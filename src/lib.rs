@@ -7,36 +7,101 @@ extern crate rustc_session;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
 
-use rustc_middle::ty::PolyFnSig;
-use rustc_middle::mir::mono::MonoItem;
 use rustc_codegen_ssa::CrateInfo;
 use std::any::Any;
 use rustc_codegen_ssa::{traits::CodegenBackend,CodegenResults};
-use rustc_middle::{ty::TyCtxt,dep_graph::WorkProduct,dep_graph::WorkProductId};
-use rustc_middle::ty::ParamEnv;
+use rustc_middle::{ty::{TyCtxt,Ty,ParamEnv,Instance,PolyFnSig},dep_graph::{WorkProductId,WorkProduct},mir::{Statement,StatementKind,Rvalue,mono::MonoItem,Operand}};
 use rustc_metadata::EncodedMetadata;
 use rustc_span::ErrorGuaranteed;
 use std::hash::BuildHasherDefault;
 use rustc_session::{config::OutputFilenames,Session};
 use rustc_data_structures::fx::FxIndexMap;
-
+#[derive(Debug)]
+enum CLROp{
+    STArg(u32),
+    LDArg(u32),
+    STLoc(u32),
+    LDLoc(u32),
+}
 struct MyBackend;
 struct CustomCodegen{}
+#[derive(Debug)]
+struct CLRMethod{
+    ops:Vec<CLROp>,
+    argc:u32,
+}
+impl CLRMethod{
+    fn argc(&self)->u32{self.argc}
+    fn new(argc:u32)->Self{
+        Self{argc,ops:Vec::with_capacity(0xF)}
+    }
+    fn load(&mut self,var:u32){
+        if var < self.argc(){ 
+            self.ops.push(CLROp::LDArg(var));
+        }
+        else{
+            println!("argc:{}, var:{var}",self.argc);
+            self.ops.push(CLROp::LDLoc(var - self.argc()));
+        }
+    }
+    // Makes so the top of the stack is the value of RValue
+    fn process_operand(&mut self, operand:&Operand){
+        match operand{
+            Operand::Copy(place) => self.load(place.local.into()),
+            _=>todo!("Unhanled operand {operand:?}"),
+        }
+    }
+    // Makes so the top of the stack is the value of RValue
+    fn process_rvalue(&mut self,rvalue:&Rvalue){
+        match rvalue{
+            Rvalue::Use(operand)=>self.process_operand(operand),
+            _=>todo!("Can't yet handle a rvalue of type {rvalue:?}"),
+        }
+    }
+    fn store(&mut self,var:u32){
+        if var < self.argc(){
+            self.ops.push(CLROp::STArg(var));
+        }
+        else{
+            self.ops.push(CLROp::STLoc(var - self.argc()));
+        }
+    }
+    fn add_statement(&mut self,statement:&Statement){
+        match &statement.kind{
+            StatementKind::Assign(asign_box)=>{
+                let (place,rvalue) = (asign_box.0,&asign_box.1);
+                self.process_rvalue(rvalue);
+                self.store(place.local.into());
+                //panic!("place:{place:?},rvalue:{rvalue:?}");
+            }
+            _=>todo!("Unhanded statement:{:?}",statement.kind),       
+        }
+    }
+}
 impl CustomCodegen{
-    fn add_fn<'tcx>(&mut self,fn_sig:PolyFnSig<'tcx>){
-        let inputs = fn_sig.inputs();
-        println!("fn_sig:{fn_sig:?} inputs:{inputs:?}");
+    fn add_fn<'tcx>(&mut self,instance:Instance<'tcx>,tcx: TyCtxt<'tcx>){
+        // TODO: figure out: What should it be???
+        let param_env = ParamEnv::empty();
+        
+        let def_id = instance.def_id(); 
+        let mir = tcx.optimized_mir(def_id);
+        let blocks = &(*mir.basic_blocks);
+        let sig = instance.ty(tcx,param_env).fn_sig(tcx);
+        let mut clr_method = CLRMethod::new(sig.inputs().no_bound_vars().expect("Encountered a not fully morphed function signature. This is not supported yet.").len() as u32);
+        for block_data in blocks{
+            for statement in &block_data.statements{
+                clr_method.add_statement(statement);
+            }
+            
+        }
+        println!("clr_method:{clr_method:?}");
+        println!("instance:{instance:?}\n");
     }
     fn add_item<'tcx>(&mut self,item:MonoItem<'tcx>,tcx: TyCtxt<'tcx>){
         println!("adding item:{}",item.symbol_name(tcx));
-        // TODO: figure out: What should it be???
-        let param_env = ParamEnv::empty();
+        
         match item{
-            MonoItem::Fn(instance)=>{
-                let ty = instance.ty(tcx,param_env);
-                let fn_sig = ty.fn_sig(tcx);
-                self.add_fn(fn_sig);
-            },
+            MonoItem::Fn(instance)=>self.add_fn(instance,tcx),
             _=>todo!("Unsupported item:\"{item:?}\"!"),
         }
     }
