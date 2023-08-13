@@ -12,7 +12,7 @@ use rustc_codegen_ssa::{traits::CodegenBackend, CodegenResults};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::{
     dep_graph::{WorkProduct, WorkProductId},
-    ty::{Ty,TyCtxt,TyKind,IntTy},
+    ty::{Ty,TyCtxt,TyKind,IntTy,UintTy},
 };
 use rustc_span::ErrorGuaranteed;
 use std::any::Any;
@@ -31,7 +31,9 @@ pub type IString = Box<str>;
 struct MyBackend;
 #[derive(Clone,Debug)]
 enum VariableType{
-    I32,
+    I8,I16,I32,I64,I128,ISize,
+    U8,U16,U32,U64,U128,USize,
+    Bool,
 }
 #[derive(Debug)]
 struct FunctionSignature{
@@ -54,13 +56,37 @@ impl FunctionSignature{
 impl VariableType{
     fn from_ty(ty:Ty)->Self{
         match ty.kind() {
+            TyKind::Int(IntTy::I8) => VariableType::I8,
+            TyKind::Int(IntTy::I16) => VariableType::I16,
             TyKind::Int(IntTy::I32) => VariableType::I32,
+            TyKind::Int(IntTy::I64) => VariableType::I64,
+            TyKind::Int(IntTy::I128) => VariableType::I128,
+            TyKind::Int(IntTy::Isize) => VariableType::ISize,
+            TyKind::Uint(UintTy::U8) => VariableType::U8,
+            TyKind::Uint(UintTy::U16) => VariableType::U16,
+            TyKind::Uint(UintTy::U32) => VariableType::U32,
+            TyKind::Uint(UintTy::U64) => VariableType::U64,
+            TyKind::Uint(UintTy::U128) => VariableType::U128,
+            TyKind::Uint(UintTy::Usize) => VariableType::USize,
+            TyKind::Bool=>VariableType::Bool,
             _ => todo!("Unhandled type kind {:?}", ty.kind()),
         }
     }
     pub(crate) fn il_name(&self)->IString{
         match self{
-            Self::I32=>"int32"
+            Self::I8=>"int8",
+            Self::I16=>"int16",
+            Self::I32=>"int32",
+            Self::I64=>"int64",
+            Self::I128=>"[System.Runtime]System.Int128",
+            Self::ISize => "native int",
+            Self::U8=>"uint8",
+            Self::U16=>"uint16",
+            Self::U32=>"uint32",
+            Self::U64=>"uint64",
+            Self::U128=>"[System.Runtime]System.UInt128",
+            Self::USize =>"native uint",
+            Self::Bool=>"bool",
         }.into()
     }
 }
