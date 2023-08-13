@@ -9,6 +9,7 @@ pub(crate) struct Assembly {
     name: IString,
 }
 impl Assembly {
+    
     pub(crate) fn into_il_ir(&self) -> IString {
         let mut methods = String::new();
         for method in &self.methods{
@@ -45,7 +46,8 @@ impl Assembly {
                 None => (),
             }
         }
-        clr_method.opt();
+        // Optimization is currently broken, and may produce invalid IR. 
+        //clr_method.opt();
         clr_method.typecheck();
         println!("clr_method:{clr_method:?}");
         println!("instance:{instance:?}\n");

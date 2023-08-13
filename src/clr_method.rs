@@ -23,6 +23,25 @@ enum LocalPlacement {
 }
 impl CLRMethod {
     fn name(&self)->&str{&self.name}
+    fn crosses_bb_border(&self,start:usize,end:usize)->bool{
+        false
+    }
+    fn backtrace_op_type(&self,op_pos:usize)->Option<&VariableType>{
+        let mut op_pos:isize = (op_pos as isize - 1);
+        let mut depth = -1;
+        while op_pos >= 0{
+            depth += self.ops[op_pos as usize].stack_change();
+            if(depth == 0){
+                return self.op_types[op_pos as usize].as_ref();
+            }
+            op_pos -= 1;
+        }
+        None
+    }
+    // This function returns the type of a local variable if it is known
+    pub(crate) fn local_type(&self,local:u32)->Option<&VariableType>{
+        self.locals.get(local as usize)?.as_ref()
+    }
     pub(crate) fn get_arg_type(&self,arg:u32)->&VariableType{
         &self.sig.inputs()[arg as usize]
     }
@@ -33,13 +52,51 @@ impl CLRMethod {
             }
         }
     }
+    fn set_local_types(&mut self){
+        for index in 0..(self.op_types.len()){
+            if let BaseIR::STLoc(index) = self.ops[index as usize]{
+                if let Some(var_type) = &self.op_types[index as usize]{
+                    while self.locals.len() < index as usize + 1{self.locals.push(None)};
+                    self.locals[index as usize] = Some(var_type.clone());
+                }
+            }
+        }
+    }
+    fn backtrace_types(&mut self){
+        for index in 0..(self.op_types.len()){
+            if let None = self.op_types[index]{
+                self.op_types[index] = self.backtrace_op_type(index).cloned();
+            }
+        }
+    }
     pub(crate) fn typecheck(&mut self){
         while self.op_types.len() < self.ops.len(){
             self.op_types.push(None);      
         }
-        
-        self.set_trivial_types();
+        for _ in 0..0x100{
+            self.set_trivial_types();
+            self.backtrace_types();
+            self.set_local_types();
+            if self.op_types.iter().all(|t| t.is_some()){break;}
+        }
         println!("op_types:{:?}",self.op_types);
+    }
+    pub(crate) fn locals_init(&self)->IString{
+        if self.locals.is_empty(){
+            return "".into();     
+        }
+        let mut locals = String::new();
+        let mut locals_iter = self.locals.iter().enumerate();
+        match locals_iter.next(){
+            Some((index,first))=>{
+                locals.push_str(&format!("\n\t\t[{index}] {loc_type}",loc_type = first.as_ref().expect("UNRESOLVED LOCAL DURING IL EMISSION!").il_name()))
+            }
+            None=>(),
+        }
+        for (index,local) in locals_iter{
+            locals.push_str(&format!(",\n\t\t[{index}] {loc_type}",loc_type = local.as_ref().expect("UNRESOLVED LOCAL DURING IL EMISSION!").il_name()))
+        }
+        format!("\t.locals init({locals}\n\t)").into()
     }
     pub(crate) fn into_il_ir(&self)->String{
         let output = self.sig.output().il_name();
@@ -57,20 +114,20 @@ impl CLRMethod {
         for op in &self.ops{
             ops_ir.push_str(&op.clr_ir());
         }
-        format!(".method public static {output} {name}({arg_list}){{\n{ops_ir}}}\n",name = self.name())
+        format!(".method public static {output} {name}({arg_list}){{\n{locals_init}\n{ops_ir}}}\n",name = self.name(),locals_init = self.locals_init())
     }
     fn argc(&self) -> u32 {
         self.sig.inputs().len() as u32
     }
     fn remove_sl(&mut self) -> usize {
         let mut opt_ops: Vec<BaseIR> = Vec::with_capacity(self.ops.len());
-        let mut ops_peek = self.ops.iter().peekable();
-        while let Some(op) = ops_peek.next() {
+        let mut ops_peek = self.ops.iter().enumerate().peekable();
+        while let Some((index,op)) = ops_peek.next() {
             match op {
                 BaseIR::STLoc(local_id) => {
-                    if let Some(BaseIR::LDLoc(other_id)) = ops_peek.peek() {
+                    if let Some((next_index,BaseIR::LDLoc(other_id))) = ops_peek.peek() {
                         //Ops store and the load the same value, being effectively a NOP.
-                        if local_id == other_id {
+                        if local_id == other_id && !self.crosses_bb_border(index,*next_index) {
                             ops_peek.next();
                             continue;
                         }
