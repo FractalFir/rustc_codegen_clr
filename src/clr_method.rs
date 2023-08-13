@@ -1,164 +1,109 @@
 use crate::BaseIR;
-use crate::IString;
 use crate::FunctionSignature;
+use crate::IString;
 use crate::VariableType;
+use rustc_index::IndexVec;
+use rustc_middle::mir::{Body, CastKind, Local, LocalDecl};
+use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::{
     mir::{
         interpret::ConstValue, AggregateKind, BinOp, ConstantKind, Operand, Rvalue, Statement,
         StatementKind, Terminator, TerminatorKind,
     },
-    ty::{IntTy, TyKind},
+    ty::{IntTy, TyCtxt, TyKind},
 };
+macro_rules! sign_cast{
+    ($var:ident,$src:ty,$dest:ty)=>{
+        (<$dest>::from_ne_bytes(($var as $src).to_ne_bytes()))
+    };
+}
 #[derive(Debug)]
 pub(crate) struct CLRMethod {
     ops: Vec<BaseIR>,
-    locals: Vec<Option<VariableType>>,
-    op_types:Vec<Option<VariableType>>,
+    locals: Vec<VariableType>,
     sig: FunctionSignature,
-    name:IString,
+    name: IString,
+    curr_bb:u32,
+    //bbs:
 }
 enum LocalPlacement {
     Arg(u32),
     Var(u32),
 }
 impl CLRMethod {
-    fn name(&self)->&str{&self.name}
-    fn crosses_bb_border(&self,start:usize,end:usize)->bool{
-        false
+    pub fn begin_bb(&mut self){
+        self.ops.push(BaseIR::BBLabel{bb_id:self.curr_bb});
+        self.curr_bb += 1;
     }
-    fn backtrace_op_type(&self,op_pos:usize)->Option<&VariableType>{
-        let mut op_pos:isize = (op_pos as isize - 1);
-        let mut depth = -1;
-        while op_pos >= 0{
-            depth += self.ops[op_pos as usize].stack_change();
-            if(depth == 0){
-                return self.op_types[op_pos as usize].as_ref();
-            }
-            op_pos -= 1;
+    fn name(&self) -> &str {
+        &self.name
+    }
+    pub(crate) fn add_locals(&mut self, locals: &IndexVec<Local, LocalDecl>) {
+        let mut new_locals: Vec<VariableType> = Vec::with_capacity(locals.len());
+        for local in locals {
+            new_locals.push(VariableType::from_ty(local.ty));
         }
-        None
+        self.locals = new_locals;
+        //todo!();
     }
-    // This function returns the type of a local variable if it is known
-    pub(crate) fn local_type(&self,local:u32)->Option<&VariableType>{
-        self.locals.get(local as usize)?.as_ref()
-    }
-    pub(crate) fn get_arg_type(&self,arg:u32)->&VariableType{
-        &self.sig.inputs()[arg as usize]
-    }
-    fn set_trivial_types(&mut self){
-        for index in 0..(self.op_types.len()){
-            if let None = self.op_types[index]{
-                self.op_types[index] = self.ops[index].get_trivial_type(self);
-            }
-        }
-    }
-    fn set_local_types(&mut self){
-        for index in 0..(self.op_types.len()){
-            if let BaseIR::STLoc(index) = self.ops[index as usize]{
-                if let Some(var_type) = &self.op_types[index as usize]{
-                    while self.locals.len() < index as usize + 1{self.locals.push(None)};
-                    self.locals[index as usize] = Some(var_type.clone());
-                }
-            }
-        }
-    }
-    fn backtrace_types(&mut self){
-        for index in 0..(self.op_types.len()){
-            if let None = self.op_types[index]{
-                self.op_types[index] = self.backtrace_op_type(index).cloned();
-            }
-        }
-    }
-    pub(crate) fn typecheck(&mut self){
-        while self.op_types.len() < self.ops.len(){
-            self.op_types.push(None);      
-        }
-        for _ in 0..0x100{
-            self.set_trivial_types();
-            self.backtrace_types();
-            self.set_local_types();
-            if self.op_types.iter().all(|t| t.is_some()){break;}
-        }
-        println!("op_types:{:?}",self.op_types);
-    }
-    pub(crate) fn locals_init(&self)->IString{
-        if self.locals.is_empty(){
-            return "".into();     
+
+    pub(crate) fn locals_init(&self) -> IString {
+        if self.locals.is_empty() {
+            return "".into();
         }
         let mut locals = String::new();
         let mut locals_iter = self.locals.iter().enumerate();
-        match locals_iter.next(){
-            Some((index,first))=>{
-                locals.push_str(&format!("\n\t\t[{index}] {loc_type}",loc_type = first.as_ref().expect("UNRESOLVED LOCAL DURING IL EMISSION!").il_name()))
-            }
-            None=>(),
+        match locals_iter.next() {
+            Some((index, first)) => locals.push_str(&format!(
+                "\n\t\t[{index}] {loc_type}",
+                loc_type = first.il_name()
+            )),
+            None => (),
         }
-        for (index,local) in locals_iter{
-            locals.push_str(&format!(",\n\t\t[{index}] {loc_type}",loc_type = local.as_ref().expect("UNRESOLVED LOCAL DURING IL EMISSION!").il_name()))
+        for (index, local) in locals_iter {
+            locals.push_str(&format!(
+                ",\n\t\t[{index}] {loc_type}",
+                loc_type = local.il_name()
+            ))
         }
         format!("\t.locals init({locals}\n\t)").into()
     }
-    pub(crate) fn into_il_ir(&self)->String{
+    pub(crate) fn into_il_ir(&self) -> String {
         let output = self.sig.output().il_name();
         let mut arg_list = String::new();
         let mut arg_iter = self.sig.inputs.iter();
-        match arg_iter.next(){
-            Some(start)=>arg_list.push_str(&start.il_name()),
-            None=>(),
+        match arg_iter.next() {
+            Some(start) => arg_list.push_str(&start.il_name()),
+            None => (),
         }
-        for arg in arg_iter{
+        for arg in arg_iter {
             arg_list.push(',');
             arg_list.push_str(&arg.il_name());
         }
         let mut ops_ir = String::new();
-        for op in &self.ops{
+        for op in &self.ops {
             ops_ir.push_str(&op.clr_ir());
         }
-        format!(".method public static {output} {name}({arg_list}){{\n{locals_init}\n{ops_ir}}}\n",name = self.name(),locals_init = self.locals_init())
+        format!(
+            ".method public static {output} {name}({arg_list}){{\n{locals_init}\n{ops_ir}}}\n",
+            name = self.name(),
+            locals_init = self.locals_init()
+        )
     }
     fn argc(&self) -> u32 {
         self.sig.inputs().len() as u32
     }
-    fn remove_sl(&mut self) -> usize {
-        let mut opt_ops: Vec<BaseIR> = Vec::with_capacity(self.ops.len());
-        let mut ops_peek = self.ops.iter().enumerate().peekable();
-        while let Some((index,op)) = ops_peek.next() {
-            match op {
-                BaseIR::STLoc(local_id) => {
-                    if let Some((next_index,BaseIR::LDLoc(other_id))) = ops_peek.peek() {
-                        //Ops store and the load the same value, being effectively a NOP.
-                        if local_id == other_id && !self.crosses_bb_border(index,*next_index) {
-                            ops_peek.next();
-                            continue;
-                        }
-                    }
-                }
-                _ => (),
-            }
-            opt_ops.push(op.clone());
-        }
-        self.ops = opt_ops;
-        self.ops.len()
-    }
-    pub(crate) fn opt(&mut self) {
-        const MAX_OPT_PASS: usize = 8;
-        for _ in 0..MAX_OPT_PASS {
-            let prev_length = self.ops.len();
-            if !(self.remove_sl() < prev_length) {
-                continue;
-            }
-        }
-    }
     fn has_return(&self) -> bool {
         true
     }
-    pub(crate) fn new(sig: FunctionSignature,name:&str) -> Self {
+    
+    pub(crate) fn new(sig: FunctionSignature, name: &str) -> Self {
         Self {
             locals: Vec::new(),
-            op_types: Vec::with_capacity(0x100),
             sig,
-            name:name.into(),
+            name: name.into(),
             ops: Vec::with_capacity(0x100),
+            curr_bb:0,
         }
     }
     fn var_live(&mut self, _local: u32) {
@@ -194,20 +139,20 @@ impl CLRMethod {
         })
     }
     fn process_constant(&mut self, constant: ConstantKind) {
-        self.ops.push(match constant {
+        match constant {
             ConstantKind::Val(value, r#type) => match value {
-                ConstValue::Scalar(scalar) => match r#type.kind() {
-                    TyKind::Int(IntTy::I32) => BaseIR::LDConstI32(
-                        scalar
-                            .to_i32()
-                            .expect("Type is i32, but odes not fit in i32."),
-                    ),
-                    _ => todo!("Unhandled type kind {:?}", r#type.kind()),
+                    ConstValue::Scalar(scalar) =>{
+                        let value:u128 = if let Scalar::Int(scalar) = scalar{
+                            scalar.try_to_uint(scalar.size()).expect("IMPOSSIBLE. Size of scalar was not equal to itself.")
+                        }else{
+                            panic!("Can't support pointers quite yet!");
+                        };
+                        self.load_constant_primitive(&VariableType::from_ty(r#type),value);
+                    }
+                    _ => todo!("Unhanled constant value {value:?}"),
                 },
-                _ => todo!("Unhanled constant value {value:?}"),
-            },
-            _ => todo!("Unhanled constant {constant:?}"),
-        });
+                _ => todo!("Unhanled constant {constant:?}"),
+        };
     }
     // Makes so the top of the stack is the value of RValue
     fn process_operand(&mut self, operand: &Operand) {
@@ -218,11 +163,24 @@ impl CLRMethod {
             Operand::Constant(const_val) => {
                 self.process_constant(const_val.literal);
             }
-            _ => todo!("Unhanled operand {operand:?}"),
+        }
+    }
+    fn convert(&mut self, src: &VariableType, dest: &VariableType) {
+        match (src, dest) {
+            (VariableType::F32 | VariableType::I8 | VariableType::I16  | VariableType::I32 | VariableType::U8 | VariableType::U16 |  VariableType::U32, VariableType::I32) => self.ops.push(BaseIR::ConvI32),
+            (VariableType::F64 | VariableType::I64 | VariableType::U64 | VariableType::ISize | VariableType::USize, VariableType::I32) => self.ops.push(BaseIR::ConvI32Checked),
+            (VariableType::F32, VariableType::I8) => self.ops.push(BaseIR::ConvI8),
+            (VariableType::I32, VariableType::F32) => self.ops.push(BaseIR::ConvF32),
+            _ => todo!("Can't convert type {src:?} to {dest:?}"),
         }
     }
     // Makes so the top of the stack is the value of RValue
-    fn process_rvalue(&mut self, rvalue: &Rvalue) {
+    fn process_rvalue<'ctx>(
+        &mut self,
+        rvalue: &Rvalue<'ctx>,
+        body: &Body<'ctx>,
+        tyctx: &TyCtxt<'ctx>,
+    ) {
         match rvalue {
             Rvalue::Use(operand) => self.process_operand(operand),
             Rvalue::BinaryOp(binop, operands) => {
@@ -231,10 +189,28 @@ impl CLRMethod {
                 self.process_operand(b);
                 self.ops.push(match binop {
                     BinOp::Add => BaseIR::Add,
+                    BinOp::Sub => BaseIR::Sub,
                     BinOp::Mul => BaseIR::Mul,
                     BinOp::Shl => BaseIR::Shl,
+                    BinOp::Shr => BaseIR::Shr,
+                    BinOp::Eq => BaseIR::Eq,
+                    BinOp::Rem => BaseIR::Rem,
                     _ => todo!("Unknown binop:{binop:?}"),
                 });
+            }
+            Rvalue::Cast(
+                CastKind::IntToInt
+                | CastKind::FloatToFloat
+                | CastKind::FloatToInt
+                | CastKind::IntToFloat,
+                operand,
+                target,
+            ) => {
+                self.process_operand(operand);
+                self.convert(
+                    &VariableType::from_ty(operand.ty(body, *tyctx)),
+                    &VariableType::from_ty(*target),
+                );
             }
             Rvalue::Aggregate(kind, operands) => {
                 match kind.as_ref() {
@@ -250,12 +226,17 @@ impl CLRMethod {
             _ => todo!("Can't yet handle a rvalue of type {rvalue:?}"),
         }
     }
-    pub(crate) fn add_statement(&mut self, statement: &Statement) {
+    pub(crate) fn add_statement<'ctx>(
+        &mut self,
+        statement: &Statement<'ctx>,
+        body: &Body<'ctx>,
+        tyctx: &TyCtxt<'ctx>,
+    ) {
         println!("statement:{statement:?}");
         match &statement.kind {
             StatementKind::Assign(asign_box) => {
                 let (place, rvalue) = (asign_box.0, &asign_box.1);
-                self.process_rvalue(rvalue);
+                self.process_rvalue(rvalue, body, tyctx);
                 self.store(place.local.into());
                 //panic!("place:{place:?},rvalue:{rvalue:?}");
             }
@@ -268,8 +249,18 @@ impl CLRMethod {
             _ => todo!("Unhanded statement:{:?}", statement.kind),
         }
     }
-    pub(crate) fn add_terminator(&mut self, terminator: &Terminator) {
-        match terminator.kind {
+    pub(crate) fn load_constant_primitive(&mut self, var_type:&VariableType,value:u128){
+        match (var_type){
+            VariableType::I8=>self.ops.push(BaseIR::LDConstI8(sign_cast!(value,u8,i8))),
+            VariableType::I32=>self.ops.push(BaseIR::LDConstI32(sign_cast!(value,u32,i32))),
+            _=>todo!("Can't yet load constant primitives of type {var_type:?}!"),
+        }
+    }
+    pub(crate) fn add_terminator<'ctx>(&mut self, terminator: &Terminator<'ctx>,
+         body: &Body<'ctx>,
+        tyctx: &TyCtxt<'ctx>,
+    ) {
+        match &terminator.kind {
             TerminatorKind::Return => {
                 if self.has_return() {
                     self.load(0);
@@ -278,6 +269,17 @@ impl CLRMethod {
                     todo!("Can't yet return from a void method!");
                 }
             }
+            TerminatorKind::SwitchInt{discr,targets}=>{
+                for (value,target) in targets.iter(){
+                    self.process_operand(&discr);
+                    self.load_constant_primitive(&VariableType::from_ty(discr.ty(body,*tyctx)),value);
+                    self.ops.push(BaseIR::BEq{target:target.into()});
+                }
+                self.ops.push(BaseIR::GoTo{target:(*targets.all_targets().last().unwrap()).into()});
+            }
+            TerminatorKind::Goto{target}=>{
+                self.ops.push(BaseIR::GoTo{target:(*target).into()});
+            },
             _ => todo!("Unknown terminator type {terminator:?}"),
         }
     }

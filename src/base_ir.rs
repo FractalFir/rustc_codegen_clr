@@ -1,47 +1,58 @@
-use crate::{IString,VariableType,CLRMethod};
+use crate::IString;
+// An IR close, but not exactly equivalent to the CoreCLR IR.
+#[derive(Debug,Clone)]
+struct BranchInfo{bb_target:u16,value:u128}
 #[derive(Debug, Clone)]
 pub(crate) enum BaseIR {
+    LDConstI8(i8),
     LDConstI32(i32),
     STArg(u32),
     LDArg(u32),
     STLoc(u32),
     LDLoc(u32),
     Add,
+    Sub,
     Mul,
+    Rem,
     Shl,
+    Shr,
+    Eq,
     Return,
+    ConvF32,
+    ConvI32,
+    ConvI32Checked,
+    ConvI8,
+    //Not a real instruction, but a marker for a basic block.
+    BBLabel{bb_id:u32},
+    BEq{target:u32},
+    GoTo{target:u32},
 }
-impl BaseIR{
-    pub(crate) fn stack_change(&self)->i8{
-        match self{
-            Self::Add | Self::Mul | Self::Shl=>-1,
-            Self::Return=>-1,
-            Self::LDLoc(_)=>1,
-            Self::LDArg(_)=>1,
-            Self::STLoc(_)=>-1,
-            Self::STArg(_)=>-1,
-            Self::LDConstI32(_)=>-1,
+impl BaseIR {
+    pub(crate) fn clr_ir(&self) -> IString {
+        match self {
+            Self::BBLabel{bb_id} => format!("\tBB_{bb_id}:\n"),
+            Self::BEq{target} => format!("\tbeq BB_{target}\n"),
+            Self::GoTo{target} => format!("\tbr BB_{target}\n"),
+            Self::LDArg(arg) => format!("\tldarg.{arg}\n"),
+            Self::STArg(arg) => format!("\tstarg.{arg}\n"),
+            Self::LDLoc(arg) => format!("\tldloc.{arg}\n"),
+            Self::STLoc(arg) => format!("\tstloc.{arg}\n"),
+            Self::Return => "\tret\n".into(),
+            Self::Add => "\tadd\n".into(),
+            Self::Sub => "\tadd\n".into(),
+            Self::Mul => "\tmul\n".into(),
+            Self::Rem => "\trem\n".into(),
+            Self::Shl => "\tshl\n".into(),
+            Self::Shr => "\tshr\n".into(),
+            Self::Eq => "\tceq\n".into(),
+            Self::LDConstI8(i8const) => format!("\tldc.i4.s {i8const}\t\n"),
+            Self::LDConstI32(i32const) => format!("\tldc.i4 {i32const}\t\n"),
+            Self::ConvF32 => "\tconv.r4\n".into(),
+            Self::ConvI8 => "\tconv.i1\n".into(),
+            Self::ConvI32 => "\tconv.i4\n".into(),
+            Self::ConvI32Checked => "\tconv.ovf.i4\n".into(),
+            //_=>format!("\t//Comment!\n"),
         }
-    }
-    pub(crate) fn get_trivial_type(&self,parent_method:&CLRMethod)->Option<VariableType>{
-        match self{
-            Self::LDConstI32(_)=>Some(VariableType::I32),
-            Self::LDLoc(var_id)=>parent_method.local_type(*var_id).cloned(),
-            Self::LDArg(arg_id)=>Some(parent_method.get_arg_type(*arg_id).clone()),
-            _=>None,
-        }
-    }
-    pub(crate) fn clr_ir(&self)->IString{
-        match self{
-            Self::LDArg(arg)=>format!("\tldarg.{arg}\n"),
-            Self::LDLoc(arg)=>format!("\tldloc.{arg}\n"),
-            Self::STLoc(arg)=>format!("\tstloc.{arg}\n"),
-            Self::Return=>"\tret\n".into(),
-            Self::Add=>"\tadd\n".into(),
-            Self::Mul=>"\tmul\n".into(),
-            Self::Shl=>"\tshl\n".into(),
-            Self::LDConstI32(i32const)=>format!("\tldc.i4 {i32const}\t\n"),
-            _=>format!("\t//Comment!\n"),
-        }.into()
+        .into()
     }
 }
