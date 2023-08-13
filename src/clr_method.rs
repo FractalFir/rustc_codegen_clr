@@ -194,6 +194,7 @@ impl CLRMethod {
                     BinOp::Shl => BaseIR::Shl,
                     BinOp::Shr => BaseIR::Shr,
                     BinOp::Eq => BaseIR::Eq,
+                    BinOp::Gt => BaseIR::Gt,
                     BinOp::Rem => BaseIR::Rem,
                     _ => todo!("Unknown binop:{binop:?}"),
                 });
@@ -253,6 +254,8 @@ impl CLRMethod {
         match (var_type){
             VariableType::I8=>self.ops.push(BaseIR::LDConstI8(sign_cast!(value,u8,i8))),
             VariableType::I32=>self.ops.push(BaseIR::LDConstI32(sign_cast!(value,u32,i32))),
+            VariableType::I64=>self.ops.push(BaseIR::LDConstI64(sign_cast!(value,u64,i64))),
+            VariableType::Bool=>self.ops.push(BaseIR::LDConstI8((value != 0) as u8 as i8)),
             _=>todo!("Can't yet load constant primitives of type {var_type:?}!"),
         }
     }

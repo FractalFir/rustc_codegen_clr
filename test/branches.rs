@@ -25,3 +25,12 @@ pub extern fn test_match(pi_digit:i8)->i8{
         _=>9,
     }
 }
+#[no_mangle]
+pub extern fn sum(mut iterations:i64)->i64{
+    let mut sum = 0;
+    while iterations > 0{
+        sum += iterations;
+        iterations += 1;
+    }
+    sum
+}
