@@ -34,4 +34,6 @@ pub extern fn boolident(a:bool)->bool{a}
 pub extern fn ref_test(a:&u64){}//->&u64{a}
 #[no_mangle]
 pub extern fn ref_ident(a:&u64)->&u64{a}
+#[no_mangle]
+pub extern fn ref_ref_ident<'a,'b>(a:&'a &'b u64)->&'a &'b u64{a}
 

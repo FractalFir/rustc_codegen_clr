@@ -1,7 +1,5 @@
-use crate::BaseIR;
-use crate::FunctionSignature;
-use crate::IString;
-use crate::VariableType;
+use crate::{BaseIR,FunctionSignature,IString,VariableType};
+use serde::{Serialize,Deserialize};
 use rustc_index::IndexVec;
 use rustc_middle::mir::{Body, CastKind, Local, LocalDecl};
 use rustc_middle::mir::interpret::Scalar;
@@ -17,7 +15,7 @@ macro_rules! sign_cast{
         (<$dest>::from_ne_bytes(($var as $src).to_ne_bytes()))
     };
 }
-#[derive(Debug)]
+#[derive(Clone,Debug,Serialize,Deserialize)]
 pub(crate) struct CLRMethod {
     ops: Vec<BaseIR>,
     locals: Vec<VariableType>,

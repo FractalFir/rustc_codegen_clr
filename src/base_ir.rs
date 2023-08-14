@@ -1,6 +1,7 @@
 use crate::IString;
+use serde::{Serialize,Deserialize};
 // An IR close, but not exactly equivalent to the CoreCLR IR.
-#[derive(PartialEq,Debug, Clone)]
+#[derive(PartialEq,Clone,Debug,Serialize,Deserialize)]
 pub(crate) enum BaseIR {
     LDConstI8(i8),
     LDConstI32(i32),

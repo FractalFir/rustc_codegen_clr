@@ -1,9 +1,10 @@
-use crate::IString;
-use crate::{CLRMethod, FunctionSignature};
+use crate::{IString,CLRMethod, FunctionSignature};
+use serde::{Serialize,Deserialize};
 use rustc_middle::{
     mir::mono::MonoItem,
     ty::{Instance, ParamEnv, TyCtxt},
 };
+#[derive(Serialize,Deserialize)]
 pub(crate) struct Assembly {
     methods: Vec<CLRMethod>,
     name: IString,
@@ -19,6 +20,9 @@ impl Assembly {
     }
 }
 impl Assembly {
+    pub(crate) fn name(&self)->&str{
+        &self.name
+    }
     pub(crate) fn new(name: &str) -> Self {
         let name: String = name.chars().take_while(|c| *c != '.').collect();
         let name = name.replace('-', "_");
@@ -66,5 +70,9 @@ impl Assembly {
             }
             _ => todo!("Unsupported item:\"{item:?}\"!"),
         }
+    }
+    pub(crate) fn link(&mut self, other:Self){
+        //TODO: do linking.
+        self.methods.extend_from_slice(&other.methods);
     }
 }
