@@ -51,8 +51,7 @@ impl Assembly {
             }
         }
         // Optimization is currently broken, and may produce invalid IR.
-        //clr_method.opt();
-        //clr_method.typecheck();
+        clr_method.opt();
         clr_method.add_locals(&mir.local_decls);
         println!("clr_method:{clr_method:?}");
         println!("instance:{instance:?}\n");

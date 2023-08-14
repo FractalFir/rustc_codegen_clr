@@ -30,4 +30,8 @@ pub extern fn addf32(a:f32,b:f32)->f32{a+b}
 pub extern fn addf64(a:f64,b:f64)->f64{a+b}
 #[no_mangle]
 pub extern fn boolident(a:bool)->bool{a}
+#[no_mangle]
+pub extern fn ref_test(a:&u64){}//->&u64{a}
+#[no_mangle]
+pub extern fn ref_ident(a:&u64)->&u64{a}
 

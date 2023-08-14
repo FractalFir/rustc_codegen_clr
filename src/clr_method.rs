@@ -31,6 +31,38 @@ enum LocalPlacement {
     Var(u32),
 }
 impl CLRMethod {
+    fn count_rws(&self,local:u32)->(usize,usize){
+        let (mut read_count,mut write_count) = (0,0);
+        for op in &self.ops{
+            if let BaseIR::LDLoc(curr_local) = op{
+                if *curr_local == local{read_count += 1};
+            }
+            else if let BaseIR::STLoc(curr_local) = op{
+                if *curr_local == local{write_count += 1};
+            }
+        }
+        (read_count,write_count)
+    }
+    fn remove_useless_local_wr_combo(&mut self){
+        for index in 0..(self.ops.len() - 1){
+            let next_index = index + 1;
+            if let BaseIR::STLoc(wloc) = self.ops[index]{if let BaseIR::LDLoc(rloc) = self.ops[next_index]{
+                if wloc != rloc{continue;}
+                let (reads,writes) = self.count_rws(wloc);
+                //TODO: use a better method to determine if STLoc && LDLoc combo has no side effects and can be removed
+                if reads != 1 || writes != 1{continue;}
+                self.ops[index] = BaseIR::Nop;
+                self.ops[next_index] = BaseIR::Nop;
+            }}
+        }
+    }
+    fn prune_nops(&mut self){
+        self.ops = self.ops.iter().filter(|op| **op != BaseIR::Nop).map(|op|op.clone()).collect();
+    }
+    pub(crate) fn opt(&mut self){
+        self.remove_useless_local_wr_combo();
+        self.prune_nops();
+    }
     pub fn begin_bb(&mut self){
         self.ops.push(BaseIR::BBLabel{bb_id:self.curr_bb});
         self.curr_bb += 1;

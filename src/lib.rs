@@ -8,14 +8,13 @@ extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
 
-use rustc_codegen_ssa::CrateInfo;
-use rustc_codegen_ssa::{traits::CodegenBackend, CodegenResults};
+use rustc_codegen_ssa::{CrateInfo,traits::CodegenBackend, CodegenResults};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_metadata::EncodedMetadata;
-use rustc_middle::ty::PolyFnSig;
 use rustc_middle::{
     dep_graph::{WorkProduct, WorkProductId},
-    ty::{FloatTy, IntTy, Ty, TyCtxt, TyKind, UintTy},
+    ty::{FloatTy, IntTy, Ty, TyCtxt, TyKind, UintTy,PolyFnSig},
+    mir::Mutability,
 };
 use rustc_session::{config::OutputFilenames, Session};
 use rustc_span::ErrorGuaranteed;
@@ -32,6 +31,7 @@ pub type IString = Box<str>;
 struct MyBackend;
 #[derive(Clone, Debug)]
 enum VariableType {
+    Void,
     I8,
     I16,
     I32,
@@ -47,6 +47,8 @@ enum VariableType {
     F32,
     F64,
     Bool,
+    Ref(Box<Self>),
+    RefMut(Box<Self>),
 }
 #[derive(Debug)]
 struct FunctionSignature {
@@ -63,11 +65,17 @@ impl FunctionSignature {
     pub(crate) fn from_poly_sig(sig: PolyFnSig) -> Option<Self> {
         let inputs = sig
             .inputs()
-            .no_bound_vars()?
+            // `skip_binder` is `a riskiy thing` TODO: Foigure out to which kind of issues it may lead!
+            .skip_binder()
+            //.no_bound_vars()?
             .iter()
             .map(|v| VariableType::from_ty(*v))
             .collect();
-        let output = VariableType::from_ty(sig.output().no_bound_vars()?);
+        let output = VariableType::from_ty(sig.output()
+            // `skip_binder` is `a riskiy thing` TODO: Foigure out to which kind of issues it may lead!
+            .skip_binder()
+            //.no_bound_vars()?
+        );
         Some(Self { inputs, output })
     }
 }
@@ -89,26 +97,55 @@ impl VariableType {
             TyKind::Float(FloatTy::F32) => VariableType::F32,
             TyKind::Float(FloatTy::F64) => VariableType::F64,
             TyKind::Bool => VariableType::Bool,
+            TyKind::Char => todo!("Can't handle chars yet!"),
+            TyKind::Foreign(ftype) => todo!("Can't handle foreign types yet!"),
+            TyKind::Str => todo!("Can't handle string slices yet!"),
+            TyKind::Array(element_type,length) => todo!("Can't handle arrays yet!"),
+            TyKind::Slice(element_type) => todo!("Can't handle slices yet!"),
+            TyKind::Adt(adt_def,subst) => todo!("Can't ADTs(structs,enums,unions) yet!"),
+            TyKind::RawPtr(target_type) => todo!("Can't handle pointers yet!"),
+            TyKind::FnPtr(sig) => todo!("Can't handle function pointers yet!"),
+            TyKind::Ref(region,ref_type,mutability)=> {
+                // There is no such concept as lifetimes in CLR
+                let _ = region;
+                match mutability{
+                    Mutability::Mut =>  Self::RefMut(Box::new(Self::from_ty(*ref_type))),
+                    Mutability::Not => Self::Ref(Box::new(Self::from_ty(*ref_type)))
+                }
+               
+            },
+            TyKind::Bound(debrujin_index, bound_ty)=>{
+                todo!("Bound, debrujin_index:{debrujin_index:?}, bound_ty:{bound_ty:?}");
+            },
+            TyKind::Tuple(inner_types) => {
+                if inner_types.len() == 0{
+                    return Self::Void;
+                }
+                todo!("Can't handle tuples yet!");
+            }
             _ => todo!("Unhandled type kind {:?}", ty.kind()),
         }
     }
     pub(crate) fn il_name(&self) -> IString {
         match self {
-            Self::I8 => "int8",
-            Self::I16 => "int16",
-            Self::I32 => "int32",
-            Self::I64 => "int64",
-            Self::I128 => "[System.Runtime]System.Int128",
-            Self::ISize => "native int",
-            Self::U8 => "uint8",
-            Self::U16 => "uint16",
-            Self::U32 => "uint32",
-            Self::U64 => "uint64",
-            Self::U128 => "[System.Runtime]System.UInt128",
-            Self::USize => "native uint",
-            Self::F32 => "float32",
-            Self::F64 => "float64",
-            Self::Bool => "bool",
+            Self::Void => "void".into(),
+            Self::I8 => "int8".into(),
+            Self::I16 => "int16".into(),
+            Self::I32 => "int32".into(),
+            Self::I64 => "int64".into(),
+            Self::I128 => "[System.Runtime]System.Int128".into(),
+            Self::ISize => "native int".into(),
+            Self::U8 => "uint8".into(),
+            Self::U16 => "uint16".into(),
+            Self::U32 => "uint32".into(),
+            Self::U64 => "uint64".into(),
+            Self::U128 => "[System.Runtime]System.UInt128".into(),
+            Self::USize => "native uint".into(),
+            Self::F32 => "float32".into(),
+            Self::F64 => "float64".into(),
+            Self::Bool => "bool".into(),
+            Self::Ref(inner) => format!("{inner}&",inner = inner.il_name()), 
+            Self::RefMut(inner) => format!("{inner}&",inner = inner.il_name()), 
         }
         .into()
     }
