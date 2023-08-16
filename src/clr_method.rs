@@ -86,8 +86,11 @@ impl CLRMethod {
     }
     pub(crate) fn add_locals(&mut self, locals: &IndexVec<Local, LocalDecl>) {
         let mut new_locals: Vec<VariableType> = Vec::with_capacity(locals.len());
-        for local in locals {
-            new_locals.push(VariableType::from_ty(local.ty));
+        for (local_id,local) in locals.iter().enumerate() {
+            let placement = self.local_id_placement(local_id as u32);
+            if let LocalPlacement::Var(_) = placement{
+                new_locals.push(VariableType::from_ty(local.ty));
+            }
         }
         self.locals = new_locals;
         //todo!();
@@ -258,8 +261,13 @@ impl CLRMethod {
                     BinOp::Shl => BaseIR::Shl,
                     BinOp::Shr => BaseIR::Shr,
                     BinOp::Eq => BaseIR::Eq,
+                    BinOp::Ne => BaseIR::NEq,
                     BinOp::Gt => BaseIR::Gt,
                     BinOp::Rem => BaseIR::Rem,
+                    BinOp::BitXor => BaseIR::Xor,
+                    BinOp::BitOr => BaseIR::Or,
+                    BinOp::BitAnd => BaseIR::And,
+                    BinOp::Div => BaseIR::Div,
                     _ => todo!("Unknown binop:{binop:?}"),
                 });
             }
@@ -361,6 +369,22 @@ impl CLRMethod {
                 self.ops.push(BaseIR::GoTo {
                     target: (*target).into(),
                 });
+            }
+            TerminatorKind::Assert{cond,
+                expected,
+                msg,
+                target,
+                unwind}=>{
+                self.process_operand(cond);
+                self.load_constant_primitive(&VariableType::Bool,if *expected{1}else{0});
+                self.ops.push(BaseIR::BEq {
+                    target: (*target).into(),
+                });
+                self.ops.push(BaseIR::LDConstString(format!("{msg:?}")));
+                self.ops.push(BaseIR::NewObj{ctor_fn:"void [System.Runtime]System.Exception::.ctor(string)".to_owned()});
+                self.ops.push(BaseIR::Throw);
+                //todo!()
+                //TODO: handle assertions!
             }
             TerminatorKind::Call {
                 func,

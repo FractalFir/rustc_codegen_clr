@@ -6,6 +6,7 @@ pub(crate) enum BaseIR {
     LDConstI8(i8),
     LDConstI32(i32),
     LDConstI64(i64),
+    LDConstString(String),
     STArg(u32),
     LDArg(u32),
     STLoc(u32),
@@ -13,11 +14,16 @@ pub(crate) enum BaseIR {
     Add,
     Sub,
     Mul,
+    Div,
     Rem,
     Shl,
     Shr,
     Eq,
+    NEq,
     Gt,
+    Xor,
+    Or,
+    And,
     Return,
     ConvF32,
     ConvI32,
@@ -28,6 +34,10 @@ pub(crate) enum BaseIR {
     BBLabel { bb_id: u32 },
     BEq { target: u32 },
     GoTo { target: u32 },
+    NewObj{
+        ctor_fn:String,
+    },
+    Throw,
 }
 impl BaseIR {
     pub(crate) fn clr_ir(&self) -> IString {
@@ -45,10 +55,15 @@ impl BaseIR {
             Self::Sub => "\tadd\n".into(),
             Self::Mul => "\tmul\n".into(),
             Self::Rem => "\trem\n".into(),
+            Self::Div => "\tdiv\n".into(),
             Self::Shl => "\tshl\n".into(),
             Self::Shr => "\tshr\n".into(),
             Self::Eq => "\tceq\n".into(),
+            Self::NEq => "\tceq\n\tldc.i4.0\n\tceq\n".into(),
             Self::Gt => "\tcgt\n".into(),
+            Self::Xor => "\txor\n".into(),
+            Self::Or => "\tor\n".into(),
+            Self::And => "\tand\n".into(),
             Self::LDConstI8(i8const) => format!("\tldc.i4.s {i8const}\n"),
             Self::LDConstI32(i32const) => format!("\tldc.i4 {i32const}\n"),
             Self::LDConstI64(i64const) => format!("\tldc.i8 {i64const}\n"),
@@ -57,6 +72,9 @@ impl BaseIR {
             Self::ConvI32 => "\tconv.i4\n".into(),
             Self::ConvI32Checked => "\tconv.ovf.i4\n".into(),
             Self::Nop => "\tnop\n".into(), //_=>format!("\t//Comment!\n"),
+            Self::LDConstString(string) => format!("\tldstr \"{string}\"\n"),
+            Self::NewObj{ctor_fn} => format!("\tnewobj instance {ctor_fn}\n"),
+            Self::Throw => "\tthrow\n".into(), 
         }
         .into()
     }
