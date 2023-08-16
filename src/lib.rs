@@ -1,12 +1,4 @@
 #![feature(rustc_private)]
-//TODO: ASAP FIX THE DAMM FUNCTION ARGUMENTS MESSING UP LOCAL TYPES!
-
-
-
-
-
-
-
 extern crate rustc_codegen_ssa;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
@@ -158,8 +150,8 @@ impl VariableType {
             Self::F32 => "float32".into(),
             Self::F64 => "float64".into(),
             Self::Bool => "bool".into(),
-            Self::Ref(inner) => format!("{inner}&", inner = inner.il_name()),
-            Self::RefMut(inner) => format!("{inner}&", inner = inner.il_name()),
+            Self::Ref(inner) => format!("{inner}*", inner = inner.il_name()),
+            Self::RefMut(inner) => format!("{inner}*", inner = inner.il_name()),
         }
         .into()
     }

@@ -25,3 +25,5 @@ pub extern fn neq(a:i32,b:i32)->bool{a != b}
 pub extern fn sqr_mag(ax:i32,ay:i32)->i32{ax*ax + ay*ay}
 #[no_mangle]
 pub extern fn pow2(power:i32)->i32{1<<power}
+#[no_mangle]
+pub extern fn set(reference:&mut i32, value:i32){*reference = value}

@@ -9,6 +9,7 @@ use rustc_middle::{
     },
     ty::{TyCtxt},
 };
+use rustc_middle::mir::Place;
 use rustc_middle::mir::Constant;
 use serde::{Deserialize, Serialize};
 macro_rules! sign_cast {
@@ -181,11 +182,20 @@ impl CLRMethod {
             LocalPlacement::Var(var_id) => BaseIR::LDLoc(var_id),
         })
     }
-    fn store(&mut self, local: u32) {
-        self.ops.push(match self.local_id_placement(local) {
-            LocalPlacement::Arg(arg_id) => BaseIR::STArg(arg_id),
-            LocalPlacement::Var(var_id) => BaseIR::STLoc(var_id),
-        })
+    fn store(&mut self, place: Place) {
+        if place.projection.is_empty(){
+            let local:u32 = place.local.into();
+            self.ops.push(match self.local_id_placement(local) {
+                LocalPlacement::Arg(arg_id) => BaseIR::STArg(arg_id),
+                LocalPlacement::Var(var_id) => BaseIR::STLoc(var_id),
+            })
+        }
+        else{
+            // First, travel trough almost every element besides the last one!
+            
+            // The value or address of the last one should be on top of the stack.
+            panic!("Non-trivial store!");
+        }
     }
     fn process_constant(&mut self, constant: ConstantKind) {
         match constant {
@@ -310,7 +320,7 @@ impl CLRMethod {
             StatementKind::Assign(asign_box) => {
                 let (place, rvalue) = (asign_box.0, &asign_box.1);
                 self.process_rvalue(rvalue, body, tyctx);
-                self.store(place.local.into());
+                self.store(place);
                 //panic!("place:{place:?},rvalue:{rvalue:?}");
             }
             StatementKind::StorageLive(local) => {
