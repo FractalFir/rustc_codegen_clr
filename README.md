@@ -11,21 +11,21 @@ I am currently going with the managed route, since:
 2. It seems to be mostly working, at least for now?
 
 # How far is the project along:
-[X] Basic functions get translated properly. 
-[X] Basic integer and float types are supported.
-[X] Arithmetic operations work
-[X] Most `if`'s work.
-[X] Basic `match` works.
-[X] While loops work.
-[X] **VERY** basic references work
-[X] Basic optimization.
-[ ] Calls
-[ ] Structs
-[ ] Enums
-[ ] Basic generics
-[ ] iterators
-[ ] for loops
-[ ] References to references(might work, but requires further investigation).
+- [X] Basic functions get translated properly. 
+- [X] Basic integer and float types are supported.
+- [X] Arithmetic operations work
+- [X] Most `if`'s work.
+- [X] Basic `match` works.
+- [X] While loops work.
+- [X] **VERY** basic references work
+- [X] Basic optimization.
+- [ ] Calls
+- [ ] Structs
+- [ ] Enums
+- [ ] Basic generics
+- [ ] iterators
+- [ ] for loops
+- [ ] References to references(might work, but requires further investigation).
 # Issues
 Documentation of internals of `rustc` is very often very lacking. This makes this project far harder than it should be.
 References in CLR seem to be far more limited than in Rust. This needs to be worked around.
