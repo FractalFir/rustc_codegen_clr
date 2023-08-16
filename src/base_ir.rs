@@ -1,7 +1,7 @@
 use crate::IString;
-use serde::{Serialize,Deserialize};
+use serde::{Deserialize, Serialize};
 // An IR close, but not exactly equivalent to the CoreCLR IR.
-#[derive(PartialEq,Clone,Debug,Serialize,Deserialize)]
+#[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub(crate) enum BaseIR {
     LDConstI8(i8),
     LDConstI32(i32),
@@ -25,17 +25,17 @@ pub(crate) enum BaseIR {
     ConvI8,
     Nop,
     //Not a real instruction, but a marker for a basic block.
-    BBLabel{bb_id:u32},
-    BEq{target:u32},
-    GoTo{target:u32},
+    BBLabel { bb_id: u32 },
+    BEq { target: u32 },
+    GoTo { target: u32 },
 }
 impl BaseIR {
     pub(crate) fn clr_ir(&self) -> IString {
         match self {
-            Self::BBLabel{bb_id} => format!("\tBB_{bb_id}:\n"),
-            Self::BEq{target} => format!("\tbeq BB_{target}\n"),
+            Self::BBLabel { bb_id } => format!("\tBB_{bb_id}:\n"),
+            Self::BEq { target } => format!("\tbeq BB_{target}\n"),
             //Self::BGt{target} => format!("\tbgt BB_{target}\n"),
-            Self::GoTo{target} => format!("\tbr BB_{target}\n"),
+            Self::GoTo { target } => format!("\tbr BB_{target}\n"),
             Self::LDArg(arg) => format!("\tldarg {arg}\n"),
             Self::STArg(arg) => format!("\tstarg {arg}\n"),
             Self::LDLoc(arg) => format!("\tldloc {arg}\n"),
@@ -56,8 +56,7 @@ impl BaseIR {
             Self::ConvI8 => "\tconv.i1\n".into(),
             Self::ConvI32 => "\tconv.i4\n".into(),
             Self::ConvI32Checked => "\tconv.ovf.i4\n".into(),
-            Self::Nop=>"\tnop\n".into()
-            //_=>format!("\t//Comment!\n"),
+            Self::Nop => "\tnop\n".into(), //_=>format!("\t//Comment!\n"),
         }
         .into()
     }

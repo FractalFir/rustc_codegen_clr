@@ -1,27 +1,28 @@
-use crate::{BaseIR,FunctionSignature,IString,VariableType};
-use serde::{Serialize,Deserialize};
+use crate::{BaseIR, FunctionSignature, IString, VariableType};
 use rustc_index::IndexVec;
-use rustc_middle::mir::{Body, CastKind, Local, LocalDecl};
 use rustc_middle::mir::interpret::Scalar;
+use rustc_middle::mir::{Body, CastKind, Local, LocalDecl};
 use rustc_middle::{
     mir::{
         interpret::ConstValue, AggregateKind, BinOp, ConstantKind, Operand, Rvalue, Statement,
         StatementKind, Terminator, TerminatorKind,
     },
-    ty::{IntTy, TyCtxt, TyKind},
+    ty::{TyCtxt},
 };
-macro_rules! sign_cast{
-    ($var:ident,$src:ty,$dest:ty)=>{
+use rustc_middle::mir::Constant;
+use serde::{Deserialize, Serialize};
+macro_rules! sign_cast {
+    ($var:ident,$src:ty,$dest:ty) => {
         (<$dest>::from_ne_bytes(($var as $src).to_ne_bytes()))
     };
 }
-#[derive(Clone,Debug,Serialize,Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct CLRMethod {
     ops: Vec<BaseIR>,
     locals: Vec<VariableType>,
     sig: FunctionSignature,
     name: IString,
-    curr_bb:u32,
+    curr_bb: u32,
     //bbs:
 }
 enum LocalPlacement {
@@ -29,40 +30,55 @@ enum LocalPlacement {
     Var(u32),
 }
 impl CLRMethod {
-    fn count_rws(&self,local:u32)->(usize,usize){
-        let (mut read_count,mut write_count) = (0,0);
-        for op in &self.ops{
-            if let BaseIR::LDLoc(curr_local) = op{
-                if *curr_local == local{read_count += 1};
-            }
-            else if let BaseIR::STLoc(curr_local) = op{
-                if *curr_local == local{write_count += 1};
+    fn count_rws(&self, local: u32) -> (usize, usize) {
+        let (mut read_count, mut write_count) = (0, 0);
+        for op in &self.ops {
+            if let BaseIR::LDLoc(curr_local) = op {
+                if *curr_local == local {
+                    read_count += 1
+                };
+            } else if let BaseIR::STLoc(curr_local) = op {
+                if *curr_local == local {
+                    write_count += 1
+                };
             }
         }
-        (read_count,write_count)
+        (read_count, write_count)
     }
-    fn remove_useless_local_wr_combo(&mut self){
-        for index in 0..(self.ops.len() - 1){
+    fn remove_useless_local_wr_combo(&mut self) {
+        for index in 0..(self.ops.len() - 1) {
             let next_index = index + 1;
-            if let BaseIR::STLoc(wloc) = self.ops[index]{if let BaseIR::LDLoc(rloc) = self.ops[next_index]{
-                if wloc != rloc{continue;}
-                let (reads,writes) = self.count_rws(wloc);
-                //TODO: use a better method to determine if STLoc && LDLoc combo has no side effects and can be removed
-                if reads != 1 || writes != 1{continue;}
-                self.ops[index] = BaseIR::Nop;
-                self.ops[next_index] = BaseIR::Nop;
-            }}
+            if let BaseIR::STLoc(wloc) = self.ops[index] {
+                if let BaseIR::LDLoc(rloc) = self.ops[next_index] {
+                    if wloc != rloc {
+                        continue;
+                    }
+                    let (reads, writes) = self.count_rws(wloc);
+                    //TODO: use a better method to determine if STLoc && LDLoc combo has no side effects and can be removed
+                    if reads != 1 || writes != 1 {
+                        continue;
+                    }
+                    self.ops[index] = BaseIR::Nop;
+                    self.ops[next_index] = BaseIR::Nop;
+                }
+            }
         }
     }
-    fn prune_nops(&mut self){
-        self.ops = self.ops.iter().filter(|op| **op != BaseIR::Nop).map(|op|op.clone()).collect();
+    fn prune_nops(&mut self) {
+        self.ops = self
+            .ops
+            .iter()
+            .filter(|op| **op != BaseIR::Nop).cloned()
+            .collect();
     }
-    pub(crate) fn opt(&mut self){
+    pub(crate) fn opt(&mut self) {
         self.remove_useless_local_wr_combo();
         self.prune_nops();
     }
-    pub fn begin_bb(&mut self){
-        self.ops.push(BaseIR::BBLabel{bb_id:self.curr_bb});
+    pub fn begin_bb(&mut self) {
+        self.ops.push(BaseIR::BBLabel {
+            bb_id: self.curr_bb,
+        });
         self.curr_bb += 1;
     }
     fn name(&self) -> &str {
@@ -126,14 +142,14 @@ impl CLRMethod {
     fn has_return(&self) -> bool {
         true
     }
-    
+
     pub(crate) fn new(sig: FunctionSignature, name: &str) -> Self {
         Self {
             locals: Vec::new(),
             sig,
             name: name.into(),
             ops: Vec::with_capacity(0x100),
-            curr_bb:0,
+            curr_bb: 0,
         }
     }
     fn var_live(&mut self, _local: u32) {
@@ -171,17 +187,19 @@ impl CLRMethod {
     fn process_constant(&mut self, constant: ConstantKind) {
         match constant {
             ConstantKind::Val(value, r#type) => match value {
-                    ConstValue::Scalar(scalar) =>{
-                        let value:u128 = if let Scalar::Int(scalar) = scalar{
-                            scalar.try_to_uint(scalar.size()).expect("IMPOSSIBLE. Size of scalar was not equal to itself.")
-                        }else{
-                            panic!("Can't support pointers quite yet!");
-                        };
-                        self.load_constant_primitive(&VariableType::from_ty(r#type),value);
-                    }
-                    _ => todo!("Unhanled constant value {value:?}"),
-                },
-                _ => todo!("Unhanled constant {constant:?}"),
+                ConstValue::Scalar(scalar) => {
+                    let value: u128 = if let Scalar::Int(scalar) = scalar {
+                        scalar
+                            .try_to_uint(scalar.size())
+                            .expect("IMPOSSIBLE. Size of scalar was not equal to itself.")
+                    } else {
+                        panic!("Can't support pointers quite yet!");
+                    };
+                    self.load_constant_primitive(&VariableType::from_ty(r#type), value);
+                }
+                _ => todo!("Unhanled constant value {value:?}"),
+            },
+            _ => todo!("Unhanled constant {constant:?}"),
         };
     }
     // Makes so the top of the stack is the value of RValue
@@ -197,8 +215,24 @@ impl CLRMethod {
     }
     fn convert(&mut self, src: &VariableType, dest: &VariableType) {
         match (src, dest) {
-            (VariableType::F32 | VariableType::I8 | VariableType::I16  | VariableType::I32 | VariableType::U8 | VariableType::U16 |  VariableType::U32, VariableType::I32) => self.ops.push(BaseIR::ConvI32),
-            (VariableType::F64 | VariableType::I64 | VariableType::U64 | VariableType::ISize | VariableType::USize, VariableType::I32) => self.ops.push(BaseIR::ConvI32Checked),
+            (
+                VariableType::F32
+                | VariableType::I8
+                | VariableType::I16
+                | VariableType::I32
+                | VariableType::U8
+                | VariableType::U16
+                | VariableType::U32,
+                VariableType::I32,
+            ) => self.ops.push(BaseIR::ConvI32),
+            (
+                VariableType::F64
+                | VariableType::I64
+                | VariableType::U64
+                | VariableType::ISize
+                | VariableType::USize,
+                VariableType::I32,
+            ) => self.ops.push(BaseIR::ConvI32Checked),
             (VariableType::F32, VariableType::I8) => self.ops.push(BaseIR::ConvI8),
             (VariableType::I32, VariableType::F32) => self.ops.push(BaseIR::ConvF32),
             _ => todo!("Can't convert type {src:?} to {dest:?}"),
@@ -280,17 +314,23 @@ impl CLRMethod {
             _ => todo!("Unhanded statement:{:?}", statement.kind),
         }
     }
-    pub(crate) fn load_constant_primitive(&mut self, var_type:&VariableType,value:u128){
-        match (var_type){
-            VariableType::I8=>self.ops.push(BaseIR::LDConstI8(sign_cast!(value,u8,i8))),
-            VariableType::I32=>self.ops.push(BaseIR::LDConstI32(sign_cast!(value,u32,i32))),
-            VariableType::I64=>self.ops.push(BaseIR::LDConstI64(sign_cast!(value,u64,i64))),
-            VariableType::Bool=>self.ops.push(BaseIR::LDConstI8((value != 0) as u8 as i8)),
-            _=>todo!("Can't yet load constant primitives of type {var_type:?}!"),
+    pub(crate) fn load_constant_primitive(&mut self, var_type: &VariableType, value: u128) {
+        match var_type {
+            VariableType::I8 => self.ops.push(BaseIR::LDConstI8(sign_cast!(value, u8, i8))),
+            VariableType::I32 => self
+                .ops
+                .push(BaseIR::LDConstI32(sign_cast!(value, u32, i32))),
+            VariableType::I64 => self
+                .ops
+                .push(BaseIR::LDConstI64(sign_cast!(value, u64, i64))),
+            VariableType::Bool => self.ops.push(BaseIR::LDConstI8((value != 0) as u8 as i8)),
+            _ => todo!("Can't yet load constant primitives of type {var_type:?}!"),
         }
     }
-    pub(crate) fn add_terminator<'ctx>(&mut self, terminator: &Terminator<'ctx>,
-         body: &Body<'ctx>,
+    pub(crate) fn add_terminator<'ctx>(
+        &mut self,
+        terminator: &Terminator<'ctx>,
+        body: &Body<'ctx>,
         tyctx: &TyCtxt<'ctx>,
     ) {
         match &terminator.kind {
@@ -302,17 +342,54 @@ impl CLRMethod {
                     todo!("Can't yet return from a void method!");
                 }
             }
-            TerminatorKind::SwitchInt{discr,targets}=>{
-                for (value,target) in targets.iter(){
-                    self.process_operand(&discr);
-                    self.load_constant_primitive(&VariableType::from_ty(discr.ty(body,*tyctx)),value);
-                    self.ops.push(BaseIR::BEq{target:target.into()});
+            TerminatorKind::SwitchInt { discr, targets } => {
+                for (value, target) in targets.iter() {
+                    self.process_operand(discr);
+                    self.load_constant_primitive(
+                        &VariableType::from_ty(discr.ty(body, *tyctx)),
+                        value,
+                    );
+                    self.ops.push(BaseIR::BEq {
+                        target: target.into(),
+                    });
                 }
-                self.ops.push(BaseIR::GoTo{target:(*targets.all_targets().last().unwrap()).into()});
+                self.ops.push(BaseIR::GoTo {
+                    target: (*targets.all_targets().last().unwrap()).into(),
+                });
             }
-            TerminatorKind::Goto{target}=>{
-                self.ops.push(BaseIR::GoTo{target:(*target).into()});
-            },
+            TerminatorKind::Goto { target } => {
+                self.ops.push(BaseIR::GoTo {
+                    target: (*target).into(),
+                });
+            }
+            TerminatorKind::Call {
+                func,
+                args: _,
+                destination: _,
+                target: _,
+                unwind: _,
+                fn_span: _,
+                call_source: _,
+            } => {
+                //let fn_sig = FunctionSignature::from_poly_sig(func);
+                match func{
+                    Operand::Constant(fn_const)=>{
+                        let Constant{span,user_ty,literal} = **fn_const;
+                        if let ConstantKind::Val(ConstValue::ZeroSized,fn_ty) = literal{
+                            assert!(fn_ty.is_fn(),"literal{literal:?} in call is not a function type!");
+                            //TODO: figure out how
+                            let fn_name = format!("{fn_ty:?}").split("{").nth(1).expect("Can't find the start of a function name.").split('}').next().expect("Can't find the end of a function name!").to_owned();
+                            
+                            println!("fn_name:{fn_name:?}");
+                        }else{
+                            panic!("Invalid function literal!");
+                        }
+                        
+                    },
+                    _=>panic!("func must be const!"),
+                }
+                todo!("Can't call yet!,func:{func:?}");
+            }
             _ => todo!("Unknown terminator type {terminator:?}"),
         }
     }
