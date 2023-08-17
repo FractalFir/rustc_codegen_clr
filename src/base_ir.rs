@@ -7,6 +7,8 @@ pub(crate) enum BaseIR {
     LDConstI32(i32),
     LDConstI64(i64),
     STIInd(u8),
+    LDIndIn(u8),
+    LDIndI,
     LDConstString(String),
     STArg(u32),
     LDArg(u32),
@@ -75,6 +77,8 @@ impl BaseIR {
             Self::NewObj { ctor_fn } => format!("\tnewobj instance {ctor_fn}\n"),
             Self::Throw => "\tthrow\n".into(),
             Self::STIInd(size) => format!("\tstind.i{size}\n"),
+            Self::LDIndIn(size) => format!("\tldind.i{size}\n"),
+            Self::LDIndI=>"\tldind.i\n".into(),
         }
         .into()
     }

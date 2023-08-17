@@ -5,6 +5,7 @@ use rustc_middle::{
     mir::{Body, Place,AggregateKind,CastKind,BinOp,Operand,ConstantKind},
     ty::TyCtxt,
 };
+use rustc_middle::mir::ProjectionElem;
 macro_rules! sign_cast {
     ($var:ident,$src:ty,$dest:ty) => {
         (<$dest>::from_ne_bytes(($var as $src).to_ne_bytes()))
@@ -34,7 +35,24 @@ impl AsigmentTarget {
                     LocalPlacement::Var(var_id) => BaseIR::STLoc(var_id),
                 });
         } else {
-            panic!("Can't handle non-trivial assignments!");
+            let local: u32 = place.local.into();
+            new.adress_calc
+                .push(match clr_method.local_id_placement(local) {
+                    LocalPlacement::Arg(arg_id) => BaseIR::LDArg(arg_id),
+                    LocalPlacement::Var(var_id) => BaseIR::LDLoc(var_id),
+                });
+            for modifier in &place.projection[..(place.projection.len() - 1)]{
+                todo!("Can't handle assignments with more than one level of indirection")
+            }
+            let last = place.projection[(place.projection.len() - 1)];
+            match last{
+                ProjectionElem::Deref => {
+                    //TODO: handle the type
+                    new.value_pos = AsigmentValuePosition::AfterAdress;
+                    new.set_ops.push(BaseIR::STIInd(4));
+                }
+                _=> todo!("Can't handle ProjectionElements of type {last:?}!"),
+            }
         }
         new
     }
@@ -90,6 +108,13 @@ impl RValue {
             _ => todo!("Unknown binop:{binop:?}"),
         });
     }
+    fn read_pointer_of_type(&mut self, element_type:&VariableType){
+        match element_type{
+            VariableType::I32 => self.ops.push(BaseIR::LDIndIn(std::mem::size_of::<i32>() as u8)),
+            VariableType::Ref(_) | VariableType::RefMut(_) =>self.ops.push(BaseIR::LDIndI),
+            _=>todo!("Can't derference pointer of type {element_type:?}"),
+        }
+    }
     fn process_rvalue<'ctx>(
         &mut self,
         rvalue: &CompilerRValue<'ctx>,
@@ -126,6 +151,16 @@ impl RValue {
                     _ => todo!(
                         "Can't yet handle the aggregate of kind {kind:?} and operands:{operands:?}"
                     ),
+                }
+            }
+            CompilerRValue::Repeat(_, _) => todo!("Can't yet initialize arrays!"),
+            CompilerRValue::CopyForDeref(place) =>{
+                if place.projection.len() == 1{
+                    self.load(place.local.into(),clr_method);
+                    self.read_pointer_of_type(&clr_method.get_type_of_local(place.local.into()).get_pointed_type().expect("Tried to deference a value that was neither a pointer nor a reference"));
+                }
+                else {
+                    panic!("Can't handle non-trivial deference's yet, projection:{projection:?}!",projection = place.projection);
                 }
             }
             _ => todo!("Can't yet handle a rvalue of type {rvalue:?}"),

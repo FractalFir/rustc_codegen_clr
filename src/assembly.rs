@@ -44,6 +44,7 @@ impl Assembly {
                 .expect("Could not resolve the function signature"),
             name,
         );
+        clr_method.add_locals(&mir.local_decls);
         for block_data in blocks {
             clr_method.begin_bb();
             for statement in &block_data.statements {
@@ -54,9 +55,7 @@ impl Assembly {
                 None => (),
             }
         }
-        // Optimization is currently broken, and may produce invalid IR.
         clr_method.opt();
-        clr_method.add_locals(&mir.local_decls);
         println!("clr_method:{clr_method:?}");
         println!("instance:{instance:?}\n");
         self.methods.push(clr_method);

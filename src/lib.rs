@@ -54,7 +54,7 @@ impl FunctionSignature {
     pub(crate) fn from_poly_sig(sig: PolyFnSig) -> Option<Self> {
         let inputs = sig
             .inputs()
-            // `skip_binder` is `a riskiy thing` TODO: Foigure out to which kind of issues it may lead!
+            // `skip_binder` is `a riskiy thing` TODO: Figure out to which kind of issues it may lead!
             .skip_binder()
             //.no_bound_vars()?
             .iter()
@@ -62,7 +62,7 @@ impl FunctionSignature {
             .collect();
         let output = VariableType::from_ty(
             sig.output()
-                // `skip_binder` is `a riskiy thing` TODO: Foigure out to which kind of issues it may lead!
+                // `skip_binder` is `a riskiy thing` TODO: Figure out to which kind of issues it may lead!
                 .skip_binder(), //.no_bound_vars()?
         );
         Some(Self { inputs, output })

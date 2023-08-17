@@ -26,6 +26,13 @@ pub(crate) enum VariableType {
     RefMut(Box<Self>),
 }
 impl VariableType {
+    pub(crate) fn get_pointed_type(&self)->Option<Self>{
+        match self{
+            Self::Ref(inner) => Some((*inner.as_ref()).clone()),
+            Self::RefMut(inner) => Some((*inner.as_ref()).clone()),
+            _=>None,
+        }
+    }
     pub(crate) fn from_ty(ty: Ty) -> Self {
         match ty.kind() {
             TyKind::Int(IntTy::I8) => VariableType::I8,

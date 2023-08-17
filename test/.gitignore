@@ -1,3 +1,4 @@
 *.rlib
 *.dll
 *.rcgu.o
+*.mir

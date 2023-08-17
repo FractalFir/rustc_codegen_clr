@@ -33,6 +33,12 @@ pub(crate) enum LocalPlacement {
     Var(u32),
 }
 impl CLRMethod {
+    pub(crate) fn get_type_of_local(&self, local:u32)->&VariableType{
+       match self.local_id_placement(local){
+            LocalPlacement::Arg(index)=>&self.sig.inputs[index as usize],
+            LocalPlacement::Var(index)=>&self.locals[index as usize],
+       }
+    }
     pub(crate) fn extend_ops(&mut self,ops:&[BaseIR]){
         self.ops.extend(ops.iter().map(|ref_op| ref_op.clone()))
     }
@@ -188,35 +194,6 @@ impl CLRMethod {
             LocalPlacement::Var(var_id) => BaseIR::LDLoc(var_id),
         })
     }
-    fn store(&mut self, place: Place) {
-        if place.projection.is_empty() {
-            let local: u32 = place.local.into();
-            self.ops.push(match self.local_id_placement(local) {
-                LocalPlacement::Arg(arg_id) => BaseIR::STArg(arg_id),
-                LocalPlacement::Var(var_id) => BaseIR::STLoc(var_id),
-            })
-        } else {
-            // First, travel trough almost every element besides the last one!
-            if place.projection.len() > 1 {
-                panic!("Unhandled Non-trivial store!");
-                for _projection_mod in &place.projection[..(place.projection.len() - 1)] {}
-            }
-            // The value or address of the last one should be on top of the stack.
-            let last = place.projection[place.projection.len() - 1];
-            match last {
-                PlaceElem::Deref => {
-                    let local: u32 = place.local.into();
-                    self.ops.push(match self.local_id_placement(local) {
-                        LocalPlacement::Arg(arg_id) => BaseIR::LDArg(arg_id),
-                        LocalPlacement::Var(var_id) => BaseIR::LDLoc(var_id),
-                    });
-                    //TODO: use type info!
-                    self.ops.push(BaseIR::STIInd(4));
-                }
-                _ => todo!("Unhandled placement!"),
-            }
-        }
-    }
     fn process_constant(&mut self, constant: ConstantKind) {
         match constant {
             ConstantKind::Val(value, r#type) => match value {
@@ -246,89 +223,6 @@ impl CLRMethod {
             }
         }
     }
-    fn convert(&mut self, src: &VariableType, dest: &VariableType) {
-        match (src, dest) {
-            (
-                VariableType::F32
-                | VariableType::I8
-                | VariableType::I16
-                | VariableType::I32
-                | VariableType::U8
-                | VariableType::U16
-                | VariableType::U32,
-                VariableType::I32,
-            ) => self.ops.push(BaseIR::ConvI32),
-            (
-                VariableType::F64
-                | VariableType::I64
-                | VariableType::U64
-                | VariableType::ISize
-                | VariableType::USize,
-                VariableType::I32,
-            ) => self.ops.push(BaseIR::ConvI32Checked),
-            (VariableType::F32, VariableType::I8) => self.ops.push(BaseIR::ConvI8),
-            (VariableType::I32, VariableType::F32) => self.ops.push(BaseIR::ConvF32),
-            _ => todo!("Can't convert type {src:?} to {dest:?}"),
-        }
-    }
-    // Makes so the top of the stack is the value of RValue
-    fn process_rvalue<'ctx>(
-        &mut self,
-        rvalue: &Rvalue<'ctx>,
-        body: &Body<'ctx>,
-        tyctx: &TyCtxt<'ctx>,
-    ) {
-        match rvalue {
-            Rvalue::Use(operand) => self.process_operand(operand),
-            Rvalue::BinaryOp(binop, operands) => {
-                let (a, b): (_, _) = (&operands.0, &operands.1);
-                self.process_operand(a);
-                self.process_operand(b);
-                self.ops.push(match binop {
-                    BinOp::Add => BaseIR::Add,
-                    BinOp::Sub => BaseIR::Sub,
-                    BinOp::Mul => BaseIR::Mul,
-                    BinOp::Shl => BaseIR::Shl,
-                    BinOp::Shr => BaseIR::Shr,
-                    BinOp::Eq => BaseIR::Eq,
-                    BinOp::Ne => BaseIR::NEq,
-                    BinOp::Gt => BaseIR::Gt,
-                    BinOp::Rem => BaseIR::Rem,
-                    BinOp::BitXor => BaseIR::Xor,
-                    BinOp::BitOr => BaseIR::Or,
-                    BinOp::BitAnd => BaseIR::And,
-                    BinOp::Div => BaseIR::Div,
-                    _ => todo!("Unknown binop:{binop:?}"),
-                });
-            }
-            Rvalue::Cast(
-                CastKind::IntToInt
-                | CastKind::FloatToFloat
-                | CastKind::FloatToInt
-                | CastKind::IntToFloat,
-                operand,
-                target,
-            ) => {
-                self.process_operand(operand);
-                self.convert(
-                    &VariableType::from_ty(operand.ty(body, *tyctx)),
-                    &VariableType::from_ty(*target),
-                );
-            }
-            Rvalue::Aggregate(kind, operands) => {
-                match kind.as_ref() {
-                    AggregateKind::Adt(def_id, variant_idx, subst_ref, utai, fidx) => {
-                        //let (def_id,variant_idx,subst_ref,utai,fidx) = *adt;
-                        panic!("def_id:{def_id:?},variant_idx:{variant_idx:?},subst_ref:{subst_ref:?},utai:{utai:?},fidx:{fidx:?}");
-                    }
-                    _ => todo!(
-                        "Can't yet handle the aggregate of kind {kind:?} and operands:{operands:?}"
-                    ),
-                }
-            }
-            _ => todo!("Can't yet handle a rvalue of type {rvalue:?}"),
-        }
-    }
     pub(crate) fn add_statement<'ctx>(
         &mut self,
         statement: &Statement<'ctx>,
@@ -339,12 +233,8 @@ impl CLRMethod {
         match &statement.kind {
             StatementKind::Assign(asign_box) => {
                 let (place, rvalue) = (asign_box.0, &asign_box.1);
-                //self.process_rvalue(rvalue, body, tyctx);
                 let rvalue = RValue::from_rvalue(rvalue, body, tyctx,self);
-                //self.ops.extend(rvalue.get_ops().iter().map(|op|op.clone()));
                 AsigmentTarget::from_placement(place,&self).finalize(rvalue,self);
-                //self.store(place);
-                //panic!("place:{place:?},rvalue:{rvalue:?}");
             }
             StatementKind::StorageLive(local) => {
                 self.var_live((*local).into());
