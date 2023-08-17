@@ -1,16 +1,18 @@
-use crate::{BaseIR, FunctionSignature, IString, VariableType};
+use crate::{BaseIR, FunctionSignature, IString, VariableType,assigment_target::RValue};
+use crate::assigment_target::AsigmentTarget;
 use rustc_index::IndexVec;
 use rustc_middle::mir::interpret::Scalar;
+use rustc_middle::mir::Constant;
+use rustc_middle::mir::Place;
+use rustc_middle::mir::PlaceElem;
 use rustc_middle::mir::{Body, CastKind, Local, LocalDecl};
 use rustc_middle::{
     mir::{
         interpret::ConstValue, AggregateKind, BinOp, ConstantKind, Operand, Rvalue, Statement,
         StatementKind, Terminator, TerminatorKind,
     },
-    ty::{TyCtxt},
+    ty::TyCtxt,
 };
-use rustc_middle::mir::Place;
-use rustc_middle::mir::Constant;
 use serde::{Deserialize, Serialize};
 macro_rules! sign_cast {
     ($var:ident,$src:ty,$dest:ty) => {
@@ -26,11 +28,14 @@ pub(crate) struct CLRMethod {
     curr_bb: u32,
     //bbs:
 }
-enum LocalPlacement {
+pub(crate) enum LocalPlacement {
     Arg(u32),
     Var(u32),
 }
 impl CLRMethod {
+    pub(crate) fn extend_ops(&mut self,ops:&[BaseIR]){
+        self.ops.extend(ops.iter().map(|ref_op| ref_op.clone()))
+    }
     fn count_rws(&self, local: u32) -> (usize, usize) {
         let (mut read_count, mut write_count) = (0, 0);
         for op in &self.ops {
@@ -69,7 +74,8 @@ impl CLRMethod {
         self.ops = self
             .ops
             .iter()
-            .filter(|op| **op != BaseIR::Nop).cloned()
+            .filter(|op| **op != BaseIR::Nop)
+            .cloned()
             .collect();
     }
     pub(crate) fn opt(&mut self) {
@@ -87,9 +93,9 @@ impl CLRMethod {
     }
     pub(crate) fn add_locals(&mut self, locals: &IndexVec<Local, LocalDecl>) {
         let mut new_locals: Vec<VariableType> = Vec::with_capacity(locals.len());
-        for (local_id,local) in locals.iter().enumerate() {
+        for (local_id, local) in locals.iter().enumerate() {
             let placement = self.local_id_placement(local_id as u32);
-            if let LocalPlacement::Var(_) = placement{
+            if let LocalPlacement::Var(_) = placement {
                 new_locals.push(VariableType::from_ty(local.ty));
             }
         }
@@ -162,7 +168,7 @@ impl CLRMethod {
     fn var_dead(&mut self, _local: u32) {
         //TODO: use variable lifetimes!
     }
-    fn local_id_placement(&self, local: u32) -> LocalPlacement {
+    pub(crate) fn local_id_placement(&self, local: u32) -> LocalPlacement {
         // I assume local 0 is supposed to be the return value. TODO: check if this is always the case.
         if self.has_return() {
             if local == 0 {
@@ -183,18 +189,32 @@ impl CLRMethod {
         })
     }
     fn store(&mut self, place: Place) {
-        if place.projection.is_empty(){
-            let local:u32 = place.local.into();
+        if place.projection.is_empty() {
+            let local: u32 = place.local.into();
             self.ops.push(match self.local_id_placement(local) {
                 LocalPlacement::Arg(arg_id) => BaseIR::STArg(arg_id),
                 LocalPlacement::Var(var_id) => BaseIR::STLoc(var_id),
             })
-        }
-        else{
+        } else {
             // First, travel trough almost every element besides the last one!
-            
+            if place.projection.len() > 1 {
+                panic!("Unhandled Non-trivial store!");
+                for _projection_mod in &place.projection[..(place.projection.len() - 1)] {}
+            }
             // The value or address of the last one should be on top of the stack.
-            panic!("Non-trivial store!");
+            let last = place.projection[place.projection.len() - 1];
+            match last {
+                PlaceElem::Deref => {
+                    let local: u32 = place.local.into();
+                    self.ops.push(match self.local_id_placement(local) {
+                        LocalPlacement::Arg(arg_id) => BaseIR::LDArg(arg_id),
+                        LocalPlacement::Var(var_id) => BaseIR::LDLoc(var_id),
+                    });
+                    //TODO: use type info!
+                    self.ops.push(BaseIR::STIInd(4));
+                }
+                _ => todo!("Unhandled placement!"),
+            }
         }
     }
     fn process_constant(&mut self, constant: ConstantKind) {
@@ -319,8 +339,11 @@ impl CLRMethod {
         match &statement.kind {
             StatementKind::Assign(asign_box) => {
                 let (place, rvalue) = (asign_box.0, &asign_box.1);
-                self.process_rvalue(rvalue, body, tyctx);
-                self.store(place);
+                //self.process_rvalue(rvalue, body, tyctx);
+                let rvalue = RValue::from_rvalue(rvalue, body, tyctx,self);
+                //self.ops.extend(rvalue.get_ops().iter().map(|op|op.clone()));
+                AsigmentTarget::from_placement(place,&self).finalize(rvalue,self);
+                //self.store(place);
                 //panic!("place:{place:?},rvalue:{rvalue:?}");
             }
             StatementKind::StorageLive(local) => {
@@ -380,18 +403,22 @@ impl CLRMethod {
                     target: (*target).into(),
                 });
             }
-            TerminatorKind::Assert{cond,
+            TerminatorKind::Assert {
+                cond,
                 expected,
                 msg,
                 target,
-                unwind}=>{
+                unwind: _,
+            } => {
                 self.process_operand(cond);
-                self.load_constant_primitive(&VariableType::Bool,if *expected{1}else{0});
+                self.load_constant_primitive(&VariableType::Bool, if *expected { 1 } else { 0 });
                 self.ops.push(BaseIR::BEq {
                     target: (*target).into(),
                 });
                 self.ops.push(BaseIR::LDConstString(format!("{msg:?}")));
-                self.ops.push(BaseIR::NewObj{ctor_fn:"void [System.Runtime]System.Exception::.ctor(string)".to_owned()});
+                self.ops.push(BaseIR::NewObj {
+                    ctor_fn: "void [System.Runtime]System.Exception::.ctor(string)".to_owned(),
+                });
                 self.ops.push(BaseIR::Throw);
                 //todo!()
                 //TODO: handle assertions!
@@ -406,21 +433,34 @@ impl CLRMethod {
                 call_source: _,
             } => {
                 //let fn_sig = FunctionSignature::from_poly_sig(func);
-                match func{
-                    Operand::Constant(fn_const)=>{
-                        let Constant{span,user_ty,literal} = **fn_const;
-                        if let ConstantKind::Val(ConstValue::ZeroSized,fn_ty) = literal{
-                            assert!(fn_ty.is_fn(),"literal{literal:?} in call is not a function type!");
+                match func {
+                    Operand::Constant(fn_const) => {
+                        let Constant {
+                            span: _,
+                            user_ty: _,
+                            literal,
+                        } = **fn_const;
+                        if let ConstantKind::Val(ConstValue::ZeroSized, fn_ty) = literal {
+                            assert!(
+                                fn_ty.is_fn(),
+                                "literal{literal:?} in call is not a function type!"
+                            );
                             //TODO: figure out how
-                            let fn_name = format!("{fn_ty:?}").split("{").nth(1).expect("Can't find the start of a function name.").split('}').next().expect("Can't find the end of a function name!").to_owned();
-                            
+                            let fn_name = format!("{fn_ty:?}")
+                                .split("{")
+                                .nth(1)
+                                .expect("Can't find the start of a function name.")
+                                .split('}')
+                                .next()
+                                .expect("Can't find the end of a function name!")
+                                .to_owned();
+
                             println!("fn_name:{fn_name:?}");
-                        }else{
+                        } else {
                             panic!("Invalid function literal!");
                         }
-                        
-                    },
-                    _=>panic!("func must be const!"),
+                    }
+                    _ => panic!("func must be const!"),
                 }
                 todo!("Can't call yet!,func:{func:?}");
             }

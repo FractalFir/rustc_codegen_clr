@@ -6,6 +6,7 @@ pub(crate) enum BaseIR {
     LDConstI8(i8),
     LDConstI32(i32),
     LDConstI64(i64),
+    STIInd(u8),
     LDConstString(String),
     STArg(u32),
     LDArg(u32),
@@ -34,9 +35,7 @@ pub(crate) enum BaseIR {
     BBLabel { bb_id: u32 },
     BEq { target: u32 },
     GoTo { target: u32 },
-    NewObj{
-        ctor_fn:String,
-    },
+    NewObj { ctor_fn: String },
     Throw,
 }
 impl BaseIR {
@@ -73,8 +72,9 @@ impl BaseIR {
             Self::ConvI32Checked => "\tconv.ovf.i4\n".into(),
             Self::Nop => "\tnop\n".into(), //_=>format!("\t//Comment!\n"),
             Self::LDConstString(string) => format!("\tldstr \"{string}\"\n"),
-            Self::NewObj{ctor_fn} => format!("\tnewobj instance {ctor_fn}\n"),
-            Self::Throw => "\tthrow\n".into(), 
+            Self::NewObj { ctor_fn } => format!("\tnewobj instance {ctor_fn}\n"),
+            Self::Throw => "\tthrow\n".into(),
+            Self::STIInd(size) => format!("\tstind.i{size}\n"),
         }
         .into()
     }
