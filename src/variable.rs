@@ -4,7 +4,7 @@ use rustc_middle::{
     ty::{FloatTy, IntTy, Ty, TyKind, UintTy},
 };
 use serde::{Deserialize, Serialize};
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug,PartialEq)]
 pub(crate) enum VariableType {
     Void,
     I8,
@@ -26,6 +26,9 @@ pub(crate) enum VariableType {
     RefMut(Box<Self>),
 }
 impl VariableType {
+    pub(crate) fn is_void(&self)->bool{
+        matches!(self,Self::Void)
+    }
     pub(crate) fn get_pointed_type(&self)->Option<Self>{
         match self{
             Self::Ref(inner) => Some((*inner.as_ref()).clone()),

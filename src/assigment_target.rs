@@ -56,6 +56,20 @@ impl AsigmentTarget {
         }
         new
     }
+    pub(crate) fn finalize_with_ops(self, ops: &[BaseIR], clr_method: &mut CLRMethod) {
+        match self.value_pos{
+            AsigmentValuePosition::BeforeAdress => {
+                clr_method.extend_ops(ops);
+                clr_method.extend_ops(&self.adress_calc);
+                clr_method.extend_ops(&self.set_ops);
+            },
+            AsigmentValuePosition::AfterAdress => {
+                clr_method.extend_ops(&self.adress_calc);
+                clr_method.extend_ops(ops);
+                clr_method.extend_ops(&self.set_ops);
+            },
+        }
+    }
     pub(crate) fn finalize(self, rvalue: RValue, clr_method: &mut CLRMethod) {
         match self.value_pos{
             AsigmentValuePosition::BeforeAdress => {

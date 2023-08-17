@@ -11,7 +11,7 @@ use rustc_middle::{
         interpret::ConstValue, AggregateKind, BinOp, ConstantKind, Operand, Rvalue, Statement,
         StatementKind, Terminator, TerminatorKind,
     },
-    ty::TyCtxt,
+    ty::{Ty,TyKind,TyCtxt,Instance,ParamEnv},
 };
 use serde::{Deserialize, Serialize};
 macro_rules! sign_cast {
@@ -194,6 +194,12 @@ impl CLRMethod {
             LocalPlacement::Var(var_id) => BaseIR::LDLoc(var_id),
         })
     }
+    fn store(&mut self, local: u32) {
+        self.ops.push(match self.local_id_placement(local) {
+            LocalPlacement::Arg(arg_id) => BaseIR::STArg(arg_id),
+            LocalPlacement::Var(var_id) => BaseIR::STLoc(var_id),
+        })
+    }
     fn process_constant(&mut self, constant: ConstantKind) {
         match constant {
             ConstantKind::Val(value, r#type) => match value {
@@ -258,6 +264,29 @@ impl CLRMethod {
             _ => todo!("Can't yet load constant primitives of type {var_type:?}!"),
         }
     }
+    pub(crate) fn call<'ctx>(&mut self,fn_type:&Ty<'ctx>, tyctx: &TyCtxt<'ctx>,args:&[Operand],destination:&Place){
+        let instance = if let TyKind::FnDef(def_id,subst_ref) = fn_type.kind(){
+            let env = ParamEnv::empty();
+            let instance = Instance::resolve(*tyctx,env,*def_id,subst_ref).expect("Error: could not resolve a call target due to an external error!").expect("Error: could not resolve a call target!");
+            instance
+        }else{
+            panic!("Trying to call a type which is not a function!");
+        };
+        let symbol = tyctx.symbol_name(instance);
+        let sig = FunctionSignature::from_poly_sig(fn_type.fn_sig(*tyctx)).expect("Can't get the function signature");
+        let function_name = format!("{symbol}").into();
+        for arg in args{
+            self.process_operand(arg);
+        }
+        // Hande
+        if sig.output.is_void(){
+            self.ops.push(BaseIR::CallStatic{function_name,sig});
+        }
+        else{
+            let assigement = AsigmentTarget::from_placement(*destination,&self);
+            assigement.finalize_with_ops(&[BaseIR::CallStatic{function_name,sig}],self);
+        }
+    } 
     pub(crate) fn add_terminator<'ctx>(
         &mut self,
         terminator: &Terminator<'ctx>,
@@ -315,9 +344,9 @@ impl CLRMethod {
             }
             TerminatorKind::Call {
                 func,
-                args: _,
-                destination: _,
-                target: _,
+                args,
+                destination,
+                target,
                 unwind: _,
                 fn_span: _,
                 call_source: _,
@@ -333,26 +362,14 @@ impl CLRMethod {
                         if let ConstantKind::Val(ConstValue::ZeroSized, fn_ty) = literal {
                             assert!(
                                 fn_ty.is_fn(),
-                                "literal{literal:?} in call is not a function type!"
-                            );
-                            //TODO: figure out how
-                            let fn_name = format!("{fn_ty:?}")
-                                .split("{")
-                                .nth(1)
-                                .expect("Can't find the start of a function name.")
-                                .split('}')
-                                .next()
-                                .expect("Can't find the end of a function name!")
-                                .to_owned();
-
-                            println!("fn_name:{fn_name:?}");
+                                "literal{literal:?} in call is not a function type!");
+                            self.call(&fn_ty,tyctx,args,destination);
                         } else {
                             panic!("Invalid function literal!");
                         }
                     }
                     _ => panic!("func must be const!"),
                 }
-                todo!("Can't call yet!,func:{func:?}");
             }
             _ => todo!("Unknown terminator type {terminator:?}"),
         }

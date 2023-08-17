@@ -15,7 +15,7 @@ impl Assembly {
         for method in &self.methods {
             methods.push_str(&method.into_il_ir());
         }
-        let methods = format!(".class {name} {{{methods}}}", name = self.name);
+        let methods = format!("{methods}");
         format!(".assembly {name}{{}}\n{methods}", name = self.name).into()
     }
 }

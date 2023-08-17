@@ -39,7 +39,7 @@ pub type IString = Box<str>;
 
 struct MyBackend;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize,PartialEq)]
 struct FunctionSignature {
     inputs: Box<[VariableType]>,
     output: VariableType,
