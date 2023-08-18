@@ -1,17 +1,17 @@
-use crate::{BaseIR, FunctionSignature, IString, VariableType,assigment_target::RValue};
 use crate::assigment_target::AsigmentTarget;
+use crate::{rvalue::RValue, BaseIR, FunctionSignature, IString, VariableType};
 use rustc_index::IndexVec;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::Constant;
 use rustc_middle::mir::Place;
-use rustc_middle::mir::PlaceElem;
-use rustc_middle::mir::{Body, CastKind, Local, LocalDecl};
+
+use rustc_middle::mir::{Body, Local, LocalDecl};
 use rustc_middle::{
     mir::{
-        interpret::ConstValue, AggregateKind, BinOp, ConstantKind, Operand, Rvalue, Statement,
-        StatementKind, Terminator, TerminatorKind,
+        interpret::ConstValue, ConstantKind, Operand, Statement, StatementKind, Terminator,
+        TerminatorKind,
     },
-    ty::{Ty,TyKind,TyCtxt,Instance,ParamEnv},
+    ty::{Instance, ParamEnv, Ty, TyCtxt, TyKind},
 };
 use serde::{Deserialize, Serialize};
 macro_rules! sign_cast {
@@ -33,13 +33,13 @@ pub(crate) enum LocalPlacement {
     Var(u32),
 }
 impl CLRMethod {
-    pub(crate) fn get_type_of_local(&self, local:u32)->&VariableType{
-       match self.local_id_placement(local){
-            LocalPlacement::Arg(index)=>&self.sig.inputs[index as usize],
-            LocalPlacement::Var(index)=>&self.locals[index as usize],
-       }
+    pub(crate) fn get_type_of_local(&self, local: u32) -> &VariableType {
+        match self.local_id_placement(local) {
+            LocalPlacement::Arg(index) => &self.sig.inputs[index as usize],
+            LocalPlacement::Var(index) => &self.locals[index as usize],
+        }
     }
-    pub(crate) fn extend_ops(&mut self,ops:&[BaseIR]){
+    pub(crate) fn extend_ops(&mut self, ops: &[BaseIR]) {
         self.ops.extend(ops.iter().map(|ref_op| ref_op.clone()))
     }
     fn count_rws(&self, local: u32) -> (usize, usize) {
@@ -239,8 +239,8 @@ impl CLRMethod {
         match &statement.kind {
             StatementKind::Assign(asign_box) => {
                 let (place, rvalue) = (asign_box.0, &asign_box.1);
-                let rvalue = RValue::from_rvalue(rvalue, body, tyctx,self);
-                AsigmentTarget::from_placement(place,&self).finalize(rvalue,self);
+                let rvalue = RValue::from_rvalue(rvalue, body, tyctx, self);
+                AsigmentTarget::from_placement(place, &self).finalize(rvalue, self);
             }
             StatementKind::StorageLive(local) => {
                 self.var_live((*local).into());
@@ -264,29 +264,37 @@ impl CLRMethod {
             _ => todo!("Can't yet load constant primitives of type {var_type:?}!"),
         }
     }
-    pub(crate) fn call<'ctx>(&mut self,fn_type:&Ty<'ctx>, tyctx: &TyCtxt<'ctx>,args:&[Operand],destination:&Place){
-        let instance = if let TyKind::FnDef(def_id,subst_ref) = fn_type.kind(){
+    pub(crate) fn call<'ctx>(
+        &mut self,
+        fn_type: &Ty<'ctx>,
+        tyctx: &TyCtxt<'ctx>,
+        args: &[Operand],
+        destination: &Place,
+    ) {
+        let instance = if let TyKind::FnDef(def_id, subst_ref) = fn_type.kind() {
             let env = ParamEnv::empty();
-            let instance = Instance::resolve(*tyctx,env,*def_id,subst_ref).expect("Error: could not resolve a call target due to an external error!").expect("Error: could not resolve a call target!");
+            let instance = Instance::resolve(*tyctx, env, *def_id, subst_ref)
+                .expect("Error: could not resolve a call target due to an external error!")
+                .expect("Error: could not resolve a call target!");
             instance
-        }else{
+        } else {
             panic!("Trying to call a type which is not a function!");
         };
         let symbol = tyctx.symbol_name(instance);
-        let sig = FunctionSignature::from_poly_sig(fn_type.fn_sig(*tyctx)).expect("Can't get the function signature");
+        let sig = FunctionSignature::from_poly_sig(fn_type.fn_sig(*tyctx))
+            .expect("Can't get the function signature");
         let function_name = format!("{symbol}").into();
-        for arg in args{
+        for arg in args {
             self.process_operand(arg);
         }
         // Hande
-        if sig.output.is_void(){
-            self.ops.push(BaseIR::CallStatic{function_name,sig});
+        if sig.output.is_void() {
+            self.ops.push(BaseIR::CallStatic { function_name, sig });
+        } else {
+            let assigement = AsigmentTarget::from_placement(*destination, &self);
+            assigement.finalize_with_ops(&[BaseIR::CallStatic { function_name, sig }], self);
         }
-        else{
-            let assigement = AsigmentTarget::from_placement(*destination,&self);
-            assigement.finalize_with_ops(&[BaseIR::CallStatic{function_name,sig}],self);
-        }
-    } 
+    }
     pub(crate) fn add_terminator<'ctx>(
         &mut self,
         terminator: &Terminator<'ctx>,
@@ -346,7 +354,7 @@ impl CLRMethod {
                 func,
                 args,
                 destination,
-                target,
+                target: _,
                 unwind: _,
                 fn_span: _,
                 call_source: _,
@@ -362,8 +370,9 @@ impl CLRMethod {
                         if let ConstantKind::Val(ConstValue::ZeroSized, fn_ty) = literal {
                             assert!(
                                 fn_ty.is_fn(),
-                                "literal{literal:?} in call is not a function type!");
-                            self.call(&fn_ty,tyctx,args,destination);
+                                "literal{literal:?} in call is not a function type!"
+                            );
+                            self.call(&fn_ty, tyctx, args, destination);
                         } else {
                             panic!("Invalid function literal!");
                         }

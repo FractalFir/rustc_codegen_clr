@@ -1,4 +1,4 @@
-use crate::{FunctionSignature,IString};
+use crate::{FunctionSignature, IString};
 use serde::{Deserialize, Serialize};
 // An IR close, but not exactly equivalent to the CoreCLR IR.
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
@@ -33,15 +33,23 @@ pub(crate) enum BaseIR {
     ConvI32Checked,
     ConvI8,
     Nop,
-    CallStatic{
-        sig:FunctionSignature,
+    CallStatic {
+        sig: FunctionSignature,
         function_name: IString,
     },
     //Not a real instruction, but a marker for a basic block.
-    BBLabel { bb_id: u32 },
-    BEq { target: u32 },
-    GoTo { target: u32 },
-    NewObj { ctor_fn: String },
+    BBLabel {
+        bb_id: u32,
+    },
+    BEq {
+        target: u32,
+    },
+    GoTo {
+        target: u32,
+    },
+    NewObj {
+        ctor_fn: String,
+    },
     Throw,
 }
 impl BaseIR {
@@ -82,20 +90,23 @@ impl BaseIR {
             Self::Throw => "\tthrow\n".into(),
             Self::STIInd(size) => format!("\tstind.i{size}\n"),
             Self::LDIndIn(size) => format!("\tldind.i{size}\n"),
-            Self::LDIndI=>"\tldind.i\n".into(),
-            Self::CallStatic{sig,function_name}=>{
+            Self::LDIndI => "\tldind.i\n".into(),
+            Self::CallStatic { sig, function_name } => {
                 //assert!(sig.inputs.is_empty());
                 let mut inputs_iter = sig.inputs.iter();
                 let mut input_string = String::new();
-                if let Some(firts_arg) = inputs_iter.next(){
+                if let Some(firts_arg) = inputs_iter.next() {
                     input_string.push_str(&firts_arg.il_name());
                 }
-                for arg in inputs_iter{
+                for arg in inputs_iter {
                     input_string.push(',');
                     input_string.push_str(&arg.il_name());
                 }
-                format!("\tcall {output} {function_name}({input_string})\n",output = sig.output.il_name())
-            },//todo!("Can't call functions yet!"),
+                format!(
+                    "\tcall {output} {function_name}({input_string})\n",
+                    output = sig.output.il_name()
+                )
+            } //todo!("Can't call functions yet!"),
         }
         .into()
     }

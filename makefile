@@ -2,10 +2,11 @@ TEST_DIR = "test"
 CODEGEN_BACKEND = ../target/debug/librustc_codegen_clr.so
 RUSTC = rustc
 RUST_FLAGS = --crate-type lib
-test: build_backend identy binops casts types calls references
+test: build_backend identy binops casts types calls references structs
 calls:
 	cd test && rustc $(RUST_FLAGS) -O -Z codegen-backend=$(CODEGEN_BACKEND) calls.rs && \
-	ilasm /dll libcalls.rlib
+	ilasm /dll libcalls.rlib && \
+	rustc -O --emit=mir --crate-type=lib calls.rs
 identy:
 	cd test && rustc $(RUST_FLAGS) -O -Z codegen-backend=$(CODEGEN_BACKEND) identity.rs && \
 	ilasm /dll libidentity.rlib
@@ -28,4 +29,8 @@ branches:
 	ilasm /dll libranches.rlib
 build_backend:
 	cargo build
+structs:
+	cd test && rustc $(RUST_FLAGS) -O -Z codegen-backend=$(CODEGEN_BACKEND) structs.rs && \
+	ilasm /dll libstructs.rlib && \
+	rustc -O --emit=mir --crate-type=lib structs.rs
 
