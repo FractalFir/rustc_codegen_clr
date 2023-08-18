@@ -1,13 +1,27 @@
-use crate::{CLRMethod, FunctionSignature, IString};
+use crate::{CLRMethod, VariableType,FunctionSignature, IString};
 use rustc_middle::{
-    mir::mono::MonoItem,
-    ty::{Instance, ParamEnv, TyCtxt},
+    mir::{mono::MonoItem,Local,LocalDecl},
+    ty::{Instance, ParamEnv, Ty,TyKind,TyCtxt},
 };
+use std::collections::HashMap;
+use rustc_index::IndexVec;
 use serde::{Deserialize, Serialize};
+#[derive(Clone,Debug,Serialize, Deserialize)]
+enum Visiblity{
+    Private,
+    Public,
+}
+#[derive(Clone,Debug,Serialize, Deserialize)]
+enum CLRType{
+    Struct{
+        fields:Vec<(IString,VariableType)>,
+    }
+}
 #[derive(Serialize, Deserialize)]
 pub(crate) struct Assembly {
     methods: Vec<CLRMethod>,
     name: IString,
+    types:HashMap<IString,CLRType>,
 }
 impl Assembly {
     pub(crate) fn into_il_ir(&self) -> IString {
@@ -15,11 +29,35 @@ impl Assembly {
         for method in &self.methods {
             methods.push_str(&method.into_il_ir());
         }
-        let methods = format!("{methods}");
-        format!(".assembly {name}{{}}\n{methods}", name = self.name).into()
+        
+        let mut types = String::new(); 
+        for clr_type in &self.types{
+            types.push_str(&format!(".class public sequential {name} extends [System.Runtime]System.ValueType{{}}",name = clr_type.0));
+        }
+        println!("\nty_count:{}\n",self.types.len());
+        //let methods = format!("{methods}");
+        format!(".assembly {name}{{}}\n{types}\n{methods}", name = self.name).into()
     }
-}
-impl Assembly {
+    pub(crate) fn add_type(&mut self, ty:Ty){
+        match ty.kind(){
+            TyKind::Adt(adt_def, subst) => {
+                // TODO: find a better way to get a name of an ADT!
+                let name = format!("{adt_def:?}").into();
+                let mut fields = Vec::new();
+                for field in adt_def.all_fields(){
+                    println!("field:{field:?}");
+                }
+                self.types.insert(name,CLRType::Struct{fields});
+                println!("adt_def:{adt_def:?} types:{types:?}",types = self.types);
+            }
+            _=>()
+        }
+    }
+    pub(crate) fn add_types_from_locals(&mut self, locals: &IndexVec<Local, LocalDecl>){
+        for local in locals.iter() {
+            self.add_type(local.ty);
+        }
+    }
     pub(crate) fn name(&self) -> &str {
         &self.name
     }
@@ -28,6 +66,7 @@ impl Assembly {
         let name = name.replace('-', "_");
         Self {
             methods: Vec::with_capacity(0x100),
+            types: HashMap::with_capacity(0x100),
             name: name.into(),
         }
     }
@@ -44,6 +83,7 @@ impl Assembly {
                 .expect("Could not resolve the function signature"),
             name,
         );
+        self.add_types_from_locals(&mir.local_decls);
         clr_method.add_locals(&mir.local_decls);
         for block_data in blocks {
             clr_method.begin_bb();
@@ -58,6 +98,7 @@ impl Assembly {
         clr_method.opt();
         println!("clr_method:{clr_method:?}");
         println!("instance:{instance:?}\n");
+        println!("types:{types:?}",types = self.types);
         self.methods.push(clr_method);
     }
     pub(crate) fn add_item<'tcx>(&mut self, item: MonoItem<'tcx>, tcx: TyCtxt<'tcx>) {
@@ -73,5 +114,6 @@ impl Assembly {
     pub(crate) fn link(&mut self, other: Self) {
         //TODO: do linking.
         self.methods.extend_from_slice(&other.methods);
+        self.types.extend(other.types);
     }
 }

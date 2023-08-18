@@ -3,6 +3,7 @@ use rustc_middle::{
     mir::Mutability,
     ty::{FloatTy, IntTy, Ty, TyKind, UintTy},
 };
+use rustc_middle::ty::AdtKind;
 use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub(crate) enum VariableType {
@@ -24,6 +25,7 @@ pub(crate) enum VariableType {
     Bool,
     Ref(Box<Self>),
     RefMut(Box<Self>),
+    Struct(IString)
 }
 impl VariableType {
     pub(crate) fn is_void(&self) -> bool {
@@ -58,7 +60,17 @@ impl VariableType {
             TyKind::Str => todo!("Can't handle string slices yet!"),
             TyKind::Array(_element_type, _length) => todo!("Can't handle arrays yet!"),
             TyKind::Slice(_element_type) => todo!("Can't handle slices yet!"),
-            TyKind::Adt(_adt_def, _subst) => todo!("Can't ADTs(structs,enums,unions) yet!"),
+            TyKind::Adt(adt_def, _subst) =>{
+                let adt = adt_def;
+                //let tcxt:&_ = adt.0.0;
+                //TODO: Figure out a better way to get this name!
+                let name = format!("{adt:?}");//tcxt.get_diagnostic_name();
+                match adt.adt_kind(){
+                    AdtKind::Struct => VariableType::Struct(name.into()),
+                    AdtKind::Union => todo!("Can't yet handle unions"),
+                    AdtKind::Enum => todo!("Can't yet handle enum"),
+                }   
+            }
             TyKind::RawPtr(_target_type) => todo!("Can't handle pointers yet!"),
             TyKind::FnPtr(_sig) => todo!("Can't handle function pointers yet!"),
             TyKind::Ref(region, ref_type, mutability) => {
@@ -101,6 +113,7 @@ impl VariableType {
             Self::Bool => "bool".into(),
             Self::Ref(inner) => format!("{inner}*", inner = inner.il_name()),
             Self::RefMut(inner) => format!("{inner}*", inner = inner.il_name()),
+            Self::Struct(name) => (*name).clone().into(),
         }
         .into()
     }
