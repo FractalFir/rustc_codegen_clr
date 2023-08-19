@@ -5,6 +5,14 @@ use rustc_middle::{
 };
 use rustc_middle::ty::AdtKind;
 use serde::{Deserialize, Serialize};
+enum TypePrefix{ValueType}
+impl TypePrefix{
+    fn il(&self)->IString{
+        match self{
+            Self::ValueType => "valuetype"
+        }.into()
+    }
+}
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub(crate) enum VariableType {
     Void,
@@ -30,7 +38,8 @@ pub(crate) enum VariableType {
        length:usize,
     },
     Slice(Box<Self>),
-    Struct(IString)
+    Struct(IString),
+    Tuple(Vec<Self>),
 }
 
 impl VariableType {
@@ -96,11 +105,27 @@ impl VariableType {
             }
             TyKind::Tuple(inner_types) => {
                 if inner_types.len() == 0 {
-                    return Self::Void;
+                    Self::Void
                 }
-                todo!("Can't handle tuples yet!");
+                else{
+                    Self::Tuple(inner_types.iter().map(|ty|VariableType::from_ty(ty)).collect())
+                }
             }
             _ => todo!("Unhandled type kind {:?}", ty.kind()),
+        }
+    }
+    fn get_prefix(&self)->Option<TypePrefix>{
+        match self{
+            Self::Tuple(_)=>Some(TypePrefix::ValueType),
+            _=>None,
+        }
+    }
+    pub(crate) fn arg_name(&self)->IString{
+        if let Some(prefix) = self.get_prefix(){
+            format!("{il_prefix} {il_name}",il_prefix = prefix.il(),il_name = self.il_name()).into()
+        }
+        else{
+            self.il_name()
         }
     }
     pub(crate) fn il_name(&self) -> IString {
@@ -132,6 +157,18 @@ impl VariableType {
                 "'RSlice_{element_il}'",
                 element_il = element.il_name().replace('\'',"")
             ).into(),
+            Self::Tuple(elements)=>{
+                let mut inner = String::new();
+                let mut elements_iter = elements.iter();
+                if let Some(first_arg) = elements_iter.next(){
+                    inner.push_str(&first_arg.il_name());
+                }
+                for arg in elements_iter{
+                    inner.push(',');
+                    inner.push_str(&arg.il_name());
+                }
+                format!("[System.Runtime]System.ValueTuple`{element_count}<{inner}>",element_count = elements.len())
+            },
         }
         .into()
     }

@@ -135,12 +135,12 @@ impl CLRMethod {
         let mut arg_list = String::new();
         let mut arg_iter = self.sig.inputs.iter();
         match arg_iter.next() {
-            Some(start) => arg_list.push_str(&start.il_name()),
+            Some(start) => arg_list.push_str(&start.arg_name()),
             None => (),
         }
         for arg in arg_iter {
             arg_list.push(',');
-            arg_list.push_str(&arg.il_name());
+            arg_list.push_str(&arg.arg_name());
         }
         let mut ops_ir = String::new();
         for op in &self.ops {
