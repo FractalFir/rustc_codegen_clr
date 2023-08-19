@@ -36,4 +36,16 @@ pub extern fn ref_test(a:&u64){}//->&u64{a}
 pub extern fn ref_ident(a:&u64)->&u64{a}
 #[no_mangle]
 pub extern fn ref_ref_ident<'a,'b>(a:&'a &'b u64)->&'a &'b u64{a}
+#[no_mangle]
+pub extern fn recive_array(arr:[i32;4]){}
+#[no_mangle]
+pub extern fn recive_array_ref(arr:&[f64;8]){}
+#[no_mangle]
+pub extern fn recive_array_array(arr:[[f64;8];8]){}
+/*
+#[no_mangle]
+pub extern fn return_array()->[i32;4]{[0,0,0,0]}
 
+#[no_mangle]
+pub extern fn handle_returned_array(){let value = return_array();}
+*/

@@ -25,8 +25,13 @@ pub(crate) enum VariableType {
     Bool,
     Ref(Box<Self>),
     RefMut(Box<Self>),
+    Array{
+       element:Box<Self>,
+       length:usize,
+    },
     Struct(IString)
 }
+
 impl VariableType {
     pub(crate) fn is_void(&self) -> bool {
         matches!(self, Self::Void)
@@ -58,7 +63,11 @@ impl VariableType {
             TyKind::Char => todo!("Can't handle chars yet!"),
             TyKind::Foreign(_ftype) => todo!("Can't handle foreign types yet!"),
             TyKind::Str => todo!("Can't handle string slices yet!"),
-            TyKind::Array(_element_type, _length) => todo!("Can't handle arrays yet!"),
+            TyKind::Array(element_type, length) => Self::Array{element:Box::new(Self::from_ty(*element_type)),length:{
+                let scalar = length.try_to_scalar().expect("Could not convert the scalar");
+                let value = scalar.to_u64().expect("Could not convert scalar to u64!");
+                value as usize
+            }},
             TyKind::Slice(_element_type) => todo!("Can't handle slices yet!"),
             TyKind::Adt(adt_def, _subst) =>{
                 let adt = adt_def;
@@ -114,6 +123,10 @@ impl VariableType {
             Self::Ref(inner) => format!("{inner}*", inner = inner.il_name()),
             Self::RefMut(inner) => format!("{inner}*", inner = inner.il_name()),
             Self::Struct(name) => (*name).clone().into(),
+            Self::Array{element,length} => format!(
+                "'RArray_{element_il}_{length}'",
+                element_il = element.il_name().replace('\'',"")
+            ).into(),
         }
         .into()
     }

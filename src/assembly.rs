@@ -15,6 +15,18 @@ enum Visiblity{
 enum CLRType{
     Struct{
         fields:Vec<(IString,VariableType)>,
+    },
+    Array{
+        element:VariableType,
+        length:usize,
+    }
+}
+impl CLRType{
+    pub(crate) fn get_def(&self,name:&str)->IString{
+        match self{
+            Self::Struct{fields}=>format!(".class public sequential {name} extends [System.Runtime]System.ValueType{{}}"),
+            Self::Array{element,length}=>format!(".class public sequential {name} extends [System.Runtime]System.ValueType{{\n\t.pack 0\n\t.size {length}\n\t.field public {element_il} arr\n}}",element_il= element.il_name()),
+        }.into()
     }
 }
 #[derive(Serialize, Deserialize)]
@@ -32,7 +44,7 @@ impl Assembly {
         
         let mut types = String::new(); 
         for clr_type in &self.types{
-            types.push_str(&format!(".class public sequential {name} extends [System.Runtime]System.ValueType{{}}",name = clr_type.0));
+            types.push_str(&clr_type.1.get_def(&clr_type.0.replace('\'',"")));
         }
         println!("\nty_count:{}\n",self.types.len());
         //let methods = format!("{methods}");
@@ -50,6 +62,18 @@ impl Assembly {
                 self.types.insert(name,CLRType::Struct{fields});
                 println!("adt_def:{adt_def:?} types:{types:?}",types = self.types);
             }
+            TyKind::Array(element_type,length) =>{
+                let (element,length) = (VariableType::from_ty(*element_type),{
+                        let scalar = length.try_to_scalar().expect("Could not convert the scalar");
+                        let value = scalar.to_u64().expect("Could not convert scalar to u64!");
+                        value as usize
+                    }
+                );
+                let name = format!("'RArray_{element_il}_{length}'",element_il = element.il_name()).into();
+                let arr = CLRType::Array{element,length};
+                self.types.insert(name,arr);
+            }
+            TyKind::Ref(_,ty,_)=>self.add_type(*ty),
             _=>()
         }
     }
