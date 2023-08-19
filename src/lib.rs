@@ -36,6 +36,7 @@ mod variable;
 use variable::*;
 mod assigment_target;
 mod rvalue;
+mod projection;
 pub type IString = Box<str>;
 
 struct MyBackend;

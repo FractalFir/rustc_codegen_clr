@@ -23,6 +23,15 @@ enum CLRType{
     Slice(VariableType),
 }
 impl CLRType{
+    pub(crate) fn get_field_getter(&self,field:usize,field_parent:&str)->Vec<crate::BaseIR>{
+        match self{
+            Self::Struct{fields}=>{
+                let field = &fields[field];
+                vec![crate::BaseIR::LDField{field_parent:field_parent.into(),field_name:field.0.clone().into(),field_type:field.1.clone()}]
+            },
+            Self::Array{..} | Self::Slice{..} => panic!("Attempted to get a field of a field-less type!"),
+        }
+    }
     pub(crate) fn get_def(&self,name:&str)->IString{
         match self{
             Self::Struct{fields}=>{
@@ -44,6 +53,7 @@ pub(crate) struct Assembly {
     types:HashMap<IString,CLRType>,
 }
 impl Assembly {
+    //pub(crate) fn (&self,type_name:&str,
     pub(crate) fn into_il_ir(&self) -> IString {
         let mut methods = String::new();
         for method in &self.methods {
@@ -131,7 +141,7 @@ impl Assembly {
         for block_data in blocks {
             clr_method.begin_bb();
             for statement in &block_data.statements {
-                clr_method.add_statement(statement, mir, &tcx);
+                clr_method.add_statement(statement, mir, &tcx,self);
             }
             match &block_data.terminator {
                 Some(term) => clr_method.add_terminator(term, mir, &tcx),

@@ -3,6 +3,7 @@ use rustc_middle::{
     mir::Mutability,
     ty::{FloatTy, IntTy, Ty, TyKind, UintTy},
 };
+ use crate::BaseIR;
 use rustc_middle::ty::AdtKind;
 use serde::{Deserialize, Serialize};
 enum TypePrefix{ValueType}
@@ -43,6 +44,15 @@ pub(crate) enum VariableType {
 }
 
 impl VariableType {
+    /// For a type T, returns a BaseIR op which derefreneces T* to T.
+    pub(crate) fn deref_op(&self) -> BaseIR{
+        match self{
+            Self::Ref(_) | Self::RefMut(_) =>BaseIR::LDIndI,
+            Self::I32 => BaseIR::LDIndIn(std::mem::size_of::<i32>() as u8),
+            Self::I64 => BaseIR::LDIndIn(std::mem::size_of::<i64>() as u8),
+            _=>todo!("Can't deference a pointer to type {self:?}")
+        }
+    }
     pub(crate) fn is_void(&self) -> bool {
         matches!(self, Self::Void)
     }

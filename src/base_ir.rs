@@ -1,4 +1,4 @@
-use crate::{FunctionSignature, IString};
+use crate::{FunctionSignature, IString,VariableType};
 use serde::{Deserialize, Serialize};
 // An IR close, but not exactly equivalent to the CoreCLR IR.
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
@@ -6,6 +6,7 @@ pub(crate) enum BaseIR {
     LDConstI8(i8),
     LDConstI32(i32),
     LDConstI64(i64),
+    LDConstF32(f32),
     STIInd(u8),
     LDIndIn(u8),
     LDIndI,
@@ -50,6 +51,11 @@ pub(crate) enum BaseIR {
     NewObj {
         ctor_fn: String,
     },
+    LDField{
+        field_parent:IString,
+        field_name:IString,
+        field_type:VariableType
+    },
     Throw,
 }
 impl BaseIR {
@@ -80,6 +86,7 @@ impl BaseIR {
             Self::LDConstI8(i8const) => format!("\tldc.i4.s {i8const}\n"),
             Self::LDConstI32(i32const) => format!("\tldc.i4 {i32const}\n"),
             Self::LDConstI64(i64const) => format!("\tldc.i8 {i64const}\n"),
+            Self::LDConstF32(f32const) => format!("\tldc.r4 {f32const}\n"),
             Self::ConvF32 => "\tconv.r4\n".into(),
             Self::ConvI8 => "\tconv.i1\n".into(),
             Self::ConvI32 => "\tconv.i4\n".into(),
@@ -106,7 +113,10 @@ impl BaseIR {
                     "\tcall {output} {function_name}({input_string})\n",
                     output = sig.output.il_name()
                 )
-            } //todo!("Can't call functions yet!"),
+            } //todo!("Can't call functions yet!")
+            Self::LDField{field_parent,field_name,field_type} => {
+                format!("ldfld {field_type} '{field_parent}'::{field_name}",field_type = field_type.arg_name(),)
+            }
         }
         .into()
     }

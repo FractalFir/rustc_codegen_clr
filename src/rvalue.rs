@@ -1,11 +1,10 @@
-use crate::{BaseIR, CLRMethod, LocalPlacement, VariableType};
+use crate::{BaseIR, CLRMethod, LocalPlacement, VariableType,Assembly};
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::mir::Rvalue as CompilerRValue;
 use rustc_middle::{
     mir::{AggregateKind, BinOp, Body, CastKind, ConstantKind, Operand},
     ty::TyCtxt,
 };
-
 macro_rules! sign_cast {
     ($var:ident,$src:ty,$dest:ty) => {
         (<$dest>::from_ne_bytes(($var as $src).to_ne_bytes()))
@@ -23,14 +22,15 @@ impl RValue {
         body: &Body<'ctx>,
         tyctx: &TyCtxt<'ctx>,
         clr_method: &CLRMethod,
+        asm:&Assembly,
     ) -> Self {
         let mut new = Self { ops: Vec::new() };
-        new.process_rvalue(rvalue, body, tyctx, clr_method);
+        new.process_rvalue(rvalue, body, tyctx, clr_method,asm);
         new
     }
-    fn process_binop(&mut self, binop: BinOp, a: &Operand, b: &Operand, clr_method: &CLRMethod) {
-        self.process_operand(a, clr_method);
-        self.process_operand(b, clr_method);
+    fn process_binop(&mut self, binop: BinOp, a: &Operand, b: &Operand, clr_method: &CLRMethod,asm:&Assembly) {
+        self.process_operand(a, clr_method,asm);
+        self.process_operand(b, clr_method,asm);
         self.ops.push(match binop {
             BinOp::Add => BaseIR::Add,
             BinOp::Sub => BaseIR::Sub,
@@ -63,12 +63,17 @@ impl RValue {
         body: &Body<'ctx>,
         tyctx: &TyCtxt<'ctx>,
         clr_method: &CLRMethod,
+        asm:&Assembly,
     ) {
+        println!("rvalue:{rvalue:?}");
         match rvalue {
-            CompilerRValue::Use(operand) => self.process_operand(operand, clr_method),
+            CompilerRValue::Use(operand) => {
+                println!("Use");
+                self.process_operand(operand, clr_method,asm)
+            }
             CompilerRValue::BinaryOp(binop, operands) => {
                 let (a, b): (_, _) = (&operands.0, &operands.1);
-                self.process_binop(*binop, a, b, clr_method);
+                self.process_binop(*binop, a, b, clr_method,asm);
             }
             CompilerRValue::Cast(
                 CastKind::IntToInt
@@ -78,7 +83,7 @@ impl RValue {
                 operand,
                 target,
             ) => {
-                self.process_operand(operand, clr_method);
+                self.process_operand(operand, clr_method,asm);
                 self.convert(
                     &VariableType::from_ty(operand.ty(body, *tyctx)),
                     &VariableType::from_ty(*target),
@@ -129,11 +134,22 @@ impl RValue {
         };
     }
     // Makes so the top of the stack is the value of RValue
-    fn process_operand(&mut self, operand: &Operand, clr_method: &CLRMethod) {
+    fn process_operand(&mut self, operand: &Operand, clr_method: &CLRMethod,asm:&Assembly) {
         match operand {
-            Operand::Copy(place) => self.load(place.local.into(), clr_method),
+            Operand::Copy(place) => {
+                self.load(place.local.into(), clr_method);
+                //println!("Use");
+                if place.projection.len() > 0{
+                     self.ops.extend(crate::projection::projection_get(place.projection,clr_method.get_type_of_local(place.local.into()),clr_method,asm));
+                }
+            }
             //TODO:Do moves need to be treated any diffrently forom copies in the context of CLR?
-            Operand::Move(place) => self.load(place.local.into(), clr_method),
+            Operand::Move(place) =>{
+                self.load(place.local.into(), clr_method);
+                if place.projection.len() > 0{
+                     self.ops.extend(crate::projection::projection_get(place.projection,clr_method.get_type_of_local(place.local.into()),clr_method,asm));
+                }
+            }
             Operand::Constant(const_val) => {
                 self.process_constant(const_val.literal, clr_method);
             }
@@ -148,6 +164,12 @@ impl RValue {
             VariableType::I64 => self
                 .ops
                 .push(BaseIR::LDConstI64(sign_cast!(value, u64, i64))),
+            VariableType::I64 => self
+                .ops
+                .push(BaseIR::LDConstI64(sign_cast!(value, u64, i64))),
+            VariableType::F32 => self
+                .ops
+                .push(BaseIR::LDConstF32(f32::from_bits(value as u32))),
             VariableType::Bool => self.ops.push(BaseIR::LDConstI8((value != 0) as u8 as i8)),
             _ => todo!("Can't yet load constant primitives of type {var_type:?}!"),
         }

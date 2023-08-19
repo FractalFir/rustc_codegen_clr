@@ -1,5 +1,4 @@
-use crate::assigment_target::AsigmentTarget;
-use crate::{rvalue::RValue, BaseIR, FunctionSignature, IString, VariableType};
+use crate::{assigment_target::AsigmentTarget,rvalue::RValue, BaseIR, FunctionSignature, IString, VariableType,Assembly};
 use rustc_index::IndexVec;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::Constant;
@@ -234,12 +233,13 @@ impl CLRMethod {
         statement: &Statement<'ctx>,
         body: &Body<'ctx>,
         tyctx: &TyCtxt<'ctx>,
+        asm:&Assembly,
     ) {
         println!("statement:{statement:?}");
         match &statement.kind {
             StatementKind::Assign(asign_box) => {
                 let (place, rvalue) = (asign_box.0, &asign_box.1);
-                let rvalue = RValue::from_rvalue(rvalue, body, tyctx, self);
+                let rvalue = RValue::from_rvalue(rvalue, body, tyctx, self,asm);
                 AsigmentTarget::from_placement(place, &self).finalize(rvalue, self);
             }
             StatementKind::StorageLive(local) => {
