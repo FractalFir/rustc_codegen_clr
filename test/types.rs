@@ -42,6 +42,8 @@ pub extern fn recive_array(arr:[i32;4]){}
 pub extern fn recive_array_ref(arr:&[f64;8]){}
 #[no_mangle]
 pub extern fn recive_array_array(arr:[[f64;8];8]){}
+#[no_mangle]
+pub extern fn slice(arr:&[i32]){}
 /*
 #[no_mangle]
 pub extern fn return_array()->[i32;4]{[0,0,0,0]}

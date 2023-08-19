@@ -19,13 +19,15 @@ enum CLRType{
     Array{
         element:VariableType,
         length:usize,
-    }
+    },
+    Slice(VariableType),
 }
 impl CLRType{
     pub(crate) fn get_def(&self,name:&str)->IString{
         match self{
-            Self::Struct{fields}=>format!(".class public sequential {name} extends [System.Runtime]System.ValueType{{}}"),
-            Self::Array{element,length}=>format!(".class public sequential {name} extends [System.Runtime]System.ValueType{{\n\t.pack 0\n\t.size {length}\n\t.field public {element_il} arr\n}}",element_il= element.il_name()),
+            Self::Struct{fields}=>format!(".class public sequential {name} extends [System.Runtime]System.ValueType{{}}\n"),
+            Self::Array{element,length}=>format!(".class public sequential {name} extends [System.Runtime]System.ValueType{{\n\t.pack 0\n\t.size {length}\n\t.field public {element_il} arr\n}}\n",element_il= element.il_name()),
+            Self::Slice(element)=>format!(".class public sequential {name} extends [System.Runtime]System.ValueType{{\n\t.field public {element_il}* ptr\n\t.field public native int cap\n}}\n",element_il= element.il_name()),
         }.into()
     }
 }
@@ -72,6 +74,12 @@ impl Assembly {
                 let name = format!("'RArray_{element_il}_{length}'",element_il = element.il_name()).into();
                 let arr = CLRType::Array{element,length};
                 self.types.insert(name,arr);
+            }
+            TyKind::Slice(element_type) =>{
+                let element = VariableType::from_ty(*element_type);
+                let name = format!("'RSlice_{element_il}'",element_il = element.il_name()).into();
+                let slice = CLRType::Slice(element);
+                self.types.insert(name,slice);
             }
             TyKind::Ref(_,ty,_)=>self.add_type(*ty),
             _=>()

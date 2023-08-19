@@ -29,6 +29,7 @@ pub(crate) enum VariableType {
        element:Box<Self>,
        length:usize,
     },
+    Slice(Box<Self>),
     Struct(IString)
 }
 
@@ -68,7 +69,7 @@ impl VariableType {
                 let value = scalar.to_u64().expect("Could not convert scalar to u64!");
                 value as usize
             }},
-            TyKind::Slice(_element_type) => todo!("Can't handle slices yet!"),
+            TyKind::Slice(element_type) => Self::Slice(Box::new(Self::from_ty(*element_type))),
             TyKind::Adt(adt_def, _subst) =>{
                 let adt = adt_def;
                 //let tcxt:&_ = adt.0.0;
@@ -125,6 +126,10 @@ impl VariableType {
             Self::Struct(name) => (*name).clone().into(),
             Self::Array{element,length} => format!(
                 "'RArray_{element_il}_{length}'",
+                element_il = element.il_name().replace('\'',"")
+            ).into(),
+            Self::Slice(element)=>format!(
+                "'RSlice_{element_il}'",
                 element_il = element.il_name().replace('\'',"")
             ).into(),
         }
