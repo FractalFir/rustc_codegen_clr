@@ -25,7 +25,13 @@ enum CLRType{
 impl CLRType{
     pub(crate) fn get_def(&self,name:&str)->IString{
         match self{
-            Self::Struct{fields}=>format!(".class public sequential {name} extends [System.Runtime]System.ValueType{{}}\n"),
+            Self::Struct{fields}=>{
+                let mut field_string = String::new();
+                for (field_name,field_type) in fields{
+                    field_string.push_str(&format!("\t.field public {il_name} {field_name}",il_name = field_type.il_name()));
+                }
+                format!(".class public sequential {name} extends [System.Runtime]System.ValueType{{\n{field_string}}}\n")
+            },
             Self::Array{element,length}=>format!(".class public sequential {name} extends [System.Runtime]System.ValueType{{\n\t.pack 0\n\t.size {length}\n\t.field public {element_il} arr\n}}\n",element_il= element.il_name()),
             Self::Slice(element)=>format!(".class public sequential {name} extends [System.Runtime]System.ValueType{{\n\t.field public {element_il}* ptr\n\t.field public native int cap\n}}\n",element_il= element.il_name()),
         }.into()
@@ -52,13 +58,18 @@ impl Assembly {
         //let methods = format!("{methods}");
         format!(".assembly {name}{{}}\n{types}\n{methods}", name = self.name).into()
     }
-    pub(crate) fn add_type(&mut self, ty:Ty){
+    pub(crate) fn add_type(&mut self, ty:Ty,tyctx:&TyCtxt){
         match ty.kind(){
             TyKind::Adt(adt_def, subst) => {
                 // TODO: find a better way to get a name of an ADT!
                 let name = format!("{adt_def:?}").into();
                 let mut fields = Vec::new();
                 for field in adt_def.all_fields(){
+                    //TODO: handle binders!
+                    fields.push((
+                        field.name.to_string().into(),
+                        VariableType::from_ty(tyctx.type_of(field.did). skip_binder())
+                    ));
                     println!("field:{field:?}");
                 }
                 self.types.insert(name,CLRType::Struct{fields});
@@ -81,13 +92,13 @@ impl Assembly {
                 let slice = CLRType::Slice(element);
                 self.types.insert(name,slice);
             }
-            TyKind::Ref(_,ty,_)=>self.add_type(*ty),
+            TyKind::Ref(_,ty,_)=>self.add_type(*ty,tyctx),
             _=>()
         }
     }
-    pub(crate) fn add_types_from_locals(&mut self, locals: &IndexVec<Local, LocalDecl>){
+    pub(crate) fn add_types_from_locals(&mut self, locals: &IndexVec<Local, LocalDecl>,tyctx:&TyCtxt){
         for local in locals.iter() {
-            self.add_type(local.ty);
+            self.add_type(local.ty,tyctx);
         }
     }
     pub(crate) fn name(&self) -> &str {
@@ -115,7 +126,7 @@ impl Assembly {
                 .expect("Could not resolve the function signature"),
             name,
         );
-        self.add_types_from_locals(&mir.local_decls);
+        self.add_types_from_locals(&mir.local_decls,&tcx);
         clr_method.add_locals(&mir.local_decls);
         for block_data in blocks {
             clr_method.begin_bb();

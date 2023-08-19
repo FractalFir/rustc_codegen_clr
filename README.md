@@ -8,7 +8,7 @@ The Rust APIs this codegen exposes to C#/F# code would be only slightly easier t
 
 Interop would still require some effort, but the Rust code would be bundled together with everything else. You will also have the guarantee that types you use from C# are exactly the same as the ones in C#, preventing any issues coming from such mismatch. All types can be safely send between Rust and C#, with exactly the same layout.
 
-Additionaly, since all Rust code compiled with this codegen can be bundled with C#/F# code, you would no longer need to ship different versions of the library for different architectures. Any architecture supported by CLR would work out of the box, without the exact same binary.
+Additionally, since all Rust code compiled with this codegen can be bundled with C#/F# code, you would no longer need to ship different versions of the library for different architectures. Any architecture supported by CLR would work out of the box, without the exact same binary.
 
 You also avoid the cost of switches between code running within the runtime and outside it. While this cost is not something unbearable, it is not something you can easily get rid of, and reducing it has some safety penalties associated with. In this case, all code will run inside the runtime, meaning no transition between code running inside runtime and outside of it will occur.
 
@@ -31,13 +31,14 @@ Compiling Rust to CLR is potentially better for the JIT. Since CLR's JIT now "se
 - [ ] Basic generics
 - [ ] for loops
 ## Types
+*NOTE This section says only if a type can be translated for .NET to understand. This **does not** mean the type is fully usable.*
 - [X] All integer and float types are supported.
 - [X] Tuples are supported
 - [X] References are supported
 - [X] Arrays, slices
 - [X] Void type
 - [X] Combinations of all of the above. 
-- [ ] Structs (only empty structs work at the moment).
+- [X] Structs
 - [ ] Enums
 - [ ] Traits
 - [ ] iterators
