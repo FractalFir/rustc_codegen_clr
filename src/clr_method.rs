@@ -1,4 +1,7 @@
-use crate::{assigment_target::AsigmentTarget,rvalue::RValue, BaseIR, FunctionSignature, IString, VariableType,Assembly};
+use crate::{
+    assigment_target::AsigmentTarget, rvalue::RValue, Assembly, BaseIR, FunctionSignature, IString,
+    VariableType,
+};
 use rustc_index::IndexVec;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::Constant;
@@ -233,14 +236,14 @@ impl CLRMethod {
         statement: &Statement<'ctx>,
         body: &Body<'ctx>,
         tyctx: &TyCtxt<'ctx>,
-        asm:&Assembly,
+        asm: &Assembly,
     ) {
         println!("statement:{statement:?}");
         match &statement.kind {
             StatementKind::Assign(asign_box) => {
                 let (place, rvalue) = (asign_box.0, &asign_box.1);
-                let rvalue = RValue::from_rvalue(rvalue, body, tyctx, self,asm);
-                AsigmentTarget::from_placement(place, &self).finalize(rvalue, self);
+                let rvalue = RValue::from_rvalue(rvalue, body, tyctx, self, asm);
+                AsigmentTarget::from_placement(place, &self,asm).finalize(rvalue, self);
             }
             StatementKind::StorageLive(local) => {
                 self.var_live((*local).into());
@@ -270,6 +273,7 @@ impl CLRMethod {
         tyctx: &TyCtxt<'ctx>,
         args: &[Operand],
         destination: &Place,
+        asm:&Assembly
     ) {
         let instance = if let TyKind::FnDef(def_id, subst_ref) = fn_type.kind() {
             let env = ParamEnv::empty();
@@ -291,7 +295,7 @@ impl CLRMethod {
         if sig.output.is_void() {
             self.ops.push(BaseIR::CallStatic { function_name, sig });
         } else {
-            let assigement = AsigmentTarget::from_placement(*destination, &self);
+            let assigement = AsigmentTarget::from_placement(*destination, &self,asm);
             assigement.finalize_with_ops(&[BaseIR::CallStatic { function_name, sig }], self);
         }
     }
@@ -300,6 +304,7 @@ impl CLRMethod {
         terminator: &Terminator<'ctx>,
         body: &Body<'ctx>,
         tyctx: &TyCtxt<'ctx>,
+        asm:&Assembly
     ) {
         match &terminator.kind {
             TerminatorKind::Return => {
@@ -372,7 +377,7 @@ impl CLRMethod {
                                 fn_ty.is_fn(),
                                 "literal{literal:?} in call is not a function type!"
                             );
-                            self.call(&fn_ty, tyctx, args, destination);
+                            self.call(&fn_ty, tyctx, args, destination,asm);
                         } else {
                             panic!("Invalid function literal!");
                         }

@@ -1,38 +1,59 @@
-use crate::{CLRMethod, VariableType,FunctionSignature, IString};
-use rustc_middle::{
-    mir::{mono::MonoItem,Local,LocalDecl},
-    ty::{Instance, ParamEnv, Ty,TyKind,TyCtxt},
-};
-use std::collections::HashMap;
+use crate::{CLRMethod, FunctionSignature, IString, VariableType};
 use rustc_index::IndexVec;
+use rustc_middle::{
+    mir::{mono::MonoItem, Local, LocalDecl},
+    ty::{Instance, ParamEnv, Ty, TyCtxt, TyKind},
+};
 use serde::{Deserialize, Serialize};
-#[derive(Clone,Debug,Serialize, Deserialize)]
-enum Visiblity{
+use std::collections::HashMap;
+#[derive(Clone, Debug, Serialize, Deserialize)]
+enum Visiblity {
     Private,
     Public,
 }
-#[derive(Clone,Debug,Serialize, Deserialize)]
-enum CLRType{
-    Struct{
-        fields:Vec<(IString,VariableType)>,
+#[derive(Clone, Debug, Serialize, Deserialize)]
+enum CLRType {
+    Struct {
+        fields: Vec<(IString, VariableType)>,
     },
-    Array{
-        element:VariableType,
-        length:usize,
+    Array {
+        element: VariableType,
+        length: usize,
     },
     Slice(VariableType),
 }
-impl CLRType{
-    pub(crate) fn get_field_getter(&self,field:usize,field_parent:&str)->Vec<crate::BaseIR>{
-        match self{
-            Self::Struct{fields}=>{
+impl CLRType {
+    pub(crate) fn get_field_getter(&self, field: usize, field_parent: &str) -> Vec<crate::BaseIR> {
+        match self {
+            Self::Struct { fields } => {
                 let field = &fields[field];
-                vec![crate::BaseIR::LDField{field_parent:field_parent.into(),field_name:field.0.clone().into(),field_type:field.1.clone()}]
-            },
-            Self::Array{..} | Self::Slice{..} => panic!("Attempted to get a field of a field-less type!"),
+                vec![crate::BaseIR::LDField {
+                    field_parent: field_parent.into(),
+                    field_name: field.0.clone().into(),
+                    field_type: field.1.clone(),
+                }]
+            }
+            Self::Array { .. } | Self::Slice { .. } => {
+                panic!("Attempted to get a field of a field-less type!")
+            }
         }
     }
-    pub(crate) fn get_def(&self,name:&str)->IString{
+    pub(crate) fn get_field_setter(&self, field: usize, field_parent: &str) -> Vec<crate::BaseIR> {
+        match self {
+            Self::Struct { fields } => {
+                let field = &fields[field];
+                vec![crate::BaseIR::STField {
+                    field_parent: field_parent.into(),
+                    field_name: field.0.clone().into(),
+                    field_type: field.1.clone(),
+                }]
+            }
+            Self::Array { .. } | Self::Slice { .. } => {
+                panic!("Attempted to get a field of a field-less type!")
+            }
+        }
+    }
+    pub(crate) fn get_def(&self, name: &str) -> IString {
         match self{
             Self::Struct{fields}=>{
                 let mut field_string = String::new();
@@ -50,65 +71,95 @@ impl CLRType{
 pub(crate) struct Assembly {
     methods: Vec<CLRMethod>,
     name: IString,
-    types:HashMap<IString,CLRType>,
+    types: HashMap<IString, CLRType>,
 }
 impl Assembly {
+    pub(crate) fn get_field_getter(
+        &self,
+        field: usize,
+        field_parent: &str,
+    ) -> Option<Vec<crate::BaseIR>> {
+        Some(
+            self.types
+                .get(field_parent)?
+                .get_field_getter(field, field_parent),
+        )
+    }
+    pub(crate) fn get_field_setter(
+        &self,
+        field: usize,
+        field_parent: &str,
+    ) -> Option<Vec<crate::BaseIR>> {
+        Some(
+            self.types
+                .get(field_parent)?
+                .get_field_setter(field, field_parent),
+        )
+    }
     //pub(crate) fn (&self,type_name:&str,
     pub(crate) fn into_il_ir(&self) -> IString {
         let mut methods = String::new();
         for method in &self.methods {
             methods.push_str(&method.into_il_ir());
         }
-        
-        let mut types = String::new(); 
-        for clr_type in &self.types{
-            types.push_str(&clr_type.1.get_def(&clr_type.0.replace('\'',"")));
+        let mut types = String::new();
+        for clr_type in &self.types {
+            types.push_str(&clr_type.1.get_def(&clr_type.0.replace('\'', "")));
         }
-        println!("\nty_count:{}\n",self.types.len());
+        println!("\nty_count:{}\n", self.types.len());
         //let methods = format!("{methods}");
         format!(".assembly {name}{{}}\n{types}\n{methods}", name = self.name).into()
     }
-    pub(crate) fn add_type(&mut self, ty:Ty,tyctx:&TyCtxt){
-        match ty.kind(){
+    pub(crate) fn add_type(&mut self, ty: Ty, tyctx: &TyCtxt) {
+        match ty.kind() {
             TyKind::Adt(adt_def, subst) => {
                 // TODO: find a better way to get a name of an ADT!
                 let name = format!("{adt_def:?}").into();
                 let mut fields = Vec::new();
-                for field in adt_def.all_fields(){
+                for field in adt_def.all_fields() {
                     //TODO: handle binders!
                     fields.push((
                         field.name.to_string().into(),
-                        VariableType::from_ty(tyctx.type_of(field.did). skip_binder())
+                        VariableType::from_ty(tyctx.type_of(field.did).skip_binder()),
                     ));
                     println!("field:{field:?}");
                 }
-                self.types.insert(name,CLRType::Struct{fields});
-                println!("adt_def:{adt_def:?} types:{types:?}",types = self.types);
+                self.types.insert(name, CLRType::Struct { fields });
+                println!("adt_def:{adt_def:?} types:{types:?}", types = self.types);
             }
-            TyKind::Array(element_type,length) =>{
-                let (element,length) = (VariableType::from_ty(*element_type),{
-                        let scalar = length.try_to_scalar().expect("Could not convert the scalar");
-                        let value = scalar.to_u64().expect("Could not convert scalar to u64!");
-                        value as usize
-                    }
-                );
-                let name = format!("'RArray_{element_il}_{length}'",element_il = element.il_name()).into();
-                let arr = CLRType::Array{element,length};
-                self.types.insert(name,arr);
+            TyKind::Array(element_type, length) => {
+                let (element, length) = (VariableType::from_ty(*element_type), {
+                    let scalar = length
+                        .try_to_scalar()
+                        .expect("Could not convert the scalar");
+                    let value = scalar.to_u64().expect("Could not convert scalar to u64!");
+                    value as usize
+                });
+                let name = format!(
+                    "'RArray_{element_il}_{length}'",
+                    element_il = element.il_name()
+                )
+                .into();
+                let arr = CLRType::Array { element, length };
+                self.types.insert(name, arr);
             }
-            TyKind::Slice(element_type) =>{
+            TyKind::Slice(element_type) => {
                 let element = VariableType::from_ty(*element_type);
-                let name = format!("'RSlice_{element_il}'",element_il = element.il_name()).into();
+                let name = format!("'RSlice_{element_il}'", element_il = element.il_name()).into();
                 let slice = CLRType::Slice(element);
-                self.types.insert(name,slice);
+                self.types.insert(name, slice);
             }
-            TyKind::Ref(_,ty,_)=>self.add_type(*ty,tyctx),
-            _=>()
+            TyKind::Ref(_, ty, _) => self.add_type(*ty, tyctx),
+            _ => (),
         }
     }
-    pub(crate) fn add_types_from_locals(&mut self, locals: &IndexVec<Local, LocalDecl>,tyctx:&TyCtxt){
+    pub(crate) fn add_types_from_locals(
+        &mut self,
+        locals: &IndexVec<Local, LocalDecl>,
+        tyctx: &TyCtxt,
+    ) {
         for local in locals.iter() {
-            self.add_type(local.ty,tyctx);
+            self.add_type(local.ty, tyctx);
         }
     }
     pub(crate) fn name(&self) -> &str {
@@ -136,22 +187,22 @@ impl Assembly {
                 .expect("Could not resolve the function signature"),
             name,
         );
-        self.add_types_from_locals(&mir.local_decls,&tcx);
+        self.add_types_from_locals(&mir.local_decls, &tcx);
         clr_method.add_locals(&mir.local_decls);
         for block_data in blocks {
             clr_method.begin_bb();
             for statement in &block_data.statements {
-                clr_method.add_statement(statement, mir, &tcx,self);
+                clr_method.add_statement(statement, mir, &tcx, self);
             }
             match &block_data.terminator {
-                Some(term) => clr_method.add_terminator(term, mir, &tcx),
+                Some(term) => clr_method.add_terminator(term, mir, &tcx,self),
                 None => (),
             }
         }
-        clr_method.opt();
+        //clr_method.opt();
         println!("clr_method:{clr_method:?}");
         println!("instance:{instance:?}\n");
-        println!("types:{types:?}",types = self.types);
+        println!("types:{types:?}", types = self.types);
         self.methods.push(clr_method);
     }
     pub(crate) fn add_item<'tcx>(&mut self, item: MonoItem<'tcx>, tcx: TyCtxt<'tcx>) {

@@ -1,17 +1,20 @@
+use crate::BaseIR;
 use crate::IString;
+use rustc_middle::ty::AdtKind;
 use rustc_middle::{
     mir::Mutability,
     ty::{FloatTy, IntTy, Ty, TyKind, UintTy},
 };
- use crate::BaseIR;
-use rustc_middle::ty::AdtKind;
 use serde::{Deserialize, Serialize};
-enum TypePrefix{ValueType}
-impl TypePrefix{
-    fn il(&self)->IString{
-        match self{
-            Self::ValueType => "valuetype"
-        }.into()
+enum TypePrefix {
+    ValueType,
+}
+impl TypePrefix {
+    fn il(&self) -> IString {
+        match self {
+            Self::ValueType => "valuetype",
+        }
+        .into()
     }
 }
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -34,10 +37,7 @@ pub(crate) enum VariableType {
     Bool,
     Ref(Box<Self>),
     RefMut(Box<Self>),
-    Array{
-       element:Box<Self>,
-       length:usize,
-    },
+    Array { element: Box<Self>, length: usize },
     Slice(Box<Self>),
     Struct(IString),
     Tuple(Vec<Self>),
@@ -45,12 +45,22 @@ pub(crate) enum VariableType {
 
 impl VariableType {
     /// For a type T, returns a BaseIR op which derefreneces T* to T.
-    pub(crate) fn deref_op(&self) -> BaseIR{
-        match self{
-            Self::Ref(_) | Self::RefMut(_) =>BaseIR::LDIndI,
+    pub(crate) fn deref_op(&self) -> BaseIR {
+        match self {
+            Self::Ref(_) | Self::RefMut(_) => BaseIR::LDIndI,
             Self::I32 => BaseIR::LDIndIn(std::mem::size_of::<i32>() as u8),
             Self::I64 => BaseIR::LDIndIn(std::mem::size_of::<i64>() as u8),
-            _=>todo!("Can't deference a pointer to type {self:?}")
+            Self::Struct(name) => BaseIR::LDObj(name.clone()),
+            _ => todo!("Can't deference a pointer to type {self:?}"),
+        }
+    }
+    pub(crate) fn set_pointed_op(&self) -> BaseIR {
+        match self {
+            Self::Ref(_) | Self::RefMut(_) => BaseIR::STIndI,
+            Self::I32 => BaseIR::STIndIn(std::mem::size_of::<i32>() as u8),
+            Self::I64 => BaseIR::STIndIn(std::mem::size_of::<i64>() as u8),
+            Self::Struct(name) => BaseIR::STObj(name.clone()),
+            _ => todo!("Can't deference a pointer to type {self:?}"),
         }
     }
     pub(crate) fn is_void(&self) -> bool {
@@ -83,22 +93,27 @@ impl VariableType {
             TyKind::Char => todo!("Can't handle chars yet!"),
             TyKind::Foreign(_ftype) => todo!("Can't handle foreign types yet!"),
             TyKind::Str => todo!("Can't handle string slices yet!"),
-            TyKind::Array(element_type, length) => Self::Array{element:Box::new(Self::from_ty(*element_type)),length:{
-                let scalar = length.try_to_scalar().expect("Could not convert the scalar");
-                let value = scalar.to_u64().expect("Could not convert scalar to u64!");
-                value as usize
-            }},
+            TyKind::Array(element_type, length) => Self::Array {
+                element: Box::new(Self::from_ty(*element_type)),
+                length: {
+                    let scalar = length
+                        .try_to_scalar()
+                        .expect("Could not convert the scalar");
+                    let value = scalar.to_u64().expect("Could not convert scalar to u64!");
+                    value as usize
+                },
+            },
             TyKind::Slice(element_type) => Self::Slice(Box::new(Self::from_ty(*element_type))),
-            TyKind::Adt(adt_def, _subst) =>{
+            TyKind::Adt(adt_def, _subst) => {
                 let adt = adt_def;
                 //let tcxt:&_ = adt.0.0;
                 //TODO: Figure out a better way to get this name!
-                let name = format!("{adt:?}");//tcxt.get_diagnostic_name();
-                match adt.adt_kind(){
+                let name = format!("{adt:?}"); //tcxt.get_diagnostic_name();
+                match adt.adt_kind() {
                     AdtKind::Struct => VariableType::Struct(name.into()),
                     AdtKind::Union => todo!("Can't yet handle unions"),
                     AdtKind::Enum => todo!("Can't yet handle enum"),
-                }   
+                }
             }
             TyKind::RawPtr(_target_type) => todo!("Can't handle pointers yet!"),
             TyKind::FnPtr(_sig) => todo!("Can't handle function pointers yet!"),
@@ -116,25 +131,33 @@ impl VariableType {
             TyKind::Tuple(inner_types) => {
                 if inner_types.len() == 0 {
                     Self::Void
-                }
-                else{
-                    Self::Tuple(inner_types.iter().map(|ty|VariableType::from_ty(ty)).collect())
+                } else {
+                    Self::Tuple(
+                        inner_types
+                            .iter()
+                            .map(|ty| VariableType::from_ty(ty))
+                            .collect(),
+                    )
                 }
             }
             _ => todo!("Unhandled type kind {:?}", ty.kind()),
         }
     }
-    fn get_prefix(&self)->Option<TypePrefix>{
-        match self{
-            Self::Tuple(_)=>Some(TypePrefix::ValueType),
-            _=>None,
+    fn get_prefix(&self) -> Option<TypePrefix> {
+        match self {
+            Self::Tuple(_) => Some(TypePrefix::ValueType),
+            _ => None,
         }
     }
-    pub(crate) fn arg_name(&self)->IString{
-        if let Some(prefix) = self.get_prefix(){
-            format!("{il_prefix} {il_name}",il_prefix = prefix.il(),il_name = self.il_name()).into()
-        }
-        else{
+    pub(crate) fn arg_name(&self) -> IString {
+        if let Some(prefix) = self.get_prefix() {
+            format!(
+                "{il_prefix} {il_name}",
+                il_prefix = prefix.il(),
+                il_name = self.il_name()
+            )
+            .into()
+        } else {
             self.il_name()
         }
     }
@@ -159,26 +182,31 @@ impl VariableType {
             Self::Ref(inner) => format!("{inner}*", inner = inner.il_name()),
             Self::RefMut(inner) => format!("{inner}*", inner = inner.il_name()),
             Self::Struct(name) => (*name).clone().into(),
-            Self::Array{element,length} => format!(
+            Self::Array { element, length } => format!(
                 "'RArray_{element_il}_{length}'",
-                element_il = element.il_name().replace('\'',"")
-            ).into(),
-            Self::Slice(element)=>format!(
+                element_il = element.il_name().replace('\'', "")
+            )
+            .into(),
+            Self::Slice(element) => format!(
                 "'RSlice_{element_il}'",
-                element_il = element.il_name().replace('\'',"")
-            ).into(),
-            Self::Tuple(elements)=>{
+                element_il = element.il_name().replace('\'', "")
+            )
+            .into(),
+            Self::Tuple(elements) => {
                 let mut inner = String::new();
                 let mut elements_iter = elements.iter();
-                if let Some(first_arg) = elements_iter.next(){
+                if let Some(first_arg) = elements_iter.next() {
                     inner.push_str(&first_arg.il_name());
                 }
-                for arg in elements_iter{
+                for arg in elements_iter {
                     inner.push(',');
                     inner.push_str(&arg.il_name());
                 }
-                format!("[System.Runtime]System.ValueTuple`{element_count}<{inner}>",element_count = elements.len())
-            },
+                format!(
+                    "[System.Runtime]System.ValueTuple`{element_count}<{inner}>",
+                    element_count = elements.len()
+                )
+            }
         }
         .into()
     }

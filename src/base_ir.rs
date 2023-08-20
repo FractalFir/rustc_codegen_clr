@@ -1,4 +1,4 @@
-use crate::{FunctionSignature, IString,VariableType};
+use crate::{FunctionSignature, IString, VariableType};
 use serde::{Deserialize, Serialize};
 // An IR close, but not exactly equivalent to the CoreCLR IR.
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
@@ -7,7 +7,8 @@ pub(crate) enum BaseIR {
     LDConstI32(i32),
     LDConstI64(i64),
     LDConstF32(f32),
-    STIInd(u8),
+    STIndIn(u8),
+    STIndI,
     LDIndIn(u8),
     LDIndI,
     LDConstString(String),
@@ -51,11 +52,18 @@ pub(crate) enum BaseIR {
     NewObj {
         ctor_fn: String,
     },
-    LDField{
-        field_parent:IString,
-        field_name:IString,
-        field_type:VariableType
+    LDField {
+        field_parent: IString,
+        field_name: IString,
+        field_type: VariableType,
     },
+    STField {
+        field_parent: IString,
+        field_name: IString,
+        field_type: VariableType,
+    },
+    LDObj(IString),
+    STObj(IString),
     Throw,
 }
 impl BaseIR {
@@ -95,9 +103,10 @@ impl BaseIR {
             Self::LDConstString(string) => format!("\tldstr \"{string}\"\n"),
             Self::NewObj { ctor_fn } => format!("\tnewobj instance {ctor_fn}\n"),
             Self::Throw => "\tthrow\n".into(),
-            Self::STIInd(size) => format!("\tstind.i{size}\n"),
+            Self::STIndIn(size) => format!("\tstind.i{size}\n"),
             Self::LDIndIn(size) => format!("\tldind.i{size}\n"),
             Self::LDIndI => "\tldind.i\n".into(),
+            Self::STIndI => "\tstind.i\n".into(),
             Self::CallStatic { sig, function_name } => {
                 //assert!(sig.inputs.is_empty());
                 let mut inputs_iter = sig.inputs.iter();
@@ -114,9 +123,28 @@ impl BaseIR {
                     output = sig.output.il_name()
                 )
             } //todo!("Can't call functions yet!")
-            Self::LDField{field_parent,field_name,field_type} => {
-                format!("ldfld {field_type} '{field_parent}'::{field_name}",field_type = field_type.arg_name(),)
+            Self::LDField {
+                field_parent,
+                field_name,
+                field_type,
+            } => {
+                format!(
+                    "\tldfld {field_type} '{field_parent}'::{field_name}\n",
+                    field_type = field_type.arg_name(),
+                )
             }
+            Self::STField {
+                field_parent,
+                field_name,
+                field_type,
+            } => {
+                format!(
+                    "\tstfld {field_type} '{field_parent}'::{field_name}\n",
+                    field_type = field_type.arg_name(),
+                )
+            }
+            Self::LDObj(struct_name) => format!("\tldobj valuetype {struct_name}\n"),
+            Self::STObj(struct_name) => format!("\tstobj valuetype {struct_name}\n"),
         }
         .into()
     }

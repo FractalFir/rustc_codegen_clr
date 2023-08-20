@@ -1,4 +1,4 @@
-use crate::{BaseIR, CLRMethod, LocalPlacement, VariableType,Assembly};
+use crate::{Assembly, BaseIR, CLRMethod, LocalPlacement, VariableType};
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::mir::Rvalue as CompilerRValue;
 use rustc_middle::{
@@ -22,15 +22,22 @@ impl RValue {
         body: &Body<'ctx>,
         tyctx: &TyCtxt<'ctx>,
         clr_method: &CLRMethod,
-        asm:&Assembly,
+        asm: &Assembly,
     ) -> Self {
         let mut new = Self { ops: Vec::new() };
-        new.process_rvalue(rvalue, body, tyctx, clr_method,asm);
+        new.process_rvalue(rvalue, body, tyctx, clr_method, asm);
         new
     }
-    fn process_binop(&mut self, binop: BinOp, a: &Operand, b: &Operand, clr_method: &CLRMethod,asm:&Assembly) {
-        self.process_operand(a, clr_method,asm);
-        self.process_operand(b, clr_method,asm);
+    fn process_binop(
+        &mut self,
+        binop: BinOp,
+        a: &Operand,
+        b: &Operand,
+        clr_method: &CLRMethod,
+        asm: &Assembly,
+    ) {
+        self.process_operand(a, clr_method, asm);
+        self.process_operand(b, clr_method, asm);
         self.ops.push(match binop {
             BinOp::Add => BaseIR::Add,
             BinOp::Sub => BaseIR::Sub,
@@ -63,17 +70,17 @@ impl RValue {
         body: &Body<'ctx>,
         tyctx: &TyCtxt<'ctx>,
         clr_method: &CLRMethod,
-        asm:&Assembly,
+        asm: &Assembly,
     ) {
         println!("rvalue:{rvalue:?}");
         match rvalue {
             CompilerRValue::Use(operand) => {
                 println!("Use");
-                self.process_operand(operand, clr_method,asm)
+                self.process_operand(operand, clr_method, asm)
             }
             CompilerRValue::BinaryOp(binop, operands) => {
                 let (a, b): (_, _) = (&operands.0, &operands.1);
-                self.process_binop(*binop, a, b, clr_method,asm);
+                self.process_binop(*binop, a, b, clr_method, asm);
             }
             CompilerRValue::Cast(
                 CastKind::IntToInt
@@ -83,7 +90,7 @@ impl RValue {
                 operand,
                 target,
             ) => {
-                self.process_operand(operand, clr_method,asm);
+                self.process_operand(operand, clr_method, asm);
                 self.convert(
                     &VariableType::from_ty(operand.ty(body, *tyctx)),
                     &VariableType::from_ty(*target),
@@ -134,20 +141,36 @@ impl RValue {
         };
     }
     // Makes so the top of the stack is the value of RValue
-    fn process_operand(&mut self, operand: &Operand, clr_method: &CLRMethod,asm:&Assembly) {
+    fn process_operand(&mut self, operand: &Operand, clr_method: &CLRMethod, asm: &Assembly) {
         match operand {
             Operand::Copy(place) => {
                 self.load(place.local.into(), clr_method);
                 //println!("Use");
-                if place.projection.len() > 0{
-                     self.ops.extend(crate::projection::projection_get(place.projection,clr_method.get_type_of_local(place.local.into()),clr_method,asm));
+                if place.projection.len() > 0 {
+                    self.ops.extend(
+                        crate::projection::projection_get(
+                            place.projection,
+                            clr_method.get_type_of_local(place.local.into()),
+                            clr_method,
+                            asm,
+                        )
+                        .1,
+                    );
                 }
             }
             //TODO:Do moves need to be treated any diffrently forom copies in the context of CLR?
-            Operand::Move(place) =>{
+            Operand::Move(place) => {
                 self.load(place.local.into(), clr_method);
-                if place.projection.len() > 0{
-                     self.ops.extend(crate::projection::projection_get(place.projection,clr_method.get_type_of_local(place.local.into()),clr_method,asm));
+                if place.projection.len() > 0 {
+                    self.ops.extend(
+                        crate::projection::projection_get(
+                            place.projection,
+                            clr_method.get_type_of_local(place.local.into()),
+                            clr_method,
+                            asm,
+                        )
+                        .1,
+                    );
                 }
             }
             Operand::Constant(const_val) => {

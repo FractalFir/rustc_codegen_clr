@@ -7,6 +7,7 @@ extern crate rustc_metadata;
 extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
+extern crate rustc_target;
 
 use rustc_codegen_ssa::{
     traits::CodegenBackend, CodegenResults, CompiledModule, CrateInfo, ModuleKind,
@@ -35,8 +36,8 @@ use base_ir::BaseIR;
 mod variable;
 use variable::*;
 mod assigment_target;
-mod rvalue;
 mod projection;
+mod rvalue;
 pub type IString = Box<str>;
 
 struct MyBackend;

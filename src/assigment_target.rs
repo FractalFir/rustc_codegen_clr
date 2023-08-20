@@ -1,9 +1,8 @@
-use crate::rvalue::RValue;
-use crate::{clr_method::LocalPlacement, BaseIR, CLRMethod};
+use crate::{clr_method::LocalPlacement,rvalue::RValue, BaseIR, CLRMethod,Assembly};
 
 use rustc_middle::mir::Place;
 use rustc_middle::mir::ProjectionElem;
-enum AsigmentValuePosition {
+pub(crate) enum AsigmentValuePosition {
     BeforeAdress,
     AfterAdress,
 }
@@ -13,7 +12,7 @@ pub(crate) struct AsigmentTarget {
     set_ops: Vec<BaseIR>,
 }
 impl AsigmentTarget {
-    pub(crate) fn from_placement(place: Place, clr_method: &CLRMethod) -> Self {
+    pub(crate) fn from_placement(place: Place, clr_method: &CLRMethod,asm:&Assembly) -> Self {
         let mut new = Self {
             adress_calc: Vec::new(),
             set_ops: Vec::new(),
@@ -27,24 +26,12 @@ impl AsigmentTarget {
                     LocalPlacement::Var(var_id) => BaseIR::STLoc(var_id),
                 });
         } else {
+            let (adress_type,adress_calc) = crate::projection::projection_get(&place.projection[..(place.projection.len() - 1)],clr_method.get_type_of_local(place.local.into()),clr_method,asm);
             let local: u32 = place.local.into();
-            new.adress_calc
-                .push(match clr_method.local_id_placement(local) {
-                    LocalPlacement::Arg(arg_id) => BaseIR::LDArg(arg_id),
-                    LocalPlacement::Var(var_id) => BaseIR::LDLoc(var_id),
-                });
-            for _modifier in &place.projection[..(place.projection.len() - 1)] {
-                todo!("Can't handle assignments with more than one level of indirection")
-            }
+            new.adress_calc.extend(adress_calc);
             let last = place.projection[place.projection.len() - 1];
-            match last {
-                ProjectionElem::Deref => {
-                    //TODO: handle the type
-                    new.value_pos = AsigmentValuePosition::AfterAdress;
-                    new.set_ops.push(BaseIR::STIInd(4));
-                }
-                _ => todo!("Can't handle ProjectionElements of type {last:?}!"),
-            }
+            let (avp,set_op) = crate::projection::projection_element_set(&last,&adress_type,clr_method,asm);
+            new.set_ops.push(set_op);
         }
         new
     }
