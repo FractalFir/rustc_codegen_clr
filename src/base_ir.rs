@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 // An IR close, but not exactly equivalent to the CoreCLR IR.
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub(crate) enum BaseIR {
+    DebugComment(IString),
     LDConstI8(i8),
     LDConstI32(i32),
     LDConstI64(i64),
@@ -53,6 +54,11 @@ pub(crate) enum BaseIR {
         ctor_fn: String,
     },
     LDField {
+        field_parent: IString,
+        field_name: IString,
+        field_type: VariableType,
+    },
+    LDFieldAdress {
         field_parent: IString,
         field_name: IString,
         field_type: VariableType,
@@ -133,6 +139,16 @@ impl BaseIR {
                     field_type = field_type.arg_name(),
                 )
             }
+            Self::LDFieldAdress {
+                field_parent,
+                field_name,
+                field_type,
+            } => {
+                format!(
+                    "\tldflda {field_type} '{field_parent}'::{field_name}\n",
+                    field_type = field_type.arg_name(),
+                )
+            }
             Self::STField {
                 field_parent,
                 field_name,
@@ -145,6 +161,7 @@ impl BaseIR {
             }
             Self::LDObj(struct_name) => format!("\tldobj valuetype {struct_name}\n"),
             Self::STObj(struct_name) => format!("\tstobj valuetype {struct_name}\n"),
+            Self::DebugComment(comment) => format!("//{comment}\n"),
         }
         .into()
     }

@@ -153,8 +153,7 @@ impl RValue {
                             clr_method.get_type_of_local(place.local.into()),
                             clr_method,
                             asm,
-                        )
-                        .1,
+                        ),
                     );
                 }
             }
@@ -169,7 +168,7 @@ impl RValue {
                             clr_method,
                             asm,
                         )
-                        .1,
+                        ,
                     );
                 }
             }

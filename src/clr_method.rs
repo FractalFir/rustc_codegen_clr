@@ -238,7 +238,10 @@ impl CLRMethod {
         tyctx: &TyCtxt<'ctx>,
         asm: &Assembly,
     ) {
-        println!("statement:{statement:?}");
+        if cfg!(debug_assertions) {
+            println!("statement:{statement:?}");
+            self.ops.push(BaseIR::DebugComment(format!("{statement:?}").into()));
+        }
         match &statement.kind {
             StatementKind::Assign(asign_box) => {
                 let (place, rvalue) = (asign_box.0, &asign_box.1);
