@@ -11,6 +11,36 @@ enum Visiblity {
     Private,
     Public,
 }
+fn array_indexers(array_name:&str,element:&VariableType)->String{   
+    //let deref_op = "ldind.i4";
+    let element_type = &element.il_name();
+    let deref_op = element.deref_op().clr_ir();
+    let set_op = element.set_pointed_op().clr_ir();
+    let getter = format!("\
+    \t.method public hidebysig specialname instance {element_type} get_Item(native int index){{\n\
+		\t\tldarg.0\n\
+		\t\tldflda {element_type} {array_name}::arr\n\
+        \t\tldarg.1\n\
+        \t\tsizeof {element_type}\n\
+        \t\tmul\n\
+        \t\tadd\n\
+        \t{deref_op}\
+		\t\tret\n\
+     }}\n");
+     let setter = format!("\
+     \t.method public hidebysig specialname instance void set_Item(native int index,{element_type} 'value'){{\n\
+		\t\tldarg.0\n\
+		\t\tldflda {element_type} {array_name}::arr\n\
+        \t\tldarg.1\n\
+        \t\tsizeof {element_type}\n\
+        \t\tmul\n\
+        \t\tadd\n\
+        \t\tldarg.2\n\
+        \t{set_op}\
+		\t\tret\n\
+     }}\n");
+     format!("{getter}{setter}")
+}
 #[derive(Clone, Debug, Serialize, Deserialize)]
 enum CLRType {
     Struct {
@@ -53,7 +83,7 @@ impl CLRType {
             }
         }
     }
-    pub(crate) fn get_def(&self, name: &str) -> IString {
+    pub(crate) fn get_def(&self, name: &str, asm: &Assembly) -> IString {
         match self{
             Self::Struct{fields}=>{
                 let mut field_string = String::new();
@@ -62,7 +92,10 @@ impl CLRType {
                 }
                 format!(".class public sequential {name} extends [System.Runtime]System.ValueType{{\n{field_string}}}\n")
             },
-            Self::Array{element,length}=>format!(".class public sequential {name} extends [System.Runtime]System.ValueType{{\n\t.pack 0\n\t.size {length}\n\t.field public {element_il} arr\n}}\n",element_il= element.il_name()),
+            Self::Array{element,length}=>{
+                let indexers = array_indexers(name,element);
+            format!(".class public sequential {name} extends [System.Runtime]System.ValueType{{\n\t.pack 0\n\t.size {size}\n\t.field public {element_il} arr\n{indexers}}}\n",element_il= element.il_name(),size = asm.sizeof_type(element)*length)
+            },
             Self::Slice(element)=>format!(".class public sequential {name} extends [System.Runtime]System.ValueType{{\n\t.field public {element_il}* ptr\n\t.field public native int cap\n}}\n",element_il= element.il_name()),
         }.into()
     }
@@ -72,8 +105,32 @@ pub(crate) struct Assembly {
     methods: Vec<CLRMethod>,
     name: IString,
     types: HashMap<IString, CLRType>,
+    size_t: u8,
 }
 impl Assembly {
+    pub(crate) fn sizeof_type(&self, var_type: &VariableType) -> usize {
+        match var_type {
+            VariableType::Void => 0,
+            VariableType::I8 | VariableType::U8 | VariableType::Bool => 1,
+            VariableType::I16 | VariableType::U16 => 2,
+            VariableType::I32 | VariableType::U32 | VariableType::F32 => 4,
+            VariableType::I64 | VariableType::U64 | VariableType::F64 => 8,
+            VariableType::I128 | VariableType::U128 => 16,
+            VariableType::ISize
+            | VariableType::USize
+            | VariableType::Ref(_)
+            | VariableType::RefMut(_)
+            | VariableType::Slice(_) => self.size_t as usize,
+            VariableType::Array { element, length } => self.sizeof_type(element) * length,
+            VariableType::Tuple(elements) => elements
+                .iter()
+                .map(|element| self.sizeof_type(element))
+                .sum::<usize>(),
+            VariableType::Struct(struct_name) => {
+                todo!("Can't yet calculate the size of a struct jet!")
+            }
+        }
+    }
     pub(crate) fn get_field_getter(
         &self,
         field: usize,
@@ -104,7 +161,7 @@ impl Assembly {
         }
         let mut types = String::new();
         for clr_type in &self.types {
-            types.push_str(&clr_type.1.get_def(&clr_type.0.replace('\'', "")));
+            types.push_str(&clr_type.1.get_def(&clr_type.0.replace('\'', ""), self));
         }
         println!("\nty_count:{}\n", self.types.len());
         //let methods = format!("{methods}");
@@ -172,6 +229,7 @@ impl Assembly {
             methods: Vec::with_capacity(0x100),
             types: HashMap::with_capacity(0x100),
             name: name.into(),
+            size_t: 8,
         }
     }
     pub(crate) fn add_fn<'tcx>(&mut self, instance: Instance<'tcx>, tcx: TyCtxt<'tcx>, name: &str) {
@@ -195,7 +253,7 @@ impl Assembly {
                 clr_method.add_statement(statement, mir, &tcx, self);
             }
             match &block_data.terminator {
-                Some(term) => clr_method.add_terminator(term, mir, &tcx,self),
+                Some(term) => clr_method.add_terminator(term, mir, &tcx, self),
                 None => (),
             }
         }

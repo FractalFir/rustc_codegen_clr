@@ -10,8 +10,12 @@ pub(crate) enum BaseIR {
     LDConstF32(f32),
     STIndIn(u8),
     STIndI,
+    STIndR8,
+    STIndR4,
     LDIndIn(u8),
     LDIndI,
+    LDIndR8,
+    LDIndR4,
     LDConstString(String),
     STArg(u32),
     LDArg(u32),
@@ -71,6 +75,7 @@ pub(crate) enum BaseIR {
     LDObj(IString),
     STObj(IString),
     Throw,
+    InitObj(IString),
 }
 impl BaseIR {
     pub(crate) fn clr_ir(&self) -> IString {
@@ -111,6 +116,10 @@ impl BaseIR {
             Self::Throw => "\tthrow\n".into(),
             Self::STIndIn(size) => format!("\tstind.i{size}\n"),
             Self::LDIndIn(size) => format!("\tldind.i{size}\n"),
+            Self::LDIndR8=> "\tldind.r8\n".into(),
+            Self::LDIndR4=> "\tldind.r4\n".into(),
+            Self::STIndR8=> "\tstind.r8\n".into(),
+            Self::STIndR4=> "\tstind.r4\n".into(),
             Self::LDIndI => "\tldind.i\n".into(),
             Self::STIndI => "\tstind.i\n".into(),
             Self::CallStatic { sig, function_name } => {
@@ -162,6 +171,7 @@ impl BaseIR {
             Self::LDObj(struct_name) => format!("\tldobj valuetype {struct_name}\n"),
             Self::STObj(struct_name) => format!("\tstobj valuetype {struct_name}\n"),
             Self::DebugComment(comment) => format!("//{comment}\n"),
+            Self::InitObj(type_name) => format!("\tinitobj {type_name}\n"),
         }
         .into()
     }

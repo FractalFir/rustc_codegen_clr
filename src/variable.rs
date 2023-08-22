@@ -50,7 +50,10 @@ impl VariableType {
             Self::Ref(_) | Self::RefMut(_) => BaseIR::LDIndI,
             Self::I32 => BaseIR::LDIndIn(std::mem::size_of::<i32>() as u8),
             Self::I64 => BaseIR::LDIndIn(std::mem::size_of::<i64>() as u8),
+            Self::F64 => BaseIR::LDIndR8,
+            Self::F32 => BaseIR::LDIndR4,
             Self::Struct(name) => BaseIR::LDObj(name.clone()),
+            Self::Array{..} => BaseIR::LDObj(self.il_name()),
             _ => todo!("Can't deference a pointer to type {self:?}"),
         }
     }
@@ -59,7 +62,10 @@ impl VariableType {
             Self::Ref(_) | Self::RefMut(_) => BaseIR::STIndI,
             Self::I32 => BaseIR::STIndIn(std::mem::size_of::<i32>() as u8),
             Self::I64 => BaseIR::STIndIn(std::mem::size_of::<i64>() as u8),
+            Self::F64 => BaseIR::STIndR8,
+            Self::F32 => BaseIR::STIndR4,
             Self::Struct(name) => BaseIR::STObj(name.clone()),
+            Self::Array{..} => BaseIR::STObj(self.il_name()),
             _ => todo!("Can't deference a pointer to type {self:?}"),
         }
     }

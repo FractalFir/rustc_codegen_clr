@@ -13,6 +13,8 @@ Additionally, since all Rust code compiled with this codegen can be bundled with
 You also avoid the cost of switches between code running within the runtime and outside it. While this cost is not something unbearable, it is not something you can easily get rid of, and reducing it has some safety penalties associated with. In this case, all code will run inside the runtime, meaning no transition between code running inside runtime and outside of it will occur.
 
 Compiling Rust to CLR is potentially better for the JIT. Since CLR's JIT now "sees" all the code, it can make better decisions regarding optimization, producing faster code.
+# Compatibility?
+`rustc_codegen_clr` currently supports ONLY 64 bit systems. Because of how arrays(fixed buffers need to have their size in bytes to be known at compile-time) work, it is currently impossible to create an assembly that works in both 32bit and 64bit  systems.
 # How far is the project along:
 ## Functionality
 - [X] Basic functions get translated properly. 
@@ -22,8 +24,8 @@ Compiling Rust to CLR is potentially better for the JIT. Since CLR's JIT now "se
 - [X] While loops work.
 - [X] Calls
 - [X] Basic IL optimization.
-- [ ] Setting value of a refernece(only some types work)
-- [ ] Getting value of a refernece(only some types work)
+- [ ] Setting value of a reference(only some types work)
+- [ ] Getting value of a reference(only some types work)
 - [ ] Creating slices from arrays
 - [ ] Creating arrays
 - [ ] Getting values of fields

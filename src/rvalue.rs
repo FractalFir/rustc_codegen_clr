@@ -23,9 +23,10 @@ impl RValue {
         tyctx: &TyCtxt<'ctx>,
         clr_method: &CLRMethod,
         asm: &Assembly,
+        target_local:u32,
     ) -> Self {
         let mut new = Self { ops: Vec::new() };
-        new.process_rvalue(rvalue, body, tyctx, clr_method, asm);
+        new.process_rvalue(rvalue, body, tyctx, clr_method, asm,target_local);
         new
     }
     fn process_binop(
@@ -71,6 +72,7 @@ impl RValue {
         tyctx: &TyCtxt<'ctx>,
         clr_method: &CLRMethod,
         asm: &Assembly,
+        target_local:u32,
     ) {
         println!("rvalue:{rvalue:?}");
         match rvalue {
@@ -101,6 +103,20 @@ impl RValue {
                     AggregateKind::Adt(def_id, variant_idx, subst_ref, utai, fidx) => {
                         //let (def_id,variant_idx,subst_ref,utai,fidx) = *adt;
                         panic!("def_id:{def_id:?},variant_idx:{variant_idx:?},subst_ref:{subst_ref:?},utai:{utai:?},fidx:{fidx:?}");
+                    }
+                    AggregateKind::Array(element_type)=>{
+                        //TODO:handle projection!
+                        self.load(target_local,clr_method);
+                        let element = VariableType::from_ty(*element_type);
+                        let arr_name = VariableType::Array{element:Box::new(element.clone()),length:operands.len()}.arg_name();
+                        self.ops.push(BaseIR::InitObj(arr_name.clone()));
+                        for (index,operand) in operands.iter().enumerate(){
+                            self.load(target_local,clr_method);
+                            self.ops.push(BaseIR::LDConstI32(index as i32));
+                            self.process_operand(operand,clr_method,asm);
+                            self.ops.push(BaseIR::CallStatic { sig:crate::FunctionSignature::new(&[element.clone(),VariableType::ISize],&VariableType::Void), function_name:format!("{arr_name}::set_Item").into()});
+                        }
+                        //todo!();
                     }
                     _ => todo!(
                         "Can't yet handle the aggregate of kind {kind:?} and operands:{operands:?}"
@@ -147,29 +163,24 @@ impl RValue {
                 self.load(place.local.into(), clr_method);
                 //println!("Use");
                 if place.projection.len() > 0 {
-                    self.ops.extend(
-                        crate::projection::projection_get(
-                            place.projection,
-                            clr_method.get_type_of_local(place.local.into()),
-                            clr_method,
-                            asm,
-                        ),
-                    );
+                    self.ops.extend(crate::projection::projection_get(
+                        place.projection,
+                        clr_method.get_type_of_local(place.local.into()),
+                        clr_method,
+                        asm,
+                    ));
                 }
             }
             //TODO:Do moves need to be treated any diffrently forom copies in the context of CLR?
             Operand::Move(place) => {
                 self.load(place.local.into(), clr_method);
                 if place.projection.len() > 0 {
-                    self.ops.extend(
-                        crate::projection::projection_get(
-                            place.projection,
-                            clr_method.get_type_of_local(place.local.into()),
-                            clr_method,
-                            asm,
-                        )
-                        ,
-                    );
+                    self.ops.extend(crate::projection::projection_get(
+                        place.projection,
+                        clr_method.get_type_of_local(place.local.into()),
+                        clr_method,
+                        asm,
+                    ));
                 }
             }
             Operand::Constant(const_val) => {

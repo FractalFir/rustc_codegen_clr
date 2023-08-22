@@ -240,13 +240,14 @@ impl CLRMethod {
     ) {
         if cfg!(debug_assertions) {
             println!("statement:{statement:?}");
-            self.ops.push(BaseIR::DebugComment(format!("{statement:?}").into()));
+            self.ops
+                .push(BaseIR::DebugComment(format!("{statement:?}").into()));
         }
         match &statement.kind {
             StatementKind::Assign(asign_box) => {
                 let (place, rvalue) = (asign_box.0, &asign_box.1);
-                let rvalue = RValue::from_rvalue(rvalue, body, tyctx, self, asm);
-                AsigmentTarget::from_placement(place, &self,asm).finalize(rvalue, self);
+                let rvalue = RValue::from_rvalue(rvalue, body, tyctx, self, asm,place.local.into());
+                AsigmentTarget::from_placement(place, &self, asm).finalize(rvalue, self);
             }
             StatementKind::StorageLive(local) => {
                 self.var_live((*local).into());
@@ -276,7 +277,7 @@ impl CLRMethod {
         tyctx: &TyCtxt<'ctx>,
         args: &[Operand],
         destination: &Place,
-        asm:&Assembly
+        asm: &Assembly,
     ) {
         let instance = if let TyKind::FnDef(def_id, subst_ref) = fn_type.kind() {
             let env = ParamEnv::empty();
@@ -298,7 +299,7 @@ impl CLRMethod {
         if sig.output.is_void() {
             self.ops.push(BaseIR::CallStatic { function_name, sig });
         } else {
-            let assigement = AsigmentTarget::from_placement(*destination, &self,asm);
+            let assigement = AsigmentTarget::from_placement(*destination, &self, asm);
             assigement.finalize_with_ops(&[BaseIR::CallStatic { function_name, sig }], self);
         }
     }
@@ -307,7 +308,7 @@ impl CLRMethod {
         terminator: &Terminator<'ctx>,
         body: &Body<'ctx>,
         tyctx: &TyCtxt<'ctx>,
-        asm:&Assembly
+        asm: &Assembly,
     ) {
         match &terminator.kind {
             TerminatorKind::Return => {
@@ -380,7 +381,7 @@ impl CLRMethod {
                                 fn_ty.is_fn(),
                                 "literal{literal:?} in call is not a function type!"
                             );
-                            self.call(&fn_ty, tyctx, args, destination,asm);
+                            self.call(&fn_ty, tyctx, args, destination, asm);
                         } else {
                             panic!("Invalid function literal!");
                         }
