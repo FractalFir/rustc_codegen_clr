@@ -1,19 +1,7 @@
-use crate::statement::CodegenCtx;
-use crate::{
-    Assembly, BaseIR, FunctionSignature, IString,
-    VariableType,
-};
+use crate::{Assembly, BaseIR, FunctionSignature, IString, VariableType,statement::CodegenCtx};
 use rustc_index::IndexVec;
-use rustc_middle::mir::interpret::Scalar;
-use rustc_middle::mir::Constant;
-use rustc_middle::mir::Place;
-
-use rustc_middle::mir::{Body, Local, LocalDecl};
 use rustc_middle::{
-    mir::{
-        interpret::ConstValue, ConstantKind, Operand, Statement, Terminator,
-        TerminatorKind,
-    },
+    mir::{interpret::ConstValue, ConstantKind, Operand, Statement, Terminator, TerminatorKind,Body, Local, LocalDecl,Place,Constant},
     ty::{Instance, ParamEnv, Ty, TyCtxt, TyKind},
 };
 use serde::{Deserialize, Serialize};
@@ -100,12 +88,12 @@ impl CLRMethod {
     fn name(&self) -> &str {
         &self.name
     }
-    pub(crate) fn add_locals(&mut self, locals: &IndexVec<Local, LocalDecl>,tyctx:TyCtxt) {
+    pub(crate) fn add_locals(&mut self, locals: &IndexVec<Local, LocalDecl>, tyctx: TyCtxt) {
         let mut new_locals: Vec<VariableType> = Vec::with_capacity(locals.len());
         for (local_id, local) in locals.iter().enumerate() {
             let placement = self.local_id_placement(local_id as u32);
             if let LocalPlacement::Var(_) = placement {
-                new_locals.push(VariableType::from_ty(local.ty,tyctx));
+                new_locals.push(VariableType::from_ty(local.ty, tyctx));
             }
         }
         self.locals = new_locals;
@@ -131,7 +119,12 @@ impl CLRMethod {
                 loc_type = local.il_name()
             ))
         }
-        format!("\t.locals init({locals}\n\t)").into()
+        if crate::ALWAYS_INIT_LOCALS{
+            format!("\t.locals init({locals}\n\t)").into()
+        }
+        else{
+            format!("\t.locals ({locals}\n\t)").into()
+        }
     }
     pub(crate) fn into_il_ir(&self) -> String {
         let output = self.sig.output().il_name();
@@ -155,13 +148,6 @@ impl CLRMethod {
             locals_init = self.locals_init()
         )
     }
-    fn argc(&self) -> u32 {
-        self.sig.inputs().len() as u32
-    }
-    fn has_return(&self) -> bool {
-        true
-    }
-
     pub(crate) fn new(sig: FunctionSignature, name: &str) -> Self {
         Self {
             locals: Vec::new(),
@@ -171,66 +157,17 @@ impl CLRMethod {
             curr_bb: 0,
         }
     }
-    fn var_live(&mut self, _local: u32) {
-        //TODO: use variable lifetimes!
-    }
-    fn var_dead(&mut self, _local: u32) {
-        //TODO: use variable lifetimes!
-    }
     pub(crate) fn local_id_placement(&self, local: u32) -> LocalPlacement {
         // I assume local 0 is supposed to be the return value. TODO: check if this is always the case.
-        if self.has_return() {
+        let argc =  self.sig.inputs().len() as u32;
             if local == 0 {
                 LocalPlacement::Var(0)
-            } else if local - 1 < self.argc() {
+            } else if local - 1 < argc {
                 LocalPlacement::Arg(local - 1)
             } else {
-                LocalPlacement::Var(local - self.argc())
+                LocalPlacement::Var(local - argc)
             }
-        } else {
-            panic!("Can't handle void functions yet. Diagnose MIR to determine what happens to the return var(0)!");
-        }
-    }
-    fn load(&mut self, local: u32) {
-        self.ops.push(match self.local_id_placement(local) {
-            LocalPlacement::Arg(arg_id) => BaseIR::LDArg(arg_id),
-            LocalPlacement::Var(var_id) => BaseIR::LDLoc(var_id),
-        })
-    }
-    fn store(&mut self, local: u32) {
-        self.ops.push(match self.local_id_placement(local) {
-            LocalPlacement::Arg(arg_id) => BaseIR::STArg(arg_id),
-            LocalPlacement::Var(var_id) => BaseIR::STLoc(var_id),
-        })
-    }
-    fn process_constant(&mut self, constant: ConstantKind,tyctx:TyCtxt) {
-        match constant {
-            ConstantKind::Val(value, r#type) => match value {
-                ConstValue::Scalar(scalar) => {
-                    let value: u128 = if let Scalar::Int(scalar) = scalar {
-                        scalar
-                            .try_to_uint(scalar.size())
-                            .expect("IMPOSSIBLE. Size of scalar was not equal to itself.")
-                    } else {
-                        panic!("Can't support pointers quite yet!");
-                    };
-                    self.load_constant_primitive(&VariableType::from_ty(r#type,tyctx), value);
-                }
-                _ => todo!("Unhanled constant value {value:?}"),
-            },
-            _ => todo!("Unhanled constant {constant:?}"),
-        };
-    }
-    // Makes so the top of the stack is the value of RValue
-    fn process_operand(&mut self, operand: &Operand,tyctx:TyCtxt) {
-        match operand {
-            Operand::Copy(place) => self.load(place.local.into()),
-            //TODO:Do moves need to be treated any diffrently forom copies in the context of CLR?
-            Operand::Move(place) => self.load(place.local.into()),
-            Operand::Constant(const_val) => {
-                self.process_constant(const_val.literal,tyctx);
-            }
-        }
+
     }
     pub(crate) fn add_statement<'ctx>(
         &mut self,
@@ -247,21 +184,6 @@ impl CLRMethod {
         self.ops.extend(crate::statement::handle_statement(
             statement, self, asm, body, tyctx,
         ));
-        /*
-        match &statement.kind {
-            StatementKind::Assign(asign_box) => {
-                let (place, rvalue) = (asign_box.0, &asign_box.1);
-                let rvalue = RValue::from_rvalue(rvalue, body, tyctx, self, asm,place.local.into());
-                AsigmentTarget::from_placement(place, &self, asm).finalize(rvalue, self);
-            }
-            StatementKind::StorageLive(local) => {
-                self.var_live((*local).into());
-            }
-            StatementKind::StorageDead(local) => {
-                self.var_dead((*local).into());
-            }
-            _ => todo!("Unhanded statement:{:?}", statement.kind),
-        }*/
     }
     pub(crate) fn load_constant_primitive(&mut self, var_type: &VariableType, value: u128) {
         match var_type {
@@ -279,13 +201,12 @@ impl CLRMethod {
     pub(crate) fn call<'ctx>(
         &mut self,
         fn_type: &Ty<'ctx>,
-        body:&'ctx Body<'ctx>,
+        body: &'ctx Body<'ctx>,
         tyctx: &TyCtxt<'ctx>,
         args: &[Operand],
         destination: &Place,
         asm: &Assembly,
-    )->Vec<BaseIR> {
-        
+    ) -> Vec<BaseIR> {
         let instance = if let TyKind::FnDef(def_id, subst_ref) = fn_type.kind() {
             let env = ParamEnv::empty();
             let instance = Instance::resolve(*tyctx, env, *def_id, subst_ref)
@@ -296,24 +217,28 @@ impl CLRMethod {
             panic!("Trying to call a type which is not a function!");
         };
         let symbol = tyctx.symbol_name(instance);
-        let sig = FunctionSignature::from_poly_sig(fn_type.fn_sig(*tyctx),*tyctx)
+        let sig = FunctionSignature::from_poly_sig(fn_type.fn_sig(*tyctx), *tyctx)
             .expect("Can't get the function signature");
         let function_name = format!("{symbol}").into();
-        let codegen_ctx = CodegenCtx::new(self,asm,body,*tyctx);
+        let codegen_ctx = CodegenCtx::new(self, asm, body, *tyctx);
         let mut call = Vec::new();
         for arg in args {
-            call.extend(crate::statement::handle_operand(arg,&codegen_ctx));
+            call.extend(crate::statement::handle_operand(arg, &codegen_ctx));
         }
         let is_void = sig.output.is_void();
-        call.push(BaseIR::CallStatic { function_name, sig});
+        call.push(BaseIR::CallStatic { function_name, sig });
         // Hande
-        if is_void{
+        if is_void {
             call
         } else {
-            let (mut addr_calc,set_op) = crate::projection::projection_set(destination.projection, codegen_ctx.get_local_type(destination.local.into()), &codegen_ctx);
+            let (mut addr_calc, set_ops) = crate::projection::projection_set(
+                destination,
+                codegen_ctx.get_local_type(destination.local.into()),
+                &codegen_ctx,
+            );
             //let assigement = AsigmentTarget::from_placement(*destination, &self, asm);
             addr_calc.extend(call);
-            addr_calc.push(set_op);
+            addr_calc.extend(set_ops);
             addr_calc
         }
     }
@@ -326,18 +251,15 @@ impl CLRMethod {
     ) {
         match &terminator.kind {
             TerminatorKind::Return => {
-                if self.has_return() {
-                    self.load(0);
-                    self.ops.push(BaseIR::Return);
-                } else {
-                    todo!("Can't yet return from a void method!");
-                }
+                self.ops.push(BaseIR::LDLoc(0));
+                self.ops.push(BaseIR::Return);
             }
             TerminatorKind::SwitchInt { discr, targets } => {
                 for (value, target) in targets.iter() {
-                    self.process_operand(discr,*tyctx);
+                    
+                    self.ops.extend(crate::statement::handle_operand(discr, &CodegenCtx::new(self,asm,body,*tyctx)));
                     self.load_constant_primitive(
-                        &VariableType::from_ty(discr.ty(body, *tyctx),*tyctx),
+                        &VariableType::from_ty(discr.ty(body, *tyctx), *tyctx),
                         value,
                     );
                     self.ops.push(BaseIR::BEq {
@@ -360,7 +282,7 @@ impl CLRMethod {
                 target,
                 unwind: _,
             } => {
-                self.process_operand(cond,*tyctx);
+                self.ops.extend(crate::statement::handle_operand(cond, &CodegenCtx::new(self,asm,body,*tyctx)));
                 self.load_constant_primitive(&VariableType::Bool, if *expected { 1 } else { 0 });
                 self.ops.push(BaseIR::BEq {
                     target: (*target).into(),
@@ -395,7 +317,7 @@ impl CLRMethod {
                                 fn_ty.is_fn(),
                                 "literal{literal:?} in call is not a function type!"
                             );
-                            let call_ops = self.call(&fn_ty,body, tyctx, args, destination, asm);
+                            let call_ops = self.call(&fn_ty, body, tyctx, args, destination, asm);
                             self.ops.extend(call_ops);
                         } else {
                             panic!("Invalid function literal!");

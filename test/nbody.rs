@@ -13,7 +13,7 @@ pub struct AstronomicalBody{
 #[no_mangle]
 pub extern fn init_10body()->[AstronomicalBody;10]{
     let boides = [AstronomicalBody::default();10];
-    let test = Some(0);
+    //let test = Some(0);
     
     
     boides

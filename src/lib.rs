@@ -40,7 +40,8 @@ mod statement;
 pub type IString = Box<str>;
 
 struct MyBackend;
-pub(crate) const ALWAYS_INIT_STRUCTS:bool = false;
+pub(crate) const ALWAYS_INIT_STRUCTS: bool = false;
+pub(crate) const ALWAYS_INIT_LOCALS: bool = false;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 struct FunctionSignature {
@@ -60,20 +61,20 @@ impl FunctionSignature {
             output: output.clone(),
         }
     }
-    pub(crate) fn from_poly_sig(sig: PolyFnSig,tyctx:TyCtxt) -> Option<Self> {
+    pub(crate) fn from_poly_sig(sig: PolyFnSig, tyctx: TyCtxt) -> Option<Self> {
         let inputs = sig
             .inputs()
             // `skip_binder` is `a riskiy thing` TODO: Figure out to which kind of issues it may lead!
             .skip_binder()
             //.no_bound_vars()?
             .iter()
-            .map(|v| VariableType::from_ty(*v,tyctx))
+            .map(|v| VariableType::from_ty(*v, tyctx))
             .collect();
         let output = VariableType::from_ty(
             sig.output()
                 // `skip_binder` is `a riskiy thing` TODO: Figure out to which kind of issues it may lead!
                 .skip_binder(), //.no_bound_vars()?
-                tyctx
+            tyctx,
         );
         Some(Self { inputs, output })
     }

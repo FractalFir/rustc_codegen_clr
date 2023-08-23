@@ -3,7 +3,7 @@ use crate::IString;
 use rustc_middle::ty::AdtKind;
 use rustc_middle::{
     mir::Mutability,
-    ty::{TyCtxt,FloatTy, IntTy, Ty, TyKind, UintTy},
+    ty::{FloatTy, IntTy, Ty, TyCtxt, TyKind, UintTy},
 };
 use serde::{Deserialize, Serialize};
 enum TypePrefix {
@@ -92,7 +92,7 @@ impl VariableType {
             _ => None,
         }
     }
-    pub(crate) fn from_ty(ty: Ty,tyctx:TyCtxt) -> Self {
+    pub(crate) fn from_ty(ty: Ty, tyctx: TyCtxt) -> Self {
         println!("ty:{ty:?}");
         match ty.kind() {
             TyKind::Int(IntTy::I8) => VariableType::I8,
@@ -114,7 +114,7 @@ impl VariableType {
             TyKind::Foreign(_ftype) => todo!("Can't handle foreign types yet!"),
             TyKind::Str => todo!("Can't handle string slices yet!"),
             TyKind::Array(element_type, length) => Self::Array {
-                element: Box::new(Self::from_ty(*element_type,tyctx)),
+                element: Box::new(Self::from_ty(*element_type, tyctx)),
                 length: {
                     let scalar = length
                         .try_to_scalar()
@@ -123,7 +123,9 @@ impl VariableType {
                     value as usize
                 },
             },
-            TyKind::Slice(element_type) => Self::Slice(Box::new(Self::from_ty(*element_type,tyctx))),
+            TyKind::Slice(element_type) => {
+                Self::Slice(Box::new(Self::from_ty(*element_type, tyctx)))
+            }
             TyKind::Adt(adt_def, _subst) => {
                 let adt = adt_def;
                 //let tcxt:&_ = adt.0.0;
@@ -141,8 +143,8 @@ impl VariableType {
                 // There is no such concept as lifetimes in CLR
                 let _ = region;
                 match mutability {
-                    Mutability::Mut => Self::RefMut(Box::new(Self::from_ty(*ref_type,tyctx))),
-                    Mutability::Not => Self::Ref(Box::new(Self::from_ty(*ref_type,tyctx))),
+                    Mutability::Mut => Self::RefMut(Box::new(Self::from_ty(*ref_type, tyctx))),
+                    Mutability::Not => Self::Ref(Box::new(Self::from_ty(*ref_type, tyctx))),
                 }
             }
             TyKind::Bound(debrujin_index, bound_ty) => {
@@ -155,23 +157,23 @@ impl VariableType {
                     Self::Tuple(
                         inner_types
                             .iter()
-                            .map(|ty| VariableType::from_ty(ty,tyctx))
+                            .map(|ty| VariableType::from_ty(ty, tyctx))
                             .collect(),
                     )
                 }
             }
-            TyKind::FnDef(_, _)=>todo!("Can't handle function definition types yet!"),
-            TyKind::Dynamic(_,_,_)=>todo!("Can't handle dynamic types yet!"),
-            TyKind::Closure(_,_)=>todo!("Can't handle closure types yet!"),
-            TyKind::Generator(_, _, _)=>todo!("Can't handle generator types yet!"),
-            TyKind::GeneratorWitness(_)=>todo!("Can't handle generator types yet!"),
-            TyKind::GeneratorWitnessMIR(_, _)=>todo!("Can't handle generator types yet!"),
+            TyKind::FnDef(_, _) => todo!("Can't handle function definition types yet!"),
+            TyKind::Dynamic(_, _, _) => todo!("Can't handle dynamic types yet!"),
+            TyKind::Closure(_, _) => todo!("Can't handle closure types yet!"),
+            TyKind::Generator(_, _, _) => todo!("Can't handle generator types yet!"),
+            TyKind::GeneratorWitness(_) => todo!("Can't handle generator types yet!"),
+            TyKind::GeneratorWitnessMIR(_, _) => todo!("Can't handle generator types yet!"),
             TyKind::Never => todo!("Can't handle never types yet!"),
-            TyKind::Alias(_, _)=>todo!("Can't handle type aliases yet!"),
-            TyKind::Placeholder(_)=>todo!("Can't handle placeholder types yet!"),
-            TyKind::Param(_inner) =>VariableType::Generic(format!("inner:?").into()),//VariableType::from_ty(inner.to_ty(tyctx),tyctx),
-            TyKind::Infer(_) =>todo!("Can't handle infered types yet!"),
-            TyKind::Error(_) =>todo!("Can't handle error types yet!"),
+            TyKind::Alias(_, _) => todo!("Can't handle type aliases yet!"),
+            TyKind::Placeholder(_) => todo!("Can't handle placeholder types yet!"),
+            TyKind::Param(_inner) => VariableType::Generic(format!("inner:?").into()), //VariableType::from_ty(inner.to_ty(tyctx),tyctx),
+            TyKind::Infer(_) => todo!("Can't handle infered types yet!"),
+            TyKind::Error(_) => todo!("Can't handle error types yet!"),
             //_ => todo!("Unhandled type kind {:?}", ty.kind()),
         }
     }

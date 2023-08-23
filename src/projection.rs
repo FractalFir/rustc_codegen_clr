@@ -1,6 +1,7 @@
-use crate::{BaseIR, VariableType};
-use rustc_middle::mir::PlaceElem;
+use crate::clr_method::LocalPlacement;
 use crate::statement::CodegenCtx;
+use crate::{BaseIR, VariableType};
+use rustc_middle::mir::{Place,PlaceElem};
 enum Projection<'a, T> {
     OnlyHead(&'a T),
     BodyAndHead(&'a [T], &'a T),
@@ -10,7 +11,7 @@ enum Projection<'a, T> {
 fn projection_element(
     element: &PlaceElem,
     var_type: &VariableType,
-    codegen_ctx:&CodegenCtx,
+    codegen_ctx: &CodegenCtx,
 ) -> (VariableType, BaseIR) {
     match element {
         PlaceElem::Deref => {
@@ -30,7 +31,7 @@ fn projection_element(
             (derefed_type, deref_op)
         }
         PlaceElem::Field(idx, ty) => {
-            let field_type = VariableType::from_ty(*ty,*codegen_ctx.tyctx());
+            let field_type = VariableType::from_ty(*ty, *codegen_ctx.tyctx());
             let var_name = if let VariableType::Struct(struct_name) = var_type {
                 struct_name
             } else {
@@ -39,7 +40,8 @@ fn projection_element(
             //TODO: figure out how to get the field index PROPELY
             let idx =
                 unsafe { std::mem::transmute::<rustc_target::abi::FieldIdx, u32>(*idx) } as usize;
-            let getter = codegen_ctx.asm()
+            let getter = codegen_ctx
+                .asm()
                 .get_field_getter(idx, &var_name)
                 .expect("Can't get field getter!");
             assert_eq!(getter.len(), 1);
@@ -71,7 +73,7 @@ fn projection_element(
 pub(crate) fn projection_element_get(
     element: &PlaceElem,
     var_type: &VariableType,
-    codegen_ctx:&CodegenCtx,
+    codegen_ctx: &CodegenCtx,
 ) -> BaseIR {
     match element {
         PlaceElem::Deref => {
@@ -81,7 +83,7 @@ pub(crate) fn projection_element_get(
             derefed_type.deref_op()
         }
         PlaceElem::Field(idx, ty) => {
-            let _field_type = VariableType::from_ty(*ty,*codegen_ctx.tyctx());
+            let _field_type = VariableType::from_ty(*ty, *codegen_ctx.tyctx());
             let var_name = if let VariableType::Struct(struct_name) = var_type {
                 struct_name
             } else {
@@ -90,7 +92,8 @@ pub(crate) fn projection_element_get(
             //TODO: figure out how to get the field index PROPELY
             let idx =
                 unsafe { std::mem::transmute::<rustc_target::abi::FieldIdx, u32>(*idx) } as usize;
-            let getter = codegen_ctx.asm()
+            let getter = codegen_ctx
+                .asm()
                 .get_field_getter(idx, &var_name)
                 .expect("Can't get field getter!");
             assert_eq!(getter.len(), 1);
@@ -107,7 +110,7 @@ pub(crate) fn projection_element_get(
 pub(crate) fn projection_element_set(
     element: &PlaceElem,
     var_type: &VariableType,
-    codegen_ctx:&CodegenCtx,
+    codegen_ctx: &CodegenCtx,
 ) -> BaseIR {
     match element {
         PlaceElem::Deref => {
@@ -118,7 +121,7 @@ pub(crate) fn projection_element_set(
             deref_op
         }
         PlaceElem::Field(idx, ty) => {
-            let _field_type = VariableType::from_ty(*ty,*codegen_ctx.tyctx());
+            let _field_type = VariableType::from_ty(*ty, *codegen_ctx.tyctx());
             let var_name = if let VariableType::Struct(struct_name) = var_type {
                 struct_name
             } else {
@@ -127,7 +130,8 @@ pub(crate) fn projection_element_set(
             //TODO: figure out how to get the field index PROPELY
             let idx =
                 unsafe { std::mem::transmute::<rustc_target::abi::FieldIdx, u32>(*idx) } as usize;
-            let setter = codegen_ctx.asm()
+            let setter = codegen_ctx
+                .asm()
                 .get_field_setter(idx, &var_name)
                 .expect("Can't get field getter!");
             assert_eq!(setter.len(), 1);
@@ -164,18 +168,31 @@ pub(crate) fn projection_adress<'a>(
     }
     ops
 }
-pub(crate) fn project<'a, F: Fn(&PlaceElem, &VariableType, &CodegenCtx) -> BaseIR>(
-    projection: &'a [PlaceElem<'a>],
+pub(crate) fn project<'a, F: Fn(&PlaceElem, &VariableType, &CodegenCtx) -> BaseIR,L:Fn(LocalPlacement)->BaseIR>(
+    place:&Place,
     local_type: &VariableType,
     codegen_ctx: &CodegenCtx,
     head_handler: F,
-) -> (Vec<BaseIR>, BaseIR) {
+    local_handler: L
+) -> (Vec<BaseIR>, Vec<BaseIR>) {
+    let projection = place.projection;
+    let mut adress_calc = Vec::new();
+    if projection.is_empty(){
+        return (Vec::new(), vec![local_handler(codegen_ctx.meth().local_id_placement(place.local.into()))]);
+    }
+    else{
+        let ld_loc_op = match codegen_ctx.meth().local_id_placement(place.local.into()){
+            LocalPlacement::Arg(arg_num)=>BaseIR::LDArg(arg_num),
+            LocalPlacement::Var(var)=>BaseIR::LDLoc(var),
+        };
+        adress_calc.push(ld_loc_op);
+    }
     assert!(
         !projection.is_empty(),
         "Can't generate ops for empty projection chain!"
     );
     match split_head(projection) {
-        Projection::OnlyHead(head) => (Vec::new(), head_handler(head, local_type, codegen_ctx)),
+        Projection::OnlyHead(head) => (Vec::new(),{adress_calc.push(head_handler(head, local_type, codegen_ctx));adress_calc}),
         Projection::BodyAndHead(body, head) => {
             let mut last_type = local_type.clone();
             let mut ops = Vec::with_capacity(body.len());
@@ -184,36 +201,34 @@ pub(crate) fn project<'a, F: Fn(&PlaceElem, &VariableType, &CodegenCtx) -> BaseI
                 ops.push(op);
                 last_type = var_type;
             }
-            let last_op = head_handler(head, &last_type,codegen_ctx);
-            (ops, last_op)
+            let last_op = head_handler(head, &last_type, codegen_ctx);
+            (ops, vec![last_op])
         }
     }
 }
 pub(crate) fn projection_get<'a>(
-    projection: &'a [PlaceElem<'a>],
+    place:&Place,
     local_type: &VariableType,
-    codegen_ctx:&CodegenCtx,
+    codegen_ctx: &CodegenCtx,
 ) -> Vec<BaseIR> {
-    let (mut addr_calc, getter) = project(
-        projection,
-        local_type,
-        codegen_ctx,
-        projection_element_get,
-    );
-    addr_calc.push(getter);
+    let (mut addr_calc, getter) =
+        project(place, local_type, codegen_ctx, projection_element_get,|local|match local{
+            LocalPlacement::Arg(arg_num)=>BaseIR::LDArg(arg_num),
+            LocalPlacement::Var(var)=>BaseIR::LDLoc(var),
+        });
+    addr_calc.extend(getter);
     addr_calc
 }
 /// Used to handle the "body" of a projection chain. Use [`projection_element_get`] or [`projection_element_set`] to handle the head(last element)
 pub(crate) fn projection_set<'a>(
-    projection: &'a [PlaceElem<'a>],
+    //projection: &'a [PlaceElem<'a>],
+    place:&Place,
     local_type: &VariableType,
-    codegen_ctx:&CodegenCtx,
-) -> (Vec<BaseIR>, BaseIR) {
-    println!("projection:{projection:?}");
-    project(
-        projection,
-        local_type,
-        codegen_ctx,
-        projection_element_set,
-    )
+    codegen_ctx: &CodegenCtx,
+) -> (Vec<BaseIR>, Vec<BaseIR>) {
+    println!("place:{place:?}");
+    project(place, local_type, codegen_ctx, projection_element_set,|local|match local{
+        LocalPlacement::Arg(arg_num)=>BaseIR::STArg(arg_num),
+        LocalPlacement::Var(var)=>BaseIR::STLoc(var),
+    })
 }
