@@ -61,8 +61,7 @@ impl<'tctx, 'local_ctx> CodegenCtx<'tctx, 'local_ctx> {
             projection_get(
                 place.projection,
                 self.get_local_type(place.local.into()),
-                self.meth(),
-                self.asm(),
+                self
             )
         }
     }
@@ -78,8 +77,7 @@ impl<'tctx, 'local_ctx> CodegenCtx<'tctx, 'local_ctx> {
             projection_adress(
                 place.projection,
                 self.get_local_type(place.local.into()),
-                self.meth(),
-                self.asm(),
+                self,
             )
         }
     }
@@ -97,8 +95,7 @@ impl<'tctx, 'local_ctx> CodegenCtx<'tctx, 'local_ctx> {
             projection_set(
                 place.projection,
                 self.get_local_type(place.local.into()),
-                self.meth(),
-                self.asm(),
+                self
             )
         }
     }
@@ -131,7 +128,7 @@ fn handle_constant(constant: &Constant, codegen_ctx: &CodegenCtx) -> Vec<BaseIR>
     let const_kind = constant.literal;
     match const_kind {
         ConstantKind::Val(value, const_ty) => {
-            load_const_value(value, VariableType::from_ty(const_ty))
+            load_const_value(value, VariableType::from_ty(const_ty,*codegen_ctx.tyctx()))
         }
         _ => todo!("Unhanded const kind {const_kind:?}!"),
     }
@@ -200,7 +197,7 @@ fn handle_agregate<'tyctx>(
         AggregateKind::Array(element_type) => {
             let agregate_adress = codegen_ctx.place_adress_ops(target_location);
             let mut agregate_construction = Vec::new();
-            let element = VariableType::from_ty(*element_type);
+            let element = VariableType::from_ty(*element_type,*codegen_ctx.tyctx());
             let arr_name = VariableType::Array {
                 element: Box::new(element.clone()),
                 length: fields.len(),
@@ -231,7 +228,7 @@ fn handle_agregate<'tyctx>(
             let agregate_adress = codegen_ctx.place_adress_ops(target_location);
             let mut agregate_construction = Vec::new();
             let param_env = ParamEnv::empty();
-            let adt_type = VariableType::from_ty(rustc_middle::ty::Instance::resolve(*codegen_ctx.tyctx(),param_env,*def_id,subst).expect("Can't get type!").expect("Can't get type!").ty(*codegen_ctx.tyctx(),param_env));
+            let adt_type = VariableType::from_ty(rustc_middle::ty::Instance::resolve(*codegen_ctx.tyctx(),param_env,*def_id,subst).expect("Can't get type!").expect("Can't get type!").ty(*codegen_ctx.tyctx(),param_env),*codegen_ctx.tyctx());
             match adt_type{
                 VariableType::Struct(name)=>{
                     if crate::ALWAYS_INIT_STRUCTS{
@@ -276,8 +273,8 @@ fn handle_rvalue<'tyctx>(
             target,
         ) => {
             let conversion = handle_convert(
-                &VariableType::from_ty(operand.ty(codegen_ctx.body(), *codegen_ctx.tyctx())),
-                &VariableType::from_ty(*target),
+                &VariableType::from_ty(operand.ty(codegen_ctx.body(), *codegen_ctx.tyctx()),*codegen_ctx.tyctx()),
+                &VariableType::from_ty(*target,*codegen_ctx.tyctx()),
             );
             let operand = handle_operand(operand, codegen_ctx);
             let mut final_ops = operand;
@@ -292,7 +289,7 @@ fn handle_rvalue<'tyctx>(
             let array_adress = codegen_ctx.place_adress_ops(target_location);
             
             let mut array_init = Vec::new();
-            let element = VariableType::from_ty(operand.ty(codegen_ctx.body(), *codegen_ctx.tyctx()));
+            let element = VariableType::from_ty(operand.ty(codegen_ctx.body(), *codegen_ctx.tyctx()),*codegen_ctx.tyctx());
             let arr_name = VariableType::Array {
                 element: Box::new(element.clone()),
                 length: ammount,
@@ -322,7 +319,7 @@ fn handle_rvalue<'tyctx>(
         Rvalue::Ref(_, _, _) => todo!("Can't create referneces yet!"),
         Rvalue::AddressOf(_, _) => todo!("Can't get adress of things yet!"),
         Rvalue::Len(palce) =>{
-            let ty = VariableType::from_ty(palce.ty(codegen_ctx.body(),*codegen_ctx.tyctx()).ty);
+            let ty = VariableType::from_ty(palce.ty(codegen_ctx.body(),*codegen_ctx.tyctx()).ty,*codegen_ctx.tyctx());
             vec![ty.sizeof_op()]
         },
         Rvalue::CheckedBinaryOp(_, _) => todo!("Can't yet preform checked binary operations"),

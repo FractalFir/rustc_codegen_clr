@@ -61,19 +61,20 @@ impl FunctionSignature {
             output: output.clone(),
         }
     }
-    pub(crate) fn from_poly_sig(sig: PolyFnSig) -> Option<Self> {
+    pub(crate) fn from_poly_sig(sig: PolyFnSig,tyctx:TyCtxt) -> Option<Self> {
         let inputs = sig
             .inputs()
             // `skip_binder` is `a riskiy thing` TODO: Figure out to which kind of issues it may lead!
             .skip_binder()
             //.no_bound_vars()?
             .iter()
-            .map(|v| VariableType::from_ty(*v))
+            .map(|v| VariableType::from_ty(*v,tyctx))
             .collect();
         let output = VariableType::from_ty(
             sig.output()
                 // `skip_binder` is `a riskiy thing` TODO: Figure out to which kind of issues it may lead!
                 .skip_binder(), //.no_bound_vars()?
+                tyctx
         );
         Some(Self { inputs, output })
     }

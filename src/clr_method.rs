@@ -99,12 +99,12 @@ impl CLRMethod {
     fn name(&self) -> &str {
         &self.name
     }
-    pub(crate) fn add_locals(&mut self, locals: &IndexVec<Local, LocalDecl>) {
+    pub(crate) fn add_locals(&mut self, locals: &IndexVec<Local, LocalDecl>,tyctx:TyCtxt) {
         let mut new_locals: Vec<VariableType> = Vec::with_capacity(locals.len());
         for (local_id, local) in locals.iter().enumerate() {
             let placement = self.local_id_placement(local_id as u32);
             if let LocalPlacement::Var(_) = placement {
-                new_locals.push(VariableType::from_ty(local.ty));
+                new_locals.push(VariableType::from_ty(local.ty,tyctx));
             }
         }
         self.locals = new_locals;
@@ -202,7 +202,7 @@ impl CLRMethod {
             LocalPlacement::Var(var_id) => BaseIR::STLoc(var_id),
         })
     }
-    fn process_constant(&mut self, constant: ConstantKind) {
+    fn process_constant(&mut self, constant: ConstantKind,tyctx:TyCtxt) {
         match constant {
             ConstantKind::Val(value, r#type) => match value {
                 ConstValue::Scalar(scalar) => {
@@ -213,7 +213,7 @@ impl CLRMethod {
                     } else {
                         panic!("Can't support pointers quite yet!");
                     };
-                    self.load_constant_primitive(&VariableType::from_ty(r#type), value);
+                    self.load_constant_primitive(&VariableType::from_ty(r#type,tyctx), value);
                 }
                 _ => todo!("Unhanled constant value {value:?}"),
             },
@@ -221,13 +221,13 @@ impl CLRMethod {
         };
     }
     // Makes so the top of the stack is the value of RValue
-    fn process_operand(&mut self, operand: &Operand) {
+    fn process_operand(&mut self, operand: &Operand,tyctx:TyCtxt) {
         match operand {
             Operand::Copy(place) => self.load(place.local.into()),
             //TODO:Do moves need to be treated any diffrently forom copies in the context of CLR?
             Operand::Move(place) => self.load(place.local.into()),
             Operand::Constant(const_val) => {
-                self.process_constant(const_val.literal);
+                self.process_constant(const_val.literal,tyctx);
             }
         }
     }
@@ -293,11 +293,11 @@ impl CLRMethod {
             panic!("Trying to call a type which is not a function!");
         };
         let symbol = tyctx.symbol_name(instance);
-        let sig = FunctionSignature::from_poly_sig(fn_type.fn_sig(*tyctx))
+        let sig = FunctionSignature::from_poly_sig(fn_type.fn_sig(*tyctx),*tyctx)
             .expect("Can't get the function signature");
         let function_name = format!("{symbol}").into();
         for arg in args {
-            self.process_operand(arg);
+            self.process_operand(arg,*tyctx);
         }
         // Hande
         if sig.output.is_void() {
@@ -325,9 +325,9 @@ impl CLRMethod {
             }
             TerminatorKind::SwitchInt { discr, targets } => {
                 for (value, target) in targets.iter() {
-                    self.process_operand(discr);
+                    self.process_operand(discr,*tyctx);
                     self.load_constant_primitive(
-                        &VariableType::from_ty(discr.ty(body, *tyctx)),
+                        &VariableType::from_ty(discr.ty(body, *tyctx),*tyctx),
                         value,
                     );
                     self.ops.push(BaseIR::BEq {
@@ -350,7 +350,7 @@ impl CLRMethod {
                 target,
                 unwind: _,
             } => {
-                self.process_operand(cond);
+                self.process_operand(cond,*tyctx);
                 self.load_constant_primitive(&VariableType::Bool, if *expected { 1 } else { 0 });
                 self.ops.push(BaseIR::BEq {
                     target: (*target).into(),

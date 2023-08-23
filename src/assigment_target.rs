@@ -33,15 +33,16 @@ impl AsigmentTarget {
                     LocalPlacement::Var(var_id) => BaseIR::LDLoc(var_id),
                 });
             new.value_pos = AsigmentValuePosition::AfterAdress;
+            todo!();
+            /* 
             let (adress_calc, set_op) = crate::projection::projection_set(
                 &place.projection,
                 clr_method.get_type_of_local(place.local.into()),
-                clr_method,
-                asm,
+                Self
             );
             //let local: u32 = place.local.into();
             new.adress_calc.extend(adress_calc);
-            new.set_ops.push(set_op);
+            new.set_ops.push(set_op);*/
         }
         new
     }

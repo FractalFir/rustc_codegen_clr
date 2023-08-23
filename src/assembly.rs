@@ -135,6 +135,7 @@ impl Assembly {
                     CLRType::Slice (element) => panic!("Can't compute sizeof silice at compile time!"),
                 }
             }
+            VariableType::Generic(_)=>todo!("Can't calcuate the size of a geneic!"),
         }
     }
     pub(crate) fn get_field_getter(
@@ -183,7 +184,7 @@ impl Assembly {
                     //TODO: handle binders!
                     fields.push((
                         field.name.to_string().into(),
-                        VariableType::from_ty(tyctx.type_of(field.did).skip_binder()),
+                        VariableType::from_ty(tyctx.type_of(field.did).skip_binder(),*tyctx),
                     ));
                     println!("field:{field:?}");
                 }
@@ -191,7 +192,7 @@ impl Assembly {
                 println!("adt_def:{adt_def:?} types:{types:?}", types = self.types);
             }
             TyKind::Array(element_type, length) => {
-                let (element, length) = (VariableType::from_ty(*element_type), {
+                let (element, length) = (VariableType::from_ty(*element_type,*tyctx), {
                     let scalar = length
                         .try_to_scalar()
                         .expect("Could not convert the scalar");
@@ -207,7 +208,7 @@ impl Assembly {
                 self.types.insert(name, arr);
             }
             TyKind::Slice(element_type) => {
-                let element = VariableType::from_ty(*element_type);
+                let element = VariableType::from_ty(*element_type,*tyctx);
                 let name = format!("'RSlice_{element_il}'", element_il = element.il_name()).into();
                 let slice = CLRType::Slice(element);
                 self.types.insert(name, slice);
@@ -247,12 +248,12 @@ impl Assembly {
         let blocks = &(*mir.basic_blocks);
         let sig = instance.ty(tcx, param_env).fn_sig(tcx);
         let mut clr_method = CLRMethod::new(
-            FunctionSignature::from_poly_sig(sig)
+            FunctionSignature::from_poly_sig(sig,tcx)
                 .expect("Could not resolve the function signature"),
             name,
         );
         self.add_types_from_locals(&mir.local_decls, &tcx);
-        clr_method.add_locals(&mir.local_decls);
+        clr_method.add_locals(&mir.local_decls,tcx);
         for block_data in blocks {
             clr_method.begin_bb();
             for statement in &block_data.statements {

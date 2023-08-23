@@ -3,7 +3,7 @@ use crate::IString;
 use rustc_middle::ty::AdtKind;
 use rustc_middle::{
     mir::Mutability,
-    ty::{FloatTy, IntTy, Ty, TyKind, UintTy},
+    ty::{TyCtxt,FloatTy, IntTy, Ty, TyKind, UintTy},
 };
 use serde::{Deserialize, Serialize};
 enum TypePrefix {
@@ -41,6 +41,7 @@ pub(crate) enum VariableType {
     Slice(Box<Self>),
     Struct(IString),
     Tuple(Vec<Self>),
+    Generic(IString),
 }
 
 impl VariableType {
@@ -91,7 +92,8 @@ impl VariableType {
             _ => None,
         }
     }
-    pub(crate) fn from_ty(ty: Ty) -> Self {
+    pub(crate) fn from_ty(ty: Ty,tyctx:TyCtxt) -> Self {
+        println!("ty:{ty:?}");
         match ty.kind() {
             TyKind::Int(IntTy::I8) => VariableType::I8,
             TyKind::Int(IntTy::I16) => VariableType::I16,
@@ -112,7 +114,7 @@ impl VariableType {
             TyKind::Foreign(_ftype) => todo!("Can't handle foreign types yet!"),
             TyKind::Str => todo!("Can't handle string slices yet!"),
             TyKind::Array(element_type, length) => Self::Array {
-                element: Box::new(Self::from_ty(*element_type)),
+                element: Box::new(Self::from_ty(*element_type,tyctx)),
                 length: {
                     let scalar = length
                         .try_to_scalar()
@@ -121,7 +123,7 @@ impl VariableType {
                     value as usize
                 },
             },
-            TyKind::Slice(element_type) => Self::Slice(Box::new(Self::from_ty(*element_type))),
+            TyKind::Slice(element_type) => Self::Slice(Box::new(Self::from_ty(*element_type,tyctx))),
             TyKind::Adt(adt_def, _subst) => {
                 let adt = adt_def;
                 //let tcxt:&_ = adt.0.0;
@@ -139,8 +141,8 @@ impl VariableType {
                 // There is no such concept as lifetimes in CLR
                 let _ = region;
                 match mutability {
-                    Mutability::Mut => Self::RefMut(Box::new(Self::from_ty(*ref_type))),
-                    Mutability::Not => Self::Ref(Box::new(Self::from_ty(*ref_type))),
+                    Mutability::Mut => Self::RefMut(Box::new(Self::from_ty(*ref_type,tyctx))),
+                    Mutability::Not => Self::Ref(Box::new(Self::from_ty(*ref_type,tyctx))),
                 }
             }
             TyKind::Bound(debrujin_index, bound_ty) => {
@@ -153,7 +155,7 @@ impl VariableType {
                     Self::Tuple(
                         inner_types
                             .iter()
-                            .map(|ty| VariableType::from_ty(ty))
+                            .map(|ty| VariableType::from_ty(ty,tyctx))
                             .collect(),
                     )
                 }
@@ -167,7 +169,7 @@ impl VariableType {
             TyKind::Never => todo!("Can't handle never types yet!"),
             TyKind::Alias(_, _)=>todo!("Can't handle type aliases yet!"),
             TyKind::Placeholder(_)=>todo!("Can't handle placeholder types yet!"),
-            TyKind::Param(inner) =>todo!(),//VariableType::from_ty(inner.to_ty()),
+            TyKind::Param(inner) =>VariableType::Generic(format!("inner:?").into()),//VariableType::from_ty(inner.to_ty(tyctx),tyctx),
             TyKind::Infer(_) =>todo!("Can't handle infered types yet!"),
             TyKind::Error(_) =>todo!("Can't handle error types yet!"),
             //_ => todo!("Unhandled type kind {:?}", ty.kind()),
@@ -193,6 +195,7 @@ impl VariableType {
     }
     pub(crate) fn il_name(&self) -> IString {
         match self {
+            Self::Generic(typename) => typename.clone().into(),
             Self::Void => "void".into(),
             Self::I8 => "int8".into(),
             Self::I16 => "int16".into(),
