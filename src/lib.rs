@@ -35,7 +35,6 @@ mod base_ir;
 use base_ir::BaseIR;
 mod variable;
 use variable::*;
-mod assigment_target;
 mod projection;
 mod statement;
 pub type IString = Box<str>;

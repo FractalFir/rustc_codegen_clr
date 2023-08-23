@@ -132,7 +132,7 @@ impl Assembly {
                 match &self.types[struct_name]{
                     CLRType::Struct{fields}=>fields.iter().map(|field|self.sizeof_type(&field.1)).sum::<usize>(),
                     CLRType::Array { element, length } => self.sizeof_type(&element)*length,
-                    CLRType::Slice (element) => panic!("Can't compute sizeof silice at compile time!"),
+                    CLRType::Slice (_element) => panic!("Can't compute sizeof silice at compile time!"),
                 }
             }
             VariableType::Generic(_)=>todo!("Can't calcuate the size of a geneic!"),

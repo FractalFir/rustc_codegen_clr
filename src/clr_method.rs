@@ -1,5 +1,6 @@
+use crate::statement::CodegenCtx;
 use crate::{
-    assigment_target::AsigmentTarget, Assembly, BaseIR, FunctionSignature, IString,
+    Assembly, BaseIR, FunctionSignature, IString,
     VariableType,
 };
 use rustc_index::IndexVec;
@@ -10,7 +11,7 @@ use rustc_middle::mir::Place;
 use rustc_middle::mir::{Body, Local, LocalDecl};
 use rustc_middle::{
     mir::{
-        interpret::ConstValue, ConstantKind, Operand, Statement, StatementKind, Terminator,
+        interpret::ConstValue, ConstantKind, Operand, Statement, Terminator,
         TerminatorKind,
     },
     ty::{Instance, ParamEnv, Ty, TyCtxt, TyKind},
@@ -278,11 +279,13 @@ impl CLRMethod {
     pub(crate) fn call<'ctx>(
         &mut self,
         fn_type: &Ty<'ctx>,
+        body:&'ctx Body<'ctx>,
         tyctx: &TyCtxt<'ctx>,
         args: &[Operand],
         destination: &Place,
         asm: &Assembly,
-    ) {
+    )->Vec<BaseIR> {
+        
         let instance = if let TyKind::FnDef(def_id, subst_ref) = fn_type.kind() {
             let env = ParamEnv::empty();
             let instance = Instance::resolve(*tyctx, env, *def_id, subst_ref)
@@ -296,21 +299,28 @@ impl CLRMethod {
         let sig = FunctionSignature::from_poly_sig(fn_type.fn_sig(*tyctx),*tyctx)
             .expect("Can't get the function signature");
         let function_name = format!("{symbol}").into();
+        let codegen_ctx = CodegenCtx::new(self,asm,body,*tyctx);
+        let mut call = Vec::new();
         for arg in args {
-            self.process_operand(arg,*tyctx);
+            call.extend(crate::statement::handle_operand(arg,&codegen_ctx));
         }
+        let is_void = sig.output.is_void();
+        call.push(BaseIR::CallStatic { function_name, sig});
         // Hande
-        if sig.output.is_void() {
-            self.ops.push(BaseIR::CallStatic { function_name, sig });
+        if is_void{
+            call
         } else {
-            let assigement = AsigmentTarget::from_placement(*destination, &self, asm);
-            assigement.finalize_with_ops(&[BaseIR::CallStatic { function_name, sig }], self);
+            let (mut addr_calc,set_op) = crate::projection::projection_set(destination.projection, codegen_ctx.get_local_type(destination.local.into()), &codegen_ctx);
+            //let assigement = AsigmentTarget::from_placement(*destination, &self, asm);
+            addr_calc.extend(call);
+            addr_calc.push(set_op);
+            addr_calc
         }
     }
     pub(crate) fn add_terminator<'ctx>(
         &mut self,
         terminator: &Terminator<'ctx>,
-        body: &Body<'ctx>,
+        body: &'ctx Body<'ctx>,
         tyctx: &TyCtxt<'ctx>,
         asm: &Assembly,
     ) {
@@ -385,7 +395,8 @@ impl CLRMethod {
                                 fn_ty.is_fn(),
                                 "literal{literal:?} in call is not a function type!"
                             );
-                            self.call(&fn_ty, tyctx, args, destination, asm);
+                            let call_ops = self.call(&fn_ty,body, tyctx, args, destination, asm);
+                            self.ops.extend(call_ops);
                         } else {
                             panic!("Invalid function literal!");
                         }

@@ -1,4 +1,4 @@
-use crate::{Assembly, BaseIR, CLRMethod, VariableType};
+use crate::{BaseIR, VariableType};
 use rustc_middle::mir::PlaceElem;
 use crate::statement::CodegenCtx;
 enum Projection<'a, T> {

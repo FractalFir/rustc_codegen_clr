@@ -169,7 +169,7 @@ impl VariableType {
             TyKind::Never => todo!("Can't handle never types yet!"),
             TyKind::Alias(_, _)=>todo!("Can't handle type aliases yet!"),
             TyKind::Placeholder(_)=>todo!("Can't handle placeholder types yet!"),
-            TyKind::Param(inner) =>VariableType::Generic(format!("inner:?").into()),//VariableType::from_ty(inner.to_ty(tyctx),tyctx),
+            TyKind::Param(_inner) =>VariableType::Generic(format!("inner:?").into()),//VariableType::from_ty(inner.to_ty(tyctx),tyctx),
             TyKind::Infer(_) =>todo!("Can't handle infered types yet!"),
             TyKind::Error(_) =>todo!("Can't handle error types yet!"),
             //_ => todo!("Unhandled type kind {:?}", ty.kind()),

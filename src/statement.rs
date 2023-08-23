@@ -133,7 +133,7 @@ fn handle_constant(constant: &Constant, codegen_ctx: &CodegenCtx) -> Vec<BaseIR>
         _ => todo!("Unhanded const kind {const_kind:?}!"),
     }
 }
-fn handle_operand(operand: &Operand, codegen_ctx: &CodegenCtx) -> Vec<BaseIR> {
+pub(crate) fn handle_operand(operand: &Operand, codegen_ctx: &CodegenCtx) -> Vec<BaseIR> {
     match operand {
         Operand::Copy(place) => codegen_ctx.place_get_ops(place),
         Operand::Move(place) => codegen_ctx.place_get_ops(place),
@@ -224,7 +224,7 @@ fn handle_agregate<'tyctx>(
             agregate_construction
             //todo!("Can't yet create aggreate arrays with element type {element_type:?}")
         }
-        AggregateKind::Adt(def_id,varaint,subst,uta,field_idx)=>{
+        AggregateKind::Adt(def_id,_varaint,subst,_uta,_field_idx)=>{
             let agregate_adress = codegen_ctx.place_adress_ops(target_location);
             let mut agregate_construction = Vec::new();
             let param_env = ParamEnv::empty();
