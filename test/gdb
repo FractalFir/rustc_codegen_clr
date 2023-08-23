@@ -1,0 +1,1 @@
+n -ex=set confirm on -ex=run -ex=quit --args rustc --crate-type lib -O -Z codegen-backend=../target/debug/librustc_codegen_clr.so nbody.rs
