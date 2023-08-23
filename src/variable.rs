@@ -53,7 +53,7 @@ impl VariableType {
             Self::F64 => BaseIR::LDIndR8,
             Self::F32 => BaseIR::LDIndR4,
             Self::Struct(name) => BaseIR::LDObj(name.clone()),
-            Self::Array{..} => BaseIR::LDObj(self.il_name()),
+            Self::Array { .. } => BaseIR::LDObj(self.il_name()),
             _ => todo!("Can't deference a pointer to type {self:?}"),
         }
     }
@@ -65,7 +65,7 @@ impl VariableType {
             Self::F64 => BaseIR::STIndR8,
             Self::F32 => BaseIR::STIndR4,
             Self::Struct(name) => BaseIR::STObj(name.clone()),
-            Self::Array{..} => BaseIR::STObj(self.il_name()),
+            Self::Array { .. } => BaseIR::STObj(self.il_name()),
             _ => todo!("Can't deference a pointer to type {self:?}"),
         }
     }
@@ -199,6 +199,10 @@ impl VariableType {
             )
             .into(),
             Self::Tuple(elements) => {
+                assert!(
+                    elements.len() < 8,
+                    "Tuples larger than 8 elements are not yet supported!"
+                );
                 let mut inner = String::new();
                 let mut elements_iter = elements.iter();
                 if let Some(first_arg) = elements_iter.next() {

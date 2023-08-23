@@ -19,8 +19,10 @@ pub(crate) enum BaseIR {
     LDConstString(String),
     STArg(u32),
     LDArg(u32),
+    LDArgA(u32),
     STLoc(u32),
     LDLoc(u32),
+    LDLocA(u32),
     Add,
     Sub,
     Mul,
@@ -41,6 +43,10 @@ pub(crate) enum BaseIR {
     ConvI8,
     Nop,
     CallStatic {
+        sig: FunctionSignature,
+        function_name: IString,
+    },
+    Call {
         sig: FunctionSignature,
         function_name: IString,
     },
@@ -85,8 +91,10 @@ impl BaseIR {
             //Self::BGt{target} => format!("\tbgt BB_{target}\n"),
             Self::GoTo { target } => format!("\tbr BB_{target}\n"),
             Self::LDArg(arg) => format!("\tldarg {arg}\n"),
+            Self::LDArgA(arg) => format!("\tldarga {arg}\n"),
             Self::STArg(arg) => format!("\tstarg {arg}\n"),
             Self::LDLoc(arg) => format!("\tldloc {arg}\n"),
+            Self::LDLocA(arg) => format!("\tldloca {arg}\n"),
             Self::STLoc(arg) => format!("\tstloc {arg}\n"),
             Self::Return => "\tret\n".into(),
             Self::Add => "\tadd\n".into(),
@@ -116,10 +124,10 @@ impl BaseIR {
             Self::Throw => "\tthrow\n".into(),
             Self::STIndIn(size) => format!("\tstind.i{size}\n"),
             Self::LDIndIn(size) => format!("\tldind.i{size}\n"),
-            Self::LDIndR8=> "\tldind.r8\n".into(),
-            Self::LDIndR4=> "\tldind.r4\n".into(),
-            Self::STIndR8=> "\tstind.r8\n".into(),
-            Self::STIndR4=> "\tstind.r4\n".into(),
+            Self::LDIndR8 => "\tldind.r8\n".into(),
+            Self::LDIndR4 => "\tldind.r4\n".into(),
+            Self::STIndR8 => "\tstind.r8\n".into(),
+            Self::STIndR4 => "\tstind.r4\n".into(),
             Self::LDIndI => "\tldind.i\n".into(),
             Self::STIndI => "\tstind.i\n".into(),
             Self::CallStatic { sig, function_name } => {
@@ -137,7 +145,24 @@ impl BaseIR {
                     "\tcall {output} {function_name}({input_string})\n",
                     output = sig.output.il_name()
                 )
-            } //todo!("Can't call functions yet!")
+            }
+            Self::Call { sig, function_name } => {
+                //assert!(sig.inputs.is_empty());
+                let mut inputs_iter = sig.inputs.iter();
+                let mut input_string = String::new();
+                if let Some(firts_arg) = inputs_iter.next() {
+                    input_string.push_str(&firts_arg.il_name());
+                }
+                for arg in inputs_iter {
+                    input_string.push(',');
+                    input_string.push_str(&arg.il_name());
+                }
+                format!(
+                    "\tcall instance {output} {function_name}({input_string})\n",
+                    output = sig.output.il_name()
+                )
+            }
+            //todo!("Can't call functions yet!")
             Self::LDField {
                 field_parent,
                 field_name,

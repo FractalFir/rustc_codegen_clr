@@ -11,12 +11,13 @@ enum Visiblity {
     Private,
     Public,
 }
-fn array_indexers(array_name:&str,element:&VariableType)->String{   
+fn array_indexers(array_name: &str, element: &VariableType) -> String {
     //let deref_op = "ldind.i4";
     let element_type = &element.il_name();
     let deref_op = element.deref_op().clr_ir();
     let set_op = element.set_pointed_op().clr_ir();
-    let getter = format!("\
+    let getter = format!(
+        "\
     \t.method public hidebysig specialname instance {element_type} get_Item(native int index){{\n\
 		\t\tldarg.0\n\
 		\t\tldflda {element_type} {array_name}::arr\n\
@@ -26,8 +27,9 @@ fn array_indexers(array_name:&str,element:&VariableType)->String{
         \t\tadd\n\
         \t{deref_op}\
 		\t\tret\n\
-     }}\n");
-     let setter = format!("\
+     }}\n"
+    );
+    let setter = format!("\
      \t.method public hidebysig specialname instance void set_Item(native int index,{element_type} 'value'){{\n\
 		\t\tldarg.0\n\
 		\t\tldflda {element_type} {array_name}::arr\n\
@@ -39,7 +41,7 @@ fn array_indexers(array_name:&str,element:&VariableType)->String{
         \t{set_op}\
 		\t\tret\n\
      }}\n");
-     format!("{getter}{setter}")
+    format!("{getter}{setter}")
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 enum CLRType {
@@ -126,7 +128,7 @@ impl Assembly {
                 .iter()
                 .map(|element| self.sizeof_type(element))
                 .sum::<usize>(),
-            VariableType::Struct(struct_name) => {
+            VariableType::Struct(_struct_name) => {
                 todo!("Can't yet calculate the size of a struct jet!")
             }
         }
@@ -169,7 +171,7 @@ impl Assembly {
     }
     pub(crate) fn add_type(&mut self, ty: Ty, tyctx: &TyCtxt) {
         match ty.kind() {
-            TyKind::Adt(adt_def, subst) => {
+            TyKind::Adt(adt_def, _subst) => {
                 // TODO: find a better way to get a name of an ADT!
                 let name = format!("{adt_def:?}").into();
                 let mut fields = Vec::new();
@@ -250,7 +252,7 @@ impl Assembly {
         for block_data in blocks {
             clr_method.begin_bb();
             for statement in &block_data.statements {
-                clr_method.add_statement(statement, mir, &tcx, self);
+                clr_method.add_statement(statement, mir, tcx, self);
             }
             match &block_data.terminator {
                 Some(term) => clr_method.add_terminator(term, mir, &tcx, self),

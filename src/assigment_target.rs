@@ -1,7 +1,7 @@
-use crate::{clr_method::LocalPlacement, rvalue::RValue, Assembly, BaseIR, CLRMethod};
+use crate::{clr_method::LocalPlacement, Assembly, BaseIR, CLRMethod};
 
 use rustc_middle::mir::Place;
-use rustc_middle::mir::ProjectionElem;
+
 pub(crate) enum AsigmentValuePosition {
     BeforeAdress,
     AfterAdress,
@@ -55,20 +55,6 @@ impl AsigmentTarget {
             AsigmentValuePosition::AfterAdress => {
                 clr_method.extend_ops(&self.adress_calc);
                 clr_method.extend_ops(ops);
-                clr_method.extend_ops(&self.set_ops);
-            }
-        }
-    }
-    pub(crate) fn finalize(self, rvalue: RValue, clr_method: &mut CLRMethod) {
-        match self.value_pos {
-            AsigmentValuePosition::BeforeAdress => {
-                clr_method.extend_ops(rvalue.get_ops());
-                clr_method.extend_ops(&self.adress_calc);
-                clr_method.extend_ops(&self.set_ops);
-            }
-            AsigmentValuePosition::AfterAdress => {
-                clr_method.extend_ops(&self.adress_calc);
-                clr_method.extend_ops(rvalue.get_ops());
                 clr_method.extend_ops(&self.set_ops);
             }
         }

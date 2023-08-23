@@ -1,5 +1,5 @@
 use crate::{
-    assigment_target::AsigmentTarget, rvalue::RValue, Assembly, BaseIR, FunctionSignature, IString,
+    assigment_target::AsigmentTarget, Assembly, BaseIR, FunctionSignature, IString,
     VariableType,
 };
 use rustc_index::IndexVec;
@@ -234,8 +234,8 @@ impl CLRMethod {
     pub(crate) fn add_statement<'ctx>(
         &mut self,
         statement: &Statement<'ctx>,
-        body: &Body<'ctx>,
-        tyctx: &TyCtxt<'ctx>,
+        body: &'ctx Body<'ctx>,
+        tyctx: TyCtxt<'ctx>,
         asm: &Assembly,
     ) {
         if cfg!(debug_assertions) {
@@ -243,6 +243,10 @@ impl CLRMethod {
             self.ops
                 .push(BaseIR::DebugComment(format!("{statement:?}").into()));
         }
+        self.ops.extend(crate::statement::handle_statement(
+            statement, self, asm, body, tyctx,
+        ));
+        /*
         match &statement.kind {
             StatementKind::Assign(asign_box) => {
                 let (place, rvalue) = (asign_box.0, &asign_box.1);
@@ -256,7 +260,7 @@ impl CLRMethod {
                 self.var_dead((*local).into());
             }
             _ => todo!("Unhanded statement:{:?}", statement.kind),
-        }
+        }*/
     }
     pub(crate) fn load_constant_primitive(&mut self, var_type: &VariableType, value: u128) {
         match var_type {

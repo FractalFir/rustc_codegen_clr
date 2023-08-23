@@ -1,4 +1,4 @@
-use crate::{assigment_target::AsigmentValuePosition, Assembly, BaseIR, CLRMethod, VariableType};
+use crate::{Assembly, BaseIR, CLRMethod, VariableType};
 use rustc_middle::mir::PlaceElem;
 enum Projection<'a, T> {
     OnlyHead(&'a T),
@@ -9,7 +9,7 @@ enum Projection<'a, T> {
 fn projection_element(
     element: &PlaceElem,
     var_type: &VariableType,
-    clr_method: &CLRMethod,
+    _clr_method: &CLRMethod,
     asm: &Assembly,
 ) -> (VariableType, BaseIR) {
     match element {
@@ -71,7 +71,7 @@ fn projection_element(
 pub(crate) fn projection_element_get(
     element: &PlaceElem,
     var_type: &VariableType,
-    clr_method: &CLRMethod,
+    _clr_method: &CLRMethod,
     asm: &Assembly,
 ) -> BaseIR {
     match element {
@@ -82,7 +82,7 @@ pub(crate) fn projection_element_get(
             derefed_type.deref_op()
         }
         PlaceElem::Field(idx, ty) => {
-            let field_type = VariableType::from_ty(*ty);
+            let _field_type = VariableType::from_ty(*ty);
             let var_name = if let VariableType::Struct(struct_name) = var_type {
                 struct_name
             } else {
@@ -108,9 +108,9 @@ pub(crate) fn projection_element_get(
 pub(crate) fn projection_element_set(
     element: &PlaceElem,
     var_type: &VariableType,
-    clr_method: &CLRMethod,
+    _clr_method: &CLRMethod,
     asm: &Assembly,
-) -> (BaseIR) {
+) -> BaseIR {
     match element {
         PlaceElem::Deref => {
             let derefed_type = var_type
@@ -120,7 +120,7 @@ pub(crate) fn projection_element_set(
             deref_op
         }
         PlaceElem::Field(idx, ty) => {
-            let field_type = VariableType::from_ty(*ty);
+            let _field_type = VariableType::from_ty(*ty);
             let var_name = if let VariableType::Struct(struct_name) = var_type {
                 struct_name
             } else {
@@ -151,6 +151,21 @@ fn split_head<'a>(projection: &'a [PlaceElem<'a>]) -> Projection<'a, PlaceElem<'
             &projection[projection.len() - 1],
         ),
     }
+}
+pub(crate) fn projection_adress<'a>(
+    projection: &'a [PlaceElem<'a>],
+    local_type: &VariableType,
+    clr_method: &CLRMethod,
+    asm: &Assembly,
+) -> Vec<BaseIR> {
+    let mut ops = Vec::new();
+    let mut var_type = local_type.clone();
+    for projection in projection {
+        let (vtype, op) = projection_element(projection, &var_type, clr_method, asm);
+        ops.push(op);
+        var_type = vtype;
+    }
+    ops
 }
 pub(crate) fn project<'a, F: Fn(&PlaceElem, &VariableType, &CLRMethod, &Assembly) -> BaseIR>(
     projection: &'a [PlaceElem<'a>],
@@ -183,7 +198,7 @@ pub(crate) fn projection_get<'a>(
     local_type: &VariableType,
     clr_method: &CLRMethod,
     asm: &Assembly,
-) -> (Vec<BaseIR>) {
+) -> Vec<BaseIR> {
     let (mut addr_calc, getter) = project(
         projection,
         local_type,

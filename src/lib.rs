@@ -37,7 +37,7 @@ mod variable;
 use variable::*;
 mod assigment_target;
 mod projection;
-mod rvalue;
+mod statement;
 pub type IString = Box<str>;
 
 struct MyBackend;
@@ -54,7 +54,12 @@ impl FunctionSignature {
     pub(crate) fn output(&self) -> &VariableType {
         &self.output
     }
-    pub(crate) fn new(inputs:&[VariableType],output:&VariableType)->Self{Self { inputs:inputs.into(), output:output.clone() }}
+    pub(crate) fn new(inputs: &[VariableType], output: &VariableType) -> Self {
+        Self {
+            inputs: inputs.into(),
+            output: output.clone(),
+        }
+    }
     pub(crate) fn from_poly_sig(sig: PolyFnSig) -> Option<Self> {
         let inputs = sig
             .inputs()
