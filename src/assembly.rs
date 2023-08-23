@@ -128,8 +128,12 @@ impl Assembly {
                 .iter()
                 .map(|element| self.sizeof_type(element))
                 .sum::<usize>(),
-            VariableType::Struct(_struct_name) => {
-                todo!("Can't yet calculate the size of a struct jet!")
+            VariableType::Struct(struct_name) => {
+                match &self.types[struct_name]{
+                    CLRType::Struct{fields}=>fields.iter().map(|field|self.sizeof_type(&field.1)).sum::<usize>(),
+                    CLRType::Array { element, length } => self.sizeof_type(&element)*length,
+                    CLRType::Slice (element) => panic!("Can't compute sizeof silice at compile time!"),
+                }
             }
         }
     }
@@ -259,10 +263,10 @@ impl Assembly {
                 None => (),
             }
         }
-        //clr_method.opt();
-        println!("clr_method:{clr_method:?}");
-        println!("instance:{instance:?}\n");
-        println!("types:{types:?}", types = self.types);
+        clr_method.opt();
+        //println!("clr_method:{clr_method:?}");
+        //println!("instance:{instance:?}\n");
+        //println!("types:{types:?}", types = self.types);
         self.methods.push(clr_method);
     }
     pub(crate) fn add_item<'tcx>(&mut self, item: MonoItem<'tcx>, tcx: TyCtxt<'tcx>) {

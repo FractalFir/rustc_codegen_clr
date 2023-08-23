@@ -41,6 +41,7 @@ pub(crate) enum BaseIR {
     ConvI32,
     ConvI32Checked,
     ConvI8,
+    ConvI,
     Nop,
     CallStatic {
         sig: FunctionSignature,
@@ -78,6 +79,7 @@ pub(crate) enum BaseIR {
         field_name: IString,
         field_type: VariableType,
     },
+    SizeOf(IString),
     LDObj(IString),
     STObj(IString),
     Throw,
@@ -115,6 +117,7 @@ impl BaseIR {
             Self::LDConstI64(i64const) => format!("\tldc.i8 {i64const}\n"),
             Self::LDConstF32(f32const) => format!("\tldc.r4 {f32const}\n"),
             Self::ConvF32 => "\tconv.r4\n".into(),
+            Self::ConvI => "\tconv.i\n".into(),
             Self::ConvI8 => "\tconv.i1\n".into(),
             Self::ConvI32 => "\tconv.i4\n".into(),
             Self::ConvI32Checked => "\tconv.ovf.i4\n".into(),
@@ -197,6 +200,7 @@ impl BaseIR {
             Self::STObj(struct_name) => format!("\tstobj valuetype {struct_name}\n"),
             Self::DebugComment(comment) => format!("//{comment}\n"),
             Self::InitObj(type_name) => format!("\tinitobj {type_name}\n"),
+            Self::SizeOf(type_name) => format!("\tsizeof {type_name}\n"),
         }
         .into()
     }

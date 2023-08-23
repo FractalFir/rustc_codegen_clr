@@ -41,6 +41,7 @@ mod statement;
 pub type IString = Box<str>;
 
 struct MyBackend;
+pub(crate) const ALWAYS_INIT_STRUCTS:bool = false;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 struct FunctionSignature {

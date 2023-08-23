@@ -57,6 +57,18 @@ impl VariableType {
             _ => todo!("Can't deference a pointer to type {self:?}"),
         }
     }
+    pub(crate) fn sizeof_op(&self) -> BaseIR {
+        match self {
+            Self::Ref(_) | Self::RefMut(_) => BaseIR::LDIndI,
+            Self::I32 => BaseIR::LDConstI8(std::mem::size_of::<i32>() as i8),
+            Self::I64 => BaseIR::LDConstI8(std::mem::size_of::<i64>() as i8),
+            Self::F64 => BaseIR::LDConstI8(std::mem::size_of::<f64>() as i8),
+            Self::F32 => BaseIR::LDConstI8(std::mem::size_of::<f32>() as i8),
+            Self::Struct(name) => BaseIR::SizeOf(name.clone()),
+            Self::Array { .. } => BaseIR::SizeOf(self.il_name()),
+            _ => todo!("Can't deference a pointer to type {self:?}"),
+        }
+    }
     pub(crate) fn set_pointed_op(&self) -> BaseIR {
         match self {
             Self::Ref(_) | Self::RefMut(_) => BaseIR::STIndI,
@@ -146,7 +158,19 @@ impl VariableType {
                     )
                 }
             }
-            _ => todo!("Unhandled type kind {:?}", ty.kind()),
+            TyKind::FnDef(_, _)=>todo!("Can't handle function definition types yet!"),
+            TyKind::Dynamic(_,_,_)=>todo!("Can't handle dynamic types yet!"),
+            TyKind::Closure(_,_)=>todo!("Can't handle closure types yet!"),
+            TyKind::Generator(_, _, _)=>todo!("Can't handle generator types yet!"),
+            TyKind::GeneratorWitness(_)=>todo!("Can't handle generator types yet!"),
+            TyKind::GeneratorWitnessMIR(_, _)=>todo!("Can't handle generator types yet!"),
+            TyKind::Never => todo!("Can't handle never types yet!"),
+            TyKind::Alias(_, _)=>todo!("Can't handle type aliases yet!"),
+            TyKind::Placeholder(_)=>todo!("Can't handle placeholder types yet!"),
+            TyKind::Param(inner) =>todo!(),//VariableType::from_ty(inner.to_ty()),
+            TyKind::Infer(_) =>todo!("Can't handle infered types yet!"),
+            TyKind::Error(_) =>todo!("Can't handle error types yet!"),
+            //_ => todo!("Unhandled type kind {:?}", ty.kind()),
         }
     }
     fn get_prefix(&self) -> Option<TypePrefix> {

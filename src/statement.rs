@@ -7,7 +7,7 @@ use rustc_middle::mir::{
     interpret::ConstValue, interpret::Scalar, AggregateKind, BinOp, Body, CastKind, Constant,
     ConstantKind, Operand, Place, Rvalue, Statement, StatementKind,
 };
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{TyCtxt,ParamEnv,Const};
 use rustc_target::abi::FieldIdx;
 macro_rules! sign_cast {
     ($var:ident,$src:ty,$dest:ty) => {
@@ -193,27 +193,31 @@ fn handle_convert(src: &VariableType, dest: &VariableType) -> Vec<BaseIR> {
 fn handle_agregate<'tyctx>(
     codegen_ctx: &CodegenCtx<'tyctx, '_>,
     target_location: &Place,
-    aggregate: &AggregateKind,
+    aggregate: &AggregateKind<'tyctx>,
     fields: &IndexVec<FieldIdx, Operand<'tyctx>>,
 ) -> Vec<BaseIR> {
     match aggregate {
         AggregateKind::Array(element_type) => {
             let agregate_adress = codegen_ctx.place_adress_ops(target_location);
-            let mut agregate_construction = agregate_adress.clone();
+            let mut agregate_construction = Vec::new();
             let element = VariableType::from_ty(*element_type);
             let arr_name = VariableType::Array {
                 element: Box::new(element.clone()),
                 length: fields.len(),
             }
             .arg_name();
-            agregate_construction.push(BaseIR::InitObj(arr_name.clone()));
+            if crate::ALWAYS_INIT_STRUCTS{
+                agregate_construction.extend(agregate_adress.clone());
+                agregate_construction.push(BaseIR::InitObj(arr_name.clone()));
+            }    
             for (index, operand) in fields.iter().enumerate() {
                 agregate_construction.extend(agregate_adress.clone());
                 agregate_construction.push(BaseIR::LDConstI32(index as i32));
+                agregate_construction.push(BaseIR::ConvI);
                 agregate_construction.extend(handle_operand(operand, codegen_ctx));
                 agregate_construction.push(BaseIR::Call {
                     sig: crate::FunctionSignature::new(
-                        &[element.clone(), VariableType::ISize],
+                        &[VariableType::ISize,element.clone()],
                         &VariableType::Void,
                     ),
                     function_name: format!("{arr_name}::set_Item").into(),
@@ -223,8 +227,35 @@ fn handle_agregate<'tyctx>(
             agregate_construction
             //todo!("Can't yet create aggreate arrays with element type {element_type:?}")
         }
+        AggregateKind::Adt(def_id,varaint,subst,uta,field_idx)=>{
+            let agregate_adress = codegen_ctx.place_adress_ops(target_location);
+            let mut agregate_construction = Vec::new();
+            let param_env = ParamEnv::empty();
+            let adt_type = VariableType::from_ty(rustc_middle::ty::Instance::resolve(*codegen_ctx.tyctx(),param_env,*def_id,subst).expect("Can't get type!").expect("Can't get type!").ty(*codegen_ctx.tyctx(),param_env));
+            match adt_type{
+                VariableType::Struct(name)=>{
+                    if crate::ALWAYS_INIT_STRUCTS{
+                        agregate_construction.extend(agregate_adress.clone());
+                        agregate_construction.push(BaseIR::InitObj(name.clone()));
+                    }
+                    for (field_idx,field) in fields.iter().enumerate(){
+                        agregate_construction.extend(agregate_adress.clone());
+                        agregate_construction.extend(handle_operand(field, codegen_ctx));
+                        agregate_construction.extend(codegen_ctx.asm().get_field_setter(field_idx,&name).expect("Can't get field!"));
+                        
+                    } 
+                    agregate_construction.extend(codegen_ctx.place_get_ops(target_location));
+                    agregate_construction 
+                },
+                _=>todo!("Unhandled adt type {adt_type:?}"),
+            }
+        },
         _ => todo!("Can't handle agregates of type {aggregate:?} yet!"),
     }
+}
+fn const_to_usize<'tyctx>(constant:&Const<'tyctx>,tyctx: TyCtxt<'tyctx>)->usize{
+    //TODO: handle constant conversion better.
+    constant.eval_target_usize(tyctx,ParamEnv::empty()) as usize
 }
 fn handle_rvalue<'tyctx>(
     rvalue: &Rvalue<'tyctx>,
@@ -256,11 +287,44 @@ fn handle_rvalue<'tyctx>(
         Rvalue::Aggregate(aggregate, fields) => {
             handle_agregate(codegen_ctx, target_location, aggregate.as_ref(), fields)
         }
-        Rvalue::Repeat(_, _) => todo!("Can't handle repeats yet!"),
+        Rvalue::Repeat(operand, ammount) => {
+            let ammount = const_to_usize(ammount,*codegen_ctx.tyctx());
+            let array_adress = codegen_ctx.place_adress_ops(target_location);
+            
+            let mut array_init = Vec::new();
+            let element = VariableType::from_ty(operand.ty(codegen_ctx.body(), *codegen_ctx.tyctx()));
+            let arr_name = VariableType::Array {
+                element: Box::new(element.clone()),
+                length: ammount,
+            }.arg_name();
+            if crate::ALWAYS_INIT_STRUCTS{
+                array_init.extend(array_adress.clone());
+                array_init.push(BaseIR::InitObj(arr_name.clone()));
+            }
+            //TODO: handle large array sizes using loops!
+            for index in 0..ammount{
+                array_init.extend(array_adress.clone());
+                array_init.push(BaseIR::LDConstI64(index as i64));
+                array_init.push(BaseIR::ConvI);
+                array_init.extend(handle_operand(operand, codegen_ctx));
+                array_init.push(BaseIR::Call {
+                    sig: crate::FunctionSignature::new(
+                        &[VariableType::ISize,element.clone()],
+                        &VariableType::Void,
+                    ),
+                    function_name: format!("{arr_name}::set_Item").into(),
+                });
+            }
+            array_init.extend(codegen_ctx.place_get_ops(target_location));
+            array_init
+        }
         Rvalue::ThreadLocalRef(_) => todo!("Can't handle thread local data yet!"),
         Rvalue::Ref(_, _, _) => todo!("Can't create referneces yet!"),
         Rvalue::AddressOf(_, _) => todo!("Can't get adress of things yet!"),
-        Rvalue::Len(_) => todo!("Can't get the length of arrays or slices yet!"),
+        Rvalue::Len(palce) =>{
+            let ty = VariableType::from_ty(palce.ty(codegen_ctx.body(),*codegen_ctx.tyctx()).ty);
+            vec![ty.sizeof_op()]
+        },
         Rvalue::CheckedBinaryOp(_, _) => todo!("Can't yet preform checked binary operations"),
         Rvalue::UnaryOp(_, _) => todo!("Can't yet preform unary ops!"),
         Rvalue::NullaryOp(_, _) => todo!("Can't yet preform nulray ops!"),
