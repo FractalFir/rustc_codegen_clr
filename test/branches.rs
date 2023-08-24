@@ -9,7 +9,7 @@ pub extern fn seven_if_even(input:i32)->i8{
     }
 }
 #[no_mangle]
-pub extern fn test_match(pi_digit:i8)->i8{
+pub extern fn test_match(pi_digit:i32)->i32{
     match pi_digit{
         0=>3,
         1=>1,
@@ -22,6 +22,7 @@ pub extern fn test_match(pi_digit:i8)->i8{
         8=>5,
         9=>3,
         10=>5,
+        //112020=>3,
         _=>9,
     }
 }

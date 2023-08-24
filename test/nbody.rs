@@ -14,7 +14,10 @@ pub struct AstronomicalBody{
 pub extern fn init_10body()->[AstronomicalBody;10]{
     let boides = [AstronomicalBody::default();10];
     //let test = Some(0);
-    
-    
-    boides
+    let mut body_idx = 0;
+    let nbody_len = boides.len();
+    while body_idx < nbody_len{
+        body_idx += 1;
+    }
+    boides 
 }

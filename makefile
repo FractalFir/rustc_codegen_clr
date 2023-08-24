@@ -3,7 +3,7 @@ CODEGEN_BACKEND = ../target/debug/librustc_codegen_clr.so
 RUSTC = rustc
 DEBUGER = #echo n > gdb -ex='set confirm on' -ex=run -ex=quit --args 
 RUST_FLAGS = --crate-type lib
-test: build_backend identy binops casts types calls references structs nbody
+test: build_backend identy branches binops casts types calls references structs nbody
 calls:
 	cd test && $(DEBUGER) rustc $(RUST_FLAGS) -O -Z codegen-backend=$(CODEGEN_BACKEND) calls.rs && \
 	ilasm /dll libcalls.rlib && \
@@ -31,7 +31,7 @@ types:
 	ilasm /dll libtypes.rlib
 branches:
 	cd test && $(DEBUGER) rustc $(RUST_FLAGS) -O -Z codegen-backend=$(CODEGEN_BACKEND) branches.rs && \
-	ilasm /dll libranches.rlib
+	ilasm /dll libbranches.rlib
 build_backend:
 	cargo build
 structs:

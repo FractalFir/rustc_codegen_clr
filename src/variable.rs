@@ -61,10 +61,10 @@ impl VariableType {
     pub(crate) fn sizeof_op(&self) -> BaseIR {
         match self {
             Self::Ref(_) | Self::RefMut(_) => BaseIR::LDIndI,
-            Self::I32 => BaseIR::LDConstI8(std::mem::size_of::<i32>() as i8),
-            Self::I64 => BaseIR::LDConstI8(std::mem::size_of::<i64>() as i8),
-            Self::F64 => BaseIR::LDConstI8(std::mem::size_of::<f64>() as i8),
-            Self::F32 => BaseIR::LDConstI8(std::mem::size_of::<f32>() as i8),
+            Self::I32 => BaseIR::LDConstI32(std::mem::size_of::<i32>() as i32),
+            Self::I64 => BaseIR::LDConstI32(std::mem::size_of::<i64>() as i32),
+            Self::F64 => BaseIR::LDConstI32(std::mem::size_of::<f64>() as i32),
+            Self::F32 => BaseIR::LDConstI32(std::mem::size_of::<f32>() as i32),
             Self::Struct(name) => BaseIR::SizeOf(name.clone()),
             Self::Array { .. } => BaseIR::SizeOf(self.il_name()),
             _ => todo!("Can't deference a pointer to type {self:?}"),

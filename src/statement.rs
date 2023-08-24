@@ -90,13 +90,16 @@ fn load_const_scalar(scalar: Scalar, scalar_type: VariableType) -> Vec<BaseIR> {
         Scalar::Ptr(_, _) => todo!("Can't handle scalar pointers yet!"),
     };
     match scalar_type {
-        VariableType::I8 => vec![BaseIR::LDConstI8(sign_cast!(scalar_u128, u8, i8))],
+        VariableType::I8 => vec![BaseIR::LDConstI32(sign_cast!(scalar_u128, u8, i8) as i32)],
         VariableType::U8 => vec![BaseIR::LDConstI32(scalar_u128 as u8 as i32)],
         VariableType::I16 => vec![BaseIR::LDConstI32(sign_cast!(scalar_u128, u16, i16) as i32)],
         VariableType::U16 => vec![BaseIR::LDConstI32(scalar_u128 as i32)],
         VariableType::I32 => vec![BaseIR::LDConstI32(sign_cast!(scalar_u128, u32, i32))],
         VariableType::F32 => vec![BaseIR::LDConstF32(f32::from_bits(scalar_u128 as u32))],
-        VariableType::Bool => vec![BaseIR::LDConstI8((scalar_u128 != 0) as u8 as i8)],
+        VariableType::Bool => vec![BaseIR::LDConstI32((scalar_u128 != 0) as u8 as i32)],
+        VariableType::I64 => vec![BaseIR::LDConstI64(sign_cast!(scalar_u128, u64, i64))],
+        VariableType::U64 => vec![BaseIR::LDConstI64(scalar_u128 as i64)],
+        VariableType::USize => vec![BaseIR::LDConstI64(scalar_u128 as i64)],
         _ => todo!("can't yet handle a scalar of type {scalar_type:?}!"),
     }
 }

@@ -185,19 +185,6 @@ impl CLRMethod {
             statement, self, asm, body, tyctx,
         ));
     }
-    pub(crate) fn load_constant_primitive(&mut self, var_type: &VariableType, value: u128) {
-        match var_type {
-            VariableType::I8 => self.ops.push(BaseIR::LDConstI8(sign_cast!(value, u8, i8))),
-            VariableType::I32 => self
-                .ops
-                .push(BaseIR::LDConstI32(sign_cast!(value, u32, i32))),
-            VariableType::I64 => self
-                .ops
-                .push(BaseIR::LDConstI64(sign_cast!(value, u64, i64))),
-            VariableType::Bool => self.ops.push(BaseIR::LDConstI8((value != 0) as u8 as i8)),
-            _ => todo!("Can't yet load constant primitives of type {var_type:?}!"),
-        }
-    }
     pub(crate) fn call<'ctx>(
         &mut self,
         fn_type: &Ty<'ctx>,
@@ -258,10 +245,7 @@ impl CLRMethod {
                 for (value, target) in targets.iter() {
                     
                     self.ops.extend(crate::statement::handle_operand(discr, &CodegenCtx::new(self,asm,body,*tyctx)));
-                    self.load_constant_primitive(
-                        &VariableType::from_ty(discr.ty(body, *tyctx), *tyctx),
-                        value,
-                    );
+                    self.ops.push(BaseIR::LDConstI64(value as i64));
                     self.ops.push(BaseIR::BEq {
                         target: target.into(),
                     });
@@ -283,7 +267,7 @@ impl CLRMethod {
                 unwind: _,
             } => {
                 self.ops.extend(crate::statement::handle_operand(cond, &CodegenCtx::new(self,asm,body,*tyctx)));
-                self.load_constant_primitive(&VariableType::Bool, if *expected { 1 } else { 0 });
+                self.ops.push(BaseIR::LDConstI32(if *expected { 1 } else { 0 } as i32));
                 self.ops.push(BaseIR::BEq {
                     target: (*target).into(),
                 });

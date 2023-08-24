@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub(crate) enum BaseIR {
     DebugComment(IString),
-    LDConstI8(i8),
+    //LDConstI8(i8),
     LDConstI32(i32),
     LDConstI64(i64),
     LDConstF32(f32),
@@ -92,12 +92,47 @@ impl BaseIR {
             Self::BEq { target } => format!("\tbeq BB_{target}\n"),
             //Self::BGt{target} => format!("\tbgt BB_{target}\n"),
             Self::GoTo { target } => format!("\tbr BB_{target}\n"),
-            Self::LDArg(arg) => format!("\tldarg {arg}\n"),
-            Self::LDArgA(arg) => format!("\tldarga {arg}\n"),
-            Self::STArg(arg) => format!("\tstarg {arg}\n"),
-            Self::LDLoc(arg) => format!("\tldloc {arg}\n"),
-            Self::LDLocA(arg) => format!("\tldloca {arg}\n"),
-            Self::STLoc(arg) => format!("\tstloc {arg}\n"),
+            Self::LDArg(arg) => {
+                match arg{
+                    0..=3 => format!("\tldarg.{arg}\n"),
+                    4..=255 =>format!("\tldarg.s {arg}\n"),
+                    _=>format!("\tldarg {arg}\n"),
+                }
+            },
+            Self::STArg(arg) => {
+                match arg{
+                    0..=255 =>format!("\tstarg.s {arg}\n"),
+                    _=>format!("\ttstarg{arg}\n"),
+                }
+            },
+            Self::LDArgA(arg) => {
+                if *arg < 256{
+                    format!("\tldarga.s {arg}\n")
+                } else{
+                    format!("\tldarga {arg}\n")
+                }
+            },
+            Self::LDLoc(arg) => {
+                match arg{
+                    0..=3 => format!("\tldloc.{arg}\n"),
+                    4..=255 =>format!("\tldloc.s {arg}\n"),
+                    _=>format!("\tldloc {arg}\n"),
+                }
+            },
+            Self::STLoc(arg) => {
+                match arg{
+                    0..=3 => format!("\tstloc.{arg}\n"),
+                    4..=255 =>format!("\tstloc.s {arg}\n"),
+                    _=>format!("\tstloc {arg}\n"),
+                }
+            },
+            Self::LDLocA(arg) => {
+                if *arg < 256{
+                    format!("\tldloca.s {arg}\n")
+                } else{
+                    format!("\tldloca {arg}\n")
+                }
+            },
             Self::Return => "\tret\n".into(),
             Self::Add => "\tadd\n".into(),
             Self::Sub => "\tadd\n".into(),
@@ -112,8 +147,24 @@ impl BaseIR {
             Self::Xor => "\txor\n".into(),
             Self::Or => "\tor\n".into(),
             Self::And => "\tand\n".into(),
-            Self::LDConstI8(i8const) => format!("\tldc.i4.s {i8const}\n"),
-            Self::LDConstI32(i32const) => format!("\tldc.i4 {i32const}\n"),
+            //Self::LDConstI8(i8const) => format!("\tldc.i4.s {i8const}\n"),
+            Self::LDConstI32(i32const) => {
+                match i32const{
+                    -1=>"\tldc.i4.m1".into(),
+                    0..=8=>format!("\tldc.i4.{i32const}\n"),
+                    9..=127=>format!("\tldc.i4.s {i32const}\n"),
+                    _=>format!("\tldc.i4 {i32const}\n"),
+                }
+            },
+            Self::LDConstI64(i32const) => {
+                match i32const{
+                    -1=>"\tldc.i4.m1".into(),
+                    0..=8=>format!("\tldc.i4.{i32const}\n"),
+                    9..=127=>format!("\tldc.i4.s {i32const}\n"),
+                    127..=32_767=>format!("\tldc.i4 {i32const}\n"),
+                    _=>format!("\tldc.i8 {i32const}\n"),
+                }
+            },
             Self::LDConstI64(i64const) => format!("\tldc.i8 {i64const}\n"),
             Self::LDConstF32(f32const) => format!("\tldc.r4 {f32const}\n"),
             Self::ConvF32 => "\tconv.r4\n".into(),
