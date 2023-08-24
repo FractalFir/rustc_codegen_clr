@@ -61,7 +61,7 @@ impl FunctionSignature {
             output: output.clone(),
         }
     }
-    pub(crate) fn from_poly_sig(sig: PolyFnSig, tyctx: TyCtxt) -> Option<Self> {
+    pub(crate) fn from_poly_sig<'ctx>(sig: PolyFnSig<'ctx>, tyctx: TyCtxt<'ctx>) -> Option<Self> {
         let inputs = sig
             .inputs()
             // `skip_binder` is `a riskiy thing` TODO: Figure out to which kind of issues it may lead!

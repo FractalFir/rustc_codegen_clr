@@ -1,7 +1,10 @@
-use crate::{Assembly, BaseIR, FunctionSignature, IString, VariableType,statement::CodegenCtx};
+use crate::{statement::CodegenCtx, Assembly, BaseIR, FunctionSignature, IString, VariableType};
 use rustc_index::IndexVec;
 use rustc_middle::{
-    mir::{interpret::ConstValue, ConstantKind, Operand, Statement, Terminator, TerminatorKind,Body, Local, LocalDecl,Place,Constant},
+    mir::{
+        interpret::ConstValue, Body, Constant, ConstantKind, Local, LocalDecl, Operand, Place,
+        Statement, Terminator, TerminatorKind,
+    },
     ty::{Instance, ParamEnv, Ty, TyCtxt, TyKind},
 };
 use serde::{Deserialize, Serialize};
@@ -88,7 +91,11 @@ impl CLRMethod {
     fn name(&self) -> &str {
         &self.name
     }
-    pub(crate) fn add_locals(&mut self, locals: &IndexVec<Local, LocalDecl>, tyctx: TyCtxt) {
+    pub(crate) fn add_locals<'ctx>(
+        &mut self,
+        locals: &IndexVec<Local, LocalDecl<'ctx>>,
+        tyctx: TyCtxt<'ctx>,
+    ) {
         let mut new_locals: Vec<VariableType> = Vec::with_capacity(locals.len());
         for (local_id, local) in locals.iter().enumerate() {
             let placement = self.local_id_placement(local_id as u32);
@@ -119,10 +126,9 @@ impl CLRMethod {
                 loc_type = local.il_name()
             ))
         }
-        if crate::ALWAYS_INIT_LOCALS{
+        if crate::ALWAYS_INIT_LOCALS {
             format!("\t.locals init({locals}\n\t)").into()
-        }
-        else{
+        } else {
             format!("\t.locals ({locals}\n\t)").into()
         }
     }
@@ -159,15 +165,14 @@ impl CLRMethod {
     }
     pub(crate) fn local_id_placement(&self, local: u32) -> LocalPlacement {
         // I assume local 0 is supposed to be the return value. TODO: check if this is always the case.
-        let argc =  self.sig.inputs().len() as u32;
-            if local == 0 {
-                LocalPlacement::Var(0)
-            } else if local - 1 < argc {
-                LocalPlacement::Arg(local - 1)
-            } else {
-                LocalPlacement::Var(local - argc)
-            }
-
+        let argc = self.sig.inputs().len() as u32;
+        if local == 0 {
+            LocalPlacement::Var(0)
+        } else if local - 1 < argc {
+            LocalPlacement::Arg(local - 1)
+        } else {
+            LocalPlacement::Var(local - argc)
+        }
     }
     pub(crate) fn add_statement<'ctx>(
         &mut self,
@@ -190,8 +195,8 @@ impl CLRMethod {
         fn_type: &Ty<'ctx>,
         body: &'ctx Body<'ctx>,
         tyctx: &TyCtxt<'ctx>,
-        args: &[Operand],
-        destination: &Place,
+        args: &[Operand<'ctx>],
+        destination: &Place<'ctx>,
         asm: &Assembly,
     ) -> Vec<BaseIR> {
         let instance = if let TyKind::FnDef(def_id, subst_ref) = fn_type.kind() {
@@ -243,8 +248,10 @@ impl CLRMethod {
             }
             TerminatorKind::SwitchInt { discr, targets } => {
                 for (value, target) in targets.iter() {
-                    
-                    self.ops.extend(crate::statement::handle_operand(discr, &CodegenCtx::new(self,asm,body,*tyctx)));
+                    self.ops.extend(crate::statement::handle_operand(
+                        discr,
+                        &CodegenCtx::new(self, asm, body, *tyctx),
+                    ));
                     self.ops.push(BaseIR::LDConstI64(value as i64));
                     self.ops.push(BaseIR::BEq {
                         target: target.into(),
@@ -266,8 +273,12 @@ impl CLRMethod {
                 target,
                 unwind: _,
             } => {
-                self.ops.extend(crate::statement::handle_operand(cond, &CodegenCtx::new(self,asm,body,*tyctx)));
-                self.ops.push(BaseIR::LDConstI32(if *expected { 1 } else { 0 } as i32));
+                self.ops.extend(crate::statement::handle_operand(
+                    cond,
+                    &CodegenCtx::new(self, asm, body, *tyctx),
+                ));
+                self.ops
+                    .push(BaseIR::LDConstI32(if *expected { 1 } else { 0 } as i32));
                 self.ops.push(BaseIR::BEq {
                     target: (*target).into(),
                 });

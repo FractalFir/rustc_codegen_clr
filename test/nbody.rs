@@ -1,8 +1,32 @@
 #[derive(Copy,Clone,Default)]
-struct Vector3{
+pub struct Vector3{
     x:f32,
     y:f32,
     z:f32,
+}
+impl Vector3{
+    fn distance(&self,other:&Self)->f32{
+        let diff = *self - *other;
+        (diff.x*diff.x+diff.y*diff.y+diff.z*diff.z).sqrt()
+    }
+}
+impl std::ops::Add<Vector3> for Vector3{
+    type Output = Vector3;
+    fn add(self, rhs:Vector3) -> Vector3{
+        Self{x:self.x + rhs.x,y:self.y + rhs.y,z:self.z + rhs.z}
+    }
+}
+impl std::ops::Sub<Vector3> for Vector3{
+    type Output = Vector3;
+    fn sub(self, rhs:Vector3) -> Vector3{
+        Self{x:self.x - rhs.x,y:self.y - rhs.y,z:self.z - rhs.z}
+    }
+}
+impl std::ops::Mul<f32> for Vector3{
+    type Output = Vector3;
+    fn mul(self, rhs:f32) -> Vector3{
+        Self{x:self.x*rhs,y:self.y*rhs,z:self.z*rhs}
+    }
 }
 #[derive(Copy,Clone,Default)]
 pub struct AstronomicalBody{
@@ -10,14 +34,91 @@ pub struct AstronomicalBody{
     velocity:Vector3,
     mass:f32
 }
+impl AstronomicalBody{
+    fn distance(&self,other:&Self)->f32{
+        self.position.distance(&other.position)
+    }
+    fn handle_interaction(&mut self, other:&Self){
+        let distance = self.distance(other);
+        let gravity = ((self.mass + other.mass)/(distance*distance))/self.mass;
+        let dir = self.position - other.position;
+        self.velocity = self.velocity + (dir * gravity);
+    }
+    fn apply_velociy(&mut self){
+        self.position = self.position + self.velocity;
+        self.velocity = Vector3::default();
+    }
+}
+struct RNG{
+    state:i32,
+}
+impl RNG{
+    fn next_i16(&mut self)->i16{
+         self.state = (214013*self.state+2531011); 
+         return ((self.state>>16)&0xFFFF) as i16; 
+    }
+    fn next_f32(&mut self)->f32{
+        let fract = (self.next_i16() as f32 / 32768.0);
+        self.next_i16() as f32 + fract
+    }
+    fn seeded(seed:i32)->Self{
+        Self{state:seed}    
+    }
+}
+
 #[no_mangle]
 pub extern fn init_10body()->[AstronomicalBody;10]{
-    let boides = [AstronomicalBody::default();10];
+    let mut boides = [AstronomicalBody::default();10];
     //let test = Some(0);
-    let mut body_idx = 0;
+    let mut a_body_idx = 0;
+   
     let nbody_len = boides.len();
-    while body_idx < nbody_len{
-        body_idx += 1;
+    let mut rng = RNG::seeded(-85119085);
+    while a_body_idx < nbody_len{
+        boides[a_body_idx].position.x = rng.next_f32();
+        boides[a_body_idx].position.y = rng.next_f32();
+        boides[a_body_idx].position.z = rng.next_f32();
+        boides[a_body_idx].velocity.x = rng.next_f32()/1000.0;
+        boides[a_body_idx].velocity.y = rng.next_f32()/1000.0;
+        boides[a_body_idx].velocity.z = rng.next_f32()/1000.0;
+        boides[a_body_idx].mass = rng.next_f32()/100_000.0;
+        a_body_idx += 1;
     }
+    //println!("DONE!");
     boides 
+}
+#[no_mangle]
+pub extern fn tick_10body(boides:&mut [AstronomicalBody;10],tick_count:usize){
+    let mut a_body_idx = 0;
+    let mut b_body_idx = 0;
+    while 0 < tick_count{
+    while a_body_idx <  boides.len(){
+         let mut a_body = boides[a_body_idx];
+         while b_body_idx <  boides.len(){
+            if b_body_idx == a_body_idx{
+                continue;
+            }
+            let b_body = &boides[a_body_idx];
+            a_body.handle_interaction(b_body);
+            b_body_idx += 1;
+        }
+        a_body.apply_velociy();
+        a_body_idx += 1;
+    }}
+}
+#[no_mangle]
+pub extern fn get_position_10body(boides:&mut [AstronomicalBody;10],index:usize)->Vector3{
+    boides[index].position
+}
+#[no_mangle]
+pub extern fn get_x(vector:Vector3,index:usize)->f32{
+   vector.x
+}
+#[no_mangle]
+pub extern fn get_y(vector:Vector3,index:usize)->f32{
+   vector.y
+}
+#[no_mangle]
+pub extern fn get_z(vector:Vector3,index:usize)->f32{
+   vector.z
 }

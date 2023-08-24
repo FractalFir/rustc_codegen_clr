@@ -42,6 +42,7 @@ pub(crate) enum VariableType {
     Struct(IString),
     Tuple(Vec<Self>),
     Generic(IString),
+    StrSlice,
 }
 
 impl VariableType {
@@ -58,6 +59,13 @@ impl VariableType {
             _ => todo!("Can't deference a pointer to type {self:?}"),
         }
     }
+    pub(crate) fn element_type(&self) -> Option<Self> {
+        match self {
+            Self::Array { element, .. } => Some(element.as_ref().clone()),
+            Self::Slice(element) => Some(element.as_ref().clone()),
+            _ => None,
+        }
+    }
     pub(crate) fn sizeof_op(&self) -> BaseIR {
         match self {
             Self::Ref(_) | Self::RefMut(_) => BaseIR::LDIndI,
@@ -67,7 +75,8 @@ impl VariableType {
             Self::F32 => BaseIR::LDConstI32(std::mem::size_of::<f32>() as i32),
             Self::Struct(name) => BaseIR::SizeOf(name.clone()),
             Self::Array { .. } => BaseIR::SizeOf(self.il_name()),
-            _ => todo!("Can't deference a pointer to type {self:?}"),
+            Self::Slice { .. } => BaseIR::SizeOf(self.il_name()),
+            _ => todo!("Can't get the size of a type {self:?}"),
         }
     }
     pub(crate) fn set_pointed_op(&self) -> BaseIR {
@@ -92,7 +101,7 @@ impl VariableType {
             _ => None,
         }
     }
-    pub(crate) fn from_ty(ty: Ty, tyctx: TyCtxt) -> Self {
+    pub(crate) fn from_ty<'ctx>(ty: Ty<'ctx>, tyctx: TyCtxt<'ctx>) -> Self {
         println!("ty:{ty:?}");
         match ty.kind() {
             TyKind::Int(IntTy::I8) => VariableType::I8,
@@ -112,7 +121,7 @@ impl VariableType {
             TyKind::Bool => VariableType::Bool,
             TyKind::Char => todo!("Can't handle chars yet!"),
             TyKind::Foreign(_ftype) => todo!("Can't handle foreign types yet!"),
-            TyKind::Str => todo!("Can't handle string slices yet!"),
+            TyKind::Str => VariableType::StrSlice,
             TyKind::Array(element_type, length) => Self::Array {
                 element: Box::new(Self::from_ty(*element_type, tyctx)),
                 length: {
@@ -169,7 +178,13 @@ impl VariableType {
             TyKind::GeneratorWitness(_) => todo!("Can't handle generator types yet!"),
             TyKind::GeneratorWitnessMIR(_, _) => todo!("Can't handle generator types yet!"),
             TyKind::Never => todo!("Can't handle never types yet!"),
-            TyKind::Alias(_, _) => todo!("Can't handle type aliases yet!"),
+            TyKind::Alias(alias_kind, alias_type) => {
+                let alias = alias_type.self_ty(); //alias_type.to_ty(tyctx);
+                                                  //TODO: handle type aliases!
+                let alias = Self::from_ty(alias, tyctx);
+                //todo!("Can't handle type aliases yet! AliasKind: {alias_kind:?} alias:{alias:?}")
+                alias
+            }
             TyKind::Placeholder(_) => todo!("Can't handle placeholder types yet!"),
             TyKind::Param(_inner) => VariableType::Generic(format!("inner:?").into()), //VariableType::from_ty(inner.to_ty(tyctx),tyctx),
             TyKind::Infer(_) => todo!("Can't handle infered types yet!"),
@@ -197,6 +212,7 @@ impl VariableType {
     }
     pub(crate) fn il_name(&self) -> IString {
         match self {
+            Self::StrSlice => "strslice".into(),
             Self::Generic(typename) => typename.clone().into(),
             Self::Void => "void".into(),
             Self::I8 => "int8".into(),

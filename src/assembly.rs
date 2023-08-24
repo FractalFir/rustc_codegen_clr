@@ -6,6 +6,7 @@ use rustc_middle::{
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+const LIBC_IMPL: &str = include_str!("libc.il");
 #[derive(Clone, Debug, Serialize, Deserialize)]
 enum Visiblity {
     Private,
@@ -41,7 +42,61 @@ fn array_indexers(array_name: &str, element: &VariableType) -> String {
         \t{set_op}\
 		\t\tret\n\
      }}\n");
-    format!("{getter}{setter}")
+    let adresser = format!("\
+    \t.method public hidebysig specialname instance {element_type}* adress_Item(native int index){{\n\
+		\t\tldarg.0\n\
+		\t\tldflda {element_type} {array_name}::arr\n\
+        \t\tldarg.1\n\
+        \t\tsizeof {element_type}\n\
+        \t\tmul\n\
+        \t\tadd\n\
+		\t\tret\n\
+     }}\n"
+    );
+    format!("{getter}{setter}{adresser}")
+}
+fn slice_indexers(slice_name: &str, element: &VariableType) -> String {
+    //let deref_op = "ldind.i4";
+    let element_type = &element.il_name();
+    let deref_op = element.deref_op().clr_ir();
+    let set_op = element.set_pointed_op().clr_ir();
+    let getter = format!(
+        "\
+    \t.method public hidebysig specialname instance {element_type} get_Item(native int index){{\n\
+		\t\tldarg.0\n\
+		\t\tldfld {element_type}* {slice_name}::ptr\n\
+        \t\tldarg.1\n\
+        \t\tsizeof {element_type}\n\
+        \t\tmul\n\
+        \t\tadd\n\
+        \t{deref_op}\
+		\t\tret\n\
+     }}\n"
+    );
+    let setter = format!("\
+     \t.method public hidebysig specialname instance void set_Item(native int index,{element_type} 'value'){{\n\
+		\t\tldarg.0\n\
+		\t\tldfld {element_type}* {slice_name}::ptr\n\
+        \t\tldarg.1\n\
+        \t\tsizeof {element_type}\n\
+        \t\tmul\n\
+        \t\tadd\n\
+        \t\tldarg.2\n\
+        \t{set_op}\
+		\t\tret\n\
+     }}\n");
+    let adresser = format!("\
+    \t.method public hidebysig specialname instance {element_type}* item_Adress(native int index){{\n\
+		\t\tldarg.0\n\
+		\t\tldfld {element_type}* {slice_name}::ptr\n\
+        \t\tldarg.1\n\
+        \t\tsizeof {element_type}\n\
+        \t\tmul\n\
+        \t\tadd\n\
+		\t\tret\n\
+     }}\n"
+    );
+    format!("{getter}{setter}{adresser}")
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 enum CLRType {
@@ -98,7 +153,10 @@ impl CLRType {
                 let indexers = array_indexers(name,element);
             format!(".class public sequential {name} extends [System.Runtime]System.ValueType{{\n\t.pack 0\n\t.size {size}\n\t.field public {element_il} arr\n{indexers}}}\n",element_il= element.il_name(),size = asm.sizeof_type(element)*length)
             },
-            Self::Slice(element)=>format!(".class public sequential {name} extends [System.Runtime]System.ValueType{{\n\t.field public {element_il}* ptr\n\t.field public native int cap\n}}\n",element_il= element.il_name()),
+            Self::Slice(element)=>{
+                let indexers = slice_indexers(name,element);
+                format!(".class public sequential {name} extends [System.Runtime]System.ValueType{{\n\t.field public {element_il}* ptr\n\t.field public native int cap\n{indexers}}}\n",element_il= element.il_name())
+            },
         }.into()
     }
 }
@@ -136,6 +194,7 @@ impl Assembly {
                 CLRType::Array { element, length } => self.sizeof_type(&element) * length,
                 CLRType::Slice(_element) => panic!("Can't compute sizeof silice at compile time!"),
             },
+            VariableType::StrSlice => panic!("Can't compute sizeof string silice at compile time!"),
             VariableType::Generic(_) => todo!("Can't calcuate the size of a geneic!"),
         }
     }
@@ -173,9 +232,13 @@ impl Assembly {
         }
         println!("\nty_count:{}\n", self.types.len());
         //let methods = format!("{methods}");
-        format!(".assembly {name}{{}}\n{types}\n{methods}", name = self.name).into()
+        format!(
+            ".assembly {name}{{}}\n{LIBC_IMPL}\n{types}\n{methods}",
+            name = self.name
+        )
+        .into()
     }
-    pub(crate) fn add_type(&mut self, ty: Ty, tyctx: &TyCtxt) {
+    pub(crate) fn add_type<'ctx>(&mut self, ty: Ty<'ctx>, tyctx: &TyCtxt<'ctx>) {
         match ty.kind() {
             TyKind::Adt(adt_def, _subst) => {
                 // TODO: find a better way to get a name of an ADT!
@@ -218,10 +281,10 @@ impl Assembly {
             _ => (),
         }
     }
-    pub(crate) fn add_types_from_locals(
+    pub(crate) fn add_types_from_locals<'ctx>(
         &mut self,
-        locals: &IndexVec<Local, LocalDecl>,
-        tyctx: &TyCtxt,
+        locals: &IndexVec<Local, LocalDecl<'ctx>>,
+        tyctx: &TyCtxt<'ctx>,
     ) {
         for local in locals.iter() {
             self.add_type(local.ty, tyctx);

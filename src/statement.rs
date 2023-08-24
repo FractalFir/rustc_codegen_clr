@@ -9,6 +9,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::{Const, ParamEnv, TyCtxt};
 use rustc_target::abi::FieldIdx;
+#[macro_export]
 macro_rules! sign_cast {
     ($var:ident,$src:ty,$dest:ty) => {
         (<$dest>::from_ne_bytes(($var as $src).to_ne_bytes()))
@@ -49,15 +50,10 @@ impl<'tctx, 'local_ctx> CodegenCtx<'tctx, 'local_ctx> {
     pub(crate) fn get_local_type(&self, local: u32) -> &VariableType {
         self.clr_method.get_type_of_local(local)
     }
-    pub(crate) fn place_get_ops(&self, place: &Place) -> Vec<BaseIR> {
-        projection_get(
-            place,
-            self.get_local_type(place.local.into()),
-            self,
-        )
-        
+    pub(crate) fn place_get_ops(&self, place: &Place<'tctx>) -> Vec<BaseIR> {
+        projection_get(place, self.get_local_type(place.local.into()), self)
     }
-    pub(crate) fn place_adress_ops(&self, place: &Place) -> Vec<BaseIR> {
+    pub(crate) fn place_adress_ops(&self, place: &Place<'tctx>) -> Vec<BaseIR> {
         if place.projection.is_empty() {
             vec![
                 match self.clr_method.local_id_placement(place.local.into()) {
@@ -66,20 +62,12 @@ impl<'tctx, 'local_ctx> CodegenCtx<'tctx, 'local_ctx> {
                 },
             ]
         } else {
-            projection_adress(
-                place.projection,
-                self.get_local_type(place.local.into()),
-                self,
-            )
+            projection_adress(place, self.get_local_type(place.local.into()), self)
         }
     }
-    pub(crate) fn place_set_ops(&self, place: &Place) -> (Vec<BaseIR>, Vec<BaseIR>) {
+    pub(crate) fn place_set_ops(&self, place: &Place<'tctx>) -> (Vec<BaseIR>, Vec<BaseIR>) {
         //Empty projection, just set the local
-        projection_set(
-            place,
-            self.get_local_type(place.local.into()),
-            self,
-        )
+        projection_set(place, self.get_local_type(place.local.into()), self)
     }
 }
 fn load_const_scalar(scalar: Scalar, scalar_type: VariableType) -> Vec<BaseIR> {
@@ -109,7 +97,10 @@ fn load_const_value(const_val: ConstValue, const_ty: VariableType) -> Vec<BaseIR
         _ => todo!("Unhandled const value {const_val:?}"),
     }
 }
-fn handle_constant(constant: &Constant, codegen_ctx: &CodegenCtx) -> Vec<BaseIR> {
+fn handle_constant<'ctx>(
+    constant: &Constant<'ctx>,
+    codegen_ctx: &CodegenCtx<'ctx, '_>,
+) -> Vec<BaseIR> {
     let const_kind = constant.literal;
     match const_kind {
         ConstantKind::Val(value, const_ty) => {
@@ -118,32 +109,43 @@ fn handle_constant(constant: &Constant, codegen_ctx: &CodegenCtx) -> Vec<BaseIR>
         _ => todo!("Unhanded const kind {const_kind:?}!"),
     }
 }
-pub(crate) fn handle_operand(operand: &Operand, codegen_ctx: &CodegenCtx) -> Vec<BaseIR> {
+pub(crate) fn handle_operand<'ctx>(
+    operand: &Operand<'ctx>,
+    codegen_ctx: &CodegenCtx<'ctx, '_>,
+) -> Vec<BaseIR> {
     match operand {
         Operand::Copy(place) => codegen_ctx.place_get_ops(place),
         Operand::Move(place) => codegen_ctx.place_get_ops(place),
         Operand::Constant(const_val) => handle_constant(const_val.as_ref(), codegen_ctx),
     }
 }
-fn handle_binop(binop: BinOp, a: &Operand, b: &Operand, codegen_ctx: &CodegenCtx) -> Vec<BaseIR> {
+fn handle_binop<'ctx>(
+    binop: BinOp,
+    a: &Operand<'ctx>,
+    b: &Operand<'ctx>,
+    codegen_ctx: &CodegenCtx<'ctx, '_>,
+) -> Vec<BaseIR> {
     let mut ops = Vec::new();
     ops.extend(handle_operand(a, codegen_ctx));
     ops.extend(handle_operand(b, codegen_ctx));
     ops.push(match binop {
-        BinOp::Add => BaseIR::Add,
-        BinOp::Sub => BaseIR::Sub,
-        BinOp::Mul => BaseIR::Mul,
-        BinOp::Shl => BaseIR::Shl,
-        BinOp::Shr => BaseIR::Shr,
+        BinOp::Add | BinOp::AddUnchecked => BaseIR::Add,
+        BinOp::Sub | BinOp::SubUnchecked => BaseIR::Sub,
+        BinOp::Mul | BinOp::MulUnchecked => BaseIR::Mul,
+        BinOp::Shl | BinOp::ShlUnchecked => BaseIR::Shl,
+        BinOp::Shr | BinOp::ShrUnchecked => BaseIR::Shr,
         BinOp::Eq => BaseIR::Eq,
         BinOp::Ne => BaseIR::NEq,
         BinOp::Gt => BaseIR::Gt,
+        BinOp::Lt => BaseIR::Lt,
+        BinOp::Ge => BaseIR::Ge,
+        BinOp::Le => BaseIR::Le,
         BinOp::Rem => BaseIR::Rem,
         BinOp::BitXor => BaseIR::Xor,
         BinOp::BitOr => BaseIR::Or,
         BinOp::BitAnd => BaseIR::And,
         BinOp::Div => BaseIR::Div,
-        _ => todo!("Unknown binop:{binop:?}"),
+        BinOp::Offset => todo!("Can't yet handle the pointer offset operator!"),
     });
     ops
 }
@@ -168,13 +170,24 @@ fn handle_convert(src: &VariableType, dest: &VariableType) -> Vec<BaseIR> {
             VariableType::I32,
         ) => vec![BaseIR::ConvI32Checked],
         (VariableType::F32, VariableType::I8) => vec![BaseIR::ConvI8],
-        (VariableType::I32, VariableType::F32) => vec![BaseIR::ConvF32],
+        (
+            VariableType::U8
+            | VariableType::I8
+            | VariableType::U16
+            | VariableType::I16
+            | VariableType::U32
+            | VariableType::I32,
+            VariableType::F32,
+        ) => vec![BaseIR::ConvF32],
+        (VariableType::F32 | VariableType::I32 | VariableType::U32, VariableType::I16) => {
+            vec![BaseIR::ConvI16Checked]
+        }
         _ => todo!("Can't convert type {src:?} to {dest:?}"),
     }
 }
 fn handle_agregate<'tyctx>(
     codegen_ctx: &CodegenCtx<'tyctx, '_>,
-    target_location: &Place,
+    target_location: &Place<'tyctx>,
     aggregate: &AggregateKind<'tyctx>,
     fields: &IndexVec<FieldIdx, Operand<'tyctx>>,
 ) -> Vec<BaseIR> {
@@ -257,7 +270,7 @@ fn const_to_usize<'tyctx>(constant: &Const<'tyctx>, tyctx: TyCtxt<'tyctx>) -> us
 fn handle_rvalue<'tyctx>(
     rvalue: &Rvalue<'tyctx>,
     codegen_ctx: &CodegenCtx<'tyctx, '_>,
-    target_location: &Place,
+    target_location: &Place<'tyctx>,
 ) -> Vec<BaseIR> {
     match rvalue {
         Rvalue::BinaryOp(binop, operands) => {
@@ -323,7 +336,10 @@ fn handle_rvalue<'tyctx>(
             array_init
         }
         Rvalue::ThreadLocalRef(_) => todo!("Can't handle thread local data yet!"),
-        Rvalue::Ref(_, _, _) => todo!("Can't create referneces yet!"),
+        Rvalue::Ref(_region, _kind, place) => {
+            codegen_ctx.place_adress_ops(place)
+            //todo!("Can't create referneces yet!")
+        }
         Rvalue::AddressOf(_, _) => todo!("Can't get adress of things yet!"),
         Rvalue::Len(palce) => {
             let ty = VariableType::from_ty(
@@ -338,6 +354,9 @@ fn handle_rvalue<'tyctx>(
         Rvalue::CopyForDeref(place) => codegen_ctx.place_get_ops(place),
         Rvalue::Discriminant(_) => todo!("Can't yet compute discriminat types!"),
         Rvalue::ShallowInitBox(_, _) => todo!("Can't yet shalowly initalize a box!"),
+        Rvalue::Cast(CastKind::PointerCoercion(ptr), operand, _) => {
+            handle_operand(operand, codegen_ctx)
+        }
         Rvalue::Cast(cast_kind, _, _) => todo!("Can't yet handle casts of type {cast_kind:?}"),
     }
 }
