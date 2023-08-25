@@ -2,6 +2,7 @@ use crate::{
     projection::{projection_adress, projection_get, projection_set},
     Assembly, BaseIR, CLRMethod, LocalPlacement, VariableType,
 };
+use rustc_middle::mir::NullOp;
 use rustc_index::IndexVec;
 use rustc_middle::mir::{
     interpret::ConstValue, interpret::Scalar, AggregateKind, BinOp, Body, CastKind, Constant,
@@ -88,12 +89,14 @@ fn load_const_scalar(scalar: Scalar, scalar_type: VariableType) -> Vec<BaseIR> {
         VariableType::I64 => vec![BaseIR::LDConstI64(sign_cast!(scalar_u128, u64, i64))],
         VariableType::U64 => vec![BaseIR::LDConstI64(scalar_u128 as i64)],
         VariableType::USize => vec![BaseIR::LDConstI64(scalar_u128 as i64)],
+        VariableType::Enum(_) => vec![BaseIR::LDConstI32((scalar_u128 != 0) as u8 as i32)],
         _ => todo!("can't yet handle a scalar of type {scalar_type:?}!"),
     }
 }
 fn load_const_value(const_val: ConstValue, const_ty: VariableType) -> Vec<BaseIR> {
     match const_val {
         ConstValue::Scalar(scalar) => load_const_scalar(scalar, const_ty),
+        ConstValue::ZeroSized => vec![BaseIR::DebugComment("ZeroSized!".into())],
         _ => todo!("Unhandled const value {const_val:?}"),
     }
 }
@@ -106,6 +109,7 @@ fn handle_constant<'ctx>(
         ConstantKind::Val(value, const_ty) => {
             load_const_value(value, VariableType::from_ty(const_ty, *codegen_ctx.tyctx()))
         }
+        ConstantKind::Unevaluated(a,b)=>vec![BaseIR::DebugComment(format!("{a:?} {b:?}").into())],
         _ => todo!("Unhanded const kind {const_kind:?}!"),
     }
 }
@@ -257,6 +261,7 @@ fn handle_agregate<'tyctx>(
                     agregate_construction.extend(codegen_ctx.place_get_ops(target_location));
                     agregate_construction
                 }
+                VariableType::Enum(enum_name)=>vec![BaseIR::DebugComment(enum_name)],
                 _ => todo!("Unhandled adt type {adt_type:?}"),
             }
         }
@@ -350,7 +355,16 @@ fn handle_rvalue<'tyctx>(
         }
         Rvalue::CheckedBinaryOp(_, _) => todo!("Can't yet preform checked binary operations"),
         Rvalue::UnaryOp(_, _) => todo!("Can't yet preform unary ops!"),
-        Rvalue::NullaryOp(_, _) => todo!("Can't yet preform nulray ops!"),
+        Rvalue::NullaryOp(null_op, op_type) => {
+            let op_type = VariableType::from_ty(*op_type,*codegen_ctx.tyctx());
+            match null_op{
+                NullOp::SizeOf => vec![op_type.sizeof_op()],
+                //TODO: actualy calcualte algiment!
+                NullOp::AlignOf => vec![BaseIR::LDConstI32(8)],
+                _=>todo!("Unsuiported nullary op {null_op:?}")
+            }
+            //todo!("Can't yet preform nulray ops!")
+        },
         Rvalue::CopyForDeref(place) => codegen_ctx.place_get_ops(place),
         Rvalue::Discriminant(_) => todo!("Can't yet compute discriminat types!"),
         Rvalue::ShallowInitBox(_, _) => todo!("Can't yet shalowly initalize a box!"),

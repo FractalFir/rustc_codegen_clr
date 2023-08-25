@@ -36,10 +36,12 @@ pub(crate) enum VariableType {
     F64,
     Bool,
     Ref(Box<Self>),
+    Pointer(Box<Self>),
     RefMut(Box<Self>),
     Array { element: Box<Self>, length: usize },
     Slice(Box<Self>),
     Struct(IString),
+    Enum(IString),
     Tuple(Vec<Self>),
     Generic(IString),
     StrSlice,
@@ -76,6 +78,7 @@ impl VariableType {
             Self::Struct(name) => BaseIR::SizeOf(name.clone()),
             Self::Array { .. } => BaseIR::SizeOf(self.il_name()),
             Self::Slice { .. } => BaseIR::SizeOf(self.il_name()),
+            Self::Generic(name)=>BaseIR::SizeOf(name.clone()),
             _ => todo!("Can't get the size of a type {self:?}"),
         }
     }
@@ -143,10 +146,14 @@ impl VariableType {
                 match adt.adt_kind() {
                     AdtKind::Struct => VariableType::Struct(name.into()),
                     AdtKind::Union => todo!("Can't yet handle unions"),
-                    AdtKind::Enum => todo!("Can't yet handle enum"),
+                    AdtKind::Enum =>  VariableType::Enum(name.into()),//todo!("Can't yet handle enum"),
                 }
             }
-            TyKind::RawPtr(_target_type) => todo!("Can't handle pointers yet!"),
+            TyKind::RawPtr(type_and_mut) => {
+                let tpe = type_and_mut.ty;
+                Self::Pointer(Box::new(Self::from_ty(tpe,tyctx)))
+                //todo!("Can't handle pointers yet!")
+            },
             TyKind::FnPtr(_sig) => todo!("Can't handle function pointers yet!"),
             TyKind::Ref(region, ref_type, mutability) => {
                 // There is no such concept as lifetimes in CLR
@@ -232,7 +239,9 @@ impl VariableType {
             Self::Bool => "bool".into(),
             Self::Ref(inner) => format!("{inner}*", inner = inner.il_name()),
             Self::RefMut(inner) => format!("{inner}*", inner = inner.il_name()),
+            Self::Pointer(inner) => format!("{inner}*", inner = inner.il_name()),
             Self::Struct(name) => (*name).clone().into(),
+            Self::Enum(name) => (*name).clone().into(),
             Self::Array { element, length } => format!(
                 "'RArray_{element_il}_{length}'",
                 element_il = element.il_name().replace('\'', "")

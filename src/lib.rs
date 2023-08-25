@@ -8,7 +8,15 @@ extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
-
+use rustc_middle::ty::{Binder,BoundVariableKind};
+fn skip_binder_if_no_generic_types<T>(binder:Binder<T>)->Option<T>{
+    if binder.bound_vars().iter().any(|bound_var_kind|matches!(bound_var_kind,BoundVariableKind::Ty(_))){
+        return None;
+    }
+    else{
+        Some(binder.skip_binder())
+    }
+}
 use rustc_codegen_ssa::{
     traits::CodegenBackend, CodegenResults, CompiledModule, CrateInfo, ModuleKind,
 };
@@ -62,18 +70,14 @@ impl FunctionSignature {
         }
     }
     pub(crate) fn from_poly_sig<'ctx>(sig: PolyFnSig<'ctx>, tyctx: TyCtxt<'ctx>) -> Option<Self> {
-        let inputs = sig
+        let inputs = skip_binder_if_no_generic_types(sig
             .inputs()
-            // `skip_binder` is `a riskiy thing` TODO: Figure out to which kind of issues it may lead!
-            .skip_binder()
-            //.no_bound_vars()?
+            )?
             .iter()
             .map(|v| VariableType::from_ty(*v, tyctx))
             .collect();
         let output = VariableType::from_ty(
-            sig.output()
-                // `skip_binder` is `a riskiy thing` TODO: Figure out to which kind of issues it may lead!
-                .skip_binder(), //.no_bound_vars()?
+            skip_binder_if_no_generic_types(sig.output())?,
             tyctx,
         );
         Some(Self { inputs, output })

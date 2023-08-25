@@ -179,8 +179,8 @@ impl Assembly {
             VariableType::ISize
             | VariableType::USize
             | VariableType::Ref(_)
-            | VariableType::RefMut(_)
-            | VariableType::Slice(_) => self.size_t as usize,
+            | VariableType::RefMut(_)  | VariableType::Pointer(_)=> self.size_t as usize,
+            VariableType::Slice(_) => (self.size_t + self.size_t)as usize,
             VariableType::Array { element, length } => self.sizeof_type(element) * length,
             VariableType::Tuple(elements) => elements
                 .iter()
@@ -194,6 +194,7 @@ impl Assembly {
                 CLRType::Array { element, length } => self.sizeof_type(&element) * length,
                 CLRType::Slice(_element) => panic!("Can't compute sizeof silice at compile time!"),
             },
+            VariableType::Enum(_enum_name) =>panic!("Can't yet compute sizeof enum at compile time!"),
             VariableType::StrSlice => panic!("Can't compute sizeof string silice at compile time!"),
             VariableType::Generic(_) => todo!("Can't calcuate the size of a geneic!"),
         }

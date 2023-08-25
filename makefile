@@ -4,6 +4,8 @@ RUSTC = rustc
 DEBUGER = #echo n > gdb -ex='set confirm on' -ex=run -ex=quit --args 
 RUST_FLAGS = --crate-type lib
 test: build_backend identy branches binops casts types calls references structs libc nbody
+cleanup:
+	rm ./*.mir
 calls:
 	cd test && $(DEBUGER) rustc $(RUST_FLAGS) -O -Z codegen-backend=$(CODEGEN_BACKEND) calls.rs && \
 	ilasm /dll libcalls.rlib && \
