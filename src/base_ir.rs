@@ -90,6 +90,14 @@ pub(crate) enum BaseIR {
     InitObj(IString),
 }
 impl BaseIR {
+    pub(crate) fn remove_void_local(&mut self,void_locals:&[usize]){
+        match self{
+            Self::LDLoc(local) => if void_locals.iter().any(|void_local|*void_local as u32 == *local){*self = BaseIR::Nop;},
+            Self::LDLocA(local) => if void_locals.iter().any(|void_local|*void_local as u32 == *local){*self = BaseIR::Nop;},
+            Self::STLoc(local) => if void_locals.iter().any(|void_local|*void_local as u32 == *local){*self = BaseIR::Nop;},
+            _=>(),
+        }
+    }
     pub(crate) fn clr_ir(&self) -> IString {
         match self {
             Self::BBLabel { bb_id } => format!("\tBB_{bb_id}:\n"),

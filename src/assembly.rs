@@ -243,7 +243,7 @@ impl Assembly {
         match ty.kind() {
             TyKind::Adt(adt_def, _subst) => {
                 // TODO: find a better way to get a name of an ADT!
-                let name = format!("{adt_def:?}").into();
+                let name = format!("{adt_def:?}").replace("::",".").into();
                 let mut fields = Vec::new();
                 for field in adt_def.all_fields() {
                     //TODO: handle binders!
@@ -329,6 +329,7 @@ impl Assembly {
                 None => (),
             }
         }
+        clr_method.remove_void_locals();
         clr_method.opt();
         //println!("clr_method:{clr_method:?}");
         //println!("instance:{instance:?}\n");

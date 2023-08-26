@@ -52,6 +52,7 @@ impl VariableType {
     pub(crate) fn deref_op(&self) -> BaseIR {
         match self {
             Self::Ref(_) | Self::RefMut(_) => BaseIR::LDIndI,
+            Self::U8 | Self::I8 => BaseIR::LDIndIn(std::mem::size_of::<u8>() as u8),
             Self::I32 => BaseIR::LDIndIn(std::mem::size_of::<i32>() as u8),
             Self::I64 => BaseIR::LDIndIn(std::mem::size_of::<i64>() as u8),
             Self::F64 => BaseIR::LDIndR8,
@@ -85,6 +86,7 @@ impl VariableType {
     pub(crate) fn set_pointed_op(&self) -> BaseIR {
         match self {
             Self::Ref(_) | Self::RefMut(_) => BaseIR::STIndI,
+            Self::I8 | Self::U8  => BaseIR::STIndIn(std::mem::size_of::<u8>() as u8),
             Self::I32 => BaseIR::STIndIn(std::mem::size_of::<i32>() as u8),
             Self::I64 => BaseIR::STIndIn(std::mem::size_of::<i64>() as u8),
             Self::F64 => BaseIR::STIndR8,
@@ -179,12 +181,12 @@ impl VariableType {
                 }
             }
             TyKind::FnDef(_, _) => todo!("Can't handle function definition types yet!"),
-            TyKind::Dynamic(_, _, _) => todo!("Can't handle dynamic types yet!"),
+            TyKind::Dynamic(_, _, _) => Self::Void,// TODO: deal with dynamics THIS IS A TEMPORARY FIX TO ALLOW COMPILATION OF #[no_std] PROGRAMS!//todo!("Can't handle dynamic types yet!"),
             TyKind::Closure(_, _) => todo!("Can't handle closure types yet!"),
             TyKind::Generator(_, _, _) => todo!("Can't handle generator types yet!"),
             TyKind::GeneratorWitness(_) => todo!("Can't handle generator types yet!"),
             TyKind::GeneratorWitnessMIR(_, _) => todo!("Can't handle generator types yet!"),
-            TyKind::Never => todo!("Can't handle never types yet!"),
+            TyKind::Never => Self::Void,//todo!("Can't handle never types yet!"),
             TyKind::Alias(alias_kind, alias_type) => {
                 let alias = alias_type.self_ty(); //alias_type.to_ty(tyctx);
                                                   //TODO: handle type aliases!
@@ -220,7 +222,7 @@ impl VariableType {
     pub(crate) fn il_name(&self) -> IString {
         match self {
             Self::StrSlice => "strslice".into(),
-            Self::Generic(typename) => typename.clone().into(),
+            Self::Generic(typename) => typename.replace("::",".").into(),
             Self::Void => "void".into(),
             Self::I8 => "int8".into(),
             Self::I16 => "int16".into(),
@@ -240,8 +242,8 @@ impl VariableType {
             Self::Ref(inner) => format!("{inner}*", inner = inner.il_name()),
             Self::RefMut(inner) => format!("{inner}*", inner = inner.il_name()),
             Self::Pointer(inner) => format!("{inner}*", inner = inner.il_name()),
-            Self::Struct(name) => (*name).clone().into(),
-            Self::Enum(name) => (*name).clone().into(),
+            Self::Struct(name) => (*name).replace("::",".").into(),
+            Self::Enum(name) => (*name).replace("::",".").into(),
             Self::Array { element, length } => format!(
                 "'RArray_{element_il}_{length}'",
                 element_il = element.il_name().replace('\'', "")

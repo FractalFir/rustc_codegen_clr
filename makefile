@@ -2,46 +2,37 @@ TEST_DIR = "test"
 CODEGEN_BACKEND = ../target/debug/librustc_codegen_clr.so
 RUSTC = rustc
 DEBUGER = #echo n > gdb -ex='set confirm on' -ex=run -ex=quit --args 
-RUST_FLAGS = --crate-type lib
-test: build_backend identy branches binops casts types calls references structs libc nbody
-cleanup:
-	rm ./*.mir
-calls:
-	cd test && $(DEBUGER) rustc $(RUST_FLAGS) -O -Z codegen-backend=$(CODEGEN_BACKEND) calls.rs && \
-	ilasm /dll libcalls.rlib && \
-	rustc -O --emit=mir --crate-type=lib calls.rs
-libc:
-	cd test && $(DEBUGER) rustc $(RUST_FLAGS) -O -Z codegen-backend=$(CODEGEN_BACKEND) libc.rs && \
-	ilasm /dll liblibc.rlib && \
-	rustc -O --emit=mir --crate-type=lib libc.rs
-identy:
-	cd test && $(DEBUGER) rustc $(RUST_FLAGS) -O -Z codegen-backend=$(CODEGEN_BACKEND) identity.rs && \
-	ilasm /dll libidentity.rlib
-binops:
-	cd test && $(DEBUGER) rustc $(RUST_FLAGS) -O -Z codegen-backend=$(CODEGEN_BACKEND) binops.rs && \
-	ilasm /dll libbinops.rlib && \
-	rustc -O --emit=mir --crate-type=lib binops.rs
-references:
-	cd test && $(DEBUGER) rustc $(RUST_FLAGS) -O -Z codegen-backend=$(CODEGEN_BACKEND) references.rs && \
-	ilasm /dll libreferences.rlib && \
-	rustc -O --emit=mir --crate-type=lib references.rs
-nbody:
-	cd test && $(DEBUGER) rustc $(RUST_FLAGS) -O -Z codegen-backend=$(CODEGEN_BACKEND) nbody.rs && \
-	ilasm /dll libnbody.rlib && \
-	rustc -O --emit=mir --crate-type=lib nbody.rs
-casts:
-	cd test && $(DEBUGER) rustc $(RUST_FLAGS) -O -Z codegen-backend=$(CODEGEN_BACKEND) casts.rs && \
-	ilasm /dll libcasts.rlib
-types:
-	cd test && $(DEBUGER) rustc $(RUST_FLAGS) -O -Z codegen-backend=$(CODEGEN_BACKEND) types.rs && \
-	ilasm /dll libtypes.rlib
-branches:
-	cd test && $(DEBUGER) rustc $(RUST_FLAGS) -O -Z codegen-backend=$(CODEGEN_BACKEND) branches.rs && \
-	ilasm /dll libbranches.rlib
+RUST_FLAGS =
+# this function compiles a particular test lib
+compile_lib = cd test && rustc -O --emit=mir --crate-type=lib $(1).rs && $(DEBUGER) rustc $(RUST_FLAGS) --crate-type lib -O -Z codegen-backend=$(CODEGEN_BACKEND) $(1).rs -o libs/$(1).rlib && ilasm /dll libs/$(1).rlib 
+
+test: setup build_backend identity branches binops casts types calls references structs libc nbody hello
+setup:
+	cd test && mkdir -p libs
 build_backend:
 	cargo build
+calls:
+	$(call compile_lib,calls)
+libc:
+	$(call compile_lib,libc)
+identity:
+	$(call compile_lib,identity)
+binops:
+	$(call compile_lib,binops)
+references:
+	$(call compile_lib,references)
+nbody:
+	$(call compile_lib,nbody)
+casts:
+	$(call compile_lib,casts)
+types:
+	$(call compile_lib,types)
+branches:
+	$(call compile_lib,branches)
 structs:
-	cd test &&  $(DEBUGER) rustc $(RUST_FLAGS) -O -Z codegen-backend=$(CODEGEN_BACKEND) structs.rs && \
-	ilasm /dll libstructs.rlib && \
-	rustc -O --emit=mir --crate-type=lib structs.rs
+	$(call compile_lib,structs)
+hello:
+	cd test && $(DEBUGER) rustc $(RUST_FLAGS) -O -Z codegen-backend=$(CODEGEN_BACKEND) hello.rs && \
+	ilasm hello && \
+	rustc -O --emit=mir hello.rs
 

@@ -125,5 +125,5 @@ pub extern fn get_z(vector:Vector3,index:usize)->f32{
 }
 #[no_mangle]
 pub extern fn alloc_vec(size:usize){
-    let vec:Vec<usize> = Vec::with_capacity(size);
+    //let vec:Vec<usize> = Vec::with_capacity(size);
 }

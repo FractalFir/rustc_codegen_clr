@@ -46,7 +46,24 @@ use variable::*;
 mod projection;
 mod statement;
 pub type IString = Box<str>;
-
+const ENTRYPOINT:&str = ".class public auto ansi abstract sealed beforefieldinit Program
+extends [System.Runtime]System.Object
+{
+ .method public hidebysig static 
+    void Main (
+        string[] args
+    ) cil managed 
+    {
+        .entrypoint 
+        ldc.i4.0
+        conv.i
+        ldc.i4.0
+        conv.i
+        call native int main(native int, uint8**)
+        pop
+        ret
+    }
+}";
 struct MyBackend;
 pub(crate) const ALWAYS_INIT_STRUCTS: bool = false;
 pub(crate) const ALWAYS_INIT_LOCALS: bool = false;
@@ -172,8 +189,24 @@ impl CodegenBackend for MyBackend {
                 .expect("ERROR:Could not decode the assembly file!");
             final_assembly.link(assembly);
         }
+        println!("PERPARING TO EMMIT FINAL CRATE! CRATE COUNT: {}",sess.opts.crate_types.len());
+        if sess.opts.crate_types.is_empty(){
+            let output_name = out_filename(sess, CrateType::Executable, outputs, crate_name);
+            match output_name {
+                OutFileName::Real(ref path) => {
+                    let mut out_file = std::fs::File::create(path).unwrap();
+                    let asm_il = final_assembly.into_il_ir();
+                    
+                    write!(out_file, "{}\n{ENTRYPOINT}", asm_il).unwrap();
+                }
+                OutFileName::Stdout => {
+                    let mut stdout = std::io::stdout();
+                    write!(stdout, "This has been \"compiled\" successfully.").unwrap();
+                }
+            }
+        }
         for &crate_type in sess.opts.crate_types.iter() {
-            if crate_type != CrateType::Rlib {
+            if crate_type != CrateType::Rlib && crate_type != CrateType::Executable {
                 sess.fatal(format!("Crate type is {:?}", crate_type));
             }
             let output_name = out_filename(sess, crate_type, outputs, crate_name);

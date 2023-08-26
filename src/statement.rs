@@ -89,6 +89,7 @@ fn load_const_scalar(scalar: Scalar, scalar_type: VariableType) -> Vec<BaseIR> {
         VariableType::I64 => vec![BaseIR::LDConstI64(sign_cast!(scalar_u128, u64, i64))],
         VariableType::U64 => vec![BaseIR::LDConstI64(scalar_u128 as i64)],
         VariableType::USize => vec![BaseIR::LDConstI64(scalar_u128 as i64)],
+        VariableType::ISize => vec![BaseIR::LDConstI64(scalar_u128 as i64)],
         VariableType::Enum(_) => vec![BaseIR::LDConstI32((scalar_u128 != 0) as u8 as i32)],
         _ => todo!("can't yet handle a scalar of type {scalar_type:?}!"),
     }
@@ -302,6 +303,15 @@ fn handle_rvalue<'tyctx>(
             final_ops.extend(conversion);
             final_ops
         }
+        Rvalue::Cast(
+            CastKind::PtrToPtr,
+            operand,
+            target,
+        ) => {
+            let mut  ops = handle_operand(operand, codegen_ctx);
+            ops.push(BaseIR::ConvI);
+            ops
+        }
         Rvalue::Aggregate(aggregate, fields) => {
             handle_agregate(codegen_ctx, target_location, aggregate.as_ref(), fields)
         }
@@ -345,7 +355,10 @@ fn handle_rvalue<'tyctx>(
             codegen_ctx.place_adress_ops(place)
             //todo!("Can't create referneces yet!")
         }
-        Rvalue::AddressOf(_, _) => todo!("Can't get adress of things yet!"),
+        Rvalue::AddressOf(_mutability, place) =>{
+            codegen_ctx.place_adress_ops(place)
+            //todo!("Can't get adress of things yet!"),
+        } 
         Rvalue::Len(palce) => {
             let ty = VariableType::from_ty(
                 palce.ty(codegen_ctx.body(), *codegen_ctx.tyctx()).ty,
