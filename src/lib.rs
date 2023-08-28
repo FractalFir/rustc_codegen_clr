@@ -45,6 +45,7 @@ mod variable;
 use variable::*;
 mod projection;
 mod statement;
+mod assembly_exporter;
 pub type IString = Box<str>;
 const ENTRYPOINT:&str = ".class public auto ansi abstract sealed beforefieldinit Program
 extends [System.Runtime]System.Object

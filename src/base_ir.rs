@@ -39,6 +39,7 @@ pub(crate) enum BaseIR {
     Xor,
     Or,
     And,
+    Not,
     Return,
     ConvF32,
     ConvI32,
@@ -250,6 +251,7 @@ impl BaseIR {
                     field_type = field_type.arg_name(),
                 )
             }
+            Self::Not=>"\tnot\n".into(),
             Self::LDObj(struct_name) => format!("\tldobj valuetype {struct_name}\n"),
             Self::STObj(struct_name) => format!("\tstobj valuetype {struct_name}\n"),
             Self::DebugComment(comment) => format!("//{comment}\n"),

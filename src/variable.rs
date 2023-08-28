@@ -124,7 +124,7 @@ impl VariableType {
             TyKind::Float(FloatTy::F32) => VariableType::F32,
             TyKind::Float(FloatTy::F64) => VariableType::F64,
             TyKind::Bool => VariableType::Bool,
-            TyKind::Char => todo!("Can't handle chars yet!"),
+            TyKind::Char  => VariableType::U64,// todo!("Can't handle chars yet!"),
             TyKind::Foreign(_ftype) => todo!("Can't handle foreign types yet!"),
             TyKind::Str => VariableType::StrSlice,
             TyKind::Array(element_type, length) => Self::Array {

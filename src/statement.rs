@@ -2,6 +2,7 @@ use crate::{
     projection::{projection_adress, projection_get, projection_set},
     Assembly, BaseIR, CLRMethod, LocalPlacement, VariableType,
 };
+use rustc_middle::mir::UnOp;
 use rustc_middle::mir::NullOp;
 use rustc_index::IndexVec;
 use rustc_middle::mir::{
@@ -84,6 +85,7 @@ fn load_const_scalar(scalar: Scalar, scalar_type: VariableType) -> Vec<BaseIR> {
         VariableType::I16 => vec![BaseIR::LDConstI32(sign_cast!(scalar_u128, u16, i16) as i32)],
         VariableType::U16 => vec![BaseIR::LDConstI32(scalar_u128 as i32)],
         VariableType::I32 => vec![BaseIR::LDConstI32(sign_cast!(scalar_u128, u32, i32))],
+        VariableType::U32 => vec![BaseIR::LDConstI32(scalar_u128 as i32)],
         VariableType::F32 => vec![BaseIR::LDConstF32(f32::from_bits(scalar_u128 as u32))],
         VariableType::Bool => vec![BaseIR::LDConstI32((scalar_u128 != 0) as u8 as i32)],
         VariableType::I64 => vec![BaseIR::LDConstI64(sign_cast!(scalar_u128, u64, i64))],
@@ -367,7 +369,14 @@ fn handle_rvalue<'tyctx>(
             vec![ty.sizeof_op()]
         }
         Rvalue::CheckedBinaryOp(_, _) => todo!("Can't yet preform checked binary operations"),
-        Rvalue::UnaryOp(_, _) => todo!("Can't yet preform unary ops!"),
+        Rvalue::UnaryOp(unary, operand) =>{
+            let mut ops = handle_operand(operand, codegen_ctx);
+            match unary{
+                UnOp::Not=>ops.push(BaseIR::Not),
+                _=> todo!("Can't yet preform unary ops of type {unary:?}!"),
+            }
+            ops
+        }
         Rvalue::NullaryOp(null_op, op_type) => {
             let op_type = VariableType::from_ty(*op_type,*codegen_ctx.tyctx());
             match null_op{
