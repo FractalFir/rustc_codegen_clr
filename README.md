@@ -13,6 +13,8 @@ Additionally, since all Rust code compiled with this codegen can be bundled with
 You also avoid the cost of switches between code running within the runtime and outside it. While this cost is not something unbearable, it is not something you can easily get rid of, and reducing it has some safety penalties associated with. In this case, all code will run inside the runtime, meaning no transition between code running inside runtime and outside of it will occur.
 
 Compiling Rust to CLR is potentially better for the JIT. Since CLR's JIT now "sees" all the code, it can make better decisions regarding optimization, producing faster code.
+# Licensing
+`rustc_codegen_clr` is dual licensed under MIT license and Apache License, Version 2.0.  
 # Compatibility?
 `rustc_codegen_clr` is tested solely on Linux x86_64. Anything else *should*, but does not have to work.
 # How far is the project along:
