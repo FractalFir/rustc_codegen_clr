@@ -14,7 +14,7 @@ You also avoid the cost of switches between code running within the runtime and 
 
 Compiling Rust to CLR is potentially better for the JIT. Since CLR's JIT now "sees" all the code, it can make better decisions regarding optimization, producing faster code.
 # Licensing
-`rustc_codegen_clr` is dual licensed under MIT license and Apache License, Version 2.0.  
+`rustc_codegen_clr` is dual licensed under MIT license or Apache License, Version 2.0.  
 # Compatibility?
 `rustc_codegen_clr` is tested solely on Linux x86_64. Anything else *should*, but does not have to work.
 # How far is the project along:
