@@ -8,12 +8,15 @@ extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
-use rustc_middle::ty::{Binder,BoundVariableKind};
-fn skip_binder_if_no_generic_types<T>(binder:Binder<T>)->Option<T>{
-    if binder.bound_vars().iter().any(|bound_var_kind|matches!(bound_var_kind,BoundVariableKind::Ty(_))){
+use rustc_middle::ty::{Binder, BoundVariableKind};
+fn skip_binder_if_no_generic_types<T>(binder: Binder<T>) -> Option<T> {
+    if binder
+        .bound_vars()
+        .iter()
+        .any(|bound_var_kind| matches!(bound_var_kind, BoundVariableKind::Ty(_)))
+    {
         return None;
-    }
-    else{
+    } else {
         Some(binder.skip_binder())
     }
 }
@@ -43,11 +46,11 @@ mod base_ir;
 use base_ir::BaseIR;
 mod variable;
 use variable::*;
+mod assembly_exporter;
 mod projection;
 mod statement;
-mod assembly_exporter;
 pub type IString = Box<str>;
-const ENTRYPOINT:&str = ".class public auto ansi abstract sealed beforefieldinit Program
+const ENTRYPOINT: &str = ".class public auto ansi abstract sealed beforefieldinit Program
 extends [System.Runtime]System.Object
 {
  .method public hidebysig static 
@@ -88,16 +91,11 @@ impl FunctionSignature {
         }
     }
     pub(crate) fn from_poly_sig<'ctx>(sig: PolyFnSig<'ctx>, tyctx: TyCtxt<'ctx>) -> Option<Self> {
-        let inputs = skip_binder_if_no_generic_types(sig
-            .inputs()
-            )?
+        let inputs = skip_binder_if_no_generic_types(sig.inputs())?
             .iter()
             .map(|v| VariableType::from_ty(*v, tyctx))
             .collect();
-        let output = VariableType::from_ty(
-            skip_binder_if_no_generic_types(sig.output())?,
-            tyctx,
-        );
+        let output = VariableType::from_ty(skip_binder_if_no_generic_types(sig.output())?, tyctx);
         Some(Self { inputs, output })
     }
 }
@@ -190,14 +188,17 @@ impl CodegenBackend for MyBackend {
                 .expect("ERROR:Could not decode the assembly file!");
             final_assembly.link(assembly);
         }
-        println!("PERPARING TO EMMIT FINAL CRATE! CRATE COUNT: {}",sess.opts.crate_types.len());
-        if sess.opts.crate_types.is_empty(){
+        println!(
+            "PERPARING TO EMMIT FINAL CRATE! CRATE COUNT: {}",
+            sess.opts.crate_types.len()
+        );
+        if sess.opts.crate_types.is_empty() {
             let output_name = out_filename(sess, CrateType::Executable, outputs, crate_name);
             match output_name {
                 OutFileName::Real(ref path) => {
                     let mut out_file = std::fs::File::create(path).unwrap();
                     let asm_il = final_assembly.into_il_ir();
-                    
+
                     write!(out_file, "{}\n{ENTRYPOINT}", asm_il).unwrap();
                 }
                 OutFileName::Stdout => {

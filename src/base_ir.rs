@@ -91,12 +91,33 @@ pub(crate) enum BaseIR {
     InitObj(IString),
 }
 impl BaseIR {
-    pub(crate) fn remove_void_local(&mut self,void_locals:&[usize]){
-        match self{
-            Self::LDLoc(local) => if void_locals.iter().any(|void_local|*void_local as u32 == *local){*self = BaseIR::Nop;},
-            Self::LDLocA(local) => if void_locals.iter().any(|void_local|*void_local as u32 == *local){*self = BaseIR::Nop;},
-            Self::STLoc(local) => if void_locals.iter().any(|void_local|*void_local as u32 == *local){*self = BaseIR::Nop;},
-            _=>(),
+    pub(crate) fn remove_void_local(&mut self, void_locals: &[usize]) {
+        match self {
+            Self::LDLoc(local) => {
+                if void_locals
+                    .iter()
+                    .any(|void_local| *void_local as u32 == *local)
+                {
+                    *self = BaseIR::Nop;
+                }
+            }
+            Self::LDLocA(local) => {
+                if void_locals
+                    .iter()
+                    .any(|void_local| *void_local as u32 == *local)
+                {
+                    *self = BaseIR::Nop;
+                }
+            }
+            Self::STLoc(local) => {
+                if void_locals
+                    .iter()
+                    .any(|void_local| *void_local as u32 == *local)
+                {
+                    *self = BaseIR::Nop;
+                }
+            }
+            _ => (),
         }
     }
     pub(crate) fn clr_ir(&self) -> IString {
@@ -251,7 +272,7 @@ impl BaseIR {
                     field_type = field_type.arg_name(),
                 )
             }
-            Self::Not=>"\tnot\n".into(),
+            Self::Not => "\tnot\n".into(),
             Self::LDObj(struct_name) => format!("\tldobj valuetype {struct_name}\n"),
             Self::STObj(struct_name) => format!("\tstobj valuetype {struct_name}\n"),
             Self::DebugComment(comment) => format!("//{comment}\n"),

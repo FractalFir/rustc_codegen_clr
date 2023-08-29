@@ -27,18 +27,52 @@ pub(crate) enum LocalPlacement {
     Var(u32),
 }
 impl CLRMethod {
+    pub(crate) fn name(&self) -> &str {
+        &self.name
+    }
+    pub(crate) fn sig(&self) -> &FunctionSignature {
+        &self.sig
+    }
+    pub(crate) fn from_raw(
+        ops: &[BaseIR],
+        locals: &[VariableType],
+        name: &str,
+        sig: FunctionSignature,
+    ) -> Self {
+        //TODO: calculate value of curr_bb.
+        let curr_bb = 0;
+        Self {
+            ops: ops.into(),
+            locals: locals.into(),
+            name: name.into(),
+            sig,
+            curr_bb,
+        }
+    }
     pub(crate) fn get_type_of_local(&self, local: u32) -> &VariableType {
         match self.local_id_placement(local) {
             LocalPlacement::Arg(index) => &self.sig.inputs[index as usize],
             LocalPlacement::Var(index) => &self.locals[index as usize],
         }
     }
-    pub(crate) fn remove_void_locals(&mut self){
-        let void_locals:Box<[_]> = self.locals.iter().enumerate().filter(|(index,vartype)|**vartype == VariableType::Void).map(|(index,vartype)|index).collect();
-        self.ops.iter_mut().for_each(|op|op.remove_void_local(&void_locals));
+    pub(crate) fn remove_void_locals(&mut self) {
+        let void_locals: Box<[_]> = self
+            .locals
+            .iter()
+            .enumerate()
+            .filter(|(index, vartype)| **vartype == VariableType::Void)
+            .map(|(index, vartype)| index)
+            .collect();
+        self.ops
+            .iter_mut()
+            .for_each(|op| op.remove_void_local(&void_locals));
         //TODO: remove void locals propely
-        self.locals.iter_mut().for_each(|ltype|if *ltype == VariableType::Void{*ltype = VariableType::I8});
-    } 
+        self.locals.iter_mut().for_each(|ltype| {
+            if *ltype == VariableType::Void {
+                *ltype = VariableType::I8
+            }
+        });
+    }
     pub(crate) fn extend_ops(&mut self, ops: &[BaseIR]) {
         self.ops.extend(ops.iter().map(|ref_op| ref_op.clone()))
     }
@@ -93,9 +127,6 @@ impl CLRMethod {
             bb_id: self.curr_bb,
         });
         self.curr_bb += 1;
-    }
-    fn name(&self) -> &str {
-        &self.name
     }
     pub(crate) fn add_locals<'ctx>(
         &mut self,
@@ -161,9 +192,7 @@ impl CLRMethod {
         )
     }
     pub(crate) fn new(sig: FunctionSignature, name: &str) -> Self {
-        let name = if name.contains("main"){
-            "main"
-        }else{name};
+        let name = if name.contains("main") { "main" } else { name };
         Self {
             locals: Vec::new(),
             sig,
@@ -336,7 +365,7 @@ impl CLRMethod {
             TerminatorKind::Drop { .. } => {
                 //TODO: stop ignoreing drops!
                 //todo!("Can't handle terminator kind Drop!")
-            },
+            }
             TerminatorKind::Yield { .. } => todo!("Can't handle terminator kind Yield!"),
             _ => todo!("Unknown terminator type {terminator:?}"),
         }

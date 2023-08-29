@@ -2,9 +2,9 @@ use crate::{
     projection::{projection_adress, projection_get, projection_set},
     Assembly, BaseIR, CLRMethod, LocalPlacement, VariableType,
 };
-use rustc_middle::mir::UnOp;
-use rustc_middle::mir::NullOp;
 use rustc_index::IndexVec;
+use rustc_middle::mir::NullOp;
+use rustc_middle::mir::UnOp;
 use rustc_middle::mir::{
     interpret::ConstValue, interpret::Scalar, AggregateKind, BinOp, Body, CastKind, Constant,
     ConstantKind, Operand, Place, Rvalue, Statement, StatementKind,
@@ -112,7 +112,9 @@ fn handle_constant<'ctx>(
         ConstantKind::Val(value, const_ty) => {
             load_const_value(value, VariableType::from_ty(const_ty, *codegen_ctx.tyctx()))
         }
-        ConstantKind::Unevaluated(a,b)=>vec![BaseIR::DebugComment(format!("{a:?} {b:?}").into())],
+        ConstantKind::Unevaluated(a, b) => {
+            vec![BaseIR::DebugComment(format!("{a:?} {b:?}").into())]
+        }
         _ => todo!("Unhanded const kind {const_kind:?}!"),
     }
 }
@@ -264,7 +266,7 @@ fn handle_agregate<'tyctx>(
                     agregate_construction.extend(codegen_ctx.place_get_ops(target_location));
                     agregate_construction
                 }
-                VariableType::Enum(enum_name)=>vec![BaseIR::DebugComment(enum_name)],
+                VariableType::Enum(enum_name) => vec![BaseIR::DebugComment(enum_name)],
                 _ => todo!("Unhandled adt type {adt_type:?}"),
             }
         }
@@ -305,12 +307,8 @@ fn handle_rvalue<'tyctx>(
             final_ops.extend(conversion);
             final_ops
         }
-        Rvalue::Cast(
-            CastKind::PtrToPtr,
-            operand,
-            target,
-        ) => {
-            let mut  ops = handle_operand(operand, codegen_ctx);
+        Rvalue::Cast(CastKind::PtrToPtr, operand, target) => {
+            let mut ops = handle_operand(operand, codegen_ctx);
             ops.push(BaseIR::ConvI);
             ops
         }
@@ -357,10 +355,10 @@ fn handle_rvalue<'tyctx>(
             codegen_ctx.place_adress_ops(place)
             //todo!("Can't create referneces yet!")
         }
-        Rvalue::AddressOf(_mutability, place) =>{
+        Rvalue::AddressOf(_mutability, place) => {
             codegen_ctx.place_adress_ops(place)
             //todo!("Can't get adress of things yet!"),
-        } 
+        }
         Rvalue::Len(palce) => {
             let ty = VariableType::from_ty(
                 palce.ty(codegen_ctx.body(), *codegen_ctx.tyctx()).ty,
@@ -369,24 +367,24 @@ fn handle_rvalue<'tyctx>(
             vec![ty.sizeof_op()]
         }
         Rvalue::CheckedBinaryOp(_, _) => todo!("Can't yet preform checked binary operations"),
-        Rvalue::UnaryOp(unary, operand) =>{
+        Rvalue::UnaryOp(unary, operand) => {
             let mut ops = handle_operand(operand, codegen_ctx);
-            match unary{
-                UnOp::Not=>ops.push(BaseIR::Not),
-                _=> todo!("Can't yet preform unary ops of type {unary:?}!"),
+            match unary {
+                UnOp::Not => ops.push(BaseIR::Not),
+                _ => todo!("Can't yet preform unary ops of type {unary:?}!"),
             }
             ops
         }
         Rvalue::NullaryOp(null_op, op_type) => {
-            let op_type = VariableType::from_ty(*op_type,*codegen_ctx.tyctx());
-            match null_op{
+            let op_type = VariableType::from_ty(*op_type, *codegen_ctx.tyctx());
+            match null_op {
                 NullOp::SizeOf => vec![op_type.sizeof_op()],
                 //TODO: actualy calcualte algiment!
                 NullOp::AlignOf => vec![BaseIR::LDConstI32(8)],
-                _=>todo!("Unsuiported nullary op {null_op:?}")
+                _ => todo!("Unsuiported nullary op {null_op:?}"),
             }
             //todo!("Can't yet preform nulray ops!")
-        },
+        }
         Rvalue::CopyForDeref(place) => codegen_ctx.place_get_ops(place),
         Rvalue::Discriminant(_) => todo!("Can't yet compute discriminat types!"),
         Rvalue::ShallowInitBox(_, _) => todo!("Can't yet shalowly initalize a box!"),

@@ -46,7 +46,19 @@ pub(crate) enum VariableType {
     Generic(IString),
     StrSlice,
 }
-
+pub(crate) trait AsVartype {
+    fn vtpe() -> VariableType;
+}
+impl AsVartype for f32 {
+    fn vtpe() -> VariableType {
+        VariableType::F32
+    }
+}
+impl AsVartype for () {
+    fn vtpe() -> VariableType {
+        VariableType::Void
+    }
+}
 impl VariableType {
     /// For a type T, returns a BaseIR op which derefreneces T* to T.
     pub(crate) fn deref_op(&self) -> BaseIR {
@@ -79,14 +91,14 @@ impl VariableType {
             Self::Struct(name) => BaseIR::SizeOf(name.clone()),
             Self::Array { .. } => BaseIR::SizeOf(self.il_name()),
             Self::Slice { .. } => BaseIR::SizeOf(self.il_name()),
-            Self::Generic(name)=>BaseIR::SizeOf(name.clone()),
+            Self::Generic(name) => BaseIR::SizeOf(name.clone()),
             _ => todo!("Can't get the size of a type {self:?}"),
         }
     }
     pub(crate) fn set_pointed_op(&self) -> BaseIR {
         match self {
             Self::Ref(_) | Self::RefMut(_) => BaseIR::STIndI,
-            Self::I8 | Self::U8  => BaseIR::STIndIn(std::mem::size_of::<u8>() as u8),
+            Self::I8 | Self::U8 => BaseIR::STIndIn(std::mem::size_of::<u8>() as u8),
             Self::I32 => BaseIR::STIndIn(std::mem::size_of::<i32>() as u8),
             Self::I64 => BaseIR::STIndIn(std::mem::size_of::<i64>() as u8),
             Self::F64 => BaseIR::STIndR8,
@@ -124,7 +136,7 @@ impl VariableType {
             TyKind::Float(FloatTy::F32) => VariableType::F32,
             TyKind::Float(FloatTy::F64) => VariableType::F64,
             TyKind::Bool => VariableType::Bool,
-            TyKind::Char  => VariableType::U64,// todo!("Can't handle chars yet!"),
+            TyKind::Char => VariableType::U64, // todo!("Can't handle chars yet!"),
             TyKind::Foreign(_ftype) => todo!("Can't handle foreign types yet!"),
             TyKind::Str => VariableType::StrSlice,
             TyKind::Array(element_type, length) => Self::Array {
@@ -148,14 +160,14 @@ impl VariableType {
                 match adt.adt_kind() {
                     AdtKind::Struct => VariableType::Struct(name.into()),
                     AdtKind::Union => todo!("Can't yet handle unions"),
-                    AdtKind::Enum =>  VariableType::Enum(name.into()),//todo!("Can't yet handle enum"),
+                    AdtKind::Enum => VariableType::Enum(name.into()), //todo!("Can't yet handle enum"),
                 }
             }
             TyKind::RawPtr(type_and_mut) => {
                 let tpe = type_and_mut.ty;
-                Self::Pointer(Box::new(Self::from_ty(tpe,tyctx)))
+                Self::Pointer(Box::new(Self::from_ty(tpe, tyctx)))
                 //todo!("Can't handle pointers yet!")
-            },
+            }
             TyKind::FnPtr(_sig) => todo!("Can't handle function pointers yet!"),
             TyKind::Ref(region, ref_type, mutability) => {
                 // There is no such concept as lifetimes in CLR
@@ -181,12 +193,12 @@ impl VariableType {
                 }
             }
             TyKind::FnDef(_, _) => todo!("Can't handle function definition types yet!"),
-            TyKind::Dynamic(_, _, _) => Self::Void,// TODO: deal with dynamics THIS IS A TEMPORARY FIX TO ALLOW COMPILATION OF #[no_std] PROGRAMS!//todo!("Can't handle dynamic types yet!"),
+            TyKind::Dynamic(_, _, _) => Self::Void, // TODO: deal with dynamics THIS IS A TEMPORARY FIX TO ALLOW COMPILATION OF #[no_std] PROGRAMS!//todo!("Can't handle dynamic types yet!"),
             TyKind::Closure(_, _) => todo!("Can't handle closure types yet!"),
             TyKind::Generator(_, _, _) => todo!("Can't handle generator types yet!"),
             TyKind::GeneratorWitness(_) => todo!("Can't handle generator types yet!"),
             TyKind::GeneratorWitnessMIR(_, _) => todo!("Can't handle generator types yet!"),
-            TyKind::Never => Self::Void,//todo!("Can't handle never types yet!"),
+            TyKind::Never => Self::Void, //todo!("Can't handle never types yet!"),
             TyKind::Alias(alias_kind, alias_type) => {
                 let alias = alias_type.self_ty(); //alias_type.to_ty(tyctx);
                                                   //TODO: handle type aliases!
@@ -222,7 +234,7 @@ impl VariableType {
     pub(crate) fn il_name(&self) -> IString {
         match self {
             Self::StrSlice => "strslice".into(),
-            Self::Generic(typename) => typename.replace("::",".").into(),
+            Self::Generic(typename) => typename.replace("::", ".").into(),
             Self::Void => "void".into(),
             Self::I8 => "int8".into(),
             Self::I16 => "int16".into(),
@@ -242,8 +254,8 @@ impl VariableType {
             Self::Ref(inner) => format!("{inner}*", inner = inner.il_name()),
             Self::RefMut(inner) => format!("{inner}*", inner = inner.il_name()),
             Self::Pointer(inner) => format!("{inner}*", inner = inner.il_name()),
-            Self::Struct(name) => (*name).replace("::",".").into(),
-            Self::Enum(name) => (*name).replace("::",".").into(),
+            Self::Struct(name) => (*name).replace("::", ".").into(),
+            Self::Enum(name) => (*name).replace("::", ".").into(),
             Self::Array { element, length } => format!(
                 "'RArray_{element_il}_{length}'",
                 element_il = element.il_name().replace('\'', "")
