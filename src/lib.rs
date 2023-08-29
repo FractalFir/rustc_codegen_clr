@@ -192,6 +192,14 @@ impl CodegenBackend for MyBackend {
             "PERPARING TO EMMIT FINAL CRATE! CRATE COUNT: {}",
             sess.opts.crate_types.len()
         );
+        use crate::assembly_exporter::AssemblyExporter;
+        let path = out_filename(sess, CrateType::Rlib, outputs, crate_name);
+        let path = match path {
+            OutFileName::Real(ref path) => path.to_owned(),
+            OutFileName::Stdout => panic!("Compiling to stdout is not supported!"),
+        };
+        crate::assembly_exporter::ilasm_exporter::ILASMExporter::export_assembly(&final_assembly,&path).expect("Could not create the final assembly!");
+        /* 
         if sess.opts.crate_types.is_empty() {
             let output_name = out_filename(sess, CrateType::Executable, outputs, crate_name);
             match output_name {
@@ -203,7 +211,7 @@ impl CodegenBackend for MyBackend {
                 }
                 OutFileName::Stdout => {
                     let mut stdout = std::io::stdout();
-                    write!(stdout, "This has been \"compiled\" successfully.").unwrap();
+                    //write!(stdout, "This has been \"compiled\" successfully.").unwrap();
                 }
             }
         }
@@ -223,7 +231,7 @@ impl CodegenBackend for MyBackend {
                     write!(stdout, "This has been \"compiled\" successfully.").unwrap();
                 }
             }
-        }
+        }*/
         Ok(())
     }
 }

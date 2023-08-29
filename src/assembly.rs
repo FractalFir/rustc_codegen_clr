@@ -168,6 +168,14 @@ pub(crate) struct Assembly {
     size_t: u8,
 }
 impl Assembly {
+    pub(crate) fn structs(&self)->Vec<crate::assembly_exporter::StructType>{
+        self.types.iter().map(
+            |tpe| if let CLRType::Struct {fields} = tpe.1{
+                Some(
+                    crate::assembly_exporter::StructType::new(tpe.0, fields)
+                )
+            }else{None}).filter(|strct|strct.is_some()).map(|strct|strct.unwrap()).collect()
+    } 
     pub(crate) fn sizeof_type(&self, var_type: &VariableType) -> usize {
         match var_type {
             VariableType::Void => 0,
