@@ -194,10 +194,12 @@ impl CodegenBackend for MyBackend {
         );
         use crate::assembly_exporter::AssemblyExporter;
         let path = out_filename(sess, CrateType::Rlib, outputs, crate_name);
+        
         let path = match path {
             OutFileName::Real(ref path) => path.to_owned(),
             OutFileName::Stdout => panic!("Compiling to stdout is not supported!"),
         };
+        std::fs::create_dir_all(path.parent().expect("Could not get the target directory")).expect("Could not create the target directory!");
         crate::assembly_exporter::ilasm_exporter::ILASMExporter::export_assembly(&final_assembly,&path).expect("Could not create the final assembly!");
         /* 
         if sess.opts.crate_types.is_empty() {

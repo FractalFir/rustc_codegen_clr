@@ -33,6 +33,9 @@ impl CLRMethod {
     pub(crate) fn sig(&self) -> &FunctionSignature {
         &self.sig
     }
+    pub(crate) fn ops(&self)->&[BaseIR]{
+        &self.ops
+    }
     pub(crate) fn from_raw(
         ops: &[BaseIR],
         locals: &[VariableType],
@@ -168,28 +171,6 @@ impl CLRMethod {
         } else {
             format!("\t.locals ({locals}\n\t)").into()
         }
-    }
-    pub(crate) fn into_il_ir(&self) -> String {
-        let output = self.sig.output().il_name();
-        let mut arg_list = String::new();
-        let mut arg_iter = self.sig.inputs.iter();
-        match arg_iter.next() {
-            Some(start) => arg_list.push_str(&start.arg_name()),
-            None => (),
-        }
-        for arg in arg_iter {
-            arg_list.push(',');
-            arg_list.push_str(&arg.arg_name());
-        }
-        let mut ops_ir = String::new();
-        for op in &self.ops {
-            ops_ir.push_str(&op.clr_ir());
-        }
-        format!(
-            ".method public static {output} {name}({arg_list}){{\n{locals_init}\n{ops_ir}}}\n",
-            name = self.name(),
-            locals_init = self.locals_init()
-        )
     }
     pub(crate) fn new(sig: FunctionSignature, name: &str) -> Self {
         let name = if name.contains("main") { "main" } else { name };

@@ -137,25 +137,25 @@ fn handle_binop<'ctx>(
     let mut ops = Vec::new();
     ops.extend(handle_operand(a, codegen_ctx));
     ops.extend(handle_operand(b, codegen_ctx));
-    ops.push(match binop {
-        BinOp::Add | BinOp::AddUnchecked => BaseIR::Add,
-        BinOp::Sub | BinOp::SubUnchecked => BaseIR::Sub,
-        BinOp::Mul | BinOp::MulUnchecked => BaseIR::Mul,
-        BinOp::Shl | BinOp::ShlUnchecked => BaseIR::Shl,
-        BinOp::Shr | BinOp::ShrUnchecked => BaseIR::Shr,
-        BinOp::Eq => BaseIR::Eq,
-        BinOp::Ne => BaseIR::NEq,
-        BinOp::Gt => BaseIR::Gt,
-        BinOp::Lt => BaseIR::Lt,
-        BinOp::Ge => BaseIR::Ge,
-        BinOp::Le => BaseIR::Le,
-        BinOp::Rem => BaseIR::Rem,
-        BinOp::BitXor => BaseIR::Xor,
-        BinOp::BitOr => BaseIR::Or,
-        BinOp::BitAnd => BaseIR::And,
-        BinOp::Div => BaseIR::Div,
+    match binop {
+        BinOp::Add | BinOp::AddUnchecked => ops.push(BaseIR::Add),
+        BinOp::Sub | BinOp::SubUnchecked => ops.push(BaseIR::Sub),
+        BinOp::Mul | BinOp::MulUnchecked => ops.push(BaseIR::Mul),
+        BinOp::Shl | BinOp::ShlUnchecked => ops.push(BaseIR::Shl),
+        BinOp::Shr | BinOp::ShrUnchecked => ops.push(BaseIR::Shr),
+        BinOp::Eq => ops.push(BaseIR::Eq),
+        BinOp::Ne => ops.extend([BaseIR::Eq,BaseIR::LDConstI32(0),BaseIR::Eq]),
+        BinOp::Gt => ops.push(BaseIR::Gt),
+        BinOp::Lt => ops.push(BaseIR::Lt),
+        BinOp::Ge => ops.push(BaseIR::Ge),
+        BinOp::Le => ops.push(BaseIR::Le),
+        BinOp::Rem => ops.push(BaseIR::Rem),
+        BinOp::BitXor => ops.push(BaseIR::Xor),
+        BinOp::BitOr => ops.push(BaseIR::Or),
+        BinOp::BitAnd => ops.push(BaseIR::And),
+        BinOp::Div => ops.push(BaseIR::Div),
         BinOp::Offset => todo!("Can't yet handle the pointer offset operator!"),
-    });
+    };
     ops
 }
 fn handle_convert(src: &VariableType, dest: &VariableType) -> Vec<BaseIR> {

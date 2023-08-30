@@ -1,53 +1,62 @@
-pub(crate) type GenericType = ();
+pub(crate) type GenericArgument = ();
 pub(crate) type EnumVariant = ();
+pub(crate) type Attribute = ();
 pub(crate) type Method = CLRMethod;
 use std::path::Path;
 #[derive(Debug, Clone)]
-pub(crate) struct StructType {
+enum AccessModifer{
+    Private,
+    Public,
+}
+#[derive(Debug, Clone)]
+pub(crate) struct ClassInfo {
     name: IString,
     fields: Vec<(IString, VariableType)>,
+    explicit_field_offsets:Option<Vec<u8>>,
+    extends:(Option<IString>,IString),//First, optional name of the assembly it comes form, then, type string
+    //Optional, can be ignored for now
+    access_modifier:AccessModifer,
+    member_functions:Vec<Method>,
+    generic_args:Vec<GenericArgument>,
+    attribute:Vec<Attribute>,
 }
-impl StructType {
+impl ClassInfo {
     pub(crate) fn new(name: &str, fields: &[(IString, VariableType)]) -> Self {
         Self {
             name: name.into(),
             fields: fields.into(),
+            extends: (Some("System.Runtime".into()),"System.ValueType".into()),
+            explicit_field_offsets:None,
+            access_modifier:AccessModifer::Public,
+            member_functions:vec![],
+            generic_args:vec![],
+            attribute:vec![],
         }
     }
     pub(crate) fn name(&self) -> &str {
         &self.name
     }
+    pub(crate) fn extends(&self) -> &(Option<IString>,IString){
+        &self.extends
+    }
     pub(crate) fn fields(&self) -> &[(IString, VariableType)] {
         &self.fields
-    }
-    fn has_generics(&self) -> bool {
-        self.fields
-            .iter()
-            .any(|field| matches!(field.1, VariableType::Generic(_)))
     }
 }
 use crate::{clr_method::CLRMethod, IString, VariableType, assembly::Assembly};
 pub(crate) mod ilasm_exporter;
 pub(crate) trait AssemblyExporter:Sized {
     fn init(name: &str) -> Self;
-    fn add_struct(&mut self, struct_type: StructType);
-    fn add_enum_type(
-        &mut self,
-        name: &str,
-        enum_variants: &[EnumVariant],
-        generics: &GenericType,
-    ) -> Result<(), AssemblyExportError>;
-    fn add_array_type(
-        &mut self,
-        element: &VariableType,
-        length: usize,
-    ) -> Result<(), AssemblyExportError>;
-    fn add_method(&mut self, symbol: &str, method: &Method) -> Result<(), AssemblyExportError>;
+    fn add_struct(&mut self, struct_type: ClassInfo);
+    fn add_method(&mut self,method:CLRMethod);
     fn finalize(self, final_path: &Path) -> Result<(), AssemblyExportError>;
     fn export_assembly(asm:&Assembly, final_path: &Path) -> Result<(), AssemblyExportError>{
         let mut asm_exporter = Self::init(asm.name());
         for struct_type in asm.structs(){
             asm_exporter.add_struct(struct_type);
+        }
+        for method in asm.methods(){
+            asm_exporter.add_method(method.clone());
         }
         //TODO:methods
         asm_exporter.finalize(final_path)

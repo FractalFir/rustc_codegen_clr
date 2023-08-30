@@ -1,4 +1,4 @@
-use crate::{CLRMethod, FunctionSignature, IString, VariableType};
+use crate::{CLRMethod, FunctionSignature, IString, VariableType, assembly_exporter::Method};
 use rustc_index::IndexVec;
 use rustc_middle::{
     mir::{mono::MonoItem, Local, LocalDecl},
@@ -13,90 +13,11 @@ enum Visiblity {
     Public,
 }
 fn array_indexers(array_name: &str, element: &VariableType) -> String {
-    //let deref_op = "ldind.i4";
-    let element_type = &element.il_name();
-    let deref_op = element.deref_op().clr_ir();
-    let set_op = element.set_pointed_op().clr_ir();
-    let getter = format!(
-        "\
-    \t.method public hidebysig specialname instance {element_type} get_Item(native int index){{\n\
-		\t\tldarg.0\n\
-		\t\tldflda {element_type} {array_name}::arr\n\
-        \t\tldarg.1\n\
-        \t\tsizeof {element_type}\n\
-        \t\tmul\n\
-        \t\tadd\n\
-        \t{deref_op}\
-		\t\tret\n\
-     }}\n"
-    );
-    let setter = format!("\
-     \t.method public hidebysig specialname instance void set_Item(native int index,{element_type} 'value'){{\n\
-		\t\tldarg.0\n\
-		\t\tldflda {element_type} {array_name}::arr\n\
-        \t\tldarg.1\n\
-        \t\tsizeof {element_type}\n\
-        \t\tmul\n\
-        \t\tadd\n\
-        \t\tldarg.2\n\
-        \t{set_op}\
-		\t\tret\n\
-     }}\n");
-    let adresser = format!("\
-    \t.method public hidebysig specialname instance {element_type}* adress_Item(native int index){{\n\
-		\t\tldarg.0\n\
-		\t\tldflda {element_type} {array_name}::arr\n\
-        \t\tldarg.1\n\
-        \t\tsizeof {element_type}\n\
-        \t\tmul\n\
-        \t\tadd\n\
-		\t\tret\n\
-     }}\n"
-    );
-    format!("{getter}{setter}{adresser}")
+    format!("")
 }
 fn slice_indexers(slice_name: &str, element: &VariableType) -> String {
-    //let deref_op = "ldind.i4";
-    let element_type = &element.il_name();
-    let deref_op = element.deref_op().clr_ir();
-    let set_op = element.set_pointed_op().clr_ir();
-    let getter = format!(
-        "\
-    \t.method public hidebysig specialname instance {element_type} get_Item(native int index){{\n\
-		\t\tldarg.0\n\
-		\t\tldfld {element_type}* {slice_name}::ptr\n\
-        \t\tldarg.1\n\
-        \t\tsizeof {element_type}\n\
-        \t\tmul\n\
-        \t\tadd\n\
-        \t{deref_op}\
-		\t\tret\n\
-     }}\n"
-    );
-    let setter = format!("\
-     \t.method public hidebysig specialname instance void set_Item(native int index,{element_type} 'value'){{\n\
-		\t\tldarg.0\n\
-		\t\tldfld {element_type}* {slice_name}::ptr\n\
-        \t\tldarg.1\n\
-        \t\tsizeof {element_type}\n\
-        \t\tmul\n\
-        \t\tadd\n\
-        \t\tldarg.2\n\
-        \t{set_op}\
-		\t\tret\n\
-     }}\n");
-    let adresser = format!("\
-    \t.method public hidebysig specialname instance {element_type}* item_Adress(native int index){{\n\
-		\t\tldarg.0\n\
-		\t\tldfld {element_type}* {slice_name}::ptr\n\
-        \t\tldarg.1\n\
-        \t\tsizeof {element_type}\n\
-        \t\tmul\n\
-        \t\tadd\n\
-		\t\tret\n\
-     }}\n"
-    );
-    format!("{getter}{setter}{adresser}")
+    //let deref_op = "ldind.i4"
+    format!("")
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 enum CLRType {
@@ -168,14 +89,17 @@ pub(crate) struct Assembly {
     size_t: u8,
 }
 impl Assembly {
-    pub(crate) fn structs(&self)->Vec<crate::assembly_exporter::StructType>{
+    pub(crate) fn structs(&self)->Vec<crate::assembly_exporter::ClassInfo>{
         self.types.iter().map(
             |tpe| if let CLRType::Struct {fields} = tpe.1{
                 Some(
-                    crate::assembly_exporter::StructType::new(tpe.0, fields)
+                    crate::assembly_exporter::ClassInfo::new(tpe.0, fields)
                 )
             }else{None}).filter(|strct|strct.is_some()).map(|strct|strct.unwrap()).collect()
-    } 
+    }
+    pub(crate) fn methods(&self)->&[CLRMethod]{
+        &self.methods
+    }
     pub(crate) fn sizeof_type(&self, var_type: &VariableType) -> usize {
         match var_type {
             VariableType::Void => 0,
@@ -231,24 +155,6 @@ impl Assembly {
                 .get(field_parent)?
                 .get_field_setter(field, field_parent),
         )
-    }
-    //pub(crate) fn (&self,type_name:&str,
-    pub(crate) fn into_il_ir(&self) -> IString {
-        let mut methods = String::new();
-        for method in &self.methods {
-            methods.push_str(&method.into_il_ir());
-        }
-        let mut types = String::new();
-        for clr_type in &self.types {
-            types.push_str(&clr_type.1.get_def(&clr_type.0.replace('\'', ""), self));
-        }
-        println!("\nty_count:{}\n", self.types.len());
-        //let methods = format!("{methods}");
-        format!(
-            ".assembly {name}{{}}\n{LIBC_IMPL}\n{types}\n{methods}",
-            name = self.name
-        )
-        .into()
     }
     pub(crate) fn add_type<'ctx>(&mut self, ty: Ty<'ctx>, tyctx: &TyCtxt<'ctx>) {
         match ty.kind() {
