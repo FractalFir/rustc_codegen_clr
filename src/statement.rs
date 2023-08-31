@@ -144,7 +144,7 @@ fn handle_binop<'ctx>(
         BinOp::Shl | BinOp::ShlUnchecked => ops.push(BaseIR::Shl),
         BinOp::Shr | BinOp::ShrUnchecked => ops.push(BaseIR::Shr),
         BinOp::Eq => ops.push(BaseIR::Eq),
-        BinOp::Ne => ops.extend([BaseIR::Eq,BaseIR::LDConstI32(0),BaseIR::Eq]),
+        BinOp::Ne => ops.extend([BaseIR::Eq, BaseIR::LDConstI32(0), BaseIR::Eq]),
         BinOp::Gt => ops.push(BaseIR::Gt),
         BinOp::Lt => ops.push(BaseIR::Lt),
         BinOp::Ge => ops.push(BaseIR::Ge),
@@ -159,40 +159,7 @@ fn handle_binop<'ctx>(
     ops
 }
 fn handle_convert(src: &VariableType, dest: &VariableType) -> Vec<BaseIR> {
-    match (src, dest) {
-        (
-            VariableType::F32
-            | VariableType::I8
-            | VariableType::I16
-            | VariableType::I32
-            | VariableType::U8
-            | VariableType::U16
-            | VariableType::U32,
-            VariableType::I32,
-        ) => vec![BaseIR::ConvI32],
-        (
-            VariableType::F64
-            | VariableType::I64
-            | VariableType::U64
-            | VariableType::ISize
-            | VariableType::USize,
-            VariableType::I32,
-        ) => vec![BaseIR::ConvI32Checked],
-        (VariableType::F32, VariableType::I8) => vec![BaseIR::ConvI8],
-        (
-            VariableType::U8
-            | VariableType::I8
-            | VariableType::U16
-            | VariableType::I16
-            | VariableType::U32
-            | VariableType::I32,
-            VariableType::F32,
-        ) => vec![BaseIR::ConvF32],
-        (VariableType::F32 | VariableType::I32 | VariableType::U32, VariableType::I16) => {
-            vec![BaseIR::ConvI16Checked]
-        }
-        _ => todo!("Can't convert type {src:?} to {dest:?}"),
-    }
+    crate::codegen::convert::convert_as(src, dest)
 }
 fn handle_agregate<'tyctx>(
     codegen_ctx: &CodegenCtx<'tyctx, '_>,

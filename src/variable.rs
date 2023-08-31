@@ -43,7 +43,7 @@ pub(crate) enum VariableType {
     Struct(IString),
     Enum(IString),
     Tuple(Vec<Self>),
-    Generic(IString),
+    Generic(u32),
     StrSlice,
 }
 pub(crate) trait AsVartype {
@@ -91,7 +91,7 @@ impl VariableType {
             Self::Struct(name) => BaseIR::SizeOf(name.clone()),
             Self::Array { .. } => BaseIR::SizeOf(self.il_name()),
             Self::Slice { .. } => BaseIR::SizeOf(self.il_name()),
-            Self::Generic(name) => BaseIR::SizeOf(name.clone()),
+            Self::Generic(name) => panic!("Can't take size of a type which has not morphized yet!"),
             _ => todo!("Can't get the size of a type {self:?}"),
         }
     }
@@ -152,7 +152,9 @@ impl VariableType {
             TyKind::Slice(element_type) => {
                 Self::Slice(Box::new(Self::from_ty(*element_type, tyctx)))
             }
-            TyKind::Adt(adt_def, _subst) => {
+            TyKind::Adt(adt_def, subst) => {
+                println!("adt:{ty:?}");
+                assert!(subst.is_empty(), "Genrics not supported yet!");
                 let adt = adt_def;
                 //let tcxt:&_ = adt.0.0;
                 //TODO: Figure out a better way to get this name!
@@ -207,7 +209,7 @@ impl VariableType {
                 alias
             }
             TyKind::Placeholder(_) => todo!("Can't handle placeholder types yet!"),
-            TyKind::Param(_inner) => VariableType::Generic(format!("inner:?").into()), //VariableType::from_ty(inner.to_ty(tyctx),tyctx),
+            TyKind::Param(param) => Self::Generic(param.index),
             TyKind::Infer(_) => todo!("Can't handle infered types yet!"),
             TyKind::Error(_) => todo!("Can't handle error types yet!"),
             //_ => todo!("Unhandled type kind {:?}", ty.kind()),
@@ -234,7 +236,7 @@ impl VariableType {
     pub(crate) fn il_name(&self) -> IString {
         match self {
             Self::StrSlice => "strslice".into(),
-            Self::Generic(typename) => typename.replace("::", ".").into(),
+            Self::Generic(index) => panic!("Can't take name of an unresolved generic!"),
             Self::Void => "void".into(),
             Self::I8 => "int8".into(),
             Self::I16 => "int16".into(),

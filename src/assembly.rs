@@ -1,4 +1,4 @@
-use crate::{CLRMethod, FunctionSignature, IString, VariableType, assembly_exporter::Method};
+use crate::{assembly_exporter::Method, CLRMethod, FunctionSignature, IString, VariableType};
 use rustc_index::IndexVec;
 use rustc_middle::{
     mir::{mono::MonoItem, Local, LocalDecl},
@@ -89,15 +89,21 @@ pub(crate) struct Assembly {
     size_t: u8,
 }
 impl Assembly {
-    pub(crate) fn structs(&self)->Vec<crate::assembly_exporter::ClassInfo>{
-        self.types.iter().map(
-            |tpe| if let CLRType::Struct {fields} = tpe.1{
-                Some(
-                    crate::assembly_exporter::ClassInfo::new(tpe.0, fields)
-                )
-            }else{None}).filter(|strct|strct.is_some()).map(|strct|strct.unwrap()).collect()
+    pub(crate) fn structs(&self) -> Vec<crate::assembly_exporter::ClassInfo> {
+        self.types
+            .iter()
+            .map(|tpe| {
+                if let CLRType::Struct { fields } = tpe.1 {
+                    Some(crate::assembly_exporter::ClassInfo::new(tpe.0, fields))
+                } else {
+                    None
+                }
+            })
+            .filter(|strct| strct.is_some())
+            .map(|strct| strct.unwrap())
+            .collect()
     }
-    pub(crate) fn methods(&self)->&[CLRMethod]{
+    pub(crate) fn methods(&self) -> &[CLRMethod] {
         &self.methods
     }
     pub(crate) fn sizeof_type(&self, var_type: &VariableType) -> usize {

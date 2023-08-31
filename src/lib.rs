@@ -37,8 +37,8 @@ use rustc_session::{
 use rustc_span::ErrorGuaranteed;
 use serde::{Deserialize, Serialize};
 use std::any::Any;
-
 mod clr_method;
+mod codegen;
 use clr_method::*;
 mod assembly;
 use assembly::*;
@@ -49,6 +49,7 @@ use variable::*;
 mod assembly_exporter;
 mod projection;
 mod statement;
+mod types;
 pub type IString = Box<str>;
 const ENTRYPOINT: &str = ".class public auto ansi abstract sealed beforefieldinit Program
 extends [System.Runtime]System.Object
@@ -194,46 +195,18 @@ impl CodegenBackend for MyBackend {
         );
         use crate::assembly_exporter::AssemblyExporter;
         let path = out_filename(sess, CrateType::Rlib, outputs, crate_name);
-        
+
         let path = match path {
             OutFileName::Real(ref path) => path.to_owned(),
             OutFileName::Stdout => panic!("Compiling to stdout is not supported!"),
         };
-        std::fs::create_dir_all(path.parent().expect("Could not get the target directory")).expect("Could not create the target directory!");
-        crate::assembly_exporter::ilasm_exporter::ILASMExporter::export_assembly(&final_assembly,&path).expect("Could not create the final assembly!");
-        /* 
-        if sess.opts.crate_types.is_empty() {
-            let output_name = out_filename(sess, CrateType::Executable, outputs, crate_name);
-            match output_name {
-                OutFileName::Real(ref path) => {
-                    let mut out_file = std::fs::File::create(path).unwrap();
-                    let asm_il = final_assembly.into_il_ir();
-
-                    write!(out_file, "{}\n{ENTRYPOINT}", asm_il).unwrap();
-                }
-                OutFileName::Stdout => {
-                    let mut stdout = std::io::stdout();
-                    //write!(stdout, "This has been \"compiled\" successfully.").unwrap();
-                }
-            }
-        }
-        for &crate_type in sess.opts.crate_types.iter() {
-            if crate_type != CrateType::Rlib && crate_type != CrateType::Executable {
-                sess.fatal(format!("Crate type is {:?}", crate_type));
-            }
-            let output_name = out_filename(sess, crate_type, outputs, crate_name);
-            match output_name {
-                OutFileName::Real(ref path) => {
-                    let mut out_file = std::fs::File::create(path).unwrap();
-                    let asm_il = final_assembly.into_il_ir();
-                    write!(out_file, "{}", asm_il).unwrap();
-                }
-                OutFileName::Stdout => {
-                    let mut stdout = std::io::stdout();
-                    write!(stdout, "This has been \"compiled\" successfully.").unwrap();
-                }
-            }
-        }*/
+        std::fs::create_dir_all(path.parent().expect("Could not get the target directory"))
+            .expect("Could not create the target directory!");
+        crate::assembly_exporter::ilasm_exporter::ILASMExporter::export_assembly(
+            &final_assembly,
+            &path,
+        )
+        .expect("Could not create the final assembly!");
         Ok(())
     }
 }

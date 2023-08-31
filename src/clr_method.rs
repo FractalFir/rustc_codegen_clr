@@ -33,7 +33,7 @@ impl CLRMethod {
     pub(crate) fn sig(&self) -> &FunctionSignature {
         &self.sig
     }
-    pub(crate) fn ops(&self)->&[BaseIR]{
+    pub(crate) fn ops(&self) -> &[BaseIR] {
         &self.ops
     }
     pub(crate) fn from_raw(

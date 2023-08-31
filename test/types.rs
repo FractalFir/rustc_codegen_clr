@@ -49,6 +49,11 @@ pub extern fn tuple(tup:(i32,i32)){}
 pub extern fn init_arr()->[i32;8]{
     [0,1,2,3,4,5,6,7]
 }
+pub struct GenericType<Inner>(Inner);
+#[no_mangle]
+pub extern fn get_option()->GenericType<i32>{
+    GenericType(1)
+}
 /*
 #[no_mangle]
 pub extern fn return_array()->[i32;4]{[0,0,0,0]}

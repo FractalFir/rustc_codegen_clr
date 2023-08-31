@@ -19,29 +19,45 @@ impl AssemblyExporter for ILASMExporter {
     fn add_struct(&mut self, struct_type: ClassInfo) {
         self.structs.push(struct_type)
     }
-    fn add_method(&mut self,method:CLRMethod){
+    fn add_method(&mut self, method: CLRMethod) {
         self.methods.push(method);
     }
     fn finalize(self, final_path: &std::path::Path) -> Result<(), super::AssemblyExportError> {
         use std::io::Write;
         //println!("final_path:{final_path:?}");
-        let directory = final_path.parent().expect("Can't get the target directory").canonicalize()?;
+        let directory = final_path
+            .parent()
+            .expect("Can't get the target directory")
+            .canonicalize()?;
 
         let mut out_path = directory.clone();
         out_path.set_file_name(final_path.file_name().expect("Target file has no name!"));
-        let out_path =out_path.with_extension(final_path.extension().expect("target file has no extension!"));//final_path.expect("Could not canonialize path!");
+        let out_path = out_path.with_extension(
+            final_path
+                .extension()
+                .expect("target file has no extension!"),
+        ); //final_path.expect("Could not canonialize path!");
 
         let cil_path = out_path.with_extension("il");
         let cil = self.get_cil()?;
         println!("cil_path:{cil_path:?}");
-        std::fs::File::create(&cil_path).expect("Could not create file").write_all(cil.as_bytes())?;
-        let asm_type = "/dll"; 
-        let target = format!("/output:{out_path}",out_path = out_path.clone().to_string_lossy().to_string());
-        let args:[String;3] = [asm_type.into(),target,cil_path.clone().to_string_lossy().to_string()];
+        std::fs::File::create(&cil_path)
+            .expect("Could not create file")
+            .write_all(cil.as_bytes())?;
+        let asm_type = "/dll";
+        let target = format!(
+            "/output:{out_path}",
+            out_path = out_path.clone().to_string_lossy().to_string()
+        );
+        let args: [String; 3] = [
+            asm_type.into(),
+            target,
+            cil_path.clone().to_string_lossy().to_string(),
+        ];
         std::process::Command::new("ilasm")
-        .args(args)
-        .output()
-        .expect("failed run ilasm process");
+            .args(args)
+            .output()
+            .expect("failed run ilasm process");
         Ok(())
     }
 }
@@ -50,7 +66,11 @@ impl ILASMExporter {
         (0, 0, 0, 0)
     }
     fn field_cil(&self, field: &(IString, VariableType)) -> String {
-        format!(".field {type_name} {field_name}",type_name = escaped_type_name(&field.1),field_name = field.0)
+        format!(
+            ".field {type_name} {field_name}",
+            type_name = escaped_type_name(&field.1),
+            field_name = field.0
+        )
     }
     fn struct_cil(&self, strct: &ClassInfo) -> Result<IString, super::AssemblyExportError> {
         const STRUCT_MODIFIERS: &str = "sequential ansi sealed beforefieldinit";
@@ -61,17 +81,21 @@ impl ILASMExporter {
             .iter()
             .map(|field| format!("\t{fld}\n", fld = self.field_cil(field)))
             .collect();
-        let extends = 
-        {
+        let extends = {
             let extends = strct.extends();
-            let assembly_ref = match extends.0.as_ref(){
-                Some(assembly_ref)=>format!("[{assembly_ref}]"),
-                None=>"".into(),
+            let assembly_ref = match extends.0.as_ref() {
+                Some(assembly_ref) => format!("[{assembly_ref}]"),
+                None => "".into(),
             };
-            format!("{assembly_ref}'{type_string}'",type_string = extends.1)
+            format!("{assembly_ref}'{type_string}'", type_string = extends.1)
         };
-        
-        Ok(format!(".class {visibility} {STRUCT_MODIFIERS} '{name}' extends {extends}{{{fields}}}").into())
+
+        Ok(
+            format!(
+                ".class {visibility} {STRUCT_MODIFIERS} '{name}' extends {extends}{{{fields}}}"
+            )
+            .into(),
+        )
     }
     fn get_cil(&self) -> Result<IString, super::AssemblyExportError> {
         let structs: String = self
@@ -84,7 +108,11 @@ impl ILASMExporter {
                 )
             })
             .collect();
-        let methods:String = self.methods.iter().map(|meth|self.method_cil(meth)).collect();
+        let methods: String = self
+            .methods
+            .iter()
+            .map(|meth| self.method_cil(meth))
+            .collect();
         let version = self.version();
         let version = format!("{}:{}:{}:{}", version.0, version.1, version.2, version.3);
         let final_cil = format!(
@@ -97,7 +125,10 @@ impl ILASMExporter {
         ""
     }
     fn ops_cil(&self, ops: &[BaseIR]) -> String {
-        ops.iter().map(|op|op_cil(op,self.call_prefix())).flat_map(|op_str|[op_str,"\n\t".into()]).collect()
+        ops.iter()
+            .map(|op| op_cil(op, self.call_prefix()))
+            .flat_map(|op_str| [op_str, "\n\t".into()])
+            .collect()
     }
     fn method_cil(&self, method: &CLRMethod) -> IString {
         let name = method.name();
@@ -110,107 +141,91 @@ impl ILASMExporter {
             .into()
     }
 }
-fn op_cil(op:&BaseIR,call_prefix:&str)->String{
-    match op{
-        //Controll flow 
+fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
+    match op {
+        //Controll flow
         BaseIR::BBLabel { bb_id } => format!("bb_{bb_id}:"),
         BaseIR::BEq { target } => format!("beq bb_{target}"),
         BaseIR::GoTo { target } => format!("br bb_{target}"),
-        BaseIR::Return=>"ret".into(),
-        BaseIR::Throw=>"throw".into(),
+        BaseIR::Return => "ret".into(),
+        BaseIR::Throw => "throw".into(),
         //Arguments
-        BaseIR::LDArg(argnum) =>{
-            if *argnum < 8{
+        BaseIR::LDArg(argnum) => {
+            if *argnum < 8 {
                 format!("ldarg.{argnum}")
-            }
-            else if *argnum <= u8::MAX as u32{
+            } else if *argnum <= u8::MAX as u32 {
                 format!("ldarg.s {argnum}")
-            }
-            else{
-                format!("ldarg {argnum}") 
+            } else {
+                format!("ldarg {argnum}")
             }
         }
-        BaseIR::LDArgA(argnum) =>{
-            if *argnum <= u8::MAX as u32{
+        BaseIR::LDArgA(argnum) => {
+            if *argnum <= u8::MAX as u32 {
                 format!("ldarga.s {argnum}")
-            }
-            else{
-                format!("ldarga {argnum}") 
+            } else {
+                format!("ldarga {argnum}")
             }
         }
-        BaseIR::STArg(argnum) =>{
-            if *argnum <= u8::MAX as u32{
+        BaseIR::STArg(argnum) => {
+            if *argnum <= u8::MAX as u32 {
                 format!("starg.s {argnum}")
-            }
-            else{
-                format!("starg {argnum}") 
+            } else {
+                format!("starg {argnum}")
             }
         }
         //Locals
-        BaseIR::LDLoc(argnum) =>{
-            if *argnum < 4{
+        BaseIR::LDLoc(argnum) => {
+            if *argnum < 4 {
                 format!("ldloc.{argnum}")
-            }
-            else if *argnum <= u8::MAX as u32{
+            } else if *argnum <= u8::MAX as u32 {
                 format!("ldloc.s {argnum}")
-            }
-            else{
-                format!("ldloc {argnum}") 
+            } else {
+                format!("ldloc {argnum}")
             }
         }
-        BaseIR::LDLocA(argnum) =>{
-            if *argnum <= u8::MAX as u32{
+        BaseIR::LDLocA(argnum) => {
+            if *argnum <= u8::MAX as u32 {
                 format!("ldloc.s {argnum}")
-            }
-            else{
-                format!("ldloc {argnum}") 
+            } else {
+                format!("ldloc {argnum}")
             }
         }
-        BaseIR::STLoc(argnum) =>{
-            if *argnum < 4{
+        BaseIR::STLoc(argnum) => {
+            if *argnum < 4 {
                 format!("stloc.{argnum}")
-            }
-            else if *argnum <= u8::MAX as u32{
+            } else if *argnum <= u8::MAX as u32 {
                 format!("stloc.s {argnum}")
-            }
-            else{
-                format!("stloc {argnum}") 
+            } else {
+                format!("stloc {argnum}")
             }
         }
         //Constants
-        BaseIR::LDConstI64(value)=>{
-            if *value == -1{
+        BaseIR::LDConstI64(value) => {
+            if *value == -1 {
                 "ldc.i4.m1".into()
-            }
-            else if *value <= 8 && *value >= 0{
+            } else if *value <= 8 && *value >= 0 {
                 format!("ldc.i4.{value}")
-            }
-            else if *value <= i8::MAX as i64 && *value >= i8::MIN as i64{
+            } else if *value <= i8::MAX as i64 && *value >= i8::MIN as i64 {
                 format!("ldc.i4.s {value}")
-            }
-            else if *value <= i32::MAX as i64 && *value >= i32::MIN as i64{
+            } else if *value <= i32::MAX as i64 && *value >= i32::MIN as i64 {
                 format!("ldc.i4 {value}")
-            }
-            else{
+            } else {
                 format!("ldc.i8 {value}")
             }
-        },
+        }
         BaseIR::LDConstF32(f32const) => format!("ldc.r4 {f32const}"),
-        BaseIR::LDConstI32(value)=>{
-            if *value == -1{
+        BaseIR::LDConstI32(value) => {
+            if *value == -1 {
                 "ldc.i4.m1".into()
-            }
-            else if *value <= 8 && *value >= 0{
+            } else if *value <= 8 && *value >= 0 {
                 format!("ldc.i4.{value}")
-            }
-            else if *value <= i8::MAX as i32 && *value >= i8::MIN as i32{
+            } else if *value <= i8::MAX as i32 && *value >= i8::MIN as i32 {
                 format!("ldc.i4.s {value}")
-            }
-            else {
+            } else {
                 format!("ldc.i4 {value}")
             }
-        },
-        BaseIR::LDConstString(string)=>format!("ldstr \"{string}\""),
+        }
+        BaseIR::LDConstString(string) => format!("ldstr \"{string}\""),
         BaseIR::NewObj { ctor_fn } => format!("newobj instance {ctor_fn}"),
         //Arthmetics
         BaseIR::Add => "add".into(),
@@ -235,16 +250,16 @@ fn op_cil(op:&BaseIR,call_prefix:&str)->String{
         //Seting Pointers
         BaseIR::LDIndI => "ldind.i".into(),
         BaseIR::LDIndIn(n) => format!("ldind.i{n}"),
-        BaseIR::LDIndR4  => format!("ldind.r4"),
-        BaseIR::LDIndR8  => format!("ldind.r8"),
+        BaseIR::LDIndR4 => format!("ldind.r4"),
+        BaseIR::LDIndR8 => format!("ldind.r8"),
         BaseIR::STObj(name) => format!("stobj valuetype {name}"),
         // Geting pointers
         BaseIR::STIndI => "stind.i".into(),
         BaseIR::STIndIn(n) => format!("stind.i{n}"),
         BaseIR::LDObj(name) => format!("ldobj valuetype {name}"),
-        BaseIR::STIndR4  => format!("stind.r4"),
-        BaseIR::STIndR8  => format!("stind.r8"),
-        //Fileds 
+        BaseIR::STIndR4 => format!("stind.r4"),
+        BaseIR::STIndR8 => format!("stind.r8"),
+        //Fileds
         BaseIR::LDField {
             field_parent,
             field_name,
@@ -277,10 +292,19 @@ fn op_cil(op:&BaseIR,call_prefix:&str)->String{
         }
         //Conversions
         BaseIR::ConvI => "conv.i".into(),
+        BaseIR::ConvU => "conv.u".into(),
         BaseIR::ConvI8 => "conv.i8".into(),
-        BaseIR::ConvI16Checked => "conv.ovf.i2".into(),
+        BaseIR::ConvU8 => "conv.u8".into(),
+        BaseIR::ConvI16 => "conv.i16".into(),
+        BaseIR::ConvU16 => "conv.i16".into(),
         BaseIR::ConvI32 => "conv.i32".into(),
+        BaseIR::ConvU32 => "conv.i32".into(),
         BaseIR::ConvF32 => "conv.r4".into(),
+        BaseIR::ConvI64 => "conv.i64".into(),
+        BaseIR::ConvU64 => "conv.i64".into(),
+        BaseIR::ConvF64 => "conv.r8".into(),
+        //Checked convetions
+        BaseIR::ConvI16Checked => "conv.ovf.i2".into(),
         BaseIR::ConvI32Checked => "conv.ovf.i4".into(),
         //Calls
         BaseIR::Call { sig, function_name } => {
@@ -316,33 +340,37 @@ fn op_cil(op:&BaseIR,call_prefix:&str)->String{
             )
         }
         //Type info
-        BaseIR::SizeOf(name)=> format!("sizeof {name}"),
+        BaseIR::SizeOf(name) => format!("sizeof {name}"),
         //Debuging
         BaseIR::DebugComment(comment) => format!("//{comment}"),
-        BaseIR::Nop =>"nop".into(),
+        BaseIR::Nop => "nop".into(),
         //Other
-        BaseIR::InitObj(name)=>format!("initobj {name}"),
+        BaseIR::InitObj(name) => format!("initobj {name}"),
         //_=>todo!("unsuported op:{op:?}."),
     }
 }
 fn variable_arg_type_name(var: &VariableType) -> IString {
-   match var{
-        VariableType::Struct(_)=> format!("valuetype {typename}",typename = escaped_type_name(var) ).into(),
-        VariableType::Enum(_)=> format!("valuetype {typename}",typename = escaped_type_name(var) ).into(),
-        _=>escaped_type_name(var),
-   }
-}
-fn escaped_type_name(var:&VariableType) -> IString{
-   match var{
-        VariableType::Struct(name)=> format!("'{name}'").into(),
-        VariableType::Enum(name)=> format!("'{name}'").into(),
-        _=>type_name(var)
-   }
-}
-fn type_name(var:&VariableType)->IString{
     match var {
-        VariableType::Struct(name)=>  name.replace("::","."),
-        VariableType::Enum(name)=> name.replace("::","."),
+        VariableType::Struct(_) => {
+            format!("valuetype {typename}", typename = escaped_type_name(var)).into()
+        }
+        VariableType::Enum(_) => {
+            format!("valuetype {typename}", typename = escaped_type_name(var)).into()
+        }
+        _ => escaped_type_name(var),
+    }
+}
+fn escaped_type_name(var: &VariableType) -> IString {
+    match var {
+        VariableType::Struct(name) => format!("'{name}'").into(),
+        VariableType::Enum(name) => format!("'{name}'").into(),
+        _ => type_name(var),
+    }
+}
+fn type_name(var: &VariableType) -> IString {
+    match var {
+        VariableType::Struct(name) => name.replace("::", "."),
+        VariableType::Enum(name) => name.replace("::", "."),
         VariableType::Void => "void".into(),
         VariableType::I8 => "int8".into(),
         VariableType::U8 => "uint8".into(),
@@ -359,10 +387,13 @@ fn type_name(var:&VariableType)->IString{
         VariableType::ISize => "native int".into(),
         VariableType::USize => "native uint".into(),
         VariableType::Bool => "bool".into(),
-        VariableType::Ref(inner) => format!("{inner}*",inner = escaped_type_name(inner)),
-        VariableType::Array { element, length } => format!("Arr{length}_{element}",element = type_name(element)),
+        VariableType::Ref(inner) => format!("{inner}*", inner = escaped_type_name(inner)),
+        VariableType::Array { element, length } => {
+            format!("Arr{length}_{element}", element = type_name(element))
+        }
         _ => todo!("unhandled var type {var:?}"),
-    }.into()
+    }
+    .into()
 }
 #[cfg(test)]
 use crate::AsVartype;
