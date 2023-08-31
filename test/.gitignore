@@ -2,3 +2,6 @@
 *.dll
 *.rcgu.o
 *.mir
+*.il
+*.exe
+*.txt

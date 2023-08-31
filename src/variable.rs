@@ -120,6 +120,7 @@ impl VariableType {
     }
     pub(crate) fn from_ty<'ctx>(ty: Ty<'ctx>, tyctx: TyCtxt<'ctx>) -> Self {
         println!("ty:{ty:?}");
+        let tpe = crate::types::Type::from_ty(&ty,&tyctx);
         match ty.kind() {
             TyKind::Int(IntTy::I8) => VariableType::I8,
             TyKind::Int(IntTy::I16) => VariableType::I16,

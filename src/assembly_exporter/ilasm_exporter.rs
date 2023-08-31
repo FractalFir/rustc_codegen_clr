@@ -16,7 +16,7 @@ impl AssemblyExporter for ILASMExporter {
         }
     }
 
-    fn add_struct(&mut self, struct_type: ClassInfo) {
+    fn add_class(&mut self, struct_type: ClassInfo) {
         self.structs.push(struct_type)
     }
     fn add_method(&mut self, method: CLRMethod) {
@@ -439,5 +439,5 @@ fn ilasm_exporter_add_struct() {
         ("z".into(), f32::vtpe()),
     ];
     let vec3 = ClassInfo::new("Vector3", fields);
-    ilasm.add_struct(vec3);
+    ilasm.add_class(vec3);
 }

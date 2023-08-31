@@ -3,6 +3,7 @@ pub(crate) type EnumVariant = ();
 pub(crate) type Attribute = ();
 pub(crate) type Method = CLRMethod;
 use std::path::Path;
+type AssemblyInfo = str;
 #[derive(Debug, Clone)]
 enum AccessModifer {
     Private,
@@ -46,19 +47,18 @@ impl ClassInfo {
 use crate::{assembly::Assembly, clr_method::CLRMethod, IString, VariableType};
 pub(crate) mod ilasm_exporter;
 pub(crate) trait AssemblyExporter: Sized {
-    fn init(name: &str) -> Self;
-    fn add_struct(&mut self, struct_type: ClassInfo);
+    fn init(asm_info: &AssemblyInfo) -> Self;
+    fn add_class(&mut self, class: ClassInfo);
     fn add_method(&mut self, method: CLRMethod);
     fn finalize(self, final_path: &Path) -> Result<(), AssemblyExportError>;
     fn export_assembly(asm: &Assembly, final_path: &Path) -> Result<(), AssemblyExportError> {
         let mut asm_exporter = Self::init(asm.name());
         for struct_type in asm.structs() {
-            asm_exporter.add_struct(struct_type);
+            asm_exporter.add_class(struct_type);
         }
         for method in asm.methods() {
             asm_exporter.add_method(method.clone());
         }
-        //TODO:methods
         asm_exporter.finalize(final_path)
     }
 }

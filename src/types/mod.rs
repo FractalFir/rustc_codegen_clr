@@ -1,9 +1,11 @@
 use crate::IString;
-use rustc_middle::ty::{Const, FloatTy, IntTy, Ty, TyKind, UintTy};
+use rustc_middle::ty::{Const, FloatTy, IntTy, Ty, TyCtxt, TyKind, UintTy,AdtDef,AdtKind,GenericArg};
+#[derive(Debug,Clone,PartialEq)]
 pub(crate) struct FieldType {
     name: IString,
     tpe: Type,
 }
+#[derive(Debug,Clone,PartialEq)]
 pub(crate) enum Type {
     //Intieger types
     U8,
@@ -27,7 +29,7 @@ pub(crate) enum Type {
     //Algebraic Data Types
     Struct {
         name: IString,
-        fields: Vec<FieldType>,
+        fields: Box<[FieldType]>,
     },
     //Slice/Array types
     StrSlice,
@@ -42,10 +44,11 @@ pub(crate) enum Type {
     },
     ResolvedGenric {
         inner: Box<Self>,
-        params: Vec<Self>,
+        params: Box<[Option<Self>]>,
     },
     //Special types
     Bool,
+    Tuple(Box<[Self]>),
     Void,
 }
 pub(crate) trait ToCLRType {
@@ -107,34 +110,89 @@ fn get_array_length(arr_len: Const) -> u64 {
     value
 }
 // Cpnversions from the Rust Type system
-impl From<Ty<'_>> for Type {
-    fn from(value: Ty<'_>) -> Self {
-        (&value).into()
+impl Type {
+    pub(crate) fn box_from_ty<'ctx>(rust_tpe: &Ty<'ctx>,tyctx:&TyCtxt<'ctx>)->Box<Self>{
+        Box::new(Self::from_ty(rust_tpe, tyctx))
     }
-}
-impl From<&Ty<'_>> for Type {
-    fn from(rust_tpe: &Ty) -> Self {
+    pub(crate) fn from_ty_non_cyclic<'ctx>(rust_tpe: &Ty<'ctx>,tyctx:&TyCtxt<'ctx>) -> Self {
+        Self::from_ty(rust_tpe,tyctx)
+    }
+    pub(crate) fn from_ty<'ctx>(rust_tpe: &Ty<'ctx>,tyctx:&TyCtxt<'ctx>) -> Self {
         match rust_tpe.kind() {
+            //Basic types
             TyKind::Bool => Self::Bool,
             TyKind::Int(int) => int.into(),
             TyKind::Uint(uint) => uint.into(),
             TyKind::Char => Self::U64,
             TyKind::Float(float) => float.into(),
+            //Special 
+            TyKind::Never => Self::Void,
             TyKind::Str => Self::StrSlice,
             TyKind::Foreign(_) => Self::Void,
             TyKind::Array(element_type, length_const) => Self::Array {
-                element: Box::new(element_type.into()),
+                element: Box::new(Self::from_ty(element_type,tyctx)),
                 length: get_array_length(*length_const),
             },
-            TyKind::RawPtr(ptr_info) => Self::Ptr(Box::new(ptr_info.ty.into())),
-            TyKind::Ref(_, referenced_type, _) => Self::Ref(Box::new(referenced_type.into())),
+            TyKind::RawPtr(ptr_info) => Self::Ptr(Self::box_from_ty(&ptr_info.ty,tyctx)),
+            TyKind::Ref(_, referenced_type, _) => Self::Ref(Self::box_from_ty(referenced_type,tyctx)),
             TyKind::FnDef(_, _) => todo!("Function types are not supported yet."),
             TyKind::FnPtr(_) => todo!("Function pointer types are not supported yet."),
             TyKind::Closure(_, _) => todo!("Closure types are not supported yet."),
-            TyKind::Slice(element_type) => Self::Slice(Box::new(element_type.into())),
-            _ => todo!("type:{rust_tpe}"),
+            TyKind::Slice(element_type) => Self::Slice(Self::box_from_ty(element_type,tyctx)),
+            TyKind::Dynamic(_,_,_) => Self::Void, //Dynamics are needed for `no_std` to work.
+            TyKind::Generator(_,_,_) => todo!("Gernerators are not supported."),
+            TyKind::GeneratorWitness(_) => todo!("Gernerators are not supported."),
+            TyKind::GeneratorWitnessMIR{..} => todo!("Gernerators are not supported."),
+            TyKind::Tuple(elements) => {
+                if elements.len() == 0 {
+                    Self::Void
+                } else {
+                    Self::Tuple(elements.iter().map(|e|Self::from_ty(&e,tyctx)).collect())
+                }
+            },
+            TyKind::Param(param) => Self::GenericParam { index:param.index },
+            TyKind::Alias(_,aty)=> Self::from_ty(&aty.to_ty(*tyctx),tyctx),
+            TyKind::Infer(_) => panic!("`rustc_codgen_clr` was passed an invalid type of kind `Infer`"),
+            TyKind::Error(_) => panic!("`rustc_codgen_clr` was passed an invalid type of kind `Error`"),
+            TyKind::Placeholder(_) => panic!("`rustc_codgen_clr` was passed an invalid type of kind `Placeholder`"),
+            TyKind::Bound(_,_)=> panic!("`rustc_codgen_clr` was passed a bound type."),
+            TyKind::Adt(adt,subst)=>Self::from_adt(adt,subst,tyctx),
+            //_ => todo!("type:{rust_tpe}"),
         }
     }
+    fn from_adt<'ctx>(adt:&AdtDef<'ctx>,subst:&[GenericArg<'ctx>],tyctx:&TyCtxt<'ctx>)->Self{
+        let subst:Box<[Option<_>]> = subst.iter().map(|arg|Some(Self::from_ty(&arg.as_type()?,tyctx))).collect();
+        match adt.adt_kind() {
+            AdtKind::Struct => {
+                if adt.is_box(){
+                    assert_eq!(adt.all_fields().count(),2,"Box must have exactly two fields!");
+                    let t_field = adt.all_fields().nth(0).unwrap();
+                    let t_type = tyctx.type_of(t_field.did).skip_binder();
+                    return Self::Ptr(Self::box_from_ty(&t_type,tyctx)).resolve_generic(&subst);
+                }
+                let fields:Vec<FieldType> = adt.all_fields().map(|field|(FieldType{
+                    name:field.name.to_string().into(),
+                    tpe:Self::from_ty_non_cyclic(&tyctx.type_of(field.did).skip_binder(), tyctx),}
+                )).collect();
+                let name = adt_name(adt);
+                Self::Struct { name, fields:fields.into() }.resolve_generic(&subst)
+            }
+            AdtKind::Union => todo!("Can't yet handle unions"),
+            AdtKind::Enum => todo!("Enum is not supported yet"),
+        }
+    }
+    fn resolve_generic(self,subst:&[Option<Self>])->Self{
+        if subst.is_empty(){
+            self
+        }
+        else{
+            assert!(!matches!(self,Self::ResolvedGenric {..}),"Can't yet handle nested generics.");
+            Self::ResolvedGenric { inner: Box::new(self), params: subst.into() }
+        }
+    }
+}
+fn adt_name(adt:&AdtDef)->IString{
+    format!("{adt:?}").into()
 }
 impl From<&IntTy> for Type {
     fn from(int_tpe: &IntTy) -> Self {
