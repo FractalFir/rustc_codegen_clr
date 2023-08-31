@@ -1,6 +1,6 @@
 use crate::{
     projection::{projection_adress, projection_get, projection_set},
-    Assembly, BaseIR, CLRMethod, LocalPlacement, VariableType,
+    Assembly, BaseIR, CLRMethod, LocalPlacement, types::Type,
 };
 use rustc_index::IndexVec;
 use rustc_middle::mir::NullOp;
@@ -49,7 +49,7 @@ impl<'tctx, 'local_ctx> CodegenCtx<'tctx, 'local_ctx> {
     pub(crate) fn tyctx(&self) -> &TyCtxt<'tctx> {
         &self.tyctx
     }
-    pub(crate) fn get_local_type(&self, local: u32) -> &VariableType {
+    pub(crate) fn get_local_type(&self, local: u32) -> &Type {
         self.clr_method.get_type_of_local(local)
     }
     pub(crate) fn place_get_ops(&self, place: &Place<'tctx>) -> Vec<BaseIR> {
@@ -72,7 +72,7 @@ impl<'tctx, 'local_ctx> CodegenCtx<'tctx, 'local_ctx> {
         projection_set(place, self.get_local_type(place.local.into()), self)
     }
 }
-fn load_const_scalar(scalar: Scalar, scalar_type: VariableType) -> Vec<BaseIR> {
+fn load_const_scalar(scalar: Scalar, scalar_type: Type) -> Vec<BaseIR> {
     let scalar_u128 = match scalar {
         Scalar::Int(scalar_int) => scalar_int
             .try_to_uint(scalar.size())
@@ -80,23 +80,23 @@ fn load_const_scalar(scalar: Scalar, scalar_type: VariableType) -> Vec<BaseIR> {
         Scalar::Ptr(_, _) => todo!("Can't handle scalar pointers yet!"),
     };
     match scalar_type {
-        VariableType::I8 => vec![BaseIR::LDConstI32(sign_cast!(scalar_u128, u8, i8) as i32)],
-        VariableType::U8 => vec![BaseIR::LDConstI32(scalar_u128 as u8 as i32)],
-        VariableType::I16 => vec![BaseIR::LDConstI32(sign_cast!(scalar_u128, u16, i16) as i32)],
-        VariableType::U16 => vec![BaseIR::LDConstI32(scalar_u128 as i32)],
-        VariableType::I32 => vec![BaseIR::LDConstI32(sign_cast!(scalar_u128, u32, i32))],
-        VariableType::U32 => vec![BaseIR::LDConstI32(scalar_u128 as i32)],
-        VariableType::F32 => vec![BaseIR::LDConstF32(f32::from_bits(scalar_u128 as u32))],
-        VariableType::Bool => vec![BaseIR::LDConstI32((scalar_u128 != 0) as u8 as i32)],
-        VariableType::I64 => vec![BaseIR::LDConstI64(sign_cast!(scalar_u128, u64, i64))],
-        VariableType::U64 => vec![BaseIR::LDConstI64(scalar_u128 as i64)],
-        VariableType::USize => vec![BaseIR::LDConstI64(scalar_u128 as i64)],
-        VariableType::ISize => vec![BaseIR::LDConstI64(scalar_u128 as i64)],
-        VariableType::Enum(_) => vec![BaseIR::LDConstI32((scalar_u128 != 0) as u8 as i32)],
+        Type::I8 => vec![BaseIR::LDConstI32(sign_cast!(scalar_u128, u8, i8) as i32)],
+        Type::U8 => vec![BaseIR::LDConstI32(scalar_u128 as u8 as i32)],
+        Type::I16 => vec![BaseIR::LDConstI32(sign_cast!(scalar_u128, u16, i16) as i32)],
+        Type::U16 => vec![BaseIR::LDConstI32(scalar_u128 as i32)],
+        Type::I32 => vec![BaseIR::LDConstI32(sign_cast!(scalar_u128, u32, i32))],
+        Type::U32 => vec![BaseIR::LDConstI32(scalar_u128 as i32)],
+        Type::F32 => vec![BaseIR::LDConstF32(f32::from_bits(scalar_u128 as u32))],
+        Type::Bool => vec![BaseIR::LDConstI32((scalar_u128 != 0) as u8 as i32)],
+        Type::I64 => vec![BaseIR::LDConstI64(sign_cast!(scalar_u128, u64, i64))],
+        Type::U64 => vec![BaseIR::LDConstI64(scalar_u128 as i64)],
+        Type::USize => vec![BaseIR::LDConstI64(scalar_u128 as i64)],
+        Type::ISize => vec![BaseIR::LDConstI64(scalar_u128 as i64)],
+        //Type::Enum(_) => vec![BaseIR::LDConstI32((scalar_u128 != 0) as u8 as i32)],
         _ => todo!("can't yet handle a scalar of type {scalar_type:?}!"),
     }
 }
-fn load_const_value(const_val: ConstValue, const_ty: VariableType) -> Vec<BaseIR> {
+fn load_const_value(const_val: ConstValue, const_ty: Type) -> Vec<BaseIR> {
     match const_val {
         ConstValue::Scalar(scalar) => load_const_scalar(scalar, const_ty),
         ConstValue::ZeroSized => vec![BaseIR::DebugComment("ZeroSized!".into())],
@@ -110,7 +110,7 @@ fn handle_constant<'ctx>(
     let const_kind = constant.literal;
     match const_kind {
         ConstantKind::Val(value, const_ty) => {
-            load_const_value(value, VariableType::from_ty(const_ty, *codegen_ctx.tyctx()))
+            load_const_value(value, Type::from_ty(&const_ty, codegen_ctx.tyctx()))
         }
         ConstantKind::Unevaluated(a, b) => {
             vec![BaseIR::DebugComment(format!("{a:?} {b:?}").into())]
@@ -158,7 +158,7 @@ fn handle_binop<'ctx>(
     };
     ops
 }
-fn handle_convert(src: &VariableType, dest: &VariableType) -> Vec<BaseIR> {
+fn handle_convert(src: &Type, dest: &Type) -> Vec<BaseIR> {
     crate::codegen::convert::convert_as(src, dest)
 }
 fn handle_agregate<'tyctx>(
@@ -169,12 +169,13 @@ fn handle_agregate<'tyctx>(
 ) -> Vec<BaseIR> {
     match aggregate {
         AggregateKind::Array(element_type) => {
+            /* 
             let agregate_adress = codegen_ctx.place_adress_ops(target_location);
             let mut agregate_construction = Vec::new();
-            let element = VariableType::from_ty(*element_type, *codegen_ctx.tyctx());
-            let arr_name = VariableType::Array {
+            let element = Type::from_ty(element_type, codegen_ctx.tyctx());
+            let arr_name = Type::Array {
                 element: Box::new(element.clone()),
-                length: fields.len(),
+                length: fields.len() as u64,
             }
             .arg_name();
             if crate::ALWAYS_INIT_STRUCTS {
@@ -188,22 +189,22 @@ fn handle_agregate<'tyctx>(
                 agregate_construction.extend(handle_operand(operand, codegen_ctx));
                 agregate_construction.push(BaseIR::Call {
                     sig: crate::FunctionSignature::new(
-                        &[VariableType::ISize, element.clone()],
-                        &VariableType::Void,
+                        &[Type::ISize, element.clone()],
+                        &Type::Void,
                     ),
                     function_name: format!("{arr_name}::set_Item").into(),
                 });
             }
             agregate_construction.extend(codegen_ctx.place_get_ops(target_location));
-            agregate_construction
-            //todo!("Can't yet create aggreate arrays with element type {element_type:?}")
+            agregate_construction*/
+            todo!("Can't yet create aggreate arrays with element type {element_type:?}")
         }
         AggregateKind::Adt(def_id, _varaint, subst, _uta, _field_idx) => {
             let agregate_adress = codegen_ctx.place_adress_ops(target_location);
-            let mut agregate_construction = Vec::new();
+            //let mut agregate_construction = Vec::new();
             let param_env = ParamEnv::empty();
-            let adt_type = VariableType::from_ty(
-                rustc_middle::ty::Instance::resolve(
+            let adt_type = Type::from_ty(
+                &rustc_middle::ty::Instance::resolve(
                     *codegen_ctx.tyctx(),
                     param_env,
                     *def_id,
@@ -212,10 +213,11 @@ fn handle_agregate<'tyctx>(
                 .expect("Can't get type!")
                 .expect("Can't get type!")
                 .ty(*codegen_ctx.tyctx(), param_env),
-                *codegen_ctx.tyctx(),
+                codegen_ctx.tyctx(),
             );
             match adt_type {
-                VariableType::Struct(name) => {
+                /* 
+                Type::Struct(name) => {
                     if crate::ALWAYS_INIT_STRUCTS {
                         agregate_construction.extend(agregate_adress.clone());
                         agregate_construction.push(BaseIR::InitObj(name.clone()));
@@ -232,8 +234,8 @@ fn handle_agregate<'tyctx>(
                     }
                     agregate_construction.extend(codegen_ctx.place_get_ops(target_location));
                     agregate_construction
-                }
-                VariableType::Enum(enum_name) => vec![BaseIR::DebugComment(enum_name)],
+                }*/
+                //Type::Enum(enum_name) => vec![BaseIR::DebugComment(enum_name)],
                 _ => todo!("Unhandled adt type {adt_type:?}"),
             }
         }
@@ -263,11 +265,11 @@ fn handle_rvalue<'tyctx>(
             target,
         ) => {
             let conversion = handle_convert(
-                &VariableType::from_ty(
-                    operand.ty(codegen_ctx.body(), *codegen_ctx.tyctx()),
-                    *codegen_ctx.tyctx(),
+                &Type::from_ty(
+                    &operand.ty(codegen_ctx.body(), *codegen_ctx.tyctx()),
+                    codegen_ctx.tyctx(),
                 ),
-                &VariableType::from_ty(*target, *codegen_ctx.tyctx()),
+                &Type::from_ty(target, codegen_ctx.tyctx()),
             );
             let operand = handle_operand(operand, codegen_ctx);
             let mut final_ops = operand;
@@ -287,13 +289,14 @@ fn handle_rvalue<'tyctx>(
             let array_adress = codegen_ctx.place_adress_ops(target_location);
 
             let mut array_init = Vec::new();
-            let element = VariableType::from_ty(
-                operand.ty(codegen_ctx.body(), *codegen_ctx.tyctx()),
-                *codegen_ctx.tyctx(),
+            let element = Type::from_ty(
+                &operand.ty(codegen_ctx.body(), *codegen_ctx.tyctx()),
+                codegen_ctx.tyctx(),
             );
-            let arr_name = VariableType::Array {
+            /* 
+            let arr_name = Type::Array {
                 element: Box::new(element.clone()),
-                length: ammount,
+                length: ammount as u64,
             }
             .arg_name();
             if crate::ALWAYS_INIT_STRUCTS {
@@ -308,12 +311,12 @@ fn handle_rvalue<'tyctx>(
                 array_init.extend(handle_operand(operand, codegen_ctx));
                 array_init.push(BaseIR::Call {
                     sig: crate::FunctionSignature::new(
-                        &[VariableType::ISize, element.clone()],
-                        &VariableType::Void,
+                        &[Type::ISize, element.clone()],
+                        &Type::Void,
                     ),
                     function_name: format!("{arr_name}::set_Item").into(),
                 });
-            }
+            }*/
             array_init.extend(codegen_ctx.place_get_ops(target_location));
             array_init
         }
@@ -327,11 +330,11 @@ fn handle_rvalue<'tyctx>(
             //todo!("Can't get adress of things yet!"),
         }
         Rvalue::Len(palce) => {
-            let ty = VariableType::from_ty(
-                palce.ty(codegen_ctx.body(), *codegen_ctx.tyctx()).ty,
-                *codegen_ctx.tyctx(),
+            let ty = Type::from_ty(
+                &palce.ty(codegen_ctx.body(), *codegen_ctx.tyctx()).ty,
+                codegen_ctx.tyctx(),
             );
-            vec![ty.sizeof_op()]
+            crate::codegen::sizeof_ops(&ty)
         }
         Rvalue::CheckedBinaryOp(_, _) => todo!("Can't yet preform checked binary operations"),
         Rvalue::UnaryOp(unary, operand) => {
@@ -343,9 +346,9 @@ fn handle_rvalue<'tyctx>(
             ops
         }
         Rvalue::NullaryOp(null_op, op_type) => {
-            let op_type = VariableType::from_ty(*op_type, *codegen_ctx.tyctx());
+            let op_type = Type::from_ty(op_type, codegen_ctx.tyctx());
             match null_op {
-                NullOp::SizeOf => vec![op_type.sizeof_op()],
+                NullOp::SizeOf =>crate::codegen::sizeof_ops(&op_type),
                 //TODO: actualy calcualte algiment!
                 NullOp::AlignOf => vec![BaseIR::LDConstI32(8)],
                 _ => todo!("Unsuiported nullary op {null_op:?}"),

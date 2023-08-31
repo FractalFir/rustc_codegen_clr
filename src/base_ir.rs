@@ -1,4 +1,4 @@
-use crate::{FunctionSignature, IString, VariableType};
+use crate::{FunctionSignature, IString,types::Type};
 use serde::{Deserialize, Serialize};
 // An IR close, but not exactly equivalent to the CoreCLR IR.
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
@@ -79,17 +79,17 @@ pub(crate) enum BaseIR {
     LDField {
         field_parent: IString,
         field_name: IString,
-        field_type: VariableType,
+        field_type: Type,
     },
     LDFieldAdress {
         field_parent: IString,
         field_name: IString,
-        field_type: VariableType,
+        field_type: Type,
     },
     STField {
         field_parent: IString,
         field_name: IString,
-        field_type: VariableType,
+        field_type: Type,
     },
     SizeOf(IString),
     LDObj(IString),

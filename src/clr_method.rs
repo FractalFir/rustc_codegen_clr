@@ -1,4 +1,4 @@
-use crate::{statement::CodegenCtx, Assembly, BaseIR, FunctionSignature, IString, VariableType};
+use crate::{statement::CodegenCtx, Assembly, BaseIR, FunctionSignature, IString,types::Type};
 use rustc_index::IndexVec;
 use rustc_middle::{
     mir::{
@@ -16,7 +16,7 @@ macro_rules! sign_cast {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct CLRMethod {
     ops: Vec<BaseIR>,
-    locals: Vec<VariableType>,
+    locals: Vec<Type>,
     sig: FunctionSignature,
     name: IString,
     curr_bb: u32,
@@ -38,7 +38,7 @@ impl CLRMethod {
     }
     pub(crate) fn from_raw(
         ops: &[BaseIR],
-        locals: &[VariableType],
+        locals: &[Type],
         name: &str,
         sig: FunctionSignature,
     ) -> Self {
@@ -52,7 +52,7 @@ impl CLRMethod {
             curr_bb,
         }
     }
-    pub(crate) fn get_type_of_local(&self, local: u32) -> &VariableType {
+    pub(crate) fn get_type_of_local(&self, local: u32) -> &Type {
         match self.local_id_placement(local) {
             LocalPlacement::Arg(index) => &self.sig.inputs[index as usize],
             LocalPlacement::Var(index) => &self.locals[index as usize],
@@ -63,7 +63,7 @@ impl CLRMethod {
             .locals
             .iter()
             .enumerate()
-            .filter(|(index, vartype)| **vartype == VariableType::Void)
+            .filter(|(index, vartype)| **vartype == Type::Void)
             .map(|(index, vartype)| index)
             .collect();
         self.ops
@@ -71,8 +71,8 @@ impl CLRMethod {
             .for_each(|op| op.remove_void_local(&void_locals));
         //TODO: remove void locals propely
         self.locals.iter_mut().for_each(|ltype| {
-            if *ltype == VariableType::Void {
-                *ltype = VariableType::I8
+            if *ltype == Type::Void {
+                *ltype = Type::I8
             }
         });
     }
@@ -136,17 +136,17 @@ impl CLRMethod {
         locals: &IndexVec<Local, LocalDecl<'ctx>>,
         tyctx: TyCtxt<'ctx>,
     ) {
-        let mut new_locals: Vec<VariableType> = Vec::with_capacity(locals.len());
+        let mut new_locals: Vec<Type> = Vec::with_capacity(locals.len());
         for (local_id, local) in locals.iter().enumerate() {
             let placement = self.local_id_placement(local_id as u32);
             if let LocalPlacement::Var(_) = placement {
-                new_locals.push(VariableType::from_ty(local.ty, tyctx));
+                new_locals.push(Type::from_ty(&local.ty, &tyctx));
             }
         }
         self.locals = new_locals;
         //todo!();
     }
-
+    /* 
     pub(crate) fn locals_init(&self) -> IString {
         if self.locals.is_empty() {
             return "".into();
@@ -171,7 +171,7 @@ impl CLRMethod {
         } else {
             format!("\t.locals ({locals}\n\t)").into()
         }
-    }
+    }*/
     pub(crate) fn new(sig: FunctionSignature, name: &str) -> Self {
         let name = if name.contains("main") { "main" } else { name };
         Self {

@@ -1,16 +1,16 @@
 use crate::clr_method::LocalPlacement;
 use crate::sign_cast;
 use crate::statement::CodegenCtx;
-use crate::{BaseIR, VariableType};
+use crate::{BaseIR,types::Type};
 use rustc_middle::mir::{Place, PlaceElem};
 enum Projection<'a, T> {
     OnlyHead(&'a T),
     BodyAndHead(&'a [T], &'a T),
 }
-fn adress_unless_copy(innertype: &VariableType) -> bool {
-    if let VariableType::Struct(_) = innertype {
+fn adress_unless_copy(innertype: &Type) -> bool {
+    if let Type::Struct{..} = innertype {
         return true;
-    } else if let VariableType::Slice(_) = innertype {
+    } else if let Type::Slice(_) = innertype {
         return true;
     }
     false
@@ -19,29 +19,29 @@ fn adress_unless_copy(innertype: &VariableType) -> bool {
 /// E.g. Structs fields need to be copied, instead of their adress being taken.
 fn projection_element<'ctx>(
     element: &PlaceElem<'ctx>,
-    var_type: &VariableType,
+    var_type: &Type,
     codegen_ctx: &CodegenCtx<'ctx, '_>,
-) -> (VariableType, Vec<BaseIR>) {
+) -> (Type, Vec<BaseIR>) {
     match element {
         PlaceElem::Deref => {
-            if let VariableType::Ref(refd) = var_type {
-                if adress_unless_copy(refd.as_ref()) {
-                    return (refd.as_ref().clone(), vec![BaseIR::Nop]);
-                }
-            } else if let VariableType::RefMut(refd) = var_type {
+            /* 
+            if let Type::Ref(refd) = var_type {
                 if adress_unless_copy(refd.as_ref()) {
                     return (refd.as_ref().clone(), vec![BaseIR::Nop]);
                 }
             }
             let derefed_type = var_type
-                .get_pointed_type()
+                .pointed_type()
                 .expect("Dereferenced type is not a pointer, Box  or reference!");
             let deref_op = derefed_type.deref_op();
-            (derefed_type, vec![deref_op])
+            (derefed_type.clone(), vec![deref_op])
+            */
+            todo!("Can't dereference pointers yet!")
         }
         PlaceElem::Field(idx, ty) => {
-            let field_type = VariableType::from_ty(*ty, *codegen_ctx.tyctx());
-            let var_name = if let VariableType::Struct(struct_name) = var_type {
+            /* 
+            let field_type = Type::from_ty(ty, codegen_ctx.tyctx());
+            let var_name = if let Type::Struct(struct_name) = var_type {
                 struct_name
             } else {
                 panic!("Tried to get a type of a non-struct type {ty:?}.");
@@ -69,8 +69,10 @@ fn projection_element<'ctx>(
             }
 
             (field_type, vec![getter])
+            */todo!("Can't get adresses of fields yet!")
         }
         PlaceElem::Index(index_operand) => {
+            /* 
             let arr_type = var_type;
             let element_type = arr_type
                 .element_type()
@@ -85,8 +87,8 @@ fn projection_element<'ctx>(
                 }];
                 indexer.push(BaseIR::Call {
                     sig: crate::FunctionSignature::new(
-                        &[VariableType::ISize],
-                        &VariableType::Ref(Box::new(element_type.clone())),
+                        &[Type::ISize],
+                        &Type::Ref(Box::new(element_type.clone())),
                     ),
                     function_name: format!(
                         "{arr_name}::item_Adress",
@@ -98,6 +100,8 @@ fn projection_element<'ctx>(
             } else {
                 panic!("Can't indexing of primitve types is broken!")
             }
+            */
+            todo!("Can't index yet!")
         }
         PlaceElem::Subslice { .. } => todo!("Can't create subslices!"),
         PlaceElem::OpaqueCast(_) => todo!("Can't do opaque casts!"),
@@ -107,6 +111,7 @@ fn projection_element<'ctx>(
             min_length,
             from_end,
         } => {
+            /* 
             assert!(!from_end, "Can't handle constant indexing from back!");
             let arr_type = var_type;
             let element_type = arr_type
@@ -117,8 +122,8 @@ fn projection_element<'ctx>(
                 let mut indexer = vec![BaseIR::LDConstI64(sign_cast!(offset, u64, i64))];
                 indexer.push(BaseIR::Call {
                     sig: crate::FunctionSignature::new(
-                        &[VariableType::ISize],
-                        &VariableType::Ref(Box::new(element_type.clone())),
+                        &[Type::ISize],
+                        &Type::Ref(Box::new(element_type.clone())),
                     ),
                     function_name: format!(
                         "{arr_name}::item_Adress",
@@ -129,7 +134,8 @@ fn projection_element<'ctx>(
                 (element_type, indexer)
             } else {
                 panic!("Can't indexing of primitve types is broken!")
-            }
+            }*/
+            todo!("Can't do constant indexing yet!")
         }
     }
 }
@@ -137,19 +143,22 @@ fn projection_element<'ctx>(
 /// It behaves slightly differently than `projection_element` because it, for example copies struct fields instead of just getting their address.
 pub(crate) fn projection_element_get<'ctx>(
     element: &PlaceElem<'ctx>,
-    var_type: &VariableType,
+    var_type: &Type,
     codegen_ctx: &CodegenCtx<'ctx, '_>,
 ) -> Vec<BaseIR> {
     match element {
         PlaceElem::Deref => {
+            /* 
             let derefed_type = var_type
-                .get_pointed_type()
+                .pointed_type()
                 .expect("Dereferenced type is not a pointer, Box  or reference!");
             vec![derefed_type.deref_op()]
+            */
+            todo!("Can't dereference pointers yet!")
         }
-        PlaceElem::Field(idx, ty) => {
-            let _field_type = VariableType::from_ty(*ty, *codegen_ctx.tyctx());
-            let var_name = if let VariableType::Struct(struct_name) = var_type {
+        PlaceElem::Field(idx, ty) => {/* 
+            let _field_type = Type::from_ty(ty, codegen_ctx.tyctx());
+            let var_name = if let Type::Struct(struct_name) = var_type {
                 struct_name
             } else {
                 panic!("Tried to get a type of a non-struct type {ty:?}.");
@@ -163,8 +172,11 @@ pub(crate) fn projection_element_get<'ctx>(
                 .expect("Can't get field getter!");
             assert_eq!(getter.len(), 1);
             getter
+            */
+            todo!("Can't get fields yet!")
         }
         PlaceElem::Index(index_operand) => {
+            /* 
             let arr_type = var_type;
             let element_type = arr_type
                 .element_type()
@@ -177,11 +189,13 @@ pub(crate) fn projection_element_get<'ctx>(
                 LocalPlacement::Var(var) => BaseIR::LDLoc(var),
             }];
             indexer.push(BaseIR::Call {
-                sig: crate::FunctionSignature::new(&[VariableType::ISize], &element_type),
+                sig: crate::FunctionSignature::new(&[Type::ISize], &element_type),
                 function_name: format!("{arr_name}::get_Item", arr_name = arr_type.il_name())
                     .into(),
             });
             indexer
+            */
+            todo!("Can't index yet!")
         }
         PlaceElem::Subslice { .. } => todo!("Can't create subslices!"),
         PlaceElem::OpaqueCast(_) => todo!("Can't do opaque casts!"),
@@ -196,20 +210,24 @@ pub(crate) fn projection_element_get<'ctx>(
 /// This function sest the value of the projected element and should be used on the last element in the projection chain.
 pub(crate) fn projection_element_set<'ctx>(
     element: &PlaceElem<'ctx>,
-    var_type: &VariableType,
+    var_type: &Type,
     codegen_ctx: &CodegenCtx<'ctx, '_>,
 ) -> Vec<BaseIR> {
     match element {
         PlaceElem::Deref => {
+            /* 
             let derefed_type = var_type
-                .get_pointed_type()
+                .pointed_type()
                 .expect("Dereferenced type is not a pointer, Box  or reference!");
             let deref_op = derefed_type.set_pointed_op();
             vec![deref_op]
+            */
+            todo!("Can't set pointers yet!")
         }
         PlaceElem::Field(idx, ty) => {
-            let _field_type = VariableType::from_ty(*ty, *codegen_ctx.tyctx());
-            let var_name = if let VariableType::Struct(struct_name) = var_type {
+            /* 
+            let _field_type = Type::from_ty(ty, codegen_ctx.tyctx());
+            let var_name = if let Type::Struct{struct_name) = var_type {
                 struct_name
             } else {
                 panic!("Tried to get a type of a non-struct type {ty:?}.");
@@ -223,6 +241,8 @@ pub(crate) fn projection_element_set<'ctx>(
                 .expect("Can't get field getter!");
             //assert_eq!(setter.len(), 1);
             setter
+            */
+            todo!("Can't set fields yet")
         }
         PlaceElem::Index(_) => todo!("Can't handle indexing"),
         PlaceElem::Subslice { .. } => todo!("Can't create subslices!"),
@@ -247,7 +267,7 @@ fn split_head<'a>(projection: &'a [PlaceElem<'a>]) -> Projection<'a, PlaceElem<'
 }
 pub(crate) fn projection_adress<'ctx>(
     place: &Place<'ctx>,
-    local_type: &VariableType,
+    local_type: &Type,
     codegen_ctx: &CodegenCtx<'ctx, '_>,
 ) -> Vec<BaseIR> {
     let projection = place.projection;
@@ -269,11 +289,11 @@ pub(crate) fn projection_adress<'ctx>(
 pub(crate) fn project<
     'a,
     'ctx,
-    F: Fn(&PlaceElem<'ctx>, &VariableType, &CodegenCtx<'ctx, '_>) -> Vec<BaseIR>,
+    F: Fn(&PlaceElem<'ctx>, &Type, &CodegenCtx<'ctx, '_>) -> Vec<BaseIR>,
     L: Fn(LocalPlacement) -> BaseIR,
 >(
     place: &Place<'ctx>,
-    local_type: &VariableType,
+    local_type: &Type,
     codegen_ctx: &CodegenCtx<'ctx, '_>,
     head_handler: F,
     local_handler: L,
@@ -318,7 +338,7 @@ pub(crate) fn project<
 }
 pub(crate) fn projection_get<'a, 'ctx>(
     place: &Place<'ctx>,
-    local_type: &VariableType,
+    local_type: &Type,
     codegen_ctx: &CodegenCtx<'ctx, '_>,
 ) -> Vec<BaseIR> {
     let (mut addr_calc, getter) = project(
@@ -339,7 +359,7 @@ pub(crate) fn projection_get<'a, 'ctx>(
 pub(crate) fn projection_set<'a, 'ctx>(
     //projection: &'a [PlaceElem<'a>],
     place: &Place<'ctx>,
-    local_type: &VariableType,
+    local_type: &Type,
     codegen_ctx: &CodegenCtx<'ctx, '_>,
 ) -> (Vec<BaseIR>, Vec<BaseIR>) {
     println!("place:{place:?}");

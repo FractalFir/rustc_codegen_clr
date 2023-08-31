@@ -12,7 +12,7 @@ enum AccessModifer {
 #[derive(Debug, Clone)]
 pub(crate) struct ClassInfo {
     name: IString,
-    fields: Vec<(IString, VariableType)>,
+    fields: Vec<(IString, Type)>,
     explicit_field_offsets: Option<Vec<u8>>,
     extends: (Option<IString>, IString), //First, optional name of the assembly it comes form, then, type string
     //Optional, can be ignored for now
@@ -22,7 +22,7 @@ pub(crate) struct ClassInfo {
     attribute: Vec<Attribute>,
 }
 impl ClassInfo {
-    pub(crate) fn new(name: &str, fields: &[(IString, VariableType)]) -> Self {
+    pub(crate) fn new(name: &str, fields: &[(IString, Type)]) -> Self {
         Self {
             name: name.into(),
             fields: fields.into(),
@@ -40,11 +40,11 @@ impl ClassInfo {
     pub(crate) fn extends(&self) -> &(Option<IString>, IString) {
         &self.extends
     }
-    pub(crate) fn fields(&self) -> &[(IString, VariableType)] {
+    pub(crate) fn fields(&self) -> &[(IString, Type)] {
         &self.fields
     }
 }
-use crate::{assembly::Assembly, clr_method::CLRMethod, IString, VariableType};
+use crate::{assembly::Assembly, clr_method::CLRMethod, IString, types::Type};
 pub(crate) mod ilasm_exporter;
 pub(crate) trait AssemblyExporter: Sized {
     fn init(asm_info: &AssemblyInfo) -> Self;
@@ -53,9 +53,10 @@ pub(crate) trait AssemblyExporter: Sized {
     fn finalize(self, final_path: &Path) -> Result<(), AssemblyExportError>;
     fn export_assembly(asm: &Assembly, final_path: &Path) -> Result<(), AssemblyExportError> {
         let mut asm_exporter = Self::init(asm.name());
+        /* 
         for struct_type in asm.structs() {
             asm_exporter.add_class(struct_type);
-        }
+        }*/
         for method in asm.methods() {
             asm_exporter.add_method(method.clone());
         }

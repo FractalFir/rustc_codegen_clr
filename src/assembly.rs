@@ -1,4 +1,4 @@
-use crate::{assembly_exporter::Method, CLRMethod, FunctionSignature, IString, VariableType};
+use crate::{assembly_exporter::Method, CLRMethod, FunctionSignature, IString, types::Type};
 use rustc_index::IndexVec;
 use rustc_middle::{
     mir::{mono::MonoItem, Local, LocalDecl},
@@ -6,89 +6,15 @@ use rustc_middle::{
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-const LIBC_IMPL: &str = include_str!("libc.il");
-#[derive(Clone, Debug, Serialize, Deserialize)]
-enum Visiblity {
-    Private,
-    Public,
-}
-fn array_indexers(array_name: &str, element: &VariableType) -> String {
-    format!("")
-}
-fn slice_indexers(slice_name: &str, element: &VariableType) -> String {
-    //let deref_op = "ldind.i4"
-    format!("")
-}
-#[derive(Clone, Debug, Serialize, Deserialize)]
-enum CLRType {
-    Struct {
-        fields: Vec<(IString, VariableType)>,
-    },
-    Array {
-        element: VariableType,
-        length: usize,
-    },
-    Slice(VariableType),
-}
-impl CLRType {
-    pub(crate) fn get_field_getter(&self, field: usize, field_parent: &str) -> Vec<crate::BaseIR> {
-        match self {
-            Self::Struct { fields } => {
-                let field = &fields[field];
-                vec![crate::BaseIR::LDField {
-                    field_parent: field_parent.into(),
-                    field_name: field.0.clone().into(),
-                    field_type: field.1.clone(),
-                }]
-            }
-            Self::Array { .. } | Self::Slice { .. } => {
-                panic!("Attempted to get a field of a field-less type!")
-            }
-        }
-    }
-    pub(crate) fn get_field_setter(&self, field: usize, field_parent: &str) -> Vec<crate::BaseIR> {
-        match self {
-            Self::Struct { fields } => {
-                let field = &fields[field];
-                vec![crate::BaseIR::STField {
-                    field_parent: field_parent.into(),
-                    field_name: field.0.clone().into(),
-                    field_type: field.1.clone(),
-                }]
-            }
-            Self::Array { .. } | Self::Slice { .. } => {
-                panic!("Attempted to get a field of a field-less type!")
-            }
-        }
-    }
-    pub(crate) fn get_def(&self, name: &str, asm: &Assembly) -> IString {
-        match self{
-            Self::Struct{fields}=>{
-                let mut field_string = String::new();
-                for (field_name,field_type) in fields{
-                    field_string.push_str(&format!("\t.field public {il_name} {field_name}",il_name = field_type.il_name()));
-                }
-                format!(".class public sequential {name} extends [System.Runtime]System.ValueType{{\n{field_string}}}\n")
-            },
-            Self::Array{element,length}=>{
-                let indexers = array_indexers(name,element);
-            format!(".class public sequential {name} extends [System.Runtime]System.ValueType{{\n\t.pack 0\n\t.size {size}\n\t.field public {element_il} arr\n{indexers}}}\n",element_il= element.il_name(),size = asm.sizeof_type(element)*length)
-            },
-            Self::Slice(element)=>{
-                let indexers = slice_indexers(name,element);
-                format!(".class public sequential {name} extends [System.Runtime]System.ValueType{{\n\t.field public {element_il}* ptr\n\t.field public native int cap\n{indexers}}}\n",element_il= element.il_name())
-            },
-        }.into()
-    }
-}
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize,Deserialize)]
 pub(crate) struct Assembly {
     methods: Vec<CLRMethod>,
     name: IString,
-    types: HashMap<IString, CLRType>,
+    //types: HashMap<IString, CLRType>,
     size_t: u8,
 }
 impl Assembly {
+    /* 
     pub(crate) fn structs(&self) -> Vec<crate::assembly_exporter::ClassInfo> {
         self.types
             .iter()
@@ -102,42 +28,32 @@ impl Assembly {
             .filter(|strct| strct.is_some())
             .map(|strct| strct.unwrap())
             .collect()
-    }
+    }*/
     pub(crate) fn methods(&self) -> &[CLRMethod] {
         &self.methods
     }
-    pub(crate) fn sizeof_type(&self, var_type: &VariableType) -> usize {
+    pub(crate) fn sizeof_type(&self, var_type: &Type) -> usize {
         match var_type {
-            VariableType::Void => 0,
-            VariableType::I8 | VariableType::U8 | VariableType::Bool => 1,
-            VariableType::I16 | VariableType::U16 => 2,
-            VariableType::I32 | VariableType::U32 | VariableType::F32 => 4,
-            VariableType::I64 | VariableType::U64 | VariableType::F64 => 8,
-            VariableType::I128 | VariableType::U128 => 16,
-            VariableType::ISize
-            | VariableType::USize
-            | VariableType::Ref(_)
-            | VariableType::RefMut(_)
-            | VariableType::Pointer(_) => self.size_t as usize,
-            VariableType::Slice(_) => (self.size_t + self.size_t) as usize,
-            VariableType::Array { element, length } => self.sizeof_type(element) * length,
-            VariableType::Tuple(elements) => elements
+            Type::Void => 0,
+            Type::I8 | Type::U8 | Type::Bool => 1,
+            Type::I16 | Type::U16 => 2,
+            Type::I32 | Type::U32 | Type::F32 => 4,
+            Type::I64 | Type::U64 | Type::F64 => 8,
+            Type::I128 | Type::U128 => 16,
+            Type::ISize
+            | Type::USize
+            | Type::Ref(_)
+            | Type::Ptr(_) => self.size_t as usize,
+            Type::Slice(_) => (self.size_t + self.size_t) as usize,
+            Type::Array { element, length } => todo!("Can't get sizeof array yet!"),//self.sizeof_type(element) * length,
+            Type::Tuple(elements) => elements
                 .iter()
                 .map(|element| self.sizeof_type(element))
                 .sum::<usize>(),
-            VariableType::Struct(struct_name) => match &self.types[struct_name] {
-                CLRType::Struct { fields } => fields
-                    .iter()
-                    .map(|field| self.sizeof_type(&field.1))
-                    .sum::<usize>(),
-                CLRType::Array { element, length } => self.sizeof_type(&element) * length,
-                CLRType::Slice(_element) => panic!("Can't compute sizeof silice at compile time!"),
-            },
-            VariableType::Enum(_enum_name) => {
-                panic!("Can't yet compute sizeof enum at compile time!")
-            }
-            VariableType::StrSlice => panic!("Can't compute sizeof string silice at compile time!"),
-            VariableType::Generic(_) => todo!("Can't calcuate the size of a geneic!"),
+            Type::Struct{name,..} => todo!("can't take sizeof struct yet!"),
+            Type::StrSlice => panic!("Can't compute sizeof string silice at compile time!"),
+            //Type::Generic(_) => todo!("Can't calcuate the size of a geneic!"),
+            _=>todo!("Cant estimate size of {var_type:?} yet."),
         }
     }
     pub(crate) fn get_field_getter(
@@ -145,24 +61,17 @@ impl Assembly {
         field: usize,
         field_parent: &str,
     ) -> Option<Vec<crate::BaseIR>> {
-        Some(
-            self.types
-                .get(field_parent)?
-                .get_field_getter(field, field_parent),
-        )
+        todo!("Can't get field yet!")
     }
     pub(crate) fn get_field_setter(
         &self,
         field: usize,
         field_parent: &str,
     ) -> Option<Vec<crate::BaseIR>> {
-        Some(
-            self.types
-                .get(field_parent)?
-                .get_field_setter(field, field_parent),
-        )
+        todo!("Can't set field yet!")
     }
     pub(crate) fn add_type<'ctx>(&mut self, ty: Ty<'ctx>, tyctx: &TyCtxt<'ctx>) {
+        /* 
         match ty.kind() {
             TyKind::Adt(adt_def, _subst) => {
                 // TODO: find a better way to get a name of an ADT!
@@ -172,7 +81,7 @@ impl Assembly {
                     //TODO: handle binders!
                     fields.push((
                         field.name.to_string().into(),
-                        VariableType::from_ty(tyctx.type_of(field.did).skip_binder(), *tyctx),
+                        Type::from_ty(&tyctx.type_of(field.did).skip_binder(), tyctx),
                     ));
                     println!("field:{field:?}");
                 }
@@ -180,7 +89,7 @@ impl Assembly {
                 println!("adt_def:{adt_def:?} types:{types:?}", types = self.types);
             }
             TyKind::Array(element_type, length) => {
-                let (element, length) = (VariableType::from_ty(*element_type, *tyctx), {
+                let (element, length) = (Type::from_ty(*element_type, *tyctx), {
                     let scalar = length
                         .try_to_scalar()
                         .expect("Could not convert the scalar");
@@ -196,14 +105,14 @@ impl Assembly {
                 self.types.insert(name, arr);
             }
             TyKind::Slice(element_type) => {
-                let element = VariableType::from_ty(*element_type, *tyctx);
+                let element = Type::from_ty(*element_type, *tyctx);
                 let name = format!("'RSlice_{element_il}'", element_il = element.il_name()).into();
                 let slice = CLRType::Slice(element);
                 self.types.insert(name, slice);
             }
             TyKind::Ref(_, ty, _) => self.add_type(*ty, tyctx),
             _ => (),
-        }
+        }*/
     }
     pub(crate) fn add_types_from_locals<'ctx>(
         &mut self,
@@ -222,7 +131,7 @@ impl Assembly {
         let name = name.replace('-', "_");
         Self {
             methods: Vec::with_capacity(0x100),
-            types: HashMap::with_capacity(0x100),
+            //types: HashMap::with_capacity(0x100),
             name: name.into(),
             size_t: 8,
         }
@@ -272,6 +181,6 @@ impl Assembly {
     pub(crate) fn link(&mut self, other: Self) {
         //TODO: do linking.
         self.methods.extend_from_slice(&other.methods);
-        self.types.extend(other.types);
+        //self.types.extend(other.types);
     }
 }

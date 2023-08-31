@@ -1,11 +1,12 @@
 use crate::IString;
 use rustc_middle::ty::{Const, FloatTy, IntTy, Ty, TyCtxt, TyKind, UintTy,AdtDef,AdtKind,GenericArg};
-#[derive(Debug,Clone,PartialEq)]
+use serde::{Deserialize, Serialize};
+#[derive(Debug,Clone,PartialEq,Deserialize, Serialize)]
 pub(crate) struct FieldType {
     name: IString,
     tpe: Type,
 }
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq,Deserialize, Serialize)]
 pub(crate) enum Type {
     //Intieger types
     U8,
@@ -111,6 +112,18 @@ fn get_array_length(arr_len: Const) -> u64 {
 }
 // Cpnversions from the Rust Type system
 impl Type {
+    /// Returns the type a pointer or a refernece points to.
+    pub(crate) fn pointed_type(&self)->Option<&Self>{
+        match self{
+            Self::Ptr(inner)=>Some(inner),
+            Self::Ref(inner)=>Some(inner),
+            _=>None,
+        }
+    }
+    /// Returns true if type is [`Type::Void`]
+    pub(crate) fn is_void(&self)->bool{
+        matches!(self,Self::Void)
+    }
     pub(crate) fn box_from_ty<'ctx>(rust_tpe: &Ty<'ctx>,tyctx:&TyCtxt<'ctx>)->Box<Self>{
         Box::new(Self::from_ty(rust_tpe, tyctx))
     }

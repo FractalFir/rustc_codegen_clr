@@ -36,6 +36,7 @@ use rustc_session::{
 };
 use rustc_span::ErrorGuaranteed;
 use serde::{Deserialize, Serialize};
+use types::Type;
 use std::any::Any;
 mod clr_method;
 mod codegen;
@@ -75,17 +76,17 @@ pub(crate) const ALWAYS_INIT_LOCALS: bool = false;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 struct FunctionSignature {
-    inputs: Box<[VariableType]>,
-    output: VariableType,
+    inputs: Box<[Type]>,
+    output: Type,
 }
 impl FunctionSignature {
-    pub(crate) fn inputs(&self) -> &[VariableType] {
+    pub(crate) fn inputs(&self) -> &[Type] {
         &self.inputs
     }
-    pub(crate) fn output(&self) -> &VariableType {
+    pub(crate) fn output(&self) -> &Type {
         &self.output
     }
-    pub(crate) fn new(inputs: &[VariableType], output: &VariableType) -> Self {
+    pub(crate) fn new(inputs: &[Type], output: &Type) -> Self {
         Self {
             inputs: inputs.into(),
             output: output.clone(),
@@ -94,9 +95,9 @@ impl FunctionSignature {
     pub(crate) fn from_poly_sig<'ctx>(sig: PolyFnSig<'ctx>, tyctx: TyCtxt<'ctx>) -> Option<Self> {
         let inputs = skip_binder_if_no_generic_types(sig.inputs())?
             .iter()
-            .map(|v| VariableType::from_ty(*v, tyctx))
+            .map(|v| Type::from_ty(v, &tyctx))
             .collect();
-        let output = VariableType::from_ty(skip_binder_if_no_generic_types(sig.output())?, tyctx);
+        let output = Type::from_ty(&skip_binder_if_no_generic_types(sig.output())?, &tyctx);
         Some(Self { inputs, output })
     }
 }

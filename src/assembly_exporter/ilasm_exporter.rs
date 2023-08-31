@@ -1,4 +1,4 @@
-use crate::{base_ir::BaseIR, clr_method::CLRMethod, variable::VariableType, IString};
+use crate::{base_ir::BaseIR, clr_method::CLRMethod, types::Type, IString};
 
 use super::{AssemblyExporter, ClassInfo};
 #[must_use]
@@ -65,7 +65,7 @@ impl ILASMExporter {
     fn version(&self) -> (u8, u8, u8, u8) {
         (0, 0, 0, 0)
     }
-    fn field_cil(&self, field: &(IString, VariableType)) -> String {
+    fn field_cil(&self, field: &(IString, Type)) -> String {
         format!(
             ".field {type_name} {field_name}",
             type_name = escaped_type_name(&field.1),
@@ -267,7 +267,7 @@ fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
         } => {
             format!(
                 "ldfld {field_type} '{field_parent}'::{field_name}",
-                field_type = field_type.arg_name(),
+                field_type = variable_arg_type_name(field_type),
             )
         }
         BaseIR::LDFieldAdress {
@@ -277,7 +277,7 @@ fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
         } => {
             format!(
                 "ldflda {field_type} '{field_parent}'::{field_name}",
-                field_type = field_type.arg_name(),
+                field_type = variable_arg_type_name(field_type),
             )
         }
         BaseIR::STField {
@@ -287,7 +287,7 @@ fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
         } => {
             format!(
                 "stfld {field_type} '{field_parent}'::{field_name}",
-                field_type = field_type.arg_name(),
+                field_type = variable_arg_type_name(field_type),
             )
         }
         //Conversions
@@ -312,15 +312,15 @@ fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
             let mut inputs_iter = sig.inputs.iter();
             let mut input_string = String::new();
             if let Some(firts_arg) = inputs_iter.next() {
-                input_string.push_str(&firts_arg.il_name());
+                input_string.push_str(&escaped_type_name(&firts_arg));
             }
             for arg in inputs_iter {
                 input_string.push(',');
-                input_string.push_str(&arg.il_name());
+                input_string.push_str(&escaped_type_name(&arg));
             }
             format!(
                 "\tcall instance {output} {function_name}({input_string})\n",
-                output = sig.output.il_name()
+                output = escaped_type_name(&sig.output)
             )
         }
         BaseIR::CallStatic { sig, function_name } => {
@@ -328,15 +328,15 @@ fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
             let mut inputs_iter = sig.inputs.iter();
             let mut input_string = String::new();
             if let Some(firts_arg) = inputs_iter.next() {
-                input_string.push_str(&firts_arg.il_name());
+                input_string.push_str(&escaped_type_name(&firts_arg));
             }
             for arg in inputs_iter {
                 input_string.push(',');
-                input_string.push_str(&arg.il_name());
+                input_string.push_str(&escaped_type_name(&arg));
             }
             format!(
                 "\tcall {output} {call_prefix}{function_name}({input_string})\n",
-                output = sig.output.il_name()
+                output = escaped_type_name(&sig.output)
             )
         }
         //Type info
@@ -349,46 +349,47 @@ fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
         //_=>todo!("unsuported op:{op:?}."),
     }
 }
-fn variable_arg_type_name(var: &VariableType) -> IString {
+fn variable_arg_type_name(var: &Type) -> IString {
     match var {
-        VariableType::Struct(_) => {
+        Type::Struct{..} => {
             format!("valuetype {typename}", typename = escaped_type_name(var)).into()
         }
-        VariableType::Enum(_) => {
+        /* 
+        Type::Enum(_) => {
             format!("valuetype {typename}", typename = escaped_type_name(var)).into()
-        }
+        }*/
         _ => escaped_type_name(var),
     }
 }
-fn escaped_type_name(var: &VariableType) -> IString {
+fn escaped_type_name(var: &Type) -> IString {
     match var {
-        VariableType::Struct(name) => format!("'{name}'").into(),
-        VariableType::Enum(name) => format!("'{name}'").into(),
+        Type::Struct{..} => format!("'{name}'",name = type_name(var)).into(),
+        //Type::Enum(name) => format!("'{name}'").into(),
         _ => type_name(var),
     }
 }
-fn type_name(var: &VariableType) -> IString {
+fn type_name(var: &Type) -> IString {
     match var {
-        VariableType::Struct(name) => name.replace("::", "."),
-        VariableType::Enum(name) => name.replace("::", "."),
-        VariableType::Void => "void".into(),
-        VariableType::I8 => "int8".into(),
-        VariableType::U8 => "uint8".into(),
-        VariableType::I16 => "int16".into(),
-        VariableType::U16 => "uint16".into(),
-        VariableType::I32 => "int32".into(),
-        VariableType::U32 => "uint32".into(),
-        VariableType::F32 => "float32".into(),
-        VariableType::I64 => "int64".into(),
-        VariableType::U64 => "uint64".into(),
-        VariableType::F64 => "float64".into(),
-        VariableType::I128 => "[System.Runtime]System.Int128".into(),
-        VariableType::U128 => "[System.Runtime]System.UInt128".into(),
-        VariableType::ISize => "native int".into(),
-        VariableType::USize => "native uint".into(),
-        VariableType::Bool => "bool".into(),
-        VariableType::Ref(inner) => format!("{inner}*", inner = escaped_type_name(inner)),
-        VariableType::Array { element, length } => {
+        Type::Struct{name,..} => name.replace("::", "."),//TODO: handle generic arguments
+        //Type::Enum(name) => name.replace("::", "."),
+        Type::Void => "void".into(),
+        Type::I8 => "int8".into(),
+        Type::U8 => "uint8".into(),
+        Type::I16 => "int16".into(),
+        Type::U16 => "uint16".into(),
+        Type::I32 => "int32".into(),
+        Type::U32 => "uint32".into(),
+        Type::F32 => "float32".into(),
+        Type::I64 => "int64".into(),
+        Type::U64 => "uint64".into(),
+        Type::F64 => "float64".into(),
+        Type::I128 => "[System.Runtime]System.Int128".into(),
+        Type::U128 => "[System.Runtime]System.UInt128".into(),
+        Type::ISize => "native int".into(),
+        Type::USize => "native uint".into(),
+        Type::Bool => "bool".into(),
+        Type::Ref(inner) => format!("{inner}*", inner = escaped_type_name(inner)),
+        Type::Array { element, length } => {
             format!("Arr{length}_{element}", element = type_name(element))
         }
         _ => todo!("unhandled var type {var:?}"),
@@ -396,7 +397,7 @@ fn type_name(var: &VariableType) -> IString {
     .into()
 }
 #[cfg(test)]
-use crate::AsVartype;
+use crate::types::ToCLRType;
 #[test]
 fn init_ilasm_exporter() {
     let _ilasm = ILASMExporter::init("mock_assembly");
@@ -422,7 +423,7 @@ fn empty_struct_to_cil() {
 #[test]
 fn empty_method_to_cil() {
     let ilasm = ILASMExporter::init("mock_assembly");
-    let sig = crate::FunctionSignature::new(&[<()>::vtpe()], &<()>::vtpe());
+    let sig = crate::FunctionSignature::new(&[<()>::clr_tpe()], &<()>::clr_tpe());
     let empty = CLRMethod::from_raw(&[BaseIR::Return], &[], "empty", sig);
     let method_cil = ilasm.method_cil(&empty);
     assert_eq!(
@@ -434,9 +435,9 @@ fn empty_method_to_cil() {
 fn ilasm_exporter_add_struct() {
     let mut ilasm = ILASMExporter::init("mock_assembly");
     let fields = &[
-        ("x".into(), f32::vtpe()),
-        ("y".into(), f32::vtpe()),
-        ("z".into(), f32::vtpe()),
+        ("x".into(), f32::clr_tpe()),
+        ("y".into(), f32::clr_tpe()),
+        ("z".into(), f32::clr_tpe()),
     ];
     let vec3 = ClassInfo::new("Vector3", fields);
     ilasm.add_class(vec3);
