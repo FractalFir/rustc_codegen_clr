@@ -1,4 +1,4 @@
-use crate::{statement::CodegenCtx, Assembly, BaseIR, FunctionSignature, IString,types::Type};
+use crate::{statement::CodegenCtx, types::Type, Assembly, BaseIR, FunctionSignature, IString};
 use rustc_index::IndexVec;
 use rustc_middle::{
     mir::{
@@ -22,6 +22,7 @@ pub(crate) struct CLRMethod {
     curr_bb: u32,
     //bbs:
 }
+#[derive(Debug, Clone)]
 pub(crate) enum LocalPlacement {
     Arg(u32),
     Var(u32),
@@ -146,7 +147,7 @@ impl CLRMethod {
         self.locals = new_locals;
         //todo!();
     }
-    /* 
+    /*
     pub(crate) fn locals_init(&self) -> IString {
         if self.locals.is_empty() {
             return "".into();

@@ -1,4 +1,4 @@
-use crate::{assembly_exporter::Method, CLRMethod, FunctionSignature, IString, types::Type};
+use crate::{assembly_exporter::Method, types::Type, CLRMethod, FunctionSignature, IString};
 use rustc_index::IndexVec;
 use rustc_middle::{
     mir::{mono::MonoItem, Local, LocalDecl},
@@ -6,7 +6,7 @@ use rustc_middle::{
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-#[derive(Serialize,Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub(crate) struct Assembly {
     methods: Vec<CLRMethod>,
     name: IString,
@@ -14,7 +14,7 @@ pub(crate) struct Assembly {
     size_t: u8,
 }
 impl Assembly {
-    /* 
+    /*
     pub(crate) fn structs(&self) -> Vec<crate::assembly_exporter::ClassInfo> {
         self.types
             .iter()
@@ -40,20 +40,17 @@ impl Assembly {
             Type::I32 | Type::U32 | Type::F32 => 4,
             Type::I64 | Type::U64 | Type::F64 => 8,
             Type::I128 | Type::U128 => 16,
-            Type::ISize
-            | Type::USize
-            | Type::Ref(_)
-            | Type::Ptr(_) => self.size_t as usize,
+            Type::ISize | Type::USize | Type::Ref(_) | Type::Ptr(_) => self.size_t as usize,
             Type::Slice(_) => (self.size_t + self.size_t) as usize,
-            Type::Array { element, length } => todo!("Can't get sizeof array yet!"),//self.sizeof_type(element) * length,
+            Type::Array { element, length } => todo!("Can't get sizeof array yet!"), //self.sizeof_type(element) * length,
             Type::Tuple(elements) => elements
                 .iter()
                 .map(|element| self.sizeof_type(element))
                 .sum::<usize>(),
-            Type::Struct{name,..} => todo!("can't take sizeof struct yet!"),
+            Type::Struct { name, .. } => todo!("can't take sizeof struct yet!"),
             Type::StrSlice => panic!("Can't compute sizeof string silice at compile time!"),
             //Type::Generic(_) => todo!("Can't calcuate the size of a geneic!"),
-            _=>todo!("Cant estimate size of {var_type:?} yet."),
+            _ => todo!("Cant estimate size of {var_type:?} yet."),
         }
     }
     pub(crate) fn get_field_getter(
@@ -71,7 +68,7 @@ impl Assembly {
         todo!("Can't set field yet!")
     }
     pub(crate) fn add_type<'ctx>(&mut self, ty: Ty<'ctx>, tyctx: &TyCtxt<'ctx>) {
-        /* 
+        /*
         match ty.kind() {
             TyKind::Adt(adt_def, _subst) => {
                 // TODO: find a better way to get a name of an ADT!

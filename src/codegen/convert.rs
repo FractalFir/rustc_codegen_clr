@@ -32,17 +32,17 @@ pub(crate) fn convert_as(src: &Type, dest: &Type) -> Vec<BaseIR> {
         Type::StrSlice => {
             panic!("tried to convert type {src:?} to string slice type, using `as` convertion")
         }
-        Type::Struct{..} => panic!(
+        Type::Struct { .. } => panic!(
             "tried to convert type {src:?} to struct type(\"{dest:?}\") using `as` convertion"
         ),
-        /* 
+        /*
         Type::Enum{..} => {
             panic!("tried to convert type {src:?} to enum type(\"{dest:?}\") using `as` convertion")
         }*/
         Type::Tuple(_) => panic!(
             "tried to convert type {src:?} to tuple type(\"{dest:?}\") using `as` convertion"
         ),
-        Type::ResolvedGenric{..} => todo!("Convertions can't yet handle resolved generic types"),
+        Type::ResolvedGenric { .. } => todo!("Convertions can't yet handle resolved generic types"),
         Type::I128 | Type::U128 => {
             todo!("Casts involving i128/u128 are not supported yet.")
         }

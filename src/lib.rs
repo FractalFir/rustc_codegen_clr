@@ -36,8 +36,8 @@ use rustc_session::{
 };
 use rustc_span::ErrorGuaranteed;
 use serde::{Deserialize, Serialize};
-use types::Type;
 use std::any::Any;
+use types::Type;
 mod clr_method;
 mod codegen;
 use clr_method::*;
@@ -45,8 +45,6 @@ mod assembly;
 use assembly::*;
 mod base_ir;
 use base_ir::BaseIR;
-mod variable;
-use variable::*;
 mod assembly_exporter;
 mod projection;
 mod statement;

@@ -44,7 +44,7 @@ impl ClassInfo {
         &self.fields
     }
 }
-use crate::{assembly::Assembly, clr_method::CLRMethod, IString, types::Type};
+use crate::{assembly::Assembly, clr_method::CLRMethod, types::Type, IString};
 pub(crate) mod ilasm_exporter;
 pub(crate) trait AssemblyExporter: Sized {
     fn init(asm_info: &AssemblyInfo) -> Self;
@@ -53,7 +53,7 @@ pub(crate) trait AssemblyExporter: Sized {
     fn finalize(self, final_path: &Path) -> Result<(), AssemblyExportError>;
     fn export_assembly(asm: &Assembly, final_path: &Path) -> Result<(), AssemblyExportError> {
         let mut asm_exporter = Self::init(asm.name());
-        /* 
+        /*
         for struct_type in asm.structs() {
             asm_exporter.add_class(struct_type);
         }*/

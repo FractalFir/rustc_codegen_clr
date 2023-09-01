@@ -1,14 +1,14 @@
 use crate::clr_method::LocalPlacement;
 use crate::sign_cast;
 use crate::statement::CodegenCtx;
-use crate::{BaseIR,types::Type};
+use crate::{types::Type, BaseIR};
 use rustc_middle::mir::{Place, PlaceElem};
 enum Projection<'a, T> {
     OnlyHead(&'a T),
     BodyAndHead(&'a [T], &'a T),
 }
 fn adress_unless_copy(innertype: &Type) -> bool {
-    if let Type::Struct{..} = innertype {
+    if let Type::Struct { .. } = innertype {
         return true;
     } else if let Type::Slice(_) = innertype {
         return true;
@@ -24,7 +24,7 @@ fn projection_element<'ctx>(
 ) -> (Type, Vec<BaseIR>) {
     match element {
         PlaceElem::Deref => {
-            /* 
+            /*
             if let Type::Ref(refd) = var_type {
                 if adress_unless_copy(refd.as_ref()) {
                     return (refd.as_ref().clone(), vec![BaseIR::Nop]);
@@ -39,7 +39,7 @@ fn projection_element<'ctx>(
             todo!("Can't dereference pointers yet!")
         }
         PlaceElem::Field(idx, ty) => {
-            /* 
+            /*
             let field_type = Type::from_ty(ty, codegen_ctx.tyctx());
             let var_name = if let Type::Struct(struct_name) = var_type {
                 struct_name
@@ -69,10 +69,11 @@ fn projection_element<'ctx>(
             }
 
             (field_type, vec![getter])
-            */todo!("Can't get adresses of fields yet!")
+            */
+            todo!("Can't get adresses of fields yet!")
         }
         PlaceElem::Index(index_operand) => {
-            /* 
+            /*
             let arr_type = var_type;
             let element_type = arr_type
                 .element_type()
@@ -111,7 +112,7 @@ fn projection_element<'ctx>(
             min_length,
             from_end,
         } => {
-            /* 
+            /*
             assert!(!from_end, "Can't handle constant indexing from back!");
             let arr_type = var_type;
             let element_type = arr_type
@@ -148,7 +149,7 @@ pub(crate) fn projection_element_get<'ctx>(
 ) -> Vec<BaseIR> {
     match element {
         PlaceElem::Deref => {
-            /* 
+            /*
             let derefed_type = var_type
                 .pointed_type()
                 .expect("Dereferenced type is not a pointer, Box  or reference!");
@@ -156,7 +157,8 @@ pub(crate) fn projection_element_get<'ctx>(
             */
             todo!("Can't dereference pointers yet!")
         }
-        PlaceElem::Field(idx, ty) => {/* 
+        PlaceElem::Field(idx, ty) => {
+            /*
             let _field_type = Type::from_ty(ty, codegen_ctx.tyctx());
             let var_name = if let Type::Struct(struct_name) = var_type {
                 struct_name
@@ -176,7 +178,7 @@ pub(crate) fn projection_element_get<'ctx>(
             todo!("Can't get fields yet!")
         }
         PlaceElem::Index(index_operand) => {
-            /* 
+            /*
             let arr_type = var_type;
             let element_type = arr_type
                 .element_type()
@@ -215,7 +217,7 @@ pub(crate) fn projection_element_set<'ctx>(
 ) -> Vec<BaseIR> {
     match element {
         PlaceElem::Deref => {
-            /* 
+            /*
             let derefed_type = var_type
                 .pointed_type()
                 .expect("Dereferenced type is not a pointer, Box  or reference!");
@@ -225,7 +227,7 @@ pub(crate) fn projection_element_set<'ctx>(
             todo!("Can't set pointers yet!")
         }
         PlaceElem::Field(idx, ty) => {
-            /* 
+            /*
             let _field_type = Type::from_ty(ty, codegen_ctx.tyctx());
             let var_name = if let Type::Struct{struct_name) = var_type {
                 struct_name
@@ -341,6 +343,7 @@ pub(crate) fn projection_get<'a, 'ctx>(
     local_type: &Type,
     codegen_ctx: &CodegenCtx<'ctx, '_>,
 ) -> Vec<BaseIR> {
+    /*
     let (mut addr_calc, getter) = project(
         place,
         local_type,
@@ -353,7 +356,8 @@ pub(crate) fn projection_get<'a, 'ctx>(
     );
     println!("addr_calc:{addr_calc:?} getter:{getter:?}");
     addr_calc.extend(getter);
-    addr_calc
+    addr_calc*/
+    crate::codegen::place::place_getter_ops(place, codegen_ctx)
 }
 /// Used to handle the "body" of a projection chain. Use [`projection_element_get`] or [`projection_element_set`] to handle the head(last element)
 pub(crate) fn projection_set<'a, 'ctx>(

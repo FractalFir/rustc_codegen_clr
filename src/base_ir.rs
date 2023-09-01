@@ -1,4 +1,4 @@
-use crate::{FunctionSignature, IString,types::Type};
+use crate::{types::Type, FunctionSignature, IString};
 use serde::{Deserialize, Serialize};
 // An IR close, but not exactly equivalent to the CoreCLR IR.
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]

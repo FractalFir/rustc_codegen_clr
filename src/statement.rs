@@ -1,6 +1,7 @@
 use crate::{
     projection::{projection_adress, projection_get, projection_set},
-    Assembly, BaseIR, CLRMethod, LocalPlacement, types::Type,
+    types::Type,
+    Assembly, BaseIR, CLRMethod, LocalPlacement,
 };
 use rustc_index::IndexVec;
 use rustc_middle::mir::NullOp;
@@ -36,6 +37,9 @@ impl<'tctx, 'local_ctx> CodegenCtx<'tctx, 'local_ctx> {
             body,
             tyctx,
         }
+    }
+    pub(crate) fn local_placement(&self, local: u32) -> LocalPlacement {
+        self.meth().local_id_placement(local)
     }
     pub(crate) fn asm(&self) -> &Assembly {
         self.asm
@@ -169,7 +173,7 @@ fn handle_agregate<'tyctx>(
 ) -> Vec<BaseIR> {
     match aggregate {
         AggregateKind::Array(element_type) => {
-            /* 
+            /*
             let agregate_adress = codegen_ctx.place_adress_ops(target_location);
             let mut agregate_construction = Vec::new();
             let element = Type::from_ty(element_type, codegen_ctx.tyctx());
@@ -216,7 +220,7 @@ fn handle_agregate<'tyctx>(
                 codegen_ctx.tyctx(),
             );
             match adt_type {
-                /* 
+                /*
                 Type::Struct(name) => {
                     if crate::ALWAYS_INIT_STRUCTS {
                         agregate_construction.extend(agregate_adress.clone());
@@ -293,7 +297,7 @@ fn handle_rvalue<'tyctx>(
                 &operand.ty(codegen_ctx.body(), *codegen_ctx.tyctx()),
                 codegen_ctx.tyctx(),
             );
-            /* 
+            /*
             let arr_name = Type::Array {
                 element: Box::new(element.clone()),
                 length: ammount as u64,
@@ -348,7 +352,7 @@ fn handle_rvalue<'tyctx>(
         Rvalue::NullaryOp(null_op, op_type) => {
             let op_type = Type::from_ty(op_type, codegen_ctx.tyctx());
             match null_op {
-                NullOp::SizeOf =>crate::codegen::sizeof_ops(&op_type),
+                NullOp::SizeOf => crate::codegen::sizeof_ops(&op_type),
                 //TODO: actualy calcualte algiment!
                 NullOp::AlignOf => vec![BaseIR::LDConstI32(8)],
                 _ => todo!("Unsuiported nullary op {null_op:?}"),

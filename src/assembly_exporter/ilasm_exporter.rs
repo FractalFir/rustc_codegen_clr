@@ -351,10 +351,10 @@ fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
 }
 fn variable_arg_type_name(var: &Type) -> IString {
     match var {
-        Type::Struct{..} => {
+        Type::Struct { .. } => {
             format!("valuetype {typename}", typename = escaped_type_name(var)).into()
         }
-        /* 
+        /*
         Type::Enum(_) => {
             format!("valuetype {typename}", typename = escaped_type_name(var)).into()
         }*/
@@ -363,14 +363,14 @@ fn variable_arg_type_name(var: &Type) -> IString {
 }
 fn escaped_type_name(var: &Type) -> IString {
     match var {
-        Type::Struct{..} => format!("'{name}'",name = type_name(var)).into(),
+        Type::Struct { .. } => format!("'{name}'", name = type_name(var)).into(),
         //Type::Enum(name) => format!("'{name}'").into(),
         _ => type_name(var),
     }
 }
 fn type_name(var: &Type) -> IString {
     match var {
-        Type::Struct{name,..} => name.replace("::", "."),//TODO: handle generic arguments
+        Type::Struct { name, .. } => name.replace("::", "."), //TODO: handle generic arguments
         //Type::Enum(name) => name.replace("::", "."),
         Type::Void => "void".into(),
         Type::I8 => "int8".into(),
@@ -416,7 +416,7 @@ fn empty_struct_to_cil() {
         .expect("Could not create proper struct CIL");
     assert_eq!(
         struct_cil.as_ref(),
-        ".class public sequential ansii sealed beforefieldinit 'Empty' extends [System.Runtime]'System.ValueType'{}"
+        ".class public sequential ansi sealed beforefieldinit 'Empty' extends [System.Runtime]'System.ValueType'{}"
     );
 }
 
