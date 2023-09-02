@@ -354,7 +354,7 @@ fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
             )
         }
         //Type info
-        BaseIR::SizeOf(name) => format!("sizeof {name}"),
+        BaseIR::SizeOf(tpe) => format!("sizeof {name}", name = escaped_type_name(tpe)),
         //Debuging
         BaseIR::DebugComment(comment) => format!("//{comment}"),
         BaseIR::Nop => "nop".into(),

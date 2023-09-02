@@ -91,7 +91,7 @@ pub(crate) enum BaseIR {
         field_name: IString,
         field_type: Type,
     },
-    SizeOf(IString),
+    SizeOf(Type),
     LDObj(IString),
     STObj(IString),
     Throw,

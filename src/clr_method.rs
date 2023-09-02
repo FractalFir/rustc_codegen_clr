@@ -215,7 +215,7 @@ impl CLRMethod {
         if is_void {
             call
         } else {
-            crate::codegen::place::place_setter_ops(destination,&codegen_ctx,call)
+            crate::codegen::place::place_setter_ops(destination, &codegen_ctx, call)
         }
     }
     pub(crate) fn add_terminator<'ctx>(

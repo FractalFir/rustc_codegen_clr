@@ -32,7 +32,6 @@ fn projection_element<'ctx>(
             min_length,
             from_end,
         } => {
-            
             todo!("Can't do constant indexing yet!")
         }
     }

@@ -1,7 +1,6 @@
+use crate::codegen::place::{place_getter_ops, place_setter_ops};
 use crate::{
-    projection::{projection_adress},
-    types::Type,
-    Assembly, BaseIR, CLRMethod, LocalPlacement,
+    projection::projection_adress, types::Type, Assembly, BaseIR, CLRMethod, LocalPlacement,
 };
 use rustc_index::IndexVec;
 use rustc_middle::mir::NullOp;
@@ -10,7 +9,6 @@ use rustc_middle::mir::{
     interpret::ConstValue, interpret::Scalar, AggregateKind, BinOp, Body, CastKind, Constant,
     ConstantKind, Operand, Place, Rvalue, Statement, StatementKind,
 };
-use crate::codegen::place::{place_getter_ops,place_setter_ops};
 use rustc_middle::ty::{Const, ParamEnv, TyCtxt};
 use rustc_target::abi::FieldIdx;
 #[macro_export]
@@ -121,8 +119,8 @@ pub(crate) fn handle_operand<'ctx>(
     codegen_ctx: &CodegenCtx<'ctx, '_>,
 ) -> Vec<BaseIR> {
     match operand {
-        Operand::Copy(place) => place_getter_ops(place,codegen_ctx),
-        Operand::Move(place) => place_getter_ops(place,codegen_ctx),
+        Operand::Copy(place) => place_getter_ops(place, codegen_ctx),
+        Operand::Move(place) => place_getter_ops(place, codegen_ctx),
         Operand::Constant(const_val) => handle_constant(const_val.as_ref(), codegen_ctx),
     }
 }
@@ -132,29 +130,19 @@ fn handle_binop<'ctx>(
     b: &Operand<'ctx>,
     codegen_ctx: &CodegenCtx<'ctx, '_>,
 ) -> Vec<BaseIR> {
-    let mut ops = Vec::new();
-    ops.extend(handle_operand(a, codegen_ctx));
-    ops.extend(handle_operand(b, codegen_ctx));
-    match binop {
-        BinOp::Add | BinOp::AddUnchecked => ops.push(BaseIR::Add),
-        BinOp::Sub | BinOp::SubUnchecked => ops.push(BaseIR::Sub),
-        BinOp::Mul | BinOp::MulUnchecked => ops.push(BaseIR::Mul),
-        BinOp::Shl | BinOp::ShlUnchecked => ops.push(BaseIR::Shl),
-        BinOp::Shr | BinOp::ShrUnchecked => ops.push(BaseIR::Shr),
-        BinOp::Eq => ops.push(BaseIR::Eq),
-        BinOp::Ne => ops.extend([BaseIR::Eq, BaseIR::LDConstI32(0), BaseIR::Eq]),
-        BinOp::Gt => ops.push(BaseIR::Gt),
-        BinOp::Lt => ops.push(BaseIR::Lt),
-        BinOp::Ge => ops.push(BaseIR::Ge),
-        BinOp::Le => ops.push(BaseIR::Le),
-        BinOp::Rem => ops.push(BaseIR::Rem),
-        BinOp::BitXor => ops.push(BaseIR::Xor),
-        BinOp::BitOr => ops.push(BaseIR::Or),
-        BinOp::BitAnd => ops.push(BaseIR::And),
-        BinOp::Div => ops.push(BaseIR::Div),
-        BinOp::Offset => todo!("Can't yet handle the pointer offset operator!"),
-    };
-    ops
+    let a_type = Type::from_ty(
+        &a.ty(codegen_ctx.body(), *codegen_ctx.tyctx()),
+        &codegen_ctx.tyctx(),
+    );
+    let b_type = Type::from_ty(
+        &a.ty(codegen_ctx.body(), *codegen_ctx.tyctx()),
+        &codegen_ctx.tyctx(),
+    );
+    crate::codegen::arthmetics::binop_unchecked(
+        binop,
+        (handle_operand(a, codegen_ctx), a_type),
+        (handle_operand(b, codegen_ctx), b_type),
+    )
 }
 fn handle_convert(src: &Type, dest: &Type) -> Vec<BaseIR> {
     crate::codegen::convert::convert_as(src, dest)
@@ -303,24 +291,24 @@ fn handle_rvalue<'tyctx>(
         }
         Rvalue::CheckedBinaryOp(_, _) => todo!("Can't yet preform checked binary operations"),
         Rvalue::UnaryOp(unary, operand) => {
-            let mut ops = handle_operand(operand, codegen_ctx);
-            match unary {
-                UnOp::Not => ops.push(BaseIR::Not),
-                _ => todo!("Can't yet preform unary ops of type {unary:?}!"),
-            }
-            ops
+            let tpe = Type::from_ty(
+                &operand.ty(codegen_ctx.body(), *codegen_ctx.tyctx()),
+                &codegen_ctx.tyctx(),
+            );
+            crate::codegen::arthmetics::unop_unchecked(
+                *unary,
+                (handle_operand(operand, codegen_ctx), tpe),
+            )
         }
         Rvalue::NullaryOp(null_op, op_type) => {
             let op_type = Type::from_ty(op_type, codegen_ctx.tyctx());
             match null_op {
                 NullOp::SizeOf => crate::codegen::sizeof_ops(&op_type),
-                //TODO: actualy calcualte algiment!
-                NullOp::AlignOf => vec![BaseIR::LDConstI32(8)],
+                NullOp::AlignOf => vec![crate::codegen::align_of(op_type)],
                 _ => todo!("Unsuiported nullary op {null_op:?}"),
             }
-            //todo!("Can't yet preform nulray ops!")
         }
-        Rvalue::CopyForDeref(place) => place_getter_ops(place,codegen_ctx),
+        Rvalue::CopyForDeref(place) => place_getter_ops(place, codegen_ctx),
         Rvalue::Discriminant(_) => todo!("Can't yet compute discriminat types!"),
         Rvalue::ShallowInitBox(_, _) => todo!("Can't yet shalowly initalize a box!"),
         Rvalue::Cast(CastKind::PointerCoercion(ptr), operand, _) => {

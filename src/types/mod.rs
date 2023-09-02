@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub(crate) struct FieldType {
     name: IString,
-    tpe: Type,
+    pub(crate) tpe: Type,
 }
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub(crate) enum Type {
@@ -240,6 +240,9 @@ impl Type {
                 params: subst.into(),
             }
         }
+    }
+    pub(crate) fn resolved(&self) -> Self {
+        todo!("Can't yet resolve generic types!")
     }
 }
 fn adt_name(adt: &AdtDef) -> IString {
