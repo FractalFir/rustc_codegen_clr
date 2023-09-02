@@ -8,6 +8,10 @@ pub(crate) fn place_getter_ops<'a>(place: &RPlace<'a>, ctx: &CodegenCtx<'a, '_>)
     let place = Place::from(place, ctx);
     place_get_ops(&place)
 }
+pub(crate) fn place_setter_ops<'a>(place: &RPlace<'a>, ctx: &CodegenCtx<'a, '_>,value_calc:Vec<BaseIR>) -> Vec<BaseIR> {
+    let place = Place::from(place, ctx);
+    place_set_ops(&place,value_calc)
+}
 fn local_get(local: &LocalPlacement) -> BaseIR {
     match local {
         LocalPlacement::Arg(arg_num) => BaseIR::LDArg(*arg_num),
@@ -21,13 +25,30 @@ fn local_set(local: &LocalPlacement) -> BaseIR {
     }
 }
 fn place_get_ops(place: &Place) -> Vec<BaseIR> {
-    let mut ops: Vec<_> = place
-        .body
-        .iter()
-        .map(|proj| proj.body_ops())
-        .flatten()
-        .collect();
-    ops.extend(place.head.get_ops());
+    let mut ops: Vec<_> = Vec::with_capacity(place.body.len()*2);
+    // Since first element must be a local, first element does not use the type. It then changes the type to value other than [`Void`]. This makes catching bugs easier - if the 
+    // first element is not `Local`, this will instanlty panic.
+    let mut tpe = Type::Void;
+    for segement in place.body.iter(){
+        let (sops,stpe) = segement.body_ops(&tpe);
+        ops.extend(sops);
+        tpe = stpe;
+    }
+    ops.extend(place.head.get_ops(tpe));
+    ops
+}
+fn place_set_ops(place: &Place,value_calc:Vec<BaseIR>) -> Vec<BaseIR> {
+    let mut ops: Vec<_> = Vec::with_capacity(place.body.len()*2);
+    // Since first element must be a local, first element does not use the type. It then changes the type to value other than [`Void`]. This makes catching bugs easier - if the 
+    // first element is not `Local`, this will instanlty panic.
+    let mut tpe = Type::Void;
+    for segement in place.body.iter(){
+        let (sops,stpe) = segement.body_ops(&tpe);
+        ops.extend(sops);
+        tpe = stpe;
+    }
+    ops.extend(value_calc);
+    ops.extend(place.head.set_ops(tpe));
     ops
 }
 // Translating Rust's palce to CLR ops is a not trivial task. For this reason, any place is split into 2 parts: "body" and "head".
@@ -40,7 +61,7 @@ struct Place {
 }
 impl Place {
     fn from<'a>(src: &RPlace<'a>, ctx: &CodegenCtx<'a, '_>) -> Self {
-        let local = ctx.local_placement(src.local.as_u32());
+        let local = (ctx.local_placement(src.local.as_u32()),ctx.get_local_type(src.local.as_u32()));
         let mut projection: Vec<_> = src
             .projection
             .iter()
@@ -48,8 +69,8 @@ impl Place {
             .collect();
         Self::new(local, projection)
     }
-    fn new(local: LocalPlacement, projection: Vec<ProjectionElement>) -> Self {
-        let local = ProjectionElement::Local(local);
+    fn new(local: (LocalPlacement,&Type), projection: Vec<ProjectionElement>) -> Self {
+        let local = ProjectionElement::Local{local:local.0,tpe:local.1.clone()};
         let mut body: Vec<_> = projection.into();
         body.insert(0, local);
         //Since we have inserted into body, it must have at least 1 element in it.
@@ -64,7 +85,7 @@ impl Place {
 }
 #[derive(Debug, Clone)]
 enum ProjectionElement {
-    Local(LocalPlacement),
+    Local{local: LocalPlacement,tpe:Type},
     Deref,
     Field { index: u32, owner: Type },
     Index { local: LocalPlacement },
@@ -114,45 +135,119 @@ impl ProjectionElement {
         }
     }
     /// Returns the ops necesary to handle a [`ProjectionElement`] that is within `body` of a [`Place`].
-    fn body_ops(&self) -> Vec<BaseIR> {
+    fn body_ops(&self,tpe:&Type) -> (Vec<BaseIR>,Type) {
         match self {
-            Self::Local(local) => vec![local_get(local)],
+            Self::Local{local,tpe} => (vec![local_get(local)],tpe.clone()),
+            Self::Deref=>{
+                let pointed = tpe.pointed_type().expect("Tried to deref a non-pointer type!");
+                let ops = body_deref_ops(pointed);
+                (ops,pointed.clone())
+            },
             _ => todo!("Unhandled projection element type:{self:?}"),
         }
     }
     /// Returns the ops necesary to get the value behind a [`ProjectionElement`] that is within `head` of a [`Place`].
-    fn get_ops(&self) -> Vec<BaseIR> {
+    fn get_ops(&self,tpe:Type) -> Vec<BaseIR> {
         match self {
-            Self::Local(local) => vec![local_get(local)],
+            Self::Local{local,..} => vec![local_get(local)],
+            Self::Deref=>{
+                let pointed = tpe.pointed_type().expect("Tried to deref a non-pointer type!");
+                let ops = getter_deref_ops(pointed);
+                ops
+            },
             _ => todo!("Unhandled projection element type:{self:?}"),
         }
+    }
+    /// Returns the ops necesary to set the value behind a [`ProjectionElement`] that is within `head` of a [`Place`].
+    fn set_ops(&self,tpe:Type) -> Vec<BaseIR> {
+        match self {
+            Self::Local{local,..} => vec![local_set(local)],
+            Self::Deref=>{
+                let pointed = tpe.pointed_type().expect("Tried to deref a non-pointer type!");
+                let ops = setter_deref_ops(pointed);
+                ops
+            },
+            _ => todo!("Unhandled projection element type:{self:?}"),
+        }
+    }
+}
+fn body_deref_ops(pointed:&Type)->Vec<BaseIR>{
+    match pointed{
+        Type::I8 | Type::U8=> vec![BaseIR::LDIndIn(1)],
+        Type::I16 | Type::U16=> vec![BaseIR::LDIndIn(2)],
+        Type::I32 | Type::U32=> vec![BaseIR::LDIndIn(4)],
+        Type::I64 | Type::U64=> vec![BaseIR::LDIndIn(8)],
+        Type::Ref(_) | Type::Ptr(_)  | Type::USize | Type::ISize=> vec![BaseIR::LDIndI],
+        Type::F32 => vec![BaseIR::LDIndR4],
+        Type::F64 => vec![BaseIR::LDIndR8],
+        _=>todo!("unsuported adress derf: {pointed:?}"),
+    }
+}
+fn getter_deref_ops(pointed:&Type)->Vec<BaseIR>{
+    match pointed{
+        _=>body_deref_ops(pointed),
+    }
+}
+fn setter_deref_ops(pointed:&Type)->Vec<BaseIR>{
+    match pointed{
+        Type::I8 | Type::U8=> vec![BaseIR::STIndIn(1)],
+        Type::I16 | Type::U16=> vec![BaseIR::STIndIn(2)],
+        Type::I32 | Type::U32=> vec![BaseIR::STIndIn(4)],
+        Type::I64 | Type::U64=> vec![BaseIR::STIndIn(8)],
+        Type::Ref(_) | Type::Ptr(_)  | Type::USize | Type::ISize=> vec![BaseIR::STIndI],
+        Type::F32 => vec![BaseIR::STIndR4],
+        Type::F64 => vec![BaseIR::STIndR8],
+        _=>todo!("unsuported set derf: {pointed:?}"),
     }
 }
 #[test]
 fn trivial_get() {
     for i in 0..1000 {
-        let place = Place::new(LocalPlacement::Arg(i), vec![]);
+        let place = Place::new((LocalPlacement::Arg(i),&Type::I32), vec![]);
         let ops = place_get_ops(&place);
         assert_eq!(ops, [BaseIR::LDArg(i)])
     }
     for i in 0..1000 {
-        let place = Place::new(LocalPlacement::Var(i), vec![]);
+        let place = Place::new((LocalPlacement::Var(i),&Type::I32), vec![]);
         let ops = place_get_ops(&place);
         assert_eq!(ops, [BaseIR::LDLoc(i)])
     }
 }
-/*
 #[test]
-fn field_get(){
-    //let vec3 = Type::Struct { name: "vec3", fields: [Filed].into() }
-    for i in 0..1000{
-        let place = Place::new(LocalPlacement::Arg(i),vec![]);
-        let ops = place_get_ops(&place);
-        assert_eq!(ops,[BaseIR::LDArg(i)])
-    }
-    for i in 0..1000{
-        let place = Place::new(LocalPlacement::Var(i),vec![]);
-        let ops = place_get_ops(&place);
-        assert_eq!(ops,[BaseIR::LDLoc(i)])
-    }
-}*/
+fn deref() {
+    //Deref I32
+    let place = Place::new((LocalPlacement::Arg(0),&Type::Ref(Box::new(Type::I32))), vec![ProjectionElement::Deref]);
+    let ops = place_get_ops(&place);
+    assert_eq!(ops, [BaseIR::LDArg(0),BaseIR::LDIndIn(4)]);
+    //Deref I64
+    let place = Place::new((LocalPlacement::Arg(0),&Type::Ref(Box::new(Type::I64))), vec![ProjectionElement::Deref]);
+    let ops = place_get_ops(&place);
+    assert_eq!(ops, [BaseIR::LDArg(0),BaseIR::LDIndIn(8)]);
+    //Deref U8
+    let place = Place::new((LocalPlacement::Arg(0),&Type::Ref(Box::new(Type::U8))), vec![ProjectionElement::Deref]);
+    let ops = place_get_ops(&place);
+    assert_eq!(ops, [BaseIR::LDArg(0),BaseIR::LDIndIn(1)]);
+    //Deref Usize
+    let place = Place::new((LocalPlacement::Arg(0),&Type::Ref(Box::new(Type::USize))), vec![ProjectionElement::Deref]);
+    let ops = place_get_ops(&place);
+    assert_eq!(ops, [BaseIR::LDArg(0),BaseIR::LDIndI]);
+    //Deref Ref()
+    let place = Place::new((LocalPlacement::Arg(0),&Type::Ref(Box::new(Type::Ref(Box::new(Type::USize))))), vec![ProjectionElement::Deref]);
+    let ops = place_get_ops(&place);
+    assert_eq!(ops, [BaseIR::LDArg(0),BaseIR::LDIndI]);
+    //Deref 2 layers
+    let place = Place::new((LocalPlacement::Arg(0),&Type::Ref(Box::new(Type::Ref(Box::new(Type::U8))))), vec![ProjectionElement::Deref,ProjectionElement::Deref]);
+    let ops = place_get_ops(&place);
+    assert_eq!(ops, [BaseIR::LDArg(0),BaseIR::LDIndI,BaseIR::LDIndIn(1)]);
+    //Deref F32
+    let place = Place::new((LocalPlacement::Arg(0),&Type::Ref(Box::new(Type::F32))), vec![ProjectionElement::Deref]);
+    let ops = place_get_ops(&place);
+    assert_eq!(ops, [BaseIR::LDArg(0),BaseIR::LDIndR4]);
+    //Deref F64
+    let place = Place::new((LocalPlacement::Arg(0),&Type::Ref(Box::new(Type::F64))), vec![ProjectionElement::Deref]);
+    let ops = place_get_ops(&place);
+    assert_eq!(ops, [BaseIR::LDArg(0),BaseIR::LDIndR8]);
+    let place = Place::new((LocalPlacement::Arg(0),&Type::Ref(Box::new(Type::F32))), vec![ProjectionElement::Deref]);
+    let ops = place_set_ops(&place,vec![BaseIR::LDConstF32(0.123)]);
+    assert_eq!(ops, [BaseIR::LDArg(0),BaseIR::LDConstF32(0.123),BaseIR::STIndR4]);
+}

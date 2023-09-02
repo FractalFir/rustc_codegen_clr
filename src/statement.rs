@@ -1,5 +1,5 @@
 use crate::{
-    projection::{projection_adress, projection_get, projection_set},
+    projection::{projection_adress},
     types::Type,
     Assembly, BaseIR, CLRMethod, LocalPlacement,
 };
@@ -10,6 +10,7 @@ use rustc_middle::mir::{
     interpret::ConstValue, interpret::Scalar, AggregateKind, BinOp, Body, CastKind, Constant,
     ConstantKind, Operand, Place, Rvalue, Statement, StatementKind,
 };
+use crate::codegen::place::{place_getter_ops,place_setter_ops};
 use rustc_middle::ty::{Const, ParamEnv, TyCtxt};
 use rustc_target::abi::FieldIdx;
 #[macro_export]
@@ -56,9 +57,6 @@ impl<'tctx, 'local_ctx> CodegenCtx<'tctx, 'local_ctx> {
     pub(crate) fn get_local_type(&self, local: u32) -> &Type {
         self.clr_method.get_type_of_local(local)
     }
-    pub(crate) fn place_get_ops(&self, place: &Place<'tctx>) -> Vec<BaseIR> {
-        projection_get(place, self.get_local_type(place.local.into()), self)
-    }
     pub(crate) fn place_adress_ops(&self, place: &Place<'tctx>) -> Vec<BaseIR> {
         if place.projection.is_empty() {
             vec![
@@ -70,10 +68,6 @@ impl<'tctx, 'local_ctx> CodegenCtx<'tctx, 'local_ctx> {
         } else {
             projection_adress(place, self.get_local_type(place.local.into()), self)
         }
-    }
-    pub(crate) fn place_set_ops(&self, place: &Place<'tctx>) -> (Vec<BaseIR>, Vec<BaseIR>) {
-        //Empty projection, just set the local
-        projection_set(place, self.get_local_type(place.local.into()), self)
     }
 }
 fn load_const_scalar(scalar: Scalar, scalar_type: Type) -> Vec<BaseIR> {
@@ -127,8 +121,8 @@ pub(crate) fn handle_operand<'ctx>(
     codegen_ctx: &CodegenCtx<'ctx, '_>,
 ) -> Vec<BaseIR> {
     match operand {
-        Operand::Copy(place) => codegen_ctx.place_get_ops(place),
-        Operand::Move(place) => codegen_ctx.place_get_ops(place),
+        Operand::Copy(place) => place_getter_ops(place,codegen_ctx),
+        Operand::Move(place) => place_getter_ops(place,codegen_ctx),
         Operand::Constant(const_val) => handle_constant(const_val.as_ref(), codegen_ctx),
     }
 }
@@ -289,40 +283,7 @@ fn handle_rvalue<'tyctx>(
             handle_agregate(codegen_ctx, target_location, aggregate.as_ref(), fields)
         }
         Rvalue::Repeat(operand, ammount) => {
-            let ammount = const_to_usize(ammount, *codegen_ctx.tyctx());
-            let array_adress = codegen_ctx.place_adress_ops(target_location);
-
-            let mut array_init = Vec::new();
-            let element = Type::from_ty(
-                &operand.ty(codegen_ctx.body(), *codegen_ctx.tyctx()),
-                codegen_ctx.tyctx(),
-            );
-            /*
-            let arr_name = Type::Array {
-                element: Box::new(element.clone()),
-                length: ammount as u64,
-            }
-            .arg_name();
-            if crate::ALWAYS_INIT_STRUCTS {
-                array_init.extend(array_adress.clone());
-                array_init.push(BaseIR::InitObj(arr_name.clone()));
-            }
-            //TODO: handle large array sizes using loops!
-            for index in 0..ammount {
-                array_init.extend(array_adress.clone());
-                array_init.push(BaseIR::LDConstI64(index as i64));
-                array_init.push(BaseIR::ConvI);
-                array_init.extend(handle_operand(operand, codegen_ctx));
-                array_init.push(BaseIR::Call {
-                    sig: crate::FunctionSignature::new(
-                        &[Type::ISize, element.clone()],
-                        &Type::Void,
-                    ),
-                    function_name: format!("{arr_name}::set_Item").into(),
-                });
-            }*/
-            array_init.extend(codegen_ctx.place_get_ops(target_location));
-            array_init
+            todo!();
         }
         Rvalue::ThreadLocalRef(_) => todo!("Can't handle thread local data yet!"),
         Rvalue::Ref(_region, _kind, place) => {
@@ -359,7 +320,7 @@ fn handle_rvalue<'tyctx>(
             }
             //todo!("Can't yet preform nulray ops!")
         }
-        Rvalue::CopyForDeref(place) => codegen_ctx.place_get_ops(place),
+        Rvalue::CopyForDeref(place) => place_getter_ops(place,codegen_ctx),
         Rvalue::Discriminant(_) => todo!("Can't yet compute discriminat types!"),
         Rvalue::ShallowInitBox(_, _) => todo!("Can't yet shalowly initalize a box!"),
         Rvalue::Cast(CastKind::PointerCoercion(ptr), operand, _) => {
@@ -380,10 +341,7 @@ pub(crate) fn handle_statement<'tctx, 'local_ctx>(
         StatementKind::Assign(asign_box) => {
             let (place, rvalue) = (asign_box.0, &asign_box.1);
             let rvalue_ops = handle_rvalue(&rvalue, &codegen_ctx, &place); // RValue::from_rvalue(rvalue, body, tyctx, self, asm,place.local.into());
-            let (adress_calc, set_op) = codegen_ctx.place_set_ops(&place);
-            let mut final_ops = adress_calc;
-            final_ops.extend(rvalue_ops);
-            final_ops.extend(set_op);
+            let final_ops = place_setter_ops(&place, &codegen_ctx, rvalue_ops);
             final_ops
         }
         StatementKind::StorageLive(_local) => Vec::new(), //TODO: maybe use lifetime info to better guide CLR IL generation?

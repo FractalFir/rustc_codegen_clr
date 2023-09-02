@@ -37,6 +37,7 @@ impl CLRMethod {
     pub(crate) fn ops(&self) -> &[BaseIR] {
         &self.ops
     }
+    #[cfg(test)]
     pub(crate) fn from_raw(
         ops: &[BaseIR],
         locals: &[Type],
@@ -64,8 +65,8 @@ impl CLRMethod {
             .locals
             .iter()
             .enumerate()
-            .filter(|(index, vartype)| **vartype == Type::Void)
-            .map(|(index, vartype)| index)
+            .filter(|(_index, vartype)| **vartype == Type::Void)
+            .map(|(index, _vartype)| index)
             .collect();
         self.ops
             .iter_mut()
@@ -76,9 +77,6 @@ impl CLRMethod {
                 *ltype = Type::I8
             }
         });
-    }
-    pub(crate) fn extend_ops(&mut self, ops: &[BaseIR]) {
-        self.ops.extend(ops.iter().map(|ref_op| ref_op.clone()))
     }
     fn count_rws(&self, local: u32) -> (usize, usize) {
         let (mut read_count, mut write_count) = (0, 0);
@@ -147,32 +145,6 @@ impl CLRMethod {
         self.locals = new_locals;
         //todo!();
     }
-    /*
-    pub(crate) fn locals_init(&self) -> IString {
-        if self.locals.is_empty() {
-            return "".into();
-        }
-        let mut locals = String::new();
-        let mut locals_iter = self.locals.iter().enumerate();
-        match locals_iter.next() {
-            Some((index, first)) => locals.push_str(&format!(
-                "\n\t\t[{index}] {loc_type}",
-                loc_type = first.il_name()
-            )),
-            None => (),
-        }
-        for (index, local) in locals_iter {
-            locals.push_str(&format!(
-                ",\n\t\t[{index}] {loc_type}",
-                loc_type = local.il_name()
-            ))
-        }
-        if crate::ALWAYS_INIT_LOCALS {
-            format!("\t.locals init({locals}\n\t)").into()
-        } else {
-            format!("\t.locals ({locals}\n\t)").into()
-        }
-    }*/
     pub(crate) fn new(sig: FunctionSignature, name: &str) -> Self {
         let name = if name.contains("main") { "main" } else { name };
         Self {
@@ -243,15 +215,7 @@ impl CLRMethod {
         if is_void {
             call
         } else {
-            let (mut addr_calc, set_ops) = crate::projection::projection_set(
-                destination,
-                codegen_ctx.get_local_type(destination.local.into()),
-                &codegen_ctx,
-            );
-            //let assigement = AsigmentTarget::from_placement(*destination, &self, asm);
-            addr_calc.extend(call);
-            addr_calc.extend(set_ops);
-            addr_calc
+            crate::codegen::place::place_setter_ops(destination,&codegen_ctx,call)
         }
     }
     pub(crate) fn add_terminator<'ctx>(
