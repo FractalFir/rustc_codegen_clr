@@ -46,6 +46,7 @@ use assembly::*;
 mod base_ir;
 use base_ir::BaseIR;
 mod assembly_exporter;
+mod compile_test;
 mod projection;
 mod statement;
 mod types;
@@ -205,7 +206,7 @@ impl CodegenBackend for MyBackend {
             &final_assembly,
             &path,
         )
-        .expect("Could not create the final assembly!");
+        .expect("Could not create the final asm!");
         Ok(())
     }
 }

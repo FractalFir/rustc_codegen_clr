@@ -1,4 +1,7 @@
-use crate::{base_ir::BaseIR, clr_method::CLRMethod, types::Type, IString};
+use crate::{
+    assembly_exporter::AssemblyExportError, base_ir::BaseIR, clr_method::CLRMethod, types::Type,
+    IString,
+};
 
 use super::{AssemblyExporter, ClassInfo};
 #[must_use]
@@ -22,13 +25,14 @@ impl AssemblyExporter for ILASMExporter {
     fn add_method(&mut self, method: CLRMethod) {
         self.methods.push(method);
     }
-    fn finalize(self, final_path: &std::path::Path) -> Result<(), super::AssemblyExportError> {
+    fn finalize(self, final_path: &std::path::Path) -> Result<(), AssemblyExportError> {
         use std::io::Write;
         //println!("final_path:{final_path:?}");
-        let directory = final_path
+        let directory = absolute_path(final_path)
+            .map_err(|io| AssemblyExportError::CouldNotCanonalizePath(io, final_path.to_owned()))?
             .parent()
             .expect("Can't get the target directory")
-            .canonicalize()?;
+            .to_owned();
 
         let mut out_path = directory.clone();
         out_path.set_file_name(final_path.file_name().expect("Target file has no name!"));
@@ -39,11 +43,12 @@ impl AssemblyExporter for ILASMExporter {
         ); //final_path.expect("Could not canonialize path!");
 
         let cil_path = out_path.with_extension("il");
-        let cil = self.get_cil()?;
+        let cil = self.get_cil().expect("Could not get cil");
         println!("cil_path:{cil_path:?}");
         std::fs::File::create(&cil_path)
             .expect("Could not create file")
-            .write_all(cil.as_bytes())?;
+            .write_all(cil.as_bytes())
+            .expect("Could not write bytes");
         let asm_type = "/dll";
         let target = format!(
             "/output:{out_path}",
@@ -59,6 +64,15 @@ impl AssemblyExporter for ILASMExporter {
             .output()
             .expect("failed run ilasm process");
         Ok(())
+    }
+}
+fn absolute_path(path: &std::path::Path) -> std::io::Result<std::path::PathBuf> {
+    if path.has_root() {
+        Ok(path.to_owned())
+    } else {
+        let mut abs_path = std::env::current_dir()?;
+        abs_path.extend(path);
+        Ok(abs_path)
     }
 }
 impl ILASMExporter {

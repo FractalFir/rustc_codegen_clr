@@ -60,12 +60,15 @@ pub(crate) trait AssemblyExporter: Sized {
         for method in asm.methods() {
             asm_exporter.add_method(method.clone());
         }
-        asm_exporter.finalize(final_path)
+        Ok(asm_exporter
+            .finalize(final_path)
+            .expect("Could not export assembly"))
     }
 }
 #[derive(Debug)]
 pub(crate) enum AssemblyExportError {
     InvalidIL,
+    CouldNotCanonalizePath(std::io::Error, std::path::PathBuf),
     IoError(std::io::Error),
 }
 impl From<std::io::Error> for AssemblyExportError {
