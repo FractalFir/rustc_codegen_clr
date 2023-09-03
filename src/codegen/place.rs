@@ -1,4 +1,4 @@
-use crate::{base_ir::BaseIR, clr_method::LocalPlacement, statement::CodegenCtx, types::Type};
+use crate::{base_ir::{BaseIR, FiledDescriptor}, clr_method::LocalPlacement, statement::CodegenCtx, types::Type};
 use rustc_middle::mir::{Place as RPlace, PlaceElem};
 
 pub(crate) fn place_getter_ops<'a>(place: &RPlace<'a>, ctx: &CodegenCtx<'a, '_>) -> Vec<BaseIR> {
@@ -94,7 +94,7 @@ impl Place {
 enum ProjectionElement {
     Local { local: LocalPlacement, tpe: Type },
     Deref,
-    Field { index: u32, owner: Type },
+    Field { index: u32, /*field_type: Type*/ },
     Index { local: LocalPlacement },
     ConstIndex { offset: u64, min_length: u64 },
     Subslice { from: u64, to: u64 },
@@ -103,11 +103,11 @@ impl ProjectionElement {
     fn from<'a>(value: &PlaceElem<'a>, ctx: &CodegenCtx<'a, '_>) -> Self {
         match value {
             PlaceElem::Deref => ProjectionElement::Deref,
-            PlaceElem::Field(index, owner) => {
-                let owner = Type::from_ty(owner, ctx.tyctx());
+            PlaceElem::Field(index, field_type) => {
+                //let field_type = Type::from_ty(field_type, ctx.tyctx());
                 Self::Field {
                     index: index.as_u32(),
-                    owner,
+                    //field_type,
                 }
             }
             PlaceElem::Index(local) => Self::Index {
@@ -145,6 +145,14 @@ impl ProjectionElement {
     fn body_ops(&self, tpe: &Type) -> (Vec<BaseIR>, Type) {
         match self {
             Self::Local { local, tpe } => (vec![local_get(local)], tpe.clone()),
+            Self::Field{index} =>{
+                let variant = 0;
+                let field = tpe.field(variant, *index);
+                match field.tpe{
+                    Type::Struct { .. }=>(vec![BaseIR::LDFieldAdress(Box::new(FiledDescriptor{ owner:tpe.clone(), variant, field_index: *index }))],field.tpe.clone()),
+                    _=>(vec![BaseIR::LDField(Box::new(FiledDescriptor{ owner:tpe.clone(), variant, field_index: *index }))],field.tpe.clone())
+                }
+            }
             Self::Deref => {
                 let pointed = tpe
                     .pointed_type()
@@ -166,6 +174,11 @@ impl ProjectionElement {
 
                 getter_deref_ops(pointed)
             }
+            Self::Field{index} =>{
+                let variant = 0;
+                let field = tpe.field(variant, *index);
+                vec![BaseIR::LDField(Box::new(FiledDescriptor{ owner:tpe.clone(), variant, field_index: *index }))]
+            }
             _ => todo!("Unhandled projection element type:{self:?}"),
         }
     }
@@ -180,6 +193,11 @@ impl ProjectionElement {
 
                 setter_deref_ops(pointed)
             }
+            Self::Field{index} =>{
+                let variant = 0;
+                let field = tpe.field(variant, *index);
+                vec![BaseIR::STField(Box::new(FiledDescriptor{ owner:tpe.clone(), variant, field_index: *index }))]
+            }
             _ => todo!("Unhandled projection element type:{self:?}"),
         }
     }
@@ -193,11 +211,17 @@ fn body_deref_ops(pointed: &Type) -> Vec<BaseIR> {
         Type::Ref(_) | Type::Ptr(_) | Type::USize | Type::ISize => vec![BaseIR::LDIndI],
         Type::F32 => vec![BaseIR::LDIndR4],
         Type::F64 => vec![BaseIR::LDIndR8],
+        // In body, struct types should never be derferenced.
+        Type::Struct { .. } => vec![BaseIR::Nop],
         _ => todo!("unsuported adress derf: {pointed:?}"),
     }
 }
 fn getter_deref_ops(pointed: &Type) -> Vec<BaseIR> {
-    body_deref_ops(pointed)
+    match pointed{
+        Type::Struct { .. } => vec![BaseIR::LDObj(pointed.clone())],
+        _=>body_deref_ops(pointed)
+    }
+    
 }
 fn setter_deref_ops(pointed: &Type) -> Vec<BaseIR> {
     match pointed {
@@ -208,6 +232,7 @@ fn setter_deref_ops(pointed: &Type) -> Vec<BaseIR> {
         Type::Ref(_) | Type::Ptr(_) | Type::USize | Type::ISize => vec![BaseIR::STIndI],
         Type::F32 => vec![BaseIR::STIndR4],
         Type::F64 => vec![BaseIR::STIndR8],
+        Type::Struct{..}=> vec![BaseIR::STObj(pointed.clone())],
         _ => todo!("unsuported set derf: {pointed:?}"),
     }
 }

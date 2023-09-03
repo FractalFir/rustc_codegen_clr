@@ -295,11 +295,11 @@ fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
         BaseIR::LDIndIn(n) => format!("ldind.i{n}"),
         BaseIR::LDIndR4 => "ldind.r4".to_string(),
         BaseIR::LDIndR8 => "ldind.r8".to_string(),
-        BaseIR::STObj(name) => format!("stobj valuetype {name}"),
+        BaseIR::STObj(tpe) => format!("stobj {name}", name = variable_arg_type_name(tpe)),
         // Geting pointers
         BaseIR::STIndI => "stind.i".into(),
         BaseIR::STIndIn(n) => format!("stind.i{n}"),
-        BaseIR::LDObj(name) => format!("ldobj valuetype {name}"),
+        BaseIR::LDObj(tpe) => format!("ldobj {name}", name = variable_arg_type_name(tpe)),
         BaseIR::STIndR4 => "stind.r4".to_string(),
         BaseIR::STIndR8 => "stind.r8".to_string(),
         //Fileds

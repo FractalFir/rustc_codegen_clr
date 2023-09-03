@@ -79,8 +79,8 @@ pub(crate) enum BaseIR {
     LDFieldAdress(Box<FiledDescriptor>),
     STField(Box<FiledDescriptor>),
     SizeOf(Box<Type>),
-    LDObj(IString),
-    STObj(IString),
+    LDObj(Type),
+    STObj(Type),
     Throw,
     InitObj(IString),
 }
