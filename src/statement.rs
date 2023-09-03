@@ -4,7 +4,6 @@ use crate::{
 };
 use rustc_index::IndexVec;
 use rustc_middle::mir::NullOp;
-use rustc_middle::mir::UnOp;
 use rustc_middle::mir::{
     interpret::ConstValue, interpret::Scalar, AggregateKind, BinOp, Body, CastKind, Constant,
     ConstantKind, Operand, Place, Rvalue, Statement, StatementKind,

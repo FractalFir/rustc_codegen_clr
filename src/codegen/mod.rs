@@ -3,11 +3,9 @@ use crate::{base_ir::BaseIR, types::Type};
 pub(crate) mod arthmetics;
 pub(crate) mod convert;
 pub(crate) mod place;
-pub(crate) fn sizeof_ops(tpe: &Type) -> Vec<BaseIR> {
+pub(crate) mod aggregate;
+pub(crate) fn sizeof_ops(_tpe: &Type) -> Vec<BaseIR> {
     todo!("Can't yet calculate size of things!");
-}
-pub(crate) fn deref_ops(tpe: &Type) -> Vec<BaseIR> {
-    todo!("Can't yet get the deref ops of types!");
 }
 #[derive(Clone, Copy)]
 pub(crate) enum Aligement {
@@ -69,8 +67,8 @@ fn align_of_tpe(tpe: &Type) -> Aligement {
             .iter()
             .map(|filed| align_of_tpe(&filed.tpe))
             .fold(Aligement::A1, |a, b| a.max(&b)),
-        Type::GenericParam { index } => Aligement::Unknown,
-        Type::ResolvedGenric { inner, params } => align_of_tpe(&tpe.resolved()),
+        Type::GenericParam { .. } => Aligement::Unknown,
+        Type::ResolvedGenric {.. } => align_of_tpe(&tpe.resolved()),
     }
 }
 pub(crate) fn align_of(tpe: Type) -> BaseIR {

@@ -1,8 +1,5 @@
 use crate::{base_ir::BaseIR, clr_method::LocalPlacement, statement::CodegenCtx, types::Type};
-use rustc_middle::{
-    mir::{Place as RPlace, PlaceElem},
-    ty::TyCtxt,
-};
+use rustc_middle::mir::{Place as RPlace, PlaceElem};
 
 pub(crate) fn place_getter_ops<'a>(place: &RPlace<'a>, ctx: &CodegenCtx<'a, '_>) -> Vec<BaseIR> {
     let place = Place::from(place, ctx);
@@ -59,7 +56,7 @@ fn place_set_ops(place: &Place, value_calc: Vec<BaseIR>) -> Vec<BaseIR> {
 // "Body" is the part that calculates the adress of the variable in question. It is handled in the same way for every operation done with a place.
 // For any head, there is always a certain set of ops that will be consitenlty emmited.
 // "Head" is the last element of the projection. This is the part that gets the value, addres or sets the varaible. What ops will it create? Depends on what you want to do with it.
-struct Place {
+pub(crate) struct Place {
     body: Box<[ProjectionElement]>,
     head: Box<ProjectionElement>,
 }
@@ -69,7 +66,7 @@ impl Place {
             ctx.local_placement(src.local.as_u32()),
             ctx.get_local_type(src.local.as_u32()),
         );
-        let mut projection: Vec<_> = src
+        let projection: Vec<_> = src
             .projection
             .iter()
             .map(|e| ProjectionElement::from(&e, ctx))

@@ -46,6 +46,6 @@ pub(crate) fn convert_as(src: &Type, dest: &Type) -> Vec<BaseIR> {
         Type::I128 | Type::U128 => {
             todo!("Casts involving i128/u128 are not supported yet.")
         }
-        Type::GenericParam { index } => todo!("Can't handle converting to generic using as"),
+        Type::GenericParam { .. } => todo!("Can't handle converting to generic using as"),
     }
 }

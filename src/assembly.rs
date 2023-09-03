@@ -1,115 +1,27 @@
-use crate::{assembly_exporter::Method, types::Type, CLRMethod, FunctionSignature, IString};
+use crate::{types::Type, CLRMethod, FunctionSignature, IString};
 use rustc_index::IndexVec;
 use rustc_middle::{
     mir::{mono::MonoItem, Local, LocalDecl},
-    ty::{Instance, ParamEnv, Ty, TyCtxt, TyKind},
+    ty::{Instance, ParamEnv, Ty, TyCtxt},
 };
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::HashSet;
 #[derive(Serialize, Deserialize)]
 pub(crate) struct Assembly {
     methods: Vec<CLRMethod>,
     name: IString,
-    //types: HashMap<IString, CLRType>,
+    types:HashSet<Type>,
     size_t: u8,
 }
 impl Assembly {
-    /*
-    pub(crate) fn structs(&self) -> Vec<crate::assembly_exporter::ClassInfo> {
-        self.types
-            .iter()
-            .map(|tpe| {
-                if let CLRType::Struct { fields } = tpe.1 {
-                    Some(crate::assembly_exporter::ClassInfo::new(tpe.0, fields))
-                } else {
-                    None
-                }
-            })
-            .filter(|strct| strct.is_some())
-            .map(|strct| strct.unwrap())
-            .collect()
-    }*/
+    pub(crate) fn types(&self)->impl Iterator<Item = &Type>{
+        self.types.iter()
+    }
     pub(crate) fn methods(&self) -> &[CLRMethod] {
         &self.methods
     }
-    pub(crate) fn sizeof_type(&self, var_type: &Type) -> usize {
-        match var_type {
-            Type::Void => 0,
-            Type::I8 | Type::U8 | Type::Bool => 1,
-            Type::I16 | Type::U16 => 2,
-            Type::I32 | Type::U32 | Type::F32 => 4,
-            Type::I64 | Type::U64 | Type::F64 => 8,
-            Type::I128 | Type::U128 => 16,
-            Type::ISize | Type::USize | Type::Ref(_) | Type::Ptr(_) => self.size_t as usize,
-            Type::Slice(_) => (self.size_t + self.size_t) as usize,
-            Type::Array { element, length } => todo!("Can't get sizeof array yet!"), //self.sizeof_type(element) * length,
-            Type::Tuple(elements) => elements
-                .iter()
-                .map(|element| self.sizeof_type(element))
-                .sum::<usize>(),
-            Type::Struct { name, .. } => todo!("can't take sizeof struct yet!"),
-            Type::StrSlice => panic!("Can't compute sizeof string silice at compile time!"),
-            //Type::Generic(_) => todo!("Can't calcuate the size of a geneic!"),
-            _ => todo!("Cant estimate size of {var_type:?} yet."),
-        }
-    }
-    pub(crate) fn get_field_getter(
-        &self,
-        field: usize,
-        field_parent: &str,
-    ) -> Option<Vec<crate::BaseIR>> {
-        todo!("Can't get field yet!")
-    }
-    pub(crate) fn get_field_setter(
-        &self,
-        field: usize,
-        field_parent: &str,
-    ) -> Option<Vec<crate::BaseIR>> {
-        todo!("Can't set field yet!")
-    }
     pub(crate) fn add_type<'ctx>(&mut self, ty: Ty<'ctx>, tyctx: &TyCtxt<'ctx>) {
-        /*
-        match ty.kind() {
-            TyKind::Adt(adt_def, _subst) => {
-                // TODO: find a better way to get a name of an ADT!
-                let name = format!("{adt_def:?}").replace("::", ".").into();
-                let mut fields = Vec::new();
-                for field in adt_def.all_fields() {
-                    //TODO: handle binders!
-                    fields.push((
-                        field.name.to_string().into(),
-                        Type::from_ty(&tyctx.type_of(field.did).skip_binder(), tyctx),
-                    ));
-                    println!("field:{field:?}");
-                }
-                self.types.insert(name, CLRType::Struct { fields });
-                println!("adt_def:{adt_def:?} types:{types:?}", types = self.types);
-            }
-            TyKind::Array(element_type, length) => {
-                let (element, length) = (Type::from_ty(*element_type, *tyctx), {
-                    let scalar = length
-                        .try_to_scalar()
-                        .expect("Could not convert the scalar");
-                    let value = scalar.to_u64().expect("Could not convert scalar to u64!");
-                    value as usize
-                });
-                let name = format!(
-                    "'RArray_{element_il}_{length}'",
-                    element_il = element.il_name()
-                )
-                .into();
-                let arr = CLRType::Array { element, length };
-                self.types.insert(name, arr);
-            }
-            TyKind::Slice(element_type) => {
-                let element = Type::from_ty(*element_type, *tyctx);
-                let name = format!("'RSlice_{element_il}'", element_il = element.il_name()).into();
-                let slice = CLRType::Slice(element);
-                self.types.insert(name, slice);
-            }
-            TyKind::Ref(_, ty, _) => self.add_type(*ty, tyctx),
-            _ => (),
-        }*/
+        self.types.insert(Type::from_ty(&ty, tyctx));
     }
     pub(crate) fn add_types_from_locals<'ctx>(
         &mut self,
@@ -128,7 +40,7 @@ impl Assembly {
         let name = name.replace('-', "_");
         Self {
             methods: Vec::with_capacity(0x100),
-            //types: HashMap::with_capacity(0x100),
+            types: HashSet::with_capacity(0x100),
             name: name.into(),
             size_t: 8,
         }
@@ -178,6 +90,6 @@ impl Assembly {
     pub(crate) fn link(&mut self, other: Self) {
         //TODO: do linking.
         self.methods.extend_from_slice(&other.methods);
-        //self.types.extend(other.types);
+        self.types.extend(other.types);
     }
 }

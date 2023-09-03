@@ -1,4 +1,7 @@
 #![feature(rustc_private)]
+#![allow(dead_code)]
+#![allow(unused_variables)]
+
 extern crate rustc_codegen_ssa;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
@@ -8,6 +11,8 @@ extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
+
+
 use rustc_middle::ty::{Binder, BoundVariableKind};
 fn skip_binder_if_no_generic_types<T>(binder: Binder<T>) -> Option<T> {
     if binder
@@ -171,7 +176,7 @@ impl CodegenBackend for MyBackend {
             config::{CrateType, OutFileName},
             output::out_filename,
         };
-        use std::io::Write;
+        
         let crate_name = codegen_results.crate_info.local_crate_name;
         let mut final_assembly =
             Assembly::new(&codegen_results.crate_info.local_crate_name.to_string());

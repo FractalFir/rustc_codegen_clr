@@ -59,10 +59,17 @@ impl AssemblyExporter for ILASMExporter {
             target,
             cil_path.clone().to_string_lossy().to_string(),
         ];
-        std::process::Command::new("ilasm")
+       let out = std::process::Command::new("ilasm")
             .args(args)
             .output()
             .expect("failed run ilasm process");
+        if out.stderr.len() > 0{
+            let stdout = String::from_utf8(out.stdout).unwrap();
+            if !stdout.contains("\nOperation completed successfully\n"){
+                let err = format!("stdout:{} stderr:{}",stdout,String::from_utf8(out.stderr).unwrap());
+                return Err(AssemblyExportError::ExporterError(err.into()));
+            }
+        }
         Ok(())
     }
 }
@@ -338,7 +345,6 @@ fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
             )
         }
         BaseIR::CallStatic { sig, function_name } => {
-            //assert!(sig.inputs.is_empty());
             let mut inputs_iter = sig.inputs.iter();
             let mut input_string = String::new();
             if let Some(firts_arg) = inputs_iter.next() {

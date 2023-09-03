@@ -3,12 +3,12 @@ use rustc_middle::ty::{
     AdtDef, AdtKind, Const, FloatTy, GenericArg, IntTy, Ty, TyCtxt, TyKind, UintTy,
 };
 use serde::{Deserialize, Serialize};
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize,Hash)]
 pub(crate) struct FieldType {
     name: IString,
     pub(crate) tpe: Type,
 }
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize,Hash)]
 pub(crate) enum Type {
     //Intieger types
     U8,
@@ -207,13 +207,13 @@ impl Type {
                 let fields: Vec<FieldType> = adt
                     .all_fields()
                     .map(|field| {
-                        (FieldType {
+                        FieldType {
                             name: field.name.to_string().into(),
                             tpe: Self::from_ty_non_cyclic(
                                 &tyctx.type_of(field.did).skip_binder(),
                                 tyctx,
                             ),
-                        })
+                        }
                     })
                     .collect();
                 let name = adt_name(adt);
@@ -280,3 +280,4 @@ impl From<&FloatTy> for Type {
         }
     }
 }
+impl Eq for Type{}

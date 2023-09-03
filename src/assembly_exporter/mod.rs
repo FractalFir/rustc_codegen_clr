@@ -50,6 +50,7 @@ pub(crate) trait AssemblyExporter: Sized {
     fn init(asm_info: &AssemblyInfo) -> Self;
     fn add_class(&mut self, class: ClassInfo);
     fn add_method(&mut self, method: CLRMethod);
+    //fn extern_asm(&mut self,asm:&str);
     fn finalize(self, final_path: &Path) -> Result<(), AssemblyExportError>;
     fn export_assembly(asm: &Assembly, final_path: &Path) -> Result<(), AssemblyExportError> {
         let mut asm_exporter = Self::init(asm.name());
@@ -70,6 +71,7 @@ pub(crate) enum AssemblyExportError {
     InvalidIL,
     CouldNotCanonalizePath(std::io::Error, std::path::PathBuf),
     IoError(std::io::Error),
+    ExporterError(IString),
 }
 impl From<std::io::Error> for AssemblyExportError {
     fn from(error: std::io::Error) -> Self {
