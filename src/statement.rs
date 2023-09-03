@@ -13,7 +13,7 @@ use rustc_target::abi::FieldIdx;
 #[macro_export]
 macro_rules! sign_cast {
     ($var:ident,$src:ty,$dest:ty) => {
-        (<$dest>::from_ne_bytes(($var as $src).to_ne_bytes()))
+        <$dest>::from_ne_bytes(($var as $src).to_ne_bytes())
     };
 }
 pub(crate) struct CodegenCtx<'tctx, 'local_ctx> {
@@ -75,14 +75,22 @@ fn load_const_scalar(scalar: Scalar, scalar_type: Type) -> Vec<BaseIR> {
         Scalar::Ptr(_, _) => todo!("Can't handle scalar pointers yet!"),
     };
     match scalar_type {
-        Type::I8 => vec![BaseIR::LDConstI32(sign_cast!(scalar_u128, u8, i8) as i32)],
-        Type::U8 => vec![BaseIR::LDConstI32(scalar_u128 as u8 as i32)],
-        Type::I16 => vec![BaseIR::LDConstI32(sign_cast!(scalar_u128, u16, i16) as i32)],
+        Type::I8 => vec![BaseIR::LDConstI32(i32::from(sign_cast!(
+            scalar_u128,
+            u8,
+            i8
+        )))],
+        Type::U8 => vec![BaseIR::LDConstI32(i32::from(scalar_u128 as u8))],
+        Type::I16 => vec![BaseIR::LDConstI32(i32::from(sign_cast!(
+            scalar_u128,
+            u16,
+            i16
+        )))],
         Type::U16 => vec![BaseIR::LDConstI32(scalar_u128 as i32)],
         Type::I32 => vec![BaseIR::LDConstI32(sign_cast!(scalar_u128, u32, i32))],
         Type::U32 => vec![BaseIR::LDConstI32(scalar_u128 as i32)],
         Type::F32 => vec![BaseIR::LDConstF32(f32::from_bits(scalar_u128 as u32))],
-        Type::Bool => vec![BaseIR::LDConstI32((scalar_u128 != 0) as u8 as i32)],
+        Type::Bool => vec![BaseIR::LDConstI32(i32::from(u8::from(scalar_u128 != 0)))],
         Type::I64 => vec![BaseIR::LDConstI64(sign_cast!(scalar_u128, u64, i64))],
         Type::U64 => vec![BaseIR::LDConstI64(scalar_u128 as i64)],
         Type::USize => vec![BaseIR::LDConstI64(scalar_u128 as i64)],
@@ -306,7 +314,7 @@ pub(crate) fn handle_statement<'tctx, 'local_ctx>(
         StatementKind::Assign(asign_box) => {
             let (place, rvalue) = (asign_box.0, &asign_box.1);
             let rvalue_ops = handle_rvalue(rvalue, &codegen_ctx, &place); // RValue::from_rvalue(rvalue, body, tyctx, self, asm,place.local.into());
-            
+
             place_setter_ops(&place, &codegen_ctx, rvalue_ops)
         }
         StatementKind::StorageLive(_local) => Vec::new(), //TODO: maybe use lifetime info to better guide CLR IL generation?

@@ -3,12 +3,12 @@ use rustc_middle::ty::{
     AdtDef, AdtKind, Const, FloatTy, GenericArg, IntTy, Ty, TyCtxt, TyKind, UintTy,
 };
 use serde::{Deserialize, Serialize};
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize,Hash)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Hash)]
 pub(crate) struct FieldType {
-    name: IString,
+    pub(crate) name: IString,
     pub(crate) tpe: Type,
 }
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize,Hash)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Hash)]
 pub(crate) enum Type {
     //Intieger types
     U8,
@@ -53,6 +53,10 @@ pub(crate) enum Type {
     Bool,
     Tuple(Box<[Self]>),
     Void,
+    ExternType {
+        asm: IString,
+        name: IString,
+    },
 }
 pub(crate) trait ToCLRType {
     fn clr_tpe() -> Type;
@@ -206,14 +210,12 @@ impl Type {
                 }
                 let fields: Vec<FieldType> = adt
                     .all_fields()
-                    .map(|field| {
-                        FieldType {
-                            name: field.name.to_string().into(),
-                            tpe: Self::from_ty_non_cyclic(
-                                &tyctx.type_of(field.did).skip_binder(),
-                                tyctx,
-                            ),
-                        }
+                    .map(|field| FieldType {
+                        name: field.name.to_string().into(),
+                        tpe: Self::from_ty_non_cyclic(
+                            &tyctx.type_of(field.did).skip_binder(),
+                            tyctx,
+                        ),
                     })
                     .collect();
                 let name = adt_name(adt);
@@ -244,6 +246,15 @@ impl Type {
     pub(crate) fn resolved(&self) -> Self {
         todo!("Can't yet resolve generic types!")
     }
+    pub(crate) fn field(&self,variant:u32,field_index:u32)->&FieldType{
+        match self{
+            Self::Struct { name, fields } =>{
+                assert_eq!(variant,0,"Struct have only one variant, but variant is {variant}");
+                &fields[field_index as usize]
+            } 
+            _=>todo!("type {self:?} is not type!"),
+        }
+    }
 }
 fn adt_name(adt: &AdtDef) -> IString {
     format!("{adt:?}").into()
@@ -255,7 +266,7 @@ impl From<&IntTy> for Type {
             IntTy::I16 => Self::I16,
             IntTy::I32 => Self::I32,
             IntTy::I64 => Self::I64,
-            IntTy::I128 => Self::I64,
+            IntTy::I128 => Self::I128,
             IntTy::Isize => Self::ISize,
         }
     }
@@ -267,7 +278,7 @@ impl From<&UintTy> for Type {
             UintTy::U16 => Self::U16,
             UintTy::U32 => Self::U32,
             UintTy::U64 => Self::U64,
-            UintTy::U128 => Self::U64,
+            UintTy::U128 => Self::U128,
             UintTy::Usize => Self::USize,
         }
     }
@@ -280,4 +291,4 @@ impl From<&FloatTy> for Type {
         }
     }
 }
-impl Eq for Type{}
+impl Eq for Type {}

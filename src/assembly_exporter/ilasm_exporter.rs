@@ -1,5 +1,5 @@
 use crate::{
-    assembly_exporter::AssemblyExportError, base_ir::BaseIR, clr_method::CLRMethod, types::Type,
+    assembly_exporter::AssemblyExportError, base_ir::{BaseIR, CallSite}, clr_method::CLRMethod, types::Type,
     IString,
 };
 
@@ -20,7 +20,7 @@ impl AssemblyExporter for ILASMExporter {
     }
 
     fn add_class(&mut self, struct_type: ClassInfo) {
-        self.structs.push(struct_type)
+        self.structs.push(struct_type);
     }
     fn add_method(&mut self, method: CLRMethod) {
         self.methods.push(method);
@@ -59,14 +59,18 @@ impl AssemblyExporter for ILASMExporter {
             target,
             cil_path.clone().to_string_lossy().to_string(),
         ];
-       let out = std::process::Command::new("ilasm")
+        let out = std::process::Command::new("ilasm")
             .args(args)
             .output()
             .expect("failed run ilasm process");
-        if !out.stderr.is_empty(){
+        if !out.stderr.is_empty() {
             let stdout = String::from_utf8(out.stdout).unwrap();
-            if !stdout.contains("\nOperation completed successfully\n"){
-                let err = format!("stdout:{} stderr:{}",stdout,String::from_utf8(out.stderr).unwrap());
+            if !stdout.contains("\nOperation completed successfully\n") {
+                let err = format!(
+                    "stdout:{} stderr:{}",
+                    stdout,
+                    String::from_utf8(out.stderr).unwrap()
+                );
                 return Err(AssemblyExportError::ExporterError(err.into()));
             }
         }
@@ -106,7 +110,7 @@ impl ILASMExporter {
             let extends = strct.extends();
             let assembly_ref = match extends.0.as_ref() {
                 Some(assembly_ref) => format!("[{assembly_ref}]"),
-                None => "".into(),
+                None => String::new(),
             };
             format!("{assembly_ref}'{type_string}'", type_string = extends.1)
         };
@@ -174,21 +178,21 @@ fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
         BaseIR::LDArg(argnum) => {
             if *argnum < 8 {
                 format!("ldarg.{argnum}")
-            } else if *argnum <= u8::MAX as u32 {
+            } else if u8::try_from(*argnum).is_ok() {
                 format!("ldarg.s {argnum}")
             } else {
                 format!("ldarg {argnum}")
             }
         }
         BaseIR::LDArgA(argnum) => {
-            if *argnum <= u8::MAX as u32 {
+            if u8::try_from(*argnum).is_ok() {
                 format!("ldarga.s {argnum}")
             } else {
                 format!("ldarga {argnum}")
             }
         }
         BaseIR::STArg(argnum) => {
-            if *argnum <= u8::MAX as u32 {
+            if u8::try_from(*argnum).is_ok() {
                 format!("starg.s {argnum}")
             } else {
                 format!("starg {argnum}")
@@ -198,14 +202,14 @@ fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
         BaseIR::LDLoc(argnum) => {
             if *argnum < 4 {
                 format!("ldloc.{argnum}")
-            } else if *argnum <= u8::MAX as u32 {
+            } else if u8::try_from(*argnum).is_ok() {
                 format!("ldloc.s {argnum}")
             } else {
                 format!("ldloc {argnum}")
             }
         }
         BaseIR::LDLocA(argnum) => {
-            if *argnum <= u8::MAX as u32 {
+            if u8::try_from(*argnum).is_ok() {
                 format!("ldloc.s {argnum}")
             } else {
                 format!("ldloc {argnum}")
@@ -214,7 +218,7 @@ fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
         BaseIR::STLoc(argnum) => {
             if *argnum < 4 {
                 format!("stloc.{argnum}")
-            } else if *argnum <= u8::MAX as u32 {
+            } else if u8::try_from(*argnum).is_ok() {
                 format!("stloc.s {argnum}")
             } else {
                 format!("stloc {argnum}")
@@ -226,9 +230,9 @@ fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
                 "ldc.i4.m1".into()
             } else if *value <= 8 && *value >= 0 {
                 format!("ldc.i4.{value}")
-            } else if *value <= i8::MAX as i64 && *value >= i8::MIN as i64 {
+            } else if i8::try_from(*value).is_ok() {
                 format!("ldc.i4.s {value}")
-            } else if *value <= i32::MAX as i64 && *value >= i32::MIN as i64 {
+            } else if i32::try_from(*value).is_ok() {
                 format!("ldc.i4 {value}")
             } else {
                 format!("ldc.i8 {value}")
@@ -240,14 +244,32 @@ fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
                 "ldc.i4.m1".into()
             } else if *value <= 8 && *value >= 0 {
                 format!("ldc.i4.{value}")
-            } else if *value <= i8::MAX as i32 && *value >= i8::MIN as i32 {
+            } else if i8::try_from(*value).is_ok() {
                 format!("ldc.i4.s {value}")
             } else {
                 format!("ldc.i4 {value}")
             }
         }
         BaseIR::LDConstString(string) => format!("ldstr \"{string}\""),
-        BaseIR::NewObj { ctor_fn } => format!("newobj instance {ctor_fn}"),
+        BaseIR::NewObj(call_site)=>{
+            //CallSite{ assembly, name, signature, is_static } = call_site;
+            let mut inputs_iter = call_site.signature.inputs.iter();
+            let mut input_string = String::new();
+            if let Some(firts_arg) = inputs_iter.next() {
+                input_string.push_str(&escaped_type_name(firts_arg));
+            }
+            for arg in inputs_iter {
+                input_string.push(',');
+                input_string.push_str(&escaped_type_name(arg));
+            }
+            assert!(!call_site.is_static,"object constructor can't be static!");
+            let owner_name = match &call_site.owner{
+                Some(owner) => format!("{}::",escaped_type_name(&owner)),
+                None => "".into(),
+            };
+
+            format!("newobj instance {output} {owner_name}{function_name}({input_string})",function_name = call_site.name,output = escaped_type_name(&call_site.signature.output))
+        }
         //Arthmetics
         BaseIR::Add => "add".into(),
         BaseIR::Sub => "sub".into(),
@@ -281,34 +303,31 @@ fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
         BaseIR::STIndR4 => "stind.r4".to_string(),
         BaseIR::STIndR8 => "stind.r8".to_string(),
         //Fileds
-        BaseIR::LDField {
-            field_parent,
-            field_name,
-            field_type,
-        } => {
+        BaseIR::LDField (field_descriptor) => {
+            let field = field_descriptor.owner.field(field_descriptor.variant, field_descriptor.field_index);
             format!(
                 "ldfld {field_type} '{field_parent}'::{field_name}",
-                field_type = variable_arg_type_name(field_type),
+                field_parent = escaped_type_name(&field_descriptor.owner),
+                field_type = variable_arg_type_name(&field.tpe),
+                field_name = field.name,
             )
         }
-        BaseIR::LDFieldAdress {
-            field_parent,
-            field_name,
-            field_type,
-        } => {
+        BaseIR::LDFieldAdress(field_descriptor) => {
+            let field = field_descriptor.owner.field(field_descriptor.variant, field_descriptor.field_index);
             format!(
                 "ldflda {field_type} '{field_parent}'::{field_name}",
-                field_type = variable_arg_type_name(field_type),
+                field_parent = escaped_type_name(&field_descriptor.owner),
+                field_type = variable_arg_type_name(&field.tpe),
+                field_name = field.name,
             )
         }
-        BaseIR::STField {
-            field_parent,
-            field_name,
-            field_type,
-        } => {
+        BaseIR::STField (field_descriptor)=> {
+            let field = field_descriptor.owner.field(field_descriptor.variant, field_descriptor.field_index);
             format!(
                 "stfld {field_type} '{field_parent}'::{field_name}",
-                field_type = variable_arg_type_name(field_type),
+                field_parent = escaped_type_name(&field_descriptor.owner),
+                field_type = variable_arg_type_name(&field.tpe),
+                field_name = field.name,
             )
         }
         //Conversions
@@ -328,9 +347,9 @@ fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
         BaseIR::ConvI16Checked => "conv.ovf.i2".into(),
         BaseIR::ConvI32Checked => "conv.ovf.i4".into(),
         //Calls
-        BaseIR::Call { sig, function_name } => {
+        BaseIR::Call (call_site) => {
             //assert!(sig.inputs.is_empty());
-            let mut inputs_iter = sig.inputs.iter();
+            let mut inputs_iter = call_site.signature.inputs.iter();
             let mut input_string = String::new();
             if let Some(firts_arg) = inputs_iter.next() {
                 input_string.push_str(&escaped_type_name(firts_arg));
@@ -339,26 +358,21 @@ fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
                 input_string.push(',');
                 input_string.push_str(&escaped_type_name(arg));
             }
+            let prefix = if call_site.is_static{
+                "static"
+            }else{
+                "instance"
+            };
+            let owner_name = match &call_site.owner{
+                Some(owner) => format!("{}::",escaped_type_name(&owner)),
+                None => "".into(),
+            };
             format!(
-                "\tcall instance {output} {function_name}({input_string})\n",
-                output = escaped_type_name(&sig.output)
+                "\tcall {prefix} {output} {function_name}({input_string})\n",
+                function_name = call_site.name,
+                output = escaped_type_name(&call_site.signature.output)
             )
-        }
-        BaseIR::CallStatic { sig, function_name } => {
-            let mut inputs_iter = sig.inputs.iter();
-            let mut input_string = String::new();
-            if let Some(firts_arg) = inputs_iter.next() {
-                input_string.push_str(&escaped_type_name(firts_arg));
-            }
-            for arg in inputs_iter {
-                input_string.push(',');
-                input_string.push_str(&escaped_type_name(arg));
-            }
-            format!(
-                "\tcall {output} {call_prefix}{function_name}({input_string})\n",
-                output = escaped_type_name(&sig.output)
-            )
-        }
+        },
         //Type info
         BaseIR::SizeOf(tpe) => format!("sizeof {name}", name = escaped_type_name(tpe)),
         //Debuging
@@ -411,6 +425,14 @@ fn type_name(var: &Type) -> IString {
         Type::Ref(inner) => format!("{inner}*", inner = escaped_type_name(inner)),
         Type::Array { element, length } => {
             format!("Arr{length}_{element}", element = type_name(element))
+        }
+        Type::ExternType { asm, name } =>{
+            if asm.is_empty(){
+                name.to_string()
+            }
+            else{
+                format!("[{asm}]{name}")
+            }
         }
         _ => todo!("unhandled var type {var:?}"),
     }

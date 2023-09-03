@@ -62,8 +62,8 @@ pub(crate) trait AssemblyExporter: Sized {
             asm_exporter.add_method(method.clone());
         }
         asm_exporter
-        .finalize(final_path)
-        .expect("Could not export assembly");
+            .finalize(final_path)
+            .expect("Could not export assembly");
         Ok(())
     }
 }

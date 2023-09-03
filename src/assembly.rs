@@ -10,11 +10,11 @@ use std::collections::HashSet;
 pub(crate) struct Assembly {
     methods: Vec<CLRMethod>,
     name: IString,
-    types:HashSet<Type>,
+    types: HashSet<Type>,
     size_t: u8,
 }
 impl Assembly {
-    pub(crate) fn types(&self)->impl Iterator<Item = &Type>{
+    pub(crate) fn types(&self) -> impl Iterator<Item = &Type> {
         self.types.iter()
     }
     pub(crate) fn methods(&self) -> &[CLRMethod] {
@@ -28,7 +28,7 @@ impl Assembly {
         locals: &IndexVec<Local, LocalDecl<'ctx>>,
         tyctx: &TyCtxt<'ctx>,
     ) {
-        for local in locals.iter() {
+        for local in locals {
             self.add_type(local.ty, tyctx);
         }
     }
@@ -82,7 +82,7 @@ impl Assembly {
 
         match item {
             MonoItem::Fn(instance) => {
-                self.add_fn(instance, tcx, &format!("{}", item.symbol_name(tcx)))
+                self.add_fn(instance, tcx, &format!("{}", item.symbol_name(tcx)));
             }
             _ => todo!("Unsupported item:\"{item:?}\"!"),
         }

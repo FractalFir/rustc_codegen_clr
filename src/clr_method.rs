@@ -1,4 +1,7 @@
-use crate::{statement::CodegenCtx, types::Type, Assembly, BaseIR, FunctionSignature, IString};
+use crate::{
+    base_ir::CallSite, statement::CodegenCtx, types::Type, Assembly, BaseIR, FunctionSignature,
+    IString,
+};
 use rustc_index::IndexVec;
 use rustc_middle::{
     mir::{
@@ -69,7 +72,7 @@ impl CLRMethod {
         //TODO: remove void locals propely
         self.locals.iter_mut().for_each(|ltype| {
             if *ltype == Type::Void {
-                *ltype = Type::I8
+                *ltype = Type::I8;
             }
         });
     }
@@ -78,11 +81,11 @@ impl CLRMethod {
         for op in &self.ops {
             if let BaseIR::LDLoc(curr_local) = op {
                 if *curr_local == local {
-                    read_count += 1
+                    read_count += 1;
                 };
             } else if let BaseIR::STLoc(curr_local) = op {
                 if *curr_local == local {
-                    write_count += 1
+                    write_count += 1;
                 };
             }
         }
@@ -108,7 +111,7 @@ impl CLRMethod {
         }
     }
     fn prune_nops(&mut self) {
-        self.ops.retain(|op|*op != BaseIR::Nop);
+        self.ops.retain(|op| *op != BaseIR::Nop);
     }
     pub(crate) fn opt(&mut self) {
         self.remove_useless_local_wr_combo();
@@ -191,7 +194,7 @@ impl CLRMethod {
             panic!("Trying to call a type which is not a function!");
         };
         let symbol = tyctx.symbol_name(instance);
-        let sig = FunctionSignature::from_poly_sig(fn_type.fn_sig(*tyctx), *tyctx)
+        let signature = FunctionSignature::from_poly_sig(fn_type.fn_sig(*tyctx), *tyctx)
             .expect("Can't get the function signature");
         let function_name = format!("{symbol}").into();
         let codegen_ctx = CodegenCtx::new(self, asm, body, *tyctx);
@@ -199,8 +202,14 @@ impl CLRMethod {
         for arg in args {
             call.extend(crate::statement::handle_operand(arg, &codegen_ctx));
         }
-        let is_void = sig.output.is_void();
-        call.push(BaseIR::CallStatic { function_name, sig });
+        let is_void = signature.output.is_void();
+        call.push(BaseIR::Call(Box::new(CallSite {
+            owner:None,
+            name: function_name,
+            signature,
+            assembly: "".into(),
+            is_static: true,
+        })));
         // Hande
         if is_void {
             call
@@ -251,15 +260,29 @@ impl CLRMethod {
                     cond,
                     &CodegenCtx::new(self, asm, body, *tyctx),
                 ));
-                self.ops
-                    .push(BaseIR::LDConstI32(if *expected { 1 } else { 0 }));
+                self.ops.push(BaseIR::LDConstI32(i32::from(*expected)));
                 self.ops.push(BaseIR::BEq {
                     target: (*target).into(),
                 });
-                self.ops.push(BaseIR::LDConstString(format!("{msg:?}")));
-                self.ops.push(BaseIR::NewObj {
-                    ctor_fn: "void [System.Runtime]System.Exception::.ctor(string)".to_owned(),
-                });
+                self.ops
+                    .push(BaseIR::LDConstString(format!("{msg:?}").into()));
+                //  ctor_fn: "void [System.Runtime](string)".to_owned(),
+                self.ops.push(BaseIR::NewObj(Box::new(CallSite {
+                    owner:Some(Type::ExternType {
+                        asm: "System.Runtime".into(),
+                        name: "System.Exception".into(),
+                    }),
+                    assembly: "System.Runtime".into(),
+                    name: ".ctor".into(),
+                    is_static: false,
+                    signature: FunctionSignature::new(&[Type::ExternType {
+                        asm: "System.Runtime".into(),
+                        name: "System.String".into(),
+                    }],&Type::ExternType {
+                        asm: "System.Runtime".into(),
+                        name: "System.Exception".into(),
+                    }),
+                })));
                 self.ops.push(BaseIR::Throw);
                 //todo!()
                 //TODO: handle assertions!

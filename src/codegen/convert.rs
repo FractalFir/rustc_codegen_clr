@@ -47,5 +47,6 @@ pub(crate) fn convert_as(src: &Type, dest: &Type) -> Vec<BaseIR> {
             todo!("Casts involving i128/u128 are not supported yet.")
         }
         Type::GenericParam { .. } => todo!("Can't handle converting to generic using as"),
+        Type::ExternType { .. } => panic!("Tried to cast as extern type!"),
     }
 }

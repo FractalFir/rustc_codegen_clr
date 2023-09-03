@@ -12,7 +12,6 @@ extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
 
-
 use rustc_middle::ty::{Binder, BoundVariableKind};
 fn skip_binder_if_no_generic_types<T>(binder: Binder<T>) -> Option<T> {
     if binder
@@ -45,9 +44,9 @@ use std::any::Any;
 use types::Type;
 mod clr_method;
 mod codegen;
-use clr_method::*;
+use clr_method::{CLRMethod, LocalPlacement};
 mod assembly;
-use assembly::*;
+use assembly::Assembly;
 mod base_ir;
 use base_ir::BaseIR;
 mod assembly_exporter;
@@ -176,7 +175,7 @@ impl CodegenBackend for MyBackend {
             config::{CrateType, OutFileName},
             output::out_filename,
         };
-        
+
         let crate_name = codegen_results.crate_info.local_crate_name;
         let mut final_assembly =
             Assembly::new(&codegen_results.crate_info.local_crate_name.to_string());

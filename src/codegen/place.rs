@@ -30,7 +30,7 @@ fn place_get_ops(place: &Place) -> Vec<BaseIR> {
     // Since first element must be a local, first element does not use the type. It then changes the type to value other than [`Void`]. This makes catching bugs easier - if the
     // first element is not `Local`, this will instanlty panic.
     let mut tpe = Type::Void;
-    for segement in place.body.iter() {
+    for segement in &*place.body {
         let (sops, stpe) = segement.body_ops(&tpe);
         ops.extend(sops);
         tpe = stpe;
@@ -43,7 +43,7 @@ fn place_set_ops(place: &Place, value_calc: Vec<BaseIR>) -> Vec<BaseIR> {
     // Since first element must be a local, first element does not use the type. It then changes the type to value other than [`Void`]. This makes catching bugs easier - if the
     // first element is not `Local`, this will instanlty panic.
     let mut tpe = Type::Void;
-    for segement in place.body.iter() {
+    for segement in &*place.body {
         let (sops, stpe) = segement.body_ops(&tpe);
         ops.extend(sops);
         tpe = stpe;
@@ -163,7 +163,7 @@ impl ProjectionElement {
                 let pointed = tpe
                     .pointed_type()
                     .expect("Tried to deref a non-pointer type!");
-                
+
                 getter_deref_ops(pointed)
             }
             _ => todo!("Unhandled projection element type:{self:?}"),
@@ -177,7 +177,7 @@ impl ProjectionElement {
                 let pointed = tpe
                     .pointed_type()
                     .expect("Tried to deref a non-pointer type!");
-                
+
                 setter_deref_ops(pointed)
             }
             _ => todo!("Unhandled projection element type:{self:?}"),
@@ -216,12 +216,12 @@ fn trivial_get() {
     for i in 0..1000 {
         let place = Place::new((LocalPlacement::Arg(i), &Type::I32), vec![]);
         let ops = place_get_ops(&place);
-        assert_eq!(ops, [BaseIR::LDArg(i)])
+        assert_eq!(ops, [BaseIR::LDArg(i)]);
     }
     for i in 0..1000 {
         let place = Place::new((LocalPlacement::Var(i), &Type::I32), vec![]);
         let ops = place_get_ops(&place);
-        assert_eq!(ops, [BaseIR::LDLoc(i)])
+        assert_eq!(ops, [BaseIR::LDLoc(i)]);
     }
 }
 #[test]

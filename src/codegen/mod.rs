@@ -1,9 +1,9 @@
 use crate::{base_ir::BaseIR, types::Type};
 
+pub(crate) mod aggregate;
 pub(crate) mod arthmetics;
 pub(crate) mod convert;
 pub(crate) mod place;
-pub(crate) mod aggregate;
 pub(crate) fn sizeof_ops(_tpe: &Type) -> Vec<BaseIR> {
     todo!("Can't yet calculate size of things!");
 }
@@ -41,7 +41,7 @@ fn align_ops(algiement: Aligement) -> BaseIR {
         Aligement::A2 => BaseIR::LDConstI32(2),
         Aligement::A4 => BaseIR::LDConstI32(4),
         Aligement::A8 => BaseIR::LDConstI32(8),
-        Aligement::ANative => BaseIR::SizeOf(Type::ISize),
+        Aligement::ANative => BaseIR::SizeOf(Box::new(Type::ISize)),
         // TODO: Maybe we should panic if aligement is unknown??
         Aligement::Unknown => BaseIR::LDConstI32(8),
     }
@@ -68,7 +68,8 @@ fn align_of_tpe(tpe: &Type) -> Aligement {
             .map(|filed| align_of_tpe(&filed.tpe))
             .fold(Aligement::A1, |a, b| a.max(&b)),
         Type::GenericParam { .. } => Aligement::Unknown,
-        Type::ResolvedGenric {.. } => align_of_tpe(&tpe.resolved()),
+        Type::ResolvedGenric { .. } => align_of_tpe(&tpe.resolved()),
+        Type::ExternType { asm, name }=>panic!("Can't calculate algiement of extern type!"),
     }
 }
 pub(crate) fn align_of(tpe: Type) -> BaseIR {
