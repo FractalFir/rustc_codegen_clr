@@ -8,11 +8,6 @@ use rustc_middle::{
     ty::{Instance, ParamEnv, Ty, TyCtxt, TyKind},
 };
 use serde::{Deserialize, Serialize};
-macro_rules! sign_cast {
-    ($var:ident,$src:ty,$dest:ty) => {
-        (<$dest>::from_ne_bytes(($var as $src).to_ne_bytes()))
-    };
-}
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct CLRMethod {
     ops: Vec<BaseIR>,
@@ -113,12 +108,7 @@ impl CLRMethod {
         }
     }
     fn prune_nops(&mut self) {
-        self.ops = self
-            .ops
-            .iter()
-            .filter(|op| **op != BaseIR::Nop)
-            .cloned()
-            .collect();
+        self.ops.retain(|op|*op != BaseIR::Nop);
     }
     pub(crate) fn opt(&mut self) {
         self.remove_useless_local_wr_combo();
@@ -262,7 +252,7 @@ impl CLRMethod {
                     &CodegenCtx::new(self, asm, body, *tyctx),
                 ));
                 self.ops
-                    .push(BaseIR::LDConstI32(if *expected { 1 } else { 0 } as i32));
+                    .push(BaseIR::LDConstI32(if *expected { 1 } else { 0 }));
                 self.ops.push(BaseIR::BEq {
                     target: (*target).into(),
                 });
@@ -307,7 +297,7 @@ impl CLRMethod {
             }
             //TerminatorKind::Resume => todo!("Can't handle terminator kind resume!"),
             //TerminatorKind::Terminate => todo!("Can't handle terminator kind Terminate!"),
-            TerminatorKind::Unreachable => todo!("Can't handle terminator kind Unreachable!"),
+            //TerminatorKind::Unreachable => todo!("Can't handle terminator kind Unreachable!"),
             TerminatorKind::Drop { .. } => {
                 //TODO: stop ignoreing drops!
                 //todo!("Can't handle terminator kind Drop!")

@@ -60,9 +60,9 @@ fn align_of_tpe(tpe: &Type) -> Aligement {
         | Type::StrSlice => Aligement::ANative,
         Type::Tuple(inner) => inner
             .iter()
-            .map(|t| align_of_tpe(t))
+            .map(align_of_tpe)
             .fold(Aligement::A1, |a, b| a.max(&b)),
-        Type::Array { element, .. } => align_of_tpe(&element),
+        Type::Array { element, .. } => align_of_tpe(element),
         Type::Struct { fields, .. } => fields
             .iter()
             .map(|filed| align_of_tpe(&filed.tpe))

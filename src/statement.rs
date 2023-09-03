@@ -131,11 +131,11 @@ fn handle_binop<'ctx>(
 ) -> Vec<BaseIR> {
     let a_type = Type::from_ty(
         &a.ty(codegen_ctx.body(), *codegen_ctx.tyctx()),
-        &codegen_ctx.tyctx(),
+        codegen_ctx.tyctx(),
     );
     let b_type = Type::from_ty(
         &a.ty(codegen_ctx.body(), *codegen_ctx.tyctx()),
-        &codegen_ctx.tyctx(),
+        codegen_ctx.tyctx(),
     );
     crate::codegen::arthmetics::binop_unchecked(
         binop,
@@ -200,29 +200,7 @@ fn handle_agregate<'tyctx>(
                 .ty(*codegen_ctx.tyctx(), param_env),
                 codegen_ctx.tyctx(),
             );
-            match adt_type {
-                /*
-                Type::Struct(name) => {
-                    if crate::ALWAYS_INIT_STRUCTS {
-                        agregate_construction.extend(agregate_adress.clone());
-                        agregate_construction.push(BaseIR::InitObj(name.clone()));
-                    }
-                    for (field_idx, field) in fields.iter().enumerate() {
-                        agregate_construction.extend(agregate_adress.clone());
-                        agregate_construction.extend(handle_operand(field, codegen_ctx));
-                        agregate_construction.extend(
-                            codegen_ctx
-                                .asm()
-                                .get_field_setter(field_idx, &name)
-                                .expect("Can't get field!"),
-                        );
-                    }
-                    agregate_construction.extend(codegen_ctx.place_get_ops(target_location));
-                    agregate_construction
-                }*/
-                //Type::Enum(enum_name) => vec![BaseIR::DebugComment(enum_name)],
-                _ => todo!("Unhandled adt type {adt_type:?}"),
-            }
+            todo!("Unhandled adt type {adt_type:?}")
         }
         _ => todo!("Can't handle agregates of type {aggregate:?} yet!"),
     }
@@ -292,7 +270,7 @@ fn handle_rvalue<'tyctx>(
         Rvalue::UnaryOp(unary, operand) => {
             let tpe = Type::from_ty(
                 &operand.ty(codegen_ctx.body(), *codegen_ctx.tyctx()),
-                &codegen_ctx.tyctx(),
+                codegen_ctx.tyctx(),
             );
             crate::codegen::arthmetics::unop_unchecked(
                 *unary,
@@ -327,9 +305,9 @@ pub(crate) fn handle_statement<'tctx, 'local_ctx>(
     match &statement.kind {
         StatementKind::Assign(asign_box) => {
             let (place, rvalue) = (asign_box.0, &asign_box.1);
-            let rvalue_ops = handle_rvalue(&rvalue, &codegen_ctx, &place); // RValue::from_rvalue(rvalue, body, tyctx, self, asm,place.local.into());
-            let final_ops = place_setter_ops(&place, &codegen_ctx, rvalue_ops);
-            final_ops
+            let rvalue_ops = handle_rvalue(rvalue, &codegen_ctx, &place); // RValue::from_rvalue(rvalue, body, tyctx, self, asm,place.local.into());
+            
+            place_setter_ops(&place, &codegen_ctx, rvalue_ops)
         }
         StatementKind::StorageLive(_local) => Vec::new(), //TODO: maybe use lifetime info to better guide CLR IL generation?
         StatementKind::StorageDead(_local) => Vec::new(), //TODO: maybe use lifetime info to better guide CLR IL generation?

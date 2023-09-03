@@ -20,7 +20,7 @@ fn skip_binder_if_no_generic_types<T>(binder: Binder<T>) -> Option<T> {
         .iter()
         .any(|bound_var_kind| matches!(bound_var_kind, BoundVariableKind::Ty(_)))
     {
-        return None;
+        None
     } else {
         Some(binder.skip_binder())
     }

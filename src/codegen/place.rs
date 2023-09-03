@@ -78,7 +78,7 @@ impl Place {
             local: local.0,
             tpe: local.1.clone(),
         };
-        let mut body: Vec<_> = projection.into();
+        let mut body: Vec<_> = projection;
         body.insert(0, local);
         //Since we have inserted into body, it must have at least 1 element in it.
         let head = body.pop().expect(
@@ -163,8 +163,8 @@ impl ProjectionElement {
                 let pointed = tpe
                     .pointed_type()
                     .expect("Tried to deref a non-pointer type!");
-                let ops = getter_deref_ops(pointed);
-                ops
+                
+                getter_deref_ops(pointed)
             }
             _ => todo!("Unhandled projection element type:{self:?}"),
         }
@@ -177,8 +177,8 @@ impl ProjectionElement {
                 let pointed = tpe
                     .pointed_type()
                     .expect("Tried to deref a non-pointer type!");
-                let ops = setter_deref_ops(pointed);
-                ops
+                
+                setter_deref_ops(pointed)
             }
             _ => todo!("Unhandled projection element type:{self:?}"),
         }
@@ -197,9 +197,7 @@ fn body_deref_ops(pointed: &Type) -> Vec<BaseIR> {
     }
 }
 fn getter_deref_ops(pointed: &Type) -> Vec<BaseIR> {
-    match pointed {
-        _ => body_deref_ops(pointed),
-    }
+    body_deref_ops(pointed)
 }
 fn setter_deref_ops(pointed: &Type) -> Vec<BaseIR> {
     match pointed {

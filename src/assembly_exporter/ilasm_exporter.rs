@@ -52,7 +52,7 @@ impl AssemblyExporter for ILASMExporter {
         let asm_type = "/dll";
         let target = format!(
             "/output:{out_path}",
-            out_path = out_path.clone().to_string_lossy().to_string()
+            out_path = out_path.clone().to_string_lossy()
         );
         let args: [String; 3] = [
             asm_type.into(),
@@ -63,7 +63,7 @@ impl AssemblyExporter for ILASMExporter {
             .args(args)
             .output()
             .expect("failed run ilasm process");
-        if out.stderr.len() > 0{
+        if !out.stderr.is_empty(){
             let stdout = String::from_utf8(out.stdout).unwrap();
             if !stdout.contains("\nOperation completed successfully\n"){
                 let err = format!("stdout:{} stderr:{}",stdout,String::from_utf8(out.stderr).unwrap());
@@ -271,15 +271,15 @@ fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
         //Seting Pointers
         BaseIR::LDIndI => "ldind.i".into(),
         BaseIR::LDIndIn(n) => format!("ldind.i{n}"),
-        BaseIR::LDIndR4 => format!("ldind.r4"),
-        BaseIR::LDIndR8 => format!("ldind.r8"),
+        BaseIR::LDIndR4 => "ldind.r4".to_string(),
+        BaseIR::LDIndR8 => "ldind.r8".to_string(),
         BaseIR::STObj(name) => format!("stobj valuetype {name}"),
         // Geting pointers
         BaseIR::STIndI => "stind.i".into(),
         BaseIR::STIndIn(n) => format!("stind.i{n}"),
         BaseIR::LDObj(name) => format!("ldobj valuetype {name}"),
-        BaseIR::STIndR4 => format!("stind.r4"),
-        BaseIR::STIndR8 => format!("stind.r8"),
+        BaseIR::STIndR4 => "stind.r4".to_string(),
+        BaseIR::STIndR8 => "stind.r8".to_string(),
         //Fileds
         BaseIR::LDField {
             field_parent,
@@ -333,11 +333,11 @@ fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
             let mut inputs_iter = sig.inputs.iter();
             let mut input_string = String::new();
             if let Some(firts_arg) = inputs_iter.next() {
-                input_string.push_str(&escaped_type_name(&firts_arg));
+                input_string.push_str(&escaped_type_name(firts_arg));
             }
             for arg in inputs_iter {
                 input_string.push(',');
-                input_string.push_str(&escaped_type_name(&arg));
+                input_string.push_str(&escaped_type_name(arg));
             }
             format!(
                 "\tcall instance {output} {function_name}({input_string})\n",
@@ -348,11 +348,11 @@ fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
             let mut inputs_iter = sig.inputs.iter();
             let mut input_string = String::new();
             if let Some(firts_arg) = inputs_iter.next() {
-                input_string.push_str(&escaped_type_name(&firts_arg));
+                input_string.push_str(&escaped_type_name(firts_arg));
             }
             for arg in inputs_iter {
                 input_string.push(',');
-                input_string.push_str(&escaped_type_name(&arg));
+                input_string.push_str(&escaped_type_name(arg));
             }
             format!(
                 "\tcall {output} {call_prefix}{function_name}({input_string})\n",
