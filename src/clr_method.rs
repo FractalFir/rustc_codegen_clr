@@ -305,8 +305,8 @@ impl CLRMethod {
                     _ => panic!("func must be const!"),
                 }
             }
-            TerminatorKind::Resume => todo!("Can't handle terminator kind resume!"),
-            TerminatorKind::Terminate => todo!("Can't handle terminator kind Terminate!"),
+            //TerminatorKind::Resume => todo!("Can't handle terminator kind resume!"),
+            //TerminatorKind::Terminate => todo!("Can't handle terminator kind Terminate!"),
             TerminatorKind::Unreachable => todo!("Can't handle terminator kind Unreachable!"),
             TerminatorKind::Drop { .. } => {
                 //TODO: stop ignoreing drops!
