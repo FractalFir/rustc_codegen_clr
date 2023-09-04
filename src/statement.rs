@@ -154,65 +154,6 @@ fn handle_binop<'ctx>(
 fn handle_convert(src: &Type, dest: &Type) -> Vec<BaseIR> {
     crate::codegen::convert::convert_as(src, dest)
 }
-fn handle_agregate<'tyctx>(
-    codegen_ctx: &CodegenCtx<'tyctx, '_>,
-    target_location: &Place<'tyctx>,
-    aggregate: &AggregateKind<'tyctx>,
-    fields: &IndexVec<FieldIdx, Operand<'tyctx>>,
-) -> Vec<BaseIR> {
-    match aggregate {
-        AggregateKind::Array(element_type) => {
-            /*
-            let agregate_adress = codegen_ctx.place_adress_ops(target_location);
-            let mut agregate_construction = Vec::new();
-            let element = Type::from_ty(element_type, codegen_ctx.tyctx());
-            let arr_name = Type::Array {
-                element: Box::new(element.clone()),
-                length: fields.len() as u64,
-            }
-            .arg_name();
-            if crate::ALWAYS_INIT_STRUCTS {
-                agregate_construction.extend(agregate_adress.clone());
-                agregate_construction.push(BaseIR::InitObj(arr_name.clone()));
-            }
-            for (index, operand) in fields.iter().enumerate() {
-                agregate_construction.extend(agregate_adress.clone());
-                agregate_construction.push(BaseIR::LDConstI32(index as i32));
-                agregate_construction.push(BaseIR::ConvI);
-                agregate_construction.extend(handle_operand(operand, codegen_ctx));
-                agregate_construction.push(BaseIR::Call {
-                    sig: crate::FunctionSignature::new(
-                        &[Type::ISize, element.clone()],
-                        &Type::Void,
-                    ),
-                    function_name: format!("{arr_name}::set_Item").into(),
-                });
-            }
-            agregate_construction.extend(codegen_ctx.place_get_ops(target_location));
-            agregate_construction*/
-            todo!("Can't yet create aggreate arrays with element type {element_type:?}")
-        }
-        AggregateKind::Adt(def_id, _varaint, subst, _uta, _field_idx) => {
-            let agregate_adress = codegen_ctx.place_adress_ops(target_location);
-            //let mut agregate_construction = Vec::new();
-            let param_env = ParamEnv::empty();
-            let adt_type = Type::from_ty(
-                &rustc_middle::ty::Instance::resolve(
-                    *codegen_ctx.tyctx(),
-                    param_env,
-                    *def_id,
-                    subst,
-                )
-                .expect("Can't get type!")
-                .expect("Can't get type!")
-                .ty(*codegen_ctx.tyctx(), param_env),
-                codegen_ctx.tyctx(),
-            );
-            todo!("Unhandled adt type {adt_type:?}")
-        }
-        _ => todo!("Can't handle agregates of type {aggregate:?} yet!"),
-    }
-}
 fn const_to_usize<'tyctx>(constant: &Const<'tyctx>, tyctx: TyCtxt<'tyctx>) -> usize {
     //TODO: handle constant conversion better.
     constant.eval_target_usize(tyctx, ParamEnv::empty()) as usize
@@ -252,9 +193,7 @@ fn handle_rvalue<'tyctx>(
             ops.push(BaseIR::ConvI);
             ops
         }
-        Rvalue::Aggregate(aggregate, fields) => {
-            handle_agregate(codegen_ctx, target_location, aggregate.as_ref(), fields)
-        }
+        Rvalue::Aggregate(aggregate, fields) => crate::codegen::aggregate::handle_agregate(codegen_ctx, target_location, aggregate.as_ref(), fields),
         Rvalue::Repeat(operand, ammount) => {
             todo!();
         }

@@ -54,6 +54,7 @@ mod compile_test;
 mod projection;
 mod statement;
 mod types;
+mod libc;
 pub type IString = Box<str>;
 const ENTRYPOINT: &str = ".class public auto ansi abstract sealed beforefieldinit Program
 extends [System.Runtime]System.Object

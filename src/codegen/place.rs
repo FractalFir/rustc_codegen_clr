@@ -25,7 +25,7 @@ fn local_set(local: &LocalPlacement) -> BaseIR {
         LocalPlacement::Var(arg_num) => BaseIR::STLoc(*arg_num),
     }
 }
-fn place_get_ops(place: &Place) -> Vec<BaseIR> {
+pub(crate) fn place_get_ops(place: &Place) -> Vec<BaseIR> {
     let mut ops: Vec<_> = Vec::with_capacity(place.body.len() * 2);
     // Since first element must be a local, first element does not use the type. It then changes the type to value other than [`Void`]. This makes catching bugs easier - if the
     // first element is not `Local`, this will instanlty panic.
@@ -38,7 +38,7 @@ fn place_get_ops(place: &Place) -> Vec<BaseIR> {
     ops.extend(place.head.get_ops(tpe));
     ops
 }
-fn place_set_ops(place: &Place, value_calc: Vec<BaseIR>) -> Vec<BaseIR> {
+pub(crate) fn place_set_ops(place: &Place, value_calc: Vec<BaseIR>) -> Vec<BaseIR> {
     let mut ops: Vec<_> = Vec::with_capacity(place.body.len() * 2);
     // Since first element must be a local, first element does not use the type. It then changes the type to value other than [`Void`]. This makes catching bugs easier - if the
     // first element is not `Local`, this will instanlty panic.
@@ -61,7 +61,7 @@ pub(crate) struct Place {
     head: Box<ProjectionElement>,
 }
 impl Place {
-    fn from<'a>(src: &RPlace<'a>, ctx: &CodegenCtx<'a, '_>) -> Self {
+    pub(crate) fn from<'a>(src: &RPlace<'a>, ctx: &CodegenCtx<'a, '_>) -> Self {
         let local = (
             ctx.local_placement(src.local.as_u32()),
             ctx.get_local_type(src.local.as_u32()),

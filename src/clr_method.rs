@@ -35,7 +35,6 @@ impl CLRMethod {
     pub(crate) fn ops(&self) -> &[BaseIR] {
         &self.ops
     }
-    #[cfg(test)]
     pub(crate) fn from_raw(
         ops: &[BaseIR],
         locals: &[Type],

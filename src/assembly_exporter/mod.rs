@@ -48,19 +48,19 @@ use crate::{assembly::Assembly, clr_method::CLRMethod, types::Type, IString};
 pub(crate) mod ilasm_exporter;
 pub(crate) trait AssemblyExporter: Sized {
     fn init(asm_info: &AssemblyInfo) -> Self;
-    fn add_class(&mut self, class: ClassInfo);
+    fn add_type(&mut self, tpe:&Type);
     fn add_method(&mut self, method: CLRMethod);
     //fn extern_asm(&mut self,asm:&str);
     fn finalize(self, final_path: &Path) -> Result<(), AssemblyExportError>;
     fn export_assembly(asm: &Assembly, final_path: &Path) -> Result<(), AssemblyExportError> {
         let mut asm_exporter = Self::init(asm.name());
-        /*
-        for struct_type in asm.structs() {
-            asm_exporter.add_class(struct_type);
-        }*/
+        for tpe in asm.types() {
+            asm_exporter.add_type(tpe);
+        }
         for method in asm.methods() {
             asm_exporter.add_method(method.clone());
         }
+        crate::libc::insert_libc(&mut asm_exporter);
         asm_exporter
             .finalize(final_path)
             .expect("Could not export assembly");

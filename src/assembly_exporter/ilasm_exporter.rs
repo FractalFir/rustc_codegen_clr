@@ -1,5 +1,5 @@
 use crate::{
-    assembly_exporter::AssemblyExportError, base_ir::{BaseIR, CallSite}, clr_method::CLRMethod, types::Type,
+    assembly_exporter::AssemblyExportError, base_ir::{BaseIR, CallSite}, clr_method::CLRMethod, types::{Type, FieldType},
     IString,
 };
 
@@ -7,20 +7,27 @@ use super::{AssemblyExporter, ClassInfo};
 #[must_use]
 pub(crate) struct ILASMExporter {
     asm_name: IString,
-    structs: Vec<ClassInfo>,
+    types: Vec<Type>,
     methods: Vec<CLRMethod>,
 }
 impl AssemblyExporter for ILASMExporter {
     fn init(asm_name: &str) -> Self {
         Self {
             asm_name: asm_name.into(),
-            structs: vec![],
+            types: Vec::with_capacity(0x100),
             methods: vec![],
         }
     }
-
-    fn add_class(&mut self, struct_type: ClassInfo) {
-        self.structs.push(struct_type);
+    fn add_type(&mut self,tpe:&Type){
+        match tpe{
+            Type::U8 | Type::I8 => (),
+            Type::U16 | Type::I16 => (),
+            Type::U32 | Type::I32 | Type::F32 => (),
+            Type::U64 | Type::I64 | Type::F64 => (),
+            _=> {
+                let _ = self.types.push(tpe.clone());
+            },
+        }
     }
     fn add_method(&mut self, method: CLRMethod) {
         self.methods.push(method);
@@ -63,16 +70,14 @@ impl AssemblyExporter for ILASMExporter {
             .args(args)
             .output()
             .expect("failed run ilasm process");
-        if !out.stderr.is_empty() {
-            let stdout = String::from_utf8(out.stdout).unwrap();
-            if !stdout.contains("\nOperation completed successfully\n") {
-                let err = format!(
-                    "stdout:{} stderr:{}",
-                    stdout,
-                    String::from_utf8(out.stderr).unwrap()
-                );
-                return Err(AssemblyExportError::ExporterError(err.into()));
-            }
+        let stdout = String::from_utf8(out.stdout).unwrap();
+        if !stdout.contains("\nOperation completed successfully\n") {
+            let err = format!(
+                "stdout:{} stderr:{}",
+                stdout,
+                String::from_utf8(out.stderr).unwrap()
+            );
+            return Err(AssemblyExportError::ExporterError(err.into()));
         }
         Ok(())
     }
@@ -97,39 +102,22 @@ impl ILASMExporter {
             field_name = field.0
         )
     }
-    fn struct_cil(&self, strct: &ClassInfo) -> Result<IString, super::AssemblyExportError> {
-        const STRUCT_MODIFIERS: &str = "sequential ansi sealed beforefieldinit";
-        let visibility = "public";
-        let name = strct.name();
-        let fields: String = strct
-            .fields()
-            .iter()
-            .map(|field| format!("\t{fld}\n", fld = self.field_cil(field)))
-            .collect();
-        let extends = {
-            let extends = strct.extends();
-            let assembly_ref = match extends.0.as_ref() {
-                Some(assembly_ref) => format!("[{assembly_ref}]"),
-                None => String::new(),
-            };
-            format!("{assembly_ref}'{type_string}'", type_string = extends.1)
-        };
-
-        Ok(
-            format!(
-                ".class {visibility} {STRUCT_MODIFIERS} '{name}' extends {extends}{{{fields}}}"
-            )
-            .into(),
-        )
+    fn type_cil(&self, tpe: &Type) -> Result<IString, super::AssemblyExportError> {
+        match tpe{
+            Type::Struct { name, fields } =>{
+                Ok(format!(".class public sequential ansi sealed beforefieldinit '{name}' extends [System.Runtime]System.ValueType{{}}").into())
+            }
+            _=>Ok("".into()),
+        }
     }
     fn get_cil(&self) -> Result<IString, super::AssemblyExportError> {
-        let structs: String = self
-            .structs
+        let types: String = self
+            .types
             .iter()
-            .map(|strct| {
+            .map(|tpe| {
                 format!(
                     "\t{s}\n",
-                    s = self.struct_cil(strct).expect("Could not create struct CIL")
+                    s = self.type_cil(tpe).expect("Could not create struct CIL")
                 )
             })
             .collect();
@@ -141,7 +129,7 @@ impl ILASMExporter {
         let version = self.version();
         let version = format!("{}:{}:{}:{}", version.0, version.1, version.2, version.3);
         let final_cil = format!(
-            ".assembly {name}{{\n\t.ver {version}\n}}{structs}{methods}",
+            ".assembly {name}{{\n\t.ver {version}\n}}{types}{methods}",
             name = self.asm_name
         );
         Ok(final_cil.into())
@@ -159,7 +147,16 @@ impl ILASMExporter {
         let name = method.name();
         let visibility = "public";
         let ret = variable_arg_type_name(method.sig().output());
-        let args = "";
+        let mut inputs_iter = method.sig().inputs.iter();
+        let mut args = String::new();
+        if let Some(firts_arg) = inputs_iter.next() {
+            args.push_str(&escaped_type_name(firts_arg));
+        }
+        for arg in inputs_iter {
+            args.push(',');
+            args.push_str(&escaped_type_name(arg));
+        }
+        // Call
         let locals = "";
         let ops = self.ops_cil(method.ops());
         format!(".method {visibility} hidebysig static {ret} {name}({args}){{{locals}\n\t{ops}\n}}")
@@ -306,7 +303,7 @@ fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
         BaseIR::LDField (field_descriptor) => {
             let field = field_descriptor.owner.field(field_descriptor.variant, field_descriptor.field_index);
             format!(
-                "ldfld {field_type} '{field_parent}'::{field_name}",
+                "ldfld {field_type} {field_parent}::{field_name}",
                 field_parent = escaped_type_name(&field_descriptor.owner),
                 field_type = variable_arg_type_name(&field.tpe),
                 field_name = field.name,
@@ -315,7 +312,7 @@ fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
         BaseIR::LDFieldAdress(field_descriptor) => {
             let field = field_descriptor.owner.field(field_descriptor.variant, field_descriptor.field_index);
             format!(
-                "ldflda {field_type} '{field_parent}'::{field_name}",
+                "ldflda {field_type} {field_parent}::{field_name}",
                 field_parent = escaped_type_name(&field_descriptor.owner),
                 field_type = variable_arg_type_name(&field.tpe),
                 field_name = field.name,
@@ -324,7 +321,7 @@ fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
         BaseIR::STField (field_descriptor)=> {
             let field = field_descriptor.owner.field(field_descriptor.variant, field_descriptor.field_index);
             format!(
-                "stfld {field_type} '{field_parent}'::{field_name}",
+                "stfld {field_type} {field_parent}::{field_name}",
                 field_parent = escaped_type_name(&field_descriptor.owner),
                 field_type = variable_arg_type_name(&field.tpe),
                 field_name = field.name,
@@ -333,15 +330,15 @@ fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
         //Conversions
         BaseIR::ConvI => "conv.i".into(),
         BaseIR::ConvU => "conv.u".into(),
-        BaseIR::ConvI8 => "conv.i8".into(),
-        BaseIR::ConvU8 => "conv.u8".into(),
-        BaseIR::ConvI16 => "conv.i16".into(),
-        BaseIR::ConvU16 => "conv.i16".into(),
-        BaseIR::ConvI32 => "conv.i32".into(),
-        BaseIR::ConvU32 => "conv.i32".into(),
+        BaseIR::ConvI8 => "conv.i1".into(),
+        BaseIR::ConvU8 => "conv.u1".into(),
+        BaseIR::ConvI16 => "conv.i2".into(),
+        BaseIR::ConvU16 => "conv.u2".into(),
+        BaseIR::ConvI32 => "conv.i4".into(),
+        BaseIR::ConvU32 => "conv.u4".into(),
         BaseIR::ConvF32 => "conv.r4".into(),
-        BaseIR::ConvI64 => "conv.i64".into(),
-        BaseIR::ConvU64 => "conv.i64".into(),
+        BaseIR::ConvI64 => "conv.i8".into(),
+        BaseIR::ConvU64 => "conv.u8".into(),
         BaseIR::ConvF64 => "conv.r8".into(),
         //Checked convetions
         BaseIR::ConvI16Checked => "conv.ovf.i2".into(),
@@ -359,7 +356,7 @@ fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
                 input_string.push_str(&escaped_type_name(arg));
             }
             let prefix = if call_site.is_static{
-                "static"
+                ""
             }else{
                 "instance"
             };
@@ -367,6 +364,7 @@ fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
                 Some(owner) => format!("{}::",escaped_type_name(&owner)),
                 None => "".into(),
             };
+            //println!("inputs:{inputs:?} input_string: {input_string}",inputs = call_site.signature.inputs);
             format!(
                 "\tcall {prefix} {output} {function_name}({input_string})\n",
                 function_name = call_site.name,
@@ -453,19 +451,19 @@ fn empty_asm_to_cil() {
 #[test]
 fn empty_struct_to_cil() {
     let ilasm = ILASMExporter::init("mock_assembly");
-    let struct_cil = ilasm
-        .struct_cil(&ClassInfo::new("Empty", &[]))
+    let type_cil = ilasm
+        .type_cil(&Type::Struct{ name: "Empty".into(), fields:[].into() })
         .expect("Could not create proper struct CIL");
     assert_eq!(
-        struct_cil.as_ref(),
-        ".class public sequential ansi sealed beforefieldinit 'Empty' extends [System.Runtime]'System.ValueType'{}"
+        type_cil.as_ref(),
+        ".class public sequential ansi sealed beforefieldinit 'Empty' extends [System.Runtime]System.ValueType{}"
     );
 }
 
 #[test]
 fn empty_method_to_cil() {
     let ilasm = ILASMExporter::init("mock_assembly");
-    let sig = crate::FunctionSignature::new(&[<()>::clr_tpe()], &<()>::clr_tpe());
+    let sig = crate::FunctionSignature::new(&[], &<()>::clr_tpe());
     let empty = CLRMethod::from_raw(&[BaseIR::Return], &[], "empty", sig);
     let method_cil = ilasm.method_cil(&empty);
     assert_eq!(
@@ -476,11 +474,6 @@ fn empty_method_to_cil() {
 #[test]
 fn ilasm_exporter_add_struct() {
     let mut ilasm = ILASMExporter::init("mock_assembly");
-    let fields = &[
-        ("x".into(), f32::clr_tpe()),
-        ("y".into(), f32::clr_tpe()),
-        ("z".into(), f32::clr_tpe()),
-    ];
-    let vec3 = ClassInfo::new("Vector3", fields);
-    ilasm.add_class(vec3);
+    let vec3 = &Type::Struct { name: "Vec3".into(), fields: [FieldType{ name: "x".into(), tpe: Type::F32 },FieldType{ name: "y".into(), tpe: Type::F32 },FieldType{ name: "z".into(), tpe: Type::F32 }].into() };
+    ilasm.add_type(vec3);
 }
