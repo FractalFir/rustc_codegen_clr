@@ -25,6 +25,12 @@ fn local_set(local: &LocalPlacement) -> BaseIR {
         LocalPlacement::Var(arg_num) => BaseIR::STLoc(*arg_num),
     }
 }
+fn local_adress(local: &LocalPlacement) -> BaseIR {
+    match local {
+        LocalPlacement::Arg(arg_num) => BaseIR::LDArgA(*arg_num),
+        LocalPlacement::Var(arg_num) => BaseIR::LDLocA(*arg_num),
+    }
+}
 pub(crate) fn place_get_ops(place: &Place) -> Vec<BaseIR> {
     let mut ops: Vec<_> = Vec::with_capacity(place.body.len() * 2);
     // Since first element must be a local, first element does not use the type. It then changes the type to value other than [`Void`]. This makes catching bugs easier - if the
@@ -36,6 +42,19 @@ pub(crate) fn place_get_ops(place: &Place) -> Vec<BaseIR> {
         tpe = stpe;
     }
     ops.extend(place.head.get_ops(tpe));
+    ops
+}
+pub(crate) fn place_adress_ops(place: &Place) -> Vec<BaseIR> {
+    let mut ops: Vec<_> = Vec::with_capacity(place.body.len() * 2);
+    // Since first element must be a local, first element does not use the type. It then changes the type to value other than [`Void`]. This makes catching bugs easier - if the
+    // first element is not `Local`, this will instanlty panic.
+    let mut tpe = Type::Void;
+    for segement in &*place.body {
+        let (sops, stpe) = segement.body_ops(&tpe);
+        ops.extend(sops);
+        tpe = stpe;
+    }
+    ops.extend(place.head.adress_ops(tpe));
     ops
 }
 pub(crate) fn place_set_ops(place: &Place, value_calc: Vec<BaseIR>) -> Vec<BaseIR> {
@@ -160,6 +179,7 @@ impl ProjectionElement {
                 let ops = body_deref_ops(pointed);
                 (ops, pointed.clone())
             }
+            //Self::Index{ }
             _ => todo!("Unhandled projection element type:{self:?}"),
         }
     }
@@ -201,6 +221,19 @@ impl ProjectionElement {
             _ => todo!("Unhandled projection element type:{self:?}"),
         }
     }
+    /// Returns the ops necesary to get the value behind a [`ProjectionElement`] that is within `head` of a [`Place`].
+    fn adress_ops(&self, tpe: Type) -> Vec<BaseIR> {
+        match self {
+            Self::Local { local, .. } => vec![local_adress(local)],
+            Self::Deref => vec![BaseIR::Nop],
+            Self::Field{index} =>{
+                let variant = 0;
+                let field = tpe.field(variant, *index);
+                vec![BaseIR::LDFieldAdress(Box::new(FiledDescriptor{ owner:tpe.clone(), variant, field_index: *index }))]
+            }
+            _ => todo!("Unhandled projection element type:{self:?}"),
+        }
+    }
 }
 fn body_deref_ops(pointed: &Type) -> Vec<BaseIR> {
     match pointed {
@@ -212,13 +245,13 @@ fn body_deref_ops(pointed: &Type) -> Vec<BaseIR> {
         Type::F32 => vec![BaseIR::LDIndR4],
         Type::F64 => vec![BaseIR::LDIndR8],
         // In body, struct types should never be derferenced.
-        Type::Struct { .. } => vec![BaseIR::Nop],
+        Type::Struct { .. } | Type::Array{..} => vec![BaseIR::Nop],
         _ => todo!("unsuported adress derf: {pointed:?}"),
     }
 }
 fn getter_deref_ops(pointed: &Type) -> Vec<BaseIR> {
     match pointed{
-        Type::Struct { .. } => vec![BaseIR::LDObj(pointed.clone())],
+        Type::Struct { .. } | Type::Array{..} => vec![BaseIR::LDObj(pointed.clone())],
         _=>body_deref_ops(pointed)
     }
     
@@ -232,7 +265,7 @@ fn setter_deref_ops(pointed: &Type) -> Vec<BaseIR> {
         Type::Ref(_) | Type::Ptr(_) | Type::USize | Type::ISize => vec![BaseIR::STIndI],
         Type::F32 => vec![BaseIR::STIndR4],
         Type::F64 => vec![BaseIR::STIndR8],
-        Type::Struct{..}=> vec![BaseIR::STObj(pointed.clone())],
+        Type::Struct{..} | Type::Array{..} => vec![BaseIR::STObj(pointed.clone())],
         _ => todo!("unsuported set derf: {pointed:?}"),
     }
 }

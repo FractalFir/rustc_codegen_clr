@@ -68,8 +68,8 @@ impl RNG{
 }
 
 #[no_mangle]
-pub extern fn init_10body()->[AstronomicalBody;10]{
-    let mut boides = [AstronomicalBody::default();10];
+pub extern fn init_10body()->[AstronomicalBody;4]{
+    let mut boides = [AstronomicalBody::default(),AstronomicalBody::default(),AstronomicalBody::default(),AstronomicalBody::default()];
     //let test = Some(0);
     let mut a_body_idx = 0;
    
@@ -89,7 +89,7 @@ pub extern fn init_10body()->[AstronomicalBody;10]{
     boides 
 }
 #[no_mangle]
-pub extern fn tick_10body(boides:&mut [AstronomicalBody;10],tick_count:usize){
+pub extern fn tick_10body(boides:&mut [AstronomicalBody;4],tick_count:usize){
     let mut a_body_idx = 0;
     let mut b_body_idx = 0;
     while 0 < tick_count{
@@ -108,7 +108,7 @@ pub extern fn tick_10body(boides:&mut [AstronomicalBody;10],tick_count:usize){
     }}
 }
 #[no_mangle]
-pub extern fn get_position_10body(boides:&mut [AstronomicalBody;10],index:usize)->Vector3{
+pub extern fn get_position_10body(boides:&mut [AstronomicalBody;4],index:usize)->Vector3{
     boides[index].position
 }
 #[no_mangle]

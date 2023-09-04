@@ -1,9 +1,9 @@
 use crate::{
-    assembly_exporter::AssemblyExportError, base_ir::{BaseIR, CallSite}, clr_method::CLRMethod, types::{Type, FieldType},
+    assembly_exporter::AssemblyExportError, base_ir::BaseIR, clr_method::CLRMethod, types::Type,
     IString,
 };
 
-use super::{AssemblyExporter, ClassInfo};
+use super::AssemblyExporter;
 #[must_use]
 pub(crate) struct ILASMExporter {
     asm_name: IString,
@@ -431,7 +431,7 @@ fn type_name(var: &Type) -> IString {
             else{
                 format!("[{asm}]{name}")
             }
-        }
+        },
         _ => todo!("unhandled var type {var:?}"),
     }
     .into()
@@ -473,6 +473,7 @@ fn empty_method_to_cil() {
 }
 #[test]
 fn ilasm_exporter_add_struct() {
+    use crate::types::FieldType;
     let mut ilasm = ILASMExporter::init("mock_assembly");
     let vec3 = &Type::Struct { name: "Vec3".into(), fields: [FieldType{ name: "x".into(), tpe: Type::F32 },FieldType{ name: "y".into(), tpe: Type::F32 },FieldType{ name: "z".into(), tpe: Type::F32 }].into() };
     ilasm.add_type(vec3);

@@ -42,7 +42,6 @@ pub(crate) fn convert_as(src: &Type, dest: &Type) -> Vec<BaseIR> {
         Type::Tuple(_) => panic!(
             "tried to convert type {src:?} to tuple type(\"{dest:?}\") using `as` convertion"
         ),
-        Type::ResolvedGenric { .. } => todo!("Convertions can't yet handle resolved generic types"),
         Type::I128 | Type::U128 => {
             todo!("Casts involving i128/u128 are not supported yet.")
         }

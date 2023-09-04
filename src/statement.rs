@@ -2,14 +2,12 @@ use crate::codegen::place::{place_getter_ops, place_setter_ops};
 use crate::{
     projection::projection_adress, types::Type, Assembly, BaseIR, CLRMethod, LocalPlacement,
 };
-use rustc_index::IndexVec;
 use rustc_middle::mir::NullOp;
 use rustc_middle::mir::{
-    interpret::ConstValue, interpret::Scalar, AggregateKind, BinOp, Body, CastKind, Constant,
+    interpret::ConstValue, interpret::Scalar, BinOp, Body, CastKind, Constant,
     ConstantKind, Operand, Place, Rvalue, Statement, StatementKind,
 };
 use rustc_middle::ty::{Const, ParamEnv, TyCtxt};
-use rustc_target::abi::FieldIdx;
 #[macro_export]
 macro_rules! sign_cast {
     ($var:ident,$src:ty,$dest:ty) => {
@@ -95,6 +93,7 @@ fn load_const_scalar(scalar: Scalar, scalar_type: Type) -> Vec<BaseIR> {
         Type::U64 => vec![BaseIR::LDConstI64(scalar_u128 as i64)],
         Type::USize => vec![BaseIR::LDConstI64(scalar_u128 as i64)],
         Type::ISize => vec![BaseIR::LDConstI64(scalar_u128 as i64)],
+        Type::Struct { name, fields } => todo!(),
         //Type::Enum(_) => vec![BaseIR::LDConstI32((scalar_u128 != 0) as u8 as i32)],
         _ => todo!("can't yet handle a scalar of type {scalar_type:?}!"),
     }

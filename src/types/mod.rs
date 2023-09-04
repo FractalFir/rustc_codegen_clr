@@ -45,10 +45,11 @@ pub(crate) enum Type {
     GenericParam {
         index: u32,
     },
+    /* 
     ResolvedGenric {
         inner: Box<Self>,
         params: Box<[Option<Self>]>,
-    },
+    },*/
     //Special types
     Bool,
     Tuple(Box<[Self]>),
@@ -123,6 +124,14 @@ impl Type {
         match self {
             Self::Ptr(inner) => Some(inner),
             Self::Ref(inner) => Some(inner),
+            _ => None,
+        }
+    }
+    // Returns the type the element of the array or slice.
+    pub(crate) fn element_type(&self) -> Option<&Self> {
+        match self {
+            Self::Array { element, .. } => Some(element.as_ref()),
+            Self::Slice(element) =>  Some(element.as_ref()),
             _ => None,
         }
     }
@@ -206,7 +215,9 @@ impl Type {
                     );
                     let t_field = adt.all_fields().nth(0).unwrap();
                     let t_type = tyctx.type_of(t_field.did).skip_binder();
-                    return Self::Ptr(Self::box_from_ty(&t_type, tyctx)).resolve_generic(&subst);
+                    let mut res = Self::Ptr(Self::box_from_ty(&t_type, tyctx));
+                    res.resolve(&subst);
+                    return res;
                 }
                 let fields: Vec<FieldType> = adt
                     .all_fields()
@@ -219,32 +230,28 @@ impl Type {
                     })
                     .collect();
                 let name = adt_name(adt);
-                Self::Struct {
+                let mut res = Self::Struct {
                     name,
                     fields: fields.into(),
-                }
-                .resolve_generic(&subst)
+                };
+                res.resolve(&subst);
+                res
             }
             AdtKind::Union => todo!("Can't yet handle unions"),
             AdtKind::Enum => todo!("Enum is not supported yet"),
         }
     }
-    fn resolve_generic(self, subst: &[Option<Self>]) -> Self {
-        if subst.is_empty() {
-            self
-        } else {
-            assert!(
-                !matches!(self, Self::ResolvedGenric { .. }),
-                "Can't yet handle nested generics."
-            );
-            Self::ResolvedGenric {
-                inner: Box::new(self),
-                params: subst.into(),
-            }
+    fn resolve(&mut self,params:&[Option<Type>]) {
+        match self{
+            Self::GenericParam { index } => *self = params[*index as usize].as_ref().expect("Could not resolve generic!").clone(),
+            Type::U8 | Type::I8 | Type::U16 | Type::I16 | Type::U32 | Type::I32 | Type::F32 | Type::U64 | Type::I64 | Type::F64 | Type::I128 | Type::U128 | Type::ISize | Type::USize | Self::StrSlice | Type::Bool | Type::Void | Type::ExternType { .. }   => (),
+            Self::Tuple(inner)=>inner.iter_mut().for_each(|p|p.resolve(params)),
+            Self::Ptr(inner)=>inner.resolve(params),
+            Self::Ref(inner)=>inner.resolve(params),
+            Self::Slice(inner)=>inner.resolve(params),
+            Self::Struct { fields, .. } => fields.iter_mut().for_each(|field|field.tpe.resolve(params)),
+            Self::Array { element, .. }=>element.resolve(params),
         }
-    }
-    pub(crate) fn resolved(&self) -> Self {
-        todo!("Can't yet resolve generic types!")
     }
     pub(crate) fn field(&self,variant:u32,field_index:u32)->&FieldType{
         match self{
