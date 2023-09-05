@@ -48,7 +48,7 @@ use crate::{assembly::Assembly, clr_method::CLRMethod, types::Type, IString};
 pub(crate) mod ilasm_exporter;
 pub(crate) trait AssemblyExporter: Sized {
     fn init(asm_info: &AssemblyInfo) -> Self;
-    fn add_type(&mut self, tpe:&Type);
+    fn add_type(&mut self, tpe: &Type);
     fn add_method(&mut self, method: CLRMethod);
     //fn extern_asm(&mut self,asm:&str);
     fn finalize(self, final_path: &Path) -> Result<(), AssemblyExportError>;

@@ -4,8 +4,8 @@ use crate::{
 };
 use rustc_middle::mir::NullOp;
 use rustc_middle::mir::{
-    interpret::ConstValue, interpret::Scalar, BinOp, Body, CastKind, Constant,
-    ConstantKind, Operand, Place, Rvalue, Statement, StatementKind,
+    interpret::ConstValue, interpret::Scalar, BinOp, Body, CastKind, Constant, ConstantKind,
+    Operand, Place, Rvalue, Statement, StatementKind,
 };
 use rustc_middle::ty::{Const, ParamEnv, TyCtxt};
 #[macro_export]
@@ -192,7 +192,12 @@ fn handle_rvalue<'tyctx>(
             ops.push(BaseIR::ConvI);
             ops
         }
-        Rvalue::Aggregate(aggregate, fields) => crate::codegen::aggregate::handle_agregate(codegen_ctx, target_location, aggregate.as_ref(), fields),
+        Rvalue::Aggregate(aggregate, fields) => crate::codegen::aggregate::handle_agregate(
+            codegen_ctx,
+            target_location,
+            aggregate.as_ref(),
+            fields,
+        ),
         Rvalue::Repeat(operand, ammount) => {
             todo!();
         }

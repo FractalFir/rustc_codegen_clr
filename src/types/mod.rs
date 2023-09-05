@@ -9,6 +9,12 @@ pub(crate) struct FieldType {
     pub(crate) tpe: Type,
 }
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Hash)]
+pub(crate) struct EnumVariant {
+    pub(crate) name: IString,
+    pub(crate) index: u32,
+    pub(crate) fields: Vec<FieldType>,
+}
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Hash)]
 pub(crate) enum Type {
     //Intieger types
     U8,
@@ -34,6 +40,10 @@ pub(crate) enum Type {
         name: IString,
         fields: Box<[FieldType]>,
     },
+    Enum {
+        name: IString,
+        variants: Box<[EnumVariant]>,
+    },
     //Slice/Array types
     StrSlice,
     Slice(Box<Self>),
@@ -45,11 +55,6 @@ pub(crate) enum Type {
     GenericParam {
         index: u32,
     },
-    /* 
-    ResolvedGenric {
-        inner: Box<Self>,
-        params: Box<[Option<Self>]>,
-    },*/
     //Special types
     Bool,
     Tuple(Box<[Self]>),
@@ -131,7 +136,7 @@ impl Type {
     pub(crate) fn element_type(&self) -> Option<&Self> {
         match self {
             Self::Array { element, .. } => Some(element.as_ref()),
-            Self::Slice(element) =>  Some(element.as_ref()),
+            Self::Slice(element) => Some(element.as_ref()),
             _ => None,
         }
     }
@@ -166,7 +171,7 @@ impl Type {
                 Self::Ref(Self::box_from_ty(referenced_type, tyctx))
             }
             TyKind::FnDef(_, _) => todo!("Function types are not supported yet."),
-            TyKind::FnPtr(_) => todo!("Function pointer types are not supported yet."),
+            TyKind::FnPtr(_) => Type::ISize, //todo!("Function pointer types are not supported yet. FnPtr:{rust_tpe:?}"),
             TyKind::Closure(_, _) => todo!("Closure types are not supported yet."),
             TyKind::Slice(element_type) => Self::Slice(Self::box_from_ty(element_type, tyctx)),
             TyKind::Dynamic(_, _, _) => Self::Void, //Dynamics are needed for `no_std` to work.
@@ -238,32 +243,94 @@ impl Type {
                 res
             }
             AdtKind::Union => todo!("Can't yet handle unions"),
-            AdtKind::Enum => todo!("Enum is not supported yet"),
+            AdtKind::Enum => {
+                let name = adt_name(adt);
+                let variants = adt
+                    .variants()
+                    .into_iter()
+                    .enumerate()
+                    .map(|(vidx, def)| {
+                        let name = def.name.as_str().into();
+                        let fields = def
+                            .fields
+                            .iter()
+                            .map(|field| FieldType {
+                                name: field.name.to_string().into(),
+                                tpe: Self::from_ty_non_cyclic(
+                                    &tyctx.type_of(field.did).skip_binder(),
+                                    tyctx,
+                                ),
+                            })
+                            .collect();
+                        EnumVariant {
+                            name,
+                            index: vidx as u32,
+                            fields,
+                        }
+                    })
+                    .collect();
+                Self::Enum {
+                    name: name,
+                    variants: variants,
+                }
+            }
         }
     }
-    fn resolve(&mut self,params:&[Option<Type>]) {
-        match self{
-            Self::GenericParam { index } => *self = params[*index as usize].as_ref().expect("Could not resolve generic!").clone(),
-            Type::U8 | Type::I8 | Type::U16 | Type::I16 | Type::U32 | Type::I32 | Type::F32 | Type::U64 | Type::I64 | Type::F64 | Type::I128 | Type::U128 | Type::ISize | Type::USize | Self::StrSlice | Type::Bool | Type::Void | Type::ExternType { .. }   => (),
-            Self::Tuple(inner)=>inner.iter_mut().for_each(|p|p.resolve(params)),
-            Self::Ptr(inner)=>inner.resolve(params),
-            Self::Ref(inner)=>inner.resolve(params),
-            Self::Slice(inner)=>inner.resolve(params),
-            Self::Struct { fields, .. } => fields.iter_mut().for_each(|field|field.tpe.resolve(params)),
-            Self::Array { element, .. }=>element.resolve(params),
+    fn resolve(&mut self, params: &[Option<Type>]) {
+        match self {
+            Self::GenericParam { index } => match params[*index as usize].as_ref() {
+                Some(tpe) => *self = tpe.clone(),
+                None => (),
+            },
+            Type::U8
+            | Type::I8
+            | Type::U16
+            | Type::I16
+            | Type::U32
+            | Type::I32
+            | Type::F32
+            | Type::U64
+            | Type::I64
+            | Type::F64
+            | Type::I128
+            | Type::U128
+            | Type::ISize
+            | Type::USize
+            | Self::StrSlice
+            | Type::Bool
+            | Type::Void
+            | Type::ExternType { .. } => (),
+            Self::Tuple(inner) => inner.iter_mut().for_each(|p| p.resolve(params)),
+            Self::Ptr(inner) => inner.resolve(params),
+            Self::Ref(inner) => inner.resolve(params),
+            Self::Slice(inner) => inner.resolve(params),
+            Self::Struct { fields, .. } => fields
+                .iter_mut()
+                .for_each(|field| field.tpe.resolve(params)),
+            Self::Array { element, .. } => element.resolve(params),
+            Self::Enum { name, variants } => variants.iter_mut().for_each(|variant| {
+                variant
+                    .fields
+                    .iter_mut()
+                    .for_each(|field| field.tpe.resolve(params))
+            }),
         }
     }
-    pub(crate) fn field(&self,variant:u32,field_index:u32)->&FieldType{
-        match self{
-            Self::Struct { name, fields } =>{
-                assert_eq!(variant,0,"Struct have only one variant, but variant is {variant}");
+    pub(crate) fn field(&self, variant: u32, field_index: u32) -> &FieldType {
+        match self {
+            Self::Struct { name, fields } => {
+                assert_eq!(
+                    variant, 0,
+                    "Struct have only one variant, but variant is {variant}"
+                );
                 &fields[field_index as usize]
-            } 
-            _=>todo!("type {self:?} is not type!"),
+            }
+            _ => todo!("type {self:?} is not type!"),
         }
     }
 }
 fn adt_name(adt: &AdtDef) -> IString {
+    //TODO: find a better way to get adt name!
     format!("{adt:?}").into()
 }
 impl From<&IntTy> for Type {

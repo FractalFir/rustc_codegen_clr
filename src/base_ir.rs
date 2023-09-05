@@ -9,7 +9,6 @@ pub(crate) struct FiledDescriptor {
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct CallSite {
     pub(crate) owner: Option<Type>,
-    pub(crate) assembly: IString,
     pub(crate) name: IString,
     pub(crate) signature: FunctionSignature,
     pub(crate) is_static: bool,
@@ -17,6 +16,7 @@ pub(crate) struct CallSite {
 // An IR close, but not exactly equivalent to the CoreCLR IR.
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub(crate) enum BaseIR {
+    Volatile(Box<Self>),
     DebugComment(IString),
     //LDConstI8(i8),
     LDConstI32(i32),

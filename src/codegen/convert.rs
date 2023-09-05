@@ -35,6 +35,9 @@ pub(crate) fn convert_as(src: &Type, dest: &Type) -> Vec<BaseIR> {
         Type::Struct { .. } => panic!(
             "tried to convert type {src:?} to struct type(\"{dest:?}\") using `as` convertion"
         ),
+        Type::Enum { .. } => {
+            panic!("tried to convert type {src:?} to enum type(\"{dest:?}\") using `as` convertion")
+        }
         /*
         Type::Enum{..} => {
             panic!("tried to convert type {src:?} to enum type(\"{dest:?}\") using `as` convertion")

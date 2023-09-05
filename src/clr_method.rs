@@ -32,6 +32,9 @@ impl CLRMethod {
     pub(crate) fn sig(&self) -> &FunctionSignature {
         &self.sig
     }
+    pub(crate) fn locals(&self) -> &[Type] {
+        &self.locals
+    }
     pub(crate) fn ops(&self) -> &[BaseIR] {
         &self.ops
     }
@@ -203,10 +206,9 @@ impl CLRMethod {
         }
         let is_void = signature.output.is_void();
         call.push(BaseIR::Call(Box::new(CallSite {
-            owner:None,
+            owner: None,
             name: function_name,
             signature,
-            assembly: "".into(),
             is_static: true,
         })));
         // Hande
@@ -267,20 +269,22 @@ impl CLRMethod {
                     .push(BaseIR::LDConstString(format!("{msg:?}").into()));
                 //  ctor_fn: "void [System.Runtime](string)".to_owned(),
                 self.ops.push(BaseIR::NewObj(Box::new(CallSite {
-                    owner:Some(Type::ExternType {
+                    owner: Some(Type::ExternType {
                         asm: "System.Runtime".into(),
                         name: "System.Exception".into(),
                     }),
-                    assembly: "System.Runtime".into(),
                     name: ".ctor".into(),
                     is_static: false,
-                    signature: FunctionSignature::new(&[Type::ExternType {
-                        asm: "System.Runtime".into(),
-                        name: "System.String".into(),
-                    }],&Type::ExternType {
-                        asm: "System.Runtime".into(),
-                        name: "System.Exception".into(),
-                    }),
+                    signature: FunctionSignature::new(
+                        &[Type::ExternType {
+                            asm: "System.Runtime".into(),
+                            name: "System.String".into(),
+                        }],
+                        &Type::ExternType {
+                            asm: "System.Runtime".into(),
+                            name: "System.Exception".into(),
+                        },
+                    ),
                 })));
                 self.ops.push(BaseIR::Throw);
                 //todo!()

@@ -1,9 +1,9 @@
 use crate::{base_ir::BaseIR, types::Type};
 
 pub(crate) mod aggregate;
+pub(crate) mod array;
 pub(crate) mod arthmetics;
 pub(crate) mod convert;
-pub(crate) mod array;
 pub(crate) mod place;
 pub(crate) fn sizeof_ops(_tpe: &Type) -> Vec<BaseIR> {
     todo!("Can't yet calculate size of things!");
@@ -68,8 +68,24 @@ fn align_of_tpe(tpe: &Type) -> Aligement {
             .iter()
             .map(|filed| align_of_tpe(&filed.tpe))
             .fold(Aligement::A1, |a, b| a.max(&b)),
+        Type::Enum { variants, .. } => {
+            assert!(
+                variants.len() < 256,
+                "TODO: handle enum discirmintator changing enum aligement!"
+            );
+            variants
+                .iter()
+                .map(|variant| {
+                    variant
+                        .fields
+                        .iter()
+                        .map(|filed| align_of_tpe(&filed.tpe))
+                        .fold(Aligement::A1, |a, b| a.max(&b))
+                })
+                .fold(Aligement::A1, |a, b| a.max(&b))
+        }
         Type::GenericParam { .. } => Aligement::Unknown,
-        Type::ExternType { asm, name }=>panic!("Can't calculate algiement of extern type!"),
+        Type::ExternType { asm, name } => panic!("Can't calculate algiement of extern type!"),
     }
 }
 pub(crate) fn align_of(tpe: Type) -> BaseIR {
