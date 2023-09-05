@@ -17,7 +17,7 @@ fn panic(_panic: &PanicInfo<'_>) -> ! {
 #[start]
 fn main(_argc: isize, _argv: *const *const u8)->isize{
     //Broken array
-    let message = [0x48,0x64,0x6C,0x6F,0x20,0x0];
+    let message:[u8;6] = [0x48,0x64,0x6C,0x6F,0x20,0x0];
     unsafe{puts(core::ptr::addr_of!(message) as *const u8)};
     /* 
     unsafe{putc(0x48)};
