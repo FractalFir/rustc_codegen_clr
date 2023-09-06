@@ -39,8 +39,12 @@ pub(crate) fn binop_unchecked<'ctx>(
         BinOp::Ne =>{ops.extend(a.0); ops.extend(b.0);  ops.extend([BaseIR::Eq, BaseIR::LDConstI32(0), BaseIR::Eq])},
         BinOp::Gt =>{ops.extend(a.0); ops.extend(b.0);  ops.push(BaseIR::Gt)},
         BinOp::Lt =>{ops.extend(a.0); ops.extend(b.0);  ops.push(BaseIR::Lt)},
-        BinOp::Ge =>{ops.extend(a.0); ops.extend(b.0);  ops.push(BaseIR::Ge)},
-        BinOp::Le =>{ops.extend(a.0); ops.extend(b.0);  ops.push(BaseIR::Le)},
+        BinOp::Ge =>{
+            ops.extend(a.0); ops.extend(b.0);  ops.push(BaseIR::Lt); ops.push(BaseIR::LDConstI32(0)); ops.push(BaseIR::Eq);
+        },
+        BinOp::Le =>{
+            ops.extend(a.0); ops.extend(b.0);  ops.push(BaseIR::Gt); ops.push(BaseIR::LDConstI32(0)); ops.push(BaseIR::Eq);
+        },
         BinOp::Rem =>{ops.extend(a.0); ops.extend(b.0);  ops.push(BaseIR::Rem)},
         BinOp::BitXor =>{ops.extend(a.0); ops.extend(b.0);  ops.push(BaseIR::Xor)},
         BinOp::BitOr =>{ops.extend(a.0); ops.extend(b.0);  ops.push(BaseIR::Or)},

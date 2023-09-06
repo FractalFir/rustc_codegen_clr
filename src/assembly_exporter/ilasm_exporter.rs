@@ -82,6 +82,38 @@ impl AssemblyExporter for ILASMExporter {
         Ok(())
     }
 }
+fn type_cil(tpe: &Type) -> Result<IString, super::AssemblyExportError> {
+    match tpe {
+        Type::Struct { name, fields } => {
+            let mut field_iter = fields.iter();
+            let mut field_string = String::new();
+            if let Some(first) = field_iter.next(){
+                let type_name = escaped_type_name(&first.tpe);
+                let field_name = &first.name;
+                field_string.push_str(&format!(".field {type_name} {field_name}\n\t"));
+            }
+            for field in field_iter{
+                let type_name = escaped_type_name(&field.tpe);
+                let field_name = &field.name;
+                field_string.push_str(&format!(".field {type_name} {field_name}\n\t"));
+            }
+            Ok(format!(".class public sequential ansi sealed beforefieldinit '{name}' extends [System.Runtime]System.ValueType{{{field_string}}}").into())
+        }
+        Type::Array { element, length } => {
+            let name = format!("Arr{length}_{element}", element = type_name(element));
+            let mut fields = String::with_capacity((*length as usize) * 10);
+            //TODO: use a better approach for creating arrays!
+            for index in 0..(*length) {
+                fields.push_str(&format!(
+                    ".field {element} i{index}\n\t",
+                    element = escaped_type_name(element)
+                ));
+            }
+            Ok(format!(".class public sequential ansi sealed beforefieldinit '{name}' extends [System.Runtime]System.ValueType{{{fields}}}").into())
+        }
+        _ => Ok("".into()),
+    }
+}
 fn absolute_path(path: &std::path::Path) -> std::io::Result<std::path::PathBuf> {
     if path.has_root() {
         Ok(path.to_owned())
@@ -102,27 +134,6 @@ impl ILASMExporter {
             field_name = field.0
         )
     }
-    fn type_cil(&self, tpe: &Type) -> Result<IString, super::AssemblyExportError> {
-        match tpe {
-            Type::Struct { name, fields } => {
-                let fields = "";
-                Ok(format!(".class public sequential ansi sealed beforefieldinit '{name}' extends [System.Runtime]System.ValueType{{{fields}}}").into())
-            }
-            Type::Array { element, length } => {
-                let name = format!("Arr{length}_{element}", element = type_name(element));
-                let mut fields = String::with_capacity((*length as usize) * 10);
-                //TODO: use a better approach for creating arrays!
-                for index in 0..(*length) {
-                    fields.push_str(&format!(
-                        ".field {element} i{index}\n\t",
-                        element = escaped_type_name(element)
-                    ));
-                }
-                Ok(format!(".class public sequential ansi sealed beforefieldinit '{name}' extends [System.Runtime]System.ValueType{{{fields}}}").into())
-            }
-            _ => Ok("".into()),
-        }
-    }
     fn get_cil(&self) -> Result<IString, super::AssemblyExportError> {
         let types: String = self
             .types
@@ -130,7 +141,7 @@ impl ILASMExporter {
             .map(|tpe| {
                 format!(
                     "\t{s}\n",
-                    s = self.type_cil(tpe).expect("Could not create struct CIL")
+                    s = type_cil(tpe).expect("Could not create struct CIL")
                 )
             })
             .collect();
@@ -325,10 +336,8 @@ fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
         BaseIR::Shr => "shr".into(),
         //Comparisons
         BaseIR::Gt => "cgt".into(),
-        BaseIR::Ge => "cge".into(),
         BaseIR::Eq => "ceq".into(),
         BaseIR::Lt => "clt".into(),
-        BaseIR::Le => "cle".into(),
         //Seting Pointers
         BaseIR::LDIndI => "ldind.i".into(),
         BaseIR::LDIndIn(n) => format!("ldind.i{n}"),

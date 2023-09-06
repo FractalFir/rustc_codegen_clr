@@ -94,6 +94,7 @@ fn load_const_scalar(scalar: Scalar, scalar_type: Type) -> Vec<BaseIR> {
         Type::USize => vec![BaseIR::LDConstI64(scalar_u128 as i64)],
         Type::ISize => vec![BaseIR::LDConstI64(scalar_u128 as i64)],
         Type::Struct { name, fields } => todo!(),
+        Type::Ptr(_)=>vec![BaseIR::LDConstI64(scalar_u128 as i64),BaseIR::ConvI],
         //Type::Enum(_) => vec![BaseIR::LDConstI32((scalar_u128 != 0) as u8 as i32)],
         _ => todo!("can't yet handle a scalar of type {scalar_type:?}!"),
     }

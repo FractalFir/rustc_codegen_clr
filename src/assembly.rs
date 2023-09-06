@@ -50,6 +50,10 @@ impl Assembly {
         let param_env = ParamEnv::empty();
 
         let def_id = instance.def_id();
+        if !tcx.is_mir_available(def_id){
+            println!("function {instance:?} has no MIR. Skippping.");
+            return;
+        }
         let mir = tcx.optimized_mir(def_id);
         let blocks = &(*mir.basic_blocks);
         let sig = instance.ty(tcx, param_env).fn_sig(tcx);

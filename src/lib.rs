@@ -11,8 +11,10 @@ extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
+extern crate rustc_hir;
 
 use rustc_middle::ty::{Binder, BoundVariableKind};
+use rustc_hir::lang_items::LangItem;
 fn skip_binder_if_no_generic_types<T>(binder: Binder<T>) -> Option<T> {
     if binder
         .bound_vars()
@@ -123,6 +125,13 @@ impl CodegenBackend for MyBackend {
             for (item, _data) in cgu.items() {
                 codegen.add_item(*item, tcx);
             }
+        }
+        if let Some(start) = tcx.get_lang_items(()).start_fn(){
+            let start = rustc_middle::ty::Instance::resolve(tcx,rustc_middle::ty::ParamEnv::empty(),start,rustc_middle::ty::List::empty());
+            println!("start:{start:?}");
+        }
+        else{
+            println!("no start!");
         }
         //println!("CLR IL:\n```\n{ir}\n```", ir = codegen.into_il_ir());
 

@@ -41,6 +41,7 @@ pub(crate) fn insert_libc(asm: &mut impl AssemblyExporter) {
     math(asm);
     io(asm);
     malloc(asm);
+    realloc(asm);
     free(asm);
 }
 
@@ -125,4 +126,19 @@ add_method!(
         BaseIR::Return,
     ]
 );
-
+add_method!(
+    realloc,
+    &[Type::Ptr(Box::new(Type::Void)),Type::USize],
+    &Type::Ptr(Box::new(Type::Void)),
+    [
+        BaseIR::LDArg(0),
+        BaseIR::LDArg(1),
+        BaseIR::Call(Box::new(CallSite{
+            owner: Some(Type::ExternType { asm:"System.Runtime.InteropServices".into(), name: "System.Runtime.InteropServices.Marshal".into() }),
+            name: "ReAllocHGlobal".into(),
+            signature: FunctionSignature::new(&[Type::ISize,Type::ISize],&Type::ISize), 
+            is_static: true, 
+        })),
+        BaseIR::Return,
+    ]
+);

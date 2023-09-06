@@ -47,8 +47,6 @@ pub(crate) enum BaseIR {
     Eq,
     Gt,
     Lt,
-    Ge,
-    Le,
     Xor,
     Or,
     And,
