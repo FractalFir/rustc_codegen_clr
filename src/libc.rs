@@ -40,6 +40,8 @@ pub(crate) fn insert_libc(asm: &mut impl AssemblyExporter) {
     });
     math(asm);
     io(asm);
+    malloc(asm);
+    free(asm);
 }
 
 fn math(asm: &mut impl AssemblyExporter) {
@@ -93,3 +95,34 @@ add_method!(
     ],
     [Type::U8]
 );
+add_method!(
+    malloc,
+    &[Type::USize],
+    &Type::Ptr(Box::new(Type::Void)),
+    [
+        BaseIR::LDArg(0),
+        BaseIR::Call(Box::new(CallSite{
+            owner: Some(Type::ExternType { asm:"System.Runtime.InteropServices".into(), name: "System.Runtime.InteropServices.Marshal".into() }),
+            name: "AllocHGlobal".into(),
+            signature: FunctionSignature::new(&[Type::ISize],&Type::ISize), 
+            is_static: true, 
+        })),
+        BaseIR::Return,
+    ]
+);
+add_method!(
+    free,
+    &[Type::Ptr(Box::new(Type::Void))],
+    &Type::Void,
+    [
+        BaseIR::LDArg(0),
+        BaseIR::Call(Box::new(CallSite{
+            owner: Some(Type::ExternType { asm:"System.Runtime.InteropServices".into(), name: "System.Runtime.InteropServices.Marshal".into() }),
+            name: "FreeHGlobal".into(),
+            signature: FunctionSignature::new(&[Type::ISize],&Type::Void), 
+            is_static: true, 
+        })),
+        BaseIR::Return,
+    ]
+);
+

@@ -245,9 +245,9 @@ fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
         }
         BaseIR::LDLocA(argnum) => {
             if u8::try_from(*argnum).is_ok() {
-                format!("ldloc.s {argnum}")
+                format!("ldloca.s {argnum}")
             } else {
-                format!("ldloc {argnum}")
+                format!("ldloca {argnum}")
             }
         }
         BaseIR::STLoc(argnum) => {

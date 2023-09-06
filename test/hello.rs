@@ -8,7 +8,8 @@ use core::panic::PanicInfo;
 fn rust_eh_personality() {}
 extern "C" {
     fn puts(string:*const u8);
-    fn putc(c:u8);
+    fn malloc(size:usize)->*mut ();
+    fn free(ptr:*const ());
 }
 #[panic_handler]
 fn panic(_panic: &PanicInfo<'_>) -> ! {
@@ -16,31 +17,26 @@ fn panic(_panic: &PanicInfo<'_>) -> ! {
 }
 #[start]
 fn main(_argc: isize, _argv: *const *const u8)->isize{
-    //Broken array
-    let message:[u8;6] = [0x48,0x64,0x6C,0x6F,0x20,0x0];
-    unsafe{puts(core::ptr::addr_of!(message) as *const u8)};
-    /* 
-    unsafe{putc(0x48)};
-    unsafe{putc(0x65)};
-    unsafe{putc(0x6C)};
-    unsafe{putc(0x6C)};
-    unsafe{putc(0x6F)};
-    unsafe{putc(0x20)};
-    unsafe{putc(0x43)};
-    unsafe{putc(0x4C)};
-    unsafe{putc(0x52)};
-    unsafe{putc(0x20)};
-    unsafe{putc(0x66)};
-    unsafe{putc(0x72)};
-    unsafe{putc(0x6F)};
-    unsafe{putc(0x6D)};
-    unsafe{putc(0x20)};
-    unsafe{putc(0x52)};
-    unsafe{putc(0x75)};
-    unsafe{putc(0x73)};
-    unsafe{putc(0x74)};
-    unsafe{putc(0x21)};
-    unsafe{putc(0x0A)};
-    */
+    unsafe{
+        let message:*mut u8 = malloc(16) as *mut u8;
+        *message.offset(0) = 0x48;
+        *message.offset(1) =  0x65;
+        *message.offset(2) =  0x6C;          
+        *message.offset(3) =  0x6C;
+        *message.offset(4) =  0x6F;
+        *message.offset(5) =  0x20;
+        *message.offset(6) =  0x66;
+        *message.offset(7) =  0x72;
+        *message.offset(8) =  0x6F;
+        *message.offset(9) =  0x6D;
+        *message.offset(10) =  0x20;
+        *message.offset(11) =  0x43;
+        *message.offset(12) =  0x4C;
+        *message.offset(13) =  0x52;
+        *message.offset(14) =  0x21;
+        *message.offset(15) =  0x00;
+        puts(message);
+        free(message as *const _ as *const _);
+    }
     0
 }
