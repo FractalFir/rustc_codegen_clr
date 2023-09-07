@@ -18,45 +18,101 @@ pub(crate) fn binop_unchecked<'ctx>(
     //ops.extend(a.0);
     //ops.extend(b.0);
     match binop {
-        BinOp::Add | BinOp::AddUnchecked =>{
+        BinOp::Add | BinOp::AddUnchecked => {
             ops.extend(a.0);
             ops.extend(b.0);
             ops.push(add_unchecked(a.1, b.1));
-        },
+        }
         BinOp::Sub | BinOp::SubUnchecked => {
             ops.extend(a.0);
             ops.extend(b.0);
             ops.push(BaseIR::Sub);
-        },
+        }
         BinOp::Mul | BinOp::MulUnchecked => {
             ops.extend(a.0);
             ops.extend(b.0);
             ops.push(BaseIR::Mul);
         }
-        BinOp::Shl | BinOp::ShlUnchecked =>{ops.extend(a.0); ops.extend(b.0); ops.push(BaseIR::Shl)}
-        BinOp::Shr | BinOp::ShrUnchecked =>{ops.extend(a.0); ops.extend(b.0);  ops.push(BaseIR::Shr)},
-        BinOp::Eq =>{ops.extend(a.0); ops.extend(b.0);  ops.push(BaseIR::Eq)},
-        BinOp::Ne =>{ops.extend(a.0); ops.extend(b.0);  ops.extend([BaseIR::Eq, BaseIR::LDConstI32(0), BaseIR::Eq])},
-        BinOp::Gt =>{ops.extend(a.0); ops.extend(b.0);  ops.push(BaseIR::Gt)},
-        BinOp::Lt =>{ops.extend(a.0); ops.extend(b.0);  ops.push(BaseIR::Lt)},
-        BinOp::Ge =>{
-            ops.extend(a.0); ops.extend(b.0);  ops.push(BaseIR::Lt); ops.push(BaseIR::LDConstI32(0)); ops.push(BaseIR::Eq);
-        },
-        BinOp::Le =>{
-            ops.extend(a.0); ops.extend(b.0);  ops.push(BaseIR::Gt); ops.push(BaseIR::LDConstI32(0)); ops.push(BaseIR::Eq);
-        },
-        BinOp::Rem =>{ops.extend(a.0); ops.extend(b.0);  ops.push(BaseIR::Rem)},
-        BinOp::BitXor =>{ops.extend(a.0); ops.extend(b.0);  ops.push(BaseIR::Xor)},
-        BinOp::BitOr =>{ops.extend(a.0); ops.extend(b.0);  ops.push(BaseIR::Or)},
-        BinOp::BitAnd =>{ops.extend(a.0); ops.extend(b.0);  ops.push(BaseIR::And)},
-        BinOp::Div =>{ops.extend(a.0); ops.extend(b.0);  ops.push(BaseIR::Div)},
+        BinOp::Shl | BinOp::ShlUnchecked => {
+            ops.extend(a.0);
+            ops.extend(b.0);
+            ops.push(BaseIR::Shl)
+        }
+        BinOp::Shr | BinOp::ShrUnchecked => {
+            ops.extend(a.0);
+            ops.extend(b.0);
+            ops.push(BaseIR::Shr)
+        }
+        BinOp::Eq => {
+            ops.extend(a.0);
+            ops.extend(b.0);
+            ops.push(BaseIR::Eq)
+        }
+        BinOp::Ne => {
+            ops.extend(a.0);
+            ops.extend(b.0);
+            ops.extend([BaseIR::Eq, BaseIR::LDConstI32(0), BaseIR::Eq])
+        }
+        BinOp::Gt => {
+            ops.extend(a.0);
+            ops.extend(b.0);
+            ops.push(BaseIR::Gt)
+        }
+        BinOp::Lt => {
+            ops.extend(a.0);
+            ops.extend(b.0);
+            ops.push(BaseIR::Lt)
+        }
+        BinOp::Ge => {
+            ops.extend(a.0);
+            ops.extend(b.0);
+            ops.push(BaseIR::Lt);
+            ops.push(BaseIR::LDConstI32(0));
+            ops.push(BaseIR::Eq);
+        }
+        BinOp::Le => {
+            ops.extend(a.0);
+            ops.extend(b.0);
+            ops.push(BaseIR::Gt);
+            ops.push(BaseIR::LDConstI32(0));
+            ops.push(BaseIR::Eq);
+        }
+        BinOp::Rem => {
+            ops.extend(a.0);
+            ops.extend(b.0);
+            ops.push(BaseIR::Rem)
+        }
+        BinOp::BitXor => {
+            ops.extend(a.0);
+            ops.extend(b.0);
+            ops.push(BaseIR::Xor)
+        }
+        BinOp::BitOr => {
+            ops.extend(a.0);
+            ops.extend(b.0);
+            ops.push(BaseIR::Or)
+        }
+        BinOp::BitAnd => {
+            ops.extend(a.0);
+            ops.extend(b.0);
+            ops.push(BaseIR::And)
+        }
+        BinOp::Div => {
+            ops.extend(a.0);
+            ops.extend(b.0);
+            ops.push(BaseIR::Div)
+        }
         BinOp::Offset => {
             ops.extend(b.0);
-            ops.push(BaseIR::SizeOf(Box::new(a.1.pointed_type().expect("Tried to get offset of non-pointer type!").clone())));
+            ops.push(BaseIR::SizeOf(Box::new(
+                a.1.pointed_type()
+                    .expect("Tried to get offset of non-pointer type!")
+                    .clone(),
+            )));
             ops.push(BaseIR::Mul);
             ops.extend(a.0);
             ops.push(BaseIR::Add);
-        }//todo!("Can't yet handle the pointer offset operator!"),
+        } //todo!("Can't yet handle the pointer offset operator!"),
     };
     ops
 }

@@ -102,11 +102,14 @@ add_method!(
     &Type::Ptr(Box::new(Type::Void)),
     [
         BaseIR::LDArg(0),
-        BaseIR::Call(Box::new(CallSite{
-            owner: Some(Type::ExternType { asm:"System.Runtime.InteropServices".into(), name: "System.Runtime.InteropServices.Marshal".into() }),
+        BaseIR::Call(Box::new(CallSite {
+            owner: Some(Type::ExternType {
+                asm: "System.Runtime.InteropServices".into(),
+                name: "System.Runtime.InteropServices.Marshal".into()
+            }),
             name: "AllocHGlobal".into(),
-            signature: FunctionSignature::new(&[Type::ISize],&Type::ISize), 
-            is_static: true, 
+            signature: FunctionSignature::new(&[Type::ISize], &Type::ISize),
+            is_static: true,
         })),
         BaseIR::Return,
     ]
@@ -117,27 +120,33 @@ add_method!(
     &Type::Void,
     [
         BaseIR::LDArg(0),
-        BaseIR::Call(Box::new(CallSite{
-            owner: Some(Type::ExternType { asm:"System.Runtime.InteropServices".into(), name: "System.Runtime.InteropServices.Marshal".into() }),
+        BaseIR::Call(Box::new(CallSite {
+            owner: Some(Type::ExternType {
+                asm: "System.Runtime.InteropServices".into(),
+                name: "System.Runtime.InteropServices.Marshal".into()
+            }),
             name: "FreeHGlobal".into(),
-            signature: FunctionSignature::new(&[Type::ISize],&Type::Void), 
-            is_static: true, 
+            signature: FunctionSignature::new(&[Type::ISize], &Type::Void),
+            is_static: true,
         })),
         BaseIR::Return,
     ]
 );
 add_method!(
     realloc,
-    &[Type::Ptr(Box::new(Type::Void)),Type::USize],
+    &[Type::Ptr(Box::new(Type::Void)), Type::USize],
     &Type::Ptr(Box::new(Type::Void)),
     [
         BaseIR::LDArg(0),
         BaseIR::LDArg(1),
-        BaseIR::Call(Box::new(CallSite{
-            owner: Some(Type::ExternType { asm:"System.Runtime.InteropServices".into(), name: "System.Runtime.InteropServices.Marshal".into() }),
+        BaseIR::Call(Box::new(CallSite {
+            owner: Some(Type::ExternType {
+                asm: "System.Runtime.InteropServices".into(),
+                name: "System.Runtime.InteropServices.Marshal".into()
+            }),
             name: "ReAllocHGlobal".into(),
-            signature: FunctionSignature::new(&[Type::ISize,Type::ISize],&Type::ISize), 
-            is_static: true, 
+            signature: FunctionSignature::new(&[Type::ISize, Type::ISize], &Type::ISize),
+            is_static: true,
         })),
         BaseIR::Return,
     ]

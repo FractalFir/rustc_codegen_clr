@@ -4,6 +4,7 @@ pub(crate) mod aggregate;
 pub(crate) mod array;
 pub(crate) mod arthmetics;
 pub(crate) mod convert;
+pub(crate) mod entrypoint;
 pub(crate) mod place;
 pub(crate) fn sizeof_ops(_tpe: &Type) -> Vec<BaseIR> {
     todo!("Can't yet calculate size of things!");

@@ -81,6 +81,7 @@ pub(crate) enum BaseIR {
     STObj(Type),
     Throw,
     InitObj(IString),
+    Pop,
 }
 impl BaseIR {
     pub(crate) fn remove_void_local(&mut self, void_locals: &[usize]) {

@@ -5,16 +5,16 @@
 extern crate rustc_codegen_ssa;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
+extern crate rustc_hir;
 extern crate rustc_index;
 extern crate rustc_metadata;
 extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
-extern crate rustc_hir;
 
-use rustc_middle::ty::{Binder, BoundVariableKind};
 use rustc_hir::lang_items::LangItem;
+use rustc_middle::ty::{Binder, BoundVariableKind};
 fn skip_binder_if_no_generic_types<T>(binder: Binder<T>) -> Option<T> {
     if binder
         .bound_vars()
@@ -51,6 +51,8 @@ mod assembly;
 use assembly::Assembly;
 mod base_ir;
 use base_ir::BaseIR;
+
+use crate::base_ir::CallSite;
 mod assembly_exporter;
 mod compile_test;
 mod libc;
@@ -58,24 +60,7 @@ mod projection;
 mod statement;
 mod types;
 pub type IString = Box<str>;
-const ENTRYPOINT: &str = ".class public auto ansi abstract sealed beforefieldinit Program
-extends [System.Runtime]System.Object
-{
- .method public hidebysig static 
-    void Main (
-        string[] args
-    ) cil managed 
-    {
-        .entrypoint 
-        ldc.i4.0
-        conv.i
-        ldc.i4.0
-        conv.i
-        call native int main(native int, uint8**)
-        pop
-        ret
-    }
-}";
+
 struct MyBackend;
 pub(crate) const ALWAYS_INIT_STRUCTS: bool = false;
 pub(crate) const ALWAYS_INIT_LOCALS: bool = false;
@@ -126,15 +111,37 @@ impl CodegenBackend for MyBackend {
                 codegen.add_item(*item, tcx);
             }
         }
+        /*
         if let Some(start) = tcx.get_lang_items(()).start_fn(){
             let start = rustc_middle::ty::Instance::resolve(tcx,rustc_middle::ty::ParamEnv::empty(),start,rustc_middle::ty::List::empty());
             println!("start:{start:?}");
         }
         else{
             println!("no start!");
+        }*/
+        if let Some((entrypoint, kind)) = tcx.entry_fn(()) {
+            let penv = rustc_middle::ty::ParamEnv::empty();
+            let entrypoint = rustc_middle::ty::Instance::resolve(
+                tcx,
+                penv,
+                entrypoint,
+                rustc_middle::ty::List::empty(),
+            )
+            .expect("Could not resolve entrypoint!")
+            .expect("Could not resolve entrypoint!");
+            let entrypoint_fn = entrypoint.ty(tcx, penv).fn_sig(tcx);
+            let sig = FunctionSignature::from_poly_sig(entrypoint_fn, tcx)
+                .expect("Could not get the signature of the entrypoint.");
+            let symbol = tcx.symbol_name(entrypoint);
+            let symbol = format!("{symbol:?}");
+            let cs = CallSite {
+                owner: None,
+                name: symbol.into(),
+                signature: sig,
+                is_static: true,
+            };
+            codegen.set_entrypoint(cs);
         }
-        //println!("CLR IL:\n```\n{ir}\n```", ir = codegen.into_il_ir());
-
         Box::new((codegen, metadata, CrateInfo::new(tcx, "clr".to_string())))
     }
 

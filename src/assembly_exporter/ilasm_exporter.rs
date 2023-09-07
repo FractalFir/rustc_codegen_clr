@@ -87,12 +87,12 @@ fn type_cil(tpe: &Type) -> Result<IString, super::AssemblyExportError> {
         Type::Struct { name, fields } => {
             let mut field_iter = fields.iter();
             let mut field_string = String::new();
-            if let Some(first) = field_iter.next(){
+            if let Some(first) = field_iter.next() {
                 let type_name = escaped_type_name(&first.tpe);
                 let field_name = &first.name;
                 field_string.push_str(&format!(".field {type_name} {field_name}\n\t"));
             }
-            for field in field_iter{
+            for field in field_iter {
                 let type_name = escaped_type_name(&field.tpe);
                 let field_name = &field.name;
                 field_string.push_str(&format!(".field {type_name} {field_name}\n\t"));
@@ -184,7 +184,12 @@ impl ILASMExporter {
         // Call
         let locals = locals_cli(method.locals());
         let ops = self.ops_cil(method.ops());
-        format!(".method {visibility} hidebysig static {ret} {name}({args}){{{locals}\n\t{ops}\n}}")
+        let entrypoint = if method.has_attribute(&crate::clr_method::MethodAttribute::EntryPoint) {
+            ".entrypoint\n"
+        } else {
+            ""
+        };
+        format!(".method {visibility} hidebysig static {ret} {name}({args}){{\n{entrypoint}{locals}\n\t{ops}\n}}")
             .into()
     }
 }
@@ -277,7 +282,7 @@ fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
             } else if *value <= 8 && *value >= 0 {
                 format!("ldc.i4.{value}")
             } else if i8::try_from(*value).is_ok() {
-                format!("ldc.i4.s {value}")
+                format!("ldc.i4.s {value}\n\t")
             } else if i32::try_from(*value).is_ok() {
                 format!("ldc.i4 {value}")
             } else {
@@ -433,6 +438,7 @@ fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
         //Other
         BaseIR::InitObj(name) => format!("initobj {name}"),
         BaseIR::Volatile(inner) => format!("volatile. {inner}", inner = op_cil(inner, call_prefix)),
+        BaseIR::Pop => "pop".into(),
         //_=>todo!("unsuported op:{op:?}."),
     }
 }
@@ -505,13 +511,11 @@ fn empty_asm_to_cil() {
 }
 #[test]
 fn empty_struct_to_cil() {
-    let ilasm = ILASMExporter::init("mock_assembly");
-    let type_cil = ilasm
-        .type_cil(&Type::Struct {
-            name: "Empty".into(),
-            fields: [].into(),
-        })
-        .expect("Could not create proper struct CIL");
+    let type_cil = type_cil(&Type::Struct {
+        name: "Empty".into(),
+        fields: [].into(),
+    })
+    .expect("Could not create proper struct CIL");
     assert_eq!(
         type_cil.as_ref(),
         ".class public sequential ansi sealed beforefieldinit 'Empty' extends [System.Runtime]System.ValueType{}"

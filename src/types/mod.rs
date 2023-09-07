@@ -170,7 +170,7 @@ impl Type {
             TyKind::Ref(_, referenced_type, _) => {
                 Self::Ref(Self::box_from_ty(referenced_type, tyctx))
             }
-            TyKind::FnDef(_, _) => Type::ISize,//todo!("Function types are not supported yet."),
+            TyKind::FnDef(_, _) => Type::ISize, //todo!("Function types are not supported yet."),
             TyKind::FnPtr(_) => Type::ISize, //todo!("Function pointer types are not supported yet. FnPtr:{rust_tpe:?}"),
             TyKind::Closure(_, _) => todo!("Closure types are not supported yet."),
             TyKind::Slice(element_type) => Self::Slice(Self::box_from_ty(element_type, tyctx)),

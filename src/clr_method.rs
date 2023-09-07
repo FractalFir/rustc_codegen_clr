@@ -11,6 +11,10 @@ use rustc_middle::{
     ty::{Instance, ParamEnv, Ty, TyCtxt, TyKind},
 };
 use serde::{Deserialize, Serialize};
+#[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
+pub(crate) enum MethodAttribute {
+    EntryPoint,
+}
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct CLRMethod {
     ops: Vec<BaseIR>,
@@ -18,6 +22,7 @@ pub(crate) struct CLRMethod {
     sig: FunctionSignature,
     name: IString,
     curr_bb: u32,
+    attrs: Vec<MethodAttribute>,
     //bbs:
 }
 #[derive(Debug, Clone)]
@@ -52,7 +57,14 @@ impl CLRMethod {
             name: name.into(),
             sig,
             curr_bb,
+            attrs: Vec::new(),
         }
+    }
+    pub(crate) fn has_attribute(&self, attr: &MethodAttribute) -> bool {
+        self.attrs.iter().any(|mattr| *attr == *mattr)
+    }
+    pub(crate) fn add_attribute(&mut self, attr: MethodAttribute) {
+        self.attrs.push(attr)
     }
     pub(crate) fn get_type_of_local(&self, local: u32) -> &Type {
         match self.local_id_placement(local) {
@@ -141,13 +153,13 @@ impl CLRMethod {
         //todo!();
     }
     pub(crate) fn new(sig: FunctionSignature, name: &str) -> Self {
-        let name = if name.contains("main") { "main" } else { name };
         Self {
             locals: Vec::new(),
             sig,
             name: name.into(),
             ops: Vec::with_capacity(0x100),
             curr_bb: 0,
+            attrs: Vec::new(),
         }
     }
     pub(crate) fn local_id_placement(&self, local: u32) -> LocalPlacement {
@@ -326,7 +338,7 @@ impl CLRMethod {
             //TerminatorKind::Unreachable => todo!("Can't handle terminator kind Unreachable!"),
             TerminatorKind::Drop { .. } => {
                 //TODO: stop ignoreing drops!
-                //todo!("Can't handle terminator kind Drop!")
+                todo!("Can't handle terminator kind Drop!")
             }
             TerminatorKind::Yield { .. } => todo!("Can't handle terminator kind Yield!"),
             _ => todo!("Unknown terminator type {terminator:?}"),

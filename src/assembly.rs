@@ -1,4 +1,4 @@
-use crate::{types::Type, CLRMethod, FunctionSignature, IString};
+use crate::{base_ir::CallSite, types::Type, CLRMethod, FunctionSignature, IString};
 use rustc_index::IndexVec;
 use rustc_middle::{
     mir::{mono::MonoItem, Local, LocalDecl},
@@ -12,6 +12,7 @@ pub(crate) struct Assembly {
     name: IString,
     types: HashSet<Type>,
     size_t: u8,
+    entrypoint: Option<CallSite>,
 }
 impl Assembly {
     pub(crate) fn types(&self) -> impl Iterator<Item = &Type> {
@@ -19,6 +20,9 @@ impl Assembly {
     }
     pub(crate) fn methods(&self) -> &[CLRMethod] {
         &self.methods
+    }
+    pub(crate) fn entrypoint(&self) -> &Option<CallSite> {
+        &self.entrypoint
     }
     pub(crate) fn add_type<'ctx>(&mut self, ty: Ty<'ctx>, tyctx: &TyCtxt<'ctx>) {
         self.types.insert(Type::from_ty(&ty, tyctx));
@@ -43,6 +47,7 @@ impl Assembly {
             types: HashSet::with_capacity(0x100),
             name: name.into(),
             size_t: 8,
+            entrypoint: None,
         }
     }
     pub(crate) fn add_fn<'tcx>(&mut self, instance: Instance<'tcx>, tcx: TyCtxt<'tcx>, name: &str) {
@@ -50,7 +55,7 @@ impl Assembly {
         let param_env = ParamEnv::empty();
 
         let def_id = instance.def_id();
-        if !tcx.is_mir_available(def_id){
+        if !tcx.is_mir_available(def_id) {
             println!("function {instance:?} has no MIR. Skippping.");
             return;
         }
@@ -91,9 +96,19 @@ impl Assembly {
             _ => todo!("Unsupported item:\"{item:?}\"!"),
         }
     }
+    pub(crate) fn set_entrypoint(&mut self, site: CallSite) {
+        if self.entrypoint.is_none() {
+            self.entrypoint = Some(site);
+        } else {
+            panic!("ERROR: trying to link 2 crates with different entrypoints!");
+        }
+    }
     pub(crate) fn link(&mut self, other: Self) {
         //TODO: do linking.
         self.methods.extend_from_slice(&other.methods);
         self.types.extend(other.types);
+        if let Some(entrypoint) = other.entrypoint {
+            self.set_entrypoint(entrypoint);
+        }
     }
 }

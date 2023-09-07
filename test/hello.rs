@@ -1,7 +1,7 @@
 #![feature(lang_items)]
-#![feature(start)]
 #![allow(internal_features)]
 #![no_std]
+#![feature(start)]
 #![feature(core_intrinsics)]
 use core::panic::PanicInfo;
 #[lang = "eh_personality"]
@@ -22,44 +22,76 @@ struct ASCIStr{
     cap:isize,
 }
 impl ASCIStr{
+    fn new()->Self{
+        Self{ptr:core::ptr::null_mut(),len:0,cap:0}
+    }
     fn ptr(&self)->*const u8{
         self.ptr
     }
     fn push(&mut self,ch:u8){
         let new_len = self.len + 1;
+        if self.cap >= new_len{
+            self.cap = self.cap<<1;
+            if self.cap < 4{
+                self.cap = 4;
+            }
+            self.ptr = unsafe{realloc(self.ptr.cast(),self.cap as usize) as *const _ as *mut _};
+        }
         unsafe{*self.ptr.offset(self.len) = ch};
         self.len = new_len;
     }
+    fn push_char(&mut self,ch:char){
+        let val = ch as u32;
+        if val > 0x7F{
+            self.push(b'?');
+        }
+        else{
+            self.push(val as u8);
+        }
+    }
 }
+/* 
+impl Drop for ASCIStr{
+    fn drop(&mut self){
+        unsafe{free(self.ptr().cast())};
+    }
+}*/
 #[start]
-fn main(_argc: isize, _argv: *const *const u8)->isize{
+fn main(argc:isize,argv: *const *const u8) -> isize{
     unsafe{
-        let mut message:*mut u8 = malloc(16) as *mut u8;
-        
-        *message.offset(0) = 0x48;
-        *message.offset(1) =  0x65;
-        let mut asci_str = ASCIStr{ptr:message,len:2,cap:16};
-        asci_str.push(0x6C);          
-        *message.offset(3) =  0x6C;
-        *message.offset(4) =  0x6F;
-        *message.offset(5) =  0x20;
-        *message.offset(6) =  0x66;
-        *message.offset(7) =  0x72;
-        *message.offset(8) =  0x6F;
-        *message.offset(9) =  0x6D;
-        *message.offset(10) =  0x20;
-        *message.offset(11) =  0x43;
-        *message.offset(12) =  0x4C;
-        *message.offset(13) =  0x52;
-        *message.offset(14) =  0x21;
-        *message.offset(15) =  0x00;
-        
-        puts(message);
-        //message = realloc(message as *const _ as *const _,32) as *const _ as *mut u8;
-        puts(message);
+        let mut asci_str = ASCIStr::new();
+        asci_str.push_char('R');
+        asci_str.push_char('u');
+        asci_str.push_char('s');
+        asci_str.push_char('t');
+        asci_str.push_char(' ');
+        asci_str.push_char('s');
+        asci_str.push_char('a');
+        asci_str.push_char('y');
+        asci_str.push_char('s');
+        asci_str.push_char(':');
+        asci_str.push_char('\n');
+        asci_str.push_char('"');
+        asci_str.push_char('H');
+        asci_str.push_char('e');
+        asci_str.push_char('l');
+        asci_str.push_char('l');
+        asci_str.push_char('o');
+        asci_str.push_char(',');
+        asci_str.push_char(' ');
+        asci_str.push_char('.');
+        asci_str.push_char('N');
+        asci_str.push_char('E');
+        asci_str.push_char('T');
+        asci_str.push_char('!');
+        asci_str.push_char('"');
+        asci_str.push_char('\n');
+        asci_str.push(0x00);
         
         puts(asci_str.ptr());
-        free(message as *const _ as *const _);
+        puts(asci_str.ptr());
+        puts(asci_str.ptr());
+        //free(asci_str.ptr().cast());
     }
     0
 }

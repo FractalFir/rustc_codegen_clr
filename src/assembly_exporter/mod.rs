@@ -61,6 +61,9 @@ pub(crate) trait AssemblyExporter: Sized {
             asm_exporter.add_method(method.clone());
         }
         crate::libc::insert_libc(&mut asm_exporter);
+        if let Some(entrypoint) = asm.entrypoint() {
+            asm_exporter.add_method(crate::codegen::entrypoint::wrapper(entrypoint));
+        }
         asm_exporter
             .finalize(final_path)
             .expect("Could not export assembly");
