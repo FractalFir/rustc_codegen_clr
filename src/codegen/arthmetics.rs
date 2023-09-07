@@ -1,7 +1,6 @@
 use crate::{base_ir::BaseIR, types::Type};
 use rustc_middle::mir::{BinOp, UnOp};
 
-use super::sizeof_ops;
 pub(crate) fn add_unchecked<'ctx>(a: Type, b: Type) -> BaseIR {
     match (a, b) {
         (Type::I128 | Type::U128, _) => todo!("Can't add 128 bit numbers yet!"),

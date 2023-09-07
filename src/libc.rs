@@ -5,11 +5,6 @@ use crate::{
     types::Type,
     FunctionSignature,
 };
-macro_rules! method {
-    ($name:literal,$input:expr,$output:expr,$ops:expr) => {
-        CLRMethod::from_raw(&($ops), &[], $name, FunctionSignature::new($input, $output))
-    };
-}
 macro_rules! add_method {
     ($name:ident,$input:expr,$output:expr,$ops:expr) => {
         fn $name(asm: &mut impl AssemblyExporter) {

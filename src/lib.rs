@@ -1,7 +1,4 @@
 #![feature(rustc_private)]
-#![allow(dead_code)]
-#![allow(unused_variables)]
-
 extern crate rustc_codegen_ssa;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
@@ -13,7 +10,6 @@ extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
 
-use rustc_hir::lang_items::LangItem;
 use rustc_middle::ty::{Binder, BoundVariableKind};
 fn skip_binder_if_no_generic_types<T>(binder: Binder<T>) -> Option<T> {
     if binder
@@ -56,7 +52,6 @@ use crate::base_ir::CallSite;
 mod assembly_exporter;
 mod compile_test;
 mod libc;
-mod projection;
 mod statement;
 mod types;
 pub type IString = Box<str>;

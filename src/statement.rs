@@ -1,13 +1,11 @@
 use crate::codegen::place::{place_getter_ops, place_setter_ops};
-use crate::{
-    projection::projection_adress, types::Type, Assembly, BaseIR, CLRMethod, LocalPlacement,
-};
+use crate::{types::Type, Assembly, BaseIR, CLRMethod, LocalPlacement};
 use rustc_middle::mir::NullOp;
 use rustc_middle::mir::{
     interpret::ConstValue, interpret::Scalar, BinOp, Body, CastKind, Constant, ConstantKind,
     Operand, Place, Rvalue, Statement, StatementKind,
 };
-use rustc_middle::ty::{Const, ParamEnv, TyCtxt};
+use rustc_middle::ty::TyCtxt;
 #[macro_export]
 macro_rules! sign_cast {
     ($var:ident,$src:ty,$dest:ty) => {
@@ -16,7 +14,6 @@ macro_rules! sign_cast {
 }
 pub(crate) struct CodegenCtx<'tctx, 'local_ctx> {
     clr_method: &'local_ctx CLRMethod,
-    asm: &'local_ctx Assembly,
     body: &'tctx Body<'tctx>,
     tyctx: TyCtxt<'tctx>,
 }
@@ -29,16 +26,12 @@ impl<'tctx, 'local_ctx> CodegenCtx<'tctx, 'local_ctx> {
     ) -> Self {
         Self {
             clr_method,
-            asm,
             body,
             tyctx,
         }
     }
     pub(crate) fn local_placement(&self, local: u32) -> LocalPlacement {
         self.meth().local_id_placement(local)
-    }
-    pub(crate) fn asm(&self) -> &Assembly {
-        self.asm
     }
     pub(crate) fn meth(&self) -> &CLRMethod {
         self.clr_method
@@ -61,7 +54,7 @@ impl<'tctx, 'local_ctx> CodegenCtx<'tctx, 'local_ctx> {
                 },
             ]
         } else {
-            projection_adress(place, self.get_local_type(place.local.into()), self)
+            crate::codegen::place::place_addresser_ops(place, self)
         }
     }
 }
@@ -160,10 +153,6 @@ fn handle_binop<'ctx>(
 fn handle_convert(src: &Type, dest: &Type) -> Vec<BaseIR> {
     crate::codegen::convert::convert_as(src, dest)
 }
-fn const_to_usize<'tyctx>(constant: &Const<'tyctx>, tyctx: TyCtxt<'tyctx>) -> usize {
-    //TODO: handle constant conversion better.
-    constant.eval_target_usize(tyctx, ParamEnv::empty()) as usize
-}
 fn handle_rvalue<'tyctx>(
     rvalue: &Rvalue<'tyctx>,
     codegen_ctx: &CodegenCtx<'tyctx, '_>,
@@ -246,7 +235,7 @@ fn handle_rvalue<'tyctx>(
         Rvalue::CopyForDeref(place) => place_getter_ops(place, codegen_ctx),
         Rvalue::Discriminant(_) => todo!("Can't yet compute discriminat types!"),
         Rvalue::ShallowInitBox(_, _) => todo!("Can't yet shalowly initalize a box!"),
-        Rvalue::Cast(CastKind::PointerCoercion(ptr), operand, _) => {
+        Rvalue::Cast(CastKind::PointerCoercion(_), operand, _) => {
             handle_operand(operand, codegen_ctx)
         }
         Rvalue::Cast(cast_kind, _, _) => todo!("Can't yet handle casts of type {cast_kind:?}"),

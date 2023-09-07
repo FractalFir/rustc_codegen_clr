@@ -86,7 +86,7 @@ fn align_of_tpe(tpe: &Type) -> Aligement {
                 .fold(Aligement::A1, |a, b| a.max(&b))
         }
         Type::GenericParam { .. } => Aligement::Unknown,
-        Type::ExternType { asm, name } => panic!("Can't calculate algiement of extern type!"),
+        Type::ExternType { .. } => panic!("Can't calculate algiement of extern type!"),
     }
 }
 pub(crate) fn align_of(tpe: Type) -> BaseIR {

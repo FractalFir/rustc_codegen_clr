@@ -1,48 +1,9 @@
-pub(crate) type GenericArgument = ();
-pub(crate) type EnumVariant = ();
-pub(crate) type Attribute = ();
-pub(crate) type Method = CLRMethod;
 use std::path::Path;
 type AssemblyInfo = str;
 #[derive(Debug, Clone)]
 enum AccessModifer {
     Private,
     Public,
-}
-#[derive(Debug, Clone)]
-pub(crate) struct ClassInfo {
-    name: IString,
-    fields: Vec<(IString, Type)>,
-    explicit_field_offsets: Option<Vec<u8>>,
-    extends: (Option<IString>, IString), //First, optional name of the assembly it comes form, then, type string
-    //Optional, can be ignored for now
-    access_modifier: AccessModifer,
-    member_functions: Vec<Method>,
-    generic_args: Vec<GenericArgument>,
-    attribute: Vec<Attribute>,
-}
-impl ClassInfo {
-    pub(crate) fn new(name: &str, fields: &[(IString, Type)]) -> Self {
-        Self {
-            name: name.into(),
-            fields: fields.into(),
-            extends: (Some("System.Runtime".into()), "System.ValueType".into()),
-            explicit_field_offsets: None,
-            access_modifier: AccessModifer::Public,
-            member_functions: vec![],
-            generic_args: vec![],
-            attribute: vec![],
-        }
-    }
-    pub(crate) fn name(&self) -> &str {
-        &self.name
-    }
-    pub(crate) fn extends(&self) -> &(Option<IString>, IString) {
-        &self.extends
-    }
-    pub(crate) fn fields(&self) -> &[(IString, Type)] {
-        &self.fields
-    }
 }
 use crate::{assembly::Assembly, clr_method::CLRMethod, types::Type, IString};
 pub(crate) mod ilasm_exporter;

@@ -127,13 +127,6 @@ impl ILASMExporter {
     fn version(&self) -> (u8, u8, u8, u8) {
         (0, 0, 0, 0)
     }
-    fn field_cil(&self, field: &(IString, Type)) -> String {
-        format!(
-            ".field {type_name} {field_name}",
-            type_name = escaped_type_name(&field.1),
-            field_name = field.0
-        )
-    }
     fn get_cil(&self) -> Result<IString, super::AssemblyExportError> {
         let types: String = self
             .types
@@ -530,7 +523,7 @@ fn empty_method_to_cil() {
     let method_cil = ilasm.method_cil(&empty);
     assert_eq!(
         method_cil.as_ref(),
-        ".method public hidebysig static void empty(){\n\tret\n\t\n}"
+        ".method public hidebysig static void empty(){\n\n\tret\n\t\n}"
     );
 }
 #[test]

@@ -10,6 +10,10 @@ pub(crate) fn place_getter_ops<'a>(place: &RPlace<'a>, ctx: &CodegenCtx<'a, '_>)
     let place = Place::from(place, ctx);
     place_get_ops(&place)
 }
+pub(crate) fn place_addresser_ops<'a>(place: &RPlace<'a>, ctx: &CodegenCtx<'a, '_>) -> Vec<BaseIR> {
+    let place = Place::from(place, ctx);
+    place_adress_ops(&place)
+}
 pub(crate) fn place_setter_ops<'a>(
     place: &RPlace<'a>,
     ctx: &CodegenCtx<'a, '_>,
@@ -115,6 +119,7 @@ impl Place {
     }
 }
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 enum ProjectionElement {
     Local { local: LocalPlacement, tpe: Type },
     Deref,
@@ -127,7 +132,7 @@ impl ProjectionElement {
     fn from<'a>(value: &PlaceElem<'a>, ctx: &CodegenCtx<'a, '_>) -> Self {
         match value {
             PlaceElem::Deref => ProjectionElement::Deref,
-            PlaceElem::Field(index, field_type) => {
+            PlaceElem::Field(index, ..) => {
                 //let field_type = Type::from_ty(field_type, ctx.tyctx());
                 Self::Field {
                     index: index.as_u32(),
@@ -215,7 +220,7 @@ impl ProjectionElement {
             }
             Self::Field { index } => {
                 let variant = 0;
-                let field = tpe.field(variant, *index);
+                //let field = tpe.field(variant, *index);
                 vec![BaseIR::LDField(Box::new(FiledDescriptor {
                     owner: tpe.clone(),
                     variant,
@@ -238,7 +243,7 @@ impl ProjectionElement {
             }
             Self::Field { index } => {
                 let variant = 0;
-                let field = tpe.field(variant, *index);
+                //let field = tpe.field(variant, *index);
                 vec![BaseIR::STField(Box::new(FiledDescriptor {
                     owner: tpe.clone(),
                     variant,
@@ -255,7 +260,7 @@ impl ProjectionElement {
             Self::Deref => vec![BaseIR::Nop],
             Self::Field { index } => {
                 let variant = 0;
-                let field = tpe.field(variant, *index);
+                //let field = tpe.field(variant, *index);
                 vec![BaseIR::LDFieldAdress(Box::new(FiledDescriptor {
                     owner: tpe.clone(),
                     variant,
