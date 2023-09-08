@@ -16,7 +16,7 @@ macro_rules! test_lib {
                     "-O",
                     "--crate-type=lib",
                     "-Z",
-                    BACKEND_PATH,
+                    backend_path(),
                     concat!("../", stringify!($test_name), ".rs"),
                     "-o",
                     concat!("./", stringify!($test_name), ".dll"),
@@ -34,8 +34,20 @@ macro_rules! test_lib {
         }
     };
 }
+
 #[cfg(test)]
-const BACKEND_PATH: &str = "codegen-backend=../../target/debug/librustc_codegen_clr.so";
+fn backend_path() -> &'static str {
+    if cfg!(target_os = "linux") {
+        "codegen-backend=../../target/debug/librustc_codegen_clr.so"
+    } else if cfg!(target_os = "windows") {
+        "codegen-backend=../../target/debug/rustc_codegen_clr.dll"
+    } else if cfg!(target_os = "macos") {
+        "codegen-backend=../../target/debug/librustc_codegen_clr.dylib"
+    } else {
+        panic!("Unsupported target OS");
+    }
+}
+
 test_lib! {binops}
 test_lib! {branches}
 test_lib! {calls}
