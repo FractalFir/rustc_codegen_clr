@@ -14,10 +14,17 @@ pub(crate) struct EnumVariant {
     pub(crate) index: u32,
     pub(crate) fields: Vec<FieldType>,
 }
-pub(crate) fn genric_name(src_name:&str,params:&[Option<Type>])->IString{
-    let param_string:String = params.iter().map(|tpe|
-        if let Some(tpe) = tpe{crate::assembly_exporter::ilasm_exporter::type_cil(tpe).unwrap()}else{"Unresolved".into()}
-    ).collect();
+pub(crate) fn genric_name(src_name: &str, params: &[Option<Type>]) -> IString {
+    let param_string: String = params
+        .iter()
+        .map(|tpe| {
+            if let Some(tpe) = tpe {
+                crate::assembly_exporter::ilasm_exporter::type_cil(tpe).unwrap()
+            } else {
+                "Unresolved".into()
+            }
+        })
+        .collect();
     format!("{src_name}{param_string}").into()
 }
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Hash)]
@@ -310,26 +317,27 @@ impl Type {
             Self::Ptr(inner) => inner.resolve(params),
             Self::Ref(inner) => inner.resolve(params),
             Self::Slice(inner) => inner.resolve(params),
-            Self::Struct { fields, name } =>{
+            Self::Struct { fields, name } => {
                 fields
-                .iter_mut()
-                .for_each(|field| field.tpe.resolve(params));
-                *name = genric_name(name,params);
-            },
-            Self::Array { element, .. } => element.resolve(params),
-            Self::Enum {  variants, name } => {
-                *name = genric_name(name,params);
-                variants.iter_mut().for_each(|variant| {
-                variant
-                    .fields
                     .iter_mut()
-                    .for_each(|field| field.tpe.resolve(params))
-            })},
+                    .for_each(|field| field.tpe.resolve(params));
+                *name = genric_name(name, params);
+            }
+            Self::Array { element, .. } => element.resolve(params),
+            Self::Enum { variants, name } => {
+                *name = genric_name(name, params);
+                variants.iter_mut().for_each(|variant| {
+                    variant
+                        .fields
+                        .iter_mut()
+                        .for_each(|field| field.tpe.resolve(params))
+                })
+            }
         }
     }
     pub(crate) fn field(&self, variant: u32, field_index: u32) -> &FieldType {
         match self {
-            Self::Struct {  fields,.. } => {
+            Self::Struct { fields, .. } => {
                 assert_eq!(
                     variant, 0,
                     "Struct have only one variant, but variant is {variant}"

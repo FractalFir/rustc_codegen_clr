@@ -146,7 +146,7 @@ impl ILASMExporter {
         let version = self.version();
         let version = format!("{}:{}:{}:{}", version.0, version.1, version.2, version.3);
         let final_cil = format!(
-            ".assembly {name}{{\n\t.ver {version}\n}}{types}{methods}",
+            ".assembly '{name}'{{\n\t.ver {version}\n}}{types}{methods}",
             name = self.asm_name
         );
         Ok(final_cil.into())
@@ -400,27 +400,31 @@ fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
         BaseIR::ConvI32Checked => "conv.ovf.i4".into(),
         //Calls
         BaseIR::Call(call_site) => {
-            //assert!(sig.inputs.is_empty());
-            let mut inputs_iter = call_site.signature.inputs.iter();
-            let mut input_string = String::new();
-            if let Some(firts_arg) = inputs_iter.next() {
-                input_string.push_str(&escaped_type_name(firts_arg));
+            if call_site.is_nop() {
+                "".into()
+            } else {
+                //assert!(sig.inputs.is_empty());
+                let mut inputs_iter = call_site.signature.inputs.iter();
+                let mut input_string = String::new();
+                if let Some(firts_arg) = inputs_iter.next() {
+                    input_string.push_str(&escaped_type_name(firts_arg));
+                }
+                for arg in inputs_iter {
+                    input_string.push(',');
+                    input_string.push_str(&escaped_type_name(arg));
+                }
+                let prefix = if call_site.is_static { "" } else { "instance" };
+                let owner_name = match &call_site.owner {
+                    Some(owner) => format!("{}::", escaped_type_name(&owner)),
+                    None => "".into(),
+                };
+                //println!("inputs:{inputs:?} input_string: {input_string}",inputs = call_site.signature.inputs);
+                format!(
+                    "\tcall {prefix} {output} {owner_name}{function_name}({input_string})\n",
+                    function_name = call_site.name,
+                    output = escaped_type_name(&call_site.signature.output)
+                )
             }
-            for arg in inputs_iter {
-                input_string.push(',');
-                input_string.push_str(&escaped_type_name(arg));
-            }
-            let prefix = if call_site.is_static { "" } else { "instance" };
-            let owner_name = match &call_site.owner {
-                Some(owner) => format!("{}::", escaped_type_name(&owner)),
-                None => "".into(),
-            };
-            //println!("inputs:{inputs:?} input_string: {input_string}",inputs = call_site.signature.inputs);
-            format!(
-                "\tcall {prefix} {output} {owner_name}{function_name}({input_string})\n",
-                function_name = call_site.name,
-                output = escaped_type_name(&call_site.signature.output)
-            )
         }
         //Type info
         BaseIR::SizeOf(tpe) => format!("sizeof {name}", name = escaped_type_name(tpe)),
@@ -500,7 +504,10 @@ fn init_ilasm_exporter() {
 fn empty_asm_to_cil() {
     let ilasm = ILASMExporter::init("mock_assembly");
     let cil = ilasm.get_cil().expect("Could not create CIL assembly!");
-    assert_eq!(cil.as_ref(), ".assembly mock_assembly{\n\t.ver 0:0:0:0\n}");
+    assert_eq!(
+        cil.as_ref(),
+        ".assembly 'mock_assembly'{\n\t.ver 0:0:0:0\n}"
+    );
 }
 #[test]
 fn empty_struct_to_cil() {

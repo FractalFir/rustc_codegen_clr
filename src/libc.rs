@@ -42,6 +42,7 @@ pub(crate) fn insert_libc(asm: &mut impl AssemblyExporter) {
     malloc(asm);
     realloc(asm);
     free(asm);
+    abort(asm);
 }
 
 fn math(asm: &mut impl AssemblyExporter) {
@@ -147,6 +148,29 @@ add_method!(
             signature: FunctionSignature::new(&[Type::ISize, Type::ISize], &Type::ISize),
             is_static: true,
         })),
+        BaseIR::Return,
+    ]
+);
+//System.Environment.Exit(a_ExitCode)
+add_method!(
+    abort,
+    &[],
+    &Type::Void,
+    [
+        BaseIR::LDConstI32(0),
+        /*
+        BaseIR::Call(Box::new(CallSite {
+            owner: Some(Type::ExternType {
+                asm: "System.Runtime".into(),
+                name: "System.Environment".into()
+            }),
+            name: "Exit".into(),
+            signature: FunctionSignature::new(&[Type::I32], &Type::Void),
+            is_static: true,
+        })),*/
+        BaseIR::ConvI,
+        BaseIR::LDIndIn(1),
+        BaseIR::Pop,
         BaseIR::Return,
     ]
 );

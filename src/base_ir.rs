@@ -13,6 +13,30 @@ pub(crate) struct CallSite {
     pub(crate) signature: FunctionSignature,
     pub(crate) is_static: bool,
 }
+impl CallSite {
+    //Returns true if callling this function is equivalent to a NOP.
+    pub(crate) fn is_nop(&self) -> bool {
+        self.is_black_box()
+    }
+    fn is_black_box(&self) -> bool {
+        if !self.is_static {
+            return false;
+        }
+        if self.owner.is_some() {
+            return false;
+        };
+        if self.name.as_ref() != "black_box" {
+            return false;
+        };
+        if self.signature.inputs().len() != 1 {
+            return false;
+        };
+        if self.signature.inputs()[0] != *self.signature.output() {
+            return false;
+        };
+        return true;
+    }
+}
 // An IR close, but not exactly equivalent to the CoreCLR IR.
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub(crate) enum BaseIR {
