@@ -56,6 +56,9 @@ impl Drop for ASCIStr{
         unsafe{free(self.ptr().cast())};
     }
 }*/
+struct Generic<T>{
+    arg:T,
+}
 #[start]
 fn main(argc:isize,argv: *const *const u8) -> isize{
     unsafe{

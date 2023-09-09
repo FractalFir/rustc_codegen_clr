@@ -82,7 +82,7 @@ impl AssemblyExporter for ILASMExporter {
         Ok(())
     }
 }
-fn type_cil(tpe: &Type) -> Result<IString, super::AssemblyExportError> {
+pub(crate) fn type_cil(tpe: &Type) -> Result<IString, super::AssemblyExportError> {
     match tpe {
         Type::Struct { name, fields } => {
             let mut field_iter = fields.iter();

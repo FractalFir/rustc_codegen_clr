@@ -33,6 +33,10 @@ pub(crate) fn insert_libc(asm: &mut impl AssemblyExporter) {
         name: "core.panic.PanicInfo".into(),
         fields: [].into(),
     });
+    asm.add_type(&Type::Struct {
+        name: "core.panic.PanicInfoUnresolved".into(),
+        fields: [].into(),
+    });
     math(asm);
     io(asm);
     malloc(asm);
