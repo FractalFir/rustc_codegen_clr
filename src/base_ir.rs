@@ -46,6 +46,7 @@ pub(crate) enum BaseIR {
     LDConstI32(i32),
     LDConstI64(i64),
     LDConstF32(f32),
+    LDConstF64(f64),
     STIndIn(u8),
     STIndI,
     STIndR8,

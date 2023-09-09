@@ -81,6 +81,7 @@ fn load_const_scalar(scalar: Scalar, scalar_type: Type) -> Vec<BaseIR> {
         Type::I32 => vec![BaseIR::LDConstI32(sign_cast!(scalar_u128, u32, i32))],
         Type::U32 => vec![BaseIR::LDConstI32(scalar_u128 as i32), BaseIR::ConvU32],
         Type::F32 => vec![BaseIR::LDConstF32(f32::from_bits(scalar_u128 as u32))],
+        Type::F64 => vec![BaseIR::LDConstF64(f64::from_bits(scalar_u128 as u64))],
         Type::Bool => vec![
             BaseIR::LDConstI32(i32::from(u8::from(scalar_u128 != 0))),
             BaseIR::ConvI32,
@@ -113,9 +114,6 @@ fn handle_constant<'ctx>(
     match const_kind {
         ConstantKind::Val(value, const_ty) => {
             load_const_value(value, Type::from_ty(&const_ty, codegen_ctx.tyctx()))
-        }
-        ConstantKind::Unevaluated(a, b) => {
-            vec![BaseIR::DebugComment(format!("{a:?} {b:?}").into())]
         }
         _ => todo!("Unhanded const kind {const_kind:?}!"),
     }

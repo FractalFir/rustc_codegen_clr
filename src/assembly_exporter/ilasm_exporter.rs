@@ -283,6 +283,7 @@ fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
             }
         }
         BaseIR::LDConstF32(f32const) => format!("ldc.r4 {f32const}"),
+        BaseIR::LDConstF64(f64const) => format!("ldc.r8 {f64const}"),
         BaseIR::LDConstI32(value) => {
             if *value == -1 {
                 "ldc.i4.m1".into()
