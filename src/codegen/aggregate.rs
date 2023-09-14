@@ -61,6 +61,46 @@ impl AggregateKind {
         }
     }
 }
+fn create_adt(adt_type:Type,fields: Vec<(u32, Vec<BaseIR>)>, target_location: Place,variant:u32)->Vec<BaseIR>{
+    match &adt_type{
+        Type::Struct { name, .. }=>{
+            let obj_getter = super::place::place_adress_ops(&target_location);
+            let mut ops: Vec<BaseIR> = Vec::with_capacity(fields.len() * 2);
+            for field in fields {
+                ops.extend(obj_getter.iter().cloned());
+                ops.extend(field.1);
+                ops.push(BaseIR::STField(Box::new(FiledDescriptor {
+                    owner: adt_type.clone(),
+                    variant: variant,
+                    field_index: field.0,
+                })));
+            }
+            ops.extend(super::place::place_get_ops(&target_location));
+            ops
+        },
+        Type::Enum { name, variants }=>{
+            let mut getter_ops =  super::place::place_adress_ops(&target_location);
+            
+            let variant_type = adt_type.variant_type(variant).expect("Can't get variant index");
+            // Get variant adress
+            getter_ops.push(BaseIR::LDFieldAdress(Box::new(FiledDescriptor { owner: adt_type.clone(), variant: variant, field_index: u32::MAX })));
+            let mut ops = Vec::new();
+            let enum_variant = adt_type.enum_variant(variant).expect("Can't get variant index");
+            for (field,field_value) in enum_variant.fields.iter().zip(fields.iter()){
+                ops.extend(getter_ops.clone());
+                ops.extend(field_value.1.clone());
+                ops.push(BaseIR::STField(Box::new(FiledDescriptor {
+                    owner: variant_type.clone(),
+                    variant: variant,
+                    field_index: field_value.0,
+                })));
+            }
+            ops.extend(super::place::place_get_ops(&target_location));
+            ops
+        }
+        _=>todo!("Can't create ADT of type {adt_type:?}"),
+    }
+}
 fn create_aggregate(
     target_location: Place,
     aggreagate: AggregateKind,
@@ -89,21 +129,7 @@ fn create_aggregate(
             adt_type,
             variant,
             active_field,
-        } => {
-            let obj_getter = super::place::place_adress_ops(&target_location);
-            let mut ops: Vec<BaseIR> = Vec::with_capacity(fields.len() * 2);
-            for field in fields {
-                ops.extend(obj_getter.iter().cloned());
-                ops.extend(field.1);
-                ops.push(BaseIR::STField(Box::new(FiledDescriptor {
-                    owner: adt_type.clone(),
-                    variant: variant,
-                    field_index: field.0,
-                })));
-            }
-            ops.extend(super::place::place_get_ops(&target_location));
-            ops
-        }
+        } => create_adt(adt_type, fields, target_location, variant),
         AggregateKind::Tuple => todo!("Can't construct tuple aggreagtes yet!"),
     }
 }

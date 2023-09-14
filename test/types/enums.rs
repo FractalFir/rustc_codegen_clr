@@ -20,17 +20,22 @@ enum SimpleEnum{
     E,
     F,
 }
+#[allow(dead_code)]
 fn simple_enum(){
     //let simple_enum = SimpleEnum::A;
     //let _ = black_box(simple_enum);
 }
 fn main(){
+    /* 
     simple_enum();
     let maybe:*mut Maybe = core::ptr::null_mut();
     test_eq!(maybe,core::ptr::null_mut());
     let maybe:*mut Maybe = unsafe{malloc(5)}.cast();
     if let Maybe::Some(value) = unsafe{*maybe}{
         black_box(value);
-    }
+    }*/
+    /* */
+    let maybe = Maybe::Some(8);
+    black_box(maybe);
 }
 

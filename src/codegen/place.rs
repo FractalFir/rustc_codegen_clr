@@ -19,7 +19,9 @@ pub(crate) fn place_setter_ops<'a>(
     ctx: &CodegenCtx<'a, '_>,
     value_calc: Vec<BaseIR>,
 ) -> Vec<BaseIR> {
+    println!("place:{place:?}");
     let place = Place::from(place, ctx);
+    println!("place:{place:?}");
     place_set_ops(&place, value_calc)
 }
 fn local_get(local: &LocalPlacement) -> BaseIR {
@@ -84,6 +86,7 @@ pub(crate) fn place_set_ops(place: &Place, value_calc: Vec<BaseIR>) -> Vec<BaseI
 // "Body" is the part that calculates the adress of the variable in question. It is handled in the same way for every operation done with a place.
 // For any head, there is always a certain set of ops that will be consitenlty emmited.
 // "Head" is the last element of the projection. This is the part that gets the value, addres or sets the varaible. What ops will it create? Depends on what you want to do with it.
+#[derive(Debug)]
 pub(crate) struct Place {
     body: Box<[ProjectionElement]>,
     head: Box<ProjectionElement>,
@@ -133,7 +136,7 @@ impl ProjectionElement {
     fn from<'a>(value: &PlaceElem<'a>, ctx: &CodegenCtx<'a, '_>) -> Self {
         match value {
             PlaceElem::Deref => ProjectionElement::Deref,
-            PlaceElem::Field(index, ..) => {
+            PlaceElem::Field(index, _) => {
                 //let field_type = Type::from_ty(field_type, ctx.tyctx());
                 Self::Field {
                     index: index.as_u32(),

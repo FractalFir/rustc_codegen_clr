@@ -366,8 +366,8 @@ impl Type {
                 );
                 &fields[field_index as usize]
             }
-            Self::Enum{..}=>{
-                todo!("")
+            Self::Enum { name, variants }=>{
+                todo!("getting field of varaint {variant_idx} with field index {field_index} of {self:?}")
             }
             Self::EnumVariant { parrent_name, variant } =>{
                 &variant.fields[field_index as usize]

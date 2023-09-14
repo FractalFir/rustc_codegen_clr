@@ -1,5 +1,5 @@
 use crate::{
-    assembly_exporter::AssemblyExportError, base_ir::BaseIR, clr_method::CLRMethod, types::Type,
+    assembly_exporter::AssemblyExportError, base_ir::{BaseIR, FiledDescriptor}, clr_method::CLRMethod, types::Type,
     IString,
 };
 
@@ -244,7 +244,19 @@ fn locals_cli(locals: &[Type]) -> IString {
     local_string.push(')');
     local_string.into()
 }
+fn set_field(field_descriptor:&FiledDescriptor)->String{
+    let field = field_descriptor
+    .owner
+    .field(field_descriptor.variant, field_descriptor.field_index);
+format!(
+    "stfld {field_type} {field_parent}::{field_name}",
+    field_parent = escaped_type_name(&field_descriptor.owner),
+    field_type = variable_arg_type_name(&field.tpe),
+    field_name = field.name,
+)
+}
 fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
+    println!("op:{op:?}");
     match op {
         //Controll flow
         BaseIR::BBLabel { bb_id } => format!("bb_{bb_id}:"),
@@ -435,17 +447,7 @@ fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
             )
             }
         }
-        BaseIR::STField(field_descriptor) => {
-            let field = field_descriptor
-                .owner
-                .field(field_descriptor.variant, field_descriptor.field_index);
-            format!(
-                "stfld {field_type} {field_parent}::{field_name}",
-                field_parent = escaped_type_name(&field_descriptor.owner),
-                field_type = variable_arg_type_name(&field.tpe),
-                field_name = field.name,
-            )
-        }
+        BaseIR::STField(field_descriptor) => set_field(field_descriptor.as_ref()),
         //Conversions
         BaseIR::ConvI => "conv.i".into(),
         BaseIR::ConvU => "conv.u".into(),

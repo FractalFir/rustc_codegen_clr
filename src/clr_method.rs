@@ -181,9 +181,8 @@ impl CLRMethod {
         asm: &Assembly,
     ) {
         if cfg!(debug_assertions) {
-            println!("statement:{statement:?}");
-            self.ops
-                .push(BaseIR::DebugComment(format!("{statement:?}").into()));
+            //println!("statement:{statement:?}");
+            //self.ops.push(BaseIR::DebugComment(format!("{statement:?}").into()));
         }
         self.ops.extend(crate::statement::handle_statement(
             statement, self, asm, body, tyctx,
