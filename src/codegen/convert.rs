@@ -50,5 +50,7 @@ pub(crate) fn convert_as(src: &Type, dest: &Type) -> Vec<BaseIR> {
         }
         Type::GenericParam { .. } => todo!("Can't handle converting to generic using as"),
         Type::ExternType { .. } => panic!("Tried to cast as extern type!"),
+        Type::EnumVariant { .. } => panic!("Tried to cast as partial type(enum variant)!"),
+        
     }
 }

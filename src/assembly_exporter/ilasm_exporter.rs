@@ -392,7 +392,11 @@ fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
                     field_type = "uint8"
                 )
             }
+            else if field_descriptor.is_variant(){
+                todo!("Can't load field variant");
+            }
             else{
+                println!("fd:{field_descriptor:?}");
             let field = field_descriptor
                 .owner
                 .field(field_descriptor.variant, field_descriptor.field_index);
@@ -405,6 +409,21 @@ fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
             }
         }
         BaseIR::LDFieldAdress(field_descriptor) => {
+            if field_descriptor.is_discriminant(){
+                format!(
+                    "ldflda {field_type} {field_parent}::_tag",
+                    field_parent = escaped_type_name(&field_descriptor.owner),
+                    field_type = "uint8"
+                )
+            }
+            else if field_descriptor.is_variant(){
+                let variant = field_descriptor.owner.enum_variant(field_descriptor.variant).expect("Could not get enum variant!");
+                let owner = escaped_type_name(&field_descriptor.owner);
+                let variant_type = format!("{owner}/{variant}",variant = variant.name);
+                format!("ldflda {variant_type} {owner}::{variant_name}",variant_name = variant.name).into()
+                // todo!("Can't load field variant");
+            }
+            else{
             let field = field_descriptor
                 .owner
                 .field(field_descriptor.variant, field_descriptor.field_index);
@@ -414,6 +433,7 @@ fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
                 field_type = variable_arg_type_name(&field.tpe),
                 field_name = field.name,
             )
+            }
         }
         BaseIR::STField(field_descriptor) => {
             let field = field_descriptor
@@ -535,6 +555,7 @@ fn type_name(var: &Type) -> IString {
             }
         }
         Type::Enum { name, .. } => name.replace("::", "."), 
+        Type::EnumVariant { parrent_name, variant }=>format!("{parrent_name}/{variant_name}",variant_name = variant.name),
         _=>todo!("Can't yet get the name of type {var:?}"),
     }
     .into()

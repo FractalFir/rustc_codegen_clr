@@ -57,6 +57,10 @@ pub(crate) enum Type {
         name: IString,
         variants: Box<[EnumVariant]>,
     },
+    EnumVariant{
+        parrent_name:IString,
+        variant:Box<EnumVariant>,
+    },
     //Slice/Array types
     StrSlice,
     Slice(Box<Self>),
@@ -151,6 +155,23 @@ impl Type {
             Self::Array { element, .. } => Some(element.as_ref()),
             Self::Slice(element) => Some(element.as_ref()),
             _ => None,
+        }
+    }
+    pub(crate) fn variant_type(&self,variant_index:u32)->Option<Type>{
+        if let Self::Enum { name, variants } = self{
+            let enum_variant = variants.get(variant_index as usize)?;
+            Some(Type::EnumVariant { parrent_name: name.clone(), variant: Box::new(enum_variant.clone())})
+        }
+        else{
+            None
+        }
+    }
+    pub(crate) fn enum_variant(&self,variant_index:u32)->Option<&EnumVariant>{
+        if let Self::Enum { name, variants } = self{
+            variants.get(variant_index as usize)
+        }
+        else{
+            None
         }
     }
     /// Returns true if type is [`Type::Void`]
@@ -333,20 +354,24 @@ impl Type {
                         .for_each(|field| field.tpe.resolve(params))
                 })
             }
+            Self::EnumVariant { variant ,..}=>variant.fields.iter_mut().for_each(|field|field.tpe.resolve(params))
         }
     }
-    pub(crate) fn field(&self, variant: u32, field_index: u32) -> &FieldType {
+    pub(crate) fn field(&self, variant_idx: u32, field_index: u32) -> &FieldType {
         match self {
             Self::Struct { fields, .. } => {
                 assert_eq!(
-                    variant, 0,
-                    "Struct have only one variant, but variant is {variant}"
+                    variant_idx, 0,
+                    "Struct have only one variant, but variant is {variant_idx}"
                 );
                 &fields[field_index as usize]
             }
             Self::Enum{..}=>{
                 todo!("")
             }
+            Self::EnumVariant { parrent_name, variant } =>{
+                &variant.fields[field_index as usize]
+            },
             _ => todo!("can't get fields of a type {self:?}!"),
         }
     }

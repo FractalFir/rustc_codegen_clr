@@ -87,6 +87,7 @@ fn align_of_tpe(tpe: &Type) -> Aligement {
         }
         Type::GenericParam { .. } => Aligement::Unknown,
         Type::ExternType { .. } => panic!("Can't calculate algiement of extern type!"),
+        Type::EnumVariant { .. } => panic!("Can't calculate aligement of enum varaint, since it is a partial type."),
     }
 }
 pub(crate) fn align_of(tpe: Type) -> BaseIR {

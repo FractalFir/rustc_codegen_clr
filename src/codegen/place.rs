@@ -127,6 +127,7 @@ enum ProjectionElement {
     Index { local: LocalPlacement },
     ConstIndex { offset: u64, min_length: u64 },
     Subslice { from: u64, to: u64 },
+    EnumVariant(u32),
 }
 impl ProjectionElement {
     fn from<'a>(value: &PlaceElem<'a>, ctx: &CodegenCtx<'a, '_>) -> Self {
@@ -167,18 +168,27 @@ impl ProjectionElement {
                 }
             }
             PlaceElem::OpaqueCast(_) => todo!("Can't handle casts in place!"),
-            PlaceElem::Downcast(_, _) => todo!("Can't get the variant of an enum!"),
+            PlaceElem::Downcast(_, varinat_idx) =>{
+                Self::EnumVariant(varinat_idx.as_u32())
+            }
         }
     }
     /// Returns the ops necesary to handle a [`ProjectionElement`] that is within `body` of a [`Place`].
     fn body_ops(&self, tpe: &Type) -> (Vec<BaseIR>, Type) {
         match self {
-            Self::Local { local, tpe } => (vec![local_get(local)], tpe.clone()),
+            Self::Local { local, tpe } => {
+                if matches!(tpe,Type::Enum{..} | Type::EnumVariant {..}| Type::Struct{..}){
+                    (vec![local_adress(local)], tpe.clone())
+                }
+                else{
+                    (vec![local_get(local)], tpe.clone())
+                }
+            },
             Self::Field { index } => {
                 let variant = 0;
                 let field = tpe.field(variant, *index);
                 match field.tpe {
-                    Type::Struct { .. } => (
+                    Type::Struct { .. } | Type::Array { .. } | Type::Enum { .. }=> (
                         vec![BaseIR::LDFieldAdress(Box::new(FiledDescriptor {
                             owner: tpe.clone(),
                             variant,
@@ -203,6 +213,11 @@ impl ProjectionElement {
                 let ops = body_deref_ops(pointed);
                 (ops, pointed.clone())
             }
+            Self::EnumVariant(variant_idx)=>{
+                let variant_type = tpe.variant_type(*variant_idx).expect("Can't get variant index");
+                let op = BaseIR::LDFieldAdress(Box::new(FiledDescriptor { owner:tpe.clone(), variant: *variant_idx, field_index: u32::MAX }));
+                (vec![op],variant_type)
+            },
             //Self::Index{ }
             _ => todo!("Unhandled projection element type:{self:?}"),
         }

@@ -29,8 +29,8 @@ fn main(){
     let maybe:*mut Maybe = core::ptr::null_mut();
     test_eq!(maybe,core::ptr::null_mut());
     let maybe:*mut Maybe = unsafe{malloc(5)}.cast();
-    if let Maybe::Some(_) = unsafe{*maybe}{
-        black_box(1);
+    if let Maybe::Some(value) = unsafe{*maybe}{
+        black_box(value);
     }
 }
 
