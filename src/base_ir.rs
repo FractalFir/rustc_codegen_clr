@@ -6,6 +6,16 @@ pub(crate) struct FiledDescriptor {
     pub(crate) variant: u32,
     pub(crate) field_index: u32,
 }
+impl FiledDescriptor{
+    pub(crate) fn is_discriminant(&self)->bool{
+        if matches!(self.owner,Type::Enum{..}) && self.variant == u32::MAX && self.field_index == u32::MAX{
+            true
+        }
+        else{
+            false
+        }
+    }
+}
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct CallSite {
     pub(crate) owner: Option<Type>,

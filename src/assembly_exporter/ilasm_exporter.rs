@@ -24,6 +24,7 @@ impl AssemblyExporter for ILASMExporter {
             Type::U16 | Type::I16 => (),
             Type::U32 | Type::I32 | Type::F32 => (),
             Type::U64 | Type::I64 | Type::F64 => (),
+            Type::ISize | Type::USize | Type::Void => (),        
             _ => {
                 let _ = self.types.push(tpe.clone());
             }
@@ -111,6 +112,37 @@ pub(crate) fn type_cil(tpe: &Type) -> Result<IString, super::AssemblyExportError
             }
             Ok(format!(".class public sequential ansi sealed beforefieldinit '{name}' extends [System.Runtime]System.ValueType{{{fields}}}").into())
         }
+        Type::Enum{name,variants}=>{
+            let var_size = ((u64::BITS - (variants.len() as u64).leading_zeros() + 8 - 1))/8;
+            let tag_type = match var_size{
+                1=>Type::U8,
+                2=>Type::U16,
+                4=>Type::U32,
+                8=>Type::U64,
+                _=>todo!("Can't yet have {var_size} byte wide enum tag!"),
+            };
+            let mut field_string = format!("\t.field [0] {tag_type} _tag\n",tag_type = type_name(&tag_type));
+            let mut varariant_string = String::new();
+            for variant in variants.iter(){
+                let variant_name = &variant.name;
+                let var_type = format!("{name}/{variant_name}");
+                field_string.push_str(&format!("\t.field [{var_size}] {var_type} {variant_name}\n"));
+                let mut variant_field_string = String::new();
+                let mut variant_field_iter = variant.fields.iter();
+                if let Some(first) = variant_field_iter.next() {
+                    let type_name = escaped_type_name(&first.tpe);
+                    let field_name = &first.name;
+                    variant_field_string.push_str(&format!("\n\t\t.field {type_name} {field_name}\n"));
+                }
+                for field in variant_field_iter {
+                    let type_name = escaped_type_name(&field.tpe);
+                    let field_name = &field.name;
+                    variant_field_string.push_str(&format!("\t\t.field {type_name} {field_name}\n"));
+                }
+                varariant_string.push_str(&format!("\t.class public sequential ansi sealed beforefieldinit '{variant_name}' extends [System.Runtime]System.ValueType{{{variant_field_string}}}\n"));
+            }
+            Ok(format!(".class public sequential ansi sealed beforefieldinit '{name}' extends [System.Runtime]System.ValueType{{\n{varariant_string}{field_string}}}").into())
+        }
         _ => Ok("".into()),
     }
 }
@@ -128,16 +160,18 @@ impl ILASMExporter {
         (0, 0, 0, 0)
     }
     fn get_cil(&self) -> Result<IString, super::AssemblyExportError> {
+        println!("types:{types:?}",types = self.types);
         let types: String = self
             .types
             .iter()
             .map(|tpe| {
                 format!(
-                    "\t{s}\n",
+                    "{s}\n",
                     s = type_cil(tpe).expect("Could not create struct CIL")
                 )
             })
             .collect();
+        
         let methods: String = self
             .methods
             .iter()
@@ -351,6 +385,14 @@ fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
         BaseIR::STIndR8 => "stind.r8".to_string(),
         //Fileds
         BaseIR::LDField(field_descriptor) => {
+            if field_descriptor.is_discriminant(){
+                format!(
+                    "ldfld {field_type} {field_parent}::_tag",
+                    field_parent = escaped_type_name(&field_descriptor.owner),
+                    field_type = "uint8"
+                )
+            }
+            else{
             let field = field_descriptor
                 .owner
                 .field(field_descriptor.variant, field_descriptor.field_index);
@@ -360,6 +402,7 @@ fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
                 field_type = variable_arg_type_name(&field.tpe),
                 field_name = field.name,
             )
+            }
         }
         BaseIR::LDFieldAdress(field_descriptor) => {
             let field = field_descriptor
@@ -455,7 +498,7 @@ fn variable_arg_type_name(var: &Type) -> IString {
 fn escaped_type_name(var: &Type) -> IString {
     match var {
         Type::Struct { .. } => format!("'{name}'", name = type_name(var)).into(),
-        //Type::Enum(name) => format!("'{name}'").into(),
+        Type::Enum { .. } => format!("'{name}'", name = type_name(var)).into(),
         _ => type_name(var),
     }
 }
@@ -491,7 +534,8 @@ fn type_name(var: &Type) -> IString {
                 format!("[{asm}]{name}")
             }
         }
-        _ => todo!("unhandled var type {var:?}"),
+        Type::Enum { name, .. } => name.replace("::", "."), 
+        _=>todo!("Can't yet get the name of type {var:?}"),
     }
     .into()
 }

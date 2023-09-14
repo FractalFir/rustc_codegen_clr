@@ -281,13 +281,13 @@ fn body_deref_ops(pointed: &Type) -> Vec<BaseIR> {
         Type::F32 => vec![BaseIR::LDIndR4],
         Type::F64 => vec![BaseIR::LDIndR8],
         // In body, struct types should never be derferenced.
-        Type::Struct { .. } | Type::Array { .. } => vec![BaseIR::Nop],
+        Type::Struct { .. } | Type::Array { .. } | Type::Enum { .. }=> vec![BaseIR::Nop],
         _ => todo!("unsuported adress derf: {pointed:?}"),
     }
 }
 fn getter_deref_ops(pointed: &Type) -> Vec<BaseIR> {
     match pointed {
-        Type::Struct { .. } | Type::Array { .. } => vec![BaseIR::LDObj(pointed.clone())],
+        Type::Struct { .. } | Type::Array { .. } | Type::Enum { .. } => vec![BaseIR::LDObj(pointed.clone())],
         _ => body_deref_ops(pointed),
     }
 }

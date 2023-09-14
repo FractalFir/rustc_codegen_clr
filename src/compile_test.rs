@@ -135,3 +135,4 @@ test_lib! {structs}
 test_lib! {types}
 
 run_test! {arthm,add}
+run_test! {types,enums}

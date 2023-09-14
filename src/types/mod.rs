@@ -240,7 +240,7 @@ impl Type {
                 let fields: Vec<FieldType> = adt
                     .all_fields()
                     .map(|field| FieldType {
-                        name: field.name.to_string().into(),
+                        name:  field_name_escape(&field.name.to_string()),
                         tpe: Self::from_ty_non_cyclic(
                             &tyctx.type_of(field.did).skip_binder(),
                             tyctx,
@@ -268,7 +268,7 @@ impl Type {
                             .fields
                             .iter()
                             .map(|field| FieldType {
-                                name: field.name.to_string().into(),
+                                name: field_name_escape(&field.name.to_string()),
                                 tpe: Self::from_ty_non_cyclic(
                                     &tyctx.type_of(field.did).skip_binder(),
                                     tyctx,
@@ -344,8 +344,45 @@ impl Type {
                 );
                 &fields[field_index as usize]
             }
-            _ => todo!("type {self:?} is not type!"),
+            Self::Enum{..}=>{
+                todo!("")
+            }
+            _ => todo!("can't get fields of a type {self:?}!"),
         }
+    }
+    pub(crate) fn inner_types(&self)->Vec<Self>{
+        match self{
+            Self::Ptr(inner)=>{
+                let mut inner_types = inner.inner_types();
+                inner_types.push(inner.as_ref().clone());
+                inner_types
+            },
+            _=>Vec::new(),
+        }
+    }
+    pub(crate) fn is_builtin(&self)->bool{
+        match self {
+            Type::U8 | Type::I8 |
+            Type::U16 | Type::I16|
+            Type::U32 | Type::I32 | Type::F32 |
+            Type::U64 | Type::I64 | Type::F64 |
+            Type::ISize | Type::USize | Type::Void => true,
+            _=>false,
+        } 
+    }
+}
+fn field_name_escape(field_name:&str)->IString{
+    let first_letter = field_name.chars().next();
+    if let Some(first_letter) = first_letter{
+        if first_letter.is_numeric(){
+            format!("f_{field_name}").into()
+        }
+        else{
+            field_name.into()
+        }
+    }
+    else{
+        "unnamed".into()
     }
 }
 fn adt_name(adt: &AdtDef) -> IString {

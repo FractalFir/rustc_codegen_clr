@@ -25,7 +25,11 @@ impl Assembly {
         &self.entrypoint
     }
     pub(crate) fn add_type<'ctx>(&mut self, ty: Ty<'ctx>, tyctx: &TyCtxt<'ctx>) {
-        self.types.insert(Type::from_ty(&ty, tyctx));
+        let tpe = Type::from_ty(&ty, tyctx);
+        let types = tpe.inner_types();
+        self.types.insert(tpe);
+        self.types.extend(types);
+
     }
     pub(crate) fn add_types_from_locals<'ctx>(
         &mut self,

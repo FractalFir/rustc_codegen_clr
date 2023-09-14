@@ -93,17 +93,20 @@ fn load_const_scalar(scalar: Scalar, scalar_type: Type) -> Vec<BaseIR> {
         Type::U64 => vec![BaseIR::LDConstI64(scalar_u128 as i64), BaseIR::ConvU64],
         Type::USize => vec![BaseIR::LDConstI64(scalar_u128 as i64), BaseIR::ConvU],
         Type::ISize => vec![BaseIR::LDConstI64(scalar_u128 as i64), BaseIR::ConvI],
-        Type::Struct { name, fields } => todo!(),
+        Type::Struct { .. } => todo!(),
         Type::Ptr(_) => vec![BaseIR::LDConstI64(scalar_u128 as i64), BaseIR::ConvI],
-        //Type::Enum(_) => vec![BaseIR::LDConstI32((scalar_u128 != 0) as u8 as i32)],
+        Type::Enum{ name, variants }=>{
+            todo!("Const enum not supported {name} {variants:?}");
+            //vec![BaseIR::LDConstI32((scalar_u128 != 0) as u8 as i32)],
+        } 
         _ => todo!("can't yet handle a scalar of type {scalar_type:?}!"),
     }
 }
 fn load_const_value(const_val: ConstValue, const_ty: Type) -> Vec<BaseIR> {
     match const_val {
         ConstValue::Scalar(scalar) => load_const_scalar(scalar, const_ty),
-        ConstValue::ZeroSized => vec![BaseIR::DebugComment("ZeroSized!".into())],
-        _ => todo!("Unhandled const value {const_val:?}"),
+        //ConstValue::ZeroSized => vec![BaseIR::DebugComment("ZeroSized!".into())],
+        _ => todo!("Unhandled const value {const_val:?} of type {const_ty:?}"),
     }
 }
 fn handle_constant<'ctx>(
@@ -231,7 +234,20 @@ fn handle_rvalue<'tyctx>(
             }
         }
         Rvalue::CopyForDeref(place) => place_getter_ops(place, codegen_ctx),
-        Rvalue::Discriminant(_) => todo!("Can't yet compute discriminat types!"),
+        Rvalue::Discriminant(place) => {
+            let mut ops = crate::codegen::place::place_addresser_ops(place,codegen_ctx);
+            let owner = Type::from_ty(&place.ty(codegen_ctx.body(),*codegen_ctx.tyctx()).ty, codegen_ctx.tyctx());
+            ops.push(
+                BaseIR::LDField(Box::new(
+                    crate::base_ir::FiledDescriptor { 
+                        owner: owner, 
+                        variant: u32::MAX, 
+                        field_index: u32::MAX, 
+                    }
+                ))
+            );
+            ops
+        },
         Rvalue::ShallowInitBox(_, _) => todo!("Can't yet shalowly initalize a box!"),
         Rvalue::Cast(CastKind::PointerCoercion(_), operand, _) => {
             handle_operand(operand, codegen_ctx)

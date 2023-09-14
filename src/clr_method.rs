@@ -306,7 +306,7 @@ impl CLRMethod {
                 func,
                 args,
                 destination,
-                target: _,
+                target,
                 unwind: _,
                 fn_span: _,
                 call_source: _,
@@ -332,6 +332,10 @@ impl CLRMethod {
                     }
                     _ => panic!("func must be const!"),
                 }
+                if let Some(target) = target{
+                    self.ops.push(BaseIR::GoTo{target:target.as_u32()})
+                }
+                
             }
             //TerminatorKind::Resume => todo!("Can't handle terminator kind resume!"),
             //TerminatorKind::Terminate => todo!("Can't handle terminator kind Terminate!"),
