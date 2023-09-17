@@ -1,0 +1,14 @@
+use rustc_middle::ty::{Binder, BoundVariableKind};
+
+use crate::codegen_error::CodegenError;
+pub fn skip_binder_if_no_generic_types<T>(binder: Binder<T>) -> Result<T, CodegenError> {
+    if binder
+        .bound_vars()
+        .iter()
+        .any(|bound_var_kind| matches!(bound_var_kind, BoundVariableKind::Ty(_)))
+    {
+        Err(CodegenError::UnersolvedGeneric)
+    } else {
+        Ok(binder.skip_binder())
+    }
+}
