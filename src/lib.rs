@@ -57,6 +57,8 @@ mod terminator;
 mod r#type;
 mod type_def;
 mod utilis;
+mod stdlib;
+mod entrypoint;
 use assembly::Assembly;
 struct MyBackend;
 pub(crate) const ALWAYS_INIT_STRUCTS: bool = false;
@@ -83,7 +85,7 @@ impl CodegenBackend for MyBackend {
                     .expect("Could not add function");
             }
         }
-        /*
+        
         if let Some((entrypoint, kind)) = tcx.entry_fn(()) {
             let penv = rustc_middle::ty::ParamEnv::empty();
             let entrypoint = rustc_middle::ty::Instance::resolve(
@@ -95,19 +97,14 @@ impl CodegenBackend for MyBackend {
             .expect("Could not resolve entrypoint!")
             .expect("Could not resolve entrypoint!");
             let entrypoint_fn = entrypoint.ty(tcx, penv).fn_sig(tcx);
-            let sig = FunctionSignature::from_poly_sig(entrypoint_fn, tcx)
+            let sig = function_sig::FnSig::from_poly_sig(&entrypoint_fn, tcx)
                 .expect("Could not get the signature of the entrypoint.");
             let symbol = tcx.symbol_name(entrypoint);
             let symbol = format!("{symbol:?}");
-            let cs = CallSite {
-                owner: None,
-                name: symbol.into(),
-                signature: sig,
-                is_static: true,
-            };
+            let cs = cil_op::CallSite::new(None,symbol.into(),sig,true);
             codegen.set_entrypoint(cs);
         }
-        */
+    
         let name: IString = cgus.iter().next().unwrap().name().to_string().into();
         Box::new((
             name,
@@ -181,6 +178,7 @@ impl CodegenBackend for MyBackend {
                 .expect("ERROR:Could not decode the assembly file!");
             final_assembly = final_assembly.join(assembly);
         }
+        crate::stdlib::insert_libc(&mut final_assembly);
         println!(
             "PERPARING TO EMMIT FINAL CRATE! CRATE COUNT: {}",
             sess.opts.crate_types.len()

@@ -64,6 +64,7 @@ pub(crate) fn place_set<'a>(
 ) -> Vec<CILOp> {
     let mut ops = Vec::with_capacity(place.projection.len());
     if place.projection.is_empty() {
+        ops.extend(value_calc);
         ops.push(local_set(place.local.as_usize(), method));
         return ops;
     } else {

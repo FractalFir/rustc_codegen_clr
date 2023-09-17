@@ -1,4 +1,4 @@
-use crate::cil_op::CILOp;
+use crate::cil_op::{CILOp, CallSite};
 use crate::{
     access_modifier::AccessModifer, codegen_error::CodegenError, function_sig::FnSig,
     method::Method, r#type::Type, type_def::TypeDef, IString,
@@ -12,18 +12,21 @@ use serde::{Deserialize, Serialize};
 pub struct Assembly {
     types: HashSet<TypeDef>,
     functions: HashSet<Method>,
+    entrypoint:Option<CallSite>,
 }
 impl Assembly {
     pub fn empty() -> Self {
         Self {
             types: HashSet::new(),
             functions: HashSet::new(),
+            entrypoint:None,
         }
     }
     pub fn join(self, other: Self) -> Self {
         let mut types = self.types.union(&other.types).cloned().collect();
         let mut functions = self.functions.union(&other.functions).cloned().collect();
-        Self { types, functions }
+        let entrypoint = self.entrypoint.or(other.entrypoint);
+        Self { types, functions,entrypoint }
     }
     pub fn add_fn<'tcx>(
         &mut self,
@@ -55,6 +58,8 @@ impl Assembly {
             last_bb_id += 1;
             for statement in &block_data.statements {
                 ops.extend(crate::statement::handle_statement(statement, mir, tcx, mir));
+                ops.push(CILOp::Comment(format!("{statement:?}").into()));
+                //println!("ops:{ops:?}\n\n");
             }
             match &block_data.terminator {
                 Some(term) => ops.extend(crate::terminator::handle_terminator(term, mir, tcx, mir)),
@@ -65,6 +70,9 @@ impl Assembly {
         self.functions.insert(method);
         Ok(())
         //todo!("Can't add function")
+    }
+    pub fn add_method(&mut self,method:Method){
+        self.functions.insert(method);
     }
     pub fn methods(&self) -> impl Iterator<Item = &Method> {
         (&self.functions).iter()
@@ -85,6 +93,11 @@ impl Assembly {
             }
             _ => todo!("Unsupported item:\"{item:?}\"!"),
         }
+    }
+    pub fn set_entrypoint(&mut self,entrypoint:CallSite){
+        assert!(self.entrypoint.is_none(),"ERROR: Multiple entrypoints");
+        self.functions.insert(crate::entrypoint::wrapper(&entrypoint));
+        self.entrypoint = Some(entrypoint);
     }
 }
 fn locals_from_mir<'ctx>(

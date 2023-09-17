@@ -14,7 +14,7 @@ fn panic(_panic: &PanicInfo<'_>) -> ! {
 fn start(_argc:isize,_argv: *const *const u8) -> isize{
     main();
     // 'All OK!' message
-    let msg = 0x416C6C204F4B2100_i64;
+    let msg = 0x00_21_4B_4F_20_6C_6C_41_i64;
     unsafe{puts(core::ptr::addr_of!(msg).cast())}
     0
 }

@@ -13,7 +13,8 @@ pub fn handle_rvalue<'tyctx>(
     target_location: &Place<'tyctx>,
     method: &rustc_middle::mir::Body<'tyctx>,
 ) -> Vec<CILOp> {
-    match rvalue {
+    
+    let res = match rvalue {
         Rvalue::Use(operand) => crate::operand::handle_operand(operand, tcx, method),
         Rvalue::Ref(_region, _kind, place) => crate::place::place_adress(place, tcx, method),
         Rvalue::AddressOf(_mutability, place) => crate::place::place_adress(place, tcx, method),
@@ -25,5 +26,6 @@ pub fn handle_rvalue<'tyctx>(
             crate::binop::binop_unchecked(*binop, &operands.0, &operands.1, tcx, method)
         }
         _ => todo!("Unhandled RValue {rvalue:?}"),
-    }
+    };
+    res
 }

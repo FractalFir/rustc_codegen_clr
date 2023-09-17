@@ -32,7 +32,7 @@ impl AssemblyExporter for ILASMExporter {
         //let _ = self.types.push(tpe.clone());
     }
     fn add_method(&mut self, method: &Method) {
-        method_cil(&mut self.encoded_asm, method);
+        method_cil(&mut self.encoded_asm, method).expect("Error");
     }
     fn finalize(self, final_path: &std::path::Path) -> Result<(), AssemblyExportError> {
         //println!("final_path:{final_path:?}");
@@ -107,11 +107,18 @@ fn method_cil(mut w: impl Write, method: &Method) -> std::io::Result<()> {
     write!(w, ".method {access} static hidebysig {output} {name}")?;
     args_cli(&mut w, method.sig().inputs())?;
     writeln!(w, "{{")?;
-    writeln!(w, ".locals (")?;
-    for (local_id, local) in method.locals() {
-        writeln!(w, "\t{op_cli}", op_cli = op_cli(op))?;
+    if method.is_entrypoint(){
+        writeln!(w,".entrypoint")?;
     }
-    writeln!(w, ")")?;
+    writeln!(w, "\t.locals (")?;
+    let mut locals_iter = method.locals().iter().enumerate();
+    if let Some((local_id, local) ) = locals_iter.next(){
+        write!(w, "\t\t[{local_id}] {escaped_type}", escaped_type = arg_type_cli(local))?;
+    }
+    for (local_id, local) in locals_iter{
+        write!(w, ",\n\t\t[{local_id}] {escaped_type}", escaped_type = arg_type_cli(local))?;
+    }
+    writeln!(w, "\n\t)")?;
     for op in method.get_ops() {
         writeln!(w, "\t{op_cli}", op_cli = op_cli(op))?;
     }
@@ -159,6 +166,7 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
         }
         //Arthmetic
         CILOp::Add => "add".into(),
+        CILOp::Eq => "ceq".into(),
         //Arguments
         CILOp::LDArg(argnum) => {
             if *argnum < 8 {
@@ -238,6 +246,57 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
         CILOp::LdcF64(f64const) => format!("ldc.r8 {f64const}").into(),
         //Debug
         CILOp::Comment(comment) => format!("//{comment}").into(),
+        //Convertions
+        CILOp::ConvISize(checked) =>
+            if *checked{
+                "conv.ovf.i".into()
+            }
+            else{
+                "conv.i".into()
+            }
+        CILOp::ConvI8(checked) =>
+            if *checked{
+                "conv.ovf.i1".into()
+            }
+            else{
+                "conv.i1".into()
+            } 
+        CILOp::ConvI16(checked) =>
+            if *checked{
+                "conv.ovf.i2".into()
+            }
+            else{
+                "conv.i2".into()
+            } 
+        CILOp::ConvI32(checked) =>
+            if *checked{
+                "conv.ovf.i4".into()
+            }
+            else{
+                "conv.i4".into()
+            } 
+        CILOp::ConvI64(checked) =>
+            if *checked{
+                "conv.ovf.i8".into()
+            }
+            else{
+                "conv.i8".into()
+            } 
+        /* 
+        CILOp::ConvU => "conv.u".into(),
+        CILOp::ConvI8 => "conv.i1".into(),
+        CILOp::ConvU8 => "conv.u1".into(),
+        CILOp::ConvI16 => "conv.i2".into(),
+        CILOp::ConvU16 => "conv.u2".into(),
+        CILOp::ConvI32 => "conv.i4".into(),
+        CILOp::ConvU32 => "conv.u4".into(),
+        CILOp::ConvF32 => "conv.r4".into(),
+        CILOp::ConvI64 => "conv.i8".into(),
+        CILOp::ConvU64 => "conv.u8".into(),
+        CILOp::ConvF64 => "conv.r8".into(),*/
+        // Pointer stuff
+        CILOp::LDIndI8 => "ldind.i1".into(),
+        CILOp::Pop=>"pop".into(),
         _ => todo!("Unsuported op {op:?}"),
     }
 }
@@ -267,13 +326,15 @@ fn dotnet_type_ref_cli(dotnet_type: &DotnetTypeRef) -> String {
 }
 fn type_cli(tpe: &Type) -> Cow<'static, str> {
     match tpe {
-        Type::Void => "Void".into(),
+        Type::Void => "RustVoid".into(),
         Type::I8 => "int8".into(),
         Type::U8 => "uint8".into(),
         Type::I16 => "int16".into(),
         Type::U16 => "uint16".into(),
+        Type::F32 => "float32".into(),
         Type::I32 => "int32".into(),
         Type::U32 => "uint32".into(),
+        Type::F64 => "float64".into(),
         Type::I64 => "int64".into(),
         Type::U64 => "uint64".into(),
         Type::I128 => "[System.Rutnime]System.Int128".into(),
@@ -284,7 +345,9 @@ fn type_cli(tpe: &Type) -> Cow<'static, str> {
         Type::DotnetType(dotnet_type) => dotnet_type_ref_cli(dotnet_type).into(),
         //Special type
         Type::Unresolved => "unresolved".into(),
-        _ => todo!("Unsuported type {tpe:?}"),
+        Type::Bool => "bool".into(),
+        Type::DotnetChar => "char".into(),
+        //_ => todo!("Unsuported type {tpe:?}"),
     }
 }
 fn args_cli(w: &mut impl Write, args: &[Type]) -> std::io::Result<()> {

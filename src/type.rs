@@ -30,6 +30,7 @@ pub enum Type {
     Ptr(Box<Self>),
     // Speical type marking an unresoved type. This is a work around some issues with corelib types. Nothing can ever interact directly with this type.
     Unresolved,
+    DotnetChar,
 }
 #[derive(Serialize, Deserialize, PartialEq, Clone, Eq, Hash, Debug)]
 pub struct DotnetTypeRef {

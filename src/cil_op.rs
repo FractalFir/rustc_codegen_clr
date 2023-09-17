@@ -90,10 +90,14 @@ pub enum CILOp {
     ConvI32(bool),
     ConvI64(bool),
     ConvISize(bool),
+    // Pointer
+    LDIndI8,
     //Debugging
     Comment(IString),
     // Arthmetic Operations
     Add,
     // Comparisons
     Eq,
+    //Special
+    Pop,
 }

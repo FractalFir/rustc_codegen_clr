@@ -10,7 +10,7 @@ pub fn handle_statement<'tctx>(
     method: &rustc_middle::mir::Body<'tctx>,
 ) -> Vec<CILOp> {
     let kind = &statement.kind;
-    match kind {
+    let res = match kind {
         StatementKind::StorageLive(local) => {
             vec![CILOp::Comment(format!("Storage Live({local:?})").into())]
         }
@@ -24,5 +24,6 @@ pub fn handle_statement<'tctx>(
             crate::place::place_set(&place, tyctx, rvalue_ops, method)
         }
         _ => todo!("Unsuported statement kind {kind:?}"),
-    }
+    };
+    res
 }
