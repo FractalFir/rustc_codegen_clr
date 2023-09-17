@@ -2,6 +2,7 @@
 extern crate rustc_codegen_ssa;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
+extern crate rustc_errors;
 extern crate rustc_hir;
 extern crate rustc_index;
 extern crate rustc_metadata;
@@ -9,7 +10,6 @@ extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
-
 use rustc_middle::ty::{Binder, BoundVariableKind};
 fn skip_binder_if_no_generic_types<T>(binder: Binder<T>) -> Option<T> {
     if binder
@@ -29,7 +29,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::{
     dep_graph::{WorkProduct, WorkProductId},
-    ty::{PolyFnSig, TyCtxt},
+    ty::TyCtxt,
 };
 
 use rustc_session::{
@@ -37,56 +37,30 @@ use rustc_session::{
     Session,
 };
 use rustc_span::ErrorGuaranteed;
-use serde::{Deserialize, Serialize};
 use std::any::Any;
-use types::Type;
-mod clr_method;
-mod codegen;
-use clr_method::{CLRMethod, LocalPlacement};
-mod assembly;
-use assembly::Assembly;
-mod base_ir;
-use base_ir::BaseIR;
-
-use crate::base_ir::CallSite;
-mod assembly_exporter;
-mod compile_test;
-mod libc;
-mod statement;
-mod types;
 pub type IString = Box<str>;
-
+mod access_modifier;
+mod assembly;
+mod assembly_exporter;
+mod binop;
+mod cil_op;
+mod codegen_error;
+mod compile_test;
+mod constant;
+mod function_sig;
+mod method;
+mod operand;
+mod place;
+mod rvalue;
+mod statement;
+mod terminator;
+mod r#type;
+mod type_def;
+mod utilis;
+use assembly::Assembly;
 struct MyBackend;
 pub(crate) const ALWAYS_INIT_STRUCTS: bool = false;
 pub(crate) const ALWAYS_INIT_LOCALS: bool = false;
-
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-struct FunctionSignature {
-    inputs: Box<[Type]>,
-    output: Type,
-}
-impl FunctionSignature {
-    pub(crate) fn inputs(&self) -> &[Type] {
-        &self.inputs
-    }
-    pub(crate) fn output(&self) -> &Type {
-        &self.output
-    }
-    pub(crate) fn new(inputs: &[Type], output: &Type) -> Self {
-        Self {
-            inputs: inputs.into(),
-            output: output.clone(),
-        }
-    }
-    pub(crate) fn from_poly_sig<'ctx>(sig: PolyFnSig<'ctx>, tyctx: TyCtxt<'ctx>) -> Option<Self> {
-        let inputs = skip_binder_if_no_generic_types(sig.inputs())?
-            .iter()
-            .map(|v| Type::from_ty(v, &tyctx))
-            .collect();
-        let output = Type::from_ty(&skip_binder_if_no_generic_types(sig.output())?, &tyctx);
-        Some(Self { inputs, output })
-    }
-}
 
 impl CodegenBackend for MyBackend {
     fn locale_resource(&self) -> &'static str {
@@ -99,21 +73,17 @@ impl CodegenBackend for MyBackend {
         _need_metadata_module: bool,
     ) -> Box<dyn Any> {
         let (_defid_set, cgus) = tcx.collect_and_partition_mono_items(());
-        let mut codegen = Assembly::new(&cgus.iter().next().unwrap().name().to_string());
+
+        let mut codegen = Assembly::empty();
         for cgu in cgus {
             //println!("codegen {} has {} items.", cgu.name(), cgu.items().len());
             for (item, _data) in cgu.items() {
-                codegen.add_item(*item, tcx);
+                codegen
+                    .add_item(*item, tcx)
+                    .expect("Could not add function");
             }
         }
         /*
-        if let Some(start) = tcx.get_lang_items(()).start_fn(){
-            let start = rustc_middle::ty::Instance::resolve(tcx,rustc_middle::ty::ParamEnv::empty(),start,rustc_middle::ty::List::empty());
-            println!("start:{start:?}");
-        }
-        else{
-            println!("no start!");
-        }*/
         if let Some((entrypoint, kind)) = tcx.entry_fn(()) {
             let penv = rustc_middle::ty::ParamEnv::empty();
             let entrypoint = rustc_middle::ty::Instance::resolve(
@@ -137,7 +107,14 @@ impl CodegenBackend for MyBackend {
             };
             codegen.set_entrypoint(cs);
         }
-        Box::new((codegen, metadata, CrateInfo::new(tcx, "clr".to_string())))
+        */
+        let name: IString = cgus.iter().next().unwrap().name().to_string().into();
+        Box::new((
+            name,
+            codegen,
+            metadata,
+            CrateInfo::new(tcx, "clr".to_string()),
+        ))
     }
 
     fn join_codegen(
@@ -147,11 +124,11 @@ impl CodegenBackend for MyBackend {
         outputs: &OutputFilenames,
     ) -> Result<(CodegenResults, FxIndexMap<WorkProductId, WorkProduct>), ErrorGuaranteed> {
         use std::io::Write;
-        let (asm, metadata, crate_info) = *ongoing_codegen
-            .downcast::<(Assembly, EncodedMetadata, CrateInfo)>()
+        let (asm_name, asm, metadata, crate_info) = *ongoing_codegen
+            .downcast::<(IString, Assembly, EncodedMetadata, CrateInfo)>()
             .expect("in join_codegen: ongoing_codegen is not an Assembly");
-
-        let serialized_asm_path = outputs.temp_path(OutputType::Object, Some(asm.name()));
+        let asm_name = "";
+        let serialized_asm_path = outputs.temp_path(OutputType::Object, Some(asm_name));
         //std::fs::create_dir_all(&serialized_asm_path).expect("Could not create the directory temporary files are supposed to be in.");
         let mut asm_out = std::fs::File::create(&serialized_asm_path)
             .expect("Could not create the temporary files necessary for building the assembly!");
@@ -161,7 +138,7 @@ impl CodegenBackend for MyBackend {
             )
             .expect("Could not save the tmp assembly file!");
         let modules = vec![CompiledModule {
-            name: asm.name().to_owned(),
+            name: asm_name.into(),
             kind: ModuleKind::Regular,
             object: Some(serialized_asm_path),
             bytecode: None,
@@ -189,8 +166,7 @@ impl CodegenBackend for MyBackend {
         };
 
         let crate_name = codegen_results.crate_info.local_crate_name;
-        let mut final_assembly =
-            Assembly::new(&codegen_results.crate_info.local_crate_name.to_string());
+        let mut final_assembly = Assembly::empty();
         for module in codegen_results.modules {
             use std::io::Read;
 
@@ -203,7 +179,7 @@ impl CodegenBackend for MyBackend {
                 .expect("ERROR:Could not load the assembly file!");
             let assembly = postcard::from_bytes(&asm_bytes)
                 .expect("ERROR:Could not decode the assembly file!");
-            final_assembly.link(assembly);
+            final_assembly = final_assembly.join(assembly);
         }
         println!(
             "PERPARING TO EMMIT FINAL CRATE! CRATE COUNT: {}",

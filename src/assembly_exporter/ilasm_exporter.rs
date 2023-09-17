@@ -1,40 +1,40 @@
+use super::AssemblyExporter;
 use crate::{
-    assembly_exporter::AssemblyExportError, base_ir::{BaseIR, FiledDescriptor}, clr_method::CLRMethod, types::Type,
+    access_modifier::AccessModifer,
+    assembly_exporter::AssemblyExportError,
+    method::Method,
+    r#type::{DotnetTypeRef, Type},
+    type_def::TypeDef,
     IString,
 };
-
-use super::AssemblyExporter;
+use std::{borrow::Cow, io::Write};
 #[must_use]
 pub(crate) struct ILASMExporter {
-    asm_name: IString,
-    types: Vec<Type>,
-    methods: Vec<CLRMethod>,
+    encoded_asm: Vec<u8>,
+}
+impl std::io::Write for ILASMExporter {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.encoded_asm.write(buf)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        self.encoded_asm.flush()
+    }
 }
 impl AssemblyExporter for ILASMExporter {
     fn init(asm_name: &str) -> Self {
-        Self {
-            asm_name: asm_name.into(),
-            types: Vec::with_capacity(0x100),
-            methods: vec![],
-        }
+        let mut encoded_asm = Vec::with_capacity(0x1_00);
+        write!(encoded_asm, ".assembly {asm_name}{{}}").expect("Write error!");
+        Self { encoded_asm }
     }
-    fn add_type(&mut self, tpe: &Type) {
-        match tpe {
-            Type::U8 | Type::I8 => (),
-            Type::U16 | Type::I16 => (),
-            Type::U32 | Type::I32 | Type::F32 => (),
-            Type::U64 | Type::I64 | Type::F64 => (),
-            Type::ISize | Type::USize | Type::Void => (),        
-            _ => {
-                let _ = self.types.push(tpe.clone());
-            }
-        }
+    fn add_type(&mut self, tpe: &TypeDef) {
+        todo!("Can't add type definitions yet");
+        //let _ = self.types.push(tpe.clone());
     }
-    fn add_method(&mut self, method: CLRMethod) {
-        self.methods.push(method);
+    fn add_method(&mut self, method: &Method) {
+        method_cil(&mut self.encoded_asm, method);
     }
     fn finalize(self, final_path: &std::path::Path) -> Result<(), AssemblyExportError> {
-        use std::io::Write;
         //println!("final_path:{final_path:?}");
         let directory = absolute_path(final_path)
             .map_err(|io| AssemblyExportError::CouldNotCanonalizePath(io, final_path.to_owned()))?
@@ -51,11 +51,11 @@ impl AssemblyExporter for ILASMExporter {
         ); //final_path.expect("Could not canonialize path!");
 
         let cil_path = out_path.with_extension("il");
-        let cil = self.get_cil().expect("Could not get cil");
+        let cil = self.encoded_asm;
         println!("cil_path:{cil_path:?}");
         std::fs::File::create(&cil_path)
             .expect("Could not create file")
-            .write_all(cil.as_bytes())
+            .write_all(&cil)
             .expect("Could not write bytes");
         let asm_type = "/dll";
         let target = format!(
@@ -83,68 +83,9 @@ impl AssemblyExporter for ILASMExporter {
         Ok(())
     }
 }
-pub(crate) fn type_cil(tpe: &Type) -> Result<IString, super::AssemblyExportError> {
-    match tpe {
-        Type::Struct { name, fields } => {
-            let mut field_iter = fields.iter();
-            let mut field_string = String::new();
-            if let Some(first) = field_iter.next() {
-                let type_name = escaped_type_name(&first.tpe);
-                let field_name = &first.name;
-                field_string.push_str(&format!(".field {type_name} {field_name}\n\t"));
-            }
-            for field in field_iter {
-                let type_name = escaped_type_name(&field.tpe);
-                let field_name = &field.name;
-                field_string.push_str(&format!(".field {type_name} {field_name}\n\t"));
-            }
-            Ok(format!(".class public sequential ansi sealed beforefieldinit '{name}' extends [System.Runtime]System.ValueType{{{field_string}}}").into())
-        }
-        Type::Array { element, length } => {
-            let name = format!("Arr{length}_{element}", element = type_name(element));
-            let mut fields = String::with_capacity((*length as usize) * 10);
-            //TODO: use a better approach for creating arrays!
-            for index in 0..(*length) {
-                fields.push_str(&format!(
-                    ".field {element} i{index}\n\t",
-                    element = escaped_type_name(element)
-                ));
-            }
-            Ok(format!(".class public sequential ansi sealed beforefieldinit '{name}' extends [System.Runtime]System.ValueType{{{fields}}}").into())
-        }
-        Type::Enum{name,variants}=>{
-            let var_size = ((u64::BITS - (variants.len() as u64).leading_zeros() + 8 - 1))/8;
-            let tag_type = match var_size{
-                1=>Type::U8,
-                2=>Type::U16,
-                4=>Type::U32,
-                8=>Type::U64,
-                _=>todo!("Can't yet have {var_size} byte wide enum tag!"),
-            };
-            let mut field_string = format!("\t.field [0] {tag_type} _tag\n",tag_type = type_name(&tag_type));
-            let mut varariant_string = String::new();
-            for variant in variants.iter(){
-                let variant_name = &variant.name;
-                let var_type = format!("{name}/{variant_name}");
-                field_string.push_str(&format!("\t.field [{var_size}] {var_type} {variant_name}\n"));
-                let mut variant_field_string = String::new();
-                let mut variant_field_iter = variant.fields.iter();
-                if let Some(first) = variant_field_iter.next() {
-                    let type_name = escaped_type_name(&first.tpe);
-                    let field_name = &first.name;
-                    variant_field_string.push_str(&format!("\n\t\t.field {type_name} {field_name}\n"));
-                }
-                for field in variant_field_iter {
-                    let type_name = escaped_type_name(&field.tpe);
-                    let field_name = &field.name;
-                    variant_field_string.push_str(&format!("\t\t.field {type_name} {field_name}\n"));
-                }
-                varariant_string.push_str(&format!("\t.class public sequential ansi sealed beforefieldinit '{variant_name}' extends [System.Runtime]System.ValueType{{{variant_field_string}}}\n"));
-            }
-            Ok(format!(".class public sequential ansi sealed beforefieldinit '{name}' extends [System.Runtime]System.ValueType{{\n{varariant_string}{field_string}}}").into())
-        }
-        _ => Ok("".into()),
-    }
+
+fn type_def_cli(tpe: &TypeDef) -> Result<IString, super::AssemblyExportError> {
+    todo!();
 }
 fn absolute_path(path: &std::path::Path) -> std::io::Result<std::path::PathBuf> {
     if path.has_root() {
@@ -155,473 +96,221 @@ fn absolute_path(path: &std::path::Path) -> std::io::Result<std::path::PathBuf> 
         Ok(abs_path)
     }
 }
-impl ILASMExporter {
-    fn version(&self) -> (u8, u8, u8, u8) {
-        (0, 0, 0, 0)
+fn method_cil(mut w: impl Write, method: &Method) -> std::io::Result<()> {
+    let access = if let AccessModifer::Private = method.access() {
+        "private"
+    } else {
+        "public"
+    };
+    let output = output_type_cli(method.sig().output());
+    let name = method.name();
+    write!(w, ".method {access} static hidebysig {output} {name}")?;
+    args_cli(&mut w, method.sig().inputs())?;
+    writeln!(w, "{{")?;
+    writeln!(w, ".locals (")?;
+    for (local_id, local) in method.locals() {
+        writeln!(w, "\t{op_cli}", op_cli = op_cli(op))?;
     }
-    fn get_cil(&self) -> Result<IString, super::AssemblyExportError> {
-        println!("types:{types:?}",types = self.types);
-        let types: String = self
-            .types
-            .iter()
-            .map(|tpe| {
-                format!(
-                    "{s}\n",
-                    s = type_cil(tpe).expect("Could not create struct CIL")
-                )
-            })
-            .collect();
-        
-        let methods: String = self
-            .methods
-            .iter()
-            .map(|meth| self.method_cil(meth))
-            .collect();
-        let version = self.version();
-        let version = format!("{}:{}:{}:{}", version.0, version.1, version.2, version.3);
-        let final_cil = format!(
-            ".assembly '{name}'{{\n\t.ver {version}\n}}{types}{methods}",
-            name = self.asm_name
-        );
-        Ok(final_cil.into())
+    writeln!(w, ")")?;
+    for op in method.get_ops() {
+        writeln!(w, "\t{op_cli}", op_cli = op_cli(op))?;
     }
-    fn call_prefix(&self) -> &str {
-        ""
-    }
-    fn ops_cil(&self, ops: &[BaseIR]) -> String {
-        ops.iter()
-            .map(|op| op_cil(op, self.call_prefix()))
-            .flat_map(|op_str| [op_str, "\n\t".into()])
-            .collect()
-    }
-
-    fn method_cil(&self, method: &CLRMethod) -> IString {
-        let name = method.name();
-        let visibility = "public";
-        let ret = variable_arg_type_name(method.sig().output());
-        let mut inputs_iter = method.sig().inputs.iter();
-        let mut args = String::new();
-        if let Some(firts_arg) = inputs_iter.next() {
-            args.push_str(&escaped_type_name(firts_arg));
-        }
-        for arg in inputs_iter {
-            args.push(',');
-            args.push_str(&escaped_type_name(arg));
-        }
-        // Call
-        let locals = locals_cli(method.locals());
-        let ops = self.ops_cil(method.ops());
-        let entrypoint = if method.has_attribute(&crate::clr_method::MethodAttribute::EntryPoint) {
-            ".entrypoint\n"
-        } else {
-            ""
-        };
-        format!(".method {visibility} hidebysig static {ret} {name}({args}){{\n{entrypoint}{locals}\n\t{ops}\n}}")
-            .into()
-    }
+    writeln!(w, "}}")
 }
-fn locals_cli(locals: &[Type]) -> IString {
-    if locals.len() == 0 {
-        return "".into();
-    }
-    let mut local_string = ".locals init(".to_string();
-    let mut local_iter = locals.iter().enumerate();
-    if let Some((_, first)) = local_iter.next() {
-        if *first != Type::Void {
-            local_string.push_str(&format!("[0] {tpe}", tpe = escaped_type_name(first)));
-        } else {
-            local_string.push_str(&"[0] void*//Rust void");
-        }
-    }
-    for (index, tpe) in local_iter {
-        local_string.push_str(",\n\t");
-        if *tpe != Type::Void {
-            local_string.push_str(&format!("[{index}] {tpe}", tpe = escaped_type_name(tpe)));
-        } else {
-            local_string.push_str(&format!("[{index}] void*//Rust void"));
-        }
-    }
-    local_string.push(')');
-    local_string.into()
-}
-fn set_field(field_descriptor:&FiledDescriptor)->String{
-    let field = field_descriptor
-    .owner
-    .field(field_descriptor.variant, field_descriptor.field_index);
-format!(
-    "stfld {field_type} {field_parent}::{field_name}",
-    field_parent = escaped_type_name(&field_descriptor.owner),
-    field_type = variable_arg_type_name(&field.tpe),
-    field_name = field.name,
-)
-}
-fn op_cil(op: &BaseIR, call_prefix: &str) -> String {
-    println!("op:{op:?}");
+fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
+    use crate::cil_op::CILOp;
     match op {
-        //Controll flow
-        BaseIR::BBLabel { bb_id } => format!("bb_{bb_id}:"),
-        BaseIR::BEq { target } => format!("beq bb_{target}"),
-        BaseIR::GoTo { target } => format!("br bb_{target}"),
-        BaseIR::Return => "ret".into(),
-        BaseIR::Throw => "throw".into(),
-        //Arguments
-        BaseIR::LDArg(argnum) => {
-            if *argnum < 8 {
-                format!("ldarg.{argnum}")
-            } else if u8::try_from(*argnum).is_ok() {
-                format!("ldarg.s {argnum}")
-            } else {
-                format!("ldarg {argnum}")
-            }
-        }
-        BaseIR::LDArgA(argnum) => {
-            if u8::try_from(*argnum).is_ok() {
-                format!("ldarga.s {argnum}")
-            } else {
-                format!("ldarga {argnum}")
-            }
-        }
-        BaseIR::STArg(argnum) => {
-            if u8::try_from(*argnum).is_ok() {
-                format!("starg.s {argnum}")
-            } else {
-                format!("starg {argnum}")
-            }
-        }
-        //Locals
-        BaseIR::LDLoc(argnum) => {
-            if *argnum < 4 {
-                format!("ldloc.{argnum}")
-            } else if u8::try_from(*argnum).is_ok() {
-                format!("ldloc.s {argnum}")
-            } else {
-                format!("ldloc {argnum}")
-            }
-        }
-        BaseIR::LDLocA(argnum) => {
-            if u8::try_from(*argnum).is_ok() {
-                format!("ldloca.s {argnum}")
-            } else {
-                format!("ldloca {argnum}")
-            }
-        }
-        BaseIR::STLoc(argnum) => {
-            if *argnum < 4 {
-                format!("stloc.{argnum}")
-            } else if u8::try_from(*argnum).is_ok() {
-                format!("stloc.s {argnum}")
-            } else {
-                format!("stloc {argnum}")
-            }
-        }
-        //Constants
-        BaseIR::LDConstI64(value) => {
-            if *value == -1 {
-                "ldc.i4.m1".into()
-            } else if *value <= 8 && *value >= 0 {
-                format!("ldc.i4.{value}")
-            } else if i8::try_from(*value).is_ok() {
-                format!("ldc.i4.s {value}\n\t")
-            } else if i32::try_from(*value).is_ok() {
-                format!("ldc.i4 {value}")
-            } else {
-                format!("ldc.i8 {value}")
-            }
-        }
-        BaseIR::LDConstF32(f32const) => format!("ldc.r4 {f32const}"),
-        BaseIR::LDConstF64(f64const) => format!("ldc.r8 {f64const}"),
-        BaseIR::LDConstI32(value) => {
-            if *value == -1 {
-                "ldc.i4.m1".into()
-            } else if *value <= 8 && *value >= 0 {
-                format!("ldc.i4.{value}")
-            } else if i8::try_from(*value).is_ok() {
-                format!("ldc.i4.s {value}")
-            } else {
-                format!("ldc.i4 {value}")
-            }
-        }
-        BaseIR::LDConstString(string) => format!("ldstr \"{string}\""),
-        BaseIR::NewObj(call_site) => {
-            //CallSite{ assembly, name, signature, is_static } = call_site;
-            let mut inputs_iter = call_site.signature.inputs.iter();
-            let mut input_string = String::new();
-            if let Some(firts_arg) = inputs_iter.next() {
-                input_string.push_str(&escaped_type_name(firts_arg));
-            }
-            for arg in inputs_iter {
-                input_string.push(',');
-                input_string.push_str(&escaped_type_name(arg));
-            }
-            assert!(!call_site.is_static, "object constructor can't be static!");
-            let owner_name = match &call_site.owner {
-                Some(owner) => format!("{}::", escaped_type_name(&owner)),
-                None => "".into(),
-            };
-
-            format!(
-                "newobj instance {output} {owner_name}{function_name}({input_string})",
-                function_name = call_site.name,
-                output = escaped_type_name(&call_site.signature.output)
-            )
-        }
-        //Arthmetics
-        BaseIR::Add => "add".into(),
-        BaseIR::Sub => "sub".into(),
-        BaseIR::Mul => "mul".into(),
-        BaseIR::Div => "div".into(),
-        BaseIR::Rem => "rem".into(),
-        //Bitwise
-        BaseIR::And => "and".into(),
-        BaseIR::Or => "or".into(),
-        BaseIR::Xor => "xor".into(),
-        BaseIR::Not => "not".into(),
-        //Bitshifts
-        BaseIR::Shl => "shl".into(),
-        BaseIR::Shr => "shr".into(),
-        //Comparisons
-        BaseIR::Gt => "cgt".into(),
-        BaseIR::Eq => "ceq".into(),
-        BaseIR::Lt => "clt".into(),
-        //Seting Pointers
-        BaseIR::LDIndI => "ldind.i".into(),
-        BaseIR::LDIndIn(n) => format!("ldind.i{n}"),
-        BaseIR::LDIndR4 => "ldind.r4".to_string(),
-        BaseIR::LDIndR8 => "ldind.r8".to_string(),
-        BaseIR::STObj(tpe) => format!("stobj {name}", name = variable_arg_type_name(tpe)),
-        // Geting pointers
-        BaseIR::STIndI => "stind.i".into(),
-        BaseIR::STIndIn(n) => format!("stind.i{n}"),
-        BaseIR::LDObj(tpe) => format!("ldobj {name}", name = variable_arg_type_name(tpe)),
-        BaseIR::STIndR4 => "stind.r4".to_string(),
-        BaseIR::STIndR8 => "stind.r8".to_string(),
-        //Fileds
-        BaseIR::LDField(field_descriptor) => {
-            if field_descriptor.is_discriminant(){
-                format!(
-                    "ldfld {field_type} {field_parent}::_tag",
-                    field_parent = escaped_type_name(&field_descriptor.owner),
-                    field_type = "uint8"
-                )
-            }
-            else if field_descriptor.is_variant(){
-                todo!("Can't load field variant");
-            }
-            else{
-                println!("fd:{field_descriptor:?}");
-            let field = field_descriptor
-                .owner
-                .field(field_descriptor.variant, field_descriptor.field_index);
-            format!(
-                "ldfld {field_type} {field_parent}::{field_name}",
-                field_parent = escaped_type_name(&field_descriptor.owner),
-                field_type = variable_arg_type_name(&field.tpe),
-                field_name = field.name,
-            )
-            }
-        }
-        BaseIR::LDFieldAdress(field_descriptor) => {
-            if field_descriptor.is_discriminant(){
-                format!(
-                    "ldflda {field_type} {field_parent}::_tag",
-                    field_parent = escaped_type_name(&field_descriptor.owner),
-                    field_type = "uint8"
-                )
-            }
-            else if field_descriptor.is_variant(){
-                let variant = field_descriptor.owner.enum_variant(field_descriptor.variant).expect("Could not get enum variant!");
-                let owner = escaped_type_name(&field_descriptor.owner);
-                let variant_type = format!("{owner}/{variant}",variant = variant.name);
-                format!("ldflda {variant_type} {owner}::{variant_name}",variant_name = variant.name).into()
-                // todo!("Can't load field variant");
-            }
-            else{
-            let field = field_descriptor
-                .owner
-                .field(field_descriptor.variant, field_descriptor.field_index);
-            format!(
-                "ldflda {field_type} {field_parent}::{field_name}",
-                field_parent = escaped_type_name(&field_descriptor.owner),
-                field_type = variable_arg_type_name(&field.tpe),
-                field_name = field.name,
-            )
-            }
-        }
-        BaseIR::STField(field_descriptor) => set_field(field_descriptor.as_ref()),
-        //Conversions
-        BaseIR::ConvI => "conv.i".into(),
-        BaseIR::ConvU => "conv.u".into(),
-        BaseIR::ConvI8 => "conv.i1".into(),
-        BaseIR::ConvU8 => "conv.u1".into(),
-        BaseIR::ConvI16 => "conv.i2".into(),
-        BaseIR::ConvU16 => "conv.u2".into(),
-        BaseIR::ConvI32 => "conv.i4".into(),
-        BaseIR::ConvU32 => "conv.u4".into(),
-        BaseIR::ConvF32 => "conv.r4".into(),
-        BaseIR::ConvI64 => "conv.i8".into(),
-        BaseIR::ConvU64 => "conv.u8".into(),
-        BaseIR::ConvF64 => "conv.r8".into(),
-        //Checked convetions
-        BaseIR::ConvI16Checked => "conv.ovf.i2".into(),
-        BaseIR::ConvI32Checked => "conv.ovf.i4".into(),
-        //Calls
-        BaseIR::Call(call_site) => {
+        //Control flow
+        CILOp::Ret => "ret".into(),
+        CILOp::Label(id) => format!("bb_{id}:").into(),
+        CILOp::GoTo(id) => format!("br bb_{id}").into(),
+        CILOp::BEq(id) => format!("beq bb_{id}").into(),
+        CILOp::Call(call_site) => {
             if call_site.is_nop() {
                 "".into()
             } else {
                 //assert!(sig.inputs.is_empty());
-                let mut inputs_iter = call_site.signature.inputs.iter();
+                let mut inputs_iter = call_site.signature().inputs().iter();
                 let mut input_string = String::new();
                 if let Some(firts_arg) = inputs_iter.next() {
-                    input_string.push_str(&escaped_type_name(firts_arg));
+                    input_string.push_str(&arg_type_cli(firts_arg));
                 }
                 for arg in inputs_iter {
                     input_string.push(',');
-                    input_string.push_str(&escaped_type_name(arg));
+                    input_string.push_str(&arg_type_cli(arg));
                 }
-                let prefix = if call_site.is_static { "" } else { "instance" };
-                let owner_name = match &call_site.owner {
-                    Some(owner) => format!("{}::", escaped_type_name(&owner)),
+                let prefix = if call_site.is_static() {
+                    ""
+                } else {
+                    "instance"
+                };
+                let owner_name = match &call_site.class() {
+                    Some(owner) => format!("{}::", dotnet_type_ref_cli(&owner)),
                     None => "".into(),
                 };
                 //println!("inputs:{inputs:?} input_string: {input_string}",inputs = call_site.signature.inputs);
                 format!(
-                    "\tcall {prefix} {output} {owner_name}{function_name}({input_string})\n",
-                    function_name = call_site.name,
-                    output = escaped_type_name(&call_site.signature.output)
+                    "call {prefix} {output} {owner_name}{function_name}({input_string})\n",
+                    function_name = call_site.name(),
+                    output = output_type_cli(&call_site.signature().output())
                 )
+                .into()
             }
         }
-        //Type info
-        BaseIR::SizeOf(tpe) => format!("sizeof {name}", name = escaped_type_name(tpe)),
-        //Debuging
-        BaseIR::DebugComment(comment) => format!("//{comment}"),
-        BaseIR::Nop => "nop".into(),
-
-        //Other
-        BaseIR::InitObj(name) => format!("initobj {name}"),
-        BaseIR::Volatile(inner) => format!("volatile. {inner}", inner = op_cil(inner, call_prefix)),
-        BaseIR::Pop => "pop".into(),
-        //_=>todo!("unsuported op:{op:?}."),
-    }
-}
-fn variable_arg_type_name(var: &Type) -> IString {
-    match var {
-        Type::Struct { .. } => {
-            format!("valuetype {typename}", typename = escaped_type_name(var)).into()
+        //Arthmetic
+        CILOp::Add => "add".into(),
+        //Arguments
+        CILOp::LDArg(argnum) => {
+            if *argnum < 8 {
+                format!("ldarg.{argnum}").into()
+            } else if u8::try_from(*argnum).is_ok() {
+                format!("ldarg.s {argnum}").into()
+            } else {
+                format!("ldarg {argnum}").into()
+            }
         }
-        /*
-        Type::Enum(_) => {
-            format!("valuetype {typename}", typename = escaped_type_name(var)).into()
-        }*/
-        _ => escaped_type_name(var),
+        CILOp::LDArgA(argnum) => {
+            if u8::try_from(*argnum).is_ok() {
+                format!("ldarga.s {argnum}").into()
+            } else {
+                format!("ldarga {argnum}").into()
+            }
+        }
+        CILOp::STArg(argnum) => {
+            if u8::try_from(*argnum).is_ok() {
+                format!("starg.s {argnum}").into()
+            } else {
+                format!("starg {argnum}").into()
+            }
+        }
+        //Locals
+        CILOp::LDLoc(argnum) => {
+            if *argnum < 4 {
+                format!("ldloc.{argnum}").into()
+            } else if u8::try_from(*argnum).is_ok() {
+                format!("ldloc.s {argnum}").into()
+            } else {
+                format!("ldloc {argnum}").into()
+            }
+        }
+        CILOp::LDLocA(argnum) => {
+            if u8::try_from(*argnum).is_ok() {
+                format!("ldloca.s {argnum}").into()
+            } else {
+                format!("ldloca {argnum}").into()
+            }
+        }
+        CILOp::STLoc(argnum) => {
+            if *argnum < 4 {
+                format!("stloc.{argnum}").into()
+            } else if u8::try_from(*argnum).is_ok() {
+                format!("stloc.s {argnum}").into()
+            } else {
+                format!("stloc {argnum}").into()
+            }
+        }
+        //Constant
+        CILOp::LdcI32(value) => {
+            if *value == -1 {
+                "ldc.i4.m1".into()
+            } else if *value <= 8 && *value >= 0 {
+                format!("ldc.i4.{value}").into()
+            } else if i8::try_from(*value).is_ok() {
+                format!("ldc.i4.s {value}").into()
+            } else {
+                format!("ldc.i4 {value}").into()
+            }
+        }
+        CILOp::LdcI64(value) => {
+            if *value == -1 {
+                "ldc.i4.m1".into()
+            } else if *value <= 8 && *value >= 0 {
+                format!("ldc.i4.{value}").into()
+            } else if i8::try_from(*value).is_ok() {
+                format!("ldc.i4.s {value}\n\t").into()
+            } else if i32::try_from(*value).is_ok() {
+                format!("ldc.i4 {value}").into()
+            } else {
+                format!("ldc.i8 {value}").into()
+            }
+        }
+        CILOp::LdcF32(f32const) => format!("ldc.r4 {f32const}").into(),
+        CILOp::LdcF64(f64const) => format!("ldc.r8 {f64const}").into(),
+        //Debug
+        CILOp::Comment(comment) => format!("//{comment}").into(),
+        _ => todo!("Unsuported op {op:?}"),
     }
 }
-fn escaped_type_name(var: &Type) -> IString {
-    match var {
-        Type::Struct { .. } => format!("'{name}'", name = type_name(var)).into(),
-        Type::Enum { .. } => format!("'{name}'", name = type_name(var)).into(),
-        _ => type_name(var),
-    }
-}
-fn type_name(var: &Type) -> IString {
-    match var {
-        Type::Struct { name, .. } => name.replace("::", "."), //TODO: handle generic arguments
-        //Type::Enum(name) => name.replace("::", "."),
+fn output_type_cli(tpe: &Type) -> Cow<'static, str> {
+    match tpe {
         Type::Void => "void".into(),
+        _ => type_cli(tpe).into(),
+    }
+}
+fn arg_type_cli(tpe: &Type) -> Cow<'static, str> {
+    let res = match tpe {
+        Type::DotnetType(_) => format!("valuetype {tpe}", tpe = type_cli(tpe)).into(),
+        Type::Ptr(inner) => format!("{inner}*", inner = arg_type_cli(inner)).into(),
+        _ => type_cli(tpe).into(),
+    };
+    res
+}
+fn dotnet_type_ref_cli(dotnet_type: &DotnetTypeRef) -> String {
+    let asm = if let Some(asm_ref) = dotnet_type.asm() {
+        format!("[{asm_ref}]")
+    } else {
+        "".into()
+    };
+    let name = dotnet_type.name_path();
+    let generics = generics_str(dotnet_type.generics());
+    format!("{asm}{name}{generics}").into()
+}
+fn type_cli(tpe: &Type) -> Cow<'static, str> {
+    match tpe {
+        Type::Void => "Void".into(),
         Type::I8 => "int8".into(),
         Type::U8 => "uint8".into(),
         Type::I16 => "int16".into(),
         Type::U16 => "uint16".into(),
         Type::I32 => "int32".into(),
         Type::U32 => "uint32".into(),
-        Type::F32 => "float32".into(),
         Type::I64 => "int64".into(),
         Type::U64 => "uint64".into(),
-        Type::F64 => "float64".into(),
-        Type::I128 => "[System.Runtime]System.Int128".into(),
-        Type::U128 => "[System.Runtime]System.UInt128".into(),
+        Type::I128 => "[System.Rutnime]System.Int128".into(),
+        Type::U128 => "[System.Rutnime]System.UInt128".into(),
         Type::ISize => "native int".into(),
         Type::USize => "native uint".into(),
-        Type::Bool => "bool".into(),
-        Type::Ref(inner) => format!("{inner}*", inner = escaped_type_name(inner)),
-        Type::Ptr(inner) => format!("{inner}*", inner = escaped_type_name(inner)),
-        Type::Array { element, length } => {
-            format!("Arr{length}_{element}", element = type_name(element))
-        }
-        Type::ExternType { asm, name } => {
-            if asm.is_empty() {
-                name.to_string()
-            } else {
-                format!("[{asm}]{name}")
-            }
-        }
-        Type::Enum { name, .. } => name.replace("::", "."), 
-        Type::EnumVariant { parrent_name, variant }=>format!("{parrent_name}/{variant_name}",variant_name = variant.name),
-        _=>todo!("Can't yet get the name of type {var:?}"),
+        Type::Ptr(inner) => format!("{inner}*", inner = type_cli(inner)).into(),
+        Type::DotnetType(dotnet_type) => dotnet_type_ref_cli(dotnet_type).into(),
+        //Special type
+        Type::Unresolved => "unresolved".into(),
+        _ => todo!("Unsuported type {tpe:?}"),
     }
-    .into()
 }
-#[cfg(test)]
-use crate::types::ToCLRType;
-#[test]
-fn init_ilasm_exporter() {
-    let _ilasm = ILASMExporter::init("mock_assembly");
+fn args_cli(w: &mut impl Write, args: &[Type]) -> std::io::Result<()> {
+    let mut args = args.into_iter();
+    write!(w, "(")?;
+    if let Some(first_arg) = args.next() {
+        write!(w, "{type_cli}", type_cli = arg_type_cli(&first_arg))?;
+    }
+    for arg in args {
+        write!(w, ",{type_cli}", type_cli = arg_type_cli(&arg))?;
+    }
+    write!(w, ")")?;
+    Ok(())
 }
-#[test]
-fn empty_asm_to_cil() {
-    let ilasm = ILASMExporter::init("mock_assembly");
-    let cil = ilasm.get_cil().expect("Could not create CIL assembly!");
-    assert_eq!(
-        cil.as_ref(),
-        ".assembly 'mock_assembly'{\n\t.ver 0:0:0:0\n}"
-    );
-}
-#[test]
-fn empty_struct_to_cil() {
-    let type_cil = type_cil(&Type::Struct {
-        name: "Empty".into(),
-        fields: [].into(),
-    })
-    .expect("Could not create proper struct CIL");
-    assert_eq!(
-        type_cil.as_ref(),
-        ".class public sequential ansi sealed beforefieldinit 'Empty' extends [System.Runtime]System.ValueType{}"
-    );
-}
-
-#[test]
-fn empty_method_to_cil() {
-    let ilasm = ILASMExporter::init("mock_assembly");
-    let sig = crate::FunctionSignature::new(&[], &<()>::clr_tpe());
-    let empty = CLRMethod::from_raw(&[BaseIR::Return], &[], "empty", sig);
-    let method_cil = ilasm.method_cil(&empty);
-    assert_eq!(
-        method_cil.as_ref(),
-        ".method public hidebysig static void empty(){\n\n\tret\n\t\n}"
-    );
-}
-#[test]
-fn ilasm_exporter_add_struct() {
-    use crate::types::FieldType;
-    let mut ilasm = ILASMExporter::init("mock_assembly");
-    let vec3 = &Type::Struct {
-        name: "Vec3".into(),
-        fields: [
-            FieldType {
-                name: "x".into(),
-                tpe: Type::F32,
-            },
-            FieldType {
-                name: "y".into(),
-                tpe: Type::F32,
-            },
-            FieldType {
-                name: "z".into(),
-                tpe: Type::F32,
-            },
-        ]
-        .into(),
-    };
-    ilasm.add_type(vec3);
+fn generics_str(generics: &[Type]) -> Cow<'static, str> {
+    if generics.is_empty() {
+        "".into()
+    } else {
+        let mut garg_string = String::new();
+        let mut generic_iter = generics.iter();
+        if let Some(first_generic) = generic_iter.next() {
+            garg_string.push_str(&format!("{type_cli}", type_cli = type_cli(&first_generic)));
+        }
+        for arg in generic_iter {
+            garg_string.push_str(&format!(",{type_cli}", type_cli = type_cli(&arg)));
+        }
+        format!("<{garg_string}>").into()
+    }
 }

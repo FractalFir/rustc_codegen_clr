@@ -1,118 +1,102 @@
-use crate::{base_ir::CallSite, types::Type, CLRMethod, FunctionSignature, IString};
-use rustc_index::IndexVec;
-use rustc_middle::{
-    mir::{mono::MonoItem, Local, LocalDecl},
-    ty::{Instance, ParamEnv, Ty, TyCtxt},
+use crate::cil_op::CILOp;
+use crate::{
+    access_modifier::AccessModifer, codegen_error::CodegenError, function_sig::FnSig,
+    method::Method, r#type::Type, type_def::TypeDef, IString,
 };
-use serde::{Deserialize, Serialize};
+use rustc_middle::mir::{mono::MonoItem, Local, LocalDecl};
+use rustc_middle::ty::{Instance, ParamEnv, TyCtxt};
 use std::collections::HashSet;
-#[derive(Serialize, Deserialize)]
-pub(crate) struct Assembly {
-    methods: Vec<CLRMethod>,
-    name: IString,
-    types: HashSet<Type>,
-    size_t: u8,
-    entrypoint: Option<CallSite>,
+
+use serde::{Deserialize, Serialize};
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Assembly {
+    types: HashSet<TypeDef>,
+    functions: HashSet<Method>,
 }
 impl Assembly {
-    pub(crate) fn types(&self) -> impl Iterator<Item = &Type> {
-        self.types.iter()
-    }
-    pub(crate) fn methods(&self) -> &[CLRMethod] {
-        &self.methods
-    }
-    pub(crate) fn entrypoint(&self) -> &Option<CallSite> {
-        &self.entrypoint
-    }
-    pub(crate) fn add_type<'ctx>(&mut self, ty: Ty<'ctx>, tyctx: &TyCtxt<'ctx>) {
-        let tpe = Type::from_ty(&ty, tyctx);
-        let types = tpe.inner_types();
-        self.types.insert(tpe);
-        self.types.extend(types);
-
-    }
-    pub(crate) fn add_types_from_locals<'ctx>(
-        &mut self,
-        locals: &IndexVec<Local, LocalDecl<'ctx>>,
-        tyctx: &TyCtxt<'ctx>,
-    ) {
-        for local in locals {
-            self.add_type(local.ty, tyctx);
-        }
-    }
-    pub(crate) fn name(&self) -> &str {
-        &self.name
-    }
-    pub(crate) fn new(name: &str) -> Self {
-        let name: String = name.chars().take_while(|c| *c != '.').collect();
-        let name = name.replace('-', "_");
+    pub fn empty() -> Self {
         Self {
-            methods: Vec::with_capacity(0x100),
-            types: HashSet::with_capacity(0x100),
-            name: name.into(),
-            size_t: 8,
-            entrypoint: None,
+            types: HashSet::new(),
+            functions: HashSet::new(),
         }
     }
-    pub(crate) fn add_fn<'tcx>(&mut self, instance: Instance<'tcx>, tcx: TyCtxt<'tcx>, name: &str) {
-        // TODO: figure out: What should it be???
-        let param_env = ParamEnv::empty();
-
-        let def_id = instance.def_id();
-        if !tcx.is_mir_available(def_id) {
+    pub fn join(self, other: Self) -> Self {
+        let mut types = self.types.union(&other.types).cloned().collect();
+        let mut functions = self.functions.union(&other.functions).cloned().collect();
+        Self { types, functions }
+    }
+    pub fn add_fn<'tcx>(
+        &mut self,
+        instance: Instance<'tcx>,
+        tcx: TyCtxt<'tcx>,
+        name: &str,
+    ) -> Result<(), CodegenError> {
+        // Get the MIR if it exisits. Othervise, return early.
+        if !tcx.is_mir_available(instance.def_id()) {
             println!("function {instance:?} has no MIR. Skippping.");
-            return;
+            return Ok(());
         }
-        let mir = tcx.optimized_mir(def_id);
+        let mir = tcx.optimized_mir(instance.def_id());
+        // TODO: check if this is OK. It seems to work for now, but there may be some edge cases.
+        let param_env = ParamEnv::empty();
+        // Check if function is public or not.
+        let access_modifier = AccessModifer::from_visibility(tcx.visibility(instance.def_id()));
+        // Handle the function signature
+        let sig = FnSig::from_poly_sig(&instance.ty(tcx, param_env).fn_sig(tcx), tcx)?;
+        // Get locals
+        let locals = locals_from_mir(&mir.local_decls, tcx, sig.inputs().len());
+        // Create method prototype
+        let mut method = Method::new(access_modifier, sig, name, locals);
+        let mut ops = Vec::new();
+        let mut last_bb_id = 0;
         let blocks = &(*mir.basic_blocks);
-        let sig = instance.ty(tcx, param_env).fn_sig(tcx);
-        let mut clr_method = CLRMethod::new(
-            FunctionSignature::from_poly_sig(sig, tcx)
-                .expect("Could not resolve the function signature"),
-            name,
-        );
-        self.add_types_from_locals(&mir.local_decls, &tcx);
-        clr_method.add_locals(&mir.local_decls, tcx);
         for block_data in blocks {
-            clr_method.begin_bb();
+            ops.push(CILOp::Label(last_bb_id));
+            last_bb_id += 1;
             for statement in &block_data.statements {
-                clr_method.add_statement(statement, mir, tcx, self);
+                ops.extend(crate::statement::handle_statement(statement, mir, tcx, mir));
             }
             match &block_data.terminator {
-                Some(term) => clr_method.add_terminator(term, mir, &tcx, self),
+                Some(term) => ops.extend(crate::terminator::handle_terminator(term, mir, tcx, mir)),
                 None => (),
             }
         }
-        clr_method.remove_void_locals();
-        clr_method.opt();
-        //println!("clr_method:{clr_method:?}");
-        //println!("instance:{instance:?}\n");
-        //println!("types:{types:?}", types = self.types);
-        self.methods.push(clr_method);
+        method.set_ops(ops);
+        self.functions.insert(method);
+        Ok(())
+        //todo!("Can't add function")
     }
-    pub(crate) fn add_item<'tcx>(&mut self, item: MonoItem<'tcx>, tcx: TyCtxt<'tcx>) {
-        println!("adding item:{}", item.symbol_name(tcx));
-
+    pub fn methods(&self) -> impl Iterator<Item = &Method> {
+        (&self.functions).iter()
+    }
+    pub fn types(&self) -> impl Iterator<Item = &TypeDef> {
+        (&self.types).iter()
+    }
+    pub fn add_item<'tcx>(
+        &mut self,
+        item: MonoItem<'tcx>,
+        tcx: TyCtxt<'tcx>,
+    ) -> Result<(), CodegenError> {
         match item {
             MonoItem::Fn(instance) => {
-                self.add_fn(instance, tcx, &format!("{}", item.symbol_name(tcx)));
+                let symbol_name: String = item.symbol_name(tcx).to_string();
+                self.add_fn(instance, tcx, &symbol_name)?;
+                Ok(())
             }
             _ => todo!("Unsupported item:\"{item:?}\"!"),
         }
     }
-    pub(crate) fn set_entrypoint(&mut self, site: CallSite) {
-        if self.entrypoint.is_none() {
-            self.entrypoint = Some(site);
-        } else {
-            panic!("ERROR: trying to link 2 crates with different entrypoints!");
+}
+fn locals_from_mir<'ctx>(
+    locals: &rustc_index::IndexVec<Local, LocalDecl<'ctx>>,
+    tyctx: TyCtxt<'ctx>,
+    argc: usize,
+) -> Vec<Type> {
+    let mut local_types: Vec<Type> = Vec::with_capacity(locals.len());
+    for (local_id, local) in locals.iter().enumerate() {
+        if local_id == 0 || local_id > argc {
+            local_types.push(Type::from_ty(local.ty, tyctx));
         }
     }
-    pub(crate) fn link(&mut self, other: Self) {
-        //TODO: do linking.
-        self.methods.extend_from_slice(&other.methods);
-        self.types.extend(other.types);
-        if let Some(entrypoint) = other.entrypoint {
-            self.set_entrypoint(entrypoint);
-        }
-    }
+    local_types
 }
