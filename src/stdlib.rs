@@ -43,6 +43,8 @@ pub(crate) fn insert_libc(asm: &mut Assembly) {
         name: "core.panic.PanicInfoUnresolved".into(),
         fields: [].into(),
     });*/
+    asm.add_typedef(crate::type_def::TypeDef::nameonly("Unresolved"));
+    asm.add_typedef(crate::type_def::TypeDef::nameonly("RustVoid"));
     math(asm);
     io(asm);
     malloc(asm);

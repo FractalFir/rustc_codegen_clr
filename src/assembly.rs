@@ -23,8 +23,8 @@ impl Assembly {
         }
     }
     pub fn join(self, other: Self) -> Self {
-        let mut types = self.types.union(&other.types).cloned().collect();
-        let mut functions = self.functions.union(&other.functions).cloned().collect();
+        let types = self.types.union(&other.types).cloned().collect();
+        let functions = self.functions.union(&other.functions).cloned().collect();
         let entrypoint = self.entrypoint.or(other.entrypoint);
         Self { types, functions,entrypoint }
     }
@@ -67,6 +67,9 @@ impl Assembly {
             }
         }
         method.set_ops(ops);
+        for local in &mir.local_decls {
+            self.add_type(local.ty, tcx);
+        }
         self.functions.insert(method);
         Ok(())
         //todo!("Can't add function")
@@ -79,6 +82,14 @@ impl Assembly {
     }
     pub fn types(&self) -> impl Iterator<Item = &TypeDef> {
         (&self.types).iter()
+    }
+    pub fn add_type<'ctx>(&mut self,ty:rustc_middle::ty::Ty<'ctx>,tyctx: TyCtxt<'ctx>){
+        for type_def in TypeDef::from_ty(ty,tyctx){
+            self.types.insert(type_def);
+        }
+    }
+    pub fn add_typedef<'ctx>(&mut self,type_def:TypeDef){
+        self.types.insert(type_def);
     }
     pub fn add_item<'tcx>(
         &mut self,

@@ -21,10 +21,22 @@ pub fn handle_rvalue<'tyctx>(
         Rvalue::Cast(CastKind::PointerCoercion(_) | CastKind::PtrToPtr, operand, _) => {
             crate::operand::handle_operand(operand, tcx, method)
         }
-        Rvalue::Cast(kind, operand, _) => todo!("Unhandled cast kind {kind:?}, rvalue:{rvalue:?}"),
+        
         Rvalue::BinaryOp(binop, operands) => {
             crate::binop::binop_unchecked(*binop, &operands.0, &operands.1, tcx, method)
         }
+        Rvalue::UnaryOp(binop, operand) => crate::unop::unop(*binop, operand, tcx, method),
+        Rvalue::Cast(CastKind::IntToInt, operand, target) => {
+            let target = if let rustc_middle::ty::TyKind::Int(int_ty) = target.kind(){
+
+            }
+            else{
+                panic!("Tried to preform Int To Int Cast")
+            };
+            crate::operand::handle_operand(operand, tcx, method);
+            todo!("Can't do casts yet!");
+        }
+        Rvalue::Cast(kind, operand, _) => todo!("Unhandled cast kind {kind:?}, rvalue:{rvalue:?}"),
         _ => todo!("Unhandled RValue {rvalue:?}"),
     };
     res

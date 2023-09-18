@@ -28,7 +28,7 @@ impl AssemblyExporter for ILASMExporter {
         Self { encoded_asm }
     }
     fn add_type(&mut self, tpe: &TypeDef) {
-        todo!("Can't add type definitions yet");
+        type_def_cli(&mut self.encoded_asm,tpe).expect("Error");
         //let _ = self.types.push(tpe.clone());
     }
     fn add_method(&mut self, method: &Method) {
@@ -84,8 +84,30 @@ impl AssemblyExporter for ILASMExporter {
     }
 }
 
-fn type_def_cli(tpe: &TypeDef) -> Result<IString, super::AssemblyExportError> {
-    todo!();
+fn type_def_cli(mut w: impl Write,tpe: &TypeDef) -> Result<(), super::AssemblyExportError> {
+    let name = tpe.name();
+    let mut generics = String::new();
+    if tpe.gargc() != 0{
+        generics.push('<');
+    }
+    for i in 0..tpe.gargc(){
+        if i != 0{
+            generics.push(',');
+        }
+        generics.push_str(&format!("G{i}"));
+    }
+    if tpe.gargc() != 0{
+        generics.push('>');
+    }
+    let extended = if let Some(extended) = tpe.extends(){
+        todo!("Can't handle inheretence yet!");
+    }
+    else{
+        "[System.Runtime]System.ValueType"
+    };
+    writeln!(w,"\n.class {name}{generics} extends {extended}{{");
+    writeln!(w,"}}");
+    Ok(())
 }
 fn absolute_path(path: &std::path::Path) -> std::io::Result<std::path::PathBuf> {
     if path.has_root() {
@@ -164,9 +186,24 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
                 .into()
             }
         }
-        //Arthmetic
+        //Arthmetics
         CILOp::Add => "add".into(),
+        CILOp::Sub => "sub".into(),
+        CILOp::Mul => "mul".into(),
+        CILOp::Div => "div".into(),
+        CILOp::Rem => "rem".into(),
+        //Bitwise
+        CILOp::And => "and".into(),
+        CILOp::Or => "or".into(),
+        CILOp::XOr => "xor".into(),
+        //CILOp::Not => "not".into(),
+        //Bitshifts
+        CILOp::Shl => "shl".into(),
+        CILOp::Shr => "shr".into(),
+        //Comparisons
+        CILOp::Gt => "cgt".into(),
         CILOp::Eq => "ceq".into(),
+        CILOp::Lt => "clt".into(),
         //Arguments
         CILOp::LDArg(argnum) => {
             if *argnum < 8 {
@@ -282,21 +319,78 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
             else{
                 "conv.i8".into()
             } 
-        /* 
-        CILOp::ConvU => "conv.u".into(),
-        CILOp::ConvI8 => "conv.i1".into(),
-        CILOp::ConvU8 => "conv.u1".into(),
-        CILOp::ConvI16 => "conv.i2".into(),
-        CILOp::ConvU16 => "conv.u2".into(),
-        CILOp::ConvI32 => "conv.i4".into(),
-        CILOp::ConvU32 => "conv.u4".into(),
-        CILOp::ConvF32 => "conv.r4".into(),
-        CILOp::ConvI64 => "conv.i8".into(),
-        CILOp::ConvU64 => "conv.u8".into(),
-        CILOp::ConvF64 => "conv.r8".into(),*/
+        CILOp::ConvUSize(checked) =>
+            if *checked{
+                "conv.ovf.u".into()
+            }
+            else{
+                "conv.u".into()
+            }
+        CILOp::ConvU8(checked) =>
+            if *checked{
+                "conv.ovf.u1".into()
+            }
+            else{
+                "conv.u1".into()
+            } 
+        CILOp::ConvU16(checked) =>
+            if *checked{
+                "conv.ovf.u2".into()
+            }
+            else{
+                "conv.u2".into()
+            } 
+        CILOp::ConvU32(checked) =>
+            if *checked{
+                "conv.ovf.u4".into()
+            }
+            else{
+                "conv.u4".into()
+            } 
+        CILOp::ConvU64(checked) =>
+            if *checked{
+                "conv.ovf.u8".into()
+            }
+            else{
+                "conv.u8".into()
+            } 
         // Pointer stuff
         CILOp::LDIndI8 => "ldind.i1".into(),
         CILOp::Pop=>"pop".into(),
+        CILOp::Throw=>"throw".into(),
+        CILOp::LdStr(str)=>format!("ldstr {str:?}").into(),
+        CILOp::NewObj(call_site) => {
+            if call_site.is_nop() {
+                "".into()
+            } else {
+                //assert!(sig.inputs.is_empty());
+                let mut inputs_iter = call_site.signature().inputs().iter();
+                let mut input_string = String::new();
+                if let Some(firts_arg) = inputs_iter.next() {
+                    input_string.push_str(&arg_type_cli(firts_arg));
+                }
+                for arg in inputs_iter {
+                    input_string.push(',');
+                    input_string.push_str(&arg_type_cli(arg));
+                }
+                let prefix = if call_site.is_static() {
+                    ""
+                } else {
+                    "instance"
+                };
+                let owner_name = match &call_site.class() {
+                    Some(owner) => format!("{}::", dotnet_type_ref_cli(&owner)),
+                    None => "".into(),
+                };
+                //println!("inputs:{inputs:?} input_string: {input_string}",inputs = call_site.signature.inputs);
+                format!(
+                    "newobj {prefix} {output} {owner_name}{function_name}({input_string})\n",
+                    function_name = call_site.name(),
+                    output = output_type_cli(&call_site.signature().output())
+                )
+                .into()
+            }
+        }
         _ => todo!("Unsuported op {op:?}"),
     }
 }
@@ -344,7 +438,7 @@ fn type_cli(tpe: &Type) -> Cow<'static, str> {
         Type::Ptr(inner) => format!("{inner}*", inner = type_cli(inner)).into(),
         Type::DotnetType(dotnet_type) => dotnet_type_ref_cli(dotnet_type).into(),
         //Special type
-        Type::Unresolved => "unresolved".into(),
+        Type::Unresolved => "Unresolved".into(),
         Type::Bool => "bool".into(),
         Type::DotnetChar => "char".into(),
         //_ => todo!("Unsuported type {tpe:?}"),

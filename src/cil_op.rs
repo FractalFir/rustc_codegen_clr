@@ -70,6 +70,7 @@ pub enum CILOp {
     GoTo(u32),
     BEq(u32),
     Call(Box<CallSite>),
+    Throw,
     Ret,
     // Load/Store/AdressOf local
     LDLoc(u32),
@@ -84,20 +85,44 @@ pub enum CILOp {
     // Load constant float
     LdcF32(f32),
     LdcF64(f64),
+    // Load string literal 
+    LdStr(IString),
     // Signed intieger convertions
     ConvI8(bool),
     ConvI16(bool),
     ConvI32(bool),
     ConvI64(bool),
     ConvISize(bool),
+    // Unsigned intieger convertions
+    ConvU8(bool),
+    ConvU16(bool),
+    ConvU32(bool),
+    ConvU64(bool),
+    ConvUSize(bool),
     // Pointer
     LDIndI8,
     //Debugging
     Comment(IString),
     // Arthmetic Operations
     Add,
+    And,
+    Div,
+    Rem,
+    Shr,
+    Shl,
+    Sub,
+    Mul,
+    Or,
+    XOr,
+    Not,
+    Neg,
     // Comparisons
     Eq,
+    Lt,
+    Gt,
     //Special
     Pop,
+    //OOP
+    NewObj(Box<CallSite>),
+    
 }

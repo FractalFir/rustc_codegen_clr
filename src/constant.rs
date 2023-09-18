@@ -100,11 +100,11 @@ fn load_const_uint(value: u128, int_type: &UintTy, tyctx: TyCtxt) -> Vec<CILOp> 
     match int_type {
         UintTy::U8 => {
             let value = i8::from_ne_bytes([value as u8]);
-            vec![CILOp::LdcI32(value as i32), CILOp::ConvI8(false)]
+            vec![CILOp::LdcI32(value as i32), CILOp::ConvU8(false)]
         }
         UintTy::U16 => {
             let value = i16::from_ne_bytes((value as u16).to_ne_bytes());
-            vec![CILOp::LdcI32(value as i32), CILOp::ConvI16(false)]
+            vec![CILOp::LdcI32(value as i32), CILOp::ConvU16(false)]
         }
         UintTy::U32 => {
             let value = i32::from_ne_bytes((value as u32).to_ne_bytes());
@@ -112,11 +112,11 @@ fn load_const_uint(value: u128, int_type: &UintTy, tyctx: TyCtxt) -> Vec<CILOp> 
         }
         UintTy::U64 => {
             let value = i64::from_ne_bytes((value as u64).to_ne_bytes());
-            vec![CILOp::LdcI64(value), CILOp::ConvI64(false)]
+            vec![CILOp::LdcI64(value), CILOp::ConvU64(false)]
         }
         UintTy::Usize => {
             let value = i64::from_ne_bytes((value as u64).to_ne_bytes());
-            vec![CILOp::LdcI64(value), CILOp::ConvISize(true)]
+            vec![CILOp::LdcI64(value), CILOp::ConvUSize(true)]
         }
         UintTy::U128 => {
             let low = (value & (u64::MAX as u128)) as u64;

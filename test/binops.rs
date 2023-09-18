@@ -25,7 +25,9 @@ pub extern fn neq(a:i32,b:i32)->bool{a != b}
 pub extern fn sqr_mag(ax:i32,ay:i32)->i32{ax*ax + ay*ay}
 #[no_mangle]
 pub extern fn pow2(power:i32)->i32{1<<power}
+//Not binary, but unary.
 #[no_mangle]
 pub extern fn negate_i32(val:i32)->i32{-val}
 #[no_mangle]
 pub extern fn negate_f32(val:f32)->f32{-val}
+

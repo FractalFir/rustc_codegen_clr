@@ -66,7 +66,7 @@ impl DotnetTypeRef {
                 }
             })
             .collect();
-        let name = adt_name(adt);
+        let name = crate::utilis::adt_name(adt);
         Self {
             assembly: None,
             name_path: name,
@@ -135,8 +135,4 @@ impl From<&FloatTy> for Type {
             FloatTy::F64 => Self::F64,
         }
     }
-}
-fn adt_name(adt: &AdtDef) -> IString {
-    //TODO: find a better way to get adt name!
-    format!("{adt:?}").replace("::", ".").into()
 }
