@@ -38,35 +38,57 @@ pub(crate) fn binop_unchecked<'ctx>(
             .into_iter()
             .flatten()
             .collect(),
-        BinOp::BitAnd=>[ops_a, ops_b, bit_and_unchecked(ty_a, ty_b)].into_iter()
+        BinOp::BitAnd => [ops_a, ops_b, bit_and_unchecked(ty_a, ty_b)]
+            .into_iter()
+            .flatten()
+            .collect(),
+        BinOp::BitOr => [ops_a, ops_b, bit_or_unchecked(ty_a, ty_b)]
+            .into_iter()
+            .flatten()
+            .collect(),
+        BinOp::BitXor => [ops_a, ops_b, bit_xor_unchecked(ty_a, ty_b)]
+            .into_iter()
+            .flatten()
+            .collect(),
+        BinOp::Rem => [ops_a, ops_b, rem_unchecked(ty_a, ty_b)]
+            .into_iter()
+            .flatten()
+            .collect(),
+        BinOp::Shl | BinOp::ShlUnchecked => [ops_a, ops_b, shl_unchecked(ty_a, ty_b)]
+            .into_iter()
+            .flatten()
+            .collect(),
+        BinOp::Shr | BinOp::ShrUnchecked => [ops_a, ops_b, shr_unchecked(ty_a, ty_b)]
+            .into_iter()
+            .flatten()
+            .collect(),
+        BinOp::Mul | BinOp::MulUnchecked => [ops_a, ops_b, mul_unchecked(ty_a, ty_b)]
+            .into_iter()
+            .flatten()
+            .collect(),
+        BinOp::Div => [ops_a, ops_b, div_unchecked(ty_a, ty_b)]
+            .into_iter()
+            .flatten()
+            .collect(),
+        BinOp::Ge => [
+            ops_a,
+            ops_b,
+            lt_unchecked(ty_a, ty_b),
+            vec![CILOp::LdcI32(0), CILOp::Eq],
+        ]
+        .into_iter()
         .flatten()
         .collect(),
-        BinOp::BitOr=>[ops_a, ops_b, bit_or_unchecked(ty_a, ty_b)].into_iter()
+        BinOp::Le => [
+            ops_a,
+            ops_b,
+            gt_unchecked(ty_a, ty_b),
+            vec![CILOp::LdcI32(0), CILOp::Eq],
+        ]
+        .into_iter()
         .flatten()
         .collect(),
-        BinOp::BitXor=>[ops_a, ops_b, bit_xor_unchecked(ty_a, ty_b)].into_iter()
-        .flatten()
-        .collect(),
-        BinOp::Rem =>[ops_a, ops_b, rem_unchecked(ty_a, ty_b)].into_iter()
-        .flatten()
-        .collect(),
-        BinOp::Shl| BinOp::ShlUnchecked =>[ops_a, ops_b, shl_unchecked(ty_a, ty_b)].into_iter()
-        .flatten()
-        .collect(),
-        BinOp::Shr | BinOp::ShrUnchecked =>[ops_a, ops_b, shr_unchecked(ty_a, ty_b)].into_iter()
-        .flatten()
-        .collect(),
-        BinOp::Mul | BinOp::MulUnchecked =>[ops_a, ops_b, mul_unchecked(ty_a, ty_b)].into_iter()
-        .flatten()
-        .collect(),
-        BinOp::Div =>[ops_a, ops_b, div_unchecked(ty_a, ty_b)].into_iter()
-        .flatten()
-        .collect(),
-        BinOp::Ge=>[ops_a, ops_b, lt_unchecked(ty_a, ty_b),vec![CILOp::LdcI32(0), CILOp::Eq]].into_iter().flatten()
-        .collect(),
-        BinOp::Le=>[ops_a, ops_b, gt_unchecked(ty_a, ty_b),vec![CILOp::LdcI32(0), CILOp::Eq]].into_iter().flatten()
-        .collect(),
-        BinOp::Offset=>todo!("Offset of operator unsuported!"),
+        BinOp::Offset => todo!("Offset of operator unsuported!"),
         //_ => todo!("Unsupported bionp {binop:?}"),
     }
 }

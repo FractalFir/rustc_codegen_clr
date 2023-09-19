@@ -43,24 +43,24 @@ mod access_modifier;
 mod assembly;
 mod assembly_exporter;
 mod binop;
-mod unop;
+mod casts;
 mod cil_op;
 mod codegen_error;
 mod compile_test;
 mod constant;
+mod entrypoint;
 mod function_sig;
 mod method;
 mod operand;
 mod place;
 mod rvalue;
 mod statement;
+mod stdlib;
 mod terminator;
 mod r#type;
 mod type_def;
+mod unop;
 mod utilis;
-mod stdlib;
-mod entrypoint;
-mod casts;
 use assembly::Assembly;
 struct MyBackend;
 pub(crate) const ALWAYS_INIT_STRUCTS: bool = false;
@@ -87,7 +87,7 @@ impl CodegenBackend for MyBackend {
                     .expect("Could not add function");
             }
         }
-        
+
         if let Some((entrypoint, kind)) = tcx.entry_fn(()) {
             let penv = rustc_middle::ty::ParamEnv::empty();
             let entrypoint = rustc_middle::ty::Instance::resolve(
@@ -103,10 +103,10 @@ impl CodegenBackend for MyBackend {
                 .expect("Could not get the signature of the entrypoint.");
             let symbol = tcx.symbol_name(entrypoint);
             let symbol = format!("{symbol:?}");
-            let cs = cil_op::CallSite::new(None,symbol.into(),sig,true);
+            let cs = cil_op::CallSite::new(None, symbol.into(), sig, true);
             codegen.set_entrypoint(cs);
         }
-    
+
         let name: IString = cgus.iter().next().unwrap().name().to_string().into();
         Box::new((
             name,

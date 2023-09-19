@@ -1,7 +1,8 @@
 use crate::{
     cil_op::{CILOp, CallSite},
+    function_sig::FnSig,
     method::Method,
-    r#type::Type, function_sig::FnSig,
+    r#type::Type,
 };
 pub fn wrapper(entrypoint: &CallSite) -> Method {
     if entrypoint.signature().inputs()

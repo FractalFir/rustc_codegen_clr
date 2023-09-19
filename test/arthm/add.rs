@@ -2,7 +2,12 @@
 #![allow(internal_features)]
 #![no_std]
 #![feature(start)]
+#![feature(associated_type_defaults)]
 #![feature(core_intrinsics)]
+#[allow(dead_code)]
+struct Test<T>{
+    data:T,
+}
 include!("../common.rs");
 fn main(){
     // Test addition of different types
@@ -27,4 +32,7 @@ fn main(){
     // Test overflows 
     test_eq!(black_box(0xFF_u8).wrapping_add(1), 0);
     test_eq!(black_box(127_i8).wrapping_add(1), -128);
+
+    let ptr:*mut Test<i32> = core::ptr::null_mut();
+    black_box(ptr);
 }

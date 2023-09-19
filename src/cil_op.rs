@@ -1,4 +1,27 @@
 use crate::{function_sig::FnSig, r#type::DotnetTypeRef, IString};
+#[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
+pub struct FieldDescriptor {
+    owner: DotnetTypeRef,
+    tpe: crate::r#type::Type,
+    name: IString,
+}
+impl FieldDescriptor {
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+    pub fn tpe(&self) -> &crate::r#type::Type {
+        &self.tpe
+    }
+    pub fn owner(&self) -> &DotnetTypeRef {
+        &self.owner
+    }
+    pub fn new(owner: DotnetTypeRef, tpe: crate::r#type::Type, name: IString) -> Self {
+        Self { owner, tpe, name }
+    }
+    pub fn boxed(owner: DotnetTypeRef, tpe: crate::r#type::Type, name: IString) -> Box<Self> {
+        Box::new(Self { owner, tpe, name })
+    }
+}
 /// Represenation of a target of a call.
 #[derive(Clone, PartialEq, Serialize, Deserialize, Eq, Hash, Debug)]
 pub struct CallSite {
@@ -85,7 +108,7 @@ pub enum CILOp {
     // Load constant float
     LdcF32(f32),
     LdcF64(f64),
-    // Load string literal 
+    // Load string literal
     LdStr(IString),
     // Signed intieger convertions
     ConvI8(bool),
@@ -127,5 +150,6 @@ pub enum CILOp {
     Pop,
     //OOP
     NewObj(Box<CallSite>),
-    
+    LDField(Box<FieldDescriptor>),
+    LDFieldAdress(Box<FieldDescriptor>),
 }

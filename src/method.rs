@@ -11,7 +11,7 @@ pub struct Method {
     name: IString,
     locals: Vec<Type>,
     ops: Vec<CILOp>,
-    attributes:Vec<Attribute>,
+    attributes: Vec<Attribute>,
 }
 impl Eq for Method {}
 impl Hash for Method {
@@ -21,7 +21,7 @@ impl Hash for Method {
     }
 }
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Debug)]
-pub enum Attribute{
+pub enum Attribute {
     EntryPoint,
 }
 impl Method {
@@ -32,11 +32,13 @@ impl Method {
             name: name.into(),
             locals,
             ops: Vec::new(),
-            attributes:Vec::new(),
+            attributes: Vec::new(),
         }
     }
-    pub fn is_entrypoint(&self)->bool{
-        self.attributes.iter().any(|attr|*attr == Attribute::EntryPoint)
+    pub fn is_entrypoint(&self) -> bool {
+        self.attributes
+            .iter()
+            .any(|attr| *attr == Attribute::EntryPoint)
     }
     pub fn access(&self) -> AccessModifer {
         self.access
@@ -56,7 +58,7 @@ impl Method {
     pub(crate) fn get_ops(&self) -> &[CILOp] {
         &self.ops
     }
-    pub fn add_attribute(&mut self,attr:Attribute){
+    pub fn add_attribute(&mut self, attr: Attribute) {
         self.attributes.push(attr);
     }
 }

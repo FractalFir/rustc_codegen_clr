@@ -12,21 +12,25 @@ use serde::{Deserialize, Serialize};
 pub struct Assembly {
     types: HashSet<TypeDef>,
     functions: HashSet<Method>,
-    entrypoint:Option<CallSite>,
+    entrypoint: Option<CallSite>,
 }
 impl Assembly {
     pub fn empty() -> Self {
         Self {
             types: HashSet::new(),
             functions: HashSet::new(),
-            entrypoint:None,
+            entrypoint: None,
         }
     }
     pub fn join(self, other: Self) -> Self {
         let types = self.types.union(&other.types).cloned().collect();
         let functions = self.functions.union(&other.functions).cloned().collect();
         let entrypoint = self.entrypoint.or(other.entrypoint);
-        Self { types, functions,entrypoint }
+        Self {
+            types,
+            functions,
+            entrypoint,
+        }
     }
     pub fn add_fn<'tcx>(
         &mut self,
@@ -74,7 +78,7 @@ impl Assembly {
         Ok(())
         //todo!("Can't add function")
     }
-    pub fn add_method(&mut self,method:Method){
+    pub fn add_method(&mut self, method: Method) {
         self.functions.insert(method);
     }
     pub fn methods(&self) -> impl Iterator<Item = &Method> {
@@ -83,12 +87,12 @@ impl Assembly {
     pub fn types(&self) -> impl Iterator<Item = &TypeDef> {
         (&self.types).iter()
     }
-    pub fn add_type<'ctx>(&mut self,ty:rustc_middle::ty::Ty<'ctx>,tyctx: TyCtxt<'ctx>){
-        for type_def in TypeDef::from_ty(ty,tyctx){
+    pub fn add_type<'ctx>(&mut self, ty: rustc_middle::ty::Ty<'ctx>, tyctx: TyCtxt<'ctx>) {
+        for type_def in TypeDef::from_ty(ty, tyctx) {
             self.types.insert(type_def);
         }
     }
-    pub fn add_typedef<'ctx>(&mut self,type_def:TypeDef){
+    pub fn add_typedef<'ctx>(&mut self, type_def: TypeDef) {
         self.types.insert(type_def);
     }
     pub fn add_item<'tcx>(
@@ -105,9 +109,10 @@ impl Assembly {
             _ => todo!("Unsupported item:\"{item:?}\"!"),
         }
     }
-    pub fn set_entrypoint(&mut self,entrypoint:CallSite){
-        assert!(self.entrypoint.is_none(),"ERROR: Multiple entrypoints");
-        self.functions.insert(crate::entrypoint::wrapper(&entrypoint));
+    pub fn set_entrypoint(&mut self, entrypoint: CallSite) {
+        assert!(self.entrypoint.is_none(), "ERROR: Multiple entrypoints");
+        self.functions
+            .insert(crate::entrypoint::wrapper(&entrypoint));
         self.entrypoint = Some(entrypoint);
     }
 }

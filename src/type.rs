@@ -92,19 +92,20 @@ impl Type {
             TyKind::RawPtr(type_and_mut) => {
                 Self::Ptr(Box::new(Self::from_ty(type_and_mut.ty, tyctx)))
             }
-            TyKind::Ref(_region, inner, _mut) => {
-                match inner.kind(){
-                    TyKind::Str=>{
-                        let str_type = DotnetTypeRef{assembly: None, name_path: "RustStr".into(),generics:vec![]};
-                        Self::DotnetType(Box::new(str_type))
-                    }
-                    _=>{
-                        println!("Ref kind {:?}", inner.kind());
-                        Self::Ptr(Box::new(Self::from_ty(*inner, tyctx)))
-                    }
+            TyKind::Ref(_region, inner, _mut) => match inner.kind() {
+                TyKind::Str => {
+                    let str_type = DotnetTypeRef {
+                        assembly: None,
+                        name_path: "RustStr".into(),
+                        generics: vec![],
+                    };
+                    Self::DotnetType(Box::new(str_type))
                 }
-                
-            }
+                _ => {
+                    println!("Ref kind {:?}", inner.kind());
+                    Self::Ptr(Box::new(Self::from_ty(*inner, tyctx)))
+                }
+            },
             TyKind::Tuple(types) => {
                 if types.is_empty() {
                     Type::Void
@@ -112,19 +113,25 @@ impl Type {
                     todo!("Tuples are not supported yet!")
                 }
             }
-            TyKind::Slice(inner)=>{
-                let slice_tpe = DotnetTypeRef{assembly: None, name_path: "RustSlice".into(),generics:vec![Self::from_ty(*inner, tyctx)]};
+            TyKind::Slice(inner) => {
+                let slice_tpe = DotnetTypeRef {
+                    assembly: None,
+                    name_path: "RustSlice".into(),
+                    generics: vec![Self::from_ty(*inner, tyctx)],
+                };
                 Self::DotnetType(Box::new(slice_tpe))
-            },
+            }
             TyKind::Never => Self::Void, // TODO: ensure this is always OK
             TyKind::Adt(adt_def, subst) => {
                 Self::DotnetType(Box::new(DotnetTypeRef::from_adt(adt_def, subst, tyctx)))
             }
-            TyKind::Dynamic(_,_,_) => Type::Unresolved,
-            TyKind::Str=>Type::Unresolved,
-            TyKind::Foreign(_)=>Type::Foreign,
-            TyKind::Bound(_, inner)=>Type::Foreign,
-            TyKind::FnPtr(_)=>Type::USize,
+            TyKind::Dynamic(_, _, _) => Type::Unresolved,
+            TyKind::Str => Type::Unresolved,
+            TyKind::Foreign(_) => Type::Foreign,
+            TyKind::Bound(_, inner) => Type::Foreign,
+            TyKind::FnPtr(_) => Type::USize,
+            TyKind::Param(param_ty) => Type::GenericArg(param_ty.index),
+            TyKind::Alias(_, alias_ty) => Self::from_ty(alias_ty.self_ty(), tyctx),
             _ => todo!("Unsupported type{rust_tpe:?}!"),
         }
     }

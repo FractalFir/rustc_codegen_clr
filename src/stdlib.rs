@@ -1,11 +1,12 @@
+use crate::r#type::DotnetTypeRef;
 use crate::{
+    access_modifier::AccessModifer,
+    assembly::Assembly,
     cil_op::{CILOp, CallSite},
+    function_sig::FnSig,
     method::Method,
     r#type::Type,
-    function_sig::FnSig,
-    access_modifier::AccessModifer, assembly::Assembly,
 };
-use crate::r#type::DotnetTypeRef;
 macro_rules! add_method {
     ($name:ident,$input:expr,$output:expr,$ops:expr) => {
         fn $name(asm: &mut Assembly) {
@@ -34,7 +35,7 @@ macro_rules! add_method {
 }
 pub(crate) fn insert_libc(asm: &mut Assembly) {
     // Add core.panic.PanicInfo
-    /* 
+    /*
     asm.add_type(&Type::Struct {
         name: "core.panic.PanicInfo".into(),
         fields: [].into(),
@@ -58,7 +59,7 @@ pub(crate) fn insert_libc(asm: &mut Assembly) {
     abort(asm);
 }
 
-fn math(asm: &mut Assembly){
+fn math(asm: &mut Assembly) {
     sqrtf32(asm);
 }
 fn io(asm: &mut Assembly) {
@@ -85,16 +86,12 @@ add_method!(
         CILOp::LDLoc(0),
         CILOp::ConvISize(false),
         CILOp::Call(CallSite::boxed(
-             Some(DotnetTypeRef::new(
+            Some(DotnetTypeRef::new(
                 Some("System.Console"),
                 "System.Console".into()
             )),
-            "Write".into(),          
-            FnSig::new(
-                &[Type::DotnetChar
-                ],
-                &Type::Void
-            ),
+            "Write".into(),
+            FnSig::new(&[Type::DotnetChar], &Type::Void),
             true,
         )),
         CILOp::LDArg(0),
@@ -115,12 +112,12 @@ add_method!(
         CILOp::LDArg(0),
         CILOp::Call(CallSite::boxed(
             Some(DotnetTypeRef::new(
-               Some("System.Runtime.InteropServices"),
-               "System.Runtime.InteropServices.Marshal".into()
-           )),
-           "AllocHGlobal".into(),          
-           FnSig::new(&[Type::ISize], &Type::ISize),
-           true,
+                Some("System.Runtime.InteropServices"),
+                "System.Runtime.InteropServices.Marshal".into()
+            )),
+            "AllocHGlobal".into(),
+            FnSig::new(&[Type::ISize], &Type::ISize),
+            true,
         )),
         CILOp::Ret,
     ]
@@ -133,12 +130,12 @@ add_method!(
         CILOp::LDArg(0),
         CILOp::Call(CallSite::boxed(
             Some(DotnetTypeRef::new(
-               Some("System.Runtime.InteropServices"),
-               "System.Runtime.InteropServices.Marshal".into()
-           )),
-           "FreeHGlobal".into(),          
-           FnSig::new(&[Type::ISize], &Type::Void),
-           true,
+                Some("System.Runtime.InteropServices"),
+                "System.Runtime.InteropServices.Marshal".into()
+            )),
+            "FreeHGlobal".into(),
+            FnSig::new(&[Type::ISize], &Type::Void),
+            true,
         )),
         CILOp::Ret,
     ]

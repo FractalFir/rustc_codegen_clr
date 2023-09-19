@@ -1,4 +1,4 @@
-use rustc_middle::mir::{UnOp, Operand};
+use rustc_middle::mir::{Operand, UnOp};
 use rustc_middle::ty::{IntTy, Ty, TyCtxt, TyKind, UintTy};
 
 use crate::cil_op::CILOp;
@@ -11,7 +11,7 @@ pub fn unop<'ctx>(
     let ops = crate::operand::handle_operand(operand, tcx, method);
     let ty = operand.ty(&method.local_decls, tcx);
     match unnop {
-        UnOp::Neg=>vec![CILOp::Neg],
-        UnOp::Not=>vec![CILOp::Not],
+        UnOp::Neg => vec![CILOp::Neg],
+        UnOp::Not => vec![CILOp::Not],
     }
 }

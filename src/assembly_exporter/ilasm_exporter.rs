@@ -28,7 +28,7 @@ impl AssemblyExporter for ILASMExporter {
         Self { encoded_asm }
     }
     fn add_type(&mut self, tpe: &TypeDef) {
-        type_def_cli(&mut self.encoded_asm,tpe).expect("Error");
+        type_def_cli(&mut self.encoded_asm, tpe).expect("Error");
         //let _ = self.types.push(tpe.clone());
     }
     fn add_method(&mut self, method: &Method) {
@@ -84,33 +84,36 @@ impl AssemblyExporter for ILASMExporter {
     }
 }
 
-fn type_def_cli(mut w: impl Write,tpe: &TypeDef) -> Result<(), super::AssemblyExportError> {
+fn type_def_cli(mut w: impl Write, tpe: &TypeDef) -> Result<(), super::AssemblyExportError> {
     let name = tpe.name();
     let mut generics = String::new();
-    if tpe.gargc() != 0{
+    if tpe.gargc() != 0 {
         generics.push('<');
     }
-    for i in 0..tpe.gargc(){
-        if i != 0{
+    for i in 0..tpe.gargc() {
+        if i != 0 {
             generics.push(',');
         }
         generics.push_str(&format!("G{i}"));
     }
-    if tpe.gargc() != 0{
+    if tpe.gargc() != 0 {
         generics.push('>');
     }
-    let extended = if let Some(extended) = tpe.extends(){
+    let extended = if let Some(extended) = tpe.extends() {
         todo!("Can't handle inheretence yet!");
-    }
-    else{
+    } else {
         "[System.Runtime]System.ValueType"
     };
-    writeln!(w,"\n.class {name}{generics} extends {extended}{{");
+    writeln!(w, "\n.class {name}{generics} extends {extended}{{");
     let mut field_string = String::new();
-    for (field_name,field_type) in tpe.fields().iter(){
-        writeln!(w,"\t.field {field_type_name} {field_name}",field_type_name = prefixed_type_cli(field_type));
+    for (field_name, field_type) in tpe.fields().iter() {
+        writeln!(
+            w,
+            "\t.field {field_type_name} {field_name}",
+            field_type_name = prefixed_type_cli(field_type)
+        );
     }
-    writeln!(w,"}}");
+    writeln!(w, "}}");
     Ok(())
 }
 fn absolute_path(path: &std::path::Path) -> std::io::Result<std::path::PathBuf> {
@@ -133,16 +136,24 @@ fn method_cil(mut w: impl Write, method: &Method) -> std::io::Result<()> {
     write!(w, ".method {access} static hidebysig {output} {name}")?;
     args_cli(&mut w, method.sig().inputs())?;
     writeln!(w, "{{")?;
-    if method.is_entrypoint(){
-        writeln!(w,".entrypoint")?;
+    if method.is_entrypoint() {
+        writeln!(w, ".entrypoint")?;
     }
     writeln!(w, "\t.locals (")?;
     let mut locals_iter = method.locals().iter().enumerate();
-    if let Some((local_id, local) ) = locals_iter.next(){
-        write!(w, "\t\t[{local_id}] {escaped_type}", escaped_type = arg_type_cli(local))?;
+    if let Some((local_id, local)) = locals_iter.next() {
+        write!(
+            w,
+            "\t\t[{local_id}] {escaped_type}",
+            escaped_type = arg_type_cli(local)
+        )?;
     }
-    for (local_id, local) in locals_iter{
-        write!(w, ",\n\t\t[{local_id}] {escaped_type}", escaped_type = arg_type_cli(local))?;
+    for (local_id, local) in locals_iter {
+        write!(
+            w,
+            ",\n\t\t[{local_id}] {escaped_type}",
+            escaped_type = arg_type_cli(local)
+        )?;
     }
     writeln!(w, "\n\t)")?;
     for op in method.get_ops() {
@@ -289,95 +300,95 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
         //Debug
         CILOp::Comment(comment) => format!("//{comment}").into(),
         //Convertions
-        CILOp::ConvISize(checked) =>
-            if *checked{
+        CILOp::ConvISize(checked) => {
+            if *checked {
                 "conv.ovf.i".into()
-            }
-            else{
+            } else {
                 "conv.i".into()
             }
-        CILOp::ConvI8(checked) =>
-            if *checked{
+        }
+        CILOp::ConvI8(checked) => {
+            if *checked {
                 "conv.ovf.i1".into()
-            }
-            else{
+            } else {
                 "conv.i1".into()
-            } 
-        CILOp::ConvI16(checked) =>
-            if *checked{
+            }
+        }
+        CILOp::ConvI16(checked) => {
+            if *checked {
                 "conv.ovf.i2".into()
-            }
-            else{
+            } else {
                 "conv.i2".into()
-            } 
-        CILOp::ConvI32(checked) =>
-            if *checked{
+            }
+        }
+        CILOp::ConvI32(checked) => {
+            if *checked {
                 "conv.ovf.i4".into()
-            }
-            else{
+            } else {
                 "conv.i4".into()
-            } 
-        CILOp::ConvI64(checked) =>
-            if *checked{
+            }
+        }
+        CILOp::ConvI64(checked) => {
+            if *checked {
                 "conv.ovf.i8".into()
-            }
-            else{
+            } else {
                 "conv.i8".into()
-            } 
-        CILOp::ConvUSize(checked) =>
-            if *checked{
-                "conv.ovf.u".into()
             }
-            else{
+        }
+        CILOp::ConvUSize(checked) => {
+            if *checked {
+                "conv.ovf.u".into()
+            } else {
                 "conv.u".into()
             }
-        CILOp::ConvU8(checked) =>
-            if *checked{
+        }
+        CILOp::ConvU8(checked) => {
+            if *checked {
                 "conv.ovf.u1".into()
-            }
-            else{
+            } else {
                 "conv.u1".into()
-            } 
-        CILOp::ConvU16(checked) =>
-            if *checked{
+            }
+        }
+        CILOp::ConvU16(checked) => {
+            if *checked {
                 "conv.ovf.u2".into()
-            }
-            else{
+            } else {
                 "conv.u2".into()
-            } 
-        CILOp::ConvU32(checked) =>
-            if *checked{
+            }
+        }
+        CILOp::ConvU32(checked) => {
+            if *checked {
                 "conv.ovf.u4".into()
-            }
-            else{
+            } else {
                 "conv.u4".into()
-            } 
-        CILOp::ConvU64(checked) =>
-            if *checked{
+            }
+        }
+        CILOp::ConvU64(checked) => {
+            if *checked {
                 "conv.ovf.u8".into()
-            }
-            else{
+            } else {
                 "conv.u8".into()
-            } 
-            CILOp::ConvF32(checked) =>
-            if *checked{
+            }
+        }
+        CILOp::ConvF32(checked) => {
+            if *checked {
                 "conv.ovf.r4".into()
-            }
-            else{
+            } else {
                 "conv.r4".into()
-            } 
-        CILOp::ConvU64(checked) =>
-            if *checked{
-                "conv.ovf.r8".into()
             }
-            else{
-                "conv.r8".into()
-            } 
+        }
         // Pointer stuff
         CILOp::LDIndI8 => "ldind.i1".into(),
-        CILOp::Pop=>"pop".into(),
-        CILOp::Throw=>"throw".into(),
-        CILOp::LdStr(str)=>format!("ldstr {str:?}").into(),
+        CILOp::Pop => "pop".into(),
+        CILOp::Throw => "throw".into(),
+        CILOp::LdStr(str) => format!("ldstr {str:?}").into(),
+        CILOp::LDField(descr) => format!(
+            "ldfld {prefixed_type} {owner}::{field_name}",
+            prefixed_type = prefixed_type_cli(descr.tpe()),
+            owner = dotnet_type_ref_cli(descr.owner()),
+            field_name = descr.name()
+        )
+        .into(),
         CILOp::NewObj(call_site) => {
             if call_site.is_nop() {
                 "".into()
@@ -460,7 +471,7 @@ fn type_cli(tpe: &Type) -> Cow<'static, str> {
         Type::Unresolved => "Unresolved".into(),
         Type::Bool => "bool".into(),
         Type::DotnetChar => "char".into(),
-        Type::GenericArg(idx)=>format!("G{idx}").into(),
+        Type::GenericArg(idx) => format!("!G{idx}").into(),
         Type::Foreign => "valuetype Foreign".into(),
         //_ => todo!("Unsuported type {tpe:?}"),
     }
@@ -483,13 +494,15 @@ fn prefixed_type_cli(tpe: &Type) -> Cow<'static, str> {
         Type::ISize => "native int".into(),
         Type::USize => "native uint".into(),
         Type::Ptr(inner) => format!("{inner}*", inner = prefixed_type_cli(inner)).into(),
-        Type::DotnetType(dotnet_type) => format!("valuetype {}",dotnet_type_ref_cli(dotnet_type)).into(),
+        Type::DotnetType(dotnet_type) => {
+            format!("valuetype {}", dotnet_type_ref_cli(dotnet_type)).into()
+        }
         //Special type
         Type::Unresolved => "valuetype Unresolved".into(),
         Type::Foreign => "valuetype Foreign".into(),
         Type::Bool => "bool".into(),
         Type::DotnetChar => "char".into(),
-        Type::GenericArg(idx)=>format!("G{idx}").into(),
+        Type::GenericArg(idx) => format!("!G{idx}").into(),
         //_ => todo!("Unsuported type {tpe:?}"),
     }
 }
@@ -512,7 +525,10 @@ fn generics_str(generics: &[Type]) -> Cow<'static, str> {
         let mut garg_string = String::new();
         let mut generic_iter = generics.iter();
         if let Some(first_generic) = generic_iter.next() {
-            garg_string.push_str(&format!("{type_cli}", type_cli = prefixed_type_cli(&first_generic)));
+            garg_string.push_str(&format!(
+                "{type_cli}",
+                type_cli = prefixed_type_cli(&first_generic)
+            ));
         }
         for arg in generic_iter {
             garg_string.push_str(&format!(",{type_cli}", type_cli = prefixed_type_cli(&arg)));
