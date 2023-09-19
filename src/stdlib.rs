@@ -45,6 +45,11 @@ pub(crate) fn insert_libc(asm: &mut Assembly) {
     });*/
     asm.add_typedef(crate::type_def::TypeDef::nameonly("Unresolved"));
     asm.add_typedef(crate::type_def::TypeDef::nameonly("RustVoid"));
+    asm.add_typedef(crate::type_def::TypeDef::nameonly("Foreign"));
+    asm.add_typedef(crate::type_def::TypeDef::nameonly("RustStr"));
+    let mut rust_slice = crate::type_def::TypeDef::nameonly("RustSlice");
+    rust_slice.set_generic_count(1);
+    asm.add_typedef(rust_slice);
     math(asm);
     io(asm);
     malloc(asm);

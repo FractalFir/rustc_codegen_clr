@@ -99,6 +99,9 @@ pub enum CILOp {
     ConvU32(bool),
     ConvU64(bool),
     ConvUSize(bool),
+    // Float convertions
+    ConvF32(bool),
+    ConvF64(bool),
     // Pointer
     LDIndI8,
     //Debugging

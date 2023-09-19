@@ -106,6 +106,10 @@ fn type_def_cli(mut w: impl Write,tpe: &TypeDef) -> Result<(), super::AssemblyEx
         "[System.Runtime]System.ValueType"
     };
     writeln!(w,"\n.class {name}{generics} extends {extended}{{");
+    let mut field_string = String::new();
+    for (field_name,field_type) in tpe.fields().iter(){
+        writeln!(w,"\t.field {field_type_name} {field_name}",field_type_name = prefixed_type_cli(field_type));
+    }
     writeln!(w,"}}");
     Ok(())
 }
@@ -192,11 +196,12 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
         CILOp::Mul => "mul".into(),
         CILOp::Div => "div".into(),
         CILOp::Rem => "rem".into(),
+        CILOp::Neg => "neg".into(),
         //Bitwise
         CILOp::And => "and".into(),
         CILOp::Or => "or".into(),
         CILOp::XOr => "xor".into(),
-        //CILOp::Not => "not".into(),
+        CILOp::Not => "not".into(),
         //Bitshifts
         CILOp::Shl => "shl".into(),
         CILOp::Shr => "shr".into(),
@@ -354,6 +359,20 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
             else{
                 "conv.u8".into()
             } 
+            CILOp::ConvF32(checked) =>
+            if *checked{
+                "conv.ovf.r4".into()
+            }
+            else{
+                "conv.r4".into()
+            } 
+        CILOp::ConvU64(checked) =>
+            if *checked{
+                "conv.ovf.r8".into()
+            }
+            else{
+                "conv.r8".into()
+            } 
         // Pointer stuff
         CILOp::LDIndI8 => "ldind.i1".into(),
         CILOp::Pop=>"pop".into(),
@@ -441,6 +460,36 @@ fn type_cli(tpe: &Type) -> Cow<'static, str> {
         Type::Unresolved => "Unresolved".into(),
         Type::Bool => "bool".into(),
         Type::DotnetChar => "char".into(),
+        Type::GenericArg(idx)=>format!("G{idx}").into(),
+        Type::Foreign => "valuetype Foreign".into(),
+        //_ => todo!("Unsuported type {tpe:?}"),
+    }
+}
+fn prefixed_type_cli(tpe: &Type) -> Cow<'static, str> {
+    match tpe {
+        Type::Void => "RustVoid".into(),
+        Type::I8 => "int8".into(),
+        Type::U8 => "uint8".into(),
+        Type::I16 => "int16".into(),
+        Type::U16 => "uint16".into(),
+        Type::F32 => "float32".into(),
+        Type::I32 => "int32".into(),
+        Type::U32 => "uint32".into(),
+        Type::F64 => "float64".into(),
+        Type::I64 => "int64".into(),
+        Type::U64 => "uint64".into(),
+        Type::I128 => "valuetype [System.Rutnime]System.Int128".into(),
+        Type::U128 => "valuetype [System.Rutnime]System.UInt128".into(),
+        Type::ISize => "native int".into(),
+        Type::USize => "native uint".into(),
+        Type::Ptr(inner) => format!("{inner}*", inner = prefixed_type_cli(inner)).into(),
+        Type::DotnetType(dotnet_type) => format!("valuetype {}",dotnet_type_ref_cli(dotnet_type)).into(),
+        //Special type
+        Type::Unresolved => "valuetype Unresolved".into(),
+        Type::Foreign => "valuetype Foreign".into(),
+        Type::Bool => "bool".into(),
+        Type::DotnetChar => "char".into(),
+        Type::GenericArg(idx)=>format!("G{idx}").into(),
         //_ => todo!("Unsuported type {tpe:?}"),
     }
 }
@@ -463,10 +512,10 @@ fn generics_str(generics: &[Type]) -> Cow<'static, str> {
         let mut garg_string = String::new();
         let mut generic_iter = generics.iter();
         if let Some(first_generic) = generic_iter.next() {
-            garg_string.push_str(&format!("{type_cli}", type_cli = type_cli(&first_generic)));
+            garg_string.push_str(&format!("{type_cli}", type_cli = prefixed_type_cli(&first_generic)));
         }
         for arg in generic_iter {
-            garg_string.push_str(&format!(",{type_cli}", type_cli = type_cli(&arg)));
+            garg_string.push_str(&format!(",{type_cli}", type_cli = prefixed_type_cli(&arg)));
         }
         format!("<{garg_string}>").into()
     }
