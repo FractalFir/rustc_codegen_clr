@@ -12,10 +12,10 @@ pub fn handle_statement<'tctx>(
     let kind = &statement.kind;
     let res = match kind {
         StatementKind::StorageLive(local) => {
-            vec![CILOp::Comment(format!("Storage Live({local:?})").into())]
+            vec![]
         }
         StatementKind::StorageDead(local) => {
-            vec![CILOp::Comment(format!("Storage Dead({local:?})").into())]
+            vec![]
         }
         StatementKind::Assign(palce_rvalue) => {
             let place = palce_rvalue.as_ref().0;

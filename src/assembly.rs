@@ -62,7 +62,7 @@ impl Assembly {
             last_bb_id += 1;
             for statement in &block_data.statements {
                 ops.extend(crate::statement::handle_statement(statement, mir, tcx, mir));
-                ops.push(CILOp::Comment(format!("{statement:?}").into()));
+                // ops.push(CILOp::Comment(format!("{statement:?}").into()));
                 //println!("ops:{ops:?}\n\n");
             }
             match &block_data.terminator {
@@ -91,6 +91,10 @@ impl Assembly {
         for type_def in TypeDef::from_ty(ty, tyctx) {
             self.types.insert(type_def);
         }
+    }
+    pub fn opt(&mut self){
+        let functions:HashSet<_> = self.functions.iter().map(|method|{let mut method = method.clone();crate::opt::opt_method(&mut method);method}).collect();
+        self.functions = functions;
     }
     pub fn add_typedef<'ctx>(&mut self, type_def: TypeDef) {
         self.types.insert(type_def);

@@ -9,7 +9,9 @@ fn slice_head<T>(slice: &[T]) -> (&T, &[T]) {
 fn pointed_type(ty: Ty) -> Ty {
     if let TyKind::Ref(_region, inner, _mut) = ty.kind() {
         *inner
-    } else {
+    } else if let TyKind::RawPtr(inner_and_mut) = ty.kind() {
+        inner_and_mut.ty   
+    }else {
         panic!("{ty:?} is not a pointer type!");
     }
 }
@@ -18,6 +20,7 @@ fn body_ty_is_by_adress(last_ty: &Ty) -> bool {
         TyKind::Int(_) => false,
         TyKind::Adt(_, _) => true,
         TyKind::Ref(_region, inner, _mut) => false,
+        TyKind::RawPtr(_) => false,
         _ => todo!("TODO: body_ty_is_by_adress does not support type {last_ty:?}"),
     }
 }
@@ -56,37 +59,13 @@ fn local_body<'tcx>(local: usize, method: &rustc_middle::mir::Body<'tcx>) -> (CI
         (local_get(local, method), ty)
     }
 }
-/// Returns the ops for getting the value of place.
-pub fn place_get<'a>(
-    place: &Place<'a>,
-    ctx: TyCtxt<'a>,
-    method: &rustc_middle::mir::Body<'a>,
-) -> Vec<CILOp> {
-    let mut ops = Vec::with_capacity(place.projection.len());
-    if place.projection.is_empty() {
-        ops.push(local_get(place.local.as_usize(), method));
-        return ops;
-    } else {
-        let (op, mut ty) = local_body(place.local.as_usize(), method);
-        ops.push(op);
-        let (head, body) = slice_head(place.projection);
-        for elem in body {
-            println!("elem:{elem:?} ty:{ty:?}");
-            let (curr_ty, curr_ops) = place_elem_body(elem, ty, ctx);
-            ty = curr_ty;
-            ops.extend(curr_ops);
-        }
-        ops.extend(place_elem_get(head, ty, ctx));
-        ops
-    }
-}
 fn place_elem_get<'a>(
     place_elem: &PlaceElem<'a>,
     curr_type: Ty<'a>,
     ctx: TyCtxt<'a>,
 ) -> Vec<CILOp> {
     match place_elem {
-        PlaceElem::Deref => deref_op(curr_type),
+        PlaceElem::Deref => deref_op(curr_type,ctx),
         PlaceElem::Field(index, field_type) => {
             let field_name = field_name(curr_type, index.as_u32());
             let curr_type = crate::r#type::Type::from_ty(curr_type, ctx);
@@ -103,6 +82,30 @@ fn place_elem_get<'a>(
             vec![CILOp::LDField(field_desc)]
         }
         _ => todo!("Can't handle porojection {place_elem:?} in get"),
+    }
+}
+fn place_elem_set<'a>(
+    place_elem: &PlaceElem<'a>,
+    curr_type: Ty<'a>,
+    ctx: TyCtxt<'a>,
+) -> Vec<CILOp> {
+    match place_elem {
+        PlaceElem::Field(index, field_type) => {
+            let field_name = field_name(curr_type, index.as_u32());
+            let curr_type = crate::r#type::Type::from_ty(curr_type, ctx);
+            let curr_type = if let crate::r#type::Type::DotnetType(dotnet_type) = curr_type {
+                dotnet_type.as_ref().clone()
+            } else {
+                panic!();
+            };
+            let field_desc = FieldDescriptor::boxed(
+                curr_type,
+                crate::r#type::Type::from_ty(*field_type, ctx),
+                field_name,
+            );
+            vec![CILOp::STField(field_desc)]
+        }
+        _ => todo!("Can't handle porojection {place_elem:?} in set"),
     }
 }
 fn field_name(ty: Ty, idx: u32) -> crate::IString {
@@ -128,7 +131,7 @@ fn place_elem_body<'ctx>(
             if body_ty_is_by_adress(&pointed) {
                 (pointed, vec![])
             } else {
-                (pointed, deref_op(curr_type))
+                (pointed, deref_op(curr_type,tyctx))
             }
         }
         PlaceElem::Field(index, field_type) => {
@@ -153,13 +156,45 @@ fn place_elem_body<'ctx>(
         _ => todo!("Can't handle porojection {place_elem:?} in body"),
     }
 }
-fn deref_op(curr_type: Ty) -> Vec<CILOp> {
+fn deref_op<'ctx>(curr_type: Ty<'ctx>,tyctx: TyCtxt<'ctx>) -> Vec<CILOp> {
     match curr_type.kind() {
         TyKind::Int(int_ty) => match int_ty {
             IntTy::I8 => vec![CILOp::LDIndI8],
             _ => todo!("TODO: can't deref int type {int_ty:?} yet"),
         },
+        TyKind::Adt(_,_)=>{
+            let curr_type = if let crate::r#type::Type::DotnetType(dotnet_type) = crate::r#type::Type::from_ty(curr_type,tyctx) {
+                dotnet_type
+            } else {
+                panic!();
+            };
+            vec![CILOp::LdObj(curr_type)]
+        }
         _ => todo!("TODO: can't deref type {curr_type:?} yet"),
+    }
+}
+/// Returns the ops for getting the value of place.
+pub fn place_get<'a>(
+    place: &Place<'a>,
+    ctx: TyCtxt<'a>,
+    method: &rustc_middle::mir::Body<'a>,
+) -> Vec<CILOp> {
+    let mut ops = Vec::with_capacity(place.projection.len());
+    if place.projection.is_empty() {
+        ops.push(local_get(place.local.as_usize(), method));
+        return ops;
+    } else {
+        let (op, mut ty) = local_body(place.local.as_usize(), method);
+        ops.push(op);
+        let (head, body) = slice_head(place.projection);
+        for elem in body {
+            println!("elem:{elem:?} ty:{ty:?}");
+            let (curr_ty, curr_ops) = place_elem_body(elem, ty, ctx);
+            ty = curr_ty;
+            ops.extend(curr_ops);
+        }
+        ops.extend(place_elem_get(head, ty, ctx));
+        ops
     }
 }
 /// Returns the ops for getting the value of place.
@@ -192,6 +227,15 @@ pub(crate) fn place_set<'a>(
     } else {
         let (op, mut ty) = local_body(place.local.as_usize(), method);
         ops.push(op);
-        todo!();
+        let (head, body) = slice_head(place.projection);
+        for elem in body {
+            println!("elem:{elem:?} ty:{ty:?}");
+            let (curr_ty, curr_ops) = place_elem_body(elem, ty, ctx);
+            ty = curr_ty;
+            ops.extend(curr_ops);
+        }
+        ops.extend(value_calc);
+        ops.extend(place_elem_set(head, ty, ctx));
+        ops
     }
 }

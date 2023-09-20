@@ -40,6 +40,9 @@ impl Method {
             .iter()
             .any(|attr| *attr == Attribute::EntryPoint)
     }
+    pub fn ops_mut(&mut self)->&mut Vec<CILOp>{
+        &mut self.ops
+    }
     pub fn access(&self) -> AccessModifer {
         self.access
     }
@@ -60,5 +63,8 @@ impl Method {
     }
     pub fn add_attribute(&mut self, attr: Attribute) {
         self.attributes.push(attr);
+    }
+    pub fn set_locals(&mut self,locals: impl Into<Vec<Type>>){
+        self.locals = locals.into();
     }
 }

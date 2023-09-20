@@ -148,8 +148,12 @@ pub enum CILOp {
     Gt,
     //Special
     Pop,
+    Dup,
+    Nop,
     //OOP
     NewObj(Box<CallSite>),
     LDField(Box<FieldDescriptor>),
     LDFieldAdress(Box<FieldDescriptor>),
+    STField(Box<FieldDescriptor>),
+    LdObj(Box<DotnetTypeRef>),
 }

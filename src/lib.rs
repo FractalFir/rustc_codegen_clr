@@ -61,6 +61,7 @@ mod r#type;
 mod type_def;
 mod unop;
 mod utilis;
+mod opt;
 use assembly::Assembly;
 struct MyBackend;
 pub(crate) const ALWAYS_INIT_STRUCTS: bool = false;
@@ -106,7 +107,7 @@ impl CodegenBackend for MyBackend {
             let cs = cil_op::CallSite::new(None, symbol.into(), sig, true);
             codegen.set_entrypoint(cs);
         }
-
+        codegen.opt();
         let name: IString = cgus.iter().next().unwrap().name().to_string().into();
         Box::new((
             name,

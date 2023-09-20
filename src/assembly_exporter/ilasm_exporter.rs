@@ -379,11 +379,18 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
         }
         // Pointer stuff
         CILOp::LDIndI8 => "ldind.i1".into(),
-        CILOp::Pop => "pop".into(),
+        //OOP
         CILOp::Throw => "throw".into(),
         CILOp::LdStr(str) => format!("ldstr {str:?}").into(),
         CILOp::LDField(descr) => format!(
-            "ldfld {prefixed_type} {owner}::{field_name}",
+            "ldfld {prefixed_type} valuetype {owner}::{field_name}",
+            prefixed_type = prefixed_type_cli(descr.tpe()),
+            owner = dotnet_type_ref_cli(descr.owner()),
+            field_name = descr.name()
+        )
+        .into(),
+        CILOp::STField(descr) => format!(
+            "stfld {prefixed_type} valuetype {owner}::{field_name}",
             prefixed_type = prefixed_type_cli(descr.tpe()),
             owner = dotnet_type_ref_cli(descr.owner()),
             field_name = descr.name()
@@ -421,6 +428,9 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
                 .into()
             }
         }
+        //Stack 
+        CILOp::Pop => "pop".into(),
+        CILOp::Dup => "dup".into(),
         _ => todo!("Unsuported op {op:?}"),
     }
 }
