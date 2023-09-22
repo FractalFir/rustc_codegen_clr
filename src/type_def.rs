@@ -41,7 +41,6 @@ impl TypeDef {
         }
     }
     pub fn from_ty<'tycxt>(ty: Ty<'tycxt>, ctx: TyCtxt<'tycxt>) -> Vec<Self> {
-        println!("defs {ty:?}");
         match ty.kind() {
             TyKind::Adt(adt_def, subst) => {
                 let name = crate::utilis::adt_name(adt_def);

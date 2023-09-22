@@ -62,6 +62,7 @@ mod type_def;
 mod unop;
 mod utilis;
 mod opt;
+mod aggregate;
 use assembly::Assembly;
 struct MyBackend;
 pub(crate) const ALWAYS_INIT_STRUCTS: bool = false;

@@ -1,16 +1,17 @@
 use rustc_middle::mir::{BinOp, Operand};
-use rustc_middle::ty::{IntTy, Ty, TyCtxt, TyKind, UintTy};
+use rustc_middle::ty::{IntTy, Ty, TyCtxt, TyKind, UintTy,Instance};
 
 use crate::cil_op::CILOp;
-pub(crate) fn binop_unchecked<'ctx>(
+pub(crate) fn binop_unchecked<'tcx>(
     binop: BinOp,
-    operand_a: &Operand<'ctx>,
-    operand_b: &Operand<'ctx>,
-    tcx: TyCtxt<'ctx>,
-    method: &rustc_middle::mir::Body<'ctx>,
+    operand_a: &Operand<'tcx>,
+    operand_b: &Operand<'tcx>,
+    tcx: TyCtxt<'tcx>,
+    method: &rustc_middle::mir::Body<'tcx>,
+    method_instance: Instance<'tcx>,
 ) -> Vec<CILOp> {
-    let ops_a = crate::operand::handle_operand(operand_a, tcx, method);
-    let ops_b = crate::operand::handle_operand(operand_b, tcx, method);
+    let ops_a = crate::operand::handle_operand(operand_a, tcx,method,method_instance);
+    let ops_b = crate::operand::handle_operand(operand_b, tcx, method,method_instance);
     let ty_a = operand_a.ty(&method.local_decls, tcx);
     let ty_b = operand_b.ty(&method.local_decls, tcx);
     match binop {
@@ -92,7 +93,7 @@ pub(crate) fn binop_unchecked<'ctx>(
         //_ => todo!("Unsupported bionp {binop:?}"),
     }
 }
-fn add_unchecked<'ctx>(ty_a: Ty<'ctx>, ty_b: Ty<'ctx>) -> Vec<CILOp> {
+fn add_unchecked<'tcx>(ty_a: Ty<'tcx>, ty_b: Ty<'tcx>) -> Vec<CILOp> {
     match ty_a.kind() {
         TyKind::Int(int_ty) => {
             if let IntTy::I128 = int_ty {
@@ -112,7 +113,7 @@ fn add_unchecked<'ctx>(ty_a: Ty<'ctx>, ty_b: Ty<'ctx>) -> Vec<CILOp> {
         _ => todo!("can't add numbers of types {ty_a} and {ty_b}"),
     }
 }
-fn sub_unchecked<'ctx>(ty_a: Ty<'ctx>, ty_b: Ty<'ctx>) -> Vec<CILOp> {
+fn sub_unchecked<'tcx>(ty_a: Ty<'tcx>, ty_b: Ty<'tcx>) -> Vec<CILOp> {
     match ty_a.kind() {
         TyKind::Int(int_ty) => {
             if let IntTy::I128 = int_ty {
@@ -132,39 +133,39 @@ fn sub_unchecked<'ctx>(ty_a: Ty<'ctx>, ty_b: Ty<'ctx>) -> Vec<CILOp> {
         _ => todo!("can't add numbers of types {ty_a} and {ty_b}"),
     }
 }
-fn ne_unchecked<'ctx>(ty_a: Ty<'ctx>, ty_b: Ty<'ctx>) -> Vec<CILOp> {
+fn ne_unchecked<'tcx>(ty_a: Ty<'tcx>, ty_b: Ty<'tcx>) -> Vec<CILOp> {
     vec![CILOp::Eq, CILOp::LdcI32(0), CILOp::Eq]
 }
-fn eq_unchecked<'ctx>(ty_a: Ty<'ctx>, ty_b: Ty<'ctx>) -> Vec<CILOp> {
+fn eq_unchecked<'tcx>(ty_a: Ty<'tcx>, ty_b: Ty<'tcx>) -> Vec<CILOp> {
     vec![CILOp::Eq]
 }
-fn lt_unchecked<'ctx>(ty_a: Ty<'ctx>, ty_b: Ty<'ctx>) -> Vec<CILOp> {
+fn lt_unchecked<'tcx>(ty_a: Ty<'tcx>, ty_b: Ty<'tcx>) -> Vec<CILOp> {
     vec![CILOp::Lt]
 }
-fn gt_unchecked<'ctx>(ty_a: Ty<'ctx>, ty_b: Ty<'ctx>) -> Vec<CILOp> {
+fn gt_unchecked<'tcx>(ty_a: Ty<'tcx>, ty_b: Ty<'tcx>) -> Vec<CILOp> {
     vec![CILOp::Lt]
 }
-fn bit_and_unchecked<'ctx>(ty_a: Ty<'ctx>, ty_b: Ty<'ctx>) -> Vec<CILOp> {
+fn bit_and_unchecked<'tcx>(ty_a: Ty<'tcx>, ty_b: Ty<'tcx>) -> Vec<CILOp> {
     vec![CILOp::And]
 }
-fn bit_or_unchecked<'ctx>(ty_a: Ty<'ctx>, ty_b: Ty<'ctx>) -> Vec<CILOp> {
+fn bit_or_unchecked<'tcx>(ty_a: Ty<'tcx>, ty_b: Ty<'tcx>) -> Vec<CILOp> {
     vec![CILOp::Or]
 }
-fn bit_xor_unchecked<'ctx>(ty_a: Ty<'ctx>, ty_b: Ty<'ctx>) -> Vec<CILOp> {
+fn bit_xor_unchecked<'tcx>(ty_a: Ty<'tcx>, ty_b: Ty<'tcx>) -> Vec<CILOp> {
     vec![CILOp::XOr]
 }
-fn rem_unchecked<'ctx>(ty_a: Ty<'ctx>, ty_b: Ty<'ctx>) -> Vec<CILOp> {
+fn rem_unchecked<'tcx>(ty_a: Ty<'tcx>, ty_b: Ty<'tcx>) -> Vec<CILOp> {
     vec![CILOp::Rem]
 }
-fn shr_unchecked<'ctx>(ty_a: Ty<'ctx>, ty_b: Ty<'ctx>) -> Vec<CILOp> {
+fn shr_unchecked<'tcx>(ty_a: Ty<'tcx>, ty_b: Ty<'tcx>) -> Vec<CILOp> {
     vec![CILOp::Shr]
 }
-fn shl_unchecked<'ctx>(ty_a: Ty<'ctx>, ty_b: Ty<'ctx>) -> Vec<CILOp> {
+fn shl_unchecked<'tcx>(ty_a: Ty<'tcx>, ty_b: Ty<'tcx>) -> Vec<CILOp> {
     vec![CILOp::Shl]
 }
-fn mul_unchecked<'ctx>(ty_a: Ty<'ctx>, ty_b: Ty<'ctx>) -> Vec<CILOp> {
+fn mul_unchecked<'tcx>(ty_a: Ty<'tcx>, ty_b: Ty<'tcx>) -> Vec<CILOp> {
     vec![CILOp::Mul]
 }
-fn div_unchecked<'ctx>(ty_a: Ty<'ctx>, ty_b: Ty<'ctx>) -> Vec<CILOp> {
+fn div_unchecked<'tcx>(ty_a: Ty<'tcx>, ty_b: Ty<'tcx>) -> Vec<CILOp> {
     vec![CILOp::Div]
 }

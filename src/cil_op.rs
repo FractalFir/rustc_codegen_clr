@@ -127,6 +127,9 @@ pub enum CILOp {
     ConvF64(bool),
     // Pointer
     LDIndI8,
+    LDIndISize,
+    STIndI8,
+    STIndISize,
     //Debugging
     Comment(IString),
     // Arthmetic Operations
@@ -156,4 +159,5 @@ pub enum CILOp {
     LDFieldAdress(Box<FieldDescriptor>),
     STField(Box<FieldDescriptor>),
     LdObj(Box<DotnetTypeRef>),
+    STObj(Box<DotnetTypeRef>),
 }

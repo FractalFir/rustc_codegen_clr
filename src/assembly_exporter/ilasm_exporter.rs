@@ -379,6 +379,8 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
         }
         // Pointer stuff
         CILOp::LDIndI8 => "ldind.i1".into(),
+        CILOp::LDIndISize => "ldind.i".into(),
+        CILOp::STIndISize => "stind.i".into(),
         //OOP
         CILOp::Throw => "throw".into(),
         CILOp::LdStr(str) => format!("ldstr {str:?}").into(),
@@ -437,7 +439,7 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
 fn output_type_cli(tpe: &Type) -> Cow<'static, str> {
     match tpe {
         Type::Void => "void".into(),
-        _ => type_cli(tpe).into(),
+        _ => prefixed_type_cli(tpe).into(),
     }
 }
 fn arg_type_cli(tpe: &Type) -> Cow<'static, str> {

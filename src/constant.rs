@@ -39,6 +39,7 @@ fn load_const_scalar<'ctx>(
         TyKind::Int(int_type) => load_const_int(scalar_u128, int_type, tyctx),
         TyKind::Uint(uint_type) => load_const_uint(scalar_u128, uint_type, tyctx),
         TyKind::Float(ftype) => load_const_float(scalar_u128, ftype, tyctx),
+        TyKind::Bool => vec![CILOp::LdcI32(scalar_u128 as i32)],
         TyKind::RawPtr(_) => {
             let value = i64::from_ne_bytes((scalar_u128 as u64).to_ne_bytes());
             vec![CILOp::LdcI64(value)]

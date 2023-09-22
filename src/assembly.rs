@@ -51,7 +51,7 @@ impl Assembly {
         // Handle the function signature
         let sig = FnSig::from_poly_sig(&instance.ty(tcx, param_env).fn_sig(tcx), tcx)?;
         // Get locals
-        let locals = locals_from_mir(&mir.local_decls, tcx, sig.inputs().len());
+        let locals = locals_from_mir(&mir.local_decls, tcx, sig.inputs().len(),&instance);
         // Create method prototype
         let mut method = Method::new(access_modifier, sig, name, locals);
         let mut ops = Vec::new();
@@ -61,12 +61,12 @@ impl Assembly {
             ops.push(CILOp::Label(last_bb_id));
             last_bb_id += 1;
             for statement in &block_data.statements {
-                ops.extend(crate::statement::handle_statement(statement, mir, tcx, mir));
+                ops.extend(crate::statement::handle_statement(statement, mir, tcx, mir,instance));
                 // ops.push(CILOp::Comment(format!("{statement:?}").into()));
                 //println!("ops:{ops:?}\n\n");
             }
             match &block_data.terminator {
-                Some(term) => ops.extend(crate::terminator::handle_terminator(term, mir, tcx, mir)),
+                Some(term) => ops.extend(crate::terminator::handle_terminator(term, mir, tcx, mir,instance)),
                 None => (),
             }
         }
@@ -106,7 +106,8 @@ impl Assembly {
     ) -> Result<(), CodegenError> {
         match item {
             MonoItem::Fn(instance) => {
-                let symbol_name: String = item.symbol_name(tcx).to_string();
+                //let instance = crate::utilis::monomorphize(&instance,tcx);
+                let symbol_name = crate::utilis::function_name(item.symbol_name(tcx));
                 self.add_fn(instance, tcx, &symbol_name)?;
                 Ok(())
             }
@@ -124,11 +125,13 @@ fn locals_from_mir<'ctx>(
     locals: &rustc_index::IndexVec<Local, LocalDecl<'ctx>>,
     tyctx: TyCtxt<'ctx>,
     argc: usize,
+    method_instance: &Instance<'ctx>,
 ) -> Vec<Type> {
     let mut local_types: Vec<Type> = Vec::with_capacity(locals.len());
     for (local_id, local) in locals.iter().enumerate() {
         if local_id == 0 || local_id > argc {
-            local_types.push(Type::from_ty(local.ty, tyctx));
+            let ty = crate::utilis::monomorphize(method_instance, local.ty, tyctx);
+            local_types.push(Type::from_ty(ty, tyctx));
         }
     }
     local_types

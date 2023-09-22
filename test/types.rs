@@ -1,3 +1,4 @@
+#![allow(improper_ctypes_definitions)]
 #[no_mangle]
 pub extern fn addisize(a:isize,b:isize)->isize{a+b}
 //#[no_mangle]
@@ -37,7 +38,7 @@ pub extern fn ref_ident(a:&u64)->&u64{a}
 #[no_mangle]
 pub extern fn ref_ref_ident<'a,'b>(a:&'a &'b u64)->&'a &'b u64{a}
 #[no_mangle]
-pub extern fn slice(arr:&[i32]){}
+pub extern fn slice(_arr:&[i32]){}
 
 /* 
 pub extern fn init_arr()->[i32;8]{

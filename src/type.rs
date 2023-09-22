@@ -82,7 +82,6 @@ impl Type {
         Self::from_ty_kind(rust_tpe.kind(), tyctx)
     }
     pub fn from_ty_kind<'ctx>(rust_tpe: &TyKind<'ctx>, tyctx: TyCtxt<'ctx>) -> Self {
-        println!("Ty kind {:?}", rust_tpe);
         match rust_tpe {
             TyKind::Bool => Self::Bool,
             TyKind::Int(int) => int.into(),
