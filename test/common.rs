@@ -5,6 +5,7 @@ use core::panic::PanicInfo;
 extern "C"{
     fn puts(msg:*const u8);
     fn malloc(size:usize)->*mut ();
+    fn realloc(ptr:*mut (),size:usize)->*mut ();
 } 
 #[panic_handler]
 fn panic(_panic: &PanicInfo<'_>) -> ! {

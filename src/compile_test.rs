@@ -107,7 +107,7 @@ macro_rules! run_test {
             let exec_path = concat!("../", stringify!($test_name), ".exe");
             test_dotnet_executable(exec_path, test_dir);
         }
-};
+    };
 }
 #[cfg(test)]
 fn backend_path() -> &'static str {
@@ -137,3 +137,4 @@ test_lib! {types}
 run_test! {arthm,add}
 run_test! {types,enums}
 run_test! {types,structs}
+run_test! {types,vec}

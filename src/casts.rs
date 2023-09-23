@@ -22,6 +22,7 @@ pub fn to_int(target: Type) -> Vec<CILOp> {
         Type::I8 => vec![CILOp::ConvI8(false)],
         Type::I16 => vec![CILOp::ConvI16(false)],
         Type::I32 => vec![CILOp::ConvI32(false)],
+        Type::ISize => vec![CILOp::ConvISize(false)],
         _ => todo!("Can't cast to {target:?} yet!"),
     }
 }

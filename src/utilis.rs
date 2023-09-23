@@ -1,4 +1,7 @@
-use rustc_middle::ty::{TyCtxt,Ty,TyKind,AdtDef, Binder, BoundVariableKind,Instance,ParamEnv,EarlyBinder,TypeFoldable,SymbolName};
+use rustc_middle::ty::{
+    AdtDef, Binder, BoundVariableKind, EarlyBinder, Instance, ParamEnv, SymbolName, Ty, TyCtxt,
+    TyKind, TypeFoldable,
+};
 
 use crate::codegen_error::CodegenError;
 pub fn skip_binder_if_no_generic_types<T>(binder: Binder<T>) -> Result<T, CodegenError> {
@@ -28,14 +31,48 @@ pub fn field_name(ty: Ty, idx: u32) -> crate::IString {
         _ => todo!("Can't yet get fields of typr {ty:?}"),
     }
 }
-pub fn function_name(name:SymbolName)->crate::IString{
-    name.to_string().replace("$","_ds_").replace("..","_dd_").into()
+pub fn function_name(name: SymbolName) -> crate::IString {
+    name.to_string()
+        .replace("$", "_ds_")
+        .replace("..", "_dd_")
+        .into()
 }
-pub fn monomorphize<'tcx,T: TypeFoldable<TyCtxt<'tcx>> + Clone,>(instance:&Instance<'tcx>,ty:T,ctx:TyCtxt<'tcx>) -> T
-{
-        instance.subst_mir_and_normalize_erasing_regions(
-            ctx,
-            ParamEnv::reveal_all(),
-            EarlyBinder::bind(ty),
-        )
+pub fn monomorphize<'tcx, T: TypeFoldable<TyCtxt<'tcx>> + Clone>(
+    instance: &Instance<'tcx>,
+    ty: T,
+    ctx: TyCtxt<'tcx>,
+) -> T {
+    instance.subst_mir_and_normalize_erasing_regions(
+        ctx,
+        ParamEnv::reveal_all(),
+        EarlyBinder::bind(ty),
+    )
+}
+pub fn generic_field_ty<'ctx>(owner_ty: Ty<'ctx>, field_idx: u32, ctx: TyCtxt<'ctx>) -> Ty<'ctx> {
+    match owner_ty.kind() {
+        TyKind::Adt(adt_def, _) => {
+            let ty = ctx
+                .type_of(
+                    adt_def
+                        .all_fields()
+                        .nth(field_idx as usize)
+                        .expect("ERROR: invalid field idx")
+                        .did,
+                )
+                .instantiate_identity();
+            ty
+        }
+        _ => todo!("Can't get field {field_idx} belonging to type {owner_ty:?}"),
+    }
+}
+pub fn tag_from_enum_variants(variants: u64) -> crate::r#type::Type {
+    use crate::r#type::Type;
+    let var_size = ((u64::BITS as u64 - variants).leading_zeros() + 8 - 1) / 8;
+    match var_size {
+        1 => Type::U8,
+        2 => Type::U16,
+        4 => Type::U32,
+        8 => Type::U64,
+        _ => todo!("Can't yet have {var_size} byte wide enum tag!"),
+    }
 }

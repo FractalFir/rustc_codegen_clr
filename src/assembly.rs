@@ -51,7 +51,7 @@ impl Assembly {
         // Handle the function signature
         let sig = FnSig::from_poly_sig(&instance.ty(tcx, param_env).fn_sig(tcx), tcx)?;
         // Get locals
-        let locals = locals_from_mir(&mir.local_decls, tcx, sig.inputs().len(),&instance);
+        let locals = locals_from_mir(&mir.local_decls, tcx, sig.inputs().len(), &instance);
         // Create method prototype
         let mut method = Method::new(access_modifier, sig, name, locals);
         let mut ops = Vec::new();
@@ -61,12 +61,16 @@ impl Assembly {
             ops.push(CILOp::Label(last_bb_id));
             last_bb_id += 1;
             for statement in &block_data.statements {
-                ops.extend(crate::statement::handle_statement(statement, mir, tcx, mir,instance));
+                ops.extend(crate::statement::handle_statement(
+                    statement, mir, tcx, mir, instance,
+                ));
                 // ops.push(CILOp::Comment(format!("{statement:?}").into()));
                 //println!("ops:{ops:?}\n\n");
             }
             match &block_data.terminator {
-                Some(term) => ops.extend(crate::terminator::handle_terminator(term, mir, tcx, mir,instance)),
+                Some(term) => ops.extend(crate::terminator::handle_terminator(
+                    term, mir, tcx, mir, instance,
+                )),
                 None => (),
             }
         }
@@ -92,8 +96,16 @@ impl Assembly {
             self.types.insert(type_def);
         }
     }
-    pub fn opt(&mut self){
-        let functions:HashSet<_> = self.functions.iter().map(|method|{let mut method = method.clone();crate::opt::opt_method(&mut method);method}).collect();
+    pub fn opt(&mut self) {
+        let functions: HashSet<_> = self
+            .functions
+            .iter()
+            .map(|method| {
+                let mut method = method.clone();
+                crate::opt::opt_method(&mut method);
+                method
+            })
+            .collect();
         self.functions = functions;
     }
     pub fn add_typedef<'ctx>(&mut self, type_def: TypeDef) {

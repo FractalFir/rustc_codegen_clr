@@ -109,7 +109,7 @@ fn type_def_cli(mut w: impl Write, tpe: &TypeDef) -> Result<(), super::AssemblyE
     for (field_name, field_type) in tpe.fields().iter() {
         writeln!(
             w,
-            "\t.field {field_type_name} {field_name}",
+            "\t.field public {field_type_name} {field_name}",
             field_type_name = prefixed_type_cli(field_type)
         );
     }
@@ -382,18 +382,19 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
         CILOp::LDIndISize => "ldind.i".into(),
         CILOp::STIndISize => "stind.i".into(),
         //OOP
+        CILOp::SizeOf(tpe) => format!("sizeof {tpe}", tpe = prefixed_type_cli(tpe)).into(),
         CILOp::Throw => "throw".into(),
         CILOp::LdStr(str) => format!("ldstr {str:?}").into(),
         CILOp::LDField(descr) => format!(
             "ldfld {prefixed_type} valuetype {owner}::{field_name}",
-            prefixed_type = prefixed_type_cli(descr.tpe()),
+            prefixed_type = field_type_cli(descr.tpe()),
             owner = dotnet_type_ref_cli(descr.owner()),
             field_name = descr.name()
         )
         .into(),
         CILOp::STField(descr) => format!(
             "stfld {prefixed_type} valuetype {owner}::{field_name}",
-            prefixed_type = prefixed_type_cli(descr.tpe()),
+            prefixed_type = field_type_cli(descr.tpe()),
             owner = dotnet_type_ref_cli(descr.owner()),
             field_name = descr.name()
         )
@@ -430,7 +431,7 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
                 .into()
             }
         }
-        //Stack 
+        //Stack
         CILOp::Pop => "pop".into(),
         CILOp::Dup => "dup".into(),
         _ => todo!("Unsuported op {op:?}"),
@@ -487,6 +488,14 @@ fn type_cli(tpe: &Type) -> Cow<'static, str> {
         Type::Foreign => "valuetype Foreign".into(),
         //_ => todo!("Unsuported type {tpe:?}"),
     }
+}
+fn field_type_cli(tpe: &Type) -> Cow<'static, str> {
+    let res = match tpe {
+        Type::Ptr(inner) => format!("{inner}*", inner = field_type_cli(inner)).into(),
+        Type::GenericArg(id) => format!("!{id}").into(),
+        _ => prefixed_type_cli(tpe).into(),
+    };
+    res
 }
 fn prefixed_type_cli(tpe: &Type) -> Cow<'static, str> {
     match tpe {

@@ -1,5 +1,5 @@
 use rustc_middle::mir::{BinOp, Operand};
-use rustc_middle::ty::{IntTy, Ty, TyCtxt, TyKind, UintTy,Instance};
+use rustc_middle::ty::{Instance, IntTy, Ty, TyCtxt, TyKind, UintTy};
 
 use crate::cil_op::CILOp;
 pub(crate) fn binop_unchecked<'tcx>(
@@ -10,8 +10,8 @@ pub(crate) fn binop_unchecked<'tcx>(
     method: &rustc_middle::mir::Body<'tcx>,
     method_instance: Instance<'tcx>,
 ) -> Vec<CILOp> {
-    let ops_a = crate::operand::handle_operand(operand_a, tcx,method,method_instance);
-    let ops_b = crate::operand::handle_operand(operand_b, tcx, method,method_instance);
+    let ops_a = crate::operand::handle_operand(operand_a, tcx, method, method_instance);
+    let ops_b = crate::operand::handle_operand(operand_b, tcx, method, method_instance);
     let ty_a = operand_a.ty(&method.local_decls, tcx);
     let ty_b = operand_b.ty(&method.local_decls, tcx);
     match binop {
@@ -89,8 +89,23 @@ pub(crate) fn binop_unchecked<'tcx>(
         .into_iter()
         .flatten()
         .collect(),
-        BinOp::Offset => todo!("Offset of operator unsuported!"),
-        //_ => todo!("Unsupported bionp {binop:?}"),
+        BinOp::Offset => {
+            let pointed_ty = if let TyKind::RawPtr(inner_and_mut) = ty_a.kind() {
+                inner_and_mut.ty
+            } else {
+                todo!("Can't offset pointer of type {ty_a:?}");
+            };
+            let pointed_ty = crate::utilis::monomorphize(&method_instance, pointed_ty, tcx);
+            let pointed_ty = Box::new(crate::r#type::Type::from_ty(pointed_ty, tcx));
+            [
+                ops_a,
+                ops_b,
+                vec![CILOp::SizeOf(pointed_ty), CILOp::Mul, CILOp::Add],
+            ]
+            .into_iter()
+            .flatten()
+            .collect()
+        } //_ => todo!("Unsupported bionp {binop:?}"),
     }
 }
 fn add_unchecked<'tcx>(ty_a: Ty<'tcx>, ty_b: Ty<'tcx>) -> Vec<CILOp> {

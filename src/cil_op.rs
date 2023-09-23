@@ -129,6 +129,7 @@ pub enum CILOp {
     LDIndI8,
     LDIndISize,
     STIndI8,
+    STIndU8,
     STIndISize,
     //Debugging
     Comment(IString),
@@ -160,4 +161,5 @@ pub enum CILOp {
     STField(Box<FieldDescriptor>),
     LdObj(Box<DotnetTypeRef>),
     STObj(Box<DotnetTypeRef>),
+    SizeOf(Box<crate::r#type::Type>),
 }

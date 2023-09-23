@@ -10,7 +10,8 @@ use crate::{
     cil_op::{CILOp, CallSite},
     function_sig::FnSig,
     operand::handle_operand,
-    r#type::DotnetTypeRef, utilis::monomorphize,
+    r#type::DotnetTypeRef,
+    utilis::monomorphize,
 };
 fn call<'ctx>(
     fn_type: &Ty<'ctx>,
@@ -18,7 +19,7 @@ fn call<'ctx>(
     tyctx: TyCtxt<'ctx>,
     args: &[Operand<'ctx>],
     destination: &Place<'ctx>,
-    method_instance:Instance<'ctx>,
+    method_instance: Instance<'ctx>,
 ) -> Vec<CILOp> {
     let instance = if let TyKind::FnDef(def_id, subst_ref) = fn_type.kind() {
         let env = ParamEnv::reveal_all();
@@ -32,7 +33,12 @@ fn call<'ctx>(
     let function_name = crate::utilis::function_name(tyctx.symbol_name(instance));
     let mut call = Vec::new();
     for arg in args {
-        call.extend(crate::operand::handle_operand(arg, tyctx, body,method_instance));
+        call.extend(crate::operand::handle_operand(
+            arg,
+            tyctx,
+            body,
+            method_instance,
+        ));
     }
     let is_void = matches!(signature.output(), crate::r#type::Type::Void);
     call.push(CILOp::Call(CallSite::boxed(
@@ -45,7 +51,7 @@ fn call<'ctx>(
     if is_void {
         call
     } else {
-        crate::place::place_set(destination, tyctx, call, body,method_instance)
+        crate::place::place_set(destination, tyctx, call, body, method_instance)
     }
 }
 pub fn handle_terminator<'ctx>(
@@ -53,7 +59,7 @@ pub fn handle_terminator<'ctx>(
     body: &'ctx Body<'ctx>,
     tyctx: TyCtxt<'ctx>,
     method: &rustc_middle::mir::Body<'ctx>,
-    method_instance:Instance<'ctx>,
+    method_instance: Instance<'ctx>,
 ) -> Vec<CILOp> {
     match &terminator.kind {
         TerminatorKind::Call {
@@ -79,7 +85,8 @@ pub fn handle_terminator<'ctx>(
                             "literal{literal:?} in call is not a function type!"
                         );
                         let fn_ty = monomorphize(&method_instance, fn_ty, tyctx);
-                        let call_ops = call(&fn_ty, body, tyctx, args, destination,method_instance);
+                        let call_ops =
+                            call(&fn_ty, body, tyctx, args, destination, method_instance);
                         ops.extend(call_ops);
                     } else {
                         panic!("Invalid function literal!");
@@ -101,7 +108,7 @@ pub fn handle_terminator<'ctx>(
             }
         }
         TerminatorKind::SwitchInt { discr, targets } => {
-            let discr = crate::operand::handle_operand(discr, tyctx, method,method_instance);
+            let discr = crate::operand::handle_operand(discr, tyctx, method, method_instance);
             handle_switch(discr, targets)
         }
         TerminatorKind::Assert {
@@ -111,20 +118,30 @@ pub fn handle_terminator<'ctx>(
             target,
             unwind,
         } => {
-            let mut ops = handle_operand(cond, tyctx, method,method_instance);
+            let mut ops = handle_operand(cond, tyctx, method, method_instance);
             ops.push(CILOp::LdcI32(*expected as i32));
             ops.push(CILOp::BEq(target.as_u32()));
-            ops.extend(throw_assert_msg(msg, tyctx, method,method_instance));
+            ops.extend(throw_assert_msg(msg, tyctx, method, method_instance));
             ops
         }
         TerminatorKind::Goto { target } => vec![CILOp::GoTo((*target).into())],
-        TerminatorKind::UnwindResume=>{
+        TerminatorKind::UnwindResume => {
             eprintln!("WARNING: stack unwiniding is not supported yet in rustc_codegen_clr!");
-            vec![CILOp::Comment("WARNING: stack unwiniding is not supported yet in rustc_codegen_clr!".into())]
+            vec![CILOp::Comment(
+                "WARNING: stack unwiniding is not supported yet in rustc_codegen_clr!".into(),
+            )]
         }
-        TerminatorKind::Drop { place, target, unwind, replace }=>{
+        TerminatorKind::Drop {
+            place,
+            target,
+            unwind,
+            replace,
+        } => {
             eprintln!("WARNING: drop is not supported yet in rustc_codegen_clr!");
-            vec![CILOp::Comment("WARNING: drop is not supported yet in rustc_codegen_clr!".into()),CILOp::GoTo(target.as_u32())]
+            vec![
+                CILOp::Comment("WARNING: drop is not supported yet in rustc_codegen_clr!".into()),
+                CILOp::GoTo(target.as_u32()),
+            ]
         }
         _ => todo!("Unhandled terminator kind {kind:?}", kind = terminator.kind),
     }
@@ -133,14 +150,14 @@ fn throw_assert_msg<'ctx>(
     msg: &rustc_middle::mir::AssertMessage<'ctx>,
     tyctx: TyCtxt<'ctx>,
     method: &rustc_middle::mir::Body<'ctx>,
-    method_instance:Instance<'ctx>,
+    method_instance: Instance<'ctx>,
 ) -> Vec<CILOp> {
     use rustc_middle::mir::AssertKind;
     match msg {
         AssertKind::BoundsCheck { len, index } => {
             let mut ops = Vec::with_capacity(8);
             ops.push(CILOp::LdStr("index out of bounds: the len is ".into()));
-            ops.extend(handle_operand(len, tyctx, method,method_instance));
+            ops.extend(handle_operand(len, tyctx, method, method_instance));
             let usize_class = DotnetTypeRef::new(Some("System.Runtime"), "System.UIntPtr");
             let string_class = DotnetTypeRef::new(Some("System.Runtime"), "System.String");
             let string_type = crate::r#type::Type::DotnetType(Box::new(string_class.clone()));
@@ -148,7 +165,7 @@ fn throw_assert_msg<'ctx>(
             let usize_to_string = CallSite::boxed(Some(usize_class), "ToString".into(), sig, false);
             ops.push(CILOp::Call(usize_to_string.clone()));
             ops.push(CILOp::LdStr(" but the index is".into()));
-            ops.extend(handle_operand(index, tyctx, method,method_instance));
+            ops.extend(handle_operand(index, tyctx, method, method_instance));
             ops.push(CILOp::Call(usize_to_string.clone()));
 
             let sig = FnSig::new(
@@ -214,7 +231,7 @@ fn throw_assert_msg<'ctx>(
             ops.push(CILOp::LdStr(
                 format!("attempt to {binop:?} with overflow lhs:").into(),
             ));
-            ops.extend(handle_operand(a, tyctx, method,method_instance));
+            ops.extend(handle_operand(a, tyctx, method, method_instance));
             let usize_class = DotnetTypeRef::new(Some("System.Runtime"), "System.UIntPtr");
             let string_type = crate::r#type::Type::DotnetType(Box::new(DotnetTypeRef::new(
                 Some("System.Runtime"),
@@ -224,7 +241,7 @@ fn throw_assert_msg<'ctx>(
             let usize_to_string = CallSite::boxed(Some(usize_class), "ToString".into(), sig, false);
             ops.push(CILOp::Call(usize_to_string.clone()));
             ops.push(CILOp::LdStr("rhs:".into()));
-            ops.extend(handle_operand(b, tyctx, method,method_instance));
+            ops.extend(handle_operand(b, tyctx, method, method_instance));
             ops.push(CILOp::Call(usize_to_string.clone()));
 
             let sig = FnSig::new(

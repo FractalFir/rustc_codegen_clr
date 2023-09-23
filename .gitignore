@@ -1,6 +1,7 @@
 .idea/
 *.rlib
 *.il
+*.o
 test/out
 /target
 /Cargo.lock

@@ -1,6 +1,7 @@
 use crate::{
     access_modifier::AccessModifer,
     r#type::{DotnetTypeRef, Type},
+    utilis::tag_from_enum_variants,
     IString,
 };
 use rustc_middle::ty::{AdtDef, AdtKind, GenericArg, List, Ty, TyCtxt, TyKind};
@@ -116,27 +117,16 @@ impl TypeDef {
         let access = AccessModifer::Public;
         //let mut fields = Vec::with_capacity(adt_def.all_fields().count());
         let mut res = Vec::new();
-        for field in adt_def.all_fields() {
-            //Add generic types of fields
-            {
-                let resolved_field_ty = field.ty(ctx, subst);
-                //This is a simple loop prevention. More complex types may still lead to cycles. TODO: deal with cycles.
-                if resolved_field_ty != original {
-                    res.extend(Self::from_ty(resolved_field_ty, ctx));
-                }
-            }
-            //rustc_middle::ty::List::empty()
-            /*
-            let ty = ctx.type_of(field.did).instantiate_identity();
-            let ty = Type::from_ty(ty,ctx);
-            let name = field.name.to_string().into();
-            fields.push((name,ty));*/
-        }
+
+        let mut fields = vec![(
+            "_tag".into(),
+            tag_from_enum_variants(adt_def.variants().len() as u64),
+        )];
         res.push(Self {
             access,
             name,
             inner_types: vec![],
-            fields: vec![],
+            fields,
             gargc,
             extends: None,
         });
