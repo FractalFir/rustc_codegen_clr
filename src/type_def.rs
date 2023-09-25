@@ -1,7 +1,7 @@
 use crate::{
     access_modifier::AccessModifer,
     r#type::{DotnetTypeRef, Type},
-    utilis::tag_from_enum_variants,
+    utilis::{enum_tag_size, tag_from_enum_variants},
     IString,
 };
 use rustc_middle::ty::{AdtDef, AdtKind, GenericArg, List, Ty, TyCtxt, TyKind};
@@ -12,6 +12,7 @@ pub struct TypeDef {
     name: IString,
     inner_types: Vec<Self>,
     fields: Vec<(IString, Type)>,
+    explicit_offsets: Option<Vec<u32>>,
     gargc: u32,
     extends: Option<DotnetTypeRef>,
 }
@@ -25,11 +26,20 @@ impl TypeDef {
     pub fn name(&self) -> &str {
         &self.name
     }
+    pub fn access_modifier(&self) -> AccessModifer {
+        self.access
+    }
     pub fn extends(&self) -> Option<&DotnetTypeRef> {
         self.extends.as_ref()
     }
     pub fn fields(&self) -> &[(IString, Type)] {
         &self.fields
+    }
+    pub fn inner_types(&self) -> &[Self] {
+        &self.inner_types
+    }
+    pub fn explicit_offsets(&self) -> Option<&Vec<u32>> {
+        self.explicit_offsets.as_ref()
     }
     pub fn nameonly(name: &str) -> Self {
         Self {
@@ -39,6 +49,7 @@ impl TypeDef {
             fields: vec![],
             gargc: 0,
             extends: None,
+            explicit_offsets: None,
         }
     }
     pub fn from_ty<'tycxt>(ty: Ty<'tycxt>, ctx: TyCtxt<'tycxt>) -> Vec<Self> {
@@ -57,6 +68,7 @@ impl TypeDef {
                         fields: vec![],
                         gargc,
                         extends: None,
+                        explicit_offsets: None,
                     }],
                 }
             }
@@ -81,19 +93,18 @@ impl TypeDef {
         let access = AccessModifer::Public;
         let mut fields = Vec::with_capacity(adt_def.all_fields().count());
         let mut res = Vec::new();
-        for field in adt_def.all_fields() {
-            //Add generic types of fields
-            {
-                let resolved_field_ty = field.ty(ctx, subst);
-                //This is a simple loop prevention. More complex types may still lead to cycles. TODO: deal with cycles.
-                if resolved_field_ty != original {
-                    res.extend(Self::from_ty(resolved_field_ty, ctx));
-                }
+        adt_def.all_fields().for_each(|field| {
+            let resolved_field_ty = field.ty(ctx, subst);
+            //This is a simple loop prevention. More complex types may still lead to cycles. TODO: deal with cycles.
+            if resolved_field_ty != original {
+                res.extend(Self::from_ty(resolved_field_ty, ctx));
             }
+        });
+        for field in adt_def.all_fields() {
             //rustc_middle::ty::List::empty()
             let ty = ctx.type_of(field.did).instantiate_identity();
             let ty = Type::from_ty(ty, ctx);
-            let name = escape_type_name(field.name.to_string().into());
+            let name = escape_field_name(&field.name.to_string());
             fields.push((name, ty));
         }
         res.push(Self {
@@ -103,6 +114,7 @@ impl TypeDef {
             fields,
             gargc,
             extends: None,
+            explicit_offsets: None,
         });
         res
     }
@@ -117,26 +129,68 @@ impl TypeDef {
         let access = AccessModifer::Public;
         //let mut fields = Vec::with_capacity(adt_def.all_fields().count());
         let mut res = Vec::new();
-
+        adt_def.all_fields().for_each(|field| {
+            let resolved_field_ty = field.ty(ctx, subst);
+            //This is a simple loop prevention. More complex types may still lead to cycles. TODO: deal with cycles.
+            if resolved_field_ty != original {
+                res.extend(Self::from_ty(resolved_field_ty, ctx));
+            }
+        });
         let mut fields = vec![(
             "_tag".into(),
             tag_from_enum_variants(adt_def.variants().len() as u64),
         )];
+        let mut explicit_offsets = vec![0];
+        let tag_size = enum_tag_size(adt_def.variants().len() as u64);
+        explicit_offsets.extend(adt_def.variants().iter().map(|_| tag_size));
+        let mut inner_types = vec![];
+        for variant in adt_def.variants() {
+            //println!("Variant:{variant:?}");
+            let variant_name = variant.name.to_string();
+            fields.push((
+                format!("v_{}", escape_field_name(variant_name.as_ref())).into(),
+                Type::DotnetType(Box::new(DotnetTypeRef::new(
+                    None,
+                    &format!("{name}/{variant_name}"),
+                ))),
+            ));
+            let mut fields = vec![];
+            for field in &variant.fields {
+                let ty = ctx.type_of(field.did).instantiate_identity();
+                let ty = Type::from_ty(ty, ctx);
+                let name = escape_field_name(&field.name.to_string());
+                fields.push((name, ty));
+            }
+            inner_types.push(Self {
+                access: AccessModifer::Public,
+                name: variant_name.into(),
+                inner_types: vec![],
+                fields,
+                gargc,
+                extends: None,
+                explicit_offsets: None,
+            });
+        }
         res.push(Self {
             access,
             name,
-            inner_types: vec![],
+            inner_types,
             fields,
             gargc,
             extends: None,
+            explicit_offsets: Some(explicit_offsets),
         });
         res
     }
 }
-fn escape_type_name(name: IString) -> IString {
-    if name.as_ref() == "value" {
+fn escape_field_name(name: &str) -> IString {
+    if name == "value" {
         "m_value".into()
+    } else if name.is_empty() {
+        "fld".into()
+    } else if !name.chars().nth(0).unwrap().is_alphabetic() {
+        format!("m_{name}").into()
     } else {
-        name
+        name.into()
     }
 }

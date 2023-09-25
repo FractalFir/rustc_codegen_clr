@@ -84,7 +84,7 @@ impl AssemblyExporter for ILASMExporter {
     }
 }
 
-fn type_def_cli(mut w: impl Write, tpe: &TypeDef) -> Result<(), super::AssemblyExportError> {
+fn type_def_cli(w: &mut impl Write, tpe: &TypeDef) -> Result<(), super::AssemblyExportError> {
     let name = tpe.name();
     let mut generics = String::new();
     if tpe.gargc() != 0 {
@@ -104,14 +104,32 @@ fn type_def_cli(mut w: impl Write, tpe: &TypeDef) -> Result<(), super::AssemblyE
     } else {
         "[System.Runtime]System.ValueType"
     };
-    writeln!(w, "\n.class {name}{generics} extends {extended}{{");
+    let access = if let AccessModifer::Public = tpe.access_modifier() {
+        "public"
+    } else {
+        "private"
+    };
+    writeln!(w, "\n.class {access} {name}{generics} extends {extended}{{");
+    for inner_type in tpe.inner_types() {
+        type_def_cli(w, inner_type);
+    }
     let mut field_string = String::new();
-    for (field_name, field_type) in tpe.fields().iter() {
-        writeln!(
-            w,
-            "\t.field public {field_type_name} {field_name}",
-            field_type_name = prefixed_type_cli(field_type)
-        );
+    if let Some(offsets) = tpe.explicit_offsets() {
+        for ((field_name, field_type), offset) in tpe.fields().iter().zip(offsets.iter()) {
+            writeln!(
+                w,
+                "\t.field [{offset}] public {field_type_name} {field_name}",
+                field_type_name = prefixed_type_cli(field_type)
+            );
+        }
+    } else {
+        for (field_name, field_type) in tpe.fields().iter() {
+            writeln!(
+                w,
+                "\t.field public {field_type_name} {field_name}",
+                field_type_name = prefixed_type_cli(field_type)
+            );
+        }
     }
     writeln!(w, "}}");
     Ok(())
@@ -156,7 +174,9 @@ fn method_cil(mut w: impl Write, method: &Method) -> std::io::Result<()> {
         )?;
     }
     writeln!(w, "\n\t)")?;
+    println!("{name}:\n\n");
     for op in method.get_ops() {
+        println!("{op:?}");
         writeln!(w, "\t{op_cli}", op_cli = op_cli(op))?;
     }
     writeln!(w, "}}")
@@ -169,6 +189,8 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
         CILOp::Label(id) => format!("bb_{id}:").into(),
         CILOp::GoTo(id) => format!("br bb_{id}").into(),
         CILOp::BEq(id) => format!("beq bb_{id}").into(),
+        CILOp::BGe(id) => format!("bge bb_{id}").into(),
+        CILOp::BZero(id) => format!("brzero bb_{id}").into(),
         CILOp::Call(call_site) => {
             if call_site.is_nop() {
                 "".into()
@@ -194,7 +216,7 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
                 };
                 //println!("inputs:{inputs:?} input_string: {input_string}",inputs = call_site.signature.inputs);
                 format!(
-                    "call {prefix} {output} {owner_name}{function_name}({input_string})\n",
+                    "call {prefix} {output} {owner_name}{function_name}({input_string})",
                     function_name = call_site.name(),
                     output = output_type_cli(&call_site.signature().output())
                 )
@@ -385,6 +407,8 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
         CILOp::SizeOf(tpe) => format!("sizeof {tpe}", tpe = prefixed_type_cli(tpe)).into(),
         CILOp::Throw => "throw".into(),
         CILOp::LdStr(str) => format!("ldstr {str:?}").into(),
+        CILOp::LdObj(obj)=> format!("ldobj valuetype {tpe}", tpe = dotnet_type_ref_cli(obj)).into(),
+        CILOp::STObj(obj)=> format!("stobj valuetype {tpe}", tpe = dotnet_type_ref_cli(obj)).into(),
         CILOp::LDField(descr) => format!(
             "ldfld {prefixed_type} valuetype {owner}::{field_name}",
             prefixed_type = field_type_cli(descr.tpe()),
@@ -424,7 +448,7 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
                 };
                 //println!("inputs:{inputs:?} input_string: {input_string}",inputs = call_site.signature.inputs);
                 format!(
-                    "newobj {prefix} {output} {owner_name}{function_name}({input_string})\n",
+                    "newobj {prefix} {output} {owner_name}{function_name}({input_string})",
                     function_name = call_site.name(),
                     output = output_type_cli(&call_site.signature().output())
                 )

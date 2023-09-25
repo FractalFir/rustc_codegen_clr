@@ -64,7 +64,7 @@ impl Assembly {
                 ops.extend(crate::statement::handle_statement(
                     statement, mir, tcx, mir, instance,
                 ));
-                // ops.push(CILOp::Comment(format!("{statement:?}").into()));
+                ops.push(CILOp::Comment(format!("{statement:?}").into()));
                 //println!("ops:{ops:?}\n\n");
             }
             match &block_data.terminator {

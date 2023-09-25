@@ -201,6 +201,7 @@ impl CodegenBackend for MyBackend {
             &path,
         )
         .expect("Could not create the final asm!");
+        //panic!();
         Ok(())
     }
 }

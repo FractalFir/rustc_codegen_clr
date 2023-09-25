@@ -65,9 +65,14 @@ pub fn generic_field_ty<'ctx>(owner_ty: Ty<'ctx>, field_idx: u32, ctx: TyCtxt<'c
         _ => todo!("Can't get field {field_idx} belonging to type {owner_ty:?}"),
     }
 }
+pub fn enum_tag_size(variants: u64) -> u32 {
+    (((u64::BITS as u64 - (variants).leading_zeros() as u64) + 8 - 1) / 8) as u32
+}
+
 pub fn tag_from_enum_variants(variants: u64) -> crate::r#type::Type {
     use crate::r#type::Type;
-    let var_size = ((u64::BITS as u64 - variants).leading_zeros() + 8 - 1) / 8;
+    let var_size = enum_tag_size(variants);
+    println!("variants:{variants}tag_size:{var_size}");
     match var_size {
         1 => Type::U8,
         2 => Type::U16,

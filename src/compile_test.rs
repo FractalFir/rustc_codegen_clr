@@ -36,10 +36,7 @@ macro_rules! test_lib {
             // Ensures the test directory is present
             std::fs::create_dir_all("./test/out").expect("Could not setup the test env");
             // Builds the backend if neceasry
-            std::process::Command::new("cargo")
-                .args(["build"])
-                .output()
-                .expect("could not build the backend");
+            build_backend();
             // Compiles the test project
             let out = std::process::Command::new("rustc")
                 .current_dir("./test/out")
@@ -76,10 +73,7 @@ macro_rules! run_test {
             // Ensures the test directory is present
             std::fs::create_dir_all(test_dir).expect("Could not setup the test env");
             // Builds the backend if neceasry
-            std::process::Command::new("cargo")
-                .args(["build"])
-                .output()
-                .expect("could not build the backend");
+            build_backend();
             // Compiles the test project
             let out = std::process::Command::new("rustc")
                 //.env("RUST_TARGET_PATH","../../")
@@ -109,8 +103,42 @@ macro_rules! run_test {
         }
     };
 }
+#[cfg(debug_assertions)]
+fn build_backend() {
+    std::process::Command::new("cargo")
+        .args(["build"])
+        .output()
+        .expect("could not build the backend");
+}
+#[cfg(not(debug_assertions))]
+fn build_backend() {
+    std::process::Command::new("cargo")
+        .args(["build", "--release"])
+        .output()
+        .expect("could not build the backend");
+}
 #[cfg(test)]
 fn backend_path() -> &'static str {
+    if cfg!(debug_assertions) {
+        backend_path_debug()
+    } else {
+        backend_path_release()
+    }
+}
+#[cfg(test)]
+fn backend_path_release() -> &'static str {
+    if cfg!(target_os = "linux") {
+        "codegen-backend=../../target/release/librustc_codegen_clr.so"
+    } else if cfg!(target_os = "windows") {
+        "codegen-backend=../../target/release/rustc_codegen_clr.dll"
+    } else if cfg!(target_os = "macos") {
+        "codegen-backend=../../target/release/librustc_codegen_clr.dylib"
+    } else {
+        panic!("Unsupported target OS");
+    }
+}
+#[cfg(test)]
+fn backend_path_debug() -> &'static str {
     if cfg!(target_os = "linux") {
         "codegen-backend=../../target/debug/librustc_codegen_clr.so"
     } else if cfg!(target_os = "windows") {
@@ -121,7 +149,6 @@ fn backend_path() -> &'static str {
         panic!("Unsupported target OS");
     }
 }
-
 test_lib! {binops}
 test_lib! {branches}
 test_lib! {calls}

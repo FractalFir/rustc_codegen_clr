@@ -26,16 +26,17 @@ fn simple_enum(){
     //let _ = black_box(simple_enum);
 }
 fn main(){
-    /* 
-    simple_enum();
-    let maybe:*mut Maybe = core::ptr::null_mut();
-    test_eq!(maybe,core::ptr::null_mut());
-    let maybe:*mut Maybe = unsafe{malloc(5)}.cast();
-    if let Maybe::Some(value) = unsafe{*maybe}{
-        black_box(value);
-    }*/
-    /* */
-    let maybe = Maybe::Some(8);
+    
+    //simple_enum();
+    //let maybe:*mut Maybe = core::ptr::null_mut();
+    //test_eq!(maybe,core::ptr::null_mut());
+    let maybe:*mut Option<i32> = unsafe{malloc(5)}.cast();
+    let tag:*mut u8 = maybe.cast();
+    unsafe{*tag = 0};
+    if let Some(_) = unsafe{*maybe}{
+        core::intrinsics::abort();
+    }
+    //let maybe = Maybe::Some(8);
     black_box(maybe);
 }
 

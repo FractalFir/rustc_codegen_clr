@@ -1,8 +1,9 @@
 use crate::{cil_op::CILOp, method::Method};
-const MAX_PASS: u32 = 4;
+const MAX_PASS: u32 = 8;
 pub fn opt_method(method: &mut Method) {
     for _ in 0..MAX_PASS {
         op2_combos(method.ops_mut());
+        //op3_combos(method.ops_mut());
         remove_zombie_sets(method.ops_mut());
         method.ops_mut().retain(|op| *op != CILOp::Nop);
         remove_unused_locals(method);
@@ -70,7 +71,7 @@ fn op2_combos(ops: &mut Vec<CILOp>) {
                     ops[idx] = CILOp::Dup;
                 }
             }
-            (CILOp::Dup, CILOp::Pop) => {
+            (CILOp::Dup | CILOp::LDLoc(_) | CILOp::LDLocA(_), CILOp::Pop) => {
                 ops[idx] = CILOp::Nop;
                 ops[idx + 1] = CILOp::Nop;
             }
@@ -79,6 +80,25 @@ fn op2_combos(ops: &mut Vec<CILOp>) {
                     ops[idx] = CILOp::Nop;
                 }
             }
+            (CILOp::LdcI32(0) | CILOp::LdcI64(0), CILOp::BEq(target)) => {
+                ops[idx + 1] = CILOp::BZero(*target);
+                ops[idx] = CILOp::Nop;
+            }
+            (CILOp::Lt, CILOp::BZero(target)) => {
+                ops[idx + 1] = CILOp::BGe(*target);
+                ops[idx] = CILOp::Nop;
+            }
+            _ => (),
+        }
+    }
+}
+fn op3_combos(ops: &mut Vec<CILOp>) {
+    if ops.len() < 3 {
+        return;
+    }
+    for idx in 0..(ops.len() - 2) {
+        let (op1, op2, op3) = (&ops[idx], &ops[idx + 1], &ops[idx + 2]);
+        match (op1, op2, op3) {
             _ => (),
         }
     }
@@ -105,6 +125,9 @@ fn is_label_unsused(ops: &[CILOp], label: u32) -> bool {
     !ops.iter().any(|op| match op {
         CILOp::GoTo(target) => label == *target,
         CILOp::BEq(target) => label == *target,
+        CILOp::BLt(target) => label == *target,
+        CILOp::BGe(target) => label == *target,
+        CILOp::BZero(target) => label == *target,
         _ => false,
     })
 }

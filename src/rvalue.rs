@@ -92,6 +92,22 @@ pub fn handle_rvalue<'tcx>(
             method_instance,
         ),
         Rvalue::Cast(kind, operand, _) => todo!("Unhandled cast kind {kind:?}, rvalue:{rvalue:?}"),
+        Rvalue::Discriminant(place) => {
+            let mut ops = crate::place::place_adress(place, tcx, method, method_instance);
+            let owner_ty = place.ty(method, tcx).ty;
+            let owner = crate::r#type::Type::from_ty(owner_ty, tcx);
+            //TODO: chose proper tag type based on variant count of `owner`
+            let discr_type = crate::r#type::Type::U8; //owner_ty
+            let owner = if let crate::r#type::Type::DotnetType(dotnet_type) = owner {
+                dotnet_type.as_ref().clone()
+            } else {
+                panic!();
+            };
+            ops.push(CILOp::LDField(Box::new(
+                crate::cil_op::FieldDescriptor::new(owner, discr_type, "_tag".into()),
+            )));
+            ops
+        }
         _ => todo!("Unhandled RValue {rvalue:?}"),
     };
     res

@@ -49,6 +49,11 @@ impl DotnetTypeRef {
             generics: Vec::new(),
         }
     }
+    pub fn append_path(&mut self, append: &str) {
+        let mut name_path = self.name_path.to_string();
+        name_path.push_str(append);
+        self.name_path = name_path.into();
+    }
     pub fn asm(&self) -> Option<&str> {
         self.assembly.as_ref().map(|asm| asm.as_ref())
     }

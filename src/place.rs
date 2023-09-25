@@ -1,20 +1,25 @@
 // This file contains many unnecesary morphize calls.
 use crate::cil_op::{CILOp, FieldDescriptor};
+use crate::r#type::DotnetTypeRef;
 use crate::utilis::field_name;
 use rustc_middle::mir::{Place, PlaceElem};
-use rustc_middle::ty::{Instance, IntTy, Ty, TyCtxt, TyKind, UintTy};
+use rustc_middle::ty::{Instance, IntTy, ParamEnv, Ty, TyCtxt, TyKind, UintTy};
 fn slice_head<T>(slice: &[T]) -> (&T, &[T]) {
     assert!(!slice.is_empty());
     let last = &slice[slice.len() - 1];
     (last, &slice[..(slice.len() - 1)])
 }
-fn pointed_type(ty: Ty) -> Ty {
-    if let TyKind::Ref(_region, inner, _mut) = ty.kind() {
-        *inner
-    } else if let TyKind::RawPtr(inner_and_mut) = ty.kind() {
-        inner_and_mut.ty
+fn pointed_type(ty: PlaceTy) -> Ty {
+    if let PlaceTy::Ty(ty) = ty {
+        if let TyKind::Ref(_region, inner, _mut) = ty.kind() {
+            *inner
+        } else if let TyKind::RawPtr(inner_and_mut) = ty.kind() {
+            inner_and_mut.ty
+        } else {
+            panic!("{ty:?} is not a pointer type!");
+        }
     } else {
-        panic!("{ty:?} is not a pointer type!");
+        panic!("Can't dereference enum variant!");
     }
 }
 fn body_ty_is_by_adress(last_ty: &Ty) -> bool {
@@ -63,58 +68,80 @@ fn local_body<'tcx>(local: usize, method: &rustc_middle::mir::Body<'tcx>) -> (CI
 }
 fn place_elem_get<'a>(
     place_elem: &PlaceElem<'a>,
-    curr_type: Ty<'a>,
+    curr_type: PlaceTy<'a>,
     ctx: TyCtxt<'a>,
     method_instance: Instance<'a>,
 ) -> Vec<CILOp> {
     match place_elem {
-        PlaceElem::Deref => deref_op(curr_type, ctx),
-        PlaceElem::Field(index, field_type) => {
-            let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, ctx);
-            let field_type = crate::utilis::generic_field_ty(curr_type, index.as_u32(), ctx);
-            //let field_type = crate::utilis::monomorphize(&method_instance, *field_type, ctx);
-            let field_name = field_name(curr_type, index.as_u32());
-            let curr_type = crate::r#type::Type::from_ty(curr_type, ctx);
-            let curr_type = if let crate::r#type::Type::DotnetType(dotnet_type) = curr_type {
-                dotnet_type.as_ref().clone()
-            } else {
-                panic!();
-            };
-            let field_desc = FieldDescriptor::boxed(
-                curr_type,
-                crate::r#type::Type::from_ty(field_type, ctx),
-                field_name,
-            );
-            vec![CILOp::LDField(field_desc)]
-        }
+        PlaceElem::Deref => deref_op(pointed_type(curr_type).into(), ctx),
+        PlaceElem::Field(index, field_type) => match curr_type {
+            PlaceTy::Ty(curr_type) => {
+                let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, ctx);
+                let field_type = crate::utilis::generic_field_ty(curr_type, index.as_u32(), ctx);
+                let field_name = field_name(curr_type, index.as_u32());
+                let curr_type = crate::r#type::Type::from_ty(curr_type, ctx);
+                let curr_type = if let crate::r#type::Type::DotnetType(dotnet_type) = curr_type {
+                    dotnet_type.as_ref().clone()
+                } else {
+                    panic!();
+                };
+                let field_desc = FieldDescriptor::boxed(
+                    curr_type,
+                    crate::r#type::Type::from_ty(field_type, ctx),
+                    field_name,
+                );
+                vec![CILOp::LDField(field_desc)]
+            }
+            PlaceTy::EnumVariant(enm, var_idx) => {
+                let owner = crate::utilis::monomorphize(&method_instance, enm, ctx);
+                let owner = crate::r#type::Type::from_ty(owner, ctx);
+                let owner = if let crate::r#type::Type::DotnetType(owner) = owner {
+                    owner.as_ref().clone()
+                } else {
+                    panic!();
+                };
+                let field_name = field_name(enm, index.as_u32());
+                let field_desc = FieldDescriptor::boxed(
+                    owner,
+                    crate::r#type::Type::from_ty(*field_type, ctx),
+                    field_name,
+                );
+                vec![CILOp::LDField(field_desc)]
+                //todo!("Can't get fields of enum variants yet!");
+            }
+        },
         _ => todo!("Can't handle porojection {place_elem:?} in get"),
     }
 }
 fn place_elem_set<'a>(
     place_elem: &PlaceElem<'a>,
-    curr_type: Ty<'a>,
+    curr_type: PlaceTy<'a>,
     ctx: TyCtxt<'a>,
     method_instance: Instance<'a>,
 ) -> Vec<CILOp> {
     match place_elem {
         PlaceElem::Deref => ptr_set_op(curr_type, ctx),
         PlaceElem::Field(index, field_type) => {
-            let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, ctx);
-            let field_type = crate::utilis::generic_field_ty(curr_type, index.as_u32(), ctx);
-            let field_name = field_name(curr_type, index.as_u32());
+            if let PlaceTy::Ty(curr_type) = curr_type {
+                let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, ctx);
+                let field_type = crate::utilis::generic_field_ty(curr_type, index.as_u32(), ctx);
+                let field_name = field_name(curr_type, index.as_u32());
 
-            let curr_type = crate::r#type::Type::from_ty(curr_type, ctx);
-            let curr_type = if let crate::r#type::Type::DotnetType(dotnet_type) = curr_type {
-                dotnet_type.as_ref().clone()
+                let curr_type = crate::r#type::Type::from_ty(curr_type, ctx);
+                let curr_type = if let crate::r#type::Type::DotnetType(dotnet_type) = curr_type {
+                    dotnet_type.as_ref().clone()
+                } else {
+                    panic!();
+                };
+                let field_desc = FieldDescriptor::boxed(
+                    curr_type,
+                    crate::r#type::Type::from_ty(field_type, ctx),
+                    field_name,
+                );
+                vec![CILOp::STField(field_desc)]
             } else {
-                panic!();
-            };
-            let field_desc = FieldDescriptor::boxed(
-                curr_type,
-                crate::r#type::Type::from_ty(field_type, ctx),
-                field_name,
-            );
-            vec![CILOp::STField(field_desc)]
+                todo!("Can't set fields of enum variants yet!");
+            }
         }
         _ => todo!("Can't handle porojection {place_elem:?} in set"),
     }
@@ -122,89 +149,131 @@ fn place_elem_set<'a>(
 
 fn place_elem_body<'ctx>(
     place_elem: &PlaceElem<'ctx>,
-    curr_type: Ty<'ctx>,
+    curr_type: PlaceTy<'ctx>,
     tyctx: TyCtxt<'ctx>,
     method_instance: Instance<'ctx>,
-) -> (Ty<'ctx>, Vec<CILOp>) {
+) -> (PlaceTy<'ctx>, Vec<CILOp>) {
     match place_elem {
         PlaceElem::Deref => {
             let pointed = pointed_type(curr_type);
+            println!("Dereferencing {curr_type:?} in place_elem_body ");
             if body_ty_is_by_adress(&pointed) {
-                (pointed, vec![])
+                (pointed.into(), vec![])
             } else {
-                (pointed, deref_op(curr_type, tyctx))
+                (pointed.into(), deref_op(pointed.into(), tyctx))
             }
         }
         PlaceElem::Field(index, field_type) => {
-            let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
-            let field_type = crate::utilis::generic_field_ty(curr_type, index.as_u32(), tyctx);
-            //let field_type = crate::utilis::monomorphize(&method_instance, *field_type, tyctx);
-            let field_name = field_name(curr_type, index.as_u32());
-            let curr_type = crate::r#type::Type::from_ty(curr_type, tyctx);
-            let curr_type = if let crate::r#type::Type::DotnetType(dotnet_type) = curr_type {
-                dotnet_type.as_ref().clone()
-            } else {
-                panic!();
-            };
+            if let PlaceTy::Ty(curr_type) = curr_type {
+                let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
+                let field_type = crate::utilis::generic_field_ty(curr_type, index.as_u32(), tyctx);
+                //let field_type = crate::utilis::monomorphize(&method_instance, *field_type, tyctx);
+                let field_name = field_name(curr_type, index.as_u32());
+                let curr_type = crate::r#type::Type::from_ty(curr_type, tyctx);
+                let curr_type = if let crate::r#type::Type::DotnetType(dotnet_type) = curr_type {
+                    dotnet_type.as_ref().clone()
+                } else {
+                    panic!();
+                };
 
+                let field_desc = FieldDescriptor::boxed(
+                    curr_type,
+                    crate::r#type::Type::from_ty(field_type, tyctx),
+                    field_name,
+                );
+                if body_ty_is_by_adress(&field_type) {
+                    (field_type.into(), vec![CILOp::LDFieldAdress(field_desc)])
+                } else {
+                    (field_type.into(), vec![CILOp::LDField(field_desc)])
+                }
+            } else {
+                todo!("Can't get fields of enum variants yet!");
+            }
+        }
+        PlaceElem::Downcast(symbol, variant) => {
+            let curr_type = curr_type
+                .as_ty()
+                .expect("Can't get enum variant of an enum varaint!");
+            let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
+            let curr_dotnet_type = crate::r#type::Type::from_ty(curr_type, tyctx);
+            let curr_dotnet_type =
+                if let crate::r#type::Type::DotnetType(dotnet_type) = curr_dotnet_type {
+                    dotnet_type.as_ref().clone()
+                } else {
+                    panic!();
+                };
+            let variant_name = symbol.unwrap();
+            let field_name = format!("v_{variant_name}").into();
+            let curr_type_name = (curr_dotnet_type).name_path();
             let field_desc = FieldDescriptor::boxed(
-                curr_type,
-                crate::r#type::Type::from_ty(field_type, tyctx),
+                curr_dotnet_type.clone(),
+                crate::r#type::Type::DotnetType(Box::new(DotnetTypeRef::new(
+                    None,
+                    &format!("{curr_type_name}/{variant_name}"),
+                ))),
                 field_name,
             );
-            if body_ty_is_by_adress(&field_type) {
-                (field_type, vec![CILOp::LDFieldAdress(field_desc)])
-            } else {
-                (field_type, vec![CILOp::LDField(field_desc)])
-            }
+            let variant_type = PlaceTy::EnumVariant(curr_type, variant.as_u32());
+            (variant_type, vec![CILOp::LDFieldAdress(field_desc)])
         }
         _ => todo!("Can't handle porojection {place_elem:?} in body"),
     }
 }
-fn ptr_set_op<'ctx>(curr_type: Ty<'ctx>, tyctx: TyCtxt<'ctx>) -> Vec<CILOp> {
-    match curr_type.kind() {
-        TyKind::Int(int_ty) => match int_ty {
-            IntTy::I8 => vec![CILOp::STIndI8],
-            _ => todo!("TODO: can't deref int type {int_ty:?} yet"),
-        },
-        TyKind::Uint(int_ty) => match int_ty {
-            UintTy::U8 => vec![CILOp::STIndU8],
-            _ => todo!("TODO: can't deref int type {int_ty:?} yet"),
-        },
-        TyKind::Adt(_, _) => {
-            let curr_type = if let crate::r#type::Type::DotnetType(dotnet_type) =
-                crate::r#type::Type::from_ty(curr_type, tyctx)
-            {
-                dotnet_type
-            } else {
-                panic!();
-            };
-            vec![CILOp::STObj(curr_type)]
+fn ptr_set_op<'ctx>(curr_type: PlaceTy<'ctx>, tyctx: TyCtxt<'ctx>) -> Vec<CILOp> {
+    if let PlaceTy::Ty(curr_type) = curr_type {
+        match curr_type.kind() {
+            TyKind::Int(int_ty) => match int_ty {
+                IntTy::I8 => vec![CILOp::STIndI8],
+                _ => todo!("TODO: can't deref int type {int_ty:?} yet"),
+            },
+            TyKind::Uint(int_ty) => match int_ty {
+                UintTy::U8 => vec![CILOp::STIndU8],
+                _ => todo!("TODO: can't deref int type {int_ty:?} yet"),
+            },
+            TyKind::Adt(_, _) => {
+                let curr_type = if let crate::r#type::Type::DotnetType(dotnet_type) =
+                    crate::r#type::Type::from_ty(curr_type, tyctx)
+                {
+                    dotnet_type
+                } else {
+                    panic!();
+                };
+                vec![CILOp::STObj(curr_type)]
+            }
+            TyKind::Ref(_, _, _) => vec![CILOp::STIndISize],
+            TyKind::RawPtr(_) => vec![CILOp::STIndISize],
+            _ => todo!(" can't deref type {curr_type:?} yet"),
         }
-        TyKind::Ref(_, _, _) => vec![CILOp::STIndISize],
-        TyKind::RawPtr(_) => vec![CILOp::STIndISize],
-        _ => todo!("TODO: can't deref type {curr_type:?} yet"),
+    } else {
+        todo!("Can't set the value behind a poitner to an enum variant!");
     }
 }
-fn deref_op<'ctx>(curr_type: Ty<'ctx>, tyctx: TyCtxt<'ctx>) -> Vec<CILOp> {
-    match curr_type.kind() {
-        TyKind::Int(int_ty) => match int_ty {
-            IntTy::I8 => vec![CILOp::LDIndI8],
-            _ => todo!("TODO: can't deref int type {int_ty:?} yet"),
-        },
-        TyKind::Adt(_, _) => {
-            let curr_type = if let crate::r#type::Type::DotnetType(dotnet_type) =
-                crate::r#type::Type::from_ty(curr_type, tyctx)
-            {
-                dotnet_type
-            } else {
-                panic!();
-            };
-            vec![CILOp::LdObj(curr_type)]
+fn deref_op<'ctx>(curr_type: PlaceTy<'ctx>, tyctx: TyCtxt<'ctx>) -> Vec<CILOp> {
+    let res =if let PlaceTy::Ty(curr_type) = curr_type {
+        match curr_type.kind() {
+            TyKind::Int(int_ty) => match int_ty {
+                IntTy::I8 => vec![CILOp::LDIndI8],
+                _ => todo!("TODO: can't deref int type {int_ty:?} yet"),
+            },
+            TyKind::Adt(_, _) => {
+                let curr_type = if let crate::r#type::Type::DotnetType(dotnet_type) =
+                    crate::r#type::Type::from_ty(curr_type, tyctx)
+                {
+                    dotnet_type
+                } else {
+                    panic!();
+                };
+                vec![CILOp::LdObj(curr_type)]
+            }
+            TyKind::Ref(_, _, _) => vec![CILOp::LDIndISize],
+            TyKind::RawPtr(_) => vec![CILOp::LDIndISize],
+            _ => todo!("TODO: can't deref type {curr_type:?} yet"),
         }
-        TyKind::Ref(_, _, _) => vec![CILOp::LDIndISize],
-        _ => todo!("TODO: can't deref type {curr_type:?} yet"),
-    }
+    } else {
+        todo!("Can't dereference enum variants yet!")
+    };
+    println!("using ops {res:?} to deref type {curr_type:?}");
+    res
 }
 /// Returns the ops for getting the value of place.
 pub fn place_get<'a>(
@@ -220,14 +289,16 @@ pub fn place_get<'a>(
     } else {
         let (op, mut ty) = local_body(place.local.as_usize(), method);
         ty = crate::utilis::monomorphize(&method_instance, ty, ctx);
+        let mut ty = ty.into();
         ops.push(op);
         let (head, body) = slice_head(place.projection);
         for elem in body {
             println!("elem:{elem:?} ty:{ty:?}");
             let (curr_ty, curr_ops) = place_elem_body(elem, ty, ctx, method_instance);
-            ty = crate::utilis::monomorphize(&method_instance, curr_ty, ctx);
+            ty = curr_ty.monomorphize(&method_instance, ctx);
             ops.extend(curr_ops);
         }
+        println!("Geting {ty:?} with head {head:?}");
         ops.extend(place_elem_get(head, ty, ctx, method_instance));
         ops
     }
@@ -262,18 +333,46 @@ pub(crate) fn place_set<'a>(
         ops.push(local_set(place.local.as_usize(), method));
         return ops;
     } else {
-        let (op, mut ty) = local_body(place.local.as_usize(), method);
+        let (op, ty) = local_body(place.local.as_usize(), method);
+        let mut ty = ty.into();
         ops.push(op);
         let (head, body) = slice_head(place.projection);
         for elem in body {
             println!("elem:{elem:?} ty:{ty:?}");
             let (curr_ty, curr_ops) = place_elem_body(elem, ty, ctx, method_instance);
-            ty = crate::utilis::monomorphize(&method_instance, curr_ty, ctx);
+            ty = curr_ty.monomorphize(&method_instance, ctx);
             ops.extend(curr_ops);
         }
         ops.extend(value_calc);
-        ty = crate::utilis::monomorphize(&method_instance, ty, ctx);
+        ty = ty.monomorphize(&method_instance, ctx);
         ops.extend(place_elem_set(head, ty, ctx, method_instance));
         ops
+    }
+}
+#[derive(Debug, Clone, Copy)]
+enum PlaceTy<'ctx> {
+    Ty(Ty<'ctx>),
+    EnumVariant(Ty<'ctx>, u32),
+}
+impl<'ctx> From<Ty<'ctx>> for PlaceTy<'ctx> {
+    fn from(ty: Ty<'ctx>) -> Self {
+        Self::Ty(ty)
+    }
+}
+impl<'ctx> PlaceTy<'ctx> {
+    pub fn monomorphize(&self, method_instance: &Instance<'ctx>, ctx: TyCtxt<'ctx>) -> Self {
+        match self {
+            Self::Ty(inner) => Self::Ty(crate::utilis::monomorphize(&method_instance, *inner, ctx)),
+            Self::EnumVariant(enm, variant) => Self::EnumVariant(
+                crate::utilis::monomorphize(&method_instance, *enm, ctx),
+                *variant,
+            ),
+        }
+    }
+    pub fn as_ty(&self) -> Option<Ty<'ctx>> {
+        match self {
+            Self::Ty(inner) => Some(*inner),
+            _ => None,
+        }
     }
 }
