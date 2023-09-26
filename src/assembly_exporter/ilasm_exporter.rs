@@ -401,24 +401,36 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
         }
         // Pointer stuff
         CILOp::LDIndI8 => "ldind.i1".into(),
+        CILOp::STIndI8 => "stind.i1".into(),
         CILOp::LDIndISize => "ldind.i".into(),
         CILOp::STIndISize => "stind.i".into(),
         //OOP
         CILOp::SizeOf(tpe) => format!("sizeof {tpe}", tpe = prefixed_type_cli(tpe)).into(),
         CILOp::Throw => "throw".into(),
         CILOp::LdStr(str) => format!("ldstr {str:?}").into(),
-        CILOp::LdObj(obj)=> format!("ldobj valuetype {tpe}", tpe = dotnet_type_ref_cli(obj)).into(),
-        CILOp::STObj(obj)=> format!("stobj valuetype {tpe}", tpe = dotnet_type_ref_cli(obj)).into(),
+        CILOp::LdObj(obj) => {
+            format!("ldobj valuetype {tpe}", tpe = dotnet_type_ref_cli(obj)).into()
+        }
+        CILOp::STObj(obj) => {
+            format!("stobj valuetype {tpe}", tpe = dotnet_type_ref_cli(obj)).into()
+        }
         CILOp::LDField(descr) => format!(
             "ldfld {prefixed_type} valuetype {owner}::{field_name}",
-            prefixed_type = field_type_cli(descr.tpe()),
+            prefixed_type = preifxed_field_type_cli(descr.tpe()),
+            owner = dotnet_type_ref_cli(descr.owner()),
+            field_name = descr.name()
+        )
+        .into(),
+        CILOp::LDFieldAdress(descr) => format!(
+            "ldflda {prefixed_type} valuetype {owner}::{field_name}",
+            prefixed_type = preifxed_field_type_cli(descr.tpe()),
             owner = dotnet_type_ref_cli(descr.owner()),
             field_name = descr.name()
         )
         .into(),
         CILOp::STField(descr) => format!(
             "stfld {prefixed_type} valuetype {owner}::{field_name}",
-            prefixed_type = field_type_cli(descr.tpe()),
+            prefixed_type = preifxed_field_type_cli(descr.tpe()),
             owner = dotnet_type_ref_cli(descr.owner()),
             field_name = descr.name()
         )
@@ -485,6 +497,16 @@ fn dotnet_type_ref_cli(dotnet_type: &DotnetTypeRef) -> String {
     let generics = generics_str(dotnet_type.generics());
     format!("{asm}{name}{generics}").into()
 }
+fn dotnet_type_ref_cli_generics_unescaped(dotnet_type: &DotnetTypeRef) -> String {
+    let asm = if let Some(asm_ref) = dotnet_type.asm() {
+        format!("[{asm_ref}]")
+    } else {
+        "".into()
+    };
+    let name = dotnet_type.name_path();
+    let generics = generics_ident_str(dotnet_type.generics());
+    format!("{asm}{name}{generics}").into()
+}
 fn type_cli(tpe: &Type) -> Cow<'static, str> {
     match tpe {
         Type::Void => "RustVoid".into(),
@@ -515,8 +537,22 @@ fn type_cli(tpe: &Type) -> Cow<'static, str> {
 }
 fn field_type_cli(tpe: &Type) -> Cow<'static, str> {
     let res = match tpe {
-        Type::Ptr(inner) => format!("{inner}*", inner = field_type_cli(inner)).into(),
+        Type::Ptr(inner) => format!("{inner}*", inner = type_cli(inner)).into(),
         Type::GenericArg(id) => format!("!{id}").into(),
+        Type::DotnetType(dotnet_type) => dotnet_type_ref_cli_generics_unescaped(dotnet_type).into(),
+        _ => prefixed_type_cli(tpe).into(),
+    };
+    res
+}
+fn preifxed_field_type_cli(tpe: &Type) -> Cow<'static, str> {
+    let res = match tpe {
+        Type::Ptr(inner) => format!("{inner}*", inner = type_cli(inner)).into(),
+        Type::GenericArg(id) => format!("!{id}").into(),
+        Type::DotnetType(dotnet_type) => format!(
+            "valuetype {}",
+            dotnet_type_ref_cli_generics_unescaped(dotnet_type)
+        )
+        .into(),
         _ => prefixed_type_cli(tpe).into(),
     };
     res
@@ -577,6 +613,24 @@ fn generics_str(generics: &[Type]) -> Cow<'static, str> {
         }
         for arg in generic_iter {
             garg_string.push_str(&format!(",{type_cli}", type_cli = prefixed_type_cli(&arg)));
+        }
+        format!("<{garg_string}>").into()
+    }
+}
+fn generics_ident_str(generics: &[Type]) -> Cow<'static, str> {
+    if generics.is_empty() {
+        "".into()
+    } else {
+        let mut garg_string = String::new();
+        let mut generic_iter = generics.iter();
+        if let Some(first_generic) = generic_iter.next() {
+            garg_string.push_str(&format!(
+                "{type_cli}",
+                type_cli = field_type_cli(&first_generic)
+            ));
+        }
+        for arg in generic_iter {
+            garg_string.push_str(&format!(",{type_cli}", type_cli = field_type_cli(&arg)));
         }
         format!("<{garg_string}>").into()
     }

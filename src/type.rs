@@ -63,6 +63,12 @@ impl DotnetTypeRef {
     pub fn generics(&self) -> &[Type] {
         self.generics.as_ref()
     }
+    pub fn set_generics(&mut self, generics: impl Into<Vec<Type>>) {
+        self.generics = generics.into();
+    }
+    pub fn set_generics_identity(&mut self) {
+        self.generics = crate::type_def::ident_gargs(self.generics.len()).into();
+    }
     fn from_adt<'ctx>(adt: &AdtDef<'ctx>, subst: &[GenericArg<'ctx>], tyctx: TyCtxt<'ctx>) -> Self {
         let generics: Vec<Type> = subst
             .iter()

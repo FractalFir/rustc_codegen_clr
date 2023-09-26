@@ -36,7 +36,18 @@ fn main(){
     if let Some(_) = unsafe{*maybe}{
         core::intrinsics::abort();
     }
-    //let maybe = Maybe::Some(8);
     black_box(maybe);
+    let maybe = Some(8);
+    black_box(maybe);
+    let end = black_box(100);
+    let range = (0..end);
+    black_box(&range);
+    let mut iter = range.into_iter();
+    black_box(&iter);
+    //let first = iter.next();
+    while let Some(_) = iter.next(){
+        black_box(0);
+    }
+    
 }
 

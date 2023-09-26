@@ -132,7 +132,6 @@ pub enum CILOp {
     LDIndI8,
     LDIndISize,
     STIndI8,
-    STIndU8,
     STIndISize,
     //Debugging
     Comment(IString),

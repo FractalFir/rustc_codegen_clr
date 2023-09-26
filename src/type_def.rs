@@ -147,12 +147,11 @@ impl TypeDef {
         for variant in adt_def.variants() {
             //println!("Variant:{variant:?}");
             let variant_name = variant.name.to_string();
+            let mut variant_type = DotnetTypeRef::new(None, &format!("{name}/{variant_name}"));
+            variant_type.set_generics(ident_gargs(gargc as usize));
             fields.push((
                 format!("v_{}", escape_field_name(variant_name.as_ref())).into(),
-                Type::DotnetType(Box::new(DotnetTypeRef::new(
-                    None,
-                    &format!("{name}/{variant_name}"),
-                ))),
+                Type::DotnetType(Box::new(variant_type)),
             ));
             let mut fields = vec![];
             for field in &variant.fields {
@@ -183,7 +182,7 @@ impl TypeDef {
         res
     }
 }
-fn escape_field_name(name: &str) -> IString {
+pub fn escape_field_name(name: &str) -> IString {
     if name == "value" {
         "m_value".into()
     } else if name.is_empty() {
@@ -192,5 +191,18 @@ fn escape_field_name(name: &str) -> IString {
         format!("m_{name}").into()
     } else {
         name.into()
+    }
+}
+pub fn ident_gargs(gargc: usize) -> std::borrow::Cow<'static, [Type]> {
+    const ZERO_GARGS: &'static [Type] = &[];
+    const ONE_GARG: &'static [Type] = &[Type::GenericArg(0)];
+    match gargc {
+        0 => ZERO_GARGS.into(),
+        1 => ONE_GARG.into(),
+        _ => (0..gargc)
+            .into_iter()
+            .map(|g| Type::GenericArg(g as u32))
+            .collect::<Vec<_>>()
+            .into(),
     }
 }

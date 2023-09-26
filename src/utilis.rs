@@ -26,7 +26,7 @@ pub fn field_name(ty: Ty, idx: u32) -> crate::IString {
                 .all_fields()
                 .nth(idx as usize)
                 .expect("Field index out of range.");
-            field_def.name.to_string().into()
+            crate::type_def::escape_field_name(&field_def.name.to_string()).into()
         }
         _ => todo!("Can't yet get fields of typr {ty:?}"),
     }
@@ -65,6 +65,7 @@ pub fn generic_field_ty<'ctx>(owner_ty: Ty<'ctx>, field_idx: u32, ctx: TyCtxt<'c
         _ => todo!("Can't get field {field_idx} belonging to type {owner_ty:?}"),
     }
 }
+// /pub fn polimorphize(ty: Ty<'ctx>)
 pub fn enum_tag_size(variants: u64) -> u32 {
     (((u64::BITS as u64 - (variants).leading_zeros() as u64) + 8 - 1) / 8) as u32
 }

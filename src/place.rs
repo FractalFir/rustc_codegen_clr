@@ -101,12 +101,17 @@ fn place_elem_get<'a>(
                     panic!();
                 };
                 let field_name = field_name(enm, index.as_u32());
+                let mut field_owner = owner;
+                let variant_name = "Some";
+                field_owner.append_path(&format!("/{variant_name}"));
                 let field_desc = FieldDescriptor::boxed(
-                    owner,
+                    field_owner,
                     crate::r#type::Type::from_ty(*field_type, ctx),
                     field_name,
                 );
-                vec![CILOp::LDField(field_desc)]
+                let ops = vec![CILOp::LDField(field_desc)];
+                println!("Using ops:{ops:?} to get field of an enum variant!");
+                ops
                 //todo!("Can't get fields of enum variants yet!");
             }
         },
@@ -120,7 +125,10 @@ fn place_elem_set<'a>(
     method_instance: Instance<'a>,
 ) -> Vec<CILOp> {
     match place_elem {
-        PlaceElem::Deref => ptr_set_op(curr_type, ctx),
+        PlaceElem::Deref => {
+            let pointed_type = pointed_type(curr_type);
+            ptr_set_op(pointed_type.into(), ctx)
+        }
         PlaceElem::Field(index, field_type) => {
             if let PlaceTy::Ty(curr_type) = curr_type {
                 let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, ctx);
@@ -227,7 +235,7 @@ fn ptr_set_op<'ctx>(curr_type: PlaceTy<'ctx>, tyctx: TyCtxt<'ctx>) -> Vec<CILOp>
                 _ => todo!("TODO: can't deref int type {int_ty:?} yet"),
             },
             TyKind::Uint(int_ty) => match int_ty {
-                UintTy::U8 => vec![CILOp::STIndU8],
+                UintTy::U8 => vec![CILOp::STIndI8],
                 _ => todo!("TODO: can't deref int type {int_ty:?} yet"),
             },
             TyKind::Adt(_, _) => {
@@ -249,7 +257,7 @@ fn ptr_set_op<'ctx>(curr_type: PlaceTy<'ctx>, tyctx: TyCtxt<'ctx>) -> Vec<CILOp>
     }
 }
 fn deref_op<'ctx>(curr_type: PlaceTy<'ctx>, tyctx: TyCtxt<'ctx>) -> Vec<CILOp> {
-    let res =if let PlaceTy::Ty(curr_type) = curr_type {
+    let res = if let PlaceTy::Ty(curr_type) = curr_type {
         match curr_type.kind() {
             TyKind::Int(int_ty) => match int_ty {
                 IntTy::I8 => vec![CILOp::LDIndI8],

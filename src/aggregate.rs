@@ -1,4 +1,4 @@
-use crate::cil_op::CILOp;
+use crate::cil_op::{CILOp, FieldDescriptor};
 use crate::r#type::Type;
 use crate::utilis::field_name;
 use rustc_index::IndexVec;
@@ -90,6 +90,54 @@ fn aggregate_from_adt<'tcx>(
                     field_name,
                 );
                 ops.push(CILOp::STField(field_desc));
+            }
+            ops.extend(crate::place::place_get(
+                &target_location,
+                tcx,
+                method,
+                method_instance,
+            ));
+            ops
+        }
+        AdtKind::Enum => {
+            let mut adt_adress_ops =
+                crate::place::place_adress(&target_location, tcx, method, method_instance);
+
+            let mut variant_type = adt_type_ref.clone(); //adt_type.variant_type(variant).expect("Can't get variant index");
+            let variant_name = "Some";
+            variant_type.append_path(&format!("/{variant_name}"));
+            let mut variant_identity = variant_type.clone();
+
+            variant_identity.set_generics_identity();
+            // Get variant adress
+            let variant_field_desc = FieldDescriptor::new(
+                adt_type_ref,
+                Type::DotnetType(Box::new(variant_identity)),
+                format!("v_{variant_name}").into(),
+            );
+            adt_adress_ops.push(CILOp::LDFieldAdress(Box::new(variant_field_desc)));
+            let mut ops = Vec::new();
+            let enum_variant = adt
+                .variants()
+                .iter()
+                .nth(variant_idx as usize)
+                .expect("Can't get variant index");
+            for (field_idx, (field, field_value)) in
+                enum_variant.fields.iter().zip(fields.iter()).enumerate()
+            {
+                ops.extend(adt_adress_ops.clone());
+                ops.extend(field_value.1.clone());
+                let field_name = field.name.to_string();
+                let field_name = crate::type_def::escape_field_name(&field_name);
+                let field = Type::from_ty(
+                    crate::utilis::generic_field_ty(adt_type, field_idx as u32, tcx),
+                    tcx,
+                );
+                ops.push(CILOp::STField(Box::new(FieldDescriptor::new(
+                    variant_type.clone(),
+                    field,
+                    field_name,
+                ))));
             }
             ops.extend(crate::place::place_get(
                 &target_location,

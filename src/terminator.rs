@@ -143,6 +143,19 @@ pub fn handle_terminator<'ctx>(
                 CILOp::GoTo(target.as_u32()),
             ]
         }
+        TerminatorKind::Unreachable => {
+            let string_type = crate::r#type::Type::DotnetType(Box::new(DotnetTypeRef::new(
+                Some("System.Runtime"),
+                "System.String",
+            )));
+            let exception = DotnetTypeRef::new(Some("System.Runtime"), "System.Exception");
+            let sig = FnSig::new(&[string_type], &crate::r#type::Type::Void);
+            vec![
+                CILOp::LdStr("Undefined behaviour! Unreachable terminator reached!".into()),
+                CILOp::NewObj(CallSite::boxed(Some(exception), ".ctor".into(), sig, false)),
+                CILOp::Throw,
+            ]
+        }
         _ => todo!("Unhandled terminator kind {kind:?}", kind = terminator.kind),
     }
 }
