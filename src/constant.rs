@@ -5,7 +5,7 @@ use rustc_middle::ty::{FloatTy, IntTy, Ty, TyCtxt, TyKind, UintTy};
 pub fn handle_constant<'ctx>(
     constant: &Constant<'ctx>,
     tyctx: TyCtxt<'ctx>,
-    method: &rustc_middle::mir::Body<'ctx>,
+    _method: &rustc_middle::mir::Body<'ctx>,
 ) -> Vec<CILOp> {
     let const_kind = constant.literal;
     match const_kind {
@@ -47,7 +47,7 @@ fn load_const_scalar<'ctx>(
         _ => todo!("Can't load scalar constants of type {scalar_type:?}!"),
     }
 }
-fn load_const_float(value: u128, int_type: &FloatTy, tyctx: TyCtxt) -> Vec<CILOp> {
+fn load_const_float(value: u128, int_type: &FloatTy, _tyctx: TyCtxt) -> Vec<CILOp> {
     match int_type {
         FloatTy::F32 => {
             let value = f32::from_ne_bytes((value as u32).to_ne_bytes());
@@ -59,15 +59,15 @@ fn load_const_float(value: u128, int_type: &FloatTy, tyctx: TyCtxt) -> Vec<CILOp
         }
     }
 }
-fn load_const_int(value: u128, int_type: &IntTy, tyctx: TyCtxt) -> Vec<CILOp> {
+fn load_const_int(value: u128, int_type: &IntTy, _tyctx: TyCtxt) -> Vec<CILOp> {
     match int_type {
         IntTy::I8 => {
             let value = i8::from_ne_bytes([value as u8]);
-            vec![CILOp::LdcI32(value as i32), CILOp::ConvI8(false)]
+            vec![CILOp::LdcI32(i32::from(value)), CILOp::ConvI8(false)]
         }
         IntTy::I16 => {
             let value = i16::from_ne_bytes((value as u16).to_ne_bytes());
-            vec![CILOp::LdcI32(value as i32), CILOp::ConvI16(false)]
+            vec![CILOp::LdcI32(i32::from(value)), CILOp::ConvI16(false)]
         }
         IntTy::I32 => {
             let value = i32::from_ne_bytes((value as u32).to_ne_bytes());
@@ -82,10 +82,10 @@ fn load_const_int(value: u128, int_type: &IntTy, tyctx: TyCtxt) -> Vec<CILOp> {
             vec![CILOp::LdcI64(value), CILOp::ConvISize(true)]
         }
         IntTy::I128 => {
-            let low = (value & (u64::MAX as u128)) as u64;
+            let low = (value & u128::from(u64::MAX)) as u64;
             let high = (value << 64) as u64;
-            let low = i64::from_ne_bytes((low as u64).to_ne_bytes());
-            let high = i64::from_ne_bytes((high as u64).to_ne_bytes());
+            let low = i64::from_ne_bytes(low.to_ne_bytes());
+            let high = i64::from_ne_bytes(high.to_ne_bytes());
             let i128_class = DotnetTypeRef::new(Some("System.Runtime"), "System.Int128");
             let ctor_sig = crate::function_sig::FnSig::new(&[Type::U64, Type::U64], &Type::I128);
             vec![
@@ -101,15 +101,15 @@ fn load_const_int(value: u128, int_type: &IntTy, tyctx: TyCtxt) -> Vec<CILOp> {
         }
     }
 }
-fn load_const_uint(value: u128, int_type: &UintTy, tyctx: TyCtxt) -> Vec<CILOp> {
+fn load_const_uint(value: u128, int_type: &UintTy, _tyctx: TyCtxt) -> Vec<CILOp> {
     match int_type {
         UintTy::U8 => {
             let value = i8::from_ne_bytes([value as u8]);
-            vec![CILOp::LdcI32(value as i32), CILOp::ConvU8(false)]
+            vec![CILOp::LdcI32(i32::from(value)), CILOp::ConvU8(false)]
         }
         UintTy::U16 => {
             let value = i16::from_ne_bytes((value as u16).to_ne_bytes());
-            vec![CILOp::LdcI32(value as i32), CILOp::ConvU16(false)]
+            vec![CILOp::LdcI32(i32::from(value)), CILOp::ConvU16(false)]
         }
         UintTy::U32 => {
             let value = i32::from_ne_bytes((value as u32).to_ne_bytes());
@@ -124,10 +124,10 @@ fn load_const_uint(value: u128, int_type: &UintTy, tyctx: TyCtxt) -> Vec<CILOp> 
             vec![CILOp::LdcI64(value), CILOp::ConvUSize(true)]
         }
         UintTy::U128 => {
-            let low = (value & (u64::MAX as u128)) as u64;
+            let low = (value & u128::from(u64::MAX)) as u64;
             let high = (value << 64) as u64;
-            let low = i64::from_ne_bytes((low as u64).to_ne_bytes());
-            let high = i64::from_ne_bytes((high as u64).to_ne_bytes());
+            let low = i64::from_ne_bytes(low.to_ne_bytes());
+            let high = i64::from_ne_bytes(high.to_ne_bytes());
             let i128_class = DotnetTypeRef::new(Some("System.Runtime"), "System.UInt128");
             let ctor_sig = crate::function_sig::FnSig::new(&[Type::U64, Type::U64], &Type::U128);
             vec![

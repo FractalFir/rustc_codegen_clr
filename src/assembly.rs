@@ -1,7 +1,7 @@
 use crate::cil_op::{CILOp, CallSite};
 use crate::{
     access_modifier::AccessModifer, codegen_error::CodegenError, function_sig::FnSig,
-    method::Method, r#type::Type, type_def::TypeDef, IString,
+    method::Method, r#type::Type, type_def::TypeDef,
 };
 use rustc_middle::mir::{mono::MonoItem, Local, LocalDecl};
 use rustc_middle::ty::{Instance, ParamEnv, TyCtxt};
@@ -86,10 +86,10 @@ impl Assembly {
         self.functions.insert(method);
     }
     pub fn methods(&self) -> impl Iterator<Item = &Method> {
-        (&self.functions).iter()
+        self.functions.iter()
     }
     pub fn types(&self) -> impl Iterator<Item = &TypeDef> {
-        (&self.types).iter()
+        self.types.iter()
     }
     pub fn add_type<'ctx>(&mut self, ty: rustc_middle::ty::Ty<'ctx>, tyctx: TyCtxt<'ctx>) {
         for type_def in TypeDef::from_ty(ty, tyctx) {

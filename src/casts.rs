@@ -10,7 +10,7 @@ pub fn int_to_int(src: Type, target: Type) -> Vec<CILOp> {
         to_int(target)
     }
 }
-pub fn float_to_int(src: Type, target: Type) -> Vec<CILOp> {
+pub fn float_to_int(_src: Type, target: Type) -> Vec<CILOp> {
     if matches!(target, Type::I128 | Type::U128) {
         todo!("Casting to 128 bit intiegers is not supported!")
     } else {

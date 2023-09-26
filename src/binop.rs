@@ -148,39 +148,39 @@ fn sub_unchecked<'tcx>(ty_a: Ty<'tcx>, ty_b: Ty<'tcx>) -> Vec<CILOp> {
         _ => todo!("can't add numbers of types {ty_a} and {ty_b}"),
     }
 }
-fn ne_unchecked<'tcx>(ty_a: Ty<'tcx>, ty_b: Ty<'tcx>) -> Vec<CILOp> {
+fn ne_unchecked<'tcx>(_ty_a: Ty<'tcx>, _ty_b: Ty<'tcx>) -> Vec<CILOp> {
     vec![CILOp::Eq, CILOp::LdcI32(0), CILOp::Eq]
 }
-fn eq_unchecked<'tcx>(ty_a: Ty<'tcx>, ty_b: Ty<'tcx>) -> Vec<CILOp> {
+fn eq_unchecked<'tcx>(_ty_a: Ty<'tcx>, _ty_b: Ty<'tcx>) -> Vec<CILOp> {
     vec![CILOp::Eq]
 }
-fn lt_unchecked<'tcx>(ty_a: Ty<'tcx>, ty_b: Ty<'tcx>) -> Vec<CILOp> {
+fn lt_unchecked<'tcx>(_ty_a: Ty<'tcx>, _ty_b: Ty<'tcx>) -> Vec<CILOp> {
     vec![CILOp::Lt]
 }
-fn gt_unchecked<'tcx>(ty_a: Ty<'tcx>, ty_b: Ty<'tcx>) -> Vec<CILOp> {
+fn gt_unchecked<'tcx>(_ty_a: Ty<'tcx>, _ty_b: Ty<'tcx>) -> Vec<CILOp> {
     vec![CILOp::Lt]
 }
-fn bit_and_unchecked<'tcx>(ty_a: Ty<'tcx>, ty_b: Ty<'tcx>) -> Vec<CILOp> {
+fn bit_and_unchecked<'tcx>(_ty_a: Ty<'tcx>, _ty_b: Ty<'tcx>) -> Vec<CILOp> {
     vec![CILOp::And]
 }
-fn bit_or_unchecked<'tcx>(ty_a: Ty<'tcx>, ty_b: Ty<'tcx>) -> Vec<CILOp> {
+fn bit_or_unchecked<'tcx>(_ty_a: Ty<'tcx>, _ty_b: Ty<'tcx>) -> Vec<CILOp> {
     vec![CILOp::Or]
 }
-fn bit_xor_unchecked<'tcx>(ty_a: Ty<'tcx>, ty_b: Ty<'tcx>) -> Vec<CILOp> {
+fn bit_xor_unchecked<'tcx>(_ty_a: Ty<'tcx>, _ty_b: Ty<'tcx>) -> Vec<CILOp> {
     vec![CILOp::XOr]
 }
-fn rem_unchecked<'tcx>(ty_a: Ty<'tcx>, ty_b: Ty<'tcx>) -> Vec<CILOp> {
+fn rem_unchecked<'tcx>(_ty_a: Ty<'tcx>, _ty_b: Ty<'tcx>) -> Vec<CILOp> {
     vec![CILOp::Rem]
 }
-fn shr_unchecked<'tcx>(ty_a: Ty<'tcx>, ty_b: Ty<'tcx>) -> Vec<CILOp> {
+fn shr_unchecked<'tcx>(_ty_a: Ty<'tcx>, _ty_b: Ty<'tcx>) -> Vec<CILOp> {
     vec![CILOp::Shr]
 }
-fn shl_unchecked<'tcx>(ty_a: Ty<'tcx>, ty_b: Ty<'tcx>) -> Vec<CILOp> {
+fn shl_unchecked<'tcx>(_ty_a: Ty<'tcx>, _ty_b: Ty<'tcx>) -> Vec<CILOp> {
     vec![CILOp::Shl]
 }
-fn mul_unchecked<'tcx>(ty_a: Ty<'tcx>, ty_b: Ty<'tcx>) -> Vec<CILOp> {
+fn mul_unchecked<'tcx>(_ty_a: Ty<'tcx>, _ty_b: Ty<'tcx>) -> Vec<CILOp> {
     vec![CILOp::Mul]
 }
-fn div_unchecked<'tcx>(ty_a: Ty<'tcx>, ty_b: Ty<'tcx>) -> Vec<CILOp> {
+fn div_unchecked<'tcx>(_ty_a: Ty<'tcx>, _ty_b: Ty<'tcx>) -> Vec<CILOp> {
     vec![CILOp::Div]
 }

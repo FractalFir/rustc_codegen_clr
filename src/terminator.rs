@@ -1,7 +1,7 @@
 use rustc_middle::{
     mir::{
-        interpret::ConstValue, BasicBlock, Body, Constant, ConstantKind, Operand, Place,
-        SwitchTargets, Terminator, TerminatorKind,
+        interpret::ConstValue, Body, Constant, ConstantKind, Operand, Place, SwitchTargets,
+        Terminator, TerminatorKind,
     },
     ty::{Instance, ParamEnv, Ty, TyCtxt, TyKind},
 };
@@ -67,9 +67,9 @@ pub fn handle_terminator<'ctx>(
             args,
             destination,
             target,
-            unwind,
-            call_source,
-            fn_span,
+            unwind: _,
+            call_source: _,
+            fn_span: _,
         } => {
             let mut ops = Vec::new();
             match func {
@@ -116,10 +116,10 @@ pub fn handle_terminator<'ctx>(
             expected,
             msg,
             target,
-            unwind,
+            unwind: _,
         } => {
             let mut ops = handle_operand(cond, tyctx, method, method_instance);
-            ops.push(CILOp::LdcI32(*expected as i32));
+            ops.push(CILOp::LdcI32(i32::from(*expected)));
             ops.push(CILOp::BEq(target.as_u32()));
             ops.extend(throw_assert_msg(msg, tyctx, method, method_instance));
             ops
@@ -132,10 +132,10 @@ pub fn handle_terminator<'ctx>(
             )]
         }
         TerminatorKind::Drop {
-            place,
+            place: _,
             target,
-            unwind,
-            replace,
+            unwind: _,
+            replace: _,
         } => {
             eprintln!("WARNING: drop is not supported yet in rustc_codegen_clr!");
             vec![
@@ -208,7 +208,7 @@ fn throw_assert_msg<'ctx>(
             ops.push(CILOp::Throw);
             ops
         }
-        AssertKind::DivisionByZero(operand) => {
+        AssertKind::DivisionByZero(_operand) => {
             let mut ops = Vec::with_capacity(8);
 
             let sig = FnSig::new(&[], &crate::r#type::Type::Void);
@@ -223,7 +223,7 @@ fn throw_assert_msg<'ctx>(
             ops.push(CILOp::Throw);
             ops
         }
-        AssertKind::RemainderByZero(operand) => {
+        AssertKind::RemainderByZero(_operand) => {
             let mut ops = Vec::with_capacity(8);
 
             let sig = FnSig::new(&[], &crate::r#type::Type::Void);

@@ -21,19 +21,19 @@ pub fn adt_name(adt: &AdtDef) -> crate::IString {
 }
 pub fn field_name(ty: Ty, idx: u32) -> crate::IString {
     match ty.kind() {
-        TyKind::Adt(adt_def, subst) => {
+        TyKind::Adt(adt_def, _subst) => {
             let field_def = adt_def
                 .all_fields()
                 .nth(idx as usize)
                 .expect("Field index out of range.");
-            crate::type_def::escape_field_name(&field_def.name.to_string()).into()
+            crate::type_def::escape_field_name(&field_def.name.to_string())
         }
         _ => todo!("Can't yet get fields of typr {ty:?}"),
     }
 }
 pub fn function_name(name: SymbolName) -> crate::IString {
     name.to_string()
-        .replace("$", "_ds_")
+        .replace('$', "_ds_")
         .replace("..", "_dd_")
         .into()
 }
@@ -67,7 +67,7 @@ pub fn generic_field_ty<'ctx>(owner_ty: Ty<'ctx>, field_idx: u32, ctx: TyCtxt<'c
 }
 // /pub fn polimorphize(ty: Ty<'ctx>)
 pub fn enum_tag_size(variants: u64) -> u32 {
-    (((u64::BITS as u64 - (variants).leading_zeros() as u64) + 8 - 1) / 8) as u32
+    (((u64::from(u64::BITS) - u64::from((variants).leading_zeros())) + 8 - 1) / 8) as u32
 }
 
 pub fn tag_from_enum_variants(variants: u64) -> crate::r#type::Type {

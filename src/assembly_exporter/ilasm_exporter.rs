@@ -5,7 +5,6 @@ use crate::{
     method::Method,
     r#type::{DotnetTypeRef, Type},
     type_def::TypeDef,
-    IString,
 };
 use std::{borrow::Cow, io::Write};
 #[must_use]
@@ -99,7 +98,7 @@ fn type_def_cli(w: &mut impl Write, tpe: &TypeDef) -> Result<(), super::Assembly
     if tpe.gargc() != 0 {
         generics.push('>');
     }
-    let extended = if let Some(extended) = tpe.extends() {
+    let extended = if let Some(_extended) = tpe.extends() {
         todo!("Can't handle inheretence yet!");
     } else {
         "[System.Runtime]System.ValueType"
@@ -113,7 +112,7 @@ fn type_def_cli(w: &mut impl Write, tpe: &TypeDef) -> Result<(), super::Assembly
     for inner_type in tpe.inner_types() {
         type_def_cli(w, inner_type);
     }
-    let mut field_string = String::new();
+    let _field_string = String::new();
     if let Some(offsets) = tpe.explicit_offsets() {
         for ((field_name, field_type), offset) in tpe.fields().iter().zip(offsets.iter()) {
             writeln!(
@@ -123,7 +122,7 @@ fn type_def_cli(w: &mut impl Write, tpe: &TypeDef) -> Result<(), super::Assembly
             );
         }
     } else {
-        for (field_name, field_type) in tpe.fields().iter() {
+        for (field_name, field_type) in tpe.fields() {
             writeln!(
                 w,
                 "\t.field public {field_type_name} {field_name}",
@@ -211,14 +210,14 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
                     "instance"
                 };
                 let owner_name = match &call_site.class() {
-                    Some(owner) => format!("{}::", dotnet_type_ref_cli(&owner)),
-                    None => "".into(),
+                    Some(owner) => format!("{}::", dotnet_type_ref_cli(owner)),
+                    None => String::new(),
                 };
                 //println!("inputs:{inputs:?} input_string: {input_string}",inputs = call_site.signature.inputs);
                 format!(
                     "call {prefix} {output} {owner_name}{function_name}({input_string})",
                     function_name = call_site.name(),
-                    output = output_type_cli(&call_site.signature().output())
+                    output = output_type_cli(call_site.signature().output())
                 )
                 .into()
             }
@@ -455,14 +454,14 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
                     "instance"
                 };
                 let owner_name = match &call_site.class() {
-                    Some(owner) => format!("{}::", dotnet_type_ref_cli(&owner)),
-                    None => "".into(),
+                    Some(owner) => format!("{}::", dotnet_type_ref_cli(owner)),
+                    None => String::new(),
                 };
                 //println!("inputs:{inputs:?} input_string: {input_string}",inputs = call_site.signature.inputs);
                 format!(
                     "newobj {prefix} {output} {owner_name}{function_name}({input_string})",
                     function_name = call_site.name(),
-                    output = output_type_cli(&call_site.signature().output())
+                    output = output_type_cli(call_site.signature().output())
                 )
                 .into()
             }
@@ -476,36 +475,35 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
 fn output_type_cli(tpe: &Type) -> Cow<'static, str> {
     match tpe {
         Type::Void => "void".into(),
-        _ => prefixed_type_cli(tpe).into(),
+        _ => prefixed_type_cli(tpe),
     }
 }
 fn arg_type_cli(tpe: &Type) -> Cow<'static, str> {
-    let res = match tpe {
+    match tpe {
         Type::DotnetType(_) => format!("valuetype {tpe}", tpe = type_cli(tpe)).into(),
         Type::Ptr(inner) => format!("{inner}*", inner = arg_type_cli(inner)).into(),
-        _ => type_cli(tpe).into(),
-    };
-    res
+        _ => type_cli(tpe),
+    }
 }
 fn dotnet_type_ref_cli(dotnet_type: &DotnetTypeRef) -> String {
     let asm = if let Some(asm_ref) = dotnet_type.asm() {
         format!("[{asm_ref}]")
     } else {
-        "".into()
+        String::new()
     };
     let name = dotnet_type.name_path();
     let generics = generics_str(dotnet_type.generics());
-    format!("{asm}{name}{generics}").into()
+    format!("{asm}{name}{generics}")
 }
 fn dotnet_type_ref_cli_generics_unescaped(dotnet_type: &DotnetTypeRef) -> String {
     let asm = if let Some(asm_ref) = dotnet_type.asm() {
         format!("[{asm_ref}]")
     } else {
-        "".into()
+        String::new()
     };
     let name = dotnet_type.name_path();
     let generics = generics_ident_str(dotnet_type.generics());
-    format!("{asm}{name}{generics}").into()
+    format!("{asm}{name}{generics}")
 }
 fn type_cli(tpe: &Type) -> Cow<'static, str> {
     match tpe {
@@ -536,16 +534,15 @@ fn type_cli(tpe: &Type) -> Cow<'static, str> {
     }
 }
 fn field_type_cli(tpe: &Type) -> Cow<'static, str> {
-    let res = match tpe {
+    match tpe {
         Type::Ptr(inner) => format!("{inner}*", inner = type_cli(inner)).into(),
         Type::GenericArg(id) => format!("!{id}").into(),
         Type::DotnetType(dotnet_type) => dotnet_type_ref_cli_generics_unescaped(dotnet_type).into(),
-        _ => prefixed_type_cli(tpe).into(),
-    };
-    res
+        _ => prefixed_type_cli(tpe),
+    }
 }
 fn preifxed_field_type_cli(tpe: &Type) -> Cow<'static, str> {
-    let res = match tpe {
+    match tpe {
         Type::Ptr(inner) => format!("{inner}*", inner = type_cli(inner)).into(),
         Type::GenericArg(id) => format!("!{id}").into(),
         Type::DotnetType(dotnet_type) => format!(
@@ -553,9 +550,8 @@ fn preifxed_field_type_cli(tpe: &Type) -> Cow<'static, str> {
             dotnet_type_ref_cli_generics_unescaped(dotnet_type)
         )
         .into(),
-        _ => prefixed_type_cli(tpe).into(),
-    };
-    res
+        _ => prefixed_type_cli(tpe),
+    }
 }
 fn prefixed_type_cli(tpe: &Type) -> Cow<'static, str> {
     match tpe {
@@ -588,13 +584,13 @@ fn prefixed_type_cli(tpe: &Type) -> Cow<'static, str> {
     }
 }
 fn args_cli(w: &mut impl Write, args: &[Type]) -> std::io::Result<()> {
-    let mut args = args.into_iter();
+    let mut args = args.iter();
     write!(w, "(")?;
     if let Some(first_arg) = args.next() {
-        write!(w, "{type_cli}", type_cli = arg_type_cli(&first_arg))?;
+        write!(w, "{type_cli}", type_cli = arg_type_cli(first_arg))?;
     }
     for arg in args {
-        write!(w, ",{type_cli}", type_cli = arg_type_cli(&arg))?;
+        write!(w, ",{type_cli}", type_cli = arg_type_cli(arg))?;
     }
     write!(w, ")")?;
     Ok(())
@@ -608,11 +604,11 @@ fn generics_str(generics: &[Type]) -> Cow<'static, str> {
         if let Some(first_generic) = generic_iter.next() {
             garg_string.push_str(&format!(
                 "{type_cli}",
-                type_cli = prefixed_type_cli(&first_generic)
+                type_cli = prefixed_type_cli(first_generic)
             ));
         }
         for arg in generic_iter {
-            garg_string.push_str(&format!(",{type_cli}", type_cli = prefixed_type_cli(&arg)));
+            garg_string.push_str(&format!(",{type_cli}", type_cli = prefixed_type_cli(arg)));
         }
         format!("<{garg_string}>").into()
     }
@@ -626,11 +622,11 @@ fn generics_ident_str(generics: &[Type]) -> Cow<'static, str> {
         if let Some(first_generic) = generic_iter.next() {
             garg_string.push_str(&format!(
                 "{type_cli}",
-                type_cli = field_type_cli(&first_generic)
+                type_cli = field_type_cli(first_generic)
             ));
         }
         for arg in generic_iter {
-            garg_string.push_str(&format!(",{type_cli}", type_cli = field_type_cli(&arg)));
+            garg_string.push_str(&format!(",{type_cli}", type_cli = field_type_cli(arg)));
         }
         format!("<{garg_string}>").into()
     }

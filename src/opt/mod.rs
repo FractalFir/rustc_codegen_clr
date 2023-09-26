@@ -97,10 +97,8 @@ fn op3_combos(ops: &mut Vec<CILOp>) {
         return;
     }
     for idx in 0..(ops.len() - 2) {
-        let (op1, op2, op3) = (&ops[idx], &ops[idx + 1], &ops[idx + 2]);
-        match (op1, op2, op3) {
-            _ => (),
-        }
+        let (_op1, _op2, _op3) = (&ops[idx], &ops[idx + 1], &ops[idx + 2]);
+        ();
     }
 }
 /// A "Dead" local is one that is only written into - never read.

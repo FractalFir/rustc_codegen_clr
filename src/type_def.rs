@@ -187,20 +187,19 @@ pub fn escape_field_name(name: &str) -> IString {
         "m_value".into()
     } else if name.is_empty() {
         "fld".into()
-    } else if !name.chars().nth(0).unwrap().is_alphabetic() {
+    } else if !name.chars().next().unwrap().is_alphabetic() {
         format!("m_{name}").into()
     } else {
         name.into()
     }
 }
 pub fn ident_gargs(gargc: usize) -> std::borrow::Cow<'static, [Type]> {
-    const ZERO_GARGS: &'static [Type] = &[];
-    const ONE_GARG: &'static [Type] = &[Type::GenericArg(0)];
+    const ZERO_GARGS: &[Type] = &[];
+    const ONE_GARG: &[Type] = &[Type::GenericArg(0)];
     match gargc {
         0 => ZERO_GARGS.into(),
         1 => ONE_GARG.into(),
         _ => (0..gargc)
-            .into_iter()
             .map(|g| Type::GenericArg(g as u32))
             .collect::<Vec<_>>()
             .into(),

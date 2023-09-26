@@ -1,8 +1,5 @@
 use crate::cil_op::CILOp;
-use rustc_middle::mir::{
-    interpret::ConstValue, interpret::Scalar, BinOp, Body, CastKind, Constant, ConstantKind,
-    NullOp, Operand, Statement, StatementKind,
-};
+use rustc_middle::mir::{CastKind, NullOp};
 use rustc_middle::{
     mir::{Place, Rvalue},
     ty::{Instance, TyCtxt},
@@ -91,7 +88,7 @@ pub fn handle_rvalue<'tcx>(
             field_index,
             method_instance,
         ),
-        Rvalue::Cast(kind, operand, _) => todo!("Unhandled cast kind {kind:?}, rvalue:{rvalue:?}"),
+        Rvalue::Cast(kind, _operand, _) => todo!("Unhandled cast kind {kind:?}, rvalue:{rvalue:?}"),
         Rvalue::Discriminant(place) => {
             let mut ops = crate::place::place_adress(place, tcx, method, method_instance);
             let owner_ty = place.ty(method, tcx).ty;

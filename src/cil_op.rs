@@ -81,7 +81,7 @@ impl CallSite {
         if self.signature.inputs()[0] != *self.signature.output() {
             return false;
         };
-        return true;
+        true
     }
 }
 use serde::{Deserialize, Serialize};

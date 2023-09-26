@@ -86,10 +86,7 @@ add_method!(
         CILOp::LDLoc(0),
         CILOp::ConvISize(false),
         CILOp::Call(CallSite::boxed(
-            Some(DotnetTypeRef::new(
-                Some("System.Console"),
-                "System.Console".into()
-            )),
+            Some(DotnetTypeRef::new(Some("System.Console"), "System.Console")),
             "Write".into(),
             FnSig::new(&[Type::DotnetChar], &Type::Void),
             true,
@@ -113,7 +110,7 @@ add_method!(
         CILOp::Call(CallSite::boxed(
             Some(DotnetTypeRef::new(
                 Some("System.Runtime.InteropServices"),
-                "System.Runtime.InteropServices.Marshal".into()
+                "System.Runtime.InteropServices.Marshal"
             )),
             "AllocHGlobal".into(),
             FnSig::new(&[Type::ISize], &Type::ISize),
@@ -131,7 +128,7 @@ add_method!(
         CILOp::Call(CallSite::boxed(
             Some(DotnetTypeRef::new(
                 Some("System.Runtime.InteropServices"),
-                "System.Runtime.InteropServices.Marshal".into()
+                "System.Runtime.InteropServices.Marshal"
             )),
             "FreeHGlobal".into(),
             FnSig::new(&[Type::ISize], &Type::Void),

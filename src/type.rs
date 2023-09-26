@@ -44,7 +44,7 @@ pub struct DotnetTypeRef {
 impl DotnetTypeRef {
     pub fn new(assembly: Option<&str>, name_path: &str) -> Self {
         Self {
-            assembly: assembly.map(|asm| asm.into()),
+            assembly: assembly.map(std::convert::Into::into),
             name_path: name_path.into(),
             generics: Vec::new(),
         }
@@ -55,7 +55,7 @@ impl DotnetTypeRef {
         self.name_path = name_path.into();
     }
     pub fn asm(&self) -> Option<&str> {
-        self.assembly.as_ref().map(|asm| asm.as_ref())
+        self.assembly.as_ref().map(std::convert::AsRef::as_ref)
     }
     pub fn name_path(&self) -> &str {
         self.name_path.as_ref()
@@ -138,7 +138,7 @@ impl Type {
             TyKind::Dynamic(_, _, _) => Type::Unresolved,
             TyKind::Str => Type::Unresolved,
             TyKind::Foreign(_) => Type::Foreign,
-            TyKind::Bound(_, inner) => Type::Foreign,
+            TyKind::Bound(_, _inner) => Type::Foreign,
             TyKind::FnPtr(_) => Type::USize,
             TyKind::Param(param_ty) => Type::GenericArg(param_ty.index),
             TyKind::Alias(_, alias_ty) => Self::from_ty(alias_ty.self_ty(), tyctx),

@@ -3,7 +3,7 @@ use crate::cil_op::{CILOp, FieldDescriptor};
 use crate::r#type::DotnetTypeRef;
 use crate::utilis::field_name;
 use rustc_middle::mir::{Place, PlaceElem};
-use rustc_middle::ty::{Instance, IntTy, ParamEnv, Ty, TyCtxt, TyKind, UintTy};
+use rustc_middle::ty::{Instance, IntTy, Ty, TyCtxt, TyKind, UintTy};
 fn slice_head<T>(slice: &[T]) -> (&T, &[T]) {
     assert!(!slice.is_empty());
     let last = &slice[slice.len() - 1];
@@ -26,7 +26,7 @@ fn body_ty_is_by_adress(last_ty: &Ty) -> bool {
     match *last_ty.kind() {
         TyKind::Int(_) => false,
         TyKind::Adt(_, _) => true,
-        TyKind::Ref(_region, inner, _mut) => false,
+        TyKind::Ref(_region, _inner, _mut) => false,
         TyKind::RawPtr(_) => false,
         _ => todo!("TODO: body_ty_is_by_adress does not support type {last_ty:?}"),
     }
@@ -92,7 +92,7 @@ fn place_elem_get<'a>(
                 );
                 vec![CILOp::LDField(field_desc)]
             }
-            PlaceTy::EnumVariant(enm, var_idx) => {
+            PlaceTy::EnumVariant(enm, _var_idx) => {
                 let owner = crate::utilis::monomorphize(&method_instance, enm, ctx);
                 let owner = crate::r#type::Type::from_ty(owner, ctx);
                 let owner = if let crate::r#type::Type::DotnetType(owner) = owner {
@@ -129,7 +129,7 @@ fn place_elem_set<'a>(
             let pointed_type = pointed_type(curr_type);
             ptr_set_op(pointed_type.into(), ctx)
         }
-        PlaceElem::Field(index, field_type) => {
+        PlaceElem::Field(index, _field_type) => {
             if let PlaceTy::Ty(curr_type) = curr_type {
                 let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, ctx);
                 let field_type = crate::utilis::generic_field_ty(curr_type, index.as_u32(), ctx);
@@ -171,7 +171,7 @@ fn place_elem_body<'ctx>(
                 (pointed.into(), deref_op(pointed.into(), tyctx))
             }
         }
-        PlaceElem::Field(index, field_type) => {
+        PlaceElem::Field(index, _field_type) => {
             if let PlaceTy::Ty(curr_type) = curr_type {
                 let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
                 let field_type = crate::utilis::generic_field_ty(curr_type, index.as_u32(), tyctx);
@@ -293,7 +293,7 @@ pub fn place_get<'a>(
     let mut ops = Vec::with_capacity(place.projection.len());
     if place.projection.is_empty() {
         ops.push(local_get(place.local.as_usize(), method));
-        return ops;
+        ops
     } else {
         let (op, mut ty) = local_body(place.local.as_usize(), method);
         ty = crate::utilis::monomorphize(&method_instance, ty, ctx);
@@ -314,16 +314,16 @@ pub fn place_get<'a>(
 /// Returns the ops for getting the value of place.
 pub fn place_adress<'a>(
     place: &Place<'a>,
-    ctx: TyCtxt<'a>,
+    _ctx: TyCtxt<'a>,
     method: &rustc_middle::mir::Body<'a>,
-    method_instance: Instance<'a>,
+    _method_instance: Instance<'a>,
 ) -> Vec<CILOp> {
     let mut ops = Vec::with_capacity(place.projection.len());
     if place.projection.is_empty() {
         ops.push(local_adress(place.local.as_usize(), method));
-        return ops;
+        ops
     } else {
-        let (op, mut ty) = local_body(place.local.as_usize(), method);
+        let (op, _ty) = local_body(place.local.as_usize(), method);
         ops.push(op);
         todo!();
     }
@@ -339,7 +339,7 @@ pub(crate) fn place_set<'a>(
     if place.projection.is_empty() {
         ops.extend(value_calc);
         ops.push(local_set(place.local.as_usize(), method));
-        return ops;
+        ops
     } else {
         let (op, ty) = local_body(place.local.as_usize(), method);
         let mut ty = ty.into();
@@ -370,9 +370,9 @@ impl<'ctx> From<Ty<'ctx>> for PlaceTy<'ctx> {
 impl<'ctx> PlaceTy<'ctx> {
     pub fn monomorphize(&self, method_instance: &Instance<'ctx>, ctx: TyCtxt<'ctx>) -> Self {
         match self {
-            Self::Ty(inner) => Self::Ty(crate::utilis::monomorphize(&method_instance, *inner, ctx)),
+            Self::Ty(inner) => Self::Ty(crate::utilis::monomorphize(method_instance, *inner, ctx)),
             Self::EnumVariant(enm, variant) => Self::EnumVariant(
-                crate::utilis::monomorphize(&method_instance, *enm, ctx),
+                crate::utilis::monomorphize(method_instance, *enm, ctx),
                 *variant,
             ),
         }

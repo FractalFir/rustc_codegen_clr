@@ -7,9 +7,10 @@ fn test_dotnet_executable(exec_path: &str, test_dir: &str) {
         .output()
         .expect("failed to run test assebmly!");
     let stderr = String::from_utf8(out.stderr).expect("Stdout is not UTF8 String!");
-    if !stderr.is_empty() {
-        panic!("Test program failed with message {stderr:}");
-    }
+    assert!(
+        stderr.is_empty(),
+        "Test program failed with message {stderr:}"
+    );
 }
 //TODO: While we can ensure all exec_path's come from the test runner, it is also very important to ensure this:
 //1. Always executes test

@@ -1,5 +1,5 @@
 use crate::cil_op::CILOp;
-use rustc_middle::mir::Body;
+
 use rustc_middle::mir::Operand;
 use rustc_middle::ty::{Instance, TyCtxt};
 pub(crate) fn handle_operand<'ctx>(

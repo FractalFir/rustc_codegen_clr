@@ -3,9 +3,9 @@
 pub enum CodegenError {
     UnersolvedGeneric,
 }
-impl Into<rustc_errors::ErrorGuaranteed> for CodegenError {
-    fn into(self) -> rustc_errors::ErrorGuaranteed {
-        self.report_error();
+impl From<CodegenError> for rustc_errors::ErrorGuaranteed {
+    fn from(val: CodegenError) -> Self {
+        val.report_error();
         error_guaranteed()
     }
 }

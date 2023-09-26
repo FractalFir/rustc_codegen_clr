@@ -90,7 +90,7 @@ impl CodegenBackend for MyBackend {
             }
         }
 
-        if let Some((entrypoint, kind)) = tcx.entry_fn(()) {
+        if let Some((entrypoint, _kind)) = tcx.entry_fn(()) {
             let penv = rustc_middle::ty::ParamEnv::empty();
             let entrypoint = rustc_middle::ty::Instance::resolve(
                 tcx,
@@ -125,7 +125,7 @@ impl CodegenBackend for MyBackend {
         outputs: &OutputFilenames,
     ) -> Result<(CodegenResults, FxIndexMap<WorkProductId, WorkProduct>), ErrorGuaranteed> {
         use std::io::Write;
-        let (asm_name, asm, metadata, crate_info) = *ongoing_codegen
+        let (_asm_name, asm, metadata, crate_info) = *ongoing_codegen
             .downcast::<(IString, Assembly, EncodedMetadata, CrateInfo)>()
             .expect("in join_codegen: ongoing_codegen is not an Assembly");
         let asm_name = "";
