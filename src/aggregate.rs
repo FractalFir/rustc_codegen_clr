@@ -104,18 +104,19 @@ fn aggregate_from_adt<'tcx>(
                 crate::place::place_adress(target_location, tcx, method, method_instance);
 
             let mut variant_type = adt_type_ref.clone(); //adt_type.variant_type(variant).expect("Can't get variant index");
-            let variant_name = "Some";
+            let variant_name = crate::utilis::variant_name(adt_type, variant_idx);
             variant_type.append_path(&format!("/{variant_name}"));
             let mut variant_identity = variant_type.clone();
 
             variant_identity.set_generics_identity();
             // Get variant adress
             let variant_field_desc = FieldDescriptor::new(
-                adt_type_ref,
+                adt_type_ref.clone(),
                 Type::DotnetType(Box::new(variant_identity)),
                 format!("v_{variant_name}").into(),
             );
-            adt_adress_ops.push(CILOp::LDFieldAdress(Box::new(variant_field_desc)));
+            let mut variant_address = adt_adress_ops.clone();
+            variant_address.push(CILOp::LDFieldAdress(Box::new(variant_field_desc)));
             let mut ops = Vec::new();
             let enum_variant = adt
                 .variants()
@@ -125,7 +126,7 @@ fn aggregate_from_adt<'tcx>(
             for (field_idx, (field, field_value)) in
                 enum_variant.fields.iter().zip(fields.iter()).enumerate()
             {
-                ops.extend(adt_adress_ops.clone());
+                ops.extend(variant_address.clone());
                 ops.extend(field_value.1.clone());
                 let field_name = field.name.to_string();
                 let field_name = crate::type_def::escape_field_name(&field_name);
@@ -135,6 +136,18 @@ fn aggregate_from_adt<'tcx>(
                 );
                 ops.push(CILOp::STField(Box::new(FieldDescriptor::new(
                     variant_type.clone(),
+                    field,
+                    field_name,
+                ))));
+            }
+            // Set tag
+            {
+                ops.extend(adt_adress_ops);
+                ops.push(CILOp::LdcI32(variant_idx as i32));
+                let field_name = "_tag".into();
+                let field = Type::U8;
+                ops.push(CILOp::STField(Box::new(FieldDescriptor::new(
+                    adt_type_ref,
                     field,
                     field_name,
                 ))));

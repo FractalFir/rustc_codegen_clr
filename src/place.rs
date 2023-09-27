@@ -92,8 +92,11 @@ fn place_elem_get<'a>(
                 );
                 vec![CILOp::LDField(field_desc)]
             }
-            PlaceTy::EnumVariant(enm, _var_idx) => {
+            PlaceTy::EnumVariant(enm, var_idx) => {
                 let owner = crate::utilis::monomorphize(&method_instance, enm, ctx);
+                let variant_name = crate::utilis::variant_name(owner, var_idx);
+                let owner = crate::utilis::monomorphize(&method_instance, enm, ctx);
+                let field_type = crate::utilis::generic_field_ty(owner, index.as_u32(), ctx);
                 let owner = crate::r#type::Type::from_ty(owner, ctx);
                 let owner = if let crate::r#type::Type::DotnetType(owner) = owner {
                     owner.as_ref().clone()
@@ -102,11 +105,11 @@ fn place_elem_get<'a>(
                 };
                 let field_name = field_name(enm, index.as_u32());
                 let mut field_owner = owner;
-                let variant_name = "Some";
+
                 field_owner.append_path(&format!("/{variant_name}"));
                 let field_desc = FieldDescriptor::boxed(
                     field_owner,
-                    crate::r#type::Type::from_ty(*field_type, ctx),
+                    crate::r#type::Type::from_ty(field_type, ctx),
                     field_name,
                 );
                 let ops = vec![CILOp::LDField(field_desc)];
@@ -213,12 +216,12 @@ fn place_elem_body<'ctx>(
             let variant_name = symbol.unwrap();
             let field_name = format!("v_{variant_name}").into();
             let curr_type_name = (curr_dotnet_type).name_path();
+            let mut field_type = curr_dotnet_type.clone();
+            field_type.append_path(&format!("/{variant_name}"));
+            field_type.set_generics_identity();
             let field_desc = FieldDescriptor::boxed(
                 curr_dotnet_type.clone(),
-                crate::r#type::Type::DotnetType(Box::new(DotnetTypeRef::new(
-                    None,
-                    &format!("{curr_type_name}/{variant_name}"),
-                ))),
+                crate::r#type::Type::DotnetType(Box::new(field_type)),
                 field_name,
             );
             let variant_type = PlaceTy::EnumVariant(curr_type, variant.as_u32());

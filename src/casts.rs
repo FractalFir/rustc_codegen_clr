@@ -20,8 +20,10 @@ pub fn float_to_int(_src: Type, target: Type) -> Vec<CILOp> {
 pub fn to_int(target: Type) -> Vec<CILOp> {
     match target {
         Type::I8 => vec![CILOp::ConvI8(false)],
+        Type::U8 => vec![CILOp::ConvU8(false)],
         Type::I16 => vec![CILOp::ConvI16(false)],
         Type::I32 => vec![CILOp::ConvI32(false)],
+        Type::I64 => vec![CILOp::ConvI64(false)],
         Type::ISize => vec![CILOp::ConvISize(false)],
         _ => todo!("Can't cast to {target:?} yet!"),
     }

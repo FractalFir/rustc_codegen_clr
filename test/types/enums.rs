@@ -6,9 +6,9 @@
 include!("../common.rs");
 #[allow(dead_code)]
 #[derive(Clone,Copy)]
-enum Maybe{
-    Some(i32),
-    None,
+enum Animal{
+    Cow(u8),
+    Dog(u64),
 }
 #[allow(dead_code)]
 #[derive(Clone,Copy)]
@@ -39,15 +39,18 @@ fn main(){
     black_box(maybe);
     let maybe = Some(8);
     black_box(maybe);
-    let end = black_box(100);
-    let range = (0..end);
+    let end = black_box(90);
+    let range = (65..end);
     black_box(&range);
     let mut iter = range.into_iter();
     black_box(&iter);
     //let first = iter.next();
-    while let Some(_) = iter.next(){
-        black_box(0);
+    while let Some(i) = iter.next(){
+        let msg = (0x00_00_00_00_00_00_0a_i64 << 8)| i;
+        unsafe{puts(core::ptr::addr_of!(msg).cast())};
+        black_box(i);
     }
-    
+    let animal = Animal::Cow(black_box(8));
+    black_box(animal);
 }
 

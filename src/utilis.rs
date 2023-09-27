@@ -31,6 +31,15 @@ pub fn field_name(ty: Ty, idx: u32) -> crate::IString {
         _ => todo!("Can't yet get fields of typr {ty:?}"),
     }
 }
+pub fn variant_name(ty: Ty, idx: u32) -> crate::IString {
+    match ty.kind() {
+        TyKind::Adt(adt_def, _subst) => {
+            let variant_def = &adt_def.variants()[idx.into()];
+            variant_def.name.to_string().into()
+        }
+        _ => todo!("Can't yet get fields of typr {ty:?}"),
+    }
+}
 pub fn function_name(name: SymbolName) -> crate::IString {
     name.to_string()
         .replace('$', "_ds_")

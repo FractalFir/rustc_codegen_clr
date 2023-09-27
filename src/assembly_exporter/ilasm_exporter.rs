@@ -543,7 +543,7 @@ fn field_type_cli(tpe: &Type) -> Cow<'static, str> {
 }
 fn preifxed_field_type_cli(tpe: &Type) -> Cow<'static, str> {
     match tpe {
-        Type::Ptr(inner) => format!("{inner}*", inner = type_cli(inner)).into(),
+        Type::Ptr(inner) => format!("{inner}*", inner = preifxed_field_type_cli(inner)).into(),
         Type::GenericArg(id) => format!("!{id}").into(),
         Type::DotnetType(dotnet_type) => format!(
             "valuetype {}",
