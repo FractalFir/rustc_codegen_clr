@@ -34,20 +34,21 @@ Compiling Rust to CLR is potentially better for the JIT. Since CLR's JIT now "se
 - [X] Getting values of fields
 - [X] Setting fields
 - [X] Pointer dereferecing
-- [ ] Basic generics
-- [ ] for loops
+- [X] Generics *GATS don't work in some edge cases*
+- [X] for loops *with some minor limitations*
 ## Types
 *NOTE This section says only if a type can be translated for .NET to understand. This **does not** mean the type is fully usable.*
-- [X] All integer and float types are supported.
-- [X] Tuples are supported
+- [X] All integer and float types are supported. Support for math with 128 bit integers is very limited 
 - [X] References are supported
-- [X] Arrays, slices
+- [ ] Arrays, slices
 - [X] Void type
 - [X] Combinations of all of the above. 
 - [X] Structs
-- [ ] Enums
+- [X] Enums
+- [ ] Tuples
 - [ ] Traits *Some, not all*
-- [ ] iterators
+- [X] iterators
 # Issues
-The backend is still very much untested and may contain a litany of buggs.
+Backend still does not understand some Rust optimizations, and you may need to prevent them to allow for compilation.
+While testing is a bit more extensive, there still are a lot of edge cases which may break this backend.
 The backend crashes any time it encounters something not supported yet.
