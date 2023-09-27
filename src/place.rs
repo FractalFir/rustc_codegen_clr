@@ -235,6 +235,10 @@ fn ptr_set_op<'ctx>(curr_type: PlaceTy<'ctx>, tyctx: TyCtxt<'ctx>) -> Vec<CILOp>
         match curr_type.kind() {
             TyKind::Int(int_ty) => match int_ty {
                 IntTy::I8 => vec![CILOp::STIndI8],
+                IntTy::I16 => vec![CILOp::STIndI16],
+                IntTy::I32 => vec![CILOp::STIndI32],
+                IntTy::I64 => vec![CILOp::STIndI64],
+                IntTy::Isize => vec![CILOp::STIndISize],
                 _ => todo!("TODO: can't deref int type {int_ty:?} yet"),
             },
             TyKind::Uint(int_ty) => match int_ty {
@@ -264,7 +268,12 @@ fn deref_op<'ctx>(curr_type: PlaceTy<'ctx>, tyctx: TyCtxt<'ctx>) -> Vec<CILOp> {
         match curr_type.kind() {
             TyKind::Int(int_ty) => match int_ty {
                 IntTy::I8 => vec![CILOp::LDIndI8],
-                _ => todo!("TODO: can't deref int type {int_ty:?} yet"),
+                IntTy::I16 => vec![CILOp::LDIndI16],
+                IntTy::I32 => vec![CILOp::LDIndI32],
+                IntTy::I64 => vec![CILOp::LDIndI64],
+                IntTy::Isize => vec![CILOp::LDIndISize],
+                IntTy::I128 => todo!("Can't dereference 128 bit intigers!"),//vec![CILOp::LdObj(Box::new())],
+                //_ => todo!("TODO: can't deref int type {int_ty:?} yet"),
             },
             TyKind::Adt(_, _) => {
                 let curr_type = if let crate::r#type::Type::DotnetType(dotnet_type) =

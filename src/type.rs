@@ -1,5 +1,5 @@
 use crate::IString;
-use rustc_middle::ty::{AdtDef, FloatTy, GenericArg, IntTy, Ty, TyCtxt, TyKind, UintTy};
+use rustc_middle::ty::{AdtDef, FloatTy, GenericArg, IntTy, Ty, TyCtxt, TyKind, UintTy,Instance,ParamEnv};
 /// This struct represetnts either a primitive .NET type (F32,F64), or stores information on how to lookup a more complex type (struct,class,array)
 use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, PartialEq, Clone, Eq, Hash, Debug)]
@@ -89,6 +89,12 @@ impl DotnetTypeRef {
     }
 }
 impl Type {
+    pub fn as_dotnet(&self)->Option<DotnetTypeRef>{
+        match self{
+            Self::DotnetType(inner)=>Some(inner.as_ref().clone()),
+            _=>None,
+        }
+    }
     pub fn from_ty<'ctx>(rust_tpe: Ty<'ctx>, tyctx: TyCtxt<'ctx>) -> Self {
         Self::from_ty_kind(rust_tpe.kind(), tyctx)
     }
@@ -142,6 +148,7 @@ impl Type {
             TyKind::FnPtr(_) => Type::USize,
             TyKind::Param(param_ty) => Type::GenericArg(param_ty.index),
             TyKind::Alias(_, alias_ty) => Self::from_ty(alias_ty.self_ty(), tyctx),
+            //TyKind::Closure(def_id,subst)=>Self::from_ty(Instance::resolve(tyctx,ParamEnv::empty(),*def_id,subst).unwrap().unwrap().ty(tyctx,ParamEnv::empty()),tyctx),
             _ => todo!("Unsupported type{rust_tpe:?}!"),
         }
     }

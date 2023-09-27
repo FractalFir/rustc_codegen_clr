@@ -189,6 +189,7 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
         CILOp::GoTo(id) => format!("br bb_{id}").into(),
         CILOp::BEq(id) => format!("beq bb_{id}").into(),
         CILOp::BGe(id) => format!("bge bb_{id}").into(),
+        CILOp::BLt(id) => format!("bglt bb_{id}").into(),
         CILOp::BZero(id) => format!("brzero bb_{id}").into(),
         CILOp::Call(call_site) => {
             if call_site.is_nop() {
@@ -398,11 +399,26 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
                 "conv.r4".into()
             }
         }
+        CILOp::ConvF64(checked) => {
+            if *checked {
+                "conv.ovf.r8".into()
+            } else {
+                "conv.r8".into()
+            }
+        }
         // Pointer stuff
         CILOp::LDIndI8 => "ldind.i1".into(),
+        CILOp::LDIndI16 => "ldind.i2".into(),
+        CILOp::LDIndI32 => "ldind.i4".into(),
+        CILOp::LDIndI64 => "ldind.i8".into(),
+        CILOp::LDIndRef => "ldind.ref".into(),
         CILOp::STIndI8 => "stind.i1".into(),
+        CILOp::STIndI16 => "stind.i2".into(),
+        CILOp::STIndI32 => "stind.i4".into(),
+        CILOp::STIndI64 => "stind.i8".into(),
         CILOp::LDIndISize => "ldind.i".into(),
         CILOp::STIndISize => "stind.i".into(),
+        CILOp::LocAlloc => "localloc".into(),
         //OOP
         CILOp::SizeOf(tpe) => format!("sizeof {tpe}", tpe = prefixed_type_cli(tpe)).into(),
         CILOp::Throw => "throw".into(),
@@ -466,10 +482,11 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
                 .into()
             }
         }
+        CILOp::Nop => "nop".into(),
         //Stack
         CILOp::Pop => "pop".into(),
         CILOp::Dup => "dup".into(),
-        _ => todo!("Unsuported op {op:?}"),
+        //_ => todo!("Unsuported op {op:?}"),
     }
 }
 fn output_type_cli(tpe: &Type) -> Cow<'static, str> {

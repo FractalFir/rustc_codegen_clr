@@ -166,3 +166,4 @@ run_test! {arthm,add}
 run_test! {types,enums}
 run_test! {types,structs}
 run_test! {types,vec}
+run_test! {std,main}

@@ -144,6 +144,7 @@ pub fn handle_terminator<'ctx>(
             ]
         }
         TerminatorKind::Unreachable => {
+            /* 
             let string_type = crate::r#type::Type::DotnetType(Box::new(DotnetTypeRef::new(
                 Some("System.Runtime"),
                 "System.String",
@@ -154,7 +155,8 @@ pub fn handle_terminator<'ctx>(
                 CILOp::LdStr("Undefined behaviour! Unreachable terminator reached!".into()),
                 CILOp::NewObj(CallSite::boxed(Some(exception), ".ctor".into(), sig, false)),
                 CILOp::Throw,
-            ]
+            ]*/
+            vec![]
         }
         _ => todo!("Unhandled terminator kind {kind:?}", kind = terminator.kind),
     }

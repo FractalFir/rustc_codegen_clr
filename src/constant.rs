@@ -1,15 +1,17 @@
 use crate::cil_op::{CILOp, CallSite};
 use crate::r#type::{DotnetTypeRef, Type};
-use rustc_middle::mir::{interpret::ConstValue, interpret::Scalar, Constant, ConstantKind};
-use rustc_middle::ty::{FloatTy, IntTy, Ty, TyCtxt, TyKind, UintTy};
+use rustc_middle::mir::{interpret::ConstValue, interpret::Scalar, Constant, ConstantKind,Place};
+use rustc_middle::ty::{FloatTy, IntTy, Ty, TyCtxt, TyKind, UintTy,Instance,AdtKind};
 pub fn handle_constant<'ctx>(
     constant: &Constant<'ctx>,
     tyctx: TyCtxt<'ctx>,
-    _method: &rustc_middle::mir::Body<'ctx>,
+
+    method: &rustc_middle::mir::Body<'ctx>,
+    method_instance: Instance<'ctx>,
 ) -> Vec<CILOp> {
     let const_kind = constant.literal;
     match const_kind {
-        ConstantKind::Val(value, const_ty) => load_const_value(value, const_ty, tyctx),
+        ConstantKind::Val(value, const_ty) => load_const_value(value, const_ty, tyctx,method,method_instance),
         _ => todo!("Unhanded const kind {const_kind:?}!"),
     }
 }
@@ -17,9 +19,12 @@ fn load_const_value<'ctx>(
     const_val: ConstValue<'ctx>,
     const_ty: Ty<'ctx>,
     tyctx: TyCtxt<'ctx>,
+
+    method: &rustc_middle::mir::Body<'ctx>,
+    method_instance: Instance<'ctx>,
 ) -> Vec<CILOp> {
     match const_val {
-        ConstValue::Scalar(scalar) => load_const_scalar(scalar, const_ty, tyctx),
+        ConstValue::Scalar(scalar) => load_const_scalar(scalar, const_ty, tyctx,method,method_instance),
         //ConstValue::ZeroSized => vec![BaseIR::DebugComment("ZeroSized!".into())],
         _ => todo!("Unhandled const value {const_val:?} of type {const_ty:?}"),
     }
@@ -28,6 +33,8 @@ fn load_const_scalar<'ctx>(
     scalar: Scalar,
     scalar_type: Ty<'ctx>,
     tyctx: TyCtxt<'ctx>,
+    method: &rustc_middle::mir::Body<'ctx>,
+    method_instance: Instance<'ctx>,
 ) -> Vec<CILOp> {
     let scalar_u128 = match scalar {
         Scalar::Int(scalar_int) => scalar_int
@@ -35,6 +42,7 @@ fn load_const_scalar<'ctx>(
             .expect("IMPOSSIBLE. Size of scalar was not equal to itself."),
         Scalar::Ptr(_, _) => todo!("Can't handle scalar pointers yet!"),
     };
+    let tpe = Type::from_ty(scalar_type,tyctx);
     match scalar_type.kind() {
         TyKind::Int(int_type) => load_const_int(scalar_u128, int_type, tyctx),
         TyKind::Uint(uint_type) => load_const_uint(scalar_u128, uint_type, tyctx),
@@ -44,6 +52,23 @@ fn load_const_scalar<'ctx>(
             let value = i64::from_ne_bytes((scalar_u128 as u64).to_ne_bytes());
             vec![CILOp::LdcI64(value)]
         }
+        TyKind::Adt(adt_def,subst)=>{
+            match adt_def.adt_kind(){
+                AdtKind::Enum => {
+                    let field_type = Type::U8;
+                    let enum_dotnet = tpe.as_dotnet().expect("Enum scalar not an ADT!");
+                    vec![CILOp::SizeOf(Box::new(tpe)),CILOp::LocAlloc,CILOp::Dup,CILOp::LDIndRef,CILOp::LdcI64(scalar_u128 as i64),
+                    CILOp::STField(Box::new(crate::cil_op::FieldDescriptor::new(
+                        enum_dotnet.clone(),
+                        field_type,
+                        "_tag".into(),
+                    ))),
+                    CILOp::LdObj(Box::new(enum_dotnet)),
+                    ]
+                }
+                _=>todo!("Can't load const ADT scalars of type {scalar_type:?}"),
+            }
+        },
         _ => todo!("Can't load scalar constants of type {scalar_type:?}!"),
     }
 }

@@ -130,8 +130,15 @@ pub enum CILOp {
     ConvF64(bool),
     // Pointer
     LDIndI8,
+    LDIndI16,
+    LDIndI32,
+    LDIndI64,
     LDIndISize,
+    LDIndRef,
     STIndI8,
+    STIndI16,
+    STIndI32,
+    STIndI64,
     STIndISize,
     //Debugging
     Comment(IString),
@@ -156,6 +163,7 @@ pub enum CILOp {
     Pop,
     Dup,
     Nop,
+    LocAlloc,
     //OOP
     NewObj(Box<CallSite>),
     LDField(Box<FieldDescriptor>),

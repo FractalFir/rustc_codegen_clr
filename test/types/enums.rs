@@ -1,8 +1,6 @@
-#![feature(lang_items)]
 #![allow(internal_features)]
 #![no_std]
-#![feature(start)]
-#![feature(core_intrinsics)]
+#![feature(start,lang_items,core_intrinsics)]
 include!("../common.rs");
 #[allow(dead_code)]
 #[derive(Clone,Copy)]
@@ -22,12 +20,11 @@ enum SimpleEnum{
 }
 #[allow(dead_code)]
 fn simple_enum(){
-    //let simple_enum = SimpleEnum::A;
-    //let _ = black_box(simple_enum);
+    let simple_enum = SimpleEnum::A;
+    black_box(simple_enum);
 }
 fn main(){
-    
-    //simple_enum();
+    simple_enum();
     //let maybe:*mut Maybe = core::ptr::null_mut();
     //test_eq!(maybe,core::ptr::null_mut());
     let maybe:*mut Option<i32> = unsafe{malloc(5)}.cast();
@@ -44,8 +41,9 @@ fn main(){
     black_box(&range);
     let mut iter = range.into_iter();
     black_box(&iter);
-    //let first = iter.next();
-    while let Some(i) = iter.next(){
+    let first = iter.next();
+    
+    for i in (65..end){
         let msg = (0x00_00_00_00_00_00_0a_i64 << 8)| i;
         unsafe{puts(core::ptr::addr_of!(msg).cast())};
         black_box(i);
