@@ -486,10 +486,9 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
         //Stack
         CILOp::Pop => "pop".into(),
         CILOp::Dup => "dup".into(),
-        CILOp::LDStaticField(static_field)=>{
+        CILOp::LDStaticField(static_field) => {
             todo!("Can't load static field {static_field:?}");
-        }
-        //_ => todo!("Unsuported op {op:?}"),
+        } //_ => todo!("Unsuported op {op:?}"),
     }
 }
 fn output_type_cli(tpe: &Type) -> Cow<'static, str> {
@@ -499,11 +498,7 @@ fn output_type_cli(tpe: &Type) -> Cow<'static, str> {
     }
 }
 fn arg_type_cli(tpe: &Type) -> Cow<'static, str> {
-    match tpe {
-        Type::DotnetType(_) => format!("valuetype {tpe}", tpe = type_cli(tpe)).into(),
-        Type::Ptr(inner) => format!("{inner}*", inner = arg_type_cli(inner)).into(),
-        _ => type_cli(tpe),
-    }
+    prefixed_type_cli(tpe)
 }
 fn dotnet_type_ref_cli(dotnet_type: &DotnetTypeRef) -> String {
     let asm = if let Some(asm_ref) = dotnet_type.asm() {
@@ -575,7 +570,7 @@ fn preifxed_field_type_cli(tpe: &Type) -> Cow<'static, str> {
 }
 fn prefixed_type_cli(tpe: &Type) -> Cow<'static, str> {
     match tpe {
-        Type::Void => "RustVoid".into(),
+        Type::Void => "valuetype RustVoid".into(),
         Type::I8 => "int8".into(),
         Type::U8 => "uint8".into(),
         Type::I16 => "int16".into(),

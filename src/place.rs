@@ -283,7 +283,7 @@ pub fn deref_op<'ctx>(curr_type: PlaceTy<'ctx>, tyctx: TyCtxt<'ctx>) -> Vec<CILO
                 UintTy::U64 => vec![CILOp::LDIndI64],
                 UintTy::Usize => vec![CILOp::LDIndISize],
                 UintTy::U128 => todo!("Can't dereference 128 bit intigers!"), //vec![CILOp::LdObj(Box::new())],
-                                                                             //_ => todo!("TODO: can't deref int type {int_ty:?} yet"),
+                                                                              //_ => todo!("TODO: can't deref int type {int_ty:?} yet"),
             },
             TyKind::Adt(_, _) => {
                 let curr_type = if let crate::r#type::Type::DotnetType(dotnet_type) =

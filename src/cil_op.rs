@@ -41,7 +41,11 @@ impl StaticFieldDescriptor {
     pub fn new(owner: Option<DotnetTypeRef>, tpe: crate::r#type::Type, name: IString) -> Self {
         Self { owner, tpe, name }
     }
-    pub fn boxed(owner: Option<DotnetTypeRef>, tpe: crate::r#type::Type, name: IString) -> Box<Self> {
+    pub fn boxed(
+        owner: Option<DotnetTypeRef>,
+        tpe: crate::r#type::Type,
+        name: IString,
+    ) -> Box<Self> {
         Box::new(Self { owner, tpe, name })
     }
 }

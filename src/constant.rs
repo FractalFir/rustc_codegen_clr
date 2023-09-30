@@ -1,6 +1,9 @@
 use crate::cil_op::{CILOp, CallSite};
 use crate::r#type::{DotnetTypeRef, Type};
-use rustc_middle::mir::{interpret::{ConstValue,GlobalAlloc, Scalar}, Constant, ConstantKind, Place};
+use rustc_middle::mir::{
+    interpret::{ConstValue, GlobalAlloc, Scalar},
+    Constant, ConstantKind, Place,
+};
 use rustc_middle::ty::{AdtKind, FloatTy, Instance, IntTy, Ty, TyCtxt, TyKind, UintTy};
 pub fn handle_constant<'ctx>(
     constant: &Constant<'ctx>,
@@ -31,8 +34,8 @@ fn load_const_value<'ctx>(
         }
         ConstValue::ZeroSized => {
             let tpe = Type::from_ty(const_ty, tyctx);
-            let mut ops = vec![CILOp::SizeOf(Box::new(tpe)),CILOp::LocAlloc];
-            ops.extend(crate::place::deref_op(const_ty.into(),tyctx));
+            let mut ops = vec![CILOp::SizeOf(Box::new(tpe)), CILOp::LocAlloc];
+            ops.extend(crate::place::deref_op(const_ty.into(), tyctx));
             ops
         }
         _ => todo!("Unhandled const value {const_val:?} of type {const_ty:?}"),
@@ -50,22 +53,22 @@ fn load_const_scalar<'ctx>(
             .try_to_uint(scalar.size())
             .expect("IMPOSSIBLE. Size of scalar was not equal to itself."),
         Scalar::Ptr(ptr, _size) => {
-            let (alloc_id,offset) = ptr.into_parts();
+            let (alloc_id, offset) = ptr.into_parts();
             let global_alloc = tyctx.global_alloc(alloc_id);
-            match global_alloc{
-                GlobalAlloc::Static(def_id)=>{
+            match global_alloc {
+                GlobalAlloc::Static(def_id) => {
                     let instance = Instance::mono(tyctx, def_id).polymorphize(tyctx);
                     let symbol_name = tyctx.symbol_name(instance).to_string().into();
                     let ty = tyctx.type_of(def_id).instantiate_identity();
-                    let tpe = Type::from_ty(ty,tyctx);
-                    return vec![CILOp::LDStaticField(crate::cil_op::StaticFieldDescriptor::boxed(
-                        None,tpe,symbol_name
-                    ))];
-                },
-                _=>todo!("Unhandled global alloc {global_alloc:?}"),
+                    let tpe = Type::from_ty(ty, tyctx);
+                    return vec![CILOp::LDStaticField(
+                        crate::cil_op::StaticFieldDescriptor::boxed(None, tpe, symbol_name),
+                    )];
+                }
+                _ => todo!("Unhandled global alloc {global_alloc:?}"),
             }
             //panic!("alloc_id:{alloc_id:?}")
-        },
+        }
     };
     let tpe = Type::from_ty(scalar_type, tyctx);
     match scalar_type.kind() {

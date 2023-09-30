@@ -155,7 +155,7 @@ impl TypeDef {
     ) -> Vec<Self> {
         let name = crate::utilis::adt_name(adt_def);
         // Handle  `Never` type alias
-        if name.to_string() == "std.convert.Infallible"{
+        if name.to_string() == "std.convert.Infallible" {
             return vec![];
         }
         let gargc = subst.len() as u32;
@@ -216,11 +216,9 @@ impl TypeDef {
     }
 }
 pub fn escape_field_name(name: &str) -> IString {
-    if name == "value" {
-        "m_value".into()
-    } else if name.is_empty() {
+    if name.is_empty() {
         "fld".into()
-    } else if !name.chars().next().unwrap().is_alphabetic() {
+    } else if !name.chars().next().unwrap().is_alphabetic() || name == "value" || name == "flags" {
         format!("m_{name}").into()
     } else {
         name.into()

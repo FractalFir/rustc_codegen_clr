@@ -94,7 +94,7 @@ pub fn handle_rvalue<'tcx>(
                 (TyKind::Int(IntTy::Isize) | TyKind::Uint(UintTy::Usize), TyKind::RawPtr(_)) => {
                     vec![]
                 }
-                (TyKind::RawPtr(_),TyKind::Int(IntTy::Isize) | TyKind::Uint(UintTy::Usize)) => {
+                (TyKind::RawPtr(_), TyKind::Int(IntTy::Isize) | TyKind::Uint(UintTy::Usize)) => {
                     vec![]
                 }
                 _ => todo!("Unhandled transmute from {src:?} to {dst:?}"),
