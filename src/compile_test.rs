@@ -1,54 +1,43 @@
-#[cfg(any(target_os = "linux", target_os = "macos"))]
+
 fn test_dotnet_executable(file_path: &str, test_dir: &str) {
     use std::io::Write;
 
     let exec_path = &format!("{file_path}.exe");
-    // Execute the test assembly
-    let out = std::process::Command::new("mono")
-        .current_dir(test_dir)
-        .args([exec_path])
-        .output()
-        .expect("failed to run test assebmly!");
-    let stderr = String::from_utf8(out.stderr).expect("Stdout is not UTF8 String!");
-    assert!(
-        stderr.is_empty(),
-        "Test program failed with message {stderr:}"
-    );
+    if *IS_MONO_PRESENT {
+        // Execute the test assembly
+        let out = std::process::Command::new("mono")
+            .current_dir(test_dir)
+            .args([exec_path])
+            .output()
+            .expect("failed to run test assebmly!");
+        let stderr = String::from_utf8(out.stderr).expect("Stdout is not UTF8 String!");
+        assert!(
+            stderr.is_empty(),
+            "Test program failed with message {stderr:}"
+        );
+    }
     //println!("exec_path:{exec_path:?}");
-    let config_path = format!("{test_dir}/{file_path}.runtimeconfig.json");
-    println!("{config_path:?}");
-    let mut file = std::fs::File::create(config_path).unwrap();
-    file.write_all(RUNTIME_CONFIG.as_bytes())
-        .expect("COuld not write runtime config");
-    //RUNTIME_CONFIG
-    let out = std::process::Command::new("dotnet")
-        .current_dir(test_dir)
-        .args([exec_path])
-        .output()
-        .expect("failed to run test assebmly!");
+    if *IS_DOTNET_PRESENT {
+        let config_path = format!("{test_dir}/{file_path}.runtimeconfig.json");
+        println!("{config_path:?}");
+        let mut file = std::fs::File::create(config_path).unwrap();
+        file.write_all(RUNTIME_CONFIG.as_bytes())
+            .expect("COuld not write runtime config");
+        //RUNTIME_CONFIG
+        let out = std::process::Command::new("dotnet")
+            .current_dir(test_dir)
+            .args([exec_path])
+            .output()
+            .expect("failed to run test assebmly!");
 
-    let stderr = String::from_utf8(out.stderr).expect("Stdout is not UTF8 String!");
-    assert!(
-        stderr.is_empty(),
-        "Test program failed with message {stderr:}"
-    );
-}
-//TODO: While we can ensure all exec_path's come from the test runner, it is also very important to ensure this:
-//1. Always executes test
-//2. cannot be used to run any arbitray executable not produced by the compiler backend. This is not an issue when using mono, since all of our executables must be .NET assemblies to be executed.
-// This is most likely not an issue at all, I just prefer being unecesarly paranoid over shipping broken code.
-// Idealy, we would prefer a sanboxed enviroment over this for all targets, but setting it up may require some more effort.
-#[cfg(target_os = "windows")]
-fn test_dotnet_executable(exec_path: &str, test_dir: &str) {
-    todo!("Executing test assemblies on windows is not yet supported, since I am not sure if this is the right way to go about it. Comment out this line if you want to renable this kind of tests.");
-    // Execute the test assembly
-    let out = std::process::Command::new(exec_path)
-        .current_dir(test_dir)
-        .output()
-        .expect("failed to run test assebmly!");
-    let stderr = String::from_utf8(out.stderr).expect("Stdout is not UTF8 String!");
-    if !stderr.is_empty() {
-        panic!("Test program failed with message {stderr:}");
+        let stderr = String::from_utf8(out.stderr).expect("Stdout is not UTF8 String!");
+        assert!(
+            stderr.is_empty(),
+            "Test program failed with message {stderr:}"
+        );
+    }
+    if !(*IS_DOTNET_PRESENT || *IS_MONO_PRESENT){
+        panic!("You must have either mono or dotnet runtime installed to run tests.");
     }
 }
 macro_rules! test_lib {
@@ -58,7 +47,7 @@ macro_rules! test_lib {
             // Ensures the test directory is present
             std::fs::create_dir_all("./test/out").expect("Could not setup the test env");
             // Builds the backend if neceasry
-            build_backend();
+            RUSTC_BUILD_STATUS.as_ref().expect("Could not build rustc!");
             // Compiles the test project
             let out = std::process::Command::new("rustc")
                 .current_dir("./test/out")
@@ -95,7 +84,7 @@ macro_rules! run_test {
             // Ensures the test directory is present
             std::fs::create_dir_all(test_dir).expect("Could not setup the test env");
             // Builds the backend if neceasry
-            build_backend();
+            RUSTC_BUILD_STATUS.as_ref().expect("Could not build rustc!");
             // Compiles the test project
             let out = std::process::Command::new("rustc")
                 //.env("RUST_TARGET_PATH","../../")
@@ -126,11 +115,15 @@ macro_rules! run_test {
     };
 }
 #[cfg(debug_assertions)]
-fn build_backend() {
-    std::process::Command::new("cargo")
+fn build_backend() ->Result<(),String>{
+    let out = std::process::Command::new("cargo")
         .args(["build"])
-        .output()
-        .expect("could not build the backend");
+        .output().map_err(|err| err.to_string())?;
+    /*
+    if out.stderr.len() > 0{
+        return Err(String::from_utf8(out.stderr).expect("Non UTF8 error message!"));
+    }*/
+    Ok(())
 }
 #[cfg(not(debug_assertions))]
 fn build_backend() {
@@ -220,4 +213,7 @@ lazy_static! {
           }}"
         )
     };
+    static ref IS_MONO_PRESENT: bool = std::process::Command::new("mono").output().is_ok() ;
+    static ref IS_DOTNET_PRESENT: bool = std::process::Command::new("dotnet").output().is_ok() ;
+    static ref RUSTC_BUILD_STATUS: Result<(),String> = build_backend();
 }
