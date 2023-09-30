@@ -1,5 +1,7 @@
 use crate::IString;
-use rustc_middle::ty::{AdtDef, FloatTy, GenericArg, IntTy, Ty, TyCtxt, TyKind, UintTy,Instance,ParamEnv};
+use rustc_middle::ty::{
+    AdtDef, FloatTy, GenericArg, Instance, IntTy, ParamEnv, Ty, TyCtxt, TyKind, UintTy,
+};
 /// This struct represetnts either a primitive .NET type (F32,F64), or stores information on how to lookup a more complex type (struct,class,array)
 use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, PartialEq, Clone, Eq, Hash, Debug)]
@@ -89,10 +91,10 @@ impl DotnetTypeRef {
     }
 }
 impl Type {
-    pub fn as_dotnet(&self)->Option<DotnetTypeRef>{
-        match self{
-            Self::DotnetType(inner)=>Some(inner.as_ref().clone()),
-            _=>None,
+    pub fn as_dotnet(&self) -> Option<DotnetTypeRef> {
+        match self {
+            Self::DotnetType(inner) => Some(inner.as_ref().clone()),
+            _ => None,
         }
     }
     pub fn from_ty<'ctx>(rust_tpe: Ty<'ctx>, tyctx: TyCtxt<'ctx>) -> Self {

@@ -37,16 +37,15 @@ fn main(){
     let maybe = Some(8);
     black_box(maybe);
     let end = black_box(90);
-    let range = (65..end);
+    let range = 65..end;
     black_box(&range);
     let mut iter = range.into_iter();
     black_box(&iter);
     let first = iter.next();
-    
-    for i in (65..end){
+    black_box(&first);
+    for i in 65..black_box(90){
         let msg = (0x00_00_00_00_00_00_0a_i64 << 8)| i;
         unsafe{puts(core::ptr::addr_of!(msg).cast())};
-        black_box(i);
     }
     let animal = Animal::Cow(black_box(8));
     black_box(animal);

@@ -61,15 +61,7 @@ impl TypeDef {
                 match adt_def.adt_kind() {
                     AdtKind::Struct => Self::struct_from_adt(ty, adt_def, subst, ctx),
                     AdtKind::Enum => Self::enum_from_adt(ty, adt_def, subst, ctx),
-                    _ => vec![Self {
-                        access,
-                        name,
-                        inner_types: vec![],
-                        fields: vec![],
-                        gargc,
-                        extends: None,
-                        explicit_offsets: None,
-                    }],
+                    AdtKind::Union => Self::union_from_adt(ty, adt_def, subst, ctx),
                 }
             }
             TyKind::Ref(_region, inner, _mut) => Self::from_ty(*inner, ctx),
@@ -118,6 +110,43 @@ impl TypeDef {
         });
         res
     }
+    fn union_from_adt<'tcx>(
+        original: Ty<'tcx>,
+        adt_def: &AdtDef<'tcx>,
+        subst: &'tcx List<GenericArg<'tcx>>,
+        ctx: TyCtxt<'tcx>,
+    ) -> Vec<Self> {
+        let name = crate::utilis::adt_name(adt_def);
+        let gargc = subst.len() as u32;
+        let access = AccessModifer::Public;
+        let mut fields = Vec::with_capacity(adt_def.all_fields().count());
+        let mut res = Vec::new();
+        adt_def.all_fields().for_each(|field| {
+            let resolved_field_ty = field.ty(ctx, subst);
+            //This is a simple loop prevention. More complex types may still lead to cycles. TODO: deal with cycles.
+            if resolved_field_ty != original {
+                res.extend(Self::from_ty(resolved_field_ty, ctx));
+            }
+        });
+        for field in adt_def.all_fields() {
+            //rustc_middle::ty::List::empty()
+            let ty = ctx.type_of(field.did).instantiate_identity();
+            let ty = Type::from_ty(ty, ctx);
+            let name = escape_field_name(&field.name.to_string());
+            fields.push((name, ty));
+        }
+        let explicit_offsets = Some(fields.iter().map(|_| 0).collect());
+        res.push(Self {
+            access,
+            name,
+            inner_types: vec![],
+            fields,
+            gargc,
+            extends: None,
+            explicit_offsets,
+        });
+        res
+    }
     fn enum_from_adt<'tcx>(
         original: Ty<'tcx>,
         adt_def: &AdtDef<'tcx>,
@@ -125,6 +154,10 @@ impl TypeDef {
         ctx: TyCtxt<'tcx>,
     ) -> Vec<Self> {
         let name = crate::utilis::adt_name(adt_def);
+        // Handle  `Never` type alias
+        if name.to_string() == "std.convert.Infallible"{
+            return vec![];
+        }
         let gargc = subst.len() as u32;
         let access = AccessModifer::Public;
         //let mut fields = Vec::with_capacity(adt_def.all_fields().count());

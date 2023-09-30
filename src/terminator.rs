@@ -144,7 +144,7 @@ pub fn handle_terminator<'ctx>(
             ]
         }
         TerminatorKind::Unreachable => {
-            /* 
+            /*
             let string_type = crate::r#type::Type::DotnetType(Box::new(DotnetTypeRef::new(
                 Some("System.Runtime"),
                 "System.String",

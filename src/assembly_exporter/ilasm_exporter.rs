@@ -486,6 +486,9 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
         //Stack
         CILOp::Pop => "pop".into(),
         CILOp::Dup => "dup".into(),
+        CILOp::LDStaticField(static_field)=>{
+            todo!("Can't load static field {static_field:?}");
+        }
         //_ => todo!("Unsuported op {op:?}"),
     }
 }

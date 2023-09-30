@@ -6,6 +6,7 @@ use crate::{
 use rustc_middle::mir::{mono::MonoItem, Local, LocalDecl};
 use rustc_middle::ty::{Instance, ParamEnv, TyCtxt};
 use std::collections::HashSet;
+use std::panic::UnwindSafe;
 
 use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug)]
@@ -120,7 +121,10 @@ impl Assembly {
             MonoItem::Fn(instance) => {
                 //let instance = crate::utilis::monomorphize(&instance,tcx);
                 let symbol_name = crate::utilis::function_name(item.symbol_name(tcx));
-                self.add_fn(instance, tcx, &symbol_name)?;
+
+                self.add_fn(instance, tcx, &symbol_name)
+                    .expect("Could not add function!");
+
                 Ok(())
             }
             _ => todo!("Unsupported item:\"{item:?}\"!"),

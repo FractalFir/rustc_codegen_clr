@@ -59,6 +59,7 @@ mod rvalue;
 mod statement;
 mod stdlib;
 mod terminator;
+mod transmute;
 mod r#type;
 mod type_def;
 mod unop;

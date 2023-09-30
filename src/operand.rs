@@ -12,7 +12,7 @@ pub(crate) fn handle_operand<'ctx>(
         Operand::Copy(place) => crate::place::place_get(place, tyctx, method, method_instance),
         Operand::Move(place) => crate::place::place_get(place, tyctx, method, method_instance),
         Operand::Constant(const_val) => {
-            crate::constant::handle_constant(const_val.as_ref(), tyctx,method,method_instance)
+            crate::constant::handle_constant(const_val.as_ref(), tyctx, method, method_instance)
         }
     }
 }

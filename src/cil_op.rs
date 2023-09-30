@@ -22,6 +22,29 @@ impl FieldDescriptor {
         Box::new(Self { owner, tpe, name })
     }
 }
+#[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
+pub struct StaticFieldDescriptor {
+    owner: Option<DotnetTypeRef>,
+    tpe: crate::r#type::Type,
+    name: IString,
+}
+impl StaticFieldDescriptor {
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+    pub fn tpe(&self) -> &crate::r#type::Type {
+        &self.tpe
+    }
+    pub fn owner(&self) -> Option<&DotnetTypeRef> {
+        self.owner.as_ref()
+    }
+    pub fn new(owner: Option<DotnetTypeRef>, tpe: crate::r#type::Type, name: IString) -> Self {
+        Self { owner, tpe, name }
+    }
+    pub fn boxed(owner: Option<DotnetTypeRef>, tpe: crate::r#type::Type, name: IString) -> Box<Self> {
+        Box::new(Self { owner, tpe, name })
+    }
+}
 /// Represenation of a target of a call.
 #[derive(Clone, PartialEq, Serialize, Deserialize, Eq, Hash, Debug)]
 pub struct CallSite {
@@ -172,4 +195,5 @@ pub enum CILOp {
     LdObj(Box<DotnetTypeRef>),
     STObj(Box<DotnetTypeRef>),
     SizeOf(Box<crate::r#type::Type>),
+    LDStaticField(Box<StaticFieldDescriptor>),
 }

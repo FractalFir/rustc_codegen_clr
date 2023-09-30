@@ -5,3 +5,4 @@
 *.il
 *.exe
 *.txt
+*.runtimeconfig.json

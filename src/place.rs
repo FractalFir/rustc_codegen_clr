@@ -25,6 +25,7 @@ fn pointed_type(ty: PlaceTy) -> Ty {
 fn body_ty_is_by_adress(last_ty: &Ty) -> bool {
     match *last_ty.kind() {
         TyKind::Int(_) => false,
+        TyKind::Uint(_) => false,
         TyKind::Adt(_, _) => true,
         TyKind::Ref(_region, _inner, _mut) => false,
         TyKind::RawPtr(_) => false,
@@ -263,7 +264,7 @@ fn ptr_set_op<'ctx>(curr_type: PlaceTy<'ctx>, tyctx: TyCtxt<'ctx>) -> Vec<CILOp>
         todo!("Can't set the value behind a poitner to an enum variant!");
     }
 }
-fn deref_op<'ctx>(curr_type: PlaceTy<'ctx>, tyctx: TyCtxt<'ctx>) -> Vec<CILOp> {
+pub fn deref_op<'ctx>(curr_type: PlaceTy<'ctx>, tyctx: TyCtxt<'ctx>) -> Vec<CILOp> {
     let res = if let PlaceTy::Ty(curr_type) = curr_type {
         match curr_type.kind() {
             TyKind::Int(int_ty) => match int_ty {
@@ -272,8 +273,17 @@ fn deref_op<'ctx>(curr_type: PlaceTy<'ctx>, tyctx: TyCtxt<'ctx>) -> Vec<CILOp> {
                 IntTy::I32 => vec![CILOp::LDIndI32],
                 IntTy::I64 => vec![CILOp::LDIndI64],
                 IntTy::Isize => vec![CILOp::LDIndISize],
-                IntTy::I128 => todo!("Can't dereference 128 bit intigers!"),//vec![CILOp::LdObj(Box::new())],
-                //_ => todo!("TODO: can't deref int type {int_ty:?} yet"),
+                IntTy::I128 => todo!("Can't dereference 128 bit intigers!"), //vec![CILOp::LdObj(Box::new())],
+                                                                             //_ => todo!("TODO: can't deref int type {int_ty:?} yet"),
+            },
+            TyKind::Uint(int_ty) => match int_ty {
+                UintTy::U8 => vec![CILOp::LDIndI8],
+                UintTy::U16 => vec![CILOp::LDIndI16],
+                UintTy::U32 => vec![CILOp::LDIndI32],
+                UintTy::U64 => vec![CILOp::LDIndI64],
+                UintTy::Usize => vec![CILOp::LDIndISize],
+                UintTy::U128 => todo!("Can't dereference 128 bit intigers!"), //vec![CILOp::LdObj(Box::new())],
+                                                                             //_ => todo!("TODO: can't deref int type {int_ty:?} yet"),
             },
             TyKind::Adt(_, _) => {
                 let curr_type = if let crate::r#type::Type::DotnetType(dotnet_type) =
@@ -318,7 +328,6 @@ pub fn place_get<'a>(
             ty = curr_ty.monomorphize(&method_instance, ctx);
             ops.extend(curr_ops);
         }
-        println!("Geting {ty:?} with head {head:?}");
         ops.extend(place_elem_get(head, ty, ctx, method_instance));
         ops
     }
@@ -326,18 +335,28 @@ pub fn place_get<'a>(
 /// Returns the ops for getting the value of place.
 pub fn place_adress<'a>(
     place: &Place<'a>,
-    _ctx: TyCtxt<'a>,
+    ctx: TyCtxt<'a>,
     method: &rustc_middle::mir::Body<'a>,
-    _method_instance: Instance<'a>,
+    method_instance: Instance<'a>,
 ) -> Vec<CILOp> {
     let mut ops = Vec::with_capacity(place.projection.len());
     if place.projection.is_empty() {
         ops.push(local_adress(place.local.as_usize(), method));
         ops
     } else {
-        let (op, _ty) = local_body(place.local.as_usize(), method);
+        let (op, mut ty) = local_body(place.local.as_usize(), method);
+        ty = crate::utilis::monomorphize(&method_instance, ty, ctx);
+        let mut ty = ty.into();
         ops.push(op);
-        todo!();
+        let (head, body) = slice_head(place.projection);
+        for elem in body {
+            println!("elem:{elem:?} ty:{ty:?}");
+            let (curr_ty, curr_ops) = place_elem_body(elem, ty, ctx, method_instance);
+            ty = curr_ty.monomorphize(&method_instance, ctx);
+            ops.extend(curr_ops);
+        }
+        ops.extend(place_elem_body(head, ty, ctx, method_instance).1);
+        ops
     }
 }
 pub(crate) fn place_set<'a>(
@@ -370,7 +389,7 @@ pub(crate) fn place_set<'a>(
     }
 }
 #[derive(Debug, Clone, Copy)]
-enum PlaceTy<'ctx> {
+pub enum PlaceTy<'ctx> {
     Ty(Ty<'ctx>),
     EnumVariant(Ty<'ctx>, u32),
 }

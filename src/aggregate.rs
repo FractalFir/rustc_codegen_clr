@@ -24,7 +24,7 @@ pub fn handle_aggregate<'tcx>(
         })
         .collect();
     match aggregate_kind {
-        AggregateKind::Adt(adt_def, variant_idx, subst, _utai, _active_field) => {
+        AggregateKind::Adt(adt_def, variant_idx, subst, _utai, active_field) => {
             let penv = ParamEnv::empty();
             let adt_type = Instance::resolve(tcx, penv, *adt_def, subst)
                 .expect("Could not resolve instance")
@@ -45,6 +45,7 @@ pub fn handle_aggregate<'tcx>(
                 variant_idx.as_u32(),
                 fields,
                 method_instance,
+                active_field,
             )
         }
         _ => todo!("Unsuported aggregate kind {aggregate_kind:?}"),
@@ -60,6 +61,7 @@ fn aggregate_from_adt<'tcx>(
     variant_idx: u32,
     fields: Vec<(u32, Vec<CILOp>)>,
     method_instance: Instance<'tcx>,
+    active_field: &Option<FieldIdx>,
 ) -> Vec<CILOp> {
     let adt_type = crate::utilis::monomorphize(&method_instance, adt_type, tcx);
     let adt_type_ref = Type::from_ty(adt_type, tcx);
@@ -100,7 +102,7 @@ fn aggregate_from_adt<'tcx>(
             ops
         }
         AdtKind::Enum => {
-            let mut adt_adress_ops =
+            let adt_adress_ops =
                 crate::place::place_adress(target_location, tcx, method, method_instance);
 
             let mut variant_type = adt_type_ref.clone(); //adt_type.variant_type(variant).expect("Can't get variant index");
@@ -160,6 +162,35 @@ fn aggregate_from_adt<'tcx>(
             ));
             ops
         }
-        _ => todo!("Unsuported adt kind {:?}", adt.adt_kind()),
+        AdtKind::Union => {
+            let obj_getter =
+                crate::place::place_adress(target_location, tcx, method, method_instance);
+            let mut ops: Vec<CILOp> = Vec::with_capacity(fields.len() * 2);
+            for field in fields {
+                ops.extend(obj_getter.iter().cloned());
+                ops.extend(field.1);
+                let field_def = adt
+                    .all_fields()
+                    .nth(field.0 as usize)
+                    .expect("Could not find field!");
+                let _field_type = field_def.ty(tcx, subst);
+
+                let field_type = crate::utilis::generic_field_ty(adt_type, field.0, tcx);
+                let field_name = field_name(adt_type, field.0);
+                let field_desc = crate::cil_op::FieldDescriptor::boxed(
+                    adt_type_ref.clone(),
+                    crate::r#type::Type::from_ty(field_type, tcx),
+                    field_name,
+                );
+                ops.push(CILOp::STField(field_desc));
+            }
+            ops.extend(crate::place::place_get(
+                target_location,
+                tcx,
+                method,
+                method_instance,
+            ));
+            ops
+        }
     }
 }
