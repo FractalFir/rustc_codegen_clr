@@ -56,9 +56,9 @@ impl AssemblyExporter for ILASMExporter {
             .expect("Could not create file")
             .write_all(&cil)
             .expect("Could not write bytes");
-        let asm_type = "/dll";
+        let asm_type = "-dll";
         let target = format!(
-            "/output:{out_path}",
+            "-output:{out_path}",
             out_path = out_path.clone().to_string_lossy()
         );
         let args: [String; 3] = [
@@ -70,12 +70,12 @@ impl AssemblyExporter for ILASMExporter {
             .args(args)
             .output()
             .expect("failed run ilasm process");
-        let stdout = String::from_utf8(out.stdout).unwrap();
+        let stdout = String::from_utf8_lossy(&out.stdout);
         if !stdout.contains("\nOperation completed successfully\n") {
             let err = format!(
                 "stdout:{} stderr:{}",
                 stdout,
-                String::from_utf8(out.stderr).unwrap()
+                String::from_utf8_lossy(&out.stderr)
             );
             return Err(AssemblyExportError::ExporterError(err.into()));
         }
