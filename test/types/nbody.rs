@@ -1,3 +1,8 @@
+#![allow(internal_features)]
+#![no_std]
+#![feature(start,lang_items,core_intrinsics)]
+include!("../common.rs");
+#[allow(dead_code)]
 #[derive(Copy,Clone,Default)]
 pub struct Vector3{
     x:f32,
@@ -7,22 +12,22 @@ pub struct Vector3{
 impl Vector3{
     fn distance(&self,other:&Self)->f32{
         let diff = *self - *other;
-        (diff.x*diff.x+diff.y*diff.y+diff.z*diff.z).sqrt()
+        unsafe{sqrtf32(diff.x*diff.x+diff.y*diff.y+diff.z*diff.z)}
     }
 }
-impl std::ops::Add<Vector3> for Vector3{
+impl core::ops::Add<Vector3> for Vector3{
     type Output = Vector3;
     fn add(self, rhs:Vector3) -> Vector3{
         Self{x:self.x + rhs.x,y:self.y + rhs.y,z:self.z + rhs.z}
     }
 }
-impl std::ops::Sub<Vector3> for Vector3{
+impl core::ops::Sub<Vector3> for Vector3{
     type Output = Vector3;
     fn sub(self, rhs:Vector3) -> Vector3{
         Self{x:self.x - rhs.x,y:self.y - rhs.y,z:self.z - rhs.z}
     }
 }
-impl std::ops::Mul<f32> for Vector3{
+impl core::ops::Mul<f32> for Vector3{
     type Output = Vector3;
     fn mul(self, rhs:f32) -> Vector3{
         Self{x:self.x*rhs,y:self.y*rhs,z:self.z*rhs}
@@ -107,23 +112,8 @@ pub extern fn tick_10body(boides:&mut [AstronomicalBody;4],tick_count:usize){
         a_body_idx += 1;
     }}
 }
-#[no_mangle]
-pub extern fn get_position_10body(boides:&mut [AstronomicalBody;4],index:usize)->Vector3{
-    boides[index].position
-}
-#[no_mangle]
-pub extern fn get_x(vector:Vector3,index:usize)->f32{
-   vector.x
-}
-#[no_mangle]
-pub extern fn get_y(vector:Vector3,index:usize)->f32{
-   vector.y
-}
-#[no_mangle]
-pub extern fn get_z(vector:Vector3,index:usize)->f32{
-   vector.z
-}
-#[no_mangle]
-pub extern fn alloc_vec(size:usize){
-    //let vec:Vec<usize> = Vec::with_capacity(size);
+fn main(){
+    let mut tenbody = init_10body();
+    tick_10body(&mut tenbody,25);
+    black_box(&tenbody);
 }

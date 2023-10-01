@@ -6,7 +6,7 @@ use crate::{
     r#type::{DotnetTypeRef, Type},
     type_def::TypeDef,
 };
-use std::{borrow::Cow, io::Write};
+use std::{borrow::Cow, io::Write, ops::Deref};
 #[must_use]
 pub(crate) struct ILASMExporter {
     encoded_asm: Vec<u8>,
@@ -196,7 +196,7 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
                 "".into()
             } else {
                 //assert!(sig.inputs.is_empty());
-                let mut inputs_iter = call_site.signature().inputs().iter();
+                let mut inputs_iter = call_site.explicit_inputs().iter();
                 let mut input_string = String::new();
                 if let Some(firts_arg) = inputs_iter.next() {
                     input_string.push_str(&arg_type_cli(firts_arg));
@@ -211,7 +211,9 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
                     "instance"
                 };
                 let owner_name = match &call_site.class() {
-                    Some(owner) => format!("{}::", dotnet_type_ref_cli(owner)),
+                    Some(owner) => {
+                        format!("{}::", prefixed_type_cli(&owner.deref().clone().into()))
+                    }
                     None => String::new(),
                 };
                 //println!("inputs:{inputs:?} input_string: {input_string}",inputs = call_site.signature.inputs);
@@ -455,7 +457,7 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
                 "".into()
             } else {
                 //assert!(sig.inputs.is_empty());
-                let mut inputs_iter = call_site.signature().inputs().iter();
+                let mut inputs_iter = call_site.explicit_inputs().iter();
                 let mut input_string = String::new();
                 if let Some(firts_arg) = inputs_iter.next() {
                     input_string.push_str(&arg_type_cli(firts_arg));

@@ -2,6 +2,9 @@
 *.rlib
 *.il
 *.o
+*.d
+*.rmeta
+*.lock
 test/out
 /target
 /Cargo.lock

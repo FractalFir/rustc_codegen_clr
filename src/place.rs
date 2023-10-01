@@ -1,6 +1,6 @@
 // This file contains many unnecesary morphize calls.
 use crate::cil_op::{CILOp, FieldDescriptor};
-use crate::r#type::DotnetTypeRef;
+use crate::r#type::{DotnetTypeRef, Type};
 use crate::utilis::field_name;
 use rustc_middle::mir::{Place, PlaceElem};
 use rustc_middle::ty::{Instance, IntTy, Ty, TyCtxt, TyKind, UintTy};
@@ -25,11 +25,22 @@ fn pointed_type(ty: PlaceTy) -> Ty {
 fn body_ty_is_by_adress(last_ty: &Ty) -> bool {
     match *last_ty.kind() {
         TyKind::Int(_) => false,
+        TyKind::Float(_) => false,
         TyKind::Uint(_) => false,
         TyKind::Adt(_, _) => true,
+        TyKind::Array(_, _) => true,
+
         TyKind::Ref(_region, _inner, _mut) => false,
         TyKind::RawPtr(_) => false,
-        _ => todo!("TODO: body_ty_is_by_adress does not support type {last_ty:?}"),
+        TyKind::Bool => false,
+        TyKind::Char => false,
+        //TODO: check if slices are handled propely
+        TyKind::Slice(_) => true,
+        TyKind::Str => true,
+        _ => todo!(
+            "TODO: body_ty_is_by_adress does not support type {last_ty:?} kind:{kind:?}",
+            kind = last_ty.kind()
+        ),
     }
 }
 fn local_get(local: usize, method: &rustc_middle::mir::Body) -> CILOp {
@@ -119,6 +130,33 @@ fn place_elem_get<'a>(
                 //todo!("Can't get fields of enum variants yet!");
             }
         },
+        PlaceElem::Index(index) => {
+            let mut ops = vec![crate::place::local_adress(
+                index.as_usize(),
+                ctx.optimized_mir(method_instance.def_id()),
+            )];
+            let curr_ty = curr_type.as_ty().expect("Can't index into enum!");
+            let tpe = Type::from_ty(curr_ty, ctx);
+            let class = if let Type::DotnetType(dotnet) = &tpe {
+                dotnet
+            } else {
+                panic!("Can't index into type {tpe:?}");
+            };
+            let index_ty = Type::USize;
+            let element_ty = crate::r#type::element_type(curr_ty);
+
+            let signature = crate::function_sig::FnSig::new(
+                &[tpe.clone(), index_ty],
+                &Type::from_ty(element_ty, ctx),
+            );
+            ops.push(CILOp::Call(crate::cil_op::CallSite::boxed(
+                Some(class.as_ref().clone()),
+                "get_Item".into(),
+                signature,
+                false,
+            )));
+            ops
+        }
         _ => todo!("Can't handle porojection {place_elem:?} in get"),
     }
 }
@@ -227,6 +265,46 @@ fn place_elem_body<'ctx>(
             );
             let variant_type = PlaceTy::EnumVariant(curr_type, variant.as_u32());
             (variant_type, vec![CILOp::LDFieldAdress(field_desc)])
+        }
+        PlaceElem::Index(index) => {
+            let mut ops = vec![crate::place::local_adress(
+                index.as_usize(),
+                tyctx.optimized_mir(method_instance.def_id()),
+            )];
+            let curr_ty = curr_type.as_ty().expect("Can't index into enum!");
+            let tpe = Type::from_ty(curr_ty, tyctx);
+            let class = if let Type::DotnetType(dotnet) = &tpe {
+                dotnet
+            } else {
+                panic!("Can't index into type {tpe:?}");
+            };
+            let index_ty = Type::USize;
+            let element_ty = crate::r#type::element_type(curr_ty);
+            if body_ty_is_by_adress(&element_ty) {
+                let signature = crate::function_sig::FnSig::new(
+                    &[tpe.clone(), index_ty],
+                    &Type::Ptr(Box::new(Type::from_ty(element_ty, tyctx))),
+                );
+                ops.push(CILOp::Call(crate::cil_op::CallSite::boxed(
+                    Some(class.as_ref().clone()),
+                    "get_Adress".into(),
+                    signature,
+                    false,
+                )));
+                (element_ty.into(), ops)
+            } else {
+                let signature = crate::function_sig::FnSig::new(
+                    &[tpe.clone(), index_ty],
+                    &Type::from_ty(element_ty, tyctx),
+                );
+                ops.push(CILOp::Call(crate::cil_op::CallSite::boxed(
+                    Some(class.as_ref().clone()),
+                    "get_Item".into(),
+                    signature,
+                    false,
+                )));
+                (element_ty.into(), ops)
+            }
         }
         _ => todo!("Can't handle porojection {place_elem:?} in body"),
     }

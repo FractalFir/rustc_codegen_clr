@@ -132,12 +132,14 @@ pub fn handle_terminator<'ctx>(
             )]
         }
         TerminatorKind::Drop {
-            place: _,
+            place,
             target,
             unwind: _,
             replace: _,
         } => {
-            eprintln!("WARNING: drop is not supported yet in rustc_codegen_clr!");
+            let ty = monomorphize(&method_instance, place.ty(method, tyctx).ty, tyctx);
+            let drop_instance = Instance::resolve_drop_in_place(tyctx, ty).polymorphize(tyctx);
+            eprintln!("WARNING: drop is not supported yet in rustc_codegen_clr! drop_instance:{drop_instance:?}");
             vec![
                 CILOp::Comment("WARNING: drop is not supported yet in rustc_codegen_clr!".into()),
                 CILOp::GoTo(target.as_u32()),

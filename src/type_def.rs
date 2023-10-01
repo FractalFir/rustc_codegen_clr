@@ -67,6 +67,27 @@ impl TypeDef {
             TyKind::Ref(_region, inner, _mut) => Self::from_ty(*inner, ctx),
             TyKind::RawPtr(inner_and_mut) => Self::from_ty(inner_and_mut.ty, ctx),
             TyKind::Slice(inner) => Self::from_ty(*inner, ctx),
+            TyKind::Array(element, size) => {
+                let length = crate::utilis::try_resolve_const_size(size)
+                    .expect("Could not resolve array size!");
+                let name = format!("Arr{length}");
+                let mut fields = Vec::with_capacity(length);
+                for field in 0..length {
+                    fields.push((format!("f_{field}").into(), Type::GenericArg(0)))
+                }
+                let def = TypeDef {
+                    access: AccessModifer::Public,
+                    name: name.into(),
+                    inner_types: vec![],
+                    fields,
+                    explicit_offsets: None,
+                    gargc: 1,
+                    extends: None,
+                };
+                let mut types = Self::from_ty(*element, ctx);
+                types.push(def);
+                types
+            }
             TyKind::Alias(_, alias_ty) => {
                 let alias_ty = ctx.type_of(alias_ty.def_id).instantiate_identity();
                 Self::from_ty(alias_ty, ctx)

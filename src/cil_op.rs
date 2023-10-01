@@ -110,6 +110,18 @@ impl CallSite {
         };
         true
     }
+    /// All inputs. Includes impilcit `this` argument for instance functions.
+    pub fn inputs(&self) -> &[crate::r#type::Type] {
+        &self.signature.inputs()
+    }
+    /// Inputs, with the implicit `this` skipped if needed.
+    pub fn explicit_inputs(&self) -> &[crate::r#type::Type] {
+        if self.is_static || self.inputs().is_empty() {
+            &self.signature.inputs()
+        } else {
+            &self.signature.inputs()[1..]
+        }
+    }
 }
 use serde::{Deserialize, Serialize};
 /// Represenation of a CIL opcode.

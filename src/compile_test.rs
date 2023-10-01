@@ -1,4 +1,3 @@
-
 fn test_dotnet_executable(file_path: &str, test_dir: &str) {
     use std::io::Write;
 
@@ -36,7 +35,7 @@ fn test_dotnet_executable(file_path: &str, test_dir: &str) {
             "Test program failed with message {stderr:}"
         );
     }
-    if !(*IS_DOTNET_PRESENT || *IS_MONO_PRESENT){
+    if !(*IS_DOTNET_PRESENT || *IS_MONO_PRESENT) {
         panic!("You must have either mono or dotnet runtime installed to run tests.");
     }
 }
@@ -115,10 +114,11 @@ macro_rules! run_test {
     };
 }
 #[cfg(debug_assertions)]
-fn build_backend() ->Result<(),String>{
+fn build_backend() -> Result<(), String> {
     let out = std::process::Command::new("cargo")
         .args(["build"])
-        .output().map_err(|err| err.to_string())?;
+        .output()
+        .map_err(|err| err.to_string())?;
     /*
     if out.stderr.len() > 0{
         return Err(String::from_utf8(out.stderr).expect("Non UTF8 error message!"));
@@ -170,7 +170,7 @@ test_lib! {calls}
 test_lib! {casts}
 test_lib! {identity}
 test_lib! {libc}
-test_lib! {nbody}
+
 test_lib! {references}
 //test_lib! {structs}
 
@@ -178,6 +178,7 @@ test_lib! {types}
 
 run_test! {arthm,add}
 run_test! {types,enums}
+run_test! {types,nbody}
 run_test! {types,structs}
 run_test! {types,vec}
 run_test! {std,main}
@@ -213,7 +214,7 @@ lazy_static! {
           }}"
         )
     };
-    static ref IS_MONO_PRESENT: bool = std::process::Command::new("mono").output().is_ok() ;
-    static ref IS_DOTNET_PRESENT: bool = std::process::Command::new("dotnet").output().is_ok() ;
-    static ref RUSTC_BUILD_STATUS: Result<(),String> = build_backend();
+    static ref IS_MONO_PRESENT: bool = std::process::Command::new("mono").output().is_ok();
+    static ref IS_DOTNET_PRESENT: bool = std::process::Command::new("dotnet").output().is_ok();
+    static ref RUSTC_BUILD_STATUS: Result<(), String> = build_backend();
 }

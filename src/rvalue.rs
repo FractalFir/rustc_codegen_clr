@@ -1,4 +1,4 @@
-use crate::cil_op::CILOp;
+use crate::cil_op::{CILOp, CallSite};
 use rustc_middle::mir::{CastKind, NullOp};
 use rustc_middle::{
     mir::{Place, Rvalue},
@@ -116,6 +116,25 @@ pub fn handle_rvalue<'tcx>(
                 crate::cil_op::FieldDescriptor::new(owner, discr_type, "_tag".into()),
             )));
             ops
+        }
+        Rvalue::Len(operand) => {
+            let mut ops = crate::place::place_adress(operand, tcx, method, method_instance);
+            let tpe = operand.ty(method, tcx);
+            let class = crate::r#type::Type::from_ty(tpe.ty, tcx)
+                .as_dotnet()
+                .expect("Can't get the dotnet type!");
+            let signature = crate::function_sig::FnSig::new(
+                &[class.clone().into()],
+                &crate::r#type::Type::USize,
+            );
+            ops.push(CILOp::Call(CallSite::boxed(
+                Some(class),
+                "GetLength".into(),
+                signature,
+                false,
+            )));
+            ops
+            //todo!("Can't get the length of {operand:?}");
         }
         _ => todo!("Unhandled RValue {rvalue:?}"),
     };

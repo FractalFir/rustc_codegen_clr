@@ -1,6 +1,8 @@
 #[lang = "eh_personality"]
 fn rust_eh_personality() {}
 use core::panic::PanicInfo;
+#[allow(unused_imports)]
+use core::intrinsics::sqrtf32;
 #[allow(dead_code)]
 extern "C"{
     fn puts(msg:*const u8);

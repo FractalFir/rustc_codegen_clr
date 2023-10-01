@@ -25,6 +25,7 @@ impl FnSig {
     pub fn output(&self) -> &Type {
         &self.output
     }
+    /// Creates a new function signature. For non-static functions, this must include the hidden first `this` argument!
     pub fn new(inputs: &[Type], output: &Type) -> Self {
         Self {
             inputs: inputs.into(),

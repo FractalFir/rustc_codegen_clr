@@ -1,6 +1,6 @@
 use rustc_middle::ty::{
-    AdtDef, Binder, BoundVariableKind, EarlyBinder, Instance, ParamEnv, SymbolName, Ty, TyCtxt,
-    TyKind, TypeFoldable,
+    AdtDef, Binder, BoundVariableKind, Const, EarlyBinder, Instance, ParamEnv, SymbolName, Ty,
+    TyCtxt, TyKind, TypeFoldable,
 };
 
 use crate::codegen_error::CodegenError;
@@ -90,4 +90,12 @@ pub fn tag_from_enum_variants(variants: u64) -> crate::r#type::Type {
         8 => Type::U64,
         _ => todo!("Can't yet have {var_size} byte wide enum tag!"),
     }
+}
+pub fn try_resolve_const_size(size: &Const) -> Result<usize, &'static str> {
+    let scalar = match size.try_to_scalar() {
+        Some(value) => Ok(value),
+        None => Err("Can't resolve scalar array size!"),
+    }?;
+    let value = scalar.to_u64().expect("Could not convert scalar to u64!");
+    Ok(value as usize)
 }

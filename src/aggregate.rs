@@ -1,5 +1,5 @@
 use crate::cil_op::{CILOp, FieldDescriptor};
-use crate::r#type::Type;
+use crate::r#type::{DotnetTypeRef, Type};
 use crate::utilis::field_name;
 use rustc_index::IndexVec;
 use rustc_middle::mir::{AggregateKind, Operand, Place};
@@ -47,6 +47,33 @@ pub fn handle_aggregate<'tcx>(
                 method_instance,
                 active_field,
             )
+        }
+        AggregateKind::Array(element) => {
+            let element = Type::from_ty(*element, tcx);
+            let array_type = DotnetTypeRef::array(element.clone(), field_index.len());
+            let mut ops: Vec<CILOp> = Vec::with_capacity(fields.len() * 2);
+            let array_getter =
+                super::place::place_adress(&target_location, tcx, method, method_instance);
+            let sig = crate::function_sig::FnSig::new(
+                &[array_type.clone().into(), element, Type::USize],
+                &Type::Void,
+            );
+            let call_site =
+                crate::cil_op::CallSite::boxed(Some(array_type), "set_Item".into(), sig, false);
+            for field in fields {
+                ops.extend(array_getter.iter().cloned());
+                ops.extend(field.1);
+                ops.push(CILOp::LdcI64(field.0 as u64 as i64));
+                ops.push(CILOp::ConvISize(false));
+                ops.push(CILOp::Call(call_site.clone()));
+            }
+            ops.extend(super::place::place_get(
+                &target_location,
+                tcx,
+                method,
+                method_instance,
+            ));
+            ops
         }
         _ => todo!("Unsuported aggregate kind {aggregate_kind:?}"),
     }

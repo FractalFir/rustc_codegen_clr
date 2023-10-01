@@ -1,6 +1,6 @@
 use crate::IString;
 use rustc_middle::ty::{
-    AdtDef, FloatTy, GenericArg, Instance, IntTy, ParamEnv, Ty, TyCtxt, TyKind, UintTy,
+    AdtDef, ClosureKind, FloatTy, GenericArg, Instance, IntTy, ParamEnv, Ty, TyCtxt, TyKind, UintTy,
 };
 /// This struct represetnts either a primitive .NET type (F32,F64), or stores information on how to lookup a more complex type (struct,class,array)
 use serde::{Deserialize, Serialize};
@@ -50,6 +50,12 @@ impl DotnetTypeRef {
             name_path: name_path.into(),
             generics: Vec::new(),
         }
+    }
+    pub fn array(element: Type, length: usize) -> Self {
+        let name = format!("Arr{length}");
+        let mut array = DotnetTypeRef::new(None, &name);
+        array.set_generics([element]);
+        array
     }
     pub fn append_path(&mut self, append: &str) {
         let mut name_path = self.name_path.to_string();
@@ -150,7 +156,19 @@ impl Type {
             TyKind::FnPtr(_) => Type::USize,
             TyKind::Param(param_ty) => Type::GenericArg(param_ty.index),
             TyKind::Alias(_, alias_ty) => Self::from_ty(alias_ty.self_ty(), tyctx),
-            //TyKind::Closure(def_id,subst)=>Self::from_ty(Instance::resolve(tyctx,ParamEnv::empty(),*def_id,subst).unwrap().unwrap().ty(tyctx,ParamEnv::empty()),tyctx),
+            TyKind::Closure(def_id, subst) => {
+                // this is wrong.
+                let kind = ClosureKind::FnOnce;
+                let closure = Instance::resolve_closure(tyctx, *def_id, subst, kind)
+                    .expect("Could not resolve closure!");
+                Self::from_ty(closure.ty(tyctx, ParamEnv::empty()), tyctx)
+            }
+            TyKind::Array(element, length) => {
+                let length = crate::utilis::try_resolve_const_size(length).unwrap();
+
+                let element = Type::from_ty(*element, tyctx);
+                DotnetTypeRef::array(element, length).into()
+            }
             _ => todo!("Unsupported type{rust_tpe:?}!"),
         }
     }
@@ -185,5 +203,16 @@ impl From<&FloatTy> for Type {
             FloatTy::F32 => Self::F32,
             FloatTy::F64 => Self::F64,
         }
+    }
+}
+pub fn element_type<'tyctx>(src: Ty<'tyctx>) -> Ty<'tyctx> {
+    match src.kind() {
+        TyKind::Array(element, _) => *element,
+        _ => panic!("Can't get element type of {src:?}"),
+    }
+}
+impl From<DotnetTypeRef> for Type {
+    fn from(value: DotnetTypeRef) -> Self {
+        Self::DotnetType(Box::new(value))
     }
 }
