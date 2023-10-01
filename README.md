@@ -2,11 +2,11 @@
 *NOTE: this project is a very early proof-of-concept*
 This is a compiler backend for rustc which targets the .NET platform and runtime, and could enable compiling rust code for the `.NET` runtime. This would enable you to use some Rust libraries from C#/F#, with little effort. 
 # .NET runtime has GC, so would not Rusts memory management be useless here?
-Rust code usually heavily uses stack instead of Heap. This would speed up code ruining within the CLR runtime too. As for the heap allocated objects, they will be allocated from unmanged(non-GC) memory, and will be allocated/freed exactly like in Rust.
+Rust code usually heavily uses stack instead of Heap. This would speed up code running within the CLR runtime too. As for the heap allocated objects, they will be allocated from unmanged(non-GC) memory, and will be allocated/freed exactly like in Rust.
 # I can already load shared libraries from C# code, so is this not useless? Does this improve interop?
 The Rust APIs this codegen exposes to C#/F# code would be only slightly easier to use than something you could expose in a .so or .dll rust library.
 
-Interop would still require some effort, but the Rust code would be bundled together with everything else. You will also have the guarantee that types you use from C# are exactly the same as the ones in C#, preventing any issues coming from such mismatch. All types can be safely send between Rust and C#, with exactly the same layout.
+Interop would still require some effort, but the Rust code would be bundled together with everything else. You will also have the guarantee that types you use from C# are exactly the same as the ones in C#, preventing any issues coming from such mismatch. All types can be safely sent between Rust and C#, with exactly the same layout.
 
 Additionally, since all Rust code compiled with this codegen can be bundled with C#/F# code, you would no longer need to ship different versions of the library for different architectures. Any architecture supported by CLR would work out of the box, without the exact same binary.
 
