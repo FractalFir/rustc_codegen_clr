@@ -164,6 +164,7 @@ fn backend_path_debug() -> &'static str {
         panic!("Unsupported target OS");
     }
 }
+test_lib! {assign}
 test_lib! {binops}
 test_lib! {branches}
 test_lib! {calls}

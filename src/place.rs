@@ -3,7 +3,7 @@ use crate::cil_op::{CILOp, FieldDescriptor};
 use crate::r#type::{DotnetTypeRef, Type};
 use crate::utilis::field_name;
 use rustc_middle::mir::{Place, PlaceElem};
-use rustc_middle::ty::{Instance, IntTy, Ty, TyCtxt, TyKind, UintTy};
+use rustc_middle::ty::{Instance, IntTy, Ty, TyCtxt, TyKind, UintTy, FloatTy};
 fn slice_head<T>(slice: &[T]) -> (&T, &[T]) {
     assert!(!slice.is_empty());
     let last = &slice[slice.len() - 1];
@@ -318,12 +318,22 @@ fn ptr_set_op<'ctx>(curr_type: PlaceTy<'ctx>, tyctx: TyCtxt<'ctx>) -> Vec<CILOp>
                 IntTy::I32 => vec![CILOp::STIndI32],
                 IntTy::I64 => vec![CILOp::STIndI64],
                 IntTy::Isize => vec![CILOp::STIndISize],
-                _ => todo!("TODO: can't deref int type {int_ty:?} yet"),
+                IntTy::I128 => todo!("Can't dereference 128 bit intigers!"), //vec![CILOp::LdObj(Box::new())],
             },
             TyKind::Uint(int_ty) => match int_ty {
                 UintTy::U8 => vec![CILOp::STIndI8],
-                _ => todo!("TODO: can't deref int type {int_ty:?} yet"),
+                UintTy::U16 => vec![CILOp::STIndI16],
+                UintTy::U32 => vec![CILOp::STIndI32],
+                UintTy::U64 => vec![CILOp::STIndI64],
+                UintTy::Usize => vec![CILOp::STIndISize],
+                UintTy::U128 => todo!("Can't dereference 128 bit intigers!"), //vec![CILOp::LdObj(Box::new())],
             },
+            TyKind::Float(float_ty) => match float_ty {
+                FloatTy::F32 => vec![CILOp::STIndF32],
+                FloatTy::F64 => vec![CILOp::STIndF64],
+            },
+            TyKind::Bool => vec![CILOp::STIndI8], // an unmanaged bool is 1 byte, even though a managed bool is 4 bytes
+            TyKind::Char => vec![CILOp::STIndI32], // always 4 bytes wide: https://doc.rust-lang.org/std/primitive.char.html#representation
             TyKind::Adt(_, _) => {
                 let curr_type = if let crate::r#type::Type::DotnetType(dotnet_type) =
                     crate::r#type::Type::from_ty(curr_type, tyctx)
@@ -363,6 +373,12 @@ pub fn deref_op<'ctx>(curr_type: PlaceTy<'ctx>, tyctx: TyCtxt<'ctx>) -> Vec<CILO
                 UintTy::U128 => todo!("Can't dereference 128 bit intigers!"), //vec![CILOp::LdObj(Box::new())],
                                                                               //_ => todo!("TODO: can't deref int type {int_ty:?} yet"),
             },
+            TyKind::Float(float_ty) => match float_ty {
+                FloatTy::F32 => vec![CILOp::LDIndF32],
+                FloatTy::F64 => vec![CILOp::LDIndF64],
+            },
+            TyKind::Bool => vec![CILOp::LDIndI8], // an unmanaged bool is 1 byte, even though a managed bool is 4 bytes
+            TyKind::Char => vec![CILOp::LDIndI32], // always 4 bytes wide: https://doc.rust-lang.org/std/primitive.char.html#representation
             TyKind::Adt(_, _) => {
                 let curr_type = if let crate::r#type::Type::DotnetType(dotnet_type) =
                     crate::r#type::Type::from_ty(curr_type, tyctx)
