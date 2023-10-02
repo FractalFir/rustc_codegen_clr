@@ -9,7 +9,7 @@ enum Animal{
     Dog(u64),
 }
 #[allow(dead_code)]
-#[derive(Clone,Copy)]
+#[derive(Clone,Copy,PartialEq,Eq)]
 enum SimpleEnum{
     A,
     B,
@@ -21,7 +21,9 @@ enum SimpleEnum{
 #[allow(dead_code)]
 fn simple_enum(){
     let simple_enum = SimpleEnum::A;
-    black_box(simple_enum);
+    let simple_enum = black_box(simple_enum);
+    test_eq!(simple_enum, SimpleEnum::A);
+    test_ne!(simple_enum, SimpleEnum::B);
 }
 fn main(){
     simple_enum();

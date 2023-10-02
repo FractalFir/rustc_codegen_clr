@@ -1,13 +1,25 @@
-use crate::{cil_op::CILOp, method::Method};
+use crate::{cil_op::CILOp, method::Method, r#type::Type};
 const MAX_PASS: u32 = 8;
 pub fn opt_method(method: &mut Method) {
+        return;
+    repalce_const_sizes(method.ops_mut());
     for _ in 0..MAX_PASS {
         op2_combos(method.ops_mut());
-        //op3_combos(method.ops_mut());
+        op3_combos(method.ops_mut());
+        op4_combos(method.ops_mut());
         remove_zombie_sets(method.ops_mut());
         method.ops_mut().retain(|op| *op != CILOp::Nop);
         remove_unused_locals(method);
     }
+}
+fn repalce_const_sizes(ops: &mut [CILOp]){
+    ops.iter_mut().for_each(|op|match op{
+        CILOp::SizeOf(tpe)=>match tpe.as_ref(){
+            Type::U8 | Type::I8 => *op = CILOp::LdcI32(1),
+            _=>(),
+        }
+        _=>(),
+    })
 }
 fn remove_unused_locals(method: &mut Method) {
     let mut local_map = vec![u32::MAX; method.locals().len()];
@@ -97,8 +109,39 @@ fn op3_combos(ops: &mut Vec<CILOp>) {
         return;
     }
     for idx in 0..(ops.len() - 2) {
-        let (_op1, _op2, _op3) = (&ops[idx], &ops[idx + 1], &ops[idx + 2]);
-        ();
+        let (op1, op2, op3) = (&ops[idx], &ops[idx + 1], &ops[idx + 2]);
+        match (op1,op2,op3){
+            (CILOp::LdcI32(1) , CILOp::LDLoc(_) | CILOp::LDArg(_) , CILOp::Mul)=>{
+                ops[idx] = op2.clone();
+                ops[idx + 1] = CILOp::Nop;
+                ops[idx + 2] = CILOp::Nop;
+            },
+            (_, CILOp::LdcI32(1) , CILOp::Mul)=>{
+                ops[idx] = op1.clone();
+                ops[idx + 1] = CILOp::Nop;
+                ops[idx + 2] = CILOp::Nop;
+            },
+            _=>(),
+        }
+    }
+}
+fn op4_combos(ops: &mut Vec<CILOp>) {
+    if ops.len() < 4 {
+        return;
+    }
+    for idx in 0..(ops.len() - 3) {
+        let (op1, op2, op3,op4) = (&ops[idx], &ops[idx + 1], &ops[idx + 2],&ops[idx + 3]);
+        match (op1,op2,op3,op4){
+            (CILOp::STLoc(b1),CILOp::LDLoc(_) | CILOp::LDArg(_),CILOp::LDLoc(b2),CILOp::Add | CILOp::Mul)=>if b1==b2{
+                let op2 = op2.clone();
+                ops[idx+1] = op4.clone();
+                ops[idx] = op2;
+                ops[idx+2] = CILOp::Nop;
+                ops[idx+3] = CILOp::Nop;
+            }
+            _=>(),
+        }
+        
     }
 }
 /// A "Dead" local is one that is only written into - never read.

@@ -147,7 +147,13 @@ impl Type {
             }
             TyKind::Never => Self::Void, // TODO: ensure this is always OK
             TyKind::Adt(adt_def, subst) => {
-                Self::DotnetType(Box::new(DotnetTypeRef::from_adt(adt_def, subst, tyctx)))
+                let name = crate::utilis::adt_name(adt_def);
+                if is_name_magic(name.as_ref()){
+                    magic_type(name.as_ref(),adt_def,subst)
+                }
+                else{
+                    Self::DotnetType(Box::new(DotnetTypeRef::from_adt(adt_def, subst, tyctx)))
+                }
             }
             TyKind::Dynamic(_, _, _) => Type::Unresolved,
             TyKind::Str => Type::Unresolved,
@@ -214,5 +220,17 @@ pub fn element_type<'tyctx>(src: Ty<'tyctx>) -> Ty<'tyctx> {
 impl From<DotnetTypeRef> for Type {
     fn from(value: DotnetTypeRef) -> Self {
         Self::DotnetType(Box::new(value))
+    }
+}
+const INTEROP_OBJ_TPE_NAME:&str = "RustcCLRInteropManagedClass";
+const INTEROP_CHR_TPE_NAME:&str = "RustcCLRInteropManagedChar";
+fn is_name_magic(name:&str)->bool{
+    name.contains("RustcCLRInteropManaged")
+}
+fn magic_type(name:&str,adt:&AdtDef,subst:&[GenericArg])->Type{
+    match name{
+        INTEROP_OBJ_TPE_NAME=>todo!("Interop with managed classes not supported!"),
+        INTEROP_CHR_TPE_NAME=>Type::DotnetChar,
+        _=>todo!("Interop type {name:?} is not yet supported!"),
     }
 }
