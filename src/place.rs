@@ -332,6 +332,8 @@ fn ptr_set_op<'ctx>(curr_type: PlaceTy<'ctx>, tyctx: TyCtxt<'ctx>) -> Vec<CILOp>
                 FloatTy::F32 => vec![CILOp::STIndF32],
                 FloatTy::F64 => vec![CILOp::STIndF64],
             },
+            TyKind::Bool => vec![CILOp::STIndI8], // an unmanaged bool is 1 byte, even though a managed bool is 4 bytes
+            TyKind::Char => vec![CILOp::STIndI32], // always 4 bytes wide: https://doc.rust-lang.org/std/primitive.char.html#representation
             TyKind::Adt(_, _) => {
                 let curr_type = if let crate::r#type::Type::DotnetType(dotnet_type) =
                     crate::r#type::Type::from_ty(curr_type, tyctx)
@@ -375,6 +377,8 @@ pub fn deref_op<'ctx>(curr_type: PlaceTy<'ctx>, tyctx: TyCtxt<'ctx>) -> Vec<CILO
                 FloatTy::F32 => vec![CILOp::LDIndF32],
                 FloatTy::F64 => vec![CILOp::LDIndF64],
             },
+            TyKind::Bool => vec![CILOp::LDIndI8], // an unmanaged bool is 1 byte, even though a managed bool is 4 bytes
+            TyKind::Char => vec![CILOp::LDIndI32], // always 4 bytes wide: https://doc.rust-lang.org/std/primitive.char.html#representation
             TyKind::Adt(_, _) => {
                 let curr_type = if let crate::r#type::Type::DotnetType(dotnet_type) =
                     crate::r#type::Type::from_ty(curr_type, tyctx)

@@ -57,3 +57,13 @@ pub extern fn assign_f32(place: &mut f32, value: &f32) {
 pub extern fn assign_f64(place: &mut f64, value: &f64) {
     *place = *value;
 }
+
+#[no_mangle]
+pub extern fn assign_bool(place: &mut bool, value: &bool) {
+    *place = *value;
+}
+
+#[no_mangle]
+pub extern fn assign_char(place: &mut char, value: &char) {
+    *place = *value;
+}
