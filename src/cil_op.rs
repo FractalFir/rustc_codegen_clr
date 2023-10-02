@@ -173,12 +173,16 @@ pub enum CILOp {
     LDIndI32,
     LDIndI64,
     LDIndISize,
+    LDIndF32,
+    LDIndF64,
     LDIndRef,
     STIndI8,
     STIndI16,
     STIndI32,
     STIndI64,
     STIndISize,
+    STIndF32,
+    STIndF64,
     //Debugging
     Comment(IString),
     // Arthmetic Operations
