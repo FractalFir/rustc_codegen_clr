@@ -2,7 +2,7 @@
 *NOTE: this project is a very early proof-of-concept*
 This is a compiler backend for rustc which targets the .NET platform and runtime, and could enable compiling Rust code for the `.NET` runtime. This would enable you to use some Rust libraries from C#/F#, with little effort. 
 # .NET runtime has GC, so would not Rusts memory management be useless here?
-Rust code usually heavily uses stack instead of Heap. This would speed up code running within the CLR runtime too. As for the heap allocated objects, they will be allocated from unmanaged(non-GC) memory, and will be allocated/freed exactly like in Rust.
+Rust code usually heavily uses stack instead of Heap. This would speed up code running within the CLR runtime too. As for the heap allocated objects, they will be allocated from unmanged(non-GC) memory, and will be allocated/freed exactly like in Rust.
 # I can already load shared libraries from C# code, so is this not useless? Does this improve interop?
 The Rust APIs this codegen exposes to C#/F# code would be only slightly easier to use than something you could expose in a .so or .dll Rust library.
 
