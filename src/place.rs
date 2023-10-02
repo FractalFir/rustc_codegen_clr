@@ -318,11 +318,15 @@ fn ptr_set_op<'ctx>(curr_type: PlaceTy<'ctx>, tyctx: TyCtxt<'ctx>) -> Vec<CILOp>
                 IntTy::I32 => vec![CILOp::STIndI32],
                 IntTy::I64 => vec![CILOp::STIndI64],
                 IntTy::Isize => vec![CILOp::STIndISize],
-                _ => todo!("TODO: can't deref int type {int_ty:?} yet"),
+                IntTy::I128 => todo!("Can't dereference 128 bit intigers!"), //vec![CILOp::LdObj(Box::new())],
             },
             TyKind::Uint(int_ty) => match int_ty {
                 UintTy::U8 => vec![CILOp::STIndI8],
-                _ => todo!("TODO: can't deref int type {int_ty:?} yet"),
+                UintTy::U16 => vec![CILOp::STIndI16],
+                UintTy::U32 => vec![CILOp::STIndI32],
+                UintTy::U64 => vec![CILOp::STIndI64],
+                UintTy::Usize => vec![CILOp::STIndISize],
+                UintTy::U128 => todo!("Can't dereference 128 bit intigers!"), //vec![CILOp::LdObj(Box::new())],
             },
             TyKind::Adt(_, _) => {
                 let curr_type = if let crate::r#type::Type::DotnetType(dotnet_type) =
