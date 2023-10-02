@@ -47,3 +47,13 @@ pub extern fn assign_u64(place: &mut u64, value: u64) {
 pub extern fn assign_usize(place: &mut usize, value: usize) {
     *place = value;
 }
+
+#[no_mangle]
+pub extern fn assign_f32(place: &mut f32, value: f32) {
+    *place = value;
+}
+
+#[no_mangle]
+pub extern fn assign_f64(place: &mut f64, value: f64) {
+    *place = value;
+}
