@@ -1,12 +1,12 @@
 # What is rustc_codegen_clr?
 *NOTE: this project is a very early proof-of-concept*
-This is a compiler backend for rustc which targets the .NET platform and runtime, and could enable compiling rust code for the `.NET` runtime. This would enable you to use some Rust libraries from C#/F#, with little effort. 
+This is a compiler backend for rustc which targets the .NET platform and runtime, and could enable compiling Rust code for the `.NET` runtime. This would enable you to use some Rust libraries from C#/F#, with little effort. 
 # .NET runtime has GC, so would not Rusts memory management be useless here?
-Rust code usually heavily uses stack instead of Heap. This would speed up code ruining within the CLR runtime too. As for the heap allocated objects, they will be allocated from unmanged(non-GC) memory, and will be allocated/freed exactly like in Rust.
+Rust code usually heavily uses stack instead of Heap. This would speed up code running within the CLR runtime too. As for the heap allocated objects, they will be allocated from unmanged(non-GC) memory, and will be allocated/freed exactly like in Rust.
 # I can already load shared libraries from C# code, so is this not useless? Does this improve interop?
-The Rust APIs this codegen exposes to C#/F# code would be only slightly easier to use than something you could expose in a .so or .dll rust library.
+The Rust APIs this codegen exposes to C#/F# code would be only slightly easier to use than something you could expose in a .so or .dll Rust library.
 
-Interop would still require some effort, but the Rust code would be bundled together with everything else. You will also have the guarantee that types you use from C# are exactly the same as the ones in C#, preventing any issues coming from such mismatch. All types can be safely send between Rust and C#, with exactly the same layout.
+Interop would still require some effort, but the Rust code would be bundled together with everything else. You will also have the guarantee that types you use from C# are exactly the same as the ones in C#, preventing any issues coming from such mismatch. All types can be safely sent between Rust and C#, with exactly the same layout.
 
 Additionally, since all Rust code compiled with this codegen can be bundled with C#/F# code, you would no longer need to ship different versions of the library for different architectures. Any architecture supported by CLR would work out of the box, without the exact same binary.
 
@@ -37,8 +37,8 @@ Compiling Rust to CLR is potentially better for the JIT. Since CLR's JIT now "se
 - [X] Generics *GATS don't work in some edge cases*
 - [X] for loops *with some minor limitations*
 ## Types
-*NOTE This section says only if a type can be translated for .NET to understand. This **does not** mean the type is fully usable.*
-- [X] All integer and float types are supported. Support for math with 128 bit integers is very limited 
+*NOTE: This section says only if a type can be translated for .NET to understand. This **does not** mean the type is fully usable.*
+- [X] All integer and float types are supported. Support for math with 128-bit integers is very limited 
 - [X] References are supported
 - [ ] Arrays, slices
 - [X] Void type
@@ -51,4 +51,4 @@ Compiling Rust to CLR is potentially better for the JIT. Since CLR's JIT now "se
 # Issues
 Backend still does not understand some Rust optimizations, and you may need to prevent them to allow for compilation.
 While testing is a bit more extensive, there still are a lot of edge cases which may break this backend.
-The backend crashes any time it encounters something not supported yet.
+The backend crashes anytime it encounters something not supported yet.
