@@ -1,6 +1,7 @@
 use crate::IString;
 use rustc_middle::ty::{
-    AdtDef, ClosureKind, FloatTy, GenericArg, Instance, IntTy, ParamEnv, Ty, TyCtxt, TyKind, UintTy,
+    AdtDef, ClosureKind, ConstKind, FloatTy, GenericArg, Instance, IntTy, ParamEnv, Ty, TyCtxt,
+    TyKind, UintTy,
 };
 /// This struct represetnts either a primitive .NET type (F32,F64), or stores information on how to lookup a more complex type (struct,class,array)
 use serde::{Deserialize, Serialize};
@@ -28,6 +29,7 @@ pub enum Type {
     ISize,
     // A refernece to a .NET type
     DotnetType(Box<DotnetTypeRef>),
+    DotnetArray(Box<DotnetArray>),
     // Pointer to a type
     Ptr(Box<Self>),
     // Speical type marking an unresoved type. This is a work around some issues with corelib types. Nothing can ever interact directly with this type.
@@ -36,6 +38,11 @@ pub enum Type {
     Foreign,
     GenericArg(u32),
     DotnetChar,
+}
+#[derive(Serialize, Deserialize, PartialEq, Clone, Eq, Hash, Debug)]
+pub struct DotnetArray {
+    pub element: Type,
+    pub dimensions: usize,
 }
 #[derive(Serialize, Deserialize, PartialEq, Clone, Eq, Hash, Debug)]
 pub struct DotnetTypeRef {
@@ -148,10 +155,9 @@ impl Type {
             TyKind::Never => Self::Void, // TODO: ensure this is always OK
             TyKind::Adt(adt_def, subst) => {
                 let name = crate::utilis::adt_name(adt_def);
-                if is_name_magic(name.as_ref()){
-                    magic_type(name.as_ref(),adt_def,subst)
-                }
-                else{
+                if is_name_magic(name.as_ref()) {
+                    magic_type(name.as_ref(), adt_def, subst, tyctx)
+                } else {
                     Self::DotnetType(Box::new(DotnetTypeRef::from_adt(adt_def, subst, tyctx)))
                 }
             }
@@ -222,15 +228,67 @@ impl From<DotnetTypeRef> for Type {
         Self::DotnetType(Box::new(value))
     }
 }
-const INTEROP_OBJ_TPE_NAME:&str = "RustcCLRInteropManagedClass";
-const INTEROP_CHR_TPE_NAME:&str = "RustcCLRInteropManagedChar";
-fn is_name_magic(name:&str)->bool{
+const INTEROP_OBJ_TPE_NAME: &str = "RustcCLRInteropManagedClass";
+const INTEROP_CHR_TPE_NAME: &str = "RustcCLRInteropManagedChar";
+const INTEROP_ARR_TPE_NAME: &str = "RustcCLRInteropManagedArray";
+fn is_name_magic(name: &str) -> bool {
     name.contains("RustcCLRInteropManaged")
 }
-fn magic_type(name:&str,adt:&AdtDef,subst:&[GenericArg])->Type{
-    match name{
-        INTEROP_OBJ_TPE_NAME=>todo!("Interop with managed classes not supported!"),
-        INTEROP_CHR_TPE_NAME=>Type::DotnetChar,
-        _=>todo!("Interop type {name:?} is not yet supported!"),
+fn magic_type<'tyctx>(
+    name: &str,
+    adt: &AdtDef<'tyctx>,
+    subst: &[GenericArg<'tyctx>],
+    ctx: TyCtxt<'tyctx>,
+) -> Type {
+    match name {
+        INTEROP_OBJ_TPE_NAME => {
+            if subst.len() != 2 {
+                panic!("MAnaged object reference must have exactly 2 generic arguments!");
+            }
+            let asm = garg_to_string(&subst[0], ctx);
+            let asm = Some(asm).filter(|asm| !asm.is_empty());
+            let name = garg_to_string(&subst[1], ctx);
+            Type::DotnetType(DotnetTypeRef::new(asm.as_ref().map(|x| x.as_str()), &name).into())
+        }
+        INTEROP_ARR_TPE_NAME => {
+            if subst.is_empty() {
+                panic!("Managed array size is not");
+            }
+            let element = &subst[0].as_type().expect("Arrat type must be specified!");
+            let element = Type::from_ty(*element, ctx);
+            let dimensions = 1;
+            Type::DotnetArray(
+                DotnetArray {
+                    element,
+                    dimensions,
+                }
+                .into(),
+            )
+        }
+        INTEROP_CHR_TPE_NAME => Type::DotnetChar,
+        _ => todo!("Interop type {name:?} is not yet supported!"),
+    }
+}
+fn garg_to_string<'tyctx>(garg: &GenericArg<'tyctx>, ctx: TyCtxt<'tyctx>) -> String {
+    let str_const = garg
+        .as_const()
+        .expect("Generic argument was not an constant!");
+    let tpe = str_const
+        .ty()
+        .builtin_deref(true)
+        .expect("Type of generic argument was not a reference, can't resolve as string!");
+    if !tpe.ty.is_str() {
+        panic!("Generic argument was not a string, but {str_const:?}!");
+    } else {
+        let kind = str_const.kind();
+        match kind {
+            ConstKind::Value(value) => {
+                let raw_bytes = value
+                    .try_to_raw_bytes(ctx, str_const.ty())
+                    .expect("String const did not contain valid string!");
+                String::from_utf8(raw_bytes.into()).expect("String constant invalid!")
+            }
+            _ => todo!("Can't convert generic arg of const kind {kind:?} to string!"),
+        }
     }
 }

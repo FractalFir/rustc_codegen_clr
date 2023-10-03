@@ -279,10 +279,10 @@ add_method!(managed_char_from_utf8,&[Type::U64],&Type::DotnetChar,&[
 */
 // ORIGINAL IL:
 /*
-.method public static hidebysig 
+.method public static hidebysig
         instance char FromUTF8 (
             uint64 UTF8
-        ) cil managed 
+        ) cil managed
     {
         // Method begins at RVA 0x2068
         // Code size 139 (0x8b)

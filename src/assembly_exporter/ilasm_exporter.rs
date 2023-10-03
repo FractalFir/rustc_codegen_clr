@@ -551,7 +551,14 @@ fn type_cli(tpe: &Type) -> Cow<'static, str> {
         Type::DotnetChar => "char".into(),
         Type::GenericArg(idx) => format!("!G{idx}").into(),
         Type::Foreign => "valuetype Foreign".into(),
-        //_ => todo!("Unsuported type {tpe:?}"),
+        Type::DotnetArray(array) => {
+            let arr = if array.dimensions > 0 {
+                (0..(array.dimensions - 1)).map(|_| ",").collect::<String>()
+            } else {
+                "".into()
+            };
+            format!("{tpe}[{arr}]", tpe = type_cli(&array.element)).into()
+        } //_ => todo!("Unsuported type {tpe:?}"),
     }
 }
 fn field_type_cli(tpe: &Type) -> Cow<'static, str> {
@@ -601,7 +608,14 @@ fn prefixed_type_cli(tpe: &Type) -> Cow<'static, str> {
         Type::Bool => "bool".into(),
         Type::DotnetChar => "char".into(),
         Type::GenericArg(idx) => format!("!G{idx}").into(),
-        //_ => todo!("Unsuported type {tpe:?}"),
+        Type::DotnetArray(array) => {
+            let arr = if array.dimensions > 0 {
+                (0..(array.dimensions - 1)).map(|_| ",").collect::<String>()
+            } else {
+                "".into()
+            };
+            format!("{tpe}[{arr}]", tpe = type_cli(&array.element)).into()
+        } //_ => todo!("Unsuported type {tpe:?}"),
     }
 }
 fn args_cli(w: &mut impl Write, args: &[Type]) -> std::io::Result<()> {

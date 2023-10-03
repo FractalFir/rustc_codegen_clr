@@ -3,7 +3,7 @@ use crate::cil_op::{CILOp, FieldDescriptor};
 use crate::r#type::{DotnetTypeRef, Type};
 use crate::utilis::field_name;
 use rustc_middle::mir::{Place, PlaceElem};
-use rustc_middle::ty::{Instance, IntTy, Ty, TyCtxt, TyKind, UintTy, FloatTy};
+use rustc_middle::ty::{FloatTy, Instance, IntTy, Ty, TyCtxt, TyKind, UintTy};
 fn slice_head<T>(slice: &[T]) -> (&T, &[T]) {
     assert!(!slice.is_empty());
     let last = &slice[slice.len() - 1];
