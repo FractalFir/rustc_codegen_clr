@@ -1,6 +1,6 @@
 use rustc_middle::ty::{
-    AdtDef, Binder, BoundVariableKind, Const, EarlyBinder, Instance, ParamEnv, SymbolName, Ty,
-    TyCtxt, TyKind, TypeFoldable,
+    AdtDef, Binder, BoundVariableKind, Const, ConstKind, EarlyBinder, GenericArg, Instance,
+    ParamEnv, SymbolName, Ty, TyCtxt, TyKind, TypeFoldable,
 };
 
 use crate::codegen_error::CodegenError;
@@ -98,4 +98,27 @@ pub fn try_resolve_const_size(size: &Const) -> Result<usize, &'static str> {
     }?;
     let value = scalar.to_u64().expect("Could not convert scalar to u64!");
     Ok(value as usize)
+}
+pub fn garg_to_string<'tyctx>(garg: &GenericArg<'tyctx>, ctx: TyCtxt<'tyctx>) -> String {
+    let str_const = garg
+        .as_const()
+        .expect("Generic argument was not an constant!");
+    let tpe = str_const
+        .ty()
+        .builtin_deref(true)
+        .expect("Type of generic argument was not a reference, can't resolve as string!");
+    if !tpe.ty.is_str() {
+        panic!("Generic argument was not a string, but {str_const:?}!");
+    } else {
+        let kind = str_const.kind();
+        match kind {
+            ConstKind::Value(value) => {
+                let raw_bytes = value
+                    .try_to_raw_bytes(ctx, str_const.ty())
+                    .expect("String const did not contain valid string!");
+                String::from_utf8(raw_bytes.into()).expect("String constant invalid!")
+            }
+            _ => todo!("Can't convert generic arg of const kind {kind:?} to string!"),
+        }
+    }
 }

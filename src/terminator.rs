@@ -1,11 +1,4 @@
-use rustc_middle::{
-    mir::{
-        interpret::ConstValue, Body, Constant, ConstantKind, Operand, Place, SwitchTargets,
-        Terminator, TerminatorKind,
-    },
-    ty::{Instance, ParamEnv, Ty, TyCtxt, TyKind},
-};
-
+use crate::utilis::garg_to_string;
 use crate::{
     cil_op::{CILOp, CallSite},
     function_sig::FnSig,
@@ -13,6 +6,52 @@ use crate::{
     r#type::DotnetTypeRef,
     utilis::monomorphize,
 };
+use rustc_middle::{
+    mir::{
+        interpret::ConstValue, Body, Constant, ConstantKind, Operand, Place, SwitchTargets,
+        Terminator, TerminatorKind,
+    },
+    ty::{GenericArg, Instance, ParamEnv, Ty, TyCtxt, TyKind},
+};
+use rustc_span::def_id::DefId;
+const CTOR_FN_NAME: &str = "rustc_clr_interop_managed_ctor";
+fn call_ctor<'ctx>(
+    tyctx: TyCtxt<'ctx>,
+    def_id: DefId,
+    subst_ref: &[GenericArg<'ctx>],
+    function_name: &str,
+    args: &[Operand<'ctx>],
+    destination: &Place<'ctx>,
+    method: &'ctx Body<'ctx>,
+    method_instance: Instance<'ctx>,
+) -> Vec<CILOp> {
+    let argc_start = function_name.find(CTOR_FN_NAME).unwrap() + (CTOR_FN_NAME.len());
+    let argc_end = argc_start + function_name[argc_start..].find('_').unwrap();
+    let argc = &function_name[argc_start..argc_end];
+    let argc = argc.parse::<u32>().unwrap();
+    assert!(subst_ref.len() as u32 == argc + 2);
+    assert!(args.len() as u32 == argc);
+    let asm = garg_to_string(&subst_ref[0], tyctx);
+    let asm = Some(asm).filter(|asm| !asm.is_empty());
+    let class_name = garg_to_string(&subst_ref[1], tyctx);
+    let tpe = DotnetTypeRef::new(asm.as_ref().map(|x| x.as_str()), &class_name);
+    if argc == 0 {
+        crate::place::place_set(
+            destination,
+            tyctx,
+            vec![CILOp::NewObj(CallSite::boxed(
+                Some(tpe.clone()),
+                ".ctor".into(),
+                FnSig::new(&[tpe.into()], &crate::r#type::Type::Void),
+                false,
+            ))],
+            method,
+            method_instance,
+        )
+    } else {
+        todo!("Using arguments in constrcutors is not supported yet!");
+    }
+}
 fn call<'ctx>(
     fn_type: &Ty<'ctx>,
     body: &'ctx Body<'ctx>,
@@ -21,16 +60,28 @@ fn call<'ctx>(
     destination: &Place<'ctx>,
     method_instance: Instance<'ctx>,
 ) -> Vec<CILOp> {
-    let instance = if let TyKind::FnDef(def_id, subst_ref) = fn_type.kind() {
+    let (instance, def_id, subst_ref) = if let TyKind::FnDef(def_id, subst_ref) = fn_type.kind() {
         let env = ParamEnv::reveal_all();
         let instance = Instance::expect_resolve(tyctx, env, *def_id, subst_ref);
-        instance
+        (instance, def_id, subst_ref)
     } else {
         todo!("Trying to call a type which is not a function definition!");
     };
     let signature = FnSig::from_poly_sig(&fn_type.fn_sig(tyctx), tyctx)
         .expect("Can't get the function signature");
     let function_name = crate::utilis::function_name(tyctx.symbol_name(instance));
+    if function_name.contains(CTOR_FN_NAME) {
+        return call_ctor(
+            tyctx,
+            *def_id,
+            subst_ref,
+            &function_name,
+            args,
+            destination,
+            body,
+            method_instance,
+        );
+    }
     let mut call = Vec::new();
     for arg in args {
         call.extend(crate::operand::handle_operand(

@@ -256,7 +256,7 @@ fn magic_type<'tyctx>(
             }
             let element = &subst[0].as_type().expect("Arrat type must be specified!");
             let element = Type::from_ty(*element, ctx);
-            let dimensions = garag_to_usize(&subst[1],ctx);
+            let dimensions = garag_to_usize(&subst[1], ctx);
             Type::DotnetArray(
                 DotnetArray {
                     element,
@@ -269,45 +269,26 @@ fn magic_type<'tyctx>(
         _ => todo!("Interop type {name:?} is not yet supported!"),
     }
 }
-fn garag_to_usize<'tyctx>(garg: &GenericArg<'tyctx>, ctx: TyCtxt<'tyctx>) ->u64{
+fn garag_to_usize<'tyctx>(garg: &GenericArg<'tyctx>, ctx: TyCtxt<'tyctx>) -> u64 {
     let usize_const = garg
-    .as_const()
-    .expect("Generic argument was not an constant!"); 
-    if usize_const.ty().is_unit(){
-        panic!("Generic argument was not a unit type! ty:{:?}",usize_const.ty());
-    }
-    else{
+        .as_const()
+        .expect("Generic argument was not an constant!");
+    if usize_const.ty().is_unit() {
+        panic!(
+            "Generic argument was not a unit type! ty:{:?}",
+            usize_const.ty()
+        );
+    } else {
         let kind = usize_const.kind();
         match kind {
             ConstKind::Value(value) => {
-                let scalar = value.try_to_scalar_int()
+                let scalar = value
+                    .try_to_scalar_int()
                     .expect("String const did not contain valid scalar!");
-                scalar. try_to_uint(scalar.size()).unwrap() as u64
+                scalar.try_to_uint(scalar.size()).unwrap() as u64
             }
             _ => todo!("Can't convert generic arg of const kind {kind:?} to string!"),
         }
     }
 }
-fn garg_to_string<'tyctx>(garg: &GenericArg<'tyctx>, ctx: TyCtxt<'tyctx>) -> String {
-    let str_const = garg
-        .as_const()
-        .expect("Generic argument was not an constant!");
-    let tpe = str_const
-        .ty()
-        .builtin_deref(true)
-        .expect("Type of generic argument was not a reference, can't resolve as string!");
-    if !tpe.ty.is_str() {
-        panic!("Generic argument was not a string, but {str_const:?}!");
-    } else {
-        let kind = str_const.kind();
-        match kind {
-            ConstKind::Value(value) => {
-                let raw_bytes = value
-                    .try_to_raw_bytes(ctx, str_const.ty())
-                    .expect("String const did not contain valid string!");
-                String::from_utf8(raw_bytes.into()).expect("String constant invalid!")
-            }
-            _ => todo!("Can't convert generic arg of const kind {kind:?} to string!"),
-        }
-    }
-}
+use crate::utilis::garg_to_string;
