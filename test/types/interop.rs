@@ -31,4 +31,10 @@ fn main(){
     black_box(tpe);
     let arr:*mut RustcCLRInteropManagedArray<i32,1> = unsafe{core::ptr::null_mut()};
     black_box(arr);
+    let arr:*mut RustcCLRInteropManagedArray<i32,2> = unsafe{core::ptr::null_mut()};
+    black_box(arr);
+    let arr:*mut RustcCLRInteropManagedArray<i32,3> = unsafe{core::ptr::null_mut()};
+    black_box(arr);
+    let arr:*mut RustcCLRInteropManagedArray<i32,4> = unsafe{core::ptr::null_mut()};
+    black_box(arr);
 }

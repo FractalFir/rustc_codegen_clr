@@ -42,7 +42,7 @@ pub enum Type {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Eq, Hash, Debug)]
 pub struct DotnetArray {
     pub element: Type,
-    pub dimensions: usize,
+    pub dimensions: u64,
 }
 #[derive(Serialize, Deserialize, PartialEq, Clone, Eq, Hash, Debug)]
 pub struct DotnetTypeRef {
@@ -251,12 +251,12 @@ fn magic_type<'tyctx>(
             Type::DotnetType(DotnetTypeRef::new(asm.as_ref().map(|x| x.as_str()), &name).into())
         }
         INTEROP_ARR_TPE_NAME => {
-            if subst.is_empty() {
+            if subst.len() != 2 {
                 panic!("Managed array size is not");
             }
             let element = &subst[0].as_type().expect("Arrat type must be specified!");
             let element = Type::from_ty(*element, ctx);
-            let dimensions = 1;
+            let dimensions = garag_to_usize(&subst[1],ctx);
             Type::DotnetArray(
                 DotnetArray {
                     element,
@@ -267,6 +267,25 @@ fn magic_type<'tyctx>(
         }
         INTEROP_CHR_TPE_NAME => Type::DotnetChar,
         _ => todo!("Interop type {name:?} is not yet supported!"),
+    }
+}
+fn garag_to_usize<'tyctx>(garg: &GenericArg<'tyctx>, ctx: TyCtxt<'tyctx>) ->u64{
+    let usize_const = garg
+    .as_const()
+    .expect("Generic argument was not an constant!"); 
+    if usize_const.ty().is_unit(){
+        panic!("Generic argument was not a unit type! ty:{:?}",usize_const.ty());
+    }
+    else{
+        let kind = usize_const.kind();
+        match kind {
+            ConstKind::Value(value) => {
+                let scalar = value.try_to_scalar_int()
+                    .expect("String const did not contain valid scalar!");
+                scalar. try_to_uint(scalar.size()).unwrap() as u64
+            }
+            _ => todo!("Can't convert generic arg of const kind {kind:?} to string!"),
+        }
     }
 }
 fn garg_to_string<'tyctx>(garg: &GenericArg<'tyctx>, ctx: TyCtxt<'tyctx>) -> String {
