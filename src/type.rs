@@ -68,8 +68,11 @@ impl DotnetTypeRef {
             "valuetype"
         }
         else{
-            ""
+            "class"
         }
+    }
+    pub fn set_valuetype(&mut self,is_valuetype:bool){
+        self.is_valuetype = is_valuetype;
     }
     pub fn array(element: Type, length: usize) -> Self {
         let name = format!("Arr{length}");

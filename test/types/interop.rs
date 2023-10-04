@@ -27,31 +27,31 @@ impl From<char> for RustcCLRInteropManagedChar{
     }
 }
 #[inline(never)]
-fn rustc_clr_interop_managed_call0_<const ASSEMBLY:&'static str,const CLASS_PATH:&'static str,const METHOD:&'static str,Ret>()->Ret{
+fn rustc_clr_interop_managed_call0_<const ASSEMBLY:&'static str,const CLASS_PATH:&'static str,const IS_VALUETYPE:bool,const METHOD:&'static str,Ret>()->Ret{
     core::intrinsics::abort();
 }
 #[inline(never)]
-fn rustc_clr_interop_managed_call1_<const ASSEMBLY:&'static str,const CLASS_PATH:&'static str,const METHOD:&'static str,const IS_STATIC:bool,Ret,Arg1>(arg1:Arg1)->Ret{
+fn rustc_clr_interop_managed_call1_<const ASSEMBLY:&'static str,const CLASS_PATH:&'static str,const IS_VALUETYPE:bool,const METHOD:&'static str,const IS_STATIC:bool,Ret,Arg1>(arg1:Arg1)->Ret{
     core::intrinsics::abort();
 }
 #[inline(never)]
-fn rustc_clr_interop_managed_call2_<const ASSEMBLY:&'static str,const CLASS_PATH:&'static str,const METHOD:&'static str,const IS_STATIC:bool,Ret,Arg1,Arg2>(arg1:Arg1,arg2:Arg2)->Ret{
+fn rustc_clr_interop_managed_call2_<const ASSEMBLY:&'static str,const CLASS_PATH:&'static str,const IS_VALUETYPE:bool,const METHOD:&'static str,const IS_STATIC:bool,Ret,Arg1,Arg2>(arg1:Arg1,arg2:Arg2)->Ret{
     core::intrinsics::abort();
 }
 #[inline(never)]
-fn rustc_clr_interop_managed_ctor0_<const ASSEMBLY:&'static str,const CLASS_PATH:&'static str>()->RustcCLRInteropManagedClass<ASSEMBLY,CLASS_PATH>{
+fn rustc_clr_interop_managed_ctor0_<const ASSEMBLY:&'static str,const CLASS_PATH:&'static str,const IS_VALUETYPE:bool>()->RustcCLRInteropManagedClass<ASSEMBLY,CLASS_PATH>{
     core::intrinsics::abort();
 }
 #[inline(never)]
-fn rustc_clr_interop_managed_ctor1_<const ASSEMBLY:&'static str,const CLASS_PATH:&'static str,Arg1>(arg1:Arg1)->RustcCLRInteropManagedClass<ASSEMBLY,CLASS_PATH>{
+fn rustc_clr_interop_managed_ctor1_<const ASSEMBLY:&'static str,const CLASS_PATH:&'static str,const IS_VALUETYPE:bool,Arg1>(arg1:Arg1)->RustcCLRInteropManagedClass<ASSEMBLY,CLASS_PATH>{
     core::intrinsics::abort();
 }
 #[inline(never)]
-fn rustc_clr_interop_managed_ctor2_<const ASSEMBLY:&'static str,const CLASS_PATH:&'static str,Arg1,Arg2>(arg1:Arg1,arg2:Arg2)->RustcCLRInteropManagedClass<ASSEMBLY,CLASS_PATH>{
+fn rustc_clr_interop_managed_ctor2_<const ASSEMBLY:&'static str,const CLASS_PATH:&'static str,const IS_VALUETYPE:bool,Arg1,Arg2>(arg1:Arg1,arg2:Arg2)->RustcCLRInteropManagedClass<ASSEMBLY,CLASS_PATH>{
     core::intrinsics::abort();
 }
 #[inline(never)]
-fn rustc_clr_interop_managed_ctor3_<const ASSEMBLY:&'static str,const CLASS_PATH:&'static str,Arg1,Arg2,Arg3>(arg1:Arg1,arg2:Arg2,arg3:Arg3)->RustcCLRInteropManagedClass<ASSEMBLY,CLASS_PATH>{
+fn rustc_clr_interop_managed_ctor3_<const ASSEMBLY:&'static str,const CLASS_PATH:&'static str,const IS_VALUETYPE:bool,Arg1,Arg2,Arg3>(arg1:Arg1,arg2:Arg2,arg3:Arg3)->RustcCLRInteropManagedClass<ASSEMBLY,CLASS_PATH>{
     core::intrinsics::abort();
 }
 //struct RustcCLRInteropManagedBool;
@@ -80,24 +80,24 @@ fn main(){
     new_helloworld();
 }
 fn test_ctors(){
-    let obj = black_box(rustc_clr_interop_managed_ctor0_::<"System.Runtime","System.Object">());
+    let obj = black_box(rustc_clr_interop_managed_ctor0_::<"System.Runtime","System.Object",false>());
     black_box(obj);
     //let strig = rustc_clr_interop_managed_ctor0_::<"System.Runtime","System.String">();
     //black_box(strig);
-    let sb = rustc_clr_interop_managed_ctor0_::<"System.Runtime","System.Text.StringBuilder">();
+    let sb = rustc_clr_interop_managed_ctor0_::<"System.Runtime","System.Text.StringBuilder",false>();
     black_box(sb);
 
-    let vec3 = rustc_clr_interop_managed_ctor3_::<"System.Numerics.Vectors","System.Numerics.Vector3",f32,f32,f32>(0.0,1.5,4.6);
+    let vec3 = rustc_clr_interop_managed_ctor3_::<"System.Numerics.Vectors","System.Numerics.Vector3",true,f32,f32,f32>(0.0,1.5,4.6);
     black_box(vec3);
 }
 type StringBuilder = RustcCLRInteropManagedClass<"System.Runtime","System.Text.StringBuilder">;
 fn console_writeline(){
-    rustc_clr_interop_managed_call0_::<"System.Console","System.Console","WriteLine",()>();
-    rustc_clr_interop_managed_call1_::<"System.Console","System.Console","WriteLine",true,(),i32>(64);
+    rustc_clr_interop_managed_call0_::<"System.Console","System.Console",false,"WriteLine",()>();
+    rustc_clr_interop_managed_call1_::<"System.Console","System.Console",false,"WriteLine",true,(),i32>(64);
 }
 fn new_helloworld(){
-    let sb = rustc_clr_interop_managed_ctor0_::<"System.Runtime","System.Text.StringBuilder">();
+    let sb = rustc_clr_interop_managed_ctor0_::<"System.Runtime","System.Text.StringBuilder",false>();
     black_box(sb);
     let m_char = unsafe{core::mem::transmute::<u16,RustcCLRInteropManagedChar>(black_box(64))}; 
-    rustc_clr_interop_managed_call2_::<"System.Runtime","System.Text.StringBuilder","Append",false,StringBuilder,StringBuilder,RustcCLRInteropManagedChar>(sb,m_char);
+    rustc_clr_interop_managed_call2_::<"System.Runtime","System.Text.StringBuilder",false,"Append",false,StringBuilder,StringBuilder,RustcCLRInteropManagedChar>(sb,m_char);
 }

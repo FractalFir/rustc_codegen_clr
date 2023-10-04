@@ -36,8 +36,10 @@ fn call_managed<'ctx>(
     let asm = garg_to_string(&subst_ref[0], tyctx);
     let asm = Some(asm).filter(|asm| !asm.is_empty());
     let class_name = garg_to_string(&subst_ref[1], tyctx);
-    let managed_fn_name = garg_to_string(&subst_ref[2], tyctx);
-    let tpe = DotnetTypeRef::new(asm.as_ref().map(|x| x.as_str()), &class_name);
+    let is_valuetype = crate::utilis::garag_to_bool(&subst_ref[2], tyctx);
+    let managed_fn_name = garg_to_string(&subst_ref[3], tyctx);
+    let mut tpe = DotnetTypeRef::new(asm.as_ref().map(|x| x.as_str()), &class_name);
+    tpe.set_valuetype(is_valuetype);
     let signature = FnSig::from_poly_sig(&fn_type.fn_sig(tyctx), tyctx)
         .expect("Can't get the function signature");
     if argc == 0 {
@@ -56,7 +58,7 @@ fn call_managed<'ctx>(
         }
     }
     else{
-        let is_static = crate::utilis::garag_to_bool(&subst_ref[3],tyctx);
+        let is_static = crate::utilis::garag_to_bool(&subst_ref[4],tyctx);
         
         let mut call = Vec::new();
         for arg in args {
@@ -95,12 +97,14 @@ fn call_ctor<'ctx>(
     let argc_end = argc_start + function_name[argc_start..].find('_').unwrap();
     let argc = &function_name[argc_start..argc_end];
     let argc = argc.parse::<u32>().unwrap();
-    assert!(subst_ref.len() as u32 == argc + 2);
+    assert!(subst_ref.len() as u32 == argc + 3);
     assert!(args.len() as u32 == argc);
     let asm = garg_to_string(&subst_ref[0], tyctx);
     let asm = Some(asm).filter(|asm| !asm.is_empty());
     let class_name = garg_to_string(&subst_ref[1], tyctx);
-    let tpe = DotnetTypeRef::new(asm.as_ref().map(|x| x.as_str()), &class_name);
+    let is_valuetype = crate::utilis::garag_to_bool(&subst_ref[2], tyctx);
+    let mut tpe = DotnetTypeRef::new(asm.as_ref().map(|x| x.as_str()), &class_name);
+    tpe.set_valuetype(is_valuetype);
     if argc == 0 {
         crate::place::place_set(
             destination,
@@ -115,7 +119,7 @@ fn call_ctor<'ctx>(
             method_instance,
         )
     } else {
-        let mut inputs: Vec<_> = subst_ref[2..]
+        let mut inputs: Vec<_> = subst_ref[3..]
             .iter()
             .map(|ty| crate::r#type::Type::from_ty(ty.as_type().unwrap(), tyctx))
             .collect();
