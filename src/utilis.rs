@@ -2,7 +2,11 @@ use rustc_middle::ty::{
     AdtDef, Binder, BoundVariableKind, Const, ConstKind, EarlyBinder, GenericArg, Instance,
     ParamEnv, SymbolName, Ty, TyCtxt, TyKind, TypeFoldable,
 };
-
+pub const CTOR_FN_NAME: &str = "rustc_clr_interop_managed_ctor";
+pub const MANAGED_CALL_FN_NAME: &str = "rustc_clr_interop_managed_call";
+pub fn is_function_magic(name:&str)->bool{
+    name.contains(CTOR_FN_NAME) || name.contains(MANAGED_CALL_FN_NAME)
+}
 use crate::codegen_error::CodegenError;
 pub fn skip_binder_if_no_generic_types<T>(binder: Binder<T>) -> Result<T, CodegenError> {
     if binder
@@ -117,6 +121,29 @@ pub fn garg_to_string<'tyctx>(garg: &GenericArg<'tyctx>, ctx: TyCtxt<'tyctx>) ->
                     .try_to_raw_bytes(ctx, str_const.ty())
                     .expect("String const did not contain valid string!");
                 String::from_utf8(raw_bytes.into()).expect("String constant invalid!")
+            }
+            _ => todo!("Can't convert generic arg of const kind {kind:?} to string!"),
+        }
+    }
+}
+pub fn garag_to_bool<'tyctx>(garg: &GenericArg<'tyctx>, ctx: TyCtxt<'tyctx>) -> bool {
+    let usize_const = garg
+        .as_const()
+        .expect("Generic argument was not an constant!");
+    let tpe = usize_const.ty();
+    if !tpe.is_bool() {
+        panic!(
+            "Generic argument was not a bool type! ty:{:?}",
+            tpe
+        );
+    } else {
+        let kind = usize_const.kind();
+        match kind {
+            ConstKind::Value(value) => {
+                let scalar = value
+                    .try_to_scalar_int()
+                    .expect("String const did not contain valid scalar!");
+                scalar.try_to_uint(scalar.size()).unwrap() != 0
             }
             _ => todo!("Can't convert generic arg of const kind {kind:?} to string!"),
         }

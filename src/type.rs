@@ -49,6 +49,7 @@ pub struct DotnetTypeRef {
     assembly: Option<IString>,
     name_path: IString,
     generics: Vec<Type>,
+    is_valuetype:bool,
 }
 impl DotnetTypeRef {
     pub fn new(assembly: Option<&str>, name_path: &str) -> Self {
@@ -56,6 +57,18 @@ impl DotnetTypeRef {
             assembly: assembly.map(std::convert::Into::into),
             name_path: name_path.into(),
             generics: Vec::new(),
+            is_valuetype:true,
+        }
+    }
+    pub fn is_valuetype(&self)->bool{
+        self.is_valuetype
+    }
+    pub fn tpe_prefix(&self)->&'static str{
+        if self.is_valuetype(){
+            "valuetype"
+        }
+        else{
+            ""
         }
     }
     pub fn array(element: Type, length: usize) -> Self {
@@ -100,6 +113,7 @@ impl DotnetTypeRef {
             assembly: None,
             name_path: name,
             generics,
+            is_valuetype:true,
         }
     }
 }
@@ -129,6 +143,7 @@ impl Type {
                         assembly: None,
                         name_path: "RustStr".into(),
                         generics: vec![],
+                        is_valuetype:true,
                     };
                     Self::DotnetType(Box::new(str_type))
                 }
@@ -149,6 +164,7 @@ impl Type {
                     assembly: None,
                     name_path: "RustSlice".into(),
                     generics: vec![Self::from_ty(*inner, tyctx)],
+                    is_valuetype:true,
                 };
                 Self::DotnetType(Box::new(slice_tpe))
             }
@@ -228,7 +244,8 @@ impl From<DotnetTypeRef> for Type {
         Self::DotnetType(Box::new(value))
     }
 }
-const INTEROP_OBJ_TPE_NAME: &str = "RustcCLRInteropManagedClass";
+const INTEROP_CLASS_TPE_NAME: &str = "RustcCLRInteropManagedClass";
+const INTEROP_STRUCT_TPE_NAME: &str = "RustcCLRInteropManagedStruct";
 const INTEROP_CHR_TPE_NAME: &str = "RustcCLRInteropManagedChar";
 const INTEROP_ARR_TPE_NAME: &str = "RustcCLRInteropManagedArray";
 fn is_name_magic(name: &str) -> bool {
@@ -241,14 +258,27 @@ fn magic_type<'tyctx>(
     ctx: TyCtxt<'tyctx>,
 ) -> Type {
     match name {
-        INTEROP_OBJ_TPE_NAME => {
+        INTEROP_CLASS_TPE_NAME => {
             if subst.len() != 2 {
                 panic!("MAnaged object reference must have exactly 2 generic arguments!");
             }
-            let asm = garg_to_string(&subst[0], ctx);
-            let asm = Some(asm).filter(|asm| !asm.is_empty());
-            let name = garg_to_string(&subst[1], ctx);
-            Type::DotnetType(DotnetTypeRef::new(asm.as_ref().map(|x| x.as_str()), &name).into())
+            let assembly:Box<str> = garg_to_string(&subst[0], ctx).into();
+            let assembly = Some(assembly).filter(|assembly| !assembly.is_empty());
+            let name = garg_to_string(&subst[1], ctx).into();
+            println!("{name} is a class refernece. ");
+            let dotnet_tpe = DotnetTypeRef{assembly:assembly, name_path:name,generics:vec![],is_valuetype:false};
+            println!("dotnet_tpe:{dotnet_tpe:?}");
+            Type::DotnetType(dotnet_tpe.into())
+        }
+        INTEROP_STRUCT_TPE_NAME => {
+            if subst.len() != 2 {
+                panic!("MAnaged object reference must have exactly 2 generic arguments!");
+            }
+            let assembly:Box<str> = garg_to_string(&subst[0], ctx).into();
+            let assembly = Some(assembly).filter(|assembly| !assembly.is_empty());
+            let name = garg_to_string(&subst[1], ctx).into();
+            let dotnet_tpe = DotnetTypeRef{assembly:assembly, name_path:name,generics:vec![],is_valuetype:true};
+            Type::DotnetType(dotnet_tpe.into())
         }
         INTEROP_ARR_TPE_NAME => {
             if subst.len() != 2 {
@@ -273,7 +303,7 @@ fn garag_to_usize<'tyctx>(garg: &GenericArg<'tyctx>, ctx: TyCtxt<'tyctx>) -> u64
     let usize_const = garg
         .as_const()
         .expect("Generic argument was not an constant!");
-    if usize_const.ty().is_unit() {
+    if !usize_const.ty().is_integral() {
         panic!(
             "Generic argument was not a unit type! ty:{:?}",
             usize_const.ty()

@@ -1,7 +1,7 @@
 use crate::{cil_op::CILOp, method::Method, r#type::Type};
 const MAX_PASS: u32 = 8;
 pub fn opt_method(method: &mut Method) {
-    return;
+    //return;
     repalce_const_sizes(method.ops_mut());
     for _ in 0..MAX_PASS {
         op2_combos(method.ops_mut());

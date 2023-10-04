@@ -1,4 +1,6 @@
 use crate::cil_op::{CILOp, CallSite};
+use crate::operand::handle_operand;
+use crate::r#type::Type;
 use rustc_middle::mir::{CastKind, NullOp};
 use rustc_middle::{
     mir::{Place, Rvalue},
@@ -90,12 +92,17 @@ pub fn handle_rvalue<'tcx>(
         ),
         Rvalue::Cast(CastKind::Transmute, operand, dst) => {
             let src = operand.ty(method, tcx);
-            match (src.kind(), dst.kind()) {
-                (TyKind::Int(IntTy::Isize) | TyKind::Uint(UintTy::Usize), TyKind::RawPtr(_)) => {
-                    vec![]
+            let src = Type::from_ty(src,tcx);
+            let dst = Type::from_ty(*dst,tcx);
+            match (&src, &dst) {
+                (Type::ISize | Type::USize, Type::Ptr(_)) => {
+                    handle_operand(operand, tcx, method, method_instance)
                 }
-                (TyKind::RawPtr(_), TyKind::Int(IntTy::Isize) | TyKind::Uint(UintTy::Usize)) => {
-                    vec![]
+                (Type::Ptr(_), Type::ISize | Type::USize) => {
+                    handle_operand(operand, tcx, method, method_instance)
+                }
+                (Type::U16, Type::DotnetChar) => {
+                    handle_operand(operand, tcx, method, method_instance)
                 }
                 _ => todo!("Unhandled transmute from {src:?} to {dst:?}"),
             }

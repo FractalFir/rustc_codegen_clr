@@ -175,7 +175,7 @@ fn method_cil(mut w: impl Write, method: &Method) -> std::io::Result<()> {
     writeln!(w, "\n\t)")?;
     println!("{name}:\n\n");
     for op in method.get_ops() {
-        println!("{op:?}");
+        //println!("{op:?}");
         writeln!(w, "\t{op_cli}", op_cli = op_cli(op))?;
     }
     writeln!(w, "}}")
@@ -218,7 +218,7 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
                 };
                 //println!("inputs:{inputs:?} input_string: {input_string}",inputs = call_site.signature.inputs);
                 format!(
-                    "call {prefix} {output} {owner_name}{function_name}({input_string})",
+                    "call {prefix} {output} {owner_name} {function_name}({input_string})",
                     function_name = call_site.name(),
                     output = output_type_cli(call_site.signature().output())
                 )
@@ -573,16 +573,19 @@ fn preifxed_field_type_cli(tpe: &Type) -> Cow<'static, str> {
     match tpe {
         Type::Ptr(inner) => format!("{inner}*", inner = preifxed_field_type_cli(inner)).into(),
         Type::GenericArg(id) => format!("!{id}").into(),
-        Type::DotnetType(dotnet_type) => format!(
-            "valuetype {}",
+        Type::DotnetType(dotnet_type) => {
+            let prefix = dotnet_type.tpe_prefix();
+            format!(
+            "{prefix} {}",
             dotnet_type_ref_cli_generics_unescaped(dotnet_type)
         )
-        .into(),
+        .into()
+    },
         _ => prefixed_type_cli(tpe),
     }
 }
 fn prefixed_type_cli(tpe: &Type) -> Cow<'static, str> {
-    match tpe {
+    let prefixed_type = match tpe {
         Type::Void => "valuetype RustVoid".into(),
         Type::I8 => "int8".into(),
         Type::U8 => "uint8".into(),
@@ -600,7 +603,8 @@ fn prefixed_type_cli(tpe: &Type) -> Cow<'static, str> {
         Type::USize => "native uint".into(),
         Type::Ptr(inner) => format!("{inner}*", inner = prefixed_type_cli(inner)).into(),
         Type::DotnetType(dotnet_type) => {
-            format!("valuetype {}", dotnet_type_ref_cli(dotnet_type)).into()
+            let prefix = dotnet_type.tpe_prefix();
+            format!("{prefix} {}", dotnet_type_ref_cli(dotnet_type)).into()
         }
         //Special type
         Type::Unresolved => "valuetype Unresolved".into(),
@@ -616,7 +620,9 @@ fn prefixed_type_cli(tpe: &Type) -> Cow<'static, str> {
             };
             format!("{tpe}[{arr}]", tpe = type_cli(&array.element)).into()
         } //_ => todo!("Unsuported type {tpe:?}"),
-    }
+    };
+    println!("prefixed_type:{prefixed_type}, type:{tpe:?}");
+    prefixed_type
 }
 fn args_cli(w: &mut impl Write, args: &[Type]) -> std::io::Result<()> {
     let mut args = args.iter();

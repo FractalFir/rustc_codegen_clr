@@ -39,6 +39,9 @@ impl Assembly {
         tcx: TyCtxt<'tcx>,
         name: &str,
     ) -> Result<(), CodegenError> {
+        if crate::utilis::is_function_magic(name){
+            return Ok(());
+        }
         // Get the MIR if it exisits. Othervise, return early.
         if !tcx.is_mir_available(instance.def_id()) {
             println!("function {instance:?} has no MIR. Skippping.");
@@ -65,7 +68,7 @@ impl Assembly {
                 ops.extend(crate::statement::handle_statement(
                     statement, mir, tcx, mir, instance,
                 ));
-                ops.push(CILOp::Comment(format!("{statement:?}").into()));
+                //ops.push(CILOp::Comment(format!("{statement:?}").into()));
                 //println!("ops:{ops:?}\n\n");
             }
             match &block_data.terminator {

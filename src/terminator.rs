@@ -5,6 +5,8 @@ use crate::{
     operand::handle_operand,
     r#type::DotnetTypeRef,
     utilis::monomorphize,
+    utilis::CTOR_FN_NAME,
+    utilis::MANAGED_CALL_FN_NAME,
 };
 use rustc_middle::{
     mir::{
@@ -14,7 +16,71 @@ use rustc_middle::{
     ty::{GenericArg, Instance, ParamEnv, Ty, TyCtxt, TyKind},
 };
 use rustc_span::def_id::DefId;
-const CTOR_FN_NAME: &str = "rustc_clr_interop_managed_ctor";
+fn call_managed<'ctx>(
+    tyctx: TyCtxt<'ctx>,
+    def_id: DefId,
+    subst_ref: &[GenericArg<'ctx>],
+    function_name: &str,
+    args: &[Operand<'ctx>],
+    destination: &Place<'ctx>,
+    method: &'ctx Body<'ctx>,
+    method_instance: Instance<'ctx>,
+    fn_type: &Ty<'ctx>
+) -> Vec<CILOp> {
+    let argc_start = function_name.find(MANAGED_CALL_FN_NAME).unwrap() + (MANAGED_CALL_FN_NAME.len());
+    let argc_end = argc_start + function_name[argc_start..].find('_').unwrap();
+    let argc = &function_name[argc_start..argc_end];
+    let argc = argc.parse::<u32>().unwrap();
+    assert!(subst_ref.len() as u32 == argc + 3 || subst_ref.len() as u32 == argc + 4 || true);
+    assert!(args.len() as u32 == argc);
+    let asm = garg_to_string(&subst_ref[0], tyctx);
+    let asm = Some(asm).filter(|asm| !asm.is_empty());
+    let class_name = garg_to_string(&subst_ref[1], tyctx);
+    let managed_fn_name = garg_to_string(&subst_ref[2], tyctx);
+    let tpe = DotnetTypeRef::new(asm.as_ref().map(|x| x.as_str()), &class_name);
+    let signature = FnSig::from_poly_sig(&fn_type.fn_sig(tyctx), tyctx)
+        .expect("Can't get the function signature");
+    if argc == 0 {
+        let ret = crate::r#type::Type::Void;
+        let call = vec![CILOp::Call(CallSite::boxed(
+            Some(tpe.clone()),
+            managed_fn_name.into(),
+            FnSig::new(&[], &ret),
+            true,
+        ))];
+        if *signature.output() == crate::r#type::Type::Void{
+            call
+        }
+        else{
+            crate::place::place_set(destination, tyctx, call, method, method_instance)
+        }
+    }
+    else{
+        let is_static = crate::utilis::garag_to_bool(&subst_ref[3],tyctx);
+        
+        let mut call = Vec::new();
+        for arg in args {
+            call.extend(crate::operand::handle_operand(
+                arg,
+                tyctx,
+                method,
+                method_instance,
+            ));
+        }
+        call.push(CILOp::Call(CallSite::boxed(
+            Some(tpe.clone()),
+            managed_fn_name.into(),
+            signature.clone(),
+            is_static,
+        )));
+        if *signature.output() == crate::r#type::Type::Void{
+            call
+        }
+        else{
+            crate::place::place_set(destination, tyctx, call, method, method_instance)
+        }
+    }   
+}
 fn call_ctor<'ctx>(
     tyctx: TyCtxt<'ctx>,
     def_id: DefId,
@@ -49,7 +115,28 @@ fn call_ctor<'ctx>(
             method_instance,
         )
     } else {
-        todo!("Using arguments in constrcutors is not supported yet!");
+        let mut inputs: Vec<_> = subst_ref[2..]
+            .iter()
+            .map(|ty| crate::r#type::Type::from_ty(ty.as_type().unwrap(), tyctx))
+            .collect();
+        inputs.insert(0, tpe.clone().into());
+        let sig = FnSig::new(&inputs, &crate::r#type::Type::Void);
+        let mut call = Vec::new();
+        for arg in args {
+            call.extend(crate::operand::handle_operand(
+                arg,
+                tyctx,
+                method,
+                method_instance,
+            ));
+        }
+        call.push(CILOp::NewObj(CallSite::boxed(
+            Some(tpe.clone()),
+            ".ctor".into(),
+            sig,
+            false,
+        )));
+        crate::place::place_set(destination, tyctx, call, method, method_instance)
     }
 }
 fn call<'ctx>(
@@ -80,6 +167,19 @@ fn call<'ctx>(
             destination,
             body,
             method_instance,
+        );
+    }
+    else if function_name.contains(MANAGED_CALL_FN_NAME){
+        return call_managed(
+            tyctx,
+            *def_id,
+            subst_ref,
+            &function_name,
+            args,
+            destination,
+            body,
+            method_instance,
+            fn_type
         );
     }
     let mut call = Vec::new();
