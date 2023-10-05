@@ -11,3 +11,7 @@ postcard = { version = "1.0.6", features = ["use-std"] }
 serde = { version = "1.0.183", features = ["derive"] }
 [lib]
 crate-type=["rlib", "cdylib"]
+[[bin]]
+name = "linker"
+test = false
+bench = false

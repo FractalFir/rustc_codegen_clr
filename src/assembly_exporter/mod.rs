@@ -6,8 +6,8 @@ enum AccessModifer {
     Public,
 }
 use crate::{assembly::Assembly, method::Method, type_def::TypeDef, IString};
-pub(crate) mod ilasm_exporter;
-pub(crate) trait AssemblyExporter: Sized {
+pub mod ilasm_exporter;
+pub trait AssemblyExporter: Sized {
     fn init(asm_info: &AssemblyInfo) -> Self;
     fn add_type(&mut self, tpe: &TypeDef);
     fn add_method(&mut self, method: &Method);
@@ -33,7 +33,7 @@ pub(crate) trait AssemblyExporter: Sized {
     }
 }
 #[derive(Debug)]
-pub(crate) enum AssemblyExportError {
+pub enum AssemblyExportError {
     InvalidIL,
     CouldNotCanonalizePath(std::io::Error, std::path::PathBuf),
     IoError(std::io::Error),

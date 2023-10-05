@@ -33,7 +33,7 @@ macro_rules! add_method {
         }
     };
 }
-pub(crate) fn insert_libc(asm: &mut Assembly) {
+pub fn insert_libc(asm: &mut Assembly) {
     // Add core.panic.PanicInfo
     /*
     asm.add_type(&Type::Struct {

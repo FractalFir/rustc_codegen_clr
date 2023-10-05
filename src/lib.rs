@@ -22,27 +22,26 @@ fn skip_binder_if_no_generic_types<T>(binder: Binder<T>) -> Option<T> {
         Some(binder.skip_binder())
     }
 }
-use rustc_codegen_ssa::{
-    traits::CodegenBackend, CodegenResults, CompiledModule, CrateInfo, ModuleKind,
-};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::{
     dep_graph::{WorkProduct, WorkProductId},
     ty::TyCtxt,
 };
-
+use rustc_codegen_ssa::{back::archive::{ArArchiveBuilder,ArchiveBuilder,ArchiveBuilderBuilder,get_native_object_symbols},traits::CodegenBackend, CodegenResults, CompiledModule, CrateInfo, ModuleKind};
 use rustc_session::{
+    
     config::{OutputFilenames, OutputType},
+    
     Session,
 };
 use rustc_span::ErrorGuaranteed;
-use std::any::Any;
+use std::{any::Any,path::{Path,PathBuf}};
 pub type IString = Box<str>;
 mod access_modifier;
 mod aggregate;
-mod assembly;
-mod assembly_exporter;
+pub mod assembly;
+pub mod assembly_exporter;
 mod binop;
 mod casts;
 mod cil_op;
@@ -57,7 +56,7 @@ mod opt;
 mod place;
 mod rvalue;
 mod statement;
-mod stdlib;
+pub mod stdlib;
 mod terminator;
 mod transmute;
 mod r#type;
@@ -130,7 +129,7 @@ impl CodegenBackend for MyBackend {
             .downcast::<(IString, Assembly, EncodedMetadata, CrateInfo)>()
             .expect("in join_codegen: ongoing_codegen is not an Assembly");
         let asm_name = "";
-        let serialized_asm_path = outputs.temp_path(OutputType::Object, Some(asm_name));
+        let serialized_asm_path = outputs.temp_path(OutputType::Bitcode, Some(asm_name));
         //std::fs::create_dir_all(&serialized_asm_path).expect("Could not create the directory temporary files are supposed to be in.");
         let mut asm_out = std::fs::File::create(&serialized_asm_path)
             .expect("Could not create the temporary files necessary for building the assembly!");
@@ -166,7 +165,7 @@ impl CodegenBackend for MyBackend {
             config::{CrateType, OutFileName},
             output::out_filename,
         };
-
+        /*
         let crate_name = codegen_results.crate_info.local_crate_name;
         let mut final_assembly = Assembly::empty();
         for module in codegen_results.modules {
@@ -203,10 +202,30 @@ impl CodegenBackend for MyBackend {
         )
         .expect("Could not create the final asm!");
         //panic!();
+        */
+        use rustc_codegen_ssa::back::link::link_binary;
+
+        link_binary(sess, &RlibArchiveBuilder, &codegen_results, outputs);
         Ok(())
     }
 }
+struct RlibArchiveBuilder;
+impl ArchiveBuilderBuilder for RlibArchiveBuilder {
+    fn new_archive_builder<'a>(&self, sess: &'a Session) -> Box<dyn ArchiveBuilder<'a> + 'a> {
+        Box::new(ArArchiveBuilder::new(sess, get_native_object_symbols))
+    }
 
+    fn create_dll_import_lib(
+        &self,
+        _sess: &Session,
+        _lib_name: &str,
+        _dll_imports: &[rustc_session::cstore::DllImport],
+        _tmpdir: &Path,
+        _is_direct_dependency: bool,
+    ) -> PathBuf {
+        unimplemented!("creating dll imports is not yet supported");
+    }
+}
 #[no_mangle]
 pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
     Box::new(MyBackend)

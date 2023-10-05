@@ -8,7 +8,7 @@ use crate::{
 };
 use std::{borrow::Cow, io::Write, ops::Deref};
 #[must_use]
-pub(crate) struct ILASMExporter {
+pub struct ILASMExporter {
     encoded_asm: Vec<u8>,
 }
 impl std::io::Write for ILASMExporter {

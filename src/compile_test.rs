@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 fn test_dotnet_executable(file_path: &str, test_dir: &str) {
     use std::io::Write;
 
@@ -56,9 +57,12 @@ macro_rules! test_lib {
                     "--crate-type=lib",
                     "-Z",
                     backend_path(),
+                    "-C",
+                    &format!("linker={}",RUSTC_CODEGEN_CLR_LINKER.display()),
                     concat!("../", stringify!($test_name), ".rs"),
                     "-o",
                     concat!("./", stringify!($test_name), ".dll"),
+                    
                     //"--target",
                     // "clr64-unknown-clr"
                 ])
@@ -92,6 +96,8 @@ macro_rules! run_test {
                     "-O",
                     "-Z",
                     backend_path(),
+                    "-C",
+                    &format!("linker={}",RUSTC_CODEGEN_CLR_LINKER.display()),
                     concat!("./", stringify!($test_name), ".rs"),
                     "-o",
                     concat!("./", stringify!($test_name), ".exe"),
@@ -220,4 +226,16 @@ lazy_static! {
     static ref IS_MONO_PRESENT: bool = std::process::Command::new("mono").output().is_ok();
     static ref IS_DOTNET_PRESENT: bool = std::process::Command::new("dotnet").output().is_ok();
     static ref RUSTC_BUILD_STATUS: Result<(), String> = build_backend();
+    static ref RUSTC_CODEGEN_CLR_LINKER:PathBuf = {
+        if cfg!(debug_assertions) {
+            std::process::Command::new("cargo").args(["build","--bin","linker"]).output().unwrap();
+            //TODO: Fix this for other platforms
+            std::fs::canonicalize("target/debug/linker").unwrap()
+        } else {
+            std::process::Command::new("cargo").args(["build","--bin","linker","--release"]).output().unwrap();
+            //TODO: Fix this for other platforms
+            std::fs::canonicalize("target/release/linker").unwrap()
+        }
+        
+    };
 }
