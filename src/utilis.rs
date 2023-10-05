@@ -4,7 +4,7 @@ use rustc_middle::ty::{
 };
 pub const CTOR_FN_NAME: &str = "rustc_clr_interop_managed_ctor";
 pub const MANAGED_CALL_FN_NAME: &str = "rustc_clr_interop_managed_call";
-pub fn is_function_magic(name:&str)->bool{
+pub fn is_function_magic(name: &str) -> bool {
     name.contains(CTOR_FN_NAME) || name.contains(MANAGED_CALL_FN_NAME)
 }
 use crate::codegen_error::CodegenError;
@@ -32,6 +32,7 @@ pub fn field_name(ty: Ty, idx: u32) -> crate::IString {
                 .expect("Field index out of range.");
             crate::type_def::escape_field_name(&field_def.name.to_string())
         }
+        TyKind::Tuple(_) => format!("Item{}", idx + 1).into(),
         _ => todo!("Can't yet get fields of typr {ty:?}"),
     }
 }
@@ -61,7 +62,11 @@ pub fn monomorphize<'tcx, T: TypeFoldable<TyCtxt<'tcx>> + Clone>(
         EarlyBinder::bind(ty),
     )
 }
-pub fn generic_field_ty<'ctx>(owner_ty: Ty<'ctx>, field_idx: u32, ctx: TyCtxt<'ctx>) -> Ty<'ctx> {
+pub fn generic_field_ty<'ctx>(
+    owner_ty: Ty<'ctx>,
+    field_idx: u32,
+    ctx: TyCtxt<'ctx>,
+) -> crate::r#type::Type {
     match owner_ty.kind() {
         TyKind::Adt(adt_def, _) => {
             let ty = ctx
@@ -73,8 +78,9 @@ pub fn generic_field_ty<'ctx>(owner_ty: Ty<'ctx>, field_idx: u32, ctx: TyCtxt<'c
                         .did,
                 )
                 .instantiate_identity();
-            ty
+            crate::r#type::Type::from_ty(ty, ctx)
         }
+        TyKind::Tuple(_) => crate::r#type::Type::GenericArg(field_idx),
         _ => todo!("Can't get field {field_idx} belonging to type {owner_ty:?}"),
     }
 }
@@ -132,10 +138,7 @@ pub fn garag_to_bool<'tyctx>(garg: &GenericArg<'tyctx>, ctx: TyCtxt<'tyctx>) -> 
         .expect("Generic argument was not an constant!");
     let tpe = usize_const.ty();
     if !tpe.is_bool() {
-        panic!(
-            "Generic argument was not a bool type! ty:{:?}",
-            tpe
-        );
+        panic!("Generic argument was not a bool type! ty:{:?}", tpe);
     } else {
         let kind = usize_const.kind();
         match kind {

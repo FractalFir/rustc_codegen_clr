@@ -7,5 +7,33 @@
 #![feature(core_intrinsics,adt_const_params)]
 /// Very low-level interop stuff. Don't use unless you need to.
 pub mod intrinsics;
+/// Wrappers around types from the `System` namespace
 pub mod system;
-pub type ManagedChar = crate::intrinsics::RustcCLRInteropManagedChar;
+/// C# `char` type
+pub type DotNetChar = crate::intrinsics::RustcCLRInteropManagedChar;
+#[macro_export]
+macro_rules! panic_handler {
+    () => {
+        #[panic_handler]
+        fn panic(_panic: &core::panic::PanicInfo<'_>) -> ! {
+            core::intrinsics::abort();
+        }
+    };
+}
+#[macro_export]
+macro_rules! start {
+    () => {
+        #[start]
+        fn start(_argc:isize,_argv: *const *const u8) -> isize{
+            main();
+            0
+        }
+    };
+    ($entry_fn:ident) => {
+        #[start]
+        fn start(_argc:isize,_argv: *const *const u8) -> isize{
+            $entry_fn();
+            0
+        }
+    };
+}

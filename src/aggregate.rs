@@ -75,6 +75,37 @@ pub fn handle_aggregate<'tcx>(
             ));
             ops
         }
+        AggregateKind::Tuple => {
+            if fields.len() > 8 {
+                todo!("Tuples with more than 8 fields are not supported yet.");
+            } else {
+                let tuple_getter =
+                    super::place::place_adress(&target_location, tcx, method, method_instance);
+                let types: Vec<_> = field_index
+                    .iter()
+                    .map(|operand| (Type::from_ty(operand.ty(method, tcx), tcx)))
+                    .collect();
+                let dotnet_tpe = crate::r#type::tuple_type(&types);
+                let mut ops: Vec<CILOp> = Vec::with_capacity(fields.len() * 2);
+                for field in fields.iter().zip(types) {
+                    let name = format!("Item{}", field.0 .0 + 1);
+                    ops.extend(tuple_getter.iter().cloned());
+                    ops.extend(field.0 .1.iter().cloned());
+                    ops.push(CILOp::STField(FieldDescriptor::boxed(
+                        dotnet_tpe.clone(),
+                        field.1,
+                        name.into(),
+                    )));
+                }
+                ops.extend(super::place::place_get(
+                    &target_location,
+                    tcx,
+                    method,
+                    method_instance,
+                ));
+                ops
+            }
+        }
         _ => todo!("Unsuported aggregate kind {aggregate_kind:?}"),
     }
 }
@@ -115,7 +146,7 @@ fn aggregate_from_adt<'tcx>(
                 let field_name = field_name(adt_type, field.0);
                 let field_desc = crate::cil_op::FieldDescriptor::boxed(
                     adt_type_ref.clone(),
-                    crate::r#type::Type::from_ty(field_type, tcx),
+                    field_type,
                     field_name,
                 );
                 ops.push(CILOp::STField(field_desc));
@@ -159,10 +190,7 @@ fn aggregate_from_adt<'tcx>(
                 ops.extend(field_value.1.clone());
                 let field_name = field.name.to_string();
                 let field_name = crate::type_def::escape_field_name(&field_name);
-                let field = Type::from_ty(
-                    crate::utilis::generic_field_ty(adt_type, field_idx as u32, tcx),
-                    tcx,
-                );
+                let field = crate::utilis::generic_field_ty(adt_type, field_idx as u32, tcx);
                 ops.push(CILOp::STField(Box::new(FieldDescriptor::new(
                     variant_type.clone(),
                     field,
@@ -206,7 +234,7 @@ fn aggregate_from_adt<'tcx>(
                 let field_name = field_name(adt_type, field.0);
                 let field_desc = crate::cil_op::FieldDescriptor::boxed(
                     adt_type_ref.clone(),
-                    crate::r#type::Type::from_ty(field_type, tcx),
+                    field_type,
                     field_name,
                 );
                 ops.push(CILOp::STField(field_desc));

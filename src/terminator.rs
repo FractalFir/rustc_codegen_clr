@@ -25,9 +25,10 @@ fn call_managed<'ctx>(
     destination: &Place<'ctx>,
     method: &'ctx Body<'ctx>,
     method_instance: Instance<'ctx>,
-    fn_type: &Ty<'ctx>
+    fn_type: &Ty<'ctx>,
 ) -> Vec<CILOp> {
-    let argc_start = function_name.find(MANAGED_CALL_FN_NAME).unwrap() + (MANAGED_CALL_FN_NAME.len());
+    let argc_start =
+        function_name.find(MANAGED_CALL_FN_NAME).unwrap() + (MANAGED_CALL_FN_NAME.len());
     let argc_end = argc_start + function_name[argc_start..].find('_').unwrap();
     let argc = &function_name[argc_start..argc_end];
     let argc = argc.parse::<u32>().unwrap();
@@ -50,16 +51,14 @@ fn call_managed<'ctx>(
             FnSig::new(&[], &ret),
             true,
         ))];
-        if *signature.output() == crate::r#type::Type::Void{
+        if *signature.output() == crate::r#type::Type::Void {
             call
-        }
-        else{
+        } else {
             crate::place::place_set(destination, tyctx, call, method, method_instance)
         }
-    }
-    else{
-        let is_static = crate::utilis::garag_to_bool(&subst_ref[4],tyctx);
-        
+    } else {
+        let is_static = crate::utilis::garag_to_bool(&subst_ref[4], tyctx);
+
         let mut call = Vec::new();
         for arg in args {
             call.extend(crate::operand::handle_operand(
@@ -75,13 +74,12 @@ fn call_managed<'ctx>(
             signature.clone(),
             is_static,
         )));
-        if *signature.output() == crate::r#type::Type::Void{
+        if *signature.output() == crate::r#type::Type::Void {
             call
-        }
-        else{
+        } else {
             crate::place::place_set(destination, tyctx, call, method, method_instance)
         }
-    }   
+    }
 }
 fn call_ctor<'ctx>(
     tyctx: TyCtxt<'ctx>,
@@ -172,8 +170,7 @@ fn call<'ctx>(
             body,
             method_instance,
         );
-    }
-    else if function_name.contains(MANAGED_CALL_FN_NAME){
+    } else if function_name.contains(MANAGED_CALL_FN_NAME) {
         return call_managed(
             tyctx,
             *def_id,
@@ -183,7 +180,7 @@ fn call<'ctx>(
             destination,
             body,
             method_instance,
-            fn_type
+            fn_type,
         );
     }
     let mut call = Vec::new();

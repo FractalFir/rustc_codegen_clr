@@ -97,11 +97,7 @@ fn place_elem_get<'a>(
                 } else {
                     panic!();
                 };
-                let field_desc = FieldDescriptor::boxed(
-                    curr_type,
-                    crate::r#type::Type::from_ty(field_type, ctx),
-                    field_name,
-                );
+                let field_desc = FieldDescriptor::boxed(curr_type, field_type, field_name);
                 vec![CILOp::LDField(field_desc)]
             }
             PlaceTy::EnumVariant(enm, var_idx) => {
@@ -119,11 +115,7 @@ fn place_elem_get<'a>(
                 let mut field_owner = owner;
 
                 field_owner.append_path(&format!("/{variant_name}"));
-                let field_desc = FieldDescriptor::boxed(
-                    field_owner,
-                    crate::r#type::Type::from_ty(field_type, ctx),
-                    field_name,
-                );
+                let field_desc = FieldDescriptor::boxed(field_owner, field_type, field_name);
                 let ops = vec![CILOp::LDField(field_desc)];
                 println!("Using ops:{ops:?} to get field of an enum variant!");
                 ops
@@ -183,11 +175,7 @@ fn place_elem_set<'a>(
                 } else {
                     panic!();
                 };
-                let field_desc = FieldDescriptor::boxed(
-                    curr_type,
-                    crate::r#type::Type::from_ty(field_type, ctx),
-                    field_name,
-                );
+                let field_desc = FieldDescriptor::boxed(curr_type, field_type, field_name);
                 vec![CILOp::STField(field_desc)]
             } else {
                 todo!("Can't set fields of enum variants yet!");
@@ -213,10 +201,11 @@ fn place_elem_body<'ctx>(
                 (pointed.into(), deref_op(pointed.into(), tyctx))
             }
         }
-        PlaceElem::Field(index, _field_type) => {
-            if let PlaceTy::Ty(curr_type) = curr_type {
+        PlaceElem::Field(index, field_type) => match curr_type {
+            PlaceTy::Ty(curr_type) => {
                 let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
-                let field_type = crate::utilis::generic_field_ty(curr_type, index.as_u32(), tyctx);
+                let gen_field_type =
+                    crate::utilis::generic_field_ty(curr_type, index.as_u32(), tyctx);
                 //let field_type = crate::utilis::monomorphize(&method_instance, *field_type, tyctx);
                 let field_name = field_name(curr_type, index.as_u32());
                 let curr_type = crate::r#type::Type::from_ty(curr_type, tyctx);
@@ -226,20 +215,34 @@ fn place_elem_body<'ctx>(
                     panic!();
                 };
 
-                let field_desc = FieldDescriptor::boxed(
-                    curr_type,
-                    crate::r#type::Type::from_ty(field_type, tyctx),
-                    field_name,
-                );
+                let field_desc = FieldDescriptor::boxed(curr_type, gen_field_type, field_name);
                 if body_ty_is_by_adress(&field_type) {
-                    (field_type.into(), vec![CILOp::LDFieldAdress(field_desc)])
+                    ((*field_type).into(), vec![CILOp::LDFieldAdress(field_desc)])
                 } else {
-                    (field_type.into(), vec![CILOp::LDField(field_desc)])
+                    ((*field_type).into(), vec![CILOp::LDField(field_desc)])
                 }
-            } else {
-                todo!("Can't get fields of enum variants yet!");
             }
-        }
+            PlaceTy::EnumVariant(enm, var_idx) => {
+                let owner = crate::utilis::monomorphize(&method_instance, enm, tyctx);
+                let variant_name = crate::utilis::variant_name(owner, var_idx);
+                let owner = crate::utilis::monomorphize(&method_instance, enm, tyctx);
+                let gen_field_type = crate::utilis::generic_field_ty(owner, index.as_u32(), tyctx);
+                let owner = crate::r#type::Type::from_ty(owner, tyctx);
+                let owner = if let crate::r#type::Type::DotnetType(owner) = owner {
+                    owner.as_ref().clone()
+                } else {
+                    panic!();
+                };
+                let field_name = field_name(enm, index.as_u32());
+                let mut field_owner = owner;
+
+                field_owner.append_path(&format!("/{variant_name}"));
+                let field_desc = FieldDescriptor::boxed(field_owner, gen_field_type, field_name);
+                let ops = vec![CILOp::LDFieldAdress(field_desc)];
+                println!("Using ops:{ops:?} to get field of an enum variant!");
+                ((*field_type).into(), ops)
+            }
+        },
         PlaceElem::Downcast(symbol, variant) => {
             let curr_type = curr_type
                 .as_ty()

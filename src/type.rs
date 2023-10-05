@@ -49,7 +49,7 @@ pub struct DotnetTypeRef {
     assembly: Option<IString>,
     name_path: IString,
     generics: Vec<Type>,
-    is_valuetype:bool,
+    is_valuetype: bool,
 }
 impl DotnetTypeRef {
     pub fn new(assembly: Option<&str>, name_path: &str) -> Self {
@@ -57,21 +57,20 @@ impl DotnetTypeRef {
             assembly: assembly.map(std::convert::Into::into),
             name_path: name_path.into(),
             generics: Vec::new(),
-            is_valuetype:true,
+            is_valuetype: true,
         }
     }
-    pub fn is_valuetype(&self)->bool{
+    pub fn is_valuetype(&self) -> bool {
         self.is_valuetype
     }
-    pub fn tpe_prefix(&self)->&'static str{
-        if self.is_valuetype(){
+    pub fn tpe_prefix(&self) -> &'static str {
+        if self.is_valuetype() {
             "valuetype"
-        }
-        else{
+        } else {
             "class"
         }
     }
-    pub fn set_valuetype(&mut self,is_valuetype:bool){
+    pub fn set_valuetype(&mut self, is_valuetype: bool) {
         self.is_valuetype = is_valuetype;
     }
     pub fn array(element: Type, length: usize) -> Self {
@@ -116,7 +115,7 @@ impl DotnetTypeRef {
             assembly: None,
             name_path: name,
             generics,
-            is_valuetype:true,
+            is_valuetype: true,
         }
     }
 }
@@ -146,7 +145,7 @@ impl Type {
                         assembly: None,
                         name_path: "RustStr".into(),
                         generics: vec![],
-                        is_valuetype:true,
+                        is_valuetype: true,
                     };
                     Self::DotnetType(Box::new(str_type))
                 }
@@ -156,10 +155,11 @@ impl Type {
                 }
             },
             TyKind::Tuple(types) => {
+                let types: Vec<_> = types.iter().map(|ty| Type::from_ty(ty, tyctx)).collect();
                 if types.is_empty() {
                     Type::Void
                 } else {
-                    todo!("Tuples are not supported yet!")
+                    tuple_type(&types).into()
                 }
             }
             TyKind::Slice(inner) => {
@@ -167,7 +167,7 @@ impl Type {
                     assembly: None,
                     name_path: "RustSlice".into(),
                     generics: vec![Self::from_ty(*inner, tyctx)],
-                    is_valuetype:true,
+                    is_valuetype: true,
                 };
                 Self::DotnetType(Box::new(slice_tpe))
             }
@@ -254,22 +254,46 @@ const INTEROP_ARR_TPE_NAME: &str = "RustcCLRInteropManagedArray";
 fn is_name_magic(name: &str) -> bool {
     name.contains("RustcCLRInteropManaged")
 }
+pub fn tuple_type(types: &[Type]) -> DotnetTypeRef {
+    if types.len() < 8 {
+        let len = types.len();
+        let name = format!("System.Tuple`{len}");
+        crate::r#type::DotnetTypeRef {
+            assembly: Some("System.Runtime".into()),
+            name_path: name.into(),
+            generics: types.into(),
+            is_valuetype: true,
+        }
+        .into()
+    } else {
+        panic!("Tuples with more than 8 elements are not supported yet. types:{types:?}");
+    }
+}
 fn magic_type<'tyctx>(
-    name: &str,
+    mut name: &str,
     adt: &AdtDef<'tyctx>,
     subst: &[GenericArg<'tyctx>],
     ctx: TyCtxt<'tyctx>,
 ) -> Type {
+    while let Some(idx) = name.find('.') {
+        name = &name[(idx + 1)..];
+    }
+    let name = name;
     match name {
         INTEROP_CLASS_TPE_NAME => {
             if subst.len() != 2 {
                 panic!("MAnaged object reference must have exactly 2 generic arguments!");
             }
-            let assembly:Box<str> = garg_to_string(&subst[0], ctx).into();
+            let assembly: Box<str> = garg_to_string(&subst[0], ctx).into();
             let assembly = Some(assembly).filter(|assembly| !assembly.is_empty());
             let name = garg_to_string(&subst[1], ctx).into();
             println!("{name} is a class refernece. ");
-            let dotnet_tpe = DotnetTypeRef{assembly:assembly, name_path:name,generics:vec![],is_valuetype:false};
+            let dotnet_tpe = DotnetTypeRef {
+                assembly: assembly,
+                name_path: name,
+                generics: vec![],
+                is_valuetype: false,
+            };
             println!("dotnet_tpe:{dotnet_tpe:?}");
             Type::DotnetType(dotnet_tpe.into())
         }
@@ -277,10 +301,15 @@ fn magic_type<'tyctx>(
             if subst.len() != 2 {
                 panic!("MAnaged object reference must have exactly 2 generic arguments!");
             }
-            let assembly:Box<str> = garg_to_string(&subst[0], ctx).into();
+            let assembly: Box<str> = garg_to_string(&subst[0], ctx).into();
             let assembly = Some(assembly).filter(|assembly| !assembly.is_empty());
             let name = garg_to_string(&subst[1], ctx).into();
-            let dotnet_tpe = DotnetTypeRef{assembly:assembly, name_path:name,generics:vec![],is_valuetype:true};
+            let dotnet_tpe = DotnetTypeRef {
+                assembly: assembly,
+                name_path: name,
+                generics: vec![],
+                is_valuetype: true,
+            };
             Type::DotnetType(dotnet_tpe.into())
         }
         INTEROP_ARR_TPE_NAME => {

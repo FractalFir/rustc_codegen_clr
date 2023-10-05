@@ -39,7 +39,7 @@ impl Assembly {
         tcx: TyCtxt<'tcx>,
         name: &str,
     ) -> Result<(), CodegenError> {
-        if crate::utilis::is_function_magic(name){
+        if crate::utilis::is_function_magic(name) {
             return Ok(());
         }
         // Get the MIR if it exisits. Othervise, return early.

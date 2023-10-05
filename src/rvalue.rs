@@ -92,8 +92,8 @@ pub fn handle_rvalue<'tcx>(
         ),
         Rvalue::Cast(CastKind::Transmute, operand, dst) => {
             let src = operand.ty(method, tcx);
-            let src = Type::from_ty(src,tcx);
-            let dst = Type::from_ty(*dst,tcx);
+            let src = Type::from_ty(src, tcx);
+            let dst = Type::from_ty(*dst, tcx);
             match (&src, &dst) {
                 (Type::ISize | Type::USize, Type::Ptr(_)) => {
                     handle_operand(operand, tcx, method, method_instance)

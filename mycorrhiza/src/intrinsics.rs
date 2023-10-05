@@ -1,4 +1,4 @@
-use crate::ManagedChar;
+
 
 
 #[derive(Clone,Copy)]
@@ -125,7 +125,7 @@ impl TryFrom<char> for RustcCLRInteropManagedChar{
         }
     }
 }
-impl ManagedChar{
+impl RustcCLRInteropManagedChar{
     pub fn single_codepoint_unchecked(value: char)->Self{
         let byte1 = (value as u64) & 0xFF;
         if (byte1 & 0x80) == 0x00{

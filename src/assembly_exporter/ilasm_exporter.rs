@@ -576,11 +576,11 @@ fn preifxed_field_type_cli(tpe: &Type) -> Cow<'static, str> {
         Type::DotnetType(dotnet_type) => {
             let prefix = dotnet_type.tpe_prefix();
             format!(
-            "{prefix} {}",
-            dotnet_type_ref_cli_generics_unescaped(dotnet_type)
-        )
-        .into()
-    },
+                "{prefix} {}",
+                dotnet_type_ref_cli_generics_unescaped(dotnet_type)
+            )
+            .into()
+        }
         _ => prefixed_type_cli(tpe),
     }
 }
