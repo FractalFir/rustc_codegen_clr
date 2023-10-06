@@ -2,7 +2,7 @@ use super::AssemblyExporter;
 use crate::{
     access_modifier::AccessModifer,
     assembly_exporter::AssemblyExportError,
-    method::Method,
+    method::{Method, Modifier},
     r#type::{DotnetTypeRef, Type},
     type_def::TypeDef,
 };
@@ -108,9 +108,9 @@ fn type_def_cli(w: &mut impl Write, tpe: &TypeDef) -> Result<(), super::Assembly
     } else {
         "private"
     };
-    writeln!(w, "\n.class {access} {name}{generics} extends {extended}{{");
+    writeln!(w, "\n.class {access} {name}{generics} extends {extended}{{")?;
     for inner_type in tpe.inner_types() {
-        type_def_cli(w, inner_type);
+        type_def_cli(w, inner_type)?;
     }
     let _field_string = String::new();
     if let Some(offsets) = tpe.explicit_offsets() {
@@ -119,7 +119,7 @@ fn type_def_cli(w: &mut impl Write, tpe: &TypeDef) -> Result<(), super::Assembly
                 w,
                 "\t.field [{offset}] public {field_type_name} {field_name}",
                 field_type_name = prefixed_type_cli(field_type)
-            );
+            )?;
         }
     } else {
         for (field_name, field_type) in tpe.fields() {
@@ -127,10 +127,13 @@ fn type_def_cli(w: &mut impl Write, tpe: &TypeDef) -> Result<(), super::Assembly
                 w,
                 "\t.field public {field_type_name} {field_name}",
                 field_type_name = prefixed_type_cli(field_type)
-            );
+            )?;
         }
     }
-    writeln!(w, "}}");
+    for (_, method) in tpe.methods().enumerate() {
+        method_cil(w, method)?;
+    }
+    writeln!(w, "}}")?;
     Ok(())
 }
 fn absolute_path(path: &std::path::Path) -> std::io::Result<std::path::PathBuf> {
@@ -142,7 +145,13 @@ fn absolute_path(path: &std::path::Path) -> std::io::Result<std::path::PathBuf> 
         Ok(abs_path)
     }
 }
-fn method_cil(mut w: impl Write, method: &Method) -> std::io::Result<()> {
+fn modifier_cil(modifier: &Modifier) -> String {
+    match modifier {
+        Modifier::Static => "static".into(),
+        Modifier::Instance => "instance".into(),
+    }
+}
+fn method_cil(w: &mut impl Write, method: &Method) -> std::io::Result<()> {
     let access = if let AccessModifer::Private = method.access() {
         "private"
     } else {
@@ -150,8 +159,13 @@ fn method_cil(mut w: impl Write, method: &Method) -> std::io::Result<()> {
     };
     let output = output_type_cli(method.sig().output());
     let name = method.name();
-    write!(w, ".method {access} static hidebysig {output} {name}")?;
-    args_cli(&mut w, method.sig().inputs())?;
+    write!(w, ".method {access} hidebysig ")?;
+    for (_, modifier) in method.modifiers().iter().enumerate() {
+        let modifier_name = modifier_cil(modifier);
+        write!(w, "{modifier_name} ")?;
+    }
+    write!(w, "{output} {name}")?;
+    args_cli(w, method.sig().inputs())?;
     writeln!(w, "{{")?;
     if method.is_entrypoint() {
         writeln!(w, ".entrypoint")?;

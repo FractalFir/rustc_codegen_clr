@@ -2,7 +2,7 @@ use crate::{
     access_modifier::AccessModifer,
     r#type::{DotnetTypeRef, Type},
     utilis::{enum_tag_size, tag_from_enum_variants},
-    IString,
+    IString, method::Method,
 };
 use rustc_middle::ty::{AdtDef, AdtKind, GenericArg, List, Ty, TyCtxt, TyKind};
 use serde::{Deserialize, Serialize};
@@ -12,6 +12,7 @@ pub struct TypeDef {
     name: IString,
     inner_types: Vec<Self>,
     fields: Vec<(IString, Type)>,
+    functions: Vec<Method>,
     explicit_offsets: Option<Vec<u32>>,
     gargc: u32,
     extends: Option<DotnetTypeRef>,
@@ -35,11 +36,20 @@ impl TypeDef {
     pub fn fields(&self) -> &[(IString, Type)] {
         &self.fields
     }
+    pub fn add_field(&mut self, name: IString, tpe: Type) {
+        self.fields.push((name, tpe));
+    }
     pub fn inner_types(&self) -> &[Self] {
         &self.inner_types
     }
     pub fn explicit_offsets(&self) -> Option<&Vec<u32>> {
         self.explicit_offsets.as_ref()
+    }
+    pub fn add_method(&mut self, method: Method) {
+        self.functions.push(method);
+    }
+    pub fn methods(&self) -> impl Iterator<Item = &Method> {
+        self.functions.iter()
     }
     pub fn nameonly(name: &str) -> Self {
         Self {
@@ -47,6 +57,7 @@ impl TypeDef {
             name: name.into(),
             inner_types: vec![],
             fields: vec![],
+            functions: vec![],
             gargc: 0,
             extends: None,
             explicit_offsets: None,
@@ -80,6 +91,7 @@ impl TypeDef {
                     name: name.into(),
                     inner_types: vec![],
                     fields,
+                    functions: vec![],
                     explicit_offsets: None,
                     gargc: 1,
                     extends: None,
@@ -125,6 +137,7 @@ impl TypeDef {
             name,
             inner_types: vec![],
             fields,
+            functions: vec![],
             gargc,
             extends: None,
             explicit_offsets: None,
@@ -162,6 +175,7 @@ impl TypeDef {
             name,
             inner_types: vec![],
             fields,
+            functions: vec![],
             gargc,
             extends: None,
             explicit_offsets,
@@ -219,6 +233,7 @@ impl TypeDef {
                 name: variant_name.into(),
                 inner_types: vec![],
                 fields,
+                functions: vec![],
                 gargc,
                 extends: None,
                 explicit_offsets: None,
@@ -229,6 +244,7 @@ impl TypeDef {
             name,
             inner_types,
             fields,
+            functions: vec![],
             gargc,
             extends: None,
             explicit_offsets: Some(explicit_offsets),

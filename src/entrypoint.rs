@@ -1,7 +1,7 @@
 use crate::{
     cil_op::{CILOp, CallSite},
     function_sig::FnSig,
-    method::Method,
+    method::{Method, Modifier},
     r#type::Type,
 };
 pub fn wrapper(entrypoint: &CallSite) -> Method {
@@ -22,6 +22,7 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
         ];
         let mut method = Method::new(
             crate::access_modifier::AccessModifer::Public,
+            vec![Modifier::Static],
             sig,
             "entrypoint",
             vec![],
