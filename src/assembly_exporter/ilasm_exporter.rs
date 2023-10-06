@@ -43,11 +43,10 @@ impl AssemblyExporter for ILASMExporter {
 
         let mut out_path = directory.clone();
         out_path.set_file_name(final_path.file_name().expect("Target file has no name!"));
-        let out_path = out_path.with_extension(
-            final_path
-                .extension()
-                .expect("target file has no extension!"),
-        ); //final_path.expect("Could not canonialize path!");
+        if let Some(ext) = final_path.extension() {
+            out_path = out_path.with_extension(ext);
+        }
+        //final_path.expect("Could not canonialize path!");
 
         let cil_path = out_path.with_extension("il");
         let cil = self.encoded_asm;

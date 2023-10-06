@@ -22,21 +22,28 @@ fn skip_binder_if_no_generic_types<T>(binder: Binder<T>) -> Option<T> {
         Some(binder.skip_binder())
     }
 }
+use rustc_codegen_ssa::{
+    back::archive::{
+        get_native_object_symbols, ArArchiveBuilder, ArchiveBuilder, ArchiveBuilderBuilder,
+    },
+    traits::CodegenBackend,
+    CodegenResults, CompiledModule, CrateInfo, ModuleKind,
+};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::{
     dep_graph::{WorkProduct, WorkProductId},
     ty::TyCtxt,
 };
-use rustc_codegen_ssa::{back::archive::{ArArchiveBuilder,ArchiveBuilder,ArchiveBuilderBuilder,get_native_object_symbols},traits::CodegenBackend, CodegenResults, CompiledModule, CrateInfo, ModuleKind};
 use rustc_session::{
-    
     config::{OutputFilenames, OutputType},
-    
     Session,
 };
 use rustc_span::ErrorGuaranteed;
-use std::{any::Any,path::{Path,PathBuf}};
+use std::{
+    any::Any,
+    path::{Path, PathBuf},
+};
 pub type IString = Box<str>;
 mod access_modifier;
 mod aggregate;

@@ -58,11 +58,10 @@ macro_rules! test_lib {
                     "-Z",
                     backend_path(),
                     "-C",
-                    &format!("linker={}",RUSTC_CODEGEN_CLR_LINKER.display()),
+                    &format!("linker={}", RUSTC_CODEGEN_CLR_LINKER.display()),
                     concat!("../", stringify!($test_name), ".rs"),
                     "-o",
                     concat!("./", stringify!($test_name), ".dll"),
-                    
                     //"--target",
                     // "clr64-unknown-clr"
                 ])
@@ -97,7 +96,7 @@ macro_rules! run_test {
                     "-Z",
                     backend_path(),
                     "-C",
-                    &format!("linker={}",RUSTC_CODEGEN_CLR_LINKER.display()),
+                    &format!("linker={}", RUSTC_CODEGEN_CLR_LINKER.display()),
                     concat!("./", stringify!($test_name), ".rs"),
                     "-o",
                     concat!("./", stringify!($test_name), ".exe"),
@@ -116,6 +115,41 @@ macro_rules! run_test {
             }
             let exec_path = concat!("../", stringify!($test_name));
             test_dotnet_executable(exec_path, test_dir);
+        }
+    };
+}
+macro_rules! cargo_test {
+    ($test_name:ident) => {
+        #[test]
+        fn $test_name() {
+            let test_dir = concat!("./cargo_tests/", stringify!($test_name), "/");
+            // Ensures the test directory is present
+            std::fs::create_dir_all(test_dir).expect("Could not setup the test env");
+            // Builds the backend if neceasry
+            RUSTC_BUILD_STATUS.as_ref().expect("Could not build rustc!");
+            // Compiles the test project
+            let out = std::process::Command::new("cargo")
+                .env("RUSTFLAGS","-Z codegen-backend=/home/michal/Rust/rustc_codegen_clr/target/debug/librustc_codegen_clr.so -C linker=/home/michal/Rust/rustc_codegen_clr/target/debug/linker")
+                .current_dir(test_dir)
+                .args([
+                    "build",
+                    "--release"
+                    //"--target",
+                    //"clr64-unknown-clr"
+                ])
+                .output()
+                .expect("failed to execute process");
+            // panic!("out:{out:?}");
+            // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
+            if !out.stderr.is_empty() {
+                let stdout = String::from_utf8(out.stdout)
+                    .expect("rustc error contained non-UTF8 characters.");
+                let stderr = String::from_utf8(out.stderr)
+                    .expect("rustc error contained non-UTF8 characters.");
+                panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
+            }
+            //let exec_path = concat!("../", stringify!($test_name));
+            //test_dotnet_executable(exec_path, test_dir);
         }
     };
 }
@@ -190,6 +224,7 @@ run_test! {types,structs}
 run_test! {types,interop}
 run_test! {types,vec}
 run_test! {std,main}
+cargo_test! {hello_world}
 use lazy_static::*;
 lazy_static! {
     static ref RUNTIME_CONFIG: String = {
@@ -230,12 +265,25 @@ lazy_static! {
         if cfg!(debug_assertions) {
             std::process::Command::new("cargo").args(["build","--bin","linker"]).output().unwrap();
             //TODO: Fix this for other platforms
-            std::fs::canonicalize("target/debug/linker").unwrap()
+            if cfg!(target_os = "linux") || cfg!(target_os = "macos") {
+                std::fs::canonicalize("target/debug/linker").unwrap()
+            } else if cfg!(target_os = "windows") {
+                std::fs::canonicalize("target/debug/linker.exe").unwrap()
+            }
+             else {
+                panic!("Unsupported target OS");
+            }
         } else {
             std::process::Command::new("cargo").args(["build","--bin","linker","--release"]).output().unwrap();
             //TODO: Fix this for other platforms
-            std::fs::canonicalize("target/release/linker").unwrap()
+            if cfg!(target_os = "linux") || cfg!(target_os = "macos") {
+                std::fs::canonicalize("target/release/linker").unwrap()
+            } else if cfg!(target_os = "windows") {
+                std::fs::canonicalize("target/release/linker.exe").unwrap()
+            } else {
+                panic!("Unsupported target OS");
+            }
         }
-        
+
     };
 }
