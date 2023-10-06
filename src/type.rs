@@ -257,7 +257,7 @@ fn is_name_magic(name: &str) -> bool {
 pub fn tuple_type(types: &[Type]) -> DotnetTypeRef {
     if types.len() < 8 {
         let len = types.len();
-        let name = format!("System.Tuple`{len}");
+        let name = format!("System.ValueTuple`{len}");
         crate::r#type::DotnetTypeRef {
             assembly: Some("System.Runtime".into()),
             name_path: name.into(),

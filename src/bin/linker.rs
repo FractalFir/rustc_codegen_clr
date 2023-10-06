@@ -1,6 +1,6 @@
+use assembly::Assembly;
 use rustc_codegen_clr::*;
 use std::env;
-use assembly::Assembly;
 fn load_ar(r: &mut impl std::io::Read) -> std::io::Result<assembly::Assembly> {
     use ar::Archive;
     use std::io::Read;
@@ -10,16 +10,15 @@ fn load_ar(r: &mut impl std::io::Read) -> std::io::Result<assembly::Assembly> {
     while let Some(entry_result) = archive.next_entry() {
         let mut entry = entry_result.unwrap();
         let name = String::from_utf8_lossy(entry.header().identifier());
-        if name.contains(".bc"){
-        let mut asm_bytes = Vec::with_capacity(0x100);
-        entry
-            .read_to_end(&mut asm_bytes)
-            .expect("ERROR: Could not load the assembly file!");
-            let assembly =
-            postcard::from_bytes(&asm_bytes).expect("ERROR:Could not decode the assembly file!");
-        final_assembly = final_assembly.join(assembly);
+        if name.contains(".bc") {
+            let mut asm_bytes = Vec::with_capacity(0x100);
+            entry
+                .read_to_end(&mut asm_bytes)
+                .expect("ERROR: Could not load the assembly file!");
+            let assembly = postcard::from_bytes(&asm_bytes)
+                .expect("ERROR:Could not decode the assembly file!");
+            final_assembly = final_assembly.join(assembly);
         }
-       
     }
     Ok(final_assembly)
 }
