@@ -199,10 +199,6 @@ fn call<'ctx>(
         signature,
         true,
     )));
-    eprintln!(
-        "calling {fn_type:?}\n using ops:{call:?}\n{fn_sig:?}\n",
-        fn_sig = fn_type.fn_sig(tyctx)
-    );
     // Hande
     if is_void {
         call
