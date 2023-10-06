@@ -19,6 +19,19 @@ impl FnSig {
         let output = Type::from_ty(skip_binder_if_no_generic_types(sig.output())?, tcx);
         Ok(Self { inputs, output })
     }
+    pub fn from_poly_sig_mono<'tcx>(
+        sig: &PolyFnSig<'tcx>,
+        tcx: TyCtxt<'tcx>,
+        method: &rustc_middle::ty::Instance<'tcx>,
+    ) -> Result<Self, CodegenError> {
+        let inputs = skip_binder_if_no_generic_types(sig.inputs())?
+            .iter()
+            .map(|v| Type::from_ty(crate::utilis::monomorphize(method,*v,tcx), tcx))
+            .collect();
+        //
+        let output = Type::from_ty(crate::utilis::monomorphize(method,skip_binder_if_no_generic_types(sig.output())?,tcx), tcx);
+        Ok(Self { inputs, output })
+    }
     pub fn inputs(&self) -> &[Type] {
         &self.inputs
     }

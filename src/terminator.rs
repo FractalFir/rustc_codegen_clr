@@ -156,7 +156,7 @@ fn call<'ctx>(
     } else {
         todo!("Trying to call a type which is not a function definition!");
     };
-    let signature = FnSig::from_poly_sig(&fn_type.fn_sig(tyctx), tyctx)
+    let signature = FnSig::from_poly_sig_mono(&fn_type.fn_sig(tyctx), tyctx,&method_instance)
         .expect("Can't get the function signature");
     let function_name = crate::utilis::function_name(tyctx.symbol_name(instance));
     if function_name.contains(CTOR_FN_NAME) {
@@ -199,6 +199,7 @@ fn call<'ctx>(
         signature,
         true,
     )));
+    eprintln!("calling {fn_type:?}\n using ops:{call:?}\n{fn_sig:?}\n",fn_sig = fn_type.fn_sig(tyctx));
     // Hande
     if is_void {
         call

@@ -86,7 +86,7 @@ impl From<u16> for RustcCLRInteropManagedChar{
 }
 impl TryFrom<char> for RustcCLRInteropManagedChar{
     type Error = (RustcCLRInteropManagedChar,RustcCLRInteropManagedChar);
-    fn try_from(value: char) -> Result<Self, Self::Error> {
+    fn try_from(value: char) -> Result<RustcCLRInteropManagedChar, (RustcCLRInteropManagedChar,RustcCLRInteropManagedChar)> {
         let byte1 = (value as u64) & 0xFF;
         if (byte1 & 0x80) == 0x00{
             //1 byte long char
