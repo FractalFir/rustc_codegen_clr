@@ -127,9 +127,13 @@ macro_rules! cargo_test {
             std::fs::create_dir_all(test_dir).expect("Could not setup the test env");
             // Builds the backend if neceasry
             RUSTC_BUILD_STATUS.as_ref().expect("Could not build rustc!");
+            let backend = absolute_backend_path();
+            let backend = backend.display();
+            let linker = RUSTC_CODEGEN_CLR_LINKER.display();
+            let rustflags = format!("-Z codegen-backend={backend} -C linker={linker}");
             // Compiles the test project
             let out = std::process::Command::new("cargo")
-                .env("RUSTFLAGS","-Z codegen-backend=/home/michal/Rust/rustc_codegen_clr/target/debug/librustc_codegen_clr.so -C linker=/home/michal/Rust/rustc_codegen_clr/target/debug/linker")
+                .env("RUSTFLAGS",&rustflags)
                 .current_dir(test_dir)
                 .args([
                     "build",
@@ -180,6 +184,30 @@ fn build_backend() -> Result<(), String> {
         .output()
         .expect("could not build the backend");
     Ok(())
+}
+#[cfg(test)]
+fn absolute_backend_path() -> PathBuf {
+    if cfg!(debug_assertions) {
+        if cfg!(target_os = "linux") {
+            std::fs::canonicalize("target/debug/librustc_codegen_clr.so").unwrap() 
+        } else if cfg!(target_os = "windows") {
+            std::fs::canonicalize("target/debug/librustc_codegen_clr.dll").unwrap() 
+        } else if cfg!(target_os = "macos") {
+            std::fs::canonicalize("target/debug/librustc_codegen_clr.dylib").unwrap() 
+        } else {
+            panic!("Unsupported target OS");
+        }
+    } else {
+        if cfg!(target_os = "linux") {
+            std::fs::canonicalize("target/release/librustc_codegen_clr.so").unwrap() 
+        } else if cfg!(target_os = "windows") {
+            std::fs::canonicalize("target/release/librustc_codegen_clr.dll").unwrap() 
+        } else if cfg!(target_os = "macos") {
+            std::fs::canonicalize("target/release/librustc_codegen_clr.dylib").unwrap() 
+        } else {
+            panic!("Unsupported target OS");
+        }
+    }
 }
 #[cfg(test)]
 fn backend_path() -> &'static str {

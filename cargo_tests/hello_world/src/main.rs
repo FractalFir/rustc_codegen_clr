@@ -19,17 +19,18 @@ fn main() {
     sb.append_char('l');
     sb.append_char('d');
     sb.append_char('!');
-    sb.append_char('\n');
-    sb.append_char('\r');
+    let mstr = sb.to_mstring();
+    mycorrhiza::system::console::Console::writeln_string(mstr);
+    let sb = mycorrhiza::system::text::StringBuilder::empty();
+    //println!("Hello, world!");
     sb.append_char('ó');
-    sb.append_char('ą');
-    sb.append_char('ź');
-    sb.append_char('ż');
-    sb.append_char('漢');
-    sb.append_char('字');
+    //sb.append_char('ą');
+    //sb.append_char('ź');
+    //sb.append_char('ż');
+    //sb.append_char('漢');
+    //sb.append_char('字');
     sb.append_char('\n');
     sb.append_char('\r');
     let mstr = sb.to_mstring();
     mycorrhiza::system::console::Console::writeln_string(mstr);
-    //println!("Hello, world!");
 }

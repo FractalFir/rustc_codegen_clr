@@ -122,14 +122,13 @@ fn op3_combos(ops: &mut Vec<CILOp>) {
                 ops[idx + 1] = CILOp::Nop;
                 ops[idx + 2] = CILOp::Nop;
             }
-            /*
-            (CILOp::BEq(a1), CILOp::Br(b), CILOp::Label(a2)) => if a1 == a2{
+            (CILOp::BEq(a1), CILOp::GoTo(b), CILOp::Label(a2)) => if a1 == a2{
                 let a = *a1;
                 let b = *b;
                 ops[idx] = CILOp::BNe(b);
                 ops[idx + 1] = CILOp::Nop;
-                ops[idx + 2] = CILOp::CILOp::Label(a);
-            }*/
+                ops[idx + 2] = CILOp::Label(a);
+            }
             _ => (),
         }
     }
@@ -182,6 +181,7 @@ fn is_label_unsused(ops: &[CILOp], label: u32) -> bool {
     !ops.iter().any(|op| match op {
         CILOp::GoTo(target) => label == *target,
         CILOp::BEq(target) => label == *target,
+        CILOp::BNe(target) => label == *target,
         CILOp::BLt(target) => label == *target,
         CILOp::BGe(target) => label == *target,
         CILOp::BZero(target) => label == *target,

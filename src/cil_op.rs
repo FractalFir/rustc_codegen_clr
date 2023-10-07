@@ -131,6 +131,7 @@ pub enum CILOp {
     Label(u32),
     GoTo(u32),
     BEq(u32),
+    BNe(u32),
     BLt(u32),
     BGe(u32),
     BZero(u32),
