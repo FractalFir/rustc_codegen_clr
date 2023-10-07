@@ -57,7 +57,7 @@ impl Assembly {
         // Get locals
         let locals = locals_from_mir(&mir.local_decls, tcx, sig.inputs().len(), &instance);
         // Create method prototype
-        let mut method = Method::new(access_modifier, sig, name, locals);
+        let mut method = Method::new(access_modifier, true, sig, name, locals);
         let mut ops = Vec::new();
         let mut last_bb_id = 0;
         let blocks = &(*mir.basic_blocks);

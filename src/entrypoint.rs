@@ -22,6 +22,7 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
         ];
         let mut method = Method::new(
             crate::access_modifier::AccessModifer::Public,
+            true,
             sig,
             "entrypoint",
             vec![],

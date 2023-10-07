@@ -12,6 +12,7 @@ macro_rules! add_method {
         fn $name(asm: &mut Assembly) {
             let mut method = Method::new(
                 AccessModifer::Private,
+                true,
                 FnSig::new($input, $output),
                 stringify!($name),
                 vec![],
@@ -24,12 +25,41 @@ macro_rules! add_method {
         fn $name(asm: &mut Assembly) {
             let mut method = Method::new(
                 AccessModifer::Private,
+                true,
                 FnSig::new($input, $output),
                 stringify!($name),
                 $locals.into(),
             );
             method.set_ops(($ops).into());
             asm.add_method(method);
+        }
+    };
+}
+macro_rules! add_tpe_method {
+    ($name:ident,$is_static:expr,$input:expr,$output:expr,$ops:expr) => {
+        fn $name(tpe: &mut crate::type_def::TypeDef) {
+            let mut method = Method::new(
+                AccessModifer::Public,
+                $is_static,
+                FnSig::new($input, $output),
+                stringify!($name),
+                vec![],
+            );
+            method.set_ops(($ops).to_vec());
+            tpe.add_method(method);
+        }
+    };
+    ($name:ident,$input:expr,$output:expr,$ops:expr,$locals:expr) => {
+        fn $name(tpe: &mut crate::type_def::TypeDef) {
+            let mut method = Method::new(
+                AccessModifer::Public,
+                $is_static,
+                FnSig::new($input, $output),
+                stringify!($name),
+                $locals.into(),
+            );
+            method.set_ops(($ops).into());
+            tpe.add_method(method);
         }
     };
 }
@@ -48,15 +78,34 @@ pub fn insert_libc(asm: &mut Assembly) {
     asm.add_typedef(crate::type_def::TypeDef::nameonly("RustVoid"));
     asm.add_typedef(crate::type_def::TypeDef::nameonly("Foreign"));
     asm.add_typedef(crate::type_def::TypeDef::nameonly("RustStr"));
-    let mut rust_slice = crate::type_def::TypeDef::nameonly("RustSlice");
-    rust_slice.set_generic_count(1);
-    asm.add_typedef(rust_slice);
+    rust_slice(asm);
     math(asm);
     io(asm);
     malloc(asm);
     realloc(asm);
     free(asm);
     abort(asm);
+}
+
+fn rust_slice(asm: &mut Assembly) {
+    let mut rust_slice = crate::type_def::TypeDef::nameonly("RustSlice");
+    rust_slice.set_generic_count(1);
+    // TODO: constrain this generic to be unmanaged
+    rust_slice.add_field("_ptr".into(), Type::Ptr(Box::new(Type::GenericArg(0))));
+    rust_slice.add_field("_length".into(), Type::ISize);
+    add_tpe_method!(
+        get_length,
+        false,
+        &[],
+        &Type::I32,
+        [
+            // just returning 0 for now
+            CILOp::LdcI32(0),
+            CILOp::Ret
+        ]
+    );
+    get_length(&mut rust_slice);
+    asm.add_typedef(rust_slice);
 }
 
 fn math(asm: &mut Assembly) {
