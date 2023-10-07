@@ -1,5 +1,4 @@
 use crate::cil_op::{CILOp, CallSite};
-use crate::method::Modifier;
 use crate::{
     access_modifier::AccessModifer, codegen_error::CodegenError, function_sig::FnSig,
     method::Method, r#type::Type, type_def::TypeDef,
@@ -58,7 +57,7 @@ impl Assembly {
         // Get locals
         let locals = locals_from_mir(&mir.local_decls, tcx, sig.inputs().len(), &instance);
         // Create method prototype
-        let mut method = Method::new(access_modifier, vec![Modifier::Static], sig, name, locals);
+        let mut method = Method::new(access_modifier, true, sig, name, locals);
         let mut ops = Vec::new();
         let mut last_bb_id = 0;
         let blocks = &(*mir.basic_blocks);

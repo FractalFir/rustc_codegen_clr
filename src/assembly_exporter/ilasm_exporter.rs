@@ -2,7 +2,7 @@ use super::AssemblyExporter;
 use crate::{
     access_modifier::AccessModifer,
     assembly_exporter::AssemblyExportError,
-    method::{Method, Modifier},
+    method::Method,
     r#type::{DotnetTypeRef, Type},
     type_def::TypeDef,
 };
@@ -145,26 +145,20 @@ fn absolute_path(path: &std::path::Path) -> std::io::Result<std::path::PathBuf> 
         Ok(abs_path)
     }
 }
-fn modifier_cil(modifier: &Modifier) -> String {
-    match modifier {
-        Modifier::Static => "static".into(),
-        Modifier::Instance => "instance".into(),
-    }
-}
 fn method_cil(w: &mut impl Write, method: &Method) -> std::io::Result<()> {
     let access = if let AccessModifer::Private = method.access() {
         "private"
     } else {
         "public"
     };
+    let static_inst = if method.is_static() {
+        "static"
+    } else {
+        "instance"
+    };
     let output = output_type_cli(method.sig().output());
     let name = method.name();
-    write!(w, ".method {access} hidebysig ")?;
-    for (_, modifier) in method.modifiers().iter().enumerate() {
-        let modifier_name = modifier_cil(modifier);
-        write!(w, "{modifier_name} ")?;
-    }
-    write!(w, "{output} {name}")?;
+    write!(w, ".method {access} hidebysig {static_inst} {output} {name}")?;
     args_cli(w, method.sig().inputs())?;
     writeln!(w, "{{")?;
     if method.is_entrypoint() {

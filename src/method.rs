@@ -3,16 +3,11 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
-#[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Debug)]
-pub enum Modifier {
-    Static,
-    Instance,
-}
 /// Represenation of a CIL method.
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 pub struct Method {
     access: AccessModifer,
-    modifiers: Vec<Modifier>,
+    is_static: bool,
     sig: FnSig,
     name: IString,
     locals: Vec<Type>,
@@ -31,10 +26,10 @@ pub enum Attribute {
     EntryPoint,
 }
 impl Method {
-    pub fn new(access: AccessModifer, modifiers: Vec<Modifier>, sig: FnSig, name: &str, locals: Vec<Type>) -> Self {
+    pub fn new(access: AccessModifer, is_static: bool, sig: FnSig, name: &str, locals: Vec<Type>) -> Self {
         Self {
             access,
-            modifiers,
+            is_static,
             sig,
             name: name.into(),
             locals,
@@ -53,8 +48,8 @@ impl Method {
     pub fn access(&self) -> AccessModifer {
         self.access
     }
-    pub fn modifiers(&self) -> &[Modifier] {
-        &self.modifiers
+    pub fn is_static(&self) -> bool {
+        self.is_static
     }
     pub fn name(&self) -> &str {
         &self.name

@@ -4,7 +4,7 @@ use crate::{
     assembly::Assembly,
     cil_op::{CILOp, CallSite},
     function_sig::FnSig,
-    method::{Method, Modifier},
+    method::Method,
     r#type::Type,
 };
 macro_rules! add_method {
@@ -12,7 +12,7 @@ macro_rules! add_method {
         fn $name(asm: &mut Assembly) {
             let mut method = Method::new(
                 AccessModifer::Private,
-                vec![Modifier::Static],
+                true,
                 FnSig::new($input, $output),
                 stringify!($name),
                 vec![],
@@ -25,7 +25,7 @@ macro_rules! add_method {
         fn $name(asm: &mut Assembly) {
             let mut method = Method::new(
                 AccessModifer::Private,
-                vec![Modifier::Static],
+                true,
                 FnSig::new($input, $output),
                 stringify!($name),
                 $locals.into(),
@@ -36,11 +36,11 @@ macro_rules! add_method {
     };
 }
 macro_rules! add_tpe_method {
-    ($name:ident,$input:expr,$output:expr,$ops:expr) => {
+    ($name:ident,$is_static:expr,$input:expr,$output:expr,$ops:expr) => {
         fn $name(tpe: &mut crate::type_def::TypeDef) {
             let mut method = Method::new(
                 AccessModifer::Public,
-                vec![Modifier::Instance],
+                $is_static,
                 FnSig::new($input, $output),
                 stringify!($name),
                 vec![],
@@ -53,7 +53,7 @@ macro_rules! add_tpe_method {
         fn $name(tpe: &mut crate::type_def::TypeDef) {
             let mut method = Method::new(
                 AccessModifer::Public,
-                vec![Modifier::Instance],
+                $is_static,
                 FnSig::new($input, $output),
                 stringify!($name),
                 $locals.into(),
@@ -95,6 +95,7 @@ fn rust_slice(asm: &mut Assembly) {
     rust_slice.add_field("_length".into(), Type::ISize);
     add_tpe_method!(
         get_length,
+        false,
         &[],
         &Type::I32,
         [
