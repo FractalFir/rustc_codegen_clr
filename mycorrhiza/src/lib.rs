@@ -4,7 +4,9 @@
 //! Mycorrhiza must "look" like a normal crate from the outside, even tough it deeply interacts with `rustc_codegen_clr`. It also should be possible to
 //! implement an equivalent APIs in standard Rust.
 #![no_std]
+#![allow(internal_features)]
 #![feature(core_intrinsics,adt_const_params)]
+
 /// Very low-level interop stuff. Don't use unless you need to.
 pub mod intrinsics;
 /// Wrappers around types from the `System` namespace

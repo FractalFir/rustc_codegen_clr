@@ -2,6 +2,7 @@ use crate::{cil_op::CILOp, method::Method, r#type::Type};
 const MAX_PASS: u32 = 8;
 pub fn opt_method(method: &mut Method) {
     //return;
+    //panic!("opt");
     repalce_const_sizes(method.ops_mut());
     for _ in 0..MAX_PASS {
         op2_combos(method.ops_mut());
@@ -121,6 +122,14 @@ fn op3_combos(ops: &mut Vec<CILOp>) {
                 ops[idx + 1] = CILOp::Nop;
                 ops[idx + 2] = CILOp::Nop;
             }
+            /*
+            (CILOp::BEq(a1), CILOp::Br(b), CILOp::Label(a2)) => if a1 == a2{
+                let a = *a1;
+                let b = *b;
+                ops[idx] = CILOp::BNe(b);
+                ops[idx + 1] = CILOp::Nop;
+                ops[idx + 2] = CILOp::CILOp::Label(a);
+            }*/
             _ => (),
         }
     }
@@ -129,6 +138,7 @@ fn op4_combos(ops: &mut Vec<CILOp>) {
     if ops.len() < 4 {
         return;
     }
+    // Beq(A) Br(B) Label(A)
     for idx in 0..(ops.len() - 3) {
         let (op1, op2, op3, op4) = (&ops[idx], &ops[idx + 1], &ops[idx + 2], &ops[idx + 3]);
         match (op1, op2, op3, op4) {

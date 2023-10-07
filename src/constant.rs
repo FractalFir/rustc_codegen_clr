@@ -72,8 +72,8 @@ fn load_const_scalar<'ctx>(
     };
     let tpe = Type::from_ty(scalar_type, tyctx);
     match scalar_type.kind() {
-        TyKind::Int(int_type) => load_const_int(scalar_u128, int_type, tyctx),
-        TyKind::Uint(uint_type) => load_const_uint(scalar_u128, uint_type, tyctx),
+        TyKind::Int(int_type) => load_const_int(scalar_u128, int_type),
+        TyKind::Uint(uint_type) => load_const_uint(scalar_u128, uint_type),
         TyKind::Float(ftype) => load_const_float(scalar_u128, ftype, tyctx),
         TyKind::Bool => vec![CILOp::LdcI32(scalar_u128 as i32)],
         TyKind::RawPtr(_) => {
@@ -119,7 +119,7 @@ fn load_const_float(value: u128, int_type: &FloatTy, _tyctx: TyCtxt) -> Vec<CILO
         }
     }
 }
-fn load_const_int(value: u128, int_type: &IntTy, _tyctx: TyCtxt) -> Vec<CILOp> {
+pub fn load_const_int(value: u128, int_type: &IntTy) -> Vec<CILOp> {
     match int_type {
         IntTy::I8 => {
             let value = i8::from_ne_bytes([value as u8]);
@@ -161,7 +161,7 @@ fn load_const_int(value: u128, int_type: &IntTy, _tyctx: TyCtxt) -> Vec<CILOp> {
         }
     }
 }
-fn load_const_uint(value: u128, int_type: &UintTy, _tyctx: TyCtxt) -> Vec<CILOp> {
+pub fn load_const_uint(value: u128, int_type: &UintTy) -> Vec<CILOp> {
     match int_type {
         UintTy::U8 => {
             let value = i8::from_ne_bytes([value as u8]);

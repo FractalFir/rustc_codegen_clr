@@ -156,9 +156,13 @@ macro_rules! cargo_test {
 #[cfg(debug_assertions)]
 fn build_backend() -> Result<(), String> {
     let out = std::process::Command::new("cargo")
-        .args(["build"])
+        .args(["build","--lib"])
         .output()
         .map_err(|err| err.to_string())?;
+    std::process::Command::new("cargo")
+        .args(["build","--bin","linker"])
+        .output()
+        .expect("could not build the backend");
     /*
     if out.stderr.len() > 0{
         return Err(String::from_utf8(out.stderr).expect("Non UTF8 error message!"));
@@ -166,11 +170,16 @@ fn build_backend() -> Result<(), String> {
     Ok(())
 }
 #[cfg(not(debug_assertions))]
-fn build_backend() {
+fn build_backend() -> Result<(), String> {
     std::process::Command::new("cargo")
-        .args(["build", "--release"])
+        .args(["build", "--release","--lib"])
         .output()
         .expect("could not build the backend");
+    std::process::Command::new("cargo")
+        .args(["build", "--release","--bin","linker"])
+        .output()
+        .expect("could not build the backend");
+    Ok(())
 }
 #[cfg(test)]
 fn backend_path() -> &'static str {

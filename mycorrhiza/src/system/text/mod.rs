@@ -10,9 +10,6 @@ impl StringBuilder{
     }
     #[inline(always)]
     pub fn append_char(self,chr:char)->Self{
-        match chr.try_into(){
-            Ok(chr)=>self.append_mchar(chr),
-            Err((chr1,chr2))=>self.append_mchar(chr1).append_mchar(chr2),
-        }
+        self.append_mchar(crate::DotNetChar::single_codepoint_unchecked(chr))
     }
 }

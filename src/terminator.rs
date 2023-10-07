@@ -260,8 +260,9 @@ pub fn handle_terminator<'ctx>(
             }
         }
         TerminatorKind::SwitchInt { discr, targets } => {
+            let ty = crate::utilis::monomorphize(&method_instance,discr.ty(method,tyctx),tyctx);
             let discr = crate::operand::handle_operand(discr, tyctx, method, method_instance);
-            handle_switch(discr, targets)
+            handle_switch(ty,discr, targets)
         }
         TerminatorKind::Assert {
             cond,
@@ -443,11 +444,17 @@ fn throw_assert_msg<'ctx>(
         _ => todo!("unsuported assertion message:{msg:?}"),
     }
 }
-fn handle_switch(discr: Vec<CILOp>, switch: &SwitchTargets) -> Vec<CILOp> {
+fn handle_switch(ty:Ty,discr: Vec<CILOp>, switch: &SwitchTargets) -> Vec<CILOp> {
     let mut ops = Vec::new();
     for (value, target) in switch.iter() {
         ops.extend(discr.iter().cloned());
-        ops.push(CILOp::LdcI64(value as i64));
+        ops.extend(match ty.kind(){
+            TyKind::Int(int)=>crate::constant::load_const_int(value,int),
+            TyKind::Uint(uint)=>crate::constant::load_const_uint(value,uint),
+            TyKind::Bool=>vec![CILOp::LdcI32(value as u8 as i32)],
+            _=>todo!("Unsuported switch discriminant type {ty:?}")
+        });
+        //ops.push(CILOp::LdcI64(value as i64));
         ops.push(CILOp::BEq(target.into()));
     }
     ops.push(CILOp::GoTo(switch.otherwise().into()));
