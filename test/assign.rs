@@ -1,3 +1,5 @@
+#![allow(improper_ctypes_definitions)]
+
 #[no_mangle]
 pub extern fn assign_i8(place: &mut i8, value: &i8) {
     *place = *value;
@@ -66,4 +68,14 @@ pub extern fn assign_bool(place: &mut bool, value: &bool) {
 #[no_mangle]
 pub extern fn assign_char(place: &mut char, value: &char) {
     *place = *value;
+}
+
+#[no_mangle]
+pub extern fn assign_array_elem(place: &mut [u8; 1], value: &[u8; 1]) {
+    place[0] = value[0];
+}
+
+#[no_mangle]
+pub extern fn assign_slice_elem(place: &mut [u8], value: &[u8]) {
+    place[0] = value[0];
 }

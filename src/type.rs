@@ -239,6 +239,7 @@ impl From<&FloatTy> for Type {
 pub fn element_type<'tyctx>(src: Ty<'tyctx>) -> Ty<'tyctx> {
     match src.kind() {
         TyKind::Array(element, _) => *element,
+        TyKind::Slice(element) => *element,
         _ => panic!("Can't get element type of {src:?}"),
     }
 }

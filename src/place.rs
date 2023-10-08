@@ -3,7 +3,7 @@ use crate::cil_op::{CILOp, FieldDescriptor};
 use crate::r#type::{DotnetTypeRef, Type};
 use crate::utilis::field_name;
 use rustc_middle::mir::{Place, PlaceElem};
-use rustc_middle::ty::{FloatTy, Instance, IntTy, Ty, TyCtxt, TyKind, UintTy};
+use rustc_middle::ty::{FloatTy, Instance, IntTy, Ty, TyCtxt, TyKind, UintTy, ParamEnv};
 fn slice_head<T>(slice: &[T]) -> (&T, &[T]) {
     assert!(!slice.is_empty());
     let last = &slice[slice.len() - 1];
@@ -78,6 +78,95 @@ fn local_body<'tcx>(local: usize, method: &rustc_middle::mir::Body<'tcx>) -> (CI
         (local_get(local, method), ty)
     }
 }
+fn place_get_length<'ctx>(
+    curr_type: PlaceTy<'ctx>,
+    ctx: TyCtxt<'ctx>,
+    method_instance: Instance<'ctx>
+) -> Vec<CILOp> {
+    let curr_ty = curr_type.as_ty().expect("Can't index into enum!");
+    let tpe = Type::from_ty(curr_ty, ctx);
+    let class = if let Type::DotnetType(dotnet) = &tpe {
+        dotnet
+    } else {
+        panic!("Can't index into type {tpe:?}");
+    };
+    match *curr_ty.kind() {
+        TyKind::Array(_elem, len) => {
+            let len = crate::utilis::monomorphize(&method_instance, len, ctx);
+            let len = len.eval_target_usize(ctx, ParamEnv::reveal_all()) as i64;
+            vec![CILOp::LdcI64(len)]
+        },
+        TyKind::Slice(_elem) => {
+            let signature = crate::function_sig::FnSig::new(&[tpe.clone()], &Type::USize);
+            vec![
+                CILOp::LDArg(0),
+                CILOp::Call(crate::cil_op::CallSite::boxed(
+                    Some(class.as_ref().clone()),
+                    "get_Length".into(),
+                    signature,
+                    false,
+                ))
+            ]
+        },
+        _ => todo!("Can't get length of non-array/slice!")
+    }
+}
+fn place_elem_get_at<'a>(
+    curr_type: PlaceTy<'a>,
+    ctx: TyCtxt<'a>,
+) -> Vec<CILOp> {
+    let curr_ty = curr_type.as_ty().expect("Can't index into enum!");
+    let tpe = Type::from_ty(curr_ty, ctx);
+    let class = if let Type::DotnetType(dotnet) = &tpe {
+        dotnet
+    } else {
+        panic!("Can't index into type {tpe:?}");
+    };
+    let index_ty = Type::USize;
+    let element_ty = crate::r#type::element_type(curr_ty);
+
+    let signature = crate::function_sig::FnSig::new(
+        &[tpe.clone(), index_ty],
+        &Type::from_ty(element_ty, ctx),
+    );
+    vec![
+        CILOp::LDArg(0),
+        CILOp::Call(crate::cil_op::CallSite::boxed(
+            Some(class.as_ref().clone()),
+            "get_Item".into(),
+            signature,
+            false,
+        ))
+    ]
+}
+fn place_elem_set_at<'a>(
+    curr_type: PlaceTy<'a>,
+    ctx: TyCtxt<'a>,
+) -> Vec<CILOp> {
+    let curr_ty = curr_type.as_ty().expect("Can't index into enum!");
+    let tpe = Type::from_ty(curr_ty, ctx);
+    let class = if let Type::DotnetType(dotnet) = &tpe {
+        dotnet
+    } else {
+        panic!("Can't index into type {tpe:?}");
+    };
+    let index_ty = Type::USize;
+    let element_ty = crate::r#type::element_type(curr_ty);
+
+    let signature = crate::function_sig::FnSig::new(
+        &[tpe.clone(), index_ty],
+        &Type::from_ty(element_ty, ctx),
+    );
+    vec![
+        CILOp::LDArg(0),
+        CILOp::Call(crate::cil_op::CallSite::boxed(
+            Some(class.as_ref().clone()),
+            "set_Item".into(),
+            signature,
+            false,
+        ))
+    ]
+}
 fn place_elem_get<'a>(
     place_elem: &PlaceElem<'a>,
     curr_type: PlaceTy<'a>,
@@ -127,28 +216,23 @@ fn place_elem_get<'a>(
                 index.as_usize(),
                 ctx.optimized_mir(method_instance.def_id()),
             )];
-            let curr_ty = curr_type.as_ty().expect("Can't index into enum!");
-            let tpe = Type::from_ty(curr_ty, ctx);
-            let class = if let Type::DotnetType(dotnet) = &tpe {
-                dotnet
-            } else {
-                panic!("Can't index into type {tpe:?}");
-            };
-            let index_ty = Type::USize;
-            let element_ty = crate::r#type::element_type(curr_ty);
-
-            let signature = crate::function_sig::FnSig::new(
-                &[tpe.clone(), index_ty],
-                &Type::from_ty(element_ty, ctx),
-            );
-            ops.push(CILOp::Call(crate::cil_op::CallSite::boxed(
-                Some(class.as_ref().clone()),
-                "get_Item".into(),
-                signature,
-                false,
-            )));
+            ops.extend(place_elem_get_at(curr_type, ctx));
             ops
-        }
+        },
+        PlaceElem::ConstantIndex { offset, min_length: _, from_end } => {
+            let mut ops = if !from_end {
+                vec![CILOp::LdcI64(*offset as i64)]
+            } else {
+                let mut get_len = place_get_length(curr_type, ctx, method_instance);
+                get_len.extend(vec![
+                    CILOp::LdcI64(*offset as i64),
+                    CILOp::Sub
+                ]);
+                get_len
+            };
+            ops.extend(place_elem_get_at(curr_type, ctx));
+            ops
+        },
         _ => todo!("Can't handle porojection {place_elem:?} in get"),
     }
 }
@@ -180,7 +264,29 @@ fn place_elem_set<'a>(
             } else {
                 todo!("Can't set fields of enum variants yet!");
             }
-        }
+        },
+        PlaceElem::Index(index) => {
+            let mut ops = vec![crate::place::local_adress(
+                index.as_usize(),
+                ctx.optimized_mir(method_instance.def_id()),
+            )];
+            ops.extend(place_elem_set_at(curr_type, ctx));
+            ops
+        },
+        PlaceElem::ConstantIndex { offset, min_length: _, from_end } => {
+            let mut ops = if !from_end {
+                vec![CILOp::LdcI64(*offset as i64)]
+            } else {
+                let mut get_len = place_get_length(curr_type, ctx, method_instance);
+                get_len.extend(vec![
+                    CILOp::LdcI64(*offset as i64),
+                    CILOp::Sub
+                ]);
+                get_len
+            };
+            ops.extend(place_elem_set_at(curr_type, ctx));
+            ops
+        },
         _ => todo!("Can't handle porojection {place_elem:?} in set"),
     }
 }
@@ -288,9 +394,10 @@ fn place_elem_body<'ctx>(
                     &[tpe.clone(), index_ty],
                     &Type::Ptr(Box::new(Type::from_ty(element_ty, tyctx))),
                 );
+                ops.push(CILOp::LDArg(0));
                 ops.push(CILOp::Call(crate::cil_op::CallSite::boxed(
                     Some(class.as_ref().clone()),
-                    "get_Adress".into(),
+                    "get_Address".into(),
                     signature,
                     false,
                 )));
@@ -300,6 +407,7 @@ fn place_elem_body<'ctx>(
                     &[tpe.clone(), index_ty],
                     &Type::from_ty(element_ty, tyctx),
                 );
+                ops.push(CILOp::LDArg(0));
                 ops.push(CILOp::Call(crate::cil_op::CallSite::boxed(
                     Some(class.as_ref().clone()),
                     "get_Item".into(),
