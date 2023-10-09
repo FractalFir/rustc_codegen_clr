@@ -9,4 +9,4 @@ test/out
 /target
 /Cargo.lock
 .vscode/
-.bc
+*.bc

@@ -133,13 +133,12 @@ macro_rules! cargo_test {
             let rustflags = format!("-Z codegen-backend={backend} -C linker={linker}");
             // Compiles the test project
             let out = std::process::Command::new("cargo")
-                .env("RUSTFLAGS",&rustflags)
+                .env("RUSTFLAGS", &rustflags)
                 .current_dir(test_dir)
                 .args([
                     "build",
-                    "--release"
-                    //"--target",
-                    //"clr64-unknown-clr"
+                    "--release", //"--target",
+                                 //"clr64-unknown-clr"
                 ])
                 .output()
                 .expect("failed to execute process");
@@ -160,11 +159,11 @@ macro_rules! cargo_test {
 #[cfg(debug_assertions)]
 fn build_backend() -> Result<(), String> {
     let out = std::process::Command::new("cargo")
-        .args(["build","--lib"])
+        .args(["build", "--lib"])
         .output()
         .map_err(|err| err.to_string())?;
     std::process::Command::new("cargo")
-        .args(["build","--bin","linker"])
+        .args(["build", "--bin", "linker"])
         .output()
         .expect("could not build the backend");
     /*
@@ -176,11 +175,11 @@ fn build_backend() -> Result<(), String> {
 #[cfg(not(debug_assertions))]
 fn build_backend() -> Result<(), String> {
     std::process::Command::new("cargo")
-        .args(["build", "--release","--lib"])
+        .args(["build", "--release", "--lib"])
         .output()
         .expect("could not build the backend");
     std::process::Command::new("cargo")
-        .args(["build", "--release","--bin","linker"])
+        .args(["build", "--release", "--bin", "linker"])
         .output()
         .expect("could not build the backend");
     Ok(())
@@ -189,21 +188,21 @@ fn build_backend() -> Result<(), String> {
 fn absolute_backend_path() -> PathBuf {
     if cfg!(debug_assertions) {
         if cfg!(target_os = "linux") {
-            std::fs::canonicalize("target/debug/librustc_codegen_clr.so").unwrap() 
+            std::fs::canonicalize("target/debug/librustc_codegen_clr.so").unwrap()
         } else if cfg!(target_os = "windows") {
-            std::fs::canonicalize("target/debug/librustc_codegen_clr.dll").unwrap() 
+            std::fs::canonicalize("target/debug/librustc_codegen_clr.dll").unwrap()
         } else if cfg!(target_os = "macos") {
-            std::fs::canonicalize("target/debug/librustc_codegen_clr.dylib").unwrap() 
+            std::fs::canonicalize("target/debug/librustc_codegen_clr.dylib").unwrap()
         } else {
             panic!("Unsupported target OS");
         }
     } else {
         if cfg!(target_os = "linux") {
-            std::fs::canonicalize("target/release/librustc_codegen_clr.so").unwrap() 
+            std::fs::canonicalize("target/release/librustc_codegen_clr.so").unwrap()
         } else if cfg!(target_os = "windows") {
-            std::fs::canonicalize("target/release/librustc_codegen_clr.dll").unwrap() 
+            std::fs::canonicalize("target/release/librustc_codegen_clr.dll").unwrap()
         } else if cfg!(target_os = "macos") {
-            std::fs::canonicalize("target/release/librustc_codegen_clr.dylib").unwrap() 
+            std::fs::canonicalize("target/release/librustc_codegen_clr.dylib").unwrap()
         } else {
             panic!("Unsupported target OS");
         }
@@ -262,6 +261,7 @@ run_test! {types,interop}
 run_test! {types,vec}
 run_test! {std,main}
 cargo_test! {hello_world}
+cargo_test! {benchmarks}
 use lazy_static::*;
 lazy_static! {
     static ref RUNTIME_CONFIG: String = {

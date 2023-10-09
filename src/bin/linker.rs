@@ -25,7 +25,6 @@ fn load_ar(r: &mut impl std::io::Read) -> std::io::Result<assembly::Assembly> {
 fn main() {
     use std::io::Read;
     let args: Vec<String> = env::args().collect();
-    //panic!("{args}");
     let args = &args[1..];
     let to_link: Vec<_> = args.iter().filter(|arg| arg.contains(".bc")).collect();
     let ar_to_link: Vec<_> = args.iter().filter(|arg| arg.contains(".rlib")).collect();
@@ -54,11 +53,8 @@ fn main() {
     stdlib::insert_libc(&mut final_assembly);
     use rustc_codegen_clr::assembly_exporter::AssemblyExporter;
     let path = output;
-    /*std::fs::create_dir_all(path.parent().expect("Could not get the target directory"))
-    .expect("Could not create the target directory!");*/
     rustc_codegen_clr::assembly_exporter::ilasm_exporter::ILASMExporter::export_assembly(
         &final_assembly,
         path.as_ref(),
     );
-    //panic!("to_link:{to_link:?} output:{output:?}")
 }

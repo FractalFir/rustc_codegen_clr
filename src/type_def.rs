@@ -1,8 +1,9 @@
 use crate::{
     access_modifier::AccessModifer,
+    method::Method,
     r#type::{DotnetTypeRef, Type},
     utilis::{enum_tag_size, tag_from_enum_variants},
-    IString, method::Method,
+    IString,
 };
 use rustc_middle::ty::{AdtDef, AdtKind, GenericArg, List, Ty, TyCtxt, TyKind};
 use serde::{Deserialize, Serialize};
@@ -193,6 +194,7 @@ impl TypeDef {
         if name.to_string() == "std.convert.Infallible" {
             return vec![];
         }
+
         let gargc = subst.len() as u32;
         let access = AccessModifer::Public;
         //let mut fields = Vec::with_capacity(adt_def.all_fields().count());
@@ -210,6 +212,7 @@ impl TypeDef {
         )];
         let mut explicit_offsets = vec![0];
         let tag_size = enum_tag_size(adt_def.variants().len() as u64);
+        assert_ne!(tag_size, 0, "ERROR:{name} has a zero sized tag!");
         explicit_offsets.extend(adt_def.variants().iter().map(|_| tag_size));
         let mut inner_types = vec![];
         for variant in adt_def.variants() {

@@ -40,6 +40,7 @@ pub fn int_to_float(src: Type, target: Type) -> Vec<CILOp> {
     } else {
         match target {
             Type::F32 => vec![CILOp::ConvF32(false)],
+            Type::F64 => vec![CILOp::ConvF64(false)],
             _ => todo!("Can't cast to {target:?} yet!"),
         }
     }

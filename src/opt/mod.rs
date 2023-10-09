@@ -122,12 +122,14 @@ fn op3_combos(ops: &mut Vec<CILOp>) {
                 ops[idx + 1] = CILOp::Nop;
                 ops[idx + 2] = CILOp::Nop;
             }
-            (CILOp::BEq(a1), CILOp::GoTo(b), CILOp::Label(a2)) => if a1 == a2{
-                let a = *a1;
-                let b = *b;
-                ops[idx] = CILOp::BNe(b);
-                ops[idx + 1] = CILOp::Nop;
-                ops[idx + 2] = CILOp::Label(a);
+            (CILOp::BEq(a1), CILOp::GoTo(b), CILOp::Label(a2)) => {
+                if a1 == a2 {
+                    let a = *a1;
+                    let b = *b;
+                    ops[idx] = CILOp::BNe(b);
+                    ops[idx + 1] = CILOp::Nop;
+                    ops[idx + 2] = CILOp::Label(a);
+                }
             }
             _ => (),
         }

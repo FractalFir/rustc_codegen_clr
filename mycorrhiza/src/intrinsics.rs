@@ -29,6 +29,10 @@ impl<const ASSEMBLY:&'static str,const CLASS_PATH:&'static str> RustcCLRInteropM
         rustc_clr_interop_managed_call1_::<ASSEMBLY,CLASS_PATH,false,METHOD,false,Ret,Self>(self)
     }
     #[inline(always)]
+    pub fn virt0<const METHOD:&'static str,Ret>(self)->Ret{
+        rustc_clr_interop_managed_call_virt1_::<ASSEMBLY,CLASS_PATH,false,METHOD,false,Ret,Self>(self)
+    }
+    #[inline(always)]
     pub fn static1_<const METHOD:&'static str,Arg1,Ret>(arg1:Arg1)->Ret{
         rustc_clr_interop_managed_call1_::<ASSEMBLY,CLASS_PATH,false,METHOD,true,Ret,Arg1>(arg1)
     }
@@ -52,6 +56,7 @@ struct RustcCLRInteropManagedArray<T,const DIMENSIONS:usize>{
     object_ref:usize,
     pd:core::marker::PhantomData<T>,
 }
+//Calls
 #[allow(unused_variables)]
 #[inline(never)]
 pub fn rustc_clr_interop_managed_call0_<const ASSEMBLY:&'static str,const CLASS_PATH:&'static str,const IS_VALUETYPE:bool,const METHOD:&'static str,Ret>()->Ret{
@@ -67,6 +72,23 @@ pub fn rustc_clr_interop_managed_call1_<const ASSEMBLY:&'static str,const CLASS_
 pub fn rustc_clr_interop_managed_call2_<const ASSEMBLY:&'static str,const CLASS_PATH:&'static str,const IS_VALUETYPE:bool,const METHOD:&'static str,const IS_STATIC:bool,Ret,Arg1,Arg2>(arg1:Arg1,arg2:Arg2)->Ret{
     core::intrinsics::abort();
 }
+//VCalls
+#[allow(unused_variables)]
+#[inline(never)]
+pub fn rustc_clr_interop_managed_call_virt0_<const ASSEMBLY:&'static str,const CLASS_PATH:&'static str,const IS_VALUETYPE:bool,const METHOD:&'static str,Ret>()->Ret{
+    core::intrinsics::abort();
+}
+#[allow(unused_variables)]
+#[inline(never)]
+pub fn rustc_clr_interop_managed_call_virt1_<const ASSEMBLY:&'static str,const CLASS_PATH:&'static str,const IS_VALUETYPE:bool,const METHOD:&'static str,const IS_STATIC:bool,Ret,Arg1>(arg1:Arg1)->Ret{
+    core::intrinsics::abort();
+}
+#[allow(unused_variables)]
+#[inline(never)]
+pub fn rustc_clr_interop_managed_call_virt2_<const ASSEMBLY:&'static str,const CLASS_PATH:&'static str,const IS_VALUETYPE:bool,const METHOD:&'static str,const IS_STATIC:bool,Ret,Arg1,Arg2>(arg1:Arg1,arg2:Arg2)->Ret{
+    core::intrinsics::abort();
+}
+//Ctors
 #[allow(unused_variables)]
 #[inline(never)]
 pub fn rustc_clr_interop_managed_ctor0_<const ASSEMBLY:&'static str,const CLASS_PATH:&'static str,const IS_VALUETYPE:bool>()->RustcCLRInteropManagedClass<ASSEMBLY,CLASS_PATH>{

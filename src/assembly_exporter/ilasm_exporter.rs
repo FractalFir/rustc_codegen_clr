@@ -157,7 +157,10 @@ fn method_cil(w: &mut impl Write, method: &Method) -> std::io::Result<()> {
     };
     let output = output_type_cli(method.sig().output());
     let name = method.name();
-    write!(w, ".method {access} hidebysig {static_inst} {output} {name}")?;
+    write!(
+        w,
+        ".method {access} hidebysig {static_inst} {output} {name}"
+    )?;
     args_cli(w, method.sig().inputs())?;
     writeln!(w, "{{")?;
     if method.is_entrypoint() {
@@ -227,6 +230,40 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
                 //println!("inputs:{inputs:?} input_string: {input_string}",inputs = call_site.signature.inputs);
                 format!(
                     "call {prefix} {output} {owner_name} {function_name}({input_string})",
+                    function_name = call_site.name(),
+                    output = output_type_cli(call_site.signature().output())
+                )
+                .into()
+            }
+        }
+        CILOp::CallVirt(call_site) => {
+            if call_site.is_nop() {
+                "".into()
+            } else {
+                //assert!(sig.inputs.is_empty());
+                let mut inputs_iter = call_site.explicit_inputs().iter();
+                let mut input_string = String::new();
+                if let Some(firts_arg) = inputs_iter.next() {
+                    input_string.push_str(&arg_type_cli(firts_arg));
+                }
+                for arg in inputs_iter {
+                    input_string.push(',');
+                    input_string.push_str(&arg_type_cli(arg));
+                }
+                let prefix = if call_site.is_static() {
+                    ""
+                } else {
+                    "instance"
+                };
+                let owner_name = match &call_site.class() {
+                    Some(owner) => {
+                        format!("{}::", prefixed_type_cli(&owner.deref().clone().into()))
+                    }
+                    None => String::new(),
+                };
+                //println!("inputs:{inputs:?} input_string: {input_string}",inputs = call_site.signature.inputs);
+                format!(
+                    "callvirt {prefix} {output} {owner_name} {function_name}({input_string})",
                     function_name = call_site.name(),
                     output = output_type_cli(call_site.signature().output())
                 )
@@ -437,12 +474,16 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
         CILOp::SizeOf(tpe) => format!("sizeof {tpe}", tpe = prefixed_type_cli(tpe)).into(),
         CILOp::Throw => "throw".into(),
         CILOp::LdStr(str) => format!("ldstr {str:?}").into(),
-        CILOp::LdObj(obj) => {
-            format!("ldobj valuetype {tpe}", tpe = dotnet_type_ref_cli(obj)).into()
-        }
-        CILOp::STObj(obj) => {
-            format!("stobj valuetype {tpe}", tpe = dotnet_type_ref_cli(obj)).into()
-        }
+        CILOp::LdObj(obj) => format!(
+            "ldobj {tpe}",
+            tpe = prefixed_type_cli(&obj.as_ref().clone().into())
+        )
+        .into(),
+        CILOp::STObj(obj) => format!(
+            "stobj {tpe}",
+            tpe = prefixed_type_cli(&obj.as_ref().clone().into())
+        )
+        .into(),
         CILOp::LDField(descr) => format!(
             "ldfld {prefixed_type} valuetype {owner}::{field_name}",
             prefixed_type = preifxed_field_type_cli(descr.tpe()),

@@ -26,7 +26,13 @@ pub enum Attribute {
     EntryPoint,
 }
 impl Method {
-    pub fn new(access: AccessModifer, is_static: bool, sig: FnSig, name: &str, locals: Vec<Type>) -> Self {
+    pub fn new(
+        access: AccessModifer,
+        is_static: bool,
+        sig: FnSig,
+        name: &str,
+        locals: Vec<Type>,
+    ) -> Self {
         Self {
             access,
             is_static,

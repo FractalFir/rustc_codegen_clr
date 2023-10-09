@@ -102,7 +102,11 @@ fn rust_slice(asm: &mut Assembly) {
         &Type::USize,
         [
             CILOp::LDArg(0),
-            CILOp::LDField(FieldDescriptor::boxed(rust_slice_dotnet.clone(), Type::USize, "_length".into())),
+            CILOp::LDField(FieldDescriptor::boxed(
+                rust_slice_dotnet.clone(),
+                Type::USize,
+                "_length".into()
+            )),
             CILOp::Ret
         ]
     );
@@ -113,11 +117,18 @@ fn rust_slice(asm: &mut Assembly) {
     add_tpe_method!(
         get_Item,
         false,
-        &[Type::DotnetType(Box::new(rust_slice_dotnet.clone())), Type::USize],
+        &[
+            Type::DotnetType(Box::new(rust_slice_dotnet.clone())),
+            Type::USize
+        ],
         &Type::GenericArg(0),
         [
             CILOp::LDArg(0),
-            CILOp::LDField(FieldDescriptor::boxed(rust_slice_dotnet.clone(), Type::Ptr(Box::new(Type::GenericArg(0))), "_ptr".into())),
+            CILOp::LDField(FieldDescriptor::boxed(
+                rust_slice_dotnet.clone(),
+                Type::Ptr(Box::new(Type::GenericArg(0))),
+                "_ptr".into()
+            )),
             CILOp::LDArg(1), // offset
             CILOp::ConvU64(false),
             CILOp::SizeOf(Box::new(Type::GenericArg(0))),
@@ -132,11 +143,19 @@ fn rust_slice(asm: &mut Assembly) {
     add_tpe_method!(
         set_Item,
         false,
-        &[Type::DotnetType(Box::new(rust_slice_dotnet.clone())), Type::USize, Type::GenericArg(0)],
+        &[
+            Type::DotnetType(Box::new(rust_slice_dotnet.clone())),
+            Type::USize,
+            Type::GenericArg(0)
+        ],
         &Type::Void,
         [
             CILOp::LDArg(0),
-            CILOp::LDField(FieldDescriptor::boxed(rust_slice_dotnet.clone(), Type::Ptr(Box::new(Type::GenericArg(0))), "_ptr".into())),
+            CILOp::LDField(FieldDescriptor::boxed(
+                rust_slice_dotnet.clone(),
+                Type::Ptr(Box::new(Type::GenericArg(0))),
+                "_ptr".into()
+            )),
             CILOp::LDArg(1), // offset
             CILOp::ConvU64(false),
             CILOp::SizeOf(Box::new(Type::GenericArg(0))),

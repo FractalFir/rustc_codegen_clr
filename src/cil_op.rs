@@ -136,6 +136,7 @@ pub enum CILOp {
     BGe(u32),
     BZero(u32),
     Call(Box<CallSite>),
+    CallVirt(Box<CallSite>),
     Throw,
     Ret,
     // Load/Store/AdressOf local

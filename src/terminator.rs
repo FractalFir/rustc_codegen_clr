@@ -7,6 +7,7 @@ use crate::{
     utilis::monomorphize,
     utilis::CTOR_FN_NAME,
     utilis::MANAGED_CALL_FN_NAME,
+    utilis::MANAGED_CALL_VIRT_FN_NAME,
 };
 use rustc_middle::{
     mir::{
@@ -69,6 +70,71 @@ fn call_managed<'ctx>(
             ));
         }
         call.push(CILOp::Call(CallSite::boxed(
+            Some(tpe.clone()),
+            managed_fn_name.into(),
+            signature.clone(),
+            is_static,
+        )));
+        if *signature.output() == crate::r#type::Type::Void {
+            call
+        } else {
+            crate::place::place_set(destination, tyctx, call, method, method_instance)
+        }
+    }
+}
+fn callvirt_managed<'ctx>(
+    tyctx: TyCtxt<'ctx>,
+    def_id: DefId,
+    subst_ref: &[GenericArg<'ctx>],
+    function_name: &str,
+    args: &[Operand<'ctx>],
+    destination: &Place<'ctx>,
+    method: &'ctx Body<'ctx>,
+    method_instance: Instance<'ctx>,
+    fn_type: &Ty<'ctx>,
+) -> Vec<CILOp> {
+    let argc_start =
+        function_name.find(MANAGED_CALL_VIRT_FN_NAME).unwrap() + (MANAGED_CALL_VIRT_FN_NAME.len());
+    let argc_end = argc_start + function_name[argc_start..].find('_').unwrap();
+    let argc = &function_name[argc_start..argc_end];
+    let argc = argc.parse::<u32>().unwrap();
+    assert!(subst_ref.len() as u32 == argc + 3 || subst_ref.len() as u32 == argc + 4 || true);
+    assert!(args.len() as u32 == argc);
+    let asm = garg_to_string(&subst_ref[0], tyctx);
+    let asm = Some(asm).filter(|asm| !asm.is_empty());
+    let class_name = garg_to_string(&subst_ref[1], tyctx);
+    let is_valuetype = crate::utilis::garag_to_bool(&subst_ref[2], tyctx);
+    let managed_fn_name = garg_to_string(&subst_ref[3], tyctx);
+    let mut tpe = DotnetTypeRef::new(asm.as_ref().map(|x| x.as_str()), &class_name);
+    tpe.set_valuetype(is_valuetype);
+    let signature = FnSig::from_poly_sig(&fn_type.fn_sig(tyctx), tyctx)
+        .expect("Can't get the function signature");
+    if argc == 0 {
+        let ret = crate::r#type::Type::Void;
+        let call = vec![CILOp::Call(CallSite::boxed(
+            Some(tpe.clone()),
+            managed_fn_name.into(),
+            FnSig::new(&[], &ret),
+            true,
+        ))];
+        if *signature.output() == crate::r#type::Type::Void {
+            call
+        } else {
+            crate::place::place_set(destination, tyctx, call, method, method_instance)
+        }
+    } else {
+        let is_static = crate::utilis::garag_to_bool(&subst_ref[4], tyctx);
+
+        let mut call = Vec::new();
+        for arg in args {
+            call.extend(crate::operand::handle_operand(
+                arg,
+                tyctx,
+                method,
+                method_instance,
+            ));
+        }
+        call.push(CILOp::CallVirt(CallSite::boxed(
             Some(tpe.clone()),
             managed_fn_name.into(),
             signature.clone(),
@@ -170,6 +236,18 @@ fn call<'ctx>(
             body,
             method_instance,
         );
+    } else if function_name.contains(MANAGED_CALL_VIRT_FN_NAME) {
+        return callvirt_managed(
+            tyctx,
+            *def_id,
+            subst_ref,
+            &function_name,
+            args,
+            destination,
+            body,
+            method_instance,
+            fn_type,
+        );
     } else if function_name.contains(MANAGED_CALL_FN_NAME) {
         return call_managed(
             tyctx,
@@ -260,9 +338,9 @@ pub fn handle_terminator<'ctx>(
             }
         }
         TerminatorKind::SwitchInt { discr, targets } => {
-            let ty = crate::utilis::monomorphize(&method_instance,discr.ty(method,tyctx),tyctx);
+            let ty = crate::utilis::monomorphize(&method_instance, discr.ty(method, tyctx), tyctx);
             let discr = crate::operand::handle_operand(discr, tyctx, method, method_instance);
-            handle_switch(ty,discr, targets)
+            handle_switch(ty, discr, targets)
         }
         TerminatorKind::Assert {
             cond,
@@ -444,15 +522,15 @@ fn throw_assert_msg<'ctx>(
         _ => todo!("unsuported assertion message:{msg:?}"),
     }
 }
-fn handle_switch(ty:Ty,discr: Vec<CILOp>, switch: &SwitchTargets) -> Vec<CILOp> {
+fn handle_switch(ty: Ty, discr: Vec<CILOp>, switch: &SwitchTargets) -> Vec<CILOp> {
     let mut ops = Vec::new();
     for (value, target) in switch.iter() {
         ops.extend(discr.iter().cloned());
-        ops.extend(match ty.kind(){
-            TyKind::Int(int)=>crate::constant::load_const_int(value,int),
-            TyKind::Uint(uint)=>crate::constant::load_const_uint(value,uint),
-            TyKind::Bool=>vec![CILOp::LdcI32(value as u8 as i32)],
-            _=>todo!("Unsuported switch discriminant type {ty:?}")
+        ops.extend(match ty.kind() {
+            TyKind::Int(int) => crate::constant::load_const_int(value, int),
+            TyKind::Uint(uint) => crate::constant::load_const_uint(value, uint),
+            TyKind::Bool => vec![CILOp::LdcI32(value as u8 as i32)],
+            _ => todo!("Unsuported switch discriminant type {ty:?}"),
         });
         //ops.push(CILOp::LdcI64(value as i64));
         ops.push(CILOp::BEq(target.into()));
