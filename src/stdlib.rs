@@ -2,7 +2,7 @@ use crate::r#type::DotnetTypeRef;
 use crate::{
     access_modifier::AccessModifer,
     assembly::Assembly,
-    cil_op::{CILOp, CallSite},
+    cil_op::{CILOp, CallSite, FieldDescriptor},
     function_sig::FnSig,
     method::Method,
     r#type::Type,
@@ -37,7 +37,7 @@ macro_rules! add_method {
 }
 macro_rules! add_tpe_method {
     ($name:ident,$is_static:expr,$input:expr,$output:expr,$ops:expr) => {
-        fn $name(tpe: &mut crate::type_def::TypeDef) {
+        let $name = |tpe: &mut crate::type_def::TypeDef| {
             let mut method = Method::new(
                 AccessModifer::Public,
                 $is_static,
@@ -47,10 +47,10 @@ macro_rules! add_tpe_method {
             );
             method.set_ops(($ops).to_vec());
             tpe.add_method(method);
-        }
+        };
     };
     ($name:ident,$input:expr,$output:expr,$ops:expr,$locals:expr) => {
-        fn $name(tpe: &mut crate::type_def::TypeDef) {
+        let $name = |tpe: &mut crate::type_def::TypeDef| {
             let mut method = Method::new(
                 AccessModifer::Public,
                 $is_static,
@@ -60,7 +60,7 @@ macro_rules! add_tpe_method {
             );
             method.set_ops(($ops).into());
             tpe.add_method(method);
-        }
+        };
     };
 }
 pub fn insert_libc(asm: &mut Assembly) {
@@ -89,22 +89,69 @@ pub fn insert_libc(asm: &mut Assembly) {
 
 fn rust_slice(asm: &mut Assembly) {
     let mut rust_slice = crate::type_def::TypeDef::nameonly("RustSlice");
+    let mut rust_slice_dotnet = DotnetTypeRef::new(None, "RustSlice");
     rust_slice.set_generic_count(1);
+    rust_slice_dotnet.set_generics([Type::GenericArg(0)]);
     // TODO: constrain this generic to be unmanaged
     rust_slice.add_field("_ptr".into(), Type::Ptr(Box::new(Type::GenericArg(0))));
     rust_slice.add_field("_length".into(), Type::ISize);
     add_tpe_method!(
-        get_length,
+        get_Length,
         false,
-        &[],
-        &Type::I32,
+        &[Type::DotnetType(Box::new(rust_slice_dotnet.clone()))],
+        &Type::USize,
         [
-            // just returning 0 for now
-            CILOp::LdcI32(0),
+            CILOp::LDArg(0),
+            CILOp::LDField(FieldDescriptor::boxed(rust_slice_dotnet.clone(), Type::USize, "_length".into())),
             CILOp::Ret
         ]
     );
-    get_length(&mut rust_slice);
+    let signature = crate::function_sig::FnSig::new(
+        &[Type::DotnetType(Box::new(rust_slice_dotnet.clone()))],
+        &Type::GenericArg(0),
+    );
+    add_tpe_method!(
+        get_Item,
+        false,
+        &[Type::DotnetType(Box::new(rust_slice_dotnet.clone())), Type::USize],
+        &Type::GenericArg(0),
+        [
+            CILOp::LDArg(0),
+            CILOp::LDField(FieldDescriptor::boxed(rust_slice_dotnet.clone(), Type::Ptr(Box::new(Type::GenericArg(0))), "_ptr".into())),
+            CILOp::LDArg(1), // offset
+            CILOp::ConvU64(false),
+            CILOp::SizeOf(Box::new(Type::GenericArg(0))),
+            CILOp::ConvI64(false),
+            CILOp::Mul,
+            CILOp::ConvUSize(false),
+            CILOp::Add,
+            CILOp::LdObj(Box::new(DotnetTypeRef::new(None, "!0"))),
+            CILOp::Ret
+        ]
+    );
+    add_tpe_method!(
+        set_Item,
+        false,
+        &[Type::DotnetType(Box::new(rust_slice_dotnet.clone())), Type::USize, Type::GenericArg(0)],
+        &Type::Void,
+        [
+            CILOp::LDArg(0),
+            CILOp::LDField(FieldDescriptor::boxed(rust_slice_dotnet.clone(), Type::Ptr(Box::new(Type::GenericArg(0))), "_ptr".into())),
+            CILOp::LDArg(1), // offset
+            CILOp::ConvU64(false),
+            CILOp::SizeOf(Box::new(Type::GenericArg(0))),
+            CILOp::ConvI64(false),
+            CILOp::Mul,
+            CILOp::ConvUSize(false),
+            CILOp::Add,
+            CILOp::LDArg(2), // value
+            CILOp::STObj(Box::new(DotnetTypeRef::new(None, "!0"))),
+            CILOp::Ret
+        ]
+    );
+    get_Length(&mut rust_slice);
+    get_Item(&mut rust_slice);
+    set_Item(&mut rust_slice);
     asm.add_typedef(rust_slice);
 }
 
