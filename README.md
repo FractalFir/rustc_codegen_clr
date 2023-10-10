@@ -52,3 +52,18 @@ Compiling Rust to CLR is potentially better for the JIT. Since CLR's JIT now "se
 Backend still does not understand some Rust optimizations, and you may need to prevent them to allow for compilation.
 While testing is a bit more extensive, there still are a lot of edge cases which may break this backend.
 The backend crashes anytime it encounters something not supported yet.
+# Basic benchmarks:
+*NOTE* Those are benchmarks which put Rust on the worst footing, since they involve no allocations/GC at all. They serve as a baseline to determine the best possible performance.
+All tests were run in CoreCLR .NET runtime, version `7.0.11` The host system was `Linux fedora 6.5.5-200.fc38.x86_64`, and the CPU was `13th Gen Intel(R) Core(TM) i5-13500HX`.
+
+`Codegen Optimzations Disabled` means that the code was compiled in release mode., but post-MIR, codegen-internal optimizations were disabled. 
+## Fibonachi of 10, recursive.
+|Test Method| avg of 100K runs |
+|-----------|------------------------|
+| Rust native(release)| 100 ns |
+| Rust native(debug)| 360 ns |
+| Rust .NET(default optimizations) | 270 ns |
+| Rust .NET(codegen optimizations disabled) | 330 ns |
+| C# release | 250 ns |
+| C# debug | 370 ns |
+As you can see, the difference between optimized C# and optimized .NET Rust code is not all that big. It is noticeable(~10%), but I would say it is a pretty good result considering how few optimizations are done right now. With a couple bigger changes coming later down the line, the gap could become non-existent in the future. Since this benchmark is meant to show the worst case scenario, Rust could already outperform C# in a wide range of more memory-intensive scenarios. 
