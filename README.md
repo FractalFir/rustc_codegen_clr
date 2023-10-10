@@ -58,12 +58,21 @@ All tests were run in CoreCLR .NET runtime, version `7.0.11` The host system was
 
 `Codegen Optimzations Disabled` means that the code was compiled in release mode., but post-MIR, codegen-internal optimizations were disabled. 
 ## Fibonachi of 10, recursive.
-|Test Method| avg of 100K runs |
+|Test Method| avg of 10K runs |
 |-----------|------------------------|
 | Rust native(release)| 100 ns |
 | Rust native(debug)| 360 ns |
 | Rust .NET(default optimizations) | 270 ns |
 | Rust .NET(codegen optimizations disabled) | 330 ns |
-| C# release | 250 ns |
-| C# debug | 370 ns |
+| C# release(pure IL) | 250 ns |
+| C# debug(pure IL)  | 370 ns |
 As you can see, the difference between optimized C# and optimized .NET Rust code is not all that big. It is noticeable(~10%), but I would say it is a pretty good result considering how few optimizations are done right now. With a couple bigger changes coming later down the line, the gap could become non-existent in the future. Since this benchmark is meant to show the worst case scenario, Rust could already outperform C# in a wide range of more memory-intensive scenarios. 
+
+**However**, you should take all of those results with a pinch of salt. Since there is currently no way to use "proper" .NET bench marking tools, I am relying on the `Stopwatch` class for time and have no way to control for the behavior of the JIT. It seems to optimize the rust code after enough runs, all while the speed of C# dropped significantly. This is not due to thermal throttling or any other variable I can think of - both tests were run multiple times back-to-back(Rust then C# the Rust then C# again), and the results remain consistent. Such oddities point at issues with the testing setup, but the results can still serve as a rough guide about what kinds of performance can be expected. 
+
+|Test Method| avg of 100M runs |
+|-----------|------------------------|
+| Rust native(release)| 107 ns |
+| Rust .NET(default optimizations) | 252.3 ns |
+| C# release(pure IL)  | 281.66 ns |
+
