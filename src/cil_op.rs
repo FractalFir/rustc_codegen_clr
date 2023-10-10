@@ -214,8 +214,8 @@ pub enum CILOp {
     LDField(Box<FieldDescriptor>),
     LDFieldAdress(Box<FieldDescriptor>),
     STField(Box<FieldDescriptor>),
-    LdObj(Box<DotnetTypeRef>),
-    STObj(Box<DotnetTypeRef>),
+    LdObj(Box<crate::r#type::Type>),
+    STObj(Box<crate::r#type::Type>),
     SizeOf(Box<crate::r#type::Type>),
     LDStaticField(Box<StaticFieldDescriptor>),
 }

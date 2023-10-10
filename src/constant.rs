@@ -95,7 +95,7 @@ fn load_const_scalar<'ctx>(
                         field_type,
                         "_tag".into(),
                     ))),
-                    CILOp::LdObj(Box::new(enum_dotnet)),
+                    CILOp::LdObj(Box::new(enum_dotnet.into())),
                 ]
             }
             _ => todo!("Can't load const ADT scalars of type {scalar_type:?}"),

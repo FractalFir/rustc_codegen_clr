@@ -136,7 +136,7 @@ fn rust_slice(asm: &mut Assembly) {
             CILOp::Mul,
             CILOp::ConvUSize(false),
             CILOp::Add,
-            CILOp::LdObj(Box::new(DotnetTypeRef::new(None, "!0"))),
+            CILOp::LdObj(Type::GenericArg(0).into()),
             CILOp::Ret
         ]
     );
@@ -164,7 +164,7 @@ fn rust_slice(asm: &mut Assembly) {
             CILOp::ConvUSize(false),
             CILOp::Add,
             CILOp::LDArg(2), // value
-            CILOp::STObj(Box::new(DotnetTypeRef::new(None, "!0"))),
+            CILOp::STObj(Type::GenericArg(0).into()),
             CILOp::Ret
         ]
     );

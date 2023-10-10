@@ -438,14 +438,9 @@ fn ptr_set_op<'ctx>(curr_type: PlaceTy<'ctx>, tyctx: TyCtxt<'ctx>) -> Vec<CILOp>
             TyKind::Bool => vec![CILOp::STIndI8], // an unmanaged bool is 1 byte, even though a managed bool is 4 bytes
             TyKind::Char => vec![CILOp::STIndI32], // always 4 bytes wide: https://doc.rust-lang.org/std/primitive.char.html#representation
             TyKind::Adt(_, _) => {
-                let curr_type = if let crate::r#type::Type::DotnetType(dotnet_type) =
-                    crate::r#type::Type::from_ty(curr_type, tyctx)
-                {
-                    dotnet_type
-                } else {
-                    panic!();
-                };
-                vec![CILOp::STObj(curr_type)]
+                vec![CILOp::STObj(
+                    crate::r#type::Type::from_ty(curr_type, tyctx).into(),
+                )]
             }
             TyKind::Ref(_, _, _) => vec![CILOp::STIndISize],
             TyKind::RawPtr(_) => vec![CILOp::STIndISize],
@@ -483,14 +478,9 @@ pub fn deref_op<'ctx>(curr_type: PlaceTy<'ctx>, tyctx: TyCtxt<'ctx>) -> Vec<CILO
             TyKind::Bool => vec![CILOp::LDIndI8], // an unmanaged bool is 1 byte, even though a managed bool is 4 bytes
             TyKind::Char => vec![CILOp::LDIndI32], // always 4 bytes wide: https://doc.rust-lang.org/std/primitive.char.html#representation
             TyKind::Adt(_, _) => {
-                let curr_type = if let crate::r#type::Type::DotnetType(dotnet_type) =
-                    crate::r#type::Type::from_ty(curr_type, tyctx)
-                {
-                    dotnet_type
-                } else {
-                    panic!();
-                };
-                vec![CILOp::LdObj(curr_type)]
+                vec![CILOp::LdObj(
+                    crate::r#type::Type::from_ty(curr_type, tyctx).into(),
+                )]
             }
             TyKind::Ref(_, _, _) => vec![CILOp::LDIndISize],
             TyKind::RawPtr(_) => vec![CILOp::LDIndISize],

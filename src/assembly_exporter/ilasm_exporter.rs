@@ -476,32 +476,32 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
         CILOp::LdStr(str) => format!("ldstr {str:?}").into(),
         CILOp::LdObj(obj) => format!(
             "ldobj {tpe}",
-            tpe = prefixed_type_cli(&obj.as_ref().clone().into())
+            tpe = prefixed_field_type_cil(&obj.as_ref().clone().into())
         )
         .into(),
         CILOp::STObj(obj) => format!(
             "stobj {tpe}",
-            tpe = prefixed_type_cli(&obj.as_ref().clone().into())
+            tpe = prefixed_field_type_cil(&obj.as_ref().clone().into())
         )
         .into(),
         CILOp::LDField(descr) => format!(
-            "ldfld {prefixed_type} valuetype {owner}::{field_name}",
-            prefixed_type = preifxed_field_type_cli(descr.tpe()),
-            owner = dotnet_type_ref_cli(descr.owner()),
+            "ldfld {prefixed_type} {owner}::{field_name}",
+            prefixed_type = prefixed_field_type_cil(descr.tpe()),
+            owner = prefixed_field_type_cil(&descr.owner().clone().into()),
             field_name = descr.name()
         )
         .into(),
         CILOp::LDFieldAdress(descr) => format!(
-            "ldflda {prefixed_type} valuetype {owner}::{field_name}",
-            prefixed_type = preifxed_field_type_cli(descr.tpe()),
-            owner = dotnet_type_ref_cli(descr.owner()),
+            "ldflda {prefixed_type} {owner}::{field_name}",
+            prefixed_type = prefixed_field_type_cil(descr.tpe()),
+            owner = prefixed_field_type_cil(&descr.owner().clone().into()),
             field_name = descr.name()
         )
         .into(),
         CILOp::STField(descr) => format!(
-            "stfld {prefixed_type} valuetype {owner}::{field_name}",
-            prefixed_type = preifxed_field_type_cli(descr.tpe()),
-            owner = dotnet_type_ref_cli(descr.owner()),
+            "stfld {prefixed_type} {owner}::{field_name}",
+            prefixed_type = prefixed_field_type_cil(descr.tpe()),
+            owner = prefixed_field_type_cil(&descr.owner().clone().into()),
             field_name = descr.name()
         )
         .into(),
@@ -618,9 +618,9 @@ fn field_type_cli(tpe: &Type) -> Cow<'static, str> {
         _ => prefixed_type_cli(tpe),
     }
 }
-fn preifxed_field_type_cli(tpe: &Type) -> Cow<'static, str> {
+fn prefixed_field_type_cil(tpe: &Type) -> Cow<'static, str> {
     match tpe {
-        Type::Ptr(inner) => format!("{inner}*", inner = preifxed_field_type_cli(inner)).into(),
+        Type::Ptr(inner) => format!("{inner}*", inner = prefixed_field_type_cil(inner)).into(),
         Type::GenericArg(id) => format!("!{id}").into(),
         Type::DotnetType(dotnet_type) => {
             let prefix = dotnet_type.tpe_prefix();
@@ -646,8 +646,8 @@ fn prefixed_type_cli(tpe: &Type) -> Cow<'static, str> {
         Type::F64 => "float64".into(),
         Type::I64 => "int64".into(),
         Type::U64 => "uint64".into(),
-        Type::I128 => "valuetype [System.Rutnime]System.Int128".into(),
-        Type::U128 => "valuetype [System.Rutnime]System.UInt128".into(),
+        Type::I128 => "valuetype [System.Runtime]System.Int128".into(),
+        Type::U128 => "valuetype [System.Runtime]System.UInt128".into(),
         Type::ISize => "native int".into(),
         Type::USize => "native uint".into(),
         Type::Ptr(inner) => format!("{inner}*", inner = prefixed_type_cli(inner)).into(),
@@ -720,4 +720,10 @@ fn generics_ident_str(generics: &[Type]) -> Cow<'static, str> {
         }
         format!("<{garg_string}>").into()
     }
+}
+#[test]
+fn generic_prefix() {
+    let generic = Type::GenericArg(0);
+    assert_eq!("!G0", &prefixed_type_cli(&generic));
+    assert_eq!("!0", &prefixed_field_type_cil(&generic));
 }
