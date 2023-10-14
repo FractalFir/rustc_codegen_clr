@@ -103,3 +103,8 @@ pub extern fn assign_array_elem(place: &mut [u8; 1], value: &[u8; 1]) {
 pub extern fn assign_slice_elem(place: &mut [u8], value: &[u8]) {
     place[0] = value[0];
 }
+
+#[no_mangle]
+pub extern fn assign_tuple(place: &mut (u8, u8), value: &(u8, u8)) {
+    *place = *value;
+}

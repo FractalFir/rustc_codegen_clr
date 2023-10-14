@@ -441,7 +441,13 @@ fn ptr_set_op<'ctx>(curr_type: PlaceTy<'ctx>, tyctx: TyCtxt<'ctx>) -> Vec<CILOp>
                 vec![CILOp::STObj(
                     crate::r#type::Type::from_ty(curr_type, tyctx).into(),
                 )]
-            }
+            },
+            TyKind::Tuple(_) => {
+                // This is interpreted as a System.ValueTuple and can be treated as an ADT
+                vec![CILOp::STObj(
+                    crate::r#type::Type::from_ty(curr_type, tyctx).into(),
+                )]
+            },
             TyKind::Ref(_, _, _) => vec![CILOp::STIndISize],
             TyKind::RawPtr(_) => vec![CILOp::STIndISize],
             _ => todo!(" can't deref type {curr_type:?} yet"),
@@ -481,7 +487,13 @@ pub fn deref_op<'ctx>(curr_type: PlaceTy<'ctx>, tyctx: TyCtxt<'ctx>) -> Vec<CILO
                 vec![CILOp::LdObj(
                     crate::r#type::Type::from_ty(curr_type, tyctx).into(),
                 )]
-            }
+            },
+            TyKind::Tuple(_) => {
+                // This is interpreted as a System.ValueTuple and can be treated as an ADT
+                vec![CILOp::LdObj(
+                    crate::r#type::Type::from_ty(curr_type, tyctx).into(),
+                )]
+            },
             TyKind::Ref(_, _, _) => vec![CILOp::LDIndISize],
             TyKind::RawPtr(_) => vec![CILOp::LDIndISize],
             _ => todo!("TODO: can't deref type {curr_type:?} yet"),
