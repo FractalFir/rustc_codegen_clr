@@ -70,6 +70,30 @@ pub extern fn assign_char(place: &mut char, value: &char) {
     *place = *value;
 }
 
+#[derive(Copy, Clone)]
+pub struct TestStruct {}
+
+#[no_mangle]
+pub extern fn assign_struct(place: &mut TestStruct, value: &TestStruct) {
+    *place = *value;
+}
+
+#[no_mangle]
+pub extern fn assign_enum(place: &mut Option<i8>, value: &Option<i8>) {
+    *place = *value;
+}
+
+#[derive(Copy, Clone)]
+pub union TestUnion {
+    pub f1: u32,
+    pub f2: f32,
+}
+
+#[no_mangle]
+pub extern fn assign_union(place: &mut TestUnion, value: &TestUnion) {
+    *place = *value;
+}
+
 #[no_mangle]
 pub extern fn assign_array_elem(place: &mut [u8; 1], value: &[u8; 1]) {
     place[0] = value[0];
