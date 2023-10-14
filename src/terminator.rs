@@ -9,6 +9,7 @@ use crate::{
     utilis::MANAGED_CALL_FN_NAME,
     utilis::MANAGED_CALL_VIRT_FN_NAME,
 };
+use rustc_middle::ty::InstanceDef;
 use rustc_middle::{
     mir::{
         interpret::ConstValue, Body, Constant, ConstantKind, Operand, Place, SwitchTargets,
@@ -370,11 +371,16 @@ pub fn handle_terminator<'ctx>(
         } => {
             let ty = monomorphize(&method_instance, place.ty(method, tyctx).ty, tyctx);
             let drop_instance = Instance::resolve_drop_in_place(tyctx, ty).polymorphize(tyctx);
+            if let InstanceDef::DropGlue(_, None) = drop_instance.def {
+                //Empty drop, nothing needs to happen.
+                vec![]
+            } else {
             eprintln!("WARNING: drop is not supported yet in rustc_codegen_clr! drop_instance:{drop_instance:?}");
             vec![
                 CILOp::Comment("WARNING: drop is not supported yet in rustc_codegen_clr!".into()),
                 CILOp::GoTo(target.as_u32()),
             ]
+            }
         }
         TerminatorKind::Unreachable => {
             /*
