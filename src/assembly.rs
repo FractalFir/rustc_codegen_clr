@@ -6,7 +6,6 @@ use crate::{
 use rustc_middle::mir::{mono::MonoItem, Local, LocalDecl};
 use rustc_middle::ty::{Instance, ParamEnv, TyCtxt};
 use std::collections::HashSet;
-use std::panic::UnwindSafe;
 
 use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug)]

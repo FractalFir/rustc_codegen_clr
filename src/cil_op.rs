@@ -219,3 +219,81 @@ pub enum CILOp {
     SizeOf(Box<crate::r#type::Type>),
     LDStaticField(Box<StaticFieldDescriptor>),
 }
+impl CILOp {
+    /// Descirbes the difference in stack size before and after the op.
+    pub fn stack_diff(&self) -> isize {
+        match self {
+            CILOp::Nop => 0,
+            CILOp::Comment(_) => 0,
+            CILOp::Label(_) | CILOp::GoTo(_) => 0,
+            CILOp::BZero(_) => -1,
+            CILOp::BEq(_) | CILOp::BNe(_) | CILOp::BLt(_) | CILOp::BGe(_) => -1,
+            CILOp::LDArg(_) | CILOp::LDArgA(_) | CILOp::LDLoc(_) | CILOp::LDLocA(_) => 1,
+            CILOp::LdcI32(_)
+            | CILOp::LdcI64(_)
+            | CILOp::LdcF32(_)
+            | CILOp::LdcF64(_)
+            | CILOp::LdStr(_)
+            | CILOp::SizeOf(_) => 1,
+            CILOp::ConvI8(_)
+            | CILOp::ConvI16(_)
+            | CILOp::ConvI32(_)
+            | CILOp::ConvI64(_)
+            | CILOp::ConvISize(_)
+            | CILOp::ConvU8(_)
+            | CILOp::ConvU16(_)
+            | CILOp::ConvU32(_)
+            | CILOp::ConvU64(_)
+            | CILOp::ConvUSize(_)
+            | CILOp::ConvF32(_)
+            | CILOp::ConvF64(_) => 0,
+            CILOp::LDIndI8
+            | CILOp::LDIndI16
+            | CILOp::LDIndI32
+            | CILOp::LDIndI64
+            | CILOp::LDIndISize
+            | CILOp::LDIndF32
+            | CILOp::LDIndF64
+            | CILOp::LDIndRef => 0,
+            CILOp::STIndI8
+            | CILOp::STIndI16
+            | CILOp::STIndI32
+            | CILOp::STIndI64
+            | CILOp::STIndISize
+            | CILOp::STIndF32
+            | CILOp::STIndF64 => -2,
+            CILOp::Pop => -1,
+            CILOp::Dup => 1,
+            CILOp::LDField(_) | CILOp::LDFieldAdress(_) => 0,
+            CILOp::LocAlloc | CILOp::NewObj(_) => 1,
+            CILOp::LdObj(_) => 1,
+            CILOp::LDStaticField(_) => 1,
+            CILOp::STObj(_) => -2,
+            CILOp::STField(_) => -2,
+            CILOp::Add
+            | CILOp::And
+            | CILOp::Div
+            | CILOp::Rem
+            | CILOp::Shr
+            | CILOp::Shl
+            | CILOp::Sub
+            | CILOp::Mul
+            | CILOp::Or
+            | CILOp::XOr
+            | CILOp::Eq
+            | CILOp::Lt
+            | CILOp::Gt => -1,
+            CILOp::Not | CILOp::Neg => 0,
+            CILOp::STLoc(_) | CILOp::STArg(_) => -1,
+            CILOp::Call(site) | CILOp::CallVirt(site) => {
+                if *site.signature().output() == crate::r#type::Type::Void {
+                    -(site.signature().inputs().len() as isize)
+                } else {
+                    1 - (site.signature().inputs().len() as isize)
+                }
+            }
+            CILOp::Throw => -1,
+            CILOp::Ret => -1,
+        }
+    }
+}
