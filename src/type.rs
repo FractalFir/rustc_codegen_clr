@@ -272,7 +272,7 @@ pub fn tuple_type(types: &[Type]) -> DotnetTypeRef {
 }
 fn magic_type<'tyctx>(
     mut name: &str,
-    adt: &AdtDef<'tyctx>,
+    _adt: &AdtDef<'tyctx>,
     subst: &[GenericArg<'tyctx>],
     ctx: TyCtxt<'tyctx>,
 ) -> Type {
@@ -332,7 +332,7 @@ fn magic_type<'tyctx>(
         _ => todo!("Interop type {name:?} is not yet supported!"),
     }
 }
-fn garag_to_usize<'tyctx>(garg: &GenericArg<'tyctx>, ctx: TyCtxt<'tyctx>) -> u64 {
+fn garag_to_usize<'tyctx>(garg: &GenericArg<'tyctx>, _ctx: TyCtxt<'tyctx>) -> u64 {
     let usize_const = garg
         .as_const()
         .expect("Generic argument was not an constant!");

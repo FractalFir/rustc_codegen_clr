@@ -158,7 +158,7 @@ macro_rules! cargo_test {
 }
 #[cfg(debug_assertions)]
 fn build_backend() -> Result<(), String> {
-    let out = std::process::Command::new("cargo")
+    let _out = std::process::Command::new("cargo")
         .args(["build", "--lib"])
         .output()
         .map_err(|err| err.to_string())?;

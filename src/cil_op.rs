@@ -296,4 +296,26 @@ impl CILOp {
             CILOp::Ret => -1,
         }
     }
+    pub fn get_op_arg_pos(ops: &[CILOp], pos: usize, arg: usize) -> Option<usize> {
+        todo!();
+        /*
+        let mut depth = (arg + 1) as isize;
+        while depth > 0{
+            if pos == 0 || pos > ops.len(){
+                return None;
+            }
+        }*/
+    }
+    /// Flips a conditional, changing the order of its arguments. Eg. BLt(a,b) [a < b] becomes BGe(b,a) [b >= a].
+    pub fn flip_cond(&self) -> Self {
+        match self{
+                CILOp::BGe(target) =>{
+                    CILOp::BLt(*target)
+                }
+                CILOp::BLt(target) =>{
+                    CILOp::BGe(*target)
+                }
+                _=>todo!("Can't filp conditional operation {self:?}, either because it is not a conditional(bug) or it is not supported yet!"),
+            }
+    }
 }

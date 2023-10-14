@@ -119,7 +119,7 @@ fn aggregate_from_adt<'tcx>(
     variant_idx: u32,
     fields: Vec<(u32, Vec<CILOp>)>,
     method_instance: Instance<'tcx>,
-    active_field: &Option<FieldIdx>,
+    _active_field: &Option<FieldIdx>,
 ) -> Vec<CILOp> {
     let adt_type = crate::utilis::monomorphize(&method_instance, adt_type, tcx);
     let adt_type_ref = Type::from_ty(adt_type, tcx);

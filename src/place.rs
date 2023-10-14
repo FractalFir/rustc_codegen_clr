@@ -1,6 +1,6 @@
 // This file contains many unnecesary morphize calls.
 use crate::cil_op::{CILOp, FieldDescriptor};
-use crate::r#type::{DotnetTypeRef, Type};
+use crate::r#type::Type;
 use crate::utilis::field_name;
 use rustc_middle::mir::{Place, PlaceElem};
 use rustc_middle::ty::{FloatTy, Instance, IntTy, ParamEnv, Ty, TyCtxt, TyKind, UintTy};
@@ -165,7 +165,7 @@ fn place_elem_get<'a>(
 ) -> Vec<CILOp> {
     match place_elem {
         PlaceElem::Deref => deref_op(pointed_type(curr_type).into(), ctx),
-        PlaceElem::Field(index, field_type) => match curr_type {
+        PlaceElem::Field(index, _field_type) => match curr_type {
             PlaceTy::Ty(curr_type) => {
                 let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, ctx);
                 let field_type = crate::utilis::generic_field_ty(curr_type, index.as_u32(), ctx);
@@ -355,7 +355,7 @@ fn place_elem_body<'ctx>(
                 };
             let variant_name = symbol.unwrap();
             let field_name = format!("v_{variant_name}").into();
-            let curr_type_name = (curr_dotnet_type).name_path();
+            let _curr_type_name = (curr_dotnet_type).name_path();
             let mut field_type = curr_dotnet_type.clone();
             field_type.append_path(&format!("/{variant_name}"));
             field_type.set_generics_identity();

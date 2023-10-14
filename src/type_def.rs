@@ -67,9 +67,9 @@ impl TypeDef {
     pub fn from_ty<'tycxt>(ty: Ty<'tycxt>, ctx: TyCtxt<'tycxt>) -> Vec<Self> {
         match ty.kind() {
             TyKind::Adt(adt_def, subst) => {
-                let name = crate::utilis::adt_name(adt_def);
-                let gargc = subst.len() as u32;
-                let access = AccessModifer::Public;
+                let _name = crate::utilis::adt_name(adt_def);
+                let _gargc = subst.len() as u32;
+                let _access = AccessModifer::Public;
                 match adt_def.adt_kind() {
                     AdtKind::Struct => Self::struct_from_adt(ty, adt_def, subst, ctx),
                     AdtKind::Enum => Self::enum_from_adt(ty, adt_def, subst, ctx),

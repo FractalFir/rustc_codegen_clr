@@ -4,7 +4,7 @@ use crate::r#type::Type;
 use rustc_middle::mir::{CastKind, NullOp};
 use rustc_middle::{
     mir::{Place, Rvalue},
-    ty::{Instance, IntTy, TyCtxt, TyKind, UintTy},
+    ty::{Instance, TyCtxt},
 };
 pub fn handle_rvalue<'tcx>(
     rvalue: &Rvalue<'tcx>,

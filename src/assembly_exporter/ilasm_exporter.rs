@@ -200,7 +200,7 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
         CILOp::BEq(id) => format!("beq bb_{id}").into(),
         CILOp::BNe(id) => format!("bne.un bb_{id}").into(),
         CILOp::BGe(id) => format!("bge bb_{id}").into(),
-        CILOp::BLt(id) => format!("bglt bb_{id}").into(),
+        CILOp::BLt(id) => format!("blt bb_{id}").into(),
         CILOp::BZero(id) => format!("brzero bb_{id}").into(),
         CILOp::Call(call_site) => {
             if call_site.is_nop() {

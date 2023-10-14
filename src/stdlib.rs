@@ -110,7 +110,7 @@ fn rust_slice(asm: &mut Assembly) {
             CILOp::Ret
         ]
     );
-    let signature = crate::function_sig::FnSig::new(
+    let _signature = crate::function_sig::FnSig::new(
         &[Type::DotnetType(Box::new(rust_slice_dotnet.clone()))],
         &Type::GenericArg(0),
     );

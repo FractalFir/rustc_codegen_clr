@@ -168,10 +168,6 @@ impl CodegenBackend for MyBackend {
         codegen_results: CodegenResults,
         outputs: &OutputFilenames,
     ) -> Result<(), ErrorGuaranteed> {
-        use rustc_session::{
-            config::{CrateType, OutFileName},
-            output::out_filename,
-        };
         /*
         let crate_name = codegen_results.crate_info.local_crate_name;
         let mut final_assembly = Assembly::empty();

@@ -133,7 +133,7 @@ pub fn garg_to_string<'tyctx>(garg: &GenericArg<'tyctx>, ctx: TyCtxt<'tyctx>) ->
         }
     }
 }
-pub fn garag_to_bool<'tyctx>(garg: &GenericArg<'tyctx>, ctx: TyCtxt<'tyctx>) -> bool {
+pub fn garag_to_bool<'tyctx>(garg: &GenericArg<'tyctx>, _ctx: TyCtxt<'tyctx>) -> bool {
     let usize_const = garg
         .as_const()
         .expect("Generic argument was not an constant!");

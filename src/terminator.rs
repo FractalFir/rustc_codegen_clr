@@ -19,7 +19,7 @@ use rustc_middle::{
 use rustc_span::def_id::DefId;
 fn call_managed<'ctx>(
     tyctx: TyCtxt<'ctx>,
-    def_id: DefId,
+    _def_id: DefId,
     subst_ref: &[GenericArg<'ctx>],
     function_name: &str,
     args: &[Operand<'ctx>],
@@ -84,7 +84,7 @@ fn call_managed<'ctx>(
 }
 fn callvirt_managed<'ctx>(
     tyctx: TyCtxt<'ctx>,
-    def_id: DefId,
+    _def_id: DefId,
     subst_ref: &[GenericArg<'ctx>],
     function_name: &str,
     args: &[Operand<'ctx>],
@@ -149,7 +149,7 @@ fn callvirt_managed<'ctx>(
 }
 fn call_ctor<'ctx>(
     tyctx: TyCtxt<'ctx>,
-    def_id: DefId,
+    _def_id: DefId,
     subst_ref: &[GenericArg<'ctx>],
     function_name: &str,
     args: &[Operand<'ctx>],

@@ -144,7 +144,7 @@ fn op3_combos(ops: &mut Vec<CILOp>) {
         }
     }
 }
-fn op4_combos(ops: &mut Vec<CILOp>) {
+fn op4_combos(ops: &mut [CILOp]) {
     if ops.len() < 4 {
         return;
     }
@@ -164,6 +164,43 @@ fn op4_combos(ops: &mut Vec<CILOp>) {
                     ops[idx] = op2;
                     ops[idx + 2] = CILOp::Nop;
                     ops[idx + 3] = CILOp::Nop;
+                }
+            }
+            (
+                CILOp::STLoc(b1),
+                CILOp::LDLoc(_) | CILOp::LDArg(_),
+                CILOp::LDLoc(b2),
+                CILOp::BGe(target),
+            ) => {
+                if b1 == b2 {
+                    // b
+                    // dup  | b b
+                    // stloc(b) | b
+                    // ldloc(a) | b a instead of ab
+                    // flipped contional
+                    let op2 = op2.clone();
+                    let op4 = op4.flip_cond();
+                    let b = *b1;
+                    ops[idx] = CILOp::Dup;
+                    ops[idx + 1] = CILOp::STLoc(b);
+                    ops[idx + 2] = op2;
+                    ops[idx + 3] = op4;
+                }
+            }
+            (
+                CILOp::LDLoc(a),
+                CILOp::STLoc(b1),
+                CILOp::LDLoc(c) | CILOp::LDArg(c),
+                CILOp::LDLoc(b2),
+            ) => {
+                if b1 == b2 && c != b1 {
+                    let op1 = op1.clone();
+                    let op3 = op3.clone();
+                    let b = *b1;
+                    ops[idx] = op3;
+                    ops[idx + 1] = op1;
+                    ops[idx + 2] = CILOp::Dup;
+                    ops[idx + 3] = CILOp::STLoc(b);
                 }
             }
             _ => (),
@@ -198,4 +235,11 @@ fn is_label_unsused(ops: &[CILOp], label: u32) -> bool {
         CILOp::BZero(target) => label == *target,
         _ => false,
     })
+}
+#[test]
+fn cond_reordering(){
+    let mut ops = [CILOp::STLoc(0),CILOp::LDLoc(1),CILOp::LDLoc(0),CILOp::BGe(0)];
+    op4_combos(&mut ops);
+    assert_eq!(ops,[CILOp::Dup, CILOp::STLoc(0), CILOp::LDLoc(1), CILOp::BLt(0)]);
+    //panic!("ops:{ops:?}")
 }

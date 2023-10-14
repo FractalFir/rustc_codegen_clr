@@ -2,7 +2,7 @@ use crate::cil_op::{CILOp, CallSite};
 use crate::r#type::{DotnetTypeRef, Type};
 use rustc_middle::mir::{
     interpret::{ConstValue, GlobalAlloc, Scalar},
-    Constant, ConstantKind, Place,
+    Constant, ConstantKind,
 };
 use rustc_middle::ty::{AdtKind, FloatTy, Instance, IntTy, Ty, TyCtxt, TyKind, UintTy};
 pub fn handle_constant<'ctx>(
@@ -45,15 +45,15 @@ fn load_const_scalar<'ctx>(
     scalar: Scalar,
     scalar_type: Ty<'ctx>,
     tyctx: TyCtxt<'ctx>,
-    method: &rustc_middle::mir::Body<'ctx>,
-    method_instance: Instance<'ctx>,
+    _method: &rustc_middle::mir::Body<'ctx>,
+    _method_instance: Instance<'ctx>,
 ) -> Vec<CILOp> {
     let scalar_u128 = match scalar {
         Scalar::Int(scalar_int) => scalar_int
             .try_to_uint(scalar.size())
             .expect("IMPOSSIBLE. Size of scalar was not equal to itself."),
         Scalar::Ptr(ptr, _size) => {
-            let (alloc_id, offset) = ptr.into_parts();
+            let (alloc_id, _offset) = ptr.into_parts();
             let global_alloc = tyctx.global_alloc(alloc_id);
             match global_alloc {
                 GlobalAlloc::Static(def_id) => {
@@ -80,7 +80,7 @@ fn load_const_scalar<'ctx>(
             let value = i64::from_ne_bytes((scalar_u128 as u64).to_ne_bytes());
             vec![CILOp::LdcI64(value)]
         }
-        TyKind::Adt(adt_def, subst) => match adt_def.adt_kind() {
+        TyKind::Adt(adt_def, _subst) => match adt_def.adt_kind() {
             AdtKind::Enum => {
                 let field_type = Type::U8;
                 let enum_dotnet = tpe.as_dotnet().expect("Enum scalar not an ADT!");
