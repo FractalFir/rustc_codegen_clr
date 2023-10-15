@@ -50,23 +50,31 @@ macro_rules! test_lib {
             // Builds the backend if neceasry
             RUSTC_BUILD_STATUS.as_ref().expect("Could not build rustc!");
             // Compiles the test project
-            let out = std::process::Command::new("rustc")
-                .current_dir("./test/out")
-                //.env("RUST_TARGET_PATH","../../")
-                .args([
-                    "-O",
-                    "--crate-type=lib",
-                    "-Z",
-                    backend_path(),
-                    "-C",
-                    &format!("linker={}", RUSTC_CODEGEN_CLR_LINKER.display()),
-                    concat!("../", stringify!($test_name), ".rs"),
-                    "-o",
-                    concat!("./", stringify!($test_name), ".rlib"),
-                    //"--target",
-                    // "clr64-unknown-clr"
-                ])
-                .output()
+            let mut command = std::process::Command::new("rustc");
+            let command =  command.current_dir("./test/out")
+            //.env("RUST_TARGET_PATH","../../")
+            .args([
+                "-O",
+                "--crate-type=lib",
+                "-Z",
+                backend_path(),
+                "-C",
+                &format!("linker={}", RUSTC_CODEGEN_CLR_LINKER.display()),
+                concat!("../", stringify!($test_name), ".rs"),
+                "-o",
+                concat!("./", stringify!($test_name), ".rlib"),
+                //"--target",
+                // "clr64-unknown-clr"
+            ]);
+               
+            let command = if *IS_MONO_PRESENT{
+                // Tell the linker to test AOT
+                command.args(["-C","link-arg=--aot-mode,mono-full"])
+            }
+            else{
+                command
+            };
+            let out = command.output()
                 .expect("failed to execute process");
             if !out.stderr.is_empty() {
                 let stdout = String::from_utf8(out.stdout)

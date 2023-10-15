@@ -43,6 +43,14 @@ impl Method {
             attributes: Vec::new(),
         }
     }
+    pub fn ensure_valid(&mut self){
+        if let Some(CILOp::Ret) = self.ops.iter().last(){
+            //Do nothing
+        }
+        else{
+            self.ops.push(CILOp::Ret);
+        }
+    }
     pub fn is_entrypoint(&self) -> bool {
         self.attributes
             .iter()

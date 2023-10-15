@@ -81,11 +81,13 @@ impl Assembly {
         for local in &mir.local_decls {
             self.add_type(local.ty, tcx);
         }
+        method.ensure_valid();
         self.functions.insert(method);
         Ok(())
         //todo!("Can't add function")
     }
-    pub fn add_method(&mut self, method: Method) {
+    pub fn add_method(&mut self, mut method: Method) {
+        method.ensure_valid();
         self.functions.insert(method);
     }
     pub fn methods(&self) -> impl Iterator<Item = &Method> {

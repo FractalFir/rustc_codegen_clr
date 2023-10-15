@@ -7,3 +7,7 @@ edition = "2021"
 
 [dependencies]
 mycorrhiza = {path="../../mycorrhiza"}
+[build]
+rustflags = [
+"-C", "link-arg=--aot-mode=mono_full",
+]
