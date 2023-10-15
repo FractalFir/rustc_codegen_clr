@@ -237,9 +237,17 @@ fn is_label_unsused(ops: &[CILOp], label: u32) -> bool {
     })
 }
 #[test]
-fn cond_reordering(){
-    let mut ops = [CILOp::STLoc(0),CILOp::LDLoc(1),CILOp::LDLoc(0),CILOp::BGe(0)];
+fn cond_reordering() {
+    let mut ops = [
+        CILOp::STLoc(0),
+        CILOp::LDLoc(1),
+        CILOp::LDLoc(0),
+        CILOp::BGe(0),
+    ];
     op4_combos(&mut ops);
-    assert_eq!(ops,[CILOp::Dup, CILOp::STLoc(0), CILOp::LDLoc(1), CILOp::BLt(0)]);
+    assert_eq!(
+        ops,
+        [CILOp::Dup, CILOp::STLoc(0), CILOp::LDLoc(1), CILOp::BLt(0)]
+    );
     //panic!("ops:{ops:?}")
 }

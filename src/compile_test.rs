@@ -1,3 +1,4 @@
+use std::path::Path;
 use std::path::PathBuf;
 fn test_dotnet_executable(file_path: &str, test_dir: &str) {
     use std::io::Write;
@@ -61,12 +62,26 @@ macro_rules! test_lib {
                     &format!("linker={}", RUSTC_CODEGEN_CLR_LINKER.display()),
                     concat!("../", stringify!($test_name), ".rs"),
                     "-o",
-                    concat!("./", stringify!($test_name), ".dll"),
+                    concat!("./", stringify!($test_name), ".rlib"),
                     //"--target",
                     // "clr64-unknown-clr"
                 ])
                 .output()
                 .expect("failed to execute process");
+            if !out.stderr.is_empty() {
+                let stdout = String::from_utf8(out.stdout)
+                    .expect("rustc error contained non-UTF8 characters.");
+                let stderr = String::from_utf8(out.stderr)
+                    .expect("rustc error contained non-UTF8 characters.");
+                panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
+            }
+            let out = std::process::Command::new(RUSTC_CODEGEN_CLR_LINKER.display().to_string())
+                .current_dir("./test/out")
+                .arg("-o")
+                .arg(concat!("./", stringify!($test_name), ".dll"))
+                .arg(concat!("./", stringify!($test_name), ".rlib"))
+                .output()
+                .unwrap();
             // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
             if !out.stderr.is_empty() {
                 let stdout = String::from_utf8(out.stdout)

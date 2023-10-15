@@ -12,8 +12,12 @@ pub trait AssemblyExporter: Sized {
     fn add_type(&mut self, tpe: &TypeDef);
     fn add_method(&mut self, method: &Method);
     //fn extern_asm(&mut self,asm:&str);
-    fn finalize(self, final_path: &Path) -> Result<(), AssemblyExportError>;
-    fn export_assembly(asm: &Assembly, final_path: &Path) -> Result<(), AssemblyExportError> {
+    fn finalize(self, final_path: &Path, is_dll: bool) -> Result<(), AssemblyExportError>;
+    fn export_assembly(
+        asm: &Assembly,
+        final_path: &Path,
+        is_dll: bool,
+    ) -> Result<(), AssemblyExportError> {
         let mut asm_exporter = Self::init("asm");
         for tpe in asm.types() {
             asm_exporter.add_type(tpe);
@@ -27,7 +31,7 @@ pub trait AssemblyExporter: Sized {
             asm_exporter.add_method(crate::codegen::entrypoint::wrapper(entrypoint));
         }*/
         asm_exporter
-            .finalize(final_path)
+            .finalize(final_path, is_dll)
             .expect("Could not export assembly");
         Ok(())
     }

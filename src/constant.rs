@@ -2,8 +2,7 @@ use crate::cil_op::{CILOp, CallSite};
 use crate::r#type::{DotnetTypeRef, Type};
 use rustc_middle::mir::{
     interpret::{GlobalAlloc, Scalar},
-    ConstValue,
-    Const,
+    Const, ConstValue,
 };
 use rustc_middle::ty::{AdtKind, FloatTy, Instance, IntTy, Ty, TyCtxt, TyKind, UintTy};
 pub fn handle_constant<'ctx>(

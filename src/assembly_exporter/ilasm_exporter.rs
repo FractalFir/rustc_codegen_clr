@@ -33,7 +33,11 @@ impl AssemblyExporter for ILASMExporter {
     fn add_method(&mut self, method: &Method) {
         method_cil(&mut self.encoded_asm, method).expect("Error");
     }
-    fn finalize(self, final_path: &std::path::Path) -> Result<(), AssemblyExportError> {
+    fn finalize(
+        self,
+        final_path: &std::path::Path,
+        is_dll: bool,
+    ) -> Result<(), AssemblyExportError> {
         //println!("final_path:{final_path:?}");
         let directory = absolute_path(final_path)
             .map_err(|io| AssemblyExportError::CouldNotCanonalizePath(io, final_path.to_owned()))?
@@ -55,7 +59,7 @@ impl AssemblyExporter for ILASMExporter {
             .expect("Could not create file")
             .write_all(&cil)
             .expect("Could not write bytes");
-        let asm_type = "-dll";
+        let asm_type = if is_dll { "-dll" } else { "-exe" };
         let target = format!(
             "-output:{out_path}",
             out_path = out_path.clone().to_string_lossy()

@@ -11,10 +11,7 @@ use crate::{
 };
 use rustc_middle::ty::InstanceDef;
 use rustc_middle::{
-    mir::{
-        ConstValue, Body, Const, Operand, Place, SwitchTargets,
-        Terminator, TerminatorKind,
-    },
+    mir::{Body, Const, ConstValue, Operand, Place, SwitchTargets, Terminator, TerminatorKind},
     ty::{GenericArg, Instance, ParamEnv, Ty, TyCtxt, TyKind},
 };
 use rustc_span::def_id::DefId;
@@ -306,14 +303,13 @@ pub fn handle_terminator<'ctx>(
             match func {
                 Operand::Constant(fn_const) => {
                     let fn_ty = fn_const.ty();
-                        assert!(
-                            fn_ty.is_fn(),
-                            "fn_ty{fn_ty:?} in call is not a function type!"
-                        );
-                        let fn_ty = monomorphize(&method_instance, fn_ty, tyctx);
-                        let call_ops =
-                            call(&fn_ty, body, tyctx, args, destination, method_instance);
-                        ops.extend(call_ops);
+                    assert!(
+                        fn_ty.is_fn(),
+                        "fn_ty{fn_ty:?} in call is not a function type!"
+                    );
+                    let fn_ty = monomorphize(&method_instance, fn_ty, tyctx);
+                    let call_ops = call(&fn_ty, body, tyctx, args, destination, method_instance);
+                    ops.extend(call_ops);
                 }
                 _ => panic!("called func must be const!"),
             }
@@ -367,11 +363,13 @@ pub fn handle_terminator<'ctx>(
                 //Empty drop, nothing needs to happen.
                 vec![]
             } else {
-            eprintln!("WARNING: drop is not supported yet in rustc_codegen_clr! drop_instance:{drop_instance:?}");
-            vec![
-                CILOp::Comment("WARNING: drop is not supported yet in rustc_codegen_clr!".into()),
-                CILOp::GoTo(target.as_u32()),
-            ]
+                eprintln!("WARNING: drop is not supported yet in rustc_codegen_clr! drop_instance:{drop_instance:?}");
+                vec![
+                    CILOp::Comment(
+                        "WARNING: drop is not supported yet in rustc_codegen_clr!".into(),
+                    ),
+                    CILOp::GoTo(target.as_u32()),
+                ]
             }
         }
         TerminatorKind::Unreachable => {

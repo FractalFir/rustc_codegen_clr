@@ -1,4 +1,5 @@
-use assembly::Assembly;
+#![deny(unused_must_use)]
+//use assembly::Assembly;
 use rustc_codegen_clr::*;
 use std::env;
 fn load_ar(r: &mut impl std::io::Read) -> std::io::Result<assembly::Assembly> {
@@ -53,8 +54,11 @@ fn main() {
     stdlib::insert_libc(&mut final_assembly);
     use rustc_codegen_clr::assembly_exporter::AssemblyExporter;
     let path = output;
+    let is_lib = output.contains(".dll") || output.contains(".so") || output.contains(".o");
     rustc_codegen_clr::assembly_exporter::ilasm_exporter::ILASMExporter::export_assembly(
         &final_assembly,
         path.as_ref(),
-    );
+        is_lib,
+    )
+    .expect("Assembly export faliure!");
 }
