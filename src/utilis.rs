@@ -57,7 +57,7 @@ pub fn monomorphize<'tcx, T: TypeFoldable<TyCtxt<'tcx>> + Clone>(
     ty: T,
     ctx: TyCtxt<'tcx>,
 ) -> T {
-    instance.subst_mir_and_normalize_erasing_regions(
+    instance.instantiate_mir_and_normalize_erasing_regions(
         ctx,
         ParamEnv::reveal_all(),
         EarlyBinder::bind(ty),

@@ -12,7 +12,7 @@ use crate::{
 use rustc_middle::ty::InstanceDef;
 use rustc_middle::{
     mir::{
-        interpret::ConstValue, Body, Constant, ConstantKind, Operand, Place, SwitchTargets,
+        ConstValue, Body, Const, Operand, Place, SwitchTargets,
         Terminator, TerminatorKind,
     },
     ty::{GenericArg, Instance, ParamEnv, Ty, TyCtxt, TyKind},
@@ -305,23 +305,15 @@ pub fn handle_terminator<'ctx>(
             let mut ops = Vec::new();
             match func {
                 Operand::Constant(fn_const) => {
-                    let Constant {
-                        span: _,
-                        user_ty: _,
-                        literal,
-                    } = **fn_const;
-                    if let ConstantKind::Val(ConstValue::ZeroSized, fn_ty) = literal {
+                    let fn_ty = fn_const.ty();
                         assert!(
                             fn_ty.is_fn(),
-                            "literal{literal:?} in call is not a function type!"
+                            "fn_ty{fn_ty:?} in call is not a function type!"
                         );
                         let fn_ty = monomorphize(&method_instance, fn_ty, tyctx);
                         let call_ops =
                             call(&fn_ty, body, tyctx, args, destination, method_instance);
                         ops.extend(call_ops);
-                    } else {
-                        panic!("Invalid function literal!");
-                    }
                 }
                 _ => panic!("called func must be const!"),
             }

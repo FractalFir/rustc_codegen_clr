@@ -1,23 +1,23 @@
 use crate::cil_op::{CILOp, CallSite};
 use crate::r#type::{DotnetTypeRef, Type};
 use rustc_middle::mir::{
-    interpret::{ConstValue, GlobalAlloc, Scalar},
-    Constant, ConstantKind,
+    interpret::{GlobalAlloc, Scalar},
+    ConstValue,
+    Const,
 };
 use rustc_middle::ty::{AdtKind, FloatTy, Instance, IntTy, Ty, TyCtxt, TyKind, UintTy};
 pub fn handle_constant<'ctx>(
-    constant: &Constant<'ctx>,
+    constant: &Const<'ctx>,
     tyctx: TyCtxt<'ctx>,
 
     method: &rustc_middle::mir::Body<'ctx>,
     method_instance: Instance<'ctx>,
 ) -> Vec<CILOp> {
-    let const_kind = constant.literal;
-    match const_kind {
-        ConstantKind::Val(value, const_ty) => {
-            load_const_value(value, const_ty, tyctx, method, method_instance)
+    match constant {
+        Const::Val(value, const_ty) => {
+            load_const_value(*value, *const_ty, tyctx, method, method_instance)
         }
-        _ => todo!("Unhanded const kind {const_kind:?}!"),
+        _ => todo!("Unhanded const {constant:?}!"),
     }
 }
 fn load_const_value<'ctx>(
