@@ -1,6 +1,7 @@
 // This file contains many unnecesary morphize calls.
 use crate::cil_op::{CILOp, FieldDescriptor};
 use crate::r#type::Type;
+use crate::assert_morphic;
 use crate::utilis::field_name;
 use rustc_middle::mir::{Place, PlaceElem};
 use rustc_middle::ty::{FloatTy, Instance, IntTy, ParamEnv, Ty, TyCtxt, TyKind, UintTy};
@@ -23,6 +24,7 @@ fn pointed_type(ty: PlaceTy) -> Ty {
     }
 }
 fn body_ty_is_by_adress(last_ty: &Ty) -> bool {
+    crate::assert_morphic!(last_ty);
     match *last_ty.kind() {
         TyKind::Int(_) => false,
         TyKind::Float(_) => false,
@@ -289,9 +291,13 @@ fn place_elem_body<'ctx>(
     tyctx: TyCtxt<'ctx>,
     method_instance: Instance<'ctx>,
 ) -> (PlaceTy<'ctx>, Vec<CILOp>) {
+    let curr_type = curr_type.monomorphize(&method_instance, tyctx);
+    assert_morphic!(curr_type);
+
     match place_elem {
         PlaceElem::Deref => {
             let pointed = pointed_type(curr_type);
+            assert_morphic!(pointed);
             println!("Dereferencing {curr_type:?} in place_elem_body ");
             if body_ty_is_by_adress(&pointed) {
                 (pointed.into(), vec![])
@@ -304,7 +310,8 @@ fn place_elem_body<'ctx>(
                 let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
                 let gen_field_type =
                     crate::utilis::generic_field_ty(curr_type, index.as_u32(), tyctx);
-                //let field_type = crate::utilis::monomorphize(&method_instance, *field_type, tyctx);
+                //TODO: Why was this commented out?
+                let field_type = crate::utilis::monomorphize(&method_instance, *field_type, tyctx);
                 let field_name = field_name(curr_type, index.as_u32());
                 let curr_type = crate::r#type::Type::from_ty(curr_type, tyctx);
                 let curr_type = if let crate::r#type::Type::DotnetType(dotnet_type) = curr_type {
@@ -315,9 +322,9 @@ fn place_elem_body<'ctx>(
 
                 let field_desc = FieldDescriptor::boxed(curr_type, gen_field_type, field_name);
                 if body_ty_is_by_adress(&field_type) {
-                    ((*field_type).into(), vec![CILOp::LDFieldAdress(field_desc)])
+                    ((field_type).into(), vec![CILOp::LDFieldAdress(field_desc)])
                 } else {
-                    ((*field_type).into(), vec![CILOp::LDField(field_desc)])
+                    ((field_type).into(), vec![CILOp::LDField(field_desc)])
                 }
             }
             PlaceTy::EnumVariant(enm, var_idx) => {
@@ -572,7 +579,8 @@ pub(crate) fn place_set<'a>(
         ops
     } else {
         let (op, ty) = local_body(place.local.as_usize(), method);
-        let mut ty = ty.into();
+        let mut ty:PlaceTy = ty.into();
+        ty = ty.monomorphize(&method_instance, ctx);
         ops.push(op);
         let (head, body) = slice_head(place.projection);
         for elem in body {
@@ -611,6 +619,14 @@ impl<'ctx> PlaceTy<'ctx> {
         match self {
             Self::Ty(inner) => Some(*inner),
             _ => None,
+        }
+    }
+    /// Returns the kind of the underlyting Ty.
+    pub fn kind(&self)->&TyKind<'ctx>{
+        match self{
+            Self::Ty(ty)=>ty.kind(),
+            //TODO: find a better way to get the emum variant!
+            Self::EnumVariant(ty, variant)=>ty.kind(),
         }
     }
 }

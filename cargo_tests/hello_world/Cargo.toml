@@ -7,6 +7,8 @@ edition = "2021"
 
 [dependencies]
 mycorrhiza = {path="../../mycorrhiza"}
+# WIP pseudo STD
+#std = {path = "../../std"}
 [build]
 rustflags = [
 "-C", "link-arg=--aot-mode=mono_full",

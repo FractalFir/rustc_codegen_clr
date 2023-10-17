@@ -21,7 +21,7 @@ impl<const ASSEMBLY:&'static str,const CLASS_PATH:&'static str> RustcCLRInteropM
         rustc_clr_interop_managed_ctor3_::<ASSEMBLY,CLASS_PATH,false,Arg1,Arg2,Arg3>(arg1,arg2,arg3)
     }
     #[inline(always)]
-    pub fn static0_<const METHOD:&'static str,Ret>()->Ret{
+    pub fn static0<const METHOD:&'static str,Ret>()->Ret{
         rustc_clr_interop_managed_call0_::<ASSEMBLY,CLASS_PATH,false,METHOD,Ret>()
     }
     #[inline(always)]
@@ -33,8 +33,12 @@ impl<const ASSEMBLY:&'static str,const CLASS_PATH:&'static str> RustcCLRInteropM
         rustc_clr_interop_managed_call_virt1_::<ASSEMBLY,CLASS_PATH,false,METHOD,false,Ret,Self>(self)
     }
     #[inline(always)]
-    pub fn static1_<const METHOD:&'static str,Arg1,Ret>(arg1:Arg1)->Ret{
+    pub fn static1<const METHOD:&'static str,Arg1,Ret>(arg1:Arg1)->Ret{
         rustc_clr_interop_managed_call1_::<ASSEMBLY,CLASS_PATH,false,METHOD,true,Ret,Arg1>(arg1)
+    }
+    #[inline(always)]
+    pub fn static2<const METHOD:&'static str,Arg1,Arg2,Ret>(arg1:Arg1,arg2:Arg2)->Ret{
+        rustc_clr_interop_managed_call2_::<ASSEMBLY,CLASS_PATH,false,METHOD,true,Ret,Arg1,Arg2>(arg1,arg2)
     }
     #[inline(always)]
     pub fn instance1_<const METHOD:&'static str,Arg1,Ret>(self,arg1:Arg1)->Ret{
@@ -114,6 +118,7 @@ impl From<u16> for RustcCLRInteropManagedChar{
         unsafe{core::mem::transmute::<u16,RustcCLRInteropManagedChar>(core::intrinsics::black_box(utf16_char))}
     }
 }
+/*
 impl TryFrom<char> for RustcCLRInteropManagedChar{
     type Error = (RustcCLRInteropManagedChar,RustcCLRInteropManagedChar);
     fn try_from(value: char) -> Result<RustcCLRInteropManagedChar, (RustcCLRInteropManagedChar,RustcCLRInteropManagedChar)> {
@@ -154,7 +159,7 @@ impl TryFrom<char> for RustcCLRInteropManagedChar{
             Ok(0xFFFD.into())
         }
     }
-}
+}*/
 impl RustcCLRInteropManagedChar{
     pub fn single_codepoint_unchecked(value: char)->Self{
         let byte1 = (value as u64) & 0xFF;

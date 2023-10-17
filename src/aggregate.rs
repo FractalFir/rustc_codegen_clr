@@ -87,13 +87,13 @@ pub fn handle_aggregate<'tcx>(
                     .collect();
                 let dotnet_tpe = crate::r#type::tuple_type(&types);
                 let mut ops: Vec<CILOp> = Vec::with_capacity(fields.len() * 2);
-                for field in fields.iter().zip(types) {
-                    let name = format!("Item{}", field.0 .0 + 1);
+                for field in fields.iter(){
+                    let name = format!("Item{}", field.0 + 1);
                     ops.extend(tuple_getter.iter().cloned());
-                    ops.extend(field.0 .1.iter().cloned());
+                    ops.extend(field.1.iter().cloned());
                     ops.push(CILOp::STField(FieldDescriptor::boxed(
                         dotnet_tpe.clone(),
-                        field.1,
+                        Type::GenericArg(field.0),
                         name.into(),
                     )));
                 }

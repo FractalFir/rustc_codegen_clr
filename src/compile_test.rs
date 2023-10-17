@@ -285,6 +285,7 @@ run_test! {types,vec}
 run_test! {std,main}
 cargo_test! {hello_world}
 cargo_test! {benchmarks}
+cargo_test! {glam_test}
 use lazy_static::*;
 lazy_static! {
     static ref RUNTIME_CONFIG: String = {

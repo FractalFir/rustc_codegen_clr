@@ -33,4 +33,6 @@ fn main() {
     sb.append_char('\r');
     let mstr = sb.to_mstring();
     mycorrhiza::system::console::Console::writeln_string(mstr);
+    use mycorrhiza::std::vec::Vec;
+    
 }

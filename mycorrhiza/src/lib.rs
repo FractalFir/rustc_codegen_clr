@@ -11,8 +11,11 @@
 pub mod intrinsics;
 /// Wrappers around types from the `System` namespace
 pub mod system;
+/// Reimplementation of some Rust std APIs
+pub mod std;
 /// C# `char` type
 pub type DotNetChar = crate::intrinsics::RustcCLRInteropManagedChar;
+
 #[macro_export]
 macro_rules! panic_handler {
     () => {

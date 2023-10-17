@@ -153,3 +153,11 @@ pub fn garag_to_bool<'tyctx>(garg: &GenericArg<'tyctx>, _ctx: TyCtxt<'tyctx>) ->
         }
     }
 }
+#[macro_export]
+macro_rules! assert_morphic{
+    ($ty:ident)=>{
+        let ty_kind = $ty.kind();
+        debug_assert!(!matches!(ty_kind,TyKind::Alias(_,_)),"ERROR: NON MORPHIC TYPE(ALIAS TYPE) {ty:?} WHERE MORPHIC TYPE EXPECTED!",ty = $ty);
+        debug_assert!(!matches!(ty_kind,TyKind::Param(_)),"ERROR: NON MORPHIC TYPE(GENERIC PARAM TYPE) {ty:?} WHERE MORPHIC TYPE EXPECTED!",ty = $ty);
+    };
+}
