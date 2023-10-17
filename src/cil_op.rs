@@ -1,46 +1,58 @@
 use crate::{function_sig::FnSig, r#type::DotnetTypeRef, IString};
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
+/// This struct descibes a .NET field. It contains information about the type this field belongs to, the name of the field, and the fields type. 
 pub struct FieldDescriptor {
     owner: DotnetTypeRef,
     tpe: crate::r#type::Type,
     name: IString,
 }
 impl FieldDescriptor {
+    /// Returns the name of the field
     pub fn name(&self) -> &str {
         &self.name
     }
+    /// Returns the type of the field. For getting the type this field belongs to, see [self.owner]
     pub fn tpe(&self) -> &crate::r#type::Type {
         &self.tpe
     }
+    /// Returns the the type this field belongs to. For getting the type of this field, see [self.tpe]
     pub fn owner(&self) -> &DotnetTypeRef {
         &self.owner
     }
+    /// Constructs a new fieldref, reffering to field of type `tpe`, belonging to `owner`, and named `name`
     pub fn new(owner: DotnetTypeRef, tpe: crate::r#type::Type, name: IString) -> Self {
         Self { owner, tpe, name }
     }
+    /// The same as [`Self::new`], but also boxes the field descriptor.
     pub fn boxed(owner: DotnetTypeRef, tpe: crate::r#type::Type, name: IString) -> Box<Self> {
         Box::new(Self { owner, tpe, name })
     }
 }
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
+/// This struct desribes a static .NET field.  It contains information about the type this static field belongs to, the name of the field, and the fields type. 
 pub struct StaticFieldDescriptor {
     owner: Option<DotnetTypeRef>,
     tpe: crate::r#type::Type,
     name: IString,
 }
 impl StaticFieldDescriptor {
+    /// Returns the name of the static field
     pub fn name(&self) -> &str {
         &self.name
     }
+    /// Returns the type of the static field. For getting the type this field belongs to, see [self.owner]
     pub fn tpe(&self) -> &crate::r#type::Type {
         &self.tpe
     }
+    /// Returns the the type this static field belongs to. For getting the type of this field, see [self.tpe]
     pub fn owner(&self) -> Option<&DotnetTypeRef> {
         self.owner.as_ref()
     }
+    /// Constructs a new static fieldref, reffering to field of type `tpe`, belonging to `owner`, and named `name`
     pub fn new(owner: Option<DotnetTypeRef>, tpe: crate::r#type::Type, name: IString) -> Self {
         Self { owner, tpe, name }
     }
+ /// The same as [`Self::new`], but also boxes the field descriptor.
     pub fn boxed(
         owner: Option<DotnetTypeRef>,
         tpe: crate::r#type::Type,
@@ -58,6 +70,8 @@ pub struct CallSite {
     is_static: bool,
 }
 impl CallSite {
+    /// Constructs a new call site targeting method `name`, with signature `signature` and bleonging to class `class`. If `class` is [`None`], then the `<Module>` class 
+    /// is assumed. 
     pub fn new(
         class: Option<DotnetTypeRef>,
         name: IString,
@@ -71,6 +85,7 @@ impl CallSite {
             is_static,
         }
     }
+    /// The same as [`Self::new`], but boxes the result.
     pub fn boxed(
         class: Option<DotnetTypeRef>,
         name: IString,
@@ -79,19 +94,23 @@ impl CallSite {
     ) -> Box<Self> {
         Box::new(Self::new(class, name, signature, is_static))
     }
+    /// Returns the signature of the function this call site targets.
     pub fn signature(&self) -> &FnSig {
         &self.signature
     }
+    /// Returns the class the targeted method belongs to.
     pub fn class(&self) -> Option<&DotnetTypeRef> {
         self.class.as_ref()
     }
+    /// Returns `true` if the method in question is static.
     pub fn is_static(&self) -> bool {
         self.is_static
     }
+    /// Returns the name of the targteted method.
     pub fn name(&self) -> &str {
         &self.name
     }
-    // Returns true if a call is equivalent to a No-Op. Used to handle black_box.
+    /// Returns true if a call is equivalent to a No-Op. Used to handle black_box.
     pub fn is_nop(&self) -> bool {
         if !self.is_static() {
             return false;
@@ -128,39 +147,74 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 pub enum CILOp {
     // Control Flow
+
+    /// Lablel. Represents a position in code that can be jumped to. Does not translate to any real CIL ops, used only to calucalte jump targets.
+    /// Should be placed automaticaly at the beiging of a basic block, and not constructed manualy.
     Label(u32),
+    /// Unconditional jump to a label with the specified id.
     GoTo(u32),
+    /// Jump to target if 2 top values on the stack are equal, continue otherwise. WARING: make sure the compared values have the same type, othewise IL is invalid.
     BEq(u32),
+    /// Jump to target if 2 top values on the stack are not equal, continue otherwise. WARING: make sure the compared values have the same type, othewise IL is invalid.
     BNe(u32),
+    /// Jump to target if the top value is less than the bottom one, continue otherwise. WARING: make sure the compared values have the same type, othewise IL is invalid.
     BLt(u32),
+    /// Jump to target if the top value is greater than the bottom one, continue otherwise. WARING: make sure the compared values have the same type, othewise IL is invalid.
     BGe(u32),
+    /// Jump to target if the top value on the stack is zero, continue otherwise. WARING: make sure the compared values have the same type, othewise IL is invalid.
     BZero(u32),
+    /// Call the metod behind `call_site`.`
     Call(Box<CallSite>),
+    /// Call the virtual method behind `call_site`.`
     CallVirt(Box<CallSite>),
+    /// Throw the top value on the stack as an exception
     Throw,
+    /// Return the top value on the stack from this function
     Ret,
-    // Load/Store/AdressOf local
+
+    // Load/Store/AdressOf locals
+
+    /// Load the local number `n` on top of the stack
     LDLoc(u32),
+    /// Load the argument number `n` on top of the stack
     LDArg(u32),
+    /// Set the local number `n` to the value poped from the stack
     STLoc(u32),
+    /// Set the argument number `n`to the value poped from the stack
     STArg(u32),
+    /// Load the adddres of local varible `n` on top of the stack
     LDLocA(u32),
+    /// Load the adddres of argument `n` on top of the stack
     LDArgA(u32),
-    // Load constant sigined intieger
+
+    // Load constant values.
+
+    /// Load constant sigined 32 bit intieger and push it on top of the stack. Can be used to load u32s too.
     LdcI32(i32),
+    /// Load constant sigined 64 bit intieger and push it on top of the stack. Can be used to load u64s too.
     LdcI64(i64),
-    // Load constant float
+    /// Load constant 32 bit floating-point number on top of the stack.
     LdcF32(f32),
+    /// Load constant 64 bit floating-point number and push it on top of the stack.
     LdcF64(f64),
-    // Load string literal
+    /// Load string literal
     LdStr(IString),
+
     // Signed intieger convertions
+
+    /// Convert the value on top of the stack to an i8. Preform checked convertion if true.
     ConvI8(bool),
+    /// Convert the value on top of the stack to an i16. Preform checked convertion if true.
     ConvI16(bool),
+    /// Convert the value on top of the stack to an i32. Preform checked convertion if true.
     ConvI32(bool),
+    /// Convert the value on top of the stack to an i64. Preform checked convertion if true.
     ConvI64(bool),
+    /// Convert the value on top of the stack to an isize. Preform checked convertion if true.
     ConvISize(bool),
+
     // Unsigned intieger convertions
+    
     ConvU8(bool),
     ConvU16(bool),
     ConvU32(bool),

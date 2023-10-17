@@ -95,7 +95,7 @@ fn main() {
         let assembly = load_ar(&mut asm_file).expect("Could not oper archive");
         final_assembly = final_assembly.join(assembly);
     }
-    stdlib::insert_libc(&mut final_assembly);
+    libc::insert_libc(&mut final_assembly);
     use rustc_codegen_clr::assembly_exporter::AssemblyExporter;
     let path = output;
     let is_lib = output.contains(".dll") || output.contains(".so") || output.contains(".o");

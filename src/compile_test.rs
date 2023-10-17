@@ -268,6 +268,7 @@ test_lib! {binops}
 test_lib! {branches}
 test_lib! {calls}
 test_lib! {casts}
+test_lib! {closure}
 test_lib! {identity}
 test_lib! {libc}
 

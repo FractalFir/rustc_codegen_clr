@@ -16,3 +16,7 @@ crate-type=["rlib", "cdylib"]
 name = "linker"
 test = false
 bench = false
+[workspace]
+members = [
+    "mycorrhiza",
+]

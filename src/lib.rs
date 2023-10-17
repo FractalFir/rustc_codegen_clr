@@ -1,4 +1,6 @@
 #![feature(rustc_private)]
+// References to internal rustc crates.
+
 extern crate rustc_codegen_ssa;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
@@ -10,18 +12,58 @@ extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
-use rustc_middle::ty::{Binder, BoundVariableKind};
-fn skip_binder_if_no_generic_types<T>(binder: Binder<T>) -> Option<T> {
-    if binder
-        .bound_vars()
-        .iter()
-        .any(|bound_var_kind| matches!(bound_var_kind, BoundVariableKind::Ty(_)))
-    {
-        None
-    } else {
-        Some(binder.skip_binder())
-    }
-}
+
+/// Specifies if a method/type is private or public.
+mod access_modifier;
+/// Code handling the creation of aggreate values (Arrays, enums,structs,tuples,etc.)
+mod aggregate;
+/// Representation of a .NET assembly
+pub mod assembly;
+/// Module containg ILASM-based exporter and code shared between all IL exporter.
+pub mod assembly_exporter;
+/// Code handling binary operations
+mod binop;
+/// Code hansling rust `as` casts.
+mod casts;
+/// A representation of C# IL op.
+mod cil_op;
+/// Runtime errors and utlity functions/macros related to them
+mod codegen_error;
+/// Test harnesses. 
+mod compile_test;
+/// Code handling loading constant values in CIL. 
+mod constant;
+/// Code detecting and inserting wrappers around entrypoints.
+mod entrypoint;
+/// Signature of a function (inputs)->output
+mod function_sig;
+/// A representation of a .NET method
+mod method;
+/// Handles a MIR operand.
+mod operand;
+/// Method-level CIL opitimizations
+mod opt;
+/// Code handling getting/setting/adressing memory locations.
+mod place;
+/// Converts righthandside of a MIR statement into CIL ops.
+mod rvalue;
+/// Code dealing with truning an individual MIR statement into CIL ops.
+mod statement;
+/// Implementation of some libc functions in CIL assembly. Will likely be removed and mostly replaced by functions implmented using mycorrhize.
+pub mod libc;
+/// Converts a terminator of a basic block into CIL ops.
+mod terminator;
+/// Code handling transmutes.
+mod transmute;
+/// A representation of a primitve type or a reference.
+mod r#type;
+/// Contains a reperesentation of a non-primitve .NET type(class,struct)
+mod type_def;
+/// Implementations of unary operations.
+mod unop;
+/// Contains small helper functions(debug assertions, functions used to get field names, etc), which are frequently used, but are not specific to a part of the coodegen.
+mod utilis;
+// rustc functions used here.
 use rustc_codegen_ssa::{
     back::archive::{
         get_native_object_symbols, ArArchiveBuilder, ArchiveBuilder, ArchiveBuilderBuilder,
@@ -40,45 +82,22 @@ use rustc_session::{
     Session,
 };
 use rustc_span::ErrorGuaranteed;
+
 use std::{
     any::Any,
     path::{Path, PathBuf},
 };
+/// Immutable string - used to save a bit of memory on storage.
 pub type IString = Box<str>;
-mod access_modifier;
-mod aggregate;
-pub mod assembly;
-pub mod assembly_exporter;
-mod binop;
-mod casts;
-mod cil_op;
-mod codegen_error;
-mod compile_test;
-mod constant;
-mod entrypoint;
-mod function_sig;
-mod method;
-mod operand;
-mod opt;
-mod place;
-mod rvalue;
-mod statement;
-pub mod stdlib;
-mod terminator;
-mod transmute;
-mod r#type;
-mod type_def;
-mod unop;
-mod utilis;
-use assembly::Assembly;
-struct MyBackend;
-pub(crate) const ALWAYS_INIT_STRUCTS: bool = false;
-pub(crate) const ALWAYS_INIT_LOCALS: bool = false;
 
+use assembly::Assembly;
+/// An instance of the codegen.
+struct MyBackend;
 impl CodegenBackend for MyBackend {
     fn locale_resource(&self) -> &'static str {
         ""
     }
+    /// Compiles a crate, and returns its in-memory representaion as a .NET assembly.
     fn codegen_crate<'a>(
         &self,
         tcx: TyCtxt<'_>,
@@ -124,7 +143,7 @@ impl CodegenBackend for MyBackend {
             CrateInfo::new(tcx, "clr".to_string()),
         ))
     }
-
+    /// Saves an in-memory assemably to codegen specific IR in a .bc file.
     fn join_codegen(
         &self,
         ongoing_codegen: Box<dyn Any>,
@@ -161,63 +180,25 @@ impl CodegenBackend for MyBackend {
         };
         Ok((codegen_results, FxIndexMap::default()))
     }
-
+    /// Collects all the files emmited by the codegen for a specific crate, and turns them into a .rlib file containg the serialized assembly IR and metadata. 
     fn link(
         &self,
         sess: &Session,
         codegen_results: CodegenResults,
         outputs: &OutputFilenames,
     ) -> Result<(), ErrorGuaranteed> {
-        /*
-        let crate_name = codegen_results.crate_info.local_crate_name;
-        let mut final_assembly = Assembly::empty();
-        for module in codegen_results.modules {
-            use std::io::Read;
-
-            let asm_path = module.object.expect("ERROR: object file path is missing!");
-            let mut asm_file =
-                std::fs::File::open(asm_path).expect("ERROR:Could not open the assembly file!");
-            let mut asm_bytes = Vec::with_capacity(0x100);
-            asm_file
-                .read_to_end(&mut asm_bytes)
-                .expect("ERROR:Could not load the assembly file!");
-            let assembly = postcard::from_bytes(&asm_bytes)
-                .expect("ERROR:Could not decode the assembly file!");
-            final_assembly = final_assembly.join(assembly);
-        }
-        crate::stdlib::insert_libc(&mut final_assembly);
-        println!(
-            "PERPARING TO EMMIT FINAL CRATE! CRATE COUNT: {}",
-            sess.opts.crate_types.len()
-        );
-        use crate::assembly_exporter::AssemblyExporter;
-        let path = out_filename(sess, CrateType::Rlib, outputs, crate_name);
-
-        let path = match path {
-            OutFileName::Real(ref path) => path.to_owned(),
-            OutFileName::Stdout => panic!("Compiling to stdout is not supported!"),
-        };
-        std::fs::create_dir_all(path.parent().expect("Could not get the target directory"))
-            .expect("Could not create the target directory!");
-        crate::assembly_exporter::ilasm_exporter::ILASMExporter::export_assembly(
-            &final_assembly,
-            &path,
-        )
-        .expect("Could not create the final asm!");
-        //panic!();
-        */
         use rustc_codegen_ssa::back::link::link_binary;
 
-        link_binary(sess, &RlibArchiveBuilder, &codegen_results, outputs);
+        link_binary(sess, &RlibArchiveBuilder, &codegen_results, outputs).expect("Could not link the binary into a .rlib file!");
         Ok(())
     }
 }
+// Inspired by cranelifts glue code. Is responsible for turing the files produced by teh backend into 
 struct RlibArchiveBuilder;
 impl ArchiveBuilderBuilder for RlibArchiveBuilder {
     fn new_archive_builder<'a>(&self, sess: &'a Session) -> Box<dyn ArchiveBuilder<'a> + 'a> {
         Box::new(ArArchiveBuilder::new(sess, get_native_object_symbols))
     }
-
     fn create_dll_import_lib(
         &self,
         _sess: &Session,
@@ -226,10 +207,11 @@ impl ArchiveBuilderBuilder for RlibArchiveBuilder {
         _tmpdir: &Path,
         _is_direct_dependency: bool,
     ) -> PathBuf {
-        unimplemented!("creating dll imports is not yet supported");
+        unimplemented!("creating dll imports is not supported");
     }
 }
 #[no_mangle]
+/// Entrypoint of the codegen. This function starts the backend up, and returns a reference to it to rustc.
 pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
     Box::new(MyBackend)
 }
