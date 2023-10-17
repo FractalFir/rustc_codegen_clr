@@ -8,17 +8,19 @@ pub const MANAGED_CALL_VIRT_FN_NAME: &str = "rustc_clr_interop_managed_call_virt
 pub fn is_function_magic(name: &str) -> bool {
     name.contains(CTOR_FN_NAME) || name.contains(MANAGED_CALL_FN_NAME)
 }
-use crate::codegen_error::CodegenError;
-pub fn skip_binder_if_no_generic_types<T>(binder: Binder<T>) -> Result<T, CodegenError> {
+use crate::codegen_error::MethodCodegenError;
+pub fn skip_binder_if_no_generic_types<T>(binder: Binder<T>) -> Result<T, MethodCodegenError> {
+    /* 
     if binder
         .bound_vars()
         .iter()
         .any(|bound_var_kind| matches!(bound_var_kind, BoundVariableKind::Ty(_)))
     {
-        Err(CodegenError::UnersolvedGeneric)
+        crate::codegen_error!("Could not resolve generic!");
     } else {
         Ok(binder.skip_binder())
-    }
+    }*/
+    Ok(binder.skip_binder())
 }
 pub fn adt_name(adt: &AdtDef) -> crate::IString {
     //TODO: find a better way to get adt name!

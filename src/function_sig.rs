@@ -1,4 +1,4 @@
-use crate::{codegen_error::CodegenError, r#type::Type, utilis::skip_binder_if_no_generic_types};
+use crate::{codegen_error:: MethodCodegenError, r#type::Type, utilis::skip_binder_if_no_generic_types};
 use rustc_middle::ty::{PolyFnSig, TyCtxt};
 use serde::{Deserialize, Serialize};
 /// Function signature.
@@ -8,22 +8,33 @@ pub struct FnSig {
     output: Type,
 }
 impl FnSig {
+    /// Creates a function signature from a fn sig. Does not morphize!
     pub fn from_poly_sig<'tcx>(
         sig: &PolyFnSig<'tcx>,
         tcx: TyCtxt<'tcx>,
-    ) -> Result<Self, CodegenError> {
+    ) -> Result<Self, MethodCodegenError> {
+        println!("sig:{sig:?}");
+
         let inputs = skip_binder_if_no_generic_types(sig.inputs())?
             .iter()
-            .map(|v| Type::from_ty(*v, tcx))
+            .map(|v| {
+                println!("arg:{v:?}");
+                let tmp = Type::from_ty(*v, tcx);
+                println!("endarg");
+                tmp
+    })
             .collect();
-        let output = Type::from_ty(skip_binder_if_no_generic_types(sig.output())?, tcx);
+        let out = skip_binder_if_no_generic_types(sig.output())?;
+        println!("out:{out:?}");
+        let output = Type::from_ty(out, tcx);
         Ok(Self { inputs, output })
     }
+    /// Creates a function signature from a fn sig, using the parrent method to morphize the call
     pub fn from_poly_sig_mono<'tcx>(
         sig: &PolyFnSig<'tcx>,
         tcx: TyCtxt<'tcx>,
         method: &rustc_middle::ty::Instance<'tcx>,
-    ) -> Result<Self, CodegenError> {
+    ) -> Result<Self, MethodCodegenError> {
         let inputs = skip_binder_if_no_generic_types(sig.inputs())?
             .iter()
             .map(|v| Type::from_ty(crate::utilis::monomorphize(method, *v, tcx), tcx))

@@ -1,4 +1,4 @@
-use crate::IString;
+use crate::{IString, cil_op::CallSite};
 use rustc_middle::ty::{
     AdtDef, ClosureKind, ConstKind, FloatTy, GenericArg, Instance, IntTy, ParamEnv, Ty, TyCtxt,
     TyKind, UintTy,
@@ -7,8 +7,9 @@ use rustc_middle::ty::{
 use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, PartialEq, Clone, Eq, Hash, Debug)]
 pub enum Type {
+    /// Void type
     Void,
-    // Bool
+    /// Boolean type
     Bool,
     // Floating-point types
     F32,
@@ -27,17 +28,21 @@ pub enum Type {
     I64,
     I128,
     ISize,
-    // A refernece to a .NET type
+    /// A refernece to a .NET type
     DotnetType(Box<DotnetTypeRef>),
+    /// A reference to a .NET array type
     DotnetArray(Box<DotnetArray>),
     // Pointer to a type
     Ptr(Box<Self>),
     // Speical type marking an unresoved type. This is a work around some issues with corelib types. Nothing can ever interact directly with this type.
     Unresolved,
-    // Foregin type. Will never be interacted with directly
+    /// Foregin type. Will never be interacted with directly
     Foreign,
+    /// Generic argument 
     GenericArg(u32),
     DotnetChar,
+    /// Rust FnDefs
+    FnDef(Box<CallSite>),
 }
 #[derive(Serialize, Deserialize, PartialEq, Clone, Eq, Hash, Debug)]
 pub struct DotnetArray {
@@ -190,9 +195,37 @@ impl Type {
             TyKind::Closure(def_id, subst) => {
                 // this is wrong.
                 let kind = ClosureKind::FnOnce;
-                let closure = Instance::resolve_closure(tyctx, *def_id, subst, kind)
-                    .expect("Could not resolve closure!");
-                Self::from_ty(closure.ty(tyctx, ParamEnv::empty()), tyctx)
+                let instance = Instance::resolve(tyctx, ParamEnv::reveal_all(),*def_id, subst,)
+                    .expect("Could not resolve closure!").expect("Could not resolve closure!");
+                let closure = subst.as_closure();
+                let sig = closure.sig();
+                let function_name = crate::utilis::function_name(tyctx.symbol_name(instance));
+                println!("CLOSURE: rust_tpe:{rust_tpe:?} closure:{closure:?},sig:{sig} function_name:{function_name:?}");
+                //FIXME: This is wrong. Figure out how to propely handle closures
+                Self::DotnetType(DotnetTypeRef::new(Some("FIXME_CLOSURE"),&function_name).into())
+            }
+            TyKind::FnDef(def_id,subst_ref)=>{
+                let fn_type = rust_tpe;
+                let env = ParamEnv::reveal_all();
+                let (instance, def_id, subst_ref) = {
+                    let instance = Instance::expect_resolve(tyctx, env, *def_id, subst_ref);
+                    (instance, def_id, subst_ref)
+                };
+                println!("BEEEP fn_def def_id:{def_id:?}");
+                let fn_def_sig = instance.ty(tyctx,env).fn_sig(tyctx);
+                let signature = 
+                crate::function_sig::FnSig::from_poly_sig(&fn_def_sig, tyctx)
+                .expect("Can't get the function signature");
+                println!("BOOP");
+                let function_name = crate::utilis::function_name(tyctx.symbol_name(instance));
+                let call = CallSite::boxed(
+                    None,
+                    function_name,
+                    signature,
+                    true,
+                );
+                println!("BIIP");
+                Self::FnDef(call)
             }
             TyKind::Array(element, length) => {
                 let length = crate::utilis::try_resolve_const_size(length).unwrap();

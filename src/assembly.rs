@@ -1,4 +1,5 @@
 use crate::cil_op::{CILOp, CallSite};
+use crate::codegen_error::MethodCodegenError;
 use crate::{
     access_modifier::AccessModifer, codegen_error::CodegenError, function_sig::FnSig,
     method::Method, r#type::Type, type_def::TypeDef,
@@ -37,7 +38,7 @@ impl Assembly {
         instance: Instance<'tcx>,
         tcx: TyCtxt<'tcx>,
         name: &str,
-    ) -> Result<(), CodegenError> {
+    ) -> Result<(), MethodCodegenError> {
         if crate::utilis::is_function_magic(name) {
             return Ok(());
         }
@@ -59,7 +60,9 @@ impl Assembly {
         let mut method = Method::new(access_modifier, true, sig, name, locals);
         let mut ops = Vec::new();
         let mut last_bb_id = 0;
+
         let blocks = &(*mir.basic_blocks);
+
         for block_data in blocks {
             ops.push(CILOp::Label(last_bb_id));
             last_bb_id += 1;
