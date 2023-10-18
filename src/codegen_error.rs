@@ -19,27 +19,45 @@ impl CodegenError {
 fn error_guaranteed() -> rustc_errors::ErrorGuaranteed {
     unsafe { std::mem::transmute(()) }
 }
-pub struct MethodCodegenError{
-    file:String,
-    line:u32,
-    column:u32,
-    message:String,
+pub struct MethodCodegenError {
+    file: String,
+    line: u32,
+    column: u32,
+    message: String,
 }
-impl MethodCodegenError{
-    pub fn new(file:&str,line:u32,column:u32,message:String)->Self{
-        Self{ file:file.into(), line, column, message }
+impl MethodCodegenError {
+    pub fn new(file: &str, line: u32, column: u32, message: String) -> Self {
+        Self {
+            file: file.into(),
+            line,
+            column,
+            message,
+        }
     }
     pub fn report(&self) {
-        eprintln!("Method Codegen Error: {file}({line},{column}): {message}",file = self.file,line = self.line, column = self.column,message = self.message);
+        eprintln!(
+            "Method Codegen Error: {file}({line},{column}): {message}",
+            file = self.file,
+            line = self.line,
+            column = self.column,
+            message = self.message
+        );
     }
 }
-impl Debug for MethodCodegenError{
+impl Debug for MethodCodegenError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f,"Method Codegen Error: {file}({line},{column}): {message}",file = self.file,line = self.line, column = self.column,message = self.message)
+        write!(
+            f,
+            "Method Codegen Error: {file}({line},{column}): {message}",
+            file = self.file,
+            line = self.line,
+            column = self.column,
+            message = self.message
+        )
     }
 }
 /// Modifies the behavoiour of the `codegen_error` macro, making it panic if true and report the error if false.
-pub const PANIC_ON_ERROR:bool = false;
+pub const PANIC_ON_ERROR: bool = false;
 #[macro_export]
 macro_rules! codegen_error {
     () => {

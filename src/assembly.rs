@@ -16,6 +16,7 @@ pub struct Assembly {
     entrypoint: Option<CallSite>,
 }
 impl Assembly {
+    /// Creates a new, empty assembly.
     pub fn empty() -> Self {
         Self {
             types: HashSet::new(),
@@ -23,6 +24,7 @@ impl Assembly {
             entrypoint: None,
         }
     }
+    /// Joins 2 assemblies together. 
     pub fn join(self, other: Self) -> Self {
         let types = self.types.union(&other.types).cloned().collect();
         let functions = self.functions.union(&other.functions).cloned().collect();
@@ -33,6 +35,7 @@ impl Assembly {
             entrypoint,
         }
     }
+    /// Adds a rust MIR function to the assembly.
     pub fn add_fn<'tcx>(
         &mut self,
         instance: Instance<'tcx>,
@@ -89,21 +92,26 @@ impl Assembly {
         Ok(())
         //todo!("Can't add function")
     }
+    /// Adds a method to the assebmly.
     pub fn add_method(&mut self, mut method: Method) {
         method.ensure_valid();
         self.functions.insert(method);
     }
+    /// Returns an interator over all methods within the assembly.
     pub fn methods(&self) -> impl Iterator<Item = &Method> {
         self.functions.iter()
     }
+    /// Returns an iterator over all types witin the assembly.
     pub fn types(&self) -> impl Iterator<Item = &TypeDef> {
         self.types.iter()
     }
-    pub fn add_type<'ctx>(&mut self, ty: rustc_middle::ty::Ty<'ctx>, tyctx: TyCtxt<'ctx>) {
+    /// Adds rust type `ty` and all types contained within it, if such type is not already present.
+    pub fn add_type<'tyctx>(&mut self, ty: rustc_middle::ty::Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) {
         for type_def in TypeDef::from_ty(ty, tyctx) {
             self.types.insert(type_def);
         }
     }
+    /// Optimizes all the methods witin the assembly.
     pub fn opt(&mut self) {
         let functions: HashSet<_> = self
             .functions
@@ -116,9 +124,11 @@ impl Assembly {
             .collect();
         self.functions = functions;
     }
-    pub fn add_typedef<'ctx>(&mut self, type_def: TypeDef) {
+    /// Adds a definition of a type to the assembly.
+    pub fn add_typedef(&mut self, type_def: TypeDef) {
         self.types.insert(type_def);
     }
+    /// Adds a MIR item (method,inline assembly code, etc.) to the assembly.
     pub fn add_item<'tcx>(
         &mut self,
         item: MonoItem<'tcx>,
@@ -137,6 +147,7 @@ impl Assembly {
             _ => todo!("Unsupported item:\"{item:?}\"!"),
         }
     }
+    /// Sets the entrypoint of the assembly to the method behind `CallSite`.
     pub fn set_entrypoint(&mut self, entrypoint: CallSite) {
         assert!(self.entrypoint.is_none(), "ERROR: Multiple entrypoints");
         self.functions
@@ -144,11 +155,12 @@ impl Assembly {
         self.entrypoint = Some(entrypoint);
     }
 }
-fn locals_from_mir<'ctx>(
-    locals: &rustc_index::IndexVec<Local, LocalDecl<'ctx>>,
-    tyctx: TyCtxt<'ctx>,
+/// Returns the list of all local variables within MIR of a function, and converts them to the internal type represenation `Type`
+fn locals_from_mir<'tyctx>(
+    locals: &rustc_index::IndexVec<Local, LocalDecl<'tyctx>>,
+    tyctx: TyCtxt<'tyctx>,
     argc: usize,
-    method_instance: &Instance<'ctx>,
+    method_instance: &Instance<'tyctx>,
 ) -> Vec<Type> {
     let mut local_types: Vec<Type> = Vec::with_capacity(locals.len());
     for (local_id, local) in locals.iter().enumerate() {

@@ -5,89 +5,91 @@ use rustc_index::IndexVec;
 use rustc_middle::mir::{AggregateKind, Operand, Place};
 use rustc_middle::ty::{AdtDef, AdtKind, GenericArg, Instance, List, ParamEnv, Ty, TyCtxt, TyKind};
 use rustc_target::abi::FieldIdx;
-pub fn handle_aggregate<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    target_location: &Place<'tcx>,
-    method: &rustc_middle::mir::Body<'tcx>,
-    aggregate_kind: &AggregateKind<'tcx>,
-    field_index: &IndexVec<FieldIdx, Operand<'tcx>>,
-    method_instance: Instance<'tcx>,
+/// Returns the CIL ops to create the aggreagate value specifed by `aggregate_kind` at `target_location`. Uses indivlidual values specifed by `value_index`
+pub fn handle_aggregate<'tyctx>(
+    tyctx: TyCtxt<'tyctx>,
+    target_location: &Place<'tyctx>,
+    method: &rustc_middle::mir::Body<'tyctx>,
+    aggregate_kind: &AggregateKind<'tyctx>,
+    value_index: &IndexVec<FieldIdx, Operand<'tyctx>>,
+    method_instance: Instance<'tyctx>,
 ) -> Vec<CILOp> {
-    let fields: Vec<_> = field_index
+    // Get CIL ops for each value
+    let values: Vec<_> = value_index
         .iter()
         .enumerate()
         .map(|operand| {
             (
                 operand.0 as u32,
-                crate::operand::handle_operand(operand.1, tcx, method, method_instance),
+                crate::operand::handle_operand(operand.1, tyctx, method, method_instance),
             )
         })
         .collect();
     match aggregate_kind {
         AggregateKind::Adt(adt_def, variant_idx, subst, _utai, active_field) => {
             let penv = ParamEnv::empty();
-            let adt_type = Instance::resolve(tcx, penv, *adt_def, subst)
+            let adt_type = Instance::resolve(tyctx, penv, *adt_def, subst)
                 .expect("Could not resolve instance")
                 .expect("Could not resolve instance")
-                .ty(tcx, penv);
+                .ty(tyctx, penv);
             let (adt_def, subst) = if let TyKind::Adt(def_id, subst) = adt_type.kind() {
                 (def_id, subst)
             } else {
                 panic!("Type {adt_type:?} is not a Algebraic Data Type!");
             };
-            aggregate_from_adt(
-                tcx,
+            aggregate_adt(
+                tyctx,
                 target_location,
                 method,
                 adt_def,
                 adt_type,
                 subst,
                 variant_idx.as_u32(),
-                fields,
+                values,
                 method_instance,
                 active_field,
             )
         }
         AggregateKind::Array(element) => {
-            let element = Type::from_ty(*element, tcx);
-            let array_type = DotnetTypeRef::array(element.clone(), field_index.len());
-            let mut ops: Vec<CILOp> = Vec::with_capacity(fields.len() * 2);
+            let element = Type::from_ty(*element, tyctx);
+            let array_type = DotnetTypeRef::array(element.clone(), value_index.len());
+            let mut ops: Vec<CILOp> = Vec::with_capacity(values.len() * 2);
             let array_getter =
-                super::place::place_adress(&target_location, tcx, method, method_instance);
+                super::place::place_adress(&target_location, tyctx, method, method_instance);
             let sig = crate::function_sig::FnSig::new(
                 &[array_type.clone().into(), element, Type::USize],
                 &Type::Void,
             );
             let call_site =
                 crate::cil_op::CallSite::boxed(Some(array_type), "set_Item".into(), sig, false);
-            for field in fields {
+            for value in values {
                 ops.extend(array_getter.iter().cloned());
-                ops.extend(field.1);
-                ops.push(CILOp::LdcI64(field.0 as u64 as i64));
+                ops.extend(value.1);
+                ops.push(CILOp::LdcI64(value.0 as u64 as i64));
                 ops.push(CILOp::ConvISize(false));
                 ops.push(CILOp::Call(call_site.clone()));
             }
             ops.extend(super::place::place_get(
                 &target_location,
-                tcx,
+                tyctx,
                 method,
                 method_instance,
             ));
             ops
         }
         AggregateKind::Tuple => {
-            if fields.len() > 8 {
+            if values.len() > 8 {
                 todo!("Tuples with more than 8 fields are not supported yet.");
             } else {
                 let tuple_getter =
-                    super::place::place_adress(&target_location, tcx, method, method_instance);
-                let types: Vec<_> = field_index
+                    super::place::place_adress(&target_location, tyctx, method, method_instance);
+                let types: Vec<_> = value_index
                     .iter()
-                    .map(|operand| (Type::from_ty(operand.ty(method, tcx), tcx)))
+                    .map(|operand| (Type::from_ty(operand.ty(method, tyctx), tyctx)))
                     .collect();
                 let dotnet_tpe = crate::r#type::tuple_type(&types);
-                let mut ops: Vec<CILOp> = Vec::with_capacity(fields.len() * 2);
-                for field in fields.iter(){
+                let mut ops: Vec<CILOp> = Vec::with_capacity(values.len() * 2);
+                for field in values.iter() {
                     let name = format!("Item{}", field.0 + 1);
                     ops.extend(tuple_getter.iter().cloned());
                     ops.extend(field.1.iter().cloned());
@@ -99,7 +101,7 @@ pub fn handle_aggregate<'tcx>(
                 }
                 ops.extend(super::place::place_get(
                     &target_location,
-                    tcx,
+                    tyctx,
                     method,
                     method_instance,
                 ));
@@ -109,20 +111,21 @@ pub fn handle_aggregate<'tcx>(
         _ => todo!("Unsuported aggregate kind {aggregate_kind:?}"),
     }
 }
-fn aggregate_from_adt<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    target_location: &Place<'tcx>,
-    method: &rustc_middle::mir::Body<'tcx>,
-    adt: &AdtDef<'tcx>,
-    adt_type: Ty<'tcx>,
-    subst: &'tcx List<GenericArg<'tcx>>,
+/// Builds an Algebraic Data Type (struct,enum,union) at location `target_location`, with fields set using ops in `fields`.
+fn aggregate_adt<'tyctx>(
+    tyctx: TyCtxt<'tyctx>,
+    target_location: &Place<'tyctx>,
+    method: &rustc_middle::mir::Body<'tyctx>,
+    adt: &AdtDef<'tyctx>,
+    adt_type: Ty<'tyctx>,
+    subst: &'tyctx List<GenericArg<'tyctx>>,
     variant_idx: u32,
     fields: Vec<(u32, Vec<CILOp>)>,
-    method_instance: Instance<'tcx>,
+    method_instance: Instance<'tyctx>,
     _active_field: &Option<FieldIdx>,
 ) -> Vec<CILOp> {
-    let adt_type = crate::utilis::monomorphize(&method_instance, adt_type, tcx);
-    let adt_type_ref = Type::from_ty(adt_type, tcx);
+    let adt_type = crate::utilis::monomorphize(&method_instance, adt_type, tyctx);
+    let adt_type_ref = Type::from_ty(adt_type, tyctx);
     let adt_type_ref = if let Type::DotnetType(type_ref) = adt_type_ref {
         type_ref.as_ref().clone()
     } else {
@@ -131,7 +134,7 @@ fn aggregate_from_adt<'tcx>(
     match adt.adt_kind() {
         AdtKind::Struct => {
             let obj_getter =
-                crate::place::place_adress(target_location, tcx, method, method_instance);
+                crate::place::place_adress(target_location, tyctx, method, method_instance);
             let mut ops: Vec<CILOp> = Vec::with_capacity(fields.len() * 2);
             for field in fields {
                 ops.extend(obj_getter.iter().cloned());
@@ -140,9 +143,9 @@ fn aggregate_from_adt<'tcx>(
                     .all_fields()
                     .nth(field.0 as usize)
                     .expect("Could not find field!");
-                let _field_type = field_def.ty(tcx, subst);
+                let _field_type = field_def.ty(tyctx, subst);
 
-                let field_type = crate::utilis::generic_field_ty(adt_type, field.0, tcx);
+                let field_type = crate::utilis::generic_field_ty(adt_type, field.0, tyctx);
                 let field_name = field_name(adt_type, field.0);
                 let field_desc = crate::cil_op::FieldDescriptor::boxed(
                     adt_type_ref.clone(),
@@ -153,7 +156,7 @@ fn aggregate_from_adt<'tcx>(
             }
             ops.extend(crate::place::place_get(
                 target_location,
-                tcx,
+                tyctx,
                 method,
                 method_instance,
             ));
@@ -161,7 +164,7 @@ fn aggregate_from_adt<'tcx>(
         }
         AdtKind::Enum => {
             let adt_adress_ops =
-                crate::place::place_adress(target_location, tcx, method, method_instance);
+                crate::place::place_adress(target_location, tyctx, method, method_instance);
 
             let mut variant_type = adt_type_ref.clone(); //adt_type.variant_type(variant).expect("Can't get variant index");
             let variant_name = crate::utilis::variant_name(adt_type, variant_idx);
@@ -190,7 +193,7 @@ fn aggregate_from_adt<'tcx>(
                 ops.extend(field_value.1.clone());
                 let field_name = field.name.to_string();
                 let field_name = crate::type_def::escape_field_name(&field_name);
-                let field = crate::utilis::generic_field_ty(adt_type, field_idx as u32, tcx);
+                let field = crate::utilis::generic_field_ty(adt_type, field_idx as u32, tyctx);
                 ops.push(CILOp::STField(Box::new(FieldDescriptor::new(
                     variant_type.clone(),
                     field,
@@ -211,7 +214,7 @@ fn aggregate_from_adt<'tcx>(
             }
             ops.extend(crate::place::place_get(
                 target_location,
-                tcx,
+                tyctx,
                 method,
                 method_instance,
             ));
@@ -219,7 +222,7 @@ fn aggregate_from_adt<'tcx>(
         }
         AdtKind::Union => {
             let obj_getter =
-                crate::place::place_adress(target_location, tcx, method, method_instance);
+                crate::place::place_adress(target_location, tyctx, method, method_instance);
             let mut ops: Vec<CILOp> = Vec::with_capacity(fields.len() * 2);
             for field in fields {
                 ops.extend(obj_getter.iter().cloned());
@@ -228,9 +231,9 @@ fn aggregate_from_adt<'tcx>(
                     .all_fields()
                     .nth(field.0 as usize)
                     .expect("Could not find field!");
-                let _field_type = field_def.ty(tcx, subst);
+                let _field_type = field_def.ty(tyctx, subst);
 
-                let field_type = crate::utilis::generic_field_ty(adt_type, field.0, tcx);
+                let field_type = crate::utilis::generic_field_ty(adt_type, field.0, tyctx);
                 let field_name = field_name(adt_type, field.0);
                 let field_desc = crate::cil_op::FieldDescriptor::boxed(
                     adt_type_ref.clone(),
@@ -241,7 +244,7 @@ fn aggregate_from_adt<'tcx>(
             }
             ops.extend(crate::place::place_get(
                 target_location,
-                tcx,
+                tyctx,
                 method,
                 method_instance,
             ));

@@ -10,7 +10,7 @@ pub fn is_function_magic(name: &str) -> bool {
 }
 use crate::codegen_error::MethodCodegenError;
 pub fn skip_binder_if_no_generic_types<T>(binder: Binder<T>) -> Result<T, MethodCodegenError> {
-    /* 
+    /*
     if binder
         .bound_vars()
         .iter()
@@ -26,6 +26,7 @@ pub fn adt_name(adt: &AdtDef) -> crate::IString {
     //TODO: find a better way to get adt name!
     format!("{adt:?}").replace("::", ".").into()
 }
+/// Gets the name of a field with index `idx`
 pub fn field_name(ty: Ty, idx: u32) -> crate::IString {
     match ty.kind() {
         TyKind::Adt(adt_def, _subst) => {
@@ -39,6 +40,7 @@ pub fn field_name(ty: Ty, idx: u32) -> crate::IString {
         _ => todo!("Can't yet get fields of typr {ty:?}"),
     }
 }
+/// Gets the name of a enum variant with index `idx`
 pub fn variant_name(ty: Ty, idx: u32) -> crate::IString {
     match ty.kind() {
         TyKind::Adt(adt_def, _subst) => {
@@ -48,12 +50,14 @@ pub fn variant_name(ty: Ty, idx: u32) -> crate::IString {
         _ => todo!("Can't yet get fields of typr {ty:?}"),
     }
 }
+/// Escapes the name of a function 
 pub fn function_name(name: SymbolName) -> crate::IString {
     name.to_string()
         .replace('$', "_ds_")
         .replace("..", "_dd_")
         .into()
 }
+/// Monomorphizes type `ty`
 pub fn monomorphize<'tcx, T: TypeFoldable<TyCtxt<'tcx>> + Clone>(
     instance: &Instance<'tcx>,
     ty: T,
@@ -65,6 +69,7 @@ pub fn monomorphize<'tcx, T: TypeFoldable<TyCtxt<'tcx>> + Clone>(
         EarlyBinder::bind(ty),
     )
 }
+/// Gets the type of field with index `field_idx`, returning a GenericArg if the types field is generic
 pub fn generic_field_ty<'ctx>(
     owner_ty: Ty<'ctx>,
     field_idx: u32,
@@ -87,11 +92,11 @@ pub fn generic_field_ty<'ctx>(
         _ => todo!("Can't get field {field_idx} belonging to type {owner_ty:?}"),
     }
 }
-// /pub fn polimorphize(ty: Ty<'ctx>)
+/// Returns the size of a tag of an enum with `variants` variants.
 pub fn enum_tag_size(variants: u64) -> u32 {
     (((u64::from(u64::BITS) - u64::from((variants).leading_zeros())) + 8 - 1) / 8) as u32
 }
-
+/// Gets the type of the tag of enum with `variants` varinats.
 pub fn tag_from_enum_variants(variants: u64) -> crate::r#type::Type {
     use crate::r#type::Type;
     let var_size = enum_tag_size(variants);
@@ -104,6 +109,7 @@ pub fn tag_from_enum_variants(variants: u64) -> crate::r#type::Type {
         _ => todo!("Can't yet have {var_size} byte wide enum tag!"),
     }
 }
+/// Tires to get the value of Const `size` as usize.
 pub fn try_resolve_const_size(size: &Const) -> Result<usize, &'static str> {
     let scalar = match size.try_to_scalar() {
         Some(value) => Ok(value),
@@ -112,6 +118,7 @@ pub fn try_resolve_const_size(size: &Const) -> Result<usize, &'static str> {
     let value = scalar.to_u64().expect("Could not convert scalar to u64!");
     Ok(value as usize)
 }
+/// Converts a generic argument to a string, and panics if it could not.
 pub fn garg_to_string<'tyctx>(garg: &GenericArg<'tyctx>, ctx: TyCtxt<'tyctx>) -> String {
     let str_const = garg
         .as_const()
@@ -135,6 +142,7 @@ pub fn garg_to_string<'tyctx>(garg: &GenericArg<'tyctx>, ctx: TyCtxt<'tyctx>) ->
         }
     }
 }
+/// Converts a generic argument to a boolean, and panics if it could not.
 pub fn garag_to_bool<'tyctx>(garg: &GenericArg<'tyctx>, _ctx: TyCtxt<'tyctx>) -> bool {
     let usize_const = garg
         .as_const()
@@ -156,10 +164,18 @@ pub fn garag_to_bool<'tyctx>(garg: &GenericArg<'tyctx>, _ctx: TyCtxt<'tyctx>) ->
     }
 }
 #[macro_export]
-macro_rules! assert_morphic{
-    ($ty:ident)=>{
+macro_rules! assert_morphic {
+    ($ty:ident) => {
         let ty_kind = $ty.kind();
-        debug_assert!(!matches!(ty_kind,TyKind::Alias(_,_)),"ERROR: NON MORPHIC TYPE(ALIAS TYPE) {ty:?} WHERE MORPHIC TYPE EXPECTED!",ty = $ty);
-        debug_assert!(!matches!(ty_kind,TyKind::Param(_)),"ERROR: NON MORPHIC TYPE(GENERIC PARAM TYPE) {ty:?} WHERE MORPHIC TYPE EXPECTED!",ty = $ty);
+        debug_assert!(
+            !matches!(ty_kind, TyKind::Alias(_, _)),
+            "ERROR: NON MORPHIC TYPE(ALIAS TYPE) {ty:?} WHERE MORPHIC TYPE EXPECTED!",
+            ty = $ty
+        );
+        debug_assert!(
+            !matches!(ty_kind, TyKind::Param(_)),
+            "ERROR: NON MORPHIC TYPE(GENERIC PARAM TYPE) {ty:?} WHERE MORPHIC TYPE EXPECTED!",
+            ty = $ty
+        );
     };
 }

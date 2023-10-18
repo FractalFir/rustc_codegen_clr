@@ -1,7 +1,7 @@
-// This file contains many unnecesary morphize calls.
+// FIXME: This file may contain unnecesary morphize calls.
+use crate::assert_morphic;
 use crate::cil_op::{CILOp, FieldDescriptor};
 use crate::r#type::Type;
-use crate::assert_morphic;
 use crate::utilis::field_name;
 use rustc_middle::mir::{Place, PlaceElem};
 use rustc_middle::ty::{FloatTy, Instance, IntTy, ParamEnv, Ty, TyCtxt, TyKind, UintTy};
@@ -419,9 +419,10 @@ fn place_elem_body<'ctx>(
         _ => todo!("Can't handle porojection {place_elem:?} in body"),
     }
 }
-fn ptr_set_op<'ctx>(curr_type: PlaceTy<'ctx>, tyctx: TyCtxt<'ctx>) -> Vec<CILOp> {
-    if let PlaceTy::Ty(curr_type) = curr_type {
-        match curr_type.kind() {
+/// Returns a set of instructons to set a pointer to a pointed_type to a value from the stack.
+fn ptr_set_op<'ctx>(pointed_type: PlaceTy<'ctx>, tyctx: TyCtxt<'ctx>) -> Vec<CILOp> {
+    if let PlaceTy::Ty(pointed_type) = pointed_type {
+        match pointed_type.kind() {
             TyKind::Int(int_ty) => match int_ty {
                 IntTy::I8 => vec![CILOp::STIndI8],
                 IntTy::I16 => vec![CILOp::STIndI16],
@@ -442,30 +443,32 @@ fn ptr_set_op<'ctx>(curr_type: PlaceTy<'ctx>, tyctx: TyCtxt<'ctx>) -> Vec<CILOp>
                 FloatTy::F32 => vec![CILOp::STIndF32],
                 FloatTy::F64 => vec![CILOp::STIndF64],
             },
-            TyKind::Bool => vec![CILOp::STIndI8], // an unmanaged bool is 1 byte, even though a managed bool is 4 bytes
+            TyKind::Bool => vec![CILOp::STIndI8],  // Both Rust bool and a managed bool are 1 byte wide. .NET bools are 4 byte wide only in the context of Marshaling/PInvoke,
+                                                    // due to historic reasons(BOOL was an alias for int in early Windows, and it stayed this way.) - FractalFir
             TyKind::Char => vec![CILOp::STIndI32], // always 4 bytes wide: https://doc.rust-lang.org/std/primitive.char.html#representation
             TyKind::Adt(_, _) => {
                 vec![CILOp::STObj(
-                    crate::r#type::Type::from_ty(curr_type, tyctx).into(),
+                    crate::r#type::Type::from_ty(pointed_type, tyctx).into(),
                 )]
             }
             TyKind::Tuple(_) => {
                 // This is interpreted as a System.ValueTuple and can be treated as an ADT
                 vec![CILOp::STObj(
-                    crate::r#type::Type::from_ty(curr_type, tyctx).into(),
+                    crate::r#type::Type::from_ty(pointed_type, tyctx).into(),
                 )]
             }
             TyKind::Ref(_, _, _) => vec![CILOp::STIndISize],
             TyKind::RawPtr(_) => vec![CILOp::STIndISize],
-            _ => todo!(" can't deref type {curr_type:?} yet"),
+            _ => todo!(" can't deref type {pointed_type:?} yet"),
         }
     } else {
         todo!("Can't set the value behind a poitner to an enum variant!");
     }
 }
-pub fn deref_op<'ctx>(curr_type: PlaceTy<'ctx>, tyctx: TyCtxt<'ctx>) -> Vec<CILOp> {
-    let res = if let PlaceTy::Ty(curr_type) = curr_type {
-        match curr_type.kind() {
+/// Given a type `derefed_type`, it retuns a set of instructions to get a value behind a pointer to `derefed_type`.
+pub fn deref_op<'ctx>(derefed_type: PlaceTy<'ctx>, tyctx: TyCtxt<'ctx>) -> Vec<CILOp> {
+    let res = if let PlaceTy::Ty(derefed_type) = derefed_type {
+        match derefed_type.kind() {
             TyKind::Int(int_ty) => match int_ty {
                 IntTy::I8 => vec![CILOp::LDIndI8],
                 IntTy::I16 => vec![CILOp::LDIndI16],
@@ -488,27 +491,27 @@ pub fn deref_op<'ctx>(curr_type: PlaceTy<'ctx>, tyctx: TyCtxt<'ctx>) -> Vec<CILO
                 FloatTy::F32 => vec![CILOp::LDIndF32],
                 FloatTy::F64 => vec![CILOp::LDIndF64],
             },
-            TyKind::Bool => vec![CILOp::LDIndI8], // an unmanaged bool is 1 byte, even though a managed bool is 4 bytes
+            TyKind::Bool => vec![CILOp::LDIndI8], // Both Rust bool and a managed bool are 1 byte wide. .NET bools are 4 byte wide only in the context of Marshaling/PInvoke,
+                                                  // due to historic reasons(BOOL was an alias for int in early Windows, and it stayed this way.) - FractalFir
             TyKind::Char => vec![CILOp::LDIndI32], // always 4 bytes wide: https://doc.rust-lang.org/std/primitive.char.html#representation
             TyKind::Adt(_, _) => {
                 vec![CILOp::LdObj(
-                    crate::r#type::Type::from_ty(curr_type, tyctx).into(),
+                    crate::r#type::Type::from_ty(derefed_type, tyctx).into(),
                 )]
             }
             TyKind::Tuple(_) => {
                 // This is interpreted as a System.ValueTuple and can be treated as an ADT
                 vec![CILOp::LdObj(
-                    crate::r#type::Type::from_ty(curr_type, tyctx).into(),
+                    crate::r#type::Type::from_ty(derefed_type, tyctx).into(),
                 )]
             }
             TyKind::Ref(_, _, _) => vec![CILOp::LDIndISize],
             TyKind::RawPtr(_) => vec![CILOp::LDIndISize],
-            _ => todo!("TODO: can't deref type {curr_type:?} yet"),
+            _ => todo!("TODO: can't deref type {derefed_type:?} yet"),
         }
     } else {
         todo!("Can't dereference enum variants yet!")
     };
-    println!("using ops {res:?} to deref type {curr_type:?}");
     res
 }
 /// Returns the ops for getting the value of place.
@@ -538,7 +541,7 @@ pub fn place_get<'a>(
         ops
     }
 }
-/// Returns the ops for getting the value of place.
+/// Returns the ops for getting the value of  a given place.
 pub fn place_adress<'a>(
     place: &Place<'a>,
     ctx: TyCtxt<'a>,
@@ -579,7 +582,7 @@ pub(crate) fn place_set<'a>(
         ops
     } else {
         let (op, ty) = local_body(place.local.as_usize(), method);
-        let mut ty:PlaceTy = ty.into();
+        let mut ty: PlaceTy = ty.into();
         ty = ty.monomorphize(&method_instance, ctx);
         ops.push(op);
         let (head, body) = slice_head(place.projection);
@@ -622,11 +625,11 @@ impl<'ctx> PlaceTy<'ctx> {
         }
     }
     /// Returns the kind of the underlyting Ty.
-    pub fn kind(&self)->&TyKind<'ctx>{
-        match self{
-            Self::Ty(ty)=>ty.kind(),
+    pub fn kind(&self) -> &TyKind<'ctx> {
+        match self {
+            Self::Ty(ty) => ty.kind(),
             //TODO: find a better way to get the emum variant!
-            Self::EnumVariant(ty, variant)=>ty.kind(),
+            Self::EnumVariant(ty, variant) => ty.kind(),
         }
     }
 }

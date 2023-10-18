@@ -29,14 +29,16 @@ mod casts;
 mod cil_op;
 /// Runtime errors and utlity functions/macros related to them
 mod codegen_error;
-/// Test harnesses. 
+/// Test harnesses.
 mod compile_test;
-/// Code handling loading constant values in CIL. 
+/// Code handling loading constant values in CIL.
 mod constant;
 /// Code detecting and inserting wrappers around entrypoints.
 mod entrypoint;
 /// Signature of a function (inputs)->output
 mod function_sig;
+/// Implementation of some libc functions in CIL assembly. Will likely be removed and mostly replaced by functions implmented using mycorrhize.
+pub mod libc;
 /// A representation of a .NET method
 mod method;
 /// Handles a MIR operand.
@@ -49,8 +51,6 @@ mod place;
 mod rvalue;
 /// Code dealing with truning an individual MIR statement into CIL ops.
 mod statement;
-/// Implementation of some libc functions in CIL assembly. Will likely be removed and mostly replaced by functions implmented using mycorrhize.
-pub mod libc;
 /// Converts a terminator of a basic block into CIL ops.
 mod terminator;
 /// Code handling transmutes.
@@ -180,7 +180,7 @@ impl CodegenBackend for MyBackend {
         };
         Ok((codegen_results, FxIndexMap::default()))
     }
-    /// Collects all the files emmited by the codegen for a specific crate, and turns them into a .rlib file containg the serialized assembly IR and metadata. 
+    /// Collects all the files emmited by the codegen for a specific crate, and turns them into a .rlib file containg the serialized assembly IR and metadata.
     fn link(
         &self,
         sess: &Session,
@@ -189,11 +189,12 @@ impl CodegenBackend for MyBackend {
     ) -> Result<(), ErrorGuaranteed> {
         use rustc_codegen_ssa::back::link::link_binary;
 
-        link_binary(sess, &RlibArchiveBuilder, &codegen_results, outputs).expect("Could not link the binary into a .rlib file!");
+        link_binary(sess, &RlibArchiveBuilder, &codegen_results, outputs)
+            .expect("Could not link the binary into a .rlib file!");
         Ok(())
     }
 }
-// Inspired by cranelifts glue code. Is responsible for turing the files produced by teh backend into 
+// Inspired by cranelifts glue code. Is responsible for turing the files produced by teh backend into
 struct RlibArchiveBuilder;
 impl ArchiveBuilderBuilder for RlibArchiveBuilder {
     fn new_archive_builder<'a>(&self, sess: &'a Session) -> Box<dyn ArchiveBuilder<'a> + 'a> {

@@ -1,4 +1,4 @@
-use crate::{IString, cil_op::CallSite};
+use crate::{cil_op::CallSite, IString};
 use rustc_middle::ty::{
     AdtDef, ClosureKind, ConstKind, FloatTy, GenericArg, Instance, IntTy, ParamEnv, Ty, TyCtxt,
     TyKind, UintTy,
@@ -38,7 +38,7 @@ pub enum Type {
     Unresolved,
     /// Foregin type. Will never be interacted with directly
     Foreign,
-    /// Generic argument 
+    /// Generic argument
     GenericArg(u32),
     DotnetChar,
     /// Rust FnDefs
@@ -195,16 +195,17 @@ impl Type {
             TyKind::Closure(def_id, subst) => {
                 // this is wrong.
                 let kind = ClosureKind::FnOnce;
-                let instance = Instance::resolve(tyctx, ParamEnv::reveal_all(),*def_id, subst,)
-                    .expect("Could not resolve closure!").expect("Could not resolve closure!");
+                let instance = Instance::resolve(tyctx, ParamEnv::reveal_all(), *def_id, subst)
+                    .expect("Could not resolve closure!")
+                    .expect("Could not resolve closure!");
                 let closure = subst.as_closure();
                 let sig = closure.sig();
                 let function_name = crate::utilis::function_name(tyctx.symbol_name(instance));
                 println!("CLOSURE: rust_tpe:{rust_tpe:?} closure:{closure:?},sig:{sig} function_name:{function_name:?}");
                 //FIXME: This is wrong. Figure out how to propely handle closures
-                Self::DotnetType(DotnetTypeRef::new(Some("FIXME_CLOSURE"),&function_name).into())
+                Self::DotnetType(DotnetTypeRef::new(Some("FIXME_CLOSURE"), &function_name).into())
             }
-            TyKind::FnDef(def_id,subst_ref)=>{
+            TyKind::FnDef(def_id, subst_ref) => {
                 let fn_type = rust_tpe;
                 let env = ParamEnv::reveal_all();
                 let (instance, def_id, subst_ref) = {
@@ -212,18 +213,12 @@ impl Type {
                     (instance, def_id, subst_ref)
                 };
                 println!("BEEEP fn_def def_id:{def_id:?}");
-                let fn_def_sig = instance.ty(tyctx,env).fn_sig(tyctx);
-                let signature = 
-                crate::function_sig::FnSig::from_poly_sig(&fn_def_sig, tyctx)
-                .expect("Can't get the function signature");
+                let fn_def_sig = instance.ty(tyctx, env).fn_sig(tyctx);
+                let signature = crate::function_sig::FnSig::from_poly_sig(&fn_def_sig, tyctx)
+                    .expect("Can't get the function signature");
                 println!("BOOP");
                 let function_name = crate::utilis::function_name(tyctx.symbol_name(instance));
-                let call = CallSite::boxed(
-                    None,
-                    function_name,
-                    signature,
-                    true,
-                );
+                let call = CallSite::boxed(None, function_name, signature, true);
                 println!("BIIP");
                 Self::FnDef(call)
             }

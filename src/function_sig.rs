@@ -1,4 +1,6 @@
-use crate::{codegen_error:: MethodCodegenError, r#type::Type, utilis::skip_binder_if_no_generic_types};
+use crate::{
+    codegen_error::MethodCodegenError, r#type::Type, utilis::skip_binder_if_no_generic_types,
+};
 use rustc_middle::ty::{PolyFnSig, TyCtxt};
 use serde::{Deserialize, Serialize};
 /// Function signature.
@@ -22,7 +24,7 @@ impl FnSig {
                 let tmp = Type::from_ty(*v, tcx);
                 println!("endarg");
                 tmp
-    })
+            })
             .collect();
         let out = skip_binder_if_no_generic_types(sig.output())?;
         println!("out:{out:?}");

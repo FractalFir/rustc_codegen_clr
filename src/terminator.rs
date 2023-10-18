@@ -15,6 +15,7 @@ use rustc_middle::{
     ty::{GenericArg, Instance, ParamEnv, Ty, TyCtxt, TyKind},
 };
 use rustc_span::def_id::DefId;
+/// Calls a non-virtual managed function(used for interop)
 fn call_managed<'ctx>(
     tyctx: TyCtxt<'ctx>,
     _def_id: DefId,
@@ -80,6 +81,7 @@ fn call_managed<'ctx>(
         }
     }
 }
+/// Calls a virtual managed function(used for interop)
 fn callvirt_managed<'ctx>(
     tyctx: TyCtxt<'ctx>,
     _def_id: DefId,
@@ -145,6 +147,7 @@ fn callvirt_managed<'ctx>(
         }
     }
 }
+/// Creates a new managed object, and places a reference to it in destination
 fn call_ctor<'ctx>(
     tyctx: TyCtxt<'ctx>,
     _def_id: DefId,
@@ -159,14 +162,21 @@ fn call_ctor<'ctx>(
     let argc_end = argc_start + function_name[argc_start..].find('_').unwrap();
     let argc = &function_name[argc_start..argc_end];
     let argc = argc.parse::<u32>().unwrap();
+    // Check that there are enough function path and argument specifers
     assert!(subst_ref.len() as u32 == argc + 3);
+    // Check that a proper number of arguments is used
     assert!(args.len() as u32 == argc);
+    // Get the name of the assembly the constructed object resides in
     let asm = garg_to_string(&subst_ref[0], tyctx);
+    // If empty, make it none(for consitent encoing of No-assembly)
     let asm = Some(asm).filter(|asm| !asm.is_empty());
+    // Get the name of the constructed object
     let class_name = garg_to_string(&subst_ref[1], tyctx);
+    // Check if the costructed object is valuetype. TODO: this may be unnecesary. Are valuetpes constructed using newobj?
     let is_valuetype = crate::utilis::garag_to_bool(&subst_ref[2], tyctx);
     let mut tpe = DotnetTypeRef::new(asm.as_ref().map(|x| x.as_str()), &class_name);
     tpe.set_valuetype(is_valuetype);
+    // If no arguments, inputs don't have to be handled, so a simpler call handling is used.
     if argc == 0 {
         crate::place::place_set(
             destination,
@@ -205,6 +215,7 @@ fn call_ctor<'ctx>(
         crate::place::place_set(destination, tyctx, call, method, method_instance)
     }
 }
+/// Calls `fn_type` with `args`, placing the return value in destination.
 fn call<'ctx>(
     fn_type: &Ty<'ctx>,
     body: &'ctx Body<'ctx>,
@@ -215,7 +226,9 @@ fn call<'ctx>(
 ) -> Vec<CILOp> {
     let (instance, def_id, subst_ref) = if let TyKind::FnDef(def_id, subst_ref) = fn_type.kind() {
         let env = ParamEnv::reveal_all();
-        let instance = Instance::resolve(tyctx, env, *def_id, subst_ref).expect("Invalid function def").expect("No function?");
+        let instance = Instance::resolve(tyctx, env, *def_id, subst_ref)
+            .expect("Invalid function def")
+            .expect("No function?");
         (instance, def_id, subst_ref)
     } else {
         todo!("Trying to call a type which is not a function definition!");
@@ -223,7 +236,9 @@ fn call<'ctx>(
     let signature = FnSig::from_poly_sig_mono(&fn_type.fn_sig(tyctx), tyctx, &method_instance)
         .expect("Can't get the function signature");
     let function_name = crate::utilis::function_name(tyctx.symbol_name(instance));
+    // Checks if function is "magic"
     if function_name.contains(CTOR_FN_NAME) {
+        // Constructor
         return call_ctor(
             tyctx,
             *def_id,
@@ -235,6 +250,7 @@ fn call<'ctx>(
             method_instance,
         );
     } else if function_name.contains(MANAGED_CALL_VIRT_FN_NAME) {
+        // Virtual (for interop)
         return callvirt_managed(
             tyctx,
             *def_id,
@@ -247,6 +263,7 @@ fn call<'ctx>(
             fn_type,
         );
     } else if function_name.contains(MANAGED_CALL_FN_NAME) {
+        // Not-Virtual (for interop)
         return call_managed(
             tyctx,
             *def_id,

@@ -43,11 +43,10 @@ impl Method {
             attributes: Vec::new(),
         }
     }
-    pub fn ensure_valid(&mut self){
-        if let Some(CILOp::Ret) = self.ops.iter().last(){
+    pub fn ensure_valid(&mut self) {
+        if let Some(CILOp::Ret) = self.ops.iter().last() {
             //Do nothing
-        }
-        else{
+        } else {
             self.ops.push(CILOp::Ret);
         }
     }

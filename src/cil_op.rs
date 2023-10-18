@@ -1,6 +1,6 @@
 use crate::{function_sig::FnSig, r#type::DotnetTypeRef, IString};
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
-/// This struct descibes a .NET field. It contains information about the type this field belongs to, the name of the field, and the fields type. 
+/// This struct descibes a .NET field. It contains information about the type this field belongs to, the name of the field, and the fields type.
 pub struct FieldDescriptor {
     owner: DotnetTypeRef,
     tpe: crate::r#type::Type,
@@ -29,7 +29,7 @@ impl FieldDescriptor {
     }
 }
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
-/// This struct desribes a static .NET field.  It contains information about the type this static field belongs to, the name of the field, and the fields type. 
+/// This struct desribes a static .NET field.  It contains information about the type this static field belongs to, the name of the field, and the fields type.
 pub struct StaticFieldDescriptor {
     owner: Option<DotnetTypeRef>,
     tpe: crate::r#type::Type,
@@ -52,7 +52,7 @@ impl StaticFieldDescriptor {
     pub fn new(owner: Option<DotnetTypeRef>, tpe: crate::r#type::Type, name: IString) -> Self {
         Self { owner, tpe, name }
     }
- /// The same as [`Self::new`], but also boxes the field descriptor.
+    /// The same as [`Self::new`], but also boxes the field descriptor.
     pub fn boxed(
         owner: Option<DotnetTypeRef>,
         tpe: crate::r#type::Type,
@@ -70,8 +70,8 @@ pub struct CallSite {
     is_static: bool,
 }
 impl CallSite {
-    /// Constructs a new call site targeting method `name`, with signature `signature` and bleonging to class `class`. If `class` is [`None`], then the `<Module>` class 
-    /// is assumed. 
+    /// Constructs a new call site targeting method `name`, with signature `signature` and bleonging to class `class`. If `class` is [`None`], then the `<Module>` class
+    /// is assumed.
     pub fn new(
         class: Option<DotnetTypeRef>,
         name: IString,
@@ -147,7 +147,6 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 pub enum CILOp {
     // Control Flow
-
     /// Lablel. Represents a position in code that can be jumped to. Does not translate to any real CIL ops, used only to calucalte jump targets.
     /// Should be placed automaticaly at the beiging of a basic block, and not constructed manualy.
     Label(u32),
@@ -173,7 +172,6 @@ pub enum CILOp {
     Ret,
 
     // Load/Store/AdressOf locals
-
     /// Load the local number `n` on top of the stack
     LDLoc(u32),
     /// Load the argument number `n` on top of the stack
@@ -188,7 +186,6 @@ pub enum CILOp {
     LDArgA(u32),
 
     // Load constant values.
-
     /// Load constant sigined 32 bit intieger and push it on top of the stack. Can be used to load u32s too.
     LdcI32(i32),
     /// Load constant sigined 64 bit intieger and push it on top of the stack. Can be used to load u64s too.
@@ -201,7 +198,6 @@ pub enum CILOp {
     LdStr(IString),
 
     // Signed intieger convertions
-
     /// Convert the value on top of the stack to an i8. Preform checked convertion if true.
     ConvI8(bool),
     /// Convert the value on top of the stack to an i16. Preform checked convertion if true.
@@ -214,7 +210,6 @@ pub enum CILOp {
     ConvISize(bool),
 
     // Unsigned intieger convertions
-    
     ConvU8(bool),
     ConvU16(bool),
     ConvU32(bool),

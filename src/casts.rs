@@ -1,5 +1,5 @@
 use crate::{cil_op::CILOp, r#type::Type};
-
+/// Casts from intiger type `src` to target `target`
 pub fn int_to_int(src: Type, target: Type) -> Vec<CILOp> {
     if matches!(src, Type::I128 | Type::U128) {
         todo!("Casting from 128 bit intiegers is not supported!")
@@ -10,6 +10,7 @@ pub fn int_to_int(src: Type, target: Type) -> Vec<CILOp> {
         to_int(target)
     }
 }
+/// Returns CIL ops required to convert type src to target
 pub fn float_to_int(_src: Type, target: Type) -> Vec<CILOp> {
     if matches!(target, Type::I128 | Type::U128) {
         todo!("Casting to 128 bit intiegers is not supported!")
@@ -17,6 +18,7 @@ pub fn float_to_int(_src: Type, target: Type) -> Vec<CILOp> {
         to_int(target)
     }
 }
+/// Returns CIL ops required to convert to intiger of type `target`
 pub fn to_int(target: Type) -> Vec<CILOp> {
     match target {
         Type::I8 => vec![CILOp::ConvI8(false)],
@@ -31,6 +33,7 @@ pub fn to_int(target: Type) -> Vec<CILOp> {
         _ => todo!("Can't cast to {target:?} yet!"),
     }
 }
+/// Returns CIL ops required to casts from intiger type `src` to `target`
 pub fn int_to_float(src: Type, target: Type) -> Vec<CILOp> {
     if matches!(src, Type::I128 | Type::U128) {
         todo!("Casting from 128 bit intiegers is not supported!")

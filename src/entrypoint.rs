@@ -4,6 +4,7 @@ use crate::{
     method::Method,
     r#type::Type,
 };
+/// Creates a wrapper method around entypoint represented by `CallSite`
 pub fn wrapper(entrypoint: &CallSite) -> Method {
     if entrypoint.signature().inputs()
         == &[

@@ -37,6 +37,7 @@ fn load_const_value<'ctx>(
             ops.extend(crate::place::deref_op(const_ty.into(), tyctx));
             ops
         }
+        ConstValue::Slice{data,meta}=>todo!("Constant allocations are not supported yet data:{data:?},meta:{meta:?}!"),
         _ => todo!("Unhandled const value {const_val:?} of type {const_ty:?}"),
     }
 }

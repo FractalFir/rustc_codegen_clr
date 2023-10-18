@@ -2,6 +2,7 @@ use rustc_middle::mir::{BinOp, Operand};
 use rustc_middle::ty::{Instance, IntTy, Ty, TyCtxt, TyKind, UintTy};
 
 use crate::cil_op::CILOp;
+/// Preforms an unchecked binary operation.
 pub(crate) fn binop_unchecked<'tcx>(
     binop: BinOp,
     operand_a: &Operand<'tcx>,
@@ -108,6 +109,7 @@ pub(crate) fn binop_unchecked<'tcx>(
         } //_ => todo!("Unsupported bionp {binop:?}"),
     }
 }
+/// Preforms unchecked addition
 fn add_unchecked<'tcx>(ty_a: Ty<'tcx>, ty_b: Ty<'tcx>) -> Vec<CILOp> {
     match ty_a.kind() {
         TyKind::Int(int_ty) => {
@@ -128,6 +130,7 @@ fn add_unchecked<'tcx>(ty_a: Ty<'tcx>, ty_b: Ty<'tcx>) -> Vec<CILOp> {
         _ => todo!("can't add numbers of types {ty_a} and {ty_b}"),
     }
 }
+/// Preforms unchecked subtraction
 fn sub_unchecked<'tcx>(ty_a: Ty<'tcx>, ty_b: Ty<'tcx>) -> Vec<CILOp> {
     match ty_a.kind() {
         TyKind::Int(int_ty) => {

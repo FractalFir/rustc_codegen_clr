@@ -613,7 +613,7 @@ fn type_cil(tpe: &Type) -> Cow<'static, str> {
             };
             format!("{tpe}[{arr}]", tpe = type_cil(&array.element)).into()
         } //_ => todo!("Unsuported type {tpe:?}"),
-        Type::FnDef(site)=>"FnDef".into(),
+        Type::FnDef(site) => "FnDef".into(),
     }
 }
 fn field_type_cil(tpe: &Type) -> Cow<'static, str> {
@@ -654,7 +654,7 @@ fn prefixed_type_cil(tpe: &Type) -> Cow<'static, str> {
             let prefix = dotnet_type.tpe_prefix();
             format!("{prefix} {}", dotnet_type_ref_cli(dotnet_type)).into()
         }
-        Type::FnDef(site)=>"valuetype FnDef".into(),
+        Type::FnDef(site) => "valuetype FnDef".into(),
         //Special type
         Type::Unresolved => "valuetype Unresolved".into(),
         Type::Foreign => "valuetype Foreign".into(),
