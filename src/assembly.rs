@@ -24,7 +24,7 @@ impl Assembly {
             entrypoint: None,
         }
     }
-    /// Joins 2 assemblies together. 
+    /// Joins 2 assemblies together.
     pub fn join(self, other: Self) -> Self {
         let types = self.types.union(&other.types).cloned().collect();
         let functions = self.functions.union(&other.functions).cloned().collect();

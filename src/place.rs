@@ -443,8 +443,8 @@ fn ptr_set_op<'ctx>(pointed_type: PlaceTy<'ctx>, tyctx: TyCtxt<'ctx>) -> Vec<CIL
                 FloatTy::F32 => vec![CILOp::STIndF32],
                 FloatTy::F64 => vec![CILOp::STIndF64],
             },
-            TyKind::Bool => vec![CILOp::STIndI8],  // Both Rust bool and a managed bool are 1 byte wide. .NET bools are 4 byte wide only in the context of Marshaling/PInvoke,
-                                                    // due to historic reasons(BOOL was an alias for int in early Windows, and it stayed this way.) - FractalFir
+            TyKind::Bool => vec![CILOp::STIndI8], // Both Rust bool and a managed bool are 1 byte wide. .NET bools are 4 byte wide only in the context of Marshaling/PInvoke,
+            // due to historic reasons(BOOL was an alias for int in early Windows, and it stayed this way.) - FractalFir
             TyKind::Char => vec![CILOp::STIndI32], // always 4 bytes wide: https://doc.rust-lang.org/std/primitive.char.html#representation
             TyKind::Adt(_, _) => {
                 vec![CILOp::STObj(
@@ -492,7 +492,7 @@ pub fn deref_op<'ctx>(derefed_type: PlaceTy<'ctx>, tyctx: TyCtxt<'ctx>) -> Vec<C
                 FloatTy::F64 => vec![CILOp::LDIndF64],
             },
             TyKind::Bool => vec![CILOp::LDIndI8], // Both Rust bool and a managed bool are 1 byte wide. .NET bools are 4 byte wide only in the context of Marshaling/PInvoke,
-                                                  // due to historic reasons(BOOL was an alias for int in early Windows, and it stayed this way.) - FractalFir
+            // due to historic reasons(BOOL was an alias for int in early Windows, and it stayed this way.) - FractalFir
             TyKind::Char => vec![CILOp::LDIndI32], // always 4 bytes wide: https://doc.rust-lang.org/std/primitive.char.html#representation
             TyKind::Adt(_, _) => {
                 vec![CILOp::LdObj(

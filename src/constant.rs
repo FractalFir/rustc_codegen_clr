@@ -1,10 +1,13 @@
 use crate::cil_op::{CILOp, CallSite};
 use crate::r#type::{DotnetTypeRef, Type};
+use rustc_abi::Size;
 use rustc_middle::mir::{
-    interpret::{GlobalAlloc, Scalar},
+    interpret::{AllocId, AllocRange, GlobalAlloc, Scalar},
     Const, ConstValue,
 };
-use rustc_middle::ty::{AdtKind, FloatTy, Instance, IntTy, Ty, TyCtxt, TyKind, UintTy};
+use rustc_middle::ty::{
+    AdtDef, AdtKind, FloatTy, Instance, IntTy, List, Ty, TyCtxt, TyKind, UintTy,
+};
 pub fn handle_constant<'ctx>(
     constant: &Const<'ctx>,
     tyctx: TyCtxt<'ctx>,
@@ -19,11 +22,68 @@ pub fn handle_constant<'ctx>(
         _ => todo!("Unhanded const {constant:?}!"),
     }
 }
+/// Returns the ops neceasry to create constant ADT of type represented by `adt_def` and `subst` with byte values matching the ones in the slice bytes
+fn create_const_adt_from_bytes<'ctx>(
+    adt_def: AdtDef<'ctx>,
+    subst: &'ctx List<rustc_middle::ty::GenericArg<'ctx>>,
+    tyctx: TyCtxt<'ctx>,
+    bytes: &[u8],
+) -> Vec<CILOp> {
+    match adt_def.adt_kind() {
+        AdtKind::Struct => {
+            let mut curr_offset = 0;
+            for field in adt_def.all_fields() {
+                let ftype = field.ty(tyctx, subst);
+                let sizeof = crate::utilis::compiletime_sizeof(ftype);
+                let field_bytes = &bytes[curr_offset..(curr_offset + sizeof)];
+                let ops = create_const_from_slice(ftype, tyctx, field_bytes);
+                println!("Const field {name} of type {ftype} with bytes {field_bytes:?},\n loading using ops {ops:?}",name = field.name);
+                // Increment the offset.
+                curr_offset += sizeof;
+            }
+            todo!("Can't load const struct from bytes {bytes:?}!");
+        }
+        AdtKind::Enum => todo!("Can't load const enum from bytes {bytes:?}!"),
+        AdtKind::Union => todo!("Can't load const union from bytes {bytes:?}!"),
+    }
+}
+/// Returns the ops neceasry to create constant value of type `ty` with byte values matching the ones in the slice bytes
+fn create_const_from_slice<'ctx>(ty: Ty<'ctx>, tyctx: TyCtxt<'ctx>, bytes: &[u8]) -> Vec<CILOp> {
+    // TODO: Read up on the order of bytes inside a const allocation and ensure it is correct. All .NET target will be Little Enidian, but if we want to support
+    // big enidian targets in the future, this will need to be revised.
+    match ty.kind() {
+        TyKind::Adt(adt_def, subst) => create_const_adt_from_bytes(*adt_def, subst, tyctx, bytes),
+        TyKind::Int(int) => match int {
+            IntTy::I32 => vec![CILOp::LdcI32(i32::from_le_bytes(
+                bytes[..std::mem::size_of::<i32>()].try_into().unwrap(),
+            ))],
+            _ => todo!("Can't yet load const value of type {int:?} with bytes:{bytes:?}"),
+        },
+        _ => todo!("Can't yet load const value of type {ty:?} with bytes:{bytes:?}"),
+    }
+}
+/// Returns the ops neceasry to create constant value of type `ty` with byte values matching the ones in the allocation
+fn create_const_from_data<'ctx>(
+    ty: Ty<'ctx>,
+    tyctx: TyCtxt<'ctx>,
+    alloc_id: AllocId,
+    offset_bytes: u64,
+) -> Vec<CILOp> {
+    let alloc = tyctx.global_alloc(alloc_id);
+    // Constant should be memory:
+    let memory = alloc.unwrap_memory();
+    let len = memory.0.len();
+    let range = AllocRange {
+        start: Size::from_bytes(offset_bytes),
+        size: Size::from_bytes((len as u64) - offset_bytes),
+    };
+    let bytes = memory.0.get_bytes_unchecked(range);
+    create_const_from_slice(ty, tyctx, bytes)
+}
 fn load_const_value<'ctx>(
     const_val: ConstValue<'ctx>,
     const_ty: Ty<'ctx>,
     tyctx: TyCtxt<'ctx>,
-
     method: &rustc_middle::mir::Body<'ctx>,
     method_instance: Instance<'ctx>,
 ) -> Vec<CILOp> {
@@ -37,8 +97,13 @@ fn load_const_value<'ctx>(
             ops.extend(crate::place::deref_op(const_ty.into(), tyctx));
             ops
         }
-        ConstValue::Slice{data,meta}=>todo!("Constant allocations are not supported yet data:{data:?},meta:{meta:?}!"),
-        _ => todo!("Unhandled const value {const_val:?} of type {const_ty:?}"),
+        ConstValue::Slice { data, meta } => {
+            todo!("Constant slice allocations are not supported yet data:{data:?},meta:{meta:?}!")
+        }
+        ConstValue::Indirect { alloc_id, offset } => {
+            create_const_from_data(const_ty, tyctx, alloc_id, offset.bytes())
+            //todo!("Can't handle by-ref allocation {alloc_id:?} {offset:?}")
+        } //_ => todo!("Unhandled const value {const_val:?} of type {const_ty:?}"),
     }
 }
 fn load_const_scalar<'ctx>(

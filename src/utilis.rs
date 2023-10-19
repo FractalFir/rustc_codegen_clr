@@ -50,7 +50,7 @@ pub fn variant_name(ty: Ty, idx: u32) -> crate::IString {
         _ => todo!("Can't yet get fields of typr {ty:?}"),
     }
 }
-/// Escapes the name of a function 
+/// Escapes the name of a function
 pub fn function_name(name: SymbolName) -> crate::IString {
     name.to_string()
         .replace('$', "_ds_")
@@ -161,6 +161,21 @@ pub fn garag_to_bool<'tyctx>(garg: &GenericArg<'tyctx>, _ctx: TyCtxt<'tyctx>) ->
             }
             _ => todo!("Can't convert generic arg of const kind {kind:?} to string!"),
         }
+    }
+}
+/// This function returns the size of a type at the compile time. This should be used ONLY for handling constants. It currently assumes a 64 bit env
+pub fn compiletime_sizeof(ty: Ty) -> usize {
+    use rustc_middle::ty::{IntTy, UintTy};
+    match ty.kind() {
+        TyKind::Int(int) => match int {
+            IntTy::I32 => std::mem::size_of::<i32>(),
+            _ => todo!("Can't compute compiletime sizeof {int:?}"),
+        },
+        TyKind::Uint(int) => match int {
+            UintTy::U32 => std::mem::size_of::<u32>(),
+            _ => todo!("Can't compute compiletime sizeof {int:?}"),
+        },
+        _ => todo!("Can't compute compiletime sizeof {ty:?}"),
     }
 }
 #[macro_export]
