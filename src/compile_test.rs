@@ -283,6 +283,7 @@ run_test! {types,structs}
 run_test! {types,interop}
 run_test! {types,vec}
 run_test! {std,main}
+run_test! {control_flow,cf_for}
 cargo_test! {hello_world}
 cargo_test! {benchmarks}
 cargo_test! {glam_test}

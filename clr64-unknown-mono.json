@@ -1,0 +1,12 @@
+{
+  "llvm-target": "clr64-unknown-mono",
+  "data-layout": "e-m:e-i64:64-f80:128-n8:16:32:64-S128",
+  "panic-strategy": "abort",
+  "linker-flavor": "gcc",
+  "linker": "arm-none-eabi-gcc",
+  "target-endian": "little",
+  "target-pointer-width": "64",
+  "target-c-int-width": "32",
+  "arch": "clr64",
+  "os": "mono"
+}

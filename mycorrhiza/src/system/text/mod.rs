@@ -3,11 +3,11 @@ pub type StringBuilder =
 impl StringBuilder {
     #[inline(always)]
     pub fn empty() -> Self {
-        Self::ctor0_()
+        Self::ctor0()
     }
     #[inline(always)]
     pub fn append_mchar(self, chr: crate::DotNetChar) -> Self {
-        self.instance1_::<"Append", crate::DotNetChar, Self>(chr)
+        self.instance1::<"Append", crate::DotNetChar, Self>(chr)
     }
     #[inline(always)]
     pub fn append_char(self, chr: char) -> Self {

@@ -8,19 +8,19 @@ impl<const ASSEMBLY: &'static str, const CLASS_PATH: &'static str>
     RustcCLRInteropManagedClass<ASSEMBLY, CLASS_PATH>
 {
     #[inline(always)]
-    pub fn ctor0_() -> Self {
+    pub fn ctor0() -> Self {
         rustc_clr_interop_managed_ctor0_::<ASSEMBLY, CLASS_PATH, false>()
     }
     #[inline(always)]
-    pub fn ctor1_<Arg1>(arg1: Arg1) -> Self {
+    pub fn ctor1<Arg1>(arg1: Arg1) -> Self {
         rustc_clr_interop_managed_ctor1_::<ASSEMBLY, CLASS_PATH, false, Arg1>(arg1)
     }
     #[inline(always)]
-    pub fn ctor2_<Arg1, Arg2>(arg1: Arg1, arg2: Arg2) -> Self {
+    pub fn ctor2<Arg1, Arg2>(arg1: Arg1, arg2: Arg2) -> Self {
         rustc_clr_interop_managed_ctor2_::<ASSEMBLY, CLASS_PATH, false, Arg1, Arg2>(arg1, arg2)
     }
     #[inline(always)]
-    pub fn ctor3_<Arg1, Arg2, Arg3>(arg1: Arg1, arg2: Arg2, arg3: Arg3) -> Self {
+    pub fn ctor3<Arg1, Arg2, Arg3>(arg1: Arg1, arg2: Arg2, arg3: Arg3) -> Self {
         rustc_clr_interop_managed_ctor3_::<ASSEMBLY, CLASS_PATH, false, Arg1, Arg2, Arg3>(
             arg1, arg2, arg3,
         )
@@ -30,7 +30,7 @@ impl<const ASSEMBLY: &'static str, const CLASS_PATH: &'static str>
         rustc_clr_interop_managed_call0_::<ASSEMBLY, CLASS_PATH, false, METHOD, Ret>()
     }
     #[inline(always)]
-    pub fn instance0_<const METHOD: &'static str, Ret>(self) -> Ret {
+    pub fn instance0<const METHOD: &'static str, Ret>(self) -> Ret {
         rustc_clr_interop_managed_call1_::<ASSEMBLY, CLASS_PATH, false, METHOD, false, Ret, Self>(
             self,
         )
@@ -54,7 +54,7 @@ impl<const ASSEMBLY: &'static str, const CLASS_PATH: &'static str>
         )
     }
     #[inline(always)]
-    pub fn instance1_<const METHOD: &'static str, Arg1, Ret>(self, arg1: Arg1) -> Ret {
+    pub fn instance1<const METHOD: &'static str, Arg1, Ret>(self, arg1: Arg1) -> Ret {
         rustc_clr_interop_managed_call2_::<
             ASSEMBLY,
             CLASS_PATH,
@@ -68,7 +68,7 @@ impl<const ASSEMBLY: &'static str, const CLASS_PATH: &'static str>
     }
     #[inline(always)]
     pub fn to_mstring(self) -> crate::system::MString {
-        self.instance0_::<"ToString", crate::system::MString>()
+        self.instance0::<"ToString", crate::system::MString>()
     }
 }
 #[derive(Clone, Copy)]
