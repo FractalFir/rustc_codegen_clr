@@ -185,6 +185,26 @@ pub enum CILOp {
     /// Load the adddres of argument `n` on top of the stack
     LDArgA(u32),
 
+    // Syntetic("fake") ops used to simplify some more complex parts of the codegen. They later get turned into real CIL ops.
+    /// This is a Syntetic("fake") instruction, which is used **only** internaly. It is not present in the resulting assembly.
+    /// Sometimes, a temporary local variable is needed for codegen purposes(mainly when handling constants)
+    /// This instrunction creates a new, short-lived temporary local variable, which can be accessed using [`LoadTMPLocal`],[`LoadAddresOfTMPLocal`]
+    /// and [`SetTMPLocal`]. Each [`NewTMPLocal`] must be paired with a corresponding [`FreeTMPLocal`].
+    /// No temporary variable is allowed to live across MIR statements.
+    NewTMPLocal(Box<crate::r#type::Type>),
+    /// This is a Syntetic("fake") instruction, which is used **only** internaly. It is not present in the resulting assembly.
+    /// This instruction frees the last allocated temporary variable.
+    FreeTMPLocal,
+    /// This is a Syntetic("fake") instruction, which is used **only** internaly. It is not present in the resulting assembly.
+    /// This instruction reads the value of the current temporary local. It is equivalent to `LDLoc(tmp)`.
+    LoadTMPLocal,
+    /// This is a Syntetic("fake") instruction, which is used **only** internaly. It is not present in the resulting assembly.
+    /// This instruction reads the adress of the current temporary local. It is equivalent to `LDLocA(tmp)`.
+    LoadAddresOfTMPLocal,
+    /// This is a Syntetic("fake") instruction, which is used **only** internaly. It is not present in the resulting assembly.
+    /// This instruction sets the value of the current temporary local. It is equivalent to `STLoc(tmp)`.
+    SetTMPLocal,
+
     // Load constant values.
     /// Load constant sigined 32 bit intieger and push it on top of the stack. Can be used to load u32s too.
     LdcI32(i32),
@@ -343,6 +363,10 @@ impl CILOp {
             }
             CILOp::Throw => -1,
             CILOp::Ret => -1,
+            // Syntetic instructions
+            CILOp::NewTMPLocal(_) | CILOp::FreeTMPLocal => 0,
+            CILOp::LoadAddresOfTMPLocal | CILOp::LoadTMPLocal => 1,
+            CILOp::SetTMPLocal => -1,
         }
     }
     pub fn get_op_arg_pos(ops: &[CILOp], pos: usize, arg: usize) -> Option<usize> {
@@ -356,9 +380,12 @@ impl CILOp {
         }*/
     }
     /// Flips a conditional, changing the order of its arguments. Eg. BLt(a,b) [a < b] becomes BGe(b,a) [b >= a].
+    // There may be a bug there.
     pub fn flip_cond(&self) -> Self {
         match self{
+            // a >= b
                 CILOp::BGe(target) =>{
+                    // b < a
                     CILOp::BLt(*target)
                 }
                 CILOp::BLt(target) =>{
@@ -367,4 +394,30 @@ impl CILOp {
                 _=>todo!("Can't filp conditional operation {self:?}, either because it is not a conditional(bug) or it is not supported yet!"),
             }
     }
+}
+#[test]
+fn test_tmp_locals() {
+    use crate::method::Method;
+    use crate::r#type::Type;
+    let mut method = Method::new(
+        crate::access_modifier::AccessModifer::Public,
+        true,
+        FnSig::new(&[], &Type::U32),
+        "meth",
+        vec![],
+    );
+    let ops = vec![CILOp::NewTMPLocal(Type::U32.into()),CILOp::LdcI32(8),CILOp::SetTMPLocal,CILOp::LdcI32(7),CILOp::LoadTMPLocal,CILOp::FreeTMPLocal,CILOp::Ret];
+    method.set_ops(ops);
+    let mut expected_method = Method::new(
+        crate::access_modifier::AccessModifer::Public,
+        true,
+        FnSig::new(&[], &Type::U32),
+        "meth",
+        vec![Type::U32],
+    );
+    let expected_ops = vec![CILOp::LdcI32(8),CILOp::STLoc(0),CILOp::LdcI32(7),CILOp::LDLoc(0),CILOp::Ret];
+    expected_method.set_ops(expected_ops);
+    assert_ne!(method,expected_method,"The methods are different at first.");
+    method.allocate_temporaries();
+    assert_ne!(method,expected_method,"Methods match after temporary allocation.");
 }

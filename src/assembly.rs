@@ -87,13 +87,13 @@ impl Assembly {
         for local in &mir.local_decls {
             self.add_type(local.ty, tcx);
         }
-        method.ensure_valid();
-        self.functions.insert(method);
+        self.add_method(method);
         Ok(())
         //todo!("Can't add function")
     }
     /// Adds a method to the assebmly.
     pub fn add_method(&mut self, mut method: Method) {
+        method.allocate_temporaries();
         method.ensure_valid();
         self.functions.insert(method);
     }

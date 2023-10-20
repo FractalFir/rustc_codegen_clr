@@ -26,30 +26,23 @@ impl From<char> for RustcCLRInteropManagedChar{
         }
     }
 }
-#[inline(never)]
-fn rustc_clr_interop_managed_call0_<const ASSEMBLY:&'static str,const CLASS_PATH:&'static str,const IS_VALUETYPE:bool,const METHOD:&'static str,Ret>()->Ret{
-    core::intrinsics::abort();
-}
-#[inline(never)]
-fn rustc_clr_interop_managed_call1_<const ASSEMBLY:&'static str,const CLASS_PATH:&'static str,const IS_VALUETYPE:bool,const METHOD:&'static str,const IS_STATIC:bool,Ret,Arg1>(arg1:Arg1)->Ret{
-    core::intrinsics::abort();
-}
-#[inline(never)]
-fn rustc_clr_interop_managed_call2_<const ASSEMBLY:&'static str,const CLASS_PATH:&'static str,const IS_VALUETYPE:bool,const METHOD:&'static str,const IS_STATIC:bool,Ret,Arg1,Arg2>(arg1:Arg1,arg2:Arg2)->Ret{
-    core::intrinsics::abort();
-}
+
+#[allow(dead_code)]
 #[inline(never)]
 fn rustc_clr_interop_managed_ctor0_<const ASSEMBLY:&'static str,const CLASS_PATH:&'static str,const IS_VALUETYPE:bool>()->RustcCLRInteropManagedClass<ASSEMBLY,CLASS_PATH>{
     core::intrinsics::abort();
 }
+#[allow(dead_code)]
 #[inline(never)]
 fn rustc_clr_interop_managed_ctor1_<const ASSEMBLY:&'static str,const CLASS_PATH:&'static str,const IS_VALUETYPE:bool,Arg1>(arg1:Arg1)->RustcCLRInteropManagedClass<ASSEMBLY,CLASS_PATH>{
     core::intrinsics::abort();
 }
+#[allow(dead_code)]
 #[inline(never)]
 fn rustc_clr_interop_managed_ctor2_<const ASSEMBLY:&'static str,const CLASS_PATH:&'static str,const IS_VALUETYPE:bool,Arg1,Arg2>(arg1:Arg1,arg2:Arg2)->RustcCLRInteropManagedClass<ASSEMBLY,CLASS_PATH>{
     core::intrinsics::abort();
 }
+#[allow(dead_code)]
 #[inline(never)]
 fn rustc_clr_interop_managed_ctor3_<const ASSEMBLY:&'static str,const CLASS_PATH:&'static str,const IS_VALUETYPE:bool,Arg1,Arg2,Arg3>(arg1:Arg1,arg2:Arg2,arg3:Arg3)->RustcCLRInteropManagedClass<ASSEMBLY,CLASS_PATH>{
     core::intrinsics::abort();

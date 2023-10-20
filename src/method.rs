@@ -79,6 +79,35 @@ impl Method {
     pub(crate) fn get_ops(&self) -> &[CILOp] {
         &self.ops
     }
+    pub(crate) fn allocate_temporaries(&mut self){
+        let mut tmp_stack = vec![];
+        let ops = &mut self.ops;
+        for op in ops{
+            match op{
+                CILOp::NewTMPLocal(tpe)=>{
+                    let index = self.locals.len();
+                    self.locals.push(tpe.as_ref().clone());
+                    tmp_stack.push(index);
+                    *op = CILOp::Nop;
+                },
+                CILOp::FreeTMPLocal=>{
+                    tmp_stack.pop().expect("Freeing TMP local when none existed");
+                    *op = CILOp::Nop;
+                },
+                CILOp::LoadTMPLocal=>{
+                    *op = CILOp::LDLoc(*tmp_stack.iter().last().expect("Using a TMP local with `LoadTMPLocal` when no TMP local allocated!") as u32);
+                }
+                CILOp::LoadAddresOfTMPLocal=>{
+                    *op = CILOp::LDLocA(*tmp_stack.iter().last().expect("Using a TMP local with `LoadTMPLocal` when no TMP local allocated!") as u32);
+                }
+                CILOp::SetTMPLocal=>{
+                    *op = CILOp::STLoc(*tmp_stack.iter().last().expect("Using a TMP local with `LoadTMPLocal` when no TMP local allocated!") as u32);
+                }
+                _=>(),
+            }
+        }
+        //todo!("Can't allocate temporaries quite yet!");
+    }
     pub fn add_attribute(&mut self, attr: Attribute) {
         self.attributes.push(attr);
     }

@@ -542,6 +542,8 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
             }
         }
         CILOp::Nop => "nop".into(),
+        CILOp::NewTMPLocal(_) | CILOp::FreeTMPLocal | CILOp::LoadAddresOfTMPLocal | CILOp::SetTMPLocal | CILOp::LoadTMPLocal =>
+         panic!("CRITICAL INTERNAL ERROR: OP '{op:?}' is syntetic(internal only) and should have been substituted before being emmited!"),
         //Stack
         CILOp::Pop => "pop".into(),
         CILOp::Dup => "dup".into(),

@@ -166,6 +166,8 @@ fn op4_combos(ops: &mut [CILOp]) {
                     ops[idx + 3] = CILOp::Nop;
                 }
             }
+            //This is bugged.
+            /* 
             (
                 CILOp::STLoc(b1),
                 CILOp::LDLoc(_) | CILOp::LDArg(_),
@@ -186,7 +188,7 @@ fn op4_combos(ops: &mut [CILOp]) {
                     ops[idx + 2] = op2;
                     ops[idx + 3] = op4;
                 }
-            }
+            }*/
             (
                 CILOp::LDLoc(a),
                 CILOp::STLoc(b1),

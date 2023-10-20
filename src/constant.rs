@@ -35,21 +35,29 @@ fn create_const_adt_from_bytes<'ctx>(
             let mut curr_offset = 0;
             let cil_ty = Type::from_ty(ty, tyctx);
             let dotnet_ty = cil_ty.as_dotnet().expect("ADT must be a value type!");
-            let mut creator_ops = vec![CILOp::SizeOf(cil_ty.into()),CILOp::LocAlloc];
-            for (field_idx,field) in adt_def.all_fields().enumerate() {
+            let mut creator_ops = vec![CILOp::NewTMPLocal(cil_ty.clone().into())];
+            for (field_idx, field) in adt_def.all_fields().enumerate() {
                 let ftype = field.ty(tyctx, subst);
                 let sizeof = crate::utilis::compiletime_sizeof(ftype);
                 let field_bytes = &bytes[curr_offset..(curr_offset + sizeof)];
                 let field_ops = create_const_from_slice(ftype, tyctx, field_bytes);
-                creator_ops.push(CILOp::Dup);
+                creator_ops.push(CILOp::LoadAddresOfTMPLocal);
                 creator_ops.extend(field_ops);
                 let cil_ftype = crate::utilis::generic_field_ty(ty, field_idx as u32, tyctx);
-                creator_ops.push(CILOp::STField(crate::cil_op::FieldDescriptor::boxed(dotnet_ty.clone(),cil_ftype,field.name.to_string().into())));
-                println!("Const field {name} of type {ftype} with bytes {field_bytes:?}",name = field.name);
+                creator_ops.push(CILOp::STField(crate::cil_op::FieldDescriptor::boxed(
+                    dotnet_ty.clone(),
+                    cil_ftype,
+                    field.name.to_string().into(),
+                )));
+                println!(
+                    "Const field {name} of type {ftype} with bytes {field_bytes:?}",
+                    name = field.name
+                );
                 // Increment the offset.
                 curr_offset += sizeof;
             }
-            creator_ops.push(CILOp::LDIndRef);
+            creator_ops.push(CILOp::LoadTMPLocal);
+            creator_ops.push(CILOp::FreeTMPLocal);
             creator_ops
         }
         AdtKind::Enum => todo!("Can't load const enum from bytes {bytes:?}!"),
@@ -61,7 +69,9 @@ fn create_const_from_slice<'ctx>(ty: Ty<'ctx>, tyctx: TyCtxt<'ctx>, bytes: &[u8]
     // TODO: Read up on the order of bytes inside a const allocation and ensure it is correct. All .NET target will be Little Enidian, but if we want to support
     // big enidian targets in the future, this will need to be revised.
     match ty.kind() {
-        TyKind::Adt(adt_def, subst) => create_const_adt_from_bytes(ty,*adt_def, subst, tyctx, bytes),
+        TyKind::Adt(adt_def, subst) => {
+            create_const_adt_from_bytes(ty, *adt_def, subst, tyctx, bytes)
+        }
         TyKind::Int(int) => match int {
             IntTy::I32 => vec![CILOp::LdcI32(i32::from_le_bytes(
                 bytes[..std::mem::size_of::<i32>()].try_into().unwrap(),
