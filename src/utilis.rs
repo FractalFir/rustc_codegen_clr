@@ -75,7 +75,7 @@ pub fn generic_field_ty<'ctx>(
     field_idx: u32,
     ctx: TyCtxt<'ctx>,
 ) -> crate::r#type::Type {
-    match owner_ty.kind() {
+     match owner_ty.kind() {
         TyKind::Adt(adt_def, _) => {
             let ty = ctx
                 .type_of(
@@ -86,6 +86,7 @@ pub fn generic_field_ty<'ctx>(
                         .did,
                 )
                 .instantiate_identity();
+            println!("Generic field type {ty:?}");
             crate::r#type::Type::from_ty(ty, ctx)
         }
         TyKind::Tuple(_) => crate::r#type::Type::GenericArg(field_idx),
