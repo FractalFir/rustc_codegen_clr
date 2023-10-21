@@ -82,23 +82,8 @@ impl TypeDef {
             TyKind::Array(element, size) => {
                 let length = crate::utilis::try_resolve_const_size(size)
                     .expect("Could not resolve array size!");
-                let name = format!("Arr{length}");
-                let mut fields = Vec::with_capacity(length);
-                for field in 0..length {
-                    fields.push((format!("f_{field}").into(), Type::GenericArg(0)))
-                }
-                let def = TypeDef {
-                    access: AccessModifer::Public,
-                    name: name.into(),
-                    inner_types: vec![],
-                    fields,
-                    functions: vec![],
-                    explicit_offsets: None,
-                    gargc: 1,
-                    extends: None,
-                };
                 let mut types = Self::from_ty(*element, ctx);
-                types.push(def);
+                types.push(get_array_type(length));
                 types
             }
             TyKind::Alias(_, alias_ty) => {
@@ -255,6 +240,26 @@ impl TypeDef {
         res
     }
 }
+impl Into<Type> for TypeDef {
+    fn into(self) -> Type {
+        Type::DotnetType(DotnetTypeRef::new(None, self.name()).into())
+    }
+}
+impl Into<Type> for &TypeDef {
+    fn into(self) -> Type {
+        Type::DotnetType(DotnetTypeRef::new(None, self.name()).into())
+    }
+}
+impl Into<DotnetTypeRef> for TypeDef {
+    fn into(self) -> DotnetTypeRef {
+        DotnetTypeRef::new(None, self.name()).into()
+    }
+}
+impl Into<DotnetTypeRef> for &TypeDef {
+    fn into(self) -> DotnetTypeRef {
+        DotnetTypeRef::new(None, self.name()).into()
+    }
+}
 pub fn escape_field_name(name: &str) -> IString {
     if name.is_empty() {
         "fld".into()
@@ -275,4 +280,73 @@ pub fn ident_gargs(gargc: usize) -> std::borrow::Cow<'static, [Type]> {
             .collect::<Vec<_>>()
             .into(),
     }
+}
+pub fn get_array_type(element_count: usize) -> TypeDef {
+    use crate::cil_op::{CILOp, FieldDescriptor};
+    let name = format!("Arr{element_count}");
+    let mut fields = Vec::with_capacity(element_count);
+    for field in 0..element_count {
+        fields.push((format!("f_{field}").into(), Type::GenericArg(0)))
+    }
+    let mut def = TypeDef {
+        access: AccessModifer::Public,
+        name: name.into(),
+        inner_types: vec![],
+        fields,
+        functions: vec![],
+        explicit_offsets: None,
+        gargc: 1,
+        extends: None,
+    };
+    // set_Item(usize offset, G0 value)
+    let mut set_usize = Method::new(
+        AccessModifer::Public,
+        false,
+        crate::function_sig::FnSig::new(
+            &[(&def).into(), Type::USize, Type::GenericArg(0)],
+            &Type::Void,
+        ),
+        "set_Item",
+        vec![],
+    );
+    let ops = vec![
+        CILOp::LDArg(0),
+        CILOp::LDFieldAdress(FieldDescriptor::boxed(
+            (&def).into(),
+            Type::GenericArg(0),
+            "f_0".to_string().into(),
+        )),
+        CILOp::LDArg(1),
+        CILOp::Add,
+        CILOp::LDArg(2),
+        CILOp::STObj(Type::GenericArg(0).into()),
+        CILOp::Ret,
+    ];
+    set_usize.set_ops(ops);
+    def.add_method(set_usize);
+    // get_Address(usize offset)
+    let mut get_adress_usize = Method::new(
+        AccessModifer::Public,
+        false,
+        crate::function_sig::FnSig::new(
+            &[(&def).into(), Type::USize],
+            &Type::Ptr(Type::GenericArg(0).into()),
+        ),
+        "get_Address",
+        vec![],
+    );
+    let ops = vec![
+        CILOp::LDArg(0),
+        CILOp::LDFieldAdress(FieldDescriptor::boxed(
+            (&def).into(),
+            Type::GenericArg(0),
+            "f_0".to_string().into(),
+        )),
+        CILOp::LDArg(1),
+        CILOp::Add,
+        CILOp::Ret,
+    ];
+    get_adress_usize.set_ops(ops);
+    def.add_method(get_adress_usize);
+    def
 }

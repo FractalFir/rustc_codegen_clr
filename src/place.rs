@@ -125,7 +125,7 @@ fn place_elem_get_at<'a>(curr_type: PlaceTy<'a>, ctx: TyCtxt<'a>) -> Vec<CILOp> 
     let element_ty = crate::r#type::element_type(curr_ty);
 
     let signature =
-        crate::function_sig::FnSig::new(&[tpe.clone(), index_ty], &Type::from_ty(element_ty, ctx));
+        crate::function_sig::FnSig::new(&[index_ty, tpe.clone()], &Type::from_ty(element_ty, ctx));
     vec![
         CILOp::LDArg(0),
         CILOp::Call(crate::cil_op::CallSite::boxed(
@@ -147,10 +147,12 @@ fn place_elem_set_at<'a>(curr_type: PlaceTy<'a>, ctx: TyCtxt<'a>) -> Vec<CILOp> 
     let index_ty = Type::USize;
     let element_ty = crate::r#type::element_type(curr_ty);
 
-    let signature =
-        crate::function_sig::FnSig::new(&[tpe.clone(), index_ty], &Type::from_ty(element_ty, ctx));
+    let signature = crate::function_sig::FnSig::new(
+        &[tpe.clone(), index_ty, Type::GenericArg(0)],
+        &Type::GenericArg(0),
+    );
     vec![
-        CILOp::LDArg(0),
+        //CILOp::LDArg(0),
         CILOp::Call(crate::cil_op::CallSite::boxed(
             Some(class.as_ref().clone()),
             "set_Item".into(),
@@ -391,7 +393,7 @@ fn place_elem_body<'ctx>(
             if body_ty_is_by_adress(&element_ty) {
                 let signature = crate::function_sig::FnSig::new(
                     &[tpe.clone(), index_ty],
-                    &Type::Ptr(Box::new(Type::from_ty(element_ty, tyctx))),
+                    &Type::Ptr(Box::new(Type::GenericArg(0))),
                 );
                 ops.push(CILOp::LDArg(0));
                 ops.push(CILOp::Call(crate::cil_op::CallSite::boxed(
@@ -404,7 +406,7 @@ fn place_elem_body<'ctx>(
             } else {
                 let signature = crate::function_sig::FnSig::new(
                     &[tpe.clone(), index_ty],
-                    &Type::from_ty(element_ty, tyctx),
+                    &Type::GenericArg(0),
                 );
                 ops.push(CILOp::LDArg(0));
                 ops.push(CILOp::Call(crate::cil_op::CallSite::boxed(

@@ -57,16 +57,16 @@ pub fn handle_aggregate<'tyctx>(
             let array_getter =
                 super::place::place_adress(&target_location, tyctx, method, method_instance);
             let sig = crate::function_sig::FnSig::new(
-                &[array_type.clone().into(), element, Type::USize],
+                &[array_type.clone().into(), Type::USize, Type::GenericArg(0)],
                 &Type::Void,
             );
             let call_site =
                 crate::cil_op::CallSite::boxed(Some(array_type), "set_Item".into(), sig, false);
             for value in values {
                 ops.extend(array_getter.iter().cloned());
-                ops.extend(value.1);
                 ops.push(CILOp::LdcI64(value.0 as u64 as i64));
-                ops.push(CILOp::ConvISize(false));
+                ops.push(CILOp::ConvUSize(false));
+                ops.extend(value.1);
                 ops.push(CILOp::Call(call_site.clone()));
             }
             ops.extend(super::place::place_get(

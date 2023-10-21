@@ -96,7 +96,7 @@ fn rust_slice(asm: &mut Assembly) {
     rust_slice.add_field("_ptr".into(), Type::Ptr(Box::new(Type::GenericArg(0))));
     rust_slice.add_field("_length".into(), Type::ISize);
     add_tpe_method!(
-        get_Length,
+        GetLength,
         false,
         &[Type::DotnetType(Box::new(rust_slice_dotnet.clone()))],
         &Type::USize,
@@ -168,7 +168,7 @@ fn rust_slice(asm: &mut Assembly) {
             CILOp::Ret
         ]
     );
-    get_Length(&mut rust_slice);
+    GetLength(&mut rust_slice);
     get_Item(&mut rust_slice);
     set_Item(&mut rust_slice);
     asm.add_typedef(rust_slice);

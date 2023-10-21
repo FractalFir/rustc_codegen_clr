@@ -55,6 +55,13 @@ impl Method {
             .iter()
             .any(|attr| *attr == Attribute::EntryPoint)
     }
+    pub fn explicit_inputs(&self) -> &[Type] {
+        if self.is_static() {
+            self.sig().inputs()
+        } else {
+            &self.sig().inputs()[1..]
+        }
+    }
     pub fn ops_mut(&mut self) -> &mut Vec<CILOp> {
         &mut self.ops
     }

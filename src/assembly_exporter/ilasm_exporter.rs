@@ -165,7 +165,7 @@ fn method_cil(w: &mut impl Write, method: &Method) -> std::io::Result<()> {
         w,
         ".method {access} hidebysig {static_inst} {output} {name}"
     )?;
-    args_cli(w, method.sig().inputs())?;
+    args_cli(w, method.explicit_inputs())?;
     writeln!(w, "{{")?;
     if method.is_entrypoint() {
         writeln!(w, ".entrypoint")?;
@@ -214,11 +214,11 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
                 let mut inputs_iter = call_site.explicit_inputs().iter();
                 let mut input_string = String::new();
                 if let Some(firts_arg) = inputs_iter.next() {
-                    input_string.push_str(&arg_type_cil(firts_arg));
+                    input_string.push_str(&call_arg_type_cil(firts_arg));
                 }
                 for arg in inputs_iter {
                     input_string.push(',');
-                    input_string.push_str(&arg_type_cil(arg));
+                    input_string.push_str(&call_arg_type_cil(arg));
                 }
                 let prefix = if call_site.is_static() {
                     ""
@@ -248,11 +248,11 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
                 let mut inputs_iter = call_site.explicit_inputs().iter();
                 let mut input_string = String::new();
                 if let Some(firts_arg) = inputs_iter.next() {
-                    input_string.push_str(&arg_type_cil(firts_arg));
+                    input_string.push_str(&call_arg_type_cil(firts_arg));
                 }
                 for arg in inputs_iter {
                     input_string.push(',');
-                    input_string.push_str(&arg_type_cil(arg));
+                    input_string.push_str(&call_arg_type_cil(arg));
                 }
                 let prefix = if call_site.is_static() {
                     ""
@@ -517,11 +517,11 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
                 let mut inputs_iter = call_site.explicit_inputs().iter();
                 let mut input_string = String::new();
                 if let Some(firts_arg) = inputs_iter.next() {
-                    input_string.push_str(&arg_type_cil(firts_arg));
+                    input_string.push_str(&call_arg_type_cil(firts_arg));
                 }
                 for arg in inputs_iter {
                     input_string.push(',');
-                    input_string.push_str(&arg_type_cil(arg));
+                    input_string.push_str(&call_arg_type_cil(arg));
                 }
                 let prefix = if call_site.is_static() {
                     ""
@@ -560,6 +560,9 @@ fn output_type_cil(tpe: &Type) -> Cow<'static, str> {
 }
 fn arg_type_cil(tpe: &Type) -> Cow<'static, str> {
     prefixed_type_cil(tpe)
+}
+fn call_arg_type_cil(tpe: &Type) -> Cow<'static, str> {
+    prefixed_field_type_cil(tpe)
 }
 fn dotnet_type_ref_cli(dotnet_type: &DotnetTypeRef) -> String {
     let asm = if let Some(asm_ref) = dotnet_type.asm() {
@@ -683,6 +686,18 @@ fn args_cli(w: &mut impl Write, args: &[Type]) -> std::io::Result<()> {
     }
     for arg in args {
         write!(w, ",{type_cil}", type_cil = arg_type_cil(arg))?;
+    }
+    write!(w, ")")?;
+    Ok(())
+}
+fn call_args_cli(w: &mut impl Write, args: &[Type]) -> std::io::Result<()> {
+    let mut args = args.iter();
+    write!(w, "(")?;
+    if let Some(first_arg) = args.next() {
+        write!(w, "{type_cil}", type_cil = call_arg_type_cil(first_arg))?;
+    }
+    for arg in args {
+        write!(w, ",{type_cil}", type_cil = call_arg_type_cil(arg))?;
     }
     write!(w, ")")?;
     Ok(())
