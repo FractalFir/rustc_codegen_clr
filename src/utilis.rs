@@ -2,6 +2,10 @@ use rustc_middle::ty::{
     AdtDef, Binder, BoundVariableKind, Const, ConstKind, EarlyBinder, GenericArg, Instance,
     ParamEnv, SymbolName, Ty, TyCtxt, TyKind, TypeFoldable,
 };
+pub const BEGIN_TRY: &str = "rustc_clr_interop_begin_try";
+pub const END_TRY: &str = "rustc_clr_interop_end_try";
+pub const BEGIN_CATCH: &str = "rustc_clr_interop_begin_catch";
+pub const END_CATCH: &str = "rustc_clr_interop_end_catch";
 pub const CTOR_FN_NAME: &str = "rustc_clr_interop_managed_ctor";
 pub const MANAGED_CALL_FN_NAME: &str = "rustc_clr_interop_managed_call";
 pub const MANAGED_CALL_VIRT_FN_NAME: &str = "rustc_clr_interop_managed_call_virt";

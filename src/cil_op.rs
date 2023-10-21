@@ -168,6 +168,8 @@ pub enum CILOp {
     CallVirt(Box<CallSite>),
     /// Throw the top value on the stack as an exception
     Throw,
+    /// Rethrow the current exception
+    Rethrow,
     /// Return the top value on the stack from this function
     Ret,
 
@@ -367,6 +369,7 @@ impl CILOp {
                 }
             }
             CILOp::Throw => -1,
+            CILOp::Rethrow => -1,
             CILOp::Ret => -1,
             // Syntetic instructions
             CILOp::NewTMPLocal(_) | CILOp::FreeTMPLocal => 0,

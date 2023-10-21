@@ -404,10 +404,8 @@ fn place_elem_body<'ctx>(
                 )));
                 (element_ty.into(), ops)
             } else {
-                let signature = crate::function_sig::FnSig::new(
-                    &[tpe.clone(), index_ty],
-                    &Type::GenericArg(0),
-                );
+                let signature =
+                    crate::function_sig::FnSig::new(&[tpe.clone(), index_ty], &Type::GenericArg(0));
                 ops.push(CILOp::LDArg(0));
                 ops.push(CILOp::Call(crate::cil_op::CallSite::boxed(
                     Some(class.as_ref().clone()),

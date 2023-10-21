@@ -477,6 +477,7 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
         //OOP
         CILOp::SizeOf(tpe) => format!("sizeof {tpe}", tpe = prefixed_type_cil(tpe)).into(),
         CILOp::Throw => "throw".into(),
+        CILOp::Rethrow => "rethrow".into(),
         CILOp::LdStr(str) => format!("ldstr {str:?}").into(),
         CILOp::LdObj(obj) => format!(
             "ldobj {tpe}",

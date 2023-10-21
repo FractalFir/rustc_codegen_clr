@@ -18,10 +18,12 @@ extern crate rustc_target;
 mod access_modifier;
 /// Code handling the creation of aggreate values (Arrays, enums,structs,tuples,etc.)
 mod aggregate;
+
 /// Representation of a .NET assembly
 pub mod assembly;
 /// Module containg ILASM-based exporter and code shared between all IL exporter.
 pub mod assembly_exporter;
+mod basic_block;
 /// Code handling binary operations
 mod binop;
 /// Code hansling rust `as` casts.
