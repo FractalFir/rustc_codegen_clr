@@ -1,10 +1,6 @@
-#![feature(lang_items)]
-#![allow(internal_features)]
+#![feature(lang_items,adt_const_params,associated_type_defaults,core_intrinsics,start)]
+#![allow(internal_features,incomplete_features,unused_variables,dead_code,improper_ctypes_definitions)]
 #![no_std]
-#![feature(start)]
-#![feature(core_intrinsics)]
-#![allow(unused_variables)]
-#![allow(dead_code)]
 include!("../common.rs");
 struct Vec<T>{
     ptr:*mut T,

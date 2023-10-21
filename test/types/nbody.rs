@@ -1,6 +1,6 @@
-#![allow(internal_features)]
+#![feature(lang_items,adt_const_params,associated_type_defaults,core_intrinsics,start)]
+#![allow(internal_features,incomplete_features,unused_variables,dead_code,improper_ctypes_definitions)]
 #![no_std]
-#![feature(start,lang_items,core_intrinsics)]
 include!("../common.rs");
 #[allow(dead_code)]
 #[derive(Copy,Clone,Default)]
@@ -60,11 +60,11 @@ struct RNG{
 }
 impl RNG{
     fn next_i16(&mut self)->i16{
-         self.state = (214013*self.state+2531011); 
+         self.state = 214013*self.state+2531011; 
          return ((self.state>>16)&0xFFFF) as i16; 
     }
     fn next_f32(&mut self)->f32{
-        let fract = (self.next_i16() as f32 / 32768.0);
+        let fract = self.next_i16() as f32 / 32768.0;
         self.next_i16() as f32 + fract
     }
     fn seeded(seed:i32)->Self{

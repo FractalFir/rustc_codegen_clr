@@ -204,6 +204,11 @@ pub enum CILOp {
     /// This is a Syntetic("fake") instruction, which is used **only** internaly. It is not present in the resulting assembly.
     /// This instruction sets the value of the current temporary local. It is equivalent to `STLoc(tmp)`.
     SetTMPLocal,
+    /// This is a Syntetic("fake") instruction, which is used **only** internaly. It is not present in the resulting assembly.
+    /// This instruction loads a pointer to local allocation `alloc_id`.
+    LoadLocalAllocPtr {
+        alloc_id: u64,
+    },
 
     // Load constant values.
     /// Load constant sigined 32 bit intieger and push it on top of the stack. Can be used to load u32s too.
@@ -367,6 +372,7 @@ impl CILOp {
             CILOp::NewTMPLocal(_) | CILOp::FreeTMPLocal => 0,
             CILOp::LoadAddresOfTMPLocal | CILOp::LoadTMPLocal => 1,
             CILOp::SetTMPLocal => -1,
+            CILOp::LoadLocalAllocPtr { alloc_id } => 1,
         }
     }
     pub fn get_op_arg_pos(ops: &[CILOp], pos: usize, arg: usize) -> Option<usize> {
@@ -406,7 +412,15 @@ fn test_tmp_locals() {
         "meth",
         vec![],
     );
-    let ops = vec![CILOp::NewTMPLocal(Type::U32.into()),CILOp::LdcI32(8),CILOp::SetTMPLocal,CILOp::LdcI32(7),CILOp::LoadTMPLocal,CILOp::FreeTMPLocal,CILOp::Ret];
+    let ops = vec![
+        CILOp::NewTMPLocal(Type::U32.into()),
+        CILOp::LdcI32(8),
+        CILOp::SetTMPLocal,
+        CILOp::LdcI32(7),
+        CILOp::LoadTMPLocal,
+        CILOp::FreeTMPLocal,
+        CILOp::Ret,
+    ];
     method.set_ops(ops);
     let mut expected_method = Method::new(
         crate::access_modifier::AccessModifer::Public,
@@ -415,9 +429,21 @@ fn test_tmp_locals() {
         "meth",
         vec![Type::U32],
     );
-    let expected_ops = vec![CILOp::LdcI32(8),CILOp::STLoc(0),CILOp::LdcI32(7),CILOp::LDLoc(0),CILOp::Ret];
+    let expected_ops = vec![
+        CILOp::LdcI32(8),
+        CILOp::STLoc(0),
+        CILOp::LdcI32(7),
+        CILOp::LDLoc(0),
+        CILOp::Ret,
+    ];
     expected_method.set_ops(expected_ops);
-    assert_ne!(method,expected_method,"The methods are different at first.");
+    assert_ne!(
+        method, expected_method,
+        "The methods are different at first."
+    );
     method.allocate_temporaries();
-    assert_ne!(method,expected_method,"Methods match after temporary allocation.");
+    assert_ne!(
+        method, expected_method,
+        "Methods match after temporary allocation."
+    );
 }

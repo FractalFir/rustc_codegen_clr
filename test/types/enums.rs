@@ -1,8 +1,8 @@
-#![allow(internal_features)]
+#![feature(lang_items,adt_const_params,associated_type_defaults,core_intrinsics,start)]
+#![allow(internal_features,incomplete_features,unused_variables,dead_code)]
 #![no_std]
-#![feature(start,lang_items,core_intrinsics)]
 include!("../common.rs");
-#[allow(dead_code)]
+
 #[derive(Clone,Copy)]
 enum Animal{
     Cow(u8),

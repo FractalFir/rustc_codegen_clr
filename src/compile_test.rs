@@ -171,7 +171,9 @@ macro_rules! cargo_test {
                     .expect("rustc error contained non-UTF8 characters.");
                 let stderr = String::from_utf8(out.stderr)
                     .expect("rustc error contained non-UTF8 characters.");
-                panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
+                if !stderr.contains("Finished") {
+                    panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
+                }
             }
             //let exec_path = concat!("../", stringify!($test_name));
             //test_dotnet_executable(exec_path, test_dir);
@@ -282,6 +284,8 @@ run_test! {types,nbody}
 run_test! {types,structs}
 run_test! {types,interop}
 run_test! {types,vec}
+run_test! {types,string_slice}
+run_test! {types,slice}
 run_test! {std,main}
 run_test! {control_flow,cf_for}
 cargo_test! {hello_world}

@@ -167,7 +167,7 @@ fn op4_combos(ops: &mut [CILOp]) {
                 }
             }
             //This is bugged.
-            /* 
+            /*
             (
                 CILOp::STLoc(b1),
                 CILOp::LDLoc(_) | CILOp::LDArg(_),

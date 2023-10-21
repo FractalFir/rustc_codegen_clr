@@ -143,9 +143,16 @@ fn aggregate_adt<'tyctx>(
                     .all_fields()
                     .nth(field.0 as usize)
                     .expect("Could not find field!");
-                let _field_type = field_def.ty(tyctx, subst);
+                let field_type = field_def.ty(tyctx, subst);
 
-                let field_type = crate::utilis::generic_field_ty(adt_type, field.0, tyctx);
+                let field_type = if crate::utilis::is_ty_alias(field_type) {
+                    Type::from_ty(
+                        crate::utilis::monomorphize(&method_instance, field_type, tyctx),
+                        tyctx,
+                    )
+                } else {
+                    crate::utilis::generic_field_ty(adt_type, field.0, tyctx)
+                };
                 let field_name = field_name(adt_type, field.0);
                 let field_desc = crate::cil_op::FieldDescriptor::boxed(
                     adt_type_ref.clone(),

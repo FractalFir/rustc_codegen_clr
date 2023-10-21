@@ -191,7 +191,9 @@ impl Type {
             TyKind::Bound(_, _inner) => Type::Foreign,
             TyKind::FnPtr(_) => Type::USize,
             TyKind::Param(param_ty) => Type::GenericArg(param_ty.index),
-            TyKind::Alias(_, alias_ty) => Self::from_ty(alias_ty.self_ty(), tyctx),
+            TyKind::Alias(_, alias_ty) => {
+                panic!("Encontered type alias, {rust_tpe:?} is not morphic!")
+            } //Self::from_ty(alias_ty.self_ty(), tyctx),
             TyKind::Closure(def_id, subst) => {
                 // this is wrong.
                 let kind = ClosureKind::FnOnce;

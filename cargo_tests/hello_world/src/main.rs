@@ -1,5 +1,6 @@
+#![allow(internal_features,unused_imports,incomplete_features,unused_variables,dead_code,improper_ctypes_definitions)]
+#![feature(lang_items,adt_const_params,associated_type_defaults,core_intrinsics,start)]
 #![no_std]
-#![feature(start,core_intrinsics,lang_items)]
 use mycorrhiza::{start,panic_handler};
 panic_handler!{}
 start!{}

@@ -1,9 +1,6 @@
-#![feature(lang_items)]
-#![allow(internal_features)]
+#![feature(lang_items,adt_const_params,associated_type_defaults,core_intrinsics,start)]
+#![allow(internal_features,incomplete_features,unused_variables,dead_code)]
 #![no_std]
-#![feature(start)]
-#![feature(associated_type_defaults)]
-#![feature(core_intrinsics)]
 #[allow(dead_code)]
 struct Test<T>{
     data:T,

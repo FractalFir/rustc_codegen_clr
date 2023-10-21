@@ -1,6 +1,6 @@
-#![allow(internal_features,incomplete_features,improper_ctypes,dead_code)]
+#![feature(lang_items,adt_const_params,associated_type_defaults,core_intrinsics,start)]
+#![allow(internal_features,incomplete_features,unused_variables,dead_code,improper_ctypes_definitions,improper_ctypes)]
 #![no_std]
-#![feature(start,lang_items,core_intrinsics,adt_const_params)]
 include!("../common.rs");
 #[allow(dead_code)]
 #[derive(Clone,Copy)]
@@ -49,7 +49,7 @@ fn rustc_clr_interop_managed_ctor3_<const ASSEMBLY:&'static str,const CLASS_PATH
 }
 //struct RustcCLRInteropManagedBool;
 fn main(){
-    let chr:*mut RustcCLRInteropManagedChar = unsafe{core::ptr::null_mut()};
+    let chr:*mut RustcCLRInteropManagedChar = core::ptr::null_mut();
     black_box(chr);
     //let bl = black_box(RustcCLRInteropManagedBool);
     let object:*mut RustcCLRInteropManagedClass<"System.Runtime","System.Object"> = core::ptr::null_mut();

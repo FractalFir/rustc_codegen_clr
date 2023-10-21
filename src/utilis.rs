@@ -164,6 +164,10 @@ pub fn garag_to_bool<'tyctx>(garg: &GenericArg<'tyctx>, _ctx: TyCtxt<'tyctx>) ->
         }
     }
 }
+/// Checks if `ty` is a TyKind::Alias
+pub fn is_ty_alias(ty: Ty) -> bool {
+    matches!(ty.kind(), TyKind::Alias(_, _))
+}
 /// This function returns the size of a type at the compile time. This should be used ONLY for handling constants. It currently assumes a 64 bit env
 pub fn compiletime_sizeof(ty: Ty) -> usize {
     use rustc_middle::ty::{IntTy, UintTy};
