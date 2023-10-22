@@ -26,19 +26,23 @@ fn pointed_type(ty: PlaceTy) -> Ty {
 fn body_ty_is_by_adress(last_ty: &Ty) -> bool {
     crate::assert_morphic!(last_ty);
     match *last_ty.kind() {
+        TyKind::Adt(_, _) => true,
+        TyKind::Array(_, _) => true,
+        // True for non-0 tuples
+        TyKind::Tuple(elements) => !elements.is_empty(),
+        //TODO: check if slices are handled propely
+        TyKind::Slice(_) => true,
+        TyKind::Str => true,
+
         TyKind::Int(_) => false,
         TyKind::Float(_) => false,
         TyKind::Uint(_) => false,
-        TyKind::Adt(_, _) => true,
-        TyKind::Array(_, _) => true,
 
         TyKind::Ref(_region, _inner, _mut) => false,
         TyKind::RawPtr(_) => false,
         TyKind::Bool => false,
         TyKind::Char => false,
-        //TODO: check if slices are handled propely
-        TyKind::Slice(_) => true,
-        TyKind::Str => true,
+
         _ => todo!(
             "TODO: body_ty_is_by_adress does not support type {last_ty:?} kind:{kind:?}",
             kind = last_ty.kind()

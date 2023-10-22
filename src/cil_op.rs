@@ -265,13 +265,18 @@ pub enum CILOp {
     Comment(IString),
     // Arthmetic Operations
     Add,
+    AddOvf,
+    AddOvfUn,
     And,
     Div,
     Rem,
     Shr,
     Shl,
     Sub,
+    SubOvf,
+    SubOvfUn,
     Mul,
+    MulOvf,
     Or,
     XOr,
     Not,
@@ -347,13 +352,18 @@ impl CILOp {
             CILOp::STObj(_) => -2,
             CILOp::STField(_) => -2,
             CILOp::Add
+            | CILOp::AddOvf
+            | CILOp::AddOvfUn
             | CILOp::And
             | CILOp::Div
             | CILOp::Rem
             | CILOp::Shr
             | CILOp::Shl
             | CILOp::Sub
+            | CILOp::SubOvf
+            | CILOp::SubOvfUn
             | CILOp::Mul
+            | CILOp::MulOvf
             | CILOp::Or
             | CILOp::XOr
             | CILOp::Eq

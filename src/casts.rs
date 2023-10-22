@@ -25,6 +25,7 @@ pub fn to_int(target: Type) -> Vec<CILOp> {
         Type::U8 => vec![CILOp::ConvU8(false)],
         Type::I16 => vec![CILOp::ConvI16(false)],
         Type::U16 => vec![CILOp::ConvU16(false)],
+        Type::U32 => vec![CILOp::ConvU32(false)],
         Type::I32 => vec![CILOp::ConvI32(false)],
         Type::I64 => vec![CILOp::ConvI64(false)],
         Type::U64 => vec![CILOp::ConvU64(false)],

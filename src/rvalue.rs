@@ -35,6 +35,14 @@ pub fn handle_rvalue<'tcx>(
             method,
             method_instance,
         ),
+        Rvalue::CheckedBinaryOp(binop, operands) => crate::checked_binop::binop_checked(
+            *binop,
+            &operands.0,
+            &operands.1,
+            tcx,
+            method,
+            method_instance,
+        ),
         Rvalue::UnaryOp(binop, operand) => {
             crate::unop::unop(*binop, operand, tcx, method, method_instance)
         }
@@ -80,6 +88,7 @@ pub fn handle_rvalue<'tcx>(
                 let ty = Box::new(crate::r#type::Type::from_ty(ty, tcx));
                 vec![CILOp::SizeOf(ty)]
             }
+            NullOp::AlignOf=>vec![CILOp::LdcI64(align_of(*ty) as i64),CILOp::ConvUSize(false)],
             _ => todo!("Unsuported nullary {op:?}!"),
         },
         Rvalue::Aggregate(aggregate_kind, field_index) => crate::aggregate::handle_aggregate(
@@ -146,4 +155,16 @@ pub fn handle_rvalue<'tcx>(
         _ => todo!("Unhandled RValue {rvalue:?}"),
     };
     res
+}
+fn align_of(ty:rustc_middle::ty::Ty)->u64{
+    use rustc_middle::ty::{IntTy,TyKind};
+    match ty.kind(){
+        TyKind::Int(int)=>match int{
+            IntTy::I8=>std::mem::align_of::<i8>() as u64,
+            _=>todo!("Can't calcuate align of int type {int:?}"),
+        },
+        //TODO: While always returing 8 for ADTs won't cause crashes, it is inefficent.
+        TyKind::Adt(_,_)=>8,
+        _=>todo!("Can't calcualte the aligement of type {ty:?}"),
+    }
 }

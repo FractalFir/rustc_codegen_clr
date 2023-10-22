@@ -532,6 +532,95 @@ fn throw_assert_msg<'ctx>(
             ops.push(CILOp::Throw);
             ops
         }
+        AssertKind::MisalignedPointerDereference{required,found} => {
+            let mut ops = Vec::with_capacity(8);
+            let string_class = DotnetTypeRef::new(Some("System.Runtime"), "System.String");
+            ops.push(CILOp::LdStr(
+                format!("Missaligned pointer dereference. required: ").into(),
+            ));
+            ops.extend(handle_operand(required, tyctx, method, method_instance));
+            let usize_class = DotnetTypeRef::new(Some("System.Runtime"), "System.UIntPtr");
+            let string_type = crate::r#type::Type::DotnetType(Box::new(DotnetTypeRef::new(
+                Some("System.Runtime"),
+                "System.String",
+            )));
+            let sig = FnSig::new(&[], &string_type);
+            let usize_to_string = CallSite::boxed(Some(usize_class), "ToString".into(), sig, false);
+            ops.push(CILOp::Call(usize_to_string.clone()));
+            ops.push(CILOp::LdStr(" found: ".into()));
+            ops.extend(handle_operand(found, tyctx, method, method_instance));
+            ops.push(CILOp::Call(usize_to_string.clone()));
+
+            let sig = FnSig::new(
+                &[
+                    string_type.clone(),
+                    string_type.clone(),
+                    string_type.clone(),
+                    string_type.clone(),
+                ],
+                &crate::r#type::Type::Void,
+            );
+            ops.push(CILOp::NewObj(CallSite::boxed(
+                Some(string_class),
+                ".ctor".into(),
+                sig,
+                false,
+            )));
+            let sig = FnSig::new(&[string_type], &crate::r#type::Type::Void);
+            let ovefow_exception =
+                DotnetTypeRef::new(Some("System.Runtime"), "System.Exception");
+            ops.push(CILOp::NewObj(CallSite::boxed(
+                Some(ovefow_exception),
+                ".ctor".into(),
+                sig,
+                false,
+            )));
+            ops.push(CILOp::Throw);
+            ops
+        }
+        AssertKind::OverflowNeg(value) => {
+            let mut ops = Vec::with_capacity(8);
+            let string_class = DotnetTypeRef::new(Some("System.Runtime"), "System.String");
+            ops.push(CILOp::LdStr(
+                format!("attempt to neg with overflow value:").into(),
+            ));
+            ops.extend(handle_operand(value, tyctx, method, method_instance));
+            let usize_class = DotnetTypeRef::new(Some("System.Runtime"), "System.UIntPtr");
+            let string_type = crate::r#type::Type::DotnetType(Box::new(DotnetTypeRef::new(
+                Some("System.Runtime"),
+                "System.String",
+            )));
+            let sig = FnSig::new(&[], &string_type);
+            let usize_to_string = CallSite::boxed(Some(usize_class), "ToString".into(), sig, false);
+            ops.push(CILOp::Call(usize_to_string.clone()));
+            ops.push(CILOp::LdStr("rhs:".into()));
+
+            let sig = FnSig::new(
+                &[
+                    string_type.clone(),
+                    string_type.clone(),
+                    string_type.clone(),
+                ],
+                &crate::r#type::Type::Void,
+            );
+            ops.push(CILOp::NewObj(CallSite::boxed(
+                Some(string_class),
+                ".ctor".into(),
+                sig,
+                false,
+            )));
+            let sig = FnSig::new(&[string_type], &crate::r#type::Type::Void);
+            let ovefow_exception =
+                DotnetTypeRef::new(Some("System.Runtime"), "System.ArithmeticException");
+            ops.push(CILOp::NewObj(CallSite::boxed(
+                Some(ovefow_exception),
+                ".ctor".into(),
+                sig,
+                false,
+            )));
+            ops.push(CILOp::Throw);
+            ops
+        }
         _ => todo!("unsuported assertion message:{msg:?}"),
     }
 }

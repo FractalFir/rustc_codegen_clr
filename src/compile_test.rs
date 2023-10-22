@@ -43,72 +43,137 @@ fn test_dotnet_executable(file_path: &str, test_dir: &str) {
 }
 macro_rules! test_lib {
     ($test_name:ident) => {
-        #[test]
-        fn $test_name() {
-            // Ensures the test directory is present
-            std::fs::create_dir_all("./test/out").expect("Could not setup the test env");
-            // Builds the backend if neceasry
-            RUSTC_BUILD_STATUS.as_ref().expect("Could not build rustc!");
-            // Compiles the test project
-            let mut command = std::process::Command::new("rustc");
-            let command = command
-                .current_dir("./test/out")
-                //.env("RUST_TARGET_PATH","../../")
-                .args([
-                    "-O",
-                    "--crate-type=lib",
-                    "-Z",
-                    backend_path(),
-                    "-C",
-                    &format!("linker={}", RUSTC_CODEGEN_CLR_LINKER.display()),
-                    concat!("../", stringify!($test_name), ".rs"),
-                    "-o",
-                    concat!("./", stringify!($test_name), ".rlib"),
-                    //"--target",
-                    // "clr64-unknown-clr"
-                ]);
+        mod $test_name {
+            #[test]
+            fn release() {
+                // Ensures the test directory is present
+                std::fs::create_dir_all("./test/out").expect("Could not setup the test env");
+                // Builds the backend if neceasry
+                super::RUSTC_BUILD_STATUS
+                    .as_ref()
+                    .expect("Could not build rustc!");
+                // Compiles the test project
+                let mut command = std::process::Command::new("rustc");
+                let command = command
+                    .current_dir("./test/out")
+                    //.env("RUST_TARGET_PATH","../../")
+                    .args([
+                        "-O",
+                        "--crate-type=lib",
+                        "-Z",
+                        super::backend_path(),
+                        "-C",
+                        &format!("linker={}", super::RUSTC_CODEGEN_CLR_LINKER.display()),
+                        concat!("../", stringify!($test_name), ".rs"),
+                        "-o",
+                        concat!("./", stringify!($test_name), ".rlib"),
+                        //"--target",
+                        // "clr64-unknown-clr"
+                    ]);
 
-            let command = if *IS_MONO_PRESENT {
-                // Tell the linker to test AOT
-                command.args(["-C", "link-arg=--aot-mode,mono-full"])
-            } else {
-                command
-            };
-            let out = command.output().expect("failed to execute process");
-            if !out.stderr.is_empty() {
-                let stdout = String::from_utf8(out.stdout)
-                    .expect("rustc error contained non-UTF8 characters.");
-                let stderr = String::from_utf8(out.stderr)
-                    .expect("rustc error contained non-UTF8 characters.");
-                panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
-            }
-            let out = std::process::Command::new(RUSTC_CODEGEN_CLR_LINKER.display().to_string())
+                let command = if *super::IS_MONO_PRESENT {
+                    // Tell the linker to test AOT
+                    command.args(["-C", "link-arg=--aot-mode,mono-full"])
+                } else {
+                    command
+                };
+                let out = command.output().expect("failed to execute process");
+                if !out.stderr.is_empty() {
+                    let stdout = String::from_utf8(out.stdout)
+                        .expect("rustc error contained non-UTF8 characters.");
+                    let stderr = String::from_utf8(out.stderr)
+                        .expect("rustc error contained non-UTF8 characters.");
+                    panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
+                }
+                let out = std::process::Command::new(
+                    super::RUSTC_CODEGEN_CLR_LINKER.display().to_string(),
+                )
                 .current_dir("./test/out")
                 .arg("-o")
                 .arg(concat!("./", stringify!($test_name), ".dll"))
                 .arg(concat!("./", stringify!($test_name), ".rlib"))
                 .output()
                 .unwrap();
-            // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
-            if !out.stderr.is_empty() {
-                let stdout = String::from_utf8(out.stdout)
-                    .expect("rustc error contained non-UTF8 characters.");
-                let stderr = String::from_utf8(out.stderr)
-                    .expect("rustc error contained non-UTF8 characters.");
-                panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
+                // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
+                if !out.stderr.is_empty() {
+                    let stdout = String::from_utf8(out.stdout)
+                        .expect("rustc error contained non-UTF8 characters.");
+                    let stderr = String::from_utf8(out.stderr)
+                        .expect("rustc error contained non-UTF8 characters.");
+                    panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
+                }
+            }
+            #[test]
+            fn debug() {
+                // Ensures the test directory is present
+                std::fs::create_dir_all("./test/out").expect("Could not setup the test env");
+                // Builds the backend if neceasry
+                super::RUSTC_BUILD_STATUS
+                    .as_ref()
+                    .expect("Could not build rustc!");
+                // Compiles the test project
+                let mut command = std::process::Command::new("rustc");
+                let command = command
+                    .current_dir("./test/out")
+                    //.env("RUST_TARGET_PATH","../../")
+                    .args([
+                        "--crate-type=lib",
+                        "-Z",
+                        super::backend_path(),
+                        "-C",
+                        &format!("linker={}", super::RUSTC_CODEGEN_CLR_LINKER.display()),
+                        concat!("../", stringify!($test_name), ".rs"),
+                        "-o",
+                        concat!("./", stringify!($test_name), ".rlib"),
+                        //"--target",
+                        // "clr64-unknown-clr"
+                    ]);
+
+                let command = if *super::IS_MONO_PRESENT {
+                    // Tell the linker to test AOT
+                    command.args(["-C", "link-arg=--aot-mode,mono-full"])
+                } else {
+                    command
+                };
+                let out = command.output().expect("failed to execute process");
+                if !out.stderr.is_empty() {
+                    let stdout = String::from_utf8(out.stdout)
+                        .expect("rustc error contained non-UTF8 characters.");
+                    let stderr = String::from_utf8(out.stderr)
+                        .expect("rustc error contained non-UTF8 characters.");
+                    panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
+                }
+                let out = std::process::Command::new(
+                    super::RUSTC_CODEGEN_CLR_LINKER.display().to_string(),
+                )
+                .current_dir("./test/out")
+                .arg("-o")
+                .arg(concat!("./", stringify!($test_name), ".dll"))
+                .arg(concat!("./", stringify!($test_name), ".rlib"))
+                .output()
+                .unwrap();
+                // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
+                if !out.stderr.is_empty() {
+                    let stdout = String::from_utf8(out.stdout)
+                        .expect("rustc error contained non-UTF8 characters.");
+                    let stderr = String::from_utf8(out.stderr)
+                        .expect("rustc error contained non-UTF8 characters.");
+                    panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
+                }
             }
         }
     };
 }
 macro_rules! run_test {
     ($prefix:ident,$test_name:ident) => {
+        mod $test_name {
         #[test]
-        fn $test_name() {
+        fn release() {
             let test_dir = concat!("./test/", stringify!($prefix), "/");
             // Ensures the test directory is present
             std::fs::create_dir_all(test_dir).expect("Could not setup the test env");
             // Builds the backend if neceasry
-            RUSTC_BUILD_STATUS.as_ref().expect("Could not build rustc!");
+            super::RUSTC_BUILD_STATUS.as_ref().expect("Could not build rustc!");
             // Compiles the test project
             let out = std::process::Command::new("rustc")
                 //.env("RUST_TARGET_PATH","../../")
@@ -116,9 +181,9 @@ macro_rules! run_test {
                 .args([
                     "-O",
                     "-Z",
-                    backend_path(),
+                    super::backend_path(),
                     "-C",
-                    &format!("linker={}", RUSTC_CODEGEN_CLR_LINKER.display()),
+                    &format!("linker={}", super::RUSTC_CODEGEN_CLR_LINKER.display()),
                     concat!("./", stringify!($test_name), ".rs"),
                     "-o",
                     concat!("./", stringify!($test_name), ".exe"),
@@ -136,8 +201,44 @@ macro_rules! run_test {
                 panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
             }
             let exec_path = concat!("../", stringify!($test_name));
-            test_dotnet_executable(exec_path, test_dir);
+            super::test_dotnet_executable(exec_path, test_dir);
         }
+        #[test]
+        fn debug() {
+            let test_dir = concat!("./test/", stringify!($prefix), "/");
+            // Ensures the test directory is present
+            std::fs::create_dir_all(test_dir).expect("Could not setup the test env");
+            // Builds the backend if neceasry
+            super::RUSTC_BUILD_STATUS.as_ref().expect("Could not build rustc!");
+            // Compiles the test project
+            let out = std::process::Command::new("rustc")
+                //.env("RUST_TARGET_PATH","../../")
+                .current_dir(test_dir)
+                .args([
+                    "-Z",
+                    super::backend_path(),
+                    "-C",
+                    &format!("linker={}", super::RUSTC_CODEGEN_CLR_LINKER.display()),
+                    concat!("./", stringify!($test_name), ".rs"),
+                    "-o",
+                    concat!("./", stringify!($test_name), ".exe"),
+                    //"--target",
+                    //"clr64-unknown-clr"
+                ])
+                .output()
+                .expect("failed to execute process");
+            // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
+            if !out.stderr.is_empty() {
+                let stdout = String::from_utf8(out.stdout)
+                    .expect("rustc error contained non-UTF8 characters.");
+                let stderr = String::from_utf8(out.stderr)
+                    .expect("rustc error contained non-UTF8 characters.");
+                panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
+            }
+            let exec_path = concat!("../", stringify!($test_name));
+            super::test_dotnet_executable(exec_path, test_dir);
+        }
+    }
     };
 }
 macro_rules! cargo_test {

@@ -196,7 +196,6 @@ impl Type {
             } //Self::from_ty(alias_ty.self_ty(), tyctx),
             TyKind::Closure(def_id, subst) => {
                 // this is wrong.
-                let kind = ClosureKind::FnOnce;
                 let instance = Instance::resolve(tyctx, ParamEnv::reveal_all(), *def_id, subst)
                     .expect("Could not resolve closure!")
                     .expect("Could not resolve closure!");

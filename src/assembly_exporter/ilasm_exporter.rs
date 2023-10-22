@@ -276,8 +276,13 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
         }
         //Arthmetics
         CILOp::Add => "add".into(),
+        CILOp::AddOvf => "add.ovf".into(),
+        CILOp::AddOvfUn => "add.ovf.un".into(),
         CILOp::Sub => "sub".into(),
+        CILOp::SubOvf => "sub.ovf".into(),
+        CILOp::SubOvfUn => "sub.ovf.un".into(),
         CILOp::Mul => "mul".into(),
+        CILOp::MulOvf => "mul.ovf".into(),
         CILOp::Div => "div".into(),
         CILOp::Rem => "rem".into(),
         CILOp::Neg => "neg".into(),

@@ -26,8 +26,10 @@ pub mod assembly_exporter;
 mod basic_block;
 /// Code handling binary operations
 mod binop;
+
 /// Code hansling rust `as` casts.
 mod casts;
+mod checked_binop;
 /// A representation of C# IL op.
 mod cil_op;
 /// Runtime errors and utlity functions/macros related to them
