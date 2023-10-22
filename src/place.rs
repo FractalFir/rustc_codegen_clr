@@ -128,7 +128,7 @@ fn place_elem_get_at<'a>(curr_type: PlaceTy<'a>, ctx: TyCtxt<'a>) -> Vec<CILOp> 
     let element_ty = crate::r#type::element_type(curr_ty);
 
     let signature =
-        crate::function_sig::FnSig::new(&[index_ty, tpe.clone()], &Type::from_ty(element_ty, ctx));
+        crate::function_sig::FnSig::new(&[tpe.clone(),index_ty], &Type::GenericArg(0));
     vec![
         CILOp::Call(crate::cil_op::CallSite::boxed(
             Some(class.as_ref().clone()),
@@ -397,7 +397,7 @@ fn place_elem_body<'ctx>(
                     &[tpe.clone(), index_ty],
                     &Type::Ptr(Box::new(Type::GenericArg(0))),
                 );
-                ops.push(local_get(index.as_usize(), &body));
+                //ops.push(local_get(index.as_usize(), &body));
                 ops.push(CILOp::Call(crate::cil_op::CallSite::boxed(
                     Some(class.as_ref().clone()),
                     "get_Address".into(),

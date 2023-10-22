@@ -94,7 +94,7 @@ fn rust_slice(asm: &mut Assembly) {
     rust_slice_dotnet.set_generics([Type::GenericArg(0)]);
     // TODO: constrain this generic to be unmanaged
     rust_slice.add_field("_ptr".into(), Type::Ptr(Box::new(Type::GenericArg(0))));
-    rust_slice.add_field("_length".into(), Type::ISize);
+    rust_slice.add_field("_length".into(), Type::USize);
     
     add_tpe_method!(
         GetLength,

@@ -94,7 +94,7 @@ pub extern fn init_10body()->[AstronomicalBody;4]{
     boides 
 }
 #[no_mangle]
-pub extern fn tick_10body(boides:&mut [AstronomicalBody;4],tick_count:usize){
+pub extern fn tick_10body(boides:&mut [AstronomicalBody;4],mut tick_count:usize){
     let mut a_body_idx = 0;
     let mut b_body_idx = 0;
     while 0 < tick_count{
@@ -110,7 +110,9 @@ pub extern fn tick_10body(boides:&mut [AstronomicalBody;4],tick_count:usize){
         }
         a_body.apply_velociy();
         a_body_idx += 1;
-    }}
+    }
+    tick_count -= 1;
+}
 }
 fn main(){
     let mut tenbody = init_10body();

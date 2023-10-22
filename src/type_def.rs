@@ -348,5 +348,30 @@ pub fn get_array_type(element_count: usize) -> TypeDef {
     ];
     get_adress_usize.set_ops(ops);
     def.add_method(get_adress_usize);
+    // get_Item
+    let mut get_item_usize = Method::new(
+        AccessModifer::Public,
+        false,
+        crate::function_sig::FnSig::new(
+            &[(&def).into(), Type::USize],
+            &Type::GenericArg(0).into(),
+        ),
+        "get_Item",
+        vec![],
+    );
+    let ops = vec![
+        CILOp::LDArg(0),
+        CILOp::LDFieldAdress(FieldDescriptor::boxed(
+            (&def).into(),
+            Type::GenericArg(0),
+            "f_0".to_string().into(),
+        )),
+        CILOp::LDArg(1),
+        CILOp::Add,
+        CILOp::LdObj(Type::GenericArg(0).into()),
+        CILOp::Ret,
+    ];
+    get_item_usize.set_ops(ops);
+    def.add_method(get_item_usize);
     def
 }

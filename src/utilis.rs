@@ -222,6 +222,12 @@ pub fn check_statement(ops:&[crate::cil_op::CILOp],statement:&rustc_middle::mir:
     }
     if stack != 0{
         eprintln!("Propable miscompilation: statement {statement:?} resulted in ops {ops:?} and did not pass the stack check.");
+        let mut stack = 0;
+        for op in ops{
+            let diff = op.stack_diff();
+            eprintln!("\t{op:?} changed stack by {diff}, to {stack}");
+            stack += diff;
+        }
         panic!();
     }
 }
