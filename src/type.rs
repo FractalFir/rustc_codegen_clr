@@ -54,6 +54,7 @@ pub struct DotnetTypeRef {
     assembly: Option<IString>,
     name_path: IString,
     generics: Vec<Type>,
+    // In cause of `System.BadImageFormatException: Expected value type but got type kind 14` check if `is_valuetype` is always correct! 
     is_valuetype: bool,
 }
 impl DotnetTypeRef {

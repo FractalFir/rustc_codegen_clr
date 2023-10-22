@@ -419,8 +419,8 @@ fn throw_assert_msg<'ctx>(
             let mut ops = Vec::with_capacity(8);
             ops.push(CILOp::LdStr("index out of bounds: the len is ".into()));
             ops.extend(handle_operand(len, tyctx, method, method_instance));
-            let usize_class = DotnetTypeRef::new(Some("System.Runtime"), "System.UIntPtr");
-            let string_class = DotnetTypeRef::new(Some("System.Runtime"), "System.String");
+            let usize_class = crate::utilis::usize_class();
+            let string_class = crate::utilis::string_class();
             let string_type = crate::r#type::Type::DotnetType(Box::new(string_class.clone()));
             let sig = FnSig::new(&[], &string_type);
             let usize_to_string = CallSite::boxed(Some(usize_class), "ToString".into(), sig, false);
@@ -436,15 +436,15 @@ fn throw_assert_msg<'ctx>(
                     string_type.clone(),
                     string_type.clone(),
                 ],
-                &crate::r#type::Type::Void,
+                &string_type.clone(),
             );
             let out_of_range_exception =
                 DotnetTypeRef::new(Some("System.Runtime"), "System.IndexOutOfRangeException");
-            ops.push(CILOp::NewObj(CallSite::boxed(
+            ops.push(CILOp::Call(CallSite::boxed(
                 Some(string_class),
-                ".ctor".into(),
+                "Concat".into(),
                 sig,
-                false,
+                true,
             )));
             let sig = FnSig::new(&[string_type], &crate::r#type::Type::Void);
             ops.push(CILOp::NewObj(CallSite::boxed(
@@ -488,16 +488,13 @@ fn throw_assert_msg<'ctx>(
         }
         AssertKind::Overflow(binop, a, b) => {
             let mut ops = Vec::with_capacity(8);
-            let string_class = DotnetTypeRef::new(Some("System.Runtime"), "System.String");
+            let string_class = crate::utilis::string_class();
             ops.push(CILOp::LdStr(
                 format!("attempt to {binop:?} with overflow lhs:").into(),
             ));
             ops.extend(handle_operand(a, tyctx, method, method_instance));
-            let usize_class = DotnetTypeRef::new(Some("System.Runtime"), "System.UIntPtr");
-            let string_type = crate::r#type::Type::DotnetType(Box::new(DotnetTypeRef::new(
-                Some("System.Runtime"),
-                "System.String",
-            )));
+            let usize_class = crate::utilis::usize_class();
+            let string_type = crate::r#type::Type::DotnetType(Box::new(string_class.clone()));
             let sig = FnSig::new(&[], &string_type);
             let usize_to_string = CallSite::boxed(Some(usize_class), "ToString".into(), sig, false);
             ops.push(CILOp::Call(usize_to_string.clone()));
@@ -512,13 +509,13 @@ fn throw_assert_msg<'ctx>(
                     string_type.clone(),
                     string_type.clone(),
                 ],
-                &crate::r#type::Type::Void,
+                &string_type.clone(),
             );
-            ops.push(CILOp::NewObj(CallSite::boxed(
+            ops.push(CILOp::Call(CallSite::boxed(
                 Some(string_class),
-                ".ctor".into(),
+                "Concat".into(),
                 sig,
-                false,
+                true,
             )));
             let sig = FnSig::new(&[string_type], &crate::r#type::Type::Void);
             let ovefow_exception =
@@ -534,16 +531,13 @@ fn throw_assert_msg<'ctx>(
         }
         AssertKind::MisalignedPointerDereference{required,found} => {
             let mut ops = Vec::with_capacity(8);
-            let string_class = DotnetTypeRef::new(Some("System.Runtime"), "System.String");
+            let string_class = crate::utilis::string_class();
             ops.push(CILOp::LdStr(
                 format!("Missaligned pointer dereference. required: ").into(),
             ));
             ops.extend(handle_operand(required, tyctx, method, method_instance));
-            let usize_class = DotnetTypeRef::new(Some("System.Runtime"), "System.UIntPtr");
-            let string_type = crate::r#type::Type::DotnetType(Box::new(DotnetTypeRef::new(
-                Some("System.Runtime"),
-                "System.String",
-            )));
+            let usize_class = crate::utilis::usize_class();
+            let string_type = crate::r#type::Type::DotnetType(string_class.clone().into());
             let sig = FnSig::new(&[], &string_type);
             let usize_to_string = CallSite::boxed(Some(usize_class), "ToString".into(), sig, false);
             ops.push(CILOp::Call(usize_to_string.clone()));
@@ -558,13 +552,13 @@ fn throw_assert_msg<'ctx>(
                     string_type.clone(),
                     string_type.clone(),
                 ],
-                &crate::r#type::Type::Void,
+                &string_type.clone(),
             );
-            ops.push(CILOp::NewObj(CallSite::boxed(
+            ops.push(CILOp::Call(CallSite::boxed(
                 Some(string_class),
-                ".ctor".into(),
+                "Concat".into(),
                 sig,
-                false,
+                true,
             )));
             let sig = FnSig::new(&[string_type], &crate::r#type::Type::Void);
             let ovefow_exception =
@@ -580,16 +574,13 @@ fn throw_assert_msg<'ctx>(
         }
         AssertKind::OverflowNeg(value) => {
             let mut ops = Vec::with_capacity(8);
-            let string_class = DotnetTypeRef::new(Some("System.Runtime"), "System.String");
+            let string_class = crate::utilis::string_class();
             ops.push(CILOp::LdStr(
                 format!("attempt to neg with overflow value:").into(),
             ));
             ops.extend(handle_operand(value, tyctx, method, method_instance));
-            let usize_class = DotnetTypeRef::new(Some("System.Runtime"), "System.UIntPtr");
-            let string_type = crate::r#type::Type::DotnetType(Box::new(DotnetTypeRef::new(
-                Some("System.Runtime"),
-                "System.String",
-            )));
+            let usize_class = crate::utilis::usize_class();
+            let string_type = crate::r#type::Type::DotnetType(Box::new(string_class.clone()));
             let sig = FnSig::new(&[], &string_type);
             let usize_to_string = CallSite::boxed(Some(usize_class), "ToString".into(), sig, false);
             ops.push(CILOp::Call(usize_to_string.clone()));
@@ -601,13 +592,13 @@ fn throw_assert_msg<'ctx>(
                     string_type.clone(),
                     string_type.clone(),
                 ],
-                &crate::r#type::Type::Void,
+                &string_type.clone(),
             );
-            ops.push(CILOp::NewObj(CallSite::boxed(
+            ops.push(CILOp::Call(CallSite::boxed(
                 Some(string_class),
-                ".ctor".into(),
+                "Concat".into(),
                 sig,
-                false,
+                true,
             )));
             let sig = FnSig::new(&[string_type], &crate::r#type::Type::Void);
             let ovefow_exception =

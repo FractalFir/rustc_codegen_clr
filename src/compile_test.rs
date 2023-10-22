@@ -210,6 +210,8 @@ macro_rules! run_test {
             std::fs::create_dir_all(test_dir).expect("Could not setup the test env");
             // Builds the backend if neceasry
             super::RUSTC_BUILD_STATUS.as_ref().expect("Could not build rustc!");
+            let test_name = concat!("debug_",stringify!($test_name));
+            let output_path = format!("./{test_name}.exe");
             // Compiles the test project
             let out = std::process::Command::new("rustc")
                 //.env("RUST_TARGET_PATH","../../")
@@ -221,7 +223,7 @@ macro_rules! run_test {
                     &format!("linker={}", super::RUSTC_CODEGEN_CLR_LINKER.display()),
                     concat!("./", stringify!($test_name), ".rs"),
                     "-o",
-                    concat!("./", stringify!($test_name), ".exe"),
+                   &output_path,
                     //"--target",
                     //"clr64-unknown-clr"
                 ])
@@ -235,8 +237,8 @@ macro_rules! run_test {
                     .expect("rustc error contained non-UTF8 characters.");
                 panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
             }
-            let exec_path = concat!("../", stringify!($test_name));
-            super::test_dotnet_executable(exec_path, test_dir);
+            let exec_path = format!("../{test_name}");
+            super::test_dotnet_executable(&exec_path, test_dir);
         }
     }
     };

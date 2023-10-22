@@ -95,6 +95,7 @@ fn rust_slice(asm: &mut Assembly) {
     // TODO: constrain this generic to be unmanaged
     rust_slice.add_field("_ptr".into(), Type::Ptr(Box::new(Type::GenericArg(0))));
     rust_slice.add_field("_length".into(), Type::ISize);
+    
     add_tpe_method!(
         GetLength,
         false,
@@ -171,6 +172,7 @@ fn rust_slice(asm: &mut Assembly) {
     GetLength(&mut rust_slice);
     get_Item(&mut rust_slice);
     set_Item(&mut rust_slice);
+    
     asm.add_typedef(rust_slice);
 }
 

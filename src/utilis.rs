@@ -12,7 +12,7 @@ pub const MANAGED_CALL_VIRT_FN_NAME: &str = "rustc_clr_interop_managed_call_virt
 pub fn is_function_magic(name: &str) -> bool {
     name.contains(CTOR_FN_NAME) || name.contains(MANAGED_CALL_FN_NAME)
 }
-use crate::codegen_error::MethodCodegenError;
+use crate::{codegen_error::MethodCodegenError, r#type::DotnetTypeRef};
 pub fn skip_binder_if_no_generic_types<T>(binder: Binder<T>) -> Result<T, MethodCodegenError> {
     /*
     if binder
@@ -202,4 +202,15 @@ macro_rules! assert_morphic {
             ty = $ty
         );
     };
+}
+pub fn string_class()->DotnetTypeRef{
+    let mut string = DotnetTypeRef::new(Some("System.Runtime"), "System.String");;
+    string.set_valuetype(false);
+    string
+}
+pub fn usize_class()->DotnetTypeRef{
+    let mut string = DotnetTypeRef::new(Some("System.Runtime"), "System.UIntPtr");
+    //TODO: Inwestigate this. The valuetype prefix seems to be missing from UIntPtr in compiled C# code
+    string.set_valuetype(false);
+    string
 }
