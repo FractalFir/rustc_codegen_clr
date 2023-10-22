@@ -9,10 +9,11 @@ pub fn unop<'ctx>(
     method: &rustc_middle::mir::Body<'ctx>,
     method_instance: Instance<'ctx>,
 ) -> Vec<CILOp> {
-    let _ops = crate::operand::handle_operand(operand, tcx, method, method_instance);
+    let mut ops = crate::operand::handle_operand(operand, tcx, method, method_instance);
     let _ty = operand.ty(&method.local_decls, tcx);
     match unnop {
-        UnOp::Neg => vec![CILOp::Neg],
-        UnOp::Not => vec![CILOp::Not],
-    }
+        UnOp::Neg => ops.push(CILOp::Neg),
+        UnOp::Not => ops.push(CILOp::Not),
+    };
+    ops
 }

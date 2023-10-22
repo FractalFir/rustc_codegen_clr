@@ -14,6 +14,10 @@ extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
 
+/// Tells the codegen to insert comments containing the MIR statemtens after each one of them.
+const INSERT_MIR_DEBUG_COMMENTS:bool = false; 
+/// Tells the codegen to optmize the emiited CIL.
+const OPTIMIZE_CIL:bool = (!INSERT_MIR_DEBUG_COMMENTS)&&(true); 
 /// Specifies if a method/type is private or public.
 mod access_modifier;
 /// Code handling the creation of aggreate values (Arrays, enums,structs,tuples,etc.)

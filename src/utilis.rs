@@ -214,3 +214,14 @@ pub fn usize_class()->DotnetTypeRef{
     string.set_valuetype(false);
     string
 }
+/// Translated MIR statements should have the total stack diff of 0.
+pub fn check_statement(ops:&[crate::cil_op::CILOp],statement:&rustc_middle::mir::Statement){
+    let mut stack = 0;
+    for op in ops{
+        stack += op.stack_diff();
+    }
+    if stack != 0{
+        eprintln!("Propable miscompilation: statement {statement:?} resulted in ops {ops:?} and did not pass the stack check.");
+        panic!();
+    }
+}

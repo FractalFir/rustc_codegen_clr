@@ -223,8 +223,9 @@ pub enum CILOp {
     LdcF64(f64),
     /// Load string literal
     LdStr(IString),
-
-    // Signed intieger convertions
+    /// Load null reference
+    LdNull, 
+    /// Signed intieger convertions
     /// Convert the value on top of the stack to an i8. Preform checked convertion if true.
     ConvI8(bool),
     /// Convert the value on top of the stack to an i16. Preform checked convertion if true.
@@ -315,6 +316,7 @@ impl CILOp {
             | CILOp::LdcF32(_)
             | CILOp::LdcF64(_)
             | CILOp::LdStr(_)
+            | CILOp::LdNull
             | CILOp::SizeOf(_) => 1,
             CILOp::ConvI8(_)
             | CILOp::ConvI16(_)
@@ -347,7 +349,7 @@ impl CILOp {
             CILOp::Dup => 1,
             CILOp::LDField(_) | CILOp::LDFieldAdress(_) => 0,
             CILOp::LocAlloc | CILOp::NewObj(_) => 1,
-            CILOp::LdObj(_) => 1,
+            CILOp::LdObj(_) => 0,
             CILOp::LDStaticField(_) => 1,
             CILOp::STObj(_) => -2,
             CILOp::STField(_) => -2,

@@ -235,7 +235,7 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
                 format!(
                     "call {prefix} {output} {owner_name} {function_name}({input_string})",
                     function_name = call_site.name(),
-                    output = output_type_cil(call_site.signature().output())
+                    output = call_output_type_cil(call_site.signature().output())
                 )
                 .into()
             }
@@ -269,7 +269,7 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
                 format!(
                     "callvirt {prefix} {output} {owner_name} {function_name}({input_string})",
                     function_name = call_site.name(),
-                    output = output_type_cil(call_site.signature().output())
+                    output = call_output_type_cil(call_site.signature().output())
                 )
                 .into()
             }
@@ -373,6 +373,7 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
                 format!("ldc.i8 {value}").into()
             }
         }
+        CILOp::LdNull => "ldnull".into(), 
         CILOp::LdcF32(f32const) => format!("ldc.r4 {f32const}").into(),
         CILOp::LdcF64(f64const) => format!("ldc.r8 {f64const}").into(),
         //Debug
@@ -562,6 +563,12 @@ fn output_type_cil(tpe: &Type) -> Cow<'static, str> {
     match tpe {
         Type::Void => "void".into(),
         _ => prefixed_type_cil(tpe),
+    }
+}
+fn call_output_type_cil(tpe: &Type) -> Cow<'static, str> {
+    match tpe {
+        Type::Void => "void".into(),
+        _ => prefixed_field_type_cil(tpe),
     }
 }
 fn arg_type_cil(tpe: &Type) -> Cow<'static, str> {

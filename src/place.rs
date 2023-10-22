@@ -105,7 +105,6 @@ fn place_get_length<'ctx>(
         TyKind::Slice(_elem) => {
             let signature = crate::function_sig::FnSig::new(&[tpe.clone()], &Type::USize);
             vec![
-                CILOp::LDArg(0),
                 CILOp::Call(crate::cil_op::CallSite::boxed(
                     Some(class.as_ref().clone()),
                     "get_Length".into(),
@@ -131,7 +130,6 @@ fn place_elem_get_at<'a>(curr_type: PlaceTy<'a>, ctx: TyCtxt<'a>) -> Vec<CILOp> 
     let signature =
         crate::function_sig::FnSig::new(&[index_ty, tpe.clone()], &Type::from_ty(element_ty, ctx));
     vec![
-        CILOp::LDArg(0),
         CILOp::Call(crate::cil_op::CallSite::boxed(
             Some(class.as_ref().clone()),
             "get_Item".into(),
@@ -156,7 +154,6 @@ fn place_elem_set_at<'a>(curr_type: PlaceTy<'a>, ctx: TyCtxt<'a>) -> Vec<CILOp> 
         &Type::GenericArg(0),
     );
     vec![
-        //CILOp::LDArg(0),
         CILOp::Call(crate::cil_op::CallSite::boxed(
             Some(class.as_ref().clone()),
             "set_Item".into(),
@@ -296,6 +293,7 @@ fn place_elem_body<'ctx>(
     curr_type: PlaceTy<'ctx>,
     tyctx: TyCtxt<'ctx>,
     method_instance: Instance<'ctx>,
+    body: &rustc_middle::mir::Body,
 ) -> (PlaceTy<'ctx>, Vec<CILOp>) {
     let curr_type = curr_type.monomorphize(&method_instance, tyctx);
     assert_morphic!(curr_type);
@@ -399,7 +397,7 @@ fn place_elem_body<'ctx>(
                     &[tpe.clone(), index_ty],
                     &Type::Ptr(Box::new(Type::GenericArg(0))),
                 );
-                ops.push(CILOp::LDArg(0));
+                ops.push(local_get(index.as_usize(), &body));
                 ops.push(CILOp::Call(crate::cil_op::CallSite::boxed(
                     Some(class.as_ref().clone()),
                     "get_Address".into(),
@@ -537,7 +535,7 @@ pub fn place_get<'a>(
         let (head, body) = slice_head(place.projection);
         for elem in body {
             println!("elem:{elem:?} ty:{ty:?}");
-            let (curr_ty, curr_ops) = place_elem_body(elem, ty, ctx, method_instance);
+            let (curr_ty, curr_ops) = place_elem_body(elem, ty, ctx, method_instance,method);
             ty = curr_ty.monomorphize(&method_instance, ctx);
             ops.extend(curr_ops);
         }
@@ -564,11 +562,11 @@ pub fn place_adress<'a>(
         let (head, body) = slice_head(place.projection);
         for elem in body {
             println!("elem:{elem:?} ty:{ty:?}");
-            let (curr_ty, curr_ops) = place_elem_body(elem, ty, ctx, method_instance);
+            let (curr_ty, curr_ops) = place_elem_body(elem, ty, ctx, method_instance,method);
             ty = curr_ty.monomorphize(&method_instance, ctx);
             ops.extend(curr_ops);
         }
-        ops.extend(place_elem_body(head, ty, ctx, method_instance).1);
+        ops.extend(place_elem_body(head, ty, ctx, method_instance,method).1);
         ops
     }
 }
@@ -592,7 +590,7 @@ pub(crate) fn place_set<'a>(
         let (head, body) = slice_head(place.projection);
         for elem in body {
             println!("elem:{elem:?} ty:{ty:?}");
-            let (curr_ty, curr_ops) = place_elem_body(elem, ty, ctx, method_instance);
+            let (curr_ty, curr_ops) = place_elem_body(elem, ty, ctx, method_instance,method);
             ty = curr_ty.monomorphize(&method_instance, ctx);
             ops.extend(curr_ops);
         }

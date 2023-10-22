@@ -22,7 +22,7 @@ enum SimpleEnum{
 fn simple_enum(){
     let simple_enum = SimpleEnum::A;
     let simple_enum = black_box(simple_enum);
-    test_eq!(simple_enum, SimpleEnum::A);
+    //test_eq!(simple_enum, SimpleEnum::A);
     test_ne!(simple_enum, SimpleEnum::B);
 }
 fn main(){

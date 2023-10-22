@@ -414,6 +414,8 @@ fn throw_assert_msg<'ctx>(
     method_instance: Instance<'ctx>,
 ) -> Vec<CILOp> {
     use rustc_middle::mir::AssertKind;
+    // Assertion messages cause miscomplations.
+    if true{return vec![CILOp::LdNull,CILOp::Throw]};
     match msg {
         AssertKind::BoundsCheck { len, index } => {
             let mut ops = Vec::with_capacity(8);

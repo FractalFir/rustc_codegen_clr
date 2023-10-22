@@ -70,10 +70,18 @@ impl Assembly {
             ops.push(CILOp::Label(last_bb_id));
             last_bb_id += 1;
             for statement in &block_data.statements {
-                ops.extend(crate::statement::handle_statement(
+                if crate::INSERT_MIR_DEBUG_COMMENTS{
+                    ops.push(CILOp::Comment(format!("{statement:?}").into()));
+                }
+                let statement_ops = crate::statement::handle_statement(
                     statement, mir, tcx, mir, instance,
-                ));
-                //ops.push(CILOp::Comment(format!("{statement:?}").into()));
+                );
+                crate::utilis::check_statement(&statement_ops,statement);
+                ops.extend(statement_ops);
+                if crate::INSERT_MIR_DEBUG_COMMENTS{
+                    ops.push(CILOp::Comment("STATEMENT END.".into()));
+                }
+                //
                 //println!("ops:{ops:?}\n\n");
             }
             match &block_data.terminator {
