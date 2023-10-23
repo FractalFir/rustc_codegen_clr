@@ -2,10 +2,10 @@ use crate::{
     access_modifier::AccessModifer,
     method::Method,
     r#type::{DotnetTypeRef, Type},
-    utilis::{enum_tag_size, tag_from_enum_variants},
+    utilis::{enum_tag_size, tag_from_enum_variants, monomorphize},
     IString,
 };
-use rustc_middle::ty::{AdtDef, AdtKind, GenericArg, List, Ty, TyCtxt, TyKind};
+use rustc_middle::ty::{AdtDef, AdtKind, GenericArg, List, Ty, TyCtxt, TyKind,Instance};
 use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug)]
 pub struct TypeDef {
@@ -64,40 +64,41 @@ impl TypeDef {
             explicit_offsets: None,
         }
     }
-    pub fn from_ty<'tycxt>(ty: Ty<'tycxt>, ctx: TyCtxt<'tycxt>) -> Vec<Self> {
+    pub fn from_ty<'tyctx>(ty: Ty<'tyctx>, ctx: TyCtxt<'tyctx>,method:&Instance<'tyctx>) -> Vec<Self> {
         match ty.kind() {
             TyKind::Adt(adt_def, subst) => {
                 let _name = crate::utilis::adt_name(adt_def);
                 let _gargc = subst.len() as u32;
                 let _access = AccessModifer::Public;
                 match adt_def.adt_kind() {
-                    AdtKind::Struct => Self::struct_from_adt(ty, adt_def, subst, ctx),
-                    AdtKind::Enum => Self::enum_from_adt(ty, adt_def, subst, ctx),
-                    AdtKind::Union => Self::union_from_adt(ty, adt_def, subst, ctx),
+                    AdtKind::Struct => Self::struct_from_adt(ty, adt_def, subst, ctx,method),
+                    AdtKind::Enum => Self::enum_from_adt(ty, adt_def, subst, ctx,method),
+                    AdtKind::Union => Self::union_from_adt(ty, adt_def, subst, ctx,method),
                 }
             }
-            TyKind::Ref(_region, inner, _mut) => Self::from_ty(*inner, ctx),
-            TyKind::RawPtr(inner_and_mut) => Self::from_ty(inner_and_mut.ty, ctx),
-            TyKind::Slice(inner) => Self::from_ty(*inner, ctx),
+            TyKind::Ref(_region, inner, _mut) => Self::from_ty(*inner, ctx,method),
+            TyKind::RawPtr(inner_and_mut) => Self::from_ty(inner_and_mut.ty, ctx,method),
+            TyKind::Slice(inner) => Self::from_ty(*inner, ctx,method),
             TyKind::Array(element, size) => {
                 let length = crate::utilis::try_resolve_const_size(size)
                     .expect("Could not resolve array size!");
-                let mut types = Self::from_ty(*element, ctx);
+                let mut types = Self::from_ty(*element, ctx,method);
                 types.push(get_array_type(length));
                 types
             }
             TyKind::Alias(_, alias_ty) => {
                 let alias_ty = ctx.type_of(alias_ty.def_id).instantiate_identity();
-                Self::from_ty(alias_ty, ctx)
+                Self::from_ty(alias_ty, ctx,method)
             }
             _ => vec![],
         }
     }
-    fn struct_from_adt<'tcx>(
-        original: Ty<'tcx>,
-        adt_def: &AdtDef<'tcx>,
-        subst: &'tcx List<GenericArg<'tcx>>,
-        ctx: TyCtxt<'tcx>,
+    fn struct_from_adt<'tyctx>(
+        original: Ty<'tyctx>,
+        adt_def: &AdtDef<'tyctx>,
+        subst: &'tyctx List<GenericArg<'tyctx>>,
+        ctx: TyCtxt<'tyctx>,
+        method:&Instance<'tyctx>,
     ) -> Vec<Self> {
         let name = crate::utilis::adt_name(adt_def);
         let gargc = subst.len() as u32;
@@ -107,14 +108,18 @@ impl TypeDef {
         adt_def.all_fields().for_each(|field| {
             let resolved_field_ty = field.ty(ctx, subst);
             //This is a simple loop prevention. More complex types may still lead to cycles. TODO: deal with cycles.
+            let resolved_field_ty = monomorphize(method, resolved_field_ty, ctx);
             if resolved_field_ty != original {
-                res.extend(Self::from_ty(resolved_field_ty, ctx));
+                res.extend(Self::from_ty(resolved_field_ty, ctx,method));
             }
         });
         for field in adt_def.all_fields() {
             //rustc_middle::ty::List::empty()
-            let ty = ctx.type_of(field.did).instantiate_identity();
-            let ty = Type::from_ty(ty, ctx);
+            let generic_ty = ctx.type_of(field.did).instantiate_identity();
+            if let TyKind::Alias(_,_) = generic_ty.kind(){
+                panic!("UNHANDLED ERROR: type contains an associated generic!");
+            }
+            let ty = Type::from_ty(generic_ty, ctx);
             let name = escape_field_name(&field.name.to_string());
             fields.push((name, ty));
         }
@@ -130,11 +135,12 @@ impl TypeDef {
         });
         res
     }
-    fn union_from_adt<'tcx>(
-        original: Ty<'tcx>,
-        adt_def: &AdtDef<'tcx>,
-        subst: &'tcx List<GenericArg<'tcx>>,
-        ctx: TyCtxt<'tcx>,
+    fn union_from_adt<'tyctx>(
+        original: Ty<'tyctx>,
+        adt_def: &AdtDef<'tyctx>,
+        subst: &'tyctx List<GenericArg<'tyctx>>,
+        ctx: TyCtxt<'tyctx>,
+        method:&Instance<'tyctx>,
     ) -> Vec<Self> {
         let name = crate::utilis::adt_name(adt_def);
         let gargc = subst.len() as u32;
@@ -143,15 +149,20 @@ impl TypeDef {
         let mut res = Vec::new();
         adt_def.all_fields().for_each(|field| {
             let resolved_field_ty = field.ty(ctx, subst);
+            let resolved_field_ty = monomorphize(method, resolved_field_ty, ctx);
             //This is a simple loop prevention. More complex types may still lead to cycles. TODO: deal with cycles.
             if resolved_field_ty != original {
-                res.extend(Self::from_ty(resolved_field_ty, ctx));
+                res.extend(Self::from_ty(resolved_field_ty, ctx,method));
             }
         });
         for field in adt_def.all_fields() {
             //rustc_middle::ty::List::empty()
-            let ty = ctx.type_of(field.did).instantiate_identity();
-            let ty = Type::from_ty(ty, ctx);
+            // HERE ALL GOES TO SHIT WITH MORPHIZATION.
+            let generic_ty = ctx.type_of(field.did).instantiate_identity();
+            if let TyKind::Alias(_,_) = generic_ty.kind(){
+                panic!("UNHANDLED ERROR: type contains an associated generic!");
+            }
+            let ty = Type::from_ty(generic_ty, ctx);
             let name = escape_field_name(&field.name.to_string());
             fields.push((name, ty));
         }
@@ -168,11 +179,12 @@ impl TypeDef {
         });
         res
     }
-    fn enum_from_adt<'tcx>(
-        original: Ty<'tcx>,
-        adt_def: &AdtDef<'tcx>,
-        subst: &'tcx List<GenericArg<'tcx>>,
-        ctx: TyCtxt<'tcx>,
+    fn enum_from_adt<'tyctx>(
+        original: Ty<'tyctx>,
+        adt_def: &AdtDef<'tyctx>,
+        subst: &'tyctx List<GenericArg<'tyctx>>,
+        ctx: TyCtxt<'tyctx>,
+        method:&Instance<'tyctx>,
     ) -> Vec<Self> {
         let name = crate::utilis::adt_name(adt_def);
         // Handle  `Never` type alias
@@ -188,7 +200,7 @@ impl TypeDef {
             let resolved_field_ty = field.ty(ctx, subst);
             //This is a simple loop prevention. More complex types may still lead to cycles. TODO: deal with cycles.
             if resolved_field_ty != original {
-                res.extend(Self::from_ty(resolved_field_ty, ctx));
+                res.extend(Self::from_ty(resolved_field_ty, ctx,method));
             }
         });
         let mut fields = vec![(
@@ -211,8 +223,12 @@ impl TypeDef {
             ));
             let mut fields = vec![];
             for field in &variant.fields {
-                let ty = ctx.type_of(field.did).instantiate_identity();
-                let ty = Type::from_ty(ty, ctx);
+                let generic_ty = ctx.type_of(field.did).instantiate_identity();
+                if let TyKind::Alias(_,_) = generic_ty.kind(){
+                    panic!("UNHANDLED ERROR: type contains an associated generic!");
+                }
+                let ty = Type::from_ty(generic_ty, ctx);
+            
                 let name = escape_field_name(&field.name.to_string());
                 fields.push((name, ty));
             }

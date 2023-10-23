@@ -95,7 +95,7 @@ impl Assembly {
         method.set_ops(ops);
         for local in &mir.local_decls {
             let local_ty = monomorphize(&instance, local.ty, tcx);
-            self.add_type(local_ty, tcx);
+            self.add_type(local_ty, tcx,&instance);
         }
         self.add_method(method);
         Ok(())
@@ -116,8 +116,8 @@ impl Assembly {
         self.types.iter()
     }
     /// Adds rust type `ty` and all types contained within it, if such type is not already present.
-    pub fn add_type<'tyctx>(&mut self, ty: rustc_middle::ty::Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) {
-        for type_def in TypeDef::from_ty(ty, tyctx) {
+    pub fn add_type<'tyctx>(&mut self, ty: rustc_middle::ty::Ty<'tyctx>, tyctx: TyCtxt<'tyctx>,method:&Instance<'tyctx>) {
+        for type_def in TypeDef::from_ty(ty, tyctx,method) {
             self.types.insert(type_def);
         }
     }
