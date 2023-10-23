@@ -112,9 +112,7 @@ fn load_const_value<'ctx>(
         }
         ConstValue::ZeroSized => {
             let tpe = Type::from_ty(const_ty, tyctx);
-            let mut ops = vec![CILOp::SizeOf(Box::new(tpe)), CILOp::LocAlloc];
-            ops.extend(crate::place::deref_op(const_ty.into(), tyctx));
-            ops
+            vec![CILOp::NewTMPLocal(tpe.into()),CILOp::LoadTMPLocal,CILOp::FreeTMPLocal]
         }
         ConstValue::Slice { data, meta } => {
             todo!("Constant slice allocations are not supported yet data:{data:?},meta:{meta:?}!")

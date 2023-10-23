@@ -225,8 +225,9 @@ pub fn check_statement(ops:&[crate::cil_op::CILOp],statement:&rustc_middle::mir:
         let mut stack = 0;
         for op in ops{
             let diff = op.stack_diff();
-            eprintln!("\t{op:?} changed stack by {diff}, to {stack}");
             stack += diff;
+            eprintln!("\t{op:?} changed stack by {diff}, to {stack}");
+            
         }
         panic!();
     }

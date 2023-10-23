@@ -1,5 +1,6 @@
 use crate::cil_op::{CILOp, CallSite};
 use crate::codegen_error::MethodCodegenError;
+use crate::utilis::monomorphize;
 use crate::{
     access_modifier::AccessModifer, codegen_error::CodegenError, function_sig::FnSig,
     method::Method, r#type::Type, type_def::TypeDef,
@@ -93,7 +94,8 @@ impl Assembly {
         }
         method.set_ops(ops);
         for local in &mir.local_decls {
-            self.add_type(local.ty, tcx);
+            let local_ty = monomorphize(&instance, local.ty, tcx);
+            self.add_type(local_ty, tcx);
         }
         self.add_method(method);
         Ok(())

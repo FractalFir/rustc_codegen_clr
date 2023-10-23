@@ -1,6 +1,6 @@
 use crate::cil_op::{CILOp, FieldDescriptor};
 use crate::r#type::{DotnetTypeRef, Type};
-use crate::utilis::field_name;
+use crate::utilis::{field_name, monomorphize};
 use rustc_index::IndexVec;
 use rustc_middle::mir::{AggregateKind, Operand, Place};
 use rustc_middle::ty::{AdtDef, AdtKind, GenericArg, Instance, List, ParamEnv, Ty, TyCtxt, TyKind};
@@ -24,7 +24,7 @@ pub fn handle_aggregate<'tyctx>(
                 crate::operand::handle_operand(operand.1, tyctx, method, method_instance),
             )
         })
-        .collect();
+        .collect(); 
     match aggregate_kind {
         AggregateKind::Adt(adt_def, variant_idx, subst, _utai, active_field) => {
             let penv = ParamEnv::empty();
@@ -32,6 +32,7 @@ pub fn handle_aggregate<'tyctx>(
                 .expect("Could not resolve instance")
                 .expect("Could not resolve instance")
                 .ty(tyctx, penv);
+            let adt_type = monomorphize(&method_instance, adt_type, tyctx);
             let (adt_def, subst) = if let TyKind::Adt(def_id, subst) = adt_type.kind() {
                 (def_id, subst)
             } else {
