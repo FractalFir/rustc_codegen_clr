@@ -1,5 +1,5 @@
 use rustc_middle::ty::{
-    AdtDef, Binder, BoundVariableKind, Const, ConstKind, EarlyBinder, GenericArg, Instance,
+    AdtDef,AliasKind, Binder, BoundVariableKind, Const, ConstKind, EarlyBinder, GenericArg, Instance,
     ParamEnv, SymbolName, Ty, TyCtxt, TyKind, TypeFoldable,
 };
 pub const BEGIN_TRY: &str = "rustc_clr_interop_begin_try";
@@ -78,6 +78,7 @@ pub fn generic_field_ty<'ctx>(
     owner_ty: Ty<'ctx>,
     field_idx: u32,
     ctx: TyCtxt<'ctx>,
+    method_instance: Instance<'ctx>,
 ) -> crate::r#type::Type {
     match owner_ty.kind() {
         TyKind::Adt(adt_def, _) => {
@@ -91,7 +92,7 @@ pub fn generic_field_ty<'ctx>(
                 )
                 .instantiate_identity();
             println!("Generic field type {ty:?}");
-            crate::r#type::Type::from_ty(ty, ctx)
+            crate::r#type::Type::from_ty(ty, ctx,&method_instance)
         }
         TyKind::Tuple(_) => crate::r#type::Type::GenericArg(field_idx),
         _ => todo!("Can't get field {field_idx} belonging to type {owner_ty:?}"),

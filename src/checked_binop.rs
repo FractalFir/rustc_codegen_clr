@@ -17,7 +17,7 @@ pub(crate) fn binop_checked<'tcx>(
     let ty_a = operand_a.ty(&method.local_decls, tcx);
     let ty_b = operand_b.ty(&method.local_decls, tcx);
     assert_eq!(ty_a, ty_b);
-    let ty = Type::from_ty(ty_a, tcx);
+    let ty = Type::from_ty(ty_a, tcx,&method_instance);
     todo!("Checked ops should return a tuple!");
     match binop {
         BinOp::Mul | BinOp::MulUnchecked => [ops_a, ops_b, mul(ty).into()]

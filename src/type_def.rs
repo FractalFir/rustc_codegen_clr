@@ -5,7 +5,7 @@ use crate::{
     utilis::{enum_tag_size, tag_from_enum_variants, monomorphize},
     IString,
 };
-use rustc_middle::ty::{AdtDef, AdtKind, GenericArg, List, Ty, TyCtxt, TyKind,Instance};
+use rustc_middle::ty::{AdtDef, AdtKind,AliasKind, GenericArg, List, Ty, TyCtxt, TyKind,Instance};
 use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug)]
 pub struct TypeDef {
@@ -101,7 +101,7 @@ impl TypeDef {
         method:&Instance<'tyctx>,
     ) -> Vec<Self> {
         let name = crate::utilis::adt_name(adt_def);
-        let gargc = subst.len() as u32;
+        let mut gargc = subst.len() as u32;
         let access = AccessModifer::Public;
         let mut fields = Vec::with_capacity(adt_def.all_fields().count());
         let mut res = Vec::new();
@@ -116,10 +116,17 @@ impl TypeDef {
         for field in adt_def.all_fields() {
             //rustc_middle::ty::List::empty()
             let generic_ty = ctx.type_of(field.did).instantiate_identity();
-            if let TyKind::Alias(_,_) = generic_ty.kind(){
-                panic!("UNHANDLED ERROR: type contains an associated generic!");
+            let ty = if let TyKind::Alias(ak,_) = generic_ty.kind(){
+                assert_eq!(*ak,AliasKind::Projection,"ERROR alias kind is not supported in adt def!");
+                // Increase generic count
+                let curr_gargc = gargc;
+                println!("Generic typedef is now supported!");
+                gargc+= 1;
+                Type::GenericArg(curr_gargc)
             }
-            let ty = Type::from_ty(generic_ty, ctx);
+            else{
+                Type::generic_from_ty(generic_ty, ctx)
+            };
             let name = escape_field_name(&field.name.to_string());
             fields.push((name, ty));
         }
@@ -162,7 +169,7 @@ impl TypeDef {
             if let TyKind::Alias(_,_) = generic_ty.kind(){
                 panic!("UNHANDLED ERROR: type contains an associated generic!");
             }
-            let ty = Type::from_ty(generic_ty, ctx);
+            let ty = Type::generic_from_ty(generic_ty, ctx);
             let name = escape_field_name(&field.name.to_string());
             fields.push((name, ty));
         }
@@ -192,7 +199,7 @@ impl TypeDef {
             return vec![];
         }
 
-        let gargc = subst.len() as u32;
+        let mut gargc = subst.len() as u32;
         let access = AccessModifer::Public;
         //let mut fields = Vec::with_capacity(adt_def.all_fields().count());
         let mut res = Vec::new();
@@ -224,11 +231,17 @@ impl TypeDef {
             let mut fields = vec![];
             for field in &variant.fields {
                 let generic_ty = ctx.type_of(field.did).instantiate_identity();
-                if let TyKind::Alias(_,_) = generic_ty.kind(){
-                    panic!("UNHANDLED ERROR: type contains an associated generic!");
+                let ty = if let TyKind::Alias(ak,_) = generic_ty.kind(){
+                    assert_eq!(*ak,AliasKind::Projection,"ERROR alias kind is not supported in adt def!");
+                    // Increase generic count
+                    let curr_gargc = gargc;
+                    println!("Generic typedef is now supported!");
+                    gargc+= 1;
+                    Type::GenericArg(curr_gargc)
                 }
-                let ty = Type::from_ty(generic_ty, ctx);
-            
+                else{
+                    Type::generic_from_ty(generic_ty, ctx)
+                };
                 let name = escape_field_name(&field.name.to_string());
                 fields.push((name, ty));
             }

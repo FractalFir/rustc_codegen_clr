@@ -97,7 +97,7 @@ pub(crate) fn binop_unchecked<'tcx>(
                 todo!("Can't offset pointer of type {ty_a:?}");
             };
             let pointed_ty = crate::utilis::monomorphize(&method_instance, pointed_ty, tcx);
-            let pointed_ty = Box::new(crate::r#type::Type::from_ty(pointed_ty, tcx));
+            let pointed_ty = Box::new(crate::r#type::Type::from_ty(pointed_ty, tcx,&method_instance));
             [
                 ops_a,
                 ops_b,

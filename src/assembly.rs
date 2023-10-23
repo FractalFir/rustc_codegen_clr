@@ -57,7 +57,7 @@ impl Assembly {
         // Check if function is public or not.
         let access_modifier = AccessModifer::from_visibility(tcx.visibility(instance.def_id()));
         // Handle the function signature
-        let sig = FnSig::from_poly_sig(&instance.ty(tcx, param_env).fn_sig(tcx), tcx)?;
+        let sig = FnSig::from_poly_sig(&instance.ty(tcx, param_env).fn_sig(tcx), tcx,&instance)?;
         // Get locals
         let locals = locals_from_mir(&mir.local_decls, tcx, sig.inputs().len(), &instance);
         // Create method prototype
@@ -176,7 +176,10 @@ fn locals_from_mir<'tyctx>(
     for (local_id, local) in locals.iter().enumerate() {
         if local_id == 0 || local_id > argc {
             let ty = crate::utilis::monomorphize(method_instance, local.ty, tyctx);
-            local_types.push(Type::from_ty(ty, tyctx));
+            if crate::PRINT_LOCAL_TYPES {
+                println!("Setting local to type {ty:?},non-morphic: {non_morph}",non_morph = local.ty);
+            }
+            local_types.push(Type::from_ty(ty, tyctx,method_instance));
         }
     }
     local_types

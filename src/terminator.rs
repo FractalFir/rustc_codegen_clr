@@ -41,7 +41,7 @@ fn call_managed<'ctx>(
     let managed_fn_name = garg_to_string(&subst_ref[3], tyctx);
     let mut tpe = DotnetTypeRef::new(asm.as_ref().map(|x| x.as_str()), &class_name);
     tpe.set_valuetype(is_valuetype);
-    let signature = FnSig::from_poly_sig(&fn_type.fn_sig(tyctx), tyctx)
+    let signature = FnSig::from_poly_sig(&fn_type.fn_sig(tyctx), tyctx,&method_instance)
         .expect("Can't get the function signature");
     if argc == 0 {
         let ret = crate::r#type::Type::Void;
@@ -107,7 +107,7 @@ fn callvirt_managed<'ctx>(
     let managed_fn_name = garg_to_string(&subst_ref[3], tyctx);
     let mut tpe = DotnetTypeRef::new(asm.as_ref().map(|x| x.as_str()), &class_name);
     tpe.set_valuetype(is_valuetype);
-    let signature = FnSig::from_poly_sig(&fn_type.fn_sig(tyctx), tyctx)
+    let signature = FnSig::from_poly_sig(&fn_type.fn_sig(tyctx), tyctx,&method_instance)
         .expect("Can't get the function signature");
     if argc == 0 {
         let ret = crate::r#type::Type::Void;
@@ -193,7 +193,7 @@ fn call_ctor<'ctx>(
     } else {
         let mut inputs: Vec<_> = subst_ref[3..]
             .iter()
-            .map(|ty| crate::r#type::Type::from_ty(ty.as_type().unwrap(), tyctx))
+            .map(|ty| crate::r#type::Type::from_ty(ty.as_type().unwrap(), tyctx,&method_instance))
             .collect();
         inputs.insert(0, tpe.clone().into());
         let sig = FnSig::new(&inputs, &crate::r#type::Type::Void);
@@ -336,7 +336,7 @@ pub fn handle_terminator<'ctx>(
             ops
         }
         TerminatorKind::Return => {
-            if crate::r#type::Type::from_ty(method.return_ty(), tyctx) != crate::r#type::Type::Void
+            if crate::r#type::Type::from_ty(method.return_ty(), tyctx,&method_instance) != crate::r#type::Type::Void
             {
                 vec![CILOp::LDLoc(0), CILOp::Ret]
             } else {

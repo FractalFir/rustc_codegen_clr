@@ -90,7 +90,7 @@ fn place_get_length<'ctx>(
     method_instance: Instance<'ctx>,
 ) -> Vec<CILOp> {
     let curr_ty = curr_type.as_ty().expect("Can't index into enum!");
-    let tpe = Type::from_ty(curr_ty, ctx);
+    let tpe = Type::from_ty(curr_ty, ctx,&method_instance);
     let class = if let Type::DotnetType(dotnet) = &tpe {
         dotnet
     } else {
@@ -116,9 +116,9 @@ fn place_get_length<'ctx>(
         _ => todo!("Can't get length of non-array/slice!"),
     }
 }
-fn place_elem_get_at<'a>(curr_type: PlaceTy<'a>, ctx: TyCtxt<'a>) -> Vec<CILOp> {
+fn place_elem_get_at<'a>(curr_type: PlaceTy<'a>, ctx: TyCtxt<'a>,method_instance: &Instance<'a>) -> Vec<CILOp> {
     let curr_ty = curr_type.as_ty().expect("Can't index into enum!");
-    let tpe = Type::from_ty(curr_ty, ctx);
+    let tpe = Type::from_ty(curr_ty, ctx,method_instance);
     let class = if let Type::DotnetType(dotnet) = &tpe {
         dotnet
     } else {
@@ -138,9 +138,9 @@ fn place_elem_get_at<'a>(curr_type: PlaceTy<'a>, ctx: TyCtxt<'a>) -> Vec<CILOp> 
         )),
     ]
 }
-fn place_elem_set_at<'a>(curr_type: PlaceTy<'a>, ctx: TyCtxt<'a>) -> Vec<CILOp> {
+fn place_elem_set_at<'a>(curr_type: PlaceTy<'a>, ctx: TyCtxt<'a>,method_instance: &Instance<'a>) -> Vec<CILOp> {
     let curr_ty = curr_type.as_ty().expect("Can't index into enum!");
-    let tpe = Type::from_ty(curr_ty, ctx);
+    let tpe = Type::from_ty(curr_ty, ctx,method_instance);
     let class = if let Type::DotnetType(dotnet) = &tpe {
         dotnet
     } else {
@@ -169,13 +169,13 @@ fn place_elem_get<'a>(
     method_instance: Instance<'a>,
 ) -> Vec<CILOp> {
     match place_elem {
-        PlaceElem::Deref => deref_op(pointed_type(curr_type).into(), ctx),
+        PlaceElem::Deref => deref_op(pointed_type(curr_type).into(), ctx,&method_instance),
         PlaceElem::Field(index, _field_type) => match curr_type {
             PlaceTy::Ty(curr_type) => {
                 let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, ctx);
-                let field_type = crate::utilis::generic_field_ty(curr_type, index.as_u32(), ctx);
+                let field_type = crate::utilis::generic_field_ty(curr_type, index.as_u32(), ctx,method_instance);
                 let field_name = field_name(curr_type, index.as_u32());
-                let curr_type = crate::r#type::Type::from_ty(curr_type, ctx);
+                let curr_type = crate::r#type::Type::from_ty(curr_type, ctx,&method_instance);
                 let curr_type = if let crate::r#type::Type::DotnetType(dotnet_type) = curr_type {
                     dotnet_type.as_ref().clone()
                 } else {
@@ -188,8 +188,8 @@ fn place_elem_get<'a>(
                 let owner = crate::utilis::monomorphize(&method_instance, enm, ctx);
                 let variant_name = crate::utilis::variant_name(owner, var_idx);
                 let owner = crate::utilis::monomorphize(&method_instance, enm, ctx);
-                let field_type = crate::utilis::generic_field_ty(owner, index.as_u32(), ctx);
-                let owner = crate::r#type::Type::from_ty(owner, ctx);
+                let field_type = crate::utilis::generic_field_ty(owner, index.as_u32(), ctx,method_instance);
+                let owner = crate::r#type::Type::from_ty(owner, ctx,&method_instance);
                 let owner = if let crate::r#type::Type::DotnetType(owner) = owner {
                     owner.as_ref().clone()
                 } else {
@@ -211,7 +211,7 @@ fn place_elem_get<'a>(
                 index.as_usize(),
                 ctx.optimized_mir(method_instance.def_id()),
             )];
-            ops.extend(place_elem_get_at(curr_type, ctx));
+            ops.extend(place_elem_get_at(curr_type, ctx,&method_instance));
             ops
         }
         PlaceElem::ConstantIndex {
@@ -226,7 +226,7 @@ fn place_elem_get<'a>(
                 get_len.extend(vec![CILOp::LdcI64(*offset as i64), CILOp::Sub]);
                 get_len
             };
-            ops.extend(place_elem_get_at(curr_type, ctx));
+            ops.extend(place_elem_get_at(curr_type, ctx,&method_instance));
             ops
         }
         _ => todo!("Can't handle porojection {place_elem:?} in get"),
@@ -241,15 +241,15 @@ fn place_elem_set<'a>(
     match place_elem {
         PlaceElem::Deref => {
             let pointed_type = pointed_type(curr_type);
-            ptr_set_op(pointed_type.into(), ctx)
+            ptr_set_op(pointed_type.into(), ctx,&method_instance)
         }
         PlaceElem::Field(index, _field_type) => {
             if let PlaceTy::Ty(curr_type) = curr_type {
                 let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, ctx);
-                let field_type = crate::utilis::generic_field_ty(curr_type, index.as_u32(), ctx);
+                let field_type = crate::utilis::generic_field_ty(curr_type, index.as_u32(), ctx,method_instance);
                 let field_name = field_name(curr_type, index.as_u32());
 
-                let curr_type = crate::r#type::Type::from_ty(curr_type, ctx);
+                let curr_type = crate::r#type::Type::from_ty(curr_type, ctx,&method_instance);
                 let curr_type = if let crate::r#type::Type::DotnetType(dotnet_type) = curr_type {
                     dotnet_type.as_ref().clone()
                 } else {
@@ -266,7 +266,7 @@ fn place_elem_set<'a>(
                 index.as_usize(),
                 ctx.optimized_mir(method_instance.def_id()),
             )];
-            ops.extend(place_elem_set_at(curr_type, ctx));
+            ops.extend(place_elem_set_at(curr_type, ctx,&method_instance));
             ops
         }
         PlaceElem::ConstantIndex {
@@ -281,7 +281,7 @@ fn place_elem_set<'a>(
                 get_len.extend(vec![CILOp::LdcI64(*offset as i64), CILOp::Sub]);
                 get_len
             };
-            ops.extend(place_elem_set_at(curr_type, ctx));
+            ops.extend(place_elem_set_at(curr_type, ctx,&method_instance));
             ops
         }
         _ => todo!("Can't handle porojection {place_elem:?} in set"),
@@ -306,18 +306,18 @@ fn place_elem_body<'ctx>(
             if body_ty_is_by_adress(&pointed) {
                 (pointed.into(), vec![])
             } else {
-                (pointed.into(), deref_op(pointed.into(), tyctx))
+                (pointed.into(), deref_op(pointed.into(), tyctx,&method_instance))
             }
         }
         PlaceElem::Field(index, field_type) => match curr_type {
             PlaceTy::Ty(curr_type) => {
                 let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
                 let gen_field_type =
-                    crate::utilis::generic_field_ty(curr_type, index.as_u32(), tyctx);
+                    crate::utilis::generic_field_ty(curr_type, index.as_u32(), tyctx,method_instance);
                 //TODO: Why was this commented out?
                 let field_type = crate::utilis::monomorphize(&method_instance, *field_type, tyctx);
                 let field_name = field_name(curr_type, index.as_u32());
-                let curr_type = crate::r#type::Type::from_ty(curr_type, tyctx);
+                let curr_type = crate::r#type::Type::from_ty(curr_type, tyctx,&method_instance);
                 let curr_type = if let crate::r#type::Type::DotnetType(dotnet_type) = curr_type {
                     dotnet_type.as_ref().clone()
                 } else {
@@ -335,8 +335,8 @@ fn place_elem_body<'ctx>(
                 let owner = crate::utilis::monomorphize(&method_instance, enm, tyctx);
                 let variant_name = crate::utilis::variant_name(owner, var_idx);
                 let owner = crate::utilis::monomorphize(&method_instance, enm, tyctx);
-                let gen_field_type = crate::utilis::generic_field_ty(owner, index.as_u32(), tyctx);
-                let owner = crate::r#type::Type::from_ty(owner, tyctx);
+                let gen_field_type = crate::utilis::generic_field_ty(owner, index.as_u32(), tyctx,method_instance);
+                let owner = crate::r#type::Type::from_ty(owner, tyctx,&method_instance);
                 let owner = if let crate::r#type::Type::DotnetType(owner) = owner {
                     owner.as_ref().clone()
                 } else {
@@ -357,7 +357,7 @@ fn place_elem_body<'ctx>(
                 .as_ty()
                 .expect("Can't get enum variant of an enum varaint!");
             let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
-            let curr_dotnet_type = crate::r#type::Type::from_ty(curr_type, tyctx);
+            let curr_dotnet_type = crate::r#type::Type::from_ty(curr_type, tyctx,&method_instance);
             let curr_dotnet_type =
                 if let crate::r#type::Type::DotnetType(dotnet_type) = curr_dotnet_type {
                     dotnet_type.as_ref().clone()
@@ -384,7 +384,7 @@ fn place_elem_body<'ctx>(
                 tyctx.optimized_mir(method_instance.def_id()),
             )];
             let curr_ty = curr_type.as_ty().expect("Can't index into enum!");
-            let tpe = Type::from_ty(curr_ty, tyctx);
+            let tpe = Type::from_ty(curr_ty, tyctx,&method_instance);
             let class = if let Type::DotnetType(dotnet) = &tpe {
                 dotnet
             } else {
@@ -422,7 +422,7 @@ fn place_elem_body<'ctx>(
     }
 }
 /// Returns a set of instructons to set a pointer to a pointed_type to a value from the stack.
-fn ptr_set_op<'ctx>(pointed_type: PlaceTy<'ctx>, tyctx: TyCtxt<'ctx>) -> Vec<CILOp> {
+fn ptr_set_op<'ctx>(pointed_type: PlaceTy<'ctx>, tyctx: TyCtxt<'ctx>,method_instance: &Instance<'ctx>,) -> Vec<CILOp> {
     if let PlaceTy::Ty(pointed_type) = pointed_type {
         match pointed_type.kind() {
             TyKind::Int(int_ty) => match int_ty {
@@ -450,13 +450,13 @@ fn ptr_set_op<'ctx>(pointed_type: PlaceTy<'ctx>, tyctx: TyCtxt<'ctx>) -> Vec<CIL
             TyKind::Char => vec![CILOp::STIndI32], // always 4 bytes wide: https://doc.rust-lang.org/std/primitive.char.html#representation
             TyKind::Adt(_, _) => {
                 vec![CILOp::STObj(
-                    crate::r#type::Type::from_ty(pointed_type, tyctx).into(),
+                    crate::r#type::Type::from_ty(pointed_type, tyctx,method_instance).into(),
                 )]
             }
             TyKind::Tuple(_) => {
                 // This is interpreted as a System.ValueTuple and can be treated as an ADT
                 vec![CILOp::STObj(
-                    crate::r#type::Type::from_ty(pointed_type, tyctx).into(),
+                    crate::r#type::Type::from_ty(pointed_type, tyctx,method_instance).into(),
                 )]
             }
             TyKind::Ref(_, _, _) => vec![CILOp::STIndISize],
@@ -468,7 +468,7 @@ fn ptr_set_op<'ctx>(pointed_type: PlaceTy<'ctx>, tyctx: TyCtxt<'ctx>) -> Vec<CIL
     }
 }
 /// Given a type `derefed_type`, it retuns a set of instructions to get a value behind a pointer to `derefed_type`.
-pub fn deref_op<'ctx>(derefed_type: PlaceTy<'ctx>, tyctx: TyCtxt<'ctx>) -> Vec<CILOp> {
+pub fn deref_op<'ctx>(derefed_type: PlaceTy<'ctx>, tyctx: TyCtxt<'ctx>,method_instance: &Instance<'ctx>) -> Vec<CILOp> {
     let res = if let PlaceTy::Ty(derefed_type) = derefed_type {
         match derefed_type.kind() {
             TyKind::Int(int_ty) => match int_ty {
@@ -498,13 +498,13 @@ pub fn deref_op<'ctx>(derefed_type: PlaceTy<'ctx>, tyctx: TyCtxt<'ctx>) -> Vec<C
             TyKind::Char => vec![CILOp::LDIndI32], // always 4 bytes wide: https://doc.rust-lang.org/std/primitive.char.html#representation
             TyKind::Adt(_, _) => {
                 vec![CILOp::LdObj(
-                    crate::r#type::Type::from_ty(derefed_type, tyctx).into(),
+                    crate::r#type::Type::from_ty(derefed_type, tyctx,method_instance).into(),
                 )]
             }
             TyKind::Tuple(_) => {
                 // This is interpreted as a System.ValueTuple and can be treated as an ADT
                 vec![CILOp::LdObj(
-                    crate::r#type::Type::from_ty(derefed_type, tyctx).into(),
+                    crate::r#type::Type::from_ty(derefed_type, tyctx,method_instance).into(),
                 )]
             }
             TyKind::Ref(_, _, _) => vec![CILOp::LDIndISize],

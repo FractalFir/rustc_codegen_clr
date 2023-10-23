@@ -52,7 +52,7 @@ pub fn handle_aggregate<'tyctx>(
             )
         }
         AggregateKind::Array(element) => {
-            let element = Type::from_ty(*element, tyctx);
+            let element = Type::from_ty(*element, tyctx,&method_instance);
             let array_type = DotnetTypeRef::array(element.clone(), value_index.len());
             let mut ops: Vec<CILOp> = Vec::with_capacity(values.len() * 2);
             let array_getter =
@@ -86,7 +86,7 @@ pub fn handle_aggregate<'tyctx>(
                     super::place::place_adress(&target_location, tyctx, method, method_instance);
                 let types: Vec<_> = value_index
                     .iter()
-                    .map(|operand| (Type::from_ty(operand.ty(method, tyctx), tyctx)))
+                    .map(|operand| (Type::from_ty(operand.ty(method, tyctx), tyctx,&method_instance)))
                     .collect();
                 let dotnet_tpe = crate::r#type::tuple_type(&types);
                 let mut ops: Vec<CILOp> = Vec::with_capacity(values.len() * 2);
@@ -126,7 +126,7 @@ fn aggregate_adt<'tyctx>(
     _active_field: &Option<FieldIdx>,
 ) -> Vec<CILOp> {
     let adt_type = crate::utilis::monomorphize(&method_instance, adt_type, tyctx);
-    let adt_type_ref = Type::from_ty(adt_type, tyctx);
+    let adt_type_ref = Type::from_ty(adt_type, tyctx,&method_instance);
     let adt_type_ref = if let Type::DotnetType(type_ref) = adt_type_ref {
         type_ref.as_ref().clone()
     } else {
@@ -150,9 +150,10 @@ fn aggregate_adt<'tyctx>(
                     Type::from_ty(
                         crate::utilis::monomorphize(&method_instance, field_type, tyctx),
                         tyctx,
+                        &method_instance
                     )
                 } else {
-                    crate::utilis::generic_field_ty(adt_type, field.0, tyctx)
+                    crate::utilis::generic_field_ty(adt_type, field.0, tyctx,method_instance)
                 };
                 let field_name = field_name(adt_type, field.0);
                 let field_desc = crate::cil_op::FieldDescriptor::boxed(
@@ -201,7 +202,7 @@ fn aggregate_adt<'tyctx>(
                 ops.extend(field_value.1.clone());
                 let field_name = field.name.to_string();
                 let field_name = crate::type_def::escape_field_name(&field_name);
-                let field = crate::utilis::generic_field_ty(adt_type, field_idx as u32, tyctx);
+                let field = crate::utilis::generic_field_ty(adt_type, field_idx as u32, tyctx,method_instance);
                 ops.push(CILOp::STField(Box::new(FieldDescriptor::new(
                     variant_type.clone(),
                     field,
@@ -241,7 +242,7 @@ fn aggregate_adt<'tyctx>(
                     .expect("Could not find field!");
                 let _field_type = field_def.ty(tyctx, subst);
 
-                let field_type = crate::utilis::generic_field_ty(adt_type, field.0, tyctx);
+                let field_type = crate::utilis::generic_field_ty(adt_type, field.0, tyctx,method_instance);
                 let field_name = field_name(adt_type, field.0);
                 let field_desc = crate::cil_op::FieldDescriptor::boxed(
                     adt_type_ref.clone(),
