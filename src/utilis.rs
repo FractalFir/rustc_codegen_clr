@@ -1,6 +1,6 @@
 use rustc_middle::ty::{
-    AdtDef,AliasKind, Binder, BoundVariableKind, Const, ConstKind, EarlyBinder, GenericArg, Instance,
-    ParamEnv, SymbolName, Ty, TyCtxt, TyKind, TypeFoldable,
+    AdtDef, AliasKind, Binder, BoundVariableKind, Const, ConstKind, EarlyBinder, GenericArg,
+    Instance, ParamEnv, SymbolName, Ty, TyCtxt, TyKind, TypeFoldable,
 };
 pub const BEGIN_TRY: &str = "rustc_clr_interop_begin_try";
 pub const END_TRY: &str = "rustc_clr_interop_end_try";
@@ -92,7 +92,7 @@ pub fn generic_field_ty<'ctx>(
                 )
                 .instantiate_identity();
             println!("Generic field type {ty:?}");
-            crate::r#type::Type::from_ty(ty, ctx,&method_instance)
+            crate::r#type::Type::from_ty(ty, ctx, &method_instance)
         }
         TyKind::Tuple(_) => crate::r#type::Type::GenericArg(field_idx),
         _ => todo!("Can't get field {field_idx} belonging to type {owner_ty:?}"),
@@ -204,31 +204,30 @@ macro_rules! assert_morphic {
         );
     };
 }
-pub fn string_class()->DotnetTypeRef{
-    let mut string = DotnetTypeRef::new(Some("System.Runtime"), "System.String");;
+pub fn string_class() -> DotnetTypeRef {
+    let mut string = DotnetTypeRef::new(Some("System.Runtime"), "System.String");
     string.set_valuetype(false);
     string
 }
-pub fn usize_class()->DotnetTypeRef{
+pub fn usize_class() -> DotnetTypeRef {
     let mut string = DotnetTypeRef::new(Some("System.Runtime"), "System.UIntPtr");
     //TODO: Inwestigate this. The valuetype prefix seems to be missing from UIntPtr in compiled C# code
     string.set_valuetype(false);
     string
 }
 /// Translated MIR statements should have the total stack diff of 0.
-pub fn check_statement(ops:&[crate::cil_op::CILOp],statement:&rustc_middle::mir::Statement){
+pub fn check_statement(ops: &[crate::cil_op::CILOp], statement: &rustc_middle::mir::Statement) {
     let mut stack = 0;
-    for op in ops{
+    for op in ops {
         stack += op.stack_diff();
     }
-    if stack != 0{
+    if stack != 0 {
         eprintln!("Propable miscompilation: statement {statement:?} resulted in ops {ops:?} and did not pass the stack check.");
         let mut stack = 0;
-        for op in ops{
+        for op in ops {
             let diff = op.stack_diff();
             stack += diff;
             eprintln!("\t{op:?} changed stack by {diff}, to {stack}");
-            
         }
         panic!();
     }

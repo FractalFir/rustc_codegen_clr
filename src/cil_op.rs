@@ -201,6 +201,9 @@ pub enum CILOp {
     /// This instruction reads the value of the current temporary local. It is equivalent to `LDLoc(tmp)`.
     LoadTMPLocal,
     /// This is a Syntetic("fake") instruction, which is used **only** internaly. It is not present in the resulting assembly.
+    /// Loads the TMP local n elements under the top of the TMP local stack.
+    LoadUnderTMPLocal(u8),
+    /// This is a Syntetic("fake") instruction, which is used **only** internaly. It is not present in the resulting assembly.
     /// This instruction reads the adress of the current temporary local. It is equivalent to `LDLocA(tmp)`.
     LoadAddresOfTMPLocal,
     /// This is a Syntetic("fake") instruction, which is used **only** internaly. It is not present in the resulting assembly.
@@ -224,7 +227,7 @@ pub enum CILOp {
     /// Load string literal
     LdStr(IString),
     /// Load null reference
-    LdNull, 
+    LdNull,
     /// Signed intieger convertions
     /// Convert the value on top of the stack to an i8. Preform checked convertion if true.
     ConvI8(bool),
@@ -386,7 +389,7 @@ impl CILOp {
             CILOp::Ret => -1,
             // Syntetic instructions
             CILOp::NewTMPLocal(_) | CILOp::FreeTMPLocal => 0,
-            CILOp::LoadAddresOfTMPLocal | CILOp::LoadTMPLocal => 1,
+            CILOp::LoadAddresOfTMPLocal | CILOp::LoadUnderTMPLocal(_) | CILOp::LoadTMPLocal => 1,
             CILOp::SetTMPLocal => -1,
             CILOp::LoadLocalAllocPtr { alloc_id } => 1,
         }

@@ -1,7 +1,7 @@
 use crate::{cil_op::CallSite, IString};
 use rustc_middle::ty::{
-    AdtDef,AliasKind, ClosureKind, ConstKind, FloatTy, GenericArg, Instance, IntTy, ParamEnv, Ty, TyCtxt,
-    TyKind, UintTy,List
+    AdtDef, AliasKind, ClosureKind, ConstKind, FloatTy, GenericArg, Instance, IntTy, List,
+    ParamEnv, Ty, TyCtxt, TyKind, UintTy,
 };
 /// This struct represetnts either a primitive .NET type (F32,F64), or stores information on how to lookup a more complex type (struct,class,array)
 use serde::{Deserialize, Serialize};
@@ -54,7 +54,7 @@ pub struct DotnetTypeRef {
     assembly: Option<IString>,
     name_path: IString,
     generics: Vec<Type>,
-    // In cause of `System.BadImageFormatException: Expected value type but got type kind 14` check if `is_valuetype` is always correct! 
+    // In cause of `System.BadImageFormatException: Expected value type but got type kind 14` check if `is_valuetype` is always correct!
     is_valuetype: bool,
 }
 impl DotnetTypeRef {
@@ -105,12 +105,17 @@ impl DotnetTypeRef {
     pub fn set_generics_identity(&mut self) {
         self.generics = crate::type_def::ident_gargs(self.generics.len()).into();
     }
-    fn from_adt<'ctx>(adt_def: &AdtDef<'ctx>, subst: &'ctx List<GenericArg<'ctx>>, tyctx: TyCtxt<'ctx>,method:&Instance<'ctx>) -> Self {
+    fn from_adt<'ctx>(
+        adt_def: &AdtDef<'ctx>,
+        subst: &'ctx List<GenericArg<'ctx>>,
+        tyctx: TyCtxt<'ctx>,
+        method: &Instance<'ctx>,
+    ) -> Self {
         let mut generics: Vec<Type> = subst
             .iter()
             .map(|arg| {
                 if let Some(resolved) = arg.as_type() {
-                    Type::from_ty(resolved, tyctx,method)
+                    Type::from_ty(resolved, tyctx, method)
                 } else {
                     Type::Unresolved
                 }
@@ -119,11 +124,16 @@ impl DotnetTypeRef {
         for field in adt_def.all_fields() {
             //rustc_middle::ty::List::empty()
             let generic_ty = tyctx.type_of(field.did).instantiate_identity();
-            if let TyKind::Alias(ak,_) = generic_ty.kind(){
-                assert_eq!(*ak,AliasKind::Projection,"ERROR alias kind is not supported in adt def!");
-                let substituted = crate::utilis::monomorphize(method, field.ty(tyctx,subst), tyctx);
+            if let TyKind::Alias(ak, _) = generic_ty.kind() {
+                assert_eq!(
+                    *ak,
+                    AliasKind::Projection,
+                    "ERROR alias kind is not supported in adt def!"
+                );
+                let substituted =
+                    crate::utilis::monomorphize(method, field.ty(tyctx, subst), tyctx);
                 println!("Projection field! generic_ty{generic_ty:?} Substituted:{substituted:?}");
-                generics.push(Type::from_ty(substituted, tyctx,method))
+                generics.push(Type::from_ty(substituted, tyctx, method))
             }
         }
         let name = crate::utilis::adt_name(adt_def);
@@ -134,7 +144,11 @@ impl DotnetTypeRef {
             is_valuetype: true,
         }
     }
-    fn generic_from_adt<'ctx>(adt_def: &AdtDef<'ctx>, subst: &'ctx List<GenericArg<'ctx>>, tyctx: TyCtxt<'ctx>) -> Self {
+    fn generic_from_adt<'ctx>(
+        adt_def: &AdtDef<'ctx>,
+        subst: &'ctx List<GenericArg<'ctx>>,
+        tyctx: TyCtxt<'ctx>,
+    ) -> Self {
         let mut generics: Vec<Type> = subst
             .iter()
             .map(|arg| {
@@ -148,8 +162,8 @@ impl DotnetTypeRef {
         for field in adt_def.all_fields() {
             //rustc_middle::ty::List::empty()
             let generic_ty = tyctx.type_of(field.did).instantiate_identity();
-            if let TyKind::Alias(ak,_) = generic_ty.kind(){
-                // FIXME: This is wrong, since it pushes the generic type of the child instead of the parrant. Overall - we should traverse trough all 
+            if let TyKind::Alias(ak, _) = generic_ty.kind() {
+                // FIXME: This is wrong, since it pushes the generic type of the child instead of the parrant. Overall - we should traverse trough all
                 // ADT locals and take them into account when building the generic list.
                 let generic_count = generics.len();
                 generics.push(Type::GenericArg(generic_count as u32));
@@ -172,12 +186,14 @@ impl Type {
             _ => None,
         }
     }
-    pub fn from_ty<'ctx>(rust_tpe: Ty<'ctx>, tyctx: TyCtxt<'ctx>,method:&Instance<'ctx>) -> Self {
-        if crate::PRINT_TY_CONVERTION {println!("ty:{rust_tpe:?}")};
-        Self::from_ty_kind(rust_tpe.kind(), tyctx,method)
+    pub fn from_ty<'ctx>(rust_tpe: Ty<'ctx>, tyctx: TyCtxt<'ctx>, method: &Instance<'ctx>) -> Self {
+        if crate::PRINT_TY_CONVERTION {
+            println!("ty:{rust_tpe:?}")
+        };
+        Self::from_ty_kind(rust_tpe.kind(), tyctx, method)
     }
     pub fn generic_from_ty<'ctx>(rust_tpe: Ty<'ctx>, tyctx: TyCtxt<'ctx>) -> Self {
-        match rust_tpe.kind(){
+        match rust_tpe.kind() {
             TyKind::Bool => Self::Bool,
             TyKind::Int(int) => int.into(),
             TyKind::Uint(uint) => uint.into(),
@@ -197,17 +213,20 @@ impl Type {
                     Self::DotnetType(Box::new(str_type))
                 }
                 TyKind::Slice(inner) => {
-                    let mut slice = DotnetTypeRef::new(None,"RustSlice");
+                    let mut slice = DotnetTypeRef::new(None, "RustSlice");
                     slice.set_generics(&[Type::generic_from_ty(*inner, tyctx)]);
                     slice.into()
-                } 
+                }
                 _ => {
                     println!("Ref kind {:?}", inner.kind());
                     Self::Ptr(Box::new(Self::generic_from_ty(*inner, tyctx)))
                 }
             },
             TyKind::Tuple(types) => {
-                let types: Vec<_> = types.iter().map(|ty| Type::generic_from_ty(ty, tyctx)).collect();
+                let types: Vec<_> = types
+                    .iter()
+                    .map(|ty| Type::generic_from_ty(ty, tyctx))
+                    .collect();
                 if types.is_empty() {
                     Type::Void
                 } else {
@@ -232,7 +251,9 @@ impl Type {
                     todo!("Special types aren't yet handled in generic_from_ty")
                 } else {
                     //todo!("ADT types aren't yet handled in generic_from_ty")
-                    Self::DotnetType(Box::new(DotnetTypeRef::generic_from_adt(adt_def, subst, tyctx)))
+                    Self::DotnetType(Box::new(DotnetTypeRef::generic_from_adt(
+                        adt_def, subst, tyctx,
+                    )))
                 }
             }
             TyKind::Dynamic(_, _, _) => Type::Unresolved,
@@ -257,7 +278,7 @@ impl Type {
                 Self::DotnetType(DotnetTypeRef::new(Some("FIXME_CLOSURE"), &function_name).into())
             }
             TyKind::FnDef(def_id, subst_ref) => {
-                /* 
+                /*
                 let fn_type = rust_tpe;
                 let env = ParamEnv::reveal_all();
                 let (instance, def_id, subst_ref) = {
@@ -284,7 +305,11 @@ impl Type {
             _ => todo!("Unsupported type{rust_tpe:?}!"),
         }
     }
-    pub fn from_ty_kind<'ctx>(rust_tpe: &TyKind<'ctx>, tyctx: TyCtxt<'ctx>,method:&Instance<'ctx>) -> Self {
+    pub fn from_ty_kind<'ctx>(
+        rust_tpe: &TyKind<'ctx>,
+        tyctx: TyCtxt<'ctx>,
+        method: &Instance<'ctx>,
+    ) -> Self {
         match rust_tpe {
             TyKind::Bool => Self::Bool,
             TyKind::Int(int) => int.into(),
@@ -292,7 +317,7 @@ impl Type {
             TyKind::Char => Self::U64,
             TyKind::Float(float) => float.into(),
             TyKind::RawPtr(type_and_mut) => {
-                Self::Ptr(Box::new(Self::from_ty(type_and_mut.ty, tyctx,method)))
+                Self::Ptr(Box::new(Self::from_ty(type_and_mut.ty, tyctx, method)))
             }
             TyKind::Ref(_region, inner, _mut) => match inner.kind() {
                 TyKind::Str => {
@@ -304,18 +329,21 @@ impl Type {
                     };
                     Self::DotnetType(Box::new(str_type))
                 }
-                TyKind::Slice(inner) =>{
-                    let mut slice = DotnetTypeRef::new(None,"RustSlice");
+                TyKind::Slice(inner) => {
+                    let mut slice = DotnetTypeRef::new(None, "RustSlice");
                     slice.set_generics(&[Type::from_ty(*inner, tyctx, method)]);
                     slice.into()
                 } //todo!("Slice references not yet handled!"),
                 _ => {
                     println!("Ref kind {:?}", inner.kind());
-                    Self::Ptr(Box::new(Self::from_ty(*inner, tyctx,method)))
+                    Self::Ptr(Box::new(Self::from_ty(*inner, tyctx, method)))
                 }
             },
             TyKind::Tuple(types) => {
-                let types: Vec<_> = types.iter().map(|ty| Type::from_ty(ty, tyctx,method)).collect();
+                let types: Vec<_> = types
+                    .iter()
+                    .map(|ty| Type::from_ty(ty, tyctx, method))
+                    .collect();
                 if types.is_empty() {
                     Type::Void
                 } else {
@@ -327,7 +355,7 @@ impl Type {
                 let slice_tpe = DotnetTypeRef {
                     assembly: None,
                     name_path: "RustSlice".into(),
-                    generics: vec![Self::from_ty(*inner, tyctx,method)],
+                    generics: vec![Self::from_ty(*inner, tyctx, method)],
                     is_valuetype: true,
                 };
                 Self::DotnetType(Box::new(slice_tpe))
@@ -336,9 +364,11 @@ impl Type {
             TyKind::Adt(adt_def, subst) => {
                 let name = crate::utilis::adt_name(adt_def);
                 if is_name_magic(name.as_ref()) {
-                    magic_type(name.as_ref(), adt_def, subst, tyctx,method)
+                    magic_type(name.as_ref(), adt_def, subst, tyctx, method)
                 } else {
-                    Self::DotnetType(Box::new(DotnetTypeRef::from_adt(adt_def, subst, tyctx,method)))
+                    Self::DotnetType(Box::new(DotnetTypeRef::from_adt(
+                        adt_def, subst, tyctx, method,
+                    )))
                 }
             }
             TyKind::Dynamic(_, _, _) => Type::Unresolved,
@@ -371,8 +401,9 @@ impl Type {
                 };
                 println!("BEEEP fn_def def_id:{def_id:?}");
                 let fn_def_sig = instance.ty(tyctx, env).fn_sig(tyctx);
-                let signature = crate::function_sig::FnSig::from_poly_sig(&fn_def_sig, tyctx,method)
-                    .expect("Can't get the function signature");
+                let signature =
+                    crate::function_sig::FnSig::from_poly_sig(&fn_def_sig, tyctx, method)
+                        .expect("Can't get the function signature");
                 println!("BOOP");
                 let function_name = crate::utilis::function_name(tyctx.symbol_name(instance));
                 let call = CallSite::boxed(None, function_name, signature, true);
@@ -382,7 +413,7 @@ impl Type {
             TyKind::Array(element, length) => {
                 let length = crate::utilis::try_resolve_const_size(length).unwrap();
 
-                let element = Type::from_ty(*element, tyctx,method);
+                let element = Type::from_ty(*element, tyctx, method);
                 DotnetTypeRef::array(element, length).into()
             }
             _ => todo!("Unsupported type{rust_tpe:?}!"),
@@ -460,7 +491,7 @@ fn magic_type<'tyctx>(
     _adt: &AdtDef<'tyctx>,
     subst: &[GenericArg<'tyctx>],
     ctx: TyCtxt<'tyctx>,
-    method:&Instance<'tyctx>
+    method: &Instance<'tyctx>,
 ) -> Type {
     while let Some(idx) = name.find('.') {
         name = &name[(idx + 1)..];
@@ -504,7 +535,7 @@ fn magic_type<'tyctx>(
                 panic!("Managed array size is not");
             }
             let element = &subst[0].as_type().expect("Arrat type must be specified!");
-            let element = Type::from_ty(*element, ctx,method);
+            let element = Type::from_ty(*element, ctx, method);
             let dimensions = garag_to_usize(&subst[1], ctx);
             Type::DotnetArray(
                 DotnetArray {
@@ -539,5 +570,13 @@ fn garag_to_usize<'tyctx>(garg: &GenericArg<'tyctx>, _ctx: TyCtxt<'tyctx>) -> u6
             _ => todo!("Can't convert generic arg of const kind {kind:?} to string!"),
         }
     }
+}
+/// Creates a tuple with no more than 8 elements.
+pub fn simple_tuple(elements:&[Type])->DotnetTypeRef{
+    assert!(elements.len() <= 8,"Tuple ({elements:?}) contains more than 8 elements, so it can't be stored inside a simple tuple.");
+    let name = format!("System.ValueTuple`{element_count}",element_count = elements.len());
+    let mut dotnet = DotnetTypeRef::new(Some("System.Runtime"),&name);
+    dotnet.set_generics(elements);
+    dotnet
 }
 use crate::utilis::garg_to_string;

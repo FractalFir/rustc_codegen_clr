@@ -108,6 +108,10 @@ impl Method {
                         "Using a TMP local with `LoadTMPLocal` when no TMP local allocated!",
                     ) as u32);
                 }
+                CILOp::LoadUnderTMPLocal(under) => {
+                    println!("tmp_stack:{tmp_stack:?} under:{under}");
+                    *op = CILOp::LDLoc(tmp_stack[(tmp_stack.len() - 1) - (*under as usize)] as u32);
+                }
                 CILOp::LoadAddresOfTMPLocal => {
                     *op = CILOp::LDLocA(*tmp_stack.iter().last().expect(
                         "Using a TMP local with `LoadTMPLocal` when no TMP local allocated!",

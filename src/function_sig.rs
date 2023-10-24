@@ -1,7 +1,7 @@
 use crate::{
     codegen_error::MethodCodegenError, r#type::Type, utilis::skip_binder_if_no_generic_types,
 };
-use rustc_middle::ty::{PolyFnSig, TyCtxt,Instance};
+use rustc_middle::ty::{Instance, PolyFnSig, TyCtxt};
 use serde::{Deserialize, Serialize};
 /// Function signature.
 #[derive(Clone, PartialEq, Serialize, Deserialize, Eq, Hash, Debug)]
@@ -14,7 +14,7 @@ impl FnSig {
     pub fn from_poly_sig<'tcx>(
         sig: &PolyFnSig<'tcx>,
         tcx: TyCtxt<'tcx>,
-        method_instance: &Instance<'tcx>
+        method_instance: &Instance<'tcx>,
     ) -> Result<Self, MethodCodegenError> {
         println!("sig:{sig:?}");
 
@@ -22,14 +22,14 @@ impl FnSig {
             .iter()
             .map(|v| {
                 println!("arg:{v:?}");
-                let tmp = Type::from_ty(*v, tcx,method_instance);
+                let tmp = Type::from_ty(*v, tcx, method_instance);
                 println!("endarg");
                 tmp
             })
             .collect();
         let out = skip_binder_if_no_generic_types(sig.output())?;
         println!("out:{out:?}");
-        let output = Type::from_ty(out, tcx,method_instance);
+        let output = Type::from_ty(out, tcx, method_instance);
         Ok(Self { inputs, output })
     }
     /// Creates a function signature from a fn sig, using the parrent method to morphize the call
@@ -40,7 +40,7 @@ impl FnSig {
     ) -> Result<Self, MethodCodegenError> {
         let inputs = skip_binder_if_no_generic_types(sig.inputs())?
             .iter()
-            .map(|v| Type::from_ty(crate::utilis::monomorphize(method, *v, tcx), tcx,method))
+            .map(|v| Type::from_ty(crate::utilis::monomorphize(method, *v, tcx), tcx, method))
             .collect();
         //
         let output = Type::from_ty(
@@ -50,7 +50,7 @@ impl FnSig {
                 tcx,
             ),
             tcx,
-            method
+            method,
         );
         Ok(Self { inputs, output })
     }

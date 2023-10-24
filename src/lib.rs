@@ -17,11 +17,11 @@ extern crate rustc_target;
 // Debug config
 
 /// Tells the codegen to insert comments containing the MIR statemtens after each one of them.
-const INSERT_MIR_DEBUG_COMMENTS:bool = false; 
-const PRINT_LOCAL_TYPES:bool = false;
-const PRINT_TY_CONVERTION:bool = false;
+const INSERT_MIR_DEBUG_COMMENTS: bool = false;
+const PRINT_LOCAL_TYPES: bool = false;
+const PRINT_TY_CONVERTION: bool = false;
 /// Tells the codegen to optmize the emiited CIL.
-const OPTIMIZE_CIL:bool = (!INSERT_MIR_DEBUG_COMMENTS)&&(true); 
+const OPTIMIZE_CIL: bool = (!INSERT_MIR_DEBUG_COMMENTS) && (true);
 
 // Modules
 
@@ -143,7 +143,7 @@ impl CodegenBackend for MyBackend {
             .expect("Could not resolve entrypoint!")
             .expect("Could not resolve entrypoint!");
             let entrypoint_fn = entrypoint.ty(tcx, penv).fn_sig(tcx);
-            let sig = function_sig::FnSig::from_poly_sig(&entrypoint_fn, tcx,&entrypoint)
+            let sig = function_sig::FnSig::from_poly_sig(&entrypoint_fn, tcx, &entrypoint)
                 .expect("Could not get the signature of the entrypoint.");
             let symbol = tcx.symbol_name(entrypoint);
             let symbol = format!("{symbol:?}");

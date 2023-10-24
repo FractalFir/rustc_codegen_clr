@@ -57,7 +57,7 @@ impl Assembly {
         // Check if function is public or not.
         let access_modifier = AccessModifer::from_visibility(tcx.visibility(instance.def_id()));
         // Handle the function signature
-        let sig = FnSig::from_poly_sig(&instance.ty(tcx, param_env).fn_sig(tcx), tcx,&instance)?;
+        let sig = FnSig::from_poly_sig(&instance.ty(tcx, param_env).fn_sig(tcx), tcx, &instance)?;
         // Get locals
         let locals = locals_from_mir(&mir.local_decls, tcx, sig.inputs().len(), &instance);
         // Create method prototype
@@ -71,15 +71,14 @@ impl Assembly {
             ops.push(CILOp::Label(last_bb_id));
             last_bb_id += 1;
             for statement in &block_data.statements {
-                if crate::INSERT_MIR_DEBUG_COMMENTS{
+                if crate::INSERT_MIR_DEBUG_COMMENTS {
                     ops.push(CILOp::Comment(format!("{statement:?}").into()));
                 }
-                let statement_ops = crate::statement::handle_statement(
-                    statement, mir, tcx, mir, instance,
-                );
-                crate::utilis::check_statement(&statement_ops,statement);
+                let statement_ops =
+                    crate::statement::handle_statement(statement, mir, tcx, mir, instance);
+                crate::utilis::check_statement(&statement_ops, statement);
                 ops.extend(statement_ops);
-                if crate::INSERT_MIR_DEBUG_COMMENTS{
+                if crate::INSERT_MIR_DEBUG_COMMENTS {
                     ops.push(CILOp::Comment("STATEMENT END.".into()));
                 }
                 //
@@ -95,7 +94,7 @@ impl Assembly {
         method.set_ops(ops);
         for local in &mir.local_decls {
             let local_ty = monomorphize(&instance, local.ty, tcx);
-            self.add_type(local_ty, tcx,&instance);
+            self.add_type(local_ty, tcx, &instance);
         }
         self.add_method(method);
         Ok(())
@@ -116,8 +115,13 @@ impl Assembly {
         self.types.iter()
     }
     /// Adds rust type `ty` and all types contained within it, if such type is not already present.
-    pub fn add_type<'tyctx>(&mut self, ty: rustc_middle::ty::Ty<'tyctx>, tyctx: TyCtxt<'tyctx>,method:&Instance<'tyctx>) {
-        for type_def in TypeDef::from_ty(ty, tyctx,method) {
+    pub fn add_type<'tyctx>(
+        &mut self,
+        ty: rustc_middle::ty::Ty<'tyctx>,
+        tyctx: TyCtxt<'tyctx>,
+        method: &Instance<'tyctx>,
+    ) {
+        for type_def in TypeDef::from_ty(ty, tyctx, method) {
             self.types.insert(type_def);
         }
     }
@@ -177,9 +181,12 @@ fn locals_from_mir<'tyctx>(
         if local_id == 0 || local_id > argc {
             let ty = crate::utilis::monomorphize(method_instance, local.ty, tyctx);
             if crate::PRINT_LOCAL_TYPES {
-                println!("Setting local to type {ty:?},non-morphic: {non_morph}",non_morph = local.ty);
+                println!(
+                    "Setting local to type {ty:?},non-morphic: {non_morph}",
+                    non_morph = local.ty
+                );
             }
-            local_types.push(Type::from_ty(ty, tyctx,method_instance));
+            local_types.push(Type::from_ty(ty, tyctx, method_instance));
         }
     }
     local_types

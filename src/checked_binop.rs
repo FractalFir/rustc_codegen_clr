@@ -1,7 +1,7 @@
 use rustc_middle::mir::{BinOp, Operand};
 use rustc_middle::ty::{Instance, IntTy, Ty, TyCtxt, TyKind, UintTy};
 
-use crate::cil_op::CILOp;
+use crate::cil_op::{CILOp, FieldDescriptor};
 use crate::r#type::Type;
 /// Preforms an checked binary operation.
 pub(crate) fn binop_checked<'tcx>(
@@ -17,8 +17,7 @@ pub(crate) fn binop_checked<'tcx>(
     let ty_a = operand_a.ty(&method.local_decls, tcx);
     let ty_b = operand_b.ty(&method.local_decls, tcx);
     assert_eq!(ty_a, ty_b);
-    let ty = Type::from_ty(ty_a, tcx,&method_instance);
-    todo!("Checked ops should return a tuple!");
+    let ty = Type::from_ty(ty_a, tcx, &method_instance);
     match binop {
         BinOp::Mul | BinOp::MulUnchecked => [ops_a, ops_b, mul(ty).into()]
             .into_iter()
@@ -37,39 +36,91 @@ pub(crate) fn binop_checked<'tcx>(
 }
 fn mul(tpe: Type) -> &'static [CILOp] {
     match tpe {
-        Type::I16 => &[CILOp::MulOvf, CILOp::ConvI16(true)],
-        Type::I32 => &[CILOp::MulOvf],
-        Type::I64 => &[CILOp::MulOvf],
         _ => todo!("Can't preform checked mul on type {tpe:?} yet!"),
     }
 }
-fn add(tpe: Type) -> &'static [CILOp] {
+fn add(tpe: Type) -> Vec<CILOp> {
+    let tuple = crate::r#type::simple_tuple(&[tpe.clone(),Type::Bool]);
+    let tuple_ty = tuple.clone().into();
     match tpe {
-        Type::I8 => &[CILOp::AddOvf, CILOp::ConvI8(true)],
-        Type::U8 => &[CILOp::AddOvfUn, CILOp::ConvU8(true)],
-        Type::I16 => &[CILOp::AddOvf, CILOp::ConvI16(true)],
-        Type::U16 => &[CILOp::AddOvfUn, CILOp::ConvU16(true)],
-        Type::I32 => &[CILOp::AddOvf],
-        Type::U32 => &[CILOp::AddOvfUn],
-        Type::I64 => &[CILOp::AddOvf],
-        Type::U64 => &[CILOp::AddOvfUn],
-        Type::USize => &[CILOp::AddOvfUn],
-        Type::ISize => &[CILOp::AddOvf],
+        Type::I32 => vec![
+            CILOp::NewTMPLocal(Type::I32.into()),
+            CILOp::SetTMPLocal,
+            CILOp::NewTMPLocal(Type::I32.into()),
+            CILOp::SetTMPLocal,
+
+            CILOp::LoadTMPLocal,
+            CILOp::LoadUnderTMPLocal(1),
+            CILOp::Add,
+            CILOp::Dup,
+
+            CILOp::NewTMPLocal(Type::I32.into()),
+            CILOp::SetTMPLocal,
+            CILOp::LoadUnderTMPLocal(1),
+            CILOp::LoadUnderTMPLocal(2),
+            CILOp::Or,
+            CILOp::Lt,
+            CILOp::NewTMPLocal(Type::I32.into()),
+            CILOp::SetTMPLocal,
+
+            CILOp::NewTMPLocal(Box::new(tuple_ty)),
+            CILOp::LoadAddresOfTMPLocal,
+            CILOp::LoadUnderTMPLocal(1),
+            CILOp::STField(FieldDescriptor::boxed(tuple.clone(),Type::GenericArg(1),"Item2".into())),
+
+            CILOp::LoadAddresOfTMPLocal,
+            CILOp::LoadUnderTMPLocal(2),
+            CILOp::STField(FieldDescriptor::boxed(tuple.clone(),Type::GenericArg(0),"Item1".into())),
+
+            CILOp::LoadTMPLocal,
+
+            CILOp::FreeTMPLocal,
+            CILOp::FreeTMPLocal,
+            CILOp::FreeTMPLocal,
+            CILOp::FreeTMPLocal,
+            CILOp::FreeTMPLocal,
+
+        ],
         _ => todo!("Can't preform checked add on type {tpe:?} yet!"),
     }
 }
 fn sub(tpe: Type) -> &'static [CILOp] {
     match tpe {
-        Type::I8 => &[CILOp::SubOvf, CILOp::ConvI8(true)],
-        Type::U8 => &[CILOp::SubOvfUn, CILOp::ConvU8(true)],
-        Type::I16 => &[CILOp::SubOvf, CILOp::ConvI16(true)],
-        Type::U16 => &[CILOp::SubOvfUn, CILOp::ConvU16(true)],
-        Type::I32 => &[CILOp::SubOvf],
-        Type::U32 => &[CILOp::SubOvfUn],
-        Type::I64 => &[CILOp::SubOvf],
-        Type::U64 => &[CILOp::SubOvfUn],
-        Type::USize => &[CILOp::SubOvfUn],
-        Type::ISize => &[CILOp::SubOvf],
         _ => todo!("Can't preform checked add on type {tpe:?} yet!"),
     }
 }
+// a b                  []
+// a b                  [u]
+// a                    [b]
+// a                    [b,u]
+
+//                      [b,a]
+// a                    [b,a]
+// a,b                  [b,a]
+// a+b                  [b,a]
+// a+b,a+b              [b,a]
+
+// a+b,a+b              [b,a,u]
+// a+b                  [b,a,a+b]
+// a+b,a                [b,a,a+b]
+// a+b,a,b              [b,a,a+b]
+// a+b,a|b              [b,a,a+b]
+// a+b<a|b              [b,a,a+b,u]
+// a+b<a|b              [b,a,a+b,a+b<a|b]
+
+//                      [b,a,a+b ,a+b<a|b,RES]
+// *RES                 [b,a,a+b ,a+b<a|b,RES]
+// *RES,a+b             [b,a,a+b ,a+b<a|b,RES]
+//                      [b,a,a+b ,a+b<a|b,RES]
+
+// *RES                 [b,a,a+b ,a+b<a|b,RES]
+// *RES,a+b<a|b         [b,a,a+b,a+b<a|b,RES]
+//                      [b,a,a+b,a+b<a|b,RES]
+
+// RES                  [b,a,a+b,a+b<a|b,RES]
+
+// RES                  [b,a,a+b,a+b<a|b]
+// RES                  [b,a,a+b]
+// RES                  [b,a]
+// RES                  [b]
+// RES                  []

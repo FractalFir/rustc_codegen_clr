@@ -47,9 +47,9 @@ pub fn handle_rvalue<'tcx>(
             crate::unop::unop(*binop, operand, tcx, method, method_instance)
         }
         Rvalue::Cast(CastKind::IntToInt, operand, target) => {
-            let target = crate::r#type::Type::from_ty(*target, tcx,&method_instance);
+            let target = crate::r#type::Type::from_ty(*target, tcx, &method_instance);
             let src = operand.ty(&method.local_decls, tcx);
-            let src = crate::r#type::Type::from_ty(src, tcx,&method_instance);
+            let src = crate::r#type::Type::from_ty(src, tcx, &method_instance);
             [
                 crate::operand::handle_operand(operand, tcx, method, method_instance),
                 crate::casts::int_to_int(src, target),
@@ -59,9 +59,9 @@ pub fn handle_rvalue<'tcx>(
             .collect()
         }
         Rvalue::Cast(CastKind::FloatToInt, operand, target) => {
-            let target = crate::r#type::Type::from_ty(*target, tcx,&method_instance);
+            let target = crate::r#type::Type::from_ty(*target, tcx, &method_instance);
             let src = operand.ty(&method.local_decls, tcx);
-            let src = crate::r#type::Type::from_ty(src, tcx,&method_instance);
+            let src = crate::r#type::Type::from_ty(src, tcx, &method_instance);
             [
                 crate::operand::handle_operand(operand, tcx, method, method_instance),
                 crate::casts::float_to_int(src, target),
@@ -71,9 +71,9 @@ pub fn handle_rvalue<'tcx>(
             .collect()
         }
         Rvalue::Cast(CastKind::IntToFloat, operand, target) => {
-            let target = crate::r#type::Type::from_ty(*target, tcx,&method_instance);
+            let target = crate::r#type::Type::from_ty(*target, tcx, &method_instance);
             let src = operand.ty(&method.local_decls, tcx);
-            let src = crate::r#type::Type::from_ty(src, tcx,&method_instance);
+            let src = crate::r#type::Type::from_ty(src, tcx, &method_instance);
             [
                 crate::operand::handle_operand(operand, tcx, method, method_instance),
                 crate::casts::int_to_float(src, target),
@@ -85,10 +85,10 @@ pub fn handle_rvalue<'tcx>(
         Rvalue::NullaryOp(op, ty) => match op {
             NullOp::SizeOf => {
                 let ty = crate::utilis::monomorphize(&method_instance, *ty, tcx);
-                let ty = Box::new(crate::r#type::Type::from_ty(ty, tcx,&method_instance));
+                let ty = Box::new(crate::r#type::Type::from_ty(ty, tcx, &method_instance));
                 vec![CILOp::SizeOf(ty)]
             }
-            NullOp::AlignOf=>vec![CILOp::LdcI64(align_of(*ty) as i64),CILOp::ConvUSize(false)],
+            NullOp::AlignOf => vec![CILOp::LdcI64(align_of(*ty) as i64), CILOp::ConvUSize(false)],
             _ => todo!("Unsuported nullary {op:?}!"),
         },
         Rvalue::Aggregate(aggregate_kind, field_index) => crate::aggregate::handle_aggregate(
@@ -101,8 +101,8 @@ pub fn handle_rvalue<'tcx>(
         ),
         Rvalue::Cast(CastKind::Transmute, operand, dst) => {
             let src = operand.ty(method, tcx);
-            let src = Type::from_ty(src, tcx,&method_instance);
-            let dst = Type::from_ty(*dst, tcx,&method_instance);
+            let src = Type::from_ty(src, tcx, &method_instance);
+            let dst = Type::from_ty(*dst, tcx, &method_instance);
             match (&src, &dst) {
                 (Type::ISize | Type::USize, Type::Ptr(_)) => {
                     handle_operand(operand, tcx, method, method_instance)
@@ -120,7 +120,7 @@ pub fn handle_rvalue<'tcx>(
         Rvalue::Discriminant(place) => {
             let mut ops = crate::place::place_adress(place, tcx, method, method_instance);
             let owner_ty = place.ty(method, tcx).ty;
-            let owner = crate::r#type::Type::from_ty(owner_ty, tcx,&method_instance);
+            let owner = crate::r#type::Type::from_ty(owner_ty, tcx, &method_instance);
             //TODO: chose proper tag type based on variant count of `owner`
             let discr_type = crate::r#type::Type::U8; //owner_ty
             let owner = if let crate::r#type::Type::DotnetType(dotnet_type) = owner {
@@ -136,7 +136,7 @@ pub fn handle_rvalue<'tcx>(
         Rvalue::Len(operand) => {
             let mut ops = crate::place::place_adress(operand, tcx, method, method_instance);
             let tpe = operand.ty(method, tcx);
-            let class = crate::r#type::Type::from_ty(tpe.ty, tcx,&method_instance)
+            let class = crate::r#type::Type::from_ty(tpe.ty, tcx, &method_instance)
                 .as_dotnet()
                 .expect("Can't get the dotnet type!");
             let signature = crate::function_sig::FnSig::new(
@@ -156,15 +156,15 @@ pub fn handle_rvalue<'tcx>(
     };
     res
 }
-fn align_of(ty:rustc_middle::ty::Ty)->u64{
-    use rustc_middle::ty::{IntTy,TyKind};
-    match ty.kind(){
-        TyKind::Int(int)=>match int{
-            IntTy::I8=>std::mem::align_of::<i8>() as u64,
-            _=>todo!("Can't calcuate align of int type {int:?}"),
+fn align_of(ty: rustc_middle::ty::Ty) -> u64 {
+    use rustc_middle::ty::{IntTy, TyKind};
+    match ty.kind() {
+        TyKind::Int(int) => match int {
+            IntTy::I8 => std::mem::align_of::<i8>() as u64,
+            _ => todo!("Can't calcuate align of int type {int:?}"),
         },
         //TODO: While always returing 8 for ADTs won't cause crashes, it is inefficent.
-        TyKind::Adt(_,_)=>8,
-        _=>todo!("Can't calcualte the aligement of type {ty:?}"),
+        TyKind::Adt(_, _) => 8,
+        _ => todo!("Can't calcualte the aligement of type {ty:?}"),
     }
 }

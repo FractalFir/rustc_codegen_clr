@@ -34,17 +34,18 @@ fn create_const_adt_from_bytes<'ctx>(
     match adt_def.adt_kind() {
         AdtKind::Struct => {
             let mut curr_offset = 0;
-            let cil_ty = Type::from_ty(ty, tyctx,&method_instance);
+            let cil_ty = Type::from_ty(ty, tyctx, &method_instance);
             let dotnet_ty = cil_ty.as_dotnet().expect("ADT must be a value type!");
             let mut creator_ops = vec![CILOp::NewTMPLocal(cil_ty.clone().into())];
             for (field_idx, field) in adt_def.all_fields().enumerate() {
                 let ftype = field.ty(tyctx, subst);
                 let sizeof = crate::utilis::compiletime_sizeof(ftype);
                 let field_bytes = &bytes[curr_offset..(curr_offset + sizeof)];
-                let field_ops = create_const_from_slice(ftype, tyctx, field_bytes,method_instance);
+                let field_ops = create_const_from_slice(ftype, tyctx, field_bytes, method_instance);
                 creator_ops.push(CILOp::LoadAddresOfTMPLocal);
                 creator_ops.extend(field_ops);
-                let cil_ftype = crate::utilis::generic_field_ty(ty, field_idx as u32, tyctx,method_instance);
+                let cil_ftype =
+                    crate::utilis::generic_field_ty(ty, field_idx as u32, tyctx, method_instance);
                 creator_ops.push(CILOp::STField(crate::cil_op::FieldDescriptor::boxed(
                     dotnet_ty.clone(),
                     cil_ftype,
@@ -66,12 +67,17 @@ fn create_const_adt_from_bytes<'ctx>(
     }
 }
 /// Returns the ops neceasry to create constant value of type `ty` with byte values matching the ones in the slice bytes
-fn create_const_from_slice<'ctx>(ty: Ty<'ctx>, tyctx: TyCtxt<'ctx>, bytes: &[u8],method_instance: Instance<'ctx>) -> Vec<CILOp> {
+fn create_const_from_slice<'ctx>(
+    ty: Ty<'ctx>,
+    tyctx: TyCtxt<'ctx>,
+    bytes: &[u8],
+    method_instance: Instance<'ctx>,
+) -> Vec<CILOp> {
     // TODO: Read up on the order of bytes inside a const allocation and ensure it is correct. All .NET target will be Little Enidian, but if we want to support
     // big enidian targets in the future, this will need to be revised.
     match ty.kind() {
         TyKind::Adt(adt_def, subst) => {
-            create_const_adt_from_bytes(ty, *adt_def, subst, tyctx, bytes,method_instance)
+            create_const_adt_from_bytes(ty, *adt_def, subst, tyctx, bytes, method_instance)
         }
         TyKind::Int(int) => match int {
             IntTy::I32 => vec![CILOp::LdcI32(i32::from_le_bytes(
@@ -99,7 +105,7 @@ fn create_const_from_data<'ctx>(
         size: Size::from_bytes((len as u64) - offset_bytes),
     };
     let bytes = memory.0.get_bytes_unchecked(range);
-    create_const_from_slice(ty, tyctx, bytes,method_instance)
+    create_const_from_slice(ty, tyctx, bytes, method_instance)
 }
 fn load_const_value<'ctx>(
     const_val: ConstValue<'ctx>,
@@ -113,14 +119,18 @@ fn load_const_value<'ctx>(
             load_const_scalar(scalar, const_ty, tyctx, method, method_instance)
         }
         ConstValue::ZeroSized => {
-            let tpe = Type::from_ty(const_ty, tyctx,&method_instance);
-            vec![CILOp::NewTMPLocal(tpe.into()),CILOp::LoadTMPLocal,CILOp::FreeTMPLocal]
+            let tpe = Type::from_ty(const_ty, tyctx, &method_instance);
+            vec![
+                CILOp::NewTMPLocal(tpe.into()),
+                CILOp::LoadTMPLocal,
+                CILOp::FreeTMPLocal,
+            ]
         }
         ConstValue::Slice { data, meta } => {
             todo!("Constant slice allocations are not supported yet data:{data:?},meta:{meta:?}!")
         }
         ConstValue::Indirect { alloc_id, offset } => {
-            create_const_from_data(const_ty, tyctx, alloc_id, offset.bytes(),method_instance)
+            create_const_from_data(const_ty, tyctx, alloc_id, offset.bytes(), method_instance)
             //todo!("Can't handle by-ref allocation {alloc_id:?} {offset:?}")
         } //_ => todo!("Unhandled const value {const_val:?} of type {const_ty:?}"),
     }
@@ -144,7 +154,7 @@ fn load_const_scalar<'ctx>(
                     let instance = Instance::mono(tyctx, def_id).polymorphize(tyctx);
                     let symbol_name = tyctx.symbol_name(instance).to_string().into();
                     let ty = tyctx.type_of(def_id).instantiate_identity();
-                    let tpe = Type::from_ty(ty, tyctx,&method_instance);
+                    let tpe = Type::from_ty(ty, tyctx, &method_instance);
                     return vec![CILOp::LDStaticField(
                         crate::cil_op::StaticFieldDescriptor::boxed(None, tpe, symbol_name),
                     )];
@@ -154,7 +164,7 @@ fn load_const_scalar<'ctx>(
             //panic!("alloc_id:{alloc_id:?}")
         }
     };
-    let tpe = Type::from_ty(scalar_type, tyctx,&method_instance);
+    let tpe = Type::from_ty(scalar_type, tyctx, &method_instance);
     match scalar_type.kind() {
         TyKind::Int(int_type) => load_const_int(scalar_u128, int_type),
         TyKind::Uint(uint_type) => load_const_uint(scalar_u128, uint_type),
