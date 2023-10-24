@@ -572,10 +572,13 @@ fn garag_to_usize<'tyctx>(garg: &GenericArg<'tyctx>, _ctx: TyCtxt<'tyctx>) -> u6
     }
 }
 /// Creates a tuple with no more than 8 elements.
-pub fn simple_tuple(elements:&[Type])->DotnetTypeRef{
+pub fn simple_tuple(elements: &[Type]) -> DotnetTypeRef {
     assert!(elements.len() <= 8,"Tuple ({elements:?}) contains more than 8 elements, so it can't be stored inside a simple tuple.");
-    let name = format!("System.ValueTuple`{element_count}",element_count = elements.len());
-    let mut dotnet = DotnetTypeRef::new(Some("System.Runtime"),&name);
+    let name = format!(
+        "System.ValueTuple`{element_count}",
+        element_count = elements.len()
+    );
+    let mut dotnet = DotnetTypeRef::new(Some("System.Runtime"), &name);
     dotnet.set_generics(elements);
     dotnet
 }

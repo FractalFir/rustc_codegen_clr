@@ -104,7 +104,11 @@ fn callvirt_managed<'ctx>(
     let asm = Some(asm).filter(|asm| !asm.is_empty());
     let class_name = garg_to_string(&subst_ref[1], tyctx);
     let is_valuetype = crate::utilis::garag_to_bool(&subst_ref[2], tyctx);
-    let managed_fn_name = garg_to_string(&subst_ref[3], tyctx);
+
+    let managed_fn_garg = &subst_ref[3];
+    let managed_fn_garg = crate::utilis::monomorphize(&method_instance, *managed_fn_garg, tyctx);
+    let managed_fn_name = garg_to_string(&managed_fn_garg, tyctx);
+
     let mut tpe = DotnetTypeRef::new(asm.as_ref().map(|x| x.as_str()), &class_name);
     tpe.set_valuetype(is_valuetype);
     let signature = FnSig::from_poly_sig(&fn_type.fn_sig(tyctx), tyctx, &method_instance)

@@ -484,7 +484,6 @@ fn place_elem_adress<'ctx>(
 
                 let field_desc = FieldDescriptor::boxed(curr_type, gen_field_type, field_name);
                 ((field_type).into(), vec![CILOp::LDFieldAdress(field_desc)])
-               
             }
             PlaceTy::EnumVariant(enm, var_idx) => {
                 let owner = crate::utilis::monomorphize(&method_instance, enm, tyctx);

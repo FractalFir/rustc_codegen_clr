@@ -41,57 +41,59 @@ fn mul(tpe: Type) -> &'static [CILOp] {
 }
 fn add(tpe: Type) -> Vec<CILOp> {
     match tpe {
-        Type::I8 =>checked_add_type(Type::I8,CILOp::ConvI8(false)),
-        Type::U8 =>checked_add_type(Type::U8,CILOp::ConvU8(false)),
-        Type::I16 =>checked_add_type(Type::I16,CILOp::ConvI16(false)),
-        Type::U16 =>checked_add_type(Type::U16,CILOp::ConvU16(false)),
-        Type::U32 =>checked_add_type(Type::U32,CILOp::Nop),
-        Type::I32 =>checked_add_type(Type::I32,CILOp::Nop),
-        Type::U64 =>checked_add_type(Type::U64,CILOp::Nop),
-        Type::I64 =>checked_add_type(Type::I64,CILOp::Nop),
+        Type::I8 => checked_add_type(Type::I8, CILOp::ConvI8(false)),
+        Type::U8 => checked_add_type(Type::U8, CILOp::ConvU8(false)),
+        Type::I16 => checked_add_type(Type::I16, CILOp::ConvI16(false)),
+        Type::U16 => checked_add_type(Type::U16, CILOp::ConvU16(false)),
+        Type::U32 => checked_add_type(Type::U32, CILOp::Nop),
+        Type::I32 => checked_add_type(Type::I32, CILOp::Nop),
+        Type::U64 => checked_add_type(Type::U64, CILOp::Nop),
+        Type::I64 => checked_add_type(Type::I64, CILOp::Nop),
         _ => todo!("Can't preform checked add on type {tpe:?} yet!"),
     }
 }
-fn checked_add_type(tpe:Type,truncate:CILOp)->Vec<CILOp>{
-    let tuple = crate::r#type::simple_tuple(&[tpe.clone(),Type::Bool]);
+fn checked_add_type(tpe: Type, truncate: CILOp) -> Vec<CILOp> {
+    let tuple = crate::r#type::simple_tuple(&[tpe.clone(), Type::Bool]);
     let tuple_ty = tuple.clone().into();
     vec![
         CILOp::NewTMPLocal(tpe.clone().into()),
-            CILOp::SetTMPLocal,
-            CILOp::NewTMPLocal(tpe.clone().into()),
-            CILOp::SetTMPLocal,
-
-            CILOp::LoadTMPLocal,
-            CILOp::LoadUnderTMPLocal(1),
-            CILOp::Add,
-            truncate,
-            CILOp::Dup,
-
-            CILOp::NewTMPLocal(tpe.clone().into()),
-            CILOp::SetTMPLocal,
-            CILOp::LoadUnderTMPLocal(1),
-            CILOp::LoadUnderTMPLocal(2),
-            CILOp::Or,
-            CILOp::Lt,
-            CILOp::NewTMPLocal(Type::Bool.into()),
-            CILOp::SetTMPLocal,
-
-            CILOp::NewTMPLocal(Box::new(tuple_ty)),
-            CILOp::LoadAddresOfTMPLocal,
-            CILOp::LoadUnderTMPLocal(1),
-            CILOp::STField(FieldDescriptor::boxed(tuple.clone(),Type::GenericArg(1),"Item2".into())),
-
-            CILOp::LoadAddresOfTMPLocal,
-            CILOp::LoadUnderTMPLocal(2),
-            CILOp::STField(FieldDescriptor::boxed(tuple.clone(),Type::GenericArg(0),"Item1".into())),
-
-            CILOp::LoadTMPLocal,
-
-            CILOp::FreeTMPLocal,
-            CILOp::FreeTMPLocal,
-            CILOp::FreeTMPLocal,
-            CILOp::FreeTMPLocal,
-            CILOp::FreeTMPLocal,
+        CILOp::SetTMPLocal,
+        CILOp::NewTMPLocal(tpe.clone().into()),
+        CILOp::SetTMPLocal,
+        CILOp::LoadTMPLocal,
+        CILOp::LoadUnderTMPLocal(1),
+        CILOp::Add,
+        truncate,
+        CILOp::Dup,
+        CILOp::NewTMPLocal(tpe.clone().into()),
+        CILOp::SetTMPLocal,
+        CILOp::LoadUnderTMPLocal(1),
+        CILOp::LoadUnderTMPLocal(2),
+        CILOp::Or,
+        CILOp::Lt,
+        CILOp::NewTMPLocal(Type::Bool.into()),
+        CILOp::SetTMPLocal,
+        CILOp::NewTMPLocal(Box::new(tuple_ty)),
+        CILOp::LoadAddresOfTMPLocal,
+        CILOp::LoadUnderTMPLocal(1),
+        CILOp::STField(FieldDescriptor::boxed(
+            tuple.clone(),
+            Type::GenericArg(1),
+            "Item2".into(),
+        )),
+        CILOp::LoadAddresOfTMPLocal,
+        CILOp::LoadUnderTMPLocal(2),
+        CILOp::STField(FieldDescriptor::boxed(
+            tuple.clone(),
+            Type::GenericArg(0),
+            "Item1".into(),
+        )),
+        CILOp::LoadTMPLocal,
+        CILOp::FreeTMPLocal,
+        CILOp::FreeTMPLocal,
+        CILOp::FreeTMPLocal,
+        CILOp::FreeTMPLocal,
+        CILOp::FreeTMPLocal,
     ]
 }
 fn sub(tpe: Type) -> &'static [CILOp] {
