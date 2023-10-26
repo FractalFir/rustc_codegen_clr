@@ -5,9 +5,10 @@ use crate::{
     access_modifier::AccessModifer, codegen_error::CodegenError, function_sig::FnSig,
     method::Method, r#type::Type, type_def::TypeDef,
 };
-use rustc_middle::mir::{mono::MonoItem, Local, LocalDecl};
+use rustc_middle::mir::{mono::MonoItem,Body, Local, LocalDecl,Statement};
 use rustc_middle::ty::{Instance, ParamEnv, TyCtxt};
 use std::collections::HashSet;
+use std::ops::Deref;
 
 use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug)]
@@ -75,7 +76,7 @@ impl Assembly {
                     ops.push(CILOp::Comment(format!("{statement:?}").into()));
                 }
                 let statement_ops =
-                    crate::statement::handle_statement(statement, mir, tcx, mir, instance);
+                    crate::statement::handle_statement(statement, tcx, mir, instance);
                 crate::utilis::check_statement(&statement_ops, statement);
                 ops.extend(statement_ops);
                 if crate::INSERT_MIR_DEBUG_COMMENTS {

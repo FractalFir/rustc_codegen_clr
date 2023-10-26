@@ -203,6 +203,7 @@ impl Type {
                 Self::Ptr(Box::new(Self::generic_from_ty(type_and_mut.ty, tyctx)))
             }
             TyKind::Ref(_region, inner, _mut) => match inner.kind() {
+                /*
                 TyKind::Str => {
                     let str_type = DotnetTypeRef {
                         assembly: None,
@@ -216,7 +217,7 @@ impl Type {
                     let mut slice = DotnetTypeRef::new(None, "RustSlice");
                     slice.set_generics(&[Type::generic_from_ty(*inner, tyctx)]);
                     slice.into()
-                }
+                }*/
                 _ => {
                     println!("Ref kind {:?}", inner.kind());
                     Self::Ptr(Box::new(Self::generic_from_ty(*inner, tyctx)))
@@ -320,6 +321,7 @@ impl Type {
                 Self::Ptr(Box::new(Self::from_ty(type_and_mut.ty, tyctx, method)))
             }
             TyKind::Ref(_region, inner, _mut) => match inner.kind() {
+                /* 
                 TyKind::Str => {
                     let str_type = DotnetTypeRef {
                         assembly: None,
@@ -334,6 +336,7 @@ impl Type {
                     slice.set_generics(&[Type::from_ty(*inner, tyctx, method)]);
                     slice.into()
                 } //todo!("Slice references not yet handled!"),
+                */
                 _ => {
                     println!("Ref kind {:?}", inner.kind());
                     Self::Ptr(Box::new(Self::from_ty(*inner, tyctx, method)))

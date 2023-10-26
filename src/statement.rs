@@ -5,9 +5,8 @@ use rustc_middle::{
 };
 pub fn handle_statement<'tcx>(
     statement: &Statement<'tcx>,
-    _body: &'tcx Body<'tcx>,
     tyctx: TyCtxt<'tcx>,
-    method: &rustc_middle::mir::Body<'tcx>,
+    method: &Body<'tcx>,
     method_instance: Instance<'tcx>,
 ) -> Vec<CILOp> {
     let kind = &statement.kind;

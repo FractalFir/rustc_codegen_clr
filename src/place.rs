@@ -173,6 +173,7 @@ fn place_elem_get<'a>(
         PlaceElem::Deref => deref_op(pointed_type(curr_type).into(), ctx, &method_instance),
         PlaceElem::Field(index, _field_type) => match curr_type {
             PlaceTy::Ty(curr_type) => {
+                let curr_type = curr_type;
                 let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, ctx);
                 let field_type = crate::utilis::generic_field_ty(
                     curr_type,
@@ -180,7 +181,9 @@ fn place_elem_get<'a>(
                     ctx,
                     method_instance,
                 );
+               
                 let field_name = field_name(curr_type, index.as_u32());
+                println!("Generic type of field named {field_name:?} is {field_type:?}");
                 let curr_type = crate::r#type::Type::from_ty(curr_type, ctx, &method_instance);
                 let curr_type = if let crate::r#type::Type::DotnetType(dotnet_type) = curr_type {
                     dotnet_type.as_ref().clone()
