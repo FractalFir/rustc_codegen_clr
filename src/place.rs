@@ -152,10 +152,8 @@ fn place_elem_set_at<'a>(
     let index_ty = Type::USize;
     let element_ty = crate::r#type::element_type(curr_ty);
 
-    let signature = crate::function_sig::FnSig::new(
-        &[tpe.clone(), index_ty, Type::GenericArg(0)],
-        &Type::GenericArg(0),
-    );
+    let signature =
+        crate::function_sig::FnSig::new(&[tpe.clone(), index_ty, Type::GenericArg(0)], &Type::Void);
     vec![CILOp::Call(crate::cil_op::CallSite::boxed(
         Some(class.as_ref().clone()),
         "set_Item".into(),
@@ -181,7 +179,7 @@ fn place_elem_get<'a>(
                     ctx,
                     method_instance,
                 );
-               
+
                 let field_name = field_name(curr_type, index.as_u32());
                 println!("Generic type of field named {field_name:?} is {field_type:?}");
                 let curr_type = crate::r#type::Type::from_ty(curr_type, ctx, &method_instance);

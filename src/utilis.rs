@@ -129,6 +129,10 @@ pub fn garg_to_string<'tyctx>(garg: &GenericArg<'tyctx>, ctx: TyCtxt<'tyctx>) ->
     let str_const = garg
         .as_const()
         .expect("Generic argument was not an constant!");
+
+    let val_tree = str_const
+        .eval(ctx, ParamEnv::reveal_all(), None)
+        .expect("Could not eval const!");
     let tpe = str_const
         .ty()
         .builtin_deref(true)
@@ -138,8 +142,8 @@ pub fn garg_to_string<'tyctx>(garg: &GenericArg<'tyctx>, ctx: TyCtxt<'tyctx>) ->
     } else {
         let kind = str_const.kind();
         match kind {
-            ConstKind::Value(value) => {
-                let raw_bytes = value
+            ConstKind::Value(_) => {
+                let raw_bytes = val_tree
                     .try_to_raw_bytes(ctx, str_const.ty())
                     .expect("String const did not contain valid string!");
                 String::from_utf8(raw_bytes.into()).expect("String constant invalid!")

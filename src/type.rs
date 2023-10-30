@@ -321,7 +321,7 @@ impl Type {
                 Self::Ptr(Box::new(Self::from_ty(type_and_mut.ty, tyctx, method)))
             }
             TyKind::Ref(_region, inner, _mut) => match inner.kind() {
-                /* 
+                /*
                 TyKind::Str => {
                     let str_type = DotnetTypeRef {
                         assembly: None,

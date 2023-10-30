@@ -5,7 +5,7 @@ use crate::{
     access_modifier::AccessModifer, codegen_error::CodegenError, function_sig::FnSig,
     method::Method, r#type::Type, type_def::TypeDef,
 };
-use rustc_middle::mir::{mono::MonoItem,Body, Local, LocalDecl,Statement};
+use rustc_middle::mir::{mono::MonoItem, Body, Local, LocalDecl, Statement};
 use rustc_middle::ty::{Instance, ParamEnv, TyCtxt};
 use std::collections::HashSet;
 use std::ops::Deref;
@@ -73,7 +73,7 @@ impl Assembly {
             last_bb_id += 1;
             for statement in &block_data.statements {
                 if crate::INSERT_MIR_DEBUG_COMMENTS {
-                    ops.push(CILOp::Comment(format!("{statement:?}").into()));
+                    rustc_middle::ty::print::with_no_trimmed_paths! {ops.push(CILOp::Comment(format!("{statement:?}").into()))};
                 }
                 let statement_ops =
                     crate::statement::handle_statement(statement, tcx, mir, instance);

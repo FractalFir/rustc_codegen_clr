@@ -1,5 +1,21 @@
-use std::path::Path;
 use std::path::PathBuf;
+#[cfg(test)]
+fn peverify(file_path: &str, test_dir: &str) {
+    if !*IS_PEVERIFY_PRESENT {
+        //No PEVerify, can't check assemblies.
+        let out = std::process::Command::new("peverify")
+            .current_dir(test_dir)
+            .args([file_path])
+            .output()
+            .expect("failed to verfiy test assebmly!");
+        let stderr = String::from_utf8(out.stderr).expect("Stdout is not UTF8 String!");
+        assert!(
+            stderr.is_empty(),
+            "Verification of a test program failed with message {stderr:}"
+        );
+    }
+}
+#[cfg(test)]
 fn test_dotnet_executable(file_path: &str, test_dir: &str) {
     use std::io::Write;
 
@@ -85,15 +101,17 @@ macro_rules! test_lib {
                         .expect("rustc error contained non-UTF8 characters.");
                     panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
                 }
+                let test_dll = concat!("./", stringify!($test_name), ".dll");
                 let out = std::process::Command::new(
                     super::RUSTC_CODEGEN_CLR_LINKER.display().to_string(),
                 )
                 .current_dir("./test/out")
                 .arg("-o")
-                .arg(concat!("./", stringify!($test_name), ".dll"))
+                .arg(test_dll)
                 .arg(concat!("./", stringify!($test_name), ".rlib"))
                 .output()
                 .unwrap();
+                super::peverify(test_dll, "./test/out");
                 // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
                 if !out.stderr.is_empty() {
                     let stdout = String::from_utf8(out.stdout)
@@ -143,15 +161,17 @@ macro_rules! test_lib {
                         .expect("rustc error contained non-UTF8 characters.");
                     panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
                 }
+                let test_dll = concat!("./dbg_", stringify!($test_name), ".dll");
                 let out = std::process::Command::new(
                     super::RUSTC_CODEGEN_CLR_LINKER.display().to_string(),
                 )
                 .current_dir("./test/out")
                 .arg("-o")
-                .arg(concat!("./", stringify!($test_name), ".dll"))
+                .arg(test_dll)
                 .arg(concat!("./", stringify!($test_name), ".rlib"))
                 .output()
                 .unwrap();
+                super::peverify(test_dll, "./test/out");
                 // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
                 if !out.stderr.is_empty() {
                     let stdout = String::from_utf8(out.stdout)
@@ -203,6 +223,7 @@ macro_rules! run_test {
                     panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
                 }
                 let exec_path = concat!("../", stringify!($test_name));
+                super::peverify(exec_path, test_dir);
                 super::test_dotnet_executable(exec_path, test_dir);
             }
             #[test]
@@ -242,6 +263,7 @@ macro_rules! run_test {
                     panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
                 }
                 let exec_path = format!("../{test_name}");
+                super::peverify(&exec_path, test_dir);
                 super::test_dotnet_executable(&exec_path, test_dir);
             }
         }
@@ -249,78 +271,80 @@ macro_rules! run_test {
 }
 macro_rules! cargo_test {
     ($test_name:ident) => {
-        mod $test_name{
+        mod $test_name {
             #[test]
-        fn debug() {
-            let test_dir = concat!("./cargo_tests/", stringify!($test_name), "/");
-            // Ensures the test directory is present
-            std::fs::create_dir_all(test_dir).expect("Could not setup the test env");
-            // Builds the backend if neceasry
-            super::RUSTC_BUILD_STATUS.as_ref().expect("Could not build rustc!");
-            let backend = super::absolute_backend_path();
-            let backend = backend.display();
-            let linker = super::RUSTC_CODEGEN_CLR_LINKER.display();
-            let rustflags = format!("-Z codegen-backend={backend} -C linker={linker}");
-            // Compiles the test project
-            let out = std::process::Command::new("cargo")
-                .env("RUSTFLAGS", &rustflags)
-                .current_dir(test_dir)
-                .args([
-                    "build",
-                ])
-                .output()
-                .expect("failed to execute process");
-            // panic!("out:{out:?}");
-            // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
-            if !out.stderr.is_empty() {
-                let stdout = String::from_utf8(out.stdout)
-                    .expect("rustc error contained non-UTF8 characters.");
-                let stderr = String::from_utf8(out.stderr)
-                    .expect("rustc error contained non-UTF8 characters.");
-                if !stderr.contains("Finished") {
-                    panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
+            fn debug() {
+                let test_dir = concat!("./cargo_tests/", stringify!($test_name), "/");
+                // Ensures the test directory is present
+                std::fs::create_dir_all(test_dir).expect("Could not setup the test env");
+                // Builds the backend if neceasry
+                super::RUSTC_BUILD_STATUS
+                    .as_ref()
+                    .expect("Could not build rustc!");
+                let backend = super::absolute_backend_path();
+                let backend = backend.display();
+                let linker = super::RUSTC_CODEGEN_CLR_LINKER.display();
+                let rustflags = format!("-Z codegen-backend={backend} -C linker={linker}");
+                // Compiles the test project
+                let out = std::process::Command::new("cargo")
+                    .env("RUSTFLAGS", &rustflags)
+                    .current_dir(test_dir)
+                    .args(["build"])
+                    .output()
+                    .expect("failed to execute process");
+                // panic!("out:{out:?}");
+                // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
+                if !out.stderr.is_empty() {
+                    let stdout = String::from_utf8(out.stdout)
+                        .expect("rustc error contained non-UTF8 characters.");
+                    let stderr = String::from_utf8(out.stderr)
+                        .expect("rustc error contained non-UTF8 characters.");
+                    if !stderr.contains("Finished") {
+                        panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
+                    }
                 }
+                //let exec_path = concat!("../", stringify!($test_name));
+                //test_dotnet_executable(exec_path, test_dir);
             }
-            //let exec_path = concat!("../", stringify!($test_name));
-            //test_dotnet_executable(exec_path, test_dir);
-        }
-        #[test]
-        fn release() {
-            let test_dir = concat!("./cargo_tests/", stringify!($test_name), "/");
-            // Ensures the test directory is present
-            std::fs::create_dir_all(test_dir).expect("Could not setup the test env");
-            // Builds the backend if neceasry
-            super::RUSTC_BUILD_STATUS.as_ref().expect("Could not build rustc!");
-            let backend = super::absolute_backend_path();
-            let backend = backend.display();
-            let linker = super::RUSTC_CODEGEN_CLR_LINKER.display();
-            let rustflags = format!("-Z codegen-backend={backend} -C linker={linker}");
-            // Compiles the test project
-            let out = std::process::Command::new("cargo")
-                .env("RUSTFLAGS", &rustflags)
-                .current_dir(test_dir)
-                .args([
-                    "build",
-                    "--release", //"--target",
-                                 //"clr64-unknown-clr"
-                ])
-                .output()
-                .expect("failed to execute process");
-            // panic!("out:{out:?}");
-            // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
-            if !out.stderr.is_empty() {
-                let stdout = String::from_utf8(out.stdout)
-                    .expect("rustc error contained non-UTF8 characters.");
-                let stderr = String::from_utf8(out.stderr)
-                    .expect("rustc error contained non-UTF8 characters.");
-                if !stderr.contains("Finished") {
-                    panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
+            #[test]
+            fn release() {
+                let test_dir = concat!("./cargo_tests/", stringify!($test_name), "/");
+                // Ensures the test directory is present
+                std::fs::create_dir_all(test_dir).expect("Could not setup the test env");
+                // Builds the backend if neceasry
+                super::RUSTC_BUILD_STATUS
+                    .as_ref()
+                    .expect("Could not build rustc!");
+                let backend = super::absolute_backend_path();
+                let backend = backend.display();
+                let linker = super::RUSTC_CODEGEN_CLR_LINKER.display();
+                let rustflags = format!("-Z codegen-backend={backend} -C linker={linker}");
+                // Compiles the test project
+                let out = std::process::Command::new("cargo")
+                    .env("RUSTFLAGS", &rustflags)
+                    .current_dir(test_dir)
+                    .args([
+                        "build",
+                        "--release", //"--target",
+                                     //"clr64-unknown-clr"
+                    ])
+                    .output()
+                    .expect("failed to execute process");
+                // panic!("out:{out:?}");
+                // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
+                if !out.stderr.is_empty() {
+                    let stdout = String::from_utf8(out.stdout)
+                        .expect("rustc error contained non-UTF8 characters.");
+                    let stderr = String::from_utf8(out.stderr)
+                        .expect("rustc error contained non-UTF8 characters.");
+                    if !stderr.contains("Finished") {
+                        panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
+                    }
                 }
+                //let exec_path = concat!("../", stringify!($test_name));
+                //test_dotnet_executable(exec_path, test_dir);
             }
-            //let exec_path = concat!("../", stringify!($test_name));
-            //test_dotnet_executable(exec_path, test_dir);
         }
-    }
     };
 }
 #[cfg(debug_assertions)]
@@ -469,6 +493,7 @@ lazy_static! {
         )
     };
     static ref IS_MONO_PRESENT: bool = std::process::Command::new("mono").output().is_ok();
+    static ref IS_PEVERIFY_PRESENT: bool = std::process::Command::new("peverify").output().is_ok();
     static ref IS_DOTNET_PRESENT: bool = std::process::Command::new("dotnet").output().is_ok();
     static ref RUSTC_BUILD_STATUS: Result<(), String> = build_backend();
     static ref RUSTC_CODEGEN_CLR_LINKER:PathBuf = {
