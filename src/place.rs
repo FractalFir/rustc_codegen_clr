@@ -171,7 +171,6 @@ fn place_elem_get<'a>(
         PlaceElem::Deref => deref_op(pointed_type(curr_type).into(), ctx, &method_instance),
         PlaceElem::Field(index, _field_type) => match curr_type {
             PlaceTy::Ty(curr_type) => {
-                let curr_type = curr_type;
                 let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, ctx);
                 let field_type = crate::utilis::generic_field_ty(
                     curr_type,
