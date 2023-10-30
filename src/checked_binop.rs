@@ -1,5 +1,5 @@
 use rustc_middle::mir::{BinOp, Operand};
-use rustc_middle::ty::{Instance, IntTy, Ty, TyCtxt, TyKind, UintTy};
+use rustc_middle::ty::{Instance, TyCtxt};
 
 use crate::cil_op::{CILOp, FieldDescriptor};
 use crate::r#type::Type;
@@ -23,10 +23,7 @@ pub(crate) fn binop_checked<'tcx>(
             .into_iter()
             .flatten()
             .collect(),
-        BinOp::Add => [ops_a, ops_b, add(ty).into()]
-            .into_iter()
-            .flatten()
-            .collect(),
+        BinOp::Add => [ops_a, ops_b, add(ty)].into_iter().flatten().collect(),
         BinOp::Sub => [ops_a, ops_b, sub(ty).into()]
             .into_iter()
             .flatten()
@@ -35,9 +32,7 @@ pub(crate) fn binop_checked<'tcx>(
     }
 }
 fn mul(tpe: Type) -> &'static [CILOp] {
-    match tpe {
-        _ => todo!("Can't preform checked mul on type {tpe:?} yet!"),
-    }
+    todo!("Can't preform checked mul on type {tpe:?} yet!")
 }
 fn add(tpe: Type) -> Vec<CILOp> {
     match tpe {
@@ -155,9 +150,7 @@ fn checked_sadd_type(tpe: Type, truncate: CILOp, mask: CILOp) -> Vec<CILOp> {
     ]
 }
 fn sub(tpe: Type) -> &'static [CILOp] {
-    match tpe {
-        _ => todo!("Can't preform checked add on type {tpe:?} yet!"),
-    }
+    todo!("Can't preform checked add on type {tpe:?} yet!")
 }
 #[test]
 fn unsigned_add() {

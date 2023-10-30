@@ -1,6 +1,6 @@
 use rustc_middle::ty::{
-    AdtDef, AliasKind, Binder, BoundVariableKind, Const, ConstKind, EarlyBinder, GenericArg,
-    Instance, ParamEnv, SymbolName, Ty, TyCtxt, TyKind, TypeFoldable,
+    AdtDef, Binder, Const, ConstKind, EarlyBinder, GenericArg, Instance, ParamEnv, SymbolName, Ty,
+    TyCtxt, TyKind, TypeFoldable,
 };
 pub const BEGIN_TRY: &str = "rustc_clr_interop_begin_try";
 pub const END_TRY: &str = "rustc_clr_interop_end_try";

@@ -56,7 +56,7 @@ pub fn handle_aggregate<'tyctx>(
             let array_type = DotnetTypeRef::array(element.clone(), value_index.len());
             let mut ops: Vec<CILOp> = Vec::with_capacity(values.len() * 2);
             let array_getter =
-                super::place::place_adress(&target_location, tyctx, method, method_instance);
+                super::place::place_adress(target_location, tyctx, method, method_instance);
             let sig = crate::function_sig::FnSig::new(
                 &[array_type.clone().into(), Type::USize, Type::GenericArg(0)],
                 &Type::Void,
@@ -71,7 +71,7 @@ pub fn handle_aggregate<'tyctx>(
                 ops.push(CILOp::Call(call_site.clone()));
             }
             ops.extend(super::place::place_get(
-                &target_location,
+                target_location,
                 tyctx,
                 method,
                 method_instance,
@@ -83,11 +83,11 @@ pub fn handle_aggregate<'tyctx>(
                 todo!("Tuples with more than 8 fields are not supported yet.");
             } else {
                 let tuple_getter =
-                    super::place::place_adress(&target_location, tyctx, method, method_instance);
+                    super::place::place_adress(target_location, tyctx, method, method_instance);
                 let types: Vec<_> = value_index
                     .iter()
                     .map(|operand| {
-                        (Type::from_ty(operand.ty(method, tyctx), tyctx, &method_instance))
+                        Type::from_ty(operand.ty(method, tyctx), tyctx, &method_instance)
                     })
                     .collect();
                 let dotnet_tpe = crate::r#type::tuple_type(&types);
@@ -103,7 +103,7 @@ pub fn handle_aggregate<'tyctx>(
                     )));
                 }
                 ops.extend(super::place::place_get(
-                    &target_location,
+                    target_location,
                     tyctx,
                     method,
                     method_instance,

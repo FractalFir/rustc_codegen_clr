@@ -61,7 +61,7 @@ pub const PANIC_ON_ERROR: bool = false;
 #[macro_export]
 macro_rules! codegen_error {
     () => {
-        let mce = crate::codegen_error::MethodCodegenError::new(file!(),line!(),column!(),format!());
+        let mce = $crate::codegen_error::MethodCodegenError::new(file!(),line!(),column!(),format!());
         if crate::codegen_error::PANIC_ON_ERROR{
             panic!()
         }

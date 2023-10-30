@@ -281,24 +281,24 @@ impl TypeDef {
         res
     }
 }
-impl Into<Type> for TypeDef {
-    fn into(self) -> Type {
-        Type::DotnetType(DotnetTypeRef::new(None, self.name()).into())
+impl From<TypeDef> for Type {
+    fn from(val: TypeDef) -> Type {
+        Type::DotnetType(DotnetTypeRef::new(None, val.name()).into())
     }
 }
-impl Into<Type> for &TypeDef {
-    fn into(self) -> Type {
-        Type::DotnetType(DotnetTypeRef::new(None, self.name()).into())
+impl From<&TypeDef> for Type {
+    fn from(val: &TypeDef) -> Type {
+        Type::DotnetType(DotnetTypeRef::new(None, val.name()).into())
     }
 }
-impl Into<DotnetTypeRef> for TypeDef {
-    fn into(self) -> DotnetTypeRef {
-        DotnetTypeRef::new(None, self.name()).into()
+impl From<TypeDef> for DotnetTypeRef {
+    fn from(val: TypeDef) -> DotnetTypeRef {
+        DotnetTypeRef::new(None, val.name())
     }
 }
-impl Into<DotnetTypeRef> for &TypeDef {
-    fn into(self) -> DotnetTypeRef {
-        DotnetTypeRef::new(None, self.name()).into()
+impl From<&TypeDef> for DotnetTypeRef {
+    fn from(val: &TypeDef) -> DotnetTypeRef {
+        DotnetTypeRef::new(None, val.name())
     }
 }
 pub fn escape_field_name(name: &str) -> IString {
@@ -393,7 +393,7 @@ pub fn get_array_type(element_count: usize) -> TypeDef {
     let mut get_item_usize = Method::new(
         AccessModifer::Public,
         false,
-        crate::function_sig::FnSig::new(&[(&def).into(), Type::USize], &Type::GenericArg(0).into()),
+        crate::function_sig::FnSig::new(&[(&def).into(), Type::USize], &Type::GenericArg(0)),
         "get_Item",
         vec![],
     );

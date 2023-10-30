@@ -11,7 +11,7 @@ use crate::{
 };
 use rustc_middle::ty::InstanceDef;
 use rustc_middle::{
-    mir::{Body, Const, ConstValue, Operand, Place, SwitchTargets, Terminator, TerminatorKind},
+    mir::{Body, Operand, Place, SwitchTargets, Terminator, TerminatorKind},
     ty::{GenericArg, Instance, ParamEnv, Ty, TyCtxt, TyKind},
 };
 use rustc_span::def_id::DefId;
@@ -40,7 +40,7 @@ fn call_managed<'ctx>(
     let class_name = garg_to_string(&subst_ref[1], tyctx);
     let is_valuetype = crate::utilis::garag_to_bool(&subst_ref[2], tyctx);
     let managed_fn_name = garg_to_string(&subst_ref[3], tyctx);
-    let mut tpe = DotnetTypeRef::new(asm.as_ref().map(|x| x.as_str()), &class_name);
+    let mut tpe = DotnetTypeRef::new(asm.as_deref(), &class_name);
     tpe.set_valuetype(is_valuetype);
     let signature = FnSig::from_poly_sig(&fn_type.fn_sig(tyctx), tyctx, &method_instance)
         .expect("Can't get the function signature");
@@ -110,7 +110,7 @@ fn callvirt_managed<'ctx>(
     let managed_fn_garg = crate::utilis::monomorphize(&method_instance, *managed_fn_garg, tyctx);
     let managed_fn_name = garg_to_string(&managed_fn_garg, tyctx);
 
-    let mut tpe = DotnetTypeRef::new(asm.as_ref().map(|x| x.as_str()), &class_name);
+    let mut tpe = DotnetTypeRef::new(asm.as_deref(), &class_name);
     tpe.set_valuetype(is_valuetype);
     let signature = FnSig::from_poly_sig(&fn_type.fn_sig(tyctx), tyctx, &method_instance)
         .expect("Can't get the function signature");
@@ -179,7 +179,7 @@ fn call_ctor<'ctx>(
     let class_name = garg_to_string(&subst_ref[1], tyctx);
     // Check if the costructed object is valuetype. TODO: this may be unnecesary. Are valuetpes constructed using newobj?
     let is_valuetype = crate::utilis::garag_to_bool(&subst_ref[2], tyctx);
-    let mut tpe = DotnetTypeRef::new(asm.as_ref().map(|x| x.as_str()), &class_name);
+    let mut tpe = DotnetTypeRef::new(asm.as_deref(), &class_name);
     tpe.set_valuetype(is_valuetype);
     // If no arguments, inputs don't have to be handled, so a simpler call handling is used.
     if argc == 0 {
@@ -543,7 +543,9 @@ fn throw_assert_msg<'ctx>(
             let mut ops = Vec::with_capacity(8);
             let string_class = crate::utilis::string_class();
             ops.push(CILOp::LdStr(
-                format!("Missaligned pointer dereference. required: ").into(),
+                "Missaligned pointer dereference. required: "
+                    .to_string()
+                    .into(),
             ));
             ops.extend(handle_operand(required, tyctx, method, method_instance));
             let usize_class = crate::utilis::usize_class();
@@ -585,7 +587,7 @@ fn throw_assert_msg<'ctx>(
             let mut ops = Vec::with_capacity(8);
             let string_class = crate::utilis::string_class();
             ops.push(CILOp::LdStr(
-                format!("attempt to neg with overflow value:").into(),
+                "attempt to neg with overflow value:".to_string().into(),
             ));
             ops.extend(handle_operand(value, tyctx, method, method_instance));
             let usize_class = crate::utilis::usize_class();

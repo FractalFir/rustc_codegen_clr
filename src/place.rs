@@ -127,7 +127,7 @@ fn place_elem_get_at<'a>(
         panic!("Can't index into type {tpe:?}");
     };
     let index_ty = Type::USize;
-    let element_ty = crate::r#type::element_type(curr_ty);
+    let _element_ty = crate::r#type::element_type(curr_ty);
 
     let signature = crate::function_sig::FnSig::new(&[tpe.clone(), index_ty], &Type::GenericArg(0));
     vec![CILOp::Call(crate::cil_op::CallSite::boxed(
@@ -150,7 +150,7 @@ fn place_elem_set_at<'a>(
         panic!("Can't index into type {tpe:?}");
     };
     let index_ty = Type::USize;
-    let element_ty = crate::r#type::element_type(curr_ty);
+    let _element_ty = crate::r#type::element_type(curr_ty);
 
     let signature =
         crate::function_sig::FnSig::new(&[tpe.clone(), index_ty, Type::GenericArg(0)], &Type::Void);
@@ -305,7 +305,7 @@ fn place_elem_body<'ctx>(
     curr_type: PlaceTy<'ctx>,
     tyctx: TyCtxt<'ctx>,
     method_instance: Instance<'ctx>,
-    body: &rustc_middle::mir::Body,
+    _body: &rustc_middle::mir::Body,
 ) -> (PlaceTy<'ctx>, Vec<CILOp>) {
     let curr_type = curr_type.monomorphize(&method_instance, tyctx);
     assert_morphic!(curr_type);
@@ -445,7 +445,7 @@ fn place_elem_adress<'ctx>(
     curr_type: PlaceTy<'ctx>,
     tyctx: TyCtxt<'ctx>,
     method_instance: Instance<'ctx>,
-    body: &rustc_middle::mir::Body,
+    _body: &rustc_middle::mir::Body,
 ) -> (PlaceTy<'ctx>, Vec<CILOp>) {
     let curr_type = curr_type.monomorphize(&method_instance, tyctx);
     assert_morphic!(curr_type);
@@ -783,7 +783,7 @@ impl<'ctx> PlaceTy<'ctx> {
         match self {
             Self::Ty(ty) => ty.kind(),
             //TODO: find a better way to get the emum variant!
-            Self::EnumVariant(ty, variant) => ty.kind(),
+            Self::EnumVariant(ty, _variant) => ty.kind(),
         }
     }
 }

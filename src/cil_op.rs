@@ -131,12 +131,12 @@ impl CallSite {
     }
     /// All inputs. Includes impilcit `this` argument for instance functions.
     pub fn inputs(&self) -> &[crate::r#type::Type] {
-        &self.signature.inputs()
+        self.signature.inputs()
     }
     /// Inputs, with the implicit `this` skipped if needed.
     pub fn explicit_inputs(&self) -> &[crate::r#type::Type] {
         if self.is_static || self.inputs().is_empty() {
-            &self.signature.inputs()
+            self.signature.inputs()
         } else {
             &self.signature.inputs()[1..]
         }
@@ -391,10 +391,10 @@ impl CILOp {
             CILOp::NewTMPLocal(_) | CILOp::FreeTMPLocal => 0,
             CILOp::LoadAddresOfTMPLocal | CILOp::LoadUnderTMPLocal(_) | CILOp::LoadTMPLocal => 1,
             CILOp::SetTMPLocal => -1,
-            CILOp::LoadLocalAllocPtr { alloc_id } => 1,
+            CILOp::LoadLocalAllocPtr { alloc_id: _ } => 1,
         }
     }
-    pub fn get_op_arg_pos(ops: &[CILOp], pos: usize, arg: usize) -> Option<usize> {
+    pub fn get_op_arg_pos(_ops: &[CILOp], _pos: usize, _arg: usize) -> Option<usize> {
         todo!();
         /*
         let mut depth = (arg + 1) as isize;

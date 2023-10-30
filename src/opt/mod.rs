@@ -192,7 +192,7 @@ fn op4_combos(ops: &mut [CILOp]) {
                 }
             }*/
             (
-                CILOp::LDLoc(a),
+                CILOp::LDLoc(_a),
                 CILOp::STLoc(b1),
                 CILOp::LDLoc(c) | CILOp::LDArg(c),
                 CILOp::LDLoc(b2),

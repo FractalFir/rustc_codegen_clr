@@ -466,7 +466,7 @@ lazy_static! {
             .arg("--info")
             .output()
             .expect("Could not run `dotnet --info`");
-        if info.stderr.len() > 0 {
+        if !info.stderr.is_empty() {
             let stderr = std::str::from_utf8(&info.stderr).expect("Error message not utf8");
             panic!("dotnet --info panicked with {stderr}")
         }

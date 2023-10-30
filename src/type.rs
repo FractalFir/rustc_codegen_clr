@@ -1,7 +1,7 @@
 use crate::{cil_op::CallSite, IString};
 use rustc_middle::ty::{
-    AdtDef, AliasKind, ClosureKind, ConstKind, FloatTy, GenericArg, Instance, IntTy, List,
-    ParamEnv, Ty, TyCtxt, TyKind, UintTy,
+    AdtDef, AliasKind, ConstKind, FloatTy, GenericArg, Instance, IntTy, List, ParamEnv, Ty, TyCtxt,
+    TyKind, UintTy,
 };
 /// This struct represetnts either a primitive .NET type (F32,F64), or stores information on how to lookup a more complex type (struct,class,array)
 use serde::{Deserialize, Serialize};
@@ -162,7 +162,7 @@ impl DotnetTypeRef {
         for field in adt_def.all_fields() {
             //rustc_middle::ty::List::empty()
             let generic_ty = tyctx.type_of(field.did).instantiate_identity();
-            if let TyKind::Alias(ak, _) = generic_ty.kind() {
+            if let TyKind::Alias(_ak, _) = generic_ty.kind() {
                 // FIXME: This is wrong, since it pushes the generic type of the child instead of the parrant. Overall - we should traverse trough all
                 // ADT locals and take them into account when building the generic list.
                 let generic_count = generics.len();
@@ -263,7 +263,7 @@ impl Type {
             TyKind::Bound(_, _inner) => Type::Foreign,
             TyKind::FnPtr(_) => Type::USize,
             TyKind::Param(param_ty) => Type::GenericArg(param_ty.index),
-            TyKind::Alias(_, alias_ty) => {
+            TyKind::Alias(_, _alias_ty) => {
                 panic!("Encontered type alias when processing generic argument. This sholud be handled in the caller., {rust_tpe:?} is not morphic!")
             } //Self::from_ty(alias_ty.self_ty(), tyctx),
             TyKind::Closure(def_id, subst) => {
@@ -278,7 +278,7 @@ impl Type {
                 //FIXME: This is wrong. Figure out how to propely handle closures
                 Self::DotnetType(DotnetTypeRef::new(Some("FIXME_CLOSURE"), &function_name).into())
             }
-            TyKind::FnDef(def_id, subst_ref) => {
+            TyKind::FnDef(_def_id, _subst_ref) => {
                 /*
                 let fn_type = rust_tpe;
                 let env = ParamEnv::reveal_all();
@@ -380,7 +380,7 @@ impl Type {
             TyKind::Bound(_, _inner) => Type::Foreign,
             TyKind::FnPtr(_) => Type::USize,
             TyKind::Param(param_ty) => Type::GenericArg(param_ty.index),
-            TyKind::Alias(_, alias_ty) => {
+            TyKind::Alias(_, _alias_ty) => {
                 panic!("Encontered type alias, {rust_tpe:?} is not morphic!")
             } //Self::from_ty(alias_ty.self_ty(), tyctx),
             TyKind::Closure(def_id, subst) => {
@@ -396,9 +396,9 @@ impl Type {
                 Self::DotnetType(DotnetTypeRef::new(Some("FIXME_CLOSURE"), &function_name).into())
             }
             TyKind::FnDef(def_id, subst_ref) => {
-                let fn_type = rust_tpe;
+                let _fn_type = rust_tpe;
                 let env = ParamEnv::reveal_all();
-                let (instance, def_id, subst_ref) = {
+                let (instance, def_id, _subst_ref) = {
                     let instance = Instance::expect_resolve(tyctx, env, *def_id, subst_ref);
                     (instance, def_id, subst_ref)
                 };
@@ -455,7 +455,7 @@ impl From<&FloatTy> for Type {
         }
     }
 }
-pub fn element_type<'tyctx>(src: Ty<'tyctx>) -> Ty<'tyctx> {
+pub fn element_type(src: Ty<'_>) -> Ty<'_> {
     match src.kind() {
         TyKind::Array(element, _) => *element,
         TyKind::Slice(element) => *element,
@@ -484,7 +484,6 @@ pub fn tuple_type(types: &[Type]) -> DotnetTypeRef {
             generics: types.into(),
             is_valuetype: true,
         }
-        .into()
     } else {
         panic!("Tuples with more than 8 elements are not supported yet. types:{types:?}");
     }
@@ -510,7 +509,7 @@ fn magic_type<'tyctx>(
             let name = garg_to_string(&subst[1], ctx).into();
             println!("{name} is a class refernece. ");
             let dotnet_tpe = DotnetTypeRef {
-                assembly: assembly,
+                assembly,
                 name_path: name,
                 generics: vec![],
                 is_valuetype: false,
@@ -526,7 +525,7 @@ fn magic_type<'tyctx>(
             let assembly = Some(assembly).filter(|assembly| !assembly.is_empty());
             let name = garg_to_string(&subst[1], ctx).into();
             let dotnet_tpe = DotnetTypeRef {
-                assembly: assembly,
+                assembly,
                 name_path: name,
                 generics: vec![],
                 is_valuetype: true,
