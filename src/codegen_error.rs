@@ -4,6 +4,8 @@ use std::fmt::Debug;
 /// Repersentation of an error which occured while converting MIR to CIL assembly.
 pub enum CodegenError {
     UnersolvedGeneric,
+    Error(crate::IString),
+    Method(MethodCodegenError),
 }
 impl From<CodegenError> for rustc_errors::ErrorGuaranteed {
     fn from(val: CodegenError) -> Self {
@@ -11,9 +13,17 @@ impl From<CodegenError> for rustc_errors::ErrorGuaranteed {
         error_guaranteed()
     }
 }
+impl From<MethodCodegenError> for CodegenError{
+    fn from(value: MethodCodegenError) -> Self {
+        Self::Method(value)
+    }
+} 
 impl CodegenError {
     fn report_error(&self) {
         eprintln!("Codegen faliled with error:{self:?}")
+    }
+    pub fn from_panic_message(msg:&str)->Self{
+        Self::Error(msg.into())
     }
 }
 fn error_guaranteed() -> rustc_errors::ErrorGuaranteed {

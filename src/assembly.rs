@@ -5,8 +5,8 @@ use crate::{
     access_modifier::AccessModifer, codegen_error::CodegenError, function_sig::FnSig,
     method::Method, r#type::Type, type_def::TypeDef,
 };
-use rustc_middle::mir::{mono::MonoItem, Local, LocalDecl};
-use rustc_middle::ty::{Instance, ParamEnv, TyCtxt};
+use rustc_middle::mir::{mono::MonoItem, Statement,Local, LocalDecl};
+use rustc_middle::ty::{Instance, ParamEnv, TyCtxt,TyKind};
 use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
@@ -36,6 +36,24 @@ impl Assembly {
             entrypoint,
         }
     }
+    pub fn statement_to_ops<'tcx>(statement:&Statement<'tcx>, tcx:TyCtxt<'tcx>, mir:&rustc_middle::mir::Body<'tcx>, instance:Instance<'tcx>)->Result<Vec<CILOp>, CodegenError>{
+        if crate::ABORT_ON_ERROR{
+            Ok(crate::statement::handle_statement(statement, tcx, mir, instance))
+        }
+        else{
+            match std::panic::catch_unwind(std::panic::AssertUnwindSafe(||{crate::statement::handle_statement(statement, tcx, mir, instance)})){
+                Ok(success)=>Ok(success),
+                Err(payload)=>{
+                    if let Some(msg) = payload.downcast_ref::<&str>(){
+                        Err(crate::codegen_error::CodegenError::from_panic_message(msg))
+                    }
+                    else{
+                        Err(crate::codegen_error::CodegenError::from_panic_message("try_from_poly_sig panicked with a non-string message!"))
+                    }
+                },
+            }
+        }
+    }
     /// Adds a rust MIR function to the assembly.
     pub fn add_fn<'tcx>(
         &mut self,
@@ -44,6 +62,13 @@ impl Assembly {
         name: &str,
     ) -> Result<(), MethodCodegenError> {
         if crate::utilis::is_function_magic(name) {
+            return Ok(());
+        }
+        if let TyKind::FnDef(_,_) = instance.ty(tcx,ParamEnv::reveal_all()).kind(){
+            //ALL OK.
+        }
+        else{
+            eprintln!("fn item {instance:?} is not a function definition type. Skippping.");
             return Ok(());
         }
         // Get the MIR if it exisits. Othervise, return early.
@@ -55,9 +80,17 @@ impl Assembly {
         // TODO: check if this is OK. It seems to work for now, but there may be some edge cases.
         let param_env = ParamEnv::empty();
         // Check if function is public or not.
-        let access_modifier = AccessModifer::from_visibility(tcx.visibility(instance.def_id()));
+        // FIXME: figure out the source of the bug causing visibility to not be read propely.
+        // let access_modifier = AccessModifer::from_visibility(tcx.visibility(instance.def_id()));
+        let access_modifier = AccessModifer::Public;
         // Handle the function signature
-        let sig = FnSig::from_poly_sig(&instance.ty(tcx, param_env).fn_sig(tcx), tcx, &instance)?;
+        let sig = match FnSig::try_from_poly_sig(&instance.ty(tcx, param_env).fn_sig(tcx), tcx, &instance){
+            Ok(sig)=>sig,
+            Err(err)=>{
+                eprintln!("Could not get the signature of function {name} because {err:?}");
+                return Ok(());
+            }
+        };
         // Get locals
         let locals = locals_from_mir(&mir.local_decls, tcx, sig.inputs().len(), &instance);
         // Create method prototype
@@ -74,8 +107,12 @@ impl Assembly {
                 if crate::INSERT_MIR_DEBUG_COMMENTS {
                     rustc_middle::ty::print::with_no_trimmed_paths! {ops.push(CILOp::Comment(format!("{statement:?}").into()))};
                 }
-                let statement_ops =
-                    crate::statement::handle_statement(statement, tcx, mir, instance);
+                let statement_ops = match  Self::statement_to_ops(statement, tcx, mir, instance){Ok(ops) =>ops,
+                    Err(err)=>{
+                        eprintln!("Method \"{name}\" failed to compile statement with message {err:?}");
+                        CILOp::throw_msg(&format!("Tired to run a statement which failed to compile with error message {err:?}.")).into()
+                    }
+                };
                 crate::utilis::check_statement(&statement_ops, statement);
                 ops.extend(statement_ops);
                 if crate::INSERT_MIR_DEBUG_COMMENTS {

@@ -70,6 +70,7 @@ pub struct CallSite {
     is_static: bool,
 }
 impl CallSite {
+ 
     /// Constructs a new call site targeting method `name`, with signature `signature` and bleonging to class `class`. If `class` is [`None`], then the `<Module>` class
     /// is assumed.
     pub fn new(
@@ -305,6 +306,21 @@ pub enum CILOp {
     LDStaticField(Box<StaticFieldDescriptor>),
 }
 impl CILOp {
+    
+    pub fn call(&self)->Option<&CallSite>{
+        match self{
+            Self::Call(site)=>Some(site),
+            Self::CallVirt(site)=>Some(site),
+            Self::NewObj(site)=>Some(site),
+            _=>None,
+        }
+    }
+    pub fn throw_msg(msg:&str)->[CILOp;3]{
+        let class = Some(DotnetTypeRef::new(Some("System.Runtime"),"System.Exception"));
+        let name = ".ctor".into();
+        let signature = FnSig::new(&[crate::utilis::string_class().into()], &crate::r#type::Type::Void);
+        [CILOp::LdStr(msg.into()),CILOp::NewObj(CallSite::boxed(class, name, signature, false)),CILOp::Throw]
+    }
     /// Descirbes the difference in stack size before and after the op.
     pub fn stack_diff(&self) -> isize {
         match self {
@@ -352,7 +368,7 @@ impl CILOp {
             CILOp::Dup => 1,
             CILOp::LDField(_) | CILOp::LDFieldAdress(_) => 0,
             CILOp::LocAlloc => 0,
-            CILOp::NewObj(_) => 1,
+            CILOp::NewObj(site) => 1 - (site.inputs().len() as isize),
             CILOp::LdObj(_) => 0,
             CILOp::LDStaticField(_) => 1,
             CILOp::STObj(_) => -2,

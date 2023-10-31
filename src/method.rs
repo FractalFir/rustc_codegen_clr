@@ -1,5 +1,5 @@
 use crate::{
-    access_modifier::AccessModifer, cil_op::CILOp, function_sig::FnSig, r#type::Type, IString,
+    access_modifier::AccessModifer, cil_op::{CILOp, CallSite}, function_sig::FnSig, r#type::Type, IString,
 };
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
@@ -85,6 +85,9 @@ impl Method {
     }
     pub(crate) fn get_ops(&self) -> &[CILOp] {
         &self.ops
+    }
+    pub (crate) fn calls(&self)->impl Iterator<Item = &CallSite>{
+        self.ops.iter().map(|op|op.call()).filter_map(|site|site)
     }
     pub(crate) fn allocate_temporaries(&mut self) {
         let mut tmp_stack = vec![];

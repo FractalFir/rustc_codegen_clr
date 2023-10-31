@@ -54,6 +54,27 @@ impl FnSig {
         );
         Ok(Self { inputs, output })
     }
+    /// Tries to create a signature using `from_poly_sig`. Will panic if `ABORT_ON_ERROR` is set.
+    pub fn try_from_poly_sig<'tcx>(sig: &PolyFnSig<'tcx>,
+    tcx: TyCtxt<'tcx>,
+    method_instance: &Instance<'tcx>,)-> Result<Self, crate::codegen_error::CodegenError> {
+        if crate::ABORT_ON_ERROR{
+            Self::from_poly_sig(sig,tcx,method_instance).map_err(|err|err.into())
+        }
+        else{
+            match std::panic::catch_unwind(std::panic::AssertUnwindSafe(||{Self::from_poly_sig(sig, tcx, method_instance)})){
+                Ok(inner_res)=>Ok(inner_res?),
+                Err(payload)=>{
+                    if let Some(msg) = payload.downcast_ref::<&str>(){
+                        Err(crate::codegen_error::CodegenError::from_panic_message(msg))
+                    }
+                    else{
+                        Err(crate::codegen_error::CodegenError::from_panic_message("try_from_poly_sig panicked with a non-string message!"))
+                    }
+                },
+            }
+        }
+    }
     pub fn inputs(&self) -> &[Type] {
         &self.inputs
     }

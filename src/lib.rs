@@ -23,6 +23,7 @@ const PRINT_TY_CONVERTION: bool = false;
 /// Tells the codegen to optmize the emiited CIL.
 const OPTIMIZE_CIL: bool = (!INSERT_MIR_DEBUG_COMMENTS) && (true);
 
+const ABORT_ON_ERROR:bool = false;
 // Modules
 
 /// Specifies if a method/type is private or public.
