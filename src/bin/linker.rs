@@ -94,7 +94,7 @@ fn main() {
     for asm_path in &ar_to_link {
         let mut asm_file =
             std::fs::File::open(asm_path).expect("ERROR: Could not open the assembly file!");
-        let assembly = load_ar(&mut asm_file).expect("Could not oper archive");
+        let assembly = load_ar(&mut asm_file).expect("Could not open archive");
         final_assembly = final_assembly.join(assembly);
     }
     libc::insert_libc(&mut final_assembly);
