@@ -23,11 +23,12 @@ const PRINT_TY_CONVERTION: bool = false;
 /// Tells the codegen to optmize the emiited CIL.
 const OPTIMIZE_CIL: bool = (!INSERT_MIR_DEBUG_COMMENTS) && (true);
 
-const ABORT_ON_ERROR:bool = false;
+pub const ABORT_ON_ERROR: bool = false;
+
 // Modules
 
 /// Specifies if a method/type is private or public.
-mod access_modifier;
+pub mod access_modifier;
 /// Code handling the creation of aggreate values (Arrays, enums,structs,tuples,etc.)
 mod aggregate;
 
@@ -43,7 +44,7 @@ mod binop;
 mod casts;
 mod checked_binop;
 /// A representation of C# IL op.
-mod cil_op;
+pub mod cil_op;
 /// Runtime errors and utlity functions/macros related to them
 mod codegen_error;
 /// Test harnesses.
@@ -53,11 +54,11 @@ mod constant;
 /// Code detecting and inserting wrappers around entrypoints.
 mod entrypoint;
 /// Signature of a function (inputs)->output
-mod function_sig;
+pub mod function_sig;
 /// Implementation of some libc functions in CIL assembly. Will likely be removed and mostly replaced by functions implmented using mycorrhize.
 pub mod libc;
 /// A representation of a .NET method
-mod method;
+pub mod method;
 /// Handles a MIR operand.
 mod operand;
 /// Method-level CIL opitimizations

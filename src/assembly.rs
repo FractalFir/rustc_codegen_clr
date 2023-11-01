@@ -5,8 +5,8 @@ use crate::{
     access_modifier::AccessModifer, codegen_error::CodegenError, function_sig::FnSig,
     method::Method, r#type::Type, type_def::TypeDef,
 };
-use rustc_middle::mir::{mono::MonoItem, Statement,Local, LocalDecl};
-use rustc_middle::ty::{Instance, ParamEnv, TyCtxt,TyKind};
+use rustc_middle::mir::{mono::MonoItem, Local, LocalDecl, Statement};
+use rustc_middle::ty::{Instance, ParamEnv, TyCtxt, TyKind};
 use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
@@ -36,24 +36,34 @@ impl Assembly {
             entrypoint,
         }
     }
-    pub fn statement_to_ops<'tcx>(statement:&Statement<'tcx>, tcx:TyCtxt<'tcx>, mir:&rustc_middle::mir::Body<'tcx>, instance:Instance<'tcx>)->Result<Vec<CILOp>, CodegenError>{
-        if crate::ABORT_ON_ERROR{
-            Ok(crate::statement::handle_statement(statement, tcx, mir, instance))
-        }
-        else{
-            match std::panic::catch_unwind(std::panic::AssertUnwindSafe(||{crate::statement::handle_statement(statement, tcx, mir, instance)})){
-                Ok(success)=>Ok(success),
-                Err(payload)=>{
-                    if let Some(msg) = payload.downcast_ref::<&str>(){
+    pub fn statement_to_ops<'tcx>(
+        statement: &Statement<'tcx>,
+        tcx: TyCtxt<'tcx>,
+        mir: &rustc_middle::mir::Body<'tcx>,
+        instance: Instance<'tcx>,
+    ) -> Result<Vec<CILOp>, CodegenError> {
+        if crate::ABORT_ON_ERROR {
+            Ok(crate::statement::handle_statement(
+                statement, tcx, mir, instance,
+            ))
+        } else {
+            match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                crate::statement::handle_statement(statement, tcx, mir, instance)
+            })) {
+                Ok(success) => Ok(success),
+                Err(payload) => {
+                    if let Some(msg) = payload.downcast_ref::<&str>() {
                         Err(crate::codegen_error::CodegenError::from_panic_message(msg))
+                    } else {
+                        Err(crate::codegen_error::CodegenError::from_panic_message(
+                            "try_from_poly_sig panicked with a non-string message!",
+                        ))
                     }
-                    else{
-                        Err(crate::codegen_error::CodegenError::from_panic_message("try_from_poly_sig panicked with a non-string message!"))
-                    }
-                },
+                }
             }
         }
     }
+    //fn terminator_to_ops()
     /// Adds a rust MIR function to the assembly.
     pub fn add_fn<'tcx>(
         &mut self,
@@ -64,10 +74,9 @@ impl Assembly {
         if crate::utilis::is_function_magic(name) {
             return Ok(());
         }
-        if let TyKind::FnDef(_,_) = instance.ty(tcx,ParamEnv::reveal_all()).kind(){
+        if let TyKind::FnDef(_, _) = instance.ty(tcx, ParamEnv::reveal_all()).kind() {
             //ALL OK.
-        }
-        else{
+        } else {
             eprintln!("fn item {instance:?} is not a function definition type. Skippping.");
             return Ok(());
         }
@@ -84,9 +93,13 @@ impl Assembly {
         // let access_modifier = AccessModifer::from_visibility(tcx.visibility(instance.def_id()));
         let access_modifier = AccessModifer::Public;
         // Handle the function signature
-        let sig = match FnSig::try_from_poly_sig(&instance.ty(tcx, param_env).fn_sig(tcx), tcx, &instance){
-            Ok(sig)=>sig,
-            Err(err)=>{
+        let sig = match FnSig::try_from_poly_sig(
+            &instance.ty(tcx, param_env).fn_sig(tcx),
+            tcx,
+            &instance,
+        ) {
+            Ok(sig) => sig,
+            Err(err) => {
                 eprintln!("Could not get the signature of function {name} because {err:?}");
                 return Ok(());
             }
@@ -107,9 +120,12 @@ impl Assembly {
                 if crate::INSERT_MIR_DEBUG_COMMENTS {
                     rustc_middle::ty::print::with_no_trimmed_paths! {ops.push(CILOp::Comment(format!("{statement:?}").into()))};
                 }
-                let statement_ops = match  Self::statement_to_ops(statement, tcx, mir, instance){Ok(ops) =>ops,
-                    Err(err)=>{
-                        eprintln!("Method \"{name}\" failed to compile statement with message {err:?}");
+                let statement_ops = match Self::statement_to_ops(statement, tcx, mir, instance) {
+                    Ok(ops) => ops,
+                    Err(err) => {
+                        eprintln!(
+                            "Method \"{name}\" failed to compile statement with message {err:?}"
+                        );
                         CILOp::throw_msg(&format!("Tired to run a statement which failed to compile with error message {err:?}.")).into()
                     }
                 };
@@ -137,11 +153,18 @@ impl Assembly {
         Ok(())
         //todo!("Can't add function")
     }
+    pub fn contains_fn_named(&self, name: &str) -> bool {
+        //FIXME:This is inefficient.
+        self.methods().any(|m| m.name() == name)
+    }
     /// Adds a method to the assebmly.
     pub fn add_method(&mut self, mut method: Method) {
         method.allocate_temporaries();
         method.ensure_valid();
         self.functions.insert(method);
+    }
+    pub fn call_sites(&self) -> impl Iterator<Item = &CallSite> {
+        self.methods().map(|method| method.calls()).flatten()
     }
     /// Returns an interator over all methods within the assembly.
     pub fn methods(&self) -> impl Iterator<Item = &Method> {

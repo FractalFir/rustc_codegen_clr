@@ -231,9 +231,13 @@ fn call<'ctx>(
 ) -> Vec<CILOp> {
     let (instance, def_id, subst_ref) = if let TyKind::FnDef(def_id, subst_ref) = fn_type.kind() {
         let env = ParamEnv::reveal_all();
-        let instance = Instance::resolve(tyctx, env, *def_id, subst_ref)
+
+        let instance = match Instance::resolve(tyctx, env, *def_id, subst_ref)
             .expect("Invalid function def")
-            .expect("No function?");
+        {
+            Some(ok) => ok,
+            None => panic!("ERROR: Could not get function instance. fn type:{fn_type:?}"),
+        };
         (instance, def_id, subst_ref)
     } else {
         todo!("Trying to call a type which is not a function definition!");

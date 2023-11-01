@@ -13,16 +13,16 @@ impl From<CodegenError> for rustc_errors::ErrorGuaranteed {
         error_guaranteed()
     }
 }
-impl From<MethodCodegenError> for CodegenError{
+impl From<MethodCodegenError> for CodegenError {
     fn from(value: MethodCodegenError) -> Self {
         Self::Method(value)
     }
-} 
+}
 impl CodegenError {
     fn report_error(&self) {
         eprintln!("Codegen faliled with error:{self:?}")
     }
-    pub fn from_panic_message(msg:&str)->Self{
+    pub fn from_panic_message(msg: &str) -> Self {
         Self::Error(msg.into())
     }
 }

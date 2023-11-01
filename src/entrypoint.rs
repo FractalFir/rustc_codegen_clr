@@ -31,15 +31,11 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
         method.set_ops(ops);
         method.add_attribute(crate::method::Attribute::EntryPoint);
         method
-    } 
-    else if entrypoint.signature().inputs().is_empty()
+    } else if entrypoint.signature().inputs().is_empty()
         && entrypoint.signature().output() == &Type::Void
     {
         let sig = FnSig::new(&[], &Type::Void);
-        let ops = vec![
-            CILOp::Call(Box::new(entrypoint.clone())),
-            CILOp::Ret,
-        ];
+        let ops = vec![CILOp::Call(Box::new(entrypoint.clone())), CILOp::Ret];
         let mut method = Method::new(
             crate::access_modifier::AccessModifer::Public,
             true,
@@ -50,8 +46,7 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
         method.set_ops(ops);
         method.add_attribute(crate::method::Attribute::EntryPoint);
         method
-    } 
-    else {
+    } else {
         panic!("Unsuported entrypoint wrapper signature! entrypoint:{entrypoint:?}");
     }
 }

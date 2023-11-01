@@ -1,9 +1,8 @@
-
 use crate::cil_op::{CILOp, FieldDescriptor};
 use crate::r#type::Type;
+use crate::utilis::field_name;
 use rustc_middle::mir::{Place, PlaceElem};
 use rustc_middle::ty::{FloatTy, Instance, IntTy, ParamEnv, Ty, TyCtxt, TyKind, UintTy};
-use crate::utilis::field_name;
 
 pub(super) fn local_get(local: usize, method: &rustc_middle::mir::Body) -> CILOp {
     if local == 0 {
@@ -33,7 +32,8 @@ pub fn place_get<'a>(
         let (head, body) = super::slice_head(place.projection);
         for elem in body {
             println!("elem:{elem:?} ty:{ty:?}");
-            let (curr_ty, curr_ops) = super::place_elem_body(elem, ty, ctx, method_instance, method);
+            let (curr_ty, curr_ops) =
+                super::place_elem_body(elem, ty, ctx, method_instance, method);
             ty = curr_ty.monomorphize(&method_instance, ctx);
             ops.extend(curr_ops);
         }
@@ -71,7 +71,9 @@ fn place_elem_get<'a>(
     method_instance: Instance<'a>,
 ) -> Vec<CILOp> {
     match place_elem {
-        PlaceElem::Deref => super::deref_op(super::pointed_type(curr_type).into(), ctx, &method_instance),
+        PlaceElem::Deref => {
+            super::deref_op(super::pointed_type(curr_type).into(), ctx, &method_instance)
+        }
         PlaceElem::Field(index, _field_type) => match curr_type {
             super::PlaceTy::Ty(curr_type) => {
                 let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, ctx);

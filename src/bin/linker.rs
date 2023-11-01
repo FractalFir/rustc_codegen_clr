@@ -1,6 +1,6 @@
 #![deny(unused_must_use)]
 //use assembly::Assembly;
-use rustc_codegen_clr::*;
+use rustc_codegen_clr::{assembly::Assembly, *};
 use std::env;
 fn load_ar(r: &mut impl std::io::Read) -> std::io::Result<assembly::Assembly> {
     use ar::Archive;
@@ -69,6 +69,37 @@ fn aot_compile_mode(args: &[String]) -> AOTCompileMode {
         AOTCompileMode::NoAOT
     }
 }
+fn patch_missing_method(call_site: &cil_op::CallSite) -> method::Method {
+    let sig = call_site.signature().clone();
+    let mut method = method::Method::new(
+        access_modifier::AccessModifer::Private,
+        true,
+        sig,
+        call_site.name(),
+        vec![],
+    );
+    let ops = rustc_codegen_clr::cil_op::CILOp::throw_msg(&format!(
+        "Tried to invoke missing method {name}",
+        name = call_site.name()
+    ));
+    method.set_ops(ops.into());
+    method
+}
+fn autopatch(asm: &mut Assembly) {
+    let call_sites = asm
+        .call_sites()
+        .filter(|call| call.is_static() && call.class().is_none())
+        .filter(|call| !asm.contains_fn_named(call.name()));
+    let mut patched = std::collections::HashMap::new();
+    for call in call_sites {
+        if !patched.contains_key(call) {
+            patched.insert(call.clone(), patch_missing_method(call));
+        }
+    }
+    patched
+        .values()
+        .for_each(|method| asm.add_method(method.clone()));
+}
 fn main() {
     use std::io::Read;
     let args: Vec<String> = env::args().collect();
@@ -98,6 +129,10 @@ fn main() {
         final_assembly = final_assembly.join(assembly);
     }
     libc::insert_libc(&mut final_assembly);
+    if !rustc_codegen_clr::ABORT_ON_ERROR {
+        autopatch(&mut final_assembly);
+    }
+
     use rustc_codegen_clr::assembly_exporter::AssemblyExporter;
     let path = output;
     let is_lib = output.contains(".dll") || output.contains(".so") || output.contains(".o");
