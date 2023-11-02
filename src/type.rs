@@ -58,6 +58,12 @@ pub struct DotnetTypeRef {
     is_valuetype: bool,
 }
 impl DotnetTypeRef {
+    pub fn int_128() -> Self {
+        Self::new(Some("System.Runtime"), "System.Int128")
+    }
+    pub fn uint_128() -> Self {
+        Self::new(Some("System.Runtime"), "System.UInt128")
+    }
     pub fn new(assembly: Option<&str>, name_path: &str) -> Self {
         Self {
             assembly: assembly.map(std::convert::Into::into),

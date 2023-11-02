@@ -127,7 +127,13 @@ fn add_unchecked<'tcx>(ty_a: Ty<'tcx>, ty_b: Ty<'tcx>) -> Vec<CILOp> {
             if let UintTy::U128 = uint_ty {
                 todo!("Can't add 128 bit intigers yet!");
             } else {
-                vec![CILOp::Add]
+                match uint_ty {
+                    UintTy::U8 => vec![CILOp::Add, CILOp::ConvU8(false)],
+                    UintTy::U16 => vec![CILOp::Add, CILOp::ConvU16(false)],
+                    UintTy::U32 => vec![CILOp::Add, CILOp::ConvU32(false)],
+                    UintTy::U64 => vec![CILOp::Add, CILOp::ConvU64(false)],
+                    _ => vec![CILOp::Add],
+                }
             }
         }
         TyKind::Float(_) => vec![CILOp::Add],

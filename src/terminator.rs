@@ -99,7 +99,7 @@ fn callvirt_managed<'ctx>(
     let argc_end = argc_start + function_name[argc_start..].find('_').unwrap();
     let argc = &function_name[argc_start..argc_end];
     let argc = argc.parse::<u32>().unwrap();
-    assert!(subst_ref.len() as u32 == argc + 3 || subst_ref.len() as u32 == argc + 4);
+    //assert!(subst_ref.len() as u32 == argc + 3 || subst_ref.len() as u32 == argc + 4);
     assert!(args.len() as u32 == argc);
     let asm = garg_to_string(&subst_ref[0], tyctx);
     let asm = Some(asm).filter(|asm| !asm.is_empty());

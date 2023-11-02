@@ -2,7 +2,7 @@ use rustc_middle::mir::{BinOp, Operand};
 use rustc_middle::ty::{Instance, TyCtxt};
 
 use crate::cil_op::{CILOp, FieldDescriptor};
-use crate::r#type::Type;
+use crate::r#type::{DotnetTypeRef, Type};
 /// Preforms an checked binary operation.
 pub(crate) fn binop_checked<'tcx>(
     binop: BinOp,
@@ -31,18 +31,85 @@ pub(crate) fn binop_checked<'tcx>(
         _ => todo!("Can't preform checked op {binop:?}"),
     }
 }
-fn mul(tpe: Type) -> &'static [CILOp] {
-    todo!("Can't preform checked mul on type {tpe:?} yet!")
+fn mul(tpe: Type) -> Vec<CILOp> {
+    match tpe {
+        Type::U8 => promoted_ubinop(
+            Type::U8,
+            Type::U16,
+            CILOp::ConvU16(false),
+            CILOp::ConvU8(false),
+            CILOp::LdcI32(u8::MAX as i32),
+            CILOp::Mul,
+        ),
+        Type::I8 => promoted_sbinop(
+            Type::I8,
+            Type::I16,
+            CILOp::ConvI16(false),
+            CILOp::ConvI8(false),
+            CILOp::LdcI32(i8::MAX as i32),
+            CILOp::LdcI32(i8::MIN as i32),
+            CILOp::Mul,
+        ),
+        _ => todo!("Can't preform checked mul on type {tpe:?} yet!"),
+    }
 }
 fn add(tpe: Type) -> Vec<CILOp> {
     match tpe {
-        Type::I8 => checked_sadd_type(Type::I8, CILOp::ConvI8(false), CILOp::LdcI32(1 << 7)),
+        Type::I8 => promoted_sbinop(
+            Type::I8,
+            Type::I16,
+            CILOp::ConvI16(false),
+            CILOp::ConvI8(false),
+            CILOp::LdcI32(i8::MAX as i32),
+            CILOp::LdcI32(i8::MIN as i32),
+            CILOp::Add,
+        ),
         Type::U8 => checked_uadd_type(Type::U8, CILOp::ConvU8(false)),
-        Type::I16 => checked_sadd_type(Type::I16, CILOp::ConvI16(false), CILOp::LdcI32(1 << 15)),
+        Type::I16 => promoted_sbinop(
+            Type::I16,
+            Type::I32,
+            CILOp::ConvI32(false),
+            CILOp::ConvI16(false),
+            CILOp::LdcI32(i16::MAX as i32),
+            CILOp::LdcI32(i16::MIN as i32),
+            CILOp::Add,
+        ),
         Type::U16 => checked_uadd_type(Type::U16, CILOp::ConvU16(false)),
-        Type::I32 => checked_sadd_type(Type::I32, CILOp::Nop, CILOp::LdcI32(1 << 31)),
+        Type::I32 => promoted_sbinop(
+            Type::I32,
+            Type::I64,
+            CILOp::ConvI64(false),
+            CILOp::ConvI32(false),
+            CILOp::LdcI32(i32::MAX),
+            CILOp::LdcI32(i32::MIN),
+            CILOp::Add,
+        ),
         Type::U32 => checked_uadd_type(Type::U32, CILOp::Nop),
-        Type::I64 => checked_sadd_type(Type::I64, CILOp::ConvI64(false), CILOp::LdcI64(1 << 63)),
+        //This works ONLY in dotnet.
+        Type::I64 => promoted_sbinop(
+            Type::I64,
+            Type::I128,
+            CILOp::Call(crate::cil_op::CallSite::boxed(
+                Some(DotnetTypeRef::int_128()),
+                "op_Implicit".into(),
+                crate::function_sig::FnSig::new(&[Type::I64], &Type::I128),
+                true,
+            )),
+            CILOp::Call(crate::cil_op::CallSite::boxed(
+                Some(DotnetTypeRef::int_128()),
+                "op_Explicit".into(),
+                crate::function_sig::FnSig::new(&[Type::I128], &Type::I64),
+                true,
+            )),
+            CILOp::LdcI64(i64::MAX),
+            CILOp::LdcI64(i64::MIN),
+            CILOp::Call(crate::cil_op::CallSite::boxed(
+                Some(DotnetTypeRef::int_128()),
+                "op_Addition".into(),
+                crate::function_sig::FnSig::new(&[Type::I128, Type::I128], &Type::I128),
+                true,
+            )),
+        ),
         Type::U64 => checked_uadd_type(Type::U64, CILOp::Nop),
         _ => todo!("Can't preform checked add on type {tpe:?} yet!"),
     }
@@ -130,15 +197,15 @@ fn checked_sadd_type(tpe: Type, truncate: CILOp, mask: CILOp) -> Vec<CILOp> {
         CILOp::LoadUnderTMPLocal(1),
         CILOp::STField(FieldDescriptor::boxed(
             tuple.clone(),
-            Type::GenericArg(0),
-            "Item1".into(),
+            Type::GenericArg(1),
+            "Item2".into(),
         )),
         CILOp::LoadAddresOfTMPLocal,
         CILOp::LoadUnderTMPLocal(3),
         CILOp::STField(FieldDescriptor::boxed(
             tuple.clone(),
-            Type::GenericArg(1),
-            "Item2".into(),
+            Type::GenericArg(0),
+            "Item1".into(),
         )),
         CILOp::LoadTMPLocal,
         CILOp::FreeTMPLocal,
@@ -149,8 +216,109 @@ fn checked_sadd_type(tpe: Type, truncate: CILOp, mask: CILOp) -> Vec<CILOp> {
         CILOp::FreeTMPLocal,
     ]
 }
-fn sub(tpe: Type) -> &'static [CILOp] {
-    todo!("Can't preform checked add on type {tpe:?} yet!")
+fn sub(tpe: Type) -> Vec<CILOp> {
+    match tpe {
+        Type::I8 => promoted_sbinop(
+            Type::I8,
+            Type::I16,
+            CILOp::ConvI16(false),
+            CILOp::ConvI8(false),
+            CILOp::LdcI32(i8::MAX as i32),
+            CILOp::LdcI32(i8::MIN as i32),
+            CILOp::Sub,
+        ),
+        Type::U8 => promoted_ubinop(
+            Type::U8,
+            Type::U16,
+            CILOp::ConvU16(false),
+            CILOp::ConvU8(false),
+            CILOp::LdcI32(u8::MAX as i32),
+            CILOp::Sub,
+        ),
+        Type::I16 => promoted_sbinop(
+            Type::I16,
+            Type::I32,
+            CILOp::ConvI32(false),
+            CILOp::ConvI16(false),
+            CILOp::LdcI32(i16::MAX as i32),
+            CILOp::LdcI32(i16::MIN as i32),
+            CILOp::Sub,
+        ),
+        Type::U16 => promoted_ubinop(
+            Type::U16,
+            Type::U32,
+            CILOp::ConvU32(false),
+            CILOp::ConvU16(false),
+            CILOp::LdcI32(u16::MAX as i32),
+            CILOp::Sub,
+        ),
+        Type::I32 => promoted_sbinop(
+            Type::I32,
+            Type::I64,
+            CILOp::ConvI64(false),
+            CILOp::ConvI32(false),
+            CILOp::LdcI32(i32::MAX),
+            CILOp::LdcI32(i32::MIN),
+            CILOp::Sub,
+        ),
+        Type::U32 => promoted_ubinop(
+            Type::U32,
+            Type::U64,
+            CILOp::ConvU64(false),
+            CILOp::ConvU32(false),
+            CILOp::LdcI64(u64::MAX as i64),
+            CILOp::Sub,
+        ),
+        //This works ONLY in dotnet.
+        Type::I64 => promoted_sbinop(
+            Type::I64,
+            Type::I128,
+            CILOp::Call(crate::cil_op::CallSite::boxed(
+                Some(DotnetTypeRef::int_128()),
+                "op_Implicit".into(),
+                crate::function_sig::FnSig::new(&[Type::I64], &Type::I128),
+                true,
+            )),
+            CILOp::Call(crate::cil_op::CallSite::boxed(
+                Some(DotnetTypeRef::int_128()),
+                "op_Explicit".into(),
+                crate::function_sig::FnSig::new(&[Type::I128], &Type::I64),
+                true,
+            )),
+            CILOp::LdcI64(i64::MAX),
+            CILOp::LdcI64(i64::MIN),
+            CILOp::Call(crate::cil_op::CallSite::boxed(
+                Some(DotnetTypeRef::int_128()),
+                "op_Subtraction".into(),
+                crate::function_sig::FnSig::new(&[Type::I128, Type::I128], &Type::I128),
+                true,
+            )),
+        ),
+        Type::U64 => promoted_ubinop(
+            Type::U64,
+            Type::U128,
+            CILOp::Call(crate::cil_op::CallSite::boxed(
+                Some(DotnetTypeRef::uint_128()),
+                "op_Implicit".into(),
+                crate::function_sig::FnSig::new(&[Type::U64], &Type::U128),
+                true,
+            )),
+            CILOp::Call(crate::cil_op::CallSite::boxed(
+                Some(DotnetTypeRef::uint_128()),
+                "op_Explicit".into(),
+                crate::function_sig::FnSig::new(&[Type::U128], &Type::U64),
+                true,
+            )),
+            CILOp::LdcI64(i64::MIN),
+            CILOp::Call(crate::cil_op::CallSite::boxed(
+                Some(DotnetTypeRef::uint_128()),
+                "op_Subtraction".into(),
+                crate::function_sig::FnSig::new(&[Type::U128, Type::U128], &Type::U128),
+                true,
+            )),
+        ),
+        _ => todo!("Can't preform checked sub on type {tpe:?} yet!"),
+    }
 }
 #[test]
 fn unsigned_add() {
@@ -192,48 +360,126 @@ fn signed_add() {
         }
     }
 }
-// Signed int add
-
-//a,b               []                  NewTMPLoc
-//a,b               [u]                 CILOp::SetTMPLocal
-//a                 [b]                 NewTMPLoc
-//a                 [u]                 CILOp::SetTMPLocal
-//                  [b,a]               CILOp::LoadTMPLocal
-//a                 [b,a]               CILOp::LoadUnderTMPLocal(1)
-//a,b               [b,a]               Add
-//a+b               [b,a]               NewTMPLoc
-//a+b               [b,a,u]             CILOp::SetTMPLocal
-//                  [b,a,s]             CILOp::LoadUnderTMPLocal(1)
-//a                 [b,a,s]             LDConst(SIGN_MASK)
-//a,m               [b,a,s]             And
-//am                [b,a,s,am]          Dup
-//am,am             [b,a,s,am]          CILOp::LoadUnderTMPLocal(2)
-//am,am,b           [b,a,s]             LDConst(SIGN_MASK)
-//am,am,b,m         [b,a,s]             And
-//am,am,bm          [b,a,s]             Eq
-//am,am==bm         [b,a,s]             NewTMPLoc
-//am,am==bm         [b,a,s,u]           STMPLoc
-//am,               [b,a,s,eq]          CILOp::LoadUnderTMPLocal(1)
-//am,s              [b,a,s,eq]          LDConst(SIGN_MASK)
-//am,s,m            [b,a,s,eq]          And
-//am,sm             [b,a,s,eq]          Eq
-//am==sm            [b,a,s,eq]          Not
-//am!=sm            [b,a,s,eq]          CILOp::LoadTMPLocal
-//am!=sm,am==bm     [b,a,s,eq]          And
-//(am!=sm&&am==bm)  [b,a,s,eq]          NewTMPLoc
-//(am!=sm&&am==bm)  [b,a,s,eq,u]        CILOp::SetTMPLocal
-//                  [b,a,s,eq,cond]     NewTMPLoc
-//                  [b,a,s,eq,cond,res] CILOp::LoadTMPLocalA
-//res               [b,a,s,eq,cond,res] CILOp::LoadUnderTMPLocal(1)
-//res,cond          [b,a,s,eq,cond,res] STFLD(cond)
-//                  [b,a,s,eq,cond,res] CILOp::LoadTMPLocalA
-//res               [b,a,s,eq,cond,res] CILOp::LoadUnderTMPLocal(3)
-//res,s             [b,a,s,eq,cond,res] STFLD(sum)
-//                  [b,a,s,eq,cond,res] CILOp::LoadTMPLocal(sum)
-//res               [b,a,s,eq,cond,res] FreeTMP
-//res               [b,a,s,eq,cond]     FreeTMP
-//res               [b,a,s,eq]          FreeTMP
-//res               [b,a,s]             FreeTMP
-//res               [b,a]               FreeTMP
-//res               [b]                 FreeTMP
-//res               []
+pub fn promoted_ubinop(
+    tpe: Type,
+    promoted_type: Type,
+    promote: CILOp,
+    truncate: CILOp,
+    omask: CILOp,
+    binop: CILOp,
+) -> Vec<CILOp> {
+    let tuple = crate::r#type::simple_tuple(&[tpe.clone(), Type::Bool]);
+    let tuple_ty: Type = tuple.clone().into();
+    vec![
+        // Promote arguments
+        CILOp::NewTMPLocal(tpe.clone().into()),
+        CILOp::SetTMPLocal,
+        promote.clone(),
+        CILOp::LoadTMPLocal,
+        promote.clone(),
+        // Preform binop
+        binop.clone(),
+        // Save the promoted result of binop
+        CILOp::NewTMPLocal(promoted_type.clone().into()),
+        CILOp::SetTMPLocal,
+        // Compare the result to the overflow mask
+        CILOp::LoadTMPLocal,
+        omask.clone(),
+        promote.clone(),
+        CILOp::Gt,
+        // Save the bollean indicating overflow
+        CILOp::NewTMPLocal(Type::Bool.into()),
+        CILOp::SetTMPLocal,
+        // Create result tuple type
+        CILOp::NewTMPLocal(tuple_ty.into()),
+        // Set the tuples second field to overflow flag
+        CILOp::LoadAddresOfTMPLocal,
+        CILOp::LoadUnderTMPLocal(1), // ov
+        CILOp::STField(FieldDescriptor::boxed(
+            tuple.clone(),
+            Type::GenericArg(1),
+            "Item2".into(),
+        )),
+        // Set the tuples first field to promotion result
+        CILOp::LoadAddresOfTMPLocal,
+        CILOp::LoadUnderTMPLocal(2),
+        truncate,
+        CILOp::STField(FieldDescriptor::boxed(
+            tuple.clone(),
+            Type::GenericArg(0),
+            "Item1".into(),
+        )),
+        // Load results
+        CILOp::LoadTMPLocal,
+        // Reset temporary local statck.
+        CILOp::FreeTMPLocal,
+        CILOp::FreeTMPLocal,
+        CILOp::FreeTMPLocal,
+        CILOp::FreeTMPLocal,
+    ]
+}
+pub fn promoted_sbinop(
+    tpe: Type,
+    promoted_type: Type,
+    promote: CILOp,
+    truncate: CILOp,
+    omask: CILOp,
+    umask: CILOp,
+    binop: CILOp,
+) -> Vec<CILOp> {
+    let tuple = crate::r#type::simple_tuple(&[tpe.clone(), Type::Bool]);
+    let tuple_ty: Type = tuple.clone().into();
+    vec![
+        // Promote arguments
+        CILOp::NewTMPLocal(tpe.clone().into()),
+        CILOp::SetTMPLocal,
+        promote.clone(),
+        CILOp::LoadTMPLocal,
+        promote.clone(),
+        // Preform binop
+        binop.clone(),
+        // Save the promoted result of binop
+        CILOp::NewTMPLocal(promoted_type.clone().into()),
+        CILOp::SetTMPLocal,
+        // Compare the result to the overflow mask
+        CILOp::LoadTMPLocal,
+        omask.clone(),
+        promote.clone(),
+        CILOp::Gt,
+        CILOp::LoadTMPLocal,
+        // Compare the result to the undeflow mask
+        umask.clone(),
+        promote.clone(),
+        CILOp::Lt,
+        CILOp::Or,
+        // Save the bollean indicating overflow
+        CILOp::NewTMPLocal(Type::Bool.into()),
+        CILOp::SetTMPLocal,
+        // Create result tuple type
+        CILOp::NewTMPLocal(tuple_ty.into()),
+        // Set the tuples second field to overflow flag
+        CILOp::LoadAddresOfTMPLocal,
+        CILOp::LoadUnderTMPLocal(1), // ov
+        CILOp::STField(FieldDescriptor::boxed(
+            tuple.clone(),
+            Type::GenericArg(1),
+            "Item2".into(),
+        )),
+        // Set the tuples first field to promotion result
+        CILOp::LoadAddresOfTMPLocal,
+        CILOp::LoadUnderTMPLocal(2),
+        truncate,
+        CILOp::STField(FieldDescriptor::boxed(
+            tuple.clone(),
+            Type::GenericArg(0),
+            "Item1".into(),
+        )),
+        // Load results
+        CILOp::LoadTMPLocal,
+        // Reset temporary local statck.
+        CILOp::FreeTMPLocal,
+        CILOp::FreeTMPLocal,
+        CILOp::FreeTMPLocal,
+        CILOp::FreeTMPLocal,
+    ]
+}

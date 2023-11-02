@@ -19,6 +19,9 @@ pub fn handle_constant<'ctx>(
         Const::Val(value, const_ty) => {
             load_const_value(*value, *const_ty, tyctx, method, method_instance)
         }
+        Const::Unevaluated(_, _) => {
+            todo!("Can't handle unevaluated constants yet!");
+        }
         _ => todo!("Unhanded const {constant:?}!"),
     }
 }

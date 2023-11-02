@@ -34,6 +34,8 @@ macro_rules! test{
 macro_rules! test_eq{
     ($a:expr,$b:expr)=>{
         if black_box($a) != black_box($b){
+            Put::putnl($a);
+            Put::putnl($b);
             core::intrinsics::abort();
         }
     }
@@ -62,3 +64,49 @@ fn rustc_clr_interop_managed_call1_<const ASSEMBLY:&'static str,const CLASS_PATH
 fn rustc_clr_interop_managed_call2_<const ASSEMBLY:&'static str,const CLASS_PATH:&'static str,const IS_VALUETYPE:bool,const METHOD:&'static str,const IS_STATIC:bool,Ret,Arg1,Arg2>(arg1:Arg1,arg2:Arg2)->Ret{
     core::intrinsics::abort();
 }
+trait Put:Sized{
+    fn putnl(val:Self){
+        rustc_clr_interop_managed_call1_::<"System.Console","System.Console",false,"WriteLine",true,(),Self>(val);
+    }
+    fn put(val:Self){
+        rustc_clr_interop_managed_call1_::<"System.Console","System.Console",false,"Write",true,(),Self>(val);
+    }
+}
+impl Put for i8{
+    fn putnl(val:Self){
+        <i32 as Put>::putnl(val as i32);
+    }
+    fn put(val:Self){
+        <i32 as Put>::put(val as i32);
+    }
+}
+impl Put for i16{
+    fn putnl(val:Self){
+        <i32 as Put>::putnl(val as i32);
+    }
+    fn put(val:Self){
+        <i32 as Put>::put(val as i32);
+    }
+}
+impl Put for i32{}
+impl Put for i64{}
+impl Put for u8{
+    fn putnl(val:Self){
+        <u32 as Put>::putnl(val as u32);
+    }
+    fn put(val:Self){
+        <u32 as Put>::put(val as u32);
+    }
+}
+impl Put for u16{
+    fn putnl(val:Self){
+        <u32 as Put>::putnl(val as u32);
+    }
+    fn put(val:Self){
+        <u32 as Put>::put(val as u32);
+    }
+}
+impl Put for u32{}
+impl Put for u64{}
+impl Put for f32{}
+impl Put for f64{}
