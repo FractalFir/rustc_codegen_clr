@@ -220,7 +220,7 @@ pub fn usize_class() -> DotnetTypeRef {
     string
 }
 /// Translated MIR statements should have the total stack diff of 0.
-pub fn check_debugable(ops: &[crate::cil_op::CILOp], debugable:impl std::fmt::Debug) {
+pub fn check_debugable(ops: &[crate::cil_op::CILOp], debugable: impl std::fmt::Debug) {
     let mut stack = 0;
     for op in ops {
         stack += op.stack_diff();

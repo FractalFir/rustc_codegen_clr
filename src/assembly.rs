@@ -5,7 +5,7 @@ use crate::{
     access_modifier::AccessModifer, codegen_error::CodegenError, function_sig::FnSig,
     method::Method, r#type::Type, type_def::TypeDef,
 };
-use rustc_middle::mir::{mono::MonoItem, Local, LocalDecl, Statement,Terminator};
+use rustc_middle::mir::{mono::MonoItem, Local, LocalDecl, Statement, Terminator};
 use rustc_middle::ty::{Instance, ParamEnv, TyCtxt, TyKind};
 use std::collections::HashSet;
 
@@ -36,31 +36,33 @@ impl Assembly {
             entrypoint,
         }
     }
-    pub fn terminator_to_ops<'tcx>(term:&Terminator<'tcx>,mir:&'tcx rustc_middle::mir::Body<'tcx>,tcx: TyCtxt<'tcx>,instance: Instance<'tcx>)->Vec<CILOp>{
-        if crate::ABORT_ON_ERROR{
-            crate::terminator::handle_terminator(
-                term, mir, tcx, mir, instance,
-            )
-        }
-        else{
-        match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {crate::terminator::handle_terminator(
-            term, mir, tcx, mir, instance,
-        )})){
-            Ok(ok)=>ok,
-            Err(payload)=>{
-                let msg = if let Some(msg) = payload.downcast_ref::<&str>() {
-                    rustc_middle::ty::print::with_no_trimmed_paths!{
+    pub fn terminator_to_ops<'tcx>(
+        term: &Terminator<'tcx>,
+        mir: &'tcx rustc_middle::mir::Body<'tcx>,
+        tcx: TyCtxt<'tcx>,
+        instance: Instance<'tcx>,
+    ) -> Vec<CILOp> {
+        if crate::ABORT_ON_ERROR {
+            crate::terminator::handle_terminator(term, mir, tcx, mir, instance)
+        } else {
+            match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                crate::terminator::handle_terminator(term, mir, tcx, mir, instance)
+            })) {
+                Ok(ok) => ok,
+                Err(payload) => {
+                    let msg = if let Some(msg) = payload.downcast_ref::<&str>() {
+                        rustc_middle::ty::print::with_no_trimmed_paths! {
                         format!("Tried to execute terminator {term:?} whose compialtion message {msg:?}!")}
-                } else {
-                    eprintln!("handle_terminator panicked with a non-string message!");
-                    rustc_middle::ty::print::with_no_trimmed_paths!{
-                    format!("Tried to execute terminator {term:?} whose compialtion failed with a no-string message!")
-                    }
-                };
-                CILOp::throw_msg(&msg).into()
+                    } else {
+                        eprintln!("handle_terminator panicked with a non-string message!");
+                        rustc_middle::ty::print::with_no_trimmed_paths! {
+                        format!("Tried to execute terminator {term:?} whose compialtion failed with a no-string message!")
+                        }
+                    };
+                    CILOp::throw_msg(&msg).into()
+                }
             }
         }
-    }
     }
     pub fn statement_to_ops<'tcx>(
         statement: &Statement<'tcx>,
@@ -165,15 +167,13 @@ impl Assembly {
             }
             match &block_data.terminator {
                 Some(term) => {
-                    let term_ops = Self::terminator_to_ops(
-                        term, mir, tcx,  instance,
-                    );
-                    if term_ops != &[CILOp::Ret]{
+                    let term_ops = Self::terminator_to_ops(term, mir, tcx, instance);
+                    if term_ops != &[CILOp::Ret] {
                         crate::utilis::check_debugable(&term_ops, term);
                     }
-                    
+
                     ops.extend(term_ops)
-                },
+                }
                 None => (),
             }
         }

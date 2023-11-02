@@ -385,16 +385,23 @@ pub fn handle_terminator<'ctx>(
             replace: _,
         } => {
             let ty = monomorphize(&method_instance, place.ty(method, tyctx).ty, tyctx);
-           
+
             let drop_instance = Instance::resolve_drop_in_place(tyctx, ty).polymorphize(tyctx);
             if let InstanceDef::DropGlue(_, None) = drop_instance.def {
                 //Empty drop, nothing needs to happen.
                 vec![]
             } else {
-                let sig = FnSig::from_poly_sig(&drop_instance.ty(tyctx,ParamEnv::reveal_all()).fn_sig(tyctx), tyctx, &method_instance).unwrap();
+                let sig = FnSig::from_poly_sig(
+                    &drop_instance
+                        .ty(tyctx, ParamEnv::reveal_all())
+                        .fn_sig(tyctx),
+                    tyctx,
+                    &method_instance,
+                )
+                .unwrap();
                 let function_name = crate::utilis::function_name(tyctx.symbol_name(drop_instance));
                 let mut call = crate::place::place_adress(place, tyctx, method, method_instance);
-                
+
                 call.push(CILOp::Call(CallSite::boxed(None, function_name, sig, true)));
                 eprintln!("drop call:{call:?}");
                 call
