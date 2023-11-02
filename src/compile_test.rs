@@ -457,6 +457,7 @@ run_test! {types,string_slice}
 run_test! {types,slice}
 run_test! {std,main}
 run_test! {control_flow,cf_for}
+run_test! {control_flow,drop}
 cargo_test! {hello_world}
 cargo_test! {std_hello_world}
 cargo_test! {benchmarks}

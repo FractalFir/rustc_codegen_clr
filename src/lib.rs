@@ -17,7 +17,7 @@ extern crate rustc_target;
 // Debug config
 
 /// Tells the codegen to insert comments containing the MIR statemtens after each one of them.
-const INSERT_MIR_DEBUG_COMMENTS: bool = false;
+const INSERT_MIR_DEBUG_COMMENTS: bool = true;
 const PRINT_LOCAL_TYPES: bool = false;
 const PRINT_TY_CONVERTION: bool = false;
 /// Tells the codegen to optmize the emiited CIL.

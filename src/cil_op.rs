@@ -336,7 +336,7 @@ impl CILOp {
             CILOp::Comment(_) => 0,
             CILOp::Label(_) | CILOp::GoTo(_) => 0,
             CILOp::BZero(_) => -1,
-            CILOp::BEq(_) | CILOp::BNe(_) | CILOp::BLt(_) | CILOp::BGe(_) => -1,
+            CILOp::BEq(_) | CILOp::BNe(_) | CILOp::BLt(_) | CILOp::BGe(_) => -2,
             CILOp::LDArg(_) | CILOp::LDArgA(_) | CILOp::LDLoc(_) | CILOp::LDLocA(_) => 1,
             CILOp::LdcI32(_)
             | CILOp::LdcI64(_)

@@ -220,13 +220,13 @@ pub fn usize_class() -> DotnetTypeRef {
     string
 }
 /// Translated MIR statements should have the total stack diff of 0.
-pub fn check_statement(ops: &[crate::cil_op::CILOp], statement: &rustc_middle::mir::Statement) {
+pub fn check_debugable(ops: &[crate::cil_op::CILOp], debugable:impl std::fmt::Debug) {
     let mut stack = 0;
     for op in ops {
         stack += op.stack_diff();
     }
     if stack != 0 {
-        eprintln!("Propable miscompilation: statement {statement:?} resulted in ops {ops:?} and did not pass the stack check.");
+        rustc_middle::ty::print::with_no_trimmed_paths! {eprintln!("Propable miscompilation: {debugable:?} resulted in ops {ops:?} and did not pass the stack check.")};
         let mut stack = 0;
         for op in ops {
             let diff = op.stack_diff();
