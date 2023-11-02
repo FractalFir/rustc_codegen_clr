@@ -23,7 +23,7 @@ The project is still very early in development, but it has made significant prog
 - [ ] Indexing arrays *broken*
 - [X] Getting values of fields
 - [X] Setting fields
-- [X] Pointer dereferecing
+- [X] Pointer dereferencing
 - [X] Generics *GATS don't work in some edge cases*
 - [X] for loops *with some minor limitations*
 
@@ -50,9 +50,9 @@ The project is still very early in development, but it has made significant prog
 >
 > All tests were run in CoreCLR .NET runtime, version `7.0.11` The host system was `Linux fedora 6.5.5-200.fc38.x86_64`, and the CPU was `13th Gen Intel(R) Core(TM) i5-13500HX`.
 
-`Codegen Optimzations Disabled` means that the code was compiled in release mode, but post-MIR, codegen-internal optimizations were disabled.
+`Codegen Optimizations Disabled` means that the code was compiled in release mode, but post-MIR, codegen-internal optimizations were disabled.
 
-### Fibonachi of 10, recursive
+### Fibonacci of 10, recursive
 
 | Test Method                                | Avg of 10K runs |
 | ------------------------------------------ | --------------- |
