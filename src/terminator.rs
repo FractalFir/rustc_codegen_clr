@@ -189,7 +189,7 @@ fn call_ctor<'ctx>(
             vec![CILOp::NewObj(CallSite::boxed(
                 Some(tpe.clone()),
                 ".ctor".into(),
-                FnSig::new(&[tpe.into()], &crate::r#type::Type::Void),
+                FnSig::new(&[], &crate::r#type::Type::Void),
                 false,
             ))],
             method,
@@ -200,7 +200,7 @@ fn call_ctor<'ctx>(
             .iter()
             .map(|ty| crate::r#type::Type::from_ty(ty.as_type().unwrap(), tyctx, &method_instance))
             .collect();
-        inputs.insert(0, tpe.clone().into());
+        //inputs.insert(0, tpe.clone().into());
         let sig = FnSig::new(&inputs, &crate::r#type::Type::Void);
         let mut call = Vec::new();
         for arg in args {
