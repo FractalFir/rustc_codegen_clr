@@ -158,8 +158,10 @@ pub enum CILOp {
     BNe(u32),
     /// Jump to target if the top value is less than the bottom one, continue otherwise. WARING: make sure the compared values have the same type, othewise IL is invalid.
     BLt(u32),
-    /// Jump to target if the top value is greater than the bottom one, continue otherwise. WARING: make sure the compared values have the same type, othewise IL is invalid.
+    /// Jump to target if the top value is greater than or equal to the bottom one, continue otherwise. WARING: make sure the compared values have the same type, othewise IL is invalid.
     BGe(u32),
+    /// Jump to target if the top value is less than or equal to the bottom one, continue otherwise. WARING: make sure the compared values have the same type, othewise IL is invalid.
+    BLe(u32),
     /// Jump to target if the top value on the stack is zero, continue otherwise. WARING: make sure the compared values have the same type, othewise IL is invalid.
     BZero(u32),
     /// Call the metod behind `call_site`.`
@@ -336,7 +338,7 @@ impl CILOp {
             CILOp::Comment(_) => 0,
             CILOp::Label(_) | CILOp::GoTo(_) => 0,
             CILOp::BZero(_) => -1,
-            CILOp::BEq(_) | CILOp::BNe(_) | CILOp::BLt(_) | CILOp::BGe(_) => -2,
+            CILOp::BEq(_) | CILOp::BNe(_) | CILOp::BLt(_) | CILOp::BGe(_)  | CILOp::BLe(_)=> -2,
             CILOp::LDArg(_) | CILOp::LDArgA(_) | CILOp::LDLoc(_) | CILOp::LDLocA(_) => 1,
             CILOp::LdcI32(_)
             | CILOp::LdcI64(_)
@@ -428,16 +430,16 @@ impl CILOp {
             }
         }*/
     }
-    /// Flips a conditional, changing the order of its arguments. Eg. BLt(a,b) [a < b] becomes BGe(b,a) [b >= a].
+    /// Flips a conditional, changing the order of its arguments. Eg. BLt(a,b) [a < b] becomes BGt(b,a) [b > a].
     // There may be a bug there.
     pub fn flip_cond(&self) -> Self {
         match self{
             // a >= b
                 CILOp::BGe(target) =>{
                     // b < a
-                    CILOp::BLt(*target)
+                    CILOp::BLe(*target)
                 }
-                CILOp::BLt(target) =>{
+                CILOp::BLe(target) =>{
                     CILOp::BGe(*target)
                 }
                 _=>todo!("Can't filp conditional operation {self:?}, either because it is not a conditional(bug) or it is not supported yet!"),

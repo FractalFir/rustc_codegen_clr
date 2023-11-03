@@ -168,8 +168,7 @@ fn op4_combos(ops: &mut [CILOp]) {
                     ops[idx + 3] = CILOp::Nop;
                 }
             }
-            //This is bugged.
-            /*
+            /* 
             (
                 CILOp::STLoc(b1),
                 CILOp::LDLoc(_) | CILOp::LDArg(_),
@@ -236,6 +235,7 @@ fn is_label_unsused(ops: &[CILOp], label: u32) -> bool {
         CILOp::BNe(target) => label == *target,
         CILOp::BLt(target) => label == *target,
         CILOp::BGe(target) => label == *target,
+        CILOp::BLe(target) => label == *target,
         CILOp::BZero(target) => label == *target,
         _ => false,
     })
