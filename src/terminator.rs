@@ -386,15 +386,17 @@ pub fn handle_terminator<'ctx>(
         } => {
             let ty = monomorphize(&method_instance, place.ty(method, tyctx).ty, tyctx);
 
-            let drop_instance = Instance::resolve_drop_in_place(tyctx, ty).polymorphize(tyctx);
+            let drop_instance = Instance::resolve_drop_in_place(tyctx, ty);
             if let InstanceDef::DropGlue(_, None) = drop_instance.def {
                 //Empty drop, nothing needs to happen.
                 vec![]
             } else {
+                let ty = drop_instance
+                .ty(tyctx, ParamEnv::reveal_all())
+                .fn_sig(tyctx);
+                let ty = monomorphize(&method_instance,ty,tyctx); 
                 let sig = FnSig::from_poly_sig(
-                    &drop_instance
-                        .ty(tyctx, ParamEnv::reveal_all())
-                        .fn_sig(tyctx),
+                    &ty,
                     tyctx,
                     &method_instance,
                 )
