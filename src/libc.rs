@@ -278,23 +278,7 @@ add_method!(
     abort,
     &[],
     &Type::Void,
-    [
-        CILOp::LdcI64(0),
-        /*
-        CILOp::Call(Box::new(CallSite {
-            owner: Some(Type::ExternType {
-                asm: "System.Runtime".into(),
-                name: "System.Environment".into()
-            }),
-            name: "Exit".into(),
-            signature: FnSig::new(&[Type::I32], &Type::Void),
-            is_static: true,
-        })),*/
-        CILOp::ConvISize(false),
-        CILOp::LDIndI8,
-        CILOp::Pop,
-        CILOp::Ret,
-    ]
+    CILOp::throw_msg("Called abort!")
 );
 /*
 add_method!(managed_char_from_utf8,&[Type::U64],&Type::DotnetChar,&[

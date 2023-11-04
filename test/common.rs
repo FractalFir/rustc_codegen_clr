@@ -34,8 +34,8 @@ macro_rules! test{
 macro_rules! test_eq{
     ($a:expr,$b:expr)=>{
         if black_box($a) != black_box($b){
-            Put::putnl($a);
-            Put::putnl($b);
+            //Put::putnl($a);
+            //Put::putnl($b);
             core::intrinsics::abort();
         }
     }

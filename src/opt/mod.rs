@@ -168,10 +168,9 @@ fn op4_combos(ops: &mut [CILOp]) {
                     ops[idx + 3] = CILOp::Nop;
                 }
             }
-            /* 
             (
                 CILOp::STLoc(b1),
-                CILOp::LDLoc(_) | CILOp::LDArg(_),
+                CILOp::LDLoc(_),
                 CILOp::LDLoc(b2),
                 CILOp::BGe(target),
             ) => {
@@ -189,7 +188,7 @@ fn op4_combos(ops: &mut [CILOp]) {
                     ops[idx + 2] = op2;
                     ops[idx + 3] = op4;
                 }
-            }*/
+            }
             (
                 CILOp::LDLoc(_a),
                 CILOp::STLoc(b1),

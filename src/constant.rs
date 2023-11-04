@@ -182,17 +182,16 @@ fn load_const_scalar<'ctx>(
                 let field_type = Type::U8;
                 let enum_dotnet = tpe.as_dotnet().expect("Enum scalar not an ADT!");
                 vec![
-                    CILOp::SizeOf(Box::new(tpe)),
-                    CILOp::LocAlloc,
-                    CILOp::Dup,
-                    CILOp::LDIndRef,
+                    CILOp::NewTMPLocal(tpe.into()),
+                    CILOp::LoadAddresOfTMPLocal,
                     CILOp::LdcI64(scalar_u128 as i64),
                     CILOp::STField(Box::new(crate::cil_op::FieldDescriptor::new(
                         enum_dotnet.clone(),
                         field_type,
                         "_tag".into(),
                     ))),
-                    CILOp::LdObj(Box::new(enum_dotnet.into())),
+                    CILOp::LoadTMPLocal,
+                    CILOp::FreeTMPLocal,
                 ]
             }
             _ => todo!("Can't load const ADT scalars of type {scalar_type:?}"),
