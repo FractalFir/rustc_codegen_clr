@@ -225,7 +225,7 @@ impl Assembly {
             .iter()
             .map(|method| {
                 let mut method = method.clone();
-                crate::opt::opt_method(&mut method);
+                crate::opt::opt_method(&mut method,self);
                 method
             })
             .collect();

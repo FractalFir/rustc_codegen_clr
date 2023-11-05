@@ -208,7 +208,7 @@ impl CodegenBackend for MyBackend {
         outputs: &OutputFilenames,
     ) -> Result<(), ErrorGuaranteed> {
         use rustc_codegen_ssa::back::link::link_binary;
-
+        //panic!();
         link_binary(sess, &RlibArchiveBuilder, &codegen_results, outputs)
             .expect("Could not link the binary into a .rlib file!");
         Ok(())

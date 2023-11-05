@@ -1,10 +1,13 @@
-use crate::{cil_op::CILOp, method::Method, r#type::Type};
-const MAX_PASS: u32 = 8;
-pub fn opt_method(method: &mut Method) {
+use std::ops::Range;
+
+use crate::{cil_op::CILOp, method::Method, r#type::Type, assembly::Assembly};
+const MAX_PASS: u32 = 16;
+pub fn opt_method(method: &mut Method,asm:& Assembly) {
     if !crate::OPTIMIZE_CIL {
         return;
     };
     //panic!("opt");
+    method.ops_mut().retain(|op| match op {CILOp::Call(site)=>!site.is_nop(),_=>true});
     repalce_const_sizes(method.ops_mut());
     for _ in 0..MAX_PASS {
         op2_combos(method.ops_mut());
@@ -12,6 +15,7 @@ pub fn opt_method(method: &mut Method) {
         op4_combos(method.ops_mut());
         remove_zombie_sets(method.ops_mut());
         method.ops_mut().retain(|op| *op != CILOp::Nop);
+        try_alias_locals(method.ops_mut());
         remove_unused_locals(method);
     }
 }
@@ -95,6 +99,18 @@ fn op2_combos(ops: &mut Vec<CILOp>) {
                     ops[idx] = CILOp::Nop;
                 }
             }
+            (CILOp::Not, CILOp::BZero(target)) => {
+                ops[idx + 1] = CILOp::BTrue(*target);
+                ops[idx] = CILOp::Nop;
+            }
+            (CILOp::Eq, CILOp::BZero(target)) => {
+                ops[idx + 1] = CILOp::BNe(*target);
+                ops[idx] = CILOp::Nop;
+            }
+            (CILOp::Eq, CILOp::BTrue(target)) => {
+                ops[idx + 1] = CILOp::BEq(*target);
+                ops[idx] = CILOp::Nop;
+            }
             (CILOp::LdcI32(0) | CILOp::LdcI64(0), CILOp::BEq(target)) => {
                 ops[idx + 1] = CILOp::BZero(*target);
                 ops[idx] = CILOp::Nop;
@@ -172,7 +188,7 @@ fn op4_combos(ops: &mut [CILOp]) {
                 CILOp::STLoc(b1),
                 CILOp::LDLoc(_),
                 CILOp::LDLoc(b2),
-                CILOp::BGe(target),
+                CILOp::BGe(_) | CILOp::BEq(_)| CILOp::BNe(_),
             ) => {
                 if b1 == b2 {
                     // b
@@ -236,6 +252,7 @@ fn is_label_unsused(ops: &[CILOp], label: u32) -> bool {
         CILOp::BGe(target) => label == *target,
         CILOp::BLe(target) => label == *target,
         CILOp::BZero(target) => label == *target,
+        CILOp::BTrue(target) => label == *target,
         _ => false,
     })
 }
@@ -250,7 +267,92 @@ fn cond_reordering() {
     op4_combos(&mut ops);
     assert_eq!(
         ops,
-        [CILOp::Dup, CILOp::STLoc(0), CILOp::LDLoc(1), CILOp::BLt(0)]
+        [CILOp::Dup, CILOp::STLoc(0), CILOp::LDLoc(1), CILOp::BLe(0)]
     );
     //panic!("ops:{ops:?}")
+}
+fn alias_local(src:u32,dst:u32,ops:&mut [CILOp]){
+    ops.iter_mut().for_each(|op|match op{
+        CILOp::LDLoc(loc)=> if *loc == src{
+            *loc = dst;
+        }
+        CILOp::LDLocA(loc)=> if *loc == src{
+            *loc = dst;
+        }
+        CILOp::STLoc(loc)=> if *loc == src{
+            *loc = dst;
+        }
+        _=>(),
+    });
+}
+fn try_alias_locals(ops:&mut [CILOp]){
+    
+    for index in 0..(ops.len() - 1){
+        let op1 = &ops[index];
+        let op2 = &ops[index + 1];
+        if let (CILOp::LDLoc(loc1),CILOp::STLoc(loc2)) = (op1,op2){
+            //eprintln!("Checking for alias between {loc1} and {loc2}!");
+            if loc1 == loc2{
+                //eprintln!("locals equal!");
+                continue;
+            }
+            if could_local_ptr_escape(*loc1,ops){
+               //eprintln!("ptr could escape!");
+                continue;
+            }
+            let loc1_range = if let Some(range) = get_local_access_range(*loc1,ops){range}else{continue;};
+            let loc2_range = if let Some(range) = get_local_access_range(*loc2,ops){range}else{continue;};
+            // Ranges don't overlap, use simple aliasing
+            if !do_ranges_overlap(&loc1_range,&loc2_range){
+                //println!("{loc2} will now be {loc1}!");
+                alias_local(*loc2,*loc1,ops);
+                continue;
+            }
+            //eprintln!("ranges {loc1_range:?} {loc2_range:?} overlap.");
+        }
+    }
+}
+fn do_ranges_overlap(range1:&Range<usize>,range2:&Range<usize>)->bool{
+   range1.start <= range2.end && range2.start <= range1.end
+}
+fn get_local_access_range(local:u32,ops:&[CILOp])->Option<Range<usize>>{
+    let mut start = ops.len();
+    let mut end = 0;
+    for (index,op) in ops.iter().enumerate(){
+        match op{
+            CILOp::LDLoc(loc) | CILOp::STLoc(loc) | CILOp::LDLocA(loc) =>if *loc == local{
+                start = start.min(index);
+                end = end.max(index);
+            }
+            _=>(),
+        }
+    }
+    if start > end{
+        eprintln!("Can't get range!");
+        None
+    }
+    else{
+        Some(start..end)
+    }
+}
+/// Checks if it is possible for a pointer to a local to escape. 
+fn could_local_ptr_escape(local:u32,ops:&[CILOp])->bool{
+    for (index,op) in ops.iter().enumerate(){
+        match op{
+            CILOp::LDLocA(loc) =>if *loc == local{
+                assert!(index + 2 < ops.len(),"ERROR: malformed method. LDLocA must be followed by at least 2 ops.");
+                let op2 = &ops[index + 1];
+                let op3 = &ops[index + 2];
+                if let CILOp::LDField(_) = op2{
+                    continue;
+                }
+                if let CILOp::STField(_) = op3{
+                    continue;
+                }
+               return true;
+            }
+            _=>(),
+        }
+    }
+    return false;
 }

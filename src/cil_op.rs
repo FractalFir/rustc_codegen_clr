@@ -164,6 +164,8 @@ pub enum CILOp {
     BLe(u32),
     /// Jump to target if the top value on the stack is zero, continue otherwise. WARING: make sure the compared values have the same type, othewise IL is invalid.
     BZero(u32),
+    /// Jump to target if the top value on the stack is zero, continue otherwise. WARING: make sure the compared values have the same type, othewise IL is invalid.
+    BTrue(u32),
     /// Call the metod behind `call_site`.`
     Call(Box<CallSite>),
     /// Call the virtual method behind `call_site`.`
@@ -337,7 +339,7 @@ impl CILOp {
             CILOp::Nop => 0,
             CILOp::Comment(_) => 0,
             CILOp::Label(_) | CILOp::GoTo(_) => 0,
-            CILOp::BZero(_) => -1,
+            CILOp::BZero(_) | CILOp::BTrue(_) => -1,
             CILOp::BEq(_) | CILOp::BNe(_) | CILOp::BLt(_) | CILOp::BGe(_)  | CILOp::BLe(_)=> -2,
             CILOp::LDArg(_) | CILOp::LDArgA(_) | CILOp::LDLoc(_) | CILOp::LDLocA(_) => 1,
             CILOp::LdcI32(_)
@@ -434,14 +436,12 @@ impl CILOp {
     // There may be a bug there.
     pub fn flip_cond(&self) -> Self {
         match self{
-            // a >= b
-                CILOp::BGe(target) =>{
-                    // b < a
-                    CILOp::BLe(*target)
-                }
-                CILOp::BLe(target) =>{
-                    CILOp::BGe(*target)
-                }
+                CILOp::BGe(target) =>
+                    CILOp::BLe(*target),
+                CILOp::BLe(target) =>
+                    CILOp::BGe(*target),
+                CILOp::BEq(target)=>CILOp::BEq(*target),
+                CILOp::BNe(target)=>CILOp::BNe(*target),
                 _=>todo!("Can't filp conditional operation {self:?}, either because it is not a conditional(bug) or it is not supported yet!"),
             }
     }

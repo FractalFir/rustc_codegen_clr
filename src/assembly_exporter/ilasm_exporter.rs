@@ -212,6 +212,7 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
         CILOp::BLt(id) => format!("blt bb_{id}").into(),
         CILOp::BLe(id) => format!("ble bb_{id}").into(),
         CILOp::BZero(id) => format!("brzero bb_{id}").into(),
+        CILOp::BTrue(id) => format!("brtrue bb_{id}").into(),
         CILOp::Call(call_site) => {
             if call_site.is_nop() {
                 "".into()
