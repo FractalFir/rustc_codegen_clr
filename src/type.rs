@@ -186,6 +186,22 @@ impl DotnetTypeRef {
     }
 }
 impl Type {
+    pub fn map_generic(&self, generics: &[Type]) -> Type {
+        match self {
+            Self::GenericArg(arg) => generics[*arg as usize].clone(),
+            Self::DotnetType(dref) => {
+                let mut dref = dref.clone();
+                let dref_generics: Vec<_> = dref
+                    .generics()
+                    .iter()
+                    .map(|gtype| gtype.map_generic(generics))
+                    .collect();
+                dref.set_generics(dref_generics);
+                Self::DotnetType(dref)
+            }
+            _ => self.clone(),
+        }
+    }
     pub fn as_dotnet(&self) -> Option<DotnetTypeRef> {
         match self {
             Self::DotnetType(inner) => Some(inner.as_ref().clone()),

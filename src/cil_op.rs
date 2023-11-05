@@ -309,6 +309,51 @@ pub enum CILOp {
     LDStaticField(Box<StaticFieldDescriptor>),
 }
 impl CILOp {
+    pub fn replace_target(&mut self, orignal: u32, replacement: u32) {
+        match self {
+            CILOp::GoTo(target) => {
+                if orignal == *target {
+                    *target = replacement
+                }
+            }
+            CILOp::BEq(target) => {
+                if orignal == *target {
+                    *target = replacement
+                }
+            }
+            CILOp::BNe(target) => {
+                if orignal == *target {
+                    *target = replacement
+                }
+            }
+            CILOp::BLt(target) => {
+                if orignal == *target {
+                    *target = replacement
+                }
+            }
+            CILOp::BGe(target) => {
+                if orignal == *target {
+                    *target = replacement
+                }
+            }
+            CILOp::BLe(target) => {
+                if orignal == *target {
+                    *target = replacement
+                }
+            }
+            CILOp::BZero(target) => {
+                if orignal == *target {
+                    *target = replacement
+                }
+            }
+            CILOp::BTrue(target) => {
+                if orignal == *target {
+                    *target = replacement
+                }
+            }
+            _ => (),
+        }
+    }
     pub fn call(&self) -> Option<&CallSite> {
         match self {
             Self::Call(site) => Some(site),
@@ -340,7 +385,7 @@ impl CILOp {
             CILOp::Comment(_) => 0,
             CILOp::Label(_) | CILOp::GoTo(_) => 0,
             CILOp::BZero(_) | CILOp::BTrue(_) => -1,
-            CILOp::BEq(_) | CILOp::BNe(_) | CILOp::BLt(_) | CILOp::BGe(_)  | CILOp::BLe(_)=> -2,
+            CILOp::BEq(_) | CILOp::BNe(_) | CILOp::BLt(_) | CILOp::BGe(_) | CILOp::BLe(_) => -2,
             CILOp::LDArg(_) | CILOp::LDArgA(_) | CILOp::LDLoc(_) | CILOp::LDLocA(_) => 1,
             CILOp::LdcI32(_)
             | CILOp::LdcI64(_)
@@ -441,6 +486,7 @@ impl CILOp {
                 CILOp::BLe(target) =>
                     CILOp::BGe(*target),
                 CILOp::BEq(target)=>CILOp::BEq(*target),
+                CILOp::Eq=>CILOp::Eq,
                 CILOp::BNe(target)=>CILOp::BNe(*target),
                 _=>todo!("Can't filp conditional operation {self:?}, either because it is not a conditional(bug) or it is not supported yet!"),
             }

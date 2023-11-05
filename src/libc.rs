@@ -274,12 +274,7 @@ add_method!(
     ]
 );
 //System.Environment.Exit(a_ExitCode)
-add_method!(
-    abort,
-    &[],
-    &Type::Void,
-    CILOp::throw_msg("Called abort!")
-);
+add_method!(abort, &[], &Type::Void, CILOp::throw_msg("Called abort!"));
 /*
 add_method!(managed_char_from_utf8,&[Type::U64],&Type::DotnetChar,&[
     CILOp::LDArg(0),

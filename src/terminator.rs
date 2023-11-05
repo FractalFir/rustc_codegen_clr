@@ -392,15 +392,10 @@ pub fn handle_terminator<'ctx>(
                 vec![]
             } else {
                 let ty = drop_instance
-                .ty(tyctx, ParamEnv::reveal_all())
-                .fn_sig(tyctx);
-                let ty = monomorphize(&method_instance,ty,tyctx); 
-                let sig = FnSig::from_poly_sig(
-                    &ty,
-                    tyctx,
-                    &method_instance,
-                )
-                .unwrap();
+                    .ty(tyctx, ParamEnv::reveal_all())
+                    .fn_sig(tyctx);
+                let ty = monomorphize(&method_instance, ty, tyctx);
+                let sig = FnSig::from_poly_sig(&ty, tyctx, &method_instance).unwrap();
                 let function_name = crate::utilis::function_name(tyctx.symbol_name(drop_instance));
                 let mut call = crate::place::place_adress(place, tyctx, method, method_instance);
 

@@ -1,13 +1,16 @@
 use std::ops::Range;
 
-use crate::{cil_op::CILOp, method::Method, r#type::Type, assembly::Assembly};
+use crate::{assembly::Assembly, cil_op::CILOp, method::Method, r#type::Type};
 const MAX_PASS: u32 = 16;
-pub fn opt_method(method: &mut Method,asm:& Assembly) {
+pub fn opt_method(method: &mut Method, asm: &Assembly) {
     if !crate::OPTIMIZE_CIL {
         return;
     };
     //panic!("opt");
-    method.ops_mut().retain(|op| match op {CILOp::Call(site)=>!site.is_nop(),_=>true});
+    method.ops_mut().retain(|op| match op {
+        CILOp::Call(site) => !site.is_nop(),
+        _ => true,
+    });
     repalce_const_sizes(method.ops_mut());
     for _ in 0..MAX_PASS {
         op2_combos(method.ops_mut());
@@ -16,6 +19,7 @@ pub fn opt_method(method: &mut Method,asm:& Assembly) {
         remove_zombie_sets(method.ops_mut());
         method.ops_mut().retain(|op| *op != CILOp::Nop);
         try_alias_locals(method.ops_mut());
+        try_split_locals(method, asm);
         remove_unused_locals(method);
     }
 }
@@ -78,6 +82,14 @@ fn op2_combos(ops: &mut Vec<CILOp>) {
     for idx in 0..(ops.len() - 1) {
         let (op1, op2) = (&ops[idx], &ops[idx + 1]);
         match (op1, op2) {
+            // BB_SOURCE:goto target makes it so all goto SOURCE can be replaced with goto TARGET
+            (CILOp::Label(source), CILOp::GoTo(target)) => {
+                let source = *source;
+                let target = *target;
+                ops.iter_mut()
+                    .for_each(|cilop| cilop.replace_target(source, target));
+            }
+
             (CILOp::LDLoc(a), CILOp::STLoc(b)) => {
                 if a == b {
                     ops[idx] = CILOp::Nop;
@@ -99,6 +111,13 @@ fn op2_combos(ops: &mut Vec<CILOp>) {
                     ops[idx] = CILOp::Nop;
                 }
             }
+            (CILOp::Label(source), CILOp::Label(target)) => {
+                let source = *source;
+                let target = *target;
+                ops.iter_mut()
+                    .for_each(|cilop| cilop.replace_target(source, target));
+            }
+            (CILOp::GoTo(_), CILOp::GoTo(_)) => ops[idx + 1] = CILOp::Nop,
             (CILOp::Not, CILOp::BZero(target)) => {
                 ops[idx + 1] = CILOp::BTrue(*target);
                 ops[idx] = CILOp::Nop;
@@ -113,6 +132,10 @@ fn op2_combos(ops: &mut Vec<CILOp>) {
             }
             (CILOp::LdcI32(0) | CILOp::LdcI64(0), CILOp::BEq(target)) => {
                 ops[idx + 1] = CILOp::BZero(*target);
+                ops[idx] = CILOp::Nop;
+            }
+            (CILOp::LdcI32(0) | CILOp::LdcI64(0), CILOp::BNe(target)) => {
+                ops[idx + 1] = CILOp::BTrue(*target);
                 ops[idx] = CILOp::Nop;
             }
             (CILOp::Lt, CILOp::BZero(target)) => {
@@ -188,7 +211,7 @@ fn op4_combos(ops: &mut [CILOp]) {
                 CILOp::STLoc(b1),
                 CILOp::LDLoc(_),
                 CILOp::LDLoc(b2),
-                CILOp::BGe(_) | CILOp::BEq(_)| CILOp::BNe(_),
+                CILOp::BGe(_) | CILOp::BEq(_) | CILOp::BNe(_) | CILOp::Eq,
             ) => {
                 if b1 == b2 {
                     // b
@@ -271,88 +294,230 @@ fn cond_reordering() {
     );
     //panic!("ops:{ops:?}")
 }
-fn alias_local(src:u32,dst:u32,ops:&mut [CILOp]){
-    ops.iter_mut().for_each(|op|match op{
-        CILOp::LDLoc(loc)=> if *loc == src{
-            *loc = dst;
+fn alias_local(src: u32, dst: u32, ops: &mut [CILOp]) {
+    ops.iter_mut().for_each(|op| match op {
+        CILOp::LDLoc(loc) => {
+            if *loc == src {
+                *loc = dst;
+            }
         }
-        CILOp::LDLocA(loc)=> if *loc == src{
-            *loc = dst;
+        CILOp::LDLocA(loc) => {
+            if *loc == src {
+                *loc = dst;
+            }
         }
-        CILOp::STLoc(loc)=> if *loc == src{
-            *loc = dst;
+        CILOp::STLoc(loc) => {
+            if *loc == src {
+                *loc = dst;
+            }
         }
-        _=>(),
+        _ => (),
     });
 }
-fn try_alias_locals(ops:&mut [CILOp]){
-    
-    for index in 0..(ops.len() - 1){
+fn try_alias_locals(ops: &mut [CILOp]) {
+    for index in 0..(ops.len() - 1) {
         let op1 = &ops[index];
         let op2 = &ops[index + 1];
-        if let (CILOp::LDLoc(loc1),CILOp::STLoc(loc2)) = (op1,op2){
+        if let (CILOp::LDLoc(loc1), CILOp::STLoc(loc2)) = (op1, op2) {
             //eprintln!("Checking for alias between {loc1} and {loc2}!");
-            if loc1 == loc2{
+            if loc1 == loc2 {
                 //eprintln!("locals equal!");
                 continue;
             }
-            if could_local_ptr_escape(*loc1,ops){
-               //eprintln!("ptr could escape!");
+            if could_local_ptr_escape(*loc1, ops) {
+                //eprintln!("ptr could escape!");
                 continue;
             }
-            let loc1_range = if let Some(range) = get_local_access_range(*loc1,ops){range}else{continue;};
-            let loc2_range = if let Some(range) = get_local_access_range(*loc2,ops){range}else{continue;};
+            let loc1_range = if let Some(range) = get_local_access_range(*loc1, ops) {
+                range
+            } else {
+                continue;
+            };
+            let loc2_range = if let Some(range) = get_local_access_range(*loc2, ops) {
+                range
+            } else {
+                continue;
+            };
             // Ranges don't overlap, use simple aliasing
-            if !do_ranges_overlap(&loc1_range,&loc2_range){
+            if !do_ranges_overlap(&loc1_range, &loc2_range) {
                 //println!("{loc2} will now be {loc1}!");
-                alias_local(*loc2,*loc1,ops);
+                alias_local(*loc2, *loc1, ops);
                 continue;
             }
             //eprintln!("ranges {loc1_range:?} {loc2_range:?} overlap.");
         }
     }
 }
-fn do_ranges_overlap(range1:&Range<usize>,range2:&Range<usize>)->bool{
-   range1.start <= range2.end && range2.start <= range1.end
+fn do_ranges_overlap(range1: &Range<usize>, range2: &Range<usize>) -> bool {
+    range1.start <= range2.end && range2.start <= range1.end
 }
-fn get_local_access_range(local:u32,ops:&[CILOp])->Option<Range<usize>>{
+fn get_local_access_range(local: u32, ops: &[CILOp]) -> Option<Range<usize>> {
     let mut start = ops.len();
     let mut end = 0;
-    for (index,op) in ops.iter().enumerate(){
-        match op{
-            CILOp::LDLoc(loc) | CILOp::STLoc(loc) | CILOp::LDLocA(loc) =>if *loc == local{
-                start = start.min(index);
-                end = end.max(index);
+    for (index, op) in ops.iter().enumerate() {
+        match op {
+            CILOp::LDLoc(loc) | CILOp::STLoc(loc) | CILOp::LDLocA(loc) => {
+                if *loc == local {
+                    start = start.min(index);
+                    end = end.max(index);
+                }
             }
-            _=>(),
+            _ => (),
         }
     }
-    if start > end{
+    if start > end {
         eprintln!("Can't get range!");
         None
-    }
-    else{
+    } else {
         Some(start..end)
     }
 }
-/// Checks if it is possible for a pointer to a local to escape. 
-fn could_local_ptr_escape(local:u32,ops:&[CILOp])->bool{
-    for (index,op) in ops.iter().enumerate(){
-        match op{
-            CILOp::LDLocA(loc) =>if *loc == local{
-                assert!(index + 2 < ops.len(),"ERROR: malformed method. LDLocA must be followed by at least 2 ops.");
-                let op2 = &ops[index + 1];
-                let op3 = &ops[index + 2];
-                if let CILOp::LDField(_) = op2{
-                    continue;
+/// Checks if it is possible for a pointer to a local to escape.
+fn could_local_ptr_escape(local: u32, ops: &[CILOp]) -> bool {
+    for (index, op) in ops.iter().enumerate() {
+        match op {
+            CILOp::LDLocA(loc) => {
+                if *loc == local {
+                    assert!(
+                        index + 2 < ops.len(),
+                        "ERROR: malformed method. LDLocA must be followed by at least 2 ops."
+                    );
+                    let op2 = &ops[index + 1];
+                    let op3 = &ops[index + 2];
+                    if let CILOp::LDField(_) = op2 {
+                        continue;
+                    }
+                    if let CILOp::STField(_) = op3 {
+                        continue;
+                    }
+                    return true;
                 }
-                if let CILOp::STField(_) = op3{
-                    continue;
-                }
-               return true;
             }
-            _=>(),
+            _ => (),
         }
     }
     return false;
+}
+fn try_split_locals(method: &mut Method, asm: &Assembly) {
+    let splits: Vec<_> = method
+        .locals()
+        .iter()
+        .enumerate()
+        .filter(|(_, tpe)| is_type_splitable(tpe))
+        .collect();
+    //eprintln!("Typewise splits:{splits:?}");
+    let splits: Vec<_> = method
+        .locals()
+        .iter()
+        .enumerate()
+        .filter(|(_, tpe)| is_type_splitable(tpe))
+        .filter(|(local, _)| can_split_local(*local as u32, method.get_ops()))
+        .map(|(index, tpe)| (index, tpe.clone()))
+        .collect();
+
+    //eprintln!("Spliting locals within method {}", method.name());
+    //eprintln!("Locals: {locals:?}.\n\n splits:{splits:?}v \n\nops:{ops:?} \n\n\n",locals = method.locals(),ops = method.get_ops());
+    for (split_local, split_tpe) in splits {
+        let dotnet_tpe = split_tpe
+            .as_dotnet()
+            .expect("Can't spilt non-dotnet types!");
+        let type_def = asm.get_typedef_by_path(dotnet_tpe.name_path());
+        let type_def = type_def.expect("Could not find type!");
+        let local_map_start = method.locals().len();
+        let morphic_fields: Box<[_]> = type_def.morphic_fields(dotnet_tpe.generics()).collect();
+        method.extend_locals(morphic_fields.iter().map(|(name, tpe)| tpe));
+        for index in 0..(method.get_ops().len() - 2) {
+            //FIXME: this needs to be changed if we ever allow for this to optimize more compilcated split field access patterns.
+            let (op1, op2, op3) = (
+                &method.get_ops()[index],
+                &method.get_ops()[index + 1],
+                &method.get_ops()[index + 2],
+            );
+            // Check if op1 is LDLoc(split_local), otherwise ignore.
+            if let CILOp::LDLocA(local) = op1 {
+                if *local != split_local as u32 {
+                    continue;
+                }
+            } else {
+                continue;
+            }
+            //eprintln!("Prepalring to preform struct spiling modifications on ops {op1:?} {op2:?} {op3:?} split_local:{split_local:?}.");
+            if let CILOp::LDField(field_desc) = op2 {
+                let field_idx = morphic_fields
+                    .iter()
+                    .position(|mfield| mfield.0 == field_desc.name())
+                    .expect("Cound not find field during spliting!");
+                method.ops_mut()[index] = CILOp::Nop;
+                method.ops_mut()[index + 1] = CILOp::LDLoc((field_idx + local_map_start) as u32);
+                continue;
+            }
+            if let CILOp::LDFieldAdress(field_desc) = op2 {
+                let field_idx = morphic_fields
+                    .iter()
+                    .position(|mfield| mfield.0 == field_desc.name())
+                    .expect("Cound not find field during spliting!");
+                method.ops_mut()[index] = CILOp::Nop;
+                method.ops_mut()[index + 1] = CILOp::LDLocA((field_idx + local_map_start) as u32);
+                continue;
+            }
+            if let CILOp::STField(field_desc) = op3 {
+                let field_idx = morphic_fields
+                    .iter()
+                    .position(|mfield| mfield.0 == field_desc.name())
+                    .expect("Cound not find field during spliting!");
+                method.ops_mut()[index] = CILOp::Nop;
+                method.ops_mut()[index + 2] = CILOp::STLoc((field_idx + local_map_start) as u32);
+                continue;
+            }
+            panic!("Invalid field access in field split on ops {op1:?} {op2:?} {op3:?} split_local:{split_local:?} ");
+        }
+        //todo!("Can't yet split local {split_local:?} of type {split_tpe:?}. type_def:{type_def:?} morphic_fields:{morphic_fields:?}")
+    }
+}
+/// Checks if a local of type `tpe` could potentialy be split.
+fn is_type_splitable(tpe: &Type) -> bool {
+    if let Type::DotnetType(tref) = tpe {
+        tref.is_valuetype() && tref.asm().is_none() //&& (!tref.name_path().contains("/"))
+    } else {
+        false
+    }
+}
+/// Checks if a local could be split.
+fn can_split_local(local: u32, ops: &[CILOp]) -> bool {
+    // Local is get/set by value, should not be split.
+    if ops.iter().any(|op| {
+        if let CILOp::LDLoc(loc) | CILOp::STLoc(loc) = op {
+            *loc == local
+        } else {
+            false
+        }
+    }) {
+        return false;
+    }
+    // Check if local adress is used ONLY to get fields.
+    for (index, op) in ops.iter().enumerate() {
+        match op {
+            CILOp::LDLocA(loc) => {
+                if *loc == local {
+                    assert!(
+                        index + 2 < ops.len(),
+                        "ERROR: malformed method. LDLocA must be followed by at least 2 ops."
+                    );
+                    let op2 = &ops[index + 1];
+                    let op3 = &ops[index + 2];
+                    if let CILOp::LDField(_) | CILOp::LDFieldAdress(_) = op2 {
+                        continue;
+                    }
+                    if let CILOp::STField(_) = op3 {
+                        continue;
+                    }
+                    eprintln!("Can't split local {loc}, because {op:?} {op2:?} {op3:?}");
+                    return false;
+                }
+            }
+            _ => (),
+        }
+    }
+
+    true
 }

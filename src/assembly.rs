@@ -36,6 +36,35 @@ impl Assembly {
             entrypoint,
         }
     }
+    /// Gets the typdefef at path `path`.
+    pub fn get_typedef_by_path(&self, path: &str) -> Option<&TypeDef> {
+        if path.contains("/") {
+            let mut path_iter = path.split("/");
+            let path_first = path_iter.next().unwrap();
+            let mut td = self.get_typedef_by_path(path_first)?;
+            // FIXME: this loop is messy.
+            for part in path_iter {
+                let old = td;
+                for inner in td.inner_types() {
+                    if inner.name() == part {
+                        td = inner;
+                        break;
+                    }
+                }
+                if td == old {
+                    return None;
+                }
+            }
+            return Some(td);
+        } else {
+            for tpe in self.types() {
+                if tpe.name() == path {
+                    return Some(tpe);
+                }
+            }
+        }
+        None
+    }
     pub fn terminator_to_ops<'tcx>(
         term: &Terminator<'tcx>,
         mir: &'tcx rustc_middle::mir::Body<'tcx>,
@@ -225,7 +254,7 @@ impl Assembly {
             .iter()
             .map(|method| {
                 let mut method = method.clone();
-                crate::opt::opt_method(&mut method,self);
+                crate::opt::opt_method(&mut method, self);
                 method
             })
             .collect();

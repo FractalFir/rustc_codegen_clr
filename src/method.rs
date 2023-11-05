@@ -54,6 +54,9 @@ impl Method {
             self.ops.push(CILOp::Ret);
         }
     }
+    pub fn extend_locals<'a>(&mut self, iter: impl Iterator<Item = &'a Type>) {
+        self.locals.extend(iter.cloned());
+    }
     pub fn is_entrypoint(&self) -> bool {
         self.attributes
             .iter()

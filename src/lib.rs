@@ -24,7 +24,7 @@ const PRINT_TY_CONVERTION: bool = false;
 const OPTIMIZE_CIL: bool = (!INSERT_MIR_DEBUG_COMMENTS) && (true);
 
 /// Try turining on in cause of issues. If it fixes them, then their root cause is UB(eg. use of uninitailized memory).
-pub const ALWAYS_INIT_LOCALS:bool = false;
+pub const ALWAYS_INIT_LOCALS: bool = false;
 pub const ABORT_ON_ERROR: bool = false;
 
 // Modules

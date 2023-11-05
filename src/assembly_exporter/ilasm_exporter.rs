@@ -170,10 +170,9 @@ fn method_cil(w: &mut impl Write, method: &Method) -> std::io::Result<()> {
     if method.is_entrypoint() {
         writeln!(w, ".entrypoint")?;
     }
-    if crate::ALWAYS_INIT_LOCALS{
+    if crate::ALWAYS_INIT_LOCALS {
         writeln!(w, "\t.locals init(")?;
-    }
-    else{
+    } else {
         writeln!(w, "\t.locals (")?;
     }
     let mut locals_iter = method.locals().iter().enumerate();
