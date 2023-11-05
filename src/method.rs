@@ -54,6 +54,9 @@ impl Method {
             self.ops.push(CILOp::Ret);
         }
     }
+    pub fn add_local<'a>(&mut self, local: Type) {
+        self.locals.push(local.clone());
+    }
     pub fn extend_locals<'a>(&mut self, iter: impl Iterator<Item = &'a Type>) {
         self.locals.extend(iter.cloned());
     }

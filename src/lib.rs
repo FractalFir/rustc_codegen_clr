@@ -155,6 +155,8 @@ impl CodegenBackend for MyBackend {
             codegen.set_entrypoint(cs);
         }
         codegen.opt();
+        // Done twice for inlining!
+        codegen.opt();
         let name: IString = cgus.iter().next().unwrap().name().to_string().into();
         Box::new((
             name,

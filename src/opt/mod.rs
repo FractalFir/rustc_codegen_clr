@@ -2,6 +2,69 @@ use std::ops::Range;
 
 use crate::{assembly::Assembly, cil_op::CILOp, method::Method, r#type::Type};
 const MAX_PASS: u32 = 16;
+pub fn try_inline(caller: &mut Method, inlined: &Method, target: usize) {
+    // Inlining is still sometimes quite buggy.
+    if true {
+        return;
+    }
+    // Can't yet inline non-empty methods!
+    if !inlined.locals().is_empty() {
+        return;
+    }
+
+    // Can't yet inline methods with multpile returns
+    if inlined
+        .get_ops()
+        .iter()
+        .filter(|op| **op == CILOp::Ret)
+        .count()
+        > 1
+    {
+        return;
+    }
+
+    // Can't yet handle inline methods with non-trivial control flow.
+    if inlined
+        .get_ops()
+        .iter()
+        .any(|op| matches!(op, CILOp::Label(_)))
+    {
+        return;
+    }
+    //eprintln!("Inlining {inlined_name}",inlined_name = inlined.name());
+    let arg_beg = caller.locals().len();
+    caller.add_local(inlined.sig().output().clone());
+    caller.extend_locals(inlined.sig().inputs().iter());
+    let mut inlined_call = Vec::new();
+    for (index, _) in inlined.sig().inputs().iter().enumerate() {
+        inlined_call.push(CILOp::STLoc((arg_beg + 1 + index) as u32));
+    }
+    let mut inlined_method_ops: Vec<_> = inlined.get_ops().into();
+    inlined_method_ops.iter_mut().for_each(|op| match op {
+        CILOp::LDArg(id) => *op = CILOp::LDLoc((arg_beg + 1 + *id as usize) as u32),
+        CILOp::LDArgA(id) => *op = CILOp::LDLocA((arg_beg + 1 + *id as usize) as u32),
+        CILOp::STArg(id) => *op = CILOp::STArg((arg_beg + 1 + *id as usize) as u32),
+        CILOp::LDLoc(_) | CILOp::LDLocA(_) | CILOp::STLoc(_) => {
+            todo!("Inlining locals not supported yet!")
+        }
+        CILOp::Ret => *op = CILOp::Nop,
+        _ => (),
+    });
+    inlined_call.extend(inlined_method_ops);
+    let ops = caller.ops_mut();
+    // Remove the call
+    let preamble = &ops[..target];
+    //eprintln!("preamble:{preamble:?}");
+    let epilouge = &ops[(target + 1)..];
+    //eprintln!("epilouge:{epilouge:?}");
+    // /eprintln!("inlined_call:{inlined_call:?}");
+    let mut new_ops = Vec::with_capacity(ops.len() + inlined_call.len());
+    new_ops.extend(preamble.iter().cloned());
+    new_ops.extend(inlined_call);
+    new_ops.extend(epilouge.iter().cloned());
+
+    *ops = new_ops;
+}
 pub fn opt_method(method: &mut Method, asm: &Assembly) {
     if !crate::OPTIMIZE_CIL {
         return;
@@ -21,6 +84,29 @@ pub fn opt_method(method: &mut Method, asm: &Assembly) {
         try_alias_locals(method.ops_mut());
         try_split_locals(method, asm);
         remove_unused_locals(method);
+        //Inlining
+        let inline_candidates: Vec<_> = method
+            .get_ops()
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, op)| match op {
+                CILOp::Call(callsite) => Some((idx, callsite.clone())),
+                _ => None,
+            })
+            .filter(|(_, site)| site.is_static() && site.class().is_none())
+            .collect();
+        for (target, candidate) in inline_candidates {
+            let linlined = if let Some(method) = asm.methods().find(|method| {
+                method.name() == candidate.name()
+                    && method.sig() == candidate.signature()
+                    && method.is_static()
+            }) {
+                method
+            } else {
+                continue;
+            };
+            try_inline(method, linlined, target);
+        }
     }
 }
 fn repalce_const_sizes(ops: &mut [CILOp]) {
@@ -142,6 +228,32 @@ fn op2_combos(ops: &mut Vec<CILOp>) {
                 ops[idx + 1] = CILOp::BGe(*target);
                 ops[idx] = CILOp::Nop;
             }
+            (
+                CILOp::LdcI32(_) | CILOp::LdcI64(_) | CILOp::LdcF32(_) | CILOp::LdcF64(_),
+                CILOp::STLoc(loc),
+            ) => {
+                let loc = *loc;
+                let set_count = ops.iter().filter(|op| CILOp::STLoc(loc) == **op).count();
+                // If this is not the only set, this optimization won't work.
+                if set_count != 1 {
+                    continue;
+                }
+                // If a pointer to this local is taken, this optmization won't work.
+                if ops.iter().any(|op| CILOp::LDLocA(loc) == *op) {
+                    continue;
+                }
+                let load = op1.clone();
+                ops.iter_mut()
+                    .filter(|op| CILOp::LDLoc(loc) == **op)
+                    .for_each(|op| *op = load.clone());
+            }
+            (
+                CILOp::LdcI32(_) | CILOp::LdcI64(_) | CILOp::LdcF32(_) | CILOp::LdcF64(_),
+                CILOp::Pop,
+            ) => {
+                ops[idx] = CILOp::Nop;
+                ops[idx + 1] = CILOp::Nop;
+            }
             _ => (),
         }
     }
@@ -170,6 +282,20 @@ fn op3_combos(ops: &mut Vec<CILOp>) {
                     ops[idx] = CILOp::BNe(b);
                     ops[idx + 1] = CILOp::Nop;
                     ops[idx + 2] = CILOp::Label(a);
+                }
+            }
+            (CILOp::LdcI32(0) | CILOp::LdcI64(0), CILOp::ConvISize(_), CILOp::BEq(target)) => {
+                let target = *target;
+                ops[idx] = CILOp::Nop;
+                ops[idx + 1] = CILOp::Nop;
+                ops[idx + 2] = CILOp::BZero(target);
+            }
+            (CILOp::LDLoc(a), CILOp::Dup, CILOp::STLoc(b)) => {
+                if a == b {
+                    let a = *a;
+                    ops[idx] = CILOp::Nop;
+                    ops[idx + 1] = CILOp::Nop;
+                    ops[idx + 2] = CILOp::LDLoc(a);
                 }
             }
             (CILOp::GoTo(a1), CILOp::Label(b), CILOp::Label(a2)) => {
@@ -315,10 +441,42 @@ fn alias_local(src: u32, dst: u32, ops: &mut [CILOp]) {
     });
 }
 fn try_alias_locals(ops: &mut [CILOp]) {
-    for index in 0..(ops.len() - 1) {
+    if ops.len() < 2 {
+        return;
+    }
+    for index in 0..(ops.len() - 2) {
         let op1 = &ops[index];
         let op2 = &ops[index + 1];
+        let op3 = &ops[index + 2];
         if let (CILOp::LDLoc(loc1), CILOp::STLoc(loc2)) = (op1, op2) {
+            //eprintln!("Checking for alias between {loc1} and {loc2}!");
+            if loc1 == loc2 {
+                //eprintln!("locals equal!");
+                continue;
+            }
+            if could_local_ptr_escape(*loc1, ops) {
+                //eprintln!("ptr could escape!");
+                continue;
+            }
+            let loc1_range = if let Some(range) = get_local_access_range(*loc1, ops) {
+                range
+            } else {
+                continue;
+            };
+            let loc2_range = if let Some(range) = get_local_access_range(*loc2, ops) {
+                range
+            } else {
+                continue;
+            };
+            // Ranges don't overlap, use simple aliasing
+            if !do_ranges_overlap(&loc1_range, &loc2_range) {
+                //println!("{loc2} will now be {loc1}!");
+                alias_local(*loc2, *loc1, ops);
+                continue;
+            }
+            //eprintln!("ranges {loc1_range:?} {loc2_range:?} overlap.");
+        }
+        if let (CILOp::LDLoc(loc1), CILOp::Dup, CILOp::STLoc(loc2)) = (op1, op2, op3) {
             //eprintln!("Checking for alias between {loc1} and {loc2}!");
             if loc1 == loc2 {
                 //eprintln!("locals equal!");
@@ -511,7 +669,6 @@ fn can_split_local(local: u32, ops: &[CILOp]) -> bool {
                     if let CILOp::STField(_) = op3 {
                         continue;
                     }
-                    eprintln!("Can't split local {loc}, because {op:?} {op2:?} {op3:?}");
                     return false;
                 }
             }
