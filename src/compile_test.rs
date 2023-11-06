@@ -274,7 +274,7 @@ macro_rules! cargo_test {
         mod $test_name {
             use std::io::Write;
             #[test]
-            fn debug() {
+            fn cargo_debug() {
                 let test_dir = concat!("./cargo_tests/", stringify!($test_name), "/");
                 // Ensures the test directory is present
                 std::fs::create_dir_all(test_dir).expect("Could not setup the test env");
@@ -300,16 +300,20 @@ macro_rules! cargo_test {
                         .expect("rustc error contained non-UTF8 characters.");
 
                     if !stderr.contains("Finished") {
-                        std::io::stderr().write_all(&out.stdout).unwrap();
-                        std::io::stderr().write_all(&out.stderr).unwrap();
-                        panic!();
+                        let stdout = String::from_utf8(out.stdout)
+                        .expect("rustc error contained non-UTF8 characters.");
+                    let stderr = String::from_utf8(out.stderr)
+                        .expect("rustc error contained non-UTF8 characters.");
+                    if !stderr.contains("Finished") {
+                        panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
+                    }
                     }
                 }
                 //let exec_path = concat!("../", stringify!($test_name));
                 //test_dotnet_executable(exec_path, test_dir);
             }
             #[test]
-            fn release() {
+            fn cargo_release() {
                 let test_dir = concat!("./cargo_tests/", stringify!($test_name), "/");
                 // Ensures the test directory is present
                 std::fs::create_dir_all(test_dir).expect("Could not setup the test env");

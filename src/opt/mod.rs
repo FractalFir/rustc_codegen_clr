@@ -11,7 +11,7 @@ const MAX_PASS: u32 = 16;
 pub fn try_inline(caller: &mut Method, inlined: &Method, target: usize) -> bool {
     // Inlining is still sometimes quite buggy.
     if true {
-        //return;
+        //return false;
     }
 
     // Can't yet inline non-empty methods!
@@ -46,7 +46,6 @@ pub fn try_inline(caller: &mut Method, inlined: &Method, target: usize) -> bool 
             *inlined.sig().output() == Type::Void,
         );
     }
-    //eprintln!("Inlining {inlined_name}",inlined_name = inlined.name());
     let arg_beg = caller.locals().len();
     caller.add_local(inlined.sig().output().clone());
     caller.extend_locals(inlined.sig().inputs().iter());
@@ -72,21 +71,11 @@ pub fn try_inline(caller: &mut Method, inlined: &Method, target: usize) -> bool 
     let ops = caller.get_ops();
     // Remove the call
     let preamble = &ops[..target];
-    //eprintln!("preamble:{preamble:?}");
     let epilouge = &ops[(target + 1)..];
-    //eprintln!("epilouge:{epilouge:?}");
-    // /eprintln!("inlined_call:{inlined_call:?}");
     let mut new_ops = Vec::with_capacity(ops.len() + inlined_call.len());
     new_ops.extend(preamble.iter().cloned());
     new_ops.extend(inlined_call);
     new_ops.extend(epilouge.iter().cloned());
-
-    for (idx, op) in ops.iter().enumerate() {
-        eprintln!("{idx}:\t{op:?}");
-    }
-    for (idx, op) in new_ops.iter().enumerate() {
-        eprintln!("{idx}:\t{op:?}");
-    }
     // Validate method AFTER inline
     crate::utilis::check_debugable(&new_ops, &new_ops, *caller.sig().output() == Type::Void);
     caller.set_ops(new_ops);
@@ -121,7 +110,7 @@ fn try_inline_all(method: &mut Method, asm: &Assembly) {
         };
         // If inline succeds, then the positions of all inline targets will become wrong, and rebuilding of the inline target list becomes necessary.
         if try_inline(method, linlined, target) {
-            try_inline_all(method, asm);
+            //try_inline_all(method, asm);
             return;
         }
     }
@@ -236,7 +225,7 @@ fn op2_combos(ops: &mut Vec<CILOp>) {
                     ops[idx] = CILOp::Nop;
                 }
             }
-            (CILOp::GoTo(target), op2) => {
+            (CILOp::GoTo(_), op2) => {
                 //TODO: Handle exception handling constructs!
                 if let CILOp::Label(_) = op2 {
                 }
@@ -251,7 +240,6 @@ fn op2_combos(ops: &mut Vec<CILOp>) {
                 ops.iter_mut()
                     .for_each(|cilop| cilop.replace_target(source, target));
             }
-            (CILOp::GoTo(_), CILOp::GoTo(_)) => ops[idx + 1] = CILOp::Nop,
             (CILOp::Not, CILOp::BZero(target)) => {
                 ops[idx + 1] = CILOp::BTrue(*target);
                 ops[idx] = CILOp::Nop;
@@ -497,13 +485,10 @@ fn try_alias_locals(ops: &mut [CILOp]) {
         let op2 = &ops[index + 1];
         let op3 = &ops[index + 2];
         if let (CILOp::LDLoc(loc1), CILOp::STLoc(loc2)) = (op1, op2) {
-            //eprintln!("Checking for alias between {loc1} and {loc2}!");
             if loc1 == loc2 {
-                //eprintln!("locals equal!");
                 continue;
             }
             if could_local_ptr_escape(*loc1, ops) {
-                //eprintln!("ptr could escape!");
                 continue;
             }
             let loc1_range = if let Some(range) = get_local_access_range(*loc1, ops) {
@@ -522,16 +507,12 @@ fn try_alias_locals(ops: &mut [CILOp]) {
                 alias_local(*loc2, *loc1, ops);
                 continue;
             }
-            //eprintln!("ranges {loc1_range:?} {loc2_range:?} overlap.");
         }
         if let (CILOp::LDLoc(loc1), CILOp::Dup, CILOp::STLoc(loc2)) = (op1, op2, op3) {
-            //eprintln!("Checking for alias between {loc1} and {loc2}!");
             if loc1 == loc2 {
-                //eprintln!("locals equal!");
                 continue;
             }
             if could_local_ptr_escape(*loc1, ops) {
-                //eprintln!("ptr could escape!");
                 continue;
             }
             let loc1_range = if let Some(range) = get_local_access_range(*loc1, ops) {
@@ -550,7 +531,6 @@ fn try_alias_locals(ops: &mut [CILOp]) {
                 alias_local(*loc2, *loc1, ops);
                 continue;
             }
-            //eprintln!("ranges {loc1_range:?} {loc2_range:?} overlap.");
         }
     }
 }
@@ -610,19 +590,10 @@ fn try_split_locals(method: &mut Method, asm: &Assembly) {
         .iter()
         .enumerate()
         .filter(|(_, tpe)| is_type_splitable(tpe))
-        .collect();
-    //eprintln!("Typewise splits:{splits:?}");
-    let splits: Vec<_> = method
-        .locals()
-        .iter()
-        .enumerate()
-        .filter(|(_, tpe)| is_type_splitable(tpe))
         .filter(|(local, _)| can_split_local(*local as u32, method.get_ops()))
         .map(|(index, tpe)| (index, tpe.clone()))
         .collect();
 
-    //eprintln!("Spliting locals within method {}", method.name());
-    //eprintln!("Locals: {locals:?}.\n\n splits:{splits:?}v \n\nops:{ops:?} \n\n\n",locals = method.locals(),ops = method.get_ops());
     for (split_local, split_tpe) in splits {
         let dotnet_tpe = split_tpe
             .as_dotnet()
@@ -647,7 +618,6 @@ fn try_split_locals(method: &mut Method, asm: &Assembly) {
             } else {
                 continue;
             }
-            //eprintln!("Prepalring to preform struct spiling modifications on ops {op1:?} {op2:?} {op3:?} split_local:{split_local:?}.");
             if let CILOp::LDField(field_desc) = op2 {
                 let field_idx = morphic_fields
                     .iter()
