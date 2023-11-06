@@ -272,6 +272,7 @@ macro_rules! run_test {
 macro_rules! cargo_test {
     ($test_name:ident) => {
         mod $test_name {
+            use std::io::Write;
             #[test]
             fn debug() {
                 let test_dir = concat!("./cargo_tests/", stringify!($test_name), "/");
@@ -295,12 +296,13 @@ macro_rules! cargo_test {
                 // panic!("out:{out:?}");
                 // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
                 if !out.stderr.is_empty() {
-                    let stdout = String::from_utf8(out.stdout)
+                    let stderr = String::from_utf8(out.stderr.clone())
                         .expect("rustc error contained non-UTF8 characters.");
-                    let stderr = String::from_utf8(out.stderr)
-                        .expect("rustc error contained non-UTF8 characters.");
+
                     if !stderr.contains("Finished") {
-                        panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
+                        std::io::stderr().write_all(&out.stdout).unwrap();
+                        std::io::stderr().write_all(&out.stderr).unwrap();
+                        panic!();
                     }
                 }
                 //let exec_path = concat!("../", stringify!($test_name));

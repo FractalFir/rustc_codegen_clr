@@ -1,15 +1,22 @@
 use std::ops::Range;
 
-use crate::{assembly::Assembly, cil_op::CILOp, method::Method, r#type::Type};
+use crate::{
+    assembly::Assembly,
+    cil_op::{CILOp, CallSite},
+    method::Method,
+    r#type::Type,
+    utilis::check_debugable,
+};
 const MAX_PASS: u32 = 16;
-pub fn try_inline(caller: &mut Method, inlined: &Method, target: usize) {
+pub fn try_inline(caller: &mut Method, inlined: &Method, target: usize) -> bool {
     // Inlining is still sometimes quite buggy.
     if true {
-        return;
+        //return;
     }
+
     // Can't yet inline non-empty methods!
     if !inlined.locals().is_empty() {
-        return;
+        return false;
     }
 
     // Can't yet inline methods with multpile returns
@@ -20,7 +27,7 @@ pub fn try_inline(caller: &mut Method, inlined: &Method, target: usize) {
         .count()
         > 1
     {
-        return;
+        return false;
     }
 
     // Can't yet handle inline methods with non-trivial control flow.
@@ -29,14 +36,25 @@ pub fn try_inline(caller: &mut Method, inlined: &Method, target: usize) {
         .iter()
         .any(|op| matches!(op, CILOp::Label(_)))
     {
-        return;
+        return false;
+    }
+    // inlined first validation
+    if cfg!(debug_assertions) {
+        crate::utilis::check_debugable(
+            inlined.get_ops(),
+            inlined,
+            *inlined.sig().output() == Type::Void,
+        );
     }
     //eprintln!("Inlining {inlined_name}",inlined_name = inlined.name());
     let arg_beg = caller.locals().len();
     caller.add_local(inlined.sig().output().clone());
     caller.extend_locals(inlined.sig().inputs().iter());
     let mut inlined_call = Vec::new();
-    for (index, _) in inlined.sig().inputs().iter().enumerate() {
+    for (index, atype) in inlined.sig().inputs().iter().enumerate() {
+        if *atype == Type::Void {
+            continue;
+        }
         inlined_call.push(CILOp::STLoc((arg_beg + 1 + index) as u32));
     }
     let mut inlined_method_ops: Vec<_> = inlined.get_ops().into();
@@ -45,13 +63,13 @@ pub fn try_inline(caller: &mut Method, inlined: &Method, target: usize) {
         CILOp::LDArgA(id) => *op = CILOp::LDLocA((arg_beg + 1 + *id as usize) as u32),
         CILOp::STArg(id) => *op = CILOp::STArg((arg_beg + 1 + *id as usize) as u32),
         CILOp::LDLoc(_) | CILOp::LDLocA(_) | CILOp::STLoc(_) => {
-            todo!("Inlining locals not supported yet!")
+            todo!("Inlining with locals not supported yet!")
         }
         CILOp::Ret => *op = CILOp::Nop,
         _ => (),
     });
     inlined_call.extend(inlined_method_ops);
-    let ops = caller.ops_mut();
+    let ops = caller.get_ops();
     // Remove the call
     let preamble = &ops[..target];
     //eprintln!("preamble:{preamble:?}");
@@ -63,7 +81,50 @@ pub fn try_inline(caller: &mut Method, inlined: &Method, target: usize) {
     new_ops.extend(inlined_call);
     new_ops.extend(epilouge.iter().cloned());
 
-    *ops = new_ops;
+    for (idx, op) in ops.iter().enumerate() {
+        eprintln!("{idx}:\t{op:?}");
+    }
+    for (idx, op) in new_ops.iter().enumerate() {
+        eprintln!("{idx}:\t{op:?}");
+    }
+    // Validate method AFTER inline
+    crate::utilis::check_debugable(&new_ops, &new_ops, *caller.sig().output() == Type::Void);
+    caller.set_ops(new_ops);
+    // Inlining succcedded.
+    true
+}
+fn get_inlline_candidates(method: &Method) -> Vec<(usize, Box<CallSite>)> {
+    method
+        .get_ops()
+        .iter()
+        .enumerate()
+        .filter_map(|(idx, op)| match op {
+            CILOp::Call(callsite) => Some((idx, callsite.clone())),
+            _ => None,
+        })
+        .filter(|(_, site)| site.is_static() && site.class().is_none())
+        .collect()
+}
+fn try_inline_all(method: &mut Method, asm: &Assembly) {
+    //Inlining
+    let inline_candidates = get_inlline_candidates(method);
+    for (target, candidate) in inline_candidates {
+        debug_assert_eq!(method.get_ops()[target], CILOp::Call(candidate.clone()));
+        let linlined = if let Some(method) = asm.methods().find(|method| {
+            method.name() == candidate.name()
+                && method.sig() == candidate.signature()
+                && method.is_static()
+        }) {
+            method
+        } else {
+            continue;
+        };
+        // If inline succeds, then the positions of all inline targets will become wrong, and rebuilding of the inline target list becomes necessary.
+        if try_inline(method, linlined, target) {
+            try_inline_all(method, asm);
+            return;
+        }
+    }
 }
 pub fn opt_method(method: &mut Method, asm: &Assembly) {
     if !crate::OPTIMIZE_CIL {
@@ -84,29 +145,7 @@ pub fn opt_method(method: &mut Method, asm: &Assembly) {
         try_alias_locals(method.ops_mut());
         try_split_locals(method, asm);
         remove_unused_locals(method);
-        //Inlining
-        let inline_candidates: Vec<_> = method
-            .get_ops()
-            .iter()
-            .enumerate()
-            .filter_map(|(idx, op)| match op {
-                CILOp::Call(callsite) => Some((idx, callsite.clone())),
-                _ => None,
-            })
-            .filter(|(_, site)| site.is_static() && site.class().is_none())
-            .collect();
-        for (target, candidate) in inline_candidates {
-            let linlined = if let Some(method) = asm.methods().find(|method| {
-                method.name() == candidate.name()
-                    && method.sig() == candidate.signature()
-                    && method.is_static()
-            }) {
-                method
-            } else {
-                continue;
-            };
-            try_inline(method, linlined, target);
-        }
+        try_inline_all(method, asm);
     }
 }
 fn repalce_const_sizes(ops: &mut [CILOp]) {
@@ -195,6 +234,15 @@ fn op2_combos(ops: &mut Vec<CILOp>) {
             (CILOp::GoTo(target), CILOp::Label(label)) => {
                 if target == label {
                     ops[idx] = CILOp::Nop;
+                }
+            }
+            (CILOp::GoTo(target), op2) => {
+                //TODO: Handle exception handling constructs!
+                if let CILOp::Label(_) = op2 {
+                }
+                // Any op after GOTO and not preceded by a label is unreachable.
+                else {
+                    ops[idx + 1] = CILOp::Nop;
                 }
             }
             (CILOp::Label(source), CILOp::Label(target)) => {

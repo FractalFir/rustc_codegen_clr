@@ -220,18 +220,44 @@ pub fn usize_class() -> DotnetTypeRef {
     string
 }
 /// Translated MIR statements should have the total stack diff of 0.
-pub fn check_debugable(ops: &[crate::cil_op::CILOp], debugable: impl std::fmt::Debug) {
+pub fn check_debugable(
+    ops: &[crate::cil_op::CILOp],
+    debugable: impl std::fmt::Debug,
+    does_return_void: bool,
+) {
+    use colored::Colorize;
+
     let mut stack = 0;
     for op in ops {
-        stack += op.stack_diff();
+        if !(does_return_void && *op == crate::cil_op::CILOp::Ret) {
+            stack += op.stack_diff();
+        }
     }
     if stack != 0 {
         rustc_middle::ty::print::with_no_trimmed_paths! {eprintln!("Propable miscompilation: {debugable:?} resulted in ops {ops:?} and did not pass the stack check.")};
         let mut stack = 0;
-        for op in ops {
-            let diff = op.stack_diff();
-            stack += diff;
-            eprintln!("\t{op:?} changed stack by {diff}, to {stack}");
+        for (index, op) in ops.iter().enumerate() {
+            if !(does_return_void && *op == crate::cil_op::CILOp::Ret) {
+                let diff = op.stack_diff();
+                stack += diff;
+                if stack < 0 {
+                    eprintln!(
+                        "{}",
+                        format!("{index}:\t{op:?} changed stack by {diff}, to {stack}").red()
+                    );
+                } else {
+                    eprintln!("{index}:\t{op:?} changed stack by {diff}, to {stack}");
+                }
+            } else {
+                if stack < 0 {
+                    eprintln!(
+                        "{}",
+                        format!("{index}:\t{op:?} changed stack by 0, to {stack}").red()
+                    );
+                } else {
+                    eprintln!("{index}:\t{op:?} changed stack by 0, to {stack}");
+                }
+            }
         }
         panic!();
     }

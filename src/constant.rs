@@ -235,7 +235,7 @@ pub fn load_const_int(value: u128, int_type: &IntTy) -> Vec<CILOp> {
         }
         IntTy::Isize => {
             let value = i64::from_ne_bytes((value as u64).to_ne_bytes());
-            vec![CILOp::LdcI64(value), CILOp::ConvISize(true)]
+            vec![CILOp::LdcI64(value), CILOp::ConvISize(false)]
         }
         IntTy::I128 => {
             let low = (value & u128::from(u64::MAX)) as u64;
@@ -277,7 +277,7 @@ pub fn load_const_uint(value: u128, int_type: &UintTy) -> Vec<CILOp> {
         }
         UintTy::Usize => {
             let value = i64::from_ne_bytes((value as u64).to_ne_bytes());
-            vec![CILOp::LdcI64(value), CILOp::ConvUSize(true)]
+            vec![CILOp::LdcI64(value), CILOp::ConvUSize(false)]
         }
         UintTy::U128 => {
             let low = (value & u128::from(u64::MAX)) as u64;

@@ -169,7 +169,7 @@ impl Assembly {
         let mut last_bb_id = 0;
 
         let blocks = &(*mir.basic_blocks);
-
+        let does_return_void: bool = *method.sig().output() == Type::Void;
         for block_data in blocks {
             ops.push(CILOp::Label(last_bb_id));
             last_bb_id += 1;
@@ -186,7 +186,7 @@ impl Assembly {
                         CILOp::throw_msg(&format!("Tired to run a statement which failed to compile with error message {err:?}.")).into()
                     }
                 };
-                crate::utilis::check_debugable(&statement_ops, statement);
+                crate::utilis::check_debugable(&statement_ops, statement, does_return_void);
                 ops.extend(statement_ops);
                 if crate::INSERT_MIR_DEBUG_COMMENTS {
                     ops.push(CILOp::Comment("STATEMENT END.".into()));
@@ -198,7 +198,7 @@ impl Assembly {
                 Some(term) => {
                     let term_ops = Self::terminator_to_ops(term, mir, tcx, instance);
                     if term_ops != &[CILOp::Ret] {
-                        crate::utilis::check_debugable(&term_ops, term);
+                        crate::utilis::check_debugable(&term_ops, term, does_return_void);
                     }
 
                     ops.extend(term_ops)
@@ -207,6 +207,8 @@ impl Assembly {
             }
         }
         method.set_ops(ops);
+        // Do some basic checks on the method as a whole.
+        crate::utilis::check_debugable(method.get_ops(), &method, does_return_void);
         for local in &mir.local_decls {
             let local_ty = monomorphize(&instance, local.ty, tcx);
             self.add_type(local_ty, tcx, &instance);
