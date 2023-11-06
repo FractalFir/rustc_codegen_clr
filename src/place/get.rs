@@ -31,7 +31,6 @@ pub fn place_get<'a>(
         ops.push(op);
         let (head, body) = super::slice_head(place.projection);
         for elem in body {
-            println!("elem:{elem:?} ty:{ty:?}");
             let (curr_ty, curr_ops) =
                 super::place_elem_body(elem, ty, ctx, method_instance, method);
             ty = curr_ty.monomorphize(&method_instance, ctx);
@@ -85,7 +84,6 @@ fn place_elem_get<'a>(
                 );
 
                 let field_name = field_name(curr_type, index.as_u32());
-                println!("Generic type of field named {field_name:?} is {field_type:?}");
                 let curr_type = crate::r#type::Type::from_ty(curr_type, ctx, &method_instance);
                 let curr_type = if let crate::r#type::Type::DotnetType(dotnet_type) = curr_type {
                     dotnet_type.as_ref().clone()
@@ -113,7 +111,6 @@ fn place_elem_get<'a>(
                 field_owner.append_path(&format!("/{variant_name}"));
                 let field_desc = FieldDescriptor::boxed(field_owner, field_type, field_name);
                 let ops = vec![CILOp::LDField(field_desc)];
-                println!("Using ops:{ops:?} to get field of an enum variant!");
                 ops
                 //todo!("Can't get fields of enum variants yet!");
             }

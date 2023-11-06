@@ -191,8 +191,6 @@ impl Assembly {
                 if crate::INSERT_MIR_DEBUG_COMMENTS {
                     ops.push(CILOp::Comment("STATEMENT END.".into()));
                 }
-                //
-                //println!("ops:{ops:?}\n\n");
             }
             match &block_data.terminator {
                 Some(term) => {

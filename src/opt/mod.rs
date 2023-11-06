@@ -115,6 +115,7 @@ fn try_inline_all(method: &mut Method, asm: &Assembly) {
         }
     }
 }
+//pub fn try_turn_locals_into_bools(method:&Method){}
 pub fn opt_method(method: &mut Method, asm: &Assembly) {
     if !crate::OPTIMIZE_CIL {
         return;
@@ -290,6 +291,10 @@ fn op2_combos(ops: &mut Vec<CILOp>) {
                 ops[idx] = CILOp::Nop;
                 ops[idx + 1] = CILOp::Nop;
             }
+            (CILOp::ConvUSize(false) | CILOp::ConvF64(false),CILOp::Pop)=>{
+                ops[idx] = CILOp::Pop;
+                ops[idx + 1] = CILOp::Nop;
+            }
             _ => (),
         }
     }
@@ -342,6 +347,33 @@ fn op3_combos(ops: &mut Vec<CILOp>) {
                     ops[idx + 1] = CILOp::Label(b);
                     ops[idx + 2] = CILOp::Label(a);
                 }
+            }
+            //TODO: ensure changing the offset of ops does not cause issues.
+            (CILOp::LdcI32(_) | CILOp::LdcI64(_) | CILOp::LdcF32(_) | CILOp::LdcF64(_), CILOp::ConvUSize(_) | CILOp::ConvF64(_), CILOp::STLoc(loc))=>{
+                let loc = *loc;
+                let set_count = ops.iter().filter(|op| CILOp::STLoc(loc) == **op).count();
+                // If this is not the only set, this optimization won't work.
+                if set_count != 1 {
+                    continue;
+                }
+                // If a pointer to this local is taken, this optmization won't work.
+                if ops.iter().any(|op| CILOp::LDLocA(loc) == *op) {
+                    continue;
+                }
+                let load = [op1.clone(), op2.clone()];
+                let mut new_ops = Vec::with_capacity(ops.len());
+                for op in ops.iter(){
+                    match op{
+                        CILOp::LDLoc(oplocal)=>if loc == *oplocal{
+                            new_ops.extend(load.iter().cloned())
+                        } else{
+                            new_ops.push(op.clone())
+                        }
+                        _=>new_ops.push(op.clone()),
+                    }
+                }
+                *ops = new_ops;
+                continue;
             }
             _ => (),
         }

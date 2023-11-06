@@ -208,7 +208,6 @@ fn place_elem_body<'ctx>(
         PlaceElem::Deref => {
             let pointed = pointed_type(curr_type);
             assert_morphic!(pointed);
-            println!("Dereferencing {curr_type:?} in place_elem_body ");
             if body_ty_is_by_adress(&pointed) {
                 (pointed.into(), vec![])
             } else {
@@ -262,7 +261,6 @@ fn place_elem_body<'ctx>(
                 field_owner.append_path(&format!("/{variant_name}"));
                 let field_desc = FieldDescriptor::boxed(field_owner, gen_field_type, field_name);
                 let ops = vec![CILOp::LDFieldAdress(field_desc)];
-                println!("Using ops:{ops:?} to get field of an enum variant!");
                 ((*field_type).into(), ops)
             }
         },
@@ -348,7 +346,6 @@ fn place_elem_adress<'ctx>(
         PlaceElem::Deref => {
             let pointed = pointed_type(curr_type);
             assert_morphic!(pointed);
-            println!("Dereferencing {curr_type:?} in place_elem_body ");
             if body_ty_is_by_adress(&pointed) {
                 (pointed.into(), vec![])
             } else {
@@ -398,7 +395,6 @@ fn place_elem_adress<'ctx>(
                 field_owner.append_path(&format!("/{variant_name}"));
                 let field_desc = FieldDescriptor::boxed(field_owner, gen_field_type, field_name);
                 let ops = vec![CILOp::LDFieldAdress(field_desc)];
-                println!("Using ops:{ops:?} to get field of an enum variant!");
                 ((*field_type).into(), ops)
             }
         },
@@ -582,7 +578,6 @@ pub fn place_adress<'a>(
         ops.push(op);
         let (head, body) = slice_head(place.projection);
         for elem in body {
-            println!("elem:{elem:?} ty:{ty:?}");
             let (curr_ty, curr_ops) = place_elem_body(elem, ty, ctx, method_instance, method);
             ty = curr_ty.monomorphize(&method_instance, ctx);
             ops.extend(curr_ops);
@@ -610,7 +605,6 @@ pub(crate) fn place_set<'a>(
         ops.push(op);
         let (head, body) = slice_head(place.projection);
         for elem in body {
-            println!("elem:{elem:?} ty:{ty:?}");
             let (curr_ty, curr_ops) = place_elem_body(elem, ty, ctx, method_instance, method);
             ty = curr_ty.monomorphize(&method_instance, ctx);
             ops.extend(curr_ops);

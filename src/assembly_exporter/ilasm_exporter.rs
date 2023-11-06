@@ -38,7 +38,6 @@ impl AssemblyExporter for ILASMExporter {
         final_path: &std::path::Path,
         is_dll: bool,
     ) -> Result<(), AssemblyExportError> {
-        //println!("final_path:{final_path:?}");
         let directory = absolute_path(final_path)
             .map_err(|io| AssemblyExportError::CouldNotCanonalizePath(io, final_path.to_owned()))?
             .parent()
@@ -54,7 +53,6 @@ impl AssemblyExporter for ILASMExporter {
 
         let cil_path = out_path.with_extension("il");
         let cil = self.encoded_asm;
-        println!("cil_path:{cil_path:?}");
         std::fs::File::create(&cil_path)
             .expect("Could not create file")
             .write_all(&cil)
@@ -191,9 +189,7 @@ fn method_cil(w: &mut impl Write, method: &Method) -> std::io::Result<()> {
         )?;
     }
     writeln!(w, "\n\t)")?;
-    println!("{name}:\n\n");
     for op in method.get_ops() {
-        //println!("{op:?}");
         writeln!(w, "\t{op_cli}", op_cli = op_cli(op))?;
     }
     writeln!(w, "}}")
@@ -237,7 +233,6 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
                     }
                     None => String::new(),
                 };
-                //println!("inputs:{inputs:?} input_string: {input_string}",inputs = call_site.signature.inputs);
                 format!(
                     "call {prefix} {output} {owner_name} {function_name}({input_string})",
                     function_name = call_site.name(),
@@ -271,7 +266,6 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
                     }
                     None => String::new(),
                 };
-                //println!("inputs:{inputs:?} input_string: {input_string}",inputs = call_site.signature.inputs);
                 format!(
                     "callvirt {prefix} {output} {owner_name} {function_name}({input_string})",
                     function_name = call_site.name(),
@@ -545,7 +539,6 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
                     Some(owner) => format!("{}::", dotnet_type_ref_cli(owner)),
                     None => String::new(),
                 };
-                //println!("inputs:{inputs:?} input_string: {input_string}",inputs = call_site.signature.inputs);
                 format!(
                     "newobj {prefix} {output} {owner_name}{function_name}({input_string})",
                     function_name = call_site.name(),
@@ -694,7 +687,6 @@ fn prefixed_type_cil(tpe: &Type) -> Cow<'static, str> {
             format!("{tpe}[{arr}]", tpe = type_cil(&array.element)).into()
         } //_ => todo!("Unsuported type {tpe:?}"),
     };
-    println!("prefixed_type:{prefixed_type}, type:{tpe:?}");
     prefixed_type
 }
 fn args_cli(w: &mut impl Write, args: &[Type]) -> std::io::Result<()> {

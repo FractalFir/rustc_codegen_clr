@@ -138,7 +138,6 @@ impl DotnetTypeRef {
                 );
                 let substituted =
                     crate::utilis::monomorphize(method, field.ty(tyctx, subst), tyctx);
-                println!("Projection field! generic_ty{generic_ty:?} Substituted:{substituted:?}");
                 generics.push(Type::from_ty(substituted, tyctx, method))
             }
         }
@@ -241,7 +240,6 @@ impl Type {
                     slice.into()
                 }*/
                 _ => {
-                    println!("Ref kind {:?}", inner.kind());
                     Self::Ptr(Box::new(Self::generic_from_ty(*inner, tyctx)))
                 }
             },
@@ -257,7 +255,6 @@ impl Type {
                 }
             }
             TyKind::Slice(inner) => {
-                println!("Slice. Inner:{inner:?}");
                 let slice_tpe = DotnetTypeRef {
                     assembly: None,
                     name_path: "RustSlice".into(),
@@ -308,14 +305,11 @@ impl Type {
                     let instance = Instance::expect_resolve(tyctx, env, *def_id, subst_ref);
                     (instance, def_id, subst_ref)
                 };
-                println!("BEEEP fn_def def_id:{def_id:?}");
                 let fn_def_sig = instance.ty(tyctx, env).fn_sig(tyctx);
                 let signature = crate::function_sig::FnSig::from_poly_sig(&fn_def_sig, tyctx)
                     .expect("Can't get the function signature");
-                println!("BOOP");
                 let function_name = crate::utilis::function_name(tyctx.symbol_name(instance));
                 let call = CallSite::boxed(None, function_name, signature, true);
-                println!("BIIP");
                 Self::FnDef(call)*/
                 todo!("Generic fn defs unsuported!")
             }
@@ -360,7 +354,6 @@ impl Type {
                 } //todo!("Slice references not yet handled!"),
                 */
                 _ => {
-                    println!("Ref kind {:?}", inner.kind());
                     Self::Ptr(Box::new(Self::from_ty(*inner, tyctx, method)))
                 }
             },
@@ -376,7 +369,6 @@ impl Type {
                 }
             }
             TyKind::Slice(inner) => {
-                println!("Slice. Inner:{inner:?}");
                 let slice_tpe = DotnetTypeRef {
                     assembly: None,
                     name_path: "RustSlice".into(),
@@ -424,15 +416,13 @@ impl Type {
                     let instance = Instance::expect_resolve(tyctx, env, *def_id, subst_ref);
                     (instance, def_id, subst_ref)
                 };
-                println!("BEEEP fn_def def_id:{def_id:?}");
                 let fn_def_sig = instance.ty(tyctx, env).fn_sig(tyctx);
                 let signature =
                     crate::function_sig::FnSig::from_poly_sig(&fn_def_sig, tyctx, method)
                         .expect("Can't get the function signature");
-                println!("BOOP");
+
                 let function_name = crate::utilis::function_name(tyctx.symbol_name(instance));
                 let call = CallSite::boxed(None, function_name, signature, true);
-                println!("BIIP");
                 Self::FnDef(call)
             }
             TyKind::Array(element, length) => {
@@ -529,14 +519,12 @@ fn magic_type<'tyctx>(
             let assembly: Box<str> = garg_to_string(&subst[0], ctx).into();
             let assembly = Some(assembly).filter(|assembly| !assembly.is_empty());
             let name = garg_to_string(&subst[1], ctx).into();
-            println!("{name} is a class refernece. ");
             let dotnet_tpe = DotnetTypeRef {
                 assembly,
                 name_path: name,
                 generics: vec![],
                 is_valuetype: false,
             };
-            println!("dotnet_tpe:{dotnet_tpe:?}");
             Type::DotnetType(dotnet_tpe.into())
         }
         INTEROP_STRUCT_TPE_NAME => {
