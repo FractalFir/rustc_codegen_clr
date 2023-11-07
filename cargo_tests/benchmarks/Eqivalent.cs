@@ -15,18 +15,18 @@ class Test{
         fibonacci(10);
     }
     public static void Main(string[] args){
-        for(int i = 0; i< 100_000/100; i++){
+        for(int i = 0; i< 1000_000; i++){
             Run();
         }
         var stopwatch = new Stopwatch();
         stopwatch.Start();
-        for(int i = 0; i< 100_000; i++){
+        for(int i = 0; i< 1000_000; i++){
            Run();
         }
         stopwatch.Stop();
         var ms = stopwatch.ElapsedMilliseconds;
         var ns = (double)(ms*1_000_000);
-        var ns_per_iter = ns/((double)(100_000));
+        var ns_per_iter = ns/((double)(1000_000));
         Console.WriteLine(ns_per_iter);
     }
 }

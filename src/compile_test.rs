@@ -60,8 +60,12 @@ fn test_dotnet_executable(file_path: &str, test_dir: &str) {
 macro_rules! test_lib {
     ($test_name:ident) => {
         mod $test_name {
+            #[cfg(test)]
+            static COMPILE_LOCK:std::sync::Mutex<()> = std::sync::Mutex::new(());
             #[test]
             fn release() {
+                // Ensures no two compilations run at the same time.
+                let lock = COMPILE_LOCK.lock();
                 // Ensures the test directory is present
                 std::fs::create_dir_all("./test/out").expect("Could not setup the test env");
                 // Builds the backend if neceasry
@@ -120,9 +124,11 @@ macro_rules! test_lib {
                         .expect("rustc error contained non-UTF8 characters.");
                     panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
                 }
+                drop(lock);
             }
             #[test]
             fn debug() {
+                let lock = COMPILE_LOCK.lock();
                 // Ensures the test directory is present
                 std::fs::create_dir_all("./test/out").expect("Could not setup the test env");
                 // Builds the backend if neceasry
@@ -180,6 +186,7 @@ macro_rules! test_lib {
                         .expect("rustc error contained non-UTF8 characters.");
                     panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
                 }
+                drop(lock);
             }
         }
     };
@@ -187,8 +194,11 @@ macro_rules! test_lib {
 macro_rules! run_test {
     ($prefix:ident,$test_name:ident) => {
         mod $test_name {
+            #[cfg(test)]
+            static COMPILE_LOCK:std::sync::Mutex<()> = std::sync::Mutex::new(());
             #[test]
             fn release() {
+                let lock = COMPILE_LOCK.lock();
                 let test_dir = concat!("./test/", stringify!($prefix), "/");
                 // Ensures the test directory is present
                 std::fs::create_dir_all(test_dir).expect("Could not setup the test env");
@@ -223,11 +233,14 @@ macro_rules! run_test {
                     panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
                 }
                 let exec_path = concat!("../", stringify!($test_name));
+                drop(lock);
                 super::peverify(exec_path, test_dir);
                 super::test_dotnet_executable(exec_path, test_dir);
+                
             }
             #[test]
             fn debug() {
+                let lock = COMPILE_LOCK.lock();
                 let test_dir = concat!("./test/", stringify!($prefix), "/");
                 // Ensures the test directory is present
                 std::fs::create_dir_all(test_dir).expect("Could not setup the test env");
@@ -263,6 +276,7 @@ macro_rules! run_test {
                     panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
                 }
                 let exec_path = format!("../{test_name}");
+                drop(lock);
                 super::peverify(&exec_path, test_dir);
                 super::test_dotnet_executable(&exec_path, test_dir);
             }
@@ -272,9 +286,13 @@ macro_rules! run_test {
 macro_rules! cargo_test {
     ($test_name:ident) => {
         mod $test_name {
+            #[cfg(test)]
             use std::io::Write;
+            #[cfg(test)]
+            static COMPILE_LOCK:std::sync::Mutex<()> = std::sync::Mutex::new(());
             #[test]
             fn cargo_debug() {
+                let lock = COMPILE_LOCK.lock();
                 let test_dir = concat!("./cargo_tests/", stringify!($test_name), "/");
                 // Ensures the test directory is present
                 std::fs::create_dir_all(test_dir).expect("Could not setup the test env");
@@ -309,11 +327,13 @@ macro_rules! cargo_test {
                     }
                     }
                 }
+                drop(lock);
                 //let exec_path = concat!("../", stringify!($test_name));
                 //test_dotnet_executable(exec_path, test_dir);
             }
             #[test]
             fn cargo_release() {
+                let lock = COMPILE_LOCK.lock();
                 let test_dir = concat!("./cargo_tests/", stringify!($test_name), "/");
                 // Ensures the test directory is present
                 std::fs::create_dir_all(test_dir).expect("Could not setup the test env");
@@ -347,6 +367,7 @@ macro_rules! cargo_test {
                         panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
                     }
                 }
+                drop(lock);
                 //let exec_path = concat!("../", stringify!($test_name));
                 //test_dotnet_executable(exec_path, test_dir);
             }
