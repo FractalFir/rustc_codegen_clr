@@ -79,9 +79,11 @@ impl FnSig {
             }
         }
     }
+    /// Returns the list of function inputs.
     pub fn inputs(&self) -> &[Type] {
         &self.inputs
     }
+    /// Returns the function output.
     pub fn output(&self) -> &Type {
         &self.output
     }

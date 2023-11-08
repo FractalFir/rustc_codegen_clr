@@ -239,9 +239,7 @@ impl Type {
                     slice.set_generics(&[Type::generic_from_ty(*inner, tyctx)]);
                     slice.into()
                 }*/
-                _ => {
-                    Self::Ptr(Box::new(Self::generic_from_ty(*inner, tyctx)))
-                }
+                _ => Self::Ptr(Box::new(Self::generic_from_ty(*inner, tyctx))),
             },
             TyKind::Tuple(types) => {
                 let types: Vec<_> = types
@@ -353,9 +351,7 @@ impl Type {
                     slice.into()
                 } //todo!("Slice references not yet handled!"),
                 */
-                _ => {
-                    Self::Ptr(Box::new(Self::from_ty(*inner, tyctx, method)))
-                }
+                _ => Self::Ptr(Box::new(Self::from_ty(*inner, tyctx, method))),
             },
             TyKind::Tuple(types) => {
                 let types: Vec<_> = types

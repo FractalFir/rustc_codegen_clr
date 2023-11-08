@@ -216,6 +216,7 @@ pub enum CILOp {
     /// This is a Syntetic("fake") instruction, which is used **only** internaly. It is not present in the resulting assembly.
     /// This instruction loads a pointer to local allocation `alloc_id`.
     LoadLocalAllocPtr {
+        /// ID of the allocation - used for looking up its data during later stages of codegen.
         alloc_id: u64,
     },
 
@@ -245,70 +246,126 @@ pub enum CILOp {
     ConvISize(bool),
 
     // Unsigned intieger convertions
+    /// Convert the value on top of the stack to an u8. Preform checked convertion if true.
     ConvU8(bool),
+    /// Convert the value on top of the stack to an u16. Preform checked convertion if true.
     ConvU16(bool),
+    /// Convert the value on top of the stack to an u32. Preform checked convertion if true.
     ConvU32(bool),
+    /// Convert the value on top of the stack to an u64. Preform checked convertion if true.
     ConvU64(bool),
+    /// Convert the value on top of the stack to an usize. Preform checked convertion if true.
     ConvUSize(bool),
     // Float convertions
+    /// Convert the value on top of the stack to an f32. Preform checked convertion if true.
     ConvF32(bool),
+    /// Convert the value on top of the stack to an f64. Preform checked convertion if true.
     ConvF64(bool),
     // Pointer
+    /// Load a value of type i8 at adress represented by the pointer at the top of the stack.
     LDIndI8,
+    /// Load a value of type i16 at adress represented by the pointer at the top of the stack.
     LDIndI16,
+    /// Load a value of type i32 at adress represented by the pointer at the top of the stack.
     LDIndI32,
+    /// Load a value of type i64 at adress represented by the pointer at the top of the stack.
     LDIndI64,
+    /// Load a value of type isize at adress represented by the pointer at the top of the stack.
     LDIndISize,
+    /// Load a value of type f32 at adress represented by the pointer at the top of the stack.
     LDIndF32,
+    /// Load a value of type f64 at adress represented by the pointer at the top of the stack.
     LDIndF64,
+    /// Load a value of managed type `ref T` at adress represented by the pointer at the top of the stack.
     LDIndRef,
+    /// Set a value of type i8 at adress represented by the pointer at the top of the stack, to the value contained at the stack.
     STIndI8,
+    /// Set a value of type i16 at adress represented by the pointer at the top of the stack, to the value contained at the stack.
     STIndI16,
+    /// Set a value of type i32 at adress represented by the pointer at the top of the stack, to the value contained at the stack.
     STIndI32,
+    /// Set a value of type i64 at adress represented by the pointer at the top of the stack, to the value contained at the stack.
     STIndI64,
+    /// Set a value of type isize at adress represented by the pointer at the top of the stack, to the value contained at the stack.
     STIndISize,
+    /// Set a value of type f32 at adress represented by the pointer at the top of the stack, to the value contained at the stack.
     STIndF32,
+    /// Set a value of type f64 at adress represented by the pointer at the top of the stack, to the value contained at the stack.
     STIndF64,
     //Debugging
+    /// Debug comment. Apears in generated ILASM, prevents optimzations.
     Comment(IString),
     // Arthmetic Operations
+    /// Adds the 2 top values on the stack togeter, pushing their sum on top of the stack.
     Add,
+    /// Variant of `Add` which throws an exception on overflow and underflow, signed.
     AddOvf,
+    /// Variant of `Add` which throws an exception on overflow, unsigned.
     AddOvfUn,
+    /// Binray ands's the 2 top values on the stack togeter, pushing their sum on top of the stack.
     And,
+    /// Divides the value on top of the stack, by the value under it.
     Div,
+    /// Divides the value on top of the stack, by the value under it, and pushes the reminder on the top of the stack.
     Rem,
+    /// Shifts the value on top of the stack to right by the value under it.
     Shr,
+    /// Shifts the value on top of the stack to left by the value under it.
     Shl,
+    /// Subtracts from the value on top of the stack, the value under it.
     Sub,
+    /// Subtracts from the value on top of the stack, the value under it. Throws exception on over/underflow, signed.
     SubOvf,
+    /// Subtracts from the value on top of the stack, the value under it. Throws exception on overflow, unsigned.
     SubOvfUn,
+    /// Multiplies the 2 top values on the stack togeter, pushing their sum on top of the stack.
     Mul,
+    /// Multiplies the 2 top values on the stack togeter, pushing their sum on top of the stack. Throws an exception on oveflow.
     MulOvf,
+    /// Binray or's the 2 top values on the stack togeter, pushing their sum on top of the stack.
     Or,
+    /// Binray xor's the 2 top values on the stack togeter, pushing their sum on top of the stack.
     XOr,
+    /// Binray nots the top value on the stack togeter, pushing their sum on top of the stack.
     Not,
+    /// Flips the sign of the top value of the stack.
     Neg,
     // Comparisons
+    /// Checks if the 2 top values on the stack are equal, pushes 0 if not, and 1 if they are.
     Eq,
+    /// Checks if the upper value on the stack is less than the lower one, pushes 0 if not, and 1 if it is.
     Lt,
+    /// Checks if the upper value on the stack is greater than the lower one, pushes 0 if not, and 1 if it is.
     Gt,
     //Special
+    /// Discards the top value on the stack.
     Pop,
+    /// Duplicates the top value on the stack.
     Dup,
+    /// Does nothing.
     Nop,
+    /// Allocates a temporary buffer of size equal to the value on top of the stack. It lives trough the entire function call, and is deallocated after return.
     LocAlloc,
     //OOP
+    /// Allocates a new object using the constructor in `call_site`
     NewObj(Box<CallSite>),
+    /// Loads the value field described by `field_describtor`
     LDField(Box<FieldDescriptor>),
+    /// Loads the adress of the field described by `field_describtor`
     LDFieldAdress(Box<FieldDescriptor>),
+    /// Sets the value field described by `field_describtor`
     STField(Box<FieldDescriptor>),
+    /// Loads the value of `type` behind the pointer on top of the stack.
     LdObj(Box<crate::r#type::Type>),
+    /// Sets the value of `type` behind the pointer on top of the stack, to the value under it.
     STObj(Box<crate::r#type::Type>),
+    /// Returns the size of object of `type`.
     SizeOf(Box<crate::r#type::Type>),
+    /// Loads the value of the static field represented by `StaticFieldDescriptor`.
     LDStaticField(Box<StaticFieldDescriptor>),
 }
 impl CILOp {
+    /// If this op is a branch operation, and its target is `original`, replaces the target with `replacement`
     pub fn replace_target(&mut self, orignal: u32, replacement: u32) {
         match self {
             CILOp::GoTo(target) => {
@@ -354,6 +411,7 @@ impl CILOp {
             _ => (),
         }
     }
+    /// If the cil op is a call, virtual call or new object cosntructor, returns the [`CallSite`] representing the called function.
     pub fn call(&self) -> Option<&CallSite> {
         match self {
             Self::Call(site) => Some(site),
@@ -362,6 +420,7 @@ impl CILOp {
             _ => None,
         }
     }
+    /// Returns the ops necesary to construct and throw a new `System.Exception` with message `msg`.
     pub fn throw_msg(msg: &str) -> [CILOp; 3] {
         let class = Some(DotnetTypeRef::new(
             Some("System.Runtime"),
@@ -467,7 +526,7 @@ impl CILOp {
             CILOp::LoadLocalAllocPtr { alloc_id: _ } => 1,
         }
     }
-    pub fn get_op_arg_pos(_ops: &[CILOp], _pos: usize, _arg: usize) -> Option<usize> {
+    fn get_op_arg_pos(_ops: &[CILOp], _pos: usize, _arg: usize) -> Option<usize> {
         todo!();
         /*
         let mut depth = (arg + 1) as isize;

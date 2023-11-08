@@ -26,10 +26,13 @@ impl Hash for Method {
     }
 }
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Debug)]
+/// Method attribute.
 pub enum Attribute {
+    /// Set if the function is the assemblys entrypoint.
     EntryPoint,
 }
 impl Method {
+    /// Creates new method with `access` access modifier, signature `sig`, name `name`, locals `locals`, and `is_static` if method is static.
     pub fn new(
         access: AccessModifer,
         is_static: bool,
@@ -47,55 +50,68 @@ impl Method {
             attributes: Vec::new(),
         }
     }
-    pub fn ensure_valid(&mut self) {
+    pub(crate) fn ensure_valid(&mut self) {
         if let Some(CILOp::Ret) = self.ops.iter().last() {
             //Do nothing
         } else {
             self.ops.push(CILOp::Ret);
         }
     }
-    pub fn add_local<'a>(&mut self, local: Type) {
+    /// Adds a local variable of type `local`
+    pub fn add_local(&mut self, local: Type) {
         self.locals.push(local.clone());
     }
+    /// Extends local variables by `iter`.
     pub fn extend_locals<'a>(&mut self, iter: impl Iterator<Item = &'a Type>) {
         self.locals.extend(iter.cloned());
     }
+    /// Checks if the method `self` is the entrypoint.
     pub fn is_entrypoint(&self) -> bool {
         self.attributes
             .iter()
             .any(|attr| *attr == Attribute::EntryPoint)
     }
-    pub fn explicit_inputs(&self) -> &[Type] {
+
+    pub(crate) fn explicit_inputs(&self) -> &[Type] {
         if self.is_static() {
             self.sig().inputs()
         } else {
             &self.sig().inputs()[1..]
         }
     }
+    /// Returns a mutable reference to this functions ops.
     pub fn ops_mut(&mut self) -> &mut Vec<CILOp> {
         &mut self.ops
     }
+    /// Returns the access modifier of this function.
     pub fn access(&self) -> AccessModifer {
         self.access
     }
+    /// Returns true if this function is static, else it returns false.
     pub fn is_static(&self) -> bool {
         self.is_static
     }
+    /// Returns the name of this function.
     pub fn name(&self) -> &str {
         &self.name
     }
+    /// Returns the signature of `self`.
     pub fn sig(&self) -> &FnSig {
         &self.sig
     }
+    /// Returns the list of local types.
     pub fn locals(&self) -> &[Type] {
         &self.locals
     }
+    /// Sets this methods CIL ops to `ops`.
     pub fn set_ops(&mut self, ops: Vec<CILOp>) {
         self.ops = ops;
     }
+    /// Returns the ops of this method.
     pub(crate) fn get_ops(&self) -> &[CILOp] {
         &self.ops
     }
+    /// Returns the list of external calls this function preforms. Calls may repeat.
     pub(crate) fn calls(&self) -> impl Iterator<Item = &CallSite> {
         self.ops.iter().map(|op| op.call()).filter_map(|site| site)
     }
@@ -140,9 +156,11 @@ impl Method {
         }
         //todo!("Can't allocate temporaries quite yet!");
     }
+    /// Adds method attribute `attr` to self.
     pub fn add_attribute(&mut self, attr: Attribute) {
         self.attributes.push(attr);
     }
+    /// Sets the list of locals of self to `locals`.
     pub fn set_locals(&mut self, locals: impl Into<Vec<Type>>) {
         self.locals = locals.into();
     }

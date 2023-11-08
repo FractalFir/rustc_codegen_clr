@@ -291,7 +291,7 @@ fn op2_combos(ops: &mut Vec<CILOp>) {
                 ops[idx] = CILOp::Nop;
                 ops[idx + 1] = CILOp::Nop;
             }
-            (CILOp::ConvUSize(false) | CILOp::ConvF64(false),CILOp::Pop)=>{
+            (CILOp::ConvUSize(false) | CILOp::ConvF64(false), CILOp::Pop) => {
                 ops[idx] = CILOp::Pop;
                 ops[idx + 1] = CILOp::Nop;
             }
@@ -349,7 +349,11 @@ fn op3_combos(ops: &mut Vec<CILOp>) {
                 }
             }
             //TODO: ensure changing the offset of ops does not cause issues.
-            (CILOp::LdcI32(_) | CILOp::LdcI64(_) | CILOp::LdcF32(_) | CILOp::LdcF64(_), CILOp::ConvUSize(_) | CILOp::ConvF64(_), CILOp::STLoc(loc))=>{
+            (
+                CILOp::LdcI32(_) | CILOp::LdcI64(_) | CILOp::LdcF32(_) | CILOp::LdcF64(_),
+                CILOp::ConvUSize(_) | CILOp::ConvF64(_),
+                CILOp::STLoc(loc),
+            ) => {
                 let loc = *loc;
                 let set_count = ops.iter().filter(|op| CILOp::STLoc(loc) == **op).count();
                 // If this is not the only set, this optimization won't work.
@@ -362,14 +366,16 @@ fn op3_combos(ops: &mut Vec<CILOp>) {
                 }
                 let load = [op1.clone(), op2.clone()];
                 let mut new_ops = Vec::with_capacity(ops.len());
-                for op in ops.iter(){
-                    match op{
-                        CILOp::LDLoc(oplocal)=>if loc == *oplocal{
-                            new_ops.extend(load.iter().cloned())
-                        } else{
-                            new_ops.push(op.clone())
+                for op in ops.iter() {
+                    match op {
+                        CILOp::LDLoc(oplocal) => {
+                            if loc == *oplocal {
+                                new_ops.extend(load.iter().cloned())
+                            } else {
+                                new_ops.push(op.clone())
+                            }
                         }
-                        _=>new_ops.push(op.clone()),
+                        _ => new_ops.push(op.clone()),
                     }
                 }
                 *ops = new_ops;

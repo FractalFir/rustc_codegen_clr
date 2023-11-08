@@ -8,6 +8,7 @@ use crate::{
 };
 use std::{borrow::Cow, io::Write, ops::Deref};
 #[must_use]
+/// A struct used to export an asssembly using the ILASM tool as a .NET assembly creator.
 pub struct ILASMExporter {
     encoded_asm: Vec<u8>,
 }

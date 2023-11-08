@@ -11,6 +11,7 @@ use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug)]
+/// Representation of a .NET assembly.
 pub struct Assembly {
     types: HashSet<TypeDef>,
     functions: HashSet<Method>,
@@ -65,6 +66,7 @@ impl Assembly {
         }
         None
     }
+    /// Turns a terminator into ops, if ABORT_ON_ERROR set to false, will handle and recover from errors.
     pub fn terminator_to_ops<'tcx>(
         term: &Terminator<'tcx>,
         mir: &'tcx rustc_middle::mir::Body<'tcx>,
@@ -93,6 +95,7 @@ impl Assembly {
             }
         }
     }
+    /// Turns a statement into ops, if ABORT_ON_ERROR set to false, will handle and recover from errors.
     pub fn statement_to_ops<'tcx>(
         statement: &Statement<'tcx>,
         tcx: TyCtxt<'tcx>,
@@ -215,6 +218,7 @@ impl Assembly {
         Ok(())
         //todo!("Can't add function")
     }
+    /// Returns true if assembly contains function named `name`
     pub fn contains_fn_named(&self, name: &str) -> bool {
         //FIXME:This is inefficient.
         self.methods().any(|m| m.name() == name)
@@ -225,6 +229,7 @@ impl Assembly {
         method.ensure_valid();
         self.functions.insert(method);
     }
+    /// Returns the list of all calls within the method. Calls may repeat.
     pub fn call_sites(&self) -> impl Iterator<Item = &CallSite> {
         self.methods().map(|method| method.calls()).flatten()
     }

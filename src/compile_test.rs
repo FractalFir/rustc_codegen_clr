@@ -61,7 +61,7 @@ macro_rules! test_lib {
     ($test_name:ident) => {
         mod $test_name {
             #[cfg(test)]
-            static COMPILE_LOCK:std::sync::Mutex<()> = std::sync::Mutex::new(());
+            static COMPILE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
             #[test]
             fn release() {
                 // Ensures no two compilations run at the same time.
@@ -195,7 +195,7 @@ macro_rules! run_test {
     ($prefix:ident,$test_name:ident) => {
         mod $test_name {
             #[cfg(test)]
-            static COMPILE_LOCK:std::sync::Mutex<()> = std::sync::Mutex::new(());
+            static COMPILE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
             #[test]
             fn release() {
                 let lock = COMPILE_LOCK.lock();
@@ -236,7 +236,6 @@ macro_rules! run_test {
                 drop(lock);
                 super::peverify(exec_path, test_dir);
                 super::test_dotnet_executable(exec_path, test_dir);
-                
             }
             #[test]
             fn debug() {
@@ -289,7 +288,7 @@ macro_rules! cargo_test {
             #[cfg(test)]
             use std::io::Write;
             #[cfg(test)]
-            static COMPILE_LOCK:std::sync::Mutex<()> = std::sync::Mutex::new(());
+            static COMPILE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
             #[test]
             fn cargo_debug() {
                 let lock = COMPILE_LOCK.lock();
@@ -319,12 +318,12 @@ macro_rules! cargo_test {
 
                     if !stderr.contains("Finished") {
                         let stdout = String::from_utf8(out.stdout)
-                        .expect("rustc error contained non-UTF8 characters.");
-                    let stderr = String::from_utf8(out.stderr)
-                        .expect("rustc error contained non-UTF8 characters.");
-                    if !stderr.contains("Finished") {
-                        panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
-                    }
+                            .expect("rustc error contained non-UTF8 characters.");
+                        let stderr = String::from_utf8(out.stderr)
+                            .expect("rustc error contained non-UTF8 characters.");
+                        if !stderr.contains("Finished") {
+                            panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
+                        }
                     }
                 }
                 drop(lock);

@@ -63,6 +63,7 @@ macro_rules! add_tpe_method {
         };
     };
 }
+/// Inserts a small subset of libc and some standard types into an assembly.
 pub fn insert_libc(asm: &mut Assembly) {
     // Add core.panic.PanicInfo
     /*

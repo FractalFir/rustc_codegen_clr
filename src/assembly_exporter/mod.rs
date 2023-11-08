@@ -6,13 +6,20 @@ enum AccessModifer {
     Public,
 }
 use crate::{assembly::Assembly, method::Method, type_def::TypeDef, IString};
+/// ILASM-based assembly exporter.
 pub mod ilasm_exporter;
+/// This trait represents an interface implemented by all .NET assembly exporters. (Currently only ilasm)
 pub trait AssemblyExporter: Sized {
+    /// Initializes an assembly exporter.
     fn init(asm_info: &AssemblyInfo) -> Self;
+    /// Adds type definition `tpe` to the assembly.
     fn add_type(&mut self, tpe: &TypeDef);
+    /// Adds method to assembly.
     fn add_method(&mut self, method: &Method);
     //fn extern_asm(&mut self,asm:&str);
+    /// Finishes exporting the assembly.
     fn finalize(self, final_path: &Path, is_dll: bool) -> Result<(), AssemblyExportError>;
+    /// Handles the whole assembly export process all at once.
     fn export_assembly(
         asm: &Assembly,
         final_path: &Path,
@@ -37,10 +44,15 @@ pub trait AssemblyExporter: Sized {
     }
 }
 #[derive(Debug)]
+/// Represents an error which happened during assembly exporting.
 pub enum AssemblyExportError {
+    /// Assemmbly IL was invalid
     InvalidIL,
+    /// Could not turn assembly path from relative to absoulte.
     CouldNotCanonalizePath(std::io::Error, std::path::PathBuf),
+    /// A generic IO error happended when exporting the assembly.
     IoError(std::io::Error),
+    /// The exporter command (ILASM) failed with an error message.
     ExporterError(IString),
 }
 impl From<std::io::Error> for AssemblyExportError {

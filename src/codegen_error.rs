@@ -68,21 +68,3 @@ impl Debug for MethodCodegenError {
 }
 /// Modifies the behavoiour of the `codegen_error` macro, making it panic if true and report the error if false.
 pub const PANIC_ON_ERROR: bool = false;
-#[macro_export]
-macro_rules! codegen_error {
-    () => {
-        let mce = $crate::codegen_error::MethodCodegenError::new(file!(),line!(),column!(),format!());
-        if crate::codegen_error::PANIC_ON_ERROR{
-            panic!()
-        }
-        return Err(mce).into();
-    };
-    ($($arg:tt)+) => {{
-        let mce = crate::codegen_error::MethodCodegenError::new(file!(),line!(),column!(),format_args!($($arg)+).to_string());
-        if crate::codegen_error::PANIC_ON_ERROR{
-            panic!($($arg)+)
-        }
-        return Err(mce).into();
-    }
-    };
-}

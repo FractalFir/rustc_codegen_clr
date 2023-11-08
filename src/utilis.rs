@@ -192,6 +192,7 @@ pub fn compiletime_sizeof(ty: Ty) -> usize {
         _ => todo!("Can't compute compiletime sizeof {ty:?}"),
     }
 }
+/// Ensures that a type is morphic.
 #[macro_export]
 macro_rules! assert_morphic {
     ($ty:ident) => {

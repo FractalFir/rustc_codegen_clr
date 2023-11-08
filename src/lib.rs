@@ -1,6 +1,43 @@
 #![feature(rustc_private)]
-// References to internal rustc crates.
+#![deny(missing_docs)]
+#![warn(clippy::missing_docs_in_private_items)]
+//! Rustc Codegen CLR - an experimental rustc backend compiling Rust for .NET. This project aims to bring the speed and memory efficency of Rust to .NET.
+//!
+//! # Explaing the project
+//!  
+//! This part of the documentation aims to help anyone interested in the project better understand the guiding principles behind it, and its architecture.
+//! It is a bit more on the techincal side, but please feel free to ask me if anything is unclear.
+//!
+//! ## Guiding principles
+//!
+//! The project aims to keep it's codebase as simple as possible, at the cost of increased compile times. Compile times still should be on par with someting like
+//! LLVM, due to the project not needing to perform as many complex optimzations.
+//!
+//! ### Functional
+//!
+//! The project heavily uses functional programing style. Each element of Rust MIR is handled by a simple pure function, which takes the MIR element,
+//! and returns a single translated item, eg. a method, a list of CIL ops, or type definitions. All parameters passed to the functuion are immutable:
+//! this heavily simplifies testing, and makes the backend far more predictable. It also makes recovering from errors very easy, since we don't have to deal
+//! with potential changes to mutable structutes.
+//! This does have its drawbacks(it makes allocating additional local variables harder than it needs to be), but its benefits outhgweight the issues it brings,
+//! at least at this point in time.
+//!
+//! ## Faithful to MIR
+//!
+//! The project first translates MIR to CIL in a very precise, but inefficient fasion. This inefficent CIL is then optimized using the functions within the `opt` module.
+//! This way, it is far less likely that a piece of code will be miscompiled. It also helps with debuging, and allows us to achieve a very high-level translation of MIR.
+//!
+//! # Where the compilation starts
+//!
+//! Almost everyting in this file is related to things specific to the rust compiler - reciving MIR from rustc, loading/saving intermediate data,
+//! linking the final executable.
+//! The compilation process really begins in [`crate::assembly::Assembly::add_item`] - this is where an item - static, function, or inline assembly - gets turned into
+//! its .NET representation. The [`crate::assembly::Assembly::add_function`] uses [`crate::assembly::Assembly::add_type`] to add all types needed by a method to the
+//! assembly. add_function gets the function name, signature, local varaiables and MIR. It uses`handle_statement` and `handle_terminator` turn MIR statements
+//! and block terminators into CIL ops.
+// TODO: Extend project desctibtion.
 
+// References to internal rustc crates.
 extern crate rustc_abi;
 extern crate rustc_codegen_ssa;
 extern crate rustc_data_structures;
@@ -23,8 +60,10 @@ const PRINT_TY_CONVERTION: bool = false;
 /// Tells the codegen to optmize the emiited CIL.
 const OPTIMIZE_CIL: bool = (!INSERT_MIR_DEBUG_COMMENTS) && (true);
 
+/// Changes `.locals` into `.locals init`. Causes the runtime to always initialize local variables.
 /// Try turining on in cause of issues. If it fixes them, then their root cause is UB(eg. use of uninitailized memory).
 pub const ALWAYS_INIT_LOCALS: bool = false;
+/// Should the codegen stop working when ecountering an error, or try to press on, replacing unusuported code with exceptions throws?
 pub const ABORT_ON_ERROR: bool = false;
 
 // Modules
