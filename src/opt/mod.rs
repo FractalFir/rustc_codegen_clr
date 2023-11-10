@@ -639,7 +639,13 @@ fn try_split_locals(method: &mut Method, asm: &Assembly) {
         let type_def = asm.get_typedef_by_path(dotnet_tpe.name_path());
         let type_def = type_def.expect("Could not find type!");
         let local_map_start = method.locals().len();
-        let morphic_fields: Box<[_]> = type_def.morphic_fields(dotnet_tpe.generics()).collect();
+        let morphic_fields: Option<Box<[_]>> = type_def.morphic_fields(dotnet_tpe.generics()).collect();
+        let morphic_fields = if let Some(morphic_fields) = morphic_fields{
+            morphic_fields
+        }
+        else{
+            continue;
+        };
         method.extend_locals(morphic_fields.iter().map(|(name, tpe)| tpe));
         for index in 0..(method.get_ops().len() - 2) {
             //FIXME: this needs to be changed if we ever allow for this to optimize more compilcated split field access patterns.

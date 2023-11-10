@@ -24,10 +24,10 @@ impl TypeDef {
     pub fn morphic_fields<'a>(
         &'a self,
         generics: &'a [Type],
-    ) -> impl Iterator<Item = (&'a str, Type)> + 'a {
+    ) -> impl Iterator<Item = Option<(&'a str, Type)>> + 'a {
         self.fields()
             .iter()
-            .map(|(name, tpe)| (name.as_ref(), tpe.map_generic(generics)))
+            .map(|(name, tpe)| Some((name.as_ref(), tpe.map_generic(generics)?)))
     }
     pub fn set_generic_count(&mut self, generic_count: u32) {
         self.gargc = generic_count;
