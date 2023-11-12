@@ -217,7 +217,7 @@ add_method!(
         CILOp::Label(1),
         CILOp::Ret
     ],
-    [Type::U8]
+    [(None, Type::U8)]
 );
 add_method!(
     malloc,

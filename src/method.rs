@@ -14,10 +14,12 @@ pub struct Method {
     is_static: bool,
     sig: FnSig,
     name: IString,
-    locals: Vec<Type>,
+    locals: Vec<LocalDef>,
     ops: Vec<CILOp>,
     attributes: Vec<Attribute>,
 }
+/// Local varaible. Consists of an optional name and type.
+pub type LocalDef = (Option<IString>, Type);
 impl Eq for Method {}
 impl Hash for Method {
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -38,7 +40,7 @@ impl Method {
         is_static: bool,
         sig: FnSig,
         name: &str,
-        locals: Vec<Type>,
+        locals: Vec<LocalDef>,
     ) -> Self {
         Self {
             access,
@@ -59,11 +61,11 @@ impl Method {
     }
     /// Adds a local variable of type `local`
     pub fn add_local(&mut self, local: Type) {
-        self.locals.push(local.clone());
+        self.locals.push((None, local.clone()));
     }
     /// Extends local variables by `iter`.
     pub fn extend_locals<'a>(&mut self, iter: impl Iterator<Item = &'a Type>) {
-        self.locals.extend(iter.cloned());
+        self.locals.extend(iter.map(|tpe| (None, tpe.clone())));
     }
     /// Checks if the method `self` is the entrypoint.
     pub fn is_entrypoint(&self) -> bool {
@@ -100,7 +102,7 @@ impl Method {
         &self.sig
     }
     /// Returns the list of local types.
-    pub fn locals(&self) -> &[Type] {
+    pub fn locals(&self) -> &[(Option<IString>, Type)] {
         &self.locals
     }
     /// Sets this methods CIL ops to `ops`.
@@ -122,7 +124,7 @@ impl Method {
             match op {
                 CILOp::NewTMPLocal(tpe) => {
                     let index = self.locals.len();
-                    self.locals.push(tpe.as_ref().clone());
+                    self.locals.push((None, tpe.as_ref().clone()));
                     tmp_stack.push(index);
                     *op = CILOp::Nop;
                 }
@@ -161,7 +163,7 @@ impl Method {
         self.attributes.push(attr);
     }
     /// Sets the list of locals of self to `locals`.
-    pub fn set_locals(&mut self, locals: impl Into<Vec<Type>>) {
+    pub fn set_locals(&mut self, locals: impl Into<Vec<(Option<IString>, Type)>>) {
         self.locals = locals.into();
     }
 }

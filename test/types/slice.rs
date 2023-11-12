@@ -3,6 +3,8 @@
 #![no_std]
 include!("../common.rs");
 fn main(){
-    let slice:&mut [u8] = unsafe{core::slice::from_raw_parts_mut(malloc(64) as *mut _,64)};
+    let ptr = unsafe{malloc(64) as *mut _};
+    black_box(ptr);
+    let slice:&mut [u8] = unsafe{core::slice::from_raw_parts_mut(ptr,64)};
     black_box(slice);
 }

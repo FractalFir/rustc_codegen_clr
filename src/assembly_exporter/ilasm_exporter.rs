@@ -179,14 +179,14 @@ fn method_cil(w: &mut impl Write, method: &Method) -> std::io::Result<()> {
         write!(
             w,
             "\t\t[{local_id}] {escaped_type}",
-            escaped_type = arg_type_cil(local)
+            escaped_type = arg_type_cil(&local.1)
         )?;
     }
     for (local_id, local) in locals_iter {
         write!(
             w,
             ",\n\t\t[{local_id}] {escaped_type}",
-            escaped_type = arg_type_cil(local)
+            escaped_type = arg_type_cil(&local.1)
         )?;
     }
     writeln!(w, "\n\t)")?;

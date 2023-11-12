@@ -1,6 +1,7 @@
 use crate::cil_op::{CILOp, CallSite};
 use crate::codegen_error::MethodCodegenError;
 use crate::utilis::monomorphize;
+use crate::IString;
 use crate::{
     access_modifier::AccessModifer, codegen_error::CodegenError, function_sig::FnSig,
     method::Method, r#type::Type, type_def::TypeDef,
@@ -302,18 +303,20 @@ fn locals_from_mir<'tyctx>(
     tyctx: TyCtxt<'tyctx>,
     argc: usize,
     method_instance: &Instance<'tyctx>,
-) -> Vec<Type> {
-    let mut local_types: Vec<Type> = Vec::with_capacity(locals.len());
+) -> Vec<(Option<IString>, Type)> {
+    let mut local_types: Vec<_> = Vec::with_capacity(locals.len());
     for (local_id, local) in locals.iter().enumerate() {
         if local_id == 0 || local_id > argc {
             let ty = crate::utilis::monomorphize(method_instance, local.ty, tyctx);
+            let name: Option<IString> = None;
             if crate::PRINT_LOCAL_TYPES {
                 println!(
                     "Setting local to type {ty:?},non-morphic: {non_morph}",
                     non_morph = local.ty
                 );
             }
-            local_types.push(Type::from_ty(ty, tyctx, method_instance));
+            let name = None;
+            local_types.push((name, Type::from_ty(ty, tyctx, method_instance)));
         }
     }
     local_types

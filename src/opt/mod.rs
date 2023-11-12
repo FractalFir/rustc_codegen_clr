@@ -627,23 +627,24 @@ fn try_split_locals(method: &mut Method, asm: &Assembly) {
         .locals()
         .iter()
         .enumerate()
-        .filter(|(_, tpe)| is_type_splitable(tpe))
+        .filter(|(_, tpe)| is_type_splitable(&tpe.1))
         .filter(|(local, _)| can_split_local(*local as u32, method.get_ops()))
         .map(|(index, tpe)| (index, tpe.clone()))
         .collect();
 
     for (split_local, split_tpe) in splits {
         let dotnet_tpe = split_tpe
+            .1
             .as_dotnet()
             .expect("Can't spilt non-dotnet types!");
         let type_def = asm.get_typedef_by_path(dotnet_tpe.name_path());
         let type_def = type_def.expect("Could not find type!");
         let local_map_start = method.locals().len();
-        let morphic_fields: Option<Box<[_]>> = type_def.morphic_fields(dotnet_tpe.generics()).collect();
-        let morphic_fields = if let Some(morphic_fields) = morphic_fields{
+        let morphic_fields: Option<Box<[_]>> =
+            type_def.morphic_fields(dotnet_tpe.generics()).collect();
+        let morphic_fields = if let Some(morphic_fields) = morphic_fields {
             morphic_fields
-        }
-        else{
+        } else {
             continue;
         };
         method.extend_locals(morphic_fields.iter().map(|(name, tpe)| tpe));

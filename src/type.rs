@@ -149,6 +149,14 @@ impl DotnetTypeRef {
             is_valuetype: true,
         }
     }
+    pub fn slice_type(element: Type) -> DotnetTypeRef {
+        DotnetTypeRef {
+            assembly: None,
+            name_path: "RustSlice".into(),
+            generics: vec![element],
+            is_valuetype: true,
+        }
+    }
     fn generic_from_adt<'ctx>(
         adt_def: &AdtDef<'ctx>,
         subst: &'ctx List<GenericArg<'ctx>>,
@@ -185,6 +193,14 @@ impl DotnetTypeRef {
     }
 }
 impl Type {
+    pub fn slice_ref(slice_element: Type) -> Type {
+        const SLICE_PTR_NAME: &str = "core.ptr.metadata.PtrComponents";
+
+        let mut slice_ref_type = DotnetTypeRef::new(None, SLICE_PTR_NAME);
+        let slice_type = DotnetTypeRef::slice_type(slice_element.clone()).into();
+        slice_ref_type.set_generics([slice_type, slice_element]);
+        slice_ref_type.into()
+    }
     pub fn map_generic(&self, generics: &[Type]) -> Option<Type> {
         match self {
             Self::GenericArg(arg) => generics.get(*arg as usize).cloned(),
@@ -233,12 +249,8 @@ impl Type {
                         is_valuetype: true,
                     };
                     Self::DotnetType(Box::new(str_type))
-                }
-                TyKind::Slice(inner) => {
-                    let mut slice = DotnetTypeRef::new(None, "RustSlice");
-                    slice.set_generics(&[Type::generic_from_ty(*inner, tyctx)]);
-                    slice.into()
                 }*/
+                TyKind::Slice(inner) => Self::slice_ref(Type::generic_from_ty(*inner, tyctx)),
                 _ => Self::Ptr(Box::new(Self::generic_from_ty(*inner, tyctx))),
             },
             TyKind::Tuple(types) => {
@@ -345,12 +357,8 @@ impl Type {
                     };
                     Self::DotnetType(Box::new(str_type))
                 }
-                TyKind::Slice(inner) => {
-                    let mut slice = DotnetTypeRef::new(None, "RustSlice");
-                    slice.set_generics(&[Type::from_ty(*inner, tyctx, method)]);
-                    slice.into()
-                } //todo!("Slice references not yet handled!"),
                 */
+                TyKind::Slice(inner) => Self::slice_ref(Type::from_ty(*inner, tyctx, method)),
                 _ => Self::Ptr(Box::new(Self::from_ty(*inner, tyctx, method))),
             },
             TyKind::Tuple(types) => {

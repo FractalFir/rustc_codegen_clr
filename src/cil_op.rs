@@ -577,7 +577,7 @@ fn test_tmp_locals() {
         true,
         FnSig::new(&[], &Type::U32),
         "meth",
-        vec![Type::U32],
+        vec![(None, Type::U32)],
     );
     let expected_ops = vec![
         CILOp::LdcI32(8),
