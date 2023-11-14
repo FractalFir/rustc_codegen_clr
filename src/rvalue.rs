@@ -116,6 +116,24 @@ pub fn handle_rvalue<'tcx>(
                 _ => todo!("Unhandled transmute from {src:?} to {dst:?}"),
             }
         }
+        Rvalue::Cast(CastKind::PointerFromExposedAddress, operand, _) => {
+            //FIXME: the documentation of this cast(https://doc.rust-lang.org/nightly/std/ptr/fn.from_exposed_addr.html) is a bit confusing,
+            //since this seems to be something deeply linked to the rust memory model.
+            // I assume this to be ALWAYS equivalent to `usize as *const/mut T`, but this may not always be the case.
+            // If something breaks in the fututre, this is a place that needs checking.
+
+            // Cast from usize/isize to any *T is a NOP, so we just have to load the operand.
+            handle_operand(operand, tcx, method, method_instance)
+        },
+        Rvalue::Cast(CastKind::PointerExposeAddress, operand, _) => {
+            //FIXME: the documentation of this cast(https://doc.rust-lang.org/nightly/std/primitive.pointer.html#method.expose_addrl) is a bit confusing,
+            //since this seems to be something deeply linked to the rust memory model.
+            // I assume this to be ALWAYS equivalent to `*const/mut T as usize`, but this may not always be the case.
+            // If something breaks in the fututre, this is a place that needs checking.
+
+            // Cast to usize/isize from any *T is a NOP, so we just have to load the operand.
+            handle_operand(operand, tcx, method, method_instance)
+        },
         Rvalue::Cast(kind, _operand, _) => todo!("Unhandled cast kind {kind:?}, rvalue:{rvalue:?}"),
         Rvalue::Discriminant(place) => {
             let mut ops = crate::place::place_adress(place, tcx, method, method_instance);

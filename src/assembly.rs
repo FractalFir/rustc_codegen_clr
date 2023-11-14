@@ -286,6 +286,14 @@ impl Assembly {
 
                 Ok(())
             }
+            MonoItem::GlobalAsm(asm)=>{
+                eprintln!("Unsuported item - Global ASM:{asm:?}");
+                Ok(())
+            },
+            MonoItem::Static(stotic)=>{
+                eprintln!("Unsuported item - Static:{stotic:?}");
+                Ok(())
+            },
             _ => todo!("Unsupported item:\"{item:?}\"!"),
         }
     }

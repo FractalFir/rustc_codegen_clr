@@ -66,5 +66,3 @@ impl Debug for MethodCodegenError {
         )
     }
 }
-/// Modifies the behavoiour of the `codegen_error` macro, making it panic if true and report the error if false.
-pub const PANIC_ON_ERROR: bool = false;

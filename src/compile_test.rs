@@ -486,6 +486,7 @@ run_test! {control_flow,cf_for}
 run_test! {control_flow,drop}
 cargo_test! {hello_world}
 cargo_test! {std_hello_world}
+cargo_test! {build_core}
 cargo_test! {benchmarks}
 cargo_test! {glam_test}
 cargo_test! {fastrand_test}

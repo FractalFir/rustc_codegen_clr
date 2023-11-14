@@ -363,6 +363,8 @@ pub enum CILOp {
     SizeOf(Box<crate::r#type::Type>),
     /// Loads the value of the static field represented by `StaticFieldDescriptor`.
     LDStaticField(Box<StaticFieldDescriptor>),
+    /// Copies to *dst* from *src* *count* bytes.  
+    CpBlk,
 }
 impl CILOp {
     /// If this op is a branch operation, and its target is `original`, replaces the target with `replacement`
@@ -519,6 +521,7 @@ impl CILOp {
             CILOp::Throw => -1,
             CILOp::Rethrow => -1,
             CILOp::Ret => -1,
+            CILOp::CpBlk=>-3,
             // Syntetic instructions
             CILOp::NewTMPLocal(_) | CILOp::FreeTMPLocal => 0,
             CILOp::LoadAddresOfTMPLocal | CILOp::LoadUnderTMPLocal(_) | CILOp::LoadTMPLocal => 1,

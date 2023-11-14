@@ -517,6 +517,7 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
             field_name = descr.name()
         )
         .into(),
+        CILOp::CpBlk=>"cpblk".into(),
         CILOp::NewObj(call_site) => {
             if call_site.is_nop() {
                 "".into()

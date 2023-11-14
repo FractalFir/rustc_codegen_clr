@@ -638,7 +638,12 @@ fn try_split_locals(method: &mut Method, asm: &Assembly) {
             .as_dotnet()
             .expect("Can't spilt non-dotnet types!");
         let type_def = asm.get_typedef_by_path(dotnet_tpe.name_path());
-        let type_def = type_def.expect("Could not find type!");
+        let type_def = if let Some(type_def) = type_def{
+            type_def
+        }
+        else{
+            continue;
+        };
         let local_map_start = method.locals().len();
         let morphic_fields: Option<Box<[_]>> =
             type_def.morphic_fields(dotnet_tpe.generics()).collect();

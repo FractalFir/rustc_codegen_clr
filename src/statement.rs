@@ -1,6 +1,6 @@
 use crate::cil_op::CILOp;
 use rustc_middle::{
-    mir::{Body, NonDivergingIntrinsic, Statement, StatementKind},
+    mir::{Body, NonDivergingIntrinsic, Statement, StatementKind,CopyNonOverlapping},
     ty::{Instance, TyCtxt},
 };
 pub fn handle_statement<'tcx>(
@@ -27,6 +27,23 @@ pub fn handle_statement<'tcx>(
         StatementKind::Intrinsic(non_diverging_intirinsic) => {
             match non_diverging_intirinsic.as_ref() {
                 NonDivergingIntrinsic::Assume(_) => vec![],
+                NonDivergingIntrinsic::CopyNonOverlapping(CopyNonOverlapping{src,dst,count})=> {
+                    let dst_op = crate::operand::handle_operand(dst, tyctx, method, method_instance);
+                    let src_op = crate::operand::handle_operand(src, tyctx, method, method_instance);
+                    let count_op = crate::operand::handle_operand(count, tyctx, method, method_instance);
+                    let src_ty = src.ty(method,tyctx);
+                    let ptr_type = crate::r#type::Type::from_ty(src_ty,tyctx,&method_instance);
+                    let pointed = if let crate::r#type::Type::Ptr(pointed) = ptr_type{
+                        pointed
+                    }else{
+                        panic!("Copy nonoverlaping called with non-pointer type {src_ty:?}");
+                    };
+                    let mut res:Vec<_> = [dst_op,src_op,count_op].into_iter().flatten().collect();
+                    res.push(CILOp::SizeOf(pointed));
+                    res.push(CILOp::Mul);
+                    res.push(CILOp::CpBlk);
+                    res
+                }
                 _ => {
                     todo!("Can't handle non-diverging intrinsics {non_diverging_intirinsic:?} yet!")
                 }

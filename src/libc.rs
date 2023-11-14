@@ -89,91 +89,17 @@ pub fn insert_libc(asm: &mut Assembly) {
 }
 
 fn rust_slice(asm: &mut Assembly) {
-    let mut rust_slice = crate::type_def::TypeDef::nameonly("RustSlice");
-    let mut rust_slice_dotnet = DotnetTypeRef::new(None, "RustSlice");
-    rust_slice.set_generic_count(1);
-    rust_slice_dotnet.set_generics([Type::GenericArg(0)]);
+    let mut rust_slice = crate::type_def::TypeDef::nameonly("core.ptr.metadata.PtrComponents");
+    let mut rust_slice_dotnet = DotnetTypeRef::new(None, "core.ptr.metadata.PtrComponents");
+    rust_slice.set_generic_count(2);
+    rust_slice_dotnet.set_generics([Type::GenericArg(0),Type::GenericArg(1)]);
     // TODO: constrain this generic to be unmanaged
-    rust_slice.add_field("_ptr".into(), Type::Ptr(Box::new(Type::GenericArg(0))));
-    rust_slice.add_field("_length".into(), Type::USize);
+    rust_slice.add_field("data_address".into(), Type::Ptr(Type::Void.into()));
+    rust_slice.add_field("metadata".into(), Type::USize);
 
-    add_tpe_method!(
-        GetLength,
-        false,
-        &[Type::DotnetType(Box::new(rust_slice_dotnet.clone()))],
-        &Type::USize,
-        [
-            CILOp::LDArg(0),
-            CILOp::LDField(FieldDescriptor::boxed(
-                rust_slice_dotnet.clone(),
-                Type::USize,
-                "_length".into()
-            )),
-            CILOp::Ret
-        ]
-    );
-    let _signature = crate::function_sig::FnSig::new(
-        &[Type::DotnetType(Box::new(rust_slice_dotnet.clone()))],
-        &Type::GenericArg(0),
-    );
-    add_tpe_method!(
-        get_Item,
-        false,
-        &[
-            Type::DotnetType(Box::new(rust_slice_dotnet.clone())),
-            Type::USize
-        ],
-        &Type::GenericArg(0),
-        [
-            CILOp::LDArg(0),
-            CILOp::LDField(FieldDescriptor::boxed(
-                rust_slice_dotnet.clone(),
-                Type::Ptr(Box::new(Type::GenericArg(0))),
-                "_ptr".into()
-            )),
-            CILOp::LDArg(1), // offset
-            CILOp::ConvU64(false),
-            CILOp::SizeOf(Box::new(Type::GenericArg(0))),
-            CILOp::ConvI64(false),
-            CILOp::Mul,
-            CILOp::ConvUSize(false),
-            CILOp::Add,
-            CILOp::LdObj(Type::GenericArg(0).into()),
-            CILOp::Ret
-        ]
-    );
-    add_tpe_method!(
-        set_Item,
-        false,
-        &[
-            Type::DotnetType(Box::new(rust_slice_dotnet.clone())),
-            Type::USize,
-            Type::GenericArg(0)
-        ],
-        &Type::Void,
-        [
-            CILOp::LDArg(0),
-            CILOp::LDField(FieldDescriptor::boxed(
-                rust_slice_dotnet.clone(),
-                Type::Ptr(Box::new(Type::GenericArg(0))),
-                "_ptr".into()
-            )),
-            CILOp::LDArg(1), // offset
-            CILOp::ConvU64(false),
-            CILOp::SizeOf(Box::new(Type::GenericArg(0))),
-            CILOp::ConvI64(false),
-            CILOp::Mul,
-            CILOp::ConvUSize(false),
-            CILOp::Add,
-            CILOp::LDArg(2), // value
-            CILOp::STObj(Type::GenericArg(0).into()),
-            CILOp::Ret
-        ]
-    );
-    GetLength(&mut rust_slice);
-    get_Item(&mut rust_slice);
-    set_Item(&mut rust_slice);
-
+    asm.add_typedef(rust_slice);
+    let mut rust_slice = crate::type_def::TypeDef::nameonly("RustSlice");
+    rust_slice.set_generic_count(2);
     asm.add_typedef(rust_slice);
 }
 
