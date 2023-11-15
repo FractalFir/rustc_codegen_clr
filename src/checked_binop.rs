@@ -98,7 +98,7 @@ fn add(tpe: Type) -> Vec<CILOp> {
             CILOp::LdcI32(i8::MIN as i32),
             CILOp::Add,
         ),
-        Type::U8 => checked_uadd_type(Type::U8, CILOp::ConvU8(false),CILOp::Add),
+        Type::U8 => checked_uadd_type(Type::U8, CILOp::ConvU8(false), CILOp::Add),
         Type::I16 => promoted_sbinop(
             Type::I16,
             Type::I32,
@@ -108,7 +108,7 @@ fn add(tpe: Type) -> Vec<CILOp> {
             CILOp::LdcI32(i16::MIN as i32),
             CILOp::Add,
         ),
-        Type::U16 => checked_uadd_type(Type::U16, CILOp::ConvU16(false),CILOp::Add),
+        Type::U16 => checked_uadd_type(Type::U16, CILOp::ConvU16(false), CILOp::Add),
         Type::I32 => promoted_sbinop(
             Type::I32,
             Type::I64,
@@ -118,7 +118,7 @@ fn add(tpe: Type) -> Vec<CILOp> {
             CILOp::LdcI32(i32::MIN),
             CILOp::Add,
         ),
-        Type::U32 => checked_uadd_type(Type::U32, CILOp::Nop,CILOp::Add),
+        Type::U32 => checked_uadd_type(Type::U32, CILOp::Nop, CILOp::Add),
         //This works ONLY in dotnet.
         Type::I64 => promoted_sbinop(
             Type::I64,
@@ -144,18 +144,30 @@ fn add(tpe: Type) -> Vec<CILOp> {
                 true,
             )),
         ),
-        Type::U64 => checked_uadd_type(Type::U64, CILOp::Nop,CILOp::Add),
-        Type::U128 => checked_uadd_type(Type::U64, CILOp::Nop,CILOp::Call(
+        Type::U64 => checked_uadd_type(Type::U64, CILOp::Nop, CILOp::Add),
+        Type::U128 => checked_uadd_type(
+            Type::U64,
+            CILOp::Nop,
+            CILOp::Call(
                 crate::cil_op::CallSite::new(
                     Some(DotnetTypeRef::uint_128()),
                     "op_Addition".into(),
-                    crate::function_sig::FnSig::new(&[DotnetTypeRef::uint_128().into(), DotnetTypeRef::uint_128().into()], &DotnetTypeRef::uint_128().into()),
+                    crate::function_sig::FnSig::new(
+                        &[
+                            DotnetTypeRef::uint_128().into(),
+                            DotnetTypeRef::uint_128().into(),
+                        ],
+                        &DotnetTypeRef::uint_128().into(),
+                    ),
                     true,
-        ).into())),
+                )
+                .into(),
+            ),
+        ),
         _ => todo!("Can't preform checked add on type {tpe:?} yet!"),
     }
 }
-fn checked_uadd_type(tpe: Type, truncate: CILOp,add:CILOp) -> Vec<CILOp> {
+fn checked_uadd_type(tpe: Type, truncate: CILOp, add: CILOp) -> Vec<CILOp> {
     let tuple = crate::r#type::simple_tuple(&[tpe.clone(), Type::Bool]);
     let tuple_ty = tuple.clone().into();
     vec![

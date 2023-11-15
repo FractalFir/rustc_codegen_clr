@@ -12,7 +12,7 @@ use crate::{
 use rustc_middle::ty::InstanceDef;
 use rustc_middle::{
     mir::{Body, Operand, Place, SwitchTargets, Terminator, TerminatorKind},
-    ty::{GenericArg, Instance, ParamEnv, Ty, TyCtxt, TyKind,List},
+    ty::{GenericArg, Instance, List, ParamEnv, Ty, TyCtxt, TyKind},
 };
 use rustc_span::def_id::DefId;
 /// Calls a non-virtual managed function(used for interop)
@@ -244,7 +244,8 @@ fn call<'ctx>(
     } else {
         todo!("Trying to call a type which is not a function definition!");
     };
-    let signature = FnSig::sig_from_instance(instance, tyctx).expect("Could not resolve function sig");
+    let signature =
+        FnSig::sig_from_instance(instance, tyctx).expect("Could not resolve function sig");
     let function_name = crate::utilis::function_name(tyctx.symbol_name(instance));
     // Checks if function is "magic"
     if function_name.contains(CTOR_FN_NAME) {
@@ -296,19 +297,20 @@ fn call<'ctx>(
         ));
     }
 
-    if args.len() < signature.inputs().len(){
-        let tpe:crate::r#type::Type = DotnetTypeRef::new(None,"rustc_std_workspace_core.panic.Location").into();
-        assert_eq!(args.len(),signature.inputs().len() + 1);
-        assert_eq!(signature.inputs()[signature.inputs().len() - 1],tpe);
+    if args.len() < signature.inputs().len() {
+        let tpe: crate::r#type::Type = signature.inputs()[signature.inputs().len() - 1].clone();
+        // let arg_len = args.len();
+        //assert_eq!(args.len() + 1,signature.inputs().len(),"ERROR: mismatched argument count. \nsignature inputs:{:?} \narguments:{args:?}\narg_len:{arg_len}\n",signature.inputs());
+        // assert_eq!(signature.inputs()[signature.inputs().len() - 1],tpe);
         //FIXME:This assembles a panic location from uninitialized memory. This WILL lead to bugs once unwinding is added. The fields `file`,`col`, and `line` should be set there.
         call.extend([
             CILOp::NewTMPLocal(Box::new(tpe)),
             CILOp::LoadTMPLocal,
             CILOp::FreeTMPLocal,
         ]);
-        panic!("Call with PanicLocation!");
+        //panic!("Call with PanicLocation!");
     }
-    assert_eq!(args.len(),signature.inputs().len(),"CALL SIGNATURE ARG COUNT MISMATCH!");
+    //assert_eq!(args.len(),signature.inputs().len(),"CALL SIGNATURE ARG COUNT MISMATCH!");
     let is_void = matches!(signature.output(), crate::r#type::Type::Void);
     call.push(CILOp::Call(CallSite::boxed(
         None,

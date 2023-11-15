@@ -145,7 +145,7 @@ impl Assembly {
                         Err(crate::codegen_error::CodegenError::from_panic_message(msg))
                     } else {
                         Err(crate::codegen_error::CodegenError::from_panic_message(
-                            "try_from_poly_sig panicked with a non-string message!",
+                            "statement_to_ops panicked with a non-string message!",
                         ))
                     }
                 }
@@ -182,10 +182,7 @@ impl Assembly {
         // let access_modifier = AccessModifer::from_visibility(tcx.visibility(instance.def_id()));
         let access_modifier = AccessModifer::Public;
         // Handle the function signature
-        let sig = match FnSig::sig_from_instance(
-            instance,
-            tcx,
-        ) {
+        let sig = match FnSig::sig_from_instance(instance, tcx) {
             Ok(sig) => sig,
             Err(err) => {
                 eprintln!("Could not get the signature of function {name} because {err:?}");
@@ -329,7 +326,6 @@ impl Assembly {
                 eprintln!("Unsuported item - Static:{stotic:?}");
                 Ok(())
             }
-            _ => todo!("Unsupported item:\"{item:?}\"!"),
         }
     }
     /// Sets the entrypoint of the assembly to the method behind `CallSite`.

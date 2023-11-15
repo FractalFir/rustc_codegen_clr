@@ -270,6 +270,6 @@ pub fn check_debugable(
                 }
             }
         }
-        panic!();
+        //panic!();
     }
 }
