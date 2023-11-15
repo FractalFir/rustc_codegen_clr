@@ -186,10 +186,12 @@ pub fn compiletime_sizeof(ty: Ty) -> usize {
             IntTy::I16 => std::mem::size_of::<i16>(),
             IntTy::I32 => std::mem::size_of::<i32>(),
             IntTy::I64 => std::mem::size_of::<i64>(),
+            IntTy::I128 => std::mem::size_of::<i128>(),
             _ => todo!("Can't compute compiletime sizeof {int:?}"),
         },
         TyKind::Uint(int) => match int {
             UintTy::U32 => std::mem::size_of::<u32>(),
+            UintTy::U128 => std::mem::size_of::<u128>(),
             UintTy::Usize => {
                 eprintln!("WARNING: Assuming sizeof::<usize>() == 8!");
                 8

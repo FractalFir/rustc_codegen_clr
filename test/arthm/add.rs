@@ -19,6 +19,13 @@ fn main(){
     test_eq!(black_box(2_u64) + 2, 4);
     // Signed 64 bit checked add DOES NOT WORK in mono.
     test_eq!(black_box(2_i64)+ 2, 4);
+    
+    test_eq!(black_box(2_u128)+ 2, 4);
+    #[cfg(debug_assertions)]
+    {
+        test_eq!(black_box(2_i128)+ 2, 4);
+    }
+    
 
     test_eq!(black_box(2.0_f32) + 2.0, 4.0);
     test_eq!(black_box(2.0_f64) + 2.0, 4.0);

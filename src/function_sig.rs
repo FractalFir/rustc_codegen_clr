@@ -1,7 +1,8 @@
 use crate::{
-    codegen_error::MethodCodegenError, r#type::Type, utilis::skip_binder_if_no_generic_types,
+    codegen_error::{MethodCodegenError, CodegenError}, r#type::Type, utilis::skip_binder_if_no_generic_types,
 };
-use rustc_middle::ty::{Instance, PolyFnSig, TyCtxt};
+use rustc_target::abi::call::Conv;
+use rustc_middle::ty::{Instance,List, PolyFnSig, TyCtxt,ParamEnvAnd,ParamEnv};
 use serde::{Deserialize, Serialize};
 /// Function signature.
 #[derive(Clone, PartialEq, Serialize, Deserialize, Eq, Hash, Debug)]
@@ -32,28 +33,6 @@ impl FnSig {
         let output = Type::from_ty(out, tcx, method_instance);
         Ok(Self { inputs, output })
     }
-    /// Creates a function signature from a fn sig, using the parrent method to morphize the call
-    pub fn from_poly_sig_mono<'tcx>(
-        sig: &PolyFnSig<'tcx>,
-        tcx: TyCtxt<'tcx>,
-        method: &rustc_middle::ty::Instance<'tcx>,
-    ) -> Result<Self, MethodCodegenError> {
-        let inputs = skip_binder_if_no_generic_types(sig.inputs())?
-            .iter()
-            .map(|v| Type::from_ty(crate::utilis::monomorphize(method, *v, tcx), tcx, method))
-            .collect();
-        //
-        let output = Type::from_ty(
-            crate::utilis::monomorphize(
-                method,
-                skip_binder_if_no_generic_types(sig.output())?,
-                tcx,
-            ),
-            tcx,
-            method,
-        );
-        Ok(Self { inputs, output })
-    }
     /// Tries to create a signature using `from_poly_sig`. Will panic if `ABORT_ON_ERROR` is set.
     pub fn try_from_poly_sig<'tcx>(
         sig: &PolyFnSig<'tcx>,
@@ -78,6 +57,30 @@ impl FnSig {
                 }
             }
         }
+    }
+    /// Returns the sigmnature of function behind `function`.
+    pub fn sig_from_instance<'tcx>(function:Instance<'tcx>,tcx: TyCtxt<'tcx>)->Result<Self,CodegenError>{
+        let fn_abi = tcx.fn_abi_of_instance(ParamEnvAnd{param_env:ParamEnv::reveal_all(),value:(function,List::empty())});
+        let fn_abi = match fn_abi{
+            Ok(abi)=>abi,
+            Err(error)=>todo!(),
+        };
+        let conv = fn_abi.conv;
+        match conv{
+            Conv::Rust=>(),
+            Conv::C=>(),
+            _=>panic!("ERROR:calling using convention {conv:?} is not supported!"),
+        }
+        assert!(!fn_abi.c_variadic);
+        let ret = Type::from_ty(fn_abi.ret.layout.ty,tcx,&function);
+        let mut args = Vec::with_capacity(fn_abi.args.len());
+        for arg in fn_abi.args.iter(){
+            args.push(Type::from_ty(arg.layout.ty,tcx,&function));
+        }
+        Ok(Self{
+            inputs:args,
+            output:ret,
+        })
     }
     /// Returns the list of function inputs.
     pub fn inputs(&self) -> &[Type] {

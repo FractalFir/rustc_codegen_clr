@@ -182,10 +182,9 @@ impl Assembly {
         // let access_modifier = AccessModifer::from_visibility(tcx.visibility(instance.def_id()));
         let access_modifier = AccessModifer::Public;
         // Handle the function signature
-        let sig = match FnSig::try_from_poly_sig(
-            &instance.ty(tcx, param_env).fn_sig(tcx),
+        let sig = match FnSig::sig_from_instance(
+            instance,
             tcx,
-            &instance,
         ) {
             Ok(sig) => sig,
             Err(err) => {

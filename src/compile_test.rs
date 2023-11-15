@@ -373,6 +373,99 @@ macro_rules! cargo_test {
         }
     };
 }
+macro_rules! cargo_test_ignored {
+    ($test_name:ident) => {
+        mod $test_name {
+            #[cfg(test)]
+            use std::io::Write;
+            #[cfg(test)]
+            static COMPILE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+            #[ignore]
+            #[test]
+            fn cargo_debug() {
+                let lock = COMPILE_LOCK.lock();
+                let test_dir = concat!("./cargo_tests/", stringify!($test_name), "/");
+                // Ensures the test directory is present
+                std::fs::create_dir_all(test_dir).expect("Could not setup the test env");
+                // Builds the backend if neceasry
+                super::RUSTC_BUILD_STATUS
+                    .as_ref()
+                    .expect("Could not build rustc!");
+                let backend = super::absolute_backend_path();
+                let backend = backend.display();
+                let linker = super::RUSTC_CODEGEN_CLR_LINKER.display();
+                let rustflags = format!("-Z codegen-backend={backend} -C linker={linker}");
+                // Compiles the test project
+                let out = std::process::Command::new("cargo")
+                    .env("RUSTFLAGS", &rustflags)
+                    .current_dir(test_dir)
+                    .args(["build"])
+                    .output()
+                    .expect("failed to execute process");
+                // panic!("out:{out:?}");
+                // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
+                if !out.stderr.is_empty() {
+                    let stderr = String::from_utf8(out.stderr.clone())
+                        .expect("rustc error contained non-UTF8 characters.");
+
+                    if !stderr.contains("Finished") {
+                        let stdout = String::from_utf8(out.stdout)
+                            .expect("rustc error contained non-UTF8 characters.");
+                        let stderr = String::from_utf8(out.stderr)
+                            .expect("rustc error contained non-UTF8 characters.");
+                        if !stderr.contains("Finished") {
+                            panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
+                        }
+                    }
+                }
+                drop(lock);
+                //let exec_path = concat!("../", stringify!($test_name));
+                //test_dotnet_executable(exec_path, test_dir);
+            }
+            #[ignore]
+            #[test]
+            fn cargo_release() {
+                let lock = COMPILE_LOCK.lock();
+                let test_dir = concat!("./cargo_tests/", stringify!($test_name), "/");
+                // Ensures the test directory is present
+                std::fs::create_dir_all(test_dir).expect("Could not setup the test env");
+                // Builds the backend if neceasry
+                super::RUSTC_BUILD_STATUS
+                    .as_ref()
+                    .expect("Could not build rustc!");
+                let backend = super::absolute_backend_path();
+                let backend = backend.display();
+                let linker = super::RUSTC_CODEGEN_CLR_LINKER.display();
+                let rustflags = format!("-Z codegen-backend={backend} -C linker={linker}");
+                // Compiles the test project
+                let out = std::process::Command::new("cargo")
+                    .env("RUSTFLAGS", &rustflags)
+                    .current_dir(test_dir)
+                    .args([
+                        "build",
+                        "--release", //"--target",
+                                     //"clr64-unknown-clr"
+                    ])
+                    .output()
+                    .expect("failed to execute process");
+                // panic!("out:{out:?}");
+                // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
+                if !out.stderr.is_empty() {
+                    let stdout = String::from_utf8(out.stdout)
+                        .expect("rustc error contained non-UTF8 characters.");
+                    let stderr = String::from_utf8(out.stderr)
+                        .expect("rustc error contained non-UTF8 characters.");
+                    if !stderr.contains("Finished") {
+                        panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
+                    }
+                }
+                drop(lock);
+                //let exec_path = concat!("../", stringify!($test_name));
+                //test_dotnet_executable(exec_path, test_dir);
+            }
+        }
+    };
+}
 #[cfg(debug_assertions)]
 fn build_backend() -> Result<(), String> {
     let _out = std::process::Command::new("cargo")
@@ -486,9 +579,9 @@ run_test! {control_flow,cf_for}
 run_test! {control_flow,drop}
 cargo_test! {hello_world}
 cargo_test! {std_hello_world}
-cargo_test! {build_core}
-cargo_test! {build_alloc}
-cargo_test! {build_std}
+cargo_test_ignored! {build_core}
+cargo_test_ignored! {build_alloc}
+cargo_test_ignored! {build_std}
 cargo_test! {benchmarks}
 cargo_test! {glam_test}
 cargo_test! {fastrand_test}

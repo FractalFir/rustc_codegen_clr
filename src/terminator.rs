@@ -12,7 +12,7 @@ use crate::{
 use rustc_middle::ty::InstanceDef;
 use rustc_middle::{
     mir::{Body, Operand, Place, SwitchTargets, Terminator, TerminatorKind},
-    ty::{GenericArg, Instance, ParamEnv, Ty, TyCtxt, TyKind},
+    ty::{GenericArg, Instance, ParamEnv, Ty, TyCtxt, TyKind,List},
 };
 use rustc_span::def_id::DefId;
 /// Calls a non-virtual managed function(used for interop)
@@ -244,8 +244,7 @@ fn call<'ctx>(
     } else {
         todo!("Trying to call a type which is not a function definition!");
     };
-    let signature = FnSig::from_poly_sig_mono(&fn_type.fn_sig(tyctx), tyctx, &method_instance)
-        .expect("Can't get the function signature");
+    let signature = FnSig::sig_from_instance(instance, tyctx).expect("Could not resolve function sig");
     let function_name = crate::utilis::function_name(tyctx.symbol_name(instance));
     // Checks if function is "magic"
     if function_name.contains(CTOR_FN_NAME) {
@@ -296,6 +295,20 @@ fn call<'ctx>(
             method_instance,
         ));
     }
+
+    if args.len() < signature.inputs().len(){
+        let tpe:crate::r#type::Type = DotnetTypeRef::new(None,"rustc_std_workspace_core.panic.Location").into();
+        assert_eq!(args.len(),signature.inputs().len() + 1);
+        assert_eq!(signature.inputs()[signature.inputs().len() - 1],tpe);
+        //FIXME:This assembles a panic location from uninitialized memory. This WILL lead to bugs once unwinding is added. The fields `file`,`col`, and `line` should be set there.
+        call.extend([
+            CILOp::NewTMPLocal(Box::new(tpe)),
+            CILOp::LoadTMPLocal,
+            CILOp::FreeTMPLocal,
+        ]);
+        panic!("Call with PanicLocation!");
+    }
+    assert_eq!(args.len(),signature.inputs().len(),"CALL SIGNATURE ARG COUNT MISMATCH!");
     let is_void = matches!(signature.output(), crate::r#type::Type::Void);
     call.push(CILOp::Call(CallSite::boxed(
         None,
@@ -336,6 +349,7 @@ pub fn handle_terminator<'ctx>(
                         "fn_ty{fn_ty:?} in call is not a function type!"
                     );
                     let fn_ty = monomorphize(&method_instance, fn_ty, tyctx);
+                    //let fn_instance = Instance::resolve(tyctx,ParamEnv::reveal_all,fn_ty.did,List::empty());
                     let call_ops = call(&fn_ty, body, tyctx, args, destination, method_instance);
                     ops.extend(call_ops);
                 }
