@@ -8,30 +8,32 @@ use rustc_middle::{
 };
 pub fn handle_rvalue<'tcx>(
     rvalue: &Rvalue<'tcx>,
-    tcx: TyCtxt<'tcx>,
+    tyctx: TyCtxt<'tcx>,
     target_location: &Place<'tcx>,
     method: &rustc_middle::mir::Body<'tcx>,
     method_instance: Instance<'tcx>,
 ) -> Vec<CILOp> {
     let res = match rvalue {
         Rvalue::Use(operand) => {
-            crate::operand::handle_operand(operand, tcx, method, method_instance)
+            crate::operand::handle_operand(operand, tyctx, method, method_instance)
         }
-        Rvalue::CopyForDeref(place) => crate::place::place_get(place, tcx, method, method_instance),
+        Rvalue::CopyForDeref(place) => {
+            crate::place::place_get(place, tyctx, method, method_instance)
+        }
         Rvalue::Ref(_region, _kind, place) => {
-            crate::place::place_adress(place, tcx, method, method_instance)
+            crate::place::place_adress(place, tyctx, method, method_instance)
         }
         Rvalue::AddressOf(_mutability, place) => {
-            crate::place::place_adress(place, tcx, method, method_instance)
+            crate::place::place_adress(place, tyctx, method, method_instance)
         }
         Rvalue::Cast(CastKind::PointerCoercion(_) | CastKind::PtrToPtr, operand, _) => {
-            crate::operand::handle_operand(operand, tcx, method, method_instance)
+            crate::operand::handle_operand(operand, tyctx, method, method_instance)
         }
         Rvalue::BinaryOp(binop, operands) => crate::binop::binop_unchecked(
             *binop,
             &operands.0,
             &operands.1,
-            tcx,
+            tyctx,
             method,
             method_instance,
         ),
@@ -39,19 +41,19 @@ pub fn handle_rvalue<'tcx>(
             *binop,
             &operands.0,
             &operands.1,
-            tcx,
+            tyctx,
             method,
             method_instance,
         ),
         Rvalue::UnaryOp(binop, operand) => {
-            crate::unop::unop(*binop, operand, tcx, method, method_instance)
+            crate::unop::unop(*binop, operand, tyctx, method, method_instance)
         }
         Rvalue::Cast(CastKind::IntToInt, operand, target) => {
-            let target = crate::r#type::Type::from_ty(*target, tcx, &method_instance);
-            let src = operand.ty(&method.local_decls, tcx);
-            let src = crate::r#type::Type::from_ty(src, tcx, &method_instance);
+            let target = crate::r#type::Type::from_ty(*target, tyctx, &method_instance);
+            let src = operand.ty(&method.local_decls, tyctx);
+            let src = crate::r#type::Type::from_ty(src, tyctx, &method_instance);
             [
-                crate::operand::handle_operand(operand, tcx, method, method_instance),
+                crate::operand::handle_operand(operand, tyctx, method, method_instance),
                 crate::casts::int_to_int(src, target),
             ]
             .into_iter()
@@ -59,11 +61,11 @@ pub fn handle_rvalue<'tcx>(
             .collect()
         }
         Rvalue::Cast(CastKind::FloatToInt, operand, target) => {
-            let target = crate::r#type::Type::from_ty(*target, tcx, &method_instance);
-            let src = operand.ty(&method.local_decls, tcx);
-            let src = crate::r#type::Type::from_ty(src, tcx, &method_instance);
+            let target = crate::r#type::Type::from_ty(*target, tyctx, &method_instance);
+            let src = operand.ty(&method.local_decls, tyctx);
+            let src = crate::r#type::Type::from_ty(src, tyctx, &method_instance);
             [
-                crate::operand::handle_operand(operand, tcx, method, method_instance),
+                crate::operand::handle_operand(operand, tyctx, method, method_instance),
                 crate::casts::float_to_int(src, target),
             ]
             .into_iter()
@@ -71,11 +73,11 @@ pub fn handle_rvalue<'tcx>(
             .collect()
         }
         Rvalue::Cast(CastKind::IntToFloat, operand, target) => {
-            let target = crate::r#type::Type::from_ty(*target, tcx, &method_instance);
-            let src = operand.ty(&method.local_decls, tcx);
-            let src = crate::r#type::Type::from_ty(src, tcx, &method_instance);
+            let target = crate::r#type::Type::from_ty(*target, tyctx, &method_instance);
+            let src = operand.ty(&method.local_decls, tyctx);
+            let src = crate::r#type::Type::from_ty(src, tyctx, &method_instance);
             [
-                crate::operand::handle_operand(operand, tcx, method, method_instance),
+                crate::operand::handle_operand(operand, tyctx, method, method_instance),
                 crate::casts::int_to_float(src, target),
             ]
             .into_iter()
@@ -84,15 +86,15 @@ pub fn handle_rvalue<'tcx>(
         }
         Rvalue::NullaryOp(op, ty) => match op {
             NullOp::SizeOf => {
-                let ty = crate::utilis::monomorphize(&method_instance, *ty, tcx);
-                let ty = Box::new(crate::r#type::Type::from_ty(ty, tcx, &method_instance));
+                let ty = crate::utilis::monomorphize(&method_instance, *ty, tyctx);
+                let ty = Box::new(crate::r#type::Type::from_ty(ty, tyctx, &method_instance));
                 vec![CILOp::SizeOf(ty)]
             }
             NullOp::AlignOf => vec![CILOp::LdcI64(align_of(*ty) as i64), CILOp::ConvUSize(false)],
             _ => todo!("Unsuported nullary {op:?}!"),
         },
         Rvalue::Aggregate(aggregate_kind, field_index) => crate::aggregate::handle_aggregate(
-            tcx,
+            tyctx,
             target_location,
             method,
             aggregate_kind.as_ref(),
@@ -100,18 +102,60 @@ pub fn handle_rvalue<'tcx>(
             method_instance,
         ),
         Rvalue::Cast(CastKind::Transmute, operand, dst) => {
-            let src = operand.ty(method, tcx);
-            let src = Type::from_ty(src, tcx, &method_instance);
-            let dst = Type::from_ty(*dst, tcx, &method_instance);
+            let src = operand.ty(method, tyctx);
+            let src = Type::from_ty(src, tyctx, &method_instance);
+            let dst = Type::from_ty(*dst, tyctx, &method_instance);
             match (&src, &dst) {
-                (Type::ISize | Type::USize, Type::Ptr(_)) => {
-                    handle_operand(operand, tcx, method, method_instance)
-                }
-                (Type::Ptr(_), Type::ISize | Type::USize) => {
-                    handle_operand(operand, tcx, method, method_instance)
-                }
+                (
+                    Type::ISize | Type::USize | Type::Ptr(_),
+                    Type::ISize | Type::USize | Type::Ptr(_),
+                ) => handle_operand(operand, tyctx, method, method_instance),
                 (Type::U16, Type::DotnetChar) => {
-                    handle_operand(operand, tcx, method, method_instance)
+                    handle_operand(operand, tyctx, method, method_instance)
+                }
+                (Type::F64, Type::U64) => {
+                    let mut res = handle_operand(operand, tyctx, method, method_instance);
+                    res.extend([
+                        CILOp::NewTMPLocal(Type::Ptr(src.into()).into()),
+                        CILOp::SetTMPLocal,
+                        CILOp::LoadAddresOfTMPLocal,
+                        CILOp::LDIndI64,
+                        CILOp::FreeTMPLocal,
+                    ]);
+                    res
+                }
+                (Type::F32, Type::U32) => {
+                    let mut res = handle_operand(operand, tyctx, method, method_instance);
+                    res.extend([
+                        CILOp::NewTMPLocal(Type::Ptr(src.into()).into()),
+                        CILOp::SetTMPLocal,
+                        CILOp::LoadAddresOfTMPLocal,
+                        CILOp::LDIndI32,
+                        CILOp::FreeTMPLocal,
+                    ]);
+                    res
+                }
+                (Type::U32, Type::F32) => {
+                    let mut res = handle_operand(operand, tyctx, method, method_instance);
+                    res.extend([
+                        CILOp::NewTMPLocal(Type::Ptr(src.into()).into()),
+                        CILOp::SetTMPLocal,
+                        CILOp::LoadAddresOfTMPLocal,
+                        CILOp::LDIndF32,
+                        CILOp::FreeTMPLocal,
+                    ]);
+                    res
+                }
+                (Type::U64, Type::F64) => {
+                    let mut res = handle_operand(operand, tyctx, method, method_instance);
+                    res.extend([
+                        CILOp::NewTMPLocal(Type::Ptr(src.into()).into()),
+                        CILOp::SetTMPLocal,
+                        CILOp::LoadAddresOfTMPLocal,
+                        CILOp::LDIndF64,
+                        CILOp::FreeTMPLocal,
+                    ]);
+                    res
                 }
                 _ => todo!("Unhandled transmute from {src:?} to {dst:?}"),
             }
@@ -123,8 +167,8 @@ pub fn handle_rvalue<'tcx>(
             // If something breaks in the fututre, this is a place that needs checking.
 
             // Cast from usize/isize to any *T is a NOP, so we just have to load the operand.
-            handle_operand(operand, tcx, method, method_instance)
-        },
+            handle_operand(operand, tyctx, method, method_instance)
+        }
         Rvalue::Cast(CastKind::PointerExposeAddress, operand, _) => {
             //FIXME: the documentation of this cast(https://doc.rust-lang.org/nightly/std/primitive.pointer.html#method.expose_addrl) is a bit confusing,
             //since this seems to be something deeply linked to the rust memory model.
@@ -132,13 +176,23 @@ pub fn handle_rvalue<'tcx>(
             // If something breaks in the fututre, this is a place that needs checking.
 
             // Cast to usize/isize from any *T is a NOP, so we just have to load the operand.
-            handle_operand(operand, tcx, method, method_instance)
-        },
+            handle_operand(operand, tyctx, method, method_instance)
+        }
+        Rvalue::Cast(CastKind::FloatToFloat, operand, target) => {
+            let target = Type::from_ty(*target, tyctx, &method_instance);
+            let mut ops = handle_operand(operand, tyctx, method, method_instance);
+            match target {
+                Type::F32 => ops.push(CILOp::ConvF32(false)),
+                Type::F64 => ops.push(CILOp::ConvF64(false)),
+                _ => panic!("Can't preform a FloatToFloat cast to type {target:?}"),
+            }
+            ops
+        }
         Rvalue::Cast(kind, _operand, _) => todo!("Unhandled cast kind {kind:?}, rvalue:{rvalue:?}"),
         Rvalue::Discriminant(place) => {
-            let mut ops = crate::place::place_adress(place, tcx, method, method_instance);
-            let owner_ty = place.ty(method, tcx).ty;
-            let owner = crate::r#type::Type::from_ty(owner_ty, tcx, &method_instance);
+            let mut ops = crate::place::place_adress(place, tyctx, method, method_instance);
+            let owner_ty = place.ty(method, tyctx).ty;
+            let owner = crate::r#type::Type::from_ty(owner_ty, tyctx, &method_instance);
             //TODO: chose proper tag type based on variant count of `owner`
             let discr_type = crate::r#type::Type::U8; //owner_ty
             let owner = if let crate::r#type::Type::DotnetType(dotnet_type) = owner {
@@ -152,9 +206,9 @@ pub fn handle_rvalue<'tcx>(
             ops
         }
         Rvalue::Len(operand) => {
-            let mut ops = crate::place::place_adress(operand, tcx, method, method_instance);
-            let tpe = operand.ty(method, tcx);
-            let class = crate::r#type::Type::from_ty(tpe.ty, tcx, &method_instance)
+            let mut ops = crate::place::place_adress(operand, tyctx, method, method_instance);
+            let tpe = operand.ty(method, tyctx);
+            let class = crate::r#type::Type::from_ty(tpe.ty, tyctx, &method_instance)
                 .as_dotnet()
                 .expect("Can't get the dotnet type!");
             let signature = crate::function_sig::FnSig::new(

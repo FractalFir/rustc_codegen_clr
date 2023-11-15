@@ -27,6 +27,18 @@ impl AssemblyExporter for ILASMExporter {
         write!(encoded_asm, ".assembly {asm_name}{{}}").expect("Write error!");
         Self { encoded_asm }
     }
+    fn add_extern_ref(
+        &mut self,
+        asm_name: &str,
+        asm_ref_data: &crate::assembly::AssemblyExternRef,
+    ) {
+        let (v1, v2, v3, v4) = asm_ref_data.version();
+        write!(
+            self.encoded_asm,
+            ".assembly extern {asm_name}{{.ver {v1}:{v2}:{v3}:{v4} }}"
+        )
+        .expect("Write error!");
+    }
     fn add_type(&mut self, tpe: &TypeDef) {
         type_def_cli(&mut self.encoded_asm, tpe).expect("Error");
         //let _ = self.types.push(tpe.clone());

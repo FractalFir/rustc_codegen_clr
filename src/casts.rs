@@ -1,22 +1,89 @@
-use crate::{cil_op::CILOp, r#type::Type};
+use crate::{
+    cil_op::CILOp,
+    function_sig::FnSig,
+    r#type::{DotnetTypeRef, Type},
+};
 /// Casts from intiger type `src` to target `target`
 pub fn int_to_int(src: Type, target: Type) -> Vec<CILOp> {
-    if matches!(src, Type::I128 | Type::U128) {
-        todo!("Casting from 128 bit intiegers is not supported!")
-    }
-    if matches!(target, Type::I128 | Type::U128) {
-        todo!("Casting to 128 bit intiegers is not supported!")
-    } else {
-        to_int(target)
+    match (&src, &target) {
+        (_, Type::I128) => {
+            vec![CILOp::Call(
+                crate::cil_op::CallSite::new(
+                    Some(DotnetTypeRef::int_128()),
+                    "op_Implicit".into(),
+                    FnSig::new(&[src], &target),
+                    true,
+                )
+                .into(),
+            )]
+        }
+        (_, Type::U128) => {
+            vec![CILOp::Call(
+                crate::cil_op::CallSite::new(
+                    Some(DotnetTypeRef::uint_128()),
+                    "op_Implicit".into(),
+                    FnSig::new(&[src], &target),
+                    true,
+                )
+                .into(),
+            )]
+        }
+        (Type::I128, _) => {
+            vec![CILOp::Call(
+                crate::cil_op::CallSite::new(
+                    Some(DotnetTypeRef::int_128()),
+                    "op_Explicit".into(),
+                    FnSig::new(&[src], &target),
+                    true,
+                )
+                .into(),
+            )]
+        }
+        (Type::U128, _) => {
+            vec![CILOp::Call(
+                crate::cil_op::CallSite::new(
+                    Some(DotnetTypeRef::uint_128()),
+                    "op_Explicit".into(),
+                    FnSig::new(&[src], &target),
+                    true,
+                )
+                .into(),
+            )]
+        }
+        //todo!("Casting to 128 bit intiegers is not supported!"),
+        _ => to_int(target),
     }
 }
 /// Returns CIL ops required to convert type src to target
-pub fn float_to_int(_src: Type, target: Type) -> Vec<CILOp> {
-    if matches!(target, Type::I128 | Type::U128) {
-        todo!("Casting to 128 bit intiegers is not supported!")
-    } else {
-        to_int(target)
+pub fn float_to_int(src: Type, target: Type) -> Vec<CILOp> {
+    match target {
+        Type::I128 => {
+            vec![CILOp::Call(
+                crate::cil_op::CallSite::new(
+                    Some(DotnetTypeRef::int_128()),
+                    "op_Explicit".into(),
+                    FnSig::new(&[src], &target),
+                    true,
+                )
+                .into(),
+            )]
+        }
+        Type::U128 => {
+            vec![CILOp::Call(
+                crate::cil_op::CallSite::new(
+                    Some(DotnetTypeRef::uint_128()),
+                    "op_Explicit".into(),
+                    FnSig::new(&[src], &target),
+                    true,
+                )
+                .into(),
+            )]
+        } //todo!("Casting to 128 bit intiegers is not supported!"),
+        _ => to_int(target),
     }
+
+    //call uint64 [System.Runtime]System.Int128::op_Explicit(valuetype [System.Runtime]System.Int128)
+    //
 }
 /// Returns CIL ops required to convert to intiger of type `target`
 pub fn to_int(target: Type) -> Vec<CILOp> {

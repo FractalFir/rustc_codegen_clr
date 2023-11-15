@@ -19,6 +19,8 @@ pub trait AssemblyExporter: Sized {
     //fn extern_asm(&mut self,asm:&str);
     /// Finishes exporting the assembly.
     fn finalize(self, final_path: &Path, is_dll: bool) -> Result<(), AssemblyExportError>;
+    /// Adds a reference to assembly `asm_name` with info `info`
+    fn add_extern_ref(&mut self, asm_name: &str, info: &crate::assembly::AssemblyExternRef);
     /// Handles the whole assembly export process all at once.
     fn export_assembly(
         asm: &Assembly,
@@ -26,6 +28,9 @@ pub trait AssemblyExporter: Sized {
         is_dll: bool,
     ) -> Result<(), AssemblyExportError> {
         let mut asm_exporter = Self::init("asm");
+        for (asm_name, asm_ref) in asm.extern_refs() {
+            asm_exporter.add_extern_ref(asm_name, asm_ref);
+        }
         for tpe in asm.types() {
             asm_exporter.add_type(tpe);
         }

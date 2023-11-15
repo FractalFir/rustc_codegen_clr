@@ -638,10 +638,9 @@ fn try_split_locals(method: &mut Method, asm: &Assembly) {
             .as_dotnet()
             .expect("Can't spilt non-dotnet types!");
         let type_def = asm.get_typedef_by_path(dotnet_tpe.name_path());
-        let type_def = if let Some(type_def) = type_def{
+        let type_def = if let Some(type_def) = type_def {
             type_def
-        }
-        else{
+        } else {
             continue;
         };
         let local_map_start = method.locals().len();

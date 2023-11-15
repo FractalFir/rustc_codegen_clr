@@ -1,7 +1,7 @@
 // FIXME: This file may contain unnecesary morphize calls.
 use crate::assert_morphic;
 use crate::cil_op::{CILOp, FieldDescriptor};
-use crate::r#type::Type;
+use crate::r#type::{DotnetTypeRef, Type};
 use crate::utilis::field_name;
 use rustc_middle::mir::{Place, PlaceElem};
 
@@ -104,8 +104,8 @@ pub fn deref_op<'ctx>(
                 IntTy::I32 => vec![CILOp::LDIndI32],
                 IntTy::I64 => vec![CILOp::LDIndI64],
                 IntTy::Isize => vec![CILOp::LDIndISize],
-                IntTy::I128 => todo!("Can't dereference 128 bit intigers!"), //vec![CILOp::LdObj(Box::new())],
-                                                                             //_ => todo!("TODO: can't deref int type {int_ty:?} yet"),
+                IntTy::I128 => vec![CILOp::LdObj(Box::new(DotnetTypeRef::int_128().into()))],
+                //_ => todo!("TODO: can't deref int type {int_ty:?} yet"),
             },
             TyKind::Uint(int_ty) => match int_ty {
                 UintTy::U8 => vec![CILOp::LDIndI8],
@@ -113,8 +113,8 @@ pub fn deref_op<'ctx>(
                 UintTy::U32 => vec![CILOp::LDIndI32],
                 UintTy::U64 => vec![CILOp::LDIndI64],
                 UintTy::Usize => vec![CILOp::LDIndISize],
-                UintTy::U128 => todo!("Can't dereference 128 bit intigers!"), //vec![CILOp::LdObj(Box::new())],
-                                                                              //_ => todo!("TODO: can't deref int type {int_ty:?} yet"),
+                UintTy::U128 => vec![CILOp::LdObj(Box::new(DotnetTypeRef::uint_128().into()))], //vec![CILOp::LdObj(Box::new())],
+                                                                                                //_ => todo!("TODO: can't deref int type {int_ty:?} yet"),
             },
             TyKind::Float(float_ty) => match float_ty {
                 FloatTy::F32 => vec![CILOp::LDIndF32],

@@ -8,34 +8,62 @@ use crate::{
 };
 use rustc_middle::mir::{mono::MonoItem, Local, LocalDecl, Statement, Terminator};
 use rustc_middle::ty::{Instance, ParamEnv, TyCtxt, TyKind};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use serde::{Deserialize, Serialize};
+#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
+/// Data representing a reference to an external assembly.
+pub struct AssemblyExternRef {
+    version: (u16, u16, u16, u16),
+}
+impl AssemblyExternRef {
+    /// Returns the version information of this assembly.
+    pub fn version(&self) -> (u16, u16, u16, u16) {
+        self.version
+    }
+}
 #[derive(Serialize, Deserialize, Debug)]
 /// Representation of a .NET assembly.
 pub struct Assembly {
     types: HashSet<TypeDef>,
     functions: HashSet<Method>,
     entrypoint: Option<CallSite>,
+    extern_refs: HashMap<IString, AssemblyExternRef>,
 }
 impl Assembly {
+    /// Returns the external assembly reference
+    pub fn extern_refs(&self) -> &HashMap<IString, AssemblyExternRef> {
+        &self.extern_refs
+    }
     /// Creates a new, empty assembly.
     pub fn empty() -> Self {
-        Self {
+        let mut res = Self {
             types: HashSet::new(),
             functions: HashSet::new(),
             entrypoint: None,
-        }
+            extern_refs: HashMap::new(),
+        };
+        let dotnet_ver = AssemblyExternRef {
+            version: (6, 12, 0, 0),
+        };
+        res.extern_refs.insert("System.Runtime".into(), dotnet_ver);
+        //res.extern_refs.insert("mscorlib".into(),dotnet_ver);
+        res.extern_refs
+            .insert("System.Runtime.InteropServices".into(), dotnet_ver);
+        res
     }
     /// Joins 2 assemblies together.
     pub fn join(self, other: Self) -> Self {
         let types = self.types.union(&other.types).cloned().collect();
         let functions = self.functions.union(&other.functions).cloned().collect();
         let entrypoint = self.entrypoint.or(other.entrypoint);
+        let mut extern_refs = self.extern_refs;
+        extern_refs.extend(other.extern_refs);
         Self {
             types,
             functions,
             entrypoint,
+            extern_refs,
         }
     }
     /// Gets the typdefef at path `path`.
@@ -276,6 +304,14 @@ impl Assembly {
         item: MonoItem<'tcx>,
         tcx: TyCtxt<'tcx>,
     ) -> Result<(), CodegenError> {
+        if !item.is_instantiable(tcx) {
+            let name = item.symbol_name(tcx);
+            // TODO: check if this whole if statement is even needed.
+            eprintln!(
+                "WARNING: {name} is not instantiable. Skipping it, since it should not be needed."
+            );
+            return Ok(());
+        }
         match item {
             MonoItem::Fn(instance) => {
                 //let instance = crate::utilis::monomorphize(&instance,tcx);
@@ -286,14 +322,14 @@ impl Assembly {
 
                 Ok(())
             }
-            MonoItem::GlobalAsm(asm)=>{
+            MonoItem::GlobalAsm(asm) => {
                 eprintln!("Unsuported item - Global ASM:{asm:?}");
                 Ok(())
-            },
-            MonoItem::Static(stotic)=>{
+            }
+            MonoItem::Static(stotic) => {
                 eprintln!("Unsuported item - Static:{stotic:?}");
                 Ok(())
-            },
+            }
             _ => todo!("Unsupported item:\"{item:?}\"!"),
         }
     }

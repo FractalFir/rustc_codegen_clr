@@ -2,6 +2,8 @@ use rustc_middle::mir::{BinOp, Operand};
 use rustc_middle::ty::{Instance, IntTy, Ty, TyCtxt, TyKind, UintTy};
 
 use crate::cil_op::CILOp;
+use crate::function_sig::FnSig;
+use crate::r#type::{DotnetTypeRef, Type};
 /// Preforms an unchecked binary operation.
 pub(crate) fn binop_unchecked<'tcx>(
     binop: BinOp,
@@ -16,14 +18,22 @@ pub(crate) fn binop_unchecked<'tcx>(
     let ty_a = operand_a.ty(&method.local_decls, tcx);
     let ty_b = operand_b.ty(&method.local_decls, tcx);
     match binop {
-        BinOp::Add | BinOp::AddUnchecked => [ops_a, ops_b, add_unchecked(ty_a, ty_b)]
-            .into_iter()
-            .flatten()
-            .collect(),
-        BinOp::Sub | BinOp::SubUnchecked => [ops_a, ops_b, sub_unchecked(ty_a, ty_b)]
-            .into_iter()
-            .flatten()
-            .collect(),
+        BinOp::Add | BinOp::AddUnchecked => [
+            ops_a,
+            ops_b,
+            add_unchecked(ty_a, ty_b, tcx, &method_instance),
+        ]
+        .into_iter()
+        .flatten()
+        .collect(),
+        BinOp::Sub | BinOp::SubUnchecked => [
+            ops_a,
+            ops_b,
+            sub_unchecked(ty_a, ty_b, tcx, &method_instance),
+        ]
+        .into_iter()
+        .flatten()
+        .collect(),
         BinOp::Ne => [ops_a, ops_b, ne_unchecked(ty_a, ty_b)]
             .into_iter()
             .flatten()
@@ -114,18 +124,43 @@ pub(crate) fn binop_unchecked<'tcx>(
     }
 }
 /// Preforms unchecked addition
-fn add_unchecked<'tcx>(ty_a: Ty<'tcx>, ty_b: Ty<'tcx>) -> Vec<CILOp> {
+fn add_unchecked<'tcx>(
+    ty_a: Ty<'tcx>,
+    ty_b: Ty<'tcx>,
+    tcx: TyCtxt<'tcx>,
+    method_instance: &Instance<'tcx>,
+) -> Vec<CILOp> {
     match ty_a.kind() {
         TyKind::Int(int_ty) => {
             if let IntTy::I128 = int_ty {
-                todo!("Can't add 128 bit intigers yet!");
+                let ty_a = Type::from_ty(ty_a, tcx, method_instance);
+                let ty_b = Type::from_ty(ty_b, tcx, method_instance);
+                vec![CILOp::Call(
+                    crate::cil_op::CallSite::new(
+                        Some(DotnetTypeRef::int_128()),
+                        "op_Addition".into(),
+                        FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
+                        true,
+                    )
+                    .into(),
+                )]
             } else {
                 vec![CILOp::Add]
             }
         }
         TyKind::Uint(uint_ty) => {
             if let UintTy::U128 = uint_ty {
-                todo!("Can't add 128 bit intigers yet!");
+                let ty_a = Type::from_ty(ty_a, tcx, method_instance);
+                let ty_b = Type::from_ty(ty_b, tcx, method_instance);
+                vec![CILOp::Call(
+                    crate::cil_op::CallSite::new(
+                        Some(DotnetTypeRef::uint_128()),
+                        "op_Addition".into(),
+                        FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
+                        true,
+                    )
+                    .into(),
+                )]
             } else {
                 match uint_ty {
                     UintTy::U8 => vec![CILOp::Add, CILOp::ConvU8(false)],
@@ -141,18 +176,43 @@ fn add_unchecked<'tcx>(ty_a: Ty<'tcx>, ty_b: Ty<'tcx>) -> Vec<CILOp> {
     }
 }
 /// Preforms unchecked subtraction
-fn sub_unchecked<'tcx>(ty_a: Ty<'tcx>, ty_b: Ty<'tcx>) -> Vec<CILOp> {
+fn sub_unchecked<'tcx>(
+    ty_a: Ty<'tcx>,
+    ty_b: Ty<'tcx>,
+    tcx: TyCtxt<'tcx>,
+    method_instance: &Instance<'tcx>,
+) -> Vec<CILOp> {
     match ty_a.kind() {
         TyKind::Int(int_ty) => {
             if let IntTy::I128 = int_ty {
-                todo!("Can't add 128 bit intigers yet!");
+                let ty_a = Type::from_ty(ty_a, tcx, method_instance);
+                let ty_b = Type::from_ty(ty_b, tcx, method_instance);
+                vec![CILOp::Call(
+                    crate::cil_op::CallSite::new(
+                        Some(DotnetTypeRef::int_128()),
+                        "op_Subtraction".into(),
+                        FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
+                        true,
+                    )
+                    .into(),
+                )]
             } else {
                 vec![CILOp::Sub]
             }
         }
         TyKind::Uint(uint_ty) => {
             if let UintTy::U128 = uint_ty {
-                todo!("Can't add 128 bit intigers yet!");
+                let ty_a = Type::from_ty(ty_a, tcx, method_instance);
+                let ty_b = Type::from_ty(ty_b, tcx, method_instance);
+                vec![CILOp::Call(
+                    crate::cil_op::CallSite::new(
+                        Some(DotnetTypeRef::uint_128()),
+                        "op_Subtraction".into(),
+                        FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
+                        true,
+                    )
+                    .into(),
+                )]
             } else {
                 vec![CILOp::Sub]
             }

@@ -140,7 +140,6 @@ impl Method {
                     ) as u32);
                 }
                 CILOp::LoadUnderTMPLocal(under) => {
-                    println!("tmp_stack:{tmp_stack:?} under:{under}");
                     *op = CILOp::LDLoc(tmp_stack[(tmp_stack.len() - 1) - (*under as usize)] as u32);
                 }
                 CILOp::LoadAddresOfTMPLocal => {

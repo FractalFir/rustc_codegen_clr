@@ -92,7 +92,7 @@ fn rust_slice(asm: &mut Assembly) {
     let mut rust_slice = crate::type_def::TypeDef::nameonly("core.ptr.metadata.PtrComponents");
     let mut rust_slice_dotnet = DotnetTypeRef::new(None, "core.ptr.metadata.PtrComponents");
     rust_slice.set_generic_count(2);
-    rust_slice_dotnet.set_generics([Type::GenericArg(0),Type::GenericArg(1)]);
+    rust_slice_dotnet.set_generics([Type::GenericArg(0), Type::GenericArg(1)]);
     // TODO: constrain this generic to be unmanaged
     rust_slice.add_field("data_address".into(), Type::Ptr(Type::Void.into()));
     rust_slice.add_field("metadata".into(), Type::USize);

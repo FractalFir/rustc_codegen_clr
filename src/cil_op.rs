@@ -521,7 +521,7 @@ impl CILOp {
             CILOp::Throw => -1,
             CILOp::Rethrow => -1,
             CILOp::Ret => -1,
-            CILOp::CpBlk=>-3,
+            CILOp::CpBlk => -3,
             // Syntetic instructions
             CILOp::NewTMPLocal(_) | CILOp::FreeTMPLocal => 0,
             CILOp::LoadAddresOfTMPLocal | CILOp::LoadUnderTMPLocal(_) | CILOp::LoadTMPLocal => 1,

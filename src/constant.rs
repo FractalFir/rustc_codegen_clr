@@ -6,24 +6,18 @@ use rustc_middle::mir::{
     Const, ConstValue,
 };
 use rustc_middle::ty::{
-    AdtDef, AdtKind, FloatTy, Instance, IntTy, List, Ty, TyCtxt, TyKind, UintTy,
+    AdtDef, AdtKind, FloatTy, Instance, IntTy, List, ParamEnv, Ty, TyCtxt, TyKind, UintTy,
 };
 pub fn handle_constant<'ctx>(
     constant: &Const<'ctx>,
     tyctx: TyCtxt<'ctx>,
-
     method: &rustc_middle::mir::Body<'ctx>,
     method_instance: Instance<'ctx>,
 ) -> Vec<CILOp> {
-    match constant {
-        Const::Val(value, const_ty) => {
-            load_const_value(*value, *const_ty, tyctx, method, method_instance)
-        }
-        Const::Unevaluated(_, _) => {
-            todo!("Can't handle unevaluated constants yet!");
-        }
-        _ => todo!("Unhanded const {constant:?}!"),
-    }
+    let evaluated = constant
+        .eval(tyctx, ParamEnv::reveal_all(), None)
+        .expect("Could not evaluate constant!");
+    load_const_value(evaluated, constant.ty(), tyctx, method, method_instance)
 }
 /// Returns the ops neceasry to create constant ADT of type represented by `adt_def` and `subst` with byte values matching the ones in the slice bytes
 fn create_const_adt_from_bytes<'ctx>(

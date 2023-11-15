@@ -21,14 +21,14 @@ impl FnSig {
         let inputs = skip_binder_if_no_generic_types(sig.inputs())?
             .iter()
             .map(|v| {
-                println!("arg:{v:?}");
+                //println!("arg:{v:?}");
                 let tmp = Type::from_ty(*v, tcx, method_instance);
-                println!("endarg");
+                //println!("endarg");
                 tmp
             })
             .collect();
         let out = skip_binder_if_no_generic_types(sig.output())?;
-        println!("out:{out:?}");
+        //println!("out:{out:?}");
         let output = Type::from_ty(out, tcx, method_instance);
         Ok(Self { inputs, output })
     }
