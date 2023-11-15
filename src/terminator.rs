@@ -44,6 +44,7 @@ fn call_managed<'ctx>(
     tpe.set_valuetype(is_valuetype);
     let signature = FnSig::from_poly_sig(&fn_type.fn_sig(tyctx), tyctx, &method_instance)
         .expect("Can't get the function signature");
+
     if argc == 0 {
         let ret = crate::r#type::Type::Void;
         let call = vec![CILOp::Call(CallSite::boxed(
@@ -229,6 +230,7 @@ fn call<'ctx>(
     destination: &Place<'ctx>,
     method_instance: Instance<'ctx>,
 ) -> Vec<CILOp> {
+    let fn_type = crate::utilis::monomorphize(&method_instance, *fn_type, tyctx);
     let (instance, def_id, subst_ref) = if let TyKind::FnDef(def_id, subst_ref) = fn_type.kind() {
         let env = ParamEnv::reveal_all();
 
@@ -269,7 +271,7 @@ fn call<'ctx>(
             destination,
             body,
             method_instance,
-            fn_type,
+            &fn_type,
         );
     } else if function_name.contains(MANAGED_CALL_FN_NAME) {
         // Not-Virtual (for interop)
@@ -282,7 +284,7 @@ fn call<'ctx>(
             destination,
             body,
             method_instance,
-            fn_type,
+            &fn_type,
         );
     }
     let mut call = Vec::new();

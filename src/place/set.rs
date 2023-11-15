@@ -1,6 +1,6 @@
 use super::{place_get_length, pointed_type, PlaceTy};
 use crate::cil_op::{CILOp, FieldDescriptor};
-use crate::r#type::Type;
+use crate::r#type::{DotnetTypeRef, Type};
 use crate::utilis::field_name;
 use rustc_middle::mir::{Place, PlaceElem};
 use rustc_middle::ty::{FloatTy, Instance, IntTy, ParamEnv, Ty, TyCtxt, TyKind, UintTy};
@@ -112,7 +112,7 @@ fn ptr_set_op<'ctx>(
                 IntTy::I32 => vec![CILOp::STIndI32],
                 IntTy::I64 => vec![CILOp::STIndI64],
                 IntTy::Isize => vec![CILOp::STIndISize],
-                IntTy::I128 => todo!("Can't dereference 128 bit intigers!"), //vec![CILOp::LdObj(Box::new())],
+                IntTy::I128 => vec![CILOp::STObj(Box::new(DotnetTypeRef::int_128().into()))],
             },
             TyKind::Uint(int_ty) => match int_ty {
                 UintTy::U8 => vec![CILOp::STIndI8],
@@ -120,7 +120,7 @@ fn ptr_set_op<'ctx>(
                 UintTy::U32 => vec![CILOp::STIndI32],
                 UintTy::U64 => vec![CILOp::STIndI64],
                 UintTy::Usize => vec![CILOp::STIndISize],
-                UintTy::U128 => todo!("Can't dereference 128 bit intigers!"), //vec![CILOp::LdObj(Box::new())],
+                UintTy::U128 => vec![CILOp::STObj(Box::new(DotnetTypeRef::uint_128().into()))],
             },
             TyKind::Float(float_ty) => match float_ty {
                 FloatTy::F32 => vec![CILOp::STIndF32],

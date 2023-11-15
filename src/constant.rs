@@ -1,4 +1,4 @@
-use crate::cil_op::{CILOp, CallSite};
+use crate::cil_op::{CILOp, CallSite, FieldDescriptor};
 use crate::r#type::{DotnetTypeRef, Type};
 use rustc_abi::Size;
 use rustc_middle::mir::{
@@ -80,8 +80,70 @@ fn create_const_from_slice<'ctx>(
             IntTy::I32 => vec![CILOp::LdcI32(i32::from_le_bytes(
                 bytes[..std::mem::size_of::<i32>()].try_into().unwrap(),
             ))],
+            IntTy::I64 => vec![CILOp::LdcI64(i64::from_le_bytes(
+                bytes[..std::mem::size_of::<i64>()].try_into().unwrap(),
+            ))],
+            IntTy::Isize => vec![
+                CILOp::LdcI64(i64::from_le_bytes(
+                    bytes[..crate::utilis::compiletime_sizeof(ty)]
+                        .try_into()
+                        .unwrap(),
+                )),
+                CILOp::ConvUSize(false),
+            ],
             _ => todo!("Can't yet load const value of type {int:?} with bytes:{bytes:?}"),
         },
+        TyKind::Uint(int) => match int {
+            UintTy::U32 => vec![CILOp::LdcI32(i32::from_le_bytes(
+                bytes[..std::mem::size_of::<i32>()].try_into().unwrap(),
+            ))],
+            UintTy::U64 => vec![CILOp::LdcI64(i64::from_le_bytes(
+                bytes[..std::mem::size_of::<i64>()].try_into().unwrap(),
+            ))],
+            UintTy::Usize => vec![
+                CILOp::LdcI64(i64::from_le_bytes(
+                    bytes[..crate::utilis::compiletime_sizeof(ty)]
+                        .try_into()
+                        .unwrap(),
+                )),
+                CILOp::ConvUSize(false),
+            ],
+            _ => todo!("Can't yet load const value of type {int:?} with bytes:{bytes:?}"),
+        },
+        TyKind::Bool => vec![CILOp::LdcI32(bytes[0] as i32)],
+        TyKind::Tuple(elements) => {
+            assert!(
+                elements.len() < 8,
+                "Can't create a const tuple with more than 8 elements yet!"
+            );
+            let element_types: Vec<_> = elements
+                .iter()
+                .map(|ele| Type::from_ty(ele, tyctx, &method_instance))
+                .collect();
+            let tuple_dotnet = crate::r#type::tuple_type(&element_types);
+            let tuple_type: Type = tuple_dotnet.clone().into();
+            let mut ops = vec![CILOp::NewTMPLocal(tuple_type.clone().into())];
+            let mut curr_offset = 0;
+            for (idx, (element_type, element_ty)) in
+                element_types.iter().zip(elements.iter()).enumerate()
+            {
+                let sizeof = crate::utilis::compiletime_sizeof(element_ty);
+                let field_bytes = &bytes[curr_offset..(curr_offset + sizeof)];
+                let field_ops =
+                    create_const_from_slice(element_ty, tyctx, field_bytes, method_instance);
+                ops.push(CILOp::LoadAddresOfTMPLocal);
+                ops.extend(field_ops);
+                ops.push(CILOp::STField(FieldDescriptor::boxed(
+                    tuple_dotnet.clone(),
+                    element_type.clone(),
+                    format!("Item{num}", num = idx + 1).into(),
+                )));
+                curr_offset += sizeof;
+            }
+            ops.push(CILOp::LoadTMPLocal);
+            ops.push(CILOp::FreeTMPLocal);
+            ops
+        }
         _ => todo!("Can't yet load const value of type {ty:?} with bytes:{bytes:?}"),
     }
 }
@@ -144,7 +206,7 @@ fn load_const_scalar<'ctx>(
             .try_to_uint(scalar.size())
             .expect("IMPOSSIBLE. Size of scalar was not equal to itself."),
         Scalar::Ptr(ptr, _size) => {
-            let (alloc_id, _offset) = ptr.into_parts();
+            let (alloc_id, offset) = ptr.into_parts();
             let global_alloc = tyctx.global_alloc(alloc_id);
             match global_alloc {
                 GlobalAlloc::Static(def_id) => {
@@ -155,6 +217,16 @@ fn load_const_scalar<'ctx>(
                     return vec![CILOp::LDStaticField(
                         crate::cil_op::StaticFieldDescriptor::boxed(None, tpe, symbol_name),
                     )];
+                }
+                GlobalAlloc::Memory(_) => {
+                    return vec![
+                        CILOp::LoadGlobalAllocPtr {
+                            alloc_id: alloc_id.0.into(),
+                        },
+                        CILOp::LdcI64(offset.bytes() as i64),
+                        CILOp::ConvISize(false),
+                        CILOp::Add,
+                    ];
                 }
                 _ => todo!("Unhandled global alloc {global_alloc:?}"),
             }

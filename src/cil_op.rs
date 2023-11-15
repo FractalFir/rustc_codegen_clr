@@ -215,7 +215,7 @@ pub enum CILOp {
     SetTMPLocal,
     /// This is a Syntetic("fake") instruction, which is used **only** internaly. It is not present in the resulting assembly.
     /// This instruction loads a pointer to local allocation `alloc_id`.
-    LoadLocalAllocPtr {
+    LoadGlobalAllocPtr {
         /// ID of the allocation - used for looking up its data during later stages of codegen.
         alloc_id: u64,
     },
@@ -526,7 +526,7 @@ impl CILOp {
             CILOp::NewTMPLocal(_) | CILOp::FreeTMPLocal => 0,
             CILOp::LoadAddresOfTMPLocal | CILOp::LoadUnderTMPLocal(_) | CILOp::LoadTMPLocal => 1,
             CILOp::SetTMPLocal => -1,
-            CILOp::LoadLocalAllocPtr { alloc_id: _ } => 1,
+            CILOp::LoadGlobalAllocPtr { alloc_id: _ } => 1,
         }
     }
     fn get_op_arg_pos(_ops: &[CILOp], _pos: usize, _arg: usize) -> Option<usize> {

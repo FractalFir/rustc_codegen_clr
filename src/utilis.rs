@@ -182,13 +182,21 @@ pub fn compiletime_sizeof(ty: Ty) -> usize {
     use rustc_middle::ty::{IntTy, UintTy};
     match ty.kind() {
         TyKind::Int(int) => match int {
+            IntTy::I8 => std::mem::size_of::<i8>(),
+            IntTy::I16 => std::mem::size_of::<i16>(),
             IntTy::I32 => std::mem::size_of::<i32>(),
+            IntTy::I64 => std::mem::size_of::<i64>(),
             _ => todo!("Can't compute compiletime sizeof {int:?}"),
         },
         TyKind::Uint(int) => match int {
             UintTy::U32 => std::mem::size_of::<u32>(),
+            UintTy::Usize => {
+                eprintln!("WARNING: Assuming sizeof::<usize>() == 8!");
+                8
+            }
             _ => todo!("Can't compute compiletime sizeof {int:?}"),
         },
+        TyKind::Bool => std::mem::size_of::<u8>(),
         _ => todo!("Can't compute compiletime sizeof {ty:?}"),
     }
 }
