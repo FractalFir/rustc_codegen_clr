@@ -15,17 +15,24 @@ The project is still very early in development, but it has made significant prog
 - [X] Basic `match` works.
 - [X] While loops work.
 - [X] Calls
-- [X] Basic IL optimization.
+- [X] Basic IL optimization(replacing some instruction sequences with shorter ones).
+- [X] IL local variable merging(reduces the complexity of generated CIL)
+- [X] Local struct spliting(significantly speeds up for loops, reduces complexity of CIL) 
+- [X] Auto inlining of trivial functions
+- [ ] Full variable lifetime analisis and optimzations based on it.
+- [ ] Stack unwiwinding
+- [ ] Exception handling
 - [X] Setting value of a reference
 - [X] Getting value of a reference
 - [ ] Creating slices from arrays
 - [X] Creating arrays
-- [ ] Indexing arrays *broken*
+- [X] Indexing arrays 
 - [X] Getting values of fields
 - [X] Setting fields
 - [X] Pointer dereferencing
-- [X] Generics *GATS don't work in some edge cases*
-- [X] for loops *with some minor limitations*
+- [X] Generics *GATS don't work in some edge cases, the generic handling will need to be revorked*
+- [X] for loops 
+- [X] constant values
 
 ### Types
 
@@ -34,15 +41,24 @@ The project is still very early in development, but it has made significant prog
 
 - [X] All integer and float types are supported. Support for math with 128-bit integers is very limited
 - [X] References are supported
-- [ ] Arrays, slices
+- [X] Arrays
+- [ ] Slices
 - [X] Void type
 - [X] Combinations of all of the above.
 - [X] Structs
 - [X] Enums
-- [ ] Tuples
-- [ ] Traits *Some, not all*
+- [X] Tuples
+- [X] Traits *Most should work*
 - [X] iterators
+- [ ] Closures
+- [ ] Function types
 
+## Milestones
+- [X] Draft version of the `mycorrhiza` interop layer, capable of creating managed objects, and calling methods. 
+- [ ] Compiling the `core` Rust crate - *Substantial chunk of core now compiles,  with <150 methods having trouble compiling. The compilation still gets terminated early due to errors* 
+- [ ] Compiling the `alloc` Rust crate 
+- [ ] Compiling the `std` Rust crate 
+- [ ] Stack unwinding 
 ## Basic benchmarks
 
 > [!NOTE]
@@ -93,13 +109,14 @@ As you can see, the difference between optimized C# and optimized .NET Rust code
 
 ### Q: Compatibility?
 
-**A**: *`rustc_codegen_clr` is only tested on Linux x86_64. It may work on other platforms, but it is not guaranteed.
+**A**: *`rustc_codegen_clr` is only tested on Linux x86_64, with the Mono and CoreCLR(more commonly known as simply the .NET runtime). It may work on other platforms, but it is not guaranteed.
+**A** The support for the mono runtime is not as good as it could be. Due to not supported features and differences, 128 bit integers and checked 64 bit arithmetic's are not supported on mono. 
 
 ### Q: Are there any issues?
 
 **A**: *The backend still does not understand some Rust optimizations, and you may need to disable them to allow for compilation*.
 **A**: *While testing is more extensive, there are still many edge cases that may break this backend.*
-**A**: *The backend crashes whenever it encounters something not supported yet*.
+**A**: *The backend can recover from encountering errors/unsupported features, but it still sometimes crashes when it fails to compile something not supported yet*.
 
 ## Licensing
 
