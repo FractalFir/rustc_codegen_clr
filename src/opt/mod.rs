@@ -133,7 +133,9 @@ pub fn opt_method(method: &mut Method, asm: &Assembly) {
         remove_zombie_sets(method.ops_mut());
         method.ops_mut().retain(|op| *op != CILOp::Nop);
         try_alias_locals(method.ops_mut());
-        try_split_locals(method, asm);
+        if crate::SPLIT_LOCAL_STRUCTS{
+            try_split_locals(method, asm);
+        }
         remove_unused_locals(method);
         try_inline_all(method, asm);
     }
@@ -637,6 +639,10 @@ fn try_split_locals(method: &mut Method, asm: &Assembly) {
             .1
             .as_dotnet()
             .expect("Can't spilt non-dotnet types!");
+        if dotnet_tpe.name_path().contains("PtrRepr"){
+            eprintln!("WARINING: PtrRepr is bugged and causes issues during optimzation. It will not be optimized. TODO: figure out why the field `const_ptr` can't be found.");
+            continue;
+        }
         let type_def = asm.get_typedef_by_path(dotnet_tpe.name_path());
         let type_def = if let Some(type_def) = type_def {
             type_def
@@ -668,28 +674,37 @@ fn try_split_locals(method: &mut Method, asm: &Assembly) {
                 continue;
             }
             if let CILOp::LDField(field_desc) = op2 {
-                let field_idx = morphic_fields
+                let field_idx = if let Some(field) = morphic_fields
                     .iter()
                     .position(|mfield| mfield.0 == field_desc.name())
-                    .expect("Cound not find field during spliting!");
+                    {field}
+                    else{
+                        panic!("ERROR: field spliting failed because field {field_desc:?} could not be found. This may be caused by an error during codegen");
+                    };
                 method.ops_mut()[index] = CILOp::Nop;
                 method.ops_mut()[index + 1] = CILOp::LDLoc((field_idx + local_map_start) as u32);
                 continue;
             }
             if let CILOp::LDFieldAdress(field_desc) = op2 {
-                let field_idx = morphic_fields
+                let field_idx = if let Some(field) =  morphic_fields
                     .iter()
                     .position(|mfield| mfield.0 == field_desc.name())
-                    .expect("Cound not find field during spliting!");
+                    {field}
+                    else{
+                        panic!("ERROR: field spliting failed because field {field_desc:?} could not be found. This may be caused by an error during codegen");
+                    };
                 method.ops_mut()[index] = CILOp::Nop;
                 method.ops_mut()[index + 1] = CILOp::LDLocA((field_idx + local_map_start) as u32);
                 continue;
             }
             if let CILOp::STField(field_desc) = op3 {
-                let field_idx = morphic_fields
+                let field_idx = if let Some(field) =  morphic_fields
                     .iter()
                     .position(|mfield| mfield.0 == field_desc.name())
-                    .expect("Cound not find field during spliting!");
+                    {field}
+                    else{
+                        panic!("ERROR: field spliting failed because field {field_desc:?} could not be found. This may be caused by an error during codegen");
+                    };
                 method.ops_mut()[index] = CILOp::Nop;
                 method.ops_mut()[index + 2] = CILOp::STLoc((field_idx + local_map_start) as u32);
                 continue;

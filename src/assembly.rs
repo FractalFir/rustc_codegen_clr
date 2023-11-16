@@ -152,6 +152,26 @@ impl Assembly {
             }
         }
     }
+    /// This is used *ONLY* to catch uncaught errors.
+    fn checked_add_fn<'tcx>(&mut self,
+        instance: Instance<'tcx>,
+        tcx: TyCtxt<'tcx>,
+        name: &str)-> Result<(), MethodCodegenError>{
+        match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+           self.add_fn(instance, tcx, name)
+        })) {
+            Ok(success) => success,
+            Err(payload) => {
+                if let Some(msg) = payload.downcast_ref::<&str>() {
+                    eprintln!("fn_add panicked with unhandled message: {msg:?}");
+                    return Ok(());
+                } else {
+                    eprintln!("fn_add panicked with no message.");
+                    return Ok(());
+                }
+            }
+        }
+    }
     //fn terminator_to_ops()
     /// Adds a rust MIR function to the assembly.
     pub fn add_fn<'tcx>(
@@ -313,7 +333,7 @@ impl Assembly {
                 //let instance = crate::utilis::monomorphize(&instance,tcx);
                 let symbol_name = crate::utilis::function_name(item.symbol_name(tcx));
 
-                self.add_fn(instance, tcx, &symbol_name)
+                self.checked_add_fn(instance, tcx, &symbol_name)
                     .expect("Could not add function!");
 
                 Ok(())

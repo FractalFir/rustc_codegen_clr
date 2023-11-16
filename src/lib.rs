@@ -58,7 +58,9 @@ const INSERT_MIR_DEBUG_COMMENTS: bool = false;
 const PRINT_LOCAL_TYPES: bool = false;
 const PRINT_TY_CONVERTION: bool = false;
 /// Tells the codegen to optmize the emiited CIL.
-const OPTIMIZE_CIL: bool = (!INSERT_MIR_DEBUG_COMMENTS) && (true);
+const OPTIMIZE_CIL: bool = (!INSERT_MIR_DEBUG_COMMENTS) && (false);
+/// Turns on the struct spliting optimzation.
+const SPLIT_LOCAL_STRUCTS:bool = false;
 
 /// Changes `.locals` into `.locals init`. Causes the runtime to always initialize local variables.
 /// Try turining on in cause of issues. If it fixes them, then their root cause is UB(eg. use of uninitailized memory).

@@ -430,6 +430,7 @@ impl Type {
                 Self::FnDef(call)
             }
             TyKind::Array(element, length) => {
+                //let length = crate::utilis::monomorphize(method, length, tyctx)
                 let length = crate::utilis::try_resolve_const_size(length).unwrap();
 
                 let element = Type::from_ty(*element, tyctx, method);

@@ -108,6 +108,7 @@ pub fn tag_from_enum_variants(variants: u64) -> crate::r#type::Type {
     let var_size = enum_tag_size(variants);
     println!("variants:{variants}tag_size:{var_size}");
     match var_size {
+        0 => Type::Void,
         1 => Type::U8,
         2 => Type::U16,
         4 => Type::U32,

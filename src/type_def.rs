@@ -233,7 +233,7 @@ impl TypeDef {
         )];
         let mut explicit_offsets = vec![0];
         let tag_size = enum_tag_size(adt_def.variants().len() as u64);
-        assert_ne!(tag_size, 0, "ERROR:{name} has a zero sized tag!");
+        //assert_ne!(tag_size, 0, "ERROR:{name} has a zero sized tag!");
         explicit_offsets.extend(adt_def.variants().iter().map(|_| tag_size));
         let mut inner_types = vec![];
         for variant in adt_def.variants() {
