@@ -3,19 +3,21 @@ use crate::r#type::{DotnetTypeRef, Type};
 use rustc_abi::Size;
 use rustc_middle::mir::{
     interpret::{AllocId, AllocRange, GlobalAlloc, Scalar},
-    Const, ConstValue,
+    Const, ConstValue,ConstOperand
 };
 use rustc_middle::ty::{
     AdtDef, AdtKind, FloatTy, Instance, IntTy, List, ParamEnv, Ty, TyCtxt, TyKind, UintTy,
 };
 pub fn handle_constant<'ctx>(
-    constant: &Const<'ctx>,
+    constant_op: &ConstOperand<'ctx>,
     tyctx: TyCtxt<'ctx>,
     method: &rustc_middle::mir::Body<'ctx>,
     method_instance: Instance<'ctx>,
 ) -> Vec<CILOp> {
+    let constant = constant_op.const_;
+    let constant = crate::utilis::monomorphize(&method_instance, constant, tyctx);
     let evaluated = constant
-        .eval(tyctx, ParamEnv::reveal_all(), None)
+        .eval(tyctx, ParamEnv::reveal_all(), Some(constant_op.span))
         .expect("Could not evaluate constant!");
     load_const_value(evaluated, constant.ty(), tyctx, method, method_instance)
 }
