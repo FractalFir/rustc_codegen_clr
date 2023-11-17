@@ -38,28 +38,14 @@ pub fn place_elem_body<'ctx>(
         }
         PlaceElem::Field(index, field_type) => match curr_type {
             PlaceTy::Ty(curr_type) => {
-                let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
-                let gen_field_type = crate::utilis::generic_field_ty(
-                    curr_type,
-                    index.as_u32(),
-                    tyctx,
-                    method_instance,
-                );
                 //TODO: Why was this commented out?
                 let field_type = crate::utilis::monomorphize(&method_instance, *field_type, tyctx);
-                let field_name = field_name(curr_type, index.as_u32());
-                let curr_type = crate::r#type::Type::from_ty(curr_type, tyctx, &method_instance);
-                let curr_type = if let crate::r#type::Type::DotnetType(dotnet_type) = curr_type {
-                    dotnet_type.as_ref().clone()
-                } else {
-                    panic!();
-                };
-
-                let field_desc = FieldDescriptor::boxed(curr_type, gen_field_type, field_name);
+                let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
+                let field_desc = crate::utilis::field_descrptor(curr_type,(*index).into(),tyctx,method_instance);
                 if body_ty_is_by_adress(&field_type) {
-                    ((field_type).into(), vec![CILOp::LDFieldAdress(field_desc)])
+                    ((field_type).into(), vec![CILOp::LDFieldAdress(field_desc.into())])
                 } else {
-                    ((field_type).into(), vec![CILOp::LDField(field_desc)])
+                    ((field_type).into(), vec![CILOp::LDField(field_desc.into())])
                 }
             }
             PlaceTy::EnumVariant(enm, var_idx) => {

@@ -443,7 +443,8 @@ macro_rules! cargo_test_ignored {
                     .current_dir(test_dir)
                     .args([
                         "build",
-                        "--release", //"--target",
+                        "--release",
+                        "-j1" //"--target",
                                      //"clr64-unknown-clr"
                     ])
                     .output()

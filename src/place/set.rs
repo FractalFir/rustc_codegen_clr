@@ -52,22 +52,8 @@ pub fn place_elem_set<'a>(
         PlaceElem::Field(index, _field_type) => {
             if let PlaceTy::Ty(curr_type) = curr_type {
                 let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, ctx);
-                let field_type = crate::utilis::generic_field_ty(
-                    curr_type,
-                    index.as_u32(),
-                    ctx,
-                    method_instance,
-                );
-                let field_name = field_name(curr_type, index.as_u32());
-
-                let curr_type = crate::r#type::Type::from_ty(curr_type, ctx, &method_instance);
-                let curr_type = if let crate::r#type::Type::DotnetType(dotnet_type) = curr_type {
-                    dotnet_type.as_ref().clone()
-                } else {
-                    panic!();
-                };
-                let field_desc = FieldDescriptor::boxed(curr_type, field_type, field_name);
-                vec![CILOp::STField(field_desc)]
+                let field_desc = crate::utilis::field_descrptor(curr_type,(*index).into(),ctx,method_instance);
+                vec![CILOp::STField(field_desc.into())]
             } else {
                 todo!("Can't set fields of enum variants yet!");
             }

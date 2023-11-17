@@ -3,7 +3,7 @@ use crate::{
     method::Method,
     r#type::{DotnetTypeRef, Type},
     utilis::{enum_tag_size, monomorphize, tag_from_enum_variants},
-    IString,
+    IString, cil_op::FieldDescriptor,
 };
 use rustc_middle::ty::{
     AdtDef, AdtKind, AliasKind, GenericArg, Instance, List, Ty, TyCtxt, TyKind,
@@ -31,6 +31,23 @@ impl TypeDef {
     }
     pub fn set_generic_count(&mut self, generic_count: u32) {
         self.gargc = generic_count;
+    }
+    /// Gets a [`FieldDescriptor`] describing to a rust filed at rust field index `rust_field_idx`.
+   pub fn field_desc_from_rust_field_idx(&self,self_tpe_ref:DotnetTypeRef,rust_field_idx:u32)->FieldDescriptor{
+        let mut field_iter = self.fields.iter();
+        // If explicit offsets present, check for enum tags
+        if let Some(offsets) = &self.explicit_offsets{
+            if offsets[0] == 0 && self.fields()[0].0.as_ref() == "_tag"{
+                field_iter.next();
+            }
+        };
+        // Get the nth field
+        let (field_name,field_type) = field_iter.nth(rust_field_idx as usize).expect("`field_desc_from_rust_field_idx` could not find field info!");
+        FieldDescriptor::new(
+            self_tpe_ref,
+            field_type.clone(),
+            field_name.clone(),
+        )
     }
     pub fn gargc(&self) -> u32 {
         self.gargc
@@ -74,6 +91,8 @@ impl TypeDef {
             explicit_offsets: None,
         }
     }
+    /// Gets the definition from type `ty`. The TypeDef corresponding to `ty` is the last one.
+    // TODO: refactor this!
     pub fn from_ty<'tyctx>(
         ty: Ty<'tyctx>,
         ctx: TyCtxt<'tyctx>,

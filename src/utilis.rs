@@ -12,7 +12,7 @@ pub const MANAGED_CALL_VIRT_FN_NAME: &str = "rustc_clr_interop_managed_call_virt
 pub fn is_function_magic(name: &str) -> bool {
     name.contains(CTOR_FN_NAME) || name.contains(MANAGED_CALL_FN_NAME)
 }
-use crate::{codegen_error::MethodCodegenError, r#type::DotnetTypeRef};
+use crate::{codegen_error::MethodCodegenError, r#type::{DotnetTypeRef, Type}, type_def::TypeDef, cil_op::FieldDescriptor};
 pub fn skip_binder_if_no_generic_types<T>(binder: Binder<T>) -> Result<T, MethodCodegenError> {
     /*
     if binder
@@ -73,6 +73,25 @@ pub fn monomorphize<'tcx, T: TypeFoldable<TyCtxt<'tcx>> + Clone>(
         EarlyBinder::bind(ty),
     )
 }
+pub fn field_descrptor<'ctx>(
+    owner_ty: Ty<'ctx>,
+    field_idx: u32,
+    ctx: TyCtxt<'ctx>,
+    method_instance: Instance<'ctx>,
+) -> FieldDescriptor {
+    if let TyKind::Tuple(elements) = owner_ty.kind(){
+        assert!(elements.len() < 8,"Tuples with more than 8 elements are not supported!");
+        return FieldDescriptor::new(
+            crate::r#type::tuple_type(&elements.iter().map(|tpe|Type::from_ty(tpe,ctx,&method_instance)).collect::<Vec<_>>()),
+            Type::GenericArg(field_idx),
+            format!("Item{}",field_idx + 1).into(),
+        );
+    }
+    let defs = TypeDef::from_ty(owner_ty, ctx, &method_instance);
+    let type_ref = Type::from_ty(owner_ty, ctx, &method_instance).as_dotnet().expect("Field owner not a dotnet type!");
+    let def = defs.iter().last().expect("`crate::utilis::field_descrptor` called on type without a definition.");
+    def.field_desc_from_rust_field_idx(type_ref,field_idx)
+}
 /// Gets the type of field with index `field_idx`, returning a GenericArg if the types field is generic
 pub fn generic_field_ty<'ctx>(
     owner_ty: Ty<'ctx>,
@@ -80,6 +99,7 @@ pub fn generic_field_ty<'ctx>(
     ctx: TyCtxt<'ctx>,
     method_instance: Instance<'ctx>,
 ) -> crate::r#type::Type {
+   
     match owner_ty.kind() {
         TyKind::Adt(adt_def, _) => {
             let ty = ctx
@@ -191,6 +211,8 @@ pub fn compiletime_sizeof(ty: Ty) -> usize {
             _ => todo!("Can't compute compiletime sizeof {int:?}"),
         },
         TyKind::Uint(int) => match int {
+            UintTy::U8 => std::mem::size_of::<u8>(),
+            UintTy::U16 => std::mem::size_of::<u16>(),
             UintTy::U32 => std::mem::size_of::<u32>(),
             UintTy::U128 => std::mem::size_of::<u128>(),
             UintTy::Usize => {
