@@ -41,9 +41,17 @@ pub fn place_elem_body<'ctx>(
                 //TODO: Why was this commented out?
                 let field_type = crate::utilis::monomorphize(&method_instance, *field_type, tyctx);
                 let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
-                let field_desc = crate::utilis::field_descrptor(curr_type,(*index).into(),tyctx,method_instance);
+                let field_desc = crate::utilis::field_descrptor(
+                    curr_type,
+                    (*index).into(),
+                    tyctx,
+                    method_instance,
+                );
                 if body_ty_is_by_adress(&field_type) {
-                    ((field_type).into(), vec![CILOp::LDFieldAdress(field_desc.into())])
+                    (
+                        (field_type).into(),
+                        vec![CILOp::LDFieldAdress(field_desc.into())],
+                    )
                 } else {
                     ((field_type).into(), vec![CILOp::LDField(field_desc.into())])
                 }

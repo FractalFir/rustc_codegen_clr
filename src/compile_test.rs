@@ -444,8 +444,8 @@ macro_rules! cargo_test_ignored {
                     .args([
                         "build",
                         "--release",
-                        "-j1" //"--target",
-                                     //"clr64-unknown-clr"
+                        "-j1", //"--target",
+                               //"clr64-unknown-clr"
                     ])
                     .output()
                     .expect("failed to execute process");

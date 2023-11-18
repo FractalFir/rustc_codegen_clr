@@ -76,7 +76,12 @@ fn place_elem_get<'a>(
         PlaceElem::Field(index, _field_type) => match curr_type {
             super::PlaceTy::Ty(curr_type) => {
                 let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, ctx);
-                let field_desc = crate::utilis::field_descrptor(curr_type,(*index).into(),ctx,method_instance);
+                let field_desc = crate::utilis::field_descrptor(
+                    curr_type,
+                    (*index).into(),
+                    ctx,
+                    method_instance,
+                );
                 vec![CILOp::LDField(field_desc.into())]
             }
             super::PlaceTy::EnumVariant(enm, var_idx) => {

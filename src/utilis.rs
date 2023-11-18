@@ -12,7 +12,12 @@ pub const MANAGED_CALL_VIRT_FN_NAME: &str = "rustc_clr_interop_managed_call_virt
 pub fn is_function_magic(name: &str) -> bool {
     name.contains(CTOR_FN_NAME) || name.contains(MANAGED_CALL_FN_NAME)
 }
-use crate::{codegen_error::MethodCodegenError, r#type::{DotnetTypeRef, Type}, type_def::TypeDef, cil_op::FieldDescriptor};
+use crate::{
+    cil_op::FieldDescriptor,
+    codegen_error::MethodCodegenError,
+    r#type::TypeDef,
+    r#type::{DotnetTypeRef, Type},
+};
 pub fn skip_binder_if_no_generic_types<T>(binder: Binder<T>) -> Result<T, MethodCodegenError> {
     /*
     if binder
@@ -38,7 +43,7 @@ pub fn field_name(ty: Ty, idx: u32) -> crate::IString {
                 .all_fields()
                 .nth(idx as usize)
                 .expect("Field index out of range.");
-            crate::type_def::escape_field_name(&field_def.name.to_string())
+            crate::r#type::escape_field_name(&field_def.name.to_string())
         }
         TyKind::Tuple(_) => format!("Item{}", idx + 1).into(),
         _ => todo!("Can't yet get fields of typr {ty:?}"),
@@ -79,18 +84,31 @@ pub fn field_descrptor<'ctx>(
     ctx: TyCtxt<'ctx>,
     method_instance: Instance<'ctx>,
 ) -> FieldDescriptor {
-    if let TyKind::Tuple(elements) = owner_ty.kind(){
-        assert!(elements.len() < 8,"Tuples with more than 8 elements are not supported!");
+    if let TyKind::Tuple(elements) = owner_ty.kind() {
+        assert!(
+            elements.len() < 8,
+            "Tuples with more than 8 elements are not supported!"
+        );
         return FieldDescriptor::new(
-            crate::r#type::tuple_type(&elements.iter().map(|tpe|Type::from_ty(tpe,ctx,&method_instance)).collect::<Vec<_>>()),
+            crate::r#type::tuple_type(
+                &elements
+                    .iter()
+                    .map(|tpe| Type::from_ty(tpe, ctx, &method_instance))
+                    .collect::<Vec<_>>(),
+            ),
             Type::GenericArg(field_idx),
-            format!("Item{}",field_idx + 1).into(),
+            format!("Item{}", field_idx + 1).into(),
         );
     }
     let defs = TypeDef::from_ty(owner_ty, ctx, &method_instance);
-    let type_ref = Type::from_ty(owner_ty, ctx, &method_instance).as_dotnet().expect("Field owner not a dotnet type!");
-    let def = defs.iter().last().expect("`crate::utilis::field_descrptor` called on type without a definition.");
-    def.field_desc_from_rust_field_idx(type_ref,field_idx)
+    let type_ref = Type::from_ty(owner_ty, ctx, &method_instance)
+        .as_dotnet()
+        .expect("Field owner not a dotnet type!");
+    let def = defs
+        .iter()
+        .last()
+        .expect("`crate::utilis::field_descrptor` called on type without a definition.");
+    def.field_desc_from_rust_field_idx(type_ref, field_idx)
 }
 /// Gets the type of field with index `field_idx`, returning a GenericArg if the types field is generic
 pub fn generic_field_ty<'ctx>(
@@ -99,7 +117,6 @@ pub fn generic_field_ty<'ctx>(
     ctx: TyCtxt<'ctx>,
     method_instance: Instance<'ctx>,
 ) -> crate::r#type::Type {
-   
     match owner_ty.kind() {
         TyKind::Adt(adt_def, _) => {
             let ty = ctx

@@ -58,9 +58,9 @@ const INSERT_MIR_DEBUG_COMMENTS: bool = false;
 const PRINT_LOCAL_TYPES: bool = false;
 const PRINT_TY_CONVERTION: bool = false;
 /// Tells the codegen to optmize the emiited CIL.
-const OPTIMIZE_CIL: bool = (!INSERT_MIR_DEBUG_COMMENTS) && (false);
+const OPTIMIZE_CIL: bool = (!INSERT_MIR_DEBUG_COMMENTS) && (true);
 /// Turns on the struct spliting optimzation.
-const SPLIT_LOCAL_STRUCTS:bool = false;
+const SPLIT_LOCAL_STRUCTS: bool = false;
 
 /// Changes `.locals` into `.locals init`. Causes the runtime to always initialize local variables.
 /// Try turining on in cause of issues. If it fixes them, then their root cause is UB(eg. use of uninitailized memory).
@@ -116,10 +116,9 @@ mod statement;
 mod terminator;
 /// Code handling transmutes.
 mod transmute;
-/// A representation of a primitve type or a reference.
+/// Code related to types.
 mod r#type;
-/// Contains a reperesentation of a non-primitve .NET type(class,struct)
-mod type_def;
+
 /// Implementations of unary operations.
 mod unop;
 /// Contains small helper functions(debug assertions, functions used to get field names, etc), which are frequently used, but are not specific to a part of the coodegen.

@@ -42,8 +42,16 @@ pub fn place_elem_adress<'ctx>(
                 //TODO: Why was this commented out?
                 let field_type = crate::utilis::monomorphize(&method_instance, *field_type, tyctx);
                 let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
-                let field_desc = crate::utilis::field_descrptor(curr_type,(*index).into(),tyctx,method_instance);
-                ((field_type).into(), vec![CILOp::LDFieldAdress(field_desc.into())])
+                let field_desc = crate::utilis::field_descrptor(
+                    curr_type,
+                    (*index).into(),
+                    tyctx,
+                    method_instance,
+                );
+                (
+                    (field_type).into(),
+                    vec![CILOp::LDFieldAdress(field_desc.into())],
+                )
             }
             PlaceTy::EnumVariant(enm, var_idx) => {
                 let owner = crate::utilis::monomorphize(&method_instance, enm, tyctx);

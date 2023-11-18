@@ -3,8 +3,8 @@ use crate::{
     access_modifier::AccessModifer,
     assembly_exporter::AssemblyExportError,
     method::Method,
+    r#type::TypeDef,
     r#type::{DotnetTypeRef, Type},
-    type_def::TypeDef,
 };
 use std::{borrow::Cow, io::Write, ops::Deref};
 #[must_use]

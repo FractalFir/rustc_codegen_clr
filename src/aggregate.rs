@@ -203,7 +203,7 @@ fn aggregate_adt<'tyctx>(
                 ops.extend(variant_address.clone());
                 ops.extend(field_value.1.clone());
                 let field_name = field.name.to_string();
-                let field_name = crate::type_def::escape_field_name(&field_name);
+                let field_name = crate::r#type::escape_field_name(&field_name);
                 let field = crate::utilis::generic_field_ty(
                     adt_type,
                     field_idx as u32,

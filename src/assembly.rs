@@ -1,10 +1,11 @@
 use crate::cil_op::{CILOp, CallSite};
 use crate::codegen_error::MethodCodegenError;
+use crate::r#type::TyCache;
 use crate::utilis::monomorphize;
 use crate::IString;
 use crate::{
     access_modifier::AccessModifer, codegen_error::CodegenError, function_sig::FnSig,
-    method::Method, r#type::Type, type_def::TypeDef,
+    method::Method, r#type::Type, r#type::TypeDef,
 };
 use rustc_middle::mir::{mono::MonoItem, Local, LocalDecl, Statement, Terminator};
 use rustc_middle::ty::{Instance, ParamEnv, TyCtxt, TyKind};
@@ -153,12 +154,14 @@ impl Assembly {
         }
     }
     /// This is used *ONLY* to catch uncaught errors.
-    fn checked_add_fn<'tcx>(&mut self,
+    fn checked_add_fn<'tcx>(
+        &mut self,
         instance: Instance<'tcx>,
         tcx: TyCtxt<'tcx>,
-        name: &str)-> Result<(), MethodCodegenError>{
+        name: &str,
+    ) -> Result<(), MethodCodegenError> {
         match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-           self.add_fn(instance, tcx, name)
+            self.add_fn(instance, tcx, name)
         })) {
             Ok(success) => success,
             Err(payload) => {
@@ -180,6 +183,7 @@ impl Assembly {
         tcx: TyCtxt<'tcx>,
         name: &str,
     ) -> Result<(), MethodCodegenError> {
+        
         if crate::utilis::is_function_magic(name) {
             return Ok(());
         }
@@ -189,28 +193,36 @@ impl Assembly {
             eprintln!("fn item {instance:?} is not a function definition type. Skippping.");
             return Ok(());
         }
+        
         // Get the MIR if it exisits. Othervise, return early.
         if !tcx.is_mir_available(instance.def_id()) {
             println!("function {instance:?} has no MIR. Skippping.");
             return Ok(());
         }
+        let mut cache = crate::r#type::TyCache::empty();
         let mir = tcx.optimized_mir(instance.def_id());
-        // TODO: check if this is OK. It seems to work for now, but there may be some edge cases.
-        let param_env = ParamEnv::empty();
         // Check if function is public or not.
         // FIXME: figure out the source of the bug causing visibility to not be read propely.
         // let access_modifier = AccessModifer::from_visibility(tcx.visibility(instance.def_id()));
         let access_modifier = AccessModifer::Public;
         // Handle the function signature
-        let sig = match FnSig::sig_from_instance(instance, tcx) {
+        let sig = match FnSig::sig_from_instance_(instance, tcx,&mut cache) {
             Ok(sig) => sig,
             Err(err) => {
                 eprintln!("Could not get the signature of function {name} because {err:?}");
                 return Ok(());
             }
         };
+       
         // Get locals
-        let locals = locals_from_mir(&mir.local_decls, tcx, sig.inputs().len(), &instance);
+        //eprintln!("method")
+        let locals = locals_from_mir(
+            &mir.local_decls,
+            tcx,
+            sig.inputs().len(),
+            &instance,
+            &mut cache,
+        );
         // Create method prototype
         let mut method = Method::new(access_modifier, true, sig, name, locals);
         let mut ops = Vec::new();
@@ -255,10 +267,7 @@ impl Assembly {
         method.set_ops(ops);
         // Do some basic checks on the method as a whole.
         crate::utilis::check_debugable(method.get_ops(), &method, does_return_void);
-        for local in &mir.local_decls {
-            let local_ty = monomorphize(&instance, local.ty, tcx);
-            self.add_type(local_ty, tcx, &instance);
-        }
+        self.types.extend(cache.defs().cloned());
         println!("Compiled method {name}");
         self.add_method(method);
         Ok(())
@@ -363,6 +372,7 @@ fn locals_from_mir<'tyctx>(
     tyctx: TyCtxt<'tyctx>,
     argc: usize,
     method_instance: &Instance<'tyctx>,
+    tycache: &mut TyCache,
 ) -> Vec<(Option<IString>, Type)> {
     let mut local_types: Vec<_> = Vec::with_capacity(locals.len());
     for (local_id, local) in locals.iter().enumerate() {
@@ -376,7 +386,9 @@ fn locals_from_mir<'tyctx>(
                 );
             }
             let name = None;
-            local_types.push((name, Type::from_ty(ty, tyctx, method_instance)));
+            let tpe = tycache.type_from_cache(ty, tyctx);
+            //let tpe = Type::from_ty(ty, tyctx, method_instance);
+            local_types.push((name, tpe));
         }
     }
     local_types

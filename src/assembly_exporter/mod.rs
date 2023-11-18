@@ -5,7 +5,7 @@ enum AccessModifer {
     Private,
     Public,
 }
-use crate::{assembly::Assembly, method::Method, type_def::TypeDef, IString};
+use crate::{assembly::Assembly, method::Method, r#type::TypeDef, IString};
 /// ILASM-based assembly exporter.
 pub mod ilasm_exporter;
 /// This trait represents an interface implemented by all .NET assembly exporters. (Currently only ilasm)

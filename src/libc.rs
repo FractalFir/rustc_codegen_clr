@@ -75,10 +75,10 @@ pub fn insert_libc(asm: &mut Assembly) {
         name: "core.panic.PanicInfoUnresolved".into(),
         fields: [].into(),
     });*/
-    asm.add_typedef(crate::type_def::TypeDef::nameonly("Unresolved"));
-    asm.add_typedef(crate::type_def::TypeDef::nameonly("RustVoid"));
-    asm.add_typedef(crate::type_def::TypeDef::nameonly("Foreign"));
-    asm.add_typedef(crate::type_def::TypeDef::nameonly("RustStr"));
+    asm.add_typedef(crate::r#type::TypeDef::nameonly("Unresolved"));
+    asm.add_typedef(crate::r#type::TypeDef::nameonly("RustVoid"));
+    asm.add_typedef(crate::r#type::TypeDef::nameonly("Foreign"));
+    asm.add_typedef(crate::r#type::TypeDef::nameonly("RustStr"));
     rust_slice(asm);
     math(asm);
     io(asm);
@@ -89,7 +89,7 @@ pub fn insert_libc(asm: &mut Assembly) {
 }
 
 fn rust_slice(asm: &mut Assembly) {
-    let mut rust_slice = crate::type_def::TypeDef::nameonly("core.ptr.metadata.PtrComponents");
+    let mut rust_slice = crate::r#type::TypeDef::nameonly("core.ptr.metadata.PtrComponents");
     let mut rust_slice_dotnet = DotnetTypeRef::new(None, "core.ptr.metadata.PtrComponents");
     rust_slice.set_generic_count(2);
     rust_slice_dotnet.set_generics([Type::GenericArg(0), Type::GenericArg(1)]);
@@ -98,7 +98,7 @@ fn rust_slice(asm: &mut Assembly) {
     rust_slice.add_field("metadata".into(), Type::USize);
 
     asm.add_typedef(rust_slice);
-    let mut rust_slice = crate::type_def::TypeDef::nameonly("RustSlice");
+    let mut rust_slice = crate::r#type::TypeDef::nameonly("RustSlice");
     rust_slice.set_generic_count(2);
     asm.add_typedef(rust_slice);
 }

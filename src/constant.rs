@@ -3,7 +3,7 @@ use crate::r#type::{DotnetTypeRef, Type};
 use rustc_abi::Size;
 use rustc_middle::mir::{
     interpret::{AllocId, AllocRange, GlobalAlloc, Scalar},
-    Const, ConstValue,ConstOperand
+    Const, ConstOperand, ConstValue,
 };
 use rustc_middle::ty::{
     AdtDef, AdtKind, FloatTy, Instance, IntTy, List, ParamEnv, Ty, TyCtxt, TyKind, UintTy,
@@ -65,30 +65,33 @@ fn create_const_adt_from_bytes<'ctx>(
             let variant_size = crate::utilis::enum_tag_size(adt_def.variants().len() as u64);
             let mut curr_offset = 0;
             let enum_ty = Type::from_ty(ty, tyctx, &method_instance);
-            let enum_dotnet:DotnetTypeRef = if let Type::DotnetType(ty_ref) = &enum_ty{
+            let enum_dotnet: DotnetTypeRef = if let Type::DotnetType(ty_ref) = &enum_ty {
                 ty_ref.as_ref().clone()
-            }
-            else{
+            } else {
                 panic!("Invalid enum type {enum_ty:?}");
             };
             let mut ops = vec![CILOp::NewTMPLocal(enum_ty.into())];
-            let curr_variant = match variant_size{
-                0=>todo!("Can't yet handle constant enums with 0-sized tags."),
-                1=>{
+            let curr_variant = match variant_size {
+                0 => todo!("Can't yet handle constant enums with 0-sized tags."),
+                1 => {
                     curr_offset = 1;
                     let variant = bytes[0] as u32;
-                    ops.extend([CILOp::LoadAddresOfTMPLocal,CILOp::LdcI32(variant as i32),CILOp::STField(FieldDescriptor::boxed(
-                        enum_dotnet.clone(),
-                        Type::U8,
-                        "_tag".into(),
-                    ))]);
+                    ops.extend([
+                        CILOp::LoadAddresOfTMPLocal,
+                        CILOp::LdcI32(variant as i32),
+                        CILOp::STField(FieldDescriptor::boxed(
+                            enum_dotnet.clone(),
+                            Type::U8,
+                            "_tag".into(),
+                        )),
+                    ]);
                     variant
                 }
-                _=>todo!("Can't yet support enums with {variant_size} wide tags."),
+                _ => todo!("Can't yet support enums with {variant_size} wide tags."),
             };
             assert!(curr_variant < adt_def.variants().len() as u32);
             let active_variant = &adt_def.variants()[curr_variant.into()];
-            for field in &active_variant.fields{
+            for field in &active_variant.fields {
                 todo!("Can't yet create const enum fields.");
             }
             ops.push(CILOp::FreeTMPLocal);
