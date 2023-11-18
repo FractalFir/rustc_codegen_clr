@@ -554,7 +554,8 @@ pub fn magic_type<'tyctx>(
                 panic!("Managed array size is not");
             }
             let element = &subst[0].as_type().expect("Arrat type must be specified!");
-            let element = todo!();///Type::from_ty(*element, ctx, method);
+            let element = todo!();
+            ///Type::from_ty(*element, ctx, method);
             let dimensions = garag_to_usize(&subst[1], ctx);
             Type::DotnetArray(
                 DotnetArray {

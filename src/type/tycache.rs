@@ -53,7 +53,7 @@ impl GenericResolvePath {
             Self::Subst { nth } => (&subst[*nth as usize])
                 .clone()
                 .expect("ERROR: non type subst where type expected!"),
-            Self::Ptr(inner)=>Type::Ptr(inner.monomorphize_from(subst).into()),
+            Self::Ptr(inner) => Type::Ptr(inner.monomorphize_from(subst).into()),
             _ => todo!("Subst type {self:?} not supported yet!"),
         }
     }
@@ -122,7 +122,7 @@ impl TyCache {
             .into_iter()
             .map(|(name, tpe)| (name, generalize_type(&mut generic_info, tpe)))
             .collect();
-       
+
         let access = AccessModifer::Public;
         let type_def = TypeDef::new(
             access,
@@ -212,8 +212,8 @@ impl TyCache {
             generic_info,
         }
     }
-    pub fn defs<'a>(&'a self)->impl Iterator<Item = &TypeDef> + 'a{
-        self.type_def_cache.values().map(|tdagi|&tdagi.type_def)
+    pub fn defs<'a>(&'a self) -> impl Iterator<Item = &TypeDef> + 'a {
+        self.type_def_cache.values().map(|tdagi| &tdagi.type_def)
     }
     fn union_<'tyctx>(
         &mut self,
@@ -324,7 +324,7 @@ impl TyCache {
                 let name = crate::utilis::adt_name(&def);
                 if super::is_name_magic(name.as_ref()) {
                     return Either::Left(super::magic_type(name.as_ref(), def, subst, tyctx));
-                } 
+                }
                 let subst: Vec<_> = subst
                     .iter()
                     .map(|garg| {

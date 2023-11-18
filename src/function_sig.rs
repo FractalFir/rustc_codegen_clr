@@ -1,6 +1,6 @@
 use crate::{
     codegen_error::{CodegenError, MethodCodegenError},
-    r#type::{Type, TyCache},
+    r#type::{TyCache, Type},
     utilis::skip_binder_if_no_generic_types,
 };
 use rustc_middle::ty::{Instance, List, ParamEnv, ParamEnvAnd, PolyFnSig, TyCtxt};
@@ -69,7 +69,7 @@ impl FnSig {
     pub fn sig_from_instance_<'tcx>(
         function: Instance<'tcx>,
         tcx: TyCtxt<'tcx>,
-        tycache:&mut TyCache,
+        tycache: &mut TyCache,
     ) -> Result<Self, CodegenError> {
         let fn_abi = tcx.fn_abi_of_instance(ParamEnvAnd {
             param_env: ParamEnv::reveal_all(),

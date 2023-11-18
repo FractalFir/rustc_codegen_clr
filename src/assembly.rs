@@ -183,7 +183,6 @@ impl Assembly {
         tcx: TyCtxt<'tcx>,
         name: &str,
     ) -> Result<(), MethodCodegenError> {
-        
         if crate::utilis::is_function_magic(name) {
             return Ok(());
         }
@@ -193,7 +192,7 @@ impl Assembly {
             eprintln!("fn item {instance:?} is not a function definition type. Skippping.");
             return Ok(());
         }
-        
+
         // Get the MIR if it exisits. Othervise, return early.
         if !tcx.is_mir_available(instance.def_id()) {
             println!("function {instance:?} has no MIR. Skippping.");
@@ -206,14 +205,14 @@ impl Assembly {
         // let access_modifier = AccessModifer::from_visibility(tcx.visibility(instance.def_id()));
         let access_modifier = AccessModifer::Public;
         // Handle the function signature
-        let sig = match FnSig::sig_from_instance_(instance, tcx,&mut cache) {
+        let sig = match FnSig::sig_from_instance_(instance, tcx, &mut cache) {
             Ok(sig) => sig,
             Err(err) => {
                 eprintln!("Could not get the signature of function {name} because {err:?}");
                 return Ok(());
             }
         };
-       
+
         // Get locals
         //eprintln!("method")
         let locals = locals_from_mir(
