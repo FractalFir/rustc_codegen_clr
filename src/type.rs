@@ -324,7 +324,9 @@ impl Type {
                 todo!("Generic fn defs unsuported!")
             }
             TyKind::Array(element, length) => {
-                let length = crate::utilis::try_resolve_const_size(length).unwrap();
+                
+                //TODO: array size *COULD* be generic. This is not handled yet.
+                let length = crate::utilis::try_resolve_const_size(length).expect("Generic array size.");
 
                 let element = Type::generic_from_ty(*element, tyctx);
                 DotnetTypeRef::array(element, length).into()
@@ -430,8 +432,8 @@ impl Type {
                 Self::FnDef(call)
             }
             TyKind::Array(element, length) => {
-                //let length = crate::utilis::monomorphize(method, length, tyctx)
-                let length = crate::utilis::try_resolve_const_size(length).unwrap();
+                let length = crate::utilis::monomorphize(method, *length, tyctx);
+                let length = crate::utilis::try_resolve_const_size(&length).unwrap();
 
                 let element = Type::from_ty(*element, tyctx, method);
                 DotnetTypeRef::array(element, length).into()

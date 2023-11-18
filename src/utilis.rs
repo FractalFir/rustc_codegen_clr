@@ -111,7 +111,7 @@ pub fn generic_field_ty<'ctx>(
                         .did,
                 )
                 .instantiate_identity();
-            println!("Generic field type {ty:?}");
+            //println!("Generic field type {ty:?}");
             crate::r#type::Type::from_ty(ty, ctx, &method_instance)
         }
         TyKind::Tuple(_) => crate::r#type::Type::GenericArg(field_idx),
@@ -126,7 +126,7 @@ pub fn enum_tag_size(variants: u64) -> u32 {
 pub fn tag_from_enum_variants(variants: u64) -> crate::r#type::Type {
     use crate::r#type::Type;
     let var_size = enum_tag_size(variants);
-    println!("variants:{variants}tag_size:{var_size}");
+    // println!("variants:{variants}tag_size:{var_size}");
     match var_size {
         0 => Type::Void,
         1 => Type::U8,

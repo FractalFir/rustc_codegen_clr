@@ -259,6 +259,7 @@ impl Assembly {
             let local_ty = monomorphize(&instance, local.ty, tcx);
             self.add_type(local_ty, tcx, &instance);
         }
+        println!("Compiled method {name}");
         self.add_method(method);
         Ok(())
         //todo!("Can't add function")
