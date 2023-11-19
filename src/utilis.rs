@@ -15,8 +15,8 @@ pub fn is_function_magic(name: &str) -> bool {
 use crate::{
     cil_op::FieldDescriptor,
     codegen_error::MethodCodegenError,
-    r#type::{TypeDef, TyCache},
     r#type::{DotnetTypeRef, Type},
+    r#type::{TyCache, TypeDef},
 };
 pub fn skip_binder_if_no_generic_types<T>(binder: Binder<T>) -> Result<T, MethodCodegenError> {
     /*
@@ -83,7 +83,7 @@ pub fn field_descrptor<'ctx>(
     field_idx: u32,
     ctx: TyCtxt<'ctx>,
     method_instance: Instance<'ctx>,
-    type_cache:&mut TyCache,
+    type_cache: &mut TyCache,
 ) -> FieldDescriptor {
     if let TyKind::Tuple(elements) = owner_ty.kind() {
         assert!(
@@ -105,7 +105,8 @@ pub fn field_descrptor<'ctx>(
         );
     }
     let defs = TypeDef::from_ty(owner_ty, ctx, &method_instance);
-    let type_ref = type_cache.type_from_cache(owner_ty, ctx)//
+    let type_ref = type_cache
+        .type_from_cache(owner_ty, ctx) //
         .as_dotnet()
         .expect("Field owner not a dotnet type!");
     let def = defs

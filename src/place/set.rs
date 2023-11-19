@@ -18,7 +18,7 @@ fn place_elem_set_at<'a>(
     curr_type: PlaceTy<'a>,
     tyctx: TyCtxt<'a>,
     method_instance: &Instance<'a>,
-    type_cache:&mut crate::r#type::TyCache,
+    type_cache: &mut crate::r#type::TyCache,
 ) -> Vec<CILOp> {
     let curr_ty = curr_type.as_ty().expect("Can't index into enum!");
     let curr_ty = crate::utilis::monomorphize(method_instance, curr_ty, tyctx);
@@ -45,12 +45,12 @@ pub fn place_elem_set<'a>(
     curr_type: PlaceTy<'a>,
     ctx: TyCtxt<'a>,
     method_instance: Instance<'a>,
-    type_cache:&mut crate::r#type::TyCache,
+    type_cache: &mut crate::r#type::TyCache,
 ) -> Vec<CILOp> {
     match place_elem {
         PlaceElem::Deref => {
             let pointed_type = pointed_type(curr_type);
-            ptr_set_op(pointed_type.into(), ctx, &method_instance,type_cache)
+            ptr_set_op(pointed_type.into(), ctx, &method_instance, type_cache)
         }
         PlaceElem::Field(index, _field_type) => {
             if let PlaceTy::Ty(curr_type) = curr_type {
@@ -60,7 +60,7 @@ pub fn place_elem_set<'a>(
                     (*index).into(),
                     ctx,
                     method_instance,
-                    type_cache
+                    type_cache,
                 );
                 vec![CILOp::STField(field_desc.into())]
             } else {
@@ -72,7 +72,12 @@ pub fn place_elem_set<'a>(
                 index.as_usize(),
                 ctx.optimized_mir(method_instance.def_id()),
             )];
-            ops.extend(place_elem_set_at(curr_type, ctx, &method_instance,type_cache));
+            ops.extend(place_elem_set_at(
+                curr_type,
+                ctx,
+                &method_instance,
+                type_cache,
+            ));
             ops
         }
         PlaceElem::ConstantIndex {
@@ -83,11 +88,16 @@ pub fn place_elem_set<'a>(
             let mut ops = if !from_end {
                 vec![CILOp::LdcI64(*offset as i64)]
             } else {
-                let mut get_len = place_get_length(curr_type, ctx, method_instance,type_cache);
+                let mut get_len = place_get_length(curr_type, ctx, method_instance, type_cache);
                 get_len.extend(vec![CILOp::LdcI64(*offset as i64), CILOp::Sub]);
                 get_len
             };
-            ops.extend(place_elem_set_at(curr_type, ctx, &method_instance,type_cache));
+            ops.extend(place_elem_set_at(
+                curr_type,
+                ctx,
+                &method_instance,
+                type_cache,
+            ));
             ops
         }
         _ => todo!("Can't handle porojection {place_elem:?} in set"),
@@ -98,7 +108,7 @@ fn ptr_set_op<'ctx>(
     pointed_type: PlaceTy<'ctx>,
     tyctx: TyCtxt<'ctx>,
     method_instance: &Instance<'ctx>,
-    type_cache:&mut crate::r#type::TyCache
+    type_cache: &mut crate::r#type::TyCache,
 ) -> Vec<CILOp> {
     if let PlaceTy::Ty(pointed_type) = pointed_type {
         match pointed_type.kind() {
@@ -127,16 +137,12 @@ fn ptr_set_op<'ctx>(
             TyKind::Char => vec![CILOp::STIndI32], // always 4 bytes wide: https://doc.rust-lang.org/std/primitive.char.html#representation
             TyKind::Adt(_, _) => {
                 let pointed_type = type_cache.type_from_cache(pointed_type, tyctx);
-                vec![CILOp::STObj(
-                    pointed_type.into()
-                )]
+                vec![CILOp::STObj(pointed_type.into())]
             }
             TyKind::Tuple(_) => {
                 let pointed_type = type_cache.type_from_cache(pointed_type, tyctx);
                 // This is interpreted as a System.ValueTuple and can be treated as an ADT
-                vec![CILOp::STObj(
-                    pointed_type.into()
-                )]
+                vec![CILOp::STObj(pointed_type.into())]
             }
             TyKind::Ref(_, _, _) => vec![CILOp::STIndISize],
             TyKind::RawPtr(_) => vec![CILOp::STIndISize],

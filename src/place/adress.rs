@@ -21,7 +21,7 @@ pub fn place_elem_adress<'ctx>(
     tyctx: TyCtxt<'ctx>,
     method_instance: Instance<'ctx>,
     _body: &rustc_middle::mir::Body,
-    type_cache:&mut crate::r#type::TyCache,
+    type_cache: &mut crate::r#type::TyCache,
 ) -> (PlaceTy<'ctx>, Vec<CILOp>) {
     let curr_type = curr_type.monomorphize(&method_instance, tyctx);
     assert_morphic!(curr_type);
@@ -34,7 +34,7 @@ pub fn place_elem_adress<'ctx>(
             } else {
                 (
                     pointed.into(),
-                    deref_op(pointed.into(), tyctx, &method_instance,type_cache),
+                    deref_op(pointed.into(), tyctx, &method_instance, type_cache),
                 )
             }
         }
@@ -48,7 +48,7 @@ pub fn place_elem_adress<'ctx>(
                     (*index).into(),
                     tyctx,
                     method_instance,
-                    type_cache
+                    type_cache,
                 );
                 (
                     (field_type).into(),
@@ -109,7 +109,7 @@ pub fn place_elem_adress<'ctx>(
             )];
             let curr_ty = curr_type.as_ty().expect("Can't index into enum!");
             let curr_ty = crate::utilis::monomorphize(&method_instance, curr_ty, tyctx);
-            let tpe =type_cache.type_from_cache(curr_ty, tyctx);
+            let tpe = type_cache.type_from_cache(curr_ty, tyctx);
             let class = if let Type::DotnetType(dotnet) = &tpe {
                 dotnet
             } else {

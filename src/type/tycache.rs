@@ -72,9 +72,11 @@ impl TypeDefAndGenericInfo {
             .iter()
             .map(|gi| gi.monomorphize_from(subst))
             .collect();
-        if name.contains("Vec"){
-            println!("Vec generics:{generics:?} {generic_info:?}",generic_info =self
-            .generic_info);
+        if name.contains("Vec") {
+            println!(
+                "Vec generics:{generics:?} {generic_info:?}",
+                generic_info = self.generic_info
+            );
         }
         dref.set_generics(generics);
         dref
@@ -350,19 +352,20 @@ impl TyCache {
                 nth: param_ty.index,
             }),
             TyKind::Ref(_region, inner, _mut) => match inner.kind() {
-                TyKind::Slice(inner) => match self.generic_type_from_cache(*inner, tyctx){
-                    Either::Left(concreate)=>{
-                        let mut dotnet = DotnetTypeRef::new(None,"core.ptr.metadata.PtrComponents");
-                        dotnet.set_generics(vec![concreate.clone(),Type::USize]);
+                TyKind::Slice(inner) => match self.generic_type_from_cache(*inner, tyctx) {
+                    Either::Left(concreate) => {
+                        let mut dotnet =
+                            DotnetTypeRef::new(None, "core.ptr.metadata.PtrComponents");
+                        dotnet.set_generics(vec![concreate.clone(), Type::USize]);
                         Either::Left(dotnet.into())
-                    },
-                    Either::Right(_generic)=>todo!("Can't handle generic slice!"),
+                    }
+                    Either::Right(_generic) => todo!("Can't handle generic slice!"),
                 },
                 TyKind::Str => {
-                    let mut dotnet = DotnetTypeRef::new(None,"core.ptr.metadata.PtrComponents");
-                    dotnet.set_generics(vec![Type::U8,Type::USize]);
+                    let mut dotnet = DotnetTypeRef::new(None, "core.ptr.metadata.PtrComponents");
+                    dotnet.set_generics(vec![Type::U8, Type::USize]);
                     Either::Left(dotnet.into())
-                },
+                }
                 _ => match self.generic_type_from_cache(*inner, tyctx) {
                     Either::Left(tpe) => Either::Left(Type::Ptr(tpe.into())),
                     Either::Right(tpe) => Either::Right(GenericResolvePath::Ptr(tpe.into())),
@@ -371,28 +374,25 @@ impl TyCache {
             TyKind::Foreign(foregin) => {
                 println!("foregin:{foregin:?}");
                 Either::Left(Type::Foreign)
-            },
+            }
             TyKind::Bound(_, _inner) => Either::Left(Type::Foreign),
             TyKind::FnPtr(_) => Either::Left(Type::USize),
-            TyKind::Slice(inner) => {
-                match self.generic_type_from_cache(*inner, tyctx){
-                    Either::Left(inner)=>{
-                        let mut slice_tpe = DotnetTypeRef::new (
-                        None,
-                            "RustSlice".into(),
-                        );
-                        slice_tpe.set_generics(vec![inner]);
-                        Either::Left(Type::DotnetType(Box::new(slice_tpe)))
-                    }
-                    Either::Right(generic)=>todo!("Generic slice"),
+            TyKind::Slice(inner) => match self.generic_type_from_cache(*inner, tyctx) {
+                Either::Left(inner) => {
+                    let mut slice_tpe = DotnetTypeRef::new(None, "RustSlice".into());
+                    slice_tpe.set_generics(vec![inner]);
+                    Either::Left(Type::DotnetType(Box::new(slice_tpe)))
                 }
+                Either::Right(generic) => todo!("Generic slice"),
             },
             TyKind::Array(element, length) => {
                 //let length = crate::utilis::monomorphize(method, *length, tyctx);
                 let length = crate::utilis::try_resolve_const_size(&length).unwrap();
                 match self.generic_type_from_cache(*element, tyctx) {
-                    Either::Left(element)=>Either::Left(DotnetTypeRef::array(element, length).into()),
-                    Either::Right(tpe) => todo!("Generic array!"),//Either::Right(GenericResolvePath::Ptr(tpe.into())),
+                    Either::Left(element) => {
+                        Either::Left(DotnetTypeRef::array(element, length).into())
+                    }
+                    Either::Right(tpe) => todo!("Generic array!"), //Either::Right(GenericResolvePath::Ptr(tpe.into())),
                 }
             }
             _ => todo!("Can't yet get type {ty:?} from type cache."),

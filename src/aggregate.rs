@@ -1,5 +1,5 @@
 use crate::cil_op::{CILOp, FieldDescriptor};
-use crate::r#type::{DotnetTypeRef, Type, TyCache};
+use crate::r#type::{DotnetTypeRef, TyCache, Type};
 use crate::utilis::{field_name, monomorphize};
 use rustc_index::IndexVec;
 use rustc_middle::mir::{AggregateKind, Operand, Place};
@@ -13,7 +13,7 @@ pub fn handle_aggregate<'tyctx>(
     aggregate_kind: &AggregateKind<'tyctx>,
     value_index: &IndexVec<FieldIdx, Operand<'tyctx>>,
     method_instance: Instance<'tyctx>,
-    tycache:&mut TyCache,
+    tycache: &mut TyCache,
 ) -> Vec<CILOp> {
     // Get CIL ops for each value
     let values: Vec<_> = value_index
@@ -22,7 +22,7 @@ pub fn handle_aggregate<'tyctx>(
         .map(|operand| {
             (
                 operand.0 as u32,
-                crate::operand::handle_operand(operand.1, tyctx, method, method_instance,tycache),
+                crate::operand::handle_operand(operand.1, tyctx, method, method_instance, tycache),
             )
         })
         .collect();
@@ -50,7 +50,7 @@ pub fn handle_aggregate<'tyctx>(
                 values,
                 method_instance,
                 active_field,
-                tycache
+                tycache,
             )
         }
         AggregateKind::Array(element) => {
@@ -58,8 +58,13 @@ pub fn handle_aggregate<'tyctx>(
             let element = tycache.type_from_cache(element, tyctx);
             let array_type = DotnetTypeRef::array(element.clone(), value_index.len());
             let mut ops: Vec<CILOp> = Vec::with_capacity(values.len() * 2);
-            let array_getter =
-                super::place::place_adress(target_location, tyctx, method, method_instance,tycache);
+            let array_getter = super::place::place_adress(
+                target_location,
+                tyctx,
+                method,
+                method_instance,
+                tycache,
+            );
             let sig = crate::function_sig::FnSig::new(
                 &[array_type.clone().into(), Type::USize, Type::GenericArg(0)],
                 &Type::Void,
@@ -86,12 +91,21 @@ pub fn handle_aggregate<'tyctx>(
             if values.len() > 8 {
                 todo!("Tuples with more than 8 fields are not supported yet.");
             } else {
-                let tuple_getter =
-                    super::place::place_adress(target_location, tyctx, method, method_instance,tycache);
+                let tuple_getter = super::place::place_adress(
+                    target_location,
+                    tyctx,
+                    method,
+                    method_instance,
+                    tycache,
+                );
                 let types: Vec<_> = value_index
                     .iter()
                     .map(|operand| {
-                        let operand_ty = crate::utilis::monomorphize(&method_instance, operand.ty(method, tyctx), tyctx);
+                        let operand_ty = crate::utilis::monomorphize(
+                            &method_instance,
+                            operand.ty(method, tyctx),
+                            tyctx,
+                        );
                         tycache.type_from_cache(operand_ty, tyctx)
                     })
                     .collect();
@@ -132,7 +146,7 @@ fn aggregate_adt<'tyctx>(
     fields: Vec<(u32, Vec<CILOp>)>,
     method_instance: Instance<'tyctx>,
     _active_field: &Option<FieldIdx>,
-    type_cache:&mut crate::r#type::TyCache,
+    type_cache: &mut crate::r#type::TyCache,
 ) -> Vec<CILOp> {
     let adt_type = crate::utilis::monomorphize(&method_instance, adt_type, tyctx);
     let adt_type_ref = type_cache.type_from_cache(adt_type, tyctx);
@@ -143,8 +157,13 @@ fn aggregate_adt<'tyctx>(
     };
     match adt.adt_kind() {
         AdtKind::Struct => {
-            let obj_getter =
-                crate::place::place_adress(target_location, tyctx, method, method_instance,type_cache);
+            let obj_getter = crate::place::place_adress(
+                target_location,
+                tyctx,
+                method,
+                method_instance,
+                type_cache,
+            );
             let mut ops: Vec<CILOp> = Vec::with_capacity(fields.len() * 2);
             for field in fields {
                 ops.extend(obj_getter.iter().cloned());
@@ -156,7 +175,8 @@ fn aggregate_adt<'tyctx>(
                 let field_type = field_def.ty(tyctx, subst);
 
                 let field_type = if crate::utilis::is_ty_alias(field_type) {
-                    let field_type = crate::utilis::monomorphize(&method_instance, field_type, tyctx);
+                    let field_type =
+                        crate::utilis::monomorphize(&method_instance, field_type, tyctx);
                     type_cache.type_from_cache(field_type, tyctx)
                 } else {
                     crate::utilis::generic_field_ty(adt_type, field.0, tyctx, method_instance)
@@ -174,13 +194,18 @@ fn aggregate_adt<'tyctx>(
                 tyctx,
                 method,
                 method_instance,
-                type_cache
+                type_cache,
             ));
             ops
         }
         AdtKind::Enum => {
-            let adt_adress_ops =
-                crate::place::place_adress(target_location, tyctx, method, method_instance,type_cache);
+            let adt_adress_ops = crate::place::place_adress(
+                target_location,
+                tyctx,
+                method,
+                method_instance,
+                type_cache,
+            );
 
             let mut variant_type = adt_type_ref.clone(); //adt_type.variant_type(variant).expect("Can't get variant index");
             let variant_name = crate::utilis::variant_name(adt_type, variant_idx);
@@ -243,8 +268,13 @@ fn aggregate_adt<'tyctx>(
             ops
         }
         AdtKind::Union => {
-            let obj_getter =
-                crate::place::place_adress(target_location, tyctx, method, method_instance,type_cache);
+            let obj_getter = crate::place::place_adress(
+                target_location,
+                tyctx,
+                method,
+                method_instance,
+                type_cache,
+            );
             let mut ops: Vec<CILOp> = Vec::with_capacity(fields.len() * 2);
             for field in fields {
                 ops.extend(obj_getter.iter().cloned());

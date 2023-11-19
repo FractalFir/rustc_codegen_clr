@@ -3,7 +3,7 @@ use rustc_middle::ty::{Instance, IntTy, Ty, TyCtxt, TyKind, UintTy};
 
 use crate::cil_op::CILOp;
 use crate::function_sig::FnSig;
-use crate::r#type::{DotnetTypeRef, Type, TyCache};
+use crate::r#type::{DotnetTypeRef, TyCache, Type};
 /// Preforms an unchecked binary operation.
 pub(crate) fn binop_unchecked<'tyctx>(
     binop: BinOp,
@@ -12,17 +12,17 @@ pub(crate) fn binop_unchecked<'tyctx>(
     tyctx: TyCtxt<'tyctx>,
     method: &rustc_middle::mir::Body<'tyctx>,
     method_instance: Instance<'tyctx>,
-    tycache:&mut TyCache,
+    tycache: &mut TyCache,
 ) -> Vec<CILOp> {
-    let ops_a = crate::operand::handle_operand(operand_a, tyctx, method, method_instance,tycache);
-    let ops_b = crate::operand::handle_operand(operand_b, tyctx, method, method_instance,tycache);
+    let ops_a = crate::operand::handle_operand(operand_a, tyctx, method, method_instance, tycache);
+    let ops_b = crate::operand::handle_operand(operand_b, tyctx, method, method_instance, tycache);
     let ty_a = operand_a.ty(&method.local_decls, tyctx);
     let ty_b = operand_b.ty(&method.local_decls, tyctx);
     match binop {
         BinOp::Add | BinOp::AddUnchecked => [
             ops_a,
             ops_b,
-            add_unchecked(ty_a, ty_b, tyctx, &method_instance,tycache),
+            add_unchecked(ty_a, ty_b, tyctx, &method_instance, tycache),
         ]
         .into_iter()
         .flatten()
@@ -30,7 +30,7 @@ pub(crate) fn binop_unchecked<'tyctx>(
         BinOp::Sub | BinOp::SubUnchecked => [
             ops_a,
             ops_b,
-            sub_unchecked(ty_a, ty_b, tyctx, &method_instance,tycache),
+            sub_unchecked(ty_a, ty_b, tyctx, &method_instance, tycache),
         ]
         .into_iter()
         .flatten()
@@ -108,10 +108,7 @@ pub(crate) fn binop_unchecked<'tyctx>(
                 todo!("Can't offset pointer of type {ty_a:?}");
             };
             let pointed_ty = crate::utilis::monomorphize(&method_instance, pointed_ty, tyctx);
-            let pointed_ty = Box::new(tycache.type_from_cache(
-                pointed_ty,
-                tyctx,
-            ));
+            let pointed_ty = Box::new(tycache.type_from_cache(pointed_ty, tyctx));
             [
                 ops_a,
                 ops_b,
@@ -129,7 +126,7 @@ fn add_unchecked<'tyctx>(
     ty_b: Ty<'tyctx>,
     tyctx: TyCtxt<'tyctx>,
     method_instance: &Instance<'tyctx>,
-    tycache:&mut TyCache,
+    tycache: &mut TyCache,
 ) -> Vec<CILOp> {
     match ty_a.kind() {
         TyKind::Int(int_ty) => {
@@ -182,7 +179,7 @@ fn sub_unchecked<'tyctx>(
     ty_b: Ty<'tyctx>,
     tyctx: TyCtxt<'tyctx>,
     method_instance: &Instance<'tyctx>,
-    tycache:&mut TyCache,
+    tycache: &mut TyCache,
 ) -> Vec<CILOp> {
     match ty_a.kind() {
         TyKind::Int(int_ty) => {

@@ -172,7 +172,7 @@ impl CodegenBackend for MyBackend {
             //println!("codegen {} has {} items.", cgu.name(), cgu.items().len());
             for (item, _data) in cgu.items() {
                 codegen
-                    .add_item(*item, tcx,&mut cache)
+                    .add_item(*item, tcx, &mut cache)
                     .expect("Could not add function");
             }
         }
@@ -187,7 +187,7 @@ impl CodegenBackend for MyBackend {
             )
             .expect("Could not resolve entrypoint!")
             .expect("Could not resolve entrypoint!");
-            let sig = function_sig::FnSig::sig_from_instance_(entrypoint, tcx,&mut cache)
+            let sig = function_sig::FnSig::sig_from_instance_(entrypoint, tcx, &mut cache)
                 .expect("Could not get the signature of the entrypoint.");
             let symbol = tcx.symbol_name(entrypoint);
             let symbol = format!("{symbol:?}");

@@ -179,21 +179,19 @@ impl Type {
             _ => Some(self.clone()),
         }
     }
-    pub fn ref_to(&self)->Self{
-        match self{
-            Self::DotnetType(dotnet)=>todo!("Can't create reference to type {dotnet:?}"),
-            _=>Self::Ptr(self.clone().into()),
+    pub fn ref_to(&self) -> Self {
+        match self {
+            Self::DotnetType(dotnet) => todo!("Can't create reference to type {dotnet:?}"),
+            _ => Self::Ptr(self.clone().into()),
         }
     }
-    pub fn metadata(&self)->Self{
-        match self{
-            Self::DotnetType(dotnet)=>{
-                match dotnet.name_path(){
-                    "PtrComponents"=>Type::USize,
-                    _=>Type::Void,
-                }
-            }
-            _=>Self::Void,
+    pub fn metadata(&self) -> Self {
+        match self {
+            Self::DotnetType(dotnet) => match dotnet.name_path() {
+                "PtrComponents" => Type::USize,
+                _ => Type::Void,
+            },
+            _ => Self::Void,
         }
     }
     pub fn as_dotnet(&self) -> Option<DotnetTypeRef> {
@@ -202,7 +200,7 @@ impl Type {
             _ => None,
         }
     }
-    /* 
+    /*
     pub fn from_ty<'ctx>(rust_tpe: Ty<'ctx>, tyctx: TyCtxt<'ctx>, method: &Instance<'ctx>) -> Self {
         if crate::PRINT_TY_CONVERTION {
             println!("ty:{rust_tpe:?}")

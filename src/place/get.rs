@@ -19,7 +19,7 @@ pub fn place_get<'a>(
     ctx: TyCtxt<'a>,
     method: &rustc_middle::mir::Body<'a>,
     method_instance: Instance<'a>,
-    type_cache:&mut crate::r#type::TyCache,
+    type_cache: &mut crate::r#type::TyCache,
 ) -> Vec<CILOp> {
     let mut ops = Vec::with_capacity(place.projection.len());
     if place.projection.is_empty() {
@@ -33,11 +33,11 @@ pub fn place_get<'a>(
         let (head, body) = super::slice_head(place.projection);
         for elem in body {
             let (curr_ty, curr_ops) =
-                super::place_elem_body(elem, ty, ctx, method_instance, method,type_cache);
+                super::place_elem_body(elem, ty, ctx, method_instance, method, type_cache);
             ty = curr_ty.monomorphize(&method_instance, ctx);
             ops.extend(curr_ops);
         }
-        ops.extend(place_elem_get(head, ty, ctx, method_instance,type_cache));
+        ops.extend(place_elem_get(head, ty, ctx, method_instance, type_cache));
         ops
     }
 }
@@ -45,7 +45,7 @@ fn place_elem_get_at<'a>(
     curr_type: super::PlaceTy<'a>,
     tyctx: TyCtxt<'a>,
     method_instance: &Instance<'a>,
-    type_cache:&mut crate::r#type::TyCache,
+    type_cache: &mut crate::r#type::TyCache,
 ) -> Vec<CILOp> {
     let curr_ty = curr_type.as_ty().expect("Can't index into enum!");
     let curr_ty = crate::utilis::monomorphize(method_instance, curr_ty, tyctx);
@@ -71,12 +71,15 @@ fn place_elem_get<'a>(
     curr_type: super::PlaceTy<'a>,
     tyctx: TyCtxt<'a>,
     method_instance: Instance<'a>,
-    type_cache:&mut crate::r#type::TyCache,
+    type_cache: &mut crate::r#type::TyCache,
 ) -> Vec<CILOp> {
     match place_elem {
-        PlaceElem::Deref => {
-            super::deref_op(super::pointed_type(curr_type).into(), tyctx, &method_instance,type_cache)
-        }
+        PlaceElem::Deref => super::deref_op(
+            super::pointed_type(curr_type).into(),
+            tyctx,
+            &method_instance,
+            type_cache,
+        ),
         PlaceElem::Field(index, _field_type) => match curr_type {
             super::PlaceTy::Ty(curr_type) => {
                 let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
@@ -85,7 +88,7 @@ fn place_elem_get<'a>(
                     (*index).into(),
                     tyctx,
                     method_instance,
-                    type_cache
+                    type_cache,
                 );
                 vec![CILOp::LDField(field_desc.into())]
             }
@@ -116,7 +119,12 @@ fn place_elem_get<'a>(
                 index.as_usize(),
                 tyctx.optimized_mir(method_instance.def_id()),
             )];
-            ops.extend(place_elem_get_at(curr_type, tyctx, &method_instance,type_cache));
+            ops.extend(place_elem_get_at(
+                curr_type,
+                tyctx,
+                &method_instance,
+                type_cache,
+            ));
             ops
         }
         PlaceElem::ConstantIndex {
@@ -127,11 +135,17 @@ fn place_elem_get<'a>(
             let mut ops = if !from_end {
                 vec![CILOp::LdcI64(*offset as i64)]
             } else {
-                let mut get_len = super::place_get_length(curr_type, tyctx, method_instance,type_cache);
+                let mut get_len =
+                    super::place_get_length(curr_type, tyctx, method_instance, type_cache);
                 get_len.extend(vec![CILOp::LdcI64(*offset as i64), CILOp::Sub]);
                 get_len
             };
-            ops.extend(place_elem_get_at(curr_type, tyctx, &method_instance,type_cache));
+            ops.extend(place_elem_get_at(
+                curr_type,
+                tyctx,
+                &method_instance,
+                type_cache,
+            ));
             ops
         }
         _ => todo!("Can't handle porojection {place_elem:?} in get"),

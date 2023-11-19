@@ -20,7 +20,7 @@ pub fn place_elem_body<'ctx>(
     tyctx: TyCtxt<'ctx>,
     method_instance: Instance<'ctx>,
     _body: &rustc_middle::mir::Body,
-    type_cache:&mut crate::r#type::TyCache,
+    type_cache: &mut crate::r#type::TyCache,
 ) -> (PlaceTy<'ctx>, Vec<CILOp>) {
     let curr_ty = curr_type.as_ty().expect("Can't index into enum!");
     let curr_ty = crate::utilis::monomorphize(&method_instance, curr_ty, tyctx);
@@ -34,7 +34,7 @@ pub fn place_elem_body<'ctx>(
             } else {
                 (
                     pointed.into(),
-                    deref_op(pointed.into(), tyctx, &method_instance,type_cache),
+                    deref_op(pointed.into(), tyctx, &method_instance, type_cache),
                 )
             }
         }
@@ -48,7 +48,7 @@ pub fn place_elem_body<'ctx>(
                     (*index).into(),
                     tyctx,
                     method_instance,
-                    type_cache
+                    type_cache,
                 );
                 if body_ty_is_by_adress(&field_type) {
                     (

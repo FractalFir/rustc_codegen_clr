@@ -63,7 +63,7 @@ fn place_get_length<'ctx>(
     curr_type: PlaceTy<'ctx>,
     tyctx: TyCtxt<'ctx>,
     method_instance: Instance<'ctx>,
-    type_cache:&mut crate::r#type::TyCache,
+    type_cache: &mut crate::r#type::TyCache,
 ) -> Vec<CILOp> {
     let curr_ty = curr_type.as_ty().expect("Can't index into enum!");
     let curr_ty = crate::utilis::monomorphize(&method_instance, curr_ty, tyctx);
@@ -97,7 +97,7 @@ pub fn deref_op<'ctx>(
     derefed_type: PlaceTy<'ctx>,
     tyctx: TyCtxt<'ctx>,
     method_instance: &Instance<'ctx>,
-    type_cache:&mut crate::r#type::TyCache,
+    type_cache: &mut crate::r#type::TyCache,
 ) -> Vec<CILOp> {
     let res = if let PlaceTy::Ty(derefed_type) = derefed_type {
         match derefed_type.kind() {
@@ -128,16 +128,12 @@ pub fn deref_op<'ctx>(
             TyKind::Char => vec![CILOp::LDIndI32], // always 4 bytes wide: https://doc.rust-lang.org/std/primitive.char.html#representation
             TyKind::Adt(_, _) => {
                 let derefed_type = type_cache.type_from_cache(derefed_type, tyctx);
-                vec![CILOp::LdObj(
-                    derefed_type.into()
-                )]
+                vec![CILOp::LdObj(derefed_type.into())]
             }
             TyKind::Tuple(_) => {
                 // This is interpreted as a System.ValueTuple and can be treated as an ADT
                 let derefed_type = type_cache.type_from_cache(derefed_type, tyctx);
-                vec![CILOp::LdObj(
-                    derefed_type.into()
-                )]
+                vec![CILOp::LdObj(derefed_type.into())]
             }
             TyKind::Ref(_, _, _) => vec![CILOp::LDIndISize],
             TyKind::RawPtr(_) => vec![CILOp::LDIndISize],
@@ -155,7 +151,7 @@ pub fn place_adress<'a>(
     ctx: TyCtxt<'a>,
     method: &rustc_middle::mir::Body<'a>,
     method_instance: Instance<'a>,
-    type_cache:&mut crate::r#type::TyCache,
+    type_cache: &mut crate::r#type::TyCache,
 ) -> Vec<CILOp> {
     let mut ops = Vec::with_capacity(place.projection.len());
     if place.projection.is_empty() {
@@ -168,11 +164,12 @@ pub fn place_adress<'a>(
         ops.push(op);
         let (head, body) = slice_head(place.projection);
         for elem in body {
-            let (curr_ty, curr_ops) = place_elem_body(elem, ty, ctx, method_instance, method,type_cache);
+            let (curr_ty, curr_ops) =
+                place_elem_body(elem, ty, ctx, method_instance, method, type_cache);
             ty = curr_ty.monomorphize(&method_instance, ctx);
             ops.extend(curr_ops);
         }
-        ops.extend(adress::place_elem_adress(head, ty, ctx, method_instance, method,type_cache).1);
+        ops.extend(adress::place_elem_adress(head, ty, ctx, method_instance, method, type_cache).1);
         ops
     }
 }
@@ -182,7 +179,7 @@ pub(crate) fn place_set<'a>(
     value_calc: Vec<CILOp>,
     method: &rustc_middle::mir::Body<'a>,
     method_instance: Instance<'a>,
-    type_cache:&mut crate::r#type::TyCache,
+    type_cache: &mut crate::r#type::TyCache,
 ) -> Vec<CILOp> {
     let mut ops = Vec::with_capacity(place.projection.len());
     if place.projection.is_empty() {
@@ -196,13 +193,14 @@ pub(crate) fn place_set<'a>(
         ops.push(op);
         let (head, body) = slice_head(place.projection);
         for elem in body {
-            let (curr_ty, curr_ops) = place_elem_body(elem, ty, ctx, method_instance, method,type_cache);
+            let (curr_ty, curr_ops) =
+                place_elem_body(elem, ty, ctx, method_instance, method, type_cache);
             ty = curr_ty.monomorphize(&method_instance, ctx);
             ops.extend(curr_ops);
         }
         ops.extend(value_calc);
         ty = ty.monomorphize(&method_instance, ctx);
-        ops.extend(place_elem_set(head, ty, ctx, method_instance,type_cache));
+        ops.extend(place_elem_set(head, ty, ctx, method_instance, type_cache));
         ops
     }
 }
