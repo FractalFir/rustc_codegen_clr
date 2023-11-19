@@ -167,11 +167,12 @@ impl CodegenBackend for MyBackend {
         let (_defid_set, cgus) = tcx.collect_and_partition_mono_items(());
 
         let mut codegen = Assembly::empty();
+        let mut cache = crate::r#type::TyCache::empty();
         for cgu in cgus {
             //println!("codegen {} has {} items.", cgu.name(), cgu.items().len());
             for (item, _data) in cgu.items() {
                 codegen
-                    .add_item(*item, tcx)
+                    .add_item(*item, tcx,&mut cache)
                     .expect("Could not add function");
             }
         }
@@ -186,8 +187,7 @@ impl CodegenBackend for MyBackend {
             )
             .expect("Could not resolve entrypoint!")
             .expect("Could not resolve entrypoint!");
-            let entrypoint_fn = entrypoint.ty(tcx, penv).fn_sig(tcx);
-            let sig = function_sig::FnSig::from_poly_sig(&entrypoint_fn, tcx, &entrypoint)
+            let sig = function_sig::FnSig::sig_from_instance_(entrypoint, tcx,&mut cache)
                 .expect("Could not get the signature of the entrypoint.");
             let symbol = tcx.symbol_name(entrypoint);
             let symbol = format!("{symbol:?}");

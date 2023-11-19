@@ -3,25 +3,26 @@ use rustc_middle::ty::{Instance, IntTy, Ty, TyCtxt, TyKind, UintTy};
 
 use crate::cil_op::CILOp;
 use crate::function_sig::FnSig;
-use crate::r#type::{DotnetTypeRef, Type};
+use crate::r#type::{DotnetTypeRef, Type, TyCache};
 /// Preforms an unchecked binary operation.
-pub(crate) fn binop_unchecked<'tcx>(
+pub(crate) fn binop_unchecked<'tyctx>(
     binop: BinOp,
-    operand_a: &Operand<'tcx>,
-    operand_b: &Operand<'tcx>,
-    tcx: TyCtxt<'tcx>,
-    method: &rustc_middle::mir::Body<'tcx>,
-    method_instance: Instance<'tcx>,
+    operand_a: &Operand<'tyctx>,
+    operand_b: &Operand<'tyctx>,
+    tyctx: TyCtxt<'tyctx>,
+    method: &rustc_middle::mir::Body<'tyctx>,
+    method_instance: Instance<'tyctx>,
+    tycache:&mut TyCache,
 ) -> Vec<CILOp> {
-    let ops_a = crate::operand::handle_operand(operand_a, tcx, method, method_instance);
-    let ops_b = crate::operand::handle_operand(operand_b, tcx, method, method_instance);
-    let ty_a = operand_a.ty(&method.local_decls, tcx);
-    let ty_b = operand_b.ty(&method.local_decls, tcx);
+    let ops_a = crate::operand::handle_operand(operand_a, tyctx, method, method_instance,tycache);
+    let ops_b = crate::operand::handle_operand(operand_b, tyctx, method, method_instance,tycache);
+    let ty_a = operand_a.ty(&method.local_decls, tyctx);
+    let ty_b = operand_b.ty(&method.local_decls, tyctx);
     match binop {
         BinOp::Add | BinOp::AddUnchecked => [
             ops_a,
             ops_b,
-            add_unchecked(ty_a, ty_b, tcx, &method_instance),
+            add_unchecked(ty_a, ty_b, tyctx, &method_instance,tycache),
         ]
         .into_iter()
         .flatten()
@@ -29,7 +30,7 @@ pub(crate) fn binop_unchecked<'tcx>(
         BinOp::Sub | BinOp::SubUnchecked => [
             ops_a,
             ops_b,
-            sub_unchecked(ty_a, ty_b, tcx, &method_instance),
+            sub_unchecked(ty_a, ty_b, tyctx, &method_instance,tycache),
         ]
         .into_iter()
         .flatten()
@@ -106,11 +107,10 @@ pub(crate) fn binop_unchecked<'tcx>(
             } else {
                 todo!("Can't offset pointer of type {ty_a:?}");
             };
-            let pointed_ty = crate::utilis::monomorphize(&method_instance, pointed_ty, tcx);
-            let pointed_ty = Box::new(crate::r#type::Type::from_ty(
+            let pointed_ty = crate::utilis::monomorphize(&method_instance, pointed_ty, tyctx);
+            let pointed_ty = Box::new(tycache.type_from_cache(
                 pointed_ty,
-                tcx,
-                &method_instance,
+                tyctx,
             ));
             [
                 ops_a,
@@ -124,17 +124,18 @@ pub(crate) fn binop_unchecked<'tcx>(
     }
 }
 /// Preforms unchecked addition
-fn add_unchecked<'tcx>(
-    ty_a: Ty<'tcx>,
-    ty_b: Ty<'tcx>,
-    tcx: TyCtxt<'tcx>,
-    method_instance: &Instance<'tcx>,
+fn add_unchecked<'tyctx>(
+    ty_a: Ty<'tyctx>,
+    ty_b: Ty<'tyctx>,
+    tyctx: TyCtxt<'tyctx>,
+    method_instance: &Instance<'tyctx>,
+    tycache:&mut TyCache,
 ) -> Vec<CILOp> {
     match ty_a.kind() {
         TyKind::Int(int_ty) => {
             if let IntTy::I128 = int_ty {
-                let ty_a = Type::from_ty(ty_a, tcx, method_instance);
-                let ty_b = Type::from_ty(ty_b, tcx, method_instance);
+                let ty_a = tycache.type_from_cache(ty_a, tyctx);
+                let ty_b = tycache.type_from_cache(ty_b, tyctx);
                 vec![CILOp::Call(
                     crate::cil_op::CallSite::new(
                         Some(DotnetTypeRef::int_128()),
@@ -150,8 +151,8 @@ fn add_unchecked<'tcx>(
         }
         TyKind::Uint(uint_ty) => {
             if let UintTy::U128 = uint_ty {
-                let ty_a = Type::from_ty(ty_a, tcx, method_instance);
-                let ty_b = Type::from_ty(ty_b, tcx, method_instance);
+                let ty_a = tycache.type_from_cache(ty_a, tyctx);
+                let ty_b = tycache.type_from_cache(ty_b, tyctx);
                 vec![CILOp::Call(
                     crate::cil_op::CallSite::new(
                         Some(DotnetTypeRef::uint_128()),
@@ -176,17 +177,18 @@ fn add_unchecked<'tcx>(
     }
 }
 /// Preforms unchecked subtraction
-fn sub_unchecked<'tcx>(
-    ty_a: Ty<'tcx>,
-    ty_b: Ty<'tcx>,
-    tcx: TyCtxt<'tcx>,
-    method_instance: &Instance<'tcx>,
+fn sub_unchecked<'tyctx>(
+    ty_a: Ty<'tyctx>,
+    ty_b: Ty<'tyctx>,
+    tyctx: TyCtxt<'tyctx>,
+    method_instance: &Instance<'tyctx>,
+    tycache:&mut TyCache,
 ) -> Vec<CILOp> {
     match ty_a.kind() {
         TyKind::Int(int_ty) => {
             if let IntTy::I128 = int_ty {
-                let ty_a = Type::from_ty(ty_a, tcx, method_instance);
-                let ty_b = Type::from_ty(ty_b, tcx, method_instance);
+                let ty_a = tycache.type_from_cache(ty_a, tyctx);
+                let ty_b = tycache.type_from_cache(ty_b, tyctx);
                 vec![CILOp::Call(
                     crate::cil_op::CallSite::new(
                         Some(DotnetTypeRef::int_128()),
@@ -202,8 +204,8 @@ fn sub_unchecked<'tcx>(
         }
         TyKind::Uint(uint_ty) => {
             if let UintTy::U128 = uint_ty {
-                let ty_a = Type::from_ty(ty_a, tcx, method_instance);
-                let ty_b = Type::from_ty(ty_b, tcx, method_instance);
+                let ty_a = tycache.type_from_cache(ty_a, tyctx);
+                let ty_b = tycache.type_from_cache(ty_b, tyctx);
                 vec![CILOp::Call(
                     crate::cil_op::CallSite::new(
                         Some(DotnetTypeRef::uint_128()),
@@ -221,39 +223,39 @@ fn sub_unchecked<'tcx>(
         _ => todo!("can't add numbers of types {ty_a} and {ty_b}"),
     }
 }
-fn ne_unchecked<'tcx>(_ty_a: Ty<'tcx>, _ty_b: Ty<'tcx>) -> Vec<CILOp> {
+fn ne_unchecked<'tyctx>(_ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> Vec<CILOp> {
     vec![CILOp::Eq, CILOp::LdcI32(0), CILOp::Eq]
 }
-fn eq_unchecked<'tcx>(_ty_a: Ty<'tcx>, _ty_b: Ty<'tcx>) -> Vec<CILOp> {
+fn eq_unchecked<'tyctx>(_ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> Vec<CILOp> {
     vec![CILOp::Eq]
 }
-fn lt_unchecked<'tcx>(_ty_a: Ty<'tcx>, _ty_b: Ty<'tcx>) -> Vec<CILOp> {
+fn lt_unchecked<'tyctx>(_ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> Vec<CILOp> {
     vec![CILOp::Lt]
 }
-fn gt_unchecked<'tcx>(_ty_a: Ty<'tcx>, _ty_b: Ty<'tcx>) -> Vec<CILOp> {
+fn gt_unchecked<'tyctx>(_ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> Vec<CILOp> {
     vec![CILOp::Lt]
 }
-fn bit_and_unchecked<'tcx>(_ty_a: Ty<'tcx>, _ty_b: Ty<'tcx>) -> Vec<CILOp> {
+fn bit_and_unchecked<'tyctx>(_ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> Vec<CILOp> {
     vec![CILOp::And]
 }
-fn bit_or_unchecked<'tcx>(_ty_a: Ty<'tcx>, _ty_b: Ty<'tcx>) -> Vec<CILOp> {
+fn bit_or_unchecked<'tyctx>(_ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> Vec<CILOp> {
     vec![CILOp::Or]
 }
-fn bit_xor_unchecked<'tcx>(_ty_a: Ty<'tcx>, _ty_b: Ty<'tcx>) -> Vec<CILOp> {
+fn bit_xor_unchecked<'tyctx>(_ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> Vec<CILOp> {
     vec![CILOp::XOr]
 }
-fn rem_unchecked<'tcx>(_ty_a: Ty<'tcx>, _ty_b: Ty<'tcx>) -> Vec<CILOp> {
+fn rem_unchecked<'tyctx>(_ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> Vec<CILOp> {
     vec![CILOp::Rem]
 }
-fn shr_unchecked<'tcx>(_ty_a: Ty<'tcx>, _ty_b: Ty<'tcx>) -> Vec<CILOp> {
+fn shr_unchecked<'tyctx>(_ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> Vec<CILOp> {
     vec![CILOp::Shr]
 }
-fn shl_unchecked<'tcx>(_ty_a: Ty<'tcx>, _ty_b: Ty<'tcx>) -> Vec<CILOp> {
+fn shl_unchecked<'tyctx>(_ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> Vec<CILOp> {
     vec![CILOp::Shl]
 }
-fn mul_unchecked<'tcx>(_ty_a: Ty<'tcx>, _ty_b: Ty<'tcx>) -> Vec<CILOp> {
+fn mul_unchecked<'tyctx>(_ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> Vec<CILOp> {
     vec![CILOp::Mul]
 }
-fn div_unchecked<'tcx>(_ty_a: Ty<'tcx>, _ty_b: Ty<'tcx>) -> Vec<CILOp> {
+fn div_unchecked<'tyctx>(_ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> Vec<CILOp> {
     vec![CILOp::Div]
 }

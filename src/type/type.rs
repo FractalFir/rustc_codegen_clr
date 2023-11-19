@@ -111,44 +111,6 @@ impl DotnetTypeRef {
     pub fn set_generics_identity(&mut self) {
         self.generics = crate::r#type::ident_gargs(self.generics.len()).into();
     }
-    fn from_adt<'ctx>(
-        adt_def: &AdtDef<'ctx>,
-        subst: &'ctx List<GenericArg<'ctx>>,
-        tyctx: TyCtxt<'ctx>,
-        method: &Instance<'ctx>,
-    ) -> Self {
-        let mut generics: Vec<Type> = subst
-            .iter()
-            .map(|arg| {
-                if let Some(resolved) = arg.as_type() {
-                    Type::from_ty(resolved, tyctx, method)
-                } else {
-                    Type::Unresolved
-                }
-            })
-            .collect();
-        for field in adt_def.all_fields() {
-            //rustc_middle::ty::List::empty()
-            let generic_ty = tyctx.type_of(field.did).instantiate_identity();
-            if let TyKind::Alias(ak, _) = generic_ty.kind() {
-                assert_eq!(
-                    *ak,
-                    AliasKind::Projection,
-                    "ERROR alias kind is not supported in adt def!"
-                );
-                let substituted =
-                    crate::utilis::monomorphize(method, field.ty(tyctx, subst), tyctx);
-                generics.push(Type::from_ty(substituted, tyctx, method))
-            }
-        }
-        let name = crate::utilis::adt_name(adt_def);
-        Self {
-            assembly: None,
-            name_path: name,
-            generics,
-            is_valuetype: true,
-        }
-    }
     pub fn slice_type(element: Type) -> DotnetTypeRef {
         DotnetTypeRef {
             assembly: None,
@@ -217,18 +179,36 @@ impl Type {
             _ => Some(self.clone()),
         }
     }
+    pub fn ref_to(&self)->Self{
+        match self{
+            Self::DotnetType(dotnet)=>todo!("Can't create reference to type {dotnet:?}"),
+            _=>Self::Ptr(self.clone().into()),
+        }
+    }
+    pub fn metadata(&self)->Self{
+        match self{
+            Self::DotnetType(dotnet)=>{
+                match dotnet.name_path(){
+                    "PtrComponents"=>Type::USize,
+                    _=>Type::Void,
+                }
+            }
+            _=>Self::Void,
+        }
+    }
     pub fn as_dotnet(&self) -> Option<DotnetTypeRef> {
         match self {
             Self::DotnetType(inner) => Some(inner.as_ref().clone()),
             _ => None,
         }
     }
+    /* 
     pub fn from_ty<'ctx>(rust_tpe: Ty<'ctx>, tyctx: TyCtxt<'ctx>, method: &Instance<'ctx>) -> Self {
         if crate::PRINT_TY_CONVERTION {
             println!("ty:{rust_tpe:?}")
         };
         Self::from_ty_kind(rust_tpe.kind(), tyctx, method)
-    }
+    }*/
     pub fn generic_from_ty<'ctx>(rust_tpe: Ty<'ctx>, tyctx: TyCtxt<'ctx>) -> Self {
         match rust_tpe.kind() {
             TyKind::Bool => Self::Bool,
@@ -329,113 +309,6 @@ impl Type {
                     crate::utilis::try_resolve_const_size(length).expect("Generic array size.");
 
                 let element = Type::generic_from_ty(*element, tyctx);
-                DotnetTypeRef::array(element, length).into()
-            }
-            _ => todo!("Unsupported type{rust_tpe:?}!"),
-        }
-    }
-    pub fn from_ty_kind<'ctx>(
-        rust_tpe: &TyKind<'ctx>,
-        tyctx: TyCtxt<'ctx>,
-        method: &Instance<'ctx>,
-    ) -> Self {
-        match rust_tpe {
-            TyKind::Bool => Self::Bool,
-            TyKind::Int(int) => int.into(),
-            TyKind::Uint(uint) => uint.into(),
-            TyKind::Char => Self::U64,
-            TyKind::Float(float) => float.into(),
-            TyKind::RawPtr(type_and_mut) => {
-                Self::Ptr(Box::new(Self::from_ty(type_and_mut.ty, tyctx, method)))
-            }
-            TyKind::Ref(_region, inner, _mut) => match inner.kind() {
-                /*
-                TyKind::Str => {
-                    let str_type = DotnetTypeRef {
-                        assembly: None,
-                        name_path: "RustStr".into(),
-                        generics: vec![],
-                        is_valuetype: true,
-                    };
-                    Self::DotnetType(Box::new(str_type))
-                }
-                */
-                TyKind::Slice(inner) => Self::slice_ref(Type::from_ty(*inner, tyctx, method)),
-                _ => Self::Ptr(Box::new(Self::from_ty(*inner, tyctx, method))),
-            },
-            TyKind::Tuple(types) => {
-                let types: Vec<_> = types
-                    .iter()
-                    .map(|ty| Type::from_ty(ty, tyctx, method))
-                    .collect();
-                if types.is_empty() {
-                    Type::Void
-                } else {
-                    tuple_type(&types).into()
-                }
-            }
-            TyKind::Slice(inner) => {
-                let slice_tpe = DotnetTypeRef {
-                    assembly: None,
-                    name_path: "RustSlice".into(),
-                    generics: vec![Self::from_ty(*inner, tyctx, method)],
-                    is_valuetype: true,
-                };
-                Self::DotnetType(Box::new(slice_tpe))
-            }
-            TyKind::Never => Self::Void, // TODO: ensure this is always OK
-            TyKind::Adt(adt_def, subst) => {
-                let name = crate::utilis::adt_name(adt_def);
-                if is_name_magic(name.as_ref()) {
-                    magic_type(name.as_ref(), adt_def, subst, tyctx)
-                } else {
-                    Self::DotnetType(Box::new(DotnetTypeRef::from_adt(
-                        adt_def, subst, tyctx, method,
-                    )))
-                }
-            }
-            TyKind::Dynamic(_, _, _) => Type::Unresolved,
-            TyKind::Str => Type::Unresolved,
-            TyKind::Foreign(_) => Type::Foreign,
-            TyKind::Bound(_, _inner) => Type::Foreign,
-            TyKind::FnPtr(_) => Type::USize,
-            TyKind::Param(param_ty) => Type::GenericArg(param_ty.index),
-            TyKind::Alias(_, _alias_ty) => {
-                panic!("Encontered type alias, {rust_tpe:?} is not morphic!")
-            } //Self::from_ty(alias_ty.self_ty(), tyctx),
-            TyKind::Closure(def_id, subst) => {
-                // this is wrong.
-                let instance = Instance::resolve(tyctx, ParamEnv::reveal_all(), *def_id, subst)
-                    .expect("Could not resolve closure!")
-                    .expect("Could not resolve closure!");
-                let closure = subst.as_closure();
-                let sig = closure.sig();
-                let function_name = crate::utilis::function_name(tyctx.symbol_name(instance));
-                println!("CLOSURE: rust_tpe:{rust_tpe:?} closure:{closure:?},sig:{sig} function_name:{function_name:?}");
-                //FIXME: This is wrong. Figure out how to propely handle closures
-                Self::DotnetType(DotnetTypeRef::new(Some("FIXME_CLOSURE"), &function_name).into())
-            }
-            TyKind::FnDef(def_id, subst_ref) => {
-                let _fn_type = rust_tpe;
-                let env = ParamEnv::reveal_all();
-                let (instance, def_id, _subst_ref) = {
-                    let instance = Instance::expect_resolve(tyctx, env, *def_id, subst_ref);
-                    (instance, def_id, subst_ref)
-                };
-                let fn_def_sig = instance.ty(tyctx, env).fn_sig(tyctx);
-                let signature =
-                    crate::function_sig::FnSig::from_poly_sig(&fn_def_sig, tyctx, method)
-                        .expect("Can't get the function signature");
-
-                let function_name = crate::utilis::function_name(tyctx.symbol_name(instance));
-                let call = CallSite::boxed(None, function_name, signature, true);
-                Self::FnDef(call)
-            }
-            TyKind::Array(element, length) => {
-                let length = crate::utilis::monomorphize(method, *length, tyctx);
-                let length = crate::utilis::try_resolve_const_size(&length).unwrap();
-
-                let element = Type::from_ty(*element, tyctx, method);
                 DotnetTypeRef::array(element, length).into()
             }
             _ => todo!("Unsupported type{rust_tpe:?}!"),
@@ -555,7 +428,6 @@ pub fn magic_type<'tyctx>(
             }
             let element = &subst[0].as_type().expect("Arrat type must be specified!");
             let element = todo!();
-            ///Type::from_ty(*element, ctx, method);
             let dimensions = garag_to_usize(&subst[1], ctx);
             Type::DotnetArray(
                 DotnetArray {

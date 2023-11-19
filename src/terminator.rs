@@ -25,7 +25,8 @@ fn call_managed<'ctx>(
     destination: &Place<'ctx>,
     method: &'ctx Body<'ctx>,
     method_instance: Instance<'ctx>,
-    fn_type: &Ty<'ctx>,
+    fn_instance:Instance<'ctx>,
+    type_cache:&mut crate::r#type::TyCache,
 ) -> Vec<CILOp> {
     let argc_start =
         function_name.find(MANAGED_CALL_FN_NAME).unwrap() + (MANAGED_CALL_FN_NAME.len());
@@ -42,7 +43,7 @@ fn call_managed<'ctx>(
     let managed_fn_name = garg_to_string(&subst_ref[3], tyctx);
     let mut tpe = DotnetTypeRef::new(asm.as_deref(), &class_name);
     tpe.set_valuetype(is_valuetype);
-    let signature = FnSig::from_poly_sig(&fn_type.fn_sig(tyctx), tyctx, &method_instance)
+    let signature = FnSig::sig_from_instance_(fn_instance, tyctx, type_cache)
         .expect("Can't get the function signature");
 
     if argc == 0 {
@@ -56,7 +57,7 @@ fn call_managed<'ctx>(
         if *signature.output() == crate::r#type::Type::Void {
             call
         } else {
-            crate::place::place_set(destination, tyctx, call, method, method_instance)
+            crate::place::place_set(destination, tyctx, call, method, method_instance,type_cache)
         }
     } else {
         let is_static = crate::utilis::garag_to_bool(&subst_ref[4], tyctx);
@@ -68,6 +69,7 @@ fn call_managed<'ctx>(
                 tyctx,
                 method,
                 method_instance,
+                type_cache
             ));
         }
         call.push(CILOp::Call(CallSite::boxed(
@@ -79,7 +81,7 @@ fn call_managed<'ctx>(
         if *signature.output() == crate::r#type::Type::Void {
             call
         } else {
-            crate::place::place_set(destination, tyctx, call, method, method_instance)
+            crate::place::place_set(destination, tyctx, call, method, method_instance,type_cache)
         }
     }
 }
@@ -93,7 +95,8 @@ fn callvirt_managed<'ctx>(
     destination: &Place<'ctx>,
     method: &'ctx Body<'ctx>,
     method_instance: Instance<'ctx>,
-    fn_type: &Ty<'ctx>,
+    fn_instance:Instance<'ctx>,
+    type_cache:&mut crate::r#type::TyCache,
 ) -> Vec<CILOp> {
     let argc_start =
         function_name.find(MANAGED_CALL_VIRT_FN_NAME).unwrap() + (MANAGED_CALL_VIRT_FN_NAME.len());
@@ -113,7 +116,7 @@ fn callvirt_managed<'ctx>(
 
     let mut tpe = DotnetTypeRef::new(asm.as_deref(), &class_name);
     tpe.set_valuetype(is_valuetype);
-    let signature = FnSig::from_poly_sig(&fn_type.fn_sig(tyctx), tyctx, &method_instance)
+    let signature = FnSig::sig_from_instance_(fn_instance, tyctx, type_cache)
         .expect("Can't get the function signature");
     if argc == 0 {
         let ret = crate::r#type::Type::Void;
@@ -126,7 +129,7 @@ fn callvirt_managed<'ctx>(
         if *signature.output() == crate::r#type::Type::Void {
             call
         } else {
-            crate::place::place_set(destination, tyctx, call, method, method_instance)
+            crate::place::place_set(destination, tyctx, call, method, method_instance,type_cache)
         }
     } else {
         let is_static = crate::utilis::garag_to_bool(&subst_ref[4], tyctx);
@@ -138,6 +141,7 @@ fn callvirt_managed<'ctx>(
                 tyctx,
                 method,
                 method_instance,
+                type_cache
             ));
         }
         call.push(CILOp::CallVirt(CallSite::boxed(
@@ -149,7 +153,7 @@ fn callvirt_managed<'ctx>(
         if *signature.output() == crate::r#type::Type::Void {
             call
         } else {
-            crate::place::place_set(destination, tyctx, call, method, method_instance)
+            crate::place::place_set(destination, tyctx, call, method, method_instance,type_cache)
         }
     }
 }
@@ -163,6 +167,7 @@ fn call_ctor<'ctx>(
     destination: &Place<'ctx>,
     method: &'ctx Body<'ctx>,
     method_instance: Instance<'ctx>,
+    type_cache:&mut crate::r#type::TyCache,
 ) -> Vec<CILOp> {
     let argc_start = function_name.find(CTOR_FN_NAME).unwrap() + (CTOR_FN_NAME.len());
     let argc_end = argc_start + function_name[argc_start..].find('_').unwrap();
@@ -195,11 +200,15 @@ fn call_ctor<'ctx>(
             ))],
             method,
             method_instance,
+            type_cache
         )
     } else {
         let mut inputs: Vec<_> = subst_ref[3..]
             .iter()
-            .map(|ty| crate::r#type::Type::from_ty(ty.as_type().unwrap(), tyctx, &method_instance))
+            .map(|ty| {
+                let ty = crate::utilis::monomorphize(&method_instance, *ty, tyctx);
+                type_cache.type_from_cache(ty.as_type().expect("Expceted generic type but got something that was not a type!"), tyctx)
+            })
             .collect();
         //inputs.insert(0, tpe.clone().into());
         let sig = FnSig::new(&inputs, &crate::r#type::Type::Void);
@@ -210,6 +219,7 @@ fn call_ctor<'ctx>(
                 tyctx,
                 method,
                 method_instance,
+                type_cache
             ));
         }
         call.push(CILOp::NewObj(CallSite::boxed(
@@ -218,7 +228,7 @@ fn call_ctor<'ctx>(
             sig,
             false,
         )));
-        crate::place::place_set(destination, tyctx, call, method, method_instance)
+        crate::place::place_set(destination, tyctx, call, method, method_instance,type_cache)
     }
 }
 /// Calls `fn_type` with `args`, placing the return value in destination.
@@ -229,6 +239,7 @@ fn call<'ctx>(
     args: &[Operand<'ctx>],
     destination: &Place<'ctx>,
     method_instance: Instance<'ctx>,
+    type_cache:&mut crate::r#type::TyCache,
 ) -> Vec<CILOp> {
     let fn_type = crate::utilis::monomorphize(&method_instance, *fn_type, tyctx);
     let (instance, def_id, subst_ref) = if let TyKind::FnDef(def_id, subst_ref) = fn_type.kind() {
@@ -245,7 +256,7 @@ fn call<'ctx>(
         todo!("Trying to call a type which is not a function definition!");
     };
     let signature =
-        FnSig::sig_from_instance(instance, tyctx).expect("Could not resolve function sig");
+        FnSig::sig_from_instance_(instance, tyctx,type_cache).expect("Could not resolve function sig");
     let function_name = crate::utilis::function_name(tyctx.symbol_name(instance));
     // Checks if function is "magic"
     if function_name.contains(CTOR_FN_NAME) {
@@ -259,6 +270,7 @@ fn call<'ctx>(
             destination,
             body,
             method_instance,
+            type_cache
         );
     } else if function_name.contains(MANAGED_CALL_VIRT_FN_NAME) {
         // Virtual (for interop)
@@ -271,7 +283,8 @@ fn call<'ctx>(
             destination,
             body,
             method_instance,
-            &fn_type,
+            instance,
+            type_cache
         );
     } else if function_name.contains(MANAGED_CALL_FN_NAME) {
         // Not-Virtual (for interop)
@@ -284,7 +297,8 @@ fn call<'ctx>(
             destination,
             body,
             method_instance,
-            &fn_type,
+            instance,
+            type_cache
         );
     }
     let mut call = Vec::new();
@@ -294,6 +308,7 @@ fn call<'ctx>(
             tyctx,
             body,
             method_instance,
+            type_cache
         ));
     }
 
@@ -322,7 +337,7 @@ fn call<'ctx>(
     if is_void {
         call
     } else {
-        crate::place::place_set(destination, tyctx, call, body, method_instance)
+        crate::place::place_set(destination, tyctx, call, body, method_instance,type_cache)
     }
 }
 pub fn handle_terminator<'ctx>(
@@ -331,6 +346,7 @@ pub fn handle_terminator<'ctx>(
     tyctx: TyCtxt<'ctx>,
     method: &rustc_middle::mir::Body<'ctx>,
     method_instance: Instance<'ctx>,
+    type_cache:&mut crate::r#type::TyCache,
 ) -> Vec<CILOp> {
     match &terminator.kind {
         TerminatorKind::Call {
@@ -352,7 +368,7 @@ pub fn handle_terminator<'ctx>(
                     );
                     let fn_ty = monomorphize(&method_instance, fn_ty, tyctx);
                     //let fn_instance = Instance::resolve(tyctx,ParamEnv::reveal_all,fn_ty.did,List::empty());
-                    let call_ops = call(&fn_ty, body, tyctx, args, destination, method_instance);
+                    let call_ops = call(&fn_ty, body, tyctx, args, destination, method_instance,type_cache);
                     ops.extend(call_ops);
                 }
                 _ => panic!("called func must be const!"),
@@ -363,7 +379,8 @@ pub fn handle_terminator<'ctx>(
             ops
         }
         TerminatorKind::Return => {
-            if crate::r#type::Type::from_ty(method.return_ty(), tyctx, &method_instance)
+            let ret = crate::utilis::monomorphize(&method_instance, method.return_ty(), tyctx);
+            if type_cache.type_from_cache(ret, tyctx)
                 != crate::r#type::Type::Void
             {
                 vec![CILOp::LDLoc(0), CILOp::Ret]
@@ -373,7 +390,7 @@ pub fn handle_terminator<'ctx>(
         }
         TerminatorKind::SwitchInt { discr, targets } => {
             let ty = crate::utilis::monomorphize(&method_instance, discr.ty(method, tyctx), tyctx);
-            let discr = crate::operand::handle_operand(discr, tyctx, method, method_instance);
+            let discr = crate::operand::handle_operand(discr, tyctx, method, method_instance,type_cache);
             handle_switch(ty, discr, targets)
         }
         TerminatorKind::Assert {
@@ -383,10 +400,10 @@ pub fn handle_terminator<'ctx>(
             target,
             unwind: _,
         } => {
-            let mut ops = handle_operand(cond, tyctx, method, method_instance);
+            let mut ops = handle_operand(cond, tyctx, method, method_instance,type_cache);
             ops.push(CILOp::LdcI32(i32::from(*expected)));
             ops.push(CILOp::BEq(target.as_u32()));
-            ops.extend(throw_assert_msg(msg, tyctx, method, method_instance));
+            ops.extend(throw_assert_msg(msg, tyctx, method, method_instance,type_cache));
             ops
         }
         TerminatorKind::Goto { target } => vec![CILOp::GoTo((*target).into())],
@@ -409,13 +426,9 @@ pub fn handle_terminator<'ctx>(
                 //Empty drop, nothing needs to happen.
                 vec![]
             } else {
-                let ty = drop_instance
-                    .ty(tyctx, ParamEnv::reveal_all())
-                    .fn_sig(tyctx);
-                let ty = monomorphize(&method_instance, ty, tyctx);
-                let sig = FnSig::from_poly_sig(&ty, tyctx, &method_instance).unwrap();
+                let sig = FnSig::sig_from_instance_(drop_instance, tyctx, type_cache).unwrap();
                 let function_name = crate::utilis::function_name(tyctx.symbol_name(drop_instance));
-                let mut call = crate::place::place_adress(place, tyctx, method, method_instance);
+                let mut call = crate::place::place_adress(place, tyctx, method, method_instance,type_cache);
 
                 call.push(CILOp::Call(CallSite::boxed(None, function_name, sig, true)));
                 eprintln!("drop call:{call:?}");
@@ -445,6 +458,7 @@ fn throw_assert_msg<'ctx>(
     tyctx: TyCtxt<'ctx>,
     method: &rustc_middle::mir::Body<'ctx>,
     method_instance: Instance<'ctx>,
+    type_cache:&mut crate::r#type::TyCache,
 ) -> Vec<CILOp> {
     use rustc_middle::mir::AssertKind;
     // Assertion messages cause miscomplations.
@@ -455,7 +469,7 @@ fn throw_assert_msg<'ctx>(
         AssertKind::BoundsCheck { len, index } => {
             let mut ops = Vec::with_capacity(8);
             ops.push(CILOp::LdStr("index out of bounds: the len is ".into()));
-            ops.extend(handle_operand(len, tyctx, method, method_instance));
+            ops.extend(handle_operand(len, tyctx, method, method_instance,type_cache));
             let usize_class = crate::utilis::usize_class();
             let string_class = crate::utilis::string_class();
             let string_type = crate::r#type::Type::DotnetType(Box::new(string_class.clone()));
@@ -463,7 +477,7 @@ fn throw_assert_msg<'ctx>(
             let usize_to_string = CallSite::boxed(Some(usize_class), "ToString".into(), sig, false);
             ops.push(CILOp::Call(usize_to_string.clone()));
             ops.push(CILOp::LdStr(" but the index is".into()));
-            ops.extend(handle_operand(index, tyctx, method, method_instance));
+            ops.extend(handle_operand(index, tyctx, method, method_instance,type_cache));
             ops.push(CILOp::Call(usize_to_string.clone()));
 
             let sig = FnSig::new(
@@ -529,14 +543,14 @@ fn throw_assert_msg<'ctx>(
             ops.push(CILOp::LdStr(
                 format!("attempt to {binop:?} with overflow lhs:").into(),
             ));
-            ops.extend(handle_operand(a, tyctx, method, method_instance));
+            ops.extend(handle_operand(a, tyctx, method, method_instance,type_cache));
             let usize_class = crate::utilis::usize_class();
             let string_type = crate::r#type::Type::DotnetType(Box::new(string_class.clone()));
             let sig = FnSig::new(&[], &string_type);
             let usize_to_string = CallSite::boxed(Some(usize_class), "ToString".into(), sig, false);
             ops.push(CILOp::Call(usize_to_string.clone()));
             ops.push(CILOp::LdStr("rhs:".into()));
-            ops.extend(handle_operand(b, tyctx, method, method_instance));
+            ops.extend(handle_operand(b, tyctx, method, method_instance,type_cache));
             ops.push(CILOp::Call(usize_to_string.clone()));
 
             let sig = FnSig::new(
@@ -574,14 +588,14 @@ fn throw_assert_msg<'ctx>(
                     .to_string()
                     .into(),
             ));
-            ops.extend(handle_operand(required, tyctx, method, method_instance));
+            ops.extend(handle_operand(required, tyctx, method, method_instance,type_cache));
             let usize_class = crate::utilis::usize_class();
             let string_type = crate::r#type::Type::DotnetType(string_class.clone().into());
             let sig = FnSig::new(&[], &string_type);
             let usize_to_string = CallSite::boxed(Some(usize_class), "ToString".into(), sig, false);
             ops.push(CILOp::Call(usize_to_string.clone()));
             ops.push(CILOp::LdStr(" found: ".into()));
-            ops.extend(handle_operand(found, tyctx, method, method_instance));
+            ops.extend(handle_operand(found, tyctx, method, method_instance,type_cache));
             ops.push(CILOp::Call(usize_to_string.clone()));
 
             let sig = FnSig::new(
@@ -616,7 +630,7 @@ fn throw_assert_msg<'ctx>(
             ops.push(CILOp::LdStr(
                 "attempt to neg with overflow value:".to_string().into(),
             ));
-            ops.extend(handle_operand(value, tyctx, method, method_instance));
+            ops.extend(handle_operand(value, tyctx, method, method_instance,type_cache));
             let usize_class = crate::utilis::usize_class();
             let string_type = crate::r#type::Type::DotnetType(Box::new(string_class.clone()));
             let sig = FnSig::new(&[], &string_type);

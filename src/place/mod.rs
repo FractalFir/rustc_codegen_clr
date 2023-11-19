@@ -61,11 +61,13 @@ fn body_ty_is_by_adress(last_ty: &Ty) -> bool {
 
 fn place_get_length<'ctx>(
     curr_type: PlaceTy<'ctx>,
-    ctx: TyCtxt<'ctx>,
+    tyctx: TyCtxt<'ctx>,
     method_instance: Instance<'ctx>,
+    type_cache:&mut crate::r#type::TyCache,
 ) -> Vec<CILOp> {
     let curr_ty = curr_type.as_ty().expect("Can't index into enum!");
-    let tpe = Type::from_ty(curr_ty, ctx, &method_instance);
+    let curr_ty = crate::utilis::monomorphize(&method_instance, curr_ty, tyctx);
+    let tpe = type_cache.type_from_cache(curr_ty, tyctx);
     let class = if let Type::DotnetType(dotnet) = &tpe {
         dotnet
     } else {
@@ -73,8 +75,8 @@ fn place_get_length<'ctx>(
     };
     match *curr_ty.kind() {
         TyKind::Array(_elem, len) => {
-            let len = crate::utilis::monomorphize(&method_instance, len, ctx);
-            let len = len.eval_target_usize(ctx, ParamEnv::reveal_all()) as i64;
+            let len = crate::utilis::monomorphize(&method_instance, len, tyctx);
+            let len = len.eval_target_usize(tyctx, ParamEnv::reveal_all()) as i64;
             vec![CILOp::LdcI64(len)]
         }
         TyKind::Slice(_elem) => {
@@ -95,6 +97,7 @@ pub fn deref_op<'ctx>(
     derefed_type: PlaceTy<'ctx>,
     tyctx: TyCtxt<'ctx>,
     method_instance: &Instance<'ctx>,
+    type_cache:&mut crate::r#type::TyCache,
 ) -> Vec<CILOp> {
     let res = if let PlaceTy::Ty(derefed_type) = derefed_type {
         match derefed_type.kind() {
@@ -124,14 +127,16 @@ pub fn deref_op<'ctx>(
             // due to historic reasons(BOOL was an alias for int in early Windows, and it stayed this way.) - FractalFir
             TyKind::Char => vec![CILOp::LDIndI32], // always 4 bytes wide: https://doc.rust-lang.org/std/primitive.char.html#representation
             TyKind::Adt(_, _) => {
+                let derefed_type = type_cache.type_from_cache(derefed_type, tyctx);
                 vec![CILOp::LdObj(
-                    crate::r#type::Type::from_ty(derefed_type, tyctx, method_instance).into(),
+                    derefed_type.into()
                 )]
             }
             TyKind::Tuple(_) => {
                 // This is interpreted as a System.ValueTuple and can be treated as an ADT
+                let derefed_type = type_cache.type_from_cache(derefed_type, tyctx);
                 vec![CILOp::LdObj(
-                    crate::r#type::Type::from_ty(derefed_type, tyctx, method_instance).into(),
+                    derefed_type.into()
                 )]
             }
             TyKind::Ref(_, _, _) => vec![CILOp::LDIndISize],
@@ -150,6 +155,7 @@ pub fn place_adress<'a>(
     ctx: TyCtxt<'a>,
     method: &rustc_middle::mir::Body<'a>,
     method_instance: Instance<'a>,
+    type_cache:&mut crate::r#type::TyCache,
 ) -> Vec<CILOp> {
     let mut ops = Vec::with_capacity(place.projection.len());
     if place.projection.is_empty() {
@@ -162,11 +168,11 @@ pub fn place_adress<'a>(
         ops.push(op);
         let (head, body) = slice_head(place.projection);
         for elem in body {
-            let (curr_ty, curr_ops) = place_elem_body(elem, ty, ctx, method_instance, method);
+            let (curr_ty, curr_ops) = place_elem_body(elem, ty, ctx, method_instance, method,type_cache);
             ty = curr_ty.monomorphize(&method_instance, ctx);
             ops.extend(curr_ops);
         }
-        ops.extend(adress::place_elem_adress(head, ty, ctx, method_instance, method).1);
+        ops.extend(adress::place_elem_adress(head, ty, ctx, method_instance, method,type_cache).1);
         ops
     }
 }
@@ -176,6 +182,7 @@ pub(crate) fn place_set<'a>(
     value_calc: Vec<CILOp>,
     method: &rustc_middle::mir::Body<'a>,
     method_instance: Instance<'a>,
+    type_cache:&mut crate::r#type::TyCache,
 ) -> Vec<CILOp> {
     let mut ops = Vec::with_capacity(place.projection.len());
     if place.projection.is_empty() {
@@ -189,13 +196,13 @@ pub(crate) fn place_set<'a>(
         ops.push(op);
         let (head, body) = slice_head(place.projection);
         for elem in body {
-            let (curr_ty, curr_ops) = place_elem_body(elem, ty, ctx, method_instance, method);
+            let (curr_ty, curr_ops) = place_elem_body(elem, ty, ctx, method_instance, method,type_cache);
             ty = curr_ty.monomorphize(&method_instance, ctx);
             ops.extend(curr_ops);
         }
         ops.extend(value_calc);
         ty = ty.monomorphize(&method_instance, ctx);
-        ops.extend(place_elem_set(head, ty, ctx, method_instance));
+        ops.extend(place_elem_set(head, ty, ctx, method_instance,type_cache));
         ops
     }
 }

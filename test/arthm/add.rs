@@ -25,7 +25,7 @@ fn main(){
     {
         test_eq!(black_box(2_i128)+ 2, 4);
     }
-    
+    //let slice:&mut [u8] = black_box(unsafe{core::slice::from_raw_parts_mut(black_box(core::ptr::null_mut()),64)});
 
     test_eq!(black_box(2.0_f32) + 2.0, 4.0);
     test_eq!(black_box(2.0_f64) + 2.0, 4.0);

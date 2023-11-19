@@ -2,22 +2,25 @@ use rustc_middle::mir::{BinOp, Operand};
 use rustc_middle::ty::{Instance, TyCtxt};
 
 use crate::cil_op::{CILOp, FieldDescriptor};
-use crate::r#type::{DotnetTypeRef, Type};
+use crate::r#type::{DotnetTypeRef, Type, TyCache};
 /// Preforms an checked binary operation.
-pub(crate) fn binop_checked<'tcx>(
+pub(crate) fn binop_checked<'tyctx>(
     binop: BinOp,
-    operand_a: &Operand<'tcx>,
-    operand_b: &Operand<'tcx>,
-    tcx: TyCtxt<'tcx>,
-    method: &rustc_middle::mir::Body<'tcx>,
-    method_instance: Instance<'tcx>,
+    operand_a: &Operand<'tyctx>,
+    operand_b: &Operand<'tyctx>,
+    tyctx: TyCtxt<'tyctx>,
+    method: &rustc_middle::mir::Body<'tyctx>,
+    method_instance: Instance<'tyctx>,
+    cache:&mut TyCache,
 ) -> Vec<CILOp> {
-    let ops_a = crate::operand::handle_operand(operand_a, tcx, method, method_instance);
-    let ops_b = crate::operand::handle_operand(operand_b, tcx, method, method_instance);
-    let ty_a = operand_a.ty(&method.local_decls, tcx);
-    let ty_b = operand_b.ty(&method.local_decls, tcx);
+    let ops_a = crate::operand::handle_operand(operand_a, tyctx, method, method_instance,cache);
+    let ops_b = crate::operand::handle_operand(operand_b, tyctx, method, method_instance,cache);
+    let ty_a = operand_a.ty(&method.local_decls, tyctx);
+    let ty_a = crate::utilis::monomorphize(&method_instance, ty_a, tyctx);
+    let ty_b = operand_b.ty(&method.local_decls, tyctx);
+    let ty_b = crate::utilis::monomorphize(&method_instance, ty_b, tyctx);
     assert_eq!(ty_a, ty_b);
-    let ty = Type::from_ty(ty_a, tcx, &method_instance);
+    let ty = cache.type_from_cache(ty_a, tyctx);
     match binop {
         BinOp::Mul | BinOp::MulUnchecked => [ops_a, ops_b, mul(ty).into()]
             .into_iter()

@@ -102,12 +102,13 @@ impl Assembly {
         mir: &'tcx rustc_middle::mir::Body<'tcx>,
         tcx: TyCtxt<'tcx>,
         instance: Instance<'tcx>,
+        type_cache:&mut TyCache,
     ) -> Vec<CILOp> {
         if crate::ABORT_ON_ERROR {
-            crate::terminator::handle_terminator(term, mir, tcx, mir, instance)
+            crate::terminator::handle_terminator(term, mir, tcx, mir, instance,type_cache)
         } else {
             match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                crate::terminator::handle_terminator(term, mir, tcx, mir, instance)
+                crate::terminator::handle_terminator(term, mir, tcx, mir, instance,type_cache)
             })) {
                 Ok(ok) => ok,
                 Err(payload) => {
@@ -131,14 +132,15 @@ impl Assembly {
         tcx: TyCtxt<'tcx>,
         mir: &rustc_middle::mir::Body<'tcx>,
         instance: Instance<'tcx>,
+        type_cache:&mut TyCache,
     ) -> Result<Vec<CILOp>, CodegenError> {
         if crate::ABORT_ON_ERROR {
             Ok(crate::statement::handle_statement(
-                statement, tcx, mir, instance,
+                statement, tcx, mir, instance,type_cache
             ))
         } else {
             match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                crate::statement::handle_statement(statement, tcx, mir, instance)
+                crate::statement::handle_statement(statement, tcx, mir, instance,type_cache)
             })) {
                 Ok(success) => Ok(success),
                 Err(payload) => {
@@ -159,9 +161,10 @@ impl Assembly {
         instance: Instance<'tcx>,
         tcx: TyCtxt<'tcx>,
         name: &str,
+        cache:&mut TyCache,
     ) -> Result<(), MethodCodegenError> {
         match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            self.add_fn(instance, tcx, name)
+            self.add_fn(instance, tcx, name,cache)
         })) {
             Ok(success) => success,
             Err(payload) => {
@@ -182,6 +185,7 @@ impl Assembly {
         instance: Instance<'tcx>,
         tcx: TyCtxt<'tcx>,
         name: &str,
+        cache:&mut TyCache,
     ) -> Result<(), MethodCodegenError> {
         if crate::utilis::is_function_magic(name) {
             return Ok(());
@@ -198,14 +202,14 @@ impl Assembly {
             println!("function {instance:?} has no MIR. Skippping.");
             return Ok(());
         }
-        let mut cache = crate::r#type::TyCache::empty();
+        
         let mir = tcx.optimized_mir(instance.def_id());
         // Check if function is public or not.
         // FIXME: figure out the source of the bug causing visibility to not be read propely.
         // let access_modifier = AccessModifer::from_visibility(tcx.visibility(instance.def_id()));
         let access_modifier = AccessModifer::Public;
         // Handle the function signature
-        let sig = match FnSig::sig_from_instance_(instance, tcx, &mut cache) {
+        let sig = match FnSig::sig_from_instance_(instance, tcx,  cache) {
             Ok(sig) => sig,
             Err(err) => {
                 eprintln!("Could not get the signature of function {name} because {err:?}");
@@ -220,7 +224,7 @@ impl Assembly {
             tcx,
             sig.inputs().len(),
             &instance,
-            &mut cache,
+            cache,
         );
         // Create method prototype
         let mut method = Method::new(access_modifier, true, sig, name, locals);
@@ -236,7 +240,7 @@ impl Assembly {
                 if crate::INSERT_MIR_DEBUG_COMMENTS {
                     rustc_middle::ty::print::with_no_trimmed_paths! {ops.push(CILOp::Comment(format!("{statement:?}").into()))};
                 }
-                let statement_ops = match Self::statement_to_ops(statement, tcx, mir, instance) {
+                let statement_ops = match Self::statement_to_ops(statement, tcx, mir, instance,cache) {
                     Ok(ops) => ops,
                     Err(err) => {
                         eprintln!(
@@ -253,7 +257,7 @@ impl Assembly {
             }
             match &block_data.terminator {
                 Some(term) => {
-                    let term_ops = Self::terminator_to_ops(term, mir, tcx, instance);
+                    let term_ops = Self::terminator_to_ops(term, mir, tcx, instance,cache);
                     if term_ops != &[CILOp::Ret] {
                         crate::utilis::check_debugable(&term_ops, term, does_return_void);
                     }
@@ -271,6 +275,12 @@ impl Assembly {
         self.add_method(method);
         Ok(())
         //todo!("Can't add function")
+    }
+    /// Adds 100 first array types
+    pub fn add_array_types(&mut self){
+        for i in 0..25{
+            self.types.insert(crate::r#type::type_def::get_array_type(i));
+        }
     }
     /// Returns true if assembly contains function named `name`
     pub fn contains_fn_named(&self, name: &str) -> bool {
@@ -295,17 +305,6 @@ impl Assembly {
     pub fn types(&self) -> impl Iterator<Item = &TypeDef> {
         self.types.iter()
     }
-    /// Adds rust type `ty` and all types contained within it, if such type is not already present.
-    pub fn add_type<'tyctx>(
-        &mut self,
-        ty: rustc_middle::ty::Ty<'tyctx>,
-        tyctx: TyCtxt<'tyctx>,
-        method: &Instance<'tyctx>,
-    ) {
-        for type_def in TypeDef::from_ty(ty, tyctx, method) {
-            self.types.insert(type_def);
-        }
-    }
     /// Optimizes all the methods witin the assembly.
     pub fn opt(&mut self) {
         let functions: HashSet<_> = self
@@ -328,7 +327,9 @@ impl Assembly {
         &mut self,
         item: MonoItem<'tcx>,
         tcx: TyCtxt<'tcx>,
+        cache:&mut TyCache
     ) -> Result<(), CodegenError> {
+        
         if !item.is_instantiable(tcx) {
             let name = item.symbol_name(tcx);
             // TODO: check if this whole if statement is even needed.
@@ -342,7 +343,7 @@ impl Assembly {
                 //let instance = crate::utilis::monomorphize(&instance,tcx);
                 let symbol_name = crate::utilis::function_name(item.symbol_name(tcx));
 
-                self.checked_add_fn(instance, tcx, &symbol_name)
+                self.checked_add_fn(instance, tcx, &symbol_name,cache)
                     .expect("Could not add function!");
 
                 Ok(())
@@ -386,7 +387,6 @@ fn locals_from_mir<'tyctx>(
             }
             let name = None;
             let tpe = tycache.type_from_cache(ty, tyctx);
-            //let tpe = Type::from_ty(ty, tyctx, method_instance);
             local_types.push((name, tpe));
         }
     }
