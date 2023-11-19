@@ -37,12 +37,12 @@ impl GenericResolvePath {
             )
         }
     }
-    fn generalize(&self,generics: &mut Vec<GenericResolvePath>)->Type{
-        match self{
-            Self::Ptr(inner)=>Type::Ptr(inner.generalize(generics).into()),
-            Self::Concreate(tpe)=>tpe.clone(),
-            Self::Subst { nth } => Type::GenericArg(generic_idx(generics,self)),
-            _=>todo!("Can't generalize grp {self:?}")
+    fn generalize(&self, generics: &mut Vec<GenericResolvePath>) -> Type {
+        match self {
+            Self::Ptr(inner) => Type::Ptr(inner.generalize(generics).into()),
+            Self::Concreate(tpe) => tpe.clone(),
+            Self::Subst { nth } => Type::GenericArg(generic_idx(generics, self)),
+            _ => todo!("Can't generalize grp {self:?}"),
         }
     }
 }
@@ -106,7 +106,7 @@ fn generalize_type(
 ) -> Type {
     match tpe {
         Either::Left(tpe) => tpe,
-        Either::Right(generic) =>generic.generalize(generics),
+        Either::Right(generic) => generic.generalize(generics),
     }
 }
 pub struct TyCache {
@@ -161,7 +161,12 @@ impl TyCache {
     ) -> TypeDefAndGenericInfo {
         let access = AccessModifer::Public;
         let mut explicit_offsets: Vec<u32> = vec![0];
+
         let tag_size = enum_tag_size(adt.variants().len() as u64);
+        let mut fields = vec![(
+            "_tag".into(),
+            crate::utilis::tag_from_enum_variants(adt.variants().len() as u64),
+        )];
         explicit_offsets.extend(adt.variants().iter().map(|_| tag_size));
         //let mut inner_types = vec![];
         let mut variants = vec![];
@@ -171,6 +176,7 @@ impl TyCache {
             for field in &variant.fields {
                 let generic_ty = tyctx.type_of(field.did).instantiate_identity();
                 let name = escape_field_name(&field.name.to_string());
+
                 let generic_ty = self.generic_type_from_cache(generic_ty, tyctx);
                 variant_fields.push((name, generic_ty));
             }
@@ -188,7 +194,7 @@ impl TyCache {
                 (variant_name, fields)
             })
             .collect();
-        let mut fields = Vec::new();
+
         let enum_name = crate::utilis::adt_name(&adt);
         for (variant_name, field_list) in variants {
             let inner = TypeDef::new(
@@ -208,6 +214,7 @@ impl TyCache {
                 .map(|(idx, _)| Type::GenericArg(idx as u32))
                 .collect();
             dref.set_generics(generics);
+            let variant_name: IString = format!("v_{variant_name}").into();
             fields.push((variant_name, dref.into()));
             inner_types.push(inner);
         }
@@ -299,9 +306,7 @@ impl TyCache {
         tyctx: TyCtxt<'tyctx>,
     ) -> Option<TypeDefAndGenericInfo> {
         match ty.kind() {
-            TyKind::Adt(adt, _)=>{
-                Some(self.adt_from_cache(*adt,tyctx))
-            }
+            TyKind::Adt(adt, _) => Some(self.adt_from_cache(*adt, tyctx)),
             _ => todo!("Can't retrive typedef for type {ty:?} from cache yet!"),
         }
     }
