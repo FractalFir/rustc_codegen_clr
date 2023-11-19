@@ -104,15 +104,12 @@ pub fn field_descrptor<'ctx>(
             format!("Item{}", field_idx + 1).into(),
         );
     }
-    let defs = TypeDef::from_ty(owner_ty, ctx, &method_instance);
+    let def = &type_cache.type_def_from_cache(owner_ty,ctx).expect("Could not find owner_ty.").type_def;//TypeDef::from_ty(owner_ty, ctx, &method_instance);
+    let def = def.clone();
     let type_ref = type_cache
         .type_from_cache(owner_ty, ctx) //
         .as_dotnet()
         .expect("Field owner not a dotnet type!");
-    let def = defs
-        .iter()
-        .last()
-        .expect("`crate::utilis::field_descrptor` called on type without a definition.");
     def.field_desc_from_rust_field_idx(type_ref, field_idx)
 }
 /// Gets the type of field with index `field_idx`, returning a GenericArg if the types field is generic

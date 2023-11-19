@@ -12,7 +12,7 @@ enum GenericResolvePath {
     Tuple { elements: Box<[GenericResolvePath]> },
     Concreate(Type),
     Ptr(Box<Self>),
-    //Ref(Box<Self>),
+    Ref(Box<Self>),
     DotnetRef(Box<(DotnetTypeRef, Box<[Option<Type>]>)>),
 }
 impl GenericResolvePath {
@@ -37,6 +37,14 @@ impl GenericResolvePath {
             )
         }
     }
+    fn generalize(&self,generics: &mut Vec<GenericResolvePath>)->Type{
+        match self{
+            Self::Ptr(inner)=>Type::Ptr(inner.generalize(generics).into()),
+            Self::Concreate(tpe)=>tpe.clone(),
+            Self::Subst { nth } => Type::GenericArg(generic_idx(generics,self)),
+            _=>todo!("Can't generalize grp {self:?}")
+        }
+    }
 }
 impl From<Either<Type, Self>> for GenericResolvePath {
     fn from(value: Either<Type, Self>) -> Self {
@@ -59,8 +67,8 @@ impl GenericResolvePath {
     }
 }
 #[derive(Debug, Clone)]
-struct TypeDefAndGenericInfo {
-    type_def: TypeDef,
+pub struct TypeDefAndGenericInfo {
+    pub type_def: TypeDef,
     generic_info: Vec<GenericResolvePath>,
 }
 impl TypeDefAndGenericInfo {
@@ -98,7 +106,7 @@ fn generalize_type(
 ) -> Type {
     match tpe {
         Either::Left(tpe) => tpe,
-        Either::Right(generic) => Type::GenericArg(generic_idx(generics, &generic)),
+        Either::Right(generic) =>generic.generalize(generics),
     }
 }
 pub struct TyCache {
@@ -285,12 +293,15 @@ impl TyCache {
             .expect("ERROR: Get directly after insert failed")
             .clone()
     }
-    fn type_def_from_cache<'tyctx>(
+    pub fn type_def_from_cache<'tyctx>(
         &mut self,
         ty: Ty<'tyctx>,
         tyctx: TyCtxt<'tyctx>,
-    ) -> Option<&TypeDefAndGenericInfo> {
+    ) -> Option<TypeDefAndGenericInfo> {
         match ty.kind() {
+            TyKind::Adt(adt, _)=>{
+                Some(self.adt_from_cache(*adt,tyctx))
+            }
             _ => todo!("Can't retrive typedef for type {ty:?} from cache yet!"),
         }
     }
