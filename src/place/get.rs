@@ -94,22 +94,15 @@ fn place_elem_get<'a>(
             }
             super::PlaceTy::EnumVariant(enm, var_idx) => {
                 let owner = crate::utilis::monomorphize(&method_instance, enm, tyctx);
-                let variant_name = crate::utilis::variant_name(owner, var_idx);
-                let owner = crate::utilis::monomorphize(&method_instance, enm, tyctx);
-                let field_type =
-                    crate::utilis::generic_field_ty(owner, index.as_u32(), tyctx, method_instance);
-                let owner = type_cache.type_from_cache(owner, tyctx);
-                let owner = if let crate::r#type::Type::DotnetType(owner) = owner {
-                    owner.as_ref().clone()
-                } else {
-                    panic!();
-                };
-                let field_name = field_name(enm, index.as_u32());
-                let mut field_owner = owner;
-
-                field_owner.append_path(&format!("/{variant_name}"));
-                let field_desc = FieldDescriptor::boxed(field_owner, field_type, field_name);
-                let ops = vec![CILOp::LDField(field_desc)];
+                let field_desc = crate::utilis::field_descrptor(
+                    owner,
+                    (var_idx + 1).into(),
+                    tyctx,
+                    method_instance,
+                    type_cache,
+                );
+                //let field_desc = crate::utilis::field_descrptor(enm, field_idx, ctx, method_instance, type_cache);
+                let ops = vec![CILOp::LDField(field_desc.into())];
                 ops
                 //todo!("Can't get fields of enum variants yet!");
             }

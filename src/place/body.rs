@@ -61,22 +61,14 @@ pub fn place_elem_body<'ctx>(
             }
             PlaceTy::EnumVariant(enm, var_idx) => {
                 let owner = crate::utilis::monomorphize(&method_instance, enm, tyctx);
-                let variant_name = crate::utilis::variant_name(owner, var_idx);
-                let owner = crate::utilis::monomorphize(&method_instance, enm, tyctx);
-                let gen_field_type =
-                    crate::utilis::generic_field_ty(owner, index.as_u32(), tyctx, method_instance);
-                let owner = type_cache.type_from_cache(curr_ty, tyctx);
-                let owner = if let crate::r#type::Type::DotnetType(owner) = owner {
-                    owner.as_ref().clone()
-                } else {
-                    panic!();
-                };
-                let field_name = field_name(enm, index.as_u32());
-                let mut field_owner = owner;
-
-                field_owner.append_path(&format!("/{variant_name}"));
-                let field_desc = FieldDescriptor::boxed(field_owner, gen_field_type, field_name);
-                let ops = vec![CILOp::LDFieldAdress(field_desc)];
+                let field_desc = crate::utilis::field_descrptor(
+                    owner,
+                    (var_idx + 1).into(),
+                    tyctx,
+                    method_instance,
+                    type_cache,
+                );
+                let ops = vec![CILOp::LDFieldAdress(field_desc.into())];
                 ((*field_type).into(), ops)
             }
         },

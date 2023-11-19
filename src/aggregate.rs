@@ -168,26 +168,8 @@ fn aggregate_adt<'tyctx>(
             for field in fields {
                 ops.extend(obj_getter.iter().cloned());
                 ops.extend(field.1);
-                let field_def = adt
-                    .all_fields()
-                    .nth(field.0 as usize)
-                    .expect("Could not find field!");
-                let field_type = field_def.ty(tyctx, subst);
-
-                let field_type = if crate::utilis::is_ty_alias(field_type) {
-                    let field_type =
-                        crate::utilis::monomorphize(&method_instance, field_type, tyctx);
-                    type_cache.type_from_cache(field_type, tyctx)
-                } else {
-                    crate::utilis::generic_field_ty(adt_type, field.0, tyctx, method_instance)
-                };
-                let field_name = field_name(adt_type, field.0);
-                let field_desc = crate::cil_op::FieldDescriptor::boxed(
-                    adt_type_ref.clone(),
-                    field_type,
-                    field_name,
-                );
-                ops.push(CILOp::STField(field_desc));
+                let field_desc = crate::utilis::field_descrptor(adt_type, field.0, tyctx, method_instance, type_cache);
+                ops.push(CILOp::STField(field_desc.into()));
             }
             ops.extend(crate::place::place_get(
                 target_location,
@@ -293,7 +275,8 @@ fn aggregate_adt<'tyctx>(
                     field_type,
                     field_name,
                 );
-                ops.push(CILOp::STField(field_desc));
+                let field_desc = crate::utilis::field_descrptor(adt_type, field.0, tyctx, method_instance, type_cache);
+                ops.push(CILOp::STField(field_desc.into()));
             }
             ops.extend(crate::place::place_get(
                 target_location,
