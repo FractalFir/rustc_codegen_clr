@@ -6,5 +6,6 @@ fn main(){
     let ptr = unsafe{malloc(64) as *mut _};
     black_box(ptr);
     let slice:&mut [u8] = unsafe{core::slice::from_raw_parts_mut(ptr,64)};
+    let len = slice.len();
     black_box(slice);
 }

@@ -91,15 +91,15 @@ pub fn insert_libc(asm: &mut Assembly) {
 fn rust_slice(asm: &mut Assembly) {
     let mut ptr_components = crate::r#type::TypeDef::nameonly("core.ptr.metadata.PtrComponents");
     let mut rust_slice_dotnet = DotnetTypeRef::new(None, "core.ptr.metadata.PtrComponents");
-    ptr_components.set_generic_count(2);
-    rust_slice_dotnet.set_generics([Type::GenericArg(0), Type::GenericArg(1)]);
+    ptr_components.set_generic_count(1);
+    rust_slice_dotnet.set_generics([Type::GenericArg(0)]);
     // TODO: constrain this generic to be unmanaged
     ptr_components.add_field("data_address".into(), Type::Ptr(Type::Void.into()));
-    ptr_components.add_field("metadata".into(), Type::GenericArg(1));
+    ptr_components.add_field("metadata".into(), Type::GenericArg(0));
 
     asm.add_typedef(ptr_components);
     let mut rust_slice = crate::r#type::TypeDef::nameonly("RustSlice");
-    rust_slice.set_generic_count(2);
+    rust_slice.set_generic_count(1);
     asm.add_typedef(rust_slice);
 }
 

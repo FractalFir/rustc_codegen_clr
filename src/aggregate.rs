@@ -168,7 +168,13 @@ fn aggregate_adt<'tyctx>(
             for field in fields {
                 ops.extend(obj_getter.iter().cloned());
                 ops.extend(field.1);
-                let field_desc = crate::utilis::field_descrptor(adt_type, field.0, tyctx, method_instance, type_cache);
+                let field_desc = crate::utilis::field_descrptor(
+                    adt_type,
+                    field.0,
+                    tyctx,
+                    method_instance,
+                    type_cache,
+                );
                 ops.push(CILOp::STField(field_desc.into()));
             }
             ops.extend(crate::place::place_get(
@@ -275,7 +281,13 @@ fn aggregate_adt<'tyctx>(
                     field_type,
                     field_name,
                 );
-                let field_desc = crate::utilis::field_descrptor(adt_type, field.0, tyctx, method_instance, type_cache);
+                let field_desc = crate::utilis::field_descrptor(
+                    adt_type,
+                    field.0,
+                    tyctx,
+                    method_instance,
+                    type_cache,
+                );
                 ops.push(CILOp::STField(field_desc.into()));
             }
             ops.extend(crate::place::place_get(
