@@ -16,7 +16,6 @@ enum GenericResolvePath {
     },
     Concreate(Type),
     Ptr(Box<Self>),
-    Ref(Box<Self>),
     DotnetRef {
         name: IString,
         ref_generics: Box<[GenericResolvePath]>,
@@ -50,9 +49,8 @@ impl GenericResolvePath {
     }
     fn generalize(&self, generics: &mut Vec<GenericResolvePath>) -> Type {
         match self {
-            Self::Ptr(inner) => Type::Ptr(inner.generalize(generics).into()),
             Self::Concreate(tpe) => tpe.clone(),
-            Self::Subst { .. } | Self::Alias { .. } => {
+            Self::Subst { .. } | Self::Alias { .. } | Self::Ptr{..}=> {
                 Type::GenericArg(generic_idx(generics, self))
             }
             Self::DotnetRef { name, ref_generics } => {
@@ -107,7 +105,7 @@ impl GenericResolvePath {
             Self::Subst { nth } => (&subst[*nth as usize])
                 .clone()
                 .expect("ERROR: non type subst where type expected!"),
-            Self::Ptr(inner) => Type::Ptr(inner.monomorphize_from(subst, cache).into()),
+            Self::Ptr(inner) => inner.monomorphize_from(subst, cache).pointer_to(),
             Self::Alias {
                 projection_trait,
                 alias_subst,
@@ -406,15 +404,26 @@ impl TyCache {
                 }
             }
             TyKind::Never => Either::Left(Type::Void), // TODO: ensure this is always OK
-            TyKind::RawPtr(type_and_mut) => {
-                let ptr = self.generic_type_from_cache(type_and_mut.ty, tyctx);
-                match ptr {
-                    Either::Left(tpe) => Either::Left(Type::Ptr(tpe.into())),
-                    Either::Right(generic) => {
-                        Either::Right(GenericResolvePath::Ptr(generic.into()))
+            TyKind::RawPtr(type_and_mut) => match type_and_mut.ty.kind() {
+                TyKind::Slice(inner) => match self.generic_type_from_cache(*inner, tyctx) {
+                    Either::Left(_concreate) => {
+                        let mut dotnet =
+                            DotnetTypeRef::new(None, "core.ptr.metadata.PtrComponents");
+                        dotnet.set_generics(vec![Type::USize]);
+                        Either::Left(dotnet.into())
                     }
+                    Either::Right(_generic) => todo!("Can't handle generic slice!"),
+                },
+                TyKind::Str => {
+                    let mut dotnet = DotnetTypeRef::new(None, "core.ptr.metadata.PtrComponents");
+                    dotnet.set_generics(vec![Type::U8, Type::USize]);
+                    Either::Left(dotnet.into())
                 }
-            }
+                _ => match self.generic_type_from_cache(type_and_mut.ty, tyctx) {
+                    Either::Left(tpe) => Either::Left(Type::Ptr(tpe.into())),
+                    Either::Right(tpe) => Either::Right(GenericResolvePath::Ptr(tpe.into())),
+                },
+            },
             TyKind::Adt(def, subst) => {
                 let name = crate::utilis::adt_name(&def);
                 if super::is_name_magic(name.as_ref()) {

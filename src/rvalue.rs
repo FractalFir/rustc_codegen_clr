@@ -1,10 +1,10 @@
-use crate::cil_op::{CILOp, CallSite};
+use crate::cil_op::{CILOp, CallSite, FieldDescriptor};
 use crate::operand::handle_operand;
-use crate::r#type::{TyCache, Type};
+use crate::r#type::{TyCache, Type, DotnetTypeRef};
 use rustc_middle::mir::{CastKind, NullOp};
 use rustc_middle::{
     mir::{Place, Rvalue},
-    ty::{Instance, TyCtxt},
+    ty::{Instance, TyCtxt,TyKind},
 };
 pub fn handle_rvalue<'tcx>(
     rvalue: &Rvalue<'tcx>,
@@ -223,6 +223,15 @@ pub fn handle_rvalue<'tcx>(
                 crate::place::place_adress(operand, tyctx, method, method_instance, tycache);
             let tpe = operand.ty(method, tyctx);
             let tpe = crate::utilis::monomorphize(&method_instance, tpe, tyctx);
+            match tpe.ty.kind(){
+                TyKind::Slice(_)=>{
+                    let descriptor = FieldDescriptor::new(DotnetTypeRef::slice(),Type::GenericArg(0),"metadata".into());
+                    ops.extend([CILOp::LDField(descriptor.into())])
+                },
+                _=>todo!("Get length of type {tpe:?}"),
+            }
+            ops
+            /* 
             let class = tycache
                 .type_from_cache(tpe.ty, tyctx)
                 .as_dotnet()
@@ -237,7 +246,7 @@ pub fn handle_rvalue<'tcx>(
                 signature,
                 false,
             )));
-            ops
+            ops*/
             //todo!("Can't get the length of {operand:?}");
         }
         _ => todo!("Unhandled RValue {rvalue:?}"),
