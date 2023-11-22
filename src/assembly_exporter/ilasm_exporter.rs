@@ -122,13 +122,12 @@ fn type_def_cli(w: &mut impl Write, tpe: &TypeDef) -> Result<(), super::Assembly
     } else {
         "private"
     };
-    if tpe.explicit_offsets().is_some(){
+    if tpe.explicit_offsets().is_some() {
         writeln!(w, "\n.class {access} explicit ansi sealed beforefieldinit {name}{generics}  extends {extended}{{")?;
-    }
-    else{
+    } else {
         writeln!(w, "\n.class {access} {name}{generics} extends {extended}{{")?;
     }
-    
+
     for inner_type in tpe.inner_types() {
         type_def_cli(w, inner_type)?;
     }

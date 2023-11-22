@@ -54,7 +54,7 @@ fn create_const_adt_from_bytes<'ctx>(
                     create_const_from_slice(ftype, tyctx, field_bytes, method_instance, tycache);
                 creator_ops.push(CILOp::LoadAddresOfTMPLocal);
                 creator_ops.extend(field_ops);
-                let cil_ftype = tycache.type_from_cache(field.ty(tyctx,subst), tyctx);
+                let cil_ftype = tycache.type_from_cache(field.ty(tyctx, subst), tyctx);
                 creator_ops.push(CILOp::STField(crate::cil_op::FieldDescriptor::boxed(
                     dotnet_ty.clone(),
                     cil_ftype,

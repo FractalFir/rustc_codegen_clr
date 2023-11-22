@@ -94,7 +94,7 @@ pub fn place_elem_adress<'ctx>(
             let variant_type = PlaceTy::EnumVariant(curr_type, variant.as_u32());
             (variant_type, vec![CILOp::LDFieldAdress(field_desc)])
         }
-        /* 
+        /*
         PlaceElem::Index(index) => {
             let mut ops = vec![crate::place::local_adress(
                 index.as_usize(),

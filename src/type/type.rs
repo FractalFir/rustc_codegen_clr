@@ -119,8 +119,8 @@ impl DotnetTypeRef {
             is_valuetype: true,
         }
     }
-    pub fn slice()->Self{
-        let mut slice_ref = DotnetTypeRef::new(None,"core.ptr.metadata.PtrComponents");
+    pub fn slice() -> Self {
+        let mut slice_ref = DotnetTypeRef::new(None, "core.ptr.metadata.PtrComponents");
         slice_ref.set_generics(vec![Type::USize]);
         slice_ref.into()
     }
@@ -168,17 +168,16 @@ impl Type {
         slice_ref_type.set_generics([slice_type, slice_element]);
         slice_ref_type.into()
     }
-    pub fn pointer_to(&self)->Self{
-        match self{
-            Self::DotnetType(dref)=>{
-                if dref.assembly.is_none() && dref.name_path() == "RustSlice"{
+    pub fn pointer_to(&self) -> Self {
+        match self {
+            Self::DotnetType(dref) => {
+                if dref.assembly.is_none() && dref.name_path() == "RustSlice" {
                     Self::DotnetType(DotnetTypeRef::slice().into())
-                }
-                else{
+                } else {
                     Self::Ptr(self.clone().into())
                 }
             }
-            _=>Self::Ptr(self.clone().into())
+            _ => Self::Ptr(self.clone().into()),
         }
     }
     pub fn map_generic(&self, generics: &[Type]) -> Option<Type> {

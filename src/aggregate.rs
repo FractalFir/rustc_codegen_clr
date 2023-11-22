@@ -222,7 +222,7 @@ fn aggregate_adt<'tyctx>(
                 ops.extend(field_value.1.clone());
                 let field_name = field.name.to_string();
                 let field_name = crate::r#type::escape_field_name(&field_name);
-                let field_type = type_cache.type_from_cache(field.ty(tyctx,subst), tyctx);
+                let field_type = type_cache.type_from_cache(field.ty(tyctx, subst), tyctx);
                 ops.push(CILOp::STField(Box::new(FieldDescriptor::new(
                     variant_type.clone(),
                     field_type,
