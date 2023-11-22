@@ -98,6 +98,7 @@ pub fn place_elem_body<'ctx>(
             let variant_type = PlaceTy::EnumVariant(curr_type, variant.as_u32());
             (variant_type, vec![CILOp::LDFieldAdress(field_desc)])
         }
+        /* 
         PlaceElem::Index(index) => {
             let mut ops = vec![crate::place::local_adress(
                 index.as_usize(),
@@ -138,7 +139,7 @@ pub fn place_elem_body<'ctx>(
                 )));
                 (element_ty.into(), ops)
             }
-        }
+        }*/
         _ => todo!("Can't handle porojection {place_elem:?} in body"),
     }
 }

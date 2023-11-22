@@ -7,5 +7,6 @@ fn main(){
     black_box(ptr);
     let slice:&mut [u8] = unsafe{core::slice::from_raw_parts_mut(ptr,64)};
     let len = slice.len();
+    let first = slice[black_box(0)];
     black_box(slice);
 }

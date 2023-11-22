@@ -67,6 +67,7 @@ pub fn place_elem_set<'a>(
                 todo!("Can't set fields of enum variants yet!");
             }
         }
+        /*
         PlaceElem::Index(index) => {
             let mut ops = vec![crate::place::local_adress(
                 index.as_usize(),
@@ -99,7 +100,7 @@ pub fn place_elem_set<'a>(
                 type_cache,
             ));
             ops
-        }
+        }*/
         _ => todo!("Can't handle porojection {place_elem:?} in set"),
     }
 }
