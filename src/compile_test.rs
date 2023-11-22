@@ -566,7 +566,7 @@ test_lib! {references}
 test_lib! {types}
 
 run_test! {arthm,add}
-
+run_test! {arthm,mul}
 run_test! {arthm,sub}
 run_test! {types,enums}
 run_test! {types,nbody}

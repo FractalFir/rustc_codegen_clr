@@ -104,10 +104,8 @@ pub fn field_descrptor<'ctx>(
             format!("Item{}", field_idx + 1).into(),
         );
     }
-    let def = &type_cache
-        .type_def_from_cache(owner_ty, ctx)
-        .expect("Could not find owner_ty.")
-        .type_def; //TypeDef::from_ty(owner_ty, ctx, &method_instance);
+    let def = type_cache
+        .type_def_from_cache(owner_ty, ctx);//TypeDef::from_ty(owner_ty, ctx, &method_instance);
     let def = def.clone();
     let type_ref = type_cache
         .type_from_cache(owner_ty, ctx) //

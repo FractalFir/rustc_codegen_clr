@@ -22,6 +22,12 @@ pub struct TypeDef {
     extends: Option<DotnetTypeRef>,
 }
 impl TypeDef {
+    pub fn ptr_components(name:&str,metadata:Type)->Self{
+        let mut ptr_components = crate::r#type::TypeDef::nameonly(name);
+        ptr_components.add_field("data_address".into(), Type::Ptr(Type::Void.into()));
+        ptr_components.add_field("metadata".into(), metadata);
+        ptr_components
+    }
     pub fn morphic_fields<'a>(
         &'a self,
         generics: &'a [Type],

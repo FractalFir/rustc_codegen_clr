@@ -4,230 +4,87 @@ use crate::{
 };
 use either::Either;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::{AdtDef, AdtKind, Ty, TyCtxt, TyKind};
+use rustc_middle::ty::{AdtDef, AdtKind, Ty,List, TyCtxt, TyKind,GenericArg};
 use std::collections::HashMap;
-#[derive(Debug, Clone, PartialEq)]
-enum GenericResolvePath {
-    Subst {
-        nth: u32,
-    },
-    Tuple {
-        elements: Box<[GenericResolvePath]>,
-    },
-    Concreate(Type),
-    Ptr(Box<Self>),
-    DotnetRef {
-        name: IString,
-        ref_generics: Box<[GenericResolvePath]>,
-    },
-    Alias {
-        projection_trait: DefId,
-        alias_subst: Box<[Option<GenericResolvePath>]>,
-    },
-}
-impl GenericResolvePath {
-    fn tuple(types: &[Either<Type, GenericResolvePath>]) -> Either<Type, Self> {
-        // If any type is not fully resolved, create a generic tuple type.
-        if types.iter().any(|tpe| tpe.is_right()) {
-            Either::Right(Self::Tuple {
-                elements: types
-                    .iter()
-                    .map(|tpe| (*tpe).clone().into())
-                    .collect::<Box<[GenericResolvePath]>>(),
-            })
-        } else {
-            Either::Left(
-                super::tuple_type(
-                    &types
-                        .iter()
-                        .map(|tpe| tpe.clone().unwrap_left())
-                        .collect::<Vec<_>>(),
-                )
-                .into(),
-            )
-        }
-    }
-    fn generalize(&self, generics: &mut Vec<GenericResolvePath>) -> Type {
-        match self {
-            Self::Concreate(tpe) => tpe.clone(),
-            Self::Subst { .. } | Self::Alias { .. } | Self::Ptr{..}=> {
-                Type::GenericArg(generic_idx(generics, self))
-            }
-            Self::DotnetRef { name, ref_generics } => {
-                let ref_generics: Vec<_> = ref_generics
-                    .iter()
-                    .map(|option| option.clone().generalize(generics))
-                    .collect();
-                let mut dref = DotnetTypeRef::new(None, name);
-
-                dref.set_generics(ref_generics);
-                dref.into()
-            }
-            _ => todo!("Can't generalize grp {self:?}"),
-        }
-    }
-}
-impl From<Either<Type, Self>> for GenericResolvePath {
-    fn from(value: Either<Type, Self>) -> Self {
-        match value {
-            Either::Left(tpe) => GenericResolvePath::Concreate(tpe),
-            Either::Right(right) => right,
-        }
-    }
-}
-impl GenericResolvePath {
-    fn substitute(&self, subst: &[Option<Self>]) -> Self {
-        match self {
-            Self::Subst { nth } => subst[*nth as usize].clone().unwrap(),
-            Self::Concreate(tpe) => self.clone(),
-            Self::Alias {
-                projection_trait,
-                alias_subst,
-            } => {
-                let alias_subst = alias_subst
-                    .iter()
-                    .map(|ele| match ele {
-                        Some(ele) => Some(ele.substitute(subst)),
-                        None => None,
-                    })
-                    .collect();
-                Self::Alias {
-                    projection_trait: *projection_trait,
-                    alias_subst,
-                }
-            }
-            _ => todo!("Can't susbtitute GenericResolvePath {self:?}"),
-        }
-    }
-    fn monomorphize_from(&self, subst: &[Option<Type>], cache: &TyCache) -> Type {
-        match self {
-            Self::Concreate(tpe) => tpe.clone(),
-            Self::Subst { nth } => (&subst[*nth as usize])
-                .clone()
-                .expect("ERROR: non type subst where type expected!"),
-            Self::Ptr(inner) => inner.monomorphize_from(subst, cache).pointer_to(),
-            Self::Alias {
-                projection_trait,
-                alias_subst,
-            } => {
-                let alias_subst: Box<[_]> = alias_subst
-                    .iter()
-                    .map(|elem| match elem {
-                        Some(elem) => Some(elem.monomorphize_from(subst, cache)),
-                        None => None,
-                    })
-                    .collect();
-                cache.resolve_alias(*projection_trait, alias_subst.into())
-            } //
-            _ => todo!("Subst type {self:?} not supported yet!"),
-        }
-    }
-}
-#[derive(Debug, Clone)]
-pub struct TypeDefAndGenericInfo {
-    pub type_def: TypeDef,
-    generic_info: Vec<GenericResolvePath>,
-}
-impl TypeDefAndGenericInfo {
-    fn morphic_ref(&self, subst: &[Option<Type>], cache: &TyCache) -> DotnetTypeRef {
-        let name = self.type_def.name();
-        let mut dref = DotnetTypeRef::new(None, name);
-        let generics: Vec<_> = self
-            .generic_info
-            .iter()
-            .map(|gi| gi.monomorphize_from(subst, cache))
-            .collect();
-        if name.contains("Vec") {
-            println!(
-                "Vec generics:{generics:?} {generic_info:?}",
-                generic_info = self.generic_info
-            );
-        }
-        dref.set_generics(generics);
-        dref
-    }
-}
-fn generic_idx(generics: &mut Vec<GenericResolvePath>, generic: &GenericResolvePath) -> u32 {
-    for (idx, generic_at) in generics.iter().enumerate() {
-        if generic_at == generic {
-            return idx as u32;
-        }
-    }
-    let idx = generics.len();
-    generics.push(generic.clone());
-    idx as u32
-}
-fn generalize_type(
-    generics: &mut Vec<GenericResolvePath>,
-    tpe: Either<Type, GenericResolvePath>,
-) -> Type {
-    match tpe {
-        Either::Left(tpe) => tpe,
-        Either::Right(generic) => generic.generalize(generics),
-    }
-}
 pub struct TyCache {
-    type_def_cache: HashMap<DefId, TypeDefAndGenericInfo>,
-    //TODO: Alias cache should take into accunt not only type generic, but also const generics and such.
-    alias_cache: HashMap<(Vec<Option<Type>>, DefId), Type>,
+    type_def_cache: HashMap<IString, TypeDef>,
 }
 impl TyCache {
     pub fn empty() -> Self {
         Self {
             type_def_cache: HashMap::new(),
-            alias_cache: HashMap::new(),
         }
     }
-    fn resolve_alias(&self, def_id: DefId, subst: Vec<Option<Type>>) -> Type {
-        eprintln!(
-            "WARNING: Assumuming wrong type alias on purpose! Trait:{def_id:?} subst:{subst:?}"
-        );
-        Type::USize
-        //self.alias_cache.get(&(subst,def_id)).expect("ERROR: unresolved type alias! TyCache could not resolve a type alias, because it did not have it in its database.").clone()
+    pub fn defs(&self)->impl Iterator<Item = &TypeDef>{
+        self.type_def_cache.values()
+    }
+    pub fn type_def_from_cache<'tyctx>(
+        &mut self,
+        ty: Ty<'tyctx>,
+        tyctx: TyCtxt<'tyctx>,
+    ) -> &TypeDef {
+        match ty.kind() {
+            TyKind::Adt(adt, susbt) => {
+                let name = crate::utilis::adt_name(&adt);
+                if super::is_name_magic(name.as_ref()) {
+                    todo!("Can't yet get fields of interop types!");
+                }
+                let name = super::mangle_susbt(&name, susbt);
+                if self.type_def_cache.get(name.as_ref()).is_none(){
+                    self.type_from_cache(ty, tyctx);
+                }
+                self.type_def_cache.get(name.as_ref()).expect("Added type, but it is missing??")
+            }
+            _ => todo!("Can't retrive typedef for type {ty:?} from cache yet!"),
+        }
+    }
+    fn adt<'tyctx>(&mut self,name:&str,def:AdtDef<'tyctx>,subst:&'tyctx List<rustc_middle::ty::GenericArg<'tyctx>>,tyctx: TyCtxt<'tyctx>)->DotnetTypeRef{
+        if self.type_def_cache.get(name).is_some(){
+            return DotnetTypeRef::new(None,name.into());
+        }
+        let def = match def.adt_kind(){
+            AdtKind::Struct=>self.struct_(name,def,subst,tyctx),
+            AdtKind::Enum=>self.enum_(name,def,subst,tyctx),
+            _=>todo!("adt {def:?} not supported!"),
+        };
+        self.type_def_cache.insert(name.into(),def);
+        DotnetTypeRef::new(None,name.into())
     }
     fn struct_<'tyctx>(
         &mut self,
+        name:&str,
         adt: AdtDef<'tyctx>,
+        subst:&'tyctx List<rustc_middle::ty::GenericArg<'tyctx>>,
         tyctx: TyCtxt<'tyctx>,
-    ) -> TypeDefAndGenericInfo {
-        let name = crate::utilis::adt_name(&adt);
+    ) -> TypeDef {
         let mut fields = Vec::new();
         for field in adt.all_fields() {
             let name = escape_field_name(&field.name.to_string());
-            let generic_ty = tyctx.type_of(field.did).instantiate_identity();
-            let generic_ty = self.generic_type_from_cache(generic_ty, tyctx);
-            fields.push((name, generic_ty));
+            let field_ty = self.type_from_cache(field.ty(tyctx,subst), tyctx);
+            fields.push((name, field_ty));
         }
-        let mut generic_info = Vec::new();
-        let fields: Vec<_> = fields
-            .into_iter()
-            .map(|(name, tpe)| (name, generalize_type(&mut generic_info, tpe)))
-            .collect();
 
         let access = AccessModifer::Public;
 
         let type_def = TypeDef::new(
             access,
-            name,
+            name.into(),
             vec![],
             fields,
             vec![],
             None,
-            generic_info.len() as u32,
+            0,
             None,
         );
-
-        //todo!("Can't yet create typedefs for struct {adt:?}\n fields:{fields:?}");
-        TypeDefAndGenericInfo {
-            type_def,
-            generic_info,
-        }
+        type_def
     }
     fn enum_<'tyctx>(
         &mut self,
+        enum_name:&str,
         adt: AdtDef<'tyctx>,
+        subst:&'tyctx List<rustc_middle::ty::GenericArg<'tyctx>>,
         tyctx: TyCtxt<'tyctx>,
-    ) -> TypeDefAndGenericInfo {
+    ) -> TypeDef {
         let access = AccessModifer::Public;
         let mut explicit_offsets: Vec<u32> = vec![0];
 
@@ -243,28 +100,14 @@ impl TyCache {
             let variant_name: IString = variant.name.to_string().into();
             let mut variant_fields = vec![];
             for field in &variant.fields {
-                let generic_ty = tyctx.type_of(field.did).instantiate_identity();
                 let name = escape_field_name(&field.name.to_string());
-
-                let generic_ty = self.generic_type_from_cache(generic_ty, tyctx);
-                variant_fields.push((name, generic_ty));
+            let field_ty = self.type_from_cache(field.ty(tyctx,subst), tyctx);
+                variant_fields.push((name, field_ty));
             }
             variants.push((variant_name, variant_fields));
         }
         let mut inner_types = vec![];
-        let mut generic_info = Vec::new();
-        let variants: Vec<_> = variants
-            .into_iter()
-            .map(|(variant_name, fields)| {
-                let fields: Vec<_> = fields
-                    .into_iter()
-                    .map(|(name, tpe)| (name, generalize_type(&mut generic_info, tpe)))
-                    .collect();
-                (variant_name, fields)
-            })
-            .collect();
 
-        let enum_name = crate::utilis::adt_name(&adt);
         for (variant_name, field_list) in variants {
             let inner = TypeDef::new(
                 access,
@@ -273,297 +116,116 @@ impl TyCache {
                 field_list,
                 vec![],
                 None,
-                generic_info.len() as u32,
+                0,
                 None,
             );
-            let mut dref = DotnetTypeRef::new(None, &format!("{enum_name}/{variant_name}"));
-            let generics: Vec<_> = generic_info
-                .iter()
-                .enumerate()
-                .map(|(idx, _)| Type::GenericArg(idx as u32))
-                .collect();
-            dref.set_generics(generics);
+            let dref = DotnetTypeRef::new(None, &format!("{enum_name}/{variant_name}"));
             let variant_name: IString = format!("v_{variant_name}").into();
             fields.push((variant_name, dref.into()));
             inner_types.push(inner);
         }
         let type_def = TypeDef::new(
             access,
-            enum_name,
+            enum_name.into(),
             inner_types,
             fields,
             vec![],
             Some(explicit_offsets),
-            generic_info.len() as u32,
+            0,
             None,
         );
-        TypeDefAndGenericInfo {
-            type_def,
-            generic_info,
-        }
+        type_def
     }
-    pub fn defs<'a>(&'a self) -> impl Iterator<Item = &TypeDef> + 'a {
-        self.type_def_cache.values().map(|tdagi| &tdagi.type_def)
-    }
-    fn union_<'tyctx>(
-        &mut self,
-        adt: AdtDef<'tyctx>,
-        tyctx: TyCtxt<'tyctx>,
-    ) -> TypeDefAndGenericInfo {
-        let mut fields = Vec::new();
-        for field in adt.all_fields() {
-            let name = escape_field_name(&field.name.to_string());
-            let generic_ty = tyctx.type_of(field.did).instantiate_identity();
-            let generic_ty = self.generic_type_from_cache(generic_ty, tyctx);
-            fields.push((name, generic_ty));
-        }
-        let mut generic_info = Vec::new();
-        let fields: Vec<_> = fields
-            .into_iter()
-            .map(|(name, tpe)| (name, generalize_type(&mut generic_info, tpe)))
-            .collect();
-
-        let name = crate::utilis::adt_name(&adt);
-
-        let access = AccessModifer::Public;
-        let explicit_offsets = (&fields).iter().map(|_| 0).collect();
-        let type_def = TypeDef::new(
-            access,
-            name,
-            vec![],
-            fields,
-            vec![],
-            Some(explicit_offsets),
-            generic_info.len() as u32,
-            None,
-        );
-        //todo!("Can't yet create typedefs for struct {adt:?}\n fields:{fields:?}");
-        TypeDefAndGenericInfo {
-            type_def,
-            generic_info,
-        }
-    }
-    fn adt_<'tyctx>(
-        &mut self,
-        adt: AdtDef<'tyctx>,
-        tyctx: TyCtxt<'tyctx>,
-    ) -> TypeDefAndGenericInfo {
-        match adt.adt_kind() {
-            AdtKind::Struct => self.struct_(adt, tyctx),
-            AdtKind::Enum => self.enum_(adt, tyctx),
-            AdtKind::Union => self.union_(adt, tyctx),
-        }
-    }
-    fn adt_from_cache<'tyctx>(
-        &mut self,
-        adt: AdtDef<'tyctx>,
-        tyctx: TyCtxt<'tyctx>,
-    ) -> TypeDefAndGenericInfo {
-        let did = adt.did();
-        let tdag = self.type_def_cache.get(&did);
-        if let Some(tdag) = tdag {
-            return tdag.clone();
-        }
-        let def = self.adt_(adt, tyctx);
-        self.type_def_cache.insert(did, def);
-        self.type_def_cache
-            .get(&did)
-            .expect("ERROR: Get directly after insert failed")
-            .clone()
-    }
-    pub fn type_def_from_cache<'tyctx>(
+    pub fn type_from_cache<'tyctx>(
         &mut self,
         ty: Ty<'tyctx>,
         tyctx: TyCtxt<'tyctx>,
-    ) -> Option<TypeDefAndGenericInfo> {
+    ) -> Type{
         match ty.kind() {
-            TyKind::Adt(adt, _) => Some(self.adt_from_cache(*adt, tyctx)),
-            _ => todo!("Can't retrive typedef for type {ty:?} from cache yet!"),
-        }
-    }
-    fn generic_type_from_cache<'tyctx>(
-        &mut self,
-        ty: Ty<'tyctx>,
-        tyctx: TyCtxt<'tyctx>,
-    ) -> Either<Type, GenericResolvePath> {
-        match ty.kind() {
-            TyKind::Bool => Either::Left(Type::Bool),
-            TyKind::Int(int) => Either::Left(int.into()),
-            TyKind::Uint(uint) => Either::Left(uint.into()),
-            TyKind::Char => Either::Left(Type::U64),
-            TyKind::Float(float) => Either::Left(float.into()),
+            TyKind::Bool => Type::Bool,
+            TyKind::Int(int) => int.into(),
+            TyKind::Uint(uint) => uint.into(),
+            TyKind::Char => Type::U64,
+            TyKind::Float(float) => float.into(),
             TyKind::Tuple(types) => {
                 let types: Vec<_> = types
                     .iter()
-                    .map(|ty| self.generic_type_from_cache(ty, tyctx))
+                    .map(|ty| self.type_from_cache(ty, tyctx))
                     .collect();
                 if types.is_empty() {
-                    Either::Left(Type::Void)
+                    Type::Void
                 } else {
-                    GenericResolvePath::tuple(&types)
+                    super::tuple_type(&types).into()
                 }
             }
-            TyKind::Never => Either::Left(Type::Void), // TODO: ensure this is always OK
+            TyKind::Never => Type::Void, // TODO: ensure this is always OK
             TyKind::RawPtr(type_and_mut) => match type_and_mut.ty.kind() {
-                TyKind::Slice(inner) => match self.generic_type_from_cache(*inner, tyctx) {
-                    Either::Left(_concreate) => {
-                        let mut dotnet =
-                            DotnetTypeRef::new(None, "core.ptr.metadata.PtrComponents");
-                        dotnet.set_generics(vec![Type::USize]);
-                        Either::Left(dotnet.into())
-                    }
-                    Either::Right(_generic) => todo!("Can't handle generic slice!"),
+                TyKind::Slice(inner) =>{
+                    todo!("Can't handle slices!")
                 },
                 TyKind::Str => {
                     let mut dotnet = DotnetTypeRef::new(None, "core.ptr.metadata.PtrComponents");
                     dotnet.set_generics(vec![Type::U8, Type::USize]);
-                    Either::Left(dotnet.into())
+                    dotnet.into()
                 }
-                _ => match self.generic_type_from_cache(type_and_mut.ty, tyctx) {
-                    Either::Left(tpe) => Either::Left(Type::Ptr(tpe.into())),
-                    Either::Right(tpe) => Either::Right(GenericResolvePath::Ptr(tpe.into())),
-                },
+                _ => Type::Ptr(self.type_from_cache(type_and_mut.ty, tyctx).into()),
             },
             TyKind::Adt(def, subst) => {
                 let name = crate::utilis::adt_name(&def);
                 if super::is_name_magic(name.as_ref()) {
-                    return Either::Left(super::magic_type(name.as_ref(), def, subst, tyctx));
+                    return super::magic_type(name.as_ref(), def, subst, tyctx);
                 }
-                let subst: Vec<_> = subst
-                    .iter()
-                    .map(|garg| {
-                        let ty = garg.as_type();
-                        match ty {
-                            Some(ty) => Some(self.generic_type_from_cache(ty, tyctx)),
-                            None => None,
-                        }
-                    })
-                    .collect();
-                let def_and_generic = self.adt_from_cache(*def, tyctx);
-                if subst
-                    .iter()
-                    .any(|subst| subst.as_ref().is_some_and(|subst| subst.is_right()))
-                {
-                    let subst: Box<[_]> = subst
-                        .into_iter()
-                        .map(|option| match option {
-                            Some(generic) => match generic {
-                                Either::Left(concreate) => {
-                                    Some(GenericResolvePath::Concreate(concreate))
-                                }
-                                Either::Right(grp) => Some(grp),
-                            },
-                            None => None,
-                        })
-                        .collect();
-                    let ref_generics: Box<_> = def_and_generic
-                        .generic_info
-                        .iter()
-                        .map(|gi| gi.substitute(subst.as_ref()))
-                        .collect();
-
-                    Either::Right(GenericResolvePath::DotnetRef { name, ref_generics })
-                    //Either::Right(GenericResolvePath::DotnetRef((dref,subst)))
-                } else {
-                    let subst: Vec<_> = subst
-                        .into_iter()
-                        .map(|option| match option {
-                            Some(inner) => Some(inner.unwrap_left()),
-                            None => None,
-                        })
-                        .collect();
-                    Either::Left(Type::DotnetType(
-                        def_and_generic.morphic_ref(&subst, self).into(),
-                    ))
-                }
+                let mangled = super::mangle_susbt(&name,subst);
+                println!("mangled:{mangled:?}");
+                self.adt(&mangled,*def,subst,tyctx).into()
             }
             TyKind::Dynamic(trait_, _, dyn_kind) => {
                 println!("trait:{trait_:?} dyn_kind:{dyn_kind:?}");
-                Either::Left(Type::Unresolved)
+                Type::Unresolved
             }
-            TyKind::Param(param_ty) => Either::Right(GenericResolvePath::Subst {
-                nth: param_ty.index,
-            }),
             TyKind::Ref(_region, inner, _mut) => match inner.kind() {
-                TyKind::Slice(inner) => match self.generic_type_from_cache(*inner, tyctx) {
-                    Either::Left(_concreate) => {
-                        let mut dotnet =
-                            DotnetTypeRef::new(None, "core.ptr.metadata.PtrComponents");
-                        dotnet.set_generics(vec![Type::USize]);
-                        Either::Left(dotnet.into())
+                TyKind::Slice(inner) =>{
+                    let name:IString = format!("core.ptr.metadata.PtrComponents{}",super::mangle_ty(*inner)).into();
+                    //let inner = self.inne
+                    let dotnet = DotnetTypeRef::new(None, &name);
+                    if self.type_def_cache.get_key_value(&name).is_some(){
+                        return dotnet.into();
                     }
-                    Either::Right(_generic) => todo!("Can't handle generic slice!"),
+                    self.type_def_cache.insert(name.clone(),TypeDef::ptr_components(&name,Type::USize));
+                    dotnet.into()
                 },
                 TyKind::Str => {
-                    let mut dotnet = DotnetTypeRef::new(None, "core.ptr.metadata.PtrComponents");
-                    dotnet.set_generics(vec![Type::U8, Type::USize]);
-                    Either::Left(dotnet.into())
+                    let name = "core.ptr.metadata.PtrComponentsStr";
+                    let dotnet = DotnetTypeRef::new(None, &name);
+                    if self.type_def_cache.get_key_value(name).is_some(){
+                        return dotnet.into();
+                    }
+                    self.type_def_cache.insert(name.into(),TypeDef::ptr_components(&name,Type::USize));
+                    dotnet.into()
                 }
-                _ => match self.generic_type_from_cache(*inner, tyctx) {
-                    Either::Left(tpe) => Either::Left(Type::Ptr(tpe.into())),
-                    Either::Right(tpe) => Either::Right(GenericResolvePath::Ptr(tpe.into())),
-                },
+                _ => Type::Ptr(self.type_from_cache(*inner, tyctx).into()),
             },
             TyKind::Foreign(foregin) => {
                 println!("foregin:{foregin:?}");
-                Either::Left(Type::Foreign)
+                Type::Foreign
             }
-            TyKind::Bound(_, _inner) => Either::Left(Type::Foreign),
-            TyKind::FnPtr(_) => Either::Left(Type::USize),
-            TyKind::Slice(inner) => match self.generic_type_from_cache(*inner, tyctx) {
-                Either::Left(inner) => {
-                    let mut slice_tpe = DotnetTypeRef::new(None, "RustSlice".into());
-                    slice_tpe.set_generics(vec![inner]);
-                    Either::Left(Type::DotnetType(Box::new(slice_tpe)))
-                }
-                Either::Right(generic) => todo!("Generic slice"),
+            TyKind::Bound(_, _inner) => Type::Foreign,
+            TyKind::FnPtr(_) => Type::USize,
+            TyKind::Slice(inner) => {
+                //let match self.type_from_cache(*inner, tyctx) 
+                //let mut slice_tpe = DotnetTypeRef::new(None, "RustSlice".into());
+                //slice_tpe.set_generics(vec![inner]);
+                //Type::DotnetType(Box::new(slice_tpe)))
+                todo!("Slice!")
             },
             TyKind::Array(element, length) => {
                 //let length = crate::utilis::monomorphize(method, *length, tyctx);
                 let length = crate::utilis::try_resolve_const_size(&length).unwrap();
-                match self.generic_type_from_cache(*element, tyctx) {
-                    Either::Left(element) => {
-                        Either::Left(DotnetTypeRef::array(element, length).into())
-                    }
-                    Either::Right(tpe) => todo!("Generic array!"), //Either::Right(GenericResolvePath::Ptr(tpe.into())),
-                }
-            }
-            TyKind::Alias(kind, ty) => {
-                //TODO: handle kind!
-                let def = ty.def_id;
-                let alias_subst: Box<[_]> = ty
-                    .args
-                    .iter()
-                    .map(|garg| {
-                        let ty = garg.as_type();
-                        match ty {
-                            Some(ty) => Some(match self.generic_type_from_cache(ty, tyctx) {
-                                Either::Right(grp) => grp,
-                                Either::Left(concreate) => GenericResolvePath::Concreate(concreate),
-                            }),
-                            None => None,
-                        }
-                    })
-                    .collect();
-
-                /*
-                let generics:Vec<_> = ty.args.iter().map(|g|match g.as_type(){
-                    Some(generic_arg)=>Some(self.generic_type_from_cache(generic_arg, tyctx)),
-                    None=>None,
-                }).collect();*/
-                Either::Right(GenericResolvePath::Alias {
-                    projection_trait: def,
-                    alias_subst,
-                })
+               // let element = self.
+                //DotnetTypeRef::array(element, length).into()
+                todo!("Array!")
             }
             _ => todo!("Can't yet get type {ty:?} from type cache."),
-        }
-    }
-    pub fn type_from_cache<'tyctx>(&mut self, ty: Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -> Type {
-        if let Either::Left(tpe) = self.generic_type_from_cache(ty, tyctx) {
-            tpe
-        } else {
-            panic!("Tried to get a morphic type from cache, but passed a generic {ty:?}!");
         }
     }
 }

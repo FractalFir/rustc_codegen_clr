@@ -226,6 +226,7 @@ impl Type {
         Self::from_ty_kind(rust_tpe.kind(), tyctx, method)
     }*/
     pub fn generic_from_ty<'ctx>(rust_tpe: Ty<'ctx>, tyctx: TyCtxt<'ctx>) -> Self {
+        todo!("UJsed generic_from_ty");
         match rust_tpe.kind() {
             TyKind::Bool => Self::Bool,
             TyKind::Int(int) => int.into(),
