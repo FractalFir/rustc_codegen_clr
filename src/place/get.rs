@@ -49,7 +49,7 @@ fn place_elem_get_at<'a>(
 ) -> Vec<CILOp> {
     let curr_ty = curr_type.as_ty().expect("Can't index into enum!");
     let curr_ty = crate::utilis::monomorphize(method_instance, curr_ty, tyctx);
-    let tpe = type_cache.type_from_cache(curr_ty, tyctx);
+    let tpe = type_cache.type_from_cache(curr_ty, tyctx,                Some(*method_instance));
     let class = if let Type::DotnetType(dotnet) = &tpe {
         dotnet
     } else {
@@ -120,7 +120,7 @@ fn place_elem_get<'a>(
             match curr_ty.kind() {
                 TyKind::Slice(inner) => {
                     let inner = crate::utilis::monomorphize(&method_instance, *inner, tyctx);
-                    let inner_type = type_cache.type_from_cache(inner, tyctx);
+                    let inner_type = type_cache.type_from_cache(inner, tyctx,                Some(method_instance));
                     let desc = FieldDescriptor::new(
                         DotnetTypeRef::slice(),
                         Type::Void.pointer_to(),
@@ -144,18 +144,6 @@ fn place_elem_get<'a>(
                 }
                 _ => todo!("Can't index into {curr_ty}!"),
             }
-            /*
-            let mut ops = vec![crate::place::local_get(
-                index.as_usize(),
-                tyctx.optimized_mir(method_instance.def_id()),
-            )];
-            ops.extend(place_elem_get_at(
-                curr_type,
-                tyctx,
-                &method_instance,
-                type_cache,
-            ));
-            ops*/
         } /*
         PlaceElem::ConstantIndex {
         offset,

@@ -239,6 +239,7 @@ fn call_ctor<'ctx>(
                     ty.as_type()
                         .expect("Expceted generic type but got something that was not a type!"),
                     tyctx,
+                    Some(method_instance)
                 )
             })
             .collect();
@@ -427,7 +428,7 @@ pub fn handle_terminator<'ctx>(
         }
         TerminatorKind::Return => {
             let ret = crate::utilis::monomorphize(&method_instance, method.return_ty(), tyctx);
-            if type_cache.type_from_cache(ret, tyctx) != crate::r#type::Type::Void {
+            if type_cache.type_from_cache(ret, tyctx,Some(method_instance)) != crate::r#type::Type::Void {
                 vec![CILOp::LDLoc(0), CILOp::Ret]
             } else {
                 vec![CILOp::Ret]

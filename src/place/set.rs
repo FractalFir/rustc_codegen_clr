@@ -22,7 +22,7 @@ fn place_elem_set_at<'a>(
 ) -> Vec<CILOp> {
     let curr_ty = curr_type.as_ty().expect("Can't index into enum!");
     let curr_ty = crate::utilis::monomorphize(method_instance, curr_ty, tyctx);
-    let tpe = type_cache.type_from_cache(curr_ty, tyctx);
+    let tpe = type_cache.type_from_cache(curr_ty, tyctx,                Some(*method_instance));
     let class = if let Type::DotnetType(dotnet) = &tpe {
         dotnet
     } else {
@@ -67,6 +67,43 @@ pub fn place_elem_set<'a>(
                 todo!("Can't set fields of enum variants yet!");
             }
         }
+        PlaceElem::Index(index) => {
+            let curr_ty = curr_type
+                .as_ty()
+                .expect("INVALID PLACE: Indexing into enum variant???");
+            let index = crate::place::local_get(
+                index.as_usize(),
+                ctx.optimized_mir(method_instance.def_id()),
+            );
+
+            match curr_ty.kind() {
+                TyKind::Slice(inner) => {
+                    let inner = crate::utilis::monomorphize(&method_instance, *inner, ctx);
+                    let inner_type = type_cache.type_from_cache(inner, ctx,                Some(method_instance));
+                    let desc = FieldDescriptor::new(
+                        DotnetTypeRef::slice(),
+                        Type::Void.pointer_to(),
+                        "data_address".into(),
+                    );
+                    let ptr_set_op = ptr_set_op(
+                        super::PlaceTy::Ty(inner),
+                        ctx,
+                        &method_instance,
+                        type_cache,
+                    );
+                    let mut ops = vec![
+                        CILOp::LDField(desc.into()),
+                        index,
+                        CILOp::SizeOf(inner_type.into()),
+                        CILOp::Mul,
+                        CILOp::Add,
+                    ];
+                    ops.extend(ptr_set_op);
+                    ops
+                }
+                _ => todo!("Can't index into {curr_ty}!"),
+            }
+        } 
         /*
         PlaceElem::Index(index) => {
             let mut ops = vec![crate::place::local_adress(
@@ -137,11 +174,11 @@ fn ptr_set_op<'ctx>(
             // due to historic reasons(BOOL was an alias for int in early Windows, and it stayed this way.) - FractalFir
             TyKind::Char => vec![CILOp::STIndI32], // always 4 bytes wide: https://doc.rust-lang.org/std/primitive.char.html#representation
             TyKind::Adt(_, _) => {
-                let pointed_type = type_cache.type_from_cache(pointed_type, tyctx);
+                let pointed_type = type_cache.type_from_cache(pointed_type, tyctx,Some(*method_instance));
                 vec![CILOp::STObj(pointed_type.into())]
             }
             TyKind::Tuple(_) => {
-                let pointed_type = type_cache.type_from_cache(pointed_type, tyctx);
+                let pointed_type = type_cache.type_from_cache(pointed_type, tyctx,Some(*method_instance));
                 // This is interpreted as a System.ValueTuple and can be treated as an ADT
                 vec![CILOp::STObj(pointed_type.into())]
             }

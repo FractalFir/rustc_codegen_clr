@@ -4,7 +4,7 @@ use crate::{
 };
 use either::Either;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::{AdtDef, AdtKind, GenericArg, List, Ty, TyCtxt, TyKind};
+use rustc_middle::ty::{AdtDef, AdtKind, GenericArg, List, Ty, TyCtxt, TyKind,Instance};
 use std::collections::HashMap;
 pub struct TyCache {
     type_def_cache: HashMap<IString, TypeDef>,
@@ -21,7 +21,7 @@ impl TyCache {
     pub fn type_def_from_cache<'tyctx>(
         &mut self,
         ty: Ty<'tyctx>,
-        tyctx: TyCtxt<'tyctx>,
+        tyctx: TyCtxt<'tyctx>,method:Option<Instance<'tyctx>>,
     ) -> &TypeDef {
         match ty.kind() {
             TyKind::Adt(adt, susbt) => {
@@ -31,7 +31,7 @@ impl TyCache {
                 }
                 let name = super::mangle_susbt(&name, susbt);
                 if self.type_def_cache.get(name.as_ref()).is_none() {
-                    self.type_from_cache(ty, tyctx);
+                    self.type_from_cache(ty, tyctx,method);
                 }
                 self.type_def_cache
                     .get(name.as_ref())
@@ -45,14 +45,15 @@ impl TyCache {
         name: &str,
         def: AdtDef<'tyctx>,
         subst: &'tyctx List<rustc_middle::ty::GenericArg<'tyctx>>,
-        tyctx: TyCtxt<'tyctx>,
+        tyctx: TyCtxt<'tyctx>,method:Option<Instance<'tyctx>>
     ) -> DotnetTypeRef {
         if self.type_def_cache.get(name).is_some() {
             return DotnetTypeRef::new(None, name.into());
         }
         let def = match def.adt_kind() {
-            AdtKind::Struct => self.struct_(name, def, subst, tyctx),
-            AdtKind::Enum => self.enum_(name, def, subst, tyctx),
+            AdtKind::Struct => self.struct_(name, def, subst, tyctx,method),
+            AdtKind::Enum => self.enum_(name, def, subst, tyctx,method),
+            AdtKind::Union => self.union_(name, def, subst, tyctx,method),
             _ => todo!("adt {def:?} not supported!"),
         };
         self.type_def_cache.insert(name.into(), def);
@@ -63,12 +64,14 @@ impl TyCache {
         name: &str,
         adt: AdtDef<'tyctx>,
         subst: &'tyctx List<rustc_middle::ty::GenericArg<'tyctx>>,
-        tyctx: TyCtxt<'tyctx>,
+        tyctx: TyCtxt<'tyctx>,method:Option<Instance<'tyctx>>
     ) -> TypeDef {
         let mut fields = Vec::new();
         for field in adt.all_fields() {
             let name = escape_field_name(&field.name.to_string());
-            let field_ty = self.type_from_cache(field.ty(tyctx, subst), tyctx);
+            let mut field_ty = field.ty(tyctx, subst);
+            method.inspect(|method_instance|field_ty = crate::utilis::monomorphize(method_instance, field_ty, tyctx));
+            let field_ty = self.type_from_cache(field_ty, tyctx,method);
             fields.push((name, field_ty));
         }
 
@@ -77,12 +80,34 @@ impl TyCache {
         let type_def = TypeDef::new(access, name.into(), vec![], fields, vec![], None, 0, None);
         type_def
     }
+    fn union_<'tyctx>(
+        &mut self,
+        name: &str,
+        adt: AdtDef<'tyctx>,
+        subst: &'tyctx List<rustc_middle::ty::GenericArg<'tyctx>>,
+        tyctx: TyCtxt<'tyctx>,method:Option<Instance<'tyctx>>
+    ) -> TypeDef {
+        let mut fields = Vec::new();
+        for field in adt.all_fields() {
+            let name = escape_field_name(&field.name.to_string());
+            let mut field_ty = field.ty(tyctx, subst);
+            method.inspect(|method_instance|field_ty = crate::utilis::monomorphize(method_instance, field_ty, tyctx));
+            let field_ty = self.type_from_cache(field_ty, tyctx,method);
+            fields.push((name, field_ty));
+        }
+
+        let access = AccessModifer::Public;
+        let offsets = adt.all_fields().map(|_|0).collect();
+        let type_def = TypeDef::new(access, name.into(), vec![], fields, vec![], Some(offsets), 0, None);
+        type_def
+    }
     fn enum_<'tyctx>(
         &mut self,
         enum_name: &str,
         adt: AdtDef<'tyctx>,
         subst: &'tyctx List<rustc_middle::ty::GenericArg<'tyctx>>,
         tyctx: TyCtxt<'tyctx>,
+        method:Option<Instance<'tyctx>>
     ) -> TypeDef {
         let access = AccessModifer::Public;
         let mut explicit_offsets: Vec<u32> = vec![0];
@@ -100,7 +125,7 @@ impl TyCache {
             let mut variant_fields = vec![];
             for field in &variant.fields {
                 let name = escape_field_name(&field.name.to_string());
-                let field_ty = self.type_from_cache(field.ty(tyctx, subst), tyctx);
+                let field_ty = self.type_from_cache(field.ty(tyctx, subst), tyctx,method);
                 variant_fields.push((name, field_ty));
             }
             variants.push((variant_name, variant_fields));
@@ -135,7 +160,7 @@ impl TyCache {
         );
         type_def
     }
-    pub fn type_from_cache<'tyctx>(&mut self, ty: Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -> Type {
+    pub fn type_from_cache<'tyctx>(&mut self, ty: Ty<'tyctx>, tyctx: TyCtxt<'tyctx>,method:Option<Instance<'tyctx>>) -> Type {
         match ty.kind() {
             TyKind::Bool => Type::Bool,
             TyKind::Int(int) => int.into(),
@@ -145,7 +170,7 @@ impl TyCache {
             TyKind::Tuple(types) => {
                 let types: Vec<_> = types
                     .iter()
-                    .map(|ty| self.type_from_cache(ty, tyctx))
+                    .map(|ty| self.type_from_cache(ty, tyctx,method))
                     .collect();
                 if types.is_empty() {
                     Type::Void
@@ -156,14 +181,26 @@ impl TyCache {
             TyKind::Never => Type::Void, // TODO: ensure this is always OK
             TyKind::RawPtr(type_and_mut) => match type_and_mut.ty.kind() {
                 TyKind::Slice(inner) => {
-                    todo!("Can't handle slices!")
+                    let name: IString = format!(
+                        "core.ptr.metadata.PtrComponents{}",
+                        super::mangle_ty(*inner)
+                    )
+                    .into();
+                    //let inner = self.inne
+                    let dotnet = DotnetTypeRef::new(None, &name);
+                    if self.type_def_cache.get_key_value(&name).is_some() {
+                        return dotnet.into();
+                    }
+                    self.type_def_cache
+                        .insert(name.clone(), TypeDef::ptr_components(&name, Type::USize));
+                    dotnet.into()
                 }
                 TyKind::Str => {
                     let mut dotnet = DotnetTypeRef::new(None, "core.ptr.metadata.PtrComponents");
                     dotnet.set_generics(vec![Type::U8, Type::USize]);
                     dotnet.into()
                 }
-                _ => Type::Ptr(self.type_from_cache(type_and_mut.ty, tyctx).into()),
+                _ => Type::Ptr(self.type_from_cache(type_and_mut.ty, tyctx,method).into()),
             },
             TyKind::Adt(def, subst) => {
                 let name = crate::utilis::adt_name(&def);
@@ -172,7 +209,7 @@ impl TyCache {
                 }
                 let mangled = super::mangle_susbt(&name, subst);
                 println!("mangled:{mangled:?}");
-                self.adt(&mangled, *def, subst, tyctx).into()
+                self.adt(&mangled, *def, subst, tyctx,method).into()
             }
             TyKind::Dynamic(trait_, _, dyn_kind) => {
                 println!("trait:{trait_:?} dyn_kind:{dyn_kind:?}");
@@ -204,7 +241,7 @@ impl TyCache {
                         .insert(name.into(), TypeDef::ptr_components(&name, Type::USize));
                     dotnet.into()
                 }
-                _ => Type::Ptr(self.type_from_cache(*inner, tyctx).into()),
+                _ => Type::Ptr(self.type_from_cache(*inner, tyctx,method).into()),
             },
             TyKind::Foreign(foregin) => {
                 println!("foregin:{foregin:?}");

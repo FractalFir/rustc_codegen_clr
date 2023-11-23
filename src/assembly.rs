@@ -374,7 +374,6 @@ fn locals_from_mir<'tyctx>(
     for (local_id, local) in locals.iter().enumerate() {
         if local_id == 0 || local_id > argc {
             let ty = crate::utilis::monomorphize(method_instance, local.ty, tyctx);
-            let name: Option<IString> = None;
             if crate::PRINT_LOCAL_TYPES {
                 println!(
                     "Setting local to type {ty:?},non-morphic: {non_morph}",
@@ -382,7 +381,7 @@ fn locals_from_mir<'tyctx>(
                 );
             }
             let name = None;
-            let tpe = tycache.type_from_cache(ty, tyctx);
+            let tpe = tycache.type_from_cache(ty, tyctx,Some(*method_instance));
             local_types.push((name, tpe));
         }
     }

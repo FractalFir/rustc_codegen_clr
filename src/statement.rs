@@ -68,7 +68,7 @@ pub fn handle_statement<'tcx>(
                         type_cache,
                     );
                     let src_ty = src.ty(method, tyctx);
-                    let ptr_type = type_cache.type_from_cache(src_ty, tyctx);
+                    let ptr_type = type_cache.type_from_cache(src_ty, tyctx,Some(method_instance));
                     let pointed = if let crate::r#type::Type::Ptr(pointed) = ptr_type {
                         pointed
                     } else {

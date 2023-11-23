@@ -73,7 +73,7 @@ pub fn place_elem_adress<'ctx>(
                 .as_ty()
                 .expect("Can't get enum variant of an enum varaint!");
             let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
-            let curr_dotnet_type = type_cache.type_from_cache(curr_type, tyctx);
+            let curr_dotnet_type = type_cache.type_from_cache(curr_type, tyctx,Some(method_instance));
             let curr_dotnet_type =
                 if let crate::r#type::Type::DotnetType(dotnet_type) = curr_dotnet_type {
                     dotnet_type.as_ref().clone()
