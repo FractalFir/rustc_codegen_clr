@@ -112,6 +112,7 @@ impl Assembly {
             })) {
                 Ok(ok) => ok,
                 Err(payload) => {
+                    type_cache.recover_from_panic();
                     let msg = if let Some(msg) = payload.downcast_ref::<&str>() {
                         rustc_middle::ty::print::with_no_trimmed_paths! {
                         format!("Tried to execute terminator {term:?} whose compialtion message {msg:?}!")}
@@ -168,6 +169,7 @@ impl Assembly {
         })) {
             Ok(success) => success,
             Err(payload) => {
+                cache.recover_from_panic();
                 if let Some(msg) = payload.downcast_ref::<&str>() {
                     eprintln!("fn_add panicked with unhandled message: {msg:?}");
                     return Ok(());
@@ -239,6 +241,7 @@ impl Assembly {
                 ) {
                     Ok(ops) => ops,
                     Err(err) => {
+                        cache.recover_from_panic();
                         eprintln!(
                             "Method \"{name}\" failed to compile statement with message {err:?}"
                         );
@@ -274,7 +277,7 @@ impl Assembly {
     }
     /// Adds 100 first array types
     pub fn add_array_types(&mut self) {
-        for i in 0..25 {
+        for i in 0..40 {
             self.types
                 .insert(crate::r#type::type_def::get_array_type(i));
         }

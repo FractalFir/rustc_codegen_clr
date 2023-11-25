@@ -8,11 +8,13 @@ use rustc_middle::ty::{AdtDef, AdtKind, GenericArg, Instance, List, Ty, TyCtxt, 
 use std::collections::HashMap;
 pub struct TyCache {
     type_def_cache: HashMap<IString, TypeDef>,
+    cycle_prevention:Vec<IString>,
 }
 impl TyCache {
     pub fn empty() -> Self {
         Self {
             type_def_cache: HashMap::new(),
+            cycle_prevention:vec![],
         }
     }
     pub fn defs(&self) -> impl Iterator<Item = &TypeDef> {
@@ -52,6 +54,10 @@ impl TyCache {
         if self.type_def_cache.get(name).is_some() {
             return DotnetTypeRef::new(None, name.into());
         }
+        if self.cycle_prevention.iter().any(|c_name|c_name.as_ref() == name){
+            panic!("Type {name} is cyclic!");
+        }
+        self.cycle_prevention.push(name.into());
         let def = match def.adt_kind() {
             AdtKind::Struct => self.struct_(name, def, subst, tyctx, method),
             AdtKind::Enum => self.enum_(name, def, subst, tyctx, method),
@@ -59,7 +65,11 @@ impl TyCache {
             _ => todo!("adt {def:?} not supported!"),
         };
         self.type_def_cache.insert(name.into(), def);
+        self.cycle_prevention.pop();
         DotnetTypeRef::new(None, name.into())
+    }
+    pub fn recover_from_panic(&mut self){
+        self.cycle_prevention.clear()
     }
     fn struct_<'tyctx>(
         &mut self,
@@ -279,11 +289,21 @@ impl TyCache {
                 todo!("Slice!")
             }
             TyKind::Array(element, length) => {
-                //let length = crate::utilis::monomorphize(method, *length, tyctx);
+                let mut length = *length;
+                method.inspect(|method|length = crate::utilis::monomorphize(method, length, tyctx));
                 let length = crate::utilis::try_resolve_const_size(&length).unwrap();
-                // let element = self.
-                //DotnetTypeRef::array(element, length).into()
-                todo!("Array!")
+                let mut element = *element;
+                method.inspect(|method|element = crate::utilis::monomorphize(method, element, tyctx));
+                let element = self.type_from_cache(element, tyctx, method);
+                let arr_name:IString = format!("Arr{length}").into();
+                if true || self.type_def_cache.get(&arr_name).is_none(){
+                    println!("adding array type {arr_name}");
+                   
+                    self.type_def_cache
+                    .insert(arr_name,crate::r#type::type_def::get_array_type(length));
+                }
+                DotnetTypeRef::array(element, length).into()
+                //todo!("Array!")
             }
             _ => todo!("Can't yet get type {ty:?} from type cache."),
         }

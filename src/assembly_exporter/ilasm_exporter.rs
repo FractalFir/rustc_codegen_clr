@@ -318,7 +318,7 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
         CILOp::Lt => "clt".into(),
         //Arguments
         CILOp::LDArg(argnum) => {
-            if *argnum < 8 {
+            if *argnum < 4 {
                 format!("ldarg.{argnum}").into()
             } else if u8::try_from(*argnum).is_ok() {
                 format!("ldarg.s {argnum}").into()
@@ -393,7 +393,7 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
         }
         CILOp::LdNull => "ldnull".into(), 
         CILOp::LdcF32(f32const) =>{
-            if f32const.is_finite(){
+            if f32const.is_finite() && f32const.abs() < 0.0000001{
                 format!("ldc.r4 {f32const}").into()
             }
             else{
@@ -401,7 +401,15 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
                 format!("ldc.r4 ({:02x} {:02x} {:02x} {:02x})",const_literal[0],const_literal[1],const_literal[2],const_literal[3]).into()
             }
         }
-        CILOp::LdcF64(f64const) => format!("ldc.r8 {f64const}").into(),
+        CILOp::LdcF64(f64const) => {
+            if f64const.is_finite() && f64const.abs() < 0.0000001{
+                format!("ldc.r8 {f64const}").into()
+            }
+            else{
+                let const_literal = f64const.to_le_bytes();
+                format!("ldc.r8 ({:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x})",const_literal[0],const_literal[1],const_literal[2],const_literal[3],const_literal[4],const_literal[5],const_literal[6],const_literal[7]).into()
+            }
+        }
         //Debug
         CILOp::Comment(comment) => format!("//{comment}").into(),
         //Convertions

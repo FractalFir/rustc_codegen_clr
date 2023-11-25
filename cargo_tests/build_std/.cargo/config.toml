@@ -1,5 +1,5 @@
 [build]
 target = "wasm64-unknown-unknown"
 [unstable]
-build-std = ["panic_abort","std"]
+build-std = ["core","alloc","std","panic_abort"]
 

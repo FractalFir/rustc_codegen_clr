@@ -33,11 +33,13 @@ pub fn skip_binder_if_no_generic_types<T>(binder: Binder<T>) -> Result<T, Method
 }
 pub fn adt_name(adt: &AdtDef) -> crate::IString {
     //TODO: find a better way to get adt name!
+    rustc_middle::ty::print::with_no_trimmed_paths! {
     format!("{adt:?}")
         .replace("::", ".")
         .replace("<'", "")
         .replace(">", "")
         .into()
+    }
 }
 /// Gets the name of a field with index `idx`
 pub fn field_name(ty: Ty, idx: u32) -> crate::IString {

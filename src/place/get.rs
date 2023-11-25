@@ -41,31 +41,6 @@ pub fn place_get<'a>(
         ops
     }
 }
-fn place_elem_get_at<'a>(
-    curr_type: super::PlaceTy<'a>,
-    tyctx: TyCtxt<'a>,
-    method_instance: &Instance<'a>,
-    type_cache: &mut crate::r#type::TyCache,
-) -> Vec<CILOp> {
-    let curr_ty = curr_type.as_ty().expect("Can't index into enum!");
-    let curr_ty = crate::utilis::monomorphize(method_instance, curr_ty, tyctx);
-    let tpe = type_cache.type_from_cache(curr_ty, tyctx, Some(*method_instance));
-    let class = if let Type::DotnetType(dotnet) = &tpe {
-        dotnet
-    } else {
-        panic!("Can't index into type {tpe:?}");
-    };
-    let index_ty = Type::USize;
-    let _element_ty = crate::r#type::element_type(curr_ty);
-
-    let signature = crate::function_sig::FnSig::new(&[tpe.clone(), index_ty], &Type::GenericArg(0));
-    vec![CILOp::Call(crate::cil_op::CallSite::boxed(
-        Some(class.as_ref().clone()),
-        "get_Item".into(),
-        signature,
-        false,
-    ))]
-}
 fn place_elem_get<'a>(
     place_elem: &PlaceElem<'a>,
     curr_type: super::PlaceTy<'a>,
@@ -143,7 +118,7 @@ fn place_elem_get<'a>(
                     ops.extend(deref_op);
                     ops
                 }
-                _ => todo!("Can't index into {curr_ty}!"),
+                _ => rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Can't index into {curr_ty}!")},
             }
         } /*
         PlaceElem::ConstantIndex {
