@@ -43,7 +43,7 @@ fn create_const_adt_from_bytes<'ctx>(
         AdtKind::Struct => {
             let mut curr_offset = 0;
             let cil_ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
-            let cil_ty = tycache.type_from_cache(cil_ty, tyctx,Some(method_instance));
+            let cil_ty = tycache.type_from_cache(cil_ty, tyctx, Some(method_instance));
             let dotnet_ty = cil_ty.as_dotnet().expect("ADT must be a value type!");
             let mut creator_ops = vec![CILOp::NewTMPLocal(cil_ty.clone().into())];
             for (field_idx, field) in adt_def.all_fields().enumerate() {
@@ -54,7 +54,8 @@ fn create_const_adt_from_bytes<'ctx>(
                     create_const_from_slice(ftype, tyctx, field_bytes, method_instance, tycache);
                 creator_ops.push(CILOp::LoadAddresOfTMPLocal);
                 creator_ops.extend(field_ops);
-                let cil_ftype = tycache.type_from_cache(field.ty(tyctx, subst), tyctx,Some(method_instance));
+                let cil_ftype =
+                    tycache.type_from_cache(field.ty(tyctx, subst), tyctx, Some(method_instance));
                 creator_ops.push(CILOp::STField(crate::cil_op::FieldDescriptor::boxed(
                     dotnet_ty.clone(),
                     cil_ftype,
@@ -75,7 +76,7 @@ fn create_const_adt_from_bytes<'ctx>(
             let variant_size = crate::utilis::enum_tag_size(adt_def.variants().len() as u64);
             let mut curr_offset = 0;
             let enum_ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
-            let enum_ty = tycache.type_from_cache(enum_ty, tyctx,Some(method_instance));
+            let enum_ty = tycache.type_from_cache(enum_ty, tyctx, Some(method_instance));
             let enum_dotnet: DotnetTypeRef = if let Type::DotnetType(ty_ref) = &enum_ty {
                 ty_ref.as_ref().clone()
             } else {
@@ -170,7 +171,7 @@ fn create_const_from_slice<'ctx>(
                 .iter()
                 .map(|ele| {
                     let ele = crate::utilis::monomorphize(&method_instance, ele, tyctx);
-                    tycache.type_from_cache(ele, tyctx,Some(method_instance))
+                    tycache.type_from_cache(ele, tyctx, Some(method_instance))
                 })
                 .collect();
             let tuple_dotnet = crate::r#type::tuple_type(&element_types);
@@ -239,7 +240,7 @@ fn load_const_value<'ctx>(
         }
         ConstValue::ZeroSized => {
             let tpe = crate::utilis::monomorphize(&method_instance, const_ty, tyctx);
-            let tpe = tycache.type_from_cache(tpe, tyctx,Some(method_instance));
+            let tpe = tycache.type_from_cache(tpe, tyctx, Some(method_instance));
             vec![
                 CILOp::NewTMPLocal(tpe.into()),
                 CILOp::LoadTMPLocal,
@@ -282,6 +283,7 @@ fn load_const_scalar<'ctx>(
                     todo!("Can't handle statics yet!");
                 }
                 GlobalAlloc::Memory(_) => {
+                    todo!("Can't handle memory constants yet!");
                     return vec![
                         CILOp::LoadGlobalAllocPtr {
                             alloc_id: alloc_id.0.into(),
@@ -297,7 +299,7 @@ fn load_const_scalar<'ctx>(
         }
     };
     let tpe = crate::utilis::monomorphize(&method_instance, scalar_type, tyctx);
-    let tpe = tycache.type_from_cache(tpe, tyctx,Some(method_instance));
+    let tpe = tycache.type_from_cache(tpe, tyctx, Some(method_instance));
     match scalar_type.kind() {
         TyKind::Int(int_type) => load_const_int(scalar_u128, int_type),
         TyKind::Uint(uint_type) => load_const_uint(scalar_u128, uint_type),

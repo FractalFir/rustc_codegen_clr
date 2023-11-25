@@ -20,7 +20,7 @@ pub(crate) fn binop_checked<'tyctx>(
     let ty_b = operand_b.ty(&method.local_decls, tyctx);
     let ty_b = crate::utilis::monomorphize(&method_instance, ty_b, tyctx);
     assert_eq!(ty_a, ty_b);
-    let ty = cache.type_from_cache(ty_a, tyctx,                Some(method_instance));
+    let ty = cache.type_from_cache(ty_a, tyctx, Some(method_instance));
     match binop {
         BinOp::Mul | BinOp::MulUnchecked => [ops_a, ops_b, mul(ty).into()]
             .into_iter()

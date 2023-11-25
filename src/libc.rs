@@ -101,6 +101,7 @@ fn rust_slice(asm: &mut Assembly) {
     let mut rust_slice = crate::r#type::TypeDef::nameonly("RustSlice");
     rust_slice.set_generic_count(1);
     asm.add_typedef(rust_slice);
+    rust_begin_unwind(asm);
 }
 
 fn math(asm: &mut Assembly) {
@@ -115,6 +116,12 @@ add_method!(
     &Type::F32,
     [CILOp::LDArg(0), CILOp::Ret]
 );
+add_method! {
+    rust_begin_unwind,
+    &[Type::Ptr(Type::DotnetType(DotnetTypeRef::new(None,"panic.panic_info.PanicInfo").into()).into())],
+    &Type::Void,
+    CILOp::throw_msg("`rust_begin_unwind` called, but unwinding unsuported!")
+}
 add_method!(
     puts,
     &[Type::Ptr(Box::new(Type::U8))],

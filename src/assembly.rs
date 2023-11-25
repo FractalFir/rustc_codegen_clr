@@ -381,7 +381,7 @@ fn locals_from_mir<'tyctx>(
                 );
             }
             let name = None;
-            let tpe = tycache.type_from_cache(ty, tyctx,Some(*method_instance));
+            let tpe = tycache.type_from_cache(ty, tyctx, Some(*method_instance));
             local_types.push((name, tpe));
         }
     }

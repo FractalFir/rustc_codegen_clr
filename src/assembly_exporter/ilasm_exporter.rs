@@ -392,7 +392,15 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
             }
         }
         CILOp::LdNull => "ldnull".into(), 
-        CILOp::LdcF32(f32const) => format!("ldc.r4 {f32const}").into(),
+        CILOp::LdcF32(f32const) =>{
+            if f32const.is_finite(){
+                format!("ldc.r4 {f32const}").into()
+            }
+            else{
+                let const_literal = f32const.to_le_bytes();
+                format!("ldc.r4 ({:02x} {:02x} {:02x} {:02x})",const_literal[0],const_literal[1],const_literal[2],const_literal[3]).into()
+            }
+        }
         CILOp::LdcF64(f64const) => format!("ldc.r8 {f64const}").into(),
         //Debug
         CILOp::Comment(comment) => format!("//{comment}").into(),
@@ -502,7 +510,7 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
         CILOp::SizeOf(tpe) => format!("sizeof {tpe}", tpe = prefixed_type_cil(tpe)).into(),
         CILOp::Throw => "throw".into(),
         CILOp::Rethrow => "rethrow".into(),
-        CILOp::LdStr(str) => format!("ldstr {str:?}").into(),
+        CILOp::LdStr(str) => format!("ldstr {str:?}").replace('\'',"\\\'").into(),
         CILOp::LdObj(obj) => format!(
             "ldobj {tpe}",
             tpe = prefixed_field_type_cil(&obj.as_ref().clone())

@@ -55,7 +55,7 @@ The project is still very early in development, but it has made significant prog
 
 ## Milestones
 - [X] Draft version of the `mycorrhiza` interop layer, capable of creating managed objects, and calling methods. 
-- [ ] Compiling the `core` Rust crate - *Substantial chunk of core now compiles,  with many  methods still having trouble compiling. The compilation still gets terminated early due to errors* 
+- [X] Compiling the `core` Rust crate - *Core now compiles, but is not fully functional. Around ~100 function instances don't compile at all, and a couple more compile with errors.
 - [ ] Compiling the `alloc` Rust crate 
 - [ ] Compiling the `std` Rust crate 
 - [ ] Stack unwinding 

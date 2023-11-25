@@ -108,7 +108,8 @@ pub(crate) fn binop_unchecked<'tyctx>(
                 todo!("Can't offset pointer of type {ty_a:?}");
             };
             let pointed_ty = crate::utilis::monomorphize(&method_instance, pointed_ty, tyctx);
-            let pointed_ty = Box::new(tycache.type_from_cache(pointed_ty, tyctx,Some(method_instance)));
+            let pointed_ty =
+                Box::new(tycache.type_from_cache(pointed_ty, tyctx, Some(method_instance)));
             [
                 ops_a,
                 ops_b,
@@ -131,8 +132,8 @@ fn add_unchecked<'tyctx>(
     match ty_a.kind() {
         TyKind::Int(int_ty) => {
             if let IntTy::I128 = int_ty {
-                let ty_a = tycache.type_from_cache(ty_a, tyctx,Some(*method_instance));
-                let ty_b = tycache.type_from_cache(ty_b, tyctx,Some(*method_instance));
+                let ty_a = tycache.type_from_cache(ty_a, tyctx, Some(*method_instance));
+                let ty_b = tycache.type_from_cache(ty_b, tyctx, Some(*method_instance));
                 vec![CILOp::Call(
                     crate::cil_op::CallSite::new(
                         Some(DotnetTypeRef::int_128()),
@@ -148,8 +149,8 @@ fn add_unchecked<'tyctx>(
         }
         TyKind::Uint(uint_ty) => {
             if let UintTy::U128 = uint_ty {
-                let ty_a = tycache.type_from_cache(ty_a, tyctx,Some(*method_instance));
-                let ty_b = tycache.type_from_cache(ty_b, tyctx,Some(*method_instance));
+                let ty_a = tycache.type_from_cache(ty_a, tyctx, Some(*method_instance));
+                let ty_b = tycache.type_from_cache(ty_b, tyctx, Some(*method_instance));
                 vec![CILOp::Call(
                     crate::cil_op::CallSite::new(
                         Some(DotnetTypeRef::uint_128()),
@@ -184,8 +185,8 @@ fn sub_unchecked<'tyctx>(
     match ty_a.kind() {
         TyKind::Int(int_ty) => {
             if let IntTy::I128 = int_ty {
-                let ty_a = tycache.type_from_cache(ty_a, tyctx,Some(*method_instance));
-                let ty_b = tycache.type_from_cache(ty_b, tyctx,Some(*method_instance));
+                let ty_a = tycache.type_from_cache(ty_a, tyctx, Some(*method_instance));
+                let ty_b = tycache.type_from_cache(ty_b, tyctx, Some(*method_instance));
                 vec![CILOp::Call(
                     crate::cil_op::CallSite::new(
                         Some(DotnetTypeRef::int_128()),
@@ -201,8 +202,8 @@ fn sub_unchecked<'tyctx>(
         }
         TyKind::Uint(uint_ty) => {
             if let UintTy::U128 = uint_ty {
-                let ty_a = tycache.type_from_cache(ty_a, tyctx,Some(*method_instance));
-                let ty_b = tycache.type_from_cache(ty_b, tyctx,Some(*method_instance));
+                let ty_a = tycache.type_from_cache(ty_a, tyctx, Some(*method_instance));
+                let ty_b = tycache.type_from_cache(ty_b, tyctx, Some(*method_instance));
                 vec![CILOp::Call(
                     crate::cil_op::CallSite::new(
                         Some(DotnetTypeRef::uint_128()),

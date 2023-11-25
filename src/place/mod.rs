@@ -67,7 +67,7 @@ fn place_get_length<'ctx>(
 ) -> Vec<CILOp> {
     let curr_ty = curr_type.as_ty().expect("Can't index into enum!");
     let curr_ty = crate::utilis::monomorphize(&method_instance, curr_ty, tyctx);
-    let tpe = type_cache.type_from_cache(curr_ty, tyctx,Some(method_instance));
+    let tpe = type_cache.type_from_cache(curr_ty, tyctx, Some(method_instance));
     let class = if let Type::DotnetType(dotnet) = &tpe {
         dotnet
     } else {
@@ -127,12 +127,14 @@ pub fn deref_op<'ctx>(
             // due to historic reasons(BOOL was an alias for int in early Windows, and it stayed this way.) - FractalFir
             TyKind::Char => vec![CILOp::LDIndI32], // always 4 bytes wide: https://doc.rust-lang.org/std/primitive.char.html#representation
             TyKind::Adt(_, _) => {
-                let derefed_type = type_cache.type_from_cache(derefed_type, tyctx,Some(*method_instance));
+                let derefed_type =
+                    type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance));
                 vec![CILOp::LdObj(derefed_type.into())]
             }
             TyKind::Tuple(_) => {
                 // This is interpreted as a System.ValueTuple and can be treated as an ADT
-                let derefed_type = type_cache.type_from_cache(derefed_type, tyctx,Some(*method_instance));
+                let derefed_type =
+                    type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance));
                 vec![CILOp::LdObj(derefed_type.into())]
             }
             TyKind::Ref(_, _, _) => vec![CILOp::LDIndISize],

@@ -51,10 +51,10 @@ pub fn handle_rvalue<'tcx>(
         }
         Rvalue::Cast(CastKind::IntToInt, operand, target) => {
             let target = crate::utilis::monomorphize(&method_instance, *target, tyctx);
-            let target = tycache.type_from_cache(target, tyctx,Some(method_instance));
+            let target = tycache.type_from_cache(target, tyctx, Some(method_instance));
             let src = operand.ty(&method.local_decls, tyctx);
             let src = crate::utilis::monomorphize(&method_instance, src, tyctx);
-            let src = tycache.type_from_cache(src, tyctx,Some(method_instance));
+            let src = tycache.type_from_cache(src, tyctx, Some(method_instance));
             [
                 handle_operand(operand, tyctx, method, method_instance, tycache),
                 crate::casts::int_to_int(src, target),
@@ -65,10 +65,10 @@ pub fn handle_rvalue<'tcx>(
         }
         Rvalue::Cast(CastKind::FloatToInt, operand, target) => {
             let target = crate::utilis::monomorphize(&method_instance, *target, tyctx);
-            let target = tycache.type_from_cache(target, tyctx,Some(method_instance));
+            let target = tycache.type_from_cache(target, tyctx, Some(method_instance));
             let src = operand.ty(&method.local_decls, tyctx);
             let src = crate::utilis::monomorphize(&method_instance, src, tyctx);
-            let src = tycache.type_from_cache(src, tyctx,Some(method_instance));
+            let src = tycache.type_from_cache(src, tyctx, Some(method_instance));
             [
                 handle_operand(operand, tyctx, method, method_instance, tycache),
                 crate::casts::float_to_int(src, target),
@@ -79,10 +79,10 @@ pub fn handle_rvalue<'tcx>(
         }
         Rvalue::Cast(CastKind::IntToFloat, operand, target) => {
             let target = crate::utilis::monomorphize(&method_instance, *target, tyctx);
-            let target = tycache.type_from_cache(target, tyctx,Some(method_instance));
+            let target = tycache.type_from_cache(target, tyctx, Some(method_instance));
             let src = operand.ty(&method.local_decls, tyctx);
             let src = crate::utilis::monomorphize(&method_instance, src, tyctx);
-            let src = tycache.type_from_cache(src, tyctx,Some(method_instance));
+            let src = tycache.type_from_cache(src, tyctx, Some(method_instance));
             [
                 handle_operand(operand, tyctx, method, method_instance, tycache),
                 crate::casts::int_to_float(src, target),
@@ -94,7 +94,7 @@ pub fn handle_rvalue<'tcx>(
         Rvalue::NullaryOp(op, ty) => match op {
             NullOp::SizeOf => {
                 let ty = crate::utilis::monomorphize(&method_instance, *ty, tyctx);
-                let ty = Box::new(tycache.type_from_cache(ty, tyctx,Some(method_instance)));
+                let ty = Box::new(tycache.type_from_cache(ty, tyctx, Some(method_instance)));
                 vec![CILOp::SizeOf(ty)]
             }
             NullOp::AlignOf => vec![CILOp::LdcI64(align_of(*ty) as i64), CILOp::ConvUSize(false)],
@@ -111,10 +111,10 @@ pub fn handle_rvalue<'tcx>(
         ),
         Rvalue::Cast(CastKind::Transmute, operand, dst) => {
             let dst = crate::utilis::monomorphize(&method_instance, *dst, tyctx);
-            let dst = tycache.type_from_cache(dst, tyctx,Some(method_instance));
+            let dst = tycache.type_from_cache(dst, tyctx, Some(method_instance));
             let src = operand.ty(&method.local_decls, tyctx);
             let src = crate::utilis::monomorphize(&method_instance, src, tyctx);
-            let src = tycache.type_from_cache(src, tyctx,Some(method_instance));
+            let src = tycache.type_from_cache(src, tyctx, Some(method_instance));
             match (&src, &dst) {
                 (
                     Type::ISize | Type::USize | Type::Ptr(_),
@@ -190,7 +190,7 @@ pub fn handle_rvalue<'tcx>(
         }
         Rvalue::Cast(CastKind::FloatToFloat, operand, target) => {
             let target = crate::utilis::monomorphize(&method_instance, *target, tyctx);
-            let target = tycache.type_from_cache(target, tyctx,Some(method_instance));
+            let target = tycache.type_from_cache(target, tyctx, Some(method_instance));
             let mut ops = handle_operand(operand, tyctx, method, method_instance, tycache);
             match target {
                 Type::F32 => ops.push(CILOp::ConvF32(false)),
@@ -205,7 +205,7 @@ pub fn handle_rvalue<'tcx>(
                 crate::place::place_adress(place, tyctx, method, method_instance, tycache);
             let owner_ty = place.ty(method, tyctx).ty;
             let owner_ty = crate::utilis::monomorphize(&method_instance, owner_ty, tyctx);
-            let owner = tycache.type_from_cache(owner_ty, tyctx,Some(method_instance));
+            let owner = tycache.type_from_cache(owner_ty, tyctx, Some(method_instance));
             //TODO: chose proper tag type based on variant count of `owner`
             let discr_type = crate::r#type::Type::U8; //owner_ty
             let owner = if let crate::r#type::Type::DotnetType(dotnet_type) = owner {
@@ -223,20 +223,17 @@ pub fn handle_rvalue<'tcx>(
                 crate::place::place_adress(operand, tyctx, method, method_instance, tycache);
             let ty = operand.ty(method, tyctx);
             let ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
-           // let tpe = tycache.type_from_cache(ty.ty, tyctx, Some(method_instance));
+            // let tpe = tycache.type_from_cache(ty.ty, tyctx, Some(method_instance));
             match ty.ty.kind() {
                 TyKind::Slice(inner) => {
-                    let name:String = format!(
+                    let name: String = format!(
                         "core.ptr.metadata.PtrComponents{}",
                         crate::r#type::mangle_ty(*inner)
                     )
                     .into();
-                let slice_tpe = DotnetTypeRef::new(None,&name);
-                    let descriptor = FieldDescriptor::new(
-                        slice_tpe,
-                        Type::USize,
-                        "metadata".into(),
-                    );
+                    let slice_tpe = DotnetTypeRef::new(None, &name);
+                    let descriptor =
+                        FieldDescriptor::new(slice_tpe, Type::USize, "metadata".into());
                     ops.extend([CILOp::LDField(descriptor.into())])
                 }
                 _ => todo!("Get length of type {ty:?}"),

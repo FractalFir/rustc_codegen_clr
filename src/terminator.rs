@@ -239,7 +239,7 @@ fn call_ctor<'ctx>(
                     ty.as_type()
                         .expect("Expceted generic type but got something that was not a type!"),
                     tyctx,
-                    Some(method_instance)
+                    Some(method_instance),
                 )
             })
             .collect();
@@ -428,7 +428,9 @@ pub fn handle_terminator<'ctx>(
         }
         TerminatorKind::Return => {
             let ret = crate::utilis::monomorphize(&method_instance, method.return_ty(), tyctx);
-            if type_cache.type_from_cache(ret, tyctx,Some(method_instance)) != crate::r#type::Type::Void {
+            if type_cache.type_from_cache(ret, tyctx, Some(method_instance))
+                != crate::r#type::Type::Void
+            {
                 vec![CILOp::LDLoc(0), CILOp::Ret]
             } else {
                 vec![CILOp::Ret]
@@ -447,17 +449,18 @@ pub fn handle_terminator<'ctx>(
             target,
             unwind: _,
         } => {
-            let mut ops = handle_operand(cond, tyctx, method, method_instance, type_cache);
-            ops.push(CILOp::LdcI32(i32::from(*expected)));
-            ops.push(CILOp::BEq(target.as_u32()));
-            ops.extend(throw_assert_msg(
-                msg,
-                tyctx,
-                method,
-                method_instance,
-                type_cache,
-            ));
-            ops
+            //let mut ops = handle_operand(cond, tyctx, method, method_instance, type_cache);
+            //ops.push(CILOp::LdcI32(i32::from(*expected)));
+            //ops.push(CILOp::BEq(target.as_u32()));
+            //ops.extend(throw_assert_msg(
+            //msg,
+            //tyctx,
+            //method,
+            //method_instance,
+            //type_cache,
+            //));
+            //ops
+            vec![CILOp::GoTo(target.as_u32())]
         }
         TerminatorKind::Goto { target } => vec![CILOp::GoTo((*target).into())],
         TerminatorKind::UnwindResume => {
@@ -659,6 +662,7 @@ fn throw_assert_msg<'ctx>(
             ops
         }
         AssertKind::MisalignedPointerDereference { required, found } => {
+            /*
             let mut ops = Vec::with_capacity(8);
             let string_class = crate::utilis::string_class();
             ops.push(CILOp::LdStr(
@@ -712,7 +716,8 @@ fn throw_assert_msg<'ctx>(
                 false,
             )));
             ops.push(CILOp::Throw);
-            ops
+            ops*/
+            vec![]
         }
         AssertKind::OverflowNeg(value) => {
             let mut ops = Vec::with_capacity(8);

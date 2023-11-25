@@ -33,7 +33,11 @@ pub fn skip_binder_if_no_generic_types<T>(binder: Binder<T>) -> Result<T, Method
 }
 pub fn adt_name(adt: &AdtDef) -> crate::IString {
     //TODO: find a better way to get adt name!
-    format!("{adt:?}").replace("::", ".").into()
+    format!("{adt:?}")
+        .replace("::", ".")
+        .replace("<'", "")
+        .replace(">", "")
+        .into()
 }
 /// Gets the name of a field with index `idx`
 pub fn field_name(ty: Ty, idx: u32) -> crate::IString {
@@ -96,7 +100,7 @@ pub fn field_descrptor<'ctx>(
                     .iter()
                     .map(|tpe| {
                         let tpe = crate::utilis::monomorphize(&method_instance, tpe, ctx);
-                        type_cache.type_from_cache(tpe, ctx,Some(method_instance))
+                        type_cache.type_from_cache(tpe, ctx, Some(method_instance))
                     })
                     .collect::<Vec<_>>(),
             ),
@@ -104,10 +108,10 @@ pub fn field_descrptor<'ctx>(
             format!("Item{}", field_idx + 1).into(),
         );
     }
-    let def = type_cache.type_def_from_cache(owner_ty, ctx,Some(method_instance)); //TypeDef::from_ty(owner_ty, ctx, &method_instance);
+    let def = type_cache.type_def_from_cache(owner_ty, ctx, Some(method_instance)); //TypeDef::from_ty(owner_ty, ctx, &method_instance);
     let def = def.clone();
     let type_ref = type_cache
-        .type_from_cache(owner_ty, ctx,Some(method_instance)) //
+        .type_from_cache(owner_ty, ctx, Some(method_instance)) //
         .as_dotnet()
         .expect("Field owner not a dotnet type!");
     def.field_desc_from_rust_field_idx(type_ref, field_idx)

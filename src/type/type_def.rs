@@ -145,7 +145,11 @@ impl From<&TypeDef> for DotnetTypeRef {
 pub fn escape_field_name(name: &str) -> IString {
     if name.is_empty() {
         "fld".into()
-    } else if !name.chars().next().unwrap().is_alphabetic() || name == "value" || name == "flags" {
+    } else if !name.chars().next().unwrap().is_alphabetic()
+        || name == "value"
+        || name == "flags"
+        || name == "alignment"
+    {
         format!("m_{name}").into()
     } else {
         name.into()
