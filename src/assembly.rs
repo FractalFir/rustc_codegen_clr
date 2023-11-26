@@ -1,13 +1,17 @@
 use crate::cil_op::{CILOp, CallSite};
 use crate::codegen_error::MethodCodegenError;
-use crate::r#type::TyCache;
+use crate::r#type::{DotnetTypeRef, TyCache};
 use crate::utilis::monomorphize;
 use crate::IString;
 use crate::{
     access_modifier::AccessModifer, codegen_error::CodegenError, function_sig::FnSig,
     method::Method, r#type::Type, r#type::TypeDef,
 };
-use rustc_middle::mir::{mono::MonoItem, Local, LocalDecl, Statement, Terminator};
+use rustc_middle::mir::{
+    interpret::{AllocId, GlobalAlloc},
+    mono::MonoItem,
+    Local, LocalDecl, Statement, Terminator,
+};
 use rustc_middle::ty::{Instance, ParamEnv, TyCtxt, TyKind};
 use std::collections::{HashMap, HashSet};
 
@@ -27,11 +31,16 @@ impl AssemblyExternRef {
 /// Representation of a .NET assembly.
 pub struct Assembly {
     types: HashSet<TypeDef>,
-    functions: HashSet<Method>,
+    functions: HashMap<CallSite, Method>,
     entrypoint: Option<CallSite>,
     extern_refs: HashMap<IString, AssemblyExternRef>,
+    static_fields: HashMap<IString, Type>,
 }
 impl Assembly {
+    /// Returns iterator over all global fields
+    pub fn globals(&self)->impl Iterator<Item = (&IString,&Type)>{
+        self.static_fields.iter()
+    }
     /// Returns the external assembly reference
     pub fn extern_refs(&self) -> &HashMap<IString, AssemblyExternRef> {
         &self.extern_refs
@@ -40,9 +49,10 @@ impl Assembly {
     pub fn empty() -> Self {
         let mut res = Self {
             types: HashSet::new(),
-            functions: HashSet::new(),
+            functions: HashMap::new(),
             entrypoint: None,
             extern_refs: HashMap::new(),
+            static_fields: HashMap::new(),
         };
         let dotnet_ver = AssemblyExternRef {
             version: (6, 12, 0, 0),
@@ -56,15 +66,19 @@ impl Assembly {
     /// Joins 2 assemblies together.
     pub fn join(self, other: Self) -> Self {
         let types = self.types.union(&other.types).cloned().collect();
-        let functions = self.functions.union(&other.functions).cloned().collect();
+        let mut functions = self.functions;
+        functions.extend(other.functions);
         let entrypoint = self.entrypoint.or(other.entrypoint);
         let mut extern_refs = self.extern_refs;
+        let mut static_fields = self.static_fields;
+        static_fields.extend(other.static_fields);
         extern_refs.extend(other.extern_refs);
         Self {
             types,
             functions,
             entrypoint,
             extern_refs,
+            static_fields,
         }
     }
     /// Gets the typdefef at path `path`.
@@ -266,6 +280,13 @@ impl Assembly {
                 None => (),
             }
         }
+        ops.iter_mut().for_each(|op| match op {
+            CILOp::LoadGlobalAllocPtr { alloc_id } => {
+                *op = CILOp::LDStaticField(self.add_allocation(*alloc_id, tcx).into());
+            }
+            _ => (),
+        });
+
         method.set_ops(ops);
         // Do some basic checks on the method as a whole.
         crate::utilis::check_debugable(method.get_ops(), &method, does_return_void);
@@ -274,6 +295,83 @@ impl Assembly {
         self.add_method(method);
         Ok(())
         //todo!("Can't add function")
+    }
+
+    fn add_allocation<'tcx>(
+        &mut self,
+        alloc_id: u64,
+        tcx: TyCtxt<'tcx>,
+    ) -> crate::cil_op::StaticFieldDescriptor {
+        let const_allocation =
+            match tcx.global_alloc(AllocId(alloc_id.try_into().expect("0 alloc id?"))) {
+                GlobalAlloc::Memory(alloc) => alloc,
+                GlobalAlloc::Function(_) | GlobalAlloc::Static(_) | GlobalAlloc::VTable(..) => {
+                    unreachable!()
+                }
+            };
+        let const_allocation = const_allocation.inner();
+        let bytes: &[u8] = const_allocation
+            .inspect_with_uninit_and_ptr_outside_interpreter(0..const_allocation.len());
+        use std::hash::{DefaultHasher, Hash, Hasher};
+        fn calculate_hash<T: Hash>(t: &T) -> u64 {
+            let mut s = DefaultHasher::new();
+            t.hash(&mut s);
+            s.finish()
+        }
+        let byte_hash = calculate_hash(&bytes);
+        
+       
+        let alloc_fld:IString = format!("alloc_{alloc_id}_{byte_hash}").into();
+        let field_desc = crate::cil_op::StaticFieldDescriptor::new(
+            None,
+            Type::Ptr(Type::U8.into()),
+            alloc_fld.clone().into(),
+        );
+        if self.static_fields.get(&alloc_fld).is_none(){
+            let method = self
+            .functions
+            .entry(CallSite::new(
+                None,
+                ".cctor".into(),
+                FnSig::new(&[], &Type::Void),
+                true,
+            ))
+            .or_insert_with(|| {
+                Method::new(
+                    AccessModifer::Public,
+                    true,
+                    FnSig::new(&[], &Type::Void),
+                    ".cctor",
+                    vec![(None, Type::Ptr(Type::U8.into())), (None,Type::Ptr(Type::U8.into()))],
+                )
+            });
+            let ops: &mut Vec<CILOp> = method.ops_mut();
+            if ops.len() > 0 && ops[ops.len() - 1] == CILOp::Ret{
+                ops.pop();
+            }
+            ops.extend([
+                CILOp::LdcI64(const_allocation.len() as u64 as i64),
+                CILOp::ConvISize(false),
+                CILOp::Call(
+                    CallSite::new(
+                        None,
+                        "malloc".into(),
+                        FnSig::new(&[Type::USize], &Type::Ptr(Type::Void.into())),
+                        true,
+                    )
+                    .into(),
+                ),
+                CILOp::Dup,
+                CILOp::STLoc(0),
+                CILOp::STLoc(1),
+            ]);
+            for byte in bytes{
+                ops.extend([CILOp::LDLoc(0),CILOp::LdcI32(*byte as i32),CILOp::STIndI8,CILOp::LDLoc(0),CILOp::LdcI32(1),CILOp::Add,CILOp::STLoc(0)]);
+            }
+            ops.extend([CILOp::LDLoc(1),CILOp::STStaticField(field_desc.clone().into()),CILOp::Ret]);
+            self.static_fields.insert(alloc_fld,Type::Ptr(Type::U8.into()));
+        }
+        field_desc
     }
     /// Adds 100 first array types
     pub fn add_array_types(&mut self) {
@@ -291,7 +389,7 @@ impl Assembly {
     pub fn add_method(&mut self, mut method: Method) {
         method.allocate_temporaries();
         method.ensure_valid();
-        self.functions.insert(method);
+        self.functions.insert(method.call_site(), method);
     }
     /// Returns the list of all calls within the method. Calls may repeat.
     pub fn call_sites(&self) -> impl Iterator<Item = &CallSite> {
@@ -299,7 +397,7 @@ impl Assembly {
     }
     /// Returns an interator over all methods within the assembly.
     pub fn methods(&self) -> impl Iterator<Item = &Method> {
-        self.functions.iter()
+        self.functions.values()
     }
     /// Returns an iterator over all types witin the assembly.
     pub fn types(&self) -> impl Iterator<Item = &TypeDef> {
@@ -307,13 +405,14 @@ impl Assembly {
     }
     /// Optimizes all the methods witin the assembly.
     pub fn opt(&mut self) {
-        let functions: HashSet<_> = self
+        let functions: HashMap<_, _> = self
             .functions
             .iter()
             .map(|method| {
+                let (site, method) = method;
                 let mut method = method.clone();
                 crate::opt::opt_method(&mut method, self);
-                method
+                (site.clone(), method)
             })
             .collect();
         self.functions = functions;
@@ -360,8 +459,8 @@ impl Assembly {
     /// Sets the entrypoint of the assembly to the method behind `CallSite`.
     pub fn set_entrypoint(&mut self, entrypoint: CallSite) {
         assert!(self.entrypoint.is_none(), "ERROR: Multiple entrypoints");
-        self.functions
-            .insert(crate::entrypoint::wrapper(&entrypoint));
+        let wrapper = crate::entrypoint::wrapper(&entrypoint);
+        self.functions.insert(wrapper.call_site(), wrapper);
         self.entrypoint = Some(entrypoint);
     }
 }

@@ -282,8 +282,7 @@ fn load_const_scalar<'ctx>(
                 GlobalAlloc::Static(def_id) => {
                     todo!("Can't handle statics yet!");
                 }
-                GlobalAlloc::Memory(_) => {
-                    todo!("Can't handle memory constants yet!");
+                GlobalAlloc::Memory(const_allocation) => {
                     return vec![
                         CILOp::LoadGlobalAllocPtr {
                             alloc_id: alloc_id.0.into(),

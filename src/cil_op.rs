@@ -363,6 +363,8 @@ pub enum CILOp {
     SizeOf(Box<crate::r#type::Type>),
     /// Loads the value of the static field represented by `StaticFieldDescriptor`.
     LDStaticField(Box<StaticFieldDescriptor>),
+    /// Sets the value of the static field represented by `StaticFieldDescriptor`.
+    STStaticField(Box<StaticFieldDescriptor>),
     /// Copies to *dst* from *src* *count* bytes.  
     CpBlk,
 }
@@ -424,18 +426,18 @@ impl CILOp {
     }
     /// Returns the ops necesary to construct and throw a new `System.Exception` with message `msg`.
     pub fn throw_msg(msg: &str) -> [CILOp; 3] {
-        let class = Some(DotnetTypeRef::new(
+        let class = DotnetTypeRef::new(
             Some("System.Runtime"),
             "System.Exception",
-        ));
+        );
         let name = ".ctor".into();
         let signature = FnSig::new(
-            &[crate::utilis::string_class().into()],
+            &[class.clone().into(),crate::utilis::string_class().into()],
             &crate::r#type::Type::Void,
         );
         [
             CILOp::LdStr(msg.into()),
-            CILOp::NewObj(CallSite::boxed(class, name, signature, false)),
+            CILOp::NewObj(CallSite::boxed(Some(class), name, signature, false)),
             CILOp::Throw,
         ]
     }
@@ -489,6 +491,7 @@ impl CILOp {
             CILOp::NewObj(site) => 1 - (site.inputs().len() as isize),
             CILOp::LdObj(_) => 0,
             CILOp::LDStaticField(_) => 1,
+            CILOp::STStaticField(_) => -1,
             CILOp::STObj(_) => -2,
             CILOp::STField(_) => -2,
             CILOp::Add
