@@ -243,7 +243,7 @@ fn call_ctor<'ctx>(
                 )
             })
             .collect();
-        //inputs.insert(0, tpe.clone().into());
+        inputs.insert(0, tpe.clone().into());
         let sig = FnSig::new(&inputs, &crate::r#type::Type::Void);
         let mut call = Vec::new();
         for arg in args {

@@ -1,5 +1,6 @@
 use super::{place_get_length, pointed_type, PlaceTy};
 use crate::cil_op::{CILOp, FieldDescriptor};
+use crate::function_sig::FnSig;
 use crate::r#type::{DotnetTypeRef, Type};
 use crate::utilis::field_name;
 use rustc_middle::mir::{Place, PlaceElem};
@@ -142,6 +143,16 @@ pub fn place_elem_set<'a>(
                         CILOp::Add,
                     ];
                     ops.extend(ptr_set_op);
+                    ops
+                }
+                TyKind::Array(element,length)=>{
+                    //let element = crate::utilis::monomorphize(&method_instance, *element, tyctx);
+                    let array_type =  type_cache.type_from_cache(curr_ty, ctx, Some(method_instance));
+                    let array_dotnet =array_type.as_dotnet().expect("Non array type");
+                    let ops = vec![
+                        index,
+                        CILOp::Call(crate::cil_op::CallSite::new(Some(array_dotnet),"set_Item".into(),FnSig::new(&[array_type,Type::USize],&Type::GenericArg(0)),false).into())
+                    ];
                     ops
                 }
                 _ => {

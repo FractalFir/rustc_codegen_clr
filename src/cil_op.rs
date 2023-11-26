@@ -485,7 +485,7 @@ impl CILOp {
             CILOp::Dup => 1,
             CILOp::LDField(_) | CILOp::LDFieldAdress(_) => 0,
             CILOp::LocAlloc => 0,
-            CILOp::NewObj(site) => 1 - (site.inputs().len() as isize),
+            CILOp::NewObj(site) => 1 - (site.explicit_inputs().len() as isize),
             CILOp::LdObj(_) => 0,
             CILOp::LDStaticField(_) => 1,
             CILOp::STStaticField(_) => -1,
