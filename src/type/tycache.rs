@@ -4,17 +4,17 @@ use crate::{
 };
 use either::Either;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::{AdtDef, AdtKind, GenericArg, ParamEnv,Instance, List, Ty, TyCtxt, TyKind};
+use rustc_middle::ty::{AdtDef, AdtKind, GenericArg, Instance, List, ParamEnv, Ty, TyCtxt, TyKind};
 use std::collections::HashMap;
 pub struct TyCache {
     type_def_cache: HashMap<IString, TypeDef>,
-    cycle_prevention:Vec<IString>,
+    cycle_prevention: Vec<IString>,
 }
 impl TyCache {
     pub fn empty() -> Self {
         Self {
             type_def_cache: HashMap::new(),
-            cycle_prevention:vec![],
+            cycle_prevention: vec![],
         }
     }
     pub fn defs(&self) -> impl Iterator<Item = &TypeDef> {
@@ -54,7 +54,11 @@ impl TyCache {
         if self.type_def_cache.get(name).is_some() {
             return DotnetTypeRef::new(None, name.into());
         }
-        if self.cycle_prevention.iter().any(|c_name|c_name.as_ref() == name){
+        if self
+            .cycle_prevention
+            .iter()
+            .any(|c_name| c_name.as_ref() == name)
+        {
             panic!("Type {name} is cyclic!");
         }
         self.cycle_prevention.push(name.into());
@@ -68,7 +72,7 @@ impl TyCache {
         self.cycle_prevention.pop();
         DotnetTypeRef::new(None, name.into())
     }
-    pub fn recover_from_panic(&mut self){
+    pub fn recover_from_panic(&mut self) {
         self.cycle_prevention.clear()
     }
     fn struct_<'tyctx>(
@@ -288,25 +292,33 @@ impl TyCache {
                 //Type::DotnetType(Box::new(slice_tpe)))
                 todo!("Slice!")
             }
-            TyKind::FnDef(did, subst)=>{
-                let instance = Instance::resolve(tyctx, ParamEnv::reveal_all(), *did, subst).expect("Could not get function instance due to error").expect("Could not get function instance.");
-                let function_name = crate::utilis::function_name(tyctx.symbol_name(instance)); 
-                self.type_def_cache.insert(format!("fn_{function_name}").into(),TypeDef::nameonly(&format!("fn_{function_name}")));
+            TyKind::FnDef(did, subst) => {
+                let instance = Instance::resolve(tyctx, ParamEnv::reveal_all(), *did, subst)
+                    .expect("Could not get function instance due to error")
+                    .expect("Could not get function instance.");
+                let function_name = crate::utilis::function_name(tyctx.symbol_name(instance));
+                self.type_def_cache.insert(
+                    format!("fn_{function_name}").into(),
+                    TypeDef::nameonly(&format!("fn_{function_name}")),
+                );
                 Type::FnDef(function_name)
             }
             TyKind::Array(element, length) => {
                 let mut length = *length;
-                method.inspect(|method|length = crate::utilis::monomorphize(method, length, tyctx));
+                method
+                    .inspect(|method| length = crate::utilis::monomorphize(method, length, tyctx));
                 let length = crate::utilis::try_resolve_const_size(&length).unwrap();
                 let mut element = *element;
-                method.inspect(|method|element = crate::utilis::monomorphize(method, element, tyctx));
+                method.inspect(|method| {
+                    element = crate::utilis::monomorphize(method, element, tyctx)
+                });
                 let element = self.type_from_cache(element, tyctx, method);
-                let arr_name:IString = format!("Arr{length}").into();
-                if true || self.type_def_cache.get(&arr_name).is_none(){
+                let arr_name: IString = format!("Arr{length}").into();
+                if true || self.type_def_cache.get(&arr_name).is_none() {
                     println!("adding array type {arr_name}");
-                   
+
                     self.type_def_cache
-                    .insert(arr_name,crate::r#type::type_def::get_array_type(length));
+                        .insert(arr_name, crate::r#type::type_def::get_array_type(length));
                 }
                 DotnetTypeRef::array(element, length).into()
                 //todo!("Array!")

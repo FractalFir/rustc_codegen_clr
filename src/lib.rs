@@ -67,6 +67,8 @@ const SPLIT_LOCAL_STRUCTS: bool = false;
 pub const ALWAYS_INIT_LOCALS: bool = false;
 /// Should the codegen stop working when ecountering an error, or try to press on, replacing unusuported code with exceptions throws?
 pub const ABORT_ON_ERROR: bool = false;
+/// Should the codegen continue working after it encoutnered a miscompilation?
+pub const ALLOW_MISCOMPILATIONS: bool = true;
 
 // Modules
 

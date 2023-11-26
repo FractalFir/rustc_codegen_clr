@@ -127,6 +127,8 @@ pub fn place_elem_adress<'ctx>(
                 (element_ty.into(), ops)
             }
         }*/
-        _ => rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Can't handle porojection {place_elem:?} in body")},
+        _ => {
+            rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Can't handle porojection {place_elem:?} in body")}
+        }
     }
 }

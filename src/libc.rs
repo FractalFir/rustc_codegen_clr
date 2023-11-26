@@ -101,7 +101,7 @@ fn rust_slice(asm: &mut Assembly) {
     let mut rust_slice = crate::r#type::TypeDef::nameonly("RustSlice");
     rust_slice.set_generic_count(1);
     asm.add_typedef(rust_slice);
-    if asm.types().any(|tpe|tpe.name().contains("PanicInfo")){
+    if asm.types().any(|tpe| tpe.name().contains("PanicInfo")) {
         rust_begin_unwind(asm);
     }
     //

@@ -59,7 +59,7 @@ fn place_elem_get<'a>(
             super::PlaceTy::Ty(curr_type) => {
                 let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
                 let field_type = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
-                
+
                 let field_desc = crate::utilis::field_descrptor(
                     curr_type,
                     (*index).into(),
@@ -121,7 +121,9 @@ fn place_elem_get<'a>(
                     ops.extend(deref_op);
                     ops
                 }
-                _ => rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Can't index into {curr_ty}!")},
+                _ => {
+                    rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Can't index into {curr_ty}!")}
+                }
             }
         } /*
         PlaceElem::ConstantIndex {

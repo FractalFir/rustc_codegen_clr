@@ -22,8 +22,13 @@ pub fn place_elem_body<'ctx>(
     _body: &rustc_middle::mir::Body,
     type_cache: &mut crate::r#type::TyCache,
 ) -> (PlaceTy<'ctx>, Vec<CILOp>) {
-    let curr_ty = curr_type.as_ty().expect("Can't index into enum!");
-    let curr_ty = crate::utilis::monomorphize(&method_instance, curr_ty, tyctx);
+    let curr_type = match curr_type {
+        PlaceTy::Ty(ty) => PlaceTy::Ty(crate::utilis::monomorphize(&method_instance, ty, tyctx)),
+        PlaceTy::EnumVariant(enm, idx) => PlaceTy::EnumVariant(
+            crate::utilis::monomorphize(&method_instance, enm, tyctx),
+            idx,
+        ),
+    };
     assert_morphic!(curr_type);
     match place_elem {
         PlaceElem::Deref => {
@@ -79,7 +84,7 @@ pub fn place_elem_body<'ctx>(
                 .expect("Can't get enum variant of an enum varaint!");
             let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
             let curr_dotnet_type =
-                type_cache.type_from_cache(curr_ty, tyctx, Some(method_instance));
+                type_cache.type_from_cache(curr_type, tyctx, Some(method_instance));
             let curr_dotnet_type =
                 if let crate::r#type::Type::DotnetType(dotnet_type) = curr_dotnet_type {
                     dotnet_type.as_ref().clone()

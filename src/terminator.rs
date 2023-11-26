@@ -341,7 +341,7 @@ fn call<'ctx>(
         );
     }
     let mut call = Vec::new();
-    for arg in args{
+    for arg in args {
         call.extend(crate::operand::handle_operand(
             arg,
             tyctx,
@@ -349,7 +349,6 @@ fn call<'ctx>(
             method_instance,
             type_cache,
         ));
-        
     }
 
     if args.len() < signature.inputs().len() {

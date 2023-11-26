@@ -111,6 +111,7 @@ pub fn handle_rvalue<'tcx>(
         ),
         Rvalue::Cast(CastKind::Transmute, operand, dst) => {
             let dst = crate::utilis::monomorphize(&method_instance, *dst, tyctx);
+            let dst_ty = dst;
             let dst = tycache.type_from_cache(dst, tyctx, Some(method_instance));
             let src = operand.ty(&method.local_decls, tyctx);
             let src = crate::utilis::monomorphize(&method_instance, src, tyctx);
@@ -167,7 +168,23 @@ pub fn handle_rvalue<'tcx>(
                     ]);
                     res
                 }
-                _ => todo!("Unhandled transmute from {src:?} to {dst:?}"),
+                (_, _) => {
+                    eprintln!(
+                        "transmute from {src:?} to {dst:?} does not have special handling yet!"
+                    );
+                    let mut res = handle_operand(operand, tyctx, method, method_instance, tycache);
+                    res.push(CILOp::NewTMPLocal(src.into()));
+                    res.push(CILOp::SetTMPLocal);
+                    res.push(CILOp::LoadAddresOfTMPLocal);
+                    res.push(CILOp::FreeTMPLocal);
+                    res.extend(crate::place::deref_op(
+                        crate::place::PlaceTy::Ty(dst_ty),
+                        tyctx,
+                        &method_instance,
+                        tycache,
+                    ));
+                    res
+                }
             }
         }
         Rvalue::Cast(CastKind::PointerFromExposedAddress, operand, _) => {

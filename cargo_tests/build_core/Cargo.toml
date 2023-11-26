@@ -8,5 +8,5 @@ edition = "2021"
 [dependencies]
 mycorrhiza = {path="../../mycorrhiza"}
 [workspace]
-[profile.release.build-override]
+
 codegen-units = 1
