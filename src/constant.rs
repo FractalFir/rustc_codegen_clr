@@ -226,6 +226,9 @@ fn create_const_from_data<'ctx>(
     let bytes = memory.0.get_bytes_unchecked(range);
     create_const_from_slice(ty, tyctx, bytes, method_instance, tycache)
 }
+fn alloc_id_to_u64(alloc_id: AllocId) -> u64 {
+    unsafe { std::mem::transmute(alloc_id) }
+}
 fn load_const_value<'ctx>(
     const_val: ConstValue<'ctx>,
     const_ty: Ty<'ctx>,
@@ -248,7 +251,28 @@ fn load_const_value<'ctx>(
             ]
         }
         ConstValue::Slice { data, meta } => {
-            todo!("Constant slice allocations are not supported yet data:{data:?},meta:{meta:?}!")
+            let slice_type = tycache.type_from_cache(const_ty, tyctx, Some(method_instance));
+            let slice_dotnet = slice_type.as_dotnet().expect("Slice type invalid!");
+            let metadata_field =
+                FieldDescriptor::new(slice_dotnet.clone(), Type::USize, "metadata".into());
+            let ptr_field =
+                FieldDescriptor::new(slice_dotnet, Type::Void.pointer_to(), "data_address".into());
+            // TODO: find a better way to get an alloc_id. This is likely to be incoreect.
+            let alloc_id = tyctx.reserve_and_set_memory_alloc(data);
+            let alloc_id: u64 = alloc_id_to_u64(alloc_id);
+ 
+
+            vec![
+                CILOp::NewTMPLocal(slice_type.into()),
+                CILOp::LoadAddresOfTMPLocal,
+                CILOp::LdcI64(meta as i64),
+                CILOp::STField(metadata_field.into()),
+                CILOp::LoadAddresOfTMPLocal,
+                CILOp::LoadGlobalAllocPtr { alloc_id },
+                CILOp::STField(ptr_field.into()),
+                CILOp::LoadTMPLocal,
+                CILOp::FreeTMPLocal,
+            ]
         }
         ConstValue::Indirect { alloc_id, offset } => {
             create_const_from_data(

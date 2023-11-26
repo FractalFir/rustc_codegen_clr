@@ -38,7 +38,7 @@ pub struct Assembly {
 }
 impl Assembly {
     /// Returns iterator over all global fields
-    pub fn globals(&self)->impl Iterator<Item = (&IString,&Type)>{
+    pub fn globals(&self) -> impl Iterator<Item = (&IString, &Type)> {
         self.static_fields.iter()
     }
     /// Returns the external assembly reference
@@ -319,34 +319,36 @@ impl Assembly {
             s.finish()
         }
         let byte_hash = calculate_hash(&bytes);
-        
-       
-        let alloc_fld:IString = format!("alloc_{alloc_id}_{byte_hash}").into();
+
+        let alloc_fld: IString = format!("alloc_{alloc_id:x}_{byte_hash:x}").into();
         let field_desc = crate::cil_op::StaticFieldDescriptor::new(
             None,
             Type::Ptr(Type::U8.into()),
             alloc_fld.clone().into(),
         );
-        if self.static_fields.get(&alloc_fld).is_none(){
+        if self.static_fields.get(&alloc_fld).is_none() {
             let method = self
-            .functions
-            .entry(CallSite::new(
-                None,
-                ".cctor".into(),
-                FnSig::new(&[], &Type::Void),
-                true,
-            ))
-            .or_insert_with(|| {
-                Method::new(
-                    AccessModifer::Public,
-                    true,
+                .functions
+                .entry(CallSite::new(
+                    None,
+                    ".cctor".into(),
                     FnSig::new(&[], &Type::Void),
-                    ".cctor",
-                    vec![(None, Type::Ptr(Type::U8.into())), (None,Type::Ptr(Type::U8.into()))],
-                )
-            });
+                    true,
+                ))
+                .or_insert_with(|| {
+                    Method::new(
+                        AccessModifer::Public,
+                        true,
+                        FnSig::new(&[], &Type::Void),
+                        ".cctor",
+                        vec![
+                            (None, Type::Ptr(Type::U8.into())),
+                            (None, Type::Ptr(Type::U8.into())),
+                        ],
+                    )
+                });
             let ops: &mut Vec<CILOp> = method.ops_mut();
-            if ops.len() > 0 && ops[ops.len() - 1] == CILOp::Ret{
+            if ops.len() > 0 && ops[ops.len() - 1] == CILOp::Ret {
                 ops.pop();
             }
             ops.extend([
@@ -365,11 +367,24 @@ impl Assembly {
                 CILOp::STLoc(0),
                 CILOp::STLoc(1),
             ]);
-            for byte in bytes{
-                ops.extend([CILOp::LDLoc(0),CILOp::LdcI32(*byte as i32),CILOp::STIndI8,CILOp::LDLoc(0),CILOp::LdcI32(1),CILOp::Add,CILOp::STLoc(0)]);
+            for byte in bytes {
+                ops.extend([
+                    CILOp::LDLoc(0),
+                    CILOp::LdcI32(*byte as i32),
+                    CILOp::STIndI8,
+                    CILOp::LDLoc(0),
+                    CILOp::LdcI32(1),
+                    CILOp::Add,
+                    CILOp::STLoc(0),
+                ]);
             }
-            ops.extend([CILOp::LDLoc(1),CILOp::STStaticField(field_desc.clone().into()),CILOp::Ret]);
-            self.static_fields.insert(alloc_fld,Type::Ptr(Type::U8.into()));
+            ops.extend([
+                CILOp::LDLoc(1),
+                CILOp::STStaticField(field_desc.clone().into()),
+                CILOp::Ret,
+            ]);
+            self.static_fields
+                .insert(alloc_fld, Type::Ptr(Type::U8.into()));
         }
         field_desc
     }

@@ -244,7 +244,7 @@ impl TyCache {
                     return super::magic_type(name.as_ref(), def, subst, tyctx);
                 }
                 let mangled = super::mangle_susbt(&name, subst);
-                println!("mangled:{mangled:?}");
+                //println!("mangled:{mangled:?}");
                 self.adt(&mangled, *def, subst, tyctx, method).into()
             }
             TyKind::Dynamic(trait_, _, dyn_kind) => {

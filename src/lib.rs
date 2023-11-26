@@ -200,7 +200,10 @@ impl CodegenBackend for MyBackend {
         // Done twice for inlining!
         codegen.opt();
         let name: IString = cgus.iter().next().unwrap().name().to_string().into();
-        println!("globals:{globals:?}",globals = codegen.globals().collect::<Vec<_>>());
+        println!(
+            "globals:{globals:?}",
+            globals = codegen.globals().collect::<Vec<_>>()
+        );
         Box::new((
             name,
             codegen,
@@ -215,7 +218,6 @@ impl CodegenBackend for MyBackend {
         _sess: &Session,
         outputs: &OutputFilenames,
     ) -> Result<(CodegenResults, FxIndexMap<WorkProductId, WorkProduct>), ErrorGuaranteed> {
-        
         use std::io::Write;
         let (_asm_name, asm, metadata, crate_info) = *ongoing_codegen
             .downcast::<(IString, Assembly, EncodedMetadata, CrateInfo)>()

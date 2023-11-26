@@ -22,8 +22,9 @@ impl std::io::Write for ILASMExporter {
     }
 }
 impl AssemblyExporter for ILASMExporter {
-    fn add_global(&mut self,tpe:&Type,name:&str) {
-        writeln!(self,".field static {tpe} {name}",tpe = type_cil(&tpe)).expect("Could not write global!")
+    fn add_global(&mut self, tpe: &Type, name: &str) {
+        writeln!(self, ".field static {tpe} {name}", tpe = type_cil(&tpe))
+            .expect("Could not write global!")
     }
     fn init(asm_name: &str) -> Self {
         let mut encoded_asm = Vec::with_capacity(0x1_00);
@@ -595,14 +596,14 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
             match static_field.owner(){
                 Some(owner)=>todo!("Can't load static field {static_field:?}"),
                 None=>format!("ldsfld {tpe} {name}",tpe = field_type_cil(static_field.tpe()), name = static_field.name()).into(),
-            }  
+            }
         }
         CILOp::STStaticField(static_field) => {
             match static_field.owner(){
                 Some(owner)=>todo!("Can't load static field {static_field:?}"),
                 None=>format!("stsfld {tpe} {name}",tpe = field_type_cil(static_field.tpe()), name = static_field.name()).into(),
-            }  
-        } 
+            }
+        }
     }
 }
 fn output_type_cil(tpe: &Type) -> Cow<'static, str> {

@@ -426,13 +426,10 @@ impl CILOp {
     }
     /// Returns the ops necesary to construct and throw a new `System.Exception` with message `msg`.
     pub fn throw_msg(msg: &str) -> [CILOp; 3] {
-        let class = DotnetTypeRef::new(
-            Some("System.Runtime"),
-            "System.Exception",
-        );
+        let class = DotnetTypeRef::new(Some("System.Runtime"), "System.Exception");
         let name = ".ctor".into();
         let signature = FnSig::new(
-            &[class.clone().into(),crate::utilis::string_class().into()],
+            &[class.clone().into(), crate::utilis::string_class().into()],
             &crate::r#type::Type::Void,
         );
         [
