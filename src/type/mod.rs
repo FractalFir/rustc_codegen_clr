@@ -33,6 +33,14 @@ pub fn mangle_ty(ty: Ty) -> std::borrow::Cow<'static, str> {
             IntTy::Isize => "ISize",
         }
         .into(),
+        TyKind::Tuple(elements)=>{
+            if elements.is_empty(){
+                "V".into()
+            }
+            else{
+                format!("T{element_count}{elements}",element_count = elements.len(),elements = elements.iter().map(|ele|mangle_ty(ele).to_string()).collect::<String>()).into()
+            }
+        }
         TyKind::Ref(_region, inner, _mut) => format!("Ref{}", mangle_ty(*inner)).into(),
         TyKind::Adt(def, subst) => {
             let name = crate::utilis::adt_name(&def);

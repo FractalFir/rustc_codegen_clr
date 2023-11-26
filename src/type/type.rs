@@ -42,7 +42,7 @@ pub enum Type {
     GenericArg(u32),
     DotnetChar,
     /// Rust FnDefs
-    FnDef(Box<CallSite>),
+    FnDef(IString),
 }
 #[derive(Serialize, Deserialize, PartialEq, Clone, Eq, Hash, Debug)]
 pub struct DotnetArray {

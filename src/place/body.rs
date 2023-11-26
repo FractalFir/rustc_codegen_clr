@@ -61,9 +61,10 @@ pub fn place_elem_body<'ctx>(
             }
             PlaceTy::EnumVariant(enm, var_idx) => {
                 let owner = crate::utilis::monomorphize(&method_instance, enm, tyctx);
-                let field_desc = crate::utilis::field_descrptor(
+                let field_desc = crate::utilis::enum_field_descriptor(
                     owner,
-                    (var_idx + 1).into(),
+                    index.as_u32(),
+                    var_idx.into(),
                     tyctx,
                     method_instance,
                     type_cache,

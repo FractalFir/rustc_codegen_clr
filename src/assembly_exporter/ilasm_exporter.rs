@@ -634,6 +634,7 @@ fn dotnet_type_ref_cli_generics_unescaped(dotnet_type: &DotnetTypeRef) -> String
 }
 fn type_cil(tpe: &Type) -> Cow<'static, str> {
     match tpe {
+        Type::FnDef(name)=>format!("fn_{name}").into(),
         Type::Void => "RustVoid".into(),
         Type::I8 => "int8".into(),
         Type::U8 => "uint8".into(),
@@ -687,6 +688,7 @@ fn prefixed_field_type_cil(tpe: &Type) -> Cow<'static, str> {
 fn prefixed_type_cil(tpe: &Type) -> Cow<'static, str> {
     let prefixed_type = match tpe {
         Type::Void => "valuetype RustVoid".into(),
+        Type::FnDef(name)=>format!("valuetype fn_{name}").into(),
         Type::I8 => "int8".into(),
         Type::U8 => "uint8".into(),
         Type::I16 => "int16".into(),

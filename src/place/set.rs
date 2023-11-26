@@ -52,8 +52,8 @@ pub fn place_elem_set<'a>(
             let pointed_type = pointed_type(curr_type);
             ptr_set_op(pointed_type.into(), ctx, &method_instance, type_cache)
         }
-        PlaceElem::Field(index, _field_type) => {
-            if let PlaceTy::Ty(curr_type) = curr_type {
+        PlaceElem::Field(index, _field_type) =>  match curr_type {
+             PlaceTy::Ty(curr_type) => {
                 let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, ctx);
                 let field_desc = crate::utilis::field_descrptor(
                     curr_type,
@@ -63,8 +63,18 @@ pub fn place_elem_set<'a>(
                     type_cache,
                 );
                 vec![CILOp::STField(field_desc.into())]
-            } else {
-                todo!("Can't set fields of enum variants yet!");
+            },
+            super::PlaceTy::EnumVariant(enm, var_idx) =>  {
+                let enm = crate::utilis::monomorphize(&method_instance, enm, ctx);
+                let field_desc = crate::utilis::enum_field_descriptor(
+                    enm,
+                    index.as_u32(),
+                    var_idx.into(),
+                    ctx,
+                    method_instance,
+                    type_cache,
+                );
+                vec![CILOp::STField(field_desc.into())]
             }
         }
         PlaceElem::Index(index) => {
@@ -97,7 +107,7 @@ pub fn place_elem_set<'a>(
                     ops.extend(ptr_set_op);
                     ops
                 }
-                _ => todo!("Can't index into {curr_ty}!"),
+                _ =>rustc_middle::ty::print::with_no_trimmed_paths! { todo!("Can't index into {curr_ty}!")},
             }
         }
         /*

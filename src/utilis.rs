@@ -1,6 +1,6 @@
 use rustc_middle::ty::{
     AdtDef, Binder, Const, ConstKind, EarlyBinder, GenericArg, Instance, ParamEnv, SymbolName, Ty,
-    TyCtxt, TyKind, TypeFoldable,
+    TyCtxt, TyKind, TypeFoldable,List
 };
 pub const BEGIN_TRY: &str = "rustc_clr_interop_begin_try";
 pub const END_TRY: &str = "rustc_clr_interop_end_try";
@@ -30,6 +30,12 @@ pub fn skip_binder_if_no_generic_types<T>(binder: Binder<T>) -> Result<T, Method
         Ok(binder.skip_binder())
     }*/
     Ok(binder.skip_binder())
+}
+pub fn as_adt(ty:Ty)->Option<(AdtDef,&List<GenericArg>)>{
+    match ty.kind(){
+        TyKind::Adt(adt,subst)=>Some((*adt,subst)),
+        _=>None,
+    }
 }
 pub fn adt_name(adt: &AdtDef) -> crate::IString {
     //TODO: find a better way to get adt name!
@@ -84,6 +90,29 @@ pub fn monomorphize<'tcx, T: TypeFoldable<TyCtxt<'tcx>> + Clone>(
         EarlyBinder::bind(ty),
     )
 }
+pub fn enum_field_descriptor<'ctx>(
+    owner_ty: Ty<'ctx>,
+    field_idx: u32,
+    variant_idx:u32,
+    ctx: TyCtxt<'ctx>,
+    method_instance: Instance<'ctx>,
+    type_cache: &mut TyCache,
+) -> FieldDescriptor {
+    let (adt,subst) = as_adt(owner_ty).expect("Tried to get a field of a non ADT or tuple type!");
+    let variant = adt.variants().iter().nth(variant_idx as usize).expect("No enum variant with such index!"); 
+    let field = variant.fields.iter().nth(field_idx as usize).expect("No enum field with provided index!");
+    let field_name = crate::r#type::escape_field_name(&field.name.to_string());
+    let field_ty = field.ty(ctx,subst);
+    let field_ty = crate::utilis::monomorphize(&method_instance, field_ty, ctx);
+    let field_ty = type_cache.type_from_cache(field_ty, ctx, Some(method_instance));
+    let owner_ty = type_cache.type_from_cache(owner_ty, ctx, Some(method_instance)).as_dotnet().expect("Error: tried to set a field of a non-object type!");
+    assert!(owner_ty.asm().is_none(),"External enum!");
+    let variant_name = variant.name.to_string();
+    let enum_variant_dotnet = DotnetTypeRef::new(None,&format!("{owner_name}/{variant_name}",owner_name = owner_ty.name_path()));
+    FieldDescriptor::new(enum_variant_dotnet,field_ty,field_name)
+
+
+}
 pub fn field_descrptor<'ctx>(
     owner_ty: Ty<'ctx>,
     field_idx: u32,
@@ -110,13 +139,22 @@ pub fn field_descrptor<'ctx>(
             format!("Item{}", field_idx + 1).into(),
         );
     }
+    let (adt,subst) = as_adt(owner_ty).expect("Tried to get a field of a non ADT or tuple type!");
+    let field = adt.all_fields().nth(field_idx as usize).expect("No field with provided index!");
+    let field_name = crate::r#type::escape_field_name(&field.name.to_string());
+    let field_ty = field.ty(ctx,subst);
+    let field_ty = crate::utilis::monomorphize(&method_instance, field_ty, ctx);
+    let field_ty = type_cache.type_from_cache(field_ty, ctx, Some(method_instance));
+    let owner_ty = type_cache.type_from_cache(owner_ty, ctx, Some(method_instance)).as_dotnet().expect("Error: tried to set a field of a non-object type!");
+    FieldDescriptor::new(owner_ty,field_ty,field_name)
+        /* 
     let def = type_cache.type_def_from_cache(owner_ty, ctx, Some(method_instance)); //TypeDef::from_ty(owner_ty, ctx, &method_instance);
     let def = def.clone();
     let type_ref = type_cache
         .type_from_cache(owner_ty, ctx, Some(method_instance)) //
         .as_dotnet()
         .expect("Field owner not a dotnet type!");
-    def.field_desc_from_rust_field_idx(type_ref, field_idx)
+    def.field_desc_from_rust_field_idx(type_ref, field_idx)*/
 }
 /// Gets the type of field with index `field_idx`, returning a GenericArg if the types field is generic
 pub fn generic_field_ty<'ctx>(

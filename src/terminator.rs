@@ -284,7 +284,6 @@ fn call<'ctx>(
     let fn_type = crate::utilis::monomorphize(&method_instance, *fn_type, tyctx);
     let (instance, def_id, subst_ref) = if let TyKind::FnDef(def_id, subst_ref) = fn_type.kind() {
         let env = ParamEnv::reveal_all();
-
         let instance = match Instance::resolve(tyctx, env, *def_id, subst_ref)
             .expect("Invalid function def")
         {
@@ -342,7 +341,7 @@ fn call<'ctx>(
         );
     }
     let mut call = Vec::new();
-    for arg in args {
+    for arg in args{
         call.extend(crate::operand::handle_operand(
             arg,
             tyctx,
@@ -350,6 +349,7 @@ fn call<'ctx>(
             method_instance,
             type_cache,
         ));
+        
     }
 
     if args.len() < signature.inputs().len() {

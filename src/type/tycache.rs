@@ -4,7 +4,7 @@ use crate::{
 };
 use either::Either;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::{AdtDef, AdtKind, GenericArg, Instance, List, Ty, TyCtxt, TyKind};
+use rustc_middle::ty::{AdtDef, AdtKind, GenericArg, ParamEnv,Instance, List, Ty, TyCtxt, TyKind};
 use std::collections::HashMap;
 pub struct TyCache {
     type_def_cache: HashMap<IString, TypeDef>,
@@ -287,6 +287,12 @@ impl TyCache {
                 //slice_tpe.set_generics(vec![inner]);
                 //Type::DotnetType(Box::new(slice_tpe)))
                 todo!("Slice!")
+            }
+            TyKind::FnDef(did, subst)=>{
+                let instance = Instance::resolve(tyctx, ParamEnv::reveal_all(), *did, subst).expect("Could not get function instance due to error").expect("Could not get function instance.");
+                let function_name = crate::utilis::function_name(tyctx.symbol_name(instance)); 
+                self.type_def_cache.insert(format!("fn_{function_name}").into(),TypeDef::nameonly(&format!("fn_{function_name}")));
+                Type::FnDef(function_name)
             }
             TyKind::Array(element, length) => {
                 let mut length = *length;

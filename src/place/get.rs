@@ -55,9 +55,11 @@ fn place_elem_get<'a>(
             &method_instance,
             type_cache,
         ),
-        PlaceElem::Field(index, _field_type) => match curr_type {
+        PlaceElem::Field(index, field_type) => match curr_type {
             super::PlaceTy::Ty(curr_type) => {
                 let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
+                let field_type = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
+                
                 let field_desc = crate::utilis::field_descrptor(
                     curr_type,
                     (*index).into(),
@@ -69,9 +71,10 @@ fn place_elem_get<'a>(
             }
             super::PlaceTy::EnumVariant(enm, var_idx) => {
                 let owner = crate::utilis::monomorphize(&method_instance, enm, tyctx);
-                let field_desc = crate::utilis::field_descrptor(
+                let field_desc = crate::utilis::enum_field_descriptor(
                     owner,
-                    (var_idx + 1).into(),
+                    index.as_u32(),
+                    var_idx.into(),
                     tyctx,
                     method_instance,
                     type_cache,
