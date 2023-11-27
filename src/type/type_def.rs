@@ -149,6 +149,7 @@ pub fn escape_field_name(name: &str) -> IString {
         || name == "value"
         || name == "flags"
         || name == "alignment"
+        || name == "init"
     {
         format!("m_{name}").into()
     } else {

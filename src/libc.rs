@@ -102,7 +102,7 @@ fn rust_slice(asm: &mut Assembly) {
     rust_slice.set_generic_count(1);
     asm.add_typedef(rust_slice);
     if asm.types().any(|tpe| tpe.name().contains("PanicInfo")) {
-        //rust_begin_unwind(asm);
+        rust_begin_unwind(asm);
     }
     //
 }

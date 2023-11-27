@@ -241,9 +241,9 @@ fn ptr_set_op<'ctx>(
             }
             TyKind::Ref(_, _, _) => vec![CILOp::STIndISize],
             TyKind::RawPtr(_) => vec![CILOp::STIndISize],
-            TyKind::Array(_,_)=>{
+            TyKind::Array(_, _) => {
                 let pointed_type =
-                type_cache.type_from_cache(pointed_type, tyctx, Some(*method_instance));
+                    type_cache.type_from_cache(pointed_type, tyctx, Some(*method_instance));
                 vec![CILOp::STObj(pointed_type.into())]
             }
             _ => todo!(" can't deref type {pointed_type:?} yet"),

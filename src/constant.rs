@@ -48,7 +48,7 @@ fn create_const_adt_from_bytes<'ctx>(
             let mut creator_ops = vec![CILOp::NewTMPLocal(cil_ty.clone().into())];
             for (field_idx, field) in adt_def.all_fields().enumerate() {
                 let ftype = field.ty(tyctx, subst);
-                let sizeof = crate::utilis::compiletime_sizeof(ftype,tyctx);
+                let sizeof = crate::utilis::compiletime_sizeof(ftype, tyctx);
                 let field_bytes = &bytes[curr_offset..(curr_offset + sizeof)];
                 let field_ops =
                     create_const_from_slice(ftype, tyctx, field_bytes, method_instance, tycache);
@@ -129,12 +129,18 @@ fn create_const_from_slice<'ctx>(
             create_const_adt_from_bytes(ty, *adt_def, subst, tyctx, bytes, method_instance, tycache)
         }
         TyKind::Int(int) => match int {
-            IntTy::I8 => vec![CILOp::LdcI32(i8::from_le_bytes(
-                bytes[..std::mem::size_of::<i8>()].try_into().unwrap(),
-            ) as i32),CILOp::ConvI8(false)],
-            IntTy::I16 => vec![CILOp::LdcI32(i16::from_le_bytes(
-                bytes[..std::mem::size_of::<i16>()].try_into().unwrap(),
-            ) as i32),CILOp::ConvI16(false)],
+            IntTy::I8 => vec![
+                CILOp::LdcI32(i8::from_le_bytes(
+                    bytes[..std::mem::size_of::<i8>()].try_into().unwrap(),
+                ) as i32),
+                CILOp::ConvI8(false),
+            ],
+            IntTy::I16 => vec![
+                CILOp::LdcI32(i16::from_le_bytes(
+                    bytes[..std::mem::size_of::<i16>()].try_into().unwrap(),
+                ) as i32),
+                CILOp::ConvI16(false),
+            ],
             IntTy::I32 => vec![CILOp::LdcI32(i32::from_le_bytes(
                 bytes[..std::mem::size_of::<i32>()].try_into().unwrap(),
             ))],
@@ -143,7 +149,7 @@ fn create_const_from_slice<'ctx>(
             ))],
             IntTy::Isize => vec![
                 CILOp::LdcI64(i64::from_le_bytes(
-                    bytes[..crate::utilis::compiletime_sizeof(ty,tyctx)]
+                    bytes[..crate::utilis::compiletime_sizeof(ty, tyctx)]
                         .try_into()
                         .unwrap(),
                 )),
@@ -152,12 +158,18 @@ fn create_const_from_slice<'ctx>(
             _ => todo!("Can't yet load const value of type {int:?} with bytes:{bytes:?}"),
         },
         TyKind::Uint(int) => match int {
-            UintTy::U8 => vec![CILOp::LdcI32(i8::from_le_bytes(
-                bytes[..std::mem::size_of::<i8>()].try_into().unwrap(),
-            ) as i32),CILOp::ConvU8(false)],
-            UintTy::U16 => vec![CILOp::LdcI32(i16::from_le_bytes(
-                bytes[..std::mem::size_of::<i16>()].try_into().unwrap(),
-            ) as i32),CILOp::ConvU16(false)],
+            UintTy::U8 => vec![
+                CILOp::LdcI32(i8::from_le_bytes(
+                    bytes[..std::mem::size_of::<i8>()].try_into().unwrap(),
+                ) as i32),
+                CILOp::ConvU8(false),
+            ],
+            UintTy::U16 => vec![
+                CILOp::LdcI32(i16::from_le_bytes(
+                    bytes[..std::mem::size_of::<i16>()].try_into().unwrap(),
+                ) as i32),
+                CILOp::ConvU16(false),
+            ],
             UintTy::U32 => vec![CILOp::LdcI32(i32::from_le_bytes(
                 bytes[..std::mem::size_of::<i32>()].try_into().unwrap(),
             ))],
@@ -166,7 +178,7 @@ fn create_const_from_slice<'ctx>(
             ))],
             UintTy::Usize => vec![
                 CILOp::LdcI64(i64::from_le_bytes(
-                    bytes[..crate::utilis::compiletime_sizeof(ty,tyctx)]
+                    bytes[..crate::utilis::compiletime_sizeof(ty, tyctx)]
                         .try_into()
                         .unwrap(),
                 )),
@@ -194,7 +206,7 @@ fn create_const_from_slice<'ctx>(
             for (idx, (element_type, element_ty)) in
                 element_types.iter().zip(elements.iter()).enumerate()
             {
-                let sizeof = crate::utilis::compiletime_sizeof(element_ty,tyctx);
+                let sizeof = crate::utilis::compiletime_sizeof(element_ty, tyctx);
                 let field_bytes = &bytes[curr_offset..(curr_offset + sizeof)];
                 let field_ops = create_const_from_slice(
                     element_ty,
@@ -222,7 +234,7 @@ fn create_const_from_slice<'ctx>(
             let length = crate::utilis::monomorphize(&method_instance, *length, tyctx);
             let element_ty = crate::utilis::monomorphize(&method_instance, *element_ty, tyctx);
 
-            let element_sizeof = crate::utilis::compiletime_sizeof(element_ty,tyctx);
+            let element_sizeof = crate::utilis::compiletime_sizeof(element_ty, tyctx);
             let length = crate::utilis::try_resolve_const_size(&length).unwrap();
             let mut curr_offset = 0;
             let mut res = vec![CILOp::NewTMPLocal(array_type.clone().into())];
@@ -342,6 +354,7 @@ fn load_const_scalar<'ctx>(
     method_instance: Instance<'ctx>,
     tycache: &mut TyCache,
 ) -> Vec<CILOp> {
+    let scalar_type = crate::utilis::monomorphize(&method_instance, scalar_type, tyctx);
     let scalar_u128 = match scalar {
         Scalar::Int(scalar_int) => scalar_int
             .try_to_uint(scalar.size())
@@ -351,6 +364,7 @@ fn load_const_scalar<'ctx>(
             let global_alloc = tyctx.global_alloc(alloc_id);
             match global_alloc {
                 GlobalAlloc::Static(def_id) => {
+                    todo!("Statics are buggy, skipping!");
                     let alloc = tyctx.eval_static_initializer(def_id).unwrap();
                     //def_id.ty();
                     let tyctx = tyctx.reserve_and_set_memory_alloc(alloc);

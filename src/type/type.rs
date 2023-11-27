@@ -64,6 +64,12 @@ impl DotnetTypeRef {
     pub fn uint_128() -> Self {
         Self::new(Some("System.Runtime"), "System.UInt128")
     }
+    pub fn usize_type() -> Self {
+        Self::new(Some("System.Runtime"), "System.UIntPtr")
+    }
+    pub fn isize_type() -> Self {
+        Self::new(Some("System.Runtime"), "System.IntPtr")
+    }
     pub fn new(assembly: Option<&str>, name_path: &str) -> Self {
         Self {
             assembly: assembly.map(std::convert::Into::into),

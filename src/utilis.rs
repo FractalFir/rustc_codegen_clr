@@ -1,7 +1,7 @@
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::ty::{
-    AdtDef, Binder, Const, ConstKind, EarlyBinder, GenericArg, Instance, List, ParamEnv,
-    SymbolName, Ty, TyCtxt, TyKind, TypeFoldable,FloatTy,AdtKind
+    AdtDef, AdtKind, Binder, Const, ConstKind, EarlyBinder, FloatTy, GenericArg, Instance, List,
+    ParamEnv, SymbolName, Ty, TyCtxt, TyKind, TypeFoldable,
 };
 
 pub const BEGIN_TRY: &str = "rustc_clr_interop_begin_try";
@@ -285,7 +285,7 @@ pub fn is_ty_alias(ty: Ty) -> bool {
     matches!(ty.kind(), TyKind::Alias(_, _))
 }
 /// This function returns the size of a type at the compile time. This should be used ONLY for handling constants. It currently assumes a 64 bit env
-pub fn compiletime_sizeof<'tyctx>(ty: Ty<'tyctx>,tyctx:TyCtxt<'tyctx>) -> usize {
+pub fn compiletime_sizeof<'tyctx>(ty: Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -> usize {
     use rustc_middle::ty::{IntTy, UintTy};
     match ty.kind() {
         TyKind::Int(int) => match int {
@@ -298,7 +298,6 @@ pub fn compiletime_sizeof<'tyctx>(ty: Ty<'tyctx>,tyctx:TyCtxt<'tyctx>) -> usize 
                 eprintln!("WARNING: Assuming sizeof::<isize>() == 8!");
                 8
             }
-
         },
         TyKind::Uint(int) => match int {
             UintTy::U8 => std::mem::size_of::<u8>(),
@@ -311,26 +310,36 @@ pub fn compiletime_sizeof<'tyctx>(ty: Ty<'tyctx>,tyctx:TyCtxt<'tyctx>) -> usize 
                 8
             }
         },
-        TyKind::Float(float_ty)=> match float_ty{
-            FloatTy::F32=>std::mem::size_of::<f32>(),
-            FloatTy::F64=>std::mem::size_of::<f64>(),
-        }
+        TyKind::Float(float_ty) => match float_ty {
+            FloatTy::F32 => std::mem::size_of::<f32>(),
+            FloatTy::F64 => std::mem::size_of::<f64>(),
+        },
         TyKind::Bool => std::mem::size_of::<u8>(),
-        TyKind::Adt(def,subst)=> match def.adt_kind(){
-            AdtKind::Struct=>def.all_fields().map(|field|compiletime_sizeof(field.ty(tyctx,subst),tyctx)).sum::<usize>(),
-            AdtKind::Union=>def.all_fields().map(|field|compiletime_sizeof(field.ty(tyctx,subst),tyctx)).max().unwrap_or(0),
-            AdtKind::Enum=>{
-                let tag = match def.variants().len(){
-                    0=>0,
-                    1..=256=>1,
-                    257..=65_535=>2,
-                    65_536..=4_294_967_295=>4,
-                    _=>8,
+        TyKind::Adt(def, subst) => match def.adt_kind() {
+            AdtKind::Struct => def
+                .all_fields()
+                .map(|field| compiletime_sizeof(field.ty(tyctx, subst), tyctx))
+                .sum::<usize>(),
+            AdtKind::Union => def
+                .all_fields()
+                .map(|field| compiletime_sizeof(field.ty(tyctx, subst), tyctx))
+                .max()
+                .unwrap_or(0),
+            AdtKind::Enum => {
+                let tag = match def.variants().len() {
+                    0 => 0,
+                    1..=256 => 1,
+                    257..=65_535 => 2,
+                    65_536..=4_294_967_295 => 4,
+                    _ => 8,
                 };
                 todo!("Can't calculate compiletime sizeof Enum!")
-            } 
-        }
-        TyKind::Tuple(elements)=>elements.iter().map(|element|compiletime_sizeof(element,tyctx)).sum::<usize>(),
+            }
+        },
+        TyKind::Tuple(elements) => elements
+            .iter()
+            .map(|element| compiletime_sizeof(element, tyctx))
+            .sum::<usize>(),
         _ => todo!("Can't compute compiletime sizeof {ty:?}"),
     }
 }
