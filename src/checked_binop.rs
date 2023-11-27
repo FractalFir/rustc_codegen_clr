@@ -87,6 +87,121 @@ fn mul(tpe: Type) -> Vec<CILOp> {
             CILOp::LdcI32(i32::MIN as i32),
             CILOp::Mul,
         ),
+        Type::U64 => promoted_ubinop(
+            Type::U64,
+            Type::U128,
+            CILOp::Call(crate::cil_op::CallSite::boxed(
+                Some(DotnetTypeRef::uint_128()),
+                "op_Implicit".into(),
+                crate::function_sig::FnSig::new(&[Type::U64], &Type::U128),
+                true,
+            )),
+            CILOp::Call(crate::cil_op::CallSite::boxed(
+                Some(DotnetTypeRef::uint_128()),
+                "op_Explicit".into(),
+                crate::function_sig::FnSig::new(&[Type::U128], &Type::U64),
+                true,
+            )),
+            CILOp::LdcI64(u64::MAX as i64),
+            CILOp::Call(crate::cil_op::CallSite::boxed(
+                Some(DotnetTypeRef::uint_128()),
+                "op_Multiplication".into(),
+                crate::function_sig::FnSig::new(&[Type::U128, Type::U128], &Type::U128),
+                true,
+            )),
+        ),
+        Type::I64 => promoted_sbinop(
+            Type::I64,
+            Type::I128,
+            CILOp::Call(crate::cil_op::CallSite::boxed(
+                Some(DotnetTypeRef::int_128()),
+                "op_Implicit".into(),
+                crate::function_sig::FnSig::new(&[Type::I64], &Type::I128),
+                true,
+            )),
+            CILOp::Call(crate::cil_op::CallSite::boxed(
+                Some(DotnetTypeRef::int_128()),
+                "op_Explicit".into(),
+                crate::function_sig::FnSig::new(&[Type::I128], &Type::I64),
+                true,
+            )),
+            CILOp::LdcI64(i64::MAX),
+            CILOp::LdcI64(i64::MIN),
+            CILOp::Call(crate::cil_op::CallSite::boxed(
+                Some(DotnetTypeRef::int_128()),
+                "op_Multiplication".into(),
+                crate::function_sig::FnSig::new(&[Type::I128, Type::I128], &Type::I128),
+                true,
+            )),
+        ),
+        Type::I128=>{
+            eprintln!("WARING: checked 128 bit arthmetics ARE NOT SUPPOPRTED YET. Using unchecked variants, bugs may occur.");
+            let tuple = crate::r#type::simple_tuple(&[tpe.clone(), Type::Bool]);
+            let tuple_ty:Type = tuple.clone().into();
+            vec![CILOp::Call(
+                crate::cil_op::CallSite::new(
+                    Some(DotnetTypeRef::int_128()),
+                    "op_Multiplication".into(),
+                    crate::function_sig::FnSig::new(&[Type::I128, Type::I128], &Type::I128),
+                    true,
+                )
+                .into(),
+            ),
+            CILOp::NewTMPLocal(tpe.clone().into()),
+            CILOp::SetTMPLocal,
+            CILOp::NewTMPLocal(tuple_ty.into()),
+            CILOp::LoadAddresOfTMPLocal,
+            CILOp::LoadUnderTMPLocal(1),
+            CILOp::STField(FieldDescriptor::boxed(
+                tuple.clone(),
+                Type::GenericArg(0),
+                "Item1".into(),
+            )),
+            CILOp::LoadAddresOfTMPLocal,
+            CILOp::LdcI32(0),
+            CILOp::STField(FieldDescriptor::boxed(
+                tuple.clone(),
+                Type::GenericArg(1),
+                "Item2".into(),
+            )),
+            CILOp::LoadTMPLocal,
+            CILOp::FreeTMPLocal,
+            ]
+        }
+        Type::U128=>{
+            eprintln!("WARING: checked 128 bit arthmetics ARE NOT SUPPOPRTED YET. Using unchecked variants, bugs may occur.");
+            let tuple = crate::r#type::simple_tuple(&[tpe.clone(), Type::Bool]);
+            let tuple_ty:Type = tuple.clone().into();
+            vec![CILOp::Call(
+                crate::cil_op::CallSite::new(
+                    Some(DotnetTypeRef::uint_128()),
+                    "op_Multiplication".into(),
+                    crate::function_sig::FnSig::new(&[Type::U128, Type::U128], &Type::U128),
+                    true,
+                )
+                .into(),
+            ),
+            CILOp::NewTMPLocal(tpe.clone().into()),
+            CILOp::SetTMPLocal,
+            CILOp::NewTMPLocal(tuple_ty.into()),
+            CILOp::LoadAddresOfTMPLocal,
+            CILOp::LoadUnderTMPLocal(1),
+            CILOp::STField(FieldDescriptor::boxed(
+                tuple.clone(),
+                Type::GenericArg(0),
+                "Item1".into(),
+            )),
+            CILOp::LoadAddresOfTMPLocal,
+            CILOp::LdcI32(0),
+            CILOp::STField(FieldDescriptor::boxed(
+                tuple.clone(),
+                Type::GenericArg(1),
+                "Item2".into(),
+            )),
+            CILOp::LoadTMPLocal,
+            CILOp::FreeTMPLocal,
+            ]
+        }
         _ => todo!("Can't preform checked mul on type {tpe:?} yet!"),
     }
 }

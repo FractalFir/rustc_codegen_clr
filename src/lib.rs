@@ -50,7 +50,7 @@ extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
-
+extern crate stable_mir;
 // Debug config
 
 /// Tells the codegen to insert comments containing the MIR statemtens after each one of them.
@@ -200,10 +200,7 @@ impl CodegenBackend for MyBackend {
         // Done twice for inlining!
         codegen.opt();
         let name: IString = cgus.iter().next().unwrap().name().to_string().into();
-        println!(
-            "globals:{globals:?}",
-            globals = codegen.globals().collect::<Vec<_>>()
-        );
+  
         Box::new((
             name,
             codegen,

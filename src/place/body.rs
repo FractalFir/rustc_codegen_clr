@@ -2,7 +2,7 @@ use super::{place_get_length, pointed_type, PlaceTy};
 use crate::assert_morphic;
 use crate::cil_op::{CILOp, FieldDescriptor};
 use crate::place::{body_ty_is_by_adress, deref_op};
-use crate::r#type::{Type, DotnetTypeRef};
+use crate::r#type::{DotnetTypeRef, Type};
 use crate::utilis::field_name;
 use rustc_middle::mir::{Place, PlaceElem};
 use rustc_middle::ty::{FloatTy, Instance, IntTy, ParamEnv, Ty, TyCtxt, TyKind, UintTy};
@@ -119,7 +119,8 @@ pub fn place_elem_body<'ctx>(
             match curr_ty.kind() {
                 TyKind::Slice(inner) => {
                     let inner = crate::utilis::monomorphize(&method_instance, *inner, tyctx);
-                    let inner_type = type_cache.type_from_cache(inner, tyctx, Some(method_instance));
+                    let inner_type =
+                        type_cache.type_from_cache(inner, tyctx, Some(method_instance));
                     let desc = FieldDescriptor::new(
                         DotnetTypeRef::slice(),
                         Type::Void.pointer_to(),
@@ -132,9 +133,9 @@ pub fn place_elem_body<'ctx>(
                         CILOp::Mul,
                         CILOp::Add,
                     ];
-                    (inner.into(),ops)
+                    (inner.into(), ops)
                 }
-                
+
                 _ => {
                     rustc_middle::ty::print::with_no_trimmed_paths! { todo!("Can't index into {curr_ty}!")}
                 }

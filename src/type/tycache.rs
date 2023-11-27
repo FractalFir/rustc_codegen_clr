@@ -315,8 +315,11 @@ impl TyCache {
                 });
                 let element = self.type_from_cache(element, tyctx, method);
                 let arr_name: IString = format!("Arr{length}").into();
-                if true || self.type_def_cache.get(&arr_name).is_none() {
-                    println!("adding array type {arr_name}");
+                if self.type_def_cache.get(&arr_name).is_none() {
+                    println!(
+                        "adding array type {arr_name} Is it readded:{}",
+                        !self.type_def_cache.get(&arr_name).is_none()
+                    );
 
                     self.type_def_cache
                         .insert(arr_name, crate::r#type::type_def::get_array_type(length));

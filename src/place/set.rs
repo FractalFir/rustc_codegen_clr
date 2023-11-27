@@ -145,13 +145,25 @@ pub fn place_elem_set<'a>(
                     ops.extend(ptr_set_op);
                     ops
                 }
-                TyKind::Array(element,length)=>{
+                TyKind::Array(element, length) => {
                     //let element = crate::utilis::monomorphize(&method_instance, *element, tyctx);
-                    let array_type =  type_cache.type_from_cache(curr_ty, ctx, Some(method_instance));
-                    let array_dotnet =array_type.as_dotnet().expect("Non array type");
+                    let array_type =
+                        type_cache.type_from_cache(curr_ty, ctx, Some(method_instance));
+                    let array_dotnet = array_type.as_dotnet().expect("Non array type");
                     let ops = vec![
                         index,
-                        CILOp::Call(crate::cil_op::CallSite::new(Some(array_dotnet),"set_Item".into(),FnSig::new(&[array_type,Type::USize],&Type::GenericArg(0)),false).into())
+                        CILOp::Call(
+                            crate::cil_op::CallSite::new(
+                                Some(array_dotnet),
+                                "set_Item".into(),
+                                FnSig::new(
+                                    &[array_type, Type::USize, Type::GenericArg(0)],
+                                    &Type::Void,
+                                ),
+                                false,
+                            )
+                            .into(),
+                        ),
                     ];
                     ops
                 }
@@ -229,6 +241,11 @@ fn ptr_set_op<'ctx>(
             }
             TyKind::Ref(_, _, _) => vec![CILOp::STIndISize],
             TyKind::RawPtr(_) => vec![CILOp::STIndISize],
+            TyKind::Array(_,_)=>{
+                let pointed_type =
+                type_cache.type_from_cache(pointed_type, tyctx, Some(*method_instance));
+                vec![CILOp::STObj(pointed_type.into())]
+            }
             _ => todo!(" can't deref type {pointed_type:?} yet"),
         }
     } else {

@@ -13,6 +13,7 @@ pub use type_def::*;
 pub fn mangle_ty(ty: Ty) -> std::borrow::Cow<'static, str> {
     match ty.kind() {
         TyKind::Bool => "B".into(),
+        TyKind::Char => "C".into(),
         TyKind::Slice(inner) => format!("Sl{}", mangle_ty(*inner)).into(),
         TyKind::Str => "Str".into(),
         TyKind::Uint(uint) => match uint {
@@ -47,6 +48,10 @@ pub fn mangle_ty(ty: Ty) -> std::borrow::Cow<'static, str> {
                 )
                 .into()
             }
+        }
+        TyKind::Array(element, length) => {
+            let length = crate::utilis::try_resolve_const_size(&length).unwrap();
+            format!("A{length}{element}", element = mangle_ty(*element)).into()
         }
         TyKind::Ref(_region, inner, _mut) => format!("Ref{}", mangle_ty(*inner)).into(),
         TyKind::Adt(def, subst) => {

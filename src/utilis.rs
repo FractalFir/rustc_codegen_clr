@@ -1,7 +1,9 @@
+use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::ty::{
     AdtDef, Binder, Const, ConstKind, EarlyBinder, GenericArg, Instance, List, ParamEnv,
-    SymbolName, Ty, TyCtxt, TyKind, TypeFoldable,
+    SymbolName, Ty, TyCtxt, TyKind, TypeFoldable,FloatTy,AdtKind
 };
+
 pub const BEGIN_TRY: &str = "rustc_clr_interop_begin_try";
 pub const END_TRY: &str = "rustc_clr_interop_end_try";
 pub const BEGIN_CATCH: &str = "rustc_clr_interop_begin_catch";
@@ -283,7 +285,7 @@ pub fn is_ty_alias(ty: Ty) -> bool {
     matches!(ty.kind(), TyKind::Alias(_, _))
 }
 /// This function returns the size of a type at the compile time. This should be used ONLY for handling constants. It currently assumes a 64 bit env
-pub fn compiletime_sizeof(ty: Ty) -> usize {
+pub fn compiletime_sizeof<'tyctx>(ty: Ty<'tyctx>,tyctx:TyCtxt<'tyctx>) -> usize {
     use rustc_middle::ty::{IntTy, UintTy};
     match ty.kind() {
         TyKind::Int(int) => match int {
@@ -292,20 +294,43 @@ pub fn compiletime_sizeof(ty: Ty) -> usize {
             IntTy::I32 => std::mem::size_of::<i32>(),
             IntTy::I64 => std::mem::size_of::<i64>(),
             IntTy::I128 => std::mem::size_of::<i128>(),
-            _ => todo!("Can't compute compiletime sizeof {int:?}"),
+            IntTy::Isize => {
+                eprintln!("WARNING: Assuming sizeof::<isize>() == 8!");
+                8
+            }
+
         },
         TyKind::Uint(int) => match int {
             UintTy::U8 => std::mem::size_of::<u8>(),
             UintTy::U16 => std::mem::size_of::<u16>(),
             UintTy::U32 => std::mem::size_of::<u32>(),
+            UintTy::U64 => std::mem::size_of::<u64>(),
             UintTy::U128 => std::mem::size_of::<u128>(),
             UintTy::Usize => {
                 eprintln!("WARNING: Assuming sizeof::<usize>() == 8!");
                 8
             }
-            _ => todo!("Can't compute compiletime sizeof {int:?}"),
         },
+        TyKind::Float(float_ty)=> match float_ty{
+            FloatTy::F32=>std::mem::size_of::<f32>(),
+            FloatTy::F64=>std::mem::size_of::<f64>(),
+        }
         TyKind::Bool => std::mem::size_of::<u8>(),
+        TyKind::Adt(def,subst)=> match def.adt_kind(){
+            AdtKind::Struct=>def.all_fields().map(|field|compiletime_sizeof(field.ty(tyctx,subst),tyctx)).sum::<usize>(),
+            AdtKind::Union=>def.all_fields().map(|field|compiletime_sizeof(field.ty(tyctx,subst),tyctx)).max().unwrap_or(0),
+            AdtKind::Enum=>{
+                let tag = match def.variants().len(){
+                    0=>0,
+                    1..=256=>1,
+                    257..=65_535=>2,
+                    65_536..=4_294_967_295=>4,
+                    _=>8,
+                };
+                todo!("Can't calculate compiletime sizeof Enum!")
+            } 
+        }
+        TyKind::Tuple(elements)=>elements.iter().map(|element|compiletime_sizeof(element,tyctx)).sum::<usize>(),
         _ => todo!("Can't compute compiletime sizeof {ty:?}"),
     }
 }
@@ -381,4 +406,7 @@ pub fn check_debugable(
             panic!("Miscompiled  {debugable:?}.")
         };
     }
+}
+pub(crate) fn alloc_id_to_u64(alloc_id: AllocId) -> u64 {
+    unsafe { std::mem::transmute(alloc_id) }
 }

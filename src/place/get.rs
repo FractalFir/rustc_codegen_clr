@@ -122,13 +122,22 @@ fn place_elem_get<'a>(
                     ops.extend(deref_op);
                     ops
                 }
-                TyKind::Array(element,length)=>{
+                TyKind::Array(element, length) => {
                     //let element = crate::utilis::monomorphize(&method_instance, *element, tyctx);
-                    let array_type =  type_cache.type_from_cache(curr_ty, tyctx, Some(method_instance));
-                    let array_dotnet =array_type.as_dotnet().expect("Non array type");
+                    let array_type =
+                        type_cache.type_from_cache(curr_ty, tyctx, Some(method_instance));
+                    let array_dotnet = array_type.as_dotnet().expect("Non array type");
                     let ops = vec![
                         index,
-                        CILOp::Call(crate::cil_op::CallSite::new(Some(array_dotnet),"get_Item".into(),FnSig::new(&[array_type,Type::USize],&Type::GenericArg(0)),false).into())
+                        CILOp::Call(
+                            crate::cil_op::CallSite::new(
+                                Some(array_dotnet),
+                                "get_Item".into(),
+                                FnSig::new(&[array_type, Type::USize], &Type::GenericArg(0)),
+                                false,
+                            )
+                            .into(),
+                        ),
                     ];
                     ops
                 }
@@ -136,7 +145,8 @@ fn place_elem_get<'a>(
                     rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Can't index into {curr_ty}!")}
                 }
             }
-        } PlaceElem::ConstantIndex {
+        }
+        PlaceElem::ConstantIndex {
             offset,
             min_length,
             from_end,
@@ -150,14 +160,19 @@ fn place_elem_get<'a>(
             match curr_ty.kind() {
                 TyKind::Slice(inner) => {
                     let inner = crate::utilis::monomorphize(&method_instance, *inner, tyctx);
-                    let inner_type = type_cache.type_from_cache(inner, tyctx, Some(method_instance));
+                    let inner_type =
+                        type_cache.type_from_cache(inner, tyctx, Some(method_instance));
                     let desc = FieldDescriptor::new(
                         DotnetTypeRef::slice(),
                         Type::Void.pointer_to(),
                         "data_address".into(),
                     );
-                    let derf_op =
-                    super::deref_op(super::PlaceTy::Ty(inner), tyctx, &method_instance, type_cache);
+                    let derf_op = super::deref_op(
+                        super::PlaceTy::Ty(inner),
+                        tyctx,
+                        &method_instance,
+                        type_cache,
+                    );
                     let mut ops = vec![
                         CILOp::LDField(desc.into()),
                         index,

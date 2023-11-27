@@ -185,10 +185,10 @@ impl Assembly {
             Err(payload) => {
                 cache.recover_from_panic();
                 if let Some(msg) = payload.downcast_ref::<&str>() {
-                    eprintln!("fn_add panicked with unhandled message: {msg:?}");
+                    eprintln!("could not compile method {name}. fn_add panicked with unhandled message: {msg:?}");
                     return Ok(());
                 } else {
-                    eprintln!("fn_add panicked with no message.");
+                    eprintln!("could not compile method {name}. fn_add panicked with no message.");
                     return Ok(());
                 }
             }
@@ -305,7 +305,12 @@ impl Assembly {
         let const_allocation =
             match tcx.global_alloc(AllocId(alloc_id.try_into().expect("0 alloc id?"))) {
                 GlobalAlloc::Memory(alloc) => alloc,
-                GlobalAlloc::Function(_) | GlobalAlloc::Static(_) | GlobalAlloc::VTable(..) => {
+                GlobalAlloc::Static(def_id) => {
+                    let alloc = tcx.eval_static_initializer(def_id).unwrap();
+                    //tcx.reserve_and_set_memory_alloc(alloc)
+                    alloc
+                }
+                GlobalAlloc::Function(_) | GlobalAlloc::VTable(..) => {
                     unreachable!()
                 }
             };
@@ -466,7 +471,10 @@ impl Assembly {
                 Ok(())
             }
             MonoItem::Static(stotic) => {
-                eprintln!("Unsuported item - Static:{stotic:?}");
+                let alloc = tcx.eval_static_initializer(stotic).unwrap();
+                let alloc_id = tcx.reserve_and_set_memory_alloc(alloc);
+                self.add_allocation(crate::utilis::alloc_id_to_u64(alloc_id), tcx);
+                //eprintln!("Unsuported item - Static:{stotic:?}");
                 Ok(())
             }
         }

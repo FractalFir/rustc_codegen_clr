@@ -48,7 +48,7 @@ fn create_const_adt_from_bytes<'ctx>(
             let mut creator_ops = vec![CILOp::NewTMPLocal(cil_ty.clone().into())];
             for (field_idx, field) in adt_def.all_fields().enumerate() {
                 let ftype = field.ty(tyctx, subst);
-                let sizeof = crate::utilis::compiletime_sizeof(ftype);
+                let sizeof = crate::utilis::compiletime_sizeof(ftype,tyctx);
                 let field_bytes = &bytes[curr_offset..(curr_offset + sizeof)];
                 let field_ops =
                     create_const_from_slice(ftype, tyctx, field_bytes, method_instance, tycache);
@@ -121,6 +121,7 @@ fn create_const_from_slice<'ctx>(
     method_instance: Instance<'ctx>,
     tycache: &mut TyCache,
 ) -> Vec<CILOp> {
+    let ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
     // TODO: Read up on the order of bytes inside a const allocation and ensure it is correct. All .NET target will be Little Enidian, but if we want to support
     // big enidian targets in the future, this will need to be revised.
     match ty.kind() {
@@ -128,6 +129,12 @@ fn create_const_from_slice<'ctx>(
             create_const_adt_from_bytes(ty, *adt_def, subst, tyctx, bytes, method_instance, tycache)
         }
         TyKind::Int(int) => match int {
+            IntTy::I8 => vec![CILOp::LdcI32(i8::from_le_bytes(
+                bytes[..std::mem::size_of::<i8>()].try_into().unwrap(),
+            ) as i32),CILOp::ConvI8(false)],
+            IntTy::I16 => vec![CILOp::LdcI32(i16::from_le_bytes(
+                bytes[..std::mem::size_of::<i16>()].try_into().unwrap(),
+            ) as i32),CILOp::ConvI16(false)],
             IntTy::I32 => vec![CILOp::LdcI32(i32::from_le_bytes(
                 bytes[..std::mem::size_of::<i32>()].try_into().unwrap(),
             ))],
@@ -136,7 +143,7 @@ fn create_const_from_slice<'ctx>(
             ))],
             IntTy::Isize => vec![
                 CILOp::LdcI64(i64::from_le_bytes(
-                    bytes[..crate::utilis::compiletime_sizeof(ty)]
+                    bytes[..crate::utilis::compiletime_sizeof(ty,tyctx)]
                         .try_into()
                         .unwrap(),
                 )),
@@ -145,6 +152,12 @@ fn create_const_from_slice<'ctx>(
             _ => todo!("Can't yet load const value of type {int:?} with bytes:{bytes:?}"),
         },
         TyKind::Uint(int) => match int {
+            UintTy::U8 => vec![CILOp::LdcI32(i8::from_le_bytes(
+                bytes[..std::mem::size_of::<i8>()].try_into().unwrap(),
+            ) as i32),CILOp::ConvU8(false)],
+            UintTy::U16 => vec![CILOp::LdcI32(i16::from_le_bytes(
+                bytes[..std::mem::size_of::<i16>()].try_into().unwrap(),
+            ) as i32),CILOp::ConvU16(false)],
             UintTy::U32 => vec![CILOp::LdcI32(i32::from_le_bytes(
                 bytes[..std::mem::size_of::<i32>()].try_into().unwrap(),
             ))],
@@ -153,7 +166,7 @@ fn create_const_from_slice<'ctx>(
             ))],
             UintTy::Usize => vec![
                 CILOp::LdcI64(i64::from_le_bytes(
-                    bytes[..crate::utilis::compiletime_sizeof(ty)]
+                    bytes[..crate::utilis::compiletime_sizeof(ty,tyctx)]
                         .try_into()
                         .unwrap(),
                 )),
@@ -181,7 +194,7 @@ fn create_const_from_slice<'ctx>(
             for (idx, (element_type, element_ty)) in
                 element_types.iter().zip(elements.iter()).enumerate()
             {
-                let sizeof = crate::utilis::compiletime_sizeof(element_ty);
+                let sizeof = crate::utilis::compiletime_sizeof(element_ty,tyctx);
                 let field_bytes = &bytes[curr_offset..(curr_offset + sizeof)];
                 let field_ops = create_const_from_slice(
                     element_ty,
@@ -202,6 +215,43 @@ fn create_const_from_slice<'ctx>(
             ops.push(CILOp::LoadTMPLocal);
             ops.push(CILOp::FreeTMPLocal);
             ops
+        }
+        TyKind::Array(element_ty, length) => {
+            let array_type = tycache.type_from_cache(ty, tyctx, Some(method_instance));
+            let dotnet_array_type = array_type.clone().as_dotnet().expect("Array not array!");
+            let length = crate::utilis::monomorphize(&method_instance, *length, tyctx);
+            let element_ty = crate::utilis::monomorphize(&method_instance, *element_ty, tyctx);
+
+            let element_sizeof = crate::utilis::compiletime_sizeof(element_ty,tyctx);
+            let length = crate::utilis::try_resolve_const_size(&length).unwrap();
+            let mut curr_offset = 0;
+            let mut res = vec![CILOp::NewTMPLocal(array_type.clone().into())];
+            for index in 0..length {
+                res.push(CILOp::LoadAddresOfTMPLocal);
+                res.push(CILOp::LdcI64(index as u64 as i64));
+                res.extend(create_const_from_slice(
+                    element_ty,
+                    tyctx,
+                    &bytes[curr_offset..],
+                    method_instance,
+                    tycache,
+                ));
+                res.push(CILOp::Call(
+                    CallSite::new(
+                        Some(dotnet_array_type.clone()),
+                        "set_Item".into(),
+                        crate::function_sig::FnSig::new(
+                            &[array_type.clone(), Type::ISize, Type::GenericArg(0)],
+                            &Type::Void,
+                        ),
+                        false,
+                    )
+                    .into(),
+                ));
+                curr_offset += element_sizeof;
+            }
+            res.extend([CILOp::LoadTMPLocal, CILOp::FreeTMPLocal]);
+            res
         }
         _ => todo!("Can't yet load const value of type {ty:?} with bytes:{bytes:?}"),
     }
@@ -226,9 +276,7 @@ fn create_const_from_data<'ctx>(
     let bytes = memory.0.get_bytes_unchecked(range);
     create_const_from_slice(ty, tyctx, bytes, method_instance, tycache)
 }
-fn alloc_id_to_u64(alloc_id: AllocId) -> u64 {
-    unsafe { std::mem::transmute(alloc_id) }
-}
+
 fn load_const_value<'ctx>(
     const_val: ConstValue<'ctx>,
     const_ty: Ty<'ctx>,
@@ -259,8 +307,7 @@ fn load_const_value<'ctx>(
                 FieldDescriptor::new(slice_dotnet, Type::Void.pointer_to(), "data_address".into());
             // TODO: find a better way to get an alloc_id. This is likely to be incoreect.
             let alloc_id = tyctx.reserve_and_set_memory_alloc(data);
-            let alloc_id: u64 = alloc_id_to_u64(alloc_id);
- 
+            let alloc_id: u64 = crate::utilis::alloc_id_to_u64(alloc_id);
 
             vec![
                 CILOp::NewTMPLocal(slice_type.into()),
@@ -304,7 +351,11 @@ fn load_const_scalar<'ctx>(
             let global_alloc = tyctx.global_alloc(alloc_id);
             match global_alloc {
                 GlobalAlloc::Static(def_id) => {
-                    todo!("Can't handle statics yet!");
+                    let alloc = tyctx.eval_static_initializer(def_id).unwrap();
+                    //def_id.ty();
+                    let tyctx = tyctx.reserve_and_set_memory_alloc(alloc);
+                    let alloc_id = crate::utilis::alloc_id_to_u64(alloc_id);
+                    return vec![CILOp::LoadGlobalAllocPtr { alloc_id }];
                 }
                 GlobalAlloc::Memory(const_allocation) => {
                     return vec![

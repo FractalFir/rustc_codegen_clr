@@ -4,7 +4,7 @@ use crate::r#type::{DotnetTypeRef, TyCache, Type};
 use rustc_middle::mir::{CastKind, NullOp};
 use rustc_middle::{
     mir::{Place, Rvalue},
-    ty::{Instance, TyCtxt, TyKind},
+    ty::{Instance, TyCtxt, TyKind, UintTy},
 };
 pub fn handle_rvalue<'tcx>(
     rvalue: &Rvalue<'tcx>,
@@ -97,7 +97,10 @@ pub fn handle_rvalue<'tcx>(
                 let ty = Box::new(tycache.type_from_cache(ty, tyctx, Some(method_instance)));
                 vec![CILOp::SizeOf(ty)]
             }
-            NullOp::AlignOf => vec![CILOp::LdcI64(align_of(*ty) as i64), CILOp::ConvUSize(false)],
+            NullOp::AlignOf => {
+                let ty = crate::utilis::monomorphize(&method_instance, *ty, tyctx);
+                vec![CILOp::LdcI64(align_of(ty) as i64), CILOp::ConvUSize(false)]
+            }
             _ => todo!("Unsuported nullary {op:?}!"),
         },
         Rvalue::Aggregate(aggregate_kind, field_index) => crate::aggregate::handle_aggregate(
@@ -266,9 +269,30 @@ fn align_of(ty: rustc_middle::ty::Ty) -> u64 {
     match ty.kind() {
         TyKind::Int(int) => match int {
             IntTy::I8 => std::mem::align_of::<i8>() as u64,
-            _ => todo!("Can't calcuate align of int type {int:?}"),
+            IntTy::I16 => std::mem::align_of::<i16>() as u64,
+            IntTy::I32 => std::mem::align_of::<i32>() as u64,
+            IntTy::I64 => std::mem::align_of::<i64>() as u64,
+            IntTy::Isize => {
+                eprintln!("WARINING: assuming alignof(isize) == 8!");
+                std::mem::align_of::<i64>() as u64
+            }
+            IntTy::I128 => std::mem::align_of::<i128>() as u64,
+            //_ => todo!("Can't calcuate align of int type {int:?}"),
+        },
+        TyKind::Uint(uint) => match uint {
+            UintTy::U8 => std::mem::align_of::<u8>() as u64,
+            UintTy::U16 => std::mem::align_of::<u16>() as u64,
+            UintTy::U32 => std::mem::align_of::<u32>() as u64,
+            UintTy::U64 => std::mem::align_of::<u64>() as u64,
+            UintTy::Usize => {
+                eprintln!("WARINING: assuming alignof(usize) == 8!");
+                std::mem::align_of::<u64>() as u64
+            }
+            UintTy::U128 => std::mem::align_of::<u128>() as u64,
+            //_ => todo!("Can't calcuate align of int type {int:?}"),
         },
         //TODO: While always returing 8 for ADTs won't cause crashes, it is inefficent.
+        TyKind::Tuple(elements) => elements.iter().map(|ele| align_of(ele)).max().unwrap_or(1),
         TyKind::Adt(_, _) => 8,
         _ => todo!("Can't calcualte the aligement of type {ty:?}"),
     }

@@ -139,6 +139,11 @@ pub fn deref_op<'ctx>(
             }
             TyKind::Ref(_, _, _) => vec![CILOp::LDIndISize],
             TyKind::RawPtr(_) => vec![CILOp::LDIndISize],
+            TyKind::Array(_,_)=>{
+                let derefed_type =
+                type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance));
+                vec![CILOp::LdObj(derefed_type.into())]
+            }
             _ => todo!("TODO: can't deref type {derefed_type:?} yet"),
         }
     } else {
