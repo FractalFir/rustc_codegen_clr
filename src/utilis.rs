@@ -3,7 +3,6 @@ use rustc_middle::ty::{
     AdtDef, AdtKind, Binder, Const, ConstKind, EarlyBinder, FloatTy, GenericArg, Instance, List,
     ParamEnv, SymbolName, Ty, TyCtxt, TyKind, TypeFoldable,
 };
-
 pub const BEGIN_TRY: &str = "rustc_clr_interop_begin_try";
 pub const END_TRY: &str = "rustc_clr_interop_end_try";
 pub const BEGIN_CATCH: &str = "rustc_clr_interop_begin_catch";
@@ -39,15 +38,44 @@ pub fn as_adt(ty: Ty) -> Option<(AdtDef, &List<GenericArg>)> {
         _ => None,
     }
 }
-pub fn adt_name(adt: &AdtDef) -> crate::IString {
+pub fn adt_name<'tyctx>(
+    adt: &AdtDef<'tyctx>,
+    tyctx: TyCtxt<'tyctx>,
+    gargs: &'tyctx List<GenericArg<'tyctx>>,
+) -> crate::IString {
     //TODO: find a better way to get adt name!
-    rustc_middle::ty::print::with_no_trimmed_paths! {
-    format!("{adt:?}")
+    //let def_str = tyctx.def_path_str(adt.did());
+    let gdef_str = if gargs
+        .iter()
+        .any(|garg| garg.as_type().is_some() || garg.as_const().is_some())
+    {
+        rustc_middle::ty::print::with_no_trimmed_paths! {tyctx.def_path_str_with_args(adt.did(),gargs)}
+    } else {
+        rustc_middle::ty::print::with_no_trimmed_paths! {tyctx.def_path_str(adt.did())}
+    };
+    let gdef_str: String = gdef_str
         .replace("::", ".")
-        .replace("<'", "")
-        .replace(">", "")
-        .into()
-    }
+        .replace("<", "_lt_")
+        .replace('\'', "_ap_")
+        .replace(' ', "_spc_")
+        .replace(">", "_gt_")
+        .replace('(', "_lpar_")
+        .replace(')', "_rpar")
+        .replace('{', "_lbra_")
+        .replace('}', "_rbra")
+        .replace('[', "_lsbra_")
+        .replace(']', "_rsbra_")
+        .replace('+', "_pls_")
+        .replace('-', "_hyp_")
+        .replace(',', "_com_")
+        .replace('*', "_ptr_")
+        .replace('#', "_hsh_")
+        .replace('&', "_ref_")
+        .replace(';', "_scol_")
+        .replace('!', "_excl_")
+        .replace('\"', "_qt_")
+        .into();
+    gdef_str.into()
 }
 /// Gets the name of a field with index `idx`
 pub fn field_name(ty: Ty, idx: u32) -> crate::IString {
@@ -418,4 +446,7 @@ pub fn check_debugable(
 }
 pub(crate) fn alloc_id_to_u64(alloc_id: AllocId) -> u64 {
     unsafe { std::mem::transmute(alloc_id) }
+}
+fn root_crate_num() -> rustc_hir::def_id::CrateNum {
+    unsafe { std::mem::transmute(0_u32) }
 }

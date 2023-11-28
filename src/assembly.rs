@@ -186,6 +186,7 @@ impl Assembly {
                 cache.recover_from_panic();
                 if let Some(msg) = payload.downcast_ref::<&str>() {
                     eprintln!("could not compile method {name}. fn_add panicked with unhandled message: {msg:?}");
+                    //self.add_method(Method::missing_because(format!("could not compile method {name}. fn_add panicked with unhandled message: {msg:?}")));
                     return Ok(());
                 } else {
                     eprintln!("could not compile method {name}. fn_add panicked with no message.");

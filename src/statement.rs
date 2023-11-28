@@ -21,14 +21,14 @@ pub fn handle_statement<'tcx>(
         StatementKind::Assign(palce_rvalue) => {
             let place = palce_rvalue.as_ref().0;
             let rvalue = &palce_rvalue.as_ref().1;
-            let rvalue_ops = crate::rvalue::handle_rvalue(
+            let rvalue_ops = rustc_middle::ty::print::with_no_trimmed_paths! {crate::rvalue::handle_rvalue(
                 rvalue,
                 tyctx,
                 &place,
                 method,
                 method_instance,
                 type_cache,
-            );
+            )};
             crate::place::place_set(
                 &place,
                 tyctx,
@@ -73,7 +73,7 @@ pub fn handle_statement<'tcx>(
                     let pointed = if let crate::r#type::Type::Ptr(pointed) = ptr_type {
                         pointed
                     } else {
-                        panic!("Copy nonoverlaping called with non-pointer type {src_ty:?}");
+                        rustc_middle::ty::print::with_no_trimmed_paths! { panic!("Copy nonoverlaping called with non-pointer type {src_ty:?}")};
                     };
                     let mut res: Vec<_> =
                         [dst_op, src_op, count_op].into_iter().flatten().collect();
@@ -83,11 +83,13 @@ pub fn handle_statement<'tcx>(
                     res
                 }
                 _ => {
-                    todo!("Can't handle non-diverging intrinsics {non_diverging_intirinsic:?} yet!")
+                    rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Can't handle non-diverging intrinsics {non_diverging_intirinsic:?} yet!")}
                 }
             }
         }
-        _ => todo!("Unsuported statement kind {kind:?}"),
+        _ => {
+            rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Unsuported statement kind {kind:?}")}
+        }
     };
     res
 }

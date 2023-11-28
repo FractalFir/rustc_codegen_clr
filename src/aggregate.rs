@@ -2,8 +2,10 @@ use crate::cil_op::{CILOp, FieldDescriptor};
 use crate::r#type::{DotnetTypeRef, TyCache, Type};
 use crate::utilis::{field_name, monomorphize};
 use rustc_index::IndexVec;
-use rustc_middle::mir::{AggregateKind, Operand, Place,};
-use rustc_middle::ty::{AdtDef, AdtKind, GenericArg, Instance, List, ParamEnv, Ty, TyCtxt, TyKind,EarlyBinder};
+use rustc_middle::mir::{AggregateKind, Operand, Place};
+use rustc_middle::ty::{
+    AdtDef, AdtKind, EarlyBinder, GenericArg, Instance, List, ParamEnv, Ty, TyCtxt, TyKind,
+};
 use rustc_target::abi::FieldIdx;
 /// Returns the CIL ops to create the aggreagate value specifed by `aggregate_kind` at `target_location`. Uses indivlidual values specifed by `value_index`
 pub fn handle_aggregate<'tyctx>(
@@ -33,7 +35,8 @@ pub fn handle_aggregate<'tyctx>(
             //eprintln!("Preparing to resolve {adt_def:?} {subst:?}");
             let adt_type = Instance::resolve(tyctx, penv, *adt_def, subst);
 
-            let adt_type = adt_type.expect("Could not resolve instance")
+            let adt_type = adt_type
+                .expect("Could not resolve instance")
                 .expect("Could not resolve instance")
                 .ty(tyctx, penv);
             let adt_type = monomorphize(&method_instance, adt_type, tyctx);

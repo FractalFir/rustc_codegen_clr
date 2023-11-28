@@ -248,7 +248,7 @@ pub fn handle_rvalue<'tcx>(
                 TyKind::Slice(inner) => {
                     let name: String = format!(
                         "core.ptr.metadata.PtrComponents{}",
-                        crate::r#type::mangle_ty(*inner)
+                        crate::r#type::mangle_ty(*inner, tyctx)
                     )
                     .into();
                     let slice_tpe = DotnetTypeRef::new(None, &name);
@@ -260,7 +260,7 @@ pub fn handle_rvalue<'tcx>(
             }
             ops
         }
-        _ => todo!("Unhandled RValue {rvalue:?}"),
+        _ => rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Unhandled RValue {rvalue:?}")},
     };
     res
 }

@@ -564,6 +564,7 @@ test_lib! {references}
 //test_lib! {structs}
 
 test_lib! {types}
+test_lib! {tuple}
 
 run_test! {arthm,add}
 run_test! {arthm,mul}

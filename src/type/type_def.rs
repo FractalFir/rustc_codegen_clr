@@ -150,6 +150,17 @@ pub fn escape_field_name(name: &str) -> IString {
         || name == "flags"
         || name == "alignment"
         || name == "init"
+        || name == "string"
+        || name == "nint"
+        || name == "nuint"
+        || name == "out"
+        || name == "rem"
+        || name == "add"
+        || name == "div"
+        || name == "error"
+        || name == "opt"
+        //FIXME: this is a sign of a bug. ALL fields not starting with a letter should have been caught by the statement above.
+        || name == "0"
     {
         format!("m_{name}").into()
     } else {

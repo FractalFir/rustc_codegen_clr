@@ -397,7 +397,7 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
         }
         CILOp::LdNull => "ldnull".into(), 
         CILOp::LdcF32(f32const) =>{
-            if f32const.is_finite() && f32const.abs() < 0.0000001{
+            if f32const.is_finite() && format!("{f32const}").len() < 14{
                 format!("ldc.r4 {f32const}").into()
             }
             else{
@@ -406,7 +406,7 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
             }
         }
         CILOp::LdcF64(f64const) => {
-            if f64const.is_finite() && f64const.abs() < 0.0000001{
+            if f64const.is_finite() && format!("{f64const}").len() < 26{
                 format!("ldc.r8 {f64const}").into()
             }
             else{
@@ -695,7 +695,36 @@ fn prefixed_field_type_cil(tpe: &Type) -> Cow<'static, str> {
         Type::Ptr(inner) => format!("{inner}*", inner = prefixed_field_type_cil(inner)).into(),
         Type::GenericArg(id) => format!("!{id}").into(),
         Type::DotnetType(dotnet_type) => dotnet_type_ref_cli_generics_unescaped(dotnet_type).into(),
-        _ => prefixed_type_cil(tpe),
+        Type::Void => "valuetype RustVoid".into(),
+        Type::FnDef(name) => format!("valuetype fn_{name}").into(),
+        Type::I8 => "int8".into(),
+        Type::U8 => "uint8".into(),
+        Type::I16 => "int16".into(),
+        Type::U16 => "uint16".into(),
+        Type::F32 => "float32".into(),
+        Type::I32 => "int32".into(),
+        Type::U32 => "uint32".into(),
+        Type::F64 => "float64".into(),
+        Type::I64 => "int64".into(),
+        Type::U64 => "uint64".into(),
+        Type::I128 => "valuetype [System.Runtime]System.Int128".into(),
+        Type::U128 => "valuetype [System.Runtime]System.UInt128".into(),
+        Type::ISize => "native int".into(),
+        Type::USize => "native uint".into(),
+        //Special type
+        Type::Unresolved => "valuetype Unresolved".into(),
+        Type::Foreign => "valuetype Foreign".into(),
+        Type::Bool => "bool".into(),
+        Type::DotnetChar => "char".into(),
+        Type::DotnetArray(array) => {
+            let arr = if array.dimensions > 0 {
+                (0..(array.dimensions - 1)).map(|_| ",").collect::<String>()
+            } else {
+                "".into()
+            };
+            format!("{tpe}[{arr}]", tpe = type_cil(&array.element)).into()
+        } //_ => todo!("Unsuported type {tpe:?}"),
+          //_ => prefixed_field_type_cil(tpe),
     }
 }
 fn prefixed_type_cil(tpe: &Type) -> Cow<'static, str> {
@@ -721,7 +750,6 @@ fn prefixed_type_cil(tpe: &Type) -> Cow<'static, str> {
             let prefix = dotnet_type.tpe_prefix();
             format!("{prefix} {}", dotnet_type_ref_cli(dotnet_type)).into()
         }
-        Type::FnDef(_site) => "valuetype FnDef".into(),
         //Special type
         Type::Unresolved => "valuetype Unresolved".into(),
         Type::Foreign => "valuetype Foreign".into(),
@@ -793,11 +821,14 @@ fn generics_ident_str(generics: &[Type]) -> Cow<'static, str> {
         if let Some(first_generic) = generic_iter.next() {
             garg_string.push_str(&format!(
                 "{type_cil}",
-                type_cil = field_type_cil(first_generic)
+                type_cil = prefixed_field_type_cil(first_generic)
             ));
         }
         for arg in generic_iter {
-            garg_string.push_str(&format!(",{type_cil}", type_cil = field_type_cil(arg)));
+            garg_string.push_str(&format!(
+                ",{type_cil}",
+                type_cil = prefixed_field_type_cil(arg)
+            ));
         }
         format!("<{garg_string}>").into()
     }
@@ -817,6 +848,12 @@ fn tuple_type() {
     );
     assert_eq!(
         "valuetype [System.Runtime]System.ValueTuple`2<int8,uint8>",
+        &prefixed_field_type_cil(&generic)
+    );
+    let int128: Type = DotnetTypeRef::int_128().into();
+    let generic = crate::r#type::tuple_type(&[Type::I8, Type::Ptr(int128.into())]).into();
+    assert_eq!(
+        "valuetype [System.Runtime]System.ValueTuple`2<int8,valuetype [System.Runtime]System.Int128*>",
         &prefixed_field_type_cil(&generic)
     );
 }

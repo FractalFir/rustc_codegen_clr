@@ -28,11 +28,11 @@ impl TyCache {
     ) -> &TypeDef {
         match ty.kind() {
             TyKind::Adt(adt, susbt) => {
-                let name = crate::utilis::adt_name(&adt);
+                let name = crate::utilis::adt_name(&adt, tyctx, susbt);
                 if super::is_name_magic(name.as_ref()) {
                     todo!("Can't yet get fields of interop types!");
                 }
-                let name = super::mangle_susbt(&name, susbt);
+
                 if self.type_def_cache.get(name.as_ref()).is_none() {
                     self.type_from_cache(ty, tyctx, method);
                 }
@@ -219,7 +219,7 @@ impl TyCache {
                 TyKind::Slice(inner) => {
                     let name: IString = format!(
                         "core.ptr.metadata.PtrComponents{}",
-                        super::mangle_ty(*inner)
+                        super::mangle_ty(*inner, tyctx)
                     )
                     .into();
                     //let inner = self.inne
@@ -239,13 +239,12 @@ impl TyCache {
                 _ => Type::Ptr(self.type_from_cache(type_and_mut.ty, tyctx, method).into()),
             },
             TyKind::Adt(def, subst) => {
-                let name = crate::utilis::adt_name(&def);
+                let name = crate::utilis::adt_name(&def, tyctx, subst);
                 if super::is_name_magic(name.as_ref()) {
                     return super::magic_type(name.as_ref(), def, subst, tyctx);
                 }
-                let mangled = super::mangle_susbt(&name, subst);
                 //println!("mangled:{mangled:?}");
-                self.adt(&mangled, *def, subst, tyctx, method).into()
+                self.adt(&name, *def, subst, tyctx, method).into()
             }
             TyKind::Dynamic(trait_, _, dyn_kind) => {
                 println!("trait:{trait_:?} dyn_kind:{dyn_kind:?}");
@@ -255,7 +254,7 @@ impl TyCache {
                 TyKind::Slice(inner) => {
                     let name: IString = format!(
                         "core.ptr.metadata.PtrComponents{}",
-                        super::mangle_ty(*inner)
+                        super::mangle_ty(*inner, tyctx)
                     )
                     .into();
                     //let inner = self.inne

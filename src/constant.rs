@@ -61,10 +61,10 @@ fn create_const_adt_from_bytes<'ctx>(
                     cil_ftype,
                     field.name.to_string().into(),
                 )));
-                println!(
+                rustc_middle::ty::print::with_no_trimmed_paths! {println!(
                     "Const field {name} of type {ftype} with bytes {field_bytes:?}",
                     name = field.name
-                );
+                )};
                 // Increment the offset.
                 curr_offset += sizeof;
             }
