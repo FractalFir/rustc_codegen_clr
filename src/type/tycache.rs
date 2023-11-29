@@ -59,7 +59,7 @@ impl TyCache {
             .iter()
             .any(|c_name| c_name.as_ref() == name)
         {
-            panic!("Type {name} is cyclic!");
+            return DotnetTypeRef::new(None, name.into());
         }
         self.cycle_prevention.push(name.into());
         let def = match def.adt_kind() {

@@ -44,8 +44,9 @@ pub fn adt_name<'tyctx>(
     gargs: &'tyctx List<GenericArg<'tyctx>>,
 ) -> crate::IString {
     //TODO: find a better way to get adt name!
+   
     //let def_str = tyctx.def_path_str(adt.did());
-    let gdef_str = if gargs
+    let mut gdef_str = if gargs
         .iter()
         .any(|garg| garg.as_type().is_some() || garg.as_const().is_some())
     {
@@ -53,6 +54,17 @@ pub fn adt_name<'tyctx>(
     } else {
         rustc_middle::ty::print::with_no_trimmed_paths! {tyctx.def_path_str(adt.did())}
     };
+    let krate = adt.did().krate;
+    /* 
+    if krate != root_crate_num(){
+        let krate_name = tyctx.crate_name(krate).to_string();
+        eprintln!("Preparing to add crate PREFIX gdef_str:{gdef_str} krate_name:{krate_name}");
+        //TODO: This *could* not get triggered when it should when the crate contains a modulw with its name.
+        if !gdef_str.contains(&krate_name){
+            eprintln!("Adding prefix {krate_name}");
+            gdef_str = format!("{krate_name}.{gdef_str}");
+        }
+    }*/
     let gdef_str: String = gdef_str
         .replace("::", ".")
         .replace("<", "_lt_")
