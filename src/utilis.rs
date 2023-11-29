@@ -65,7 +65,13 @@ pub fn adt_name<'tyctx>(
             gdef_str = format!("{krate_name}.{gdef_str}");
         }
     }*/
-    let gdef_str: String = gdef_str
+    let adt_instance = Instance::resolve(tyctx,ParamEnv::reveal_all(),adt.did(),gargs).unwrap().unwrap();
+    let auto_mangled = rustc_symbol_mangling::symbol_name_for_instance_in_crate(tyctx,adt_instance,krate);
+    //eprintln!("auto_mangled:{auto_mangled:?}");
+    //let opt_name = tyctx.item_name(adt.did()).to_string();
+    //eprintln!("opt_name:{opt_name}");
+
+    auto_mangled
         .replace("::", ".")
         .replace("<", "_lt_")
         .replace('\'', "_ap_")
@@ -86,8 +92,7 @@ pub fn adt_name<'tyctx>(
         .replace(';', "_scol_")
         .replace('!', "_excl_")
         .replace('\"', "_qt_")
-        .into();
-    gdef_str.into()
+        .into()
 }
 /// Gets the name of a field with index `idx`
 pub fn field_name(ty: Ty, idx: u32) -> crate::IString {

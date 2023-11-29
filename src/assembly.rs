@@ -324,9 +324,9 @@ impl Assembly {
             t.hash(&mut s);
             s.finish()
         }
-        let byte_hash = calculate_hash(&bytes);
+        //let byte_hash = calculate_hash(&bytes);
 
-        let alloc_fld: IString = format!("alloc_{alloc_id:x}_{byte_hash:x}").into();
+        let alloc_fld: IString = format!("alloc_{alloc_id:x}").into();
         let field_desc = crate::cil_op::StaticFieldDescriptor::new(
             None,
             Type::Ptr(Type::U8.into()),

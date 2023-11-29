@@ -136,7 +136,9 @@ pub fn opt_method(method: &mut Method, asm: &Assembly) {
         if crate::SPLIT_LOCAL_STRUCTS {
             try_split_locals(method, asm);
         }
-        remove_unused_locals(method);
+        if crate::REMOVE_UNSUED_LOCALS{
+            remove_unused_locals(method);
+        }
         try_inline_all(method, asm);
     }
 }

@@ -51,17 +51,19 @@ extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
 extern crate stable_mir;
+extern crate rustc_symbol_mangling;
 // Debug config
 
 /// Tells the codegen to insert comments containing the MIR statemtens after each one of them.
-const INSERT_MIR_DEBUG_COMMENTS: bool = true;
+const INSERT_MIR_DEBUG_COMMENTS: bool = false;
 const PRINT_LOCAL_TYPES: bool = false;
 const PRINT_TY_CONVERTION: bool = false;
 /// Tells the codegen to optmize the emiited CIL.
-const OPTIMIZE_CIL: bool = (!INSERT_MIR_DEBUG_COMMENTS) && (false);
+const OPTIMIZE_CIL: bool = (!INSERT_MIR_DEBUG_COMMENTS) && (true);
 /// Turns on the struct spliting optimzation.
 const SPLIT_LOCAL_STRUCTS: bool = false;
-
+/// Turns on the local removal optimization.
+const REMOVE_UNSUED_LOCALS:bool = false;
 /// Changes `.locals` into `.locals init`. Causes the runtime to always initialize local variables.
 /// Try turining on in cause of issues. If it fixes them, then their root cause is UB(eg. use of uninitailized memory).
 pub const ALWAYS_INIT_LOCALS: bool = false;
