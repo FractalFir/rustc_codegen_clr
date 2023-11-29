@@ -50,7 +50,8 @@ extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
-
+extern crate stable_mir;
+extern crate rustc_symbol_mangling;
 // Debug config
 
 /// Tells the codegen to insert comments containing the MIR statemtens after each one of them.
@@ -58,15 +59,18 @@ const INSERT_MIR_DEBUG_COMMENTS: bool = false;
 const PRINT_LOCAL_TYPES: bool = false;
 const PRINT_TY_CONVERTION: bool = false;
 /// Tells the codegen to optmize the emiited CIL.
-const OPTIMIZE_CIL: bool = (!INSERT_MIR_DEBUG_COMMENTS) && (false);
+const OPTIMIZE_CIL: bool = (!INSERT_MIR_DEBUG_COMMENTS) && (true);
 /// Turns on the struct spliting optimzation.
-const SPLIT_LOCAL_STRUCTS:bool = false;
-
+const SPLIT_LOCAL_STRUCTS: bool = false;
+/// Turns on the local removal optimization.
+const REMOVE_UNSUED_LOCALS:bool = false;
 /// Changes `.locals` into `.locals init`. Causes the runtime to always initialize local variables.
 /// Try turining on in cause of issues. If it fixes them, then their root cause is UB(eg. use of uninitailized memory).
 pub const ALWAYS_INIT_LOCALS: bool = false;
 /// Should the codegen stop working when ecountering an error, or try to press on, replacing unusuported code with exceptions throws?
 pub const ABORT_ON_ERROR: bool = false;
+/// Should the codegen continue working after it encoutnered a miscompilation?
+pub const ALLOW_MISCOMPILATIONS: bool = true;
 
 // Modules
 
@@ -116,10 +120,9 @@ mod statement;
 mod terminator;
 /// Code handling transmutes.
 mod transmute;
-/// A representation of a primitve type or a reference.
+/// Code related to types.
 mod r#type;
-/// Contains a reperesentation of a non-primitve .NET type(class,struct)
-mod type_def;
+
 /// Implementations of unary operations.
 mod unop;
 /// Contains small helper functions(debug assertions, functions used to get field names, etc), which are frequently used, but are not specific to a part of the coodegen.
@@ -165,46 +168,50 @@ impl CodegenBackend for MyBackend {
         metadata: EncodedMetadata,
         _need_metadata_module: bool,
     ) -> Box<dyn Any> {
-        let (_defid_set, cgus) = tcx.collect_and_partition_mono_items(());
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let (_defid_set, cgus) = tcx.collect_and_partition_mono_items(());
 
-        let mut codegen = Assembly::empty();
-        for cgu in cgus {
-            //println!("codegen {} has {} items.", cgu.name(), cgu.items().len());
-            for (item, _data) in cgu.items() {
-                codegen
-                    .add_item(*item, tcx)
-                    .expect("Could not add function");
+            let mut codegen = Assembly::empty();
+            let mut cache = crate::r#type::TyCache::empty();
+            for cgu in cgus {
+                //println!("codegen {} has {} items.", cgu.name(), cgu.items().len());
+                for (item, _data) in cgu.items() {
+                    codegen
+                        .add_item(*item, tcx, &mut cache)
+                        .expect("Could not add function");
+                }
             }
-        }
 
-        if let Some((entrypoint, _kind)) = tcx.entry_fn(()) {
-            let penv = rustc_middle::ty::ParamEnv::empty();
-            let entrypoint = rustc_middle::ty::Instance::resolve(
-                tcx,
-                penv,
-                entrypoint,
-                rustc_middle::ty::List::empty(),
-            )
-            .expect("Could not resolve entrypoint!")
-            .expect("Could not resolve entrypoint!");
-            let entrypoint_fn = entrypoint.ty(tcx, penv).fn_sig(tcx);
-            let sig = function_sig::FnSig::from_poly_sig(&entrypoint_fn, tcx, &entrypoint)
-                .expect("Could not get the signature of the entrypoint.");
-            let symbol = tcx.symbol_name(entrypoint);
-            let symbol = format!("{symbol:?}");
-            let cs = cil_op::CallSite::new(None, symbol.into(), sig, true);
-            codegen.set_entrypoint(cs);
-        }
-        codegen.opt();
-        // Done twice for inlining!
-        codegen.opt();
-        let name: IString = cgus.iter().next().unwrap().name().to_string().into();
-        Box::new((
-            name,
-            codegen,
-            metadata,
-            CrateInfo::new(tcx, "clr".to_string()),
-        ))
+            if let Some((entrypoint, _kind)) = tcx.entry_fn(()) {
+                let penv = rustc_middle::ty::ParamEnv::reveal_all();
+                let entrypoint = rustc_middle::ty::Instance::resolve(
+                    tcx,
+                    penv,
+                    entrypoint,
+                    rustc_middle::ty::List::empty(),
+                )
+                .expect("Could not resolve entrypoint!")
+                .expect("Could not resolve entrypoint!");
+                let sig = function_sig::FnSig::sig_from_instance_(entrypoint, tcx, &mut cache)
+                    .expect("Could not get the signature of the entrypoint.");
+                let symbol = tcx.symbol_name(entrypoint);
+                let symbol = format!("{symbol:?}");
+                let cs = cil_op::CallSite::new(None, symbol.into(), sig, true);
+                codegen.set_entrypoint(cs);
+            }
+            codegen.opt();
+            // Done twice for inlining!
+            codegen.opt();
+            let name: IString = cgus.iter().next().unwrap().name().to_string().into();
+
+            Box::new((
+                name,
+                codegen,
+                metadata,
+                CrateInfo::new(tcx, "clr".to_string()),
+            ))
+        }))
+        .expect("Codegen failed!!!")
     }
     /// Saves an in-memory assemably to codegen specific IR in a .bc file.
     fn join_codegen(
@@ -213,35 +220,39 @@ impl CodegenBackend for MyBackend {
         _sess: &Session,
         outputs: &OutputFilenames,
     ) -> Result<(CodegenResults, FxIndexMap<WorkProductId, WorkProduct>), ErrorGuaranteed> {
-        use std::io::Write;
-        let (_asm_name, asm, metadata, crate_info) = *ongoing_codegen
-            .downcast::<(IString, Assembly, EncodedMetadata, CrateInfo)>()
-            .expect("in join_codegen: ongoing_codegen is not an Assembly");
-        let asm_name = "";
-        let serialized_asm_path = outputs.temp_path(OutputType::Bitcode, Some(asm_name));
-        //std::fs::create_dir_all(&serialized_asm_path).expect("Could not create the directory temporary files are supposed to be in.");
-        let mut asm_out = std::fs::File::create(&serialized_asm_path)
-            .expect("Could not create the temporary files necessary for building the assembly!");
-        asm_out
-            .write_all(
-                &postcard::to_stdvec(&asm).expect("Could not serialize the tmp assembly file!"),
-            )
-            .expect("Could not save the tmp assembly file!");
-        let modules = vec![CompiledModule {
-            name: asm_name.into(),
-            kind: ModuleKind::Regular,
-            object: Some(serialized_asm_path),
-            bytecode: None,
-            dwarf_object: None,
-        }];
-        let codegen_results = CodegenResults {
-            modules,
-            allocator_module: None,
-            metadata_module: None,
-            metadata,
-            crate_info,
-        };
-        Ok((codegen_results, FxIndexMap::default()))
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            use std::io::Write;
+            let (_asm_name, asm, metadata, crate_info) = *ongoing_codegen
+                .downcast::<(IString, Assembly, EncodedMetadata, CrateInfo)>()
+                .expect("in join_codegen: ongoing_codegen is not an Assembly");
+            let asm_name = "";
+            let serialized_asm_path = outputs.temp_path(OutputType::Bitcode, Some(asm_name));
+            //std::fs::create_dir_all(&serialized_asm_path).expect("Could not create the directory temporary files are supposed to be in.");
+            let mut asm_out = std::fs::File::create(&serialized_asm_path).expect(
+                "Could not create the temporary files necessary for building the assembly!",
+            );
+            asm_out
+                .write_all(
+                    &postcard::to_stdvec(&asm).expect("Could not serialize the tmp assembly file!"),
+                )
+                .expect("Could not save the tmp assembly file!");
+            let modules = vec![CompiledModule {
+                name: asm_name.into(),
+                kind: ModuleKind::Regular,
+                object: Some(serialized_asm_path),
+                bytecode: None,
+                dwarf_object: None,
+            }];
+            let codegen_results = CodegenResults {
+                modules,
+                allocator_module: None,
+                metadata_module: None,
+                metadata,
+                crate_info,
+            };
+            Ok((codegen_results, FxIndexMap::default()))
+        }))
+        .expect("Could not join_codegen")
     }
     /// Collects all the files emmited by the codegen for a specific crate, and turns them into a .rlib file containg the serialized assembly IR and metadata.
     fn link(

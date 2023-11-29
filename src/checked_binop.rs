@@ -1,23 +1,27 @@
 use rustc_middle::mir::{BinOp, Operand};
 use rustc_middle::ty::{Instance, TyCtxt};
 
-use crate::cil_op::{CILOp, FieldDescriptor};
-use crate::r#type::{DotnetTypeRef, Type};
+use crate::cil_op::{CILOp, CallSite, FieldDescriptor};
+use crate::function_sig::FnSig;
+use crate::r#type::{DotnetTypeRef, TyCache, Type};
 /// Preforms an checked binary operation.
-pub(crate) fn binop_checked<'tcx>(
+pub(crate) fn binop_checked<'tyctx>(
     binop: BinOp,
-    operand_a: &Operand<'tcx>,
-    operand_b: &Operand<'tcx>,
-    tcx: TyCtxt<'tcx>,
-    method: &rustc_middle::mir::Body<'tcx>,
-    method_instance: Instance<'tcx>,
+    operand_a: &Operand<'tyctx>,
+    operand_b: &Operand<'tyctx>,
+    tyctx: TyCtxt<'tyctx>,
+    method: &rustc_middle::mir::Body<'tyctx>,
+    method_instance: Instance<'tyctx>,
+    cache: &mut TyCache,
 ) -> Vec<CILOp> {
-    let ops_a = crate::operand::handle_operand(operand_a, tcx, method, method_instance);
-    let ops_b = crate::operand::handle_operand(operand_b, tcx, method, method_instance);
-    let ty_a = operand_a.ty(&method.local_decls, tcx);
-    let ty_b = operand_b.ty(&method.local_decls, tcx);
+    let ops_a = crate::operand::handle_operand(operand_a, tyctx, method, method_instance, cache);
+    let ops_b = crate::operand::handle_operand(operand_b, tyctx, method, method_instance, cache);
+    let ty_a = operand_a.ty(&method.local_decls, tyctx);
+    let ty_a = crate::utilis::monomorphize(&method_instance, ty_a, tyctx);
+    let ty_b = operand_b.ty(&method.local_decls, tyctx);
+    let ty_b = crate::utilis::monomorphize(&method_instance, ty_b, tyctx);
     assert_eq!(ty_a, ty_b);
-    let ty = Type::from_ty(ty_a, tcx, &method_instance);
+    let ty = cache.type_from_cache(ty_a, tyctx, Some(method_instance));
     match binop {
         BinOp::Mul | BinOp::MulUnchecked => [ops_a, ops_b, mul(ty).into()]
             .into_iter()
@@ -84,6 +88,186 @@ fn mul(tpe: Type) -> Vec<CILOp> {
             CILOp::LdcI32(i32::MIN as i32),
             CILOp::Mul,
         ),
+        Type::U64 => promoted_ubinop(
+            Type::U64,
+            Type::U128,
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::uint_128()),
+                "op_Implicit".into(),
+                crate::function_sig::FnSig::new(&[Type::U64], &Type::U128),
+                true,
+            )),
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::uint_128()),
+                "op_Explicit".into(),
+                crate::function_sig::FnSig::new(&[Type::U128], &Type::U64),
+                true,
+            )),
+            CILOp::LdcI64(u64::MAX as i64),
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::uint_128()),
+                "op_Multiplication".into(),
+                crate::function_sig::FnSig::new(&[Type::U128, Type::U128], &Type::U128),
+                true,
+            )),
+        ),
+        Type::I64 => promoted_sbinop(
+            Type::I64,
+            Type::I128,
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::int_128()),
+                "op_Implicit".into(),
+                crate::function_sig::FnSig::new(&[Type::I64], &Type::I128),
+                true,
+            )),
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::int_128()),
+                "op_Explicit".into(),
+                crate::function_sig::FnSig::new(&[Type::I128], &Type::I64),
+                true,
+            )),
+            CILOp::LdcI64(i64::MAX),
+            CILOp::LdcI64(i64::MIN),
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::int_128()),
+                "op_Multiplication".into(),
+                crate::function_sig::FnSig::new(&[Type::I128, Type::I128], &Type::I128),
+                true,
+            )),
+        ),
+        Type::I128 => {
+            eprintln!("WARING: checked 128 bit arthmetics ARE NOT SUPPOPRTED YET. Using unchecked variants, bugs may occur.");
+            let tuple = crate::r#type::simple_tuple(&[tpe.clone(), Type::Bool]);
+            let tuple_ty: Type = tuple.clone().into();
+            vec![
+                CILOp::Call(
+                    CallSite::new(
+                        Some(DotnetTypeRef::int_128()),
+                        "op_Multiplication".into(),
+                        crate::function_sig::FnSig::new(&[Type::I128, Type::I128], &Type::I128),
+                        true,
+                    )
+                    .into(),
+                ),
+                CILOp::NewTMPLocal(tpe.clone().into()),
+                CILOp::SetTMPLocal,
+                CILOp::NewTMPLocal(tuple_ty.into()),
+                CILOp::LoadAddresOfTMPLocal,
+                CILOp::LoadUnderTMPLocal(1),
+                CILOp::STField(FieldDescriptor::boxed(
+                    tuple.clone(),
+                    Type::GenericArg(0),
+                    "Item1".into(),
+                )),
+                CILOp::LoadAddresOfTMPLocal,
+                CILOp::LdcI32(0),
+                CILOp::STField(FieldDescriptor::boxed(
+                    tuple.clone(),
+                    Type::GenericArg(1),
+                    "Item2".into(),
+                )),
+                CILOp::LoadTMPLocal,
+                CILOp::FreeTMPLocal,
+            ]
+        }
+        Type::U128 => {
+            eprintln!("WARING: checked 128 bit arthmetics ARE NOT SUPPOPRTED YET. Using unchecked variants, bugs may occur.");
+            let tuple = crate::r#type::simple_tuple(&[tpe.clone(), Type::Bool]);
+            let tuple_ty: Type = tuple.clone().into();
+            vec![
+                CILOp::Call(
+                    CallSite::new(
+                        Some(DotnetTypeRef::uint_128()),
+                        "op_Multiplication".into(),
+                        crate::function_sig::FnSig::new(&[Type::U128, Type::U128], &Type::U128),
+                        true,
+                    )
+                    .into(),
+                ),
+                CILOp::NewTMPLocal(tpe.clone().into()),
+                CILOp::SetTMPLocal,
+                CILOp::NewTMPLocal(tuple_ty.into()),
+                CILOp::LoadAddresOfTMPLocal,
+                CILOp::LoadUnderTMPLocal(1),
+                CILOp::STField(FieldDescriptor::boxed(
+                    tuple.clone(),
+                    Type::GenericArg(0),
+                    "Item1".into(),
+                )),
+                CILOp::LoadAddresOfTMPLocal,
+                CILOp::LdcI32(0),
+                CILOp::STField(FieldDescriptor::boxed(
+                    tuple.clone(),
+                    Type::GenericArg(1),
+                    "Item2".into(),
+                )),
+                CILOp::LoadTMPLocal,
+                CILOp::FreeTMPLocal,
+            ]
+        }
+        Type::USize => promoted_ubinop(
+            Type::USize,
+            Type::U128,
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::uint_128()),
+                "op_Implicit".into(),
+                crate::function_sig::FnSig::new(&[Type::USize], &Type::U128),
+                true,
+            )),
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::uint_128()),
+                "op_Explicit".into(),
+                crate::function_sig::FnSig::new(&[Type::U128], &Type::USize),
+                true,
+            )),
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::usize_type()),
+                "get_MaxValue".into(),
+                FnSig::new(&[], &Type::USize),
+                true,
+            )),
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::uint_128()),
+                "op_Multiplication".into(),
+                crate::function_sig::FnSig::new(&[Type::U128, Type::U128], &Type::U128),
+                true,
+            )),
+        ),
+
+        Type::ISize => promoted_sbinop(
+            Type::ISize,
+            Type::I128,
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::int_128()),
+                "op_Implicit".into(),
+                crate::function_sig::FnSig::new(&[Type::ISize], &Type::I128),
+                true,
+            )),
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::int_128()),
+                "op_Explicit".into(),
+                crate::function_sig::FnSig::new(&[Type::I128], &Type::ISize),
+                true,
+            )),
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::isize_type()),
+                "get_MaxValue".into(),
+                FnSig::new(&[], &Type::ISize),
+                true,
+            )),
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::isize_type()),
+                "get_MinValue".into(),
+                FnSig::new(&[], &Type::ISize),
+                true,
+            )),
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::int_128()),
+                "op_Multiplication".into(),
+                crate::function_sig::FnSig::new(&[Type::I128, Type::I128], &Type::I128),
+                true,
+            )),
+        ),
         _ => todo!("Can't preform checked mul on type {tpe:?} yet!"),
     }
 }
@@ -123,13 +307,13 @@ fn add(tpe: Type) -> Vec<CILOp> {
         Type::I64 => promoted_sbinop(
             Type::I64,
             Type::I128,
-            CILOp::Call(crate::cil_op::CallSite::boxed(
+            CILOp::Call(CallSite::boxed(
                 Some(DotnetTypeRef::int_128()),
                 "op_Implicit".into(),
                 crate::function_sig::FnSig::new(&[Type::I64], &Type::I128),
                 true,
             )),
-            CILOp::Call(crate::cil_op::CallSite::boxed(
+            CILOp::Call(CallSite::boxed(
                 Some(DotnetTypeRef::int_128()),
                 "op_Explicit".into(),
                 crate::function_sig::FnSig::new(&[Type::I128], &Type::I64),
@@ -137,7 +321,7 @@ fn add(tpe: Type) -> Vec<CILOp> {
             )),
             CILOp::LdcI64(i64::MAX),
             CILOp::LdcI64(i64::MIN),
-            CILOp::Call(crate::cil_op::CallSite::boxed(
+            CILOp::Call(CallSite::boxed(
                 Some(DotnetTypeRef::int_128()),
                 "op_Addition".into(),
                 crate::function_sig::FnSig::new(&[Type::I128, Type::I128], &Type::I128),
@@ -149,7 +333,7 @@ fn add(tpe: Type) -> Vec<CILOp> {
             Type::U64,
             CILOp::Nop,
             CILOp::Call(
-                crate::cil_op::CallSite::new(
+                CallSite::new(
                     Some(DotnetTypeRef::uint_128()),
                     "op_Addition".into(),
                     crate::function_sig::FnSig::new(
@@ -163,6 +347,68 @@ fn add(tpe: Type) -> Vec<CILOp> {
                 )
                 .into(),
             ),
+        ),
+        Type::USize => promoted_ubinop(
+            Type::USize,
+            Type::U128,
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::uint_128()),
+                "op_Implicit".into(),
+                crate::function_sig::FnSig::new(&[Type::USize], &Type::U128),
+                true,
+            )),
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::uint_128()),
+                "op_Explicit".into(),
+                crate::function_sig::FnSig::new(&[Type::U128], &Type::USize),
+                true,
+            )),
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::usize_type()),
+                "get_MaxValue".into(),
+                FnSig::new(&[], &Type::USize),
+                true,
+            )),
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::uint_128()),
+                "op_Addition".into(),
+                crate::function_sig::FnSig::new(&[Type::U128, Type::U128], &Type::U128),
+                true,
+            )),
+        ),
+        Type::ISize => promoted_sbinop(
+            Type::ISize,
+            Type::I128,
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::int_128()),
+                "op_Implicit".into(),
+                crate::function_sig::FnSig::new(&[Type::ISize], &Type::I128),
+                true,
+            )),
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::int_128()),
+                "op_Explicit".into(),
+                crate::function_sig::FnSig::new(&[Type::I128], &Type::ISize),
+                true,
+            )),
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::isize_type()),
+                "get_MaxValue".into(),
+                FnSig::new(&[], &Type::ISize),
+                true,
+            )),
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::isize_type()),
+                "get_MinValue".into(),
+                FnSig::new(&[], &Type::ISize),
+                true,
+            )),
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::int_128()),
+                "op_Addition".into(),
+                crate::function_sig::FnSig::new(&[Type::I128, Type::I128], &Type::I128),
+                true,
+            )),
         ),
         _ => todo!("Can't preform checked add on type {tpe:?} yet!"),
     }
@@ -326,13 +572,13 @@ fn sub(tpe: Type) -> Vec<CILOp> {
         Type::I64 => promoted_sbinop(
             Type::I64,
             Type::I128,
-            CILOp::Call(crate::cil_op::CallSite::boxed(
+            CILOp::Call(CallSite::boxed(
                 Some(DotnetTypeRef::int_128()),
                 "op_Implicit".into(),
                 crate::function_sig::FnSig::new(&[Type::I64], &Type::I128),
                 true,
             )),
-            CILOp::Call(crate::cil_op::CallSite::boxed(
+            CILOp::Call(CallSite::boxed(
                 Some(DotnetTypeRef::int_128()),
                 "op_Explicit".into(),
                 crate::function_sig::FnSig::new(&[Type::I128], &Type::I64),
@@ -340,7 +586,7 @@ fn sub(tpe: Type) -> Vec<CILOp> {
             )),
             CILOp::LdcI64(i64::MAX),
             CILOp::LdcI64(i64::MIN),
-            CILOp::Call(crate::cil_op::CallSite::boxed(
+            CILOp::Call(CallSite::boxed(
                 Some(DotnetTypeRef::int_128()),
                 "op_Subtraction".into(),
                 crate::function_sig::FnSig::new(&[Type::I128, Type::I128], &Type::I128),
@@ -350,23 +596,85 @@ fn sub(tpe: Type) -> Vec<CILOp> {
         Type::U64 => promoted_ubinop(
             Type::U64,
             Type::U128,
-            CILOp::Call(crate::cil_op::CallSite::boxed(
+            CILOp::Call(CallSite::boxed(
                 Some(DotnetTypeRef::uint_128()),
                 "op_Implicit".into(),
                 crate::function_sig::FnSig::new(&[Type::U64], &Type::U128),
                 true,
             )),
-            CILOp::Call(crate::cil_op::CallSite::boxed(
+            CILOp::Call(CallSite::boxed(
                 Some(DotnetTypeRef::uint_128()),
                 "op_Explicit".into(),
                 crate::function_sig::FnSig::new(&[Type::U128], &Type::U64),
                 true,
             )),
             CILOp::LdcI64(i64::MIN),
-            CILOp::Call(crate::cil_op::CallSite::boxed(
+            CILOp::Call(CallSite::boxed(
                 Some(DotnetTypeRef::uint_128()),
                 "op_Subtraction".into(),
                 crate::function_sig::FnSig::new(&[Type::U128, Type::U128], &Type::U128),
+                true,
+            )),
+        ),
+        Type::USize => promoted_ubinop(
+            Type::USize,
+            Type::U128,
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::uint_128()),
+                "op_Implicit".into(),
+                crate::function_sig::FnSig::new(&[Type::USize], &Type::U128),
+                true,
+            )),
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::uint_128()),
+                "op_Explicit".into(),
+                crate::function_sig::FnSig::new(&[Type::U128], &Type::USize),
+                true,
+            )),
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::usize_type()),
+                "get_MaxValue".into(),
+                FnSig::new(&[], &Type::USize),
+                true,
+            )),
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::uint_128()),
+                "op_Subtraction".into(),
+                crate::function_sig::FnSig::new(&[Type::U128, Type::U128], &Type::U128),
+                true,
+            )),
+        ),
+        Type::ISize => promoted_sbinop(
+            Type::ISize,
+            Type::I128,
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::int_128()),
+                "op_Implicit".into(),
+                crate::function_sig::FnSig::new(&[Type::ISize], &Type::I128),
+                true,
+            )),
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::int_128()),
+                "op_Explicit".into(),
+                crate::function_sig::FnSig::new(&[Type::I128], &Type::ISize),
+                true,
+            )),
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::isize_type()),
+                "get_MaxValue".into(),
+                FnSig::new(&[], &Type::ISize),
+                true,
+            )),
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::isize_type()),
+                "get_MinValue".into(),
+                FnSig::new(&[], &Type::ISize),
+                true,
+            )),
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::int_128()),
+                "op_Subtraction".into(),
+                crate::function_sig::FnSig::new(&[Type::I128, Type::I128], &Type::I128),
                 true,
             )),
         ),

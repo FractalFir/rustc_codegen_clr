@@ -3,8 +3,8 @@ use crate::{
     access_modifier::AccessModifer,
     assembly_exporter::AssemblyExportError,
     method::Method,
+    r#type::TypeDef,
     r#type::{DotnetTypeRef, Type},
-    type_def::TypeDef,
 };
 use std::{borrow::Cow, io::Write, ops::Deref};
 #[must_use]
@@ -22,6 +22,10 @@ impl std::io::Write for ILASMExporter {
     }
 }
 impl AssemblyExporter for ILASMExporter {
+    fn add_global(&mut self, tpe: &Type, name: &str) {
+        writeln!(self, ".field static {tpe} {name}", tpe = type_cil(&tpe))
+            .expect("Could not write global!")
+    }
     fn init(asm_name: &str) -> Self {
         let mut encoded_asm = Vec::with_capacity(0x1_00);
         write!(encoded_asm, ".assembly {asm_name}{{}}").expect("Write error!");
@@ -122,7 +126,12 @@ fn type_def_cli(w: &mut impl Write, tpe: &TypeDef) -> Result<(), super::Assembly
     } else {
         "private"
     };
-    writeln!(w, "\n.class {access} {name}{generics} extends {extended}{{")?;
+    if tpe.explicit_offsets().is_some() {
+        writeln!(w, "\n.class {access} explicit ansi sealed beforefieldinit {name}{generics}  extends {extended}{{")?;
+    } else {
+        writeln!(w, "\n.class {access} {name}{generics} extends {extended}{{")?;
+    }
+
     for inner_type in tpe.inner_types() {
         type_def_cli(w, inner_type)?;
     }
@@ -313,7 +322,7 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
         CILOp::Lt => "clt".into(),
         //Arguments
         CILOp::LDArg(argnum) => {
-            if *argnum < 8 {
+            if *argnum < 4 {
                 format!("ldarg.{argnum}").into()
             } else if u8::try_from(*argnum).is_ok() {
                 format!("ldarg.s {argnum}").into()
@@ -387,8 +396,24 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
             }
         }
         CILOp::LdNull => "ldnull".into(), 
-        CILOp::LdcF32(f32const) => format!("ldc.r4 {f32const}").into(),
-        CILOp::LdcF64(f64const) => format!("ldc.r8 {f64const}").into(),
+        CILOp::LdcF32(f32const) =>{
+            if f32const.is_finite() && format!("{f32const}").len() < 14{
+                format!("ldc.r4 {f32const}").into()
+            }
+            else{
+                let const_literal = f32const.to_le_bytes();
+                format!("ldc.r4 ({:02x} {:02x} {:02x} {:02x})",const_literal[0],const_literal[1],const_literal[2],const_literal[3]).into()
+            }
+        }
+        CILOp::LdcF64(f64const) => {
+            if f64const.is_finite() && format!("{f64const}").len() < 26{
+                format!("ldc.r8 {f64const}").into()
+            }
+            else{
+                let const_literal = f64const.to_le_bytes();
+                format!("ldc.r8 ({:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x})",const_literal[0],const_literal[1],const_literal[2],const_literal[3],const_literal[4],const_literal[5],const_literal[6],const_literal[7]).into()
+            }
+        }
         //Debug
         CILOp::Comment(comment) => format!("//{comment}").into(),
         //Convertions
@@ -497,7 +522,7 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
         CILOp::SizeOf(tpe) => format!("sizeof {tpe}", tpe = prefixed_type_cil(tpe)).into(),
         CILOp::Throw => "throw".into(),
         CILOp::Rethrow => "rethrow".into(),
-        CILOp::LdStr(str) => format!("ldstr {str:?}").into(),
+        CILOp::LdStr(str) => format!("ldstr {str:?}").replace('\'',"\\\'").into(),
         CILOp::LdObj(obj) => format!(
             "ldobj {tpe}",
             tpe = prefixed_field_type_cil(&obj.as_ref().clone())
@@ -568,8 +593,17 @@ fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
         CILOp::Pop => "pop".into(),
         CILOp::Dup => "dup".into(),
         CILOp::LDStaticField(static_field) => {
-            todo!("Can't load static field {static_field:?}");
-        } //_ => todo!("Unsuported op {op:?}"),
+            match static_field.owner(){
+                Some(owner)=>todo!("Can't load static field {static_field:?}"),
+                None=>format!("ldsfld {tpe} {name}",tpe = field_type_cil(static_field.tpe()), name = static_field.name()).into(),
+            }
+        }
+        CILOp::STStaticField(static_field) => {
+            match static_field.owner(){
+                Some(owner)=>todo!("Can't load static field {static_field:?}"),
+                None=>format!("stsfld {tpe} {name}",tpe = field_type_cil(static_field.tpe()), name = static_field.name()).into(),
+            }
+        }
     }
 }
 fn output_type_cil(tpe: &Type) -> Cow<'static, str> {
@@ -613,6 +647,7 @@ fn dotnet_type_ref_cli_generics_unescaped(dotnet_type: &DotnetTypeRef) -> String
 }
 fn type_cil(tpe: &Type) -> Cow<'static, str> {
     match tpe {
+        Type::FnDef(name) => format!("fn_{name}").into(),
         Type::Void => "RustVoid".into(),
         Type::I8 => "int8".into(),
         Type::U8 => "uint8".into(),
@@ -660,12 +695,42 @@ fn prefixed_field_type_cil(tpe: &Type) -> Cow<'static, str> {
         Type::Ptr(inner) => format!("{inner}*", inner = prefixed_field_type_cil(inner)).into(),
         Type::GenericArg(id) => format!("!{id}").into(),
         Type::DotnetType(dotnet_type) => dotnet_type_ref_cli_generics_unescaped(dotnet_type).into(),
-        _ => prefixed_type_cil(tpe),
+        Type::Void => "valuetype RustVoid".into(),
+        Type::FnDef(name) => format!("valuetype fn_{name}").into(),
+        Type::I8 => "int8".into(),
+        Type::U8 => "uint8".into(),
+        Type::I16 => "int16".into(),
+        Type::U16 => "uint16".into(),
+        Type::F32 => "float32".into(),
+        Type::I32 => "int32".into(),
+        Type::U32 => "uint32".into(),
+        Type::F64 => "float64".into(),
+        Type::I64 => "int64".into(),
+        Type::U64 => "uint64".into(),
+        Type::I128 => "valuetype [System.Runtime]System.Int128".into(),
+        Type::U128 => "valuetype [System.Runtime]System.UInt128".into(),
+        Type::ISize => "native int".into(),
+        Type::USize => "native uint".into(),
+        //Special type
+        Type::Unresolved => "valuetype Unresolved".into(),
+        Type::Foreign => "valuetype Foreign".into(),
+        Type::Bool => "bool".into(),
+        Type::DotnetChar => "char".into(),
+        Type::DotnetArray(array) => {
+            let arr = if array.dimensions > 0 {
+                (0..(array.dimensions - 1)).map(|_| ",").collect::<String>()
+            } else {
+                "".into()
+            };
+            format!("{tpe}[{arr}]", tpe = type_cil(&array.element)).into()
+        } //_ => todo!("Unsuported type {tpe:?}"),
+          //_ => prefixed_field_type_cil(tpe),
     }
 }
 fn prefixed_type_cil(tpe: &Type) -> Cow<'static, str> {
     let prefixed_type = match tpe {
         Type::Void => "valuetype RustVoid".into(),
+        Type::FnDef(name) => format!("valuetype fn_{name}").into(),
         Type::I8 => "int8".into(),
         Type::U8 => "uint8".into(),
         Type::I16 => "int16".into(),
@@ -685,7 +750,6 @@ fn prefixed_type_cil(tpe: &Type) -> Cow<'static, str> {
             let prefix = dotnet_type.tpe_prefix();
             format!("{prefix} {}", dotnet_type_ref_cli(dotnet_type)).into()
         }
-        Type::FnDef(_site) => "valuetype FnDef".into(),
         //Special type
         Type::Unresolved => "valuetype Unresolved".into(),
         Type::Foreign => "valuetype Foreign".into(),
@@ -757,11 +821,14 @@ fn generics_ident_str(generics: &[Type]) -> Cow<'static, str> {
         if let Some(first_generic) = generic_iter.next() {
             garg_string.push_str(&format!(
                 "{type_cil}",
-                type_cil = field_type_cil(first_generic)
+                type_cil = prefixed_field_type_cil(first_generic)
             ));
         }
         for arg in generic_iter {
-            garg_string.push_str(&format!(",{type_cil}", type_cil = field_type_cil(arg)));
+            garg_string.push_str(&format!(
+                ",{type_cil}",
+                type_cil = prefixed_field_type_cil(arg)
+            ));
         }
         format!("<{garg_string}>").into()
     }
@@ -781,6 +848,12 @@ fn tuple_type() {
     );
     assert_eq!(
         "valuetype [System.Runtime]System.ValueTuple`2<int8,uint8>",
+        &prefixed_field_type_cil(&generic)
+    );
+    let int128: Type = DotnetTypeRef::int_128().into();
+    let generic = crate::r#type::tuple_type(&[Type::I8, Type::Ptr(int128.into())]).into();
+    assert_eq!(
+        "valuetype [System.Runtime]System.ValueTuple`2<int8,valuetype [System.Runtime]System.Int128*>",
         &prefixed_field_type_cil(&generic)
     );
 }

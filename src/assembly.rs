@@ -1,12 +1,17 @@
 use crate::cil_op::{CILOp, CallSite};
 use crate::codegen_error::MethodCodegenError;
+use crate::r#type::{DotnetTypeRef, TyCache};
 use crate::utilis::monomorphize;
 use crate::IString;
 use crate::{
     access_modifier::AccessModifer, codegen_error::CodegenError, function_sig::FnSig,
-    method::Method, r#type::Type, type_def::TypeDef,
+    method::Method, r#type::Type, r#type::TypeDef,
 };
-use rustc_middle::mir::{mono::MonoItem, Local, LocalDecl, Statement, Terminator};
+use rustc_middle::mir::{
+    interpret::{AllocId, GlobalAlloc},
+    mono::MonoItem,
+    Local, LocalDecl, Statement, Terminator,
+};
 use rustc_middle::ty::{Instance, ParamEnv, TyCtxt, TyKind};
 use std::collections::{HashMap, HashSet};
 
@@ -26,11 +31,16 @@ impl AssemblyExternRef {
 /// Representation of a .NET assembly.
 pub struct Assembly {
     types: HashSet<TypeDef>,
-    functions: HashSet<Method>,
+    functions: HashMap<CallSite, Method>,
     entrypoint: Option<CallSite>,
     extern_refs: HashMap<IString, AssemblyExternRef>,
+    static_fields: HashMap<IString, Type>,
 }
 impl Assembly {
+    /// Returns iterator over all global fields
+    pub fn globals(&self) -> impl Iterator<Item = (&IString, &Type)> {
+        self.static_fields.iter()
+    }
     /// Returns the external assembly reference
     pub fn extern_refs(&self) -> &HashMap<IString, AssemblyExternRef> {
         &self.extern_refs
@@ -39,9 +49,10 @@ impl Assembly {
     pub fn empty() -> Self {
         let mut res = Self {
             types: HashSet::new(),
-            functions: HashSet::new(),
+            functions: HashMap::new(),
             entrypoint: None,
             extern_refs: HashMap::new(),
+            static_fields: HashMap::new(),
         };
         let dotnet_ver = AssemblyExternRef {
             version: (6, 12, 0, 0),
@@ -55,15 +66,19 @@ impl Assembly {
     /// Joins 2 assemblies together.
     pub fn join(self, other: Self) -> Self {
         let types = self.types.union(&other.types).cloned().collect();
-        let functions = self.functions.union(&other.functions).cloned().collect();
+        let mut functions = self.functions;
+        functions.extend(other.functions);
         let entrypoint = self.entrypoint.or(other.entrypoint);
         let mut extern_refs = self.extern_refs;
+        let mut static_fields = self.static_fields;
+        static_fields.extend(other.static_fields);
         extern_refs.extend(other.extern_refs);
         Self {
             types,
             functions,
             entrypoint,
             extern_refs,
+            static_fields,
         }
     }
     /// Gets the typdefef at path `path`.
@@ -101,15 +116,17 @@ impl Assembly {
         mir: &'tcx rustc_middle::mir::Body<'tcx>,
         tcx: TyCtxt<'tcx>,
         instance: Instance<'tcx>,
+        type_cache: &mut TyCache,
     ) -> Vec<CILOp> {
         if crate::ABORT_ON_ERROR {
-            crate::terminator::handle_terminator(term, mir, tcx, mir, instance)
+            crate::terminator::handle_terminator(term, mir, tcx, mir, instance, type_cache)
         } else {
             match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                crate::terminator::handle_terminator(term, mir, tcx, mir, instance)
+                crate::terminator::handle_terminator(term, mir, tcx, mir, instance, type_cache)
             })) {
                 Ok(ok) => ok,
                 Err(payload) => {
+                    type_cache.recover_from_panic();
                     let msg = if let Some(msg) = payload.downcast_ref::<&str>() {
                         rustc_middle::ty::print::with_no_trimmed_paths! {
                         format!("Tried to execute terminator {term:?} whose compialtion message {msg:?}!")}
@@ -130,14 +147,15 @@ impl Assembly {
         tcx: TyCtxt<'tcx>,
         mir: &rustc_middle::mir::Body<'tcx>,
         instance: Instance<'tcx>,
+        type_cache: &mut TyCache,
     ) -> Result<Vec<CILOp>, CodegenError> {
         if crate::ABORT_ON_ERROR {
             Ok(crate::statement::handle_statement(
-                statement, tcx, mir, instance,
+                statement, tcx, mir, instance, type_cache,
             ))
         } else {
             match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                crate::statement::handle_statement(statement, tcx, mir, instance)
+                crate::statement::handle_statement(statement, tcx, mir, instance, type_cache)
             })) {
                 Ok(success) => Ok(success),
                 Err(payload) => {
@@ -153,20 +171,25 @@ impl Assembly {
         }
     }
     /// This is used *ONLY* to catch uncaught errors.
-    fn checked_add_fn<'tcx>(&mut self,
+    fn checked_add_fn<'tcx>(
+        &mut self,
         instance: Instance<'tcx>,
         tcx: TyCtxt<'tcx>,
-        name: &str)-> Result<(), MethodCodegenError>{
+        name: &str,
+        cache: &mut TyCache,
+    ) -> Result<(), MethodCodegenError> {
         match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-           self.add_fn(instance, tcx, name)
+            self.add_fn(instance, tcx, name, cache)
         })) {
             Ok(success) => success,
             Err(payload) => {
+                cache.recover_from_panic();
                 if let Some(msg) = payload.downcast_ref::<&str>() {
-                    eprintln!("fn_add panicked with unhandled message: {msg:?}");
+                    eprintln!("could not compile method {name}. fn_add panicked with unhandled message: {msg:?}");
+                    //self.add_method(Method::missing_because(format!("could not compile method {name}. fn_add panicked with unhandled message: {msg:?}")));
                     return Ok(());
                 } else {
-                    eprintln!("fn_add panicked with no message.");
+                    eprintln!("could not compile method {name}. fn_add panicked with no message.");
                     return Ok(());
                 }
             }
@@ -179,6 +202,7 @@ impl Assembly {
         instance: Instance<'tcx>,
         tcx: TyCtxt<'tcx>,
         name: &str,
+        cache: &mut TyCache,
     ) -> Result<(), MethodCodegenError> {
         if crate::utilis::is_function_magic(name) {
             return Ok(());
@@ -189,28 +213,30 @@ impl Assembly {
             eprintln!("fn item {instance:?} is not a function definition type. Skippping.");
             return Ok(());
         }
+
         // Get the MIR if it exisits. Othervise, return early.
         if !tcx.is_mir_available(instance.def_id()) {
             println!("function {instance:?} has no MIR. Skippping.");
             return Ok(());
         }
+
         let mir = tcx.optimized_mir(instance.def_id());
-        // TODO: check if this is OK. It seems to work for now, but there may be some edge cases.
-        let param_env = ParamEnv::empty();
         // Check if function is public or not.
         // FIXME: figure out the source of the bug causing visibility to not be read propely.
         // let access_modifier = AccessModifer::from_visibility(tcx.visibility(instance.def_id()));
         let access_modifier = AccessModifer::Public;
         // Handle the function signature
-        let sig = match FnSig::sig_from_instance(instance, tcx) {
+        let sig = match FnSig::sig_from_instance_(instance, tcx, cache) {
             Ok(sig) => sig,
             Err(err) => {
                 eprintln!("Could not get the signature of function {name} because {err:?}");
                 return Ok(());
             }
         };
+
         // Get locals
-        let locals = locals_from_mir(&mir.local_decls, tcx, sig.inputs().len(), &instance);
+        //eprintln!("method")
+        let locals = locals_from_mir(&mir.local_decls, tcx, sig.inputs().len(), &instance, cache);
         // Create method prototype
         let mut method = Method::new(access_modifier, true, sig, name, locals);
         let mut ops = Vec::new();
@@ -225,9 +251,12 @@ impl Assembly {
                 if crate::INSERT_MIR_DEBUG_COMMENTS {
                     rustc_middle::ty::print::with_no_trimmed_paths! {ops.push(CILOp::Comment(format!("{statement:?}").into()))};
                 }
-                let statement_ops = match Self::statement_to_ops(statement, tcx, mir, instance) {
+                let statement_ops = match Self::statement_to_ops(
+                    statement, tcx, mir, instance, cache,
+                ) {
                     Ok(ops) => ops,
                     Err(err) => {
+                        cache.recover_from_panic();
                         eprintln!(
                             "Method \"{name}\" failed to compile statement with message {err:?}"
                         );
@@ -242,7 +271,7 @@ impl Assembly {
             }
             match &block_data.terminator {
                 Some(term) => {
-                    let term_ops = Self::terminator_to_ops(term, mir, tcx, instance);
+                    let term_ops = Self::terminator_to_ops(term, mir, tcx, instance, cache);
                     if term_ops != &[CILOp::Ret] {
                         crate::utilis::check_debugable(&term_ops, term, does_return_void);
                     }
@@ -252,17 +281,125 @@ impl Assembly {
                 None => (),
             }
         }
+        ops.iter_mut().for_each(|op| match op {
+            CILOp::LoadGlobalAllocPtr { alloc_id } => {
+                *op = CILOp::LDStaticField(self.add_allocation(*alloc_id, tcx).into());
+            }
+            _ => (),
+        });
+
         method.set_ops(ops);
         // Do some basic checks on the method as a whole.
         crate::utilis::check_debugable(method.get_ops(), &method, does_return_void);
-        for local in &mir.local_decls {
-            let local_ty = monomorphize(&instance, local.ty, tcx);
-            self.add_type(local_ty, tcx, &instance);
-        }
+        self.types.extend(cache.defs().cloned());
         println!("Compiled method {name}");
         self.add_method(method);
         Ok(())
         //todo!("Can't add function")
+    }
+
+    fn add_allocation<'tcx>(
+        &mut self,
+        alloc_id: u64,
+        tcx: TyCtxt<'tcx>,
+    ) -> crate::cil_op::StaticFieldDescriptor {
+        let const_allocation =
+            match tcx.global_alloc(AllocId(alloc_id.try_into().expect("0 alloc id?"))) {
+                GlobalAlloc::Memory(alloc) => alloc,
+                GlobalAlloc::Static(def_id) => {
+                    let alloc = tcx.eval_static_initializer(def_id).unwrap();
+                    //tcx.reserve_and_set_memory_alloc(alloc)
+                    alloc
+                }
+                GlobalAlloc::Function(_) | GlobalAlloc::VTable(..) => {
+                    unreachable!()
+                }
+            };
+        let const_allocation = const_allocation.inner();
+        let bytes: &[u8] = const_allocation
+            .inspect_with_uninit_and_ptr_outside_interpreter(0..const_allocation.len());
+        use std::hash::{DefaultHasher, Hash, Hasher};
+        fn calculate_hash<T: Hash>(t: &T) -> u64 {
+            let mut s = DefaultHasher::new();
+            t.hash(&mut s);
+            s.finish()
+        }
+        //let byte_hash = calculate_hash(&bytes);
+
+        let alloc_fld: IString = format!("alloc_{alloc_id:x}").into();
+        let field_desc = crate::cil_op::StaticFieldDescriptor::new(
+            None,
+            Type::Ptr(Type::U8.into()),
+            alloc_fld.clone().into(),
+        );
+        if self.static_fields.get(&alloc_fld).is_none() {
+            let method = self
+                .functions
+                .entry(CallSite::new(
+                    None,
+                    ".cctor".into(),
+                    FnSig::new(&[], &Type::Void),
+                    true,
+                ))
+                .or_insert_with(|| {
+                    Method::new(
+                        AccessModifer::Public,
+                        true,
+                        FnSig::new(&[], &Type::Void),
+                        ".cctor",
+                        vec![
+                            (None, Type::Ptr(Type::U8.into())),
+                            (None, Type::Ptr(Type::U8.into())),
+                        ],
+                    )
+                });
+            let ops: &mut Vec<CILOp> = method.ops_mut();
+            if ops.len() > 0 && ops[ops.len() - 1] == CILOp::Ret {
+                ops.pop();
+            }
+            ops.extend([
+                CILOp::LdcI64(const_allocation.len() as u64 as i64),
+                CILOp::ConvISize(false),
+                CILOp::Call(
+                    CallSite::new(
+                        None,
+                        "malloc".into(),
+                        FnSig::new(&[Type::USize], &Type::Ptr(Type::Void.into())),
+                        true,
+                    )
+                    .into(),
+                ),
+                CILOp::Dup,
+                CILOp::STLoc(0),
+                CILOp::STLoc(1),
+            ]);
+            for byte in bytes {
+                ops.extend([
+                    CILOp::LDLoc(0),
+                    CILOp::LdcI32(*byte as i32),
+                    CILOp::STIndI8,
+                    CILOp::LDLoc(0),
+                    CILOp::LdcI32(1),
+                    CILOp::Add,
+                    CILOp::STLoc(0),
+                ]);
+            }
+            ops.extend([
+                CILOp::LDLoc(1),
+                CILOp::STStaticField(field_desc.clone().into()),
+                CILOp::Ret,
+            ]);
+            self.static_fields
+                .insert(alloc_fld, Type::Ptr(Type::U8.into()));
+        }
+        field_desc
+    }
+    /// Adds 100 first array types
+    pub fn add_array_types(&mut self) {
+        for i in 0..40 {
+            self.types
+                .insert(crate::r#type::type_def::get_array_type(i));
+        }
     }
     /// Returns true if assembly contains function named `name`
     pub fn contains_fn_named(&self, name: &str) -> bool {
@@ -273,7 +410,7 @@ impl Assembly {
     pub fn add_method(&mut self, mut method: Method) {
         method.allocate_temporaries();
         method.ensure_valid();
-        self.functions.insert(method);
+        self.functions.insert(method.call_site(), method);
     }
     /// Returns the list of all calls within the method. Calls may repeat.
     pub fn call_sites(&self) -> impl Iterator<Item = &CallSite> {
@@ -281,32 +418,22 @@ impl Assembly {
     }
     /// Returns an interator over all methods within the assembly.
     pub fn methods(&self) -> impl Iterator<Item = &Method> {
-        self.functions.iter()
+        self.functions.values()
     }
     /// Returns an iterator over all types witin the assembly.
     pub fn types(&self) -> impl Iterator<Item = &TypeDef> {
         self.types.iter()
     }
-    /// Adds rust type `ty` and all types contained within it, if such type is not already present.
-    pub fn add_type<'tyctx>(
-        &mut self,
-        ty: rustc_middle::ty::Ty<'tyctx>,
-        tyctx: TyCtxt<'tyctx>,
-        method: &Instance<'tyctx>,
-    ) {
-        for type_def in TypeDef::from_ty(ty, tyctx, method) {
-            self.types.insert(type_def);
-        }
-    }
     /// Optimizes all the methods witin the assembly.
     pub fn opt(&mut self) {
-        let functions: HashSet<_> = self
+        let functions: HashMap<_, _> = self
             .functions
             .iter()
             .map(|method| {
+                let (site, method) = method;
                 let mut method = method.clone();
                 crate::opt::opt_method(&mut method, self);
-                method
+                (site.clone(), method)
             })
             .collect();
         self.functions = functions;
@@ -320,6 +447,7 @@ impl Assembly {
         &mut self,
         item: MonoItem<'tcx>,
         tcx: TyCtxt<'tcx>,
+        cache: &mut TyCache,
     ) -> Result<(), CodegenError> {
         if !item.is_instantiable(tcx) {
             let name = item.symbol_name(tcx);
@@ -334,7 +462,7 @@ impl Assembly {
                 //let instance = crate::utilis::monomorphize(&instance,tcx);
                 let symbol_name = crate::utilis::function_name(item.symbol_name(tcx));
 
-                self.checked_add_fn(instance, tcx, &symbol_name)
+                self.checked_add_fn(instance, tcx, &symbol_name, cache)
                     .expect("Could not add function!");
 
                 Ok(())
@@ -344,7 +472,10 @@ impl Assembly {
                 Ok(())
             }
             MonoItem::Static(stotic) => {
-                eprintln!("Unsuported item - Static:{stotic:?}");
+                let alloc = tcx.eval_static_initializer(stotic).unwrap();
+                let alloc_id = tcx.reserve_and_set_memory_alloc(alloc);
+                self.add_allocation(crate::utilis::alloc_id_to_u64(alloc_id), tcx);
+                //eprintln!("Unsuported item - Static:{stotic:?}");
                 Ok(())
             }
         }
@@ -352,8 +483,8 @@ impl Assembly {
     /// Sets the entrypoint of the assembly to the method behind `CallSite`.
     pub fn set_entrypoint(&mut self, entrypoint: CallSite) {
         assert!(self.entrypoint.is_none(), "ERROR: Multiple entrypoints");
-        self.functions
-            .insert(crate::entrypoint::wrapper(&entrypoint));
+        let wrapper = crate::entrypoint::wrapper(&entrypoint);
+        self.functions.insert(wrapper.call_site(), wrapper);
         self.entrypoint = Some(entrypoint);
     }
 }
@@ -363,12 +494,12 @@ fn locals_from_mir<'tyctx>(
     tyctx: TyCtxt<'tyctx>,
     argc: usize,
     method_instance: &Instance<'tyctx>,
+    tycache: &mut TyCache,
 ) -> Vec<(Option<IString>, Type)> {
     let mut local_types: Vec<_> = Vec::with_capacity(locals.len());
     for (local_id, local) in locals.iter().enumerate() {
         if local_id == 0 || local_id > argc {
             let ty = crate::utilis::monomorphize(method_instance, local.ty, tyctx);
-            let name: Option<IString> = None;
             if crate::PRINT_LOCAL_TYPES {
                 println!(
                     "Setting local to type {ty:?},non-morphic: {non_morph}",
@@ -376,7 +507,8 @@ fn locals_from_mir<'tyctx>(
                 );
             }
             let name = None;
-            local_types.push((name, Type::from_ty(ty, tyctx, method_instance)));
+            let tpe = tycache.type_from_cache(ty, tyctx, Some(*method_instance));
+            local_types.push((name, tpe));
         }
     }
     local_types

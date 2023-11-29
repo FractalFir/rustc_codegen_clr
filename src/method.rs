@@ -117,6 +117,13 @@ impl Method {
     pub(crate) fn calls(&self) -> impl Iterator<Item = &CallSite> {
         self.ops.iter().map(|op| op.call()).filter_map(|site| site)
     }
+    pub(crate) fn call_site(&self) -> CallSite {
+        CallSite::new(None, self.name().into(), self.sig().clone(), true)
+    }
+    /*
+    pub(crate) fn failed_to_compile(name:&str,reason:&str)->Self{
+        Self:: new(AccessModifer::Public,true,)
+    }*/
     pub(crate) fn allocate_temporaries(&mut self) {
         let mut tmp_stack = vec![];
         let ops = &mut self.ops;

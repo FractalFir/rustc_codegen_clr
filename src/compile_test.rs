@@ -345,16 +345,18 @@ macro_rules! cargo_test {
                 let linker = super::RUSTC_CODEGEN_CLR_LINKER.display();
                 let rustflags = format!("-Z codegen-backend={backend} -C linker={linker}");
                 // Compiles the test project
-                let out = std::process::Command::new("cargo")
-                    .env("RUSTFLAGS", &rustflags)
-                    .current_dir(test_dir)
-                    .args([
-                        "build",
-                        "--release", //"--target",
-                                     //"clr64-unknown-clr"
-                    ])
+                let mut command = std::process::Command::new("cargo");
+                command.env("RUSTFLAGS", &rustflags)
+                .current_dir(test_dir)
+                .args([
+                    "build",
+                    "--release", //"--target",
+                                 //"clr64-unknown-clr"
+                ]);
+                let out = command
                     .output()
                     .expect("failed to execute process");
+
                 // panic!("out:{out:?}");
                 // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
                 if !out.stderr.is_empty() {
@@ -363,7 +365,7 @@ macro_rules! cargo_test {
                     let stderr = String::from_utf8(out.stderr)
                         .expect("rustc error contained non-UTF8 characters.");
                     if !stderr.contains("Finished") {
-                        panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
+                        panic!("command:{command:?} failed. \n stdout:\n{stdout}\nstderr:\n{stderr}");
                     }
                 }
                 drop(lock);
@@ -438,15 +440,15 @@ macro_rules! cargo_test_ignored {
                 let linker = super::RUSTC_CODEGEN_CLR_LINKER.display();
                 let rustflags = format!("-Z codegen-backend={backend} -C linker={linker}");
                 // Compiles the test project
-                let out = std::process::Command::new("cargo")
-                    .env("RUSTFLAGS", &rustflags)
-                    .current_dir(test_dir)
-                    .args([
-                        "build",
-                        "--release",
-                        "-j1" //"--target",
-                                     //"clr64-unknown-clr"
-                    ])
+                let mut command = std::process::Command::new("cargo");
+                command.env("RUSTFLAGS", &rustflags)
+                .current_dir(test_dir)
+                .args([
+                    "build",
+                    "--release", //"--target",
+                                 //"clr64-unknown-clr"
+                ]);
+                let out = command
                     .output()
                     .expect("failed to execute process");
                 // panic!("out:{out:?}");
@@ -457,7 +459,7 @@ macro_rules! cargo_test_ignored {
                     let stderr = String::from_utf8(out.stderr)
                         .expect("rustc error contained non-UTF8 characters.");
                     if !stderr.contains("Finished") {
-                        panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
+                        panic!("command:{command:?} failed. \n stdout:\n{stdout}\nstderr:\n{stderr}");
                     }
                 }
                 drop(lock);
@@ -564,9 +566,11 @@ test_lib! {references}
 //test_lib! {structs}
 
 test_lib! {types}
+test_lib! {recursive}
+test_lib! {tuple}
 
 run_test! {arthm,add}
-
+run_test! {arthm,mul}
 run_test! {arthm,sub}
 run_test! {types,enums}
 run_test! {types,nbody}

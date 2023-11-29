@@ -1,6 +1,6 @@
 use crate::{
     codegen_error::{CodegenError, MethodCodegenError},
-    r#type::Type,
+    r#type::{TyCache, Type},
     utilis::skip_binder_if_no_generic_types,
 };
 use rustc_middle::ty::{Instance, List, ParamEnv, ParamEnvAnd, PolyFnSig, TyCtxt};
@@ -13,32 +13,11 @@ pub struct FnSig {
     output: Type,
 }
 impl FnSig {
-    /// Creates a function signature from a fn sig. Does not morphize!
-    pub fn from_poly_sig<'tcx>(
-        sig: &PolyFnSig<'tcx>,
-        tcx: TyCtxt<'tcx>,
-        method_instance: &Instance<'tcx>,
-    ) -> Result<Self, MethodCodegenError> {
-        println!("sig:{sig:?}");
-
-        let inputs = skip_binder_if_no_generic_types(sig.inputs())?
-            .iter()
-            .map(|v| {
-                //println!("arg:{v:?}");
-                let tmp = Type::from_ty(*v, tcx, method_instance);
-                //println!("endarg");
-                tmp
-            })
-            .collect();
-        let out = skip_binder_if_no_generic_types(sig.output())?;
-        //println!("out:{out:?}");
-        let output = Type::from_ty(out, tcx, method_instance);
-        Ok(Self { inputs, output })
-    }
     /// Returns the signature of function behind `function`.
-    pub fn sig_from_instance<'tcx>(
+    pub fn sig_from_instance_<'tcx>(
         function: Instance<'tcx>,
         tcx: TyCtxt<'tcx>,
+        tycache: &mut TyCache,
     ) -> Result<Self, CodegenError> {
         let fn_abi = tcx.fn_abi_of_instance(ParamEnvAnd {
             param_env: ParamEnv::reveal_all(),
@@ -55,10 +34,10 @@ impl FnSig {
             _ => panic!("ERROR:calling using convention {conv:?} is not supported!"),
         }
         assert!(!fn_abi.c_variadic);
-        let ret = Type::from_ty(fn_abi.ret.layout.ty, tcx, &function);
+        let ret = tycache.type_from_cache(fn_abi.ret.layout.ty, tcx, Some(function));
         let mut args = Vec::with_capacity(fn_abi.args.len());
         for arg in fn_abi.args.iter() {
-            args.push(Type::from_ty(arg.layout.ty, tcx, &function));
+            args.push(tycache.type_from_cache(arg.layout.ty, tcx, None));
         }
         Ok(Self {
             inputs: args,

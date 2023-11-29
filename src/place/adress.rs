@@ -21,6 +21,7 @@ pub fn place_elem_adress<'ctx>(
     tyctx: TyCtxt<'ctx>,
     method_instance: Instance<'ctx>,
     _body: &rustc_middle::mir::Body,
+    type_cache: &mut crate::r#type::TyCache,
 ) -> (PlaceTy<'ctx>, Vec<CILOp>) {
     let curr_type = curr_type.monomorphize(&method_instance, tyctx);
     assert_morphic!(curr_type);
@@ -33,7 +34,7 @@ pub fn place_elem_adress<'ctx>(
             } else {
                 (
                     pointed.into(),
-                    deref_op(pointed.into(), tyctx, &method_instance),
+                    deref_op(pointed.into(), tyctx, &method_instance, type_cache),
                 )
             }
         }
@@ -42,27 +43,29 @@ pub fn place_elem_adress<'ctx>(
                 //TODO: Why was this commented out?
                 let field_type = crate::utilis::monomorphize(&method_instance, *field_type, tyctx);
                 let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
-                let field_desc = crate::utilis::field_descrptor(curr_type,(*index).into(),tyctx,method_instance);
-                ((field_type).into(), vec![CILOp::LDFieldAdress(field_desc.into())])
+                let field_desc = crate::utilis::field_descrptor(
+                    curr_type,
+                    (*index).into(),
+                    tyctx,
+                    method_instance,
+                    type_cache,
+                );
+                (
+                    (field_type).into(),
+                    vec![CILOp::LDFieldAdress(field_desc.into())],
+                )
             }
             PlaceTy::EnumVariant(enm, var_idx) => {
                 let owner = crate::utilis::monomorphize(&method_instance, enm, tyctx);
-                let variant_name = crate::utilis::variant_name(owner, var_idx);
-                let owner = crate::utilis::monomorphize(&method_instance, enm, tyctx);
-                let gen_field_type =
-                    crate::utilis::generic_field_ty(owner, index.as_u32(), tyctx, method_instance);
-                let owner = crate::r#type::Type::from_ty(owner, tyctx, &method_instance);
-                let owner = if let crate::r#type::Type::DotnetType(owner) = owner {
-                    owner.as_ref().clone()
-                } else {
-                    panic!();
-                };
-                let field_name = field_name(enm, index.as_u32());
-                let mut field_owner = owner;
-
-                field_owner.append_path(&format!("/{variant_name}"));
-                let field_desc = FieldDescriptor::boxed(field_owner, gen_field_type, field_name);
-                let ops = vec![CILOp::LDFieldAdress(field_desc)];
+                let field_desc = crate::utilis::enum_field_descriptor(
+                    owner,
+                    index.as_u32(),
+                    var_idx.into(),
+                    tyctx,
+                    method_instance,
+                    type_cache,
+                );
+                let ops = vec![CILOp::LDFieldAdress(field_desc.into())];
                 ((*field_type).into(), ops)
             }
         },
@@ -71,7 +74,8 @@ pub fn place_elem_adress<'ctx>(
                 .as_ty()
                 .expect("Can't get enum variant of an enum varaint!");
             let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
-            let curr_dotnet_type = crate::r#type::Type::from_ty(curr_type, tyctx, &method_instance);
+            let curr_dotnet_type =
+                type_cache.type_from_cache(curr_type, tyctx, Some(method_instance));
             let curr_dotnet_type =
                 if let crate::r#type::Type::DotnetType(dotnet_type) = curr_dotnet_type {
                     dotnet_type.as_ref().clone()
@@ -92,13 +96,15 @@ pub fn place_elem_adress<'ctx>(
             let variant_type = PlaceTy::EnumVariant(curr_type, variant.as_u32());
             (variant_type, vec![CILOp::LDFieldAdress(field_desc)])
         }
+        /*
         PlaceElem::Index(index) => {
             let mut ops = vec![crate::place::local_adress(
                 index.as_usize(),
                 tyctx.optimized_mir(method_instance.def_id()),
             )];
             let curr_ty = curr_type.as_ty().expect("Can't index into enum!");
-            let tpe = Type::from_ty(curr_ty, tyctx, &method_instance);
+            let curr_ty = crate::utilis::monomorphize(&method_instance, curr_ty, tyctx);
+            let tpe = type_cache.type_from_cache(curr_ty, tyctx);
             let class = if let Type::DotnetType(dotnet) = &tpe {
                 dotnet
             } else {
@@ -120,7 +126,9 @@ pub fn place_elem_adress<'ctx>(
                 )));
                 (element_ty.into(), ops)
             }
+        }*/
+        _ => {
+            rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Can't handle porojection {place_elem:?} in body")}
         }
-        _ => todo!("Can't handle porojection {place_elem:?} in body"),
     }
 }

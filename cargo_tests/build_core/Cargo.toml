@@ -8,3 +8,5 @@ edition = "2021"
 [dependencies]
 mycorrhiza = {path="../../mycorrhiza"}
 [workspace]
+
+codegen-units = 1

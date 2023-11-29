@@ -5,7 +5,12 @@ enum AccessModifer {
     Private,
     Public,
 }
-use crate::{assembly::Assembly, method::Method, type_def::TypeDef, IString};
+use crate::{
+    assembly::Assembly,
+    method::Method,
+    r#type::{Type, TypeDef},
+    IString,
+};
 /// ILASM-based assembly exporter.
 pub mod ilasm_exporter;
 /// This trait represents an interface implemented by all .NET assembly exporters. (Currently only ilasm)
@@ -21,6 +26,8 @@ pub trait AssemblyExporter: Sized {
     fn finalize(self, final_path: &Path, is_dll: bool) -> Result<(), AssemblyExportError>;
     /// Adds a reference to assembly `asm_name` with info `info`
     fn add_extern_ref(&mut self, asm_name: &str, info: &crate::assembly::AssemblyExternRef);
+    /// Adds a global field
+    fn add_global(&mut self, tpe: &Type, name: &str);
     /// Handles the whole assembly export process all at once.
     fn export_assembly(
         asm: &Assembly,
@@ -36,6 +43,13 @@ pub trait AssemblyExporter: Sized {
         }
         for method in asm.methods() {
             asm_exporter.add_method(method);
+        }
+        println!(
+            "globals:{globals:?}",
+            globals = asm.globals().collect::<Vec<_>>()
+        );
+        for global in asm.globals() {
+            asm_exporter.add_global(global.1, global.0);
         }
         /*
         crate::libc::insert_libc(&mut asm_exporter);
