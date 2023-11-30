@@ -1,13 +1,14 @@
 #![allow(internal_features,unused_imports,incomplete_features,unused_variables,dead_code,improper_ctypes_definitions)]
 #![feature(lang_items,adt_const_params,associated_type_defaults,core_intrinsics,start)]
 //#![no_std]
-
+use std::time::Instant;
 //use mycorrhiza::{start,panic_handler};
 //panic_handler!{}
 //start!{}
 //#[lang = "eh_personality"]
 //fn rust_eh_personality() {}
 fn main() {
+    /* 
     let sb = mycorrhiza::system::text::StringBuilder::empty();
     sb.append_char('H');
     sb.append_char('e');
@@ -35,6 +36,7 @@ fn main() {
     sb.append_char('\r');
     let mstr = sb.to_mstring();
     mycorrhiza::system::console::Console::writeln_string(mstr);
-    use mycorrhiza::std::vec::Vec;
-    
+    use mycorrhiza::std::vec::Vec;*/
+    let vec:Vec<usize> = Vec::new();
+    std::hint::black_box(vec);
 }

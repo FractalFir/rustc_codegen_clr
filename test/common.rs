@@ -6,8 +6,8 @@ use core::intrinsics::sqrtf32;
 #[allow(dead_code)]
 extern "C"{
     fn puts(msg:*const u8);
-    fn malloc(size:usize)->*mut ();
-    fn realloc(ptr:*mut (),size:usize)->*mut ();
+    fn malloc(size:usize)->*mut core::ffi::c_void;
+    fn realloc(ptr:*mut core::ffi::c_void,size:usize)->*mut core::ffi::c_void;
 } 
 #[panic_handler]
 fn panic(_panic: &PanicInfo<'_>) -> ! {

@@ -118,7 +118,7 @@ impl Assembly {
         instance: Instance<'tcx>,
         type_cache: &mut TyCache,
     ) -> Vec<CILOp> {
-        if crate::ABORT_ON_ERROR {
+        let mut terminator = if crate::ABORT_ON_ERROR {
             crate::terminator::handle_terminator(term, mir, tcx, mir, instance, type_cache)
         } else {
             match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
@@ -139,7 +139,16 @@ impl Assembly {
                     CILOp::throw_msg(&msg).into()
                 }
             }
+        };
+        let argc = mir.arg_count as u32;
+        let locc =  mir.local_decls.len() as u32 - mir.arg_count as u32;
+        if !crate::utilis::verify_locals_within_range(&terminator, argc,locc){
+            let msg = rustc_middle::ty::print::with_no_trimmed_paths! {format!("{term:?} failed verification, because it refered to local varibles/arguments that do not exist. ops:{terminator:?} argc:{argc} locc:{locc}")};
+            eprintln!("WARING: teminator {msg}");
+            terminator.clear();
+            terminator.extend(CILOp::throw_msg(&format!("Tried to execute miscompiled terminator, which {msg}")));
         }
+        terminator
     }
     /// Turns a statement into ops, if ABORT_ON_ERROR set to false, will handle and recover from errors.
     pub fn statement_to_ops<'tcx>(
@@ -236,7 +245,7 @@ impl Assembly {
 
         // Get locals
         //eprintln!("method")
-        let locals = locals_from_mir(&mir.local_decls, tcx, sig.inputs().len(), &instance, cache);
+        let locals = locals_from_mir(&mir.local_decls, tcx, mir.arg_count, &instance, cache);
         // Create method prototype
         let mut method = Method::new(access_modifier, true, sig, name, locals);
         let mut ops = Vec::new();

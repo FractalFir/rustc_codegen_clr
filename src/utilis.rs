@@ -13,6 +13,7 @@ pub const MANAGED_CALL_VIRT_FN_NAME: &str = "rustc_clr_interop_managed_call_virt
 pub fn is_function_magic(name: &str) -> bool {
     name.contains(CTOR_FN_NAME) || name.contains(MANAGED_CALL_FN_NAME)
 }
+use crate::cil_op::CILOp;
 use crate::{
     cil_op::FieldDescriptor,
     codegen_error::MethodCodegenError,
@@ -44,7 +45,7 @@ pub fn adt_name<'tyctx>(
     gargs: &'tyctx List<GenericArg<'tyctx>>,
 ) -> crate::IString {
     //TODO: find a better way to get adt name!
-   
+
     //let def_str = tyctx.def_path_str(adt.did());
     let mut gdef_str = if gargs
         .iter()
@@ -55,7 +56,7 @@ pub fn adt_name<'tyctx>(
         rustc_middle::ty::print::with_no_trimmed_paths! {tyctx.def_path_str(adt.did())}
     };
     let krate = adt.did().krate;
-    /* 
+    /*
     if krate != root_crate_num(){
         let krate_name = tyctx.crate_name(krate).to_string();
         eprintln!("Preparing to add crate PREFIX gdef_str:{gdef_str} krate_name:{krate_name}");
@@ -65,8 +66,11 @@ pub fn adt_name<'tyctx>(
             gdef_str = format!("{krate_name}.{gdef_str}");
         }
     }*/
-    let adt_instance = Instance::resolve(tyctx,ParamEnv::reveal_all(),adt.did(),gargs).unwrap().unwrap();
-    let auto_mangled = rustc_symbol_mangling::symbol_name_for_instance_in_crate(tyctx,adt_instance,krate);
+    let adt_instance = Instance::resolve(tyctx, ParamEnv::reveal_all(), adt.did(), gargs)
+        .unwrap()
+        .unwrap();
+    let auto_mangled =
+        rustc_symbol_mangling::symbol_name_for_instance_in_crate(tyctx, adt_instance, krate);
     //eprintln!("auto_mangled:{auto_mangled:?}");
     //let opt_name = tyctx.item_name(adt.did()).to_string();
     //eprintln!("opt_name:{opt_name}");
@@ -466,4 +470,12 @@ pub(crate) fn alloc_id_to_u64(alloc_id: AllocId) -> u64 {
 }
 fn root_crate_num() -> rustc_hir::def_id::CrateNum {
     unsafe { std::mem::transmute(0_u32) }
+}
+/// Part of micompilatio detection.
+pub(crate) fn verify_locals_within_range(ops:&[CILOp],argc:u32,locc:u32)->bool{
+    ops.iter().all(|op|match op{
+        CILOp::LDLoc(local) | CILOp::LDLocA(local) | CILOp::STLoc(local)=> *local < locc,
+        CILOp::LDArg(arg) | CILOp::LDArgA(arg) | CILOp::STArg(arg)=> *arg < argc,
+        _=>true,
+    })
 }
