@@ -144,8 +144,10 @@ impl From<&TypeDef> for DotnetTypeRef {
 }
 pub fn escape_field_name(name: &str) -> IString {
     if name.is_empty() {
-        "fld".into()
-    } else if !name.chars().next().unwrap().is_alphabetic()
+        return "fld".into();
+    }
+    let first = name.chars().next().unwrap(); 
+     if !(first.is_alphabetic() || first == '_')
         || name == "value"
         || name == "flags"
         || name == "alignment"

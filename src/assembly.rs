@@ -146,9 +146,9 @@ impl Assembly {
             let msg = rustc_middle::ty::print::with_no_trimmed_paths! {format!("{term:?} failed verification, because it refered to local varibles/arguments that do not exist. ops:{terminator:?} argc:{argc} locc:{locc}")};
             eprintln!("WARING: teminator {msg}");
             terminator.clear();
-            terminator.extend(CILOp::throw_msg(&format!(
-                "Tried to execute miscompiled terminator, which {msg}"
-            )));
+            rustc_middle::ty::print::with_no_trimmed_paths! {terminator.extend(CILOp::throw_msg(&format!(
+                "Tried to execute miscompiled terminator {term:?}, which {msg}"
+            )))};
         }
         terminator
     }
@@ -268,10 +268,10 @@ impl Assembly {
                     Ok(ops) => ops,
                     Err(err) => {
                         cache.recover_from_panic();
-                        eprintln!(
-                            "Method \"{name}\" failed to compile statement with message {err:?}"
-                        );
-                        CILOp::throw_msg(&format!("Tired to run a statement which failed to compile with error message {err:?}.")).into()
+                        rustc_middle::ty::print::with_no_trimmed_paths! {eprintln!(
+                            "Method \"{name}\" failed to compile statement {statement:?} with message {err:?}"
+                        )};
+                        rustc_middle::ty::print::with_no_trimmed_paths! {CILOp::throw_msg(&format!("Tired to run a statement {statement:?} which failed to compile with error message {err:?}.")).into()}
                     }
                 };
                 crate::utilis::check_debugable(&statement_ops, statement, does_return_void);
@@ -371,9 +371,7 @@ impl Assembly {
             ops.extend([
                 CILOp::LdcI64(const_allocation.len() as u64 as i64),
                 CILOp::ConvISize(false),
-                CILOp::Call(
-                    CallSite::malloc(tcx).into(),
-                ),
+                CILOp::Call(CallSite::malloc(tcx).into()),
                 CILOp::Dup,
                 CILOp::STLoc(0),
                 CILOp::STLoc(1),

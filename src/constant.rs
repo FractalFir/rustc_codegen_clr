@@ -186,6 +186,20 @@ fn create_const_from_slice<'ctx>(
             ],
             _ => todo!("Can't yet load const value of type {int:?} with bytes:{bytes:?}"),
         },
+        TyKind::RawPtr(type_and_mut) => match type_and_mut.ty.kind() {
+            TyKind::Slice(_) => {
+                todo!("Can't load const slices.")
+            }
+            TyKind::Str => {
+                todo!("Can't load const string slices.")
+            }
+            _ => {
+                eprintln!("WARNING: assuming sizeof<*T>() == 8!");
+                vec![CILOp::LdcI64(i64::from_le_bytes(
+                    bytes[..std::mem::size_of::<i64>()].try_into().unwrap(),
+                ))]
+            }  
+        },
         TyKind::Bool => vec![CILOp::LdcI32(bytes[0] as i32)],
         TyKind::Tuple(elements) => {
             assert!(

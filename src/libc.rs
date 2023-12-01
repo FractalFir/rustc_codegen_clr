@@ -67,8 +67,17 @@ macro_rules! add_tpe_method {
 /// Inserts a small subset of libc and some standard types into an assembly.
 pub fn insert_libc(asm: &mut Assembly, tyctx: TyCtxt) {
     let c_void = Type::c_void(tyctx);
-    asm.add_typedef(crate::r#type::TypeDef::new(AccessModifer::Private,c_void.as_dotnet().unwrap().name_path().into(),vec![], vec![],vec![],None,0,None));
- 
+    asm.add_typedef(crate::r#type::TypeDef::new(
+        AccessModifer::Private,
+        c_void.as_dotnet().unwrap().name_path().into(),
+        vec![],
+        vec![],
+        vec![],
+        None,
+        0,
+        None,
+    ));
+
     // Add core.panic.PanicInfo
     /*
     asm.add_type(&Type::Struct {
@@ -86,8 +95,9 @@ pub fn insert_libc(asm: &mut Assembly, tyctx: TyCtxt) {
     rust_slice(asm);
     math(asm);
     io(asm);
+    unlikely(asm);
     //malloc(asm);
-  
+
     let mut malloc = Method::new(
         AccessModifer::Private,
         true,
@@ -112,7 +122,10 @@ pub fn insert_libc(asm: &mut Assembly, tyctx: TyCtxt) {
     let mut realloc = Method::new(
         AccessModifer::Private,
         true,
-        FnSig::new(&[Type::Ptr(c_void.clone().into()), Type::USize], &Type::Ptr(c_void.clone().into())),
+        FnSig::new(
+            &[Type::Ptr(c_void.clone().into()), Type::USize],
+            &Type::Ptr(c_void.clone().into()),
+        ),
         "realloc",
         vec![],
     );
@@ -122,7 +135,7 @@ pub fn insert_libc(asm: &mut Assembly, tyctx: TyCtxt) {
         CILOp::Call(CallSite::boxed(
             Some(DotnetTypeRef::new(
                 Some("System.Runtime.InteropServices"),
-                "System.Runtime.InteropServices.Marshal"
+                "System.Runtime.InteropServices.Marshal",
             )),
             "ReAllocHGlobal".into(),
             FnSig::new(&[Type::ISize, Type::ISize], &Type::ISize),
@@ -138,17 +151,18 @@ pub fn insert_libc(asm: &mut Assembly, tyctx: TyCtxt) {
         "free",
         vec![],
     );
-    free.set_ops(vec![ CILOp::LDArg(0),
-    CILOp::Call(CallSite::boxed(
-        Some(DotnetTypeRef::new(
-            Some("System.Runtime.InteropServices"),
-            "System.Runtime.InteropServices.Marshal"
+    free.set_ops(vec![
+        CILOp::LDArg(0),
+        CILOp::Call(CallSite::boxed(
+            Some(DotnetTypeRef::new(
+                Some("System.Runtime.InteropServices"),
+                "System.Runtime.InteropServices.Marshal",
+            )),
+            "FreeHGlobal".into(),
+            FnSig::new(&[Type::ISize], &Type::Void),
+            true,
         )),
-        "FreeHGlobal".into(),
-        FnSig::new(&[Type::ISize], &Type::Void),
-        true,
-    )),
-    CILOp::Ret,
+        CILOp::Ret,
     ]);
     asm.add_method(free);
     abort(asm);
@@ -223,20 +237,11 @@ add_method!(
     [(None, Type::U8)]
 );
 add_method!(
-    free,
-    &[Type::Ptr(Box::new(Type::Void))],
-    &Type::Void,
+    unlikely,
+    &[Type::Bool],
+    &Type::Bool,
     [
         CILOp::LDArg(0),
-        CILOp::Call(CallSite::boxed(
-            Some(DotnetTypeRef::new(
-                Some("System.Runtime.InteropServices"),
-                "System.Runtime.InteropServices.Marshal"
-            )),
-            "FreeHGlobal".into(),
-            FnSig::new(&[Type::ISize], &Type::Void),
-            true,
-        )),
         CILOp::Ret,
     ]
 );

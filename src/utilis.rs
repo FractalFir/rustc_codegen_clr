@@ -393,6 +393,14 @@ pub fn compiletime_sizeof<'tyctx>(ty: Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -> usiz
             .iter()
             .map(|element| compiletime_sizeof(element, tyctx))
             .sum::<usize>(),
+        TyKind::RawPtr(type_and_mut) => match type_and_mut.ty.kind() {
+                TyKind::Slice(inner) => rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Can't compute compiletime sizeof *[{inner:?}]")},
+                TyKind::Str => todo!("Can't compute compiletime sizeof *str"),
+                _ => {
+                    eprintln!("WARNING: Assuming sizeof::<*T>() == sizeof::<isize>() == 8!");
+                    8
+                }
+            },
         _ => todo!("Can't compute compiletime sizeof {ty:?}"),
     }
 }

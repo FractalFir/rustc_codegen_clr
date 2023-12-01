@@ -139,7 +139,7 @@ pub fn opt_method(method: &mut Method, asm: &Assembly) {
         if crate::REMOVE_UNSUED_LOCALS {
             remove_unused_locals(method);
         }
-        try_inline_all(method, asm);
+        //try_inline_all(method, asm);
     }
 }
 fn repalce_const_sizes(ops: &mut [CILOp]) {
