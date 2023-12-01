@@ -14,6 +14,7 @@ pub fn is_function_magic(name: &str) -> bool {
     name.contains(CTOR_FN_NAME) || name.contains(MANAGED_CALL_FN_NAME)
 }
 use crate::cil_op::CILOp;
+use crate::IString;
 use crate::{
     cil_op::FieldDescriptor,
     codegen_error::MethodCodegenError,
@@ -75,8 +76,11 @@ pub fn adt_name<'tyctx>(
     //let opt_name = tyctx.item_name(adt.did()).to_string();
     //eprintln!("opt_name:{opt_name}");
 
-    auto_mangled
-        .replace("::", ".")
+    escape_class_name(&auto_mangled)
+}
+
+pub fn escape_class_name(name: &str) -> IString {
+    name.replace("::", ".")
         .replace("<", "_lt_")
         .replace('\'', "_ap_")
         .replace(' ', "_spc_")
@@ -472,10 +476,10 @@ fn root_crate_num() -> rustc_hir::def_id::CrateNum {
     unsafe { std::mem::transmute(0_u32) }
 }
 /// Part of micompilatio detection.
-pub(crate) fn verify_locals_within_range(ops:&[CILOp],argc:u32,locc:u32)->bool{
-    ops.iter().all(|op|match op{
-        CILOp::LDLoc(local) | CILOp::LDLocA(local) | CILOp::STLoc(local)=> *local < locc,
-        CILOp::LDArg(arg) | CILOp::LDArgA(arg) | CILOp::STArg(arg)=> *arg < argc,
-        _=>true,
+pub(crate) fn verify_locals_within_range(ops: &[CILOp], argc: u32, locc: u32) -> bool {
+    ops.iter().all(|op| match op {
+        CILOp::LDLoc(local) | CILOp::LDLocA(local) | CILOp::STLoc(local) => *local < locc,
+        CILOp::LDArg(arg) | CILOp::LDArgA(arg) | CILOp::STArg(arg) => *arg < argc,
+        _ => true,
     })
 }

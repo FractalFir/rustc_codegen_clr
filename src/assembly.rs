@@ -141,12 +141,14 @@ impl Assembly {
             }
         };
         let argc = mir.arg_count as u32;
-        let locc =  mir.local_decls.len() as u32 - mir.arg_count as u32;
-        if !crate::utilis::verify_locals_within_range(&terminator, argc,locc){
+        let locc = mir.local_decls.len() as u32 - mir.arg_count as u32;
+        if !crate::utilis::verify_locals_within_range(&terminator, argc, locc) {
             let msg = rustc_middle::ty::print::with_no_trimmed_paths! {format!("{term:?} failed verification, because it refered to local varibles/arguments that do not exist. ops:{terminator:?} argc:{argc} locc:{locc}")};
             eprintln!("WARING: teminator {msg}");
             terminator.clear();
-            terminator.extend(CILOp::throw_msg(&format!("Tried to execute miscompiled terminator, which {msg}")));
+            terminator.extend(CILOp::throw_msg(&format!(
+                "Tried to execute miscompiled terminator, which {msg}"
+            )));
         }
         terminator
     }
@@ -370,13 +372,7 @@ impl Assembly {
                 CILOp::LdcI64(const_allocation.len() as u64 as i64),
                 CILOp::ConvISize(false),
                 CILOp::Call(
-                    CallSite::new(
-                        None,
-                        "malloc".into(),
-                        FnSig::new(&[Type::USize], &Type::Ptr(Type::Void.into())),
-                        true,
-                    )
-                    .into(),
+                    CallSite::malloc(tcx).into(),
                 ),
                 CILOp::Dup,
                 CILOp::STLoc(0),

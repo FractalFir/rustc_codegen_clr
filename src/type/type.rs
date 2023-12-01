@@ -1,4 +1,5 @@
 use crate::{cil_op::CallSite, IString};
+use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::ty::{
     AdtDef, AliasKind, ConstKind, FloatTy, GenericArg, Instance, IntTy, List, ParamEnv, Ty, TyCtxt,
     TyKind, UintTy,
@@ -166,6 +167,17 @@ impl DotnetTypeRef {
     }
 }
 impl Type {
+    pub fn c_void(tyctx: TyCtxt) -> Type {
+        let lang_items = tyctx.lang_items();
+        let c_void = lang_items.c_void().expect("c_void not defined.");
+        let name = rustc_codegen_ssa::back::symbol_export::symbol_name_for_instance_in_crate(
+            tyctx,
+            ExportedSymbol::NonGeneric(c_void),
+            c_void.krate,
+        );
+        let name = crate::utilis::escape_class_name(&name);
+        DotnetTypeRef::new(None, &name).into()
+    }
     pub fn slice_ref(slice_element: Type) -> Type {
         const SLICE_PTR_NAME: &str = "core.ptr.metadata.PtrComponents";
 
@@ -300,13 +312,12 @@ pub fn tuple_type(types: &[Type]) -> DotnetTypeRef {
     }
 }
 pub fn magic_type<'tyctx>(
-    mut name: &str,
+    name: &str,
     _adt: &AdtDef<'tyctx>,
     subst: &[GenericArg<'tyctx>],
     ctx: TyCtxt<'tyctx>,
     //method: &Instance<'tyctx>,
 ) -> Type {
-    eprintln!("iname:{name}");
     if name.contains(INTEROP_CLASS_TPE_NAME) {
         if subst.len() != 2 {
             panic!("MAnaged object reference must have exactly 2 generic arguments!");

@@ -1,4 +1,5 @@
-use crate::{function_sig::FnSig, r#type::DotnetTypeRef, IString};
+use crate::{function_sig::FnSig, r#type::DotnetTypeRef,r#type::Type, IString};
+use rustc_middle::ty::TyCtxt;
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 /// This struct descibes a .NET field. It contains information about the type this field belongs to, the name of the field, and the fields type.
 pub struct FieldDescriptor {
@@ -97,6 +98,10 @@ impl CallSite {
     /// Returns the signature of the function this call site targets.
     pub fn signature(&self) -> &FnSig {
         &self.signature
+    }
+    /// Returns the call site refering to the function malloc.
+    pub fn malloc(ctx:TyCtxt)->Self{
+        Self::new(None,"malloc".into(),FnSig::new(&[Type::USize],&Type::c_void(ctx)),true)
     }
     /// Returns the class the targeted method belongs to.
     pub fn class(&self) -> Option<&DotnetTypeRef> {

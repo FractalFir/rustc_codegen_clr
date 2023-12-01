@@ -202,6 +202,7 @@ impl CodegenBackend for MyBackend {
             codegen.opt();
             // Done twice for inlining!
             codegen.opt();
+            libc::insert_libc(&mut codegen, tcx);
             let name: IString = cgus.iter().next().unwrap().name().to_string().into();
 
             Box::new((

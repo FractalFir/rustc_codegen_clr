@@ -165,7 +165,6 @@ pub fn escape_field_name(name: &str) -> IString {
         || name == "class"
         //FIXME: this is a sign of a bug. ALL fields not starting with a letter should have been caught by the statement above.
         || name == "0"
-    
     {
         format!("m_{name}").into()
     } else {

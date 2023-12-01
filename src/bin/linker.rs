@@ -129,7 +129,7 @@ fn main() {
         final_assembly = final_assembly.join(assembly);
     }
     //final_assembly.add_array_types();
-    libc::insert_libc(&mut final_assembly);
+    //
     if !rustc_codegen_clr::ABORT_ON_ERROR {
         autopatch(&mut final_assembly);
     }
