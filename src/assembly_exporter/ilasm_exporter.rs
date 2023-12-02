@@ -216,8 +216,8 @@ fn method_cil(w: &mut impl Write, method: &Method) -> std::io::Result<()> {
     }
     writeln!(w, "}}")
 }
-fn op_cli(op: &crate::cil_op::CILOp) -> Cow<'static, str> {
-    use crate::cil_op::CILOp;
+fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
+    use crate::cil::CILOp;
     match op {
         //Control flow
         CILOp::Ret => "ret".into(),

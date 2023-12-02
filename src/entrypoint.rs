@@ -1,5 +1,5 @@
 use crate::{
-    cil_op::{CILOp, CallSite},
+    cil::{CILOp, CallSite},
     function_sig::FnSig,
     method::Method,
     r#type::Type,

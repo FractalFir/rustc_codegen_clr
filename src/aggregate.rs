@@ -1,6 +1,9 @@
-use crate::cil_op::{CILOp, FieldDescriptor};
-use crate::r#type::{DotnetTypeRef, TyCache, Type};
-use crate::utilis::{field_name, monomorphize};
+use crate::{
+    cil::CallSite,
+    cil::{CILOp, FieldDescriptor},
+    r#type::{DotnetTypeRef, TyCache, Type},
+    utilis::{field_name, monomorphize},
+};
 use rustc_index::IndexVec;
 use rustc_middle::mir::{AggregateKind, Operand, Place};
 use rustc_middle::ty::{
@@ -75,8 +78,7 @@ pub fn handle_aggregate<'tyctx>(
                 &[array_type.clone().into(), Type::USize, Type::GenericArg(0)],
                 &Type::Void,
             );
-            let call_site =
-                crate::cil_op::CallSite::boxed(Some(array_type), "set_Item".into(), sig, false);
+            let call_site = CallSite::boxed(Some(array_type), "set_Item".into(), sig, false);
             for value in values {
                 ops.extend(array_getter.iter().cloned());
                 ops.push(CILOp::LdcI64(value.0 as u64 as i64));
@@ -281,11 +283,8 @@ fn aggregate_adt<'tyctx>(
                 let field_type =
                     type_cache.type_from_cache(field_type, tyctx, Some(method_instance));
                 let field_name = field_name(adt_type, field.0);
-                let field_desc = crate::cil_op::FieldDescriptor::boxed(
-                    adt_type_ref.clone(),
-                    field_type,
-                    field_name,
-                );
+                let field_desc =
+                    FieldDescriptor::boxed(adt_type_ref.clone(), field_type, field_name);
 
                 ops.push(CILOp::STField(field_desc.into()));
             }

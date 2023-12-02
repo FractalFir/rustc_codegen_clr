@@ -2,7 +2,7 @@ use std::ops::Range;
 
 use crate::{
     assembly::Assembly,
-    cil_op::{CILOp, CallSite},
+    cil::{CILOp, CallSite},
     method::Method,
     r#type::Type,
     utilis::check_debugable,

@@ -1,7 +1,7 @@
 use rustc_middle::mir::{BinOp, Operand};
 use rustc_middle::ty::{Instance, IntTy, Ty, TyCtxt, TyKind, UintTy};
 
-use crate::cil_op::CILOp;
+use crate::cil::{CILOp, CallSite};
 use crate::function_sig::FnSig;
 use crate::r#type::{DotnetTypeRef, TyCache, Type};
 /// Preforms an unchecked binary operation.
@@ -135,7 +135,7 @@ fn add_unchecked<'tyctx>(
                 let ty_a = tycache.type_from_cache(ty_a, tyctx, Some(*method_instance));
                 let ty_b = tycache.type_from_cache(ty_b, tyctx, Some(*method_instance));
                 vec![CILOp::Call(
-                    crate::cil_op::CallSite::new(
+                    CallSite::new(
                         Some(DotnetTypeRef::int_128()),
                         "op_Addition".into(),
                         FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
@@ -152,7 +152,7 @@ fn add_unchecked<'tyctx>(
                 let ty_a = tycache.type_from_cache(ty_a, tyctx, Some(*method_instance));
                 let ty_b = tycache.type_from_cache(ty_b, tyctx, Some(*method_instance));
                 vec![CILOp::Call(
-                    crate::cil_op::CallSite::new(
+                    CallSite::new(
                         Some(DotnetTypeRef::uint_128()),
                         "op_Addition".into(),
                         FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
@@ -188,7 +188,7 @@ fn sub_unchecked<'tyctx>(
                 let ty_a = tycache.type_from_cache(ty_a, tyctx, Some(*method_instance));
                 let ty_b = tycache.type_from_cache(ty_b, tyctx, Some(*method_instance));
                 vec![CILOp::Call(
-                    crate::cil_op::CallSite::new(
+                    CallSite::new(
                         Some(DotnetTypeRef::int_128()),
                         "op_Subtraction".into(),
                         FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
@@ -205,7 +205,7 @@ fn sub_unchecked<'tyctx>(
                 let ty_a = tycache.type_from_cache(ty_a, tyctx, Some(*method_instance));
                 let ty_b = tycache.type_from_cache(ty_b, tyctx, Some(*method_instance));
                 vec![CILOp::Call(
-                    crate::cil_op::CallSite::new(
+                    CallSite::new(
                         Some(DotnetTypeRef::uint_128()),
                         "op_Subtraction".into(),
                         FnSig::new(&[ty_a.clone(), ty_b], &ty_a),

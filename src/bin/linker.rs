@@ -69,7 +69,7 @@ fn aot_compile_mode(args: &[String]) -> AOTCompileMode {
         AOTCompileMode::NoAOT
     }
 }
-fn patch_missing_method(call_site: &cil_op::CallSite) -> method::Method {
+fn patch_missing_method(call_site: &cil::CallSite) -> method::Method {
     let sig = call_site.signature().clone();
     let mut method = method::Method::new(
         access_modifier::AccessModifer::Private,
@@ -78,7 +78,7 @@ fn patch_missing_method(call_site: &cil_op::CallSite) -> method::Method {
         call_site.name(),
         vec![],
     );
-    let ops = rustc_codegen_clr::cil_op::CILOp::throw_msg(&format!(
+    let ops = rustc_codegen_clr::cil::CILOp::throw_msg(&format!(
         "Tried to invoke missing method {name}",
         name = call_site.name()
     ));

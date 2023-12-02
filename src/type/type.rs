@@ -1,4 +1,4 @@
-use crate::{cil_op::CallSite, IString};
+use crate::{cil::CallSite, IString};
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::ty::{
     AdtDef, AliasKind, ConstKind, FloatTy, GenericArg, Instance, IntTy, List, ParamEnv, Ty, TyCtxt,

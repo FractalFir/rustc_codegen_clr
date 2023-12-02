@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+
 #[cfg(test)]
 fn peverify(file_path: &str, test_dir: &str) {
     if !*IS_PEVERIFY_PRESENT {
@@ -195,8 +196,11 @@ macro_rules! run_test {
     ($prefix:ident,$test_name:ident) => {
         mod $test_name {
             #[cfg(test)]
+            use ntest::timeout;
+            #[cfg(test)]
             static COMPILE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
             #[test]
+            #[timeout(5_000)]
             fn release() {
                 let lock = COMPILE_LOCK.lock();
                 let test_dir = concat!("./test/", stringify!($prefix), "/");
@@ -238,6 +242,7 @@ macro_rules! run_test {
                 super::test_dotnet_executable(exec_path, test_dir);
             }
             #[test]
+            #[timeout(5_000)]
             fn debug() {
                 let lock = COMPILE_LOCK.lock();
                 let test_dir = concat!("./test/", stringify!($prefix), "/");

@@ -1,6 +1,6 @@
 // FIXME: This file may contain unnecesary morphize calls.
 use crate::assert_morphic;
-use crate::cil_op::{CILOp, FieldDescriptor};
+use crate::cil::{CILOp, FieldDescriptor};
 use crate::r#type::{DotnetTypeRef, Type};
 use crate::utilis::field_name;
 use rustc_middle::mir::{Place, PlaceElem};
@@ -81,7 +81,7 @@ fn place_get_length<'ctx>(
         }
         TyKind::Slice(_elem) => {
             let signature = crate::function_sig::FnSig::new(&[tpe.clone()], &Type::USize);
-            vec![CILOp::Call(crate::cil_op::CallSite::boxed(
+            vec![CILOp::Call(crate::cil::CallSite::boxed(
                 Some(class.as_ref().clone()),
                 "get_Length".into(),
                 signature,

@@ -1,4 +1,4 @@
-use crate::cil_op::{CILOp, FieldDescriptor};
+use crate::cil::{CILOp, FieldDescriptor};
 use crate::function_sig::FnSig;
 use crate::r#type::{DotnetTypeRef, Type};
 use crate::utilis::field_name;
@@ -86,7 +86,6 @@ fn place_elem_get<'a>(
                 //todo!("Can't get fields of enum variants yet!");
             }
         },
-
         PlaceElem::Index(index) => {
             let curr_ty = curr_type
                 .as_ty()
@@ -95,7 +94,6 @@ fn place_elem_get<'a>(
                 index.as_usize(),
                 tyctx.optimized_mir(method_instance.def_id()),
             );
-
             match curr_ty.kind() {
                 TyKind::Slice(inner) => {
                     let inner = crate::utilis::monomorphize(&method_instance, *inner, tyctx);
@@ -130,7 +128,7 @@ fn place_elem_get<'a>(
                     let ops = vec![
                         index,
                         CILOp::Call(
-                            crate::cil_op::CallSite::new(
+                            crate::cil::CallSite::new(
                                 Some(array_dotnet),
                                 "get_Item".into(),
                                 FnSig::new(&[array_type, Type::USize], &Type::GenericArg(0)),

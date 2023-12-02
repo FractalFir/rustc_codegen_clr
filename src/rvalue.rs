@@ -1,4 +1,4 @@
-use crate::cil_op::{CILOp, CallSite, FieldDescriptor};
+use crate::cil::{CILOp, CallSite, FieldDescriptor};
 use crate::operand::handle_operand;
 use crate::r#type::{DotnetTypeRef, TyCache, Type};
 use rustc_middle::mir::{CastKind, NullOp};
@@ -233,9 +233,11 @@ pub fn handle_rvalue<'tcx>(
             } else {
                 panic!();
             };
-            ops.push(CILOp::LDField(Box::new(
-                crate::cil_op::FieldDescriptor::new(owner, discr_type, "_tag".into()),
-            )));
+            ops.push(CILOp::LDField(Box::new(crate::cil::FieldDescriptor::new(
+                owner,
+                discr_type,
+                "_tag".into(),
+            ))));
             ops
         }
         Rvalue::Len(operand) => {

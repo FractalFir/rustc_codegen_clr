@@ -1,11 +1,15 @@
-use crate::cil_op::{CILOp, CallSite};
-use crate::codegen_error::MethodCodegenError;
-use crate::r#type::{DotnetTypeRef, TyCache};
-use crate::utilis::monomorphize;
-use crate::IString;
 use crate::{
-    access_modifier::AccessModifer, codegen_error::CodegenError, function_sig::FnSig,
-    method::Method, r#type::Type, r#type::TypeDef,
+    access_modifier::AccessModifer,
+    cil::{CILOp, CallSite},
+    codegen_error::CodegenError,
+    codegen_error::MethodCodegenError,
+    function_sig::FnSig,
+    method::Method,
+    r#type::Type,
+    r#type::TypeDef,
+    r#type::{DotnetTypeRef, TyCache},
+    utilis::monomorphize,
+    IString,
 };
 use rustc_middle::mir::{
     interpret::{AllocId, GlobalAlloc},
@@ -13,9 +17,8 @@ use rustc_middle::mir::{
     Local, LocalDecl, Statement, Terminator,
 };
 use rustc_middle::ty::{Instance, ParamEnv, TyCtxt, TyKind};
-use std::collections::{HashMap, HashSet};
-
 use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
 #[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 /// Data representing a reference to an external assembly.
 pub struct AssemblyExternRef {
@@ -313,7 +316,7 @@ impl Assembly {
         &mut self,
         alloc_id: u64,
         tcx: TyCtxt<'tcx>,
-    ) -> crate::cil_op::StaticFieldDescriptor {
+    ) -> crate::cil::StaticFieldDescriptor {
         let const_allocation =
             match tcx.global_alloc(AllocId(alloc_id.try_into().expect("0 alloc id?"))) {
                 GlobalAlloc::Memory(alloc) => alloc,
@@ -338,7 +341,7 @@ impl Assembly {
         //let byte_hash = calculate_hash(&bytes);
 
         let alloc_fld: IString = format!("alloc_{alloc_id:x}").into();
-        let field_desc = crate::cil_op::StaticFieldDescriptor::new(
+        let field_desc = crate::cil::StaticFieldDescriptor::new(
             None,
             Type::Ptr(Type::U8.into()),
             alloc_fld.clone().into(),

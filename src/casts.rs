@@ -1,5 +1,5 @@
 use crate::{
-    cil_op::CILOp,
+    cil::{CILOp, CallSite},
     function_sig::FnSig,
     r#type::{DotnetTypeRef, Type},
 };
@@ -8,7 +8,7 @@ pub fn int_to_int(src: Type, target: Type) -> Vec<CILOp> {
     match (&src, &target) {
         (_, Type::I128) => {
             vec![CILOp::Call(
-                crate::cil_op::CallSite::new(
+                CallSite::new(
                     Some(DotnetTypeRef::int_128()),
                     "op_Implicit".into(),
                     FnSig::new(&[src], &target),
@@ -19,7 +19,7 @@ pub fn int_to_int(src: Type, target: Type) -> Vec<CILOp> {
         }
         (_, Type::U128) => {
             vec![CILOp::Call(
-                crate::cil_op::CallSite::new(
+                CallSite::new(
                     Some(DotnetTypeRef::uint_128()),
                     "op_Implicit".into(),
                     FnSig::new(&[src], &target),
@@ -30,7 +30,7 @@ pub fn int_to_int(src: Type, target: Type) -> Vec<CILOp> {
         }
         (Type::I128, _) => {
             vec![CILOp::Call(
-                crate::cil_op::CallSite::new(
+                CallSite::new(
                     Some(DotnetTypeRef::int_128()),
                     "op_Explicit".into(),
                     FnSig::new(&[src], &target),
@@ -41,7 +41,7 @@ pub fn int_to_int(src: Type, target: Type) -> Vec<CILOp> {
         }
         (Type::U128, _) => {
             vec![CILOp::Call(
-                crate::cil_op::CallSite::new(
+                CallSite::new(
                     Some(DotnetTypeRef::uint_128()),
                     "op_Explicit".into(),
                     FnSig::new(&[src], &target),
@@ -59,7 +59,7 @@ pub fn float_to_int(src: Type, target: Type) -> Vec<CILOp> {
     match target {
         Type::I128 => {
             vec![CILOp::Call(
-                crate::cil_op::CallSite::new(
+                CallSite::new(
                     Some(DotnetTypeRef::int_128()),
                     "op_Explicit".into(),
                     FnSig::new(&[src], &target),
@@ -70,7 +70,7 @@ pub fn float_to_int(src: Type, target: Type) -> Vec<CILOp> {
         }
         Type::U128 => {
             vec![CILOp::Call(
-                crate::cil_op::CallSite::new(
+                CallSite::new(
                     Some(DotnetTypeRef::uint_128()),
                     "op_Explicit".into(),
                     FnSig::new(&[src], &target),

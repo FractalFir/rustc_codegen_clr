@@ -2,7 +2,7 @@ use crate::r#type::tycache::TyCache;
 use rustc_middle::mir::{Operand, UnOp};
 use rustc_middle::ty::{Instance, TyCtxt};
 
-use crate::cil_op::CILOp;
+use crate::cil::CILOp;
 pub fn unop<'ctx>(
     unnop: UnOp,
     operand: &Operand<'ctx>,

@@ -91,7 +91,7 @@ mod binop;
 mod casts;
 mod checked_binop;
 /// A representation of C# IL op.
-pub mod cil_op;
+pub mod cil;
 /// Runtime errors and utlity functions/macros related to them
 mod codegen_error;
 /// Test harnesses.
@@ -196,7 +196,7 @@ impl CodegenBackend for MyBackend {
                     .expect("Could not get the signature of the entrypoint.");
                 let symbol = tcx.symbol_name(entrypoint);
                 let symbol = format!("{symbol:?}");
-                let cs = cil_op::CallSite::new(None, symbol.into(), sig, true);
+                let cs = cil::CallSite::new(None, symbol.into(), sig, true);
                 codegen.set_entrypoint(cs);
             }
             codegen.opt();

@@ -1,4 +1,4 @@
-use crate::{cil_op::CILOp, r#type::TyCache};
+use crate::{cil::CILOp, r#type::TyCache};
 use rustc_middle::{
     mir::{Body, CopyNonOverlapping, NonDivergingIntrinsic, Statement, StatementKind},
     ty::{Instance, TyCtxt},

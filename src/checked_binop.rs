@@ -1,9 +1,11 @@
 use rustc_middle::mir::{BinOp, Operand};
 use rustc_middle::ty::{Instance, TyCtxt};
 
-use crate::cil_op::{CILOp, CallSite, FieldDescriptor};
-use crate::function_sig::FnSig;
-use crate::r#type::{DotnetTypeRef, TyCache, Type};
+use crate::{
+    cil::{CILOp, CallSite, FieldDescriptor},
+    function_sig::FnSig,
+    r#type::{DotnetTypeRef, TyCache, Type},
+};
 /// Preforms an checked binary operation.
 pub(crate) fn binop_checked<'tyctx>(
     binop: BinOp,

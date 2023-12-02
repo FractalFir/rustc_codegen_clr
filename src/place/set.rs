@@ -1,5 +1,5 @@
 use super::{place_get_length, pointed_type, PlaceTy};
-use crate::cil_op::{CILOp, FieldDescriptor};
+use crate::cil::{CILOp, FieldDescriptor};
 use crate::function_sig::FnSig;
 use crate::r#type::{DotnetTypeRef, Type};
 use crate::utilis::field_name;
@@ -34,7 +34,7 @@ fn place_elem_set_at<'a>(
 
     let signature =
         crate::function_sig::FnSig::new(&[tpe.clone(), index_ty, Type::GenericArg(0)], &Type::Void);
-    vec![CILOp::Call(crate::cil_op::CallSite::boxed(
+    vec![CILOp::Call(crate::cil::CallSite::boxed(
         Some(class.as_ref().clone()),
         "set_Item".into(),
         signature,
@@ -153,7 +153,7 @@ pub fn place_elem_set<'a>(
                     let ops = vec![
                         index,
                         CILOp::Call(
-                            crate::cil_op::CallSite::new(
+                            crate::cil::CallSite::new(
                                 Some(array_dotnet),
                                 "set_Item".into(),
                                 FnSig::new(

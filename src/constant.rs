@@ -1,5 +1,7 @@
-use crate::cil_op::{CILOp, CallSite, FieldDescriptor};
-use crate::r#type::{DotnetTypeRef, TyCache, Type};
+use crate::{
+    cil::{CILOp, CallSite, FieldDescriptor},
+    r#type::{DotnetTypeRef, TyCache, Type},
+};
 use rustc_abi::Size;
 use rustc_middle::mir::{
     interpret::{AllocId, AllocRange, GlobalAlloc, Scalar},
@@ -56,7 +58,7 @@ fn create_const_adt_from_bytes<'ctx>(
                 creator_ops.extend(field_ops);
                 let cil_ftype =
                     tycache.type_from_cache(field.ty(tyctx, subst), tyctx, Some(method_instance));
-                creator_ops.push(CILOp::STField(crate::cil_op::FieldDescriptor::boxed(
+                creator_ops.push(CILOp::STField(crate::cil::FieldDescriptor::boxed(
                     dotnet_ty.clone(),
                     cil_ftype,
                     field.name.to_string().into(),
@@ -198,7 +200,7 @@ fn create_const_from_slice<'ctx>(
                 vec![CILOp::LdcI64(i64::from_le_bytes(
                     bytes[..std::mem::size_of::<i64>()].try_into().unwrap(),
                 ))]
-            }  
+            }
         },
         TyKind::Bool => vec![CILOp::LdcI32(bytes[0] as i32)],
         TyKind::Tuple(elements) => {
@@ -419,7 +421,7 @@ fn load_const_scalar<'ctx>(
                     CILOp::NewTMPLocal(tpe.into()),
                     CILOp::LoadAddresOfTMPLocal,
                     CILOp::LdcI64(scalar_u128 as i64),
-                    CILOp::STField(Box::new(crate::cil_op::FieldDescriptor::new(
+                    CILOp::STField(Box::new(crate::cil::FieldDescriptor::new(
                         enum_dotnet.clone(),
                         field_type,
                         "_tag".into(),

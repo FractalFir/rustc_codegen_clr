@@ -1,4 +1,4 @@
-use crate::cil_op::CILOp;
+use crate::cil::CILOp;
 use rustc_middle::mir::UnwindAction;
 #[derive(Debug)]
 struct BasicBlock {
@@ -26,7 +26,7 @@ impl BasicBlock {
 }
 #[test]
 fn exceptions() {
-    use crate::{cil_op::CallSite, function_sig::FnSig, r#type::Type};
+    use crate::{cil::CallSite, function_sig::FnSig, r#type::Type};
     let bb0 = BasicBlock::new(
         vec![
             CILOp::LDArg(0),

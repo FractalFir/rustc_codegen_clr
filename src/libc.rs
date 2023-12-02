@@ -2,7 +2,7 @@ use crate::r#type::DotnetTypeRef;
 use crate::{
     access_modifier::AccessModifer,
     assembly::Assembly,
-    cil_op::{CILOp, CallSite, FieldDescriptor},
+    cil::{CILOp, CallSite, FieldDescriptor},
     function_sig::FnSig,
     method::Method,
     r#type::Type,
@@ -240,10 +240,7 @@ add_method!(
     unlikely,
     &[Type::Bool],
     &Type::Bool,
-    [
-        CILOp::LDArg(0),
-        CILOp::Ret,
-    ]
+    [CILOp::LDArg(0), CILOp::Ret,]
 );
 //System.Environment.Exit(a_ExitCode)
 add_method!(abort, &[], &Type::Void, CILOp::throw_msg("Called abort!"));

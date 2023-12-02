@@ -1,4 +1,4 @@
-use crate::cil_op::CILOp;
+use crate::cil::CILOp;
 
 use rustc_middle::mir::Operand;
 use rustc_middle::ty::{Instance, TyCtxt};

@@ -1,8 +1,9 @@
 use super::{place_get_length, pointed_type, PlaceTy};
 use crate::assert_morphic;
-use crate::cil_op::{CILOp, FieldDescriptor};
+use crate::cil::{CILOp, FieldDescriptor};
+use crate::function_sig::FnSig;
 use crate::place::{body_ty_is_by_adress, deref_op};
-use crate::r#type::Type;
+use crate::r#type::{DotnetTypeRef, Type};
 use crate::utilis::field_name;
 use rustc_middle::mir::{Place, PlaceElem};
 use rustc_middle::ty::{FloatTy, Instance, IntTy, ParamEnv, Ty, TyCtxt, TyKind, UintTy};
@@ -96,37 +97,66 @@ pub fn place_elem_adress<'ctx>(
             let variant_type = PlaceTy::EnumVariant(curr_type, variant.as_u32());
             (variant_type, vec![CILOp::LDFieldAdress(field_desc)])
         }
-        /*
         PlaceElem::Index(index) => {
-            let mut ops = vec![crate::place::local_adress(
+            let curr_ty = curr_type
+                .as_ty()
+                .expect("INVALID PLACE: Indexing into enum variant???");
+            let index = crate::place::local_get(
                 index.as_usize(),
                 tyctx.optimized_mir(method_instance.def_id()),
-            )];
-            let curr_ty = curr_type.as_ty().expect("Can't index into enum!");
-            let curr_ty = crate::utilis::monomorphize(&method_instance, curr_ty, tyctx);
-            let tpe = type_cache.type_from_cache(curr_ty, tyctx);
-            let class = if let Type::DotnetType(dotnet) = &tpe {
-                dotnet
-            } else {
-                panic!("Can't index into type {tpe:?}");
-            };
-            let index_ty = Type::USize;
-            let element_ty = crate::r#type::element_type(curr_ty);
-            {
-                let signature = crate::function_sig::FnSig::new(
-                    &[tpe.clone(), index_ty],
-                    &Type::Ptr(Box::new(Type::GenericArg(0))),
-                );
-                //ops.push(local_get(index.as_usize(), &body));
-                ops.push(CILOp::Call(crate::cil_op::CallSite::boxed(
-                    Some(class.as_ref().clone()),
-                    "get_Address".into(),
-                    signature,
-                    false,
-                )));
-                (element_ty.into(), ops)
+            );
+            match curr_ty.kind() {
+                TyKind::Slice(inner) => {
+                    let inner = crate::utilis::monomorphize(&method_instance, *inner, tyctx);
+                    let inner_type =
+                        type_cache.type_from_cache(inner, tyctx, Some(method_instance));
+                    let desc = FieldDescriptor::new(
+                        DotnetTypeRef::slice(),
+                        Type::Void.pointer_to(),
+                        "data_address".into(),
+                    );
+                    let deref_op = super::deref_op(
+                        super::PlaceTy::Ty(inner),
+                        tyctx,
+                        &method_instance,
+                        type_cache,
+                    );
+                    let mut ops = vec![
+                        CILOp::LDField(desc.into()),
+                        index,
+                        CILOp::SizeOf(inner_type.into()),
+                        CILOp::Mul,
+                        CILOp::Add,
+                    ];
+                    (inner.into(), ops)
+                }
+                TyKind::Array(element, length) => {
+                    //let element = crate::utilis::monomorphize(&method_instance, *element, tyctx);
+                    let array_type =
+                        type_cache.type_from_cache(curr_ty, tyctx, Some(method_instance));
+                    let array_dotnet = array_type.as_dotnet().expect("Non array type");
+                    let ops = vec![
+                        index,
+                        CILOp::Call(
+                            crate::cil::CallSite::new(
+                                Some(array_dotnet),
+                                "get_Address".into(),
+                                FnSig::new(
+                                    &[array_type, Type::USize],
+                                    &Type::Ptr(Type::GenericArg(0).into()),
+                                ),
+                                false,
+                            )
+                            .into(),
+                        ),
+                    ];
+                    ((*element).into(), ops)
+                }
+                _ => {
+                    rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Can't index into {curr_ty}!")}
+                }
             }
-        }*/
+        }
         _ => {
             rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Can't handle porojection {place_elem:?} in body")}
         }

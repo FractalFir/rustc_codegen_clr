@@ -1,6 +1,6 @@
 use crate::{
     access_modifier::AccessModifer,
-    cil_op::{CILOp, CallSite},
+    cil::{CILOp, CallSite},
     function_sig::FnSig,
     r#type::Type,
     IString,

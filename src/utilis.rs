@@ -13,13 +13,12 @@ pub const MANAGED_CALL_VIRT_FN_NAME: &str = "rustc_clr_interop_managed_call_virt
 pub fn is_function_magic(name: &str) -> bool {
     name.contains(CTOR_FN_NAME) || name.contains(MANAGED_CALL_FN_NAME)
 }
-use crate::cil_op::CILOp;
-use crate::IString;
 use crate::{
-    cil_op::FieldDescriptor,
+    cil::{CILOp, FieldDescriptor},
     codegen_error::MethodCodegenError,
     r#type::{DotnetTypeRef, Type},
     r#type::{TyCache, TypeDef},
+    IString,
 };
 pub fn skip_binder_if_no_generic_types<T>(binder: Binder<T>) -> Result<T, MethodCodegenError> {
     /*
@@ -394,13 +393,15 @@ pub fn compiletime_sizeof<'tyctx>(ty: Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -> usiz
             .map(|element| compiletime_sizeof(element, tyctx))
             .sum::<usize>(),
         TyKind::RawPtr(type_and_mut) => match type_and_mut.ty.kind() {
-                TyKind::Slice(inner) => rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Can't compute compiletime sizeof *[{inner:?}]")},
-                TyKind::Str => todo!("Can't compute compiletime sizeof *str"),
-                _ => {
-                    eprintln!("WARNING: Assuming sizeof::<*T>() == sizeof::<isize>() == 8!");
-                    8
-                }
-            },
+            TyKind::Slice(inner) => {
+                rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Can't compute compiletime sizeof *[{inner:?}]")}
+            }
+            TyKind::Str => todo!("Can't compute compiletime sizeof *str"),
+            _ => {
+                eprintln!("WARNING: Assuming sizeof::<*T>() == sizeof::<isize>() == 8!");
+                8
+            }
+        },
         _ => todo!("Can't compute compiletime sizeof {ty:?}"),
     }
 }
@@ -434,7 +435,7 @@ pub fn usize_class() -> DotnetTypeRef {
 }
 /// Translated MIR statements should have the total stack diff of 0.
 pub fn check_debugable(
-    ops: &[crate::cil_op::CILOp],
+    ops: &[crate::cil::CILOp],
     debugable: impl std::fmt::Debug,
     does_return_void: bool,
 ) {
@@ -442,7 +443,7 @@ pub fn check_debugable(
 
     let mut stack = 0;
     for op in ops {
-        if !(does_return_void && *op == crate::cil_op::CILOp::Ret) {
+        if !(does_return_void && *op == crate::cil::CILOp::Ret) {
             stack += op.stack_diff();
         }
     }
@@ -450,7 +451,7 @@ pub fn check_debugable(
         rustc_middle::ty::print::with_no_trimmed_paths! {eprintln!("Propable miscompilation: {debugable:?} resulted in ops {ops:?} and did not pass the stack check.")};
         let mut stack = 0;
         for (index, op) in ops.iter().enumerate() {
-            if !(does_return_void && *op == crate::cil_op::CILOp::Ret) {
+            if !(does_return_void && *op == crate::cil::CILOp::Ret) {
                 let diff = op.stack_diff();
                 stack += diff;
                 if stack < 0 {

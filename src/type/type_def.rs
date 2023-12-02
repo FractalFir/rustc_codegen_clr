@@ -1,6 +1,6 @@
 use crate::{
     access_modifier::AccessModifer,
-    cil_op::FieldDescriptor,
+    cil::FieldDescriptor,
     method::Method,
     r#type::{DotnetTypeRef, Type},
     utilis::{enum_tag_size, monomorphize, tag_from_enum_variants},
@@ -146,8 +146,8 @@ pub fn escape_field_name(name: &str) -> IString {
     if name.is_empty() {
         return "fld".into();
     }
-    let first = name.chars().next().unwrap(); 
-     if !(first.is_alphabetic() || first == '_')
+    let first = name.chars().next().unwrap();
+    if !(first.is_alphabetic() || first == '_')
         || name == "value"
         || name == "flags"
         || name == "alignment"
@@ -186,7 +186,7 @@ pub fn ident_gargs(gargc: usize) -> std::borrow::Cow<'static, [Type]> {
     }
 }
 pub fn get_array_type(element_count: usize) -> TypeDef {
-    use crate::cil_op::{CILOp, FieldDescriptor};
+    use crate::cil::{CILOp, FieldDescriptor};
     let name = format!("Arr{element_count}");
     let mut fields = Vec::with_capacity(element_count);
     for field in 0..element_count {
