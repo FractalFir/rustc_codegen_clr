@@ -1,9 +1,9 @@
 // FIXME: This file may contain unnecesary morphize calls.
-use crate::assert_morphic;
-use crate::cil::{CILOp, FieldDescriptor};
+
+use crate::cil::CILOp;
 use crate::r#type::{DotnetTypeRef, Type};
-use crate::utilis::field_name;
-use rustc_middle::mir::{Place, PlaceElem};
+
+use rustc_middle::mir::Place;
 
 mod adress;
 mod body;

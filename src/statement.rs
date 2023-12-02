@@ -11,7 +11,7 @@ pub fn handle_statement<'tcx>(
     type_cache: &mut TyCache,
 ) -> Vec<CILOp> {
     let kind = &statement.kind;
-    let res = match kind {
+    let mut res = match kind {
         StatementKind::StorageLive(_local) => {
             vec![]
         }
@@ -29,14 +29,106 @@ pub fn handle_statement<'tcx>(
                 method_instance,
                 type_cache,
             )};
-            crate::place::place_set(
+            let mut res = crate::place::place_set(
                 &place,
                 tyctx,
                 rvalue_ops,
                 method,
                 method_instance,
                 type_cache,
-            )
+            );
+            if crate::TRACE_STATEMENTS {
+                use crate::r#type::Type;
+                rustc_middle::ty::print::with_no_trimmed_paths! {res.extend(CILOp::debug_msg(&format!("{statement:?}")))};
+                let place_ty = type_cache.type_from_cache(
+                    crate::utilis::monomorphize(
+                        &method_instance,
+                        place.ty(method, tyctx).ty,
+                        tyctx,
+                    ),
+                    tyctx,
+                    Some(method_instance),
+                );
+                match place_ty {
+                    Type::Bool => rustc_middle::ty::print::with_no_trimmed_paths! {{
+                        res.extend(CILOp::debug_msg_no_nl(&format!("{place:?}:")));
+                        res.extend(crate::place::place_get(
+                            &place,
+                            tyctx,
+                            method,
+                            method_instance,
+                            type_cache
+                        ));
+                        res.push(CILOp::debug_bool());
+                        res.extend(CILOp::debug_msg(&""));
+                    }},
+                    Type::I32 => rustc_middle::ty::print::with_no_trimmed_paths! {{
+                        res.extend(CILOp::debug_msg_no_nl(&format!("{place:?}:")));
+                        res.extend(crate::place::place_get(
+                            &place,
+                            tyctx,
+                            method,
+                            method_instance,
+                            type_cache
+                        ));
+                        res.push(CILOp::debug_i32());
+                        res.extend(CILOp::debug_msg(&""));
+                    }},
+                    Type::USize => rustc_middle::ty::print::with_no_trimmed_paths! {{
+                        res.extend(CILOp::debug_msg_no_nl(&format!("{place:?}:")));
+                        res.extend(crate::place::place_get(
+                            &place,
+                            tyctx,
+                            method,
+                            method_instance,
+                            type_cache
+                        ));
+                        res.push(CILOp::ConvU64(false));
+                        res.push(CILOp::debug_u64());
+                        res.extend(CILOp::debug_msg(&""));
+                    }},
+                    Type::ISize => rustc_middle::ty::print::with_no_trimmed_paths! {{
+                        res.extend(CILOp::debug_msg_no_nl(&format!("{place:?}:")));
+                        res.extend(crate::place::place_get(
+                            &place,
+                            tyctx,
+                            method,
+                            method_instance,
+                            type_cache
+                        ));
+                        res.push(CILOp::ConvU64(false));
+                        res.push(CILOp::debug_u64());
+                        res.extend(CILOp::debug_msg(&""));
+                    }},
+                    Type::Ptr(_) => rustc_middle::ty::print::with_no_trimmed_paths! {{
+                        res.extend(CILOp::debug_msg_no_nl(&format!("{place:?}:")));
+                        res.extend(crate::place::place_get(
+                            &place,
+                            tyctx,
+                            method,
+                            method_instance,
+                            type_cache
+                        ));
+                        res.push(CILOp::ConvU64(false));
+                        res.push(CILOp::debug_u64());
+                        res.extend(CILOp::debug_msg(&""));
+                    }},
+                    Type::F32 => rustc_middle::ty::print::with_no_trimmed_paths! {{
+                        res.extend(CILOp::debug_msg_no_nl(&format!("{place:?}:")));
+                        res.extend(crate::place::place_get(
+                            &place,
+                            tyctx,
+                            method,
+                            method_instance,
+                            type_cache
+                        ));
+                        res.push(CILOp::debug_f32());
+                        res.extend(CILOp::debug_msg(&""));
+                    }},
+                    _ => (),
+                }
+            };
+            res
         }
         StatementKind::Intrinsic(non_diverging_intirinsic) => {
             match non_diverging_intirinsic.as_ref() {
@@ -80,6 +172,9 @@ pub fn handle_statement<'tcx>(
                     res.push(CILOp::SizeOf(pointed));
                     res.push(CILOp::Mul);
                     res.push(CILOp::CpBlk);
+                    if crate::TRACE_STATEMENTS {
+                        rustc_middle::ty::print::with_no_trimmed_paths! {res.extend(CILOp::debug_msg(&format!("{statement:?}")))};
+                    }
                     res
                 }
                 _ => {
@@ -91,5 +186,6 @@ pub fn handle_statement<'tcx>(
             rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Unsuported statement kind {kind:?}")}
         }
     };
+
     res
 }

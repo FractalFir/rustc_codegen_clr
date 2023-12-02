@@ -6,9 +6,7 @@ use crate::{
 };
 use rustc_index::IndexVec;
 use rustc_middle::mir::{AggregateKind, Operand, Place};
-use rustc_middle::ty::{
-    AdtDef, AdtKind, EarlyBinder, GenericArg, Instance, List, ParamEnv, Ty, TyCtxt, TyKind,
-};
+use rustc_middle::ty::{AdtDef, AdtKind, GenericArg, Instance, List, ParamEnv, Ty, TyCtxt, TyKind};
 use rustc_target::abi::FieldIdx;
 /// Returns the CIL ops to create the aggreagate value specifed by `aggregate_kind` at `target_location`. Uses indivlidual values specifed by `value_index`
 pub fn handle_aggregate<'tyctx>(
@@ -58,7 +56,7 @@ pub fn handle_aggregate<'tyctx>(
                 variant_idx.as_u32(),
                 values,
                 method_instance,
-                &active_field,
+                active_field,
                 tycache,
             )
         }
@@ -223,7 +221,7 @@ fn aggregate_adt<'tyctx>(
                 .iter()
                 .nth(variant_idx as usize)
                 .expect("Can't get variant index");
-            for (field_idx, (field, field_value)) in
+            for (_field_idx, (field, field_value)) in
                 enum_variant.fields.iter().zip(fields.iter()).enumerate()
             {
                 ops.extend(variant_address.clone());
@@ -286,7 +284,7 @@ fn aggregate_adt<'tyctx>(
                 let field_desc =
                     FieldDescriptor::boxed(adt_type_ref.clone(), field_type, field_name);
 
-                ops.push(CILOp::STField(field_desc.into()));
+                ops.push(CILOp::STField(field_desc));
             }
             ops.extend(crate::place::place_get(
                 target_location,

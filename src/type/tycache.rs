@@ -2,9 +2,8 @@ use super::{DotnetTypeRef, Type, TypeDef};
 use crate::{
     access_modifier::AccessModifer, r#type::escape_field_name, utilis::enum_tag_size, IString,
 };
-use either::Either;
-use rustc_hir::def_id::DefId;
-use rustc_middle::ty::{AdtDef, AdtKind, GenericArg, Instance, List, ParamEnv, Ty, TyCtxt, TyKind};
+
+use rustc_middle::ty::{AdtDef, AdtKind, Instance, List, ParamEnv, Ty, TyCtxt, TyKind};
 use std::collections::HashMap;
 pub struct TyCache {
     type_def_cache: HashMap<IString, TypeDef>,
@@ -28,7 +27,7 @@ impl TyCache {
     ) -> &TypeDef {
         match ty.kind() {
             TyKind::Adt(adt, susbt) => {
-                let name = crate::utilis::adt_name(&adt, tyctx, susbt);
+                let name = crate::utilis::adt_name(adt, tyctx, susbt);
                 if super::is_name_magic(name.as_ref()) {
                     todo!("Can't yet get fields of interop types!");
                 }
@@ -52,14 +51,14 @@ impl TyCache {
         method: Option<Instance<'tyctx>>,
     ) -> DotnetTypeRef {
         if self.type_def_cache.get(name).is_some() {
-            return DotnetTypeRef::new(None, name.into());
+            return DotnetTypeRef::new(None, name);
         }
         if self
             .cycle_prevention
             .iter()
             .any(|c_name| c_name.as_ref() == name)
         {
-            return DotnetTypeRef::new(None, name.into());
+            return DotnetTypeRef::new(None, name);
         }
         self.cycle_prevention.push(name.into());
         let def = match def.adt_kind() {
@@ -70,7 +69,7 @@ impl TyCache {
         };
         self.type_def_cache.insert(name.into(), def);
         self.cycle_prevention.pop();
-        DotnetTypeRef::new(None, name.into())
+        DotnetTypeRef::new(None, name)
     }
     pub fn recover_from_panic(&mut self) {
         self.cycle_prevention.clear()
@@ -96,8 +95,7 @@ impl TyCache {
 
         let access = AccessModifer::Public;
 
-        let type_def = TypeDef::new(access, name.into(), vec![], fields, vec![], None, 0, None);
-        type_def
+        TypeDef::new(access, name.into(), vec![], fields, vec![], None, 0, None)
     }
     fn union_<'tyctx>(
         &mut self,
@@ -120,7 +118,8 @@ impl TyCache {
 
         let access = AccessModifer::Public;
         let offsets = adt.all_fields().map(|_| 0).collect();
-        let type_def = TypeDef::new(
+
+        TypeDef::new(
             access,
             name.into(),
             vec![],
@@ -129,8 +128,7 @@ impl TyCache {
             Some(offsets),
             0,
             None,
-        );
-        type_def
+        )
     }
     fn enum_<'tyctx>(
         &mut self,
@@ -179,7 +177,8 @@ impl TyCache {
             fields.push((variant_name, dref.into()));
             inner_types.push(inner);
         }
-        let type_def = TypeDef::new(
+
+        TypeDef::new(
             access,
             enum_name.into(),
             inner_types,
@@ -188,8 +187,7 @@ impl TyCache {
             Some(explicit_offsets),
             0,
             None,
-        );
-        type_def
+        )
     }
     pub fn type_from_cache<'tyctx>(
         &mut self,
@@ -239,7 +237,7 @@ impl TyCache {
                 _ => Type::Ptr(self.type_from_cache(type_and_mut.ty, tyctx, method).into()),
             },
             TyKind::Adt(def, subst) => {
-                let name = crate::utilis::adt_name(&def, tyctx, subst);
+                let name = crate::utilis::adt_name(def, tyctx, subst);
                 if super::is_name_magic(name.as_ref()) {
                     return super::magic_type(name.as_ref(), def, subst, tyctx);
                 }
@@ -268,12 +266,12 @@ impl TyCache {
                 }
                 TyKind::Str => {
                     let name = "core.ptr.metadata.PtrComponentsStr";
-                    let dotnet = DotnetTypeRef::new(None, &name);
+                    let dotnet = DotnetTypeRef::new(None, name);
                     if self.type_def_cache.get_key_value(name).is_some() {
                         return dotnet.into();
                     }
                     self.type_def_cache
-                        .insert(name.into(), TypeDef::ptr_components(&name, Type::USize));
+                        .insert(name.into(), TypeDef::ptr_components(name, Type::USize));
                     dotnet.into()
                 }
                 _ => Type::Ptr(self.type_from_cache(*inner, tyctx, method).into()),
@@ -284,7 +282,7 @@ impl TyCache {
             }
             TyKind::Bound(_, _inner) => Type::Foreign,
             TyKind::FnPtr(_) => Type::USize,
-            TyKind::Slice(inner) => {
+            TyKind::Slice(_inner) => {
                 //let match self.type_from_cache(*inner, tyctx)
                 //let mut slice_tpe = DotnetTypeRef::new(None, "RustSlice".into());
                 //slice_tpe.set_generics(vec![inner]);
@@ -317,7 +315,7 @@ impl TyCache {
                 if self.type_def_cache.get(&arr_name).is_none() {
                     println!(
                         "adding array type {arr_name} Is it readded:{}",
-                        !self.type_def_cache.get(&arr_name).is_none()
+                        self.type_def_cache.get(&arr_name).is_some()
                     );
 
                     self.type_def_cache

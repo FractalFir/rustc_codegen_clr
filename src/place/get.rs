@@ -1,9 +1,9 @@
 use crate::cil::{CILOp, FieldDescriptor};
 use crate::function_sig::FnSig;
 use crate::r#type::{DotnetTypeRef, Type};
-use crate::utilis::field_name;
+
 use rustc_middle::mir::{Place, PlaceElem};
-use rustc_middle::ty::{FloatTy, Instance, IntTy, ParamEnv, Ty, TyCtxt, TyKind, UintTy};
+use rustc_middle::ty::{Instance, TyCtxt, TyKind};
 
 pub(super) fn local_get(local: usize, method: &rustc_middle::mir::Body) -> CILOp {
     if local == 0 {
@@ -56,10 +56,10 @@ fn place_elem_get<'a>(
             &method_instance,
             type_cache,
         ),
-        PlaceElem::Field(index, field_type) => match curr_type {
+        PlaceElem::Field(index, _field_type) => match curr_type {
             super::PlaceTy::Ty(curr_type) => {
                 let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
-                let field_type = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
+                let _field_type = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
 
                 let field_desc = crate::utilis::field_descrptor(
                     curr_type,
@@ -75,7 +75,7 @@ fn place_elem_get<'a>(
                 let field_desc = crate::utilis::enum_field_descriptor(
                     owner,
                     index.as_u32(),
-                    var_idx.into(),
+                    var_idx,
                     tyctx,
                     method_instance,
                     type_cache,
@@ -120,7 +120,7 @@ fn place_elem_get<'a>(
                     ops.extend(deref_op);
                     ops
                 }
-                TyKind::Array(element, length) => {
+                TyKind::Array(_element, _length) => {
                     //let element = crate::utilis::monomorphize(&method_instance, *element, tyctx);
                     let array_type =
                         type_cache.type_from_cache(curr_ty, tyctx, Some(method_instance));

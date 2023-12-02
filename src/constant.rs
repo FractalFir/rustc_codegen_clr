@@ -5,7 +5,7 @@ use crate::{
 use rustc_abi::Size;
 use rustc_middle::mir::{
     interpret::{AllocId, AllocRange, GlobalAlloc, Scalar},
-    Const, ConstOperand, ConstValue,
+    ConstOperand, ConstValue,
 };
 use rustc_middle::ty::{
     AdtDef, AdtKind, FloatTy, Instance, IntTy, List, ParamEnv, Ty, TyCtxt, TyKind, UintTy,
@@ -48,7 +48,7 @@ fn create_const_adt_from_bytes<'ctx>(
             let cil_ty = tycache.type_from_cache(cil_ty, tyctx, Some(method_instance));
             let dotnet_ty = cil_ty.as_dotnet().expect("ADT must be a value type!");
             let mut creator_ops = vec![CILOp::NewTMPLocal(cil_ty.clone().into())];
-            for (field_idx, field) in adt_def.all_fields().enumerate() {
+            for (_field_idx, field) in adt_def.all_fields().enumerate() {
                 let ftype = field.ty(tyctx, subst);
                 let sizeof = crate::utilis::compiletime_sizeof(ftype, tyctx);
                 let field_bytes = &bytes[curr_offset..(curr_offset + sizeof)];
@@ -105,7 +105,7 @@ fn create_const_adt_from_bytes<'ctx>(
             };
             assert!(curr_variant < adt_def.variants().len() as u32);
             let active_variant = &adt_def.variants()[curr_variant.into()];
-            for field in &active_variant.fields {
+            for _field in &active_variant.fields {
                 todo!("Can't yet create const enum fields.");
             }
             ops.push(CILOp::FreeTMPLocal);
@@ -383,11 +383,11 @@ fn load_const_scalar<'ctx>(
                     todo!("Statics are buggy, skipping!");
                     let alloc = tyctx.eval_static_initializer(def_id).unwrap();
                     //def_id.ty();
-                    let tyctx = tyctx.reserve_and_set_memory_alloc(alloc);
+                    let _tyctx = tyctx.reserve_and_set_memory_alloc(alloc);
                     let alloc_id = crate::utilis::alloc_id_to_u64(alloc_id);
                     return vec![CILOp::LoadGlobalAllocPtr { alloc_id }];
                 }
-                GlobalAlloc::Memory(const_allocation) => {
+                GlobalAlloc::Memory(_const_allocation) => {
                     return vec![
                         CILOp::LoadGlobalAllocPtr {
                             alloc_id: alloc_id.0.into(),

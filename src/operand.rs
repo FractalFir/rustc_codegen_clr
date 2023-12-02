@@ -17,7 +17,7 @@ pub(crate) fn handle_operand<'ctx>(
             crate::place::place_get(place, tyctx, method, method_instance, tycache)
         }
         Operand::Constant(const_val) => {
-            crate::constant::handle_constant(&const_val, tyctx, method, method_instance, tycache)
+            crate::constant::handle_constant(const_val, tyctx, method, method_instance, tycache)
         }
     }
 }

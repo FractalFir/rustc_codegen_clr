@@ -12,7 +12,7 @@ use crate::{
 use rustc_middle::ty::InstanceDef;
 use rustc_middle::{
     mir::{Body, Operand, Place, SwitchTargets, Terminator, TerminatorKind},
-    ty::{GenericArg, Instance, List, ParamEnv, Ty, TyCtxt, TyKind},
+    ty::{GenericArg, Instance, ParamEnv, Ty, TyCtxt, TyKind},
 };
 use rustc_span::def_id::DefId;
 /// Calls a non-virtual managed function(used for interop)
@@ -442,9 +442,9 @@ pub fn handle_terminator<'ctx>(
             handle_switch(ty, discr, targets)
         }
         TerminatorKind::Assert {
-            cond,
-            expected,
-            msg,
+            cond: _,
+            expected: _,
+            msg: _,
             target,
             unwind: _,
         } => {
@@ -470,7 +470,7 @@ pub fn handle_terminator<'ctx>(
         }
         TerminatorKind::Drop {
             place,
-            target,
+            target: _,
             unwind: _,
             replace: _,
         } => {
@@ -660,7 +660,10 @@ fn throw_assert_msg<'ctx>(
             ops.push(CILOp::Throw);
             ops
         }
-        AssertKind::MisalignedPointerDereference { required, found } => {
+        AssertKind::MisalignedPointerDereference {
+            required: _,
+            found: _,
+        } => {
             /*
             let mut ops = Vec::with_capacity(8);
             let string_class = crate::utilis::string_class();

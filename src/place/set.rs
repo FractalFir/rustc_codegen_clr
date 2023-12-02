@@ -1,10 +1,10 @@
-use super::{place_get_length, pointed_type, PlaceTy};
+use super::{pointed_type, PlaceTy};
 use crate::cil::{CILOp, FieldDescriptor};
 use crate::function_sig::FnSig;
 use crate::r#type::{DotnetTypeRef, Type};
-use crate::utilis::field_name;
-use rustc_middle::mir::{Place, PlaceElem};
-use rustc_middle::ty::{FloatTy, Instance, IntTy, ParamEnv, Ty, TyCtxt, TyKind, UintTy};
+
+use rustc_middle::mir::PlaceElem;
+use rustc_middle::ty::{FloatTy, Instance, IntTy, TyCtxt, TyKind, UintTy};
 
 pub fn local_set(local: usize, method: &rustc_middle::mir::Body) -> CILOp {
     if local == 0 {
@@ -70,7 +70,7 @@ pub fn place_elem_set<'a>(
                 let field_desc = crate::utilis::enum_field_descriptor(
                     enm,
                     index.as_u32(),
-                    var_idx.into(),
+                    var_idx,
                     ctx,
                     method_instance,
                     type_cache,
@@ -145,7 +145,7 @@ pub fn place_elem_set<'a>(
                     ops.extend(ptr_set_op);
                     ops
                 }
-                TyKind::Array(element, length) => {
+                TyKind::Array(_element, _length) => {
                     //let element = crate::utilis::monomorphize(&method_instance, *element, tyctx);
                     let array_type =
                         type_cache.type_from_cache(curr_ty, ctx, Some(method_instance));

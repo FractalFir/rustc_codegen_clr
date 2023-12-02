@@ -16,8 +16,8 @@ pub fn is_function_magic(name: &str) -> bool {
 use crate::{
     cil::{CILOp, FieldDescriptor},
     codegen_error::MethodCodegenError,
+    r#type::TyCache,
     r#type::{DotnetTypeRef, Type},
-    r#type::{TyCache, TypeDef},
     IString,
 };
 pub fn skip_binder_if_no_generic_types<T>(binder: Binder<T>) -> Result<T, MethodCodegenError> {
@@ -47,7 +47,7 @@ pub fn adt_name<'tyctx>(
     //TODO: find a better way to get adt name!
 
     //let def_str = tyctx.def_path_str(adt.did());
-    let mut gdef_str = if gargs
+    let _gdef_str = if gargs
         .iter()
         .any(|garg| garg.as_type().is_some() || garg.as_const().is_some())
     {
@@ -80,10 +80,10 @@ pub fn adt_name<'tyctx>(
 
 pub fn escape_class_name(name: &str) -> IString {
     name.replace("::", ".")
-        .replace("<", "_lt_")
+        .replace('<', "_lt_")
         .replace('\'', "_ap_")
         .replace(' ', "_spc_")
-        .replace(">", "_gt_")
+        .replace('>', "_gt_")
         .replace('(', "_lpar_")
         .replace(')', "_rpar")
         .replace('{', "_lbra_")
@@ -236,7 +236,7 @@ pub fn generic_field_ty<'ctx>(
     owner_ty: Ty<'ctx>,
     field_idx: u32,
     ctx: TyCtxt<'ctx>,
-    method_instance: Instance<'ctx>,
+    _method_instance: Instance<'ctx>,
 ) -> crate::r#type::Type {
     match owner_ty.kind() {
         TyKind::Adt(adt_def, _) => {
@@ -378,7 +378,7 @@ pub fn compiletime_sizeof<'tyctx>(ty: Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -> usiz
                 .max()
                 .unwrap_or(0),
             AdtKind::Enum => {
-                let tag = match def.variants().len() {
+                let _tag = match def.variants().len() {
                     0 => 0,
                     1..=256 => 1,
                     257..=65_535 => 2,
@@ -462,15 +462,13 @@ pub fn check_debugable(
                 } else {
                     eprintln!("{index}:\t{op:?} changed stack by {diff}, to {stack}");
                 }
+            } else if stack < 0 {
+                eprintln!(
+                    "{}",
+                    format!("{index}:\t{op:?} changed stack by 0, to {stack}").red()
+                );
             } else {
-                if stack < 0 {
-                    eprintln!(
-                        "{}",
-                        format!("{index}:\t{op:?} changed stack by 0, to {stack}").red()
-                    );
-                } else {
-                    eprintln!("{index}:\t{op:?} changed stack by 0, to {stack}");
-                }
+                eprintln!("{index}:\t{op:?} changed stack by 0, to {stack}");
             }
         }
         if !crate::ALLOW_MISCOMPILATIONS {

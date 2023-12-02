@@ -1,12 +1,12 @@
-use super::{place_get_length, pointed_type, PlaceTy};
+use super::{pointed_type, PlaceTy};
 use crate::assert_morphic;
 use crate::cil::{CILOp, FieldDescriptor};
 use crate::function_sig::FnSig;
 use crate::place::{body_ty_is_by_adress, deref_op};
 use crate::r#type::{DotnetTypeRef, Type};
-use crate::utilis::field_name;
-use rustc_middle::mir::{Place, PlaceElem};
-use rustc_middle::ty::{FloatTy, Instance, IntTy, ParamEnv, Ty, TyCtxt, TyKind, UintTy};
+
+use rustc_middle::mir::PlaceElem;
+use rustc_middle::ty::{Instance, TyCtxt, TyKind};
 pub fn local_adress(local: usize, method: &rustc_middle::mir::Body) -> CILOp {
     if local == 0 {
         CILOp::LDLocA(0)
@@ -61,7 +61,7 @@ pub fn place_elem_adress<'ctx>(
                 let field_desc = crate::utilis::enum_field_descriptor(
                     owner,
                     index.as_u32(),
-                    var_idx.into(),
+                    var_idx,
                     tyctx,
                     method_instance,
                     type_cache,
@@ -115,13 +115,13 @@ pub fn place_elem_adress<'ctx>(
                         Type::Void.pointer_to(),
                         "data_address".into(),
                     );
-                    let deref_op = super::deref_op(
+                    let _deref_op = super::deref_op(
                         super::PlaceTy::Ty(inner),
                         tyctx,
                         &method_instance,
                         type_cache,
                     );
-                    let mut ops = vec![
+                    let ops = vec![
                         CILOp::LDField(desc.into()),
                         index,
                         CILOp::SizeOf(inner_type.into()),
@@ -130,7 +130,7 @@ pub fn place_elem_adress<'ctx>(
                     ];
                     (inner.into(), ops)
                 }
-                TyKind::Array(element, length) => {
+                TyKind::Array(element, _length) => {
                     //let element = crate::utilis::monomorphize(&method_instance, *element, tyctx);
                     let array_type =
                         type_cache.type_from_cache(curr_ty, tyctx, Some(method_instance));

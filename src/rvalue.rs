@@ -1,7 +1,8 @@
-use crate::cil::{CILOp, CallSite, FieldDescriptor};
+use crate::cil::{CILOp, FieldDescriptor};
 use crate::operand::handle_operand;
 use crate::r#type::{DotnetTypeRef, TyCache, Type};
 use rustc_middle::mir::{CastKind, NullOp};
+use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::{
     mir::{Place, Rvalue},
     ty::{Instance, TyCtxt, TyKind, UintTy},
@@ -25,8 +26,54 @@ pub fn handle_rvalue<'tcx>(
         Rvalue::AddressOf(_mutability, place) => {
             crate::place::place_adress(place, tyctx, method, method_instance, tycache)
         }
-        Rvalue::Cast(CastKind::PointerCoercion(_) | CastKind::PtrToPtr, operand, _) => {
-            handle_operand(operand, tyctx, method, method_instance, tycache)
+        Rvalue::Cast(
+            CastKind::PointerCoercion(PointerCoercion::MutToConstPointer) | CastKind::PtrToPtr,
+            operand,
+            _,
+        ) => handle_operand(operand, tyctx, method, method_instance, tycache),
+        Rvalue::Cast(CastKind::PointerCoercion(PointerCoercion::Unsize), operand, target) => {
+            let target = crate::utilis::monomorphize(&method_instance, *target, tyctx);
+            let source =
+                crate::utilis::monomorphize(&method_instance, operand.ty(method, tyctx), tyctx);
+            let source_type = tycache.type_from_cache(source, tyctx, Some(method_instance));
+            let target_type = tycache.type_from_cache(target, tyctx, Some(method_instance));
+            let target_dotnet = target_type.as_dotnet().unwrap();
+            let derefed_source = match source.kind(){
+                TyKind::RawPtr(tpe)=>tpe.ty,
+                TyKind::Ref(_,inner,_)=>*inner,
+                _=> panic!("Non ptr type:{source:?}")
+            };
+            let length = if let TyKind::Array(element,length) = derefed_source.kind(){
+                crate::utilis::try_resolve_const_size(&length).unwrap()
+            }else{
+                panic!("Non array type:{source:?}")
+            };
+            //let element_type = tycache.type_from_cache(*element, tyctx, Some(method_instance));
+            let mut res = handle_operand(operand, tyctx, method, method_instance, tycache);
+            res.extend([
+                CILOp::NewTMPLocal(source_type.clone().into()),
+                CILOp::SetTMPLocal,
+                // a:*[T;n] = stack_top;
+                CILOp::NewTMPLocal(target_type.into()),
+                // b:Slice = unint();
+                CILOp::LoadAddresOfTMPLocal,
+                CILOp::LoadUnderTMPLocal(1),
+                CILOp::STField(FieldDescriptor::new(target_dotnet.clone(),Type::Ptr(Type::Void.into()),"data_address".into()).into()),
+                // b.data_address = (a as *mut RustVoid);
+                CILOp::LoadAddresOfTMPLocal,
+                CILOp::LdcI64(length as u64 as i64),
+                CILOp::ConvUSize(false),
+                CILOp::STField(FieldDescriptor::new(target_dotnet,Type::USize,"metadata".into()).into()),
+                // b.metadata = (length_i64 as usize);
+                CILOp::LoadTMPLocal,
+                // stack_top = b;
+                CILOp::FreeTMPLocal,
+                CILOp::FreeTMPLocal,
+
+            ]);
+            res
+            //todo!("Array to slice {res:?}!")
+            //
         }
         Rvalue::BinaryOp(binop, operands) => crate::binop::binop_unchecked(
             *binop,
@@ -251,8 +298,7 @@ pub fn handle_rvalue<'tcx>(
                     let name: String = format!(
                         "core.ptr.metadata.PtrComponents{}",
                         crate::r#type::mangle_ty(*inner, tyctx)
-                    )
-                    .into();
+                    );
                     let slice_tpe = DotnetTypeRef::new(None, &name);
                     let descriptor =
                         FieldDescriptor::new(slice_tpe, Type::USize, "metadata".into());

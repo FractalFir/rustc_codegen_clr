@@ -3,12 +3,9 @@ use crate::{
     cil::FieldDescriptor,
     method::Method,
     r#type::{DotnetTypeRef, Type},
-    utilis::{enum_tag_size, monomorphize, tag_from_enum_variants},
     IString,
 };
-use rustc_middle::ty::{
-    AdtDef, AdtKind, AliasKind, GenericArg, Instance, List, Ty, TyCtxt, TyKind,
-};
+
 use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug)]
 pub struct TypeDef {

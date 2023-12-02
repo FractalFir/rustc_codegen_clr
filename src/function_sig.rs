@@ -1,9 +1,8 @@
 use crate::{
-    codegen_error::{CodegenError, MethodCodegenError},
+    codegen_error::CodegenError,
     r#type::{TyCache, Type},
-    utilis::skip_binder_if_no_generic_types,
 };
-use rustc_middle::ty::{Instance, List, ParamEnv, ParamEnvAnd, PolyFnSig, TyCtxt};
+use rustc_middle::ty::{Instance, List, ParamEnv, ParamEnvAnd, TyCtxt};
 use rustc_target::abi::call::Conv;
 use serde::{Deserialize, Serialize};
 /// Function signature.
@@ -25,7 +24,7 @@ impl FnSig {
         });
         let fn_abi = match fn_abi {
             Ok(abi) => abi,
-            Err(error) => todo!(),
+            Err(_error) => todo!(),
         };
         let conv = fn_abi.conv;
         match conv {

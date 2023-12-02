@@ -5,7 +5,6 @@ pub mod type_def;
 
 pub mod tycache;
 
-use crate::IString;
 pub use r#type::*;
 use rustc_middle::ty::{GenericArg, IntTy, Ty, TyCtxt, TyKind, UintTy};
 pub use tycache::*;
@@ -50,12 +49,12 @@ pub fn mangle_ty<'tyctx>(ty: Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -> std::borrow::
             }
         }
         TyKind::Array(element, length) => {
-            let length = crate::utilis::try_resolve_const_size(&length).unwrap();
+            let length = crate::utilis::try_resolve_const_size(length).unwrap();
             format!("A{length}{element}", element = mangle_ty(*element, tyctx)).into()
         }
         TyKind::Ref(_region, inner, _mut) => format!("Ref{}", mangle_ty(*inner, tyctx)).into(),
         TyKind::Adt(def, subst) => {
-            let name = crate::utilis::adt_name(&def, tyctx, subst);
+            let name = crate::utilis::adt_name(def, tyctx, subst);
             if is_name_magic(name.as_ref()) {
                 todo!("Can't yet handle interop-related generic types.");
             }
@@ -71,19 +70,19 @@ fn mangle_elem<'tyctx>(
     if let Some(tpe) = elem.as_type() {
         return mangle_ty(tpe, tyctx);
     }
-    if let Some(tpe) = elem.as_const() {
+    if let Some(_tpe) = elem.as_const() {
         todo!("Can't mangle consts!");
     }
-    return "".into();
+    "".into()
 }
-pub(self) fn mangle_susbt<'tyctx>(
+fn mangle_susbt<'tyctx>(
     name: &str,
     subst: &[GenericArg<'tyctx>],
     tyctx: TyCtxt<'tyctx>,
 ) -> std::borrow::Cow<'static, str> {
     let mut result: String = name.into();
     for generic in subst {
-        result.push_str(&mangle_elem(&generic, tyctx));
+        result.push_str(&mangle_elem(generic, tyctx));
     }
     result.into()
 }

@@ -3,7 +3,7 @@ use rustc_middle::ty::{Instance, IntTy, Ty, TyCtxt, TyKind, UintTy};
 
 use crate::cil::{CILOp, CallSite};
 use crate::function_sig::FnSig;
-use crate::r#type::{DotnetTypeRef, TyCache, Type};
+use crate::r#type::{DotnetTypeRef, TyCache};
 /// Preforms an unchecked binary operation.
 pub(crate) fn binop_unchecked<'tyctx>(
     binop: BinOp,

@@ -25,15 +25,9 @@ pub(crate) fn binop_checked<'tyctx>(
     assert_eq!(ty_a, ty_b);
     let ty = cache.type_from_cache(ty_a, tyctx, Some(method_instance));
     match binop {
-        BinOp::Mul | BinOp::MulUnchecked => [ops_a, ops_b, mul(ty).into()]
-            .into_iter()
-            .flatten()
-            .collect(),
+        BinOp::Mul | BinOp::MulUnchecked => [ops_a, ops_b, mul(ty)].into_iter().flatten().collect(),
         BinOp::Add => [ops_a, ops_b, add(ty)].into_iter().flatten().collect(),
-        BinOp::Sub => [ops_a, ops_b, sub(ty).into()]
-            .into_iter()
-            .flatten()
-            .collect(),
+        BinOp::Sub => [ops_a, ops_b, sub(ty)].into_iter().flatten().collect(),
         _ => todo!("Can't preform checked op {binop:?}"),
     }
 }
@@ -86,8 +80,8 @@ fn mul(tpe: Type) -> Vec<CILOp> {
             Type::I64,
             CILOp::ConvI64(false),
             CILOp::ConvI32(false),
-            CILOp::LdcI32(i32::MAX as i32),
-            CILOp::LdcI32(i32::MIN as i32),
+            CILOp::LdcI32(i32::MAX),
+            CILOp::LdcI32(i32::MIN),
             CILOp::Mul,
         ),
         Type::U64 => promoted_ubinop(

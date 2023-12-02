@@ -1,4 +1,4 @@
-use crate::{function_sig::FnSig, r#type::DotnetTypeRef, r#type::Type, IString};
+use crate::{function_sig::FnSig, r#type::DotnetTypeRef, IString};
 mod call_site;
 pub use call_site::*;
 mod field_desc;
@@ -70,6 +70,9 @@ pub enum CILOp {
     /// This is a Syntetic("fake") instruction, which is used **only** internaly. It is not present in the resulting assembly.
     /// Loads the TMP local n elements under the top of the TMP local stack.
     LoadUnderTMPLocal(u8),
+    /// This is a Syntetic("fake") instruction, which is used **only** internaly. It is not present in the resulting assembly.
+    /// Loads the adress TMP local n elements under the top of the TMP local stack.
+    LoadAdressUnderTMPLocal(u8),
     /// This is a Syntetic("fake") instruction, which is used **only** internaly. It is not present in the resulting assembly.
     /// This instruction reads the adress of the current temporary local. It is equivalent to `LDLocA(tmp)`.
     LoadAddresOfTMPLocal,
@@ -289,7 +292,8 @@ impl CILOp {
     }
     /// Returns the ops necesary to construct and throw a new `System.Exception` with message `msg`.
     pub fn throw_msg(msg: &str) -> [CILOp; 3] {
-        let class = DotnetTypeRef::new(Some("System.Runtime"), "System.Exception");
+        let mut class = DotnetTypeRef::new(Some("System.Runtime"), "System.Exception");
+        class.set_valuetype(false);
         let name = ".ctor".into();
         let signature = FnSig::new(
             &[class.clone().into(), crate::utilis::string_class().into()],
@@ -300,6 +304,66 @@ impl CILOp {
             CILOp::NewObj(CallSite::boxed(Some(class), name, signature, false)),
             CILOp::Throw,
         ]
+    }
+    /// Returns the ops necesary to  write message `msg` to STDOUT. Ends with new line.
+    pub fn debug_msg(msg: &str) -> [CILOp; 2] {
+        let mut class = DotnetTypeRef::new(Some("System.Console"), "System.Console");
+        class.set_valuetype(false);
+        let name = "WriteLine".into();
+        let signature = FnSig::new(
+            &[crate::utilis::string_class().into()],
+            &crate::r#type::Type::Void,
+        );
+        [
+            CILOp::LdStr(msg.into()),
+            CILOp::Call(CallSite::new(Some(class), name, signature, true).into()),
+        ]
+    }
+    /// Returns the ops necesary to  write message `msg` to STDOUT. Does not end with new line.
+    pub fn debug_msg_no_nl(msg: &str) -> [CILOp; 2] {
+        let mut class = DotnetTypeRef::new(Some("System.Console"), "System.Console");
+        class.set_valuetype(false);
+        let name = "Write".into();
+        let signature = FnSig::new(
+            &[crate::utilis::string_class().into()],
+            &crate::r#type::Type::Void,
+        );
+        [
+            CILOp::LdStr(msg.into()),
+            CILOp::Call(CallSite::new(Some(class), name, signature, true).into()),
+        ]
+    }
+    /// Returns the ops necesary to  write message bool from stack to stdout. Ends without a new line.
+    pub fn debug_bool() -> CILOp {
+        let mut class = DotnetTypeRef::new(Some("System.Console"), "System.Console");
+        class.set_valuetype(false);
+        let name = "Write".into();
+        let signature = FnSig::new(&[crate::r#type::Type::Bool], &crate::r#type::Type::Void);
+        CILOp::Call(CallSite::new(Some(class), name, signature, true).into())
+    }
+    /// Returns the ops necesary to  write message i32 from stack to stdout. Ends without a new line.
+    pub fn debug_i32() -> CILOp {
+        let mut class = DotnetTypeRef::new(Some("System.Console"), "System.Console");
+        class.set_valuetype(false);
+        let name = "Write".into();
+        let signature = FnSig::new(&[crate::r#type::Type::I32], &crate::r#type::Type::Void);
+        CILOp::Call(CallSite::new(Some(class), name, signature, true).into())
+    }
+    /// Returns the ops necesary to  write message f32 from stack to stdout. Ends without a new line.
+    pub fn debug_f32() -> CILOp {
+        let mut class = DotnetTypeRef::new(Some("System.Console"), "System.Console");
+        class.set_valuetype(false);
+        let name = "Write".into();
+        let signature = FnSig::new(&[crate::r#type::Type::F32], &crate::r#type::Type::Void);
+        CILOp::Call(CallSite::new(Some(class), name, signature, true).into())
+    }
+    /// Returns the ops necesary to u64 write message u64 from stack to stdout. Ends without a new line.
+    pub fn debug_u64() -> CILOp {
+        let mut class = DotnetTypeRef::new(Some("System.Console"), "System.Console");
+        class.set_valuetype(false);
+        let name = "Write".into();
+        let signature = FnSig::new(&[crate::r#type::Type::U64], &crate::r#type::Type::Void);
+        CILOp::Call(CallSite::new(Some(class), name, signature, true).into())
     }
     /// Descirbes the difference in stack size before and after the op.
     pub fn stack_diff(&self) -> isize {
@@ -387,7 +451,10 @@ impl CILOp {
             CILOp::CpBlk => -3,
             // Syntetic instructions
             CILOp::NewTMPLocal(_) | CILOp::FreeTMPLocal => 0,
-            CILOp::LoadAddresOfTMPLocal | CILOp::LoadUnderTMPLocal(_) | CILOp::LoadTMPLocal => 1,
+            CILOp::LoadAddresOfTMPLocal
+            | CILOp::LoadUnderTMPLocal(_)
+            | CILOp::LoadAdressUnderTMPLocal(_)
+            | CILOp::LoadTMPLocal => 1,
             CILOp::SetTMPLocal => -1,
             CILOp::LoadGlobalAllocPtr { alloc_id: _ } => 1,
         }

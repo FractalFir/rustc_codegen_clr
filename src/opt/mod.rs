@@ -5,7 +5,6 @@ use crate::{
     cil::{CILOp, CallSite},
     method::Method,
     r#type::Type,
-    utilis::check_debugable,
 };
 const MAX_PASS: u32 = 16;
 pub fn try_inline(caller: &mut Method, inlined: &Method, target: usize) -> bool {
@@ -624,7 +623,7 @@ fn could_local_ptr_escape(local: u32, ops: &[CILOp]) -> bool {
             _ => (),
         }
     }
-    return false;
+    false
 }
 fn try_split_locals(method: &mut Method, asm: &Assembly) {
     let splits: Vec<_> = method
@@ -659,7 +658,7 @@ fn try_split_locals(method: &mut Method, asm: &Assembly) {
         } else {
             continue;
         };
-        method.extend_locals(morphic_fields.iter().map(|(name, tpe)| tpe));
+        method.extend_locals(morphic_fields.iter().map(|(_name, tpe)| tpe));
         for index in 0..(method.get_ops().len() - 2) {
             //FIXME: this needs to be changed if we ever allow for this to optimize more compilcated split field access patterns.
             let (op1, op2, op3) = (

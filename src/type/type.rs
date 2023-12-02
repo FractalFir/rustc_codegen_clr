@@ -1,8 +1,7 @@
-use crate::{cil::CallSite, IString};
+use crate::IString;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::ty::{
-    AdtDef, AliasKind, ConstKind, FloatTy, GenericArg, Instance, IntTy, List, ParamEnv, Ty, TyCtxt,
-    TyKind, UintTy,
+    AdtDef, ConstKind, FloatTy, GenericArg, IntTy, List, Ty, TyCtxt, TyKind, UintTy,
 };
 /// This struct represetnts either a primitive .NET type (F32,F64), or stores information on how to lookup a more complex type (struct,class,array)
 use serde::{Deserialize, Serialize};
@@ -129,7 +128,7 @@ impl DotnetTypeRef {
     pub fn slice() -> Self {
         let mut slice_ref = DotnetTypeRef::new(None, "core.ptr.metadata.PtrComponents");
         slice_ref.set_generics(vec![Type::USize]);
-        slice_ref.into()
+        slice_ref
     }
     fn generic_from_adt<'ctx>(
         adt_def: &AdtDef<'ctx>,
@@ -242,7 +241,7 @@ impl Type {
         };
         Self::from_ty_kind(rust_tpe.kind(), tyctx, method)
     }*/
-    pub fn generic_from_ty<'ctx>(rust_tpe: Ty<'ctx>, tyctx: TyCtxt<'ctx>) -> Self {
+    pub fn generic_from_ty<'ctx>(_rust_tpe: Ty<'ctx>, _tyctx: TyCtxt<'ctx>) -> Self {
         todo!("UJsed generic_from_ty");
     }
 }

@@ -115,7 +115,7 @@ impl Method {
     }
     /// Returns the list of external calls this function preforms. Calls may repeat.
     pub(crate) fn calls(&self) -> impl Iterator<Item = &CallSite> {
-        self.ops.iter().map(|op| op.call()).filter_map(|site| site)
+        self.ops.iter().map(|op| op.call()).flatten()
     }
     pub(crate) fn call_site(&self) -> CallSite {
         CallSite::new(None, self.name().into(), self.sig().clone(), true)
@@ -148,6 +148,10 @@ impl Method {
                 }
                 CILOp::LoadUnderTMPLocal(under) => {
                     *op = CILOp::LDLoc(tmp_stack[(tmp_stack.len() - 1) - (*under as usize)] as u32);
+                }
+                CILOp::LoadAdressUnderTMPLocal(under) => {
+                    *op =
+                        CILOp::LDLocA(tmp_stack[(tmp_stack.len() - 1) - (*under as usize)] as u32);
                 }
                 CILOp::LoadAddresOfTMPLocal => {
                     *op = CILOp::LDLocA(*tmp_stack.iter().last().expect(

@@ -2,7 +2,7 @@ use crate::r#type::DotnetTypeRef;
 use crate::{
     access_modifier::AccessModifer,
     assembly::Assembly,
-    cil::{CILOp, CallSite, FieldDescriptor},
+    cil::{CILOp, CallSite},
     function_sig::FnSig,
     method::Method,
     r#type::Type,

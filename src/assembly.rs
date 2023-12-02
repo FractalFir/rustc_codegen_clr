@@ -5,10 +5,9 @@ use crate::{
     codegen_error::MethodCodegenError,
     function_sig::FnSig,
     method::Method,
+    r#type::TyCache,
     r#type::Type,
     r#type::TypeDef,
-    r#type::{DotnetTypeRef, TyCache},
-    utilis::monomorphize,
     IString,
 };
 use rustc_middle::mir::{
@@ -86,8 +85,8 @@ impl Assembly {
     }
     /// Gets the typdefef at path `path`.
     pub fn get_typedef_by_path(&self, path: &str) -> Option<&TypeDef> {
-        if path.contains("/") {
-            let mut path_iter = path.split("/");
+        if path.contains('/') {
+            let mut path_iter = path.split('/');
             let path_first = path_iter.next().unwrap();
             let mut td = self.get_typedef_by_path(path_first)?;
             // FIXME: this loop is messy.
@@ -201,10 +200,10 @@ impl Assembly {
                 if let Some(msg) = payload.downcast_ref::<&str>() {
                     eprintln!("could not compile method {name}. fn_add panicked with unhandled message: {msg:?}");
                     //self.add_method(Method::missing_because(format!("could not compile method {name}. fn_add panicked with unhandled message: {msg:?}")));
-                    return Ok(());
+                    Ok(())
                 } else {
                     eprintln!("could not compile method {name}. fn_add panicked with no message.");
-                    return Ok(());
+                    Ok(())
                 }
             }
         }
@@ -254,6 +253,9 @@ impl Assembly {
         // Create method prototype
         let mut method = Method::new(access_modifier, true, sig, name, locals);
         let mut ops = Vec::new();
+        if crate::TRACE_CALLS {
+            ops.extend(CILOp::debug_msg(&format!("Called {name}.")));
+        }
         let mut last_bb_id = 0;
 
         let blocks = &(*mir.basic_blocks);
@@ -312,10 +314,10 @@ impl Assembly {
         //todo!("Can't add function")
     }
 
-    fn add_allocation<'tcx>(
+    fn add_allocation(
         &mut self,
         alloc_id: u64,
-        tcx: TyCtxt<'tcx>,
+        tcx: TyCtxt<'_>,
     ) -> crate::cil::StaticFieldDescriptor {
         let const_allocation =
             match tcx.global_alloc(AllocId(alloc_id.try_into().expect("0 alloc id?"))) {
@@ -344,7 +346,7 @@ impl Assembly {
         let field_desc = crate::cil::StaticFieldDescriptor::new(
             None,
             Type::Ptr(Type::U8.into()),
-            alloc_fld.clone().into(),
+            alloc_fld.clone(),
         );
         if self.static_fields.get(&alloc_fld).is_none() {
             let method = self
@@ -368,7 +370,7 @@ impl Assembly {
                     )
                 });
             let ops: &mut Vec<CILOp> = method.ops_mut();
-            if ops.len() > 0 && ops[ops.len() - 1] == CILOp::Ret {
+            if !ops.is_empty() && ops[ops.len() - 1] == CILOp::Ret {
                 ops.pop();
             }
             ops.extend([
@@ -420,7 +422,7 @@ impl Assembly {
     }
     /// Returns the list of all calls within the method. Calls may repeat.
     pub fn call_sites(&self) -> impl Iterator<Item = &CallSite> {
-        self.methods().map(|method| method.calls()).flatten()
+        self.methods().flat_map(|method| method.calls())
     }
     /// Returns an interator over all methods within the assembly.
     pub fn methods(&self) -> impl Iterator<Item = &Method> {

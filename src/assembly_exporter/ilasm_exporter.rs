@@ -23,7 +23,7 @@ impl std::io::Write for ILASMExporter {
 }
 impl AssemblyExporter for ILASMExporter {
     fn add_global(&mut self, tpe: &Type, name: &str) {
-        writeln!(self, ".field static {tpe} {name}", tpe = type_cil(&tpe))
+        writeln!(self, ".field static {tpe} {name}", tpe = type_cil(tpe))
             .expect("Could not write global!")
     }
     fn init(asm_name: &str) -> Self {
@@ -587,20 +587,20 @@ fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
             }
         }
         CILOp::Nop => "nop".into(),
-        CILOp::NewTMPLocal(_) | CILOp::FreeTMPLocal | CILOp::LoadAddresOfTMPLocal | CILOp::SetTMPLocal | CILOp::LoadTMPLocal | CILOp::LoadUnderTMPLocal(_) =>
+        CILOp::NewTMPLocal(_) | CILOp::FreeTMPLocal | CILOp::LoadAddresOfTMPLocal | CILOp::SetTMPLocal | CILOp::LoadTMPLocal | CILOp::LoadUnderTMPLocal(_) | CILOp::LoadAdressUnderTMPLocal(_)=>
          panic!("CRITICAL INTERNAL ERROR: OP '{op:?}' is syntetic(internal only) and should have been substituted before being emmited!"),
          CILOp::LoadGlobalAllocPtr { alloc_id } => panic!("CRITICAL INTERNAL ERROR:Allocation {alloc_id} was not resolved to a static."),
         CILOp::Pop => "pop".into(),
         CILOp::Dup => "dup".into(),
         CILOp::LDStaticField(static_field) => {
             match static_field.owner(){
-                Some(owner)=>todo!("Can't load static field {static_field:?}"),
+                Some(_owner)=>todo!("Can't load static field {static_field:?}"),
                 None=>format!("ldsfld {tpe} {name}",tpe = field_type_cil(static_field.tpe()), name = static_field.name()).into(),
             }
         }
         CILOp::STStaticField(static_field) => {
             match static_field.owner(){
-                Some(owner)=>todo!("Can't load static field {static_field:?}"),
+                Some(_owner)=>todo!("Can't load static field {static_field:?}"),
                 None=>format!("stsfld {tpe} {name}",tpe = field_type_cil(static_field.tpe()), name = static_field.name()).into(),
             }
         }
@@ -625,6 +625,12 @@ fn call_arg_type_cil(tpe: &Type) -> Cow<'static, str> {
     prefixed_field_type_cil(tpe)
 }
 fn dotnet_type_ref_cli(dotnet_type: &DotnetTypeRef) -> String {
+    if Some("System.Runtime") == dotnet_type.asm()
+        && "System.String" == dotnet_type.name_path()
+        && !dotnet_type.is_valuetype()
+    {
+        return "string".into();
+    }
     let asm = if let Some(asm_ref) = dotnet_type.asm() {
         format!("[{asm_ref}]")
     } else {
@@ -635,6 +641,12 @@ fn dotnet_type_ref_cli(dotnet_type: &DotnetTypeRef) -> String {
     format!("{asm}{name}{generics}")
 }
 fn dotnet_type_ref_cli_generics_unescaped(dotnet_type: &DotnetTypeRef) -> String {
+    if Some("System.Runtime") == dotnet_type.asm()
+        && "System.String" == dotnet_type.name_path()
+        && !dotnet_type.is_valuetype()
+    {
+        return "string".into();
+    }
     let asm = if let Some(asm_ref) = dotnet_type.asm() {
         format!("[{asm_ref}]")
     } else {
@@ -728,7 +740,7 @@ fn prefixed_field_type_cil(tpe: &Type) -> Cow<'static, str> {
     }
 }
 fn prefixed_type_cil(tpe: &Type) -> Cow<'static, str> {
-    let prefixed_type = match tpe {
+    match tpe {
         Type::Void => "valuetype RustVoid".into(),
         Type::FnDef(name) => format!("valuetype fn_{name}").into(),
         Type::I8 => "int8".into(),
@@ -764,8 +776,7 @@ fn prefixed_type_cil(tpe: &Type) -> Cow<'static, str> {
             };
             format!("{tpe}[{arr}]", tpe = type_cil(&array.element)).into()
         } //_ => todo!("Unsuported type {tpe:?}"),
-    };
-    prefixed_type
+    }
 }
 fn args_cli(w: &mut impl Write, args: &[Type]) -> std::io::Result<()> {
     let mut args = args.iter();

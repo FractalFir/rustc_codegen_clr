@@ -102,6 +102,7 @@ pub extern fn tick_10body(boides:&mut [AstronomicalBody;4],mut tick_count:usize)
          let mut a_body = boides[a_body_idx];
          while b_body_idx <  boides.len(){
             if b_body_idx == a_body_idx{
+                b_body_idx += 1;
                 continue;
             }
             let b_body = &boides[a_body_idx];

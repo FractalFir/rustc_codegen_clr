@@ -1,12 +1,12 @@
-use super::{place_get_length, pointed_type, PlaceTy};
+use super::{pointed_type, PlaceTy};
 use crate::assert_morphic;
 use crate::cil::{CILOp, FieldDescriptor};
 use crate::function_sig::FnSig;
 use crate::place::{body_ty_is_by_adress, deref_op};
 use crate::r#type::{DotnetTypeRef, Type};
-use crate::utilis::field_name;
-use rustc_middle::mir::{Place, PlaceElem};
-use rustc_middle::ty::{FloatTy, Instance, IntTy, ParamEnv, Ty, TyCtxt, TyKind, UintTy};
+
+use rustc_middle::mir::PlaceElem;
+use rustc_middle::ty::{Instance, Ty, TyCtxt, TyKind};
 pub fn local_body<'tcx>(local: usize, method: &rustc_middle::mir::Body<'tcx>) -> (CILOp, Ty<'tcx>) {
     let ty = method.local_decls[local.into()].ty;
     if body_ty_is_by_adress(&ty) {
@@ -70,7 +70,7 @@ pub fn place_elem_body<'ctx>(
                 let field_desc = crate::utilis::enum_field_descriptor(
                     owner,
                     index.as_u32(),
-                    var_idx.into(),
+                    var_idx,
                     tyctx,
                     method_instance,
                     type_cache,
@@ -173,17 +173,17 @@ pub fn place_elem_body<'ctx>(
                         CILOp::Mul,
                         CILOp::Add,
                     ];
-                    if !body_ty_is_by_adress(&inner.into()) {
+                    if !body_ty_is_by_adress(&inner) {
                         ops.extend(deref_op);
                     }
                     (inner.into(), ops)
                 }
-                TyKind::Array(element, length) => {
+                TyKind::Array(element, _length) => {
                     //let element = crate::utilis::monomorphize(&method_instance, *element, tyctx);
                     let array_type =
                         type_cache.type_from_cache(curr_ty, tyctx, Some(method_instance));
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
-                    if body_ty_is_by_adress(element.into()) {
+                    if body_ty_is_by_adress(element) {
                         let ops = vec![
                             index,
                             CILOp::Call(
