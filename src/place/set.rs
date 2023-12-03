@@ -108,6 +108,25 @@ pub fn place_elem_set<'a>(
                     ops.extend(ptr_set_op);
                     ops
                 }
+                TyKind::Array(_element, _length) => {
+                    //let element = crate::utilis::monomorphize(&method_instance, *element, tyctx);
+                    let array_type =
+                        type_cache.type_from_cache(curr_ty, ctx, Some(method_instance));
+                    let array_dotnet = array_type.as_dotnet().expect("Non array type");
+                    let ops = vec![
+                        index,
+                        CILOp::Call(
+                            crate::cil::CallSite::new(
+                                Some(array_dotnet),
+                                "set_Item".into(),
+                                FnSig::new(&[array_type, Type::USize,Type::GenericArg(0)], &Type::Void),
+                                false,
+                            )
+                            .into(),
+                        ),
+                    ];
+                    ops
+                }
                 _ => {
                     rustc_middle::ty::print::with_no_trimmed_paths! { todo!("Can't index into {curr_ty}!")}
                 }

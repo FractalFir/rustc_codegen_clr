@@ -199,7 +199,7 @@ impl TyCache {
             TyKind::Bool => Type::Bool,
             TyKind::Int(int) => int.into(),
             TyKind::Uint(uint) => uint.into(),
-            TyKind::Char => Type::U64,
+            TyKind::Char => Type::U32,
             TyKind::Float(float) => float.into(),
             TyKind::Tuple(types) => {
                 let types: Vec<_> = types

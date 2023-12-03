@@ -11,14 +11,14 @@ extern "C"{
     fn puts(msg:*const u8);
 }
 fn main() {
-    let mut vec:Vec<u8> = Vec::new();
-    vec.push(0x48);
-    vec.push(0x65);
-    vec.push(0x6C);
-    vec.push(0x6C);
-    vec.push(0x6F);
-    vec.push(0x21);
-    vec.push(0x00);
-    std::hint::black_box(&vec);
-    unsafe{puts(vec.as_ptr())}
+    let mut string = String::with_capacity(100);
+    string.push('H');
+    string.push('e');
+    string.push('l');
+    string.push('l');
+    string.push('o');
+    string.push('!');
+    string.push('\0');
+    std::hint::black_box(&string);
+    unsafe{puts(string.as_ptr())}
 }
