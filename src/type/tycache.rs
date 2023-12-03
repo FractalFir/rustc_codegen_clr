@@ -202,7 +202,7 @@ impl TyCache {
         inner: Ty<'tyctx>,
         tyctx: TyCtxt<'tyctx>,
         method: Option<Instance<'tyctx>>)->Type{
-            slice_ref_to(tyctx,self,inner,method)
+            slice_ref_to(tyctx,self,Ty::new_slice(tyctx,inner),method)
         }
     pub fn type_from_cache<'tyctx>(
         &mut self,
@@ -238,10 +238,10 @@ impl TyCache {
                     }else{
                         *inner
                     };
-                    slice_ref_to(tyctx,self,inner,method)
+                    slice_ref_to(tyctx,self,Ty::new_slice(tyctx,inner),method)
                 }
                 TyKind::Str => {
-                    slice_ref_to(tyctx,self,u8_ty(tyctx),method)
+                    slice_ref_to(tyctx,self,Ty::new_slice(tyctx,u8_ty(tyctx)),method)
                 }
                 _ => Type::Ptr(self.type_from_cache(type_and_mut.ty, tyctx, method).into()),
             },
@@ -264,10 +264,10 @@ impl TyCache {
                     }else{
                         *inner
                     };
-                    slice_ref_to(tyctx,self,inner,method)
+                    slice_ref_to(tyctx,self,Ty::new_slice(tyctx,inner),method)
                 }
                 TyKind::Str => {
-                    slice_ref_to(tyctx,self,u8_ty(tyctx),method)
+                    slice_ref_to(tyctx,self,Ty::new_slice(tyctx,u8_ty(tyctx)),method)
                 }
                 _ => Type::Ptr(self.type_from_cache(*inner, tyctx, method).into()),
             },
