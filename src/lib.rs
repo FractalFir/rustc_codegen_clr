@@ -58,7 +58,7 @@ extern crate stable_mir;
 const INSERT_MIR_DEBUG_COMMENTS: bool = false;
 const PRINT_LOCAL_TYPES: bool = false;
 /// Tells the codegen to optmize the emiited CIL.
-const OPTIMIZE_CIL: bool = (!INSERT_MIR_DEBUG_COMMENTS) && (true);
+const OPTIMIZE_CIL: bool = (!INSERT_MIR_DEBUG_COMMENTS) && (false);
 /// Turns on the struct spliting optimzation.
 const SPLIT_LOCAL_STRUCTS: bool = false;
 /// Turns on the local removal optimization.
@@ -73,7 +73,7 @@ pub const ABORT_ON_ERROR: bool = false;
 /// Should the codegen continue working after it encoutnered a miscompilation?
 pub const ALLOW_MISCOMPILATIONS: bool = true;
 /// Preapends each function call with a debug message
-pub const TRACE_CALLS: bool = false;
+pub const TRACE_CALLS: bool = true;
 /// Preapends each statement with a debug message
 pub const TRACE_STATEMENTS: bool = false;
 // Modules

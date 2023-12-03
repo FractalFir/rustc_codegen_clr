@@ -231,7 +231,7 @@ fn lt_unchecked<'tyctx>(_ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> Vec<CILOp> {
     vec![CILOp::Lt]
 }
 fn gt_unchecked<'tyctx>(_ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> Vec<CILOp> {
-    vec![CILOp::Lt]
+    vec![CILOp::Gt]
 }
 fn bit_and_unchecked<'tyctx>(_ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> Vec<CILOp> {
     vec![CILOp::And]
