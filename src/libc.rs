@@ -97,7 +97,12 @@ pub fn insert_libc(asm: &mut Assembly, tyctx: TyCtxt) {
     io(asm);
     unlikely(asm);
     //malloc(asm);
-
+    let mut marshal = DotnetTypeRef::new(
+        Some("System.Runtime.InteropServices"),
+        "System.Runtime.InteropServices.Marshal",
+    );
+    marshal.set_valuetype(false);
+    let marshal = Some(marshal);
     let mut malloc = Method::new(
         AccessModifer::Private,
         true,
@@ -108,10 +113,7 @@ pub fn insert_libc(asm: &mut Assembly, tyctx: TyCtxt) {
     malloc.set_ops(vec![
         CILOp::LDArg(0),
         CILOp::Call(CallSite::boxed(
-            Some(DotnetTypeRef::new(
-                Some("System.Runtime.InteropServices"),
-                "System.Runtime.InteropServices.Marshal",
-            )),
+            marshal.clone(),
             "AllocHGlobal".into(),
             FnSig::new(&[Type::ISize], &Type::ISize),
             true,
@@ -133,10 +135,7 @@ pub fn insert_libc(asm: &mut Assembly, tyctx: TyCtxt) {
         CILOp::LDArg(0),
         CILOp::LDArg(1),
         CILOp::Call(CallSite::boxed(
-            Some(DotnetTypeRef::new(
-                Some("System.Runtime.InteropServices"),
-                "System.Runtime.InteropServices.Marshal",
-            )),
+            marshal.clone(),
             "ReAllocHGlobal".into(),
             FnSig::new(&[Type::ISize, Type::ISize], &Type::ISize),
             true,
@@ -154,10 +153,7 @@ pub fn insert_libc(asm: &mut Assembly, tyctx: TyCtxt) {
     free.set_ops(vec![
         CILOp::LDArg(0),
         CILOp::Call(CallSite::boxed(
-            Some(DotnetTypeRef::new(
-                Some("System.Runtime.InteropServices"),
-                "System.Runtime.InteropServices.Marshal",
-            )),
+            marshal,
             "FreeHGlobal".into(),
             FnSig::new(&[Type::ISize], &Type::Void),
             true,

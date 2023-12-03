@@ -36,7 +36,7 @@ impl FnSig {
         let ret = tycache.type_from_cache(fn_abi.ret.layout.ty, tcx, Some(function));
         let mut args = Vec::with_capacity(fn_abi.args.len());
         for arg in fn_abi.args.iter() {
-            args.push(tycache.type_from_cache(arg.layout.ty, tcx, None));
+            args.push(tycache.type_from_cache(arg.layout.ty, tcx, Some(function)));
         }
         Ok(Self {
             inputs: args,

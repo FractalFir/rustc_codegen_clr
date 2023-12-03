@@ -63,6 +63,8 @@ const OPTIMIZE_CIL: bool = (!INSERT_MIR_DEBUG_COMMENTS) && (true);
 const SPLIT_LOCAL_STRUCTS: bool = false;
 /// Turns on the local removal optimization.
 const REMOVE_UNSUED_LOCALS: bool = false;
+/// Prints debug info during type handling.
+const PRINT_TY_CONVERTION:bool = false;
 /// Changes `.locals` into `.locals init`. Causes the runtime to always initialize local variables.
 /// Try turining on in cause of issues. If it fixes them, then their root cause is UB(eg. use of uninitailized memory).
 pub const ALWAYS_INIT_LOCALS: bool = false;

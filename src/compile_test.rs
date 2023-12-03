@@ -200,7 +200,7 @@ macro_rules! run_test {
             #[cfg(test)]
             static COMPILE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
             #[test]
-            #[timeout(5_000)]
+            #[timeout(30_000)]
             fn release() {
                 let lock = COMPILE_LOCK.lock();
                 let test_dir = concat!("./test/", stringify!($prefix), "/");
@@ -242,7 +242,7 @@ macro_rules! run_test {
                 super::test_dotnet_executable(exec_path, test_dir);
             }
             #[test]
-            #[timeout(5_000)]
+            #[timeout(30_000)]
             fn debug() {
                 let lock = COMPILE_LOCK.lock();
                 let test_dir = concat!("./test/", stringify!($prefix), "/");

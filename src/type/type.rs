@@ -117,19 +117,6 @@ impl DotnetTypeRef {
     pub fn set_generics_identity(&mut self) {
         self.generics = crate::r#type::ident_gargs(self.generics.len()).into();
     }
-    pub fn slice_type(element: Type) -> DotnetTypeRef {
-        DotnetTypeRef {
-            assembly: None,
-            name_path: "RustSlice".into(),
-            generics: vec![element],
-            is_valuetype: true,
-        }
-    }
-    pub fn slice() -> Self {
-        let mut slice_ref = DotnetTypeRef::new(None, "core.ptr.metadata.PtrComponents");
-        slice_ref.set_generics(vec![Type::USize]);
-        slice_ref
-    }
     fn generic_from_adt<'ctx>(
         adt_def: &AdtDef<'ctx>,
         subst: &'ctx List<GenericArg<'ctx>>,
@@ -177,6 +164,7 @@ impl Type {
         let name = crate::utilis::escape_class_name(&name);
         DotnetTypeRef::new(None, &name).into()
     }
+    /* 
     pub fn slice_ref(slice_element: Type) -> Type {
         const SLICE_PTR_NAME: &str = "core.ptr.metadata.PtrComponents";
 
@@ -196,7 +184,7 @@ impl Type {
             }
             _ => Self::Ptr(self.clone().into()),
         }
-    }
+    }*/
     pub fn map_generic(&self, generics: &[Type]) -> Option<Type> {
         match self {
             Self::GenericArg(arg) => generics.get(*arg as usize).cloned(),

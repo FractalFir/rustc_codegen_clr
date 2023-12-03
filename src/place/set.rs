@@ -91,9 +91,10 @@ pub fn place_elem_set<'a>(
                 TyKind::Slice(inner) => {
                     let inner = crate::utilis::monomorphize(&method_instance, *inner, ctx);
                     let inner_type = type_cache.type_from_cache(inner, ctx, Some(method_instance));
+                    let slice = type_cache.slice_ty(inner,ctx,Some(method_instance)).as_dotnet().unwrap();
                     let desc = FieldDescriptor::new(
-                        DotnetTypeRef::slice(),
-                        Type::Void.pointer_to(),
+                        slice,
+                        Type::Ptr(Type::Void.into()),
                         "data_address".into(),
                     );
                     let ptr_set_op =
@@ -146,10 +147,12 @@ pub fn place_elem_set<'a>(
             match curr_ty.kind() {
                 TyKind::Slice(inner) => {
                     let inner = crate::utilis::monomorphize(&method_instance, *inner, ctx);
+                   
                     let inner_type = type_cache.type_from_cache(inner, ctx, Some(method_instance));
+                    let slice = type_cache.slice_ty(inner,ctx,Some(method_instance)).as_dotnet().unwrap();
                     let desc = FieldDescriptor::new(
-                        DotnetTypeRef::slice(),
-                        Type::Void.pointer_to(),
+                        slice,
+                        Type::Ptr(Type::Void.into()),
                         "data_address".into(),
                     );
                     let ptr_set_op =

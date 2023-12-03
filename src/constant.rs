@@ -332,7 +332,7 @@ fn load_const_value<'ctx>(
             let metadata_field =
                 FieldDescriptor::new(slice_dotnet.clone(), Type::USize, "metadata".into());
             let ptr_field =
-                FieldDescriptor::new(slice_dotnet, Type::Void.pointer_to(), "data_address".into());
+                FieldDescriptor::new(slice_dotnet, Type::Ptr(Type::Void.into()), "data_address".into());
             // TODO: find a better way to get an alloc_id. This is likely to be incoreect.
             let alloc_id = tyctx.reserve_and_set_memory_alloc(data);
             let alloc_id: u64 = crate::utilis::alloc_id_to_u64(alloc_id);

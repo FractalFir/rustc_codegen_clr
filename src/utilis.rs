@@ -80,6 +80,8 @@ pub fn adt_name<'tyctx>(
 
 pub fn escape_class_name(name: &str) -> IString {
     name.replace("::", ".")
+    .replace("..", ".")
+    .replace('$', "_dsig_")
         .replace('<', "_lt_")
         .replace('\'', "_ap_")
         .replace(' ', "_spc_")

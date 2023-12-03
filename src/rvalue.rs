@@ -295,11 +295,8 @@ pub fn handle_rvalue<'tcx>(
             // let tpe = tycache.type_from_cache(ty.ty, tyctx, Some(method_instance));
             match ty.ty.kind() {
                 TyKind::Slice(inner) => {
-                    let name: String = format!(
-                        "core.ptr.metadata.PtrComponents{}",
-                        crate::r#type::mangle_ty(*inner, tyctx)
-                    );
-                    let slice_tpe = DotnetTypeRef::new(None, &name);
+
+                    let slice_tpe =  tycache.slice_ty(*inner, tyctx, Some(method_instance)).as_dotnet().unwrap();
                     let descriptor =
                         FieldDescriptor::new(slice_tpe, Type::USize, "metadata".into());
                     ops.extend([CILOp::LDField(descriptor.into())])

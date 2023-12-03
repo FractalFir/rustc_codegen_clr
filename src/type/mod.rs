@@ -9,6 +9,7 @@ pub use r#type::*;
 use rustc_middle::ty::{GenericArg, IntTy, Ty, TyCtxt, TyKind, UintTy};
 pub use tycache::*;
 pub use type_def::*;
+/* 
 pub fn mangle_ty<'tyctx>(ty: Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -> std::borrow::Cow<'static, str> {
     match ty.kind() {
         TyKind::Bool => "B".into(),
@@ -85,4 +86,4 @@ fn mangle_susbt<'tyctx>(
         result.push_str(&mangle_elem(generic, tyctx));
     }
     result.into()
-}
+}*/
