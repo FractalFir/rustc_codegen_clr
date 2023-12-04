@@ -85,7 +85,7 @@ impl DotnetTypeRef {
         if self.is_valuetype() {
             "valuetype"
         } else {
-            "class"
+            ""
         }
     }
     pub fn set_valuetype(&mut self, is_valuetype: bool) {
@@ -164,7 +164,7 @@ impl Type {
         let name = crate::utilis::escape_class_name(&name);
         DotnetTypeRef::new(None, &name).into()
     }
-    /* 
+    /*
     pub fn slice_ref(slice_element: Type) -> Type {
         const SLICE_PTR_NAME: &str = "core.ptr.metadata.PtrComponents";
 

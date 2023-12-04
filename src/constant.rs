@@ -331,8 +331,11 @@ fn load_const_value<'ctx>(
             let slice_dotnet = slice_type.as_dotnet().expect("Slice type invalid!");
             let metadata_field =
                 FieldDescriptor::new(slice_dotnet.clone(), Type::USize, "metadata".into());
-            let ptr_field =
-                FieldDescriptor::new(slice_dotnet, Type::Ptr(Type::Void.into()), "data_address".into());
+            let ptr_field = FieldDescriptor::new(
+                slice_dotnet,
+                Type::Ptr(Type::Void.into()),
+                "data_address".into(),
+            );
             // TODO: find a better way to get an alloc_id. This is likely to be incoreect.
             let alloc_id = tyctx.reserve_and_set_memory_alloc(data);
             let alloc_id: u64 = crate::utilis::alloc_id_to_u64(alloc_id);
@@ -380,8 +383,20 @@ fn load_const_scalar<'ctx>(
             let global_alloc = tyctx.global_alloc(alloc_id);
             match global_alloc {
                 GlobalAlloc::Static(def_id) => {
-                    todo!("Statics are buggy, skipping!");
-                    let alloc = tyctx.eval_static_initializer(def_id).unwrap();
+                    assert!(tyctx.is_static(def_id));
+                    let attrs = tyctx.codegen_fn_attrs(def_id);
+                    rustc_middle::ty::print::with_no_trimmed_paths! {
+                        eprintln!("Codegening static {def_id:?}.")
+                    };
+                    if let Some(import_linkage) = attrs.import_linkage {
+                        rustc_middle::ty::print::with_no_trimmed_paths! {
+                            eprintln!("Static {def_id:?} requires special linkage {import_linkage:?} handling.")
+                        };
+                    }
+                    // TODO: figure out why 
+                    // internal compiler error: compiler/rustc_const_eval/src/const_eval/machine.rs:395:21: trying to call extern function 
+                    // happens.
+                    let alloc = tyctx.eval_static_initializer(def_id).expect("No initializer??");
                     //def_id.ty();
                     let _tyctx = tyctx.reserve_and_set_memory_alloc(alloc);
                     let alloc_id = crate::utilis::alloc_id_to_u64(alloc_id);

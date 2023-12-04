@@ -4,8 +4,29 @@ pub use call_site::*;
 mod field_desc;
 pub use field_desc::*;
 mod static_field_desc;
+use rustc_span::def_id::DefId;
 use serde::{Deserialize, Serialize};
 pub use static_field_desc::*;
+#[derive(Clone,Debug,PartialEq)]
+/// Wrapper around temporaryu data that should never be present after codegen and can't be serialized.
+pub struct TMPSynthOpData<T:Clone + PartialEq>{
+    /// Inner wrappered temporary variable that can't be serialized
+    pub inner:T,
+}
+impl<T:Clone + PartialEq> Serialize for TMPSynthOpData<T>{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer {
+        panic!("Atempted to serialize temporary synthetic op data.")
+    }
+}
+impl<'de,T:Clone + PartialEq> Deserialize<'de> for TMPSynthOpData<T>{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de> {
+            panic!("Atempted to deserialize temporary synthetic op data.")
+    }
+}
 /// Represenation of a CIL opcode.
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 pub enum CILOp {
@@ -85,7 +106,12 @@ pub enum CILOp {
         /// ID of the allocation - used for looking up its data during later stages of codegen.
         alloc_id: u64,
     },
-
+    /// This is a Syntetic("fake") instruction, which is used **only** internaly. It is not present in the resulting assembly.
+    /// This instruction loads a pointer to a static behind `static_did`.
+    LoadGlobalStaticPtr {
+        /// Definition ID of the static
+        static_did: TMPSynthOpData<DefId>,
+    },
     // Load constant values.
     /// Load constant sigined 32 bit intieger and push it on top of the stack. Can be used to load u32s too.
     LdcI32(i32),
@@ -456,7 +482,8 @@ impl CILOp {
             | CILOp::LoadAdressUnderTMPLocal(_)
             | CILOp::LoadTMPLocal => 1,
             CILOp::SetTMPLocal => -1,
-            CILOp::LoadGlobalAllocPtr { alloc_id: _ } => 1,
+            CILOp::LoadGlobalAllocPtr { alloc_id: _ }
+            | CILOp::LoadGlobalStaticPtr { static_did: _ } => 1,
         }
     }
     /// Flips a conditional, changing the order of its arguments. Eg. BLt(a,b) [a < b] becomes BGt(b,a) [b > a].

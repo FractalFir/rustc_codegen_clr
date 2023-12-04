@@ -587,6 +587,7 @@ run_test! {types,interop}
 run_test! {types,vec}
 run_test! {types,string_slice}
 run_test! {types,slice}
+run_test! {types,statics}
 run_test! {std,main}
 run_test! {control_flow,cf_for}
 run_test! {control_flow,drop}

@@ -122,7 +122,10 @@ pub fn place_elem_body<'ctx>(
                     let inner = crate::utilis::monomorphize(&method_instance, *inner, tyctx);
                     let inner_type =
                         type_cache.type_from_cache(inner, tyctx, Some(method_instance));
-                    let slice = type_cache.slice_ty(inner,tyctx,Some(method_instance)).as_dotnet().unwrap();
+                    let slice = type_cache
+                        .slice_ty(inner, tyctx, Some(method_instance))
+                        .as_dotnet()
+                        .unwrap();
                     let desc = FieldDescriptor::new(
                         slice,
                         Type::Ptr(Type::Void.into()),
@@ -156,7 +159,10 @@ pub fn place_elem_body<'ctx>(
                     let inner = crate::utilis::monomorphize(&method_instance, *inner, tyctx);
                     let inner_type =
                         type_cache.type_from_cache(inner, tyctx, Some(method_instance));
-                        let slice = type_cache.slice_ty(inner,tyctx,Some(method_instance)).as_dotnet().unwrap();
+                    let slice = type_cache
+                        .slice_ty(inner, tyctx, Some(method_instance))
+                        .as_dotnet()
+                        .unwrap();
                     let desc = FieldDescriptor::new(
                         slice,
                         Type::Ptr(Type::Void.into()),

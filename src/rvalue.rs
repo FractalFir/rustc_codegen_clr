@@ -38,14 +38,14 @@ pub fn handle_rvalue<'tcx>(
             let source_type = tycache.type_from_cache(source, tyctx, Some(method_instance));
             let target_type = tycache.type_from_cache(target, tyctx, Some(method_instance));
             let target_dotnet = target_type.as_dotnet().unwrap();
-            let derefed_source = match source.kind(){
-                TyKind::RawPtr(tpe)=>tpe.ty,
-                TyKind::Ref(_,inner,_)=>*inner,
-                _=> panic!("Non ptr type:{source:?}")
+            let derefed_source = match source.kind() {
+                TyKind::RawPtr(tpe) => tpe.ty,
+                TyKind::Ref(_, inner, _) => *inner,
+                _ => panic!("Non ptr type:{source:?}"),
             };
-            let length = if let TyKind::Array(element,length) = derefed_source.kind(){
+            let length = if let TyKind::Array(element, length) = derefed_source.kind() {
                 crate::utilis::try_resolve_const_size(&length).unwrap()
-            }else{
+            } else {
                 panic!("Non array type:{source:?}")
             };
             //let element_type = tycache.type_from_cache(*element, tyctx, Some(method_instance));
@@ -58,18 +58,26 @@ pub fn handle_rvalue<'tcx>(
                 // b:Slice = unint();
                 CILOp::LoadAddresOfTMPLocal,
                 CILOp::LoadUnderTMPLocal(1),
-                CILOp::STField(FieldDescriptor::new(target_dotnet.clone(),Type::Ptr(Type::Void.into()),"data_address".into()).into()),
+                CILOp::STField(
+                    FieldDescriptor::new(
+                        target_dotnet.clone(),
+                        Type::Ptr(Type::Void.into()),
+                        "data_address".into(),
+                    )
+                    .into(),
+                ),
                 // b.data_address = (a as *mut RustVoid);
                 CILOp::LoadAddresOfTMPLocal,
                 CILOp::LdcI64(length as u64 as i64),
                 CILOp::ConvUSize(false),
-                CILOp::STField(FieldDescriptor::new(target_dotnet,Type::USize,"metadata".into()).into()),
+                CILOp::STField(
+                    FieldDescriptor::new(target_dotnet, Type::USize, "metadata".into()).into(),
+                ),
                 // b.metadata = (length_i64 as usize);
                 CILOp::LoadTMPLocal,
                 // stack_top = b;
                 CILOp::FreeTMPLocal,
                 CILOp::FreeTMPLocal,
-
             ]);
             res
             //todo!("Array to slice {res:?}!")
@@ -295,8 +303,10 @@ pub fn handle_rvalue<'tcx>(
             // let tpe = tycache.type_from_cache(ty.ty, tyctx, Some(method_instance));
             match ty.ty.kind() {
                 TyKind::Slice(inner) => {
-
-                    let slice_tpe =  tycache.slice_ty(*inner, tyctx, Some(method_instance)).as_dotnet().unwrap();
+                    let slice_tpe = tycache
+                        .slice_ty(*inner, tyctx, Some(method_instance))
+                        .as_dotnet()
+                        .unwrap();
                     let descriptor =
                         FieldDescriptor::new(slice_tpe, Type::USize, "metadata".into());
                     ops.extend([CILOp::LDField(descriptor.into())])

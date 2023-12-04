@@ -2,28 +2,30 @@ use super::{DotnetTypeRef, Type, TypeDef};
 use crate::{
     access_modifier::AccessModifer, r#type::escape_field_name, utilis::enum_tag_size, IString,
 };
+use rustc_middle::ty::{
+    AdtDef, AdtKind, GenericArg, Instance, List, ParamEnv, Ty, TyCtxt, TyKind, UintTy,
+};
 use rustc_span::def_id::DefId;
-use rustc_middle::ty::{AdtDef, AdtKind, Instance, List, ParamEnv, Ty, TyCtxt, TyKind,GenericArg,UintTy};
 use std::collections::HashMap;
 // CAN'T BE SERAILIZED!
 pub struct TyCache {
     type_def_cache: HashMap<IString, TypeDef>,
     cycle_prevention: Vec<IString>,
-    ptr_components:Option<DefId>,
+    ptr_components: Option<DefId>,
 }
 impl TyCache {
     pub fn empty() -> Self {
         Self {
             type_def_cache: HashMap::new(),
             cycle_prevention: vec![],
-            ptr_components:None,
+            ptr_components: None,
         }
     }
     pub fn defs(&self) -> impl Iterator<Item = &TypeDef> {
         self.type_def_cache.values()
     }
-    pub fn ptr_components(&mut self,tyctx: TyCtxt)->DefId{
-        if self.ptr_components.is_none(){
+    pub fn ptr_components(&mut self, tyctx: TyCtxt) -> DefId {
+        if self.ptr_components.is_none() {
             self.ptr_components = Some(try_find_ptr_components(tyctx));
         }
         self.ptr_components.unwrap()
@@ -198,19 +200,21 @@ impl TyCache {
             None,
         )
     }
-    pub fn slice_ty<'tyctx>(&mut self,
+    pub fn slice_ty<'tyctx>(
+        &mut self,
         inner: Ty<'tyctx>,
         tyctx: TyCtxt<'tyctx>,
-        method: Option<Instance<'tyctx>>)->Type{
-            slice_ref_to(tyctx,self,Ty::new_slice(tyctx,inner),method)
-        }
+        method: Option<Instance<'tyctx>>,
+    ) -> Type {
+        slice_ref_to(tyctx, self, Ty::new_slice(tyctx, inner), method)
+    }
     pub fn type_from_cache<'tyctx>(
         &mut self,
         ty: Ty<'tyctx>,
         tyctx: TyCtxt<'tyctx>,
         method: Option<Instance<'tyctx>>,
     ) -> Type {
-        if crate::PRINT_TY_CONVERTION{
+        if crate::PRINT_TY_CONVERTION {
             eprintln!("ty:{ty:?} method:{method:?}");
         }
         match ty.kind() {
@@ -233,15 +237,15 @@ impl TyCache {
             TyKind::Never => Type::Void, // TODO: ensure this is always OK
             TyKind::RawPtr(type_and_mut) => match type_and_mut.ty.kind() {
                 TyKind::Slice(inner) => {
-                    let inner = if let Some(method) = method{
+                    let inner = if let Some(method) = method {
                         crate::utilis::monomorphize(&method, *inner, tyctx)
-                    }else{
+                    } else {
                         *inner
                     };
-                    slice_ref_to(tyctx,self,Ty::new_slice(tyctx,inner),method)
+                    slice_ref_to(tyctx, self, Ty::new_slice(tyctx, inner), method)
                 }
                 TyKind::Str => {
-                    slice_ref_to(tyctx,self,Ty::new_slice(tyctx,u8_ty(tyctx)),method)
+                    slice_ref_to(tyctx, self, Ty::new_slice(tyctx, u8_ty(tyctx)), method)
                 }
                 _ => Type::Ptr(self.type_from_cache(type_and_mut.ty, tyctx, method).into()),
             },
@@ -259,15 +263,15 @@ impl TyCache {
             }
             TyKind::Ref(_region, inner, _mut) => match inner.kind() {
                 TyKind::Slice(inner) => {
-                    let inner = if let Some(method) = method{
+                    let inner = if let Some(method) = method {
                         crate::utilis::monomorphize(&method, *inner, tyctx)
-                    }else{
+                    } else {
                         *inner
                     };
-                    slice_ref_to(tyctx,self,Ty::new_slice(tyctx,inner),method)
+                    slice_ref_to(tyctx, self, Ty::new_slice(tyctx, inner), method)
                 }
                 TyKind::Str => {
-                    slice_ref_to(tyctx,self,Ty::new_slice(tyctx,u8_ty(tyctx)),method)
+                    slice_ref_to(tyctx, self, Ty::new_slice(tyctx, u8_ty(tyctx)), method)
                 }
                 _ => Type::Ptr(self.type_from_cache(*inner, tyctx, method).into()),
             },
@@ -323,8 +327,13 @@ impl TyCache {
         }
     }
 }
-fn slice_ref_to<'tyctx>(tyctx:TyCtxt<'tyctx>,cache:&mut TyCache,mut inner:Ty<'tyctx>,method:Option<Instance<'tyctx>>)->Type{
-    method.inspect(|method|inner = crate::utilis::monomorphize(method, inner, tyctx));
+fn slice_ref_to<'tyctx>(
+    tyctx: TyCtxt<'tyctx>,
+    cache: &mut TyCache,
+    mut inner: Ty<'tyctx>,
+    method: Option<Instance<'tyctx>>,
+) -> Type {
+    method.inspect(|method| inner = crate::utilis::monomorphize(method, inner, tyctx));
     let inner = ty_generic_arg(inner);
     // TODO: ensure this function call is valid.
     let list = tyctx.mk_args(&[inner]);
@@ -333,54 +342,66 @@ fn slice_ref_to<'tyctx>(tyctx:TyCtxt<'tyctx>,cache:&mut TyCache,mut inner:Ty<'ty
     let ptr_components = cache.ptr_components(tyctx);
     //std::process::exit(-1);
     let adt_def = tyctx.adt_def(ptr_components);
-    let ty = Ty::new(tyctx,TyKind::Adt(adt_def,list));
+    let ty = Ty::new(tyctx, TyKind::Adt(adt_def, list));
     cache.type_from_cache(ty, tyctx, method)
 }
-fn u8_ty(tyctx:TyCtxt)->Ty{
-    Ty::new(tyctx,TyKind::Uint(UintTy::U8))
+fn u8_ty(tyctx: TyCtxt) -> Ty {
+    Ty::new(tyctx, TyKind::Uint(UintTy::U8))
 }
-fn ty_generic_arg(ty:Ty)->GenericArg{
+fn ty_generic_arg(ty: Ty) -> GenericArg {
     // Shit version, ok only cause type tag is 0b00
-    unsafe{std::mem::transmute(ty)}
+    unsafe { std::mem::transmute(ty) }
     // Good version
     /*
     rustc_middle::ty::GenericArgKind::Type(ty).pack()
     */
 }
-// WARING: This function is hacky as shit. It assumes the index of defid of PtrComponents is smaller than the index of the last public function. This *should* almost always be the case, 
+// WARING: This function is hacky as shit. It assumes the index of defid of PtrComponents is smaller than the index of the last public function. This *should* almost always be the case,
 // but it might not be.
 
-fn try_find_ptr_components(ctx:TyCtxt)->DefId{
+fn try_find_ptr_components(ctx: TyCtxt) -> DefId {
     use rustc_middle::middle::exported_symbols::ExportedSymbol;
     let mut core = None;
-    for krate in ctx.crates(()){
+    for krate in ctx.crates(()) {
         let name = ctx.crate_name(*krate);
-        if name.as_str() == "core"{
+        if name.as_str() == "core" {
             core = Some(krate);
             break;
-        }    
+        }
     }
     let core = core.expect("Could not find core!");
-    let core_symbols = ctx.exported_symbols(*core); 
+    let core_symbols = ctx.exported_symbols(*core);
     let mut max_index = 0;
-    for symbol in core_symbols{
-        match symbol.0{
-            ExportedSymbol::NonGeneric(def_id)=>max_index = max_index.max(def_id.index.as_u32()),
-            ExportedSymbol::Generic(def_id,_)=>max_index = max_index.max(def_id.index.as_u32()),
-            ExportedSymbol::ThreadLocalShim(def_id)=>max_index = max_index.max(def_id.index.as_u32()),
-            _=>(),
+    for symbol in core_symbols {
+        match symbol.0 {
+            ExportedSymbol::NonGeneric(def_id) => max_index = max_index.max(def_id.index.as_u32()),
+            ExportedSymbol::Generic(def_id, _) => max_index = max_index.max(def_id.index.as_u32()),
+            ExportedSymbol::ThreadLocalShim(def_id) => {
+                max_index = max_index.max(def_id.index.as_u32())
+            }
+            _ => (),
         }
     }
     let mut ptr_components = None;
-    for index in 0..max_index{
-        let did = DefId{index:index.into(),krate:*core};
-        let name =format!("{did:?}");
-        if name.contains("ptr::metadata::PtrComponents") && !name.contains("PtrComponents::data_address") && !name.contains("PtrComponents::metadata")   && !name.contains("PtrComponents::T"){
+    for index in 0..max_index {
+        let did = DefId {
+            index: index.into(),
+            krate: *core,
+        };
+        let name = format!("{did:?}");
+        if name.contains("ptr::metadata::PtrComponents")
+            && !name.contains("PtrComponents::data_address")
+            && !name.contains("PtrComponents::metadata")
+            && !name.contains("PtrComponents::T")
+        {
             //println!("did:{did:?}");
-            assert!(ptr_components.is_none(),"Found more than one defintin of PtrComponents");
+            assert!(
+                ptr_components.is_none(),
+                "Found more than one defintin of PtrComponents"
+            );
             ptr_components = Some(did);
         }
-       
+
         //44548
     }
     //todo!("core:{core:?} max_index:{max_index:?} ptr_components:{ptr_components:?}");
