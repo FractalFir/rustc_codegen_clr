@@ -161,6 +161,7 @@ pub fn place_adress<'a>(
     type_cache: &mut crate::r#type::TyCache,
 ) -> Vec<CILOp> {
     let mut ops = Vec::with_capacity(place.projection.len());
+    eprintln!("place_adress takes adress of place:{place:?}");
     if place.projection.is_empty() {
         ops.push(local_adress(place.local.as_usize(), method));
         ops

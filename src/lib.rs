@@ -1,5 +1,5 @@
 #![feature(rustc_private)]
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 #![warn(clippy::missing_docs_in_private_items)]
 //! Rustc Codegen CLR - an experimental rustc backend compiling Rust for .NET. This project aims to bring the speed and memory efficency of Rust to .NET.
 //!
@@ -55,7 +55,7 @@ extern crate stable_mir;
 // Debug config
 
 /// Tells the codegen to insert comments containing the MIR statemtens after each one of them.
-const INSERT_MIR_DEBUG_COMMENTS: bool = false;
+const INSERT_MIR_DEBUG_COMMENTS: bool = true;
 const PRINT_LOCAL_TYPES: bool = false;
 /// Tells the codegen to optmize the emiited CIL.
 const OPTIMIZE_CIL: bool = (!INSERT_MIR_DEBUG_COMMENTS) && (false);
@@ -125,7 +125,7 @@ mod terminator;
 /// Code handling transmutes.
 mod transmute;
 /// Code related to types.
-mod r#type;
+pub mod r#type;
 
 /// Implementations of unary operations.
 mod unop;

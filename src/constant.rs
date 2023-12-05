@@ -1,5 +1,5 @@
 use crate::{
-    cil::{CILOp, CallSite, FieldDescriptor},
+    cil::{CILOp, CallSite, FieldDescriptor, StaticFieldDescriptor},
     r#type::{DotnetTypeRef, TyCache, Type},
 };
 use rustc_abi::Size;
@@ -384,19 +384,51 @@ fn load_const_scalar<'ctx>(
             match global_alloc {
                 GlobalAlloc::Static(def_id) => {
                     assert!(tyctx.is_static(def_id));
+
+                    let name = tyctx
+                        .opt_item_name(def_id)
+                        .expect("Static without name")
+                        .to_string();
+                    if name == "__rust_alloc_error_handler_should_panic" || name == "__rust_no_alloc_shim_is_unstable"{
+                        return vec![
+                            CILOp::LDStaticField(
+                                StaticFieldDescriptor::new(None, Type::U8, name.clone().into())
+                                    .into(),
+                            ),
+                            CILOp::NewTMPLocal(Type::U8.into()),
+                            CILOp::SetTMPLocal,
+                            CILOp::LoadAddresOfTMPLocal,
+                            CILOp::FreeTMPLocal,
+                        ];
+                    }
+                    if  name == "environ"{
+                        return vec![
+                            CILOp::LDStaticField(
+                                StaticFieldDescriptor::new(None, Type::Ptr(Type::Ptr(Type::U8.into()).into()), name.clone().into())
+                                    .into(),
+                            ),
+                            CILOp::NewTMPLocal(Type::U8.into()),
+                            CILOp::SetTMPLocal,
+                            CILOp::LoadAddresOfTMPLocal,
+                            CILOp::FreeTMPLocal,
+                        ];
+                    }
                     let attrs = tyctx.codegen_fn_attrs(def_id);
                     rustc_middle::ty::print::with_no_trimmed_paths! {
-                        eprintln!("Codegening static {def_id:?}.")
+                        eprintln!("Codegening static {name}.")
                     };
                     if let Some(import_linkage) = attrs.import_linkage {
                         rustc_middle::ty::print::with_no_trimmed_paths! {
-                            eprintln!("Static {def_id:?} requires special linkage {import_linkage:?} handling.")
+                            panic!("Static {def_id:?} requires special linkage {import_linkage:?} handling.")
                         };
                     }
-                    // TODO: figure out why 
-                    // internal compiler error: compiler/rustc_const_eval/src/const_eval/machine.rs:395:21: trying to call extern function 
+
+                    // TODO: figure out why
+                    // internal compiler error: compiler/rustc_const_eval/src/const_eval/machine.rs:395:21: trying to call extern function
                     // happens.
-                    let alloc = tyctx.eval_static_initializer(def_id).expect("No initializer??");
+                    let alloc = tyctx
+                        .eval_static_initializer(def_id)
+                        .expect("No initializer??");
                     //def_id.ty();
                     let _tyctx = tyctx.reserve_and_set_memory_alloc(alloc);
                     let alloc_id = crate::utilis::alloc_id_to_u64(alloc_id);

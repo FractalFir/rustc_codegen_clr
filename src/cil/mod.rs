@@ -7,24 +7,26 @@ mod static_field_desc;
 use rustc_span::def_id::DefId;
 use serde::{Deserialize, Serialize};
 pub use static_field_desc::*;
-#[derive(Clone,Debug,PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 /// Wrapper around temporaryu data that should never be present after codegen and can't be serialized.
-pub struct TMPSynthOpData<T:Clone + PartialEq>{
+pub struct TMPSynthOpData<T: Clone + PartialEq> {
     /// Inner wrappered temporary variable that can't be serialized
-    pub inner:T,
+    pub inner: T,
 }
-impl<T:Clone + PartialEq> Serialize for TMPSynthOpData<T>{
+impl<T: Clone + PartialEq> Serialize for TMPSynthOpData<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer {
+        S: serde::Serializer,
+    {
         panic!("Atempted to serialize temporary synthetic op data.")
     }
 }
-impl<'de,T:Clone + PartialEq> Deserialize<'de> for TMPSynthOpData<T>{
+impl<'de, T: Clone + PartialEq> Deserialize<'de> for TMPSynthOpData<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de> {
-            panic!("Atempted to deserialize temporary synthetic op data.")
+        D: serde::Deserializer<'de>,
+    {
+        panic!("Atempted to deserialize temporary synthetic op data.")
     }
 }
 /// Represenation of a CIL opcode.

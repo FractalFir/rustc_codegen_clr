@@ -1,6 +1,6 @@
 #![deny(unused_must_use)]
 //use assembly::Assembly;
-use rustc_codegen_clr::{assembly::Assembly, *};
+use rustc_codegen_clr::{assembly::Assembly, *,r#type::Type};
 use std::env;
 fn load_ar(r: &mut impl std::io::Read) -> std::io::Result<assembly::Assembly> {
     use ar::Archive;
@@ -100,6 +100,11 @@ fn autopatch(asm: &mut Assembly) {
         .values()
         .for_each(|method| asm.add_method(method.clone()));
 }
+fn add_mandatory_statics(asm:&mut Assembly){
+    asm.add_static(Type::U8,"__rust_alloc_error_handler_should_panic");
+    asm.add_static(Type::U8,"__rust_no_alloc_shim_is_unstable");
+    asm.add_static(Type::Ptr(Type::Ptr(Type::U8.into()).into()),"environ");
+}
 fn main() {
     use std::io::Read;
     let args: Vec<String> = env::args().collect();
@@ -137,6 +142,7 @@ fn main() {
     use rustc_codegen_clr::assembly_exporter::AssemblyExporter;
     let path = output;
     let is_lib = output.contains(".dll") || output.contains(".so") || output.contains(".o");
+    add_mandatory_statics(&mut final_assembly);
     rustc_codegen_clr::assembly_exporter::ilasm_exporter::ILASMExporter::export_assembly(
         &final_assembly,
         path.as_ref(),

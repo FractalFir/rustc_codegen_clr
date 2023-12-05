@@ -313,7 +313,10 @@ impl Assembly {
         Ok(())
         //todo!("Can't add function")
     }
-
+    /// Adds a global static field named *name* of type *tpe*
+    pub fn add_static(&mut self,tpe:Type,name:&str){
+        self.static_fields.insert(name.into(),tpe);
+    }
     fn add_allocation(
         &mut self,
         alloc_id: u64,
@@ -334,12 +337,6 @@ impl Assembly {
         let const_allocation = const_allocation.inner();
         let bytes: &[u8] = const_allocation
             .inspect_with_uninit_and_ptr_outside_interpreter(0..const_allocation.len());
-        use std::hash::{DefaultHasher, Hash, Hasher};
-        fn calculate_hash<T: Hash>(t: &T) -> u64 {
-            let mut s = DefaultHasher::new();
-            t.hash(&mut s);
-            s.finish()
-        }
         //let byte_hash = calculate_hash(&bytes);
 
         let alloc_fld: IString = format!("alloc_{alloc_id:x}").into();

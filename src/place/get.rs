@@ -23,6 +23,7 @@ pub fn place_get<'a>(
     type_cache: &mut crate::r#type::TyCache,
 ) -> Vec<CILOp> {
     let mut ops = Vec::with_capacity(place.projection.len());
+   
     if place.projection.is_empty() {
         ops.push(local_get(place.local.as_usize(), method));
         ops

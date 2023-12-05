@@ -586,6 +586,8 @@ run_test! {types,structs}
 run_test! {types,interop}
 run_test! {types,vec}
 run_test! {types,string_slice}
+run_test! {types,ref_deref}
+
 run_test! {types,slice}
 run_test! {types,statics}
 run_test! {std,main}
