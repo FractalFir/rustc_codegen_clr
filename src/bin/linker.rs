@@ -1,6 +1,6 @@
 #![deny(unused_must_use)]
 //use assembly::Assembly;
-use rustc_codegen_clr::{assembly::Assembly, *,r#type::Type};
+use rustc_codegen_clr::{assembly::Assembly, r#type::Type, *};
 use std::env;
 fn load_ar(r: &mut impl std::io::Read) -> std::io::Result<assembly::Assembly> {
     use ar::Archive;
@@ -100,10 +100,10 @@ fn autopatch(asm: &mut Assembly) {
         .values()
         .for_each(|method| asm.add_method(method.clone()));
 }
-fn add_mandatory_statics(asm:&mut Assembly){
-    asm.add_static(Type::U8,"__rust_alloc_error_handler_should_panic");
-    asm.add_static(Type::U8,"__rust_no_alloc_shim_is_unstable");
-    asm.add_static(Type::Ptr(Type::Ptr(Type::U8.into()).into()),"environ");
+fn add_mandatory_statics(asm: &mut Assembly) {
+    asm.add_static(Type::U8, "__rust_alloc_error_handler_should_panic");
+    asm.add_static(Type::U8, "__rust_no_alloc_shim_is_unstable");
+    asm.add_static(Type::Ptr(Type::Ptr(Type::U8.into()).into()), "environ");
 }
 fn main() {
     use std::io::Read;

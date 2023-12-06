@@ -23,26 +23,18 @@ pub fn place_elem_adress<'ctx>(
     method_instance: Instance<'ctx>,
     _body: &rustc_middle::mir::Body,
     type_cache: &mut crate::r#type::TyCache,
-) -> (PlaceTy<'ctx>, Vec<CILOp>) {
+) -> Vec<CILOp> {
     let curr_type = curr_type.monomorphize(&method_instance, tyctx);
     assert_morphic!(curr_type);
     match place_elem {
+        // If I am trying to take somethings adress, and the last projection is a deref, then it should presumably be skipped.
         PlaceElem::Deref => {
-            let pointed = pointed_type(curr_type);
-            assert_morphic!(pointed);
-            if body_ty_is_by_adress(&pointed) {
-                (pointed.into(), vec![])
-            } else {
-                (
-                    pointed.into(),
-                    deref_op(pointed.into(), tyctx, &method_instance, type_cache),
-                )
-            }
+            vec![]
         }
         PlaceElem::Field(index, field_type) => match curr_type {
             PlaceTy::Ty(curr_type) => {
                 //TODO: Why was this commented out?
-                let field_type = crate::utilis::monomorphize(&method_instance, *field_type, tyctx);
+                //let field_type = crate::utilis::monomorphize(&method_instance, *field_type, tyctx);
                 let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
                 let field_desc = crate::utilis::field_descrptor(
                     curr_type,
@@ -51,10 +43,7 @@ pub fn place_elem_adress<'ctx>(
                     method_instance,
                     type_cache,
                 );
-                (
-                    (field_type).into(),
-                    vec![CILOp::LDFieldAdress(field_desc.into())],
-                )
+                vec![CILOp::LDFieldAdress(field_desc.into())]
             }
             PlaceTy::EnumVariant(enm, var_idx) => {
                 let owner = crate::utilis::monomorphize(&method_instance, enm, tyctx);
@@ -67,7 +56,7 @@ pub fn place_elem_adress<'ctx>(
                     type_cache,
                 );
                 let ops = vec![CILOp::LDFieldAdress(field_desc.into())];
-                ((*field_type).into(), ops)
+                (ops)
             }
         },
         PlaceElem::Downcast(symbol, variant) => {
@@ -95,7 +84,7 @@ pub fn place_elem_adress<'ctx>(
                 field_name,
             );
             let variant_type = PlaceTy::EnumVariant(curr_type, variant.as_u32());
-            (variant_type, vec![CILOp::LDFieldAdress(field_desc)])
+            (vec![CILOp::LDFieldAdress(field_desc)])
         }
         PlaceElem::Index(index) => {
             let curr_ty = curr_type
@@ -132,7 +121,7 @@ pub fn place_elem_adress<'ctx>(
                         CILOp::Mul,
                         CILOp::Add,
                     ];
-                    (inner.into(), ops)
+                    (ops)
                 }
                 TyKind::Array(element, _length) => {
                     //let element = crate::utilis::monomorphize(&method_instance, *element, tyctx);
@@ -154,7 +143,7 @@ pub fn place_elem_adress<'ctx>(
                             .into(),
                         ),
                     ];
-                    ((*element).into(), ops)
+                    (ops)
                 }
                 _ => {
                     rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Can't index into {curr_ty}!")}

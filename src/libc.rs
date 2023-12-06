@@ -143,6 +143,52 @@ pub fn insert_libc(asm: &mut Assembly, tyctx: TyCtxt) {
         CILOp::Ret,
     ]);
     asm.add_method(realloc);
+    let mut native_mem = DotnetTypeRef::new(
+        Some("System.Runtime.InteropServices"),
+        "System.Runtime.InteropServices.NativeMemory",
+    );
+    native_mem.set_valuetype(false);
+    let native_mem = Some(native_mem);
+    let mut __rust_alloc = Method::new(
+        AccessModifer::Private,
+        true,
+        FnSig::new(&[Type::USize, Type::USize], &Type::Ptr(Type::U8.into())),
+        "__rust_alloc",
+        vec![],
+    );
+    __rust_alloc.set_ops(vec![
+        CILOp::LDArg(0),
+        CILOp::LDArg(1),
+        CILOp::Call(CallSite::boxed(
+            native_mem.clone(),
+            "AlignedAlloc".into(),
+            FnSig::new(&[Type::USize, Type::USize], &Type::Ptr(Type::Void.into())),
+            true,
+        )),
+        CILOp::Ret,
+    ]);
+    asm.add_method(__rust_alloc);
+    let mut __rust_dealloc = Method::new(
+        AccessModifer::Private,
+        true,
+        FnSig::new(
+            &[Type::Ptr(Type::U8.into()), Type::USize, Type::USize],
+            &Type::Void,
+        ),
+        "__rust_dealloc",
+        vec![],
+    );
+    __rust_dealloc.set_ops(vec![
+        CILOp::LDArg(0),
+        CILOp::Call(CallSite::boxed(
+            native_mem.clone(),
+            "AlignedFree".into(),
+            FnSig::new(&[Type::Ptr(Type::Void.into())], &Type::Void),
+            true,
+        )),
+        CILOp::Ret,
+    ]);
+    asm.add_method(__rust_dealloc);
     let mut free = Method::new(
         AccessModifer::Private,
         true,
@@ -153,7 +199,7 @@ pub fn insert_libc(asm: &mut Assembly, tyctx: TyCtxt) {
     free.set_ops(vec![
         CILOp::LDArg(0),
         CILOp::Call(CallSite::boxed(
-            marshal,
+            native_mem.clone(),
             "FreeHGlobal".into(),
             FnSig::new(&[Type::ISize], &Type::Void),
             true,
@@ -161,6 +207,15 @@ pub fn insert_libc(asm: &mut Assembly, tyctx: TyCtxt) {
         CILOp::Ret,
     ]);
     asm.add_method(free);
+    let mut volatile_load = Method::new(
+        AccessModifer::Private,
+        true,
+        FnSig::new(&[Type::Ptr(Type::U8.into())], &Type::U8),
+        "volatile_load",
+        vec![],
+    );
+    volatile_load.set_ops(vec![CILOp::LDArg(0), CILOp::LDIndI8, CILOp::Ret]);
+    asm.add_method(volatile_load);
     abort(asm);
 }
 
@@ -190,6 +245,7 @@ fn math(asm: &mut Assembly) {
 fn io(asm: &mut Assembly) {
     puts(asm);
 }
+
 add_method!(
     sqrtf32,
     &[Type::F32],

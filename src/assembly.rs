@@ -314,8 +314,8 @@ impl Assembly {
         //todo!("Can't add function")
     }
     /// Adds a global static field named *name* of type *tpe*
-    pub fn add_static(&mut self,tpe:Type,name:&str){
-        self.static_fields.insert(name.into(),tpe);
+    pub fn add_static(&mut self, tpe: Type, name: &str) {
+        self.static_fields.insert(name.into(), tpe);
     }
     fn add_allocation(
         &mut self,

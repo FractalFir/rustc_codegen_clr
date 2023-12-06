@@ -1,6 +1,6 @@
 use crate::cil::{CILOp, FieldDescriptor};
 use crate::function_sig::FnSig;
-use crate::r#type::{DotnetTypeRef, Type};
+use crate::r#type::{DotnetTypeRef, Type, TyCache};
 
 use rustc_middle::mir::{Place, PlaceElem};
 use rustc_middle::ty::{Instance, TyCtxt, TyKind};
@@ -23,7 +23,7 @@ pub fn place_get<'a>(
     type_cache: &mut crate::r#type::TyCache,
 ) -> Vec<CILOp> {
     let mut ops = Vec::with_capacity(place.projection.len());
-   
+
     if place.projection.is_empty() {
         ops.push(local_get(place.local.as_usize(), method));
         ops
@@ -43,6 +43,7 @@ pub fn place_get<'a>(
         ops
     }
 }
+
 fn place_elem_get<'a>(
     place_elem: &PlaceElem<'a>,
     curr_type: super::PlaceTy<'a>,

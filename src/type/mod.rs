@@ -1,9 +1,9 @@
+/// Cached type handler
+pub(crate) mod tycache;
 /// A representation of a primitve type or a reference.
 pub mod r#type;
 /// Contains a reperesentation of a non-primitve .NET type(class,struct)
 pub(crate) mod type_def;
-/// Cached type handler
-pub(crate) mod tycache;
 
 pub use r#type::*;
 use rustc_middle::ty::{GenericArg, IntTy, Ty, TyCtxt, TyKind, UintTy};

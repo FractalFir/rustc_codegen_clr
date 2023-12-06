@@ -1,5 +1,18 @@
-#![allow(internal_features,unused_imports,incomplete_features,unused_variables,dead_code,improper_ctypes_definitions)]
-#![feature(lang_items,adt_const_params,associated_type_defaults,core_intrinsics,start)]
+#![allow(
+    internal_features,
+    unused_imports,
+    incomplete_features,
+    unused_variables,
+    dead_code,
+    improper_ctypes_definitions
+)]
+#![feature(
+    lang_items,
+    adt_const_params,
+    associated_type_defaults,
+    core_intrinsics,
+    start
+)]
 //#![no_std]
 use std::time::Instant;
 //use mycorrhiza::{start,panic_handler};
@@ -7,10 +20,14 @@ use std::time::Instant;
 //start!{}
 //#[lang = "eh_personality"]
 //fn rust_eh_personality() {}
-extern "C"{
-    fn puts(msg:*const u8);
+extern "C" {
+    fn puts(msg: *const u8);
 }
 fn main() {
+    let int = std::hint::black_box(8);
+    let boxed_int = std::hint::black_box(Box::new(int));
+    let val = std::hint::black_box(*boxed_int);
+    /*
     let mut string = String::with_capacity(100);
     string.push('H');
     string.push('e');
@@ -20,5 +37,5 @@ fn main() {
     string.push('!');
     string.push('\0');
     std::hint::black_box(&string);
-    unsafe{puts(string.as_ptr())}
+    unsafe{puts(string.as_ptr())}*/
 }

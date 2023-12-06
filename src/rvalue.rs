@@ -16,7 +16,12 @@ pub fn handle_rvalue<'tcx>(
     tycache: &mut TyCache,
 ) -> Vec<CILOp> {
     let res = match rvalue {
-        Rvalue::Use(operand) => handle_operand(operand, tyctx, method, method_instance, tycache),
+        Rvalue::Use(operand) => {
+            let res = handle_operand(operand, tyctx, method, method_instance, tycache);
+            let ty = operand.ty(method,tyctx);
+            println!("operand:{operand:?} res:{res:?} ty:{ty:?}");
+            res
+        },
         Rvalue::CopyForDeref(place) => {
             crate::place::place_get(place, tyctx, method, method_instance, tycache)
         }
@@ -29,8 +34,51 @@ pub fn handle_rvalue<'tcx>(
         Rvalue::Cast(
             CastKind::PointerCoercion(PointerCoercion::MutToConstPointer) | CastKind::PtrToPtr,
             operand,
-            _,
-        ) => handle_operand(operand, tyctx, method, method_instance, tycache),
+            dst,
+        ) => {
+           
+            let target = crate::utilis::monomorphize(&method_instance, *dst, tyctx);
+            let target_pointed_to = match target.kind() {
+                TyKind::RawPtr(type_and_mut) => type_and_mut.ty,
+                TyKind::Ref(_, inner, _) => *inner,
+                _ => panic!("Type is not ptr {target:?}."),
+            };
+            let source =
+                crate::utilis::monomorphize(&method_instance, operand.ty(method, tyctx), tyctx);
+            let source_pointed_to = match source.kind() {
+                TyKind::RawPtr(type_and_mut) => type_and_mut.ty,
+                TyKind::Ref(_, inner, _) => *inner,
+                _ => panic!("Type is not ptr {target:?}."),
+            };
+            let source_type = tycache.type_from_cache(source, tyctx, Some(method_instance));
+            let target_type = tycache.type_from_cache(target, tyctx, Some(method_instance));
+            
+            let ops = match (source_pointed_to.kind(), target_pointed_to.kind()) {
+                (TyKind::Slice(_),TyKind::Slice(_))=>{
+                    let mut res = handle_operand(operand, tyctx, method, method_instance, tycache);
+                    res.push(CILOp::NewTMPLocal(source_type.into()));
+                    res.push(CILOp::SetTMPLocal);
+                    res.push(CILOp::LoadAddresOfTMPLocal);
+                    res.push(CILOp::FreeTMPLocal);
+                    res.extend(crate::place::deref_op(
+                        crate::place::PlaceTy::Ty(target),
+                        tyctx,
+                        &method_instance,
+                        tycache,
+                    ));
+                    res
+                }
+                (TyKind::Slice(_),_)=>{
+                    let mut res = handle_operand(operand, tyctx, method, method_instance, tycache);
+                    //println!("Slice!");
+                    res.push(CILOp::LDField(FieldDescriptor::new(source_type.as_dotnet().unwrap(),Type::Ptr(Type::Void.into()),"data_address".into()).into()));
+                    res
+                }
+                _ => handle_operand(operand, tyctx, method, method_instance, tycache),
+            };
+            //println!("casting {source:?} source_pointed_to:{source_pointed_to:?} to {target:?} target_pointed_to:{target_pointed_to:?}. ops:{ops:?}");
+            ops
+        }
         Rvalue::Cast(CastKind::PointerCoercion(PointerCoercion::Unsize), operand, target) => {
             let target = crate::utilis::monomorphize(&method_instance, *target, tyctx);
             let source =
@@ -50,6 +98,7 @@ pub fn handle_rvalue<'tcx>(
             };
             //let element_type = tycache.type_from_cache(*element, tyctx, Some(method_instance));
             let mut res = handle_operand(operand, tyctx, method, method_instance, tycache);
+            println!("Unsize casting {target:?} to {target:?}");
             res.extend([
                 CILOp::NewTMPLocal(source_type.clone().into()),
                 CILOp::SetTMPLocal,
@@ -245,7 +294,28 @@ pub fn handle_rvalue<'tcx>(
                 }
             }
         }
+        Rvalue::ShallowInitBox(operand, dst) => {
+            let dst = crate::utilis::monomorphize(&method_instance, *dst, tyctx);
+            let dst_ty = dst;
+            //let dst = tycache.type_from_cache(dst, tyctx, Some(method_instance));
+            let src = operand.ty(&method.local_decls, tyctx);
+            let src = crate::utilis::monomorphize(&method_instance, src, tyctx);
+            let src = tycache.type_from_cache(src, tyctx, Some(method_instance));
+            let mut res = handle_operand(operand, tyctx, method, method_instance, tycache);
+            res.push(CILOp::NewTMPLocal(src.into()));
+            res.push(CILOp::SetTMPLocal);
+            res.push(CILOp::LoadAddresOfTMPLocal);
+            res.push(CILOp::FreeTMPLocal);
+            res.extend(crate::place::deref_op(
+                crate::place::PlaceTy::Ty(dst_ty),
+                tyctx,
+                &method_instance,
+                tycache,
+            ));
+            res
+        }
         Rvalue::Cast(CastKind::PointerFromExposedAddress, operand, _) => {
+
             //FIXME: the documentation of this cast(https://doc.rust-lang.org/nightly/std/ptr/fn.from_exposed_addr.html) is a bit confusing,
             //since this seems to be something deeply linked to the rust memory model.
             // I assume this to be ALWAYS equivalent to `usize as *const/mut T`, but this may not always be the case.
@@ -255,6 +325,7 @@ pub fn handle_rvalue<'tcx>(
             handle_operand(operand, tyctx, method, method_instance, tycache)
         }
         Rvalue::Cast(CastKind::PointerExposeAddress, operand, _) => {
+
             //FIXME: the documentation of this cast(https://doc.rust-lang.org/nightly/std/primitive.pointer.html#method.expose_addrl) is a bit confusing,
             //since this seems to be something deeply linked to the rust memory model.
             // I assume this to be ALWAYS equivalent to `*const/mut T as usize`, but this may not always be the case.
@@ -349,6 +420,10 @@ fn align_of(ty: rustc_middle::ty::Ty) -> u64 {
         //TODO: While always returing 8 for ADTs won't cause crashes, it is inefficent.
         TyKind::Tuple(elements) => elements.iter().map(|ele| align_of(ele)).max().unwrap_or(1),
         TyKind::Adt(_, _) => 8,
+        TyKind::RawPtr(_) => {
+            eprintln!("WARINING: assuming alignof(usize) == 8!");
+            std::mem::align_of::<u64>() as u64
+        }
         _ => todo!("Can't calcualte the aligement of type {ty:?}"),
     }
 }

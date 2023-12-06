@@ -137,8 +137,16 @@ pub fn deref_op<'ctx>(
                     type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance));
                 vec![CILOp::LdObj(derefed_type.into())]
             }
-            TyKind::Ref(_, _, _) => vec![CILOp::LDIndISize],
-            TyKind::RawPtr(_) => vec![CILOp::LDIndISize],
+            TyKind::Ref(_, inner, _) => match inner.kind(){
+                TyKind::Slice(_)=>vec![CILOp::LdObj(type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance)).into())],
+                TyKind::Str=>vec![CILOp::LdObj(type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance)).into())],
+                _=> vec![CILOp::LDIndISize],
+            },
+            TyKind::RawPtr(type_and_mut)=> match type_and_mut.ty.kind(){
+                TyKind::Slice(_)=>vec![CILOp::LdObj(type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance)).into())],
+                TyKind::Str=>vec![CILOp::LdObj(type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance)).into())],
+                _=> vec![CILOp::LDIndISize],
+            },
             TyKind::Array(_, _) => {
                 let derefed_type =
                     type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance));
@@ -161,7 +169,6 @@ pub fn place_adress<'a>(
     type_cache: &mut crate::r#type::TyCache,
 ) -> Vec<CILOp> {
     let mut ops = Vec::with_capacity(place.projection.len());
-    eprintln!("place_adress takes adress of place:{place:?}");
     if place.projection.is_empty() {
         ops.push(local_adress(place.local.as_usize(), method));
         ops
@@ -177,7 +184,14 @@ pub fn place_adress<'a>(
             ty = curr_ty.monomorphize(&method_instance, ctx);
             ops.extend(curr_ops);
         }
-        ops.extend(adress::place_elem_adress(head, ty, ctx, method_instance, method, type_cache).1);
+        ops.extend(adress::place_elem_adress(
+            head,
+            ty,
+            ctx,
+            method_instance,
+            method,
+            type_cache,
+        ));
         ops
     }
 }

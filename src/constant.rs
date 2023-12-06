@@ -389,7 +389,9 @@ fn load_const_scalar<'ctx>(
                         .opt_item_name(def_id)
                         .expect("Static without name")
                         .to_string();
-                    if name == "__rust_alloc_error_handler_should_panic" || name == "__rust_no_alloc_shim_is_unstable"{
+                    if name == "__rust_alloc_error_handler_should_panic"
+                        || name == "__rust_no_alloc_shim_is_unstable"
+                    {
                         return vec![
                             CILOp::LDStaticField(
                                 StaticFieldDescriptor::new(None, Type::U8, name.clone().into())
@@ -401,11 +403,15 @@ fn load_const_scalar<'ctx>(
                             CILOp::FreeTMPLocal,
                         ];
                     }
-                    if  name == "environ"{
+                    if name == "environ" {
                         return vec![
                             CILOp::LDStaticField(
-                                StaticFieldDescriptor::new(None, Type::Ptr(Type::Ptr(Type::U8.into()).into()), name.clone().into())
-                                    .into(),
+                                StaticFieldDescriptor::new(
+                                    None,
+                                    Type::Ptr(Type::Ptr(Type::U8.into()).into()),
+                                    name.clone().into(),
+                                )
+                                .into(),
                             ),
                             CILOp::NewTMPLocal(Type::U8.into()),
                             CILOp::SetTMPLocal,

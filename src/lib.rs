@@ -55,7 +55,7 @@ extern crate stable_mir;
 // Debug config
 
 /// Tells the codegen to insert comments containing the MIR statemtens after each one of them.
-const INSERT_MIR_DEBUG_COMMENTS: bool = true;
+const INSERT_MIR_DEBUG_COMMENTS: bool = false;
 const PRINT_LOCAL_TYPES: bool = false;
 /// Tells the codegen to optmize the emiited CIL.
 const OPTIMIZE_CIL: bool = (!INSERT_MIR_DEBUG_COMMENTS) && (false);
