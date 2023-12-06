@@ -1,6 +1,6 @@
 use crate::cil::{CILOp, FieldDescriptor};
 use crate::function_sig::FnSig;
-use crate::r#type::{DotnetTypeRef, Type, TyCache};
+use crate::r#type::{DotnetTypeRef, TyCache, Type};
 
 use rustc_middle::mir::{Place, PlaceElem};
 use rustc_middle::ty::{Instance, TyCtxt, TyKind};

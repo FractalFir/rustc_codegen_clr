@@ -199,7 +199,7 @@ pub fn insert_libc(asm: &mut Assembly, tyctx: TyCtxt) {
     free.set_ops(vec![
         CILOp::LDArg(0),
         CILOp::Call(CallSite::boxed(
-            native_mem.clone(),
+            marshal.clone(),
             "FreeHGlobal".into(),
             FnSig::new(&[Type::ISize], &Type::Void),
             true,
@@ -273,7 +273,9 @@ add_method!(
         CILOp::LDLoc(0),
         CILOp::ConvISize(false),
         CILOp::Call(CallSite::boxed(
-            Some(DotnetTypeRef::new(Some("System.Console"), "System.Console")),
+            Some(
+                DotnetTypeRef::new(Some("System.Console"), "System.Console").with_valuetype(false)
+            ),
             "Write".into(),
             FnSig::new(&[Type::DotnetChar], &Type::Void),
             true,

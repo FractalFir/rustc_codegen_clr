@@ -75,7 +75,7 @@ pub const ALLOW_MISCOMPILATIONS: bool = true;
 /// Preapends each function call with a debug message
 pub const TRACE_CALLS: bool = true;
 /// Preapends each statement with a debug message
-pub const TRACE_STATEMENTS: bool = false;
+pub const TRACE_STATEMENTS: bool = true;
 // Modules
 
 /// Specifies if a method/type is private or public.

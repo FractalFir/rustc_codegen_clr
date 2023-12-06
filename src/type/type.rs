@@ -70,6 +70,10 @@ impl DotnetTypeRef {
     pub fn isize_type() -> Self {
         Self::new(Some("System.Runtime"), "System.IntPtr")
     }
+    pub fn with_valuetype(mut self, valuetype: bool) -> Self {
+        self.set_valuetype(valuetype);
+        self
+    }
     pub fn new(assembly: Option<&str>, name_path: &str) -> Self {
         Self {
             assembly: assembly.map(std::convert::Into::into),

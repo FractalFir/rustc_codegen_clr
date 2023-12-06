@@ -137,15 +137,31 @@ pub fn deref_op<'ctx>(
                     type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance));
                 vec![CILOp::LdObj(derefed_type.into())]
             }
-            TyKind::Ref(_, inner, _) => match inner.kind(){
-                TyKind::Slice(_)=>vec![CILOp::LdObj(type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance)).into())],
-                TyKind::Str=>vec![CILOp::LdObj(type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance)).into())],
-                _=> vec![CILOp::LDIndISize],
+            TyKind::Ref(_, inner, _) => match inner.kind() {
+                TyKind::Slice(_) => vec![CILOp::LdObj(
+                    type_cache
+                        .type_from_cache(derefed_type, tyctx, Some(*method_instance))
+                        .into(),
+                )],
+                TyKind::Str => vec![CILOp::LdObj(
+                    type_cache
+                        .type_from_cache(derefed_type, tyctx, Some(*method_instance))
+                        .into(),
+                )],
+                _ => vec![CILOp::LDIndISize],
             },
-            TyKind::RawPtr(type_and_mut)=> match type_and_mut.ty.kind(){
-                TyKind::Slice(_)=>vec![CILOp::LdObj(type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance)).into())],
-                TyKind::Str=>vec![CILOp::LdObj(type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance)).into())],
-                _=> vec![CILOp::LDIndISize],
+            TyKind::RawPtr(type_and_mut) => match type_and_mut.ty.kind() {
+                TyKind::Slice(_) => vec![CILOp::LdObj(
+                    type_cache
+                        .type_from_cache(derefed_type, tyctx, Some(*method_instance))
+                        .into(),
+                )],
+                TyKind::Str => vec![CILOp::LdObj(
+                    type_cache
+                        .type_from_cache(derefed_type, tyctx, Some(*method_instance))
+                        .into(),
+                )],
+                _ => vec![CILOp::LDIndISize],
             },
             TyKind::Array(_, _) => {
                 let derefed_type =
