@@ -347,6 +347,18 @@ impl CILOp {
             CILOp::Call(CallSite::new(Some(class), name, signature, true).into()),
         ]
     }
+    /// Returns the ops necesary to  write message `msg` to STDOUT. Ends with new line.
+    pub fn new_line() -> Self {
+        let mut class = DotnetTypeRef::new(Some("System.Console"), "System.Console");
+        class.set_valuetype(false);
+        let name = "WriteLine".into();
+        let signature = FnSig::new(
+            &[],
+            &crate::r#type::Type::Void,
+        );
+
+            CILOp::Call(CallSite::new(Some(class), name, signature, true).into())
+    }
     /// Returns the ops necesary to  write message `msg` to STDOUT. Does not end with new line.
     pub fn debug_msg_no_nl(msg: &str) -> [CILOp; 2] {
         let mut class = DotnetTypeRef::new(Some("System.Console"), "System.Console");

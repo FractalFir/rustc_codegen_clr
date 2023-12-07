@@ -37,5 +37,7 @@ fn main() {
     string.push('\0');
     std::hint::black_box(&string);
     unsafe{puts(string.as_ptr())};
+   //let mut f = File::create("foo.txt")?;
+    //black_box(f);
     let val = std::hint::black_box(*boxed_int);
 }

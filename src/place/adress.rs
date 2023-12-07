@@ -3,10 +3,10 @@ use crate::assert_morphic;
 use crate::cil::{CILOp, FieldDescriptor};
 use crate::function_sig::FnSig;
 use crate::place::{body_ty_is_by_adress, deref_op};
-use crate::r#type::{DotnetTypeRef, Type};
+use crate::r#type::{DotnetTypeRef, Type, TyCache};
 
 use rustc_middle::mir::PlaceElem;
-use rustc_middle::ty::{Instance, TyCtxt, TyKind};
+use rustc_middle::ty::{Instance, TyCtxt, TyKind,Ty};
 pub fn local_adress(local: usize, method: &rustc_middle::mir::Body) -> CILOp {
     if local == 0 {
         CILOp::LDLocA(0)
@@ -16,6 +16,33 @@ pub fn local_adress(local: usize, method: &rustc_middle::mir::Body) -> CILOp {
         CILOp::LDArgA((local - 1) as u32)
     }
 }
+pub fn address_last_dereference<'ctx>(target_type:Ty<'ctx>,curr_type:PlaceTy<'ctx>,tycache:&mut TyCache,tyctx: TyCtxt<'ctx>,method:Instance<'ctx>)->Vec<CILOp>{
+    let curr_type = match curr_type{
+        PlaceTy::Ty(curr_type) => curr_type,
+        // Enums don't require any special handling
+        PlaceTy::EnumVariant(_,_)=>return vec![],
+    };
+    //eprintln!("target_type:{target_type:?} curr_type:{curr_type:?}");
+    // Get the type curr_type points to!
+    let curr_points_to = super::pointed_type(curr_type.into());
+    let curr_type = tycache.type_from_cache(curr_type, tyctx, Some(method));
+    
+    match (curr_points_to.kind(), target_type.kind()) {
+        (TyKind::Slice(_), TyKind::Slice(_)) => 
+            vec![],
+        (TyKind::Slice(_), _) => 
+            vec![CILOp::LDField(
+                FieldDescriptor::new(
+                    curr_type.as_dotnet().unwrap(),
+                    Type::Ptr(Type::Void.into()),
+                    "data_address".into(),
+                )
+                .into(),
+            )],
+        _=>vec![],
+    }
+    //println!("casting {source:?} source_pointed_to:{source_pointed_to:?} to {target:?} target_pointed_to:{target_pointed_to:?}. ops:{ops:?}");
+}
 pub fn place_elem_adress<'ctx>(
     place_elem: &PlaceElem<'ctx>,
     curr_type: PlaceTy<'ctx>,
@@ -23,14 +50,12 @@ pub fn place_elem_adress<'ctx>(
     method_instance: Instance<'ctx>,
     _body: &rustc_middle::mir::Body,
     type_cache: &mut crate::r#type::TyCache,
+    place_ty:Ty<'ctx>
 ) -> Vec<CILOp> {
     let curr_type = curr_type.monomorphize(&method_instance, tyctx);
     assert_morphic!(curr_type);
     match place_elem {
-        // If I am trying to take somethings adress, and the last projection is a deref, then it should presumably be skipped.
-        PlaceElem::Deref => {
-            vec![]
-        }
+        PlaceElem::Deref => address_last_dereference(place_ty,curr_type,type_cache,tyctx,method_instance),
         PlaceElem::Field(index, field_type) => match curr_type {
             PlaceTy::Ty(curr_type) => {
                 //TODO: Why was this commented out?

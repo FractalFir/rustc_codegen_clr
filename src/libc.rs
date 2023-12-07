@@ -156,6 +156,7 @@ pub fn insert_libc(asm: &mut Assembly, tyctx: TyCtxt) {
         "__rust_alloc",
         vec![],
     );
+    let msg = CILOp::debug_msg_no_nl("Allocated buffer at adress ");
     __rust_alloc.set_ops(vec![
         CILOp::LDArg(0),
         CILOp::LDArg(1),
@@ -165,6 +166,12 @@ pub fn insert_libc(asm: &mut Assembly, tyctx: TyCtxt) {
             FnSig::new(&[Type::USize, Type::USize], &Type::Ptr(Type::Void.into())),
             true,
         )),
+        CILOp::Dup,
+        msg[0].clone(),
+        msg[1].clone(),
+        CILOp::ConvU64(false),
+        CILOp::new_line(),
+        CILOp::debug_u64(),
         CILOp::Ret,
     ]);
     asm.add_method(__rust_alloc);
