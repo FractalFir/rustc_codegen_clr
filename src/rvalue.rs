@@ -54,7 +54,7 @@ pub fn handle_rvalue<'tcx>(
             let target_type = tycache.type_from_cache(target, tyctx, Some(method_instance));
 
             let ops = match (source_pointed_to.kind(), target_pointed_to.kind()) {
-                (TyKind::Slice(_), TyKind::Slice(_)) => {
+                (TyKind::Slice(_)| TyKind::Str, TyKind::Slice(_)| TyKind::Str) => {
                     let mut res = handle_operand(operand, tyctx, method, method_instance, tycache);
                     res.push(CILOp::NewTMPLocal(source_type.into()));
                     res.push(CILOp::SetTMPLocal);
@@ -68,7 +68,7 @@ pub fn handle_rvalue<'tcx>(
                     ));
                     res
                 }
-                (TyKind::Slice(_), _) => {
+                (TyKind::Slice(_) | TyKind::Str, _) => {
                     let mut res = handle_operand(operand, tyctx, method, method_instance, tycache);
                     //println!("Slice!");
                     res.push(CILOp::LDField(

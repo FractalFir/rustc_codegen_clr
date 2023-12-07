@@ -166,12 +166,14 @@ pub fn insert_libc(asm: &mut Assembly, tyctx: TyCtxt) {
             FnSig::new(&[Type::USize, Type::USize], &Type::Ptr(Type::Void.into())),
             true,
         )),
+        // Allocation tracing
+        /*
         CILOp::Dup,
         msg[0].clone(),
         msg[1].clone(),
         CILOp::ConvU64(false),
         CILOp::new_line(),
-        CILOp::debug_u64(),
+        CILOp::debug_u64(),*/
         CILOp::Ret,
     ]);
     asm.add_method(__rust_alloc);

@@ -609,12 +609,14 @@ fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
 fn output_type_cil(tpe: &Type) -> Cow<'static, str> {
     match tpe {
         Type::Void => "void".into(),
+        Type::Ptr(inner)=>format!("{inner}*",inner = output_type_cil(inner)).into(),
         _ => prefixed_type_cil(tpe),
     }
 }
 fn call_output_type_cil(tpe: &Type) -> Cow<'static, str> {
     match tpe {
         Type::Void => "void".into(),
+        Type::Ptr(inner)=>format!("{inner}*",inner = output_type_cil(inner)).into(),
         _ => prefixed_field_type_cil(tpe),
     }
 }

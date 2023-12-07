@@ -73,9 +73,9 @@ pub const ABORT_ON_ERROR: bool = false;
 /// Should the codegen continue working after it encoutnered a miscompilation?
 pub const ALLOW_MISCOMPILATIONS: bool = true;
 /// Preapends each function call with a debug message
-pub const TRACE_CALLS: bool = true;
+pub const TRACE_CALLS: bool = false;
 /// Preapends each statement with a debug message
-pub const TRACE_STATEMENTS: bool = true;
+pub const TRACE_STATEMENTS: bool = false;
 // Modules
 
 /// Specifies if a method/type is private or public.
