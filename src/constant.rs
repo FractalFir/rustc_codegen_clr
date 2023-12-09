@@ -58,10 +58,12 @@ fn create_const_adt_from_bytes<'ctx>(
                 creator_ops.extend(field_ops);
                 let cil_ftype =
                     tycache.type_from_cache(field.ty(tyctx, subst), tyctx, Some(method_instance));
+                let name = field.name.to_string();
+                let name = crate::r#type::escape_field_name(&name);
                 creator_ops.push(CILOp::STField(crate::cil::FieldDescriptor::boxed(
                     dotnet_ty.clone(),
                     cil_ftype,
-                    field.name.to_string().into(),
+                    name,
                 )));
                 rustc_middle::ty::print::with_no_trimmed_paths! {println!(
                     "Const field {name} of type {ftype} with bytes {field_bytes:?}",

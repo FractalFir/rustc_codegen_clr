@@ -281,6 +281,7 @@ fn aggregate_adt<'tyctx>(
                 let field_type =
                     type_cache.type_from_cache(field_type, tyctx, Some(method_instance));
                 let field_name = field_name(adt_type, field.0);
+                //let field_name = crate::utilis::field_name(ty, idx)
                 let field_desc =
                     FieldDescriptor::boxed(adt_type_ref.clone(), field_type, field_name);
 
