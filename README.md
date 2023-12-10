@@ -19,18 +19,18 @@ The project is still very early in development, but it has made significant prog
 - [X] IL local variable merging(reduces the complexity of generated CIL)
 - [X] Local struct spliting(significantly speeds up for loops, reduces complexity of CIL) 
 - [X] Auto inlining of trivial functions
-- [ ] Full variable lifetime analisis and optimzations based on it.
-- [ ] Stack unwiwinding
+- [ ] Full variable lifetime analysis and optimizations based on it.
+- [ ] Stack unwinding
 - [ ] Exception handling
 - [X] Setting value of a reference
 - [X] Getting value of a reference
 - [ ] Creating slices from arrays
 - [X] Creating arrays
-- [X] Indexing arrays 
+- [X] Indexing arrays
 - [X] Getting values of fields
 - [X] Setting fields
 - [X] Pointer dereferencing
-- [X] Generics *GATS don't work in some edge cases, the generic handling will need to be revorked*
+- [X] Generics *GATS don't work in some edge cases, the generic handling will need to be reworked*
 - [X] for loops 
 - [X] constant values
 
@@ -54,11 +54,13 @@ The project is still very early in development, but it has made significant prog
 - [ ] Function types
 
 ## Milestones
+
 - [X] Draft version of the `mycorrhiza` interop layer, capable of creating managed objects, and calling methods. 
-- [X] Compiling the `core` Rust crate - *Core now compiles, but is not fully functional. Around ~100 function instances don't compile at all, and a couple more compile with errors.
+- [X] Compiling the `core` Rust crate - *Core now compiles, but is not fully functional. Around ~100 function instances don't compile at all, and a couple more compile with errors.*
 - [ ] Compiling the `alloc` Rust crate 
 - [ ] Compiling the `std` Rust crate 
-- [ ] Stack unwinding 
+- [ ] Stack unwinding
+
 ## Basic benchmarks
 
 > [!NOTE]
@@ -79,9 +81,9 @@ The project is still very early in development, but it has made significant prog
 | C# release (pure IL)                       | 250 ns          |
 | C# debug (pure IL)                         | 370 ns          |
 
-As you can see, the difference between optimized C# and optimized .NET Rust code is not all that big. It is noticeable(~10%), but I would say it is a pretty good result considering how few optimizations are done right now. With a couple bigger changes coming later down the line, the gap could become non-existent in the future. Since this benchmark is meant to show the worst case scenario, Rust could already outperform C# in a wide range of more memory-intensive scenarios.
+As you can see, the difference between optimized C# and optimized .NET Rust code is not all that big. It is noticeable(~10%), but I would say it is a pretty good result considering how few optimizations are done right now. With a couple bigger changes coming further down the line, the gap could become non-existent in the future. Since this benchmark is meant to show the worst case scenario, Rust could already outperform C# in a wide range of more memory-intensive scenarios.
 
-**However**, you should take all of those results with a pinch of salt. Since there is currently no way to use "proper" .NET bench marking tools, I am relying on the `Stopwatch` class for time and have no way to control for the behavior of the JIT. It seems to optimize the rust code after enough runs, all while the speed of C# dropped significantly. This is not due to thermal throttling or any other variable I can think of - both tests were run multiple times back-to-back(Rust then C# the Rust then C# again), and the results remain consistent. Such oddities point at issues with the testing setup, but the results can still serve as a rough guide about what kinds of performance can be expected.
+**However**, you should take all of those results with a pinch of salt. Since there is currently no way to use "proper" .NET benchmarking tools, I am relying on the `Stopwatch` class for time and have no way to control for the behavior of the JIT. It seems to optimize the rust code after enough runs, all while the speed of C# dropped significantly. This is not due to thermal throttling or any other variable I can think of - both tests were run multiple times back-to-back(Rust then C# the Rust then C# again), and the results remain consistent. Such oddities point at issues with the testing setup, but the results can still serve as a rough guide about what kinds of performance can be expected.
 
 | Test Method                       | Avg of 100M runs |
 | --------------------------------- | ---------------- |
