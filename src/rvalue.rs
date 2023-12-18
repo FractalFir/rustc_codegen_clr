@@ -1,12 +1,11 @@
 use crate::cil::{CILOp, FieldDescriptor};
 use crate::operand::handle_operand;
 use crate::place::deref_op;
-use crate::r#type::{DotnetTypeRef, TyCache, Type};
-use rustc_middle::mir::{CastKind, NullOp};
-use rustc_middle::ty::adjustment::PointerCoercion;
+use crate::r#type::{TyCache, Type};
 use rustc_middle::{
-    mir::{Place, Rvalue},
-    ty::{Instance, Ty, TyCtxt, TyKind, UintTy},
+    mir::{Place, Rvalue,CastKind, NullOp},
+    ty::{Instance, Ty, TyCtxt, TyKind,adjustment::PointerCoercion,ParamEnv},
+    
 };
 pub fn handle_rvalue<'tcx>(
     rvalue: &Rvalue<'tcx>,
@@ -51,7 +50,7 @@ pub fn handle_rvalue<'tcx>(
                 _ => panic!("Type is not ptr {target:?}."),
             };
             let source_type = tycache.type_from_cache(source, tyctx, Some(method_instance));
-            let target_type = tycache.type_from_cache(target, tyctx, Some(method_instance));
+            //let target_type = tycache.type_from_cache(target, tyctx, Some(method_instance));
 
             let ops = match (source_pointed_to.kind(), target_pointed_to.kind()) {
                 (TyKind::Slice(_)| TyKind::Str, TyKind::Slice(_)| TyKind::Str) => {
@@ -98,7 +97,7 @@ pub fn handle_rvalue<'tcx>(
                 TyKind::Ref(_, inner, _) => *inner,
                 _ => panic!("Non ptr type:{source:?}"),
             };
-            let length = if let TyKind::Array(element, length) = derefed_source.kind() {
+            let length = if let TyKind::Array(_, length) = derefed_source.kind() {
                 crate::utilis::try_resolve_const_size(&length).unwrap()
             } else {
                 panic!("Non array type:{source:?}")
@@ -210,7 +209,7 @@ pub fn handle_rvalue<'tcx>(
             }
             NullOp::AlignOf => {
                 let ty = crate::utilis::monomorphize(&method_instance, *ty, tyctx);
-                vec![CILOp::LdcI64(align_of(ty) as i64), CILOp::ConvUSize(false)]
+                vec![CILOp::LdcI64(align_of(ty,tyctx) as i64), CILOp::ConvUSize(false)]
             }
             _ => todo!("Unsuported nullary {op:?}!"),
         },
@@ -304,7 +303,6 @@ pub fn handle_rvalue<'tcx>(
         Rvalue::ShallowInitBox(operand, dst) => {
             let dst = crate::utilis::monomorphize(&method_instance, *dst, tyctx);
             let boxed_dst = Ty::new_box(tyctx, dst);
-            let dst_ty = dst;
             //let dst = tycache.type_from_cache(dst, tyctx, Some(method_instance));
             let src = operand.ty(&method.local_decls, tyctx);
             let src = crate::utilis::monomorphize(&method_instance, src, tyctx);
@@ -393,40 +391,11 @@ pub fn handle_rvalue<'tcx>(
     };
     res
 }
-fn align_of(ty: rustc_middle::ty::Ty) -> u64 {
-    use rustc_middle::ty::{IntTy, TyKind};
-    match ty.kind() {
-        TyKind::Int(int) => match int {
-            IntTy::I8 => std::mem::align_of::<i8>() as u64,
-            IntTy::I16 => std::mem::align_of::<i16>() as u64,
-            IntTy::I32 => std::mem::align_of::<i32>() as u64,
-            IntTy::I64 => std::mem::align_of::<i64>() as u64,
-            IntTy::Isize => {
-                eprintln!("WARINING: assuming alignof(isize) == 8!");
-                std::mem::align_of::<i64>() as u64
-            }
-            IntTy::I128 => std::mem::align_of::<i128>() as u64,
-            //_ => todo!("Can't calcuate align of int type {int:?}"),
-        },
-        TyKind::Uint(uint) => match uint {
-            UintTy::U8 => std::mem::align_of::<u8>() as u64,
-            UintTy::U16 => std::mem::align_of::<u16>() as u64,
-            UintTy::U32 => std::mem::align_of::<u32>() as u64,
-            UintTy::U64 => std::mem::align_of::<u64>() as u64,
-            UintTy::Usize => {
-                eprintln!("WARINING: assuming alignof(usize) == 8!");
-                std::mem::align_of::<u64>() as u64
-            }
-            UintTy::U128 => std::mem::align_of::<u128>() as u64,
-            //_ => todo!("Can't calcuate align of int type {int:?}"),
-        },
-        //TODO: While always returing 8 for ADTs won't cause crashes, it is inefficent.
-        TyKind::Tuple(elements) => elements.iter().map(|ele| align_of(ele)).max().unwrap_or(1),
-        TyKind::Adt(_, _) => 8,
-        TyKind::RawPtr(_) => {
-            eprintln!("WARINING: assuming alignof(usize) == 8!");
-            std::mem::align_of::<u64>() as u64
-        }
-        _ => todo!("Can't calcualte the aligement of type {ty:?}"),
-    }
+fn align_of<'tcx>(ty: rustc_middle::ty::Ty<'tcx>,tyctx: TyCtxt<'tcx>) -> u64 {
+    let layout = tyctx.layout_of(rustc_middle::ty::ParamEnvAnd{param_env:ParamEnv::reveal_all(),value:ty}).expect("Can't get layout of a type.").layout;
+    
+    let align = layout.align.abi;
+    // FIXME: this field is likely private for a reason. I should not do this get its value. Find a better way to get aligement.
+    let pow2 = unsafe{std::mem::transmute::<_,u8>(align)} as u64;
+    1<<pow2
 }

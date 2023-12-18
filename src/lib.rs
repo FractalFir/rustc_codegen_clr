@@ -52,6 +52,7 @@ extern crate rustc_span;
 extern crate rustc_symbol_mangling;
 extern crate rustc_target;
 extern crate stable_mir;
+extern crate rustc_ty_utils;
 // Debug config
 
 /// Tells the codegen to insert comments containing the MIR statemtens after each one of them.
@@ -90,7 +91,8 @@ pub mod assembly_exporter;
 mod basic_block;
 /// Code handling binary operations
 mod binop;
-
+/// Implementation of key external functions(eg. libc) necesary for propely running a Rust executable
+pub mod ffi;
 /// Code hansling rust `as` casts.
 mod casts;
 mod checked_binop;
@@ -106,8 +108,8 @@ mod constant;
 mod entrypoint;
 /// Signature of a function (inputs)->output
 pub mod function_sig;
-/// Implementation of some libc functions in CIL assembly. Will likely be removed and mostly replaced by functions implmented using mycorrhize.
-pub mod libc;
+//
+
 /// A representation of a .NET method
 pub mod method;
 /// Handles a MIR operand.
@@ -206,7 +208,7 @@ impl CodegenBackend for MyBackend {
             codegen.opt();
             // Done twice for inlining!
             codegen.opt();
-            libc::insert_libc(&mut codegen, tcx);
+            ffi::insert_ffi_functions(&mut codegen, tcx);
             let name: IString = cgus.iter().next().unwrap().name().to_string().into();
 
             Box::new((

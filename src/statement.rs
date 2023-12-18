@@ -11,7 +11,7 @@ pub fn handle_statement<'tcx>(
     type_cache: &mut TyCache,
 ) -> Vec<CILOp> {
     let kind = &statement.kind;
-    let mut res = match kind {
+    match kind {
         StatementKind::StorageLive(_local) => {
             vec![]
         }
@@ -177,15 +177,10 @@ pub fn handle_statement<'tcx>(
                     }
                     res
                 }
-                _ => {
-                    rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Can't handle non-diverging intrinsics {non_diverging_intirinsic:?} yet!")}
-                }
             }
         }
         _ => {
             rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Unsuported statement kind {kind:?}")}
         }
-    };
-
-    res
+    }
 }

@@ -1,11 +1,15 @@
 use std::ops::Range;
-
+mod locals;
+mod op2_combos;
+mod op3_combos;
 use crate::{
     assembly::Assembly,
     cil::{CILOp, CallSite},
     method::Method,
     r#type::Type,
 };
+
+use self::locals::{remove_unused_locals, try_split_locals};
 const MAX_PASS: u32 = 16;
 pub fn try_inline(caller: &mut Method, inlined: &Method, target: usize) -> bool {
     // Inlining is still sometimes quite buggy.
@@ -126,8 +130,8 @@ pub fn opt_method(method: &mut Method, asm: &Assembly) {
     });
     repalce_const_sizes(method.ops_mut());
     for _ in 0..MAX_PASS {
-        op2_combos(method.ops_mut());
-        op3_combos(method.ops_mut());
+        op2_combos::optimize_combos(method.ops_mut());
+        op3_combos::optimize_combos(method.ops_mut());
         op4_combos(method.ops_mut());
         remove_zombie_sets(method.ops_mut());
         method.ops_mut().retain(|op| *op != CILOp::Nop);
@@ -150,32 +154,7 @@ fn repalce_const_sizes(ops: &mut [CILOp]) {
         _ => (),
     })
 }
-fn remove_unused_locals(method: &mut Method) {
-    let mut local_map = vec![u32::MAX; method.locals().len()];
-    let mut new_locals = Vec::with_capacity(method.locals().len());
-    for (local, tpe) in method.locals().iter().enumerate() {
-        if local_map[local] == u32::MAX && !is_local_unused(method.get_ops(), local as u32) {
-            local_map[local] = new_locals.len() as u32;
-            new_locals.push(tpe.clone());
-        }
-    }
-    method.ops_mut().iter_mut().for_each(|op| match op {
-        CILOp::LDLoc(idx) => {
-            let new_loc = local_map[*idx as usize];
-            *op = CILOp::LDLoc(new_loc);
-        }
-        CILOp::LDLocA(idx) => {
-            let new_loc = local_map[*idx as usize];
-            *op = CILOp::LDLocA(new_loc);
-        }
-        CILOp::STLoc(idx) => {
-            let new_loc = local_map[*idx as usize];
-            *op = CILOp::STLoc(new_loc);
-        }
-        _ => (),
-    });
-    method.set_locals(new_locals);
-}
+
 fn remove_zombie_sets(ops: &mut Vec<CILOp>) {
     for idx in 0..ops.len() {
         match ops[idx] {
@@ -193,201 +172,8 @@ fn remove_zombie_sets(ops: &mut Vec<CILOp>) {
         }
     }
 }
-fn op2_combos(ops: &mut Vec<CILOp>) {
-    if ops.is_empty() {
-        return;
-    }
-    for idx in 0..(ops.len() - 1) {
-        let (op1, op2) = (&ops[idx], &ops[idx + 1]);
-        match (op1, op2) {
-            // BB_SOURCE:goto target makes it so all goto SOURCE can be replaced with goto TARGET
-            (CILOp::Label(source), CILOp::GoTo(target)) => {
-                let source = *source;
-                let target = *target;
-                ops.iter_mut()
-                    .for_each(|cilop| cilop.replace_target(source, target));
-            }
 
-            (CILOp::LDLoc(a), CILOp::STLoc(b)) => {
-                if a == b {
-                    ops[idx] = CILOp::Nop;
-                    ops[idx + 1] = CILOp::Nop;
-                }
-            }
-            (CILOp::STLoc(a), CILOp::LDLoc(b)) => {
-                if a == b {
-                    ops[idx + 1] = CILOp::STLoc(*a);
-                    ops[idx] = CILOp::Dup;
-                }
-            }
-            (CILOp::Dup | CILOp::LDLoc(_) | CILOp::LDLocA(_), CILOp::Pop) => {
-                ops[idx] = CILOp::Nop;
-                ops[idx + 1] = CILOp::Nop;
-            }
-            (CILOp::GoTo(target), CILOp::Label(label)) => {
-                if target == label {
-                    ops[idx] = CILOp::Nop;
-                }
-            }
-            (CILOp::GoTo(_), op2) => {
-                //TODO: Handle exception handling constructs!
-                if let CILOp::Label(_) = op2 {
-                }
-                // Any op after GOTO and not preceded by a label is unreachable.
-                else {
-                    ops[idx + 1] = CILOp::Nop;
-                }
-            }
-            (CILOp::Label(source), CILOp::Label(target)) => {
-                let source = *source;
-                let target = *target;
-                ops.iter_mut()
-                    .for_each(|cilop| cilop.replace_target(source, target));
-            }
-            (CILOp::Not, CILOp::BZero(target)) => {
-                ops[idx + 1] = CILOp::BTrue(*target);
-                ops[idx] = CILOp::Nop;
-            }
-            (CILOp::Eq, CILOp::BZero(target)) => {
-                ops[idx + 1] = CILOp::BNe(*target);
-                ops[idx] = CILOp::Nop;
-            }
-            (CILOp::Eq, CILOp::BTrue(target)) => {
-                ops[idx + 1] = CILOp::BEq(*target);
-                ops[idx] = CILOp::Nop;
-            }
-            (CILOp::LdcI32(0) | CILOp::LdcI64(0), CILOp::BEq(target)) => {
-                ops[idx + 1] = CILOp::BZero(*target);
-                ops[idx] = CILOp::Nop;
-            }
-            (CILOp::LdcI32(0) | CILOp::LdcI64(0), CILOp::BNe(target)) => {
-                ops[idx + 1] = CILOp::BTrue(*target);
-                ops[idx] = CILOp::Nop;
-            }
-            (CILOp::Lt, CILOp::BZero(target)) => {
-                ops[idx + 1] = CILOp::BGe(*target);
-                ops[idx] = CILOp::Nop;
-            }
-            (
-                CILOp::LdcI32(_) | CILOp::LdcI64(_) | CILOp::LdcF32(_) | CILOp::LdcF64(_),
-                CILOp::STLoc(loc),
-            ) => {
-                let loc = *loc;
-                let set_count = ops.iter().filter(|op| CILOp::STLoc(loc) == **op).count();
-                // If this is not the only set, this optimization won't work.
-                if set_count != 1 {
-                    continue;
-                }
-                // If a pointer to this local is taken, this optmization won't work.
-                if ops.iter().any(|op| CILOp::LDLocA(loc) == *op) {
-                    continue;
-                }
-                let load = op1.clone();
-                ops.iter_mut()
-                    .filter(|op| CILOp::LDLoc(loc) == **op)
-                    .for_each(|op| *op = load.clone());
-            }
-            (
-                CILOp::LdcI32(_) | CILOp::LdcI64(_) | CILOp::LdcF32(_) | CILOp::LdcF64(_),
-                CILOp::Pop,
-            ) => {
-                ops[idx] = CILOp::Nop;
-                ops[idx + 1] = CILOp::Nop;
-            }
-            (CILOp::ConvUSize(false) | CILOp::ConvF64(false), CILOp::Pop) => {
-                ops[idx] = CILOp::Pop;
-                ops[idx + 1] = CILOp::Nop;
-            }
-            _ => (),
-        }
-    }
-}
-fn op3_combos(ops: &mut Vec<CILOp>) {
-    if ops.len() < 3 {
-        return;
-    }
-    for idx in 0..(ops.len() - 2) {
-        let (op1, op2, op3) = (&ops[idx], &ops[idx + 1], &ops[idx + 2]);
-        match (op1, op2, op3) {
-            (CILOp::LdcI32(1), CILOp::LDLoc(_) | CILOp::LDArg(_), CILOp::Mul) => {
-                ops[idx] = op2.clone();
-                ops[idx + 1] = CILOp::Nop;
-                ops[idx + 2] = CILOp::Nop;
-            }
-            (_, CILOp::LdcI32(1), CILOp::Mul) => {
-                ops[idx] = op1.clone();
-                ops[idx + 1] = CILOp::Nop;
-                ops[idx + 2] = CILOp::Nop;
-            }
-            (CILOp::BEq(a1), CILOp::GoTo(b), CILOp::Label(a2)) => {
-                if a1 == a2 {
-                    let a = *a1;
-                    let b = *b;
-                    ops[idx] = CILOp::BNe(b);
-                    ops[idx + 1] = CILOp::Nop;
-                    ops[idx + 2] = CILOp::Label(a);
-                }
-            }
-            (CILOp::LdcI32(0) | CILOp::LdcI64(0), CILOp::ConvISize(_), CILOp::BEq(target)) => {
-                let target = *target;
-                ops[idx] = CILOp::Nop;
-                ops[idx + 1] = CILOp::Nop;
-                ops[idx + 2] = CILOp::BZero(target);
-            }
-            (CILOp::LDLoc(a), CILOp::Dup, CILOp::STLoc(b)) => {
-                if a == b {
-                    let a = *a;
-                    ops[idx] = CILOp::Nop;
-                    ops[idx + 1] = CILOp::Nop;
-                    ops[idx + 2] = CILOp::LDLoc(a);
-                }
-            }
-            (CILOp::GoTo(a1), CILOp::Label(b), CILOp::Label(a2)) => {
-                if a1 == a2 {
-                    let a = *a1;
-                    let b = *b;
-                    ops[idx] = CILOp::Nop;
-                    ops[idx + 1] = CILOp::Label(b);
-                    ops[idx + 2] = CILOp::Label(a);
-                }
-            }
-            //TODO: ensure changing the offset of ops does not cause issues.
-            (
-                CILOp::LdcI32(_) | CILOp::LdcI64(_) | CILOp::LdcF32(_) | CILOp::LdcF64(_),
-                CILOp::ConvUSize(_) | CILOp::ConvF64(_),
-                CILOp::STLoc(loc),
-            ) => {
-                let loc = *loc;
-                let set_count = ops.iter().filter(|op| CILOp::STLoc(loc) == **op).count();
-                // If this is not the only set, this optimization won't work.
-                if set_count != 1 {
-                    continue;
-                }
-                // If a pointer to this local is taken, this optmization won't work.
-                if ops.iter().any(|op| CILOp::LDLocA(loc) == *op) {
-                    continue;
-                }
-                let load = [op1.clone(), op2.clone()];
-                let mut new_ops = Vec::with_capacity(ops.len());
-                for op in ops.iter() {
-                    match op {
-                        CILOp::LDLoc(oplocal) => {
-                            if loc == *oplocal {
-                                new_ops.extend(load.iter().cloned())
-                            } else {
-                                new_ops.push(op.clone())
-                            }
-                        }
-                        _ => new_ops.push(op.clone()),
-                    }
-                }
-                *ops = new_ops;
-                continue;
-            }
-            _ => (),
-        }
-    }
-}
+
 fn op4_combos(ops: &mut [CILOp]) {
     if ops.len() < 4 {
         return;
@@ -459,15 +245,7 @@ fn is_local_dead(ops: &[CILOp], local: u32) -> bool {
         _ => false,
     })
 }
-/// A "Unused" local is one that is never written to or read from.
-fn is_local_unused(ops: &[CILOp], local: u32) -> bool {
-    !ops.iter().any(|op| match op {
-        CILOp::LDLoc(loc) => *loc == local,
-        CILOp::LDLocA(loc) => *loc == local,
-        CILOp::STLoc(loc) => *loc == local,
-        _ => false,
-    })
-}
+
 /// A "Unused" label is one that is never jumped to
 fn is_label_unsused(ops: &[CILOp], label: u32) -> bool {
     !ops.iter().any(|op| match op {
@@ -625,142 +403,4 @@ fn could_local_ptr_escape(local: u32, ops: &[CILOp]) -> bool {
     }
     false
 }
-fn try_split_locals(method: &mut Method, asm: &Assembly) {
-    let splits: Vec<_> = method
-        .locals()
-        .iter()
-        .enumerate()
-        .filter(|(_, tpe)| is_type_splitable(&tpe.1))
-        .filter(|(local, _)| can_split_local(*local as u32, method.get_ops()))
-        .map(|(index, tpe)| (index, tpe.clone()))
-        .collect();
 
-    for (split_local, split_tpe) in splits {
-        let dotnet_tpe = split_tpe
-            .1
-            .as_dotnet()
-            .expect("Can't spilt non-dotnet types!");
-        if dotnet_tpe.name_path().contains("PtrRepr") {
-            eprintln!("WARINING: PtrRepr is bugged and causes issues during optimzation. It will not be optimized. TODO: figure out why the field `const_ptr` can't be found.");
-            continue;
-        }
-        let type_def = asm.get_typedef_by_path(dotnet_tpe.name_path());
-        let type_def = if let Some(type_def) = type_def {
-            type_def
-        } else {
-            continue;
-        };
-        let local_map_start = method.locals().len();
-        let morphic_fields: Option<Box<[_]>> =
-            type_def.morphic_fields(dotnet_tpe.generics()).collect();
-        let morphic_fields = if let Some(morphic_fields) = morphic_fields {
-            morphic_fields
-        } else {
-            continue;
-        };
-        method.extend_locals(morphic_fields.iter().map(|(_name, tpe)| tpe));
-        for index in 0..(method.get_ops().len() - 2) {
-            //FIXME: this needs to be changed if we ever allow for this to optimize more compilcated split field access patterns.
-            let (op1, op2, op3) = (
-                &method.get_ops()[index],
-                &method.get_ops()[index + 1],
-                &method.get_ops()[index + 2],
-            );
-            // Check if op1 is LDLoc(split_local), otherwise ignore.
-            if let CILOp::LDLocA(local) = op1 {
-                if *local != split_local as u32 {
-                    continue;
-                }
-            } else {
-                continue;
-            }
-            if let CILOp::LDField(field_desc) = op2 {
-                let field_idx = if let Some(field) = morphic_fields
-                    .iter()
-                    .position(|mfield| mfield.0 == field_desc.name())
-                {
-                    field
-                } else {
-                    panic!("ERROR: field spliting failed because field {field_desc:?} could not be found. This may be caused by an error during codegen");
-                };
-                method.ops_mut()[index] = CILOp::Nop;
-                method.ops_mut()[index + 1] = CILOp::LDLoc((field_idx + local_map_start) as u32);
-                continue;
-            }
-            if let CILOp::LDFieldAdress(field_desc) = op2 {
-                let field_idx = if let Some(field) = morphic_fields
-                    .iter()
-                    .position(|mfield| mfield.0 == field_desc.name())
-                {
-                    field
-                } else {
-                    panic!("ERROR: field spliting failed because field {field_desc:?} could not be found. This may be caused by an error during codegen");
-                };
-                method.ops_mut()[index] = CILOp::Nop;
-                method.ops_mut()[index + 1] = CILOp::LDLocA((field_idx + local_map_start) as u32);
-                continue;
-            }
-            if let CILOp::STField(field_desc) = op3 {
-                let field_idx = if let Some(field) = morphic_fields
-                    .iter()
-                    .position(|mfield| mfield.0 == field_desc.name())
-                {
-                    field
-                } else {
-                    panic!("ERROR: field spliting failed because field {field_desc:?} could not be found. This may be caused by an error during codegen");
-                };
-                method.ops_mut()[index] = CILOp::Nop;
-                method.ops_mut()[index + 2] = CILOp::STLoc((field_idx + local_map_start) as u32);
-                continue;
-            }
-            panic!("Invalid field access in field split on ops {op1:?} {op2:?} {op3:?} split_local:{split_local:?} ");
-        }
-        //todo!("Can't yet split local {split_local:?} of type {split_tpe:?}. type_def:{type_def:?} morphic_fields:{morphic_fields:?}")
-    }
-}
-/// Checks if a local of type `tpe` could potentialy be split.
-fn is_type_splitable(tpe: &Type) -> bool {
-    if let Type::DotnetType(tref) = tpe {
-        tref.is_valuetype() && tref.asm().is_none() //&& (!tref.name_path().contains("/"))
-    } else {
-        false
-    }
-}
-/// Checks if a local could be split.
-fn can_split_local(local: u32, ops: &[CILOp]) -> bool {
-    // Local is get/set by value, should not be split.
-    if ops.iter().any(|op| {
-        if let CILOp::LDLoc(loc) | CILOp::STLoc(loc) = op {
-            *loc == local
-        } else {
-            false
-        }
-    }) {
-        return false;
-    }
-    // Check if local adress is used ONLY to get fields.
-    for (index, op) in ops.iter().enumerate() {
-        match op {
-            CILOp::LDLocA(loc) => {
-                if *loc == local {
-                    assert!(
-                        index + 2 < ops.len(),
-                        "ERROR: malformed method. LDLocA must be followed by at least 2 ops."
-                    );
-                    let op2 = &ops[index + 1];
-                    let op3 = &ops[index + 2];
-                    if let CILOp::LDField(_) | CILOp::LDFieldAdress(_) = op2 {
-                        continue;
-                    }
-                    if let CILOp::STField(_) = op3 {
-                        continue;
-                    }
-                    return false;
-                }
-            }
-            _ => (),
-        }
-    }
-
-    true
-}

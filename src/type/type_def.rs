@@ -186,7 +186,7 @@ pub fn ident_gargs(gargc: usize) -> std::borrow::Cow<'static, [Type]> {
     }
 }
 pub fn get_array_type(element_count: usize) -> TypeDef {
-    use crate::cil::{CILOp, FieldDescriptor};
+    use crate::cil::CILOp;
     let name = format!("Arr{element_count}");
     let mut fields = Vec::with_capacity(element_count);
     for field in 0..element_count {

@@ -1,12 +1,6 @@
-use super::{pointed_type, PlaceTy};
-use crate::assert_morphic;
-use crate::cil::{CILOp, FieldDescriptor};
-use crate::function_sig::FnSig;
-use crate::place::{body_ty_is_by_adress, deref_op};
-use crate::r#type::{DotnetTypeRef, Type, TyCache};
-
-use rustc_middle::mir::PlaceElem;
-use rustc_middle::ty::{Instance, TyCtxt, TyKind,Ty};
+use crate::{assert_morphic,cil::{CILOp, FieldDescriptor},function_sig::FnSig,r#type::{Type, TyCache}};
+use super::PlaceTy;
+use rustc_middle::{ty::{Instance, TyCtxt, TyKind,Ty},mir::PlaceElem};
 pub fn local_adress(local: usize, method: &rustc_middle::mir::Body) -> CILOp {
     if local == 0 {
         CILOp::LDLocA(0)
@@ -56,7 +50,7 @@ pub fn place_elem_adress<'ctx>(
     assert_morphic!(curr_type);
     match place_elem {
         PlaceElem::Deref => address_last_dereference(place_ty,curr_type,type_cache,tyctx,method_instance),
-        PlaceElem::Field(index, field_type) => match curr_type {
+        PlaceElem::Field(index, _) => match curr_type {
             PlaceTy::Ty(curr_type) => {
                 //TODO: Why was this commented out?
                 //let field_type = crate::utilis::monomorphize(&method_instance, *field_type, tyctx);
@@ -81,10 +75,10 @@ pub fn place_elem_adress<'ctx>(
                     type_cache,
                 );
                 let ops = vec![CILOp::LDFieldAdress(field_desc.into())];
-                (ops)
+                ops
             }
         },
-        PlaceElem::Downcast(symbol, variant) => {
+        PlaceElem::Downcast(symbol,_) => {
             let curr_type = curr_type
                 .as_ty()
                 .expect("Can't get enum variant of an enum varaint!");
@@ -108,8 +102,7 @@ pub fn place_elem_adress<'ctx>(
                 crate::r#type::Type::DotnetType(Box::new(field_type)),
                 field_name,
             );
-            let variant_type = PlaceTy::EnumVariant(curr_type, variant.as_u32());
-            (vec![CILOp::LDFieldAdress(field_desc)])
+            vec![CILOp::LDFieldAdress(field_desc)]
         }
         PlaceElem::Index(index) => {
             let curr_ty = curr_type
@@ -146,7 +139,7 @@ pub fn place_elem_adress<'ctx>(
                         CILOp::Mul,
                         CILOp::Add,
                     ];
-                    (ops)
+                    ops
                 }
                 TyKind::Array(element, _length) => {
                     //let element = crate::utilis::monomorphize(&method_instance, *element, tyctx);
@@ -168,7 +161,7 @@ pub fn place_elem_adress<'ctx>(
                             .into(),
                         ),
                     ];
-                    (ops)
+                    ops
                 }
                 _ => {
                     rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Can't index into {curr_ty}!")}

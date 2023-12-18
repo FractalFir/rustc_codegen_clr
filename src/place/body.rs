@@ -3,7 +3,7 @@ use crate::assert_morphic;
 use crate::cil::{CILOp, FieldDescriptor};
 use crate::function_sig::FnSig;
 use crate::place::{body_ty_is_by_adress, deref_op};
-use crate::r#type::{DotnetTypeRef, Type};
+use crate::r#type:: Type;
 
 use rustc_middle::mir::PlaceElem;
 use rustc_middle::ty::{Instance, Ty, TyCtxt, TyKind};

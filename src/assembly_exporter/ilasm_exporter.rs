@@ -16,7 +16,6 @@ impl std::io::Write for ILASMExporter {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         self.encoded_asm.write(buf)
     }
-
     fn flush(&mut self) -> std::io::Result<()> {
         self.encoded_asm.flush()
     }
@@ -126,10 +125,15 @@ fn type_def_cli(w: &mut impl Write, tpe: &TypeDef) -> Result<(), super::Assembly
     } else {
         "private"
     };
+    let sealed =  if tpe.explicit_offsets().is_some() || tpe.extends().is_none(){
+        "sealed"
+    }else{
+        ""
+    };
     if tpe.explicit_offsets().is_some() {
-        writeln!(w, "\n.class {access} explicit ansi sealed beforefieldinit {name}{generics}  extends {extended}{{")?;
+        writeln!(w, "\n.class {access} explicit ansi {sealed} beforefieldinit {name}{generics}  extends {extended}{{")?;
     } else {
-        writeln!(w, "\n.class {access} {name}{generics} extends {extended}{{")?;
+        writeln!(w, "\n.class {access} ansi {sealed} beforefieldinit {name}{generics} extends {extended}{{")?;
     }
 
     for inner_type in tpe.inner_types() {
@@ -587,7 +591,7 @@ fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
             }
         }
         CILOp::Nop => "nop".into(),
-        CILOp::NewTMPLocal(_) | CILOp::FreeTMPLocal | CILOp::LoadAddresOfTMPLocal | CILOp::SetTMPLocal | CILOp::LoadTMPLocal | CILOp::LoadUnderTMPLocal(_) | CILOp::LoadAdressUnderTMPLocal(_) | CILOp::LoadGlobalStaticPtr { .. }=>
+        CILOp::NewTMPLocal(_) | CILOp::FreeTMPLocal | CILOp::LoadAddresOfTMPLocal | CILOp::SetTMPLocal | CILOp::LoadTMPLocal | CILOp::LoadUnderTMPLocal(_) | CILOp::LoadAdressUnderTMPLocal(_) =>
          panic!("CRITICAL INTERNAL ERROR: OP '{op:?}' is syntetic(internal only) and should have been substituted before being emmited!"),
          CILOp::LoadGlobalAllocPtr { alloc_id } => panic!("CRITICAL INTERNAL ERROR:Allocation {alloc_id} was not resolved to a static."),
         CILOp::Pop => "pop".into(),

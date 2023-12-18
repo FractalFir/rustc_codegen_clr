@@ -1,12 +1,8 @@
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::ty::{
-    AdtDef, AdtKind, Binder, Const, ConstKind, EarlyBinder, FloatTy, GenericArg, Instance, List,
+    AdtDef, AdtKind, Const, ConstKind, EarlyBinder, FloatTy, GenericArg, Instance, List,
     ParamEnv, SymbolName, Ty, TyCtxt, TyKind, TypeFoldable,
 };
-pub const BEGIN_TRY: &str = "rustc_clr_interop_begin_try";
-pub const END_TRY: &str = "rustc_clr_interop_end_try";
-pub const BEGIN_CATCH: &str = "rustc_clr_interop_begin_catch";
-pub const END_CATCH: &str = "rustc_clr_interop_end_catch";
 pub const CTOR_FN_NAME: &str = "rustc_clr_interop_managed_ctor";
 pub const MANAGED_CALL_FN_NAME: &str = "rustc_clr_interop_managed_call";
 pub const MANAGED_CALL_VIRT_FN_NAME: &str = "rustc_clr_interop_managed_call_virt";
@@ -15,24 +11,10 @@ pub fn is_function_magic(name: &str) -> bool {
 }
 use crate::{
     cil::{CILOp, FieldDescriptor},
-    codegen_error::MethodCodegenError,
     r#type::TyCache,
     r#type::{DotnetTypeRef, Type},
     IString,
 };
-pub fn skip_binder_if_no_generic_types<T>(binder: Binder<T>) -> Result<T, MethodCodegenError> {
-    /*
-    if binder
-        .bound_vars()
-        .iter()
-        .any(|bound_var_kind| matches!(bound_var_kind, BoundVariableKind::Ty(_)))
-    {
-        crate::codegen_error!("Could not resolve generic!");
-    } else {
-        Ok(binder.skip_binder())
-    }*/
-    Ok(binder.skip_binder())
-}
 pub fn as_adt(ty: Ty) -> Option<(AdtDef, &List<GenericArg>)> {
     match ty.kind() {
         TyKind::Adt(adt, subst) => Some((*adt, subst)),
@@ -233,38 +215,12 @@ pub fn field_descrptor<'ctx>(
         .expect("Field owner not a dotnet type!");
     def.field_desc_from_rust_field_idx(type_ref, field_idx)*/
 }
-/// Gets the type of field with index `field_idx`, returning a GenericArg if the types field is generic
-pub fn generic_field_ty<'ctx>(
-    owner_ty: Ty<'ctx>,
-    field_idx: u32,
-    ctx: TyCtxt<'ctx>,
-    _method_instance: Instance<'ctx>,
-) -> crate::r#type::Type {
-    match owner_ty.kind() {
-        TyKind::Adt(adt_def, _) => {
-            let ty = ctx
-                .type_of(
-                    adt_def
-                        .all_fields()
-                        .nth(field_idx as usize)
-                        .expect("ERROR: invalid field idx")
-                        .did,
-                )
-                .instantiate_identity();
-            //println!("Generic field type {ty:?}");
-            crate::r#type::Type::generic_from_ty(ty, ctx)
-        }
-        TyKind::Tuple(_) => crate::r#type::Type::GenericArg(field_idx),
-        _ => todo!("Can't get field {field_idx} belonging to type {owner_ty:?}"),
-    }
-}
 /// Returns the size of a tag of an enum with `variants` variants.
 pub fn enum_tag_size(variants: u64) -> u32 {
     (((u64::from(u64::BITS) - u64::from((variants).leading_zeros())) + 8 - 1) / 8) as u32
 }
 /// Gets the type of the tag of enum with `variants` varinats.
 pub fn tag_from_enum_variants(variants: u64) -> crate::r#type::Type {
-    use crate::r#type::Type;
     let var_size = enum_tag_size(variants);
     // println!("variants:{variants}tag_size:{var_size}");
     match var_size {
@@ -333,10 +289,6 @@ pub fn garag_to_bool<'tyctx>(garg: &GenericArg<'tyctx>, _ctx: TyCtxt<'tyctx>) ->
             _ => todo!("Can't convert generic arg of const kind {kind:?} to string!"),
         }
     }
-}
-/// Checks if `ty` is a TyKind::Alias
-pub fn is_ty_alias(ty: Ty) -> bool {
-    matches!(ty.kind(), TyKind::Alias(_, _))
 }
 /// This function returns the size of a type at the compile time. This should be used ONLY for handling constants. It currently assumes a 64 bit env
 pub fn compiletime_sizeof<'tyctx>(ty: Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -> usize {
@@ -480,9 +432,6 @@ pub fn check_debugable(
 }
 pub(crate) fn alloc_id_to_u64(alloc_id: AllocId) -> u64 {
     unsafe { std::mem::transmute(alloc_id) }
-}
-fn root_crate_num() -> rustc_hir::def_id::CrateNum {
-    unsafe { std::mem::transmute(0_u32) }
 }
 /// Part of micompilatio detection.
 pub(crate) fn verify_locals_within_range(ops: &[CILOp], argc: u32, locc: u32) -> bool {

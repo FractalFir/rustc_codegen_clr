@@ -1,7 +1,7 @@
 use crate::IString;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::ty::{
-    AdtDef, ConstKind, FloatTy, GenericArg, IntTy, List, Ty, TyCtxt, TyKind, UintTy,
+    AdtDef, ConstKind, FloatTy, GenericArg, IntTy, Ty, TyCtxt, TyKind, UintTy,
 };
 /// This struct represetnts either a primitive .NET type (F32,F64), or stores information on how to lookup a more complex type (struct,class,array)
 use serde::{Deserialize, Serialize};
@@ -120,40 +120,6 @@ impl DotnetTypeRef {
     }
     pub fn set_generics_identity(&mut self) {
         self.generics = crate::r#type::ident_gargs(self.generics.len()).into();
-    }
-    fn generic_from_adt<'ctx>(
-        adt_def: &AdtDef<'ctx>,
-        subst: &'ctx List<GenericArg<'ctx>>,
-        tyctx: TyCtxt<'ctx>,
-    ) -> Self {
-        let mut generics: Vec<Type> = subst
-            .iter()
-            .map(|arg| {
-                if let Some(resolved) = arg.as_type() {
-                    Type::generic_from_ty(resolved, tyctx)
-                } else {
-                    Type::Unresolved
-                }
-            })
-            .collect();
-        for field in adt_def.all_fields() {
-            //rustc_middle::ty::List::empty()
-            let generic_ty = tyctx.type_of(field.did).instantiate_identity();
-            if let TyKind::Alias(_ak, _) = generic_ty.kind() {
-                // FIXME: This is wrong, since it pushes the generic type of the child instead of the parrant. Overall - we should traverse trough all
-                // ADT locals and take them into account when building the generic list.
-                let generic_count = generics.len();
-                generics.push(Type::GenericArg(generic_count as u32));
-                //panic!("ADT with projection is not supported in generic_from_ty");
-            }
-        }
-        let name = crate::utilis::adt_name(adt_def, tyctx, subst);
-        Self {
-            assembly: None,
-            name_path: name,
-            generics,
-            is_valuetype: true,
-        }
     }
 }
 impl Type {
@@ -341,16 +307,19 @@ pub fn magic_type<'tyctx>(
         if subst.len() != 2 {
             panic!("Managed array size is not");
         }
-        let element = &subst[0].as_type().expect("Arrat type must be specified!");
-        let element = todo!();
+        let element = &subst[0].as_type().expect("Array type must be specified!");
         let dimensions = garag_to_usize(&subst[1], ctx);
+        let _ = (element,dimensions);
+        /* 
+       
         Type::DotnetArray(
             DotnetArray {
                 element,
                 dimensions,
             }
             .into(),
-        )
+        )*/
+        todo!()
     } else if name.contains(INTEROP_CHR_TPE_NAME) {
         Type::DotnetChar
     } else {

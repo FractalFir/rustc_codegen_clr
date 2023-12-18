@@ -13,6 +13,7 @@ use crate::{
 };
 /// ILASM-based assembly exporter.
 pub mod ilasm_exporter;
+
 /// This trait represents an interface implemented by all .NET assembly exporters. (Currently only ilasm)
 pub trait AssemblyExporter: Sized {
     /// Initializes an assembly exporter.

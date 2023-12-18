@@ -459,6 +459,7 @@ pub fn handle_terminator<'ctx>(
             //type_cache,
             //));
             //ops
+            let _ = throw_assert_msg;
             vec![CILOp::GoTo(target.as_u32())]
         }
         TerminatorKind::Goto { target } => vec![CILOp::GoTo((*target).into())],

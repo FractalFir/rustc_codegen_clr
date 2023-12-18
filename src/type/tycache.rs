@@ -297,8 +297,8 @@ impl TyCache {
                     format!("fn_{function_name}").into(),
                     TypeDef::nameonly(&format!("fn_{function_name}")),
                 );
-                todo!("Fn def!");
-                //Type::FnDef(function_name)
+                //todo!("Fn def!");
+                Type::FnDef(function_name)
             }
             TyKind::Array(element, length) => {
                 let mut length = *length;

@@ -78,7 +78,7 @@ fn create_const_adt_from_bytes<'ctx>(
         }
         AdtKind::Enum => {
             let variant_size = crate::utilis::enum_tag_size(adt_def.variants().len() as u64);
-            let mut curr_offset = 0;
+            let mut curr_offset = variant_size;
             let enum_ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
             let enum_ty = tycache.type_from_cache(enum_ty, tyctx, Some(method_instance));
             let enum_dotnet: DotnetTypeRef = if let Type::DotnetType(ty_ref) = &enum_ty {
@@ -90,7 +90,7 @@ fn create_const_adt_from_bytes<'ctx>(
             let curr_variant = match variant_size {
                 0 => todo!("Can't yet handle constant enums with 0-sized tags."),
                 1 => {
-                    curr_offset = 1;
+                    //curr_offset = 1;
                     let variant = bytes[0] as u32;
                     ops.extend([
                         CILOp::LoadAddresOfTMPLocal,
@@ -108,6 +108,8 @@ fn create_const_adt_from_bytes<'ctx>(
             assert!(curr_variant < adt_def.variants().len() as u32);
             let active_variant = &adt_def.variants()[curr_variant.into()];
             for _field in &active_variant.fields {
+                // Use offset to get the right bytes
+                let _ = curr_offset;
                 todo!("Can't yet create const enum fields.");
             }
             ops.push(CILOp::FreeTMPLocal);
