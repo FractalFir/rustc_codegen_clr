@@ -848,7 +848,7 @@ fn generic_prefix() {
 }
 #[test]
 fn tuple_type() {
-    let generic = crate::r#type::tuple_type(&[Type::I8, Type::U8]).into();
+    let generic = crate::r#type::simple_tuple(&[Type::I8, Type::U8]).into();
     assert_eq!(
         "valuetype [System.Runtime]System.ValueTuple`2<int8,uint8>",
         &prefixed_type_cil(&generic)
@@ -858,7 +858,7 @@ fn tuple_type() {
         &prefixed_field_type_cil(&generic)
     );
     let int128: Type = DotnetTypeRef::int_128().into();
-    let generic = crate::r#type::tuple_type(&[Type::I8, Type::Ptr(int128.into())]).into();
+    let generic = crate::r#type::simple_tuple(&[Type::I8, Type::Ptr(int128.into())]).into();
     assert_eq!(
         "valuetype [System.Runtime]System.ValueTuple`2<int8,valuetype [System.Runtime]System.Int128*>",
         &prefixed_field_type_cil(&generic)

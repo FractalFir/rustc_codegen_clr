@@ -115,7 +115,7 @@ pub fn handle_aggregate<'tyctx>(
                         tycache.type_from_cache(operand_ty, tyctx, Some(method_instance))
                     })
                     .collect();
-                let dotnet_tpe = crate::r#type::tuple_type(&types);
+                let dotnet_tpe = crate::r#type::simple_tuple(&types);
                 let mut ops: Vec<CILOp> = Vec::with_capacity(values.len() * 2);
                 for field in values.iter() {
                     let name = format!("Item{}", field.0 + 1);

@@ -14,6 +14,7 @@ pub struct TyCache {
     ptr_components: Option<DefId>,
 }
 impl TyCache {
+    #[must_use]
     pub fn empty() -> Self {
         Self {
             type_def_cache: HashMap::new(),
@@ -24,6 +25,7 @@ impl TyCache {
     pub fn defs(&self) -> impl Iterator<Item = &TypeDef> {
         self.type_def_cache.values()
     }
+    #[must_use]
     pub fn ptr_components(&mut self, tyctx: TyCtxt) -> DefId {
         if self.ptr_components.is_none() {
             self.ptr_components = Some(try_find_ptr_components(tyctx));
@@ -82,7 +84,7 @@ impl TyCache {
         DotnetTypeRef::new(None, name)
     }
     pub fn recover_from_panic(&mut self) {
-        self.cycle_prevention.clear()
+        self.cycle_prevention.clear();
     }
     fn struct_<'tyctx>(
         &mut self,
@@ -97,7 +99,7 @@ impl TyCache {
             let name = escape_field_name(&field.name.to_string());
             let mut field_ty = field.ty(tyctx, subst);
             method.inspect(|method_instance| {
-                field_ty = crate::utilis::monomorphize(method_instance, field_ty, tyctx)
+                field_ty = crate::utilis::monomorphize(method_instance, field_ty, tyctx);
             });
             let field_ty = self.type_from_cache(field_ty, tyctx, method);
             fields.push((name, field_ty));
@@ -120,7 +122,7 @@ impl TyCache {
             let name = escape_field_name(&field.name.to_string());
             let mut field_ty = field.ty(tyctx, subst);
             method.inspect(|method_instance| {
-                field_ty = crate::utilis::monomorphize(method_instance, field_ty, tyctx)
+                field_ty = crate::utilis::monomorphize(method_instance, field_ty, tyctx);
             });
             let field_ty = self.type_from_cache(field_ty, tyctx, method);
             fields.push((name, field_ty));
@@ -207,6 +209,9 @@ impl TyCache {
     ) -> Type {
         slice_ref_to(tyctx, self, Ty::new_slice(tyctx, inner), method)
     }
+    /// Converts a [`Ty`] to a dotnet-compatible [`Type`]. It is cached.
+    /// # Panics
+    /// Will panic if type invalid/unsuported.
     pub fn type_from_cache<'tyctx>(
         &mut self,
         ty: Ty<'tyctx>,
@@ -230,10 +235,10 @@ impl TyCache {
                 if types.is_empty() {
                     Type::Void
                 } else {
-                    super::tuple_type(&types).into()
+                    super::simple_tuple(&types).into()
                 }
             }
-            TyKind::Never => Type::Void, // TODO: ensure this is always OK
+            TyKind::Never => Type::Void,
             TyKind::RawPtr(type_and_mut) => match type_and_mut.ty.kind() {
                 TyKind::Slice(inner) => {
                     let inner = if let Some(method) = method {
@@ -253,7 +258,6 @@ impl TyCache {
                 if super::is_name_magic(name.as_ref()) {
                     return super::magic_type(name.as_ref(), def, subst, tyctx);
                 }
-                //println!("mangled:{mangled:?}");
                 self.adt(&name, *def, subst, tyctx, method).into()
             }
             TyKind::Dynamic(trait_, _, dyn_kind) => {
@@ -306,21 +310,15 @@ impl TyCache {
                 let length = crate::utilis::try_resolve_const_size(length).unwrap();
                 let mut element = *element;
                 method.inspect(|method| {
-                    element = crate::utilis::monomorphize(method, element, tyctx)
+                    element = crate::utilis::monomorphize(method, element, tyctx);
                 });
                 let element = self.type_from_cache(element, tyctx, method);
                 let arr_name: IString = format!("Arr{length}").into();
                 if self.type_def_cache.get(&arr_name).is_none() {
-                    println!(
-                        "adding array type {arr_name} Is it readded:{}",
-                        self.type_def_cache.get(&arr_name).is_some()
-                    );
-
                     self.type_def_cache
                         .insert(arr_name, crate::r#type::type_def::get_array_type(length));
                 }
                 DotnetTypeRef::array(element, length).into()
-                //todo!("Array!")
             }
             _ => todo!("Can't yet get type {ty:?} from type cache."),
         }
@@ -373,9 +371,9 @@ fn try_find_ptr_components(ctx: TyCtxt) -> DefId {
     let mut max_index = 0;
     for symbol in core_symbols {
         match symbol.0 {
-            ExportedSymbol::NonGeneric(def_id) => max_index = max_index.max(def_id.index.as_u32()),
-            ExportedSymbol::Generic(def_id, _) => max_index = max_index.max(def_id.index.as_u32()),
-            ExportedSymbol::ThreadLocalShim(def_id) => {
+            ExportedSymbol::ThreadLocalShim(def_id)
+            | ExportedSymbol::Generic(def_id, _)
+            | ExportedSymbol::NonGeneric(def_id) => {
                 max_index = max_index.max(def_id.index.as_u32())
             }
             _ => (),

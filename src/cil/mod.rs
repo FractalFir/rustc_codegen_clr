@@ -374,6 +374,7 @@ impl CILOp {
         CILOp::Call(CallSite::new(Some(class), name, signature, true).into())
     }
     /// Descirbes the difference in stack size before and after the op.
+    #[allow(clippy::match_same_arms)]
     pub fn stack_diff(&self) -> isize {
         match self {
             CILOp::Nop => 0,

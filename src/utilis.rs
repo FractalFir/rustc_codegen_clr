@@ -163,7 +163,7 @@ pub fn field_descrptor<'ctx>(
             "Tuples with more than 8 elements are not supported!"
         );
         return FieldDescriptor::new(
-            crate::r#type::tuple_type(
+            crate::r#type::simple_tuple(
                 &elements
                     .iter()
                     .map(|tpe| {
@@ -201,7 +201,8 @@ pub fn field_descrptor<'ctx>(
 }
 /// Returns the size of a tag of an enum with `variants` variants.
 pub fn enum_tag_size(variants: u64) -> u32 {
-    u32::try_from(((u64::from(u64::BITS) - u64::from((variants).leading_zeros())) + 8 - 1) / 8).expect("Enum variant over 2^4294967296")
+    u32::try_from(((u64::from(u64::BITS) - u64::from((variants).leading_zeros())) + 8 - 1) / 8)
+        .expect("Enum variant over 2^4294967296")
 }
 /// Gets the type of the tag of enum with `variants` varinats.
 pub fn tag_from_enum_variants(variants: u64) -> crate::r#type::Type {
@@ -391,9 +392,8 @@ pub fn check_debugable(
         let mut stack = 0;
         for (index, op) in ops.iter().enumerate() {
             if does_return_void && *op == crate::cil::CILOp::Ret {
-                eprintln!("{index}:\t{op:?} changed stack by 0, to {stack}"); 
-            } 
-            else{
+                eprintln!("{index}:\t{op:?} changed stack by 0, to {stack}");
+            } else {
                 let diff = op.stack_diff();
                 stack += diff;
                 eprintln!("{index}:\t{op:?} changed stack by {diff}, to {stack}");

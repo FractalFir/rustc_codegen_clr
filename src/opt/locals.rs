@@ -92,7 +92,8 @@ pub fn try_split_locals(method: &mut Method, asm: &Assembly) {
                         panic!("ERROR: field spliting failed because field {field_desc:?} could not be found. This may be caused by an error during codegen");
                     };
                     method.ops_mut()[index] = CILOp::Nop;
-                    method.ops_mut()[index + 1] = CILOp::LDLoc((field_idx + local_map_start) as u32);
+                    method.ops_mut()[index + 1] =
+                        CILOp::LDLoc((field_idx + local_map_start) as u32);
                     continue;
                 }
                 if let CILOp::LDFieldAdress(field_desc) = op2 {
@@ -105,7 +106,8 @@ pub fn try_split_locals(method: &mut Method, asm: &Assembly) {
                         panic!("ERROR: field spliting failed because field {field_desc:?} could not be found. This may be caused by an error during codegen");
                     };
                     method.ops_mut()[index] = CILOp::Nop;
-                    method.ops_mut()[index + 1] = CILOp::LDLocA((field_idx + local_map_start) as u32);
+                    method.ops_mut()[index + 1] =
+                        CILOp::LDLocA((field_idx + local_map_start) as u32);
                     continue;
                 }
                 if let CILOp::STField(field_desc) = op3 {
@@ -118,12 +120,12 @@ pub fn try_split_locals(method: &mut Method, asm: &Assembly) {
                         panic!("ERROR: field spliting failed because field {field_desc:?} could not be found. This may be caused by an error during codegen");
                     };
                     method.ops_mut()[index] = CILOp::Nop;
-                    method.ops_mut()[index + 2] = CILOp::STLoc((field_idx + local_map_start) as u32);
+                    method.ops_mut()[index + 2] =
+                        CILOp::STLoc((field_idx + local_map_start) as u32);
                     continue;
                 }
                 panic!("Invalid field access in field split on ops {op1:?} {op2:?} {op3:?} split_local:{split_local:?} ");
             }
-
         }
         //todo!("Can't yet split local {split_local:?} of type {split_tpe:?}. type_def:{type_def:?} morphic_fields:{morphic_fields:?}")
     }

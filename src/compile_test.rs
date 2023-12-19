@@ -54,9 +54,10 @@ fn test_dotnet_executable(file_path: &str, test_dir: &str) {
             "Test program failed with message {stderr:}"
         );
     }
-    if !(*IS_DOTNET_PRESENT || *IS_MONO_PRESENT) {
-        panic!("You must have either mono or dotnet runtime installed to run tests.");
-    }
+    assert!(
+        (*IS_DOTNET_PRESENT || *IS_MONO_PRESENT),
+        "You must have either mono or dotnet runtime installed to run tests."
+    );
 }
 macro_rules! test_lib {
     ($test_name:ident) => {

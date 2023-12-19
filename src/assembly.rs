@@ -112,7 +112,7 @@ impl Assembly {
                 }
             }
             return Some(td);
-        } 
+        }
         for tpe in self.types() {
             if tpe.name() == path {
                 return Some(tpe);

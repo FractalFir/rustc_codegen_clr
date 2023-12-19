@@ -221,7 +221,7 @@ fn create_const_from_slice<'ctx>(
                     tycache.type_from_cache(ele, tyctx, Some(method_instance))
                 })
                 .collect();
-            let tuple_dotnet = crate::r#type::tuple_type(&element_types);
+            let tuple_dotnet = crate::r#type::simple_tuple(&element_types);
             let tuple_type: Type = tuple_dotnet.clone().into();
             let mut ops = vec![CILOp::NewTMPLocal(tuple_type.clone().into())];
             let mut curr_offset = 0;

@@ -31,11 +31,11 @@ fn call_managed<'ctx>(
     let argc_start =
         function_name.find(MANAGED_CALL_FN_NAME).unwrap() + (MANAGED_CALL_FN_NAME.len());
     let argc_end = argc_start + function_name[argc_start..].find('_').unwrap();
-    let argc = &function_name[argc_start..argc_end];
-    let argc = argc.parse::<u32>().unwrap();
+    let argument_count = &function_name[argc_start..argc_end];
+    let argument_count = argument_count.parse::<u32>().unwrap();
     //FIXME: figure out the proper argc.
     //assert!(subst_ref.len() as u32 == argc + 3 || subst_ref.len() as u32 == argc + 4);
-    assert!(args.len() as u32 == argc);
+    assert!(args.len() as u32 == argument_count);
     let asm = garg_to_string(subst_ref[0], tyctx);
     let asm = Some(asm).filter(|asm| !asm.is_empty());
     let class_name = garg_to_string(subst_ref[1], tyctx);
@@ -46,7 +46,7 @@ fn call_managed<'ctx>(
     let signature = FnSig::sig_from_instance_(fn_instance, tyctx, type_cache)
         .expect("Can't get the function signature");
 
-    if argc == 0 {
+    if argument_count == 0 {
         let ret = crate::r#type::Type::Void;
         let call = vec![CILOp::Call(CallSite::boxed(
             Some(tpe.clone()),
@@ -115,10 +115,12 @@ fn callvirt_managed<'ctx>(
     let argc_start =
         function_name.find(MANAGED_CALL_VIRT_FN_NAME).unwrap() + (MANAGED_CALL_VIRT_FN_NAME.len());
     let argc_end = argc_start + function_name[argc_start..].find('_').unwrap();
-    let argc = &function_name[argc_start..argc_end];
-    let argc = argc.parse::<u32>().unwrap();
+    let argument_count = &function_name[argc_start..argc_end];
+    let argument_count = argument_count.parse::<u32>().unwrap();
     //assert!(subst_ref.len() as u32 == argc + 3 || subst_ref.len() as u32 == argc + 4);
-    assert!(args.len() as u32 == argc);
+    assert!(
+        u32::try_from(args.len()).expect("More than 2^32 function arguments.") == argument_count
+    );
     let asm = garg_to_string(subst_ref[0], tyctx);
     let asm = Some(asm).filter(|asm| !asm.is_empty());
     let class_name = garg_to_string(subst_ref[1], tyctx);
@@ -132,7 +134,7 @@ fn callvirt_managed<'ctx>(
     tpe.set_valuetype(is_valuetype);
     let signature = FnSig::sig_from_instance_(fn_instance, tyctx, type_cache)
         .expect("Can't get the function signature");
-    if argc == 0 {
+    if argument_count == 0 {
         let ret = crate::r#type::Type::Void;
         let call = vec![CILOp::Call(CallSite::boxed(
             Some(tpe.clone()),
@@ -199,12 +201,12 @@ fn call_ctor<'ctx>(
 ) -> Vec<CILOp> {
     let argc_start = function_name.find(CTOR_FN_NAME).unwrap() + (CTOR_FN_NAME.len());
     let argc_end = argc_start + function_name[argc_start..].find('_').unwrap();
-    let argc = &function_name[argc_start..argc_end];
-    let argc = argc.parse::<u32>().unwrap();
+    let argument_count = &function_name[argc_start..argc_end];
+    let argument_count = argument_count.parse::<u32>().unwrap();
     // Check that there are enough function path and argument specifers
-    assert!(subst_ref.len() as u32 == argc + 3);
+    assert!(subst_ref.len() as u32 == argument_count + 3);
     // Check that a proper number of arguments is used
-    assert!(args.len() as u32 == argc);
+    assert!(args.len() as u32 == argument_count);
     // Get the name of the assembly the constructed object resides in
     let asm = garg_to_string(subst_ref[0], tyctx);
     // If empty, make it none(for consitent encoing of No-assembly)
@@ -216,7 +218,7 @@ fn call_ctor<'ctx>(
     let mut tpe = DotnetTypeRef::new(asm.as_deref(), &class_name);
     tpe.set_valuetype(is_valuetype);
     // If no arguments, inputs don't have to be handled, so a simpler call handling is used.
-    if argc == 0 {
+    if argument_count == 0 {
         crate::place::place_set(
             destination,
             tyctx,
@@ -284,12 +286,12 @@ fn call<'ctx>(
     let fn_type = crate::utilis::monomorphize(&method_instance, *fn_type, tyctx);
     let (instance, def_id, subst_ref) = if let TyKind::FnDef(def_id, subst_ref) = fn_type.kind() {
         let env = ParamEnv::reveal_all();
-        let instance = match Instance::resolve(tyctx, env, *def_id, subst_ref)
-            .expect("Invalid function def")
-        {
-            Some(ok) => ok,
-            None => panic!("ERROR: Could not get function instance. fn type:{fn_type:?}"),
+        let Some(instance) =
+            Instance::resolve(tyctx, env, *def_id, subst_ref).expect("Invalid function def")
+        else {
+            panic!("ERROR: Could not get function instance. fn type:{fn_type:?}")
         };
+
         (instance, def_id, subst_ref)
     } else {
         todo!("Trying to call a type which is not a function definition!");
@@ -428,11 +430,11 @@ pub fn handle_terminator<'ctx>(
         TerminatorKind::Return => {
             let ret = crate::utilis::monomorphize(&method_instance, method.return_ty(), tyctx);
             if type_cache.type_from_cache(ret, tyctx, Some(method_instance))
-                != crate::r#type::Type::Void
+                == crate::r#type::Type::Void
             {
-                vec![CILOp::LDLoc(0), CILOp::Ret]
-            } else {
                 vec![CILOp::Ret]
+            } else {
+                vec![CILOp::LDLoc(0), CILOp::Ret]
             }
         }
         TerminatorKind::SwitchInt { discr, targets } => {
@@ -778,7 +780,11 @@ fn handle_switch(ty: Ty, discr: Vec<CILOp>, switch: &SwitchTargets) -> Vec<CILOp
         ops.extend(match ty.kind() {
             TyKind::Int(int) => crate::constant::load_const_int(value, int),
             TyKind::Uint(uint) => crate::constant::load_const_uint(value, uint),
-            TyKind::Bool => vec![CILOp::LdcI32(value as u8 as i32)],
+            TyKind::Bool => vec![CILOp::LdcI32(
+                u8::try_from(value)
+                    .expect("Bool value outside of range 0-255. Should be either 0 OR 1.")
+                    as i32,
+            )],
             _ => todo!("Unsuported switch discriminant type {ty:?}"),
         });
         //ops.push(CILOp::LdcI64(value as i64));

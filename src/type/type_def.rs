@@ -19,6 +19,7 @@ pub struct TypeDef {
     extends: Option<DotnetTypeRef>,
 }
 impl TypeDef {
+    #[must_use]
     pub fn ptr_components(name: &str, metadata: Type) -> Self {
         let mut ptr_components = crate::r#type::TypeDef::nameonly(name);
         ptr_components.add_field("data_address".into(), Type::Ptr(Type::Void.into()));
@@ -36,46 +37,35 @@ impl TypeDef {
     pub fn set_generic_count(&mut self, generic_count: u32) {
         self.gargc = generic_count;
     }
-    /// Gets a [`FieldDescriptor`] describing to a rust filed at rust field index `rust_field_idx`.
-    pub fn field_desc_from_rust_field_idx(
-        &self,
-        self_tpe_ref: DotnetTypeRef,
-        rust_field_idx: u32,
-    ) -> FieldDescriptor {
-        let mut field_iter = self.fields.iter();
-        // If explicit offsets present, check for enum tags
-        if let Some(offsets) = &self.explicit_offsets {
-            if offsets[0] == 0 && self.fields()[0].0.as_ref() == "_tag" {
-                field_iter.next();
-            }
-        };
-        // Get the nth field
-        let (field_name, field_type) = field_iter
-            .nth(rust_field_idx as usize)
-            .expect("`field_desc_from_rust_field_idx` could not find field info!");
-        FieldDescriptor::new(self_tpe_ref, field_type.clone(), field_name.clone())
-    }
+
+    #[must_use]
     pub fn gargc(&self) -> u32 {
         self.gargc
     }
+    #[must_use]
     pub fn name(&self) -> &str {
         &self.name
     }
+    #[must_use]
     pub fn access_modifier(&self) -> AccessModifer {
         self.access
     }
+    #[must_use]
     pub fn extends(&self) -> Option<&DotnetTypeRef> {
         self.extends.as_ref()
     }
+    #[must_use]
     pub fn fields(&self) -> &[(IString, Type)] {
         &self.fields
     }
     pub fn add_field(&mut self, name: IString, tpe: Type) {
         self.fields.push((name, tpe));
     }
+    #[must_use]
     pub fn inner_types(&self) -> &[Self] {
         &self.inner_types
     }
+    #[must_use]
     pub fn explicit_offsets(&self) -> Option<&Vec<u32>> {
         self.explicit_offsets.as_ref()
     }
@@ -85,6 +75,7 @@ impl TypeDef {
     pub fn methods(&self) -> impl Iterator<Item = &Method> {
         self.functions.iter()
     }
+    #[must_use]
     pub fn nameonly(name: &str) -> Self {
         Self {
             access: AccessModifer::Public,
@@ -97,6 +88,7 @@ impl TypeDef {
             explicit_offsets: None,
         }
     }
+    #[must_use]
     pub fn new(
         access: AccessModifer,
         name: IString,
@@ -139,12 +131,12 @@ impl From<&TypeDef> for DotnetTypeRef {
         DotnetTypeRef::new(None, val.name())
     }
 }
+#[must_use]
 pub fn escape_field_name(name: &str) -> IString {
-    if name.is_empty() {
-        return "fld".into();
-    }
-    let first = name.chars().next().unwrap();
-    if !(first.is_alphabetic() || first == '_')
+    match name.chars().next() {
+        None => "fld".into(),
+        Some(first) => {
+            if !(first.is_alphabetic() || first == '_')
         || name == "value"
         || name == "flags"
         || name == "alignment"
@@ -164,17 +156,19 @@ pub fn escape_field_name(name: &str) -> IString {
         || name == "class"
         //FIXME: this is a sign of a bug. ALL fields not starting with a letter should have been caught by the statement above.
         || name == "0"
-    {
-        format!("m_{name}").into()
-    } else {
-        if name.contains('0') {
-            eprintln!(
-                "field name:\'{name:?}\'. Name length:{} first char:\'{:?}\'",
-                name.len(),
-                name.chars().next().unwrap()
-            );
+            {
+                format!("m_{name}").into()
+            } else {
+                if name.contains('0') {
+                    eprintln!(
+                        "field name:\'{name:?}\'. Name length:{} first char:\'{:?}\'",
+                        name.len(),
+                        first
+                    );
+                }
+                name.into()
+            }
         }
-        name.into()
     }
 }
 #[must_use]
