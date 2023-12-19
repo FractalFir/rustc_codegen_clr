@@ -1,10 +1,7 @@
 use std::path::Path;
+/// Describes an assemnly.
 type AssemblyInfo = str;
-#[derive(Debug, Clone)]
-enum AccessModifer {
-    Private,
-    Public,
-}
+
 use crate::{
     assembly::Assembly,
     method::Method,

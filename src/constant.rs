@@ -78,6 +78,8 @@ fn create_const_adt_from_bytes<'ctx>(
         }
         AdtKind::Enum => {
             let variant_size = crate::utilis::enum_tag_size(adt_def.variants().len() as u64);
+            // This will need to be mutable in order to handle enum fields.
+            #[allow(unused_mut)]
             let mut curr_offset = variant_size;
             let enum_ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
             let enum_ty = tycache.type_from_cache(enum_ty, tyctx, Some(method_instance));
@@ -255,7 +257,7 @@ fn create_const_from_slice<'ctx>(
             let element_ty = crate::utilis::monomorphize(&method_instance, *element_ty, tyctx);
 
             let element_sizeof = crate::utilis::compiletime_sizeof(element_ty, tyctx);
-            let length = crate::utilis::try_resolve_const_size(&length).unwrap();
+            let length = crate::utilis::try_resolve_const_size(length).unwrap();
             let mut curr_offset = 0;
             let mut res = vec![CILOp::NewTMPLocal(array_type.clone().into())];
             for index in 0..length {

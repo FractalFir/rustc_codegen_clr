@@ -3,9 +3,8 @@ use crate::operand::handle_operand;
 use crate::place::deref_op;
 use crate::r#type::{TyCache, Type};
 use rustc_middle::{
-    mir::{Place, Rvalue,CastKind, NullOp},
-    ty::{Instance, Ty, TyCtxt, TyKind,adjustment::PointerCoercion,ParamEnv},
-    
+    mir::{CastKind, NullOp, Place, Rvalue},
+    ty::{adjustment::PointerCoercion, Instance, ParamEnv, Ty, TyCtxt, TyKind},
 };
 pub fn handle_rvalue<'tcx>(
     rvalue: &Rvalue<'tcx>,
@@ -53,7 +52,7 @@ pub fn handle_rvalue<'tcx>(
             //let target_type = tycache.type_from_cache(target, tyctx, Some(method_instance));
 
             let ops = match (source_pointed_to.kind(), target_pointed_to.kind()) {
-                (TyKind::Slice(_)| TyKind::Str, TyKind::Slice(_)| TyKind::Str) => {
+                (TyKind::Slice(_) | TyKind::Str, TyKind::Slice(_) | TyKind::Str) => {
                     let mut res = handle_operand(operand, tyctx, method, method_instance, tycache);
                     res.push(CILOp::NewTMPLocal(source_type.into()));
                     res.push(CILOp::SetTMPLocal);
@@ -98,7 +97,7 @@ pub fn handle_rvalue<'tcx>(
                 _ => panic!("Non ptr type:{source:?}"),
             };
             let length = if let TyKind::Array(_, length) = derefed_source.kind() {
-                crate::utilis::try_resolve_const_size(&length).unwrap()
+                crate::utilis::try_resolve_const_size(*length).unwrap()
             } else {
                 panic!("Non array type:{source:?}")
             };
@@ -209,7 +208,10 @@ pub fn handle_rvalue<'tcx>(
             }
             NullOp::AlignOf => {
                 let ty = crate::utilis::monomorphize(&method_instance, *ty, tyctx);
-                vec![CILOp::LdcI64(align_of(ty,tyctx) as i64), CILOp::ConvUSize(false)]
+                vec![
+                    CILOp::LdcI64(align_of(ty, tyctx) as i64),
+                    CILOp::ConvUSize(false),
+                ]
             }
             _ => todo!("Unsuported nullary {op:?}!"),
         },
@@ -391,11 +393,17 @@ pub fn handle_rvalue<'tcx>(
     };
     res
 }
-fn align_of<'tcx>(ty: rustc_middle::ty::Ty<'tcx>,tyctx: TyCtxt<'tcx>) -> u64 {
-    let layout = tyctx.layout_of(rustc_middle::ty::ParamEnvAnd{param_env:ParamEnv::reveal_all(),value:ty}).expect("Can't get layout of a type.").layout;
-    
+fn align_of<'tcx>(ty: rustc_middle::ty::Ty<'tcx>, tyctx: TyCtxt<'tcx>) -> u64 {
+    let layout = tyctx
+        .layout_of(rustc_middle::ty::ParamEnvAnd {
+            param_env: ParamEnv::reveal_all(),
+            value: ty,
+        })
+        .expect("Can't get layout of a type.")
+        .layout;
+
     let align = layout.align.abi;
     // FIXME: this field is likely private for a reason. I should not do this get its value. Find a better way to get aligement.
-    let pow2 = unsafe{std::mem::transmute::<_,u8>(align)} as u64;
-    1<<pow2
+    let pow2 = unsafe { std::mem::transmute::<_, u8>(align) } as u64;
+    1 << pow2
 }

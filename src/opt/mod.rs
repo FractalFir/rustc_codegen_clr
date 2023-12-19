@@ -1,3 +1,4 @@
+#![allow(clippy::similar_names)]
 use std::ops::Range;
 mod locals;
 mod op2_combos;
@@ -142,6 +143,9 @@ pub fn opt_method(method: &mut Method, asm: &Assembly) {
         if crate::REMOVE_UNSUED_LOCALS {
             remove_unused_locals(method);
         }
+        if crate::INLINE_SIMPLE_FUNCTIONS {
+            try_inline_all(method, asm);
+        }
         //try_inline_all(method, asm);
     }
 }
@@ -172,7 +176,6 @@ fn remove_zombie_sets(ops: &mut Vec<CILOp>) {
         }
     }
 }
-
 
 fn op4_combos(ops: &mut [CILOp]) {
     if ops.len() < 4 {
@@ -403,4 +406,3 @@ fn could_local_ptr_escape(local: u32, ops: &[CILOp]) -> bool {
     }
     false
 }
-

@@ -453,6 +453,8 @@ fn checked_uadd_type(tpe: Type, truncate: CILOp, add: CILOp) -> Vec<CILOp> {
         CILOp::FreeTMPLocal,
     ]
 }
+/*
+/// Checked signed add type
 fn checked_sadd_type(tpe: Type, truncate: CILOp, mask: CILOp) -> Vec<CILOp> {
     let tuple = crate::r#type::simple_tuple(&[tpe.clone(), Type::Bool]);
     let tuple_ty: Type = tuple.clone().into();
@@ -510,7 +512,7 @@ fn checked_sadd_type(tpe: Type, truncate: CILOp, mask: CILOp) -> Vec<CILOp> {
         CILOp::FreeTMPLocal,
         CILOp::FreeTMPLocal,
     ]
-}
+}*/
 fn sub(tpe: Type) -> Vec<CILOp> {
     match tpe {
         Type::I8 => promoted_sbinop(
@@ -780,8 +782,8 @@ pub fn promoted_sbinop(
     promoted_type: Type,
     promote: CILOp,
     truncate: CILOp,
-    omask: CILOp,
-    umask: CILOp,
+    overflow_val: CILOp,
+    underflow_val: CILOp,
     binop: CILOp,
 ) -> Vec<CILOp> {
     let tuple = crate::r#type::simple_tuple(&[tpe.clone(), Type::Bool]);
@@ -800,12 +802,12 @@ pub fn promoted_sbinop(
         CILOp::SetTMPLocal,
         // Compare the result to the overflow mask
         CILOp::LoadTMPLocal,
-        omask.clone(),
+        overflow_val.clone(),
         promote.clone(),
         CILOp::Gt,
         CILOp::LoadTMPLocal,
         // Compare the result to the undeflow mask
-        umask.clone(),
+        underflow_val.clone(),
         promote.clone(),
         CILOp::Lt,
         CILOp::Or,

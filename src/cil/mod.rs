@@ -4,7 +4,6 @@ pub use call_site::*;
 mod field_desc;
 pub use field_desc::*;
 mod static_field_desc;
-use rustc_span::def_id::DefId;
 use serde::{Deserialize, Serialize};
 pub use static_field_desc::*;
 /// Represenation of a CIL opcode.
@@ -324,12 +323,9 @@ impl CILOp {
         let mut class = DotnetTypeRef::new(Some("System.Console"), "System.Console");
         class.set_valuetype(false);
         let name = "WriteLine".into();
-        let signature = FnSig::new(
-            &[],
-            &crate::r#type::Type::Void,
-        );
+        let signature = FnSig::new(&[], &crate::r#type::Type::Void);
 
-            CILOp::Call(CallSite::new(Some(class), name, signature, true).into())
+        CILOp::Call(CallSite::new(Some(class), name, signature, true).into())
     }
     /// Returns the ops necesary to  write message `msg` to STDOUT. Does not end with new line.
     pub fn debug_msg_no_nl(msg: &str) -> [CILOp; 2] {
@@ -468,8 +464,7 @@ impl CILOp {
             | CILOp::LoadAdressUnderTMPLocal(_)
             | CILOp::LoadTMPLocal => 1,
             CILOp::SetTMPLocal => -1,
-            CILOp::LoadGlobalAllocPtr { alloc_id: _ }
-             => 1,
+            CILOp::LoadGlobalAllocPtr { alloc_id: _ } => 1,
         }
     }
     /// Flips a conditional, changing the order of its arguments. Eg. BLt(a,b) [a < b] becomes BGt(b,a) [b > a].

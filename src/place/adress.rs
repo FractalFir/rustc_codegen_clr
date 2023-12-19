@@ -1,6 +1,14 @@
-use crate::{assert_morphic,cil::{CILOp, FieldDescriptor},function_sig::FnSig,r#type::{Type, TyCache}};
 use super::PlaceTy;
-use rustc_middle::{ty::{Instance, TyCtxt, TyKind,Ty},mir::PlaceElem};
+use crate::{
+    assert_morphic,
+    cil::{CILOp, FieldDescriptor},
+    function_sig::FnSig,
+    r#type::{TyCache, Type},
+};
+use rustc_middle::{
+    mir::PlaceElem,
+    ty::{Instance, Ty, TyCtxt, TyKind},
+};
 pub fn local_adress(local: usize, method: &rustc_middle::mir::Body) -> CILOp {
     if local == 0 {
         CILOp::LDLocA(0)
@@ -10,30 +18,34 @@ pub fn local_adress(local: usize, method: &rustc_middle::mir::Body) -> CILOp {
         CILOp::LDArgA((local - 1) as u32)
     }
 }
-pub fn address_last_dereference<'ctx>(target_type:Ty<'ctx>,curr_type:PlaceTy<'ctx>,tycache:&mut TyCache,tyctx: TyCtxt<'ctx>,method:Instance<'ctx>)->Vec<CILOp>{
-    let curr_type = match curr_type{
+pub fn address_last_dereference<'ctx>(
+    target_type: Ty<'ctx>,
+    curr_type: PlaceTy<'ctx>,
+    tycache: &mut TyCache,
+    tyctx: TyCtxt<'ctx>,
+    method: Instance<'ctx>,
+) -> Vec<CILOp> {
+    let curr_type = match curr_type {
         PlaceTy::Ty(curr_type) => curr_type,
         // Enums don't require any special handling
-        PlaceTy::EnumVariant(_,_)=>return vec![],
+        PlaceTy::EnumVariant(_, _) => return vec![],
     };
     //eprintln!("target_type:{target_type:?} curr_type:{curr_type:?}");
     // Get the type curr_type points to!
     let curr_points_to = super::pointed_type(curr_type.into());
     let curr_type = tycache.type_from_cache(curr_type, tyctx, Some(method));
-    
+
     match (curr_points_to.kind(), target_type.kind()) {
-        (TyKind::Slice(_), TyKind::Slice(_)) => 
-            vec![],
-        (TyKind::Slice(_), _) => 
-            vec![CILOp::LDField(
-                FieldDescriptor::new(
-                    curr_type.as_dotnet().unwrap(),
-                    Type::Ptr(Type::Void.into()),
-                    "data_address".into(),
-                )
-                .into(),
-            )],
-        _=>vec![],
+        (TyKind::Slice(_), TyKind::Slice(_)) => vec![],
+        (TyKind::Slice(_), _) => vec![CILOp::LDField(
+            FieldDescriptor::new(
+                curr_type.as_dotnet().unwrap(),
+                Type::Ptr(Type::Void.into()),
+                "data_address".into(),
+            )
+            .into(),
+        )],
+        _ => vec![],
     }
     //println!("casting {source:?} source_pointed_to:{source_pointed_to:?} to {target:?} target_pointed_to:{target_pointed_to:?}. ops:{ops:?}");
 }
@@ -44,12 +56,14 @@ pub fn place_elem_adress<'ctx>(
     method_instance: Instance<'ctx>,
     _body: &rustc_middle::mir::Body,
     type_cache: &mut crate::r#type::TyCache,
-    place_ty:Ty<'ctx>
+    place_ty: Ty<'ctx>,
 ) -> Vec<CILOp> {
     let curr_type = curr_type.monomorphize(&method_instance, tyctx);
     assert_morphic!(curr_type);
     match place_elem {
-        PlaceElem::Deref => address_last_dereference(place_ty,curr_type,type_cache,tyctx,method_instance),
+        PlaceElem::Deref => {
+            address_last_dereference(place_ty, curr_type, type_cache, tyctx, method_instance)
+        }
         PlaceElem::Field(index, _) => match curr_type {
             PlaceTy::Ty(curr_type) => {
                 //TODO: Why was this commented out?
@@ -78,7 +92,7 @@ pub fn place_elem_adress<'ctx>(
                 ops
             }
         },
-        PlaceElem::Downcast(symbol,_) => {
+        PlaceElem::Downcast(symbol, _) => {
             let curr_type = curr_type
                 .as_ty()
                 .expect("Can't get enum variant of an enum varaint!");
@@ -96,7 +110,6 @@ pub fn place_elem_adress<'ctx>(
             let _curr_type_name = (curr_dotnet_type).name_path();
             let mut field_type = curr_dotnet_type.clone();
             field_type.append_path(&format!("/{variant_name}"));
-            field_type.set_generics_identity();
             let field_desc = FieldDescriptor::boxed(
                 curr_dotnet_type.clone(),
                 crate::r#type::Type::DotnetType(Box::new(field_type)),
@@ -141,7 +154,7 @@ pub fn place_elem_adress<'ctx>(
                     ];
                     ops
                 }
-                TyKind::Array(element, _length) => {
+                TyKind::Array(_, _length) => {
                     //let element = crate::utilis::monomorphize(&method_instance, *element, tyctx);
                     let array_type =
                         type_cache.type_from_cache(curr_ty, tyctx, Some(method_instance));

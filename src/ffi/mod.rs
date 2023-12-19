@@ -118,7 +118,6 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
         "__rust_alloc",
         vec![],
     );
-    let msg = CILOp::debug_msg_no_nl("Allocated buffer at adress ");
     __rust_alloc.set_ops(vec![
         CILOp::LDArg(0),
         CILOp::LDArg(1),
@@ -128,14 +127,6 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
             FnSig::new(&[Type::USize, Type::USize], &Type::Ptr(Type::Void.into())),
             true,
         )),
-        // Allocation tracing
-        /*
-        CILOp::Dup,
-        msg[0].clone(),
-        msg[1].clone(),
-        CILOp::ConvU64(false),
-        CILOp::new_line(),
-        CILOp::debug_u64(),*/
         CILOp::Ret,
     ]);
     asm.add_method(__rust_alloc);
@@ -223,12 +214,6 @@ add_method!(
     &Type::F32,
     [CILOp::LDArg(0), CILOp::Ret]
 );
-add_method! {
-    rust_begin_unwind,
-    &[Type::Ptr(Type::DotnetType(DotnetTypeRef::new(None,"panic.panic_info.PanicInfo").into()).into())],
-    &Type::Void,
-    CILOp::throw_msg("`rust_begin_unwind` called, but unwinding unsuported!")
-}
 add_method!(
     puts,
     &[Type::Ptr(Box::new(Type::U8))],

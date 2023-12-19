@@ -1,6 +1,8 @@
 #![feature(rustc_private)]
+// Used for handling some configs. Will be refactored later.
+#![allow(clippy::assertions_on_constants)]
 //#![deny(missing_docs)]
-#![warn(clippy::missing_docs_in_private_items)]
+//#![warn(clippy::missing_docs_in_private_items)]
 //! Rustc Codegen CLR - an experimental rustc backend compiling Rust for .NET. This project aims to bring the speed and memory efficency of Rust to .NET.
 //!
 //! # Explaing the project
@@ -51,12 +53,13 @@ extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_symbol_mangling;
 extern crate rustc_target;
-extern crate stable_mir;
 extern crate rustc_ty_utils;
+extern crate stable_mir;
 // Debug config
 
 /// Tells the codegen to insert comments containing the MIR statemtens after each one of them.
 const INSERT_MIR_DEBUG_COMMENTS: bool = false;
+/// Prints local types of all compiled MIR functions.
 const PRINT_LOCAL_TYPES: bool = false;
 /// Tells the codegen to optmize the emiited CIL.
 const OPTIMIZE_CIL: bool = (!INSERT_MIR_DEBUG_COMMENTS) && (false);
@@ -77,6 +80,9 @@ pub const ALLOW_MISCOMPILATIONS: bool = true;
 pub const TRACE_CALLS: bool = true;
 /// Preapends each statement with a debug message
 pub const TRACE_STATEMENTS: bool = false;
+/// Allows the optimizer to inline very simple functions. It is buggy.
+pub const INLINE_SIMPLE_FUNCTIONS: bool = false;
+
 // Modules
 
 /// Specifies if a method/type is private or public.
@@ -91,8 +97,6 @@ pub mod assembly_exporter;
 mod basic_block;
 /// Code handling binary operations
 mod binop;
-/// Implementation of key external functions(eg. libc) necesary for propely running a Rust executable
-pub mod ffi;
 /// Code hansling rust `as` casts.
 mod casts;
 mod checked_binop;
@@ -106,6 +110,8 @@ mod compile_test;
 mod constant;
 /// Code detecting and inserting wrappers around entrypoints.
 mod entrypoint;
+/// Implementation of key external functions(eg. libc) necesary for propely running a Rust executable
+pub mod ffi;
 /// Signature of a function (inputs)->output
 pub mod function_sig;
 //
@@ -293,6 +299,6 @@ impl ArchiveBuilderBuilder for RlibArchiveBuilder {
 }
 #[no_mangle]
 /// Entrypoint of the codegen. This function starts the backend up, and returns a reference to it to rustc.
-pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
+pub extern "Rust" fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
     Box::new(MyBackend)
 }

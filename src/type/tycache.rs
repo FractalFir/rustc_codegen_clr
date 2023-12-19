@@ -38,7 +38,7 @@ impl TyCache {
     ) -> &TypeDef {
         match ty.kind() {
             TyKind::Adt(adt, susbt) => {
-                let name = crate::utilis::adt_name(adt, tyctx, susbt);
+                let name = crate::utilis::adt_name(*adt, tyctx, susbt);
                 if super::is_name_magic(name.as_ref()) {
                     todo!("Can't yet get fields of interop types!");
                 }
@@ -76,7 +76,6 @@ impl TyCache {
             AdtKind::Struct => self.struct_(name, def, subst, tyctx, method),
             AdtKind::Enum => self.enum_(name, def, subst, tyctx, method),
             AdtKind::Union => self.union_(name, def, subst, tyctx, method),
-            _ => todo!("adt {def:?} not supported!"),
         };
         self.type_def_cache.insert(name.into(), def);
         self.cycle_prevention.pop();
@@ -250,7 +249,7 @@ impl TyCache {
                 _ => Type::Ptr(self.type_from_cache(type_and_mut.ty, tyctx, method).into()),
             },
             TyKind::Adt(def, subst) => {
-                let name = crate::utilis::adt_name(def, tyctx, subst);
+                let name = crate::utilis::adt_name(*def, tyctx, subst);
                 if super::is_name_magic(name.as_ref()) {
                     return super::magic_type(name.as_ref(), def, subst, tyctx);
                 }
@@ -304,7 +303,7 @@ impl TyCache {
                 let mut length = *length;
                 method
                     .inspect(|method| length = crate::utilis::monomorphize(method, length, tyctx));
-                let length = crate::utilis::try_resolve_const_size(&length).unwrap();
+                let length = crate::utilis::try_resolve_const_size(length).unwrap();
                 let mut element = *element;
                 method.inspect(|method| {
                     element = crate::utilis::monomorphize(method, element, tyctx)

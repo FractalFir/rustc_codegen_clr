@@ -6,7 +6,7 @@ use crate::{
     r#type::TypeDef,
     r#type::{DotnetTypeRef, Type},
 };
-use std::{borrow::Cow, io::Write, ops::Deref};
+use std::{borrow::Cow, io::Write};
 #[must_use]
 /// A struct used to export an asssembly using the ILASM tool as a .NET assembly creator.
 pub struct ILASMExporter {
@@ -125,15 +125,18 @@ fn type_def_cli(w: &mut impl Write, tpe: &TypeDef) -> Result<(), super::Assembly
     } else {
         "private"
     };
-    let sealed =  if tpe.explicit_offsets().is_some() || tpe.extends().is_none(){
+    let sealed = if tpe.explicit_offsets().is_some() || tpe.extends().is_none() {
         "sealed"
-    }else{
+    } else {
         ""
     };
     if tpe.explicit_offsets().is_some() {
         writeln!(w, "\n.class {access} explicit ansi {sealed} beforefieldinit {name}{generics}  extends {extended}{{")?;
     } else {
-        writeln!(w, "\n.class {access} ansi {sealed} beforefieldinit {name}{generics} extends {extended}{{")?;
+        writeln!(
+            w,
+            "\n.class {access} ansi {sealed} beforefieldinit {name}{generics} extends {extended}{{"
+        )?;
     }
 
     for inner_type in tpe.inner_types() {
@@ -253,9 +256,9 @@ fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
                 } else {
                     "instance"
                 };
-                let owner_name = match &call_site.class() {
+                let owner_name = match call_site.class() {
                     Some(owner) => {
-                        format!("{}::", prefixed_type_cil(&owner.deref().clone().into()))
+                        format!("{}::", prefixed_type_cil(&owner.clone().into()))
                     }
                     None => String::new(),
                 };
@@ -286,9 +289,9 @@ fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
                 } else {
                     "instance"
                 };
-                let owner_name = match &call_site.class() {
+                let owner_name = match call_site.class() {
                     Some(owner) => {
-                        format!("{}::", prefixed_type_cil(&owner.deref().clone().into()))
+                        format!("{}::", prefixed_type_cil(&owner.clone().into()))
                     }
                     None => String::new(),
                 };
@@ -613,14 +616,14 @@ fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
 fn output_type_cil(tpe: &Type) -> Cow<'static, str> {
     match tpe {
         Type::Void => "void".into(),
-        Type::Ptr(inner)=>format!("{inner}*",inner = output_type_cil(inner)).into(),
+        Type::Ptr(inner) => format!("{inner}*", inner = output_type_cil(inner)).into(),
         _ => prefixed_type_cil(tpe),
     }
 }
 fn call_output_type_cil(tpe: &Type) -> Cow<'static, str> {
     match tpe {
         Type::Void => "void".into(),
-        Type::Ptr(inner)=>format!("{inner}*",inner = output_type_cil(inner)).into(),
+        Type::Ptr(inner) => format!("{inner}*", inner = output_type_cil(inner)).into(),
         _ => prefixed_field_type_cil(tpe),
     }
 }
@@ -697,7 +700,6 @@ fn type_cil(tpe: &Type) -> Cow<'static, str> {
             };
             format!("{tpe}[{arr}]", tpe = type_cil(&array.element)).into()
         } //_ => todo!("Unsuported type {tpe:?}"),
-        Type::FnDef(_site) => "FnDef".into(),
     }
 }
 fn field_type_cil(tpe: &Type) -> Cow<'static, str> {
@@ -792,18 +794,6 @@ fn args_cli(w: &mut impl Write, args: &[Type]) -> std::io::Result<()> {
     }
     for arg in args {
         write!(w, ",{type_cil}", type_cil = arg_type_cil(arg))?;
-    }
-    write!(w, ")")?;
-    Ok(())
-}
-fn call_args_cli(w: &mut impl Write, args: &[Type]) -> std::io::Result<()> {
-    let mut args = args.iter();
-    write!(w, "(")?;
-    if let Some(first_arg) = args.next() {
-        write!(w, "{type_cil}", type_cil = call_arg_type_cil(first_arg))?;
-    }
-    for arg in args {
-        write!(w, ",{type_cil}", type_cil = call_arg_type_cil(arg))?;
     }
     write!(w, ")")?;
     Ok(())

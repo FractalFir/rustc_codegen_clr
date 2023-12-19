@@ -185,7 +185,7 @@ pub fn place_adress<'a>(
     type_cache: &mut crate::r#type::TyCache,
 ) -> Vec<CILOp> {
     let mut ops = Vec::with_capacity(place.projection.len());
-    let place_ty = place.ty(method,ctx);
+    let place_ty = place.ty(method, ctx);
     let place_ty = crate::utilis::monomorphize(&method_instance, place_ty, ctx).ty;
     if place.projection.is_empty() {
         ops.push(local_adress(place.local.as_usize(), method));
@@ -209,7 +209,7 @@ pub fn place_adress<'a>(
             method_instance,
             method,
             type_cache,
-            place_ty
+            place_ty,
         ));
         ops
     }

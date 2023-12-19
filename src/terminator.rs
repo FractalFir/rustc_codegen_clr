@@ -36,11 +36,11 @@ fn call_managed<'ctx>(
     //FIXME: figure out the proper argc.
     //assert!(subst_ref.len() as u32 == argc + 3 || subst_ref.len() as u32 == argc + 4);
     assert!(args.len() as u32 == argc);
-    let asm = garg_to_string(&subst_ref[0], tyctx);
+    let asm = garg_to_string(subst_ref[0], tyctx);
     let asm = Some(asm).filter(|asm| !asm.is_empty());
-    let class_name = garg_to_string(&subst_ref[1], tyctx);
-    let is_valuetype = crate::utilis::garag_to_bool(&subst_ref[2], tyctx);
-    let managed_fn_name = garg_to_string(&subst_ref[3], tyctx);
+    let class_name = garg_to_string(subst_ref[1], tyctx);
+    let is_valuetype = crate::utilis::garag_to_bool(subst_ref[2], tyctx);
+    let managed_fn_name = garg_to_string(subst_ref[3], tyctx);
     let mut tpe = DotnetTypeRef::new(asm.as_deref(), &class_name);
     tpe.set_valuetype(is_valuetype);
     let signature = FnSig::sig_from_instance_(fn_instance, tyctx, type_cache)
@@ -67,7 +67,7 @@ fn call_managed<'ctx>(
             )
         }
     } else {
-        let is_static = crate::utilis::garag_to_bool(&subst_ref[4], tyctx);
+        let is_static = crate::utilis::garag_to_bool(subst_ref[4], tyctx);
 
         let mut call = Vec::new();
         for arg in args {
@@ -119,14 +119,14 @@ fn callvirt_managed<'ctx>(
     let argc = argc.parse::<u32>().unwrap();
     //assert!(subst_ref.len() as u32 == argc + 3 || subst_ref.len() as u32 == argc + 4);
     assert!(args.len() as u32 == argc);
-    let asm = garg_to_string(&subst_ref[0], tyctx);
+    let asm = garg_to_string(subst_ref[0], tyctx);
     let asm = Some(asm).filter(|asm| !asm.is_empty());
-    let class_name = garg_to_string(&subst_ref[1], tyctx);
-    let is_valuetype = crate::utilis::garag_to_bool(&subst_ref[2], tyctx);
+    let class_name = garg_to_string(subst_ref[1], tyctx);
+    let is_valuetype = crate::utilis::garag_to_bool(subst_ref[2], tyctx);
 
     let managed_fn_garg = &subst_ref[3];
     let managed_fn_garg = crate::utilis::monomorphize(&method_instance, *managed_fn_garg, tyctx);
-    let managed_fn_name = garg_to_string(&managed_fn_garg, tyctx);
+    let managed_fn_name = garg_to_string(managed_fn_garg, tyctx);
 
     let mut tpe = DotnetTypeRef::new(asm.as_deref(), &class_name);
     tpe.set_valuetype(is_valuetype);
@@ -153,7 +153,7 @@ fn callvirt_managed<'ctx>(
             )
         }
     } else {
-        let is_static = crate::utilis::garag_to_bool(&subst_ref[4], tyctx);
+        let is_static = crate::utilis::garag_to_bool(subst_ref[4], tyctx);
 
         let mut call = Vec::new();
         for arg in args {
@@ -206,13 +206,13 @@ fn call_ctor<'ctx>(
     // Check that a proper number of arguments is used
     assert!(args.len() as u32 == argc);
     // Get the name of the assembly the constructed object resides in
-    let asm = garg_to_string(&subst_ref[0], tyctx);
+    let asm = garg_to_string(subst_ref[0], tyctx);
     // If empty, make it none(for consitent encoing of No-assembly)
     let asm = Some(asm).filter(|asm| !asm.is_empty());
     // Get the name of the constructed object
-    let class_name = garg_to_string(&subst_ref[1], tyctx);
+    let class_name = garg_to_string(subst_ref[1], tyctx);
     // Check if the costructed object is valuetype. TODO: this may be unnecesary. Are valuetpes constructed using newobj?
-    let is_valuetype = crate::utilis::garag_to_bool(&subst_ref[2], tyctx);
+    let is_valuetype = crate::utilis::garag_to_bool(subst_ref[2], tyctx);
     let mut tpe = DotnetTypeRef::new(asm.as_deref(), &class_name);
     tpe.set_valuetype(is_valuetype);
     // If no arguments, inputs don't have to be handled, so a simpler call handling is used.

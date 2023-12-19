@@ -3,7 +3,7 @@ use crate::assert_morphic;
 use crate::cil::{CILOp, FieldDescriptor};
 use crate::function_sig::FnSig;
 use crate::place::{body_ty_is_by_adress, deref_op};
-use crate::r#type:: Type;
+use crate::r#type::Type;
 
 use rustc_middle::mir::PlaceElem;
 use rustc_middle::ty::{Instance, Ty, TyCtxt, TyKind};
@@ -97,7 +97,6 @@ pub fn place_elem_body<'ctx>(
             let _curr_type_name = (curr_dotnet_type).name_path();
             let mut field_type = curr_dotnet_type.clone();
             field_type.append_path(&format!("/{variant_name}"));
-            field_type.set_generics_identity();
             let field_desc = FieldDescriptor::boxed(
                 curr_dotnet_type.clone(),
                 crate::r#type::Type::DotnetType(Box::new(field_type)),

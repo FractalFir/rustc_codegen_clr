@@ -290,8 +290,7 @@ macro_rules! run_test {
 macro_rules! cargo_test {
     ($test_name:ident) => {
         mod $test_name {
-            #[cfg(test)]
-            use std::io::Write;
+
             #[cfg(test)]
             static COMPILE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
             #[test]
@@ -384,8 +383,7 @@ macro_rules! cargo_test {
 macro_rules! cargo_test_ignored {
     ($test_name:ident) => {
         mod $test_name {
-            #[cfg(test)]
-            use std::io::Write;
+
             #[cfg(test)]
             static COMPILE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
             #[ignore]
@@ -516,16 +514,14 @@ fn absolute_backend_path() -> PathBuf {
         } else {
             panic!("Unsupported target OS");
         }
+    } else if cfg!(target_os = "linux") {
+        std::fs::canonicalize("target/release/librustc_codegen_clr.so").unwrap()
+    } else if cfg!(target_os = "windows") {
+        std::fs::canonicalize("target/release/librustc_codegen_clr.dll").unwrap()
+    } else if cfg!(target_os = "macos") {
+        std::fs::canonicalize("target/release/librustc_codegen_clr.dylib").unwrap()
     } else {
-        if cfg!(target_os = "linux") {
-            std::fs::canonicalize("target/release/librustc_codegen_clr.so").unwrap()
-        } else if cfg!(target_os = "windows") {
-            std::fs::canonicalize("target/release/librustc_codegen_clr.dll").unwrap()
-        } else if cfg!(target_os = "macos") {
-            std::fs::canonicalize("target/release/librustc_codegen_clr.dylib").unwrap()
-        } else {
-            panic!("Unsupported target OS");
-        }
+        panic!("Unsupported target OS");
     }
 }
 #[cfg(test)]

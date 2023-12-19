@@ -1,7 +1,7 @@
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::ty::{
-    AdtDef, AdtKind, Const, ConstKind, EarlyBinder, FloatTy, GenericArg, Instance, List,
-    ParamEnv, SymbolName, Ty, TyCtxt, TyKind, TypeFoldable,
+    AdtDef, AdtKind, Const, ConstKind, EarlyBinder, FloatTy, GenericArg, Instance, List, ParamEnv,
+    SymbolName, Ty, TyCtxt, TyKind, TypeFoldable,
 };
 pub const CTOR_FN_NAME: &str = "rustc_clr_interop_managed_ctor";
 pub const MANAGED_CALL_FN_NAME: &str = "rustc_clr_interop_managed_call";
@@ -22,13 +22,11 @@ pub fn as_adt(ty: Ty) -> Option<(AdtDef, &List<GenericArg>)> {
     }
 }
 pub fn adt_name<'tyctx>(
-    adt: &AdtDef<'tyctx>,
+    adt: AdtDef<'tyctx>,
     tyctx: TyCtxt<'tyctx>,
     gargs: &'tyctx List<GenericArg<'tyctx>>,
 ) -> crate::IString {
     //TODO: find a better way to get adt name!
-
-    //let def_str = tyctx.def_path_str(adt.did());
     let _gdef_str = if gargs
         .iter()
         .any(|garg| garg.as_type().is_some() || garg.as_const().is_some())
@@ -38,25 +36,11 @@ pub fn adt_name<'tyctx>(
         rustc_middle::ty::print::with_no_trimmed_paths! {tyctx.def_path_str(adt.did())}
     };
     let krate = adt.did().krate;
-    /*
-    if krate != root_crate_num(){
-        let krate_name = tyctx.crate_name(krate).to_string();
-        eprintln!("Preparing to add crate PREFIX gdef_str:{gdef_str} krate_name:{krate_name}");
-        //TODO: This *could* not get triggered when it should when the crate contains a modulw with its name.
-        if !gdef_str.contains(&krate_name){
-            eprintln!("Adding prefix {krate_name}");
-            gdef_str = format!("{krate_name}.{gdef_str}");
-        }
-    }*/
     let adt_instance = Instance::resolve(tyctx, ParamEnv::reveal_all(), adt.did(), gargs)
         .unwrap()
         .unwrap();
     let auto_mangled =
         rustc_symbol_mangling::symbol_name_for_instance_in_crate(tyctx, adt_instance, krate);
-    //eprintln!("auto_mangled:{auto_mangled:?}");
-    //let opt_name = tyctx.item_name(adt.did()).to_string();
-    //eprintln!("opt_name:{opt_name}");
-
     escape_class_name(&auto_mangled)
 }
 
@@ -217,7 +201,7 @@ pub fn field_descrptor<'ctx>(
 }
 /// Returns the size of a tag of an enum with `variants` variants.
 pub fn enum_tag_size(variants: u64) -> u32 {
-    (((u64::from(u64::BITS) - u64::from((variants).leading_zeros())) + 8 - 1) / 8) as u32
+    u32::try_from(((u64::from(u64::BITS) - u64::from((variants).leading_zeros())) + 8 - 1) / 8).expect("Enum variant over 2^4294967296")
 }
 /// Gets the type of the tag of enum with `variants` varinats.
 pub fn tag_from_enum_variants(variants: u64) -> crate::r#type::Type {
@@ -233,16 +217,16 @@ pub fn tag_from_enum_variants(variants: u64) -> crate::r#type::Type {
     }
 }
 /// Tires to get the value of Const `size` as usize.
-pub fn try_resolve_const_size(size: &Const) -> Result<usize, &'static str> {
+pub fn try_resolve_const_size(size: Const) -> Result<usize, &'static str> {
     let scalar = match size.try_to_scalar() {
         Some(value) => Ok(value),
         None => Err("Can't resolve scalar array size!"),
     }?;
     let value = scalar.to_u64().expect("Could not convert scalar to u64!");
-    Ok(value as usize)
+    Ok(usize::try_from(value).expect("Const size value too big."))
 }
 /// Converts a generic argument to a string, and panics if it could not.
-pub fn garg_to_string<'tyctx>(garg: &GenericArg<'tyctx>, ctx: TyCtxt<'tyctx>) -> String {
+pub fn garg_to_string<'tyctx>(garg: GenericArg<'tyctx>, ctx: TyCtxt<'tyctx>) -> String {
     let str_const = garg
         .as_const()
         .expect("Generic argument was not an constant!");
@@ -254,40 +238,41 @@ pub fn garg_to_string<'tyctx>(garg: &GenericArg<'tyctx>, ctx: TyCtxt<'tyctx>) ->
         .ty()
         .builtin_deref(true)
         .expect("Type of generic argument was not a reference, can't resolve as string!");
-    if !tpe.ty.is_str() {
-        panic!("Generic argument was not a string, but {str_const:?}!");
-    } else {
-        let kind = str_const.kind();
-        match kind {
-            ConstKind::Value(_) => {
-                let raw_bytes = val_tree
-                    .try_to_raw_bytes(ctx, str_const.ty())
-                    .expect("String const did not contain valid string!");
-                String::from_utf8(raw_bytes.into()).expect("String constant invalid!")
-            }
-            _ => todo!("Can't convert generic arg of const kind {kind:?} to string!"),
+    assert!(
+        tpe.ty.is_str(),
+        "Generic argument was not a string, but {str_const:?}!"
+    );
+
+    let kind = str_const.kind();
+    match kind {
+        ConstKind::Value(_) => {
+            let raw_bytes = val_tree
+                .try_to_raw_bytes(ctx, str_const.ty())
+                .expect("String const did not contain valid string!");
+            String::from_utf8(raw_bytes.into()).expect("String constant invalid!")
         }
+        _ => todo!("Can't convert generic arg of const kind {kind:?} to string!"),
     }
 }
 /// Converts a generic argument to a boolean, and panics if it could not.
-pub fn garag_to_bool<'tyctx>(garg: &GenericArg<'tyctx>, _ctx: TyCtxt<'tyctx>) -> bool {
+pub fn garag_to_bool<'tyctx>(garg: GenericArg<'tyctx>, _ctx: TyCtxt<'tyctx>) -> bool {
     let usize_const = garg
         .as_const()
         .expect("Generic argument was not an constant!");
     let tpe = usize_const.ty();
-    if !tpe.is_bool() {
-        panic!("Generic argument was not a bool type! ty:{:?}", tpe);
-    } else {
-        let kind = usize_const.kind();
-        match kind {
-            ConstKind::Value(value) => {
-                let scalar = value
-                    .try_to_scalar_int()
-                    .expect("String const did not contain valid scalar!");
-                scalar.try_to_uint(scalar.size()).unwrap() != 0
-            }
-            _ => todo!("Can't convert generic arg of const kind {kind:?} to string!"),
+    assert!(
+        tpe.is_bool(),
+        "Generic argument was not a bool type! ty:{tpe:?}"
+    );
+    let kind = usize_const.kind();
+    match kind {
+        ConstKind::Value(value) => {
+            let scalar = value
+                .try_to_scalar_int()
+                .expect("String const did not contain valid scalar!");
+            scalar.try_to_uint(scalar.size()).unwrap() != 0
         }
+        _ => todo!("Can't convert generic arg of const kind {kind:?} to string!"),
     }
 }
 /// This function returns the size of a type at the compile time. This should be used ONLY for handling constants. It currently assumes a 64 bit env
@@ -376,11 +361,13 @@ macro_rules! assert_morphic {
         );
     };
 }
+/// Returns a [`DotnetTypeRef`] describing the string class.
 pub fn string_class() -> DotnetTypeRef {
     let mut string = DotnetTypeRef::new(Some("System.Runtime"), "System.String");
     string.set_valuetype(false);
     string
 }
+/// Returns a [`DotnetTypeRef`] describing the usize class.
 pub fn usize_class() -> DotnetTypeRef {
     let mut string = DotnetTypeRef::new(Some("System.Runtime"), "System.UIntPtr");
     //TODO: Inwestigate this. The valuetype prefix seems to be missing from UIntPtr in compiled C# code
@@ -393,8 +380,6 @@ pub fn check_debugable(
     debugable: impl std::fmt::Debug,
     does_return_void: bool,
 ) {
-    use colored::Colorize;
-
     let mut stack = 0;
     for op in ops {
         if !(does_return_void && *op == crate::cil::CILOp::Ret) {
@@ -405,29 +390,16 @@ pub fn check_debugable(
         rustc_middle::ty::print::with_no_trimmed_paths! {eprintln!("Propable miscompilation: {debugable:?} resulted in ops {ops:?} and did not pass the stack check.")};
         let mut stack = 0;
         for (index, op) in ops.iter().enumerate() {
-            if !(does_return_void && *op == crate::cil::CILOp::Ret) {
+            if does_return_void && *op == crate::cil::CILOp::Ret {
+                eprintln!("{index}:\t{op:?} changed stack by 0, to {stack}"); 
+            } 
+            else{
                 let diff = op.stack_diff();
                 stack += diff;
-                if stack < 0 {
-                    eprintln!(
-                        "{}",
-                        format!("{index}:\t{op:?} changed stack by {diff}, to {stack}").red()
-                    );
-                } else {
-                    eprintln!("{index}:\t{op:?} changed stack by {diff}, to {stack}");
-                }
-            } else if stack < 0 {
-                eprintln!(
-                    "{}",
-                    format!("{index}:\t{op:?} changed stack by 0, to {stack}").red()
-                );
-            } else {
-                eprintln!("{index}:\t{op:?} changed stack by 0, to {stack}");
+                eprintln!("{index}:\t{op:?} changed stack by {diff}, to {stack}");
             }
         }
-        if !crate::ALLOW_MISCOMPILATIONS {
-            panic!("Miscompiled  {debugable:?}.")
-        };
+        assert!(crate::ALLOW_MISCOMPILATIONS, "Miscompiled  {debugable:?}.");
     }
 }
 pub(crate) fn alloc_id_to_u64(alloc_id: AllocId) -> u64 {

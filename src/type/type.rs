@@ -1,8 +1,6 @@
 use crate::IString;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
-use rustc_middle::ty::{
-    AdtDef, ConstKind, FloatTy, GenericArg, IntTy, Ty, TyCtxt, TyKind, UintTy,
-};
+use rustc_middle::ty::{AdtDef, ConstKind, FloatTy, GenericArg, IntTy, Ty, TyCtxt, TyKind, UintTy};
 /// This struct represetnts either a primitive .NET type (F32,F64), or stores information on how to lookup a more complex type (struct,class,array)
 use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, PartialEq, Clone, Eq, Hash, Debug)]
@@ -117,9 +115,6 @@ impl DotnetTypeRef {
     }
     pub fn set_generics(&mut self, generics: impl Into<Vec<Type>>) {
         self.generics = generics.into();
-    }
-    pub fn set_generics_identity(&mut self) {
-        self.generics = crate::r#type::ident_gargs(self.generics.len()).into();
     }
 }
 impl Type {
@@ -276,12 +271,13 @@ pub fn magic_type<'tyctx>(
     //method: &Instance<'tyctx>,
 ) -> Type {
     if name.contains(INTEROP_CLASS_TPE_NAME) {
-        if subst.len() != 2 {
-            panic!("MAnaged object reference must have exactly 2 generic arguments!");
-        }
-        let assembly: Box<str> = garg_to_string(&subst[0], ctx).into();
+        assert!(
+            !(subst.len() != 2),
+            "Managed object reference must have exactly 2 generic arguments!"
+        );
+        let assembly: Box<str> = garg_to_string(subst[0], ctx).into();
         let assembly = Some(assembly).filter(|assembly| !assembly.is_empty());
-        let name = garg_to_string(&subst[1], ctx).into();
+        let name = garg_to_string(subst[1], ctx).into();
         let dotnet_tpe = DotnetTypeRef {
             assembly,
             name_path: name,
@@ -290,12 +286,13 @@ pub fn magic_type<'tyctx>(
         };
         Type::DotnetType(dotnet_tpe.into())
     } else if name.contains(INTEROP_STRUCT_TPE_NAME) {
-        if subst.len() != 2 {
-            panic!("MAnaged object reference must have exactly 2 generic arguments!");
-        }
-        let assembly: Box<str> = garg_to_string(&subst[0], ctx).into();
+        assert!(
+            !(subst.len() != 2),
+            "Managed struct reference must have exactly 2 generic arguments!"
+        );
+        let assembly: Box<str> = garg_to_string(subst[0], ctx).into();
         let assembly = Some(assembly).filter(|assembly| !assembly.is_empty());
-        let name = garg_to_string(&subst[1], ctx).into();
+        let name = garg_to_string(subst[1], ctx).into();
         let dotnet_tpe = DotnetTypeRef {
             assembly,
             name_path: name,
@@ -304,14 +301,12 @@ pub fn magic_type<'tyctx>(
         };
         Type::DotnetType(dotnet_tpe.into())
     } else if name.contains(INTEROP_ARR_TPE_NAME) {
-        if subst.len() != 2 {
-            panic!("Managed array size is not");
-        }
+        assert!(!(subst.len() != 2), "Managed array reference must have exactly 2 generic arguments: type and dimension count!");
         let element = &subst[0].as_type().expect("Array type must be specified!");
         let dimensions = garag_to_usize(&subst[1], ctx);
-        let _ = (element,dimensions);
-        /* 
-       
+        let _ = (element, dimensions);
+        /*
+
         Type::DotnetArray(
             DotnetArray {
                 element,

@@ -204,13 +204,10 @@ fn aggregate_adt<'tyctx>(
             let mut variant_type = adt_type_ref.clone(); //adt_type.variant_type(variant).expect("Can't get variant index");
             let variant_name = crate::utilis::variant_name(adt_type, variant_idx);
             variant_type.append_path(&format!("/{variant_name}"));
-            let mut variant_identity = variant_type.clone();
-
-            variant_identity.set_generics_identity();
             // Get variant adress
             let variant_field_desc = FieldDescriptor::new(
                 adt_type_ref.clone(),
-                Type::DotnetType(Box::new(variant_identity)),
+                Type::DotnetType(Box::new(variant_type.clone())),
                 format!("v_{variant_name}").into(),
             );
             let mut variant_address = adt_adress_ops.clone();
@@ -221,9 +218,7 @@ fn aggregate_adt<'tyctx>(
                 .iter()
                 .nth(variant_idx as usize)
                 .expect("Can't get variant index");
-            for (_field_idx, (field, field_value)) in
-                enum_variant.fields.iter().zip(fields.iter()).enumerate()
-            {
+            for (field, field_value) in enum_variant.fields.iter().zip(fields.iter()) {
                 ops.extend(variant_address.clone());
                 ops.extend(field_value.1.clone());
                 let field_name = field.name.to_string();

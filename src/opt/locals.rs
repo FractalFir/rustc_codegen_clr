@@ -1,4 +1,4 @@
-use crate::{method::Method, cil::CILOp, r#type::Type, assembly::Assembly};
+use crate::{assembly::Assembly, cil::CILOp, method::Method, r#type::Type};
 
 pub fn remove_unused_locals(method: &mut Method) {
     let mut local_map = vec![u32::MAX; method.locals().len()];
@@ -81,57 +81,57 @@ pub fn try_split_locals(method: &mut Method, asm: &Assembly) {
                 if *local != split_local as u32 {
                     continue;
                 }
-            } else {
-                continue;
+                // merged code follows:
+                if let CILOp::LDField(field_desc) = op2 {
+                    let field_idx = if let Some(field) = morphic_fields
+                        .iter()
+                        .position(|mfield| mfield.0 == field_desc.name())
+                    {
+                        field
+                    } else {
+                        panic!("ERROR: field spliting failed because field {field_desc:?} could not be found. This may be caused by an error during codegen");
+                    };
+                    method.ops_mut()[index] = CILOp::Nop;
+                    method.ops_mut()[index + 1] = CILOp::LDLoc((field_idx + local_map_start) as u32);
+                    continue;
+                }
+                if let CILOp::LDFieldAdress(field_desc) = op2 {
+                    let field_idx = if let Some(field) = morphic_fields
+                        .iter()
+                        .position(|mfield| mfield.0 == field_desc.name())
+                    {
+                        field
+                    } else {
+                        panic!("ERROR: field spliting failed because field {field_desc:?} could not be found. This may be caused by an error during codegen");
+                    };
+                    method.ops_mut()[index] = CILOp::Nop;
+                    method.ops_mut()[index + 1] = CILOp::LDLocA((field_idx + local_map_start) as u32);
+                    continue;
+                }
+                if let CILOp::STField(field_desc) = op3 {
+                    let field_idx = if let Some(field) = morphic_fields
+                        .iter()
+                        .position(|mfield| mfield.0 == field_desc.name())
+                    {
+                        field
+                    } else {
+                        panic!("ERROR: field spliting failed because field {field_desc:?} could not be found. This may be caused by an error during codegen");
+                    };
+                    method.ops_mut()[index] = CILOp::Nop;
+                    method.ops_mut()[index + 2] = CILOp::STLoc((field_idx + local_map_start) as u32);
+                    continue;
+                }
+                panic!("Invalid field access in field split on ops {op1:?} {op2:?} {op3:?} split_local:{split_local:?} ");
             }
-            if let CILOp::LDField(field_desc) = op2 {
-                let field_idx = if let Some(field) = morphic_fields
-                    .iter()
-                    .position(|mfield| mfield.0 == field_desc.name())
-                {
-                    field
-                } else {
-                    panic!("ERROR: field spliting failed because field {field_desc:?} could not be found. This may be caused by an error during codegen");
-                };
-                method.ops_mut()[index] = CILOp::Nop;
-                method.ops_mut()[index + 1] = CILOp::LDLoc((field_idx + local_map_start) as u32);
-                continue;
-            }
-            if let CILOp::LDFieldAdress(field_desc) = op2 {
-                let field_idx = if let Some(field) = morphic_fields
-                    .iter()
-                    .position(|mfield| mfield.0 == field_desc.name())
-                {
-                    field
-                } else {
-                    panic!("ERROR: field spliting failed because field {field_desc:?} could not be found. This may be caused by an error during codegen");
-                };
-                method.ops_mut()[index] = CILOp::Nop;
-                method.ops_mut()[index + 1] = CILOp::LDLocA((field_idx + local_map_start) as u32);
-                continue;
-            }
-            if let CILOp::STField(field_desc) = op3 {
-                let field_idx = if let Some(field) = morphic_fields
-                    .iter()
-                    .position(|mfield| mfield.0 == field_desc.name())
-                {
-                    field
-                } else {
-                    panic!("ERROR: field spliting failed because field {field_desc:?} could not be found. This may be caused by an error during codegen");
-                };
-                method.ops_mut()[index] = CILOp::Nop;
-                method.ops_mut()[index + 2] = CILOp::STLoc((field_idx + local_map_start) as u32);
-                continue;
-            }
-            panic!("Invalid field access in field split on ops {op1:?} {op2:?} {op3:?} split_local:{split_local:?} ");
+
         }
         //todo!("Can't yet split local {split_local:?} of type {split_tpe:?}. type_def:{type_def:?} morphic_fields:{morphic_fields:?}")
     }
 }
 /// Checks if a local could be split.
-fn can_split_local(local: u32, ops: &[CILOp]) -> bool {
+fn can_split_local(local: u32, method_ops: &[CILOp]) -> bool {
     // Local is get/set by value, should not be split.
-    if ops.iter().any(|op| {
+    if method_ops.iter().any(|op| {
         if let CILOp::LDLoc(loc) | CILOp::STLoc(loc) = op {
             *loc == local
         } else {
@@ -141,16 +141,16 @@ fn can_split_local(local: u32, ops: &[CILOp]) -> bool {
         return false;
     }
     // Check if local adress is used ONLY to get fields.
-    for (index, op) in ops.iter().enumerate() {
+    for (index, op) in method_ops.iter().enumerate() {
         match op {
             CILOp::LDLocA(loc) => {
                 if *loc == local {
                     assert!(
-                        index + 2 < ops.len(),
+                        index + 2 < method_ops.len(),
                         "ERROR: malformed method. LDLocA must be followed by at least 2 ops."
                     );
-                    let op2 = &ops[index + 1];
-                    let op3 = &ops[index + 2];
+                    let op2 = &method_ops[index + 1];
+                    let op3 = &method_ops[index + 2];
                     if let CILOp::LDField(_) | CILOp::LDFieldAdress(_) = op2 {
                         continue;
                     }

@@ -167,30 +167,23 @@ pub fn escape_field_name(name: &str) -> IString {
     {
         format!("m_{name}").into()
     } else {
-        if name.contains('0'){
-            eprintln!("field name:\'{name:?}\'. Name length:{} first char:\'{:?}\'",name.len(),name.chars().next().unwrap());
+        if name.contains('0') {
+            eprintln!(
+                "field name:\'{name:?}\'. Name length:{} first char:\'{:?}\'",
+                name.len(),
+                name.chars().next().unwrap()
+            );
         }
         name.into()
     }
 }
-pub fn ident_gargs(gargc: usize) -> std::borrow::Cow<'static, [Type]> {
-    const ZERO_GARGS: &[Type] = &[];
-    const ONE_GARG: &[Type] = &[Type::GenericArg(0)];
-    match gargc {
-        0 => ZERO_GARGS.into(),
-        1 => ONE_GARG.into(),
-        _ => (0..gargc)
-            .map(|g| Type::GenericArg(g as u32))
-            .collect::<Vec<_>>()
-            .into(),
-    }
-}
+#[must_use]
 pub fn get_array_type(element_count: usize) -> TypeDef {
     use crate::cil::CILOp;
     let name = format!("Arr{element_count}");
     let mut fields = Vec::with_capacity(element_count);
     for field in 0..element_count {
-        fields.push((format!("f_{field}").into(), Type::GenericArg(0)))
+        fields.push((format!("f_{field}").into(), Type::GenericArg(0)));
     }
     let mut def = TypeDef {
         access: AccessModifer::Public,

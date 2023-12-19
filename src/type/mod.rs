@@ -6,6 +6,5 @@ pub mod r#type;
 pub(crate) mod type_def;
 
 pub use r#type::*;
-use rustc_middle::ty::{GenericArg, IntTy, Ty, TyCtxt, TyKind, UintTy};
 pub use tycache::*;
 pub use type_def::*;

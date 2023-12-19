@@ -21,6 +21,10 @@ use std::collections::{HashMap, HashSet};
 #[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 /// Data representing a reference to an external assembly.
 pub struct AssemblyExternRef {
+    /// A tuple describing the referenced assebmly.
+    /// Tuple contains:
+    /// (Major Version, Minor Version, Revision number, Build number)
+    /// In that order.
     version: (u16, u16, u16, u16),
 }
 impl AssemblyExternRef {
@@ -32,10 +36,15 @@ impl AssemblyExternRef {
 #[derive(Serialize, Deserialize, Debug)]
 /// Representation of a .NET assembly.
 pub struct Assembly {
+    /// List of types desined within the assembly.
     types: HashSet<TypeDef>,
+    /// List of functions defined within this assembly.
     functions: HashMap<CallSite, Method>,
+    /// Callsite representing the entrypoint of this assebmly if any present.
     entrypoint: Option<CallSite>,
+    /// List of references to external assemblies
     extern_refs: HashMap<IString, AssemblyExternRef>,
+    /// List of all static fields within the assembly
     static_fields: HashMap<IString, Type>,
 }
 impl Assembly {
@@ -103,11 +112,10 @@ impl Assembly {
                 }
             }
             return Some(td);
-        } else {
-            for tpe in self.types() {
-                if tpe.name() == path {
-                    return Some(tpe);
-                }
+        } 
+        for tpe in self.types() {
+            if tpe.name() == path {
+                return Some(tpe);
             }
         }
         None
@@ -256,13 +264,11 @@ impl Assembly {
         if crate::TRACE_CALLS {
             ops.extend(CILOp::debug_msg(&format!("Called {name}.")));
         }
-        let mut last_bb_id = 0;
 
-        let blocks = &(*mir.basic_blocks);
+        let blocks = &mir.basic_blocks;
         let does_return_void: bool = *method.sig().output() == Type::Void;
-        for block_data in blocks {
-            ops.push(CILOp::Label(last_bb_id));
-            last_bb_id += 1;
+        for (last_bb_id, block_data) in blocks.into_iter().enumerate() {
+            ops.push(CILOp::Label(last_bb_id as u32));
             for statement in &block_data.statements {
                 if crate::INSERT_MIR_DEBUG_COMMENTS {
                     rustc_middle::ty::print::with_no_trimmed_paths! {ops.push(CILOp::Comment(format!("{statement:?}").into()))};
@@ -288,15 +294,16 @@ impl Assembly {
             match &block_data.terminator {
                 Some(term) => {
                     let term_ops = Self::terminator_to_ops(term, mir, tcx, instance, cache);
-                    if term_ops != &[CILOp::Ret] {
+                    if term_ops != [CILOp::Ret] {
                         crate::utilis::check_debugable(&term_ops, term, does_return_void);
                     }
-
                     ops.extend(term_ops)
                 }
                 None => (),
             }
         }
+        #[allow(clippy::single_match)]
+        // This will be slowly expanded with support for new types of allocations.
         ops.iter_mut().for_each(|op| match op {
             CILOp::LoadGlobalAllocPtr { alloc_id } => {
                 *op = CILOp::LDStaticField(self.add_allocation(*alloc_id, tcx).into());
@@ -317,6 +324,7 @@ impl Assembly {
     pub fn add_static(&mut self, tpe: Type, name: &str) {
         self.static_fields.insert(name.into(), tpe);
     }
+    /// Adds a static field and initialized for allocation represented by `alloc_id`.
     fn add_allocation(
         &mut self,
         alloc_id: u64,
@@ -507,7 +515,7 @@ fn locals_from_mir<'tyctx>(
             let ty = crate::utilis::monomorphize(method_instance, local.ty, tyctx);
             if crate::PRINT_LOCAL_TYPES {
                 println!(
-                    "Setting local to type {ty:?},non-morphic: {non_morph}",
+                    "Local type {ty:?},non-morphic: {non_morph}",
                     non_morph = local.ty
                 );
             }

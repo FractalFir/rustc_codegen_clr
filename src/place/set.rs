@@ -15,32 +15,6 @@ pub fn local_set(local: usize, method: &rustc_middle::mir::Body) -> CILOp {
         CILOp::STArg((local - 1) as u32)
     }
 }
-fn place_elem_set_at<'a>(
-    curr_type: PlaceTy<'a>,
-    tyctx: TyCtxt<'a>,
-    method_instance: &Instance<'a>,
-    type_cache: &mut crate::r#type::TyCache,
-) -> Vec<CILOp> {
-    let curr_ty = curr_type.as_ty().expect("Can't index into enum!");
-    let curr_ty = crate::utilis::monomorphize(method_instance, curr_ty, tyctx);
-    let tpe = type_cache.type_from_cache(curr_ty, tyctx, Some(*method_instance));
-    let class = if let Type::DotnetType(dotnet) = &tpe {
-        dotnet
-    } else {
-        panic!("Can't index into type {tpe:?}");
-    };
-    let index_ty = Type::USize;
-    let _element_ty = crate::r#type::element_type(curr_ty);
-
-    let signature =
-        crate::function_sig::FnSig::new(&[tpe.clone(), index_ty, Type::GenericArg(0)], &Type::Void);
-    vec![CILOp::Call(crate::cil::CallSite::boxed(
-        Some(class.as_ref().clone()),
-        "set_Item".into(),
-        signature,
-        false,
-    ))]
-}
 pub fn place_elem_set<'a>(
     place_elem: &PlaceElem<'a>,
     curr_type: PlaceTy<'a>,

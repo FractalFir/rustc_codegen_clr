@@ -1,3 +1,5 @@
+// This is a WIP module an is currently unused
+#![allow(unused)]
 use crate::cil::CILOp;
 use rustc_middle::mir::UnwindAction;
 #[derive(Debug)]
