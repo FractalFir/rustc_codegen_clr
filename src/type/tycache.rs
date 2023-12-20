@@ -26,34 +26,15 @@ impl TyCache {
         self.type_def_cache.values()
     }
     #[must_use]
+    /// Gets the definition ID of the `PtrComponents` type.
+    /// # Panics
+    /// Will panic if the `PtrComponents` type is missing.
     pub fn ptr_components(&mut self, tyctx: TyCtxt) -> DefId {
         if self.ptr_components.is_none() {
             self.ptr_components = Some(try_find_ptr_components(tyctx));
         }
-        self.ptr_components.unwrap()
-    }
-    pub fn type_def_from_cache<'tyctx>(
-        &mut self,
-        ty: Ty<'tyctx>,
-        tyctx: TyCtxt<'tyctx>,
-        method: Option<Instance<'tyctx>>,
-    ) -> &TypeDef {
-        match ty.kind() {
-            TyKind::Adt(adt, susbt) => {
-                let name = crate::utilis::adt_name(*adt, tyctx, susbt);
-                if super::is_name_magic(name.as_ref()) {
-                    todo!("Can't yet get fields of interop types!");
-                }
-
-                if self.type_def_cache.get(name.as_ref()).is_none() {
-                    self.type_from_cache(ty, tyctx, method);
-                }
-                self.type_def_cache
-                    .get(name.as_ref())
-                    .expect("Added type, but it is missing??")
-            }
-            _ => todo!("Can't retrive typedef for type {ty:?} from cache yet!"),
-        }
+        self.ptr_components
+            .expect("Could not find `PtrComponents`.")
     }
     fn adt<'tyctx>(
         &mut self,
@@ -374,7 +355,7 @@ fn try_find_ptr_components(ctx: TyCtxt) -> DefId {
             ExportedSymbol::ThreadLocalShim(def_id)
             | ExportedSymbol::Generic(def_id, _)
             | ExportedSymbol::NonGeneric(def_id) => {
-                max_index = max_index.max(def_id.index.as_u32())
+                max_index = max_index.max(def_id.index.as_u32());
             }
             _ => (),
         }

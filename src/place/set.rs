@@ -201,7 +201,7 @@ pub fn place_elem_set<'a>(
         _ => todo!("Can't handle porojection {place_elem:?} in set"),
     }
 }
-/// Returns a set of instructons to set a pointer to a pointed_type to a value from the stack.
+/// Returns a set of instructons to set a pointer to a `pointed_type` to a value from the stack.
 fn ptr_set_op<'ctx>(
     pointed_type: PlaceTy<'ctx>,
     tyctx: TyCtxt<'ctx>,
@@ -233,24 +233,13 @@ fn ptr_set_op<'ctx>(
             TyKind::Bool => vec![CILOp::STIndI8], // Both Rust bool and a managed bool are 1 byte wide. .NET bools are 4 byte wide only in the context of Marshaling/PInvoke,
             // due to historic reasons(BOOL was an alias for int in early Windows, and it stayed this way.) - FractalFir
             TyKind::Char => vec![CILOp::STIndI32], // always 4 bytes wide: https://doc.rust-lang.org/std/primitive.char.html#representation
-            TyKind::Adt(_, _) => {
+            TyKind::Adt(_, _) | TyKind::Tuple(_) | TyKind::Array(_, _) => {
                 let pointed_type =
                     type_cache.type_from_cache(pointed_type, tyctx, Some(*method_instance));
-                vec![CILOp::STObj(pointed_type.into())]
-            }
-            TyKind::Tuple(_) => {
-                let pointed_type =
-                    type_cache.type_from_cache(pointed_type, tyctx, Some(*method_instance));
-                // This is interpreted as a System.ValueTuple and can be treated as an ADT
                 vec![CILOp::STObj(pointed_type.into())]
             }
             TyKind::Ref(_, _, _) => vec![CILOp::STIndISize],
             TyKind::RawPtr(_) => vec![CILOp::STIndISize],
-            TyKind::Array(_, _) => {
-                let pointed_type =
-                    type_cache.type_from_cache(pointed_type, tyctx, Some(*method_instance));
-                vec![CILOp::STObj(pointed_type.into())]
-            }
             _ => todo!(" can't deref type {pointed_type:?} yet"),
         }
     } else {

@@ -9,9 +9,12 @@ pub(super) fn local_get(local: usize, method: &rustc_middle::mir::Body) -> CILOp
     if local == 0 {
         CILOp::LDLoc(0)
     } else if local > method.arg_count {
-        CILOp::LDLoc((local - method.arg_count) as u32)
+        CILOp::LDLoc(
+            u32::try_from(local - method.arg_count)
+                .expect("Method has more than 2^32 local varaibles"),
+        )
     } else {
-        CILOp::LDArg((local - 1) as u32)
+        CILOp::LDArg(u32::try_from(local - 1).expect("Method has more than 2^32 local variables"))
     }
 }
 /// Returns the ops for getting the value of place.

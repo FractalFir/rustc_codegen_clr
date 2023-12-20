@@ -160,7 +160,7 @@ fn type_def_cli(w: &mut impl Write, tpe: &TypeDef) -> Result<(), super::Assembly
             )?;
         }
     }
-    for (_, method) in tpe.methods().enumerate() {
+    for method in tpe.methods() {
         method_cil(w, method)?;
     }
     writeln!(w, "}}")?;

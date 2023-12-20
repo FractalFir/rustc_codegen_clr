@@ -113,12 +113,7 @@ impl Assembly {
             }
             return Some(td);
         }
-        for tpe in self.types() {
-            if tpe.name() == path {
-                return Some(tpe);
-            }
-        }
-        None
+        self.types().find(|&tpe| tpe.name() == path)
     }
     /// Turns a terminator into ops, if ABORT_ON_ERROR set to false, will handle and recover from errors.
     pub fn terminator_to_ops<'tcx>(

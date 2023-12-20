@@ -60,7 +60,7 @@ pub fn handle_statement<'tcx>(
                             type_cache
                         ));
                         res.push(CILOp::debug_bool());
-                        res.extend(CILOp::debug_msg(&""));
+                        res.extend(CILOp::debug_msg(""));
                     }},
                     Type::I32 => rustc_middle::ty::print::with_no_trimmed_paths! {{
                         res.extend(CILOp::debug_msg_no_nl(&format!("{place:?}:")));
@@ -72,47 +72,23 @@ pub fn handle_statement<'tcx>(
                             type_cache
                         ));
                         res.push(CILOp::debug_i32());
-                        res.extend(CILOp::debug_msg(&""));
+                        res.extend(CILOp::debug_msg(""));
                     }},
-                    Type::USize => rustc_middle::ty::print::with_no_trimmed_paths! {{
-                        res.extend(CILOp::debug_msg_no_nl(&format!("{place:?}:")));
-                        res.extend(crate::place::place_get(
-                            &place,
-                            tyctx,
-                            method,
-                            method_instance,
-                            type_cache
-                        ));
-                        res.push(CILOp::ConvU64(false));
-                        res.push(CILOp::debug_u64());
-                        res.extend(CILOp::debug_msg(&""));
-                    }},
-                    Type::ISize => rustc_middle::ty::print::with_no_trimmed_paths! {{
-                        res.extend(CILOp::debug_msg_no_nl(&format!("{place:?}:")));
-                        res.extend(crate::place::place_get(
-                            &place,
-                            tyctx,
-                            method,
-                            method_instance,
-                            type_cache
-                        ));
-                        res.push(CILOp::ConvU64(false));
-                        res.push(CILOp::debug_u64());
-                        res.extend(CILOp::debug_msg(&""));
-                    }},
-                    Type::Ptr(_) => rustc_middle::ty::print::with_no_trimmed_paths! {{
-                        res.extend(CILOp::debug_msg_no_nl(&format!("{place:?}:")));
-                        res.extend(crate::place::place_get(
-                            &place,
-                            tyctx,
-                            method,
-                            method_instance,
-                            type_cache
-                        ));
-                        res.push(CILOp::ConvU64(false));
-                        res.push(CILOp::debug_u64());
-                        res.extend(CILOp::debug_msg(&""));
-                    }},
+                    Type::USize | Type::ISize | Type::Ptr(_) => {
+                        rustc_middle::ty::print::with_no_trimmed_paths! {{
+                            res.extend(CILOp::debug_msg_no_nl(&format!("{place:?}:")));
+                            res.extend(crate::place::place_get(
+                                &place,
+                                tyctx,
+                                method,
+                                method_instance,
+                                type_cache
+                            ));
+                            res.push(CILOp::ConvU64(false));
+                            res.push(CILOp::debug_u64());
+                            res.extend(CILOp::debug_msg(""));
+                        }}
+                    }
                     Type::F32 => rustc_middle::ty::print::with_no_trimmed_paths! {{
                         res.extend(CILOp::debug_msg_no_nl(&format!("{place:?}:")));
                         res.extend(crate::place::place_get(
@@ -123,7 +99,7 @@ pub fn handle_statement<'tcx>(
                             type_cache
                         ));
                         res.push(CILOp::debug_f32());
-                        res.extend(CILOp::debug_msg(&""));
+                        res.extend(CILOp::debug_msg(""));
                     }},
                     _ => (),
                 }
@@ -162,11 +138,10 @@ pub fn handle_statement<'tcx>(
                     let src_ty = src.ty(method, tyctx);
                     let src_ty = crate::utilis::monomorphize(&method_instance, src_ty, tyctx);
                     let ptr_type = type_cache.type_from_cache(src_ty, tyctx, Some(method_instance));
-                    let pointed = if let crate::r#type::Type::Ptr(pointed) = ptr_type {
-                        pointed
-                    } else {
+                    let crate::r#type::Type::Ptr(pointed) = ptr_type else {
                         rustc_middle::ty::print::with_no_trimmed_paths! { panic!("Copy nonoverlaping called with non-pointer type {src_ty:?}")};
                     };
+
                     let mut res: Vec<_> =
                         [dst_op, src_op, count_op].into_iter().flatten().collect();
                     res.push(CILOp::SizeOf(pointed));

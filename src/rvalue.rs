@@ -213,7 +213,7 @@ pub fn handle_rvalue<'tcx>(
                     CILOp::ConvUSize(false),
                 ]
             }
-            _ => todo!("Unsuported nullary {op:?}!"),
+            NullOp::OffsetOf(_) => todo!("Unsuported nullary {op:?}!"),
         },
         Rvalue::Aggregate(aggregate_kind, field_index) => crate::aggregate::handle_aggregate(
             tyctx,
@@ -383,7 +383,7 @@ pub fn handle_rvalue<'tcx>(
                         .unwrap();
                     let descriptor =
                         FieldDescriptor::new(slice_tpe, Type::USize, "metadata".into());
-                    ops.extend([CILOp::LDField(descriptor.into())])
+                    ops.extend([CILOp::LDField(descriptor.into())]);
                 }
                 _ => todo!("Get length of type {ty:?}"),
             }
@@ -404,6 +404,6 @@ fn align_of<'tcx>(ty: rustc_middle::ty::Ty<'tcx>, tyctx: TyCtxt<'tcx>) -> u64 {
 
     let align = layout.align.abi;
     // FIXME: this field is likely private for a reason. I should not do this get its value. Find a better way to get aligement.
-    let pow2 = unsafe { std::mem::transmute::<_, u8>(align) } as u64;
+    let pow2 = u64::from(unsafe { std::mem::transmute::<_, u8>(align) });
     1 << pow2
 }

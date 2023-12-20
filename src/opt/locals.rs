@@ -10,17 +10,9 @@ pub fn remove_unused_locals(method: &mut Method) {
         }
     }
     method.ops_mut().iter_mut().for_each(|op| match op {
-        CILOp::LDLoc(idx) => {
-            let new_loc = local_map[*idx as usize];
-            *op = CILOp::LDLoc(new_loc);
-        }
-        CILOp::LDLocA(idx) => {
+        CILOp::LDLocA(idx) | CILOp::STLoc(idx) | CILOp::LDLoc(idx) => {
             let new_loc = local_map[*idx as usize];
             *op = CILOp::LDLocA(new_loc);
-        }
-        CILOp::STLoc(idx) => {
-            let new_loc = local_map[*idx as usize];
-            *op = CILOp::STLoc(new_loc);
         }
         _ => (),
     });
@@ -29,9 +21,7 @@ pub fn remove_unused_locals(method: &mut Method) {
 /// A "Unused" local is one that is never written to or read from.
 fn is_local_unused(ops: &[CILOp], local: u32) -> bool {
     !ops.iter().any(|op| match op {
-        CILOp::LDLoc(loc) => *loc == local,
-        CILOp::LDLocA(loc) => *loc == local,
-        CILOp::STLoc(loc) => *loc == local,
+        CILOp::LDLocA(loc) | CILOp::STLoc(loc) | CILOp::LDLoc(loc) => *loc == local,
         _ => false,
     })
 }
@@ -97,14 +87,13 @@ pub fn try_split_locals(method: &mut Method, asm: &Assembly) {
                     continue;
                 }
                 if let CILOp::LDFieldAdress(field_desc) = op2 {
-                    let field_idx = if let Some(field) = morphic_fields
+                    let Some(field_idx) = morphic_fields
                         .iter()
                         .position(|mfield| mfield.0 == field_desc.name())
-                    {
-                        field
-                    } else {
+                    else {
                         panic!("ERROR: field spliting failed because field {field_desc:?} could not be found. This may be caused by an error during codegen");
                     };
+
                     method.ops_mut()[index] = CILOp::Nop;
                     method.ops_mut()[index + 1] =
                         CILOp::LDLocA((field_idx + local_map_start) as u32);
@@ -144,25 +133,22 @@ fn can_split_local(local: u32, method_ops: &[CILOp]) -> bool {
     }
     // Check if local adress is used ONLY to get fields.
     for (index, op) in method_ops.iter().enumerate() {
-        match op {
-            CILOp::LDLocA(loc) => {
-                if *loc == local {
-                    assert!(
-                        index + 2 < method_ops.len(),
-                        "ERROR: malformed method. LDLocA must be followed by at least 2 ops."
-                    );
-                    let op2 = &method_ops[index + 1];
-                    let op3 = &method_ops[index + 2];
-                    if let CILOp::LDField(_) | CILOp::LDFieldAdress(_) = op2 {
-                        continue;
-                    }
-                    if let CILOp::STField(_) = op3 {
-                        continue;
-                    }
-                    return false;
+        if let CILOp::LDLocA(loc) = op {
+            if *loc == local {
+                assert!(
+                    index + 2 < method_ops.len(),
+                    "ERROR: malformed method. LDLocA must be followed by at least 2 ops."
+                );
+                let op2 = &method_ops[index + 1];
+                let op3 = &method_ops[index + 2];
+                if let CILOp::LDField(_) | CILOp::LDFieldAdress(_) = op2 {
+                    continue;
                 }
+                if let CILOp::STField(_) = op3 {
+                    continue;
+                }
+                return false;
             }
-            _ => (),
         }
     }
 

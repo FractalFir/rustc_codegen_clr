@@ -7,7 +7,7 @@ use crate::{
 /// Creates a wrapper method around entypoint represented by `CallSite`
 pub fn wrapper(entrypoint: &CallSite) -> Method {
     if entrypoint.signature().inputs()
-        == &[
+        == [
             Type::ISize,
             Type::Ptr(Box::new(Type::Ptr(Box::new(Type::U8)))),
         ]

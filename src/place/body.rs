@@ -9,7 +9,7 @@ use rustc_middle::mir::PlaceElem;
 use rustc_middle::ty::{Instance, Ty, TyCtxt, TyKind};
 pub fn local_body<'tcx>(local: usize, method: &rustc_middle::mir::Body<'tcx>) -> (CILOp, Ty<'tcx>) {
     let ty = method.local_decls[local.into()].ty;
-    if body_ty_is_by_adress(&ty) {
+    if body_ty_is_by_adress(ty) {
         (super::adress::local_adress(local, method), ty)
     } else {
         (super::get::local_get(local, method), ty)
@@ -35,7 +35,7 @@ pub fn place_elem_body<'ctx>(
         PlaceElem::Deref => {
             let pointed = pointed_type(curr_type);
             assert_morphic!(pointed);
-            if body_ty_is_by_adress(&pointed) {
+            if body_ty_is_by_adress(pointed) {
                 (pointed.into(), vec![])
             } else {
                 (
@@ -56,7 +56,7 @@ pub fn place_elem_body<'ctx>(
                     method_instance,
                     type_cache,
                 );
-                if body_ty_is_by_adress(&field_type) {
+                if body_ty_is_by_adress(field_type) {
                     (
                         (field_type).into(),
                         vec![CILOp::LDFieldAdress(field_desc.into())],
@@ -180,7 +180,7 @@ pub fn place_elem_body<'ctx>(
                         CILOp::Mul,
                         CILOp::Add,
                     ];
-                    if !body_ty_is_by_adress(&inner) {
+                    if !body_ty_is_by_adress(inner) {
                         ops.extend(deref_op);
                     }
                     (inner.into(), ops)
@@ -190,7 +190,7 @@ pub fn place_elem_body<'ctx>(
                     let array_type =
                         type_cache.type_from_cache(curr_ty, tyctx, Some(method_instance));
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
-                    if body_ty_is_by_adress(element) {
+                    if body_ty_is_by_adress(*element) {
                         let ops = vec![
                             index,
                             CILOp::Call(

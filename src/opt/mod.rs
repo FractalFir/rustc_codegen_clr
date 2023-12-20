@@ -103,15 +103,14 @@ fn try_inline_all(method: &mut Method, asm: &Assembly) {
     let inline_candidates = get_inlline_candidates(method);
     for (target, candidate) in inline_candidates {
         debug_assert_eq!(method.get_ops()[target], CILOp::Call(candidate.clone()));
-        let linlined = if let Some(method) = asm.methods().find(|method| {
+        let Some(linlined) = asm.methods().find(|method| {
             method.name() == candidate.name()
                 && method.sig() == candidate.signature()
                 && method.is_static()
-        }) {
-            method
-        } else {
+        }) else {
             continue;
         };
+
         // If inline succeds, then the positions of all inline targets will become wrong, and rebuilding of the inline target list becomes necessary.
         if try_inline(method, linlined, target) {
             //try_inline_all(method, asm);
@@ -150,13 +149,14 @@ pub fn opt_method(method: &mut Method, asm: &Assembly) {
     }
 }
 fn repalce_const_sizes(ops: &mut [CILOp]) {
-    ops.iter_mut().for_each(|op| match op {
-        CILOp::SizeOf(tpe) => match tpe.as_ref() {
-            Type::U8 | Type::I8 => *op = CILOp::LdcI32(1),
-            _ => (),
-        },
-        _ => (),
-    })
+    ops.iter_mut().for_each(|op| {
+        if let CILOp::SizeOf(tpe) = op {
+            match tpe.as_ref() {
+                Type::U8 | Type::I8 => *op = CILOp::LdcI32(1),
+                _ => (),
+            }
+        }
+    });
 }
 
 fn remove_zombie_sets(ops: &mut Vec<CILOp>) {
@@ -252,14 +252,14 @@ fn is_local_dead(ops: &[CILOp], local: u32) -> bool {
 /// A "Unused" label is one that is never jumped to
 fn is_label_unsused(ops: &[CILOp], label: u32) -> bool {
     !ops.iter().any(|op| match op {
-        CILOp::GoTo(target) => label == *target,
-        CILOp::BEq(target) => label == *target,
-        CILOp::BNe(target) => label == *target,
-        CILOp::BLt(target) => label == *target,
-        CILOp::BGe(target) => label == *target,
-        CILOp::BLe(target) => label == *target,
-        CILOp::BZero(target) => label == *target,
-        CILOp::BTrue(target) => label == *target,
+        CILOp::BEq(target)
+        | CILOp::GoTo(target)
+        | CILOp::BNe(target)
+        | CILOp::BLt(target)
+        | CILOp::BGe(target)
+        | CILOp::BLe(target)
+        | CILOp::BZero(target)
+        | CILOp::BTrue(target) => label == *target,
         _ => false,
     })
 }
@@ -280,17 +280,7 @@ fn cond_reordering() {
 }
 fn alias_local(src: u32, dst: u32, ops: &mut [CILOp]) {
     ops.iter_mut().for_each(|op| match op {
-        CILOp::LDLoc(loc) => {
-            if *loc == src {
-                *loc = dst;
-            }
-        }
-        CILOp::LDLocA(loc) => {
-            if *loc == src {
-                *loc = dst;
-            }
-        }
-        CILOp::STLoc(loc) => {
+        CILOp::LDLoc(loc) | CILOp::STLoc(loc) | CILOp::LDLocA(loc) => {
             if *loc == src {
                 *loc = dst;
             }
@@ -313,16 +303,13 @@ fn try_alias_locals(ops: &mut [CILOp]) {
             if could_local_ptr_escape(*loc1, ops) {
                 continue;
             }
-            let loc1_range = if let Some(range) = get_local_access_range(*loc1, ops) {
-                range
-            } else {
+            let Some(loc1_range) = get_local_access_range(*loc1, ops) else {
                 continue;
             };
-            let loc2_range = if let Some(range) = get_local_access_range(*loc2, ops) {
-                range
-            } else {
+            let Some(loc2_range) = get_local_access_range(*loc2, ops) else {
                 continue;
             };
+
             // Ranges don't overlap, use simple aliasing
             if !do_ranges_overlap(&loc1_range, &loc2_range) {
                 //println!("{loc2} will now be {loc1}!");
@@ -337,16 +324,13 @@ fn try_alias_locals(ops: &mut [CILOp]) {
             if could_local_ptr_escape(*loc1, ops) {
                 continue;
             }
-            let loc1_range = if let Some(range) = get_local_access_range(*loc1, ops) {
-                range
-            } else {
+            let Some(loc1_range) = get_local_access_range(*loc1, ops) else {
                 continue;
             };
-            let loc2_range = if let Some(range) = get_local_access_range(*loc2, ops) {
-                range
-            } else {
+            let Some(loc2_range) = get_local_access_range(*loc2, ops) else {
                 continue;
             };
+
             // Ranges don't overlap, use simple aliasing
             if !do_ranges_overlap(&loc1_range, &loc2_range) {
                 //println!("{loc2} will now be {loc1}!");
@@ -383,25 +367,22 @@ fn get_local_access_range(local: u32, ops: &[CILOp]) -> Option<Range<usize>> {
 /// Checks if it is possible for a pointer to a local to escape.
 fn could_local_ptr_escape(local: u32, ops: &[CILOp]) -> bool {
     for (index, op) in ops.iter().enumerate() {
-        match op {
-            CILOp::LDLocA(loc) => {
-                if *loc == local {
-                    assert!(
-                        index + 2 < ops.len(),
-                        "ERROR: malformed method. LDLocA must be followed by at least 2 ops."
-                    );
-                    let op2 = &ops[index + 1];
-                    let op3 = &ops[index + 2];
-                    if let CILOp::LDField(_) = op2 {
-                        continue;
-                    }
-                    if let CILOp::STField(_) = op3 {
-                        continue;
-                    }
-                    return true;
+        if let CILOp::LDLocA(loc) = op {
+            if *loc == local {
+                assert!(
+                    index + 2 < ops.len(),
+                    "ERROR: malformed method. LDLocA must be followed by at least 2 ops."
+                );
+                let op2 = &ops[index + 1];
+                let op3 = &ops[index + 2];
+                if let CILOp::LDField(_) = op2 {
+                    continue;
                 }
+                if let CILOp::STField(_) = op3 {
+                    continue;
+                }
+                return true;
             }
-            _ => (),
         }
     }
     false

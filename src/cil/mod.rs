@@ -237,42 +237,14 @@ impl CILOp {
     /// If this op is a branch operation, and its target is `original`, replaces the target with `replacement`
     pub fn replace_target(&mut self, orignal: u32, replacement: u32) {
         match self {
-            CILOp::GoTo(target) => {
-                if orignal == *target {
-                    *target = replacement
-                }
-            }
-            CILOp::BEq(target) => {
-                if orignal == *target {
-                    *target = replacement
-                }
-            }
-            CILOp::BNe(target) => {
-                if orignal == *target {
-                    *target = replacement
-                }
-            }
-            CILOp::BLt(target) => {
-                if orignal == *target {
-                    *target = replacement
-                }
-            }
-            CILOp::BGe(target) => {
-                if orignal == *target {
-                    *target = replacement
-                }
-            }
-            CILOp::BLe(target) => {
-                if orignal == *target {
-                    *target = replacement
-                }
-            }
-            CILOp::BZero(target) => {
-                if orignal == *target {
-                    *target = replacement
-                }
-            }
-            CILOp::BTrue(target) => {
+            CILOp::GoTo(target)
+            | CILOp::BEq(target)
+            | CILOp::BNe(target)
+            | CILOp::BLt(target)
+            | CILOp::BGe(target)
+            | CILOp::BLe(target)
+            | CILOp::BZero(target)
+            | CILOp::BTrue(target) => {
                 if orignal == *target {
                     *target = replacement
                 }
@@ -305,6 +277,7 @@ impl CILOp {
         ]
     }
     /// Returns the ops necesary to  write message `msg` to STDOUT. Ends with new line.
+    #[must_use]
     pub fn debug_msg(msg: &str) -> [CILOp; 2] {
         let mut class = DotnetTypeRef::new(Some("System.Console"), "System.Console");
         class.set_valuetype(false);
@@ -319,6 +292,7 @@ impl CILOp {
         ]
     }
     /// Returns the ops necesary to  write message `msg` to STDOUT. Ends with new line.
+    #[must_use]
     pub fn new_line() -> Self {
         let mut class = DotnetTypeRef::new(Some("System.Console"), "System.Console");
         class.set_valuetype(false);
@@ -328,6 +302,7 @@ impl CILOp {
         CILOp::Call(CallSite::new(Some(class), name, signature, true).into())
     }
     /// Returns the ops necesary to  write message `msg` to STDOUT. Does not end with new line.
+    #[must_use]
     pub fn debug_msg_no_nl(msg: &str) -> [CILOp; 2] {
         let mut class = DotnetTypeRef::new(Some("System.Console"), "System.Console");
         class.set_valuetype(false);
@@ -342,6 +317,7 @@ impl CILOp {
         ]
     }
     /// Returns the ops necesary to  write message bool from stack to stdout. Ends without a new line.
+    #[must_use]
     pub fn debug_bool() -> CILOp {
         let mut class = DotnetTypeRef::new(Some("System.Console"), "System.Console");
         class.set_valuetype(false);
@@ -350,6 +326,7 @@ impl CILOp {
         CILOp::Call(CallSite::new(Some(class), name, signature, true).into())
     }
     /// Returns the ops necesary to  write message i32 from stack to stdout. Ends without a new line.
+    #[must_use]
     pub fn debug_i32() -> CILOp {
         let mut class = DotnetTypeRef::new(Some("System.Console"), "System.Console");
         class.set_valuetype(false);
@@ -358,6 +335,7 @@ impl CILOp {
         CILOp::Call(CallSite::new(Some(class), name, signature, true).into())
     }
     /// Returns the ops necesary to  write message f32 from stack to stdout. Ends without a new line.
+    #[must_use]
     pub fn debug_f32() -> CILOp {
         let mut class = DotnetTypeRef::new(Some("System.Console"), "System.Console");
         class.set_valuetype(false);
@@ -366,6 +344,7 @@ impl CILOp {
         CILOp::Call(CallSite::new(Some(class), name, signature, true).into())
     }
     /// Returns the ops necesary to u64 write message u64 from stack to stdout. Ends without a new line.
+    #[must_use]
     pub fn debug_u64() -> CILOp {
         let mut class = DotnetTypeRef::new(Some("System.Console"), "System.Console");
         class.set_valuetype(false);

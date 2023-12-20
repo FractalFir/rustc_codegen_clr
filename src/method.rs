@@ -35,6 +35,7 @@ pub enum Attribute {
 }
 impl Method {
     /// Creates new method with `access` access modifier, signature `sig`, name `name`, locals `locals`, and `is_static` if method is static.
+    #[must_use]
     pub fn new(
         access: AccessModifer,
         is_static: bool,
@@ -115,7 +116,7 @@ impl Method {
     }
     /// Returns the list of external calls this function preforms. Calls may repeat.
     pub(crate) fn calls(&self) -> impl Iterator<Item = &CallSite> {
-        self.ops.iter().map(|op| op.call()).flatten()
+        self.ops.iter().filter_map(|op| op.call())
     }
     pub(crate) fn call_site(&self) -> CallSite {
         CallSite::new(None, self.name().into(), self.sig().clone(), true)

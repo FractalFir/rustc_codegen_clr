@@ -48,7 +48,7 @@ fn create_const_adt_from_bytes<'ctx>(
             let cil_ty = tycache.type_from_cache(cil_ty, tyctx, Some(method_instance));
             let dotnet_ty = cil_ty.as_dotnet().expect("ADT must be a value type!");
             let mut creator_ops = vec![CILOp::NewTMPLocal(cil_ty.clone().into())];
-            for (_field_idx, field) in adt_def.all_fields().enumerate() {
+            for field in adt_def.all_fields() {
                 let ftype = field.ty(tyctx, subst);
                 let sizeof = crate::utilis::compiletime_sizeof(ftype, tyctx);
                 let field_bytes = &bytes[curr_offset..(curr_offset + sizeof)];

@@ -26,10 +26,12 @@ impl StaticFieldDescriptor {
         self.owner.as_ref()
     }
     /// Constructs a new static fieldref, reffering to field of type `tpe`, belonging to `owner`, and named `name`
+    #[must_use]
     pub fn new(owner: Option<DotnetTypeRef>, tpe: Type, name: IString) -> Self {
         Self { owner, tpe, name }
     }
     /// The same as [`Self::new`], but also boxes the field descriptor.
+    #[must_use]
     pub fn boxed(owner: Option<DotnetTypeRef>, tpe: Type, name: IString) -> Box<Self> {
         Box::new(Self { owner, tpe, name })
     }

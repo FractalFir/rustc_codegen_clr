@@ -32,25 +32,22 @@ fn pointed_type(ty: PlaceTy) -> Ty {
         panic!("Can't dereference enum variant!");
     }
 }
-fn body_ty_is_by_adress(last_ty: &Ty) -> bool {
+fn body_ty_is_by_adress(last_ty: Ty) -> bool {
     crate::assert_morphic!(last_ty);
     match *last_ty.kind() {
-        TyKind::Adt(_, _) => true,
-        TyKind::Array(_, _) => true,
+        TyKind::Adt(_, _) | TyKind::Array(_, _) => true,
         // True for non-0 tuples
         TyKind::Tuple(elements) => !elements.is_empty(),
         //TODO: check if slices are handled propely
-        TyKind::Slice(_) => true,
-        TyKind::Str => true,
+        TyKind::Slice(_) | TyKind::Str => true,
 
-        TyKind::Int(_) => false,
-        TyKind::Float(_) => false,
-        TyKind::Uint(_) => false,
-
-        TyKind::Ref(_region, _inner, _mut) => false,
-        TyKind::RawPtr(_) => false,
-        TyKind::Bool => false,
-        TyKind::Char => false,
+        TyKind::Int(_)
+        | TyKind::Float(_)
+        | TyKind::Uint(_)
+        | TyKind::Ref(_, _, _)
+        | TyKind::RawPtr(_)
+        | TyKind::Bool
+        | TyKind::Char => false,
 
         _ => todo!(
             "TODO: body_ty_is_by_adress does not support type {last_ty:?} kind:{kind:?}",
@@ -68,11 +65,10 @@ fn place_get_length<'ctx>(
     let curr_ty = curr_type.as_ty().expect("Can't index into enum!");
     let curr_ty = crate::utilis::monomorphize(&method_instance, curr_ty, tyctx);
     let tpe = type_cache.type_from_cache(curr_ty, tyctx, Some(method_instance));
-    let class = if let Type::DotnetType(dotnet) = &tpe {
-        dotnet
-    } else {
+    let Type::DotnetType(class) = &tpe else {
         panic!("Can't index into type {tpe:?}");
     };
+
     match *curr_ty.kind() {
         TyKind::Array(_elem, len) => {
             let len = crate::utilis::monomorphize(&method_instance, len, tyctx);
@@ -126,24 +122,13 @@ pub fn deref_op<'ctx>(
             TyKind::Bool => vec![CILOp::LDIndI8], // Both Rust bool and a managed bool are 1 byte wide. .NET bools are 4 byte wide only in the context of Marshaling/PInvoke,
             // due to historic reasons(BOOL was an alias for int in early Windows, and it stayed this way.) - FractalFir
             TyKind::Char => vec![CILOp::LDIndI32], // always 4 bytes wide: https://doc.rust-lang.org/std/primitive.char.html#representation
-            TyKind::Adt(_, _) => {
-                let derefed_type =
-                    type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance));
-                vec![CILOp::LdObj(derefed_type.into())]
-            }
-            TyKind::Tuple(_) => {
-                // This is interpreted as a System.ValueTuple and can be treated as an ADT
+            TyKind::Adt(_, _) | TyKind::Tuple(_) => {
                 let derefed_type =
                     type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance));
                 vec![CILOp::LdObj(derefed_type.into())]
             }
             TyKind::Ref(_, inner, _) => match inner.kind() {
-                TyKind::Slice(_) => vec![CILOp::LdObj(
-                    type_cache
-                        .type_from_cache(derefed_type, tyctx, Some(*method_instance))
-                        .into(),
-                )],
-                TyKind::Str => vec![CILOp::LdObj(
+                TyKind::Str | TyKind::Slice(_) => vec![CILOp::LdObj(
                     type_cache
                         .type_from_cache(derefed_type, tyctx, Some(*method_instance))
                         .into(),
@@ -151,12 +136,7 @@ pub fn deref_op<'ctx>(
                 _ => vec![CILOp::LDIndISize],
             },
             TyKind::RawPtr(type_and_mut) => match type_and_mut.ty.kind() {
-                TyKind::Slice(_) => vec![CILOp::LdObj(
-                    type_cache
-                        .type_from_cache(derefed_type, tyctx, Some(*method_instance))
-                        .into(),
-                )],
-                TyKind::Str => vec![CILOp::LdObj(
+                TyKind::Str | TyKind::Slice(_) => vec![CILOp::LdObj(
                     type_cache
                         .type_from_cache(derefed_type, tyctx, Some(*method_instance))
                         .into(),
@@ -268,7 +248,7 @@ impl<'ctx> PlaceTy<'ctx> {
     pub fn as_ty(&self) -> Option<Ty<'ctx>> {
         match self {
             Self::Ty(inner) => Some(*inner),
-            _ => None,
+            Self::EnumVariant(..) => None,
         }
     }
     /// Returns the kind of the underlyting Ty.

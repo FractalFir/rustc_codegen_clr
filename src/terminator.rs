@@ -14,11 +14,9 @@ use rustc_middle::{
     mir::{Body, Operand, Place, SwitchTargets, Terminator, TerminatorKind},
     ty::{GenericArg, Instance, ParamEnv, Ty, TyCtxt, TyKind},
 };
-use rustc_span::def_id::DefId;
 /// Calls a non-virtual managed function(used for interop)
 fn call_managed<'ctx>(
     tyctx: TyCtxt<'ctx>,
-    _def_id: DefId,
     subst_ref: &[GenericArg<'ctx>],
     function_name: &str,
     args: &[Operand<'ctx>],
@@ -35,7 +33,7 @@ fn call_managed<'ctx>(
     let argument_count = argument_count.parse::<u32>().unwrap();
     //FIXME: figure out the proper argc.
     //assert!(subst_ref.len() as u32 == argc + 3 || subst_ref.len() as u32 == argc + 4);
-    assert!(args.len() as u32 == argument_count);
+    assert!(args.len() == argument_count as usize);
     let asm = garg_to_string(subst_ref[0], tyctx);
     let asm = Some(asm).filter(|asm| !asm.is_empty());
     let class_name = garg_to_string(subst_ref[1], tyctx);
@@ -102,7 +100,6 @@ fn call_managed<'ctx>(
 /// Calls a virtual managed function(used for interop)
 fn callvirt_managed<'ctx>(
     tyctx: TyCtxt<'ctx>,
-    _def_id: DefId,
     subst_ref: &[GenericArg<'ctx>],
     function_name: &str,
     args: &[Operand<'ctx>],
@@ -190,7 +187,6 @@ fn callvirt_managed<'ctx>(
 /// Creates a new managed object, and places a reference to it in destination
 fn call_ctor<'ctx>(
     tyctx: TyCtxt<'ctx>,
-    _def_id: DefId,
     subst_ref: &[GenericArg<'ctx>],
     function_name: &str,
     args: &[Operand<'ctx>],
@@ -204,9 +200,9 @@ fn call_ctor<'ctx>(
     let argument_count = &function_name[argc_start..argc_end];
     let argument_count = argument_count.parse::<u32>().unwrap();
     // Check that there are enough function path and argument specifers
-    assert!(subst_ref.len() as u32 == argument_count + 3);
+    assert!(subst_ref.len() == argument_count as usize + 3);
     // Check that a proper number of arguments is used
-    assert!(args.len() as u32 == argument_count);
+    assert!(args.len() == argument_count as usize);
     // Get the name of the assembly the constructed object resides in
     let asm = garg_to_string(subst_ref[0], tyctx);
     // If empty, make it none(for consitent encoing of No-assembly)
@@ -275,7 +271,7 @@ fn call_ctor<'ctx>(
 }
 /// Calls `fn_type` with `args`, placing the return value in destination.
 fn call<'ctx>(
-    fn_type: &Ty<'ctx>,
+    fn_type: Ty<'ctx>,
     body: &'ctx Body<'ctx>,
     tyctx: TyCtxt<'ctx>,
     args: &[Operand<'ctx>],
@@ -283,8 +279,8 @@ fn call<'ctx>(
     method_instance: Instance<'ctx>,
     type_cache: &mut crate::r#type::TyCache,
 ) -> Vec<CILOp> {
-    let fn_type = crate::utilis::monomorphize(&method_instance, *fn_type, tyctx);
-    let (instance, def_id, subst_ref) = if let TyKind::FnDef(def_id, subst_ref) = fn_type.kind() {
+    let fn_type = crate::utilis::monomorphize(&method_instance, fn_type, tyctx);
+    let (instance, subst_ref) = if let TyKind::FnDef(def_id, subst_ref) = fn_type.kind() {
         let env = ParamEnv::reveal_all();
         let Some(instance) =
             Instance::resolve(tyctx, env, *def_id, subst_ref).expect("Invalid function def")
@@ -292,7 +288,7 @@ fn call<'ctx>(
             panic!("ERROR: Could not get function instance. fn type:{fn_type:?}")
         };
 
-        (instance, def_id, subst_ref)
+        (instance, subst_ref)
     } else {
         todo!("Trying to call a type which is not a function definition!");
     };
@@ -304,7 +300,6 @@ fn call<'ctx>(
         // Constructor
         return call_ctor(
             tyctx,
-            *def_id,
             subst_ref,
             &function_name,
             args,
@@ -317,7 +312,6 @@ fn call<'ctx>(
         // Virtual (for interop)
         return callvirt_managed(
             tyctx,
-            *def_id,
             subst_ref,
             &function_name,
             args,
@@ -331,7 +325,6 @@ fn call<'ctx>(
         // Not-Virtual (for interop)
         return call_managed(
             tyctx,
-            *def_id,
             subst_ref,
             &function_name,
             args,
@@ -410,7 +403,7 @@ pub fn handle_terminator<'ctx>(
                     let fn_ty = monomorphize(&method_instance, fn_ty, tyctx);
                     //let fn_instance = Instance::resolve(tyctx,ParamEnv::reveal_all,fn_ty.did,List::empty());
                     let call_ops = call(
-                        &fn_ty,
+                        fn_ty,
                         body,
                         tyctx,
                         args,
@@ -441,7 +434,7 @@ pub fn handle_terminator<'ctx>(
             let ty = crate::utilis::monomorphize(&method_instance, discr.ty(method, tyctx), tyctx);
             let discr =
                 crate::operand::handle_operand(discr, tyctx, method, method_instance, type_cache);
-            handle_switch(ty, discr, targets)
+            handle_switch(ty, &discr, targets)
         }
         TerminatorKind::Assert {
             cond: _,
@@ -773,7 +766,7 @@ fn throw_assert_msg<'ctx>(
         _ => todo!("unsuported assertion message:{msg:?}"),
     }
 }
-fn handle_switch(ty: Ty, discr: Vec<CILOp>, switch: &SwitchTargets) -> Vec<CILOp> {
+fn handle_switch(ty: Ty, discr: &[CILOp], switch: &SwitchTargets) -> Vec<CILOp> {
     let mut ops = Vec::new();
     for (value, target) in switch.iter() {
         ops.extend(discr.iter().cloned());

@@ -1,6 +1,10 @@
 #![feature(rustc_private)]
 // Used for handling some configs. Will be refactored later.
 #![allow(clippy::assertions_on_constants)]
+// Not a big issue.
+#![allow(clippy::module_name_repetitions)]
+// CIL uses the same ops to load signed and unsigned constants, so an usingned number must be first cast to a signed one in order to be stored in CIL.
+#![allow(clippy::cast_possible_wrap)]
 //#![deny(missing_docs)]
 //#![warn(clippy::missing_docs_in_private_items)]
 //! Rustc Codegen CLR - an experimental rustc backend compiling Rust for .NET. This project aims to bring the speed and memory efficency of Rust to .NET.
@@ -35,7 +39,7 @@
 //! linking the final executable.
 //! The compilation process really begins in [`crate::assembly::Assembly::add_item`] - this is where an item - static, function, or inline assembly - gets turned into
 //! its .NET representation. The [`crate::assembly::Assembly::add_function`] uses [`crate::assembly::Assembly::add_type`] to add all types needed by a method to the
-//! assembly. add_function gets the function name, signature, local varaiables and MIR. It uses`handle_statement` and `handle_terminator` turn MIR statements
+//! assembly. `add_function` gets the function name, signature, local varaiables and MIR. It uses `handle_statement` and `handle_terminator` turn MIR statements
 //! and block terminators into CIL ops.
 // TODO: Extend project desctibtion.
 
@@ -187,7 +191,9 @@ impl CodegenBackend for MyBackend {
             let mut cache = crate::r#type::TyCache::empty();
             for cgu in cgus {
                 //println!("codegen {} has {} items.", cgu.name(), cgu.items().len());
-                for (item, _data) in cgu.items() {
+                for (item, data) in cgu.items() {
+                    // Data will be needed in the future.
+                    let _data = data;
                     codegen
                         .add_item(*item, tcx, &mut cache)
                         .expect("Could not add function");

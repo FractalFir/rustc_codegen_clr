@@ -612,7 +612,7 @@ lazy_static! {
         }
         let info = std::str::from_utf8(&info.stdout).expect("Error message not utf8");
         let version_start = info.find("Host:").unwrap_or_default();
-        let version_start = version_start + &info[version_start..].find("Version:").unwrap();
+        let version_start = version_start + info[version_start..].find("Version:").unwrap();
         let version_start = version_start + "Version:".len();
         let version_end = info.find("Architecture:").unwrap();
         let version = &info[version_start..version_end].trim();
