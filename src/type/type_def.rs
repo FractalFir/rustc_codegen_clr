@@ -176,6 +176,17 @@ pub fn arr_name(element_count: usize,element:&Type)->IString{
     let element_name = super::mangle(element);
     format!("Arr{element_count}_{element_name}",).into()
 }
+pub fn tuple_name(elements:&[Type])->IString{
+    let generics:String = elements.iter().map(|ele|super::mangle(ele)).collect();
+    format!("Tuple{generic_count}{generics}",generic_count = generics.len()).into()
+}
+
+#[must_use]
+pub fn tuple_typedef(elements:&[Type])->TypeDef{
+    let name = tuple_name(elements);
+    let fields:Vec<_> = elements.iter().enumerate().map(|(idx,ele)|(format!("Item{}",idx + 1).into(),ele.clone())).collect();
+    TypeDef::new(AccessModifer::Public,name,vec![],fields,vec![],None,0,None)
+}
 #[must_use]
 pub fn get_array_type(element_count: usize,element:Type) -> TypeDef {
     use crate::cil::CILOp;

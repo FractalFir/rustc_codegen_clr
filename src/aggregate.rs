@@ -123,7 +123,7 @@ pub fn handle_aggregate<'tyctx>(
                     ops.extend(field.1.iter().cloned());
                     ops.push(CILOp::STField(FieldDescriptor::boxed(
                         dotnet_tpe.clone(),
-                        Type::GenericArg(field.0),
+                        types[field.0 as usize].clone(),
                         name.into(),
                     )));
                 }

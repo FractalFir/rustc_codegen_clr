@@ -325,17 +325,13 @@ fn garag_to_usize<'tyctx>(garg: GenericArg<'tyctx>, _ctx: TyCtxt<'tyctx>) -> u64
     }
 }
 /// Creates a tuple with no more than 8 elements.
-/// # Panics
-/// Currently only tuples under 8 elements are supported. Will panic if more than 8 elements.
 #[must_use]
 pub fn simple_tuple(elements: &[Type]) -> DotnetTypeRef {
-    assert!(elements.len() <= 8,"Tuple ({elements:?}) contains more than 8 elements, so it can't be stored inside a simple tuple.");
-    let name = format!(
-        "System.ValueTuple`{element_count}",
-        element_count = elements.len()
-    );
-    let mut dotnet = DotnetTypeRef::new(Some("System.Runtime"), &name);
-    dotnet.set_generics(elements);
+    //assert!(elements.len() <= 8,"Tuple ({elements:?}) contains more than 8 elements, so it can't be stored inside a simple tuple.");
+    let name = tuple_name(elements);
+    let dotnet = DotnetTypeRef::new(None, &name);
     dotnet
 }
 use crate::utilis::garg_to_string;
+
+use super::tuple_name;

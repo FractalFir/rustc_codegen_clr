@@ -158,10 +158,9 @@ pub fn field_descrptor<'ctx>(
     type_cache: &mut TyCache,
 ) -> FieldDescriptor {
     if let TyKind::Tuple(elements) = owner_ty.kind() {
-        assert!(
-            elements.len() < 8,
-            "Tuples with more than 8 elements are not supported!"
-        );
+        let element = elements[field_idx as usize];
+        let element = monomorphize(&method_instance, element, ctx);
+        let element = type_cache.type_from_cache(element, ctx, Some(method_instance));
         return FieldDescriptor::new(
             crate::r#type::simple_tuple(
                 &elements
@@ -172,7 +171,7 @@ pub fn field_descrptor<'ctx>(
                     })
                     .collect::<Vec<_>>(),
             ),
-            Type::GenericArg(field_idx),
+            element,
             format!("Item{}", field_idx + 1).into(),
         );
     }

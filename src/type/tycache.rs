@@ -1,4 +1,4 @@
-use super::{DotnetTypeRef, Type, TypeDef};
+use super::{DotnetTypeRef, Type, TypeDef, tuple_name, tuple_typedef};
 use crate::{
     access_modifier::AccessModifer, r#type::escape_field_name, utilis::enum_tag_size, IString,
 };
@@ -216,6 +216,10 @@ impl TyCache {
                 if types.is_empty() {
                     Type::Void
                 } else {
+                    let name = tuple_name(&types);
+                    if !self.type_def_cache.contains_key(&name){
+                        self.type_def_cache.insert(name,tuple_typedef(&types));
+                    }
                     super::simple_tuple(&types).into()
                 }
             }

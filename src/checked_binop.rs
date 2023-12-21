@@ -152,14 +152,14 @@ fn mul(tpe: Type) -> Vec<CILOp> {
                 CILOp::LoadUnderTMPLocal(1),
                 CILOp::STField(FieldDescriptor::boxed(
                     tuple.clone(),
-                    Type::GenericArg(0),
+                    Type::I128,
                     "Item1".into(),
                 )),
                 CILOp::LoadAddresOfTMPLocal,
                 CILOp::LdcI32(0),
                 CILOp::STField(FieldDescriptor::boxed(
                     tuple.clone(),
-                    Type::GenericArg(1),
+                    Type::Bool,
                     "Item2".into(),
                 )),
                 CILOp::LoadTMPLocal,
@@ -187,14 +187,14 @@ fn mul(tpe: Type) -> Vec<CILOp> {
                 CILOp::LoadUnderTMPLocal(1),
                 CILOp::STField(FieldDescriptor::boxed(
                     tuple.clone(),
-                    Type::GenericArg(0),
+                    Type::U128,
                     "Item1".into(),
                 )),
                 CILOp::LoadAddresOfTMPLocal,
                 CILOp::LdcI32(0),
                 CILOp::STField(FieldDescriptor::boxed(
                     tuple.clone(),
-                    Type::GenericArg(1),
+                    Type::Bool,
                     "Item2".into(),
                 )),
                 CILOp::LoadTMPLocal,
@@ -435,14 +435,14 @@ fn checked_uadd_type(tpe: Type, truncate: CILOp, add: CILOp) -> Vec<CILOp> {
         CILOp::LoadUnderTMPLocal(1),
         CILOp::STField(FieldDescriptor::boxed(
             tuple.clone(),
-            Type::GenericArg(1),
+            Type::Bool,
             "Item2".into(),
         )),
         CILOp::LoadAddresOfTMPLocal,
         CILOp::LoadUnderTMPLocal(2),
         CILOp::STField(FieldDescriptor::boxed(
             tuple.clone(),
-            Type::GenericArg(0),
+            tpe,
             "Item1".into(),
         )),
         CILOp::LoadTMPLocal,
@@ -756,7 +756,7 @@ pub fn promoted_ubinop(
         CILOp::LoadUnderTMPLocal(1), // ov
         CILOp::STField(FieldDescriptor::boxed(
             tuple.clone(),
-            Type::GenericArg(1),
+            Type::Bool,
             "Item2".into(),
         )),
         // Set the tuples first field to promotion result
@@ -765,7 +765,7 @@ pub fn promoted_ubinop(
         truncate,
         CILOp::STField(FieldDescriptor::boxed(
             tuple.clone(),
-            Type::GenericArg(0),
+            tpe,
             "Item1".into(),
         )),
         // Load results
@@ -821,7 +821,7 @@ pub fn promoted_sbinop(
         CILOp::LoadUnderTMPLocal(1), // ov
         CILOp::STField(FieldDescriptor::boxed(
             tuple.clone(),
-            Type::GenericArg(1),
+            Type::Bool,
             "Item2".into(),
         )),
         // Set the tuples first field to promotion result
@@ -830,7 +830,7 @@ pub fn promoted_sbinop(
         truncate,
         CILOp::STField(FieldDescriptor::boxed(
             tuple.clone(),
-            Type::GenericArg(0),
+            tpe,
             "Item1".into(),
         )),
         // Load results
