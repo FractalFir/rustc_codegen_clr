@@ -54,7 +54,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     asm.add_typedef(crate::r#type::TypeDef::nameonly("RustVoid"));
     asm.add_typedef(crate::r#type::TypeDef::nameonly("Foreign"));
     asm.add_typedef(crate::r#type::TypeDef::nameonly("RustStr"));
-    rust_slice(asm);
+    //rust_slice(asm);
     math(asm);
     io(asm);
     unlikely(asm);

@@ -94,7 +94,7 @@ impl DotnetTypeRef {
         if self.is_valuetype() {
             "valuetype"
         } else {
-            ""
+            "class"
         }
     }
     pub fn set_valuetype(&mut self, is_valuetype: bool) {

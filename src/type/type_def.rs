@@ -172,12 +172,12 @@ pub fn escape_field_name(name: &str) -> IString {
     }
 }
 #[must_use]
-pub fn get_array_type(element_count: usize) -> TypeDef {
+pub fn get_array_type(element_count: usize,element:Type,arr_name:&str) -> TypeDef {
     use crate::cil::CILOp;
-    let name = format!("Arr{element_count}");
+    let name = arr_name;
     let mut fields = Vec::with_capacity(element_count);
     for field in 0..element_count {
-        fields.push((format!("f_{field}").into(), Type::GenericArg(0)));
+        fields.push((format!("f_{field}").into(), element.clone()));
     }
     let mut def = TypeDef {
         access: AccessModifer::Public,
@@ -186,7 +186,7 @@ pub fn get_array_type(element_count: usize) -> TypeDef {
         fields,
         functions: vec![],
         explicit_offsets: None,
-        gargc: 1,
+        gargc: 0,
         extends: None,
     };
     // set_Item(usize offset, G0 value)
@@ -194,7 +194,7 @@ pub fn get_array_type(element_count: usize) -> TypeDef {
         AccessModifer::Public,
         false,
         crate::function_sig::FnSig::new(
-            &[(&def).into(), Type::USize, Type::GenericArg(0)],
+            &[(&def).into(), Type::USize, element.clone()],
             &Type::Void,
         ),
         "set_Item",
@@ -204,13 +204,13 @@ pub fn get_array_type(element_count: usize) -> TypeDef {
         CILOp::LDArg(0),
         CILOp::LDFieldAdress(FieldDescriptor::boxed(
             (&def).into(),
-            Type::GenericArg(0),
+            element.clone(),
             "f_0".to_string().into(),
         )),
         CILOp::LDArg(1),
         CILOp::Add,
         CILOp::LDArg(2),
-        CILOp::STObj(Type::GenericArg(0).into()),
+        CILOp::STObj(element.clone().into()),
         CILOp::Ret,
     ];
     set_usize.set_ops(ops);
@@ -221,7 +221,7 @@ pub fn get_array_type(element_count: usize) -> TypeDef {
         false,
         crate::function_sig::FnSig::new(
             &[(&def).into(), Type::USize],
-            &Type::Ptr(Type::GenericArg(0).into()),
+            &Type::Ptr(element.clone().into()),
         ),
         "get_Address",
         vec![],
@@ -230,7 +230,7 @@ pub fn get_array_type(element_count: usize) -> TypeDef {
         CILOp::LDArg(0),
         CILOp::LDFieldAdress(FieldDescriptor::boxed(
             (&def).into(),
-            Type::GenericArg(0),
+            element.clone(),
             "f_0".to_string().into(),
         )),
         CILOp::LDArg(1),
@@ -243,7 +243,7 @@ pub fn get_array_type(element_count: usize) -> TypeDef {
     let mut get_item_usize = Method::new(
         AccessModifer::Public,
         false,
-        crate::function_sig::FnSig::new(&[(&def).into(), Type::USize], &Type::GenericArg(0)),
+        crate::function_sig::FnSig::new(&[(&def).into(), Type::USize], &element.clone()),
         "get_Item",
         vec![],
     );
@@ -251,12 +251,12 @@ pub fn get_array_type(element_count: usize) -> TypeDef {
         CILOp::LDArg(0),
         CILOp::LDFieldAdress(FieldDescriptor::boxed(
             (&def).into(),
-            Type::GenericArg(0),
+            element.clone(),
             "f_0".to_string().into(),
         )),
         CILOp::LDArg(1),
         CILOp::Add,
-        CILOp::LdObj(Type::GenericArg(0).into()),
+        CILOp::LdObj(element.clone().into()),
         CILOp::Ret,
     ];
     get_item_usize.set_ops(ops);

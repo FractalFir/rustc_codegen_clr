@@ -1,16 +1,16 @@
-use std::path::Path;
+use std::{path::Path, borrow::Cow};
 /// Describes an assemnly.
 type AssemblyInfo = str;
 
 use crate::{
     assembly::Assembly,
     method::Method,
-    r#type::{Type, TypeDef},
+    r#type::{Type, TypeDef, DotnetTypeRef},
     IString,
 };
 /// ILASM-based assembly exporter.
 pub mod ilasm_exporter;
-
+mod ilasm_op;
 /// This trait represents an interface implemented by all .NET assembly exporters. (Currently only ilasm)
 pub trait AssemblyExporter: Sized {
     /// Initializes an assembly exporter.
@@ -77,3 +77,4 @@ impl From<std::io::Error> for AssemblyExportError {
         Self::IoError(error)
     }
 }
+

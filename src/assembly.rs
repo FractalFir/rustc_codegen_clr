@@ -402,13 +402,6 @@ impl Assembly {
         }
         field_desc
     }
-    /// Adds 100 first array types
-    pub fn add_array_types(&mut self) {
-        for i in 0..40 {
-            self.types
-                .insert(crate::r#type::type_def::get_array_type(i));
-        }
-    }
     /// Returns true if assembly contains function named `name`
     pub fn contains_fn_named(&self, name: &str) -> bool {
         //FIXME:This is inefficient.

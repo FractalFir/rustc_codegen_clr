@@ -294,10 +294,15 @@ impl TyCache {
                     element = crate::utilis::monomorphize(method, element, tyctx);
                 });
                 let element = self.type_from_cache(element, tyctx, method);
-                let arr_name: IString = format!("Arr{length}").into();
+                let element_name:IString = match element{
+                    Type::Void => "v".into(),
+                    Type::U8=>"u8".into(),
+                    _=>todo!("Can't mangle type {element:?}"),
+                };
+                let arr_name: IString = format!("Arr{length}_{element_name}",).into();
                 if self.type_def_cache.get(&arr_name).is_none() {
                     self.type_def_cache
-                        .insert(arr_name, crate::r#type::type_def::get_array_type(length));
+                        .insert(arr_name.clone(), crate::r#type::type_def::get_array_type(length,element.clone(),&arr_name));
                 }
                 DotnetTypeRef::array(element, length).into()
             }
