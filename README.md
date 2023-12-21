@@ -24,7 +24,7 @@ The project is still very early in development, but it has made significant prog
 - [ ] Exception handling
 - [X] Setting value of a reference
 - [X] Getting value of a reference
-- [ ] Creating slices from arrays
+- [X] Creating slices from arrays
 - [X] Creating arrays
 - [X] Indexing arrays
 - [X] Getting values of fields
@@ -42,7 +42,7 @@ The project is still very early in development, but it has made significant prog
 - [X] All integer and float types are supported. Support for math with 128-bit integers is very limited
 - [X] References are supported
 - [X] Arrays
-- [ ] Slices
+- [X] Slices
 - [X] Void type
 - [X] Combinations of all of the above.
 - [X] Structs
@@ -56,9 +56,9 @@ The project is still very early in development, but it has made significant prog
 ## Milestones
 
 - [X] Draft version of the `mycorrhiza` interop layer, capable of creating managed objects, and calling methods. 
-- [X] Compiling the `core` Rust crate - *Core now compiles, but is not fully functional. Around ~100 function instances don't compile at all, and a couple more compile with errors.*
-- [ ] Compiling the `alloc` Rust crate 
-- [ ] Compiling the `std` Rust crate 
+- [X] Compiling the `core` Rust crate - *Core now compiles, but is not fully functional.*
+- [X] Compiling the `alloc` Rust crate  - *Alloc now compiles, but is only paritaly functional.*
+- [X] Compiling the `std` Rust crate - *std now compiles, but is only a very small portion of it is functional.*
 - [ ] Stack unwinding
 
 ## Basic benchmarks
