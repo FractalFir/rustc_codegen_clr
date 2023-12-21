@@ -186,11 +186,12 @@ pub fn place_elem_body<'ctx>(
                     (inner.into(), ops)
                 }
                 TyKind::Array(element, _length) => {
-                    //let element = crate::utilis::monomorphize(&method_instance, *element, tyctx);
+                    let element = crate::utilis::monomorphize(&method_instance, *element, tyctx);
+                    let element_type = type_cache.type_from_cache(element, tyctx, Some(method_instance));
                     let array_type =
                         type_cache.type_from_cache(curr_ty, tyctx, Some(method_instance));
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
-                    if body_ty_is_by_adress(*element) {
+                    if body_ty_is_by_adress(element) {
                         let ops = vec![
                             index,
                             CILOp::Call(
@@ -199,14 +200,14 @@ pub fn place_elem_body<'ctx>(
                                     "get_Address".into(),
                                     FnSig::new(
                                         &[array_type, Type::USize],
-                                        &Type::Ptr(Type::GenericArg(0).into()),
+                                        &Type::Ptr(element_type.into()),
                                     ),
                                     false,
                                 )
                                 .into(),
                             ),
                         ];
-                        ((*element).into(), ops)
+                        ((element).into(), ops)
                     } else {
                         let ops = vec![
                             index,
@@ -214,13 +215,13 @@ pub fn place_elem_body<'ctx>(
                                 crate::cil::CallSite::new(
                                     Some(array_dotnet),
                                     "get_Item".into(),
-                                    FnSig::new(&[array_type, Type::USize], &Type::GenericArg(0)),
+                                    FnSig::new(&[array_type, Type::USize], &element_type),
                                     false,
                                 )
                                 .into(),
                             ),
                         ];
-                        ((*element).into(), ops)
+                        ((element).into(), ops)
                     }
                 }
                 _ => {

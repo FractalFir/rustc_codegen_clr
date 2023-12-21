@@ -266,10 +266,6 @@ impl TyCache {
             TyKind::Bound(_, _inner) => Type::Foreign,
             TyKind::FnPtr(_) => Type::USize,
             TyKind::Slice(_inner) => {
-                //let match self.type_from_cache(*inner, tyctx)
-                //let mut slice_tpe = DotnetTypeRef::new(None, "RustSlice".into());
-                //slice_tpe.set_generics(vec![inner]);
-                //Type::DotnetType(Box::new(slice_tpe)))
                 todo!("Slice!")
             }
             TyKind::FnDef(did, subst) => {
@@ -294,15 +290,10 @@ impl TyCache {
                     element = crate::utilis::monomorphize(method, element, tyctx);
                 });
                 let element = self.type_from_cache(element, tyctx, method);
-                let element_name:IString = match element{
-                    Type::Void => "v".into(),
-                    Type::U8=>"u8".into(),
-                    _=>todo!("Can't mangle type {element:?}"),
-                };
-                let arr_name: IString = format!("Arr{length}_{element_name}",).into();
+                let arr_name = crate::r#type::type_def::arr_name(length, &element);
                 if self.type_def_cache.get(&arr_name).is_none() {
                     self.type_def_cache
-                        .insert(arr_name.clone(), crate::r#type::type_def::get_array_type(length,element.clone(),&arr_name));
+                        .insert(arr_name.clone(), crate::r#type::type_def::get_array_type(length,element.clone()));
                 }
                 DotnetTypeRef::array(element, length).into()
             }

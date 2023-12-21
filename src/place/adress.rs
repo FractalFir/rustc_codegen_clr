@@ -154,8 +154,9 @@ pub fn place_elem_adress<'ctx>(
                     ];
                     ops
                 }
-                TyKind::Array(_, _length) => {
-                    //let element = crate::utilis::monomorphize(&method_instance, *element, tyctx);
+                TyKind::Array(element, _length) => {
+                    let element = crate::utilis::monomorphize(&method_instance, *element, tyctx);
+                    let element_type = type_cache.type_from_cache(element, tyctx, Some(method_instance));
                     let array_type =
                         type_cache.type_from_cache(curr_ty, tyctx, Some(method_instance));
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
@@ -167,7 +168,7 @@ pub fn place_elem_adress<'ctx>(
                                 "get_Address".into(),
                                 FnSig::new(
                                     &[array_type, Type::USize],
-                                    &Type::Ptr(Type::GenericArg(0).into()),
+                                    &Type::Ptr(element_type.into()),
                                 ),
                                 false,
                             )

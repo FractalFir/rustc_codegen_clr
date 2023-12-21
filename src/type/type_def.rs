@@ -171,10 +171,15 @@ pub fn escape_field_name(name: &str) -> IString {
         }
     }
 }
+
+pub fn arr_name(element_count: usize,element:&Type)->IString{
+    let element_name = super::mangle(element);
+    format!("Arr{element_count}_{element_name}",).into()
+}
 #[must_use]
-pub fn get_array_type(element_count: usize,element:Type,arr_name:&str) -> TypeDef {
+pub fn get_array_type(element_count: usize,element:Type) -> TypeDef {
     use crate::cil::CILOp;
-    let name = arr_name;
+    let name = arr_name(element_count,&element);
     let mut fields = Vec::with_capacity(element_count);
     for field in 0..element_count {
         fields.push((format!("f_{field}").into(), element.clone()));

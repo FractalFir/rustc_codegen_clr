@@ -86,10 +86,13 @@ pub fn place_elem_set<'a>(
                     ops.extend(ptr_set_op);
                     ops
                 }
-                TyKind::Array(_element, _length) => {
-                    //let element = crate::utilis::monomorphize(&method_instance, *element, tyctx);
+                TyKind::Array(element, _length) => {
+                    let element = crate::utilis::monomorphize(&method_instance, *element, ctx);
                     let array_type =
                         type_cache.type_from_cache(curr_ty, ctx, Some(method_instance));
+                    let element_type =
+                        type_cache.type_from_cache(element, ctx, Some(method_instance));
+                            
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
                     let ops = vec![
                         index,
@@ -98,7 +101,7 @@ pub fn place_elem_set<'a>(
                                 Some(array_dotnet),
                                 "set_Item".into(),
                                 FnSig::new(
-                                    &[array_type, Type::USize, Type::GenericArg(0)],
+                                    &[array_type, Type::USize, element_type],
                                     &Type::Void,
                                 ),
                                 false,
@@ -150,8 +153,9 @@ pub fn place_elem_set<'a>(
                     ops.extend(ptr_set_op);
                     ops
                 }
-                TyKind::Array(_element, _length) => {
-                    //let element = crate::utilis::monomorphize(&method_instance, *element, tyctx);
+                TyKind::Array(element, _length) => {
+                    let element = crate::utilis::monomorphize(&method_instance, *element, ctx);
+                    let element = type_cache.type_from_cache(element, ctx, Some(method_instance));
                     let array_type =
                         type_cache.type_from_cache(curr_ty, ctx, Some(method_instance));
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
@@ -162,7 +166,7 @@ pub fn place_elem_set<'a>(
                                 Some(array_dotnet),
                                 "set_Item".into(),
                                 FnSig::new(
-                                    &[array_type, Type::USize, Type::GenericArg(0)],
+                                    &[array_type, Type::USize, element],
                                     &Type::Void,
                                 ),
                                 false,

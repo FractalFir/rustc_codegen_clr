@@ -129,8 +129,9 @@ fn place_elem_get<'a>(
                     ops.extend(deref_op);
                     ops
                 }
-                TyKind::Array(_element, _length) => {
-                    //let element = crate::utilis::monomorphize(&method_instance, *element, tyctx);
+                TyKind::Array(element, _length) => {
+                    let element = crate::utilis::monomorphize(&method_instance, *element, tyctx);
+                    let element = type_cache.type_from_cache(element, tyctx, Some(method_instance));
                     let array_type =
                         type_cache.type_from_cache(curr_ty, tyctx, Some(method_instance));
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
@@ -140,7 +141,7 @@ fn place_elem_get<'a>(
                             crate::cil::CallSite::new(
                                 Some(array_dotnet),
                                 "get_Item".into(),
-                                FnSig::new(&[array_type, Type::USize], &Type::GenericArg(0)),
+                                FnSig::new(&[array_type, Type::USize], &element),
                                 false,
                             )
                             .into(),
@@ -194,8 +195,9 @@ fn place_elem_get<'a>(
                     ops.extend(derf_op);
                     ops
                 }
-                TyKind::Array(_element, _length) => {
-                    //let element = crate::utilis::monomorphize(&method_instance, *element, tyctx);
+                TyKind::Array(element, _length) => {
+                    let element = crate::utilis::monomorphize(&method_instance, *element, tyctx);
+                    let element = type_cache.type_from_cache(element, tyctx, Some(method_instance));
                     let array_type =
                         type_cache.type_from_cache(curr_ty, tyctx, Some(method_instance));
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
@@ -205,7 +207,7 @@ fn place_elem_get<'a>(
                             crate::cil::CallSite::new(
                                 Some(array_dotnet),
                                 "get_Item".into(),
-                                FnSig::new(&[array_type, Type::USize], &Type::GenericArg(0)),
+                                FnSig::new(&[array_type, Type::USize], &element),
                                 false,
                             )
                             .into(),
