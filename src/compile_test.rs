@@ -375,6 +375,7 @@ macro_rules! cargo_test {
                     }
                 }
                 drop(lock);
+                todo!();
                 //let exec_path = concat!("../", stringify!($test_name));
                 //test_dotnet_executable(exec_path, test_dir);
             }

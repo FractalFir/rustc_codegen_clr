@@ -1,7 +1,7 @@
 # rustc_codegen_clr
 
 > [!WARNING]
-> This project is a very early proof-of-concept
+> This project is still early in its developement. Bugs, crashes and miscompilations are expected. DO NOT USE IT FOR ANYTHING SERIOUS.
 
 ## Project progress
 

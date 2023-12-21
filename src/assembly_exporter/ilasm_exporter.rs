@@ -1,7 +1,7 @@
 use super::{AssemblyExporter, ilasm_op::dotnet_type_ref_cli};
 use crate::{
     access_modifier::AccessModifer,
-    assembly_exporter::{AssemblyExportError, ilasm_op::{return_type_cil, type_cil}},
+    assembly_exporter::{AssemblyExportError, ilasm_op::{non_void_type_cil, type_cil}},
     method::Method,
     r#type::TypeDef,
     r#type::{DotnetTypeRef, Type},
@@ -22,7 +22,7 @@ impl std::io::Write for ILASMExporter {
 }
 impl AssemblyExporter for ILASMExporter {
     fn add_global(&mut self, tpe: &Type, name: &str) {
-        writeln!(self, ".field static {tpe} {name}", tpe = type_cil(tpe))
+        writeln!(self, ".field static {tpe} {name}", tpe = non_void_type_cil(tpe))
             .expect("Could not write global!")
     }
     fn init(asm_name: &str) -> Self {
@@ -136,7 +136,7 @@ fn type_def_cli(w: &mut impl Write, tpe: &TypeDef,is_nested:bool) -> Result<(), 
             writeln!(
                 w,
                 "\t.field [{offset}] public {field_type_name} {field_name}",
-                field_type_name = type_cil(field_type)
+                field_type_name = non_void_type_cil(field_type)
             )?;
         }
     } else {
@@ -144,7 +144,7 @@ fn type_def_cli(w: &mut impl Write, tpe: &TypeDef,is_nested:bool) -> Result<(), 
             writeln!(
                 w,
                 "\t.field public {field_type_name} {field_name}",
-                field_type_name = type_cil(field_type)
+                field_type_name = non_void_type_cil(field_type)
             )?;
         }
     }
@@ -165,7 +165,7 @@ fn method_cil(w: &mut impl Write, method: &Method) -> std::io::Result<()> {
     } else {
         "instance"
     };
-    let output = return_type_cil(method.sig().output());
+    let output = type_cil(method.sig().output());
     let name = method.name();
     write!(
         w,
@@ -173,10 +173,10 @@ fn method_cil(w: &mut impl Write, method: &Method) -> std::io::Result<()> {
     )?;
     let mut input_iter =  method.explicit_inputs().iter();
     if let Some(input) =input_iter.next(){
-        writeln!(w, "{}",type_cil(input))?;
+        write!(w, "{}",non_void_type_cil(input))?;
     }
     for input in input_iter{
-        writeln!(w, ",{}",type_cil(input))?;
+        write!(w, ",{}",non_void_type_cil(input))?;
     }
     writeln!(w, "){{")?;
     if method.is_entrypoint() {
@@ -192,14 +192,14 @@ fn method_cil(w: &mut impl Write, method: &Method) -> std::io::Result<()> {
         write!(
             w,
             "\t\t[{local_id}] {escaped_type}",
-            escaped_type = type_cil(&local.1)
+            escaped_type = non_void_type_cil(&local.1)
         )?;
     }
     for (local_id, local) in locals_iter {
         write!(
             w,
             ",\n\t\t[{local_id}] {escaped_type}",
-            escaped_type = type_cil(&local.1)
+            escaped_type = non_void_type_cil(&local.1)
         )?;
     }
     writeln!(w, "\n\t)")?;

@@ -24,11 +24,11 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
                 let mut inputs_iter = call_site.explicit_inputs().iter();
                 let mut input_string = String::new();
                 if let Some(firts_arg) = inputs_iter.next() {
-                    input_string.push_str(&type_cil(firts_arg));
+                    input_string.push_str(&non_void_type_cil(firts_arg));
                 }
                 for arg in inputs_iter {
                     input_string.push(',');
-                    input_string.push_str(&type_cil(arg));
+                    input_string.push_str(&non_void_type_cil(arg));
                 }
                 let prefix = if call_site.is_static() {
                     ""
@@ -44,7 +44,7 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
                 format!(
                     "call {prefix} {output} {owner_name} {function_name}({input_string})",
                     function_name = call_site.name(),
-                    output = return_type_cil(call_site.signature().output())
+                    output = type_cil(call_site.signature().output())
                 )
                 .into()
             }
@@ -57,11 +57,11 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
                 let mut inputs_iter = call_site.explicit_inputs().iter();
                 let mut input_string = String::new();
                 if let Some(firts_arg) = inputs_iter.next() {
-                    input_string.push_str(&type_cil(firts_arg));
+                    input_string.push_str(&non_void_type_cil(firts_arg));
                 }
                 for arg in inputs_iter {
                     input_string.push(',');
-                    input_string.push_str(&type_cil(arg));
+                    input_string.push_str(&non_void_type_cil(arg));
                 }
                 let prefix = if call_site.is_static() {
                     ""
@@ -77,7 +77,7 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
                 format!(
                     "callvirt {prefix} {output} {owner_name} {function_name}({input_string})",
                     function_name = call_site.name(),
-                    output = return_type_cil(call_site.signature().output())
+                    output = type_cil(call_site.signature().output())
                 )
                 .into()
             }
@@ -349,11 +349,11 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
                 let mut inputs_iter = call_site.explicit_inputs().iter();
                 let mut input_string = String::new();
                 if let Some(firts_arg) = inputs_iter.next() {
-                    input_string.push_str(&type_cil(firts_arg));
+                    input_string.push_str(&non_void_type_cil(firts_arg));
                 }
                 for arg in inputs_iter {
                     input_string.push(',');
-                    input_string.push_str(&type_cil(arg));
+                    input_string.push_str(&non_void_type_cil(arg));
                 }
                 let prefix = if call_site.is_static() {
                     ""
@@ -367,7 +367,7 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
                 format!(
                     "newobj {prefix} {output} {owner_name}{function_name}({input_string})",
                     function_name = call_site.name(),
-                    output = return_type_cil(call_site.signature().output())
+                    output = type_cil(call_site.signature().output())
                 )
                 .into()
             }
@@ -392,16 +392,16 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
         }
     }
 }
-pub fn return_type_cil(tpe: &Type) -> Cow<'static, str> {
+pub fn non_void_type_cil(tpe: &Type) -> Cow<'static, str> {
     match tpe {
-        Type::Void => "void".into(),
+        Type::Void => "valuetype RustVoid".into(),
         _=>type_cil(tpe),
     }
 }
 pub fn type_cil(tpe: &Type) -> Cow<'static, str> {
     match tpe {
-        Type::FnDef(name) => format!("fn_{name}").into(),
-        Type::Void => "valuetype RustVoid".into(),
+        Type::FnDef(name) => format!("valuetype fn_{name}").into(),
+        Type::Void => "void".into(),
         Type::I8 => "int8".into(),
         Type::U8 => "uint8".into(),
         Type::I16 => "int16".into(),
