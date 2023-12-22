@@ -1,11 +1,11 @@
-use std::{path::Path, borrow::Cow};
+use std::{borrow::Cow, path::Path};
 /// Describes an assemnly.
 type AssemblyInfo = str;
 
 use crate::{
     assembly::Assembly,
     method::Method,
-    r#type::{Type, TypeDef, DotnetTypeRef},
+    r#type::{DotnetTypeRef, Type, TypeDef},
     IString,
 };
 /// ILASM-based assembly exporter.
@@ -77,4 +77,3 @@ impl From<std::io::Error> for AssemblyExportError {
         Self::IoError(error)
     }
 }
-

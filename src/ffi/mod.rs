@@ -181,7 +181,6 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     abort(asm);
 }
 
-
 fn math(asm: &mut Assembly) {
     sqrtf32(asm);
 }

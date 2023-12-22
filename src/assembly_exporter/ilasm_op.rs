@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use crate::{r#type::{Type, DotnetTypeRef}};
+use crate::r#type::{DotnetTypeRef, Type};
 
 pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
     use crate::cil::CILOp;
@@ -395,7 +395,7 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
 pub fn non_void_type_cil(tpe: &Type) -> Cow<'static, str> {
     match tpe {
         Type::Void => "valuetype RustVoid".into(),
-        _=>type_cil(tpe),
+        _ => type_cil(tpe),
     }
 }
 pub fn type_cil(tpe: &Type) -> Cow<'static, str> {
@@ -458,16 +458,10 @@ fn generics_str(generics: &[Type]) -> Cow<'static, str> {
         let mut garg_string = String::new();
         let mut generic_iter = generics.iter();
         if let Some(first_generic) = generic_iter.next() {
-            garg_string.push_str(&format!(
-                "{type_cil}",
-                type_cil = type_cil(first_generic)
-            ));
+            garg_string.push_str(&format!("{type_cil}", type_cil = type_cil(first_generic)));
         }
         for arg in generic_iter {
-            garg_string.push_str(&format!(
-                ",{type_cil}",
-                type_cil = type_cil(arg)
-            ));
+            garg_string.push_str(&format!(",{type_cil}", type_cil = type_cil(arg)));
         }
         format!("<{garg_string}>").into()
     }

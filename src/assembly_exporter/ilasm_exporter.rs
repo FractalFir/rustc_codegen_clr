@@ -1,7 +1,10 @@
-use super::{AssemblyExporter, ilasm_op::dotnet_type_ref_cli};
+use super::{ilasm_op::dotnet_type_ref_cli, AssemblyExporter};
 use crate::{
     access_modifier::AccessModifer,
-    assembly_exporter::{AssemblyExportError, ilasm_op::{non_void_type_cil, type_cil}},
+    assembly_exporter::{
+        ilasm_op::{non_void_type_cil, type_cil},
+        AssemblyExportError,
+    },
     method::Method,
     r#type::TypeDef,
     r#type::{DotnetTypeRef, Type},
@@ -22,8 +25,12 @@ impl std::io::Write for ILASMExporter {
 }
 impl AssemblyExporter for ILASMExporter {
     fn add_global(&mut self, tpe: &Type, name: &str) {
-        writeln!(self, ".field static {tpe} {name}", tpe = non_void_type_cil(tpe))
-            .expect("Could not write global!")
+        writeln!(
+            self,
+            ".field static {tpe} {name}",
+            tpe = non_void_type_cil(tpe)
+        )
+        .expect("Could not write global!")
     }
     fn init(asm_name: &str) -> Self {
         let mut encoded_asm = Vec::with_capacity(0x1_00);
@@ -43,7 +50,7 @@ impl AssemblyExporter for ILASMExporter {
         .expect("Write error!");
     }
     fn add_type(&mut self, tpe: &TypeDef) {
-        type_def_cli(&mut self.encoded_asm, tpe,false).expect("Error");
+        type_def_cli(&mut self.encoded_asm, tpe, false).expect("Error");
         //let _ = self.types.push(tpe.clone());
     }
     fn add_method(&mut self, method: &Method) {
@@ -99,9 +106,16 @@ impl AssemblyExporter for ILASMExporter {
         Ok(())
     }
 }
-fn type_def_cli(w: &mut impl Write, tpe: &TypeDef,is_nested:bool) -> Result<(), super::AssemblyExportError>{
+fn type_def_cli(
+    w: &mut impl Write,
+    tpe: &TypeDef,
+    is_nested: bool,
+) -> Result<(), super::AssemblyExportError> {
     let name = tpe.name();
-    assert!(tpe.gargc() == 0, "Generic typedefs not supported yet. tpe:{tpe:?}");
+    assert!(
+        tpe.gargc() == 0,
+        "Generic typedefs not supported yet. tpe:{tpe:?}"
+    );
     let extends = if let Some(extended) = tpe.extends() {
         todo!("Can't handle inheretence yet. Typedef inherits from {extended:?}!");
     } else {
@@ -117,19 +131,15 @@ fn type_def_cli(w: &mut impl Write, tpe: &TypeDef,is_nested:bool) -> Result<(), 
     } else {
         ""
     };
-    let explicit = if tpe.explicit_offsets().is_some(){
+    let explicit = if tpe.explicit_offsets().is_some() {
         "explicit"
     } else {
         ""
     };
-    let nested = if is_nested{
-        "nested"
-    } else{
-        ""
-    };
+    let nested = if is_nested { "nested" } else { "" };
     writeln!(w,".class {nested} {access} {explicit} ansi {sealed} beforefieldinit {name} extends {extends}{{")?;
     for inner_type in tpe.inner_types() {
-        type_def_cli(w, inner_type,true)?;
+        type_def_cli(w, inner_type, true)?;
     }
     if let Some(offsets) = tpe.explicit_offsets() {
         for ((field_name, field_type), offset) in tpe.fields().iter().zip(offsets.iter()) {
@@ -151,7 +161,7 @@ fn type_def_cli(w: &mut impl Write, tpe: &TypeDef,is_nested:bool) -> Result<(), 
     for method in tpe.methods() {
         method_cil(w, method)?;
     }
-    writeln!(w,"}}")?;
+    writeln!(w, "}}")?;
     Ok(())
 }
 fn method_cil(w: &mut impl Write, method: &Method) -> std::io::Result<()> {
@@ -171,12 +181,12 @@ fn method_cil(w: &mut impl Write, method: &Method) -> std::io::Result<()> {
         w,
         ".method {access} hidebysig {static_inst} {output} {name}("
     )?;
-    let mut input_iter =  method.explicit_inputs().iter();
-    if let Some(input) =input_iter.next(){
-        write!(w, "{}",non_void_type_cil(input))?;
+    let mut input_iter = method.explicit_inputs().iter();
+    if let Some(input) = input_iter.next() {
+        write!(w, "{}", non_void_type_cil(input))?;
     }
-    for input in input_iter{
-        write!(w, ",{}",non_void_type_cil(input))?;
+    for input in input_iter {
+        write!(w, ",{}", non_void_type_cil(input))?;
     }
     writeln!(w, "){{")?;
     if method.is_entrypoint() {

@@ -7,6 +7,15 @@ struct Vec<T>{
     cap:usize,
     len:usize,
 }
+impl<T> Drop for Vec<T>{
+    fn drop(&mut self){
+        /* 
+        for idx in 0..self.len{
+            unsafe{core::ptr::drop_in_place(self.ptr.wrapping_add(idx))};
+        }*/
+        unsafe{free(self.ptr as *mut  core::ffi::c_void)};
+    }
+}
 impl<T> Vec<T>{
     pub fn new()->Self{
         Self{ptr:core::ptr::null_mut(),cap:0,len:0}
@@ -54,5 +63,6 @@ fn main(){
     vec.push(0);
     black_box(&mut vec);
     unsafe{puts(vec.ptr())};
+    drop(vec);
 }
 

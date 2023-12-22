@@ -1,4 +1,4 @@
-use super::{DotnetTypeRef, Type, TypeDef, tuple_name, tuple_typedef};
+use super::{tuple_name, tuple_typedef, DotnetTypeRef, Type, TypeDef};
 use crate::{
     access_modifier::AccessModifer, r#type::escape_field_name, utilis::enum_tag_size, IString,
 };
@@ -217,8 +217,8 @@ impl TyCache {
                     Type::Void
                 } else {
                     let name = tuple_name(&types);
-                    if !self.type_def_cache.contains_key(&name){
-                        self.type_def_cache.insert(name,tuple_typedef(&types));
+                    if !self.type_def_cache.contains_key(&name) {
+                        self.type_def_cache.insert(name, tuple_typedef(&types));
                     }
                     super::simple_tuple(&types).into()
                 }
@@ -296,8 +296,10 @@ impl TyCache {
                 let element = self.type_from_cache(element, tyctx, method);
                 let arr_name = crate::r#type::type_def::arr_name(length, &element);
                 if self.type_def_cache.get(&arr_name).is_none() {
-                    self.type_def_cache
-                        .insert(arr_name.clone(), crate::r#type::type_def::get_array_type(length,element.clone()));
+                    self.type_def_cache.insert(
+                        arr_name.clone(),
+                        crate::r#type::type_def::get_array_type(length, element.clone()),
+                    );
                 }
                 DotnetTypeRef::array(element, length).into()
             }
@@ -315,7 +317,6 @@ fn slice_ref_to<'tyctx>(
     let inner = ty_generic_arg(inner);
     // TODO: ensure this function call is valid.
     let list = tyctx.mk_args(&[inner]);
-    // TODO: this is expensive(iterates over whole `core``). Cache it.
 
     let ptr_components = cache.ptr_components(tyctx);
     //std::process::exit(-1);
@@ -326,7 +327,8 @@ fn slice_ref_to<'tyctx>(
 fn u8_ty(tyctx: TyCtxt) -> Ty {
     Ty::new(tyctx, TyKind::Uint(UintTy::U8))
 }
-fn ty_generic_arg(ty: Ty) -> GenericArg {
+/// Turns a `ty` into a `generic_arg`
+pub fn ty_generic_arg(ty: Ty) -> GenericArg {
     // Shit version, ok only cause type tag is 0b00
     unsafe { std::mem::transmute(ty) }
     // Good version

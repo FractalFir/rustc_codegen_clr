@@ -17,8 +17,6 @@ pub fn handle_rvalue<'tcx>(
     let res = match rvalue {
         Rvalue::Use(operand) => {
             let res = handle_operand(operand, tyctx, method, method_instance, tycache);
-            let ty = operand.ty(method, tyctx);
-            println!("operand:{operand:?} res:{res:?} ty:{ty:?}");
             res
         }
         Rvalue::CopyForDeref(place) => {

@@ -440,11 +440,7 @@ fn checked_uadd_type(tpe: Type, truncate: CILOp, add: CILOp) -> Vec<CILOp> {
         )),
         CILOp::LoadAddresOfTMPLocal,
         CILOp::LoadUnderTMPLocal(2),
-        CILOp::STField(FieldDescriptor::boxed(
-            tuple.clone(),
-            tpe,
-            "Item1".into(),
-        )),
+        CILOp::STField(FieldDescriptor::boxed(tuple.clone(), tpe, "Item1".into())),
         CILOp::LoadTMPLocal,
         CILOp::FreeTMPLocal,
         CILOp::FreeTMPLocal,
@@ -763,11 +759,7 @@ pub fn promoted_ubinop(
         CILOp::LoadAddresOfTMPLocal,
         CILOp::LoadUnderTMPLocal(2),
         truncate,
-        CILOp::STField(FieldDescriptor::boxed(
-            tuple.clone(),
-            tpe,
-            "Item1".into(),
-        )),
+        CILOp::STField(FieldDescriptor::boxed(tuple.clone(), tpe, "Item1".into())),
         // Load results
         CILOp::LoadTMPLocal,
         // Reset temporary local statck.
@@ -828,11 +820,7 @@ pub fn promoted_sbinop(
         CILOp::LoadAddresOfTMPLocal,
         CILOp::LoadUnderTMPLocal(2),
         truncate,
-        CILOp::STField(FieldDescriptor::boxed(
-            tuple.clone(),
-            tpe,
-            "Item1".into(),
-        )),
+        CILOp::STField(FieldDescriptor::boxed(tuple.clone(), tpe, "Item1".into())),
         // Load results
         CILOp::LoadTMPLocal,
         // Reset temporary local statck.

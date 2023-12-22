@@ -5,6 +5,7 @@ use crate::{
 use rustc_middle::ty::{Instance, List, ParamEnv, ParamEnvAnd, TyCtxt};
 use rustc_target::abi::call::Conv;
 use serde::{Deserialize, Serialize};
+use rustc_target::spec::abi::Abi as TargetAbi;
 /// Function signature.
 #[derive(Clone, PartialEq, Serialize, Deserialize, Eq, Hash, Debug)]
 pub struct FnSig {
@@ -38,6 +39,18 @@ impl FnSig {
         for arg in fn_abi.args.iter() {
             args.push(tycache.type_from_cache(arg.layout.ty, tcx, Some(function)));
         }
+        // There are 2 ABI enums for some reasons(they differ in what memebers they have)
+        let internal_abi = function.ty(tcx,ParamEnv::reveal_all()).fn_sig(tcx).abi();
+        // Only those ABIs are supported
+        match internal_abi{
+            TargetAbi::C { unwind }=>(),
+            TargetAbi::Cdecl { unwind }=>(),
+            TargetAbi::RustIntrinsic=>(),
+            TargetAbi::Rust =>(),
+            TargetAbi::RustCold =>(),
+            TargetAbi::RustCall => Err(CodegenError::FunctionABIUnsuported("\"rust_call\" ABI, used for things like clsoures, is not supported yet!"))?,
+            _=>todo!("Unsuported ABI:{internal_abi:?}")
+        }
         Ok(Self {
             inputs: args,
             output: ret,
@@ -58,4 +71,9 @@ impl FnSig {
             output: output.clone(),
         }
     }
+}
+#[derive(Clone, PartialEq, Serialize, Deserialize, Eq, Hash, Debug)]
+pub struct FunctionCallInfo {
+    inputs: Vec<Type>,
+    output: Type,
 }

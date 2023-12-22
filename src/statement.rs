@@ -21,6 +21,15 @@ pub fn handle_statement<'tcx>(
         StatementKind::Assign(palce_rvalue) => {
             let place = palce_rvalue.as_ref().0;
             let rvalue = &palce_rvalue.as_ref().1;
+            // Skip void assigments. Assigining to or from void type is a NOP.
+            if type_cache.type_from_cache(
+                crate::utilis::monomorphize(&method_instance, place.ty(method, tyctx).ty, tyctx),
+                tyctx,
+                Some(method_instance),
+            ) == crate::r#type::Type::Void
+            {
+                return vec![];
+            }
             let rvalue_ops = rustc_middle::ty::print::with_no_trimmed_paths! {crate::rvalue::handle_rvalue(
                 rvalue,
                 tyctx,

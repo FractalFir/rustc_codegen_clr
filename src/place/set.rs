@@ -92,7 +92,7 @@ pub fn place_elem_set<'a>(
                         type_cache.type_from_cache(curr_ty, ctx, Some(method_instance));
                     let element_type =
                         type_cache.type_from_cache(element, ctx, Some(method_instance));
-                            
+
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
                     let ops = vec![
                         index,
@@ -100,10 +100,7 @@ pub fn place_elem_set<'a>(
                             crate::cil::CallSite::new(
                                 Some(array_dotnet),
                                 "set_Item".into(),
-                                FnSig::new(
-                                    &[array_type, Type::USize, element_type],
-                                    &Type::Void,
-                                ),
+                                FnSig::new(&[array_type, Type::USize, element_type], &Type::Void),
                                 false,
                             )
                             .into(),
@@ -165,10 +162,7 @@ pub fn place_elem_set<'a>(
                             crate::cil::CallSite::new(
                                 Some(array_dotnet),
                                 "set_Item".into(),
-                                FnSig::new(
-                                    &[array_type, Type::USize, element],
-                                    &Type::Void,
-                                ),
+                                FnSig::new(&[array_type, Type::USize, element], &Type::Void),
                                 false,
                             )
                             .into(),

@@ -6,6 +6,7 @@ pub enum CodegenError {
     UnersolvedGeneric,
     Error(crate::IString),
     Method(MethodCodegenError),
+    FunctionABIUnsuported(&'static str)
 }
 impl From<CodegenError> for rustc_errors::ErrorGuaranteed {
     fn from(val: CodegenError) -> Self {

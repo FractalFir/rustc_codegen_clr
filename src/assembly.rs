@@ -288,6 +288,9 @@ impl Assembly {
             }
             match &block_data.terminator {
                 Some(term) => {
+                    if crate::INSERT_MIR_DEBUG_COMMENTS {
+                        rustc_middle::ty::print::with_no_trimmed_paths! {ops.push(CILOp::Comment(format!("{term:?}").into()))};
+                    }
                     let term_ops = Self::terminator_to_ops(term, mir, tcx, instance, cache);
                     if term_ops != [CILOp::Ret] {
                         crate::utilis::check_debugable(&term_ops, term, does_return_void);

@@ -102,7 +102,7 @@ impl DotnetTypeRef {
     }
     #[must_use]
     pub fn array(element: Type, length: usize) -> Self {
-        let name =  crate::r#type::type_def::arr_name(length, &element);
+        let name = crate::r#type::type_def::arr_name(length, &element);
         DotnetTypeRef::new(None, &name)
     }
     pub fn append_path(&mut self, append: &str) {

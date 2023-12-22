@@ -426,7 +426,7 @@ fn load_const_scalar<'ctx>(
                         ];
                     }
                     let attrs = tyctx.codegen_fn_attrs(def_id);
-                   
+
                     if let Some(import_linkage) = attrs.import_linkage {
                         rustc_middle::ty::print::with_no_trimmed_paths! {
                             panic!("Static {def_id:?} requires special linkage {import_linkage:?} handling.")

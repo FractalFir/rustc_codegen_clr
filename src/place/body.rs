@@ -187,7 +187,8 @@ pub fn place_elem_body<'ctx>(
                 }
                 TyKind::Array(element, _length) => {
                     let element = crate::utilis::monomorphize(&method_instance, *element, tyctx);
-                    let element_type = type_cache.type_from_cache(element, tyctx, Some(method_instance));
+                    let element_type =
+                        type_cache.type_from_cache(element, tyctx, Some(method_instance));
                     let array_type =
                         type_cache.type_from_cache(curr_ty, tyctx, Some(method_instance));
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
