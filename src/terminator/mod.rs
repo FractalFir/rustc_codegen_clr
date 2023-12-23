@@ -1,3 +1,5 @@
+use std::process::Termination;
+
 use crate::utilis::garg_to_string;
 use crate::{
     cil::{CILOp, CallSite},
@@ -108,7 +110,7 @@ pub fn handle_terminator<'ctx>(
         }
         TerminatorKind::Drop {
             place,
-            target: _,
+            target,
             unwind: _,
             replace: _,
         } => {
@@ -120,13 +122,14 @@ pub fn handle_terminator<'ctx>(
                 vec![]
             } else {
                 let sig = FnSig::sig_from_instance_(drop_instance, tyctx, type_cache).unwrap();
-            
+
                 let function_name = crate::utilis::function_name(tyctx.symbol_name(drop_instance));
                 let mut call =
                     crate::place::place_adress(place, tyctx, method, method_instance, type_cache);
 
                 call.push(CILOp::Call(CallSite::boxed(None, function_name, sig, true)));
                 eprintln!("drop call:{call:?}");
+                call.push(CILOp::GoTo(target.as_u32()));
                 call
             }
         }
@@ -145,6 +148,18 @@ pub fn handle_terminator<'ctx>(
             ]*/
             vec![]
         }
+        TerminatorKind::InlineAsm {
+            template,
+            operands,
+            options,
+            line_spans,
+            destination,
+            unwind,
+        } => {
+            eprintln!("Inline assembly is not yet supported!");
+            CILOp::throw_msg("Inline assembly is not yet supported!").to_vec()
+        }
+
         _ => todo!("Unhandled terminator kind {kind:?}", kind = terminator.kind),
     }
 }

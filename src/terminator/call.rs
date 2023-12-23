@@ -15,8 +15,13 @@ use rustc_middle::{
     mir::{Body, Operand, Place, SwitchTargets, Terminator, TerminatorKind},
     ty::{GenericArg, Instance, ParamEnv, Ty, TyCtxt, TyKind},
 };
-fn decode_interop_call<'ctx>(function_name: &str, prefix: &str,subst_ref: &[GenericArg<'ctx>],tyctx: TyCtxt<'ctx>)->CallSite{
-    let argument_count = argc_from_fn_name(function_name,MANAGED_CALL_FN_NAME);
+fn decode_interop_call<'ctx>(
+    function_name: &str,
+    prefix: &str,
+    subst_ref: &[GenericArg<'ctx>],
+    tyctx: TyCtxt<'ctx>,
+) -> CallSite {
+    let argument_count = argc_from_fn_name(function_name, MANAGED_CALL_FN_NAME);
     let asm = AssemblyRef::decode_assembly_ref(subst_ref[0], tyctx);
     let asm = asm.name();
     let class_name = garg_to_string(subst_ref[1], tyctx);
@@ -42,7 +47,7 @@ fn call_managed<'ctx>(
     fn_instance: Instance<'ctx>,
     type_cache: &mut crate::r#type::TyCache,
 ) -> Vec<CILOp> {
-    let argument_count = argc_from_fn_name(function_name,MANAGED_CALL_FN_NAME);
+    let argument_count = argc_from_fn_name(function_name, MANAGED_CALL_FN_NAME);
     //FIXME: figure out the proper argc.
     //assert!(subst_ref.len() as u32 == argc + 3 || subst_ref.len() as u32 == argc + 4);
     assert!(args.len() == argument_count as usize);
@@ -121,7 +126,7 @@ fn callvirt_managed<'ctx>(
     fn_instance: Instance<'ctx>,
     type_cache: &mut crate::r#type::TyCache,
 ) -> Vec<CILOp> {
-    let argument_count = argc_from_fn_name(function_name,MANAGED_CALL_VIRT_FN_NAME);
+    let argument_count = argc_from_fn_name(function_name, MANAGED_CALL_VIRT_FN_NAME);
     //assert!(subst_ref.len() as u32 == argc + 3 || subst_ref.len() as u32 == argc + 4);
     assert!(
         u32::try_from(args.len()).expect("More than 2^32 function arguments.") == argument_count
@@ -203,7 +208,7 @@ fn call_ctor<'ctx>(
     method_instance: Instance<'ctx>,
     type_cache: &mut crate::r#type::TyCache,
 ) -> Vec<CILOp> {
-    let argument_count = argc_from_fn_name(function_name,CTOR_FN_NAME);
+    let argument_count = argc_from_fn_name(function_name, CTOR_FN_NAME);
     // Check that there are enough function path and argument specifers
     assert!(subst_ref.len() == argument_count as usize + 3);
     // Check that a proper number of arguments is used
@@ -286,14 +291,16 @@ pub fn call<'ctx>(
     let fn_type = crate::utilis::monomorphize(&method_instance, fn_type, tyctx);
     let fn_sig = fn_type.fn_sig(tyctx);
     let (instance, subst_ref) = if let TyKind::FnDef(def_id, subst_ref) = fn_type.kind() {
-        let subst = crate::utilis::monomorphize(&method_instance, *subst_ref, tyctx) ;
+        let subst = crate::utilis::monomorphize(&method_instance, *subst_ref, tyctx);
         let env = ParamEnv::reveal_all();
         let Some(instance) =
             Instance::resolve(tyctx, env, *def_id, subst).expect("Invalid function def")
         else {
-            // I assume most functions wihc can't be resolved are empty drops. 
+            // I assume most functions wihc can't be resolved are empty drops.
             // There propably exists a better way to check if it REALLY is just an empty drop, but this is good enough for now.
-            if rustc_middle::ty::print::with_no_trimmed_paths! {format!("{fn_type:?}")}.contains("drop"){
+            if rustc_middle::ty::print::with_no_trimmed_paths! {format!("{fn_type:?}")}
+                .contains("drop")
+            {
                 rustc_middle::ty::print::with_no_trimmed_paths! {eprintln!("Empty drop {fn_type:?}")};
                 return vec![];
             }
@@ -302,7 +309,6 @@ pub fn call<'ctx>(
 
         (instance, subst_ref)
     } else {
-        
         todo!("Trying to call a type which is not a function definition!");
     };
     let signature = FnSig::sig_from_instance_(instance, tyctx, type_cache)

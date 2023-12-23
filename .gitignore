@@ -10,3 +10,4 @@ test/out
 /Cargo.lock
 .vscode/
 *.bc
+*log.txt

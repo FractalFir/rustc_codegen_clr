@@ -223,6 +223,25 @@ impl TyCache {
                     super::simple_tuple(&types).into()
                 }
             }
+            TyKind::Closure(def, args) => {
+                let closure = args.as_closure();
+                let sig = closure.sig();
+                /*
+                let types: Vec<_> = types
+                    .iter()
+                    .map(|ty| self.type_from_cache(ty, tyctx, method))
+                    .collect();
+                if types.is_empty() {
+                    Type::Void
+                } else {
+                    let name = tuple_name(&types);
+                    if !self.type_def_cache.contains_key(&name) {
+                        self.type_def_cache.insert(name, tuple_typedef(&types));
+                    }
+                    super::simple_tuple(&types).into()
+                }*/
+                todo!("Closure:{closure:?} sig:{sig:?}")
+            }
             TyKind::Never => Type::Void,
             TyKind::RawPtr(type_and_mut) => match type_and_mut.ty.kind() {
                 TyKind::Slice(inner) => {

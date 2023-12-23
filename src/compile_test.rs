@@ -463,13 +463,14 @@ macro_rules! cargo_test_ignored {
                         .expect("rustc error contained non-UTF8 characters.");
                     let stderr = String::from_utf8(out.stderr)
                         .expect("rustc error contained non-UTF8 characters.");
-                    if !stderr.contains("Finished") {
+                    if !stderr.contains("Finished") || true {
                         panic!(
                             "command:{command:?} failed. \n stdout:\n{stdout}\nstderr:\n{stderr}"
                         );
                     }
                 }
                 drop(lock);
+
                 //let exec_path = concat!("../", stringify!($test_name));
                 //test_dotnet_executable(exec_path, test_dir);
             }

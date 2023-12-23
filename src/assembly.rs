@@ -322,6 +322,7 @@ impl Assembly {
     pub fn add_static(&mut self, tpe: Type, name: &str) {
         self.static_fields.insert(name.into(), tpe);
     }
+
     /// Adds a static field and initialized for allocation represented by `alloc_id`.
     fn add_allocation(
         &mut self,
@@ -352,7 +353,7 @@ impl Assembly {
             alloc_fld.clone(),
         );
         if self.static_fields.get(&alloc_fld).is_none() {
-            let method = self
+            let cctor = self
                 .functions
                 .entry(CallSite::new(
                     None,
@@ -372,36 +373,24 @@ impl Assembly {
                         ],
                     )
                 });
-            let ops: &mut Vec<CILOp> = method.ops_mut();
+
+            let ops: &mut Vec<CILOp> = cctor.ops_mut();
             if !ops.is_empty() && ops[ops.len() - 1] == CILOp::Ret {
                 ops.pop();
             }
+            let init_method = allocation_initializer_method(bytes, &alloc_fld, tcx);
             ops.extend([
-                CILOp::LdcI64(const_allocation.len() as u64 as i64),
-                CILOp::ConvISize(false),
-                CILOp::Call(CallSite::malloc(tcx).into()),
-                CILOp::Dup,
-                CILOp::STLoc(0),
-                CILOp::STLoc(1),
-            ]);
-            for byte in bytes {
-                ops.extend([
-                    CILOp::LDLoc(0),
-                    CILOp::LdcI32(*byte as i32),
-                    CILOp::STIndI8,
-                    CILOp::LDLoc(0),
-                    CILOp::LdcI32(1),
-                    CILOp::Add,
-                    CILOp::STLoc(0),
-                ]);
-            }
-            ops.extend([
-                CILOp::LDLoc(1),
+                CILOp::Call(CallSite::boxed(
+                    None,
+                    init_method.name().into(),
+                    init_method.sig().clone(),
+                    true,
+                )),
                 CILOp::STStaticField(field_desc.clone().into()),
                 CILOp::Ret,
             ]);
-            self.static_fields
-                .insert(alloc_fld, Type::Ptr(Type::U8.into()));
+            self.add_method(init_method);
+            self.add_static(Type::Ptr(Type::U8.into()), &alloc_fld);
         }
         field_desc
     }
@@ -516,4 +505,37 @@ fn locals_from_mir<'tyctx>(
         }
     }
     local_types
+}
+fn allocation_initializer_method(bytes: &[u8], name: &str, tyctx: TyCtxt) -> Method {
+    let mut ops = Vec::new();
+    ops.extend([
+        CILOp::LdcI64(bytes.len() as u64 as i64),
+        CILOp::ConvISize(false),
+        CILOp::Call(CallSite::malloc(tyctx).into()),
+        CILOp::Dup,
+        CILOp::STLoc(0),
+        CILOp::STLoc(1),
+    ]);
+    for byte in bytes {
+        ops.extend([
+            CILOp::LDLoc(0),
+            CILOp::LdcI32(*byte as i32),
+            CILOp::STIndI8,
+            CILOp::LDLoc(0),
+            CILOp::LdcI32(1),
+            CILOp::Add,
+            CILOp::STLoc(0),
+            CILOp::Comment(name.clone().into()),
+        ]);
+    }
+    ops.extend([CILOp::LDLoc(1), CILOp::Ret]);
+    let mut method = Method::new(
+        AccessModifer::Private,
+        true,
+        FnSig::new(&[], &Type::Ptr(Type::U8.into())),
+        &format!("init_{name}"),
+        vec![(Some("curr".into()), Type::Ptr(Type::U8.into())),(Some("alloc_ptr".into()), Type::Ptr(Type::U8.into()))],
+    );
+    method.set_ops(ops);
+    method
 }
