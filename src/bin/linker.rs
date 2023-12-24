@@ -2,6 +2,7 @@
 //use assembly::Assembly;
 use rustc_codegen_clr::{assembly::Assembly, r#type::Type, *};
 use std::env;
+
 fn load_ar(r: &mut impl std::io::Read) -> std::io::Result<assembly::Assembly> {
     use ar::Archive;
     use std::io::Read;

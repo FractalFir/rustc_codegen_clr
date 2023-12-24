@@ -107,6 +107,8 @@ fn main() {
     std::hint::black_box(&string);
     unsafe{puts(string.as_ptr())};
     unsafe{puts("Testing some cool shit\n\0".as_ptr())};
+    let s = format!("Hello {}\0",8);
+    unsafe{puts(s.as_ptr())};
    //let mut f = File::create("foo.txt")?;
 
     //black_box(f);

@@ -5,7 +5,7 @@ use crate::{
     r#type::{DotnetTypeRef, Type},
     IString,
 };
-
+use rustc_span::def_id::DefId;
 use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug)]
 pub struct TypeDef {
@@ -171,7 +171,18 @@ pub fn escape_field_name(name: &str) -> IString {
         }
     }
 }
-
+pub fn closure_name(def_id:DefId,fields:&[Type],sig:&crate::function_sig::FnSig)->String{
+    let krate = def_id.krate.as_u32();
+    let index = def_id.index.as_u32();
+    // Fields and sig would describe the closure better and COULD be used to reduce ammount of types needed.
+    let _ = (fields,sig);
+    format!("Closure{index:x}_{krate:x}")
+}
+pub fn closure_typedef(def_id:DefId,fields:&[Type],sig:crate::function_sig::FnSig)->TypeDef{
+    let name = closure_name(def_id, fields, &sig);
+    let fields = fields.iter().enumerate().map(|(idx,ty)|(format!("f{idx}").into(),ty.clone())).collect();
+    TypeDef::new(AccessModifer::Public,name.into(),vec![],fields,vec![],None,0,None)
+}
 pub fn arr_name(element_count: usize, element: &Type) -> IString {
     let element_name = super::mangle(element);
     format!("Arr{element_count}_{element_name}",).into()

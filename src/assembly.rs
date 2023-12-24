@@ -52,6 +52,10 @@ impl Assembly {
     pub fn globals(&self) -> impl Iterator<Item = (&IString, &Type)> {
         self.static_fields.iter()
     }
+    /// Returns the `.cctor` function used to initialize static data
+    pub fn cctor(&self)->Option<&Method>{
+        self.functions.get(&CallSite::new(None,".cctor".into(),FnSig::new(&[],&Type::Void),true))
+    }
     /// Returns the external assembly reference
     pub fn extern_refs(&self) -> &HashMap<IString, AssemblyExternRef> {
         &self.extern_refs
@@ -76,9 +80,13 @@ impl Assembly {
     }
     /// Joins 2 assemblies together.
     pub fn join(self, other: Self) -> Self {
+        let static_initializer = link_static_initializers(self.cctor(), other.cctor());
         let types = self.types.union(&other.types).cloned().collect();
         let mut functions = self.functions;
         functions.extend(other.functions);
+        if let Some(static_initializer) = static_initializer{
+            functions.insert(static_initializer.call_site(), static_initializer);
+        }
         let entrypoint = self.entrypoint.or(other.entrypoint);
         let mut extern_refs = self.extern_refs;
         let mut static_fields = self.static_fields;
@@ -479,6 +487,22 @@ impl Assembly {
         let wrapper = crate::entrypoint::wrapper(&entrypoint);
         self.functions.insert(wrapper.call_site(), wrapper);
         self.entrypoint = Some(entrypoint);
+    }
+}
+fn link_static_initializers(a:Option<&Method>,b:Option<&Method>)->Option<Method>{
+    match (a,b){
+        (None,None)=>None,
+        (Some(a),None)=>Some(a.clone()),
+        (None,Some(b))=>Some(b.clone()),
+        (Some(a),Some(b))=>{
+            let mut merged: Method = a.clone();
+            let ops = merged.ops_mut();
+            if !ops.is_empty() && ops[ops.len() - 1] == CILOp::Ret {
+                ops.pop();
+            }
+            ops.extend(b.get_ops().iter().cloned());
+            Some(merged)
+        }
     }
 }
 /// Returns the list of all local variables within MIR of a function, and converts them to the internal type represenation `Type`

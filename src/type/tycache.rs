@@ -1,6 +1,6 @@
 use super::{tuple_name, tuple_typedef, DotnetTypeRef, Type, TypeDef};
 use crate::{
-    access_modifier::AccessModifer, r#type::escape_field_name, utilis::enum_tag_size, IString,
+    access_modifier::AccessModifer, r#type::{escape_field_name, closure_typedef}, utilis::enum_tag_size, IString, function_sig::FnSig,
 };
 use rustc_middle::ty::{
     AdtDef, AdtKind, GenericArg, Instance, List, ParamEnv, Ty, TyCtxt, TyKind, UintTy,
@@ -225,22 +225,21 @@ impl TyCache {
             }
             TyKind::Closure(def, args) => {
                 let closure = args.as_closure();
-                let sig = closure.sig();
-                /*
-                let types: Vec<_> = types
-                    .iter()
-                    .map(|ty| self.type_from_cache(ty, tyctx, method))
-                    .collect();
-                if types.is_empty() {
-                    Type::Void
-                } else {
-                    let name = tuple_name(&types);
-                    if !self.type_def_cache.contains_key(&name) {
-                        self.type_def_cache.insert(name, tuple_typedef(&types));
-                    }
-                    super::simple_tuple(&types).into()
-                }*/
-                todo!("Closure:{closure:?} sig:{sig:?}")
+                let mut sig = closure.sig();
+                method
+                .inspect(|method| sig = crate::utilis::monomorphize(method, sig, tyctx));
+                //FIXME: This should be OK(since the signature is monomorphized and we don't care about lifetimes anyway), but it would be nice to have a better solution for this.
+                let sig = sig.skip_binder();
+                let inputs:Box<_> = sig.inputs().iter().map(|ty|self.type_from_cache(*ty,tyctx,method)).collect();
+               
+                let output = self.type_from_cache(sig.output(),tyctx,method);
+                let sig = FnSig::new(&inputs,&output);
+                let fields:Box<[_]> = closure. upvar_tys().iter().map(|ty|self.type_from_cache(ty,tyctx,method)).collect();
+                let name:IString = crate::r#type::closure_name(*def, &fields, &sig).into();
+                if !self.type_def_cache.contains_key(&name){
+                    self.type_def_cache.insert(name.clone(),closure_typedef(*def, &fields, sig));
+                }
+                DotnetTypeRef::new(None,&name).into()
             }
             TyKind::Never => Type::Void,
             TyKind::RawPtr(type_and_mut) => match type_and_mut.ty.kind() {

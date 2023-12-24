@@ -2,7 +2,7 @@ use crate::{
     codegen_error::CodegenError,
     r#type::{TyCache, Type},
 };
-use rustc_middle::ty::{Instance, List, ParamEnv, ParamEnvAnd, TyCtxt};
+use rustc_middle::ty::{Instance, List, ParamEnv, ParamEnvAnd, TyCtxt,TyKind};
 use rustc_target::abi::call::Conv;
 use rustc_target::spec::abi::Abi as TargetAbi;
 use serde::{Deserialize, Serialize};
@@ -40,7 +40,12 @@ impl FnSig {
             args.push(tycache.type_from_cache(arg.layout.ty, tcx, Some(function)));
         }
         // There are 2 ABI enums for some reasons(they differ in what memebers they have)
-        let internal_abi = function.ty(tcx, ParamEnv::reveal_all()).fn_sig(tcx).abi();
+        let fn_ty = function.ty(tcx, ParamEnv::reveal_all());
+        let internal_abi = match fn_ty.kind(){
+            TyKind::FnDef(_,_)=>fn_ty.fn_sig(tcx),
+            TyKind::Closure(_,args)=>args.as_closure().sig(),
+            _=>todo!("Can't get signature of {fn_ty}")
+        }.abi();
         // Only those ABIs are supported
         match internal_abi {
             TargetAbi::C { unwind } => (),
@@ -48,9 +53,9 @@ impl FnSig {
             TargetAbi::RustIntrinsic => (),
             TargetAbi::Rust => (),
             TargetAbi::RustCold => (),
-            TargetAbi::RustCall => Err(CodegenError::FunctionABIUnsuported(
+            TargetAbi::RustCall => (),/*Err(CodegenError::FunctionABIUnsuported(
                 "\"rust_call\" ABI, used for things like clsoures, is not supported yet!",
-            ))?,
+            ))?,*/
             _ => todo!("Unsuported ABI:{internal_abi:?}"),
         }
         Ok(Self {

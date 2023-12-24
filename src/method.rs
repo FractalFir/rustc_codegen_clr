@@ -111,7 +111,7 @@ impl Method {
         self.ops = ops;
     }
     /// Returns the ops of this method.
-    pub(crate) fn get_ops(&self) -> &[CILOp] {
+    pub fn get_ops(&self) -> &[CILOp] {
         &self.ops
     }
     /// Returns the list of external calls this function preforms. Calls may repeat.
