@@ -587,7 +587,7 @@ run_test! {types,vec}
 run_test! {types,string_slice}
 run_test! {types,ref_deref}
 run_test! {types,slice_ptr_cast}
-
+run_test! {types,slice_index_ref}
 run_test! {types,slice}
 run_test! {types,statics}
 run_test! {std,main}

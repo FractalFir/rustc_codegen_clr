@@ -1,4 +1,5 @@
-use crate::cil::{CILOp, FieldDescriptor};
+use crate::cil::{CILOp, FieldDescriptor, CallSite};
+use crate::function_sig::FnSig;
 use crate::operand::handle_operand;
 use crate::place::deref_op;
 use crate::r#type::{TyCache, Type};
@@ -385,6 +386,26 @@ pub fn handle_rvalue<'tcx>(
                 }
                 _ => todo!("Get length of type {ty:?}"),
             }
+            ops
+        }
+        Rvalue::Repeat(operand,times)=>{
+            let times = times. try_eval_target_usize(tyctx,ParamEnv::reveal_all()).expect("Could not evalute array size as usize.");
+            let array = crate::utilis::monomorphize(&method_instance, rvalue.ty(method,tyctx), tyctx);
+            let array = tycache.type_from_cache(array, tyctx, Some(method_instance));
+            let array_dotnet = array.clone().as_dotnet().expect("Invalid array type.");
+           
+            let operand_type =  tycache.type_from_cache(crate::utilis::monomorphize(&method_instance, operand.ty(method,tyctx), tyctx), tyctx, Some(method_instance));
+            let operand = handle_operand(operand, tyctx, method, method_instance, tycache);
+            let mut ops = Vec::new();
+            ops.push(CILOp::NewTMPLocal(array.clone().into()));
+            for idx in 0..times{
+                ops.push(CILOp::LoadAddresOfTMPLocal);
+                ops.extend(operand.clone());
+                ops.extend([CILOp::LdcI64(idx as u64 as i64),CILOp::ConvUSize(false)]);
+                ops.push(CILOp::Call(CallSite::new(Some(array_dotnet.clone()),"set_Item".into(),FnSig::new(&[array.clone(),Type::USize,operand_type.clone()],&Type::Void),false).into()));
+            }
+            ops.push(CILOp::LoadTMPLocal);
+            ops.push(CILOp::FreeTMPLocal);
             ops
         }
         _ => rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Unhandled RValue {rvalue:?}")},

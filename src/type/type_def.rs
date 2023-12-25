@@ -172,11 +172,8 @@ pub fn escape_field_name(name: &str) -> IString {
     }
 }
 pub fn closure_name(def_id: DefId, fields: &[Type], sig: &crate::function_sig::FnSig) -> String {
-    let krate = def_id.krate.as_u32();
-    let index = def_id.index.as_u32();
-    // Fields and sig would describe the closure better and COULD be used to reduce ammount of types needed.
-    let _ = (fields, sig);
-    format!("Closure{index:x}_{krate:x}")
+    let mangled_fields:String = fields.iter().map(|f|crate::r#type::mangle(f)).collect();
+    format!("Closure{field_count}{mangled_fields}",field_count = fields.len())
 }
 pub fn closure_typedef(def_id: DefId, fields: &[Type], sig: crate::function_sig::FnSig) -> TypeDef {
     let name = closure_name(def_id, fields, &sig);

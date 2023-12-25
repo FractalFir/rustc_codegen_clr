@@ -178,6 +178,15 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     );
     volatile_load.set_ops(vec![CILOp::LDArg(0), CILOp::LDIndI8, CILOp::Ret]);
     asm.add_method(volatile_load);
+    let mut volatile_load = Method::new(
+        AccessModifer::Private,
+        true,
+        FnSig::new(&[Type::Ptr(Type::USize.into())], &Type::USize),
+        "volatile_load",
+        vec![],
+    );
+    volatile_load.set_ops(vec![CILOp::LDArg(0), CILOp::LDIndISize, CILOp::Ret]);
+    asm.add_method(volatile_load);
     abort(asm);
 }
 

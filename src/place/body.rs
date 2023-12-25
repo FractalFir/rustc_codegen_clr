@@ -105,46 +105,6 @@ pub fn place_elem_body<'ctx>(
             let variant_type = PlaceTy::EnumVariant(curr_type, variant.as_u32());
             (variant_type, vec![CILOp::LDFieldAdress(field_desc)])
         }
-        PlaceElem::ConstantIndex {
-            offset,
-            min_length,
-            from_end,
-        } => {
-            let curr_ty = curr_type
-                .as_ty()
-                .expect("INVALID PLACE: Indexing into enum variant???");
-            let index = CILOp::LdcI64(*offset as i64);
-            assert!(!from_end, "Indexing slice form end");
-            eprintln!("WARNING: ConstantIndex has required min_length of {min_length}, but bounds checking on const access not supported yet!");
-            match curr_ty.kind() {
-                TyKind::Slice(inner) => {
-                    let inner = crate::utilis::monomorphize(&method_instance, *inner, tyctx);
-                    let inner_type =
-                        type_cache.type_from_cache(inner, tyctx, Some(method_instance));
-                    let slice = type_cache
-                        .slice_ty(inner, tyctx, Some(method_instance))
-                        .as_dotnet()
-                        .unwrap();
-                    let desc = FieldDescriptor::new(
-                        slice,
-                        Type::Ptr(Type::Void.into()),
-                        "data_address".into(),
-                    );
-                    let ops = vec![
-                        CILOp::LDField(desc.into()),
-                        index,
-                        CILOp::SizeOf(inner_type.into()),
-                        CILOp::Mul,
-                        CILOp::Add,
-                    ];
-                    (inner.into(), ops)
-                }
-
-                _ => {
-                    rustc_middle::ty::print::with_no_trimmed_paths! { todo!("Can't index into {curr_ty}!")}
-                }
-            }
-        }
         PlaceElem::Index(index) => {
             let curr_ty = curr_type
                 .as_ty()
@@ -227,6 +187,84 @@ pub fn place_elem_body<'ctx>(
                 }
                 _ => {
                     rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Can't index into {curr_ty}!")}
+                }
+            }
+        }
+        PlaceElem::ConstantIndex {
+            offset,
+            min_length,
+            from_end,
+        } => {
+            let curr_ty = curr_type
+                .as_ty()
+                .expect("INVALID PLACE: Indexing into enum variant???");
+            let index = CILOp::LdcI64(*offset as i64);
+            assert!(!from_end, "Indexing slice form end");
+            eprintln!("WARNING: ConstantIndex has required min_length of {min_length}, but bounds checking on const access not supported yet!");
+            match curr_ty.kind() {
+                TyKind::Slice(inner) => {
+                    let inner = crate::utilis::monomorphize(&method_instance, *inner, tyctx);
+                    let inner_type =
+                        type_cache.type_from_cache(inner, tyctx, Some(method_instance));
+                    let slice = type_cache
+                        .slice_ty(inner, tyctx, Some(method_instance))
+                        .as_dotnet()
+                        .unwrap();
+                    let desc = FieldDescriptor::new(
+                        slice,
+                        Type::Ptr(Type::Void.into()),
+                        "data_address".into(),
+                    );
+                    let derf_op = super::deref_op(
+                        super::PlaceTy::Ty(inner),
+                        tyctx,
+                        &method_instance,
+                        type_cache,
+                    );
+                    let mut ops = vec![
+                        CILOp::LDField(desc.into()),
+                        index,
+                        CILOp::SizeOf(inner_type.into()),
+                        CILOp::Mul,
+                        CILOp::Add,
+                    ];
+                    if !body_ty_is_by_adress(inner) {
+                        ops.extend(super::deref_op(
+                            super::PlaceTy::Ty(inner),
+                            tyctx,
+                            &method_instance,
+                            type_cache,
+                        ));
+                    }
+                    ops.extend(derf_op);
+                    (inner.into(), ops)
+                }
+                TyKind::Array(element, _length) => {
+                    let element_ty =  crate::utilis::monomorphize(&method_instance, *element, tyctx);
+                    let element = type_cache.type_from_cache(element_ty, tyctx, Some(method_instance));
+                    let array_type =
+                        type_cache.type_from_cache(curr_ty, tyctx, Some(method_instance));
+                    let array_dotnet = array_type.as_dotnet().expect("Non array type");
+                    if !body_ty_is_by_adress(element_ty) {
+                        ((element_ty).into(),vec![
+                            index,
+                            CILOp::Call(
+                                crate::cil::CallSite::new(
+                                    Some(array_dotnet),
+                                    "get_Item".into(),
+                                    FnSig::new(&[array_type, Type::USize], &element),
+                                    false,
+                                )
+                                .into(),
+                            ),
+                        ])
+                    }else{
+                        todo!()
+                    }
+                   
+                }
+                _ => {
+                    rustc_middle::ty::print::with_no_trimmed_paths! { todo!("Can't index into {curr_ty}!")}
                 }
             }
         }
