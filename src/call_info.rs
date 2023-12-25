@@ -1,18 +1,17 @@
 use crate::{
     codegen_error::CodegenError,
+    function_sig::FnSig,
     r#type::{TyCache, Type},
 };
 use rustc_middle::ty::{Instance, List, ParamEnv, ParamEnvAnd, TyCtxt, TyKind};
 use rustc_target::abi::call::Conv;
 use rustc_target::spec::abi::Abi as TargetAbi;
-use serde::{Deserialize, Serialize};
-/// Function signature.
-#[derive(Clone, PartialEq, Serialize, Deserialize, Eq, Hash, Debug)]
-pub struct FnSig {
-    inputs: Vec<Type>,
-    output: Type,
+pub struct CallInfo {
+    sig: FnSig,
+    has_track_caller: bool,
+    split_last_tuple: bool,
 }
-impl FnSig {
+impl CallInfo {
     /// Returns the signature of function behind `function`.
     pub fn sig_from_instance_<'tcx>(
         function: Instance<'tcx>,
@@ -48,40 +47,35 @@ impl FnSig {
         }
         .abi();
         // Only those ABIs are supported
-        match internal_abi {
-            TargetAbi::C { unwind } => (),
-            TargetAbi::Cdecl { unwind } => (),
-            TargetAbi::RustIntrinsic => (),
-            TargetAbi::Rust => (),
-            TargetAbi::RustCold => (),
-            TargetAbi::RustCall => (), /*Err(CodegenError::FunctionABIUnsuported(
+        let split_last_tuple = match internal_abi {
+            TargetAbi::C { unwind } => false,
+            TargetAbi::Cdecl { unwind } => false,
+            TargetAbi::RustIntrinsic => false,
+            TargetAbi::Rust => false,
+            TargetAbi::RustCold => false,
+            TargetAbi::RustCall => true, /*Err(CodegenError::FunctionABIUnsuported(
             "\"rust_call\" ABI, used for things like clsoures, is not supported yet!",
             ))?,*/
             _ => todo!("Unsuported ABI:{internal_abi:?}"),
-        }
+        };
+        let sig = FnSig::new(&args, &ret);
+        let has_track_caller = false;
         Ok(Self {
-            inputs: args,
-            output: ret,
+            sig,
+            has_track_caller,
+            split_last_tuple,
         })
     }
-    /// Returns the list of function inputs.
-    pub fn inputs(&self) -> &[Type] {
-        &self.inputs
+
+    pub fn sig(&self) -> &FnSig {
+        &self.sig
     }
-    /// Returns the function output.
-    pub fn output(&self) -> &Type {
-        &self.output
+
+    fn has_track_caller(&self) -> bool {
+        self.has_track_caller
     }
-    /// Creates a new function signature. For non-static functions, this must include the hidden first `this` argument!
-    pub fn new(inputs: &[Type], output: &Type) -> Self {
-        Self {
-            inputs: inputs.into(),
-            output: output.clone(),
-        }
+
+    pub fn split_last_tuple(&self) -> bool {
+        self.split_last_tuple
     }
-}
-#[derive(Clone, PartialEq, Serialize, Deserialize, Eq, Hash, Debug)]
-pub struct FunctionCallInfo {
-    inputs: Vec<Type>,
-    output: Type,
 }

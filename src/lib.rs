@@ -101,6 +101,7 @@ pub mod assembly_exporter;
 mod basic_block;
 /// Code handling binary operations
 mod binop;
+mod call_info;
 /// Code hansling rust `as` casts.
 mod casts;
 mod checked_binop;

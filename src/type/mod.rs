@@ -24,6 +24,8 @@ pub fn mangle(tpe: &Type) -> std::borrow::Cow<'static, str> {
         Type::I64 => "i64".into(),
         Type::I128 => "i128".into(),
         Type::ISize => "is".into(),
+        Type::F32 => "f32".into(),
+        Type::F64 => "f64".into(),
         Type::Ptr(inner) => format!("p{inner}", inner = mangle(inner)).into(),
         Type::DotnetType(tpe) => {
             assert!(
@@ -32,6 +34,11 @@ pub fn mangle(tpe: &Type) -> std::borrow::Cow<'static, str> {
             );
             tpe.name_path().replace(".", "_").into()
         }
+        Type::DotnetArray(arr)=>format!("a{}{}",arr.dimensions,mangle(&arr.element)).into(),
+        Type::DotnetChar=>"c".into(),
+        Type::GenericArg(_)=>todo!("Can't mangle generic type arg"),
+        Type::FnDef(name)=>format!("fn{}{}",name.len(),name).into(),
+        Type::Unresolved=>"un".into(),
         _ => todo!("Can't mangle type {tpe:?}"),
     }
 }

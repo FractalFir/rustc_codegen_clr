@@ -53,8 +53,13 @@ impl Assembly {
         self.static_fields.iter()
     }
     /// Returns the `.cctor` function used to initialize static data
-    pub fn cctor(&self)->Option<&Method>{
-        self.functions.get(&CallSite::new(None,".cctor".into(),FnSig::new(&[],&Type::Void),true))
+    pub fn cctor(&self) -> Option<&Method> {
+        self.functions.get(&CallSite::new(
+            None,
+            ".cctor".into(),
+            FnSig::new(&[], &Type::Void),
+            true,
+        ))
     }
     /// Returns the external assembly reference
     pub fn extern_refs(&self) -> &HashMap<IString, AssemblyExternRef> {
@@ -84,7 +89,7 @@ impl Assembly {
         let types = self.types.union(&other.types).cloned().collect();
         let mut functions = self.functions;
         functions.extend(other.functions);
-        if let Some(static_initializer) = static_initializer{
+        if let Some(static_initializer) = static_initializer {
             functions.insert(static_initializer.call_site(), static_initializer);
         }
         let entrypoint = self.entrypoint.or(other.entrypoint);
@@ -233,6 +238,8 @@ impl Assembly {
         }
         if let TyKind::FnDef(_, _) = instance.ty(tcx, ParamEnv::reveal_all()).kind() {
             //ALL OK.
+        } else if let TyKind::Closure(_, _) = instance.ty(tcx, ParamEnv::reveal_all()).kind(){
+            println!("CLOSURE")
         } else {
             eprintln!("fn item {instance:?} is not a function definition type. Skippping.");
             return Ok(());
@@ -489,12 +496,12 @@ impl Assembly {
         self.entrypoint = Some(entrypoint);
     }
 }
-fn link_static_initializers(a:Option<&Method>,b:Option<&Method>)->Option<Method>{
-    match (a,b){
-        (None,None)=>None,
-        (Some(a),None)=>Some(a.clone()),
-        (None,Some(b))=>Some(b.clone()),
-        (Some(a),Some(b))=>{
+fn link_static_initializers(a: Option<&Method>, b: Option<&Method>) -> Option<Method> {
+    match (a, b) {
+        (None, None) => None,
+        (Some(a), None) => Some(a.clone()),
+        (None, Some(b)) => Some(b.clone()),
+        (Some(a), Some(b)) => {
             let mut merged: Method = a.clone();
             let ops = merged.ops_mut();
             if !ops.is_empty() && ops[ops.len() - 1] == CILOp::Ret {
@@ -558,7 +565,10 @@ fn allocation_initializer_method(bytes: &[u8], name: &str, tyctx: TyCtxt) -> Met
         true,
         FnSig::new(&[], &Type::Ptr(Type::U8.into())),
         &format!("init_{name}"),
-        vec![(Some("curr".into()), Type::Ptr(Type::U8.into())),(Some("alloc_ptr".into()), Type::Ptr(Type::U8.into()))],
+        vec![
+            (Some("curr".into()), Type::Ptr(Type::U8.into())),
+            (Some("alloc_ptr".into()), Type::Ptr(Type::U8.into())),
+        ],
     );
     method.set_ops(ops);
     method
