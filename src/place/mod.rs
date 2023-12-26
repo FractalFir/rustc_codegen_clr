@@ -35,9 +35,10 @@ fn pointed_type(ty: PlaceTy) -> Ty {
 fn body_ty_is_by_adress(last_ty: Ty) -> bool {
     crate::assert_morphic!(last_ty);
     match *last_ty.kind() {
-        TyKind::Adt(_, _) | TyKind::Array(_, _) => true,
+        TyKind::Adt(_, _) | TyKind::Closure(_, _) | TyKind::Array(_, _) => true,
         // True for non-0 tuples
         TyKind::Tuple(elements) => !elements.is_empty(),
+
         //TODO: check if slices are handled propely
         TyKind::Slice(_) | TyKind::Str => true,
 

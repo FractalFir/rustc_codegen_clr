@@ -22,3 +22,8 @@ pub fn closure_which_captures(){
     let a = black_box(8);
     let closure = black_box(||{black_box(a)});
 }
+pub fn call_closure_which_captures(){
+    let a = black_box(8);
+    let closure = black_box(||{black_box(a)});
+    black_box(closure());
+}

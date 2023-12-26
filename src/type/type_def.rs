@@ -172,8 +172,11 @@ pub fn escape_field_name(name: &str) -> IString {
     }
 }
 pub fn closure_name(def_id: DefId, fields: &[Type], sig: &crate::function_sig::FnSig) -> String {
-    let mangled_fields:String = fields.iter().map(|f|crate::r#type::mangle(f)).collect();
-    format!("Closure{field_count}{mangled_fields}",field_count = fields.len())
+    let mangled_fields: String = fields.iter().map(|f| crate::r#type::mangle(f)).collect();
+    format!(
+        "Closure{field_count}{mangled_fields}",
+        field_count = fields.len()
+    )
 }
 pub fn closure_typedef(def_id: DefId, fields: &[Type], sig: crate::function_sig::FnSig) -> TypeDef {
     let name = closure_name(def_id, fields, &sig);

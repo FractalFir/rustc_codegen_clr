@@ -238,7 +238,7 @@ impl Assembly {
         }
         if let TyKind::FnDef(_, _) = instance.ty(tcx, ParamEnv::reveal_all()).kind() {
             //ALL OK.
-        } else if let TyKind::Closure(_, _) = instance.ty(tcx, ParamEnv::reveal_all()).kind(){
+        } else if let TyKind::Closure(_, _) = instance.ty(tcx, ParamEnv::reveal_all()).kind() {
             println!("CLOSURE")
         } else {
             eprintln!("fn item {instance:?} is not a function definition type. Skippping.");

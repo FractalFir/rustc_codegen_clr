@@ -292,7 +292,9 @@ pub fn call_closure<'tyctx>(
     type_cache: &mut crate::r#type::TyCache,
 ) -> Vec<CILOp> {
     let mut call = Vec::new();
-    let last_arg = args.get(args.len() - 1).expect("Closure must be called with at least 2 arguments(closure + arg tuple)");
+    let last_arg = args
+        .get(args.len() - 1)
+        .expect("Closure must be called with at least 2 arguments(closure + arg tuple)");
     let other_args = &args[..args.len() - 1];
     for arg in other_args {
         call.extend(crate::operand::handle_operand(
@@ -303,13 +305,12 @@ pub fn call_closure<'tyctx>(
             type_cache,
         ));
     }
-    let last_arg_type = crate::utilis::monomorphize(&method_instance, last_arg.ty(body,tyctx), tyctx);
-    match last_arg_type.kind(){
-       TyKind::Tuple(elements)=>
-            if elements.is_empty(){
-                
-            }
-            else{
+    let last_arg_type =
+        crate::utilis::monomorphize(&method_instance, last_arg.ty(body, tyctx), tyctx);
+    match last_arg_type.kind() {
+        TyKind::Tuple(elements) => {
+            if elements.is_empty() {
+            } else {
                 call.extend(crate::operand::handle_operand(
                     last_arg,
                     tyctx,
@@ -317,20 +318,27 @@ pub fn call_closure<'tyctx>(
                     method_instance,
                     type_cache,
                 ));
-                let tuple_type = type_cache.type_from_cache(last_arg_type, tyctx, Some(method_instance));
+                let tuple_type =
+                    type_cache.type_from_cache(last_arg_type, tyctx, Some(method_instance));
                 call.push(CILOp::NewTMPLocal(tuple_type.clone().into()));
                 call.push(CILOp::SetTMPLocal);
-                for (index,element) in elements.iter().enumerate(){
+                for (index, element) in elements.iter().enumerate() {
                     call.push(CILOp::LoadAddresOfTMPLocal);
-                    let element_type = type_cache.type_from_cache(element, tyctx, Some(method_instance));
-                    let tuple_element_name = format!("Item{}",index + 1);
-                    let field_descriptor = FieldDescriptor::boxed(tuple_type.as_dotnet().expect("Invalid tuple type"),element_type,tuple_element_name.into());
+                    let element_type =
+                        type_cache.type_from_cache(element, tyctx, Some(method_instance));
+                    let tuple_element_name = format!("Item{}", index + 1);
+                    let field_descriptor = FieldDescriptor::boxed(
+                        tuple_type.as_dotnet().expect("Invalid tuple type"),
+                        element_type,
+                        tuple_element_name.into(),
+                    );
                     call.push(CILOp::LDField(field_descriptor));
                 }
                 call.push(CILOp::FreeTMPLocal);
                 //todo!("Can't unbox tupels yet!")
             }
-        _=>panic!("Can't unbox type {last_arg_type:?}!"),
+        }
+        _ => panic!("Can't unbox type {last_arg_type:?}!"),
     }
     //panic!("Last arg:{last_arg:?}last_arg_type:{last_arg_type:?}");
     //assert_eq!(args.len(),signature.inputs().len(),"CALL SIGNATURE ARG COUNT MISMATCH!");
@@ -437,10 +445,19 @@ pub fn call<'ctx>(
             type_cache,
         );
     }
-    if call_info.split_last_tuple(){
-        return call_closure(args, destination, tyctx, signature, body, &function_name, method_instance, type_cache);
+    if call_info.split_last_tuple() {
+        return call_closure(
+            args,
+            destination,
+            tyctx,
+            signature,
+            body,
+            &function_name,
+            method_instance,
+            type_cache,
+        );
     }
-   
+
     let mut call = Vec::new();
     for arg in args {
         call.extend(crate::operand::handle_operand(

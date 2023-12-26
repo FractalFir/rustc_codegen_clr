@@ -1,3 +1,5 @@
+use std::env::Args;
+
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::ty::{
     AdtDef, AdtKind, Const, ConstKind, EarlyBinder, FloatTy, GenericArg, Instance, List, ParamEnv,
@@ -150,42 +152,51 @@ pub fn enum_field_descriptor<'ctx>(
     );
     FieldDescriptor::new(enum_variant_dotnet, field_ty, field_name)
 }
-pub fn field_descrptor<'ctx>(
-    owner_ty: Ty<'ctx>,
+pub fn field_descrptor<'tyctx>(
+    owner_ty: Ty<'tyctx>,
     field_idx: u32,
-    ctx: TyCtxt<'ctx>,
-    method_instance: Instance<'ctx>,
+    tyctx: TyCtxt<'tyctx>,
+    method_instance: Instance<'tyctx>,
     type_cache: &mut TyCache,
 ) -> FieldDescriptor {
     if let TyKind::Tuple(elements) = owner_ty.kind() {
         let element = elements[field_idx as usize];
-        let element = monomorphize(&method_instance, element, ctx);
-        let element = type_cache.type_from_cache(element, ctx, Some(method_instance));
+        let element = monomorphize(&method_instance, element, tyctx);
+        let element = type_cache.type_from_cache(element, tyctx, Some(method_instance));
         return FieldDescriptor::new(
             crate::r#type::simple_tuple(
                 &elements
                     .iter()
                     .map(|tpe| {
-                        let tpe = crate::utilis::monomorphize(&method_instance, tpe, ctx);
-                        type_cache.type_from_cache(tpe, ctx, Some(method_instance))
+                        let tpe = crate::utilis::monomorphize(&method_instance, tpe, tyctx);
+                        type_cache.type_from_cache(tpe, tyctx, Some(method_instance))
                     })
                     .collect::<Vec<_>>(),
             ),
             element,
             format!("Item{}", field_idx + 1).into(),
         );
-    }
+    } else if let TyKind::Closure(_,args) = owner_ty.kind() {
+        let closure = args.as_closure();
+        let field_type = closure.upvar_tys().iter().nth(field_idx as usize).expect("Could not find closure fields!");
+        let field_type = crate::utilis::monomorphize(&method_instance, field_type, tyctx);
+        let field_type = type_cache.type_from_cache(field_type, tyctx, Some(method_instance));
+        let owner_ty = crate::utilis::monomorphize(&method_instance, owner_ty, tyctx);
+        let owner_type = type_cache.type_from_cache(owner_ty, tyctx, Some(method_instance));
+        let field_name = format!("f_{field_idx}").into();
+        return FieldDescriptor::new(owner_type.as_dotnet().expect("Closure type invalid!"),field_type,field_name);
+    } 
     let (adt, subst) = as_adt(owner_ty).expect("Tried to get a field of a non ADT or tuple type!");
     let field = adt
         .all_fields()
         .nth(field_idx as usize)
         .expect("No field with provided index!");
     let field_name = crate::r#type::escape_field_name(&field.name.to_string());
-    let field_ty = field.ty(ctx, subst);
-    let field_ty = crate::utilis::monomorphize(&method_instance, field_ty, ctx);
-    let field_ty = type_cache.type_from_cache(field_ty, ctx, Some(method_instance));
+    let field_ty = field.ty(tyctx, subst);
+    let field_ty = crate::utilis::monomorphize(&method_instance, field_ty, tyctx);
+    let field_ty = type_cache.type_from_cache(field_ty, tyctx, Some(method_instance));
     let owner_ty = type_cache
-        .type_from_cache(owner_ty, ctx, Some(method_instance))
+        .type_from_cache(owner_ty, tyctx, Some(method_instance))
         .as_dotnet()
         .expect("Error: tried to set a field of a non-object type!");
     FieldDescriptor::new(owner_ty, field_ty, field_name)

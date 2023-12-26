@@ -1,6 +1,8 @@
 use crate::{
     cil::CallSite,
     cil::{CILOp, FieldDescriptor},
+    operand::handle_operand,
+    place::{place_get, place_set},
     r#type::{DotnetTypeRef, TyCache, Type},
     utilis::{field_name, monomorphize},
 };
@@ -136,6 +138,55 @@ pub fn handle_aggregate<'tyctx>(
                 ));
                 ops
             }
+        }
+        AggregateKind::Closure(def_id, args) => {
+            let closure_ty = crate::utilis::monomorphize(
+                &method_instance,
+                target_location.ty(method, tyctx),
+                tyctx,
+            )
+            .ty;
+            let closure_type = tycache.type_from_cache(closure_ty, tyctx, Some(method_instance));
+            let closure_dotnet = closure_type.as_dotnet().expect("Invalid closure type!");
+            let mut closure_constructor = vec![CILOp::NewTMPLocal(closure_type.into())];
+            for (index, value) in value_index.iter_enumerated() {
+                closure_constructor.push(CILOp::LoadAddresOfTMPLocal);
+                let field_ty =
+                    crate::utilis::monomorphize(&method_instance, value.ty(method, tyctx), tyctx);
+                let field_ty = tycache.type_from_cache(field_ty, tyctx, Some(method_instance));
+                closure_constructor.extend(handle_operand(
+                    value,
+                    tyctx,
+                    method,
+                    method_instance,
+                    tycache,
+                ));
+                closure_constructor.push(CILOp::STField(
+                    FieldDescriptor::new(
+                        closure_dotnet.clone(),
+                        field_ty,
+                        format!("f_{}", index.as_u32()).into(),
+                    )
+                    .into(),
+                ))
+            }
+            closure_constructor.extend([CILOp::LoadTMPLocal, CILOp::FreeTMPLocal]);
+            let mut ops = place_set(
+                target_location,
+                tyctx,
+                closure_constructor,
+                method,
+                method_instance,
+                tycache,
+            );
+            ops.extend(place_get(
+                target_location,
+                tyctx,
+                method,
+                method_instance,
+                tycache,
+            ));
+            ops
         }
         _ => todo!("Unsuported aggregate kind {aggregate_kind:?}"),
     }

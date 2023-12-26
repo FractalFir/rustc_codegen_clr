@@ -240,28 +240,31 @@ pub fn place_elem_body<'ctx>(
                     (inner.into(), ops)
                 }
                 TyKind::Array(element, _length) => {
-                    let element_ty =  crate::utilis::monomorphize(&method_instance, *element, tyctx);
-                    let element = type_cache.type_from_cache(element_ty, tyctx, Some(method_instance));
+                    let element_ty = crate::utilis::monomorphize(&method_instance, *element, tyctx);
+                    let element =
+                        type_cache.type_from_cache(element_ty, tyctx, Some(method_instance));
                     let array_type =
                         type_cache.type_from_cache(curr_ty, tyctx, Some(method_instance));
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
                     if !body_ty_is_by_adress(element_ty) {
-                        ((element_ty).into(),vec![
-                            index,
-                            CILOp::Call(
-                                crate::cil::CallSite::new(
-                                    Some(array_dotnet),
-                                    "get_Item".into(),
-                                    FnSig::new(&[array_type, Type::USize], &element),
-                                    false,
-                                )
-                                .into(),
-                            ),
-                        ])
-                    }else{
+                        (
+                            (element_ty).into(),
+                            vec![
+                                index,
+                                CILOp::Call(
+                                    crate::cil::CallSite::new(
+                                        Some(array_dotnet),
+                                        "get_Item".into(),
+                                        FnSig::new(&[array_type, Type::USize], &element),
+                                        false,
+                                    )
+                                    .into(),
+                                ),
+                            ],
+                        )
+                    } else {
                         todo!()
                     }
-                   
                 }
                 _ => {
                     rustc_middle::ty::print::with_no_trimmed_paths! { todo!("Can't index into {curr_ty}!")}
