@@ -83,7 +83,7 @@ The project is still very early in development, but it has made significant prog
 
 As you can see, the difference between optimized C# and optimized .NET Rust code is not all that big. It is noticeable(~10%), but I would say it is a pretty good result considering how few optimizations are done right now. With a couple bigger changes coming further down the line, the gap could become non-existent in the future. Since this benchmark is meant to show the worst case scenario, Rust could already outperform C# in a wide range of more memory-intensive scenarios.
 
-**However**, you should take all of those results with a pinch of salt. Since there is currently no way to use "proper" .NET benchmarking tools, I am relying on the `Stopwatch` class for time and have no way to control for the behavior of the JIT. It seems to optimize the rust code after enough runs, all while the speed of C# dropped significantly. This is not due to thermal throttling or any other variable I can think of - both tests were run multiple times back-to-back(Rust then C# the Rust then C# again), and the results remain consistent. Such oddities point at issues with the testing setup, but the results can still serve as a rough guide about what kinds of performance can be expected.
+**However**, you should take all of those results with a pinch of salt. Since there is currently no way to use "proper" .NET benchmarking tools, I am relying on the `Stopwatch` class for time and have no way to control for the behavior of the JIT. It seems to optimize the Rust code after enough runs, all while the speed of C# dropped significantly. This is not due to thermal throttling or any other variable I can think of - both tests were run multiple times back-to-back (Rust then C# the Rust then C# again), and the results remain consistent. Such oddities point at issues with the testing setup, but the results can still serve as a rough guide about what kinds of performance can be expected.
 
 | Test Method                       | Avg of 100M runs |
 | --------------------------------- | ---------------- |
@@ -111,13 +111,16 @@ As you can see, the difference between optimized C# and optimized .NET Rust code
 
 ### Q: Compatibility?
 
-**A**: *`rustc_codegen_clr` is only tested on Linux x86_64, with the Mono and CoreCLR(more commonly known as simply the .NET runtime). It may work on other platforms, but it is not guaranteed.
-**A** The support for the mono runtime is not as good as it could be. Due to not supported features and differences, 128 bit integers and checked 64 bit arithmetic's are not supported on mono. 
+**A**: *`rustc_codegen_clr` is only tested on Linux x86_64, with the Mono and CoreCLR (more commonly known as simply the .NET runtime). It may work on other platforms, but it is not guaranteed.
+
+**A** The support for the Mono runtime is not as good as it could be. Due to not supported features and differences, 128-bit integers and checked 64-bit arithmetics are not supported on Mono.
 
 ### Q: Are there any issues?
 
 **A**: *The backend still does not understand some Rust optimizations, and you may need to disable them to allow for compilation*.
+
 **A**: *While testing is more extensive, there are still many edge cases that may break this backend.*
+
 **A**: *The backend can recover from encountering errors/unsupported features, but it still sometimes crashes when it fails to compile something not supported yet*.
 
 ## Licensing
