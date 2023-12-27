@@ -386,7 +386,7 @@ fn load_const_scalar<'ctx>(
             .expect("IMPOSSIBLE. Size of scalar was not equal to itself."),
         Scalar::Ptr(ptr, _size) => {
             let (alloc_id, offset) = ptr.into_parts();
-            let global_alloc = tyctx.global_alloc(alloc_id);
+            let global_alloc = tyctx.global_alloc(alloc_id.alloc_id());
             match global_alloc {
                 GlobalAlloc::Static(def_id) => {
                     assert!(tyctx.is_static(def_id));
@@ -441,13 +441,13 @@ fn load_const_scalar<'ctx>(
                         .expect("No initializer??");
                     //def_id.ty();
                     let _tyctx = tyctx.reserve_and_set_memory_alloc(alloc);
-                    let alloc_id = crate::utilis::alloc_id_to_u64(alloc_id);
+                    let alloc_id = crate::utilis::alloc_id_to_u64(alloc_id.alloc_id());
                     return vec![CILOp::LoadGlobalAllocPtr { alloc_id }];
                 }
                 GlobalAlloc::Memory(_const_allocation) => {
                     return vec![
                         CILOp::LoadGlobalAllocPtr {
-                            alloc_id: alloc_id.0.into(),
+                            alloc_id: alloc_id.alloc_id().0.into(),
                         },
                         CILOp::LdcI64(offset.bytes() as i64),
                         CILOp::ConvISize(false),

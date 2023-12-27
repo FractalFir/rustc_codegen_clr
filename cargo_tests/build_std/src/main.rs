@@ -107,13 +107,46 @@ fn main() {
     std::hint::black_box(&string);
     unsafe{puts(string.as_ptr())};
     unsafe{puts("Testing some cool shit\n\0".as_ptr())};
+    let mut f = std::fs::File::create("foo.txt").unwrap();
+
+    std::hint::black_box(f);
+    std::io::stdout().write_all(b"hello world\n").unwrap();
     let s = format!("Hello {}\0",8);
     unsafe{puts(s.as_ptr())};
-   //let mut f = File::create("foo.txt")?;
-
-    //black_box(f);
    
-    std::io::stdout().write_all(b"hello world\n").unwrap();
+   
+    
     let val = std::hint::black_box(*boxed_int);
     let val = std::hint::black_box(string);
+}
+use mycorrhiza::*;
+// This part is some bolierplate code informing the interop layer which types/metods to use.
+// It can be written only once and could be a separate crate.
+type MonoBehaviour = mychorriza::Class<"UnityEngine","UnityEngine.MonoBehaviour">;
+type Debug = mychorriza::Class<"UnityEngine","UnityEngine.Debug">;
+// Convienent wrapper around `Debug.Log(string)`
+fn debug_log(message:mychorriza::ManagedString){
+    // Calls static method named "Log", with one argument, of type ManagedString(C# String), and returning void
+    Deubg::static1::<"Log",mychorriza::ManagedString,()>(message);
+}
+// Macros turn this high-level class declaration into a specialy marked type, which is then transformed into a .NET class declaration
+// by the interop layer.
+#[class_decl]
+#[inherits_from(MonoBehaviour)]
+struct MyBeahviour{
+ 
+    // Other kinds of fields work normaly.
+    pub counter:u32,
+}
+impl MyBehaviour{
+    fn Start(self){
+        // You could use `"I am being intialized!".into()`` and convert a Rust `str` to C# String, but using C# strings directly is faster
+        debug_log(mychorriza::string_literal!("I am being intialized!"));
+    }
+    fn Update(self){
+        // You could use `format!("I am being updated. counter is:{counter}!").into()``
+        // and convert a Rust `String` to C# String, but using C# strings directly is faster(for interop)
+        debug_log(mychorriza::string_format!("I am being updated. counter is:{counter}!"));
+        self.counter += 1;
+    }
 }
