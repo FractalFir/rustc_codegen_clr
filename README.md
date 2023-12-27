@@ -113,7 +113,7 @@ As you can see, the difference between optimized C# and optimized .NET Rust code
 
 **A**: *`rustc_codegen_clr` is only tested on Linux x86_64, with the Mono and CoreCLR (more commonly known as simply the .NET runtime). It may work on other platforms, but it is not guaranteed.
 
-**A** The support for the Mono runtime is not as good as it could be. Due to not supported features and differences, 128-bit integers and checked 64-bit arithmetics are not supported on Mono.
+**A** The support for the Mono runtime is not as good as it could be. Due to not supported features and differences, 128-bit integers and checked 64-bit integer arithmetic are not supported on Mono.
 
 ### Q: Are there any issues?
 
