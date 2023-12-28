@@ -1,7 +1,7 @@
 // FIXME: This file may contain unnecesary morphize calls.
 
 use crate::cil::CILOp;
-use crate::r#type::{DotnetTypeRef, Type};
+use crate::r#type::{DotnetTypeRef, Type, pointer_to_is_fat};
 
 use rustc_middle::mir::Place;
 
@@ -128,21 +128,23 @@ pub fn deref_op<'ctx>(
                     type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance));
                 vec![CILOp::LdObj(derefed_type.into())]
             }
-            TyKind::Ref(_, inner, _) => match inner.kind() {
-                TyKind::Str | TyKind::Slice(_) => vec![CILOp::LdObj(
+            TyKind::Ref(_, inner, _) => if pointer_to_is_fat(*inner,tyctx,Some(*method_instance)) {
+                vec![CILOp::LdObj(
                     type_cache
                         .type_from_cache(derefed_type, tyctx, Some(*method_instance))
                         .into(),
-                )],
-                _ => vec![CILOp::LDIndISize],
+                )]
+            }else{
+                vec![CILOp::LDIndISize]
             },
-            TyKind::RawPtr(type_and_mut) => match type_and_mut.ty.kind() {
-                TyKind::Str | TyKind::Slice(_) => vec![CILOp::LdObj(
+            TyKind::RawPtr(type_and_mut) => if pointer_to_is_fat(type_and_mut.ty,tyctx,Some(*method_instance)) {
+                vec![CILOp::LdObj(
                     type_cache
                         .type_from_cache(derefed_type, tyctx, Some(*method_instance))
                         .into(),
-                )],
-                _ => vec![CILOp::LDIndISize],
+                )]
+            }else{
+                vec![CILOp::LDIndISize]
             },
             TyKind::Array(_, _) => {
                 let derefed_type =

@@ -335,3 +335,17 @@ pub fn simple_tuple(elements: &[Type]) -> DotnetTypeRef {
 use crate::utilis::garg_to_string;
 
 use super::tuple_name;
+pub fn pointer_to_is_fat<'tyctx>(pointed_type:Ty<'tyctx>,tyctx:TyCtxt<'tyctx>,method:Option<rustc_middle::ty::Instance<'tyctx>>)->bool{
+    use rustc_middle::ty::ParamEnv;
+    let (metadata, fat_if_not_sized) = pointed_type
+    .ptr_metadata_ty(tyctx, |mut ty|{
+        method.inspect(|method| {
+            ty = crate::utilis::monomorphize(method, ty, tyctx);
+        });
+        ty
+    });
+    //TODO: fat_if_not_sized is suposed to tell me if a pointer being fat depends on if the type is sized.
+    // I am not sure how this is suposed to work exactly, so it gets ignored for now.
+    let is_sized = pointed_type.is_sized(tyctx, ParamEnv::reveal_all());
+    !is_sized
+}

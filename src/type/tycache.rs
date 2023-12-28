@@ -266,7 +266,7 @@ impl TyCache {
                 //TODO: fat_if_not_sized is suposed to tell me if a pointer being fat depends on if the type is sized.
                 // I am not sure how this is suposed to work exactly, so it gets ignored for now.
                 let is_sized = type_and_mut.ty.is_sized(tyctx, ParamEnv::reveal_all());
-                if !is_sized {
+                if super::pointer_to_is_fat(type_and_mut.ty,tyctx,method) {
                     let inner = match type_and_mut.ty.kind() {
                         TyKind::Slice(inner) => {
                             let inner = if let Some(method) = method {
