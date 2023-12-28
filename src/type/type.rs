@@ -32,6 +32,8 @@ pub enum Type {
     DotnetArray(Box<DotnetArray>),
     // Pointer to a type
     Ptr(Box<Self>),
+    /// A managed reference `&`. IS NOT EQUIVALENT TO RUST `&`!
+    ManagedReference(Box<Self>),
     // Speical type marking an unresoved type. This is a work around some issues with corelib types. Nothing can ever interact directly with this type.
     Unresolved,
     /// Foregin type. Will never be interacted with directly
@@ -335,10 +337,13 @@ pub fn simple_tuple(elements: &[Type]) -> DotnetTypeRef {
 use crate::utilis::garg_to_string;
 
 use super::tuple_name;
-pub fn pointer_to_is_fat<'tyctx>(pointed_type:Ty<'tyctx>,tyctx:TyCtxt<'tyctx>,method:Option<rustc_middle::ty::Instance<'tyctx>>)->bool{
+pub fn pointer_to_is_fat<'tyctx>(
+    pointed_type: Ty<'tyctx>,
+    tyctx: TyCtxt<'tyctx>,
+    method: Option<rustc_middle::ty::Instance<'tyctx>>,
+) -> bool {
     use rustc_middle::ty::ParamEnv;
-    let (metadata, fat_if_not_sized) = pointed_type
-    .ptr_metadata_ty(tyctx, |mut ty|{
+    let (metadata, fat_if_not_sized) = pointed_type.ptr_metadata_ty(tyctx, |mut ty| {
         method.inspect(|method| {
             ty = crate::utilis::monomorphize(method, ty, tyctx);
         });

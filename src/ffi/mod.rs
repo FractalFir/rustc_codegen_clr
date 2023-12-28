@@ -1,3 +1,4 @@
+mod atomics;
 use crate::r#type::DotnetTypeRef;
 use crate::{
     access_modifier::AccessModifer,
@@ -36,7 +37,6 @@ macro_rules! add_method {
         }
     };
 }
-
 /// Inserts a small subset of libc and some standard types into an assembly.
 pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     let c_void = Type::c_void(tyctx);
@@ -169,6 +169,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
         CILOp::Ret,
     ]);
     asm.add_method(free);
+    //TODO: add volatile prefix to volatile loads
     let mut volatile_load = Method::new(
         AccessModifer::Private,
         true,
@@ -187,6 +188,9 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     );
     volatile_load.set_ops(vec![CILOp::LDArg(0), CILOp::LDIndISize, CILOp::Ret]);
     asm.add_method(volatile_load);
+
+    atomics::add_atomics(asm);
+
     abort(asm);
 }
 

@@ -417,6 +417,7 @@ pub fn type_cil(tpe: &Type) -> Cow<'static, str> {
         Type::ISize => "native int".into(),
         Type::USize => "native uint".into(),
         Type::Ptr(inner) => format!("{inner}*", inner = type_cil(inner)).into(),
+        Type::ManagedReference(inner) => format!("{inner}&", inner = type_cil(inner)).into(),
         Type::DotnetType(dotnet_type) => dotnet_type_ref_cli(dotnet_type).into(),
         //Special type
         Type::Unresolved => "valuetype Unresolved".into(),

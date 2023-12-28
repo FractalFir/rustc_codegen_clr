@@ -1,7 +1,7 @@
 use super::{pointed_type, PlaceTy};
 use crate::cil::{CILOp, FieldDescriptor};
 use crate::function_sig::FnSig;
-use crate::r#type::{DotnetTypeRef, Type, pointer_to_is_fat};
+use crate::r#type::{pointer_to_is_fat, DotnetTypeRef, Type};
 
 use rustc_middle::mir::PlaceElem;
 use rustc_middle::ty::{FloatTy, Instance, IntTy, TyCtxt, TyKind, UintTy};
@@ -236,24 +236,28 @@ fn ptr_set_op<'ctx>(
                     type_cache.type_from_cache(pointed_type, tyctx, Some(*method_instance));
                 vec![CILOp::STObj(pointed_type.into())]
             }
-            TyKind::Ref(_, inner, _) =>if pointer_to_is_fat(*inner,tyctx,Some(*method_instance)) {
-                vec![CILOp::STObj(
-                    type_cache
-                        .type_from_cache(pointed_type, tyctx, Some(*method_instance))
-                        .into(),
-                )]
-            }else{
-                vec![CILOp::STIndISize]
-            },
-            TyKind::RawPtr(ty_and_mut) => if pointer_to_is_fat(ty_and_mut.ty,tyctx,Some(*method_instance)) {
-                vec![CILOp::STObj(
-                    type_cache
-                        .type_from_cache(pointed_type, tyctx, Some(*method_instance))
-                        .into(),
-                )]
-            }else{
-                vec![CILOp::STIndISize]
-            },
+            TyKind::Ref(_, inner, _) => {
+                if pointer_to_is_fat(*inner, tyctx, Some(*method_instance)) {
+                    vec![CILOp::STObj(
+                        type_cache
+                            .type_from_cache(pointed_type, tyctx, Some(*method_instance))
+                            .into(),
+                    )]
+                } else {
+                    vec![CILOp::STIndISize]
+                }
+            }
+            TyKind::RawPtr(ty_and_mut) => {
+                if pointer_to_is_fat(ty_and_mut.ty, tyctx, Some(*method_instance)) {
+                    vec![CILOp::STObj(
+                        type_cache
+                            .type_from_cache(pointed_type, tyctx, Some(*method_instance))
+                            .into(),
+                    )]
+                } else {
+                    vec![CILOp::STIndISize]
+                }
+            }
             _ => todo!(" can't deref type {pointed_type:?} yet"),
         }
     } else {

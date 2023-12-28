@@ -232,7 +232,7 @@ fn aggregate_adt<'tyctx>(
                 let field_type =
                     type_cache.type_from_cache(field_type, tyctx, Some(method_instance));
                 // Seting a void field is a no-op.
-                if field_type == Type::Void{
+                if field_type == Type::Void {
                     continue;
                 }
                 ops.extend(obj_getter.iter().cloned());
@@ -290,7 +290,7 @@ fn aggregate_adt<'tyctx>(
                     Some(method_instance),
                 );
                 // Seting a void field is a no-op.
-                if field_type == Type::Void{
+                if field_type == Type::Void {
                     continue;
                 }
                 ops.extend(variant_address.clone());
@@ -332,7 +332,6 @@ fn aggregate_adt<'tyctx>(
             );
             let mut ops: Vec<CILOp> = Vec::with_capacity(fields.len() * 2);
             for field in fields {
-               
                 let field_def = adt
                     .all_fields()
                     .nth(field.0 as usize)
@@ -342,7 +341,7 @@ fn aggregate_adt<'tyctx>(
                 let field_type =
                     type_cache.type_from_cache(field_type, tyctx, Some(method_instance));
                 // Seting a void field is a no-op.
-                if field_type == Type::Void{
+                if field_type == Type::Void {
                     continue;
                 }
                 ops.extend(obj_getter.iter().cloned());

@@ -255,9 +255,8 @@ impl TyCache {
             }
             TyKind::Never => Type::Void,
             TyKind::RawPtr(type_and_mut) => {
-                let (metadata, fat_if_not_sized) = type_and_mut
-                    .ty
-                    .ptr_metadata_ty(tyctx, |mut ty|{
+                let (metadata, fat_if_not_sized) =
+                    type_and_mut.ty.ptr_metadata_ty(tyctx, |mut ty| {
                         method.inspect(|method| {
                             ty = crate::utilis::monomorphize(method, ty, tyctx);
                         });
@@ -266,7 +265,7 @@ impl TyCache {
                 //TODO: fat_if_not_sized is suposed to tell me if a pointer being fat depends on if the type is sized.
                 // I am not sure how this is suposed to work exactly, so it gets ignored for now.
                 let is_sized = type_and_mut.ty.is_sized(tyctx, ParamEnv::reveal_all());
-                if super::pointer_to_is_fat(type_and_mut.ty,tyctx,method) {
+                if super::pointer_to_is_fat(type_and_mut.ty, tyctx, method) {
                     let inner = match type_and_mut.ty.kind() {
                         TyKind::Slice(inner) => {
                             let inner = if let Some(method) = method {
@@ -284,12 +283,10 @@ impl TyCache {
                                 type_and_mut.ty
                             };
                             inner
-                        },
+                        }
                     };
-                    slice_ref_to(tyctx, self, Ty::new_slice(tyctx,inner),method)
-                   
-                }
-                else{
+                    slice_ref_to(tyctx, self, Ty::new_slice(tyctx, inner), method)
+                } else {
                     Type::Ptr(self.type_from_cache(type_and_mut.ty, tyctx, method).into())
                 }
             }
@@ -305,13 +302,12 @@ impl TyCache {
                 Type::Unresolved
             }
             TyKind::Ref(_region, inner, _mut) => {
-                let (metadata, fat_if_not_sized) = inner
-                    .ptr_metadata_ty(tyctx, |mut ty|{
-                        method.inspect(|method| {
-                            ty = crate::utilis::monomorphize(method, ty, tyctx);
-                        });
-                        ty
+                let (metadata, fat_if_not_sized) = inner.ptr_metadata_ty(tyctx, |mut ty| {
+                    method.inspect(|method| {
+                        ty = crate::utilis::monomorphize(method, ty, tyctx);
                     });
+                    ty
+                });
                 //TODO: fat_if_not_sized is suposed to tell me if a pointer being fat depends on if the type is sized.
                 // I am not sure how this is suposed to work exactly, so it gets ignored for now.
                 let is_sized = inner.is_sized(tyctx, ParamEnv::reveal_all());
@@ -328,24 +324,22 @@ impl TyCache {
                         TyKind::Str => u8_ty(tyctx),
                         _ => {
                             let inner = if let Some(method) = method {
-                                crate::utilis::monomorphize(&method,*inner, tyctx)
+                                crate::utilis::monomorphize(&method, *inner, tyctx)
                             } else {
                                 *inner
                             };
                             inner
-                        },
+                        }
                     };
-                    slice_ref_to(tyctx, self, Ty::new_slice(tyctx,inner),method)
-                   
-                }
-                else{
+                    slice_ref_to(tyctx, self, Ty::new_slice(tyctx, inner), method)
+                } else {
                     Type::Ptr(self.type_from_cache(*inner, tyctx, method).into())
                 }
             }
-            // Slice type is almost never refered to directly, and should pop up here ONLY in the case of 
+            // Slice type is almost never refered to directly, and should pop up here ONLY in the case of
             // a DST.
             TyKind::Str => Type::U8,
-            TyKind::Slice(inner)=>{
+            TyKind::Slice(inner) => {
                 let inner = if let Some(method) = method {
                     crate::utilis::monomorphize(&method, *inner, tyctx)
                 } else {

@@ -54,10 +54,17 @@ impl Method {
         }
     }
     pub(crate) fn ensure_valid(&mut self) {
-        if let Some(CILOp::Ret) = self.ops.iter().last() {
-            //Do nothing
-        } else {
-            self.ops.push(CILOp::Ret);
+        let last = self.ops.iter().last();
+        let last = match last {
+            Some(last) => last,
+            None => return,
+        };
+        match last{
+            CILOp::Ret=>(),
+            CILOp::Throw=>(),
+            CILOp::Rethrow=>(),
+            CILOp::GoTo(_)=>(),
+            _=>self.ops.extend(CILOp::throw_msg("Critical error: reached the end of a function not termianted with a return statement")),
         }
     }
     /// Adds a local variable of type `local`
