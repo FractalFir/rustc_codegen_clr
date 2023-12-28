@@ -223,6 +223,18 @@ fn aggregate_adt<'tyctx>(
             );
             let mut ops: Vec<CILOp> = Vec::with_capacity(fields.len() * 2);
             for field in fields {
+                let field_def = adt
+                    .all_fields()
+                    .nth(field.0 as usize)
+                    .expect("Could not find field!");
+                let field_type = field_def.ty(tyctx, subst);
+                let field_type = crate::utilis::monomorphize(&method_instance, field_type, tyctx);
+                let field_type =
+                    type_cache.type_from_cache(field_type, tyctx, Some(method_instance));
+                // Seting a void field is a no-op.
+                if field_type == Type::Void{
+                    continue;
+                }
                 ops.extend(obj_getter.iter().cloned());
                 ops.extend(field.1);
                 let field_desc = crate::utilis::field_descrptor(
@@ -270,8 +282,6 @@ fn aggregate_adt<'tyctx>(
                 .nth(variant_idx as usize)
                 .expect("Can't get variant index");
             for (field, field_value) in enum_variant.fields.iter().zip(fields.iter()) {
-                ops.extend(variant_address.clone());
-                ops.extend(field_value.1.clone());
                 let field_name = field.name.to_string();
                 let field_name = crate::r#type::escape_field_name(&field_name);
                 let field_type = type_cache.type_from_cache(
@@ -279,6 +289,12 @@ fn aggregate_adt<'tyctx>(
                     tyctx,
                     Some(method_instance),
                 );
+                // Seting a void field is a no-op.
+                if field_type == Type::Void{
+                    continue;
+                }
+                ops.extend(variant_address.clone());
+                ops.extend(field_value.1.clone());
                 ops.push(CILOp::STField(Box::new(FieldDescriptor::new(
                     variant_type.clone(),
                     field_type,
@@ -316,8 +332,7 @@ fn aggregate_adt<'tyctx>(
             );
             let mut ops: Vec<CILOp> = Vec::with_capacity(fields.len() * 2);
             for field in fields {
-                ops.extend(obj_getter.iter().cloned());
-                ops.extend(field.1);
+               
                 let field_def = adt
                     .all_fields()
                     .nth(field.0 as usize)
@@ -326,6 +341,12 @@ fn aggregate_adt<'tyctx>(
                 let field_type = crate::utilis::monomorphize(&method_instance, field_type, tyctx);
                 let field_type =
                     type_cache.type_from_cache(field_type, tyctx, Some(method_instance));
+                // Seting a void field is a no-op.
+                if field_type == Type::Void{
+                    continue;
+                }
+                ops.extend(obj_getter.iter().cloned());
+                ops.extend(field.1);
                 let field_name = field_name(adt_type, field.0);
                 //let field_name = crate::utilis::field_name(ty, idx)
                 let field_desc =

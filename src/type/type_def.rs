@@ -183,7 +183,7 @@ pub fn closure_typedef(def_id: DefId, fields: &[Type], sig: crate::function_sig:
     let fields = fields
         .iter()
         .enumerate()
-        .map(|(idx, ty)| (format!("f{idx}").into(), ty.clone()))
+        .map(|(idx, ty)| (format!("f_{idx}").into(), ty.clone()))
         .collect();
     TypeDef::new(
         AccessModifer::Public,

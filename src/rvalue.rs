@@ -2,7 +2,7 @@ use crate::cil::{CILOp, CallSite, FieldDescriptor};
 use crate::function_sig::FnSig;
 use crate::operand::handle_operand;
 use crate::place::deref_op;
-use crate::r#type::{TyCache, Type};
+use crate::r#type::{TyCache, Type, pointer_to_is_fat};
 use rustc_middle::{
     mir::{CastKind, NullOp, Place, Rvalue},
     ty::{adjustment::PointerCoercion, Instance, ParamEnv, Ty, TyCtxt, TyKind},
@@ -49,9 +49,10 @@ pub fn handle_rvalue<'tcx>(
             };
             let source_type = tycache.type_from_cache(source, tyctx, Some(method_instance));
             //let target_type = tycache.type_from_cache(target, tyctx, Some(method_instance));
-
-            let ops = match (source_pointed_to.kind(), target_pointed_to.kind()) {
-                (TyKind::Slice(_) | TyKind::Str, TyKind::Slice(_) | TyKind::Str) => {
+            let src_fat = pointer_to_is_fat(source_pointed_to,tyctx, Some(method_instance));
+            let target_fat = pointer_to_is_fat(target_pointed_to,tyctx, Some(method_instance));
+            let ops = match (src_fat, target_fat) {
+                (true, true) => {
                     let mut res = handle_operand(operand, tyctx, method, method_instance, tycache);
                     res.push(CILOp::NewTMPLocal(source_type.into()));
                     res.push(CILOp::SetTMPLocal);
@@ -65,8 +66,11 @@ pub fn handle_rvalue<'tcx>(
                     ));
                     res
                 }
-                (TyKind::Slice(_) | TyKind::Str, _) => {
+                (true, false) => {
                     let mut res = handle_operand(operand, tyctx, method, method_instance, tycache);
+                    if let None = source_type.as_dotnet(){
+                        eprintln!("source:{source:?}");
+                    } 
                     //println!("Slice!");
                     res.push(CILOp::LDField(
                         FieldDescriptor::new(
