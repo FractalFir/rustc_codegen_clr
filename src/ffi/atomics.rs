@@ -70,15 +70,20 @@ fn add_atomic_cxchgweak_acquire_acquire(asm: &mut Assembly) {
         .collect();
     for call in atomic_cxchgweak_acquire_acquire_calls.iter() {
         let ret_tuple = call.signature().output();
-        let ret_tuple_dotnet = ret_tuple.as_dotnet().expect("atomic_cxchgweak_acquire_acquire: return tuple invalid!");
+        let ret_tuple_dotnet = ret_tuple
+            .as_dotnet()
+            .expect("atomic_cxchgweak_acquire_acquire: return tuple invalid!");
         let mut method = Method::new(
             crate::access_modifier::AccessModifer::Private,
             true,
             call.signature().clone(),
             call.name(),
-            vec![(None, call.signature().inputs()[1].clone()),(Some("return_tuple".into()),ret_tuple.clone())],
+            vec![
+                (None, call.signature().inputs()[1].clone()),
+                (Some("return_tuple".into()), ret_tuple.clone()),
+            ],
         );
-        match call.signature().inputs()[1]{
+        match call.signature().inputs()[1] {
             //Those can't be implemented using System.Threading.Interlocked, since there is no Read(Uintptr).
             Type::USize | Type::ISize | Type::Ptr(_) => {
                 let call_sig = FnSig::new(
@@ -90,7 +95,6 @@ fn add_atomic_cxchgweak_acquire_acquire(asm: &mut Assembly) {
                     &Type::USize,
                 );
                 method.set_ops(vec![
-                   
                     CILOp::LDArg(0),
                     CILOp::LDArg(1),
                     CILOp::LDArg(2),
@@ -106,13 +110,21 @@ fn add_atomic_cxchgweak_acquire_acquire(asm: &mut Assembly) {
                     CILOp::STLoc(0),
                     CILOp::LDLocA(1),
                     CILOp::LDLoc(0),
-                    CILOp::STField(Box::new(FieldDescriptor::new(ret_tuple_dotnet.clone(), call.signature().inputs()[1].clone(),"Item1".into()))),
+                    CILOp::STField(Box::new(FieldDescriptor::new(
+                        ret_tuple_dotnet.clone(),
+                        call.signature().inputs()[1].clone(),
+                        "Item1".into(),
+                    ))),
                     CILOp::LDLocA(1),
                     CILOp::LDLoc(0),
                     CILOp::LDArg(1),
                     CILOp::Eq,
                     CILOp::Not,
-                    CILOp::STField(Box::new(FieldDescriptor::new(ret_tuple_dotnet,Type::Bool,"Item2".into()))),
+                    CILOp::STField(Box::new(FieldDescriptor::new(
+                        ret_tuple_dotnet,
+                        Type::Bool,
+                        "Item2".into(),
+                    ))),
                     CILOp::LDLoc(1),
                     CILOp::Ret,
                 ]);
@@ -127,7 +139,6 @@ fn add_atomic_cxchgweak_acquire_acquire(asm: &mut Assembly) {
                     &Type::I32,
                 );
                 method.set_ops(vec![
-                   
                     CILOp::LDArg(0),
                     CILOp::LDArg(1),
                     CILOp::LDArg(2),
@@ -143,13 +154,21 @@ fn add_atomic_cxchgweak_acquire_acquire(asm: &mut Assembly) {
                     CILOp::STLoc(0),
                     CILOp::LDLocA(1),
                     CILOp::LDLoc(0),
-                    CILOp::STField(Box::new(FieldDescriptor::new(ret_tuple_dotnet.clone(), call.signature().inputs()[1].clone(),"Item1".into()))),
+                    CILOp::STField(Box::new(FieldDescriptor::new(
+                        ret_tuple_dotnet.clone(),
+                        call.signature().inputs()[1].clone(),
+                        "Item1".into(),
+                    ))),
                     CILOp::LDLocA(1),
                     CILOp::LDLoc(0),
                     CILOp::LDArg(1),
                     CILOp::Eq,
                     CILOp::Not,
-                    CILOp::STField(Box::new(FieldDescriptor::new(ret_tuple_dotnet,Type::Bool,"Item2".into()))),
+                    CILOp::STField(Box::new(FieldDescriptor::new(
+                        ret_tuple_dotnet,
+                        Type::Bool,
+                        "Item2".into(),
+                    ))),
                     CILOp::LDLoc(1),
                     CILOp::Ret,
                 ]);
@@ -164,7 +183,6 @@ fn add_atomic_cxchgweak_acquire_acquire(asm: &mut Assembly) {
                     &Type::U64,
                 );
                 method.set_ops(vec![
-                    
                     CILOp::LDArg(0),
                     CILOp::LDArg(1),
                     CILOp::LDArg(2),
@@ -180,13 +198,21 @@ fn add_atomic_cxchgweak_acquire_acquire(asm: &mut Assembly) {
                     CILOp::STLoc(0),
                     CILOp::LDLocA(1),
                     CILOp::LDLoc(0),
-                    CILOp::STField(Box::new(FieldDescriptor::new(ret_tuple_dotnet.clone(), call.signature().inputs()[1].clone(),"Item1".into()))),
+                    CILOp::STField(Box::new(FieldDescriptor::new(
+                        ret_tuple_dotnet.clone(),
+                        call.signature().inputs()[1].clone(),
+                        "Item1".into(),
+                    ))),
                     CILOp::LDLocA(1),
                     CILOp::LDLoc(0),
                     CILOp::LDArg(1),
                     CILOp::Eq,
                     CILOp::Not,
-                    CILOp::STField(Box::new(FieldDescriptor::new(ret_tuple_dotnet,Type::Bool,"Item2".into()))),
+                    CILOp::STField(Box::new(FieldDescriptor::new(
+                        ret_tuple_dotnet,
+                        Type::Bool,
+                        "Item2".into(),
+                    ))),
                     CILOp::LDLoc(1),
                     CILOp::Ret,
                 ]);

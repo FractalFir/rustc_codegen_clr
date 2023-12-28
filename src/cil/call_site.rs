@@ -72,7 +72,7 @@ impl CallSite {
         if self.class().is_some() {
             return false;
         };
-        if self.name.as_ref() != "black_box" {
+        if self.name.as_ref() != "black_box" && self.name.as_ref() != "assert_inhabited"{
             return false;
         };
         if self.signature.inputs().len() != 1 {

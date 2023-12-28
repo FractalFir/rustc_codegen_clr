@@ -76,6 +76,38 @@ fn create_const_adt_from_bytes<'ctx>(
             creator_ops.push(CILOp::FreeTMPLocal);
             creator_ops
         }
+        AdtKind::Union => {
+            let curr_offset = 0;
+            let cil_ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
+            let cil_ty = tycache.type_from_cache(cil_ty, tyctx, Some(method_instance));
+            let dotnet_ty = cil_ty.as_dotnet().expect("ADT must be a value type!");
+            let mut creator_ops = vec![CILOp::NewTMPLocal(cil_ty.clone().into())];
+            for field in adt_def.all_fields() {
+                let ftype = field.ty(tyctx, subst);
+                let sizeof = crate::utilis::compiletime_sizeof(ftype, tyctx);
+                let field_bytes = &bytes[curr_offset..(curr_offset + sizeof)];
+                let field_ops =
+                    create_const_from_slice(ftype, tyctx, field_bytes, method_instance, tycache);
+                creator_ops.push(CILOp::LoadAddresOfTMPLocal);
+                creator_ops.extend(field_ops);
+                let cil_ftype =
+                    tycache.type_from_cache(field.ty(tyctx, subst), tyctx, Some(method_instance));
+                let name = field.name.to_string();
+                let name = crate::r#type::escape_field_name(&name);
+                creator_ops.push(CILOp::STField(crate::cil::FieldDescriptor::boxed(
+                    dotnet_ty.clone(),
+                    cil_ftype,
+                    name,
+                )));
+                rustc_middle::ty::print::with_no_trimmed_paths! {println!(
+                    "Const field {name} of type {ftype} with bytes {field_bytes:?}",
+                    name = field.name
+                )};
+            }
+            creator_ops.push(CILOp::LoadTMPLocal);
+            creator_ops.push(CILOp::FreeTMPLocal);
+            creator_ops
+        }
         AdtKind::Enum => {
             let variant_size = crate::utilis::enum_tag_size(adt_def.variants().len() as u64);
             // This will need to be mutable in order to handle enum fields.
@@ -487,6 +519,31 @@ fn load_const_scalar<'ctx>(
                     CILOp::FreeTMPLocal,
                 ]
             }
+            AdtKind::Struct => {
+                //assert!(adt_def.size() < 16);
+                let low = (scalar_u128 & u128::from(u64::MAX)) as u64;
+                let high = (scalar_u128 << 64) as u64;
+                let low = i64::from_ne_bytes(low.to_ne_bytes());
+                let high = i64::from_ne_bytes(high.to_ne_bytes());
+                let i128_class = DotnetTypeRef::new(Some("System.Runtime"), "System.Int128");
+                let ctor_sig =
+                    crate::function_sig::FnSig::new(&[Type::U64, Type::U64], &Type::Void);
+                vec![
+                    CILOp::LdcI64(high),
+                    CILOp::LdcI64(low),
+                    CILOp::NewObj(CallSite::boxed(
+                        Some(i128_class),
+                        ".ctor".into(),
+                        ctor_sig,
+                        true,
+                    )),
+                    CILOp::NewTMPLocal(Type::I128.into()),
+                    CILOp::SetTMPLocal,
+                    CILOp::LoadAddresOfTMPLocal,
+                    CILOp::LdObj(tpe.into()),
+                    CILOp::FreeTMPLocal,
+                ]
+            }
             _ => todo!("Can't load const ADT scalars of type {scalar_type:?}"),
         },
         TyKind::Char => {
@@ -536,11 +593,11 @@ pub fn load_const_int(value: u128, int_type: &IntTy) -> Vec<CILOp> {
             let low = i64::from_ne_bytes(low.to_ne_bytes());
             let high = i64::from_ne_bytes(high.to_ne_bytes());
             let i128_class = DotnetTypeRef::new(Some("System.Runtime"), "System.Int128");
-            let ctor_sig = crate::function_sig::FnSig::new(&[Type::U64, Type::U64], &Type::I128);
+            let ctor_sig = crate::function_sig::FnSig::new(&[Type::U64, Type::U64], &Type::Void);
             vec![
                 CILOp::LdcI64(high),
                 CILOp::LdcI64(low),
-                CILOp::Call(CallSite::boxed(
+                CILOp::NewObj(CallSite::boxed(
                     Some(i128_class),
                     ".ctor".into(),
                     ctor_sig,
@@ -578,11 +635,11 @@ pub fn load_const_uint(value: u128, int_type: &UintTy) -> Vec<CILOp> {
             let low = i64::from_ne_bytes(low.to_ne_bytes());
             let high = i64::from_ne_bytes(high.to_ne_bytes());
             let i128_class = DotnetTypeRef::new(Some("System.Runtime"), "System.UInt128");
-            let ctor_sig = crate::function_sig::FnSig::new(&[Type::U64, Type::U64], &Type::U128);
+            let ctor_sig = crate::function_sig::FnSig::new(&[Type::U64, Type::U64], &Type::Void);
             vec![
                 CILOp::LdcI64(high),
                 CILOp::LdcI64(low),
-                CILOp::Call(CallSite::boxed(
+                CILOp::NewObj(CallSite::boxed(
                     Some(i128_class),
                     ".ctor".into(),
                     ctor_sig,
