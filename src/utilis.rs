@@ -176,16 +176,24 @@ pub fn field_descrptor<'tyctx>(
             element,
             format!("Item{}", field_idx + 1).into(),
         );
-    } else if let TyKind::Closure(_,args) = owner_ty.kind() {
+    } else if let TyKind::Closure(_, args) = owner_ty.kind() {
         let closure = args.as_closure();
-        let field_type = closure.upvar_tys().iter().nth(field_idx as usize).expect("Could not find closure fields!");
+        let field_type = closure
+            .upvar_tys()
+            .iter()
+            .nth(field_idx as usize)
+            .expect("Could not find closure fields!");
         let field_type = crate::utilis::monomorphize(&method_instance, field_type, tyctx);
         let field_type = type_cache.type_from_cache(field_type, tyctx, Some(method_instance));
         let owner_ty = crate::utilis::monomorphize(&method_instance, owner_ty, tyctx);
         let owner_type = type_cache.type_from_cache(owner_ty, tyctx, Some(method_instance));
         let field_name = format!("f_{field_idx}").into();
-        return FieldDescriptor::new(owner_type.as_dotnet().expect("Closure type invalid!"),field_type,field_name);
-    } 
+        return FieldDescriptor::new(
+            owner_type.as_dotnet().expect("Closure type invalid!"),
+            field_type,
+            field_name,
+        );
+    }
     let (adt, subst) = as_adt(owner_ty).expect("Tried to get a field of a non ADT or tuple type!");
     let field = adt
         .all_fields()

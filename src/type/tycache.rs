@@ -254,20 +254,45 @@ impl TyCache {
                 DotnetTypeRef::new(None, &name).into()
             }
             TyKind::Never => Type::Void,
-            TyKind::RawPtr(type_and_mut) => match type_and_mut.ty.kind() {
-                TyKind::Slice(inner) => {
-                    let inner = if let Some(method) = method {
-                        crate::utilis::monomorphize(&method, *inner, tyctx)
-                    } else {
-                        *inner
+            TyKind::RawPtr(type_and_mut) => {
+                let (metadata, fat_if_not_sized) = type_and_mut
+                    .ty
+                    .ptr_metadata_ty(tyctx, |mut ty|{
+                        method.inspect(|method| {
+                            ty = crate::utilis::monomorphize(method, ty, tyctx);
+                        });
+                        ty
+                    });
+                //TODO: fat_if_not_sized is suposed to tell me if a pointer being fat depends on if the type is sized.
+                // I am not sure how this is suposed to work exactly, so it gets ignored for now.
+                let is_sized = type_and_mut.ty.is_sized(tyctx, ParamEnv::reveal_all());
+                if !is_sized {
+                    let inner = match type_and_mut.ty.kind() {
+                        TyKind::Slice(inner) => {
+                            let inner = if let Some(method) = method {
+                                crate::utilis::monomorphize(&method, *inner, tyctx)
+                            } else {
+                                *inner
+                            };
+                            inner
+                        }
+                        TyKind::Str => u8_ty(tyctx),
+                        _ => {
+                            let inner = if let Some(method) = method {
+                                crate::utilis::monomorphize(&method, type_and_mut.ty, tyctx)
+                            } else {
+                                type_and_mut.ty
+                            };
+                            inner
+                        },
                     };
-                    slice_ref_to(tyctx, self, Ty::new_slice(tyctx, inner), method)
+                    slice_ref_to(tyctx, self, Ty::new_slice(tyctx,inner),method)
+                   
                 }
-                TyKind::Str => {
-                    slice_ref_to(tyctx, self, Ty::new_slice(tyctx, u8_ty(tyctx)), method)
+                else{
+                    Type::Ptr(self.type_from_cache(type_and_mut.ty, tyctx, method).into())
                 }
-                _ => Type::Ptr(self.type_from_cache(type_and_mut.ty, tyctx, method).into()),
-            },
+            }
             TyKind::Adt(def, subst) => {
                 let name = crate::utilis::adt_name(*def, tyctx, subst);
                 if super::is_name_magic(name.as_ref()) {
@@ -279,20 +304,55 @@ impl TyCache {
                 println!("trait:{trait_:?} dyn_kind:{dyn_kind:?}");
                 Type::Unresolved
             }
-            TyKind::Ref(_region, inner, _mut) => match inner.kind() {
-                TyKind::Slice(inner) => {
-                    let inner = if let Some(method) = method {
-                        crate::utilis::monomorphize(&method, *inner, tyctx)
-                    } else {
-                        *inner
+            TyKind::Ref(_region, inner, _mut) => {
+                let (metadata, fat_if_not_sized) = inner
+                    .ptr_metadata_ty(tyctx, |mut ty|{
+                        method.inspect(|method| {
+                            ty = crate::utilis::monomorphize(method, ty, tyctx);
+                        });
+                        ty
+                    });
+                //TODO: fat_if_not_sized is suposed to tell me if a pointer being fat depends on if the type is sized.
+                // I am not sure how this is suposed to work exactly, so it gets ignored for now.
+                let is_sized = inner.is_sized(tyctx, ParamEnv::reveal_all());
+                if !is_sized {
+                    let inner = match inner.kind() {
+                        TyKind::Slice(inner) => {
+                            let inner = if let Some(method) = method {
+                                crate::utilis::monomorphize(&method, *inner, tyctx)
+                            } else {
+                                *inner
+                            };
+                            inner
+                        }
+                        TyKind::Str => u8_ty(tyctx),
+                        _ => {
+                            let inner = if let Some(method) = method {
+                                crate::utilis::monomorphize(&method,*inner, tyctx)
+                            } else {
+                                *inner
+                            };
+                            inner
+                        },
                     };
-                    slice_ref_to(tyctx, self, Ty::new_slice(tyctx, inner), method)
+                    slice_ref_to(tyctx, self, Ty::new_slice(tyctx,inner),method)
+                   
                 }
-                TyKind::Str => {
-                    slice_ref_to(tyctx, self, Ty::new_slice(tyctx, u8_ty(tyctx)), method)
+                else{
+                    Type::Ptr(self.type_from_cache(*inner, tyctx, method).into())
                 }
-                _ => Type::Ptr(self.type_from_cache(*inner, tyctx, method).into()),
-            },
+            }
+            // Slice type is almost never refered to directly, and should pop up here ONLY in the case of 
+            // a DST.
+            TyKind::Str => Type::U8,
+            TyKind::Slice(inner)=>{
+                let inner = if let Some(method) = method {
+                    crate::utilis::monomorphize(&method, *inner, tyctx)
+                } else {
+                    *inner
+                };
+                self.type_from_cache(inner, tyctx, method)
+            }
             TyKind::Foreign(foregin) => {
                 println!("foregin:{foregin:?}");
                 Type::Foreign
