@@ -26,8 +26,14 @@ pub(crate) fn binop_checked<'tyctx>(
     let ty = cache.type_from_cache(ty_a, tyctx, Some(method_instance));
     match binop {
         BinOp::Mul | BinOp::MulUnchecked => [ops_a, ops_b, mul(ty)].into_iter().flatten().collect(),
-        BinOp::Add => [ops_a, ops_b, add(ty)].into_iter().flatten().collect(),
-        BinOp::Sub => [ops_a, ops_b, sub(ty)].into_iter().flatten().collect(),
+        BinOp::Add => [ops_a, ops_b, add(ty).to_vec()]
+            .into_iter()
+            .flatten()
+            .collect(),
+        BinOp::Sub => [ops_a, ops_b, sub(ty).to_vec()]
+            .into_iter()
+            .flatten()
+            .collect(),
         _ => todo!("Can't preform checked op {binop:?}"),
     }
 }
@@ -40,7 +46,8 @@ fn mul(tpe: Type) -> Vec<CILOp> {
             CILOp::ConvU8(false),
             CILOp::LdcI32(u8::MAX as i32),
             CILOp::Mul,
-        ),
+        )
+        .into(),
         Type::I8 => promoted_sbinop(
             Type::I8,
             Type::I16,
@@ -49,7 +56,8 @@ fn mul(tpe: Type) -> Vec<CILOp> {
             CILOp::LdcI32(i8::MAX as i32),
             CILOp::LdcI32(i8::MIN as i32),
             CILOp::Mul,
-        ),
+        )
+        .into(),
         Type::U16 => promoted_ubinop(
             Type::U16,
             Type::U32,
@@ -57,7 +65,8 @@ fn mul(tpe: Type) -> Vec<CILOp> {
             CILOp::ConvU16(false),
             CILOp::LdcI32(u16::MAX as i32),
             CILOp::Mul,
-        ),
+        )
+        .into(),
         Type::I16 => promoted_sbinop(
             Type::I16,
             Type::I32,
@@ -66,7 +75,8 @@ fn mul(tpe: Type) -> Vec<CILOp> {
             CILOp::LdcI32(i16::MAX as i32),
             CILOp::LdcI32(i16::MIN as i32),
             CILOp::Mul,
-        ),
+        )
+        .into(),
         Type::U32 => promoted_ubinop(
             Type::U32,
             Type::U64,
@@ -74,7 +84,8 @@ fn mul(tpe: Type) -> Vec<CILOp> {
             CILOp::ConvU32(false),
             CILOp::LdcI64(u32::MAX as i64),
             CILOp::Mul,
-        ),
+        )
+        .into(),
         Type::I32 => promoted_sbinop(
             Type::I32,
             Type::I64,
@@ -83,7 +94,8 @@ fn mul(tpe: Type) -> Vec<CILOp> {
             CILOp::LdcI32(i32::MAX),
             CILOp::LdcI32(i32::MIN),
             CILOp::Mul,
-        ),
+        )
+        .into(),
         Type::U64 => promoted_ubinop(
             Type::U64,
             Type::U128,
@@ -106,7 +118,8 @@ fn mul(tpe: Type) -> Vec<CILOp> {
                 crate::function_sig::FnSig::new(&[Type::U128, Type::U128], &Type::U128),
                 true,
             )),
-        ),
+        )
+        .into(),
         Type::I64 => promoted_sbinop(
             Type::I64,
             Type::I128,
@@ -130,7 +143,8 @@ fn mul(tpe: Type) -> Vec<CILOp> {
                 crate::function_sig::FnSig::new(&[Type::I128, Type::I128], &Type::I128),
                 true,
             )),
-        ),
+        )
+        .into(),
         Type::I128 => {
             eprintln!("WARING: checked 128 bit arthmetics ARE NOT SUPPOPRTED YET. Using unchecked variants, bugs may occur.");
             let tuple = crate::r#type::simple_tuple(&[tpe.clone(), Type::Bool]);
@@ -228,7 +242,8 @@ fn mul(tpe: Type) -> Vec<CILOp> {
                 crate::function_sig::FnSig::new(&[Type::U128, Type::U128], &Type::U128),
                 true,
             )),
-        ),
+        )
+        .into(),
 
         Type::ISize => promoted_sbinop(
             Type::ISize,
@@ -263,11 +278,12 @@ fn mul(tpe: Type) -> Vec<CILOp> {
                 crate::function_sig::FnSig::new(&[Type::I128, Type::I128], &Type::I128),
                 true,
             )),
-        ),
+        )
+        .into(),
         _ => todo!("Can't preform checked mul on type {tpe:?} yet!"),
     }
 }
-fn add(tpe: Type) -> Vec<CILOp> {
+fn add(tpe: Type) -> Box<[CILOp]> {
     match tpe {
         Type::I8 => promoted_sbinop(
             Type::I8,
@@ -277,8 +293,9 @@ fn add(tpe: Type) -> Vec<CILOp> {
             CILOp::LdcI32(i8::MAX as i32),
             CILOp::LdcI32(i8::MIN as i32),
             CILOp::Add,
-        ),
-        Type::U8 => checked_uadd_type(Type::U8, CILOp::ConvU8(false), CILOp::Add),
+        )
+        .into(),
+        Type::U8 => checked_uadd_type(Type::U8, CILOp::ConvU8(false), CILOp::Add).into(),
         Type::I16 => promoted_sbinop(
             Type::I16,
             Type::I32,
@@ -287,8 +304,9 @@ fn add(tpe: Type) -> Vec<CILOp> {
             CILOp::LdcI32(i16::MAX as i32),
             CILOp::LdcI32(i16::MIN as i32),
             CILOp::Add,
-        ),
-        Type::U16 => checked_uadd_type(Type::U16, CILOp::ConvU16(false), CILOp::Add),
+        )
+        .into(),
+        Type::U16 => checked_uadd_type(Type::U16, CILOp::ConvU16(false), CILOp::Add).into(),
         Type::I32 => promoted_sbinop(
             Type::I32,
             Type::I64,
@@ -297,8 +315,9 @@ fn add(tpe: Type) -> Vec<CILOp> {
             CILOp::LdcI32(i32::MAX),
             CILOp::LdcI32(i32::MIN),
             CILOp::Add,
-        ),
-        Type::U32 => checked_uadd_type(Type::U32, CILOp::Nop, CILOp::Add),
+        )
+        .into(),
+        Type::U32 => checked_uadd_type(Type::U32, CILOp::Nop, CILOp::Add).into(),
         //This works ONLY in dotnet.
         Type::I64 => promoted_sbinop(
             Type::I64,
@@ -323,10 +342,11 @@ fn add(tpe: Type) -> Vec<CILOp> {
                 crate::function_sig::FnSig::new(&[Type::I128, Type::I128], &Type::I128),
                 true,
             )),
-        ),
-        Type::U64 => checked_uadd_type(Type::U64, CILOp::Nop, CILOp::Add),
+        )
+        .into(),
+        Type::U64 => checked_uadd_type(Type::U64, CILOp::Nop, CILOp::Add).into(),
         Type::U128 => checked_uadd_type(
-            Type::U64,
+            Type::U128,
             CILOp::Nop,
             CILOp::Call(
                 CallSite::new(
@@ -343,7 +363,9 @@ fn add(tpe: Type) -> Vec<CILOp> {
                 )
                 .into(),
             ),
-        ),
+        )
+        .into(),
+
         Type::USize => promoted_ubinop(
             Type::USize,
             Type::U128,
@@ -371,7 +393,8 @@ fn add(tpe: Type) -> Vec<CILOp> {
                 crate::function_sig::FnSig::new(&[Type::U128, Type::U128], &Type::U128),
                 true,
             )),
-        ),
+        )
+        .into(),
         Type::ISize => promoted_sbinop(
             Type::ISize,
             Type::I128,
@@ -405,7 +428,8 @@ fn add(tpe: Type) -> Vec<CILOp> {
                 crate::function_sig::FnSig::new(&[Type::I128, Type::I128], &Type::I128),
                 true,
             )),
-        ),
+        )
+        .into(),
         _ => todo!("Can't preform checked add on type {tpe:?} yet!"),
     }
 }
@@ -509,7 +533,7 @@ fn checked_sadd_type(tpe: Type, truncate: CILOp, mask: CILOp) -> Vec<CILOp> {
         CILOp::FreeTMPLocal,
     ]
 }*/
-fn sub(tpe: Type) -> Vec<CILOp> {
+fn sub(tpe: Type) -> Box<[CILOp]> {
     match tpe {
         Type::I8 => promoted_sbinop(
             Type::I8,
@@ -519,7 +543,8 @@ fn sub(tpe: Type) -> Vec<CILOp> {
             CILOp::LdcI32(i8::MAX as i32),
             CILOp::LdcI32(i8::MIN as i32),
             CILOp::Sub,
-        ),
+        )
+        .into(),
         Type::U8 => promoted_ubinop(
             Type::U8,
             Type::U16,
@@ -527,7 +552,8 @@ fn sub(tpe: Type) -> Vec<CILOp> {
             CILOp::ConvU8(false),
             CILOp::LdcI32(u8::MAX as i32),
             CILOp::Sub,
-        ),
+        )
+        .into(),
         Type::I16 => promoted_sbinop(
             Type::I16,
             Type::I32,
@@ -536,7 +562,8 @@ fn sub(tpe: Type) -> Vec<CILOp> {
             CILOp::LdcI32(i16::MAX as i32),
             CILOp::LdcI32(i16::MIN as i32),
             CILOp::Sub,
-        ),
+        )
+        .into(),
         Type::U16 => promoted_ubinop(
             Type::U16,
             Type::U32,
@@ -544,7 +571,8 @@ fn sub(tpe: Type) -> Vec<CILOp> {
             CILOp::ConvU16(false),
             CILOp::LdcI32(u16::MAX as i32),
             CILOp::Sub,
-        ),
+        )
+        .into(),
         Type::I32 => promoted_sbinop(
             Type::I32,
             Type::I64,
@@ -553,7 +581,8 @@ fn sub(tpe: Type) -> Vec<CILOp> {
             CILOp::LdcI32(i32::MAX),
             CILOp::LdcI32(i32::MIN),
             CILOp::Sub,
-        ),
+        )
+        .into(),
         Type::U32 => promoted_ubinop(
             Type::U32,
             Type::U64,
@@ -561,7 +590,8 @@ fn sub(tpe: Type) -> Vec<CILOp> {
             CILOp::ConvU32(false),
             CILOp::LdcI64(u64::MAX as i64),
             CILOp::Sub,
-        ),
+        )
+        .into(),
         //This works ONLY in dotnet.
         Type::I64 => promoted_sbinop(
             Type::I64,
@@ -586,7 +616,8 @@ fn sub(tpe: Type) -> Vec<CILOp> {
                 crate::function_sig::FnSig::new(&[Type::I128, Type::I128], &Type::I128),
                 true,
             )),
-        ),
+        )
+        .into(),
         Type::U64 => promoted_ubinop(
             Type::U64,
             Type::U128,
@@ -609,7 +640,8 @@ fn sub(tpe: Type) -> Vec<CILOp> {
                 crate::function_sig::FnSig::new(&[Type::U128, Type::U128], &Type::U128),
                 true,
             )),
-        ),
+        )
+        .into(),
         Type::USize => promoted_ubinop(
             Type::USize,
             Type::U128,
@@ -637,7 +669,8 @@ fn sub(tpe: Type) -> Vec<CILOp> {
                 crate::function_sig::FnSig::new(&[Type::U128, Type::U128], &Type::U128),
                 true,
             )),
-        ),
+        )
+        .into(),
         Type::ISize => promoted_sbinop(
             Type::ISize,
             Type::I128,
@@ -671,7 +704,62 @@ fn sub(tpe: Type) -> Vec<CILOp> {
                 crate::function_sig::FnSig::new(&[Type::I128, Type::I128], &Type::I128),
                 true,
             )),
-        ),
+        )
+        .into(),
+        Type::I128 => checked_sub_128bit(
+            Type::I128,
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::int_128()),
+                "op_Subtraction".into(),
+                FnSig::new(&[Type::I128, Type::I128], &Type::I128),
+                true,
+            )),
+            CILOp::Call(CallSite::boxed(
+            Some(DotnetTypeRef::int_128()),
+                "op_Implicit".into(),
+                FnSig::new(&[Type::I32], &Type::I128),
+                true,
+            )),
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::int_128()),
+                "op_GreaterThan".into(),
+                FnSig::new(&[Type::I128, Type::I128], &Type::Bool),
+                true,
+            )),
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::int_128()),
+                "op_LessThan".into(),
+                FnSig::new(&[Type::I128, Type::I128], &Type::Bool),
+                true,
+            )),
+        ).into(),
+        Type::U128 => checked_sub_128bit(
+            Type::U128,
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::uint_128()),
+                "op_Subtraction".into(),
+                FnSig::new(&[Type::U128, Type::U128], &Type::U128),
+                true,
+            )),
+            CILOp::Call(CallSite::boxed(
+            Some(DotnetTypeRef::uint_128()),
+                "op_Implicit".into(),
+                FnSig::new(&[Type::I32], &Type::U128),
+                true,
+            )),
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::uint_128()),
+                "op_GreaterThan".into(),
+                FnSig::new(&[Type::U128, Type::U128], &Type::Bool),
+                true,
+            )),
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::uint_128()),
+                "op_LessThan".into(),
+                FnSig::new(&[Type::U128, Type::U128], &Type::Bool),
+                true,
+            )),
+        ).into(),
         _ => todo!("Can't preform checked sub on type {tpe:?} yet!"),
     }
 }
@@ -722,10 +810,10 @@ pub fn promoted_ubinop(
     truncate: CILOp,
     omask: CILOp,
     binop: CILOp,
-) -> Vec<CILOp> {
+) -> [CILOp; 27] {
     let tuple = crate::r#type::simple_tuple(&[tpe.clone(), Type::Bool]);
     let tuple_ty: Type = tuple.clone().into();
-    vec![
+    [
         // Promote arguments
         CILOp::NewTMPLocal(tpe.clone().into()),
         CILOp::SetTMPLocal,
@@ -777,10 +865,10 @@ pub fn promoted_sbinop(
     overflow_val: CILOp,
     underflow_val: CILOp,
     binop: CILOp,
-) -> Vec<CILOp> {
+) -> [CILOp; 32] {
     let tuple = crate::r#type::simple_tuple(&[tpe.clone(), Type::Bool]);
     let tuple_ty: Type = tuple.clone().into();
-    vec![
+    [
         // Promote arguments
         CILOp::NewTMPLocal(tpe.clone().into()),
         CILOp::SetTMPLocal,
@@ -826,6 +914,84 @@ pub fn promoted_sbinop(
         // Reset temporary local statck.
         CILOp::FreeTMPLocal,
         CILOp::FreeTMPLocal,
+        CILOp::FreeTMPLocal,
+        CILOp::FreeTMPLocal,
+    ]
+}
+fn checked_sub_128bit(
+    int_type: Type,
+    subtraction: CILOp,
+    promote_i32: CILOp,
+    greater_than: CILOp,
+    less_than: CILOp,
+) -> [CILOp; 56] {
+    let tuple_type = crate::r#type::simple_tuple(&[int_type.clone(), Type::Bool]);
+
+    //call bool [System.Runtime]System.Int128::op_GreaterThan(valuetype [System.Runtime]System.Int128, valuetype [System.Runtime]System.Int128)
+    //call bool [System.Runtime]System.Int128::op_LessThan(valuetype [System.Runtime]System.Int128, valuetype [System.Runtime]System.Int128)
+    let bool_field = FieldDescriptor::new(tuple_type.clone(), Type::Bool, "Item2".into());
+    let int_field = FieldDescriptor::new(tuple_type.clone(), int_type.clone(), "Item1".into());
+    [
+        CILOp::NewTMPLocal(int_type.clone().into()),
+        CILOp::SetTMPLocal,
+        CILOp::NewTMPLocal(int_type.clone().into()),
+        CILOp::SetTMPLocal,
+        CILOp::LoadUnderTMPLocal(1),
+        CILOp::LoadTMPLocal,
+        subtraction,
+        CILOp::NewTMPLocal(int_type.clone().into()),
+        CILOp::SetTMPLocal,
+        CILOp::LoadUnderTMPLocal(2),
+        CILOp::LdcI32(0),
+        promote_i32.clone(),
+        greater_than.clone(),
+        CILOp::LoadUnderTMPLocal(1),
+        CILOp::LdcI32(0),
+        promote_i32.clone(),
+        less_than.clone(),
+        CILOp::And,
+        CILOp::LoadTMPLocal,
+        CILOp::LdcI32(0),
+        promote_i32.clone(),
+        less_than.clone(),
+        CILOp::And,
+        CILOp::LoadUnderTMPLocal(2),
+        CILOp::LdcI32(0),
+        promote_i32.clone(),
+        less_than,
+        CILOp::LoadUnderTMPLocal(1),
+        CILOp::LdcI32(0),
+        promote_i32.clone(),
+        greater_than.clone(),
+        CILOp::And,
+        CILOp::LoadTMPLocal,
+        CILOp::LdcI32(0),
+        promote_i32,
+        greater_than,
+        CILOp::And,
+        CILOp::Or,
+        CILOp::NewTMPLocal(Type::Bool.into()),
+        CILOp::SetTMPLocal,
+        // Set the bool part
+        CILOp::NewTMPLocal(Box::new(tuple_type.clone().into())),
+        CILOp::LoadAddresOfTMPLocal,
+        CILOp::LoadUnderTMPLocal(1),
+        CILOp::STField(bool_field.clone().into()),
+        // Set the bool part
+        CILOp::LoadAddresOfTMPLocal,
+        CILOp::LoadUnderTMPLocal(1),
+        CILOp::STField(bool_field.clone().into()),
+        // Set the bool part
+        CILOp::LoadAddresOfTMPLocal,
+        CILOp::LoadUnderTMPLocal(2),
+        CILOp::STField(int_field.clone().into()),
+        CILOp::LoadTMPLocal,
+        //Tuple
+        CILOp::FreeTMPLocal,
+        // Result and flag
+        CILOp::FreeTMPLocal,
+        CILOp::FreeTMPLocal,
+        // Arguments
         CILOp::FreeTMPLocal,
         CILOp::FreeTMPLocal,
     ]

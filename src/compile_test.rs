@@ -383,7 +383,7 @@ macro_rules! cargo_test_ignored {
                 let test_dir = concat!("./cargo_tests/", stringify!($test_name), "/");
                 // Ensures the test directory is present
                 std::fs::create_dir_all(test_dir).expect("Could not setup the test env");
-    
+
                 let rustflags = super::cargo_build_env();
                 // Compiles the test project
                 let out = std::process::Command::new("cargo")
@@ -639,10 +639,8 @@ lazy_static! {
 
     };
 }
-pub fn cargo_build_env()->String{
-    RUSTC_BUILD_STATUS
-    .as_ref()
-    .expect("Could not build rustc!");
+pub fn cargo_build_env() -> String {
+    RUSTC_BUILD_STATUS.as_ref().expect("Could not build rustc!");
     let backend = absolute_backend_path();
     let backend = backend.display();
     let linker = RUSTC_CODEGEN_CLR_LINKER.display();

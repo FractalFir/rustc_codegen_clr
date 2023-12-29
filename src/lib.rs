@@ -147,6 +147,7 @@ mod unop;
 /// Contains small helper functions(debug assertions, functions used to get field names, etc), which are frequently used, but are not specific to a part of the coodegen.
 mod utilis;
 // rustc functions used here.
+use crate::rustc_middle::dep_graph::DepContext;
 use rustc_codegen_ssa::{
     back::archive::{
         get_native_object_symbols, ArArchiveBuilder, ArchiveBuilder, ArchiveBuilderBuilder,
@@ -165,7 +166,6 @@ use rustc_session::{
     Session,
 };
 use rustc_span::ErrorGuaranteed;
-use crate::rustc_middle::dep_graph::DepContext;
 use std::{
     any::Any,
     path::{Path, PathBuf},
@@ -223,7 +223,9 @@ impl CodegenBackend for MyBackend {
             codegen.opt();
             // Done twice for inlining!
             codegen.opt();
-            let ffi_compile_timer = tcx.profiler(). generic_activity("insert .NET FFI functions/types");
+            let ffi_compile_timer = tcx
+                .profiler()
+                .generic_activity("insert .NET FFI functions/types");
             ffi::insert_ffi_functions(&mut codegen, tcx);
             drop(ffi_compile_timer);
             let name: IString = cgus.iter().next().unwrap().name().to_string().into();

@@ -1,4 +1,4 @@
-fn main(){
+fn main() {
     let build_env = rustc_codegen_clr::compile_test::cargo_build_env();
     println!("In order to compile cargo crates with `rustc_codegen_clr`, please set the RUSTFLAGS enviorment variable to:");
     println!();

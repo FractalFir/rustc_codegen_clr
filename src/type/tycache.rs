@@ -425,7 +425,9 @@ pub fn ty_generic_arg(ty: Ty) -> GenericArg {
 
 fn try_find_ptr_components(ctx: TyCtxt) -> DefId {
     use crate::rustc_middle::dep_graph::DepContext;
-    let find_ptr_components_timer = ctx.profiler(). generic_activity("ptr::metadata::PtrComponents");
+    let find_ptr_components_timer = ctx
+        .profiler()
+        .generic_activity("ptr::metadata::PtrComponents");
     use rustc_middle::middle::exported_symbols::ExportedSymbol;
     let mut core = None;
     for krate in ctx.crates(()) {
@@ -435,8 +437,18 @@ fn try_find_ptr_components(ctx: TyCtxt) -> DefId {
             break;
         }
     }
-    let core = core.expect("Could not find core!");
-    let core_symbols = ctx.exported_symbols(*core);
+    let core = if let Some(core) = core {
+        *core
+    } else {
+        // If no crates, assume we are compiling core.
+        if ctx.crates(()).is_empty() {
+            use rustc_span::def_id::CrateNum;
+            CrateNum::from_u32(0)
+        } else {
+            panic!("Could not find core. Crates:{:?}", ctx.crates(()));
+        }
+    };
+    let core_symbols = ctx.exported_symbols(core);
     let mut max_index = 0;
     for symbol in core_symbols {
         match symbol.0 {
@@ -452,7 +464,7 @@ fn try_find_ptr_components(ctx: TyCtxt) -> DefId {
     for index in 0..max_index {
         let did = DefId {
             index: index.into(),
-            krate: *core,
+            krate: core,
         };
         let name = format!("{did:?}");
         if name.contains("ptr::metadata::PtrComponents")
