@@ -110,7 +110,7 @@ fn main() {
     //let mut f = std::fs::File::create("foo.txt").unwrap();
 
     //std::hint::black_box(f);
-    std::io::stdout().write_all(b"hello world\n").unwrap();
+    //std::io::stdout().write_all(b"hello world\n").unwrap();
     let s = format!("Hello {}\0",8);
     unsafe{puts(s.as_ptr())};
    

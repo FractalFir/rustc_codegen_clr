@@ -10,6 +10,7 @@ use crate::{
     r#type::TypeDef,
     IString,
 };
+use crate::rustc_middle::dep_graph::DepContext;
 use rustc_middle::mir::{
     interpret::{AllocId, GlobalAlloc},
     mono::MonoItem,
@@ -233,6 +234,7 @@ impl Assembly {
         name: &str,
         cache: &mut TyCache,
     ) -> Result<(), MethodCodegenError> {
+        
         if crate::utilis::is_function_magic(name) {
             return Ok(());
         }
@@ -469,10 +471,10 @@ impl Assembly {
             MonoItem::Fn(instance) => {
                 //let instance = crate::utilis::monomorphize(&instance,tcx);
                 let symbol_name = crate::utilis::function_name(item.symbol_name(tcx));
-
+                let function_compile_timer = tcx.profiler().generic_activity_with_arg("compile function",item.symbol_name(tcx).to_string());
                 self.checked_add_fn(instance, tcx, &symbol_name, cache)
                     .expect("Could not add function!");
-
+                drop(function_compile_timer);
                 Ok(())
             }
             MonoItem::GlobalAsm(asm) => {
@@ -480,9 +482,11 @@ impl Assembly {
                 Ok(())
             }
             MonoItem::Static(stotic) => {
+                let static_compile_timer = tcx.profiler().generic_activity_with_arg("compile static initializer",item.symbol_name(tcx).to_string());
                 let alloc = tcx.eval_static_initializer(stotic).unwrap();
                 let alloc_id = tcx.reserve_and_set_memory_alloc(alloc);
                 self.add_allocation(crate::utilis::alloc_id_to_u64(alloc_id), tcx);
+                drop(static_compile_timer);
                 //eprintln!("Unsuported item - Static:{stotic:?}");
                 Ok(())
             }

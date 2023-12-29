@@ -301,13 +301,7 @@ macro_rules! cargo_test {
                 // Ensures the test directory is present
                 std::fs::create_dir_all(test_dir).expect("Could not setup the test env");
                 // Builds the backend if neceasry
-                super::RUSTC_BUILD_STATUS
-                    .as_ref()
-                    .expect("Could not build rustc!");
-                let backend = super::absolute_backend_path();
-                let backend = backend.display();
-                let linker = super::RUSTC_CODEGEN_CLR_LINKER.display();
-                let rustflags = format!("-Z codegen-backend={backend} -C linker={linker}");
+                let rustflags = super::cargo_build_env();
                 // Compiles the test project
                 let out = std::process::Command::new("cargo")
                     .env("RUSTFLAGS", &rustflags)
@@ -342,13 +336,7 @@ macro_rules! cargo_test {
                 // Ensures the test directory is present
                 std::fs::create_dir_all(test_dir).expect("Could not setup the test env");
                 // Builds the backend if neceasry
-                super::RUSTC_BUILD_STATUS
-                    .as_ref()
-                    .expect("Could not build rustc!");
-                let backend = super::absolute_backend_path();
-                let backend = backend.display();
-                let linker = super::RUSTC_CODEGEN_CLR_LINKER.display();
-                let rustflags = format!("-Z codegen-backend={backend} -C linker={linker}");
+                let rustflags = super::cargo_build_env();
                 // Compiles the test project
                 let mut command = std::process::Command::new("cargo");
                 command
@@ -395,14 +383,8 @@ macro_rules! cargo_test_ignored {
                 let test_dir = concat!("./cargo_tests/", stringify!($test_name), "/");
                 // Ensures the test directory is present
                 std::fs::create_dir_all(test_dir).expect("Could not setup the test env");
-                // Builds the backend if neceasry
-                super::RUSTC_BUILD_STATUS
-                    .as_ref()
-                    .expect("Could not build rustc!");
-                let backend = super::absolute_backend_path();
-                let backend = backend.display();
-                let linker = super::RUSTC_CODEGEN_CLR_LINKER.display();
-                let rustflags = format!("-Z codegen-backend={backend} -C linker={linker}");
+    
+                let rustflags = super::cargo_build_env();
                 // Compiles the test project
                 let out = std::process::Command::new("cargo")
                     .env("RUSTFLAGS", &rustflags)
@@ -437,14 +419,8 @@ macro_rules! cargo_test_ignored {
                 let test_dir = concat!("./cargo_tests/", stringify!($test_name), "/");
                 // Ensures the test directory is present
                 std::fs::create_dir_all(test_dir).expect("Could not setup the test env");
-                // Builds the backend if neceasry
-                super::RUSTC_BUILD_STATUS
-                    .as_ref()
-                    .expect("Could not build rustc!");
-                let backend = super::absolute_backend_path();
-                let backend = backend.display();
-                let linker = super::RUSTC_CODEGEN_CLR_LINKER.display();
-                let rustflags = format!("-Z codegen-backend={backend} -C linker={linker}");
+
+                let rustflags = super::cargo_build_env();
                 // Compiles the test project
                 let mut command = std::process::Command::new("cargo");
                 command
@@ -505,7 +481,6 @@ fn build_backend() -> Result<(), String> {
         .expect("could not build the backend");
     Ok(())
 }
-#[cfg(test)]
 fn absolute_backend_path() -> PathBuf {
     if cfg!(debug_assertions) {
         if cfg!(target_os = "linux") {
@@ -663,4 +638,13 @@ lazy_static! {
         }
 
     };
+}
+pub fn cargo_build_env()->String{
+    RUSTC_BUILD_STATUS
+    .as_ref()
+    .expect("Could not build rustc!");
+    let backend = absolute_backend_path();
+    let backend = backend.display();
+    let linker = RUSTC_CODEGEN_CLR_LINKER.display();
+    format!("-Z codegen-backend={backend} -C linker={linker}")
 }

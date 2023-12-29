@@ -424,6 +424,8 @@ pub fn ty_generic_arg(ty: Ty) -> GenericArg {
 // but it might not be.
 
 fn try_find_ptr_components(ctx: TyCtxt) -> DefId {
+    use crate::rustc_middle::dep_graph::DepContext;
+    let find_ptr_components_timer = ctx.profiler(). generic_activity("ptr::metadata::PtrComponents");
     use rustc_middle::middle::exported_symbols::ExportedSymbol;
     let mut core = None;
     for krate in ctx.crates(()) {
@@ -464,10 +466,12 @@ fn try_find_ptr_components(ctx: TyCtxt) -> DefId {
                 "Found more than one defintin of PtrComponents"
             );
             ptr_components = Some(did);
+            break;
         }
 
         //44548
     }
     //todo!("core:{core:?} max_index:{max_index:?} ptr_components:{ptr_components:?}");
+    drop(find_ptr_components_timer);
     ptr_components.expect("Could not find core::ptr::metadata::PtrComponents")
 }

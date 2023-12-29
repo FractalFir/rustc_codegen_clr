@@ -110,7 +110,7 @@ pub mod cil;
 /// Runtime errors and utlity functions/macros related to them
 mod codegen_error;
 /// Test harnesses.
-mod compile_test;
+pub mod compile_test;
 /// Code handling loading constant values in CIL.
 mod constant;
 /// Code detecting and inserting wrappers around entrypoints.
@@ -165,7 +165,7 @@ use rustc_session::{
     Session,
 };
 use rustc_span::ErrorGuaranteed;
-
+use crate::rustc_middle::dep_graph::DepContext;
 use std::{
     any::Any,
     path::{Path, PathBuf},
@@ -223,7 +223,9 @@ impl CodegenBackend for MyBackend {
             codegen.opt();
             // Done twice for inlining!
             codegen.opt();
+            let ffi_compile_timer = tcx.profiler(). generic_activity("insert .NET FFI functions/types");
             ffi::insert_ffi_functions(&mut codegen, tcx);
+            drop(ffi_compile_timer);
             let name: IString = cgus.iter().next().unwrap().name().to_string().into();
 
             Box::new((
