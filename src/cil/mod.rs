@@ -234,6 +234,8 @@ pub enum CILOp {
     STStaticField(Box<StaticFieldDescriptor>),
     /// Copies to *dst* from *src* *count* bytes.  
     CpBlk,
+    /// Calls the variable on top of the stack as a function with signature `sig`.
+    CallI(Box<FnSig>),
 }
 impl CILOp {
     /// If this op is a branch operation, and its target is `original`, replaces the target with `replacement`
@@ -260,7 +262,7 @@ impl CILOp {
             Self::Call(site) => Some(site),
             Self::CallVirt(site) => Some(site),
             Self::NewObj(site) => Some(site),
-            Self::LDFtn(site)=>Some(site),
+            Self::LDFtn(site) => Some(site),
             _ => None,
         }
     }
@@ -449,6 +451,13 @@ impl CILOp {
             CILOp::SetTMPLocal => -1,
             CILOp::LDFtn(_) => 1,
             CILOp::LoadGlobalAllocPtr { alloc_id: _ } => 1,
+            CILOp::CallI(fn_sig) => {
+                if fn_sig.output() == &crate::r#type::Type::Void {
+                    -(1 + fn_sig.inputs().len() as isize)
+                } else {
+                    1 - (1 + fn_sig.inputs().len() as isize)
+                }
+            }
         }
     }
     /// Flips a conditional, changing the order of its arguments. Eg. BLt(a,b) [a < b] becomes BGt(b,a) [b > a].

@@ -2,7 +2,7 @@ use crate::{
     codegen_error::CodegenError,
     r#type::{TyCache, Type},
 };
-use rustc_middle::ty::{Instance, List, ParamEnv, ParamEnvAnd, TyCtxt, TyKind};
+use rustc_middle::ty::{Instance, List, ParamEnv, ParamEnvAnd, PolyFnSig, TyCtxt, TyKind};
 use rustc_target::abi::call::Conv;
 use rustc_target::spec::abi::Abi as TargetAbi;
 use serde::{Deserialize, Serialize};
@@ -13,6 +13,28 @@ pub struct FnSig {
     output: Type,
 }
 impl FnSig {
+    /// Creates a `FnSig` from ``. May not match the result of `sig_from_instance_`!
+    /// Use ONLY for function pointers!
+    pub fn from_poly_sig<'tyctx>(
+        method_instance: Option<Instance<'tyctx>>,
+        tyctx: TyCtxt<'tyctx>,
+        tycache: &mut TyCache,
+        sig: PolyFnSig<'tyctx>,
+    ) -> Self {
+        let sig = if let Some(method_instance) = method_instance {
+            crate::utilis::monomorphize(&method_instance, sig, tyctx)
+        } else {
+            sig
+        };
+        let sig = sig.skip_binder();
+        let output = tycache.type_from_cache(sig.output(), tyctx, method_instance);
+        let inputs: Box<[Type]> = sig
+            .inputs()
+            .iter()
+            .map(|input| tycache.type_from_cache(*input, tyctx, method_instance))
+            .collect();
+        FnSig::new(&inputs, &output)
+    }
     /// Returns the signature of function behind `function`.
     pub fn sig_from_instance_<'tcx>(
         function: Instance<'tcx>,

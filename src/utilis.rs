@@ -96,21 +96,22 @@ pub fn variant_name(ty: Ty, idx: u32) -> crate::IString {
 }
 /// Escapes the name of a function
 pub fn function_name(name: SymbolName) -> crate::IString {
-    let mut name:IString = name.to_string()
-    .replace('$', "_ds_")
+    let mut name: IString = name
+        .to_string()
+        .replace('$', "_ds_")
         .replace("..", "_dd_")
         .into();
     // Name TOO long
-    if name.len() > 1000{
+    if name.len() > 1000 {
         use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
-//TODO: make hashes consitant!
-fn calculate_hash<T: Hash>(t: &T) -> u64 {
-    let mut s = DefaultHasher::new();
-    t.hash(&mut s);
-    s.finish()
-}
-        name = format!("{}_{}",&name[..1000],calculate_hash(&name)).into();
+        use std::hash::{Hash, Hasher};
+        //TODO: make hashes consitant!
+        fn calculate_hash<T: Hash>(t: &T) -> u64 {
+            let mut s = DefaultHasher::new();
+            t.hash(&mut s);
+            s.finish()
+        }
+        name = format!("{}_{}", &name[..1000], calculate_hash(&name)).into();
     }
     name
 }

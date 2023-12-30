@@ -1,5 +1,6 @@
 use std::process::Termination;
 
+use crate::place::place_set;
 use crate::utilis::garg_to_string;
 use crate::{
     cil::{CILOp, CallSite},
@@ -57,7 +58,45 @@ pub fn handle_terminator<'ctx>(
                     );
                     ops.extend(call_ops);
                 }
-                _ => panic!("called func must be const!"),
+                Operand::Copy(operand) | Operand::Move(operand) => {
+                    let operand_ty = operand.ty(method, tyctx);
+                    let sig = if let TyKind::FnPtr(sig) = operand_ty.ty.kind() {
+                        let sig = crate::utilis::monomorphize(&method_instance, *sig, tyctx);
+                        sig
+                    } else {
+                        todo!("Can't call operand of type {operand_ty:?}")
+                    };
+                    let sig = FnSig::from_poly_sig(Some(method_instance), tyctx, type_cache, sig);
+                    let mut call_ops = Vec::new();
+                    for arg in args {
+                        call_ops.extend(crate::operand::handle_operand(
+                            arg,
+                            tyctx,
+                            body,
+                            method_instance,
+                            type_cache,
+                        ));
+                    }
+                    call_ops.extend(crate::place::place_get(
+                        operand,
+                        tyctx,
+                        method,
+                        method_instance,
+                        type_cache,
+                    ));
+                    call_ops.push(CILOp::CallI(sig.clone().into()));
+                    if *sig.output() == crate::r#type::Type::Void{
+                        ops.extend(call_ops);
+                    }
+                    else{
+                        ops.extend(place_set(destination, tyctx, call_ops, method, method_instance, type_cache));
+                    }
+                   
+                    // Set return place
+
+                    //vec![]
+                    //todo!("Can't call {operand:?} with sig {sig:?} yet!")
+                }
             }
             if let Some(target) = target {
                 ops.push(CILOp::GoTo(target.as_u32()));
@@ -436,6 +475,7 @@ fn handle_switch(ty: Ty, discr: &[CILOp], switch: &SwitchTargets) -> Vec<CILOp> 
                     .expect("Bool value outside of range 0-255. Should be either 0 OR 1.")
                     as i32,
             )],
+            TyKind::Char => crate::constant::load_const_uint(value, &rustc_middle::ty::UintTy::U64),
             _ => todo!("Unsuported switch discriminant type {ty:?}"),
         });
         //ops.push(CILOp::LdcI64(value as i64));

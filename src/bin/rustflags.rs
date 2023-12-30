@@ -2,16 +2,16 @@ fn main() {
     let build_env = rustc_codegen_clr::compile_test::cargo_build_env();
     let print_raw_env = std::env::args().any(|arg| arg == "--print_raw_env");
     let setup_command = std::env::args().any(|arg| arg == "--setup_command");
-    if print_raw_env{
+    if print_raw_env {
         println!("\"{build_env}\"");
         return;
     }
-    if setup_command{
+    if setup_command {
         #[cfg(target_family = "unix")]
         println!("export RUSTFLAGS=\"{build_env}\"");
         #[cfg(target_family = "windows")]
         println!("$Env:RUSTFLAGS = '{build_env}'");
-        return
+        return;
     }
     println!("Welcome to the `rustc_codegen_clr` environment setup helper!");
     println!("This tool will help you use the codegen to compile Rust projects.");
@@ -24,16 +24,22 @@ fn main() {
     println!("\"{build_env}\"");
     println!();
     println!();
-    #[cfg(target_family = "unix")]{
-        println!("You may use the following command to quickly set the required environment variables:");
+    #[cfg(target_family = "unix")]
+    {
+        println!(
+            "You may use the following command to quickly set the required environment variables:"
+        );
         println!();
         println!();
         println!("export RUSTFLAGS=\"{build_env}\"");
         println!();
         println!();
     }
-    #[cfg(target_family = "windows")]{
-        println!("You may use the following command to quickly set the required environment variables:");
+    #[cfg(target_family = "windows")]
+    {
+        println!(
+            "You may use the following command to quickly set the required environment variables:"
+        );
         println!();
         println!();
         println!("$Env:RUSTFLAGS = '{build_env}'");
@@ -41,7 +47,8 @@ fn main() {
         println!();
     }
     println!("After you are done working with `rustc_codegen_clr` either unset the environment variable OR restart your shell (close the command prompt window).");
-    #[cfg(target_family = "unix")]{
+    #[cfg(target_family = "unix")]
+    {
         println!("You may use the following command to quickly unset the required environment variables:");
         println!();
         println!();
@@ -49,7 +56,8 @@ fn main() {
         println!();
         println!();
     }
-    #[cfg(target_family = "windows")]{
+    #[cfg(target_family = "windows")]
+    {
         println!();
     }
     println!("Please note that those variables may change when the codegen is updated/rebuilt.");
@@ -58,7 +66,9 @@ fn main() {
     println!("If you are using the project, please remember to:");
     println!("1. Update BOTH rustc and the project on a regular basis.");
     println!("2. Report compiler bugs to the maintainers of `rustc_codegen_clr`, and not the maintainers of the Rust compiler as a whole.");
-    println!("  In 99.999% of the cases, the bug is within this project and not the Rust compiler.");
+    println!(
+        "  In 99.999% of the cases, the bug is within this project and not the Rust compiler."
+    );
     println!("");
-   // std::env::set_var("RUSTFLAGS", build_env);
+    // std::env::set_var("RUSTFLAGS", build_env);
 }

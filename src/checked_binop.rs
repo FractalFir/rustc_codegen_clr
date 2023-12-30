@@ -430,6 +430,42 @@ fn add(tpe: Type) -> Box<[CILOp]> {
             )),
         )
         .into(),
+        Type::I128 => {
+            eprintln!("WARING: checked 128 bit arthmetics ARE NOT SUPPOPRTED YET. Using unchecked variants, bugs may occur.");
+            let tuple = crate::r#type::simple_tuple(&[tpe.clone(), Type::Bool]);
+            let tuple_ty: Type = tuple.clone().into();
+            [
+                CILOp::Call(
+                    CallSite::new(
+                        Some(DotnetTypeRef::uint_128()),
+                        "op_Multiplication".into(),
+                        crate::function_sig::FnSig::new(&[Type::I128, Type::I128], &Type::I128),
+                        true,
+                    )
+                    .into(),
+                ),
+                CILOp::NewTMPLocal(tpe.clone().into()),
+                CILOp::SetTMPLocal,
+                CILOp::NewTMPLocal(tuple_ty.into()),
+                CILOp::LoadAddresOfTMPLocal,
+                CILOp::LoadUnderTMPLocal(1),
+                CILOp::STField(FieldDescriptor::boxed(
+                    tuple.clone(),
+                    Type::I128,
+                    "Item1".into(),
+                )),
+                CILOp::LoadAddresOfTMPLocal,
+                CILOp::LdcI32(0),
+                CILOp::STField(FieldDescriptor::boxed(
+                    tuple.clone(),
+                    Type::Bool,
+                    "Item2".into(),
+                )),
+                CILOp::LoadTMPLocal,
+                CILOp::FreeTMPLocal,
+            ]
+            .into()
+        }
         _ => todo!("Can't preform checked add on type {tpe:?} yet!"),
     }
 }
@@ -715,7 +751,7 @@ fn sub(tpe: Type) -> Box<[CILOp]> {
                 true,
             )),
             CILOp::Call(CallSite::boxed(
-            Some(DotnetTypeRef::int_128()),
+                Some(DotnetTypeRef::int_128()),
                 "op_Implicit".into(),
                 FnSig::new(&[Type::I32], &Type::I128),
                 true,
@@ -732,7 +768,8 @@ fn sub(tpe: Type) -> Box<[CILOp]> {
                 FnSig::new(&[Type::I128, Type::I128], &Type::Bool),
                 true,
             )),
-        ).into(),
+        )
+        .into(),
         Type::U128 => checked_sub_128bit(
             Type::U128,
             CILOp::Call(CallSite::boxed(
@@ -742,7 +779,7 @@ fn sub(tpe: Type) -> Box<[CILOp]> {
                 true,
             )),
             CILOp::Call(CallSite::boxed(
-            Some(DotnetTypeRef::uint_128()),
+                Some(DotnetTypeRef::uint_128()),
                 "op_Implicit".into(),
                 FnSig::new(&[Type::I32], &Type::U128),
                 true,
@@ -759,7 +796,8 @@ fn sub(tpe: Type) -> Box<[CILOp]> {
                 FnSig::new(&[Type::U128, Type::U128], &Type::Bool),
                 true,
             )),
-        ).into(),
+        )
+        .into(),
         _ => todo!("Can't preform checked sub on type {tpe:?} yet!"),
     }
 }

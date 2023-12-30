@@ -49,6 +49,21 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
                 .into()
             }
         }
+        CILOp::CallI(sig)=>{
+            let mut inputs_iter = sig.inputs().iter();
+                let mut input_string = String::new();
+                if let Some(firts_arg) = inputs_iter.next() {
+                    input_string.push_str(&non_void_type_cil(firts_arg));
+                }
+                for arg in inputs_iter {
+                    input_string.push(',');
+                    input_string.push_str(&non_void_type_cil(arg));
+                }
+            format!(
+                "calli {output} ({input_string})",
+                output = type_cil(sig.output())
+            ).into()
+        }
         CILOp::LDFtn(call_site)=>{
              //assert!(sig.inputs.is_empty());
              let mut inputs_iter = call_site.explicit_inputs().iter();
@@ -429,7 +444,7 @@ pub fn non_void_type_cil(tpe: &Type) -> Cow<'static, str> {
 }
 pub fn type_cil(tpe: &Type) -> Cow<'static, str> {
     match tpe {
-        Type::DelegatePtr(sig)=>{
+        Type::DelegatePtr(sig) => {
             let mut inputs_iter = sig.inputs().iter();
             let mut input_string = String::new();
             if let Some(firts_arg) = inputs_iter.next() {
@@ -439,7 +454,11 @@ pub fn type_cil(tpe: &Type) -> Cow<'static, str> {
                 input_string.push(',');
                 input_string.push_str(&non_void_type_cil(arg));
             }
-            format!("method {output}*({input_string})",output = type_cil(sig.output())).into()
+            format!(
+                "method {output}*({input_string})",
+                output = type_cil(sig.output())
+            )
+            .into()
         }
         Type::FnDef(name) => format!("valuetype fn_{name}").into(),
         Type::Void => "void".into(),

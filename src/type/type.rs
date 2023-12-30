@@ -43,7 +43,7 @@ pub enum Type {
     DotnetChar,
     /// Rust FnDefs
     FnDef(IString),
-    DelegatePtr(Box<crate::function_sig::FnSig>)
+    DelegatePtr(Box<crate::function_sig::FnSig>),
 }
 #[derive(Serialize, Deserialize, PartialEq, Clone, Eq, Hash, Debug)]
 pub struct DotnetArray {
@@ -357,12 +357,11 @@ pub fn pointer_to_is_fat<'tyctx>(
     // I am not sure how this is suposed to work exactly, so it gets ignored for now.
     //let is_sized = pointed_type.is_sized(tyctx, ParamEnv::reveal_all());
     let is_trivialy_sized = pointed_type.is_trivially_sized(tyctx);
-    if is_trivialy_sized{
-       // Sized types don't need fat pointers
+    if is_trivialy_sized {
+        // Sized types don't need fat pointers
         false
-    }
-    else{
-        // TODO: PROPELY check if type is sized 
+    } else {
+        // TODO: PROPELY check if type is sized
         //pointed_type.is_sized(tyctx, ParamEnv::reveal_all())
         true
     }

@@ -292,7 +292,6 @@ impl TyCache {
                 Type::Unresolved
             }
             TyKind::Ref(_region, inner, _mut) => {
-
                 if super::pointer_to_is_fat(*inner, tyctx, method) {
                     let inner = match inner.kind() {
                         TyKind::Slice(inner) => {
@@ -334,16 +333,8 @@ impl TyCache {
                 Type::Foreign
             }
             TyKind::Bound(_, _inner) => Type::Foreign,
-            TyKind::FnPtr(sig)=> {
-                let sig = if let Some(method) = method {
-                    crate::utilis::monomorphize(&method, *sig, tyctx)
-                } else {
-                    *sig
-                };
-                let sig = sig.skip_binder();
-                let output =  self.type_from_cache(sig.output(), tyctx, method);
-                let inputs:Box<[Type]> =  sig.inputs().iter().map(|input|self.type_from_cache(*input, tyctx, method)).collect();
-                let sig = FnSig::new(&inputs,&output);
+            TyKind::FnPtr(sig) => {
+                let sig = FnSig::from_poly_sig(method, tyctx, self, *sig);
                 Type::DelegatePtr(sig.into())
             }
             TyKind::FnDef(did, subst) => {

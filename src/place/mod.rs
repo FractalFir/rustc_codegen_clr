@@ -155,6 +155,16 @@ pub fn deref_op<'ctx>(
                     type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance));
                 vec![CILOp::LdObj(derefed_type.into())]
             }
+            TyKind::FnPtr(_) => {
+                let derefed_type =
+                    type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance));
+                vec![CILOp::LdObj(derefed_type.into())]
+            }
+            TyKind::Closure(_,_) => {
+                let derefed_type =
+                    type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance));
+                vec![CILOp::LdObj(derefed_type.into())]
+            }
             _ => todo!("TODO: can't deref type {derefed_type:?} yet"),
         }
     } else {
