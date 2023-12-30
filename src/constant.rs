@@ -195,7 +195,23 @@ fn create_const_from_slice<'ctx>(
                 )),
                 CILOp::ConvUSize(false),
             ],
-            _ => todo!("Can't yet load const value of type {int:?} with bytes:{bytes:?}"),
+            IntTy::I128=>{
+                let value = u128::from_ne_bytes(bytes[..std::mem::size_of::<i128>()].try_into().expect("Invalid slice!"));
+                let low = (value & u128::from(u64::MAX)) as u64;
+                let high = (value << 64) as u64;
+                let low = i64::from_ne_bytes(low.to_ne_bytes());
+                let high = i64::from_ne_bytes(high.to_ne_bytes());
+                let ctor_sig =
+                    crate::function_sig::FnSig::new(&[Type::U64, Type::U64], &Type::Void);
+                vec![CILOp::LdcI64(high),
+                    CILOp::LdcI64(low),
+                    CILOp::NewObj(CallSite::boxed(
+                        Some(DotnetTypeRef::int_128()),
+                        ".ctor".into(),
+                        ctor_sig,
+                        true,
+                    ))]
+            }
         },
         TyKind::Uint(int) => match int {
             UintTy::U8 => vec![
@@ -224,7 +240,23 @@ fn create_const_from_slice<'ctx>(
                 )),
                 CILOp::ConvUSize(false),
             ],
-            _ => todo!("Can't yet load const value of type {int:?} with bytes:{bytes:?}"),
+            UintTy::U128=>{
+                let value = u128::from_ne_bytes(bytes[..std::mem::size_of::<u128>()].try_into().expect("Invalid slice!"));
+                let low = (value & u128::from(u64::MAX)) as u64;
+                let high = (value << 64) as u64;
+                let low = i64::from_ne_bytes(low.to_ne_bytes());
+                let high = i64::from_ne_bytes(high.to_ne_bytes());
+                let ctor_sig =
+                    crate::function_sig::FnSig::new(&[Type::U64, Type::U64], &Type::Void);
+                vec![CILOp::LdcI64(high),
+                    CILOp::LdcI64(low),
+                    CILOp::NewObj(CallSite::boxed(
+                        Some(DotnetTypeRef::uint_128()),
+                        ".ctor".into(),
+                        ctor_sig,
+                        true,
+                    ))]
+            }
         },
         TyKind::RawPtr(type_and_mut) => match type_and_mut.ty.kind() {
             TyKind::Slice(_) => {

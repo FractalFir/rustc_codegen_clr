@@ -96,6 +96,8 @@ pub enum CILOp {
     LdcF64(f64),
     /// Load string literal
     LdStr(IString),
+    /// Load the address of a function
+    LDFtn(Box<CallSite>),
     /// Load null reference
     LdNull,
     /// Signed intieger convertions
@@ -252,12 +254,13 @@ impl CILOp {
             _ => (),
         }
     }
-    /// If the cil op is a call, virtual call or new object cosntructor, returns the [`CallSite`] representing the called function.
+    /// If the cil op is a call, virtual call, new object cosntructor OR it loads a pointer to a function, returns the [`CallSite`] representing this function.
     pub fn call(&self) -> Option<&CallSite> {
         match self {
             Self::Call(site) => Some(site),
             Self::CallVirt(site) => Some(site),
             Self::NewObj(site) => Some(site),
+            Self::LDFtn(site)=>Some(site),
             _ => None,
         }
     }
@@ -444,6 +447,7 @@ impl CILOp {
             | CILOp::LoadAdressUnderTMPLocal(_)
             | CILOp::LoadTMPLocal => 1,
             CILOp::SetTMPLocal => -1,
+            CILOp::LDFtn(_) => 1,
             CILOp::LoadGlobalAllocPtr { alloc_id: _ } => 1,
         }
     }

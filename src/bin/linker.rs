@@ -96,7 +96,7 @@ fn autopatch(asm: &mut Assembly) {
     let call_sites = asm
         .call_sites()
         .filter(|call| call.is_static() && call.class().is_none())
-        .filter(|call| !asm.contains_fn_named(call.name()));
+        .filter(|call| !asm.contains_fn(call));
     let mut patched = std::collections::HashMap::new();
     for call in call_sites {
         if !patched.contains_key(call) {

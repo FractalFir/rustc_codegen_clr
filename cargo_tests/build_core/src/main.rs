@@ -5,8 +5,8 @@
 use mycorrhiza::{start,panic_handler};
 panic_handler!{}
 start!{}
-//#[lang = "eh_personality"]
-//fn rust_eh_personality() {}
+#[lang = "eh_personality"]
+fn rust_eh_personality() {}
 fn main() {
     let sb = mycorrhiza::system::text::StringBuilder::empty();
     sb.append_char('H');

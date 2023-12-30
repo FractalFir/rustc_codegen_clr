@@ -415,6 +415,10 @@ impl Assembly {
         //FIXME:This is inefficient.
         self.methods().any(|m| m.name() == name)
     }
+    /// Returns true if assembly contains function named `name`
+    pub fn contains_fn(&self, site: &CallSite) -> bool {
+        self.functions.contains_key(site)
+    }
     /// Adds a method to the assebmly.
     pub fn add_method(&mut self, mut method: Method) {
         method.allocate_temporaries();

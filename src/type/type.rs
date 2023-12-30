@@ -43,6 +43,7 @@ pub enum Type {
     DotnetChar,
     /// Rust FnDefs
     FnDef(IString),
+    DelegatePtr(Box<crate::function_sig::FnSig>)
 }
 #[derive(Serialize, Deserialize, PartialEq, Clone, Eq, Hash, Debug)]
 pub struct DotnetArray {
@@ -338,11 +339,14 @@ use crate::utilis::garg_to_string;
 
 use super::tuple_name;
 pub fn pointer_to_is_fat<'tyctx>(
-    pointed_type: Ty<'tyctx>,
+    mut pointed_type: Ty<'tyctx>,
     tyctx: TyCtxt<'tyctx>,
     method: Option<rustc_middle::ty::Instance<'tyctx>>,
 ) -> bool {
     use rustc_middle::ty::ParamEnv;
+    method.inspect(|method| {
+        pointed_type = crate::utilis::monomorphize(method, pointed_type, tyctx);
+    });
     let (metadata, fat_if_not_sized) = pointed_type.ptr_metadata_ty(tyctx, |mut ty| {
         method.inspect(|method| {
             ty = crate::utilis::monomorphize(method, ty, tyctx);
@@ -351,6 +355,15 @@ pub fn pointer_to_is_fat<'tyctx>(
     });
     //TODO: fat_if_not_sized is suposed to tell me if a pointer being fat depends on if the type is sized.
     // I am not sure how this is suposed to work exactly, so it gets ignored for now.
-    let is_sized = pointed_type.is_sized(tyctx, ParamEnv::reveal_all());
-    !is_sized
+    //let is_sized = pointed_type.is_sized(tyctx, ParamEnv::reveal_all());
+    let is_trivialy_sized = pointed_type.is_trivially_sized(tyctx);
+    if is_trivialy_sized{
+       // Sized types don't need fat pointers
+        false
+    }
+    else{
+        // TODO: PROPELY check if type is sized 
+        //pointed_type.is_sized(tyctx, ParamEnv::reveal_all())
+        true
+    }
 }

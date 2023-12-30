@@ -545,9 +545,10 @@ test_lib! {libc}
 
 test_lib! {references}
 //test_lib! {structs}
-
+test_lib! {empty_string_slice}
 test_lib! {types}
 test_lib! {recursive}
+test_lib! {fn_ptr}
 test_lib! {tuple}
 
 run_test! {arthm,add}

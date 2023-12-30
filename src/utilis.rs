@@ -45,7 +45,6 @@ pub fn adt_name<'tyctx>(
         rustc_symbol_mangling::symbol_name_for_instance_in_crate(tyctx, adt_instance, krate);
     escape_class_name(&auto_mangled)
 }
-
 pub fn escape_class_name(name: &str) -> IString {
     name.replace("::", ".")
         .replace("..", ".")
@@ -97,10 +96,23 @@ pub fn variant_name(ty: Ty, idx: u32) -> crate::IString {
 }
 /// Escapes the name of a function
 pub fn function_name(name: SymbolName) -> crate::IString {
-    name.to_string()
-        .replace('$', "_ds_")
+    let mut name:IString = name.to_string()
+    .replace('$', "_ds_")
         .replace("..", "_dd_")
-        .into()
+        .into();
+    // Name TOO long
+    if name.len() > 1000{
+        use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
+//TODO: make hashes consitant!
+fn calculate_hash<T: Hash>(t: &T) -> u64 {
+    let mut s = DefaultHasher::new();
+    t.hash(&mut s);
+    s.finish()
+}
+        name = format!("{}_{}",&name[..1000],calculate_hash(&name)).into();
+    }
+    name
 }
 /// Monomorphizes type `ty`
 pub fn monomorphize<'tcx, T: TypeFoldable<TyCtxt<'tcx>> + Clone>(

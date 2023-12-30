@@ -351,6 +351,30 @@ pub fn handle_rvalue<'tcx>(
             }
             ops
         }
+        Rvalue::Cast(CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer), operand,target)=>{
+            let operand_ty = operand.ty(method,tyctx);
+            operand.constant().expect("function must be constant in order to take its adress!");
+            let operand_ty = crate::utilis::monomorphize(&method_instance, operand_ty, tyctx);
+            let target = crate::utilis::monomorphize(&method_instance, *target, tyctx);
+            let (instance, subst_ref) = if let TyKind::FnDef(def_id, subst_ref) = operand_ty.kind() {
+                let subst = crate::utilis::monomorphize(&method_instance, *subst_ref, tyctx);
+                let env = ParamEnv::reveal_all();
+                let Some(instance) =
+                    Instance::resolve(tyctx, env, *def_id, subst).expect("Invalid function def")
+                else {
+                    panic!("ERROR: Could not get function instance. fn type:{operand_ty:?}")
+                };
+        
+                (instance, subst_ref)
+            } else {
+                todo!("Trying to call a type which is not a function definition!");
+            };
+            let function_name = crate::utilis::function_name(tyctx.symbol_name(instance));
+            let function_sig = FnSig::sig_from_instance_(instance,tyctx,tycache).expect("Could not get function signature when trying to get a function pointer!");
+            //FIXME: propely handle `#[track_caller]`
+            let call_site = CallSite::new(None,function_name,function_sig,true);
+            vec![CILOp::LDFtn(call_site.into())]
+        }
         Rvalue::Cast(kind, _operand, _) => todo!("Unhandled cast kind {kind:?}, rvalue:{rvalue:?}"),
         Rvalue::Discriminant(place) => {
             let mut ops =
@@ -430,6 +454,7 @@ pub fn handle_rvalue<'tcx>(
             ops.push(CILOp::FreeTMPLocal);
             ops
         }
+    
         _ => rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Unhandled RValue {rvalue:?}")},
     };
     res

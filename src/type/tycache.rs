@@ -255,16 +255,6 @@ impl TyCache {
             }
             TyKind::Never => Type::Void,
             TyKind::RawPtr(type_and_mut) => {
-                let (metadata, fat_if_not_sized) =
-                    type_and_mut.ty.ptr_metadata_ty(tyctx, |mut ty| {
-                        method.inspect(|method| {
-                            ty = crate::utilis::monomorphize(method, ty, tyctx);
-                        });
-                        ty
-                    });
-                //TODO: fat_if_not_sized is suposed to tell me if a pointer being fat depends on if the type is sized.
-                // I am not sure how this is suposed to work exactly, so it gets ignored for now.
-                let is_sized = type_and_mut.ty.is_sized(tyctx, ParamEnv::reveal_all());
                 if super::pointer_to_is_fat(type_and_mut.ty, tyctx, method) {
                     let inner = match type_and_mut.ty.kind() {
                         TyKind::Slice(inner) => {
@@ -302,16 +292,8 @@ impl TyCache {
                 Type::Unresolved
             }
             TyKind::Ref(_region, inner, _mut) => {
-                let (metadata, fat_if_not_sized) = inner.ptr_metadata_ty(tyctx, |mut ty| {
-                    method.inspect(|method| {
-                        ty = crate::utilis::monomorphize(method, ty, tyctx);
-                    });
-                    ty
-                });
-                //TODO: fat_if_not_sized is suposed to tell me if a pointer being fat depends on if the type is sized.
-                // I am not sure how this is suposed to work exactly, so it gets ignored for now.
-                let is_sized = inner.is_sized(tyctx, ParamEnv::reveal_all());
-                if !is_sized {
+
+                if super::pointer_to_is_fat(*inner, tyctx, method) {
                     let inner = match inner.kind() {
                         TyKind::Slice(inner) => {
                             let inner = if let Some(method) = method {
@@ -352,9 +334,17 @@ impl TyCache {
                 Type::Foreign
             }
             TyKind::Bound(_, _inner) => Type::Foreign,
-            TyKind::FnPtr(_) => Type::USize,
-            TyKind::Slice(_inner) => {
-                todo!("Slice!")
+            TyKind::FnPtr(sig)=> {
+                let sig = if let Some(method) = method {
+                    crate::utilis::monomorphize(&method, *sig, tyctx)
+                } else {
+                    *sig
+                };
+                let sig = sig.skip_binder();
+                let output =  self.type_from_cache(sig.output(), tyctx, method);
+                let inputs:Box<[Type]> =  sig.inputs().iter().map(|input|self.type_from_cache(*input, tyctx, method)).collect();
+                let sig = FnSig::new(&inputs,&output);
+                Type::DelegatePtr(sig.into())
             }
             TyKind::FnDef(did, subst) => {
                 let instance = Instance::resolve(tyctx, ParamEnv::reveal_all(), *did, subst)
