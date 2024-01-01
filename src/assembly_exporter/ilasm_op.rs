@@ -59,8 +59,9 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
                     input_string.push(',');
                     input_string.push_str(&non_void_type_cil(arg));
                 }
+                let callconv = "";
             format!(
-                "calli {output} ({input_string})",
+                "calli {callconv} {output} ({input_string})",
                 output = type_cil(sig.output())
             ).into()
         }

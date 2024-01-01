@@ -49,9 +49,13 @@ The project is still very early in development, but it has made significant prog
 - [X] Enums
 - [X] Tuples
 - [X] Traits *Most should work*
-- [X] iterators
-- [ ] Closures
-- [ ] Function types
+- [X] Iterators
+- [X] Closures
+- [X] Function types
+- [X] Function pointers *there are some unhnadled edge cases, related to `#[track_caller]`*
+- [ ] DSTs *Partial support*
+- [ ] Trait objects 
+#### Experimental rust types 
 
 ## Milestones
 

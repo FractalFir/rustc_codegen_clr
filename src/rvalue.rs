@@ -94,9 +94,20 @@ pub fn handle_rvalue<'tcx>(
             let source_type = tycache.type_from_cache(source, tyctx, Some(method_instance));
             let target_type = tycache.type_from_cache(target, tyctx, Some(method_instance));
             let target_dotnet = target_type.as_dotnet().unwrap();
+            let mut res = handle_operand(operand, tyctx, method, method_instance, tycache);
             let derefed_source = match source.kind() {
                 TyKind::RawPtr(tpe) => tpe.ty,
                 TyKind::Ref(_, inner, _) => *inner,
+                TyKind::Adt(_,_)=>{
+                    if source.is_box(){
+                        let inner = source.boxed_ty();
+                        let field_descriptor = crate::utilis::field_descrptor(source, 0, tyctx, method_instance, tycache);
+                        res.push(CILOp::LDField(field_descriptor.into()));
+                        inner
+                    }else{
+                        panic!("Non ptr type:{source:?}")
+                    }
+                }
                 _ => panic!("Non ptr type:{source:?}"),
             };
             let length = if let TyKind::Array(_, length) = derefed_source.kind() {
@@ -105,7 +116,7 @@ pub fn handle_rvalue<'tcx>(
                 panic!("Non array type. source:{source:?} target:{target:?}")
             };
             //let element_type = tycache.type_from_cache(*element, tyctx, Some(method_instance));
-            let mut res = handle_operand(operand, tyctx, method, method_instance, tycache);
+           
             println!("Unsize casting {target:?} to {target:?}");
             res.extend([
                 CILOp::NewTMPLocal(source_type.clone().into()),

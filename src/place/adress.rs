@@ -183,6 +183,11 @@ pub fn place_elem_adress<'ctx>(
                 }
             }
         }
+        PlaceElem::Subslice{from,to,
+            from_end}=>{
+                assert!(!from_end,"Can't subslice from end!");
+                todo!("Subslice!")
+            }
         PlaceElem::ConstantIndex {
             offset,
             min_length,

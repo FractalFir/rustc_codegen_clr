@@ -219,6 +219,14 @@ fn create_const_from_slice<'ctx>(
                 ]
             }
         },
+        TyKind::Float(float) => match float {
+            FloatTy::F32 => vec![CILOp::LdcF32(f32::from_le_bytes(
+                bytes[..std::mem::size_of::<f32>()].try_into().unwrap(),
+            ))],
+            FloatTy::F64 => vec![CILOp::LdcF64(f64::from_le_bytes(
+                bytes[..std::mem::size_of::<f64>()].try_into().unwrap(),
+            ))],
+        },
         TyKind::Uint(int) => match int {
             UintTy::U8 => vec![
                 CILOp::LdcI32(i8::from_le_bytes(
@@ -275,7 +283,26 @@ fn create_const_from_slice<'ctx>(
                 todo!("Can't load const slices.")
             }
             TyKind::Str => {
-                todo!("Can't load const string slices.")
+                let ptr = u64::from_ne_bytes(bytes[..8].try_into().unwrap());
+                let len = u64::from_ne_bytes(bytes[8..].try_into().unwrap());
+                let slice_ty = crate::r#type::slice_ref_to(tyctx, tycache, Ty::new_slice(tyctx, Ty::new(tyctx, TyKind::Uint(UintTy::U8))), Some(method_instance));
+                todo!("Can't load const string slices. ptr:{ptr} len:{len}")
+            }
+            _ => {
+                eprintln!("WARNING: assuming sizeof<*T>() == 8!");
+                vec![CILOp::LdcI64(i64::from_le_bytes(
+                    bytes[..std::mem::size_of::<i64>()].try_into().unwrap(),
+                ))]
+            }
+        },
+        TyKind::Ref(_,inner,_) => match inner.kind() {
+            TyKind::Slice(_) => {
+                todo!("Can't load const slices.")
+            }
+            TyKind::Str => {
+                let ptr = u64::from_ne_bytes(bytes[..8].try_into().unwrap());
+                let len = u64::from_ne_bytes(bytes[8..].try_into().unwrap());
+                todo!("Can't load const string slices. ptr:{ptr} len:{len}")
             }
             _ => {
                 eprintln!("WARNING: assuming sizeof<*T>() == 8!");
@@ -384,6 +411,7 @@ fn create_const_from_data<'ctx>(
         size: Size::from_bytes((len as u64) - offset_bytes),
     };
     let bytes = memory.0.get_bytes_unchecked(range);
+    //eprintln!("Creating const {ty:?} from data of length {len}.");
     create_const_from_slice(ty, tyctx, bytes, method_instance, tycache)
 }
 
