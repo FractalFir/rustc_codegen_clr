@@ -362,7 +362,7 @@ pub fn pointer_to_is_fat<'tyctx>(
         false
     } else {
         // TODO: PROPELY check if type is sized
-        pointed_type.is_sized(tyctx, ParamEnv::reveal_all())
+        !pointed_type.is_sized(tyctx, ParamEnv::reveal_all())
         //true
     }
 }
