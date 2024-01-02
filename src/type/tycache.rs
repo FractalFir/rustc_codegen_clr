@@ -287,10 +287,7 @@ impl TyCache {
                 }
                 self.adt(&name, *def, subst, tyctx, method).into()
             }
-            TyKind::Dynamic(trait_, _, dyn_kind) => {
-                println!("trait:{trait_:?} dyn_kind:{dyn_kind:?}");
-                Type::Unresolved
-            }
+          
             TyKind::Ref(_region, inner, _mut) => {
                 if super::pointer_to_is_fat(*inner, tyctx, method) {
                     let inner = match inner.kind() {

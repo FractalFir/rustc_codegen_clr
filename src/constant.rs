@@ -279,14 +279,44 @@ fn create_const_from_slice<'ctx>(
             }
         },
         TyKind::RawPtr(type_and_mut) => match type_and_mut.ty.kind() {
-            TyKind::Slice(_) => {
-                todo!("Can't load const slices.")
+            TyKind::Slice(inner) => {
+                let ptr = u64::from_ne_bytes(bytes[..8].try_into().unwrap());
+                let len = u64::from_ne_bytes(bytes[8..].try_into().unwrap());
+                let slice_type = crate::r#type::slice_ref_to(tyctx, tycache, Ty::new_slice(tyctx, *inner), Some(method_instance));
+                let slice_dotnet = slice_type.as_dotnet().unwrap();
+                vec![
+                    CILOp::NewTMPLocal(slice_type.into()),
+                    CILOp::LoadAddresOfTMPLocal,
+                    CILOp::LdcI64(ptr as i64),
+                    CILOp::ConvUSize(false),
+                    CILOp::STField(FieldDescriptor::new(slice_dotnet.clone(),Type::Ptr(Type::Void.into()),"data_adress".into()).into()),
+                    CILOp::LoadAddresOfTMPLocal,
+                    CILOp::LdcI64(len as i64),
+                    CILOp::ConvUSize(false),
+                    CILOp::STField(FieldDescriptor::new(slice_dotnet,Type::USize,"metadata".into()).into()),
+                    CILOp::LoadTMPLocal,
+                    CILOp::FreeTMPLocal,
+                ]
             }
             TyKind::Str => {
                 let ptr = u64::from_ne_bytes(bytes[..8].try_into().unwrap());
                 let len = u64::from_ne_bytes(bytes[8..].try_into().unwrap());
-                let slice_ty = crate::r#type::slice_ref_to(tyctx, tycache, Ty::new_slice(tyctx, Ty::new(tyctx, TyKind::Uint(UintTy::U8))), Some(method_instance));
-                todo!("Can't load const string slices. ptr:{ptr} len:{len}")
+                let slice_type = crate::r#type::slice_ref_to(tyctx, tycache, Ty::new_slice(tyctx, Ty::new(tyctx, TyKind::Uint(UintTy::U8))), Some(method_instance));
+                let slice_dotnet = slice_type.as_dotnet().unwrap();
+                vec![
+                    CILOp::NewTMPLocal(slice_type.into()),
+                    CILOp::LoadAddresOfTMPLocal,
+                    CILOp::LdcI64(ptr as i64),
+                    CILOp::ConvUSize(false),
+                    CILOp::STField(FieldDescriptor::new(slice_dotnet.clone(),Type::Ptr(Type::Void.into()),"data_adress".into()).into()),
+                    CILOp::LoadAddresOfTMPLocal,
+                    CILOp::LdcI64(len as i64),
+                    CILOp::ConvUSize(false),
+                    CILOp::STField(FieldDescriptor::new(slice_dotnet,Type::USize,"metadata".into()).into()),
+                    CILOp::LoadTMPLocal,
+                    CILOp::FreeTMPLocal,
+                ]
+                //todo!("Can't load const string slices. ptr:{ptr} len:{len}")
             }
             _ => {
                 eprintln!("WARNING: assuming sizeof<*T>() == 8!");
@@ -296,13 +326,43 @@ fn create_const_from_slice<'ctx>(
             }
         },
         TyKind::Ref(_,inner,_) => match inner.kind() {
-            TyKind::Slice(_) => {
-                todo!("Can't load const slices.")
+            TyKind::Slice(inner) => {
+                let ptr = u64::from_ne_bytes(bytes[..8].try_into().unwrap());
+                let len = u64::from_ne_bytes(bytes[8..].try_into().unwrap());
+                let slice_type = crate::r#type::slice_ref_to(tyctx, tycache, Ty::new_slice(tyctx,*inner), Some(method_instance));
+                let slice_dotnet = slice_type.as_dotnet().unwrap();
+                vec![
+                    CILOp::NewTMPLocal(slice_type.into()),
+                    CILOp::LoadAddresOfTMPLocal,
+                    CILOp::LdcI64(ptr as i64),
+                    CILOp::ConvUSize(false),
+                    CILOp::STField(FieldDescriptor::new(slice_dotnet.clone(),Type::Ptr(Type::Void.into()),"data_adress".into()).into()),
+                    CILOp::LoadAddresOfTMPLocal,
+                    CILOp::LdcI64(len as i64),
+                    CILOp::ConvUSize(false),
+                    CILOp::STField(FieldDescriptor::new(slice_dotnet,Type::USize,"metadata".into()).into()),
+                    CILOp::LoadTMPLocal,
+                    CILOp::FreeTMPLocal,
+                ]
             }
             TyKind::Str => {
                 let ptr = u64::from_ne_bytes(bytes[..8].try_into().unwrap());
                 let len = u64::from_ne_bytes(bytes[8..].try_into().unwrap());
-                todo!("Can't load const string slices. ptr:{ptr} len:{len}")
+                let slice_type = crate::r#type::slice_ref_to(tyctx, tycache, Ty::new_slice(tyctx, Ty::new(tyctx, TyKind::Uint(UintTy::U8))), Some(method_instance));
+                let slice_dotnet = slice_type.as_dotnet().unwrap();
+                vec![
+                    CILOp::NewTMPLocal(slice_type.into()),
+                    CILOp::LoadAddresOfTMPLocal,
+                    CILOp::LdcI64(ptr as i64),
+                    CILOp::ConvUSize(false),
+                    CILOp::STField(FieldDescriptor::new(slice_dotnet.clone(),Type::Ptr(Type::Void.into()),"data_adress".into()).into()),
+                    CILOp::LoadAddresOfTMPLocal,
+                    CILOp::LdcI64(len as i64),
+                    CILOp::ConvUSize(false),
+                    CILOp::STField(FieldDescriptor::new(slice_dotnet,Type::USize,"metadata".into()).into()),
+                    CILOp::LoadTMPLocal,
+                    CILOp::FreeTMPLocal,
+                ]
             }
             _ => {
                 eprintln!("WARNING: assuming sizeof<*T>() == 8!");
