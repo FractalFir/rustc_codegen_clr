@@ -85,13 +85,19 @@ pub fn handle_terminator<'ctx>(
                         type_cache,
                     ));
                     call_ops.push(CILOp::CallI(sig.clone().into()));
-                    if *sig.output() == crate::r#type::Type::Void{
+                    if *sig.output() == crate::r#type::Type::Void {
                         ops.extend(call_ops);
+                    } else {
+                        ops.extend(place_set(
+                            destination,
+                            tyctx,
+                            call_ops,
+                            method,
+                            method_instance,
+                            type_cache,
+                        ));
                     }
-                    else{
-                        ops.extend(place_set(destination, tyctx, call_ops, method, method_instance, type_cache));
-                    }
-                   
+
                     // Set return place
 
                     //vec![]

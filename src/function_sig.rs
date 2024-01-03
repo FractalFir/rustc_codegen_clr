@@ -26,7 +26,7 @@ impl FnSig {
         } else {
             sig
         };
-        let sig = tyctx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(),sig);
+        let sig = tyctx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), sig);
         let output = tycache.type_from_cache(sig.output(), tyctx, method_instance);
         let inputs: Box<[Type]> = sig
             .inputs()

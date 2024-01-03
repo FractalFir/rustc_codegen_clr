@@ -98,13 +98,19 @@ pub fn handle_rvalue<'tcx>(
             let derefed_source = match source.kind() {
                 TyKind::RawPtr(tpe) => tpe.ty,
                 TyKind::Ref(_, inner, _) => *inner,
-                TyKind::Adt(_,_)=>{
-                    if source.is_box(){
+                TyKind::Adt(_, _) => {
+                    if source.is_box() {
                         let inner = source.boxed_ty();
-                        let field_descriptor = crate::utilis::field_descrptor(source, 0, tyctx, method_instance, tycache);
+                        let field_descriptor = crate::utilis::field_descrptor(
+                            source,
+                            0,
+                            tyctx,
+                            method_instance,
+                            tycache,
+                        );
                         res.push(CILOp::LDField(field_descriptor.into()));
                         inner
-                    }else{
+                    } else {
                         panic!("Non ptr type:{source:?}")
                     }
                 }
@@ -116,7 +122,7 @@ pub fn handle_rvalue<'tcx>(
                 panic!("Non array type. source:{source:?} target:{target:?}")
             };
             //let element_type = tycache.type_from_cache(*element, tyctx, Some(method_instance));
-           
+
             println!("Unsize casting {target:?} to {target:?}");
             res.extend([
                 CILOp::NewTMPLocal(source_type.clone().into()),

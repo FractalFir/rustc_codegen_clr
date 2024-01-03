@@ -21,19 +21,6 @@ fn test_dotnet_executable(file_path: &str, test_dir: &str) {
     use std::io::Write;
 
     let exec_path = &format!("{file_path}.exe");
-    if *IS_MONO_PRESENT {
-        // Execute the test assembly
-        let out = std::process::Command::new("mono")
-            .current_dir(test_dir)
-            .args([exec_path])
-            .output()
-            .expect("failed to run test assebmly!");
-        let stderr = String::from_utf8(out.stderr).expect("Stdout is not UTF8 String!");
-        assert!(
-            stderr.is_empty(),
-            "Test program failed with message {stderr:}"
-        );
-    }
     //println!("exec_path:{exec_path:?}");
     if *IS_DOTNET_PRESENT {
         let config_path = format!("{test_dir}/{file_path}.runtimeconfig.json");
@@ -54,9 +41,26 @@ fn test_dotnet_executable(file_path: &str, test_dir: &str) {
             "Test program failed with message {stderr:}"
         );
     }
+    if *IS_MONO_PRESENT && crate::TEST_WITH_MONO {
+        // Execute the test assembly
+        let out = std::process::Command::new("mono")
+            .current_dir(test_dir)
+            .args([exec_path])
+            .output()
+            .expect("failed to run test assebmly!");
+        let stderr = String::from_utf8(out.stderr).expect("Stdout is not UTF8 String!");
+        assert!(
+            stderr.is_empty(),
+            "Test program failed with message {stderr:}"
+        );
+    }
+    else{
+        assert!(*IS_DOTNET_PRESENT, "Only mono runtime present. Mono does not support all the features required to get Rust code working.");
+    }
+
     assert!(
         (*IS_DOTNET_PRESENT || *IS_MONO_PRESENT),
-        "You must have either mono or dotnet runtime installed to run tests."
+        "You must have the dotnet runtime installed to run tests."
     );
 }
 macro_rules! test_lib {
@@ -560,6 +564,7 @@ run_test! {types,nbody}
 run_test! {types,structs}
 run_test! {types,interop}
 run_test! {types,vec}
+run_test! {types,subslice}
 run_test! {types,string_slice}
 run_test! {types,ref_deref}
 run_test! {types,slice_ptr_cast}

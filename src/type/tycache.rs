@@ -232,7 +232,7 @@ impl TyCache {
                 let mut sig = closure.sig();
                 method.inspect(|method| sig = crate::utilis::monomorphize(method, sig, tyctx));
                 ////FIXME: This should be OK(since the signature is monomorphized and we don't care about lifetimes anyway), but it would be nice to have a better solution for this.
-                let sig = tyctx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(),sig);
+                let sig = tyctx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), sig);
                 let inputs: Box<_> = sig
                     .inputs()
                     .iter()
@@ -287,7 +287,7 @@ impl TyCache {
                 }
                 self.adt(&name, *def, subst, tyctx, method).into()
             }
-          
+
             TyKind::Ref(_region, inner, _mut) => {
                 if super::pointer_to_is_fat(*inner, tyctx, method) {
                     let inner = match inner.kind() {

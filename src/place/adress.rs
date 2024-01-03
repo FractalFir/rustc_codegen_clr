@@ -183,11 +183,82 @@ pub fn place_elem_adress<'ctx>(
                 }
             }
         }
-        PlaceElem::Subslice{from,to,
-            from_end}=>{
-                assert!(!from_end,"Can't subslice from end!");
-                todo!("Subslice!")
+        PlaceElem::Subslice { from, to, from_end } => {
+            let curr_type = crate::r#type::tycache::slice_ref_to(
+                tyctx,
+                type_cache,
+                curr_type.as_ty().expect("Can't index into an enum!"),
+                Some(method_instance),
+            );
+            let curr_dotnet = curr_type.as_dotnet().unwrap();
+            if *from_end {
+                vec![
+                    CILOp::NewTMPLocal(Box::new(curr_type.clone())),
+                    CILOp::SetTMPLocal,
+                    CILOp::LoadAddresOfTMPLocal,
+                    CILOp::LoadAddresOfTMPLocal,
+                    CILOp::LDField(FieldDescriptor::boxed(
+                        curr_dotnet.clone(),
+                        Type::Ptr(Type::Void.into()),
+                        "data_adress".into(),
+                    )),
+                    CILOp::LdcI64(*from as i64),
+                    CILOp::ConvUSize(false),
+                    CILOp::Add,
+                    CILOp::STField(FieldDescriptor::boxed(
+                        curr_dotnet.clone(),
+                        Type::Ptr(Type::Void.into()),
+                        "data_adress".into(),
+                    )),
+                    CILOp::LoadAddresOfTMPLocal,
+                    CILOp::LoadAddresOfTMPLocal,
+                    CILOp::LDField(FieldDescriptor::boxed(
+                        curr_dotnet.clone(),
+                        Type::USize,
+                        "metadata".into(),
+                    )),
+                    CILOp::LdcI64(*to as i64),
+                    CILOp::ConvUSize(false),
+                    CILOp::Sub,
+                    CILOp::STField(FieldDescriptor::boxed(
+                        curr_dotnet,
+                        Type::USize,
+                        "metadata".into(),
+                    )),
+                    CILOp::LoadTMPLocal,
+                    CILOp::FreeTMPLocal,
+                ]
+            } else {
+                vec![
+                    CILOp::NewTMPLocal(Box::new(curr_type.clone())),
+                    CILOp::SetTMPLocal,
+                    CILOp::LoadAddresOfTMPLocal,
+                    CILOp::LoadAddresOfTMPLocal,
+                    CILOp::LDField(FieldDescriptor::boxed(
+                        curr_dotnet.clone(),
+                        Type::Ptr(Type::Void.into()),
+                        "data_adress".into(),
+                    )),
+                    CILOp::LdcI64(*from as i64),
+                    CILOp::ConvUSize(false),
+                    CILOp::Add,
+                    CILOp::STField(FieldDescriptor::boxed(
+                        curr_dotnet.clone(),
+                        Type::Ptr(Type::Void.into()),
+                        "data_adress".into(),
+                    )),
+                    CILOp::LoadAddresOfTMPLocal,
+                    CILOp::LdcI64((to - from) as i64),
+                    CILOp::STField(FieldDescriptor::boxed(
+                        curr_dotnet,
+                        Type::USize,
+                        "metadata".into(),
+                    )),
+                    CILOp::LoadTMPLocal,
+                    CILOp::FreeTMPLocal,
+                ]
             }
+        }
         PlaceElem::ConstantIndex {
             offset,
             min_length,

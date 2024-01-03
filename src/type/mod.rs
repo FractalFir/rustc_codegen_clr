@@ -39,6 +39,13 @@ pub fn mangle(tpe: &Type) -> std::borrow::Cow<'static, str> {
         Type::GenericArg(_) => todo!("Can't mangle generic type arg"),
         Type::FnDef(name) => format!("fn{}{}", name.len(), name).into(),
         Type::Unresolved => "un".into(),
+        Type::DelegatePtr(sig) => format!(
+            "d{output}{input_count}{input_string}",
+            output = mangle(sig.output()),
+            input_count = sig.inputs().len(),
+            input_string = sig.inputs().iter().map(|t| mangle(t)).collect::<String>()
+        )
+        .into(),
         _ => todo!("Can't mangle type {tpe:?}"),
     }
 }
