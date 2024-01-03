@@ -11,6 +11,8 @@ pub const MANAGED_CALL_VIRT_FN_NAME: &str = "rustc_clr_interop_managed_call_virt
 pub fn is_function_magic(name: &str) -> bool {
     name.contains(CTOR_FN_NAME) || name.contains(MANAGED_CALL_FN_NAME)
 }
+use crate::method;
+use crate::r#type::pointer_to_is_fat;
 use crate::{
     cil::{CILOp, FieldDescriptor},
     r#type::TyCache,
@@ -308,7 +310,11 @@ pub fn garag_to_bool<'tyctx>(garg: GenericArg<'tyctx>, _ctx: TyCtxt<'tyctx>) -> 
     }
 }
 /// This function returns the size of a type at the compile time. This should be used ONLY for handling constants. It currently assumes a 64 bit env
-pub fn compiletime_sizeof<'tyctx>(ty: Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -> usize {
+pub fn compiletime_sizeof<'tyctx>(
+    ty: Ty<'tyctx>,
+    tyctx: TyCtxt<'tyctx>,
+    method_instance: Instance<'tyctx>,
+) -> usize {
     use rustc_middle::ty::{IntTy, UintTy};
     match ty.kind() {
         TyKind::Int(int) => match int {
@@ -341,38 +347,51 @@ pub fn compiletime_sizeof<'tyctx>(ty: Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -> usiz
         TyKind::Adt(def, subst) => match def.adt_kind() {
             AdtKind::Struct => def
                 .all_fields()
-                .map(|field| compiletime_sizeof(field.ty(tyctx, subst), tyctx))
+                .map(|field| compiletime_sizeof(field.ty(tyctx, subst), tyctx, method_instance))
                 .sum::<usize>(),
             AdtKind::Union => def
                 .all_fields()
-                .map(|field| compiletime_sizeof(field.ty(tyctx, subst), tyctx))
+                .map(|field| compiletime_sizeof(field.ty(tyctx, subst), tyctx, method_instance))
                 .max()
                 .unwrap_or(0),
             AdtKind::Enum => {
-                let _tag = match def.variants().len() {
+                let tag = match def.variants().len() {
                     0 => 0,
                     1..=256 => 1,
                     257..=65_535 => 2,
                     65_536..=4_294_967_295 => 4,
                     _ => 8,
                 };
-                todo!("Can't calculate compiletime sizeof Enum!")
+                let mut max_size = 0;
+                for variant in def.variants() {
+                    let variant_size = variant
+                        .fields
+                        .iter()
+                        .map(|field| {
+                            let field = field.ty(tyctx, subst);
+                            let field = monomorphize(&method_instance, field, tyctx);
+                            compiletime_sizeof(field, tyctx, method_instance)
+                        })
+                        .sum::<usize>();
+                    max_size = max_size.max(variant_size);
+                }
+                // Tag + largest variant
+                tag + max_size
             }
         },
         TyKind::Tuple(elements) => elements
             .iter()
-            .map(|element| compiletime_sizeof(element, tyctx))
+            .map(|element| compiletime_sizeof(element, tyctx, method_instance))
             .sum::<usize>(),
-        TyKind::RawPtr(type_and_mut) => match type_and_mut.ty.kind() {
-            TyKind::Slice(inner) => {
-                rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Can't compute compiletime sizeof *[{inner:?}]")}
-            }
-            TyKind::Str => todo!("Can't compute compiletime sizeof *str"),
-            _ => {
+        TyKind::RawPtr(type_and_mut) => {
+            if pointer_to_is_fat(type_and_mut.ty, tyctx, Some(method_instance)) {
+                eprintln!("WARNING: Assuming sizeof::<*T>() == sizeof::<isize>() == 8!");
+                8 * 2
+            } else {
                 eprintln!("WARNING: Assuming sizeof::<*T>() == sizeof::<isize>() == 8!");
                 8
             }
-        },
+        }
         _ => todo!("Can't compute compiletime sizeof {ty:?}"),
     }
 }

@@ -53,8 +53,7 @@ fn test_dotnet_executable(file_path: &str, test_dir: &str) {
             stderr.is_empty(),
             "Test program failed with message {stderr:}"
         );
-    }
-    else{
+    } else {
         assert!(*IS_DOTNET_PRESENT, "Only mono runtime present. Mono does not support all the features required to get Rust code working.");
     }
 

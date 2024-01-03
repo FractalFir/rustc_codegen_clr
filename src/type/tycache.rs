@@ -365,6 +365,14 @@ impl TyCache {
                 }
                 DotnetTypeRef::array(element, length).into()
             }
+            TyKind::Alias(_,_)=>{
+                //self.cycle_prevention.push("ALIAS_PREV")
+                if let Some(method) = method {
+                    self.type_from_cache(crate::utilis::monomorphize(&method, ty, tyctx), tyctx, Some(method))
+                } else {
+                    panic!("Unmorphized alias {ty:?}")
+                }
+            }
             _ => todo!("Can't yet get type {ty:?} from type cache."),
         }
     }

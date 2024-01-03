@@ -86,7 +86,7 @@ pub const TRACE_CALLS: bool = true;
 pub const TRACE_STATEMENTS: bool = false;
 /// Allows the optimizer to inline very simple functions. It is buggy.
 pub const INLINE_SIMPLE_FUNCTIONS: bool = false;
-pub const TEST_WITH_MONO:bool = false;
+pub const TEST_WITH_MONO: bool = false;
 // Modules
 
 /// Specifies if a method/type is private or public.

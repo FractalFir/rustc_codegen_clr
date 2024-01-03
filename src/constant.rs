@@ -50,7 +50,7 @@ fn create_const_adt_from_bytes<'ctx>(
             let mut creator_ops = vec![CILOp::NewTMPLocal(cil_ty.clone().into())];
             for field in adt_def.all_fields() {
                 let ftype = field.ty(tyctx, subst);
-                let sizeof = crate::utilis::compiletime_sizeof(ftype, tyctx);
+                let sizeof = crate::utilis::compiletime_sizeof(ftype, tyctx, method_instance);
                 let field_bytes = &bytes[curr_offset..(curr_offset + sizeof)];
                 let field_ops =
                     create_const_from_slice(ftype, tyctx, field_bytes, method_instance, tycache);
@@ -84,7 +84,7 @@ fn create_const_adt_from_bytes<'ctx>(
             let mut creator_ops = vec![CILOp::NewTMPLocal(cil_ty.clone().into())];
             for field in adt_def.all_fields() {
                 let ftype = field.ty(tyctx, subst);
-                let sizeof = crate::utilis::compiletime_sizeof(ftype, tyctx);
+                let sizeof = crate::utilis::compiletime_sizeof(ftype, tyctx, method_instance);
                 let field_bytes = &bytes[curr_offset..(curr_offset + sizeof)];
                 let field_ops =
                     create_const_from_slice(ftype, tyctx, field_bytes, method_instance, tycache);
@@ -189,7 +189,7 @@ fn create_const_from_slice<'ctx>(
             ))],
             IntTy::Isize => vec![
                 CILOp::LdcI64(i64::from_le_bytes(
-                    bytes[..crate::utilis::compiletime_sizeof(ty, tyctx)]
+                    bytes[..crate::utilis::compiletime_sizeof(ty, tyctx, method_instance)]
                         .try_into()
                         .unwrap(),
                 )),
@@ -248,7 +248,7 @@ fn create_const_from_slice<'ctx>(
             ))],
             UintTy::Usize => vec![
                 CILOp::LdcI64(i64::from_le_bytes(
-                    bytes[..crate::utilis::compiletime_sizeof(ty, tyctx)]
+                    bytes[..crate::utilis::compiletime_sizeof(ty, tyctx, method_instance)]
                         .try_into()
                         .unwrap(),
                 )),
@@ -447,7 +447,7 @@ fn create_const_from_slice<'ctx>(
             for (idx, (element_type, element_ty)) in
                 element_types.iter().zip(elements.iter()).enumerate()
             {
-                let sizeof = crate::utilis::compiletime_sizeof(element_ty, tyctx);
+                let sizeof = crate::utilis::compiletime_sizeof(element_ty, tyctx, method_instance);
                 let field_bytes = &bytes[curr_offset..(curr_offset + sizeof)];
                 let field_ops = create_const_from_slice(
                     element_ty,
@@ -475,7 +475,8 @@ fn create_const_from_slice<'ctx>(
             let length = crate::utilis::monomorphize(&method_instance, *length, tyctx);
             let element_ty = crate::utilis::monomorphize(&method_instance, *element_ty, tyctx);
 
-            let element_sizeof = crate::utilis::compiletime_sizeof(element_ty, tyctx);
+            let element_sizeof =
+                crate::utilis::compiletime_sizeof(element_ty, tyctx, method_instance);
             let length = crate::utilis::try_resolve_const_size(length).unwrap();
             let mut curr_offset = 0;
             let mut res = vec![CILOp::NewTMPLocal(array_type.clone().into())];

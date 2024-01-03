@@ -56,10 +56,12 @@ impl FnSig {
             _ => panic!("ERROR:calling using convention {conv:?} is not supported!"),
         }
         assert!(!fn_abi.c_variadic);
-        let ret = tycache.type_from_cache(fn_abi.ret.layout.ty, tcx, Some(function));
+        let ret = crate::utilis::monomorphize(&function, fn_abi.ret.layout.ty, tcx);
+        let ret = tycache.type_from_cache(ret, tcx, Some(function));
         let mut args = Vec::with_capacity(fn_abi.args.len());
         for arg in fn_abi.args.iter() {
-            args.push(tycache.type_from_cache(arg.layout.ty, tcx, Some(function)));
+            let arg = crate::utilis::monomorphize(&function, arg.layout.ty, tcx);
+            args.push(tycache.type_from_cache(arg, tcx, Some(function)));
         }
         // There are 2 ABI enums for some reasons(they differ in what memebers they have)
         let fn_ty = function.ty(tcx, ParamEnv::reveal_all());
