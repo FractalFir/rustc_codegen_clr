@@ -366,21 +366,21 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
         .into(),
         CILOp::LDField(descr) => format!(
             "ldfld {prefixed_type} {owner}::{field_name}",
-            prefixed_type = type_cil(descr.tpe()),
+            prefixed_type = non_void_type_cil(descr.tpe()),
             owner = type_cil(&descr.owner().clone().into()),
             field_name = descr.name()
         )
         .into(),
         CILOp::LDFieldAdress(descr) => format!(
             "ldflda {prefixed_type} {owner}::{field_name}",
-            prefixed_type = type_cil(descr.tpe()),
+            prefixed_type = non_void_type_cil(descr.tpe()),
             owner = type_cil(&descr.owner().clone().into()),
             field_name = descr.name()
         )
         .into(),
         CILOp::STField(descr) => format!(
             "stfld {prefixed_type} {owner}::{field_name}",
-            prefixed_type = type_cil(descr.tpe()),
+            prefixed_type = non_void_type_cil(descr.tpe()),
             owner = type_cil(&descr.owner().clone().into()),
             field_name = descr.name()
         )
@@ -426,15 +426,16 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
         CILOp::LDStaticField(static_field) => {
             match static_field.owner(){
                 Some(_owner)=>todo!("Can't load static field {static_field:?}"),
-                None=>format!("ldsfld {tpe} {name}",tpe = type_cil(static_field.tpe()), name = static_field.name()).into(),
+                None=>format!("ldsfld {tpe} {name}",tpe = non_void_type_cil(static_field.tpe()), name = static_field.name()).into(),
             }
         }
         CILOp::STStaticField(static_field) => {
             match static_field.owner(){
                 Some(_owner)=>todo!("Can't load static field {static_field:?}"),
-                None=>format!("stsfld {tpe} {name}",tpe = type_cil(static_field.tpe()), name = static_field.name()).into(),
+                None=>format!("stsfld {tpe} {name}",tpe = non_void_type_cil(static_field.tpe()), name = static_field.name()).into(),
             }
         }
+        CILOp::InitObj(tpe)=>format!("initobj {tpe}",tpe = non_void_type_cil(tpe)).into(),
     }
 }
 pub fn non_void_type_cil(tpe: &Type) -> Cow<'static, str> {

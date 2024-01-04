@@ -442,6 +442,8 @@ pub fn handle_rvalue<'tcx>(
             ops
         }
         Rvalue::Repeat(operand, times) => {
+            let times =
+            crate::utilis::monomorphize(&method_instance, *times, tyctx);
             let times = times
                 .try_eval_target_usize(tyctx, ParamEnv::reveal_all())
                 .expect("Could not evalute array size as usize.");

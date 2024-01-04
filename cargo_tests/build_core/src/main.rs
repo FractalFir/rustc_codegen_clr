@@ -1,10 +1,11 @@
 #![allow(internal_features,unused_imports,incomplete_features,unused_variables,dead_code,improper_ctypes_definitions)]
 #![feature(lang_items,adt_const_params,associated_type_defaults,core_intrinsics,start)]
 #![no_std]
-
+mod ascii;
 use mycorrhiza::{start,panic_handler};
 panic_handler!{}
 start!{}
+use crate::ascii::*;
 #[lang = "eh_personality"]
 fn rust_eh_personality() {}
 fn main() {
@@ -35,6 +36,6 @@ fn main() {
     sb.append_char('\r');
     let mstr = sb.to_mstring();
     mycorrhiza::system::console::Console::writeln_string(mstr);
-    use mycorrhiza::std::vec::Vec;
-    
+    //use mycorrhiza::std::vec::Vec;
+    test_is_ascii();
 }

@@ -1,5 +1,8 @@
 mod atomics;
-use crate::r#type::DotnetTypeRef;
+mod ctpop;
+mod exact_div;
+mod caller_location;
+use crate::r#type::{DotnetTypeRef, TyCache};
 use crate::{
     access_modifier::AccessModifer,
     assembly::Assembly,
@@ -190,7 +193,9 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     asm.add_method(volatile_load);
 
     atomics::add_atomics(asm);
-
+    ctpop::add_ctpop(asm);
+    exact_div::add_exact_div(asm);
+    //caller_location::add_caller_location(asm,tyctx,&mut TyCache::empty());
     abort(asm);
 }
 

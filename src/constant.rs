@@ -146,11 +146,11 @@ fn create_const_adt_from_bytes<'ctx>(
                 let _ = curr_offset;
                 todo!("Can't yet create const enum fields.");
             }
+            ops.push(CILOp::LoadTMPLocal);
             ops.push(CILOp::FreeTMPLocal);
             //todo!("Can't load const enum from bytes {bytes:?}!");
             ops
-        }
-        AdtKind::Union => todo!("Can't load const union from bytes {bytes:?}!"),
+        } //AdtKind::Union => todo!("Can't load const union from bytes {bytes:?}!"),
     }
 }
 /// Returns the ops neceasry to create constant value of type `ty` with byte values matching the ones in the slice bytes
@@ -298,7 +298,7 @@ fn create_const_from_slice<'ctx>(
                         FieldDescriptor::new(
                             slice_dotnet.clone(),
                             Type::Ptr(Type::Void.into()),
-                            "data_adress".into(),
+                            "data_address".into(),
                         )
                         .into(),
                     ),
@@ -331,7 +331,7 @@ fn create_const_from_slice<'ctx>(
                         FieldDescriptor::new(
                             slice_dotnet.clone(),
                             Type::Ptr(Type::Void.into()),
-                            "data_adress".into(),
+                            "data_address".into(),
                         )
                         .into(),
                     ),
@@ -373,7 +373,7 @@ fn create_const_from_slice<'ctx>(
                         FieldDescriptor::new(
                             slice_dotnet.clone(),
                             Type::Ptr(Type::Void.into()),
-                            "data_adress".into(),
+                            "data_address".into(),
                         )
                         .into(),
                     ),
@@ -406,7 +406,7 @@ fn create_const_from_slice<'ctx>(
                         FieldDescriptor::new(
                             slice_dotnet.clone(),
                             Type::Ptr(Type::Void.into()),
-                            "data_adress".into(),
+                            "data_address".into(),
                         )
                         .into(),
                     ),

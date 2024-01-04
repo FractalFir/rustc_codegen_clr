@@ -200,7 +200,7 @@ pub fn place_elem_adress<'ctx>(
                     CILOp::LDField(FieldDescriptor::boxed(
                         curr_dotnet.clone(),
                         Type::Ptr(Type::Void.into()),
-                        "data_adress".into(),
+                        "data_address".into(),
                     )),
                     CILOp::LdcI64(*from as i64),
                     CILOp::ConvUSize(false),
@@ -208,7 +208,7 @@ pub fn place_elem_adress<'ctx>(
                     CILOp::STField(FieldDescriptor::boxed(
                         curr_dotnet.clone(),
                         Type::Ptr(Type::Void.into()),
-                        "data_adress".into(),
+                        "data_address".into(),
                     )),
                     CILOp::LoadAddresOfTMPLocal,
                     CILOp::LoadAddresOfTMPLocal,
@@ -237,7 +237,7 @@ pub fn place_elem_adress<'ctx>(
                     CILOp::LDField(FieldDescriptor::boxed(
                         curr_dotnet.clone(),
                         Type::Ptr(Type::Void.into()),
-                        "data_adress".into(),
+                        "data_address".into(),
                     )),
                     CILOp::LdcI64(*from as i64),
                     CILOp::ConvUSize(false),
@@ -245,7 +245,7 @@ pub fn place_elem_adress<'ctx>(
                     CILOp::STField(FieldDescriptor::boxed(
                         curr_dotnet.clone(),
                         Type::Ptr(Type::Void.into()),
-                        "data_adress".into(),
+                        "data_address".into(),
                     )),
                     CILOp::LoadAddresOfTMPLocal,
                     CILOp::LdcI64((to - from) as i64),
@@ -268,11 +268,12 @@ pub fn place_elem_adress<'ctx>(
                 .as_ty()
                 .expect("INVALID PLACE: Indexing into enum variant???");
             let index = CILOp::LdcI64(*offset as i64);
-            assert!(!from_end, "Indexing slice form end");
+            //assert!(!from_end, "Indexing slice form end");
             eprintln!("WARNING: ConstantIndex has required min_length of {min_length}, but bounds checking on const access not supported yet!");
             match curr_ty.kind() {
                 TyKind::Slice(inner) => {
                     let inner = crate::utilis::monomorphize(&method_instance, *inner, tyctx);
+
                     let inner_type =
                         type_cache.type_from_cache(inner, tyctx, Some(method_instance));
                     let slice = type_cache
@@ -280,9 +281,14 @@ pub fn place_elem_adress<'ctx>(
                         .as_dotnet()
                         .unwrap();
                     let desc = FieldDescriptor::new(
-                        slice,
+                        slice.clone(),
                         Type::Ptr(Type::Void.into()),
                         "data_address".into(),
+                    );
+                    let len = FieldDescriptor::new(
+                        slice,
+                        Type::USize,
+                        "metadata".into(),
                     );
                     let derf_op = super::deref_op(
                         super::PlaceTy::Ty(inner),
@@ -290,36 +296,77 @@ pub fn place_elem_adress<'ctx>(
                         &method_instance,
                         type_cache,
                     );
-                    let mut ops = vec![
-                        CILOp::LDField(desc.into()),
-                        index,
-                        CILOp::SizeOf(inner_type.into()),
-                        CILOp::Mul,
-                        CILOp::Add,
-                    ];
+                    if *from_end {
+                        let mut ops = vec![
+                            CILOp::Dup,
+                            CILOp::LDField(len.into()),
+                            CILOp::NewTMPLocal(Type::USize.into()),
+                            CILOp::SetTMPLocal,
+                            CILOp::LDField(desc.into()),
+                            CILOp::LoadTMPLocal,
+                            index,
+                            CILOp::Sub,
+                            CILOp::SizeOf(inner_type.into()),
+                            CILOp::Mul,
+                            CILOp::Add,
+                        ];
+                        ops.extend(derf_op);
+                        ops
+                        //todo!("Can't index slice from end!");
+                    } else {
+                        let mut ops = vec![
+                            CILOp::LDField(desc.into()),
+                            index,
+                            CILOp::SizeOf(inner_type.into()),
+                            CILOp::Mul,
+                            CILOp::Add,
+                        ];
 
-                    ops.extend(derf_op);
-                    ops
+                        ops.extend(derf_op);
+                        ops
+                    }
                 }
-                TyKind::Array(element, _length) => {
+                TyKind::Array(element, length) => {
                     let element_ty = crate::utilis::monomorphize(&method_instance, *element, tyctx);
+                    let length = crate::utilis::monomorphize(&method_instance, *length, tyctx);
+                    let length = crate::utilis::try_resolve_const_size(length).unwrap();
                     let element =
                         type_cache.type_from_cache(element_ty, tyctx, Some(method_instance));
                     let array_type =
                         type_cache.type_from_cache(curr_ty, tyctx, Some(method_instance));
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
-                    vec![
-                        index,
-                        CILOp::Call(
-                            crate::cil::CallSite::new(
-                                Some(array_dotnet),
-                                "get_Adress".into(),
-                                FnSig::new(&[array_type, Type::USize], &element),
-                                false,
-                            )
-                            .into(),
-                        ),
-                    ]
+                    if *from_end {
+                        vec![
+                            CILOp::LdcI64(length as u64 as i64),
+                            CILOp::ConvUSize(false),
+                            index,
+                            CILOp::Sub,
+                            CILOp::Call(
+                                crate::cil::CallSite::new(
+                                    Some(array_dotnet),
+                                    "get_Adress".into(),
+                                    FnSig::new(&[array_type, Type::USize], &element),
+                                    false,
+                                )
+                                .into(),
+                            ),
+                        ]
+                        //todo!("Can't index array from end!");
+                    } else {
+                        vec![
+                    
+                            index,
+                            CILOp::Call(
+                                crate::cil::CallSite::new(
+                                    Some(array_dotnet),
+                                    "get_Adress".into(),
+                                    FnSig::new(&[array_type, Type::USize], &element),
+                                    false,
+                                )
+                                .into(),
+                            ),
+                        ]
+                    }
                 }
                 _ => {
                     rustc_middle::ty::print::with_no_trimmed_paths! { todo!("Can't index into {curr_ty}!")}

@@ -236,6 +236,8 @@ pub enum CILOp {
     CpBlk,
     /// Calls the variable on top of the stack as a function with signature `sig`.
     CallI(Box<FnSig>),
+    /// Initializes object of type *ty* at pointer
+    InitObj(Box<crate::r#type::Type>),
 }
 impl CILOp {
     /// If this op is a branch operation, and its target is `original`, replaces the target with `replacement`
@@ -438,6 +440,7 @@ impl CILOp {
                     1 - (site.signature().inputs().len() as isize)
                 }
             }
+            CILOp::InitObj(_) => -1,
             CILOp::Throw => -1,
             CILOp::Rethrow => -1,
             CILOp::Ret => -1,
