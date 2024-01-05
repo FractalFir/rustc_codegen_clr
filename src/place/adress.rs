@@ -285,11 +285,7 @@ pub fn place_elem_adress<'ctx>(
                         Type::Ptr(Type::Void.into()),
                         "data_address".into(),
                     );
-                    let len = FieldDescriptor::new(
-                        slice,
-                        Type::USize,
-                        "metadata".into(),
-                    );
+                    let len = FieldDescriptor::new(slice, Type::USize, "metadata".into());
                     let derf_op = super::deref_op(
                         super::PlaceTy::Ty(inner),
                         tyctx,
@@ -344,8 +340,11 @@ pub fn place_elem_adress<'ctx>(
                             CILOp::Call(
                                 crate::cil::CallSite::new(
                                     Some(array_dotnet),
-                                    "get_Adress".into(),
-                                    FnSig::new(&[array_type, Type::USize], &element),
+                                    "get_Address".into(),
+                                    FnSig::new(
+                                        &[array_type, Type::USize],
+                                        &Type::Ptr(element.into()),
+                                    ),
                                     false,
                                 )
                                 .into(),
@@ -354,13 +353,15 @@ pub fn place_elem_adress<'ctx>(
                         //todo!("Can't index array from end!");
                     } else {
                         vec![
-                    
                             index,
                             CILOp::Call(
                                 crate::cil::CallSite::new(
                                     Some(array_dotnet),
-                                    "get_Adress".into(),
-                                    FnSig::new(&[array_type, Type::USize], &element),
+                                    "get_Address".into(),
+                                    FnSig::new(
+                                        &[array_type, Type::USize],
+                                        &Type::Ptr(element.into()),
+                                    ),
                                     false,
                                 )
                                 .into(),

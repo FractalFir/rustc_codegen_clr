@@ -1,10 +1,19 @@
-use crate::{r#type::{DotnetTypeRef, Type}, method::Method, assembly::Assembly, function_sig::FnSig, access_modifier::AccessModifer, cil::{CILOp, CallSite}};
+use crate::{
+    access_modifier::AccessModifer,
+    assembly::Assembly,
+    cil::{CILOp, CallSite},
+    function_sig::FnSig,
+    method::Method,
+    r#type::{DotnetTypeRef, Type},
+};
 
-pub fn add_ctpop(asm: &mut Assembly){
+pub fn add_ctpop(asm: &mut Assembly) {
     add_ctpop_u64(asm);
 }
-fn add_ctpop_u64(asm: &mut Assembly){
-    let bit_operations = DotnetTypeRef::new("System.Runtime".into(),"System.Numerics.BitOperations").with_valuetype(false);
+fn add_ctpop_u64(asm: &mut Assembly) {
+    let bit_operations =
+        DotnetTypeRef::new("System.Runtime".into(), "System.Numerics.BitOperations")
+            .with_valuetype(false);
     let bit_operations = Some(bit_operations);
     let mut ctpop = Method::new(
         AccessModifer::Private,

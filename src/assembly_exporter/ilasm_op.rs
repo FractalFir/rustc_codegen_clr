@@ -42,7 +42,7 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
                     None => String::new(),
                 };
                 format!(
-                    "call {prefix} {output} {owner_name} {function_name}({input_string})",
+                    "call {prefix} {output} {owner_name}{function_name}({input_string})",
                     function_name = call_site.name(),
                     output = type_cil(call_site.signature().output())
                 )

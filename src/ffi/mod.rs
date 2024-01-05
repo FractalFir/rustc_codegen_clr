@@ -1,7 +1,8 @@
 mod atomics;
+mod caller_location;
 mod ctpop;
 mod exact_div;
-mod caller_location;
+mod memcmp;
 use crate::r#type::{DotnetTypeRef, TyCache};
 use crate::{
     access_modifier::AccessModifer,
@@ -195,6 +196,9 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     atomics::add_atomics(asm);
     ctpop::add_ctpop(asm);
     exact_div::add_exact_div(asm);
+    memcmp::add_memcmp(asm);
+    memcmp::add_raw_eq(asm);
+    add_ptr_offset_from_unsigned(asm);
     //caller_location::add_caller_location(asm,tyctx,&mut TyCache::empty());
     abort(asm);
 }
@@ -252,3 +256,51 @@ add_method!(
 );
 //System.Environment.Exit(a_ExitCode)
 add_method!(abort, &[], &Type::Void, CILOp::throw_msg("Called abort!"));
+pub fn add_ptr_offset_from_unsigned(asm: &mut Assembly) {
+    let ptr_offset_from_unsigned_calls: Box<[_]> = asm
+        .call_sites()
+        .filter(|call_site| {
+            call_site.signature().inputs().len() == 2
+                && call_site
+                    .name()
+                    == "ptr_offset_from_unsigned"
+        })
+        .cloned()
+        .collect();
+    for call in ptr_offset_from_unsigned_calls.iter() {
+        let rtype: &Type = &call.inputs()[0];
+        let mut ptr_offset_from_unsigned = Method::new(
+            AccessModifer::Private,
+            true,
+            call.signature().clone(),
+            "raw_eq",
+            vec![],
+        );
+        ptr_offset_from_unsigned.set_ops(match rtype{
+            Type::Ptr(inner)=>{
+                vec![
+                    CILOp::LDArg(0),
+                    CILOp::LDArg(1),
+                    CILOp::Sub,
+                    CILOp::Div,
+                    CILOp::SizeOf(inner.clone()),
+                    CILOp::Ret,
+                ]
+            }
+            Type::DotnetType(type_ref)=>if type_ref.is_valuetype() && type_ref.name_path().contains("PtrComponents"){
+                todo!();
+                /*
+                vec![
+                    CILOp::LDArg(0),
+                    CILOp::LDArg(1),
+                    CILOp::Sub,
+                    CILOp::Div,
+                    CILOp::SizeOf(inner.clone()),
+                    CILOp::Ret,
+                ]*/
+            }else{continue},
+            _=>continue,
+        });
+        asm.add_method(ptr_offset_from_unsigned);
+    }
+}
