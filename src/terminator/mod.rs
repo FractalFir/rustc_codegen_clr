@@ -18,7 +18,7 @@ use rustc_middle::{
     ty::{GenericArg, Instance, ParamEnv, Ty, TyCtxt, TyKind},
 };
 mod call;
-
+mod intrinsics;
 pub fn handle_terminator<'ctx>(
     terminator: &Terminator<'ctx>,
     body: &'ctx Body<'ctx>,

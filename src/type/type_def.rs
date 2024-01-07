@@ -1,6 +1,7 @@
 use crate::{
     access_modifier::AccessModifer,
-    cil::FieldDescriptor,
+    cil::{CallSite, FieldDescriptor},
+    function_sig::FnSig,
     method::Method,
     r#type::{DotnetTypeRef, Type},
     IString,
@@ -246,6 +247,7 @@ pub fn get_array_type(element_count: usize, element: Type) -> TypeDef {
         gargc: 0,
         extends: None,
     };
+    let as_pointer = CallSite::ref_as_ptr(element.clone());
     // set_Item(usize offset, G0 value)
     let mut set_usize = Method::new(
         AccessModifer::Public,
@@ -264,6 +266,7 @@ pub fn get_array_type(element_count: usize, element: Type) -> TypeDef {
             element.clone(),
             "f_0".to_string().into(),
         )),
+        CILOp::Call(as_pointer.clone().into()),
         CILOp::LDArg(1),
         CILOp::Add,
         CILOp::LDArg(2),
@@ -283,6 +286,7 @@ pub fn get_array_type(element_count: usize, element: Type) -> TypeDef {
         "get_Address",
         vec![],
     );
+
     let ops = vec![
         CILOp::LDArg(0),
         CILOp::LDFieldAdress(FieldDescriptor::boxed(
@@ -290,6 +294,7 @@ pub fn get_array_type(element_count: usize, element: Type) -> TypeDef {
             element.clone(),
             "f_0".to_string().into(),
         )),
+        CILOp::Call(as_pointer.clone().into()),
         CILOp::LDArg(1),
         CILOp::Add,
         CILOp::Ret,
@@ -311,9 +316,10 @@ pub fn get_array_type(element_count: usize, element: Type) -> TypeDef {
             element.clone(),
             "f_0".to_string().into(),
         )),
+        CILOp::Call(as_pointer.into()),
         CILOp::LDArg(1),
         CILOp::Add,
-        CILOp::LdObj(element.clone().into()),
+        CILOp::LdObj(element.into()),
         CILOp::Ret,
     ];
     get_item_usize.set_ops(ops);

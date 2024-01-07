@@ -16,6 +16,7 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
         CILOp::BLe(id) => format!("ble bb_{id}").into(),
         CILOp::BZero(id) => format!("brzero bb_{id}").into(),
         CILOp::BTrue(id) => format!("brtrue bb_{id}").into(),
+
         CILOp::Call(call_site) => {
             if call_site.is_nop() {
                 "".into()
@@ -35,6 +36,12 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
                 } else {
                     "instance"
                 };
+                let generics = if call_site.generics().is_empty(){
+                    "".into()
+                }else{
+                    assert!(call_site.generics().len() == 1,"Methods with multiple generics not supported yet!");
+                    format!("<{}>",type_cil(&call_site.generics()[0]))
+                };
                 let owner_name = match call_site.class() {
                     Some(owner) => {
                         format!("{}::", type_cil(&owner.clone().into()))
@@ -42,7 +49,7 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
                     None => String::new(),
                 };
                 format!(
-                    "call {prefix} {output} {owner_name}{function_name}({input_string})",
+                    "call {prefix} {output} {owner_name}{function_name}{generics}({input_string})",
                     function_name = call_site.name(),
                     output = type_cil(call_site.signature().output())
                 )
@@ -81,6 +88,12 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
              } else {
                  "instance"
              };
+             let generics = if call_site.generics().is_empty(){
+                "".into()
+            }else{
+                assert!(call_site.generics().len() == 1,"Methods with multiple generics not supported yet!");
+                format!("<{}>",type_cil(&call_site.generics()[0]))
+            };
              let owner_name = match call_site.class() {
                  Some(owner) => {
                      format!("{}::", type_cil(&owner.clone().into()))
@@ -88,7 +101,7 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
                  None => String::new(),
              };
              format!(
-                 "ldftn {prefix} {output} {owner_name} {function_name}({input_string})",
+                 "ldftn {prefix} {output} {owner_name} {function_name}{generics}({input_string})",
                  function_name = call_site.name(),
                  output = type_cil(call_site.signature().output())
              )
@@ -113,6 +126,12 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
                 } else {
                     "instance"
                 };
+                let generics = if call_site.generics().is_empty(){
+                    "".into()
+                }else{
+                    assert!(call_site.generics().len() == 1,"Methods with multiple generics not supported yet!");
+                    format!("<{}>",type_cil(&call_site.generics()[0]))
+                };
                 let owner_name = match call_site.class() {
                     Some(owner) => {
                         format!("{}::", type_cil(&owner.clone().into()))
@@ -120,7 +139,7 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
                     None => String::new(),
                 };
                 format!(
-                    "callvirt {prefix} {output} {owner_name} {function_name}({input_string})",
+                    "callvirt {prefix} {output} {owner_name} {function_name}{generics}({input_string})",
                     function_name = call_site.name(),
                     output = type_cil(call_site.signature().output())
                 )
@@ -151,6 +170,7 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
         CILOp::Gt => "cgt".into(),
         CILOp::Eq => "ceq".into(),
         CILOp::Lt => "clt".into(),
+        CILOp::InitBlk => "initblk".into(),
         //Arguments
         CILOp::LDArg(argnum) => {
             if *argnum < 4 {
@@ -405,18 +425,25 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
                 } else {
                     "instance"
                 };
+                let generics = if call_site.generics().is_empty(){
+                    "".into()
+                }else{
+                    assert!(call_site.generics().len() == 1,"Methods with multiple generics not supported yet!");
+                    format!("<{}>",type_cil(&call_site.generics()[0]))
+                };
                 let owner_name = match &call_site.class() {
                     Some(owner) => format!("{}::", dotnet_type_ref_cli(owner)),
                     None => String::new(),
                 };
                 format!(
-                    "newobj {prefix} {output} {owner_name}{function_name}({input_string})",
+                    "newobj {prefix} {output} {owner_name}{function_name}{generics}({input_string})",
                     function_name = call_site.name(),
                     output = type_cil(call_site.signature().output())
                 )
                 .into()
             }
         }
+        CILOp::Volatile=>"volatile.".into(),
         CILOp::Nop => "nop".into(),
         CILOp::NewTMPLocal(_) | CILOp::FreeTMPLocal | CILOp::LoadAddresOfTMPLocal | CILOp::SetTMPLocal | CILOp::LoadTMPLocal | CILOp::LoadUnderTMPLocal(_) | CILOp::LoadAdressUnderTMPLocal(_) =>
          panic!("CRITICAL INTERNAL ERROR: OP '{op:?}' is syntetic(internal only) and should have been substituted before being emmited!"),
@@ -486,6 +513,7 @@ pub fn type_cil(tpe: &Type) -> Cow<'static, str> {
         Type::Bool => "bool".into(),
         Type::DotnetChar => "char".into(),
         Type::GenericArg(idx) => format!("!{idx}").into(),
+        Type::CallGenericArg(idx) => format!("!!{idx}").into(),
         Type::Foreign => "valuetype Foreign".into(),
         Type::DotnetArray(array) => {
             let arr = if array.dimensions > 0 {

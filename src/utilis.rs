@@ -463,3 +463,17 @@ pub(crate) fn verify_locals_within_range(ops: &[CILOp], argc: u32, locc: u32) ->
         _ => true,
     })
 }
+pub fn is_fn_intrinsic<'tyctx>(fn_ty: Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -> bool {
+    use rustc_target::spec::abi::Abi;
+    let internal_abi = match fn_ty.kind() {
+        TyKind::FnDef(_, _) => fn_ty.fn_sig(tyctx),
+        TyKind::Closure(_, args) => args.as_closure().sig(),
+        _ => todo!("Can't get signature of {fn_ty}"),
+    }
+    .abi();
+    // Only those ABIs are supported
+    match internal_abi {
+        Abi::RustIntrinsic => true,
+        _ => false,
+    }
+}

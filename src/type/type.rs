@@ -40,6 +40,7 @@ pub enum Type {
     Foreign,
     /// Generic argument
     GenericArg(u32),
+    CallGenericArg(u32),
     DotnetChar,
     /// Rust FnDefs
     FnDef(IString),
@@ -79,6 +80,14 @@ impl DotnetTypeRef {
     pub fn with_valuetype(mut self, valuetype: bool) -> Self {
         self.set_valuetype(valuetype);
         self
+    }
+    #[must_use]
+    pub fn compiler_services_unsafe() -> Self {
+        DotnetTypeRef::new(
+            Some("System.Runtime"),
+            "System.Runtime.CompilerServices.Unsafe",
+        )
+        .with_valuetype(false)
     }
     pub fn new(assembly: Option<&str>, name_path: &str) -> Self {
         Self {

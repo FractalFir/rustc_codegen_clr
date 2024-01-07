@@ -57,10 +57,7 @@ pub fn add_raw_eq(asm: &mut Assembly) {
     let raw_eq_calls: Box<[_]> = asm
         .call_sites()
         .filter(|call_site| {
-            call_site.signature().inputs().len() == 2
-                && call_site
-                    .name()
-                    == "raw_eq"
+            call_site.signature().inputs().len() == 2 && call_site.name() == "raw_eq"
         })
         .cloned()
         .collect();
@@ -73,8 +70,8 @@ pub fn add_raw_eq(asm: &mut Assembly) {
             "raw_eq",
             vec![],
         );
-        raw_eq.set_ops(match rtype{
-            Type::Ptr(inner)=>{
+        raw_eq.set_ops(match rtype {
+            Type::Ptr(inner) => {
                 let memcmp_sig = FnSig::new(
                     &[
                         Type::Ptr(Box::new(Type::U8)),
@@ -87,11 +84,11 @@ pub fn add_raw_eq(asm: &mut Assembly) {
                     CILOp::LDArg(0),
                     CILOp::LDArg(1),
                     CILOp::SizeOf(inner.clone()),
-                    CILOp::Call(CallSite::boxed(None,"memcmp".into(),memcmp_sig,true)),
+                    CILOp::Call(CallSite::boxed(None, "memcmp".into(), memcmp_sig, true)),
                     CILOp::Ret,
                 ]
             }
-            _=>continue,
+            _ => continue,
         });
         asm.add_method(raw_eq);
     }

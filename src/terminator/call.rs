@@ -388,11 +388,24 @@ pub fn call<'ctx>(
     } else {
         todo!("Trying to call a type which is not a function definition!");
     };
+
     let call_info = CallInfo::sig_from_instance_(instance, tyctx, type_cache)
         .expect("Could not resolve function sig");
 
     let signature = call_info.sig().clone();
     let function_name = crate::utilis::function_name(tyctx.symbol_name(instance));
+    if crate::utilis::is_fn_intrinsic(fn_type, tyctx) {
+        return super::intrinsics::handle_intrinsic(
+            &function_name,
+            args,
+            destination,
+            tyctx,
+            body,
+            method_instance,
+            type_cache,
+            signature,
+        );
+    }
     // Checks if function is "magic"
     if function_name.contains(CTOR_FN_NAME) {
         assert!(

@@ -13,8 +13,24 @@ pub struct CallSite {
     name: IString,
     signature: FnSig,
     is_static: bool,
+    generics: Vec<Type>,
 }
 impl CallSite {
+    /// Retruns a call site reffering to void* Unsafe.AsPtr<element>(ref element)
+    pub fn ref_as_ptr(element: Type) -> Self {
+        let unsafe_services = DotnetTypeRef::compiler_services_unsafe();
+        let mut as_pointer = CallSite::new(
+            unsafe_services.into(),
+            "AsPointer".into(),
+            FnSig::new(
+                &[Type::ManagedReference(Type::CallGenericArg(0).into())],
+                &Type::Ptr(Type::Void.into()),
+            ),
+            true,
+        );
+        as_pointer.set_generics(vec![element.clone()]);
+        as_pointer
+    }
     /// Constructs a new call site targeting method `name`, with signature `signature` and bleonging to class `class`. If `class` is [`None`], then the `<Module>` class
     /// is assumed.
     pub fn new(
@@ -28,7 +44,14 @@ impl CallSite {
             name,
             signature,
             is_static,
+            generics: vec![],
         }
+    }
+    pub fn generics(&self) -> &[Type] {
+        &self.generics
+    }
+    pub fn set_generics(&mut self, generics: Vec<Type>) {
+        self.generics = generics;
     }
     /// The same as [`Self::new`], but boxes the result.
     pub fn boxed(

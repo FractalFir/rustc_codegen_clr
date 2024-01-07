@@ -238,6 +238,9 @@ pub enum CILOp {
     CallI(Box<FnSig>),
     /// Initializes object of type *ty* at pointer
     InitObj(Box<crate::r#type::Type>),
+    /// Initializes bytes at addr to value val of length len.
+    InitBlk,
+    Volatile,
 }
 impl CILOp {
     /// If this op is a branch operation, and its target is `original`, replaces the target with `replacement`
@@ -441,6 +444,7 @@ impl CILOp {
                 }
             }
             CILOp::InitObj(_) => -1,
+            CILOp::InitBlk => -3,
             CILOp::Throw => -1,
             CILOp::Rethrow => -1,
             CILOp::Ret => -1,
@@ -461,6 +465,7 @@ impl CILOp {
                     1 - (1 + fn_sig.inputs().len() as isize)
                 }
             }
+            CILOp::Volatile=>0,
         }
     }
     /// Flips a conditional, changing the order of its arguments. Eg. BLt(a,b) [a < b] becomes BGt(b,a) [b > a].

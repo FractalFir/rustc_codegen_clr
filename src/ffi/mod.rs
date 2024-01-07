@@ -261,9 +261,7 @@ pub fn add_ptr_offset_from_unsigned(asm: &mut Assembly) {
         .call_sites()
         .filter(|call_site| {
             call_site.signature().inputs().len() == 2
-                && call_site
-                    .name()
-                    == "ptr_offset_from_unsigned"
+                && call_site.name() == "ptr_offset_from_unsigned"
         })
         .cloned()
         .collect();
@@ -276,8 +274,8 @@ pub fn add_ptr_offset_from_unsigned(asm: &mut Assembly) {
             "raw_eq",
             vec![],
         );
-        ptr_offset_from_unsigned.set_ops(match rtype{
-            Type::Ptr(inner)=>{
+        ptr_offset_from_unsigned.set_ops(match rtype {
+            Type::Ptr(inner) => {
                 vec![
                     CILOp::LDArg(0),
                     CILOp::LDArg(1),
@@ -287,19 +285,23 @@ pub fn add_ptr_offset_from_unsigned(asm: &mut Assembly) {
                     CILOp::Ret,
                 ]
             }
-            Type::DotnetType(type_ref)=>if type_ref.is_valuetype() && type_ref.name_path().contains("PtrComponents"){
-                todo!();
-                /*
-                vec![
-                    CILOp::LDArg(0),
-                    CILOp::LDArg(1),
-                    CILOp::Sub,
-                    CILOp::Div,
-                    CILOp::SizeOf(inner.clone()),
-                    CILOp::Ret,
-                ]*/
-            }else{continue},
-            _=>continue,
+            Type::DotnetType(type_ref) => {
+                if type_ref.is_valuetype() && type_ref.name_path().contains("PtrComponents") {
+                    todo!();
+                    /*
+                    vec![
+                        CILOp::LDArg(0),
+                        CILOp::LDArg(1),
+                        CILOp::Sub,
+                        CILOp::Div,
+                        CILOp::SizeOf(inner.clone()),
+                        CILOp::Ret,
+                    ]*/
+                } else {
+                    continue;
+                }
+            }
+            _ => continue,
         });
         asm.add_method(ptr_offset_from_unsigned);
     }
