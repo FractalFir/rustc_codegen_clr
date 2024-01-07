@@ -43,6 +43,25 @@ pub fn handle_intrinsic<'tyctx>(
                 type_cache,
             )
         }
+        "black_box" => {
+            debug_assert_eq!(
+                args.len(),
+                1,
+                "The intrinsic `black_box` MUST take in exactly 1 argument!"
+            );
+            if signature.output() == &Type::Void{
+                return vec![];
+            }
+            // assert_eq!(args.len(),1,"The intrinsic `unlikely` MUST take in exactly 1 argument!");
+            place_set(
+                destination,
+                tyctx,
+                handle_operand(&args[0], tyctx, body, method_instance, type_cache),
+                body,
+                method_instance,
+                type_cache,
+            )
+        }
         "ctpop" => {
             debug_assert_eq!(
                 args.len(),
@@ -223,6 +242,7 @@ pub fn handle_intrinsic<'tyctx>(
         }
         //"bswap"
         "assert_inhabited"=>vec![],
+        "abort"=>CILOp::throw_msg("Called abort!").into(),
         _ => todo!("Can't handle intrinsic {fn_name}."),
     }
 }
