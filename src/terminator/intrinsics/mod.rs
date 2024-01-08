@@ -13,6 +13,7 @@ pub fn handle_intrinsic<'tyctx>(
     tyctx: TyCtxt<'tyctx>,
     body: &'tyctx Body<'tyctx>,
     method_instance: Instance<'tyctx>,
+    call_instance:Instance<'tyctx>,
     type_cache: &mut TyCache,
     signature: FnSig,
 ) -> Vec<CILOp> {
@@ -27,7 +28,7 @@ pub fn handle_intrinsic<'tyctx>(
         ));
     }
     match fn_name {
-        "unlikely" => {
+        "unlikely" | "likely" => {
             debug_assert_eq!(
                 args.len(),
                 1,
@@ -38,6 +39,24 @@ pub fn handle_intrinsic<'tyctx>(
                 destination,
                 tyctx,
                 handle_operand(&args[0], tyctx, body, method_instance, type_cache),
+                body,
+                method_instance,
+                type_cache,
+            )
+        }
+        "needs_drop"=>{
+            debug_assert_eq!(
+                args.len(),
+                0,
+                "The intrinsic `needs_drop` MUST take in exactly 0 argument!"
+            );
+            let tpe = crate::utilis::monomorphize(&method_instance, call_instance.args[0].as_type().expect("needs_drop works only on types!"), tyctx);
+            let needs_drop = tpe.needs_drop(tyctx,ParamEnv::reveal_all());
+            let needs_drop = if needs_drop{1}else{0};
+            place_set(
+                destination,
+                tyctx,
+                vec![CILOp::LdcI32(needs_drop)],
                 body,
                 method_instance,
                 type_cache,
@@ -158,8 +177,8 @@ pub fn handle_intrinsic<'tyctx>(
         "rotate_left" => {
             debug_assert_eq!(
                 args.len(),
-                1,
-                "The intrinsic `rotate_left` MUST take in exactly 1 argument!"
+                2,
+                "The intrinsic `rotate_left` MUST take in exactly 2 arguments!"
             );
             let bit_operations =
                 DotnetTypeRef::new("System.Runtime".into(), "System.Numerics.BitOperations")
@@ -167,12 +186,13 @@ pub fn handle_intrinsic<'tyctx>(
             let bit_operations = Some(bit_operations);
             let mut res = Vec::new();
             res.extend(handle_operand(&args[0], tyctx, body, method_instance, type_cache));
+            res.extend(handle_operand(&args[1], tyctx, body, method_instance, type_cache));
             res.extend([
                 CILOp::ConvU64(false),
                 CILOp::Call(CallSite::boxed(
                     bit_operations.clone(),
                     "RotateLeft".into(),
-                    FnSig::new(&[Type::U64], &Type::I32),
+                    FnSig::new(&[Type::U64,Type::U64], &Type::I32),
                     true,
                 )),
                 CILOp::ConvU64(false),
@@ -199,6 +219,21 @@ pub fn handle_intrinsic<'tyctx>(
             ops.extend(val);
             ops.extend(count);
             ops.push(CILOp::InitBlk);
+            ops
+        }
+        "copy" => {
+            debug_assert_eq!(
+                args.len(),
+                3,
+                "The intrinsic `copy` MUST take in exactly 3 argument!"
+            );
+            let dst = handle_operand(&args[0], tyctx, body, method_instance, type_cache);
+            let val = handle_operand(&args[1], tyctx, body, method_instance, type_cache);
+            let count = handle_operand(&args[2], tyctx, body, method_instance, type_cache);
+            let mut ops = dst;
+            ops.extend(val);
+            ops.extend(count);
+            ops.push(CILOp::CpBlk);
             ops
         }
         "exact_div" => {
@@ -301,6 +336,24 @@ pub fn handle_intrinsic<'tyctx>(
                 destination,
                 tyctx,
                 ops,
+                body,
+                method_instance,
+                type_cache,
+            )
+        }
+        "size_of_val"=>{
+            debug_assert_eq!(
+                args.len(),
+                1,
+                "The intrinsic `size_of_val` MUST take in exactly 1 argument!"
+            );
+            let tpe = args[0].ty(body,tyctx);
+            let tpe = crate::utilis::monomorphize(&method_instance, tpe, tyctx);
+            let tpe = type_cache.type_from_cache(tpe, tyctx, Some(method_instance));
+            place_set(
+                destination,
+                tyctx,
+                vec![CILOp::SizeOf(tpe.into())],
                 body,
                 method_instance,
                 type_cache,

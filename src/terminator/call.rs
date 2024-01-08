@@ -402,6 +402,7 @@ pub fn call<'ctx>(
             tyctx,
             body,
             method_instance,
+            instance,
             type_cache,
             signature,
         );
