@@ -329,7 +329,7 @@ impl Assembly {
         // Do some basic checks on the method as a whole.
         crate::utilis::check_debugable(method.get_ops(), &method, does_return_void);
         self.types.extend(cache.defs().cloned());
-        println!("Compiled method {name}");
+        //println!("Compiled method {name}");
         self.add_method(method);
         Ok(())
         //todo!("Can't add function")

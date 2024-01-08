@@ -385,21 +385,21 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
         )
         .into(),
         CILOp::LDField(descr) => format!(
-            "ldfld {prefixed_type} {owner}::{field_name}",
+            "ldfld {prefixed_type} {owner}::'{field_name}'",
             prefixed_type = non_void_type_cil(descr.tpe()),
             owner = type_cil(&descr.owner().clone().into()),
             field_name = descr.name()
         )
         .into(),
         CILOp::LDFieldAdress(descr) => format!(
-            "ldflda {prefixed_type} {owner}::{field_name}",
+            "ldflda {prefixed_type} {owner}::'{field_name}'",
             prefixed_type = non_void_type_cil(descr.tpe()),
             owner = type_cil(&descr.owner().clone().into()),
             field_name = descr.name()
         )
         .into(),
         CILOp::STField(descr) => format!(
-            "stfld {prefixed_type} {owner}::{field_name}",
+            "stfld {prefixed_type} {owner}::'{field_name}'",
             prefixed_type = non_void_type_cil(descr.tpe()),
             owner = type_cil(&descr.owner().clone().into()),
             field_name = descr.name()

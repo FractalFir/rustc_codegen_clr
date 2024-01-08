@@ -1,7 +1,7 @@
 #![deny(unused_must_use)]
 //use assembly::Assembly;
 use rustc_codegen_clr::{assembly::Assembly, r#type::Type, *};
-use std::env;
+use std::{env, io::Write};
 
 fn load_ar(r: &mut impl std::io::Read) -> std::io::Result<assembly::Assembly> {
     use ar::Archive;
@@ -115,6 +115,13 @@ fn add_mandatory_statics(asm: &mut Assembly) {
 fn main() {
     use std::io::Read;
     let args: Vec<String> = env::args().collect();
+    {
+        let mut arg_file = std::fs::File::create("argdump.txt").unwrap();
+        for arg in &args {
+            use std::io::Write;
+            writeln!(arg_file, "{arg}").unwrap();
+        }
+    }
     let args = &args[1..];
     let to_link: Vec<_> = args.iter().filter(|arg| arg.contains(".bc")).collect();
     let ar_to_link: Vec<_> = args.iter().filter(|arg| arg.contains(".rlib")).collect();
@@ -159,6 +166,47 @@ fn main() {
     .expect("Assembly export faliure!");
     // Run AOT compiler
     let aot_compile_mode = aot_compile_mode(args);
-    aot_compile_mode.compile(path.as_ref());
+    aot_compile_mode.compile(path);
+    //      Cargo integration
+    
+    // Moves the final path up one directory.
+    let path = std::path::Path::new(output);
+    let executable_file_name = path.file_name().unwrap().to_str().unwrap();
+    let mut path = path.parent()
+    .expect("Cargo integration issue. Are you using a custom cargo target directory?").to_owned();
+    path.set_file_name(executable_file_name);
+    // Sets the file extension to `.exe`
+    let mut executable_path = path.clone();
+    executable_path.set_extension("exe");
+    let executable_file_name = executable_path.file_name().unwrap().to_str().unwrap();
+     // Exports the `.exe`` file.
+    rustc_codegen_clr::assembly_exporter::ilasm_exporter::ILASMExporter::export_assembly(
+        &final_assembly,
+        &executable_path,
+        is_lib,
+    )
+    .expect("Assembly export faliure!");
+    #[cfg(not(target_os = "windows"))]
+    {
+        // Creates a laucher shell script
+        use std::os::unix::fs::PermissionsExt;
+        let launcher_script = format!("#!/bin/sh\npushd $(dirname $0)\ndotnet ./{executable_file_name}\npopd\n");
+        let mut launcher_path = path.clone();
+        let launcher_file_name = launcher_path.file_name().unwrap().to_str().unwrap().rsplit_once('-').unwrap().0.to_owned();
+        launcher_path.set_file_name(launcher_file_name);
+        launcher_path.set_extension("");
+        let mut launcher_file = std::fs::File::create(&launcher_path).unwrap();
+        let metadata = launcher_file.metadata().unwrap();
+        let mut permissions = metadata.permissions();
+    
+        permissions.set_mode(0o755);
+        launcher_file.set_permissions(permissions).unwrap();
+        write!(launcher_file,"{launcher_script} executable_path:{executable_path:?}" ).unwrap();
+        let mut runtimeconfig = executable_path.clone();
+        runtimeconfig.set_extension("runtimeconfig.json");
+        let mut runtimeconfig_file = std::fs::File::create(&runtimeconfig).unwrap();
+        write!(runtimeconfig_file,"{}",rustc_codegen_clr::compile_test::get_runtime_config()).unwrap();
+        //panic!("launcher_path:{launcher_path:?}");
+    }
     //todo!()
 }

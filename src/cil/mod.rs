@@ -465,7 +465,7 @@ impl CILOp {
                     1 - (1 + fn_sig.inputs().len() as isize)
                 }
             }
-            CILOp::Volatile=>0,
+            CILOp::Volatile => 0,
         }
     }
     /// Flips a conditional, changing the order of its arguments. Eg. BLt(a,b) [a < b] becomes BGt(b,a) [b > a].

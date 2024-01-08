@@ -581,6 +581,9 @@ cargo_test! {benchmarks}
 cargo_test! {glam_test}
 cargo_test! {fastrand_test}
 use lazy_static::*;
+pub fn get_runtime_config()->&'static str{
+    &RUNTIME_CONFIG
+}
 lazy_static! {
     static ref RUNTIME_CONFIG: String = {
         let info = std::process::Command::new("dotnet")

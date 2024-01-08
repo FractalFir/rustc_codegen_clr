@@ -27,7 +27,7 @@ impl AssemblyExporter for ILASMExporter {
     fn add_global(&mut self, tpe: &Type, name: &str) {
         writeln!(
             self,
-            ".field static {tpe} {name}",
+            ".field static {tpe} '{name}'",
             tpe = non_void_type_cil(tpe)
         )
         .expect("Could not write global!")
@@ -145,7 +145,7 @@ fn type_def_cli(
         for ((field_name, field_type), offset) in tpe.fields().iter().zip(offsets.iter()) {
             writeln!(
                 w,
-                "\t.field [{offset}] public {field_type_name} {field_name}",
+                "\t.field [{offset}] public {field_type_name} '{field_name}'",
                 field_type_name = non_void_type_cil(field_type)
             )?;
         }
@@ -153,7 +153,7 @@ fn type_def_cli(
         for (field_name, field_type) in tpe.fields() {
             writeln!(
                 w,
-                "\t.field public {field_type_name} {field_name}",
+                "\t.field public {field_type_name} '{field_name}'",
                 field_type_name = non_void_type_cil(field_type)
             )?;
         }
