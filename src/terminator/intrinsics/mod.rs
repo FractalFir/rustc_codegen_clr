@@ -230,18 +230,99 @@ pub fn handle_intrinsic<'tyctx>(
         todo!("Can't handle type_id yet!");
         }
         "volatile_load"=>{
-            [CILOp::Volatile].into_iter().chain(crate::place::deref_op(args[0].ty(body,tyctx).into(), tyctx, &method_instance, type_cache).into_iter()).collect()
+            debug_assert_eq!(
+                args.len(),
+                1,
+                "The intrinsic `volatile_load` MUST take in exactly 1 argument!"
+            );
+            let mut ops =  handle_operand(&args[0], tyctx, body, method_instance, type_cache);
+            ops.push(CILOp::Volatile);
+            ops.extend(crate::place::deref_op(args[0].ty(body,tyctx).into(), tyctx, &method_instance, type_cache).into_iter());
+            place_set(
+                destination,
+                tyctx,
+                ops,
+                body,
+                method_instance,
+                type_cache,
+            )
         }
         "atomic_load_unordered"=>{
             //NOT ATOMIC!
-            [CILOp::Volatile].into_iter().chain(crate::place::deref_op(args[0].ty(body,tyctx).into(), tyctx, &method_instance, type_cache).into_iter()).collect()
+            debug_assert_eq!(
+                args.len(),
+                1,
+                "The intrinsic `atomic_load_unordered` MUST take in exactly 1 argument!"
+            );
+            let mut ops =  handle_operand(&args[0], tyctx, body, method_instance, type_cache);
+            ops.push(CILOp::Volatile);
+            ops.extend(crate::place::deref_op(args[0].ty(body,tyctx).into(), tyctx, &method_instance, type_cache).into_iter());
+            place_set(
+                destination,
+                tyctx,
+                ops,
+                body,
+                method_instance,
+                type_cache,
+            )
         }
         "atomic_load_acquire"=>{
             //NOT ATOMIC!
-            [CILOp::Volatile].into_iter().chain(crate::place::deref_op(args[0].ty(body,tyctx).into(), tyctx, &method_instance, type_cache).into_iter()).collect()
+            debug_assert_eq!(
+                args.len(),
+                1,
+                "The intrinsic `atomic_load_acquire` MUST take in exactly 1 argument!"
+            );
+            let mut ops =  handle_operand(&args[0], tyctx, body, method_instance, type_cache);
+            ops.push(CILOp::Volatile);
+            ops.extend(crate::place::deref_op(args[0].ty(body,tyctx).into(), tyctx, &method_instance, type_cache).into_iter());
+            place_set(
+                destination,
+                tyctx,
+                ops,
+                body,
+                method_instance,
+                type_cache,
+            )
         }
         //"bswap"
         "assert_inhabited"=>vec![],
+        "sqrtf32"=>{
+            debug_assert_eq!(
+                args.len(),
+                1,
+                "The intrinsic `sqrtf32` MUST take in exactly 1 argument!"
+            );
+            let mut ops = handle_operand(&args[0], tyctx, body, method_instance, type_cache);
+            ops.push(CILOp::ConvF64(false));
+            ops.push(CILOp::Call(CallSite::boxed(Some(DotnetTypeRef::new("System.Runtime".into(),"System.Math")), "Sqrt".into(), FnSig::new(&[Type::F64],&Type::F64), true)));
+            ops.push(CILOp::ConvF32(false));
+            place_set(
+                destination,
+                tyctx,
+                ops,
+                body,
+                method_instance,
+                type_cache,
+            )
+        }
+        "sqrtf64"=>{
+            debug_assert_eq!(
+                args.len(),
+                1,
+                "The intrinsic `sqrtf64` MUST take in exactly 1 argument!"
+            );
+            let mut ops = handle_operand(&args[0], tyctx, body, method_instance, type_cache);
+            ops.push(CILOp::Call(CallSite::boxed(Some(DotnetTypeRef::new("System.Runtime".into(),"System.Math")), "Sqrt".into(), FnSig::new(&[Type::F64],&Type::F64), true)));
+            place_set(
+                destination,
+                tyctx,
+                ops,
+                body,
+                method_instance,
+                type_cache,
+            )
+        }
         "abort"=>CILOp::throw_msg("Called abort!").into(),
         _ => todo!("Can't handle intrinsic {fn_name}."),
     }
