@@ -192,7 +192,7 @@ fn method_cil(w: &mut impl Write, method: &Method) -> std::io::Result<()> {
     if method.is_entrypoint() {
         writeln!(w, ".entrypoint")?;
     }
-    if crate::ALWAYS_INIT_LOCALS {
+    if *crate::config::ALWAYS_INIT_LOCALS {
         writeln!(w, "\t.locals init(")?;
     } else {
         writeln!(w, "\t.locals (")?;

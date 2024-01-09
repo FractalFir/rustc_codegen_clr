@@ -164,7 +164,7 @@ pub fn handle_terminator<'ctx>(
             let drop_instance = Instance::resolve_drop_in_place(tyctx, ty).polymorphize(tyctx);
             if let InstanceDef::DropGlue(_, None) = drop_instance.def {
                 //Empty drop, nothing needs to happen.
-                vec![]
+                vec![CILOp::GoTo(target.as_u32())]
             } else {
                 let sig = FnSig::sig_from_instance_(drop_instance, tyctx, type_cache).unwrap();
 

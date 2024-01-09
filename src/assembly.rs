@@ -137,7 +137,7 @@ impl Assembly {
         instance: Instance<'tcx>,
         type_cache: &mut TyCache,
     ) -> Vec<CILOp> {
-        let mut terminator = if crate::ABORT_ON_ERROR {
+        let mut terminator = if *crate::config::ABORT_ON_ERROR {
             crate::terminator::handle_terminator(term, mir, tcx, mir, instance, type_cache)
         } else {
             match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
@@ -179,7 +179,7 @@ impl Assembly {
         instance: Instance<'tcx>,
         type_cache: &mut TyCache,
     ) -> Result<Vec<CILOp>, CodegenError> {
-        if crate::ABORT_ON_ERROR {
+        if *crate::config::ABORT_ON_ERROR {
             Ok(crate::statement::handle_statement(
                 statement, tcx, mir, instance, type_cache,
             ))
@@ -240,7 +240,7 @@ impl Assembly {
         if let TyKind::FnDef(_, _) = instance.ty(tcx, ParamEnv::reveal_all()).kind() {
             //ALL OK.
         } else if let TyKind::Closure(_, _) = instance.ty(tcx, ParamEnv::reveal_all()).kind() {
-            println!("CLOSURE")
+            //println!("CLOSURE")
         } else {
             eprintln!("fn item {instance:?} is not a function definition type. Skippping.");
             return Ok(());
@@ -272,7 +272,7 @@ impl Assembly {
         // Create method prototype
         let mut method = Method::new(access_modifier, true, sig, name, locals);
         let mut ops = Vec::new();
-        if crate::TRACE_CALLS {
+        if *crate::config::TRACE_CALLS {
             ops.extend(CILOp::debug_msg(&format!("Called {name}.")));
         }
 
@@ -281,7 +281,7 @@ impl Assembly {
         for (last_bb_id, block_data) in blocks.into_iter().enumerate() {
             ops.push(CILOp::Label(last_bb_id as u32));
             for statement in &block_data.statements {
-                if crate::INSERT_MIR_DEBUG_COMMENTS {
+                if *crate::config::INSERT_MIR_DEBUG_COMMENTS {
                     rustc_middle::ty::print::with_no_trimmed_paths! {ops.push(CILOp::Comment(format!("{statement:?}").into()))};
                 }
                 let statement_ops = match Self::statement_to_ops(
@@ -298,13 +298,13 @@ impl Assembly {
                 };
                 crate::utilis::check_debugable(&statement_ops, statement, does_return_void);
                 ops.extend(statement_ops);
-                if crate::INSERT_MIR_DEBUG_COMMENTS {
+                if *crate::config::INSERT_MIR_DEBUG_COMMENTS {
                     ops.push(CILOp::Comment("STATEMENT END.".into()));
                 }
             }
             match &block_data.terminator {
                 Some(term) => {
-                    if crate::INSERT_MIR_DEBUG_COMMENTS {
+                    if *crate::config::INSERT_MIR_DEBUG_COMMENTS {
                         //rustc_middle::ty::print::with_no_trimmed_paths! {ops.push(CILOp::Comment(format!("{term:?}").into()))};
                     }
                     let term_ops = Self::terminator_to_ops(term, mir, tcx, instance, cache);
@@ -537,7 +537,7 @@ fn locals_from_mir<'tyctx>(
     for (local_id, local) in locals.iter().enumerate() {
         if local_id == 0 || local_id > argc {
             let ty = crate::utilis::monomorphize(method_instance, local.ty, tyctx);
-            if crate::PRINT_LOCAL_TYPES {
+            if *crate::config::PRINT_LOCAL_TYPES {
                 println!(
                     "Local type {ty:?},non-morphic: {non_morph}",
                     non_morph = local.ty

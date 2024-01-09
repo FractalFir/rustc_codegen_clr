@@ -59,34 +59,7 @@ extern crate rustc_symbol_mangling;
 extern crate rustc_target;
 extern crate rustc_ty_utils;
 extern crate stable_mir;
-// Debug config
 
-/// Tells the codegen to insert comments containing the MIR statemtens after each one of them.
-const INSERT_MIR_DEBUG_COMMENTS: bool = false;
-/// Prints local types of all compiled MIR functions.
-const PRINT_LOCAL_TYPES: bool = false;
-/// Tells the codegen to optmize the emiited CIL.
-const OPTIMIZE_CIL: bool = (!TRACE_STATEMENTS) && (!INSERT_MIR_DEBUG_COMMENTS) && (true);
-/// Turns on the struct spliting optimzation.
-const SPLIT_LOCAL_STRUCTS: bool = false;
-/// Turns on the local removal optimization.
-const REMOVE_UNSUED_LOCALS: bool = false;
-/// Prints debug info during type handling.
-const PRINT_TY_CONVERTION: bool = false;
-/// Changes `.locals` into `.locals init`. Causes the runtime to always initialize local variables.
-/// Try turining on in cause of issues. If it fixes them, then their root cause is UB(eg. use of uninitailized memory).
-pub const ALWAYS_INIT_LOCALS: bool = false;
-/// Should the codegen stop working when ecountering an error, or try to press on, replacing unusuported code with exceptions throws?
-pub const ABORT_ON_ERROR: bool = false;
-/// Should the codegen continue working after it encoutnered a miscompilation?
-pub const ALLOW_MISCOMPILATIONS: bool = true;
-/// Preapends each function call with a debug message
-pub const TRACE_CALLS: bool = true;
-/// Preapends each statement with a debug message
-pub const TRACE_STATEMENTS: bool = false;
-/// Allows the optimizer to inline very simple functions. It is buggy.
-pub const INLINE_SIMPLE_FUNCTIONS: bool = false;
-pub const TEST_WITH_MONO: bool = false;
 // Modules
 
 /// Specifies if a method/type is private or public.
@@ -146,6 +119,8 @@ pub mod r#type;
 mod unop;
 /// Contains small helper functions(debug assertions, functions used to get field names, etc), which are frequently used, but are not specific to a part of the coodegen.
 mod utilis;
+
+pub mod config;
 // rustc functions used here.
 use crate::rustc_middle::dep_graph::DepContext;
 use rustc_codegen_ssa::{

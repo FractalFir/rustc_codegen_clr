@@ -120,7 +120,7 @@ fn try_inline_all(method: &mut Method, asm: &Assembly) {
 }
 //pub fn try_turn_locals_into_bools(method:&Method){}
 pub fn opt_method(method: &mut Method, asm: &Assembly) {
-    if !crate::OPTIMIZE_CIL {
+    if !*crate::config::OPTIMIZE_CIL {
         return;
     };
     //panic!("opt");
@@ -136,13 +136,13 @@ pub fn opt_method(method: &mut Method, asm: &Assembly) {
         remove_zombie_sets(method.ops_mut());
         method.ops_mut().retain(|op| *op != CILOp::Nop);
         try_alias_locals(method.ops_mut());
-        if crate::SPLIT_LOCAL_STRUCTS {
+        if *crate::config::SPLIT_LOCAL_STRUCTS {
             try_split_locals(method, asm);
         }
-        if crate::REMOVE_UNSUED_LOCALS {
+        if *crate::config::REMOVE_UNSUED_LOCALS {
             remove_unused_locals(method);
         }
-        if crate::INLINE_SIMPLE_FUNCTIONS {
+        if *crate::config::INLINE_SIMPLE_FUNCTIONS {
             try_inline_all(method, asm);
         }
         //try_inline_all(method, asm);

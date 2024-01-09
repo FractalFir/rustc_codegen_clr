@@ -203,9 +203,6 @@ impl TyCache {
         tyctx: TyCtxt<'tyctx>,
         method: Option<Instance<'tyctx>>,
     ) -> Type {
-        if crate::PRINT_TY_CONVERTION {
-            eprintln!("ty:{ty:?} method:{method:?}");
-        }
         match ty.kind() {
             TyKind::Bool => Type::Bool,
             TyKind::Int(int) => int.into(),

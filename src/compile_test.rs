@@ -41,7 +41,7 @@ fn test_dotnet_executable(file_path: &str, test_dir: &str) {
             "Test program failed with message {stderr:}"
         );
     }
-    if *IS_MONO_PRESENT && crate::TEST_WITH_MONO {
+    if *IS_MONO_PRESENT && *crate::config::TEST_WITH_MONO {
         // Execute the test assembly
         let out = std::process::Command::new("mono")
             .current_dir(test_dir)
@@ -581,7 +581,7 @@ cargo_test! {benchmarks}
 cargo_test! {glam_test}
 cargo_test! {fastrand_test}
 use lazy_static::*;
-pub fn get_runtime_config()->&'static str{
+pub fn get_runtime_config() -> &'static str {
     &RUNTIME_CONFIG
 }
 lazy_static! {
@@ -651,5 +651,6 @@ pub fn cargo_build_env() -> String {
     let backend = absolute_backend_path();
     let backend = backend.display();
     let linker = RUSTC_CODEGEN_CLR_LINKER.display();
-    format!("-Z codegen-backend={backend} -C linker={linker}")
+    let link_args = "--cargo-support";
+    format!("-Z codegen-backend={backend} -C linker={linker} -C link-args={link_args}")
 }

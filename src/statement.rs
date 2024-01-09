@@ -46,7 +46,7 @@ pub fn handle_statement<'tcx>(
                 method_instance,
                 type_cache,
             );
-            if crate::TRACE_STATEMENTS {
+            if *crate::config::TRACE_STATEMENTS {
                 use crate::r#type::Type;
                 rustc_middle::ty::print::with_no_trimmed_paths! {res.extend(CILOp::debug_msg(&format!("{statement:?}")))};
                 let place_ty = type_cache.type_from_cache(
@@ -156,7 +156,7 @@ pub fn handle_statement<'tcx>(
                     res.push(CILOp::SizeOf(pointed));
                     res.push(CILOp::Mul);
                     res.push(CILOp::CpBlk);
-                    if crate::TRACE_STATEMENTS {
+                    if *crate::config::TRACE_STATEMENTS {
                         rustc_middle::ty::print::with_no_trimmed_paths! {res.extend(CILOp::debug_msg(&format!("{statement:?}")))};
                     }
                     res
