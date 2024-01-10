@@ -182,14 +182,13 @@ You can set the following environment variables to aid you in debugging:
 
 After changing the environment variables, you will need to run `cargo clean` and recompile for the changes to take effect.
 
-# The structure and philosophy of the project - Guide for contributors
+# The structure of the project - Guide for contributors
 
 
 I will first try to explain why the project is structured the way it is. By showcasing how I came to the current design, I hope to make it easy to understand how everything fits together. This design is not final, and may be adjusted as things 
 change.
 
-## Philosophy
-### Functional
+## Functional
 
 The project is designed in a functional fashion: most of the functions are pure(take immutable arguments) and will always return the same output for the same input. This is especially true for the MIR-to-CIL translator. I want this process
 to be highly predictable and consistent.
