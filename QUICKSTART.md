@@ -59,7 +59,7 @@ to create the example project.
 Create a directory named `.cargo` inside `rust_dotnet_example`. Inside `.cargo`, create a file named `config.toml`. This will be used tell cargo to build a .NET version of the standard library.
 Open `config.toml` and set its contents to the following:
 
-```
+```toml
 [build]
 # Keep it as "x86_64-unknown-linux-gnu", there is currently no .NET-specific target triple.
 target = "x86_64-unknown-linux-gnu"
@@ -203,8 +203,9 @@ An exception to this purely-functional style is `TyCache` - it is taken by a mut
 ### Understanding CIL
 
 Understanding the project does require having a very basic familiarity with CIL. It is stack - based, which means that all the operations occur on an imaginary stack. For example, look at this method:
+
 C#
-```
+```csharp
 int Add(int a,int b){
     return a + b;
 }
