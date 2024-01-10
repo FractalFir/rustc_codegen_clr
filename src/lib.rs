@@ -177,7 +177,9 @@ impl CodegenBackend for MyBackend {
                         .expect("Could not add function");
                 }
             }
-
+            for type_def in cache.defs(){
+                codegen.add_typedef(type_def.clone());
+            }
             if let Some((entrypoint, _kind)) = tcx.entry_fn(()) {
                 let penv = rustc_middle::ty::ParamEnv::reveal_all();
                 let entrypoint = rustc_middle::ty::Instance::resolve(

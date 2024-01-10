@@ -37,7 +37,7 @@ pub trait AssemblyExporter: Sized {
             asm_exporter.add_extern_ref(asm_name, asm_ref);
         }
         for tpe in asm.types() {
-            asm_exporter.add_type(tpe);
+            asm_exporter.add_type(tpe.1);
         }
         for method in asm.methods() {
             asm_exporter.add_method(method);

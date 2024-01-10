@@ -193,9 +193,9 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     volatile_load.set_ops(vec![CILOp::LDArg(0), CILOp::LDIndISize, CILOp::Ret]);
     asm.add_method(volatile_load);
 
-    atomics::add_atomics(asm);
-    ctpop::add_ctpop(asm);
-    exact_div::add_exact_div(asm);
+    //atomics::add_atomics(asm);
+    //ctpop::add_ctpop(asm);
+   // exact_div::add_exact_div(asm);
     memcmp::add_memcmp(asm);
     memcmp::add_raw_eq(asm);
     add_ptr_offset_from_unsigned(asm);

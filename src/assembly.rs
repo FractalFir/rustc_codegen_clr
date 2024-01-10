@@ -38,7 +38,7 @@ impl AssemblyExternRef {
 /// Representation of a .NET assembly.
 pub struct Assembly {
     /// List of types desined within the assembly.
-    types: HashSet<TypeDef>,
+    types: HashMap<IString,TypeDef>,
     /// List of functions defined within this assembly.
     functions: HashMap<CallSite, Method>,
     /// Callsite representing the entrypoint of this assebmly if any present.
@@ -69,7 +69,7 @@ impl Assembly {
     /// Creates a new, empty assembly.
     pub fn empty() -> Self {
         let mut res = Self {
-            types: HashSet::new(),
+            types: HashMap::new(),
             functions: HashMap::new(),
             entrypoint: None,
             extern_refs: HashMap::new(),
@@ -87,7 +87,8 @@ impl Assembly {
     /// Joins 2 assemblies together.
     pub fn join(self, other: Self) -> Self {
         let static_initializer = link_static_initializers(self.cctor(), other.cctor());
-        let types = self.types.union(&other.types).cloned().collect();
+        let mut types = self.types;
+        types.extend(other.types);
         let mut functions = self.functions;
         functions.extend(other.functions);
         if let Some(static_initializer) = static_initializer {
@@ -127,7 +128,7 @@ impl Assembly {
             }
             return Some(td);
         }
-        self.types().find(|&tpe| tpe.name() == path)
+        self.types().find(|&tpe| tpe.0.as_ref() == path).map(|t|t.1)
     }
     /// Turns a terminator into ops, if ABORT_ON_ERROR set to false, will handle and recover from errors.
     pub fn terminator_to_ops<'tcx>(
@@ -328,7 +329,8 @@ impl Assembly {
         method.set_ops(ops);
         // Do some basic checks on the method as a whole.
         crate::utilis::check_debugable(method.get_ops(), &method, does_return_void);
-        self.types.extend(cache.defs().cloned());
+        
+        
         //println!("Compiled method {name}");
         self.add_method(method);
         Ok(())
@@ -434,7 +436,7 @@ impl Assembly {
         self.functions.values()
     }
     /// Returns an iterator over all types witin the assembly.
-    pub fn types(&self) -> impl Iterator<Item = &TypeDef> {
+    pub fn types(&self) -> impl Iterator<Item = (&IString,&TypeDef)> {
         self.types.iter()
     }
     /// Optimizes all the methods witin the assembly.
@@ -453,7 +455,7 @@ impl Assembly {
     }
     /// Adds a definition of a type to the assembly.
     pub fn add_typedef(&mut self, type_def: TypeDef) {
-        self.types.insert(type_def);
+        self.types.insert(type_def.name().into(),type_def);
     }
     /// Adds a MIR item (method,inline assembly code, etc.) to the assembly.
     pub fn add_item<'tcx>(
