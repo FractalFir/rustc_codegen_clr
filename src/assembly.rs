@@ -250,12 +250,13 @@ impl Assembly {
         }
 
         // Get the MIR if it exisits. Othervise, return early.
+        /* 
         if !tcx.is_mir_available(instance.def_id()) {
             println!("function {instance:?} has no MIR. Skippping.");
             return Ok(());
-        }
+        }*/
 
-        let mir = tcx.optimized_mir(instance.def_id());
+        let mir = tcx.instance_mir(instance.def);
         // Check if function is public or not.
         // FIXME: figure out the source of the bug causing visibility to not be read propely.
         // let access_modifier = AccessModifer::from_visibility(tcx.visibility(instance.def_id()));

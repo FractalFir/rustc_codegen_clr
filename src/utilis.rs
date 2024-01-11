@@ -48,29 +48,7 @@ pub fn adt_name<'tyctx>(
     escape_class_name(&auto_mangled)
 }
 pub fn escape_class_name(name: &str) -> IString {
-    name.replace("::", ".")
-        .replace("..", ".")
-        .replace('$', "_dsig_")
-        .replace('<', "_lt_")
-        .replace('\'', "_ap_")
-        .replace(' ', "_spc_")
-        .replace('>', "_gt_")
-        .replace('(', "_lpar_")
-        .replace(')', "_rpar")
-        .replace('{', "_lbra_")
-        .replace('}', "_rbra")
-        .replace('[', "_lsbra_")
-        .replace(']', "_rsbra_")
-        .replace('+', "_pls_")
-        .replace('-', "_hyp_")
-        .replace(',', "_com_")
-        .replace('*', "_ptr_")
-        .replace('#', "_hsh_")
-        .replace('&', "_ref_")
-        .replace(';', "_scol_")
-        .replace('!', "_excl_")
-        .replace('\"', "_qt_")
-        .into()
+    name.replace('\'', "_ap_").into()
 }
 /// Gets the name of a field with index `idx`
 pub fn field_name(ty: Ty, idx: u32) -> crate::IString {
@@ -98,11 +76,8 @@ pub fn variant_name(ty: Ty, idx: u32) -> crate::IString {
 }
 /// Escapes the name of a function
 pub fn function_name(name: SymbolName) -> crate::IString {
-    let mut name: IString = name
-        .to_string()
-        .replace('$', "_ds_")
-        .replace("..", "_dd_")
-        .into();
+    let name: String = name
+        .to_string();
     // Name TOO long
     if name.len() > 1000 {
         use std::collections::hash_map::DefaultHasher;
@@ -113,9 +88,11 @@ pub fn function_name(name: SymbolName) -> crate::IString {
             t.hash(&mut s);
             s.finish()
         }
-        name = format!("{}_{}", &name[..1000], calculate_hash(&name)).into();
+        format!("{}_{}", &name[..1000], calculate_hash(&name)).into()
     }
-    name
+    else{
+        name.into()
+    }
 }
 /// Monomorphizes type `ty`
 pub fn monomorphize<'tcx, T: TypeFoldable<TyCtxt<'tcx>> + Clone>(

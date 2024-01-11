@@ -137,7 +137,7 @@ fn type_def_cli(
         ""
     };
     let nested = if is_nested { "nested" } else { "" };
-    writeln!(w,".class {nested} {access} {explicit} ansi {sealed} beforefieldinit {name} extends {extends}{{")?;
+    writeln!(w,".class {nested} {access} {explicit} ansi {sealed} beforefieldinit '{name}' extends {extends}{{")?;
     for inner_type in tpe.inner_types() {
         type_def_cli(w, inner_type, true)?;
     }
@@ -179,7 +179,7 @@ fn method_cil(w: &mut impl Write, method: &Method) -> std::io::Result<()> {
     let name = method.name();
     write!(
         w,
-        ".method {access} hidebysig {static_inst} {output} {name}("
+        ".method {access} hidebysig {static_inst} {output} '{name}'("
     )?;
     let mut input_iter = method.explicit_inputs().iter();
     if let Some(input) = input_iter.next() {

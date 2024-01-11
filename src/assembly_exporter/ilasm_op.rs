@@ -49,7 +49,7 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
                     None => String::new(),
                 };
                 format!(
-                    "call {prefix} {output} {owner_name}{function_name}{generics}({input_string})",
+                    "call {prefix} {output} {owner_name}'{function_name}'{generics}({input_string})",
                     function_name = call_site.name(),
                     output = type_cil(call_site.signature().output())
                 )
@@ -101,7 +101,7 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
                  None => String::new(),
              };
              format!(
-                 "ldftn {prefix} {output} {owner_name} {function_name}{generics}({input_string})",
+                 "ldftn {prefix} {output} {owner_name}'{function_name}'{generics}({input_string})",
                  function_name = call_site.name(),
                  output = type_cil(call_site.signature().output())
              )
@@ -139,7 +139,7 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
                     None => String::new(),
                 };
                 format!(
-                    "callvirt {prefix} {output} {owner_name} {function_name}{generics}({input_string})",
+                    "callvirt {prefix} {output} {owner_name}'{function_name}'{generics}({input_string})",
                     function_name = call_site.name(),
                     output = type_cil(call_site.signature().output())
                 )
@@ -436,7 +436,7 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
                     None => String::new(),
                 };
                 format!(
-                    "newobj {prefix} {output} {owner_name}{function_name}{generics}({input_string})",
+                    "newobj {prefix} {output} {owner_name}'{function_name}'{generics}({input_string})",
                     function_name = call_site.name(),
                     output = type_cil(call_site.signature().output())
                 )
@@ -540,7 +540,7 @@ pub fn dotnet_type_ref_cli(dotnet_type: &DotnetTypeRef) -> String {
     };
     let name = dotnet_type.name_path();
     let generics = generics_str(dotnet_type.generics());
-    format!("{prefix} {asm}{name}{generics}")
+    format!("{prefix} {asm}'{name}'{generics}")
 }
 fn generics_str(generics: &[Type]) -> Cow<'static, str> {
     if generics.is_empty() {
