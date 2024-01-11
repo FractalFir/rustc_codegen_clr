@@ -174,7 +174,7 @@ fn main() {
         let mut executable_path = path.clone();
         executable_path.set_extension("exe");
         let executable_file_name = executable_path.file_name().unwrap().to_str().unwrap();
-       
+
         #[cfg(not(target_os = "windows"))]
         {
             // Creates a laucher shell script
@@ -213,7 +213,7 @@ fn main() {
                 rustc_codegen_clr::compile_test::get_runtime_config()
             )
             .unwrap();
-            std::fs::copy(path,executable_path).unwrap();
+            std::fs::copy(path, executable_path).unwrap();
             //panic!("launcher_path:{launcher_path:?}");
         }
     }

@@ -449,7 +449,10 @@ pub fn check_debugable(
                 eprintln!("{index}:\t{op:?} changed stack by {diff}, to {stack}");
             }
         }
-        assert!(*crate::config::ALLOW_MISCOMPILATIONS, "Miscompiled  {debugable:?}.");
+        assert!(
+            *crate::config::ALLOW_MISCOMPILATIONS,
+            "Miscompiled  {debugable:?}."
+        );
     }
 }
 pub(crate) fn alloc_id_to_u64(alloc_id: AllocId) -> u64 {

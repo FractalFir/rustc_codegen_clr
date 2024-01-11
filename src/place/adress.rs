@@ -64,13 +64,28 @@ pub fn place_elem_adress<'ctx>(
         PlaceElem::Deref => {
             address_last_dereference(place_ty, curr_type, type_cache, tyctx, method_instance)
         }
-        PlaceElem::Field(index, _) => match curr_type {
+        PlaceElem::Field(index, field_ty) => match curr_type {
             PlaceTy::Ty(curr_type) => {
                 //TODO: Why was this commented out?
                 //let field_type = crate::utilis::monomorphize(&method_instance, *field_type, tyctx);
-                let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
+                let curr_ty = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
+                if crate::r#type::pointer_to_is_fat(curr_ty, tyctx, Some(method_instance)){
+                    use rustc_middle::ty::TypeAndMut;
+                    assert_eq!(index.as_u32(),0,"Can't handle DST with more than 1 field.");
+                    let field_ty = crate::utilis::monomorphize(&method_instance, *field_ty, tyctx);
+                    let curr_type = type_cache.type_from_cache(Ty::new_ptr(tyctx,TypeAndMut{ty:curr_ty,mutbl: rustc_middle::ty::Mutability::Mut}), tyctx, Some(method_instance));
+                    let field_type = type_cache.type_from_cache(Ty::new_ptr(tyctx,TypeAndMut{ty:field_ty,mutbl:rustc_middle::ty::Mutability::Mut}), tyctx, Some(method_instance));
+                    return vec![
+                        CILOp::NewTMPLocal(curr_type.into()),
+                        CILOp::SetTMPLocal,
+                        CILOp::LoadAddresOfTMPLocal,
+                        CILOp::LdObj(field_type.clone().into()),
+                        CILOp::FreeTMPLocal,
+                    ];
+                    //todo!("Handle DST fields. DST:")
+                }
                 let field_desc = crate::utilis::field_descrptor(
-                    curr_type,
+                    curr_ty,
                     (*index).into(),
                     tyctx,
                     method_instance,
@@ -139,12 +154,7 @@ pub fn place_elem_adress<'ctx>(
                         Type::Ptr(Type::Void.into()),
                         "data_address".into(),
                     );
-                    let _deref_op = super::deref_op(
-                        super::PlaceTy::Ty(inner),
-                        tyctx,
-                        &method_instance,
-                        type_cache,
-                    );
+
                     let ops = vec![
                         CILOp::LDField(desc.into()),
                         index,
@@ -306,7 +316,7 @@ pub fn place_elem_adress<'ctx>(
                             CILOp::Mul,
                             CILOp::Add,
                         ];
-                        ops.extend(derf_op);
+                       // ops.extend(derf_op);
                         ops
                         //todo!("Can't index slice from end!");
                     } else {
@@ -318,7 +328,7 @@ pub fn place_elem_adress<'ctx>(
                             CILOp::Add,
                         ];
 
-                        ops.extend(derf_op);
+                        //ops.extend(derf_op);
                         ops
                     }
                 }

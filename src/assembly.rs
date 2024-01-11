@@ -38,7 +38,7 @@ impl AssemblyExternRef {
 /// Representation of a .NET assembly.
 pub struct Assembly {
     /// List of types desined within the assembly.
-    types: HashMap<IString,TypeDef>,
+    types: HashMap<IString, TypeDef>,
     /// List of functions defined within this assembly.
     functions: HashMap<CallSite, Method>,
     /// Callsite representing the entrypoint of this assebmly if any present.
@@ -128,7 +128,9 @@ impl Assembly {
             }
             return Some(td);
         }
-        self.types().find(|&tpe| tpe.0.as_ref() == path).map(|t|t.1)
+        self.types()
+            .find(|&tpe| tpe.0.as_ref() == path)
+            .map(|t| t.1)
     }
     /// Turns a terminator into ops, if ABORT_ON_ERROR set to false, will handle and recover from errors.
     pub fn terminator_to_ops<'tcx>(
@@ -329,8 +331,7 @@ impl Assembly {
         method.set_ops(ops);
         // Do some basic checks on the method as a whole.
         crate::utilis::check_debugable(method.get_ops(), &method, does_return_void);
-        
-        
+
         //println!("Compiled method {name}");
         self.add_method(method);
         Ok(())
@@ -436,7 +437,7 @@ impl Assembly {
         self.functions.values()
     }
     /// Returns an iterator over all types witin the assembly.
-    pub fn types(&self) -> impl Iterator<Item = (&IString,&TypeDef)> {
+    pub fn types(&self) -> impl Iterator<Item = (&IString, &TypeDef)> {
         self.types.iter()
     }
     /// Optimizes all the methods witin the assembly.
@@ -455,7 +456,7 @@ impl Assembly {
     }
     /// Adds a definition of a type to the assembly.
     pub fn add_typedef(&mut self, type_def: TypeDef) {
-        self.types.insert(type_def.name().into(),type_def);
+        self.types.insert(type_def.name().into(), type_def);
     }
     /// Adds a MIR item (method,inline assembly code, etc.) to the assembly.
     pub fn add_item<'tcx>(

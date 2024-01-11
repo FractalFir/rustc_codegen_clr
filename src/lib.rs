@@ -177,7 +177,7 @@ impl CodegenBackend for MyBackend {
                         .expect("Could not add function");
                 }
             }
-            for type_def in cache.defs(){
+            for type_def in cache.defs() {
                 codegen.add_typedef(type_def.clone());
             }
             if let Some((entrypoint, _kind)) = tcx.entry_fn(()) {

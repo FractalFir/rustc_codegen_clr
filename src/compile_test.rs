@@ -544,6 +544,7 @@ test_lib! {casts}
 test_lib! {closure}
 test_lib! {identity}
 test_lib! {libc}
+run_test! {types,dst}
 
 test_lib! {references}
 //test_lib! {structs}
@@ -580,6 +581,7 @@ cargo_test_ignored! {build_std}
 cargo_test! {benchmarks}
 cargo_test! {glam_test}
 cargo_test! {fastrand_test}
+
 use lazy_static::*;
 pub fn get_runtime_config() -> &'static str {
     &RUNTIME_CONFIG

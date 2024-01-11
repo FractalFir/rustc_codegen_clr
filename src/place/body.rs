@@ -23,17 +23,17 @@ pub fn place_elem_body<'ctx>(
     _body: &rustc_middle::mir::Body,
     type_cache: &mut crate::r#type::TyCache,
 ) -> (PlaceTy<'ctx>, Vec<CILOp>) {
-    let curr_type = match curr_type {
+    let curr_ty = match curr_type {
         PlaceTy::Ty(ty) => PlaceTy::Ty(crate::utilis::monomorphize(&method_instance, ty, tyctx)),
         PlaceTy::EnumVariant(enm, idx) => PlaceTy::EnumVariant(
             crate::utilis::monomorphize(&method_instance, enm, tyctx),
             idx,
         ),
     };
-    assert_morphic!(curr_type);
+    assert_morphic!(curr_ty);
     match place_elem {
         PlaceElem::Deref => {
-            let pointed = pointed_type(curr_type);
+            let pointed = pointed_type(curr_ty);
             assert_morphic!(pointed);
             if body_ty_is_by_adress(pointed) {
                 (pointed.into(), vec![])
@@ -44,25 +44,38 @@ pub fn place_elem_body<'ctx>(
                 )
             }
         }
-        PlaceElem::Field(index, field_type) => match curr_type {
-            PlaceTy::Ty(curr_type) => {
-                //TODO: Why was this commented out?
-                let field_type = crate::utilis::monomorphize(&method_instance, *field_type, tyctx);
-                let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
+        PlaceElem::Field(index, field_ty) => match curr_ty {
+            PlaceTy::Ty(curr_ty) => {
+                let field_ty = crate::utilis::monomorphize(&method_instance, *field_ty, tyctx);
+                if crate::r#type::pointer_to_is_fat(curr_ty, tyctx, Some(method_instance)){
+                    use rustc_middle::ty::TypeAndMut;
+                    assert_eq!(index.as_u32(),0,"Can't handle DST with more than 1 field.");
+                    let curr_type = type_cache.type_from_cache(Ty::new_ptr(tyctx,TypeAndMut{ty:curr_ty,mutbl: rustc_middle::ty::Mutability::Mut}), tyctx, Some(method_instance));
+                    let field_type = type_cache.type_from_cache(Ty::new_ptr(tyctx,TypeAndMut{ty:field_ty,mutbl:rustc_middle::ty::Mutability::Mut}), tyctx, Some(method_instance));
+                    return (curr_ty.into(),vec![
+                        CILOp::NewTMPLocal(curr_type.into()),
+                        CILOp::SetTMPLocal,
+                        CILOp::LoadAddresOfTMPLocal,
+                        CILOp::LdObj(field_type.clone().into()),
+                        CILOp::FreeTMPLocal,
+                    ]);
+                    //todo!("Handle DST fields. DST:")
+                }
+                let curr_type = crate::utilis::monomorphize(&method_instance, curr_ty, tyctx);
                 let field_desc = crate::utilis::field_descrptor(
-                    curr_type,
+                    curr_ty,
                     (*index).into(),
                     tyctx,
                     method_instance,
                     type_cache,
                 );
-                if body_ty_is_by_adress(field_type) {
+                if body_ty_is_by_adress(field_ty) {
                     (
-                        (field_type).into(),
+                        (field_ty).into(),
                         vec![CILOp::LDFieldAdress(field_desc.into())],
                     )
                 } else {
-                    ((field_type).into(), vec![CILOp::LDField(field_desc.into())])
+                    ((field_ty).into(), vec![CILOp::LDField(field_desc.into())])
                 }
             }
             PlaceTy::EnumVariant(enm, var_idx) => {
@@ -76,11 +89,11 @@ pub fn place_elem_body<'ctx>(
                     type_cache,
                 );
                 let ops = vec![CILOp::LDFieldAdress(field_desc.into())];
-                ((*field_type).into(), ops)
+                ((*field_ty).into(), ops)
             }
         },
         PlaceElem::Downcast(symbol, variant) => {
-            let curr_type = curr_type
+            let curr_type = curr_ty
                 .as_ty()
                 .expect("Can't get enum variant of an enum varaint!");
             let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
@@ -106,7 +119,7 @@ pub fn place_elem_body<'ctx>(
             (variant_type, vec![CILOp::LDFieldAdress(field_desc)])
         }
         PlaceElem::Index(index) => {
-            let curr_ty = curr_type
+            let curr_ty = curr_ty
                 .as_ty()
                 .expect("INVALID PLACE: Indexing into enum variant???");
             let index = crate::place::local_get(
@@ -195,7 +208,7 @@ pub fn place_elem_body<'ctx>(
             min_length,
             from_end,
         } => {
-            let curr_ty = curr_type
+            let curr_ty = curr_ty
                 .as_ty()
                 .expect("INVALID PLACE: Indexing into enum variant???");
             let index = CILOp::LdcI64(*offset as i64);
