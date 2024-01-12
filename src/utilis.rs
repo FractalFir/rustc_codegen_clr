@@ -76,8 +76,7 @@ pub fn variant_name(ty: Ty, idx: u32) -> crate::IString {
 }
 /// Escapes the name of a function
 pub fn function_name(name: SymbolName) -> crate::IString {
-    let name: String = name
-        .to_string();
+    let name: String = name.to_string();
     // Name TOO long
     if name.len() > 1000 {
         use std::collections::hash_map::DefaultHasher;
@@ -89,8 +88,7 @@ pub fn function_name(name: SymbolName) -> crate::IString {
             s.finish()
         }
         format!("{}_{}", &name[..1000], calculate_hash(&name)).into()
-    }
-    else{
+    } else {
         name.into()
     }
 }

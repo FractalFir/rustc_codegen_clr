@@ -250,7 +250,7 @@ impl Assembly {
         }
 
         // Get the MIR if it exisits. Othervise, return early.
-        /* 
+        /*
         if !tcx.is_mir_available(instance.def_id()) {
             println!("function {instance:?} has no MIR. Skippping.");
             return Ok(());

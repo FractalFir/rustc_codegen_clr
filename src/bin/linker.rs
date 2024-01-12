@@ -151,12 +151,21 @@ fn main() {
     let is_lib = output.contains(".dll") || output.contains(".so") || output.contains(".o");
     add_mandatory_statics(&mut final_assembly);
     // Run ILASM
-    rustc_codegen_clr::assembly_exporter::ilasm_exporter::ILASMExporter::export_assembly(
+    
+        rustc_codegen_clr::assembly_exporter::ilasm_exporter::ILASMExporter::export_assembly(
+            &final_assembly,
+            path.as_ref(),
+            is_lib,
+        )
+        .expect("Assembly export faliure!");
+    // Mono Cecil based exporter
+    /* 
+    rustc_codegen_clr::assembly_exporter::dotnet_exporter::DotnetContext::export_assembly(
         &final_assembly,
         path.as_ref(),
         is_lib,
     )
-    .expect("Assembly export faliure!");
+    .expect("Assembly export faliure!");*/
     // Run AOT compiler
     let aot_compile_mode = aot_compile_mode(args);
     aot_compile_mode.compile(path);

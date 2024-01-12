@@ -137,7 +137,10 @@ fn type_def_cli(
         ""
     };
     let nested = if is_nested { "nested" } else { "" };
-    writeln!(w,".class {nested} {access} {explicit} ansi {sealed} beforefieldinit '{name}' extends {extends}{{")?;
+    writeln!(
+        w,
+        ".class {nested} {access} {explicit} ansi {sealed} '{name}' extends {extends}{{"
+    )?;
     for inner_type in tpe.inner_types() {
         type_def_cli(w, inner_type, true)?;
     }

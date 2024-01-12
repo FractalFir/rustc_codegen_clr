@@ -69,12 +69,36 @@ pub fn place_elem_adress<'ctx>(
                 //TODO: Why was this commented out?
                 //let field_type = crate::utilis::monomorphize(&method_instance, *field_type, tyctx);
                 let curr_ty = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
-                if crate::r#type::pointer_to_is_fat(curr_ty, tyctx, Some(method_instance)){
+                if crate::r#type::pointer_to_is_fat(curr_ty, tyctx, Some(method_instance)) {
                     use rustc_middle::ty::TypeAndMut;
-                    assert_eq!(index.as_u32(),0,"Can't handle DST with more than 1 field.");
+                    assert_eq!(
+                        index.as_u32(),
+                        0,
+                        "Can't handle DST with more than 1 field."
+                    );
                     let field_ty = crate::utilis::monomorphize(&method_instance, *field_ty, tyctx);
-                    let curr_type = type_cache.type_from_cache(Ty::new_ptr(tyctx,TypeAndMut{ty:curr_ty,mutbl: rustc_middle::ty::Mutability::Mut}), tyctx, Some(method_instance));
-                    let field_type = type_cache.type_from_cache(Ty::new_ptr(tyctx,TypeAndMut{ty:field_ty,mutbl:rustc_middle::ty::Mutability::Mut}), tyctx, Some(method_instance));
+                    let curr_type = type_cache.type_from_cache(
+                        Ty::new_ptr(
+                            tyctx,
+                            TypeAndMut {
+                                ty: curr_ty,
+                                mutbl: rustc_middle::ty::Mutability::Mut,
+                            },
+                        ),
+                        tyctx,
+                        Some(method_instance),
+                    );
+                    let field_type = type_cache.type_from_cache(
+                        Ty::new_ptr(
+                            tyctx,
+                            TypeAndMut {
+                                ty: field_ty,
+                                mutbl: rustc_middle::ty::Mutability::Mut,
+                            },
+                        ),
+                        tyctx,
+                        Some(method_instance),
+                    );
                     return vec![
                         CILOp::NewTMPLocal(curr_type.into()),
                         CILOp::SetTMPLocal,
@@ -316,7 +340,7 @@ pub fn place_elem_adress<'ctx>(
                             CILOp::Mul,
                             CILOp::Add,
                         ];
-                       // ops.extend(derf_op);
+                        // ops.extend(derf_op);
                         ops
                         //todo!("Can't index slice from end!");
                     } else {

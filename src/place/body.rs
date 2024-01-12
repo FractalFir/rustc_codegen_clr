@@ -47,18 +47,45 @@ pub fn place_elem_body<'ctx>(
         PlaceElem::Field(index, field_ty) => match curr_ty {
             PlaceTy::Ty(curr_ty) => {
                 let field_ty = crate::utilis::monomorphize(&method_instance, *field_ty, tyctx);
-                if crate::r#type::pointer_to_is_fat(curr_ty, tyctx, Some(method_instance)){
+                if crate::r#type::pointer_to_is_fat(curr_ty, tyctx, Some(method_instance)) {
                     use rustc_middle::ty::TypeAndMut;
-                    assert_eq!(index.as_u32(),0,"Can't handle DST with more than 1 field.");
-                    let curr_type = type_cache.type_from_cache(Ty::new_ptr(tyctx,TypeAndMut{ty:curr_ty,mutbl: rustc_middle::ty::Mutability::Mut}), tyctx, Some(method_instance));
-                    let field_type = type_cache.type_from_cache(Ty::new_ptr(tyctx,TypeAndMut{ty:field_ty,mutbl:rustc_middle::ty::Mutability::Mut}), tyctx, Some(method_instance));
-                    return (curr_ty.into(),vec![
-                        CILOp::NewTMPLocal(curr_type.into()),
-                        CILOp::SetTMPLocal,
-                        CILOp::LoadAddresOfTMPLocal,
-                        CILOp::LdObj(field_type.clone().into()),
-                        CILOp::FreeTMPLocal,
-                    ]);
+                    assert_eq!(
+                        index.as_u32(),
+                        0,
+                        "Can't handle DST with more than 1 field."
+                    );
+                    let curr_type = type_cache.type_from_cache(
+                        Ty::new_ptr(
+                            tyctx,
+                            TypeAndMut {
+                                ty: curr_ty,
+                                mutbl: rustc_middle::ty::Mutability::Mut,
+                            },
+                        ),
+                        tyctx,
+                        Some(method_instance),
+                    );
+                    let field_type = type_cache.type_from_cache(
+                        Ty::new_ptr(
+                            tyctx,
+                            TypeAndMut {
+                                ty: field_ty,
+                                mutbl: rustc_middle::ty::Mutability::Mut,
+                            },
+                        ),
+                        tyctx,
+                        Some(method_instance),
+                    );
+                    return (
+                        curr_ty.into(),
+                        vec![
+                            CILOp::NewTMPLocal(curr_type.into()),
+                            CILOp::SetTMPLocal,
+                            CILOp::LoadAddresOfTMPLocal,
+                            CILOp::LdObj(field_type.clone().into()),
+                            CILOp::FreeTMPLocal,
+                        ],
+                    );
                     //todo!("Handle DST fields. DST:")
                 }
                 let curr_type = crate::utilis::monomorphize(&method_instance, curr_ty, tyctx);
