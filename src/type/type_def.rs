@@ -8,6 +8,7 @@ use crate::{
 };
 use rustc_span::def_id::DefId;
 use serde::{Deserialize, Serialize};
+pub(crate) const CUSTOM_INTEROP_TYPE_DEF: &str = "RustcCLRInteropManagedCustomTypeDef";
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug)]
 pub struct TypeDef {
     access: AccessModifer,

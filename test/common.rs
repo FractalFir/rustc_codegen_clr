@@ -37,6 +37,7 @@ macro_rules! test_eq{
         if black_box($a) != black_box($b){
             //Put::putnl($a);
             //Put::putnl($b);
+            unsafe{core::intrinsics::breakpoint()};
             core::intrinsics::abort();
         }
     }
@@ -45,6 +46,7 @@ macro_rules! test_eq{
 macro_rules! test_ne{
     ($a:expr,$b:expr)=>{
         if black_box($a) == black_box($b){
+            unsafe{core::intrinsics::breakpoint()};
             core::intrinsics::abort();
         }
     }

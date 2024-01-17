@@ -245,8 +245,12 @@ fn bit_xor_unchecked<'tyctx>(_ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> Vec<CILOp>
 fn rem_unchecked<'tyctx>(_ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> Vec<CILOp> {
     vec![CILOp::Rem]
 }
-fn shr_unchecked<'tyctx>(_ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> Vec<CILOp> {
-    vec![CILOp::Shr]
+fn shr_unchecked<'tyctx>(ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> Vec<CILOp> {
+    match ty_a.kind() {
+        TyKind::Uint(_) => vec![CILOp::ShrUn],
+        TyKind::Int(_) => vec![CILOp::Shr],
+        _ => panic!("Can't bitshift type  {ty_a:?}"),
+    }
 }
 fn shl_unchecked<'tyctx>(_ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> Vec<CILOp> {
     vec![CILOp::Shl]

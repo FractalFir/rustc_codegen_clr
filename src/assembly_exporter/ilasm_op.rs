@@ -5,6 +5,7 @@ use crate::r#type::{DotnetTypeRef, Type};
 pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
     use crate::cil::CILOp;
     match op {
+        CILOp::Break => "break".into(),
         //Control flow
         CILOp::Ret => "ret".into(),
         CILOp::Label(id) => format!("bb_{id}:").into(),
@@ -166,6 +167,7 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
         //Bitshifts
         CILOp::Shl => "shl".into(),
         CILOp::Shr => "shr".into(),
+        CILOp::ShrUn => "shr.un".into(),
         //Comparisons
         CILOp::Gt => "cgt".into(),
         CILOp::Eq => "ceq".into(),
@@ -463,6 +465,7 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
             }
         }
         CILOp::InitObj(tpe)=>format!("initobj {tpe}",tpe = non_void_type_cil(tpe)).into(),
+        CILOp::LDTypeToken(tpe)=>format!("ldtoken {tpe}",tpe = non_void_type_cil(tpe)).into(),
     }
 }
 pub fn non_void_type_cil(tpe: &Type) -> Cow<'static, str> {
@@ -489,7 +492,7 @@ pub fn type_cil(tpe: &Type) -> Cow<'static, str> {
             )
             .into()
         }
-        Type::FnDef(name) => format!("valuetype fn_{name}").into(),
+        Type::FnDef(name) => format!("valuetype 'fn_{name}'").into(),
         Type::Void => "void".into(),
         Type::I8 => "int8".into(),
         Type::U8 => "uint8".into(),

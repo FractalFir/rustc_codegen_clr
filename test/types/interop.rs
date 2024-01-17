@@ -1,7 +1,44 @@
 #![feature(lang_items,adt_const_params,associated_type_defaults,core_intrinsics,start)]
 #![allow(internal_features,incomplete_features,unused_variables,dead_code,improper_ctypes_definitions,improper_ctypes)]
 #![no_std]
+#![feature(unboxed_closures)]
 include!("../common.rs");
+type Object = RustcCLRInteropManagedClass<"System.Runtime","System.Object">;
+type MString = RustcCLRInteropManagedClass<"System.Runtime","System.String">;
+//struct RustcCLRInteropVirtualMethodDef<const name:&'static str,const access:u8>{pd:core::marker::PhantomData<Func>}
+struct RustcCLRInteropFieldDef<T,const ACCESS:u8,const IS_STATIC:bool>{pd:core::marker::PhantomData<T>}
+struct RustcCLRInteropClassAccess<const ACCESS:u8>{}
+//struct RustcCLRInteropCtorDef<Func,const access:u8>{pd:core::marker::PhantomData<Func>}
+//struct RustcCLRInteropMethodDef<const name:&'static str,Func,const access:u8>{pd:core::marker::PhantomData<Func>}
+const PRIVATE:u8 = 0;
+const PROTECTED:u8 = 1;
+const PUBLIC:u8 = 2;
+trait Func{}
+#[allow(non_camel_case_types)]
+struct RustcCLRInteropManagedCustomTypeDef_CustomTypedef{
+    // Mandatory
+    rustc_clr_interop_extends:Object,
+    rustc_clr_interop_access:RustcCLRInteropClassAccess<PUBLIC>,
+    //implements0:
+    //rustc_clr_interop_virtual_def:RustcCLRInteropVirtualMethodDef<"ToString",fn()->MString,custom_to_string,PUBLIC>,
+    //rustc_clr_interop_method_def:RustcCLRInteropMethodDef<"IsHappy",is_happy,PUBLIC>,
+    // Needed, but not mandatory
+    //rustc_clr_interop_ctor_def:RustcCLRInteropCtorDef<funny_ctor,PUBLIC>,
+    // Normal fields
+    happy:RustcCLRInteropFieldDef<bool,PUBLIC,true>,
+    // Static fields
+    total_happy:RustcCLRInteropFieldDef<usize,PUBLIC,true>,
+}
+/* 
+fn is_happy()->MString{
+
+}
+fn funny_ctor()->MString{
+
+}
+fn custom_to_string()->MString{
+
+}*/
 #[allow(dead_code)]
 #[derive(Clone,Copy)]
 struct RustcCLRInteropManagedClass<const ASSEMBLY:&'static str,const CLASS_PATH:&'static str>{

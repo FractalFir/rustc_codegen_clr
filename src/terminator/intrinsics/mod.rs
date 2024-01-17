@@ -7,7 +7,7 @@ use crate::{
 };
 use rustc_middle::{
     mir::{Body, Operand, Place, SwitchTargets, Terminator, TerminatorKind},
-    ty::{GenericArg, Instance, ParamEnv, Ty, TyCtxt, TyKind},
+    ty::{GenericArg, Instance, ParamEnv, Ty, TyCtxt, TyKind, UintTy},
 };
 use tycache::TyCache;
 pub fn handle_intrinsic<'tyctx>(
@@ -32,6 +32,14 @@ pub fn handle_intrinsic<'tyctx>(
         ));
     }
     match fn_name {
+        "breakpoint" => {
+            debug_assert_eq!(
+                args.len(),
+                0,
+                "The intrinsic `breakpoint` MUST take in exactly 1 argument!"
+            );
+            vec![CILOp::Break]
+        }
         "unlikely" | "likely" => {
             debug_assert_eq!(
                 args.len(),
@@ -121,7 +129,7 @@ pub fn handle_intrinsic<'tyctx>(
             ]);
             place_set(destination, tyctx, res, body, method_instance, type_cache)
         }
-        "ctlz" => {
+        "ctlz" | "ctlz_nonzero" => {
             debug_assert_eq!(
                 args.len(),
                 1,
@@ -151,6 +159,7 @@ pub fn handle_intrinsic<'tyctx>(
             ]);
             place_set(destination, tyctx, res, body, method_instance, type_cache)
         }
+        "bswap" => bswap(args, destination, tyctx, body, method_instance, type_cache),
         "cttz" | "cttz_nonzero" => {
             debug_assert_eq!(
                 args.len(),
@@ -262,12 +271,37 @@ pub fn handle_intrinsic<'tyctx>(
             place_set(destination, tyctx, ops, body, method_instance, type_cache)
         }
         "type_id" => {
-            /*
-                IL_0000: ldtoken C
-            IL_0005: call class [System.Runtime]System.Type [System.Runtime]System.Type::GetTypeFromHandle(valuetype [System.Runtime]System.RuntimeTypeHandle)
-            IL_000a: callvirt instance valuetype [System.Runtime]System.Guid [System.Runtime]System.Type::get_GUID()
-            IL_000f: pop*/
-            todo!("Can't handle type_id yet!");
+            let tpe = crate::utilis::monomorphize(
+                &method_instance,
+                call_instance.args[0]
+                    .as_type()
+                    .expect("needs_drop works only on types!"),
+                tyctx,
+            );
+            let tpe = type_cache.type_from_cache(tpe, tyctx, Some(method_instance));
+            let sig = FnSig::new(
+                &[DotnetTypeRef::type_handle_type().into()],
+                &DotnetTypeRef::type_type().into(),
+            );
+            let gethash_sig = FnSig::new(
+                &[DotnetTypeRef::type_type().into()],
+                &Type::I32,
+            );
+            vec![
+                CILOp::LDTypeToken(tpe.into()),
+                CILOp::Call(CallSite::boxed(
+                    DotnetTypeRef::type_type().into(),
+                    "GetTypeFromHandle".into(),
+                    sig,
+                    true,
+                )),
+                CILOp::CallVirt(CallSite::boxed(
+                    DotnetTypeRef::object_type().into(),
+                    "GetHashCode".into(),
+                    gethash_sig,
+                    true,
+                )),
+            ]
         }
         "volatile_load" => {
             debug_assert_eq!(
@@ -384,3 +418,181 @@ pub fn handle_intrinsic<'tyctx>(
         _ => todo!("Can't handle intrinsic {fn_name}."),
     }
 }
+fn bswap<'tyctx>(
+    args: &[Operand<'tyctx>],
+    destination: &Place<'tyctx>,
+    tyctx: TyCtxt<'tyctx>,
+    body: &'tyctx Body<'tyctx>,
+    method_instance: Instance<'tyctx>,
+    type_cache: &mut TyCache,
+) -> Vec<CILOp> {
+    debug_assert_eq!(
+        args.len(),
+        1,
+        "The intrinsic `bswap` MUST take in exactly 1 argument!"
+    );
+    let ty = args[0].ty(body, tyctx);
+    let ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
+    let operand = handle_operand(&args[0], tyctx, body, method_instance, type_cache);
+    place_set(
+        destination,
+        tyctx,
+        match ty.kind() {
+            TyKind::Uint(uint) => match uint {
+                UintTy::U8 => operand,
+                UintTy::U16 => [
+                    operand,
+                    vec![
+                        CILOp::NewTMPLocal(Type::U16.into()),
+                        CILOp::SetTMPLocal,
+                        CILOp::LoadTMPLocal,
+                        CILOp::LdcI32(8),
+                        CILOp::Shr,
+                        CILOp::LoadTMPLocal,
+                        CILOp::LdcI32(8),
+                        CILOp::Shl,
+                        CILOp::Or,
+                        CILOp::FreeTMPLocal,
+                    ],
+                ]
+                .iter()
+                .flatten()
+                .cloned()
+                .collect(),
+                UintTy::U32 => [
+                    operand,
+                    vec![
+                        //CILOp::ConvU32(false),
+                        CILOp::NewTMPLocal(Type::U32.into()),
+                        CILOp::SetTMPLocal,
+                        // 1 byte
+                        CILOp::LoadTMPLocal,
+                        CILOp::LdcI32(24),
+                        CILOp::Shl,
+                        // 4 byte
+                        CILOp::LoadTMPLocal,
+                        CILOp::LdcI32(24),
+                        CILOp::ShrUn,
+                        CILOp::ConvU32(false),
+                        CILOp::Or,
+                        // 2 byte
+                        CILOp::LoadTMPLocal,
+                        CILOp::LdcI32(8),
+                        CILOp::Shl,
+                        CILOp::LdcI32(0xFF << 16),
+                        CILOp::And,
+                        // 3 byte
+                        CILOp::LoadTMPLocal,
+                        CILOp::LdcI32(8),
+                        CILOp::Shr,
+                        CILOp::LdcI32(0xFF << 8),
+                        CILOp::And,
+                        CILOp::Or,
+                        CILOp::Or,
+                        //CILOp::ConvU16(false),
+                        CILOp::FreeTMPLocal,
+                    ],
+                ]
+                .iter()
+                .flatten()
+                .cloned()
+                .collect(),
+                _ => todo!("Can't bswap unsigned int {ty:?}"),
+            },
+            _ => todo!("Can't bswap {ty:?}"),
+        },
+        body,
+        method_instance,
+        type_cache,
+    )
+}
+/*
+fn saturating_sub<'tyctx>(
+    args: &[Operand<'tyctx>],
+    destination: &Place<'tyctx>,
+    tyctx: TyCtxt<'tyctx>,
+    body: &'tyctx Body<'tyctx>,
+    method_instance: Instance<'tyctx>,
+    type_cache: &mut TyCache,) ->Vec<CILOp>{
+    debug_assert_eq!(
+        args.len(),
+        2,
+        "The intrinsic `saturating_sub` MUST take in exactly 2 arguments!"
+    );
+    let ty = args[0].ty(body, tyctx);
+    let ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
+    let a = handle_operand(&args[0], tyctx, body, method_instance, type_cache);
+    let b = handle_operand(&args[0], tyctx, body, method_instance, type_cache);
+    place_set(
+        destination,
+        tyctx,
+        match ty.kind() {
+            TyKind::Uint(uint) => match uint {
+                UintTy::U8 => operand,
+                UintTy::U16 => [
+                    operand,
+                    vec![
+                        CILOp::NewTMPLocal(Type::U16.into()),
+                        CILOp::SetTMPLocal,
+                        CILOp::LoadTMPLocal,
+                        CILOp::LdcI32(8),
+                        CILOp::Shr,
+                        CILOp::LoadTMPLocal,
+                        CILOp::LdcI32(8),
+                        CILOp::Shl,
+                        CILOp::Or,
+                        CILOp::FreeTMPLocal,
+                    ],
+                ]
+                .iter()
+                .flatten()
+                .cloned()
+                .collect(),
+                UintTy::U32 => [
+                    operand,
+                    vec![
+                        //CILOp::ConvU32(false),
+                        CILOp::NewTMPLocal(Type::U32.into()),
+                        CILOp::SetTMPLocal,
+                        // 1 byte
+                        CILOp::LoadTMPLocal,
+                        CILOp::LdcI32(24),
+                        CILOp::Shl,
+                        // 4 byte
+                        CILOp::LoadTMPLocal,
+                        CILOp::LdcI32(24),
+                        CILOp::ShrUn,
+                        CILOp::ConvU32(false),
+                        CILOp::Or,
+                        // 2 byte
+                        CILOp::LoadTMPLocal,
+                        CILOp::LdcI32(8),
+                        CILOp::Shl,
+                        CILOp::LdcI32(0xFF<<16),
+                        CILOp::And,
+                        // 3 byte
+                        CILOp::LoadTMPLocal,
+                        CILOp::LdcI32(8),
+                        CILOp::Shr,
+                        CILOp::LdcI32(0xFF<<8),
+                        CILOp::And,
+
+                        CILOp::Or,
+                        CILOp::Or,
+                        //CILOp::ConvU16(false),
+                        CILOp::FreeTMPLocal,
+                    ],
+                ]
+                .iter()
+                .flatten()
+                .cloned()
+                .collect(),
+                _ => todo!("Can't bswap unsigned int {ty:?}"),
+            },
+            _ => todo!("Can't bswap {ty:?}"),
+        },
+        body,
+        method_instance,
+        type_cache,
+    )
+}*/

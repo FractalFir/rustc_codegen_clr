@@ -79,6 +79,9 @@ impl TyCache {
         tyctx: TyCtxt<'tyctx>,
         method: Option<Instance<'tyctx>>,
     ) -> TypeDef {
+        if name.contains(super::type_def::CUSTOM_INTEROP_TYPE_DEF) {
+            todo!("Can't yet handle custom typedefs!")
+        }
         let mut fields = Vec::new();
         for field in adt.all_fields() {
             let name = escape_field_name(&field.name.to_string());
@@ -332,6 +335,11 @@ impl TyCache {
                 Type::DelegatePtr(sig.into())
             }
             TyKind::FnDef(did, subst) => {
+                let subst = if let Some(method) = method {
+                    crate::utilis::monomorphize(&method, *subst, tyctx)
+                } else {
+                    subst
+                };
                 let instance = Instance::resolve(tyctx, ParamEnv::reveal_all(), *did, subst)
                     .expect("Could not get function instance due to error")
                     .expect("Could not get function instance.");

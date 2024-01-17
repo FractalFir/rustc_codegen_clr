@@ -77,6 +77,18 @@ impl DotnetTypeRef {
         Self::new(Some("System.Runtime"), "System.IntPtr")
     }
     #[must_use]
+    pub fn type_handle_type() -> Self {
+        Self::new(Some("System.Runtime"), "System.RuntimeTypeHandle")
+    }
+    #[must_use]
+    pub fn type_type() -> Self {
+        Self::new(Some("System.Runtime"), "System.Type").with_valuetype(false)
+    }
+    #[must_use]
+    pub fn object_type() -> Self {
+        Self::new(Some("System.Runtime"), "System.Object").with_valuetype(false)
+    }
+    #[must_use]
     pub fn with_valuetype(mut self, valuetype: bool) -> Self {
         self.set_valuetype(valuetype);
         self

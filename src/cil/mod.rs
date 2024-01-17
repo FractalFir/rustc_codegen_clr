@@ -39,7 +39,8 @@ pub enum CILOp {
     Rethrow,
     /// Return the top value on the stack from this function
     Ret,
-
+    /// Debugger breakpoint
+    Break,
     // Load/Store/AdressOf locals
     /// Load the local number `n` on top of the stack
     LDLoc(u32),
@@ -177,6 +178,8 @@ pub enum CILOp {
     Rem,
     /// Shifts the value on top of the stack to right by the value under it.
     Shr,
+    /// Shifts the value on top of the stack to right by the value under it. Unsigned variant.
+    ShrUn,
     /// Shifts the value on top of the stack to left by the value under it.
     Shl,
     /// Subtracts from the value on top of the stack, the value under it.
@@ -241,6 +244,8 @@ pub enum CILOp {
     /// Initializes bytes at addr to value val of length len.
     InitBlk,
     Volatile,
+    /// Loads the token corresponding to type *ty*
+    LDTypeToken(Box<crate::r#type::Type>),
 }
 impl CILOp {
     /// If this op is a branch operation, and its target is `original`, replaces the target with `replacement`
@@ -379,6 +384,7 @@ impl CILOp {
             | CILOp::LdStr(_)
             | CILOp::LdNull
             | CILOp::SizeOf(_) => 1,
+            CILOp::LDTypeToken(_) => 1,
             CILOp::ConvI8(_)
             | CILOp::ConvI16(_)
             | CILOp::ConvI32(_)
@@ -410,6 +416,7 @@ impl CILOp {
             CILOp::Dup => 1,
             CILOp::LDField(_) | CILOp::LDFieldAdress(_) => 0,
             CILOp::LocAlloc => 0,
+            CILOp::Break => 0,
             CILOp::NewObj(site) => 1 - (site.explicit_inputs().len() as isize),
             CILOp::LdObj(_) => 0,
             CILOp::LDStaticField(_) => 1,
@@ -423,6 +430,7 @@ impl CILOp {
             | CILOp::Div
             | CILOp::Rem
             | CILOp::Shr
+            | CILOp::ShrUn
             | CILOp::Shl
             | CILOp::Sub
             | CILOp::SubOvf

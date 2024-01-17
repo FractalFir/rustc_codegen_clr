@@ -555,6 +555,7 @@ test_lib! {fn_ptr}
 test_lib! {tuple}
 
 run_test! {arthm,add}
+run_test! {intrinsics,bswap}
 run_test! {types,tuple_structs}
 run_test! {arthm,mul}
 run_test! {arthm,sub}

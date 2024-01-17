@@ -114,7 +114,7 @@ fn mul(tpe: Type) -> Vec<CILOp> {
             CILOp::LdcI64(u64::MAX as i64),
             CILOp::Call(CallSite::boxed(
                 Some(DotnetTypeRef::uint_128()),
-                "op_Multiplication".into(),
+                "op_Multiply".into(),
                 crate::function_sig::FnSig::new(&[Type::U128, Type::U128], &Type::U128),
                 true,
             )),
@@ -139,7 +139,7 @@ fn mul(tpe: Type) -> Vec<CILOp> {
             CILOp::LdcI64(i64::MIN),
             CILOp::Call(CallSite::boxed(
                 Some(DotnetTypeRef::int_128()),
-                "op_Multiplication".into(),
+                "op_Multiply".into(),
                 crate::function_sig::FnSig::new(&[Type::I128, Type::I128], &Type::I128),
                 true,
             )),
@@ -153,7 +153,7 @@ fn mul(tpe: Type) -> Vec<CILOp> {
                 CILOp::Call(
                     CallSite::new(
                         Some(DotnetTypeRef::int_128()),
-                        "op_Multiplication".into(),
+                        "op_Multiply".into(),
                         crate::function_sig::FnSig::new(&[Type::I128, Type::I128], &Type::I128),
                         true,
                     )
@@ -188,7 +188,7 @@ fn mul(tpe: Type) -> Vec<CILOp> {
                 CILOp::Call(
                     CallSite::new(
                         Some(DotnetTypeRef::uint_128()),
-                        "op_Multiplication".into(),
+                        "op_Multiply".into(),
                         crate::function_sig::FnSig::new(&[Type::U128, Type::U128], &Type::U128),
                         true,
                     )
@@ -238,7 +238,7 @@ fn mul(tpe: Type) -> Vec<CILOp> {
             )),
             CILOp::Call(CallSite::boxed(
                 Some(DotnetTypeRef::uint_128()),
-                "op_Multiplication".into(),
+                "op_Multiply".into(),
                 crate::function_sig::FnSig::new(&[Type::U128, Type::U128], &Type::U128),
                 true,
             )),
@@ -274,7 +274,7 @@ fn mul(tpe: Type) -> Vec<CILOp> {
             )),
             CILOp::Call(CallSite::boxed(
                 Some(DotnetTypeRef::int_128()),
-                "op_Multiplication".into(),
+                "op_Multiply".into(),
                 crate::function_sig::FnSig::new(&[Type::I128, Type::I128], &Type::I128),
                 true,
             )),
@@ -438,7 +438,7 @@ fn add(tpe: Type) -> Box<[CILOp]> {
                 CILOp::Call(
                     CallSite::new(
                         Some(DotnetTypeRef::uint_128()),
-                        "op_Multiplication".into(),
+                        "op_Multiply".into(),
                         crate::function_sig::FnSig::new(&[Type::I128, Type::I128], &Type::I128),
                         true,
                     )

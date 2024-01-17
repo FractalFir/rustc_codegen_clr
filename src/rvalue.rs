@@ -304,9 +304,9 @@ pub fn handle_rvalue<'tcx>(
                     res
                 }
                 (_, _) => {
-                    eprintln!(
+                    /*eprintln!(
                         "transmute from {src:?} to {dst:?} does not have special handling yet!"
-                    );
+                    );*/
                     let mut res = handle_operand(operand, tyctx, method, method_instance, tycache);
                     res.push(CILOp::NewTMPLocal(src.into()));
                     res.push(CILOp::SetTMPLocal);

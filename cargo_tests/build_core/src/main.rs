@@ -3,6 +3,7 @@
 #![no_std]
 mod ascii;
 mod array;
+use core::hint::black_box;
 use mycorrhiza::{start,panic_handler};
 panic_handler!{}
 start!{}

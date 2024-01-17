@@ -262,8 +262,9 @@ impl Assembly {
         // let access_modifier = AccessModifer::from_visibility(tcx.visibility(instance.def_id()));
         let access_modifier = AccessModifer::Public;
         // Handle the function signature
-        let sig = match FnSig::sig_from_instance_(instance, tcx, cache) {
-            Ok(sig) => sig,
+        let call_site = crate::call_info::CallInfo::sig_from_instance_(instance, tcx, cache);
+        let sig = match call_site {
+            Ok(call_site) => call_site.sig().clone(),
             Err(err) => {
                 eprintln!("Could not get the signature of function {name} because {err:?}");
                 return Ok(());
@@ -274,7 +275,7 @@ impl Assembly {
         //eprintln!("method")
         let locals = locals_from_mir(&mir.local_decls, tcx, mir.arg_count, &instance, cache);
         // Create method prototype
-        let mut method = Method::new(access_modifier, true, sig, name, locals);
+        let mut method = Method::new(access_modifier, true, sig.clone(), name, locals);
         let mut ops = Vec::new();
         if *crate::config::TRACE_CALLS {
             ops.extend(CILOp::debug_msg(&format!("Called {name}.")));
@@ -466,14 +467,14 @@ impl Assembly {
         tcx: TyCtxt<'tcx>,
         cache: &mut TyCache,
     ) -> Result<(), CodegenError> {
-        if !item.is_instantiable(tcx) {
+        /*if !item.is_instantiable(tcx) {
             let name = item.symbol_name(tcx);
             // TODO: check if this whole if statement is even needed.
             eprintln!(
                 "WARNING: {name} is not instantiable. Skipping it, since it should not be needed."
             );
             return Ok(());
-        }
+        }*/
         match item {
             MonoItem::Fn(instance) => {
                 //let instance = crate::utilis::monomorphize(&instance,tcx);
