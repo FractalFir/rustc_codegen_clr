@@ -70,7 +70,7 @@ pub fn handle_terminator<'ctx>(
                     let mut call_ops = Vec::new();
                     for arg in args {
                         call_ops.extend(crate::operand::handle_operand(
-                            arg,
+                            &arg.node,
                             tyctx,
                             body,
                             method_instance,

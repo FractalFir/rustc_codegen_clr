@@ -5,6 +5,7 @@ use crate::{
     place::place_set,
     r#type::{tycache, DotnetTypeRef, Type},
 };
+use rustc_span::source_map::Spanned;
 use rustc_middle::{
     mir::{Body, Operand, Place, SwitchTargets, Terminator, TerminatorKind},
     ty::{GenericArg, Instance, ParamEnv, Ty, TyCtxt, TyKind, UintTy},
@@ -12,7 +13,7 @@ use rustc_middle::{
 use tycache::TyCache;
 pub fn handle_intrinsic<'tyctx>(
     fn_name: &str,
-    args: &[Operand<'tyctx>],
+    args: &[Spanned<Operand<'tyctx>>],
     destination: &Place<'tyctx>,
     tyctx: TyCtxt<'tyctx>,
     body: &'tyctx Body<'tyctx>,
@@ -24,7 +25,7 @@ pub fn handle_intrinsic<'tyctx>(
     let mut call = Vec::new();
     for arg in args {
         call.extend(crate::operand::handle_operand(
-            arg,
+            &arg.node,
             tyctx,
             body,
             method_instance,
@@ -50,7 +51,7 @@ pub fn handle_intrinsic<'tyctx>(
             place_set(
                 destination,
                 tyctx,
-                handle_operand(&args[0], tyctx, body, method_instance, type_cache),
+                handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
                 body,
                 method_instance,
                 type_cache,
@@ -93,7 +94,7 @@ pub fn handle_intrinsic<'tyctx>(
             place_set(
                 destination,
                 tyctx,
-                handle_operand(&args[0], tyctx, body, method_instance, type_cache),
+                handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
                 body,
                 method_instance,
                 type_cache,
@@ -111,7 +112,7 @@ pub fn handle_intrinsic<'tyctx>(
             let bit_operations = Some(bit_operations);
             let mut res = Vec::new();
             res.extend(handle_operand(
-                &args[0],
+                &args[0].node,
                 tyctx,
                 body,
                 method_instance,
@@ -141,7 +142,7 @@ pub fn handle_intrinsic<'tyctx>(
             let bit_operations = Some(bit_operations);
             let mut res = Vec::new();
             res.extend(handle_operand(
-                &args[0],
+                &args[0].node,
                 tyctx,
                 body,
                 method_instance,
@@ -172,7 +173,7 @@ pub fn handle_intrinsic<'tyctx>(
             let bit_operations = Some(bit_operations);
             let mut res = Vec::new();
             res.extend(handle_operand(
-                &args[0],
+                &args[0].node,
                 tyctx,
                 body,
                 method_instance,
@@ -202,14 +203,14 @@ pub fn handle_intrinsic<'tyctx>(
             let bit_operations = Some(bit_operations);
             let mut res = Vec::new();
             res.extend(handle_operand(
-                &args[0],
+                &args[0].node,
                 tyctx,
                 body,
                 method_instance,
                 type_cache,
             ));
             res.extend(handle_operand(
-                &args[1],
+                &args[1].node,
                 tyctx,
                 body,
                 method_instance,
@@ -233,9 +234,9 @@ pub fn handle_intrinsic<'tyctx>(
                 3,
                 "The intrinsic `write_bytes` MUST take in exactly 3 argument!"
             );
-            let dst = handle_operand(&args[0], tyctx, body, method_instance, type_cache);
-            let val = handle_operand(&args[1], tyctx, body, method_instance, type_cache);
-            let count = handle_operand(&args[2], tyctx, body, method_instance, type_cache);
+            let dst = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
+            let val = handle_operand(&args[1].node, tyctx, body, method_instance, type_cache);
+            let count = handle_operand(&args[2].node, tyctx, body, method_instance, type_cache);
             let mut ops = dst;
             ops.extend(val);
             ops.extend(count);
@@ -248,9 +249,9 @@ pub fn handle_intrinsic<'tyctx>(
                 3,
                 "The intrinsic `copy` MUST take in exactly 3 argument!"
             );
-            let dst = handle_operand(&args[0], tyctx, body, method_instance, type_cache);
-            let val = handle_operand(&args[1], tyctx, body, method_instance, type_cache);
-            let count = handle_operand(&args[2], tyctx, body, method_instance, type_cache);
+            let dst = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
+            let val = handle_operand(&args[1].node, tyctx, body, method_instance, type_cache);
+            let count = handle_operand(&args[2].node, tyctx, body, method_instance, type_cache);
             let mut ops = dst;
             ops.extend(val);
             ops.extend(count);
@@ -263,8 +264,8 @@ pub fn handle_intrinsic<'tyctx>(
                 2,
                 "The intrinsic `exact_div` MUST take in exactly 2 argument!"
             );
-            let lhs = handle_operand(&args[0], tyctx, body, method_instance, type_cache);
-            let rhs = handle_operand(&args[1], tyctx, body, method_instance, type_cache);
+            let lhs = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
+            let rhs = handle_operand(&args[1].node, tyctx, body, method_instance, type_cache);
             let mut ops = lhs;
             ops.extend(rhs);
             ops.push(CILOp::Div);
@@ -309,11 +310,11 @@ pub fn handle_intrinsic<'tyctx>(
                 1,
                 "The intrinsic `volatile_load` MUST take in exactly 1 argument!"
             );
-            let mut ops = handle_operand(&args[0], tyctx, body, method_instance, type_cache);
+            let mut ops = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
             ops.push(CILOp::Volatile);
             ops.extend(
                 crate::place::deref_op(
-                    args[0].ty(body, tyctx).into(),
+                    args[0].node.ty(body, tyctx).into(),
                     tyctx,
                     &method_instance,
                     type_cache,
@@ -329,11 +330,11 @@ pub fn handle_intrinsic<'tyctx>(
                 1,
                 "The intrinsic `atomic_load_unordered` MUST take in exactly 1 argument!"
             );
-            let mut ops = handle_operand(&args[0], tyctx, body, method_instance, type_cache);
+            let mut ops = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
             ops.push(CILOp::Volatile);
             ops.extend(
                 crate::place::deref_op(
-                    args[0].ty(body, tyctx).into(),
+                    args[0].node.ty(body, tyctx).into(),
                     tyctx,
                     &method_instance,
                     type_cache,
@@ -349,11 +350,11 @@ pub fn handle_intrinsic<'tyctx>(
                 1,
                 "The intrinsic `atomic_load_acquire` MUST take in exactly 1 argument!"
             );
-            let mut ops = handle_operand(&args[0], tyctx, body, method_instance, type_cache);
+            let mut ops = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
             ops.push(CILOp::Volatile);
             ops.extend(
                 crate::place::deref_op(
-                    args[0].ty(body, tyctx).into(),
+                    args[0].node.ty(body, tyctx).into(),
                     tyctx,
                     &method_instance,
                     type_cache,
@@ -370,7 +371,7 @@ pub fn handle_intrinsic<'tyctx>(
                 1,
                 "The intrinsic `sqrtf32` MUST take in exactly 1 argument!"
             );
-            let mut ops = handle_operand(&args[0], tyctx, body, method_instance, type_cache);
+            let mut ops = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
             ops.push(CILOp::ConvF64(false));
             ops.push(CILOp::Call(CallSite::boxed(
                 Some(DotnetTypeRef::new("System.Runtime".into(), "System.Math")),
@@ -387,7 +388,7 @@ pub fn handle_intrinsic<'tyctx>(
                 1,
                 "The intrinsic `size_of_val` MUST take in exactly 1 argument!"
             );
-            let tpe = args[0].ty(body, tyctx);
+            let tpe = args[0].node.ty(body, tyctx);
             let tpe = crate::utilis::monomorphize(&method_instance, tpe, tyctx);
             let tpe = type_cache.type_from_cache(tpe, tyctx, Some(method_instance));
             place_set(
@@ -405,7 +406,7 @@ pub fn handle_intrinsic<'tyctx>(
                 1,
                 "The intrinsic `sqrtf64` MUST take in exactly 1 argument!"
             );
-            let mut ops = handle_operand(&args[0], tyctx, body, method_instance, type_cache);
+            let mut ops = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
             ops.push(CILOp::Call(CallSite::boxed(
                 Some(DotnetTypeRef::new("System.Runtime".into(), "System.Math")),
                 "Sqrt".into(),
@@ -419,7 +420,7 @@ pub fn handle_intrinsic<'tyctx>(
     }
 }
 fn bswap<'tyctx>(
-    args: &[Operand<'tyctx>],
+    args: &[Spanned<Operand<'tyctx>>],
     destination: &Place<'tyctx>,
     tyctx: TyCtxt<'tyctx>,
     body: &'tyctx Body<'tyctx>,
@@ -431,9 +432,9 @@ fn bswap<'tyctx>(
         1,
         "The intrinsic `bswap` MUST take in exactly 1 argument!"
     );
-    let ty = args[0].ty(body, tyctx);
+    let ty = args[0].node.ty(body, tyctx);
     let ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
-    let operand = handle_operand(&args[0], tyctx, body, method_instance, type_cache);
+    let operand = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
     place_set(
         destination,
         tyctx,

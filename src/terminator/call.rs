@@ -18,11 +18,12 @@ use rustc_middle::{
     mir::{Body, Operand, Place, SwitchTargets, Terminator, TerminatorKind},
     ty::{GenericArg, Instance, ParamEnv, Ty, TyCtxt, TyKind},
 };
-fn decode_interop_call<'ctx>(
+use rustc_span::source_map::Spanned;
+fn decode_interop_call<'tyctx>(
     function_name: &str,
     prefix: &str,
-    subst_ref: &[GenericArg<'ctx>],
-    tyctx: TyCtxt<'ctx>,
+    subst_ref: &[GenericArg<'tyctx>],
+    tyctx: TyCtxt<'tyctx>,
 ) -> CallSite {
     let argument_count = argc_from_fn_name(function_name, MANAGED_CALL_FN_NAME);
     let asm = AssemblyRef::decode_assembly_ref(subst_ref[0], tyctx);
@@ -39,15 +40,15 @@ fn argc_from_fn_name(function_name: &str, prefix: &str) -> u32 {
     argument_count.parse::<u32>().unwrap()
 }
 /// Calls a non-virtual managed function(used for interop)
-fn call_managed<'ctx>(
-    tyctx: TyCtxt<'ctx>,
-    subst_ref: &[GenericArg<'ctx>],
+fn call_managed<'tyctx>(
+    tyctx: TyCtxt<'tyctx>,
+    subst_ref: &[GenericArg<'tyctx>],
     function_name: &str,
-    args: &[Operand<'ctx>],
-    destination: &Place<'ctx>,
-    method: &'ctx Body<'ctx>,
-    method_instance: Instance<'ctx>,
-    fn_instance: Instance<'ctx>,
+    args: &[Spanned<Operand<'tyctx>>],
+    destination: &Place<'tyctx>,
+    method: &'tyctx Body<'tyctx>,
+    method_instance: Instance<'tyctx>,
+    fn_instance: Instance<'tyctx>,
     type_cache: &mut crate::r#type::TyCache,
 ) -> Vec<CILOp> {
     let argument_count = argc_from_fn_name(function_name, MANAGED_CALL_FN_NAME);
@@ -90,7 +91,7 @@ fn call_managed<'ctx>(
         let mut call = Vec::new();
         for arg in args {
             call.extend(crate::operand::handle_operand(
-                arg,
+                &arg.node,
                 tyctx,
                 method,
                 method_instance,
@@ -118,15 +119,15 @@ fn call_managed<'ctx>(
     }
 }
 /// Calls a virtual managed function(used for interop)
-fn callvirt_managed<'ctx>(
-    tyctx: TyCtxt<'ctx>,
-    subst_ref: &[GenericArg<'ctx>],
+fn callvirt_managed<'tyctx>(
+    tyctx: TyCtxt<'tyctx>,
+    subst_ref: &[GenericArg<'tyctx>],
     function_name: &str,
-    args: &[Operand<'ctx>],
-    destination: &Place<'ctx>,
-    method: &'ctx Body<'ctx>,
-    method_instance: Instance<'ctx>,
-    fn_instance: Instance<'ctx>,
+    args: &[Spanned<Operand<'tyctx>>],
+    destination: &Place<'tyctx>,
+    method: &'tyctx Body<'tyctx>,
+    method_instance: Instance<'tyctx>,
+    fn_instance: Instance<'tyctx>,
     type_cache: &mut crate::r#type::TyCache,
 ) -> Vec<CILOp> {
     let argument_count = argc_from_fn_name(function_name, MANAGED_CALL_VIRT_FN_NAME);
@@ -173,7 +174,7 @@ fn callvirt_managed<'ctx>(
         let mut call = Vec::new();
         for arg in args {
             call.extend(crate::operand::handle_operand(
-                arg,
+                &arg.node,
                 tyctx,
                 method,
                 method_instance,
@@ -201,14 +202,14 @@ fn callvirt_managed<'ctx>(
     }
 }
 /// Creates a new managed object, and places a reference to it in destination
-fn call_ctor<'ctx>(
-    tyctx: TyCtxt<'ctx>,
-    subst_ref: &[GenericArg<'ctx>],
+fn call_ctor<'tyctx>(
+    tyctx: TyCtxt<'tyctx>,
+    subst_ref: &[GenericArg<'tyctx>],
     function_name: &str,
-    args: &[Operand<'ctx>],
-    destination: &Place<'ctx>,
-    method: &'ctx Body<'ctx>,
-    method_instance: Instance<'ctx>,
+    args: &[Spanned<Operand<'tyctx>>],
+    destination: &Place<'tyctx>,
+    method: &'tyctx Body<'tyctx>,
+    method_instance: Instance<'tyctx>,
     type_cache: &mut crate::r#type::TyCache,
 ) -> Vec<CILOp> {
     let argument_count = argc_from_fn_name(function_name, CTOR_FN_NAME);
@@ -258,7 +259,7 @@ fn call_ctor<'ctx>(
         let mut call = Vec::new();
         for arg in args {
             call.extend(crate::operand::handle_operand(
-                arg,
+                &arg.node,
                 tyctx,
                 method,
                 method_instance,
@@ -282,7 +283,7 @@ fn call_ctor<'ctx>(
     }
 }
 pub fn call_closure<'tyctx>(
-    args: &[Operand<'tyctx>],
+    args: &[Spanned<Operand<'tyctx>>],
     destination: &Place<'tyctx>,
     tyctx: TyCtxt<'tyctx>,
     sig: FnSig,
@@ -298,7 +299,7 @@ pub fn call_closure<'tyctx>(
     let other_args = &args[..args.len() - 1];
     for arg in other_args {
         call.extend(crate::operand::handle_operand(
-            arg,
+            &arg.node,
             tyctx,
             body,
             method_instance,
@@ -306,13 +307,13 @@ pub fn call_closure<'tyctx>(
         ));
     }
     let last_arg_type =
-        crate::utilis::monomorphize(&method_instance, last_arg.ty(body, tyctx), tyctx);
+        crate::utilis::monomorphize(&method_instance, last_arg.node.ty(body, tyctx), tyctx);
     match last_arg_type.kind() {
         TyKind::Tuple(elements) => {
             if elements.is_empty() {
             } else {
                 call.extend(crate::operand::handle_operand(
-                    last_arg,
+                    &last_arg.node,
                     tyctx,
                     body,
                     method_instance,
@@ -357,13 +358,13 @@ pub fn call_closure<'tyctx>(
     }
 }
 /// Calls `fn_type` with `args`, placing the return value in destination.
-pub fn call<'ctx>(
-    fn_type: Ty<'ctx>,
-    body: &'ctx Body<'ctx>,
-    tyctx: TyCtxt<'ctx>,
-    args: &[Operand<'ctx>],
-    destination: &Place<'ctx>,
-    method_instance: Instance<'ctx>,
+pub fn call<'tyctx>(
+    fn_type: Ty<'tyctx>,
+    body: &'tyctx Body<'tyctx>,
+    tyctx: TyCtxt<'tyctx>,
+    args: &[Spanned<Operand<'tyctx>>],
+    destination: &Place<'tyctx>,
+    method_instance: Instance<'tyctx>,
     type_cache: &mut crate::r#type::TyCache,
 ) -> Vec<CILOp> {
     let fn_type = crate::utilis::monomorphize(&method_instance, fn_type, tyctx);
@@ -475,7 +476,7 @@ pub fn call<'ctx>(
     let mut call = Vec::new();
     for arg in args {
         call.extend(crate::operand::handle_operand(
-            arg,
+            &arg.node,
             tyctx,
             body,
             method_instance,
