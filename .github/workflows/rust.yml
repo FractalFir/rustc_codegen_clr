@@ -31,3 +31,5 @@ jobs:
       #run: dotnet add package Microsoft.NETCore.ILAsm --version 8.0.0
     - name: Check ILASM
       run: ilasm --version
+    - name: Check ILASM
+      run: cargo test --verbose
