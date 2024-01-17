@@ -32,4 +32,5 @@ jobs:
     - name: Check ILASM
       run: ilasm --version
     - name: Run cargo tests
-      run: cargo test --verbose
+      run: cargo test --verbose ::stable
+

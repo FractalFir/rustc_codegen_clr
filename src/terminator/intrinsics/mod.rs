@@ -5,11 +5,11 @@ use crate::{
     place::place_set,
     r#type::{tycache, DotnetTypeRef, Type},
 };
-use rustc_span::source_map::Spanned;
 use rustc_middle::{
     mir::{Body, Operand, Place, SwitchTargets, Terminator, TerminatorKind},
     ty::{GenericArg, Instance, ParamEnv, Ty, TyCtxt, TyKind, UintTy},
 };
+use rustc_span::source_map::Spanned;
 use tycache::TyCache;
 pub fn handle_intrinsic<'tyctx>(
     fn_name: &str,
@@ -284,10 +284,7 @@ pub fn handle_intrinsic<'tyctx>(
                 &[DotnetTypeRef::type_handle_type().into()],
                 &DotnetTypeRef::type_type().into(),
             );
-            let gethash_sig = FnSig::new(
-                &[DotnetTypeRef::type_type().into()],
-                &Type::I32,
-            );
+            let gethash_sig = FnSig::new(&[DotnetTypeRef::type_type().into()], &Type::I32);
             vec![
                 CILOp::LDTypeToken(tpe.into()),
                 CILOp::Call(CallSite::boxed(

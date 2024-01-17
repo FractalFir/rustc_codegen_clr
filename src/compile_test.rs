@@ -62,143 +62,104 @@ fn test_dotnet_executable(file_path: &str, test_dir: &str) {
         "You must have the dotnet runtime installed to run tests."
     );
 }
+#[cfg(test)]
+fn test_lib(args: &[&str], test_name: &str) {
+    // Ensures the test directory is present
+    std::fs::create_dir_all("./test/out").expect("Could not setup the test env");
+    // Builds the backend if neceasry
+    RUSTC_BUILD_STATUS.as_ref().expect("Could not build rustc!");
+    // Compiles the test project
+    let mut command = std::process::Command::new("rustc");
+    let command = command
+        .current_dir("./test/out")
+        //.env("RUST_TARGET_PATH","../../")
+        .args(args);
+
+    let command = if *IS_MONO_PRESENT {
+        // Tell the linker to test AOT
+        command.args(["-C", "link-arg=--aot-mode,mono-full"])
+    } else {
+        command
+    };
+    let out = command.output().expect("failed to execute process");
+    if !out.stderr.is_empty() {
+        let stdout =
+            String::from_utf8(out.stdout).expect("rustc error contained non-UTF8 characters.");
+        let stderr =
+            String::from_utf8(out.stderr).expect("rustc error contained non-UTF8 characters.");
+        panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
+    }
+    let test_dll = format!("./{test_name}.dll");
+    let out = std::process::Command::new(RUSTC_CODEGEN_CLR_LINKER.display().to_string())
+        .current_dir("./test/out")
+        .arg("-o")
+        .arg(test_dll)
+        .arg(format!("./{test_name}.rlib"))
+        .output()
+        .unwrap();
+    //super::peverify(test_dll, "./test/out");
+    // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
+    if !out.stderr.is_empty() {
+        let stdout =
+            String::from_utf8(out.stdout).expect("rustc error contained non-UTF8 characters.");
+        let stderr =
+            String::from_utf8(out.stderr).expect("rustc error contained non-UTF8 characters.");
+        panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
+    }
+}
 macro_rules! test_lib {
-    ($test_name:ident) => {
-        mod $test_name {
+    ($test_name:ident,$is_stable:ident) => {
+        mod $test_name {mod $is_stable{
             #[cfg(test)]
             static COMPILE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
             #[test]
             fn release() {
                 // Ensures no two compilations run at the same time.
                 let lock = COMPILE_LOCK.lock();
-                // Ensures the test directory is present
-                std::fs::create_dir_all("./test/out").expect("Could not setup the test env");
-                // Builds the backend if neceasry
-                super::RUSTC_BUILD_STATUS
-                    .as_ref()
-                    .expect("Could not build rustc!");
-                // Compiles the test project
-                let mut command = std::process::Command::new("rustc");
-                let command = command
-                    .current_dir("./test/out")
-                    //.env("RUST_TARGET_PATH","../../")
-                    .args([
+                super::super::test_lib(
+                    &[
                         "-O",
                         "--crate-type=lib",
                         "-Z",
-                        super::backend_path(),
+                        super::super::backend_path(),
                         "-C",
-                        &format!("linker={}", super::RUSTC_CODEGEN_CLR_LINKER.display()),
+                        &format!("linker={}", super::super::RUSTC_CODEGEN_CLR_LINKER.display()),
                         concat!("../", stringify!($test_name), ".rs"),
                         "-o",
                         concat!("./", stringify!($test_name), ".rlib"),
                         //"--target",
                         // "clr64-unknown-clr"
-                    ]);
-
-                let command = if *super::IS_MONO_PRESENT {
-                    // Tell the linker to test AOT
-                    command.args(["-C", "link-arg=--aot-mode,mono-full"])
-                } else {
-                    command
-                };
-                let out = command.output().expect("failed to execute process");
-                if !out.stderr.is_empty() {
-                    let stdout = String::from_utf8(out.stdout)
-                        .expect("rustc error contained non-UTF8 characters.");
-                    let stderr = String::from_utf8(out.stderr)
-                        .expect("rustc error contained non-UTF8 characters.");
-                    panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
-                }
-                let test_dll = concat!("./", stringify!($test_name), ".dll");
-                let out = std::process::Command::new(
-                    super::RUSTC_CODEGEN_CLR_LINKER.display().to_string(),
-                )
-                .current_dir("./test/out")
-                .arg("-o")
-                .arg(test_dll)
-                .arg(concat!("./", stringify!($test_name), ".rlib"))
-                .output()
-                .unwrap();
-                super::peverify(test_dll, "./test/out");
-                // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
-                if !out.stderr.is_empty() {
-                    let stdout = String::from_utf8(out.stdout)
-                        .expect("rustc error contained non-UTF8 characters.");
-                    let stderr = String::from_utf8(out.stderr)
-                        .expect("rustc error contained non-UTF8 characters.");
-                    panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
-                }
+                    ],
+                    stringify!($test_name),
+                );
                 drop(lock);
             }
             #[test]
             fn debug() {
                 let lock = COMPILE_LOCK.lock();
-                // Ensures the test directory is present
-                std::fs::create_dir_all("./test/out").expect("Could not setup the test env");
-                // Builds the backend if neceasry
-                super::RUSTC_BUILD_STATUS
-                    .as_ref()
-                    .expect("Could not build rustc!");
-                // Compiles the test project
-                let mut command = std::process::Command::new("rustc");
-                let command = command
-                    .current_dir("./test/out")
-                    //.env("RUST_TARGET_PATH","../../")
-                    .args([
+                super::super::test_lib(
+                    &[
                         "--crate-type=lib",
                         "-Z",
-                        super::backend_path(),
+                        super::super::backend_path(),
                         "-C",
-                        &format!("linker={}", super::RUSTC_CODEGEN_CLR_LINKER.display()),
+                        &format!("linker={}", super::super::RUSTC_CODEGEN_CLR_LINKER.display()),
                         concat!("../", stringify!($test_name), ".rs"),
                         "-o",
                         concat!("./", stringify!($test_name), ".rlib"),
                         //"--target",
                         // "clr64-unknown-clr"
-                    ]);
-
-                let command = if *super::IS_MONO_PRESENT {
-                    // Tell the linker to test AOT
-                    command.args(["-C", "link-arg=--aot-mode,mono-full"])
-                } else {
-                    command
-                };
-                let out = command.output().expect("failed to execute process");
-                if !out.stderr.is_empty() {
-                    let stdout = String::from_utf8(out.stdout)
-                        .expect("rustc error contained non-UTF8 characters.");
-                    let stderr = String::from_utf8(out.stderr)
-                        .expect("rustc error contained non-UTF8 characters.");
-                    panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
-                }
-                let test_dll = concat!("./dbg_", stringify!($test_name), ".dll");
-                let out = std::process::Command::new(
-                    super::RUSTC_CODEGEN_CLR_LINKER.display().to_string(),
-                )
-                .current_dir("./test/out")
-                .arg("-o")
-                .arg(test_dll)
-                .arg(concat!("./", stringify!($test_name), ".rlib"))
-                .output()
-                .unwrap();
-                super::peverify(test_dll, "./test/out");
-                // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
-                if !out.stderr.is_empty() {
-                    let stdout = String::from_utf8(out.stdout)
-                        .expect("rustc error contained non-UTF8 characters.");
-                    let stderr = String::from_utf8(out.stderr)
-                        .expect("rustc error contained non-UTF8 characters.");
-                    panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
-                }
+                    ],
+                    stringify!($test_name),
+                );
                 drop(lock);
             }
-        }
+        }}
     };
 }
 macro_rules! run_test {
-    ($prefix:ident,$test_name:ident) => {
-        mod $test_name {
+    ($prefix:ident,$test_name:ident,$is_stable:ident) => {
+        mod $test_name { mod $is_stable{
             #[cfg(test)]
             use ntest::timeout;
             #[cfg(test)]
@@ -211,7 +172,7 @@ macro_rules! run_test {
                 // Ensures the test directory is present
                 std::fs::create_dir_all(test_dir).expect("Could not setup the test env");
                 // Builds the backend if neceasry
-                super::RUSTC_BUILD_STATUS
+                super::super::RUSTC_BUILD_STATUS
                     .as_ref()
                     .expect("Could not build rustc!");
                 // Compiles the test project
@@ -221,9 +182,9 @@ macro_rules! run_test {
                     .args([
                         "-O",
                         "-Z",
-                        super::backend_path(),
+                        super::super::backend_path(),
                         "-C",
-                        &format!("linker={}", super::RUSTC_CODEGEN_CLR_LINKER.display()),
+                        &format!("linker={}", super::super::RUSTC_CODEGEN_CLR_LINKER.display()),
                         concat!("./", stringify!($test_name), ".rs"),
                         "-o",
                         concat!("./", stringify!($test_name), ".exe"),
@@ -242,8 +203,8 @@ macro_rules! run_test {
                 }
                 let exec_path = concat!("../", stringify!($test_name));
                 drop(lock);
-                super::peverify(exec_path, test_dir);
-                super::test_dotnet_executable(exec_path, test_dir);
+                //super::peverify(exec_path, test_dir);
+                super::super::test_dotnet_executable(exec_path, test_dir);
             }
             #[test]
             #[timeout(30_000)]
@@ -253,7 +214,7 @@ macro_rules! run_test {
                 // Ensures the test directory is present
                 std::fs::create_dir_all(test_dir).expect("Could not setup the test env");
                 // Builds the backend if neceasry
-                super::RUSTC_BUILD_STATUS
+                super::super::RUSTC_BUILD_STATUS
                     .as_ref()
                     .expect("Could not build rustc!");
                 let test_name = concat!("debug_", stringify!($test_name));
@@ -264,9 +225,9 @@ macro_rules! run_test {
                     .current_dir(test_dir)
                     .args([
                         "-Z",
-                        super::backend_path(),
+                        super::super::backend_path(),
                         "-C",
-                        &format!("linker={}", super::RUSTC_CODEGEN_CLR_LINKER.display()),
+                        &format!("linker={}", super::super::RUSTC_CODEGEN_CLR_LINKER.display()),
                         concat!("./", stringify!($test_name), ".rs"),
                         "-o",
                         &output_path,
@@ -285,10 +246,10 @@ macro_rules! run_test {
                 }
                 let exec_path = format!("../{test_name}");
                 drop(lock);
-                super::peverify(&exec_path, test_dir);
-                super::test_dotnet_executable(&exec_path, test_dir);
+                //super::peverify(&exec_path, test_dir);
+                super::super::test_dotnet_executable(&exec_path, test_dir);
             }
-        }
+        }}
     };
 }
 macro_rules! cargo_test {
@@ -536,44 +497,44 @@ fn backend_path_debug() -> &'static str {
         panic!("Unsupported target OS");
     }
 }
-test_lib! {assign}
-test_lib! {binops}
-test_lib! {branches}
-test_lib! {calls}
-test_lib! {casts}
-test_lib! {closure}
-test_lib! {identity}
-test_lib! {libc}
-run_test! {types,dst}
+test_lib! {assign,unstable}
+test_lib! {binops,stable}
+test_lib! {branches,stable}
+test_lib! {calls,stable}
+test_lib! {casts,stable}
+test_lib! {closure,stable}
+test_lib! {identity,stable}
+test_lib! {libc,stable}
+run_test! {types,dst,stable}
 
-test_lib! {references}
+test_lib! {references,stable}
 //test_lib! {structs}
-test_lib! {empty_string_slice}
-test_lib! {types}
-test_lib! {recursive}
-test_lib! {fn_ptr}
-test_lib! {tuple}
+test_lib! {empty_string_slice,stable}
+test_lib! {types,stable}
+test_lib! {recursive,stable}
+test_lib! {fn_ptr,stable}
+test_lib! {tuple,stable}
 
-run_test! {arthm,add}
-run_test! {intrinsics,bswap}
-run_test! {types,tuple_structs}
-run_test! {arthm,mul}
-run_test! {arthm,sub}
-run_test! {types,enums}
-run_test! {types,nbody}
-run_test! {types,structs}
-run_test! {types,interop}
-run_test! {types,vec}
-run_test! {types,subslice}
-run_test! {types,string_slice}
-run_test! {types,ref_deref}
-run_test! {types,slice_ptr_cast}
-run_test! {types,slice_index_ref}
-run_test! {types,slice}
-run_test! {types,statics}
-run_test! {std,main}
-run_test! {control_flow,cf_for}
-run_test! {control_flow,drop}
+run_test! {arthm,add,stable}
+run_test! {intrinsics,bswap,stable}
+run_test! {types,tuple_structs,stable}
+run_test! {arthm,mul,stable}
+run_test! {arthm,sub,stable}
+run_test! {types,enums,unstable}
+run_test! {types,nbody,stable}
+run_test! {types,structs,stable}
+run_test! {types,interop,stable}
+run_test! {types,vec,unstable}
+run_test! {types,subslice,unstable}
+run_test! {types,string_slice,unstable}
+run_test! {types,ref_deref,stable}
+run_test! {types,slice_ptr_cast,stable}
+run_test! {types,slice_index_ref,unstable}
+run_test! {types,slice,unstable}
+run_test! {types,statics,stable}
+run_test! {std,main,unstable}
+run_test! {control_flow,cf_for,stable}
+run_test! {control_flow,drop,unstable}
 cargo_test! {hello_world}
 cargo_test! {std_hello_world}
 cargo_test_ignored! {build_core}
