@@ -21,12 +21,7 @@ jobs:
     - name: Setup dotnet
       uses: actions/setup-dotnet@v3
       with:
-        dotnet-version: '6.0.x'
-        path: ~/.nuget/packages
-        # Look to see if there is a cache hit for the corresponding requirements file
-        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
-        restore-keys: |
-          ${{ runner.os }}-nuget
+        dotnet-version: '8.0.x'
     #- name: Install ILASM
       #run: dotnet add package Microsoft.NETCore.ILAsm --version 8.0.0
     - name: Check ILASM
