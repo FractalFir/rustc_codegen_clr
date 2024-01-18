@@ -285,7 +285,7 @@ pub fn handle_intrinsic<'tyctx>(
                 &DotnetTypeRef::type_type().into(),
             );
             let gethash_sig = FnSig::new(&[DotnetTypeRef::type_type().into()], &Type::I32);
-            vec![
+            place_set(destination, tyctx, vec![
                 CILOp::LDTypeToken(tpe.into()),
                 CILOp::Call(CallSite::boxed(
                     DotnetTypeRef::type_type().into(),
@@ -297,9 +297,15 @@ pub fn handle_intrinsic<'tyctx>(
                     DotnetTypeRef::object_type().into(),
                     "GetHashCode".into(),
                     gethash_sig,
+                    false,
+                )),
+                CILOp::Call(CallSite::boxed(
+                    Some(DotnetTypeRef::uint_128()),
+                    "op_Implicit".into(),
+                    crate::function_sig::FnSig::new(&[Type::U32], &Type::U128),
                     true,
                 )),
-            ]
+            ], body, method_instance, type_cache)
         }
         "volatile_load" => {
             debug_assert_eq!(

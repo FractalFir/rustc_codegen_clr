@@ -516,10 +516,11 @@ test_lib! {fn_ptr,stable}
 test_lib! {tuple,stable}
 
 run_test! {arthm,add,stable}
-run_test! {intrinsics,bswap,stable}
-run_test! {types,tuple_structs,stable}
+run_test! {arthm,not,stable}
 run_test! {arthm,mul,stable}
 run_test! {arthm,sub,stable}
+
+run_test! {types,tuple_structs,stable}
 run_test! {types,enums,unstable}
 run_test! {types,nbody,stable}
 run_test! {types,structs,stable}
@@ -533,8 +534,13 @@ run_test! {types,slice_index_ref,unstable}
 run_test! {types,slice,unstable}
 run_test! {types,statics,stable}
 run_test! {std,main,unstable}
+
 run_test! {control_flow,cf_for,stable}
 run_test! {control_flow,drop,unstable}
+
+run_test! {intrinsics,bswap,unstable}
+run_test! {intrinsics,type_id,stable}
+
 cargo_test! {hello_world}
 cargo_test! {std_hello_world}
 cargo_test_ignored! {build_core}

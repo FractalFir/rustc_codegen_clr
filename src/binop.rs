@@ -3,7 +3,7 @@ use rustc_middle::ty::{Instance, IntTy, Ty, TyCtxt, TyKind, UintTy};
 
 use crate::cil::{CILOp, CallSite};
 use crate::function_sig::FnSig;
-use crate::r#type::{DotnetTypeRef, TyCache};
+use crate::r#type::{DotnetTypeRef, TyCache, Type};
 /// Preforms an unchecked binary operation.
 pub(crate) fn binop_unchecked<'tyctx>(
     binop: BinOp,
@@ -39,7 +39,7 @@ pub(crate) fn binop_unchecked<'tyctx>(
             .into_iter()
             .flatten()
             .collect(),
-        BinOp::Eq => [ops_a, ops_b, eq_unchecked(ty_a, ty_b)]
+        BinOp::Eq => [ops_a, ops_b, vec![eq_unchecked(ty_a, ty_b)]]
             .into_iter()
             .flatten()
             .collect(),
@@ -221,11 +221,41 @@ fn sub_unchecked<'tyctx>(
         _ => todo!("can't add numbers of types {ty_a} and {ty_b}"),
     }
 }
-fn ne_unchecked<'tyctx>(_ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> Vec<CILOp> {
-    vec![CILOp::Eq, CILOp::LdcI32(0), CILOp::Eq]
+fn ne_unchecked<'tyctx>(ty_a: Ty<'tyctx>, ty_b: Ty<'tyctx>) -> Vec<CILOp> {
+    vec![eq_unchecked(ty_a,ty_b), CILOp::LdcI32(0), CILOp::Eq]
 }
-fn eq_unchecked<'tyctx>(_ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> Vec<CILOp> {
-    vec![CILOp::Eq]
+fn eq_unchecked<'tyctx>(ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> CILOp {
+    //vec![CILOp::Eq]
+    match ty_a.kind() {
+        TyKind::Uint(uint) => match uint {
+            UintTy::U128 => CILOp::Call(
+                CallSite::new(
+                    Some(DotnetTypeRef::uint_128()),
+                    "op_Equality".into(),
+                    FnSig::new(&[Type::U128, Type::U128], &Type::Bool),
+                    true,
+                )
+                .into(),
+            ),
+            _=>CILOp::Eq,
+        }
+        TyKind::Int(int) => match int {
+            IntTy::I128 => CILOp::Call(
+                CallSite::new(
+                    Some(DotnetTypeRef::int_128()),
+                    "op_Equality".into(),
+                    FnSig::new(&[Type::I128, Type::I128], &Type::Bool),
+                    true,
+                )
+                .into(),
+            ),
+            _=>CILOp::Eq,
+        }
+        TyKind::Bool => CILOp::Eq,
+        TyKind::Float(_) => CILOp::Eq,
+        TyKind::RawPtr(_) => CILOp::Eq,
+        _ => panic!("Can't bitshift type  {ty_a:?}"),
+    }
 }
 fn lt_unchecked<'tyctx>(_ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> Vec<CILOp> {
     vec![CILOp::Lt]

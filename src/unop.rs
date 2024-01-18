@@ -1,6 +1,6 @@
 use crate::r#type::tycache::TyCache;
 use rustc_middle::mir::{Operand, UnOp};
-use rustc_middle::ty::{Instance, TyCtxt};
+use rustc_middle::ty::{Instance, TyCtxt,TyKind};
 
 use crate::cil::CILOp;
 pub fn unop<'ctx>(
@@ -12,10 +12,13 @@ pub fn unop<'ctx>(
     tycache: &mut TyCache,
 ) -> Vec<CILOp> {
     let mut ops = crate::operand::handle_operand(operand, tcx, method, method_instance, tycache);
-    let _ty = operand.ty(&method.local_decls, tcx);
+    let ty = operand.ty(&method.local_decls, tcx);
     match unnop {
         UnOp::Neg => ops.push(CILOp::Neg),
-        UnOp::Not => ops.push(CILOp::Not),
+        UnOp::Not => match ty.kind() {
+            TyKind::Bool =>ops.extend([CILOp::LdcI32(0), CILOp::Eq]),
+            _=>ops.push(CILOp::Not),
+        }
     };
     ops
 }
