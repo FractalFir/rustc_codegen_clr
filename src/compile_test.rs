@@ -256,8 +256,8 @@ macro_rules! run_test {
     };
 }
 macro_rules! cargo_test {
-    ($test_name:ident) => {
-        mod $test_name {
+    ($test_name:ident,$is_stable:ident) => {
+        mod $test_name { mod $is_stable{
 
             #[cfg(test)]
             static COMPILE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
@@ -268,7 +268,7 @@ macro_rules! cargo_test {
                 // Ensures the test directory is present
                 std::fs::create_dir_all(test_dir).expect("Could not setup the test env");
                 // Builds the backend if neceasry
-                let rustflags = super::cargo_build_env();
+                let rustflags = super::super::cargo_build_env();
                 // Compiles the test project
                 let out = std::process::Command::new("cargo")
                     .env("RUSTFLAGS", &rustflags)
@@ -303,7 +303,7 @@ macro_rules! cargo_test {
                 // Ensures the test directory is present
                 std::fs::create_dir_all(test_dir).expect("Could not setup the test env");
                 // Builds the backend if neceasry
-                let rustflags = super::cargo_build_env();
+                let rustflags = super::super::cargo_build_env();
                 // Compiles the test project
                 let mut command = std::process::Command::new("cargo");
                 command
@@ -333,7 +333,7 @@ macro_rules! cargo_test {
                 //let exec_path = concat!("../", stringify!($test_name));
                 //test_dotnet_executable(exec_path, test_dir);
             }
-        }
+        }}
     };
 }
 macro_rules! cargo_test_ignored {
@@ -548,14 +548,14 @@ run_test! {intrinsics,type_id,stable}
 
 run_test! {fuzz,test0,stable}
 
-cargo_test! {hello_world}
-cargo_test! {std_hello_world}
+cargo_test! {hello_world,stable}
+cargo_test! {std_hello_world,stable}
 cargo_test_ignored! {build_core}
 cargo_test_ignored! {build_alloc}
 cargo_test_ignored! {build_std}
-cargo_test! {benchmarks}
-cargo_test! {glam_test}
-cargo_test! {fastrand_test}
+cargo_test! {benchmarks,stable}
+cargo_test! {glam_test,unstable}
+cargo_test! {fastrand_test,stable}
 
 use lazy_static::*;
 pub fn get_runtime_config() -> &'static str {

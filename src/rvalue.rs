@@ -408,8 +408,10 @@ pub fn handle_rvalue<'tcx>(
             let owner_ty = crate::utilis::monomorphize(&method_instance, owner_ty, tyctx);
             let owner = tycache.type_from_cache(owner_ty, tyctx, Some(method_instance));
             //TODO: chose proper tag type based on variant count of `owner`
-            let discr_ty = owner_ty.discriminant_ty(tyctx);
-            let discr_type = tycache.type_from_cache(discr_ty, tyctx, Some(method_instance));
+            //let discr_ty = owner_ty.discriminant_ty(tyctx);
+            //let discr_type = tycache.type_from_cache(discr_ty, tyctx, Some(method_instance));
+            let layout = tyctx.layout_of(rustc_middle::ty::ParamEnvAnd{param_env:ParamEnv::reveal_all(),value:owner_ty}).expect("Could not get type layout!");
+            let (disrc_type,_) = crate::utilis::adt::enum_tag_info(&layout.layout,tyctx);
             let owner = if let crate::r#type::Type::DotnetType(dotnet_type) = owner {
                 dotnet_type.as_ref().clone()
             } else {
@@ -417,7 +419,7 @@ pub fn handle_rvalue<'tcx>(
             };
             ops.push(CILOp::LDField(Box::new(crate::cil::FieldDescriptor::new(
                 owner,
-                discr_type,
+                disrc_type,
                 "_tag".into(),
             ))));
             ops

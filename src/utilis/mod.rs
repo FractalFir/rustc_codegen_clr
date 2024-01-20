@@ -19,6 +19,7 @@ use crate::{
     r#type::{DotnetTypeRef, Type},
     IString,
 };
+pub mod adt;
 pub fn as_adt(ty: Ty) -> Option<(AdtDef, &List<GenericArg>)> {
     match ty.kind() {
         TyKind::Adt(adt, subst) => Some((*adt, subst)),

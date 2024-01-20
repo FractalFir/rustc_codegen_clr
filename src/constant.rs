@@ -114,33 +114,50 @@ fn create_const_adt_from_bytes<'ctx>(
             #[allow(unused_mut)]
             let mut curr_offset = variant_size;
             let enum_ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
-            let enum_ty = tycache.type_from_cache(enum_ty, tyctx, Some(method_instance));
-            let enum_dotnet: DotnetTypeRef = if let Type::DotnetType(ty_ref) = &enum_ty {
+            let enum_type = tycache.type_from_cache(enum_ty, tyctx, Some(method_instance));
+            let enum_dotnet: DotnetTypeRef = if let Type::DotnetType(ty_ref) = &enum_type {
                 ty_ref.as_ref().clone()
             } else {
-                panic!("Invalid enum type {enum_ty:?}");
+                panic!("Invalid enum type {enum_type:?}");
             };
-            let mut ops = vec![CILOp::NewTMPLocal(enum_ty.into())];
-            let curr_variant = match variant_size {
+            let layout = tyctx.layout_of(rustc_middle::ty::ParamEnvAnd{param_env:ParamEnv::reveal_all(),value:enum_ty}).expect("Could not get type layout!");
+            let (disrc_type,discr_size) = crate::utilis::adt::enum_tag_info(&layout.layout,tyctx);
+            let mut ops = vec![CILOp::NewTMPLocal(enum_type.into())];
+            let curr_variant = match discr_size {
                 0 => todo!("Can't yet handle constant enums with 0-sized tags."),
                 1 => {
                     //curr_offset = 1;
                     let variant = bytes[0] as u32;
-                    ops.extend([
-                        CILOp::LoadAddresOfTMPLocal,
-                        CILOp::LdcI32(variant as i32),
-                        CILOp::STField(FieldDescriptor::boxed(
-                            enum_dotnet.clone(),
-                            Type::U8,
-                            "_tag".into(),
-                        )),
-                    ]);
-                    variant
+                    variant as u64
+                }
+                2 => {
+                    //curr_offset = 1;
+                    let variant = u16::from_ne_bytes(bytes[0..2].try_into().unwrap());
+                    variant as u64
+                }
+                4 => {
+                    //curr_offset = 1;
+                    let variant = u32::from_ne_bytes(bytes[0..4].try_into().unwrap());
+                    variant as u64
+                }
+                8 => {
+                    //curr_offset = 1;
+                    let variant = u64::from_ne_bytes(bytes[0..8].try_into().unwrap());
+                    variant as u64
                 }
                 _ => todo!("Can't yet support enums with {variant_size} wide tags."),
             };
-            assert!(curr_variant < adt_def.variants().len() as u32);
-            let active_variant = &adt_def.variants()[curr_variant.into()];
+            ops.extend([
+                CILOp::LoadAddresOfTMPLocal,
+                CILOp::LdcI64(curr_variant as i64),
+                CILOp::STField(FieldDescriptor::boxed(
+                    enum_dotnet.clone(),
+                    disrc_type,
+                    "_tag".into(),
+                )),
+            ]);
+            assert!(curr_variant < adt_def.variants().len() as u64);
+            let active_variant = &adt_def.variants()[(curr_variant as u32).into()];
             for _field in &active_variant.fields {
                 // Use offset to get the right bytes
                 let _ = curr_offset;
@@ -693,7 +710,8 @@ fn load_const_scalar<'ctx>(
         }
         TyKind::Adt(adt_def, _subst) => match adt_def.adt_kind() {
             AdtKind::Enum => {
-                let field_type = Type::U8;
+                let layout = tyctx.layout_of(rustc_middle::ty::ParamEnvAnd{param_env:ParamEnv::reveal_all(),value:scalar_type}).expect("Could not get type layout!");
+                let (disrc_type,_) = crate::utilis::adt::enum_tag_info(&layout.layout,tyctx);
                 let enum_dotnet = tpe.as_dotnet().expect("Enum scalar not an ADT!");
                 vec![
                     CILOp::NewTMPLocal(tpe.into()),
@@ -701,7 +719,7 @@ fn load_const_scalar<'ctx>(
                     CILOp::LdcI64(scalar_u128 as i64),
                     CILOp::STField(Box::new(crate::cil::FieldDescriptor::new(
                         enum_dotnet.clone(),
-                        field_type,
+                        disrc_type,
                         "_tag".into(),
                     ))),
                     CILOp::LoadTMPLocal,
