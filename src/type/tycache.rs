@@ -416,6 +416,7 @@ impl TyCache {
                 Type::DelegatePtr(sig.into())
             }
             TyKind::FnDef(did, subst) => {
+                /*
                 let subst = if let Some(method) = method {
                     crate::utilis::monomorphize(&method, *subst, tyctx)
                 } else {
@@ -430,7 +431,8 @@ impl TyCache {
                     TypeDef::nameonly(&format!("fn_{function_name}")),
                 );
                 //todo!("Fn def!");
-                Type::FnDef(function_name)
+                Type::FnDef(function_name)*/
+                Type::Void
             }
             TyKind::Array(element, length) => {
                 let mut length = *length;

@@ -394,6 +394,7 @@ pub fn call<'tyctx>(
         .expect("Could not resolve function sig");
 
     let signature = call_info.sig().clone();
+
     let function_name = crate::utilis::function_name(tyctx.symbol_name(instance));
     if crate::utilis::is_fn_intrinsic(fn_type, tyctx) {
         return super::intrinsics::handle_intrinsic(
@@ -407,6 +408,17 @@ pub fn call<'tyctx>(
             type_cache,
             signature,
         );
+    }
+    if function_name.contains("map_or_else") {
+        println!(
+            "Calling function with name {function_name}. DefId:{:?}, Subst:{:?}",
+            instance.def, instance.args
+        );
+        let sig = crate::utilis::monomorphize(&method_instance, fn_type.fn_sig(tyctx), tyctx);
+        rustc_middle::ty::print::with_no_trimmed_paths! {println!("map_or_else_sig:{:?}",sig)};
+        for input in call_info.sig().inputs() {
+            println!("\t{input:?}");
+        }
     }
     // Checks if function is "magic"
     if function_name.contains(CTOR_FN_NAME) {

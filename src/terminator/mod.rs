@@ -60,48 +60,59 @@ pub fn handle_terminator<'ctx>(
                 }
                 Operand::Copy(operand) | Operand::Move(operand) => {
                     let operand_ty = operand.ty(method, tyctx);
-                    let sig = if let TyKind::FnPtr(sig) = operand_ty.ty.kind() {
+                    if let TyKind::FnPtr(sig) = operand_ty.ty.kind() {
                         let sig = crate::utilis::monomorphize(&method_instance, *sig, tyctx);
-                        sig
-                    } else {
-                        todo!("Can't call operand of type {operand_ty:?}")
-                    };
-                    let sig = FnSig::from_poly_sig(Some(method_instance), tyctx, type_cache, sig);
-                    let mut call_ops = Vec::new();
-                    for arg in args {
-                        call_ops.extend(crate::operand::handle_operand(
-                            &arg.node,
+                        let sig =
+                            FnSig::from_poly_sig(Some(method_instance), tyctx, type_cache, sig);
+                        let mut call_ops = Vec::new();
+                        for arg in args {
+                            call_ops.extend(crate::operand::handle_operand(
+                                &arg.node,
+                                tyctx,
+                                body,
+                                method_instance,
+                                type_cache,
+                            ));
+                        }
+                        call_ops.extend(crate::place::place_get(
+                            operand,
                             tyctx,
-                            body,
-                            method_instance,
-                            type_cache,
-                        ));
-                    }
-                    call_ops.extend(crate::place::place_get(
-                        operand,
-                        tyctx,
-                        method,
-                        method_instance,
-                        type_cache,
-                    ));
-                    call_ops.push(CILOp::CallI(sig.clone().into()));
-                    if *sig.output() == crate::r#type::Type::Void {
-                        ops.extend(call_ops);
-                    } else {
-                        ops.extend(place_set(
-                            destination,
-                            tyctx,
-                            call_ops,
                             method,
                             method_instance,
                             type_cache,
                         ));
-                    }
+                        call_ops.push(CILOp::CallI(sig.clone().into()));
+                        if *sig.output() == crate::r#type::Type::Void {
+                            ops.extend(call_ops);
+                        } else {
+                            ops.extend(place_set(
+                                destination,
+                                tyctx,
+                                call_ops,
+                                method,
+                                method_instance,
+                                type_cache,
+                            ));
+                        }
+                    } else {
+                        let fn_ty = monomorphize(&method_instance, operand_ty, tyctx).ty;
+                        //let fn_instance = Instance::resolve(tyctx,ParamEnv::reveal_all,fn_ty.did,List::empty());
+                        assert!(
+                            fn_ty.is_fn(),
+                            "fn_ty{fn_ty:?} in call is not a function type!"
+                        );
+                        let call_ops = call::call(
+                            fn_ty,
+                            body,
+                            tyctx,
+                            args,
+                            destination,
+                            method_instance,
+                            type_cache,
+                        );
+                        ops.extend(call_ops);
+                    };
 
-                    // Set return place
-
-                    //vec![]
-                    //todo!("Can't call {operand:?} with sig {sig:?} yet!")
                 }
             }
             if let Some(target) = target {

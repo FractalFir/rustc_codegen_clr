@@ -252,6 +252,7 @@ fn eq_unchecked<'tyctx>(ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> CILOp {
             _ => CILOp::Eq,
         },
         TyKind::Bool => CILOp::Eq,
+        TyKind::Char => CILOp::Eq,
         TyKind::Float(_) => CILOp::Eq,
         TyKind::RawPtr(_) => CILOp::Eq,
         _ => panic!("Can't bitshift type  {ty_a:?}"),

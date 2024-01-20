@@ -764,8 +764,8 @@ fn load_const_scalar<'ctx>(
             _ => todo!("Can't load const ADT scalars of type {scalar_type:?}"),
         },
         TyKind::Char => {
-            let value = i64::from_ne_bytes((scalar_u128 as u64).to_ne_bytes());
-            vec![CILOp::LdcI64(value), CILOp::ConvU64(false)]
+            let value = i32::from_ne_bytes((scalar_u128 as u32).to_ne_bytes());
+            vec![CILOp::LdcI32(value), CILOp::ConvU32(false)]
         }
         _ => todo!("Can't load scalar constants of type {scalar_type:?}!"),
     }
