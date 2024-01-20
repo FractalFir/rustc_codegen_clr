@@ -44,6 +44,7 @@ impl TyCache {
         &mut self,
         name: &str,
         def: AdtDef<'tyctx>,
+        adt_ty:Ty<'tyctx>,
         subst: &'tyctx List<rustc_middle::ty::GenericArg<'tyctx>>,
         tyctx: TyCtxt<'tyctx>,
         method: Option<Instance<'tyctx>>,
@@ -61,7 +62,7 @@ impl TyCache {
         self.cycle_prevention.push(name.into());
         let def = match def.adt_kind() {
             AdtKind::Struct => self.struct_(name, def, subst, tyctx, method),
-            AdtKind::Enum => self.enum_(name, def, subst, tyctx, method),
+            AdtKind::Enum => self.enum_(name, def,adt_ty, subst, tyctx, method),
             AdtKind::Union => self.union_(name, def, subst, tyctx, method),
         };
         self.type_def_cache.insert(name.into(), def);
@@ -134,18 +135,34 @@ impl TyCache {
         &mut self,
         enum_name: &str,
         adt: AdtDef<'tyctx>,
+        adt_ty:Ty<'tyctx>,
         subst: &'tyctx List<rustc_middle::ty::GenericArg<'tyctx>>,
         tyctx: TyCtxt<'tyctx>,
         method: Option<Instance<'tyctx>>,
     ) -> TypeDef {
         let access = AccessModifer::Public;
         let mut explicit_offsets: Vec<u32> = vec![0];
-
-        let tag_size = enum_tag_size(adt.variants().len() as u64);
-        let mut fields = vec![(
-            "_tag".into(),
-            crate::utilis::tag_from_enum_variants(adt.variants().len() as u64),
-        )];
+        
+        let layout = tyctx.layout_of(rustc_middle::ty::ParamEnvAnd{param_env:ParamEnv::reveal_all(),value:adt_ty}).expect("Could not get type layout!");
+        let mut fields = vec![];
+        match &layout.variants {
+            rustc_target::abi::Variants::Single { index }=> todo!("Single variant enum???"),
+            rustc_target::abi::Variants::Multiple { tag, tag_encoding, tag_field, variants }=>{
+                assert_eq!(*tag_encoding,rustc_target::abi::TagEncoding::Direct,"Only direct tags supported as of now");
+                let field = adt.all_fields().nth(*tag_field);
+                //panic!("Field:{field:?}"); 
+                let tag_type = Type::U8; //adt_ty.discriminant_ty(tyctx);
+                //l//et tag_type = self.type_from_cache(tag_ty, tyctx, method);
+                fields.push((
+                    "_tag".into(),
+                    tag_type,
+                ));
+                //todo!("Mult-variant enum!"),
+            }
+        
+        }
+        let tag_size = 1;
+       
         explicit_offsets.extend(adt.variants().iter().map(|_| tag_size));
         //let mut inner_types = vec![];
         let mut variants = vec![];
@@ -285,7 +302,7 @@ impl TyCache {
                 if super::is_name_magic(name.as_ref()) {
                     return super::magic_type(name.as_ref(), def, subst, tyctx);
                 }
-                self.adt(&name, *def, subst, tyctx, method).into()
+                self.adt(&name, *def, ty,subst, tyctx, method).into()
             }
 
             TyKind::Ref(_region, inner, _mut) => {

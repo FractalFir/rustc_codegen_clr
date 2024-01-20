@@ -176,22 +176,24 @@ macro_rules! run_test {
                     .as_ref()
                     .expect("Could not build rustc!");
                 // Compiles the test project
-                let out = std::process::Command::new("rustc")
-                    //.env("RUST_TARGET_PATH","../../")
-                    .current_dir(test_dir)
-                    .args([
-                        "-O",
-                        "-Z",
-                        super::super::backend_path(),
-                        "-C",
-                        &format!("linker={}", super::super::RUSTC_CODEGEN_CLR_LINKER.display()),
-                        concat!("./", stringify!($test_name), ".rs"),
-                        "-o",
-                        concat!("./", stringify!($test_name), ".exe"),
-                        //"--target",
-                        //"clr64-unknown-clr"
-                    ])
-                    .output()
+                let mut cmd = std::process::Command::new("rustc");
+                //.env("RUST_TARGET_PATH","../../")
+                cmd.current_dir(test_dir)
+                .args([
+                    "-O",
+                    "-Z",
+                    super::super::backend_path(),
+                    "-C",
+                    &format!("linker={}", super::super::RUSTC_CODEGEN_CLR_LINKER.display()),
+                    concat!("./", stringify!($test_name), ".rs"),
+                    "-o",
+                    concat!("./", stringify!($test_name), ".exe"),
+                    //"--target",
+                    //"clr64-unknown-clr"
+                ]);
+                eprintln!("Command: {cmd:?}");
+                let out = 
+                    cmd.output()
                     .expect("failed to execute process");
                 // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
                 if !out.stderr.is_empty() {
@@ -204,6 +206,7 @@ macro_rules! run_test {
                 let exec_path = concat!("../", stringify!($test_name));
                 drop(lock);
                 //super::peverify(exec_path, test_dir);
+               
                 super::super::test_dotnet_executable(exec_path, test_dir);
             }
             #[test]
@@ -522,6 +525,7 @@ run_test! {arthm,sub,stable}
 
 run_test! {types,tuple_structs,stable}
 run_test! {types,enums,unstable}
+run_test! {types,adt_enum,stable}
 run_test! {types,nbody,stable}
 run_test! {types,structs,stable}
 run_test! {types,interop,stable}
@@ -539,7 +543,10 @@ run_test! {control_flow,cf_for,stable}
 run_test! {control_flow,drop,unstable}
 
 run_test! {intrinsics,bswap,unstable}
+run_test! {intrinsics,assert,unstable}
 run_test! {intrinsics,type_id,stable}
+
+run_test! {fuzz,test0,stable}
 
 cargo_test! {hello_world}
 cargo_test! {std_hello_world}

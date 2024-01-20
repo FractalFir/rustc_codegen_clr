@@ -408,7 +408,8 @@ pub fn handle_rvalue<'tcx>(
             let owner_ty = crate::utilis::monomorphize(&method_instance, owner_ty, tyctx);
             let owner = tycache.type_from_cache(owner_ty, tyctx, Some(method_instance));
             //TODO: chose proper tag type based on variant count of `owner`
-            let discr_type = crate::r#type::Type::U8; //owner_ty
+            let discr_ty = owner_ty.discriminant_ty(tyctx);
+            let discr_type = tycache.type_from_cache(discr_ty, tyctx, Some(method_instance));
             let owner = if let crate::r#type::Type::DotnetType(dotnet_type) = owner {
                 dotnet_type.as_ref().clone()
             } else {
