@@ -178,8 +178,7 @@ pub fn handle_terminator<'ctx>(
                 call
             }
         }
-        TerminatorKind::Unreachable => 
-            CILOp::throw_msg("Unreachable reached!").into(),
+        TerminatorKind::Unreachable => CILOp::throw_msg("Unreachable reached!").into(),
         TerminatorKind::InlineAsm {
             template,
             operands,

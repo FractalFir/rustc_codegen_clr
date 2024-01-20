@@ -285,27 +285,34 @@ pub fn handle_intrinsic<'tyctx>(
                 &DotnetTypeRef::type_type().into(),
             );
             let gethash_sig = FnSig::new(&[DotnetTypeRef::type_type().into()], &Type::I32);
-            place_set(destination, tyctx, vec![
-                CILOp::LDTypeToken(tpe.into()),
-                CILOp::Call(CallSite::boxed(
-                    DotnetTypeRef::type_type().into(),
-                    "GetTypeFromHandle".into(),
-                    sig,
-                    true,
-                )),
-                CILOp::CallVirt(CallSite::boxed(
-                    DotnetTypeRef::object_type().into(),
-                    "GetHashCode".into(),
-                    gethash_sig,
-                    false,
-                )),
-                CILOp::Call(CallSite::boxed(
-                    Some(DotnetTypeRef::uint_128()),
-                    "op_Implicit".into(),
-                    crate::function_sig::FnSig::new(&[Type::U32], &Type::U128),
-                    true,
-                )),
-            ], body, method_instance, type_cache)
+            place_set(
+                destination,
+                tyctx,
+                vec![
+                    CILOp::LDTypeToken(tpe.into()),
+                    CILOp::Call(CallSite::boxed(
+                        DotnetTypeRef::type_type().into(),
+                        "GetTypeFromHandle".into(),
+                        sig,
+                        true,
+                    )),
+                    CILOp::CallVirt(CallSite::boxed(
+                        DotnetTypeRef::object_type().into(),
+                        "GetHashCode".into(),
+                        gethash_sig,
+                        false,
+                    )),
+                    CILOp::Call(CallSite::boxed(
+                        Some(DotnetTypeRef::uint_128()),
+                        "op_Implicit".into(),
+                        crate::function_sig::FnSig::new(&[Type::U32], &Type::U128),
+                        true,
+                    )),
+                ],
+                body,
+                method_instance,
+                type_cache,
+            )
         }
         "volatile_load" => {
             debug_assert_eq!(
@@ -385,7 +392,7 @@ pub fn handle_intrinsic<'tyctx>(
             ops.push(CILOp::ConvF32(false));
             place_set(destination, tyctx, ops, body, method_instance, type_cache)
         }
-        "powif32"=> {
+        "powif32" => {
             debug_assert_eq!(
                 args.len(),
                 2,
@@ -393,12 +400,18 @@ pub fn handle_intrinsic<'tyctx>(
             );
             let mut ops = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
             ops.push(CILOp::ConvF64(false));
-            ops.extend(handle_operand(&args[1].node, tyctx, body, method_instance, type_cache));
+            ops.extend(handle_operand(
+                &args[1].node,
+                tyctx,
+                body,
+                method_instance,
+                type_cache,
+            ));
             ops.push(CILOp::ConvF64(false));
             ops.push(CILOp::Call(CallSite::boxed(
                 Some(DotnetTypeRef::new("System.Runtime".into(), "System.Math")),
                 "Pow".into(),
-                FnSig::new(&[Type::F64,Type::F64], &Type::F64),
+                FnSig::new(&[Type::F64, Type::F64], &Type::F64),
                 true,
             )));
             ops.push(CILOp::ConvF32(false));

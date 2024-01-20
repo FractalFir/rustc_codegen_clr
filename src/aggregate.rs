@@ -306,8 +306,13 @@ fn aggregate_adt<'tyctx>(
                 ops.extend(adt_adress_ops);
                 ops.push(CILOp::LdcI32(variant_idx as i32));
                 let field_name = "_tag".into();
-                let layout = tyctx.layout_of(rustc_middle::ty::ParamEnvAnd{param_env:ParamEnv::reveal_all(),value:adt_type}).expect("Could not get type layout!");
-                let (disrc_type,_) = crate::utilis::adt::enum_tag_info(&layout.layout,tyctx);
+                let layout = tyctx
+                    .layout_of(rustc_middle::ty::ParamEnvAnd {
+                        param_env: ParamEnv::reveal_all(),
+                        value: adt_type,
+                    })
+                    .expect("Could not get type layout!");
+                let (disrc_type, _) = crate::utilis::adt::enum_tag_info(&layout.layout, tyctx);
                 ops.push(CILOp::STField(Box::new(FieldDescriptor::new(
                     adt_type_ref,
                     disrc_type,

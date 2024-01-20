@@ -211,7 +211,7 @@ pub fn field_descrptor<'tyctx>(
 /// Returns the size of a tag of an enum with `variants` variants.
 pub fn enum_tag_size(_variants: u64) -> u32 {
     /*u32::try_from(((u64::from(u64::BITS) - u64::from((variants).leading_zeros())) + 8 - 1) / 8)
-        .expect("Enum variant over 2^4294967296")*/
+    .expect("Enum variant over 2^4294967296")*/
     // Seems to be always 4
     1
 }

@@ -222,7 +222,7 @@ fn sub_unchecked<'tyctx>(
     }
 }
 fn ne_unchecked<'tyctx>(ty_a: Ty<'tyctx>, ty_b: Ty<'tyctx>) -> Vec<CILOp> {
-    vec![eq_unchecked(ty_a,ty_b), CILOp::LdcI32(0), CILOp::Eq]
+    vec![eq_unchecked(ty_a, ty_b), CILOp::LdcI32(0), CILOp::Eq]
 }
 fn eq_unchecked<'tyctx>(ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> CILOp {
     //vec![CILOp::Eq]
@@ -237,8 +237,8 @@ fn eq_unchecked<'tyctx>(ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> CILOp {
                 )
                 .into(),
             ),
-            _=>CILOp::Eq,
-        }
+            _ => CILOp::Eq,
+        },
         TyKind::Int(int) => match int {
             IntTy::I128 => CILOp::Call(
                 CallSite::new(
@@ -249,8 +249,8 @@ fn eq_unchecked<'tyctx>(ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> CILOp {
                 )
                 .into(),
             ),
-            _=>CILOp::Eq,
-        }
+            _ => CILOp::Eq,
+        },
         TyKind::Bool => CILOp::Eq,
         TyKind::Float(_) => CILOp::Eq,
         TyKind::RawPtr(_) => CILOp::Eq,

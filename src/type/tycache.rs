@@ -44,7 +44,7 @@ impl TyCache {
         &mut self,
         name: &str,
         def: AdtDef<'tyctx>,
-        adt_ty:Ty<'tyctx>,
+        adt_ty: Ty<'tyctx>,
         subst: &'tyctx List<rustc_middle::ty::GenericArg<'tyctx>>,
         tyctx: TyCtxt<'tyctx>,
         method: Option<Instance<'tyctx>>,
@@ -61,9 +61,9 @@ impl TyCache {
         }
         self.cycle_prevention.push(name.into());
         let def = match def.adt_kind() {
-            AdtKind::Struct => self.struct_(name, def,adt_ty, subst, tyctx, method),
-            AdtKind::Enum => self.enum_(name, def,adt_ty, subst, tyctx, method),
-            AdtKind::Union => self.union_(name, def, adt_ty,subst, tyctx, method),
+            AdtKind::Struct => self.struct_(name, def, adt_ty, subst, tyctx, method),
+            AdtKind::Enum => self.enum_(name, def, adt_ty, subst, tyctx, method),
+            AdtKind::Union => self.union_(name, def, adt_ty, subst, tyctx, method),
         };
         self.type_def_cache.insert(name.into(), def);
         self.cycle_prevention.pop();
@@ -96,9 +96,24 @@ impl TyCache {
         }
 
         let access = AccessModifer::Public;
-        let layout = tyctx.layout_of(rustc_middle::ty::ParamEnvAnd{param_env:ParamEnv::reveal_all(),value:adt_ty}).expect("Could not get type layout!");
-        let explicit_offsets = crate::utilis::adt::FieldOffsetIterator::fields(&layout.layout).collect();
-        TypeDef::new(access, name.into(), vec![], fields, vec![], Some(explicit_offsets), 0, None)
+        let layout = tyctx
+            .layout_of(rustc_middle::ty::ParamEnvAnd {
+                param_env: ParamEnv::reveal_all(),
+                value: adt_ty,
+            })
+            .expect("Could not get type layout!");
+        let explicit_offsets =
+            crate::utilis::adt::FieldOffsetIterator::fields(&layout.layout).collect();
+        TypeDef::new(
+            access,
+            name.into(),
+            vec![],
+            fields,
+            vec![],
+            Some(explicit_offsets),
+            0,
+            None,
+        )
     }
     fn union_<'tyctx>(
         &mut self,
@@ -121,8 +136,14 @@ impl TyCache {
         }
 
         let access = AccessModifer::Public;
-        let layout = tyctx.layout_of(rustc_middle::ty::ParamEnvAnd{param_env:ParamEnv::reveal_all(),value:adt_ty}).expect("Could not get type layout!");
-        let explicit_offsets = crate::utilis::adt::FieldOffsetIterator::fields(&layout.layout).collect();
+        let layout = tyctx
+            .layout_of(rustc_middle::ty::ParamEnvAnd {
+                param_env: ParamEnv::reveal_all(),
+                value: adt_ty,
+            })
+            .expect("Could not get type layout!");
+        let explicit_offsets =
+            crate::utilis::adt::FieldOffsetIterator::fields(&layout.layout).collect();
 
         TypeDef::new(
             access,
@@ -139,54 +160,72 @@ impl TyCache {
         &mut self,
         enum_name: &str,
         adt: AdtDef<'tyctx>,
-        adt_ty:Ty<'tyctx>,
+        adt_ty: Ty<'tyctx>,
         subst: &'tyctx List<rustc_middle::ty::GenericArg<'tyctx>>,
         tyctx: TyCtxt<'tyctx>,
         method: Option<Instance<'tyctx>>,
     ) -> TypeDef {
         let access = AccessModifer::Public;
         let mut explicit_offsets: Vec<u32> = vec![];
-        
-        let layout = tyctx.layout_of(rustc_middle::ty::ParamEnvAnd{param_env:ParamEnv::reveal_all(),value:adt_ty}).expect("Could not get type layout!");
+
+        let layout = tyctx
+            .layout_of(rustc_middle::ty::ParamEnvAnd {
+                param_env: ParamEnv::reveal_all(),
+                value: adt_ty,
+            })
+            .expect("Could not get type layout!");
         let mut fields = vec![];
         let mut variant_offset = 0;
         let mut tag_size = 1;
         match &layout.variants {
-            rustc_target::abi::Variants::Single { index }=> todo!("Single variant enum???"),
-            rustc_target::abi::Variants::Multiple { tag, tag_encoding, tag_field, variants }=>{
-                
+            rustc_target::abi::Variants::Single { index } => {
+                let (tag_type, offset) = crate::utilis::adt::enum_tag_info(&layout.layout, tyctx);
+                variant_offset = offset;
+                fields.push(("_tag".into(), tag_type));
+                explicit_offsets.push(0);
+            }
+            rustc_target::abi::Variants::Multiple {
+                tag,
+                tag_encoding,
+                tag_field,
+                variants,
+            } => {
                 let field = adt.all_fields().nth(*tag_field);
-                //panic!("Field:{field:?}"); 
-                let layout = tyctx.layout_of(rustc_middle::ty::ParamEnvAnd{param_env:ParamEnv::reveal_all(),value:adt_ty}).expect("Could not get type layout!");
+                //panic!("Field:{field:?}");
+                let layout = tyctx
+                    .layout_of(rustc_middle::ty::ParamEnvAnd {
+                        param_env: ParamEnv::reveal_all(),
+                        value: adt_ty,
+                    })
+                    .expect("Could not get type layout!");
                 //let explicit_offsets:Vec<_> = crate::utilis::adt::FieldOffsetIterator::fields(&layout.layout).collect();
                 //eprintln!("explicit_offsets:{explicit_offsets:?}");
                 //let tag_ty = adt.all_fields().nth(0).unwrap().ty(tyctx,subst); //adt_ty.discriminant_ty(tyctx);
                 // self.type_from_cache(tag_ty, tyctx, method);
                 //assert_eq!(*tag_encoding,rustc_target::abi::TagEncoding::Direct,"Only direct tags supported as of now");
-                match tag_encoding{
-                    rustc_target::abi::TagEncoding::Direct=>{
-                        let (tag_type,offset) = crate::utilis::adt::enum_tag_info(&layout.layout,tyctx);
+                match tag_encoding {
+                    rustc_target::abi::TagEncoding::Direct => {
+                        let (tag_type, offset) =
+                            crate::utilis::adt::enum_tag_info(&layout.layout, tyctx);
                         variant_offset = offset;
-                        fields.push((
-                            "_tag".into(),
-                            tag_type,
-                        ));
+                        fields.push(("_tag".into(), tag_type));
                         explicit_offsets.push(0);
-                    },
-                    rustc_target::abi::TagEncoding::Niche{untagged_variant, niche_variants, niche_start}=>{
-                        let (tag_type,offset) = crate::utilis::adt::enum_tag_info(&layout.layout,tyctx);
+                    }
+                    rustc_target::abi::TagEncoding::Niche {
+                        untagged_variant,
+                        niche_variants,
+                        niche_start,
+                    } => {
+                        let (tag_type, offset) =
+                            crate::utilis::adt::enum_tag_info(&layout.layout, tyctx);
                         variant_offset = offset;
-                        fields.push((
-                            "_tag".into(),
-                            tag_type,
-                        ));
+                        fields.push(("_tag".into(), tag_type));
                         explicit_offsets.push(*niche_start as u32);
-                    },
+                    }
                 }
-              
+
                 //todo!("Mult-variant enum!"),
             }
-        
         }
         explicit_offsets.extend(adt.variants().iter().map(|_| variant_offset));
         //let mut inner_types = vec![];
@@ -327,7 +366,7 @@ impl TyCache {
                 if super::is_name_magic(name.as_ref()) {
                     return super::magic_type(name.as_ref(), def, subst, tyctx);
                 }
-                self.adt(&name, *def, ty,subst, tyctx, method).into()
+                self.adt(&name, *def, ty, subst, tyctx, method).into()
             }
 
             TyKind::Ref(_region, inner, _mut) => {

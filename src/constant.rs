@@ -120,8 +120,13 @@ fn create_const_adt_from_bytes<'ctx>(
             } else {
                 panic!("Invalid enum type {enum_type:?}");
             };
-            let layout = tyctx.layout_of(rustc_middle::ty::ParamEnvAnd{param_env:ParamEnv::reveal_all(),value:enum_ty}).expect("Could not get type layout!");
-            let (disrc_type,discr_size) = crate::utilis::adt::enum_tag_info(&layout.layout,tyctx);
+            let layout = tyctx
+                .layout_of(rustc_middle::ty::ParamEnvAnd {
+                    param_env: ParamEnv::reveal_all(),
+                    value: enum_ty,
+                })
+                .expect("Could not get type layout!");
+            let (disrc_type, discr_size) = crate::utilis::adt::enum_tag_info(&layout.layout, tyctx);
             let mut ops = vec![CILOp::NewTMPLocal(enum_type.into())];
             let curr_variant = match discr_size {
                 0 => todo!("Can't yet handle constant enums with 0-sized tags."),
@@ -710,8 +715,13 @@ fn load_const_scalar<'ctx>(
         }
         TyKind::Adt(adt_def, _subst) => match adt_def.adt_kind() {
             AdtKind::Enum => {
-                let layout = tyctx.layout_of(rustc_middle::ty::ParamEnvAnd{param_env:ParamEnv::reveal_all(),value:scalar_type}).expect("Could not get type layout!");
-                let (disrc_type,_) = crate::utilis::adt::enum_tag_info(&layout.layout,tyctx);
+                let layout = tyctx
+                    .layout_of(rustc_middle::ty::ParamEnvAnd {
+                        param_env: ParamEnv::reveal_all(),
+                        value: scalar_type,
+                    })
+                    .expect("Could not get type layout!");
+                let (disrc_type, _) = crate::utilis::adt::enum_tag_info(&layout.layout, tyctx);
                 let enum_dotnet = tpe.as_dotnet().expect("Enum scalar not an ADT!");
                 vec![
                     CILOp::NewTMPLocal(tpe.into()),
