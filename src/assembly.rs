@@ -11,6 +11,7 @@ use crate::{
     r#type::TypeDef,
     IString,
 };
+use rustc_middle::mir::interpret::Allocation;
 use rustc_middle::mir::{
     interpret::{AllocId, GlobalAlloc},
     mono::MonoItem,
@@ -350,13 +351,34 @@ impl Assembly {
                     //tcx.reserve_and_set_memory_alloc(alloc)
                     alloc
                 }
-                GlobalAlloc::Function(_) | GlobalAlloc::VTable(..) => {
-                    unreachable!()
+                GlobalAlloc::VTable(..)=>{
+                    //TODO: handle VTables
+                    let alloc_fld: IString = format!("alloc_{alloc_id:x}").into();
+                    let field_desc = crate::cil::StaticFieldDescriptor::new(
+                None,
+                    Type::Ptr(Type::U8.into()),
+                    alloc_fld.clone(),
+                    );
+                    self.static_fields.insert(alloc_fld, Type::Ptr(Type::U8.into()));
+                    return field_desc;
+                }
+                GlobalAlloc::Function(_)  => {
+                    //TODO: handle constant functions
+                    let alloc_fld: IString = format!("alloc_{alloc_id:x}").into();
+                    let field_desc = crate::cil::StaticFieldDescriptor::new(
+                None,
+                    Type::Ptr(Type::U8.into()),
+                    alloc_fld.clone(),
+                    );
+                    self.static_fields.insert(alloc_fld, Type::Ptr(Type::U8.into()));
+                    return field_desc;
+                    //todo!("Function/Vtable allocation.");
                 }
             };
         let const_allocation = const_allocation.inner();
-        let bytes: &[u8] = const_allocation
-            .inspect_with_uninit_and_ptr_outside_interpreter(0..const_allocation.len());
+        
+       
+        
         //let byte_hash = calculate_hash(&bytes);
 
         let alloc_fld: IString = format!("alloc_{alloc_id:x}").into();
@@ -366,6 +388,7 @@ impl Assembly {
             alloc_fld.clone(),
         );
         if self.static_fields.get(&alloc_fld).is_none() {
+            let init_method = allocation_initializer_method(const_allocation, &alloc_fld, tcx,self);
             let cctor = self
                 .functions
                 .entry(CallSite::new(
@@ -391,7 +414,8 @@ impl Assembly {
             if !ops.is_empty() && ops[ops.len() - 1] == CILOp::Ret {
                 ops.pop();
             }
-            let init_method = allocation_initializer_method(bytes, &alloc_fld, tcx);
+            
+          
             ops.extend([
                 CILOp::Call(CallSite::boxed(
                     None,
@@ -402,6 +426,7 @@ impl Assembly {
                 CILOp::STStaticField(field_desc.clone().into()),
                 CILOp::Ret,
             ]);
+            //eprintln!("Adding intiailzer named {}. \n Method:{init_method:?}",init_method.name());
             self.add_method(init_method);
             self.add_static(Type::Ptr(Type::U8.into()), &alloc_fld);
         }
@@ -566,7 +591,11 @@ fn locals_from_mir<'tyctx>(
     }
     local_types
 }
-fn allocation_initializer_method(bytes: &[u8], name: &str, tyctx: TyCtxt) -> Method {
+fn allocation_initializer_method(const_allocation:&Allocation, name: &str, tyctx: TyCtxt,asm:&mut Assembly) -> Method {
+    let bytes: &[u8] = const_allocation
+            .inspect_with_uninit_and_ptr_outside_interpreter(0..const_allocation.len());
+    let ptrs = const_allocation.provenance().ptrs();
+    
     let mut ops = Vec::new();
     ops.extend([
         CILOp::LdcI64(bytes.len() as u64 as i64),
@@ -585,8 +614,23 @@ fn allocation_initializer_method(bytes: &[u8], name: &str, tyctx: TyCtxt) -> Met
             CILOp::LdcI32(1),
             CILOp::Add,
             CILOp::STLoc(0),
-            CILOp::Comment(name.clone().into()),
+            
         ]);
+    }
+    if !ptrs.is_empty(){
+        for ptr in ptrs.iter(){
+            let ptr_alloc = asm.add_allocation(ptr.1.alloc_id().0.into(), tyctx);
+            let offset = ptr.0.bytes_usize() as u32;
+            ops.extend([
+                CILOp::LDLoc(1),
+                CILOp::LdcI32(offset as i32),
+                CILOp::ConvISize(false),
+                CILOp::Add,
+                CILOp::LDStaticField(ptr_alloc.into()), 
+                CILOp::STIndISize,
+            ]);
+        }
+        //eprintln!("Constant requires rellocation support!");
     }
     ops.extend([CILOp::LDLoc(1), CILOp::Ret]);
     let mut method = Method::new(

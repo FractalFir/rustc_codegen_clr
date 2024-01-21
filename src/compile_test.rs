@@ -550,6 +550,7 @@ run_test! {types,slice_ptr_cast,stable}
 run_test! {types,slice_index_ref,unstable}
 run_test! {types,slice,unstable}
 run_test! {types,statics,stable}
+run_test! {types,self_referential_statics,stable}
 run_test! {std,main,unstable}
 
 run_test! {control_flow,cf_for,stable}
