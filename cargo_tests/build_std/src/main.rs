@@ -1,4 +1,5 @@
 use std::io::Write;
+use std::hint::black_box;
 extern "C" {
     fn puts(msg: *const u8);
 }
@@ -111,7 +112,7 @@ fn main() {
 
     //std::hint::black_box(f);
     //std::io::stdout().write_all(b"hello world\n").unwrap();
-    let s = format!("Hello {}\0",8);
+    let s = format!("Hello??? WTF is going on???{}\0",black_box(65));
     unsafe{puts(s.as_ptr())};
    
    

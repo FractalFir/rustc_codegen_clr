@@ -375,6 +375,54 @@ pub fn handle_intrinsic<'tyctx>(
         }
         //"bswap"
         "assert_inhabited" => vec![],
+        "ptr_offset_from_unsigned"=>{
+            debug_assert_eq!(
+                args.len(),
+                2,
+                "The intrinsic `min_align_of_val` MUST take in exactly 1 argument!"
+            );
+            let mut ops = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
+            let tpe = crate::utilis::monomorphize(
+                &method_instance,
+                call_instance.args[0]
+                    .as_type()
+                    .expect("needs_drop works only on types!"),
+                tyctx,
+            );
+            let tpe = type_cache.type_from_cache(tpe, tyctx, Some(method_instance));
+            ops.extend(handle_operand(&args[0].node, tyctx, body, method_instance, type_cache));
+            ops.extend([
+                CILOp::Sub,
+                CILOp::SizeOf(tpe.into()),
+                CILOp::Div,
+            ]);
+            place_set(destination, tyctx, ops, body, method_instance, type_cache)
+        }
+        "min_align_of_val"=>{
+            debug_assert_eq!(
+                args.len(),
+                1,
+                "The intrinsic `min_align_of_val` MUST take in exactly 1 argument!"
+            );
+            let tpe = crate::utilis::monomorphize(
+                &method_instance,
+                call_instance.args[0]
+                    .as_type()
+                    .expect("needs_drop works only on types!"),
+                tyctx,
+            );
+            place_set(
+                destination,
+                tyctx,
+                vec![
+                    CILOp::LdcI64(crate::utilis::align_of(tpe, tyctx) as i64),
+                    CILOp::ConvUSize(false),
+                ],
+                body,
+                method_instance,
+                type_cache,
+            )
+        }
         "sqrtf32" => {
             debug_assert_eq!(
                 args.len(),

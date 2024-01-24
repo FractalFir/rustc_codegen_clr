@@ -458,3 +458,17 @@ pub fn is_fn_intrinsic<'tyctx>(fn_ty: Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -> bool
         _ => false,
     }
 }
+pub fn align_of<'tcx>(ty: rustc_middle::ty::Ty<'tcx>, tyctx: TyCtxt<'tcx>) -> u64 {
+    let layout = tyctx
+        .layout_of(rustc_middle::ty::ParamEnvAnd {
+            param_env: ParamEnv::reveal_all(),
+            value: ty,
+        })
+        .expect("Can't get layout of a type.")
+        .layout;
+
+    let align = layout.align.abi;
+    // FIXME: this field is likely private for a reason. I should not do this get its value. Find a better way to get aligement.
+    let pow2 = u64::from(unsafe { std::mem::transmute::<_, u8>(align) });
+    1 << pow2
+}

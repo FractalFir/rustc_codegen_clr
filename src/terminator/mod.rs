@@ -184,7 +184,7 @@ pub fn handle_terminator<'ctx>(
                     crate::place::place_adress(place, tyctx, method, method_instance, type_cache);
 
                 call.push(CILOp::Call(CallSite::boxed(None, function_name, sig, true)));
-                eprintln!("drop call:{call:?}");
+                //dprintln!("drop call:{call:?}");
                 call.push(CILOp::GoTo(target.as_u32()));
                 call
             }

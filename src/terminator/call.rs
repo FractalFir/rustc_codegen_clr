@@ -1,22 +1,16 @@
-use crate::call_info::CallInfo;
-use crate::cil::FieldDescriptor;
-use crate::interop::AssemblyRef;
-use crate::r#type::Type;
-use crate::utilis::garg_to_string;
 use crate::{
     cil::{CILOp, CallSite},
     function_sig::FnSig,
-    operand::handle_operand,
     r#type::DotnetTypeRef,
-    utilis::monomorphize,
     utilis::CTOR_FN_NAME,
     utilis::MANAGED_CALL_FN_NAME,
     utilis::MANAGED_CALL_VIRT_FN_NAME,
+    cil::FieldDescriptor,call_info::CallInfo,interop::AssemblyRef,
+    utilis::garg_to_string,
 };
-use rustc_middle::ty::InstanceDef;
 use rustc_middle::{
     mir::{Body, Operand, Place, SwitchTargets, Terminator, TerminatorKind},
-    ty::{GenericArg, Instance, ParamEnv, Ty, TyCtxt, TyKind},
+    ty::{GenericArg, Instance, ParamEnv, Ty, TyCtxt, TyKind,InstanceDef},
 };
 use rustc_span::source_map::Spanned;
 fn decode_interop_call<'tyctx>(
@@ -376,12 +370,13 @@ pub fn call<'tyctx>(
         else {
             // I assume most functions wihc can't be resolved are empty drops.
             // There propably exists a better way to check if it REALLY is just an empty drop, but this is good enough for now.
+            /*
             if rustc_middle::ty::print::with_no_trimmed_paths! {format!("{fn_type:?}")}
                 .contains("drop")
             {
                 rustc_middle::ty::print::with_no_trimmed_paths! {eprintln!("Empty drop {fn_type:?}")};
                 return vec![];
-            }
+            }*/
             panic!("ERROR: Could not get function instance. fn type:{fn_type:?}")
         };
 
@@ -511,6 +506,11 @@ pub fn call<'tyctx>(
     }
     //assert_eq!(args.len(),signature.inputs().len(),"CALL SIGNATURE ARG COUNT MISMATCH!");
     let is_void = matches!(signature.output(), crate::r#type::Type::Void);
+    rustc_middle::ty::print::with_no_trimmed_paths! {call.push(CILOp::Comment(format!("Calling {instance:?}").into()))};
+    match instance.def{
+        InstanceDef::DropGlue(def,None)=>return vec![],
+        _=>(),
+    }
     call.push(CILOp::Call(CallSite::boxed(
         None,
         function_name,
