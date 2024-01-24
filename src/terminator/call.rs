@@ -385,7 +385,7 @@ pub fn call<'tyctx>(
             panic!("ERROR: Could not get function instance. fn type:{fn_type:?}")
         };
 
-        (instance, subst_ref)
+        (instance, subst)
     } else {
         todo!("Trying to call a type which is not a function definition!");
     };

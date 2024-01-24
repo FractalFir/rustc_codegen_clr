@@ -3,7 +3,7 @@ pub fn optimize_combos(ops: &mut Vec<CILOp>) {
     if ops.len() < 3 {
         return;
     }
-    for idx in 0..(ops.len() - 2) {
+    'outer: for idx in 0..(ops.len() - 2) {
         let (op1, op2, op3) = (&ops[idx], &ops[idx + 1], &ops[idx + 2]);
         match (op1, op2, op3) {
             (CILOp::LdcI32(1), CILOp::LDLoc(_) | CILOp::LDArg(_), CILOp::Mul) => {
@@ -55,14 +55,23 @@ pub fn optimize_combos(ops: &mut Vec<CILOp>) {
                 CILOp::STLoc(loc),
             ) => {
                 let loc = *loc;
-                let set_count = ops.iter().filter(|op| CILOp::STLoc(loc) == **op).count();
-                // If this is not the only set, this optimization won't work.
-                if set_count != 1 {
-                    continue;
-                }
-                // If a pointer to this local is taken, this optmization won't work.
-                if ops.iter().any(|op| CILOp::LDLocA(loc) == *op) {
-                    continue;
+                
+                let mut set_count = 0;//ops.iter().filter(|op|).count();
+                for op in &*ops{
+                    match op{
+                        CILOp::STLoc(local) => if *local == loc{
+                            set_count+=1;
+                            // If this is not the only set, this optimization won't work.
+                            if set_count != 1 {
+                                continue 'outer;
+                            }
+                        }
+                        CILOp::LDLocA(local) => if *local == loc{
+                            // If a pointer to this local is taken, this optmization won't work.
+                            continue 'outer;
+                        }
+                        _=>(),
+                    }
                 }
                 let load = [op1.clone(), op2.clone()];
                 let mut new_ops = Vec::with_capacity(ops.len());
