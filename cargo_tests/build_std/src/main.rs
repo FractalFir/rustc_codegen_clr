@@ -1,7 +1,25 @@
+#![feature(core_intrinsics)]
 use std::io::Write;
 use std::hint::black_box;
 extern "C" {
     fn puts(msg: *const u8);
+}
+macro_rules! test{
+    ($name:ident)=>{
+        unsafe{puts(concat!("Running test ",stringify!($name),".\n\0").as_ptr())};
+        $name();
+        unsafe{puts(concat!("Test ",stringify!($name)," succeded.\n\0").as_ptr())};
+    }
+}
+fn collect_test(){
+    let numbers:Vec<_> = std::hint::black_box(0..100).collect();
+    std::hint::black_box(&numbers);
+    for (number,idx) in numbers.iter().enumerate(){
+        if std::hint::black_box(number) != *idx{
+            unsafe{puts("collect_test failed: items not equal.\n\0".as_ptr())};
+            unsafe{core::intrinsics::abort()};
+        }
+    } 
 }
 fn main() {
     let int = std::hint::black_box(8);
@@ -105,6 +123,7 @@ fn main() {
     string.push('!');
     string.push('\n');
     string.push('\0');
+    test!(collect_test);
     std::hint::black_box(&string);
     unsafe{puts(string.as_ptr())};
     unsafe{puts("Testing some cool shit\n\0".as_ptr())};
@@ -112,10 +131,17 @@ fn main() {
 
     //std::hint::black_box(f);
     //std::io::stdout().write_all(b"hello world\n").unwrap();
-    let s = format!("Hello??? WTF is going on???{}\0",black_box(65));
-    unsafe{puts(s.as_ptr())};
-   
-   
+    let owned = black_box("UWU\n\0").to_owned();
+    if owned.len() != 5{
+        unsafe{puts(owned.as_ptr())};
+        unsafe{core::intrinsics::abort()};
+    }
+    else{
+        unsafe{puts(owned.as_ptr())};
+    }
+    
+    //let s = format!("Hello??? WTF is going on???{}\0",black_box(65));
+    //unsafe{puts(s.as_ptr())};
     
     let val = std::hint::black_box(*boxed_int);
     let val = std::hint::black_box(string);

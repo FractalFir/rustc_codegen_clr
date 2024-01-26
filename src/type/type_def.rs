@@ -250,86 +250,88 @@ pub fn get_array_type(element_count: usize, element: Type) -> TypeDef {
     };
     let as_pointer = CallSite::ref_as_ptr(element.clone());
     // set_Item(usize offset, G0 value)
-    let mut set_usize = Method::new(
-        AccessModifer::Public,
-        false,
-        crate::function_sig::FnSig::new(
-            &[(&def).into(), Type::USize, element.clone()],
-            &Type::Void,
-        ),
-        "set_Item",
-        vec![],
-    );
-    let ops = vec![
-        CILOp::LDArg(0),
-        CILOp::LDFieldAdress(FieldDescriptor::boxed(
-            (&def).into(),
-            element.clone(),
-            "f_0".to_string().into(),
-        )),
-        //CILOp::Call(as_pointer.clone().into()),
-        CILOp::LDArg(1),
-        CILOp::SizeOf(element.clone().into()),
-        CILOp::Mul,
-        CILOp::Add,
-        CILOp::LDArg(2),
-        CILOp::STObj(element.clone().into()),
-        CILOp::Ret,
-    ];
-    set_usize.set_ops(ops);
-    def.add_method(set_usize);
-    // get_Address(usize offset)
-    let mut get_adress_usize = Method::new(
-        AccessModifer::Public,
-        false,
-        crate::function_sig::FnSig::new(
-            &[(&def).into(), Type::USize],
-            &Type::Ptr(element.clone().into()),
-        ),
-        "get_Address",
-        vec![],
-    );
-
-    let ops = vec![
-        CILOp::LDArg(0),
-        CILOp::LDFieldAdress(FieldDescriptor::boxed(
-            (&def).into(),
-            element.clone(),
-            "f_0".to_string().into(),
-        )),
-        //CILOp::Call(as_pointer.clone().into()),
-        CILOp::LDArg(1),
-        CILOp::SizeOf(element.clone().into()),
-        CILOp::Mul,
-        CILOp::Add,
-        CILOp::Ret,
-    ];
-    get_adress_usize.set_ops(ops);
-    def.add_method(get_adress_usize);
-    // get_Item
-    let mut get_item_usize = Method::new(
-        AccessModifer::Public,
-        false,
-        crate::function_sig::FnSig::new(&[(&def).into(), Type::USize], &element.clone()),
-        "get_Item",
-        vec![],
-    );
-    let ops = vec![
-        CILOp::LDArg(0),
-        CILOp::LDFieldAdress(FieldDescriptor::boxed(
-            (&def).into(),
-            element.clone(),
-            "f_0".to_string().into(),
-        )),
-        //CILOp::Call(as_pointer.into()),
-        CILOp::LDArg(1),
-        CILOp::SizeOf(element.clone().into()),
-        CILOp::Mul,
-        CILOp::Add,
-        CILOp::LdObj(element.into()),
-        CILOp::Ret,
-    ];
-    get_item_usize.set_ops(ops);
-    def.add_method(get_item_usize);
+    if element_count > 0 {
+        let mut set_usize = Method::new(
+            AccessModifer::Public,
+            false,
+            crate::function_sig::FnSig::new(
+                &[(&def).into(), Type::USize, element.clone()],
+                &Type::Void,
+            ),
+            "set_Item",
+            vec![],
+        );
+        let ops = vec![
+            CILOp::LDArg(0),
+            CILOp::LDFieldAdress(FieldDescriptor::boxed(
+                (&def).into(),
+                element.clone(),
+                "f_0".to_string().into(),
+            )),
+            //CILOp::Call(as_pointer.clone().into()),
+            CILOp::LDArg(1),
+            CILOp::SizeOf(element.clone().into()),
+            CILOp::Mul,
+            CILOp::Add,
+            CILOp::LDArg(2),
+            CILOp::STObj(element.clone().into()),
+            CILOp::Ret,
+        ];
+        set_usize.set_ops(ops);
+        def.add_method(set_usize);
+        // get_Address(usize offset)
+        let mut get_adress_usize = Method::new(
+            AccessModifer::Public,
+            false,
+            crate::function_sig::FnSig::new(
+                &[(&def).into(), Type::USize],
+                &Type::Ptr(element.clone().into()),
+            ),
+            "get_Address",
+            vec![],
+        );
+        // This may be wrong???
+        let ops = vec![
+            CILOp::LDArg(0),
+            CILOp::LDFieldAdress(FieldDescriptor::boxed(
+                (&def).into(),
+                element.clone(),
+                "f_0".to_string().into(),
+            )),
+            //CILOp::Call(as_pointer.clone().into()),
+            CILOp::LDArg(1),
+            CILOp::SizeOf(element.clone().into()),
+            CILOp::Mul,
+            CILOp::Add,
+            CILOp::Ret,
+        ];
+        get_adress_usize.set_ops(ops);
+        def.add_method(get_adress_usize);
+        // get_Item
+        let mut get_item_usize = Method::new(
+            AccessModifer::Public,
+            false,
+            crate::function_sig::FnSig::new(&[(&def).into(), Type::USize], &element.clone()),
+            "get_Item",
+            vec![],
+        );
+        let ops = vec![
+            CILOp::LDArg(0),
+            CILOp::LDFieldAdress(FieldDescriptor::boxed(
+                (&def).into(),
+                element.clone(),
+                "f_0".to_string().into(),
+            )),
+            //CILOp::Call(as_pointer.into()),
+            CILOp::LDArg(1),
+            CILOp::SizeOf(element.clone().into()),
+            CILOp::Mul,
+            CILOp::Add,
+            CILOp::LdObj(element.into()),
+            CILOp::Ret,
+        ];
+        get_item_usize.set_ops(ops);
+        def.add_method(get_item_usize);
+    }
     def
 }

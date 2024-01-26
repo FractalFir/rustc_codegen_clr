@@ -37,3 +37,4 @@ config_flag! {INSERT_MIR_DEBUG_COMMENTS,false,"Tells the codegen to insert comme
 config_flag! {PRINT_LOCAL_TYPES,false,"Prints local types of all compiled MIR functions."}
 config_flag! {OPTIMIZE_CIL,true,"Tells the codegen to optmize the emiited CIL."}
 config_flag! {USE_CECIL_EXPORTER,false,"Tells the codegen to use the CECIL based assembly exporter"}
+config_flag! {ESCAPE_NAMES,false,"Tells the codegen to escape class and method names."}

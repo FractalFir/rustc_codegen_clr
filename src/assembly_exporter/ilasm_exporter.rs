@@ -2,6 +2,7 @@ use super::{ilasm_op::dotnet_type_ref_cli, AssemblyExporter};
 use crate::{
     access_modifier::AccessModifer,
     assembly_exporter::{
+        escape_class_name,
         ilasm_op::{non_void_type_cil, type_cil},
         AssemblyExportError,
     },
@@ -14,6 +15,7 @@ use std::{borrow::Cow, io::Write};
 /// A struct used to export an asssembly using the ILASM tool as a .NET assembly creator.
 pub struct ILASMExporter {
     encoded_asm: Vec<u8>,
+    methods: Vec<u8>,
 }
 impl std::io::Write for ILASMExporter {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
@@ -34,8 +36,13 @@ impl AssemblyExporter for ILASMExporter {
     }
     fn init(asm_name: &str) -> Self {
         let mut encoded_asm = Vec::with_capacity(0x1_00);
+        let mut methods = Vec::with_capacity(0x1_00);
         write!(encoded_asm, ".assembly {asm_name}{{}}").expect("Write error!");
-        Self { encoded_asm }
+        write!(methods, ".class RustModule{{").expect("Write error!");
+        Self {
+            encoded_asm,
+            methods,
+        }
     }
     fn add_extern_ref(
         &mut self,
@@ -54,7 +61,7 @@ impl AssemblyExporter for ILASMExporter {
         //let _ = self.types.push(tpe.clone());
     }
     fn add_method(&mut self, method: &Method) {
-        method_cil(&mut self.encoded_asm, method).expect("Error");
+        method_cil(&mut self.methods, method).expect("Error");
     }
     fn finalize(
         self,
@@ -75,7 +82,9 @@ impl AssemblyExporter for ILASMExporter {
         //final_path.expect("Could not canonialize path!");
 
         let cil_path = out_path.with_extension("il");
-        let cil = self.encoded_asm;
+        let mut cil = self.encoded_asm;
+        cil.write(&self.methods)?;
+        writeln!(cil, "}}")?;
         std::fs::File::create(&cil_path)
             .expect("Could not create file")
             .write_all(&cil)
@@ -112,6 +121,11 @@ fn type_def_cli(
     is_nested: bool,
 ) -> Result<(), super::AssemblyExportError> {
     let name = tpe.name();
+    let name = if *crate::config::ESCAPE_NAMES {
+        escape_class_name(name)
+    } else {
+        name.into()
+    };
     assert!(
         tpe.gargc() == 0,
         "Generic typedefs not supported yet. tpe:{tpe:?}"

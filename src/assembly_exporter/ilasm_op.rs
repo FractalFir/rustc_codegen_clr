@@ -1,6 +1,9 @@
 use std::borrow::Cow;
 
-use crate::r#type::{DotnetTypeRef, Type};
+use crate::{
+    assembly_exporter::escape_class_name,
+    r#type::{DotnetTypeRef, Type},
+};
 
 pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
     use crate::cil::CILOp;
@@ -47,11 +50,17 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
                     Some(owner) => {
                         format!("{}::", type_cil(&owner.clone().into()))
                     }
-                    None => String::new(),
+                    None => "RustModule::".into(),
+                };
+                let function_name = call_site.name();
+                let function_name = if *crate::config::ESCAPE_NAMES{
+                    escape_class_name(function_name)
+                }else{
+                    function_name.into()
                 };
                 format!(
                     "call {prefix} {output} {owner_name}'{function_name}'{generics}({input_string})",
-                    function_name = call_site.name(),
+
                     output = type_cil(call_site.signature().output())
                 )
                 .into()
@@ -99,11 +108,16 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
                  Some(owner) => {
                      format!("{}::", type_cil(&owner.clone().into()))
                  }
-                 None => String::new(),
+                 None => "RustModule::".into(),
              };
+             let function_name = call_site.name();
+                let function_name = if *crate::config::ESCAPE_NAMES{
+                    escape_class_name(function_name)
+                }else{
+                    function_name.into()
+                };
              format!(
                  "ldftn {prefix} {output} {owner_name}'{function_name}'{generics}({input_string})",
-                 function_name = call_site.name(),
                  output = type_cil(call_site.signature().output())
              )
              .into()
@@ -137,11 +151,16 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
                     Some(owner) => {
                         format!("{}::", type_cil(&owner.clone().into()))
                     }
-                    None => String::new(),
+                    None => "RustModule::".into(),
+                };
+                let function_name = call_site.name();
+                let function_name = if *crate::config::ESCAPE_NAMES{
+                    escape_class_name(function_name)
+                }else{
+                    function_name.into()
                 };
                 format!(
                     "callvirt {prefix} {output} {owner_name}'{function_name}'{generics}({input_string})",
-                    function_name = call_site.name(),
                     output = type_cil(call_site.signature().output())
                 )
                 .into()
@@ -539,9 +558,14 @@ pub fn dotnet_type_ref_cli(dotnet_type: &DotnetTypeRef) -> String {
     let asm = if let Some(asm_ref) = dotnet_type.asm() {
         format!("[{asm_ref}]")
     } else {
-        String::new()
+        "".into()
     };
     let name = dotnet_type.name_path();
+    let name = if *crate::config::ESCAPE_NAMES {
+        escape_class_name(name)
+    } else {
+        name.into()
+    };
     let generics = generics_str(dotnet_type.generics());
     format!("{prefix} {asm}'{name}'{generics}")
 }

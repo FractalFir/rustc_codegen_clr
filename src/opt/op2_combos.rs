@@ -79,22 +79,26 @@ pub fn optimize_combos(ops: &mut Vec<CILOp>) {
                 CILOp::LdcI32(_) | CILOp::LdcI64(_) | CILOp::LdcF32(_) | CILOp::LdcF64(_),
                 CILOp::STLoc(loc),
             ) => {
-                let loc = *loc;;
-                let mut set_count = 0;//ops.iter().filter(|op|).count();
-                for op in &*ops{
-                    match op{
-                        CILOp::STLoc(local) => if *local == loc{
-                            set_count+=1;
-                            // If this is not the only set, this optimization won't work.
-                            if set_count != 1 {
+                let loc = *loc;
+                let mut set_count = 0; //ops.iter().filter(|op|).count();
+                for op in &*ops {
+                    match op {
+                        CILOp::STLoc(local) => {
+                            if *local == loc {
+                                set_count += 1;
+                                // If this is not the only set, this optimization won't work.
+                                if set_count != 1 {
+                                    continue 'outer;
+                                }
+                            }
+                        }
+                        CILOp::LDLocA(local) => {
+                            if *local == loc {
+                                // If a pointer to this local is taken, this optmization won't work.
                                 continue 'outer;
                             }
                         }
-                        CILOp::LDLocA(local) => if *local == loc{
-                            // If a pointer to this local is taken, this optmization won't work.
-                            continue 'outer;
-                        }
-                        _=>(),
+                        _ => (),
                     }
                 }
                 let load = op1.clone();

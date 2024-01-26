@@ -112,7 +112,6 @@ pub fn handle_terminator<'ctx>(
                         );
                         ops.extend(call_ops);
                     };
-
                 }
             }
             if let Some(target) = target {

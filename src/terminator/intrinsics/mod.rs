@@ -148,6 +148,22 @@ pub fn handle_intrinsic<'tyctx>(
                 method_instance,
                 type_cache,
             ));
+            let tpe = crate::utilis::monomorphize(
+                &method_instance,
+                call_instance.args[0]
+                    .as_type()
+                    .expect("needs_drop works only on types!"),
+                tyctx,
+            );
+            let tpe = type_cache.type_from_cache(tpe, tyctx, Some(method_instance));
+            let sub = match tpe {
+                Type::ISize | Type::USize | Type::Ptr(_) => 0,
+                Type::I64 | Type::U64 => 0,
+                Type::I32 | Type::U32 => 32,
+                Type::I16 | Type::U16 => 48,
+                Type::I8 | Type::U8 => 56,
+                _ => todo!("Can't `ctlz`  type {tpe:?} yet!"),
+            };
             res.extend([
                 CILOp::ConvU64(false),
                 CILOp::Call(CallSite::boxed(
@@ -156,6 +172,8 @@ pub fn handle_intrinsic<'tyctx>(
                     FnSig::new(&[Type::U64], &Type::I32),
                     true,
                 )),
+                CILOp::LdcI32(sub),
+                CILOp::Sub,
                 CILOp::ConvU64(false),
             ]);
             place_set(destination, tyctx, res, body, method_instance, type_cache)
@@ -170,6 +188,14 @@ pub fn handle_intrinsic<'tyctx>(
             let bit_operations =
                 DotnetTypeRef::new("System.Runtime".into(), "System.Numerics.BitOperations")
                     .with_valuetype(false);
+            let tpe = crate::utilis::monomorphize(
+                &method_instance,
+                call_instance.args[0]
+                    .as_type()
+                    .expect("needs_drop works only on types!"),
+                tyctx,
+            );
+            let tpe = type_cache.type_from_cache(tpe, tyctx, Some(method_instance));
             let bit_operations = Some(bit_operations);
             let mut res = Vec::new();
             res.extend(handle_operand(
@@ -179,16 +205,12 @@ pub fn handle_intrinsic<'tyctx>(
                 method_instance,
                 type_cache,
             ));
-            res.extend([
-                CILOp::ConvU64(false),
-                CILOp::Call(CallSite::boxed(
-                    bit_operations.clone(),
-                    "TrailingZeroCount".into(),
-                    FnSig::new(&[Type::U64], &Type::I32),
-                    true,
-                )),
-                CILOp::ConvU64(false),
-            ]);
+            res.extend([CILOp::Call(CallSite::boxed(
+                bit_operations.clone(),
+                "TrailingZeroCount".into(),
+                FnSig::new(&[tpe], &Type::I32),
+                true,
+            ))]);
             place_set(destination, tyctx, res, body, method_instance, type_cache)
         }
         "rotate_left" => {
@@ -375,7 +397,7 @@ pub fn handle_intrinsic<'tyctx>(
         }
         //"bswap"
         "assert_inhabited" => vec![],
-        "ptr_offset_from_unsigned"=>{
+        "ptr_offset_from_unsigned" => {
             debug_assert_eq!(
                 args.len(),
                 2,
@@ -390,15 +412,17 @@ pub fn handle_intrinsic<'tyctx>(
                 tyctx,
             );
             let tpe = type_cache.type_from_cache(tpe, tyctx, Some(method_instance));
-            ops.extend(handle_operand(&args[0].node, tyctx, body, method_instance, type_cache));
-            ops.extend([
-                CILOp::Sub,
-                CILOp::SizeOf(tpe.into()),
-                CILOp::Div,
-            ]);
+            ops.extend(handle_operand(
+                &args[0].node,
+                tyctx,
+                body,
+                method_instance,
+                type_cache,
+            ));
+            ops.extend([CILOp::Sub, CILOp::SizeOf(tpe.into()), CILOp::Div]);
             place_set(destination, tyctx, ops, body, method_instance, type_cache)
         }
-        "min_align_of_val"=>{
+        "min_align_of_val" => {
             debug_assert_eq!(
                 args.len(),
                 1,
@@ -430,14 +454,86 @@ pub fn handle_intrinsic<'tyctx>(
                 "The intrinsic `sqrtf32` MUST take in exactly 1 argument!"
             );
             let mut ops = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
-            ops.push(CILOp::ConvF64(false));
             ops.push(CILOp::Call(CallSite::boxed(
-                Some(DotnetTypeRef::new("System.Runtime".into(), "System.Math")),
+                Some(DotnetTypeRef::new("System.Runtime".into(), "System.MathF")),
                 "Sqrt".into(),
-                FnSig::new(&[Type::F64], &Type::F64),
+                FnSig::new(&[Type::F32], &Type::F32),
                 true,
             )));
-            ops.push(CILOp::ConvF32(false));
+            place_set(destination, tyctx, ops, body, method_instance, type_cache)
+        }
+        "floorf32" => {
+            debug_assert_eq!(
+                args.len(),
+                1,
+                "The intrinsic `floorf32` MUST take in exactly 1 argument!"
+            );
+            let mut ops = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
+            ops.push(CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::new("System.Runtime".into(), "System.MathF")),
+                "Floor".into(),
+                FnSig::new(&[Type::F32], &Type::F32),
+                true,
+            )));
+            place_set(destination, tyctx, ops, body, method_instance, type_cache)
+        }
+        "ceilf32" => {
+            debug_assert_eq!(
+                args.len(),
+                1,
+                "The intrinsic `ceilf32` MUST take in exactly 1 argument!"
+            );
+            let mut ops = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
+            ops.push(CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::new("System.Runtime".into(), "System.MathF")),
+                "Ceiling".into(),
+                FnSig::new(&[Type::F32], &Type::F32),
+                true,
+            )));
+            place_set(destination, tyctx, ops, body, method_instance, type_cache)
+        }
+        "maxnumf32" => {
+            debug_assert_eq!(
+                args.len(),
+                2,
+                "The intrinsic `maxnumf32` MUST take in exactly 2 arguments!"
+            );
+            let mut ops = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
+            ops.extend(handle_operand(
+                &args[1].node,
+                tyctx,
+                body,
+                method_instance,
+                type_cache,
+            ));
+            ops.push(CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::new("System.Runtime".into(), "System.MathF")),
+                "Max".into(),
+                FnSig::new(&[Type::F32, Type::F32], &Type::F32),
+                true,
+            )));
+            place_set(destination, tyctx, ops, body, method_instance, type_cache)
+        }
+        "minnumf32" => {
+            debug_assert_eq!(
+                args.len(),
+                2,
+                "The intrinsic `minnumf32` MUST take in exactly 2 arguments!"
+            );
+            let mut ops = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
+            ops.extend(handle_operand(
+                &args[1].node,
+                tyctx,
+                body,
+                method_instance,
+                type_cache,
+            ));
+            ops.push(CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::new("System.Runtime".into(), "System.MathF")),
+                "Min".into(),
+                FnSig::new(&[Type::F32, Type::F32], &Type::F32),
+                true,
+            )));
             place_set(destination, tyctx, ops, body, method_instance, type_cache)
         }
         "powif32" => {

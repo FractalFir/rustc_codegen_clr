@@ -561,7 +561,7 @@ run_test! {intrinsics,assert,unstable}
 run_test! {intrinsics,type_id,stable}
 
 run_test! {fuzz,test0,stable}
-
+run_test! {fuzz,test1,stable}
 cargo_test! {hello_world,stable}
 cargo_test! {std_hello_world,stable}
 cargo_test_ignored! {build_core}

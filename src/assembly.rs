@@ -351,34 +351,34 @@ impl Assembly {
                     //tcx.reserve_and_set_memory_alloc(alloc)
                     alloc
                 }
-                GlobalAlloc::VTable(..)=>{
+                GlobalAlloc::VTable(..) => {
                     //TODO: handle VTables
                     let alloc_fld: IString = format!("alloc_{alloc_id:x}").into();
                     let field_desc = crate::cil::StaticFieldDescriptor::new(
-                None,
-                    Type::Ptr(Type::U8.into()),
-                    alloc_fld.clone(),
+                        None,
+                        Type::Ptr(Type::U8.into()),
+                        alloc_fld.clone(),
                     );
-                    self.static_fields.insert(alloc_fld, Type::Ptr(Type::U8.into()));
+                    self.static_fields
+                        .insert(alloc_fld, Type::Ptr(Type::U8.into()));
                     return field_desc;
                 }
-                GlobalAlloc::Function(_)  => {
+                GlobalAlloc::Function(_) => {
                     //TODO: handle constant functions
                     let alloc_fld: IString = format!("alloc_{alloc_id:x}").into();
                     let field_desc = crate::cil::StaticFieldDescriptor::new(
-                None,
-                    Type::Ptr(Type::U8.into()),
-                    alloc_fld.clone(),
+                        None,
+                        Type::Ptr(Type::U8.into()),
+                        alloc_fld.clone(),
                     );
-                    self.static_fields.insert(alloc_fld, Type::Ptr(Type::U8.into()));
+                    self.static_fields
+                        .insert(alloc_fld, Type::Ptr(Type::U8.into()));
                     return field_desc;
                     //todo!("Function/Vtable allocation.");
                 }
             };
         let const_allocation = const_allocation.inner();
-        
-       
-        
+
         //let byte_hash = calculate_hash(&bytes);
 
         let alloc_fld: IString = format!("alloc_{alloc_id:x}").into();
@@ -388,7 +388,8 @@ impl Assembly {
             alloc_fld.clone(),
         );
         if self.static_fields.get(&alloc_fld).is_none() {
-            let init_method = allocation_initializer_method(const_allocation, &alloc_fld, tcx,self);
+            let init_method =
+                allocation_initializer_method(const_allocation, &alloc_fld, tcx, self);
             let cctor = self
                 .functions
                 .entry(CallSite::new(
@@ -414,8 +415,7 @@ impl Assembly {
             if !ops.is_empty() && ops[ops.len() - 1] == CILOp::Ret {
                 ops.pop();
             }
-            
-          
+
             ops.extend([
                 CILOp::Call(CallSite::boxed(
                     None,
@@ -591,11 +591,16 @@ fn locals_from_mir<'tyctx>(
     }
     local_types
 }
-fn allocation_initializer_method(const_allocation:&Allocation, name: &str, tyctx: TyCtxt,asm:&mut Assembly) -> Method {
-    let bytes: &[u8] = const_allocation
-            .inspect_with_uninit_and_ptr_outside_interpreter(0..const_allocation.len());
+fn allocation_initializer_method(
+    const_allocation: &Allocation,
+    name: &str,
+    tyctx: TyCtxt,
+    asm: &mut Assembly,
+) -> Method {
+    let bytes: &[u8] =
+        const_allocation.inspect_with_uninit_and_ptr_outside_interpreter(0..const_allocation.len());
     let ptrs = const_allocation.provenance().ptrs();
-    
+
     let mut ops = Vec::new();
     ops.extend([
         CILOp::LdcI64(bytes.len() as u64 as i64),
@@ -614,11 +619,10 @@ fn allocation_initializer_method(const_allocation:&Allocation, name: &str, tyctx
             CILOp::LdcI32(1),
             CILOp::Add,
             CILOp::STLoc(0),
-            
         ]);
     }
-    if !ptrs.is_empty(){
-        for ptr in ptrs.iter(){
+    if !ptrs.is_empty() {
+        for ptr in ptrs.iter() {
             let ptr_alloc = asm.add_allocation(ptr.1.alloc_id().0.into(), tyctx);
             let offset = ptr.0.bytes_usize() as u32;
             ops.extend([
@@ -626,7 +630,7 @@ fn allocation_initializer_method(const_allocation:&Allocation, name: &str, tyctx
                 CILOp::LdcI32(offset as i32),
                 CILOp::ConvISize(false),
                 CILOp::Add,
-                CILOp::LDStaticField(ptr_alloc.into()), 
+                CILOp::LDStaticField(ptr_alloc.into()),
                 CILOp::STIndISize,
             ]);
         }

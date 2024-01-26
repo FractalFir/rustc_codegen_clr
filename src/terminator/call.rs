@@ -1,16 +1,18 @@
 use crate::{
+    call_info::CallInfo,
+    cil::FieldDescriptor,
     cil::{CILOp, CallSite},
     function_sig::FnSig,
+    interop::AssemblyRef,
     r#type::DotnetTypeRef,
+    utilis::garg_to_string,
     utilis::CTOR_FN_NAME,
     utilis::MANAGED_CALL_FN_NAME,
     utilis::MANAGED_CALL_VIRT_FN_NAME,
-    cil::FieldDescriptor,call_info::CallInfo,interop::AssemblyRef,
-    utilis::garg_to_string,
 };
 use rustc_middle::{
     mir::{Body, Operand, Place, SwitchTargets, Terminator, TerminatorKind},
-    ty::{GenericArg, Instance, ParamEnv, Ty, TyCtxt, TyKind,InstanceDef},
+    ty::{GenericArg, Instance, InstanceDef, ParamEnv, Ty, TyCtxt, TyKind},
 };
 use rustc_span::source_map::Spanned;
 fn decode_interop_call<'tyctx>(
@@ -507,9 +509,9 @@ pub fn call<'tyctx>(
     //assert_eq!(args.len(),signature.inputs().len(),"CALL SIGNATURE ARG COUNT MISMATCH!");
     let is_void = matches!(signature.output(), crate::r#type::Type::Void);
     rustc_middle::ty::print::with_no_trimmed_paths! {call.push(CILOp::Comment(format!("Calling {instance:?}").into()))};
-    match instance.def{
-        InstanceDef::DropGlue(def,None)=>return vec![],
-        _=>(),
+    match instance.def {
+        InstanceDef::DropGlue(def, None) => return vec![],
+        _ => (),
     }
     call.push(CILOp::Call(CallSite::boxed(
         None,

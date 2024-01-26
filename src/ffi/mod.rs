@@ -45,7 +45,7 @@ macro_rules! add_method {
 pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     let c_void = Type::c_void(tyctx);
     asm.add_typedef(crate::r#type::TypeDef::new(
-        AccessModifer::Private,
+        AccessModifer::Public,
         c_void.as_dotnet().unwrap().name_path().into(),
         vec![],
         vec![],

@@ -545,13 +545,12 @@ fn try_find_ptr_components(ctx: TyCtxt) -> DefId {
             krate: core,
         };
         let name = format!("{did:?}");
-        
+
         if name.contains("ptr::metadata::PtrComponents")
             && !name.contains("PtrComponents::data_address")
             && !name.contains("PtrComponents::metadata")
             && !name.contains("PtrComponents::T")
         {
-          
             assert!(
                 ptr_components.is_none(),
                 "Found more than one defintin of PtrComponents"

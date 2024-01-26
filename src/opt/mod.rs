@@ -135,16 +135,16 @@ pub fn opt_method(method: &mut Method, asm: &Assembly) {
         op3_combos::optimize_combos(method.ops_mut());
         op4_combos(method.ops_mut());
         let local_count = method.locals().len();
-        
-        match pass%4{
-            0=> remove_dead_lables(method.ops_mut()),
-            2=>try_alias_locals(method.ops_mut(),&mut cache),
-            1|3=> remove_zombie_sets(method.ops_mut(),local_count),
-            _=>panic!(),
+
+        match pass % 4 {
+            0 => remove_dead_lables(method.ops_mut()),
+            2 => try_alias_locals(method.ops_mut(), &mut cache),
+            1 | 3 => remove_zombie_sets(method.ops_mut(), local_count),
+            _ => panic!(),
         }
         method.ops_mut().retain(|op| *op != CILOp::Nop);
         cache.reset();
-        
+
         if *crate::config::SPLIT_LOCAL_STRUCTS {
             try_split_locals(method, asm);
         }
@@ -167,13 +167,13 @@ fn repalce_const_sizes(ops: &mut [CILOp]) {
         }
     });
 }
-fn remove_zombie_sets(ops: &mut Vec<CILOp>,local_count:usize) {
+fn remove_zombie_sets(ops: &mut Vec<CILOp>, local_count: usize) {
     //(0..local_count).into_iter().map(|idx|is_local_dead(ops,idx as u32)).collect();//
-    let dead_locals:Vec<_> = dead_locals(ops,local_count);
+    let dead_locals: Vec<_> = dead_locals(ops, local_count);
     for idx in 0..ops.len() {
         match ops[idx] {
             CILOp::STLoc(loc) => {
-                if dead_locals[loc as usize]{
+                if dead_locals[loc as usize] {
                     ops[idx] = CILOp::Pop;
                 }
             }
@@ -185,7 +185,7 @@ fn remove_dead_lables(ops: &mut Vec<CILOp>) {
     for idx in 0..ops.len() {
         match ops[idx] {
             CILOp::Label(label) => {
-                if is_label_unsused(ops,label) {
+                if is_label_unsused(ops, label) {
                     ops[idx] = CILOp::Nop;
                 }
             }
@@ -265,12 +265,12 @@ fn is_local_dead(ops: &[CILOp], local: u32) -> bool {
         _ => false,
     })
 }
-fn dead_locals(ops:&[CILOp],locals:usize)->Vec<bool>{
-    let mut locals = vec![true;locals]; 
+fn dead_locals(ops: &[CILOp], locals: usize) -> Vec<bool> {
+    let mut locals = vec![true; locals];
     ops.iter().for_each(|op| match op {
-        CILOp::LDLoc(loc) | CILOp::LDLocA(loc)=>{
+        CILOp::LDLoc(loc) | CILOp::LDLocA(loc) => {
             locals[*loc as usize] = false;
-        } 
+        }
         _ => (),
     });
     locals
@@ -315,33 +315,37 @@ fn alias_local(src: u32, dst: u32, ops: &mut [CILOp]) {
         _ => (),
     });
 }
-struct LocalAccessRangeCache{
-    cache:Vec<Option<Option<Range<usize>>>>,
+struct LocalAccessRangeCache {
+    cache: Vec<Option<Option<Range<usize>>>>,
 }
-impl LocalAccessRangeCache{
-    fn new()->Self{
-        Self{cache:Vec::new()}
+impl LocalAccessRangeCache {
+    fn new() -> Self {
+        Self { cache: Vec::new() }
     }
-    fn reset(&mut self){
+    fn reset(&mut self) {
         self.cache.iter_mut().for_each(|cached| *cached = None);
     }
-    fn extend_to(&mut self,to:u32){
-        while self.cache.len() <= to as usize{
+    fn extend_to(&mut self, to: u32) {
+        while self.cache.len() <= to as usize {
             self.cache.push(None);
         }
     }
-    fn get(&mut self,index:u32,ops:&[CILOp])->Option<Range<usize>>{
-        if self.cache.len() <= index as usize{
+    fn get(&mut self, index: u32, ops: &[CILOp]) -> Option<Range<usize>> {
+        if self.cache.len() <= index as usize {
             self.extend_to(index);
         }
-        if let Some(cached) = &self.cache[index as usize]{
+        if let Some(cached) = &self.cache[index as usize] {
             return cached.clone();
         }
-        self.cache[index as usize] = Some(get_local_access_range(index,ops));
-        return self.cache[index as usize].as_ref().unwrap().as_ref().map(|s| s.clone());
+        self.cache[index as usize] = Some(get_local_access_range(index, ops));
+        return self.cache[index as usize]
+            .as_ref()
+            .unwrap()
+            .as_ref()
+            .map(|s| s.clone());
     }
 }
-fn try_alias_locals(ops: &mut [CILOp],cache:&mut LocalAccessRangeCache) {
+fn try_alias_locals(ops: &mut [CILOp], cache: &mut LocalAccessRangeCache) {
     if ops.len() < 2 {
         return;
     }

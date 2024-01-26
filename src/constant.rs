@@ -550,18 +550,23 @@ fn create_const_from_data<'ctx>(
         size: Size::from_bytes((len as u64) - offset_bytes),
     };
     let bytes = memory.0.get_bytes_unchecked(range);
-    if memory.0.provenance().ptrs().is_empty(){
-         //eprintln!("Creating const {ty:?} from data of length {len}.");
-        create_const_from_slice(ty, tyctx, bytes, method_instance, tycache) 
-    }
-    else{
-        let mut ops = vec![CILOp::LoadGlobalAllocPtr { alloc_id:alloc_id.0.into() }];
-        let ty =crate::utilis::monomorphize(&method_instance, ty, tyctx);
-        ops.extend(crate::place::deref_op(ty.into(), tyctx, &method_instance, tycache));
+    if memory.0.provenance().ptrs().is_empty() {
+        //eprintln!("Creating const {ty:?} from data of length {len}.");
+        create_const_from_slice(ty, tyctx, bytes, method_instance, tycache)
+    } else {
+        let mut ops = vec![CILOp::LoadGlobalAllocPtr {
+            alloc_id: alloc_id.0.into(),
+        }];
+        let ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
+        ops.extend(crate::place::deref_op(
+            ty.into(),
+            tyctx,
+            &method_instance,
+            tycache,
+        ));
         ops
         //panic!("Constant requires rellocation support!");
     }
-  
 }
 
 fn load_const_value<'ctx>(
