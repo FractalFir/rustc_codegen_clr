@@ -98,6 +98,7 @@ pub fn to_int(target: Type) -> Vec<CILOp> {
         Type::U64 => vec![CILOp::ConvU64(false)],
         Type::ISize => vec![CILOp::ConvISize(false)],
         Type::USize => vec![CILOp::ConvUSize(false)],
+        Type::Ptr(_) => vec![CILOp::ConvUSize(false)],
         _ => todo!("Can't cast to {target:?} yet!"),
     }
 }

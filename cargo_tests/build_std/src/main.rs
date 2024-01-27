@@ -1,8 +1,14 @@
-#![feature(core_intrinsics)]
+#![feature(core_intrinsics,adt_const_params)]
 use std::io::Write;
 use std::hint::black_box;
 extern "C" {
     fn puts(msg: *const u8);
+}
+#[allow(dead_code)]
+#[inline(never)]
+fn rustc_clr_interop_managed_call1_<const ASSEMBLY:&'static str,const CLASS_PATH:&'static str,const IS_VALUETYPE:bool,const METHOD:&'static str,const IS_STATIC:bool,Ret,Arg1>(arg1:Arg1)->Ret{
+    unsafe{puts("Called interop managed call when compiled native code.\n\0".as_ptr())};
+    core::intrinsics::abort();
 }
 macro_rules! test{
     ($name:ident)=>{
@@ -20,6 +26,31 @@ fn collect_test(){
             unsafe{core::intrinsics::abort()};
         }
     } 
+}
+fn map_test(){
+    for (number,idx) in std::hint::black_box(0..100).map(|i|{i*i}).enumerate(){
+        if std::hint::black_box(number) != idx*idx{
+            rustc_clr_interop_managed_call1_::<"System.Console","System.Console",false,"WriteLine",true,(),u64>(number as u64);
+            rustc_clr_interop_managed_call1_::<"System.Console","System.Console",false,"WriteLine",true,(),u64>(idx as u64);
+            unsafe{puts("map_test1 failed: items not equal.\n\0".as_ptr())};
+            unsafe{core::intrinsics::abort()};
+        }
+    }
+    /* 
+    let numbers:Vec<_> = std::hint::black_box(0..100).map(|i|{
+        unsafe{puts("called map!\n\0".as_ptr())};
+        rustc_clr_interop_managed_call1_::<"System.Console","System.Console",false,"WriteLine",true,(),u64>(i as u64);
+        i*i
+    }).collect();
+    std::hint::black_box(&numbers);
+    for (number,idx) in numbers.iter().enumerate(){
+        if std::hint::black_box(number) != (*idx)*(*idx){
+            rustc_clr_interop_managed_call1_::<"System.Console","System.Console",false,"WriteLine",true,(),u64>(number as u64);
+            rustc_clr_interop_managed_call1_::<"System.Console","System.Console",false,"WriteLine",true,(),u64>((*idx) as u64);
+            unsafe{puts("map_test2 failed: items not equal.\n\0".as_ptr())};
+            unsafe{core::intrinsics::abort()};
+        }
+    } */
 }
 fn main() {
     let int = std::hint::black_box(8);
@@ -124,6 +155,7 @@ fn main() {
     string.push('\n');
     string.push('\0');
     test!(collect_test);
+    test!(map_test);
     std::hint::black_box(&string);
     unsafe{puts(string.as_ptr())};
     unsafe{puts("Testing some cool shit\n\0".as_ptr())};

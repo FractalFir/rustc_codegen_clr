@@ -7,6 +7,7 @@ use crate::{
     r#type::{DotnetTypeRef, TyCache, Type},
 };
 /// Preforms an checked binary operation.
+/// Husajfwk asd ad
 pub(crate) fn binop_checked<'tyctx>(
     binop: BinOp,
     operand_a: &Operand<'tyctx>,

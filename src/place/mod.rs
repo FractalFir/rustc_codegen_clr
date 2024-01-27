@@ -185,13 +185,13 @@ pub fn place_adress<'a>(
     let place_ty = place.ty(method, ctx);
     let place_ty = crate::utilis::monomorphize(&method_instance, place_ty, ctx).ty;
     if place.projection.is_empty() {
-        ops.push(local_adress(place.local.as_usize(), method));
+        ops.extend(local_adress(place.local.as_usize(), method));
         ops
     } else {
         let (op, mut ty) = local_body(place.local.as_usize(), method);
         ty = crate::utilis::monomorphize(&method_instance, ty, ctx);
         let mut ty = ty.into();
-        ops.push(op);
+        ops.extend(op);
         let (head, body) = slice_head(place.projection);
         for elem in body {
             let (curr_ty, curr_ops) =
@@ -228,7 +228,7 @@ pub(crate) fn place_set<'a>(
         let (op, ty) = local_body(place.local.as_usize(), method);
         let mut ty: PlaceTy = ty.into();
         ty = ty.monomorphize(&method_instance, ctx);
-        ops.push(op);
+        ops.extend(op);
         let (head, body) = slice_head(place.projection);
         for elem in body {
             let (curr_ty, curr_ops) =

@@ -34,7 +34,7 @@ pub fn place_get<'a>(
         let (op, mut ty) = super::local_body(place.local.as_usize(), method);
         ty = crate::utilis::monomorphize(&method_instance, ty, ctx);
         let mut ty = ty.into();
-        ops.push(op);
+        ops.extend(op);
         let (head, body) = super::slice_head(place.projection);
         for elem in body {
             let (curr_ty, curr_ops) =

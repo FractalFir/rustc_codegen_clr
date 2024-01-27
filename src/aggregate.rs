@@ -96,9 +96,7 @@ pub fn handle_aggregate<'tyctx>(
             ops
         }
         AggregateKind::Tuple => {
-            if values.len() > 8 {
-                todo!("Tuples with more than 8 fields are not supported yet.");
-            } else {
+           
                 let tuple_getter = super::place::place_adress(
                     target_location,
                     tyctx,
@@ -137,7 +135,6 @@ pub fn handle_aggregate<'tyctx>(
                     tycache,
                 ));
                 ops
-            }
         }
         AggregateKind::Closure(def_id, args) => {
             let closure_ty = crate::utilis::monomorphize(
@@ -151,6 +148,7 @@ pub fn handle_aggregate<'tyctx>(
             let mut closure_constructor = vec![CILOp::NewTMPLocal(closure_type.into())];
             for (index, value) in value_index.iter_enumerated() {
                 closure_constructor.push(CILOp::LoadAddresOfTMPLocal);
+                closure_constructor.push(CILOp::ConvUSize(false));
                 let field_ty =
                     crate::utilis::monomorphize(&method_instance, value.ty(method, tyctx), tyctx);
                 let field_ty = tycache.type_from_cache(field_ty, tyctx, Some(method_instance));
@@ -303,9 +301,6 @@ fn aggregate_adt<'tyctx>(
             }
             // Set tag
             {
-                ops.extend(adt_adress_ops);
-                ops.push(CILOp::LdcI32(variant_idx as i32));
-                let field_name = "_tag".into();
                 let layout = tyctx
                     .layout_of(rustc_middle::ty::ParamEnvAnd {
                         param_env: ParamEnv::reveal_all(),
@@ -313,6 +308,12 @@ fn aggregate_adt<'tyctx>(
                     })
                     .expect("Could not get type layout!");
                 let (disrc_type, _) = crate::utilis::adt::enum_tag_info(&layout.layout, tyctx);
+
+                ops.extend(adt_adress_ops);
+                ops.push(CILOp::LdcI32(variant_idx as i32));
+                ops.extend( crate::casts::int_to_int(Type::I32, disrc_type.clone()));
+                let field_name = "_tag".into();
+                
                 ops.push(CILOp::STField(Box::new(FieldDescriptor::new(
                     adt_type_ref,
                     disrc_type,

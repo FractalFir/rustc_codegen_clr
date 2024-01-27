@@ -360,7 +360,7 @@ fn throw_assert_msg<'ctx>(
             found: _,
         } => {
             /*
-            let mut ops = Vec::with_capacity(8);
+            let mut ops = Vec::with_capacity(8); 
             let string_class = crate::utilis::string_class();
             ops.push(CILOp::LdStr(
                 "Missaligned pointer dereference. required: "

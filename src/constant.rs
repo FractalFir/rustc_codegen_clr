@@ -422,6 +422,7 @@ fn create_const_from_slice<'ctx>(
                 vec![
                     CILOp::NewTMPLocal(slice_type.into()),
                     CILOp::LoadAddresOfTMPLocal,
+                    CILOp::ConvUSize(false),
                     CILOp::LdcI64(ptr as i64),
                     CILOp::ConvUSize(false),
                     CILOp::STField(
@@ -433,6 +434,7 @@ fn create_const_from_slice<'ctx>(
                         .into(),
                     ),
                     CILOp::LoadAddresOfTMPLocal,
+                    CILOp::ConvUSize(false),
                     CILOp::LdcI64(len as i64),
                     CILOp::ConvUSize(false),
                     CILOp::STField(
@@ -479,6 +481,7 @@ fn create_const_from_slice<'ctx>(
                     tycache,
                 );
                 ops.push(CILOp::LoadAddresOfTMPLocal);
+                ops.push(CILOp::ConvUSize(false));
                 ops.extend(field_ops);
                 ops.push(CILOp::STField(FieldDescriptor::boxed(
                     tuple_dotnet.clone(),
@@ -504,6 +507,7 @@ fn create_const_from_slice<'ctx>(
             let mut res = vec![CILOp::NewTMPLocal(array_type.clone().into())];
             for index in 0..length {
                 res.push(CILOp::LoadAddresOfTMPLocal);
+                res.push(CILOp::ConvUSize(false));
                 res.push(CILOp::LdcI64(index as u64 as i64));
                 res.extend(create_const_from_slice(
                     element_ty,
@@ -664,6 +668,7 @@ fn load_const_scalar<'ctx>(
                             CILOp::NewTMPLocal(Type::U8.into()),
                             CILOp::SetTMPLocal,
                             CILOp::LoadAddresOfTMPLocal,
+                            CILOp::ConvUSize(false),
                             CILOp::FreeTMPLocal,
                         ];
                     }
@@ -680,6 +685,7 @@ fn load_const_scalar<'ctx>(
                             CILOp::NewTMPLocal(Type::U8.into()),
                             CILOp::SetTMPLocal,
                             CILOp::LoadAddresOfTMPLocal,
+                            CILOp::ConvUSize(false),
                             CILOp::FreeTMPLocal,
                         ];
                     }
@@ -741,6 +747,7 @@ fn load_const_scalar<'ctx>(
                 vec![
                     CILOp::NewTMPLocal(tpe.into()),
                     CILOp::LoadAddresOfTMPLocal,
+                    CILOp::ConvUSize(false),
                     CILOp::LdcI64(scalar_u128 as i64),
                     CILOp::STField(Box::new(crate::cil::FieldDescriptor::new(
                         enum_dotnet.clone(),
@@ -772,6 +779,7 @@ fn load_const_scalar<'ctx>(
                     CILOp::NewTMPLocal(Type::I128.into()),
                     CILOp::SetTMPLocal,
                     CILOp::LoadAddresOfTMPLocal,
+                    CILOp::ConvUSize(false),
                     CILOp::LdObj(tpe.into()),
                     CILOp::FreeTMPLocal,
                 ]

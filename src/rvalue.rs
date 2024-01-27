@@ -424,9 +424,12 @@ pub fn handle_rvalue<'tcx>(
             };
             ops.push(CILOp::LDField(Box::new(crate::cil::FieldDescriptor::new(
                 owner,
-                disrc_type,
+                disrc_type.clone(),
                 "_tag".into(),
             ))));
+            let src = disrc_type;
+            let target = tycache.type_from_cache(owner_ty.discriminant_ty(tyctx), tyctx, Some(method_instance));
+            ops.extend( crate::casts::int_to_int(src, target));
             ops
         }
         Rvalue::Len(operand) => {
