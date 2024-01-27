@@ -7,6 +7,7 @@ use crate::{
     r#type::{TyCache, Type},
 };
 use rustc_middle::ty::{List, Ty, TyCtxt, TyKind};
+/* 
 pub fn add_caller_location(asm: &mut Assembly, tyctx: TyCtxt, cache: &mut TyCache) {
     let panic_location = tyctx
         .get_lang_items(())
@@ -32,4 +33,4 @@ pub fn add_caller_location(asm: &mut Assembly, tyctx: TyCtxt, cache: &mut TyCach
         CILOp::Ret,
     ]);
     asm.add_method(caller_location);
-}
+}*/

@@ -2,7 +2,7 @@ use crate::{
     access_modifier::AccessModifer, assembly::Assembly, cil::CILOp, function_sig::FnSig,
     method::Method, r#type::Type,
 };
-
+/*
 pub fn add_exact_div(asm: &mut Assembly) {
     add_exact_div_u64(asm);
     add_exact_div_usize(asm);
@@ -39,3 +39,4 @@ fn add_exact_div_usize(asm: &mut Assembly) {
     ]);
     asm.add_method(exact_div);
 }
+*/

@@ -1,4 +1,4 @@
-use crate::{function_sig::FnSig, r#type::DotnetTypeRef, IString};
+use crate::{function_sig::FnSig, method::MethodType, r#type::DotnetTypeRef, IString};
 mod call_site;
 pub use call_site::*;
 mod field_desc;
@@ -497,7 +497,7 @@ fn test_tmp_locals() {
     use crate::r#type::Type;
     let mut method = Method::new(
         crate::access_modifier::AccessModifer::Public,
-        true,
+        MethodType::Static,
         FnSig::new(&[], &Type::U32),
         "meth",
         vec![],
@@ -514,7 +514,7 @@ fn test_tmp_locals() {
     method.set_ops(ops);
     let mut expected_method = Method::new(
         crate::access_modifier::AccessModifer::Public,
-        true,
+        MethodType::Static,
         FnSig::new(&[], &Type::U32),
         "meth",
         vec![(None, Type::U32)],

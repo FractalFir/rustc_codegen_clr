@@ -9,13 +9,16 @@ use rustc_middle::{
     mir::PlaceElem,
     ty::{Instance, Ty, TyCtxt, TyKind},
 };
-pub fn local_adress(local: usize, method: &rustc_middle::mir::Body) -> [CILOp;2] {
+pub fn local_adress(local: usize, method: &rustc_middle::mir::Body) -> [CILOp; 2] {
     if local == 0 {
-        [CILOp::LDLocA(0),CILOp::ConvUSize(false)]
+        [CILOp::LDLocA(0), CILOp::ConvUSize(false)]
     } else if local > method.arg_count {
-        [CILOp::LDLocA((local - method.arg_count) as u32),CILOp::ConvUSize(false)]
+        [
+            CILOp::LDLocA((local - method.arg_count) as u32),
+            CILOp::ConvUSize(false),
+        ]
     } else {
-        [CILOp::LDArgA((local - 1) as u32),CILOp::ConvUSize(false)]
+        [CILOp::LDArgA((local - 1) as u32), CILOp::ConvUSize(false)]
     }
 }
 pub fn address_last_dereference<'ctx>(

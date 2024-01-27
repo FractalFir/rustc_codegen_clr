@@ -40,7 +40,7 @@ impl FieldOffsetIterator {
                     .iter()
                     .map(|index| offsets[FieldIdx::from_u32(*index)].bytes() as u32)
                     //TODO: ask what does field offset of 4294967295 means.
-                    .map(|offset| if offset > u16::MAX as u32{0}else{offset})
+                    .map(|offset| if offset > u16::MAX as u32 { 0 } else { offset })
                     .collect();
                 FieldOffsetIterator::Explicit { offsets, index: 0 }
             }

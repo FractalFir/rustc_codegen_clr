@@ -6,7 +6,7 @@ use crate::{
         ilasm_op::{non_void_type_cil, type_cil},
         AssemblyExportError,
     },
-    method::Method,
+    method::{Method, MethodType},
     r#type::TypeDef,
     r#type::{DotnetTypeRef, Type},
 };
@@ -187,11 +187,11 @@ fn method_cil(w: &mut impl Write, method: &Method) -> std::io::Result<()> {
     } else {
         "public"
     };
-    let static_inst = if method.is_static() {
-        "static"
-    } else {
-        "instance"
-    };
+    let static_inst = match method.method_type() {
+        MethodType::Static => "static",
+        MethodType::Virtual => "virtual instance",
+        MethodType::Instance => "instance",
+    } ;
     let output = type_cil(method.sig().output());
     let name = method.name();
     write!(

@@ -7,7 +7,10 @@ use crate::r#type::Type;
 
 use rustc_middle::mir::PlaceElem;
 use rustc_middle::ty::{Instance, Ty, TyCtxt, TyKind};
-pub fn local_body<'tcx>(local: usize, method: &rustc_middle::mir::Body<'tcx>) -> (Vec<CILOp>, Ty<'tcx>) {
+pub fn local_body<'tcx>(
+    local: usize,
+    method: &rustc_middle::mir::Body<'tcx>,
+) -> (Vec<CILOp>, Ty<'tcx>) {
     let ty = method.local_decls[local.into()].ty;
     if body_ty_is_by_adress(ty) {
         (super::adress::local_adress(local, method).into(), ty)

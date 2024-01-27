@@ -11,7 +11,7 @@ use std::hash::{Hash, Hasher};
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 pub struct Method {
     access: AccessModifer,
-    is_static: bool,
+    method_type: MethodType,
     sig: FnSig,
     name: IString,
     locals: Vec<LocalDef>,
@@ -38,14 +38,14 @@ impl Method {
     #[must_use]
     pub fn new(
         access: AccessModifer,
-        is_static: bool,
+        method_type:MethodType,
         sig: FnSig,
         name: &str,
         locals: Vec<LocalDef>,
     ) -> Self {
         Self {
             access,
-            is_static,
+            method_type,
             sig,
             name: name.into(),
             locals,
@@ -102,7 +102,7 @@ impl Method {
     }
     /// Returns true if this function is static, else it returns false.
     pub fn is_static(&self) -> bool {
-        self.is_static
+        self.method_type == MethodType::Static 
     }
     /// Returns the name of this function.
     pub fn name(&self) -> &str {
@@ -187,4 +187,15 @@ impl Method {
     pub fn set_locals(&mut self, locals: impl Into<Vec<(Option<IString>, Type)>>) {
         self.locals = locals.into();
     }
+    /// Returns the type of this method(static, instance or virtual)
+    pub fn method_type(&self) -> MethodType {
+        self.method_type
+    }
+}
+/// Type of this method(static, instance or virtual).
+#[derive(Debug,Clone,Copy,PartialEq, Serialize, Deserialize)]
+pub enum MethodType{
+    Instance,
+    Virtual,
+    Static,
 }

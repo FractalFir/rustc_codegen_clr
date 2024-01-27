@@ -428,8 +428,12 @@ pub fn handle_rvalue<'tcx>(
                 "_tag".into(),
             ))));
             let src = disrc_type;
-            let target = tycache.type_from_cache(owner_ty.discriminant_ty(tyctx), tyctx, Some(method_instance));
-            ops.extend( crate::casts::int_to_int(src, target));
+            let target = tycache.type_from_cache(
+                owner_ty.discriminant_ty(tyctx),
+                tyctx,
+                Some(method_instance),
+            );
+            ops.extend(crate::casts::int_to_int(src, target));
             ops
         }
         Rvalue::Len(operand) => {

@@ -96,45 +96,44 @@ pub fn handle_aggregate<'tyctx>(
             ops
         }
         AggregateKind::Tuple => {
-           
-                let tuple_getter = super::place::place_adress(
-                    target_location,
-                    tyctx,
-                    method,
-                    method_instance,
-                    tycache,
-                );
-                let types: Vec<_> = value_index
-                    .iter()
-                    .map(|operand| {
-                        let operand_ty = crate::utilis::monomorphize(
-                            &method_instance,
-                            operand.ty(method, tyctx),
-                            tyctx,
-                        );
-                        tycache.type_from_cache(operand_ty, tyctx, Some(method_instance))
-                    })
-                    .collect();
-                let dotnet_tpe = crate::r#type::simple_tuple(&types);
-                let mut ops: Vec<CILOp> = Vec::with_capacity(values.len() * 2);
-                for field in values.iter() {
-                    let name = format!("Item{}", field.0 + 1);
-                    ops.extend(tuple_getter.iter().cloned());
-                    ops.extend(field.1.iter().cloned());
-                    ops.push(CILOp::STField(FieldDescriptor::boxed(
-                        dotnet_tpe.clone(),
-                        types[field.0 as usize].clone(),
-                        name.into(),
-                    )));
-                }
-                ops.extend(super::place::place_get(
-                    target_location,
-                    tyctx,
-                    method,
-                    method_instance,
-                    tycache,
-                ));
-                ops
+            let tuple_getter = super::place::place_adress(
+                target_location,
+                tyctx,
+                method,
+                method_instance,
+                tycache,
+            );
+            let types: Vec<_> = value_index
+                .iter()
+                .map(|operand| {
+                    let operand_ty = crate::utilis::monomorphize(
+                        &method_instance,
+                        operand.ty(method, tyctx),
+                        tyctx,
+                    );
+                    tycache.type_from_cache(operand_ty, tyctx, Some(method_instance))
+                })
+                .collect();
+            let dotnet_tpe = crate::r#type::simple_tuple(&types);
+            let mut ops: Vec<CILOp> = Vec::with_capacity(values.len() * 2);
+            for field in values.iter() {
+                let name = format!("Item{}", field.0 + 1);
+                ops.extend(tuple_getter.iter().cloned());
+                ops.extend(field.1.iter().cloned());
+                ops.push(CILOp::STField(FieldDescriptor::boxed(
+                    dotnet_tpe.clone(),
+                    types[field.0 as usize].clone(),
+                    name.into(),
+                )));
+            }
+            ops.extend(super::place::place_get(
+                target_location,
+                tyctx,
+                method,
+                method_instance,
+                tycache,
+            ));
+            ops
         }
         AggregateKind::Closure(def_id, args) => {
             let closure_ty = crate::utilis::monomorphize(
@@ -311,9 +310,9 @@ fn aggregate_adt<'tyctx>(
 
                 ops.extend(adt_adress_ops);
                 ops.push(CILOp::LdcI32(variant_idx as i32));
-                ops.extend( crate::casts::int_to_int(Type::I32, disrc_type.clone()));
+                ops.extend(crate::casts::int_to_int(Type::I32, disrc_type.clone()));
                 let field_name = "_tag".into();
-                
+
                 ops.push(CILOp::STField(Box::new(FieldDescriptor::new(
                     adt_type_ref,
                     disrc_type,

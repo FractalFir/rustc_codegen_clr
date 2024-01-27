@@ -5,6 +5,7 @@ use crate::{
     method::Method,
     r#type::{DotnetTypeRef, Type},
 };
+/* 
 //TODO: propely mimic the semantics used in atomics!
 pub fn add_atomics(asm: &mut Assembly) {
     add_atomic_load_acquire(asm);
@@ -239,3 +240,4 @@ fn add_atomic_cxchgweak_acquire_acquire(asm: &mut Assembly) {
     }
 }
 //TODO: implement cmp by using System.Threading.Interlocked.CompareExchange<T>(T, T, T)
+*/

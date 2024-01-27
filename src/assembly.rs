@@ -1,3 +1,4 @@
+use crate::method::MethodType;
 use crate::rustc_middle::dep_graph::DepContext;
 use crate::{
     access_modifier::AccessModifer,
@@ -268,7 +269,7 @@ impl Assembly {
         //eprintln!("method")
         let locals = locals_from_mir(&mir.local_decls, tcx, mir.arg_count, &instance, cache);
         // Create method prototype
-        let mut method = Method::new(access_modifier, true, sig.clone(), name, locals);
+        let mut method = Method::new(access_modifier, MethodType::Static, sig.clone(), name, locals);
         let mut ops = Vec::new();
         if *crate::config::TRACE_CALLS {
             ops.extend(CILOp::debug_msg(&format!("Called {name}.")));
@@ -401,7 +402,7 @@ impl Assembly {
                 .or_insert_with(|| {
                     Method::new(
                         AccessModifer::Public,
-                        true,
+                        MethodType::Static,
                         FnSig::new(&[], &Type::Void),
                         ".cctor",
                         vec![
@@ -639,7 +640,7 @@ fn allocation_initializer_method(
     ops.extend([CILOp::LDLoc(1), CILOp::Ret]);
     let mut method = Method::new(
         AccessModifer::Private,
-        true,
+        MethodType::Static,
         FnSig::new(&[], &Type::Ptr(Type::U8.into())),
         &format!("init_{name}"),
         vec![

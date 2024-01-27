@@ -6,7 +6,7 @@ use crate::{
     method::Method,
     r#type::{DotnetTypeRef, Type},
 };
-
+/*
 pub fn add_ctpop(asm: &mut Assembly) {
     add_ctpop_u64(asm);
 }
@@ -35,3 +35,4 @@ fn add_ctpop_u64(asm: &mut Assembly) {
     ]);
     asm.add_method(ctpop);
 }
+*/

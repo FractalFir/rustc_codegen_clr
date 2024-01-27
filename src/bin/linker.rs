@@ -1,6 +1,6 @@
 #![deny(unused_must_use)]
 //use assembly::Assembly;
-use rustc_codegen_clr::{assembly::Assembly, config::USE_CECIL_EXPORTER, r#type::Type, *};
+use rustc_codegen_clr::{assembly::Assembly, config::USE_CECIL_EXPORTER, method::MethodType, r#type::Type, *};
 use std::{env, io::Write};
 
 fn load_ar(r: &mut impl std::io::Read) -> std::io::Result<assembly::Assembly> {
@@ -80,7 +80,7 @@ fn patch_missing_method(call_site: &cil::CallSite) -> method::Method {
     let sig = call_site.signature().clone();
     let mut method = method::Method::new(
         access_modifier::AccessModifer::Private,
-        true,
+        MethodType::Static,
         sig,
         call_site.name(),
         vec![],

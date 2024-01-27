@@ -2,7 +2,7 @@ use crate::{
     access_modifier::AccessModifer,
     cil::{CallSite, FieldDescriptor},
     function_sig::FnSig,
-    method::Method,
+    method::{Method, MethodType},
     r#type::{DotnetTypeRef, Type},
     IString,
 };
@@ -253,7 +253,7 @@ pub fn get_array_type(element_count: usize, element: Type) -> TypeDef {
     if element_count > 0 {
         let mut set_usize = Method::new(
             AccessModifer::Public,
-            false,
+            MethodType::Instance,
             crate::function_sig::FnSig::new(
                 &[(&def).into(), Type::USize, element.clone()],
                 &Type::Void,
@@ -279,10 +279,11 @@ pub fn get_array_type(element_count: usize, element: Type) -> TypeDef {
         ];
         set_usize.set_ops(ops);
         def.add_method(set_usize);
+        
         // get_Address(usize offset)
         let mut get_adress_usize = Method::new(
             AccessModifer::Public,
-            false,
+            MethodType::Instance,
             crate::function_sig::FnSig::new(
                 &[(&def).into(), Type::USize],
                 &Type::Ptr(element.clone().into()),
@@ -310,7 +311,7 @@ pub fn get_array_type(element_count: usize, element: Type) -> TypeDef {
         // get_Item
         let mut get_item_usize = Method::new(
             AccessModifer::Public,
-            false,
+            MethodType::Instance,
             crate::function_sig::FnSig::new(&[(&def).into(), Type::USize], &element.clone()),
             "get_Item",
             vec![],
@@ -332,6 +333,21 @@ pub fn get_array_type(element_count: usize, element: Type) -> TypeDef {
         ];
         get_item_usize.set_ops(ops);
         def.add_method(get_item_usize);
+        let mut to_string = Method::new(
+            AccessModifer::Public,
+            MethodType::Virtual,
+            crate::function_sig::FnSig::new(&[(&def).into()], &DotnetTypeRef::string_type().into()),
+            "ToString",
+            vec![
+                (Some("arrString".into()),DotnetTypeRef::string_type().into()) 
+            ],
+        );
+        let ops = vec![
+            CILOp::LdStr("I am an array! Horray!".into()),
+            CILOp::Ret,
+        ];
+        to_string.set_ops(ops);
+        def.add_method(to_string);
     }
     def
 }

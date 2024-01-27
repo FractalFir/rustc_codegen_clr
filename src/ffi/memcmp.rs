@@ -6,7 +6,7 @@ use crate::{
     method::Method,
     r#type::{DotnetTypeRef, Type},
 };
-
+/* 
 pub fn add_memcmp(asm: &mut Assembly) {
     let sig = FnSig::new(
         &[
@@ -93,3 +93,4 @@ pub fn add_raw_eq(asm: &mut Assembly) {
         asm.add_method(raw_eq);
     }
 }
+*/

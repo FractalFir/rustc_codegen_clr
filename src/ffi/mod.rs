@@ -3,6 +3,7 @@ mod caller_location;
 mod ctpop;
 mod exact_div;
 mod memcmp;
+use crate::method::MethodType;
 use crate::r#type::{DotnetTypeRef, TyCache};
 use crate::{
     access_modifier::AccessModifer,
@@ -18,7 +19,7 @@ macro_rules! add_method {
         fn $name(asm: &mut Assembly) {
             let mut method = Method::new(
                 AccessModifer::Private,
-                true,
+                MethodType::Static,
                 FnSig::new($input, $output),
                 stringify!($name),
                 vec![],
@@ -31,7 +32,7 @@ macro_rules! add_method {
         fn $name(asm: &mut Assembly) {
             let mut method = Method::new(
                 AccessModifer::Private,
-                true,
+                MethodType::Static,
                 FnSig::new($input, $output),
                 stringify!($name),
                 $locals.into(),
@@ -71,7 +72,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     let marshal = Some(marshal);
     let mut malloc = Method::new(
         AccessModifer::Private,
-        true,
+        MethodType::Static,
         FnSig::new(&[Type::USize], &Type::Ptr(c_void.clone().into())),
         "malloc",
         vec![],
@@ -89,7 +90,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     asm.add_method(malloc);
     let mut realloc = Method::new(
         AccessModifer::Private,
-        true,
+        MethodType::Static,
         FnSig::new(
             &[Type::Ptr(c_void.clone().into()), Type::USize],
             &Type::Ptr(c_void.clone().into()),
@@ -117,7 +118,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     let native_mem = Some(native_mem);
     let mut __rust_alloc = Method::new(
         AccessModifer::Private,
-        true,
+        MethodType::Static,
         FnSig::new(&[Type::USize, Type::USize], &Type::Ptr(Type::U8.into())),
         "__rust_alloc",
         vec![],
@@ -136,7 +137,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     asm.add_method(__rust_alloc);
     let mut __rust_dealloc = Method::new(
         AccessModifer::Private,
-        true,
+        MethodType::Static,
         FnSig::new(
             &[Type::Ptr(Type::U8.into()), Type::USize, Type::USize],
             &Type::Void,
@@ -157,7 +158,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     asm.add_method(__rust_dealloc);
     let mut free = Method::new(
         AccessModifer::Private,
-        true,
+        MethodType::Static,
         FnSig::new(&[Type::Ptr(c_void.clone().into())], &Type::Void),
         "free",
         vec![],
@@ -176,7 +177,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     //TODO: add volatile prefix to volatile loads
     let mut volatile_load = Method::new(
         AccessModifer::Private,
-        true,
+        MethodType::Static,
         FnSig::new(&[Type::Ptr(Type::U8.into())], &Type::U8),
         "volatile_load",
         vec![],
@@ -185,19 +186,18 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     asm.add_method(volatile_load);
     let mut volatile_load = Method::new(
         AccessModifer::Private,
-        true,
+        MethodType::Static,
         FnSig::new(&[Type::Ptr(Type::USize.into())], &Type::USize),
         "volatile_load",
         vec![],
     );
     volatile_load.set_ops(vec![CILOp::LDArg(0), CILOp::LDIndISize, CILOp::Ret]);
     asm.add_method(volatile_load);
-
     //atomics::add_atomics(asm);
     //ctpop::add_ctpop(asm);
     // exact_div::add_exact_div(asm);
-    memcmp::add_memcmp(asm);
-    memcmp::add_raw_eq(asm);
+    //memcmp::add_memcmp(asm);
+    //memcmp::add_raw_eq(asm);
     add_ptr_offset_from_unsigned(asm);
     //caller_location::add_caller_location(asm,tyctx,&mut TyCache::empty());
     abort(asm);
@@ -269,7 +269,7 @@ pub fn add_ptr_offset_from_unsigned(asm: &mut Assembly) {
         let rtype: &Type = &call.inputs()[0];
         let mut ptr_offset_from_unsigned = Method::new(
             AccessModifer::Private,
-            true,
+            MethodType::Static,
             call.signature().clone(),
             "raw_eq",
             vec![],
