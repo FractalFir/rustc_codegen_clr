@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.002.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AssemblyUtilis", "AssemblyUtilis\AssemblyUtilis.csproj", "{D17828FA-D029-44CF-B85B-CAFA49C6DEF5}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D17828FA-D029-44CF-B85B-CAFA49C6DEF5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D17828FA-D029-44CF-B85B-CAFA49C6DEF5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D17828FA-D029-44CF-B85B-CAFA49C6DEF5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D17828FA-D029-44CF-B85B-CAFA49C6DEF5}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {FEE61B96-F9A2-45FB-89F4-1CB388A4E1FB}
+	EndGlobalSection
+EndGlobal
