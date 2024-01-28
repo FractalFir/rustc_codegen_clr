@@ -57,6 +57,22 @@ pub fn handle_intrinsic<'tyctx>(
                 type_cache,
             )
         }
+        "is_val_statically_known"=>{
+            debug_assert_eq!(
+                args.len(),
+                1,
+                "The intrinsic `is_val_statically_known` MUST take in exactly 1 argument!"
+            );
+            // assert_eq!(args.len(),1,"The intrinsic `unlikely` MUST take in exactly 1 argument!");
+            place_set(
+                destination,
+                tyctx,
+                vec![CILOp::LdcI32(0)],
+                body,
+                method_instance,
+                type_cache,
+            )
+        }
         "needs_drop" => {
             debug_assert_eq!(
                 args.len(),

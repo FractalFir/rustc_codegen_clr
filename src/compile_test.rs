@@ -199,6 +199,8 @@ macro_rules! run_test {
                         concat!("./", stringify!($test_name), ".rs"),
                         "-o",
                         concat!("./", stringify!($test_name), ".exe"),
+                        "--edition",
+                        "2021",
                         //"--target",
                         //"clr64-unknown-clr"
                     ]);
@@ -246,6 +248,8 @@ macro_rules! run_test {
                             concat!("./", stringify!($test_name), ".rs"),
                             "-o",
                             &output_path,
+                            "--edition",
+                            "2021",
                             //"--target",
                             //"clr64-unknown-clr"
                         ])
@@ -550,6 +554,7 @@ run_test! {types,slice_ptr_cast,stable}
 run_test! {types,slice_index_ref,unstable}
 run_test! {types,slice,unstable}
 run_test! {types,statics,stable}
+run_test! {types,async_types,unstable}
 run_test! {types,self_referential_statics,stable}
 run_test! {std,main,unstable}
 

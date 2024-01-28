@@ -28,7 +28,6 @@ fn test_indirect(animal:&Animal){
     }
 }
 fn main(){
-    /* 
     let animal = black_box(Animal::Cow(8));
     match animal{
         Animal::Cow(val)=>{
@@ -41,7 +40,7 @@ fn main(){
             test_eq!(0,1);
         }
     }
-    //test_indirect(&animal);*/
+    test_indirect(&animal);
     test_eq!(complex_function2(&CustomEnum::Variant1(118)),118);
 }
 
