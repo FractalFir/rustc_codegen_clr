@@ -1,10 +1,6 @@
 use super::{tuple_name, tuple_typedef, DotnetTypeRef, Type, TypeDef};
 use crate::{
-    access_modifier::AccessModifer,
-    function_sig::FnSig,
-    r#type::{closure_typedef, escape_field_name},
-    utilis::enum_tag_size,
-    IString,
+    access_modifier::AccessModifer, cil::{CILOp, CallSite}, function_sig::FnSig, method::Method, r#type::{closure_typedef, escape_field_name}, utilis::enum_tag_size, IString
 };
 use rustc_middle::ty::{
     AdtDef, AdtKind, GenericArg, Instance, List, ParamEnv, Ty, TyCtxt, TyKind, UintTy,
@@ -109,7 +105,7 @@ impl TyCache {
             name.into(),
             vec![],
             fields,
-            vec![],
+            vec![create_to_string(adt, subst, adt_ty, self, method, tyctx)],
             Some(explicit_offsets),
             0,
             None,
@@ -564,4 +560,36 @@ fn try_find_ptr_components(ctx: TyCtxt) -> DefId {
     //todo!("core:{core:?} max_index:{max_index:?} ptr_components:{ptr_components:?}");
     drop(find_ptr_components_timer);
     ptr_components.expect("Could not find core::ptr::metadata::PtrComponents")
+}
+fn create_to_string<'tyctx>(adt_def:AdtDef<'tyctx>,gargs:&'tyctx List<GenericArg<'tyctx>>,ty:Ty<'tyctx>,type_cache:&mut TyCache,method: Option<Instance<'tyctx>>,tyctx: TyCtxt<'tyctx>)->Method{
+    let tpe = type_cache.type_from_cache(ty, tyctx, method);
+    let mut to_string = Method::new(AccessModifer::Public,crate::method::MethodType::Virtual,FnSig::new(&[tpe],&DotnetTypeRef::string_type().into()),"ToString",vec![(None,DotnetTypeRef::string_type().into())]);
+    let name = crate::utilis::adt_name(adt_def, tyctx, gargs);
+    let mut ops = vec![CILOp::LdStr(format!("{name}{{").into()),CILOp::STLoc(0)];
+    // Concat string method
+    let concat = CallSite::new(DotnetTypeRef::string_type().into(), "Concat".into(), FnSig::new(&[DotnetTypeRef::string_type().into(),DotnetTypeRef::string_type().into()],&DotnetTypeRef::string_type().into()), true,);
+    // Fields
+    match adt_def.adt_kind(){
+        AdtKind::Enum | AdtKind::Union =>{},
+        AdtKind::Struct => {
+            if let Some(method) = method{
+                for (field_index,field) in adt_def.all_fields().enumerate(){
+                    let field = crate::utilis::field_descrptor(ty, field_index as u32, tyctx, method, type_cache);
+                    ops.extend([CILOp::LDLoc(0),CILOp::LdStr(format!("{name}:",name = field.name()).into()),CILOp::Call(concat.clone().into()),CILOp::STLoc(0)]);
+                    match field.tpe(){
+                        Type::F32 | Type::F64 => {
+                            //ops.extend([CILOp::LDArg(0),CILOp::LDField(field),CILOp::CallVirt(CallSite::boxed(class, name, signature, is_static))])
+
+                        }
+                        _=>(),
+                    }
+                }
+            }
+            
+        }
+    }
+    
+    ops.extend([CILOp::LDLoc(0),CILOp::LdStr("}".into()),CILOp::Call(concat.into()),CILOp::Ret]);
+    to_string.set_ops(ops);
+    to_string
 }
