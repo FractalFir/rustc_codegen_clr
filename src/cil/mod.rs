@@ -1,4 +1,4 @@
-use crate::{function_sig::FnSig, method::MethodType, r#type::DotnetTypeRef, IString};
+use crate::{function_sig::FnSig, r#type::DotnetTypeRef, IString};
 mod call_site;
 pub use call_site::*;
 mod field_desc;
@@ -491,6 +491,9 @@ impl CILOp {
             }
     }
 }
+#[cfg(test)]
+use crate::method::MethodType;
+
 #[test]
 fn test_tmp_locals() {
     use crate::method::Method;

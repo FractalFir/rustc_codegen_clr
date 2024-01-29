@@ -135,7 +135,7 @@ pub fn handle_aggregate<'tyctx>(
             ));
             ops
         }
-        AggregateKind::Closure(def_id, args) => {
+        AggregateKind::Closure(_def_id, _args) => {
             let closure_ty = crate::utilis::monomorphize(
                 &method_instance,
                 target_location.ty(method, tyctx),

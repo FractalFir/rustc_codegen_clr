@@ -6,8 +6,8 @@ use crate::{
     r#type::{tycache, DotnetTypeRef, Type},
 };
 use rustc_middle::{
-    mir::{Body, Operand, Place, SwitchTargets, Terminator, TerminatorKind},
-    ty::{GenericArg, Instance, ParamEnv, Ty, TyCtxt, TyKind, UintTy},
+    mir::{Body, Operand, Place},
+    ty::{Instance, ParamEnv, TyCtxt, TyKind, UintTy},
 };
 use rustc_span::source_map::Spanned;
 use tycache::TyCache;
@@ -57,7 +57,7 @@ pub fn handle_intrinsic<'tyctx>(
                 type_cache,
             )
         }
-        "is_val_statically_known"=>{
+        "is_val_statically_known" => {
             debug_assert_eq!(
                 args.len(),
                 1,
@@ -360,15 +360,12 @@ pub fn handle_intrinsic<'tyctx>(
             );
             let mut ops = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
             ops.push(CILOp::Volatile);
-            ops.extend(
-                crate::place::deref_op(
-                    args[0].node.ty(body, tyctx).into(),
-                    tyctx,
-                    &method_instance,
-                    type_cache,
-                )
-                .into_iter(),
-            );
+            ops.extend(crate::place::deref_op(
+                args[0].node.ty(body, tyctx).into(),
+                tyctx,
+                &method_instance,
+                type_cache,
+            ));
             place_set(destination, tyctx, ops, body, method_instance, type_cache)
         }
         "atomic_load_unordered" => {
@@ -380,15 +377,12 @@ pub fn handle_intrinsic<'tyctx>(
             );
             let mut ops = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
             ops.push(CILOp::Volatile);
-            ops.extend(
-                crate::place::deref_op(
-                    args[0].node.ty(body, tyctx).into(),
-                    tyctx,
-                    &method_instance,
-                    type_cache,
-                )
-                .into_iter(),
-            );
+            ops.extend(crate::place::deref_op(
+                args[0].node.ty(body, tyctx).into(),
+                tyctx,
+                &method_instance,
+                type_cache,
+            ));
             place_set(destination, tyctx, ops, body, method_instance, type_cache)
         }
         "atomic_load_acquire" => {
@@ -400,15 +394,12 @@ pub fn handle_intrinsic<'tyctx>(
             );
             let mut ops = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
             ops.push(CILOp::Volatile);
-            ops.extend(
-                crate::place::deref_op(
-                    args[0].node.ty(body, tyctx).into(),
-                    tyctx,
-                    &method_instance,
-                    type_cache,
-                )
-                .into_iter(),
-            );
+            ops.extend(crate::place::deref_op(
+                args[0].node.ty(body, tyctx).into(),
+                tyctx,
+                &method_instance,
+                type_cache,
+            ));
             place_set(destination, tyctx, ops, body, method_instance, type_cache)
         }
         //"bswap"

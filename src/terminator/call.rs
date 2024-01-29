@@ -11,22 +11,22 @@ use crate::{
     utilis::MANAGED_CALL_VIRT_FN_NAME,
 };
 use rustc_middle::{
-    mir::{Body, Operand, Place, SwitchTargets, Terminator, TerminatorKind},
+    mir::{Body, Operand, Place},
     ty::{GenericArg, Instance, InstanceDef, ParamEnv, Ty, TyCtxt, TyKind},
 };
 use rustc_span::source_map::Spanned;
 fn decode_interop_call<'tyctx>(
     function_name: &str,
-    prefix: &str,
+    _prefix: &str,
     subst_ref: &[GenericArg<'tyctx>],
     tyctx: TyCtxt<'tyctx>,
 ) -> CallSite {
-    let argument_count = argc_from_fn_name(function_name, MANAGED_CALL_FN_NAME);
+    let _argument_count = argc_from_fn_name(function_name, MANAGED_CALL_FN_NAME);
     let asm = AssemblyRef::decode_assembly_ref(subst_ref[0], tyctx);
-    let asm = asm.name();
-    let class_name = garg_to_string(subst_ref[1], tyctx);
-    let is_valuetype = crate::utilis::garag_to_bool(subst_ref[2], tyctx);
-    let managed_fn_name = garg_to_string(subst_ref[3], tyctx);
+    let _asm = asm.name();
+    let _class_name = garg_to_string(subst_ref[1], tyctx);
+    let _is_valuetype = crate::utilis::garag_to_bool(subst_ref[2], tyctx);
+    let _managed_fn_name = garg_to_string(subst_ref[3], tyctx);
     todo!();
 }
 fn argc_from_fn_name(function_name: &str, prefix: &str) -> u32 {
@@ -56,7 +56,7 @@ fn call_managed<'tyctx>(
     let class_name = garg_to_string(subst_ref[1], tyctx);
     let is_valuetype = crate::utilis::garag_to_bool(subst_ref[2], tyctx);
     let managed_fn_name = garg_to_string(subst_ref[3], tyctx);
-    let mut tpe = DotnetTypeRef::new(asm.as_deref(), &class_name);
+    let mut tpe = DotnetTypeRef::new(asm, &class_name);
     tpe.set_valuetype(is_valuetype);
     let signature = FnSig::sig_from_instance_(fn_instance, tyctx, type_cache)
         .expect("Can't get the function signature");
@@ -140,7 +140,7 @@ fn callvirt_managed<'tyctx>(
     let managed_fn_garg = crate::utilis::monomorphize(&method_instance, *managed_fn_garg, tyctx);
     let managed_fn_name = garg_to_string(managed_fn_garg, tyctx);
 
-    let mut tpe = DotnetTypeRef::new(asm.as_deref(), &class_name);
+    let mut tpe = DotnetTypeRef::new(asm, &class_name);
     tpe.set_valuetype(is_valuetype);
     let signature = FnSig::sig_from_instance_(fn_instance, tyctx, type_cache)
         .expect("Can't get the function signature");
@@ -220,7 +220,7 @@ fn call_ctor<'tyctx>(
     let class_name = garg_to_string(subst_ref[1], tyctx);
     // Check if the costructed object is valuetype. TODO: this may be unnecesary. Are valuetpes constructed using newobj?
     let is_valuetype = crate::utilis::garag_to_bool(subst_ref[2], tyctx);
-    let mut tpe = DotnetTypeRef::new(asm.as_deref(), &class_name);
+    let mut tpe = DotnetTypeRef::new(asm, &class_name);
     tpe.set_valuetype(is_valuetype);
     // If no arguments, inputs don't have to be handled, so a simpler call handling is used.
     if argument_count == 0 {
@@ -290,7 +290,7 @@ pub fn call_closure<'tyctx>(
 ) -> Vec<CILOp> {
     let mut call = Vec::new();
     let last_arg = args
-        .get(args.len() - 1)
+        .last()
         .expect("Closure must be called with at least 2 arguments(closure + arg tuple)");
     let other_args = &args[..args.len() - 1];
     for arg in other_args {
@@ -510,7 +510,7 @@ pub fn call<'tyctx>(
     let is_void = matches!(signature.output(), crate::r#type::Type::Void);
     rustc_middle::ty::print::with_no_trimmed_paths! {call.push(CILOp::Comment(format!("Calling {instance:?}").into()))};
     match instance.def {
-        InstanceDef::DropGlue(def, None) => return vec![],
+        InstanceDef::DropGlue(_def, None) => return vec![],
         _ => (),
     }
     call.push(CILOp::Call(CallSite::boxed(

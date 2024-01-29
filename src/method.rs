@@ -38,7 +38,7 @@ impl Method {
     #[must_use]
     pub fn new(
         access: AccessModifer,
-        method_type:MethodType,
+        method_type: MethodType,
         sig: FnSig,
         name: &str,
         locals: Vec<LocalDef>,
@@ -102,7 +102,7 @@ impl Method {
     }
     /// Returns true if this function is static, else it returns false.
     pub fn is_static(&self) -> bool {
-        self.method_type == MethodType::Static 
+        self.method_type == MethodType::Static
     }
     /// Returns the name of this function.
     pub fn name(&self) -> &str {
@@ -193,8 +193,8 @@ impl Method {
     }
 }
 /// Type of this method(static, instance or virtual).
-#[derive(Debug,Clone,Copy,PartialEq, Serialize, Deserialize)]
-pub enum MethodType{
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub enum MethodType {
     Instance,
     Virtual,
     Static,

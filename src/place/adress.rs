@@ -323,14 +323,14 @@ pub fn place_elem_adress<'ctx>(
                         "data_address".into(),
                     );
                     let len = FieldDescriptor::new(slice, Type::USize, "metadata".into());
-                    let derf_op = super::deref_op(
+                    let _derf_op = super::deref_op(
                         super::PlaceTy::Ty(inner),
                         tyctx,
                         &method_instance,
                         type_cache,
                     );
                     if *from_end {
-                        let mut ops = vec![
+                        let ops = vec![
                             CILOp::Dup,
                             CILOp::LDField(len.into()),
                             CILOp::NewTMPLocal(Type::USize.into()),
@@ -347,7 +347,7 @@ pub fn place_elem_adress<'ctx>(
                         ops
                         //todo!("Can't index slice from end!");
                     } else {
-                        let mut ops = vec![
+                        let ops = vec![
                             CILOp::LDField(desc.into()),
                             index,
                             CILOp::SizeOf(inner_type.into()),

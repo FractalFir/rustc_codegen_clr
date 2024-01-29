@@ -20,7 +20,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::{Instance, ParamEnv, TyCtxt, TyKind};
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 #[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 /// Data representing a reference to an external assembly.
 pub struct AssemblyExternRef {
@@ -269,7 +269,13 @@ impl Assembly {
         //eprintln!("method")
         let locals = locals_from_mir(&mir.local_decls, tcx, mir.arg_count, &instance, cache);
         // Create method prototype
-        let mut method = Method::new(access_modifier, MethodType::Static, sig.clone(), name, locals);
+        let mut method = Method::new(
+            access_modifier,
+            MethodType::Static,
+            sig.clone(),
+            name,
+            locals,
+        );
         let mut ops = Vec::new();
         if *crate::config::TRACE_CALLS {
             ops.extend(CILOp::debug_msg(&format!("Called {name}.")));

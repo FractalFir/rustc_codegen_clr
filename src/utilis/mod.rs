@@ -1,5 +1,3 @@
-use std::env::Args;
-
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::ty::{
     AdtDef, AdtKind, Const, ConstKind, EarlyBinder, FloatTy, GenericArg, Instance, List, ParamEnv,
@@ -11,7 +9,7 @@ pub const MANAGED_CALL_VIRT_FN_NAME: &str = "rustc_clr_interop_managed_call_virt
 pub fn is_function_magic(name: &str) -> bool {
     name.contains(CTOR_FN_NAME) || name.contains(MANAGED_CALL_FN_NAME)
 }
-use crate::method;
+
 use crate::r#type::pointer_to_is_fat;
 use crate::{
     cil::{CILOp, FieldDescriptor},

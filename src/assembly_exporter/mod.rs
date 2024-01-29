@@ -1,4 +1,4 @@
-use std::{borrow::Cow, path::Path};
+use std::path::Path;
 /// Describes an assemnly.
 type AssemblyInfo = str;
 
@@ -6,7 +6,7 @@ use crate::{
     assembly::Assembly,
     config,
     method::Method,
-    r#type::{DotnetTypeRef, Type, TypeDef},
+    r#type::{Type, TypeDef},
     IString,
 };
 pub mod cecil_exporter;
@@ -108,5 +108,4 @@ pub fn escape_class_name(name: &str) -> String {
         .replace(';', "_scol_")
         .replace('!', "_excl_")
         .replace('\"', "_qt_")
-        .into()
 }

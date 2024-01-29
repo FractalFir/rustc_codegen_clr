@@ -148,7 +148,7 @@ fn create_const_adt_from_bytes<'ctx>(
                 8 => {
                     //curr_offset = 1;
                     let variant = u64::from_ne_bytes(bytes[0..8].try_into().unwrap());
-                    variant as u64
+                    variant
                 }
                 _ => todo!("Can't yet support enums with {variant_size} wide tags."),
             };

@@ -3,7 +3,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_target::abi::FieldIdx;
 use rustc_target::abi::FieldsShape;
 use rustc_target::abi::Layout;
-use rustc_target::abi::Size;
+
 use rustc_target::abi::Variants;
 pub(crate) enum FieldOffsetIterator {
     Explicit { offsets: Box<[u32]>, index: usize },

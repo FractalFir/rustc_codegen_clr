@@ -1,6 +1,8 @@
 #![deny(unused_must_use)]
 //use assembly::Assembly;
-use rustc_codegen_clr::{assembly::Assembly, config::USE_CECIL_EXPORTER, method::MethodType, r#type::Type, *};
+use rustc_codegen_clr::{
+    assembly::Assembly, config::USE_CECIL_EXPORTER, method::MethodType, r#type::Type, *,
+};
 use std::{env, io::Write};
 
 fn load_ar(r: &mut impl std::io::Read) -> std::io::Result<assembly::Assembly> {

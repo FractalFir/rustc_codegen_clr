@@ -1,6 +1,11 @@
 use super::{tuple_name, tuple_typedef, DotnetTypeRef, Type, TypeDef};
 use crate::{
-    access_modifier::AccessModifer, cil::{CILOp, CallSite}, function_sig::FnSig, method::Method, r#type::{closure_typedef, escape_field_name}, utilis::enum_tag_size, IString
+    access_modifier::AccessModifer,
+    cil::{CILOp, CallSite},
+    function_sig::FnSig,
+    method::Method,
+    r#type::{closure_typedef, escape_field_name},
+    IString,
 };
 use rustc_middle::ty::{
     AdtDef, AdtKind, GenericArg, Instance, List, ParamEnv, Ty, TyCtxt, TyKind, UintTy,
@@ -172,21 +177,21 @@ impl TyCache {
             .expect("Could not get type layout!");
         let mut fields = vec![];
         let mut variant_offset = 0;
-        let mut tag_size = 1;
+        let _tag_size = 1;
         match &layout.variants {
-            rustc_target::abi::Variants::Single { index } => {
+            rustc_target::abi::Variants::Single { index: _ } => {
                 let (tag_type, offset) = crate::utilis::adt::enum_tag_info(&layout.layout, tyctx);
                 variant_offset = offset;
                 fields.push(("_tag".into(), tag_type));
                 explicit_offsets.push(0);
             }
             rustc_target::abi::Variants::Multiple {
-                tag,
+                tag: _,
                 tag_encoding,
                 tag_field,
-                variants,
+                variants: _,
             } => {
-                let field = adt.all_fields().nth(*tag_field);
+                let _field = adt.all_fields().nth(*tag_field);
                 //panic!("Field:{field:?}");
                 let layout = tyctx
                     .layout_of(rustc_middle::ty::ParamEnvAnd {
@@ -208,8 +213,8 @@ impl TyCache {
                         explicit_offsets.push(0);
                     }
                     rustc_target::abi::TagEncoding::Niche {
-                        untagged_variant,
-                        niche_variants,
+                        untagged_variant: _,
+                        niche_variants: _,
                         niche_start,
                     } => {
                         let (tag_type, offset) =
@@ -298,9 +303,9 @@ impl TyCache {
                     Type::Void
                 } else {
                     let name = tuple_name(&types);
-                    if !self.type_def_cache.contains_key(&name) {
-                        self.type_def_cache.insert(name, tuple_typedef(&types));
-                    }
+                    self.type_def_cache
+                        .entry(name)
+                        .or_insert_with(|| tuple_typedef(&types));
                     super::simple_tuple(&types).into()
                 }
             }
@@ -335,21 +340,19 @@ impl TyCache {
                 if super::pointer_to_is_fat(type_and_mut.ty, tyctx, method) {
                     let inner = match type_and_mut.ty.kind() {
                         TyKind::Slice(inner) => {
-                            let inner = if let Some(method) = method {
+                            if let Some(method) = method {
                                 crate::utilis::monomorphize(&method, *inner, tyctx)
                             } else {
                                 *inner
-                            };
-                            inner
+                            }
                         }
                         TyKind::Str => u8_ty(tyctx),
                         _ => {
-                            let inner = if let Some(method) = method {
+                            if let Some(method) = method {
                                 crate::utilis::monomorphize(&method, type_and_mut.ty, tyctx)
                             } else {
                                 type_and_mut.ty
-                            };
-                            inner
+                            }
                         }
                     };
                     slice_ref_to(tyctx, self, Ty::new_slice(tyctx, inner), method)
@@ -369,21 +372,19 @@ impl TyCache {
                 if super::pointer_to_is_fat(*inner, tyctx, method) {
                     let inner = match inner.kind() {
                         TyKind::Slice(inner) => {
-                            let inner = if let Some(method) = method {
+                            if let Some(method) = method {
                                 crate::utilis::monomorphize(&method, *inner, tyctx)
                             } else {
                                 *inner
-                            };
-                            inner
+                            }
                         }
                         TyKind::Str => u8_ty(tyctx),
                         _ => {
-                            let inner = if let Some(method) = method {
+                            if let Some(method) = method {
                                 crate::utilis::monomorphize(&method, *inner, tyctx)
                             } else {
                                 *inner
-                            };
-                            inner
+                            }
                         }
                     };
                     slice_ref_to(tyctx, self, Ty::new_slice(tyctx, inner), method)
@@ -411,7 +412,7 @@ impl TyCache {
                 let sig = FnSig::from_poly_sig(method, tyctx, self, *sig);
                 Type::DelegatePtr(sig.into())
             }
-            TyKind::FnDef(did, subst) => {
+            TyKind::FnDef(_did, _subst) => {
                 /*
                 let subst = if let Some(method) = method {
                     crate::utilis::monomorphize(&method, *subst, tyctx)
@@ -561,35 +562,73 @@ fn try_find_ptr_components(ctx: TyCtxt) -> DefId {
     drop(find_ptr_components_timer);
     ptr_components.expect("Could not find core::ptr::metadata::PtrComponents")
 }
-fn create_to_string<'tyctx>(adt_def:AdtDef<'tyctx>,gargs:&'tyctx List<GenericArg<'tyctx>>,ty:Ty<'tyctx>,type_cache:&mut TyCache,method: Option<Instance<'tyctx>>,tyctx: TyCtxt<'tyctx>)->Method{
+fn create_to_string<'tyctx>(
+    adt_def: AdtDef<'tyctx>,
+    gargs: &'tyctx List<GenericArg<'tyctx>>,
+    ty: Ty<'tyctx>,
+    type_cache: &mut TyCache,
+    method: Option<Instance<'tyctx>>,
+    tyctx: TyCtxt<'tyctx>,
+) -> Method {
     let tpe = type_cache.type_from_cache(ty, tyctx, method);
-    let mut to_string = Method::new(AccessModifer::Public,crate::method::MethodType::Virtual,FnSig::new(&[tpe],&DotnetTypeRef::string_type().into()),"ToString",vec![(None,DotnetTypeRef::string_type().into())]);
+    let mut to_string = Method::new(
+        AccessModifer::Public,
+        crate::method::MethodType::Virtual,
+        FnSig::new(&[tpe], &DotnetTypeRef::string_type().into()),
+        "ToString",
+        vec![(None, DotnetTypeRef::string_type().into())],
+    );
     let name = crate::utilis::adt_name(adt_def, tyctx, gargs);
-    let mut ops = vec![CILOp::LdStr(format!("{name}{{").into()),CILOp::STLoc(0)];
+    let mut ops = vec![CILOp::LdStr(format!("{name}{{").into()), CILOp::STLoc(0)];
     // Concat string method
-    let concat = CallSite::new(DotnetTypeRef::string_type().into(), "Concat".into(), FnSig::new(&[DotnetTypeRef::string_type().into(),DotnetTypeRef::string_type().into()],&DotnetTypeRef::string_type().into()), true,);
+    let concat = CallSite::new(
+        DotnetTypeRef::string_type().into(),
+        "Concat".into(),
+        FnSig::new(
+            &[
+                DotnetTypeRef::string_type().into(),
+                DotnetTypeRef::string_type().into(),
+            ],
+            &DotnetTypeRef::string_type().into(),
+        ),
+        true,
+    );
     // Fields
-    match adt_def.adt_kind(){
-        AdtKind::Enum | AdtKind::Union =>{},
+    match adt_def.adt_kind() {
+        AdtKind::Enum | AdtKind::Union => {}
         AdtKind::Struct => {
-            if let Some(method) = method{
-                for (field_index,field) in adt_def.all_fields().enumerate(){
-                    let field = crate::utilis::field_descrptor(ty, field_index as u32, tyctx, method, type_cache);
-                    ops.extend([CILOp::LDLoc(0),CILOp::LdStr(format!("{name}:",name = field.name()).into()),CILOp::Call(concat.clone().into()),CILOp::STLoc(0)]);
-                    match field.tpe(){
+            if let Some(method) = method {
+                for (field_index, _field) in adt_def.all_fields().enumerate() {
+                    let field = crate::utilis::field_descrptor(
+                        ty,
+                        field_index as u32,
+                        tyctx,
+                        method,
+                        type_cache,
+                    );
+                    ops.extend([
+                        CILOp::LDLoc(0),
+                        CILOp::LdStr(format!("{name}:", name = field.name()).into()),
+                        CILOp::Call(concat.clone().into()),
+                        CILOp::STLoc(0),
+                    ]);
+                    match field.tpe() {
                         Type::F32 | Type::F64 => {
                             //ops.extend([CILOp::LDArg(0),CILOp::LDField(field),CILOp::CallVirt(CallSite::boxed(class, name, signature, is_static))])
-
                         }
-                        _=>(),
+                        _ => (),
                     }
                 }
             }
-            
         }
     }
-    
-    ops.extend([CILOp::LDLoc(0),CILOp::LdStr("}".into()),CILOp::Call(concat.into()),CILOp::Ret]);
+
+    ops.extend([
+        CILOp::LDLoc(0),
+        CILOp::LdStr("}".into()),
+        CILOp::Call(concat.into()),
+        CILOp::Ret,
+    ]);
     to_string.set_ops(ops);
     to_string
 }

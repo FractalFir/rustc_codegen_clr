@@ -338,11 +338,7 @@ impl LocalAccessRangeCache {
             return cached.clone();
         }
         self.cache[index as usize] = Some(get_local_access_range(index, ops));
-        return self.cache[index as usize]
-            .as_ref()
-            .unwrap()
-            .as_ref()
-            .map(|s| s.clone());
+        return self.cache[index as usize].as_ref().unwrap().clone();
     }
 }
 fn try_alias_locals(ops: &mut [CILOp], cache: &mut LocalAccessRangeCache) {

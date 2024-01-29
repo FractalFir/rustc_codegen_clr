@@ -91,7 +91,7 @@ pub fn place_elem_body<'ctx>(
                     );
                     //todo!("Handle DST fields. DST:")
                 }
-                let curr_type = crate::utilis::monomorphize(&method_instance, curr_ty, tyctx);
+                let _curr_type = crate::utilis::monomorphize(&method_instance, curr_ty, tyctx);
                 let field_desc = crate::utilis::field_descrptor(
                     curr_ty,
                     (*index).into(),

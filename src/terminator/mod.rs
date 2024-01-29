@@ -1,21 +1,16 @@
-use std::process::Termination;
-
 use crate::place::place_set;
-use crate::utilis::garg_to_string;
+
 use crate::{
     cil::{CILOp, CallSite},
     function_sig::FnSig,
     operand::handle_operand,
     r#type::DotnetTypeRef,
     utilis::monomorphize,
-    utilis::CTOR_FN_NAME,
-    utilis::MANAGED_CALL_FN_NAME,
-    utilis::MANAGED_CALL_VIRT_FN_NAME,
 };
 use rustc_middle::ty::InstanceDef;
 use rustc_middle::{
-    mir::{Body, Operand, Place, SwitchTargets, Terminator, TerminatorKind},
-    ty::{GenericArg, Instance, ParamEnv, Ty, TyCtxt, TyKind},
+    mir::{Body, Operand, SwitchTargets, Terminator, TerminatorKind},
+    ty::{Instance, Ty, TyCtxt, TyKind},
 };
 mod call;
 mod intrinsics;
@@ -190,12 +185,12 @@ pub fn handle_terminator<'ctx>(
         }
         TerminatorKind::Unreachable => CILOp::throw_msg("Unreachable reached!").into(),
         TerminatorKind::InlineAsm {
-            template,
-            operands,
-            options,
-            line_spans,
-            destination,
-            unwind,
+            template: _,
+            operands: _,
+            options: _,
+            line_spans: _,
+            destination: _,
+            unwind: _,
         } => {
             eprintln!("Inline assembly is not yet supported!");
             CILOp::throw_msg("Inline assembly is not yet supported!").to_vec()

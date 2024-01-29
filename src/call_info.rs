@@ -1,8 +1,4 @@
-use crate::{
-    codegen_error::CodegenError,
-    function_sig::FnSig,
-    r#type::{TyCache, Type},
-};
+use crate::{codegen_error::CodegenError, function_sig::FnSig, r#type::TyCache};
 use rustc_middle::ty::{Instance, List, ParamEnv, ParamEnvAnd, TyCtxt, TyKind};
 use rustc_target::abi::call::Conv;
 use rustc_target::spec::abi::Abi as TargetAbi;
@@ -48,8 +44,8 @@ impl CallInfo {
         .abi();
         // Only those ABIs are supported
         let split_last_tuple = match internal_abi {
-            TargetAbi::C { unwind } => false,
-            TargetAbi::Cdecl { unwind } => false,
+            TargetAbi::C { unwind: _ } => false,
+            TargetAbi::Cdecl { unwind: _ } => false,
             TargetAbi::RustIntrinsic => false,
             TargetAbi::Rust => false,
             TargetAbi::RustCold => false,

@@ -357,8 +357,8 @@ fn garag_to_usize<'tyctx>(garg: GenericArg<'tyctx>, _ctx: TyCtxt<'tyctx>) -> u64
 pub fn simple_tuple(elements: &[Type]) -> DotnetTypeRef {
     //assert!(elements.len() <= 8,"Tuple ({elements:?}) contains more than 8 elements, so it can't be stored inside a simple tuple.");
     let name = tuple_name(elements);
-    let dotnet = DotnetTypeRef::new(None, &name);
-    dotnet
+
+    DotnetTypeRef::new(None, &name)
 }
 use crate::utilis::garg_to_string;
 
@@ -372,7 +372,7 @@ pub fn pointer_to_is_fat<'tyctx>(
     method.inspect(|method| {
         pointed_type = crate::utilis::monomorphize(method, pointed_type, tyctx);
     });
-    let (metadata, fat_if_not_sized) = pointed_type.ptr_metadata_ty(tyctx, |mut ty| {
+    let (_metadata, _fat_if_not_sized) = pointed_type.ptr_metadata_ty(tyctx, |mut ty| {
         method.inspect(|method| {
             ty = crate::utilis::monomorphize(method, ty, tyctx);
         });

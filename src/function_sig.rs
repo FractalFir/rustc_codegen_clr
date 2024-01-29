@@ -73,8 +73,8 @@ impl FnSig {
         .abi();
         // Only those ABIs are supported
         match internal_abi {
-            TargetAbi::C { unwind } => (),
-            TargetAbi::Cdecl { unwind } => (),
+            TargetAbi::C { unwind: _ } => (),
+            TargetAbi::Cdecl { unwind: _ } => (),
             TargetAbi::RustIntrinsic => (),
             TargetAbi::Rust => (),
             TargetAbi::RustCold => (),

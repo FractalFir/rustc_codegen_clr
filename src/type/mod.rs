@@ -32,7 +32,7 @@ pub fn mangle(tpe: &Type) -> std::borrow::Cow<'static, str> {
                 tpe.generics().is_empty(),
                 "Arrays of generic .NET types not supported yet"
             );
-            tpe.name_path().replace(".", "_").into()
+            tpe.name_path().replace('.', "_").into()
         }
         Type::DotnetArray(arr) => format!("a{}{}", arr.dimensions, mangle(&arr.element)).into(),
         Type::DotnetChar => "c".into(),
@@ -43,7 +43,7 @@ pub fn mangle(tpe: &Type) -> std::borrow::Cow<'static, str> {
             "d{output}{input_count}{input_string}",
             output = mangle(sig.output()),
             input_count = sig.inputs().len(),
-            input_string = sig.inputs().iter().map(|t| mangle(t)).collect::<String>()
+            input_string = sig.inputs().iter().map(mangle).collect::<String>()
         )
         .into(),
         _ => todo!("Can't mangle type {tpe:?}"),

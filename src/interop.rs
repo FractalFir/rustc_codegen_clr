@@ -1,8 +1,5 @@
 use crate::{utilis::garg_to_string, IString};
-use rustc_middle::{
-    mir::{Body, Operand, Place, SwitchTargets, Terminator, TerminatorKind},
-    ty::{GenericArg, Instance, ParamEnv, Ty, TyCtxt, TyKind},
-};
+use rustc_middle::ty::{GenericArg, TyCtxt};
 pub struct AssemblyRef {
     name: IString,
 }

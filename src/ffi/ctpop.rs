@@ -1,11 +1,3 @@
-use crate::{
-    access_modifier::AccessModifer,
-    assembly::Assembly,
-    cil::{CILOp, CallSite},
-    function_sig::FnSig,
-    method::Method,
-    r#type::{DotnetTypeRef, Type},
-};
 /*
 pub fn add_ctpop(asm: &mut Assembly) {
     add_ctpop_u64(asm);

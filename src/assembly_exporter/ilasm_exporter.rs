@@ -1,4 +1,4 @@
-use super::{ilasm_op::dotnet_type_ref_cli, AssemblyExporter};
+use super::AssemblyExporter;
 use crate::{
     access_modifier::AccessModifer,
     assembly_exporter::{
@@ -7,10 +7,10 @@ use crate::{
         AssemblyExportError,
     },
     method::{Method, MethodType},
+    r#type::Type,
     r#type::TypeDef,
-    r#type::{DotnetTypeRef, Type},
 };
-use std::{borrow::Cow, io::Write};
+use std::io::Write;
 #[must_use]
 /// A struct used to export an asssembly using the ILASM tool as a .NET assembly creator.
 pub struct ILASMExporter {
@@ -83,7 +83,7 @@ impl AssemblyExporter for ILASMExporter {
 
         let cil_path = out_path.with_extension("il");
         let mut cil = self.encoded_asm;
-        cil.write(&self.methods)?;
+        cil.write_all(&self.methods)?;
         writeln!(cil, "}}")?;
         std::fs::File::create(&cil_path)
             .expect("Could not create file")
@@ -191,7 +191,7 @@ fn method_cil(w: &mut impl Write, method: &Method) -> std::io::Result<()> {
         MethodType::Static => "static",
         MethodType::Virtual => "virtual instance",
         MethodType::Instance => "instance",
-    } ;
+    };
     let output = type_cil(method.sig().output());
     let name = method.name();
     write!(

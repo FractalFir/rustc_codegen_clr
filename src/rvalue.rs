@@ -16,10 +16,7 @@ pub fn handle_rvalue<'tcx>(
     tycache: &mut TyCache,
 ) -> Vec<CILOp> {
     let res = match rvalue {
-        Rvalue::Use(operand) => {
-            let res = handle_operand(operand, tyctx, method, method_instance, tycache);
-            res
-        }
+        Rvalue::Use(operand) => handle_operand(operand, tyctx, method, method_instance, tycache),
         Rvalue::CopyForDeref(place) => {
             crate::place::place_get(place, tyctx, method, method_instance, tycache)
         }
@@ -68,7 +65,7 @@ pub fn handle_rvalue<'tcx>(
                 }
                 (true, false) => {
                     let mut res = handle_operand(operand, tyctx, method, method_instance, tycache);
-                    if let None = source_type.as_dotnet() {
+                    if source_type.as_dotnet().is_none() {
                         eprintln!("source:{source:?}");
                     }
                     //println!("Slice!");
@@ -378,8 +375,8 @@ pub fn handle_rvalue<'tcx>(
                 .constant()
                 .expect("function must be constant in order to take its adress!");
             let operand_ty = crate::utilis::monomorphize(&method_instance, operand_ty, tyctx);
-            let target = crate::utilis::monomorphize(&method_instance, *target, tyctx);
-            let (instance, subst_ref) = if let TyKind::FnDef(def_id, subst_ref) = operand_ty.kind()
+            let _target = crate::utilis::monomorphize(&method_instance, *target, tyctx);
+            let (instance, _subst_ref) = if let TyKind::FnDef(def_id, subst_ref) = operand_ty.kind()
             {
                 let subst = crate::utilis::monomorphize(&method_instance, *subst_ref, tyctx);
                 let env = ParamEnv::reveal_all();
@@ -477,7 +474,7 @@ pub fn handle_rvalue<'tcx>(
             for idx in 0..times {
                 ops.push(CILOp::LoadAddresOfTMPLocal);
                 ops.extend(operand.clone());
-                ops.extend([CILOp::LdcI64(idx as u64 as i64), CILOp::ConvUSize(false)]);
+                ops.extend([CILOp::LdcI64(idx as i64), CILOp::ConvUSize(false)]);
                 ops.push(CILOp::Call(
                     CallSite::new(
                         Some(array_dotnet.clone()),

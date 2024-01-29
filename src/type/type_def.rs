@@ -1,7 +1,6 @@
 use crate::{
     access_modifier::AccessModifer,
     cil::{CallSite, FieldDescriptor},
-    function_sig::FnSig,
     method::{Method, MethodType},
     r#type::{DotnetTypeRef, Type},
     IString,
@@ -173,8 +172,8 @@ pub fn escape_field_name(name: &str) -> IString {
         }
     }
 }
-pub fn closure_name(def_id: DefId, fields: &[Type], sig: &crate::function_sig::FnSig) -> String {
-    let mangled_fields: String = fields.iter().map(|f| crate::r#type::mangle(f)).collect();
+pub fn closure_name(_def_id: DefId, fields: &[Type], _sig: &crate::function_sig::FnSig) -> String {
+    let mangled_fields: String = fields.iter().map(crate::r#type::mangle).collect();
     format!(
         "Closure{field_count}{mangled_fields}",
         field_count = fields.len()
@@ -203,7 +202,7 @@ pub fn arr_name(element_count: usize, element: &Type) -> IString {
     format!("Arr{element_count}_{element_name}",).into()
 }
 pub fn tuple_name(elements: &[Type]) -> IString {
-    let generics: String = elements.iter().map(|ele| super::mangle(ele)).collect();
+    let generics: String = elements.iter().map(super::mangle).collect();
     format!(
         "Tuple{generic_count}{generics}",
         generic_count = generics.len()
@@ -240,7 +239,7 @@ pub fn get_array_type(element_count: usize, element: Type) -> TypeDef {
     }
     let mut def = TypeDef {
         access: AccessModifer::Public,
-        name: name.into(),
+        name: name,
         inner_types: vec![],
         fields,
         functions: vec![],
@@ -248,7 +247,7 @@ pub fn get_array_type(element_count: usize, element: Type) -> TypeDef {
         gargc: 0,
         extends: None,
     };
-    let as_pointer = CallSite::ref_as_ptr(element.clone());
+    let _as_pointer = CallSite::ref_as_ptr(element.clone());
     // set_Item(usize offset, G0 value)
     if element_count > 0 {
         let mut set_usize = Method::new(
@@ -279,7 +278,7 @@ pub fn get_array_type(element_count: usize, element: Type) -> TypeDef {
         ];
         set_usize.set_ops(ops);
         def.add_method(set_usize);
-        
+
         // get_Address(usize offset)
         let mut get_adress_usize = Method::new(
             AccessModifer::Public,
@@ -338,14 +337,12 @@ pub fn get_array_type(element_count: usize, element: Type) -> TypeDef {
             MethodType::Virtual,
             crate::function_sig::FnSig::new(&[(&def).into()], &DotnetTypeRef::string_type().into()),
             "ToString",
-            vec![
-                (Some("arrString".into()),DotnetTypeRef::string_type().into()) 
-            ],
+            vec![(
+                Some("arrString".into()),
+                DotnetTypeRef::string_type().into(),
+            )],
         );
-        let ops = vec![
-            CILOp::LdStr("I am an array! Horray!".into()),
-            CILOp::Ret,
-        ];
+        let ops = vec![CILOp::LdStr("I am an array! Horray!".into()), CILOp::Ret];
         to_string.set_ops(ops);
         def.add_method(to_string);
     }

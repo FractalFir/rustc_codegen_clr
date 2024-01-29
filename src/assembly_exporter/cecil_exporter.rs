@@ -198,7 +198,7 @@ impl AsmBuilderHandle {
             Type::USize => unsafe { nuint((*self).into()) },
             Type::Bool => unsafe { get_bool((*self).into()) },
             Type::Void => unsafe { void((*self).into()) },
-            Type::Ptr(handle) => unsafe { type_ref_to_pointer(self.type_to_handle(handle).into()) },
+            Type::Ptr(handle) => unsafe { type_ref_to_pointer(self.type_to_handle(handle)) },
             Type::DotnetType(dotnet) => {
                 if dotnet.asm().is_none() {
                     //TODO: change name path into namespace and name!
@@ -271,7 +271,7 @@ impl DotnetContext {
             let inner = self.into_typedef(inner);
             unsafe { add_inner_type(type_def, inner) };
         }
-        if let Some(extends) = tpe.extends() {
+        if let Some(_extends) = tpe.extends() {
             todo!("Type inheretence is not yet supported!")
         } else {
             unsafe { set_typedef_baseclass(type_def, valuetype(self.asm.into())) }
@@ -295,14 +295,14 @@ impl AssemblyExporter for DotnetContext {
         self.asm.add_typedef(self.into_typedef(tpe));
     }
 
-    fn add_method(&mut self, method: &crate::method::Method) {
+    fn add_method(&mut self, _method: &crate::method::Method) {
         //todo!("Method")
     }
 
     fn finalize(
         self,
         final_path: &std::path::Path,
-        is_dll: bool,
+        _is_dll: bool,
     ) -> Result<(), super::AssemblyExportError> {
         self.asm
             .save(final_path.as_os_str().to_str().expect("INVALID PATH"));
@@ -310,12 +310,12 @@ impl AssemblyExporter for DotnetContext {
         Ok(())
     }
 
-    fn add_extern_ref(&mut self, asm_name: &str, info: &crate::assembly::AssemblyExternRef) {
+    fn add_extern_ref(&mut self, _asm_name: &str, _info: &crate::assembly::AssemblyExternRef) {
         // Ignored for now!
         //todo!()
     }
 
-    fn add_global(&mut self, tpe: &crate::r#type::Type, name: &str) {
+    fn add_global(&mut self, _tpe: &crate::r#type::Type, _name: &str) {
         //todo!()
     }
 }

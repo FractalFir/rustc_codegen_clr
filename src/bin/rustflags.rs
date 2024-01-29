@@ -17,7 +17,7 @@ fn main() {
     println!("This tool will help you use the codegen to compile Rust projects.");
     println!("WARNING: Please note, the project is currently in the early stages of development.  Bugs, crashes and miscompilations will occur.");
     println!("Currently, there is no way to permanently install the codegen. It is enabled on a per-shell-session basis (enabled for your particular command prompt window).");
-    println!("");
+    println!();
     println!("In order to compile cargo crates with `rustc_codegen_clr`, please set the RUSTFLAGS environment variable to:");
     println!();
     println!();
@@ -69,6 +69,6 @@ fn main() {
     println!(
         "  In 99.999% of the cases, the bug is within this project and not the Rust compiler."
     );
-    println!("");
+    println!();
     // std::env::set_var("RUSTFLAGS", build_env);
 }

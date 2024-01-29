@@ -4,7 +4,7 @@ mod ctpop;
 mod exact_div;
 mod memcmp;
 use crate::method::MethodType;
-use crate::r#type::{DotnetTypeRef, TyCache};
+use crate::r#type::DotnetTypeRef;
 use crate::{
     access_modifier::AccessModifer,
     assembly::Assembly,
