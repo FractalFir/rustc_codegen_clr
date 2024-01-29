@@ -420,7 +420,7 @@ pub fn handle_intrinsic<'tyctx>(
             );
             let tpe = type_cache.type_from_cache(tpe, tyctx, Some(method_instance));
             ops.extend(handle_operand(
-                &args[0].node,
+                &args[1].node,
                 tyctx,
                 body,
                 method_instance,
