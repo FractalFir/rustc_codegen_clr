@@ -39,6 +39,7 @@ impl AssemblyExporter for ILASMExporter {
         let mut methods = Vec::with_capacity(0x1_00);
         write!(encoded_asm, ".assembly {asm_name}{{}}").expect("Write error!");
         write!(methods, ".class RustModule{{").expect("Write error!");
+        write!(methods," .method private hidebysig static pinvokeimpl(\"libc.so\" as \"printf\" cdecl) vararg void printf (uint8* format) cil managed preservesig {{}}").unwrap();
         Self {
             encoded_asm,
             methods,

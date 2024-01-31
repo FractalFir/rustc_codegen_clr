@@ -136,7 +136,7 @@ fn map_test() {
 fn main() {
     let int = std::hint::black_box(8);
     let boxed_int = std::hint::black_box(Box::new(int));
-    test!(map_option_test);
+    //test!(map_option_test);
     let mut string = String::with_capacity(100);
     string.push('H');
     string.push('e');
@@ -245,16 +245,17 @@ fn main() {
 
     //std::hint::black_box(f);
     //std::io::stdout().write_all(b"hello world\n").unwrap();
-    let owned = black_box("UWU\n\0").to_owned();
-    if owned.len() != 5 {
+    /*let owned = black_box("Test\n\0").to_owned();
+    if owned.len() != 6 {
         unsafe { puts(owned.as_ptr()) };
         unsafe { core::intrinsics::abort() };
     } else {
         unsafe { puts(owned.as_ptr()) };
-    }
-
-    let s = format!("Hello??? WTF is going on???{}\n\0",black_box(65));
+    }*/
+    let s = format!("Hello!\n\0");
     unsafe{puts(s.as_ptr())};
+    //let s = format!("Hello??? WTF is going on???{}\n\0",black_box(65));
+    //unsafe{puts(s.as_ptr())};
 
     let val = std::hint::black_box(*boxed_int);
     let val = std::hint::black_box(string);

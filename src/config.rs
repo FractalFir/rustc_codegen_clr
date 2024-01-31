@@ -31,6 +31,7 @@ config_flag! {ALWAYS_INIT_LOCALS,false,"Changes `.locals` into `.locals init`. C
 config_flag! {TRACE_STATEMENTS,false,"Preapends each statement with a debug message"}
 config_flag! {INLINE_SIMPLE_FUNCTIONS,false,"Allows the optimizer to inline very simple functions. It is buggy."}
 config_flag! {REMOVE_UNSUED_LOCALS,false,"Turns on the local removal optimization."}
+config_flag! {CHECK_ALLOCATIONS,false,"Turns on allocation checks/debug info."}
 config_flag! {SPLIT_LOCAL_STRUCTS,false,"Turns on the struct spliting optimzation."}
 config_flag! {ALLOW_MISCOMPILATIONS,true,"Should the codegen continue working after it encoutnered a miscompilation?"}
 config_flag! {INSERT_MIR_DEBUG_COMMENTS,false,"Tells the codegen to insert comments containing the MIR statemtens after each one of them."}

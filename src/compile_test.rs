@@ -568,6 +568,7 @@ run_test! {intrinsics,ptr_offset_from_unsigned,stable}
 
 
 run_test! {fuzz,test0,stable}
+run_test! {fuzz,fuzz0,stable}
 run_test! {fuzz,test1,stable}
 cargo_test! {hello_world,stable}
 cargo_test! {std_hello_world,stable}

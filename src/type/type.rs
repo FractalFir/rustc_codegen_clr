@@ -60,6 +60,9 @@ pub struct DotnetTypeRef {
     is_valuetype: bool,
 }
 impl DotnetTypeRef {
+    pub fn console()->Self{
+        Self::new(Some("System.Console"), "System.Console")
+    }
     #[must_use]
     pub fn int_128() -> Self {
         Self::new(Some("System.Runtime"), "System.Int128")

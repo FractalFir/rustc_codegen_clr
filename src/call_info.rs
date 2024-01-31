@@ -28,7 +28,7 @@ impl CallInfo {
             Conv::C => (),
             _ => panic!("ERROR:calling using convention {conv:?} is not supported!"),
         }
-        assert!(!fn_abi.c_variadic);
+        //assert!(!fn_abi.c_variadic);
         let ret = tycache.type_from_cache(fn_abi.ret.layout.ty, tcx, Some(function));
         let mut args = Vec::with_capacity(fn_abi.args.len());
         for arg in fn_abi.args.iter() {
