@@ -563,9 +563,9 @@ run_test! {control_flow,drop,unstable}
 
 run_test! {intrinsics,bswap,unstable}
 run_test! {intrinsics,assert,unstable}
+run_test! {intrinsics,printf,unstable}
 run_test! {intrinsics,type_id,stable}
 run_test! {intrinsics,ptr_offset_from_unsigned,stable}
-
 
 run_test! {fuzz,test0,stable}
 run_test! {fuzz,fuzz0,stable}

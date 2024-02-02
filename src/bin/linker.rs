@@ -87,6 +87,7 @@ fn patch_missing_method(call_site: &cil::CallSite) -> method::Method {
         call_site.name(),
         vec![],
     );
+    
     let ops = rustc_codegen_clr::cil::CILOp::throw_msg(&format!(
         "Tried to invoke missing method {name}",
         name = call_site.name()
@@ -100,11 +101,18 @@ fn autopatch(asm: &mut Assembly) {
         .filter(|call| call.is_static() && call.class().is_none())
         .filter(|call| !asm.contains_fn(call));
     let mut patched = std::collections::HashMap::new();
+    let mut externs = Vec::new();
     for call in call_sites {
+        if call.name() == "printf"{
+            externs.push((call.name().into(),call.signature().to_owned(),"/lib64/libc.so.6".into()));
+            continue;
+        }
         if !patched.contains_key(call) {
+            
             patched.insert(call.clone(), patch_missing_method(call));
         }
     }
+    externs.into_iter().for_each(|(name,sig,lib)|{asm.add_extern_fn(name,sig,lib)});
     patched
         .values()
         .for_each(|method| asm.add_method(method.clone()));

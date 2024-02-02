@@ -5,6 +5,7 @@ type AssemblyInfo = str;
 use crate::{
     assembly::Assembly,
     config,
+    function_sig::FnSig,
     method::Method,
     r#type::{Type, TypeDef},
     IString,
@@ -21,6 +22,7 @@ pub trait AssemblyExporter: Sized {
     fn add_type(&mut self, tpe: &TypeDef);
     /// Adds method to assembly.
     fn add_method(&mut self, method: &Method);
+    fn add_extern_method(&mut self, lib_path: &str, name: &str, sig: &FnSig);
     //fn extern_asm(&mut self,asm:&str);
     /// Finishes exporting the assembly.
     fn finalize(self, final_path: &Path, is_dll: bool) -> Result<(), AssemblyExportError>;
@@ -49,6 +51,9 @@ pub trait AssemblyExporter: Sized {
             } else {
                 asm_exporter.add_method(method);
             }
+        }
+        for ((name,sig),lib) in asm.extern_fns(){
+            asm_exporter.add_extern_method(lib, name, sig);
         }
         println!(
             "globals:{globals:?}",

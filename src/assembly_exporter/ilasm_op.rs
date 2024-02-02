@@ -474,13 +474,13 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
         CILOp::LDStaticField(static_field) => {
             match static_field.owner(){
                 Some(_owner)=>todo!("Can't load static field {static_field:?}"),
-                None=>format!("ldsfld {tpe} {name}",tpe = non_void_type_cil(static_field.tpe()), name = static_field.name()).into(),
+                None=>format!("ldsfld {tpe} RustModule::{name}",tpe = non_void_type_cil(static_field.tpe()), name = static_field.name()).into(),
             }
         }
         CILOp::STStaticField(static_field) => {
             match static_field.owner(){
                 Some(_owner)=>todo!("Can't load static field {static_field:?}"),
-                None=>format!("stsfld {tpe} {name}",tpe = non_void_type_cil(static_field.tpe()), name = static_field.name()).into(),
+                None=>format!("stsfld {tpe} RustModule::{name}",tpe = non_void_type_cil(static_field.tpe()), name = static_field.name()).into(),
             }
         }
         CILOp::InitObj(tpe)=>format!("initobj {tpe}",tpe = non_void_type_cil(tpe)).into(),

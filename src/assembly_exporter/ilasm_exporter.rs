@@ -28,7 +28,7 @@ impl std::io::Write for ILASMExporter {
 impl AssemblyExporter for ILASMExporter {
     fn add_global(&mut self, tpe: &Type, name: &str) {
         writeln!(
-            self,
+            self.methods,
             ".field static {tpe} '{name}'",
             tpe = non_void_type_cil(tpe)
         )
@@ -39,7 +39,6 @@ impl AssemblyExporter for ILASMExporter {
         let mut methods = Vec::with_capacity(0x1_00);
         write!(encoded_asm, ".assembly {asm_name}{{}}").expect("Write error!");
         write!(methods, ".class RustModule{{").expect("Write error!");
-        write!(methods," .method private hidebysig static pinvokeimpl(\"libc.so\" as \"printf\" cdecl) vararg void printf (uint8* format) cil managed preservesig {{}}").unwrap();
         Self {
             encoded_asm,
             methods,
@@ -114,6 +113,23 @@ impl AssemblyExporter for ILASMExporter {
             return Err(AssemblyExportError::ExporterError(err.into()));
         }
         Ok(())
+    }
+
+    fn add_extern_method(&mut self, lib_path: &str, name: &str, sig: &crate::function_sig::FnSig) {
+        // /lib64/libc.so.6
+        let output = type_cil(sig.output());
+        writeln!(
+            self.methods,
+            ".method private hidebysig static pinvokeimpl(\"{lib_path}\" cdecl) {output} '{name}'("
+        ).unwrap();
+        let mut input_iter = sig.inputs().iter();
+        if let Some(input) = input_iter.next() {
+            write!(self.methods, "{}", non_void_type_cil(input)).unwrap();
+        }
+        for input in input_iter {
+            write!(self.methods, ",{}", non_void_type_cil(input)).unwrap();
+        }
+        writeln!(self.methods, "){{}}").unwrap();
     }
 }
 fn type_def_cli(

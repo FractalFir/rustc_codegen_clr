@@ -389,8 +389,8 @@ pub fn call<'tyctx>(
 
     let call_info = CallInfo::sig_from_instance_(instance, tyctx, type_cache)
         .expect("Could not resolve function sig");
-
-    let signature = call_info.sig().clone();
+    // SHOULD NOT BE MUTABLE BUT VARIADICS ARE FUCKING WIERD.
+    let mut signature = call_info.sig().clone();
 
     let function_name = crate::utilis::function_name(tyctx.symbol_name(instance));
     if crate::utilis::is_fn_intrinsic(fn_type, tyctx) {
@@ -417,6 +417,7 @@ pub fn call<'tyctx>(
             println!("\t{input:?}");
         }
     }
+
     // Checks if function is "magic"
     if function_name.contains(CTOR_FN_NAME) {
         assert!(
@@ -492,7 +493,23 @@ pub fn call<'tyctx>(
             type_cache,
         ));
     }
-
+    if crate::function_sig::is_fn_variadic(fn_type,tyctx) {
+        signature.set_inputs(
+            args.iter()
+                .map(|operand| {
+                    type_cache.type_from_cache(
+                        crate::utilis::monomorphize(
+                            &method_instance,
+                            operand.node.ty(body, tyctx),
+                            tyctx,
+                        ),
+                        tyctx,
+                        Some(method_instance),
+                    )
+                })
+                .collect(),
+        );
+    }
     if args.len() < signature.inputs().len() {
         let tpe: crate::r#type::Type = signature.inputs()[signature.inputs().len() - 1].clone();
         // let arg_len = args.len();

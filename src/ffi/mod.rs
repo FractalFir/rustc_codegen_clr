@@ -123,19 +123,26 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
         "__rust_alloc",
         vec![],
     );
-    if *crate::config::CHECK_ALLOCATIONS{
+    if *crate::config::CHECK_ALLOCATIONS {
         __rust_alloc.set_ops(vec![
-            CILOp::LdStr("Allocation of size:".into()),  
-            CILOp::Call(CallSite::boxed(Some(DotnetTypeRef::console()),"Write".into(),FnSig::new(&[DotnetTypeRef::string_type().into()],&Type::Void),true)),
-
+            CILOp::LdStr("Allocation of size:".into()),
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::console()),
+                "Write".into(),
+                FnSig::new(&[DotnetTypeRef::string_type().into()], &Type::Void),
+                true,
+            )),
             CILOp::LDArg(0),
             CILOp::ConvU64(false),
-            CILOp::Call(CallSite::boxed(Some(DotnetTypeRef::console()),"WriteLine".into(),FnSig::new(&[Type::U64],&Type::Void),true)),
-
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::console()),
+                "WriteLine".into(),
+                FnSig::new(&[Type::U64], &Type::Void),
+                true,
+            )),
             CILOp::LDArg(0),
             CILOp::ConvU32(true),
             CILOp::Pop,
-
             CILOp::LDArg(0),
             CILOp::LDArg(1),
             CILOp::Call(CallSite::boxed(
@@ -146,8 +153,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
             )),
             CILOp::Ret,
         ]);
-    }
-    else{
+    } else {
         __rust_alloc.set_ops(vec![
             CILOp::LDArg(0),
             CILOp::LDArg(1),
@@ -160,7 +166,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
             CILOp::Ret,
         ]);
     }
-    
+
     asm.add_method(__rust_alloc);
     let mut __rust_dealloc = Method::new(
         AccessModifer::Private,

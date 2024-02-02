@@ -318,4 +318,8 @@ impl AssemblyExporter for DotnetContext {
     fn add_global(&mut self, _tpe: &crate::r#type::Type, _name: &str) {
         //todo!()
     }
+
+    fn add_extern_method(&mut self, lib_path: &str, name: &str, sig: &crate::function_sig::FnSig) {
+        todo!()
+    }
 }

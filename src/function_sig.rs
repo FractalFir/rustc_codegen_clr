@@ -2,7 +2,7 @@ use crate::{
     codegen_error::CodegenError,
     r#type::{TyCache, Type},
 };
-use rustc_middle::ty::{Instance, List, ParamEnv, ParamEnvAnd, PolyFnSig, TyCtxt, TyKind};
+use rustc_middle::ty::{Instance, List, ParamEnv, ParamEnvAnd, PolyFnSig, TyCtxt, Ty,TyKind};
 use rustc_target::abi::call::Conv;
 use rustc_target::spec::abi::Abi as TargetAbi;
 use serde::{Deserialize, Serialize};
@@ -36,12 +36,12 @@ impl FnSig {
         FnSig::new(&inputs, &output)
     }
     /// Returns the signature of function behind `function`.
-    pub fn sig_from_instance_<'tcx>(
-        function: Instance<'tcx>,
-        tcx: TyCtxt<'tcx>,
+    pub fn sig_from_instance_<'tyctx>(
+        function: Instance<'tyctx>,
+        tyctx: TyCtxt<'tyctx>,
         tycache: &mut TyCache,
     ) -> Result<Self, CodegenError> {
-        let fn_abi = tcx.fn_abi_of_instance(ParamEnvAnd {
+        let fn_abi = tyctx.fn_abi_of_instance(ParamEnvAnd {
             param_env: ParamEnv::reveal_all(),
             value: (function, List::empty()),
         });
@@ -56,17 +56,17 @@ impl FnSig {
             _ => panic!("ERROR:calling using convention {conv:?} is not supported!"),
         }
         //assert!(!fn_abi.c_variadic);
-        let ret = crate::utilis::monomorphize(&function, fn_abi.ret.layout.ty, tcx);
-        let ret = tycache.type_from_cache(ret, tcx, Some(function));
+        let ret = crate::utilis::monomorphize(&function, fn_abi.ret.layout.ty, tyctx);
+        let ret = tycache.type_from_cache(ret, tyctx, Some(function));
         let mut args = Vec::with_capacity(fn_abi.args.len());
         for arg in fn_abi.args.iter() {
-            let arg = crate::utilis::monomorphize(&function, arg.layout.ty, tcx);
-            args.push(tycache.type_from_cache(arg, tcx, Some(function)));
+            let arg = crate::utilis::monomorphize(&function, arg.layout.ty, tyctx);
+            args.push(tycache.type_from_cache(arg, tyctx, Some(function)));
         }
         // There are 2 ABI enums for some reasons(they differ in what memebers they have)
-        let fn_ty = function.ty(tcx, ParamEnv::reveal_all());
+        let fn_ty = function.ty(tyctx, ParamEnv::reveal_all());
         let internal_abi = match fn_ty.kind() {
-            TyKind::FnDef(_, _) => fn_ty.fn_sig(tcx),
+            TyKind::FnDef(_, _) => fn_ty.fn_sig(tyctx),
             TyKind::Closure(_, args) => args.as_closure().sig(),
             _ => todo!("Can't get signature of {fn_ty}"),
         }
@@ -103,9 +103,16 @@ impl FnSig {
             output: output.clone(),
         }
     }
+
+    pub fn set_inputs(&mut self, inputs: Vec<Type>) {
+        self.inputs = inputs;
+    }
 }
 #[derive(Clone, PartialEq, Serialize, Deserialize, Eq, Hash, Debug)]
 pub struct FunctionCallInfo {
     inputs: Vec<Type>,
     output: Type,
+}
+pub fn is_fn_variadic<'tyctx>(ty:Ty<'tyctx>,tyctx:TyCtxt<'tyctx>)->bool{
+    ty.fn_sig(tyctx).skip_binder().c_variadic
 }

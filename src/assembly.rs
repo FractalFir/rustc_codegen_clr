@@ -47,6 +47,7 @@ pub struct Assembly {
     entrypoint: Option<CallSite>,
     /// List of references to external assemblies
     extern_refs: HashMap<IString, AssemblyExternRef>,
+    extern_fns:HashMap<(IString,FnSig),IString>,
     /// List of all static fields within the assembly
     static_fields: HashMap<IString, Type>,
 }
@@ -76,6 +77,7 @@ impl Assembly {
             entrypoint: None,
             extern_refs: HashMap::new(),
             static_fields: HashMap::new(),
+            extern_fns:HashMap::new(),
         };
         let dotnet_ver = AssemblyExternRef {
             version: (6, 12, 0, 0),
@@ -99,14 +101,17 @@ impl Assembly {
         let entrypoint = self.entrypoint.or(other.entrypoint);
         let mut extern_refs = self.extern_refs;
         let mut static_fields = self.static_fields;
+        let mut extern_fns = self.extern_fns;
         static_fields.extend(other.static_fields);
         extern_refs.extend(other.extern_refs);
+        extern_fns.extend(other.extern_fns);
         Self {
             types,
             functions,
             entrypoint,
             extern_refs,
             static_fields,
+            extern_fns
         }
     }
     /// Gets the typdefef at path `path`.
@@ -555,6 +560,14 @@ impl Assembly {
         let wrapper = crate::entrypoint::wrapper(&entrypoint);
         self.functions.insert(wrapper.call_site(), wrapper);
         self.entrypoint = Some(entrypoint);
+    }
+
+    pub fn extern_fns(&self) -> &HashMap<(IString,FnSig),IString> {
+        &self.extern_fns
+    }
+
+    pub fn add_extern_fn(&mut self, name:IString,sig:FnSig,lib:IString) {
+        self.extern_fns.insert((name,sig),lib);
     }
 }
 fn link_static_initializers(a: Option<&Method>, b: Option<&Method>) -> Option<Method> {
