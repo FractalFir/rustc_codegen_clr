@@ -300,6 +300,9 @@ fn create_const_from_slice<'ctx>(
                 ]
             }
         },
+        TyKind::Char => vec![CILOp::LdcI32(i32::from_le_bytes(
+            bytes[..std::mem::size_of::<i32>()].try_into().unwrap(),
+        ))],
         TyKind::RawPtr(type_and_mut) => match type_and_mut.ty.kind() {
             TyKind::Slice(inner) => {
                 let ptr = u64::from_ne_bytes(bytes[..8].try_into().unwrap());
@@ -375,6 +378,7 @@ fn create_const_from_slice<'ctx>(
                 ))]
             }
         },
+        
         TyKind::Ref(_, inner, _) => match inner.kind() {
             TyKind::Slice(inner) => {
                 let ptr = u64::from_ne_bytes(bytes[..8].try_into().unwrap());

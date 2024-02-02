@@ -292,6 +292,15 @@ pub fn compiletime_sizeof<'tyctx>(
     method_instance: Instance<'tyctx>,
 ) -> usize {
     use rustc_middle::ty::{IntTy, UintTy};
+    let layout = tyctx
+    .layout_of(rustc_middle::ty::ParamEnvAnd {
+        param_env: ParamEnv::reveal_all(),
+        value: ty,
+    })
+    .expect("Can't get layout of a type.")
+    .layout;
+    layout.size.bytes() as usize
+    /* 
     match ty.kind() {
         TyKind::Int(int) => match int {
             IntTy::I8 => std::mem::size_of::<i8>(),
@@ -369,7 +378,7 @@ pub fn compiletime_sizeof<'tyctx>(
             }
         }
         _ => todo!("Can't compute compiletime sizeof {ty:?}"),
-    }
+    }*/
 }
 /// Ensures that a type is morphic.
 #[macro_export]

@@ -1,15 +1,18 @@
 #![recursion_limit = "1024"]
-#![feature(custom_mir, core_intrinsics, const_hash)]
+#![feature(custom_mir, core_intrinsics, const_hash,adt_const_params,start,lang_items)]
 #![allow(
     unused_parens,
     unused_assignments,
     overflowing_literals,
-    internal_features
+    internal_features,
+    incomplete_features
 )]
+#![no_std]
+include!("../common.rs");
 extern crate core;
 use core::intrinsics::mir::*;
 
-use std::ffi::{c_char, c_int};
+use core::ffi::{c_char, c_int};
 
 extern "C" {
     fn printf(fmt: *const c_char, ...) -> c_int;
@@ -3136,11 +3139,11 @@ pub fn fn14(
 }
 pub fn main() {
     fn0(
-        std::hint::black_box(true),
-        std::hint::black_box(15983_u16),
-        std::hint::black_box((-102_isize)),
-        std::hint::black_box((-46_i8)),
-        std::hint::black_box(691098930746575142_i64),
+        core::hint::black_box(true),
+        core::hint::black_box(15983_u16),
+        core::hint::black_box((-102_isize)),
+        core::hint::black_box((-46_i8)),
+        core::hint::black_box(691098930746575142_i64),
     );
 }
 impl PrintFDebug for Adt41 {

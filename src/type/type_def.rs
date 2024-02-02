@@ -160,13 +160,6 @@ pub fn escape_field_name(name: &str) -> IString {
             {
                 format!("m_{name}").into()
             } else {
-                if name.contains('0') {
-                    eprintln!(
-                        "field name:\'{name:?}\'. Name length:{} first char:\'{:?}\'",
-                        name.len(),
-                        first
-                    );
-                }
                 name.into()
             }
         }
