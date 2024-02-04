@@ -170,7 +170,7 @@ pub fn place_elem_body<'ctx>(
                     let desc = FieldDescriptor::new(
                         slice,
                         Type::Ptr(Type::Void.into()),
-                        "data_address".into(),
+                        "data_pointer".into(),
                     );
                     let deref_op = super::deref_op(
                         super::PlaceTy::Ty(inner),
@@ -258,7 +258,7 @@ pub fn place_elem_body<'ctx>(
                     let desc = FieldDescriptor::new(
                         slice,
                         Type::Ptr(Type::Void.into()),
-                        "data_address".into(),
+                        "data_pointer".into(),
                     );
                     let derf_op = super::deref_op(
                         super::PlaceTy::Ty(inner),

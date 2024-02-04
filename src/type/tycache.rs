@@ -544,7 +544,7 @@ fn try_find_ptr_components(ctx: TyCtxt) -> DefId {
         let name = format!("{did:?}");
 
         if name.contains("ptr::metadata::PtrComponents")
-            && !name.contains("PtrComponents::data_address")
+            && !name.contains("PtrComponents::data_pointer")
             && !name.contains("PtrComponents::metadata")
             && !name.contains("PtrComponents::T")
         {

@@ -44,7 +44,7 @@ pub fn address_last_dereference<'ctx>(
             FieldDescriptor::new(
                 curr_type.as_dotnet().unwrap(),
                 Type::Ptr(Type::Void.into()),
-                "data_address".into(),
+                "data_pointer".into(),
             )
             .into(),
         )],
@@ -179,7 +179,7 @@ pub fn place_elem_adress<'ctx>(
                     let desc = FieldDescriptor::new(
                         slice,
                         Type::Ptr(Type::Void.into()),
-                        "data_address".into(),
+                        "data_pointer".into(),
                     );
 
                     let ops = vec![
@@ -237,7 +237,7 @@ pub fn place_elem_adress<'ctx>(
                     CILOp::LDField(FieldDescriptor::boxed(
                         curr_dotnet.clone(),
                         Type::Ptr(Type::Void.into()),
-                        "data_address".into(),
+                        "data_pointer".into(),
                     )),
                     CILOp::LdcI64(*from as i64),
                     CILOp::ConvUSize(false),
@@ -245,7 +245,7 @@ pub fn place_elem_adress<'ctx>(
                     CILOp::STField(FieldDescriptor::boxed(
                         curr_dotnet.clone(),
                         Type::Ptr(Type::Void.into()),
-                        "data_address".into(),
+                        "data_pointer".into(),
                     )),
                     CILOp::LoadAddresOfTMPLocal,
                     CILOp::LoadAddresOfTMPLocal,
@@ -274,7 +274,7 @@ pub fn place_elem_adress<'ctx>(
                     CILOp::LDField(FieldDescriptor::boxed(
                         curr_dotnet.clone(),
                         Type::Ptr(Type::Void.into()),
-                        "data_address".into(),
+                        "data_pointer".into(),
                     )),
                     CILOp::LdcI64(*from as i64),
                     CILOp::ConvUSize(false),
@@ -282,7 +282,7 @@ pub fn place_elem_adress<'ctx>(
                     CILOp::STField(FieldDescriptor::boxed(
                         curr_dotnet.clone(),
                         Type::Ptr(Type::Void.into()),
-                        "data_address".into(),
+                        "data_pointer".into(),
                     )),
                     CILOp::LoadAddresOfTMPLocal,
                     CILOp::LdcI64((to - from) as i64),
@@ -320,7 +320,7 @@ pub fn place_elem_adress<'ctx>(
                     let desc = FieldDescriptor::new(
                         slice.clone(),
                         Type::Ptr(Type::Void.into()),
-                        "data_address".into(),
+                        "data_pointer".into(),
                     );
                     let len = FieldDescriptor::new(slice, Type::USize, "metadata".into());
                     let _derf_op = super::deref_op(

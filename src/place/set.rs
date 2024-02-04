@@ -72,7 +72,7 @@ pub fn place_elem_set<'a>(
                     let desc = FieldDescriptor::new(
                         slice,
                         Type::Ptr(Type::Void.into()),
-                        "data_address".into(),
+                        "data_pointer".into(),
                     );
                     let ptr_set_op =
                         ptr_set_op(super::PlaceTy::Ty(inner), ctx, &method_instance, type_cache);
@@ -136,7 +136,7 @@ pub fn place_elem_set<'a>(
                     let desc = FieldDescriptor::new(
                         slice,
                         Type::Ptr(Type::Void.into()),
-                        "data_address".into(),
+                        "data_pointer".into(),
                     );
                     let ptr_set_op =
                         ptr_set_op(super::PlaceTy::Ty(inner), ctx, &method_instance, type_cache);

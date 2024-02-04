@@ -339,7 +339,7 @@ fn create_const_from_slice<'ctx>(
                         FieldDescriptor::new(
                             slice_dotnet.clone(),
                             Type::Ptr(Type::Void.into()),
-                            "data_address".into(),
+                            "data_pointer".into(),
                         )
                         .into(),
                     ),
@@ -372,7 +372,7 @@ fn create_const_from_slice<'ctx>(
                         FieldDescriptor::new(
                             slice_dotnet.clone(),
                             Type::Ptr(Type::Void.into()),
-                            "data_address".into(),
+                            "data_pointer".into(),
                         )
                         .into(),
                     ),
@@ -416,7 +416,7 @@ fn create_const_from_slice<'ctx>(
                         FieldDescriptor::new(
                             slice_dotnet.clone(),
                             Type::Ptr(Type::Void.into()),
-                            "data_address".into(),
+                            "data_pointer".into(),
                         )
                         .into(),
                     ),
@@ -450,7 +450,7 @@ fn create_const_from_slice<'ctx>(
                         FieldDescriptor::new(
                             slice_dotnet.clone(),
                             Type::Ptr(Type::Void.into()),
-                            "data_address".into(),
+                            "data_pointer".into(),
                         )
                         .into(),
                     ),
@@ -623,7 +623,7 @@ fn load_const_value<'ctx>(
             let ptr_field = FieldDescriptor::new(
                 slice_dotnet,
                 Type::Ptr(Type::Void.into()),
-                "data_address".into(),
+                "data_pointer".into(),
             );
             // TODO: find a better way to get an alloc_id. This is likely to be incoreect.
             let alloc_id = tyctx.reserve_and_set_memory_alloc(data);

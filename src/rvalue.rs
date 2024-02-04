@@ -73,7 +73,7 @@ pub fn handle_rvalue<'tcx>(
                         FieldDescriptor::new(
                             source_type.as_dotnet().unwrap(),
                             Type::Ptr(Type::Void.into()),
-                            "data_address".into(),
+                            "data_pointer".into(),
                         )
                         .into(),
                     ));
@@ -133,11 +133,11 @@ pub fn handle_rvalue<'tcx>(
                     FieldDescriptor::new(
                         target_dotnet.clone(),
                         Type::Ptr(Type::Void.into()),
-                        "data_address".into(),
+                        "data_pointer".into(),
                     )
                     .into(),
                 ),
-                // b.data_address = (a as *mut RustVoid);
+                // b.data_pointer = (a as *mut RustVoid);
                 CILOp::LoadAddresOfTMPLocal,
                 CILOp::LdcI64(length as u64 as i64),
                 CILOp::ConvUSize(false),
