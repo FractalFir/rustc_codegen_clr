@@ -247,7 +247,11 @@ fn method_cil(w: &mut impl Write, method: &Method) -> std::io::Result<()> {
             escaped_type = non_void_type_cil(&local.1)
         )?;
     }
-    writeln!(w, "\n\t)\n.maxstack {maxstack}\n",maxstack = method.maxstack())?;
+    writeln!(
+        w,
+        "\n\t)\n.maxstack {maxstack}\n",
+        maxstack = method.maxstack()
+    )?;
     for op in method.get_ops() {
         writeln!(w, "\t{op_cli}", op_cli = super::ilasm_op::op_cli(op))?;
     }

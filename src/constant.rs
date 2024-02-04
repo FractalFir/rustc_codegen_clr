@@ -823,8 +823,10 @@ fn load_const_scalar<'ctx>(
                 let low = i64::from_ne_bytes(low.to_ne_bytes());
                 let high = i64::from_ne_bytes(high.to_ne_bytes());
                 let i128_class = DotnetTypeRef::new(Some("System.Runtime"), "System.Int128");
-                let ctor_sig =
-                    crate::function_sig::FnSig::new(&[Type::U128,Type::U64, Type::U64], &Type::Void);
+                let ctor_sig = crate::function_sig::FnSig::new(
+                    &[Type::U128, Type::U64, Type::U64],
+                    &Type::Void,
+                );
                 vec![
                     CILOp::NewTMPLocal(Type::U128.into()),
                     CILOp::LoadAddresOfTMPLocal,
@@ -907,7 +909,7 @@ pub fn load_const_int(value: u128, int_type: &IntTy) -> Vec<CILOp> {
                     ctor_sig,
                     false,
                 )),
-                CILOp::LoadTMPLocal, 
+                CILOp::LoadTMPLocal,
                 CILOp::FreeTMPLocal,
             ]
         }

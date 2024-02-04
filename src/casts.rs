@@ -5,6 +5,9 @@ use crate::{
 };
 /// Casts from intiger type `src` to target `target`
 pub fn int_to_int(src: Type, target: Type) -> Vec<CILOp> {
+    if src == target{
+        return vec![];
+    }
     match (&src, &target) {
         (_, Type::I128) => {
             vec![CILOp::Call(
@@ -17,7 +20,27 @@ pub fn int_to_int(src: Type, target: Type) -> Vec<CILOp> {
                 .into(),
             )]
         }
-        (_, Type::U128) => {
+        (Type::I128,Type::U128)=>vec![CILOp::Call(
+            CallSite::new(
+                Some(DotnetTypeRef::int_128()),
+                "op_Explicit".into(),
+                FnSig::new(&[src], &target),
+                true,
+            )
+            .into(),
+        )],
+        (Type::I8|Type::I16|Type::I32|Type::I64, Type::U128) => 
+            vec![CILOp::Call(
+                CallSite::new(
+                    Some(DotnetTypeRef::uint_128()),
+                    "op_Explicit".into(),
+                    FnSig::new(&[src], &target),
+                    true,
+                )
+                .into(),
+            )]
+        ,
+        (_, Type::U128) => 
             vec![CILOp::Call(
                 CallSite::new(
                     Some(DotnetTypeRef::uint_128()),
@@ -27,7 +50,8 @@ pub fn int_to_int(src: Type, target: Type) -> Vec<CILOp> {
                 )
                 .into(),
             )]
-        }
+        ,
+        
         (Type::I128, _) => {
             vec![CILOp::Call(
                 CallSite::new(
@@ -86,7 +110,7 @@ pub fn float_to_int(src: Type, target: Type) -> Vec<CILOp> {
     //
 }
 /// Returns CIL ops required to convert to intiger of type `target`
-pub fn to_int(target: Type) -> Vec<CILOp> {
+fn to_int(target: Type) -> Vec<CILOp> {
     match target {
         Type::I8 => vec![CILOp::ConvI8(false)],
         Type::U8 => vec![CILOp::ConvU8(false)],
