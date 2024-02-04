@@ -493,7 +493,7 @@ pub fn call<'tyctx>(
             type_cache,
         ));
     }
-    if crate::function_sig::is_fn_variadic(fn_type,tyctx) {
+    if crate::function_sig::is_fn_variadic(fn_type, tyctx) {
         signature.set_inputs(
             args.iter()
                 .map(|operand| {

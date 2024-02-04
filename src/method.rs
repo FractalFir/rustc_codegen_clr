@@ -67,6 +67,9 @@ impl Method {
             _=>self.ops.extend(CILOp::throw_msg("Critical error: reached the end of a function not termianted with a return statement")),
         }
     }
+    pub fn maxstack(&self)->u32{
+        100
+    }
     pub fn set_name(&mut self, name: &str) {
         self.name = name.into();
     }

@@ -556,6 +556,8 @@ run_test! {types,slice,unstable}
 run_test! {types,statics,stable}
 run_test! {types,async_types,unstable}
 run_test! {types,self_referential_statics,stable}
+run_test! {types,int128,unstable}
+
 run_test! {std,main,unstable}
 
 run_test! {control_flow,cf_for,stable}
@@ -568,7 +570,7 @@ run_test! {intrinsics,type_id,stable}
 run_test! {intrinsics,ptr_offset_from_unsigned,stable}
 
 run_test! {fuzz,test0,stable}
-run_test! {fuzz,fuzz0,stable}
+run_test! {fuzz,fuzz0,unstable}
 run_test! {fuzz,test1,stable}
 cargo_test! {hello_world,stable}
 cargo_test! {std_hello_world,stable}

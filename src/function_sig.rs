@@ -2,7 +2,7 @@ use crate::{
     codegen_error::CodegenError,
     r#type::{TyCache, Type},
 };
-use rustc_middle::ty::{Instance, List, ParamEnv, ParamEnvAnd, PolyFnSig, TyCtxt, Ty,TyKind};
+use rustc_middle::ty::{Instance, List, ParamEnv, ParamEnvAnd, PolyFnSig, Ty, TyCtxt, TyKind};
 use rustc_target::abi::call::Conv;
 use rustc_target::spec::abi::Abi as TargetAbi;
 use serde::{Deserialize, Serialize};
@@ -113,6 +113,6 @@ pub struct FunctionCallInfo {
     inputs: Vec<Type>,
     output: Type,
 }
-pub fn is_fn_variadic<'tyctx>(ty:Ty<'tyctx>,tyctx:TyCtxt<'tyctx>)->bool{
+pub fn is_fn_variadic<'tyctx>(ty: Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -> bool {
     ty.fn_sig(tyctx).skip_binder().c_variadic
 }

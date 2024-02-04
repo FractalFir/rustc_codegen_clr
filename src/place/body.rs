@@ -135,7 +135,9 @@ pub fn place_elem_body<'ctx>(
                 } else {
                     panic!();
                 };
-            let variant_name = symbol.unwrap();
+            let variant_name = symbol
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| format!("v{variant})", variant = variant.as_u32()));
             let field_name = format!("v_{variant_name}").into();
             let _curr_type_name = (curr_dotnet_type).name_path();
             let mut field_type = curr_dotnet_type.clone();

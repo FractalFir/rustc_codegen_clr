@@ -227,17 +227,25 @@ fn create_const_from_slice<'ctx>(
                 let high = (value << 64) as u64;
                 let low = i64::from_ne_bytes(low.to_ne_bytes());
                 let high = i64::from_ne_bytes(high.to_ne_bytes());
-                let ctor_sig =
-                    crate::function_sig::FnSig::new(&[Type::U64, Type::U64], &Type::Void);
+                let ctor_sig = crate::function_sig::FnSig::new(
+                    &[Type::I128, Type::U64, Type::U64],
+                    &Type::Void,
+                );
                 vec![
+                    CILOp::NewTMPLocal(Type::I128.into()),
+                    CILOp::LoadAddresOfTMPLocal,
                     CILOp::LdcI64(high),
+                    CILOp::ConvU64(false),
                     CILOp::LdcI64(low),
-                    CILOp::NewObj(CallSite::boxed(
+                    CILOp::ConvU64(false),
+                    CILOp::Call(CallSite::boxed(
                         Some(DotnetTypeRef::int_128()),
                         ".ctor".into(),
                         ctor_sig,
-                        true,
+                        false,
                     )),
+                    CILOp::LoadTMPLocal,
+                    CILOp::FreeTMPLocal,
                 ]
             }
         },
@@ -286,17 +294,25 @@ fn create_const_from_slice<'ctx>(
                 let high = (value << 64) as u64;
                 let low = i64::from_ne_bytes(low.to_ne_bytes());
                 let high = i64::from_ne_bytes(high.to_ne_bytes());
-                let ctor_sig =
-                    crate::function_sig::FnSig::new(&[Type::U64, Type::U64], &Type::Void);
+                let ctor_sig = crate::function_sig::FnSig::new(
+                    &[Type::U128, Type::U64, Type::U64],
+                    &Type::Void,
+                );
                 vec![
+                    CILOp::NewTMPLocal(Type::U128.into()),
+                    CILOp::LoadAddresOfTMPLocal,
                     CILOp::LdcI64(high),
+                    CILOp::ConvU64(false),
                     CILOp::LdcI64(low),
-                    CILOp::NewObj(CallSite::boxed(
+                    CILOp::ConvU64(false),
+                    CILOp::Call(CallSite::boxed(
                         Some(DotnetTypeRef::uint_128()),
                         ".ctor".into(),
                         ctor_sig,
-                        true,
+                        false,
                     )),
+                    CILOp::LoadTMPLocal,
+                    CILOp::FreeTMPLocal,
                 ]
             }
         },
@@ -371,6 +387,7 @@ fn create_const_from_slice<'ctx>(
                 ]
                 //todo!("Can't load const string slices. ptr:{ptr} len:{len}")
             }
+
             _ => {
                 eprintln!("WARNING: assuming sizeof<*T>() == 8!");
                 vec![CILOp::LdcI64(i64::from_le_bytes(
@@ -378,7 +395,7 @@ fn create_const_from_slice<'ctx>(
                 ))]
             }
         },
-        
+
         TyKind::Ref(_, inner, _) => match inner.kind() {
             TyKind::Slice(inner) => {
                 let ptr = u64::from_ne_bytes(bytes[..8].try_into().unwrap());
@@ -485,7 +502,7 @@ fn create_const_from_slice<'ctx>(
                     tycache,
                 );
                 ops.push(CILOp::LoadAddresOfTMPLocal);
-                ops.push(CILOp::ConvUSize(false));
+                //ops.push(CILOp::ConvUSize(false));
                 ops.extend(field_ops);
                 ops.push(CILOp::STField(FieldDescriptor::boxed(
                     tuple_dotnet.clone(),
@@ -729,6 +746,8 @@ fn load_const_scalar<'ctx>(
     };
     let tpe = crate::utilis::monomorphize(&method_instance, scalar_type, tyctx);
     let tpe = tycache.type_from_cache(tpe, tyctx, Some(method_instance));
+    //TODO: This assumes a LE target
+    let bytes = scalar_u128.to_le_bytes();
     match scalar_type.kind() {
         TyKind::Int(int_type) => load_const_int(scalar_u128, int_type),
         TyKind::Uint(uint_type) => load_const_uint(scalar_u128, uint_type),
@@ -737,6 +756,41 @@ fn load_const_scalar<'ctx>(
         TyKind::RawPtr(_) => {
             let value = i64::from_ne_bytes((scalar_u128 as u64).to_ne_bytes());
             vec![CILOp::LdcI64(value)]
+        }
+        TyKind::Tuple(elements) => {
+            if elements.is_empty() {
+                vec![
+                    CILOp::NewTMPLocal(Type::Void.into()),
+                    CILOp::LoadTMPLocal,
+                    CILOp::FreeTMPLocal,
+                ]
+            } else {
+                //asssert!(elements.len() == 1, "Mulit element const tuples not supported yet!");
+                let tuple_dotnet = tpe.clone().as_dotnet().unwrap();
+                let mut res = vec![CILOp::NewTMPLocal(tpe.into()).into()];
+                let mut curr_offset = 0;
+                for (idx, element) in elements.iter().enumerate() {
+                    res.push(CILOp::LoadAddresOfTMPLocal);
+                    res.extend(create_const_from_slice(
+                        element,
+                        tyctx,
+                        &bytes[curr_offset..],
+                        method_instance,
+                        tycache,
+                    ));
+                    let element_type =
+                        tycache.type_from_cache(element, tyctx, Some(method_instance));
+                    res.push(CILOp::STField(FieldDescriptor::boxed(
+                        tuple_dotnet.clone(),
+                        element_type,
+                        format!("Item{}", idx + 1).into(),
+                    )));
+                    curr_offset +=
+                        crate::utilis::compiletime_sizeof(element, tyctx, method_instance);
+                }
+                res.extend([CILOp::LoadTMPLocal, CILOp::FreeTMPLocal]);
+                res
+            }
         }
         TyKind::Adt(adt_def, _subst) => match adt_def.adt_kind() {
             AdtKind::Enum => {
@@ -770,18 +824,20 @@ fn load_const_scalar<'ctx>(
                 let high = i64::from_ne_bytes(high.to_ne_bytes());
                 let i128_class = DotnetTypeRef::new(Some("System.Runtime"), "System.Int128");
                 let ctor_sig =
-                    crate::function_sig::FnSig::new(&[Type::U64, Type::U64], &Type::Void);
+                    crate::function_sig::FnSig::new(&[Type::U128,Type::U64, Type::U64], &Type::Void);
                 vec![
+                    CILOp::NewTMPLocal(Type::U128.into()),
+                    CILOp::LoadAddresOfTMPLocal,
                     CILOp::LdcI64(high),
+                    CILOp::ConvU64(false),
                     CILOp::LdcI64(low),
-                    CILOp::NewObj(CallSite::boxed(
-                        Some(i128_class),
+                    CILOp::ConvU64(false),
+                    CILOp::Call(CallSite::boxed(
+                        Some(DotnetTypeRef::uint_128()),
                         ".ctor".into(),
                         ctor_sig,
-                        true,
+                        false,
                     )),
-                    CILOp::NewTMPLocal(Type::I128.into()),
-                    CILOp::SetTMPLocal,
                     CILOp::LoadAddresOfTMPLocal,
                     CILOp::ConvUSize(false),
                     CILOp::LdObj(tpe.into()),
@@ -836,17 +892,23 @@ pub fn load_const_int(value: u128, int_type: &IntTy) -> Vec<CILOp> {
             let high = (value << 64) as u64;
             let low = i64::from_ne_bytes(low.to_ne_bytes());
             let high = i64::from_ne_bytes(high.to_ne_bytes());
-            let i128_class = DotnetTypeRef::new(Some("System.Runtime"), "System.Int128");
-            let ctor_sig = crate::function_sig::FnSig::new(&[Type::U64, Type::U64], &Type::Void);
+            let ctor_sig =
+                crate::function_sig::FnSig::new(&[Type::I128, Type::U64, Type::U64], &Type::Void);
             vec![
+                CILOp::NewTMPLocal(Type::I128.into()),
+                CILOp::LoadAddresOfTMPLocal,
                 CILOp::LdcI64(high),
+                CILOp::ConvU64(false),
                 CILOp::LdcI64(low),
-                CILOp::NewObj(CallSite::boxed(
-                    Some(i128_class),
+                CILOp::ConvU64(false),
+                CILOp::Call(CallSite::boxed(
+                    Some(DotnetTypeRef::int_128()),
                     ".ctor".into(),
                     ctor_sig,
-                    true,
+                    false,
                 )),
+                CILOp::LoadTMPLocal, 
+                CILOp::FreeTMPLocal,
             ]
         }
     }
@@ -878,17 +940,23 @@ pub fn load_const_uint(value: u128, int_type: &UintTy) -> Vec<CILOp> {
             let high = (value << 64) as u64;
             let low = i64::from_ne_bytes(low.to_ne_bytes());
             let high = i64::from_ne_bytes(high.to_ne_bytes());
-            let i128_class = DotnetTypeRef::new(Some("System.Runtime"), "System.UInt128");
-            let ctor_sig = crate::function_sig::FnSig::new(&[Type::U64, Type::U64], &Type::Void);
+            let ctor_sig =
+                crate::function_sig::FnSig::new(&[Type::U128, Type::U64, Type::U64], &Type::Void);
             vec![
+                CILOp::NewTMPLocal(Type::U128.into()),
+                CILOp::LoadAddresOfTMPLocal,
                 CILOp::LdcI64(high),
+                CILOp::ConvU64(false),
                 CILOp::LdcI64(low),
-                CILOp::NewObj(CallSite::boxed(
-                    Some(i128_class),
+                CILOp::ConvU64(false),
+                CILOp::Call(CallSite::boxed(
+                    Some(DotnetTypeRef::uint_128()),
                     ".ctor".into(),
                     ctor_sig,
-                    true,
+                    false,
                 )),
+                CILOp::LoadTMPLocal,
+                CILOp::FreeTMPLocal,
             ]
         }
     }

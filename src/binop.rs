@@ -224,7 +224,7 @@ fn sub_unchecked<'tyctx>(
 fn ne_unchecked<'tyctx>(ty_a: Ty<'tyctx>, ty_b: Ty<'tyctx>) -> Vec<CILOp> {
     vec![eq_unchecked(ty_a, ty_b), CILOp::LdcI32(0), CILOp::Eq]
 }
-fn eq_unchecked<'tyctx>(ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> CILOp {
+pub fn eq_unchecked<'tyctx>(ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> CILOp {
     //vec![CILOp::Eq]
     match ty_a.kind() {
         TyKind::Uint(uint) => match uint {

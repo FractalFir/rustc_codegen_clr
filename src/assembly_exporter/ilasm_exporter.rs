@@ -38,7 +38,7 @@ impl AssemblyExporter for ILASMExporter {
         let mut encoded_asm = Vec::with_capacity(0x1_00);
         let mut methods = Vec::with_capacity(0x1_00);
         write!(encoded_asm, ".assembly {asm_name}{{}}").expect("Write error!");
-        write!(methods, ".class RustModule{{").expect("Write error!");
+        write!(methods, ".class beforefieldinit RustModule{{").expect("Write error!");
         Self {
             encoded_asm,
             methods,
@@ -121,7 +121,8 @@ impl AssemblyExporter for ILASMExporter {
         writeln!(
             self.methods,
             ".method private hidebysig static pinvokeimpl(\"{lib_path}\" cdecl) {output} '{name}'("
-        ).unwrap();
+        )
+        .unwrap();
         let mut input_iter = sig.inputs().iter();
         if let Some(input) = input_iter.next() {
             write!(self.methods, "{}", non_void_type_cil(input)).unwrap();
@@ -246,7 +247,7 @@ fn method_cil(w: &mut impl Write, method: &Method) -> std::io::Result<()> {
             escaped_type = non_void_type_cil(&local.1)
         )?;
     }
-    writeln!(w, "\n\t)")?;
+    writeln!(w, "\n\t)\n.maxstack {maxstack}\n",maxstack = method.maxstack())?;
     for op in method.get_ops() {
         writeln!(w, "\t{op_cli}", op_cli = super::ilasm_op::op_cli(op))?;
     }

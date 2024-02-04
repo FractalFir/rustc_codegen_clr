@@ -5,7 +5,8 @@
     unused_assignments,
     overflowing_literals,
     internal_features,
-    incomplete_features
+    incomplete_features,
+    unused_variables
 )]
 #![no_std]
 include!("../common.rs");

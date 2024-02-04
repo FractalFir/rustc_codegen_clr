@@ -116,6 +116,30 @@ pub fn handle_intrinsic<'tyctx>(
                 type_cache,
             )
         }
+        "fmaf64" => {
+            debug_assert_eq!(
+                args.len(),
+                3,
+                "The intrinsic `fmaf64` MUST take in exactly 1 argument!"
+            );
+            let mut res = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
+            res.extend(handle_operand(
+                &args[1].node,
+                tyctx,
+                body,
+                method_instance,
+                type_cache,
+            ));
+            res.extend(handle_operand(
+                &args[2].node,
+                tyctx,
+                body,
+                method_instance,
+                type_cache,
+            ));
+            res.extend([CILOp::Mul, CILOp::Add]);
+            place_set(destination, tyctx, res, body, method_instance, type_cache)
+        }
         "ctpop" => {
             debug_assert_eq!(
                 args.len(),

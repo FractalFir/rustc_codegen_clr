@@ -52,7 +52,7 @@ pub trait AssemblyExporter: Sized {
                 asm_exporter.add_method(method);
             }
         }
-        for ((name,sig),lib) in asm.extern_fns(){
+        for ((name, sig), lib) in asm.extern_fns() {
             asm_exporter.add_extern_method(lib, name, sig);
         }
         println!(

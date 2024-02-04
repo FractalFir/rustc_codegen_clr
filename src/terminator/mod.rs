@@ -463,7 +463,9 @@ fn throw_assert_msg<'ctx>(
 fn handle_switch(ty: Ty, discr: &[CILOp], switch: &SwitchTargets) -> Vec<CILOp> {
     let mut ops = Vec::new();
     for (value, target) in switch.iter() {
+        //ops.extend(CILOp::debug_msg("Switchin"));
         ops.extend(discr.iter().cloned());
+       
         ops.extend(match ty.kind() {
             TyKind::Int(int) => crate::constant::load_const_int(value, int),
             TyKind::Uint(uint) => crate::constant::load_const_uint(value, uint),
@@ -476,7 +478,8 @@ fn handle_switch(ty: Ty, discr: &[CILOp], switch: &SwitchTargets) -> Vec<CILOp> 
             _ => todo!("Unsuported switch discriminant type {ty:?}"),
         });
         //ops.push(CILOp::LdcI64(value as i64));
-        ops.push(CILOp::BEq(target.into()));
+        ops.push(crate::binop::eq_unchecked(ty,ty));
+        ops.push(CILOp::BTrue(target.into()));
     }
     ops.push(CILOp::GoTo(switch.otherwise().into()));
     ops
