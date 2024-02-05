@@ -464,7 +464,7 @@ fn build_backend() -> Result<(), String> {
         .expect("could not build the backend");
     Ok(())
 }
-fn absolute_backend_path() -> PathBuf {
+pub fn absolute_backend_path() -> PathBuf {
     if cfg!(debug_assertions) {
         if cfg!(target_os = "linux") {
             std::fs::canonicalize("target/debug/librustc_codegen_clr.so").unwrap()
@@ -621,7 +621,7 @@ lazy_static! {
     static ref IS_PEVERIFY_PRESENT: bool = std::process::Command::new("peverify").output().is_ok();
     static ref IS_DOTNET_PRESENT: bool = std::process::Command::new("dotnet").output().is_ok();
     static ref RUSTC_BUILD_STATUS: Result<(), String> = build_backend();
-    static ref RUSTC_CODEGEN_CLR_LINKER:PathBuf = {
+    pub static ref RUSTC_CODEGEN_CLR_LINKER:PathBuf = {
         if cfg!(debug_assertions) {
             std::process::Command::new("cargo").args(["build","--bin","linker"]).output().unwrap();
             //TODO: Fix this for other platforms
