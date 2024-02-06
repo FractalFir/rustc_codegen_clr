@@ -37,6 +37,7 @@ macro_rules! test_eq{
         if black_box($a) != black_box($b){
             //Put::putnl($a);
             //Put::putnl($b);
+            rustc_clr_interop_managed_call1_::<"System.Console","System.Console",false,"WriteLine",true,(),u32>(line!());
             unsafe{core::intrinsics::breakpoint()};
             core::intrinsics::abort();
         }
@@ -107,6 +108,30 @@ impl Put for u16{
     }
     fn put(val:Self){
         <u32 as Put>::put(val as u32);
+    }
+}
+impl Put for usize{
+    fn putnl(val:Self){
+        <u64 as Put>::putnl(val as u64);
+    }
+    fn put(val:Self){
+        <u64 as Put>::put(val as u64);
+    }
+}
+impl<T> Put for *mut T{
+    fn putnl(val:Self){
+        <usize as Put>::putnl(val as usize);
+    }
+    fn put(val:Self){
+        <usize as Put>::put(val as usize);
+    }
+}
+impl<T> Put for *const T{
+    fn putnl(val:Self){
+        <usize as Put>::putnl(val as usize);
+    }
+    fn put(val:Self){
+        <usize as Put>::put(val as usize);
     }
 }
 impl Put for u32{}

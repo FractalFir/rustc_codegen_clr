@@ -577,6 +577,9 @@ run_test! {fuzz,fuzz0,unstable}
 run_test! {fuzz,fuzz1,unstable}
 run_test! {fuzz,fuzz2,unstable}
 run_test! {fuzz,fuzz3,unstable}
+
+run_test! {fuzz,fail0,unstable}
+
 cargo_test! {hello_world,stable}
 cargo_test! {std_hello_world,stable}
 cargo_test_ignored! {build_core}

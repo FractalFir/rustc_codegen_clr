@@ -166,6 +166,7 @@ fn is_miri_happy(crate_path: &str, target_path: &str) -> bool {
     }
     true
 }
+/* */
 fn main() {
     let source_path = "/home/michal/Rust/rustc_codegen_clr/test/fuzz/minfuzz/src/original.rs";
     let target_path = "/home/michal/Rust/rustc_codegen_clr/test/fuzz/minfuzz/src/main.rs";
@@ -184,8 +185,8 @@ fn main() {
         // Compiles the test project
         let mut cmd = std::process::Command::new("rustc");
         //.env("RUST_TARGET_PATH","../../")
-        cmd.args([
-            "-O",
+        cmd.env("TRACE_STATEMENTS","1").args([
+            //"-O",
             "-Z",
             &format!(
                 "codegen-backend={}",
@@ -234,7 +235,8 @@ fn main() {
                 return false;
             }
             if stderr.contains("System.NullReferenceException")
-                && stderr.contains("at RustModule._ZN4main3fn717h0e6921765b60ad71E")
+                && stderr.contains("(IntPtr , Int128 , Tuple2is , SByte* , Double , Int128 , Tuple2is , UInt128 , Tuple3f64 , UInt64 , Tuple3pi8 , Tuple13Tuple7u32u128 )")
+                && stdout.contains("_3 = (_1,)")
             {
                 return true;
             } else {

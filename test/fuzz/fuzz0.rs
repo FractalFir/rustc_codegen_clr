@@ -1,18 +1,8 @@
-#![recursion_limit = "1024"]
 #![feature(custom_mir, core_intrinsics, const_hash,adt_const_params,start,lang_items)]
 #![allow(
-    unused_parens,
-    unused_assignments,
     overflowing_literals,
-    internal_features,
-    incomplete_features,
-    unused_variables
 )]
-//#![no_std]
-//include!("../common.rs");
-extern crate core;
 use core::intrinsics::mir::*;
-
 use core::ffi::{c_char, c_int};
 #[custom_mir(dialect = "runtime", phase = "initial")]
 pub fn fn7(
@@ -30,240 +20,18 @@ pub fn fn7(
     mut _12: ((char, u128),),
 ) -> usize {
     mir! {
-    type RET = usize;
-    let _13: u8;
-    let _14: (u8, f64);
     let _15: (char, u128);
-    let _16: isize;
-    let _17: (char, u128);
-    let _18: *mut (&'static f64, bool, bool, u64, usize);
-    let _19: (u8, f64);
-    let _20: (u8, f64);
-    let _21: Adt41;
-    let _22: *mut *mut (&'static f64, bool, bool, u64, usize);
-    let _23: [u64; 7];
-    let _24: ((&'static f64, bool, bool, u64, usize),);
-    let _25: char;
-    let _26: [u128; 6];
-    let _27: i16;
-    let _28: ((char, u128),);
-    let _29: (f64,);
-    let _30: u32;
-    let _31: ((char, u128),);
-    let _32: [bool; 5];
-    let _33: [u64; 7];
     let _34: Adt48;
-    let _35: [i64; 7];
-    let _36: f32;
-    let _37: ();
-    let _38: ();
     {
-    _3.0 = !_1;
+    (*_4) = (88_i8);
     RET = _12.0.0 as usize;
-    (*_4) = (-88_i8);
-    _11 = (_4,);
-    _9 = (_5,);
-    _7 = _3;
-    _3.0 = _8 as isize;
-    _12.0 = ('\u{71c0a}', _8);
-    _10 = 102_u8 as u64;
-    _11 = (_4,);
-    _7 = _3;
-    _14.0 = 215_u8 ^ 74_u8;
-    Call(_8 = core::intrinsics::transmute(_2), ReturnTo(bb1), UnwindUnreachable())
-    }
-    bb1 = {
-    _15.1 = RET as u128;
-    match (*_4) {
-    0 => bb2,
-    1 => bb3,
-    2 => bb4,
-    340282366920938463463374607431768211368 => bb6,
-    _ => bb5
-    }
-    }
-    bb2 = {
-    Return()
-    }
-    bb3 = {
-    Return()
-    }
-    bb4 = {
-    Return()
-    }
-    bb5 = {
-    Return()
-    }
-    bb6 = {
-    _6 = _2 + _2;
-    _10 = (*_4) as u64;
-    _12.0.1 = !_8;
-    _12.0.0 = '\u{4d73e}';
-    _14.1 = _5;
-    _14.1 = _9.0;
-    _9 = (_5,);
-    _12.0.0 = '\u{86d4c}';
-    _15.0 = _12.0.0;
-    _15.0 = _12.0.0;
-    _12.0.1 = _8 - _8;
-    _12.0.0 = _15.0;
-    _17.1 = !_12.0.1;
-    _11 = (_4,);
-    _9.0 = _5;
-    _17.0 = _15.0;
-    _3.0 = !_1;
-    _17 = (_15.0, _12.0.1);
-    _15.0 = _12.0.0;
-    _11 = (_4,);
-    _2 = _6;
-    _12.0 = _17;
-    _12.0.0 = _17.0;
-    _15.0 = _17.0;
-    (*_4) = (-85_i8);
-    Goto(bb7)
-    }
-    bb7 = {
-    _9.0 = -_14.1;
-    _17.1 = _12.0.1 << _6;
-    _15.1 = _12.0.1;
-    RET = 4267213234085359564_usize & 6_usize;
-    (*_4) = (-8_i8) + (-92_i8);
-    _19 = _14;
-    _17.1 = 28854_i16 as u128;
-    _13 = _19.0 ^ _19.0;
-    _17.1 = !_12.0.1;
-    _6 = !_2;
-    _17.0 = _12.0.0;
-    _20.0 = _14.0;
-    (*_4) = _10 as i8;
-    _20.1 = _19.1;
-    _9.0 = _19.1 - _5;
-    _16 = _15.0 as isize;
-    _20 = (_19.0, _9.0);
-    _15.0 = _12.0.0;
-    _11 = (_4,);
-    _12.0.1 = _17.1 >> _17.1;
-    _6 = _2 << _3.0;
-    Goto(bb8)
-    }
-    bb8 = {
-    _19.0 = _12.0.1 as u8;
-    _15.1 = _9.0 as u128;
-    _14.0 = !_19.0;
-    _15 = (_12.0.0, _17.1);
-    _23 = [_10,_10,_10,_10,_10,_10,_10];
-    _19.1 = -_9.0;
-    _15.1 = _17.1;
-    _24.0.1 = !true;
-    Goto(bb9)
-    }
-    bb9 = {
-    _28.0.1 = _12.0.1 * _17.1;
-    (*_4) = 9_i8;
-    _15.1 = !_12.0.1;
-    _20.0 = !_19.0;
-    _9.0 = _20.1 + _19.1;
-    RET = 4_usize ^ 12916287186233074672_usize;
-    _7.0 = _1;
-    _18 = core::ptr::addr_of_mut!(_24.0);
-    _32 = [(*_18).1,(*_18).1,(*_18).1,(*_18).1,(*_18).1];
-    (*_18).0 = &_20.1;
-    _29 = (_5,);
-    (*_18).0 = &_14.1;
     _34.fld2.fld4.0 = _4;
-    _34.fld2.fld2 = _10;
-    _34.fld2.fld1 = _2 & _6;
-    _34.fld2.fld0.0.1 = _17.1;
-    _34.fld2.fld2 = (-628007955_i32) as u64;
-    _33 = [_10,_34.fld2.fld2,_10,_34.fld2.fld2,_34.fld2.fld2,_34.fld2.fld2,_10];
-    _31.0 = _15;
-    _27 = (-25313_i16);
-    _9 = _29;
-    _34.fld2.fld6 = _3;
+    _34.fld2.fld1 = _2;
     _4 = _34.fld2.fld4.0;
-    match _27 {
-    0 => bb10,
-    1 => bb11,
-    2 => bb12,
-    340282366920938463463374607431768186143 => bb14,
-    _ => bb13
-    }
-    }
-    bb10 = {
-    Return()
-    }
-    bb11 = {
-    _9.0 = -_14.1;
-    _17.1 = _12.0.1 << _6;
-    _15.1 = _12.0.1;
-    RET = 4267213234085359564_usize & 6_usize;
-    (*_4) = (-8_i8) + (-92_i8);
-    _19 = _14;
-    _17.1 = 28854_i16 as u128;
-    _13 = _19.0 ^ _19.0;
-    _17.1 = !_12.0.1;
-    _6 = !_2;
-    _17.0 = _12.0.0;
-    _20.0 = _14.0;
-    (*_4) = _10 as i8;
-    _20.1 = _19.1;
-    _9.0 = _19.1 - _5;
-    _16 = _15.0 as isize;
-    _20 = (_19.0, _9.0);
-    _15.0 = _12.0.0;
-    _11 = (_4,);
-    _12.0.1 = _17.1 >> _17.1;
-    _6 = _2 << _3.0;
-    Goto(bb8)
-    }
-    bb12 = {
-    _15.1 = RET as u128;
-    match (*_4) {
-    0 => bb2,
-    1 => bb3,
-    2 => bb4,
-    340282366920938463463374607431768211368 => bb6,
-    _ => bb5
-    }
-    }
-    bb13 = {
-    Return()
-    }
-    bb14 = {
-    (*_18).4 = _7.0 as usize;
-    (*_18).1 = _6 < _6;
-    _24.0.0 = &_9.0;
-    _24.0.0 = &_20.1;
-    _17.0 = _12.0.0;
-    _34.fld2.fld1 = _6 * _6;
     _3 = (_1,);
-    (*_4) = (-101_i8) << _15.1;
-    _34.fld1 = (_29.0,);
-    _29 = _9;
-    _16 = _7.0 ^ _7.0;
-    _24.0.1 = true;
-    _19.0 = !_14.0;
-    _17.1 = _34.fld2.fld0.0.1 ^ _15.1;
-    (*_18).2 = (*_18).1;
-    _24.0.2 = _20.0 <= _20.0;
-    _34.fld0 = _17.1;
-    (*_18).0 = &_29.0;
-    (*_18).4 = RET - RET;
-    _24.0.0 = &_34.fld1.0;
-    _19 = (_20.0, _9.0);
-    _20.0 = _14.0;
-    Goto(bb15)
-    }
-    bb15 = {
-    Call(_37 = dump_var(7_usize, 17_usize, Move(_17), 7_usize, Move(_7), 8_usize, Move(_8), 1_usize, Move(_1)), ReturnTo(bb16), UnwindUnreachable())
-    }
-    bb16 = {
-    Call(_37 = dump_var(7_usize, 6_usize, Move(_6), 10_usize, Move(_10), 31_usize, Move(_31), 33_usize, Move(_33)), ReturnTo(bb17), UnwindUnreachable())
-    }
-    bb17 = {
+    (*_4) = (-101_i8) << (-1_i8);
     Return()
     }
-
     }
 }
 extern "C" {
@@ -274,47 +42,38 @@ trait PrintFDebug {
 }
 impl<T: PrintFDebug> PrintFDebug for *const T {
     fn printf_debug(&self) {
-        unsafe { (**self).printf_debug() };
     }
 }
 impl<T: PrintFDebug> PrintFDebug for *mut T {
     fn printf_debug(&self) {
-        unsafe { (**self).printf_debug() };
     }
 }
 impl<T: PrintFDebug> PrintFDebug for &T {
     fn printf_debug(&self) {
-        (**self).printf_debug();
     }
 }
 impl<T: PrintFDebug> PrintFDebug for &mut T {
     fn printf_debug(&self) {
-        (**self).printf_debug();
     }
 }
 impl PrintFDebug for i8 {
     fn printf_debug(&self) {
-        unsafe { printf("%i\0".as_ptr() as *const c_char, *self as i8 as c_int) };
     }
 }
 impl PrintFDebug for u8 {
     fn printf_debug(&self) {
-        unsafe { printf("%u\0".as_ptr() as *const c_char, *self as u8 as c_int) };
     }
 }
 impl PrintFDebug for i16 {
     fn printf_debug(&self) {
-        unsafe { printf("%i\0".as_ptr() as *const c_char, *self as i16 as c_int) };
     }
 }
 impl PrintFDebug for u16 {
     fn printf_debug(&self) {
-        unsafe { printf("%u\0".as_ptr() as *const c_char, *self as u16 as c_int) };
     }
 }
 impl PrintFDebug for i32 {
     fn printf_debug(&self) {
-        unsafe { printf("%i\0".as_ptr() as *const c_char, *self) };
     }
 }
 impl PrintFDebug for f32 {
@@ -322,7 +81,6 @@ impl PrintFDebug for f32 {
         unsafe {
             printf(
                 "%f\0".as_ptr() as *const c_char,
-                *self as core::ffi::c_double,
             )
         };
     }
@@ -332,39 +90,30 @@ impl PrintFDebug for f64 {
         unsafe {
             printf(
                 "%f\0".as_ptr() as *const c_char,
-                *self as core::ffi::c_double,
             )
         };
     }
 }
 impl<T: PrintFDebug, const N: usize> PrintFDebug for [T; N] {
     fn printf_debug(&self) {
-        unsafe { printf("[\0".as_ptr() as *const c_char) };
         for b in self {
-            b.printf_debug();
-            unsafe { printf(",\0".as_ptr() as *const c_char) };
         }
-        unsafe { printf("]\0".as_ptr() as *const c_char) };
     }
 }
 impl PrintFDebug for u32 {
     fn printf_debug(&self) {
-        unsafe { printf("%u\0".as_ptr() as *const c_char, *self) };
     }
 }
 impl PrintFDebug for char {
     fn printf_debug(&self) {
-        unsafe { printf("%u\0".as_ptr() as *const c_char, *self as u64) };
     }
 }
 impl PrintFDebug for i64 {
     fn printf_debug(&self) {
-        unsafe { printf("%li\0".as_ptr() as *const c_char, *self) };
     }
 }
 impl PrintFDebug for u64 {
     fn printf_debug(&self) {
-        unsafe { printf("%lu\0".as_ptr() as *const c_char, *self) };
     }
 }
 impl PrintFDebug for i128 {
@@ -372,8 +121,6 @@ impl PrintFDebug for i128 {
         unsafe {
             printf(
                 "%lu%lu\0".as_ptr() as *const c_char,
-                *self as i64,
-                (*self as u128 >> 64) as i64,
             )
         };
     }
@@ -383,91 +130,48 @@ impl PrintFDebug for u128 {
         unsafe {
             printf(
                 "%lu%lu\0".as_ptr() as *const c_char,
-                *self as u64,
-                (*self >> 64) as u64,
             )
         };
     }
 }
 impl PrintFDebug for isize {
     fn printf_debug(&self) {
-        unsafe { printf("%li\0".as_ptr() as *const c_char, *self as isize) };
     }
 }
 impl PrintFDebug for usize {
     fn printf_debug(&self) {
-        unsafe { printf("%lu\0".as_ptr() as *const c_char, *self as usize) };
     }
 }
 impl PrintFDebug for bool {
     fn printf_debug(&self) {
         if *self {
-            unsafe { printf("true\0".as_ptr() as *const c_char) };
-        } else {
-            unsafe { printf("false\0".as_ptr() as *const c_char) };
         }
     }
 }
 impl PrintFDebug for () {
     fn printf_debug(&self) {
-        unsafe { printf("()\0".as_ptr() as *const c_char) };
     }
 }
 impl<A: PrintFDebug> PrintFDebug for (A,) {
     fn printf_debug(&self) {
-        unsafe { printf("(\0".as_ptr() as *const c_char) };
-        self.0.printf_debug();
-        unsafe { printf(",)\0".as_ptr() as *const c_char) };
     }
 }
 impl<A: PrintFDebug, B: PrintFDebug> PrintFDebug for (A, B) {
     fn printf_debug(&self) {
-        unsafe { printf("(\0".as_ptr() as *const c_char) };
-        self.0.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.1.printf_debug();
-        unsafe { printf(")\0".as_ptr() as *const c_char) };
     }
 }
 impl<A: PrintFDebug, B: PrintFDebug, C: PrintFDebug> PrintFDebug for (A, B, C) {
     fn printf_debug(&self) {
-        unsafe { printf("(\0".as_ptr() as *const c_char) };
-        self.0.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.1.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.2.printf_debug();
-        unsafe { printf(")\0".as_ptr() as *const c_char) };
     }
 }
 impl<A: PrintFDebug, B: PrintFDebug, C: PrintFDebug, D: PrintFDebug> PrintFDebug for (A, B, C, D) {
     fn printf_debug(&self) {
-        unsafe { printf("(\0".as_ptr() as *const c_char) };
-        self.0.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.1.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.2.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.3.printf_debug();
-        unsafe { printf(")\0".as_ptr() as *const c_char) };
     }
 }
 impl<A: PrintFDebug, B: PrintFDebug, C: PrintFDebug, D: PrintFDebug, E: PrintFDebug> PrintFDebug
     for (A, B, C, D, E)
 {
     fn printf_debug(&self) {
-        unsafe { printf("(\0".as_ptr() as *const c_char) };
-        self.0.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.1.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.2.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.3.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.4.printf_debug();
-        unsafe { printf(")\0".as_ptr() as *const c_char) };
     }
 }
 impl<
@@ -480,19 +184,6 @@ impl<
     > PrintFDebug for (A, B, C, D, E, F)
 {
     fn printf_debug(&self) {
-        unsafe { printf("(\0".as_ptr() as *const c_char) };
-        self.0.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.1.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.2.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.3.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.4.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.5.printf_debug();
-        unsafe { printf(")\0".as_ptr() as *const c_char) };
     }
 }
 impl<
@@ -506,21 +197,6 @@ impl<
     > PrintFDebug for (A, B, C, D, E, F, G)
 {
     fn printf_debug(&self) {
-        unsafe { printf("(\0".as_ptr() as *const c_char) };
-        self.0.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.1.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.2.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.3.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.4.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.5.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.6.printf_debug();
-        unsafe { printf(")\0".as_ptr() as *const c_char) };
     }
 }
 impl<
@@ -535,23 +211,6 @@ impl<
     > PrintFDebug for (A, B, C, D, E, F, G, H)
 {
     fn printf_debug(&self) {
-        unsafe { printf("(\0".as_ptr() as *const c_char) };
-        self.0.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.1.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.2.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.3.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.4.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.5.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.6.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.7.printf_debug();
-        unsafe { printf(")\0".as_ptr() as *const c_char) };
     }
 }
 impl<
@@ -567,25 +226,6 @@ impl<
     > PrintFDebug for (A, B, C, D, E, F, G, H, I)
 {
     fn printf_debug(&self) {
-        unsafe { printf("(\0".as_ptr() as *const c_char) };
-        self.0.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.1.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.2.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.3.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.4.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.5.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.6.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.7.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.8.printf_debug();
-        unsafe { printf(")\0".as_ptr() as *const c_char) };
     }
 }
 impl<
@@ -602,30 +242,8 @@ impl<
     > PrintFDebug for (A, B, C, D, E, F, G, H, I, J)
 {
     fn printf_debug(&self) {
-        unsafe { printf("(\0".as_ptr() as *const c_char) };
-        self.0.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.1.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.2.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.3.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.4.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.5.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.6.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.7.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.8.printf_debug();
-        unsafe { printf(",\0".as_ptr() as *const c_char) };
-        self.9.printf_debug();
-        unsafe { printf(")\0".as_ptr() as *const c_char) };
     }
 }
-#[inline(never)]
 fn dump_var(
     f: usize,
     var0: usize,
@@ -637,22 +255,13 @@ fn dump_var(
     var3: usize,
     val3: impl PrintFDebug,
 ) {
-    unsafe { printf("fn%u:_%u = \0".as_ptr() as *const c_char, f, var0) };
-    val0.printf_debug();
-    unsafe { printf("\n_%u = \0".as_ptr() as *const c_char, var1) };
-    val1.printf_debug();
-    unsafe { printf("\n_%u = \0".as_ptr() as *const c_char, f, var2) };
-    val2.printf_debug();
-    unsafe { printf("\n_%u = \0".as_ptr() as *const c_char, var3) };
-    val3.printf_debug();
-    unsafe { printf("\n\0".as_ptr() as *const c_char, var3) };
+    #[cfg(linux)]{
+    }
 }
 #[custom_mir(dialect = "runtime", phase = "initial")]
 pub fn fn0(mut _1: bool, mut _2: u16, mut _3: isize, mut _4: i8, mut _5: i64) -> i16 {
     mir! {
-    type RET = i16;
     let _6: [bool; 5];
-    let _7: Adt53;
     let _8: &'static f64;
     let _9: [u128; 6];
     let _10: ([u64; 7], (u32, i8), i128, i8, isize, (char, u128));
@@ -660,60 +269,17 @@ pub fn fn0(mut _1: bool, mut _2: u16, mut _3: isize, mut _4: i8, mut _5: i64) ->
     let _12: (char, u128);
     let _13: (u8, f64);
     let _14: [bool; 5];
-    let _15: (isize,);
-    let _16: f32;
     let _17: ();
-    let _18: ();
     {
-    _4 = (-94_i8) << 186213244416342663114195007432756064350_u128;
-    _5 = 65034267823939950986072263633949909880_u128 as i64;
-    _5 = 1734457945955912462_i64 & 4350289123145076376_i64;
     RET = 3674903828_u32 as i16;
-    _4 = !110_i8;
-    _4 = -(-55_i8);
     Call(_2 = fn1(_5, _5, _5, _4, _5, RET, _4, _4, _5), ReturnTo(bb1), UnwindUnreachable())
     }
     bb1 = {
-    RET = -(-5330_i16);
-    _4 = -(-68_i8);
-    _4 = -(-40_i8);
-    _6 = [true,false,true,true,false];
-    RET = 298838788719619924884179960693348615304_u128 as i16;
-    _5 = 4759204708330752340_i64;
-    _6 = [true,true,true,true,false];
-    _1 = true;
-    _4 = 90_i8 ^ (-45_i8);
-    _1 = true;
     Goto(bb2)
     }
     bb2 = {
-    RET = _1 as i16;
-    _5 = (-8180306888089907284_i64) + 8383412635656636310_i64;
-    _3 = (-9223372036854775808_isize) >> _4;
-    RET = _5 as i16;
-    _4 = (-970070918_i32) as i8;
-    _1 = false;
-    _2 = 43843_u16 >> _5;
-    _5 = -3439898582211925083_i64;
-    _3 = -9223372036854775807_isize;
-    _6 = [_1,_1,_1,_1,_1];
-    _1 = true;
-    RET = _3 as i16;
-    RET = 6715_i16;
-    _1 = _3 != _3;
-    _3 = !(-82_isize);
-    _6 = [_1,_1,_1,_1,_1];
-    _6 = [_1,_1,_1,_1,_1];
-    _3 = RET as isize;
-    _5 = RET as i64;
-    _5 = 171_u8 as i64;
-    RET = 12287_i16 ^ (-9554_i16);
     _10.5 = ('\u{77f1e}', 183395721729731413358487676857597199131_u128);
-    _6 = [_1,_1,_1,_1,_1];
-    _10.0 = [71434012483773626_u64,784531975360245102_u64,10441616836850750594_u64,806572805728290859_u64,5051928156132446243_u64,12436858068770311514_u64,2113890696809008355_u64];
-    _5 = 2279710617_u32 as i64;
     match _10.5.1 {
-    0 => bb3,
     1 => bb4,
     2 => bb5,
     3 => bb6,
