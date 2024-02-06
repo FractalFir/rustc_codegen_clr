@@ -561,7 +561,7 @@ run_test! {types,int128,unstable}
 run_test! {std,main,unstable}
 
 run_test! {control_flow,cf_for,stable}
-run_test! {control_flow,drop,unstable}
+run_test! {control_flow,drop,stable}
 
 run_test! {intrinsics,bswap,unstable}
 run_test! {intrinsics,assert,unstable}
@@ -578,7 +578,7 @@ run_test! {fuzz,fuzz1,unstable}
 run_test! {fuzz,fuzz2,unstable}
 run_test! {fuzz,fuzz3,unstable}
 
-run_test! {fuzz,fail0,unstable}
+run_test! {fuzz,fail0,stable}
 
 cargo_test! {hello_world,stable}
 cargo_test! {std_hello_world,stable}
