@@ -9,6 +9,39 @@ pub fn int_to_int(src: Type, target: Type) -> Vec<CILOp> {
         return vec![];
     }
     match (&src, &target) {
+        (Type::ISize,Type::I128)=>
+            vec![CILOp::ConvI64(false),CILOp::Call(
+                CallSite::new(
+                    Some(DotnetTypeRef::int_128()),
+                    "op_Implicit".into(),
+                    FnSig::new(&[Type::I64], &Type::I128),
+                    true,
+                )
+                .into(),
+            )]
+        ,
+        (Type::ISize,Type::U128)=>
+            vec![CILOp::ConvI64(false),CILOp::Call(
+                CallSite::new(
+                    Some(DotnetTypeRef::uint_128()),
+                    "op_Explicit".into(),
+                    FnSig::new(&[Type::I64], &Type::U128),
+                    true,
+                )
+                .into(),
+            )]
+        ,
+        (Type::Bool,Type::U128)=>
+            vec![CILOp::ConvI8(false),CILOp::Call(
+                CallSite::new(
+                    Some(DotnetTypeRef::uint_128()),
+                    "op_Explicit".into(),
+                    FnSig::new(&[Type::I8], &Type::U128),
+                    true,
+                )
+                .into(),
+            )]
+        ,
         (_, Type::I128) => {
             vec![CILOp::Call(
                 CallSite::new(

@@ -136,8 +136,21 @@ pub fn place_elem_body<'ctx>(
                     panic!();
                 };
             let variant_name = symbol
-                .map(|s| s.to_string())
-                .unwrap_or_else(|| format!("v{variant})", variant = variant.as_u32()));
+                .unwrap_or_else(
+                    || {
+                        match curr_ty.kind() {
+                            TyKind::Adt(def, _) => def,
+                            _ => todo!(),
+                        }
+                        .variants()
+                        .iter()
+                        .nth(variant.as_u32() as usize)
+                        .unwrap()
+                        .name
+                    }, //format!("v{variant}", variant = variant.as_u32())
+                )
+                .to_string();
+
             let field_name = format!("v_{variant_name}").into();
             let _curr_type_name = (curr_dotnet_type).name_path();
             let mut field_type = curr_dotnet_type.clone();

@@ -75,7 +75,7 @@ pub(crate) fn binop_unchecked<'tyctx>(
         .into_iter()
         .flatten()
         .collect(),
-        BinOp::Rem => [ops_a, ops_b, rem_unchecked(ty_a, ty_b)]
+        BinOp::Rem => [ops_a, ops_b, rem_unchecked(ty_a, ty_b, tycache, &method_instance, tyctx)]
             .into_iter()
             .flatten()
             .collect(),
@@ -398,9 +398,44 @@ fn bit_xor_unchecked<'tyctx>(
         _ => vec![CILOp::XOr],
     }
 }
-fn rem_unchecked<'tyctx>(_ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> Vec<CILOp> {
-    vec![CILOp::Rem]
+fn rem_unchecked<'tyctx>(
+    ty_a: Ty<'tyctx>,
+    ty_b: Ty<'tyctx>,
+    tycache: &mut TyCache,
+    method_instance: &Instance<'tyctx>,
+    tyctx: TyCtxt<'tyctx>,
+) -> Vec<CILOp> {
+    match ty_a.kind() {
+        TyKind::Int(IntTy::I128) => {
+            let ty_a = tycache.type_from_cache(ty_a, tyctx, Some(*method_instance));
+            let ty_b = tycache.type_from_cache(ty_b, tyctx, Some(*method_instance));
+            vec![CILOp::Call(
+                CallSite::new(
+                    Some(DotnetTypeRef::int_128()),
+                    "op_Modulus".into(),
+                    FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
+                    true,
+                )
+                .into(),
+            )]
+        }
+        TyKind::Uint(UintTy::U128) => {
+            let ty_a = tycache.type_from_cache(ty_a, tyctx, Some(*method_instance));
+            let ty_b = tycache.type_from_cache(ty_b, tyctx, Some(*method_instance));
+            vec![CILOp::Call(
+                CallSite::new(
+                    Some(DotnetTypeRef::uint_128()),
+                    "op_Modulus".into(),
+                    FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
+                    true,
+                )
+                .into(),
+            )]
+        }
+        _ => vec![CILOp::Rem],
+    }
 }
+
 fn shr_unchecked<'tyctx>(
     ty_a: Ty<'tyctx>,
     ty_b: Ty<'tyctx>,

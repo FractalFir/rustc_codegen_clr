@@ -1,7 +1,7 @@
 use crate::{cil::CILOp, r#type::TyCache};
 use rustc_middle::{
     mir::{Body, CopyNonOverlapping, NonDivergingIntrinsic, Statement, StatementKind},
-    ty::{Instance, TyCtxt},
+    ty::{Instance, TyCtxt,ParamEnv},
 };
 pub fn handle_statement<'tcx>(
     statement: &Statement<'tcx>,
@@ -17,6 +17,33 @@ pub fn handle_statement<'tcx>(
         }
         StatementKind::StorageDead(_local) => {
             vec![]
+        }
+        StatementKind::SetDiscriminant{place,variant_index}=>{
+            let mut ops =
+                crate::place::place_adress(place, tyctx, method, method_instance, type_cache);
+            let owner_ty = place.ty(method, tyctx).ty;
+            let owner_ty = crate::utilis::monomorphize(&method_instance, owner_ty, tyctx);
+            let owner = type_cache.type_from_cache(owner_ty, tyctx, Some(method_instance));
+
+            let layout = tyctx
+                .layout_of(rustc_middle::ty::ParamEnvAnd {
+                    param_env: ParamEnv::reveal_all(),
+                    value: owner_ty,
+                })
+                .expect("Could not get type layout!");
+            let (disrc_type, _) = crate::utilis::adt::enum_tag_info(&layout.layout, tyctx);
+            let owner = if let crate::r#type::Type::DotnetType(dotnet_type) = owner {
+                dotnet_type.as_ref().clone()
+            } else {
+                panic!();
+            };
+            ops.push(CILOp::LdcI32(variant_index.as_u32() as i32));
+            ops.push(CILOp::STField(Box::new(crate::cil::FieldDescriptor::new(
+                owner,
+                disrc_type.clone(),
+                "_tag".into(),
+            ))));
+            ops
         }
         StatementKind::Assign(palce_rvalue) => {
             let place = palce_rvalue.as_ref().0;

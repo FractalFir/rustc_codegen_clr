@@ -565,13 +565,18 @@ run_test! {control_flow,drop,unstable}
 
 run_test! {intrinsics,bswap,unstable}
 run_test! {intrinsics,assert,unstable}
+run_test! {intrinsics,addr_of,stable}
 run_test! {intrinsics,printf,unstable}
 run_test! {intrinsics,type_id,stable}
 run_test! {intrinsics,ptr_offset_from_unsigned,stable}
 
 run_test! {fuzz,test0,stable}
-run_test! {fuzz,fuzz0,unstable}
 run_test! {fuzz,test1,stable}
+
+run_test! {fuzz,fuzz0,unstable}
+run_test! {fuzz,fuzz1,unstable}
+run_test! {fuzz,fuzz2,unstable}
+run_test! {fuzz,fuzz3,unstable}
 cargo_test! {hello_world,stable}
 cargo_test! {std_hello_world,stable}
 cargo_test_ignored! {build_core}

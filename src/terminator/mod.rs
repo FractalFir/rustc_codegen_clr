@@ -153,7 +153,7 @@ pub fn handle_terminator<'ctx>(
         }
         TerminatorKind::Goto { target } => vec![CILOp::GoTo((*target).into())],
         TerminatorKind::UnwindResume => {
-            eprintln!("WARNING: stack unwiniding is not supported yet in rustc_codegen_clr!");
+            println!("WARNING: stack unwiniding is not supported yet in rustc_codegen_clr!");
             vec![CILOp::Comment(
                 "WARNING: stack unwiniding is not supported yet in rustc_codegen_clr!".into(),
             )]

@@ -492,7 +492,6 @@ pub fn handle_rvalue<'tcx>(
             ops.push(CILOp::FreeTMPLocal);
             ops
         }
-
         _ => rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Unhandled RValue {rvalue:?}")},
     };
     res
