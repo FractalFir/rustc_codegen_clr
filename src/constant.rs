@@ -575,7 +575,8 @@ fn create_const_from_data<'ctx>(
         size: Size::from_bytes((len as u64) - offset_bytes),
     };
     let bytes = memory.0.get_bytes_unchecked(range);
-    if memory.0.provenance().ptrs().is_empty() {
+    //TODO: fix layout issues!
+    if memory.0.provenance().ptrs().is_empty() && true {
         //eprintln!("Creating const {ty:?} from data of length {len}.");
         create_const_from_slice(ty, tyctx, bytes, method_instance, tycache)
     } else {

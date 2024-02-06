@@ -43,11 +43,11 @@ pub(crate) fn binop_unchecked<'tyctx>(
             .into_iter()
             .flatten()
             .collect(),
-        BinOp::Lt => [ops_a, ops_b, lt_unchecked(ty_a, ty_b)]
+        BinOp::Lt => [ops_a, ops_b, vec![lt_unchecked(ty_a, ty_b)]]
             .into_iter()
             .flatten()
             .collect(),
-        BinOp::Gt => [ops_a, ops_b, gt_unchecked(ty_a, ty_b)]
+        BinOp::Gt => [ops_a, ops_b, vec![gt_unchecked(ty_a, ty_b)]]
             .into_iter()
             .flatten()
             .collect(),
@@ -114,8 +114,7 @@ pub(crate) fn binop_unchecked<'tyctx>(
         BinOp::Ge => [
             ops_a,
             ops_b,
-            lt_unchecked(ty_a, ty_b),
-            vec![CILOp::LdcI32(0), CILOp::Eq],
+            vec![lt_unchecked(ty_a, ty_b),CILOp::LdcI32(0), CILOp::Eq],
         ]
         .into_iter()
         .flatten()
@@ -123,8 +122,7 @@ pub(crate) fn binop_unchecked<'tyctx>(
         BinOp::Le => [
             ops_a,
             ops_b,
-            gt_unchecked(ty_a, ty_b),
-            vec![CILOp::LdcI32(0), CILOp::Eq],
+            vec![gt_unchecked(ty_a, ty_b),CILOp::LdcI32(0), CILOp::Eq],
         ]
         .into_iter()
         .flatten()
@@ -283,14 +281,75 @@ pub fn eq_unchecked<'tyctx>(ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> CILOp {
         TyKind::Char => CILOp::Eq,
         TyKind::Float(_) => CILOp::Eq,
         TyKind::RawPtr(_) => CILOp::Eq,
-        _ => panic!("Can't bitshift type  {ty_a:?}"),
+        _ => panic!("Can't eq type  {ty_a:?}"),
     }
 }
-fn lt_unchecked<'tyctx>(_ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> Vec<CILOp> {
-    vec![CILOp::Lt]
+fn lt_unchecked<'tyctx>(ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> CILOp {
+    //return CILOp::Lt;
+    match ty_a.kind() {
+        TyKind::Uint(uint) => match uint {
+            UintTy::U128 => CILOp::Call(
+                CallSite::new(
+                    Some(DotnetTypeRef::uint_128()),
+                    "op_LessThan".into(),
+                    FnSig::new(&[Type::U128, Type::U128], &Type::Bool),
+                    true,
+                )
+                .into(),
+            ),
+            _ => CILOp::Lt,
+        },
+        TyKind::Int(int) => match int {
+            IntTy::I128 => CILOp::Call(
+                CallSite::new(
+                    Some(DotnetTypeRef::int_128()),
+                    "op_LessThan".into(),
+                    FnSig::new(&[Type::I128, Type::I128], &Type::Bool),
+                    true,
+                )
+                .into(),
+            ),
+            _ => CILOp::Lt,
+        },
+        TyKind::Bool => CILOp::Lt,
+        TyKind::Char => CILOp::Lt,
+        TyKind::Float(_) => CILOp::Lt,
+        TyKind::RawPtr(_) => CILOp::Lt,
+        _ => panic!("Can't eq type  {ty_a:?}"),
+    }
 }
-fn gt_unchecked<'tyctx>(_ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> Vec<CILOp> {
-    vec![CILOp::Gt]
+fn gt_unchecked<'tyctx>(ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> CILOp {
+    match ty_a.kind() {
+        TyKind::Uint(uint) => match uint {
+            UintTy::U128 => CILOp::Call(
+                CallSite::new(
+                    Some(DotnetTypeRef::uint_128()),
+                    "op_GreaterThan".into(),
+                    FnSig::new(&[Type::U128, Type::U128], &Type::Bool),
+                    true,
+                )
+                .into(),
+            ),
+            _ => CILOp::Gt,
+        },
+        TyKind::Int(int) => match int {
+            IntTy::I128 => CILOp::Call(
+                CallSite::new(
+                    Some(DotnetTypeRef::int_128()),
+                    "op_GreaterThan".into(),
+                    FnSig::new(&[Type::I128, Type::I128], &Type::Bool),
+                    true,
+                )
+                .into(),
+            ),
+            _ => CILOp::Gt,
+        },
+        TyKind::Bool => CILOp::Gt,
+        TyKind::Char => CILOp::Gt,
+        TyKind::Float(_) => CILOp::Gt,
+        TyKind::RawPtr(_) => CILOp::Gt,
+        _ => panic!("Can't eq type  {ty_a:?}"),
+    }
 }
 fn bit_and_unchecked<'tyctx>(
     ty_a: Ty<'tyctx>,

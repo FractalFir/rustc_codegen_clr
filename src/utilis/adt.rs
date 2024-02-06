@@ -6,7 +6,7 @@ use rustc_target::abi::Layout;
 
 use rustc_target::abi::Variants;
 pub(crate) enum FieldOffsetIterator {
-    Explicit { offsets: Box<[u32]>, index: usize },
+    Explicit { offsets: Box<[u32]>, index:usize},
     NoOffset { count: u64 },
 }
 impl Iterator for FieldOffsetIterator {
@@ -38,7 +38,12 @@ impl FieldOffsetIterator {
             } => {
                 let offsets: Box<[_]> = memory_index
                     .iter()
-                    .map(|index| offsets[FieldIdx::from_u32(*index)].bytes() as u32)
+                    .enumerate()
+                    .map(|(index,mem_idx)| {
+                        // DOC_HELP_IDEA: explain what mem_idx actualy does - it is not obvious from a first look. It describes the order of fields in memory.
+                        //eprintln!("index:{index},mem_idx:{mem_idx}");
+                        offsets[FieldIdx::from_u32(index as u32)].bytes() as u32
+                    })
                     //TODO: ask what does field offset of 4294967295 means.
                     .map(|offset| if offset > u16::MAX as u32 { 0 } else { offset })
                     .collect();
