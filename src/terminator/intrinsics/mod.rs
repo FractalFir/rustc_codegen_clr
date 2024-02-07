@@ -11,6 +11,7 @@ use rustc_middle::{
 };
 use rustc_span::source_map::Spanned;
 use tycache::TyCache;
+mod bswap;
 pub fn handle_intrinsic<'tyctx>(
     fn_name: &str,
     args: &[Spanned<Operand<'tyctx>>],
@@ -218,7 +219,7 @@ pub fn handle_intrinsic<'tyctx>(
             ]);
             place_set(destination, tyctx, res, body, method_instance, type_cache)
         }
-        "bswap" => bswap(args, destination, tyctx, body, method_instance, type_cache),
+        "bswap" => bswap::bswap(args, destination, tyctx, body, method_instance, type_cache),
         "cttz" | "cttz_nonzero" => {
             debug_assert_eq!(
                 args.len(),
@@ -629,94 +630,7 @@ pub fn handle_intrinsic<'tyctx>(
         _ => todo!("Can't handle intrinsic {fn_name}."),
     }
 }
-fn bswap<'tyctx>(
-    args: &[Spanned<Operand<'tyctx>>],
-    destination: &Place<'tyctx>,
-    tyctx: TyCtxt<'tyctx>,
-    body: &'tyctx Body<'tyctx>,
-    method_instance: Instance<'tyctx>,
-    type_cache: &mut TyCache,
-) -> Vec<CILOp> {
-    debug_assert_eq!(
-        args.len(),
-        1,
-        "The intrinsic `bswap` MUST take in exactly 1 argument!"
-    );
-    let ty = args[0].node.ty(body, tyctx);
-    let ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
-    let operand = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
-    place_set(
-        destination,
-        tyctx,
-        match ty.kind() {
-            TyKind::Uint(uint) => match uint {
-                UintTy::U8 => operand,
-                UintTy::U16 => [
-                    operand,
-                    vec![
-                        CILOp::NewTMPLocal(Type::U16.into()),
-                        CILOp::SetTMPLocal,
-                        CILOp::LoadTMPLocal,
-                        CILOp::LdcI32(8),
-                        CILOp::Shr,
-                        CILOp::LoadTMPLocal,
-                        CILOp::LdcI32(8),
-                        CILOp::Shl,
-                        CILOp::Or,
-                        CILOp::FreeTMPLocal,
-                    ],
-                ]
-                .iter()
-                .flatten()
-                .cloned()
-                .collect(),
-                UintTy::U32 => [
-                    operand,
-                    vec![
-                        //CILOp::ConvU32(false),
-                        CILOp::NewTMPLocal(Type::U32.into()),
-                        CILOp::SetTMPLocal,
-                        // 1 byte
-                        CILOp::LoadTMPLocal,
-                        CILOp::LdcI32(24),
-                        CILOp::Shl,
-                        // 4 byte
-                        CILOp::LoadTMPLocal,
-                        CILOp::LdcI32(24),
-                        CILOp::ShrUn,
-                        CILOp::ConvU32(false),
-                        CILOp::Or,
-                        // 2 byte
-                        CILOp::LoadTMPLocal,
-                        CILOp::LdcI32(8),
-                        CILOp::Shl,
-                        CILOp::LdcI32(0xFF << 16),
-                        CILOp::And,
-                        // 3 byte
-                        CILOp::LoadTMPLocal,
-                        CILOp::LdcI32(8),
-                        CILOp::Shr,
-                        CILOp::LdcI32(0xFF << 8),
-                        CILOp::And,
-                        CILOp::Or,
-                        CILOp::Or,
-                        //CILOp::ConvU16(false),
-                        CILOp::FreeTMPLocal,
-                    ],
-                ]
-                .iter()
-                .flatten()
-                .cloned()
-                .collect(),
-                _ => todo!("Can't bswap unsigned int {ty:?}"),
-            },
-            _ => todo!("Can't bswap {ty:?}"),
-        },
-        body,
-        method_instance,
-        type_cache,
-    )
-}
+
 /*
 fn saturating_sub<'tyctx>(
     args: &[Operand<'tyctx>],

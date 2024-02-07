@@ -12,7 +12,9 @@ fn main(){
     test_eq!(black_box(0x00_FF_00_00_u32),core::intrinsics::bswap(black_box(0x00_00_FF_00_u32)));
     test_eq!(black_box(0x00_00_FF_00_u32),core::intrinsics::bswap(black_box(0x00_FF_00_00_u32)));
     test_eq!(black_box(0x00_00_00_FF_u32),core::intrinsics::bswap(black_box(0xFF_00_00_00_u32)));
-    //test_eq!(black_box(0x000000FF_u32),core::intrinsics::bswap(black_box(0xFF000000_u32)));
-    //test_eq!(black_box(0x67452301_u32),core::intrinsics::bswap(black_box(0x01234567_u32)));
+    test_eq!(black_box(0x000000FF_u32),core::intrinsics::bswap(black_box(0xFF000000_u32)));
+    test_eq!(black_box(0x67452301_u32),core::intrinsics::bswap(black_box(0x01234567_u32)));
+    test_eq!(black_box(0xEF_CD_AB_89_67_45_23_01u64),core::intrinsics::bswap(black_box(0x01_23_45_67_89_AB_CD_EFu64)));
+    //test_eq!(black_box(0xEF_CD_AB_89_67_45_23_01_EF_CD_AB_89_67_45_23_01u128),core::intrinsics::bswap(black_box(0x01_23_45_67_89_AB_CD_EF_01_23_45_67_89_AB_CD_EFu128)));
 }
     
