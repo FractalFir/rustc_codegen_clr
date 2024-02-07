@@ -524,8 +524,24 @@ fn shr_unchecked<'tyctx>(
             )));
             res
         }
-        TyKind::Uint(_) => vec![CILOp::ShrUn],
-        TyKind::Int(_) => vec![CILOp::Shr],
+
+        TyKind::Uint(_)=> match ty_b.kind() {
+            TyKind::Uint(UintTy::U128) | TyKind::Int(IntTy::I128) => {
+                let mut res = crate::casts::int_to_int(type_b.clone(), Type::I32);
+                res.push(CILOp::ShrUn);
+                res
+            }
+            _ => vec![CILOp::ShrUn],
+        },
+        TyKind::Int(_)=> match ty_b.kind() {
+            TyKind::Uint(UintTy::U128) | TyKind::Int(IntTy::I128) => {
+                let mut res = crate::casts::int_to_int(type_b.clone(), Type::I32);
+                res.push(CILOp::Shr);
+                res
+            }
+           
+            _ => vec![CILOp::Shr],
+        },
         _ => panic!("Can't bitshift type  {ty_a:?}"),
     }
 }

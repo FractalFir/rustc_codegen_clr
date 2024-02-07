@@ -171,8 +171,8 @@ fn main() {
     let source_path = "/home/michal/Rust/rustc_codegen_clr/test/fuzz/minfuzz/src/original.rs";
     let target_path = "/home/michal/Rust/rustc_codegen_clr/test/fuzz/minfuzz/src/main.rs";
     let crate_path = "/home/michal/Rust/rustc_codegen_clr/test/fuzz/minfuzz/";
-    let out_path = "/home/michal/Rust/rustc_codegen_clr/test/fuzz/minfuzz0.exe";
-    let exec_path = "/home/michal/Rust/rustc_codegen_clr/test/minfuzz0.exe";
+    let out_path = "/home/michal/Rust/rustc_codegen_clr/test/fuzz/minfuzz3.exe";
+    let exec_path = "/home/michal/Rust/rustc_codegen_clr/test/minfuzz3.exe";
     let file = BufReader::new(std::fs::File::open(source_path).unwrap());
     let mut source_file = RustSourceFile::from_file(file).unwrap();
     source_file.try_remove_lines(&|source_file| {
@@ -234,9 +234,9 @@ fn main() {
                 println!("dotnet timemout");
                 return false;
             }
-            if stderr.contains("System.NullReferenceException")
-                && stderr.contains("(IntPtr , Int128 , Tuple2is , SByte* , Double , Int128 , Tuple2is , UInt128 , Tuple3f64 , UInt64 , Tuple3pi8 , Tuple13Tuple7u32u128 )")
-                && stdout.contains("_3 = (_1,)")
+            if stderr.contains("System.InvalidProgramException: Common Language Runtime detected an invalid program")
+                && stderr.contains("(UInt32 , UInt128 , IntPtr* , Boolean , IntPtr , Tuple13Arr1_u32u32u8 , Arr3_is )")
+                && stdout.contains("_13 = ()")
             {
                 return true;
             } else {
