@@ -27,6 +27,8 @@ use core::intrinsics::black_box;
 macro_rules! test{
     ($condition:expr)=>{
         if !black_box($condition){
+            rustc_clr_interop_managed_call1_::<"System.Console","System.Console",false,"WriteLine",true,(),u32>(line!());
+            unsafe{core::intrinsics::breakpoint()};
             core::intrinsics::abort();
         }
     }
@@ -35,8 +37,8 @@ macro_rules! test{
 macro_rules! test_eq{
     ($a:expr,$b:expr)=>{
         if black_box($a) != black_box($b){
-            Put::putnl($a);
-            Put::putnl($b);
+            //Put::putnl($a);
+            //Put::putnl($b);
             rustc_clr_interop_managed_call1_::<"System.Console","System.Console",false,"WriteLine",true,(),u32>(line!());
             unsafe{core::intrinsics::breakpoint()};
             core::intrinsics::abort();
@@ -47,6 +49,7 @@ macro_rules! test_eq{
 macro_rules! test_ne{
     ($a:expr,$b:expr)=>{
         if black_box($a) == black_box($b){
+            rustc_clr_interop_managed_call1_::<"System.Console","System.Console",false,"WriteLine",true,(),u32>(line!());
             unsafe{core::intrinsics::breakpoint()};
             core::intrinsics::abort();
         }
