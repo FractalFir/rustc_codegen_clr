@@ -66,7 +66,6 @@ extern crate stable_mir;
 pub mod access_modifier;
 /// Code handling the creation of aggreate values (Arrays, enums,structs,tuples,etc.)
 mod aggregate;
-
 /// Representation of a .NET assembly
 pub mod assembly;
 /// Module containg ILASM-based exporter and code shared between all IL exporter.
@@ -94,6 +93,7 @@ pub mod ffi;
 pub mod function_sig;
 /// Interop type handling.
 mod interop;
+mod verify;
 //
 
 /// A representation of a .NET method

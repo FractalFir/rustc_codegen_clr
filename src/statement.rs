@@ -1,7 +1,7 @@
 use crate::{cil::CILOp, r#type::TyCache};
 use rustc_middle::{
     mir::{Body, CopyNonOverlapping, NonDivergingIntrinsic, Statement, StatementKind},
-    ty::{Instance, TyCtxt,ParamEnv},
+    ty::{Instance, ParamEnv, TyCtxt},
 };
 pub fn handle_statement<'tcx>(
     statement: &Statement<'tcx>,
@@ -18,7 +18,10 @@ pub fn handle_statement<'tcx>(
         StatementKind::StorageDead(_local) => {
             vec![]
         }
-        StatementKind::SetDiscriminant{place,variant_index}=>{
+        StatementKind::SetDiscriminant {
+            place,
+            variant_index,
+        } => {
             let mut ops =
                 crate::place::place_adress(place, tyctx, method, method_instance, type_cache);
             let owner_ty = place.ty(method, tyctx).ty;

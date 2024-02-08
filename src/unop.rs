@@ -23,6 +23,12 @@ pub fn unop<'ctx>(
                 FnSig::new(&[Type::I128], &Type::I128),
                 true,
             ))),
+            TyKind::Uint(UintTy::U128) => ops.push(CILOp::Call(CallSite::boxed(
+                DotnetTypeRef::uint_128().into(),
+                "op_UnaryNegation".into(),
+                FnSig::new(&[Type::U128], &Type::U128),
+                true,
+            ))),
             _ => ops.push(CILOp::Neg),
         },
         UnOp::Not => match ty.kind() {

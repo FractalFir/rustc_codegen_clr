@@ -270,12 +270,18 @@ fn create_const_from_slice<'ctx>(
                 ) as i32),
                 CILOp::ConvU16(false),
             ],
-            UintTy::U32 => vec![CILOp::LdcI32(i32::from_le_bytes(
-                bytes[..std::mem::size_of::<i32>()].try_into().unwrap(),
-            ))],
-            UintTy::U64 => vec![CILOp::LdcI64(i64::from_le_bytes(
-                bytes[..std::mem::size_of::<i64>()].try_into().unwrap(),
-            ))],
+            UintTy::U32 => vec![
+                CILOp::LdcI32(i32::from_le_bytes(
+                    bytes[..std::mem::size_of::<i32>()].try_into().unwrap(),
+                )),
+                CILOp::ConvU32(false),
+            ],
+            UintTy::U64 => vec![
+                CILOp::LdcI64(i64::from_le_bytes(
+                    bytes[..std::mem::size_of::<i64>()].try_into().unwrap(),
+                )),
+                CILOp::ConvU64(false),
+            ],
             UintTy::Usize => vec![
                 CILOp::LdcI64(i64::from_le_bytes(
                     bytes[..crate::utilis::compiletime_sizeof(ty, tyctx, method_instance)]
@@ -928,7 +934,7 @@ pub fn load_const_uint(value: u128, int_type: &UintTy) -> Vec<CILOp> {
         }
         UintTy::U32 => {
             let value = i32::from_ne_bytes((value as u32).to_ne_bytes());
-            vec![CILOp::LdcI32(value)]
+            vec![CILOp::LdcI32(value), CILOp::ConvU32(false)]
         }
         UintTy::U64 => {
             let value = i64::from_ne_bytes((value as u64).to_ne_bytes());

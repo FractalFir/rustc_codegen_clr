@@ -75,10 +75,14 @@ pub(crate) fn binop_unchecked<'tyctx>(
         .into_iter()
         .flatten()
         .collect(),
-        BinOp::Rem => [ops_a, ops_b, rem_unchecked(ty_a, ty_b, tycache, &method_instance, tyctx)]
-            .into_iter()
-            .flatten()
-            .collect(),
+        BinOp::Rem => [
+            ops_a,
+            ops_b,
+            rem_unchecked(ty_a, ty_b, tycache, &method_instance, tyctx),
+        ]
+        .into_iter()
+        .flatten()
+        .collect(),
         BinOp::Shl | BinOp::ShlUnchecked => [
             ops_a,
             ops_b,
@@ -114,7 +118,7 @@ pub(crate) fn binop_unchecked<'tyctx>(
         BinOp::Ge => [
             ops_a,
             ops_b,
-            vec![lt_unchecked(ty_a, ty_b),CILOp::LdcI32(0), CILOp::Eq],
+            vec![lt_unchecked(ty_a, ty_b), CILOp::LdcI32(0), CILOp::Eq],
         ]
         .into_iter()
         .flatten()
@@ -122,7 +126,7 @@ pub(crate) fn binop_unchecked<'tyctx>(
         BinOp::Le => [
             ops_a,
             ops_b,
-            vec![gt_unchecked(ty_a, ty_b),CILOp::LdcI32(0), CILOp::Eq],
+            vec![gt_unchecked(ty_a, ty_b), CILOp::LdcI32(0), CILOp::Eq],
         ]
         .into_iter()
         .flatten()
@@ -525,7 +529,7 @@ fn shr_unchecked<'tyctx>(
             res
         }
 
-        TyKind::Uint(_)=> match ty_b.kind() {
+        TyKind::Uint(_) => match ty_b.kind() {
             TyKind::Uint(UintTy::U128) | TyKind::Int(IntTy::I128) => {
                 let mut res = crate::casts::int_to_int(type_b.clone(), Type::I32);
                 res.push(CILOp::ShrUn);
@@ -533,13 +537,13 @@ fn shr_unchecked<'tyctx>(
             }
             _ => vec![CILOp::ShrUn],
         },
-        TyKind::Int(_)=> match ty_b.kind() {
+        TyKind::Int(_) => match ty_b.kind() {
             TyKind::Uint(UintTy::U128) | TyKind::Int(IntTy::I128) => {
                 let mut res = crate::casts::int_to_int(type_b.clone(), Type::I32);
                 res.push(CILOp::Shr);
                 res
             }
-           
+
             _ => vec![CILOp::Shr],
         },
         _ => panic!("Can't bitshift type  {ty_a:?}"),

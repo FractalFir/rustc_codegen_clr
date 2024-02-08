@@ -340,6 +340,7 @@ impl Assembly {
         crate::utilis::check_debugable(method.get_ops(), &method, does_return_void);
 
         //println!("Compiled method {name}");
+
         self.add_method(method);
         Ok(())
         //todo!("Can't add function")
@@ -457,6 +458,10 @@ impl Assembly {
     pub fn add_method(&mut self, mut method: Method) {
         method.allocate_temporaries();
         method.ensure_valid();
+        if *crate::config::VERIFY_METHODS {
+            crate::verify::verify(&method);
+        }
+
         self.functions.insert(method.call_site(), method);
     }
     /// Returns the list of all calls within the method. Calls may repeat.

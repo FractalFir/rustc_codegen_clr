@@ -86,7 +86,11 @@ impl TyCache {
             todo!("Can't yet handle custom typedefs!")
         }
         let mut fields = Vec::new();
-        for field in adt.variant(rustc_target::abi::VariantIdx::from_u32(0)).fields.iter() {
+        for field in adt
+            .variant(rustc_target::abi::VariantIdx::from_u32(0))
+            .fields
+            .iter()
+        {
             let name = escape_field_name(&field.name.to_string());
             let mut field_ty = field.ty(tyctx, subst);
             method.inspect(|method_instance| {
@@ -95,7 +99,7 @@ impl TyCache {
             let field_ty = self.type_from_cache(field_ty, tyctx, method);
             fields.push((name, field_ty));
         }
-       
+
         let access = AccessModifer::Public;
         let layout = tyctx
             .layout_of(rustc_middle::ty::ParamEnvAnd {
@@ -105,7 +109,7 @@ impl TyCache {
             .expect("Could not get type layout!");
         let explicit_offsets =
             crate::utilis::adt::FieldOffsetIterator::fields(&layout.layout).collect();
-      
+
         TypeDef::new(
             access,
             name.into(),

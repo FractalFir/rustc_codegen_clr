@@ -9,8 +9,9 @@ pub fn int_to_int(src: Type, target: Type) -> Vec<CILOp> {
         return vec![];
     }
     match (&src, &target) {
-        (Type::ISize,Type::I128)=>
-            vec![CILOp::ConvI64(false),CILOp::Call(
+        (Type::ISize, Type::I128) => vec![
+            CILOp::ConvI64(false),
+            CILOp::Call(
                 CallSite::new(
                     Some(DotnetTypeRef::int_128()),
                     "op_Implicit".into(),
@@ -18,10 +19,11 @@ pub fn int_to_int(src: Type, target: Type) -> Vec<CILOp> {
                     true,
                 )
                 .into(),
-            )]
-        ,
-        (Type::ISize,Type::U128)=>
-            vec![CILOp::ConvI64(false),CILOp::Call(
+            ),
+        ],
+        (Type::ISize, Type::U128) => vec![
+            CILOp::ConvI64(false),
+            CILOp::Call(
                 CallSite::new(
                     Some(DotnetTypeRef::uint_128()),
                     "op_Explicit".into(),
@@ -29,10 +31,11 @@ pub fn int_to_int(src: Type, target: Type) -> Vec<CILOp> {
                     true,
                 )
                 .into(),
-            )]
-        ,
-        (Type::Bool,Type::U128)=>
-            vec![CILOp::ConvI8(false),CILOp::Call(
+            ),
+        ],
+        (Type::Bool, Type::U128) => vec![
+            CILOp::ConvI8(false),
+            CILOp::Call(
                 CallSite::new(
                     Some(DotnetTypeRef::uint_128()),
                     "op_Explicit".into(),
@@ -40,8 +43,8 @@ pub fn int_to_int(src: Type, target: Type) -> Vec<CILOp> {
                     true,
                 )
                 .into(),
-            )]
-        ,
+            ),
+        ],
         (_, Type::I128) => {
             vec![CILOp::Call(
                 CallSite::new(

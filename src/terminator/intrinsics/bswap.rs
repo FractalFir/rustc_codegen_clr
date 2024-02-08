@@ -7,7 +7,7 @@ use crate::{
 };
 use rustc_middle::{
     mir::{Body, Operand, Place},
-    ty::{Instance, ParamEnv, TyCtxt, TyKind, UintTy,IntTy,Ty},
+    ty::{Instance, IntTy, ParamEnv, Ty, TyCtxt, TyKind, UintTy},
 };
 use rustc_span::source_map::Spanned;
 use tycache::TyCache;
@@ -52,7 +52,7 @@ pub fn bswap<'tyctx>(
                 .flatten()
                 .cloned()
                 .collect(), */
-                /* 
+                /*
                 TyKind::Uint(UintTy::U32) => [
                     operand,
                     vec![
@@ -91,26 +91,40 @@ pub fn bswap<'tyctx>(
                 .flatten()
                 .cloned()
                 .collect(),*/
-                TyKind::Uint(UintTy::U128) | TyKind::Int(IntTy::I128)=>todo!("Can't bswap 128 bit ints"),
-                _=>[operand,stupid_bswap(ty, tyctx, type_cache, method_instance)].iter()
-                .flatten()
-                .cloned()
-                .collect(),
-            },
-        
+            TyKind::Uint(UintTy::U128) | TyKind::Int(IntTy::I128) => {
+                todo!("Can't bswap 128 bit ints")
+            }
+            _ => [
+                operand,
+                stupid_bswap(ty, tyctx, type_cache, method_instance),
+            ]
+            .iter()
+            .flatten()
+            .cloned()
+            .collect(),
+        },
         body,
         method_instance,
         type_cache,
     )
 }
-fn stupid_bswap<'tyctx>(ty:Ty<'tyctx>,tyctx:TyCtxt<'tyctx>,type_cache:&mut TyCache,method_instance:Instance<'tyctx>)->Vec<CILOp>{
+fn stupid_bswap<'tyctx>(
+    ty: Ty<'tyctx>,
+    tyctx: TyCtxt<'tyctx>,
+    type_cache: &mut TyCache,
+    method_instance: Instance<'tyctx>,
+) -> Vec<CILOp> {
     let size = crate::utilis::compiletime_sizeof(ty, tyctx, method_instance);
     let tpe = type_cache.type_from_cache(ty, tyctx, method_instance.into());
-    let mut res = vec![CILOp::NewTMPLocal(tpe.clone().into()),CILOp::SetTMPLocal,CILOp::NewTMPLocal(tpe.clone().into())];
-    if tpe == Type::USize || tpe == Type::USize{
+    let mut res = vec![
+        CILOp::NewTMPLocal(tpe.clone().into()),
+        CILOp::SetTMPLocal,
+        CILOp::NewTMPLocal(tpe.clone().into()),
+    ];
+    if tpe == Type::USize || tpe == Type::USize {
         println!("WARNING:bswap assumes sizeof::<usize>() == 8");
     }
-    for offset in 0..size{
+    for offset in 0..size {
         res.extend([
             CILOp::LoadAddresOfTMPLocal,
             CILOp::ConvUSize(false),
@@ -124,7 +138,11 @@ fn stupid_bswap<'tyctx>(ty:Ty<'tyctx>,tyctx:TyCtxt<'tyctx>,type_cache:&mut TyCac
             CILOp::STIndI8,
         ]);
     }
-    res.extend([CILOp::LoadTMPLocal,CILOp::FreeTMPLocal,CILOp::FreeTMPLocal]);
+    res.extend([
+        CILOp::LoadTMPLocal,
+        CILOp::FreeTMPLocal,
+        CILOp::FreeTMPLocal,
+    ]);
     crate::utilis::check_debugable(&res, "bswap fucked up", false);
     res
 }
