@@ -143,7 +143,7 @@ pub(crate) fn binop_unchecked<'tyctx>(
             [
                 ops_a,
                 ops_b,
-                vec![CILOp::SizeOf(pointed_ty), CILOp::Mul, CILOp::Add],
+                vec![CILOp::SizeOf(pointed_ty),CILOp::ConvUSize(false), CILOp::Mul, CILOp::Add],
             ]
             .into_iter()
             .flatten()

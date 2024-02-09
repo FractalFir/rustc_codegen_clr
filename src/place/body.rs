@@ -195,6 +195,7 @@ pub fn place_elem_body<'ctx>(
                         CILOp::LDField(desc.into()),
                         index,
                         CILOp::SizeOf(inner_type.into()),
+                        CILOp::ConvUSize(false),
                         CILOp::Mul,
                         CILOp::Add,
                     ];
@@ -218,7 +219,7 @@ pub fn place_elem_body<'ctx>(
                                     Some(array_dotnet),
                                     "get_Address".into(),
                                     FnSig::new(
-                                        &[array_type, Type::USize],
+                                        &[Type::Ptr(array_type.into()), Type::USize],
                                         &Type::Ptr(element_type.into()),
                                     ),
                                     false,
@@ -230,11 +231,12 @@ pub fn place_elem_body<'ctx>(
                     } else {
                         let ops = vec![
                             index,
+                            CILOp::ConvUSize(false),
                             CILOp::Call(
                                 crate::cil::CallSite::new(
                                     Some(array_dotnet),
                                     "get_Item".into(),
-                                    FnSig::new(&[array_type, Type::USize], &element_type),
+                                    FnSig::new(&[Type::Ptr(array_type.into()), Type::USize], &element_type),
                                     false,
                                 )
                                 .into(),
@@ -283,6 +285,7 @@ pub fn place_elem_body<'ctx>(
                         CILOp::LDField(desc.into()),
                         index,
                         CILOp::SizeOf(inner_type.into()),
+                        CILOp::ConvUSize(false),
                         CILOp::Mul,
                         CILOp::Add,
                     ];
@@ -309,11 +312,12 @@ pub fn place_elem_body<'ctx>(
                             (element_ty).into(),
                             vec![
                                 index,
+                                CILOp::ConvUSize(false),
                                 CILOp::Call(
                                     crate::cil::CallSite::new(
                                         Some(array_dotnet),
                                         "get_Item".into(),
-                                        FnSig::new(&[array_type, Type::USize], &element),
+                                        FnSig::new(&[Type::Ptr(array_type.into()), Type::USize], &element),
                                         false,
                                     )
                                     .into(),

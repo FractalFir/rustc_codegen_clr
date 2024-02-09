@@ -221,7 +221,7 @@ pub fn handle_rvalue<'tcx>(
             NullOp::SizeOf => {
                 let ty = crate::utilis::monomorphize(&method_instance, *ty, tyctx);
                 let ty = Box::new(tycache.type_from_cache(ty, tyctx, Some(method_instance)));
-                vec![CILOp::SizeOf(ty)]
+                vec![CILOp::SizeOf(ty),CILOp::ConvUSize(false)]
             }
             NullOp::AlignOf => {
                 let ty = crate::utilis::monomorphize(&method_instance, *ty, tyctx);
@@ -480,7 +480,7 @@ pub fn handle_rvalue<'tcx>(
                         Some(array_dotnet.clone()),
                         "set_Item".into(),
                         FnSig::new(
-                            &[array.clone(), Type::USize, operand_type.clone()],
+                            &[Type::Ptr(array.clone().into()), Type::USize, operand_type.clone()],
                             &Type::Void,
                         ),
                         false,

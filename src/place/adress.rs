@@ -186,6 +186,7 @@ pub fn place_elem_adress<'ctx>(
                         CILOp::LDField(desc.into()),
                         index,
                         CILOp::SizeOf(inner_type.into()),
+                        CILOp::ConvUSize(false),
                         CILOp::Mul,
                         CILOp::Add,
                     ];
@@ -205,7 +206,7 @@ pub fn place_elem_adress<'ctx>(
                                 Some(array_dotnet),
                                 "get_Address".into(),
                                 FnSig::new(
-                                    &[array_type, Type::USize],
+                                    &[Type::Ptr(array_type.into()), Type::USize],
                                     &Type::Ptr(element_type.into()),
                                 ),
                                 false,
@@ -338,8 +339,10 @@ pub fn place_elem_adress<'ctx>(
                             CILOp::LDField(desc.into()),
                             CILOp::LoadTMPLocal,
                             index,
+                            CILOp::ConvUSize(false),
                             CILOp::Sub,
                             CILOp::SizeOf(inner_type.into()),
+                            CILOp::ConvUSize(false),
                             CILOp::Mul,
                             CILOp::Add,
                         ];
@@ -350,7 +353,9 @@ pub fn place_elem_adress<'ctx>(
                         let ops = vec![
                             CILOp::LDField(desc.into()),
                             index,
+                            CILOp::ConvUSize(false),
                             CILOp::SizeOf(inner_type.into()),
+                            CILOp::ConvUSize(false),
                             CILOp::Mul,
                             CILOp::Add,
                         ];
@@ -373,13 +378,14 @@ pub fn place_elem_adress<'ctx>(
                             CILOp::LdcI64(length as u64 as i64),
                             CILOp::ConvUSize(false),
                             index,
+                            CILOp::ConvUSize(false),
                             CILOp::Sub,
                             CILOp::Call(
                                 crate::cil::CallSite::new(
                                     Some(array_dotnet),
                                     "get_Address".into(),
                                     FnSig::new(
-                                        &[array_type, Type::USize],
+                                        &[Type::Ptr(array_type.into()), Type::USize],
                                         &Type::Ptr(element.into()),
                                     ),
                                     false,
@@ -391,12 +397,13 @@ pub fn place_elem_adress<'ctx>(
                     } else {
                         vec![
                             index,
+                            CILOp::ConvUSize(false),
                             CILOp::Call(
                                 crate::cil::CallSite::new(
                                     Some(array_dotnet),
                                     "get_Address".into(),
                                     FnSig::new(
-                                        &[array_type, Type::USize],
+                                        &[Type::Ptr(array_type.into()), Type::USize],
                                         &Type::Ptr(element.into()),
                                     ),
                                     false,

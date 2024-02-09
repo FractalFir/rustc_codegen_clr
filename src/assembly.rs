@@ -642,6 +642,7 @@ fn allocation_initializer_method(
             CILOp::STIndI8,
             CILOp::LDLoc(0),
             CILOp::LdcI32(1),
+            CILOp::ConvUSize(false),
             CILOp::Add,
             CILOp::STLoc(0),
         ]);
@@ -653,7 +654,7 @@ fn allocation_initializer_method(
             ops.extend([
                 CILOp::LDLoc(1),
                 CILOp::LdcI32(offset as i32),
-                CILOp::ConvISize(false),
+                CILOp::ConvUSize(false),
                 CILOp::Add,
                 CILOp::LDStaticField(ptr_alloc.into()),
                 CILOp::STIndISize,

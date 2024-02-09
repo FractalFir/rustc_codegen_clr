@@ -75,7 +75,7 @@ pub fn handle_aggregate<'tyctx>(
                 tycache,
             );
             let sig = crate::function_sig::FnSig::new(
-                &[array_type.clone().into(), Type::USize, element],
+                &[Type::Ptr(Into::<Type>::into(array_type.clone()).into()), Type::USize, element],
                 &Type::Void,
             );
             let call_site = CallSite::boxed(Some(array_type), "set_Item".into(), sig, false);

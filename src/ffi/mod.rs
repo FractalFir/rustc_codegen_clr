@@ -262,7 +262,7 @@ add_method!(
         CILOp::LdcI32(0),
         CILOp::BEq(1),
         CILOp::LDLoc(0),
-        CILOp::ConvISize(false),
+        CILOp::ConvI16(false),
         CILOp::Call(CallSite::boxed(
             Some(
                 DotnetTypeRef::new(Some("System.Console"), "System.Console").with_valuetype(false)
@@ -273,6 +273,7 @@ add_method!(
         )),
         CILOp::LDArg(0),
         CILOp::LdcI64(1),
+        CILOp::ConvUSize(false),
         CILOp::Add,
         CILOp::STArg(0),
         CILOp::GoTo(0),

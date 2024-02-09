@@ -80,6 +80,7 @@ pub fn place_elem_set<'a>(
                         CILOp::LDField(desc.into()),
                         index,
                         CILOp::SizeOf(inner_type.into()),
+                        CILOp::ConvUSize(false),
                         CILOp::Mul,
                         CILOp::Add,
                     ];
@@ -100,7 +101,7 @@ pub fn place_elem_set<'a>(
                             crate::cil::CallSite::new(
                                 Some(array_dotnet),
                                 "set_Item".into(),
-                                FnSig::new(&[array_type, Type::USize, element_type], &Type::Void),
+                                FnSig::new(&[Type::Ptr(array_type.into()), Type::USize, element_type], &Type::Void),
                                 false,
                             )
                             .into(),
@@ -144,6 +145,7 @@ pub fn place_elem_set<'a>(
                         CILOp::LDField(desc.into()),
                         index,
                         CILOp::SizeOf(inner_type.into()),
+                        CILOp::ConvUSize(false),
                         CILOp::Mul,
                         CILOp::Add,
                     ];
@@ -158,11 +160,12 @@ pub fn place_elem_set<'a>(
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
                     let ops = vec![
                         index,
+                        CILOp::ConvUSize(false),
                         CILOp::Call(
                             crate::cil::CallSite::new(
                                 Some(array_dotnet),
                                 "set_Item".into(),
-                                FnSig::new(&[array_type, Type::USize, element], &Type::Void),
+                                FnSig::new(&[Type::Ptr(array_type.into()), Type::USize, element], &Type::Void),
                                 false,
                             )
                             .into(),
