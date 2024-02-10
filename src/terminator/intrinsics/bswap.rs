@@ -26,71 +26,23 @@ pub fn bswap<'tyctx>(
     );
     let ty = args[0].node.ty(body, tyctx);
     let ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
+    let tpe = type_cache.type_from_cache(ty, tyctx, Some(method_instance));
     let operand = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
     place_set(
         destination,
         tyctx,
         match ty.kind() {
             TyKind::Uint(UintTy::U8) => operand,
-            /*
-            TyKind::Uint(UintTy::U16) => [
-                    operand,
-                    vec![
-                        CILOp::NewTMPLocal(Type::U16.into()),
-                        CILOp::SetTMPLocal,
-                        CILOp::LoadTMPLocal,
-                        CILOp::LdcI32(8),
-                        CILOp::Shr,
-                        CILOp::LoadTMPLocal,
-                        CILOp::LdcI32(8),
-                        CILOp::Shl,
-                        CILOp::Or,
-                        CILOp::FreeTMPLocal,
-                    ],
-                ]
-                .iter()
-                .flatten()
-                .cloned()
-                .collect(), */
-                /*
-                TyKind::Uint(UintTy::U32) => [
-                    operand,
-                    vec![
-                        //CILOp::ConvU32(false),
-                        CILOp::NewTMPLocal(Type::U32.into()),
-                        CILOp::SetTMPLocal,
-                        // 1 byte
-                        CILOp::LoadTMPLocal,
-                        CILOp::LdcI32(24),
-                        CILOp::Shl,
-                        // 4 byte
-                        CILOp::LoadTMPLocal,
-                        CILOp::LdcI32(24),
-                        CILOp::ShrUn,
-                        CILOp::ConvU32(false),
-                        CILOp::Or,
-                        // 2 byte
-                        CILOp::LoadTMPLocal,
-                        CILOp::LdcI32(8),
-                        CILOp::Shl,
-                        CILOp::LdcI32(0xFF << 16),
-                        CILOp::And,
-                        // 3 byte
-                        CILOp::LoadTMPLocal,
-                        CILOp::LdcI32(8),
-                        CILOp::Shr,
-                        CILOp::LdcI32(0xFF << 8),
-                        CILOp::And,
-                        CILOp::Or,
-                        CILOp::Or,
-                        //CILOp::ConvU16(false),
-                        CILOp::FreeTMPLocal,
-                    ],
-                ]
-                .iter()
-                .flatten()
-                .cloned()
-                .collect(),*/
+            TyKind::Uint(_) | TyKind::Int(_) => {
+                let mut ops = operand;
+                ops.push(CILOp::Call(CallSite::boxed(
+                    Some(DotnetTypeRef::binary_primitives()),
+                    "ReverseEndianness".into(),
+                    FnSig::new(&[tpe.clone()], &tpe),
+                    true,
+                )));
+                ops
+            }
             TyKind::Uint(UintTy::U128) | TyKind::Int(IntTy::I128) => {
                 todo!("Can't bswap 128 bit ints")
             }
@@ -129,10 +81,13 @@ fn stupid_bswap<'tyctx>(
             CILOp::LoadAddresOfTMPLocal,
             CILOp::ConvUSize(false),
             CILOp::LdcI32(offset as u32 as i32),
+            //CILOp::ConvU32(false),
+            //CILOp::ConvISize(false),
             CILOp::Add,
             CILOp::LoadAdressUnderTMPLocal(1),
             CILOp::ConvUSize(false),
             CILOp::LdcI32((size - offset - 1) as u32 as i32),
+            CILOp::ConvUSize(false),
             CILOp::Add,
             CILOp::LDIndI8,
             CILOp::STIndI8,

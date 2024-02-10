@@ -147,13 +147,17 @@ pub fn handle_intrinsic<'tyctx>(
                 1,
                 "The intrinsic `ctpop` MUST take in exactly 1 argument!"
             );
-            let tpe = type_cache.type_from_cache(crate::utilis::monomorphize(
-                &method_instance,
-                call_instance.args[0]
-                    .as_type()
-                    .expect("needs_drop works only on types!"),
+            let tpe = type_cache.type_from_cache(
+                crate::utilis::monomorphize(
+                    &method_instance,
+                    call_instance.args[0]
+                        .as_type()
+                        .expect("needs_drop works only on types!"),
+                    tyctx,
+                ),
                 tyctx,
-            ), tyctx, Some(method_instance));
+                Some(method_instance),
+            );
             let bit_operations =
                 DotnetTypeRef::new("System.Runtime".into(), "System.Numerics.BitOperations")
                     .with_valuetype(false);
@@ -173,9 +177,9 @@ pub fn handle_intrinsic<'tyctx>(
                     "PopCount".into(),
                     FnSig::new(&[Type::U64], &Type::I32),
                     true,
-                )),           
+                )),
             ]);
-            res.extend( crate::casts::int_to_int(Type::I32, tpe));
+            res.extend(crate::casts::int_to_int(Type::I32, tpe));
             place_set(destination, tyctx, res, body, method_instance, type_cache)
         }
         "ctlz" | "ctlz_nonzero" => {
@@ -188,7 +192,7 @@ pub fn handle_intrinsic<'tyctx>(
                 DotnetTypeRef::new("System.Runtime".into(), "System.Numerics.BitOperations")
                     .with_valuetype(false);
             let bit_operations = Some(bit_operations);
-            
+
             let mut res = Vec::new();
             res.extend(handle_operand(
                 &args[0].node,
@@ -224,7 +228,7 @@ pub fn handle_intrinsic<'tyctx>(
                 CILOp::LdcI32(sub),
                 CILOp::Sub,
             ]);
-            res.extend( crate::casts::int_to_int(Type::I32, tpe));
+            res.extend(crate::casts::int_to_int(Type::I32, tpe));
             place_set(destination, tyctx, res, body, method_instance, type_cache)
         }
         "bswap" => bswap::bswap(args, destination, tyctx, body, method_instance, type_cache),
@@ -260,7 +264,7 @@ pub fn handle_intrinsic<'tyctx>(
                 FnSig::new(&[tpe.clone()], &Type::I32),
                 true,
             ))]);
-            res.extend( crate::casts::int_to_int(Type::I32, tpe));
+            res.extend(crate::casts::int_to_int(Type::I32, tpe));
             place_set(destination, tyctx, res, body, method_instance, type_cache)
         }
         "rotate_left" => {
@@ -392,10 +396,14 @@ pub fn handle_intrinsic<'tyctx>(
                 1,
                 "The intrinsic `volatile_load` MUST take in exactly 1 argument!"
             );
+            let arg =
+                crate::utilis::monomorphize(&method_instance, args[0].node.ty(body, tyctx), tyctx);
+            let arg = arg.builtin_deref(true).unwrap().ty;
+
             let mut ops = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
             ops.push(CILOp::Volatile);
             ops.extend(crate::place::deref_op(
-                args[0].node.ty(body, tyctx).into(),
+                arg.into(),
                 tyctx,
                 &method_instance,
                 type_cache,
@@ -460,7 +468,12 @@ pub fn handle_intrinsic<'tyctx>(
                 method_instance,
                 type_cache,
             ));
-            ops.extend([CILOp::Sub, CILOp::SizeOf(tpe.into()),CILOp::ConvUSize(false), CILOp::Div]);
+            ops.extend([
+                CILOp::Sub,
+                CILOp::SizeOf(tpe.into()),
+                CILOp::ConvUSize(false),
+                CILOp::Div,
+            ]);
             place_set(destination, tyctx, ops, body, method_instance, type_cache)
         }
         "min_align_of_val" => {
@@ -614,7 +627,7 @@ pub fn handle_intrinsic<'tyctx>(
             place_set(
                 destination,
                 tyctx,
-                vec![CILOp::SizeOf(tpe.into()),CILOp::ConvUSize(false)],
+                vec![CILOp::SizeOf(tpe.into()), CILOp::ConvUSize(false)],
                 body,
                 method_instance,
                 type_cache,

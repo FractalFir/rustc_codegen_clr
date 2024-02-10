@@ -155,13 +155,12 @@ fn create_const_adt_from_bytes<'ctx>(
             ops.push(CILOp::LoadAddresOfTMPLocal);
             ops.push(CILOp::LdcI64(curr_variant as i64));
             ops.extend(crate::casts::int_to_int(Type::I64, disrc_type.clone()));
-                
+
             ops.push(CILOp::STField(FieldDescriptor::boxed(
-                    enum_dotnet.clone(),
-                    disrc_type,
-                    "_tag".into(),
-                )),
-            );
+                enum_dotnet.clone(),
+                disrc_type,
+                "_tag".into(),
+            )));
             assert!(curr_variant < adt_def.variants().len() as u64);
             let active_variant = &adt_def.variants()[(curr_variant as u32).into()];
             for _field in &active_variant.fields {
@@ -229,7 +228,11 @@ fn create_const_from_slice<'ctx>(
                 let low = i64::from_ne_bytes(low.to_ne_bytes());
                 let high = i64::from_ne_bytes(high.to_ne_bytes());
                 let ctor_sig = crate::function_sig::FnSig::new(
-                    &[Type::ManagedReference(Type::I128.into()), Type::U64, Type::U64],
+                    &[
+                        Type::ManagedReference(Type::I128.into()),
+                        Type::U64,
+                        Type::U64,
+                    ],
                     &Type::Void,
                 );
                 vec![
@@ -302,7 +305,11 @@ fn create_const_from_slice<'ctx>(
                 let low = i64::from_ne_bytes(low.to_ne_bytes());
                 let high = i64::from_ne_bytes(high.to_ne_bytes());
                 let ctor_sig = crate::function_sig::FnSig::new(
-                    &[Type::ManagedReference(Type::U128.into()), Type::U64, Type::U64],
+                    &[
+                        Type::ManagedReference(Type::U128.into()),
+                        Type::U64,
+                        Type::U64,
+                    ],
                     &Type::Void,
                 );
                 vec![
@@ -549,7 +556,11 @@ fn create_const_from_slice<'ctx>(
                         Some(dotnet_array_type.clone()),
                         "set_Item".into(),
                         crate::function_sig::FnSig::new(
-                            &[Type::Ptr(array_type.clone().into()), Type::ISize, Type::GenericArg(0)],
+                            &[
+                                Type::Ptr(array_type.clone().into()),
+                                Type::ISize,
+                                Type::GenericArg(0),
+                            ],
                             &Type::Void,
                         ),
                         false,
@@ -764,7 +775,7 @@ fn load_const_scalar<'ctx>(
         TyKind::Bool => vec![CILOp::LdcI32(scalar_u128 as i32)],
         TyKind::RawPtr(_) => {
             let value = i64::from_ne_bytes((scalar_u128 as u64).to_ne_bytes());
-            vec![CILOp::LdcI64(value),CILOp::ConvUSize(false)]
+            vec![CILOp::LdcI64(value), CILOp::ConvUSize(false)]
         }
         TyKind::Tuple(elements) => {
             if elements.is_empty() {
@@ -811,15 +822,16 @@ fn load_const_scalar<'ctx>(
                     .expect("Could not get type layout!");
                 let (disrc_type, _) = crate::utilis::adt::enum_tag_info(&layout.layout, tyctx);
                 let enum_dotnet = tpe.as_dotnet().expect("Enum scalar not an ADT!");
-                let  mut ops = 
-                vec![
+                let mut ops = vec![
                     CILOp::NewTMPLocal(tpe.into()),
                     CILOp::LoadAddresOfTMPLocal,
-                    CILOp::ConvUSize(false)];
-                    ops.push(CILOp::LdcI64(scalar_u128 as u64 as i64));
-                    ops.extend(crate::casts::int_to_int(Type::I64, disrc_type.clone()));
+                    CILOp::ConvUSize(false),
+                ];
+                ops.push(CILOp::LdcI64(scalar_u128 as u64 as i64));
+                ops.extend(crate::casts::int_to_int(Type::I64, disrc_type.clone()));
 
-                ops.extend([CILOp::STField(Box::new(crate::cil::FieldDescriptor::new(
+                ops.extend([
+                    CILOp::STField(Box::new(crate::cil::FieldDescriptor::new(
                         enum_dotnet.clone(),
                         disrc_type,
                         "_tag".into(),
@@ -837,7 +849,11 @@ fn load_const_scalar<'ctx>(
                 let high = i64::from_ne_bytes(high.to_ne_bytes());
                 let i128_class = DotnetTypeRef::new(Some("System.Runtime"), "System.Int128");
                 let ctor_sig = crate::function_sig::FnSig::new(
-                    &[Type::ManagedReference(Type::U128.into()), Type::U64, Type::U64],
+                    &[
+                        Type::ManagedReference(Type::U128.into()),
+                        Type::U64,
+                        Type::U64,
+                    ],
                     &Type::Void,
                 );
                 vec![
@@ -907,8 +923,14 @@ pub fn load_const_int(value: u128, int_type: &IntTy) -> Vec<CILOp> {
             let high = (value << 64) as u64;
             let low = i64::from_ne_bytes(low.to_ne_bytes());
             let high = i64::from_ne_bytes(high.to_ne_bytes());
-            let ctor_sig =
-                crate::function_sig::FnSig::new(&[Type::ManagedReference(Type::I128.into()), Type::U64, Type::U64], &Type::Void);
+            let ctor_sig = crate::function_sig::FnSig::new(
+                &[
+                    Type::ManagedReference(Type::I128.into()),
+                    Type::U64,
+                    Type::U64,
+                ],
+                &Type::Void,
+            );
             vec![
                 CILOp::NewTMPLocal(Type::I128.into()),
                 CILOp::LoadAddresOfTMPLocal,
@@ -955,8 +977,14 @@ pub fn load_const_uint(value: u128, int_type: &UintTy) -> Vec<CILOp> {
             let high = (value << 64) as u64;
             let low = i64::from_ne_bytes(low.to_ne_bytes());
             let high = i64::from_ne_bytes(high.to_ne_bytes());
-            let ctor_sig =
-                crate::function_sig::FnSig::new(&[Type::ManagedReference(Type::U128.into()), Type::U64, Type::U64], &Type::Void);
+            let ctor_sig = crate::function_sig::FnSig::new(
+                &[
+                    Type::ManagedReference(Type::U128.into()),
+                    Type::U64,
+                    Type::U64,
+                ],
+                &Type::Void,
+            );
             vec![
                 CILOp::NewTMPLocal(Type::U128.into()),
                 CILOp::LoadAddresOfTMPLocal,

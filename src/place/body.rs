@@ -236,7 +236,10 @@ pub fn place_elem_body<'ctx>(
                                 crate::cil::CallSite::new(
                                     Some(array_dotnet),
                                     "get_Item".into(),
-                                    FnSig::new(&[Type::Ptr(array_type.into()), Type::USize], &element_type),
+                                    FnSig::new(
+                                        &[Type::Ptr(array_type.into()), Type::USize],
+                                        &element_type,
+                                    ),
                                     false,
                                 )
                                 .into(),
@@ -260,7 +263,7 @@ pub fn place_elem_body<'ctx>(
                 .expect("INVALID PLACE: Indexing into enum variant???");
             let index = CILOp::LdcI64(*offset as i64);
             assert!(!from_end, "Indexing slice form end");
-            eprintln!("WARNING: ConstantIndex has required min_length of {min_length}, but bounds checking on const access not supported yet!");
+            println!("WARNING: ConstantIndex has required min_length of {min_length}, but bounds checking on const access not supported yet!");
             match curr_ty.kind() {
                 TyKind::Slice(inner) => {
                     let inner = crate::utilis::monomorphize(&method_instance, *inner, tyctx);
@@ -284,6 +287,7 @@ pub fn place_elem_body<'ctx>(
                     let mut ops = vec![
                         CILOp::LDField(desc.into()),
                         index,
+                        CILOp::ConvUSize(false),
                         CILOp::SizeOf(inner_type.into()),
                         CILOp::ConvUSize(false),
                         CILOp::Mul,
@@ -317,7 +321,10 @@ pub fn place_elem_body<'ctx>(
                                     crate::cil::CallSite::new(
                                         Some(array_dotnet),
                                         "get_Item".into(),
-                                        FnSig::new(&[Type::Ptr(array_type.into()), Type::USize], &element),
+                                        FnSig::new(
+                                            &[Type::Ptr(array_type.into()), Type::USize],
+                                            &element,
+                                        ),
                                         false,
                                     )
                                     .into(),

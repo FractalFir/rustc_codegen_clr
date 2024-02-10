@@ -17,10 +17,11 @@ fn peverify(file_path: &str, test_dir: &str) {
     }
 }
 #[cfg(test)]
-fn test_dotnet_executable(file_path: &str, test_dir: &str) {
+fn test_dotnet_executable(file_path: &str, test_dir: &str)->String {
     use std::io::Write;
 
     let exec_path = &format!("{file_path}.exe");
+    let mut stdout = String::new();
     //println!("exec_path:{exec_path:?}");
     if *IS_DOTNET_PRESENT {
         let config_path = format!("{test_dir}/{file_path}.runtimeconfig.json");
@@ -40,6 +41,7 @@ fn test_dotnet_executable(file_path: &str, test_dir: &str) {
             stderr.is_empty(),
             "Test program failed with message {stderr:}"
         );
+        stdout = String::from_utf8(out.stdout).expect("Stdout is not UTF8 String!");
     }
     if *IS_MONO_PRESENT && *crate::config::TEST_WITH_MONO {
         // Execute the test assembly
@@ -61,6 +63,7 @@ fn test_dotnet_executable(file_path: &str, test_dir: &str) {
         (*IS_DOTNET_PRESENT || *IS_MONO_PRESENT),
         "You must have the dotnet runtime installed to run tests."
     );
+    stdout
 }
 #[cfg(test)]
 fn test_lib(args: &[&str], test_name: &str) {
@@ -107,6 +110,97 @@ fn test_lib(args: &[&str], test_name: &str) {
         panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
     }
 }
+macro_rules! compare_tests {
+    ($prefix:ident,$test_name:ident) => {
+        #[cfg(target_os = "linux")]
+        mod $test_name {
+            #[cfg(test)]
+            use ntest::timeout;
+            #[cfg(test)]
+            static COMPILE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+            #[test]
+            #[timeout(30_000)]
+            
+            fn release() {
+                let lock = COMPILE_LOCK.lock();
+                let mut should_panic = false;
+                let test_dir = concat!("./test/", stringify!($prefix), "/");
+                // Ensures the test directory is present
+                std::fs::create_dir_all(test_dir).expect("Could not setup the test env");
+                // Builds the backend if neceasry
+                super::RUSTC_BUILD_STATUS
+                    .as_ref()
+                    .expect("Could not build rustc!");
+                // Compiles the test project
+                let mut cmd = std::process::Command::new("rustc");
+                //.env("RUST_TARGET_PATH","../../")
+                cmd.current_dir(test_dir).args([
+                    "-O",
+                    "-Z",
+                    super::backend_path(),
+                    "-C",
+                    &format!(
+                        "linker={}",
+                        super::RUSTC_CODEGEN_CLR_LINKER.display()
+                    ),
+                    concat!("./", stringify!($test_name), ".rs"),
+                    "-o",
+                    concat!("./", stringify!($test_name), ".exe"),
+                    "--edition",
+                    "2021",
+                    //"--target",
+                    //"clr64-unknown-clr"
+                ]);
+                eprintln!("Command: {cmd:?}");
+                let out = cmd.output().expect("failed to execute process");
+                // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
+                if !out.stderr.is_empty() {
+                    let stdout = String::from_utf8(out.stdout)
+                        .expect("rustc error contained non-UTF8 characters.");
+                    let stderr = String::from_utf8(out.stderr)
+                        .expect("rustc error contained non-UTF8 characters.");
+                    eprintln!("stdout:\n{stdout}\nstderr:\n{stderr}");
+                    should_panic = true;
+                }
+                let exec_path = concat!("../", stringify!($test_name));
+                drop(lock);
+                //super::peverify(exec_path, test_dir);
+                eprintln!("Prepating to test with .NET");
+                let dotnet_out = super::test_dotnet_executable(exec_path, test_dir);
+                // Compiles the project with native rust
+                let mut cmd = std::process::Command::new("rustc");
+                //.env("RUST_TARGET_PATH","../../")
+                cmd.current_dir(test_dir).args([
+                    "-O",
+                    concat!("./", stringify!($test_name), ".rs"),
+                    "-o",
+                    concat!("./", stringify!($test_name), ".a"),
+                    "--edition",
+                    "2021",
+                ]);
+                eprintln!("Buildin");
+                let out = cmd.output().expect("failed to execute process");
+                // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
+                if !out.stderr.is_empty() {
+                    let stdout = String::from_utf8(out.stdout)
+                        .expect("rustc error contained non-UTF8 characters.");
+                    let stderr = String::from_utf8(out.stderr)
+                        .expect("rustc error contained non-UTF8 characters.");
+                    eprintln!("stdout:\n{stdout}\nstderr:\n{stderr}");
+                    should_panic = true;
+                }
+                let rust_out =  std::process::Command::new(concat!("./", stringify!($test_name), ".a")).current_dir(test_dir).output().expect("failed to execute process");
+                let rust_out = String::from_utf8(rust_out.stdout)
+                .expect("rust error contained non-UTF8 characters.");
+                assert_eq!(rust_out,dotnet_out);
+                if should_panic{
+                    panic!("{rust_out}{dotnet_out}");
+                }
+            }
+        }
+    };
+}
+
 macro_rules! test_lib {
     ($test_name:ident,$is_stable:ident) => {
         mod $test_name {
@@ -542,6 +636,7 @@ run_test! {arthm,sub,stable}
 
 run_test! {types,tuple_structs,stable}
 run_test! {types,enums,unstable}
+run_test! {types,arr,stable}
 run_test! {types,adt_enum,stable}
 run_test! {types,nbody,stable}
 run_test! {types,structs,stable}
@@ -563,7 +658,7 @@ run_test! {std,main,unstable}
 run_test! {control_flow,cf_for,stable}
 run_test! {control_flow,drop,stable}
 
-run_test! {intrinsics,bswap,unstable}
+run_test! {intrinsics,bswap,stable}
 run_test! {intrinsics,assert,unstable}
 run_test! {intrinsics,addr_of,stable}
 run_test! {intrinsics,printf,unstable}
@@ -574,9 +669,9 @@ run_test! {fuzz,test0,stable}
 run_test! {fuzz,test1,stable}
 
 run_test! {fuzz,fuzz0,unstable}
-run_test! {fuzz,fuzz1,unstable}
-run_test! {fuzz,fuzz2,unstable}
-run_test! {fuzz,fuzz3,unstable}
+compare_tests! {fuzz,fuzz1}
+compare_tests! {fuzz,fuzz2}
+compare_tests! {fuzz,fuzz3}
 
 run_test! {fuzz,fail0,stable}
 

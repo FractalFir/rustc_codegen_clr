@@ -68,6 +68,13 @@ impl DotnetTypeRef {
         Self::new(Some("System.Runtime"), "System.Int128")
     }
     #[must_use]
+    pub fn binary_primitives() -> Self {
+        Self::new(
+            Some("System.Memory"),
+            "System.Buffers.Binary.BinaryPrimitives",
+        )
+    }
+    #[must_use]
     pub fn uint_128() -> Self {
         Self::new(Some("System.Runtime"), "System.UInt128")
     }
@@ -375,15 +382,13 @@ pub fn pointer_to_is_fat<'tyctx>(
     method.inspect(|method| {
         pointed_type = crate::utilis::monomorphize(method, pointed_type, tyctx);
     });
+    /*
     let (_metadata, _fat_if_not_sized) = pointed_type.ptr_metadata_ty(tyctx, |mut ty| {
         method.inspect(|method| {
             ty = crate::utilis::monomorphize(method, ty, tyctx);
         });
         ty
-    });
-    //TODO: fat_if_not_sized is suposed to tell me if a pointer being fat depends on if the type is sized.
-    // I am not sure how this is suposed to work exactly, so it gets ignored for now.
-    //let is_sized = pointed_type.is_sized(tyctx, ParamEnv::reveal_all());
+    });*/
     let is_trivialy_sized = pointed_type.is_trivially_sized(tyctx);
     if is_trivialy_sized {
         // Sized types don't need fat pointers

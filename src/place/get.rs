@@ -122,6 +122,7 @@ fn place_elem_get<'a>(
                     let mut ops = vec![
                         CILOp::LDField(desc.into()),
                         index,
+                        CILOp::ConvUSize(false),
                         CILOp::SizeOf(inner_type.into()),
                         CILOp::ConvUSize(false),
                         CILOp::Mul,
@@ -166,7 +167,7 @@ fn place_elem_get<'a>(
                 .expect("INVALID PLACE: Indexing into enum variant???");
             let index = CILOp::LdcI64(*offset as i64);
             assert!(!from_end, "Indexing slice form end");
-            eprintln!("WARNING: ConstantIndex has required min_length of {min_length}, but bounds checking on const access not supported yet!");
+            println!("WARNING: ConstantIndex has required min_length of {min_length}, but bounds checking on const access not supported yet!");
             match curr_ty.kind() {
                 TyKind::Slice(inner) => {
                     let inner = crate::utilis::monomorphize(&method_instance, *inner, tyctx);
@@ -190,6 +191,7 @@ fn place_elem_get<'a>(
                     let mut ops = vec![
                         CILOp::LDField(desc.into()),
                         index,
+                        CILOp::ConvUSize(false),
                         CILOp::SizeOf(inner_type.into()),
                         CILOp::ConvUSize(false),
                         CILOp::Mul,

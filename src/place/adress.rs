@@ -185,6 +185,7 @@ pub fn place_elem_adress<'ctx>(
                     let ops = vec![
                         CILOp::LDField(desc.into()),
                         index,
+                        CILOp::ConvUSize(false),
                         CILOp::SizeOf(inner_type.into()),
                         CILOp::ConvUSize(false),
                         CILOp::Mul,

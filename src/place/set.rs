@@ -21,11 +21,22 @@ pub fn place_elem_set<'a>(
     ctx: TyCtxt<'a>,
     method_instance: Instance<'a>,
     type_cache: &mut crate::r#type::TyCache,
+    value_calc: Vec<CILOp>,
+    addr_calc: Vec<CILOp>,
 ) -> Vec<CILOp> {
     match place_elem {
         PlaceElem::Deref => {
             let pointed_type = pointed_type(curr_type);
-            ptr_set_op(pointed_type.into(), ctx, &method_instance, type_cache)
+            let mut ops = Vec::new();
+            ops.extend(addr_calc);
+            ops.extend(value_calc);
+            ops.extend(ptr_set_op(
+                pointed_type.into(),
+                ctx,
+                &method_instance,
+                type_cache,
+            ));
+            ops
         }
         PlaceElem::Field(index, _field_type) => match curr_type {
             PlaceTy::Ty(curr_type) => {
@@ -37,7 +48,11 @@ pub fn place_elem_set<'a>(
                     method_instance,
                     type_cache,
                 );
-                vec![CILOp::STField(field_desc.into())]
+                let mut ops = Vec::new();
+                ops.extend(addr_calc);
+                ops.extend(value_calc);
+                ops.push(CILOp::STField(field_desc.into()));
+                ops
             }
             super::PlaceTy::EnumVariant(enm, var_idx) => {
                 let enm = crate::utilis::monomorphize(&method_instance, enm, ctx);
@@ -49,7 +64,11 @@ pub fn place_elem_set<'a>(
                     method_instance,
                     type_cache,
                 );
-                vec![CILOp::STField(field_desc.into())]
+                let mut ops = Vec::new();
+                ops.extend(addr_calc);
+                ops.extend(value_calc);
+                ops.push(CILOp::STField(field_desc.into()));
+                ops
             }
         },
         PlaceElem::Index(index) => {
@@ -76,14 +95,18 @@ pub fn place_elem_set<'a>(
                     );
                     let ptr_set_op =
                         ptr_set_op(super::PlaceTy::Ty(inner), ctx, &method_instance, type_cache);
-                    let mut ops = vec![
+                    let mut ops = Vec::new();
+                    ops.extend(addr_calc);
+                    ops.extend([
                         CILOp::LDField(desc.into()),
                         index,
+                        CILOp::ConvUSize(false),
                         CILOp::SizeOf(inner_type.into()),
                         CILOp::ConvUSize(false),
                         CILOp::Mul,
                         CILOp::Add,
-                    ];
+                    ]);
+                    ops.extend(value_calc);
                     ops.extend(ptr_set_op);
                     ops
                 }
@@ -95,18 +118,22 @@ pub fn place_elem_set<'a>(
                         type_cache.type_from_cache(element, ctx, Some(method_instance));
 
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
-                    let ops = vec![
-                        index,
-                        CILOp::Call(
-                            crate::cil::CallSite::new(
-                                Some(array_dotnet),
-                                "set_Item".into(),
-                                FnSig::new(&[Type::Ptr(array_type.into()), Type::USize, element_type], &Type::Void),
-                                false,
-                            )
-                            .into(),
-                        ),
-                    ];
+                    let mut ops = Vec::new();
+                    ops.extend(addr_calc);
+                    ops.push(index);
+                    ops.extend(value_calc);
+                    ops.extend([CILOp::Call(
+                        crate::cil::CallSite::new(
+                            Some(array_dotnet),
+                            "set_Item".into(),
+                            FnSig::new(
+                                &[Type::Ptr(array_type.into()), Type::USize, element_type],
+                                &Type::Void,
+                            ),
+                            false,
+                        )
+                        .into(),
+                    )]);
                     ops
                 }
                 _ => {
@@ -124,7 +151,7 @@ pub fn place_elem_set<'a>(
                 .expect("INVALID PLACE: Indexing into enum variant???");
             let index = CILOp::LdcI64(*offset as i64);
             assert!(!from_end, "Indexing slice form end");
-            eprintln!("WARNING: ConstantIndex has required min_length of {min_length}, but bounds checking on const access not supported yet!");
+            println!("WARNING: ConstantIndex has required min_length of {min_length}, but bounds checking on const access not supported yet!");
             match curr_ty.kind() {
                 TyKind::Slice(inner) => {
                     let inner = crate::utilis::monomorphize(&method_instance, *inner, ctx);
@@ -141,14 +168,18 @@ pub fn place_elem_set<'a>(
                     );
                     let ptr_set_op =
                         ptr_set_op(super::PlaceTy::Ty(inner), ctx, &method_instance, type_cache);
-                    let mut ops = vec![
+                    let mut ops = Vec::new();
+                    ops.extend(addr_calc);
+                    ops.extend([
                         CILOp::LDField(desc.into()),
                         index,
+                        CILOp::ConvUSize(false),
                         CILOp::SizeOf(inner_type.into()),
                         CILOp::ConvUSize(false),
                         CILOp::Mul,
                         CILOp::Add,
-                    ];
+                    ]);
+                    ops.extend(value_calc);
                     ops.extend(ptr_set_op);
                     ops
                 }
@@ -158,19 +189,23 @@ pub fn place_elem_set<'a>(
                     let array_type =
                         type_cache.type_from_cache(curr_ty, ctx, Some(method_instance));
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
-                    let ops = vec![
-                        index,
-                        CILOp::ConvUSize(false),
-                        CILOp::Call(
-                            crate::cil::CallSite::new(
-                                Some(array_dotnet),
-                                "set_Item".into(),
-                                FnSig::new(&[Type::Ptr(array_type.into()), Type::USize, element], &Type::Void),
-                                false,
-                            )
-                            .into(),
-                        ),
-                    ];
+                    let mut ops = Vec::new();
+                    ops.extend(addr_calc);
+                    ops.push(index);
+                    ops.push(CILOp::ConvUSize(false));
+                    ops.extend(value_calc);
+                    ops.extend([CILOp::Call(
+                        crate::cil::CallSite::new(
+                            Some(array_dotnet),
+                            "set_Item".into(),
+                            FnSig::new(
+                                &[Type::Ptr(array_type.into()), Type::USize, element],
+                                &Type::Void,
+                            ),
+                            false,
+                        )
+                        .into(),
+                    )]);
                     ops
                 }
                 _ => {

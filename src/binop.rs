@@ -143,7 +143,12 @@ pub(crate) fn binop_unchecked<'tyctx>(
             [
                 ops_a,
                 ops_b,
-                vec![CILOp::SizeOf(pointed_ty),CILOp::ConvUSize(false), CILOp::Mul, CILOp::Add],
+                vec![
+                    CILOp::SizeOf(pointed_ty),
+                    CILOp::ConvUSize(false),
+                    CILOp::Mul,
+                    CILOp::Add,
+                ],
             ]
             .into_iter()
             .flatten()
@@ -500,14 +505,14 @@ fn rem_unchecked<'tyctx>(
 }
 
 fn shr_unchecked<'tyctx>(
-    ty_a: Ty<'tyctx>,
-    ty_b: Ty<'tyctx>,
+    value_type: Ty<'tyctx>,
+    shift_type: Ty<'tyctx>,
     tycache: &mut TyCache,
     method_instance: &Instance<'tyctx>,
     tyctx: TyCtxt<'tyctx>,
 ) -> Vec<CILOp> {
-    let type_b = tycache.type_from_cache(ty_b, tyctx, Some(*method_instance));
-    match ty_a.kind() {
+    let type_b = tycache.type_from_cache(shift_type, tyctx, Some(*method_instance));
+    match value_type.kind() {
         TyKind::Uint(UintTy::U128) => {
             let mut res = crate::casts::int_to_int(type_b.clone(), Type::I32);
             res.push(CILOp::Call(CallSite::boxed(
@@ -528,17 +533,22 @@ fn shr_unchecked<'tyctx>(
             )));
             res
         }
-
-        TyKind::Uint(_) => match ty_b.kind() {
-            TyKind::Uint(UintTy::U128) | TyKind::Int(IntTy::I128) => {
+        TyKind::Uint(_) => match shift_type.kind() {
+            TyKind::Uint(UintTy::U128)
+            | TyKind::Int(IntTy::I128)
+            | TyKind::Uint(UintTy::U64)
+            | TyKind::Int(IntTy::I64) => {
                 let mut res = crate::casts::int_to_int(type_b.clone(), Type::I32);
                 res.push(CILOp::ShrUn);
                 res
             }
             _ => vec![CILOp::ShrUn],
         },
-        TyKind::Int(_) => match ty_b.kind() {
-            TyKind::Uint(UintTy::U128) | TyKind::Int(IntTy::I128) => {
+        TyKind::Int(_) => match shift_type.kind() {
+            TyKind::Uint(UintTy::U128)
+            | TyKind::Int(IntTy::I128)
+            | TyKind::Uint(UintTy::U64)
+            | TyKind::Int(IntTy::I64) => {
                 let mut res = crate::casts::int_to_int(type_b.clone(), Type::I32);
                 res.push(CILOp::Shr);
                 res
@@ -546,18 +556,18 @@ fn shr_unchecked<'tyctx>(
 
             _ => vec![CILOp::Shr],
         },
-        _ => panic!("Can't bitshift type  {ty_a:?}"),
+        _ => panic!("Can't bitshift type  {value_type:?}"),
     }
 }
 fn shl_unchecked<'tyctx>(
-    ty_a: Ty<'tyctx>,
-    ty_b: Ty<'tyctx>,
+    value_type: Ty<'tyctx>,
+    shift_type: Ty<'tyctx>,
     tycache: &mut TyCache,
     method_instance: &Instance<'tyctx>,
     tyctx: TyCtxt<'tyctx>,
 ) -> Vec<CILOp> {
-    let type_b = tycache.type_from_cache(ty_b, tyctx, Some(*method_instance));
-    match ty_a.kind() {
+    let type_b = tycache.type_from_cache(shift_type, tyctx, Some(*method_instance));
+    match value_type.kind() {
         TyKind::Uint(UintTy::U128) => {
             let mut res = crate::casts::int_to_int(type_b.clone(), Type::I32);
             res.push(CILOp::Call(CallSite::boxed(
@@ -578,15 +588,18 @@ fn shl_unchecked<'tyctx>(
             )));
             res
         }
-        TyKind::Uint(_) | TyKind::Int(_) => match ty_b.kind() {
-            TyKind::Uint(UintTy::U128) | TyKind::Int(IntTy::I128) => {
+        TyKind::Uint(_) | TyKind::Int(_) => match shift_type.kind() {
+            TyKind::Uint(UintTy::U128)
+            | TyKind::Int(IntTy::I128)
+            | TyKind::Uint(UintTy::U64)
+            | TyKind::Int(IntTy::I64) => {
                 let mut res = crate::casts::int_to_int(type_b.clone(), Type::I32);
                 res.push(CILOp::Shl);
                 res
             }
             _ => vec![CILOp::Shl],
         },
-        _ => panic!("Can't bitshift type  {ty_a:?}"),
+        _ => panic!("Can't bitshift type  {value_type:?}"),
     }
 }
 fn mul_unchecked<'tyctx>(

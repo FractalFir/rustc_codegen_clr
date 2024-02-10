@@ -219,27 +219,35 @@ pub(crate) fn place_set<'a>(
     method_instance: Instance<'a>,
     type_cache: &mut crate::r#type::TyCache,
 ) -> Vec<CILOp> {
-    let mut ops = Vec::with_capacity(place.projection.len());
     if place.projection.is_empty() {
+        let mut ops = Vec::with_capacity(place.projection.len());
         ops.extend(value_calc);
         ops.push(set::local_set(place.local.as_usize(), method));
         ops
     } else {
+        let mut addr_calc = Vec::new();
         let (op, ty) = local_body(place.local.as_usize(), method);
         let mut ty: PlaceTy = ty.into();
         ty = ty.monomorphize(&method_instance, ctx);
-        ops.extend(op);
+        addr_calc.extend(op);
         let (head, body) = slice_head(place.projection);
         for elem in body {
             let (curr_ty, curr_ops) =
                 place_elem_body(elem, ty, ctx, method_instance, method, type_cache);
             ty = curr_ty.monomorphize(&method_instance, ctx);
-            ops.extend(curr_ops);
+            addr_calc.extend(curr_ops);
         }
-        ops.extend(value_calc);
+        //
         ty = ty.monomorphize(&method_instance, ctx);
-        ops.extend(place_elem_set(head, ty, ctx, method_instance, type_cache));
-        ops
+        place_elem_set(
+            head,
+            ty,
+            ctx,
+            method_instance,
+            type_cache,
+            value_calc,
+            addr_calc,
+        )
     }
 }
 #[derive(Debug, Clone, Copy)]

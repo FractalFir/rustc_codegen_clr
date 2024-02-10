@@ -221,7 +221,7 @@ pub fn handle_rvalue<'tcx>(
             NullOp::SizeOf => {
                 let ty = crate::utilis::monomorphize(&method_instance, *ty, tyctx);
                 let ty = Box::new(tycache.type_from_cache(ty, tyctx, Some(method_instance)));
-                vec![CILOp::SizeOf(ty),CILOp::ConvUSize(false)]
+                vec![CILOp::SizeOf(ty), CILOp::ConvUSize(false)]
             }
             NullOp::AlignOf => {
                 let ty = crate::utilis::monomorphize(&method_instance, *ty, tyctx);
@@ -231,6 +231,7 @@ pub fn handle_rvalue<'tcx>(
                 ]
             }
             NullOp::OffsetOf(_) => todo!("Unsuported nullary {op:?}!"),
+            NullOp::DebugAssertions => todo!("Unsuported nullary {op:?}!"),
         },
         Rvalue::Aggregate(aggregate_kind, field_index) => crate::aggregate::handle_aggregate(
             tyctx,
@@ -473,14 +474,18 @@ pub fn handle_rvalue<'tcx>(
             ops.push(CILOp::NewTMPLocal(array.clone().into()));
             for idx in 0..times {
                 ops.push(CILOp::LoadAddresOfTMPLocal);
-                ops.extend(operand.clone());
                 ops.extend([CILOp::LdcI64(idx as i64), CILOp::ConvUSize(false)]);
+                ops.extend(operand.clone());
                 ops.push(CILOp::Call(
                     CallSite::new(
                         Some(array_dotnet.clone()),
                         "set_Item".into(),
                         FnSig::new(
-                            &[Type::Ptr(array.clone().into()), Type::USize, operand_type.clone()],
+                            &[
+                                Type::Ptr(array.clone().into()),
+                                Type::USize,
+                                operand_type.clone(),
+                            ],
                             &Type::Void,
                         ),
                         false,
