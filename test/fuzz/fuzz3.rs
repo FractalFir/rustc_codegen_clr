@@ -99,12 +99,12 @@
     } 
     impl PrintFDebug for i128{
         unsafe fn printf_debug(&self){
-            printf("%lu%lu\0".as_ptr() as *const c_char,*self as i64, (*self as u128 >> 64) as i64);
+            u128::printf_debug(&(*self as u128));
         }
     } 
     impl PrintFDebug for u128{
         unsafe fn printf_debug(&self){
-            printf("%lu%lu\0".as_ptr() as *const c_char,*self as u64, (*self >> 64) as u64);
+            printf("%lx%lx\0".as_ptr() as *const c_char, (*self >> 64) as u64,*self as u64);
         }
     } 
     impl PrintFDebug for isize{
@@ -361,11 +361,11 @@
             val0.printf_debug();
             printf("\n_%u = \0".as_ptr() as *const c_char,var1);
             val1.printf_debug();
-            printf("\n_%u = \0".as_ptr() as *const c_char,f,var2);
+            printf("\n_%u = \0".as_ptr() as *const c_char,var2);
             val2.printf_debug();
             printf("\n_%u = \0".as_ptr() as *const c_char,var3);
             val3.printf_debug();
-            printf("\n\0".as_ptr() as *const c_char,var3);
+            printf("\n\0".as_ptr() as *const c_char);
         }
     }
     #[custom_mir(dialect = "runtime", phase = "initial")]

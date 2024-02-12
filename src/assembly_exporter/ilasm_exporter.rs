@@ -70,23 +70,30 @@ impl AssemblyExporter for ILASMExporter {
     ) -> Result<(), AssemblyExportError> {
         let directory = absolute_path(final_path)
             .map_err(|io| AssemblyExportError::CouldNotCanonalizePath(io, final_path.to_owned()))?
-            .parent()
-            .expect("Can't get the target directory")
+            //.parent()
+            //.expect("Can't get the target directory")
             .to_owned();
 
-        let mut out_path = directory.clone();
-        out_path.set_file_name(final_path.file_name().expect("Target file has no name!"));
+        let mut out_path = final_path.to_owned();
+        //out_path.set_file_name(final_path.file_name().expect("Target file has no name!"));
         if let Some(ext) = final_path.extension() {
             out_path = out_path.with_extension(ext);
         }
         //final_path.expect("Could not canonialize path!");
 
-        let cil_path = out_path.with_extension("il");
+        let cil_path = final_path.with_extension("il");
+        let config = final_path.with_extension("runtimeconfig.json");
+        let mut config = std::fs::File::create(&config).unwrap();
+        config.write_all(crate::compile_test::runtime_config().as_bytes())
+            .expect("Could not write runtime config");
+        
         let mut cil = self.encoded_asm;
         cil.write_all(&self.methods)?;
         writeln!(cil, "}}")?;
-        std::fs::File::create(&cil_path)
-            .expect("Could not create file")
+        match std::fs::File::create(&cil_path){
+            Ok(ok)=>ok,
+            Err(err)=>panic!("Can't create file at path {cil_path:?} because {err:?}"),
+        }
             .write_all(&cil)
             .expect("Could not write bytes");
         let asm_type = if is_dll { "-dll" } else { "-exe" };

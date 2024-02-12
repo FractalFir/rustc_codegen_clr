@@ -17,7 +17,7 @@ fn peverify(file_path: &str, test_dir: &str) {
     }
 }
 #[cfg(test)]
-fn test_dotnet_executable(file_path: &str, test_dir: &str)->String {
+fn test_dotnet_executable(file_path: &str, test_dir: &str) -> String {
     use std::io::Write;
 
     let exec_path = &format!("{file_path}.exe");
@@ -28,7 +28,7 @@ fn test_dotnet_executable(file_path: &str, test_dir: &str)->String {
         println!("{config_path:?}");
         let mut file = std::fs::File::create(config_path).unwrap();
         file.write_all(RUNTIME_CONFIG.as_bytes())
-            .expect("COuld not write runtime config");
+            .expect("Could not write runtime config");
         //RUNTIME_CONFIG
         let out = std::process::Command::new("dotnet")
             .current_dir(test_dir)
@@ -120,7 +120,7 @@ macro_rules! compare_tests {
             static COMPILE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
             #[test]
             #[timeout(30_000)]
-            
+
             fn release() {
                 let lock = COMPILE_LOCK.lock();
                 let mut should_panic = false;
@@ -139,10 +139,7 @@ macro_rules! compare_tests {
                     "-Z",
                     super::backend_path(),
                     "-C",
-                    &format!(
-                        "linker={}",
-                        super::RUSTC_CODEGEN_CLR_LINKER.display()
-                    ),
+                    &format!("linker={}", super::RUSTC_CODEGEN_CLR_LINKER.display()),
                     concat!("./", stringify!($test_name), ".rs"),
                     "-o",
                     concat!("./", stringify!($test_name), ".exe"),
@@ -162,7 +159,7 @@ macro_rules! compare_tests {
                     eprintln!("stdout:\n{stdout}\nstderr:\n{stderr}");
                     should_panic = true;
                 }
-                let exec_path = concat!("../", stringify!($test_name));
+                let exec_path = concat!("./", stringify!($test_name));
                 drop(lock);
                 //super::peverify(exec_path, test_dir);
                 eprintln!("Prepating to test with .NET");
@@ -189,11 +186,15 @@ macro_rules! compare_tests {
                     eprintln!("stdout:\n{stdout}\nstderr:\n{stderr}");
                     should_panic = true;
                 }
-                let rust_out =  std::process::Command::new(concat!("./", stringify!($test_name), ".a")).current_dir(test_dir).output().expect("failed to execute process");
+                let rust_out =
+                    std::process::Command::new(concat!("./", stringify!($test_name), ".a"))
+                        .current_dir(test_dir)
+                        .output()
+                        .expect("failed to execute process");
                 let rust_out = String::from_utf8(rust_out.stdout)
-                .expect("rust error contained non-UTF8 characters.");
-                assert_eq!(rust_out,dotnet_out);
-                if should_panic{
+                    .expect("rust error contained non-UTF8 characters.");
+                assert_eq!(rust_out, dotnet_out);
+                if should_panic {
                     panic!("{rust_out}{dotnet_out}");
                 }
             }
@@ -308,7 +309,7 @@ macro_rules! run_test {
                             .expect("rustc error contained non-UTF8 characters.");
                         panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
                     }
-                    let exec_path = concat!("../", stringify!($test_name));
+                    let exec_path = concat!("./", stringify!($test_name));
                     drop(lock);
                     //super::peverify(exec_path, test_dir);
 
@@ -357,7 +358,7 @@ macro_rules! run_test {
                             .expect("rustc error contained non-UTF8 characters.");
                         panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
                     }
-                    let exec_path = format!("../{test_name}");
+                    let exec_path = format!("./{test_name}");
                     drop(lock);
                     //super::peverify(&exec_path, test_dir);
                     super::super::test_dotnet_executable(&exec_path, test_dir);
@@ -757,4 +758,7 @@ pub fn cargo_build_env() -> String {
     let linker = RUSTC_CODEGEN_CLR_LINKER.display();
     let link_args = "--cargo-support";
     format!("-Z codegen-backend={backend} -C linker={linker} -C link-args={link_args}")
+}
+pub fn runtime_config()->String{
+    RUNTIME_CONFIG.to_string()
 }

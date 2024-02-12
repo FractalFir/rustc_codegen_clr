@@ -224,7 +224,8 @@ fn create_const_from_slice<'ctx>(
                         .expect("Invalid slice!"),
                 );
                 let low = (value & u128::from(u64::MAX)) as u64;
-                let high = (value << 64) as u64;
+                let high = (value >> 64) as u64;
+                
                 let low = i64::from_ne_bytes(low.to_ne_bytes());
                 let high = i64::from_ne_bytes(high.to_ne_bytes());
                 let ctor_sig = crate::function_sig::FnSig::new(
@@ -239,8 +240,10 @@ fn create_const_from_slice<'ctx>(
                     CILOp::NewTMPLocal(Type::I128.into()),
                     CILOp::LoadAddresOfTMPLocal,
                     CILOp::LdcI64(high),
+                    CILOp::ConvI64(false),
                     CILOp::ConvU64(false),
                     CILOp::LdcI64(low),
+                    CILOp::ConvI64(false),
                     CILOp::ConvU64(false),
                     CILOp::Call(CallSite::boxed(
                         Some(DotnetTypeRef::int_128()),
@@ -266,6 +269,7 @@ fn create_const_from_slice<'ctx>(
                 CILOp::LdcI32(i8::from_le_bytes(
                     bytes[..std::mem::size_of::<i8>()].try_into().unwrap(),
                 ) as i32),
+                CILOp::ConvI8(false),
                 CILOp::ConvU8(false),
             ],
             UintTy::U16 => vec![
@@ -284,6 +288,7 @@ fn create_const_from_slice<'ctx>(
                 CILOp::LdcI64(i64::from_le_bytes(
                     bytes[..std::mem::size_of::<i64>()].try_into().unwrap(),
                 )),
+                CILOp::ConvI64(false),
                 CILOp::ConvU64(false),
             ],
             UintTy::Usize => vec![
@@ -301,7 +306,8 @@ fn create_const_from_slice<'ctx>(
                         .expect("Invalid slice!"),
                 );
                 let low = (value & u128::from(u64::MAX)) as u64;
-                let high = (value << 64) as u64;
+                let high = (value >> 64) as u64;
+                //eprintln!("low:{low}, high:{high}");
                 let low = i64::from_ne_bytes(low.to_ne_bytes());
                 let high = i64::from_ne_bytes(high.to_ne_bytes());
                 let ctor_sig = crate::function_sig::FnSig::new(
@@ -316,8 +322,10 @@ fn create_const_from_slice<'ctx>(
                     CILOp::NewTMPLocal(Type::U128.into()),
                     CILOp::LoadAddresOfTMPLocal,
                     CILOp::LdcI64(high),
+                    CILOp::ConvI64(false),
                     CILOp::ConvU64(false),
                     CILOp::LdcI64(low),
+                    CILOp::ConvI64(false),
                     CILOp::ConvU64(false),
                     CILOp::Call(CallSite::boxed(
                         Some(DotnetTypeRef::uint_128()),
@@ -920,9 +928,10 @@ pub fn load_const_int(value: u128, int_type: &IntTy) -> Vec<CILOp> {
         }
         IntTy::I128 => {
             let low = (value & u128::from(u64::MAX)) as u64;
-            let high = (value << 64) as u64;
+            let high = (value >> 64) as u64;
             let low = i64::from_ne_bytes(low.to_ne_bytes());
             let high = i64::from_ne_bytes(high.to_ne_bytes());
+            //eprintln!("value:{value:x} high:{high} low:{low}");
             let ctor_sig = crate::function_sig::FnSig::new(
                 &[
                     Type::ManagedReference(Type::I128.into()),
@@ -935,8 +944,10 @@ pub fn load_const_int(value: u128, int_type: &IntTy) -> Vec<CILOp> {
                 CILOp::NewTMPLocal(Type::I128.into()),
                 CILOp::LoadAddresOfTMPLocal,
                 CILOp::LdcI64(high),
+                CILOp::ConvI64(false),
                 CILOp::ConvU64(false),
                 CILOp::LdcI64(low),
+                CILOp::ConvI64(false),
                 CILOp::ConvU64(false),
                 CILOp::Call(CallSite::boxed(
                     Some(DotnetTypeRef::int_128()),
@@ -954,7 +965,7 @@ pub fn load_const_uint(value: u128, int_type: &UintTy) -> Vec<CILOp> {
     match int_type {
         UintTy::U8 => {
             let value = i8::from_ne_bytes([value as u8]);
-            vec![CILOp::LdcI32(i32::from(value)), CILOp::ConvU8(false)]
+            vec![CILOp::LdcI32(i32::from(value)), CILOp::ConvI8(false),CILOp::ConvU8(false)]
         }
         UintTy::U16 => {
             let value = i16::from_ne_bytes((value as u16).to_ne_bytes());
@@ -966,15 +977,15 @@ pub fn load_const_uint(value: u128, int_type: &UintTy) -> Vec<CILOp> {
         }
         UintTy::U64 => {
             let value = i64::from_ne_bytes((value as u64).to_ne_bytes());
-            vec![CILOp::LdcI64(value), CILOp::ConvU64(false)]
+            vec![CILOp::LdcI64(value), CILOp::ConvI64(false), CILOp::ConvU64(false)]
         }
         UintTy::Usize => {
             let value = i64::from_ne_bytes((value as u64).to_ne_bytes());
-            vec![CILOp::LdcI64(value), CILOp::ConvUSize(false)]
+            vec![CILOp::LdcI64(value), CILOp::ConvI64(false), CILOp::ConvUSize(false)]
         }
         UintTy::U128 => {
             let low = (value & u128::from(u64::MAX)) as u64;
-            let high = (value << 64) as u64;
+            let high = (value >> 64) as u64;
             let low = i64::from_ne_bytes(low.to_ne_bytes());
             let high = i64::from_ne_bytes(high.to_ne_bytes());
             let ctor_sig = crate::function_sig::FnSig::new(
@@ -989,8 +1000,10 @@ pub fn load_const_uint(value: u128, int_type: &UintTy) -> Vec<CILOp> {
                 CILOp::NewTMPLocal(Type::U128.into()),
                 CILOp::LoadAddresOfTMPLocal,
                 CILOp::LdcI64(high),
+                CILOp::ConvI64(false),
                 CILOp::ConvU64(false),
                 CILOp::LdcI64(low),
+                CILOp::ConvI64(false),
                 CILOp::ConvU64(false),
                 CILOp::Call(CallSite::boxed(
                     Some(DotnetTypeRef::uint_128()),

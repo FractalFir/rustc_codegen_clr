@@ -38,7 +38,7 @@ macro_rules! test_eq{
     ($a:expr,$b:expr)=>{
         if black_box($a) != black_box($b){
             //Put::putnl($a);
-            //Put::putnl($b);
+            // Put::putnl($b);
             rustc_clr_interop_managed_call1_::<"System.Console","System.Console",false,"WriteLine",true,(),u32>(line!());
             unsafe{core::intrinsics::breakpoint()};
             core::intrinsics::abort();
@@ -145,6 +145,16 @@ impl Put for u128{
     fn put(val:Self){
         <u64 as Put>::put(val as u64);
         <u64 as Put>::put((val / (u64::MAX as u128)) as u64);
+    }
+}
+impl Put for i128{
+    fn putnl(val:Self){
+        <u64 as Put>::put(val as u64);
+        <u64 as Put>::putnl((val as u128 / (u64::MAX as u128)) as u64);
+    }
+    fn put(val:Self){
+        <u64 as Put>::put(val as u64);
+        <u64 as Put>::put((val as u128 / (u64::MAX as u128)) as u64);
     }
 }
 impl Put for u32{}
