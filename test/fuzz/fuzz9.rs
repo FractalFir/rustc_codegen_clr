@@ -428,12 +428,15 @@ _10 = 77_u8;
 _2 = '\u{32346}';
 _17 = RET as f32;
 _20 = !_11;
+Goto(bb5)
+/* 
 match _10 {
 0 => bb1,
 77 => bb5,
 _ => bb4
+}*/
 }
-}
+/*
 bb4 = {
 _5 = 1904_i16 >> _3;
 _1 = !true;
@@ -441,7 +444,7 @@ _17 = 353136643_i32 as f32;
 _11 = 34163_u16;
 RET = 139708253440881512949191485117737064051_i128;
 Goto(bb3)
-}
+} */
 bb5 = {
 _17 = _11 as f32;
 _21 = _17 as f64;
@@ -508,17 +511,23 @@ RET = -_8;
 _1 = true ^ true;
 _25.0 = [_5];
 _28.fld1 = _20 as usize;
+Goto(bb14)
+/*
 match _7 {
+
 0 => bb4,
 1 => bb8,
 2 => bb9,
 3 => bb10,
 4 => bb11,
 5 => bb12,
+
 8599598274528185267 => bb14,
 _ => bb13
 }
+ */
 }
+/*
 bb8 = {
 _22.fld1 = _9 - _9;
 _17 = 2703716109_u32 as f32;
@@ -568,6 +577,7 @@ _24 = !_3;
 _25.1 = -(-1047728042_i32);
 Call(_25.0 = fn1(_10, _15, _24, _24, _3, _3, _3, _21, _8, _11, _11, _3, _10, _3), ReturnTo(bb6), UnwindUnreachable())
 }
+
 bb10 = {
 _5 = 1904_i16 >> _3;
 _1 = !true;
@@ -576,6 +586,7 @@ _11 = 34163_u16;
 RET = 139708253440881512949191485117737064051_i128;
 Goto(bb3)
 }
+
 bb11 = {
 _16 = _17 as i8;
 _16 = _4;
@@ -613,6 +624,7 @@ _13 = !9036636384959981161_u64;
 _14 = _4 as u128;
 Goto(bb2)
 }
+ */
 bb14 = {
 _22 = Adt49 { fld0: _8,fld1: _9,fld2: _28.fld2,fld3: _21,fld4: _28.fld4 };
 _13 = _20 as u64;
@@ -629,6 +641,9 @@ bb17 = {
 Call(_34 = dump_var(0_usize, 29_usize, Move(_29), 4_usize, Move(_4), 35_usize, _35, 35_usize, _35), ReturnTo(bb18), UnwindUnreachable())
 }
 bb18 = {
+Call(_34 = dump_var(0_usize, 9_usize, Move(_9), 17_usize, Move(_17), 35_usize, _35, 35_usize, _35), ReturnTo(bb19), UnwindUnreachable())
+}
+bb19 = {
 Return()
 }
 
@@ -895,6 +910,10 @@ bb19 = {
 Call(_53 = dump_var(1_usize, 33_usize, Move(_33), 54_usize, _54, 54_usize, _54, 54_usize, _54), ReturnTo(bb20), UnwindUnreachable())
 }
 bb20 = {
+Call(_53 = dump_var(1_usize, 9_usize, Move(_9), 54_usize, _54, 54_usize, _54, 54_usize, _54), ReturnTo(bb21), UnwindUnreachable())
+}
+
+bb21 = {
 Return()
 }
 

@@ -232,7 +232,7 @@ pub fn handle_rvalue<'tcx>(
             }
             NullOp::OffsetOf(_) => todo!("Unsuported nullary {op:?}!"),
             // TODO: propely set this to 0 or 1 depending if debug assertions are enabled.
-            NullOp::DebugAssertions => vec![CILOp::LdcI32(0)],//todo!("Unsuported nullary {op:?}!"),
+            NullOp::DebugAssertions => vec![CILOp::LdcI32(0)], //todo!("Unsuported nullary {op:?}!"),
         },
         Rvalue::Aggregate(aggregate_kind, field_index) => crate::aggregate::handle_aggregate(
             tyctx,

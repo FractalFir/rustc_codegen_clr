@@ -68,7 +68,7 @@ impl Method {
         }
     }
     pub fn maxstack(&self) -> usize {
-        crate::utilis::max_stack(&self.ops,*self.sig().output() == Type::Void) + 10
+        crate::utilis::max_stack(&self.ops, *self.sig().output() == Type::Void) + 10
     }
     pub fn set_name(&mut self, name: &str) {
         self.name = name.into();

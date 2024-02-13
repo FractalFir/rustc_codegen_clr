@@ -636,8 +636,8 @@ fn mul_unchecked<'tyctx>(
                 .into(),
             )]
         }
-        TyKind::Int(IntTy::I8)=> vec![CILOp::Mul,CILOp::ConvI8(false)],
-        TyKind::Uint(UintTy::U8)=> vec![CILOp::Mul,CILOp::ConvU8(false)],
+        TyKind::Int(IntTy::I8) => vec![CILOp::Mul, CILOp::ConvI8(false)],
+        TyKind::Uint(UintTy::U8) => vec![CILOp::Mul, CILOp::ConvU8(false)],
         _ => vec![CILOp::Mul],
     }
 }

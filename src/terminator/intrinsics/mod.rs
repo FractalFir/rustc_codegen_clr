@@ -58,7 +58,7 @@ pub fn handle_intrinsic<'tyctx>(
                 type_cache,
             )
         }
-        "arith_offset"=>{
+        "arith_offset" => {
             let mut ops = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
             let tpe = crate::utilis::monomorphize(
                 &method_instance,
@@ -68,16 +68,20 @@ pub fn handle_intrinsic<'tyctx>(
                 tyctx,
             );
             let tpe = type_cache.type_from_cache(tpe, tyctx, Some(method_instance));
-            ops.extend(handle_operand(&args[0].node, tyctx, body, method_instance, type_cache));
-            ops.extend([CILOp::SizeOf(tpe.into()),CILOp::ConvUSize(false),CILOp::Mul,CILOp::Add]);
-            place_set(
-                destination,
+            ops.extend(handle_operand(
+                &args[0].node,
                 tyctx,
-                ops,
                 body,
                 method_instance,
                 type_cache,
-            )
+            ));
+            ops.extend([
+                CILOp::SizeOf(tpe.into()),
+                CILOp::ConvUSize(false),
+                CILOp::Mul,
+                CILOp::Add,
+            ]);
+            place_set(destination, tyctx, ops, body, method_instance, type_cache)
         }
         "is_val_statically_known" => {
             debug_assert_eq!(

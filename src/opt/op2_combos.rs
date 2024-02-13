@@ -20,12 +20,12 @@ pub fn optimize_combos(ops: &mut Vec<CILOp>) {
                     ops[idx] = CILOp::Nop;
                     ops[idx + 1] = CILOp::Nop;
                 }
-            }/*
+            } /*
             (CILOp::STLoc(a), CILOp::LDLoc(b)) => {
-                if a == b {
-                    ops[idx + 1] = CILOp::STLoc(*a);
-                    ops[idx] = CILOp::Dup;
-                }
+            if a == b {
+            ops[idx + 1] = CILOp::STLoc(*a);
+            ops[idx] = CILOp::Dup;
+            }
             } */
             (CILOp::Dup | CILOp::LDLoc(_) | CILOp::LDLocA(_), CILOp::Pop) => {
                 ops[idx] = CILOp::Nop;
@@ -51,7 +51,7 @@ pub fn optimize_combos(ops: &mut Vec<CILOp>) {
                 ops.iter_mut()
                     .for_each(|cilop| cilop.replace_target(source, target));
             }
-           
+
             (CILOp::Not, CILOp::BZero(target)) => {
                 ops[idx + 1] = CILOp::BTrue(*target);
                 ops[idx] = CILOp::Nop;

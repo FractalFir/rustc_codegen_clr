@@ -84,18 +84,19 @@ impl AssemblyExporter for ILASMExporter {
         let cil_path = final_path.with_extension("il");
         let config = final_path.with_extension("runtimeconfig.json");
         let mut config = std::fs::File::create(&config).unwrap();
-        config.write_all(crate::compile_test::runtime_config().as_bytes())
+        config
+            .write_all(crate::compile_test::runtime_config().as_bytes())
             .expect("Could not write runtime config");
-        
+
         let mut cil = self.encoded_asm;
         cil.write_all(&self.methods)?;
         writeln!(cil, "}}")?;
-        match std::fs::File::create(&cil_path){
-            Ok(ok)=>ok,
-            Err(err)=>panic!("Can't create file at path {cil_path:?} because {err:?}"),
+        match std::fs::File::create(&cil_path) {
+            Ok(ok) => ok,
+            Err(err) => panic!("Can't create file at path {cil_path:?} because {err:?}"),
         }
-            .write_all(&cil)
-            .expect("Could not write bytes");
+        .write_all(&cil)
+        .expect("Could not write bytes");
         let asm_type = if is_dll { "-dll" } else { "-exe" };
         let target = format!(
             "-output:{out_path}",

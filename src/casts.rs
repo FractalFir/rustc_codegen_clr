@@ -146,6 +146,64 @@ pub fn float_to_int(src: Type, target: Type) -> Vec<CILOp> {
                 .into(),
             )]
         } //todo!("Casting to 128 bit intiegers is not supported!"),
+        Type::U16 => vec![
+            CILOp::ConvU32(false),
+            CILOp::LdcU32(u16::MAX as u32),
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::math()),
+                "Min".into(),
+                FnSig::new(&[Type::U32, Type::U32], &Type::U32),
+                true,
+            )),
+            CILOp::ConvU16(false),
+        ],
+        Type::U8 => vec![
+            CILOp::ConvU32(false),
+            CILOp::LdcU32(u8::MAX as u32),
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::math()),
+                "Min".into(),
+                FnSig::new(&[Type::U32, Type::U32], &Type::U32),
+                true,
+            )),
+            CILOp::ConvU8(false),
+        ],
+        Type::I16 => vec![
+            CILOp::ConvI32(false),
+            CILOp::LdcI32(i16::MAX as i32),
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::math()),
+                "Min".into(),
+                FnSig::new(&[Type::I32, Type::I32], &Type::I32),
+                true,
+            )),
+            CILOp::LdcI32(i16::MIN as i32),
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::math()),
+                "Max".into(),
+                FnSig::new(&[Type::I32, Type::I32], &Type::I32),
+                true,
+            )),
+            CILOp::ConvI16(false),
+        ],
+        Type::I8 => vec![
+            CILOp::ConvI32(false),
+            CILOp::LdcI32(i8::MAX as i32),
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::math()),
+                "Min".into(),
+                FnSig::new(&[Type::I32, Type::I32], &Type::I32),
+                true,
+            )),
+            CILOp::LdcI32(i8::MIN as i32),
+            CILOp::Call(CallSite::boxed(
+                Some(DotnetTypeRef::math()),
+                "Max".into(),
+                FnSig::new(&[Type::I32, Type::I32], &Type::I32),
+                true,
+            )),
+            CILOp::ConvI8(false),
+        ],
         _ => to_int(target),
     }
 

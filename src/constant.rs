@@ -225,7 +225,7 @@ fn create_const_from_slice<'ctx>(
                 );
                 let low = (value & u128::from(u64::MAX)) as u64;
                 let high = (value >> 64) as u64;
-                
+
                 let low = i64::from_ne_bytes(low.to_ne_bytes());
                 let high = i64::from_ne_bytes(high.to_ne_bytes());
                 let ctor_sig = crate::function_sig::FnSig::new(
@@ -976,11 +976,19 @@ pub fn load_const_uint(value: u128, int_type: &UintTy) -> Vec<CILOp> {
         }
         UintTy::U64 => {
             let value = i64::from_ne_bytes((value as u64).to_ne_bytes());
-            vec![CILOp::LdcI64(value), CILOp::ConvI64(false), CILOp::ConvU64(false)]
+            vec![
+                CILOp::LdcI64(value),
+                CILOp::ConvI64(false),
+                CILOp::ConvU64(false),
+            ]
         }
         UintTy::Usize => {
             let value = i64::from_ne_bytes((value as u64).to_ne_bytes());
-            vec![CILOp::LdcI64(value), CILOp::ConvI64(false), CILOp::ConvUSize(false)]
+            vec![
+                CILOp::LdcI64(value),
+                CILOp::ConvI64(false),
+                CILOp::ConvUSize(false),
+            ]
         }
         UintTy::U128 => {
             let low = (value & u128::from(u64::MAX)) as u64;

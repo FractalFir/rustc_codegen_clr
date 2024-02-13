@@ -10,6 +10,9 @@ fn main(){
     let cons = black_box(18_446_744_073_709_551_615u64);
     let cons = black_box(u128::MAX);
     let cons =  black_box(34163_u16);
+    let flot =  black_box(353136643_i32) as f32;
+    let int =  black_box(flot) as u16;
+    test_eq!(65535_u16,int);
     // Test addition of different types
     test_eq!((black_box(2_i8) + 2) as i32, 4 as i32);
 
