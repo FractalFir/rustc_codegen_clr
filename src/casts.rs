@@ -45,6 +45,18 @@ pub fn int_to_int(src: Type, target: Type) -> Vec<CILOp> {
                 .into(),
             ),
         ],
+        (Type::Bool, Type::I128) => vec![
+            CILOp::ConvI8(false),
+            CILOp::Call(
+                CallSite::new(
+                    Some(DotnetTypeRef::int_128()),
+                    "op_Implicit".into(),
+                    FnSig::new(&[Type::I8], &Type::I128),
+                    true,
+                )
+                .into(),
+            ),
+        ],
         (_, Type::I128) => {
             vec![CILOp::Call(
                 CallSite::new(

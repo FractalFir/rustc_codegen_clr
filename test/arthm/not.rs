@@ -7,6 +7,7 @@ struct Test<T>{
 }
 include!("../common.rs");
 fn main(){
-    // Test addition of different types
     test_eq!(!black_box(true), black_box(false));
+    test_eq!(!black_box(0b1111_0000u8), black_box(0b0000_1111u8));
+    test_eq!(!black_box(-66), black_box(65i8));
 }

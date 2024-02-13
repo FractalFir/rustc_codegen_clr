@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, process::Command};
 
 #[cfg(test)]
 fn peverify(file_path: &str, test_dir: &str) {
@@ -30,10 +30,12 @@ fn test_dotnet_executable(file_path: &str, test_dir: &str) -> String {
         file.write_all(RUNTIME_CONFIG.as_bytes())
             .expect("Could not write runtime config");
         //RUNTIME_CONFIG
-        let out = std::process::Command::new("dotnet")
-            .current_dir(test_dir)
-            .args([exec_path])
-            .output()
+        let mut cmd = std::process::Command::new("dotnet");
+        cmd .current_dir(test_dir)
+        .args([exec_path]);
+        #[cfg(target_family = "unix")]
+        with_stack_size(&mut cmd,1024*20);
+        let out = cmd.output()
             .expect("failed to run test assebmly!");
 
         let stderr = String::from_utf8(out.stderr).expect("Stdout is not UTF8 String!");
@@ -111,9 +113,11 @@ fn test_lib(args: &[&str], test_name: &str) {
     }
 }
 macro_rules! compare_tests {
-    ($prefix:ident,$test_name:ident) => {
+    ($prefix:ident,$test_name:ident,$is_stable:ident) => {
+       
         #[cfg(target_os = "linux")]
         mod $test_name {
+            mod $is_stable {
             #[cfg(test)]
             use ntest::timeout;
             #[cfg(test)]
@@ -128,7 +132,7 @@ macro_rules! compare_tests {
                 // Ensures the test directory is present
                 std::fs::create_dir_all(test_dir).expect("Could not setup the test env");
                 // Builds the backend if neceasry
-                super::RUSTC_BUILD_STATUS
+                super::super::RUSTC_BUILD_STATUS
                     .as_ref()
                     .expect("Could not build rustc!");
                 // Compiles the test project
@@ -137,9 +141,9 @@ macro_rules! compare_tests {
                 cmd.current_dir(test_dir).args([
                     "-O",
                     "-Z",
-                    super::backend_path(),
+                    super::super::backend_path(),
                     "-C",
-                    &format!("linker={}", super::RUSTC_CODEGEN_CLR_LINKER.display()),
+                    &format!("linker={}", super::super::RUSTC_CODEGEN_CLR_LINKER.display()),
                     concat!("./", stringify!($test_name), ".rs"),
                     "-o",
                     concat!("./", stringify!($test_name), ".exe"),
@@ -165,7 +169,7 @@ macro_rules! compare_tests {
                 drop(lock);
                 //super::peverify(exec_path, test_dir);
                 eprintln!("Prepating to test with .NET");
-                let dotnet_out = super::test_dotnet_executable(exec_path, test_dir);
+                let dotnet_out = super::super::test_dotnet_executable(exec_path, test_dir);
                 // Compiles the project with native rust
                 let mut cmd = std::process::Command::new("rustc");
                 //.env("RUST_TARGET_PATH","../../")
@@ -203,7 +207,7 @@ macro_rules! compare_tests {
                     panic!("{rust_out}{dotnet_out}");
                 }
             }
-            
+        }
         }
     };
 }
@@ -586,6 +590,23 @@ pub fn absolute_backend_path() -> PathBuf {
         panic!("Unsupported target OS");
     }
 }
+#[cfg(target_family = "unix")]
+#[cfg(test)]
+fn with_stack_size(cmd:&mut Command,limit_kb:u64){
+    use std::os::unix::process::CommandExt;
+    use ::libc::{RLIMIT_STACK,setrlimit,rlimit};
+
+    unsafe{cmd.pre_exec(move ||{
+        unsafe {
+            setrlimit(RLIMIT_STACK, &rlimit {
+                rlim_cur: limit_kb * 1024, 
+                rlim_max: limit_kb * 1024,
+            });
+        }
+        Ok(())
+
+    })};
+}
 #[cfg(test)]
 fn backend_path() -> &'static str {
     if cfg!(debug_assertions) {
@@ -638,6 +659,7 @@ test_lib! {tuple,stable}
 
 run_test! {arthm,add,stable}
 run_test! {arthm,not,stable}
+
 run_test! {arthm,mul,stable}
 run_test! {arthm,sub,stable}
 
@@ -676,15 +698,16 @@ run_test! {fuzz,test0,stable}
 run_test! {fuzz,test1,stable}
 
 run_test! {fuzz,fuzz0,unstable}
-compare_tests! {fuzz,fuzz1}
-compare_tests! {fuzz,fuzz2}
-compare_tests! {fuzz,fuzz3}
-compare_tests! {fuzz,fuzz4}
-compare_tests! {fuzz,fuzz5}
-compare_tests! {fuzz,fuzz6}
-compare_tests! {fuzz,fuzz7}
-compare_tests! {fuzz,fuzz8}
-compare_tests! {fuzz,fuzz9}
+
+compare_tests! {fuzz,fuzz1,unstable}
+compare_tests! {fuzz,fuzz2,stable}
+compare_tests! {fuzz,fuzz3,unstable}
+compare_tests! {fuzz,fuzz4,unstable}
+compare_tests! {fuzz,fuzz5,stable}
+compare_tests! {fuzz,fuzz6,unstable}
+compare_tests! {fuzz,fuzz7,unstable}
+compare_tests! {fuzz,fuzz8,stable}
+compare_tests! {fuzz,fuzz9,unstable}
 
 
 run_test! {fuzz,fail0,stable}

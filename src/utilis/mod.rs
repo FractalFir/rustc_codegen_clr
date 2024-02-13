@@ -440,6 +440,21 @@ pub fn check_debugable(
         );
     }
 }
+pub fn max_stack(
+    ops: &[crate::cil::CILOp],
+    does_return_void: bool,
+)->usize {
+    let mut stack = 0;
+    let mut max_stack = 0;
+    for op in ops {
+        if !(does_return_void && *op == crate::cil::CILOp::Ret) {
+            stack += op.stack_diff();
+            max_stack = max_stack.max(stack);
+        }
+    }
+    max_stack as usize
+    
+}
 pub(crate) fn alloc_id_to_u64(alloc_id: AllocId) -> u64 {
     unsafe { std::mem::transmute(alloc_id) }
 }
