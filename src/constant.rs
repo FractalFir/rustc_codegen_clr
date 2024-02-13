@@ -266,21 +266,20 @@ fn create_const_from_slice<'ctx>(
         },
         TyKind::Uint(int) => match int {
             UintTy::U8 => vec![
-                CILOp::LdcI32(i8::from_le_bytes(
-                    bytes[..std::mem::size_of::<i8>()].try_into().unwrap(),
-                ) as i32),
-                CILOp::ConvI8(false),
+                CILOp::LdcU32(u8::from_le_bytes(
+                    bytes[..std::mem::size_of::<u8>()].try_into().unwrap(),
+                ) as u32),
                 CILOp::ConvU8(false),
             ],
             UintTy::U16 => vec![
-                CILOp::LdcI32(i16::from_le_bytes(
-                    bytes[..std::mem::size_of::<i16>()].try_into().unwrap(),
-                ) as i32),
+                CILOp::LdcU32(u16::from_le_bytes(
+                    bytes[..std::mem::size_of::<u16>()].try_into().unwrap(),
+                ) as u32),
                 CILOp::ConvU16(false),
             ],
             UintTy::U32 => vec![
-                CILOp::LdcI32(i32::from_le_bytes(
-                    bytes[..std::mem::size_of::<i32>()].try_into().unwrap(),
+                CILOp::LdcU32(u32::from_le_bytes(
+                    bytes[..std::mem::size_of::<u32>()].try_into().unwrap(),
                 )),
                 CILOp::ConvU32(false),
             ],
@@ -964,16 +963,16 @@ pub fn load_const_int(value: u128, int_type: &IntTy) -> Vec<CILOp> {
 pub fn load_const_uint(value: u128, int_type: &UintTy) -> Vec<CILOp> {
     match int_type {
         UintTy::U8 => {
-            let value = i8::from_ne_bytes([value as u8]);
-            vec![CILOp::LdcI32(i32::from(value)), CILOp::ConvI8(false),CILOp::ConvU8(false)]
+            let value = u8::from_ne_bytes([value as u8]);
+            vec![CILOp::LdcU32(u32::from(value)), CILOp::ConvU8(false)]
         }
         UintTy::U16 => {
-            let value = i16::from_ne_bytes((value as u16).to_ne_bytes());
-            vec![CILOp::LdcI32(i32::from(value)), CILOp::ConvU16(false)]
+            let value = u16::from_ne_bytes((value as u16).to_ne_bytes());
+            vec![CILOp::LdcU32(u32::from(value)), CILOp::ConvU16(false)]
         }
         UintTy::U32 => {
-            let value = i32::from_ne_bytes((value as u32).to_ne_bytes());
-            vec![CILOp::LdcI32(value), CILOp::ConvU32(false)]
+            let value = u32::from_ne_bytes((value as u32).to_ne_bytes());
+            vec![CILOp::LdcU32(value), CILOp::ConvU32(false)]
         }
         UintTy::U64 => {
             let value = i64::from_ne_bytes((value as u64).to_ne_bytes());

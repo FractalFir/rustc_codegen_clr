@@ -254,6 +254,15 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
                 format!("ldc.i4 {value}").into()
             }
         }
+        CILOp::LdcU32(value) => {
+            if *value <= 8 && *value >= 0 {
+                format!("ldc.i4.{value}").into()
+            } else if *value < i8::MAX as u8 as u32 {
+                format!("ldc.i4.s {value}").into()
+            } else {
+                format!("ldc.i4 {value}",value = *value as i32).into()
+            }
+        }
         CILOp::LdcI64(value) => {
             if *value == -1 {
                 "ldc.i4.m1".into()

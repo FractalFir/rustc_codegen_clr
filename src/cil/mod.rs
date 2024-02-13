@@ -89,6 +89,8 @@ pub enum CILOp {
     // Load constant values.
     /// Load constant sigined 32 bit intieger and push it on top of the stack. Can be used to load u32s too.
     LdcI32(i32),
+    /// Load constant unsigined 32 bit intieger and push it on top of the stack. Can be used to load u32s too.
+    LdcU32(u32),
     /// Load constant sigined 64 bit intieger and push it on top of the stack. Can be used to load u64s too.
     LdcI64(i64),
     /// Load constant 32 bit floating-point number on top of the stack.
@@ -378,6 +380,7 @@ impl CILOp {
             CILOp::BEq(_) | CILOp::BNe(_) | CILOp::BLt(_) | CILOp::BGe(_) | CILOp::BLe(_) => -2,
             CILOp::LDArg(_) | CILOp::LDArgA(_) | CILOp::LDLoc(_) | CILOp::LDLocA(_) => 1,
             CILOp::LdcI32(_)
+            | CILOp::LdcU32(_)
             | CILOp::LdcI64(_)
             | CILOp::LdcF32(_)
             | CILOp::LdcF64(_)

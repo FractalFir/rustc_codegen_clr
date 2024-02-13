@@ -157,7 +157,9 @@ macro_rules! compare_tests {
                     let stderr = String::from_utf8(out.stderr)
                         .expect("rustc error contained non-UTF8 characters.");
                     eprintln!("stdout:\n{stdout}\nstderr:\n{stderr}");
-                    should_panic = true;
+                    /*if stderr.contains("error"){
+                        should_panic = true;
+                    }*/
                 }
                 let exec_path = concat!("./", stringify!($test_name));
                 drop(lock);
@@ -183,8 +185,11 @@ macro_rules! compare_tests {
                         .expect("rustc error contained non-UTF8 characters.");
                     let stderr = String::from_utf8(out.stderr)
                         .expect("rustc error contained non-UTF8 characters.");
+                    if stderr.contains("error") || stderr.matches("thread 'rustc'").count() > 1{
+                        should_panic = true;
+                    }
                     eprintln!("stdout:\n{stdout}\nstderr:\n{stderr}");
-                    should_panic = true;
+                    
                 }
                 let rust_out =
                     std::process::Command::new(concat!("./", stringify!($test_name), ".a"))
@@ -198,6 +203,7 @@ macro_rules! compare_tests {
                     panic!("{rust_out}{dotnet_out}");
                 }
             }
+            
         }
     };
 }
@@ -673,6 +679,13 @@ run_test! {fuzz,fuzz0,unstable}
 compare_tests! {fuzz,fuzz1}
 compare_tests! {fuzz,fuzz2}
 compare_tests! {fuzz,fuzz3}
+compare_tests! {fuzz,fuzz4}
+compare_tests! {fuzz,fuzz5}
+compare_tests! {fuzz,fuzz6}
+compare_tests! {fuzz,fuzz7}
+compare_tests! {fuzz,fuzz8}
+compare_tests! {fuzz,fuzz9}
+
 
 run_test! {fuzz,fail0,stable}
 

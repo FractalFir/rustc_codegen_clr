@@ -9,6 +9,7 @@ include!("../common.rs");
 fn main(){
     let cons = black_box(18_446_744_073_709_551_615u64);
     let cons = black_box(u128::MAX);
+    let cons =  black_box(34163_u16);
     // Test addition of different types
     test_eq!((black_box(2_i8) + 2) as i32, 4 as i32);
 
