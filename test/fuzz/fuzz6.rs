@@ -1400,6 +1400,9 @@ bb43 = {
 Call(_76 = dump_var(3_usize, 4_usize, Move(_4), 77_usize, _77, 77_usize, _77, 77_usize, _77), ReturnTo(bb44), UnwindUnreachable())
 }
 bb44 = {
+	Call(_76 = dump_var(3_usize, 16_usize, Move(_16), 77_usize, _77, 77_usize, _77, 77_usize, _77), ReturnTo(bb45), UnwindUnreachable())
+	}
+bb45 = {
 Return()
 }
 

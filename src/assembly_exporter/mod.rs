@@ -55,10 +55,6 @@ pub trait AssemblyExporter: Sized {
         for ((name, sig), lib) in asm.extern_fns() {
             asm_exporter.add_extern_method(lib, name, sig);
         }
-        println!(
-            "globals:{globals:?}",
-            globals = asm.globals().collect::<Vec<_>>()
-        );
         for global in asm.globals() {
             asm_exporter.add_global(global.1, global.0);
         }
