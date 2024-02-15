@@ -131,7 +131,8 @@ pub fn opt_method(method: &mut Method, asm: &Assembly) {
     repalce_const_sizes(method.ops_mut());
     let mut cache = LocalAccessRangeCache::new();
     for pass in 0..MAX_PASS {
-        op2_combos::optimize_combos(method.ops_mut());
+        let (ops,locals) = method.ops_n_locals_mut();
+        op2_combos::optimize_combos(ops,locals);
         op3_combos::optimize_combos(method.ops_mut());
         op4_combos(method.ops_mut());
         let local_count = method.locals().len();

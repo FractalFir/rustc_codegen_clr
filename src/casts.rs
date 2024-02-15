@@ -9,6 +9,13 @@ pub fn int_to_int(src: Type, target: Type) -> Vec<CILOp> {
         return vec![];
     }
     match (&src, &target) {
+        /* 
+        (Type::DotnetType(tpe), Type::I128) | (Type::I128,Type::DotnetType(tpe))=>{
+            if Some("System.Runtime".into()) == tpe.asm() && tpe.name_path().contains("System.Int128"){
+                return vec![];
+            }
+            panic!();
+        }*/
         (Type::ISize, Type::I128) => vec![
             CILOp::ConvI64(false),
             CILOp::Call(
@@ -57,6 +64,15 @@ pub fn int_to_int(src: Type, target: Type) -> Vec<CILOp> {
                 .into(),
             ),
         ],
+        (Type::U128,Type::I128) => vec![CILOp::Call(
+            CallSite::new(
+                Some(DotnetTypeRef::uint_128()),
+                "op_Explicit".into(),
+                FnSig::new(&[src], &target),
+                true,
+            )
+            .into(),
+        )],
         (_, Type::I128) => {
             vec![CILOp::Call(
                 CallSite::new(
@@ -77,6 +93,7 @@ pub fn int_to_int(src: Type, target: Type) -> Vec<CILOp> {
             )
             .into(),
         )],
+        
         (Type::I8 | Type::I16 | Type::I32 | Type::I64, Type::U128) => vec![CILOp::Call(
             CallSite::new(
                 Some(DotnetTypeRef::uint_128()),

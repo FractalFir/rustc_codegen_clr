@@ -99,6 +99,9 @@ impl Method {
     pub fn ops_mut(&mut self) -> &mut Vec<CILOp> {
         &mut self.ops
     }
+    pub fn ops_n_locals_mut(&mut self) -> (&mut Vec<CILOp>,&mut [(Option<IString>,Type)]) {
+        (&mut self.ops,&mut self.locals)
+    }
     /// Returns the access modifier of this function.
     pub fn access(&self) -> AccessModifer {
         self.access

@@ -1,6 +1,6 @@
-use crate::cil::CILOp;
+use crate::{cil::CILOp, r#type::Type, IString};
 
-pub fn optimize_combos(ops: &mut Vec<CILOp>) {
+pub fn optimize_combos(ops: &mut Vec<CILOp>,locals:&[(Option<IString>,Type)]) {
     if ops.is_empty() {
         return;
     }
@@ -20,13 +20,18 @@ pub fn optimize_combos(ops: &mut Vec<CILOp>) {
                     ops[idx] = CILOp::Nop;
                     ops[idx + 1] = CILOp::Nop;
                 }
-            } /*
+            } 
             (CILOp::STLoc(a), CILOp::LDLoc(b)) => {
-            if a == b {
-            ops[idx + 1] = CILOp::STLoc(*a);
-            ops[idx] = CILOp::Dup;
-            }
-            } */
+                if a == b {
+                    match locals[*a as usize].1{
+                        // Assigment acts as a hidden cast
+                        Type::I8 | Type::U8 | Type::I16 | Type::U16 => continue,
+                        _=>(),
+                    }
+                    ops[idx + 1] = CILOp::STLoc(*a);
+                    ops[idx] = CILOp::Dup;
+                }
+            } 
             (CILOp::Dup | CILOp::LDLoc(_) | CILOp::LDLocA(_), CILOp::Pop) => {
                 ops[idx] = CILOp::Nop;
                 ops[idx + 1] = CILOp::Nop;

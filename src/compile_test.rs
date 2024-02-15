@@ -30,10 +30,13 @@ fn test_dotnet_executable(file_path: &str, test_dir: &str) -> String {
         file.write_all(RUNTIME_CONFIG.as_bytes())
             .expect("Could not write runtime config");
         //RUNTIME_CONFIG
-        let mut cmd = std::process::Command::new("dotnet");
+        let mut cmd = std::process::Command::new("timeout");
+        cmd.arg("-v");
+        cmd.arg("5");
+        cmd.arg("dotnet");
         cmd.current_dir(test_dir).args([exec_path]);
         #[cfg(target_family = "unix")]
-        with_stack_size(&mut cmd, 1024 * 20);
+        with_stack_size(&mut cmd, 1024 * 80);
         let out = cmd.output().expect("failed to run test assebmly!");
 
         let stderr = String::from_utf8(out.stderr).expect("Stdout is not UTF8 String!");
@@ -152,7 +155,6 @@ macro_rules! compare_tests {
                         //"--target",
                         //"clr64-unknown-clr"
                     ]);
-                    eprintln!("Command: {cmd:?}");
                     let out = cmd.output().expect("failed to execute process");
                     // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
                     if !out.stderr.is_empty() {
@@ -181,7 +183,6 @@ macro_rules! compare_tests {
                         "--edition",
                         "2021",
                     ]);
-                    eprintln!("Buildin");
                     let out = cmd.output().expect("failed to execute process");
                     // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
                     if !out.stderr.is_empty() {
@@ -202,7 +203,10 @@ macro_rules! compare_tests {
                             .expect("failed to execute process");
                     let rust_out = String::from_utf8(rust_out.stdout)
                         .expect("rust error contained non-UTF8 characters.");
-                    assert_eq!(rust_out, dotnet_out);
+                    if rust_out != dotnet_out{
+                        panic!("rust_out:\n{rust_out}\n\ndotnet_out:\n{dotnet_out}");
+                    }
+
                     if should_panic {
                         panic!("{rust_out}{dotnet_out}");
                     }
@@ -598,7 +602,7 @@ fn with_stack_size(cmd: &mut Command, limit_kb: u64) {
 
     unsafe {
         cmd.pre_exec(move || {
-            unsafe {
+
                 setrlimit(
                     RLIMIT_STACK,
                     &rlimit {
@@ -606,7 +610,6 @@ fn with_stack_size(cmd: &mut Command, limit_kb: u64) {
                         rlim_max: limit_kb * 1024,
                     },
                 );
-            }
             Ok(())
         })
     };
@@ -712,6 +715,16 @@ compare_tests! {fuzz,fuzz6,unstable}
 compare_tests! {fuzz,fuzz7,unstable}
 compare_tests! {fuzz,fuzz8,unstable}
 compare_tests! {fuzz,fuzz9,stable}
+compare_tests! {fuzz,fuzz10,unstable}
+compare_tests! {fuzz,fuzz11,unstable}
+compare_tests! {fuzz,fuzz12,unstable}
+compare_tests! {fuzz,fuzz13,unstable}
+compare_tests! {fuzz,fuzz14,stable}
+compare_tests! {fuzz,fuzz15,unstable}
+compare_tests! {fuzz,fuzz16,unstable}
+compare_tests! {fuzz,fuzz17,unstable}
+compare_tests! {fuzz,fuzz18,unstable}
+compare_tests! {fuzz,fuzz19,unstable}
 
 run_test! {fuzz,fail0,stable}
 
