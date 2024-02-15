@@ -1,9 +1,8 @@
-use std::io::Read;
 use ar::Archive;
 use rustc_codegen_clr::assembly::Assembly;
+use std::io::Read;
 
 fn load_ar(r: &mut impl std::io::Read) -> std::io::Result<Assembly> {
-   
     let mut final_assembly = Assembly::empty();
     let mut archive = Archive::new(r);
     // Iterate over all entries in the archive:
@@ -22,7 +21,7 @@ fn load_ar(r: &mut impl std::io::Read) -> std::io::Result<Assembly> {
     }
     Ok(final_assembly)
 }
-pub fn load_assemblies(raw_files:&[&String],archives:&[&String])->Assembly{
+pub fn load_assemblies(raw_files: &[&String], archives: &[&String]) -> Assembly {
     let mut final_assembly = Assembly::empty();
     for asm_path in raw_files {
         let mut asm_file =

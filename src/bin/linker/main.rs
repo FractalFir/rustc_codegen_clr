@@ -4,8 +4,9 @@ use rustc_codegen_clr::{
     assembly::Assembly, config::USE_CECIL_EXPORTER, method::MethodType, r#type::Type, *,
 };
 mod cmd;
-mod load;
 mod export;
+mod load;
+mod native_pastrough;
 use std::{env, io::Write};
 
 enum AOTCompileMode {
@@ -85,11 +86,15 @@ fn autopatch(asm: &mut Assembly) {
     let mut patched = std::collections::HashMap::new();
     let mut externs = Vec::new();
     for call in call_sites {
-        if call.name() == "printf" {
+        let name = call.name();
+        if native_pastrough::LIBC_FNS
+            .iter()
+            .any(|libc_fn| *libc_fn == name)
+        {
             externs.push((
                 call.name().into(),
                 call.signature().to_owned(),
-                "/lib64/libc.so.6".into(),
+                get_libc().into(),
             ));
             continue;
         }
@@ -109,27 +114,51 @@ fn add_mandatory_statics(asm: &mut Assembly) {
     asm.add_static(Type::U8, "__rust_no_alloc_shim_is_unstable");
     asm.add_static(Type::Ptr(Type::Ptr(Type::U8.into()).into()), "environ");
 }
-
+#[cfg(target_os = "linux")]
+fn get_libc() -> String {
+    let mut libc = None;
+    for entry in std::fs::read_dir("/lib").unwrap() {
+        let entry = if let Ok(entry) = entry {
+            entry
+        } else {
+            continue;
+        };
+        if entry.metadata().unwrap().is_file() {
+            let name = entry.file_name().to_string_lossy().to_string();
+            if name.contains("libc.so.") {
+                libc = Some(name);
+            }
+        }
+    }
+    libc.unwrap()
+    //todo!()
+}
+#[cfg(target_os = "windows")]
+fn get_libc() -> String {
+    "ucrtbase.dll".into()
+}
 fn main() {
-
     // Parse command line arguments
 
     let args: Vec<String> = env::args().collect();
     let args = &args[1..];
     // Input\/output files
     let to_link: Vec<_> = args.iter().filter(|arg| arg.contains(".bc")).collect();
-    let ar_to_link: Vec<_> = args.iter().filter(|arg| arg.contains(".rlib").into()).collect();
+    let ar_to_link: Vec<_> = args
+        .iter()
+        .filter(|arg| arg.contains(".rlib").into())
+        .collect();
     let output = &args[1 + args
         .iter()
         .position(|arg| arg == "-o")
         .expect("No output file!")];
     // Configs
     let aot_compile_mode = aot_compile_mode(args);
-    let cargo_support =  args.iter().any(|arg| arg.contains("--cargo-support"));
+    let cargo_support = args.iter().any(|arg| arg.contains("--cargo-support"));
 
     // Load assemblies from files
 
-    let mut final_assembly = load::load_assemblies(to_link.as_slice(),ar_to_link.as_slice());
+    let mut final_assembly = load::load_assemblies(to_link.as_slice(), ar_to_link.as_slice());
 
     if !*rustc_codegen_clr::config::ABORT_ON_ERROR {
         autopatch(&mut final_assembly);
@@ -138,25 +167,34 @@ fn main() {
     add_mandatory_statics(&mut final_assembly);
     // Run ILASM
     export::export_assembly(&final_assembly, output, is_lib).expect("Assembly export faliure!");
-  
 
     // Run AOT compiler
     aot_compile_mode.compile(output);
-    let path:std::path::PathBuf = output.into();
+    let path: std::path::PathBuf = output.into();
     //      Cargo integration
-    
+
     if cargo_support {
-        let bootstrap = format!(include_str!("dotnet_jumpstart.rs"),exec_file = path.file_name().unwrap().to_string_lossy());
+        let bootstrap = format!(
+            include_str!("dotnet_jumpstart.rs"),
+            exec_file = path.file_name().unwrap().to_string_lossy()
+        );
         let bootstrap_path = path.with_extension("rs");
         let mut bootstrap_file = std::fs::File::create(&bootstrap_path).unwrap();
         bootstrap_file.write_all(bootstrap.as_bytes()).unwrap();
         let path = std::env::var("PATH").unwrap();
-        let out = std::process::Command::new("rustc").arg("-O").arg(bootstrap_path).arg("-o").arg(output).env_clear().env("PATH", path).output().unwrap();
-        if out.stderr.len() != 0{
-            panic!("{}",String::from_utf8(out.stderr).unwrap());
+        let out = std::process::Command::new("rustc")
+            .arg("-O")
+            .arg(bootstrap_path)
+            .arg("-o")
+            .arg(output)
+            .env_clear()
+            .env("PATH", path)
+            .output()
+            .unwrap();
+        if out.stderr.len() != 0 {
+            panic!("{}", String::from_utf8(out.stderr).unwrap());
         }
-       
     }
-   
+
     //todo!()
 }

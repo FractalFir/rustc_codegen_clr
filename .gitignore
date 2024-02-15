@@ -11,3 +11,4 @@ test/out
 .vscode/
 *.bc
 *log.txt
+*.a
