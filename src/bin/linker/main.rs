@@ -130,7 +130,20 @@ fn get_libc() -> String {
             }
         }
     }
-    libc.unwrap()
+    for entry in std::fs::read_dir("/lib64").unwrap() {
+        let entry = if let Ok(entry) = entry {
+            entry
+        } else {
+            continue;
+        };
+        if entry.metadata().unwrap().is_file() {
+            let name = entry.file_name().to_string_lossy().to_string();
+            if name.contains("libc.so.") {
+                libc = Some(name);
+            }
+        }
+    }
+    libc.unwrap_or("libc.so.6".into())
     //todo!()
 }
 #[cfg(target_os = "windows")]
