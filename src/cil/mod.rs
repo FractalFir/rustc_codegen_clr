@@ -127,10 +127,12 @@ pub enum CILOp {
     /// Convert the value on top of the stack to an usize. Preform checked convertion if true.
     ConvUSize(bool),
     // Float convertions
-    /// Convert the value on top of the stack to an f32. Preform checked convertion if true.
-    ConvF32(bool),
-    /// Convert the value on top of the stack to an f64. Preform checked convertion if true.
-    ConvF64(bool),
+    /// Convert the value on top of the stack to an f32.
+    ConvF32,
+    /// Convert the value on top of the stack to an f64. 
+    ConvF64,
+    /// Convert the unsigned value on top of the stack to an f64.
+    ConvF64Un,
     // Pointer
     /// Load a value of type i8 at adress represented by the pointer at the top of the stack.
     LDIndI8,
@@ -178,6 +180,8 @@ pub enum CILOp {
     Div,
     /// Divides the value on top of the stack, by the value under it, and pushes the reminder on the top of the stack.
     Rem,
+    /// Divides the value on top of the stack, by the value under it, and pushes the reminder on the top of the stack.
+    RemUn,
     /// Shifts the value on top of the stack to right by the value under it.
     Shr,
     /// Shifts the value on top of the stack to right by the value under it. Unsigned variant.
@@ -398,8 +402,8 @@ impl CILOp {
             | CILOp::ConvU32(_)
             | CILOp::ConvU64(_)
             | CILOp::ConvUSize(_)
-            | CILOp::ConvF32(_)
-            | CILOp::ConvF64(_) => 0,
+            | CILOp::ConvF32
+            | CILOp::ConvF64 | CILOp::ConvF64Un => 0,
             CILOp::LDIndI8
             | CILOp::LDIndI16
             | CILOp::LDIndI32
@@ -432,6 +436,7 @@ impl CILOp {
             | CILOp::And
             | CILOp::Div
             | CILOp::Rem
+            | CILOp::RemUn
             | CILOp::Shr
             | CILOp::ShrUn
             | CILOp::Shl

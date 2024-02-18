@@ -119,7 +119,7 @@ pub fn optimize_combos(ops: &mut Vec<CILOp>,locals:&[(Option<IString>,Type)]) {
                 ops[idx] = CILOp::Nop;
                 ops[idx + 1] = CILOp::Nop;
             }
-            (CILOp::ConvUSize(false) | CILOp::ConvF64(false), CILOp::Pop) => {
+            (CILOp::ConvUSize(false) | CILOp::ConvF64, CILOp::Pop) => {
                 ops[idx] = CILOp::Pop;
                 ops[idx + 1] = CILOp::Nop;
             }

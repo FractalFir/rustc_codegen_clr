@@ -264,10 +264,12 @@ pub fn int_to_float(src: Type, target: Type) -> Vec<CILOp> {
     } else if matches!(target, Type::I128 | Type::U128) {
         todo!("Casting to 128 bit intiegers is not supported!")
     } else {
-        match target {
-            Type::F32 => vec![CILOp::ConvF32(false)],
-            Type::F64 => vec![CILOp::ConvF64(false)],
-            _ => todo!("Can't cast to {target:?} yet!"),
+        match (&src,&target) {
+            (Type::U32 | Type::U64,Type::F32) => vec![CILOp::ConvF64Un,CILOp::ConvF32],
+            (_,Type::F32) => vec![CILOp::ConvF32],
+            (Type::U32 | Type::U64,Type::F64) => vec![CILOp::ConvF64Un,],
+            (_,Type::F64) => vec![CILOp::ConvF64],
+            _ => todo!("Can't  cast {src:?} to {target:?} yet!"),
         }
     }
 }

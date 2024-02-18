@@ -2,7 +2,7 @@
 #![allow(internal_features,incomplete_features,unused_variables,dead_code,unused_assignments,unused_imports)]
 #![no_std]
 include!("../common.rs");
-use core::intrinsics::{cttz, ctlz, likely, unlikely, maxnumf32, minnumf32, ceilf32, floorf32};
+use core::intrinsics::{cttz, ctlz, maxnumf32, minnumf32, ceilf32, floorf32};
 
 struct CustomStruct {
     field1: i32,
@@ -32,9 +32,9 @@ fn function1(arg0: i32, arg1: f32, arg2: &mut [i32], arg3: &CustomStruct) -> f32
         sum += item;
     }
 
-    if likely(sum > arg0) {
+    if sum > arg0 {
         result = maxnumf32(arg1, arg3.field2);
-    } else if unlikely(sum < arg0) {
+    } else if sum < arg0 {
         result = minnumf32(arg1, arg3.field2);
     } else {
         result = unsafe{ceilf32(arg1) * floorf32(arg3.field2)};

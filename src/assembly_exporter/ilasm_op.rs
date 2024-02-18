@@ -177,6 +177,7 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
         CILOp::MulOvf => "mul.ovf".into(),
         CILOp::Div => "div".into(),
         CILOp::Rem => "rem".into(),
+        CILOp::RemUn => "rem.un".into(),
         CILOp::Neg => "neg".into(),
         //Bitwise
         CILOp::And => "and".into(),
@@ -368,20 +369,11 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
                 "conv.u8".into()
             }
         }
-        CILOp::ConvF32(checked) => {
-            if *checked {
-                "conv.ovf.r4".into()
-            } else {
-                "conv.r4".into()
-            }
-        }
-        CILOp::ConvF64(checked) => {
-            if *checked {
-                "conv.ovf.r8".into()
-            } else {
-                "conv.r8".into()
-            }
-        }
+        CILOp::ConvF32=> "conv.r4".into(),
+        CILOp::ConvF64 => 
+            "conv.r8".into(),
+        CILOp::ConvF64Un => 
+            "conv.r.un".into(),
         // Pointer stuff
         CILOp::LDIndI8 => "ldind.i1".into(),
         CILOp::LDIndI16 => "ldind.i2".into(),

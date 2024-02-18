@@ -233,8 +233,8 @@ fn verify_op(
             }
         }
         CILOp::ConvISize(_) => conv!(stack, op, Type::ISize),
-        CILOp::ConvF32(_) => conv!(stack, op, Type::F32),
-        CILOp::ConvF64(_) => conv!(stack, op, Type::F64),
+        CILOp::ConvF32 => conv!(stack, op, Type::F32),
+        CILOp::ConvF64 | CILOp::ConvF64Un => conv!(stack, op, Type::F64),
         CILOp::ConvI8(_) | CILOp::ConvI16(_) | CILOp::ConvI32(_) => conv!(stack, op, Type::I32),
         CILOp::ConvU8(_) | CILOp::ConvU16(_) | CILOp::ConvU32(_) => conv!(stack, op, Type::U32),
         CILOp::Dup => {

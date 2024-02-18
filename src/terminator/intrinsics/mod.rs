@@ -622,7 +622,7 @@ pub fn handle_intrinsic<'tyctx>(
                 "The intrinsic `powif32` MUST take in exactly 2 arguments!"
             );
             let mut ops = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
-            ops.push(CILOp::ConvF64(false));
+            ops.push(CILOp::ConvF64);
             ops.extend(handle_operand(
                 &args[1].node,
                 tyctx,
@@ -630,14 +630,14 @@ pub fn handle_intrinsic<'tyctx>(
                 method_instance,
                 type_cache,
             ));
-            ops.push(CILOp::ConvF64(false));
+            ops.push(CILOp::ConvF64);
             ops.push(CILOp::Call(CallSite::boxed(
                 Some(DotnetTypeRef::new("System.Runtime".into(), "System.Math")),
                 "Pow".into(),
                 FnSig::new(&[Type::F64, Type::F64], &Type::F64),
                 true,
             )));
-            ops.push(CILOp::ConvF32(false));
+            ops.push(CILOp::ConvF32);
             place_set(destination, tyctx, ops, body, method_instance, type_cache)
         }
         "size_of_val" => {

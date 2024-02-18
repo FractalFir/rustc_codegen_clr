@@ -51,7 +51,7 @@ pub fn optimize_combos(ops: &mut Vec<CILOp>) {
             //TODO: ensure changing the offset of ops does not cause issues.
             (
                 CILOp::LdcI32(_) | CILOp::LdcI64(_) | CILOp::LdcF32(_) | CILOp::LdcF64(_),
-                CILOp::ConvUSize(_) | CILOp::ConvF64(_),
+                CILOp::ConvUSize(_) | CILOp::ConvF64,
                 CILOp::STLoc(loc),
             ) => {
                 let loc = *loc;

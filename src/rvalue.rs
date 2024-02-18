@@ -361,8 +361,8 @@ pub fn handle_rvalue<'tcx>(
             let target = tycache.type_from_cache(target, tyctx, Some(method_instance));
             let mut ops = handle_operand(operand, tyctx, method, method_instance, tycache);
             match target {
-                Type::F32 => ops.push(CILOp::ConvF32(false)),
-                Type::F64 => ops.push(CILOp::ConvF64(false)),
+                Type::F32 => ops.push(CILOp::ConvF32),
+                Type::F64 => ops.push(CILOp::ConvF64),
                 _ => panic!("Can't preform a FloatToFloat cast to type {target:?}"),
             }
             ops
