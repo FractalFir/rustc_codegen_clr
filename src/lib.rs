@@ -122,6 +122,8 @@ mod utilis;
 
 pub mod config;
 // rustc functions used here.
+use rustc_data_structures::fx::FxHasher;
+use std::hash::BuildHasherDefault;
 use crate::rustc_middle::dep_graph::DepContext;
 use rustc_codegen_ssa::{
     back::archive::{
@@ -221,7 +223,7 @@ impl CodegenBackend for MyBackend {
         ongoing_codegen: Box<dyn Any>,
         _sess: &Session,
         outputs: &OutputFilenames,
-    ) -> Result<(CodegenResults, FxIndexMap<WorkProductId, WorkProduct>), ErrorGuaranteed> {
+    ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>){
         std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             use std::io::Write;
             let (_asm_name, asm, metadata, crate_info) = *ongoing_codegen
@@ -252,7 +254,7 @@ impl CodegenBackend for MyBackend {
                 metadata,
                 crate_info,
             };
-            Ok((codegen_results, FxIndexMap::default()))
+            (codegen_results, FxIndexMap::default())
         }))
         .expect("Could not join_codegen")
     }
