@@ -203,7 +203,7 @@ macro_rules! compare_tests {
                             .expect("failed to execute process");
                     let rust_out = String::from_utf8(rust_out.stdout)
                         .expect("rust error contained non-UTF8 characters.");
-                    if rust_out != dotnet_out{
+                    if rust_out != dotnet_out {
                         panic!("rust_out:\n{rust_out}\n\ndotnet_out:\n{dotnet_out}");
                     }
 
@@ -602,14 +602,13 @@ fn with_stack_size(cmd: &mut Command, limit_kb: u64) {
 
     unsafe {
         cmd.pre_exec(move || {
-
-                setrlimit(
-                    RLIMIT_STACK,
-                    &rlimit {
-                        rlim_cur: limit_kb * 1024,
-                        rlim_max: limit_kb * 1024,
-                    },
-                );
+            setrlimit(
+                RLIMIT_STACK,
+                &rlimit {
+                    rlim_cur: limit_kb * 1024,
+                    rlim_max: limit_kb * 1024,
+                },
+            );
             Ok(())
         })
     };

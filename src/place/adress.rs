@@ -2,6 +2,7 @@ use super::PlaceTy;
 use crate::{
     assert_morphic,
     cil::{CILOp, FieldDescriptor},
+    cil_tree::cil_node::CILNode,
     function_sig::FnSig,
     r#type::{TyCache, Type},
 };
@@ -9,16 +10,13 @@ use rustc_middle::{
     mir::PlaceElem,
     ty::{Instance, Ty, TyCtxt, TyKind},
 };
-pub fn local_adress(local: usize, method: &rustc_middle::mir::Body) -> [CILOp; 2] {
+pub fn local_adress(local: usize, method: &rustc_middle::mir::Body) -> CILNode {
     if local == 0 {
-        [CILOp::LDLocA(0), CILOp::ConvUSize(false)]
+        CILNode::ConvUSize(CILNode::LDLocA(0).into())
     } else if local > method.arg_count {
-        [
-            CILOp::LDLocA((local - method.arg_count) as u32),
-            CILOp::ConvUSize(false),
-        ]
+        CILNode::ConvUSize(CILNode::LDLocA((local - method.arg_count) as u32).into())
     } else {
-        [CILOp::LDArgA((local - 1) as u32), CILOp::ConvUSize(false)]
+        CILNode::ConvUSize(CILNode::LDArgA((local - 1) as u32).into()).into()
     }
 }
 pub fn address_last_dereference<'ctx>(
@@ -166,7 +164,10 @@ pub fn place_elem_adress<'ctx>(
             let index = crate::place::local_get(
                 index.as_usize(),
                 tyctx.optimized_mir(method_instance.def_id()),
-            );
+            )
+            .flatten();
+            assert_eq!(index.len(), 1);
+            let index = index[0].clone();
             match curr_ty.kind() {
                 TyKind::Slice(inner) => {
                     let inner = crate::utilis::monomorphize(&method_instance, *inner, tyctx);
@@ -325,12 +326,7 @@ pub fn place_elem_adress<'ctx>(
                         "data_pointer".into(),
                     );
                     let len = FieldDescriptor::new(slice, Type::USize, "metadata".into());
-                    let _derf_op = super::deref_op(
-                        super::PlaceTy::Ty(inner),
-                        tyctx,
-                        &method_instance,
-                        type_cache,
-                    );
+
                     if *from_end {
                         let ops = vec![
                             CILOp::Dup,

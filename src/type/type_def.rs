@@ -1,8 +1,13 @@
 use crate::{
-    access_modifier::AccessModifer, cil::{CallSite, FieldDescriptor}, method::{Method, MethodType}, r#type::{DotnetTypeRef, Type}, utilis::adt::FieldOffsetIterator, IString
+    access_modifier::AccessModifer,
+    cil::{CallSite, FieldDescriptor},
+    method::{Method, MethodType},
+    r#type::{DotnetTypeRef, Type},
+    utilis::adt::FieldOffsetIterator,
+    IString,
 };
-use  rustc_target::abi::Layout;
 use rustc_span::def_id::DefId;
+use rustc_target::abi::Layout;
 use serde::{Deserialize, Serialize};
 pub(crate) const CUSTOM_INTEROP_TYPE_DEF: &str = "RustcCLRInteropManagedCustomTypeDef";
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug)]
@@ -201,7 +206,7 @@ pub fn tuple_name(elements: &[Type]) -> IString {
 }
 
 #[must_use]
-pub fn tuple_typedef(elements: &[Type],layout:&Layout) -> TypeDef {
+pub fn tuple_typedef(elements: &[Type], layout: &Layout) -> TypeDef {
     let name = tuple_name(elements);
     let fields: Vec<_> = elements
         .iter()

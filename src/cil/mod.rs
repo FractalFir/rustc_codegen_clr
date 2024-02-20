@@ -87,12 +87,14 @@ pub enum CILOp {
         alloc_id: u64,
     },
     // Load constant values.
-    /// Load constant sigined 32 bit intieger and push it on top of the stack. Can be used to load u32s too.
+    /// Load constant sigined 32 bit intieger and push it on top of the stack.
     LdcI32(i32),
-    /// Load constant unsigined 32 bit intieger and push it on top of the stack. Can be used to load u32s too.
+    /// Load constant unsigined 32 bit intieger and push it on top of the stack.
     LdcU32(u32),
-    /// Load constant sigined 64 bit intieger and push it on top of the stack. Can be used to load u64s too.
+    /// Load constant sigined 64 bit intieger and push it on top of the stack.
     LdcI64(i64),
+    /// Load constant sigined 64 bit intieger and push it on top of the stack.
+    LdcU64(u64),
     /// Load constant 32 bit floating-point number on top of the stack.
     LdcF32(f32),
     /// Load constant 64 bit floating-point number and push it on top of the stack.
@@ -129,7 +131,7 @@ pub enum CILOp {
     // Float convertions
     /// Convert the value on top of the stack to an f32.
     ConvF32,
-    /// Convert the value on top of the stack to an f64. 
+    /// Convert the value on top of the stack to an f64.
     ConvF64,
     /// Convert the unsigned value on top of the stack to an f64.
     ConvF64Un,
@@ -389,6 +391,7 @@ impl CILOp {
             CILOp::LDArg(_) | CILOp::LDArgA(_) | CILOp::LDLoc(_) | CILOp::LDLocA(_) => 1,
             CILOp::LdcI32(_)
             | CILOp::LdcU32(_)
+            | CILOp::LdcU64(_)
             | CILOp::LdcI64(_)
             | CILOp::LdcF32(_)
             | CILOp::LdcF64(_)
@@ -407,7 +410,8 @@ impl CILOp {
             | CILOp::ConvU64(_)
             | CILOp::ConvUSize(_)
             | CILOp::ConvF32
-            | CILOp::ConvF64 | CILOp::ConvF64Un => 0,
+            | CILOp::ConvF64
+            | CILOp::ConvF64Un => 0,
             CILOp::LDIndI8
             | CILOp::LDIndI16
             | CILOp::LDIndI32

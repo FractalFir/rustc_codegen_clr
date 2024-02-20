@@ -143,7 +143,7 @@ fn verify_op(
         CILOp::GoTo(_) => Ok(()),
         CILOp::LDTypeToken(_) => Ok(stack.push(DotnetTypeRef::type_handle_type().into())),
         CILOp::LdcI32(_) | CILOp::SizeOf(_) => Ok(stack.push(Type::I32)),
-        CILOp::LdcU32(_)=> Ok(stack.push(Type::U32)),
+        CILOp::LdcU32(_) => Ok(stack.push(Type::U32)),
         CILOp::LdcF32(_) => Ok(stack.push(Type::F32)),
         CILOp::LdcI64(_) => Ok(stack.push(Type::I64)),
         CILOp::LdcF64(_) => Ok(stack.push(Type::F64)),
@@ -540,7 +540,7 @@ fn verify_op(
             ) {
                 return Err(VerificationFailure::StackUnexpected(ptr));
             }
-            if equivalent(&stack_input , tpe) {
+            if equivalent(&stack_input, tpe) {
                 Ok(())
             } else {
                 Err(VerificationFailure::StackUnexpected(stack_input))

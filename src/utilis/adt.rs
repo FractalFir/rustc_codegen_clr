@@ -5,6 +5,7 @@ use rustc_target::abi::FieldsShape;
 use rustc_target::abi::Layout;
 
 use rustc_target::abi::Variants;
+#[derive(Debug)]
 pub(crate) enum FieldOffsetIterator {
     Explicit { offsets: Box<[u32]>, index: usize },
     NoOffset { count: u64 },
@@ -31,6 +32,7 @@ impl Iterator for FieldOffsetIterator {
 }
 impl FieldOffsetIterator {
     pub fn fields(parent: &Layout) -> FieldOffsetIterator {
+        println!("fields:{:?}", parent.fields());
         match parent.fields() {
             FieldsShape::Arbitrary {
                 offsets,

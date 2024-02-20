@@ -78,8 +78,10 @@ pub fn place_elem_set<'a>(
             let index = crate::place::local_get(
                 index.as_usize(),
                 ctx.optimized_mir(method_instance.def_id()),
-            );
-
+            )
+            .flatten();
+            assert_eq!(index.len(), 1);
+            let index = index[0].clone();
             match curr_ty.kind() {
                 TyKind::Slice(inner) => {
                     let inner = crate::utilis::monomorphize(&method_instance, *inner, ctx);

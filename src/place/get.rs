@@ -1,20 +1,21 @@
 use crate::cil::{CILOp, FieldDescriptor};
+use crate::cil_tree::cil_node::CILNode;
 use crate::function_sig::FnSig;
 use crate::r#type::Type;
 
 use rustc_middle::mir::{Place, PlaceElem};
 use rustc_middle::ty::{Instance, TyCtxt, TyKind};
 
-pub(super) fn local_get(local: usize, method: &rustc_middle::mir::Body) -> CILOp {
+pub(super) fn local_get(local: usize, method: &rustc_middle::mir::Body) -> CILNode {
     if local == 0 {
-        CILOp::LDLoc(0)
+        CILNode::LDLoc(0)
     } else if local > method.arg_count {
-        CILOp::LDLoc(
+        CILNode::LDLoc(
             u32::try_from(local - method.arg_count)
                 .expect("Method has more than 2^32 local varaibles"),
         )
     } else {
-        CILOp::LDArg(u32::try_from(local - 1).expect("Method has more than 2^32 local variables"))
+        CILNode::LDArg(u32::try_from(local - 1).expect("Method has more than 2^32 local variables"))
     }
 }
 /// Returns the ops for getting the value of place.
@@ -25,25 +26,22 @@ pub fn place_get<'a>(
     method_instance: Instance<'a>,
     type_cache: &mut crate::r#type::TyCache,
 ) -> Vec<CILOp> {
-    let mut ops = Vec::with_capacity(place.projection.len());
-
     if place.projection.is_empty() {
-        ops.push(local_get(place.local.as_usize(), method));
-        ops
+        local_get(place.local.as_usize(), method).flatten()
     } else {
-        let (op, mut ty) = super::local_body(place.local.as_usize(), method);
+        let (mut op, mut ty) = super::local_body(place.local.as_usize(), method);
+
         ty = crate::utilis::monomorphize(&method_instance, ty, ctx);
         let mut ty = ty.into();
-        ops.extend(op);
+
         let (head, body) = super::slice_head(place.projection);
         for elem in body {
             let (curr_ty, curr_ops) =
-                super::place_elem_body(elem, ty, ctx, method_instance, method, type_cache);
+                super::place_elem_body(elem, ty, ctx, method_instance, method, type_cache, op);
             ty = curr_ty.monomorphize(&method_instance, ctx);
-            ops.extend(curr_ops);
+            op = curr_ops;
         }
-        ops.extend(place_elem_get(head, ty, ctx, method_instance, type_cache));
-        ops
+        place_elem_get(head, ty, ctx, method_instance, type_cache, op).flatten()
     }
 }
 
@@ -53,13 +51,15 @@ fn place_elem_get<'a>(
     tyctx: TyCtxt<'a>,
     method_instance: Instance<'a>,
     type_cache: &mut crate::r#type::TyCache,
-) -> Vec<CILOp> {
+    addr_calc: CILNode,
+) -> CILNode {
     match place_elem {
         PlaceElem::Deref => super::deref_op(
             super::pointed_type(curr_type).into(),
             tyctx,
             &method_instance,
             type_cache,
+            addr_calc,
         ),
         PlaceElem::Field(index, _field_type) => match curr_type {
             super::PlaceTy::Ty(curr_type) => {
@@ -73,7 +73,10 @@ fn place_elem_get<'a>(
                     method_instance,
                     type_cache,
                 );
-                vec![CILOp::LDField(field_desc.into())]
+                CILNode::LDField {
+                    addr: addr_calc.into(),
+                    field: field_desc.into(),
+                }
             }
             super::PlaceTy::EnumVariant(enm, var_idx) => {
                 let owner = crate::utilis::monomorphize(&method_instance, enm, tyctx);
@@ -85,10 +88,10 @@ fn place_elem_get<'a>(
                     method_instance,
                     type_cache,
                 );
-                //let field_desc = crate::utilis::field_descrptor(enm, field_idx, ctx, method_instance, type_cache);
-                let ops = vec![CILOp::LDField(field_desc.into())];
-                ops
-                //todo!("Can't get fields of enum variants yet!");
+                CILNode::LDField {
+                    addr: addr_calc.into(),
+                    field: field_desc.into(),
+                }
             }
         },
         PlaceElem::Index(index) => {
@@ -113,23 +116,26 @@ fn place_elem_get<'a>(
                         Type::Ptr(Type::Void.into()),
                         "data_pointer".into(),
                     );
-                    let deref_op = super::deref_op(
+
+                    let addr = CILNode::Add(
+                        CILNode::LDField {
+                            addr: addr_calc.into(),
+                            field: desc.into(),
+                        }
+                        .into(),
+                        CILNode::Mul(
+                            index.into(),
+                            CILNode::ConvUSize(CILNode::SizeOf(inner_type.into()).into()).into(),
+                        )
+                        .into(),
+                    );
+                    super::deref_op(
                         super::PlaceTy::Ty(inner),
                         tyctx,
                         &method_instance,
                         type_cache,
-                    );
-                    let mut ops = vec![
-                        CILOp::LDField(desc.into()),
-                        index,
-                        CILOp::ConvUSize(false),
-                        CILOp::SizeOf(inner_type.into()),
-                        CILOp::ConvUSize(false),
-                        CILOp::Mul,
-                        CILOp::Add,
-                    ];
-                    ops.extend(deref_op);
-                    ops
+                        addr,
+                    )
                 }
                 TyKind::Array(element, _length) => {
                     let element = crate::utilis::monomorphize(&method_instance, *element, tyctx);
@@ -137,20 +143,19 @@ fn place_elem_get<'a>(
                     let array_type =
                         type_cache.type_from_cache(curr_ty, tyctx, Some(method_instance));
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
-                    let ops = vec![
-                        index,
-                        CILOp::ConvUSize(false),
-                        CILOp::Call(
-                            crate::cil::CallSite::new(
-                                Some(array_dotnet),
-                                "get_Item".into(),
-                                FnSig::new(&[Type::Ptr(array_type.into()), Type::USize], &element),
-                                false,
-                            )
-                            .into(),
-                        ),
-                    ];
-                    ops
+                    CILNode::Call {
+                        site: crate::cil::CallSite::new(
+                            Some(array_dotnet),
+                            "get_Item".into(),
+                            FnSig::new(
+                                &[Type::Ptr(array_type.into()), Type::USize],
+                                &element.into(),
+                            ),
+                            false,
+                        )
+                        .into(),
+                        args: [addr_calc,CILNode::ConvUSize(index.into())].into(),
+                    }
                 }
                 _ => {
                     rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Can't index into {curr_ty}!")}
@@ -165,7 +170,7 @@ fn place_elem_get<'a>(
             let curr_ty = curr_type
                 .as_ty()
                 .expect("INVALID PLACE: Indexing into enum variant???");
-            let index = CILOp::LdcI64(*offset as i64);
+            let index = CILNode::LdcU64(*offset);
             assert!(!from_end, "Indexing slice form end");
             println!("WARNING: ConstantIndex has required min_length of {min_length}, but bounds checking on const access not supported yet!");
             match curr_ty.kind() {
@@ -182,23 +187,25 @@ fn place_elem_get<'a>(
                         Type::Ptr(Type::Void.into()),
                         "data_pointer".into(),
                     );
-                    let derf_op = super::deref_op(
+                    let addr = CILNode::Add(
+                        CILNode::LDField {
+                            addr: addr_calc.into(),
+                            field: desc.into(),
+                        }
+                        .into(),
+                        CILNode::Mul(
+                            index.into(),
+                            CILNode::ConvUSize(CILNode::SizeOf(inner_type.into()).into()).into(),
+                        )
+                        .into(),
+                    );
+                    super::deref_op(
                         super::PlaceTy::Ty(inner),
                         tyctx,
                         &method_instance,
                         type_cache,
-                    );
-                    let mut ops = vec![
-                        CILOp::LDField(desc.into()),
-                        index,
-                        CILOp::ConvUSize(false),
-                        CILOp::SizeOf(inner_type.into()),
-                        CILOp::ConvUSize(false),
-                        CILOp::Mul,
-                        CILOp::Add,
-                    ];
-                    ops.extend(derf_op);
-                    ops
+                        addr,
+                    )
                 }
                 TyKind::Array(element, _length) => {
                     let element = crate::utilis::monomorphize(&method_instance, *element, tyctx);
@@ -206,20 +213,19 @@ fn place_elem_get<'a>(
                     let array_type =
                         type_cache.type_from_cache(curr_ty, tyctx, Some(method_instance));
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
-                    let ops = vec![
-                        index,
-                        CILOp::ConvUSize(false),
-                        CILOp::Call(
-                            crate::cil::CallSite::new(
-                                Some(array_dotnet),
-                                "get_Item".into(),
-                                FnSig::new(&[Type::Ptr(array_type.into()), Type::USize], &element),
-                                false,
-                            )
-                            .into(),
-                        ),
-                    ];
-                    ops
+                    CILNode::Call {
+                        site: crate::cil::CallSite::new(
+                            Some(array_dotnet),
+                            "get_Item".into(),
+                            FnSig::new(
+                                &[Type::Ptr(array_type.into()), Type::USize],
+                                &element.into(),
+                            ),
+                            false,
+                        )
+                        .into(),
+                        args: [addr_calc,CILNode::ConvUSize(index.into())].into(),
+                    }
                 }
                 _ => {
                     rustc_middle::ty::print::with_no_trimmed_paths! { todo!("Can't index into {curr_ty}!")}

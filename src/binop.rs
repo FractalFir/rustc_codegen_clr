@@ -84,11 +84,12 @@ pub(crate) fn binop_unchecked<'tyctx>(
         .into_iter()
         .flatten()
         .collect(),
-        BinOp::Shl=> [
+        BinOp::Shl => [
             ops_a,
             ops_b,
             shl_checked(ty_a, ty_b, tycache, &method_instance, tyctx),
-        ].into_iter()
+        ]
+        .into_iter()
         .flatten()
         .collect(),
         BinOp::ShlUnchecked => [
@@ -99,7 +100,7 @@ pub(crate) fn binop_unchecked<'tyctx>(
         .into_iter()
         .flatten()
         .collect(),
-        BinOp::Shr  => [
+        BinOp::Shr => [
             ops_a,
             ops_b,
             shr_checked(ty_a, ty_b, tycache, &method_instance, tyctx),
@@ -620,21 +621,25 @@ fn shr_checked<'tyctx>(
             | TyKind::Uint(UintTy::U64)
             | TyKind::Int(IntTy::I64) => {
                 let mut res = crate::casts::int_to_int(type_b.clone(), Type::I32);
-                let bit_cap = (compiletime_sizeof(value_type, tyctx, *method_instance)*8) as u32;
-                res.extend([CILOp::ConvU32(false),
-                CILOp::LdcU32(bit_cap),
-                CILOp::RemUn,
-                //CILOp::Call(CallSite::boxed(DotnetTypeRef::math().into(),"Abs".into(),FnSig::new(&[Type::I32],&Type::I32),true)),
-                CILOp::ShrUn]);
+                let bit_cap = (compiletime_sizeof(value_type, tyctx, *method_instance) * 8) as u32;
+                res.extend([
+                    CILOp::ConvU32(false),
+                    CILOp::LdcU32(bit_cap),
+                    CILOp::RemUn,
+                    //CILOp::Call(CallSite::boxed(DotnetTypeRef::math().into(),"Abs".into(),FnSig::new(&[Type::I32],&Type::I32),true)),
+                    CILOp::ShrUn,
+                ]);
                 res
             }
             _ => {
-                let bit_cap = (compiletime_sizeof(value_type, tyctx, *method_instance)*8) as u32;
-                vec![CILOp::ConvU32(false),
-                CILOp::LdcU32(bit_cap),
-                CILOp::RemUn,
-                //CILOp::Call(CallSite::boxed(DotnetTypeRef::math().into(),"Abs".into(),FnSig::new(&[Type::I32],&Type::I32),true)),
-                CILOp::ShrUn]
+                let bit_cap = (compiletime_sizeof(value_type, tyctx, *method_instance) * 8) as u32;
+                vec![
+                    CILOp::ConvU32(false),
+                    CILOp::LdcU32(bit_cap),
+                    CILOp::RemUn,
+                    //CILOp::Call(CallSite::boxed(DotnetTypeRef::math().into(),"Abs".into(),FnSig::new(&[Type::I32],&Type::I32),true)),
+                    CILOp::ShrUn,
+                ]
             }
         },
         TyKind::Int(_) => match shift_type.kind() {
@@ -643,22 +648,26 @@ fn shr_checked<'tyctx>(
             | TyKind::Uint(UintTy::U64)
             | TyKind::Int(IntTy::I64) => {
                 let mut res = crate::casts::int_to_int(type_b.clone(), Type::I32);
-                let bit_cap = (compiletime_sizeof(value_type, tyctx, *method_instance)*8) as u32;
-                res.extend([CILOp::ConvU32(false),
-                CILOp::LdcU32(bit_cap),
-                CILOp::RemUn,
-                //CILOp::Call(CallSite::boxed(DotnetTypeRef::math().into(),"Abs".into(),FnSig::new(&[Type::I32],&Type::I32),true)),
-                CILOp::Shr]);
+                let bit_cap = (compiletime_sizeof(value_type, tyctx, *method_instance) * 8) as u32;
+                res.extend([
+                    CILOp::ConvU32(false),
+                    CILOp::LdcU32(bit_cap),
+                    CILOp::RemUn,
+                    //CILOp::Call(CallSite::boxed(DotnetTypeRef::math().into(),"Abs".into(),FnSig::new(&[Type::I32],&Type::I32),true)),
+                    CILOp::Shr,
+                ]);
                 res
             }
 
             _ => {
-                let bit_cap = (compiletime_sizeof(value_type, tyctx, *method_instance)*8) as u32;
-                vec![CILOp::ConvU32(false),
-                CILOp::LdcU32(bit_cap),
-                CILOp::RemUn,
-               // CILOp::Call(CallSite::boxed(DotnetTypeRef::math().into(),"Abs".into(),FnSig::new(&[Type::I32],&Type::I32),true)),
-                CILOp::Shr]
+                let bit_cap = (compiletime_sizeof(value_type, tyctx, *method_instance) * 8) as u32;
+                vec![
+                    CILOp::ConvU32(false),
+                    CILOp::LdcU32(bit_cap),
+                    CILOp::RemUn,
+                    // CILOp::Call(CallSite::boxed(DotnetTypeRef::math().into(),"Abs".into(),FnSig::new(&[Type::I32],&Type::I32),true)),
+                    CILOp::Shr,
+                ]
             }
         },
         _ => panic!("Can't bitshift type  {value_type:?}"),
@@ -707,21 +716,25 @@ fn shl_checked<'tyctx>(
             | TyKind::Uint(UintTy::U64)
             | TyKind::Int(IntTy::I64) => {
                 let mut res = crate::casts::int_to_int(type_b.clone(), Type::I32);
-                let bit_cap = (compiletime_sizeof(value_type, tyctx, *method_instance)*8) as u32;
-                res.extend([CILOp::ConvU32(false),
-                CILOp::LdcU32(bit_cap),
-                CILOp::RemUn,
-                //CILOp::Call(CallSite::boxed(DotnetTypeRef::math().into(),"Abs".into(),FnSig::new(&[Type::I32],&Type::I32),true)),
-                CILOp::Shl]);
+                let bit_cap = (compiletime_sizeof(value_type, tyctx, *method_instance) * 8) as u32;
+                res.extend([
+                    CILOp::ConvU32(false),
+                    CILOp::LdcU32(bit_cap),
+                    CILOp::RemUn,
+                    //CILOp::Call(CallSite::boxed(DotnetTypeRef::math().into(),"Abs".into(),FnSig::new(&[Type::I32],&Type::I32),true)),
+                    CILOp::Shl,
+                ]);
                 res
             }
             _ => {
-                let bit_cap = (compiletime_sizeof(value_type, tyctx, *method_instance)*8) as u32;
-                vec![CILOp::ConvU32(false),
-                CILOp::LdcU32(bit_cap),
-                CILOp::RemUn,
-                //CILOp::Call(CallSite::boxed(DotnetTypeRef::math().into(),"Abs".into(),FnSig::new(&[Type::I32],&Type::I32),true)),
-                CILOp::Shl]
+                let bit_cap = (compiletime_sizeof(value_type, tyctx, *method_instance) * 8) as u32;
+                vec![
+                    CILOp::ConvU32(false),
+                    CILOp::LdcU32(bit_cap),
+                    CILOp::RemUn,
+                    //CILOp::Call(CallSite::boxed(DotnetTypeRef::math().into(),"Abs".into(),FnSig::new(&[Type::I32],&Type::I32),true)),
+                    CILOp::Shl,
+                ]
             }
         },
         TyKind::Int(_) => match shift_type.kind() {
@@ -730,22 +743,26 @@ fn shl_checked<'tyctx>(
             | TyKind::Uint(UintTy::U64)
             | TyKind::Int(IntTy::I64) => {
                 let mut res = crate::casts::int_to_int(type_b.clone(), Type::I32);
-                let bit_cap = (compiletime_sizeof(value_type, tyctx, *method_instance)*8) as u32;
-                res.extend([CILOp::ConvU32(false),
-                CILOp::LdcU32(bit_cap),
-                CILOp::RemUn,
-                //CILOp::Call(CallSite::boxed(DotnetTypeRef::math().into(),"Abs".into(),FnSig::new(&[Type::I32],&Type::I32),true)),
-                CILOp::Shl]);
+                let bit_cap = (compiletime_sizeof(value_type, tyctx, *method_instance) * 8) as u32;
+                res.extend([
+                    CILOp::ConvU32(false),
+                    CILOp::LdcU32(bit_cap),
+                    CILOp::RemUn,
+                    //CILOp::Call(CallSite::boxed(DotnetTypeRef::math().into(),"Abs".into(),FnSig::new(&[Type::I32],&Type::I32),true)),
+                    CILOp::Shl,
+                ]);
                 res
             }
 
             _ => {
-                let bit_cap = (compiletime_sizeof(value_type, tyctx, *method_instance)*8) as u32;
-                vec![CILOp::ConvU32(false),
-                CILOp::LdcU32(bit_cap),
-                CILOp::RemUn,
-               // CILOp::Call(CallSite::boxed(DotnetTypeRef::math().into(),"Abs".into(),FnSig::new(&[Type::I32],&Type::I32),true)),
-                CILOp::Shl]
+                let bit_cap = (compiletime_sizeof(value_type, tyctx, *method_instance) * 8) as u32;
+                vec![
+                    CILOp::ConvU32(false),
+                    CILOp::LdcU32(bit_cap),
+                    CILOp::RemUn,
+                    // CILOp::Call(CallSite::boxed(DotnetTypeRef::math().into(),"Abs".into(),FnSig::new(&[Type::I32],&Type::I32),true)),
+                    CILOp::Shl,
+                ]
             }
         },
         _ => panic!("Can't bitshift type  {value_type:?}"),

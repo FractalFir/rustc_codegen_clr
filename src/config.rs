@@ -26,7 +26,6 @@ macro_rules! config_flag{
 }
 config_flag! {ABORT_ON_ERROR,false,"Should the codegen stop working when ecountering an error, or try to press on, replacing unusuported code with exceptions throws?"}
 
-
 config_flag! {TRACE_CALLS,false,"Preapends each function call with a debug message"}
 config_flag! {TRACE_STATEMENTS,false,"Preapends each statement with a debug message"}
 

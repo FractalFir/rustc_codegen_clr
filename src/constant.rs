@@ -1,6 +1,5 @@
 use crate::{
-    cil::{CILOp, CallSite, FieldDescriptor, StaticFieldDescriptor},
-    r#type::{DotnetTypeRef, TyCache, Type},
+    cil::{CILOp, CallSite, FieldDescriptor, StaticFieldDescriptor}, cil_tree::cil_node::CILNode, r#type::{DotnetTypeRef, TyCache, Type}
 };
 use rustc_abi::Size;
 use rustc_middle::mir::{
@@ -605,17 +604,11 @@ fn create_const_from_data<'ctx>(
         //eprintln!("Creating const {ty:?} from data of length {len}.");
         create_const_from_slice(ty, tyctx, bytes, method_instance, tycache)
     } else {
-        let mut ops = vec![CILOp::LoadGlobalAllocPtr {
+        let ptr = CILNode::LoadGlobalAllocPtr {
             alloc_id: alloc_id.0.into(),
-        }];
+        };
         let ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
-        ops.extend(crate::place::deref_op(
-            ty.into(),
-            tyctx,
-            &method_instance,
-            tycache,
-        ));
-        ops
+        crate::place::deref_op(ty.into(), tyctx, &method_instance, tycache,ptr).flatten()
         //panic!("Constant requires rellocation support!");
     }
 }

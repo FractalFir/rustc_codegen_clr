@@ -50,18 +50,20 @@ pub fn handle_rvalue<'tcx>(
             let target_fat = pointer_to_is_fat(target_pointed_to, tyctx, Some(method_instance));
             let ops = match (src_fat, target_fat) {
                 (true, true) => {
+                    /*
                     let mut res = handle_operand(operand, tyctx, method, method_instance, tycache);
                     res.push(CILOp::NewTMPLocal(source_type.into()));
                     res.push(CILOp::SetTMPLocal);
                     res.push(CILOp::LoadAddresOfTMPLocal);
                     res.push(CILOp::FreeTMPLocal);
+    
                     res.extend(crate::place::deref_op(
                         crate::place::PlaceTy::Ty(target),
                         tyctx,
                         &method_instance,
                         tycache,
                     ));
-                    res
+                    res */ todo!("FIX NOW")
                 }
                 (true, false) => {
                     let mut res = handle_operand(operand, tyctx, method, method_instance, tycache);
@@ -232,8 +234,8 @@ pub fn handle_rvalue<'tcx>(
             }
             /* */
             NullOp::OffsetOf(fields) => {
-                assert_eq!(fields.len(),1);
-                let (variant,field) = fields[0];
+                assert_eq!(fields.len(), 1);
+                let (variant, field) = fields[0];
                 todo!("Can't calc offset of yet!");
             }
             // TODO: propely set this to 0 or 1 depending if debug assertions are enabled.
@@ -308,9 +310,7 @@ pub fn handle_rvalue<'tcx>(
                     res
                 }
                 (_, _) => {
-                    /*eprintln!(
-                        "transmute from {src:?} to {dst:?} does not have special handling yet!"
-                    );*/
+                    /* 
                     let mut res = handle_operand(operand, tyctx, method, method_instance, tycache);
                     res.push(CILOp::NewTMPLocal(src.into()));
                     res.push(CILOp::SetTMPLocal);
@@ -322,7 +322,7 @@ pub fn handle_rvalue<'tcx>(
                         &method_instance,
                         tycache,
                     ));
-                    res
+                    res*/ todo!("FIX NOW")
                 }
             }
         }
@@ -333,6 +333,7 @@ pub fn handle_rvalue<'tcx>(
             let src = operand.ty(&method.local_decls, tyctx);
             let src = crate::utilis::monomorphize(&method_instance, src, tyctx);
             let src = tycache.type_from_cache(src, tyctx, Some(method_instance));
+            /* 
             let mut res = handle_operand(operand, tyctx, method, method_instance, tycache);
             res.push(CILOp::NewTMPLocal(
                 crate::r#type::Type::Ptr(src.into()).into(),
@@ -341,7 +342,7 @@ pub fn handle_rvalue<'tcx>(
             res.push(CILOp::LoadAddresOfTMPLocal);
             res.push(CILOp::FreeTMPLocal);
             res.extend(deref_op(boxed_dst.into(), tyctx, &method_instance, tycache));
-            res
+            res*/ todo!("FIX NOW")
         }
         Rvalue::Cast(CastKind::PointerFromExposedAddress, operand, _) => {
             //FIXME: the documentation of this cast(https://doc.rust-lang.org/nightly/std/ptr/fn.from_exposed_addr.html) is a bit confusing,

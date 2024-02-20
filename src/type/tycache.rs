@@ -235,7 +235,8 @@ impl TyCache {
         }
         explicit_offsets.extend(adt.variants().iter().map(|_| variant_offset));
         //let mut inner_types = vec![];
-        let mut variants = vec![];
+        //let mut variants = vec![];
+        let mut inner_types = vec![];
         for variant in adt.variants() {
             let variant_name: IString = variant.name.to_string().into();
             let mut variant_fields = vec![];
@@ -244,18 +245,31 @@ impl TyCache {
                 let field_ty = self.type_from_cache(field.ty(tyctx, subst), tyctx, method);
                 variant_fields.push((name, field_ty));
             }
-            variants.push((variant_name, variant_fields));
-        }
-        let mut inner_types = vec![];
+            let variant_ty =
+                Instance::resolve(tyctx, ParamEnv::reveal_all(), variant.def_id, subst)
+                    .unwrap()
+                    .unwrap()
+                    .ty(tyctx, ParamEnv::reveal_all());
+            let layout = tyctx
+                .layout_of(rustc_middle::ty::ParamEnvAnd {
+                    param_env: ParamEnv::reveal_all(),
+                    value: variant_ty,
+                })
+                .expect("Could not get type layout!");
+            let field_offset_iter = crate::utilis::adt::FieldOffsetIterator::fields(&layout.layout);
+            println!("field_offset_iter:{field_offset_iter:?}");
+            // TODO: fix enums
+            let explicit_offsets: Vec<_> = field_offset_iter.collect();
+            //assert_eq!(explicit_offsets.len(),variant.fields.len());
 
-        for (variant_name, field_list) in variants {
+            //variants.push((variant_name, variant_fields));
             let inner = TypeDef::new(
                 access,
                 variant_name.clone(),
                 vec![],
-                field_list,
+                variant_fields,
                 vec![],
-                None,
+                None, //Some(explicit_offsets),
                 0,
                 None,
             );
@@ -309,14 +323,14 @@ impl TyCache {
                 } else {
                     let name = tuple_name(&types);
                     let layout = tyctx
-            .layout_of(rustc_middle::ty::ParamEnvAnd {
-                param_env: ParamEnv::reveal_all(),
-                value: ty,
-            })
-            .expect("Could not get type layout!");
+                        .layout_of(rustc_middle::ty::ParamEnvAnd {
+                            param_env: ParamEnv::reveal_all(),
+                            value: ty,
+                        })
+                        .expect("Could not get type layout!");
                     self.type_def_cache
                         .entry(name)
-                        .or_insert_with(|| tuple_typedef(&types,&layout.layout));
+                        .or_insert_with(|| tuple_typedef(&types, &layout.layout));
                     super::simple_tuple(&types).into()
                 }
             }

@@ -1,6 +1,7 @@
 // FIXME: This file may contain unnecesary morphize calls.
 
 use crate::cil::CILOp;
+use crate::cil_tree::cil_node::CILNode;
 use crate::r#type::{pointer_to_is_fat, DotnetTypeRef, Type};
 
 use rustc_middle::mir::Place;
@@ -95,75 +96,102 @@ pub fn deref_op<'ctx>(
     tyctx: TyCtxt<'ctx>,
     method_instance: &Instance<'ctx>,
     type_cache: &mut crate::r#type::TyCache,
-) -> Vec<CILOp> {
+    ptr: CILNode,
+) -> CILNode {
+    let ptr = Box::new(ptr);
     let res = if let PlaceTy::Ty(derefed_type) = derefed_type {
         match derefed_type.kind() {
             TyKind::Int(int_ty) => match int_ty {
-                IntTy::I8 => vec![CILOp::LDIndI8],
-                IntTy::I16 => vec![CILOp::LDIndI16],
-                IntTy::I32 => vec![CILOp::LDIndI32],
-                IntTy::I64 => vec![CILOp::LDIndI64],
-                IntTy::Isize => vec![CILOp::LDIndISize],
-                IntTy::I128 => vec![CILOp::LdObj(Box::new(DotnetTypeRef::int_128().into()))],
+                IntTy::I8 => CILNode::LDIndI8 { ptr },
+                IntTy::I16 => CILNode::LDIndI16 { ptr },
+                IntTy::I32 => CILNode::LDIndI32 { ptr },
+                IntTy::I64 => CILNode::LDIndI64 { ptr },
+                IntTy::Isize => CILNode::LDIndISize { ptr },
+                IntTy::I128 => CILNode::LdObj {
+                    ptr,
+                    obj: Box::new(DotnetTypeRef::int_128().into()),
+                },
                 //_ => todo!("TODO: can't deref int type {int_ty:?} yet"),
             },
             TyKind::Uint(int_ty) => match int_ty {
-                UintTy::U8 => vec![CILOp::LDIndI8],
-                UintTy::U16 => vec![CILOp::LDIndI16],
-                UintTy::U32 => vec![CILOp::LDIndI32],
-                UintTy::U64 => vec![CILOp::LDIndI64],
-                UintTy::Usize => vec![CILOp::LDIndISize],
-                UintTy::U128 => vec![CILOp::LdObj(Box::new(DotnetTypeRef::uint_128().into()))], //vec![CILOp::LdObj(Box::new())],
-                                                                                                //_ => todo!("TODO: can't deref int type {int_ty:?} yet"),
+                UintTy::U8 => CILNode::LDIndI8 { ptr },
+                UintTy::U16 => CILNode::LDIndI16 { ptr },
+                UintTy::U32 => CILNode::LDIndI32 { ptr },
+                UintTy::U64 => CILNode::LDIndI64 { ptr },
+                UintTy::Usize => CILNode::LDIndISize { ptr },
+                UintTy::U128 => CILNode::LdObj {
+                    ptr,
+                    obj: Box::new(DotnetTypeRef::uint_128().into()),
+                }, //vec![CILOp::LdObj(Box::new())],
+                   //_ => todo!("TODO: can't deref int type {int_ty:?} yet"),
             },
             TyKind::Float(float_ty) => match float_ty {
-                FloatTy::F32 => vec![CILOp::LDIndF32],
-                FloatTy::F64 => vec![CILOp::LDIndF64],
+                FloatTy::F32 => CILNode::LDIndF32 { ptr },
+                FloatTy::F64 => CILNode::LDIndF64 { ptr },
             },
-            TyKind::Bool => vec![CILOp::LDIndI8], // Both Rust bool and a managed bool are 1 byte wide. .NET bools are 4 byte wide only in the context of Marshaling/PInvoke,
+            TyKind::Bool => CILNode::LDIndI8 { ptr }, // Both Rust bool and a managed bool are 1 byte wide. .NET bools are 4 byte wide only in the context of Marshaling/PInvoke,
             // due to historic reasons(BOOL was an alias for int in early Windows, and it stayed this way.) - FractalFir
-            TyKind::Char => vec![CILOp::LDIndI32], // always 4 bytes wide: https://doc.rust-lang.org/std/primitive.char.html#representation
+            TyKind::Char => CILNode::LDIndI32 { ptr }, // always 4 bytes wide: https://doc.rust-lang.org/std/primitive.char.html#representation
             TyKind::Adt(_, _) | TyKind::Tuple(_) => {
                 let derefed_type =
                     type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance));
-                vec![CILOp::LdObj(derefed_type.into())]
+
+                CILNode::LdObj {
+                    ptr,
+                    obj: Box::new(derefed_type),
+                }
             }
             TyKind::Ref(_, inner, _) => {
                 if pointer_to_is_fat(*inner, tyctx, Some(*method_instance)) {
-                    vec![CILOp::LdObj(
-                        type_cache
-                            .type_from_cache(derefed_type, tyctx, Some(*method_instance))
-                            .into(),
-                    )]
+                    CILNode::LdObj {
+                        ptr,
+                        obj: Box::new(
+                            type_cache
+                                .type_from_cache(derefed_type, tyctx, Some(*method_instance))
+                                .into(),
+                        ),
+                    }
                 } else {
-                    vec![CILOp::LDIndISize]
+                    CILNode::LDIndISize { ptr }
                 }
             }
             TyKind::RawPtr(type_and_mut) => {
                 if pointer_to_is_fat(type_and_mut.ty, tyctx, Some(*method_instance)) {
-                    vec![CILOp::LdObj(
-                        type_cache
-                            .type_from_cache(derefed_type, tyctx, Some(*method_instance))
-                            .into(),
-                    )]
+                    CILNode::LdObj {
+                        ptr,
+                        obj: Box::new(
+                            type_cache
+                                .type_from_cache(derefed_type, tyctx, Some(*method_instance))
+                                .into(),
+                        ),
+                    }
                 } else {
-                    vec![CILOp::LDIndISize]
+                    CILNode::LDIndISize { ptr }
                 }
             }
             TyKind::Array(_, _) => {
                 let derefed_type =
                     type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance));
-                vec![CILOp::LdObj(derefed_type.into())]
+                CILNode::LdObj {
+                    ptr,
+                    obj: Box::new(derefed_type),
+                }
             }
             TyKind::FnPtr(_) => {
                 let derefed_type =
                     type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance));
-                vec![CILOp::LdObj(derefed_type.into())]
+                CILNode::LdObj {
+                    ptr,
+                    obj: Box::new(derefed_type),
+                }
             }
             TyKind::Closure(_, _) => {
                 let derefed_type =
                     type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance));
-                vec![CILOp::LdObj(derefed_type.into())]
+                CILNode::LdObj {
+                    ptr,
+                    obj: Box::new(derefed_type),
+                }
             }
             _ => todo!("TODO: can't deref type {derefed_type:?} yet"),
         }
@@ -181,24 +209,31 @@ pub fn place_adress<'a>(
     method_instance: Instance<'a>,
     type_cache: &mut crate::r#type::TyCache,
 ) -> Vec<CILOp> {
-    let mut ops = Vec::with_capacity(place.projection.len());
     let place_ty = place.ty(method, ctx);
     let place_ty = crate::utilis::monomorphize(&method_instance, place_ty, ctx).ty;
     if place.projection.is_empty() {
-        ops.extend(local_adress(place.local.as_usize(), method));
-        ops
+        local_adress(place.local.as_usize(), method).flatten()
     } else {
-        let (op, mut ty) = local_body(place.local.as_usize(), method);
+        let (mut addr_calc, mut ty) = local_body(place.local.as_usize(), method);
+
         ty = crate::utilis::monomorphize(&method_instance, ty, ctx);
         let mut ty = ty.into();
-        ops.extend(op);
+
         let (head, body) = slice_head(place.projection);
         for elem in body {
-            let (curr_ty, curr_ops) =
-                place_elem_body(elem, ty, ctx, method_instance, method, type_cache);
+            let (curr_ty, curr_ops) = place_elem_body(
+                elem,
+                ty,
+                ctx,
+                method_instance,
+                method,
+                type_cache,
+                addr_calc.clone(),
+            );
             ty = curr_ty.monomorphize(&method_instance, ctx);
-            ops.extend(curr_ops);
+            addr_calc = curr_ops;
         }
+        let mut ops = addr_calc.flatten();
         ops.extend(adress::place_elem_adress(
             head,
             ty,
@@ -225,17 +260,25 @@ pub(crate) fn place_set<'a>(
         ops.push(set::local_set(place.local.as_usize(), method));
         ops
     } else {
-        let mut addr_calc = Vec::new();
+        let mut addr_calc = local_body(place.local.as_usize(), method);
         let (op, ty) = local_body(place.local.as_usize(), method);
+
         let mut ty: PlaceTy = ty.into();
         ty = ty.monomorphize(&method_instance, ctx);
-        addr_calc.extend(op);
+
         let (head, body) = slice_head(place.projection);
         for elem in body {
-            let (curr_ty, curr_ops) =
-                place_elem_body(elem, ty, ctx, method_instance, method, type_cache);
+            let (curr_ty, curr_ops) = place_elem_body(
+                elem,
+                ty,
+                ctx,
+                method_instance,
+                method,
+                type_cache,
+                addr_calc.0,
+            );
             ty = curr_ty.monomorphize(&method_instance, ctx);
-            addr_calc.extend(curr_ops);
+            addr_calc.0 = curr_ops;
         }
         //
         ty = ty.monomorphize(&method_instance, ctx);
@@ -246,7 +289,7 @@ pub(crate) fn place_set<'a>(
             method_instance,
             type_cache,
             value_calc,
-            addr_calc,
+            addr_calc.0.flatten(),
         )
     }
 }

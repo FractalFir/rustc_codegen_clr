@@ -415,6 +415,7 @@ pub fn handle_intrinsic<'tyctx>(
                 type_cache,
             )
         }
+        /*
         "volatile_load" => {
             debug_assert_eq!(
                 args.len(),
@@ -469,6 +470,7 @@ pub fn handle_intrinsic<'tyctx>(
             ));
             place_set(destination, tyctx, ops, body, method_instance, type_cache)
         }
+        */
         //"bswap"
         "assert_inhabited" => vec![],
         "ptr_offset_from_unsigned" => {

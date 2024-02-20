@@ -279,6 +279,17 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
                 format!("ldc.i8 {value}").into()
             }
         }
+        CILOp::LdcU64(value) => {
+            if *value <= 8 && *value >= 0 {
+                format!("ldc.i4.{value}").into()
+            } else if *value < i8::MAX as u8 as u64 {
+                format!("ldc.i4.s {value}\n\t").into()
+            } else if *value < i32::MAX as u32 as u64  {
+                format!("ldc.i4 {value}").into()
+            } else {
+                format!("ldc.i8 {value}").into()
+            }
+        }
         CILOp::LdNull => "ldnull".into(), 
         CILOp::LdcF32(f32const) =>{
             if f32const.is_finite() && format!("{f32const}").len() < 14{

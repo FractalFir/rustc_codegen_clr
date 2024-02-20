@@ -9,7 +9,7 @@ pub fn int_to_int(src: Type, target: Type) -> Vec<CILOp> {
         return vec![];
     }
     match (&src, &target) {
-        /* 
+        /*
         (Type::DotnetType(tpe), Type::I128) | (Type::I128,Type::DotnetType(tpe))=>{
             if Some("System.Runtime".into()) == tpe.asm() && tpe.name_path().contains("System.Int128"){
                 return vec![];
@@ -64,7 +64,7 @@ pub fn int_to_int(src: Type, target: Type) -> Vec<CILOp> {
                 .into(),
             ),
         ],
-        (Type::U128,Type::I128) => vec![CILOp::Call(
+        (Type::U128, Type::I128) => vec![CILOp::Call(
             CallSite::new(
                 Some(DotnetTypeRef::uint_128()),
                 "op_Explicit".into(),
@@ -93,7 +93,7 @@ pub fn int_to_int(src: Type, target: Type) -> Vec<CILOp> {
             )
             .into(),
         )],
-        
+
         (Type::I8 | Type::I16 | Type::I32 | Type::I64, Type::U128) => vec![CILOp::Call(
             CallSite::new(
                 Some(DotnetTypeRef::uint_128()),
@@ -264,11 +264,11 @@ pub fn int_to_float(src: Type, target: Type) -> Vec<CILOp> {
     } else if matches!(target, Type::I128 | Type::U128) {
         todo!("Casting to 128 bit intiegers is not supported!")
     } else {
-        match (&src,&target) {
-            (Type::U32 | Type::U64,Type::F32) => vec![CILOp::ConvF64Un,CILOp::ConvF32],
-            (_,Type::F32) => vec![CILOp::ConvF32],
-            (Type::U32 | Type::U64,Type::F64) => vec![CILOp::ConvF64Un,],
-            (_,Type::F64) => vec![CILOp::ConvF64],
+        match (&src, &target) {
+            (Type::U32 | Type::U64, Type::F32) => vec![CILOp::ConvF64Un, CILOp::ConvF32],
+            (_, Type::F32) => vec![CILOp::ConvF32],
+            (Type::U32 | Type::U64, Type::F64) => vec![CILOp::ConvF64Un],
+            (_, Type::F64) => vec![CILOp::ConvF64],
             _ => todo!("Can't  cast {src:?} to {target:?} yet!"),
         }
     }

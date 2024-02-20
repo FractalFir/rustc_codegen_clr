@@ -61,7 +61,6 @@ extern crate rustc_ty_utils;
 extern crate stable_mir;
 
 // Modules
-
 /// Specifies if a method/type is private or public.
 pub mod access_modifier;
 /// Code handling the creation of aggreate values (Arrays, enums,structs,tuples,etc.)
@@ -79,6 +78,7 @@ mod casts;
 mod checked_binop;
 /// A representation of C# IL op.
 pub mod cil;
+pub mod cil_tree;
 /// Runtime errors and utlity functions/macros related to them
 mod codegen_error;
 /// Test harnesses.
@@ -122,8 +122,6 @@ mod utilis;
 
 pub mod config;
 // rustc functions used here.
-use rustc_data_structures::fx::FxHasher;
-use std::hash::BuildHasherDefault;
 use crate::rustc_middle::dep_graph::DepContext;
 use rustc_codegen_ssa::{
     back::archive::{
@@ -132,6 +130,7 @@ use rustc_codegen_ssa::{
     traits::CodegenBackend,
     CodegenResults, CompiledModule, CrateInfo, ModuleKind,
 };
+use rustc_data_structures::fx::FxHasher;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::{
@@ -143,6 +142,7 @@ use rustc_session::{
     Session,
 };
 use rustc_span::ErrorGuaranteed;
+use std::hash::BuildHasherDefault;
 use std::{
     any::Any,
     path::{Path, PathBuf},
@@ -223,7 +223,7 @@ impl CodegenBackend for MyBackend {
         ongoing_codegen: Box<dyn Any>,
         _sess: &Session,
         outputs: &OutputFilenames,
-    ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>){
+    ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>) {
         std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             use std::io::Write;
             let (_asm_name, asm, metadata, crate_info) = *ongoing_codegen
