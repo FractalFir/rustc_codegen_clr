@@ -17,7 +17,9 @@ pub fn handle_rvalue<'tcx>(
     tycache: &mut TyCache,
 ) -> Vec<CILOp> {
     let res = match rvalue {
-        Rvalue::Use(operand) => handle_operand(operand, tyctx, method, method_instance, tycache).flatten(),
+        Rvalue::Use(operand) => {
+            handle_operand(operand, tyctx, method, method_instance, tycache).flatten()
+        }
         Rvalue::CopyForDeref(place) => {
             crate::place::place_get(place, tyctx, method, method_instance, tycache).flatten()
         }
@@ -52,23 +54,28 @@ pub fn handle_rvalue<'tcx>(
             let ops = match (src_fat, target_fat) {
                 (true, true) => {
                     let mut res = Vec::new();
-                    
+
                     res.push(CILOp::NewTMPLocal(source_type.into()));
                     res.push(CILOp::SetTMPLocal);
                     res.push(CILOp::LoadAddresOfTMPLocal);
                     res.push(CILOp::FreeTMPLocal);
-                    let parrent = handle_operand(operand, tyctx, method, method_instance, tycache).into();
-                   crate::place::deref_op(
+                    let parrent =
+                        handle_operand(operand, tyctx, method, method_instance, tycache).into();
+                    crate::place::deref_op(
                         crate::place::PlaceTy::Ty(target),
                         tyctx,
                         &method_instance,
                         tycache,
-                        CILNode::RawOps { parrent, ops: res.into() }
-                    ).flatten()
-                    
+                        CILNode::RawOps {
+                            parrent,
+                            ops: res.into(),
+                        },
+                    )
+                    .flatten()
                 }
                 (true, false) => {
-                    let mut res = handle_operand(operand, tyctx, method, method_instance, tycache).flatten();
+                    let mut res =
+                        handle_operand(operand, tyctx, method, method_instance, tycache).flatten();
                     if source_type.as_dotnet().is_none() {
                         eprintln!("source:{source:?}");
                     }
@@ -95,7 +102,8 @@ pub fn handle_rvalue<'tcx>(
             let source_type = tycache.type_from_cache(source, tyctx, Some(method_instance));
             let target_type = tycache.type_from_cache(target, tyctx, Some(method_instance));
             let target_dotnet = target_type.as_dotnet().unwrap();
-            let mut res = handle_operand(operand, tyctx, method, method_instance, tycache).flatten();
+            let mut res =
+                handle_operand(operand, tyctx, method, method_instance, tycache).flatten();
             let derefed_source = match source.kind() {
                 TyKind::RawPtr(tpe) => tpe.ty,
                 TyKind::Ref(_, inner, _) => *inner,
@@ -177,7 +185,7 @@ pub fn handle_rvalue<'tcx>(
             tycache,
         ),
         Rvalue::UnaryOp(binop, operand) => {
-            crate::unop::unop(*binop, operand, tyctx, method, method_instance, tycache)
+            crate::unop::unop(*binop, operand, tyctx, method, method_instance, tycache).flatten()
         }
         Rvalue::Cast(CastKind::IntToInt, operand, target) => {
             let target = crate::utilis::monomorphize(&method_instance, *target, tyctx);
@@ -268,7 +276,8 @@ pub fn handle_rvalue<'tcx>(
                     handle_operand(operand, tyctx, method, method_instance, tycache).flatten()
                 }
                 (Type::F64, Type::U64) => {
-                    let mut res = handle_operand(operand, tyctx, method, method_instance, tycache).flatten();
+                    let mut res =
+                        handle_operand(operand, tyctx, method, method_instance, tycache).flatten();
                     res.extend([
                         CILOp::NewTMPLocal(Type::Ptr(src.into()).into()),
                         CILOp::SetTMPLocal,
@@ -279,7 +288,8 @@ pub fn handle_rvalue<'tcx>(
                     res
                 }
                 (Type::F32, Type::U32) => {
-                    let mut res = handle_operand(operand, tyctx, method, method_instance, tycache).flatten();
+                    let mut res =
+                        handle_operand(operand, tyctx, method, method_instance, tycache).flatten();
                     res.extend([
                         CILOp::NewTMPLocal(Type::Ptr(src.into()).into()),
                         CILOp::SetTMPLocal,
@@ -290,7 +300,8 @@ pub fn handle_rvalue<'tcx>(
                     res
                 }
                 (Type::U32, Type::F32) => {
-                    let mut res = handle_operand(operand, tyctx, method, method_instance, tycache).flatten();
+                    let mut res =
+                        handle_operand(operand, tyctx, method, method_instance, tycache).flatten();
                     res.extend([
                         CILOp::NewTMPLocal(Type::Ptr(src.into()).into()),
                         CILOp::SetTMPLocal,
@@ -301,7 +312,8 @@ pub fn handle_rvalue<'tcx>(
                     res
                 }
                 (Type::U64, Type::F64) => {
-                    let mut res = handle_operand(operand, tyctx, method, method_instance, tycache).flatten();
+                    let mut res =
+                        handle_operand(operand, tyctx, method, method_instance, tycache).flatten();
                     res.extend([
                         CILOp::NewTMPLocal(Type::Ptr(src.into()).into()),
                         CILOp::SetTMPLocal,
@@ -313,7 +325,7 @@ pub fn handle_rvalue<'tcx>(
                 }
                 (_, _) => {
                     let mut res = Vec::new();
-                    let operand =  handle_operand(operand, tyctx, method, method_instance, tycache);
+                    let operand = handle_operand(operand, tyctx, method, method_instance, tycache);
                     res.push(CILOp::NewTMPLocal(src.into()));
                     res.push(CILOp::SetTMPLocal);
                     res.push(CILOp::LoadAddresOfTMPLocal);
@@ -323,8 +335,12 @@ pub fn handle_rvalue<'tcx>(
                         tyctx,
                         &method_instance,
                         tycache,
-                        CILNode::RawOps { parrent: operand.into(), ops: res.into() }
-                    ).flatten()
+                        CILNode::RawOps {
+                            parrent: operand.into(),
+                            ops: res.into(),
+                        },
+                    )
+                    .flatten()
                 }
             }
         }
@@ -335,7 +351,7 @@ pub fn handle_rvalue<'tcx>(
             let src = operand.ty(&method.local_decls, tyctx);
             let src = crate::utilis::monomorphize(&method_instance, src, tyctx);
             let src = tycache.type_from_cache(src, tyctx, Some(method_instance));
-            /* 
+            /*
             let mut res = handle_operand(operand, tyctx, method, method_instance, tycache);
             res.push(CILOp::NewTMPLocal(
                 crate::r#type::Type::Ptr(src.into()).into(),
@@ -344,7 +360,8 @@ pub fn handle_rvalue<'tcx>(
             res.push(CILOp::LoadAddresOfTMPLocal);
             res.push(CILOp::FreeTMPLocal);
             res.extend(deref_op(boxed_dst.into(), tyctx, &method_instance, tycache));
-            res*/ todo!("FIX NOW")
+            res*/
+            todo!("FIX NOW")
         }
         Rvalue::Cast(CastKind::PointerFromExposedAddress, operand, _) => {
             //FIXME: the documentation of this cast(https://doc.rust-lang.org/nightly/std/ptr/fn.from_exposed_addr.html) is a bit confusing,
@@ -478,7 +495,8 @@ pub fn handle_rvalue<'tcx>(
                 tyctx,
                 Some(method_instance),
             );
-            let operand = handle_operand(operand, tyctx, method, method_instance, tycache).flatten();
+            let operand =
+                handle_operand(operand, tyctx, method, method_instance, tycache).flatten();
             let mut ops = Vec::new();
             ops.push(CILOp::NewTMPLocal(array.clone().into()));
             for idx in 0..times {

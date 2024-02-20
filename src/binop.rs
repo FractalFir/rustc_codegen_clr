@@ -15,8 +15,10 @@ pub(crate) fn binop_unchecked<'tyctx>(
     method_instance: Instance<'tyctx>,
     tycache: &mut TyCache,
 ) -> Vec<CILOp> {
-    let ops_a = crate::operand::handle_operand(operand_a, tyctx, method, method_instance, tycache).flatten();
-    let ops_b = crate::operand::handle_operand(operand_b, tyctx, method, method_instance, tycache).flatten();
+    let ops_a = crate::operand::handle_operand(operand_a, tyctx, method, method_instance, tycache)
+        .flatten();
+    let ops_b = crate::operand::handle_operand(operand_b, tyctx, method, method_instance, tycache)
+        .flatten();
     let ty_a = operand_a.ty(&method.local_decls, tyctx);
     let ty_b = operand_b.ty(&method.local_decls, tyctx);
     match binop {

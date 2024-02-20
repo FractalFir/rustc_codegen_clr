@@ -154,7 +154,7 @@ fn place_elem_get<'a>(
                             false,
                         )
                         .into(),
-                        args: [addr_calc,CILNode::ConvUSize(index.into())].into(),
+                        args: [addr_calc, CILNode::ConvUSize(index.into())].into(),
                     }
                 }
                 _ => {
@@ -224,7 +224,7 @@ fn place_elem_get<'a>(
                             false,
                         )
                         .into(),
-                        args: [addr_calc,CILNode::ConvUSize(index.into())].into(),
+                        args: [addr_calc, CILNode::ConvUSize(index.into())].into(),
                     }
                 }
                 _ => {

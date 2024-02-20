@@ -11,7 +11,7 @@ pub(crate) fn handle_operand<'ctx>(
     tycache: &mut crate::r#type::TyCache,
 ) -> CILNode {
     match operand {
-        Operand::Copy(place) | Operand::Move(place)=> {
+        Operand::Copy(place) | Operand::Move(place) => {
             crate::place::place_get(place, tyctx, method, method_instance, tycache)
         }
         Operand::Constant(const_val) => {

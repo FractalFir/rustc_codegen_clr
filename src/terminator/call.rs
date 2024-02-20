@@ -86,13 +86,16 @@ fn call_managed<'tyctx>(
 
         let mut call = Vec::new();
         for arg in args {
-            call.extend(crate::operand::handle_operand(
-                &arg.node,
-                tyctx,
-                method,
-                method_instance,
-                type_cache,
-            ).flatten());
+            call.extend(
+                crate::operand::handle_operand(
+                    &arg.node,
+                    tyctx,
+                    method,
+                    method_instance,
+                    type_cache,
+                )
+                .flatten(),
+            );
         }
         call.push(CILOp::Call(CallSite::boxed(
             Some(tpe.clone()),
@@ -169,13 +172,16 @@ fn callvirt_managed<'tyctx>(
 
         let mut call = Vec::new();
         for arg in args {
-            call.extend(crate::operand::handle_operand(
-                &arg.node,
-                tyctx,
-                method,
-                method_instance,
-                type_cache,
-            ).flatten());
+            call.extend(
+                crate::operand::handle_operand(
+                    &arg.node,
+                    tyctx,
+                    method,
+                    method_instance,
+                    type_cache,
+                )
+                .flatten(),
+            );
         }
         call.push(CILOp::CallVirt(CallSite::boxed(
             Some(tpe.clone()),
@@ -254,13 +260,16 @@ fn call_ctor<'tyctx>(
         let sig = FnSig::new(&inputs, &crate::r#type::Type::Void);
         let mut call = Vec::new();
         for arg in args {
-            call.extend(crate::operand::handle_operand(
-                &arg.node,
-                tyctx,
-                method,
-                method_instance,
-                type_cache,
-            ).flatten());
+            call.extend(
+                crate::operand::handle_operand(
+                    &arg.node,
+                    tyctx,
+                    method,
+                    method_instance,
+                    type_cache,
+                )
+                .flatten(),
+            );
         }
         call.push(CILOp::NewObj(CallSite::boxed(
             Some(tpe.clone()),
@@ -294,13 +303,10 @@ pub fn call_closure<'tyctx>(
         .expect("Closure must be called with at least 2 arguments(closure + arg tuple)");
     let other_args = &args[..args.len() - 1];
     for arg in other_args {
-        call.extend(crate::operand::handle_operand(
-            &arg.node,
-            tyctx,
-            body,
-            method_instance,
-            type_cache,
-        ).flatten());
+        call.extend(
+            crate::operand::handle_operand(&arg.node, tyctx, body, method_instance, type_cache)
+                .flatten(),
+        );
     }
     let last_arg_type =
         crate::utilis::monomorphize(&method_instance, last_arg.node.ty(body, tyctx), tyctx);
@@ -308,13 +314,16 @@ pub fn call_closure<'tyctx>(
         TyKind::Tuple(elements) => {
             if elements.is_empty() {
             } else {
-                call.extend(crate::operand::handle_operand(
-                    &last_arg.node,
-                    tyctx,
-                    body,
-                    method_instance,
-                    type_cache,
-                ).flatten());
+                call.extend(
+                    crate::operand::handle_operand(
+                        &last_arg.node,
+                        tyctx,
+                        body,
+                        method_instance,
+                        type_cache,
+                    )
+                    .flatten(),
+                );
                 let tuple_type =
                     type_cache.type_from_cache(last_arg_type, tyctx, Some(method_instance));
                 call.push(CILOp::NewTMPLocal(tuple_type.clone().into()));
@@ -485,13 +494,10 @@ pub fn call<'tyctx>(
 
     let mut call = Vec::new();
     for arg in args {
-        call.extend(crate::operand::handle_operand(
-            &arg.node,
-            tyctx,
-            body,
-            method_instance,
-            type_cache,
-        ).flatten());
+        call.extend(
+            crate::operand::handle_operand(&arg.node, tyctx, body, method_instance, type_cache)
+                .flatten(),
+        );
     }
     if crate::function_sig::is_fn_variadic(fn_type, tyctx) {
         signature.set_inputs(

@@ -61,21 +61,27 @@ pub fn handle_terminator<'ctx>(
                             FnSig::from_poly_sig(Some(method_instance), tyctx, type_cache, sig);
                         let mut call_ops = Vec::new();
                         for arg in args {
-                            call_ops.extend(crate::operand::handle_operand(
-                                &arg.node,
+                            call_ops.extend(
+                                crate::operand::handle_operand(
+                                    &arg.node,
+                                    tyctx,
+                                    body,
+                                    method_instance,
+                                    type_cache,
+                                )
+                                .flatten(),
+                            );
+                        }
+                        call_ops.extend(
+                            crate::place::place_get(
+                                operand,
                                 tyctx,
-                                body,
+                                method,
                                 method_instance,
                                 type_cache,
-                            ).flatten());
-                        }
-                        call_ops.extend(crate::place::place_get(
-                            operand,
-                            tyctx,
-                            method,
-                            method_instance,
-                            type_cache,
-                        ).flatten());
+                            )
+                            .flatten(),
+                        );
                         call_ops.push(CILOp::CallI(sig.clone().into()));
                         if *sig.output() == crate::r#type::Type::Void {
                             ops.extend(call_ops);
@@ -127,7 +133,8 @@ pub fn handle_terminator<'ctx>(
         TerminatorKind::SwitchInt { discr, targets } => {
             let ty = crate::utilis::monomorphize(&method_instance, discr.ty(method, tyctx), tyctx);
             let discr =
-                crate::operand::handle_operand(discr, tyctx, method, method_instance, type_cache).flatten();
+                crate::operand::handle_operand(discr, tyctx, method, method_instance, type_cache)
+                    .flatten();
             handle_switch(ty, &discr, targets)
         }
         TerminatorKind::Assert {
@@ -215,13 +222,7 @@ fn throw_assert_msg<'ctx>(
         AssertKind::BoundsCheck { len, index } => {
             let mut ops = Vec::with_capacity(8);
             ops.push(CILOp::LdStr("index out of bounds: the len is ".into()));
-            ops.extend(handle_operand(
-                len,
-                tyctx,
-                method,
-                method_instance,
-                type_cache,
-            ).flatten());
+            ops.extend(handle_operand(len, tyctx, method, method_instance, type_cache).flatten());
             let usize_class = crate::utilis::usize_class();
             let string_class = crate::utilis::string_class();
             let string_type = crate::r#type::Type::DotnetType(Box::new(string_class.clone()));
@@ -229,13 +230,7 @@ fn throw_assert_msg<'ctx>(
             let usize_to_string = CallSite::boxed(Some(usize_class), "ToString".into(), sig, false);
             ops.push(CILOp::Call(usize_to_string.clone()));
             ops.push(CILOp::LdStr(" but the index is".into()));
-            ops.extend(handle_operand(
-                index,
-                tyctx,
-                method,
-                method_instance,
-                type_cache,
-            ).flatten());
+            ops.extend(handle_operand(index, tyctx, method, method_instance, type_cache).flatten());
             ops.push(CILOp::Call(usize_to_string.clone()));
 
             let sig = FnSig::new(
@@ -301,26 +296,14 @@ fn throw_assert_msg<'ctx>(
             ops.push(CILOp::LdStr(
                 format!("attempt to {binop:?} with overflow lhs:").into(),
             ));
-            ops.extend(handle_operand(
-                a,
-                tyctx,
-                method,
-                method_instance,
-                type_cache,
-            ).flatten());
+            ops.extend(handle_operand(a, tyctx, method, method_instance, type_cache).flatten());
             let usize_class = crate::utilis::usize_class();
             let string_type = crate::r#type::Type::DotnetType(Box::new(string_class.clone()));
             let sig = FnSig::new(&[], &string_type);
             let usize_to_string = CallSite::boxed(Some(usize_class), "ToString".into(), sig, false);
             ops.push(CILOp::Call(usize_to_string.clone()));
             ops.push(CILOp::LdStr("rhs:".into()));
-            ops.extend(handle_operand(
-                b,
-                tyctx,
-                method,
-                method_instance,
-                type_cache,
-            ).flatten());
+            ops.extend(handle_operand(b, tyctx, method, method_instance, type_cache).flatten());
             ops.push(CILOp::Call(usize_to_string.clone()));
 
             let sig = FnSig::new(
@@ -417,13 +400,7 @@ fn throw_assert_msg<'ctx>(
             ops.push(CILOp::LdStr(
                 "attempt to neg with overflow value:".to_string().into(),
             ));
-            ops.extend(handle_operand(
-                value,
-                tyctx,
-                method,
-                method_instance,
-                type_cache,
-            ).flatten());
+            ops.extend(handle_operand(value, tyctx, method, method_instance, type_cache).flatten());
             let usize_class = crate::utilis::usize_class();
             let string_type = crate::r#type::Type::DotnetType(Box::new(string_class.clone()));
             let sig = FnSig::new(&[], &string_type);
@@ -474,7 +451,9 @@ fn handle_switch(ty: Ty, discr: &[CILOp], switch: &SwitchTargets) -> Vec<CILOp> 
                     .expect("Bool value outside of range 0-255. Should be either 0 OR 1.")
                     as i32,
             )],
-            TyKind::Char => crate::constant::load_const_uint(value, &rustc_middle::ty::UintTy::U64).flatten(),
+            TyKind::Char => {
+                crate::constant::load_const_uint(value, &rustc_middle::ty::UintTy::U64).flatten()
+            }
             _ => todo!("Unsuported switch discriminant type {ty:?}"),
         });
         //ops.push(CILOp::LdcI64(value as i64));

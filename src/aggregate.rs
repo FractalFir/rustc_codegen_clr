@@ -27,7 +27,8 @@ pub fn handle_aggregate<'tyctx>(
         .map(|operand| {
             (
                 operand.0 as u32,
-                crate::operand::handle_operand(operand.1, tyctx, method, method_instance, tycache).flatten(),
+                crate::operand::handle_operand(operand.1, tyctx, method, method_instance, tycache)
+                    .flatten(),
             )
         })
         .collect();
@@ -90,13 +91,10 @@ pub fn handle_aggregate<'tyctx>(
                 ops.extend(value.1);
                 ops.push(CILOp::Call(call_site.clone()));
             }
-            ops.extend(super::place::place_get(
-                target_location,
-                tyctx,
-                method,
-                method_instance,
-                tycache,
-            ).flatten());
+            ops.extend(
+                super::place::place_get(target_location, tyctx, method, method_instance, tycache)
+                    .flatten(),
+            );
             ops
         }
         AggregateKind::Tuple => {
@@ -130,13 +128,10 @@ pub fn handle_aggregate<'tyctx>(
                     name.into(),
                 )));
             }
-            ops.extend(super::place::place_get(
-                target_location,
-                tyctx,
-                method,
-                method_instance,
-                tycache,
-            ).flatten());
+            ops.extend(
+                super::place::place_get(target_location, tyctx, method, method_instance, tycache)
+                    .flatten(),
+            );
             ops
         }
         AggregateKind::Closure(_def_id, _args) => {
@@ -155,13 +150,9 @@ pub fn handle_aggregate<'tyctx>(
                 let field_ty =
                     crate::utilis::monomorphize(&method_instance, value.ty(method, tyctx), tyctx);
                 let field_ty = tycache.type_from_cache(field_ty, tyctx, Some(method_instance));
-                closure_constructor.extend(handle_operand(
-                    value,
-                    tyctx,
-                    method,
-                    method_instance,
-                    tycache,
-                ).flatten());
+                closure_constructor.extend(
+                    handle_operand(value, tyctx, method, method_instance, tycache).flatten(),
+                );
                 closure_constructor.push(CILOp::STField(
                     FieldDescriptor::new(
                         closure_dotnet.clone(),
@@ -180,13 +171,9 @@ pub fn handle_aggregate<'tyctx>(
                 method_instance,
                 tycache,
             );
-            ops.extend(place_get(
-                target_location,
-                tyctx,
-                method,
-                method_instance,
-                tycache,
-            ).flatten());
+            ops.extend(
+                place_get(target_location, tyctx, method, method_instance, tycache).flatten(),
+            );
             ops
         }
         _ => todo!("Unsuported aggregate kind {aggregate_kind:?}"),
@@ -247,13 +234,16 @@ fn aggregate_adt<'tyctx>(
                 );
                 ops.push(CILOp::STField(field_desc.into()));
             }
-            ops.extend(crate::place::place_get(
-                target_location,
-                tyctx,
-                method,
-                method_instance,
-                type_cache,
-            ).flatten());
+            ops.extend(
+                crate::place::place_get(
+                    target_location,
+                    tyctx,
+                    method,
+                    method_instance,
+                    type_cache,
+                )
+                .flatten(),
+            );
             ops
         }
         AdtKind::Enum => {
@@ -323,13 +313,16 @@ fn aggregate_adt<'tyctx>(
                     field_name,
                 ))));
             }
-            ops.extend(crate::place::place_get(
-                target_location,
-                tyctx,
-                method,
-                method_instance,
-                type_cache,
-            ).flatten());
+            ops.extend(
+                crate::place::place_get(
+                    target_location,
+                    tyctx,
+                    method,
+                    method_instance,
+                    type_cache,
+                )
+                .flatten(),
+            );
             ops
         }
         AdtKind::Union => {
@@ -363,13 +356,16 @@ fn aggregate_adt<'tyctx>(
 
                 ops.push(CILOp::STField(field_desc));
             }
-            ops.extend(crate::place::place_get(
-                target_location,
-                tyctx,
-                method,
-                method_instance,
-                type_cache,
-            ).flatten());
+            ops.extend(
+                crate::place::place_get(
+                    target_location,
+                    tyctx,
+                    method,
+                    method_instance,
+                    type_cache,
+                )
+                .flatten(),
+            );
             ops
         }
     }

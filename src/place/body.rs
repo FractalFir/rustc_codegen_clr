@@ -265,7 +265,7 @@ pub fn place_elem_body<'ctx>(
                                 false,
                             )
                             .into(),
-                            args: [parrent_node,CILNode::ConvUSize(index.into())].into(),
+                            args: [parrent_node, CILNode::ConvUSize(index.into())].into(),
                         };
                         ((element).into(), ops)
                     } else {
@@ -280,7 +280,7 @@ pub fn place_elem_body<'ctx>(
                                 false,
                             )
                             .into(),
-                            args: [parrent_node,CILNode::ConvUSize(index.into())].into(),
+                            args: [parrent_node, CILNode::ConvUSize(index.into())].into(),
                         };
                         ((element).into(), ops)
                     }
@@ -360,7 +360,7 @@ pub fn place_elem_body<'ctx>(
                                 false,
                             )
                             .into(),
-                            args: [parrent_node,CILNode::ConvUSize(index.into())].into(),
+                            args: [parrent_node, CILNode::ConvUSize(index.into())].into(),
                         };
                         ((element_ty).into(), ops)
                     } else {
@@ -375,7 +375,7 @@ pub fn place_elem_body<'ctx>(
                                 false,
                             )
                             .into(),
-                            args: [parrent_node,CILNode::ConvUSize(index.into())].into(),
+                            args: [parrent_node, CILNode::ConvUSize(index.into())].into(),
                         };
                         ((element_ty).into(), ops)
                     }

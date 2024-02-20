@@ -159,21 +159,24 @@ pub fn handle_statement<'tcx>(
                         method,
                         method_instance,
                         type_cache,
-                    ).flatten();
+                    )
+                    .flatten();
                     let src_op = crate::operand::handle_operand(
                         src,
                         tyctx,
                         method,
                         method_instance,
                         type_cache,
-                    ).flatten();
+                    )
+                    .flatten();
                     let count_op = crate::operand::handle_operand(
                         count,
                         tyctx,
                         method,
                         method_instance,
                         type_cache,
-                    ).flatten();
+                    )
+                    .flatten();
                     let src_ty = src.ty(method, tyctx);
                     let src_ty = crate::utilis::monomorphize(&method_instance, src_ty, tyctx);
                     let ptr_type = type_cache.type_from_cache(src_ty, tyctx, Some(method_instance));

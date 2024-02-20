@@ -383,9 +383,9 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
             }
         }
         CILOp::ConvF32=> "conv.r4".into(),
-        CILOp::ConvF64 => 
+        CILOp::ConvF64 =>
             "conv.r8".into(),
-        CILOp::ConvF64Un => 
+        CILOp::ConvF64Un =>
             "conv.r.un".into(),
         // Pointer stuff
         CILOp::LDIndI8 => "ldind.i1".into(),
