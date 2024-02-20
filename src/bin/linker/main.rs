@@ -150,6 +150,10 @@ fn get_libc() -> String {
 fn get_libc() -> String {
     "ucrtbase.dll".into()
 }
+#[cfg(target_os = "macos")]
+fn get_libc() -> String {
+    "libSystem.B.dylib".into()
+}
 fn main() {
     // Parse command line arguments
 
