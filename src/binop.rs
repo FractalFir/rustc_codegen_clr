@@ -84,7 +84,14 @@ pub(crate) fn binop_unchecked<'tyctx>(
         .into_iter()
         .flatten()
         .collect(),
-        BinOp::Shl | BinOp::ShlUnchecked => [
+        BinOp::Shl=> [
+            ops_a,
+            ops_b,
+            shl_checked(ty_a, ty_b, tycache, &method_instance, tyctx),
+        ].into_iter()
+        .flatten()
+        .collect(),
+        BinOp::ShlUnchecked => [
             ops_a,
             ops_b,
             shl_unchecked(ty_a, ty_b, tycache, &method_instance, tyctx),
@@ -315,7 +322,7 @@ fn lt_unchecked<'tyctx>(ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> CILOp {
                 )
                 .into(),
             ),
-            _ => CILOp::Lt,
+            _ => CILOp::LtUn,
         },
         TyKind::Int(int) => match int {
             IntTy::I128 => CILOp::Call(
@@ -330,9 +337,10 @@ fn lt_unchecked<'tyctx>(ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> CILOp {
             _ => CILOp::Lt,
         },
         TyKind::Bool => CILOp::Lt,
+        // TODO: are chars considered signed or unsigned?
         TyKind::Char => CILOp::Lt,
         TyKind::Float(_) => CILOp::Lt,
-        TyKind::RawPtr(_) => CILOp::Lt,
+        TyKind::RawPtr(_) => CILOp::LtUn,
         _ => panic!("Can't eq type  {ty_a:?}"),
     }
 }
@@ -348,7 +356,7 @@ fn gt_unchecked<'tyctx>(ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> CILOp {
                 )
                 .into(),
             ),
-            _ => CILOp::Gt,
+            _ => CILOp::GtUn,
         },
         TyKind::Int(int) => match int {
             IntTy::I128 => CILOp::Call(
@@ -363,9 +371,10 @@ fn gt_unchecked<'tyctx>(ty_a: Ty<'tyctx>, _ty_b: Ty<'tyctx>) -> CILOp {
             _ => CILOp::Gt,
         },
         TyKind::Bool => CILOp::Gt,
+        // TODO: are chars considered signed or unsigned?
         TyKind::Char => CILOp::Gt,
         TyKind::Float(_) => CILOp::Gt,
-        TyKind::RawPtr(_) => CILOp::Gt,
+        TyKind::RawPtr(_) => CILOp::GtUn,
         _ => panic!("Can't eq type  {ty_a:?}"),
     }
 }
@@ -582,7 +591,7 @@ fn shr_checked<'tyctx>(
             res.push(CILOp::ConvU32(false));
             res.push(CILOp::LdcU32(128));
             res.push(CILOp::RemUn);
-            res.push(CILOp::Call(CallSite::boxed(DotnetTypeRef::math().into(),"Abs".into(),FnSig::new(&[Type::I32],&Type::I32),true)));
+            //res.push(CILOp::Call(CallSite::boxed(DotnetTypeRef::math().into(),"Abs".into(),FnSig::new(&[Type::I32],&Type::I32),true)));
             res.push(CILOp::Call(CallSite::boxed(
                 DotnetTypeRef::uint_128().into(),
                 "op_RightShift".into(),
@@ -650,6 +659,93 @@ fn shr_checked<'tyctx>(
                 CILOp::RemUn,
                // CILOp::Call(CallSite::boxed(DotnetTypeRef::math().into(),"Abs".into(),FnSig::new(&[Type::I32],&Type::I32),true)),
                 CILOp::Shr]
+            }
+        },
+        _ => panic!("Can't bitshift type  {value_type:?}"),
+    }
+}
+fn shl_checked<'tyctx>(
+    value_type: Ty<'tyctx>,
+    shift_type: Ty<'tyctx>,
+    tycache: &mut TyCache,
+    method_instance: &Instance<'tyctx>,
+    tyctx: TyCtxt<'tyctx>,
+) -> Vec<CILOp> {
+    let type_b = tycache.type_from_cache(shift_type, tyctx, Some(*method_instance));
+    match value_type.kind() {
+        TyKind::Uint(UintTy::U128) => {
+            let mut res = crate::casts::int_to_int(type_b.clone(), Type::I32);
+            res.push(CILOp::ConvU32(false));
+            res.push(CILOp::LdcU32(128));
+            res.push(CILOp::RemUn);
+            //res.push(CILOp::Call(CallSite::boxed(DotnetTypeRef::math().into(),"Abs".into(),FnSig::new(&[Type::I32],&Type::I32),true)));
+            res.push(CILOp::Call(CallSite::boxed(
+                DotnetTypeRef::uint_128().into(),
+                "op_LeftShift".into(),
+                FnSig::new(&[Type::U128, Type::I32], &Type::U128),
+                true,
+            )));
+            res
+        }
+        TyKind::Int(IntTy::I128) => {
+            let mut res = crate::casts::int_to_int(type_b.clone(), Type::I32);
+            res.push(CILOp::ConvU32(false));
+            res.push(CILOp::LdcU32(128));
+            res.push(CILOp::RemUn);
+            //res.push(CILOp::Call(CallSite::boxed(DotnetTypeRef::math().into(),"Abs".into(),FnSig::new(&[Type::I32],&Type::I32),true)));
+            res.push(CILOp::Call(CallSite::boxed(
+                DotnetTypeRef::int_128().into(),
+                "op_LeftShift".into(),
+                FnSig::new(&[Type::I128, Type::I32], &Type::I128),
+                true,
+            )));
+            res
+        }
+        TyKind::Uint(_) => match shift_type.kind() {
+            TyKind::Uint(UintTy::U128)
+            | TyKind::Int(IntTy::I128)
+            | TyKind::Uint(UintTy::U64)
+            | TyKind::Int(IntTy::I64) => {
+                let mut res = crate::casts::int_to_int(type_b.clone(), Type::I32);
+                let bit_cap = (compiletime_sizeof(value_type, tyctx, *method_instance)*8) as u32;
+                res.extend([CILOp::ConvU32(false),
+                CILOp::LdcU32(bit_cap),
+                CILOp::RemUn,
+                //CILOp::Call(CallSite::boxed(DotnetTypeRef::math().into(),"Abs".into(),FnSig::new(&[Type::I32],&Type::I32),true)),
+                CILOp::Shl]);
+                res
+            }
+            _ => {
+                let bit_cap = (compiletime_sizeof(value_type, tyctx, *method_instance)*8) as u32;
+                vec![CILOp::ConvU32(false),
+                CILOp::LdcU32(bit_cap),
+                CILOp::RemUn,
+                //CILOp::Call(CallSite::boxed(DotnetTypeRef::math().into(),"Abs".into(),FnSig::new(&[Type::I32],&Type::I32),true)),
+                CILOp::Shl]
+            }
+        },
+        TyKind::Int(_) => match shift_type.kind() {
+            TyKind::Uint(UintTy::U128)
+            | TyKind::Int(IntTy::I128)
+            | TyKind::Uint(UintTy::U64)
+            | TyKind::Int(IntTy::I64) => {
+                let mut res = crate::casts::int_to_int(type_b.clone(), Type::I32);
+                let bit_cap = (compiletime_sizeof(value_type, tyctx, *method_instance)*8) as u32;
+                res.extend([CILOp::ConvU32(false),
+                CILOp::LdcU32(bit_cap),
+                CILOp::RemUn,
+                //CILOp::Call(CallSite::boxed(DotnetTypeRef::math().into(),"Abs".into(),FnSig::new(&[Type::I32],&Type::I32),true)),
+                CILOp::Shl]);
+                res
+            }
+
+            _ => {
+                let bit_cap = (compiletime_sizeof(value_type, tyctx, *method_instance)*8) as u32;
+                vec![CILOp::ConvU32(false),
+                CILOp::LdcU32(bit_cap),
+                CILOp::RemUn,
+               // CILOp::Call(CallSite::boxed(DotnetTypeRef::math().into(),"Abs".into(),FnSig::new(&[Type::I32],&Type::I32),true)),
+                CILOp::Shl]
             }
         },
         _ => panic!("Can't bitshift type  {value_type:?}"),

@@ -213,6 +213,10 @@ pub enum CILOp {
     Lt,
     /// Checks if the upper value on the stack is greater than the lower one, pushes 0 if not, and 1 if it is.
     Gt,
+    /// Checks if the upper value on the stack is less than the lower one, pushes 0 if not, and 1 if it is. Unsigned version.
+    LtUn,
+    /// Checks if the upper value on the stack is greater than the lower one, pushes 0 if not, and 1 if it is. Unsigned version.
+    GtUn,
     //Special
     /// Discards the top value on the stack.
     Pop,
@@ -449,7 +453,9 @@ impl CILOp {
             | CILOp::XOr
             | CILOp::Eq
             | CILOp::Lt
-            | CILOp::Gt => -1,
+            | CILOp::Gt
+            | CILOp::LtUn
+            | CILOp::GtUn => -1,
             CILOp::Not | CILOp::Neg => 0,
             CILOp::STLoc(_) | CILOp::STArg(_) => -1,
             CILOp::Call(site) | CILOp::CallVirt(site) => {

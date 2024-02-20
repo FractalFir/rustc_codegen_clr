@@ -3850,6 +3850,7 @@ _17 = &_14.1;
 _14.1 = _10;
 _9 = &_10;
 _14.2 = 3934180252_u32;
+
 _1 = _2;
 _5 = Adt21::Variant2 { fld0: 65208965131948858390786062094399667321_u128,fld1: _14.3,fld2: (-9223372036854775808_isize) };
 _17 = &(*_9);
@@ -3897,6 +3898,9 @@ _4 = RET;
 _23 = _12 as isize;
 _14.2 = !1016691643_u32;
 _25 = (_14.1,);
+Call(_30 = dump_var(11_usize, 10_usize, Move(_10), 23_usize, Move(_23), 12_usize, _12, 14_usize, _14), ReturnTo(t1), UnwindUnreachable())
+}
+t1 = {
 _20 = &(*_20);
 match _16 {
 0 => bb2,
@@ -3957,6 +3961,9 @@ Goto(bb12)
 bb12 = {
 _22 = [(-1643234803_i32)];
 _21 = _23 - Field::<isize>(Variant(_5, 2), 2);
+Call(_30 = dump_var(11_usize, 21_usize, Move(_21), 23_usize, Move(_23), 5_usize, _5, 14_usize, _14), ReturnTo(t0), UnwindUnreachable())
+}
+t0 = {
 _9 = &_10;
 _10 = _25.0;
 _9 = &_25.0;

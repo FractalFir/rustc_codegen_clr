@@ -191,7 +191,9 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
         //Comparisons
         CILOp::Gt => "cgt".into(),
         CILOp::Eq => "ceq".into(),
+        CILOp::GtUn => "cgt.un".into(),
         CILOp::Lt => "clt".into(),
+        CILOp::LtUn => "clt.un".into(),
         CILOp::InitBlk => "initblk".into(),
         //Arguments
         CILOp::LDArg(argnum) => {

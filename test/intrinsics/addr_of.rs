@@ -36,5 +36,16 @@ fn main(){
     test_eq!(black_box(quad.c.c), 0xAA);
     // Test if pointer offsets work correctly
     test_eq!(unsafe{black_box(addr_of_mut!(quad.a).offset(2)) as usize + 2},addr_of_mut!(quad.c.c) as usize);
+    let f0 = 7818556801315723626_usize as u64;
+    let f1 = [25218654463224818122969828049712073135_i128,120712558264094237432810624595822131062_i128,114515168747267207915719546104105726720_i128,(-146246673762081125525637774717577019298_i128)];
+    let f2 = 3117618922_u32 - 210026923_u32;
+    let f3 = 9223372036854775807_isize as f64;
+    let a:(u64, [i128; 4], u32, f64) = (f0,f1,f2,f3);
+    test_eq!(black_box(addr_of!(a) as usize + 64),addr_of!(a.0) as usize);
+    test_eq!(black_box(addr_of!(a) as usize + 0),addr_of!(a.1) as usize);
+    test_eq!(black_box(addr_of!(a) as usize + 72),addr_of!(a.2) as usize);
+    test_eq!(black_box(addr_of!(a) as usize + 80),addr_of!(a.3) as usize);
+    let a = black_box(a);
+    test_eq!(a.0,f0);
 }
     

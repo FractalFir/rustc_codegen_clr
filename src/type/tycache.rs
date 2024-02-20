@@ -308,9 +308,15 @@ impl TyCache {
                     Type::Void
                 } else {
                     let name = tuple_name(&types);
+                    let layout = tyctx
+            .layout_of(rustc_middle::ty::ParamEnvAnd {
+                param_env: ParamEnv::reveal_all(),
+                value: ty,
+            })
+            .expect("Could not get type layout!");
                     self.type_def_cache
                         .entry(name)
-                        .or_insert_with(|| tuple_typedef(&types));
+                        .or_insert_with(|| tuple_typedef(&types,&layout.layout));
                     super::simple_tuple(&types).into()
                 }
             }

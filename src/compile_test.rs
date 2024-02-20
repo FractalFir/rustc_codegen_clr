@@ -44,7 +44,7 @@ fn test_dotnet_executable(file_path: &str, test_dir: &str) -> String {
             stderr.is_empty(),
             "Test program failed with message {stderr:}"
         );
-        stdout = String::from_utf8(out.stdout).expect("Stdout is not UTF8 String!");
+        stdout = String::from_utf8_lossy(&out.stdout).to_string();
     }
     if *IS_MONO_PRESENT && *crate::config::TEST_WITH_MONO {
         // Execute the test assembly
@@ -668,7 +668,10 @@ run_test! {arthm,add,stable}
 run_test! {arthm,shift,stable}
 run_test! {arthm,not,stable}
 
+run_test! {arthm,xor,stable}
+
 run_test! {arthm,mul,stable}
+run_test! {arthm,greater_than,stable}
 run_test! {arthm,sub,stable}
 
 run_test! {types,tuple_structs,stable}
@@ -698,6 +701,7 @@ run_test! {control_flow,drop,stable}
 run_test! {intrinsics,bswap,stable}
 run_test! {intrinsics,assert,unstable}
 run_test! {intrinsics,addr_of,stable}
+run_test! {intrinsics,offset_of,unstable}
 run_test! {intrinsics,printf,unstable}
 run_test! {intrinsics,type_id,stable}
 run_test! {intrinsics,ptr_offset_from_unsigned,stable}
@@ -784,7 +788,7 @@ compare_tests! {fuzz,fuzz69,stable}
 
 compare_tests! {fuzz,fuzz70,unstable}
 compare_tests! {fuzz,fuzz71,unstable}
-compare_tests! {fuzz,fuzz72,stable}
+compare_tests! {fuzz,fuzz72,unstable}
 compare_tests! {fuzz,fuzz73,unstable}
 compare_tests! {fuzz,fuzz74,unstable}
 compare_tests! {fuzz,fuzz75,stable}

@@ -1,10 +1,7 @@
 use crate::{
-    access_modifier::AccessModifer,
-    cil::{CallSite, FieldDescriptor},
-    method::{Method, MethodType},
-    r#type::{DotnetTypeRef, Type},
-    IString,
+    access_modifier::AccessModifer, cil::{CallSite, FieldDescriptor}, method::{Method, MethodType}, r#type::{DotnetTypeRef, Type}, utilis::adt::FieldOffsetIterator, IString
 };
+use  rustc_target::abi::Layout;
 use rustc_span::def_id::DefId;
 use serde::{Deserialize, Serialize};
 pub(crate) const CUSTOM_INTEROP_TYPE_DEF: &str = "RustcCLRInteropManagedCustomTypeDef";
@@ -204,20 +201,21 @@ pub fn tuple_name(elements: &[Type]) -> IString {
 }
 
 #[must_use]
-pub fn tuple_typedef(elements: &[Type]) -> TypeDef {
+pub fn tuple_typedef(elements: &[Type],layout:&Layout) -> TypeDef {
     let name = tuple_name(elements);
     let fields: Vec<_> = elements
         .iter()
         .enumerate()
         .map(|(idx, ele)| (format!("Item{}", idx + 1).into(), ele.clone()))
         .collect();
+    let explicit_offsets = FieldOffsetIterator::fields(layout).collect();
     TypeDef::new(
         AccessModifer::Public,
         name,
         vec![],
         fields,
         vec![],
-        None,
+        Some(explicit_offsets),
         0,
         None,
     )

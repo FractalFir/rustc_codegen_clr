@@ -53,6 +53,11 @@ fn main(){
     test_eq!(black_box(9_223_372_036_854_775_807i64).wrapping_add(1_i64),-9_223_372_036_854_775_808i64);
     test_eq!(black_box(u128::MAX).wrapping_add(1_u128), 0_u128);
     test_eq!(black_box(i128::MAX).wrapping_add(1_i128),i128::MIN);
+
+
+    let val =  7818556801315723626_usize as u64;
+    let val2 = black_box(val) as isize;
+    test_eq!(val2,7818556801315723626_isize);
     //let ptr:*mut Test<i32> = core::ptr::null_mut();
     //black_box(ptr);
 }

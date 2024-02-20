@@ -574,6 +574,9 @@ _13 = [149797699858840725803528914051327172733_u128];
 _19 = _4;
 _21.1 = _4;
 _2 = _20 & _5.0;
+Call(_38 = dump_var(0_usize, 2_usize, Move(_2), 20_usize, Move(_20), 5_usize, Move(_5), 2_usize, Move(_2)), ReturnTo(t0), UnwindUnreachable())
+}
+t0 = {
 _23.fld5 = 1708492193_i32;
 _22 = _8;
 _23.fld6.2.0 = _8 as u32;
@@ -598,6 +601,9 @@ Call(RET = fn1(_5.0, _3, _5.0, _5, _3, _4, _3, _5.0), ReturnTo(bb2), UnwindUnrea
 bb11 = {
 _23.fld3.2.1 = 39286_u16;
 _2 = _9.2 as u32;
+Call(_38 = dump_var(0_usize, 2_usize, Move(_2), 2_usize, Move(_2), 9_usize, Move(_9.2), 9_usize, Move(_9.2)), ReturnTo(t1), UnwindUnreachable())
+}
+t1 = {
 _23.fld3.1 = _9.3 as u128;
 _21.1 = _19;
 _3 = (-5737_i16);
@@ -605,12 +611,16 @@ _23.fld6.1 = core::ptr::addr_of!((*_7).0);
 _5.0 = _20 & _23.fld6.2.0;
 _23.fld3.2.2 = (_3,);
 _23.fld1 = [_23.fld2,_21.1,_21.1,_4,_21.1,_23.fld2];
+// WRONG!
 _23.fld3.2.2.0 = _3 ^ _3;
 _23.fld3.2.0 = [_18];
 _23.fld2 = _9.2 as isize;
 _7 = &_23.fld3;
 _23.fld0 = (*_7).2.1;
 _5.0 = _23.fld6.2.0 >> _23.fld3.2.2.0;
+Call(_38 = dump_var(0_usize, 3_usize, Move(_3), 23_usize, Move(_23.fld6.2.0), 5_usize, Move(_5.0), 23_usize, Move(_23.fld3.2.2.0)), ReturnTo(t3), UnwindUnreachable())
+}
+t3 = {
 _23.fld6.0 = (*_7).1 >> _5.0;
 _21.0 = core::ptr::addr_of_mut!(_23.fld3.3);
 _23.fld7.0 = _2;
@@ -650,6 +660,7 @@ Call(_5.0 = core::intrinsics::bswap(_2), ReturnTo(bb3), UnwindUnreachable())
 bb15 = {
 _3 = (-32251_i16) & (-27206_i16);
 _5 = (_2,);
+
 RET = '\u{81e67}';
 _3 = 21010_i16 | 4112_i16;
 Call(RET = fn1(_5.0, _3, _5.0, _5, _3, _4, _3, _5.0), ReturnTo(bb2), UnwindUnreachable())
@@ -670,6 +681,7 @@ _11 = false;
 _8 = (-44_i8) as f64;
 _5 = (_2,);
 _2 = _5.0 * _5.0;
+
 _5.0 = _2;
 _1 = 5_usize;
 _13 = [99205059270673251329469080097727271341_u128];
@@ -698,6 +710,7 @@ _11 = false;
 _8 = (-44_i8) as f64;
 _5 = (_2,);
 _2 = _5.0 * _5.0;
+
 _5.0 = _2;
 _1 = 5_usize;
 _13 = [99205059270673251329469080097727271341_u128];
@@ -707,6 +720,7 @@ RET = '\u{71064}';
 _6 = [_1,_1,_1,_1,_1];
 _8 = 10532642979457103706_u64 as f64;
 _5.0 = (-146704578384334565279661697244508632476_i128) as u32;
+
 _3 = (-19718_i16);
 Goto(bb5)
 }
@@ -724,6 +738,9 @@ _8 = _22 * _28;
 _23.fld4 = core::ptr::addr_of_mut!(_29.1);
 _4 = (*_7).2.1 as isize;
 _2 = _5.0;
+Call(_38 = dump_var(0_usize, 2_usize, Move(_2), 2_usize, Move(_2), 5_usize, Move(_5.0), 5_usize, Move(_5.0)), ReturnTo(t2), UnwindUnreachable())
+}
+t2 = {
 _34 = -_19;
 _23.fld6.3 = [_21.1,_21.1,_21.1,_21.1,_21.1,_19];
 _6 = [_1,_1,_1,_1,_1];

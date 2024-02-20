@@ -230,7 +230,12 @@ pub fn handle_rvalue<'tcx>(
                     CILOp::ConvUSize(false),
                 ]
             }
-            NullOp::OffsetOf(_) => todo!("Unsuported nullary {op:?}!"),
+            /* */
+            NullOp::OffsetOf(fields) => {
+                assert_eq!(fields.len(),1);
+                let (variant,field) = fields[0];
+                todo!("Can't calc offset of yet!");
+            }
             // TODO: propely set this to 0 or 1 depending if debug assertions are enabled.
             NullOp::DebugAssertions => vec![CILOp::LdcI32(0)], //todo!("Unsuported nullary {op:?}!"),
         },

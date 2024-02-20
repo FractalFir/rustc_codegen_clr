@@ -41,6 +41,14 @@ fn main() {
     }
     #[cfg(not(debug_assertions))]
     {
+        let val = 25907_u16;
+        let off = 0x4c4c0ad961f67741cee4d2d40cd22b7_i128;
+        let shift_res = black_box(val) << black_box(off);
+        black_box(shift_res);
+        test_eq!(shift_res, 39296);
+    }
+    #[cfg(not(debug_assertions))]
+    {
         let val = 104_u8;
         let off = -1973_i16;
         let shift_res = black_box(val) >> black_box(off);
