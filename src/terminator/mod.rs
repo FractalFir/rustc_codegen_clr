@@ -67,7 +67,7 @@ pub fn handle_terminator<'ctx>(
                                 body,
                                 method_instance,
                                 type_cache,
-                            ));
+                            ).flatten());
                         }
                         call_ops.extend(crate::place::place_get(
                             operand,
@@ -75,7 +75,7 @@ pub fn handle_terminator<'ctx>(
                             method,
                             method_instance,
                             type_cache,
-                        ));
+                        ).flatten());
                         call_ops.push(CILOp::CallI(sig.clone().into()));
                         if *sig.output() == crate::r#type::Type::Void {
                             ops.extend(call_ops);
@@ -127,7 +127,7 @@ pub fn handle_terminator<'ctx>(
         TerminatorKind::SwitchInt { discr, targets } => {
             let ty = crate::utilis::monomorphize(&method_instance, discr.ty(method, tyctx), tyctx);
             let discr =
-                crate::operand::handle_operand(discr, tyctx, method, method_instance, type_cache);
+                crate::operand::handle_operand(discr, tyctx, method, method_instance, type_cache).flatten();
             handle_switch(ty, &discr, targets)
         }
         TerminatorKind::Assert {
@@ -221,7 +221,7 @@ fn throw_assert_msg<'ctx>(
                 method,
                 method_instance,
                 type_cache,
-            ));
+            ).flatten());
             let usize_class = crate::utilis::usize_class();
             let string_class = crate::utilis::string_class();
             let string_type = crate::r#type::Type::DotnetType(Box::new(string_class.clone()));
@@ -235,7 +235,7 @@ fn throw_assert_msg<'ctx>(
                 method,
                 method_instance,
                 type_cache,
-            ));
+            ).flatten());
             ops.push(CILOp::Call(usize_to_string.clone()));
 
             let sig = FnSig::new(
@@ -307,7 +307,7 @@ fn throw_assert_msg<'ctx>(
                 method,
                 method_instance,
                 type_cache,
-            ));
+            ).flatten());
             let usize_class = crate::utilis::usize_class();
             let string_type = crate::r#type::Type::DotnetType(Box::new(string_class.clone()));
             let sig = FnSig::new(&[], &string_type);
@@ -320,7 +320,7 @@ fn throw_assert_msg<'ctx>(
                 method,
                 method_instance,
                 type_cache,
-            ));
+            ).flatten());
             ops.push(CILOp::Call(usize_to_string.clone()));
 
             let sig = FnSig::new(
@@ -423,7 +423,7 @@ fn throw_assert_msg<'ctx>(
                 method,
                 method_instance,
                 type_cache,
-            ));
+            ).flatten());
             let usize_class = crate::utilis::usize_class();
             let string_type = crate::r#type::Type::DotnetType(Box::new(string_class.clone()));
             let sig = FnSig::new(&[], &string_type);
@@ -467,14 +467,14 @@ fn handle_switch(ty: Ty, discr: &[CILOp], switch: &SwitchTargets) -> Vec<CILOp> 
         ops.extend(discr.iter().cloned());
 
         ops.extend(match ty.kind() {
-            TyKind::Int(int) => crate::constant::load_const_int(value, int),
-            TyKind::Uint(uint) => crate::constant::load_const_uint(value, uint),
+            TyKind::Int(int) => crate::constant::load_const_int(value, int).flatten(),
+            TyKind::Uint(uint) => crate::constant::load_const_uint(value, uint).flatten(),
             TyKind::Bool => vec![CILOp::LdcI32(
                 u8::try_from(value)
                     .expect("Bool value outside of range 0-255. Should be either 0 OR 1.")
                     as i32,
             )],
-            TyKind::Char => crate::constant::load_const_uint(value, &rustc_middle::ty::UintTy::U64),
+            TyKind::Char => crate::constant::load_const_uint(value, &rustc_middle::ty::UintTy::U64).flatten(),
             _ => todo!("Unsuported switch discriminant type {ty:?}"),
         });
         //ops.push(CILOp::LdcI64(value as i64));

@@ -1,4 +1,5 @@
 use crate::cil::CILOp;
+use crate::cil_tree::cil_node::CILNode;
 
 use rustc_middle::mir::Operand;
 use rustc_middle::ty::{Instance, TyCtxt};
@@ -8,12 +9,9 @@ pub(crate) fn handle_operand<'ctx>(
     method: &rustc_middle::mir::Body<'ctx>,
     method_instance: Instance<'ctx>,
     tycache: &mut crate::r#type::TyCache,
-) -> Vec<CILOp> {
+) -> CILNode {
     match operand {
-        Operand::Copy(place) => {
-            crate::place::place_get(place, tyctx, method, method_instance, tycache)
-        }
-        Operand::Move(place) => {
+        Operand::Copy(place) | Operand::Move(place)=> {
             crate::place::place_get(place, tyctx, method, method_instance, tycache)
         }
         Operand::Constant(const_val) => {

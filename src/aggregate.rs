@@ -27,7 +27,7 @@ pub fn handle_aggregate<'tyctx>(
         .map(|operand| {
             (
                 operand.0 as u32,
-                crate::operand::handle_operand(operand.1, tyctx, method, method_instance, tycache),
+                crate::operand::handle_operand(operand.1, tyctx, method, method_instance, tycache).flatten(),
             )
         })
         .collect();
@@ -96,7 +96,7 @@ pub fn handle_aggregate<'tyctx>(
                 method,
                 method_instance,
                 tycache,
-            ));
+            ).flatten());
             ops
         }
         AggregateKind::Tuple => {
@@ -136,7 +136,7 @@ pub fn handle_aggregate<'tyctx>(
                 method,
                 method_instance,
                 tycache,
-            ));
+            ).flatten());
             ops
         }
         AggregateKind::Closure(_def_id, _args) => {
@@ -161,7 +161,7 @@ pub fn handle_aggregate<'tyctx>(
                     method,
                     method_instance,
                     tycache,
-                ));
+                ).flatten());
                 closure_constructor.push(CILOp::STField(
                     FieldDescriptor::new(
                         closure_dotnet.clone(),
@@ -186,7 +186,7 @@ pub fn handle_aggregate<'tyctx>(
                 method,
                 method_instance,
                 tycache,
-            ));
+            ).flatten());
             ops
         }
         _ => todo!("Unsuported aggregate kind {aggregate_kind:?}"),
@@ -253,7 +253,7 @@ fn aggregate_adt<'tyctx>(
                 method,
                 method_instance,
                 type_cache,
-            ));
+            ).flatten());
             ops
         }
         AdtKind::Enum => {
@@ -329,7 +329,7 @@ fn aggregate_adt<'tyctx>(
                 method,
                 method_instance,
                 type_cache,
-            ));
+            ).flatten());
             ops
         }
         AdtKind::Union => {
@@ -369,7 +369,7 @@ fn aggregate_adt<'tyctx>(
                 method,
                 method_instance,
                 type_cache,
-            ));
+            ).flatten());
             ops
         }
     }

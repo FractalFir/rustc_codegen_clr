@@ -25,9 +25,9 @@ pub fn place_get<'a>(
     method: &rustc_middle::mir::Body<'a>,
     method_instance: Instance<'a>,
     type_cache: &mut crate::r#type::TyCache,
-) -> Vec<CILOp> {
+) -> CILNode {
     if place.projection.is_empty() {
-        local_get(place.local.as_usize(), method).flatten()
+        local_get(place.local.as_usize(), method)
     } else {
         let (mut op, mut ty) = super::local_body(place.local.as_usize(), method);
 
@@ -41,7 +41,7 @@ pub fn place_get<'a>(
             ty = curr_ty.monomorphize(&method_instance, ctx);
             op = curr_ops;
         }
-        place_elem_get(head, ty, ctx, method_instance, type_cache, op).flatten()
+        place_elem_get(head, ty, ctx, method_instance, type_cache, op)
     }
 }
 

@@ -15,7 +15,7 @@ pub fn handle_constant<'ctx>(
     method: &rustc_middle::mir::Body<'ctx>,
     method_instance: Instance<'ctx>,
     tycache: &mut TyCache,
-) -> Vec<CILOp> {
+) ->  CILNode{
     let constant = constant_op.const_;
     let constant = crate::utilis::monomorphize(&method_instance, constant, tyctx);
     let evaluated = constant
@@ -589,7 +589,7 @@ fn create_const_from_data<'ctx>(
     offset_bytes: u64,
     method_instance: Instance<'ctx>,
     tycache: &mut TyCache,
-) -> Vec<CILOp> {
+) -> CILNode {
     let alloc = tyctx.global_alloc(alloc_id);
     // Constant should be memory:
     let memory = alloc.unwrap_memory();
@@ -602,15 +602,16 @@ fn create_const_from_data<'ctx>(
     //TODO: fix layout issues!
     if memory.0.provenance().ptrs().is_empty() && true {
         //eprintln!("Creating const {ty:?} from data of length {len}.");
-        create_const_from_slice(ty, tyctx, bytes, method_instance, tycache)
+        //create_const_from_slice(ty, tyctx, bytes, method_instance, tycache)
     } else {
-        let ptr = CILNode::LoadGlobalAllocPtr {
-            alloc_id: alloc_id.0.into(),
-        };
-        let ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
-        crate::place::deref_op(ty.into(), tyctx, &method_instance, tycache,ptr).flatten()
+       
         //panic!("Constant requires rellocation support!");
     }
+    let ptr = CILNode::LoadGlobalAllocPtr {
+        alloc_id: alloc_id.0.into(),
+    };
+    let ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
+    crate::place::deref_op(ty.into(), tyctx, &method_instance, tycache,ptr)
 }
 
 fn load_const_value<'ctx>(
@@ -620,7 +621,7 @@ fn load_const_value<'ctx>(
     method: &rustc_middle::mir::Body<'ctx>,
     method_instance: Instance<'ctx>,
     tycache: &mut TyCache,
-) -> Vec<CILOp> {
+) -> CILNode {
     match const_val {
         ConstValue::Scalar(scalar) => {
             load_const_scalar(scalar, const_ty, tyctx, method, method_instance, tycache)
@@ -628,11 +629,11 @@ fn load_const_value<'ctx>(
         ConstValue::ZeroSized => {
             let tpe = crate::utilis::monomorphize(&method_instance, const_ty, tyctx);
             let tpe = tycache.type_from_cache(tpe, tyctx, Some(method_instance));
-            vec![
+            CILNode::RawOpsParrentless{ops:[
                 CILOp::NewTMPLocal(tpe.into()),
                 CILOp::LoadTMPLocal,
                 CILOp::FreeTMPLocal,
-            ]
+            ].into()}
         }
         ConstValue::Slice { data, meta } => {
             let slice_type = tycache.type_from_cache(const_ty, tyctx, Some(method_instance));
@@ -648,7 +649,7 @@ fn load_const_value<'ctx>(
             let alloc_id = tyctx.reserve_and_set_memory_alloc(data);
             let alloc_id: u64 = crate::utilis::alloc_id_to_u64(alloc_id);
 
-            vec![
+            CILNode::RawOpsParrentless{ops:[
                 CILOp::NewTMPLocal(slice_type.into()),
                 CILOp::LoadAddresOfTMPLocal,
                 CILOp::LdcI64(meta as i64),
@@ -659,7 +660,8 @@ fn load_const_value<'ctx>(
                 CILOp::STField(ptr_field.into()),
                 CILOp::LoadTMPLocal,
                 CILOp::FreeTMPLocal,
-            ]
+            ].into()
+        }
         }
         ConstValue::Indirect { alloc_id, offset } => {
             create_const_from_data(
@@ -681,7 +683,7 @@ fn load_const_scalar<'ctx>(
     method: &rustc_middle::mir::Body<'ctx>,
     method_instance: Instance<'ctx>,
     tycache: &mut TyCache,
-) -> Vec<CILOp> {
+) -> CILNode {
     let scalar_type = crate::utilis::monomorphize(&method_instance, scalar_type, tyctx);
     let scalar_u128 = match scalar {
         Scalar::Int(scalar_int) => scalar_int
@@ -701,7 +703,7 @@ fn load_const_scalar<'ctx>(
                     if name == "__rust_alloc_error_handler_should_panic"
                         || name == "__rust_no_alloc_shim_is_unstable"
                     {
-                        return vec![
+                        return CILNode::RawOpsParrentless{ops:[
                             CILOp::LDStaticField(
                                 StaticFieldDescriptor::new(None, Type::U8, name.clone().into())
                                     .into(),
@@ -711,10 +713,10 @@ fn load_const_scalar<'ctx>(
                             CILOp::LoadAddresOfTMPLocal,
                             CILOp::ConvUSize(false),
                             CILOp::FreeTMPLocal,
-                        ];
+                        ].into()};
                     }
                     if name == "environ" {
-                        return vec![
+                        return CILNode::RawOpsParrentless{ops:[
                             CILOp::LDStaticField(
                                 StaticFieldDescriptor::new(
                                     None,
@@ -728,7 +730,7 @@ fn load_const_scalar<'ctx>(
                             CILOp::LoadAddresOfTMPLocal,
                             CILOp::ConvUSize(false),
                             CILOp::FreeTMPLocal,
-                        ];
+                        ].into()};
                     }
                     let attrs = tyctx.codegen_fn_attrs(def_id);
 
@@ -747,17 +749,13 @@ fn load_const_scalar<'ctx>(
                     //def_id.ty();
                     let _tyctx = tyctx.reserve_and_set_memory_alloc(alloc);
                     let alloc_id = crate::utilis::alloc_id_to_u64(alloc_id.alloc_id());
-                    return vec![CILOp::LoadGlobalAllocPtr { alloc_id }];
+                    return CILNode::LoadGlobalAllocPtr { alloc_id };
                 }
                 GlobalAlloc::Memory(_const_allocation) => {
-                    return vec![
-                        CILOp::LoadGlobalAllocPtr {
-                            alloc_id: alloc_id.alloc_id().0.into(),
-                        },
-                        CILOp::LdcI64(offset.bytes() as i64),
-                        CILOp::ConvISize(false),
-                        CILOp::Add,
-                    ];
+                   
+                    return CILNode::Add(CILNode::LoadGlobalAllocPtr {
+                        alloc_id: alloc_id.alloc_id().0.into(),
+                    }.into(), CILNode::ConvUSize(CILNode::LdcU64(offset.bytes() as u64).into()).into());
                 }
                 _ => todo!("Unhandled global alloc {global_alloc:?}"),
             }
@@ -772,18 +770,15 @@ fn load_const_scalar<'ctx>(
         TyKind::Int(int_type) => load_const_int(scalar_u128, int_type),
         TyKind::Uint(uint_type) => load_const_uint(scalar_u128, uint_type),
         TyKind::Float(ftype) => load_const_float(scalar_u128, ftype, tyctx),
-        TyKind::Bool => vec![CILOp::LdcI32(scalar_u128 as i32)],
-        TyKind::RawPtr(_) => {
-            let value = i64::from_ne_bytes((scalar_u128 as u64).to_ne_bytes());
-            vec![CILOp::LdcI64(value), CILOp::ConvUSize(false)]
-        }
+        TyKind::Bool => CILNode::LdcI32(scalar_u128 as i32),
+        TyKind::RawPtr(_) => CILNode::ConvUSize(CILNode::LdcU64(scalar_u128 as u64).into()),
         TyKind::Tuple(elements) => {
             if elements.is_empty() {
-                vec![
-                    CILOp::NewTMPLocal(Type::Void.into()),
+                CILNode::RawOpsParrentless { ops: [CILOp::NewTMPLocal(Type::Void.into()),
                     CILOp::LoadTMPLocal,
                     CILOp::FreeTMPLocal,
-                ]
+                ].into() }
+                    
             } else {
                 //asssert!(elements.len() == 1, "Mulit element const tuples not supported yet!");
                 let tuple_dotnet = tpe.clone().as_dotnet().unwrap();
@@ -809,7 +804,7 @@ fn load_const_scalar<'ctx>(
                         crate::utilis::compiletime_sizeof(element, tyctx, method_instance);
                 }
                 res.extend([CILOp::LoadTMPLocal, CILOp::FreeTMPLocal]);
-                res
+                CILNode::RawOpsParrentless { ops: res.into() }
             }
         }
         TyKind::Adt(adt_def, _subst) => match adt_def.adt_kind() {
@@ -839,7 +834,7 @@ fn load_const_scalar<'ctx>(
                     CILOp::LoadTMPLocal,
                     CILOp::FreeTMPLocal,
                 ]);
-                ops
+                CILNode::RawOpsParrentless { ops: ops.into() }
             }
             AdtKind::Struct => {
                 //assert!(adt_def.size() < 16);
@@ -856,8 +851,7 @@ fn load_const_scalar<'ctx>(
                     ],
                     &Type::Void,
                 );
-                vec![
-                    CILOp::NewTMPLocal(Type::U128.into()),
+                CILNode::RawOpsParrentless { ops: [CILOp::NewTMPLocal(Type::U128.into()),
                     CILOp::LoadAddresOfTMPLocal,
                     CILOp::LdcI64(high),
                     CILOp::ConvU64(false),
@@ -873,51 +867,43 @@ fn load_const_scalar<'ctx>(
                     CILOp::ConvUSize(false),
                     CILOp::LdObj(tpe.into()),
                     CILOp::FreeTMPLocal,
-                ]
+                ].into() }
+                    
             }
             _ => todo!("Can't load const ADT scalars of type {scalar_type:?}"),
         },
-        TyKind::Char => {
-            let value = i32::from_ne_bytes((scalar_u128 as u32).to_ne_bytes());
-            vec![CILOp::LdcI32(value), CILOp::ConvU32(false)]
-        }
+        TyKind::Char => CILNode::LdcU32(scalar_u128 as u32),
         _ => todo!("Can't load scalar constants of type {scalar_type:?}!"),
     }
 }
-fn load_const_float(value: u128, int_type: &FloatTy, _tyctx: TyCtxt) -> Vec<CILOp> {
+fn load_const_float(value: u128, int_type: &FloatTy, _tyctx: TyCtxt) ->CILNode{
     match int_type {
         FloatTy::F32 => {
             let value = f32::from_ne_bytes((value as u32).to_ne_bytes());
-            vec![CILOp::LdcF32(value)]
+            CILNode::LdcF32(value)
         }
         FloatTy::F64 => {
             let value = f64::from_ne_bytes((value as u64).to_ne_bytes());
-            vec![CILOp::LdcF64(value)]
+            CILNode::LdcF64(value)
         }
     }
 }
-pub fn load_const_int(value: u128, int_type: &IntTy) -> Vec<CILOp> {
+pub fn load_const_int(value: u128, int_type: &IntTy) -> CILNode {
     match int_type {
         IntTy::I8 => {
             let value = i8::from_ne_bytes([value as u8]);
-            vec![CILOp::LdcI32(i32::from(value)), CILOp::ConvI8(false)]
+            CILNode::ConvI8(CILNode::LdcI32(value as i32).into())
         }
         IntTy::I16 => {
             let value = i16::from_ne_bytes((value as u16).to_ne_bytes());
-            vec![CILOp::LdcI32(i32::from(value)), CILOp::ConvI16(false)]
+            CILNode::ConvI16(CILNode::LdcI32(value as i32).into())
         }
-        IntTy::I32 => {
-            let value = i32::from_ne_bytes((value as u32).to_ne_bytes());
-            vec![CILOp::LdcI32(value)]
-        }
+        IntTy::I32 => 
+            CILNode::LdcI32(i32::from_ne_bytes((value as u32).to_ne_bytes())),
         IntTy::I64 => {
-            let value = i64::from_ne_bytes((value as u64).to_ne_bytes());
-            vec![CILOp::LdcI64(value), CILOp::ConvI64(false)]
+            CILNode::LdcI64(i64::from_ne_bytes((value as u64).to_ne_bytes()))
         }
-        IntTy::Isize => {
-            let value = i64::from_ne_bytes((value as u64).to_ne_bytes());
-            vec![CILOp::LdcI64(value), CILOp::ConvISize(false)]
-        }
+        IntTy::Isize => CILNode::ConvISize(CILNode::LdcI64(i64::from_ne_bytes((value as u64).to_ne_bytes())).into()),
         IntTy::I128 => {
             let low = (value & u128::from(u64::MAX)) as u64;
             let high = (value >> 64) as u64;
@@ -932,7 +918,7 @@ pub fn load_const_int(value: u128, int_type: &IntTy) -> Vec<CILOp> {
                 ],
                 &Type::Void,
             );
-            vec![
+            CILNode::RawOpsParrentless { ops: [
                 CILOp::NewTMPLocal(Type::I128.into()),
                 CILOp::LoadAddresOfTMPLocal,
                 CILOp::LdcI64(high),
@@ -949,40 +935,23 @@ pub fn load_const_int(value: u128, int_type: &IntTy) -> Vec<CILOp> {
                 )),
                 CILOp::LoadTMPLocal,
                 CILOp::FreeTMPLocal,
-            ]
+            ].into() }
         }
     }
 }
-pub fn load_const_uint(value: u128, int_type: &UintTy) -> Vec<CILOp> {
+pub fn load_const_uint(value: u128, int_type: &UintTy) -> CILNode {
     match int_type {
         UintTy::U8 => {
-            let value = u8::from_ne_bytes([value as u8]);
-            vec![CILOp::LdcU32(u32::from(value)), CILOp::ConvU8(false)]
+            let value = value as u8;
+            CILNode::ConvU8(CILNode::LdcU32(value as u32).into())
         }
         UintTy::U16 => {
-            let value = u16::from_ne_bytes((value as u16).to_ne_bytes());
-            vec![CILOp::LdcU32(u32::from(value)), CILOp::ConvU16(false)]
+            let value = value as u16;
+            CILNode::ConvU16(CILNode::LdcU32(value as u32).into())
         }
-        UintTy::U32 => {
-            let value = u32::from_ne_bytes((value as u32).to_ne_bytes());
-            vec![CILOp::LdcU32(value), CILOp::ConvU32(false)]
-        }
-        UintTy::U64 => {
-            let value = i64::from_ne_bytes((value as u64).to_ne_bytes());
-            vec![
-                CILOp::LdcI64(value),
-                CILOp::ConvI64(false),
-                CILOp::ConvU64(false),
-            ]
-        }
-        UintTy::Usize => {
-            let value = i64::from_ne_bytes((value as u64).to_ne_bytes());
-            vec![
-                CILOp::LdcI64(value),
-                CILOp::ConvI64(false),
-                CILOp::ConvUSize(false),
-            ]
-        }
+        UintTy::U32 => CILNode::ConvU32(CILNode::LdcU32(value as u32).into()),
+        UintTy::U64 =>  CILNode::ConvU64(CILNode::LdcU64(value as u64).into()),
+        UintTy::Usize => CILNode::ConvUSize(CILNode::LdcU64(value as u64).into()),
         UintTy::U128 => {
             let low = (value & u128::from(u64::MAX)) as u64;
             let high = (value >> 64) as u64;
@@ -996,7 +965,7 @@ pub fn load_const_uint(value: u128, int_type: &UintTy) -> Vec<CILOp> {
                 ],
                 &Type::Void,
             );
-            vec![
+            CILNode::RawOpsParrentless { ops:vec![
                 CILOp::NewTMPLocal(Type::U128.into()),
                 CILOp::LoadAddresOfTMPLocal,
                 CILOp::LdcI64(high),
@@ -1013,7 +982,7 @@ pub fn load_const_uint(value: u128, int_type: &UintTy) -> Vec<CILOp> {
                 )),
                 CILOp::LoadTMPLocal,
                 CILOp::FreeTMPLocal,
-            ]
+            ].into() }
         }
     }
 }

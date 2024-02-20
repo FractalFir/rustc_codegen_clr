@@ -12,7 +12,9 @@ pub enum CILNode {
     LDLocA(u32),
     LDArgA(u32),
     BlackBox(Box<Self>),
-    ConvUSize(Box<Self>),
+    
+    ConvF32(Box<Self>),
+    ConvF64(Box<Self>),
     SizeOf(Box<Type>),
     LDIndI8 {
         ptr: Box<Self>,
@@ -54,6 +56,9 @@ pub enum CILNode {
         parrent: Box<CILNode>,
         ops: Box<[CILOp]>,
     },
+    RawOpsParrentless {
+        ops: Box<[CILOp]>,
+    },
     Call {
         args: Box<[Self]>,
         site: Box<CallSite>,
@@ -62,7 +67,20 @@ pub enum CILNode {
     LdcU64(u64),
     LdcI32(i32),
     LdcU32(u32),
+    LdcF64(f64),
+    LdcF32(f32),
     LoadGlobalAllocPtr { alloc_id: u64 },
+    ConvU8(Box<Self>),
+    ConvU16(Box<Self>),
+    ConvU32(Box<Self>),
+    ConvU64(Box<Self>),
+    ConvUSize(Box<Self>),
+    ConvI8(Box<Self>),
+    ConvI16(Box<Self>),
+    ConvI32(Box<Self>),
+    ConvI64(Box<Self>),
+    ConvISize(Box<Self>),
+    Volatile(Box<Self>),
 }
 impl CILNode {
     pub fn flatten(&self) -> Vec<CILOp> {
@@ -72,8 +90,28 @@ impl CILNode {
             Self::SizeOf(tpe) => vec![CILOp::SizeOf(tpe.clone())],
             Self::LDArgA(local) => vec![CILOp::LDArgA(*local)],
             Self::LDLocA(local) => vec![CILOp::LDLocA(*local)],
+
             Self::BlackBox(inner) => inner.flatten(),
+            Self::Volatile(inner) => {
+                let mut res = vec![CILOp::Volatile];
+                res.extend(inner.flatten());
+                res
+            },
+
             Self::ConvUSize(inner) => append_vec(inner.flatten(), CILOp::ConvUSize(false)),
+            Self::ConvU8(inner) => append_vec(inner.flatten(), CILOp::ConvU8(false)),
+            Self::ConvU16(inner) => append_vec(inner.flatten(), CILOp::ConvU16(false)),
+            Self::ConvU32(inner) => append_vec(inner.flatten(), CILOp::ConvU32(false)),
+            Self::ConvU64(inner) => append_vec(inner.flatten(), CILOp::ConvU64(false)),
+
+            Self::ConvISize(inner) => append_vec(inner.flatten(), CILOp::ConvISize(false)),
+            Self::ConvI8(inner) => append_vec(inner.flatten(), CILOp::ConvI8(false)),
+            Self::ConvI16(inner) => append_vec(inner.flatten(), CILOp::ConvI16(false)),
+            Self::ConvI32(inner) => append_vec(inner.flatten(), CILOp::ConvI32(false)),
+            Self::ConvI64(inner) => append_vec(inner.flatten(), CILOp::ConvI64(false)),
+
+            Self::ConvF32(inner) => append_vec(inner.flatten(), CILOp::ConvF32),
+            Self::ConvF64(inner) => append_vec(inner.flatten(), CILOp::ConvF64),
             Self::LDIndI8 { ptr } => append_vec(ptr.flatten(), CILOp::LDIndI8),
             Self::LDIndI16 { ptr } => append_vec(ptr.flatten(), CILOp::LDIndI16),
             Self::LDIndI32 { ptr } => append_vec(ptr.flatten(), CILOp::LDIndI32),
@@ -105,6 +143,9 @@ impl CILNode {
                 parrent.extend(ops.iter().cloned());
                 parrent
             }
+            Self::RawOpsParrentless { ops } => {
+                ops.clone().into()
+            }
             Self::Call { args, site } => {
                 let mut res: Vec<CILOp> = args.iter().map(|arg| arg.flatten()).flatten().collect();
                 res.push(CILOp::Call(site.clone()));
@@ -114,6 +155,8 @@ impl CILNode {
             Self::LdcU64(val) => vec![CILOp::LdcU64(*val)],
             Self::LdcI32(val) => vec![CILOp::LdcI32(*val)],
             Self::LdcU32(val) => vec![CILOp::LdcU32(*val)],
+            Self::LdcF64(val) => vec![CILOp::LdcF64(*val)],
+            Self::LdcF32(val) => vec![CILOp::LdcF32(*val)],
             Self::LoadGlobalAllocPtr{alloc_id} => vec![CILOp::LoadGlobalAllocPtr { alloc_id: *alloc_id }]
         }
     }

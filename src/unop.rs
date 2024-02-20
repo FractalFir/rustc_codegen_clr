@@ -13,7 +13,7 @@ pub fn unop<'ctx>(
     method_instance: Instance<'ctx>,
     tycache: &mut TyCache,
 ) -> Vec<CILOp> {
-    let mut ops = crate::operand::handle_operand(operand, tcx, method, method_instance, tycache);
+    let mut ops = crate::operand::handle_operand(operand, tcx, method, method_instance, tycache).flatten();
     let ty = operand.ty(&method.local_decls, tcx);
     match unnop {
         UnOp::Neg => match ty.kind() {

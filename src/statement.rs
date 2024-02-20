@@ -97,7 +97,7 @@ pub fn handle_statement<'tcx>(
                             method,
                             method_instance,
                             type_cache
-                        ));
+                        ).flatten());
                         res.push(CILOp::debug_bool());
                         res.extend(CILOp::debug_msg(""));
                     }},
@@ -109,7 +109,7 @@ pub fn handle_statement<'tcx>(
                             method,
                             method_instance,
                             type_cache
-                        ));
+                        ).flatten());
                         res.push(CILOp::debug_i32());
                         res.extend(CILOp::debug_msg(""));
                     }},
@@ -122,7 +122,7 @@ pub fn handle_statement<'tcx>(
                                 method,
                                 method_instance,
                                 type_cache
-                            ));
+                            ).flatten());
                             res.push(CILOp::ConvU64(false));
                             res.push(CILOp::debug_u64());
                             res.extend(CILOp::debug_msg(""));
@@ -136,7 +136,7 @@ pub fn handle_statement<'tcx>(
                             method,
                             method_instance,
                             type_cache
-                        ));
+                        ).flatten());
                         res.push(CILOp::debug_f32());
                         res.extend(CILOp::debug_msg(""));
                     }},
@@ -159,21 +159,21 @@ pub fn handle_statement<'tcx>(
                         method,
                         method_instance,
                         type_cache,
-                    );
+                    ).flatten();
                     let src_op = crate::operand::handle_operand(
                         src,
                         tyctx,
                         method,
                         method_instance,
                         type_cache,
-                    );
+                    ).flatten();
                     let count_op = crate::operand::handle_operand(
                         count,
                         tyctx,
                         method,
                         method_instance,
                         type_cache,
-                    );
+                    ).flatten();
                     let src_ty = src.ty(method, tyctx);
                     let src_ty = crate::utilis::monomorphize(&method_instance, src_ty, tyctx);
                     let ptr_type = type_cache.type_from_cache(src_ty, tyctx, Some(method_instance));

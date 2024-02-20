@@ -17,8 +17,8 @@ pub(crate) fn binop_checked<'tyctx>(
     method_instance: Instance<'tyctx>,
     cache: &mut TyCache,
 ) -> Vec<CILOp> {
-    let ops_a = crate::operand::handle_operand(operand_a, tyctx, method, method_instance, cache);
-    let ops_b = crate::operand::handle_operand(operand_b, tyctx, method, method_instance, cache);
+    let ops_a = crate::operand::handle_operand(operand_a, tyctx, method, method_instance, cache).flatten();
+    let ops_b = crate::operand::handle_operand(operand_b, tyctx, method, method_instance, cache).flatten();
     let ty_a = operand_a.ty(&method.local_decls, tyctx);
     let ty_a = crate::utilis::monomorphize(&method_instance, ty_a, tyctx);
     let ty_b = operand_b.ty(&method.local_decls, tyctx);

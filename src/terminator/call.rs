@@ -92,7 +92,7 @@ fn call_managed<'tyctx>(
                 method,
                 method_instance,
                 type_cache,
-            ));
+            ).flatten());
         }
         call.push(CILOp::Call(CallSite::boxed(
             Some(tpe.clone()),
@@ -175,7 +175,7 @@ fn callvirt_managed<'tyctx>(
                 method,
                 method_instance,
                 type_cache,
-            ));
+            ).flatten());
         }
         call.push(CILOp::CallVirt(CallSite::boxed(
             Some(tpe.clone()),
@@ -260,7 +260,7 @@ fn call_ctor<'tyctx>(
                 method,
                 method_instance,
                 type_cache,
-            ));
+            ).flatten());
         }
         call.push(CILOp::NewObj(CallSite::boxed(
             Some(tpe.clone()),
@@ -300,7 +300,7 @@ pub fn call_closure<'tyctx>(
             body,
             method_instance,
             type_cache,
-        ));
+        ).flatten());
     }
     let last_arg_type =
         crate::utilis::monomorphize(&method_instance, last_arg.node.ty(body, tyctx), tyctx);
@@ -314,7 +314,7 @@ pub fn call_closure<'tyctx>(
                     body,
                     method_instance,
                     type_cache,
-                ));
+                ).flatten());
                 let tuple_type =
                     type_cache.type_from_cache(last_arg_type, tyctx, Some(method_instance));
                 call.push(CILOp::NewTMPLocal(tuple_type.clone().into()));
@@ -491,7 +491,7 @@ pub fn call<'tyctx>(
             body,
             method_instance,
             type_cache,
-        ));
+        ).flatten());
     }
     if crate::function_sig::is_fn_variadic(fn_type, tyctx) {
         signature.set_inputs(
