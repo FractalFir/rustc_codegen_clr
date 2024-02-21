@@ -1,6 +1,8 @@
+use crate::{call, ldc_i32, sub};
 use crate::{
     cil::{CILOp, CallSite},
     cil_tree::cil_node::CILNode,
+    conv_u64,
     function_sig::FnSig,
     operand::handle_operand,
     place::place_set,
@@ -175,21 +177,29 @@ pub fn handle_intrinsic<'tyctx>(
                 DotnetTypeRef::new("System.Runtime".into(), "System.Numerics.BitOperations")
                     .with_valuetype(false);
             let bit_operations = Some(bit_operations);
-            let mut res = Vec::new();
-            res.extend(
-                handle_operand(&args[0].node, tyctx, body, method_instance, type_cache).flatten(),
-            );
-            res.extend([
-                CILOp::ConvU64(false),
-                CILOp::Call(CallSite::boxed(
-                    bit_operations.clone(),
-                    "PopCount".into(),
-                    FnSig::new(&[Type::U64], &Type::I32),
-                    true,
-                )),
-            ]);
-            res.extend(crate::casts::int_to_int(Type::I32, tpe));
-            place_set(destination, tyctx, res, body, method_instance, type_cache)
+            let operand = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
+
+            place_set(
+                destination,
+                tyctx,
+                crate::casts::int_to_int(
+                    Type::I32,
+                    tpe,
+                    conv_u64!(call!(
+                        CallSite::boxed(
+                            bit_operations.clone(),
+                            "PopCount".into(),
+                            FnSig::new(&[Type::U64], &Type::I32),
+                            true,
+                        ),
+                        [operand]
+                    )),
+                )
+                .flatten(),
+                body,
+                method_instance,
+                type_cache,
+            )
         }
         "ctlz" | "ctlz_nonzero" => {
             debug_assert_eq!(
@@ -233,8 +243,37 @@ pub fn handle_intrinsic<'tyctx>(
                 CILOp::LdcI32(sub),
                 CILOp::Sub,
             ]);
-            res.extend(crate::casts::int_to_int(Type::I32, tpe));
-            place_set(destination, tyctx, res, body, method_instance, type_cache)
+
+            place_set(
+                destination,
+                tyctx,
+                crate::casts::int_to_int(
+                    Type::I32,
+                    tpe,
+                    sub!(
+                        call!(
+                            CallSite::boxed(
+                                bit_operations.clone(),
+                                "LeadingZeroCount".into(),
+                                FnSig::new(&[Type::U64], &Type::I32),
+                                true,
+                            ),
+                            [conv_u64!(handle_operand(
+                                &args[0].node,
+                                tyctx,
+                                body,
+                                method_instance,
+                                type_cache
+                            ))]
+                        ),
+                        ldc_i32!(sub)
+                    ),
+                )
+                .flatten(),
+                body,
+                method_instance,
+                type_cache,
+            )
         }
         "bswap" => bswap::bswap(args, destination, tyctx, body, method_instance, type_cache),
         "cttz" | "cttz_nonzero" => {
@@ -255,18 +294,29 @@ pub fn handle_intrinsic<'tyctx>(
             );
             let tpe = type_cache.type_from_cache(tpe, tyctx, Some(method_instance));
             let bit_operations = Some(bit_operations);
-            let mut res = Vec::new();
-            res.extend(
-                handle_operand(&args[0].node, tyctx, body, method_instance, type_cache).flatten(),
-            );
-            res.extend([CILOp::Call(CallSite::boxed(
-                bit_operations.clone(),
-                "TrailingZeroCount".into(),
-                FnSig::new(&[tpe.clone()], &Type::I32),
-                true,
-            ))]);
-            res.extend(crate::casts::int_to_int(Type::I32, tpe));
-            place_set(destination, tyctx, res, body, method_instance, type_cache)
+            let operand = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
+
+            place_set(
+                destination,
+                tyctx,
+                crate::casts::int_to_int(
+                    Type::I32,
+                    tpe.clone(),
+                    call!(
+                        CallSite::boxed(
+                            bit_operations.clone(),
+                            "TrailingZeroCount".into(),
+                            FnSig::new(&[tpe], &Type::I32),
+                            true,
+                        ),
+                        [operand]
+                    ),
+                )
+                .flatten(),
+                body,
+                method_instance,
+                type_cache,
+            )
         }
         "rotate_left" => {
             debug_assert_eq!(

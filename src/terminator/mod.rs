@@ -1,3 +1,6 @@
+use crate::cil_tree::cil_node::CILNode;
+use crate::cil_tree::cil_root::CILRoot;
+use crate::cil_tree::CILTree;
 use crate::place::place_set;
 
 use crate::{
@@ -133,9 +136,12 @@ pub fn handle_terminator<'ctx>(
         TerminatorKind::SwitchInt { discr, targets } => {
             let ty = crate::utilis::monomorphize(&method_instance, discr.ty(method, tyctx), tyctx);
             let discr =
-                crate::operand::handle_operand(discr, tyctx, method, method_instance, type_cache)
-                    .flatten();
-            handle_switch(ty, &discr, targets)
+                crate::operand::handle_operand(discr, tyctx, method, method_instance, type_cache);
+            handle_switch(ty, discr, targets)
+                .into_iter()
+                .map(|tree| tree.flatten())
+                .flatten()
+                .collect()
         }
         TerminatorKind::Assert {
             cond: _,
@@ -182,7 +188,8 @@ pub fn handle_terminator<'ctx>(
 
                 let function_name = crate::utilis::function_name(tyctx.symbol_name(drop_instance));
                 let mut call =
-                    crate::place::place_adress(place, tyctx, method, method_instance, type_cache);
+                    crate::place::place_adress(place, tyctx, method, method_instance, type_cache)
+                        .flatten();
 
                 call.push(CILOp::Call(CallSite::boxed(None, function_name, sig, true)));
                 //dprintln!("drop call:{call:?}");
@@ -437,29 +444,36 @@ fn throw_assert_msg<'ctx>(
         _ => todo!("unsuported assertion message:{msg:?}"),
     }
 }
-fn handle_switch(ty: Ty, discr: &[CILOp], switch: &SwitchTargets) -> Vec<CILOp> {
-    let mut ops = Vec::new();
+fn handle_switch(ty: Ty, discr: CILNode, switch: &SwitchTargets) -> Vec<CILTree> {
+    let mut trees = Vec::new();
     for (value, target) in switch.iter() {
         //ops.extend(CILOp::debug_msg("Switchin"));
-        ops.extend(discr.iter().cloned());
 
-        ops.extend(match ty.kind() {
-            TyKind::Int(int) => crate::constant::load_const_int(value, int).flatten(),
-            TyKind::Uint(uint) => crate::constant::load_const_uint(value, uint).flatten(),
-            TyKind::Bool => vec![CILOp::LdcI32(
+        let const_val = match ty.kind() {
+            TyKind::Int(int) => crate::constant::load_const_int(value, int),
+            TyKind::Uint(uint) => crate::constant::load_const_uint(value, uint),
+            TyKind::Bool => CILNode::LdcI32(
                 u8::try_from(value)
                     .expect("Bool value outside of range 0-255. Should be either 0 OR 1.")
                     as i32,
-            )],
-            TyKind::Char => {
-                crate::constant::load_const_uint(value, &rustc_middle::ty::UintTy::U64).flatten()
-            }
+            ),
+            TyKind::Char => crate::constant::load_const_uint(value, &rustc_middle::ty::UintTy::U64),
             _ => todo!("Unsuported switch discriminant type {ty:?}"),
-        });
+        };
         //ops.push(CILOp::LdcI64(value as i64));
-        ops.push(crate::binop::eq_unchecked(ty, ty));
-        ops.push(CILOp::BTrue(target.into()));
+        trees.push(
+            CILRoot::BTrue {
+                target: target.into(),
+                ops: crate::binop::eq_unchecked(ty, discr.clone(), const_val),
+            }
+            .into(),
+        );
     }
-    ops.push(CILOp::GoTo(switch.otherwise().into()));
-    ops
+    trees.push(
+        CILRoot::GoTo {
+            target: switch.otherwise().into(),
+        }
+        .into(),
+    );
+    trees
 }

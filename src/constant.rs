@@ -154,8 +154,15 @@ fn create_const_adt_from_bytes<'ctx>(
                 _ => todo!("Can't yet support enums with {variant_size} wide tags."),
             };
             ops.push(CILOp::LoadAddresOfTMPLocal);
-            ops.push(CILOp::LdcI64(curr_variant as i64));
-            ops.extend(crate::casts::int_to_int(Type::I64, disrc_type.clone()));
+
+            ops.extend(
+                crate::casts::int_to_int(
+                    Type::I64,
+                    disrc_type.clone(),
+                    CILNode::LdcI64(curr_variant as i64),
+                )
+                .flatten(),
+            );
 
             ops.push(CILOp::STField(FieldDescriptor::boxed(
                 enum_dotnet.clone(),
@@ -841,8 +848,15 @@ fn load_const_scalar<'ctx>(
                     CILOp::LoadAddresOfTMPLocal,
                     CILOp::ConvUSize(false),
                 ];
-                ops.push(CILOp::LdcI64(scalar_u128 as u64 as i64));
-                ops.extend(crate::casts::int_to_int(Type::I64, disrc_type.clone()));
+
+                ops.extend(
+                    crate::casts::int_to_int(
+                        Type::I64,
+                        disrc_type.clone(),
+                        CILNode::LdcI64(scalar_u128 as u64 as i64),
+                    )
+                    .flatten(),
+                );
 
                 ops.extend([
                     CILOp::STField(Box::new(crate::cil::FieldDescriptor::new(

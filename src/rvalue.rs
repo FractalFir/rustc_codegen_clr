@@ -2,7 +2,7 @@ use crate::cil::{CILOp, CallSite, FieldDescriptor};
 use crate::cil_tree::cil_node::CILNode;
 use crate::function_sig::FnSig;
 use crate::operand::handle_operand;
-use crate::place::deref_op;
+
 use crate::r#type::{pointer_to_is_fat, TyCache, Type};
 use rustc_middle::{
     mir::{CastKind, NullOp, Place, Rvalue},
@@ -24,10 +24,10 @@ pub fn handle_rvalue<'tcx>(
             crate::place::place_get(place, tyctx, method, method_instance, tycache).flatten()
         }
         Rvalue::Ref(_region, _kind, place) => {
-            crate::place::place_adress(place, tyctx, method, method_instance, tycache)
+            crate::place::place_adress(place, tyctx, method, method_instance, tycache).flatten()
         }
         Rvalue::AddressOf(_mutability, place) => {
-            crate::place::place_adress(place, tyctx, method, method_instance, tycache)
+            crate::place::place_adress(place, tyctx, method, method_instance, tycache).flatten()
         }
         Rvalue::Cast(
             CastKind::PointerCoercion(PointerCoercion::MutToConstPointer) | CastKind::PtrToPtr,
@@ -174,7 +174,8 @@ pub fn handle_rvalue<'tcx>(
             method,
             method_instance,
             tycache,
-        ),
+        )
+        .flatten(),
         Rvalue::CheckedBinaryOp(binop, operands) => crate::checked_binop::binop_checked(
             *binop,
             &operands.0,
@@ -193,13 +194,12 @@ pub fn handle_rvalue<'tcx>(
             let src = operand.ty(&method.local_decls, tyctx);
             let src = crate::utilis::monomorphize(&method_instance, src, tyctx);
             let src = tycache.type_from_cache(src, tyctx, Some(method_instance));
-            [
-                handle_operand(operand, tyctx, method, method_instance, tycache).flatten(),
-                crate::casts::int_to_int(src, target),
-            ]
-            .into_iter()
+            crate::casts::int_to_int(
+                src,
+                target,
+                handle_operand(operand, tyctx, method, method_instance, tycache),
+            )
             .flatten()
-            .collect()
         }
         Rvalue::Cast(CastKind::FloatToInt, operand, target) => {
             let target = crate::utilis::monomorphize(&method_instance, *target, tyctx);
@@ -207,13 +207,13 @@ pub fn handle_rvalue<'tcx>(
             let src = operand.ty(&method.local_decls, tyctx);
             let src = crate::utilis::monomorphize(&method_instance, src, tyctx);
             let src = tycache.type_from_cache(src, tyctx, Some(method_instance));
-            [
-                handle_operand(operand, tyctx, method, method_instance, tycache).flatten(),
-                crate::casts::float_to_int(src, target),
-            ]
-            .into_iter()
+
+            crate::casts::float_to_int(
+                src,
+                target,
+                handle_operand(operand, tyctx, method, method_instance, tycache),
+            )
             .flatten()
-            .collect()
         }
         Rvalue::Cast(CastKind::IntToFloat, operand, target) => {
             let target = crate::utilis::monomorphize(&method_instance, *target, tyctx);
@@ -426,7 +426,7 @@ pub fn handle_rvalue<'tcx>(
         }
         //Rvalue::Cast(kind, _operand, _) => todo!("Unhandled cast kind {kind:?}, rvalue:{rvalue:?}"),
         Rvalue::Discriminant(place) => {
-            let mut ops =
+            let mut addr =
                 crate::place::place_adress(place, tyctx, method, method_instance, tycache);
             let owner_ty = place.ty(method, tyctx).ty;
             let owner_ty = crate::utilis::monomorphize(&method_instance, owner_ty, tyctx);
@@ -446,23 +446,27 @@ pub fn handle_rvalue<'tcx>(
             } else {
                 panic!();
             };
-            ops.push(CILOp::LDField(Box::new(crate::cil::FieldDescriptor::new(
-                owner,
-                disrc_type.clone(),
-                "_tag".into(),
-            ))));
-            let src = disrc_type;
+
             let target = tycache.type_from_cache(
                 owner_ty.discriminant_ty(tyctx),
                 tyctx,
                 Some(method_instance),
             );
-            ops.extend(crate::casts::int_to_int(src, target));
-            ops
+            crate::casts::int_to_int(
+                disrc_type.clone(),
+                target,
+                CILNode::LDField {
+                    field: crate::cil::FieldDescriptor::new(owner, disrc_type, "_tag".into())
+                        .into(),
+                    addr: addr.into(),
+                },
+            )
+            .flatten()
         }
         Rvalue::Len(operand) => {
             let mut ops =
-                crate::place::place_adress(operand, tyctx, method, method_instance, tycache);
+                crate::place::place_adress(operand, tyctx, method, method_instance, tycache)
+                    .flatten();
             let ty = operand.ty(method, tyctx);
             let ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
             // let tpe = tycache.type_from_cache(ty.ty, tyctx, Some(method_instance));

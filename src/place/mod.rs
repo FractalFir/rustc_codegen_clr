@@ -208,11 +208,11 @@ pub fn place_adress<'a>(
     method: &rustc_middle::mir::Body<'a>,
     method_instance: Instance<'a>,
     type_cache: &mut crate::r#type::TyCache,
-) -> Vec<CILOp> {
+) -> CILNode {
     let place_ty = place.ty(method, ctx);
     let place_ty = crate::utilis::monomorphize(&method_instance, place_ty, ctx).ty;
     if place.projection.is_empty() {
-        local_adress(place.local.as_usize(), method).flatten()
+        local_adress(place.local.as_usize(), method)
     } else {
         let (mut addr_calc, mut ty) = local_body(place.local.as_usize(), method);
 
@@ -234,7 +234,7 @@ pub fn place_adress<'a>(
             addr_calc = curr_ops;
         }
         let mut ops = addr_calc.flatten();
-        ops.extend(adress::place_elem_adress(
+        adress::place_elem_adress(
             head,
             ty,
             ctx,
@@ -242,8 +242,8 @@ pub fn place_adress<'a>(
             method,
             type_cache,
             place_ty,
-        ));
-        ops
+            addr_calc,
+        )
     }
 }
 pub(crate) fn place_set<'a>(

@@ -1,6 +1,6 @@
 use crate::{
-    cil::CallSite,
-    cil::{CILOp, FieldDescriptor},
+    cil::{CILOp, CallSite, FieldDescriptor},
+    cil_tree::cil_node::CILNode,
     operand::handle_operand,
     place::{place_get, place_set},
     r#type::{DotnetTypeRef, TyCache, Type},
@@ -74,7 +74,8 @@ pub fn handle_aggregate<'tyctx>(
                 method,
                 method_instance,
                 tycache,
-            );
+            )
+            .flatten();
             let sig = crate::function_sig::FnSig::new(
                 &[
                     Type::Ptr(Into::<Type>::into(array_type.clone()).into()),
@@ -104,7 +105,8 @@ pub fn handle_aggregate<'tyctx>(
                 method,
                 method_instance,
                 tycache,
-            );
+            )
+            .flatten();
             let types: Vec<_> = value_index
                 .iter()
                 .map(|operand| {
@@ -208,7 +210,8 @@ fn aggregate_adt<'tyctx>(
                 method,
                 method_instance,
                 type_cache,
-            );
+            )
+            .flatten();
             let mut ops: Vec<CILOp> = Vec::with_capacity(fields.len() * 2);
             for field in fields {
                 let field_def = adt
@@ -253,7 +256,8 @@ fn aggregate_adt<'tyctx>(
                 method,
                 method_instance,
                 type_cache,
-            );
+            )
+            .flatten();
 
             let mut variant_type = adt_type_ref.clone(); //adt_type.variant_type(variant).expect("Can't get variant index");
             let variant_name = crate::utilis::variant_name(adt_type, variant_idx);
@@ -303,8 +307,15 @@ fn aggregate_adt<'tyctx>(
                 let (disrc_type, _) = crate::utilis::adt::enum_tag_info(&layout.layout, tyctx);
 
                 ops.extend(adt_adress_ops);
-                ops.push(CILOp::LdcI32(variant_idx as i32));
-                ops.extend(crate::casts::int_to_int(Type::I32, disrc_type.clone()));
+
+                ops.extend(
+                    crate::casts::int_to_int(
+                        Type::I32,
+                        disrc_type.clone(),
+                        CILNode::LdcU32(variant_idx as u32).into(),
+                    )
+                    .flatten(),
+                );
                 let field_name = "_tag".into();
 
                 ops.push(CILOp::STField(Box::new(FieldDescriptor::new(
@@ -332,7 +343,8 @@ fn aggregate_adt<'tyctx>(
                 method,
                 method_instance,
                 type_cache,
-            );
+            )
+            .flatten();
             let mut ops: Vec<CILOp> = Vec::with_capacity(fields.len() * 2);
             for field in fields {
                 let field_def = adt

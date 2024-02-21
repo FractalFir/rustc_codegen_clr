@@ -50,7 +50,11 @@ pub enum CILNode {
         field: Box<FieldDescriptor>,
     },
     Add(Box<Self>, Box<Self>),
+    And(Box<Self>, Box<Self>),
+    Sub(Box<Self>, Box<Self>),
     Mul(Box<Self>, Box<Self>),
+    Div(Box<Self>, Box<Self>),
+    Or(Box<Self>, Box<Self>),
     // TODO: Remove this
     RawOps {
         parrent: Box<CILNode>,
@@ -86,6 +90,10 @@ pub enum CILNode {
     Neg(Box<Self>),
     Not(Box<Self>),
     Eq(Box<Self>, Box<Self>),
+    Lt(Box<Self>, Box<Self>),
+    LtUn(Box<Self>, Box<Self>),
+    Gt(Box<Self>, Box<Self>),
+    GtUn(Box<Self>, Box<Self>),
 }
 impl CILNode {
     pub fn flatten(&self) -> Vec<CILOp> {
@@ -141,16 +149,64 @@ impl CILNode {
                 res.push(CILOp::Add);
                 res
             }
+            Self::And(a, b) => {
+                let mut res = a.flatten();
+                res.extend(b.flatten());
+                res.push(CILOp::And);
+                res
+            }
+            Self::Or(a, b) => {
+                let mut res = a.flatten();
+                res.extend(b.flatten());
+                res.push(CILOp::Or);
+                res
+            }
+            Self::Div(a, b) => {
+                let mut res = a.flatten();
+                res.extend(b.flatten());
+                res.push(CILOp::Div);
+                res
+            }
+            Self::Sub(a, b) => {
+                let mut res = a.flatten();
+                res.extend(b.flatten());
+                res.push(CILOp::Sub);
+                res
+            }
             Self::Eq(a, b) => {
                 let mut res = a.flatten();
                 res.extend(b.flatten());
                 res.push(CILOp::Eq);
                 res
             }
+            Self::Lt(a, b) => {
+                let mut res = a.flatten();
+                res.extend(b.flatten());
+                res.push(CILOp::Lt);
+                res
+            }
+            Self::LtUn(a, b) => {
+                let mut res = a.flatten();
+                res.extend(b.flatten());
+                res.push(CILOp::LtUn);
+                res
+            }
+            Self::Gt(a, b) => {
+                let mut res = a.flatten();
+                res.extend(b.flatten());
+                res.push(CILOp::Gt);
+                res
+            }
+            Self::GtUn(a, b) => {
+                let mut res = a.flatten();
+                res.extend(b.flatten());
+                res.push(CILOp::GtUn);
+                res
+            }
             Self::Mul(a, b) => {
                 let mut res = a.flatten();
                 res.extend(b.flatten());
-                res.push(CILOp::Add);
+                res.push(CILOp::Mul);
                 res
             }
             Self::RawOps { parrent, ops } => {
@@ -175,4 +231,171 @@ impl CILNode {
             }],
         }
     }
+}
+#[macro_export]
+macro_rules! add {
+    ($a:expr,$b:expr) => {
+        CILNode::Add($a.into(), $b.into())
+    };
+}
+#[macro_export]
+macro_rules! and {
+    ($a:expr,$b:expr) => {
+        CILNode::And($a.into(), $b.into())
+    };
+}
+#[macro_export]
+macro_rules! or {
+    ($a:expr,$b:expr) => {
+        CILNode::Or($a.into(), $b.into())
+    };
+}
+#[macro_export]
+macro_rules! div {
+    ($a:expr,$b:expr) => {
+        CILNode::Div($a.into(), $b.into())
+    };
+}
+#[macro_export]
+macro_rules! sub {
+    ($a:expr,$b:expr) => {
+        CILNode::Sub($a.into(), $b.into())
+    };
+}
+#[macro_export]
+macro_rules! mul {
+    ($a:expr,$b:expr) => {
+        CILNode::Mul($a.into(), $b.into())
+    };
+}
+#[macro_export]
+macro_rules! eq {
+    ($a:expr,$b:expr) => {
+        CILNode::Eq($a.into(), $b.into())
+    };
+}
+#[macro_export]
+macro_rules! lt {
+    ($a:expr,$b:expr) => {
+        CILNode::Lt($a.into(), $b.into())
+    };
+}
+
+#[macro_export]
+macro_rules! lt_un {
+    ($a:expr,$b:expr) => {
+        CILNode::LtUn($a.into(), $b.into())
+    };
+}
+#[macro_export]
+macro_rules! gt {
+    ($a:expr,$b:expr) => {
+        CILNode::Gt($a.into(), $b.into())
+    };
+}
+
+#[macro_export]
+macro_rules! gt_un {
+    ($a:expr,$b:expr) => {
+        CILNode::GtUn($a.into(), $b.into())
+    };
+}
+
+#[macro_export]
+macro_rules! size_of {
+    ($a:expr) => {
+        CILNode::SizeOf($a.into())
+    };
+}
+#[macro_export]
+macro_rules! ld_field {
+    ($addr_calc:expr,$field:expr) => {
+        CILNode::LDField {
+            addr: $addr_calc.into(),
+            field: $field.into(),
+        }
+    };
+}
+#[macro_export]
+macro_rules! call {
+    ($call_site:expr,$args:expr) => {
+        CILNode::Call {
+            args: $args.into(),
+            site: $call_site.into(),
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! conv_usize {
+    ($a:expr) => {
+        CILNode::ConvUSize($a.into())
+    };
+}
+#[macro_export]
+macro_rules! conv_isize {
+    ($a:expr) => {
+        CILNode::ConvISize($a.into())
+    };
+}
+#[macro_export]
+macro_rules! conv_u64 {
+    ($a:expr) => {
+        CILNode::ConvU64($a.into())
+    };
+}
+#[macro_export]
+macro_rules! conv_i64 {
+    ($a:expr) => {
+        CILNode::ConvI64($a.into())
+    };
+}
+#[macro_export]
+macro_rules! conv_u32 {
+    ($a:expr) => {
+        CILNode::ConvU32($a.into())
+    };
+}
+#[macro_export]
+macro_rules! conv_i32 {
+    ($a:expr) => {
+        CILNode::ConvI32($a.into())
+    };
+}
+#[macro_export]
+macro_rules! conv_u16 {
+    ($a:expr) => {
+        CILNode::ConvU16($a.into())
+    };
+}
+#[macro_export]
+macro_rules! conv_i16 {
+    ($a:expr) => {
+        CILNode::ConvI16($a.into())
+    };
+}
+#[macro_export]
+macro_rules! conv_i8 {
+    ($a:expr) => {
+        CILNode::ConvI8($a.into())
+    };
+}
+#[macro_export]
+macro_rules! conv_u8 {
+    ($a:expr) => {
+        CILNode::ConvU8($a.into())
+    };
+}
+
+#[macro_export]
+macro_rules! ldc_i32 {
+    ($val:expr) => {
+        CILNode::LdcI32($val)
+    };
+}
+#[macro_export]
+macro_rules! ldc_u32 {
+    ($val:expr) => {
+        CILNode::LdcU32($val)
+    };
 }

@@ -1,12 +1,17 @@
 use crate::{
+    call,
     cil::{CILOp, CallSite},
+    cil_tree::cil_node::CILNode,
+    conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8,
+    conv_usize,
     function_sig::FnSig,
+    ldc_i32, ldc_u32,
     r#type::{DotnetTypeRef, Type},
 };
 /// Casts from intiger type `src` to target `target`
-pub fn int_to_int(src: Type, target: Type) -> Vec<CILOp> {
+pub fn int_to_int(src: Type, target: Type, operand: CILNode) -> CILNode {
     if src == target {
-        return vec![];
+        return operand;
     }
     match (&src, &target) {
         /*
@@ -16,231 +21,213 @@ pub fn int_to_int(src: Type, target: Type) -> Vec<CILOp> {
             }
             panic!();
         }*/
-        (Type::ISize, Type::I128) => vec![
-            CILOp::ConvI64(false),
-            CILOp::Call(
-                CallSite::new(
-                    Some(DotnetTypeRef::int_128()),
-                    "op_Implicit".into(),
-                    FnSig::new(&[Type::I64], &Type::I128),
-                    true,
-                )
-                .into(),
+        (Type::ISize, Type::I128) => call!(
+            CallSite::new(
+                Some(DotnetTypeRef::int_128()),
+                "op_Implicit".into(),
+                FnSig::new(&[Type::I64], &Type::I128),
+                true,
             ),
-        ],
-        (Type::ISize, Type::U128) => vec![
-            CILOp::ConvI64(false),
-            CILOp::Call(
-                CallSite::new(
-                    Some(DotnetTypeRef::uint_128()),
-                    "op_Explicit".into(),
-                    FnSig::new(&[Type::I64], &Type::U128),
-                    true,
-                )
-                .into(),
+            [conv_i64!(operand)]
+        ),
+        (Type::ISize, Type::U128) => call!(
+            CallSite::new(
+                Some(DotnetTypeRef::uint_128()),
+                "op_Explicit".into(),
+                FnSig::new(&[Type::I64], &Type::U128),
+                true,
             ),
-        ],
-        (Type::Bool, Type::U128) => vec![
-            CILOp::ConvI8(false),
-            CILOp::Call(
-                CallSite::new(
-                    Some(DotnetTypeRef::uint_128()),
-                    "op_Explicit".into(),
-                    FnSig::new(&[Type::I8], &Type::U128),
-                    true,
-                )
-                .into(),
+            [conv_i64!(operand)]
+        ),
+        (Type::Bool, Type::U128) => call!(
+            CallSite::new(
+                Some(DotnetTypeRef::uint_128()),
+                "op_Explicit".into(),
+                FnSig::new(&[Type::I64], &Type::U128),
+                true,
             ),
-        ],
-        (Type::Bool, Type::I128) => vec![
-            CILOp::ConvI8(false),
-            CILOp::Call(
-                CallSite::new(
-                    Some(DotnetTypeRef::int_128()),
-                    "op_Implicit".into(),
-                    FnSig::new(&[Type::I8], &Type::I128),
-                    true,
-                )
-                .into(),
+            [conv_i8!(operand)]
+        ),
+        (Type::Bool, Type::I128) => call!(
+            CallSite::new(
+                Some(DotnetTypeRef::int_128()),
+                "op_Implicit".into(),
+                FnSig::new(&[Type::I8], &Type::I128),
+                true,
             ),
-        ],
-        (Type::U128, Type::I128) => vec![CILOp::Call(
+            [conv_i8!(operand)]
+        ),
+
+        (Type::U128, Type::I128) => call!(
             CallSite::new(
                 Some(DotnetTypeRef::uint_128()),
                 "op_Explicit".into(),
                 FnSig::new(&[src], &target),
                 true,
-            )
-            .into(),
-        )],
-        (_, Type::I128) => {
-            vec![CILOp::Call(
-                CallSite::new(
-                    Some(DotnetTypeRef::int_128()),
-                    "op_Implicit".into(),
-                    FnSig::new(&[src], &target),
-                    true,
-                )
-                .into(),
-            )]
-        }
-        (Type::I128, Type::U128) => vec![CILOp::Call(
+            ),
+            [operand]
+        ),
+        (_, Type::I128) => call!(
+            CallSite::new(
+                Some(DotnetTypeRef::int_128()),
+                "op_Implicit".into(),
+                FnSig::new(&[src], &target),
+                true,
+            ),
+            [operand]
+        ),
+        (Type::I128, Type::U128) => call!(
             CallSite::new(
                 Some(DotnetTypeRef::int_128()),
                 "op_Explicit".into(),
                 FnSig::new(&[src], &target),
                 true,
-            )
-            .into(),
-        )],
+            ),
+            [operand]
+        ),
 
-        (Type::I8 | Type::I16 | Type::I32 | Type::I64, Type::U128) => vec![CILOp::Call(
+        (Type::I8 | Type::I16 | Type::I32 | Type::I64, Type::U128) => call!(
             CallSite::new(
                 Some(DotnetTypeRef::uint_128()),
                 "op_Explicit".into(),
                 FnSig::new(&[src], &target),
                 true,
-            )
-            .into(),
-        )],
-        (_, Type::U128) => vec![CILOp::Call(
+            ),
+            [operand]
+        ),
+        (_, Type::U128) => call!(
             CallSite::new(
                 Some(DotnetTypeRef::uint_128()),
                 "op_Implicit".into(),
                 FnSig::new(&[src], &target),
                 true,
-            )
-            .into(),
-        )],
-        (Type::I128, _) => {
-            vec![CILOp::Call(
-                CallSite::new(
-                    Some(DotnetTypeRef::int_128()),
-                    "op_Explicit".into(),
-                    FnSig::new(&[src], &target),
-                    true,
-                )
-                .into(),
-            )]
-        }
-        (Type::U128, _) => {
-            vec![CILOp::Call(
-                CallSite::new(
-                    Some(DotnetTypeRef::uint_128()),
-                    "op_Explicit".into(),
-                    FnSig::new(&[src], &target),
-                    true,
-                )
-                .into(),
-            )]
-        }
+            ),
+            [operand]
+        ),
+        (Type::I128, _) => call!(
+            CallSite::new(
+                Some(DotnetTypeRef::int_128()),
+                "op_Explicit".into(),
+                FnSig::new(&[src], &target),
+                true,
+            ),
+            [operand]
+        ),
+        (Type::U128, _) => call!(
+            CallSite::new(
+                Some(DotnetTypeRef::uint_128()),
+                "op_Explicit".into(),
+                FnSig::new(&[src], &target),
+                true,
+            ),
+            [operand]
+        ),
         //todo!("Casting to 128 bit intiegers is not supported!"),
-        _ => to_int(target),
+        _ => to_int(target, operand),
     }
 }
 /// Returns CIL ops required to convert type src to target
-pub fn float_to_int(src: Type, target: Type) -> Vec<CILOp> {
+pub fn float_to_int(src: Type, target: Type, operand: CILNode) -> CILNode {
     match target {
-        Type::I128 => {
-            vec![CILOp::Call(
-                CallSite::new(
-                    Some(DotnetTypeRef::int_128()),
-                    "op_Explicit".into(),
-                    FnSig::new(&[src], &target),
-                    true,
-                )
-                .into(),
-            )]
-        }
-        Type::U128 => {
-            vec![CILOp::Call(
-                CallSite::new(
-                    Some(DotnetTypeRef::uint_128()),
-                    "op_Explicit".into(),
-                    FnSig::new(&[src], &target),
-                    true,
-                )
-                .into(),
-            )]
-        } //todo!("Casting to 128 bit intiegers is not supported!"),
-        Type::U16 => vec![
-            CILOp::ConvU32(false),
-            CILOp::LdcU32(u16::MAX as u32),
-            CILOp::Call(CallSite::boxed(
+        Type::I128 => call!(
+            CallSite::new(
+                Some(DotnetTypeRef::int_128()),
+                "op_Explicit".into(),
+                FnSig::new(&[src], &target),
+                true,
+            ),
+            [operand]
+        ),
+        Type::U128 => call!(
+            CallSite::new(
+                Some(DotnetTypeRef::uint_128()),
+                "op_Explicit".into(),
+                FnSig::new(&[src], &target),
+                true,
+            ),
+            [operand]
+        ),
+        //todo!("Casting to 128 bit intiegers is not supported!"),
+        Type::U16 => conv_u16!(call!(
+            CallSite::boxed(
                 Some(DotnetTypeRef::math()),
                 "Min".into(),
                 FnSig::new(&[Type::U32, Type::U32], &Type::U32),
                 true,
-            )),
-            CILOp::ConvU16(false),
-        ],
-        Type::U8 => vec![
-            CILOp::ConvU32(false),
-            CILOp::LdcU32(u8::MAX as u32),
-            CILOp::Call(CallSite::boxed(
+            ),
+            [conv_u32!(operand), ldc_u32!(u16::MAX as u32)]
+        )),
+
+        Type::U8 => conv_u8!(call!(
+            CallSite::boxed(
                 Some(DotnetTypeRef::math()),
                 "Min".into(),
                 FnSig::new(&[Type::U32, Type::U32], &Type::U32),
                 true,
-            )),
-            CILOp::ConvU8(false),
-        ],
-        Type::I16 => vec![
-            CILOp::ConvI32(false),
-            CILOp::LdcI32(i16::MAX as i32),
-            CILOp::Call(CallSite::boxed(
-                Some(DotnetTypeRef::math()),
-                "Min".into(),
-                FnSig::new(&[Type::I32, Type::I32], &Type::I32),
-                true,
-            )),
-            CILOp::LdcI32(i16::MIN as i32),
-            CILOp::Call(CallSite::boxed(
+            ),
+            [ldc_u32!(u8::MAX as u32), conv_u32!(operand)]
+        )),
+        Type::I16 => conv_i16!(call!(
+            CallSite::boxed(
                 Some(DotnetTypeRef::math()),
                 "Max".into(),
                 FnSig::new(&[Type::I32, Type::I32], &Type::I32),
                 true,
-            )),
-            CILOp::ConvI16(false),
-        ],
-        Type::I8 => vec![
-            CILOp::ConvI32(false),
-            CILOp::LdcI32(i8::MAX as i32),
-            CILOp::Call(CallSite::boxed(
-                Some(DotnetTypeRef::math()),
-                "Min".into(),
-                FnSig::new(&[Type::I32, Type::I32], &Type::I32),
-                true,
-            )),
-            CILOp::LdcI32(i8::MIN as i32),
-            CILOp::Call(CallSite::boxed(
+            ),
+            [
+                call!(
+                    CallSite::boxed(
+                        Some(DotnetTypeRef::math()),
+                        "Min".into(),
+                        FnSig::new(&[Type::I32, Type::I32], &Type::I32),
+                        true,
+                    ),
+                    [conv_i32!(operand), ldc_i32!(i16::MAX as i32)]
+                ),
+                ldc_i32!(i16::MIN as i32)
+            ]
+        )),
+
+        Type::I8 => conv_i8!(call!(
+            CallSite::boxed(
                 Some(DotnetTypeRef::math()),
                 "Max".into(),
                 FnSig::new(&[Type::I32, Type::I32], &Type::I32),
                 true,
-            )),
-            CILOp::ConvI8(false),
-        ],
-        _ => to_int(target),
+            ),
+            [
+                call!(
+                    CallSite::boxed(
+                        Some(DotnetTypeRef::math()),
+                        "Min".into(),
+                        FnSig::new(&[Type::I32, Type::I32], &Type::I32),
+                        true,
+                    ),
+                    [conv_i32!(operand), ldc_i32!(i8::MAX as i32)]
+                ),
+                ldc_i32!(i8::MIN as i32)
+            ]
+        )),
+        _ => to_int(target, operand),
     }
 
     //call uint64 [System.Runtime]System.Int128::op_Explicit(valuetype [System.Runtime]System.Int128)
     //
 }
 /// Returns CIL ops required to convert to intiger of type `target`
-fn to_int(target: Type) -> Vec<CILOp> {
+fn to_int(target: Type, operand: CILNode) -> CILNode {
     match target {
-        Type::I8 => vec![CILOp::ConvI8(false)],
-        Type::U8 => vec![CILOp::ConvU8(false)],
-        Type::I16 => vec![CILOp::ConvI16(false)],
-        Type::U16 => vec![CILOp::ConvU16(false)],
-        Type::U32 => vec![CILOp::ConvU32(false)],
-        Type::I32 => vec![CILOp::ConvI32(false)],
-        Type::I64 => vec![CILOp::ConvI64(false)],
-        Type::U64 => vec![CILOp::ConvU64(false)],
-        Type::ISize => vec![CILOp::ConvISize(false)],
-        Type::USize => vec![CILOp::ConvUSize(false)],
-        Type::Ptr(_) => vec![CILOp::ConvUSize(false)],
+        Type::I8 => conv_i8!(operand),
+        Type::U8 => conv_u8!(operand),
+        Type::I16 => conv_i16!(operand),
+        Type::U16 => conv_u16!(operand),
+        Type::U32 => conv_u32!(operand),
+        Type::I32 => conv_i32!(operand),
+        Type::I64 => conv_i64!(operand),
+        Type::U64 => conv_u64!(operand),
+        Type::ISize => conv_isize!(operand),
+        Type::USize => conv_usize!(operand),
+        Type::Ptr(_) => conv_usize!(operand),
         _ => todo!("Can't cast to {target:?} yet!"),
     }
 }

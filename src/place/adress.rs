@@ -1,10 +1,13 @@
 use super::PlaceTy;
 use crate::{
-    assert_morphic,
+    add, assert_morphic, call,
     cil::{CILOp, FieldDescriptor},
-    cil_tree::cil_node::CILNode,
+    cil_tree::cil_node::{CILNode, *},
+    conv_usize,
     function_sig::FnSig,
+    ld_field, mul,
     r#type::{TyCache, Type},
+    size_of,
 };
 use rustc_middle::{
     mir::PlaceElem,
@@ -25,11 +28,12 @@ pub fn address_last_dereference<'ctx>(
     tycache: &mut TyCache,
     tyctx: TyCtxt<'ctx>,
     method: Instance<'ctx>,
-) -> Vec<CILOp> {
+    addr_calc: CILNode,
+) -> CILNode {
     let curr_type = match curr_type {
         PlaceTy::Ty(curr_type) => curr_type,
         // Enums don't require any special handling
-        PlaceTy::EnumVariant(_, _) => return vec![],
+        PlaceTy::EnumVariant(_, _) => return addr_calc,
     };
     //eprintln!("target_type:{target_type:?} curr_type:{curr_type:?}");
     // Get the type curr_type points to!
@@ -37,16 +41,17 @@ pub fn address_last_dereference<'ctx>(
     let curr_type = tycache.type_from_cache(curr_type, tyctx, Some(method));
 
     match (curr_points_to.kind(), target_type.kind()) {
-        (TyKind::Slice(_), TyKind::Slice(_)) => vec![],
-        (TyKind::Slice(_), _) => vec![CILOp::LDField(
-            FieldDescriptor::new(
+        (TyKind::Slice(_), TyKind::Slice(_)) => addr_calc,
+        (TyKind::Slice(_), _) => CILNode::LDField {
+            field: FieldDescriptor::new(
                 curr_type.as_dotnet().unwrap(),
                 Type::Ptr(Type::Void.into()),
                 "data_pointer".into(),
             )
             .into(),
-        )],
-        _ => vec![],
+            addr: addr_calc.into(),
+        },
+        _ => addr_calc,
     }
     //println!("casting {source:?} source_pointed_to:{source_pointed_to:?} to {target:?} target_pointed_to:{target_pointed_to:?}. ops:{ops:?}");
 }
@@ -58,13 +63,19 @@ pub fn place_elem_adress<'ctx>(
     _body: &rustc_middle::mir::Body,
     type_cache: &mut crate::r#type::TyCache,
     place_ty: Ty<'ctx>,
-) -> Vec<CILOp> {
+    addr_calc: CILNode,
+) -> CILNode {
     let curr_type = curr_type.monomorphize(&method_instance, tyctx);
     assert_morphic!(curr_type);
     match place_elem {
-        PlaceElem::Deref => {
-            address_last_dereference(place_ty, curr_type, type_cache, tyctx, method_instance)
-        }
+        PlaceElem::Deref => address_last_dereference(
+            place_ty,
+            curr_type,
+            type_cache,
+            tyctx,
+            method_instance,
+            addr_calc,
+        ),
         PlaceElem::Field(index, field_ty) => match curr_type {
             PlaceTy::Ty(curr_type) => {
                 //TODO: Why was this commented out?
@@ -100,13 +111,17 @@ pub fn place_elem_adress<'ctx>(
                         tyctx,
                         Some(method_instance),
                     );
-                    return vec![
-                        CILOp::NewTMPLocal(curr_type.into()),
-                        CILOp::SetTMPLocal,
-                        CILOp::LoadAddresOfTMPLocal,
-                        CILOp::LdObj(field_type.clone().into()),
-                        CILOp::FreeTMPLocal,
-                    ];
+                    return CILNode::RawOps {
+                        parrent: addr_calc.into(),
+                        ops: [
+                            CILOp::NewTMPLocal(curr_type.into()),
+                            CILOp::SetTMPLocal,
+                            CILOp::LoadAddresOfTMPLocal,
+                            CILOp::LdObj(field_type.clone().into()),
+                            CILOp::FreeTMPLocal,
+                        ]
+                        .into(),
+                    };
                     //todo!("Handle DST fields. DST:")
                 }
                 let field_desc = crate::utilis::field_descrptor(
@@ -116,7 +131,10 @@ pub fn place_elem_adress<'ctx>(
                     method_instance,
                     type_cache,
                 );
-                vec![CILOp::LDFieldAdress(field_desc.into())]
+                CILNode::LDFieldAdress {
+                    addr: addr_calc.into(),
+                    field: field_desc.into(),
+                }
             }
             PlaceTy::EnumVariant(enm, var_idx) => {
                 let owner = crate::utilis::monomorphize(&method_instance, enm, tyctx);
@@ -128,8 +146,10 @@ pub fn place_elem_adress<'ctx>(
                     method_instance,
                     type_cache,
                 );
-                let ops = vec![CILOp::LDFieldAdress(field_desc.into())];
-                ops
+                CILNode::LDFieldAdress {
+                    addr: addr_calc.into(),
+                    field: field_desc.into(),
+                }
             }
         },
         PlaceElem::Downcast(symbol, _) => {
@@ -155,7 +175,10 @@ pub fn place_elem_adress<'ctx>(
                 crate::r#type::Type::DotnetType(Box::new(field_type)),
                 field_name,
             );
-            vec![CILOp::LDFieldAdress(field_desc)]
+            CILNode::LDFieldAdress {
+                addr: addr_calc.into(),
+                field: field_desc.into(),
+            }
         }
         PlaceElem::Index(index) => {
             let curr_ty = curr_type
@@ -164,10 +187,7 @@ pub fn place_elem_adress<'ctx>(
             let index = crate::place::local_get(
                 index.as_usize(),
                 tyctx.optimized_mir(method_instance.def_id()),
-            )
-            .flatten();
-            assert_eq!(index.len(), 1);
-            let index = index[0].clone();
+            );
             match curr_ty.kind() {
                 TyKind::Slice(inner) => {
                     let inner = crate::utilis::monomorphize(&method_instance, *inner, tyctx);
@@ -182,17 +202,10 @@ pub fn place_elem_adress<'ctx>(
                         Type::Ptr(Type::Void.into()),
                         "data_pointer".into(),
                     );
-
-                    let ops = vec![
-                        CILOp::LDField(desc.into()),
-                        index,
-                        CILOp::ConvUSize(false),
-                        CILOp::SizeOf(inner_type.into()),
-                        CILOp::ConvUSize(false),
-                        CILOp::Mul,
-                        CILOp::Add,
-                    ];
-                    ops
+                    add!(
+                        ld_field! {addr_calc, desc },
+                        mul!(conv_usize!(size_of!(inner_type)), conv_usize!(index))
+                    )
                 }
                 TyKind::Array(element, _length) => {
                     let element = crate::utilis::monomorphize(&method_instance, *element, tyctx);
@@ -201,22 +214,19 @@ pub fn place_elem_adress<'ctx>(
                     let array_type =
                         type_cache.type_from_cache(curr_ty, tyctx, Some(method_instance));
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
-                    let ops = vec![
-                        index,
-                        CILOp::Call(
-                            crate::cil::CallSite::new(
-                                Some(array_dotnet),
-                                "get_Address".into(),
-                                FnSig::new(
-                                    &[Type::Ptr(array_type.into()), Type::USize],
-                                    &Type::Ptr(element_type.into()),
-                                ),
-                                false,
-                            )
-                            .into(),
+
+                    call!(
+                        crate::cil::CallSite::new(
+                            Some(array_dotnet),
+                            "get_Address".into(),
+                            FnSig::new(
+                                &[Type::Ptr(array_type.into()), Type::USize],
+                                &Type::Ptr(element_type.into()),
+                            ),
+                            false,
                         ),
-                    ];
-                    ops
+                        [index]
+                    )
                 }
                 _ => {
                     rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Can't index into {curr_ty}!")}
@@ -232,71 +242,79 @@ pub fn place_elem_adress<'ctx>(
             );
             let curr_dotnet = curr_type.as_dotnet().unwrap();
             if *from_end {
-                vec![
-                    CILOp::NewTMPLocal(Box::new(curr_type.clone())),
-                    CILOp::SetTMPLocal,
-                    CILOp::LoadAddresOfTMPLocal,
-                    CILOp::LoadAddresOfTMPLocal,
-                    CILOp::LDField(FieldDescriptor::boxed(
-                        curr_dotnet.clone(),
-                        Type::Ptr(Type::Void.into()),
-                        "data_pointer".into(),
-                    )),
-                    CILOp::LdcI64(*from as i64),
-                    CILOp::ConvUSize(false),
-                    CILOp::Add,
-                    CILOp::STField(FieldDescriptor::boxed(
-                        curr_dotnet.clone(),
-                        Type::Ptr(Type::Void.into()),
-                        "data_pointer".into(),
-                    )),
-                    CILOp::LoadAddresOfTMPLocal,
-                    CILOp::LoadAddresOfTMPLocal,
-                    CILOp::LDField(FieldDescriptor::boxed(
-                        curr_dotnet.clone(),
-                        Type::USize,
-                        "metadata".into(),
-                    )),
-                    CILOp::LdcI64(*to as i64),
-                    CILOp::ConvUSize(false),
-                    CILOp::Sub,
-                    CILOp::STField(FieldDescriptor::boxed(
-                        curr_dotnet,
-                        Type::USize,
-                        "metadata".into(),
-                    )),
-                    CILOp::LoadTMPLocal,
-                    CILOp::FreeTMPLocal,
-                ]
+                CILNode::RawOps {
+                    parrent: addr_calc.into(),
+                    ops: [
+                        CILOp::NewTMPLocal(Box::new(curr_type.clone())),
+                        CILOp::SetTMPLocal,
+                        CILOp::LoadAddresOfTMPLocal,
+                        CILOp::LoadAddresOfTMPLocal,
+                        CILOp::LDField(FieldDescriptor::boxed(
+                            curr_dotnet.clone(),
+                            Type::Ptr(Type::Void.into()),
+                            "data_pointer".into(),
+                        )),
+                        CILOp::LdcI64(*from as i64),
+                        CILOp::ConvUSize(false),
+                        CILOp::Add,
+                        CILOp::STField(FieldDescriptor::boxed(
+                            curr_dotnet.clone(),
+                            Type::Ptr(Type::Void.into()),
+                            "data_pointer".into(),
+                        )),
+                        CILOp::LoadAddresOfTMPLocal,
+                        CILOp::LoadAddresOfTMPLocal,
+                        CILOp::LDField(FieldDescriptor::boxed(
+                            curr_dotnet.clone(),
+                            Type::USize,
+                            "metadata".into(),
+                        )),
+                        CILOp::LdcI64(*to as i64),
+                        CILOp::ConvUSize(false),
+                        CILOp::Sub,
+                        CILOp::STField(FieldDescriptor::boxed(
+                            curr_dotnet,
+                            Type::USize,
+                            "metadata".into(),
+                        )),
+                        CILOp::LoadTMPLocal,
+                        CILOp::FreeTMPLocal,
+                    ]
+                    .into(),
+                }
             } else {
-                vec![
-                    CILOp::NewTMPLocal(Box::new(curr_type.clone())),
-                    CILOp::SetTMPLocal,
-                    CILOp::LoadAddresOfTMPLocal,
-                    CILOp::LoadAddresOfTMPLocal,
-                    CILOp::LDField(FieldDescriptor::boxed(
-                        curr_dotnet.clone(),
-                        Type::Ptr(Type::Void.into()),
-                        "data_pointer".into(),
-                    )),
-                    CILOp::LdcI64(*from as i64),
-                    CILOp::ConvUSize(false),
-                    CILOp::Add,
-                    CILOp::STField(FieldDescriptor::boxed(
-                        curr_dotnet.clone(),
-                        Type::Ptr(Type::Void.into()),
-                        "data_pointer".into(),
-                    )),
-                    CILOp::LoadAddresOfTMPLocal,
-                    CILOp::LdcI64((to - from) as i64),
-                    CILOp::STField(FieldDescriptor::boxed(
-                        curr_dotnet,
-                        Type::USize,
-                        "metadata".into(),
-                    )),
-                    CILOp::LoadTMPLocal,
-                    CILOp::FreeTMPLocal,
-                ]
+                CILNode::RawOps {
+                    parrent: addr_calc.into(),
+                    ops: [
+                        CILOp::NewTMPLocal(Box::new(curr_type.clone())),
+                        CILOp::SetTMPLocal,
+                        CILOp::LoadAddresOfTMPLocal,
+                        CILOp::LoadAddresOfTMPLocal,
+                        CILOp::LDField(FieldDescriptor::boxed(
+                            curr_dotnet.clone(),
+                            Type::Ptr(Type::Void.into()),
+                            "data_pointer".into(),
+                        )),
+                        CILOp::LdcI64(*from as i64),
+                        CILOp::ConvUSize(false),
+                        CILOp::Add,
+                        CILOp::STField(FieldDescriptor::boxed(
+                            curr_dotnet.clone(),
+                            Type::Ptr(Type::Void.into()),
+                            "data_pointer".into(),
+                        )),
+                        CILOp::LoadAddresOfTMPLocal,
+                        CILOp::LdcI64((to - from) as i64),
+                        CILOp::STField(FieldDescriptor::boxed(
+                            curr_dotnet,
+                            Type::USize,
+                            "metadata".into(),
+                        )),
+                        CILOp::LoadTMPLocal,
+                        CILOp::FreeTMPLocal,
+                    ]
+                    .into(),
+                }
             }
         }
         PlaceElem::ConstantIndex {
@@ -328,37 +346,43 @@ pub fn place_elem_adress<'ctx>(
                     let len = FieldDescriptor::new(slice, Type::USize, "metadata".into());
 
                     if *from_end {
-                        let ops = vec![
-                            CILOp::Dup,
-                            CILOp::LDField(len.into()),
-                            CILOp::NewTMPLocal(Type::USize.into()),
-                            CILOp::SetTMPLocal,
-                            CILOp::LDField(desc.into()),
-                            CILOp::LoadTMPLocal,
-                            index,
-                            CILOp::ConvUSize(false),
-                            CILOp::Sub,
-                            CILOp::SizeOf(inner_type.into()),
-                            CILOp::ConvUSize(false),
-                            CILOp::Mul,
-                            CILOp::Add,
-                        ];
-                        // ops.extend(derf_op);
-                        ops
-                        //todo!("Can't index slice from end!");
+                        CILNode::RawOps {
+                            parrent: addr_calc.into(),
+                            ops: [
+                                CILOp::Dup,
+                                CILOp::LDField(len.into()),
+                                CILOp::NewTMPLocal(Type::USize.into()),
+                                CILOp::SetTMPLocal,
+                                CILOp::LDField(desc.into()),
+                                CILOp::LoadTMPLocal,
+                                index,
+                                CILOp::ConvUSize(false),
+                                CILOp::Sub,
+                                CILOp::SizeOf(inner_type.into()),
+                                CILOp::ConvUSize(false),
+                                CILOp::Mul,
+                                CILOp::Add,
+                            ]
+                            .into(),
+                        } // ops.extend(derf_op);
+
+                    //todo!("Can't index slice from end!");
                     } else {
-                        let ops = vec![
-                            CILOp::LDField(desc.into()),
-                            index,
-                            CILOp::ConvUSize(false),
-                            CILOp::SizeOf(inner_type.into()),
-                            CILOp::ConvUSize(false),
-                            CILOp::Mul,
-                            CILOp::Add,
-                        ];
+                        CILNode::RawOps {
+                            parrent: addr_calc.into(),
+                            ops: [
+                                CILOp::LDField(desc.into()),
+                                index,
+                                CILOp::ConvUSize(false),
+                                CILOp::SizeOf(inner_type.into()),
+                                CILOp::ConvUSize(false),
+                                CILOp::Mul,
+                                CILOp::Add,
+                            ]
+                            .into(),
+                        }
 
                         //ops.extend(derf_op);
-                        ops
                     }
                 }
                 TyKind::Array(element, length) => {
@@ -371,43 +395,51 @@ pub fn place_elem_adress<'ctx>(
                         type_cache.type_from_cache(curr_ty, tyctx, Some(method_instance));
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
                     if *from_end {
-                        vec![
-                            CILOp::LdcI64(length as u64 as i64),
-                            CILOp::ConvUSize(false),
-                            index,
-                            CILOp::ConvUSize(false),
-                            CILOp::Sub,
-                            CILOp::Call(
-                                crate::cil::CallSite::new(
-                                    Some(array_dotnet),
-                                    "get_Address".into(),
-                                    FnSig::new(
-                                        &[Type::Ptr(array_type.into()), Type::USize],
-                                        &Type::Ptr(element.into()),
-                                    ),
-                                    false,
-                                )
-                                .into(),
-                            ),
-                        ]
+                        CILNode::RawOps {
+                            parrent: addr_calc.into(),
+                            ops: [
+                                CILOp::LdcI64(length as u64 as i64),
+                                CILOp::ConvUSize(false),
+                                index,
+                                CILOp::ConvUSize(false),
+                                CILOp::Sub,
+                                CILOp::Call(
+                                    crate::cil::CallSite::new(
+                                        Some(array_dotnet),
+                                        "get_Address".into(),
+                                        FnSig::new(
+                                            &[Type::Ptr(array_type.into()), Type::USize],
+                                            &Type::Ptr(element.into()),
+                                        ),
+                                        false,
+                                    )
+                                    .into(),
+                                ),
+                            ]
+                            .into(),
+                        }
                         //todo!("Can't index array from end!");
                     } else {
-                        vec![
-                            index,
-                            CILOp::ConvUSize(false),
-                            CILOp::Call(
-                                crate::cil::CallSite::new(
-                                    Some(array_dotnet),
-                                    "get_Address".into(),
-                                    FnSig::new(
-                                        &[Type::Ptr(array_type.into()), Type::USize],
-                                        &Type::Ptr(element.into()),
-                                    ),
-                                    false,
-                                )
-                                .into(),
-                            ),
-                        ]
+                        CILNode::RawOps {
+                            parrent: addr_calc.into(),
+                            ops: [
+                                index,
+                                CILOp::ConvUSize(false),
+                                CILOp::Call(
+                                    crate::cil::CallSite::new(
+                                        Some(array_dotnet),
+                                        "get_Address".into(),
+                                        FnSig::new(
+                                            &[Type::Ptr(array_type.into()), Type::USize],
+                                            &Type::Ptr(element.into()),
+                                        ),
+                                        false,
+                                    )
+                                    .into(),
+                                ),
+                            ]
+                            .into(),
+                        }
                     }
                 }
                 _ => {

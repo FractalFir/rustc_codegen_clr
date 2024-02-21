@@ -23,7 +23,8 @@ pub fn handle_statement<'tcx>(
             variant_index,
         } => {
             let mut ops =
-                crate::place::place_adress(place, tyctx, method, method_instance, type_cache);
+                crate::place::place_adress(place, tyctx, method, method_instance, type_cache)
+                    .flatten();
             let owner_ty = place.ty(method, tyctx).ty;
             let owner_ty = crate::utilis::monomorphize(&method_instance, owner_ty, tyctx);
             let owner = type_cache.type_from_cache(owner_ty, tyctx, Some(method_instance));
