@@ -664,6 +664,7 @@ test_lib! {fn_ptr,stable}
 test_lib! {tuple,stable}
 
 run_test! {arthm,add,stable}
+run_test! {arthm,cmp,stable}
 run_test! {arthm,shift,stable}
 run_test! {arthm,not,stable}
 

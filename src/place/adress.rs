@@ -225,7 +225,7 @@ pub fn place_elem_adress<'ctx>(
                             ),
                             false,
                         ),
-                        [index]
+                        [addr_calc,index]
                     )
                 }
                 _ => {

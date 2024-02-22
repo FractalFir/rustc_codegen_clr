@@ -54,7 +54,13 @@ pub enum CILNode {
     Sub(Box<Self>, Box<Self>),
     Mul(Box<Self>, Box<Self>),
     Div(Box<Self>, Box<Self>),
+    Rem(Box<Self>, Box<Self>),
+    RemUn(Box<Self>, Box<Self>),
     Or(Box<Self>, Box<Self>),
+    XOr(Box<Self>, Box<Self>),
+    Shr(Box<Self>, Box<Self>),
+    Shl(Box<Self>, Box<Self>),
+    ShrUn(Box<Self>, Box<Self>),
     // TODO: Remove this
     RawOps {
         parrent: Box<CILNode>,
@@ -97,7 +103,7 @@ pub enum CILNode {
 }
 impl CILNode {
     pub fn flatten(&self) -> Vec<CILOp> {
-        match self {
+        let mut ops = match self {
             Self::LDLoc(local) => vec![CILOp::LDLoc(*local)],
             Self::LDArg(local) => vec![CILOp::LDArg(*local)],
             Self::SizeOf(tpe) => vec![CILOp::SizeOf(tpe.clone())],
@@ -155,16 +161,52 @@ impl CILNode {
                 res.push(CILOp::And);
                 res
             }
+            Self::Shr(a, b) => {
+                let mut res = a.flatten();
+                res.extend(b.flatten());
+                res.push(CILOp::Shr);
+                res
+            }
+            Self::Shl(a, b) => {
+                let mut res = a.flatten();
+                res.extend(b.flatten());
+                res.push(CILOp::Shl);
+                res
+            }
+            Self::ShrUn(a, b) => {
+                let mut res = a.flatten();
+                res.extend(b.flatten());
+                res.push(CILOp::ShrUn);
+                res
+            }
             Self::Or(a, b) => {
                 let mut res = a.flatten();
                 res.extend(b.flatten());
                 res.push(CILOp::Or);
                 res
             }
+            Self::XOr(a, b) => {
+                let mut res = a.flatten();
+                res.extend(b.flatten());
+                res.push(CILOp::XOr);
+                res
+            }
             Self::Div(a, b) => {
                 let mut res = a.flatten();
                 res.extend(b.flatten());
                 res.push(CILOp::Div);
+                res
+            }
+            Self::Rem(a, b) => {
+                let mut res = a.flatten();
+                res.extend(b.flatten());
+                res.push(CILOp::Rem);
+                res
+            }
+            Self::RemUn(a, b) => {
+                let mut res = a.flatten();
+                res.extend(b.flatten());
+                res.push(CILOp::RemUn);
                 res
             }
             Self::Sub(a, b) => {
@@ -229,7 +271,13 @@ impl CILNode {
             Self::LoadGlobalAllocPtr { alloc_id } => vec![CILOp::LoadGlobalAllocPtr {
                 alloc_id: *alloc_id,
             }],
+        };
+        {
+            ops.push(CILOp::Pop);
+            crate::utilis::check_debugable(&ops, self, false);
+            ops.pop();
         }
+        ops
     }
 }
 #[macro_export]
@@ -245,15 +293,51 @@ macro_rules! and {
     };
 }
 #[macro_export]
+macro_rules! shr {
+    ($a:expr,$b:expr) => {
+        CILNode::Shr($a.into(), $b.into())
+    };
+}
+#[macro_export]
+macro_rules! shl {
+    ($a:expr,$b:expr) => {
+        CILNode::Shl($a.into(), $b.into())
+    };
+}
+#[macro_export]
+macro_rules! shr_un {
+    ($a:expr,$b:expr) => {
+        CILNode::ShrUn($a.into(), $b.into())
+    };
+}
+#[macro_export]
 macro_rules! or {
     ($a:expr,$b:expr) => {
         CILNode::Or($a.into(), $b.into())
     };
 }
 #[macro_export]
+macro_rules! xor {
+    ($a:expr,$b:expr) => {
+        CILNode::XOr($a.into(), $b.into())
+    };
+}
+#[macro_export]
 macro_rules! div {
     ($a:expr,$b:expr) => {
         CILNode::Div($a.into(), $b.into())
+    };
+}
+#[macro_export]
+macro_rules! rem {
+    ($a:expr,$b:expr) => {
+        CILNode::Rem($a.into(), $b.into())
+    };
+}
+#[macro_export]
+macro_rules! rem_un {
+    ($a:expr,$b:expr) => {
+        CILNode::RemUn($a.into(), $b.into())
     };
 }
 #[macro_export]

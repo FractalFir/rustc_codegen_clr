@@ -464,7 +464,7 @@ fn handle_switch(ty: Ty, discr: CILNode, switch: &SwitchTargets) -> Vec<CILTree>
         trees.push(
             CILRoot::BTrue {
                 target: target.into(),
-                ops: crate::binop::eq_unchecked(ty, discr.clone(), const_val),
+                ops: crate::binop::cmp::eq_unchecked(ty, discr.clone(), const_val),
             }
             .into(),
         );
