@@ -7,7 +7,7 @@ use crate::{
 };
 use rustc_middle::{
     mir::{Body, Operand, Place},
-    ty::{Instance, IntTy, ParamEnv, Ty, TyCtxt, TyKind, UintTy},
+    ty::{Instance, IntTy, Ty, TyCtxt, TyKind, UintTy},
 };
 use rustc_span::source_map::Spanned;
 use tycache::TyCache;

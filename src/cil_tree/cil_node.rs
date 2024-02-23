@@ -101,8 +101,8 @@ pub enum CILNode {
     LtUn(Box<Self>, Box<Self>),
     Gt(Box<Self>, Box<Self>),
     GtUn(Box<Self>, Box<Self>),
-    TemporaryLocal(Box<(Type,Box<[CILRoot]>,Self)>),
-    SubTrees(Box<[CILRoot]>,Box<Self>),
+    TemporaryLocal(Box<(Type, Box<[CILRoot]>, Self)>),
+    SubTrees(Box<[CILRoot]>, Box<Self>),
     LoadAddresOfTMPLocal,
     LoadTMPLocal,
     LDFtn(Box<CallSite>),
@@ -110,18 +110,18 @@ pub enum CILNode {
 impl CILNode {
     pub fn flatten(&self) -> Vec<CILOp> {
         let mut ops = match self {
-            Self::SubTrees(trees,root)=>{
-                let mut flattened:Vec<_> = trees.iter().flat_map(|tree|tree.flatten()).collect();
+            Self::SubTrees(trees, root) => {
+                let mut flattened: Vec<_> = trees.iter().flat_map(|tree| tree.flatten()).collect();
                 flattened.extend(root.flatten());
                 flattened
             }
             Self::LoadTMPLocal => vec![CILOp::LoadTMPLocal],
             Self::LoadAddresOfTMPLocal => vec![CILOp::LoadAddresOfTMPLocal],
-            Self::LDFtn(site)=>vec![CILOp::LDFtn(site.clone().into())],
-            Self::TemporaryLocal(tuple)=>{
-                let (tpe,branches,tree) = *tuple.clone();
+            Self::LDFtn(site) => vec![CILOp::LDFtn(site.clone())],
+            Self::TemporaryLocal(tuple) => {
+                let (tpe, branches, tree) = *tuple.clone();
                 let mut res = vec![CILOp::NewTMPLocal(tpe.into())];
-                for branch in branches.iter(){
+                for branch in branches.iter() {
                     res.extend(branch.flatten());
                 }
                 res.extend(tree.flatten());
@@ -167,10 +167,10 @@ impl CILNode {
             Self::Not(inner) => append_vec(inner.flatten(), CILOp::Not),
 
             Self::LDFieldAdress { addr, field } => {
-                append_vec(addr.flatten(), CILOp::LDFieldAdress(field.clone().into()))
+                append_vec(addr.flatten(), CILOp::LDFieldAdress(field.clone()))
             }
             Self::LDField { addr, field } => {
-                append_vec(addr.flatten(), CILOp::LDField(field.clone().into()))
+                append_vec(addr.flatten(), CILOp::LDField(field.clone()))
             }
             Self::LDIndF32 { ptr } => append_vec(ptr.flatten(), CILOp::LDIndF32),
             Self::LDIndF64 { ptr } => append_vec(ptr.flatten(), CILOp::LDIndF64),
@@ -283,7 +283,7 @@ impl CILNode {
             }
             Self::RawOpsParrentless { ops } => ops.clone().into(),
             Self::Call { args, site } => {
-                let mut res: Vec<CILOp> = args.iter().map(|arg| arg.flatten()).flatten().collect();
+                let mut res: Vec<CILOp> = args.iter().flat_map(|arg| arg.flatten()).collect();
                 res.push(CILOp::Call(site.clone()));
                 res
             }

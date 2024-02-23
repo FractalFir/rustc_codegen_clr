@@ -8,7 +8,7 @@ pub struct RustSourceFile {
     is_removed: Vec<bool>,
 }
 impl RustSourceFile {
-    pub fn from_file(mut src: impl Read + BufRead) -> std::io::Result<Self> {
+    pub fn from_file(src: impl Read + BufRead) -> std::io::Result<Self> {
         let mut lines = Vec::new();
         let mut is_removed = Vec::new();
         for line in src.lines() {
@@ -214,9 +214,7 @@ fn main() {
                 "-Z",
                 &format!(
                     "codegen-backend={}",
-                    rustc_codegen_clr::compile_test::absolute_backend_path()
-                        .display()
-                        .to_string()
+                    rustc_codegen_clr::compile_test::absolute_backend_path().display()
                 ),
                 "-C",
                 &format!(
@@ -240,7 +238,7 @@ fn main() {
                     .expect("rustc error contained non-UTF8 characters.");
                 //panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
             }
-            let mut dotnet = std::process::Command::new("timeout")
+            let dotnet = std::process::Command::new("timeout")
                 .arg("-v")
                 .arg("5")
                 .arg("dotnet")

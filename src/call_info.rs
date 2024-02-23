@@ -1,4 +1,3 @@
-use crate::r#type::Type;
 use crate::{codegen_error::CodegenError, function_sig::FnSig, r#type::TyCache};
 use rustc_middle::ty::{Instance, List, ParamEnv, ParamEnvAnd, TyCtxt, TyKind};
 use rustc_target::abi::call::Conv;
@@ -69,7 +68,6 @@ impl CallInfo {
             let mut inputs = sig.inputs().to_vec();
             inputs.extend(remaining);
             sig.set_inputs(inputs);
-        } else {
         }
         let has_track_caller = false;
         Ok(Self {

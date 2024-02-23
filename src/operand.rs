@@ -1,4 +1,3 @@
-use crate::cil::CILOp;
 use crate::cil_tree::cil_node::CILNode;
 
 use rustc_middle::mir::Operand;

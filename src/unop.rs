@@ -5,7 +5,7 @@ use crate::r#type::{DotnetTypeRef, Type};
 use rustc_middle::mir::{Operand, UnOp};
 use rustc_middle::ty::{Instance, IntTy, TyCtxt, TyKind, UintTy};
 
-use crate::cil::{CILOp, CallSite};
+use crate::cil::CallSite;
 pub fn unop<'ctx>(
     unnop: UnOp,
     operand: &Operand<'ctx>,

@@ -1,7 +1,7 @@
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::ty::{
-    AdtDef, AdtKind, Const, ConstKind, EarlyBinder, FloatTy, GenericArg, Instance, List, ParamEnv,
-    SymbolName, Ty, TyCtxt, TyKind, TypeFoldable,
+    AdtDef, Const, ConstKind, EarlyBinder, GenericArg, Instance, List, ParamEnv, SymbolName, Ty,
+    TyCtxt, TyKind, TypeFoldable,
 };
 pub const CTOR_FN_NAME: &str = "rustc_clr_interop_managed_ctor";
 pub const MANAGED_CALL_FN_NAME: &str = "rustc_clr_interop_managed_call";
@@ -10,7 +10,6 @@ pub fn is_function_magic(name: &str) -> bool {
     name.contains(CTOR_FN_NAME) || name.contains(MANAGED_CALL_FN_NAME)
 }
 
-use crate::r#type::pointer_to_is_fat;
 use crate::{
     cil::{CILOp, FieldDescriptor},
     r#type::TyCache,
@@ -291,7 +290,6 @@ pub fn compiletime_sizeof<'tyctx>(
     tyctx: TyCtxt<'tyctx>,
     method_instance: Instance<'tyctx>,
 ) -> usize {
-    use rustc_middle::ty::{IntTy, UintTy};
     let layout = tyctx
         .layout_of(rustc_middle::ty::ParamEnvAnd {
             param_env: ParamEnv::reveal_all(),

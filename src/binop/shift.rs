@@ -1,10 +1,10 @@
-use crate::cil::{CILOp, CallSite};
+use crate::cil::CallSite;
 use crate::cil_tree::cil_node::CILNode;
 use crate::function_sig::FnSig;
 use crate::r#type::{DotnetTypeRef, TyCache, Type};
 use crate::utilis::compiletime_sizeof;
 use crate::{call, conv_u32, ldc_u32, rem_un, shl, shr, shr_un};
-use rustc_middle::mir::{BinOp, Operand};
+
 use rustc_middle::ty::{Instance, IntTy, Ty, TyCtxt, TyKind, UintTy};
 pub fn shr_unchecked<'tyctx>(
     value_type: Ty<'tyctx>,

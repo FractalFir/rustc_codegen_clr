@@ -1,4 +1,4 @@
-use std::{path::PathBuf, process::Command};
+use std::path::PathBuf;
 
 #[cfg(test)]
 fn peverify(file_path: &str, test_dir: &str) {
@@ -119,7 +119,6 @@ macro_rules! compare_tests {
         mod $test_name {
             mod $is_stable {
                 #[cfg(test)]
- 
                 #[cfg(test)]
                 static COMPILE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
                 #[test]
@@ -591,7 +590,7 @@ pub fn absolute_backend_path() -> PathBuf {
 }
 #[cfg(target_family = "unix")]
 #[cfg(test)]
-fn with_stack_size(cmd: &mut Command, limit_kb: u64) {
+fn with_stack_size(cmd: &mut std::process::Command, limit_kb: u64) {
     use ::libc::{rlimit, setrlimit, RLIMIT_STACK};
     use std::os::unix::process::CommandExt;
 

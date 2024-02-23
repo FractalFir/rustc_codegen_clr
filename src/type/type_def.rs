@@ -235,7 +235,7 @@ pub fn get_array_type(element_count: usize, element: Type) -> TypeDef {
     }
     let mut def = TypeDef {
         access: AccessModifer::Public,
-        name: name,
+        name,
         inner_types: vec![],
         fields,
         functions: vec![],

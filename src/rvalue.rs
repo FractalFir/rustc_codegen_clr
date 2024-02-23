@@ -1,10 +1,10 @@
 use crate::cil::{CILOp, CallSite, FieldDescriptor};
-use crate::cil_tree::cil_node::{CILNode, };
+use crate::cil_tree::cil_node::CILNode;
 use crate::cil_tree::cil_root::CILRoot;
-use crate::place::deref_op;
-use crate::{call, conv_u64, conv_usize, ld_field, ldc_u32, ldc_u64, size_of};
 use crate::function_sig::FnSig;
 use crate::operand::handle_operand;
+use crate::place::deref_op;
+use crate::{conv_usize, ld_field, ldc_u32, ldc_u64, size_of};
 
 use crate::r#type::{pointer_to_is_fat, TyCache, Type};
 use rustc_middle::{
@@ -20,9 +20,7 @@ pub fn handle_rvalue<'tcx>(
     tycache: &mut TyCache,
 ) -> Vec<CILOp> {
     match rvalue {
-        Rvalue::Use(operand) => {
-            handle_operand(operand, tyctx, method, method_instance, tycache)
-        }
+        Rvalue::Use(operand) => handle_operand(operand, tyctx, method, method_instance, tycache),
         Rvalue::CopyForDeref(place) => {
             crate::place::place_get(place, tyctx, method, method_instance, tycache)
         }
@@ -111,7 +109,7 @@ pub fn handle_rvalue<'tcx>(
                             method_instance,
                             tycache,
                         );
-                        parrent = ld_field!(parrent,field_descriptor);
+                        parrent = ld_field!(parrent, field_descriptor);
                         inner
                     } else {
                         panic!("Non ptr type:{source:?}")
@@ -124,39 +122,43 @@ pub fn handle_rvalue<'tcx>(
             } else {
                 panic!("Non array type. source:{source:?} target:{target:?}")
             };
-        
-            CILNode::RawOps { parrent: parrent.into(), ops: [
-                CILOp::NewTMPLocal(source_type.clone().into()),
-                CILOp::SetTMPLocal,
-                // a:*[T;n] = stack_top;
-                CILOp::NewTMPLocal(target_type.into()),
-                // b:Slice = unint();
-                CILOp::LoadAddresOfTMPLocal,
-                CILOp::LoadUnderTMPLocal(1),
-                CILOp::STField(
-                    FieldDescriptor::new(
-                        target_dotnet.clone(),
-                        Type::Ptr(Type::Void.into()),
-                        "data_pointer".into(),
-                    )
-                    .into(),
-                ),
-                // b.data_pointer = (a as *mut RustVoid);
-                CILOp::LoadAddresOfTMPLocal,
-                CILOp::LdcI64(length as u64 as i64),
-                CILOp::ConvUSize(false),
-                CILOp::STField(
-                    FieldDescriptor::new(target_dotnet, Type::USize, "metadata".into()).into(),
-                ),
-                // b.metadata = (length_i64 as usize);
-                CILOp::LoadTMPLocal,
-                // stack_top = b;
-                CILOp::FreeTMPLocal,
-                CILOp::FreeTMPLocal,
-            ].into() }
+
+            CILNode::RawOps {
+                parrent: parrent.into(),
+                ops: [
+                    CILOp::NewTMPLocal(source_type.clone().into()),
+                    CILOp::SetTMPLocal,
+                    // a:*[T;n] = stack_top;
+                    CILOp::NewTMPLocal(target_type.into()),
+                    // b:Slice = unint();
+                    CILOp::LoadAddresOfTMPLocal,
+                    CILOp::LoadUnderTMPLocal(1),
+                    CILOp::STField(
+                        FieldDescriptor::new(
+                            target_dotnet.clone(),
+                            Type::Ptr(Type::Void.into()),
+                            "data_pointer".into(),
+                        )
+                        .into(),
+                    ),
+                    // b.data_pointer = (a as *mut RustVoid);
+                    CILOp::LoadAddresOfTMPLocal,
+                    CILOp::LdcI64(length as u64 as i64),
+                    CILOp::ConvUSize(false),
+                    CILOp::STField(
+                        FieldDescriptor::new(target_dotnet, Type::USize, "metadata".into()).into(),
+                    ),
+                    // b.metadata = (length_i64 as usize);
+                    CILOp::LoadTMPLocal,
+                    // stack_top = b;
+                    CILOp::FreeTMPLocal,
+                    CILOp::FreeTMPLocal,
+                ]
+                .into(),
+            }
             //todo!("Array to slice {res:?}!")
             //
-        },
+        }
         Rvalue::BinaryOp(binop, operands) => crate::binop::binop_unchecked(
             *binop,
             &operands.0,
@@ -165,18 +167,19 @@ pub fn handle_rvalue<'tcx>(
             method,
             method_instance,
             tycache,
-        )
-        ,
-        Rvalue::CheckedBinaryOp(binop, operands) => CILNode::RawOpsParrentless{ops:crate::checked_binop::binop_checked(
-            *binop,
-            &operands.0,
-            &operands.1,
-            tyctx,
-            method,
-            method_instance,
-            tycache,
-        ).into(),
-            },
+        ),
+        Rvalue::CheckedBinaryOp(binop, operands) => CILNode::RawOpsParrentless {
+            ops: crate::checked_binop::binop_checked(
+                *binop,
+                &operands.0,
+                &operands.1,
+                tyctx,
+                method,
+                method_instance,
+                tycache,
+            )
+            .into(),
+        },
         Rvalue::UnaryOp(binop, operand) => {
             crate::unop::unop(*binop, operand, tyctx, method, method_instance, tycache)
         }
@@ -191,7 +194,6 @@ pub fn handle_rvalue<'tcx>(
                 target,
                 handle_operand(operand, tyctx, method, method_instance, tycache),
             )
-            
         }
         Rvalue::Cast(CastKind::FloatToInt, operand, target) => {
             let target = crate::utilis::monomorphize(&method_instance, *target, tyctx);
@@ -205,7 +207,6 @@ pub fn handle_rvalue<'tcx>(
                 target,
                 handle_operand(operand, tyctx, method, method_instance, tycache),
             )
-            
         }
         Rvalue::Cast(CastKind::IntToFloat, operand, target) => {
             let target = crate::utilis::monomorphize(&method_instance, *target, tyctx);
@@ -213,7 +214,11 @@ pub fn handle_rvalue<'tcx>(
             let src = operand.ty(&method.local_decls, tyctx);
             let src = crate::utilis::monomorphize(&method_instance, src, tyctx);
             let src = tycache.type_from_cache(src, tyctx, Some(method_instance));
-            crate::casts::int_to_float(src, target,handle_operand(operand, tyctx, method, method_instance, tycache))
+            crate::casts::int_to_float(
+                src,
+                target,
+                handle_operand(operand, tyctx, method, method_instance, tycache),
+            )
         }
         Rvalue::NullaryOp(op, ty) => match op {
             NullOp::SizeOf => {
@@ -254,46 +259,58 @@ pub fn handle_rvalue<'tcx>(
                     Type::ISize | Type::USize | Type::Ptr(_),
                     Type::ISize | Type::USize | Type::Ptr(_),
                 ) => handle_operand(operand, tyctx, method, method_instance, tycache),
-                (Type::U16, Type::DotnetChar) => 
-                    handle_operand(operand, tyctx, method, method_instance, tycache),
-                
-                (_, Type::U64) => {
+                (Type::U16, Type::DotnetChar) => {
+                    handle_operand(operand, tyctx, method, method_instance, tycache)
+                }
 
-                   CILNode::RawOps { parrent: handle_operand(operand, tyctx, method, method_instance, tycache).into(), ops:[
+                (_, Type::U64) => CILNode::RawOps {
+                    parrent: handle_operand(operand, tyctx, method, method_instance, tycache)
+                        .into(),
+                    ops: [
                         CILOp::NewTMPLocal(Type::Ptr(src.into()).into()),
                         CILOp::SetTMPLocal,
                         CILOp::LoadAddresOfTMPLocal,
                         CILOp::LDIndI64,
                         CILOp::FreeTMPLocal,
-                    ].into()}
-                }
-                (_, Type::U32) => {
-                    CILNode::RawOps { parrent: handle_operand(operand, tyctx, method, method_instance, tycache).into(), ops:[
+                    ]
+                    .into(),
+                },
+                (_, Type::U32) => CILNode::RawOps {
+                    parrent: handle_operand(operand, tyctx, method, method_instance, tycache)
+                        .into(),
+                    ops: [
                         CILOp::NewTMPLocal(Type::Ptr(src.into()).into()),
                         CILOp::SetTMPLocal,
                         CILOp::LoadAddresOfTMPLocal,
                         CILOp::LDIndI32,
                         CILOp::FreeTMPLocal,
-                    ].into()}
-                }
-                (_, Type::F32) => {
-                    CILNode::RawOps { parrent: handle_operand(operand, tyctx, method, method_instance, tycache).into(), ops:[
+                    ]
+                    .into(),
+                },
+                (_, Type::F32) => CILNode::RawOps {
+                    parrent: handle_operand(operand, tyctx, method, method_instance, tycache)
+                        .into(),
+                    ops: [
                         CILOp::NewTMPLocal(Type::Ptr(src.into()).into()),
                         CILOp::SetTMPLocal,
                         CILOp::LoadAddresOfTMPLocal,
                         CILOp::LDIndF32,
                         CILOp::FreeTMPLocal,
-                    ].into()}
-                }
-                (_, Type::F64) => {
-                    CILNode::RawOps { parrent: handle_operand(operand, tyctx, method, method_instance, tycache).into(), ops:[
+                    ]
+                    .into(),
+                },
+                (_, Type::F64) => CILNode::RawOps {
+                    parrent: handle_operand(operand, tyctx, method, method_instance, tycache)
+                        .into(),
+                    ops: [
                         CILOp::NewTMPLocal(Type::Ptr(src.into()).into()),
                         CILOp::SetTMPLocal,
                         CILOp::LoadAddresOfTMPLocal,
                         CILOp::LDIndF64,
                         CILOp::FreeTMPLocal,
-                    ].into()}
-                }
+                    ]
+                    .into(),
+                },
                 (_, _) => {
                     let mut res = Vec::new();
                     let operand = handle_operand(operand, tyctx, method, method_instance, tycache);
@@ -311,10 +328,9 @@ pub fn handle_rvalue<'tcx>(
                             ops: res.into(),
                         },
                     )
-                  
                 }
             }
-        },
+        }
         Rvalue::ShallowInitBox(operand, dst) => {
             let dst = crate::utilis::monomorphize(&method_instance, *dst, tyctx);
             let boxed_dst = Ty::new_box(tyctx, dst);
@@ -323,15 +339,23 @@ pub fn handle_rvalue<'tcx>(
             let src = crate::utilis::monomorphize(&method_instance, src, tyctx);
             let src = tycache.type_from_cache(src, tyctx, Some(method_instance));
 
-            let mut parrent = handle_operand(operand, tyctx, method, method_instance, tycache);
-            deref_op(boxed_dst.into(), tyctx, &method_instance, tycache,CILNode::RawOps { parrent: parrent.into(), ops: [
-                CILOp::NewTMPLocal(
-                    crate::r#type::Type::Ptr(src.into()).into(),
-                ),
-                CILOp::SetTMPLocal,
-                CILOp::LoadAddresOfTMPLocal,
-                CILOp::FreeTMPLocal
-            ].into()})
+            let parrent = handle_operand(operand, tyctx, method, method_instance, tycache);
+            deref_op(
+                boxed_dst.into(),
+                tyctx,
+                &method_instance,
+                tycache,
+                CILNode::RawOps {
+                    parrent: parrent.into(),
+                    ops: [
+                        CILOp::NewTMPLocal(crate::r#type::Type::Ptr(src.into()).into()),
+                        CILOp::SetTMPLocal,
+                        CILOp::LoadAddresOfTMPLocal,
+                        CILOp::FreeTMPLocal,
+                    ]
+                    .into(),
+                },
+            )
         }
         Rvalue::Cast(CastKind::PointerFromExposedAddress, operand, _) => {
             //FIXME: the documentation of this cast(https://doc.rust-lang.org/nightly/std/ptr/fn.from_exposed_addr.html) is a bit confusing,
@@ -396,8 +420,7 @@ pub fn handle_rvalue<'tcx>(
         }
         //Rvalue::Cast(kind, _operand, _) => todo!("Unhandled cast kind {kind:?}, rvalue:{rvalue:?}"),
         Rvalue::Discriminant(place) => {
-            let mut addr =
-                crate::place::place_adress(place, tyctx, method, method_instance, tycache);
+            let addr = crate::place::place_adress(place, tyctx, method, method_instance, tycache);
             let owner_ty = place.ty(method, tyctx).ty;
             let owner_ty = crate::utilis::monomorphize(&method_instance, owner_ty, tyctx);
             let owner = tycache.type_from_cache(owner_ty, tyctx, Some(method_instance));
@@ -431,7 +454,6 @@ pub fn handle_rvalue<'tcx>(
                     addr: addr.into(),
                 },
             )
-            
         }
         Rvalue::Len(operand) => {
             let ty = operand.ty(method, tyctx);
@@ -446,11 +468,19 @@ pub fn handle_rvalue<'tcx>(
                     let descriptor =
                         FieldDescriptor::new(slice_tpe, Type::USize, "metadata".into());
 
-                    ld_field!( crate::place::place_adress(operand, tyctx, method, method_instance, tycache),descriptor)
+                    ld_field!(
+                        crate::place::place_adress(
+                            operand,
+                            tyctx,
+                            method,
+                            method_instance,
+                            tycache
+                        ),
+                        descriptor
+                    )
                 }
                 _ => todo!("Get length of type {ty:?}"),
             }
-
         }
         Rvalue::Repeat(operand, times) => {
             let times = crate::utilis::monomorphize(&method_instance, *times, tyctx);
@@ -467,30 +497,35 @@ pub fn handle_rvalue<'tcx>(
                 tyctx,
                 Some(method_instance),
             );
-            let operand =
-                handle_operand(operand, tyctx, method, method_instance, tycache);
+            let operand = handle_operand(operand, tyctx, method, method_instance, tycache);
             let mut branches = Vec::new();
             for idx in 0..times {
-                branches.push(CILRoot::Call{site:CallSite::new(
-                    Some(array_dotnet.clone()),
-                    "set_Item".into(),
-                    FnSig::new(
-                        &[
-                            Type::Ptr(array.clone().into()),
-                            Type::USize,
-                            operand_type.clone(),
-                        ],
-                        &Type::Void,
+                branches.push(CILRoot::Call {
+                    site: CallSite::new(
+                        Some(array_dotnet.clone()),
+                        "set_Item".into(),
+                        FnSig::new(
+                            &[
+                                Type::Ptr(array.clone().into()),
+                                Type::USize,
+                                operand_type.clone(),
+                            ],
+                            &Type::Void,
+                        ),
+                        false,
                     ),
-                    false,
-                ),
-                args:[CILNode::LoadAddresOfTMPLocal,conv_usize!(ldc_u64!(idx)),operand.clone()].into()
+                    args: [
+                        CILNode::LoadAddresOfTMPLocal,
+                        conv_usize!(ldc_u64!(idx)),
+                        operand.clone(),
+                    ]
+                    .into(),
                 });
             }
-            let branches:Box<_> = branches.into();
-            CILNode::TemporaryLocal(Box::new((array.clone().into(),branches,CILNode::LoadTMPLocal)))
-            
+            let branches: Box<_> = branches.into();
+            CILNode::TemporaryLocal(Box::new((array.clone(), branches, CILNode::LoadTMPLocal)))
         }
         _ => rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Unhandled RValue {rvalue:?}")},
-    }.flatten()
+    }
+    .flatten()
 }

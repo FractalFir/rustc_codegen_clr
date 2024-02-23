@@ -275,7 +275,7 @@ pub fn place_elem_body<'ctx>(
                                 "get_Item".into(),
                                 FnSig::new(
                                     &[Type::Ptr(array_type.into()), Type::USize],
-                                    &element_type.into(),
+                                    &element_type,
                                 ),
                                 false,
                             )
@@ -353,10 +353,7 @@ pub fn place_elem_body<'ctx>(
                             site: crate::cil::CallSite::new(
                                 Some(array_dotnet),
                                 "get_Item".into(),
-                                FnSig::new(
-                                    &[Type::Ptr(array_type.into()), Type::USize],
-                                    &element.into(),
-                                ),
+                                FnSig::new(&[Type::Ptr(array_type.into()), Type::USize], &element),
                                 false,
                             )
                             .into(),

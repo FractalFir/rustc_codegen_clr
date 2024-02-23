@@ -1,15 +1,11 @@
-use rustc_middle::mir::{BinOp, Operand};
 use rustc_middle::ty::{Instance, IntTy, Ty, TyCtxt, TyKind, UintTy};
 
-use crate::cil::{CILOp, CallSite};
+use crate::cil::CallSite;
 use crate::cil_tree::cil_node::CILNode;
 use crate::function_sig::FnSig;
 use crate::r#type::{DotnetTypeRef, TyCache, Type};
-use crate::utilis::compiletime_sizeof;
-use crate::{
-    add, and, call, conv_i8, conv_u16, conv_u32, conv_u64, conv_u8, conv_usize, div, eq, gt, gt_un,
-    ldc_i32, lt, lt_un, mul, or, size_of, sub, xor,
-};
+
+use crate::{and, call, or, xor};
 pub fn bit_and_unchecked<'tyctx>(
     ty_a: Ty<'tyctx>,
     ty_b: Ty<'tyctx>,

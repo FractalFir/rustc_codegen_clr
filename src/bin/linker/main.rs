@@ -1,8 +1,6 @@
 #![deny(unused_must_use)]
 //use assembly::Assembly;
-use rustc_codegen_clr::{
-    assembly::Assembly, config::USE_CECIL_EXPORTER, method::MethodType, r#type::Type, *,
-};
+use rustc_codegen_clr::{assembly::Assembly, method::MethodType, r#type::Type, *};
 mod cmd;
 mod export;
 mod load;
@@ -161,10 +159,7 @@ fn main() {
     let args = &args[1..];
     // Input\/output files
     let to_link: Vec<_> = args.iter().filter(|arg| arg.contains(".bc")).collect();
-    let ar_to_link: Vec<_> = args
-        .iter()
-        .filter(|arg| arg.contains(".rlib").into())
-        .collect();
+    let ar_to_link: Vec<_> = args.iter().filter(|arg| arg.contains(".rlib")).collect();
     let output = &args[1 + args
         .iter()
         .position(|arg| arg == "-o")
@@ -208,7 +203,7 @@ fn main() {
             .env("PATH", path)
             .output()
             .unwrap();
-        if out.stderr.len() != 0 {
+        if !out.stderr.is_empty() {
             panic!("{}", String::from_utf8(out.stderr).unwrap());
         }
     }

@@ -1,5 +1,12 @@
 use crate::{
-    call, cil::{CILOp, CallSite}, cil_tree::cil_node::CILNode, conv_f32, conv_f64, conv_f64_un, conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8, conv_usize, function_sig::FnSig, ldc_i32, ldc_i64, ldc_u32, ldc_u64, r#type::{DotnetTypeRef, Type}
+    call,
+    cil::CallSite,
+    cil_tree::cil_node::CILNode,
+    conv_f32, conv_f64, conv_f64_un, conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16,
+    conv_u32, conv_u64, conv_u8, conv_usize,
+    function_sig::FnSig,
+    ldc_i64, ldc_u64,
+    r#type::{DotnetTypeRef, Type},
 };
 /// Casts from intiger type `src` to target `target`
 pub fn int_to_int(src: Type, target: Type, operand: CILNode) -> CILNode {
@@ -225,23 +232,28 @@ fn to_int(target: Type, operand: CILNode) -> CILNode {
     }
 }
 /// Returns CIL ops required to casts from intiger type `src` to `target`
-pub fn int_to_float(src: Type, target: Type,parrent:CILNode) -> CILNode {
+pub fn int_to_float(src: Type, target: Type, parrent: CILNode) -> CILNode {
     if matches!(src, Type::I128) {
-        call!(CallSite::boxed(
-            DotnetTypeRef::int_128().into(),
-            "op_Explicit".into(),
-            FnSig::new(&[src], &target),
-            true,
-        ),[parrent])
+        call!(
+            CallSite::boxed(
+                DotnetTypeRef::int_128().into(),
+                "op_Explicit".into(),
+                FnSig::new(&[src], &target),
+                true,
+            ),
+            [parrent]
+        )
         //todo!("Casting from 128 bit intiegers is not supported!")
     } else if matches!(src, Type::U128) {
-        call!(CallSite::boxed(
-            DotnetTypeRef::uint_128().into(),
-            "op_Explicit".into(),
-            FnSig::new(&[src], &target),
-            true,
-        ),[parrent])
-       
+        call!(
+            CallSite::boxed(
+                DotnetTypeRef::uint_128().into(),
+                "op_Explicit".into(),
+                FnSig::new(&[src], &target),
+                true,
+            ),
+            [parrent]
+        )
     } else if matches!(target, Type::I128 | Type::U128) {
         todo!("Casting to 128 bit intiegers is not supported!")
     } else {

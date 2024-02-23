@@ -130,7 +130,7 @@ use rustc_codegen_ssa::{
     traits::CodegenBackend,
     CodegenResults, CompiledModule, CrateInfo, ModuleKind,
 };
-use rustc_data_structures::fx::FxHasher;
+
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::{
@@ -142,7 +142,7 @@ use rustc_session::{
     Session,
 };
 use rustc_span::ErrorGuaranteed;
-use std::hash::BuildHasherDefault;
+
 use std::{
     any::Any,
     path::{Path, PathBuf},

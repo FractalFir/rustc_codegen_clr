@@ -148,8 +148,8 @@ fn create_const_adt_from_bytes<'ctx>(
                 }
                 8 => {
                     //curr_offset = 1;
-                    let variant = u64::from_ne_bytes(bytes[0..8].try_into().unwrap());
-                    variant
+
+                    u64::from_ne_bytes(bytes[0..8].try_into().unwrap())
                 }
                 _ => todo!("Can't yet support enums with {variant_size} wide tags."),
             };
@@ -777,7 +777,7 @@ fn load_const_scalar<'ctx>(
                             alloc_id: alloc_id.alloc_id().0.into(),
                         }
                         .into(),
-                        CILNode::ConvUSize(CILNode::LdcU64(offset.bytes() as u64).into()).into(),
+                        CILNode::ConvUSize(CILNode::LdcU64(offset.bytes()).into()).into(),
                     );
                 }
                 _ => todo!("Unhandled global alloc {global_alloc:?}"),
@@ -808,7 +808,7 @@ fn load_const_scalar<'ctx>(
             } else {
                 //asssert!(elements.len() == 1, "Mulit element const tuples not supported yet!");
                 let tuple_dotnet = tpe.clone().as_dotnet().unwrap();
-                let mut res = vec![CILOp::NewTMPLocal(tpe.into()).into()];
+                let mut res = vec![CILOp::NewTMPLocal(tpe.into())];
                 let mut curr_offset = 0;
                 for (idx, element) in elements.iter().enumerate() {
                     res.push(CILOp::LoadAddresOfTMPLocal);

@@ -83,7 +83,7 @@ impl AssemblyExporter for ILASMExporter {
 
         let cil_path = final_path.with_extension("il");
         let config = final_path.with_extension("runtimeconfig.json");
-        let mut config = std::fs::File::create(&config).unwrap();
+        let mut config = std::fs::File::create(config).unwrap();
         config
             .write_all(crate::compile_test::runtime_config().as_bytes())
             .expect("Could not write runtime config");

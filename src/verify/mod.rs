@@ -1,5 +1,4 @@
 use crate::{
-    call_info,
     cil::CILOp,
     method::Method,
     r#type::{DotnetTypeRef, Type},
@@ -121,13 +120,8 @@ fn equivalent(a: &Type, b: &Type) -> bool {
         }
         (Type::U128 | Type::I128, Type::DotnetType(rf))
         | (Type::DotnetType(rf), Type::U128 | Type::I128) => {
-            if rf.asm() == Some("System.Runtime")
+            rf.asm() == Some("System.Runtime")
                 && (rf.name_path() == "System.Int128" || rf.name_path() == "System.UInt128")
-            {
-                true
-            } else {
-                false
-            }
         }
         _ => false,
     }
@@ -138,17 +132,44 @@ fn verify_op(
     method: &Method,
 ) -> Result<(), VerificationFailure> {
     match op {
-        CILOp::LDFtn(_) => Ok(stack.push(Type::USize)),
+        CILOp::LDFtn(_) => {
+            stack.push(Type::USize);
+            Ok(())
+        }
         CILOp::Label(_) | CILOp::Comment(_) | CILOp::Break | CILOp::Nop | CILOp::Volatile => Ok(()),
         CILOp::GoTo(_) => Ok(()),
-        CILOp::LDTypeToken(_) => Ok(stack.push(DotnetTypeRef::type_handle_type().into())),
-        CILOp::LdcI32(_) | CILOp::SizeOf(_) => Ok(stack.push(Type::I32)),
-        CILOp::LdcU32(_) => Ok(stack.push(Type::U32)),
-        CILOp::LdcF32(_) => Ok(stack.push(Type::F32)),
-        CILOp::LdcI64(_) => Ok(stack.push(Type::I64)),
-        CILOp::LdcU64(_) => Ok(stack.push(Type::U64)),
-        CILOp::LdcF64(_) => Ok(stack.push(Type::F64)),
-        CILOp::LdStr(_) => Ok(stack.push(DotnetTypeRef::string_type().into())),
+        CILOp::LDTypeToken(_) => {
+            stack.push(DotnetTypeRef::type_handle_type().into());
+            Ok(())
+        }
+        CILOp::LdcI32(_) | CILOp::SizeOf(_) => {
+            stack.push(Type::I32);
+            Ok(())
+        }
+        CILOp::LdcU32(_) => {
+            stack.push(Type::U32);
+            Ok(())
+        }
+        CILOp::LdcF32(_) => {
+            stack.push(Type::F32);
+            Ok(())
+        }
+        CILOp::LdcI64(_) => {
+            stack.push(Type::I64);
+            Ok(())
+        }
+        CILOp::LdcU64(_) => {
+            stack.push(Type::U64);
+            Ok(())
+        }
+        CILOp::LdcF64(_) => {
+            stack.push(Type::F64);
+            Ok(())
+        }
+        CILOp::LdStr(_) => {
+            stack.push(DotnetTypeRef::string_type().into());
+            Ok(())
+        }
         CILOp::Ret => {
             let ret = to_stacktype(method.sig().output().clone());
             match ret {
@@ -229,7 +250,10 @@ fn verify_op(
                 | Type::F64
                 | Type::Ptr(_)
                 | Type::ManagedReference(_)
-                | Type::DelegatePtr(_) => Ok(stack.push(Type::USize)),
+                | Type::DelegatePtr(_) => {
+                    stack.push(Type::USize);
+                    Ok(())
+                }
                 _ => Err(VerificationFailure::StackUnexpected(tpe)),
             }
         }
@@ -249,15 +273,25 @@ fn verify_op(
             let b = stack.pop().ok_or(VerificationFailure::StackUnderflow)?;
             if !equivalent(&a, &b) {
                 if (a == Type::USize && b == Type::I32) || (a == Type::I32 && b == Type::USize) {
-                    return Ok(stack.push(Type::USize));
+                    return {
+                        stack.push(Type::USize);
+                        Ok(())
+                    };
                 }
                 return Err(VerificationFailure::OperandsMismatch(op.clone(), a, b));
             }
             match a {
-                Type::U8 | Type::U16 | Type::U32 => Ok(stack.push(Type::U32)),
-                Type::I8 | Type::I16 | Type::I32 => Ok(stack.push(Type::I32)),
+                Type::U8 | Type::U16 | Type::U32 => {
+                    stack.push(Type::U32);
+                    Ok(())
+                }
+                Type::I8 | Type::I16 | Type::I32 => {
+                    stack.push(Type::I32);
+                    Ok(())
+                }
                 Type::U64 | Type::I64 | Type::USize | Type::ISize | Type::F32 | Type::F64 => {
-                    Ok(stack.push(a))
+                    stack.push(a);
+                    Ok(())
                 }
                 _ => Err(VerificationFailure::OpUnsuported2(a, b)),
             }
@@ -269,9 +303,18 @@ fn verify_op(
                 return Err(VerificationFailure::OperandsMismatch(op.clone(), a, b));
             }
             match a {
-                Type::U8 | Type::U16 | Type::U32 => Ok(stack.push(Type::U32)),
-                Type::I8 | Type::I16 | Type::I32 => Ok(stack.push(Type::I32)),
-                Type::U64 | Type::I64 | Type::USize | Type::ISize => Ok(stack.push(a)),
+                Type::U8 | Type::U16 | Type::U32 => {
+                    stack.push(Type::U32);
+                    Ok(())
+                }
+                Type::I8 | Type::I16 | Type::I32 => {
+                    stack.push(Type::I32);
+                    Ok(())
+                }
+                Type::U64 | Type::I64 | Type::USize | Type::ISize => {
+                    stack.push(a);
+                    Ok(())
+                }
                 _ => Err(VerificationFailure::OpUnsuported2(a, b)),
             }
         }
@@ -288,9 +331,13 @@ fn verify_op(
             }?;
             match value {
                 Type::I8 | Type::I16 | Type::I32 | Type::U8 | Type::U16 | Type::U32 => {
-                    Ok(stack.push(Type::I32))
+                    stack.push(Type::I32);
+                    Ok(())
                 }
-                Type::I64 | Type::ISize | Type::I64 | Type::U64 => Ok(stack.push(value)),
+                Type::I64 | Type::ISize | Type::I64 | Type::U64 => {
+                    stack.push(value);
+                    Ok(())
+                }
                 _ => Err(VerificationFailure::OpUnsuported2(value, ammount)),
             }
         }
@@ -307,9 +354,13 @@ fn verify_op(
             }?;
             match value {
                 Type::I8 | Type::I16 | Type::I32 | Type::U8 | Type::U16 | Type::U32 => {
-                    Ok(stack.push(Type::I32))
+                    stack.push(Type::I32);
+                    Ok(())
                 }
-                Type::I64 | Type::ISize | Type::I64 | Type::U64 => Ok(stack.push(value)),
+                Type::I64 | Type::ISize | Type::I64 | Type::U64 => {
+                    stack.push(value);
+                    Ok(())
+                }
                 _ => Err(VerificationFailure::OpUnsuported2(value, ammount)),
             }
         }
@@ -326,28 +377,48 @@ fn verify_op(
             }?;
             match value {
                 Type::I8 | Type::I16 | Type::I32 | Type::U8 | Type::U16 | Type::U32 => {
-                    Ok(stack.push(Type::I32))
+                    stack.push(Type::I32);
+                    Ok(())
                 }
-                Type::I64 | Type::ISize | Type::I64 | Type::U64 => Ok(stack.push(value)),
+                Type::I64 | Type::ISize | Type::I64 | Type::U64 => {
+                    stack.push(value);
+                    Ok(())
+                }
                 _ => Err(VerificationFailure::OpUnsuported2(value, ammount)),
             }
         }
         CILOp::Not => {
             let a = stack.pop().ok_or(VerificationFailure::StackUnderflow)?;
             match a {
-                Type::U8 | Type::U16 | Type::U32 => Ok(stack.push(Type::U32)),
-                Type::I8 | Type::I16 | Type::I32 => Ok(stack.push(Type::I32)),
-                Type::U64 | Type::I64 | Type::USize | Type::ISize => Ok(stack.push(a)),
+                Type::U8 | Type::U16 | Type::U32 => {
+                    stack.push(Type::U32);
+                    Ok(())
+                }
+                Type::I8 | Type::I16 | Type::I32 => {
+                    stack.push(Type::I32);
+                    Ok(())
+                }
+                Type::U64 | Type::I64 | Type::USize | Type::ISize => {
+                    stack.push(a);
+                    Ok(())
+                }
                 _ => Err(VerificationFailure::OpUnsuported(a)),
             }
         }
         CILOp::Neg => {
             let a = stack.pop().ok_or(VerificationFailure::StackUnderflow)?;
             match a {
-                Type::U8 | Type::U16 | Type::U32 => Ok(stack.push(Type::U32)),
-                Type::I8 | Type::I16 | Type::I32 => Ok(stack.push(Type::I32)),
+                Type::U8 | Type::U16 | Type::U32 => {
+                    stack.push(Type::U32);
+                    Ok(())
+                }
+                Type::I8 | Type::I16 | Type::I32 => {
+                    stack.push(Type::I32);
+                    Ok(())
+                }
                 Type::U64 | Type::I64 | Type::USize | Type::ISize | Type::F32 | Type::F64 => {
-                    Ok(stack.push(a))
+                    stack.push(a);
+                    Ok(())
                 }
                 _ => Err(VerificationFailure::OpUnsuported(a)),
             }
@@ -365,9 +436,18 @@ fn verify_op(
         CILOp::BTrue(_) => {
             let a = stack.pop().ok_or(VerificationFailure::StackUnderflow)?;
             match a {
-                Type::U8 | Type::U16 | Type::U32 => Ok(stack.push(Type::U32)),
-                Type::I8 | Type::I16 | Type::I32 => Ok(stack.push(Type::I32)),
-                Type::U64 | Type::I64 | Type::USize | Type::ISize => Ok(stack.push(a)),
+                Type::U8 | Type::U16 | Type::U32 => {
+                    stack.push(Type::U32);
+                    Ok(())
+                }
+                Type::I8 | Type::I16 | Type::I32 => {
+                    stack.push(Type::I32);
+                    Ok(())
+                }
+                Type::U64 | Type::I64 | Type::USize | Type::ISize => {
+                    stack.push(a);
+                    Ok(())
+                }
                 _ => Err(VerificationFailure::OpUnsuported(a)),
             }
         }
@@ -391,7 +471,7 @@ fn verify_op(
                     return Err(VerificationFailure::InvalidCallArg {
                         got: stack_input,
                         expected: input,
-                        index: index,
+                        index,
                     });
                 }
             }

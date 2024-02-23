@@ -145,11 +145,11 @@ pub fn deref_op<'ctx>(
                 if pointer_to_is_fat(*inner, tyctx, Some(*method_instance)) {
                     CILNode::LdObj {
                         ptr,
-                        obj: Box::new(
-                            type_cache
-                                .type_from_cache(derefed_type, tyctx, Some(*method_instance))
-                                .into(),
-                        ),
+                        obj: Box::new(type_cache.type_from_cache(
+                            derefed_type,
+                            tyctx,
+                            Some(*method_instance),
+                        )),
                     }
                 } else {
                     CILNode::LDIndISize { ptr }
@@ -159,11 +159,11 @@ pub fn deref_op<'ctx>(
                 if pointer_to_is_fat(type_and_mut.ty, tyctx, Some(*method_instance)) {
                     CILNode::LdObj {
                         ptr,
-                        obj: Box::new(
-                            type_cache
-                                .type_from_cache(derefed_type, tyctx, Some(*method_instance))
-                                .into(),
-                        ),
+                        obj: Box::new(type_cache.type_from_cache(
+                            derefed_type,
+                            tyctx,
+                            Some(*method_instance),
+                        )),
                     }
                 } else {
                     CILNode::LDIndISize { ptr }
@@ -233,7 +233,7 @@ pub fn place_adress<'a>(
             ty = curr_ty.monomorphize(&method_instance, ctx);
             addr_calc = curr_ops;
         }
-        let mut ops = addr_calc.flatten();
+        let ops = addr_calc.flatten();
         adress::place_elem_adress(
             head,
             ty,

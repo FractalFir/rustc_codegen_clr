@@ -2,7 +2,7 @@ use super::PlaceTy;
 use crate::{
     add, assert_morphic, call,
     cil::{CILOp, FieldDescriptor},
-    cil_tree::cil_node::{CILNode, *},
+    cil_tree::cil_node::CILNode,
     conv_usize,
     function_sig::FnSig,
     ld_field, mul,
@@ -19,7 +19,7 @@ pub fn local_adress(local: usize, method: &rustc_middle::mir::Body) -> CILNode {
     } else if local > method.arg_count {
         CILNode::ConvUSize(CILNode::LDLocA((local - method.arg_count) as u32).into())
     } else {
-        CILNode::ConvUSize(CILNode::LDArgA((local - 1) as u32).into()).into()
+        CILNode::ConvUSize(CILNode::LDArgA((local - 1) as u32).into())
     }
 }
 pub fn address_last_dereference<'ctx>(
@@ -177,7 +177,7 @@ pub fn place_elem_adress<'ctx>(
             );
             CILNode::LDFieldAdress {
                 addr: addr_calc.into(),
-                field: field_desc.into(),
+                field: field_desc,
             }
         }
         PlaceElem::Index(index) => {
@@ -225,7 +225,7 @@ pub fn place_elem_adress<'ctx>(
                             ),
                             false,
                         ),
-                        [addr_calc,index]
+                        [addr_calc, index]
                     )
                 }
                 _ => {

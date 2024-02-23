@@ -139,8 +139,7 @@ pub fn handle_terminator<'ctx>(
                 crate::operand::handle_operand(discr, tyctx, method, method_instance, type_cache);
             handle_switch(ty, discr, targets)
                 .into_iter()
-                .map(|tree| tree.flatten())
-                .flatten()
+                .flat_map(|tree| tree.flatten())
                 .collect()
         }
         TerminatorKind::Assert {

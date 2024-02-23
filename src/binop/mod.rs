@@ -1,17 +1,17 @@
 use rustc_middle::mir::{BinOp, Operand};
 use rustc_middle::ty::{Instance, IntTy, Ty, TyCtxt, TyKind, UintTy};
 
-use crate::cil::{CILOp, CallSite};
+use crate::cil::CallSite;
 use crate::cil_tree::cil_node::CILNode;
 use crate::function_sig::FnSig;
-use crate::r#type::{DotnetTypeRef, TyCache, Type};
-use crate::utilis::compiletime_sizeof;
+use crate::r#type::{DotnetTypeRef, TyCache};
+
 pub mod bitop;
 pub mod cmp;
 pub mod shift;
 use crate::{
-    add, and, call, conv_i8, conv_u16, conv_u32, conv_u64, conv_u8, conv_usize, div, eq, gt, gt_un,
-    ldc_i32, lt, lt_un, mul, or, size_of, sub, xor,rem,rem_un
+    add, call, conv_u16, conv_u32, conv_u64, conv_u8, conv_usize, div, eq, ldc_i32, mul, rem,
+    rem_un, size_of, sub,
 };
 use bitop::*;
 use cmp::*;
@@ -79,7 +79,7 @@ pub(crate) fn binop_unchecked<'tyctx>(
             let pointed_ty =
                 Box::new(tycache.type_from_cache(pointed_ty, tyctx, Some(method_instance)));
             add!(ops_a, mul!(ops_b, conv_usize!(size_of!(pointed_ty))))
-        } 
+        }
     }
 }
 /// Preforms unchecked addition
@@ -196,36 +196,37 @@ fn rem_unchecked<'tyctx>(
     ops_a: CILNode,
     ops_b: CILNode,
 ) -> CILNode {
-
-            match ty_a.kind() {
-                TyKind::Int(IntTy::I128) => {
-                    let ty_a = tycache.type_from_cache(ty_a, tyctx, Some(*method_instance));
-                    let ty_b = tycache.type_from_cache(ty_b, tyctx, Some(*method_instance));
-                    call!(
-                        CallSite::new(
-                            Some(DotnetTypeRef::int_128()),
-                            "op_Modulus".into(),
-                            FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
-                            true,
-                        )
-                    ,[ops_a,ops_b])
-                }
-                TyKind::Uint(UintTy::U128) => {
-                    let ty_a = tycache.type_from_cache(ty_a, tyctx, Some(*method_instance));
-                    let ty_b = tycache.type_from_cache(ty_b, tyctx, Some(*method_instance));
-                    call!(
-                        CallSite::new(
-                            Some(DotnetTypeRef::uint_128()),
-                            "op_Modulus".into(),
-                            FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
-                            true,
-                        ),[ops_a,ops_b]
-                    )
-                }
-                TyKind::Int(_) => rem!(ops_a,ops_b),
-                TyKind::Uint(_) => rem_un!(ops_a,ops_b),
-                _ => rem!(ops_a,ops_b),
-            }
+    match ty_a.kind() {
+        TyKind::Int(IntTy::I128) => {
+            let ty_a = tycache.type_from_cache(ty_a, tyctx, Some(*method_instance));
+            let ty_b = tycache.type_from_cache(ty_b, tyctx, Some(*method_instance));
+            call!(
+                CallSite::new(
+                    Some(DotnetTypeRef::int_128()),
+                    "op_Modulus".into(),
+                    FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
+                    true,
+                ),
+                [ops_a, ops_b]
+            )
+        }
+        TyKind::Uint(UintTy::U128) => {
+            let ty_a = tycache.type_from_cache(ty_a, tyctx, Some(*method_instance));
+            let ty_b = tycache.type_from_cache(ty_b, tyctx, Some(*method_instance));
+            call!(
+                CallSite::new(
+                    Some(DotnetTypeRef::uint_128()),
+                    "op_Modulus".into(),
+                    FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
+                    true,
+                ),
+                [ops_a, ops_b]
+            )
+        }
+        TyKind::Int(_) => rem!(ops_a, ops_b),
+        TyKind::Uint(_) => rem_un!(ops_a, ops_b),
+        _ => rem!(ops_a, ops_b),
+    }
 }
 
 fn mul_unchecked<'tyctx>(

@@ -1,4 +1,4 @@
-use crate::cil::{CILOp, FieldDescriptor};
+use crate::cil::FieldDescriptor;
 use crate::cil_tree::cil_node::CILNode;
 use crate::function_sig::FnSig;
 use crate::r#type::Type;
@@ -147,10 +147,7 @@ fn place_elem_get<'a>(
                         site: crate::cil::CallSite::new(
                             Some(array_dotnet),
                             "get_Item".into(),
-                            FnSig::new(
-                                &[Type::Ptr(array_type.into()), Type::USize],
-                                &element.into(),
-                            ),
+                            FnSig::new(&[Type::Ptr(array_type.into()), Type::USize], &element),
                             false,
                         )
                         .into(),
@@ -217,10 +214,7 @@ fn place_elem_get<'a>(
                         site: crate::cil::CallSite::new(
                             Some(array_dotnet),
                             "get_Item".into(),
-                            FnSig::new(
-                                &[Type::Ptr(array_type.into()), Type::USize],
-                                &element.into(),
-                            ),
+                            FnSig::new(&[Type::Ptr(array_type.into()), Type::USize], &element),
                             false,
                         )
                         .into(),
