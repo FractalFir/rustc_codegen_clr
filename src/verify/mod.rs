@@ -146,6 +146,7 @@ fn verify_op(
         CILOp::LdcU32(_) => Ok(stack.push(Type::U32)),
         CILOp::LdcF32(_) => Ok(stack.push(Type::F32)),
         CILOp::LdcI64(_) => Ok(stack.push(Type::I64)),
+        CILOp::LdcU64(_) => Ok(stack.push(Type::U64)),
         CILOp::LdcF64(_) => Ok(stack.push(Type::F64)),
         CILOp::LdStr(_) => Ok(stack.push(DotnetTypeRef::string_type().into())),
         CILOp::Ret => {

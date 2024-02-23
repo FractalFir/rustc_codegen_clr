@@ -3,7 +3,7 @@ use crate::{
     r#type::Type,
 };
 
-use super::append_vec;
+use super::{append_vec, cil_root::CILRoot};
 
 #[derive(Clone, Debug)]
 pub enum CILNode {
@@ -15,6 +15,7 @@ pub enum CILNode {
 
     ConvF32(Box<Self>),
     ConvF64(Box<Self>),
+    ConvF64Un(Box<Self>),
     SizeOf(Box<Type>),
     LDIndI8 {
         ptr: Box<Self>,
@@ -100,10 +101,33 @@ pub enum CILNode {
     LtUn(Box<Self>, Box<Self>),
     Gt(Box<Self>, Box<Self>),
     GtUn(Box<Self>, Box<Self>),
+    TemporaryLocal(Box<(Type,Box<[CILRoot]>,Self)>),
+    SubTrees(Box<[CILRoot]>,Box<Self>),
+    LoadAddresOfTMPLocal,
+    LoadTMPLocal,
+    LDFtn(Box<CallSite>),
 }
 impl CILNode {
     pub fn flatten(&self) -> Vec<CILOp> {
         let mut ops = match self {
+            Self::SubTrees(trees,root)=>{
+                let mut flattened:Vec<_> = trees.iter().flat_map(|tree|tree.flatten()).collect();
+                flattened.extend(root.flatten());
+                flattened
+            }
+            Self::LoadTMPLocal => vec![CILOp::LoadTMPLocal],
+            Self::LoadAddresOfTMPLocal => vec![CILOp::LoadAddresOfTMPLocal],
+            Self::LDFtn(site)=>vec![CILOp::LDFtn(site.clone().into())],
+            Self::TemporaryLocal(tuple)=>{
+                let (tpe,branches,tree) = *tuple.clone();
+                let mut res = vec![CILOp::NewTMPLocal(tpe.into())];
+                for branch in branches.iter(){
+                    res.extend(branch.flatten());
+                }
+                res.extend(tree.flatten());
+                res.push(CILOp::FreeTMPLocal);
+                res
+            }
             Self::LDLoc(local) => vec![CILOp::LDLoc(*local)],
             Self::LDArg(local) => vec![CILOp::LDArg(*local)],
             Self::SizeOf(tpe) => vec![CILOp::SizeOf(tpe.clone())],
@@ -131,6 +155,7 @@ impl CILNode {
 
             Self::ConvF32(inner) => append_vec(inner.flatten(), CILOp::ConvF32),
             Self::ConvF64(inner) => append_vec(inner.flatten(), CILOp::ConvF64),
+            Self::ConvF64Un(inner) => append_vec(inner.flatten(), CILOp::ConvF64Un),
             Self::LDIndI8 { ptr } => append_vec(ptr.flatten(), CILOp::LDIndI8),
             Self::LDIndI16 { ptr } => append_vec(ptr.flatten(), CILOp::LDIndI16),
             Self::LDIndI32 { ptr } => append_vec(ptr.flatten(), CILOp::LDIndI32),
@@ -401,6 +426,15 @@ macro_rules! ld_field {
     };
 }
 #[macro_export]
+macro_rules! ld_field_address {
+    ($addr_calc:expr,$field:expr) => {
+        CILNode::LDFieldAdress {
+            addr: $addr_calc.into(),
+            field: $field.into(),
+        }
+    };
+}
+#[macro_export]
 macro_rules! call {
     ($call_site:expr,$args:expr) => {
         CILNode::Call {
@@ -470,6 +504,24 @@ macro_rules! conv_u8 {
         CILNode::ConvU8($a.into())
     };
 }
+#[macro_export]
+macro_rules! conv_f32 {
+    ($a:expr) => {
+        CILNode::ConvF32($a.into())
+    };
+}
+#[macro_export]
+macro_rules! conv_f64 {
+    ($a:expr) => {
+        CILNode::ConvF64($a.into())
+    };
+}
+#[macro_export]
+macro_rules! conv_f64_un {
+    ($a:expr) => {
+        CILNode::ConvF64Un($a.into())
+    };
+}
 
 #[macro_export]
 macro_rules! ldc_i32 {
@@ -478,8 +530,20 @@ macro_rules! ldc_i32 {
     };
 }
 #[macro_export]
+macro_rules! ldc_i64 {
+    ($val:expr) => {
+        CILNode::LdcI64($val)
+    };
+}
+#[macro_export]
 macro_rules! ldc_u32 {
     ($val:expr) => {
         CILNode::LdcU32($val)
+    };
+}
+#[macro_export]
+macro_rules! ldc_u64 {
+    ($val:expr) => {
+        CILNode::LdcU64($val)
     };
 }

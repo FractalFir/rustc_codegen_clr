@@ -1,10 +1,5 @@
 use crate::{
-    cil::{CILOp, CallSite, FieldDescriptor},
-    cil_tree::cil_node::CILNode,
-    operand::handle_operand,
-    place::{place_get, place_set},
-    r#type::{DotnetTypeRef, TyCache, Type},
-    utilis::{field_name, monomorphize},
+    call, cil::{CILOp, CallSite, FieldDescriptor}, cil_tree::{cil_node::CILNode, cil_root::CILRoot}, conv_usize, ld_field, ld_field_address, ldc_u64, operand::handle_operand, place::{place_get, place_set}, r#type::{DotnetTypeRef, TyCache, Type}, utilis::{field_name, monomorphize}
 };
 use rustc_index::IndexVec;
 use rustc_middle::mir::{AggregateKind, Operand, Place};
@@ -19,7 +14,7 @@ pub fn handle_aggregate<'tyctx>(
     value_index: &IndexVec<FieldIdx, Operand<'tyctx>>,
     method_instance: Instance<'tyctx>,
     tycache: &mut TyCache,
-) -> Vec<CILOp> {
+) -> CILNode {
     // Get CIL ops for each value
     let values: Vec<_> = value_index
         .iter()
@@ -27,8 +22,7 @@ pub fn handle_aggregate<'tyctx>(
         .map(|operand| {
             (
                 operand.0 as u32,
-                crate::operand::handle_operand(operand.1, tyctx, method, method_instance, tycache)
-                    .flatten(),
+                crate::operand::handle_operand(operand.1, tyctx, method, method_instance, tycache)  
             )
         })
         .collect();
@@ -74,8 +68,7 @@ pub fn handle_aggregate<'tyctx>(
                 method,
                 method_instance,
                 tycache,
-            )
-            .flatten();
+            );
             let sig = crate::function_sig::FnSig::new(
                 &[
                     Type::Ptr(Into::<Type>::into(array_type.clone()).into()),
@@ -84,19 +77,12 @@ pub fn handle_aggregate<'tyctx>(
                 ],
                 &Type::Void,
             );
-            let call_site = CallSite::boxed(Some(array_type), "set_Item".into(), sig, false);
+            let site = CallSite::new(Some(array_type), "set_Item".into(), sig, false);
+            let mut sub_trees = Vec::new();
             for value in values {
-                ops.extend(array_getter.iter().cloned());
-                ops.push(CILOp::LdcI64(value.0 as u64 as i64));
-                ops.push(CILOp::ConvUSize(false));
-                ops.extend(value.1);
-                ops.push(CILOp::Call(call_site.clone()));
+                sub_trees.push(CILRoot::Call{site: site.clone(),args:[array_getter.clone(),conv_usize!(ldc_u64!(value.0 as u64)),value.1].into()});
             }
-            ops.extend(
-                super::place::place_get(target_location, tyctx, method, method_instance, tycache)
-                    .flatten(),
-            );
-            ops
+            CILNode::SubTrees(sub_trees.into(),Box::new(super::place::place_get(target_location, tyctx, method, method_instance, tycache)))
         }
         AggregateKind::Tuple => {
             let tuple_getter = super::place::place_adress(
@@ -105,8 +91,7 @@ pub fn handle_aggregate<'tyctx>(
                 method,
                 method_instance,
                 tycache,
-            )
-            .flatten();
+            );
             let types: Vec<_> = value_index
                 .iter()
                 .map(|operand| {
@@ -119,22 +104,16 @@ pub fn handle_aggregate<'tyctx>(
                 })
                 .collect();
             let dotnet_tpe = crate::r#type::simple_tuple(&types);
-            let mut ops: Vec<CILOp> = Vec::with_capacity(values.len() * 2);
+            let mut sub_trees = Vec::new();
             for field in values.iter() {
                 let name = format!("Item{}", field.0 + 1);
-                ops.extend(tuple_getter.iter().cloned());
-                ops.extend(field.1.iter().cloned());
-                ops.push(CILOp::STField(FieldDescriptor::boxed(
+                sub_trees.push(CILRoot::SetField{addr:tuple_getter.clone(), value: field.1.clone(), desc: FieldDescriptor::new(
                     dotnet_tpe.clone(),
                     types[field.0 as usize].clone(),
                     name.into(),
-                )));
+                ) });
             }
-            ops.extend(
-                super::place::place_get(target_location, tyctx, method, method_instance, tycache)
-                    .flatten(),
-            );
-            ops
+           CILNode::SubTrees(sub_trees.into(),  Box::new(super::place::place_get(target_location, tyctx, method, method_instance, tycache)))
         }
         AggregateKind::Closure(_def_id, _args) => {
             let closure_ty = crate::utilis::monomorphize(
@@ -145,38 +124,27 @@ pub fn handle_aggregate<'tyctx>(
             .ty;
             let closure_type = tycache.type_from_cache(closure_ty, tyctx, Some(method_instance));
             let closure_dotnet = closure_type.as_dotnet().expect("Invalid closure type!");
-            let mut closure_constructor = vec![CILOp::NewTMPLocal(closure_type.into())];
-            for (index, value) in value_index.iter_enumerated() {
-                closure_constructor.push(CILOp::LoadAddresOfTMPLocal);
-                closure_constructor.push(CILOp::ConvUSize(false));
-                let field_ty =
-                    crate::utilis::monomorphize(&method_instance, value.ty(method, tyctx), tyctx);
-                let field_ty = tycache.type_from_cache(field_ty, tyctx, Some(method_instance));
-                closure_constructor.extend(
-                    handle_operand(value, tyctx, method, method_instance, tycache).flatten(),
-                );
-                closure_constructor.push(CILOp::STField(
-                    FieldDescriptor::new(
-                        closure_dotnet.clone(),
-                        field_ty,
-                        format!("f_{}", index.as_u32()).into(),
-                    )
-                    .into(),
-                ))
-            }
-            closure_constructor.extend([CILOp::LoadTMPLocal, CILOp::FreeTMPLocal]);
-            let mut ops = place_set(
+            let closure_getter = super::place::place_adress(
                 target_location,
                 tyctx,
-                closure_constructor,
                 method,
                 method_instance,
                 tycache,
             );
-            ops.extend(
-                place_get(target_location, tyctx, method, method_instance, tycache).flatten(),
-            );
-            ops
+            let mut sub_trees = vec![];
+            for (index, value) in value_index.iter_enumerated() {
+                let field_ty =
+                    crate::utilis::monomorphize(&method_instance, value.ty(method, tyctx), tyctx);
+                let field_ty = tycache.type_from_cache(field_ty, tyctx, Some(method_instance));
+
+                sub_trees.push(CILRoot::SetField { addr: closure_getter.clone(), value: handle_operand(value, tyctx, method, method_instance, tycache), desc:  FieldDescriptor::new(
+                    closure_dotnet.clone(),
+                    field_ty,
+                    format!("f_{}", index.as_u32()).into(),
+                ) })
+            }
+
+            CILNode::SubTrees(sub_trees.into(), Box::new(place_get(target_location, tyctx, method, method_instance, tycache)))
         }
         _ => todo!("Unsuported aggregate kind {aggregate_kind:?}"),
     }
@@ -190,11 +158,11 @@ fn aggregate_adt<'tyctx>(
     adt_type: Ty<'tyctx>,
     subst: &'tyctx List<GenericArg<'tyctx>>,
     variant_idx: u32,
-    fields: Vec<(u32, Vec<CILOp>)>,
+    fields: Vec<(u32, CILNode)>,
     method_instance: Instance<'tyctx>,
     _active_field: &Option<FieldIdx>,
     type_cache: &mut crate::r#type::TyCache,
-) -> Vec<CILOp> {
+) -> CILNode {
     let adt_type = crate::utilis::monomorphize(&method_instance, adt_type, tyctx);
     let adt_type_ref = type_cache.type_from_cache(adt_type, tyctx, Some(method_instance));
     let adt_type_ref = if let Type::DotnetType(type_ref) = adt_type_ref {
@@ -210,9 +178,9 @@ fn aggregate_adt<'tyctx>(
                 method,
                 method_instance,
                 type_cache,
-            )
-            .flatten();
-            let mut ops: Vec<CILOp> = Vec::with_capacity(fields.len() * 2);
+            );
+
+            let mut sub_trees = Vec::new();
             for field in fields {
                 let field_def = adt
                     .all_fields()
@@ -226,8 +194,6 @@ fn aggregate_adt<'tyctx>(
                 if field_type == Type::Void {
                     continue;
                 }
-                ops.extend(obj_getter.iter().cloned());
-                ops.extend(field.1);
                 let field_desc = crate::utilis::field_descrptor(
                     adt_type,
                     field.0,
@@ -235,19 +201,16 @@ fn aggregate_adt<'tyctx>(
                     method_instance,
                     type_cache,
                 );
-                ops.push(CILOp::STField(field_desc.into()));
+          
+                sub_trees.push(CILRoot::SetField { addr: obj_getter.clone(), value: field.1, desc: field_desc });
             }
-            ops.extend(
-                crate::place::place_get(
-                    target_location,
-                    tyctx,
-                    method,
-                    method_instance,
-                    type_cache,
-                )
-                .flatten(),
-            );
-            ops
+            CILNode::SubTrees(sub_trees.into(), Box::new(crate::place::place_get(
+                target_location,
+                tyctx,
+                method,
+                method_instance,
+                type_cache,
+            )))
         }
         AdtKind::Enum => {
             let adt_adress_ops = crate::place::place_adress(
@@ -256,8 +219,7 @@ fn aggregate_adt<'tyctx>(
                 method,
                 method_instance,
                 type_cache,
-            )
-            .flatten();
+            );
 
             let mut variant_type = adt_type_ref.clone(); //adt_type.variant_type(variant).expect("Can't get variant index");
             let variant_name = crate::utilis::variant_name(adt_type, variant_idx);
@@ -268,9 +230,8 @@ fn aggregate_adt<'tyctx>(
                 Type::DotnetType(Box::new(variant_type.clone())),
                 format!("v_{variant_name}").into(),
             );
-            let mut variant_address = adt_adress_ops.clone();
-            variant_address.push(CILOp::LDFieldAdress(Box::new(variant_field_desc)));
-            let mut ops = Vec::new();
+            let variant_address = ld_field_address!(adt_adress_ops.clone(),variant_field_desc);
+            let mut sub_trees = Vec::new();
             let enum_variant = adt
                 .variants()
                 .iter()
@@ -288,13 +249,12 @@ fn aggregate_adt<'tyctx>(
                 if field_type == Type::Void {
                     continue;
                 }
-                ops.extend(variant_address.clone());
-                ops.extend(field_value.1.clone());
-                ops.push(CILOp::STField(Box::new(FieldDescriptor::new(
+
+                sub_trees.push(CILRoot::SetField { addr: variant_address.clone(), value:field_value.1.clone(), desc: FieldDescriptor::new(
                     variant_type.clone(),
                     field_type,
                     field_name,
-                ))));
+                ) });
             }
             // Set tag
             {
@@ -306,35 +266,26 @@ fn aggregate_adt<'tyctx>(
                     .expect("Could not get type layout!");
                 let (disrc_type, _) = crate::utilis::adt::enum_tag_info(&layout.layout, tyctx);
 
-                ops.extend(adt_adress_ops);
-
-                ops.extend(
-                    crate::casts::int_to_int(
-                        Type::I32,
-                        disrc_type.clone(),
-                        CILNode::LdcU32(variant_idx as u32).into(),
-                    )
-                    .flatten(),
-                );
                 let field_name = "_tag".into();
 
-                ops.push(CILOp::STField(Box::new(FieldDescriptor::new(
+
+                sub_trees.push(CILRoot::SetField{ addr: adt_adress_ops, value: crate::casts::int_to_int(
+                    Type::I32,
+                    disrc_type.clone(),
+                    CILNode::LdcU32(variant_idx as u32).into(),
+                ), desc: FieldDescriptor::new(
                     adt_type_ref,
                     disrc_type,
                     field_name,
-                ))));
+                ) });
             }
-            ops.extend(
-                crate::place::place_get(
-                    target_location,
-                    tyctx,
-                    method,
-                    method_instance,
-                    type_cache,
-                )
-                .flatten(),
-            );
-            ops
+            CILNode::SubTrees(sub_trees.into(), Box::new(crate::place::place_get(
+                target_location,
+                tyctx,
+                method,
+                method_instance,
+                type_cache,
+            )))
         }
         AdtKind::Union => {
             let obj_getter = crate::place::place_adress(
@@ -343,9 +294,9 @@ fn aggregate_adt<'tyctx>(
                 method,
                 method_instance,
                 type_cache,
-            )
-            .flatten();
-            let mut ops: Vec<CILOp> = Vec::with_capacity(fields.len() * 2);
+            );
+
+            let mut sub_trees = Vec::new();
             for field in fields {
                 let field_def = adt
                     .all_fields()
@@ -359,26 +310,22 @@ fn aggregate_adt<'tyctx>(
                 if field_type == Type::Void {
                     continue;
                 }
-                ops.extend(obj_getter.iter().cloned());
-                ops.extend(field.1);
-                let field_name = field_name(adt_type, field.0);
-                //let field_name = crate::utilis::field_name(ty, idx)
-                let field_desc =
-                    FieldDescriptor::boxed(adt_type_ref.clone(), field_type, field_name);
 
-                ops.push(CILOp::STField(field_desc));
+                let field_name = field_name(adt_type, field.0);
+
+                let desc =
+                    FieldDescriptor::new(adt_type_ref.clone(), field_type, field_name);
+                sub_trees.push(CILRoot::SetField{ addr: obj_getter.clone(), value:field.1, desc });
+        
             }
-            ops.extend(
-                crate::place::place_get(
-                    target_location,
-                    tyctx,
-                    method,
-                    method_instance,
-                    type_cache,
-                )
-                .flatten(),
-            );
-            ops
+
+            CILNode::SubTrees(sub_trees.into(), Box::new(crate::place::place_get(
+                target_location,
+                tyctx,
+                method,
+                method_instance,
+                type_cache,
+            )))
         }
     }
 }

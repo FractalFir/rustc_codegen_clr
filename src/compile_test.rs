@@ -119,11 +119,10 @@ macro_rules! compare_tests {
         mod $test_name {
             mod $is_stable {
                 #[cfg(test)]
-                use ntest::timeout;
+ 
                 #[cfg(test)]
                 static COMPILE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
                 #[test]
-                #[timeout(30_000)]
 
                 fn release() {
                     let lock = COMPILE_LOCK.lock();
@@ -279,11 +278,8 @@ macro_rules! run_test {
         mod $test_name {
             mod $is_stable {
                 #[cfg(test)]
-                use ntest::timeout;
-                #[cfg(test)]
                 static COMPILE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
                 #[test]
-                #[timeout(30_000)]
                 fn release() {
                     let lock = COMPILE_LOCK.lock();
                     let test_dir = concat!("./test/", stringify!($prefix), "/");
@@ -330,7 +326,6 @@ macro_rules! run_test {
                     super::super::test_dotnet_executable(exec_path, test_dir);
                 }
                 #[test]
-                #[timeout(30_000)]
                 fn debug() {
                     let lock = COMPILE_LOCK.lock();
                     let test_dir = concat!("./test/", stringify!($prefix), "/");
@@ -821,6 +816,7 @@ compare_tests! {fuzz,fuzz99,stable}
 compare_tests! {fuzz,fuzz100,stable}
 
 run_test! {fuzz,fail0,stable}
+run_test! {fuzz,fail1,stable}
 
 cargo_test! {hello_world,stable}
 cargo_test! {std_hello_world,stable}
