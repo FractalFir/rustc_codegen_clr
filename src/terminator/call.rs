@@ -1,14 +1,14 @@
 use crate::{
+    call,
     call_info::CallInfo,
-    cil::FieldDescriptor,
-    cil::{CILOp, CallSite},
+    call_virt,
+    cil::{CILOp, CallSite, FieldDescriptor},
+    cil_tree::{cil_node::CILNode, cil_root::CILRoot},
     function_sig::FnSig,
     interop::AssemblyRef,
+    ld_field,
     r#type::DotnetTypeRef,
-    utilis::garg_to_string,
-    utilis::CTOR_FN_NAME,
-    utilis::MANAGED_CALL_FN_NAME,
-    utilis::MANAGED_CALL_VIRT_FN_NAME,
+    utilis::{garg_to_string, CTOR_FN_NAME, MANAGED_CALL_FN_NAME, MANAGED_CALL_VIRT_FN_NAME},
 };
 use rustc_middle::{
     mir::{Body, Operand, Place},
@@ -46,7 +46,7 @@ fn call_managed<'tyctx>(
     method_instance: Instance<'tyctx>,
     fn_instance: Instance<'tyctx>,
     type_cache: &mut crate::r#type::TyCache,
-) -> Vec<CILOp> {
+) -> CILRoot {
     let argument_count = argc_from_fn_name(function_name, MANAGED_CALL_FN_NAME);
     //FIXME: figure out the proper argc.
     //assert!(subst_ref.len() as u32 == argc + 3 || subst_ref.len() as u32 == argc + 4);
@@ -63,19 +63,22 @@ fn call_managed<'tyctx>(
 
     if argument_count == 0 {
         let ret = crate::r#type::Type::Void;
-        let call = vec![CILOp::Call(CallSite::boxed(
+        let call_site = CallSite::new(
             Some(tpe.clone()),
             managed_fn_name.into(),
             FnSig::new(&[], &ret),
             true,
-        ))];
+        );
         if *signature.output() == crate::r#type::Type::Void {
-            call
+            CILRoot::Call {
+                site: call_site,
+                args: [].into(),
+            }
         } else {
             crate::place::place_set(
                 destination,
                 tyctx,
-                call,
+                call!(call_site, []),
                 method,
                 method_instance,
                 type_cache,
@@ -84,32 +87,32 @@ fn call_managed<'tyctx>(
     } else {
         let is_static = crate::utilis::garag_to_bool(subst_ref[4], tyctx);
 
-        let mut call = Vec::new();
+        let mut call_args = Vec::new();
         for arg in args {
-            call.extend(
-                crate::operand::handle_operand(
-                    &arg.node,
-                    tyctx,
-                    method,
-                    method_instance,
-                    type_cache,
-                )
-                .flatten(),
-            );
+            call_args.push(crate::operand::handle_operand(
+                &arg.node,
+                tyctx,
+                method,
+                method_instance,
+                type_cache,
+            ));
         }
-        call.push(CILOp::Call(CallSite::boxed(
+        let call = CallSite::new(
             Some(tpe.clone()),
             managed_fn_name.into(),
             signature.clone(),
             is_static,
-        )));
+        );
         if *signature.output() == crate::r#type::Type::Void {
-            call
+            CILRoot::Call {
+                site: call,
+                args: call_args.into(),
+            }
         } else {
             crate::place::place_set(
                 destination,
                 tyctx,
-                call,
+                call!(call, call_args),
                 method,
                 method_instance,
                 type_cache,
@@ -128,7 +131,7 @@ fn callvirt_managed<'tyctx>(
     method_instance: Instance<'tyctx>,
     fn_instance: Instance<'tyctx>,
     type_cache: &mut crate::r#type::TyCache,
-) -> Vec<CILOp> {
+) -> CILRoot {
     let argument_count = argc_from_fn_name(function_name, MANAGED_CALL_VIRT_FN_NAME);
     //assert!(subst_ref.len() as u32 == argc + 3 || subst_ref.len() as u32 == argc + 4);
     assert!(
@@ -149,19 +152,22 @@ fn callvirt_managed<'tyctx>(
         .expect("Can't get the function signature");
     if argument_count == 0 {
         let ret = crate::r#type::Type::Void;
-        let call = vec![CILOp::Call(CallSite::boxed(
+        let call = CallSite::new(
             Some(tpe.clone()),
             managed_fn_name.into(),
             FnSig::new(&[], &ret),
             true,
-        ))];
+        );
         if *signature.output() == crate::r#type::Type::Void {
-            call
+            CILRoot::CallVirt {
+                site: call,
+                args: [].into(),
+            }
         } else {
             crate::place::place_set(
                 destination,
                 tyctx,
-                call,
+                call_virt!(call, []),
                 method,
                 method_instance,
                 type_cache,
@@ -170,32 +176,32 @@ fn callvirt_managed<'tyctx>(
     } else {
         let is_static = crate::utilis::garag_to_bool(subst_ref[4], tyctx);
 
-        let mut call = Vec::new();
+        let mut call_args = Vec::new();
         for arg in args {
-            call.extend(
-                crate::operand::handle_operand(
-                    &arg.node,
-                    tyctx,
-                    method,
-                    method_instance,
-                    type_cache,
-                )
-                .flatten(),
-            );
+            call_args.push(crate::operand::handle_operand(
+                &arg.node,
+                tyctx,
+                method,
+                method_instance,
+                type_cache,
+            ));
         }
-        call.push(CILOp::CallVirt(CallSite::boxed(
+        let call = CallSite::new(
             Some(tpe.clone()),
             managed_fn_name.into(),
             signature.clone(),
             is_static,
-        )));
+        );
         if *signature.output() == crate::r#type::Type::Void {
-            call
+            CILRoot::CallVirt {
+                site: call,
+                args: call_args.into(),
+            }
         } else {
             crate::place::place_set(
                 destination,
                 tyctx,
-                call,
+                call_virt!(call, call_args),
                 method,
                 method_instance,
                 type_cache,
@@ -213,7 +219,7 @@ fn call_ctor<'tyctx>(
     method: &'tyctx Body<'tyctx>,
     method_instance: Instance<'tyctx>,
     type_cache: &mut crate::r#type::TyCache,
-) -> Vec<CILOp> {
+) -> CILRoot {
     let argument_count = argc_from_fn_name(function_name, CTOR_FN_NAME);
     // Check that there are enough function path and argument specifers
     assert!(subst_ref.len() == argument_count as usize + 3);
@@ -233,12 +239,15 @@ fn call_ctor<'tyctx>(
         crate::place::place_set(
             destination,
             tyctx,
-            vec![CILOp::NewObj(CallSite::boxed(
-                Some(tpe.clone()),
-                ".ctor".into(),
-                FnSig::new(&[], &crate::r#type::Type::Void),
-                false,
-            ))],
+            CILNode::NewObj {
+                site: CallSite::boxed(
+                    Some(tpe.clone()),
+                    ".ctor".into(),
+                    FnSig::new(&[], &crate::r#type::Type::Void),
+                    false,
+                ),
+                args: [].into(),
+            },
             method,
             method_instance,
             type_cache,
@@ -260,27 +269,22 @@ fn call_ctor<'tyctx>(
         let sig = FnSig::new(&inputs, &crate::r#type::Type::Void);
         let mut call = Vec::new();
         for arg in args {
-            call.extend(
-                crate::operand::handle_operand(
-                    &arg.node,
-                    tyctx,
-                    method,
-                    method_instance,
-                    type_cache,
-                )
-                .flatten(),
-            );
+            call.push(crate::operand::handle_operand(
+                &arg.node,
+                tyctx,
+                method,
+                method_instance,
+                type_cache,
+            ));
         }
-        call.push(CILOp::NewObj(CallSite::boxed(
-            Some(tpe.clone()),
-            ".ctor".into(),
-            sig,
-            false,
-        )));
+
         crate::place::place_set(
             destination,
             tyctx,
-            call,
+            CILNode::NewObj {
+                site: CallSite::boxed(Some(tpe.clone()), ".ctor".into(), sig, false),
+                args: call.into(),
+            },
             method,
             method_instance,
             type_cache,
@@ -296,17 +300,20 @@ pub fn call_closure<'tyctx>(
     function_name: &str,
     method_instance: Instance<'tyctx>,
     type_cache: &mut crate::r#type::TyCache,
-) -> Vec<CILOp> {
-    let mut call = Vec::new();
+) -> CILRoot {
     let last_arg = args
         .last()
         .expect("Closure must be called with at least 2 arguments(closure + arg tuple)");
     let other_args = &args[..args.len() - 1];
+    let mut call_args = Vec::new();
     for arg in other_args {
-        call.extend(
-            crate::operand::handle_operand(&arg.node, tyctx, body, method_instance, type_cache)
-                .flatten(),
-        );
+        call_args.push(crate::operand::handle_operand(
+            &arg.node,
+            tyctx,
+            body,
+            method_instance,
+            type_cache,
+        ));
     }
     let last_arg_type =
         crate::utilis::monomorphize(&method_instance, last_arg.node.ty(body, tyctx), tyctx);
@@ -314,22 +321,10 @@ pub fn call_closure<'tyctx>(
         TyKind::Tuple(elements) => {
             if elements.is_empty() {
             } else {
-                call.extend(
-                    crate::operand::handle_operand(
-                        &last_arg.node,
-                        tyctx,
-                        body,
-                        method_instance,
-                        type_cache,
-                    )
-                    .flatten(),
-                );
                 let tuple_type =
                     type_cache.type_from_cache(last_arg_type, tyctx, Some(method_instance));
-                call.push(CILOp::NewTMPLocal(tuple_type.clone().into()));
-                call.push(CILOp::SetTMPLocal);
+
                 for (index, element) in elements.iter().enumerate() {
-                    call.push(CILOp::LoadAddresOfTMPLocal);
                     let element_type =
                         type_cache.type_from_cache(element, tyctx, Some(method_instance));
                     let tuple_element_name = format!("Item{}", index + 1);
@@ -338,9 +333,19 @@ pub fn call_closure<'tyctx>(
                         element_type,
                         tuple_element_name.into(),
                     );
-                    call.push(CILOp::LDField(field_descriptor));
+
+                    call_args.push(ld_field!(
+                        crate::operand::handle_operand(
+                            &last_arg.node,
+                            tyctx,
+                            body,
+                            method_instance,
+                            type_cache
+                        ),
+                        field_descriptor
+                    ));
                 }
-                call.push(CILOp::FreeTMPLocal);
+
                 //todo!("Can't unbox tupels yet!")
             }
         }
@@ -349,17 +354,22 @@ pub fn call_closure<'tyctx>(
     //panic!("Last arg:{last_arg:?}last_arg_type:{last_arg_type:?}");
     //assert_eq!(args.len(),signature.inputs().len(),"CALL SIGNATURE ARG COUNT MISMATCH!");
     let is_void = matches!(sig.output(), crate::r#type::Type::Void);
-    call.push(CILOp::Call(CallSite::boxed(
-        None,
-        function_name.into(),
-        sig,
-        true,
-    )));
+    let call = CallSite::new(None, function_name.into(), sig, true);
     // Hande
     if is_void {
-        call
+        CILRoot::Call {
+            site: call,
+            args: call_args.into(),
+        }
     } else {
-        crate::place::place_set(destination, tyctx, call, body, method_instance, type_cache)
+        crate::place::place_set(
+            destination,
+            tyctx,
+            call!(call, call_args),
+            body,
+            method_instance,
+            type_cache,
+        )
     }
 }
 /// Calls `fn_type` with `args`, placing the return value in destination.
@@ -371,7 +381,7 @@ pub fn call<'tyctx>(
     destination: &Place<'tyctx>,
     method_instance: Instance<'tyctx>,
     type_cache: &mut crate::r#type::TyCache,
-) -> Vec<CILOp> {
+) -> CILRoot {
     let fn_type = crate::utilis::monomorphize(&method_instance, fn_type, tyctx);
     let (instance, subst_ref) = if let TyKind::FnDef(def_id, subst_ref) = fn_type.kind() {
         let subst = crate::utilis::monomorphize(&method_instance, *subst_ref, tyctx);
@@ -492,12 +502,15 @@ pub fn call<'tyctx>(
         );
     }
 
-    let mut call = Vec::new();
+    let mut call_args = Vec::new();
     for arg in args {
-        call.extend(
-            crate::operand::handle_operand(&arg.node, tyctx, body, method_instance, type_cache)
-                .flatten(),
-        );
+        call_args.push(crate::operand::handle_operand(
+            &arg.node,
+            tyctx,
+            body,
+            method_instance,
+            type_cache,
+        ));
     }
     if crate::function_sig::is_fn_variadic(fn_type, tyctx) {
         signature.set_inputs(
@@ -522,30 +535,35 @@ pub fn call<'tyctx>(
         //assert_eq!(args.len() + 1,signature.inputs().len(),"ERROR: mismatched argument count. \nsignature inputs:{:?} \narguments:{args:?}\narg_len:{arg_len}\n",signature.inputs());
         // assert_eq!(signature.inputs()[signature.inputs().len() - 1],tpe);
         //FIXME:This assembles a panic location from uninitialized memory. This WILL lead to bugs once unwinding is added. The fields `file`,`col`, and `line` should be set there.
-        call.extend([
-            CILOp::NewTMPLocal(Box::new(tpe)),
-            CILOp::LoadTMPLocal,
-            CILOp::FreeTMPLocal,
-        ]);
+        call_args.push(CILNode::TemporaryLocal(Box::new((
+            tpe,
+            [].into(),
+            CILNode::LoadTMPLocal,
+        ))));
         //panic!("Call with PanicLocation!");
     }
     //assert_eq!(args.len(),signature.inputs().len(),"CALL SIGNATURE ARG COUNT MISMATCH!");
     let is_void = matches!(signature.output(), crate::r#type::Type::Void);
-    rustc_middle::ty::print::with_no_trimmed_paths! {call.push(CILOp::Comment(format!("Calling {instance:?}").into()))};
+    //rustc_middle::ty::print::with_no_trimmed_paths! {call.push(CILOp::Comment(format!("Calling {instance:?}").into()))};
     match instance.def {
-        InstanceDef::DropGlue(_def, None) => return vec![],
+        InstanceDef::DropGlue(_def, None) => return CILRoot::Nop,
         _ => (),
     }
-    call.push(CILOp::Call(CallSite::boxed(
-        None,
-        function_name,
-        signature,
-        true,
-    )));
+    let call_site = CallSite::new(None, function_name, signature, true);
     // Hande
     if is_void {
-        call
+        CILRoot::Call {
+            site: call_site,
+            args: call_args.into(),
+        }
     } else {
-        crate::place::place_set(destination, tyctx, call, body, method_instance, type_cache)
+        crate::place::place_set(
+            destination,
+            tyctx,
+            call!(call_site, call_args),
+            body,
+            method_instance,
+            type_cache,
+        )
     }
 }

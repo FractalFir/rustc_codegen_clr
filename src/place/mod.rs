@@ -2,6 +2,7 @@
 
 use crate::cil::CILOp;
 use crate::cil_tree::cil_node::CILNode;
+use crate::cil_tree::cil_root::CILRoot;
 use crate::r#type::{pointer_to_is_fat, DotnetTypeRef, Type};
 
 use rustc_middle::mir::Place;
@@ -249,20 +250,15 @@ pub fn place_adress<'a>(
 pub(crate) fn place_set<'a>(
     place: &Place<'a>,
     ctx: TyCtxt<'a>,
-    value_calc: Vec<CILOp>,
+    value_calc: CILNode,
     method: &rustc_middle::mir::Body<'a>,
     method_instance: Instance<'a>,
     type_cache: &mut crate::r#type::TyCache,
-) -> Vec<CILOp> {
+) -> CILRoot {
     if place.projection.is_empty() {
-        let mut ops = Vec::with_capacity(place.projection.len());
-        ops.extend(value_calc);
-        ops.push(set::local_set(place.local.as_usize(), method));
-        ops
+        set::local_set(place.local.as_usize(), method, value_calc)
     } else {
-        let mut addr_calc = local_body(place.local.as_usize(), method);
-        let (op, ty) = local_body(place.local.as_usize(), method);
-
+        let (mut addr_calc, ty) = local_body(place.local.as_usize(), method);
         let mut ty: PlaceTy = ty.into();
         ty = ty.monomorphize(&method_instance, ctx);
 
@@ -275,10 +271,10 @@ pub(crate) fn place_set<'a>(
                 method_instance,
                 method,
                 type_cache,
-                addr_calc.0,
+                addr_calc,
             );
             ty = curr_ty.monomorphize(&method_instance, ctx);
-            addr_calc.0 = curr_ops;
+            addr_calc = curr_ops;
         }
         //
         ty = ty.monomorphize(&method_instance, ctx);
@@ -288,8 +284,8 @@ pub(crate) fn place_set<'a>(
             ctx,
             method_instance,
             type_cache,
+            addr_calc,
             value_calc,
-            addr_calc.0.flatten(),
         )
     }
 }

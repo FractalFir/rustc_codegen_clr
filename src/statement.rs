@@ -1,4 +1,10 @@
-use crate::{cil::CILOp, r#type::TyCache};
+use crate::{
+    cil::CILOp,
+    cil_tree::{cil_node::CILNode, cil_root::CILRoot, CILTree},
+    ldc_i32, mul,
+    r#type::{TyCache, Type},
+    size_of,
+};
 use rustc_middle::{
     mir::{Body, CopyNonOverlapping, NonDivergingIntrinsic, Statement, StatementKind},
     ty::{Instance, ParamEnv, TyCtxt},
@@ -9,22 +15,15 @@ pub fn handle_statement<'tcx>(
     method: &Body<'tcx>,
     method_instance: Instance<'tcx>,
     type_cache: &mut TyCache,
-) -> Vec<CILOp> {
+) -> Option<CILTree> {
     let kind = &statement.kind;
     match kind {
-        StatementKind::StorageLive(_local) => {
-            vec![]
-        }
-        StatementKind::StorageDead(_local) => {
-            vec![]
-        }
+        StatementKind::StorageLive(_local) => None,
+        StatementKind::StorageDead(_local) => None,
         StatementKind::SetDiscriminant {
             place,
             variant_index,
         } => {
-            let mut ops =
-                crate::place::place_adress(place, tyctx, method, method_instance, type_cache)
-                    .flatten();
             let owner_ty = place.ty(method, tyctx).ty;
             let owner_ty = crate::utilis::monomorphize(&method_instance, owner_ty, tyctx);
             let owner = type_cache.type_from_cache(owner_ty, tyctx, Some(method_instance));
@@ -41,13 +40,29 @@ pub fn handle_statement<'tcx>(
             } else {
                 panic!();
             };
-            ops.push(CILOp::LdcI32(variant_index.as_u32() as i32));
-            ops.push(CILOp::STField(Box::new(crate::cil::FieldDescriptor::new(
-                owner,
-                disrc_type.clone(),
-                "_tag".into(),
-            ))));
-            ops
+            //ops.push();
+            Some(
+                CILRoot::SetField {
+                    desc: crate::cil::FieldDescriptor::new(
+                        owner,
+                        disrc_type.clone(),
+                        "_tag".into(),
+                    ),
+                    addr: crate::place::place_adress(
+                        place,
+                        tyctx,
+                        method,
+                        method_instance,
+                        type_cache,
+                    ),
+                    value: crate::casts::int_to_int(
+                        Type::I32,
+                        disrc_type,
+                        ldc_i32!(variant_index.as_u32() as i32),
+                    ),
+                }
+                .into(),
+            )
         }
         StatementKind::Assign(palce_rvalue) => {
             let place = palce_rvalue.as_ref().0;
@@ -59,96 +74,31 @@ pub fn handle_statement<'tcx>(
                 Some(method_instance),
             ) == crate::r#type::Type::Void
             {
-                return vec![];
+                return None;
             }
-            let rvalue_ops = rustc_middle::ty::print::with_no_trimmed_paths! {crate::rvalue::handle_rvalue(
-                rvalue,
-                tyctx,
-                &place,
-                method,
-                method_instance,
-                type_cache,
-            )};
-            let mut res = crate::place::place_set(
-                &place,
-                tyctx,
-                rvalue_ops,
-                method,
-                method_instance,
-                type_cache,
-            );
-            if *crate::config::TRACE_STATEMENTS {
-                use crate::r#type::Type;
-                rustc_middle::ty::print::with_no_trimmed_paths! {res.extend(CILOp::debug_msg(&format!("{statement:?}")))};
-                let place_ty = type_cache.type_from_cache(
-                    crate::utilis::monomorphize(
-                        &method_instance,
-                        place.ty(method, tyctx).ty,
-                        tyctx,
-                    ),
+
+            Some(
+                crate::place::place_set(
+                    &place,
                     tyctx,
-                    Some(method_instance),
-                );
-                match place_ty {
-                    Type::Bool => rustc_middle::ty::print::with_no_trimmed_paths! {{
-                        res.extend(CILOp::debug_msg_no_nl(&format!("{place:?}:")));
-                        res.extend(crate::place::place_get(
-                            &place,
-                            tyctx,
-                            method,
-                            method_instance,
-                            type_cache
-                        ).flatten());
-                        res.push(CILOp::debug_bool());
-                        res.extend(CILOp::debug_msg(""));
-                    }},
-                    Type::I32 => rustc_middle::ty::print::with_no_trimmed_paths! {{
-                        res.extend(CILOp::debug_msg_no_nl(&format!("{place:?}:")));
-                        res.extend(crate::place::place_get(
-                            &place,
-                            tyctx,
-                            method,
-                            method_instance,
-                            type_cache
-                        ).flatten());
-                        res.push(CILOp::debug_i32());
-                        res.extend(CILOp::debug_msg(""));
-                    }},
-                    Type::USize | Type::ISize | Type::Ptr(_) => {
-                        rustc_middle::ty::print::with_no_trimmed_paths! {{
-                            res.extend(CILOp::debug_msg_no_nl(&format!("{place:?}:")));
-                            res.extend(crate::place::place_get(
-                                &place,
-                                tyctx,
-                                method,
-                                method_instance,
-                                type_cache
-                            ).flatten());
-                            res.push(CILOp::ConvU64(false));
-                            res.push(CILOp::debug_u64());
-                            res.extend(CILOp::debug_msg(""));
-                        }}
-                    }
-                    Type::F32 => rustc_middle::ty::print::with_no_trimmed_paths! {{
-                        res.extend(CILOp::debug_msg_no_nl(&format!("{place:?}:")));
-                        res.extend(crate::place::place_get(
-                            &place,
-                            tyctx,
-                            method,
-                            method_instance,
-                            type_cache
-                        ).flatten());
-                        res.push(CILOp::debug_f32());
-                        res.extend(CILOp::debug_msg(""));
-                    }},
-                    _ => (),
-                }
-            };
-            res
+                    crate::rvalue::handle_rvalue(
+                        rvalue,
+                        tyctx,
+                        &place,
+                        method,
+                        method_instance,
+                        type_cache,
+                    ),
+                    method,
+                    method_instance,
+                    type_cache,
+                )
+                .into(),
+            )
         }
         StatementKind::Intrinsic(non_diverging_intirinsic) => {
             match non_diverging_intirinsic.as_ref() {
-                NonDivergingIntrinsic::Assume(_) => vec![],
+                NonDivergingIntrinsic::Assume(_) => None,
                 NonDivergingIntrinsic::CopyNonOverlapping(CopyNonOverlapping {
                     src,
                     dst,
@@ -160,24 +110,21 @@ pub fn handle_statement<'tcx>(
                         method,
                         method_instance,
                         type_cache,
-                    )
-                    .flatten();
+                    );
                     let src_op = crate::operand::handle_operand(
                         src,
                         tyctx,
                         method,
                         method_instance,
                         type_cache,
-                    )
-                    .flatten();
+                    );
                     let count_op = crate::operand::handle_operand(
                         count,
                         tyctx,
                         method,
                         method_instance,
                         type_cache,
-                    )
-                    .flatten();
+                    );
                     let src_ty = src.ty(method, tyctx);
                     let src_ty = crate::utilis::monomorphize(&method_instance, src_ty, tyctx);
                     let ptr_type = type_cache.type_from_cache(src_ty, tyctx, Some(method_instance));
@@ -185,15 +132,14 @@ pub fn handle_statement<'tcx>(
                         rustc_middle::ty::print::with_no_trimmed_paths! { panic!("Copy nonoverlaping called with non-pointer type {src_ty:?}")};
                     };
 
-                    let mut res: Vec<_> =
-                        [dst_op, src_op, count_op].into_iter().flatten().collect();
-                    res.push(CILOp::SizeOf(pointed));
-                    res.push(CILOp::Mul);
-                    res.push(CILOp::CpBlk);
-                    if *crate::config::TRACE_STATEMENTS {
-                        rustc_middle::ty::print::with_no_trimmed_paths! {res.extend(CILOp::debug_msg(&format!("{statement:?}")))};
-                    }
-                    res
+                    Some(
+                        CILRoot::CpBlk {
+                            src: src_op,
+                            dst: dst_op,
+                            len: mul!(count_op, size_of!(pointed)),
+                        }
+                        .into(),
+                    )
                 }
             }
         }

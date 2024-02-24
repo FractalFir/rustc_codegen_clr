@@ -24,7 +24,7 @@ pub fn handle_terminator<'ctx>(
     method: &rustc_middle::mir::Body<'ctx>,
     method_instance: Instance<'ctx>,
     type_cache: &mut crate::r#type::TyCache,
-) -> Vec<CILOp> {
+) -> Vec<CILTree> {
     match &terminator.kind {
         TerminatorKind::Call {
             func,
@@ -35,7 +35,7 @@ pub fn handle_terminator<'ctx>(
             call_source: _,
             fn_span: _,
         } => {
-            let mut ops = Vec::new();
+            let mut trees = Vec::new();
             match func {
                 Operand::Constant(fn_const) => {
                     let fn_ty = fn_const.ty();
@@ -54,10 +54,12 @@ pub fn handle_terminator<'ctx>(
                         method_instance,
                         type_cache,
                     );
-                    ops.extend(call_ops);
+                    trees.push(call_ops.into())
                 }
                 Operand::Copy(operand) | Operand::Move(operand) => {
                     let operand_ty = operand.ty(method, tyctx);
+                    todo!();
+                    /*
                     if let TyKind::FnPtr(sig) = operand_ty.ty.kind() {
                         let sig = crate::utilis::monomorphize(&method_instance, *sig, tyctx);
                         let sig =
@@ -115,22 +117,30 @@ pub fn handle_terminator<'ctx>(
                             type_cache,
                         );
                         ops.extend(call_ops);
-                    };
+                    };*/
                 }
             }
             if let Some(target) = target {
-                ops.push(CILOp::GoTo(target.as_u32()));
+                trees.push(
+                    CILRoot::GoTo {
+                        target: target.as_u32(),
+                    }
+                    .into(),
+                );
             }
-            ops
+            trees
         }
         TerminatorKind::Return => {
             let ret = crate::utilis::monomorphize(&method_instance, method.return_ty(), tyctx);
             if type_cache.type_from_cache(ret, tyctx, Some(method_instance))
                 == crate::r#type::Type::Void
             {
-                vec![CILOp::Ret]
+                CILRoot::VoidRet.into()
             } else {
-                vec![CILOp::LDLoc(0), CILOp::Ret]
+                CILRoot::Ret {
+                    tree: CILNode::LDLoc(0),
+                }
+                .into()
             }
         }
         TerminatorKind::SwitchInt { discr, targets } => {
@@ -138,9 +148,6 @@ pub fn handle_terminator<'ctx>(
             let discr =
                 crate::operand::handle_operand(discr, tyctx, method, method_instance, type_cache);
             handle_switch(ty, discr, targets)
-                .into_iter()
-                .flat_map(|tree| tree.flatten())
-                .collect()
         }
         TerminatorKind::Assert {
             cond: _,
@@ -160,15 +167,22 @@ pub fn handle_terminator<'ctx>(
             //type_cache,
             //));
             //ops
-            let _ = throw_assert_msg;
-            vec![CILOp::GoTo(target.as_u32())]
+            //let _ = throw_assert_msg;
+            vec![CILRoot::GoTo {
+                target: target.as_u32(),
+            }
+            .into()]
         }
-        TerminatorKind::Goto { target } => vec![CILOp::GoTo((*target).into())],
+        TerminatorKind::Goto { target } => vec![CILRoot::GoTo {
+            target: target.as_u32(),
+        }
+        .into()],
         TerminatorKind::UnwindResume => {
             println!("WARNING: stack unwiniding is not supported yet in rustc_codegen_clr!");
-            vec![CILOp::Comment(
+            /*vec![CILOp::Comment(
                 "WARNING: stack unwiniding is not supported yet in rustc_codegen_clr!".into(),
-            )]
+            )]*/
+            vec![CILRoot::Nop.into()]
         }
         TerminatorKind::Drop {
             place,
@@ -181,34 +195,48 @@ pub fn handle_terminator<'ctx>(
             let drop_instance = Instance::resolve_drop_in_place(tyctx, ty).polymorphize(tyctx);
             if let InstanceDef::DropGlue(_, None) = drop_instance.def {
                 //Empty drop, nothing needs to happen.
-                vec![CILOp::GoTo(target.as_u32())]
+                vec![CILRoot::GoTo {
+                    target: target.as_u32(),
+                }
+                .into()]
             } else {
                 let sig = FnSig::sig_from_instance_(drop_instance, tyctx, type_cache).unwrap();
 
                 let function_name = crate::utilis::function_name(tyctx.symbol_name(drop_instance));
-                let mut call =
-                    crate::place::place_adress(place, tyctx, method, method_instance, type_cache)
-                        .flatten();
 
-                call.push(CILOp::Call(CallSite::boxed(None, function_name, sig, true)));
-                //dprintln!("drop call:{call:?}");
-                call.push(CILOp::GoTo(target.as_u32()));
-                call
+                vec![
+                    CILRoot::Call {
+                        site: CallSite::new(None, function_name, sig, true).into(),
+                        args: [crate::place::place_adress(
+                            place,
+                            tyctx,
+                            method,
+                            method_instance,
+                            type_cache,
+                        )]
+                        .into(),
+                    }
+                    .into(),
+                    CILRoot::GoTo {
+                        target: target.as_u32(),
+                    }
+                    .into(),
+                ]
             }
         }
-        TerminatorKind::Unreachable => CILOp::throw_msg("Unreachable reached!").into(),
-        TerminatorKind::InlineAsm {
-            template: _,
-            operands: _,
-            options: _,
-            line_spans: _,
-            destination: _,
-            unwind: _,
-        } => {
-            eprintln!("Inline assembly is not yet supported!");
-            CILOp::throw_msg("Inline assembly is not yet supported!").to_vec()
-        }
 
+               TerminatorKind::Unreachable => CILRoot::throw("Unreachable reached!").into(),
+               TerminatorKind::InlineAsm {
+                   template: _,
+                   operands: _,
+                   options: _,
+                   line_spans: _,
+                   destination: _,
+                   unwind: _,
+               } => {
+                   eprintln!("Inline assembly is not yet supported!");
+                   CILRoot::throw("Inline assembly is not yet supported!").into()
+               }
         _ => todo!("Unhandled terminator kind {kind:?}", kind = terminator.kind),
     }
 }

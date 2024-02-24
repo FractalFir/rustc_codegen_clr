@@ -1,5 +1,7 @@
+use crate::cil_tree::CILTree;
 use crate::method::MethodType;
 use crate::rustc_middle::dep_graph::DepContext;
+use crate::cil_tree::cil_root::CILRoot;
 use crate::{
     access_modifier::AccessModifer,
     cil::{CILOp, CallSite},
@@ -146,7 +148,7 @@ impl Assembly {
         tcx: TyCtxt<'tcx>,
         instance: Instance<'tcx>,
         type_cache: &mut TyCache,
-    ) -> Vec<CILOp> {
+    ) -> Vec<CILTree> {
         let mut terminator = if *crate::config::ABORT_ON_ERROR {
             crate::terminator::handle_terminator(term, mir, tcx, mir, instance, type_cache)
         } else {
@@ -165,12 +167,13 @@ impl Assembly {
                         format!("Tried to execute terminator {term:?} whose compialtion failed with a no-string message!")
                         }
                     };
-                    CILOp::throw_msg(&msg).into()
+                    CILRoot::throw(&msg).into()
                 }
             }
         };
         let argc = mir.arg_count as u32;
         let locc = mir.local_decls.len() as u32 - mir.arg_count as u32;
+        /*
         if !crate::utilis::verify_locals_within_range(&terminator, argc, locc) {
             let msg = rustc_middle::ty::print::with_no_trimmed_paths! {format!("{term:?} failed verification, because it refered to local varibles/arguments that do not exist. ops:{terminator:?} argc:{argc} locc:{locc}")};
             eprintln!("WARING: teminator {msg}");
@@ -178,7 +181,7 @@ impl Assembly {
             rustc_middle::ty::print::with_no_trimmed_paths! {terminator.extend(CILOp::throw_msg(&format!(
                 "Tried to execute miscompiled terminator {term:?}, which {msg}"
             )))};
-        }
+        }*/
         terminator
     }
     /// Turns a statement into ops, if ABORT_ON_ERROR set to false, will handle and recover from errors.
@@ -188,7 +191,7 @@ impl Assembly {
         mir: &rustc_middle::mir::Body<'tcx>,
         instance: Instance<'tcx>,
         type_cache: &mut TyCache,
-    ) -> Result<Vec<CILOp>, CodegenError> {
+    ) -> Result<Option<CILTree>, CodegenError> {
         if *crate::config::ABORT_ON_ERROR {
             Ok(crate::statement::handle_statement(
                 statement, tcx, mir, instance, type_cache,
@@ -288,13 +291,14 @@ impl Assembly {
 
         let blocks = &mir.basic_blocks;
         let does_return_void: bool = *method.sig().output() == Type::Void;
+        let mut trees = Vec::new();
         for (last_bb_id, block_data) in blocks.into_iter().enumerate() {
             ops.push(CILOp::Label(last_bb_id as u32));
             for statement in &block_data.statements {
                 if *crate::config::INSERT_MIR_DEBUG_COMMENTS {
                     rustc_middle::ty::print::with_no_trimmed_paths! {ops.push(CILOp::Comment(format!("{statement:?}").into()))};
                 }
-                let statement_ops = match Self::statement_to_ops(
+                let statement_trees = match Self::statement_to_ops(
                     statement, tcx, mir, instance, cache,
                 ) {
                     Ok(ops) => ops,
@@ -303,28 +307,29 @@ impl Assembly {
                         rustc_middle::ty::print::with_no_trimmed_paths! {eprintln!(
                             "Method \"{name}\" failed to compile statement {statement:?} with message {err:?}"
                         )};
-                        rustc_middle::ty::print::with_no_trimmed_paths! {CILOp::throw_msg(&format!("Tired to run a statement {statement:?} which failed to compile with error message {err:?}.")).into()}
+                        rustc_middle::ty::print::with_no_trimmed_paths! {Some(CILRoot::throw(&format!("Tired to run a statement {statement:?} which failed to compile with error message {err:?}.")).into())}
+                     
                     }
                 };
-                crate::utilis::check_debugable(&statement_ops, statement, does_return_void);
-                ops.extend(statement_ops);
-                if *crate::config::INSERT_MIR_DEBUG_COMMENTS {
-                    ops.push(CILOp::Comment("STATEMENT END.".into()));
-                }
+                trees.extend(statement_trees);
+                //crate::utilis::check_debugable(&statement_ops, statement, does_return_void);
+                //ops.extend(statement_ops);
+                //if *crate::config::INSERT_MIR_DEBUG_COMMENTS {
+                //ops.push(CILOp::Comment("STATEMENT END.".into()));
+                //}
             }
             match &block_data.terminator {
                 Some(term) => {
                     if *crate::config::INSERT_MIR_DEBUG_COMMENTS {
                         //rustc_middle::ty::print::with_no_trimmed_paths! {ops.push(CILOp::Comment(format!("{term:?}").into()))};
                     }
-                    let term_ops = Self::terminator_to_ops(term, mir, tcx, instance, cache);
-                    if term_ops != [CILOp::Ret] {
-                        crate::utilis::check_debugable(&term_ops, term, does_return_void);
-                    }
-                    ops.extend(term_ops)
+                    let term_trees = Self::terminator_to_ops(term, mir, tcx, instance, cache);
+
+                    trees.extend(term_trees);
                 }
                 None => (),
             }
+            ops.extend(trees.iter().flat_map(|tree| tree.flatten()))
         }
         #[allow(clippy::single_match)]
         // This will be slowly expanded with support for new types of allocations.

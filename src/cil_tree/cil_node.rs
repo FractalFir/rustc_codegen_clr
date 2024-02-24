@@ -1,6 +1,6 @@
 use crate::{
     cil::{CILOp, CallSite, FieldDescriptor},
-    r#type::Type,
+    r#type::Type, IString,
 };
 
 use super::{append_vec, cil_root::CILRoot};
@@ -74,6 +74,10 @@ pub enum CILNode {
         args: Box<[Self]>,
         site: Box<CallSite>,
     },
+    CallVirt {
+        args: Box<[Self]>,
+        site: Box<CallSite>,
+    },
     LdcI64(i64),
     LdcU64(u64),
     LdcI32(i32),
@@ -106,6 +110,12 @@ pub enum CILNode {
     LoadAddresOfTMPLocal,
     LoadTMPLocal,
     LDFtn(Box<CallSite>),
+    LDTypeToken(Box<Type>),
+    NewObj {
+        site: Box<CallSite>,
+        args: Box<[CILNode]>,
+    },
+    LdStr(IString),
 }
 impl CILNode {
     pub fn flatten(&self) -> Vec<CILOp> {
@@ -118,6 +128,7 @@ impl CILNode {
             Self::LoadTMPLocal => vec![CILOp::LoadTMPLocal],
             Self::LoadAddresOfTMPLocal => vec![CILOp::LoadAddresOfTMPLocal],
             Self::LDFtn(site) => vec![CILOp::LDFtn(site.clone())],
+            Self::LDTypeToken(tpe) => vec![CILOp::LDTypeToken(tpe.clone())],
             Self::TemporaryLocal(tuple) => {
                 let (tpe, branches, tree) = *tuple.clone();
                 let mut res = vec![CILOp::NewTMPLocal(tpe.into())];
@@ -287,12 +298,28 @@ impl CILNode {
                 res.push(CILOp::Call(site.clone()));
                 res
             }
+            Self::Call { args, site } => {
+                let mut res: Vec<CILOp> = args.iter().flat_map(|arg| arg.flatten()).collect();
+                res.push(CILOp::Call(site.clone()));
+                res
+            }
+            Self::NewObj { args, site } => {
+                let mut res: Vec<CILOp> = args.iter().flat_map(|arg| arg.flatten()).collect();
+                res.push(CILOp::NewObj(site.clone()));
+                res
+            }
+            Self::CallVirt { args, site } => {
+                let mut res: Vec<CILOp> = args.iter().flat_map(|arg| arg.flatten()).collect();
+                res.push(CILOp::CallVirt(site.clone()));
+                res
+            }
             Self::LdcI64(val) => vec![CILOp::LdcI64(*val)],
             Self::LdcU64(val) => vec![CILOp::LdcU64(*val)],
             Self::LdcI32(val) => vec![CILOp::LdcI32(*val)],
             Self::LdcU32(val) => vec![CILOp::LdcU32(*val)],
             Self::LdcF64(val) => vec![CILOp::LdcF64(*val)],
             Self::LdcF32(val) => vec![CILOp::LdcF32(*val)],
+            Self::LdStr(string) => vec![CILOp::LdStr(string.clone())],
             Self::LoadGlobalAllocPtr { alloc_id } => vec![CILOp::LoadGlobalAllocPtr {
                 alloc_id: *alloc_id,
             }],
@@ -443,7 +470,15 @@ macro_rules! call {
         }
     };
 }
-
+#[macro_export]
+macro_rules! call_virt {
+    ($call_site:expr,$args:expr) => {
+        CILNode::CallVirt {
+            args: $args.into(),
+            site: $call_site.into(),
+        }
+    };
+}
 #[macro_export]
 macro_rules! conv_usize {
     ($a:expr) => {
@@ -526,7 +561,7 @@ macro_rules! conv_f64_un {
 #[macro_export]
 macro_rules! ldc_i32 {
     ($val:expr) => {
-        CILNode::LdcI32($val)
+        crate::cil_tree::cil_node::CILNode::LdcI32($val)
     };
 }
 #[macro_export]

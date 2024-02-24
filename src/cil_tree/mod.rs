@@ -12,6 +12,11 @@ impl From<CILRoot> for CILTree {
         Self { tree }
     }
 }
+impl From<CILRoot> for Vec<CILTree> {
+    fn from(tree: CILRoot) -> Self {
+        vec![CILTree { tree }]
+    }
+}
 impl CILTree {
     pub fn flatten(&self) -> Vec<CILOp> {
         self.tree.flatten()

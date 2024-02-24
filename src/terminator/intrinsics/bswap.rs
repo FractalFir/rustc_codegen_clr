@@ -1,5 +1,7 @@
 use crate::{
+    call,
     cil::{CILOp, CallSite},
+    cil_tree::{cil_node::CILNode, cil_root::CILRoot},
     function_sig::FnSig,
     operand::handle_operand,
     place::place_set,
@@ -18,7 +20,7 @@ pub fn bswap<'tyctx>(
     body: &'tyctx Body<'tyctx>,
     method_instance: Instance<'tyctx>,
     type_cache: &mut TyCache,
-) -> Vec<CILOp> {
+) -> CILRoot {
     debug_assert_eq!(
         args.len(),
         1,
@@ -27,33 +29,33 @@ pub fn bswap<'tyctx>(
     let ty = args[0].node.ty(body, tyctx);
     let ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
     let tpe = type_cache.type_from_cache(ty, tyctx, Some(method_instance));
-    let operand = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache).flatten();
+    let operand = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
     place_set(
         destination,
         tyctx,
         match ty.kind() {
             TyKind::Uint(UintTy::U8) => operand,
             TyKind::Uint(_) | TyKind::Int(_) => {
-                let mut ops = operand;
-                ops.push(CILOp::Call(CallSite::boxed(
-                    Some(DotnetTypeRef::binary_primitives()),
-                    "ReverseEndianness".into(),
-                    FnSig::new(&[tpe.clone()], &tpe),
-                    true,
-                )));
-                ops
+                call!(
+                    CallSite::boxed(
+                        Some(DotnetTypeRef::binary_primitives()),
+                        "ReverseEndianness".into(),
+                        FnSig::new(&[tpe.clone()], &tpe),
+                        true,
+                    ),
+                    [operand]
+                )
             }
-            TyKind::Uint(UintTy::U128) | TyKind::Int(IntTy::I128) => {
-                todo!("Can't bswap 128 bit ints")
-            }
-            _ => [
+
+            _ => todo!("Can't bswap {tpe:?}"),
+            /*_ => [
                 operand,
                 stupid_bswap(ty, tyctx, type_cache, method_instance),
             ]
             .iter()
             .flatten()
             .cloned()
-            .collect(),
+            .collect(),*/
         },
         body,
         method_instance,

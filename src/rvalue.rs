@@ -18,7 +18,7 @@ pub fn handle_rvalue<'tcx>(
     method: &rustc_middle::mir::Body<'tcx>,
     method_instance: Instance<'tcx>,
     tycache: &mut TyCache,
-) -> Vec<CILOp> {
+) -> CILNode {
     match rvalue {
         Rvalue::Use(operand) => handle_operand(operand, tyctx, method, method_instance, tycache),
         Rvalue::CopyForDeref(place) => {
@@ -527,5 +527,4 @@ pub fn handle_rvalue<'tcx>(
         }
         _ => rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Unhandled RValue {rvalue:?}")},
     }
-    .flatten()
 }

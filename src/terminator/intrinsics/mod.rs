@@ -1,4 +1,7 @@
-use crate::{call, ldc_i32, sub};
+use crate::cil_tree::cil_root::CILRoot;
+use crate::{
+    add, call, call_virt, conv_f32, conv_f64, conv_usize, div, ldc_i32, ldc_u64, mul, size_of, sub,
+};
 use crate::{
     cil::{CILOp, CallSite},
     cil_tree::cil_node::CILNode,
@@ -25,7 +28,7 @@ pub fn handle_intrinsic<'tyctx>(
     call_instance: Instance<'tyctx>,
     type_cache: &mut TyCache,
     signature: FnSig,
-) -> Vec<CILOp> {
+) -> CILRoot {
     let mut call = Vec::new();
     for arg in args {
         call.extend(
@@ -40,7 +43,7 @@ pub fn handle_intrinsic<'tyctx>(
                 0,
                 "The intrinsic `breakpoint` MUST take in exactly 1 argument!"
             );
-            vec![CILOp::Break]
+            CILRoot::Break
         }
         "unlikely" | "likely" => {
             debug_assert_eq!(
@@ -52,15 +55,13 @@ pub fn handle_intrinsic<'tyctx>(
             place_set(
                 destination,
                 tyctx,
-                handle_operand(&args[0].node, tyctx, body, method_instance, type_cache).flatten(),
+                handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
                 body,
                 method_instance,
                 type_cache,
             )
         }
         "arith_offset" => {
-            let mut ops =
-                handle_operand(&args[0].node, tyctx, body, method_instance, type_cache).flatten();
             let tpe = crate::utilis::monomorphize(
                 &method_instance,
                 call_instance.args[0]
@@ -69,16 +70,21 @@ pub fn handle_intrinsic<'tyctx>(
                 tyctx,
             );
             let tpe = type_cache.type_from_cache(tpe, tyctx, Some(method_instance));
-            ops.extend(
-                handle_operand(&args[0].node, tyctx, body, method_instance, type_cache).flatten(),
-            );
-            ops.extend([
-                CILOp::SizeOf(tpe.into()),
-                CILOp::ConvUSize(false),
-                CILOp::Mul,
-                CILOp::Add,
-            ]);
-            place_set(destination, tyctx, ops, body, method_instance, type_cache)
+
+            place_set(
+                destination,
+                tyctx,
+                add!(
+                    handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
+                    mul!(
+                        handle_operand(&args[1].node, tyctx, body, method_instance, type_cache),
+                        conv_usize!(size_of!(tpe))
+                    )
+                ),
+                body,
+                method_instance,
+                type_cache,
+            )
         }
         "is_val_statically_known" => {
             debug_assert_eq!(
@@ -90,7 +96,7 @@ pub fn handle_intrinsic<'tyctx>(
             place_set(
                 destination,
                 tyctx,
-                vec![CILOp::LdcI32(0)],
+                ldc_i32!(0),
                 body,
                 method_instance,
                 type_cache,
@@ -114,7 +120,7 @@ pub fn handle_intrinsic<'tyctx>(
             place_set(
                 destination,
                 tyctx,
-                vec![CILOp::LdcI32(needs_drop)],
+                ldc_i32!(needs_drop),
                 body,
                 method_instance,
                 type_cache,
@@ -127,13 +133,13 @@ pub fn handle_intrinsic<'tyctx>(
                 "The intrinsic `black_box` MUST take in exactly 1 argument!"
             );
             if signature.output() == &Type::Void {
-                return vec![];
+                return CILRoot::Nop;
             }
             // assert_eq!(args.len(),1,"The intrinsic `unlikely` MUST take in exactly 1 argument!");
             place_set(
                 destination,
                 tyctx,
-                handle_operand(&args[0].node, tyctx, body, method_instance, type_cache).flatten(),
+                handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
                 body,
                 method_instance,
                 type_cache,
@@ -145,16 +151,18 @@ pub fn handle_intrinsic<'tyctx>(
                 3,
                 "The intrinsic `fmaf64` MUST take in exactly 1 argument!"
             );
-            let mut res =
-                handle_operand(&args[0].node, tyctx, body, method_instance, type_cache).flatten();
-            res.extend(
-                handle_operand(&args[1].node, tyctx, body, method_instance, type_cache).flatten(),
-            );
-            res.extend(
-                handle_operand(&args[2].node, tyctx, body, method_instance, type_cache).flatten(),
-            );
-            res.extend([CILOp::Mul, CILOp::Add]);
-            place_set(destination, tyctx, res, body, method_instance, type_cache)
+            let mut a = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
+            let b = handle_operand(&args[1].node, tyctx, body, method_instance, type_cache);
+            let c = handle_operand(&args[2].node, tyctx, body, method_instance, type_cache);
+
+            place_set(
+                destination,
+                tyctx,
+                add!(mul!(a, b), c),
+                body,
+                method_instance,
+                type_cache,
+            )
         }
         "ctpop" => {
             debug_assert_eq!(
@@ -194,8 +202,7 @@ pub fn handle_intrinsic<'tyctx>(
                         ),
                         [operand]
                     )),
-                )
-                .flatten(),
+                ),
                 body,
                 method_instance,
                 type_cache,
@@ -268,8 +275,7 @@ pub fn handle_intrinsic<'tyctx>(
                         ),
                         ldc_i32!(sub)
                     ),
-                )
-                .flatten(),
+                ),
                 body,
                 method_instance,
                 type_cache,
@@ -311,8 +317,7 @@ pub fn handle_intrinsic<'tyctx>(
                         ),
                         [operand]
                     ),
-                )
-                .flatten(),
+                ),
                 body,
                 method_instance,
                 type_cache,
@@ -324,28 +329,36 @@ pub fn handle_intrinsic<'tyctx>(
                 2,
                 "The intrinsic `rotate_left` MUST take in exactly 2 arguments!"
             );
+            //TODO: ROL is buggy for some int types!
             let bit_operations =
                 DotnetTypeRef::new("System.Runtime".into(), "System.Numerics.BitOperations")
                     .with_valuetype(false);
             let bit_operations = Some(bit_operations);
-            let mut res = Vec::new();
-            res.extend(
-                handle_operand(&args[0].node, tyctx, body, method_instance, type_cache).flatten(),
-            );
-            res.extend(
-                handle_operand(&args[1].node, tyctx, body, method_instance, type_cache).flatten(),
-            );
-            res.extend([
-                CILOp::ConvU64(false),
-                CILOp::Call(CallSite::boxed(
-                    bit_operations.clone(),
-                    "RotateLeft".into(),
-                    FnSig::new(&[Type::U64, Type::U64], &Type::I32),
-                    true,
-                )),
-                CILOp::ConvU64(false),
-            ]);
-            place_set(destination, tyctx, res, body, method_instance, type_cache)
+            place_set(
+                destination,
+                tyctx,
+                call!(
+                    CallSite::boxed(
+                        bit_operations.clone(),
+                        "RotateLeft".into(),
+                        FnSig::new(&[Type::U64, Type::U64], &Type::I32),
+                        true,
+                    ),
+                    [
+                        handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
+                        conv_u64!(handle_operand(
+                            &args[1].node,
+                            tyctx,
+                            body,
+                            method_instance,
+                            type_cache
+                        ))
+                    ]
+                ),
+                body,
+                method_instance,
+                type_cache,
+            )
         }
         "write_bytes" => {
             debug_assert_eq!(
@@ -353,17 +366,10 @@ pub fn handle_intrinsic<'tyctx>(
                 3,
                 "The intrinsic `write_bytes` MUST take in exactly 3 argument!"
             );
-            let dst =
-                handle_operand(&args[0].node, tyctx, body, method_instance, type_cache).flatten();
-            let val =
-                handle_operand(&args[1].node, tyctx, body, method_instance, type_cache).flatten();
-            let count =
-                handle_operand(&args[2].node, tyctx, body, method_instance, type_cache).flatten();
-            let mut ops = dst;
-            ops.extend(val);
-            ops.extend(count);
-            ops.push(CILOp::InitBlk);
-            ops
+            let dst = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
+            let val = handle_operand(&args[1].node, tyctx, body, method_instance, type_cache);
+            let count = handle_operand(&args[2].node, tyctx, body, method_instance, type_cache);
+            CILRoot::InitBlk { dst, val, count }
         }
         "copy" => {
             debug_assert_eq!(
@@ -371,17 +377,14 @@ pub fn handle_intrinsic<'tyctx>(
                 3,
                 "The intrinsic `copy` MUST take in exactly 3 argument!"
             );
-            let dst =
-                handle_operand(&args[0].node, tyctx, body, method_instance, type_cache).flatten();
-            let val =
-                handle_operand(&args[1].node, tyctx, body, method_instance, type_cache).flatten();
-            let count =
-                handle_operand(&args[2].node, tyctx, body, method_instance, type_cache).flatten();
-            let mut ops = dst;
-            ops.extend(val);
-            ops.extend(count);
-            ops.push(CILOp::CpBlk);
-            ops
+            let src = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
+            let dst = handle_operand(&args[1].node, tyctx, body, method_instance, type_cache);
+            let count = handle_operand(&args[2].node, tyctx, body, method_instance, type_cache);
+            CILRoot::CpBlk {
+                src,
+                dst,
+                len: count,
+            }
         }
         "exact_div" => {
             debug_assert_eq!(
@@ -389,14 +392,18 @@ pub fn handle_intrinsic<'tyctx>(
                 2,
                 "The intrinsic `exact_div` MUST take in exactly 2 argument!"
             );
-            let lhs =
-                handle_operand(&args[0].node, tyctx, body, method_instance, type_cache).flatten();
-            let rhs =
-                handle_operand(&args[1].node, tyctx, body, method_instance, type_cache).flatten();
-            let mut ops = lhs;
-            ops.extend(rhs);
-            ops.push(CILOp::Div);
-            place_set(destination, tyctx, ops, body, method_instance, type_cache)
+
+            place_set(
+                destination,
+                tyctx,
+                div!(
+                    handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
+                    handle_operand(&args[1].node, tyctx, body, method_instance, type_cache)
+                ),
+                body,
+                method_instance,
+                type_cache,
+            )
         }
         "type_id" => {
             let tpe = crate::utilis::monomorphize(
@@ -415,27 +422,31 @@ pub fn handle_intrinsic<'tyctx>(
             place_set(
                 destination,
                 tyctx,
-                vec![
-                    CILOp::LDTypeToken(tpe.into()),
-                    CILOp::Call(CallSite::boxed(
-                        DotnetTypeRef::type_type().into(),
-                        "GetTypeFromHandle".into(),
-                        sig,
-                        true,
-                    )),
-                    CILOp::CallVirt(CallSite::boxed(
-                        DotnetTypeRef::object_type().into(),
-                        "GetHashCode".into(),
-                        gethash_sig,
-                        false,
-                    )),
-                    CILOp::Call(CallSite::boxed(
+                call!(
+                    CallSite::boxed(
                         Some(DotnetTypeRef::uint_128()),
                         "op_Implicit".into(),
                         crate::function_sig::FnSig::new(&[Type::U32], &Type::U128),
                         true,
-                    )),
-                ],
+                    ),
+                    [call_virt!(
+                        CallSite::boxed(
+                            DotnetTypeRef::object_type().into(),
+                            "GetHashCode".into(),
+                            gethash_sig,
+                            false,
+                        ),
+                        [call!(
+                            CallSite::boxed(
+                                DotnetTypeRef::type_type().into(),
+                                "GetTypeFromHandle".into(),
+                                sig,
+                                true,
+                            ),
+                            [CILNode::LDTypeToken(tpe.into())]
+                        )]
+                    )]
+                ),
                 body,
                 method_instance,
                 type_cache,
@@ -453,8 +464,7 @@ pub fn handle_intrinsic<'tyctx>(
             let arg_ty = arg.builtin_deref(true).unwrap().ty;
             let arg = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
             let ops =
-                crate::place::deref_op(arg_ty.into(), tyctx, &method_instance, type_cache, arg)
-                    .flatten();
+                crate::place::deref_op(arg_ty.into(), tyctx, &method_instance, type_cache, arg);
             place_set(destination, tyctx, ops, body, method_instance, type_cache)
         }
         "atomic_load_unordered" => {
@@ -470,8 +480,7 @@ pub fn handle_intrinsic<'tyctx>(
             let arg_ty = arg.builtin_deref(true).unwrap().ty;
             let arg = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
             let ops =
-                crate::place::deref_op(arg_ty.into(), tyctx, &method_instance, type_cache, arg)
-                    .flatten();
+                crate::place::deref_op(arg_ty.into(), tyctx, &method_instance, type_cache, arg);
             place_set(destination, tyctx, ops, body, method_instance, type_cache)
         }
         "atomic_load_acquire" => {
@@ -487,20 +496,17 @@ pub fn handle_intrinsic<'tyctx>(
             let arg_ty = arg.builtin_deref(true).unwrap().ty;
 
             let ops =
-                crate::place::deref_op(arg_ty.into(), tyctx, &method_instance, type_cache, ops)
-                    .flatten();
+                crate::place::deref_op(arg_ty.into(), tyctx, &method_instance, type_cache, ops);
             place_set(destination, tyctx, ops, body, method_instance, type_cache)
         }
         //"bswap"
-        "assert_inhabited" => vec![],
+        "assert_inhabited" => CILRoot::Nop,
         "ptr_offset_from_unsigned" => {
             debug_assert_eq!(
                 args.len(),
                 2,
                 "The intrinsic `min_align_of_val` MUST take in exactly 1 argument!"
             );
-            let mut ops =
-                handle_operand(&args[0].node, tyctx, body, method_instance, type_cache).flatten();
             let tpe = crate::utilis::monomorphize(
                 &method_instance,
                 call_instance.args[0]
@@ -509,16 +515,20 @@ pub fn handle_intrinsic<'tyctx>(
                 tyctx,
             );
             let tpe = type_cache.type_from_cache(tpe, tyctx, Some(method_instance));
-            ops.extend(
-                handle_operand(&args[1].node, tyctx, body, method_instance, type_cache).flatten(),
-            );
-            ops.extend([
-                CILOp::Sub,
-                CILOp::SizeOf(tpe.into()),
-                CILOp::ConvUSize(false),
-                CILOp::Div,
-            ]);
-            place_set(destination, tyctx, ops, body, method_instance, type_cache)
+            place_set(
+                destination,
+                tyctx,
+                div!(
+                    sub!(
+                        handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
+                        handle_operand(&args[1].node, tyctx, body, method_instance, type_cache)
+                    ),
+                    conv_usize!(size_of!(tpe))
+                ),
+                body,
+                method_instance,
+                type_cache,
+            )
         }
         "min_align_of_val" => {
             debug_assert_eq!(
@@ -536,10 +546,7 @@ pub fn handle_intrinsic<'tyctx>(
             place_set(
                 destination,
                 tyctx,
-                vec![
-                    CILOp::LdcI64(crate::utilis::align_of(tpe, tyctx) as i64),
-                    CILOp::ConvUSize(false),
-                ],
+                conv_usize!(ldc_u64!(crate::utilis::align_of(tpe, tyctx) as u64)),
                 body,
                 method_instance,
                 type_cache,
@@ -551,15 +558,29 @@ pub fn handle_intrinsic<'tyctx>(
                 1,
                 "The intrinsic `sqrtf32` MUST take in exactly 1 argument!"
             );
-            let mut ops =
-                handle_operand(&args[0].node, tyctx, body, method_instance, type_cache).flatten();
-            ops.push(CILOp::Call(CallSite::boxed(
-                Some(DotnetTypeRef::new("System.Runtime".into(), "System.MathF")),
-                "Sqrt".into(),
-                FnSig::new(&[Type::F32], &Type::F32),
-                true,
-            )));
-            place_set(destination, tyctx, ops, body, method_instance, type_cache)
+
+            place_set(
+                destination,
+                tyctx,
+                call!(
+                    CallSite::boxed(
+                        Some(DotnetTypeRef::new("System.Runtime".into(), "System.MathF")),
+                        "Sqrt".into(),
+                        FnSig::new(&[Type::F32], &Type::F32),
+                        true,
+                    ),
+                    [handle_operand(
+                        &args[0].node,
+                        tyctx,
+                        body,
+                        method_instance,
+                        type_cache
+                    )]
+                ),
+                body,
+                method_instance,
+                type_cache,
+            )
         }
         "floorf32" => {
             debug_assert_eq!(
@@ -567,15 +588,29 @@ pub fn handle_intrinsic<'tyctx>(
                 1,
                 "The intrinsic `floorf32` MUST take in exactly 1 argument!"
             );
-            let mut ops =
-                handle_operand(&args[0].node, tyctx, body, method_instance, type_cache).flatten();
-            ops.push(CILOp::Call(CallSite::boxed(
-                Some(DotnetTypeRef::new("System.Runtime".into(), "System.MathF")),
-                "Floor".into(),
-                FnSig::new(&[Type::F32], &Type::F32),
-                true,
-            )));
-            place_set(destination, tyctx, ops, body, method_instance, type_cache)
+
+            place_set(
+                destination,
+                tyctx,
+                call!(
+                    CallSite::boxed(
+                        Some(DotnetTypeRef::new("System.Runtime".into(), "System.MathF")),
+                        "Floor".into(),
+                        FnSig::new(&[Type::F32], &Type::F32),
+                        true,
+                    ),
+                    [handle_operand(
+                        &args[0].node,
+                        tyctx,
+                        body,
+                        method_instance,
+                        type_cache
+                    )]
+                ),
+                body,
+                method_instance,
+                type_cache,
+            )
         }
         "ceilf32" => {
             debug_assert_eq!(
@@ -583,15 +618,29 @@ pub fn handle_intrinsic<'tyctx>(
                 1,
                 "The intrinsic `ceilf32` MUST take in exactly 1 argument!"
             );
-            let mut ops =
-                handle_operand(&args[0].node, tyctx, body, method_instance, type_cache).flatten();
-            ops.push(CILOp::Call(CallSite::boxed(
-                Some(DotnetTypeRef::new("System.Runtime".into(), "System.MathF")),
-                "Ceiling".into(),
-                FnSig::new(&[Type::F32], &Type::F32),
-                true,
-            )));
-            place_set(destination, tyctx, ops, body, method_instance, type_cache)
+
+            place_set(
+                destination,
+                tyctx,
+                call!(
+                    CallSite::boxed(
+                        Some(DotnetTypeRef::new("System.Runtime".into(), "System.MathF")),
+                        "Ceiling".into(),
+                        FnSig::new(&[Type::F32], &Type::F32),
+                        true,
+                    ),
+                    [handle_operand(
+                        &args[0].node,
+                        tyctx,
+                        body,
+                        method_instance,
+                        type_cache
+                    )]
+                ),
+                body,
+                method_instance,
+                type_cache,
+            )
         }
         "maxnumf32" => {
             debug_assert_eq!(
@@ -599,18 +648,26 @@ pub fn handle_intrinsic<'tyctx>(
                 2,
                 "The intrinsic `maxnumf32` MUST take in exactly 2 arguments!"
             );
-            let mut ops =
-                handle_operand(&args[0].node, tyctx, body, method_instance, type_cache).flatten();
-            ops.extend(
-                handle_operand(&args[1].node, tyctx, body, method_instance, type_cache).flatten(),
-            );
-            ops.push(CILOp::Call(CallSite::boxed(
-                Some(DotnetTypeRef::new("System.Runtime".into(), "System.MathF")),
-                "Max".into(),
-                FnSig::new(&[Type::F32, Type::F32], &Type::F32),
-                true,
-            )));
-            place_set(destination, tyctx, ops, body, method_instance, type_cache)
+
+            place_set(
+                destination,
+                tyctx,
+                call!(
+                    CallSite::boxed(
+                        Some(DotnetTypeRef::new("System.Runtime".into(), "System.MathF")),
+                        "Max".into(),
+                        FnSig::new(&[Type::F32, Type::F32], &Type::F32),
+                        true,
+                    ),
+                    [
+                        handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
+                        handle_operand(&args[1].node, tyctx, body, method_instance, type_cache)
+                    ]
+                ),
+                body,
+                method_instance,
+                type_cache,
+            )
         }
         "minnumf32" => {
             debug_assert_eq!(
@@ -618,18 +675,25 @@ pub fn handle_intrinsic<'tyctx>(
                 2,
                 "The intrinsic `minnumf32` MUST take in exactly 2 arguments!"
             );
-            let mut ops =
-                handle_operand(&args[0].node, tyctx, body, method_instance, type_cache).flatten();
-            ops.extend(
-                handle_operand(&args[1].node, tyctx, body, method_instance, type_cache).flatten(),
-            );
-            ops.push(CILOp::Call(CallSite::boxed(
-                Some(DotnetTypeRef::new("System.Runtime".into(), "System.MathF")),
-                "Min".into(),
-                FnSig::new(&[Type::F32, Type::F32], &Type::F32),
-                true,
-            )));
-            place_set(destination, tyctx, ops, body, method_instance, type_cache)
+            place_set(
+                destination,
+                tyctx,
+                call!(
+                    CallSite::boxed(
+                        Some(DotnetTypeRef::new("System.Runtime".into(), "System.MathF")),
+                        "Min".into(),
+                        FnSig::new(&[Type::F32, Type::F32], &Type::F32),
+                        true,
+                    ),
+                    [
+                        handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
+                        handle_operand(&args[1].node, tyctx, body, method_instance, type_cache)
+                    ]
+                ),
+                body,
+                method_instance,
+                type_cache,
+            )
         }
         "powif32" => {
             debug_assert_eq!(
@@ -637,21 +701,38 @@ pub fn handle_intrinsic<'tyctx>(
                 2,
                 "The intrinsic `powif32` MUST take in exactly 2 arguments!"
             );
-            let mut ops =
-                handle_operand(&args[0].node, tyctx, body, method_instance, type_cache).flatten();
-            ops.push(CILOp::ConvF64);
-            ops.extend(
-                handle_operand(&args[1].node, tyctx, body, method_instance, type_cache).flatten(),
-            );
-            ops.push(CILOp::ConvF64);
-            ops.push(CILOp::Call(CallSite::boxed(
-                Some(DotnetTypeRef::new("System.Runtime".into(), "System.Math")),
-                "Pow".into(),
-                FnSig::new(&[Type::F64, Type::F64], &Type::F64),
-                true,
-            )));
-            ops.push(CILOp::ConvF32);
-            place_set(destination, tyctx, ops, body, method_instance, type_cache)
+
+            place_set(
+                destination,
+                tyctx,
+                conv_f32!(call!(
+                    CallSite::boxed(
+                        Some(DotnetTypeRef::new("System.Runtime".into(), "System.Math")),
+                        "Pow".into(),
+                        FnSig::new(&[Type::F64, Type::F64], &Type::F64),
+                        true,
+                    ),
+                    [
+                        conv_f64!(handle_operand(
+                            &args[0].node,
+                            tyctx,
+                            body,
+                            method_instance,
+                            type_cache
+                        )),
+                        conv_f64!(handle_operand(
+                            &args[1].node,
+                            tyctx,
+                            body,
+                            method_instance,
+                            type_cache
+                        ))
+                    ]
+                )),
+                body,
+                method_instance,
+                type_cache,
+            )
         }
         "size_of_val" => {
             debug_assert_eq!(
@@ -665,7 +746,7 @@ pub fn handle_intrinsic<'tyctx>(
             place_set(
                 destination,
                 tyctx,
-                vec![CILOp::SizeOf(tpe.into()), CILOp::ConvUSize(false)],
+                conv_usize!(size_of!(tpe)),
                 body,
                 method_instance,
                 type_cache,
@@ -677,17 +758,25 @@ pub fn handle_intrinsic<'tyctx>(
                 1,
                 "The intrinsic `sqrtf64` MUST take in exactly 1 argument!"
             );
-            let mut ops =
-                handle_operand(&args[0].node, tyctx, body, method_instance, type_cache).flatten();
-            ops.push(CILOp::Call(CallSite::boxed(
-                Some(DotnetTypeRef::new("System.Runtime".into(), "System.Math")),
-                "Sqrt".into(),
-                FnSig::new(&[Type::F64], &Type::F64),
-                true,
-            )));
+
+            let ops = call!(
+                CallSite::boxed(
+                    Some(DotnetTypeRef::new("System.Runtime".into(), "System.Math")),
+                    "Sqrt".into(),
+                    FnSig::new(&[Type::F64], &Type::F64),
+                    true,
+                ),
+                [handle_operand(
+                    &args[0].node,
+                    tyctx,
+                    body,
+                    method_instance,
+                    type_cache
+                )]
+            );
             place_set(destination, tyctx, ops, body, method_instance, type_cache)
         }
-        "abort" => CILOp::throw_msg("Called abort!").into(),
+        "abort" => CILRoot::throw("Called abort!").into(),
         _ => todo!("Can't handle intrinsic {fn_name}."),
     }
 }
