@@ -2,7 +2,7 @@ use crate::{
     access_modifier::AccessModifer,
     cil::{CILOp, CallSite},
     function_sig::FnSig,
-    r#type::Type,
+    r#type::{DotnetTypeRef, Type},
     IString,
 };
 use serde::{Deserialize, Serialize};
@@ -133,6 +133,11 @@ impl Method {
     /// Returns the list of external calls this function preforms. Calls may repeat.
     pub(crate) fn calls(&self) -> impl Iterator<Item = &CallSite> {
         self.ops.iter().filter_map(|op| op.call())
+    }
+    pub(crate) fn dotnet_types<'a>(&'a self) -> Vec<DotnetTypeRef>{
+        self.sig().inputs().iter().filter_map(|tpe|tpe.as_dotnet()).chain(
+            self.locals().iter().filter_map(|tpe|tpe.1.as_dotnet())
+        ).chain([self.sig().output()].iter().filter_map(|tpe|tpe.as_dotnet())).collect()
     }
     pub(crate) fn call_site(&self) -> CallSite {
         CallSite::new(None, self.name().into(), self.sig().clone(), true)

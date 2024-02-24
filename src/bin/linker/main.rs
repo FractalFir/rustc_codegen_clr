@@ -4,7 +4,7 @@ use rustc_codegen_clr::{assembly::Assembly, method::MethodType, r#type::Type, *}
 mod cmd;
 mod export;
 mod load;
-mod native_pastrough;
+
 use std::{env, io::Write};
 
 enum AOTCompileMode {
@@ -85,7 +85,7 @@ fn autopatch(asm: &mut Assembly) {
     let mut externs = Vec::new();
     for call in call_sites {
         let name = call.name();
-        if native_pastrough::LIBC_FNS
+        if rustc_codegen_clr::native_pastrough::LIBC_FNS
             .iter()
             .any(|libc_fn| *libc_fn == name)
         {
@@ -177,6 +177,10 @@ fn main() {
     }
     let is_lib = output.contains(".dll") || output.contains(".so") || output.contains(".o");
     add_mandatory_statics(&mut final_assembly);
+    if !is_lib {
+        final_assembly.eliminate_dead_code();
+    }
+
     // Run ILASM
     export::export_assembly(&final_assembly, output, is_lib).expect("Assembly export faliure!");
 

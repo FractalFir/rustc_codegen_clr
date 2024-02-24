@@ -59,7 +59,7 @@ extern crate rustc_symbol_mangling;
 extern crate rustc_target;
 extern crate rustc_ty_utils;
 extern crate stable_mir;
-
+pub mod native_pastrough;
 // Modules
 /// Specifies if a method/type is private or public.
 pub mod access_modifier;

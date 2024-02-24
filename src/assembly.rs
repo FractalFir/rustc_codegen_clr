@@ -563,8 +563,9 @@ impl Assembly {
     pub fn set_entrypoint(&mut self, entrypoint: CallSite) {
         assert!(self.entrypoint.is_none(), "ERROR: Multiple entrypoints");
         let wrapper = crate::entrypoint::wrapper(&entrypoint);
+        self.entrypoint = Some(wrapper.call_site());
         self.functions.insert(wrapper.call_site(), wrapper);
-        self.entrypoint = Some(entrypoint);
+       
     }
 
     pub fn extern_fns(&self) -> &HashMap<(IString, FnSig), IString> {
@@ -573,6 +574,83 @@ impl Assembly {
 
     pub fn add_extern_fn(&mut self, name: IString, sig: FnSig, lib: IString) {
         self.extern_fns.insert((name, sig), lib);
+    }
+    fn get_exported_fn(&self) -> HashMap<CallSite, Method> {
+        let mut externs = HashMap::new();
+        if let Some(entrypoint) = &self.entrypoint {
+            let method = self.functions.get(&entrypoint).cloned().unwrap();
+            externs.insert(entrypoint.clone(), method);
+        }
+        externs
+    }
+    pub fn eliminate_dead_fn(&mut self){
+        let mut alive = HashMap::new();
+        let mut resurected = self.get_exported_fn();
+        let mut to_resurect = HashMap::new();
+        while resurected.len() > 0 {
+            for function in &resurected {
+                alive.insert(function.0.clone(), function.1.clone());
+                for reference in function.1.calls() {
+                    if let Some(class) = reference.class() {
+                        // TODO: if dead code elimination too agressive check this
+                        // Methods reference by methods inside types are NOT tracked.
+                        continue;
+                    }
+                    if alive.contains_key(reference) || resurected.contains_key(reference) {
+                        // Already alive, ignore!
+                        continue;
+                    }
+                    if let Some(method) = self.functions.get(reference).cloned(){
+                        to_resurect.insert(
+                            reference.clone(),
+                            method,
+                        );
+                    } 
+                    else if !crate::native_pastrough::LIBC_FNS
+                        .iter()
+                        .any(|libc_fn| *libc_fn == reference.name()){
+                        {
+                            panic!("Unresolved extern ref: {reference:?}");
+                        }
+                    }
+                }
+            }
+            resurected = to_resurect;
+            to_resurect = HashMap::new();
+        }
+        self.functions = alive;
+    }
+    pub fn eliminate_dead_code(&mut self) {
+        //self.eliminate_dead_fn();
+        //self.eliminate_dead_types();
+    }
+    pub fn eliminate_dead_types(&mut self){
+        let mut alive = HashMap::new();
+        let mut resurected:HashMap<IString,_> = self.functions.values().map(|fnc|fnc.dotnet_types()).flatten().filter_map(|tpe|match tpe.asm(){
+            Some(_)=>None,
+            None=>Some(IString::from(tpe.name_path())),
+        }).map(|name|(name.clone().into(),self.types.get(&name).unwrap().clone())).collect();
+        resurected.insert("RustVoid".into(),self.types.get("RustVoid").cloned().unwrap());
+        let mut to_resurect:HashMap<IString,_> = HashMap::new();
+        while resurected.len() > 0 {
+            for tpe in &resurected {
+                alive.insert(tpe.0.clone(), tpe.1.clone());
+                for (name,type_def) in tpe.1.fields().iter().filter_map(|tpe|tpe.1.as_dotnet()).filter_map(|tpe|match tpe.asm(){
+                    Some(_)=>None,
+                    None=>Some(IString::from(tpe.name_path())),
+                }).map(|name|(name.to_owned(),self.types.get(&name).unwrap().clone())){
+                        let name:IString = IString::from(name);
+                        to_resurect.insert(
+                            name,
+                            type_def,
+                        );
+                    
+                }
+            }
+            resurected = to_resurect;
+            to_resurect = HashMap::new();
+        }
+        self.types = alive;
     }
 }
 fn link_static_initializers(a: Option<&Method>, b: Option<&Method>) -> Option<Method> {
