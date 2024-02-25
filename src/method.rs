@@ -63,7 +63,7 @@ impl Method {
             CILOp::Ret=>(),
             CILOp::Throw=>(),
             CILOp::ReThrow=>(),
-            CILOp::GoTo(_)=>(),
+            CILOp::GoTo(_,_)=>(),
             _=>self.ops.extend(CILOp::throw_msg("Critical error: reached the end of a function not termianted with a return statement")),
         }
     }
@@ -134,10 +134,18 @@ impl Method {
     pub(crate) fn calls(&self) -> impl Iterator<Item = &CallSite> {
         self.ops.iter().filter_map(|op| op.call())
     }
-    pub(crate) fn dotnet_types<'a>(&'a self) -> Vec<DotnetTypeRef>{
-        self.sig().inputs().iter().filter_map(|tpe|tpe.as_dotnet()).chain(
-            self.locals().iter().filter_map(|tpe|tpe.1.as_dotnet())
-        ).chain([self.sig().output()].iter().filter_map(|tpe|tpe.as_dotnet())).collect()
+    pub(crate) fn dotnet_types<'a>(&'a self) -> Vec<DotnetTypeRef> {
+        self.sig()
+            .inputs()
+            .iter()
+            .filter_map(|tpe| tpe.as_dotnet())
+            .chain(self.locals().iter().filter_map(|tpe| tpe.1.as_dotnet()))
+            .chain(
+                [self.sig().output()]
+                    .iter()
+                    .filter_map(|tpe| tpe.as_dotnet()),
+            )
+            .collect()
     }
     pub(crate) fn call_site(&self) -> CallSite {
         CallSite::new(None, self.name().into(), self.sig().clone(), true)

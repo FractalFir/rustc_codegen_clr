@@ -8,20 +8,27 @@ use crate::{
 pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
     use crate::cil::CILOp;
     match op {
+        CILOp::Leave(target) => format!("leave bb_{target}_0").into(),
+        CILOp::BeginTry => ".try{".into(),
+        CILOp::BeginCatch=>"}catch [System.Runtime]System.Exception{".into(),
+        CILOp::EndTry => "}".into(),
+        CILOp::CustomLabel(label)=>format!("{label}:").into(),
+        CILOp::EHClause { start, end, hstart }=>
+            format!(".try bb_{start} to bb_{end}_end catch [mscorlib]System.Exception handler cb_{hstart}_{start} to END_CLEANUP").into(),
         CILOp::Break => "break".into(),
         //Control flow
         CILOp::Ret => "ret".into(),
-        CILOp::Label(id) => format!("bb_{id}:").into(),
+        CILOp::Label(id,sub_id) => format!("bb_{id}_{sub_id}:").into(),
         CILOp::BlockStart(id) => format!("bb_{id}:").into(),
         CILOp::BlockEnd(id) => format!("bb_{id}_end:").into(),
-        CILOp::GoTo(id) => format!("br bb_{id}").into(),
-        CILOp::BEq(id) => format!("beq bb_{id}").into(),
-        CILOp::BNe(id) => format!("bne.un bb_{id}").into(),
-        CILOp::BGe(id) => format!("bge bb_{id}").into(),
-        CILOp::BLt(id) => format!("blt bb_{id}").into(),
-        CILOp::BLe(id) => format!("ble bb_{id}").into(),
-        CILOp::BZero(id) => format!("brzero bb_{id}").into(),
-        CILOp::BTrue(id) => format!("brtrue bb_{id}").into(),
+        CILOp::GoTo(id,sub_id) => format!("br bb_{id}_{sub_id}").into(),
+        CILOp::BEq(id,sub_id) => format!("beq bb_{id}_{sub_id}").into(),
+        CILOp::BNe(id,sub_id) => format!("bne.un bb_{id}_{sub_id}").into(),
+        CILOp::BGe(id,sub_id) => format!("bge bb_{id}_{sub_id}").into(),
+        CILOp::BLt(id,sub_id) => format!("blt bb_{id}_{sub_id}").into(),
+        CILOp::BLe(id,sub_id) => format!("ble bb_{id}_{sub_id}").into(),
+        CILOp::BZero(id,sub_id) => format!("brzero bb_{id}_{sub_id}").into(),
+        CILOp::BTrue(id,sub_id) => format!("brtrue bb_{id}_{sub_id}").into(),
 
         CILOp::Call(call_site) => {
             if call_site.is_nop() {

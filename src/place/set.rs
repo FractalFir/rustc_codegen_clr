@@ -14,7 +14,7 @@ pub fn local_set(local: usize, method: &rustc_middle::mir::Body, tree: CILNode) 
         CILRoot::STLoc { local: 0, tree }
     } else if local > method.arg_count {
         CILRoot::STLoc {
-            local: (local - method.arg_count ) as u32,
+            local: (local - method.arg_count) as u32,
             tree,
         }
     } else {

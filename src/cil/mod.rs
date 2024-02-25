@@ -12,23 +12,23 @@ pub enum CILOp {
     // Control Flow
     /// Lablel. Represents a position in code that can be jumped to. Does not translate to any real CIL ops, used only to calucalte jump targets.
     /// Should be placed automaticaly at the beiging of a basic block, and not constructed manualy.
-    Label(u32),
+    Label(u32, u32),
     /// Unconditional jump to a label with the specified id.
-    GoTo(u32),
+    GoTo(u32, u32),
     /// Jump to target if 2 top values on the stack are equal, continue otherwise. WARING: make sure the compared values have the same type, othewise IL is invalid.
-    BEq(u32),
+    BEq(u32, u32),
     /// Jump to target if 2 top values on the stack are not equal, continue otherwise. WARING: make sure the compared values have the same type, othewise IL is invalid.
-    BNe(u32),
+    BNe(u32, u32),
     /// Jump to target if the top value is less than the bottom one, continue otherwise. WARING: make sure the compared values have the same type, othewise IL is invalid.
-    BLt(u32),
+    BLt(u32, u32),
     /// Jump to target if the top value is greater than or equal to the bottom one, continue otherwise. WARING: make sure the compared values have the same type, othewise IL is invalid.
-    BGe(u32),
+    BGe(u32, u32),
     /// Jump to target if the top value is less than or equal to the bottom one, continue otherwise. WARING: make sure the compared values have the same type, othewise IL is invalid.
-    BLe(u32),
+    BLe(u32, u32),
     /// Jump to target if the top value on the stack is zero, continue otherwise. WARING: make sure the compared values have the same type, othewise IL is invalid.
-    BZero(u32),
+    BZero(u32, u32),
     /// Jump to target if the top value on the stack is zero, continue otherwise. WARING: make sure the compared values have the same type, othewise IL is invalid.
-    BTrue(u32),
+    BTrue(u32, u32),
     /// Call the metod behind `call_site`.`
     Call(Box<CallSite>),
     /// Call the virtual method behind `call_site`.`
@@ -260,12 +260,23 @@ pub enum CILOp {
     LDTypeToken(Box<crate::r#type::Type>),
     BlockEnd(u32),
     BlockStart(u32),
+    EHClause {
+        start: u32,
+        end: u32,
+        hstart: u32,
+    },
+    CustomLabel(IString),
+    BeginTry,
+    BeginCatch,
+    EndTry,
+    Leave(u32),
 }
 impl CILOp {
+    /*
     /// If this op is a branch operation, and its target is `original`, replaces the target with `replacement`
     pub fn replace_target(&mut self, orignal: u32, replacement: u32) {
         match self {
-            CILOp::GoTo(target)
+            CILOp::GoTo(target,))
             | CILOp::BEq(target)
             | CILOp::BNe(target)
             | CILOp::BLt(target)
@@ -279,7 +290,7 @@ impl CILOp {
             }
             _ => (),
         }
-    }
+    } */
     /// If the cil op is a call, virtual call, new object cosntructor OR it loads a pointer to a function, returns the [`CallSite`] representing this function.
     pub fn call(&self) -> Option<&CallSite> {
         match self {
@@ -385,11 +396,20 @@ impl CILOp {
     #[allow(clippy::match_same_arms)]
     pub fn stack_diff(&self) -> isize {
         match self {
+            CILOp::Leave(_) => 0,
+            CILOp::BeginTry | CILOp::EndTry => 0,
+            CILOp::BeginCatch => 1,
+            CILOp::EHClause { .. } => 0,
+            CILOp::CustomLabel(_) => 0,
             CILOp::Nop => 0,
             CILOp::Comment(_) => 0,
-            CILOp::Label(_) | CILOp::GoTo(_) | CILOp::BlockStart(_) | CILOp::BlockEnd(_) => 0,
-            CILOp::BZero(_) | CILOp::BTrue(_) => -1,
-            CILOp::BEq(_) | CILOp::BNe(_) | CILOp::BLt(_) | CILOp::BGe(_) | CILOp::BLe(_) => -2,
+            CILOp::Label(_, _) | CILOp::GoTo(_, _) | CILOp::BlockStart(_) | CILOp::BlockEnd(_) => 0,
+            CILOp::BZero(_, _) | CILOp::BTrue(_, _) => -1,
+            CILOp::BEq(_, _)
+            | CILOp::BNe(_, _)
+            | CILOp::BLt(_, _)
+            | CILOp::BGe(_, _)
+            | CILOp::BLe(_, _) => -2,
             CILOp::LDArg(_) | CILOp::LDArgA(_) | CILOp::LDLoc(_) | CILOp::LDLocA(_) => 1,
             CILOp::LdcI32(_)
             | CILOp::LdcU32(_)
@@ -496,6 +516,7 @@ impl CILOp {
             CILOp::Volatile => 0,
         }
     }
+    /*
     /// Flips a conditional, changing the order of its arguments. Eg. BLt(a,b) [a < b] becomes BGt(b,a) [b > a].
     // There may be a bug there.
     pub fn flip_cond(&self) -> Self {
@@ -509,7 +530,7 @@ impl CILOp {
                 CILOp::BNe(target)=>CILOp::BNe(*target),
                 _=>todo!("Can't filp conditional operation {self:?}, either because it is not a conditional(bug) or it is not supported yet!"),
             }
-    }
+    } */
 }
 #[cfg(test)]
 use crate::method::MethodType;

@@ -1,7 +1,7 @@
-#![feature(lang_items,adt_const_params,associated_type_defaults,core_intrinsics,start,panic_abort)]
+#![feature(lang_items,adt_const_params,associated_type_defaults,core_intrinsics,start)]
 #![allow(internal_features,incomplete_features,unused_variables,dead_code,improper_ctypes_definitions)]
 #![no_std]
-extern crate panic_abort;
+
 include!("../common.rs");
 struct Vec<T>{
     ptr:*mut T,

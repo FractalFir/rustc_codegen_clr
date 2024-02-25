@@ -136,8 +136,10 @@ fn verify_op(
             stack.push(Type::USize);
             Ok(())
         }
-        CILOp::Label(_) | CILOp::Comment(_) | CILOp::Break | CILOp::Nop | CILOp::Volatile => Ok(()),
-        CILOp::GoTo(_) => Ok(()),
+        CILOp::Label(_, _) | CILOp::Comment(_) | CILOp::Break | CILOp::Nop | CILOp::Volatile => {
+            Ok(())
+        }
+        CILOp::GoTo(_, _) => Ok(()),
         CILOp::LDTypeToken(_) => {
             stack.push(DotnetTypeRef::type_handle_type().into());
             Ok(())
@@ -433,7 +435,7 @@ fn verify_op(
                 Ok(())
             }
         }
-        CILOp::BTrue(_) => {
+        CILOp::BTrue(_, _) => {
             let a = stack.pop().ok_or(VerificationFailure::StackUnderflow)?;
             match a {
                 Type::U8 | Type::U16 | Type::U32 => {
@@ -701,7 +703,7 @@ fn verify_op(
                 Err(VerificationFailure::StackUnexpected(stack_input))
             }
         }
-        CILOp::BEq(_) => {
+        CILOp::BEq(_, _) => {
             let a = stack.pop().ok_or(VerificationFailure::StackUnderflow)?;
             let b = stack.pop().ok_or(VerificationFailure::StackUnderflow)?;
             if !equivalent(&a, &b) {

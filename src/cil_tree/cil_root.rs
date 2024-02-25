@@ -1,5 +1,8 @@
 use crate::{
-    cil::{CILOp, CallSite, FieldDescriptor}, cil_tree::cil_node::CILNode, function_sig::FnSig, r#type::Type
+    cil::{CILOp, CallSite, FieldDescriptor},
+    cil_tree::cil_node::CILNode,
+    function_sig::FnSig,
+    r#type::Type,
 };
 
 use super::append_vec;
@@ -11,10 +14,12 @@ pub(crate) enum CILRoot {
     },
     BTrue {
         target: u32,
+        sub_target: u32,
         ops: CILNode,
     },
     GoTo {
         target: u32,
+        sub_target: u32,
     },
     Call {
         site: CallSite,
@@ -63,39 +68,55 @@ pub(crate) enum CILRoot {
     VoidRet,
     Throw(CILNode),
     ReThrow,
-    CallI { sig: FnSig, fn_ptr: CILNode, args: Box<[CILNode]> },
+    CallI {
+        sig: FnSig,
+        fn_ptr: CILNode,
+        args: Box<[CILNode]>,
+    },
+    Raw {
+        ops: Box<[CILOp]>,
+    },
     //LabelStart(u32),
     //LabelEnd(u32),
 }
 impl CILRoot {
-    pub fn throw(msg:&str)->Self{
-        let mut class = crate::r#type::DotnetTypeRef::new(Some("System.Runtime"), "System.Exception");
+    pub fn throw(msg: &str) -> Self {
+        let mut class =
+            crate::r#type::DotnetTypeRef::new(Some("System.Runtime"), "System.Exception");
         class.set_valuetype(false);
         let name = ".ctor".into();
         let signature = crate::function_sig::FnSig::new(
             &[class.clone().into(), crate::utilis::string_class().into()],
             &crate::r#type::Type::Void,
         );
-        Self::Throw(CILNode::NewObj { site: CallSite::boxed(Some(class), name, signature, false), args: [CILNode::LdStr(msg.into())].into()})
+        Self::Throw(CILNode::NewObj {
+            site: CallSite::boxed(Some(class), name, signature, false),
+            args: [CILNode::LdStr(msg.into())].into(),
+        })
     }
+
     pub fn flatten(&self) -> Vec<CILOp> {
         match self {
             //Self::LabelStart(val)=> vec![CILOp::LabelStart(val)],
             //Self::LabelEnd(val)=> vec![CILOp::LabelEnd(val)],
-            Self::ReThrow=> vec![CILOp::ReThrow],
-            Self::Throw (tree) => append_vec(tree.flatten(), CILOp::Throw),
+            Self::ReThrow => vec![CILOp::ReThrow],
+            Self::Throw(tree) => append_vec(tree.flatten(), CILOp::Throw),
             Self::Ret { tree } => append_vec(tree.flatten(), CILOp::Ret),
             Self::VoidRet => vec![CILOp::Ret],
             Self::STLoc { local, tree } => append_vec(tree.flatten(), CILOp::STLoc(*local)),
             Self::STArg { arg, tree } => append_vec(tree.flatten(), CILOp::STArg(*arg)),
-            Self::BTrue { target, ops } => append_vec(ops.flatten(), CILOp::BTrue(*target)),
-            Self::GoTo { target } => vec![CILOp::GoTo(*target)],
+            Self::BTrue {
+                target,
+                ops,
+                sub_target,
+            } => append_vec(ops.flatten(), CILOp::BTrue(*target, *sub_target)),
+            Self::GoTo { target, sub_target } => vec![CILOp::GoTo(*target, *sub_target)],
             Self::Call { site, args } => {
                 let mut args: Vec<_> = args.iter().flat_map(|arg| arg.flatten()).collect();
                 args.push(CILOp::Call(site.clone().into()));
                 args
             }
-            Self::CallI { sig,fn_ptr, args } => {
+            Self::CallI { sig, fn_ptr, args } => {
                 let mut ops: Vec<_> = fn_ptr.flatten();
                 ops.extend(args.iter().flat_map(|arg| arg.flatten()));
                 ops.push(CILOp::CallI(sig.clone().into()));
@@ -174,6 +195,7 @@ impl CILRoot {
             }
             Self::Break => vec![CILOp::Break],
             Self::Nop => vec![CILOp::Nop],
+            Self::Raw { ops } => ops.clone().into(),
             Self::STObj {
                 tpe,
                 addr_calc,
@@ -184,6 +206,33 @@ impl CILRoot {
                 res.push(CILOp::STObj(tpe.clone()));
                 res
             }
+        }
+    }
+    pub fn targets(&self, targets: &mut Vec<(u32, u32)>) {
+        match self {
+            CILRoot::BTrue {
+                target, sub_target, ..
+            }
+            | CILRoot::GoTo { target, sub_target } => {
+                targets.push(( *target,*sub_target,));
+            }
+            _ => (),
+        }
+    }
+    pub(crate) fn fix_for_exception_handler(&mut self, id: u32) {
+        match self {
+            CILRoot::BTrue {
+                target, sub_target, ..
+            }
+            | CILRoot::GoTo { target, sub_target } => {
+                assert_eq!(
+                    *sub_target, 0,
+                    "An exception handler can't contain inner exception handler!"
+                );
+                *sub_target = *target;
+                *target = id;
+            }
+            _ => (),
         }
     }
 }

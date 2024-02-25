@@ -1,8 +1,8 @@
 use crate::basic_block::{handler_for_block, handler_from_action, BasicBlock};
+use crate::cil_tree::cil_root::CILRoot;
 use crate::cil_tree::CILTree;
 use crate::method::MethodType;
 use crate::rustc_middle::dep_graph::DepContext;
-use crate::cil_tree::cil_root::CILRoot;
 use crate::{
     access_modifier::AccessModifer,
     cil::{CILOp, CallSite},
@@ -293,7 +293,8 @@ impl Assembly {
         let blocks = &mir.basic_blocks;
         let does_return_void: bool = *method.sig().output() == Type::Void;
         //let mut trees = Vec::new();
-        //let mut bbs = Vec::new();
+        let mut normal_bbs = Vec::new();
+        let mut cleanup_bbs = Vec::new();
         for (last_bb_id, block_data) in blocks.into_iter().enumerate() {
             //ops.push(CILOp::Label(last_bb_id as u32));
             let mut trees = Vec::new();
@@ -311,10 +312,9 @@ impl Assembly {
                             "Method \"{name}\" failed to compile statement {statement:?} with message {err:?}"
                         )};
                         rustc_middle::ty::print::with_no_trimmed_paths! {Some(CILRoot::throw(&format!("Tired to run a statement {statement:?} which failed to compile with error message {err:?}.")).into())}
-                     
                     }
                 });
-               
+
                 //crate::utilis::check_debugable(&statement_ops, statement, does_return_void);
                 //ops.extend(statement_ops);
                 //if *crate::config::INSERT_MIR_DEBUG_COMMENTS {
@@ -328,13 +328,45 @@ impl Assembly {
                     }
                     let term_trees = Self::terminator_to_ops(term, mir, tcx, instance, cache);
                     trees.extend(term_trees);
-                    
                 }
                 None => (),
             }
-            ops.extend(BasicBlock::new(trees, last_bb_id as u32, handler_for_block(&block_data)).flatten());
+            if block_data.is_cleanup {
+                cleanup_bbs.push(BasicBlock::new(
+                    trees,
+                    last_bb_id as u32,
+                    handler_for_block(&block_data),
+                ))
+            } else {
+                normal_bbs.push(BasicBlock::new(
+                    trees,
+                    last_bb_id as u32,
+                    handler_for_block(&block_data),
+                ));
+            }
             //ops.extend(trees.iter().flat_map(|tree| tree.flatten()))
         }
+        normal_bbs
+            .iter_mut()
+            .for_each(|bb| bb.resolve_exception_handlers(&cleanup_bbs));
+        let mut ops: Vec<_> = normal_bbs
+            .iter()
+            .flat_map(|block| block.flatten())
+            .collect();
+        /*
+        for bb in &normal_bbs{
+            let handler = if let Some(handler) = bb.handler(){handler}else{continue};
+            ops.push(CILOp::CustomLabel(format!("cb_{handler}_{bb_id}",bb_id = bb.id()).into()));
+            ops.push(CILOp::GoTo(handler,0));
+        }
+        ops.extend(cleanup_bbs.iter().flat_map(|block|block.flatten()));
+        ops.push(CILOp::CustomLabel("END_CLEANUP".into()));
+        for bb in normal_bbs{
+            match bb.eh_clause(){
+                Some(eh_clause)=>ops.push(eh_clause),
+                None=>(),
+            }
+        } */
         #[allow(clippy::single_match)]
         // This will be slowly expanded with support for new types of allocations.
         ops.iter_mut().for_each(|op| match op {
@@ -574,7 +606,6 @@ impl Assembly {
         let wrapper = crate::entrypoint::wrapper(&entrypoint);
         self.entrypoint = Some(wrapper.call_site());
         self.functions.insert(wrapper.call_site(), wrapper);
-       
     }
 
     pub fn extern_fns(&self) -> &HashMap<(IString, FnSig), IString> {
@@ -592,7 +623,7 @@ impl Assembly {
         }
         externs
     }
-    pub fn eliminate_dead_fn(&mut self){
+    pub fn eliminate_dead_fn(&mut self) {
         let mut alive = HashMap::new();
         let mut resurected = self.get_exported_fn();
         let mut to_resurect = HashMap::new();
@@ -609,15 +640,12 @@ impl Assembly {
                         // Already alive, ignore!
                         continue;
                     }
-                    if let Some(method) = self.functions.get(reference).cloned(){
-                        to_resurect.insert(
-                            reference.clone(),
-                            method,
-                        );
-                    } 
-                    else if !crate::native_pastrough::LIBC_FNS
+                    if let Some(method) = self.functions.get(reference).cloned() {
+                        to_resurect.insert(reference.clone(), method);
+                    } else if !crate::native_pastrough::LIBC_FNS
                         .iter()
-                        .any(|libc_fn| *libc_fn == reference.name()){
+                        .any(|libc_fn| *libc_fn == reference.name())
+                    {
                         {
                             panic!("Unresolved extern ref: {reference:?}");
                         }
@@ -633,27 +661,40 @@ impl Assembly {
         //self.eliminate_dead_fn();
         //self.eliminate_dead_types();
     }
-    pub fn eliminate_dead_types(&mut self){
+    pub fn eliminate_dead_types(&mut self) {
         let mut alive = HashMap::new();
-        let mut resurected:HashMap<IString,_> = self.functions.values().map(|fnc|fnc.dotnet_types()).flatten().filter_map(|tpe|match tpe.asm(){
-            Some(_)=>None,
-            None=>Some(IString::from(tpe.name_path())),
-        }).map(|name|(name.clone().into(),self.types.get(&name).unwrap().clone())).collect();
-        resurected.insert("RustVoid".into(),self.types.get("RustVoid").cloned().unwrap());
-        let mut to_resurect:HashMap<IString,_> = HashMap::new();
+        let mut resurected: HashMap<IString, _> = self
+            .functions
+            .values()
+            .map(|fnc| fnc.dotnet_types())
+            .flatten()
+            .filter_map(|tpe| match tpe.asm() {
+                Some(_) => None,
+                None => Some(IString::from(tpe.name_path())),
+            })
+            .map(|name| (name.clone().into(), self.types.get(&name).unwrap().clone()))
+            .collect();
+        resurected.insert(
+            "RustVoid".into(),
+            self.types.get("RustVoid").cloned().unwrap(),
+        );
+        let mut to_resurect: HashMap<IString, _> = HashMap::new();
         while resurected.len() > 0 {
             for tpe in &resurected {
                 alive.insert(tpe.0.clone(), tpe.1.clone());
-                for (name,type_def) in tpe.1.fields().iter().filter_map(|tpe|tpe.1.as_dotnet()).filter_map(|tpe|match tpe.asm(){
-                    Some(_)=>None,
-                    None=>Some(IString::from(tpe.name_path())),
-                }).map(|name|(name.to_owned(),self.types.get(&name).unwrap().clone())){
-                        let name:IString = IString::from(name);
-                        to_resurect.insert(
-                            name,
-                            type_def,
-                        );
-                    
+                for (name, type_def) in tpe
+                    .1
+                    .fields()
+                    .iter()
+                    .filter_map(|tpe| tpe.1.as_dotnet())
+                    .filter_map(|tpe| match tpe.asm() {
+                        Some(_) => None,
+                        None => Some(IString::from(tpe.name_path())),
+                    })
+                    .map(|name| (name.to_owned(), self.types.get(&name).unwrap().clone()))
+                {
+                    let name: IString = IString::from(name);
+                    to_resurect.insert(name, type_def);
                 }
             }
             resurected = to_resurect;

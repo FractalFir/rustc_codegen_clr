@@ -65,37 +65,42 @@ pub fn handle_terminator<'ctx>(
                             FnSig::from_poly_sig(Some(method_instance), tyctx, type_cache, sig);
                         let mut arg_operands = Vec::new();
                         for arg in args {
-                            arg_operands.push(
-                                crate::operand::handle_operand(
-                                    &arg.node,
-                                    tyctx,
-                                    body,
-                                    method_instance,
-                                    type_cache,
-                                )
-                            );
-                        }
-                
-                
-                        if *sig.output() == crate::r#type::Type::Void {
-                            CILRoot::CallI{sig:sig.clone(),fn_ptr:crate::place::place_get(
-                                operand,
+                            arg_operands.push(crate::operand::handle_operand(
+                                &arg.node,
                                 tyctx,
-                                method,
+                                body,
                                 method_instance,
                                 type_cache,
-                            ),args:arg_operands.into()}
-                        } else {
-                            place_set(
-                                destination,
-                                tyctx,
-                                CILNode::CallI{sig:sig.clone(),fn_ptr:Box::new(crate::place::place_get(
+                            ));
+                        }
+
+                        if *sig.output() == crate::r#type::Type::Void {
+                            CILRoot::CallI {
+                                sig: sig.clone(),
+                                fn_ptr: crate::place::place_get(
                                     operand,
                                     tyctx,
                                     method,
                                     method_instance,
                                     type_cache,
-                                )),args:arg_operands.into()},
+                                ),
+                                args: arg_operands.into(),
+                            }
+                        } else {
+                            place_set(
+                                destination,
+                                tyctx,
+                                CILNode::CallI {
+                                    sig: sig.clone(),
+                                    fn_ptr: Box::new(crate::place::place_get(
+                                        operand,
+                                        tyctx,
+                                        method,
+                                        method_instance,
+                                        type_cache,
+                                    )),
+                                    args: arg_operands.into(),
+                                },
                                 method,
                                 method_instance,
                                 type_cache,
@@ -127,6 +132,7 @@ pub fn handle_terminator<'ctx>(
                 trees.push(
                     CILRoot::GoTo {
                         target: target.as_u32(),
+                        sub_target: 0,
                     }
                     .into(),
                 );
@@ -173,11 +179,13 @@ pub fn handle_terminator<'ctx>(
             //let _ = throw_assert_msg;
             vec![CILRoot::GoTo {
                 target: target.as_u32(),
+                sub_target: 0,
             }
             .into()]
         }
         TerminatorKind::Goto { target } => vec![CILRoot::GoTo {
             target: target.as_u32(),
+            sub_target: 0,
         }
         .into()],
         TerminatorKind::UnwindResume => {
@@ -198,6 +206,7 @@ pub fn handle_terminator<'ctx>(
                 //Empty drop, nothing needs to happen.
                 vec![CILRoot::GoTo {
                     target: target.as_u32(),
+                    sub_target: 0,
                 }
                 .into()]
             } else {
@@ -220,24 +229,25 @@ pub fn handle_terminator<'ctx>(
                     .into(),
                     CILRoot::GoTo {
                         target: target.as_u32(),
+                        sub_target: 0,
                     }
                     .into(),
                 ]
             }
         }
 
-               TerminatorKind::Unreachable => CILRoot::throw("Unreachable reached!").into(),
-               TerminatorKind::InlineAsm {
-                   template: _,
-                   operands: _,
-                   options: _,
-                   line_spans: _,
-                   destination: _,
-                   unwind: _,
-               } => {
-                   eprintln!("Inline assembly is not yet supported!");
-                   CILRoot::throw("Inline assembly is not yet supported!").into()
-               }
+        TerminatorKind::Unreachable => CILRoot::throw("Unreachable reached!").into(),
+        TerminatorKind::InlineAsm {
+            template: _,
+            operands: _,
+            options: _,
+            line_spans: _,
+            destination: _,
+            unwind: _,
+        } => {
+            eprintln!("Inline assembly is not yet supported!");
+            CILRoot::throw("Inline assembly is not yet supported!").into()
+        }
         _ => todo!("Unhandled terminator kind {kind:?}", kind = terminator.kind),
     }
 }
@@ -263,6 +273,7 @@ fn handle_switch(ty: Ty, discr: CILNode, switch: &SwitchTargets) -> Vec<CILTree>
             CILRoot::BTrue {
                 target: target.into(),
                 ops: crate::binop::cmp::eq_unchecked(ty, discr.clone(), const_val),
+                sub_target: 0,
             }
             .into(),
         );
@@ -270,6 +281,7 @@ fn handle_switch(ty: Ty, discr: CILNode, switch: &SwitchTargets) -> Vec<CILTree>
     trees.push(
         CILRoot::GoTo {
             target: switch.otherwise().into(),
+            sub_target: 0,
         }
         .into(),
     );

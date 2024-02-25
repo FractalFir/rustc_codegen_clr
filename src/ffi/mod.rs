@@ -254,13 +254,13 @@ add_method!(
     &[Type::Ptr(Box::new(Type::U8))],
     &Type::Void,
     [
-        CILOp::Label(0),
+        CILOp::Label(0, 0),
         CILOp::LDArg(0),
         CILOp::LDIndI8,
         CILOp::STLoc(0),
         CILOp::LDLoc(0),
         CILOp::LdcI32(0),
-        CILOp::BEq(1),
+        CILOp::BEq(1, 0),
         CILOp::LDLoc(0),
         CILOp::ConvI16(false),
         CILOp::Call(CallSite::boxed(
@@ -276,8 +276,8 @@ add_method!(
         CILOp::ConvUSize(false),
         CILOp::Add,
         CILOp::STArg(0),
-        CILOp::GoTo(0),
-        CILOp::Label(1),
+        CILOp::GoTo(0, 0),
+        CILOp::Label(1, 0),
         CILOp::Ret
     ],
     [(None, Type::U8)]
