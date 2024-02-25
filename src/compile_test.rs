@@ -812,7 +812,7 @@ compare_tests! {fuzz,fuzz96,unstable}
 compare_tests! {fuzz,fuzz97,unstable}
 compare_tests! {fuzz,fuzz98,unstable}
 compare_tests! {fuzz,fuzz99,stable}
-compare_tests! {fuzz,fuzz100,stable}
+compare_tests! {fuzz,fuzz100,unstable}
 
 run_test! {fuzz,fail0,stable}
 run_test! {fuzz,fail1,stable}

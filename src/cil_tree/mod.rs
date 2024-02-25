@@ -4,6 +4,7 @@ use self::cil_root::CILRoot;
 
 pub mod cil_node;
 pub mod cil_root;
+#[derive(Clone,Debug)]
 pub struct CILTree {
     tree: CILRoot,
 }

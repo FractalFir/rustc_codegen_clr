@@ -12,6 +12,8 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
         //Control flow
         CILOp::Ret => "ret".into(),
         CILOp::Label(id) => format!("bb_{id}:").into(),
+        CILOp::BlockStart(id) => format!("bb_{id}:").into(),
+        CILOp::BlockEnd(id) => format!("bb_{id}_end:").into(),
         CILOp::GoTo(id) => format!("br bb_{id}").into(),
         CILOp::BEq(id) => format!("beq bb_{id}").into(),
         CILOp::BNe(id) => format!("bne.un bb_{id}").into(),
@@ -407,7 +409,7 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
         //OOP
         CILOp::SizeOf(tpe) => format!("sizeof {tpe}", tpe = type_cil(tpe)).into(),
         CILOp::Throw => "throw".into(),
-        CILOp::Rethrow => "rethrow".into(),
+        CILOp::ReThrow => "rethrow".into(),
         CILOp::LdStr(str) => format!("ldstr {str:?}").replace('\'',"\\\'").into(),
         CILOp::LdObj(obj) => format!(
             "ldobj {tpe}",

@@ -1,7 +1,5 @@
 use crate::{
-    cil::{CILOp, CallSite, FieldDescriptor},
-    cil_tree::cil_node::CILNode,
-    r#type::Type,
+    cil::{CILOp, CallSite, FieldDescriptor}, cil_tree::cil_node::CILNode, function_sig::FnSig, r#type::Type
 };
 
 use super::append_vec;
@@ -64,6 +62,10 @@ pub(crate) enum CILRoot {
     },
     VoidRet,
     Throw(CILNode),
+    ReThrow,
+    CallI { sig: FnSig, fn_ptr: CILNode, args: Box<[CILNode]> },
+    //LabelStart(u32),
+    //LabelEnd(u32),
 }
 impl CILRoot {
     pub fn throw(msg:&str)->Self{
@@ -78,6 +80,9 @@ impl CILRoot {
     }
     pub fn flatten(&self) -> Vec<CILOp> {
         match self {
+            //Self::LabelStart(val)=> vec![CILOp::LabelStart(val)],
+            //Self::LabelEnd(val)=> vec![CILOp::LabelEnd(val)],
+            Self::ReThrow=> vec![CILOp::ReThrow],
             Self::Throw (tree) => append_vec(tree.flatten(), CILOp::Throw),
             Self::Ret { tree } => append_vec(tree.flatten(), CILOp::Ret),
             Self::VoidRet => vec![CILOp::Ret],
@@ -89,6 +94,12 @@ impl CILRoot {
                 let mut args: Vec<_> = args.iter().flat_map(|arg| arg.flatten()).collect();
                 args.push(CILOp::Call(site.clone().into()));
                 args
+            }
+            Self::CallI { sig,fn_ptr, args } => {
+                let mut ops: Vec<_> = fn_ptr.flatten();
+                ops.extend(args.iter().flat_map(|arg| arg.flatten()));
+                ops.push(CILOp::CallI(sig.clone().into()));
+                ops
             }
             Self::CallVirt { site, args } => {
                 let mut args: Vec<_> = args.iter().flat_map(|arg| arg.flatten()).collect();

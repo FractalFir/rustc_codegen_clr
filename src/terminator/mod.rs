@@ -58,15 +58,14 @@ pub fn handle_terminator<'ctx>(
                 }
                 Operand::Copy(operand) | Operand::Move(operand) => {
                     let operand_ty = operand.ty(method, tyctx);
-                    todo!();
-                    /*
+
                     if let TyKind::FnPtr(sig) = operand_ty.ty.kind() {
                         let sig = crate::utilis::monomorphize(&method_instance, *sig, tyctx);
                         let sig =
                             FnSig::from_poly_sig(Some(method_instance), tyctx, type_cache, sig);
-                        let mut call_ops = Vec::new();
+                        let mut arg_operands = Vec::new();
                         for arg in args {
-                            call_ops.extend(
+                            arg_operands.push(
                                 crate::operand::handle_operand(
                                     &arg.node,
                                     tyctx,
@@ -74,31 +73,33 @@ pub fn handle_terminator<'ctx>(
                                     method_instance,
                                     type_cache,
                                 )
-                                .flatten(),
                             );
                         }
-                        call_ops.extend(
-                            crate::place::place_get(
+                
+                
+                        if *sig.output() == crate::r#type::Type::Void {
+                            CILRoot::CallI{sig:sig.clone(),fn_ptr:crate::place::place_get(
                                 operand,
                                 tyctx,
                                 method,
                                 method_instance,
                                 type_cache,
-                            )
-                            .flatten(),
-                        );
-                        call_ops.push(CILOp::CallI(sig.clone().into()));
-                        if *sig.output() == crate::r#type::Type::Void {
-                            ops.extend(call_ops);
+                            ),args:arg_operands.into()}
                         } else {
-                            ops.extend(place_set(
+                            place_set(
                                 destination,
                                 tyctx,
-                                call_ops,
+                                CILNode::CallI{sig:sig.clone(),fn_ptr:Box::new(crate::place::place_get(
+                                    operand,
+                                    tyctx,
+                                    method,
+                                    method_instance,
+                                    type_cache,
+                                )),args:arg_operands.into()},
                                 method,
                                 method_instance,
                                 type_cache,
-                            ));
+                            )
                         }
                     } else {
                         let fn_ty = monomorphize(&method_instance, operand_ty, tyctx).ty;
@@ -107,6 +108,8 @@ pub fn handle_terminator<'ctx>(
                             fn_ty.is_fn(),
                             "fn_ty{fn_ty:?} in call is not a function type!"
                         );
+                        let fn_ty = monomorphize(&method_instance, fn_ty, tyctx);
+                        //let fn_instance = Instance::resolve(tyctx,ParamEnv::reveal_all,fn_ty.did,List::empty());
                         let call_ops = call::call(
                             fn_ty,
                             body,
@@ -116,8 +119,8 @@ pub fn handle_terminator<'ctx>(
                             method_instance,
                             type_cache,
                         );
-                        ops.extend(call_ops);
-                    };*/
+                        call_ops.into()
+                    };
                 }
             }
             if let Some(target) = target {
@@ -179,10 +182,8 @@ pub fn handle_terminator<'ctx>(
         .into()],
         TerminatorKind::UnwindResume => {
             println!("WARNING: stack unwiniding is not supported yet in rustc_codegen_clr!");
-            /*vec![CILOp::Comment(
-                "WARNING: stack unwiniding is not supported yet in rustc_codegen_clr!".into(),
-            )]*/
-            vec![CILRoot::Nop.into()]
+
+            vec![CILRoot::ReThrow.into()]
         }
         TerminatorKind::Drop {
             place,
@@ -240,237 +241,7 @@ pub fn handle_terminator<'ctx>(
         _ => todo!("Unhandled terminator kind {kind:?}", kind = terminator.kind),
     }
 }
-fn throw_assert_msg<'ctx>(
-    msg: &rustc_middle::mir::AssertMessage<'ctx>,
-    tyctx: TyCtxt<'ctx>,
-    method: &rustc_middle::mir::Body<'ctx>,
-    method_instance: Instance<'ctx>,
-    type_cache: &mut crate::r#type::TyCache,
-) -> Vec<CILOp> {
-    use rustc_middle::mir::AssertKind;
-    // Assertion messages cause miscomplations.
-    if true {
-        return vec![CILOp::LdNull, CILOp::Throw];
-    };
-    match msg {
-        AssertKind::BoundsCheck { len, index } => {
-            let mut ops = Vec::with_capacity(8);
-            ops.push(CILOp::LdStr("index out of bounds: the len is ".into()));
-            ops.extend(handle_operand(len, tyctx, method, method_instance, type_cache).flatten());
-            let usize_class = crate::utilis::usize_class();
-            let string_class = crate::utilis::string_class();
-            let string_type = crate::r#type::Type::DotnetType(Box::new(string_class.clone()));
-            let sig = FnSig::new(&[], &string_type);
-            let usize_to_string = CallSite::boxed(Some(usize_class), "ToString".into(), sig, false);
-            ops.push(CILOp::Call(usize_to_string.clone()));
-            ops.push(CILOp::LdStr(" but the index is".into()));
-            ops.extend(handle_operand(index, tyctx, method, method_instance, type_cache).flatten());
-            ops.push(CILOp::Call(usize_to_string.clone()));
 
-            let sig = FnSig::new(
-                &[
-                    string_type.clone(),
-                    string_type.clone(),
-                    string_type.clone(),
-                    string_type.clone(),
-                ],
-                &string_type.clone(),
-            );
-            let out_of_range_exception =
-                DotnetTypeRef::new(Some("System.Runtime"), "System.IndexOutOfRangeException");
-            ops.push(CILOp::Call(CallSite::boxed(
-                Some(string_class),
-                "Concat".into(),
-                sig,
-                true,
-            )));
-            let sig = FnSig::new(&[string_type], &crate::r#type::Type::Void);
-            ops.push(CILOp::NewObj(CallSite::boxed(
-                Some(out_of_range_exception),
-                ".ctor".into(),
-                sig,
-                false,
-            )));
-            ops.push(CILOp::Throw);
-            ops
-        }
-        AssertKind::DivisionByZero(_operand) => {
-            let mut ops = Vec::with_capacity(8);
-
-            let sig = FnSig::new(&[], &crate::r#type::Type::Void);
-            let div_by_zero_exception =
-                DotnetTypeRef::new(Some("System.Runtime"), "System.DivideByZeroException");
-            ops.push(CILOp::NewObj(CallSite::boxed(
-                Some(div_by_zero_exception),
-                ".ctor".into(),
-                sig,
-                false,
-            )));
-            ops.push(CILOp::Throw);
-            ops
-        }
-        AssertKind::RemainderByZero(_operand) => {
-            let mut ops = Vec::with_capacity(8);
-
-            let sig = FnSig::new(&[], &crate::r#type::Type::Void);
-            let div_by_zero_exception =
-                DotnetTypeRef::new(Some("System.Runtime"), "System.DivideByZeroException");
-            ops.push(CILOp::NewObj(CallSite::boxed(
-                Some(div_by_zero_exception),
-                ".ctor".into(),
-                sig,
-                false,
-            )));
-            ops.push(CILOp::Throw);
-            ops
-        }
-        AssertKind::Overflow(binop, a, b) => {
-            let mut ops = Vec::with_capacity(8);
-            let string_class = crate::utilis::string_class();
-            ops.push(CILOp::LdStr(
-                format!("attempt to {binop:?} with overflow lhs:").into(),
-            ));
-            ops.extend(handle_operand(a, tyctx, method, method_instance, type_cache).flatten());
-            let usize_class = crate::utilis::usize_class();
-            let string_type = crate::r#type::Type::DotnetType(Box::new(string_class.clone()));
-            let sig = FnSig::new(&[], &string_type);
-            let usize_to_string = CallSite::boxed(Some(usize_class), "ToString".into(), sig, false);
-            ops.push(CILOp::Call(usize_to_string.clone()));
-            ops.push(CILOp::LdStr("rhs:".into()));
-            ops.extend(handle_operand(b, tyctx, method, method_instance, type_cache).flatten());
-            ops.push(CILOp::Call(usize_to_string.clone()));
-
-            let sig = FnSig::new(
-                &[
-                    string_type.clone(),
-                    string_type.clone(),
-                    string_type.clone(),
-                    string_type.clone(),
-                ],
-                &string_type.clone(),
-            );
-            ops.push(CILOp::Call(CallSite::boxed(
-                Some(string_class),
-                "Concat".into(),
-                sig,
-                true,
-            )));
-            let sig = FnSig::new(&[string_type], &crate::r#type::Type::Void);
-            let ovefow_exception =
-                DotnetTypeRef::new(Some("System.Runtime"), "System.ArithmeticException");
-            ops.push(CILOp::NewObj(CallSite::boxed(
-                Some(ovefow_exception),
-                ".ctor".into(),
-                sig,
-                false,
-            )));
-            ops.push(CILOp::Throw);
-            ops
-        }
-        AssertKind::MisalignedPointerDereference {
-            required: _,
-            found: _,
-        } => {
-            /*
-            let mut ops = Vec::with_capacity(8);
-            let string_class = crate::utilis::string_class();
-            ops.push(CILOp::LdStr(
-                "Missaligned pointer dereference. required: "
-                    .to_string()
-                    .into(),
-            ));
-            ops.extend(handle_operand(
-                required,
-                tyctx,
-                method,
-                method_instance,
-                type_cache,
-            ));
-            let usize_class = crate::utilis::usize_class();
-            let string_type = crate::r#type::Type::DotnetType(string_class.clone().into());
-            let sig = FnSig::new(&[], &string_type);
-            let usize_to_string = CallSite::boxed(Some(usize_class), "ToString".into(), sig, false);
-            ops.push(CILOp::Call(usize_to_string.clone()));
-            ops.push(CILOp::LdStr(" found: ".into()));
-            ops.extend(handle_operand(
-                found,
-                tyctx,
-                method,
-                method_instance,
-                type_cache,
-            ));
-            ops.push(CILOp::Call(usize_to_string.clone()));
-
-            let sig = FnSig::new(
-                &[
-                    string_type.clone(),
-                    string_type.clone(),
-                    string_type.clone(),
-                    string_type.clone(),
-                ],
-                &string_type.clone(),
-            );
-            ops.push(CILOp::Call(CallSite::boxed(
-                Some(string_class),
-                "Concat".into(),
-                sig,
-                true,
-            )));
-            let sig = FnSig::new(&[string_type], &crate::r#type::Type::Void);
-            let ovefow_exception = DotnetTypeRef::new(Some("System.Runtime"), "System.Exception");
-            ops.push(CILOp::NewObj(CallSite::boxed(
-                Some(ovefow_exception),
-                ".ctor".into(),
-                sig,
-                false,
-            )));
-            ops.push(CILOp::Throw);
-            ops*/
-            vec![]
-        }
-        AssertKind::OverflowNeg(value) => {
-            let mut ops = Vec::with_capacity(8);
-            let string_class = crate::utilis::string_class();
-            ops.push(CILOp::LdStr(
-                "attempt to neg with overflow value:".to_string().into(),
-            ));
-            ops.extend(handle_operand(value, tyctx, method, method_instance, type_cache).flatten());
-            let usize_class = crate::utilis::usize_class();
-            let string_type = crate::r#type::Type::DotnetType(Box::new(string_class.clone()));
-            let sig = FnSig::new(&[], &string_type);
-            let usize_to_string = CallSite::boxed(Some(usize_class), "ToString".into(), sig, false);
-            ops.push(CILOp::Call(usize_to_string.clone()));
-            ops.push(CILOp::LdStr("rhs:".into()));
-
-            let sig = FnSig::new(
-                &[
-                    string_type.clone(),
-                    string_type.clone(),
-                    string_type.clone(),
-                ],
-                &string_type.clone(),
-            );
-            ops.push(CILOp::Call(CallSite::boxed(
-                Some(string_class),
-                "Concat".into(),
-                sig,
-                true,
-            )));
-            let sig = FnSig::new(&[string_type], &crate::r#type::Type::Void);
-            let ovefow_exception =
-                DotnetTypeRef::new(Some("System.Runtime"), "System.ArithmeticException");
-            ops.push(CILOp::NewObj(CallSite::boxed(
-                Some(ovefow_exception),
-                ".ctor".into(),
-                sig,
-                false,
-            )));
-            ops.push(CILOp::Throw);
-            ops
-        }
-        _ => todo!("unsuported assertion message:{msg:?}"),
-    }
-}
 fn handle_switch(ty: Ty, discr: CILNode, switch: &SwitchTargets) -> Vec<CILTree> {
     let mut trees = Vec::new();
     for (value, target) in switch.iter() {

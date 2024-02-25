@@ -1,3 +1,4 @@
+use crate::basic_block::{handler_for_block, handler_from_action, BasicBlock};
 use crate::cil_tree::CILTree;
 use crate::method::MethodType;
 use crate::rustc_middle::dep_graph::DepContext;
@@ -291,14 +292,16 @@ impl Assembly {
 
         let blocks = &mir.basic_blocks;
         let does_return_void: bool = *method.sig().output() == Type::Void;
-        let mut trees = Vec::new();
+        //let mut trees = Vec::new();
+        //let mut bbs = Vec::new();
         for (last_bb_id, block_data) in blocks.into_iter().enumerate() {
-            ops.push(CILOp::Label(last_bb_id as u32));
+            //ops.push(CILOp::Label(last_bb_id as u32));
+            let mut trees = Vec::new();
             for statement in &block_data.statements {
                 if *crate::config::INSERT_MIR_DEBUG_COMMENTS {
                     rustc_middle::ty::print::with_no_trimmed_paths! {ops.push(CILOp::Comment(format!("{statement:?}").into()))};
                 }
-                let statement_trees = match Self::statement_to_ops(
+                trees.extend(match Self::statement_to_ops(
                     statement, tcx, mir, instance, cache,
                 ) {
                     Ok(ops) => ops,
@@ -310,8 +313,8 @@ impl Assembly {
                         rustc_middle::ty::print::with_no_trimmed_paths! {Some(CILRoot::throw(&format!("Tired to run a statement {statement:?} which failed to compile with error message {err:?}.")).into())}
                      
                     }
-                };
-                trees.extend(statement_trees);
+                });
+               
                 //crate::utilis::check_debugable(&statement_ops, statement, does_return_void);
                 //ops.extend(statement_ops);
                 //if *crate::config::INSERT_MIR_DEBUG_COMMENTS {
@@ -324,12 +327,13 @@ impl Assembly {
                         //rustc_middle::ty::print::with_no_trimmed_paths! {ops.push(CILOp::Comment(format!("{term:?}").into()))};
                     }
                     let term_trees = Self::terminator_to_ops(term, mir, tcx, instance, cache);
-
                     trees.extend(term_trees);
+                    
                 }
                 None => (),
             }
-            ops.extend(trees.iter().flat_map(|tree| tree.flatten()))
+            ops.extend(BasicBlock::new(trees, last_bb_id as u32, handler_for_block(&block_data)).flatten());
+            //ops.extend(trees.iter().flat_map(|tree| tree.flatten()))
         }
         #[allow(clippy::single_match)]
         // This will be slowly expanded with support for new types of allocations.

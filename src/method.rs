@@ -62,7 +62,7 @@ impl Method {
         match last{
             CILOp::Ret=>(),
             CILOp::Throw=>(),
-            CILOp::Rethrow=>(),
+            CILOp::ReThrow=>(),
             CILOp::GoTo(_)=>(),
             _=>self.ops.extend(CILOp::throw_msg("Critical error: reached the end of a function not termianted with a return statement")),
         }

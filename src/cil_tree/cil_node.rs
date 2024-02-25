@@ -1,6 +1,5 @@
 use crate::{
-    cil::{CILOp, CallSite, FieldDescriptor},
-    r#type::Type, IString,
+    cil::{CILOp, CallSite, FieldDescriptor}, function_sig::FnSig, r#type::Type, IString
 };
 
 use super::{append_vec, cil_root::CILRoot};
@@ -116,10 +115,17 @@ pub enum CILNode {
         args: Box<[CILNode]>,
     },
     LdStr(IString),
+    CallI { sig: FnSig, fn_ptr: Box<CILNode>, args: Box<[Self]> },
 }
 impl CILNode {
     pub fn flatten(&self) -> Vec<CILOp> {
         let mut ops = match self {
+            Self::CallI { sig,fn_ptr, args } => {
+                let mut ops: Vec<_> = fn_ptr.flatten();
+                ops.extend(args.iter().flat_map(|arg| arg.flatten()));
+                ops.push(CILOp::CallI(sig.clone().into()));
+                ops
+            }
             Self::SubTrees(trees, root) => {
                 let mut flattened: Vec<_> = trees.iter().flat_map(|tree| tree.flatten()).collect();
                 flattened.extend(root.flatten());

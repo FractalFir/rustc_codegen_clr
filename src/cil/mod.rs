@@ -36,7 +36,7 @@ pub enum CILOp {
     /// Throw the top value on the stack as an exception
     Throw,
     /// Rethrow the current exception
-    Rethrow,
+    ReThrow,
     /// Return the top value on the stack from this function
     Ret,
     /// Debugger breakpoint
@@ -258,6 +258,8 @@ pub enum CILOp {
     Volatile,
     /// Loads the token corresponding to type *ty*
     LDTypeToken(Box<crate::r#type::Type>),
+    BlockEnd(u32),
+    BlockStart(u32),
 }
 impl CILOp {
     /// If this op is a branch operation, and its target is `original`, replaces the target with `replacement`
@@ -385,7 +387,7 @@ impl CILOp {
         match self {
             CILOp::Nop => 0,
             CILOp::Comment(_) => 0,
-            CILOp::Label(_) | CILOp::GoTo(_) => 0,
+            CILOp::Label(_) | CILOp::GoTo(_) | CILOp::BlockStart(_) | CILOp::BlockEnd(_) => 0,
             CILOp::BZero(_) | CILOp::BTrue(_) => -1,
             CILOp::BEq(_) | CILOp::BNe(_) | CILOp::BLt(_) | CILOp::BGe(_) | CILOp::BLe(_) => -2,
             CILOp::LDArg(_) | CILOp::LDArgA(_) | CILOp::LDLoc(_) | CILOp::LDLocA(_) => 1,
@@ -472,7 +474,7 @@ impl CILOp {
             CILOp::InitObj(_) => -1,
             CILOp::InitBlk => -3,
             CILOp::Throw => -1,
-            CILOp::Rethrow => -1,
+            CILOp::ReThrow => 0,
             CILOp::Ret => -1,
             CILOp::CpBlk => -3,
             // Syntetic instructions
