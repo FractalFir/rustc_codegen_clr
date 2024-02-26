@@ -214,7 +214,7 @@ impl CILRoot {
                 target, sub_target, ..
             }
             | CILRoot::GoTo { target, sub_target } => {
-                targets.push(( *target,*sub_target,));
+                targets.push((*target, *sub_target));
             }
             _ => (),
         }

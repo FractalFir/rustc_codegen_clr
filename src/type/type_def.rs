@@ -246,7 +246,7 @@ pub fn get_array_type(element_count: usize, element: Type) -> TypeDef {
     let _as_pointer = CallSite::ref_as_ptr(element.clone());
     // set_Item(usize offset, G0 value)
     if element_count > 0 {
-        let mut set_usize = Method::new(
+        let mut set_usize = Method::new_empty(
             AccessModifer::Public,
             MethodType::Instance,
             crate::function_sig::FnSig::new(
@@ -276,7 +276,7 @@ pub fn get_array_type(element_count: usize, element: Type) -> TypeDef {
         def.add_method(set_usize);
 
         // get_Address(usize offset)
-        let mut get_adress_usize = Method::new(
+        let mut get_adress_usize = Method::new_empty(
             AccessModifer::Public,
             MethodType::Instance,
             crate::function_sig::FnSig::new(
@@ -304,7 +304,7 @@ pub fn get_array_type(element_count: usize, element: Type) -> TypeDef {
         get_adress_usize.set_ops(ops);
         def.add_method(get_adress_usize);
         // get_Item
-        let mut get_item_usize = Method::new(
+        let mut get_item_usize = Method::new_empty(
             AccessModifer::Public,
             MethodType::Instance,
             crate::function_sig::FnSig::new(&[(&def).into(), Type::USize], &element.clone()),
@@ -328,7 +328,7 @@ pub fn get_array_type(element_count: usize, element: Type) -> TypeDef {
         ];
         get_item_usize.set_ops(ops);
         def.add_method(get_item_usize);
-        let mut to_string = Method::new(
+        let mut to_string = Method::new_empty(
             AccessModifer::Public,
             MethodType::Virtual,
             crate::function_sig::FnSig::new(&[(&def).into()], &DotnetTypeRef::string_type().into()),

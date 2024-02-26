@@ -596,7 +596,7 @@ fn create_to_string<'tyctx>(
     tyctx: TyCtxt<'tyctx>,
 ) -> Method {
     let tpe = type_cache.type_from_cache(ty, tyctx, method);
-    let mut to_string = Method::new(
+    let mut to_string = Method::new_empty(
         AccessModifer::Public,
         crate::method::MethodType::Virtual,
         FnSig::new(&[tpe], &DotnetTypeRef::string_type().into()),

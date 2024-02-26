@@ -1,13 +1,15 @@
+use std::collections::HashSet;
+
 use crate::{
     cil::CILOp,
     cil_tree::{cil_root::CILRoot, CILTree},
 };
-use rustc_middle::{
-    mir::{Body,BasicBlocks, Operand, SwitchTargets, Terminator, TerminatorKind},
-    ty::{Instance, Ty, TyCtxt, TyKind,InstanceDef},
-};
-use rustc_middle::mir::UnwindAction;
 use rustc_middle::mir::BasicBlockData;
+use rustc_middle::mir::UnwindAction;
+use rustc_middle::{
+    mir::{BasicBlocks, Body, Operand, SwitchTargets, Terminator, TerminatorKind},
+    ty::{Instance, InstanceDef, Ty, TyCtxt, TyKind},
+};
 #[derive(Clone, Debug)]
 pub struct BasicBlock {
     trees: Vec<CILTree>,
@@ -20,54 +22,89 @@ pub enum Handler {
     Blocks(Vec<BasicBlock>),
 }
 
-pub fn handler_for_block<'tyctx>(block_data: &BasicBlockData,blocks:&BasicBlocks<'tyctx>,tyctx:TyCtxt<'tyctx>,method_instance:&Instance<'tyctx>,method:&Body<'tyctx>) -> Option<Handler> {
+pub fn handler_for_block<'tyctx>(
+    block_data: &BasicBlockData,
+    blocks: &BasicBlocks<'tyctx>,
+    tyctx: TyCtxt<'tyctx>,
+    method_instance: &Instance<'tyctx>,
+    method: &Body<'tyctx>,
+) -> Option<Handler> {
     let term = (&block_data.terminator).as_ref()?;
     let unwind = term.unwind()?;
-    Some(Handler::RawID(simplify_handler(handler_from_action(unwind),blocks,tyctx,method_instance,method)?))
+    Some(Handler::RawID(simplify_handler(
+        handler_from_action(unwind),
+        blocks,
+        tyctx,
+        method_instance,
+        method,
+    )?))
 }
-fn simplify_handler<'tyctx>(handler:Option<u32>,blocks:&BasicBlocks<'tyctx>,tyctx:TyCtxt<'tyctx>,method_instance:&Instance<'tyctx>,method:&Body<'tyctx>)->Option<u32>{
+fn simplify_handler<'tyctx>(
+    handler: Option<u32>,
+    blocks: &BasicBlocks<'tyctx>,
+    tyctx: TyCtxt<'tyctx>,
+    method_instance: &Instance<'tyctx>,
+    method: &Body<'tyctx>,
+) -> Option<u32> {
     let handler = handler?;
-    if !blocks[handler.into()].statements.is_empty(){
+    if !blocks[handler.into()].statements.is_empty() {
         return Some(handler);
     }
-    match (&blocks[handler.into()]).terminator.as_ref()?.kind{
-        TerminatorKind::Goto { target }=> simplify_handler(Some(target.as_u32()), blocks,tyctx,method_instance,method),
+    match (&blocks[handler.into()]).terminator.as_ref()?.kind {
+        TerminatorKind::Goto { target } => simplify_handler(
+            Some(target.as_u32()),
+            blocks,
+            tyctx,
+            method_instance,
+            method,
+        ),
         TerminatorKind::UnwindResume => None,
-        TerminatorKind::Return=> panic!("Interal error: cleanup(unwind) block returns!"),
+        TerminatorKind::Return => panic!("Interal error: cleanup(unwind) block returns!"),
         // Reaching this is UB, so we can do whatever, including doing nothing :).
         TerminatorKind::Unreachable => None,
         // This block drops, so we **have** to execute it
-        TerminatorKind::Drop{place,
-        target,
-        unwind: _,
-        replace: _,
-    } => {
-        let ty = crate::utilis::monomorphize(&method_instance, place.ty(method, tyctx).ty, tyctx);
+        TerminatorKind::Drop {
+            place,
+            target,
+            unwind: _,
+            replace: _,
+        } => {
+            let ty =
+                crate::utilis::monomorphize(&method_instance, place.ty(method, tyctx).ty, tyctx);
 
-        let drop_instance = Instance::resolve_drop_in_place(tyctx, ty).polymorphize(tyctx);
-        if let InstanceDef::DropGlue(_, None) = drop_instance.def {
-            //Empty drop, nothing needs to happen.
-            simplify_handler(Some(target.as_u32()), blocks,tyctx,method_instance,method)
+            let drop_instance = Instance::resolve_drop_in_place(tyctx, ty).polymorphize(tyctx);
+            if let InstanceDef::DropGlue(_, None) = drop_instance.def {
+                //Empty drop, nothing needs to happen.
+                simplify_handler(
+                    Some(target.as_u32()),
+                    blocks,
+                    tyctx,
+                    method_instance,
+                    method,
+                )
+            } else {
+                Some(handler)
+            }
         }
-        else{
-            Some(handler)
-        }
-    }
-        TerminatorKind::CoroutineDrop{..} => Some(handler),
+        TerminatorKind::CoroutineDrop { .. } => Some(handler),
         // This block calls, so we **have** to execute it
         // TODO: consider checking if this call has side effects!
         TerminatorKind::Call { .. } => Some(handler),
         // This block asserts, so it *could* double-panics, so we **have** to execute it
-        TerminatorKind::Assert{..} => Some(handler),
-        TerminatorKind::Yield {..}=> panic!("Interal error: cleanup(unwind) block yelds(returns)!"),
+        TerminatorKind::Assert { .. } => Some(handler),
+        TerminatorKind::Yield { .. } => {
+            panic!("Interal error: cleanup(unwind) block yelds(returns)!")
+        }
         // False targets should not be present.
-        TerminatorKind::FalseEdge{..} | TerminatorKind::FalseUnwind{..} => panic!("False bb termiantor after drop elaboration!"),
-        // Iniline ASM could do **anything** so it can never be skipped. 
-        TerminatorKind::InlineAsm{..}=> Some(handler),
+        TerminatorKind::FalseEdge { .. } | TerminatorKind::FalseUnwind { .. } => {
+            panic!("False bb termiantor after drop elaboration!")
+        }
+        // Iniline ASM could do **anything** so it can never be skipped.
+        TerminatorKind::InlineAsm { .. } => Some(handler),
         // We *don't* know which target is taken, so we can't skip it
         // TODO: consider checking all sub-targets and removing impossible ones?
-        TerminatorKind::SwitchInt { .. } =>Some(handler),
-        // We can't skip a termiantor which aborts. 
+        TerminatorKind::SwitchInt { .. } => Some(handler),
+        // We can't skip a termiantor which aborts.
         TerminatorKind::UnwindTerminate(_) => Some(handler),
     }
 }
@@ -83,6 +120,40 @@ pub fn handler_from_action(action: &UnwindAction) -> Option<u32> {
         UnwindAction::Unreachable => None,
     }
 }
+fn find_bb(id: u32, bbs: &[BasicBlock]) -> &BasicBlock {
+    bbs.iter().find(|bb| bb.id() == id).unwrap()
+}
+fn block_gc(entrypoint: u32, bbs: &[BasicBlock]) -> Vec<BasicBlock> {
+    //debug_assert!(crate::utilis::is_sorted(bbs.iter(),|a,b|a.id + 1 == b.id));
+    let mut alive: HashSet<u32> = HashSet::new();
+    let mut resurecting = HashSet::new();
+    let mut to_resurect = HashSet::new();
+    to_resurect.insert(entrypoint);
+    while !to_resurect.is_empty() {
+        alive.extend(&resurecting);
+        resurecting.clear();
+        resurecting.extend(&to_resurect);
+        to_resurect.clear();
+        for (target, sub_target) in resurecting
+            .iter()
+            .map(|bb| find_bb(*bb, bbs).targets())
+            .flatten()
+        {
+            assert_eq!(
+                sub_target, 0,
+                "No block can have subblocks before the exception handler resolving phase!"
+            );
+            if !alive.contains(&target) && !resurecting.contains(&target) {
+                to_resurect.insert(target);
+            }
+        }
+    }
+    alive.extend(&resurecting);
+    bbs.iter()
+        .filter(|bb| alive.contains(&bb.id))
+        .cloned()
+        .collect()
+}
 impl BasicBlock {
     pub fn resolve_exception_handlers(&mut self, handler_bbs: &[BasicBlock]) {
         let handler = if let Some(handler) = &self.handler {
@@ -95,34 +166,30 @@ impl BasicBlock {
         } else {
             panic!("Tired to double-resolve ");
         };
-        //let handler_entrypoint = handler_bbs.iter().find(|bb|bb.id == *handler_id).unwrap().clone();
-        let mut handler = Vec::new();
-        handler.push(BasicBlock::new(
-            vec![CILRoot::GoTo {
-                target: self.id(),
-                sub_target: *handler_id,
-            }
-            .into()],
-            u32::MAX,
-            None,
-        ));
+        // Get alive blovks
+        let mut handler = block_gc(*handler_id, handler_bbs);
         // Fix up handler jumps
-        for bb in handler_bbs {
-            let mut cloned = bb.clone();
-            cloned
-                .trees
+        handler.iter_mut().for_each(|bb: &mut BasicBlock| {
+            bb.trees
                 .iter_mut()
                 .for_each(|tree| tree.fix_for_exception_handler(self.id()));
-            handler.push(cloned);
-        }
-        // Get cross-block jumps
-        let mut targets = Vec::new();
-        self.trees
-            .iter()
-            .for_each(|tree| tree.targets(&mut targets));
+        });
+        // Insert the "jumpstarter"
+        handler.insert(
+            0,
+            BasicBlock::new(
+                vec![CILRoot::GoTo {
+                    target: self.id(),
+                    sub_target: *handler_id,
+                }
+                .into()],
+                u32::MAX,
+                None,
+            ),
+        );
         // Generate launching pads for cross-block branches!
         let id = self.id();
-        for (target, sub_target) in targets {
+        for (target, sub_target) in self.targets() {
             assert_eq!(sub_target, 0);
             self.trees.push(
                 CILRoot::Raw {
@@ -140,6 +207,13 @@ impl BasicBlock {
     }
     pub fn new(trees: Vec<CILTree>, id: u32, handler: Option<Handler>) -> Self {
         Self { trees, id, handler }
+    }
+    pub fn targets(&self) -> Vec<(u32, u32)> {
+        let mut targets = Vec::new();
+        self.trees
+            .iter()
+            .for_each(|tree| tree.targets(&mut targets));
+        targets
     }
     pub fn flatten_inner(&self, id: u32, sub_id: u32) -> Vec<CILOp> {
         let mut ops = vec![CILOp::Label(id, sub_id)];

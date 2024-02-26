@@ -539,7 +539,7 @@ use crate::method::MethodType;
 fn test_tmp_locals() {
     use crate::method::Method;
     use crate::r#type::Type;
-    let mut method = Method::new(
+    let mut method = Method::new_empty(
         crate::access_modifier::AccessModifer::Public,
         MethodType::Static,
         FnSig::new(&[], &Type::U32),
@@ -556,7 +556,7 @@ fn test_tmp_locals() {
         CILOp::Ret,
     ];
     method.set_ops(ops);
-    let mut expected_method = Method::new(
+    let mut expected_method = Method::new_empty(
         crate::access_modifier::AccessModifer::Public,
         MethodType::Static,
         FnSig::new(&[], &Type::U32),

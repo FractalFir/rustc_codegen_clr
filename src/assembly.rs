@@ -278,20 +278,13 @@ impl Assembly {
         //eprintln!("method")
         let locals = locals_from_mir(&mir.local_decls, tcx, mir.arg_count, &instance, cache);
         // Create method prototype
-        let mut method = Method::new(
-            access_modifier,
-            MethodType::Static,
-            sig.clone(),
-            name,
-            locals,
-        );
+        
         let mut ops = Vec::new();
         if *crate::config::TRACE_CALLS {
             ops.extend(CILOp::debug_msg(&format!("Called {name}.")));
         }
 
         let blocks = &mir.basic_blocks;
-        let does_return_void: bool = *method.sig().output() == Type::Void;
         //let mut trees = Vec::new();
         let mut normal_bbs = Vec::new();
         let mut cleanup_bbs = Vec::new();
@@ -335,13 +328,13 @@ impl Assembly {
                 cleanup_bbs.push(BasicBlock::new(
                     trees,
                     last_bb_id as u32,
-                    handler_for_block(&block_data,&mir.basic_blocks,tcx,&instance,mir),
+                    handler_for_block(&block_data, &mir.basic_blocks, tcx, &instance, mir),
                 ))
             } else {
                 normal_bbs.push(BasicBlock::new(
                     trees,
                     last_bb_id as u32,
-                    handler_for_block(&block_data,&mir.basic_blocks,tcx,&instance,mir),
+                    handler_for_block(&block_data, &mir.basic_blocks, tcx, &instance, mir),
                 ));
             }
             //ops.extend(trees.iter().flat_map(|tree| tree.flatten()))
@@ -353,30 +346,24 @@ impl Assembly {
             .iter()
             .flat_map(|block| block.flatten())
             .collect();
-        /*
-        for bb in &normal_bbs{
-            let handler = if let Some(handler) = bb.handler(){handler}else{continue};
-            ops.push(CILOp::CustomLabel(format!("cb_{handler}_{bb_id}",bb_id = bb.id()).into()));
-            ops.push(CILOp::GoTo(handler,0));
-        }
-        ops.extend(cleanup_bbs.iter().flat_map(|block|block.flatten()));
-        ops.push(CILOp::CustomLabel("END_CLEANUP".into()));
-        for bb in normal_bbs{
-            match bb.eh_clause(){
-                Some(eh_clause)=>ops.push(eh_clause),
-                None=>(),
-            }
-        } */
         #[allow(clippy::single_match)]
         // This will be slowly expanded with support for new types of allocations.
-        ops.iter_mut().for_each(|op| match op {
+        
+        let mut method = Method::new(
+            access_modifier,
+            MethodType::Static,
+            sig.clone(),
+            name,
+            locals,
+            normal_bbs,
+        );
+        method.ops_mut().iter_mut().for_each(|op| match op {
             CILOp::LoadGlobalAllocPtr { alloc_id } => {
                 *op = CILOp::LDStaticField(self.add_allocation(*alloc_id, tcx).into());
             }
             _ => (),
         });
-
-        method.set_ops(ops);
+        let does_return_void: bool = *method.sig().output() == Type::Void;
         // Do some basic checks on the method as a whole.
         crate::utilis::check_debugable(method.get_ops(), &method, does_return_void);
 
@@ -453,7 +440,7 @@ impl Assembly {
                     true,
                 ))
                 .or_insert_with(|| {
-                    Method::new(
+                    Method::new_empty(
                         AccessModifer::Public,
                         MethodType::Static,
                         FnSig::new(&[], &Type::Void),
@@ -791,7 +778,7 @@ fn allocation_initializer_method(
         //eprintln!("Constant requires rellocation support!");
     }
     ops.extend([CILOp::LDLoc(1), CILOp::Ret]);
-    let mut method = Method::new(
+    let mut method = Method::new_empty(
         AccessModifer::Private,
         MethodType::Static,
         FnSig::new(&[], &Type::Ptr(Type::U8.into())),

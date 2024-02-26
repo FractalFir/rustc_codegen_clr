@@ -438,6 +438,16 @@ pub fn check_debugable(
         );
     }
 }
+pub fn is_sorted<T>(mut iter: impl Iterator<Item = T>, pred: impl Fn(&T, &T) -> bool) -> bool {
+    if let Some(first) = iter.next() {
+        iter.try_fold(first, |previous, current| {
+            (pred(&previous, &current)).then_some(current)
+        })
+        .is_some()
+    } else {
+        true
+    }
+}
 pub fn max_stack(ops: &[crate::cil::CILOp], does_return_void: bool) -> usize {
     let mut stack = 0;
     let mut max_stack = 0;

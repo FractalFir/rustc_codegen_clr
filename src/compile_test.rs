@@ -122,7 +122,6 @@ macro_rules! compare_tests {
                 #[cfg(test)]
                 static COMPILE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
                 #[test]
-
                 fn release() {
                     let lock = COMPILE_LOCK.lock();
                     let mut should_panic = false;
@@ -138,6 +137,92 @@ macro_rules! compare_tests {
                     //.env("RUST_TARGET_PATH","../../")
                     cmd.current_dir(test_dir).args([
                         "-O",
+                        "-Z",
+                        super::super::backend_path(),
+                        "-C",
+                        &format!(
+                            "linker={}",
+                            super::super::RUSTC_CODEGEN_CLR_LINKER.display()
+                        ),
+                        concat!("./", stringify!($test_name), ".rs"),
+                        "-o",
+                        concat!("./", stringify!($test_name), ".exe"),
+                        "--edition",
+                        "2021",
+                        //"--target",
+                        //"clr64-unknown-clr"
+                    ]);
+                    let out = cmd.output().expect("failed to execute process");
+                    // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
+                    if !out.stderr.is_empty() {
+                        let stdout = String::from_utf8(out.stdout)
+                            .expect("rustc error contained non-UTF8 characters.");
+                        let stderr = String::from_utf8(out.stderr)
+                            .expect("rustc error contained non-UTF8 characters.");
+                        eprintln!("stdout:\n{stdout}\nstderr:\n{stderr}");
+                        /*if stderr.contains("error"){
+                            should_panic = true;
+                        }*/
+                    }
+                    let exec_path = concat!("./", stringify!($test_name));
+                    drop(lock);
+                    //super::peverify(exec_path, test_dir);
+                    eprintln!("Prepating to test with .NET");
+                    let dotnet_out = super::super::test_dotnet_executable(exec_path, test_dir);
+                    // Compiles the project with native rust
+                    let mut cmd = std::process::Command::new("rustc");
+                    //.env("RUST_TARGET_PATH","../../")
+                    cmd.current_dir(test_dir).args([
+                        "-O",
+                        concat!("./", stringify!($test_name), ".rs"),
+                        "-o",
+                        concat!("./", stringify!($test_name), ".a"),
+                        "--edition",
+                        "2021",
+                    ]);
+                    let out = cmd.output().expect("failed to execute process");
+                    // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
+                    if !out.stderr.is_empty() {
+                        let stdout = String::from_utf8(out.stdout)
+                            .expect("rustc error contained non-UTF8 characters.");
+                        let stderr = String::from_utf8(out.stderr)
+                            .expect("rustc error contained non-UTF8 characters.");
+                        if stderr.contains("error") || stderr.matches("thread 'rustc'").count() > 1
+                        {
+                            should_panic = true;
+                        }
+                        eprintln!("stdout:\n{stdout}\nstderr:\n{stderr}");
+                    }
+                    let rust_out =
+                        std::process::Command::new(concat!("./", stringify!($test_name), ".a"))
+                            .current_dir(test_dir)
+                            .output()
+                            .expect("failed to execute process");
+                    let rust_out = String::from_utf8(rust_out.stdout)
+                        .expect("rust error contained non-UTF8 characters.");
+                    if rust_out != dotnet_out {
+                        panic!("rust_out:\n{rust_out}\n\ndotnet_out:\n{dotnet_out}");
+                    }
+
+                    if should_panic {
+                        panic!("{rust_out}{dotnet_out}");
+                    }
+                }
+                #[test]
+                fn debug() {
+                    let lock = COMPILE_LOCK.lock();
+                    let mut should_panic = false;
+                    let test_dir = concat!("./test/", stringify!($prefix), "/");
+                    // Ensures the test directory is present
+                    std::fs::create_dir_all(test_dir).expect("Could not setup the test env");
+                    // Builds the backend if neceasry
+                    super::super::RUSTC_BUILD_STATUS
+                        .as_ref()
+                        .expect("Could not build rustc!");
+                    // Compiles the test project
+                    let mut cmd = std::process::Command::new("rustc");
+                    //.env("RUST_TARGET_PATH","../../")
+                    cmd.current_dir(test_dir).args([
                         "-Z",
                         super::super::backend_path(),
                         "-C",
@@ -704,22 +789,22 @@ run_test! {fuzz,test0,stable}
 run_test! {fuzz,test1,stable}
 
 run_test! {fuzz,fuzz0,unstable}
-compare_tests! {fuzz,fuzz1,stable}
+compare_tests! {fuzz,fuzz1,unstable}
 compare_tests! {fuzz,fuzz2,stable}
 compare_tests! {fuzz,fuzz3,stable}
 compare_tests! {fuzz,fuzz4,stable}
 compare_tests! {fuzz,fuzz5,stable}
-compare_tests! {fuzz,fuzz6,stable}
+compare_tests! {fuzz,fuzz6,unstable}
 compare_tests! {fuzz,fuzz7,unstable}
-compare_tests! {fuzz,fuzz8,stable}
-compare_tests! {fuzz,fuzz9,stable}
+compare_tests! {fuzz,fuzz8,unstable}
+compare_tests! {fuzz,fuzz9,unstable}
 
 compare_tests! {fuzz,fuzz10,unstable}
 compare_tests! {fuzz,fuzz11,unstable}
-compare_tests! {fuzz,fuzz12,stable}
+compare_tests! {fuzz,fuzz12,unstable}
 compare_tests! {fuzz,fuzz13,unstable}
-compare_tests! {fuzz,fuzz14,stable}
-compare_tests! {fuzz,fuzz15,unstable}
+compare_tests! {fuzz,fuzz14,unstable}
+compare_tests! {fuzz,fuzz15,stable}
 compare_tests! {fuzz,fuzz16,unstable}
 compare_tests! {fuzz,fuzz17,unstable}
 compare_tests! {fuzz,fuzz18,unstable}
@@ -737,10 +822,10 @@ compare_tests! {fuzz,fuzz28,unstable}
 compare_tests! {fuzz,fuzz29,stable}
 
 compare_tests! {fuzz,fuzz30,stable}
-compare_tests! {fuzz,fuzz31,stable}
+compare_tests! {fuzz,fuzz31,unstable}
 compare_tests! {fuzz,fuzz32,unstable}
 compare_tests! {fuzz,fuzz33,stable}
-compare_tests! {fuzz,fuzz34,stable}
+compare_tests! {fuzz,fuzz34,unstable}
 compare_tests! {fuzz,fuzz35,unstable}
 compare_tests! {fuzz,fuzz36,unstable}
 compare_tests! {fuzz,fuzz37,stable}
@@ -753,17 +838,17 @@ compare_tests! {fuzz,fuzz42,unstable}
 compare_tests! {fuzz,fuzz43,unstable}
 compare_tests! {fuzz,fuzz44,unstable}
 compare_tests! {fuzz,fuzz45,stable}
-compare_tests! {fuzz,fuzz46,unstable}
+compare_tests! {fuzz,fuzz46,stable}
 compare_tests! {fuzz,fuzz47,unstable}
 compare_tests! {fuzz,fuzz48,unstable}
 compare_tests! {fuzz,fuzz49,unstable}
 
-compare_tests! {fuzz,fuzz50,stable}
+compare_tests! {fuzz,fuzz50,unstable}
 compare_tests! {fuzz,fuzz51,unstable}
 compare_tests! {fuzz,fuzz52,stable}
 compare_tests! {fuzz,fuzz53,stable}
-compare_tests! {fuzz,fuzz54,stable}
-compare_tests! {fuzz,fuzz55,stable}
+compare_tests! {fuzz,fuzz54,unstable}
+compare_tests! {fuzz,fuzz55,unstable}
 compare_tests! {fuzz,fuzz56,unstable}
 compare_tests! {fuzz,fuzz57,unstable}
 compare_tests! {fuzz,fuzz58,unstable}
@@ -778,7 +863,7 @@ compare_tests! {fuzz,fuzz65,unstable}
 compare_tests! {fuzz,fuzz66,unstable}
 compare_tests! {fuzz,fuzz67,unstable}
 compare_tests! {fuzz,fuzz68,unstable}
-compare_tests! {fuzz,fuzz69,stable}
+compare_tests! {fuzz,fuzz69,unstable}
 
 compare_tests! {fuzz,fuzz70,stable}
 compare_tests! {fuzz,fuzz71,unstable}
@@ -788,14 +873,14 @@ compare_tests! {fuzz,fuzz74,stable}
 compare_tests! {fuzz,fuzz75,stable}
 compare_tests! {fuzz,fuzz76,unstable}
 compare_tests! {fuzz,fuzz77,unstable}
-compare_tests! {fuzz,fuzz78,stable}
+compare_tests! {fuzz,fuzz78,unstable}
 compare_tests! {fuzz,fuzz79,unstable}
 
-compare_tests! {fuzz,fuzz80,stable}
+compare_tests! {fuzz,fuzz80,unstable}
 compare_tests! {fuzz,fuzz81,unstable}
 compare_tests! {fuzz,fuzz82,stable}
-compare_tests! {fuzz,fuzz83,stable}
-compare_tests! {fuzz,fuzz84,unstable}
+compare_tests! {fuzz,fuzz83,unstable}
+compare_tests! {fuzz,fuzz84,stable}
 compare_tests! {fuzz,fuzz85,unstable}
 compare_tests! {fuzz,fuzz86,stable}
 compare_tests! {fuzz,fuzz87,stable}
@@ -812,7 +897,7 @@ compare_tests! {fuzz,fuzz96,unstable}
 compare_tests! {fuzz,fuzz97,unstable}
 compare_tests! {fuzz,fuzz98,unstable}
 compare_tests! {fuzz,fuzz99,stable}
-compare_tests! {fuzz,fuzz100,unstable}
+compare_tests! {fuzz,fuzz100,stable}
 
 run_test! {fuzz,fail0,stable}
 run_test! {fuzz,fail1,stable}

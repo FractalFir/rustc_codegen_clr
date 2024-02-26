@@ -147,67 +147,46 @@ pub fn float_to_int(src: Type, target: Type, operand: CILNode) -> CILNode {
             ),
             [operand]
         ),
-        //todo!("Casting to 128 bit intiegers is not supported!"),
-        Type::U16 => conv_u16!(call!(
-            CallSite::boxed(
-                Some(DotnetTypeRef::math()),
-                "Min".into(),
-                FnSig::new(&[Type::U64, Type::U64], &Type::U64),
-                true,
-            ),
-            [conv_u64!(operand), ldc_u64!(u16::MAX as u64)]
-        )),
-
-        Type::U8 => conv_u8!(call!(
-            CallSite::boxed(
-                Some(DotnetTypeRef::math()),
-                "Min".into(),
-                FnSig::new(&[Type::U64, Type::U64], &Type::U64),
-                true,
-            ),
-            [ldc_u64!(u8::MAX as u64), conv_u64!(operand)]
-        )),
-        Type::I16 => conv_i16!(call!(
-            CallSite::boxed(
-                Some(DotnetTypeRef::math()),
-                "Max".into(),
-                FnSig::new(&[Type::I64, Type::I64], &Type::I64),
-                true,
-            ),
-            [
-                call!(
-                    CallSite::boxed(
-                        Some(DotnetTypeRef::math()),
-                        "Min".into(),
-                        FnSig::new(&[Type::I64, Type::I64], &Type::I64),
-                        true,
-                    ),
-                    [conv_i64!(operand), ldc_i64!(i16::MAX as i64)]
-                ),
-                ldc_i64!(i16::MIN as i64)
-            ]
-        )),
-
-        Type::I8 => conv_i8!(call!(
-            CallSite::boxed(
-                Some(DotnetTypeRef::math()),
-                "Max".into(),
-                FnSig::new(&[Type::I64, Type::I64], &Type::I64),
-                true,
-            ),
-            [
-                call!(
-                    CallSite::boxed(
-                        Some(DotnetTypeRef::math()),
-                        "Min".into(),
-                        FnSig::new(&[Type::I64, Type::I64], &Type::I64),
-                        true,
-                    ),
-                    [conv_i64!(operand), ldc_i64!(i8::MAX as i64)]
-                ),
-                ldc_i64!(i8::MIN as i64)
-            ]
-        )),
+        Type::U8 => match src{
+            Type::F32 => call!(CallSite::new(None,"cast_f32_u8".into(),FnSig::new(&[Type::F32],&Type::U8),true),[operand]),
+            Type::F64 => call!(CallSite::new(None,"cast_f64_u8".into(),FnSig::new(&[Type::F64],&Type::U8),true),[operand]),
+            _=>panic!("Non-float type!"),
+        }
+        Type::U16 => match src{
+            Type::F32 => call!(CallSite::new(None,"cast_f32_u16".into(),FnSig::new(&[Type::F32],&Type::U16),true),[operand]),
+            Type::F64 => call!(CallSite::new(None,"cast_f64_u16".into(),FnSig::new(&[Type::F64],&Type::U16),true),[operand]),
+            _=>panic!("Non-float type!"),
+        }
+        Type::U32 => match src{
+            Type::F32 => call!(CallSite::new(None,"cast_f32_u32".into(),FnSig::new(&[Type::F32],&Type::U32),true),[operand]),
+            Type::F64 => call!(CallSite::new(None,"cast_f64_u32".into(),FnSig::new(&[Type::F64],&Type::U32),true),[operand]),
+            _=>panic!("Non-float type!"),
+        }
+        Type::U64 => match src{
+            Type::F32 => call!(CallSite::new(None,"cast_f32_u64".into(),FnSig::new(&[Type::F32],&Type::U64),true),[operand]),
+            Type::F64 => call!(CallSite::new(None,"cast_f64_u64".into(),FnSig::new(&[Type::F64],&Type::U64),true),[operand]),
+            _=>panic!("Non-float type!"),
+        }
+        Type::I8 => match src{
+            Type::F32 => call!(CallSite::new(None,"cast_f32_i8".into(),FnSig::new(&[Type::F32],&Type::I8),true),[operand]),
+            Type::F64 => call!(CallSite::new(None,"cast_f64_i8".into(),FnSig::new(&[Type::F64],&Type::I8),true),[operand]),
+            _=>panic!("Non-float type!"),
+        }
+        Type::I16 => match src{
+            Type::F32 => call!(CallSite::new(None,"cast_f32_i16".into(),FnSig::new(&[Type::F32],&Type::I16),true),[operand]),
+            Type::F64 => call!(CallSite::new(None,"cast_f64_i16".into(),FnSig::new(&[Type::F64],&Type::I16),true),[operand]),
+            _=>panic!("Non-float type!"),
+        }
+        Type::I32 => match src{
+            Type::F32 => call!(CallSite::new(None,"cast_f32_i32".into(),FnSig::new(&[Type::F32],&Type::I32),true),[operand]),
+            Type::F64 => call!(CallSite::new(None,"cast_f64_i32".into(),FnSig::new(&[Type::F64],&Type::I32),true),[operand]),
+            _=>panic!("Non-float type!"),
+        }
+        Type::I64 => match src{
+            Type::F32 => call!(CallSite::new(None,"cast_f32_i64".into(),FnSig::new(&[Type::F32],&Type::I64),true),[operand]),
+            Type::F64 => call!(CallSite::new(None,"cast_f64_i64".into(),FnSig::new(&[Type::F64],&Type::I64),true),[operand]),
+            _=>panic!("Non-float type!"),
+        }
         _ => to_int(target, operand),
     }
 

@@ -61,7 +61,7 @@ fn aot_compile_mode(args: &[String]) -> AOTCompileMode {
 }
 fn patch_missing_method(call_site: &cil::CallSite) -> method::Method {
     let sig = call_site.signature().clone();
-    let mut method = method::Method::new(
+    let mut method = method::Method::new_empty(
         access_modifier::AccessModifer::Private,
         MethodType::Static,
         sig,

@@ -88,7 +88,7 @@ mod constant;
 /// Code detecting and inserting wrappers around entrypoints.
 mod entrypoint;
 /// Implementation of key external functions(eg. libc) necesary for propely running a Rust executable
-pub mod ffi;
+pub mod builtin;
 /// Signature of a function (inputs)->output
 pub mod function_sig;
 /// Interop type handling.
@@ -205,7 +205,7 @@ impl CodegenBackend for MyBackend {
             let ffi_compile_timer = tcx
                 .profiler()
                 .generic_activity("insert .NET FFI functions/types");
-            ffi::insert_ffi_functions(&mut codegen, tcx);
+            builtin::insert_ffi_functions(&mut codegen, tcx);
             drop(ffi_compile_timer);
             let name: IString = cgus.iter().next().unwrap().name().to_string().into();
 

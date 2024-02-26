@@ -1,6 +1,6 @@
 pub type Stopwatch = crate::intrinsics::RustcCLRInteropManagedClass<
     "System.Runtime",
-    "System.Diagnostics.Stopwatch ",
+    "System.Diagnostics.Stopwatch",
 >;
 impl Stopwatch {
     #[inline(always)]

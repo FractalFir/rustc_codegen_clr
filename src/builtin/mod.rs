@@ -1,8 +1,3 @@
-mod atomics;
-mod caller_location;
-mod ctpop;
-mod exact_div;
-mod memcmp;
 use crate::method::MethodType;
 use crate::r#type::DotnetTypeRef;
 use crate::{
@@ -14,10 +9,11 @@ use crate::{
     r#type::Type,
 };
 use rustc_middle::ty::TyCtxt;
+mod casts;
 macro_rules! add_method {
     ($name:ident,$input:expr,$output:expr,$ops:expr) => {
         fn $name(asm: &mut Assembly) {
-            let mut method = Method::new(
+            let mut method = Method::new_empty(
                 AccessModifer::Private,
                 MethodType::Static,
                 FnSig::new($input, $output),
@@ -30,7 +26,7 @@ macro_rules! add_method {
     };
     ($name:ident,$input:expr,$output:expr,$ops:expr,$locals:expr) => {
         fn $name(asm: &mut Assembly) {
-            let mut method = Method::new(
+            let mut method = Method::new_empty(
                 AccessModifer::Private,
                 MethodType::Static,
                 FnSig::new($input, $output),
@@ -41,6 +37,37 @@ macro_rules! add_method {
             asm.add_method(method);
         }
     };
+    
+}
+#[macro_export]
+macro_rules! add_method_from_trees {
+    ($name:ident,$input:expr,$output:expr,$trees:expr) => {
+        fn $name(asm: &mut crate::assembly::Assembly) {
+            let mut method = crate::method::Method::new(
+                crate::access_modifier::AccessModifer::Private,
+                crate::method::MethodType::Static,
+                crate::function_sig::FnSig::new($input, $output),
+                stringify!($name),
+                vec![],
+                $trees
+            );
+            asm.add_method(method);
+        }
+    };
+    ($name:ident,$input:expr,$output:expr,$trees:expr,$locals:expr) => {
+        fn $name(asm: &mut crate::assembly::Assembly) {
+            let mut method = crate::method::Method::new(
+                crate::access_modifier::AccessModifer::Private,
+                crate::method::MethodType::MethodType::Static,
+                crate::function_sig::FnSig::new($input, $output),
+                stringify!($name),
+                $locals.into(),
+                $trees
+            );
+            asm.add_method(method);
+        }
+    };
+
 }
 /// Inserts a small subset of libc and some standard types into an assembly.
 pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
@@ -63,6 +90,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     math(asm);
     io(asm);
     unlikely(asm);
+    casts::casts(asm);
     //malloc(asm);
     let mut marshal = DotnetTypeRef::new(
         Some("System.Runtime.InteropServices"),
@@ -70,7 +98,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     );
     marshal.set_valuetype(false);
     let marshal = Some(marshal);
-    let mut malloc = Method::new(
+    let mut malloc = Method::new_empty(
         AccessModifer::Private,
         MethodType::Static,
         FnSig::new(&[Type::USize], &Type::Ptr(c_void.clone().into())),
@@ -88,7 +116,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
         CILOp::Ret,
     ]);
     asm.add_method(malloc);
-    let mut realloc = Method::new(
+    let mut realloc = Method::new_empty(
         AccessModifer::Private,
         MethodType::Static,
         FnSig::new(
@@ -116,7 +144,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     );
     native_mem.set_valuetype(false);
     let native_mem = Some(native_mem);
-    let mut __rust_alloc = Method::new(
+    let mut __rust_alloc = Method::new_empty(
         AccessModifer::Private,
         MethodType::Static,
         FnSig::new(&[Type::USize, Type::USize], &Type::Ptr(Type::U8.into())),
@@ -168,7 +196,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     }
 
     asm.add_method(__rust_alloc);
-    let mut __rust_dealloc = Method::new(
+    let mut __rust_dealloc = Method::new_empty(
         AccessModifer::Private,
         MethodType::Static,
         FnSig::new(
@@ -189,7 +217,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
         CILOp::Ret,
     ]);
     asm.add_method(__rust_dealloc);
-    let mut free = Method::new(
+    let mut free = Method::new_empty(
         AccessModifer::Private,
         MethodType::Static,
         FnSig::new(&[Type::Ptr(c_void.clone().into())], &Type::Void),
@@ -208,7 +236,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     ]);
     asm.add_method(free);
     //TODO: add volatile prefix to volatile loads
-    let mut volatile_load = Method::new(
+    let mut volatile_load = Method::new_empty(
         AccessModifer::Private,
         MethodType::Static,
         FnSig::new(&[Type::Ptr(Type::U8.into())], &Type::U8),
@@ -217,7 +245,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     );
     volatile_load.set_ops(vec![CILOp::LDArg(0), CILOp::LDIndI8, CILOp::Ret]);
     asm.add_method(volatile_load);
-    let mut volatile_load = Method::new(
+    let mut volatile_load = Method::new_empty(
         AccessModifer::Private,
         MethodType::Static,
         FnSig::new(&[Type::Ptr(Type::USize.into())], &Type::USize),
@@ -237,18 +265,13 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
 }
 
 fn math(asm: &mut Assembly) {
-    sqrtf32(asm);
+    
 }
 fn io(asm: &mut Assembly) {
     puts(asm);
 }
 
-add_method!(
-    sqrtf32,
-    &[Type::F32],
-    &Type::F32,
-    [CILOp::LDArg(0), CILOp::Ret]
-);
+
 add_method!(
     puts,
     &[Type::Ptr(Box::new(Type::U8))],
@@ -301,7 +324,7 @@ pub fn add_ptr_offset_from_unsigned(asm: &mut Assembly) {
         .collect();
     for call in ptr_offset_from_unsigned_calls.iter() {
         let rtype: &Type = &call.inputs()[0];
-        let mut ptr_offset_from_unsigned = Method::new(
+        let mut ptr_offset_from_unsigned = Method::new_empty(
             AccessModifer::Private,
             MethodType::Static,
             call.signature().clone(),
