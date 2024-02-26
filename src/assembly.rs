@@ -335,13 +335,13 @@ impl Assembly {
                 cleanup_bbs.push(BasicBlock::new(
                     trees,
                     last_bb_id as u32,
-                    handler_for_block(&block_data),
+                    handler_for_block(&block_data,&mir.basic_blocks,tcx,&instance,mir),
                 ))
             } else {
                 normal_bbs.push(BasicBlock::new(
                     trees,
                     last_bb_id as u32,
-                    handler_for_block(&block_data),
+                    handler_for_block(&block_data,&mir.basic_blocks,tcx,&instance,mir),
                 ));
             }
             //ops.extend(trees.iter().flat_map(|tree| tree.flatten()))
