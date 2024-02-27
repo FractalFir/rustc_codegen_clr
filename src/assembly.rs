@@ -601,44 +601,51 @@ impl Assembly {
             let method = self.functions.get(entrypoint).cloned().unwrap();
             externs.insert(entrypoint.clone(), method);
         }
+        if let Some(cctor) = self.cctor(){
+            externs.insert(CallSite::new(
+                None,
+                ".cctor".into(),
+                FnSig::new(&[], &Type::Void),
+                true,
+            ), cctor.clone());
+        }
         externs
     }
     pub fn eliminate_dead_fn(&mut self) {
-        let mut alive = HashMap::new();
-        let mut resurected = self.get_exported_fn();
-        let mut to_resurect = HashMap::new();
-        while !resurected.is_empty() {
-            for function in &resurected {
-                alive.insert(function.0.clone(), function.1.clone());
-                for reference in function.1.calls() {
-                    if let Some(_class) = reference.class() {
-                        // TODO: if dead code elimination too agressive check this
-                        // Methods reference by methods inside types are NOT tracked.
-                        continue;
-                    }
-                    if alive.contains_key(reference) || resurected.contains_key(reference) {
-                        // Already alive, ignore!
-                        continue;
-                    }
-                    if let Some(method) = self.functions.get(reference).cloned() {
-                        to_resurect.insert(reference.clone(), method);
-                    } else if !crate::native_pastrough::LIBC_FNS
-                        .iter()
-                        .any(|libc_fn| *libc_fn == reference.name())
-                    {
-                        {
-                            panic!("Unresolved extern ref: {reference:?}");
-                        }
-                    }
-                }
+        let mut alive: HashMap<CallSite,Method> = HashMap::new();
+    let mut resurecting: HashMap<CallSite,Method>  = HashMap::new();
+    let mut to_resurect: HashMap<CallSite,Method>  =  self.get_exported_fn();
+    while !to_resurect.is_empty() {
+        alive.extend(resurecting.clone());
+        resurecting.clear();
+        resurecting.extend(to_resurect.clone());
+        to_resurect.clear();
+        for call in resurecting.iter().flat_map(|fnc|fnc.1.calls()) {
+            if let Some(_class) = call.class() {
+                // TODO: if dead code elimination too agressive check this
+                // Methods reference by methods inside types are NOT tracked.
+                continue;
             }
-            resurected = to_resurect;
-            to_resurect = HashMap::new();
+            if alive.contains_key(call) || resurecting.contains_key(call) {
+                // Already alive, ignore!
+                continue;
+            }
+            if let Some(method) = self.functions.get(call).cloned() {
+                to_resurect.insert(call.clone(), method);
+            } else if !crate::native_pastrough::LIBC_FNS
+                .iter()
+                .any(|libc_fn| *libc_fn == call.name())
+            {
+                    panic!("Unresolved extern ref: {call:?}");
+                }
+        
         }
+    }
+    alive.extend(resurecting);
         self.functions = alive;
     }
     pub fn eliminate_dead_code(&mut self) {
-        //self.eliminate_dead_fn();
+        self.eliminate_dead_fn();
         //self.eliminate_dead_types();
     }
     pub fn eliminate_dead_types(&mut self) {
@@ -665,12 +672,14 @@ impl Assembly {
                     .1
                     .fields()
                     .iter()
-                    .filter_map(|tpe| tpe.1.as_dotnet())
+                    .filter_map(|tpe| tpe.1.dotnet_refs())
                     .filter_map(|tpe| match tpe.asm() {
                         Some(_) => None,
                         None => Some(IString::from(tpe.name_path())),
                     })
-                    .map(|name| (name.to_owned(), self.types.get(&name).unwrap().clone()))
+                    .filter_map(|name|name.split_once('\\').map(|(a,_)|a.into()))
+                    //.map(|(a,b)|a.into())
+                    .map(|name:IString| (name.to_owned(), self.types.get(&name).unwrap_or_else(||panic!("Can't find type {name:?}")).clone()))
                 {
                     let name: IString = IString::from(name);
                     to_resurect.insert(name, type_def);

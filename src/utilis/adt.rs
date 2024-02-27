@@ -32,7 +32,6 @@ impl Iterator for FieldOffsetIterator {
 }
 impl FieldOffsetIterator {
     pub fn fields(parent: &Layout) -> FieldOffsetIterator {
-        println!("fields:{:?}", parent.fields());
         match parent.fields() {
             FieldsShape::Arbitrary {
                 offsets,
@@ -41,9 +40,8 @@ impl FieldOffsetIterator {
                 let offsets: Box<[_]> = memory_index
                     .iter()
                     .enumerate()
-                    .map(|(index, mem_idx)| {
+                    .map(|(index, _mem_idx)| {
                         // DOC_HELP_IDEA: explain what mem_idx actualy does - it is not obvious from a first look. It describes the order of fields in memory.
-                        //eprintln!("index:{index},mem_idx:{mem_idx}");
                         offsets[FieldIdx::from_u32(index as u32)].bytes() as u32
                     })
                     //TODO: ask what does field offset of 4294967295 means.

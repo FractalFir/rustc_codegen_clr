@@ -158,12 +158,13 @@ impl Method {
         self.sig()
             .inputs()
             .iter()
-            .filter_map(|tpe| tpe.as_dotnet())
-            .chain(self.locals().iter().filter_map(|tpe| tpe.1.as_dotnet()))
+            .filter_map(|tpe| tpe.dotnet_refs())
+            .chain(self.locals().iter().filter_map(|tpe| tpe.1.dotnet_refs()))
+            .chain(self.sig().inputs().iter().filter_map(|tpe| tpe.dotnet_refs()))
             .chain(
                 [self.sig().output()]
                     .iter()
-                    .filter_map(|tpe| tpe.as_dotnet()),
+                    .filter_map(|tpe| tpe.dotnet_refs()),
             )
             .collect()
     }

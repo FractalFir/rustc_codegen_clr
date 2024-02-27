@@ -74,8 +74,11 @@ pub fn variant_name(ty: Ty, idx: u32) -> crate::IString {
 }
 /// Escapes the name of a function
 pub fn function_name(name: SymbolName) -> crate::IString {
-    let name: String = name.to_string();
+    let mut name: String = name.to_string();
     // Name TOO long
+    if *crate::config::ESCAPE_NAMES{
+        name = name.replace('.',"_dot_").replace('$',"_ds_");
+    }
     if name.len() > 1000 {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};

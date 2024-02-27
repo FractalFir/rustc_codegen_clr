@@ -225,6 +225,15 @@ impl Type {
             _ => None,
         }
     }
+    #[must_use]
+    pub fn dotnet_refs(&self) -> Option<DotnetTypeRef> {
+        match self {
+            Self::DotnetType(inner) => Some(inner.as_ref().clone()),
+            Self::Ptr(inner)=>inner.dotnet_refs(),
+            Self::ManagedReference(inner)=>inner.dotnet_refs(),
+            _ => None,
+        }
+    }
 }
 impl From<&IntTy> for Type {
     fn from(int_tpe: &IntTy) -> Self {
