@@ -72,6 +72,8 @@ pub mod assembly_exporter;
 mod basic_block;
 /// Code handling binary operations
 mod binop;
+/// Implementation of key external functions(eg. libc) necesary for propely running a Rust executable
+pub mod builtin;
 mod call_info;
 /// Code hansling rust `as` casts.
 mod casts;
@@ -87,8 +89,6 @@ pub mod compile_test;
 mod constant;
 /// Code detecting and inserting wrappers around entrypoints.
 mod entrypoint;
-/// Implementation of key external functions(eg. libc) necesary for propely running a Rust executable
-pub mod builtin;
 /// Signature of a function (inputs)->output
 pub mod function_sig;
 /// Interop type handling.

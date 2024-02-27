@@ -278,7 +278,7 @@ impl Assembly {
         //eprintln!("method")
         let locals = locals_from_mir(&mir.local_decls, tcx, mir.arg_count, &instance, cache);
         // Create method prototype
-        
+
         let mut ops = Vec::new();
         if *crate::config::TRACE_CALLS {
             ops.extend(CILOp::debug_msg(&format!("Called {name}.")));
@@ -348,7 +348,6 @@ impl Assembly {
             .collect();
         #[allow(clippy::single_match)]
         // This will be slowly expanded with support for new types of allocations.
-        
         let mut method = Method::new(
             access_modifier,
             MethodType::Static,

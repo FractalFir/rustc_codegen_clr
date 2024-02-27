@@ -1,5 +1,10 @@
 use crate::{
-    access_modifier::AccessModifer, basic_block::BasicBlock, cil::{CILOp, CallSite}, function_sig::FnSig, r#type::{DotnetTypeRef, Type}, IString
+    access_modifier::AccessModifer,
+    basic_block::BasicBlock,
+    cil::{CILOp, CallSite},
+    function_sig::FnSig,
+    r#type::{DotnetTypeRef, Type},
+    IString,
 };
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
@@ -50,21 +55,24 @@ impl Method {
         }
     }
     #[must_use]
-    pub(crate) fn new(  access: AccessModifer,
+    pub(crate) fn new(
+        access: AccessModifer,
         method_type: MethodType,
         sig: FnSig,
         name: &str,
-        locals: Vec<LocalDef>,blocks:Vec<BasicBlock>)->Self{
-            Self {
-                access,
-                method_type,
-                sig,
-                name: name.into(),
-                locals,
-                ops: blocks.iter().flat_map(|bb|bb.flatten()).collect(),
-                attributes: Vec::new(),
-            }
+        locals: Vec<LocalDef>,
+        blocks: Vec<BasicBlock>,
+    ) -> Self {
+        Self {
+            access,
+            method_type,
+            sig,
+            name: name.into(),
+            locals,
+            ops: blocks.iter().flat_map(|bb| bb.flatten()).collect(),
+            attributes: Vec::new(),
         }
+    }
     pub(crate) fn ensure_valid(&mut self) {
         let last = self.ops.iter().last();
         let last = match last {

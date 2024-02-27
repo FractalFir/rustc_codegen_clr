@@ -37,7 +37,6 @@ macro_rules! add_method {
             asm.add_method(method);
         }
     };
-    
 }
 #[macro_export]
 macro_rules! add_method_from_trees {
@@ -49,7 +48,7 @@ macro_rules! add_method_from_trees {
                 crate::function_sig::FnSig::new($input, $output),
                 stringify!($name),
                 vec![],
-                $trees
+                $trees,
             );
             asm.add_method(method);
         }
@@ -62,12 +61,11 @@ macro_rules! add_method_from_trees {
                 crate::function_sig::FnSig::new($input, $output),
                 stringify!($name),
                 $locals.into(),
-                $trees
+                $trees,
             );
             asm.add_method(method);
         }
     };
-
 }
 /// Inserts a small subset of libc and some standard types into an assembly.
 pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
@@ -264,13 +262,10 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     abort(asm);
 }
 
-fn math(asm: &mut Assembly) {
-    
-}
+fn math(asm: &mut Assembly) {}
 fn io(asm: &mut Assembly) {
     puts(asm);
 }
-
 
 add_method!(
     puts,

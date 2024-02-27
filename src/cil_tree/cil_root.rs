@@ -80,6 +80,7 @@ pub(crate) enum CILRoot {
     //LabelEnd(u32),
 }
 impl CILRoot {
+   
     pub fn throw(msg: &str) -> Self {
         let mut class =
             crate::r#type::DotnetTypeRef::new(Some("System.Runtime"), "System.Exception");

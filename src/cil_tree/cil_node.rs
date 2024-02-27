@@ -125,6 +125,80 @@ pub enum CILNode {
     },
 }
 impl CILNode {
+    /*
+    pub fn get_subtree(&mut self) -> Vec<CILRoot> {
+        match self {
+            CILNode::LDLoc(tree)
+            | CILNode::LDArg(tree)
+            | CILNode::LDLocA(tree)
+            | CILNode::LDArgA(tree)
+            | CILNode::SizeOf(tree) => vec![],
+            CILNode::BlackBox(tree)
+            | CILNode::ConvF32(tree)
+            | CILNode::ConvF64(tree)
+            | CILNode::ConvF64Un(tree) => tree.get_subtree(),
+            CILNode::LDIndI8 { ptr }
+            | CILNode::LDIndI16 { ptr }
+            | CILNode::LDIndI32 { ptr }
+            | CILNode::LDIndI64 { ptr }
+            | CILNode::LDIndISize { ptr }
+            | CILNode::LdObj { ptr, obj }
+            | CILNode::LDIndF32 { ptr }
+            | CILNode::LDIndF64 { ptr } => ptr.get_subtree(),
+            CILNode::LDFieldAdress { addr, field } |
+            CILNode::LDField { addr, field } => addr.get_subtree(),
+            CILNode::Add(a,b) => todo!(),
+            CILNode::And(a,b) => todo!(),
+            CILNode::Sub(a,b) => todo!(),
+            CILNode::Mul(a,b) => todo!(),
+            CILNode::Div(a,b) => todo!(),
+            CILNode::Rem(a,b) => todo!(),
+            CILNode::RemUn(_, _) => todo!(),
+            CILNode::Or(_, _) => todo!(),
+            CILNode::XOr(_, _) => todo!(),
+            CILNode::Shr(_, _) => todo!(),
+            CILNode::Shl(_, _) => todo!(),
+            CILNode::ShrUn(_, _) => todo!(),
+            CILNode::RawOps { parrent, ops } => todo!(),
+            CILNode::RawOpsParrentless { ops } => todo!(),
+            CILNode::Call { args, site } => todo!(),
+            CILNode::CallVirt { args, site } => todo!(),
+            CILNode::LdcI64(_) => todo!(),
+            CILNode::LdcU64(_) => todo!(),
+            CILNode::LdcI32(_) => todo!(),
+            CILNode::LdcU32(_) => todo!(),
+            CILNode::LdcF64(_) => todo!(),
+            CILNode::LdcF32(_) => todo!(),
+            CILNode::LoadGlobalAllocPtr { alloc_id } => todo!(),
+            CILNode::ConvU8(_) => todo!(),
+            CILNode::ConvU16(_) => todo!(),
+            CILNode::ConvU32(_) => todo!(),
+            CILNode::ConvU64(_) => todo!(),
+            CILNode::ConvUSize(_) => todo!(),
+            CILNode::ConvI8(_) => todo!(),
+            CILNode::ConvI16(_) => todo!(),
+            CILNode::ConvI32(_) => todo!(),
+            CILNode::ConvI64(_) => todo!(),
+            CILNode::ConvISize(_) => todo!(),
+            CILNode::Volatile(_) => todo!(),
+            CILNode::Neg(_) => todo!(),
+            CILNode::Not(_) => todo!(),
+            CILNode::Eq(_, _) => todo!(),
+            CILNode::Lt(_, _) => todo!(),
+            CILNode::LtUn(_, _) => todo!(),
+            CILNode::Gt(_, _) => todo!(),
+            CILNode::GtUn(_, _) => todo!(),
+            CILNode::TemporaryLocal(_) => todo!(),
+            CILNode::SubTrees(_, _) => todo!(),
+            CILNode::LoadAddresOfTMPLocal => todo!(),
+            CILNode::LoadTMPLocal => todo!(),
+            CILNode::LDFtn(_) => todo!(),
+            CILNode::LDTypeToken(_) => todo!(),
+            CILNode::NewObj { site, args } => todo!(),
+            CILNode::LdStr(_) => todo!(),
+            CILNode::CallI { sig, fn_ptr, args } => todo!(),
+        }
+    }*/
     pub fn flatten(&self) -> Vec<CILOp> {
         let mut ops = match self {
             Self::CallI { sig, fn_ptr, args } => {
