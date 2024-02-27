@@ -154,7 +154,7 @@ impl Method {
     pub(crate) fn calls(&self) -> impl Iterator<Item = &CallSite> {
         self.ops.iter().filter_map(|op| op.call())
     }
-    pub(crate) fn dotnet_types<'a>(&'a self) -> Vec<DotnetTypeRef> {
+    pub(crate) fn dotnet_types(&self) -> Vec<DotnetTypeRef> {
         self.sig()
             .inputs()
             .iter()

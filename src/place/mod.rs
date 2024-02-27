@@ -1,9 +1,7 @@
 // FIXME: This file may contain unnecesary morphize calls.
-
-use crate::cil::CILOp;
 use crate::cil_tree::cil_node::CILNode;
 use crate::cil_tree::cil_root::CILRoot;
-use crate::r#type::{pointer_to_is_fat, DotnetTypeRef, Type};
+use crate::r#type::{pointer_to_is_fat, DotnetTypeRef};
 
 use rustc_middle::mir::Place;
 
@@ -14,7 +12,7 @@ mod set;
 pub use adress::*;
 pub use body::*;
 pub use get::*;
-use rustc_middle::ty::{FloatTy, Instance, IntTy, ParamEnv, Ty, TyCtxt, TyKind, UintTy};
+use rustc_middle::ty::{FloatTy, Instance, IntTy, Ty, TyCtxt, TyKind, UintTy};
 pub use set::*;
 fn slice_head<T>(slice: &[T]) -> (&T, &[T]) {
     assert!(!slice.is_empty());
@@ -56,38 +54,6 @@ fn body_ty_is_by_adress(last_ty: Ty) -> bool {
             "TODO: body_ty_is_by_adress does not support type {last_ty:?} kind:{kind:?}",
             kind = last_ty.kind()
         ),
-    }
-}
-
-fn place_get_length<'ctx>(
-    curr_type: PlaceTy<'ctx>,
-    tyctx: TyCtxt<'ctx>,
-    method_instance: Instance<'ctx>,
-    type_cache: &mut crate::r#type::TyCache,
-) -> Vec<CILOp> {
-    let curr_ty = curr_type.as_ty().expect("Can't index into enum!");
-    let curr_ty = crate::utilis::monomorphize(&method_instance, curr_ty, tyctx);
-    let tpe = type_cache.type_from_cache(curr_ty, tyctx, Some(method_instance));
-    let Type::DotnetType(class) = &tpe else {
-        panic!("Can't index into type {tpe:?}");
-    };
-
-    match *curr_ty.kind() {
-        TyKind::Array(_elem, len) => {
-            let len = crate::utilis::monomorphize(&method_instance, len, tyctx);
-            let len = len.eval_target_usize(tyctx, ParamEnv::reveal_all()) as i64;
-            vec![CILOp::LdcI64(len)]
-        }
-        TyKind::Slice(_elem) => {
-            let signature = crate::function_sig::FnSig::new(&[tpe.clone()], &Type::USize);
-            vec![CILOp::Call(crate::cil::CallSite::boxed(
-                Some(class.as_ref().clone()),
-                "get_Length".into(),
-                signature,
-                false,
-            ))]
-        }
-        _ => todo!("Can't get length of non-array/slice!"),
     }
 }
 
@@ -234,7 +200,6 @@ pub fn place_adress<'a>(
             ty = curr_ty.monomorphize(&method_instance, ctx);
             addr_calc = curr_ops;
         }
-        let ops = addr_calc.flatten();
         adress::place_elem_adress(
             head,
             ty,

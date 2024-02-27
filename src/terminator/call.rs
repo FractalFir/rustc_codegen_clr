@@ -2,7 +2,7 @@ use crate::{
     call,
     call_info::CallInfo,
     call_virt,
-    cil::{CILOp, CallSite, FieldDescriptor},
+    cil::{CallSite, FieldDescriptor},
     cil_tree::{cil_node::CILNode, cil_root::CILRoot},
     function_sig::FnSig,
     interop::AssemblyRef,
@@ -15,20 +15,6 @@ use rustc_middle::{
     ty::{GenericArg, Instance, InstanceDef, ParamEnv, Ty, TyCtxt, TyKind},
 };
 use rustc_span::source_map::Spanned;
-fn decode_interop_call<'tyctx>(
-    function_name: &str,
-    _prefix: &str,
-    subst_ref: &[GenericArg<'tyctx>],
-    tyctx: TyCtxt<'tyctx>,
-) -> CallSite {
-    let _argument_count = argc_from_fn_name(function_name, MANAGED_CALL_FN_NAME);
-    let asm = AssemblyRef::decode_assembly_ref(subst_ref[0], tyctx);
-    let _asm = asm.name();
-    let _class_name = garg_to_string(subst_ref[1], tyctx);
-    let _is_valuetype = crate::utilis::garag_to_bool(subst_ref[2], tyctx);
-    let _managed_fn_name = garg_to_string(subst_ref[3], tyctx);
-    todo!();
-}
 fn argc_from_fn_name(function_name: &str, prefix: &str) -> u32 {
     let argc_start = function_name.find(prefix).unwrap() + (prefix.len());
     let argc_end = argc_start + function_name[argc_start..].find('_').unwrap();

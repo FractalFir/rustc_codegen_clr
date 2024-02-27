@@ -68,12 +68,6 @@ impl AssemblyExporter for ILASMExporter {
         final_path: &std::path::Path,
         is_dll: bool,
     ) -> Result<(), AssemblyExportError> {
-        let directory = absolute_path(final_path)
-            .map_err(|io| AssemblyExportError::CouldNotCanonalizePath(io, final_path.to_owned()))?
-            //.parent()
-            //.expect("Can't get the target directory")
-            .to_owned();
-
         let mut out_path = final_path.to_owned();
         //out_path.set_file_name(final_path.file_name().expect("Target file has no name!"));
         if let Some(ext) = final_path.extension() {
@@ -264,13 +258,4 @@ fn method_cil(w: &mut impl Write, method: &Method) -> std::io::Result<()> {
         writeln!(w, "\t{op_cli}", op_cli = super::ilasm_op::op_cli(op))?;
     }
     writeln!(w, "}}")
-}
-fn absolute_path(path: &std::path::Path) -> std::io::Result<std::path::PathBuf> {
-    if path.has_root() {
-        Ok(path.to_owned())
-    } else {
-        let mut abs_path = std::env::current_dir()?;
-        abs_path.extend(path);
-        Ok(abs_path)
-    }
 }

@@ -1,5 +1,4 @@
 use crate::{
-    cil::CILOp,
     cil_tree::{cil_node::CILNode, cil_root::CILRoot, CILTree},
     ldc_i32, mul,
     r#type::{TyCache, Type},

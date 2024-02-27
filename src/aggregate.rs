@@ -1,5 +1,5 @@
 use crate::{
-    cil::{CILOp, CallSite, FieldDescriptor},
+    cil::{CallSite, FieldDescriptor},
     cil_tree::{cil_node::CILNode, cil_root::CILRoot},
     conv_usize, ld_field_address, ldc_u64,
     operand::handle_operand,
@@ -67,7 +67,6 @@ pub fn handle_aggregate<'tyctx>(
             let element = crate::utilis::monomorphize(&method_instance, *element, tyctx);
             let element = tycache.type_from_cache(element, tyctx, Some(method_instance));
             let array_type = DotnetTypeRef::array(element.clone(), value_index.len());
-            let ops: Vec<CILOp> = Vec::with_capacity(values.len() * 2);
             let array_getter = super::place::place_adress(
                 target_location,
                 tyctx,

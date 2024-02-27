@@ -4,7 +4,6 @@ use rustc_target::abi::call::Conv;
 use rustc_target::spec::abi::Abi as TargetAbi;
 pub struct CallInfo {
     sig: FnSig,
-    has_track_caller: bool,
     split_last_tuple: bool,
 }
 impl CallInfo {
@@ -69,20 +68,14 @@ impl CallInfo {
             inputs.extend(remaining);
             sig.set_inputs(inputs);
         }
-        let has_track_caller = false;
         Ok(Self {
             sig,
-            has_track_caller,
             split_last_tuple,
         })
     }
 
     pub fn sig(&self) -> &FnSig {
         &self.sig
-    }
-
-    fn has_track_caller(&self) -> bool {
-        self.has_track_caller
     }
 
     pub fn split_last_tuple(&self) -> bool {

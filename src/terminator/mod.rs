@@ -4,10 +4,8 @@ use crate::cil_tree::CILTree;
 use crate::place::place_set;
 
 use crate::{
-    cil::{CILOp, CallSite},
+    cil::{CallSite},
     function_sig::FnSig,
-    operand::handle_operand,
-    r#type::DotnetTypeRef,
     utilis::monomorphize,
 };
 use rustc_middle::ty::InstanceDef;
@@ -115,7 +113,8 @@ pub fn handle_terminator<'ctx>(
                         );
                         let fn_ty = monomorphize(&method_instance, fn_ty, tyctx);
                         //let fn_instance = Instance::resolve(tyctx,ParamEnv::reveal_all,fn_ty.did,List::empty());
-                        let call_ops = call::call(
+                        
+                        call::call(
                             fn_ty,
                             body,
                             tyctx,
@@ -123,8 +122,7 @@ pub fn handle_terminator<'ctx>(
                             destination,
                             method_instance,
                             type_cache,
-                        );
-                        call_ops.into()
+                        )
                     };
                 }
             }
@@ -216,7 +214,7 @@ pub fn handle_terminator<'ctx>(
 
                 vec![
                     CILRoot::Call {
-                        site: CallSite::new(None, function_name, sig, true).into(),
+                        site: CallSite::new(None, function_name, sig, true),
                         args: [crate::place::place_adress(
                             place,
                             tyctx,

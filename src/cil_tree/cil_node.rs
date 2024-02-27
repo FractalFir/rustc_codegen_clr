@@ -385,11 +385,6 @@ impl CILNode {
                 res.push(CILOp::Call(site.clone()));
                 res
             }
-            Self::Call { args, site } => {
-                let mut res: Vec<CILOp> = args.iter().flat_map(|arg| arg.flatten()).collect();
-                res.push(CILOp::Call(site.clone()));
-                res
-            }
             Self::NewObj { args, site } => {
                 let mut res: Vec<CILOp> = args.iter().flat_map(|arg| arg.flatten()).collect();
                 res.push(CILOp::NewObj(site.clone()));
@@ -648,7 +643,7 @@ macro_rules! conv_f64_un {
 #[macro_export]
 macro_rules! ldc_i32 {
     ($val:expr) => {
-        crate::cil_tree::cil_node::CILNode::LdcI32($val)
+        $crate::cil_tree::cil_node::CILNode::LdcI32($val)
     };
 }
 #[macro_export]

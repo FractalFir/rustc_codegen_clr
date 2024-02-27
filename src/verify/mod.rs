@@ -4,6 +4,7 @@ use crate::{
     r#type::{DotnetTypeRef, Type},
 };
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 enum VerificationFailure {
     LocalOutOfRange(usize),
     ArgOutOfRange(usize),
@@ -336,7 +337,7 @@ fn verify_op(
                     stack.push(Type::I32);
                     Ok(())
                 }
-                Type::I64 | Type::ISize | Type::I64 | Type::U64 => {
+                Type::I64 | Type::ISize | Type::U64 => {
                     stack.push(value);
                     Ok(())
                 }
@@ -359,7 +360,7 @@ fn verify_op(
                     stack.push(Type::I32);
                     Ok(())
                 }
-                Type::I64 | Type::ISize | Type::I64 | Type::U64 => {
+                Type::I64 | Type::ISize | Type::U64 => {
                     stack.push(value);
                     Ok(())
                 }
@@ -382,7 +383,7 @@ fn verify_op(
                     stack.push(Type::I32);
                     Ok(())
                 }
-                Type::I64 | Type::ISize | Type::I64 | Type::U64 => {
+                Type::I64 | Type::ISize | Type::U64 => {
                     stack.push(value);
                     Ok(())
                 }
@@ -486,7 +487,6 @@ fn verify_op(
             }
         }
         CILOp::CallI(sig) => {
-            let fn_ptr = stack.pop().ok_or(VerificationFailure::StackUnderflow)?;
             for input in sig.inputs().iter().rev().cloned().map(to_stacktype) {
                 let stack_input = stack.pop().ok_or(VerificationFailure::StackUnderflow)?;
                 if !equivalent(&input, &stack_input) {

@@ -11,9 +11,9 @@ pub fn is_function_magic(name: &str) -> bool {
 }
 
 use crate::{
-    cil::{CILOp, FieldDescriptor},
+    cil::FieldDescriptor,
     r#type::TyCache,
-    r#type::{DotnetTypeRef, Type},
+    r#type::DotnetTypeRef,
     IString,
 };
 pub mod adt;
@@ -205,26 +205,7 @@ pub fn field_descrptor<'tyctx>(
         .expect("Field owner not a dotnet type!");
     def.field_desc_from_rust_field_idx(type_ref, field_idx)*/
 }
-/// Returns the size of a tag of an enum with `variants` variants.
-pub fn enum_tag_size(_variants: u64) -> u32 {
-    /*u32::try_from(((u64::from(u64::BITS) - u64::from((variants).leading_zeros())) + 8 - 1) / 8)
-    .expect("Enum variant over 2^4294967296")*/
-    // Seems to be always 4
-    1
-}
-/// Gets the type of the tag of enum with `variants` varinats.
-pub fn tag_from_enum_variants(variants: u64) -> crate::r#type::Type {
-    let var_size = enum_tag_size(variants);
-    // println!("variants:{variants}tag_size:{var_size}");
-    match var_size {
-        0 => Type::Void,
-        1 => Type::U8,
-        2 => Type::U16,
-        4 => Type::U32,
-        8 => Type::U64,
-        _ => todo!("Can't yet have {var_size} byte wide enum tag!"),
-    }
-}
+
 /// Tires to get the value of Const `size` as usize.
 pub fn try_resolve_const_size(size: Const) -> Result<usize, &'static str> {
     let scalar = match size.try_to_scalar() {
@@ -288,7 +269,6 @@ pub fn garag_to_bool<'tyctx>(garg: GenericArg<'tyctx>, _ctx: TyCtxt<'tyctx>) -> 
 pub fn compiletime_sizeof<'tyctx>(
     ty: Ty<'tyctx>,
     tyctx: TyCtxt<'tyctx>,
-    method_instance: Instance<'tyctx>,
 ) -> usize {
     let layout = tyctx
         .layout_of(rustc_middle::ty::ParamEnvAnd {
@@ -298,85 +278,6 @@ pub fn compiletime_sizeof<'tyctx>(
         .expect("Can't get layout of a type.")
         .layout;
     layout.size.bytes() as usize
-    /*
-    match ty.kind() {
-        TyKind::Int(int) => match int {
-            IntTy::I8 => std::mem::size_of::<i8>(),
-            IntTy::I16 => std::mem::size_of::<i16>(),
-            IntTy::I32 => std::mem::size_of::<i32>(),
-            IntTy::I64 => std::mem::size_of::<i64>(),
-            IntTy::I128 => std::mem::size_of::<i128>(),
-            IntTy::Isize => {
-                eprintln!("WARNING: Assuming sizeof::<isize>() == 8!");
-                8
-            }
-        },
-        TyKind::Uint(int) => match int {
-            UintTy::U8 => std::mem::size_of::<u8>(),
-            UintTy::U16 => std::mem::size_of::<u16>(),
-            UintTy::U32 => std::mem::size_of::<u32>(),
-            UintTy::U64 => std::mem::size_of::<u64>(),
-            UintTy::U128 => std::mem::size_of::<u128>(),
-            UintTy::Usize => {
-                eprintln!("WARNING: Assuming sizeof::<usize>() == 8!");
-                8
-            }
-        },
-        TyKind::Float(float_ty) => match float_ty {
-            FloatTy::F32 => std::mem::size_of::<f32>(),
-            FloatTy::F64 => std::mem::size_of::<f64>(),
-        },
-        TyKind::Bool => std::mem::size_of::<u8>(),
-        TyKind::Adt(def, subst) => match def.adt_kind() {
-            AdtKind::Struct => def
-                .all_fields()
-                .map(|field| compiletime_sizeof(field.ty(tyctx, subst), tyctx, method_instance))
-                .sum::<usize>(),
-            AdtKind::Union => def
-                .all_fields()
-                .map(|field| compiletime_sizeof(field.ty(tyctx, subst), tyctx, method_instance))
-                .max()
-                .unwrap_or(0),
-            AdtKind::Enum => {
-                let tag = match def.variants().len() {
-                    0 => 0,
-                    1..=256 => 1,
-                    257..=65_535 => 2,
-                    65_536..=4_294_967_295 => 4,
-                    _ => 8,
-                };
-                let mut max_size = 0;
-                for variant in def.variants() {
-                    let variant_size = variant
-                        .fields
-                        .iter()
-                        .map(|field| {
-                            let field = field.ty(tyctx, subst);
-                            let field = monomorphize(&method_instance, field, tyctx);
-                            compiletime_sizeof(field, tyctx, method_instance)
-                        })
-                        .sum::<usize>();
-                    max_size = max_size.max(variant_size);
-                }
-                // Tag + largest variant
-                tag + max_size
-            }
-        },
-        TyKind::Tuple(elements) => elements
-            .iter()
-            .map(|element| compiletime_sizeof(element, tyctx, method_instance))
-            .sum::<usize>(),
-        TyKind::RawPtr(type_and_mut) => {
-            if pointer_to_is_fat(type_and_mut.ty, tyctx, Some(method_instance)) {
-                eprintln!("WARNING: Assuming sizeof::<*T>() == sizeof::<isize>() == 8!");
-                8 * 2
-            } else {
-                eprintln!("WARNING: Assuming sizeof::<*T>() == sizeof::<isize>() == 8!");
-                8
-            }
-        }
-        _ => todo!("Can't compute compiletime sizeof {ty:?}"),
-    }*/
 }
 /// Ensures that a type is morphic.
 #[macro_export]
@@ -438,16 +339,7 @@ pub fn check_debugable(
         );
     }
 }
-pub fn is_sorted<T>(mut iter: impl Iterator<Item = T>, pred: impl Fn(&T, &T) -> bool) -> bool {
-    if let Some(first) = iter.next() {
-        iter.try_fold(first, |previous, current| {
-            (pred(&previous, &current)).then_some(current)
-        })
-        .is_some()
-    } else {
-        true
-    }
-}
+
 pub fn max_stack(ops: &[crate::cil::CILOp], does_return_void: bool) -> usize {
     let mut stack = 0;
     let mut max_stack = 0;
@@ -461,14 +353,6 @@ pub fn max_stack(ops: &[crate::cil::CILOp], does_return_void: bool) -> usize {
 }
 pub(crate) fn alloc_id_to_u64(alloc_id: AllocId) -> u64 {
     unsafe { std::mem::transmute(alloc_id) }
-}
-/// Part of micompilatio detection.
-pub(crate) fn verify_locals_within_range(ops: &[CILOp], argc: u32, locc: u32) -> bool {
-    ops.iter().all(|op| match op {
-        CILOp::LDLoc(local) | CILOp::LDLocA(local) | CILOp::STLoc(local) => *local < locc,
-        CILOp::LDArg(arg) | CILOp::LDArgA(arg) | CILOp::STArg(arg) => *arg < argc,
-        _ => true,
-    })
 }
 pub fn is_fn_intrinsic<'tyctx>(fn_ty: Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -> bool {
     use rustc_target::spec::abi::Abi;

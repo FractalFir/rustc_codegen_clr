@@ -1,15 +1,15 @@
 use crate::{
     call,
-    cil::{CILOp, CallSite},
+    cil::CallSite,
     cil_tree::{cil_node::CILNode, cil_root::CILRoot},
     function_sig::FnSig,
     operand::handle_operand,
     place::place_set,
-    r#type::{tycache, DotnetTypeRef, Type},
+    r#type::{tycache, DotnetTypeRef},
 };
 use rustc_middle::{
     mir::{Body, Operand, Place},
-    ty::{Instance, IntTy, Ty, TyCtxt, TyKind, UintTy},
+    ty::{Instance, TyCtxt, TyKind, UintTy},
 };
 use rustc_span::source_map::Spanned;
 use tycache::TyCache;
@@ -61,45 +61,4 @@ pub fn bswap<'tyctx>(
         method_instance,
         type_cache,
     )
-}
-fn stupid_bswap<'tyctx>(
-    ty: Ty<'tyctx>,
-    tyctx: TyCtxt<'tyctx>,
-    type_cache: &mut TyCache,
-    method_instance: Instance<'tyctx>,
-) -> Vec<CILOp> {
-    let size = crate::utilis::compiletime_sizeof(ty, tyctx, method_instance);
-    let tpe = type_cache.type_from_cache(ty, tyctx, method_instance.into());
-    let mut res = vec![
-        CILOp::NewTMPLocal(tpe.clone().into()),
-        CILOp::SetTMPLocal,
-        CILOp::NewTMPLocal(tpe.clone().into()),
-    ];
-    if tpe == Type::USize || tpe == Type::USize {
-        println!("WARNING:bswap assumes sizeof::<usize>() == 8");
-    }
-    for offset in 0..size {
-        res.extend([
-            CILOp::LoadAddresOfTMPLocal,
-            CILOp::ConvUSize(false),
-            CILOp::LdcI32(offset as u32 as i32),
-            //CILOp::ConvU32(false),
-            //CILOp::ConvISize(false),
-            CILOp::Add,
-            CILOp::LoadAdressUnderTMPLocal(1),
-            CILOp::ConvUSize(false),
-            CILOp::LdcI32((size - offset - 1) as u32 as i32),
-            CILOp::ConvUSize(false),
-            CILOp::Add,
-            CILOp::LDIndI8,
-            CILOp::STIndI8,
-        ]);
-    }
-    res.extend([
-        CILOp::LoadTMPLocal,
-        CILOp::FreeTMPLocal,
-        CILOp::FreeTMPLocal,
-    ]);
-    crate::utilis::check_debugable(&res, "bswap fucked up", false);
-    res
 }

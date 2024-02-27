@@ -41,8 +41,8 @@ macro_rules! add_method {
 #[macro_export]
 macro_rules! add_method_from_trees {
     ($name:ident,$input:expr,$output:expr,$trees:expr) => {
-        fn $name(asm: &mut crate::assembly::Assembly) {
-            let mut method = crate::method::Method::new(
+        fn $name(asm: &mut $crate::assembly::Assembly) {
+            let method = $crate::method::Method::new(
                 crate::access_modifier::AccessModifer::Private,
                 crate::method::MethodType::Static,
                 crate::function_sig::FnSig::new($input, $output),
@@ -85,7 +85,6 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     asm.add_typedef(crate::r#type::TypeDef::nameonly("Foreign"));
     asm.add_typedef(crate::r#type::TypeDef::nameonly("RustStr"));
     //rust_slice(asm);
-    math(asm);
     io(asm);
     unlikely(asm);
     casts::casts(asm);
@@ -261,8 +260,6 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     //caller_location::add_caller_location(asm,tyctx,&mut TyCache::empty());
     abort(asm);
 }
-
-fn math(asm: &mut Assembly) {}
 fn io(asm: &mut Assembly) {
     puts(asm);
 }

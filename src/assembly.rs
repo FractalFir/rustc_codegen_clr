@@ -1,4 +1,4 @@
-use crate::basic_block::{handler_for_block, handler_from_action, BasicBlock};
+use crate::basic_block::{handler_for_block, BasicBlock};
 use crate::cil_tree::cil_root::CILRoot;
 use crate::cil_tree::CILTree;
 use crate::method::MethodType;
@@ -150,7 +150,7 @@ impl Assembly {
         instance: Instance<'tcx>,
         type_cache: &mut TyCache,
     ) -> Vec<CILTree> {
-        let mut terminator = if *crate::config::ABORT_ON_ERROR {
+        let terminator = if *crate::config::ABORT_ON_ERROR {
             crate::terminator::handle_terminator(term, mir, tcx, mir, instance, type_cache)
         } else {
             match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
@@ -172,8 +172,6 @@ impl Assembly {
                 }
             }
         };
-        let argc = mir.arg_count as u32;
-        let locc = mir.local_decls.len() as u32 - mir.arg_count as u32;
         /*
         if !crate::utilis::verify_locals_within_range(&terminator, argc, locc) {
             let msg = rustc_middle::ty::print::with_no_trimmed_paths! {format!("{term:?} failed verification, because it refered to local varibles/arguments that do not exist. ops:{terminator:?} argc:{argc} locc:{locc}")};
@@ -328,13 +326,13 @@ impl Assembly {
                 cleanup_bbs.push(BasicBlock::new(
                     trees,
                     last_bb_id as u32,
-                    handler_for_block(&block_data, &mir.basic_blocks, tcx, &instance, mir),
+                    handler_for_block(block_data, &mir.basic_blocks, tcx, &instance, mir),
                 ))
             } else {
                 normal_bbs.push(BasicBlock::new(
                     trees,
                     last_bb_id as u32,
-                    handler_for_block(&block_data, &mir.basic_blocks, tcx, &instance, mir),
+                    handler_for_block(block_data, &mir.basic_blocks, tcx, &instance, mir),
                 ));
             }
             //ops.extend(trees.iter().flat_map(|tree| tree.flatten()))
@@ -342,10 +340,6 @@ impl Assembly {
         normal_bbs
             .iter_mut()
             .for_each(|bb| bb.resolve_exception_handlers(&cleanup_bbs));
-        let mut ops: Vec<_> = normal_bbs
-            .iter()
-            .flat_map(|block| block.flatten())
-            .collect();
         #[allow(clippy::single_match)]
         // This will be slowly expanded with support for new types of allocations.
         let mut method = Method::new(
@@ -604,7 +598,7 @@ impl Assembly {
     fn get_exported_fn(&self) -> HashMap<CallSite, Method> {
         let mut externs = HashMap::new();
         if let Some(entrypoint) = &self.entrypoint {
-            let method = self.functions.get(&entrypoint).cloned().unwrap();
+            let method = self.functions.get(entrypoint).cloned().unwrap();
             externs.insert(entrypoint.clone(), method);
         }
         externs
@@ -613,11 +607,11 @@ impl Assembly {
         let mut alive = HashMap::new();
         let mut resurected = self.get_exported_fn();
         let mut to_resurect = HashMap::new();
-        while resurected.len() > 0 {
+        while !resurected.is_empty() {
             for function in &resurected {
                 alive.insert(function.0.clone(), function.1.clone());
                 for reference in function.1.calls() {
-                    if let Some(class) = reference.class() {
+                    if let Some(_class) = reference.class() {
                         // TODO: if dead code elimination too agressive check this
                         // Methods reference by methods inside types are NOT tracked.
                         continue;
@@ -652,20 +646,19 @@ impl Assembly {
         let mut resurected: HashMap<IString, _> = self
             .functions
             .values()
-            .map(|fnc| fnc.dotnet_types())
-            .flatten()
+            .flat_map(|fnc| fnc.dotnet_types())
             .filter_map(|tpe| match tpe.asm() {
                 Some(_) => None,
                 None => Some(IString::from(tpe.name_path())),
             })
-            .map(|name| (name.clone().into(), self.types.get(&name).unwrap().clone()))
+            .map(|name| (name.clone(), self.types.get(&name).unwrap().clone()))
             .collect();
         resurected.insert(
             "RustVoid".into(),
             self.types.get("RustVoid").cloned().unwrap(),
         );
         let mut to_resurect: HashMap<IString, _> = HashMap::new();
-        while resurected.len() > 0 {
+        while !resurected.is_empty() {
             for tpe in &resurected {
                 alive.insert(tpe.0.clone(), tpe.1.clone());
                 for (name, type_def) in tpe

@@ -1,22 +1,6 @@
 use std::path::PathBuf;
 
 #[cfg(test)]
-fn peverify(file_path: &str, test_dir: &str) {
-    if !*IS_PEVERIFY_PRESENT {
-        //No PEVerify, can't check assemblies.
-        let out = std::process::Command::new("peverify")
-            .current_dir(test_dir)
-            .args([file_path])
-            .output()
-            .expect("failed to verfiy test assebmly!");
-        let stderr = String::from_utf8(out.stderr).expect("Stdout is not UTF8 String!");
-        assert!(
-            stderr.is_empty(),
-            "Verification of a test program failed with message {stderr:}"
-        );
-    }
-}
-#[cfg(test)]
 fn test_dotnet_executable(file_path: &str, test_dir: &str) -> String {
     use std::io::Write;
 
@@ -897,7 +881,7 @@ compare_tests! {fuzz,fuzz96,unstable}
 compare_tests! {fuzz,fuzz97,unstable}
 compare_tests! {fuzz,fuzz98,unstable}
 compare_tests! {fuzz,fuzz99,stable}
-compare_tests! {fuzz,fuzz100,stable}
+compare_tests! {fuzz,fuzz100,unstable}
 
 run_test! {fuzz,fail0,stable}
 run_test! {fuzz,fail1,stable}

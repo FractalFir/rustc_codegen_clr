@@ -151,7 +151,7 @@ pub fn handle_intrinsic<'tyctx>(
                 3,
                 "The intrinsic `fmaf64` MUST take in exactly 1 argument!"
             );
-            let mut a = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
+            let a = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
             let b = handle_operand(&args[1].node, tyctx, body, method_instance, type_cache);
             let c = handle_operand(&args[2].node, tyctx, body, method_instance, type_cache);
 
@@ -776,7 +776,7 @@ pub fn handle_intrinsic<'tyctx>(
             );
             place_set(destination, tyctx, ops, body, method_instance, type_cache)
         }
-        "abort" => CILRoot::throw("Called abort!").into(),
+        "abort" => CILRoot::throw("Called abort!"),
         _ => todo!("Can't handle intrinsic {fn_name}."),
     }
 }

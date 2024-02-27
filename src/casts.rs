@@ -5,7 +5,6 @@ use crate::{
     conv_f32, conv_f64, conv_f64_un, conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16,
     conv_u32, conv_u64, conv_u8, conv_usize,
     function_sig::FnSig,
-    ldc_i64, ldc_u64,
     r#type::{DotnetTypeRef, Type},
 };
 /// Casts from intiger type `src` to target `target`

@@ -292,14 +292,14 @@ pub fn place_elem_body<'ctx>(
         }
         PlaceElem::ConstantIndex {
             offset,
-            min_length,
+            min_length: _,
             from_end,
         } => {
             let curr_ty = curr_ty
                 .as_ty()
                 .expect("INVALID PLACE: Indexing into enum variant???");
             let index = CILNode::LdcU64(*offset);
-
+            assert!(!from_end);
             match curr_ty.kind() {
                 TyKind::Slice(inner) => {
                     let inner = crate::utilis::monomorphize(&method_instance, *inner, tyctx);

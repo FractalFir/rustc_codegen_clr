@@ -181,14 +181,13 @@ impl TyCache {
             })
             .expect("Could not get type layout!");
         let mut fields = vec![];
-        let mut variant_offset = 0;
         let _tag_size = 1;
-        match &layout.variants {
+        let variant_offset = match &layout.variants {
             rustc_target::abi::Variants::Single { index: _ } => {
                 let (tag_type, offset) = crate::utilis::adt::enum_tag_info(&layout.layout, tyctx);
-                variant_offset = offset;
                 fields.push(("_tag".into(), tag_type));
                 explicit_offsets.push(0);
+                offset
             }
             rustc_target::abi::Variants::Multiple {
                 tag: _,
@@ -213,9 +212,10 @@ impl TyCache {
                     rustc_target::abi::TagEncoding::Direct => {
                         let (tag_type, offset) =
                             crate::utilis::adt::enum_tag_info(&layout.layout, tyctx);
-                        variant_offset = offset;
+                        
                         fields.push(("_tag".into(), tag_type));
                         explicit_offsets.push(0);
+                        offset
                     }
                     rustc_target::abi::TagEncoding::Niche {
                         untagged_variant: _,
@@ -224,15 +224,15 @@ impl TyCache {
                     } => {
                         let (tag_type, offset) =
                             crate::utilis::adt::enum_tag_info(&layout.layout, tyctx);
-                        variant_offset = offset;
                         fields.push(("_tag".into(), tag_type));
                         explicit_offsets.push(*niche_start as u32);
+                        offset
                     }
                 }
 
                 //todo!("Mult-variant enum!"),
             }
-        }
+        };
         explicit_offsets.extend(adt.variants().iter().map(|_| variant_offset));
         //let mut inner_types = vec![];
         //let mut variants = vec![];

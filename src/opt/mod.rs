@@ -1,5 +1,5 @@
 #![allow(clippy::similar_names)]
-use std::ops::Range;
+
 
 use crate::{assembly::Assembly, method::Method};
 /*
@@ -122,7 +122,7 @@ fn try_inline_all(method: &mut Method, asm: &Assembly) {
     }
 }*/
 //pub fn try_turn_locals_into_bools(method:&Method){}
-pub fn opt_method(method: &mut Method, asm: &Assembly) {
+pub fn opt_method(_: &mut Method, _: &Assembly) {
     /*
     if !*crate::config::OPTIMIZE_CIL {
         return;

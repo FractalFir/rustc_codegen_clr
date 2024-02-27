@@ -84,7 +84,7 @@ pub fn shr_checked<'tyctx>(
     ops_b: CILNode,
 ) -> CILNode {
     let type_b = tycache.type_from_cache(shift_type, tyctx, Some(*method_instance));
-    let bit_cap = (compiletime_sizeof(value_type, tyctx, *method_instance) * 8) as u32;
+    let bit_cap = (compiletime_sizeof(value_type, tyctx) * 8) as u32;
     match value_type.kind() {
         TyKind::Uint(UintTy::U128) => {
             call!(
@@ -168,7 +168,7 @@ pub fn shl_checked<'tyctx>(
     ops_b: CILNode,
 ) -> CILNode {
     let type_b = tycache.type_from_cache(shift_type, tyctx, Some(*method_instance));
-    let bit_cap = (compiletime_sizeof(value_type, tyctx, *method_instance) * 8) as u32;
+    let bit_cap = (compiletime_sizeof(value_type, tyctx) * 8) as u32;
     match value_type.kind() {
         TyKind::Uint(UintTy::U128) => {
             call!(

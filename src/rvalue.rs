@@ -232,7 +232,7 @@ pub fn handle_rvalue<'tcx>(
             }
             NullOp::OffsetOf(fields) => {
                 assert_eq!(fields.len(), 1);
-                let (variant, field) = fields[0];
+                //let (variant, field) = fields[0];
                 todo!("Can't calc offset of yet!");
             }
             // TODO: propely set this to 0 or 1 depending if debug assertions are enabled.

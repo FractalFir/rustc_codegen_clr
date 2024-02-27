@@ -7,8 +7,8 @@ use crate::{
 use rustc_middle::mir::BasicBlockData;
 use rustc_middle::mir::UnwindAction;
 use rustc_middle::{
-    mir::{BasicBlocks, Body, Operand, SwitchTargets, Terminator, TerminatorKind},
-    ty::{Instance, InstanceDef, Ty, TyCtxt, TyKind},
+    mir::{BasicBlocks, Body, TerminatorKind},
+    ty::{Instance, InstanceDef, TyCtxt},
 };
 #[derive(Clone, Debug)]
 pub struct BasicBlock {
@@ -29,7 +29,7 @@ pub fn handler_for_block<'tyctx>(
     method_instance: &Instance<'tyctx>,
     method: &Body<'tyctx>,
 ) -> Option<Handler> {
-    let term = (&block_data.terminator).as_ref()?;
+    let term = block_data.terminator.as_ref()?;
     let unwind = term.unwind()?;
     Some(Handler::RawID(simplify_handler(
         handler_from_action(unwind),
@@ -50,7 +50,7 @@ fn simplify_handler<'tyctx>(
     if !blocks[handler.into()].statements.is_empty() {
         return Some(handler);
     }
-    match (&blocks[handler.into()]).terminator.as_ref()?.kind {
+    match blocks[handler.into()].terminator.as_ref()?.kind {
         TerminatorKind::Goto { target } => simplify_handler(
             Some(target.as_u32()),
             blocks,
@@ -70,7 +70,7 @@ fn simplify_handler<'tyctx>(
             replace: _,
         } => {
             let ty =
-                crate::utilis::monomorphize(&method_instance, place.ty(method, tyctx).ty, tyctx);
+                crate::utilis::monomorphize(method_instance, place.ty(method, tyctx).ty, tyctx);
 
             let drop_instance = Instance::resolve_drop_in_place(tyctx, ty).polymorphize(tyctx);
             if let InstanceDef::DropGlue(_, None) = drop_instance.def {
@@ -136,8 +136,7 @@ fn block_gc(entrypoint: u32, bbs: &[BasicBlock]) -> Vec<BasicBlock> {
         to_resurect.clear();
         for (target, sub_target) in resurecting
             .iter()
-            .map(|bb| find_bb(*bb, bbs).targets())
-            .flatten()
+            .flat_map(|bb| find_bb(*bb, bbs).targets())
         {
             assert_eq!(
                 sub_target, 0,
