@@ -257,7 +257,6 @@ impl TyCache {
                 })
                 .expect("Could not get type layout!");
             let field_offset_iter = crate::utilis::adt::FieldOffsetIterator::fields(&layout.layout);
-            println!("field_offset_iter:{field_offset_iter:?}");
             // TODO: fix enums
             let explicit_offsets: Vec<_> = field_offset_iter.collect();
             //assert_eq!(explicit_offsets.len(),variant.fields.len());

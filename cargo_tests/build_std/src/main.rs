@@ -1,7 +1,11 @@
 #![feature(core_intrinsics, adt_const_params)]
 use std::hint::black_box;
 use std::io::Write;
+use std::ffi::{c_char, c_int};
 
+extern "C" {
+    fn printf(fmt: *const c_char, ...) -> c_int;
+}
 mod map_copy {
     pub struct Map<I, F> {
         // Used for `SplitWhitespace` and `SplitAsciiWhitespace` `as_str` methods
@@ -134,10 +138,11 @@ fn map_test() {
     }
 }
 fn main() {
-    let int = std::hint::black_box(8);
-    let boxed_int = std::hint::black_box(Box::new(int));
+    //let int = std::hint::black_box(8);
+    //let boxed_int = std::hint::black_box(Box::new(int));
+    //let mut file = std::fs::File::create("foo.txt").unwrap();
     //test!(map_option_test);
-    let mut string = String::with_capacity(100);
+    /*let mut string = String::with_capacity(100);
     string.push('H');
     string.push('e');
     string.push('l');
@@ -235,28 +240,41 @@ fn main() {
     string.push('!');
     string.push('\n');
     string.push('\0');
-    
-    test!(collect_test);
-    test!(map_test);
-    std::hint::black_box(&string);
-    unsafe { puts(string.as_ptr()) };
-    unsafe { puts("Testing some cool shit\n\0".as_ptr()) };
+    */
+    //test!(collect_test);
+    //test!(map_test);
+    //std::hint::black_box(&string);
+    //unsafe { puts(string.as_ptr()) };
+    if unsafe { printf("Testing some cool shit\n\0".as_ptr() as *const i8) } < 0{
+        std::intrinsics::abort();
+    }
     //let mut f = std::fs::File::create("foo.txt").unwrap();
 
     //std::hint::black_box(f);
     //std::io::stdout().write_all(b"hello world\n").unwrap();
-    /*let owned = black_box("Test\n\0").to_owned();
+    let owned = Box::new(black_box(&[0,1,2,3,4,5,6][..]));
+    if owned.len() != 7 {
+        unsafe { printf("Boxed slice size mismacth!\n\0".as_ptr() as *const i8) };
+        unsafe { core::intrinsics::abort() };
+    }
+    for (idx,val) in owned.iter().enumerate(){
+        if idx != *val{
+            unsafe { printf("Slice impropely copied!\n\0".as_ptr() as *const i8) };
+            unsafe { core::intrinsics::abort() };
+        }
+    }
+    let owned = black_box("Test\n\0").to_owned();
     if owned.len() != 6 {
-        unsafe { puts(owned.as_ptr()) };
+        unsafe { printf(owned.as_ptr() as *const i8) };
         unsafe { core::intrinsics::abort() };
     } else {
-        unsafe { puts(owned.as_ptr()) };
-    }*/
-    let s = format!("Hello!\n\0");
-    unsafe{puts(s.as_ptr())};
+        unsafe { printf(owned.as_ptr() as *const i8) };
+    };
+    //let s = format!("Hello!\n\0");
+    //unsafe{puts(s.as_ptr())};
     //let s = format!("Hello??? WTF is going on???{}\n\0",black_box(65));
     //unsafe{puts(s.as_ptr())};
 
-    let val = std::hint::black_box(*boxed_int);
-    let val = std::hint::black_box(string);
+    //let val = std::hint::black_box(*boxed_int);
+    //let val = std::hint::black_box(string);
 }

@@ -40,7 +40,14 @@ impl TypeDef {
     pub fn set_generic_count(&mut self, generic_count: u32) {
         self.gargc = generic_count;
     }
-
+    fn filed_types<'a>(&'a self)->impl Iterator<Item = &Type> + 'a{
+        self.fields()
+        .iter().map(|(_,tpe)|tpe)
+    }
+    pub fn all_types<'a>(&'a self)->impl Iterator<Item = &Type> + 'a{
+        //TODO: this breaks if a type contains more than one layer of nested types!
+        self.filed_types().chain(self.inner_types().iter().flat_map(|sub_tpe|sub_tpe.filed_types()))
+    }
     #[must_use]
     pub fn gargc(&self) -> u32 {
         self.gargc

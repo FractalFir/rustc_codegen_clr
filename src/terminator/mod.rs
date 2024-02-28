@@ -23,7 +23,7 @@ pub fn handle_terminator<'ctx>(
     method_instance: Instance<'ctx>,
     type_cache: &mut crate::r#type::TyCache,
 ) -> Vec<CILTree> {
-    match &terminator.kind {
+    let mut res = match &terminator.kind {
         TerminatorKind::Call {
             func,
             args,
@@ -134,6 +134,9 @@ pub fn handle_terminator<'ctx>(
                     }
                     .into(),
                 );
+            }
+            else{
+                trees.push(CILRoot::throw("Function returning `Never` returned!").into());
             }
             trees
         }
@@ -247,7 +250,10 @@ pub fn handle_terminator<'ctx>(
             CILRoot::throw("Inline assembly is not yet supported!").into()
         }
         _ => todo!("Unhandled terminator kind {kind:?}", kind = terminator.kind),
-    }
+    };
+    let last = res.last().unwrap().tree();
+    assert!(matches!(last,CILRoot::GoTo { .. } | CILRoot::Ret{..} | CILRoot::VoidRet | CILRoot::ReThrow | CILRoot::Throw(_)),"Tree {last:?} did not terminate with an uncoditional jump!.");
+    res
 }
 
 fn handle_switch(ty: Ty, discr: CILNode, switch: &SwitchTargets) -> Vec<CILTree> {

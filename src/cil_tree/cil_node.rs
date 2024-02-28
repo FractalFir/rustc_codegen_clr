@@ -228,7 +228,10 @@ impl CILNode {
             }
             Self::LDLoc(local) => vec![CILOp::LDLoc(*local)],
             Self::LDArg(local) => vec![CILOp::LDArg(*local)],
-            Self::SizeOf(tpe) => vec![CILOp::SizeOf(tpe.clone())],
+            Self::SizeOf(tpe) => match **tpe{
+                Type::Void =>vec![CILOp::LdcU32(0)],
+                _=>vec![CILOp::SizeOf(tpe.clone())],
+            }
             Self::LDArgA(local) => vec![CILOp::LDArgA(*local)],
             Self::LDLocA(local) => vec![CILOp::LDLocA(*local)],
 

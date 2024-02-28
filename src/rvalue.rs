@@ -31,7 +31,7 @@ pub fn handle_rvalue<'tcx>(
             crate::place::place_adress(place, tyctx, method, method_instance, tycache)
         }
         Rvalue::Cast(
-            CastKind::PointerCoercion(PointerCoercion::MutToConstPointer) | CastKind::PtrToPtr,
+            CastKind::PointerCoercion(PointerCoercion::MutToConstPointer) | CastKind::PtrToPtr | CastKind::PointerCoercion(PointerCoercion::ArrayToPointer),
             operand,
             dst,
         ) => {

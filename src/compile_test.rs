@@ -768,7 +768,7 @@ run_test! {intrinsics,offset_of,unstable}
 run_test! {intrinsics,printf,unstable}
 run_test! {intrinsics,type_id,stable}
 run_test! {intrinsics,ptr_offset_from_unsigned,stable}
-
+run_test! {intrinsics,arith_offset,stable}
 run_test! {fuzz,test0,stable}
 run_test! {fuzz,test1,stable}
 

@@ -670,9 +670,8 @@ impl Assembly {
                 alive.insert(tpe.0.clone(), tpe.1.clone());
                 for (name, type_def) in tpe
                     .1
-                    .fields()
-                    .iter()
-                    .filter_map(|tpe| tpe.1.dotnet_refs())
+                    .all_types()
+                    .filter_map(|tpe| tpe.dotnet_refs())
                     .filter_map(|tpe| match tpe.asm() {
                         Some(_) => None,
                         None => Some(IString::from(tpe.name_path())),
