@@ -322,7 +322,7 @@ fn aggregate_adt<'tyctx>(
                 let (disrc_type, _) = crate::utilis::adt::enum_tag_info(&layout.layout, tyctx);
 
                 let field_name = "_tag".into();
-                if disrc_type != Type::Void{
+                if disrc_type != Type::Void {
                     sub_trees.push(CILRoot::SetField {
                         addr: adt_adress_ops,
                         value: crate::casts::int_to_int(
@@ -333,7 +333,6 @@ fn aggregate_adt<'tyctx>(
                         desc: FieldDescriptor::new(adt_type_ref, disrc_type, field_name),
                     });
                 }
-                
             }
             CILNode::SubTrees(
                 sub_trees.into(),

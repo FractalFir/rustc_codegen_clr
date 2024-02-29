@@ -3,11 +3,7 @@ use crate::cil_tree::cil_root::CILRoot;
 use crate::cil_tree::CILTree;
 use crate::place::place_set;
 
-use crate::{
-    cil::{CallSite},
-    function_sig::FnSig,
-    utilis::monomorphize,
-};
+use crate::{cil::CallSite, function_sig::FnSig, utilis::monomorphize};
 use rustc_middle::ty::InstanceDef;
 use rustc_middle::{
     mir::{Body, Operand, SwitchTargets, Terminator, TerminatorKind},
@@ -113,7 +109,7 @@ pub fn handle_terminator<'ctx>(
                         );
                         let fn_ty = monomorphize(&method_instance, fn_ty, tyctx);
                         //let fn_instance = Instance::resolve(tyctx,ParamEnv::reveal_all,fn_ty.did,List::empty());
-                        
+
                         call::call(
                             fn_ty,
                             body,
@@ -134,8 +130,7 @@ pub fn handle_terminator<'ctx>(
                     }
                     .into(),
                 );
-            }
-            else{
+            } else {
                 trees.push(CILRoot::throw("Function returning `Never` returned!").into());
             }
             trees
@@ -252,7 +247,17 @@ pub fn handle_terminator<'ctx>(
         _ => todo!("Unhandled terminator kind {kind:?}", kind = terminator.kind),
     };
     let last = res.last().unwrap().tree();
-    assert!(matches!(last,CILRoot::GoTo { .. } | CILRoot::Ret{..} | CILRoot::VoidRet | CILRoot::ReThrow | CILRoot::Throw(_)),"Tree {last:?} did not terminate with an uncoditional jump!.");
+    assert!(
+        matches!(
+            last,
+            CILRoot::GoTo { .. }
+                | CILRoot::Ret { .. }
+                | CILRoot::VoidRet
+                | CILRoot::ReThrow
+                | CILRoot::Throw(_)
+        ),
+        "Tree {last:?} did not terminate with an uncoditional jump!."
+    );
     res
 }
 

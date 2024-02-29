@@ -1,5 +1,5 @@
 use super::{pointed_type, PlaceTy};
-use crate::cil::{FieldDescriptor};
+use crate::cil::FieldDescriptor;
 use crate::cil_tree::cil_node::CILNode;
 use crate::cil_tree::cil_root::CILRoot;
 use crate::function_sig::FnSig;

@@ -2,8 +2,9 @@ use crate::{
     add_method_from_trees,
     assembly::Assembly,
     basic_block::BasicBlock,
-    cil_tree::{cil_node::CILNode, cil_root::CILRoot}, conv_i16, conv_i32, conv_i64, conv_i8, conv_u16, conv_u32, conv_u64, conv_u8, gt,
-    ldc_i32, ldc_i64, ldc_u32, ldc_u64, lt,
+    cil_tree::{cil_node::CILNode, cil_root::CILRoot},
+    conv_i16, conv_i32, conv_i64, conv_i8, conv_u16, conv_u32, conv_u64, conv_u8, gt, ldc_i32,
+    ldc_i64, ldc_u32, ldc_u64, lt,
     r#type::Type,
 };
 add_method_from_trees!(

@@ -125,80 +125,116 @@ pub enum CILNode {
     },
 }
 impl CILNode {
-    /*
-    pub fn get_subtree(&mut self) -> Vec<CILRoot> {
+    fn opt_children(&mut self) {
         match self {
-            CILNode::LDLoc(tree)
-            | CILNode::LDArg(tree)
-            | CILNode::LDLocA(tree)
-            | CILNode::LDArgA(tree)
-            | CILNode::SizeOf(tree) => vec![],
-            CILNode::BlackBox(tree)
-            | CILNode::ConvF32(tree)
-            | CILNode::ConvF64(tree)
-            | CILNode::ConvF64Un(tree) => tree.get_subtree(),
+            CILNode::LDLoc(_) => (),
+            CILNode::LDArg(_) => (),
+            CILNode::LDLocA(_) => (),
+            CILNode::LDArgA(_) => (),
+            CILNode::BlackBox(inner)
+            | CILNode::ConvF32(inner)
+            | CILNode::ConvF64(inner)
+            | CILNode::ConvF64Un(inner) => inner.opt(),
+            CILNode::SizeOf(_) => (),
             CILNode::LDIndI8 { ptr }
             | CILNode::LDIndI16 { ptr }
             | CILNode::LDIndI32 { ptr }
             | CILNode::LDIndI64 { ptr }
             | CILNode::LDIndISize { ptr }
-            | CILNode::LdObj { ptr, obj }
+            | CILNode::LdObj { ptr, .. }
             | CILNode::LDIndF32 { ptr }
-            | CILNode::LDIndF64 { ptr } => ptr.get_subtree(),
-            CILNode::LDFieldAdress { addr, field } |
-            CILNode::LDField { addr, field } => addr.get_subtree(),
-            CILNode::Add(a,b) => todo!(),
-            CILNode::And(a,b) => todo!(),
-            CILNode::Sub(a,b) => todo!(),
-            CILNode::Mul(a,b) => todo!(),
-            CILNode::Div(a,b) => todo!(),
-            CILNode::Rem(a,b) => todo!(),
-            CILNode::RemUn(_, _) => todo!(),
-            CILNode::Or(_, _) => todo!(),
-            CILNode::XOr(_, _) => todo!(),
-            CILNode::Shr(_, _) => todo!(),
-            CILNode::Shl(_, _) => todo!(),
-            CILNode::ShrUn(_, _) => todo!(),
-            CILNode::RawOps { parrent, ops } => todo!(),
-            CILNode::RawOpsParrentless { ops } => todo!(),
-            CILNode::Call { args, site } => todo!(),
-            CILNode::CallVirt { args, site } => todo!(),
-            CILNode::LdcI64(_) => todo!(),
-            CILNode::LdcU64(_) => todo!(),
-            CILNode::LdcI32(_) => todo!(),
-            CILNode::LdcU32(_) => todo!(),
-            CILNode::LdcF64(_) => todo!(),
-            CILNode::LdcF32(_) => todo!(),
-            CILNode::LoadGlobalAllocPtr { alloc_id } => todo!(),
-            CILNode::ConvU8(_) => todo!(),
-            CILNode::ConvU16(_) => todo!(),
-            CILNode::ConvU32(_) => todo!(),
-            CILNode::ConvU64(_) => todo!(),
-            CILNode::ConvUSize(_) => todo!(),
-            CILNode::ConvI8(_) => todo!(),
-            CILNode::ConvI16(_) => todo!(),
-            CILNode::ConvI32(_) => todo!(),
-            CILNode::ConvI64(_) => todo!(),
-            CILNode::ConvISize(_) => todo!(),
-            CILNode::Volatile(_) => todo!(),
-            CILNode::Neg(_) => todo!(),
-            CILNode::Not(_) => todo!(),
-            CILNode::Eq(_, _) => todo!(),
-            CILNode::Lt(_, _) => todo!(),
-            CILNode::LtUn(_, _) => todo!(),
-            CILNode::Gt(_, _) => todo!(),
-            CILNode::GtUn(_, _) => todo!(),
-            CILNode::TemporaryLocal(_) => todo!(),
-            CILNode::SubTrees(_, _) => todo!(),
-            CILNode::LoadAddresOfTMPLocal => todo!(),
-            CILNode::LoadTMPLocal => todo!(),
-            CILNode::LDFtn(_) => todo!(),
-            CILNode::LDTypeToken(_) => todo!(),
-            CILNode::NewObj { site, args } => todo!(),
-            CILNode::LdStr(_) => todo!(),
-            CILNode::CallI { sig, fn_ptr, args } => todo!(),
+            | CILNode::LDIndF64 { ptr } => ptr.opt(),
+            CILNode::LDFieldAdress { addr, field } | CILNode::LDField { addr, field } => addr.opt(),
+            CILNode::Add(a, b)
+            | CILNode::And(a, b)
+            | CILNode::Sub(a, b)
+            | CILNode::Mul(a, b)
+            | CILNode::Div(a, b)
+            | CILNode::Rem(a, b)
+            | CILNode::RemUn(a, b)
+            | CILNode::Or(a, b)
+            | CILNode::XOr(a, b)
+            | CILNode::Shr(a, b)
+            | CILNode::Shl(a, b)
+            | CILNode::ShrUn(a, b)
+            | CILNode::Eq(a, b)
+            | CILNode::Lt(a, b)
+            | CILNode::LtUn(a, b)
+            | CILNode::Gt(a, b)
+            | CILNode::GtUn(a, b) => {
+                a.opt();
+                b.opt();
+            }
+            CILNode::RawOps { parrent, ops } => parrent.opt(),
+            CILNode::RawOpsParrentless { ops } => (),
+            CILNode::Call { args, site }
+            | CILNode::NewObj { site, args }
+            | CILNode::CallVirt { args, site } => args.iter_mut().for_each(|arg| arg.opt()),
+            CILNode::LdcI64(_)
+            | CILNode::LdcU64(_)
+            | CILNode::LdcI32(_)
+            | CILNode::LdcU32(_)
+            | CILNode::LdcF64(_)
+            | CILNode::LdcF32(_)
+            | CILNode::LoadGlobalAllocPtr { .. } => (),
+            CILNode::ConvU8(inner)
+            | CILNode::ConvU16(inner)
+            | CILNode::ConvU32(inner)
+            | CILNode::ConvU64(inner)
+            | CILNode::ConvUSize(inner)
+            | CILNode::ConvI8(inner)
+            | CILNode::ConvI16(inner)
+            | CILNode::ConvI32(inner)
+            | CILNode::ConvI64(inner)
+            | CILNode::ConvISize(inner)
+            | CILNode::Volatile(inner)
+            | CILNode::Neg(inner)
+            | CILNode::Not(inner) => inner.opt(),
+            CILNode::TemporaryLocal(inner) => (),
+            CILNode::SubTrees(a, b) => {
+                a.iter_mut().for_each(|tree| tree.opt());
+                b.opt()
+            }
+            CILNode::LoadAddresOfTMPLocal => (),
+            CILNode::LoadTMPLocal => (),
+            CILNode::LDFtn(_) => (),
+            CILNode::LDTypeToken(_) => (),
+            CILNode::LdStr(_) => (),
+            CILNode::CallI { sig, fn_ptr, args } => {
+                args.iter_mut().for_each(|arg| arg.opt());
+                fn_ptr.opt();
+            }
         }
-    }*/
+    }
+    pub fn opt(&mut self) {
+        self.opt_children();
+        match self {
+            Self::LDField { addr: fld_addr, .. } => match fld_addr.as_mut() {
+                Self::ConvUSize(addr) => match addr.as_mut() {
+                    Self::LDLocA(_) | Self::LDFieldAdress { .. } => *fld_addr = addr.clone(),
+                    _ => (),
+                },
+                _ => (),
+            },
+            Self::LDFieldAdress {
+                addr: fld_addr,
+                field,
+            } => match fld_addr.as_mut() {
+                Self::ConvUSize(addr) => match addr.as_mut() {
+                    Self::LDLocA(_) | Self::LDFieldAdress { .. } => {
+                        *self = Self::ConvUSize(Box::new(Self::LDFieldAdress {
+                            addr: addr.clone(),
+                            field: field.clone(),
+                        }))
+                        .into()
+                    }
+                    _ => (),
+                },
+                _ => (),
+            },
+            _ => (),
+        }
+    }
     pub fn flatten(&self) -> Vec<CILOp> {
         let mut ops = match self {
             Self::CallI { sig, fn_ptr, args } => {
@@ -228,10 +264,10 @@ impl CILNode {
             }
             Self::LDLoc(local) => vec![CILOp::LDLoc(*local)],
             Self::LDArg(local) => vec![CILOp::LDArg(*local)],
-            Self::SizeOf(tpe) => match **tpe{
-                Type::Void =>vec![CILOp::LdcU32(0)],
-                _=>vec![CILOp::SizeOf(tpe.clone())],
-            }
+            Self::SizeOf(tpe) => match **tpe {
+                Type::Void => vec![CILOp::LdcU32(0)],
+                _ => vec![CILOp::SizeOf(tpe.clone())],
+            },
             Self::LDArgA(local) => vec![CILOp::LDArgA(*local)],
             Self::LDLocA(local) => vec![CILOp::LDLocA(*local)],
 

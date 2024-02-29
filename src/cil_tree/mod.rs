@@ -30,9 +30,13 @@ impl CILTree {
     pub fn targets(&self, targets: &mut Vec<(u32, u32)>) {
         self.tree.targets(targets)
     }
-    
+
     pub fn tree(&self) -> &CILRoot {
         &self.tree
+    }
+
+    pub fn opt(&mut self) {
+        self.tree.opt()
     }
 }
 pub fn append_vec(mut vec: Vec<CILOp>, by: CILOp) -> Vec<CILOp> {

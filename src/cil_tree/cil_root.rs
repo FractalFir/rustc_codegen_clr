@@ -7,7 +7,7 @@ use crate::{
 
 use super::append_vec;
 #[derive(Clone, Debug)]
-pub(crate) enum CILRoot {
+pub enum CILRoot {
     STLoc {
         local: u32,
         tree: CILNode,
@@ -80,7 +80,63 @@ pub(crate) enum CILRoot {
     //LabelEnd(u32),
 }
 impl CILRoot {
-   
+    pub fn opt(&mut self) {
+        match self {
+            CILRoot::STLoc { local, tree } => tree.opt(),
+            CILRoot::BTrue {
+                target,
+                sub_target,
+                ops,
+            } => ops.opt(),
+            CILRoot::GoTo { target, sub_target } => (),
+            CILRoot::Call { site, args } => args.iter_mut().for_each(|arg| arg.opt()),
+            CILRoot::SetField { addr, value, desc } => {
+                addr.opt();
+                value.opt();
+            }
+            CILRoot::CpBlk { src, dst, len } => {
+                src.opt();
+                dst.opt();
+                len.opt();
+            }
+            CILRoot::STIndI8(addr, val)
+            | CILRoot::STIndI16(addr, val)
+            | CILRoot::STIndI32(addr, val)
+            | CILRoot::STIndI64(addr, val)
+            | CILRoot::STIndISize(addr, val)
+            | CILRoot::STIndF64(addr, val)
+            | CILRoot::STIndF32(addr, val) => {
+                addr.opt();
+                val.opt();
+            }
+            CILRoot::STObj {
+                tpe,
+                addr_calc,
+                value_calc,
+            } => {
+                addr_calc.opt();
+                value_calc.opt();
+            }
+            CILRoot::STArg { arg, tree } => tree.opt(),
+            CILRoot::Break => (),
+            CILRoot::Nop => (),
+            CILRoot::InitBlk { dst, val, count } => {
+                val.opt();
+                dst.opt();
+                count.opt();
+            }
+            CILRoot::CallVirt { site, args } => args.iter_mut().for_each(|arg| arg.opt()),
+            CILRoot::Ret { tree } => tree.opt(),
+            CILRoot::VoidRet => (),
+            CILRoot::Throw(ops) => ops.opt(),
+            CILRoot::ReThrow => (),
+            CILRoot::CallI { sig, fn_ptr, args } => {
+                args.iter_mut().for_each(|arg| arg.opt());
+                fn_ptr.opt();
+            }
+            CILRoot::Raw { ops } => (),
+        }
+    }
     pub fn throw(msg: &str) -> Self {
         let mut class =
             crate::r#type::DotnetTypeRef::new(Some("System.Runtime"), "System.Exception");

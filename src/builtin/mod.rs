@@ -95,7 +95,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     );
     marshal.set_valuetype(false);
     let marshal = Some(marshal);
-    let mut malloc = Method::new_empty(
+    /*let mut malloc = Method::new_empty(
         AccessModifer::Private,
         MethodType::Static,
         FnSig::new(&[Type::USize], &Type::Ptr(c_void.clone().into())),
@@ -112,7 +112,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
         )),
         CILOp::Ret,
     ]);
-    asm.add_method(malloc);
+    asm.add_method(malloc);*/
     let mut realloc = Method::new_empty(
         AccessModifer::Private,
         MethodType::Static,

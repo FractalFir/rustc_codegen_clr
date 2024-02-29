@@ -1,6 +1,5 @@
 #![allow(clippy::similar_names)]
 
-
 use crate::{assembly::Assembly, method::Method};
 /*
 mod locals;

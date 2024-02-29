@@ -212,7 +212,7 @@ impl TyCache {
                     rustc_target::abi::TagEncoding::Direct => {
                         let (tag_type, offset) =
                             crate::utilis::adt::enum_tag_info(&layout.layout, tyctx);
-                        
+
                         fields.push(("_tag".into(), tag_type));
                         explicit_offsets.push(0);
                         offset

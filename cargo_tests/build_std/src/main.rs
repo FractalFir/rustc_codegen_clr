@@ -1,8 +1,11 @@
 #![feature(core_intrinsics, adt_const_params)]
+#![feature(slice_ptr_get)]
+#![feature(allocator_api)]
 use std::hint::black_box;
 use std::io::Write;
 use std::ffi::{c_char, c_int};
-
+mod exchange_malloc;
+use crate::exchange_malloc::exchange_malloc_test;
 extern "C" {
     fn printf(fmt: *const c_char, ...) -> c_int;
 }
@@ -139,10 +142,12 @@ fn map_test() {
 }
 fn main() {
     //let int = std::hint::black_box(8);
-    //let boxed_int = std::hint::black_box(Box::new(int));
+    //let boxed_int = std::hint::black_box(Box::new(8));
     //let mut file = std::fs::File::create("foo.txt").unwrap();
-    //test!(map_option_test);
-    /*let mut string = String::with_capacity(100);
+    test!(exchange_malloc_test);
+    /* 
+    test!(map_option_test);
+    let mut string = String::with_capacity(100);
     string.push('H');
     string.push('e');
     string.push('l');
@@ -240,8 +245,8 @@ fn main() {
     string.push('!');
     string.push('\n');
     string.push('\0');
-    */
-    //test!(collect_test);
+
+    test!(collect_test);
     //test!(map_test);
     //std::hint::black_box(&string);
     //unsafe { puts(string.as_ptr()) };
@@ -252,6 +257,8 @@ fn main() {
 
     //std::hint::black_box(f);
     //std::io::stdout().write_all(b"hello world\n").unwrap();
+    exchange_malloc::test();
+   /*
     let owned = Box::new(black_box(&[0,1,2,3,4,5,6][..]));
     if owned.len() != 7 {
         unsafe { printf("Boxed slice size mismacth!\n\0".as_ptr() as *const i8) };
@@ -269,12 +276,12 @@ fn main() {
         unsafe { core::intrinsics::abort() };
     } else {
         unsafe { printf(owned.as_ptr() as *const i8) };
-    };
+    }; */
     //let s = format!("Hello!\n\0");
     //unsafe{puts(s.as_ptr())};
     //let s = format!("Hello??? WTF is going on???{}\n\0",black_box(65));
     //unsafe{puts(s.as_ptr())};
-
+*/
     //let val = std::hint::black_box(*boxed_int);
     //let val = std::hint::black_box(string);
 }

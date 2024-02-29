@@ -601,47 +601,44 @@ impl Assembly {
             let method = self.functions.get(entrypoint).cloned().unwrap();
             externs.insert(entrypoint.clone(), method);
         }
-        if let Some(cctor) = self.cctor(){
-            externs.insert(CallSite::new(
-                None,
-                ".cctor".into(),
-                FnSig::new(&[], &Type::Void),
-                true,
-            ), cctor.clone());
+        if let Some(cctor) = self.cctor() {
+            externs.insert(
+                CallSite::new(None, ".cctor".into(), FnSig::new(&[], &Type::Void), true),
+                cctor.clone(),
+            );
         }
         externs
     }
     pub fn eliminate_dead_fn(&mut self) {
-        let mut alive: HashMap<CallSite,Method> = HashMap::new();
-    let mut resurecting: HashMap<CallSite,Method>  = HashMap::new();
-    let mut to_resurect: HashMap<CallSite,Method>  =  self.get_exported_fn();
-    while !to_resurect.is_empty() {
-        alive.extend(resurecting.clone());
-        resurecting.clear();
-        resurecting.extend(to_resurect.clone());
-        to_resurect.clear();
-        for call in resurecting.iter().flat_map(|fnc|fnc.1.calls()) {
-            if let Some(_class) = call.class() {
-                // TODO: if dead code elimination too agressive check this
-                // Methods reference by methods inside types are NOT tracked.
-                continue;
-            }
-            if alive.contains_key(call) || resurecting.contains_key(call) {
-                // Already alive, ignore!
-                continue;
-            }
-            if let Some(method) = self.functions.get(call).cloned() {
-                to_resurect.insert(call.clone(), method);
-            } else if !crate::native_pastrough::LIBC_FNS
-                .iter()
-                .any(|libc_fn| *libc_fn == call.name())
-            {
+        let mut alive: HashMap<CallSite, Method> = HashMap::new();
+        let mut resurecting: HashMap<CallSite, Method> = HashMap::new();
+        let mut to_resurect: HashMap<CallSite, Method> = self.get_exported_fn();
+        while !to_resurect.is_empty() {
+            alive.extend(resurecting.clone());
+            resurecting.clear();
+            resurecting.extend(to_resurect.clone());
+            to_resurect.clear();
+            for call in resurecting.iter().flat_map(|fnc| fnc.1.calls()) {
+                if let Some(_class) = call.class() {
+                    // TODO: if dead code elimination too agressive check this
+                    // Methods reference by methods inside types are NOT tracked.
+                    continue;
+                }
+                if alive.contains_key(call) || resurecting.contains_key(call) {
+                    // Already alive, ignore!
+                    continue;
+                }
+                if let Some(method) = self.functions.get(call).cloned() {
+                    to_resurect.insert(call.clone(), method);
+                } else if !crate::native_pastrough::LIBC_FNS
+                    .iter()
+                    .any(|libc_fn| *libc_fn == call.name())
+                {
                     panic!("Unresolved extern ref: {call:?}");
                 }
-        
+            }
         }
-    }
-    alive.extend(resurecting);
+        alive.extend(resurecting);
         self.functions = alive;
     }
     pub fn eliminate_dead_code(&mut self) {
@@ -676,9 +673,17 @@ impl Assembly {
                         Some(_) => None,
                         None => Some(IString::from(tpe.name_path())),
                     })
-                    .filter_map(|name|name.split_once('\\').map(|(a,_)|a.into()))
+                    .filter_map(|name| name.split_once('\\').map(|(a, _)| a.into()))
                     //.map(|(a,b)|a.into())
-                    .map(|name:IString| (name.to_owned(), self.types.get(&name).unwrap_or_else(||panic!("Can't find type {name:?}")).clone()))
+                    .map(|name: IString| {
+                        (
+                            name.to_owned(),
+                            self.types
+                                .get(&name)
+                                .unwrap_or_else(|| panic!("Can't find type {name:?}"))
+                                .clone(),
+                        )
+                    })
                 {
                     let name: IString = IString::from(name);
                     to_resurect.insert(name, type_def);

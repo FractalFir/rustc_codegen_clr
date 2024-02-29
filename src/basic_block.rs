@@ -242,4 +242,8 @@ impl BasicBlock {
     pub fn id(&self) -> u32 {
         self.id
     }
+
+    pub fn trees_mut(&mut self) -> &mut Vec<CILTree> {
+        &mut self.trees
+    }
 }

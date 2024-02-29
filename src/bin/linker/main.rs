@@ -1,6 +1,8 @@
 #![deny(unused_must_use)]
 //use assembly::Assembly;
-use rustc_codegen_clr::{assembly::Assembly, method::MethodType, r#type::Type, *};
+use rustc_codegen_clr::{
+    assembly::Assembly, basic_block::BasicBlock, cil::CallSite, cil_tree::{cil_node::CILNode, cil_root::CILRoot}, function_sig::FnSig, method::{Method, MethodType}, r#type::{DotnetTypeRef, Type}, *
+};
 mod cmd;
 mod export;
 mod load;
@@ -85,6 +87,93 @@ fn autopatch(asm: &mut Assembly) {
     let mut externs = Vec::new();
     for call in call_sites {
         let name = call.name();
+        if name == "malloc" {
+            patched.insert(
+                call.clone(),
+                Method::new(
+                    access_modifier::AccessModifer::Private,
+                    MethodType::Static,
+                    call.signature().clone(),
+                    "malloc",
+                    vec![],
+                    vec![BasicBlock::new(
+                        vec![CILRoot::Ret {
+                            tree: CILNode::Call {
+                                args: [CILNode::LDArg(0)].into(),
+                                site: CallSite::boxed(
+                                    DotnetTypeRef::marshal().into(),
+                                    "AllocHGlobal".into(),
+                                    FnSig::new(&[Type::ISize],&Type::ISize),
+                                    true,
+                                ),
+                            },
+                        }
+                        .into()],
+                        0,
+                        None,
+                    )],
+                ),
+            );
+            continue;
+        }
+        if name == "free" {
+            patched.insert(
+                call.clone(),
+                Method::new(
+                    access_modifier::AccessModifer::Private,
+                    MethodType::Static,
+                    call.signature().clone(),
+                    "free",
+                    vec![],
+                    vec![BasicBlock::new(
+                        vec![CILRoot::Ret {
+                            tree: CILNode::Call {
+                                args: [CILNode::LDArg(0)].into(),
+                                site: CallSite::boxed(
+                                    DotnetTypeRef::marshal().into(),
+                                    "FreeHGlobal".into(),
+                                    FnSig::new(&[Type::ISize],&Type::Void),
+                                    true,
+                                ),
+                            },
+                        }
+                        .into()],
+                        0,
+                        None,
+                    )],
+                ),
+            );
+            continue;
+        }
+        if name == "realloc" {
+            patched.insert(
+                call.clone(),
+                Method::new(
+                    access_modifier::AccessModifer::Private,
+                    MethodType::Static,
+                    call.signature().clone(),
+                    "realloc",
+                    vec![],
+                    vec![BasicBlock::new(
+                        vec![CILRoot::Ret {
+                            tree: CILNode::Call {
+                                args: [CILNode::LDArg(0),CILNode::LDArg(1)].into(),
+                                site: CallSite::boxed(
+                                    DotnetTypeRef::marshal().into(),
+                                    "ReAllocHGlobal".into(),
+                                    FnSig::new(&[Type::ISize,Type::ISize],&Type::ISize),
+                                    true,
+                                ),
+                            },
+                        }
+                        .into()],
+                        0,
+                        None,
+                    )],
+                ),
+            );
+            continue;
+        }
         if rustc_codegen_clr::native_pastrough::LIBC_FNS
             .iter()
             .any(|libc_fn| *libc_fn == name)

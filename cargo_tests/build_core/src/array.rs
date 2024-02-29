@@ -1,8 +1,7 @@
 use crate::*;
-use core::{array, assert_eq};
 use core::num::NonZeroUsize;
 use core::sync::atomic::{AtomicUsize, Ordering};
-
+use core::{array, assert_eq};
 
 pub fn array_from_ref() {
     let value: i32 = 8.into();

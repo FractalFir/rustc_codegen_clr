@@ -60,6 +60,9 @@ pub struct DotnetTypeRef {
     is_valuetype: bool,
 }
 impl DotnetTypeRef {
+    pub fn marshal()->Self{
+        Self::new(Some("System.Runtime.InteropServices"),"System.Runtime.InteropServices.Marshal")
+    }
     #[must_use]
     pub fn console() -> Self {
         Self::new(Some("System.Console"), "System.Console")
@@ -229,8 +232,8 @@ impl Type {
     pub fn dotnet_refs(&self) -> Option<DotnetTypeRef> {
         match self {
             Self::DotnetType(inner) => Some(inner.as_ref().clone()),
-            Self::Ptr(inner)=>inner.dotnet_refs(),
-            Self::ManagedReference(inner)=>inner.dotnet_refs(),
+            Self::Ptr(inner) => inner.dotnet_refs(),
+            Self::ManagedReference(inner) => inner.dotnet_refs(),
             _ => None,
         }
     }

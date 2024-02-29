@@ -55,14 +55,18 @@ impl Method {
         }
     }
     #[must_use]
-    pub(crate) fn new(
+    pub fn new(
         access: AccessModifer,
         method_type: MethodType,
         sig: FnSig,
         name: &str,
         locals: Vec<LocalDef>,
-        blocks: Vec<BasicBlock>,
+        mut blocks: Vec<BasicBlock>,
     ) -> Self {
+        blocks
+            .iter_mut()
+            .flat_map(|blck| blck.trees_mut().iter_mut())
+            .for_each(|tree| tree.opt());
         Self {
             access,
             method_type,
@@ -160,7 +164,12 @@ impl Method {
             .iter()
             .filter_map(|tpe| tpe.dotnet_refs())
             .chain(self.locals().iter().filter_map(|tpe| tpe.1.dotnet_refs()))
-            .chain(self.sig().inputs().iter().filter_map(|tpe| tpe.dotnet_refs()))
+            .chain(
+                self.sig()
+                    .inputs()
+                    .iter()
+                    .filter_map(|tpe| tpe.dotnet_refs()),
+            )
             .chain(
                 [self.sig().output()]
                     .iter()

@@ -1,4 +1,4 @@
-#![allow(non_upper_case_globals,dead_code)]
+#![allow(non_upper_case_globals, dead_code)]
 use core::num::NonZeroI32;
 use lazy_static::*;
 

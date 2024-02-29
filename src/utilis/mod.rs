@@ -10,12 +10,7 @@ pub fn is_function_magic(name: &str) -> bool {
     name.contains(CTOR_FN_NAME) || name.contains(MANAGED_CALL_FN_NAME)
 }
 
-use crate::{
-    cil::FieldDescriptor,
-    r#type::TyCache,
-    r#type::DotnetTypeRef,
-    IString,
-};
+use crate::{cil::FieldDescriptor, r#type::DotnetTypeRef, r#type::TyCache, IString};
 pub mod adt;
 pub fn as_adt(ty: Ty) -> Option<(AdtDef, &List<GenericArg>)> {
     match ty.kind() {
@@ -76,8 +71,8 @@ pub fn variant_name(ty: Ty, idx: u32) -> crate::IString {
 pub fn function_name(name: SymbolName) -> crate::IString {
     let mut name: String = name.to_string();
     // Name TOO long
-    if *crate::config::ESCAPE_NAMES{
-        name = name.replace('.',"_dot_").replace('$',"_ds_");
+    if *crate::config::ESCAPE_NAMES {
+        name = name.replace('.', "_dot_").replace('$', "_ds_");
     }
     if name.len() > 1000 {
         use std::collections::hash_map::DefaultHasher;
@@ -269,10 +264,7 @@ pub fn garag_to_bool<'tyctx>(garg: GenericArg<'tyctx>, _ctx: TyCtxt<'tyctx>) -> 
     }
 }
 /// This function returns the size of a type at the compile time. This should be used ONLY for handling constants. It currently assumes a 64 bit env
-pub fn compiletime_sizeof<'tyctx>(
-    ty: Ty<'tyctx>,
-    tyctx: TyCtxt<'tyctx>,
-) -> usize {
+pub fn compiletime_sizeof<'tyctx>(ty: Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -> usize {
     let layout = tyctx
         .layout_of(rustc_middle::ty::ParamEnvAnd {
             param_env: ParamEnv::reveal_all(),

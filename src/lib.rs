@@ -1,4 +1,4 @@
-#![feature(rustc_private)]
+#![feature(rustc_private, box_patterns)]
 // Used for handling some configs. Will be refactored later.
 #![allow(clippy::assertions_on_constants)]
 // Not a big issue.
@@ -69,7 +69,7 @@ mod aggregate;
 pub mod assembly;
 /// Module containg ILASM-based exporter and code shared between all IL exporter.
 pub mod assembly_exporter;
-mod basic_block;
+pub mod basic_block;
 /// Code handling binary operations
 mod binop;
 /// Implementation of key external functions(eg. libc) necesary for propely running a Rust executable
@@ -275,7 +275,7 @@ impl CodegenBackend for MyBackend {
 // Inspired by cranelifts glue code. Is responsible for turing the files produced by teh backend into
 struct RlibArchiveBuilder;
 impl ArchiveBuilderBuilder for RlibArchiveBuilder {
-    fn new_archive_builder<'a>(&self, sess: &'a Session) -> Box<dyn ArchiveBuilder<'a> + 'a> {
+    fn new_archive_builder<'a>(&self, sess: &'a Session) -> Box<dyn ArchiveBuilder + 'a> {
         Box::new(ArArchiveBuilder::new(sess, get_native_object_symbols))
     }
     fn create_dll_import_lib(
