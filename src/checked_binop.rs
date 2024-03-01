@@ -1,13 +1,12 @@
 use rustc_middle::mir::{BinOp, Operand};
-use rustc_middle::ty::{Instance, TyCtxt};
-
+use rustc_middle::ty::{Instance, Ty, TyCtxt};
+/*
 use crate::{
     cil::{CILOp, CallSite, FieldDescriptor},
     function_sig::FnSig,
     r#type::{DotnetTypeRef, TyCache, Type},
 };
 /// Preforms an checked binary operation.
-/// Husajfwk asd ad
 pub(crate) fn binop_checked<'tyctx>(
     binop: BinOp,
     operand_a: &Operand<'tyctx>,
@@ -39,6 +38,25 @@ pub(crate) fn binop_checked<'tyctx>(
             .collect(),
         _ => todo!("Can't preform checked op {binop:?}"),
     }
+}
+fn max_for_type(ty:Ty)->CILNode{
+   todo!()
+}
+fn min_for_type(ty:Ty)->CILNode{
+    todo!()
+}
+fn signed_sub<'tyctx>(
+    binop: BinOp,
+    operand_a: &Operand<'tyctx>,
+    operand_b: &Operand<'tyctx>,
+    tyctx: TyCtxt<'tyctx>,
+    method: &rustc_middle::mir::Body<'tyctx>,
+    method_instance: Instance<'tyctx>,
+    cache: &mut TyCache,
+)->CILNode{
+    //(b > 0 && a < INT_MIN + b) || (b < 0 && a > INT_MAX + b);
+    let flag = or!();
+    todo!();
 }
 fn mul(tpe: Type) -> Vec<CILOp> {
     match tpe {
@@ -1036,4 +1054,4 @@ fn checked_sub_128bit(
         CILOp::FreeTMPLocal,
         CILOp::FreeTMPLocal,
     ]
-}
+}*/

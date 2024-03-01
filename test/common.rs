@@ -9,6 +9,8 @@ extern "C"{
     fn malloc(size:usize)->*mut core::ffi::c_void;
     fn free(ptr:*mut core::ffi::c_void);
     fn realloc(ptr:*mut core::ffi::c_void,size:usize)->*mut core::ffi::c_void;
+    fn __rust_alloc(size: usize, align: usize) -> *mut u8;
+    fn printf(fmt: *const core::ffi::c_char, ...) -> core::ffi::c_int;
 } 
 #[panic_handler]
 fn panic(_panic: &PanicInfo<'_>) -> ! {

@@ -7,6 +7,7 @@ use crate::function_sig::FnSig;
 use crate::r#type::{DotnetTypeRef, TyCache};
 
 pub mod bitop;
+pub mod checked;
 pub mod cmp;
 pub mod shift;
 use crate::{
@@ -14,6 +15,7 @@ use crate::{
     rem_un, size_of, sub,
 };
 use bitop::*;
+pub use checked::binop_checked;
 use cmp::*;
 use shift::*;
 /// Preforms an unchecked binary operation.

@@ -119,6 +119,7 @@ impl TyCache {
             Some(explicit_offsets),
             0,
             None,
+            Some(layout.layout.size().bytes()),
         )
     }
     fn union_<'tyctx>(
@@ -160,6 +161,7 @@ impl TyCache {
             Some(explicit_offsets),
             0,
             None,
+            Some(layout.layout.size().bytes()),
         )
     }
     fn enum_<'tyctx>(
@@ -271,6 +273,7 @@ impl TyCache {
                 None, //Some(explicit_offsets),
                 0,
                 None,
+                Some(layout.layout.size().bytes()),
             );
             let dref = DotnetTypeRef::new(None, &format!("{enum_name}/{variant_name}"));
             let variant_name: IString = format!("v_{variant_name}").into();
@@ -287,6 +290,7 @@ impl TyCache {
             Some(explicit_offsets),
             0,
             None,
+            Some(layout.layout.size().bytes()),
         )
     }
     pub fn slice_ty<'tyctx>(

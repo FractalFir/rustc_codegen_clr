@@ -60,8 +60,11 @@ pub struct DotnetTypeRef {
     is_valuetype: bool,
 }
 impl DotnetTypeRef {
-    pub fn marshal()->Self{
-        Self::new(Some("System.Runtime.InteropServices"),"System.Runtime.InteropServices.Marshal")
+    pub fn marshal() -> Self {
+        Self::new(
+            Some("System.Runtime.InteropServices"),
+            "System.Runtime.InteropServices.Marshal",
+        )
     }
     #[must_use]
     pub fn console() -> Self {

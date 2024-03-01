@@ -79,6 +79,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
         None,
         0,
         None,
+        None,
     ));
     asm.add_typedef(crate::r#type::TypeDef::nameonly("Unresolved"));
     asm.add_typedef(crate::r#type::TypeDef::nameonly("RustVoid"));

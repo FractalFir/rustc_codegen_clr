@@ -65,6 +65,9 @@ pub enum CILRoot {
     Ret {
         tree: CILNode,
     },
+    Pop {
+        tree: CILNode,
+    },
     VoidRet,
     Throw(CILNode),
     ReThrow,
@@ -90,9 +93,22 @@ impl CILRoot {
             } => ops.opt(),
             CILRoot::GoTo { target, sub_target } => (),
             CILRoot::Call { site, args } => args.iter_mut().for_each(|arg| arg.opt()),
-            CILRoot::SetField { addr, value, desc } => {
-                addr.opt();
+            CILRoot::SetField {
+                addr: fld_addr,
+                value,
+                desc,
+            } => {
+                fld_addr.opt();
                 value.opt();
+                match fld_addr {
+                    CILNode::ConvUSize(addr) => match addr.as_mut() {
+                        CILNode::LDLocA(_) | CILNode::LDFieldAdress { .. } => {
+                            *fld_addr = addr.as_ref().clone()
+                        }
+                        _ => (),
+                    },
+                    _ => (),
+                }
             }
             CILRoot::CpBlk { src, dst, len } => {
                 src.opt();
@@ -127,6 +143,7 @@ impl CILRoot {
             }
             CILRoot::CallVirt { site, args } => args.iter_mut().for_each(|arg| arg.opt()),
             CILRoot::Ret { tree } => tree.opt(),
+            CILRoot::Pop { tree } => tree.opt(),
             CILRoot::VoidRet => (),
             CILRoot::Throw(ops) => ops.opt(),
             CILRoot::ReThrow => (),
@@ -151,7 +168,19 @@ impl CILRoot {
             args: [CILNode::LdStr(msg.into())].into(),
         })
     }
-
+    pub fn debug(msg: &str) -> Self {
+        let mut class = crate::r#type::DotnetTypeRef::new(Some("System.Console"), "System.Console");
+        class.set_valuetype(false);
+        let name = "WriteLine".into();
+        let signature = crate::function_sig::FnSig::new(
+            &[crate::utilis::string_class().into()],
+            &crate::r#type::Type::Void,
+        );
+        Self::Call {
+            site: CallSite::new(Some(class), name, signature, true),
+            args: [CILNode::LdStr(msg.into())].into(),
+        }
+    }
     pub fn flatten(&self) -> Vec<CILOp> {
         match self {
             //Self::LabelStart(val)=> vec![CILOp::LabelStart(val)],
@@ -159,6 +188,7 @@ impl CILRoot {
             Self::ReThrow => vec![CILOp::ReThrow],
             Self::Throw(tree) => append_vec(tree.flatten(), CILOp::Throw),
             Self::Ret { tree } => append_vec(tree.flatten(), CILOp::Ret),
+            Self::Pop { tree } => append_vec(tree.flatten(), CILOp::Pop),
             Self::VoidRet => vec![CILOp::Ret],
             Self::STLoc { local, tree } => append_vec(tree.flatten(), CILOp::STLoc(*local)),
             Self::STArg { arg, tree } => append_vec(tree.flatten(), CILOp::STArg(*arg)),

@@ -762,6 +762,7 @@ run_test! {control_flow,cf_for,stable}
 run_test! {control_flow,drop,stable}
 
 run_test! {intrinsics,bswap,stable}
+
 run_test! {intrinsics,assert,unstable}
 run_test! {intrinsics,addr_of,stable}
 run_test! {intrinsics,malloc,stable}
@@ -770,6 +771,9 @@ run_test! {intrinsics,printf,unstable}
 run_test! {intrinsics,type_id,stable}
 run_test! {intrinsics,ptr_offset_from_unsigned,stable}
 run_test! {intrinsics,arith_offset,stable}
+
+run_test! {alloc,abox,stable}
+
 run_test! {fuzz,test0,stable}
 run_test! {fuzz,test1,stable}
 

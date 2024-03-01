@@ -175,6 +175,9 @@ fn type_def_cli(
         w,
         ".class {nested} {access} {explicit} ansi {sealed} '{name}' extends {extends}{{"
     )?;
+    if let Some(size) = tpe.explict_size() {
+        writeln!(w, ".size {size}")?;
+    }
     for inner_type in tpe.inner_types() {
         type_def_cli(w, inner_type, true)?;
     }

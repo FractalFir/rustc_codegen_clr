@@ -1,7 +1,14 @@
 #![deny(unused_must_use)]
 //use assembly::Assembly;
 use rustc_codegen_clr::{
-    assembly::Assembly, basic_block::BasicBlock, cil::CallSite, cil_tree::{cil_node::CILNode, cil_root::CILRoot}, function_sig::FnSig, method::{Method, MethodType}, r#type::{DotnetTypeRef, Type}, *
+    assembly::Assembly,
+    basic_block::BasicBlock,
+    cil::CallSite,
+    cil_tree::{cil_node::CILNode, cil_root::CILRoot},
+    function_sig::FnSig,
+    method::{Method, MethodType},
+    r#type::{DotnetTypeRef, Type},
+    *,
 };
 mod cmd;
 mod export;
@@ -103,7 +110,7 @@ fn autopatch(asm: &mut Assembly) {
                                 site: CallSite::boxed(
                                     DotnetTypeRef::marshal().into(),
                                     "AllocHGlobal".into(),
-                                    FnSig::new(&[Type::ISize],&Type::ISize),
+                                    FnSig::new(&[Type::ISize], &Type::ISize),
                                     true,
                                 ),
                             },
@@ -132,7 +139,7 @@ fn autopatch(asm: &mut Assembly) {
                                 site: CallSite::boxed(
                                     DotnetTypeRef::marshal().into(),
                                     "FreeHGlobal".into(),
-                                    FnSig::new(&[Type::ISize],&Type::Void),
+                                    FnSig::new(&[Type::ISize], &Type::Void),
                                     true,
                                 ),
                             },
@@ -157,11 +164,11 @@ fn autopatch(asm: &mut Assembly) {
                     vec![BasicBlock::new(
                         vec![CILRoot::Ret {
                             tree: CILNode::Call {
-                                args: [CILNode::LDArg(0),CILNode::LDArg(1)].into(),
+                                args: [CILNode::LDArg(0), CILNode::LDArg(1)].into(),
                                 site: CallSite::boxed(
                                     DotnetTypeRef::marshal().into(),
                                     "ReAllocHGlobal".into(),
-                                    FnSig::new(&[Type::ISize,Type::ISize],&Type::ISize),
+                                    FnSig::new(&[Type::ISize, Type::ISize], &Type::ISize),
                                     true,
                                 ),
                             },

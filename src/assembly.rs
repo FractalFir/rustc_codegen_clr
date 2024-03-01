@@ -305,12 +305,13 @@ impl Assembly {
                         rustc_middle::ty::print::with_no_trimmed_paths! {Some(CILRoot::throw(&format!("Tired to run a statement {statement:?} which failed to compile with error message {err:?}.")).into())}
                     }
                 });
+                if *crate::config::INSERT_MIR_DEBUG_COMMENTS {
+                    rustc_middle::ty::print::with_no_trimmed_paths! {trees.push(CILRoot::debug(&format!("{statement:?}")).into())};
+                }
 
                 //crate::utilis::check_debugable(&statement_ops, statement, does_return_void);
                 //ops.extend(statement_ops);
-                //if *crate::config::INSERT_MIR_DEBUG_COMMENTS {
-                //ops.push(CILOp::Comment("STATEMENT END.".into()));
-                //}
+                //
             }
             match &block_data.terminator {
                 Some(term) => {

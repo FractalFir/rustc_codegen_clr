@@ -170,18 +170,15 @@ pub fn handle_rvalue<'tcx>(
             method_instance,
             tycache,
         ),
-        Rvalue::CheckedBinaryOp(binop, operands) => CILNode::RawOpsParrentless {
-            ops: crate::checked_binop::binop_checked(
-                *binop,
-                &operands.0,
-                &operands.1,
-                tyctx,
-                method,
-                method_instance,
-                tycache,
-            )
-            .into(),
-        },
+        Rvalue::CheckedBinaryOp(binop, operands) => crate::binop::binop_checked(
+            *binop,
+            &operands.0,
+            &operands.1,
+            tyctx,
+            method,
+            method_instance,
+            tycache,
+        ),
         Rvalue::UnaryOp(binop, operand) => {
             crate::unop::unop(*binop, operand, tyctx, method, method_instance, tycache)
         }

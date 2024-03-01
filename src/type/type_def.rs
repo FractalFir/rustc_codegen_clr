@@ -20,6 +20,7 @@ pub struct TypeDef {
     explicit_offsets: Option<Vec<u32>>,
     gargc: u32,
     extends: Option<DotnetTypeRef>,
+    explict_size: Option<u64>,
 }
 impl TypeDef {
     #[must_use]
@@ -99,6 +100,7 @@ impl TypeDef {
             gargc: 0,
             extends: None,
             explicit_offsets: None,
+            explict_size: None,
         }
     }
     #[must_use]
@@ -111,6 +113,7 @@ impl TypeDef {
         explicit_offsets: Option<Vec<u32>>,
         gargc: u32,
         extends: Option<DotnetTypeRef>,
+        explict_size: Option<u64>,
     ) -> Self {
         Self {
             access,
@@ -121,7 +124,12 @@ impl TypeDef {
             explicit_offsets,
             gargc,
             extends,
+            explict_size,
         }
+    }
+
+    pub fn explict_size(&self) -> Option<u64> {
+        self.explict_size
     }
 }
 impl From<TypeDef> for Type {
@@ -200,6 +208,7 @@ pub fn closure_typedef(def_id: DefId, fields: &[Type], sig: crate::function_sig:
         None,
         0,
         None,
+        None,
     )
 }
 pub fn arr_name(element_count: usize, element: &Type) -> IString {
@@ -233,6 +242,7 @@ pub fn tuple_typedef(elements: &[Type], layout: &Layout) -> TypeDef {
         Some(explicit_offsets),
         0,
         None,
+        None,
     )
 }
 #[must_use]
@@ -252,6 +262,7 @@ pub fn get_array_type(element_count: usize, element: Type) -> TypeDef {
         explicit_offsets: None,
         gargc: 0,
         extends: None,
+        explict_size: None,
     };
     let _as_pointer = CallSite::ref_as_ptr(element.clone());
     // set_Item(usize offset, G0 value)

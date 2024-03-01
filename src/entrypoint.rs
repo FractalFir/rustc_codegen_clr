@@ -1,6 +1,12 @@
 use crate::{
+    basic_block::BasicBlock,
+    call,
     cil::{CILOp, CallSite},
+    cil_tree::cil_node::CILNode,
+    cil_tree::cil_root::CILRoot,
+    conv_usize,
     function_sig::FnSig,
+    ldc_u32,
     method::{Method, MethodType},
     r#type::Type,
 };
@@ -14,21 +20,29 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
         && entrypoint.signature().output() == &Type::ISize
     {
         let sig = FnSig::new(&[], &Type::Void);
-        let ops = vec![
-            CILOp::LdcI32(0),
-            CILOp::LdcI32(0),
-            CILOp::Call(Box::new(entrypoint.clone())),
-            CILOp::Pop,
-            CILOp::Ret,
-        ];
-        let mut method = Method::new_empty(
+
+        let mut method = Method::new(
             crate::access_modifier::AccessModifer::Public,
             MethodType::Static,
             sig,
             "entrypoint",
             vec![],
+            vec![BasicBlock::new(
+                vec![
+                    CILRoot::Pop {
+                        tree: call!(
+                            Box::new(entrypoint.clone()),
+                            [conv_usize!(ldc_u32!(0)), conv_usize!(ldc_u32!(0))]
+                        ),
+                    }
+                    .into(),
+                    CILRoot::VoidRet.into(),
+                ],
+                0,
+                None,
+            )],
         );
-        method.set_ops(ops);
+        //method.set_ops(ops);
         method.add_attribute(crate::method::Attribute::EntryPoint);
         method
     } else if entrypoint.signature().inputs().is_empty()
