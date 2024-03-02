@@ -145,22 +145,22 @@ result_tuple(
             ldc_i32!(0),
             super::mul_unchecked(ty_a, ty_b, tycache, &method_instance, tyctx, ops_a, ops_b),
         ), */
-        pub fn mul<'tyctx>(
-            ops_a: CILNode,
-            ops_b: CILNode,
-            ty: Ty<'tyctx>,
-            tyctx: TyCtxt<'tyctx>,
-            method_instance: Instance<'tyctx>,
-            tycache: &mut TyCache,
-        ) -> CILNode {
-            //(b > 0 && a < INT_MIN + b) || (b < 0 && a > INT_MAX + b);
-            let tpe = tycache.type_from_cache(ty, tyctx, Some(method_instance));
-            result_tuple(
-                tpe,
-                ldc_u32!(0),
-                super::mul_unchecked(ty, ty, tycache, &method_instance, tyctx, ops_a, ops_b),
-            )
-        }
+pub fn mul<'tyctx>(
+    ops_a: CILNode,
+    ops_b: CILNode,
+    ty: Ty<'tyctx>,
+    tyctx: TyCtxt<'tyctx>,
+    method_instance: Instance<'tyctx>,
+    tycache: &mut TyCache,
+) -> CILNode {
+    //(b > 0 && a < INT_MIN + b) || (b < 0 && a > INT_MAX + b);
+    let tpe = tycache.type_from_cache(ty, tyctx, Some(method_instance));
+    result_tuple(
+        tpe,
+        ldc_u32!(0),
+        super::mul_unchecked(ty, ty, tycache, &method_instance, tyctx, ops_a, ops_b),
+    )
+}
 pub fn sub_signed<'tyctx>(
     ops_a: CILNode,
     ops_b: CILNode,

@@ -1,10 +1,5 @@
 use crate::{
-    access_modifier::AccessModifer,
-    cil::{CallSite, FieldDescriptor},
-    method::{Method, MethodType},
-    r#type::{DotnetTypeRef, Type},
-    utilis::adt::FieldOffsetIterator,
-    IString,
+    access_modifier::AccessModifer, add, basic_block::BasicBlock, cil::{CallSite, FieldDescriptor}, cil_tree::{cil_node::CILNode, cil_root::CILRoot}, conv_usize, ld_field, ld_field_address, method::{Method, MethodType}, mul, size_of, r#type::{DotnetTypeRef, Type}, utilis::adt::FieldOffsetIterator, IString
 };
 use rustc_span::def_id::DefId;
 use rustc_target::abi::Layout;
@@ -267,7 +262,7 @@ pub fn get_array_type(element_count: usize, element: Type) -> TypeDef {
     let _as_pointer = CallSite::ref_as_ptr(element.clone());
     // set_Item(usize offset, G0 value)
     if element_count > 0 {
-        let mut set_usize = Method::new_empty(
+        let set_usize = Method::new(
             AccessModifer::Public,
             MethodType::Instance,
             crate::function_sig::FnSig::new(
@@ -276,28 +271,31 @@ pub fn get_array_type(element_count: usize, element: Type) -> TypeDef {
             ),
             "set_Item",
             vec![],
+            vec![BasicBlock::new(
+                vec![
+                    CILRoot::STObj {
+                        tpe: element.clone().into(),
+                        addr_calc: add!(
+                            conv_usize!(ld_field_address!(CILNode::LDArg(0),FieldDescriptor::boxed(
+                                (&def).into(),
+                                element.clone(),
+                                "f_0".to_string().into(),
+                            ))),
+                            mul!(CILNode::LDArg(1), size_of!(element.clone()))
+                        ),
+                        value_calc: CILNode::LDArg(2),
+                    }
+                    .into(),
+                    CILRoot::VoidRet.into(),
+                ],
+                0,
+                None,
+            )],
         );
-        let ops = vec![
-            CILOp::LDArg(0),
-            CILOp::LDFieldAdress(FieldDescriptor::boxed(
-                (&def).into(),
-                element.clone(),
-                "f_0".to_string().into(),
-            )),
-            //CILOp::Call(as_pointer.clone().into()),
-            CILOp::LDArg(1),
-            CILOp::SizeOf(element.clone().into()),
-            CILOp::Mul,
-            CILOp::Add,
-            CILOp::LDArg(2),
-            CILOp::STObj(element.clone().into()),
-            CILOp::Ret,
-        ];
-        set_usize.set_ops(ops);
         def.add_method(set_usize);
 
         // get_Address(usize offset)
-        let mut get_adress_usize = Method::new_empty(
+        let get_adress_usize = Method::new(
             AccessModifer::Public,
             MethodType::Instance,
             crate::function_sig::FnSig::new(
@@ -306,48 +304,45 @@ pub fn get_array_type(element_count: usize, element: Type) -> TypeDef {
             ),
             "get_Address",
             vec![],
+            vec![BasicBlock::new(
+                vec![
+                    CILRoot::Ret{ tree: add!(
+                        conv_usize!(ld_field_address!(CILNode::LDArg(0),FieldDescriptor::boxed(
+                            (&def).into(),
+                            element.clone(),
+                            "f_0".to_string().into(),
+                        ))),
+                        mul!(CILNode::LDArg(1), size_of!(element.clone()))
+                    ),}.into()
+                ],
+                0,
+                None
+            )]
         );
-        // This may be wrong???
-        let ops = vec![
-            CILOp::LDArg(0),
-            CILOp::LDFieldAdress(FieldDescriptor::boxed(
-                (&def).into(),
-                element.clone(),
-                "f_0".to_string().into(),
-            )),
-            //CILOp::Call(as_pointer.clone().into()),
-            CILOp::LDArg(1),
-            CILOp::SizeOf(element.clone().into()),
-            CILOp::Mul,
-            CILOp::Add,
-            CILOp::Ret,
-        ];
-        get_adress_usize.set_ops(ops);
         def.add_method(get_adress_usize);
         // get_Item
-        let mut get_item_usize = Method::new_empty(
+        let mut get_item_usize = Method::new(
             AccessModifer::Public,
             MethodType::Instance,
             crate::function_sig::FnSig::new(&[(&def).into(), Type::USize], &element.clone()),
             "get_Item",
             vec![],
+            vec![BasicBlock::new(
+                vec![
+                    CILRoot::Ret{ tree: CILNode::LdObj { ptr: add!(
+                        conv_usize!(ld_field_address!(CILNode::LDArg(0),FieldDescriptor::boxed(
+                            (&def).into(),
+                            element.clone(),
+                            "f_0".to_string().into(),
+                        ))),
+                        mul!(CILNode::LDArg(1), size_of!(element.clone()))
+                    ).into(), obj: Box::new(element) }}.into()
+                ],
+                0,
+                None
+            )]
         );
-        let ops = vec![
-            CILOp::LDArg(0),
-            CILOp::LDFieldAdress(FieldDescriptor::boxed(
-                (&def).into(),
-                element.clone(),
-                "f_0".to_string().into(),
-            )),
-            //CILOp::Call(as_pointer.into()),
-            CILOp::LDArg(1),
-            CILOp::SizeOf(element.clone().into()),
-            CILOp::Mul,
-            CILOp::Add,
-            CILOp::LdObj(element.into()),
-            CILOp::Ret,
-        ];
-        get_item_usize.set_ops(ops);
+     
         def.add_method(get_item_usize);
         let mut to_string = Method::new_empty(
             AccessModifer::Public,
