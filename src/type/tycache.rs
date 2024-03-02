@@ -214,9 +214,10 @@ impl TyCache {
                     rustc_target::abi::TagEncoding::Direct => {
                         let (tag_type, offset) =
                             crate::utilis::adt::enum_tag_info(&layout.layout, tyctx);
-
-                        fields.push(("_tag".into(), tag_type));
-                        explicit_offsets.push(0);
+                        if tag_type != Type::Void{
+                            fields.push(("_tag".into(), tag_type));
+                            explicit_offsets.push(0);
+                        }
                         offset
                     }
                     rustc_target::abi::TagEncoding::Niche {
@@ -226,8 +227,10 @@ impl TyCache {
                     } => {
                         let (tag_type, offset) =
                             crate::utilis::adt::enum_tag_info(&layout.layout, tyctx);
-                        fields.push(("_tag".into(), tag_type));
-                        explicit_offsets.push(*niche_start as u32);
+                        if tag_type != Type::Void{
+                            fields.push(("_tag".into(), tag_type));
+                            explicit_offsets.push(*niche_start as u32);
+                        }
                         offset
                     }
                 }

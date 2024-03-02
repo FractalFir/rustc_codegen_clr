@@ -444,6 +444,11 @@ pub fn handle_rvalue<'tcx>(
                 tyctx,
                 Some(method_instance),
             );
+            if disrc_type == Type::Void{
+                //CILNode::LDOb 
+                todo!();
+            }
+            else{
             crate::casts::int_to_int(
                 disrc_type.clone(),
                 target,
@@ -453,6 +458,7 @@ pub fn handle_rvalue<'tcx>(
                     addr: addr.into(),
                 },
             )
+        }
         }
         Rvalue::Len(operand) => {
             let ty = operand.ty(method, tyctx);

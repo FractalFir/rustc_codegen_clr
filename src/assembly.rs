@@ -752,8 +752,8 @@ fn allocation_initializer_method(
         CILOp::LdcI64(bytes.len() as u64 as i64),
         CILOp::ConvISize(false),
         CILOp::Call(CallSite::malloc(tyctx).into()),
-        CILOp::Dup,
         CILOp::STLoc(0),
+        CILOp::LDLoc(0),
         CILOp::STLoc(1),
     ]);
     for byte in bytes {

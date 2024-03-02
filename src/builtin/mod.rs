@@ -1,3 +1,5 @@
+use crate::basic_block::BasicBlock;
+use crate::cil_tree::cil_root::CILRoot;
 use crate::method::MethodType;
 use crate::r#type::DotnetTypeRef;
 use crate::{
@@ -85,6 +87,9 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     asm.add_typedef(crate::r#type::TypeDef::nameonly("RustVoid"));
     asm.add_typedef(crate::r#type::TypeDef::nameonly("Foreign"));
     asm.add_typedef(crate::r#type::TypeDef::nameonly("RustStr"));
+    /*asm.add_method(Method::new(AccessModifer::Public,MethodType::Static,FnSig::new(&[Type::U64,Type::U64],&Type::U128),"new_u128",vec![],vec![
+        BasicBlock::new(vec![CILRoot::Ret{ tree: todo!() }.into()],0,None),
+    ]));*/
     //rust_slice(asm);
     io(asm);
     unlikely(asm);

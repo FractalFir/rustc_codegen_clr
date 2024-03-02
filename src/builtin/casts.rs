@@ -162,7 +162,7 @@ add_method_from_trees!(
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_u64!(u64::MAX)
+                    tree: conv_u64!(ldc_u64!(u64::MAX))
                 }
                 .into()
             ],
@@ -178,7 +178,7 @@ add_method_from_trees!(
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_u64!(u64::MIN)
+                    tree: conv_u64!(ldc_u64!(u64::MIN))
                 }
                 .into()
             ],
@@ -538,7 +538,7 @@ add_method_from_trees!(
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_u64!(u64::MAX)
+                    tree: conv_u64!(ldc_u64!(u64::MAX))
                 }
                 .into()
             ],
@@ -554,7 +554,7 @@ add_method_from_trees!(
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_u64!(u64::MIN)
+                    tree: conv_u64!(ldc_u64!(u64::MIN))
                 }
                 .into()
             ],

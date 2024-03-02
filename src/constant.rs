@@ -402,22 +402,22 @@ pub fn load_const_int(value: u128, int_type: &IntTy) -> CILNode {
             );
             CILNode::RawOpsParrentless {
                 ops: [
-                    CILOp::NewTMPLocal(Type::I128.into()),
-                    CILOp::LoadAddresOfTMPLocal,
+                    //CILOp::NewTMPLocal(Type::I128.into()),
+                    //CILOp::LoadAddresOfTMPLocal,
                     CILOp::LdcI64(high),
                     CILOp::ConvI64(false),
                     CILOp::ConvU64(false),
                     CILOp::LdcI64(low),
                     CILOp::ConvI64(false),
                     CILOp::ConvU64(false),
-                    CILOp::Call(CallSite::boxed(
+                    CILOp::NewObj(CallSite::boxed(
                         Some(DotnetTypeRef::int_128()),
                         ".ctor".into(),
                         ctor_sig,
                         false,
                     )),
-                    CILOp::LoadTMPLocal,
-                    CILOp::FreeTMPLocal,
+                    //CILOp::LoadTMPLocal,
+                    //CILOp::FreeTMPLocal,
                 ]
                 .into(),
             }
@@ -452,22 +452,18 @@ pub fn load_const_uint(value: u128, int_type: &UintTy) -> CILNode {
             );
             CILNode::RawOpsParrentless {
                 ops: vec![
-                    CILOp::NewTMPLocal(Type::U128.into()),
-                    CILOp::LoadAddresOfTMPLocal,
                     CILOp::LdcI64(high),
                     CILOp::ConvI64(false),
                     CILOp::ConvU64(false),
                     CILOp::LdcI64(low),
                     CILOp::ConvI64(false),
                     CILOp::ConvU64(false),
-                    CILOp::Call(CallSite::boxed(
+                    CILOp::NewObj(CallSite::boxed(
                         Some(DotnetTypeRef::uint_128()),
                         ".ctor".into(),
                         ctor_sig,
                         false,
                     )),
-                    CILOp::LoadTMPLocal,
-                    CILOp::FreeTMPLocal,
                 ]
                 .into(),
             }

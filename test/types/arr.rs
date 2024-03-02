@@ -78,5 +78,8 @@ fn main(){
     // Non-const indexed mutating
     indarr.arr[black_box(4)] = 4;
     test_eq!(indarr.arr[4],4);
+    let a = [123456_u128];
+    black_box(a);
 }
+
 
