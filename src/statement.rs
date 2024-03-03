@@ -45,7 +45,7 @@ pub fn handle_statement<'tcx>(
                     desc: crate::cil::FieldDescriptor::new(
                         owner,
                         disrc_type.clone(),
-                        "_tag".into(),
+                        "value__".into(),
                     ),
                     addr: crate::place::place_adress(
                         place,

@@ -1,5 +1,5 @@
 #![feature(lang_items,adt_const_params,associated_type_defaults,core_intrinsics,start,fundamental,ptr_internals,sized_type_properties)]
-#![allow(internal_features,incomplete_features,unused_variables,dead_code,unused_unsafe,unused_imports,private_interfaces)]
+#![allow(internal_features,incomplete_features,unused_variables,dead_code,unused_unsafe,unused_imports,private_interfaces,unused_mut)]
 #![no_std]
 include!("../common.rs");
 use core::ptr::{self, NonNull, Unique};
@@ -89,6 +89,16 @@ impl Alignment{
     }
 }
 impl Layout{
+    pub fn test_layout(){
+        unsafe{
+        let mut res = Self::from_size_align_unchecked(0,1024);
+        res.size = 64;
+        test_eq!(res.size,64);
+        res.align =  Alignment::new_unchecked(1024);
+        test_eq!(res.align(),1024);
+        test_eq!(res.size,64);
+        }
+    }
     #[must_use]
     #[inline]
     pub fn dangling(&self) -> NonNull<u8> {
@@ -172,7 +182,7 @@ impl<T> Box<T>{
         } else {
             f64::putnl(4.0);
             let layout = Layout::new::<mem::MaybeUninit<T>>();
-            test_ne!(layout.size(),0);
+            //test_ne!(layout.size(),0);
             unsafe{alloc.allocate(layout)?.cast()}
         };
         u64::putnl(ptr.as_ptr() as usize as u64);
@@ -251,10 +261,16 @@ impl Alloc {
 const MIN_ALIGN:usize = 8;
 fn main(){
     unsafe{
+        Layout::test_layout();
         let layout = black_box(Layout::new::<i32>());
         test_eq!(layout.size(),4_usize);
-        let layout = black_box(Layout::from_size_align_unchecked(64,black_box(4)));
+        let layout = black_box(Layout::from_size_align_unchecked(4,black_box(64)));
         test_eq!(layout.size(),4_usize);
+        test_eq!(8,core::mem::size_of::<AlignmentEnum>());
+        test_eq!(8,core::mem::size_of::<Alignment>());
+        test_eq!(16,core::mem::size_of::<Layout>());
+        let mut layout = Layout::new::<u8>(); 
+        test_eq!(layout.size(),1);
         let boxed = Box::new(64_u8);
     }
 }

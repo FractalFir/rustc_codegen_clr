@@ -310,7 +310,7 @@ fn load_const_scalar<'ctx>(
                     CILOp::STField(Box::new(crate::cil::FieldDescriptor::new(
                         enum_dotnet.clone(),
                         disrc_type,
-                        "_tag".into(),
+                        "value__".into(),
                     ))),
                     CILOp::LoadTMPLocal,
                     CILOp::FreeTMPLocal,

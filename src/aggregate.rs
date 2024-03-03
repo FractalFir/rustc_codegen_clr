@@ -321,7 +321,7 @@ fn aggregate_adt<'tyctx>(
                     .expect("Could not get type layout!");
                 let (disrc_type, _) = crate::utilis::adt::enum_tag_info(&layout.layout, tyctx);
 
-                let field_name = "_tag".into();
+                let field_name = "value__".into();
                 if disrc_type != Type::Void {
                     sub_trees.push(CILRoot::SetField {
                         addr: adt_adress_ops,

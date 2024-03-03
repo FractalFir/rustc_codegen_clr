@@ -453,7 +453,7 @@ pub fn handle_rvalue<'tcx>(
                 disrc_type.clone(),
                 target,
                 CILNode::LDField {
-                    field: crate::cil::FieldDescriptor::new(owner, disrc_type, "_tag".into())
+                    field: crate::cil::FieldDescriptor::new(owner, disrc_type, "value__".into())
                         .into(),
                     addr: addr.into(),
                 },
