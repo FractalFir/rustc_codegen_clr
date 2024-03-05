@@ -1,5 +1,16 @@
 use crate::{
-    access_modifier::AccessModifer, add, basic_block::BasicBlock, cil::{CallSite, FieldDescriptor}, cil_tree::{cil_node::CILNode, cil_root::CILRoot}, conv_usize, ld_field, ld_field_address, method::{Method, MethodType}, mul, size_of, r#type::{DotnetTypeRef, Type}, utilis::adt::FieldOffsetIterator, IString
+    access_modifier::AccessModifer,
+    add,
+    basic_block::BasicBlock,
+    cil::{CallSite, FieldDescriptor},
+    cil_tree::{cil_node::CILNode, cil_root::CILRoot},
+    conv_usize, ld_field, ld_field_address,
+    method::{Method, MethodType},
+    mul,
+    r#type::{DotnetTypeRef, Type},
+    size_of,
+    utilis::adt::FieldOffsetIterator,
+    IString,
 };
 use rustc_span::def_id::DefId;
 use rustc_target::abi::Layout;
@@ -276,11 +287,14 @@ pub fn get_array_type(element_count: usize, element: Type) -> TypeDef {
                     CILRoot::STObj {
                         tpe: element.clone().into(),
                         addr_calc: add!(
-                            conv_usize!(ld_field_address!(CILNode::LDArg(0),FieldDescriptor::boxed(
-                                (&def).into(),
-                                element.clone(),
-                                "f_0".to_string().into(),
-                            ))),
+                            conv_usize!(ld_field_address!(
+                                CILNode::LDArg(0),
+                                FieldDescriptor::boxed(
+                                    (&def).into(),
+                                    element.clone(),
+                                    "f_0".to_string().into(),
+                                )
+                            )),
                             mul!(CILNode::LDArg(1), size_of!(element.clone()))
                         ),
                         value_calc: CILNode::LDArg(2),
@@ -305,19 +319,23 @@ pub fn get_array_type(element_count: usize, element: Type) -> TypeDef {
             "get_Address",
             vec![],
             vec![BasicBlock::new(
-                vec![
-                    CILRoot::Ret{ tree: add!(
-                        conv_usize!(ld_field_address!(CILNode::LDArg(0),FieldDescriptor::boxed(
-                            (&def).into(),
-                            element.clone(),
-                            "f_0".to_string().into(),
-                        ))),
+                vec![CILRoot::Ret {
+                    tree: add!(
+                        conv_usize!(ld_field_address!(
+                            CILNode::LDArg(0),
+                            FieldDescriptor::boxed(
+                                (&def).into(),
+                                element.clone(),
+                                "f_0".to_string().into(),
+                            )
+                        )),
                         mul!(CILNode::LDArg(1), size_of!(element.clone()))
-                    ),}.into()
-                ],
+                    ),
+                }
+                .into()],
                 0,
-                None
-            )]
+                None,
+            )],
         );
         def.add_method(get_adress_usize);
         // get_Item
@@ -328,21 +346,29 @@ pub fn get_array_type(element_count: usize, element: Type) -> TypeDef {
             "get_Item",
             vec![],
             vec![BasicBlock::new(
-                vec![
-                    CILRoot::Ret{ tree: CILNode::LdObj { ptr: add!(
-                        conv_usize!(ld_field_address!(CILNode::LDArg(0),FieldDescriptor::boxed(
-                            (&def).into(),
-                            element.clone(),
-                            "f_0".to_string().into(),
-                        ))),
-                        mul!(CILNode::LDArg(1), size_of!(element.clone()))
-                    ).into(), obj: Box::new(element) }}.into()
-                ],
+                vec![CILRoot::Ret {
+                    tree: CILNode::LdObj {
+                        ptr: add!(
+                            conv_usize!(ld_field_address!(
+                                CILNode::LDArg(0),
+                                FieldDescriptor::boxed(
+                                    (&def).into(),
+                                    element.clone(),
+                                    "f_0".to_string().into(),
+                                )
+                            )),
+                            mul!(CILNode::LDArg(1), size_of!(element.clone()))
+                        )
+                        .into(),
+                        obj: Box::new(element),
+                    },
+                }
+                .into()],
                 0,
-                None
-            )]
+                None,
+            )],
         );
-     
+
         def.add_method(get_item_usize);
         let mut to_string = Method::new_empty(
             AccessModifer::Public,

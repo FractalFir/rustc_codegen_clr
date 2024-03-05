@@ -444,21 +444,24 @@ pub fn handle_rvalue<'tcx>(
                 tyctx,
                 Some(method_instance),
             );
-            if disrc_type == Type::Void{
-                //CILNode::LDOb 
+            if disrc_type == Type::Void {
+                //CILNode::LDOb
                 todo!();
-            }
-            else{
-            crate::casts::int_to_int(
-                disrc_type.clone(),
-                target,
-                CILNode::LDField {
-                    field: crate::cil::FieldDescriptor::new(owner, disrc_type, "value__".into())
+            } else {
+                crate::casts::int_to_int(
+                    disrc_type.clone(),
+                    target,
+                    CILNode::LDField {
+                        field: crate::cil::FieldDescriptor::new(
+                            owner,
+                            disrc_type,
+                            "value__".into(),
+                        )
                         .into(),
-                    addr: addr.into(),
-                },
-            )
-        }
+                        addr: addr.into(),
+                    },
+                )
+            }
         }
         Rvalue::Len(operand) => {
             let ty = operand.ty(method, tyctx);

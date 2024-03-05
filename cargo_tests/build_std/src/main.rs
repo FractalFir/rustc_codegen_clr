@@ -32,9 +32,6 @@ mod map_copy {
         }
     }
 }
-extern "C" {
-    fn puts(msg: *const u8);
-}
 #[allow(dead_code)]
 #[inline(never)]
 fn rustc_clr_interop_managed_call1_<
@@ -48,14 +45,14 @@ fn rustc_clr_interop_managed_call1_<
 >(
     arg1: Arg1,
 ) -> Ret {
-    unsafe { puts("Called interop managed call when compiled native code.\n\0".as_ptr()) };
+    unsafe { printf("Called interop managed call when compiled native code.\n\0".as_ptr() as *const i8) };
     core::intrinsics::abort();
 }
 macro_rules! test {
     ($name:ident) => {
-        unsafe { puts(concat!("Running test ", stringify!($name), ".\n\0").as_ptr()) };
+        unsafe { printf(concat!("Running test ", stringify!($name), ".\n\0").as_ptr() as *const i8) };
         $name();
-        unsafe { puts(concat!("Test ", stringify!($name), " succeded.\n\0").as_ptr()) };
+        unsafe { printf(concat!("Test ", stringify!($name), " succeded.\n\0").as_ptr() as *const i8) };
     };
 }
 fn test_ptr_offset_from_unsigned() {
@@ -91,7 +88,7 @@ fn collect_test() {
     std::hint::black_box(&numbers);
     for (number, idx) in numbers.iter().enumerate() {
         if std::hint::black_box(number) != *idx {
-            unsafe { puts("collect_test failed: items not equal.\n\0".as_ptr()) };
+            unsafe { printf("collect_test failed: items not equal.\n\0".as_ptr()  as *const i8) };
             unsafe { core::intrinsics::abort() };
         }
     }
@@ -110,7 +107,7 @@ fn map_option_test() {
                 (),
                 u64,
             >(number);
-            unsafe { puts("map_option_test failed: items not equal.\n\0".as_ptr()) };
+            unsafe { printf("map_option_test failed: items not equal.\n\0".as_ptr() as *const i8) };
             unsafe { core::intrinsics::abort() };
     }
 }
@@ -135,18 +132,17 @@ fn map_test() {
                 (),
                 u64,
             >(idx as u64);
-            unsafe { puts("map_test1b failed: items not equal.\n\0".as_ptr()) };
+            unsafe { printf("map_test1b failed: items not equal.\n\0".as_ptr() as *const i8) };
             unsafe { core::intrinsics::abort() };
         }
     }
 }
 fn main() {
-    //let int = std::hint::black_box(8);
-    //let boxed_int = std::hint::black_box(Box::new(8));
+    let int = std::hint::black_box(8);
+    let boxed_int = std::hint::black_box(Box::new(8));
     //let mut file = std::fs::File::create("foo.txt").unwrap();
-    test!(exchange_malloc_test);
-    /* 
-    test!(map_option_test);
+    //test!(exchange_malloc_test);
+    //test!(map_option_test);
     let mut string = String::with_capacity(100);
     string.push('H');
     string.push('e');
@@ -246,10 +242,9 @@ fn main() {
     string.push('\n');
     string.push('\0');
 
-    test!(collect_test);
+    //test!(collect_test);
     //test!(map_test);
     //std::hint::black_box(&string);
-    //unsafe { puts(string.as_ptr()) };
     if unsafe { printf("Testing some cool shit\n\0".as_ptr() as *const i8) } < 0{
         std::intrinsics::abort();
     }
@@ -257,31 +252,48 @@ fn main() {
 
     //std::hint::black_box(f);
     //std::io::stdout().write_all(b"hello world\n").unwrap();
-    exchange_malloc::test();
-   /*
     let owned = Box::new(black_box(&[0,1,2,3,4,5,6][..]));
     if owned.len() != 7 {
         unsafe { printf("Boxed slice size mismacth!\n\0".as_ptr() as *const i8) };
         unsafe { core::intrinsics::abort() };
     }
+    
     for (idx,val) in owned.iter().enumerate(){
         if idx != *val{
-            unsafe { printf("Slice impropely copied!\n\0".as_ptr() as *const i8) };
-            unsafe { core::intrinsics::abort() };
+            //unsafe { printf("Slice impropely copied %d %d!\n\0".as_ptr() as *const i8,idx,val) };
+            rustc_clr_interop_managed_call1_::<
+                "System.Console",
+                "System.Console",
+                false,
+                "WriteLine",
+                true,
+                (),
+                u64,
+            >(idx as u64);
+            rustc_clr_interop_managed_call1_::<
+                "System.Console",
+                "System.Console",
+                false,
+                "WriteLine",
+                true,
+                (),
+                u64,
+            >(*val as u64);
+            //unsafe { core::intrinsics::abort() };
         }
-    }
+    }/* 
     let owned = black_box("Test\n\0").to_owned();
     if owned.len() != 6 {
         unsafe { printf(owned.as_ptr() as *const i8) };
         unsafe { core::intrinsics::abort() };
     } else {
         unsafe { printf(owned.as_ptr() as *const i8) };
-    }; */
+    };*/
     //let s = format!("Hello!\n\0");
-    //unsafe{puts(s.as_ptr())};
+    //unsafe{printf(s.as_ptr() as *const i8)};
     //let s = format!("Hello??? WTF is going on???{}\n\0",black_box(65));
-    //unsafe{puts(s.as_ptr())};
-*/
-    //let val = std::hint::black_box(*boxed_int);
+    //unsafe{printf(s.as_ptr() as *const i8)};
+
+    let val = std::hint::black_box(*boxed_int);
     //let val = std::hint::black_box(string);
 }

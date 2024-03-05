@@ -1,17 +1,63 @@
 use crate::basic_block::BasicBlock;
+use crate::cil_tree::cil_node::CILNode;
 use crate::cil_tree::cil_root::CILRoot;
 use crate::method::MethodType;
 use crate::r#type::DotnetTypeRef;
 use crate::{
     access_modifier::AccessModifer,
+    add_method_from_trees,
     assembly::Assembly,
     cil::{CILOp, CallSite},
     function_sig::FnSig,
     method::Method,
     r#type::Type,
 };
+use crate::{gt, lt_un};
 use rustc_middle::ty::TyCtxt;
 mod casts;
+add_method_from_trees!(
+    bounds_check,
+    &[Type::USize, Type::USize],
+    &Type::USize,
+    vec![
+        BasicBlock::new(
+            vec![
+                CILRoot::BTrue {
+                    target: 1,
+                    sub_target: 0,
+                    ops: lt_un!(CILNode::LDArg(0), CILNode::LDArg(1))
+                }
+                .into(),
+                CILRoot::Throw(
+                    CILNode::NewObj {
+                        site: CallSite::boxed(
+                            Some(DotnetTypeRef::new(
+                                Some("System.Runtime"),
+                                "IndexOutOfRangeException"
+                            )),
+                            ".ctor".into(),
+                            FnSig::new(&[], &Type::Void),
+                            true
+                        ),
+                        args: [].into()
+                    }
+                    .into()
+                )
+                .into(),
+            ],
+            0,
+            None
+        ),
+        BasicBlock::new(
+            vec![CILRoot::Ret {
+                tree: CILNode::LDArg(0),
+            }
+            .into()],
+            1,
+            None
+        ),
+    ]
+);
 macro_rules! add_method {
     ($name:ident,$input:expr,$output:expr,$ops:expr) => {
         fn $name(asm: &mut Assembly) {
@@ -69,8 +115,10 @@ macro_rules! add_method_from_trees {
         }
     };
 }
+
 /// Inserts a small subset of libc and some standard types into an assembly.
 pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
+    bounds_check(asm);
     let c_void = Type::c_void(tyctx);
     asm.add_typedef(crate::r#type::TypeDef::new(
         AccessModifer::Public,

@@ -1,6 +1,6 @@
 use super::{pointed_type, PlaceTy};
-use crate::assert_morphic;
-use crate::cil::{CILOp, FieldDescriptor};
+use crate::{add, assert_morphic, call, conv_usize, ld_field, ldc_u64, mul};
+use crate::cil::{CILOp, CallSite, FieldDescriptor};
 use crate::cil_tree::cil_node::CILNode;
 use crate::function_sig::FnSig;
 use crate::place::{body_ty_is_by_adress, deref_op};
@@ -292,7 +292,7 @@ pub fn place_elem_body<'ctx>(
         }
         PlaceElem::ConstantIndex {
             offset,
-            min_length: _,
+            min_length,
             from_end,
         } => {
             let curr_ty = curr_ty
@@ -310,21 +310,31 @@ pub fn place_elem_body<'ctx>(
                         .as_dotnet()
                         .unwrap();
                     let desc = FieldDescriptor::new(
-                        slice,
+                        slice.clone(),
                         Type::Ptr(Type::Void.into()),
                         "data_pointer".into(),
                     );
-                    let addr = CILNode::Add(
-                        CILNode::LDField {
-                            addr: parrent_node.into(),
-                            field: desc.into(),
-                        }
-                        .into(),
-                        CILNode::Mul(
-                            index.into(),
-                            CILNode::ConvUSize(CILNode::SizeOf(inner_type.into()).into()).into(),
+                    let metadata = FieldDescriptor::new(slice, Type::USize, "metadata".into());
+                    let addr = add!(
+                        ld_field!(
+                            parrent_node.clone(),
+                            desc
+                        ),
+                        mul!(
+                            call!(
+                                CallSite::new(
+                                    None,
+                                    "bounds_check".into(),
+                                    FnSig::new(&[Type::USize, Type::USize], &Type::USize),
+                                    true
+                                ),
+                                [
+                                    ld_field!(parrent_node, metadata),
+                                    conv_usize!(ldc_u64!(*min_length))
+                                ]
+                            ),
+                            conv_usize!(CILNode::SizeOf(inner_type.into()))
                         )
-                        .into(),
                     );
                     if !body_ty_is_by_adress(inner) {
                         (

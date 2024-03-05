@@ -214,7 +214,7 @@ impl TyCache {
                     rustc_target::abi::TagEncoding::Direct => {
                         let (tag_type, offset) =
                             crate::utilis::adt::enum_tag_info(&layout.layout, tyctx);
-                        if tag_type != Type::Void{
+                        if tag_type != Type::Void {
                             fields.push(("value__".into(), tag_type));
                             explicit_offsets.push(0);
                         }
@@ -227,7 +227,7 @@ impl TyCache {
                     } => {
                         let (tag_type, offset) =
                             crate::utilis::adt::enum_tag_info(&layout.layout, tyctx);
-                        if tag_type != Type::Void{
+                        if tag_type != Type::Void {
                             fields.push(("value__".into(), tag_type));
                             explicit_offsets.push(*niche_start as u32);
                         }
@@ -280,13 +280,12 @@ impl TyCache {
             );
             let dref = DotnetTypeRef::new(None, &format!("{enum_name}/{variant_name}"));
             let variant_name: IString = format!("v_{variant_name}").into();
-           
+
             inner_types.push(inner);
             // TODO: handle 0-sized enum variants with fields propely. They WILL cause very unpredictable and wierd bugs.
-            if variant.fields.len() > 0{
+            if variant.fields.len() > 0 {
                 fields.push((variant_name, dref.into()));
             }
-          
         }
 
         TypeDef::new(

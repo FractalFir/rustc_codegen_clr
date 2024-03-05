@@ -1,10 +1,10 @@
 use super::{pointed_type, PlaceTy};
-use crate::cil::FieldDescriptor;
+use crate::cil::{CallSite, FieldDescriptor};
 use crate::cil_tree::cil_node::CILNode;
 use crate::cil_tree::cil_root::CILRoot;
 use crate::function_sig::FnSig;
 use crate::r#type::{pointer_to_is_fat, DotnetTypeRef, Type};
-use crate::{add, conv_usize, ld_field, ldc_u64, mul, size_of};
+use crate::{add, call, conv_usize, ld_field, ldc_u64, mul, size_of};
 
 use rustc_middle::mir::PlaceElem;
 use rustc_middle::ty::{FloatTy, Instance, IntTy, TyCtxt, TyKind, UintTy};
@@ -151,7 +151,7 @@ pub fn place_elem_set<'a>(
                 .expect("INVALID PLACE: Indexing into enum variant???");
             let index = ldc_u64!(*offset);
             assert!(!from_end, "Indexing slice form end");
-            println!("WARNING: ConstantIndex has required min_length of {min_length}, but bounds checking on const access not supported yet!");
+            
             match curr_ty.kind() {
                 TyKind::Slice(inner) => {
                     let inner = crate::utilis::monomorphize(&method_instance, *inner, ctx);
@@ -162,23 +162,43 @@ pub fn place_elem_set<'a>(
                         .as_dotnet()
                         .unwrap();
                     let desc = FieldDescriptor::new(
-                        slice,
+                        slice.clone(),
                         Type::Ptr(Type::Void.into()),
                         "data_pointer".into(),
+                    );
+                    let metadata = FieldDescriptor::new(slice, Type::USize, "metadata".into());
+                    let addr = add!(
+                        ld_field!(
+                            addr_calc.clone(),
+                            desc
+                        ),
+                        mul!(
+                            call!(
+                                CallSite::new(
+                                    None,
+                                    "bounds_check".into(),
+                                    FnSig::new(&[Type::USize, Type::USize], &Type::USize),
+                                    true
+                                ),
+                                [
+                                    ld_field!(addr_calc, metadata),
+                                    conv_usize!(ldc_u64!(*min_length))
+                                ]
+                            ),
+                            conv_usize!(CILNode::SizeOf(inner_type.into()))
+                        )
                     );
                     ptr_set_op(
                         super::PlaceTy::Ty(inner),
                         ctx,
                         &method_instance,
                         type_cache,
-                        add!(
-                            ld_field!(addr_calc, desc),
-                            mul!(conv_usize!(index), conv_usize!(size_of!(inner_type)))
-                        ),
+                        addr,
                         value_calc,
                     )
                 }
                 TyKind::Array(element, _length) => {
+                    println!("WARNING: ConstantIndex has required min_length of {min_length}, but bounds checking on const access not supported yet!");
                     let element = crate::utilis::monomorphize(&method_instance, *element, ctx);
                     let element = type_cache.type_from_cache(element, ctx, Some(method_instance));
                     let array_type =

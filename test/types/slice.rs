@@ -1,4 +1,4 @@
-#![feature(lang_items,adt_const_params,associated_type_defaults,core_intrinsics,start)]
+#![feature(lang_items,adt_const_params,associated_type_defaults,core_intrinsics,start,ascii_char)]
 #![allow(internal_features,incomplete_features,unused_variables,dead_code)]
 #![no_std]
 include!("../common.rs");
@@ -16,7 +16,24 @@ fn main(){
     slice[black_box(3)] = 'l' as u8;
     slice[black_box(4)] = 'o' as u8;
     slice[black_box(5)] = '.' as u8;
-    slice[black_box(6)] = 0;
+    slice[black_box(6)] = '\n' as u8;
+    slice[black_box(7)] = 0;
     unsafe{puts(ptr)};
-    black_box(slice);
+    black_box(&slice);
+    let oslice = "Hello, World\n\0";
+    test_eq!(oslice.len(),14);
+    let slice = slice.as_ascii();
+    let slice = if let Some(slice) = slice{
+        slice
+    }else{
+        unsafe{puts(oslice.as_ptr() as *const _ )};
+        for c in oslice.chars(){
+            test_eq!(c.is_ascii(),true);
+        }
+        test_eq!(0,1);
+        core::intrinsics::abort();
+    };
+    test_eq!(slice.len(),14);
+    test_eq!(slice[0],core::ascii::Char::from_u8(72).unwrap());
+    
 }
