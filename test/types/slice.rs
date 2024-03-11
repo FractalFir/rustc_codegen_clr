@@ -30,8 +30,13 @@ fn main(){
         for c in oslice.chars(){
             test_eq!(c.is_ascii(),true);
         }
-        test_eq!(0,1);
-        core::intrinsics::abort();
+       
+        if black_box(false){
+            loop{}
+        }
+        else{
+            core::intrinsics::abort();
+        }
     };
     test_eq!(slice.len(),14);
     test_eq!(slice[0],core::ascii::Char::from_u8(72).unwrap());

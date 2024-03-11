@@ -1,12 +1,39 @@
 use crate::{
-    add_method_from_trees,
-    assembly::Assembly,
-    basic_block::BasicBlock,
-    cil_tree::{cil_node::CILNode, cil_root::CILRoot},
-    conv_i16, conv_i32, conv_i64, conv_i8, conv_u16, conv_u32, conv_u64, conv_u8, gt, ldc_i32,
-    ldc_i64, ldc_u32, ldc_u64, lt,
-    r#type::Type,
+    add_method_from_trees, assembly::Assembly, basic_block::BasicBlock, cil_tree::{cil_node::CILNode, cil_root::CILRoot}, conv_i16, conv_i32, conv_i64, conv_i8, conv_u16, conv_u32, conv_u64, conv_u8, gt, ldc_i32, ldc_i64, ldc_u32, ldc_u64, lt, or, r#type::Type
 };
+add_method_from_trees!(
+    cast_i32_to_u64,
+    &[Type::I32],
+    &Type::U64,
+    vec![
+        BasicBlock::new(
+            vec![
+                CILRoot::BTrue {
+                    target: 1,
+                    sub_target: 0,
+                    ops: lt!(CILNode::LDArg(0), CILNode::LdcI32(0))
+                }
+                .into(),
+                CILRoot::Ret {
+                    tree: conv_u64!(CILNode::LDArg(0))
+                }
+                .into()
+            ],
+            0,
+            None
+        ),
+        BasicBlock::new(
+            vec![
+                CILRoot::Ret {
+                    tree: or!(conv_u64!(CILNode::LDArg(0)), conv_i64!(ldc_i32!(i32::MIN)))
+                }
+                .into()
+            ],
+            1,
+            None
+        ),
+    ]
+);
 add_method_from_trees!(
     cast_f32_u8,
     &[Type::F32],
@@ -776,4 +803,6 @@ pub fn casts(asm: &mut Assembly) {
     cast_f64_i16(asm);
     cast_f64_i32(asm);
     cast_f64_i64(asm);
+    // Int casts
+    cast_i32_to_u64(asm);
 }

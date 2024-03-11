@@ -198,7 +198,7 @@ pub fn place_elem_set<'a>(
                     )
                 }
                 TyKind::Array(element, _length) => {
-                    println!("WARNING: ConstantIndex has required min_length of {min_length}, but bounds checking on const access not supported yet!");
+                    //println!("WARNING: ConstantIndex has required min_length of {min_length}, but bounds checking on const access not supported yet!");
                     let element = crate::utilis::monomorphize(&method_instance, *element, ctx);
                     let element = type_cache.type_from_cache(element, ctx, Some(method_instance));
                     let array_type =

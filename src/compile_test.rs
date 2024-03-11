@@ -778,6 +778,13 @@ run_test! {fuzz,test0,stable}
 run_test! {fuzz,test1,stable}
 
 run_test! {fuzz,fuzz0,unstable}
+
+run_test! {cast,i32_to_usize,stable}
+run_test! {cast,i32_to_u64,stable}
+run_test! {cast,i16_to_u64,stable}
+run_test! {cast,i8_to_u64,stable}
+
+
 compare_tests! {fuzz,fuzz1,unstable}
 compare_tests! {fuzz,fuzz2,stable}
 compare_tests! {fuzz,fuzz3,stable}
@@ -890,6 +897,7 @@ compare_tests! {fuzz,fuzz100,unstable}
 
 run_test! {fuzz,fail0,stable}
 run_test! {fuzz,fail1,stable}
+compare_tests! {fuzz,fail3,unstable}
 
 cargo_test! {hello_world,stable}
 cargo_test! {std_hello_world,stable}

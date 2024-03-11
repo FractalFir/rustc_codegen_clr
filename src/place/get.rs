@@ -218,7 +218,7 @@ fn place_elem_get<'a>(
                     let array_type =
                         type_cache.type_from_cache(curr_ty, tyctx, Some(method_instance));
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
-                    eprintln!("WARNING: ConstantIndex has required min_length of {min_length}, but bounds checking on const access not supported yet!");
+                    //eprintln!("WARNING: ConstantIndex has required min_length of {min_length}, but bounds checking on const access not supported yet!");
                     CILNode::Call {
                         site: crate::cil::CallSite::new(
                             Some(array_dotnet),
