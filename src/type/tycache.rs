@@ -229,7 +229,10 @@ impl TyCache {
                             crate::utilis::adt::enum_tag_info(&layout.layout, tyctx);
                         if tag_type != Type::Void {
                             fields.push(("value__".into(), tag_type));
-                            explicit_offsets.push(*niche_start as u32);
+                            /*if *niche_start as u64 > layout.layout.size().bytes() {
+                                panic!("Enum niche offset {niche_start} is bigger than {size}",size =  layout.layout.size().bytes());
+                            }*/
+                            explicit_offsets.push(*tag_field as u32);
                         }
                         offset
                     }
@@ -262,8 +265,10 @@ impl TyCache {
                 })
                 .expect("Could not get type layout!");
             let field_offset_iter = crate::utilis::adt::FieldOffsetIterator::fields(&layout.layout);
+           
+           
             // TODO: fix enums
-            let explicit_offsets: Vec<_> = field_offset_iter.collect();
+    
             //assert_eq!(explicit_offsets.len(),variant.fields.len());
 
             //variants.push((variant_name, variant_fields));

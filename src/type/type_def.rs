@@ -121,7 +121,7 @@ impl TypeDef {
         extends: Option<DotnetTypeRef>,
         explict_size: Option<u64>,
     ) -> Self {
-        Self {
+        let res = Self {
             access,
             name,
             inner_types,
@@ -131,11 +131,22 @@ impl TypeDef {
             gargc,
             extends,
             explict_size,
-        }
+        };
+        //TODO:consider having this enabled only for debug
+        res.sanity_check();
+        res
     }
 
     pub fn explict_size(&self) -> Option<u64> {
         self.explict_size
+    }
+    
+    fn sanity_check(&self) {
+        if let Some(size) = self.explict_size(){
+            self.explicit_offsets().iter().flat_map(|vec|*vec).for_each(|offset|if *offset > size as u32{
+                panic!("Sanity check failed! The size of type {name} is {size}, yet it has a filed at offset {offset}",name = self.name);
+            });
+        }
     }
 }
 impl From<TypeDef> for Type {

@@ -12,6 +12,7 @@ fn fn9(mut _1: Adt44, mut _5: [i64; ARR_SIZE]) {
     core::hint::black_box(())
 }
 pub fn main() {
+  
     return fn9(
         Adt44::Variant1 {
             fld0: <[i64; ARR_SIZE]>::default(),
