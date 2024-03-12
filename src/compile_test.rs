@@ -777,7 +777,7 @@ run_test! {alloc,abox,stable}
 run_test! {fuzz,test0,stable}
 run_test! {fuzz,test1,stable}
 
-run_test! {fuzz,fuzz0,unstable}
+
 
 run_test! {cast,i32_to_usize,stable}
 run_test! {cast,i32_to_u64,stable}
@@ -786,6 +786,7 @@ run_test! {cast,i8_to_u64,stable}
 
 
 compare_tests! {fuzz,fuzz1,unstable}
+compare_tests! {fuzz,fuzz0,unstable}
 compare_tests! {fuzz,fuzz2,stable}
 compare_tests! {fuzz,fuzz3,stable}
 compare_tests! {fuzz,fuzz4,stable}
@@ -856,7 +857,7 @@ compare_tests! {fuzz,fuzz62,stable}
 compare_tests! {fuzz,fuzz63,unstable}
 compare_tests! {fuzz,fuzz64,unstable}
 compare_tests! {fuzz,fuzz65,unstable}
-compare_tests! {fuzz,fuzz66,unstable}
+compare_tests! {fuzz,fuzz66,stable}
 compare_tests! {fuzz,fuzz67,unstable}
 compare_tests! {fuzz,fuzz68,unstable}
 compare_tests! {fuzz,fuzz69,unstable}

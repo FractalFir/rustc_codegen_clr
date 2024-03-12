@@ -420,8 +420,10 @@ pub fn int_to_float(src: Type, target: Type, parrent: CILNode) -> CILNode {
     } else {
         match (&src, &target) {
             (Type::U32 | Type::U64, Type::F32) => conv_f32!(conv_f64_un!(parrent)),
+            (Type::USize, Type::F32) => conv_f32!(conv_f64_un!(conv_u64!(parrent))),
             (_, Type::F32) => conv_f32!(parrent),
             (Type::U32 | Type::U64, Type::F64) => conv_f64_un!(parrent),
+            (Type::USize, Type::F64) => conv_f64_un!(conv_u64!(parrent)),
             (_, Type::F64) => conv_f64!(parrent),
             _ => todo!("Can't  cast {src:?} to {target:?} yet!"),
         }
