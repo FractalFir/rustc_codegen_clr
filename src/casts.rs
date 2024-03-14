@@ -57,7 +57,7 @@ pub fn int_to_int(src: Type, target: Type, operand: CILNode) -> CILNode {
             [conv_i8!(operand)]
         ),
         // Fixes sign casts
-        (Type::I32, Type::USize) =>conv_usize!(call!(
+        (Type::I32, Type::USize) => conv_usize!(call!(
             CallSite::new(
                 None,
                 "cast_i32_to_u64".into(),
@@ -66,7 +66,7 @@ pub fn int_to_int(src: Type, target: Type, operand: CILNode) -> CILNode {
             ),
             [operand]
         )),
-        (Type::I32, Type::U64) =>call!(
+        (Type::I32, Type::U64) => call!(
             CallSite::new(
                 None,
                 "cast_i32_to_u64".into(),
@@ -75,7 +75,7 @@ pub fn int_to_int(src: Type, target: Type, operand: CILNode) -> CILNode {
             ),
             [operand]
         ),
-        (Type::I16, Type::USize) =>conv_usize!(call!(
+        (Type::I16, Type::USize) => conv_usize!(call!(
             CallSite::new(
                 None,
                 "cast_i32_to_u64".into(),
@@ -84,7 +84,7 @@ pub fn int_to_int(src: Type, target: Type, operand: CILNode) -> CILNode {
             ),
             [operand]
         )),
-        (Type::I16, Type::U64) =>call!(
+        (Type::I16, Type::U64) => call!(
             CallSite::new(
                 None,
                 "cast_i32_to_u64".into(),
@@ -93,7 +93,7 @@ pub fn int_to_int(src: Type, target: Type, operand: CILNode) -> CILNode {
             ),
             [operand]
         ),
-        (Type::I8, Type::USize) =>conv_usize!(call!(
+        (Type::I8, Type::USize) => conv_usize!(call!(
             CallSite::new(
                 None,
                 "cast_i32_to_u64".into(),
@@ -102,7 +102,7 @@ pub fn int_to_int(src: Type, target: Type, operand: CILNode) -> CILNode {
             ),
             [operand]
         )),
-        (Type::I8, Type::U64) =>call!(
+        (Type::I8, Type::U64) => call!(
             CallSite::new(
                 None,
                 "cast_i32_to_u64".into(),

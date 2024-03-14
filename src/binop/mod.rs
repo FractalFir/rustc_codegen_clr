@@ -85,7 +85,7 @@ pub(crate) fn binop_unchecked<'tyctx>(
     }
 }
 /// Preforms unchecked addition
-fn add_unchecked<'tyctx>(
+pub fn add_unchecked<'tyctx>(
     ty_a: Ty<'tyctx>,
     ty_b: Ty<'tyctx>,
     tyctx: TyCtxt<'tyctx>,

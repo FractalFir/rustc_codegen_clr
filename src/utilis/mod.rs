@@ -119,7 +119,12 @@ pub fn enum_field_descriptor<'ctx>(
         .iter()
         .nth(field_idx as usize)
         .expect("No enum field with provided index!");
-    let field_name = crate::r#type::escape_field_name(&field.name.to_string());
+    let variant_name: IString = variant.name.to_string().into();
+    let field_name = format!(
+        "{variant_name}_{fname}",
+        fname = crate::r#type::escape_field_name(&field.name.to_string())
+    )
+    .into();
     let field_ty = field.ty(ctx, subst);
     let field_ty = crate::utilis::monomorphize(&method_instance, field_ty, ctx);
     let field_ty = type_cache.type_from_cache(field_ty, ctx, Some(method_instance));
@@ -127,16 +132,8 @@ pub fn enum_field_descriptor<'ctx>(
         .type_from_cache(owner_ty, ctx, Some(method_instance))
         .as_dotnet()
         .expect("Error: tried to set a field of a non-object type!");
-    assert!(owner_ty.asm().is_none(), "External enum!");
-    let variant_name = variant.name.to_string();
-    let enum_variant_dotnet = DotnetTypeRef::new(
-        None,
-        &format!(
-            "{owner_name}/{variant_name}",
-            owner_name = owner_ty.name_path()
-        ),
-    );
-    FieldDescriptor::new(enum_variant_dotnet, field_ty, field_name)
+
+    FieldDescriptor::new(owner_ty, field_ty, field_name)
 }
 pub fn field_descrptor<'tyctx>(
     owner_ty: Ty<'tyctx>,

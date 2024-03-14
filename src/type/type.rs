@@ -127,6 +127,7 @@ impl DotnetTypeRef {
         .with_valuetype(false)
     }
     pub fn new(assembly: Option<&str>, name_path: &str) -> Self {
+        assert!(!name_path.contains('/'));
         Self {
             assembly: assembly.map(std::convert::Into::into),
             name_path: name_path.into(),
@@ -154,11 +155,7 @@ impl DotnetTypeRef {
         let name = crate::r#type::type_def::arr_name(length, &element);
         DotnetTypeRef::new(None, &name)
     }
-    pub fn append_path(&mut self, append: &str) {
-        let mut name_path = self.name_path.to_string();
-        name_path.push_str(append);
-        self.name_path = name_path.into();
-    }
+
     pub fn asm(&self) -> Option<&str> {
         self.assembly.as_ref().map(std::convert::AsRef::as_ref)
     }

@@ -5,7 +5,7 @@ use crate::{
     operand::handle_operand,
     place::place_get,
     r#type::{DotnetTypeRef, TyCache, Type},
-    utilis::{field_name, monomorphize},
+    utilis::{adt::set_discr, field_name, monomorphize},
 };
 use rustc_index::IndexVec;
 use rustc_middle::mir::{AggregateKind, Operand, Place};
@@ -276,16 +276,9 @@ fn aggregate_adt<'tyctx>(
                 type_cache,
             );
 
-            let mut variant_type = adt_type_ref.clone(); //adt_type.variant_type(variant).expect("Can't get variant index");
             let variant_name = crate::utilis::variant_name(adt_type, variant_idx);
-            variant_type.append_path(&format!("/{variant_name}"));
-            // Get variant adress
-            let variant_field_desc = FieldDescriptor::new(
-                adt_type_ref.clone(),
-                Type::DotnetType(Box::new(variant_type.clone())),
-                format!("v_{variant_name}").into(),
-            );
-            let variant_address = ld_field_address!(adt_adress_ops.clone(), variant_field_desc);
+
+            let variant_address = adt_adress_ops.clone();
             let mut sub_trees = Vec::new();
             let enum_variant = adt
                 .variants()
@@ -293,8 +286,11 @@ fn aggregate_adt<'tyctx>(
                 .nth(variant_idx as usize)
                 .expect("Can't get variant index");
             for (field, field_value) in enum_variant.fields.iter().zip(fields.iter()) {
-                let field_name = field.name.to_string();
-                let field_name = crate::r#type::escape_field_name(&field_name);
+                let field_name = format!(
+                    "{variant_name}_{fname}",
+                    fname = crate::r#type::escape_field_name(&field.name.to_string())
+                )
+                .into();
                 let field_type = type_cache.type_from_cache(
                     field.ty(tyctx, subst),
                     tyctx,
@@ -308,7 +304,7 @@ fn aggregate_adt<'tyctx>(
                 sub_trees.push(CILRoot::SetField {
                     addr: variant_address.clone(),
                     value: field_value.1.clone(),
-                    desc: FieldDescriptor::new(variant_type.clone(), field_type, field_name),
+                    desc: FieldDescriptor::new(adt_type_ref.clone(), field_type, field_name),
                 });
             }
             // Set tag
@@ -320,18 +316,15 @@ fn aggregate_adt<'tyctx>(
                     })
                     .expect("Could not get type layout!");
                 let (disrc_type, _) = crate::utilis::adt::enum_tag_info(&layout.layout, tyctx);
-
-                let field_name = "value__".into();
                 if disrc_type != Type::Void {
-                    sub_trees.push(CILRoot::SetField {
-                        addr: adt_adress_ops,
-                        value: crate::casts::int_to_int(
-                            Type::I32,
-                            disrc_type.clone(),
-                            CILNode::LdcU32(variant_idx),
-                        ),
-                        desc: FieldDescriptor::new(adt_type_ref, disrc_type, field_name),
-                    });
+                    sub_trees.push(set_discr(
+                        &layout.layout,
+                        variant_idx.into(),
+                        adt_adress_ops,
+                        adt_type_ref,
+                        tyctx,
+                        layout.ty,
+                    ))
                 }
             }
             CILNode::SubTrees(

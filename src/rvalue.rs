@@ -451,15 +451,7 @@ pub fn handle_rvalue<'tcx>(
                 crate::casts::int_to_int(
                     disrc_type.clone(),
                     target,
-                    CILNode::LDField {
-                        field: crate::cil::FieldDescriptor::new(
-                            owner,
-                            disrc_type,
-                            "value__".into(),
-                        )
-                        .into(),
-                        addr: addr.into(),
-                    },
+                    crate::utilis::adt::get_discr(&layout.layout, addr, owner, tyctx, owner_ty)
                 )
             }
         }

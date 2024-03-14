@@ -1,5 +1,6 @@
 #![feature(core_intrinsics)]
 #![allow(internal_features, dead_code)]
+// https://dotnetfiddle.net/KHr6Y1
 pub fn main() {
     let adt = Adt29 {
         fld2: 0x42,
@@ -17,6 +18,6 @@ pub struct Adt29 {
 }
 
 pub enum Adt18 {
-    Variant0 { fld0: [u64; 3], fld4: u128 },
+    Variant0 { fld0: (u64,u64,u64), fld4: u128 },
     Variant1 { fld0: u8 },
 }

@@ -40,28 +40,14 @@ pub fn handle_statement<'tcx>(
                 panic!();
             };
             //ops.push();
-            Some(
-                CILRoot::SetField {
-                    desc: crate::cil::FieldDescriptor::new(
-                        owner,
-                        disrc_type.clone(),
-                        "value__".into(),
-                    ),
-                    addr: crate::place::place_adress(
-                        place,
-                        tyctx,
-                        method,
-                        method_instance,
-                        type_cache,
-                    ),
-                    value: crate::casts::int_to_int(
-                        Type::I32,
-                        disrc_type,
-                        ldc_i32!(variant_index.as_u32() as i32),
-                    ),
-                }
-                .into(),
-            )
+            
+            Some(crate::utilis::adt::set_discr(&layout.layout, *variant_index,  crate::place::place_adress(
+                place,
+                tyctx,
+                method,
+                method_instance,
+                type_cache,
+            ), owner, tyctx, owner_ty).into())
         }
         StatementKind::Assign(palce_rvalue) => {
             let place = palce_rvalue.as_ref().0;

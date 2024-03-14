@@ -3,6 +3,7 @@ use crate::{
     function_sig::FnSig,
     r#type::Type,
     IString,
+    call,
 };
 
 use super::{append_vec, cil_root::CILRoot};
@@ -125,6 +126,14 @@ pub enum CILNode {
     },
 }
 impl CILNode {
+    pub fn select(tpe:Type, a:CILNode,b:CILNode,predictate:CILNode)->Self{
+        match tpe{
+            Type::USize | Type::ISize | Type::Ptr(_) => call!(CallSite::new(None,"select_usize".into(),FnSig::new(&[Type::USize,Type::USize,Type::Bool],&Type::USize),true),[
+                a,b,predictate
+            ]),
+            _=>todo!("Can't select type {tpe:?}"),
+        }
+    }
     fn opt_children(&mut self) {
         match self {
             CILNode::LDLoc(_) => (),

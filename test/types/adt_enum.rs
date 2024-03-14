@@ -47,11 +47,14 @@ fn main(){
 fn complex_function2(arg1: &CustomEnum) -> i32 {
     match arg1 {
         CustomEnum::Variant1(value) => {
-            Put::putnl(*value);
             let arg_slice = unsafe{core::slice::from_raw_parts(arg1 as *const _ as *const u8,core::mem::size_of::<CustomEnum>())};
             for val in arg_slice.iter(){
                 Put::putnl(*val);
             }
+            let arg_ptr = arg1 as *const _ as *const u8;
+           
+            Put::putnl(*value);
+            test_eq!(*value,118);
             *value
         }
         CustomEnum::Variant2(value) => {

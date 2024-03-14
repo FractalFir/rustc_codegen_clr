@@ -1,10 +1,10 @@
 use super::{pointed_type, PlaceTy};
-use crate::{add, assert_morphic, call, conv_usize, ld_field, ldc_u64, mul};
 use crate::cil::{CILOp, CallSite, FieldDescriptor};
 use crate::cil_tree::cil_node::CILNode;
 use crate::function_sig::FnSig;
 use crate::place::{body_ty_is_by_adress, deref_op};
 use crate::r#type::Type;
+use crate::{add, assert_morphic, call, conv_usize, ld_field, ldc_u64, mul};
 
 use rustc_middle::mir::PlaceElem;
 use rustc_middle::ty::{Instance, Ty, TyCtxt, TyKind};
@@ -153,47 +153,15 @@ pub fn place_elem_body<'ctx>(
                 .as_ty()
                 .expect("Can't get enum variant of an enum varaint!");
             let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
-            let curr_dotnet_type =
-                type_cache.type_from_cache(curr_type, tyctx, Some(method_instance));
-            let curr_dotnet_type =
-                if let crate::r#type::Type::DotnetType(dotnet_type) = curr_dotnet_type {
-                    dotnet_type.as_ref().clone()
-                } else {
-                    panic!();
-                };
-            let variant_name = symbol
-                .unwrap_or_else(
-                    || {
-                        match curr_ty.kind() {
-                            TyKind::Adt(def, _) => def,
-                            _ => todo!(),
-                        }
-                        .variants()
-                        .iter()
-                        .nth(variant.as_u32() as usize)
-                        .unwrap()
-                        .name
-                    }, //format!("v{variant}", variant = variant.as_u32())
-                )
-                .to_string();
-
-            let field_name = format!("v_{variant_name}").into();
-            let _curr_type_name = (curr_dotnet_type).name_path();
-            let mut field_type = curr_dotnet_type.clone();
-            field_type.append_path(&format!("/{variant_name}"));
-            let field_desc = FieldDescriptor::boxed(
-                curr_dotnet_type.clone(),
-                crate::r#type::Type::DotnetType(Box::new(field_type)),
-                field_name,
-            );
             let variant_type = PlaceTy::EnumVariant(curr_type, variant.as_u32());
-            (
+            /*(
                 variant_type,
                 CILNode::LDFieldAdress {
                     field: field_desc,
                     addr: parrent_node.into(),
                 },
-            )
+            )*/
+            (variant_type, parrent_node)
         }
         PlaceElem::Index(index) => {
             let curr_ty = curr_ty
@@ -316,10 +284,7 @@ pub fn place_elem_body<'ctx>(
                     );
                     let metadata = FieldDescriptor::new(slice, Type::USize, "metadata".into());
                     let addr = add!(
-                        ld_field!(
-                            parrent_node.clone(),
-                            desc
-                        ),
+                        ld_field!(parrent_node.clone(), desc),
                         mul!(
                             call!(
                                 CallSite::new(

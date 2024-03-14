@@ -241,15 +241,19 @@ impl TyCache {
                 //todo!("Mult-variant enum!"),
             }
         };
-        explicit_offsets.extend(adt.variants().iter().map(|_| variant_offset));
+
         //let mut inner_types = vec![];
         //let mut variants = vec![];
         let mut inner_types = vec![];
-        for variant in adt.variants() {
+        for (vidx, variant) in adt.variants().iter().enumerate() {
             let variant_name: IString = variant.name.to_string().into();
             let mut variant_fields = vec![];
             for field in &variant.fields {
-                let name = escape_field_name(&field.name.to_string());
+                let name = format!(
+                    "{variant_name}_{fname}",
+                    fname = escape_field_name(&field.name.to_string())
+                )
+                .into();
                 let field_ty = self.type_from_cache(field.ty(tyctx, subst), tyctx, method);
                 variant_fields.push((name, field_ty));
             }
@@ -258,39 +262,38 @@ impl TyCache {
                     .unwrap()
                     .unwrap()
                     .ty(tyctx, ParamEnv::reveal_all());
-            let layout = tyctx
-                .layout_of(rustc_middle::ty::ParamEnvAnd {
-                    param_env: ParamEnv::reveal_all(),
-                    value: variant_ty,
-                })
-                .expect("Could not get type layout!");
-            let field_offset_iter = crate::utilis::adt::FieldOffsetIterator::fields(&layout.layout);
-           
-           
+
+            let field_offset_iter =
+                crate::utilis::adt::enum_variant_offsets(adt, layout.layout, vidx);
+
             // TODO: fix enums
-    
+
             //assert_eq!(explicit_offsets.len(),variant.fields.len());
 
             //variants.push((variant_name, variant_fields));
+            /*
             let inner = TypeDef::new(
                 access,
                 variant_name.clone(),
                 vec![],
                 variant_fields,
                 vec![],
-                None, //Some(explicit_offsets),
+                Some(field_offset_iter.collect()),
                 0,
                 None,
                 Some(layout.layout.size().bytes()),
             );
+
             let dref = DotnetTypeRef::new(None, &format!("{enum_name}/{variant_name}"));
             let variant_name: IString = format!("v_{variant_name}").into();
 
-            inner_types.push(inner);
+            //inner_types.push(inner);
             // TODO: handle 0-sized enum variants with fields propely. They WILL cause very unpredictable and wierd bugs.
             if variant.fields.len() > 0 {
                 fields.push((variant_name, dref.into()));
-            }
+            }*/
+            fields.extend(variant_fields);
+            explicit_offsets.extend(field_offset_iter);
         }
 
         TypeDef::new(

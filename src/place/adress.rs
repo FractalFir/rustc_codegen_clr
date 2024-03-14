@@ -152,6 +152,7 @@ pub fn place_elem_adress<'ctx>(
                 }
             }
         },
+        /*
         PlaceElem::Downcast(symbol, _) => {
             let curr_type = curr_type
                 .as_ty()
@@ -179,7 +180,7 @@ pub fn place_elem_adress<'ctx>(
                 addr: addr_calc.into(),
                 field: field_desc,
             }
-        }
+        }*/
         PlaceElem::Index(index) => {
             let curr_ty = curr_type
                 .as_ty()

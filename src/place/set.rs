@@ -151,7 +151,7 @@ pub fn place_elem_set<'a>(
                 .expect("INVALID PLACE: Indexing into enum variant???");
             let index = ldc_u64!(*offset);
             assert!(!from_end, "Indexing slice form end");
-            
+
             match curr_ty.kind() {
                 TyKind::Slice(inner) => {
                     let inner = crate::utilis::monomorphize(&method_instance, *inner, ctx);
@@ -168,10 +168,7 @@ pub fn place_elem_set<'a>(
                     );
                     let metadata = FieldDescriptor::new(slice, Type::USize, "metadata".into());
                     let addr = add!(
-                        ld_field!(
-                            addr_calc.clone(),
-                            desc
-                        ),
+                        ld_field!(addr_calc.clone(), desc),
                         mul!(
                             call!(
                                 CallSite::new(

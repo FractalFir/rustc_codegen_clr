@@ -777,13 +777,10 @@ run_test! {alloc,abox,stable}
 run_test! {fuzz,test0,stable}
 run_test! {fuzz,test1,stable}
 
-
-
 run_test! {cast,i32_to_usize,stable}
 run_test! {cast,i32_to_u64,stable}
 run_test! {cast,i16_to_u64,stable}
 run_test! {cast,i8_to_u64,stable}
-
 
 compare_tests! {fuzz,fuzz1,unstable}
 compare_tests! {fuzz,fuzz0,unstable}
