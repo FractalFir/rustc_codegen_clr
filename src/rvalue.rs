@@ -451,7 +451,7 @@ pub fn handle_rvalue<'tcx>(
                 crate::casts::int_to_int(
                     disrc_type.clone(),
                     target,
-                    crate::utilis::adt::get_discr(&layout.layout, addr, owner, tyctx, owner_ty)
+                    crate::utilis::adt::get_discr(&layout.layout, addr, owner, tyctx, owner_ty),
                 )
             }
         }

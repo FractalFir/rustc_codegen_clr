@@ -534,7 +534,7 @@ impl CILOp {
 }
 #[cfg(test)]
 use crate::method::MethodType;
-
+/*
 #[test]
 fn test_tmp_locals() {
     use crate::method::Method;
@@ -581,3 +581,4 @@ fn test_tmp_locals() {
         "Methods match after temporary allocation."
     );
 }
+ */

@@ -1,10 +1,11 @@
-use crate::cil::CILOp;
+use crate::{cil::CILOp, r#type::Type};
 
 use self::cil_root::CILRoot;
 
 pub mod cil_node;
 pub mod cil_root;
-#[derive(Clone, Debug)]
+use serde::{Deserialize, Serialize};
+#[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 pub struct CILTree {
     tree: CILRoot,
 }
@@ -37,6 +38,14 @@ impl CILTree {
 
     pub fn opt(&mut self) {
         self.tree.opt()
+    }
+
+    pub(crate) fn allocate_tmps(&mut self, locals: &mut Vec<(Option<Box<str>>, Type)>) {
+        self.tree.allocate_tmps(None,locals);
+    }
+    
+    pub(crate) fn resolve_global_allocations(&mut self, arg: &mut crate::assembly::Assembly) {
+        self.tree.resolve_global_allocations(arg);
     }
 }
 pub fn append_vec(mut vec: Vec<CILOp>, by: CILOp) -> Vec<CILOp> {

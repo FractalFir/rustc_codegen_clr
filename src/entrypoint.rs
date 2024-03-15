@@ -49,15 +49,22 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
         && entrypoint.signature().output() == &Type::Void
     {
         let sig = FnSig::new(&[], &Type::Void);
-        let ops = vec![CILOp::Call(Box::new(entrypoint.clone())), CILOp::Ret];
-        let mut method = Method::new_empty(
+        let mut method = Method::new(
             crate::access_modifier::AccessModifer::Public,
             MethodType::Static,
             sig,
             "entrypoint",
             vec![],
+            vec![BasicBlock::new(
+                vec![CILRoot::Ret {
+                    tree: call!(entrypoint.clone(), []),
+                }
+                .into()],
+                0,
+                None,
+            )],
         );
-        method.set_ops(ops);
+
         method.add_attribute(crate::method::Attribute::EntryPoint);
         method
     } else {

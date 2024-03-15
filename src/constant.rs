@@ -1,7 +1,5 @@
 use crate::{
-    cil::{CILOp, CallSite, FieldDescriptor, StaticFieldDescriptor},
-    cil_tree::cil_node::CILNode,
-    r#type::{DotnetTypeRef, TyCache, Type},
+    cil::{CILOp, CallSite, FieldDescriptor, StaticFieldDescriptor}, cil_tree::{cil_node::CILNode, cil_root::CILRoot}, conv_usize, ldc_u64, r#type::{DotnetTypeRef, TyCache, Type}
 };
 use rustc_abi::Size;
 use rustc_middle::mir::{
@@ -79,14 +77,7 @@ fn load_const_value<'ctx>(
         ConstValue::ZeroSized => {
             let tpe = crate::utilis::monomorphize(&method_instance, const_ty, tyctx);
             let tpe = tycache.type_from_cache(tpe, tyctx, Some(method_instance));
-            CILNode::RawOpsParrentless {
-                ops: [
-                    CILOp::NewTMPLocal(tpe.into()),
-                    CILOp::LoadTMPLocal,
-                    CILOp::FreeTMPLocal,
-                ]
-                .into(),
-            }
+            CILNode::TemporaryLocal(Box::new((tpe,[].into(),CILNode::LoadTMPLocal)))
         }
         ConstValue::Slice { data, meta } => {
             let slice_type = tycache.type_from_cache(const_ty, tyctx, Some(method_instance));
@@ -102,21 +93,10 @@ fn load_const_value<'ctx>(
             let alloc_id = tyctx.reserve_and_set_memory_alloc(data);
             let alloc_id: u64 = crate::utilis::alloc_id_to_u64(alloc_id);
 
-            CILNode::RawOpsParrentless {
-                ops: [
-                    CILOp::NewTMPLocal(slice_type.into()),
-                    CILOp::LoadAddresOfTMPLocal,
-                    CILOp::LdcI64(meta as i64),
-                    CILOp::ConvUSize(false),
-                    CILOp::STField(metadata_field.into()),
-                    CILOp::LoadAddresOfTMPLocal,
-                    CILOp::LoadGlobalAllocPtr { alloc_id },
-                    CILOp::STField(ptr_field.into()),
-                    CILOp::LoadTMPLocal,
-                    CILOp::FreeTMPLocal,
-                ]
-                .into(),
-            }
+            CILNode::TemporaryLocal(Box::new((slice_type.into(),[
+                CILRoot::SetField { addr: CILNode::LoadAddresOfTMPLocal, value: conv_usize!(ldc_u64!(meta as u64)), desc: metadata_field.into() },
+                CILRoot::SetField { addr: CILNode::LoadAddresOfTMPLocal, value: CILNode::LoadGlobalAllocPtr { alloc_id }, desc: ptr_field.into() }
+            ].into(),CILNode::LoadTMPLocal)))
         }
         ConstValue::Indirect { alloc_id, offset } => {
             create_const_from_data(
@@ -158,6 +138,7 @@ fn load_const_scalar<'ctx>(
                     if name == "__rust_alloc_error_handler_should_panic"
                         || name == "__rust_no_alloc_shim_is_unstable"
                     {
+                        /* 
                         return CILNode::RawOpsParrentless {
                             ops: [
                                 CILOp::LDStaticField(
@@ -170,10 +151,11 @@ fn load_const_scalar<'ctx>(
                                 CILOp::ConvUSize(false),
                                 CILOp::FreeTMPLocal,
                             ]
-                            .into(),
-                        };
+                            .into(),};*/
+                            todo!();
+                        
                     }
-                    if name == "environ" {
+                    if name == "environ" {/* 
                         return CILNode::RawOpsParrentless {
                             ops: [
                                 CILOp::LDStaticField(
@@ -191,7 +173,8 @@ fn load_const_scalar<'ctx>(
                                 CILOp::FreeTMPLocal,
                             ]
                             .into(),
-                        };
+                        };*/
+                        todo!();
                     }
                     let attrs = tyctx.codegen_fn_attrs(def_id);
 

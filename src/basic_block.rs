@@ -10,13 +10,14 @@ use rustc_middle::{
     mir::{BasicBlocks, Body, TerminatorKind},
     ty::{Instance, InstanceDef, TyCtxt},
 };
-#[derive(Clone, Debug)]
+use serde::{Deserialize, Serialize};
+#[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 pub struct BasicBlock {
     trees: Vec<CILTree>,
     id: u32,
     handler: Option<Handler>,
 }
-#[derive(Clone, Debug)]
+#[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 pub enum Handler {
     RawID(u32),
     Blocks(Vec<BasicBlock>),
@@ -235,7 +236,7 @@ impl BasicBlock {
         }
         ops
     }
-    pub fn flatten(&self) -> Vec<CILOp> {
+    pub fn into_ops(&self) -> Vec<CILOp> {
         self.flatten_inner(self.id(), 0)
     }
 

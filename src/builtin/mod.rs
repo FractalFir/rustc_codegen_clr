@@ -12,7 +12,7 @@ use crate::{
     method::Method,
     r#type::Type,
 };
-use crate::{gt, lt_un};
+use crate::{call, gt, lt_un};
 use rustc_middle::ty::TyCtxt;
 mod casts;
 add_method_from_trees!(
@@ -140,7 +140,6 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     ]));*/
     //rust_slice(asm);
     io(asm);
-    unlikely(asm);
     casts::casts(asm);
     //malloc(asm);
     let mut marshal = DotnetTypeRef::new(
@@ -167,7 +166,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
         CILOp::Ret,
     ]);
     asm.add_method(malloc);*/
-    let mut realloc = Method::new_empty(
+    let mut realloc = Method::new(
         AccessModifer::Private,
         MethodType::Static,
         FnSig::new(
@@ -176,18 +175,24 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
         ),
         "realloc",
         vec![],
+        vec![BasicBlock::new(
+            vec![CILRoot::Ret {
+                tree: call!(
+                    CallSite::new(
+                        marshal.clone(),
+                        "ReAllocHGlobal".into(),
+                        FnSig::new(&[Type::ISize, Type::ISize], &Type::ISize),
+                        true,
+                    ),
+                    [CILNode::LDArg(0), CILNode::LDArg(1)]
+                ),
+            }
+            .into()],
+            0,
+            None,
+        )],
     );
-    realloc.set_ops(vec![
-        CILOp::LDArg(0),
-        CILOp::LDArg(1),
-        CILOp::Call(CallSite::boxed(
-            marshal.clone(),
-            "ReAllocHGlobal".into(),
-            FnSig::new(&[Type::ISize, Type::ISize], &Type::ISize),
-            true,
-        )),
-        CILOp::Ret,
-    ]);
+
     asm.add_method(realloc);
     let mut native_mem = DotnetTypeRef::new(
         Some("System.Runtime.InteropServices"),
@@ -195,59 +200,88 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     );
     native_mem.set_valuetype(false);
     let native_mem = Some(native_mem);
-    let mut __rust_alloc = Method::new_empty(
+    let mut __rust_alloc = Method::new(
         AccessModifer::Private,
         MethodType::Static,
         FnSig::new(&[Type::USize, Type::USize], &Type::Ptr(Type::U8.into())),
         "__rust_alloc",
         vec![],
+        if *crate::config::CHECK_ALLOCATIONS {
+            /*
+            __rust_alloc.set_ops(vec![
+                CILOp::LdStr("Allocation of size:".into()),
+                CILOp::Call(CallSite::boxed(
+                    Some(DotnetTypeRef::console()),
+                    "Write".into(),
+                    FnSig::new(&[DotnetTypeRef::string_type().into()], &Type::Void),
+                    true,
+                )),
+                CILOp::LDArg(0),
+                CILOp::ConvU64(false),
+                CILOp::Call(CallSite::boxed(
+                    Some(DotnetTypeRef::console()),
+                    "WriteLine".into(),
+                    FnSig::new(&[Type::U64], &Type::Void),
+                    true,
+                )),
+                CILOp::LDArg(0),
+                CILOp::ConvU32(true),
+                CILOp::Pop,
+                CILOp::LDArg(0),
+                CILOp::LDArg(1),
+                CILOp::Call(CallSite::boxed(
+                    native_mem.clone(),
+                    "AlignedAlloc".into(),
+                    FnSig::new(&[Type::USize, Type::USize], &Type::Ptr(Type::Void.into())),
+                    true,
+                )),
+                CILOp::Ret,
+            ]); */
+            todo!("Can't check allocations yet");
+            vec![BasicBlock::new(
+                vec![
+                    //CILRoot::Pop { tree: () }.into()
+                    CILRoot::Ret {
+                        tree: call!(
+                            CallSite::new(
+                                native_mem.clone(),
+                                "AlignedAlloc".into(),
+                                FnSig::new(
+                                    &[Type::USize, Type::USize],
+                                    &Type::Ptr(Type::Void.into())
+                                ),
+                                true,
+                            ),
+                            [CILNode::LDArg(0), CILNode::LDArg(1)]
+                        ),
+                    }
+                    .into(),
+                ],
+                0,
+                None,
+            )]
+        } else {
+            vec![BasicBlock::new(
+                vec![CILRoot::Ret {
+                    tree: call!(
+                        CallSite::new(
+                            native_mem.clone(),
+                            "AlignedAlloc".into(),
+                            FnSig::new(&[Type::USize, Type::USize], &Type::Ptr(Type::Void.into())),
+                            true,
+                        ),
+                        [CILNode::LDArg(0), CILNode::LDArg(1)]
+                    ),
+                }
+                .into()],
+                0,
+                None,
+            )]
+        },
     );
-    if *crate::config::CHECK_ALLOCATIONS {
-        __rust_alloc.set_ops(vec![
-            CILOp::LdStr("Allocation of size:".into()),
-            CILOp::Call(CallSite::boxed(
-                Some(DotnetTypeRef::console()),
-                "Write".into(),
-                FnSig::new(&[DotnetTypeRef::string_type().into()], &Type::Void),
-                true,
-            )),
-            CILOp::LDArg(0),
-            CILOp::ConvU64(false),
-            CILOp::Call(CallSite::boxed(
-                Some(DotnetTypeRef::console()),
-                "WriteLine".into(),
-                FnSig::new(&[Type::U64], &Type::Void),
-                true,
-            )),
-            CILOp::LDArg(0),
-            CILOp::ConvU32(true),
-            CILOp::Pop,
-            CILOp::LDArg(0),
-            CILOp::LDArg(1),
-            CILOp::Call(CallSite::boxed(
-                native_mem.clone(),
-                "AlignedAlloc".into(),
-                FnSig::new(&[Type::USize, Type::USize], &Type::Ptr(Type::Void.into())),
-                true,
-            )),
-            CILOp::Ret,
-        ]);
-    } else {
-        __rust_alloc.set_ops(vec![
-            CILOp::LDArg(0),
-            CILOp::LDArg(1),
-            CILOp::Call(CallSite::boxed(
-                native_mem.clone(),
-                "AlignedAlloc".into(),
-                FnSig::new(&[Type::USize, Type::USize], &Type::Ptr(Type::Void.into())),
-                true,
-            )),
-            CILOp::Ret,
-        ]);
-    }
 
     asm.add_method(__rust_alloc);
-    let mut __rust_dealloc = Method::new_empty(
+    let mut __rust_dealloc = Method::new(
         AccessModifer::Private,
         MethodType::Static,
         FnSig::new(
@@ -256,68 +290,62 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
         ),
         "__rust_dealloc",
         vec![],
+        vec![BasicBlock::new(
+            vec![CILRoot::Call {
+                site:
+                    CallSite::new(
+                        native_mem.clone(),
+                        "AlignedFree".into(),
+                        FnSig::new(&[Type::Ptr(Type::Void.into())], &Type::Void),
+                        true,
+                    ),
+                    args:[CILNode::LDArg(0)].into(),
+            }.into(),CILRoot::VoidRet
+            .into()],
+            0,
+            None,
+        )],
+ 
     );
-    __rust_dealloc.set_ops(vec![
-        CILOp::LDArg(0),
-        CILOp::Call(CallSite::boxed(
-            native_mem.clone(),
-            "AlignedFree".into(),
-            FnSig::new(&[Type::Ptr(Type::Void.into())], &Type::Void),
-            true,
-        )),
-        CILOp::Ret,
-    ]);
+
     asm.add_method(__rust_dealloc);
-    let mut free = Method::new_empty(
+    let free = Method::new(
         AccessModifer::Private,
         MethodType::Static,
         FnSig::new(&[Type::Ptr(c_void.clone().into())], &Type::Void),
         "free",
         vec![],
+        vec![BasicBlock::new(
+            vec![CILRoot::Call{ site: CallSite::new(
+                marshal.clone(),
+                "FreeHGlobal".into(),
+                FnSig::new(&[Type::ISize], &Type::Void),
+                true,
+            ), args:  
+            [CILNode::LDArg(0)].into() }.into(),
+                CILRoot::VoidRet
+            .into()],
+            0,
+            None,
+        )],
     );
-    free.set_ops(vec![
-        CILOp::LDArg(0),
-        CILOp::Call(CallSite::boxed(
-            marshal.clone(),
-            "FreeHGlobal".into(),
-            FnSig::new(&[Type::ISize], &Type::Void),
-            true,
-        )),
-        CILOp::Ret,
-    ]);
+
     asm.add_method(free);
     //TODO: add volatile prefix to volatile loads
-    let mut volatile_load = Method::new_empty(
-        AccessModifer::Private,
-        MethodType::Static,
-        FnSig::new(&[Type::Ptr(Type::U8.into())], &Type::U8),
-        "volatile_load",
-        vec![],
-    );
-    volatile_load.set_ops(vec![CILOp::LDArg(0), CILOp::LDIndI8, CILOp::Ret]);
-    asm.add_method(volatile_load);
-    let mut volatile_load = Method::new_empty(
-        AccessModifer::Private,
-        MethodType::Static,
-        FnSig::new(&[Type::Ptr(Type::USize.into())], &Type::USize),
-        "volatile_load",
-        vec![],
-    );
-    volatile_load.set_ops(vec![CILOp::LDArg(0), CILOp::LDIndISize, CILOp::Ret]);
-    asm.add_method(volatile_load);
+
+    // asm.add_method(volatile_load);
     //atomics::add_atomics(asm);
     //ctpop::add_ctpop(asm);
     // exact_div::add_exact_div(asm);
     //memcmp::add_memcmp(asm);
     //memcmp::add_raw_eq(asm);
-    add_ptr_offset_from_unsigned(asm);
+    //add_ptr_offset_from_unsigned(asm);
     //caller_location::add_caller_location(asm,tyctx,&mut TyCache::empty());
-    abort(asm);
 }
 fn io(asm: &mut Assembly) {
-    puts(asm);
+    //puts(asm);
 }
-
+/*
 add_method!(
     puts,
     &[Type::Ptr(Box::new(Type::U8))],
@@ -409,3 +437,4 @@ pub fn add_ptr_offset_from_unsigned(asm: &mut Assembly) {
         asm.add_method(ptr_offset_from_unsigned);
     }
 }
+*/

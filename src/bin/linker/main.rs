@@ -70,24 +70,34 @@ fn aot_compile_mode(args: &[String]) -> AOTCompileMode {
 }
 fn patch_missing_method(call_site: &cil::CallSite) -> method::Method {
     let sig = call_site.signature().clone();
-    let mut method = method::Method::new_empty(
+    let mut method = method::Method::new(
         access_modifier::AccessModifer::Private,
         MethodType::Static,
         sig,
         call_site.name(),
         vec![],
+        vec![BasicBlock::new(
+            vec![CILRoot::throw(&format!(
+                "Tried to invoke missing method {name}",
+                name = call_site.name()
+            ))
+            .into()],
+            0,
+            None,
+        )],
     );
 
     let ops = rustc_codegen_clr::cil::CILOp::throw_msg(&format!(
         "Tried to invoke missing method {name}",
         name = call_site.name()
     ));
-    method.set_ops(ops.into());
+    //method.set_ops(ops.into());
     method
 }
 fn autopatch(asm: &mut Assembly) {
-    let call_sites = asm
-        .call_sites()
+    let asm_sites = asm.call_sites();
+    let call_sites = asm_sites
+        .iter()
         .filter(|call| call.is_static() && call.class().is_none())
         .filter(|call| !asm.contains_fn(call));
     let mut patched = std::collections::HashMap::new();

@@ -35,6 +35,7 @@ enum VerificationFailure {
     OpUnsuported2(Type, Type),
     OperandsMismatch(CILOp, Type, Type),
 }
+/*
 pub fn verify(method: &Method) {
     let mut stack = Vec::with_capacity(64);
     let mut errors = Vec::new();
@@ -58,7 +59,7 @@ pub fn verify(method: &Method) {
             }
         }
     }
-}
+}*/
 fn get_nth_local(method: &Method, index: usize) -> Result<Type, VerificationFailure> {
     method
         .locals()

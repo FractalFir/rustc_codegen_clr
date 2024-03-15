@@ -6,7 +6,8 @@ use crate::{
 };
 
 use super::append_vec;
-#[derive(Clone, Debug)]
+use serde::{Deserialize, Serialize};
+#[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 pub enum CILRoot {
     STLoc {
         local: u32,
@@ -320,6 +321,96 @@ impl CILRoot {
                 *target = id;
             }
             _ => (),
+        }
+    }
+
+    pub(crate) fn allocate_tmps(&mut self, curr_local:Option<u32>, locals: &mut Vec<(Option<Box<str>>, Type)>) {
+        match self {
+            CILRoot::STLoc { local, tree } => tree.allocate_tmps(curr_local, locals),
+            CILRoot::BTrue {
+                target,
+                sub_target,
+                ops,
+            } => ops.allocate_tmps(curr_local, locals),
+            CILRoot::GoTo { target, sub_target } => (),
+            CILRoot::Call { site, args } => args.iter_mut().for_each(|arg|arg.allocate_tmps(curr_local, locals)),
+            CILRoot::SetField { addr, value, desc } =>{
+                addr.allocate_tmps(curr_local, locals);
+                value.allocate_tmps(curr_local, locals);
+            }
+            CILRoot::CpBlk { src, dst, len } => todo!(),
+            CILRoot::STIndI8(addr_calc, value_calc)|
+            CILRoot::STIndI16(addr_calc, value_calc) |
+            CILRoot::STIndI32(addr_calc, value_calc) |
+            CILRoot::STIndI64(addr_calc, value_calc) |
+            CILRoot::STIndISize(addr_calc, value_calc) |
+            CILRoot::STIndF64(addr_calc, value_calc)|
+            CILRoot::STIndF32(addr_calc, value_calc)|
+            CILRoot::STObj {
+                addr_calc,
+                value_calc,
+                ..
+            } => {
+                addr_calc.allocate_tmps(curr_local, locals)
+            }
+            CILRoot::STArg { arg, tree } => todo!(),
+            CILRoot::Break => (),
+            CILRoot::Nop => (),
+            CILRoot::InitBlk { dst, val, count } => todo!(),
+            CILRoot::CallVirt { site, args } => todo!(),
+            CILRoot::Ret { tree } |
+            CILRoot::Pop { tree } |
+            CILRoot::Throw(tree) =>  tree.allocate_tmps(curr_local, locals),
+            CILRoot::VoidRet => (),
+          
+            CILRoot::ReThrow => (),
+            CILRoot::CallI { sig, fn_ptr, args } => todo!(),
+            CILRoot::Raw { ops } => todo!(),
+        }
+    }
+    
+    pub(crate) fn resolve_global_allocations(&mut self, asm: &mut crate::assembly::Assembly)  {
+        match self {
+            CILRoot::STLoc { local, tree } => tree.resolve_global_allocations(asm),
+            CILRoot::BTrue {
+                target,
+                sub_target,
+                ops,
+            } => ops.resolve_global_allocations(asm),
+            CILRoot::GoTo { target, sub_target } => (),
+            CILRoot::Call { site, args } => args.iter_mut().for_each(|arg|arg.resolve_global_allocations(asm)),
+            CILRoot::SetField { addr, value, desc } => {
+                addr.resolve_global_allocations(asm);
+                value.resolve_global_allocations(asm);
+            }
+            CILRoot::CpBlk { src, dst, len } => todo!(),
+            CILRoot::STIndI8(addr_calc, value_calc)|
+            CILRoot::STIndI16(addr_calc, value_calc) |
+            CILRoot::STIndI32(addr_calc, value_calc) |
+            CILRoot::STIndI64(addr_calc, value_calc) |
+            CILRoot::STIndISize(addr_calc, value_calc) |
+            CILRoot::STIndF64(addr_calc, value_calc)|
+            CILRoot::STIndF32(addr_calc, value_calc)|
+            CILRoot::STObj {
+                addr_calc,
+                value_calc,
+                ..
+            } => {
+                addr_calc.resolve_global_allocations(asm)
+            }
+            CILRoot::STArg { arg, tree } => todo!(),
+            CILRoot::Break => (),
+            CILRoot::Nop =>(),
+            CILRoot::InitBlk { dst, val, count } => todo!(),
+            CILRoot::CallVirt { site, args } => todo!(),
+            CILRoot::Ret { tree } |
+            CILRoot::Pop { tree } |
+            CILRoot::Throw(tree) =>  tree.resolve_global_allocations(asm),
+            CILRoot::VoidRet => (),
+          
+            CILRoot::ReThrow => (),
+            CILRoot::CallI { sig, fn_ptr, args } => todo!(),
+            CILRoot::Raw { ops } => todo!(),
         }
     }
 }

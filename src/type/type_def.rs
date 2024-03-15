@@ -395,8 +395,8 @@ pub fn get_array_type(element_count: usize, element: Type) -> TypeDef {
             )],
         );
         let ops = vec![CILOp::LdStr("I am an array! Horray!".into()), CILOp::Ret];
-        to_string.set_ops(ops);
-        def.add_method(to_string);
+        //to_string.set_ops(ops);
+        //def.add_method(to_string);
     }
     def
 }

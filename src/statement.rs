@@ -40,14 +40,18 @@ pub fn handle_statement<'tcx>(
                 panic!();
             };
             //ops.push();
-            
-            Some(crate::utilis::adt::set_discr(&layout.layout, *variant_index,  crate::place::place_adress(
-                place,
-                tyctx,
-                method,
-                method_instance,
-                type_cache,
-            ), owner, tyctx, owner_ty).into())
+
+            Some(
+                crate::utilis::adt::set_discr(
+                    &layout.layout,
+                    *variant_index,
+                    crate::place::place_adress(place, tyctx, method, method_instance, type_cache),
+                    owner,
+                    tyctx,
+                    owner_ty,
+                )
+                .into(),
+            )
         }
         StatementKind::Assign(palce_rvalue) => {
             let place = palce_rvalue.as_ref().0;

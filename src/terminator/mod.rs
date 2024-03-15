@@ -185,7 +185,6 @@ pub fn handle_terminator<'ctx>(
         }
         .into()],
         TerminatorKind::UnwindResume => {
-            println!("WARNING: stack unwiniding is not supported yet in rustc_codegen_clr!");
 
             vec![CILRoot::ReThrow.into()]
         }

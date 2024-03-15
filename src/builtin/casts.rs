@@ -9,7 +9,7 @@ use crate::{
 };
 add_method_from_trees!(
     select_usize,
-    &[Type::USize,Type::USize,Type::Bool],
+    &[Type::USize, Type::USize, Type::Bool],
     &Type::USize,
     vec![
         BasicBlock::new(
@@ -21,7 +21,7 @@ add_method_from_trees!(
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree:CILNode::LDArg(1)
+                    tree: CILNode::LDArg(1)
                 }
                 .into()
             ],

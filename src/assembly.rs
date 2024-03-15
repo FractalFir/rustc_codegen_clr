@@ -351,15 +351,17 @@ impl Assembly {
             locals,
             normal_bbs,
         );
+        method.resolve_global_allocations(self);
+        /*
         method.ops_mut().iter_mut().for_each(|op| match op {
             CILOp::LoadGlobalAllocPtr { alloc_id } => {
                 *op = CILOp::LDStaticField(self.add_allocation(*alloc_id, tcx).into());
             }
             _ => (),
-        });
+        });*/
         let does_return_void: bool = *method.sig().output() == Type::Void;
         // Do some basic checks on the method as a whole.
-        crate::utilis::check_debugable(method.get_ops(), &method, does_return_void);
+        //crate::utilis::check_debugable(method.get_ops(), &method, does_return_void);
 
         //println!("Compiled method {name}");
 
@@ -423,6 +425,8 @@ impl Assembly {
             alloc_fld.clone(),
         );
         if self.static_fields.get(&alloc_fld).is_none() {
+            todo!();
+            /*
             let init_method =
                 allocation_initializer_method(const_allocation, &alloc_fld, tcx, self);
             let cctor = self
@@ -463,7 +467,7 @@ impl Assembly {
             ]);
             //eprintln!("Adding intiailzer named {}. \n Method:{init_method:?}",init_method.name());
             self.add_method(init_method);
-            self.add_static(Type::Ptr(Type::U8.into()), &alloc_fld);
+            self.add_static(Type::Ptr(Type::U8.into()), &alloc_fld);*/
         }
         field_desc
     }
@@ -479,16 +483,16 @@ impl Assembly {
     /// Adds a method to the assebmly.
     pub fn add_method(&mut self, mut method: Method) {
         method.allocate_temporaries();
-        method.ensure_valid();
+        //method.ensure_valid();
         if *crate::config::VERIFY_METHODS {
-            crate::verify::verify(&method);
+            //crate::verify::verify(&method);
         }
 
         self.functions.insert(method.call_site(), method);
     }
     /// Returns the list of all calls within the method. Calls may repeat.
-    pub fn call_sites(&self) -> impl Iterator<Item = &CallSite> {
-        self.methods().flat_map(|method| method.calls())
+    pub fn call_sites(&self) -> Vec<CallSite> {
+        self.methods().flat_map(|method| method.calls()).collect()
     }
     /// Returns an interator over all methods within the assembly.
     pub fn methods(&self) -> impl Iterator<Item = &Method> {
@@ -625,11 +629,11 @@ impl Assembly {
                     // Methods reference by methods inside types are NOT tracked.
                     continue;
                 }
-                if alive.contains_key(call) || resurecting.contains_key(call) {
+                if alive.contains_key(&call) || resurecting.contains_key(&call) {
                     // Already alive, ignore!
                     continue;
                 }
-                if let Some(method) = self.functions.get(call).cloned() {
+                if let Some(method) = self.functions.get(&call).cloned() {
                     to_resurect.insert(call.clone(), method);
                 } else if !crate::native_pastrough::LIBC_FNS
                     .iter()
@@ -702,13 +706,15 @@ fn link_static_initializers(a: Option<&Method>, b: Option<&Method>) -> Option<Me
         (Some(a), None) => Some(a.clone()),
         (None, Some(b)) => Some(b.clone()),
         (Some(a), Some(b)) => {
+            todo!("Can't link static initializers!");
+            /*
             let mut merged: Method = a.clone();
             let ops = merged.ops_mut();
             if !ops.is_empty() && ops[ops.len() - 1] == CILOp::Ret {
                 ops.pop();
             }
             ops.extend(b.get_ops().iter().cloned());
-            Some(merged)
+            Some(merged)*/
         }
     }
 }
@@ -737,6 +743,7 @@ fn locals_from_mir<'tyctx>(
     }
     local_types
 }
+/*
 fn allocation_initializer_method(
     const_allocation: &Allocation,
     name: &str,
@@ -796,4 +803,4 @@ fn allocation_initializer_method(
     );
     method.set_ops(ops);
     method
-}
+} */

@@ -109,13 +109,13 @@ impl TyCache {
             .expect("Could not get type layout!");
         let explicit_offsets =
             crate::utilis::adt::FieldOffsetIterator::fields(&layout.layout).collect();
-
+        //let to_string = create_to_string(adt, subst, adt_ty, self, method, tyctx);
         TypeDef::new(
             access,
             name.into(),
             vec![],
             fields,
-            vec![create_to_string(adt, subst, adt_ty, self, method, tyctx)],
+            vec![],
             Some(explicit_offsets),
             0,
             None,
@@ -605,6 +605,7 @@ fn try_find_ptr_components(ctx: TyCtxt) -> DefId {
     drop(find_ptr_components_timer);
     ptr_components.expect("Could not find core::ptr::metadata::PtrComponents")
 }
+/*
 fn create_to_string<'tyctx>(
     adt_def: AdtDef<'tyctx>,
     gargs: &'tyctx List<GenericArg<'tyctx>>,
@@ -614,14 +615,10 @@ fn create_to_string<'tyctx>(
     tyctx: TyCtxt<'tyctx>,
 ) -> Method {
     let tpe = type_cache.type_from_cache(ty, tyctx, method);
-    let mut to_string = Method::new_empty(
-        AccessModifer::Public,
-        crate::method::MethodType::Virtual,
-        FnSig::new(&[tpe], &DotnetTypeRef::string_type().into()),
-        "ToString",
-        vec![(None, DotnetTypeRef::string_type().into())],
-    );
+
     let name = crate::utilis::adt_name(adt_def, tyctx, gargs);
+    let trees = Vec::new();
+    trees.push(CILRoot::CILNode::STLoc())
     let mut ops = vec![CILOp::LdStr(format!("{name}{{").into()), CILOp::STLoc(0)];
     // Concat string method
     let concat = CallSite::new(
@@ -636,6 +633,7 @@ fn create_to_string<'tyctx>(
         ),
         true,
     );
+
     // Fields
     match adt_def.adt_kind() {
         AdtKind::Enum | AdtKind::Union => {}
@@ -672,6 +670,14 @@ fn create_to_string<'tyctx>(
         CILOp::Call(concat.into()),
         CILOp::Ret,
     ]);
+    let mut to_string = Method::new(
+        AccessModifer::Public,
+        crate::method::MethodType::Virtual,
+        FnSig::new(&[tpe], &DotnetTypeRef::string_type().into()),
+        "ToString",
+        vec![(None, DotnetTypeRef::string_type().into())],
+    );
     to_string.set_ops(ops);
     to_string
 }
+*/

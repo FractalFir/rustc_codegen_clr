@@ -6,8 +6,8 @@ use crate::eq;
 use crate::ldc_u64;
 use crate::lt;
 use crate::lt_un;
-use crate::sub;
 use crate::r#type::DotnetTypeRef;
+use crate::sub;
 
 use crate::r#type::Type;
 use rustc_target::abi::VariantIdx;
@@ -204,11 +204,11 @@ pub fn get_discr<'tyctx>(
     let (tag_tpe, _) = crate::utilis::adt::enum_tag_info(&layout, tyctx);
     let (tag_scalar, tag_encoding, tag_field) = match layout.variants {
         Variants::Single { index } => {
-            let discr_val = 
-                ty
+            let discr_val = ty
                 .discriminant_for_variant(tyctx, index)
                 .map_or(index.as_u32() as u128, |discr| discr.val);
-            let tag_val = crate::ldc_u64!(discr_val.try_into().expect("Tag does not fit within a u64"));
+            let tag_val =
+                crate::ldc_u64!(discr_val.try_into().expect("Tag does not fit within a u64"));
             return crate::casts::int_to_int(Type::U64, tag_tpe.clone(), tag_val);
         }
         Variants::Multiple {
@@ -219,8 +219,6 @@ pub fn get_discr<'tyctx>(
         } => (tag, tag_encoding, tag_field),
     };
 
-   
-
     // Decode the discriminant (specifically if it's niche-encoded).
     match *tag_encoding {
         TagEncoding::Direct => {
@@ -229,12 +227,8 @@ pub fn get_discr<'tyctx>(
                 todo!();
             } else {
                 CILNode::LDField {
-                    field: crate::cil::FieldDescriptor::new(
-                        enum_tpe,
-                        tag_tpe,
-                        "value__".into(),
-                    )
-                    .into(),
+                    field: crate::cil::FieldDescriptor::new(enum_tpe, tag_tpe, "value__".into())
+                        .into(),
                     addr: enum_addr.into(),
                 }
             }
@@ -246,7 +240,7 @@ pub fn get_discr<'tyctx>(
         } => {
             let (disrc_type, _) = crate::utilis::adt::enum_tag_info(&layout, tyctx);
             let relative_max = niche_variants.end().as_u32() - niche_variants.start().as_u32();
-            let tag =CILNode::LDField {
+            let tag = CILNode::LDField {
                 field: crate::cil::FieldDescriptor::new(
                     enum_tpe,
                     disrc_type.clone(),
@@ -279,39 +273,73 @@ pub fn get_discr<'tyctx>(
                 // } else {
                 //     untagged_variant
                 // }
-                let tag = crate::casts::int_to_int( disrc_type.clone(),Type::U64, tag);
+                let tag = crate::casts::int_to_int(disrc_type.clone(), Type::U64, tag);
                 //let niche_start = bx.cx().const_uint_big(tag_llty, niche_start);
-                let is_niche = eq!(tag,ldc_u64!(niche_start.try_into().expect("tag is too big to fit within u64")));//bx.icmp(IntPredicate::IntEQ, tag, niche_start);
-                let tagged_discr = ldc_u64!(niche_start.try_into().expect("tag is too big to fit within u64"));
+                let is_niche = eq!(
+                    tag,
+                    ldc_u64!(niche_start
+                        .try_into()
+                        .expect("tag is too big to fit within u64"))
+                ); //bx.icmp(IntPredicate::IntEQ, tag, niche_start);
+                let tagged_discr = ldc_u64!(niche_start
+                    .try_into()
+                    .expect("tag is too big to fit within u64"));
                 (is_niche, tagged_discr, 0)
             } else {
                 // The special cases don't apply, so we'll have to go with
                 // the general algorithm.
-                let tag = crate::casts::int_to_int( disrc_type.clone(),Type::U64, tag);
-                let relative_discr = sub!(tag,ldc_u64!(niche_start.try_into().expect("tag is too big to fit within u64")));
-                //let cast_tag = bx.intcast(relative_discr, cast_to, false);
-                let cast_tag = crate::casts::int_to_int( disrc_type.clone(),Type::U64, relative_discr.clone());
-                let is_niche = lt_un!(
-                    relative_discr,
-                    ldc_u64!(relative_max as u64)
+                let tag = crate::casts::int_to_int(disrc_type.clone(), Type::U64, tag);
+                let relative_discr = sub!(
+                    tag,
+                    ldc_u64!(niche_start
+                        .try_into()
+                        .expect("tag is too big to fit within u64"))
                 );
+                //let cast_tag = bx.intcast(relative_discr, cast_to, false);
+                let cast_tag =
+                    crate::casts::int_to_int(disrc_type.clone(), Type::U64, relative_discr.clone());
+                let is_niche = lt_un!(relative_discr, ldc_u64!(relative_max as u64));
                 (is_niche, cast_tag, niche_variants.start().as_u32() as u128)
             };
 
             let tagged_discr = if delta == 0 {
                 tagged_discr
             } else {
-                let delta = crate::casts::int_to_int(Type::U64, disrc_type.clone(), ldc_u64!(delta.try_into().expect("Tag does not fit within u64")));
-                assert!(matches!(disrc_type.clone(),Type::U8 | Type::I8 |Type::U16 | Type::I16 |Type::U32 | Type::I32 |  Type::U64 | Type::I64 |  Type::Ptr(_) | Type::USize | Type::ISize));
+                let delta = crate::casts::int_to_int(
+                    Type::U64,
+                    disrc_type.clone(),
+                    ldc_u64!(delta.try_into().expect("Tag does not fit within u64")),
+                );
+                assert!(matches!(
+                    disrc_type.clone(),
+                    Type::U8
+                        | Type::I8
+                        | Type::U16
+                        | Type::I16
+                        | Type::U32
+                        | Type::I32
+                        | Type::U64
+                        | Type::I64
+                        | Type::Ptr(_)
+                        | Type::USize
+                        | Type::ISize
+                ));
                 add!(tagged_discr, delta)
             };
 
-          
-            
             // In principle we could insert assumes on the possible range of `discr`, but
             // currently in LLVM this seems to be a pessimization.
 
-            CILNode::select(disrc_type.clone(),tagged_discr,crate::casts::int_to_int(Type::U64, disrc_type, ldc_u64!(untagged_variant.as_u32() as u64)),is_niche)
+            CILNode::select(
+                disrc_type.clone(),
+                tagged_discr,
+                crate::casts::int_to_int(
+                    Type::U64,
+                    disrc_type,
+                    ldc_u64!(untagged_variant.as_u32() as u64),
+                ),
+                is_niche,
+            )
         }
     }
 }

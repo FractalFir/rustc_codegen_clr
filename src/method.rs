@@ -16,7 +16,7 @@ pub struct Method {
     sig: FnSig,
     name: IString,
     locals: Vec<LocalDef>,
-    ops: Vec<CILOp>,
+    blocks: Vec<BasicBlock>,
     attributes: Vec<Attribute>,
 }
 /// Local varaible. Consists of an optional name and type.
@@ -50,7 +50,7 @@ impl Method {
             sig,
             name: name.into(),
             locals,
-            ops: Vec::new(),
+            blocks: Vec::new(),
             attributes: Vec::new(),
         }
     }
@@ -73,10 +73,11 @@ impl Method {
             sig,
             name: name.into(),
             locals,
-            ops: blocks.iter().flat_map(|bb| bb.flatten()).collect(),
+            blocks,
             attributes: Vec::new(),
         }
     }
+    /*
     pub(crate) fn ensure_valid(&mut self) {
         let last = self.ops.iter().last();
         let last = match last {
@@ -90,9 +91,16 @@ impl Method {
             CILOp::GoTo(_,_)=>(),
             _=>self.ops.extend(CILOp::throw_msg("Critical error: reached the end of a function not termianted with a return statement")),
         }
-    }
+    }*/
     pub fn maxstack(&self) -> usize {
-        crate::utilis::max_stack(&self.ops, *self.sig().output() == Type::Void) + 10
+        crate::utilis::max_stack(
+            self.blocks
+                .iter()
+                .flat_map(|bb| bb.into_ops())
+                .collect::<Vec<_>>()
+                .as_ref(),
+            *self.sig().output() == Type::Void,
+        ) + 10
     }
     pub fn set_name(&mut self, name: &str) {
         self.name = name.into();
@@ -119,13 +127,6 @@ impl Method {
             &self.sig().inputs()[1..]
         }
     }
-    /// Returns a mutable reference to this functions ops.
-    pub fn ops_mut(&mut self) -> &mut Vec<CILOp> {
-        &mut self.ops
-    }
-    pub fn ops_n_locals_mut(&mut self) -> (&mut Vec<CILOp>, &mut [(Option<IString>, Type)]) {
-        (&mut self.ops, &mut self.locals)
-    }
     /// Returns the access modifier of this function.
     pub fn access(&self) -> AccessModifer {
         self.access
@@ -146,17 +147,13 @@ impl Method {
     pub fn locals(&self) -> &[(Option<IString>, Type)] {
         &self.locals
     }
-    /// Sets this methods CIL ops to `ops`.
-    pub fn set_ops(&mut self, ops: Vec<CILOp>) {
-        self.ops = ops;
-    }
-    /// Returns the ops of this method.
-    pub fn get_ops(&self) -> &[CILOp] {
-        &self.ops
-    }
     /// Returns the list of external calls this function preforms. Calls may repeat.
-    pub(crate) fn calls(&self) -> impl Iterator<Item = &CallSite> {
-        self.ops.iter().filter_map(|op| op.call())
+    pub(crate) fn calls(&self) -> Vec<CallSite> {
+        self.blocks
+            .iter()
+            .flat_map(|bb| bb.into_ops())
+            .filter_map(|op| op.call().cloned())
+            .collect()
     }
     pub(crate) fn dotnet_types(&self) -> Vec<DotnetTypeRef> {
         self.sig()
@@ -185,48 +182,11 @@ impl Method {
         Self:: new(AccessModifer::Public,true,)
     }*/
     pub(crate) fn allocate_temporaries(&mut self) {
-        let mut tmp_stack = vec![];
-        let ops = &mut self.ops;
-        for op in ops {
-            match op {
-                CILOp::NewTMPLocal(tpe) => {
-                    let index = self.locals.len();
-                    self.locals.push((None, tpe.as_ref().clone()));
-                    tmp_stack.push(index);
-                    *op = CILOp::Nop;
-                }
-                CILOp::FreeTMPLocal => {
-                    tmp_stack
-                        .pop()
-                        .expect("Freeing TMP local when none existed");
-                    *op = CILOp::Nop;
-                }
-                CILOp::LoadTMPLocal => {
-                    *op = CILOp::LDLoc(*tmp_stack.iter().last().expect(
-                        "Using a TMP local with `LoadTMPLocal` when no TMP local allocated!",
-                    ) as u32);
-                }
-                CILOp::LoadUnderTMPLocal(under) => {
-                    *op = CILOp::LDLoc(tmp_stack[(tmp_stack.len() - 1) - (*under as usize)] as u32);
-                }
-                CILOp::LoadAdressUnderTMPLocal(under) => {
-                    *op =
-                        CILOp::LDLocA(tmp_stack[(tmp_stack.len() - 1) - (*under as usize)] as u32);
-                }
-                CILOp::LoadAddresOfTMPLocal => {
-                    *op = CILOp::LDLocA(*tmp_stack.iter().last().expect(
-                        "Using a TMP local with `LoadTMPLocal` when no TMP local allocated!",
-                    ) as u32);
-                }
-                CILOp::SetTMPLocal => {
-                    *op = CILOp::STLoc(*tmp_stack.iter().last().expect(
-                        "Using a TMP local with `LoadTMPLocal` when no TMP local allocated!",
-                    ) as u32);
-                }
-                _ => (),
-            }
-        }
-        //todo!("Can't allocate temporaries quite yet!");
+        self.blocks
+            .iter_mut()
+            .flat_map(|block| block.trees_mut())
+            .for_each(|tree| tree.allocate_tmps(&mut self.locals));
+        
     }
     /// Adds method attribute `attr` to self.
     pub fn add_attribute(&mut self, attr: Attribute) {
@@ -239,6 +199,18 @@ impl Method {
     /// Returns the type of this method(static, instance or virtual)
     pub fn method_type(&self) -> MethodType {
         self.method_type
+    }
+
+    pub(crate) fn resolve_global_allocations(&mut self, arg: &mut crate::assembly::Assembly) {
+        self.blocks
+        .iter_mut()
+        .flat_map(|block| block.trees_mut())
+        .for_each(|tree| tree.resolve_global_allocations(arg));
+    
+    }
+
+    pub fn blocks(&self) -> &[BasicBlock] {
+        &self.blocks
     }
 }
 /// Type of this method(static, instance or virtual).
