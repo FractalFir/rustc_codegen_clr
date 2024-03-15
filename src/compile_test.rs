@@ -898,7 +898,8 @@ run_test! {fuzz,fail1,stable}
 compare_tests! {fuzz,fail3,stable}
 compare_tests! {fuzz,fail4,stable}
 compare_tests! {fuzz,fail5,stable}
-compare_tests! {fuzz,fail6,unstable}
+compare_tests! {fuzz,fail6,stable}
+compare_tests! {fuzz,fail7,unstable}
 cargo_test! {hello_world,stable}
 cargo_test! {std_hello_world,stable}
 cargo_test_ignored! {build_core}
