@@ -318,7 +318,7 @@ impl Assembly {
             match &block_data.terminator {
                 Some(term) => {
                     if *crate::config::INSERT_MIR_DEBUG_COMMENTS {
-                        //rustc_middle::ty::print::with_no_trimmed_paths! {ops.push(CILOp::Comment(format!("{term:?}").into()))};
+                        rustc_middle::ty::print::with_no_trimmed_paths! {trees.push(CILRoot::debug(&format!("{term:?}")).into())};
                     }
                     let term_trees = Self::terminator_to_ops(term, mir, tyctx, instance, cache);
                     trees.extend(term_trees);

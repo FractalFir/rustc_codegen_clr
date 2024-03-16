@@ -33,7 +33,7 @@ add_method_from_trees!(
                         site: CallSite::boxed(
                             Some(DotnetTypeRef::new(
                                 Some("System.Runtime"),
-                                "IndexOutOfRangeException"
+                                "System.IndexOutOfRangeException"
                             )),
                             ".ctor".into(),
                             FnSig::new(&[], &Type::Void),

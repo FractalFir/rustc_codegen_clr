@@ -106,7 +106,7 @@ pub fn place_elem_adress<'ctx>(
                     );
                     return (
                         CILNode::TemporaryLocal(Box::new((
-                        Type::Ptr(curr_type.into()),
+                        curr_type.into(),
                         [CILRoot::SetTMPLocal {
                             value: addr_calc
                                 
@@ -237,7 +237,7 @@ pub fn place_elem_adress<'ctx>(
             if *from_end {
                 /*CILNode::RawOps {
                     parrent: addr_calc.into(),
-                    ops: [
+                    ops: [CILNode::TemporaryLocal(Box::new((
                         CILOp::NewTMPLocal(Box::new(curr_type.clone())),
                         CILOp::SetTMPLocal,
                         CILOp::LoadAddresOfTMPLocal,

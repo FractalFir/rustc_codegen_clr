@@ -253,7 +253,7 @@ pub fn handle_rvalue<'tcx>(
                 /*
                  */
                 (_, Type::F64) => CILNode::TemporaryLocal(Box::new((
-                    Type::Ptr((src.into())),
+                    src.into(),
                     [CILRoot::SetTMPLocal {
                         value: handle_operand(operand, tyctx, method, method_instance, tycache)
                             .into(),
@@ -264,7 +264,7 @@ pub fn handle_rvalue<'tcx>(
                     },
                 ))),
                 (_, _) => CILNode::TemporaryLocal(Box::new((
-                    Type::Ptr(src.into()),
+                    src.into(),
                     [CILRoot::SetTMPLocal {
                         value: handle_operand(operand, tyctx, method, method_instance, tycache)
                             .into(),

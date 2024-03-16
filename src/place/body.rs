@@ -90,7 +90,7 @@ pub fn place_elem_body<'ctx>(
                     );
                     return  (
                         curr_ty.into(),CILNode::TemporaryLocal(Box::new((
-                        Type::Ptr(curr_type.into()),
+                        curr_type.into(),
                         [CILRoot::SetTMPLocal {
                             value: parrent_node
                                 
