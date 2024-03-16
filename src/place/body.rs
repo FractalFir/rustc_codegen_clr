@@ -1,6 +1,7 @@
 use super::{pointed_type, PlaceTy};
 use crate::cil::{CILOp, CallSite, FieldDescriptor};
 use crate::cil_tree::cil_node::CILNode;
+use crate::cil_tree::cil_root::CILRoot;
 use crate::function_sig::FnSig;
 use crate::place::{body_ty_is_by_adress, deref_op};
 use crate::r#type::Type;
@@ -87,20 +88,19 @@ pub fn place_elem_body<'ctx>(
                         tyctx,
                         Some(method_instance),
                     );
-                    return (
-                        curr_ty.into(),
-                        CILNode::RawOps {
-                            parrent: parrent_node.into(),
-                            ops: [
-                                CILOp::NewTMPLocal(curr_type.into()),
-                                CILOp::SetTMPLocal,
-                                CILOp::LoadAddresOfTMPLocal,
-                                CILOp::LdObj(field_type.clone().into()),
-                                CILOp::FreeTMPLocal,
-                            ]
-                            .into(),
-                        },
-                    );
+                    return  (
+                        curr_ty.into(),CILNode::TemporaryLocal(Box::new((
+                        Type::Ptr(curr_type.into()),
+                        [CILRoot::SetTMPLocal {
+                            value: parrent_node
+                                
+                        }.into()]
+                        .into(),
+                        CILNode::LdObj { ptr: CILNode::LoadAddresOfTMPLocal.into(), obj: field_type.into() }
+                            
+                        ),
+                    )));
+                   
                     //todo!("Handle DST fields. DST:")
                 }
                 let _curr_type = crate::utilis::monomorphize(&method_instance, curr_ty, tyctx);
@@ -294,7 +294,7 @@ pub fn place_elem_body<'ctx>(
                                     true
                                 ),
                                 [
-                                    ld_field!(parrent_node, metadata),
+                                    index,
                                     conv_usize!(ldc_u64!(*min_length))
                                 ]
                             ),

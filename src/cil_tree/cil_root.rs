@@ -1,11 +1,11 @@
+use super::append_vec;
 use crate::{
     cil::{CILOp, CallSite, FieldDescriptor},
     cil_tree::cil_node::CILNode,
     function_sig::FnSig,
     r#type::Type,
 };
-
-use super::append_vec;
+use rustc_middle::ty::TyCtxt;
 use serde::{Deserialize, Serialize};
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 pub enum CILRoot {
@@ -30,6 +30,9 @@ pub enum CILRoot {
         addr: CILNode,
         value: CILNode,
         desc: FieldDescriptor,
+    },
+    SetTMPLocal {
+        value: CILNode,
     },
     CpBlk {
         src: CILNode,
@@ -77,8 +80,12 @@ pub enum CILRoot {
         fn_ptr: CILNode,
         args: Box<[CILNode]>,
     },
-    Raw {
+    JumpingPad {
         ops: Box<[CILOp]>,
+    },
+    SetStaticField {
+        descr: crate::cil::StaticFieldDescriptor,
+        value: CILNode,
     },
     //LabelStart(u32),
     //LabelEnd(u32),
@@ -152,7 +159,9 @@ impl CILRoot {
                 args.iter_mut().for_each(|arg| arg.opt());
                 fn_ptr.opt();
             }
-            CILRoot::Raw { ops } => (),
+            CILRoot::JumpingPad { ops } => (),
+            CILRoot::SetTMPLocal { value } => value.opt(),
+            CILRoot::SetStaticField { descr, value } => value.opt(),
         }
     }
     pub fn throw(msg: &str) -> Self {
@@ -182,7 +191,7 @@ impl CILRoot {
             args: [CILNode::LdStr(msg.into())].into(),
         }
     }
-    pub fn flatten(&self) -> Vec<CILOp> {
+    pub fn into_ops(&self) -> Vec<CILOp> {
         match self {
             //Self::LabelStart(val)=> vec![CILOp::LabelStart(val)],
             //Self::LabelEnd(val)=> vec![CILOp::LabelEnd(val)],
@@ -283,7 +292,7 @@ impl CILRoot {
             }
             Self::Break => vec![CILOp::Break],
             Self::Nop => vec![CILOp::Nop],
-            Self::Raw { ops } => ops.clone().into(),
+            Self::JumpingPad { ops } => ops.clone().into(),
             Self::STObj {
                 tpe,
                 addr_calc,
@@ -293,6 +302,12 @@ impl CILRoot {
                 res.extend(value_calc.flatten());
                 res.push(CILOp::STObj(tpe.clone()));
                 res
+            }
+            Self::SetTMPLocal { value } => {
+                todo!("Can't flatten unresolved root!")
+            }
+            Self::SetStaticField { descr, value } => {
+                append_vec(value.flatten(), CILOp::STStaticField(descr.clone().into()))
             }
         }
     }
@@ -324,7 +339,11 @@ impl CILRoot {
         }
     }
 
-    pub(crate) fn allocate_tmps(&mut self, curr_local:Option<u32>, locals: &mut Vec<(Option<Box<str>>, Type)>) {
+    pub(crate) fn allocate_tmps(
+        &mut self,
+        curr_local: Option<u32>,
+        locals: &mut Vec<(Option<Box<str>>, Type)>,
+    ) {
         match self {
             CILRoot::STLoc { local, tree } => tree.allocate_tmps(curr_local, locals),
             CILRoot::BTrue {
@@ -333,84 +352,100 @@ impl CILRoot {
                 ops,
             } => ops.allocate_tmps(curr_local, locals),
             CILRoot::GoTo { target, sub_target } => (),
-            CILRoot::Call { site, args } => args.iter_mut().for_each(|arg|arg.allocate_tmps(curr_local, locals)),
-            CILRoot::SetField { addr, value, desc } =>{
+            CILRoot::Call { site, args } => args
+                .iter_mut()
+                .for_each(|arg| arg.allocate_tmps(curr_local, locals)),
+            CILRoot::SetField { addr, value, desc } => {
                 addr.allocate_tmps(curr_local, locals);
                 value.allocate_tmps(curr_local, locals);
             }
             CILRoot::CpBlk { src, dst, len } => todo!(),
-            CILRoot::STIndI8(addr_calc, value_calc)|
-            CILRoot::STIndI16(addr_calc, value_calc) |
-            CILRoot::STIndI32(addr_calc, value_calc) |
-            CILRoot::STIndI64(addr_calc, value_calc) |
-            CILRoot::STIndISize(addr_calc, value_calc) |
-            CILRoot::STIndF64(addr_calc, value_calc)|
-            CILRoot::STIndF32(addr_calc, value_calc)|
-            CILRoot::STObj {
+            CILRoot::STIndI8(addr_calc, value_calc)
+            | CILRoot::STIndI16(addr_calc, value_calc)
+            | CILRoot::STIndI32(addr_calc, value_calc)
+            | CILRoot::STIndI64(addr_calc, value_calc)
+            | CILRoot::STIndISize(addr_calc, value_calc)
+            | CILRoot::STIndF64(addr_calc, value_calc)
+            | CILRoot::STIndF32(addr_calc, value_calc)
+            | CILRoot::STObj {
                 addr_calc,
                 value_calc,
                 ..
-            } => {
-                addr_calc.allocate_tmps(curr_local, locals)
-            }
-            CILRoot::STArg { arg, tree } => todo!(),
+            } => addr_calc.allocate_tmps(curr_local, locals),
+            CILRoot::STArg { arg, tree } => tree.allocate_tmps(curr_local, locals),
             CILRoot::Break => (),
             CILRoot::Nop => (),
             CILRoot::InitBlk { dst, val, count } => todo!(),
             CILRoot::CallVirt { site, args } => todo!(),
-            CILRoot::Ret { tree } |
-            CILRoot::Pop { tree } |
-            CILRoot::Throw(tree) =>  tree.allocate_tmps(curr_local, locals),
+            CILRoot::Ret { tree } | CILRoot::Pop { tree } | CILRoot::Throw(tree) => {
+                tree.allocate_tmps(curr_local, locals)
+            }
             CILRoot::VoidRet => (),
-          
+
             CILRoot::ReThrow => (),
             CILRoot::CallI { sig, fn_ptr, args } => todo!(),
-            CILRoot::Raw { ops } => todo!(),
+            CILRoot::JumpingPad { ops } => (),
+            CILRoot::SetTMPLocal { value } => {
+                *self = Self::STLoc {
+                    local: curr_local.expect("Referenced a tmp local when none present!"),
+                    tree: value.clone().into(),
+                };
+            }
+            CILRoot::SetStaticField { descr, value } => value.allocate_tmps(curr_local, locals),
         }
     }
-    
-    pub(crate) fn resolve_global_allocations(&mut self, asm: &mut crate::assembly::Assembly)  {
+
+    pub(crate) fn resolve_global_allocations(
+        &mut self,
+        asm: &mut crate::assembly::Assembly,
+        tyctx: TyCtxt,
+    ) {
         match self {
-            CILRoot::STLoc { local, tree } => tree.resolve_global_allocations(asm),
+            CILRoot::STLoc { local, tree } => tree.resolve_global_allocations(asm, tyctx),
             CILRoot::BTrue {
                 target,
                 sub_target,
                 ops,
-            } => ops.resolve_global_allocations(asm),
+            } => ops.resolve_global_allocations(asm, tyctx),
             CILRoot::GoTo { target, sub_target } => (),
-            CILRoot::Call { site, args } => args.iter_mut().for_each(|arg|arg.resolve_global_allocations(asm)),
+            CILRoot::Call { site, args } => args
+                .iter_mut()
+                .for_each(|arg| arg.resolve_global_allocations(asm, tyctx)),
             CILRoot::SetField { addr, value, desc } => {
-                addr.resolve_global_allocations(asm);
-                value.resolve_global_allocations(asm);
+                addr.resolve_global_allocations(asm, tyctx);
+                value.resolve_global_allocations(asm, tyctx);
             }
             CILRoot::CpBlk { src, dst, len } => todo!(),
-            CILRoot::STIndI8(addr_calc, value_calc)|
-            CILRoot::STIndI16(addr_calc, value_calc) |
-            CILRoot::STIndI32(addr_calc, value_calc) |
-            CILRoot::STIndI64(addr_calc, value_calc) |
-            CILRoot::STIndISize(addr_calc, value_calc) |
-            CILRoot::STIndF64(addr_calc, value_calc)|
-            CILRoot::STIndF32(addr_calc, value_calc)|
-            CILRoot::STObj {
+            CILRoot::STIndI8(addr_calc, value_calc)
+            | CILRoot::STIndI16(addr_calc, value_calc)
+            | CILRoot::STIndI32(addr_calc, value_calc)
+            | CILRoot::STIndI64(addr_calc, value_calc)
+            | CILRoot::STIndISize(addr_calc, value_calc)
+            | CILRoot::STIndF64(addr_calc, value_calc)
+            | CILRoot::STIndF32(addr_calc, value_calc)
+            | CILRoot::STObj {
                 addr_calc,
                 value_calc,
                 ..
-            } => {
-                addr_calc.resolve_global_allocations(asm)
-            }
-            CILRoot::STArg { arg, tree } => todo!(),
+            } => addr_calc.resolve_global_allocations(asm, tyctx),
+            CILRoot::STArg { arg, tree } => tree.resolve_global_allocations(asm, tyctx),
             CILRoot::Break => (),
-            CILRoot::Nop =>(),
+            CILRoot::Nop => (),
             CILRoot::InitBlk { dst, val, count } => todo!(),
             CILRoot::CallVirt { site, args } => todo!(),
-            CILRoot::Ret { tree } |
-            CILRoot::Pop { tree } |
-            CILRoot::Throw(tree) =>  tree.resolve_global_allocations(asm),
+            CILRoot::Ret { tree } | CILRoot::Pop { tree } | CILRoot::Throw(tree) => {
+                tree.resolve_global_allocations(asm, tyctx)
+            }
             CILRoot::VoidRet => (),
-          
+
             CILRoot::ReThrow => (),
             CILRoot::CallI { sig, fn_ptr, args } => todo!(),
-            CILRoot::Raw { ops } => todo!(),
+            // Jump pads CAN'T ever allocate.
+            CILRoot::JumpingPad { ops } => (),
+            CILRoot::SetTMPLocal { value } => value.resolve_global_allocations(asm, tyctx),
+            CILRoot::SetStaticField { descr, value } => {
+                value.resolve_global_allocations(asm, tyctx)
+            }
         }
     }
 }

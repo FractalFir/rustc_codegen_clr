@@ -1,5 +1,5 @@
 use crate::{
-    cil::{CILOp, CallSite, FieldDescriptor, StaticFieldDescriptor}, cil_tree::{cil_node::CILNode, cil_root::CILRoot}, conv_usize, ldc_u64, r#type::{DotnetTypeRef, TyCache, Type}
+    cil::{CILOp, CallSite, FieldDescriptor, StaticFieldDescriptor}, cil_tree::{cil_node::CILNode, cil_root::CILRoot}, conv_u64, conv_usize, ldc_u64, r#type::{DotnetTypeRef, TyCache, Type}
 };
 use rustc_abi::Size;
 use rustc_middle::mir::{
@@ -77,7 +77,7 @@ fn load_const_value<'ctx>(
         ConstValue::ZeroSized => {
             let tpe = crate::utilis::monomorphize(&method_instance, const_ty, tyctx);
             let tpe = tycache.type_from_cache(tpe, tyctx, Some(method_instance));
-            CILNode::TemporaryLocal(Box::new((tpe,[].into(),CILNode::LoadTMPLocal)))
+            CILNode::TemporaryLocal(Box::new((tpe, [].into(), CILNode::LoadTMPLocal)))
         }
         ConstValue::Slice { data, meta } => {
             let slice_type = tycache.type_from_cache(const_ty, tyctx, Some(method_instance));
@@ -93,10 +93,23 @@ fn load_const_value<'ctx>(
             let alloc_id = tyctx.reserve_and_set_memory_alloc(data);
             let alloc_id: u64 = crate::utilis::alloc_id_to_u64(alloc_id);
 
-            CILNode::TemporaryLocal(Box::new((slice_type.into(),[
-                CILRoot::SetField { addr: CILNode::LoadAddresOfTMPLocal, value: conv_usize!(ldc_u64!(meta as u64)), desc: metadata_field.into() },
-                CILRoot::SetField { addr: CILNode::LoadAddresOfTMPLocal, value: CILNode::LoadGlobalAllocPtr { alloc_id }, desc: ptr_field.into() }
-            ].into(),CILNode::LoadTMPLocal)))
+            CILNode::TemporaryLocal(Box::new((
+                slice_type.into(),
+                [
+                    CILRoot::SetField {
+                        addr: CILNode::LoadAddresOfTMPLocal,
+                        value: conv_usize!(ldc_u64!(meta as u64)),
+                        desc: metadata_field.into(),
+                    },
+                    CILRoot::SetField {
+                        addr: CILNode::LoadAddresOfTMPLocal,
+                        value: CILNode::LoadGlobalAllocPtr { alloc_id },
+                        desc: ptr_field.into(),
+                    },
+                ]
+                .into(),
+                CILNode::LoadTMPLocal,
+            )))
         }
         ConstValue::Indirect { alloc_id, offset } => {
             create_const_from_data(
@@ -138,7 +151,7 @@ fn load_const_scalar<'ctx>(
                     if name == "__rust_alloc_error_handler_should_panic"
                         || name == "__rust_no_alloc_shim_is_unstable"
                     {
-                        /* 
+                        /*
                         return CILNode::RawOpsParrentless {
                             ops: [
                                 CILOp::LDStaticField(
@@ -152,10 +165,10 @@ fn load_const_scalar<'ctx>(
                                 CILOp::FreeTMPLocal,
                             ]
                             .into(),};*/
-                            todo!();
-                        
+                        todo!();
                     }
-                    if name == "environ" {/* 
+                    if name == "environ" {
+                        /*
                         return CILNode::RawOpsParrentless {
                             ops: [
                                 CILOp::LDStaticField(
@@ -220,19 +233,17 @@ fn load_const_scalar<'ctx>(
         TyKind::RawPtr(_) => CILNode::ConvUSize(CILNode::LdcU64(scalar_u128 as u64).into()),
         TyKind::Tuple(elements) => {
             if elements.is_empty() {
-                CILNode::RawOpsParrentless {
-                    ops: [
-                        CILOp::NewTMPLocal(Type::Void.into()),
-                        CILOp::LoadTMPLocal,
-                        CILOp::FreeTMPLocal,
-                    ]
+               
+                CILNode::TemporaryLocal(Box::new((
+                    Type::Ptr(tpe.clone().into()),
+                    []
                     .into(),
-                }
+                    CILNode::LdObj { ptr: CILNode::LoadTMPLocal.into(), obj: Type::Void.into() }
+                    
+                )))
             } else {
                 let low = (scalar_u128 & u128::from(u64::MAX)) as u64;
-                let high = (scalar_u128 << 64) as u64;
-                let low = i64::from_ne_bytes(low.to_ne_bytes());
-                let high = i64::from_ne_bytes(high.to_ne_bytes());
+                let high = (scalar_u128 >> 64) as u64;
                 let ctor_sig = crate::function_sig::FnSig::new(
                     &[
                         Type::ManagedReference(Type::U128.into()),
@@ -241,27 +252,26 @@ fn load_const_scalar<'ctx>(
                     ],
                     &Type::Void,
                 );
-                CILNode::RawOpsParrentless {
-                    ops: [
-                        CILOp::NewTMPLocal(Type::U128.into()),
-                        CILOp::LoadAddresOfTMPLocal,
-                        CILOp::LdcI64(high),
-                        CILOp::ConvU64(false),
-                        CILOp::LdcI64(low),
-                        CILOp::ConvU64(false),
-                        CILOp::Call(CallSite::boxed(
-                            Some(DotnetTypeRef::uint_128()),
-                            ".ctor".into(),
-                            ctor_sig,
-                            false,
-                        )),
-                        CILOp::LoadAddresOfTMPLocal,
-                        CILOp::ConvUSize(false),
-                        CILOp::LdObj(tpe.into()),
-                        CILOp::FreeTMPLocal,
-                    ]
-                    .into(),
-                }
+                let value = CILNode::NewObj { site: CallSite::boxed(
+                    Some(DotnetTypeRef::int_128()),
+                    ".ctor".into(),
+                    ctor_sig,
+                    false,
+                ), args: [
+                    conv_u64!(ldc_u64!(high)),
+                    conv_u64!(ldc_u64!(low))
+                ].into() };
+                
+                   
+                    CILNode::TemporaryLocal(Box::new((
+                        Type::Ptr(tpe.clone().into()),
+                        [CILRoot::SetTMPLocal {
+                            value,
+                        }]
+                        .into(),
+                        CILNode::LdObj { ptr: CILNode::LoadAddresOfTMPLocal.into(), obj: tpe.into() }
+                        
+                    )))
             }
         }
         TyKind::Adt(adt_def, _subst) => match adt_def.adt_kind() {
@@ -272,69 +282,71 @@ fn load_const_scalar<'ctx>(
                         value: scalar_type,
                     })
                     .expect("Could not get type layout!");
-                let (disrc_type, _) = crate::utilis::adt::enum_tag_info(&layout.layout, tyctx);
-                let enum_dotnet = tpe.as_dotnet().expect("Enum scalar not an ADT!");
-                let mut ops = vec![
-                    CILOp::NewTMPLocal(tpe.into()),
-                    CILOp::LoadAddresOfTMPLocal,
-                    CILOp::ConvUSize(false),
-                ];
-
-                ops.extend(
-                    crate::casts::int_to_int(
-                        Type::I64,
-                        disrc_type.clone(),
-                        CILNode::LdcI64(scalar_u128 as u64 as i64),
-                    )
-                    .flatten(),
-                );
-
-                ops.extend([
-                    CILOp::STField(Box::new(crate::cil::FieldDescriptor::new(
-                        enum_dotnet.clone(),
-                        disrc_type,
-                        "value__".into(),
-                    ))),
-                    CILOp::LoadTMPLocal,
-                    CILOp::FreeTMPLocal,
-                ]);
-                CILNode::RawOpsParrentless { ops: ops.into() }
+                //let (disrc_type, _) = crate::utilis::adt::enum_tag_info(&layout.layout, tyctx);
+                //let enum_dotnet = tpe.as_dotnet().expect("Enum scalar not an ADT!");
+                let low = (scalar_u128 & u128::from(u64::MAX)) as u64;
+            let high = (scalar_u128 >> 64) as u64;
+            let ctor_sig = crate::function_sig::FnSig::new(
+                &[
+                    Type::ManagedReference(Type::U128.into()),
+                    Type::U64,
+                    Type::U64,
+                ],
+                &Type::Void,
+            );
+            let value = CILNode::NewObj { site: CallSite::boxed(
+                Some(DotnetTypeRef::int_128()),
+                ".ctor".into(),
+                ctor_sig,
+                false,
+            ), args: [
+                conv_u64!(ldc_u64!(high)),
+                conv_u64!(ldc_u64!(low))
+            ].into() };
+            
+               
+                CILNode::TemporaryLocal(Box::new((
+                    Type::Ptr(tpe.clone().into()),
+                    [CILRoot::SetTMPLocal {
+                        value,
+                    }]
+                    .into(),
+                    CILNode::LdObj { ptr: CILNode::LoadAddresOfTMPLocal.into(), obj: tpe.into() }
+                    
+                )))
             }
             AdtKind::Struct => {
-                //assert!(adt_def.size() < 16);
+               
                 let low = (scalar_u128 & u128::from(u64::MAX)) as u64;
-                let high = (scalar_u128 << 64) as u64;
-                let low = i64::from_ne_bytes(low.to_ne_bytes());
-                let high = i64::from_ne_bytes(high.to_ne_bytes());
-                let ctor_sig = crate::function_sig::FnSig::new(
-                    &[
-                        Type::ManagedReference(Type::U128.into()),
-                        Type::U64,
-                        Type::U64,
-                    ],
-                    &Type::Void,
-                );
-                CILNode::RawOpsParrentless {
-                    ops: [
-                        CILOp::NewTMPLocal(Type::U128.into()),
-                        CILOp::LoadAddresOfTMPLocal,
-                        CILOp::LdcI64(high),
-                        CILOp::ConvU64(false),
-                        CILOp::LdcI64(low),
-                        CILOp::ConvU64(false),
-                        CILOp::Call(CallSite::boxed(
-                            Some(DotnetTypeRef::uint_128()),
-                            ".ctor".into(),
-                            ctor_sig,
-                            false,
-                        )),
-                        CILOp::LoadAddresOfTMPLocal,
-                        CILOp::ConvUSize(false),
-                        CILOp::LdObj(tpe.into()),
-                        CILOp::FreeTMPLocal,
-                    ]
+            let high = (scalar_u128 >> 64) as u64;
+            let ctor_sig = crate::function_sig::FnSig::new(
+                &[
+                    Type::ManagedReference(Type::U128.into()),
+                    Type::U64,
+                    Type::U64,
+                ],
+                &Type::Void,
+            );
+            let value = CILNode::NewObj { site: CallSite::boxed(
+                Some(DotnetTypeRef::int_128()),
+                ".ctor".into(),
+                ctor_sig,
+                false,
+            ), args: [
+                conv_u64!(ldc_u64!(high)),
+                conv_u64!(ldc_u64!(low))
+            ].into() };
+            
+               
+                CILNode::TemporaryLocal(Box::new((
+                    Type::Ptr(tpe.clone().into()),
+                    [CILRoot::SetTMPLocal {
+                        value,
+                    }]
                     .into(),
-                }
+                    CILNode::LdObj { ptr: CILNode::LoadAddresOfTMPLocal.into(), obj: tpe.into() }
+                    
+                )))
             }
             _ => todo!("Can't load const ADT scalars of type {scalar_type:?}"),
         },
@@ -372,38 +384,23 @@ pub fn load_const_int(value: u128, int_type: &IntTy) -> CILNode {
         IntTy::I128 => {
             let low = (value & u128::from(u64::MAX)) as u64;
             let high = (value >> 64) as u64;
-            let low = i64::from_ne_bytes(low.to_ne_bytes());
-            let high = i64::from_ne_bytes(high.to_ne_bytes());
-            //eprintln!("value:{value:x} high:{high} low:{low}");
             let ctor_sig = crate::function_sig::FnSig::new(
                 &[
-                    Type::ManagedReference(Type::I128.into()),
+                    Type::ManagedReference(Type::U128.into()),
                     Type::U64,
                     Type::U64,
                 ],
                 &Type::Void,
             );
-            CILNode::RawOpsParrentless {
-                ops: [
-                    //CILOp::NewTMPLocal(Type::I128.into()),
-                    //CILOp::LoadAddresOfTMPLocal,
-                    CILOp::LdcI64(high),
-                    CILOp::ConvI64(false),
-                    CILOp::ConvU64(false),
-                    CILOp::LdcI64(low),
-                    CILOp::ConvI64(false),
-                    CILOp::ConvU64(false),
-                    CILOp::NewObj(CallSite::boxed(
-                        Some(DotnetTypeRef::int_128()),
-                        ".ctor".into(),
-                        ctor_sig,
-                        false,
-                    )),
-                    //CILOp::LoadTMPLocal,
-                    //CILOp::FreeTMPLocal,
-                ]
-                .into(),
-            }
+            CILNode::NewObj { site: CallSite::boxed(
+                Some(DotnetTypeRef::int_128()),
+                ".ctor".into(),
+                ctor_sig,
+                false,
+            ), args: [
+                conv_u64!(ldc_u64!(high)),
+                conv_u64!(ldc_u64!(low))
+            ].into() }
         }
     }
 }
@@ -423,8 +420,6 @@ pub fn load_const_uint(value: u128, int_type: &UintTy) -> CILNode {
         UintTy::U128 => {
             let low = (value & u128::from(u64::MAX)) as u64;
             let high = (value >> 64) as u64;
-            let low = i64::from_ne_bytes(low.to_ne_bytes());
-            let high = i64::from_ne_bytes(high.to_ne_bytes());
             let ctor_sig = crate::function_sig::FnSig::new(
                 &[
                     Type::ManagedReference(Type::U128.into()),
@@ -433,23 +428,16 @@ pub fn load_const_uint(value: u128, int_type: &UintTy) -> CILNode {
                 ],
                 &Type::Void,
             );
-            CILNode::RawOpsParrentless {
-                ops: vec![
-                    CILOp::LdcI64(high),
-                    CILOp::ConvI64(false),
-                    CILOp::ConvU64(false),
-                    CILOp::LdcI64(low),
-                    CILOp::ConvI64(false),
-                    CILOp::ConvU64(false),
-                    CILOp::NewObj(CallSite::boxed(
-                        Some(DotnetTypeRef::uint_128()),
-                        ".ctor".into(),
-                        ctor_sig,
-                        false,
-                    )),
-                ]
-                .into(),
-            }
+            CILNode::NewObj { site: CallSite::boxed(
+                Some(DotnetTypeRef::uint_128()),
+                ".ctor".into(),
+                ctor_sig,
+                false,
+            ), args: [
+                conv_u64!(ldc_u64!(high)),
+                conv_u64!(ldc_u64!(low))
+            ].into() }
+           
         }
     }
 }

@@ -192,7 +192,7 @@ impl BasicBlock {
         for (target, sub_target) in self.targets() {
             assert_eq!(sub_target, 0);
             self.trees.push(
-                CILRoot::Raw {
+                CILRoot::JumpingPad {
                     ops: Box::new([CILOp::Label(id, target), CILOp::Leave(target)]),
                 }
                 .into(),
@@ -220,7 +220,7 @@ impl BasicBlock {
         if let Some(_) = self.handler {
             ops.push(CILOp::BeginTry);
         };
-        ops.extend(self.trees.iter().flat_map(|tree| tree.flatten()));
+        ops.extend(self.trees.iter().flat_map(|tree| tree.into_ops()));
         if let Some(handler) = &self.handler {
             ops.push(CILOp::BeginCatch);
             ops.push(CILOp::Pop);

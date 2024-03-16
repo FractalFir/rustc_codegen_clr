@@ -1,13 +1,6 @@
 use super::PlaceTy;
 use crate::{
-    add, assert_morphic, call,
-    cil::{CILOp, FieldDescriptor},
-    cil_tree::cil_node::CILNode,
-    conv_usize,
-    function_sig::FnSig,
-    ld_field, mul,
-    r#type::{TyCache, Type},
-    size_of,
+    add, assert_morphic, call, cil::{CILOp, CallSite, FieldDescriptor}, cil_tree::{cil_node::CILNode, cil_root::CILRoot}, conv_usize, function_sig::FnSig, ld_field, ldc_u64, mul, size_of, r#type::{TyCache, Type}
 };
 use rustc_middle::{
     mir::PlaceElem,
@@ -111,17 +104,16 @@ pub fn place_elem_adress<'ctx>(
                         tyctx,
                         Some(method_instance),
                     );
-                    return CILNode::RawOps {
-                        parrent: addr_calc.into(),
-                        ops: [
-                            CILOp::NewTMPLocal(curr_type.into()),
-                            CILOp::SetTMPLocal,
-                            CILOp::LoadAddresOfTMPLocal,
-                            CILOp::LdObj(field_type.clone().into()),
-                            CILOp::FreeTMPLocal,
-                        ]
+                    return (
+                        CILNode::TemporaryLocal(Box::new((
+                        Type::Ptr(curr_type.into()),
+                        [CILRoot::SetTMPLocal {
+                            value: addr_calc
+                                
+                        }.into()]
                         .into(),
-                    };
+                        CILNode::LdObj { ptr: CILNode::LoadAddresOfTMPLocal.into(), obj: field_type.into() }
+                    ))));
                     //todo!("Handle DST fields. DST:")
                 }
                 let field_desc = crate::utilis::field_descrptor(
@@ -243,7 +235,7 @@ pub fn place_elem_adress<'ctx>(
             );
             let curr_dotnet = curr_type.as_dotnet().unwrap();
             if *from_end {
-                CILNode::RawOps {
+                /*CILNode::RawOps {
                     parrent: addr_calc.into(),
                     ops: [
                         CILOp::NewTMPLocal(Box::new(curr_type.clone())),
@@ -282,40 +274,34 @@ pub fn place_elem_adress<'ctx>(
                         CILOp::FreeTMPLocal,
                     ]
                     .into(),
-                }
+                }*/
+                todo!("Can't subslice from end")
             } else {
-                CILNode::RawOps {
-                    parrent: addr_calc.into(),
-                    ops: [
-                        CILOp::NewTMPLocal(Box::new(curr_type.clone())),
-                        CILOp::SetTMPLocal,
-                        CILOp::LoadAddresOfTMPLocal,
-                        CILOp::LoadAddresOfTMPLocal,
-                        CILOp::LDField(FieldDescriptor::boxed(
-                            curr_dotnet.clone(),
-                            Type::Ptr(Type::Void.into()),
-                            "data_pointer".into(),
-                        )),
-                        CILOp::LdcI64(*from as i64),
-                        CILOp::ConvUSize(false),
-                        CILOp::Add,
-                        CILOp::STField(FieldDescriptor::boxed(
-                            curr_dotnet.clone(),
-                            Type::Ptr(Type::Void.into()),
-                            "data_pointer".into(),
-                        )),
-                        CILOp::LoadAddresOfTMPLocal,
-                        CILOp::LdcI64((to - from) as i64),
-                        CILOp::STField(FieldDescriptor::boxed(
-                            curr_dotnet,
-                            Type::USize,
-                            "metadata".into(),
-                        )),
-                        CILOp::LoadTMPLocal,
-                        CILOp::FreeTMPLocal,
+                let metadata_field =
+                FieldDescriptor::new(curr_dotnet.clone(), Type::USize, "metadata".into());
+            let ptr_field = FieldDescriptor::new(
+                curr_dotnet.clone(),
+                Type::Ptr(Type::Void.into()),
+                "data_pointer".into(),
+            );
+                CILNode::TemporaryLocal(Box::new((
+                    curr_type.into(),
+                    [
+                        CILRoot::SetField {
+                            addr: CILNode::LoadAddresOfTMPLocal,
+                            value: conv_usize!(ldc_u64!((to - from) as u64)),
+                            desc: metadata_field.into(),
+                        },
+                        CILRoot::SetField {
+                            addr: CILNode::LoadAddresOfTMPLocal,
+                            value: add!(ld_field!(addr_calc,ptr_field.clone()),conv_usize!(ldc_u64!(*from))),
+                            desc: ptr_field.clone().into(),
+                        },
                     ]
                     .into(),
-                }
+                    CILNode::LoadTMPLocal,
+                )))
+                
             }
         }
         PlaceElem::ConstantIndex {
@@ -326,7 +312,7 @@ pub fn place_elem_adress<'ctx>(
             let curr_ty = curr_type
                 .as_ty()
                 .expect("INVALID PLACE: Indexing into enum variant???");
-            let index = CILOp::LdcI64(*offset as i64);
+            let index = ldc_u64!(*offset as u64);
             //assert!(!from_end, "Indexing slice form end");
             //println!("WARNING: ConstantIndex has required min_length of {min_length}, but bounds checking on const access not supported yet!");
             match curr_ty.kind() {
@@ -344,44 +330,29 @@ pub fn place_elem_adress<'ctx>(
                         Type::Ptr(Type::Void.into()),
                         "data_pointer".into(),
                     );
-                    let len = FieldDescriptor::new(slice, Type::USize, "metadata".into());
-
+                    let len = FieldDescriptor::new(slice.clone(), Type::USize, "metadata".into());
+                    let metadata = FieldDescriptor::new(slice, Type::USize, "metadata".into());
                     if *from_end {
-                        CILNode::RawOps {
-                            parrent: addr_calc.into(),
-                            ops: [
-                                CILOp::Dup,
-                                CILOp::LDField(len.into()),
-                                CILOp::NewTMPLocal(Type::USize.into()),
-                                CILOp::SetTMPLocal,
-                                CILOp::LDField(desc.into()),
-                                CILOp::LoadTMPLocal,
-                                index,
-                                CILOp::ConvUSize(false),
-                                CILOp::Sub,
-                                CILOp::SizeOf(inner_type.into()),
-                                CILOp::ConvUSize(false),
-                                CILOp::Mul,
-                                CILOp::Add,
-                            ]
-                            .into(),
-                        } // ops.extend(derf_op);
-
-                    //todo!("Can't index slice from end!");
+                        todo!("Can't index slice from end!");
                     } else {
-                        CILNode::RawOps {
-                            parrent: addr_calc.into(),
-                            ops: [
-                                CILOp::LDField(desc.into()),
-                                index,
-                                CILOp::ConvUSize(false),
-                                CILOp::SizeOf(inner_type.into()),
-                                CILOp::ConvUSize(false),
-                                CILOp::Mul,
-                                CILOp::Add,
-                            ]
-                            .into(),
-                        }
+                        add!(
+                            ld_field!(addr_calc.clone(), desc),
+                            mul!(
+                                call!(
+                                    CallSite::new(
+                                        None,
+                                        "bounds_check".into(),
+                                        FnSig::new(&[Type::USize, Type::USize], &Type::USize),
+                                        true
+                                    ),
+                                    [
+                                        index,
+                                        conv_usize!(ldc_u64!(*min_length))
+                                    ]
+                                ),
+                                conv_usize!(CILNode::SizeOf(inner_type.into()))
+                            )
+                        )
 
                         //ops.extend(derf_op);
                     }
@@ -396,50 +367,20 @@ pub fn place_elem_adress<'ctx>(
                         type_cache.type_from_cache(curr_ty, tyctx, Some(method_instance));
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
                     if *from_end {
-                        CILNode::RawOps {
-                            parrent: addr_calc.into(),
-                            ops: [
-                                CILOp::LdcI64(length as u64 as i64),
-                                CILOp::ConvUSize(false),
-                                index,
-                                CILOp::ConvUSize(false),
-                                CILOp::Sub,
-                                CILOp::Call(
-                                    crate::cil::CallSite::new(
-                                        Some(array_dotnet),
-                                        "get_Address".into(),
-                                        FnSig::new(
-                                            &[Type::Ptr(array_type.into()), Type::USize],
-                                            &Type::Ptr(element.into()),
-                                        ),
-                                        false,
-                                    )
-                                    .into(),
-                                ),
-                            ]
-                            .into(),
-                        }
-                        //todo!("Can't index array from end!");
+                        todo!("Can't index array from end!");
                     } else {
-                        CILNode::RawOps {
-                            parrent: addr_calc.into(),
-                            ops: [
-                                index,
-                                CILOp::ConvUSize(false),
-                                CILOp::Call(
-                                    crate::cil::CallSite::new(
-                                        Some(array_dotnet),
-                                        "get_Address".into(),
-                                        FnSig::new(
-                                            &[Type::Ptr(array_type.into()), Type::USize],
-                                            &Type::Ptr(element.into()),
-                                        ),
-                                        false,
-                                    )
-                                    .into(),
+                        CILNode::Call {
+                            site: crate::cil::CallSite::new(
+                                Some(array_dotnet),
+                                "get_Address".into(),
+                                FnSig::new(
+                                    &[Type::Ptr(array_type.into()), Type::USize],
+                                    &Type::Ptr(element.into()),
                                 ),
-                            ]
+                                false,
+                            )
                             .into(),
+                            args: [addr_calc, CILNode::ConvUSize(index.into())].into(),
                         }
                     }
                 }

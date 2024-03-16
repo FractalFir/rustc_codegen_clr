@@ -55,37 +55,6 @@ pub enum CILOp {
     /// Load the adddres of argument `n` on top of the stack
     LDArgA(u32),
 
-    // Syntetic("fake") ops used to simplify some more complex parts of the codegen. They later get turned into real CIL ops.
-    /// This is a Syntetic("fake") instruction, which is used **only** internaly. It is not present in the resulting assembly.
-    /// Sometimes, a temporary local variable is needed for codegen purposes(mainly when handling constants)
-    /// This instrunction creates a new, short-lived temporary local variable, which can be accessed using [`LoadTMPLocal`],[`LoadAddresOfTMPLocal`]
-    /// and [`SetTMPLocal`]. Each [`NewTMPLocal`] must be paired with a corresponding [`FreeTMPLocal`].
-    /// No temporary variable is allowed to live across MIR statements.
-    NewTMPLocal(Box<crate::r#type::Type>),
-    /// This is a Syntetic("fake") instruction, which is used **only** internaly. It is not present in the resulting assembly.
-    /// This instruction frees the last allocated temporary variable.
-    FreeTMPLocal,
-    /// This is a Syntetic("fake") instruction, which is used **only** internaly. It is not present in the resulting assembly.
-    /// This instruction reads the value of the current temporary local. It is equivalent to `LDLoc(tmp)`.
-    LoadTMPLocal,
-    /// This is a Syntetic("fake") instruction, which is used **only** internaly. It is not present in the resulting assembly.
-    /// Loads the TMP local n elements under the top of the TMP local stack.
-    LoadUnderTMPLocal(u8),
-    /// This is a Syntetic("fake") instruction, which is used **only** internaly. It is not present in the resulting assembly.
-    /// Loads the adress TMP local n elements under the top of the TMP local stack.
-    LoadAdressUnderTMPLocal(u8),
-    /// This is a Syntetic("fake") instruction, which is used **only** internaly. It is not present in the resulting assembly.
-    /// This instruction reads the adress of the current temporary local. It is equivalent to `LDLocA(tmp)`.
-    LoadAddresOfTMPLocal,
-    /// This is a Syntetic("fake") instruction, which is used **only** internaly. It is not present in the resulting assembly.
-    /// This instruction sets the value of the current temporary local. It is equivalent to `STLoc(tmp)`.
-    SetTMPLocal,
-    /// This is a Syntetic("fake") instruction, which is used **only** internaly. It is not present in the resulting assembly.
-    /// This instruction loads a pointer to local allocation `alloc_id`.
-    LoadGlobalAllocPtr {
-        /// ID of the allocation - used for looking up its data during later stages of codegen.
-        alloc_id: u64,
-    },
     // Load constant values.
     /// Load constant sigined 32 bit intieger and push it on top of the stack.
     LdcI32(i32),
@@ -498,14 +467,9 @@ impl CILOp {
             CILOp::Ret => -1,
             CILOp::CpBlk => -3,
             // Syntetic instructions
-            CILOp::NewTMPLocal(_) | CILOp::FreeTMPLocal => 0,
-            CILOp::LoadAddresOfTMPLocal
-            | CILOp::LoadUnderTMPLocal(_)
-            | CILOp::LoadAdressUnderTMPLocal(_)
-            | CILOp::LoadTMPLocal => 1,
-            CILOp::SetTMPLocal => -1,
+          
             CILOp::LDFtn(_) => 1,
-            CILOp::LoadGlobalAllocPtr { alloc_id: _ } => 1,
+     
             CILOp::CallI(fn_sig) => {
                 if fn_sig.output() == &crate::r#type::Type::Void {
                     -(1 + fn_sig.inputs().len() as isize)

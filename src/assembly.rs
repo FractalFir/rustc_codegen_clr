@@ -1,4 +1,5 @@
 use crate::basic_block::{handler_for_block, BasicBlock};
+use crate::cil_tree::cil_node::CILNode;
 use crate::cil_tree::cil_root::CILRoot;
 use crate::cil_tree::CILTree;
 use crate::method::MethodType;
@@ -15,6 +16,7 @@ use crate::{
     r#type::TypeDef,
     IString,
 };
+use crate::{add, call, conv_isize, conv_usize, ldc_u32, ldc_u64};
 use rustc_middle::mir::interpret::Allocation;
 use rustc_middle::mir::{
     interpret::{AllocId, GlobalAlloc},
@@ -239,31 +241,31 @@ impl Assembly {
     }
     //fn terminator_to_ops()
     /// Adds a rust MIR function to the assembly.
-    pub fn add_fn<'tcx>(
+    pub fn add_fn<'tyctx>(
         &mut self,
-        instance: Instance<'tcx>,
-        tcx: TyCtxt<'tcx>,
+        instance: Instance<'tyctx>,
+        tyctx: TyCtxt<'tyctx>,
         name: &str,
         cache: &mut TyCache,
     ) -> Result<(), MethodCodegenError> {
         if crate::utilis::is_function_magic(name) {
             return Ok(());
         }
-        if let TyKind::FnDef(_, _) = instance.ty(tcx, ParamEnv::reveal_all()).kind() {
+        if let TyKind::FnDef(_, _) = instance.ty(tyctx, ParamEnv::reveal_all()).kind() {
             //ALL OK.
-        } else if let TyKind::Closure(_, _) = instance.ty(tcx, ParamEnv::reveal_all()).kind() {
+        } else if let TyKind::Closure(_, _) = instance.ty(tyctx, ParamEnv::reveal_all()).kind() {
             //println!("CLOSURE")
         } else {
             eprintln!("fn item {instance:?} is not a function definition type. Skippping.");
             return Ok(());
         }
-        let mir = tcx.instance_mir(instance.def);
+        let mir = tyctx.instance_mir(instance.def);
         // Check if function is public or not.
         // FIXME: figure out the source of the bug causing visibility to not be read propely.
         // let access_modifier = AccessModifer::from_visibility(tcx.visibility(instance.def_id()));
         let access_modifier = AccessModifer::Public;
         // Handle the function signature
-        let call_site = crate::call_info::CallInfo::sig_from_instance_(instance, tcx, cache);
+        let call_site = crate::call_info::CallInfo::sig_from_instance_(instance, tyctx, cache);
         let sig = match call_site {
             Ok(call_site) => call_site.sig().clone(),
             Err(err) => {
@@ -274,7 +276,7 @@ impl Assembly {
 
         // Get locals
         //eprintln!("method")
-        let locals = locals_from_mir(&mir.local_decls, tcx, mir.arg_count, &instance, cache);
+        let locals = locals_from_mir(&mir.local_decls, tyctx, mir.arg_count, &instance, cache);
         // Create method prototype
 
         let mut ops = Vec::new();
@@ -294,7 +296,7 @@ impl Assembly {
                     rustc_middle::ty::print::with_no_trimmed_paths! {ops.push(CILOp::Comment(format!("{statement:?}").into()))};
                 }
                 trees.extend(match Self::statement_to_ops(
-                    statement, tcx, mir, instance, cache,
+                    statement, tyctx, mir, instance, cache,
                 ) {
                     Ok(ops) => ops,
                     Err(err) => {
@@ -318,7 +320,7 @@ impl Assembly {
                     if *crate::config::INSERT_MIR_DEBUG_COMMENTS {
                         //rustc_middle::ty::print::with_no_trimmed_paths! {ops.push(CILOp::Comment(format!("{term:?}").into()))};
                     }
-                    let term_trees = Self::terminator_to_ops(term, mir, tcx, instance, cache);
+                    let term_trees = Self::terminator_to_ops(term, mir, tyctx, instance, cache);
                     trees.extend(term_trees);
                 }
                 None => (),
@@ -327,13 +329,13 @@ impl Assembly {
                 cleanup_bbs.push(BasicBlock::new(
                     trees,
                     last_bb_id as u32,
-                    handler_for_block(block_data, &mir.basic_blocks, tcx, &instance, mir),
+                    handler_for_block(block_data, &mir.basic_blocks, tyctx, &instance, mir),
                 ))
             } else {
                 normal_bbs.push(BasicBlock::new(
                     trees,
                     last_bb_id as u32,
-                    handler_for_block(block_data, &mir.basic_blocks, tcx, &instance, mir),
+                    handler_for_block(block_data, &mir.basic_blocks, tyctx, &instance, mir),
                 ));
             }
             //ops.extend(trees.iter().flat_map(|tree| tree.flatten()))
@@ -351,7 +353,7 @@ impl Assembly {
             locals,
             normal_bbs,
         );
-        method.resolve_global_allocations(self);
+        method.resolve_global_allocations(self, tyctx);
         /*
         method.ops_mut().iter_mut().for_each(|op| match op {
             CILOp::LoadGlobalAllocPtr { alloc_id } => {
@@ -375,7 +377,7 @@ impl Assembly {
     }
 
     /// Adds a static field and initialized for allocation represented by `alloc_id`.
-    fn add_allocation(
+    pub fn add_allocation(
         &mut self,
         alloc_id: u64,
         tcx: TyCtxt<'_>,
@@ -425,8 +427,6 @@ impl Assembly {
             alloc_fld.clone(),
         );
         if self.static_fields.get(&alloc_fld).is_none() {
-            todo!();
-            /*
             let init_method =
                 allocation_initializer_method(const_allocation, &alloc_fld, tcx, self);
             let cctor = self
@@ -449,25 +449,41 @@ impl Assembly {
                         ],
                     )
                 });
-
-            let ops: &mut Vec<CILOp> = cctor.ops_mut();
-            if !ops.is_empty() && ops[ops.len() - 1] == CILOp::Ret {
-                ops.pop();
+            let blocks = cctor.blocks_mut();
+            if blocks.is_empty() {
+                blocks.push(BasicBlock::new(vec![CILRoot::VoidRet.into()], 0, None));
+            }
+            assert_eq!(
+                blocks.len(),
+                1,
+                "Unexpected number of basic blocks in a static data initializer."
+            );
+            let trees = blocks[0].trees_mut();
+            {
+                // Remove return
+                let ret = trees.pop().unwrap();
+                // Append initailzer
+                trees.push(
+                    CILRoot::SetStaticField {
+                        descr: field_desc.clone(),
+                        value: call!(
+                            CallSite::new(
+                                None,
+                                init_method.name().into(),
+                                init_method.sig().clone(),
+                                true,
+                            ),
+                            []
+                        ),
+                    }
+                    .into(),
+                );
+                // Add return again
+                trees.push(ret);
             }
 
-            ops.extend([
-                CILOp::Call(CallSite::boxed(
-                    None,
-                    init_method.name().into(),
-                    init_method.sig().clone(),
-                    true,
-                )),
-                CILOp::STStaticField(field_desc.clone().into()),
-                CILOp::Ret,
-            ]);
-            //eprintln!("Adding intiailzer named {}. \n Method:{init_method:?}",init_method.name());
             self.add_method(init_method);
-            self.add_static(Type::Ptr(Type::U8.into()), &alloc_fld);*/
+            self.add_static(Type::Ptr(Type::U8.into()), &alloc_fld);
         }
         field_desc
     }
@@ -590,7 +606,8 @@ impl Assembly {
         assert!(self.entrypoint.is_none(), "ERROR: Multiple entrypoints");
         let wrapper = crate::entrypoint::wrapper(&entrypoint);
         self.entrypoint = Some(wrapper.call_site());
-        self.functions.insert(wrapper.call_site(), wrapper);
+        self.add_method(wrapper);
+
     }
 
     pub fn extern_fns(&self) -> &HashMap<(IString, FnSig), IString> {
@@ -743,7 +760,7 @@ fn locals_from_mir<'tyctx>(
     }
     local_types
 }
-/*
+
 fn allocation_initializer_method(
     const_allocation: &Allocation,
     name: &str,
@@ -753,45 +770,55 @@ fn allocation_initializer_method(
     let bytes: &[u8] =
         const_allocation.inspect_with_uninit_and_ptr_outside_interpreter(0..const_allocation.len());
     let ptrs = const_allocation.provenance().ptrs();
-
-    let mut ops = Vec::new();
-    ops.extend([
-        CILOp::LdcI64(bytes.len() as u64 as i64),
-        CILOp::ConvISize(false),
-        CILOp::Call(CallSite::malloc(tyctx).into()),
-        CILOp::STLoc(0),
-        CILOp::LDLoc(0),
-        CILOp::STLoc(1),
-    ]);
+    let mut trees: Vec<CILTree> = Vec::new();
+    trees.push(
+        CILRoot::STLoc {
+            local: 0,
+            tree: call!(
+                CallSite::malloc(tyctx),
+                [conv_isize!(ldc_u64!(bytes.len() as u64))]
+            ),
+        }
+        .into(),
+    );
+    trees.push(
+        CILRoot::STLoc {
+            local: 1,
+            tree: CILNode::LDLoc(0),
+        }
+        .into(),
+    );
     for byte in bytes {
-        ops.extend([
-            CILOp::LDLoc(0),
-            CILOp::LdcI32(*byte as i32),
-            CILOp::STIndI8,
-            CILOp::LDLoc(0),
-            CILOp::LdcI32(1),
-            CILOp::ConvUSize(false),
-            CILOp::Add,
-            CILOp::STLoc(0),
-        ]);
+        trees.push(CILRoot::STIndI8(CILNode::LDLoc(0), ldc_u32!(*byte as u32)).into());
+        trees.push(
+            CILRoot::STLoc {
+                local: 0,
+                tree: add!(CILNode::LDLoc(0), conv_usize!(ldc_u32!(1))),
+            }
+            .into(),
+        )
     }
     if !ptrs.is_empty() {
         for ptr in ptrs.iter() {
             let ptr_alloc = asm.add_allocation(ptr.1.alloc_id().0.into(), tyctx);
             let offset = ptr.0.bytes_usize() as u32;
-            ops.extend([
-                CILOp::LDLoc(1),
-                CILOp::LdcI32(offset as i32),
-                CILOp::ConvUSize(false),
-                CILOp::Add,
-                CILOp::LDStaticField(ptr_alloc.into()),
-                CILOp::STIndISize,
-            ]);
+            trees.push(
+                CILRoot::STIndISize(
+                    add!(CILNode::LDLoc(1), conv_usize!(ldc_u32!(offset as u32))),
+                    CILNode::LDStaticField(ptr_alloc.into()),
+                )
+                .into(),
+            )
         }
         //eprintln!("Constant requires rellocation support!");
     }
-    ops.extend([CILOp::LDLoc(1), CILOp::Ret]);
-    let mut method = Method::new_empty(
+    trees.push(
+        CILRoot::Ret {
+            tree: CILNode::LDLoc(1),
+        }
+        .into(),
+    );
+    let method = Method::new(
         AccessModifer::Private,
         MethodType::Static,
         FnSig::new(&[], &Type::Ptr(Type::U8.into())),
@@ -800,7 +827,8 @@ fn allocation_initializer_method(
             (Some("curr".into()), Type::Ptr(Type::U8.into())),
             (Some("alloc_ptr".into()), Type::Ptr(Type::U8.into())),
         ],
+        vec![BasicBlock::new(trees, 0, None)],
     );
-    method.set_ops(ops);
+
     method
-} */
+}

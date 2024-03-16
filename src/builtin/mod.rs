@@ -12,7 +12,7 @@ use crate::{
     method::Method,
     r#type::Type,
 };
-use crate::{call, gt, lt_un};
+use crate::{add, call, gt, ldc_u64, lt_un};
 use rustc_middle::ty::TyCtxt;
 mod casts;
 add_method_from_trees!(
@@ -69,19 +69,6 @@ macro_rules! add_method {
                 vec![],
             );
             method.set_ops(($ops).to_vec());
-            asm.add_method(method);
-        }
-    };
-    ($name:ident,$input:expr,$output:expr,$ops:expr,$locals:expr) => {
-        fn $name(asm: &mut Assembly) {
-            let mut method = Method::new_empty(
-                AccessModifer::Private,
-                MethodType::Static,
-                FnSig::new($input, $output),
-                stringify!($name),
-                $locals.into(),
-            );
-            method.set_ops(($ops).into());
             asm.add_method(method);
         }
     };
@@ -291,23 +278,24 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
         "__rust_dealloc",
         vec![],
         vec![BasicBlock::new(
-            vec![CILRoot::Call {
-                site:
-                    CallSite::new(
+            vec![
+                CILRoot::Call {
+                    site: CallSite::new(
                         native_mem.clone(),
                         "AlignedFree".into(),
                         FnSig::new(&[Type::Ptr(Type::Void.into())], &Type::Void),
                         true,
                     ),
-                    args:[CILNode::LDArg(0)].into(),
-            }.into(),CILRoot::VoidRet
-            .into()],
+                    args: [CILNode::LDArg(0)].into(),
+                }
+                .into(),
+                CILRoot::VoidRet.into(),
+            ],
             0,
             None,
         )],
- 
     );
-
+    puts(asm);
     asm.add_method(__rust_dealloc);
     let free = Method::new(
         AccessModifer::Private,
@@ -316,15 +304,19 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
         "free",
         vec![],
         vec![BasicBlock::new(
-            vec![CILRoot::Call{ site: CallSite::new(
-                marshal.clone(),
-                "FreeHGlobal".into(),
-                FnSig::new(&[Type::ISize], &Type::Void),
-                true,
-            ), args:  
-            [CILNode::LDArg(0)].into() }.into(),
-                CILRoot::VoidRet
-            .into()],
+            vec![
+                CILRoot::Call {
+                    site: CallSite::new(
+                        marshal.clone(),
+                        "FreeHGlobal".into(),
+                        FnSig::new(&[Type::ISize], &Type::Void),
+                        true,
+                    ),
+                    args: [CILNode::LDArg(0)].into(),
+                }
+                .into(),
+                CILRoot::VoidRet.into(),
+            ],
             0,
             None,
         )],
@@ -345,40 +337,53 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
 fn io(asm: &mut Assembly) {
     //puts(asm);
 }
-/*
-add_method!(
+
+add_method_from_trees!(
     puts,
     &[Type::Ptr(Box::new(Type::U8))],
     &Type::Void,
-    [
-        CILOp::Label(0, 0),
-        CILOp::LDArg(0),
-        CILOp::LDIndI8,
-        CILOp::STLoc(0),
-        CILOp::LDLoc(0),
-        CILOp::LdcI32(0),
-        CILOp::BEq(1, 0),
-        CILOp::LDLoc(0),
-        CILOp::ConvI16(false),
-        CILOp::Call(CallSite::boxed(
-            Some(
-                DotnetTypeRef::new(Some("System.Console"), "System.Console").with_valuetype(false)
-            ),
-            "Write".into(),
-            FnSig::new(&[Type::DotnetChar], &Type::Void),
-            true,
-        )),
-        CILOp::LDArg(0),
-        CILOp::LdcI64(1),
-        CILOp::ConvUSize(false),
-        CILOp::Add,
-        CILOp::STArg(0),
-        CILOp::GoTo(0, 0),
-        CILOp::Label(1, 0),
-        CILOp::Ret
-    ],
-    [(None, Type::U8)]
+    vec![
+        BasicBlock::new(
+            vec![
+                CILRoot::BTrue {
+                    target: 1,
+                    sub_target: 0,
+                    ops: CILNode::LDIndI8 {
+                        ptr: CILNode::LDArg(0).into()
+                    }
+                }
+                .into(),
+                CILRoot::Call {
+                    site: CallSite::new(
+                        Some(DotnetTypeRef::console()),
+                        "Write".into(),
+                        FnSig::new(&[Type::DotnetChar], &Type::Void),
+                        true
+                    ),
+                    args: [CILNode::LDIndI8 {
+                        ptr: CILNode::LDArg(0).into()
+                    }]
+                    .into()
+                }
+                .into(),
+                CILRoot::STArg {
+                    arg: 0,
+                    tree: add!(CILNode::LDArg(0), ldc_u64!(1))
+                }
+                .into(),
+                CILRoot::GoTo {
+                    target: 0,
+                    sub_target: 0
+                }
+                .into(),
+            ],
+            0,
+            None,
+        ),
+        BasicBlock::new(vec![CILRoot::VoidRet.into(),], 1, None,)
+    ]
 );
+/*
 add_method!(
     unlikely,
     &[Type::Bool],

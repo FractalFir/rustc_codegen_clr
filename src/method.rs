@@ -8,6 +8,7 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
+use rustc_middle::ty::TyCtxt;
 /// Represenation of a CIL method.
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 pub struct Method {
@@ -63,11 +64,12 @@ impl Method {
         locals: Vec<LocalDef>,
         mut blocks: Vec<BasicBlock>,
     ) -> Self {
+
         blocks
             .iter_mut()
             .flat_map(|blck| blck.trees_mut().iter_mut())
             .for_each(|tree| tree.opt());
-        Self {
+        let mut res = Self {
             access,
             method_type,
             sig,
@@ -75,7 +77,9 @@ impl Method {
             locals,
             blocks,
             attributes: Vec::new(),
-        }
+        };
+        res.allocate_temporaries();
+        res
     }
     /*
     pub(crate) fn ensure_valid(&mut self) {
@@ -201,16 +205,20 @@ impl Method {
         self.method_type
     }
 
-    pub(crate) fn resolve_global_allocations(&mut self, arg: &mut crate::assembly::Assembly) {
+    pub(crate) fn resolve_global_allocations(&mut self, arg: &mut crate::assembly::Assembly,tyctx:TyCtxt) {
         self.blocks
         .iter_mut()
         .flat_map(|block| block.trees_mut())
-        .for_each(|tree| tree.resolve_global_allocations(arg));
+        .for_each(|tree| tree.resolve_global_allocations(arg,tyctx));
     
     }
 
     pub fn blocks(&self) -> &[BasicBlock] {
         &self.blocks
+    }
+    
+    pub fn blocks_mut(&mut self) -> &mut Vec<BasicBlock> {
+        &mut self.blocks
     }
 }
 /// Type of this method(static, instance or virtual).

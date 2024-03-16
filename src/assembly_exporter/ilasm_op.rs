@@ -489,9 +489,8 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
         }
         CILOp::Volatile=>"volatile.".into(),
         CILOp::Nop => "nop".into(),
-        CILOp::NewTMPLocal(_) | CILOp::FreeTMPLocal | CILOp::LoadAddresOfTMPLocal | CILOp::SetTMPLocal | CILOp::LoadTMPLocal | CILOp::LoadUnderTMPLocal(_) | CILOp::LoadAdressUnderTMPLocal(_) =>
-         panic!("CRITICAL INTERNAL ERROR: OP '{op:?}' is syntetic(internal only) and should have been substituted before being emmited!"),
-         CILOp::LoadGlobalAllocPtr { alloc_id } => panic!("CRITICAL INTERNAL ERROR:Allocation {alloc_id} was not resolved to a static."),
+      
+         //CILOp::LoadGlobalAllocPtr { alloc_id } => panic!("CRITICAL INTERNAL ERROR:Allocation {alloc_id} was not resolved to a static."),
         CILOp::Pop => "pop".into(),
         CILOp::Dup => "dup".into(),
         CILOp::LDStaticField(static_field) => {

@@ -19,7 +19,7 @@ pub fn handle_terminator<'ctx>(
     method_instance: Instance<'ctx>,
     type_cache: &mut crate::r#type::TyCache,
 ) -> Vec<CILTree> {
-    let mut res = match &terminator.kind {
+    let  res = match &terminator.kind {
         TerminatorKind::Call {
             func,
             args,
@@ -185,7 +185,6 @@ pub fn handle_terminator<'ctx>(
         }
         .into()],
         TerminatorKind::UnwindResume => {
-
             vec![CILRoot::ReThrow.into()]
         }
         TerminatorKind::Drop {

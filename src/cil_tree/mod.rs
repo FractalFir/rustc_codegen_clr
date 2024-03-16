@@ -1,7 +1,7 @@
 use crate::{cil::CILOp, r#type::Type};
 
 use self::cil_root::CILRoot;
-
+use rustc_middle::ty::TyCtxt;
 pub mod cil_node;
 pub mod cil_root;
 use serde::{Deserialize, Serialize};
@@ -20,8 +20,9 @@ impl From<CILRoot> for Vec<CILTree> {
     }
 }
 impl CILTree {
-    pub fn flatten(&self) -> Vec<CILOp> {
-        self.tree.flatten()
+    pub fn into_ops(&self) -> Vec<CILOp> {
+
+        self.tree.into_ops()
     }
 
     pub(crate) fn fix_for_exception_handler(&mut self, id: u32) {
@@ -41,11 +42,15 @@ impl CILTree {
     }
 
     pub(crate) fn allocate_tmps(&mut self, locals: &mut Vec<(Option<Box<str>>, Type)>) {
-        self.tree.allocate_tmps(None,locals);
+        self.tree.allocate_tmps(None, locals);
     }
-    
-    pub(crate) fn resolve_global_allocations(&mut self, arg: &mut crate::assembly::Assembly) {
-        self.tree.resolve_global_allocations(arg);
+
+    pub(crate) fn resolve_global_allocations(
+        &mut self,
+        arg: &mut crate::assembly::Assembly,
+        tyctx: TyCtxt,
+    ) {
+        self.tree.resolve_global_allocations(arg, tyctx);
     }
 }
 pub fn append_vec(mut vec: Vec<CILOp>, by: CILOp) -> Vec<CILOp> {

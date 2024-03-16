@@ -29,13 +29,7 @@ pub fn handle_intrinsic<'tyctx>(
     type_cache: &mut TyCache,
     signature: FnSig,
 ) -> CILRoot {
-    let mut call = Vec::new();
-    for arg in args {
-        call.extend(
-            crate::operand::handle_operand(&arg.node, tyctx, body, method_instance, type_cache)
-                .flatten(),
-        );
-    }
+
     match fn_name {
         "breakpoint" => {
             debug_assert_eq!(
