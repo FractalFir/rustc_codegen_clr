@@ -67,7 +67,6 @@ pub enum CILNode {
     Shl(Box<Self>, Box<Self>),
     ShrUn(Box<Self>, Box<Self>),
     // TODO: Remove this
-   
     RawOpsParrentless {
         ops: Box<[CILOp]>,
     },
@@ -250,7 +249,6 @@ impl CILNode {
         }
     }
     pub fn flatten(&self) -> Vec<CILOp> {
-
         let mut ops = match self {
             Self::CallI { sig, fn_ptr, args } => {
                 let mut ops: Vec<_> = fn_ptr.flatten();
@@ -263,8 +261,12 @@ impl CILNode {
                 flattened.extend(root.flatten());
                 flattened
             }
-            Self::LoadTMPLocal => panic!("Unresolved temporary local during the CIL flattening phase!"),
-            Self::LoadAddresOfTMPLocal => panic!("Unresolved temporary local during the CIL flattening phase!"),
+            Self::LoadTMPLocal => {
+                panic!("Unresolved temporary local during the CIL flattening phase!")
+            }
+            Self::LoadAddresOfTMPLocal => {
+                panic!("Unresolved temporary local during the CIL flattening phase!")
+            }
             Self::LDFtn(site) => vec![CILOp::LDFtn(site.clone())],
             Self::LDTypeToken(tpe) => vec![CILOp::LDTypeToken(tpe.clone())],
             Self::TemporaryLocal(tuple) => {
@@ -421,7 +423,7 @@ impl CILNode {
                 res.push(CILOp::Mul);
                 res
             }
-    
+
             Self::RawOpsParrentless { ops } => ops.clone().into(),
             Self::Call { args, site } => {
                 let mut res: Vec<CILOp> = args.iter().flat_map(|arg| arg.flatten()).collect();
@@ -445,7 +447,9 @@ impl CILNode {
             Self::LdcF64(val) => vec![CILOp::LdcF64(*val)],
             Self::LdcF32(val) => vec![CILOp::LdcF32(*val)],
             Self::LdStr(string) => vec![CILOp::LdStr(string.clone())],
-            Self::LoadGlobalAllocPtr { alloc_id } => panic!("Unresolved global alloc  during the CIL flattening phase!"),
+            Self::LoadGlobalAllocPtr { alloc_id } => {
+                panic!("Unresolved global alloc  during the CIL flattening phase!")
+            }
             Self::LDStaticField(sfield) => vec![CILOp::LDStaticField(sfield.clone())],
         };
         {
@@ -461,7 +465,6 @@ impl CILNode {
         curr_loc: Option<u32>,
         locals: &mut Vec<(Option<Box<str>>, Type)>,
     ) {
-
         match self {
             CILNode::LDLoc(_) |
             CILNode::LDArg(_) |
@@ -499,7 +502,6 @@ impl CILNode {
                 a.allocate_tmps(curr_loc, locals);
                 b.allocate_tmps(curr_loc, locals)
             }
-        
             CILNode::RawOpsParrentless { ops } => {
                 eprintln!("WARNING: allocate_tmps does not work for `RawOpsParrentless`")
             }
@@ -597,7 +599,6 @@ impl CILNode {
                 a.resolve_global_allocations(asm,tyctx);
                 b.resolve_global_allocations(asm,tyctx)
             }
-       
             CILNode::RawOpsParrentless { ops } => {
                 eprintln!("WARNING: resolve_global_allocations does not work for `RawOpsParrentless`")
             }
@@ -649,87 +650,92 @@ impl CILNode {
             Self::LDStaticField(sfield)=>(),
         }
     }
-    
-    pub(crate) fn sheed_trees(&mut self) -> Vec<CILRoot>{
-        match self{
-            CILNode::LDLoc(_) |
-            CILNode::LDArg(_)|
-            CILNode::LDLocA(_) |
-            CILNode::LDArgA(_) => vec![],
+
+    pub(crate) fn sheed_trees(&mut self) -> Vec<CILRoot> {
+        match self {
+            CILNode::LDLoc(_) | CILNode::LDArg(_) | CILNode::LDLocA(_) | CILNode::LDArgA(_) => {
+                vec![]
+            }
             CILNode::BlackBox(inner) => inner.sheed_trees(),
             CILNode::LDStaticField(_) => vec![],
-            CILNode::ConvF32(inner) |
-            CILNode::ConvF64(inner)|
-            CILNode::ConvF64Un(inner) => inner.sheed_trees(),
-            CILNode::SizeOf(_) =>  vec![],
-            CILNode::LDIndI8 { ptr } |
-            CILNode::LDIndI16 { ptr }  |
-            CILNode::LDIndI32 { ptr } |
-            CILNode::LDIndI64 { ptr } |
-            CILNode::LDIndISize { ptr }  |
-            CILNode::LdObj { ptr, .. } |
-            CILNode::LDIndF32 { ptr } |
-            CILNode::LDIndF64 { ptr } =>ptr.sheed_trees(),
-            CILNode::LDFieldAdress { addr, field }|
-            CILNode::LDField { addr, field } =>addr.sheed_trees(),
-            CILNode::Add(a, b) |
-            CILNode::And(a, b) |
-            CILNode::Sub(a, b) |
-            CILNode::Mul(a, b) |
-            CILNode::Div(a, b) |
-            CILNode::Rem(a, b) |
-            CILNode::RemUn(a, b) |
-            CILNode::Or(a, b) |
-            CILNode::XOr(a, b) |
-            CILNode::Shr(a, b)  |
-            CILNode::Shl(a, b)  |
-            CILNode::ShrUn(a, b) => {
+            CILNode::ConvF32(inner) | CILNode::ConvF64(inner) | CILNode::ConvF64Un(inner) => {
+                inner.sheed_trees()
+            }
+            CILNode::SizeOf(_) => vec![],
+            CILNode::LDIndI8 { ptr }
+            | CILNode::LDIndI16 { ptr }
+            | CILNode::LDIndI32 { ptr }
+            | CILNode::LDIndI64 { ptr }
+            | CILNode::LDIndISize { ptr }
+            | CILNode::LdObj { ptr, .. }
+            | CILNode::LDIndF32 { ptr }
+            | CILNode::LDIndF64 { ptr } => ptr.sheed_trees(),
+            CILNode::LDFieldAdress { addr, field } | CILNode::LDField { addr, field } => {
+                addr.sheed_trees()
+            }
+            CILNode::Add(a, b)
+            | CILNode::And(a, b)
+            | CILNode::Sub(a, b)
+            | CILNode::Mul(a, b)
+            | CILNode::Div(a, b)
+            | CILNode::Rem(a, b)
+            | CILNode::RemUn(a, b)
+            | CILNode::Or(a, b)
+            | CILNode::XOr(a, b)
+            | CILNode::Shr(a, b)
+            | CILNode::Shl(a, b)
+            | CILNode::ShrUn(a, b) => {
                 let mut res = a.sheed_trees();
                 res.extend(b.sheed_trees());
                 res
             }
             CILNode::RawOpsParrentless { ops } => vec![],
-            CILNode::Call { args, site } |
-            CILNode::CallVirt { args, site }  => args.iter_mut().flat_map(|arg|arg.sheed_trees()).collect(),
-            CILNode::LdcI64(_) |
-            CILNode::LdcU64(_) |
-            CILNode::LdcI32(_)|
-            CILNode::LdcU32(_)|
-            CILNode::LdcF64(_) |
-            CILNode::LdcF32(_) => vec![],
-            CILNode::LoadGlobalAllocPtr { alloc_id }  => vec![],
-            CILNode::ConvU8(val)|
-            CILNode::ConvU16(val) |
-            CILNode::ConvU32(val) |
-            CILNode::ConvU64(val) |
-            CILNode::ConvUSize(val) |
-            CILNode::ConvI8(val)|
-            CILNode::ConvI16(val)|
-            CILNode::ConvI32(val)|
-            CILNode::ConvI64(val)|
-            CILNode::ConvISize(val)  => val.sheed_trees(),
-            CILNode::Neg(val) |
-            CILNode::Not(val) => val.sheed_trees(),
-            CILNode::Eq(a, b) |
-            CILNode::Lt(a, b) |
-            CILNode::LtUn(a, b)|
-            CILNode::Gt(a, b)|
-            CILNode::GtUn(a, b) => {
+            CILNode::Call { args, site } | CILNode::CallVirt { args, site } => {
+                args.iter_mut().flat_map(|arg| arg.sheed_trees()).collect()
+            }
+            CILNode::LdcI64(_)
+            | CILNode::LdcU64(_)
+            | CILNode::LdcI32(_)
+            | CILNode::LdcU32(_)
+            | CILNode::LdcF64(_)
+            | CILNode::LdcF32(_) => vec![],
+            CILNode::LoadGlobalAllocPtr { alloc_id } => vec![],
+            CILNode::ConvU8(val)
+            | CILNode::ConvU16(val)
+            | CILNode::ConvU32(val)
+            | CILNode::ConvU64(val)
+            | CILNode::ConvUSize(val)
+            | CILNode::ConvI8(val)
+            | CILNode::ConvI16(val)
+            | CILNode::ConvI32(val)
+            | CILNode::ConvI64(val)
+            | CILNode::ConvISize(val) => val.sheed_trees(),
+            CILNode::Neg(val) | CILNode::Not(val) => val.sheed_trees(),
+            CILNode::Eq(a, b)
+            | CILNode::Lt(a, b)
+            | CILNode::LtUn(a, b)
+            | CILNode::Gt(a, b)
+            | CILNode::GtUn(a, b) => {
                 let mut res = a.sheed_trees();
                 res.extend(b.sheed_trees());
                 res
             }
-            CILNode::TemporaryLocal(_) => panic!("Trees should be sheed after locals are allocated!"),
+            CILNode::TemporaryLocal(_) => {
+                panic!("Trees should be sheed after locals are allocated!")
+            }
             CILNode::SubTrees(trees, main) => {
                 let res = trees.to_vec();
                 *self = *main.clone();
                 res
-            },
-            CILNode::LoadAddresOfTMPLocal => panic!("Trees should be sheed after locals are allocated!"),
+            }
+            CILNode::LoadAddresOfTMPLocal => {
+                panic!("Trees should be sheed after locals are allocated!")
+            }
             CILNode::LoadTMPLocal => panic!("Trees should be sheed after locals are allocated!"),
-            CILNode::LDFtn(_) |
-            CILNode::LDTypeToken(_) => vec![],
-            CILNode::NewObj { site, args }  => args.iter_mut().flat_map(|arg|arg.sheed_trees()).collect(),
+            CILNode::LDFtn(_) | CILNode::LDTypeToken(_) => vec![],
+            CILNode::NewObj { site, args } => {
+                args.iter_mut().flat_map(|arg| arg.sheed_trees()).collect()
+            }
             CILNode::LdStr(_) => vec![],
             CILNode::CallI { sig, fn_ptr, args } => todo!(),
         }

@@ -291,7 +291,11 @@ pub fn get_array_type(element_count: usize, element: Type) -> TypeDef {
             AccessModifer::Public,
             MethodType::Instance,
             crate::function_sig::FnSig::new(
-                &[Type::Ptr(Box::new(def.clone().into())), Type::USize, element.clone()],
+                &[
+                    Type::Ptr(Box::new(def.clone().into())),
+                    Type::USize,
+                    element.clone(),
+                ],
                 &Type::Void,
             ),
             "set_Item",
@@ -356,7 +360,10 @@ pub fn get_array_type(element_count: usize, element: Type) -> TypeDef {
         let mut get_item_usize = Method::new(
             AccessModifer::Public,
             MethodType::Instance,
-            crate::function_sig::FnSig::new(&[Type::Ptr(Box::new(def.clone().into())), Type::USize], &element.clone()),
+            crate::function_sig::FnSig::new(
+                &[Type::Ptr(Box::new(def.clone().into())), Type::USize],
+                &element.clone(),
+            ),
             "get_Item",
             vec![],
             vec![BasicBlock::new(
@@ -384,17 +391,7 @@ pub fn get_array_type(element_count: usize, element: Type) -> TypeDef {
         );
 
         def.add_method(get_item_usize);
-        let mut to_string = Method::new_empty(
-            AccessModifer::Public,
-            MethodType::Virtual,
-            crate::function_sig::FnSig::new(&[(&def).into()], &DotnetTypeRef::string_type().into()),
-            "ToString",
-            vec![(
-                Some("arrString".into()),
-                DotnetTypeRef::string_type().into(),
-            )],
-        );
-        let ops = vec![CILOp::LdStr("I am an array! Horray!".into()), CILOp::Ret];
+
         //to_string.set_ops(ops);
         //def.add_method(to_string);
     }

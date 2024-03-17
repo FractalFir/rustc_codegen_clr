@@ -19,7 +19,7 @@ pub fn handle_terminator<'ctx>(
     method_instance: Instance<'ctx>,
     type_cache: &mut crate::r#type::TyCache,
 ) -> Vec<CILTree> {
-    let  res = match &terminator.kind {
+    let res = match &terminator.kind {
         TerminatorKind::Call {
             func,
             args,

@@ -1,6 +1,13 @@
 use super::PlaceTy;
 use crate::{
-    add, assert_morphic, call, cil::{CILOp, CallSite, FieldDescriptor}, cil_tree::{cil_node::CILNode, cil_root::CILRoot}, conv_usize, function_sig::FnSig, ld_field, ldc_u64, mul, size_of, r#type::{TyCache, Type}
+    add, assert_morphic, call,
+    cil::{CILOp, CallSite, FieldDescriptor},
+    cil_tree::{cil_node::CILNode, cil_root::CILRoot},
+    conv_usize,
+    function_sig::FnSig,
+    ld_field, ldc_u64, mul,
+    r#type::{TyCache, Type},
+    size_of,
 };
 use rustc_middle::{
     mir::PlaceElem,
@@ -104,15 +111,13 @@ pub fn place_elem_adress<'ctx>(
                         tyctx,
                         Some(method_instance),
                     );
-                    return (
-                        CILNode::TemporaryLocal(Box::new((
+                    return (CILNode::TemporaryLocal(Box::new((
                         curr_type.into(),
-                        [CILRoot::SetTMPLocal {
-                            value: addr_calc
-                                
-                        }.into()]
-                        .into(),
-                        CILNode::LdObj { ptr: CILNode::LoadAddresOfTMPLocal.into(), obj: field_type.into() }
+                        [CILRoot::SetTMPLocal { value: addr_calc }.into()].into(),
+                        CILNode::LdObj {
+                            ptr: CILNode::LoadAddresOfTMPLocal.into(),
+                            obj: field_type.into(),
+                        },
                     ))));
                     //todo!("Handle DST fields. DST:")
                 }
@@ -278,12 +283,12 @@ pub fn place_elem_adress<'ctx>(
                 todo!("Can't subslice from end")
             } else {
                 let metadata_field =
-                FieldDescriptor::new(curr_dotnet.clone(), Type::USize, "metadata".into());
-            let ptr_field = FieldDescriptor::new(
-                curr_dotnet.clone(),
-                Type::Ptr(Type::Void.into()),
-                "data_pointer".into(),
-            );
+                    FieldDescriptor::new(curr_dotnet.clone(), Type::USize, "metadata".into());
+                let ptr_field = FieldDescriptor::new(
+                    curr_dotnet.clone(),
+                    Type::Ptr(Type::Void.into()),
+                    "data_pointer".into(),
+                );
                 CILNode::TemporaryLocal(Box::new((
                     curr_type.into(),
                     [
@@ -294,14 +299,16 @@ pub fn place_elem_adress<'ctx>(
                         },
                         CILRoot::SetField {
                             addr: CILNode::LoadAddresOfTMPLocal,
-                            value: add!(ld_field!(addr_calc,ptr_field.clone()),conv_usize!(ldc_u64!(*from))),
+                            value: add!(
+                                ld_field!(addr_calc, ptr_field.clone()),
+                                conv_usize!(ldc_u64!(*from))
+                            ),
                             desc: ptr_field.clone().into(),
                         },
                     ]
                     .into(),
                     CILNode::LoadTMPLocal,
                 )))
-                
             }
         }
         PlaceElem::ConstantIndex {
@@ -345,10 +352,7 @@ pub fn place_elem_adress<'ctx>(
                                         FnSig::new(&[Type::USize, Type::USize], &Type::USize),
                                         true
                                     ),
-                                    [
-                                        index,
-                                        conv_usize!(ldc_u64!(*min_length))
-                                    ]
+                                    [index, conv_usize!(ldc_u64!(*min_length))]
                                 ),
                                 conv_usize!(CILNode::SizeOf(inner_type.into()))
                             )

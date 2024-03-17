@@ -6,9 +6,9 @@ use crate::{
     r#type::{DotnetTypeRef, Type},
     IString,
 };
+use rustc_middle::ty::TyCtxt;
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
-use rustc_middle::ty::TyCtxt;
 /// Represenation of a CIL method.
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 pub struct Method {
@@ -36,25 +36,6 @@ pub enum Attribute {
     EntryPoint,
 }
 impl Method {
-    /// Creates new method with `access` access modifier, signature `sig`, name `name`, locals `locals`, and `is_static` if method is static.
-    #[must_use]
-    pub fn new_empty(
-        access: AccessModifer,
-        method_type: MethodType,
-        sig: FnSig,
-        name: &str,
-        locals: Vec<LocalDef>,
-    ) -> Self {
-        Self {
-            access,
-            method_type,
-            sig,
-            name: name.into(),
-            locals,
-            blocks: Vec::new(),
-            attributes: Vec::new(),
-        }
-    }
     #[must_use]
     pub fn new(
         access: AccessModifer,
@@ -64,7 +45,6 @@ impl Method {
         locals: Vec<LocalDef>,
         mut blocks: Vec<BasicBlock>,
     ) -> Self {
-
         blocks
             .iter_mut()
             .flat_map(|blck| blck.trees_mut().iter_mut())
@@ -79,7 +59,7 @@ impl Method {
             attributes: Vec::new(),
         };
         res.allocate_temporaries();
-        res.blocks_mut().iter_mut().for_each(|bb|bb.sheed_trees());
+        res.blocks_mut().iter_mut().for_each(|bb| bb.sheed_trees());
         res
     }
     /*
@@ -191,7 +171,6 @@ impl Method {
             .iter_mut()
             .flat_map(|block| block.trees_mut())
             .for_each(|tree| tree.allocate_tmps(&mut self.locals));
-        
     }
     /// Adds method attribute `attr` to self.
     pub fn add_attribute(&mut self, attr: Attribute) {
@@ -206,18 +185,21 @@ impl Method {
         self.method_type
     }
 
-    pub(crate) fn resolve_global_allocations(&mut self, arg: &mut crate::assembly::Assembly,tyctx:TyCtxt) {
+    pub(crate) fn resolve_global_allocations(
+        &mut self,
+        arg: &mut crate::assembly::Assembly,
+        tyctx: TyCtxt,
+    ) {
         self.blocks
-        .iter_mut()
-        .flat_map(|block| block.trees_mut())
-        .for_each(|tree| tree.resolve_global_allocations(arg,tyctx));
-    
+            .iter_mut()
+            .flat_map(|block| block.trees_mut())
+            .for_each(|tree| tree.resolve_global_allocations(arg, tyctx));
     }
 
     pub fn blocks(&self) -> &[BasicBlock] {
         &self.blocks
     }
-    
+
     pub fn blocks_mut(&mut self) -> &mut Vec<BasicBlock> {
         &mut self.blocks
     }

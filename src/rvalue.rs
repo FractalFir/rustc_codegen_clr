@@ -56,7 +56,6 @@ pub fn handle_rvalue<'tcx>(
             let target_fat = pointer_to_is_fat(target_pointed_to, tyctx, Some(method_instance));
             match (src_fat, target_fat) {
                 (true, true) => {
- 
                     let parrent =
                         handle_operand(operand, tyctx, method, method_instance, tycache).into();
 
@@ -109,7 +108,11 @@ pub fn handle_rvalue<'tcx>(
                             method_instance,
                             tycache,
                         );
-                        parrent = CILNode::TemporaryLocal(Box::new((source_type,[CILRoot::SetTMPLocal { value: parrent }].into(),ld_field!(CILNode::LoadAddresOfTMPLocal, field_descriptor))));
+                        parrent = CILNode::TemporaryLocal(Box::new((
+                            source_type,
+                            [CILRoot::SetTMPLocal { value: parrent }].into(),
+                            ld_field!(CILNode::LoadAddresOfTMPLocal, field_descriptor),
+                        )));
                         inner
                     } else {
                         panic!("Non ptr type:{source:?}")

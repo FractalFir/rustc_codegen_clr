@@ -467,9 +467,8 @@ impl CILOp {
             CILOp::Ret => -1,
             CILOp::CpBlk => -3,
             // Syntetic instructions
-          
             CILOp::LDFtn(_) => 1,
-     
+
             CILOp::CallI(fn_sig) => {
                 if fn_sig.output() == &crate::r#type::Type::Void {
                     -(1 + fn_sig.inputs().len() as isize)

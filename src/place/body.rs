@@ -88,19 +88,22 @@ pub fn place_elem_body<'ctx>(
                         tyctx,
                         Some(method_instance),
                     );
-                    return  (
-                        curr_ty.into(),CILNode::TemporaryLocal(Box::new((
-                        curr_type.into(),
-                        [CILRoot::SetTMPLocal {
-                            value: parrent_node
-                                
-                        }.into()]
-                        .into(),
-                        CILNode::LdObj { ptr: CILNode::LoadAddresOfTMPLocal.into(), obj: field_type.into() }
-                            
-                        ),
-                    )));
-                   
+                    return (
+                        curr_ty.into(),
+                        CILNode::TemporaryLocal(Box::new((
+                            curr_type.into(),
+                            [CILRoot::SetTMPLocal {
+                                value: parrent_node,
+                            }
+                            .into()]
+                            .into(),
+                            CILNode::LdObj {
+                                ptr: CILNode::LoadAddresOfTMPLocal.into(),
+                                obj: field_type.into(),
+                            },
+                        ))),
+                    );
+
                     //todo!("Handle DST fields. DST:")
                 }
                 let _curr_type = crate::utilis::monomorphize(&method_instance, curr_ty, tyctx);
@@ -293,10 +296,7 @@ pub fn place_elem_body<'ctx>(
                                     FnSig::new(&[Type::USize, Type::USize], &Type::USize),
                                     true
                                 ),
-                                [
-                                    index,
-                                    conv_usize!(ldc_u64!(*min_length))
-                                ]
+                                [index, conv_usize!(ldc_u64!(*min_length))]
                             ),
                             conv_usize!(CILNode::SizeOf(inner_type.into()))
                         )

@@ -489,7 +489,6 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
         }
         CILOp::Volatile=>"volatile.".into(),
         CILOp::Nop => "nop".into(),
-      
          //CILOp::LoadGlobalAllocPtr { alloc_id } => panic!("CRITICAL INTERNAL ERROR:Allocation {alloc_id} was not resolved to a static."),
         CILOp::Pop => "pop".into(),
         CILOp::Dup => "dup".into(),

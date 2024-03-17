@@ -56,8 +56,14 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
             "entrypoint",
             vec![],
             vec![BasicBlock::new(
-                vec![CILRoot::Call { site: entrypoint.clone(), args: [].into() }
-                .into(),CILRoot::VoidRet.into()],
+                vec![
+                    CILRoot::Call {
+                        site: entrypoint.clone(),
+                        args: [].into(),
+                    }
+                    .into(),
+                    CILRoot::VoidRet.into(),
+                ],
                 0,
                 None,
             )],

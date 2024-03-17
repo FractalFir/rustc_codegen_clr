@@ -438,7 +438,7 @@ impl Assembly {
                     true,
                 ))
                 .or_insert_with(|| {
-                    Method::new_empty(
+                    Method::new(
                         AccessModifer::Public,
                         MethodType::Static,
                         FnSig::new(&[], &Type::Void),
@@ -447,6 +447,7 @@ impl Assembly {
                             (None, Type::Ptr(Type::U8.into())),
                             (None, Type::Ptr(Type::U8.into())),
                         ],
+                        vec![],
                     )
                 });
             let blocks = cctor.blocks_mut();
@@ -607,7 +608,6 @@ impl Assembly {
         let wrapper = crate::entrypoint::wrapper(&entrypoint);
         self.entrypoint = Some(wrapper.call_site());
         self.add_method(wrapper);
-
     }
 
     pub fn extern_fns(&self) -> &HashMap<(IString, FnSig), IString> {

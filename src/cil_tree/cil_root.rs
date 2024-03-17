@@ -338,13 +338,22 @@ impl CILRoot {
             _ => (),
         }
     }
-    pub fn shed_trees(mut self)->Vec<Self>{
-        let mut res= vec![];
-        let trees:Vec<CILRoot>  = match &mut self{
-            CILRoot::STLoc { local, tree } => tree.sheed_trees(),
-            CILRoot::BTrue { target, sub_target, ops } => ops.sheed_trees(),
-            CILRoot::GoTo { target, sub_target } => vec![],
-            CILRoot::Call { site, args } => args.iter_mut().flat_map(|arg|arg.sheed_trees()).collect(),
+    pub fn shed_trees(mut self) -> Vec<Self> {
+        let mut res = vec![];
+        let trees: Vec<CILRoot> = match &mut self {
+            CILRoot::STLoc { local: _, tree } => tree.sheed_trees(),
+            CILRoot::BTrue {
+                target: _,
+                sub_target: _,
+                ops,
+            } => ops.sheed_trees(),
+            CILRoot::GoTo {
+                target: _,
+                sub_target: _,
+            } => vec![],
+            CILRoot::CallVirt { site: _, args } | CILRoot::Call { site: _, args } => {
+                args.iter_mut().flat_map(|arg| arg.sheed_trees()).collect()
+            }
             CILRoot::SetField { addr, value, desc } => {
                 let mut res = addr.sheed_trees();
                 res.extend(value.sheed_trees());
@@ -352,31 +361,34 @@ impl CILRoot {
             }
             CILRoot::SetTMPLocal { value } => todo!(),
             CILRoot::CpBlk { src, dst, len } => todo!(),
-            CILRoot::STIndI8( addr_calc, value_calc) |
-            CILRoot::STIndI16( addr_calc, value_calc) |
-            CILRoot::STIndI32( addr_calc, value_calc)|
-            CILRoot::STIndI64( addr_calc, value_calc)|
-            CILRoot::STIndISize( addr_calc, value_calc) |
-            CILRoot::STIndF64( addr_calc, value_calc)|
-            CILRoot::STIndF32( addr_calc, value_calc)|
-            CILRoot::STObj { addr_calc, value_calc,.. } => {
+            CILRoot::STIndI8(addr_calc, value_calc)
+            | CILRoot::STIndI16(addr_calc, value_calc)
+            | CILRoot::STIndI32(addr_calc, value_calc)
+            | CILRoot::STIndI64(addr_calc, value_calc)
+            | CILRoot::STIndISize(addr_calc, value_calc)
+            | CILRoot::STIndF64(addr_calc, value_calc)
+            | CILRoot::STIndF32(addr_calc, value_calc)
+            | CILRoot::STObj {
+                addr_calc,
+                value_calc,
+                ..
+            } => {
                 let mut res = addr_calc.sheed_trees();
                 res.extend(value_calc.sheed_trees());
                 res
-            },
-            CILRoot::STArg { arg, tree } =>tree.sheed_trees(),
+            }
+            CILRoot::STArg { arg, tree } => tree.sheed_trees(),
             CILRoot::Break => vec![],
-            CILRoot::Nop =>  vec![],
+            CILRoot::Nop => vec![],
             CILRoot::InitBlk { dst, val, count } => todo!(),
-            CILRoot::CallVirt { site, args } => todo!(),
-            CILRoot::Ret { tree } |
-            CILRoot::Pop { tree } => tree.sheed_trees(),
+
+            CILRoot::Ret { tree } | CILRoot::Pop { tree } => tree.sheed_trees(),
             CILRoot::VoidRet => vec![],
             CILRoot::Throw(tree) => tree.sheed_trees(),
             CILRoot::ReThrow => vec![],
             CILRoot::CallI { sig, fn_ptr, args } => todo!(),
             CILRoot::JumpingPad { ops } => vec![],
-            CILRoot::SetStaticField { descr, value } =>value.sheed_trees(),
+            CILRoot::SetStaticField { descr, value } => value.sheed_trees(),
         };
         res.extend(trees);
         res.push(self);
