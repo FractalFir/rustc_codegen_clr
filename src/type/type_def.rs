@@ -291,7 +291,7 @@ pub fn get_array_type(element_count: usize, element: Type) -> TypeDef {
             AccessModifer::Public,
             MethodType::Instance,
             crate::function_sig::FnSig::new(
-                &[(&def).into(), Type::USize, element.clone()],
+                &[Type::Ptr(Box::new(def.clone().into())), Type::USize, element.clone()],
                 &Type::Void,
             ),
             "set_Item",
@@ -327,7 +327,7 @@ pub fn get_array_type(element_count: usize, element: Type) -> TypeDef {
             AccessModifer::Public,
             MethodType::Instance,
             crate::function_sig::FnSig::new(
-                &[(&def).into(), Type::USize],
+                &[Type::Ptr(Box::new(def.clone().into())), Type::USize],
                 &Type::Ptr(element.clone().into()),
             ),
             "get_Address",
@@ -356,7 +356,7 @@ pub fn get_array_type(element_count: usize, element: Type) -> TypeDef {
         let mut get_item_usize = Method::new(
             AccessModifer::Public,
             MethodType::Instance,
-            crate::function_sig::FnSig::new(&[(&def).into(), Type::USize], &element.clone()),
+            crate::function_sig::FnSig::new(&[Type::Ptr(Box::new(def.clone().into())), Type::USize], &element.clone()),
             "get_Item",
             vec![],
             vec![BasicBlock::new(

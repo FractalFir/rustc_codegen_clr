@@ -109,7 +109,7 @@ pub fn handle_rvalue<'tcx>(
                             method_instance,
                             tycache,
                         );
-                        parrent = ld_field!(parrent, field_descriptor);
+                        parrent = CILNode::TemporaryLocal(Box::new((source_type,[CILRoot::SetTMPLocal { value: parrent }].into(),ld_field!(CILNode::LoadAddresOfTMPLocal, field_descriptor))));
                         inner
                     } else {
                         panic!("Non ptr type:{source:?}")

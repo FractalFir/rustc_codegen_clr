@@ -32,7 +32,9 @@ impl CILTree {
     pub fn targets(&self, targets: &mut Vec<(u32, u32)>) {
         self.tree.targets(targets)
     }
-
+    pub fn shed_trees(self)->Vec<Self>{
+        self.tree.shed_trees().into_iter().map(|tree|tree.into()).collect()
+    }
     pub fn tree(&self) -> &CILRoot {
         &self.tree
     }

@@ -79,6 +79,7 @@ impl Method {
             attributes: Vec::new(),
         };
         res.allocate_temporaries();
+        res.blocks_mut().iter_mut().for_each(|bb|bb.sheed_trees());
         res
     }
     /*

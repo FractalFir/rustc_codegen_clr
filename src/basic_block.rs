@@ -23,6 +23,16 @@ pub enum Handler {
     Blocks(Vec<BasicBlock>),
 }
 
+impl Handler {
+    pub fn as_blocks_mut(&mut self) -> Option<&mut Vec<BasicBlock>> {
+        if let Self::Blocks(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+}
+
 pub fn handler_for_block<'tyctx>(
     block_data: &BasicBlockData,
     blocks: &BasicBlocks<'tyctx>,
@@ -155,6 +165,12 @@ fn block_gc(entrypoint: u32, bbs: &[BasicBlock]) -> Vec<BasicBlock> {
         .collect()
 }
 impl BasicBlock {
+    pub fn sheed_trees(&mut self){
+        self.trees = self.trees.clone().into_iter().flat_map(|tree|tree.shed_trees()).collect();
+        if let Some(handler) = self.handler.as_mut(){
+            handler.as_blocks_mut().unwrap().iter_mut().for_each(|bb|bb.sheed_trees());
+        }
+    }
     pub fn resolve_exception_handlers(&mut self, handler_bbs: &[BasicBlock]) {
         let handler = if let Some(handler) = &self.handler {
             handler
