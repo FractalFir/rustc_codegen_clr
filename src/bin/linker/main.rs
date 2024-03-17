@@ -286,7 +286,13 @@ fn main() {
     if !is_lib {
         final_assembly.eliminate_dead_code();
     }
-
+    if *config::C_MODE{
+        println!("The codegen is now running in C mode. It will emmit C source files and build them.");
+        type EXPORTER = rustc_codegen_clr::assembly_exporter::c_exporter::CExporter;
+        use rustc_codegen_clr::assembly_exporter::AssemblyExporter;
+        EXPORTER::export_assembly(&final_assembly, output.as_ref(), is_lib).unwrap();
+        return;
+    }
     // Run ILASM
     export::export_assembly(&final_assembly, output, is_lib).expect("Assembly export faliure!");
 

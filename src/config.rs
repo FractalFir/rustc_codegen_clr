@@ -45,3 +45,5 @@ config_flag! {USE_CECIL_EXPORTER,false,"Tells the codegen to use the CECIL based
 config_flag! {ESCAPE_NAMES,false,"Tells the codegen to escape class and method names."}
 
 config_flag! {TEST_WITH_MONO,false}
+
+config_flag! {C_MODE,false,"Tells the codegen to emmit C source files."}

@@ -247,4 +247,8 @@ impl BasicBlock {
     pub fn trees_mut(&mut self) -> &mut Vec<CILTree> {
         &mut self.trees
     }
+    
+    pub fn trees(&self) -> &[CILTree] {
+        &self.trees
+    }
 }
