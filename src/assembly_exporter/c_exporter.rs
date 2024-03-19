@@ -1,5 +1,6 @@
 use super::AssemblyExporter;
 use crate::cil_tree::cil_root::CILRoot;
+use crate::function_sig::FnSig;
 use crate::r#type::TypeDef;
 use crate::{
     cil_tree::{cil_node::CILNode, CILTree},
@@ -28,6 +29,7 @@ impl std::io::Write for CExporter {
         self.encoded_asm.flush()
     }
 }
+
 impl CExporter {
     fn as_source(&self,is_dll:bool) -> Vec<u8> {
         let mut res = self.headers.clone();
@@ -47,12 +49,12 @@ impl CExporter {
 
         let name = method.name().replace('.',"_");
         // Puts is already defined in C.
-        if name == "puts" || name == "malloc"{
+        if name == "puts" || name == "malloc"|| name == "printf" || name == "free" || name == "realloc"{
             return;
         }
         let output = c_tpe(sig.output());
         let mut inputs: String = "(".into();
-        let mut input_iter = sig.inputs().iter().enumerate();
+        let mut input_iter = sig.inputs().iter().enumerate().filter(|(_,tpe)|**tpe != Type::Void);
         if let Some((idx, input)) = input_iter.next() {
             inputs.push_str(&format!("{input} A{idx}", input = c_tpe(input)));
         }
@@ -190,12 +192,12 @@ impl AssemblyExporter for CExporter {
     }
 
     fn add_extern_method(&mut self, lib_path: &str, name: &str, sig: &crate::function_sig::FnSig) {
-        if name == "puts" || name == "malloc"|| name == "printf"{
+        if name == "puts" || name == "malloc"|| name == "printf" || name == "free"{
             return;
         }
         let output = c_tpe(sig.output());
         let mut inputs: String = "(".into();
-        let mut input_iter = sig.inputs().iter().enumerate();
+        let mut input_iter = sig.inputs().iter().enumerate().filter(|(_,tpe)|**tpe != Type::Void);;
         if let Some((idx, input)) = input_iter.next() {
             inputs.push_str(&format!("{input} A{idx}", input = c_tpe(input)));
         }
@@ -247,8 +249,8 @@ fn node_string(tree: &CILNode) -> String {
         CILNode::BlackBox(inner) => node_string(inner),
         CILNode::LDStaticField(static_field) => static_field.name().into(),
         CILNode::ConvF32(inner) => format!("((float){inner})", inner = node_string(inner)),
-        CILNode::ConvF64(inner) => format!("((double){inner})", inner = node_string(inner)),
-        CILNode::ConvF64Un(_) => todo!(),
+        CILNode::ConvF64(inner) |
+        CILNode::ConvF64Un(inner) => format!("((double){inner})", inner = node_string(inner)),
         CILNode::SizeOf(tpe) => format!("sizeof({tpe})", tpe = c_tpe(tpe)),
         CILNode::LDIndI8 { ptr } => format!("(*((int8_t*){ptr}))", ptr = node_string(ptr)),
         CILNode::LDIndI16 { ptr } => format!("(*((int16_t*){ptr}))", ptr = node_string(ptr)),
@@ -283,14 +285,14 @@ fn node_string(tree: &CILNode) -> String {
             format!("{a} % {b}", a = node_string(a), b = node_string(b))
         }
         CILNode::Or(a, b) => format!("({a}) | ({b})", a = node_string(a), b = node_string(b)),
-        CILNode::XOr(_, _) => todo!(),
-        CILNode::Shr(a, b) => format!("{a} << {b}", a = node_string(a), b = node_string(b)),
-        CILNode::Shl(_, _) => todo!(),
-        CILNode::ShrUn(_, _) => todo!(),
+        CILNode::XOr(a, b) => format!("({a}) ^ ({b})", a = node_string(a), b = node_string(b)),
+        CILNode::Shr(a, b) => format!("{a} >> {b}", a = node_string(a), b = node_string(b)),
+        CILNode::Shl(a, b) |
+        CILNode::ShrUn(a, b)=> format!("{a} << {b}", a = node_string(a), b = node_string(b)),
         CILNode::RawOpsParrentless { ops } => todo!(),
         CILNode::Call { args, site } => {
             let name = site.name();
-            let mut input_iter = args.iter();
+            let mut input_iter = args.iter().zip(site.signature().inputs()).filter_map(|(code,tpe)|if *tpe != Type::Void{Some(code)}else{None});
             let mut inputs: String = "(".into();
             if let Some(input) = input_iter.next() {
                 inputs.push_str(&format!("{input}", input = node_string(input)));
@@ -324,8 +326,8 @@ fn node_string(tree: &CILNode) -> String {
         CILNode::ConvI32(inner) => format!("((int32_t){inner})", inner = node_string(inner)),
         CILNode::ConvI64(inner) => format!("((int64_t){inner})", inner = node_string(inner)),
         CILNode::ConvISize(inner) => format!("((ptrdiff_t){inner})", inner = node_string(inner)),
-        CILNode::Neg(_) => todo!(),
-        CILNode::Not(_) => todo!(),
+        CILNode::Neg(a) =>format!("-({a})", a = node_string(a)),
+        CILNode::Not(a) => format!("!({a})", a = node_string(a)),
         CILNode::Eq(a, b) => format!("(({a}) == ({b}))", a = node_string(a), b = node_string(b)),
         CILNode::Lt(a, b) | CILNode::LtUn(a, b) => {
             format!("{a} < {b}", a = node_string(a), b = node_string(b))
@@ -345,7 +347,7 @@ fn node_string(tree: &CILNode) -> String {
         CILNode::LDTypeToken(_) => todo!(),
         CILNode::NewObj { site, args } => {
             let name = site.name();
-            let mut input_iter = args.iter();
+            let mut input_iter = args.iter().zip(site.signature().inputs()).filter_map(|(code,tpe)|if *tpe != Type::Void{Some(code)}else{None});
             let mut inputs: String = "(".into();
             if let Some(input) = input_iter.next() {
                 inputs.push_str(&format!("{input}", input = node_string(input)));
@@ -381,10 +383,21 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
             sub_target,
             ops,
         } => {
-            assert_eq!(*sub_target, 0);
-            format!("\tif({ops})goto BB_{target};\n", ops = node_string(ops))
+           if *sub_target != 0{
+                format!("\tif({ops})goto BB_{sub_target};\n", ops = node_string(ops))
+           }else{
+                format!("\tif({ops})goto BB_{target};\n", ops = node_string(ops))
+           }
+            
         }
-        CILRoot::GoTo { target, sub_target } => format!("goto BB_{target};"),
+        CILRoot::GoTo { target, sub_target } => {
+
+            if *sub_target !=  0{
+                format!("goto BB_{sub_target};")
+            }else{
+                format!("goto BB_{target};")
+            }
+        },
         CILRoot::Call { site, args } => {
             let name = site.name();
             let mut input_iter = args.iter();
@@ -425,7 +438,11 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
         CILRoot::STIndI16(_, _) => todo!(),
         CILRoot::STIndI32(_, _) => todo!(),
         CILRoot::STIndI64(_, _) => todo!(),
-        CILRoot::STIndISize(_, _) => todo!(),
+        CILRoot::STIndISize(addr_calc, value_calc) => format!(
+            "*((size_t*)({addr_calc})) = (size_t){value_calc};",
+            addr_calc = node_string(addr_calc),
+            value_calc = node_string(value_calc)
+        ),
         CILRoot::STIndF64(_, _) => todo!(),
         CILRoot::STIndF32(_, _) => todo!(),
         CILRoot::STObj {
@@ -450,28 +467,28 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
                 )
             }
         }
-        crate::cil_tree::cil_root::CILRoot::STArg { arg, tree } => {
+        CILRoot::STArg { arg, tree } => {
             format!("A{arg} = {tree};", tree = node_string(tree))
         }
-        crate::cil_tree::cil_root::CILRoot::Break => "".into(),
-        crate::cil_tree::cil_root::CILRoot::Nop => "".into(),
-        crate::cil_tree::cil_root::CILRoot::InitBlk { dst, val, count } => todo!(),
-        crate::cil_tree::cil_root::CILRoot::CallVirt { site, args } => todo!(),
-        crate::cil_tree::cil_root::CILRoot::Ret { tree } => {
+        CILRoot::Break => "".into(),
+        CILRoot::Nop => "".into(),
+        CILRoot::InitBlk { dst, val, count } => todo!(),
+        CILRoot::CallVirt { site, args } => todo!(),
+        CILRoot::Ret { tree } => {
             format!("\treturn {ops};", ops = node_string(tree))
         }
-        crate::cil_tree::cil_root::CILRoot::Pop { tree } => {
+        CILRoot::Pop { tree } => {
             format!("\t{ops};", ops = node_string(tree))
         }
-        crate::cil_tree::cil_root::CILRoot::VoidRet => "return;".into(),
-        crate::cil_tree::cil_root::CILRoot::Throw(_) => format!("abort();"),
-        crate::cil_tree::cil_root::CILRoot::ReThrow => todo!(),
-        crate::cil_tree::cil_root::CILRoot::CallI { sig, fn_ptr, args } => todo!(),
-        crate::cil_tree::cil_root::CILRoot::JumpingPad { ops } => {
+        CILRoot::VoidRet => "return;".into(),
+        CILRoot::Throw(_) => format!("abort();"),
+        CILRoot::ReThrow => todo!(),
+        CILRoot::CallI { sig, fn_ptr, args } => todo!(),
+        CILRoot::JumpingPad { ops } => {
             println!("WARNING: There should be no jumping pads in C, jet a jumping pad remains!");
             "/*Invalid jump pad was here*/abort();\n".into()
         }
-        crate::cil_tree::cil_root::CILRoot::SetStaticField { descr, value } => {
+        CILRoot::SetStaticField { descr, value } => {
             let local_ty = descr.tpe();
             if let Some(_) = local_ty.as_dotnet() {
                 format!(
@@ -519,6 +536,18 @@ fn c_tpe(tpe: &Type) -> Cow<'static, str> {
                 return c_tpe(&Type::Void);
             }
             tref.name_path().to_owned().into()
+        }
+        Type::DelegatePtr(sig)=>{
+            let mut input_iter = sig.inputs().iter().filter(|tpe|**tpe != Type::Void);
+            let mut inputs: String = "(".into();
+            if let Some(input) = input_iter.next() {
+                inputs.push_str(&format!("{input}", input = c_tpe(input)));
+            }
+            for input in input_iter {
+                inputs.push_str(&format!(",{input} ", input = c_tpe(input)));
+            }
+            inputs.push(')');
+            format!("({output} (*){inputs})",output = c_tpe(sig.output())).into()
         }
         _ => todo!("Unsuported type {tpe:?}"),
     }
