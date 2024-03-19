@@ -568,7 +568,6 @@ impl CILNode {
             CILNode::LDArgA(_) => (),
             CILNode::BlackBox(_) => todo!(),
             CILNode::SizeOf(_) => (),
-            CILNode::SizeOf(_) => (),
             CILNode::LDIndI8 { ptr }|
             CILNode::LDIndI16 { ptr }|
             CILNode::LDIndI32 { ptr }|
@@ -652,6 +651,7 @@ impl CILNode {
     }
 
     pub(crate) fn sheed_trees(&mut self) -> Vec<CILRoot> {
+       
         match self {
             CILNode::LDLoc(_) | CILNode::LDArg(_) | CILNode::LDLocA(_) | CILNode::LDArgA(_) => {
                 vec![]
@@ -724,8 +724,9 @@ impl CILNode {
                 panic!("Trees should be sheed after locals are allocated!")
             }
             CILNode::SubTrees(trees, main) => {
+                let clone =  *main.clone();
                 let res = trees.to_vec();
-                *self = *main.clone();
+                *self = clone;
                 res
             }
             CILNode::LoadAddresOfTMPLocal => {

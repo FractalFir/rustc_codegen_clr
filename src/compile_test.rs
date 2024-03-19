@@ -6,6 +6,21 @@ fn test_dotnet_executable(file_path: &str, test_dir: &str) -> String {
 
     let exec_path = &format!("{file_path}.exe");
     let mut stdout = String::new();
+    if *crate::config::C_MODE{
+        let out = std::process::Command::new("timeout")
+            .current_dir(test_dir)
+            .arg("-v")
+            .arg("1")
+            .arg(exec_path)
+            .output()
+            .expect("failed to run test program!");
+        let stderr = String::from_utf8(out.stderr).expect("stderr is not UTF8 String!");
+        assert!(
+            stderr.is_empty(),
+            "Test program failed with message {stderr:}"
+        );
+        return String::from_utf8_lossy(&out.stdout).to_string();
+    }
     //println!("exec_path:{exec_path:?}");
     if *IS_DOTNET_PRESENT {
         let config_path = format!("{test_dir}/{file_path}.runtimeconfig.json");

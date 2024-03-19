@@ -1,8 +1,10 @@
+
 #define System_Int128op_Addition(a,b) ((a) + (b))
 #define System_UInt128op_Addition(a,b) ((a) + (b))
 #define System_UInt128op_Equality(a,b) ((a) == (b))
 #define System_Int128op_Equality(a,b) ((a) == (b))
 #define System_ConsoleWriteLine(arg)
+
 /*
 #define System_ConsoleWriteLine(arg) _Generic((arg), \
     char *: puts(arg), \
@@ -22,3 +24,4 @@
 #define System_ConsoleWrite(chr) putc(chr,stdout)
 #define ctor_System_UInt128(upper,lower) (((unsigned __int128)lower) | (((unsigned __int128)upper)<<64))
 #define ctor_System_Int128(upper,lower) (((__int128)lower) | (((__int128)upper)<<64))
+#define System_Runtime_InteropServices_NativeMemoryAlignedAlloc _mm_malloc

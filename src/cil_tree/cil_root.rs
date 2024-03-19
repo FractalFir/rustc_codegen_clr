@@ -357,6 +357,8 @@ impl CILRoot {
             CILRoot::SetField { addr, value, desc } => {
                 let mut res = addr.sheed_trees();
                 res.extend(value.sheed_trees());
+                // Check that trees were propely sheed.
+                assert!(!matches!(value,CILNode::SubTrees(_, _)));
                 res
             }
             CILRoot::SetTMPLocal { value } => todo!(),

@@ -47,3 +47,4 @@ config_flag! {ESCAPE_NAMES,false,"Tells the codegen to escape class and method n
 config_flag! {TEST_WITH_MONO,false}
 
 config_flag! {C_MODE,false,"Tells the codegen to emmit C source files."}
+config_flag! {C_SANITIZE,false,"Tells the codegen sanitize C."}

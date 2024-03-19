@@ -297,3 +297,7 @@ fn main() {
     let val = std::hint::black_box(*boxed_int);
     //let val = std::hint::black_box(string);
 }
+#[test]
+fn fun(){
+    
+}

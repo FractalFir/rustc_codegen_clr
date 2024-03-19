@@ -91,6 +91,8 @@ impl Assembly {
         //res.extern_refs.insert("mscorlib".into(),dotnet_ver);
         res.extern_refs
             .insert("System.Runtime.InteropServices".into(), dotnet_ver);
+        // Needed to get C-Mode to work
+        res.add_cctor();
         res
     }
     /// Joins 2 assemblies together.
@@ -293,7 +295,7 @@ impl Assembly {
             let mut trees = Vec::new();
             for statement in &block_data.statements {
                 if *crate::config::INSERT_MIR_DEBUG_COMMENTS {
-                    rustc_middle::ty::print::with_no_trimmed_paths! {ops.push(CILOp::Comment(format!("{statement:?}").into()))};
+                    rustc_middle::ty::print::with_no_trimmed_paths! {trees.push(CILRoot::debug(&format!("{statement:?}")).into())};
                 }
                 trees.extend(match Self::statement_to_ops(
                     statement, tyctx, mir, instance, cache,
@@ -307,9 +309,7 @@ impl Assembly {
                         rustc_middle::ty::print::with_no_trimmed_paths! {Some(CILRoot::throw(&format!("Tired to run a statement {statement:?} which failed to compile with error message {err:?}.")).into())}
                     }
                 });
-                if *crate::config::INSERT_MIR_DEBUG_COMMENTS {
-                    rustc_middle::ty::print::with_no_trimmed_paths! {trees.push(CILRoot::debug(&format!("{statement:?}")).into())};
-                }
+                
 
                 //crate::utilis::check_debugable(&statement_ops, statement, does_return_void);
                 //ops.extend(statement_ops);
@@ -375,7 +375,29 @@ impl Assembly {
     pub fn add_static(&mut self, tpe: Type, name: &str) {
         self.static_fields.insert(name.into(), tpe);
     }
-
+    fn add_cctor(&mut self)->&mut Method{
+        self
+        .functions
+        .entry(CallSite::new(
+            None,
+            ".cctor".into(),
+            FnSig::new(&[], &Type::Void),
+            true,
+        ))
+        .or_insert_with(|| {
+            Method::new(
+                AccessModifer::Public,
+                MethodType::Static,
+                FnSig::new(&[], &Type::Void),
+                ".cctor",
+                vec![
+                    (None, Type::Ptr(Type::U8.into())),
+                    (None, Type::Ptr(Type::U8.into())),
+                ],
+                vec![BasicBlock::new(vec![CILRoot::VoidRet.into()], 0, None)],
+            )
+        })
+    } 
     /// Adds a static field and initialized for allocation represented by `alloc_id`.
     pub fn add_allocation(
         &mut self,
@@ -429,27 +451,7 @@ impl Assembly {
         if self.static_fields.get(&alloc_fld).is_none() {
             let init_method =
                 allocation_initializer_method(const_allocation, &alloc_fld, tcx, self);
-            let cctor = self
-                .functions
-                .entry(CallSite::new(
-                    None,
-                    ".cctor".into(),
-                    FnSig::new(&[], &Type::Void),
-                    true,
-                ))
-                .or_insert_with(|| {
-                    Method::new(
-                        AccessModifer::Public,
-                        MethodType::Static,
-                        FnSig::new(&[], &Type::Void),
-                        ".cctor",
-                        vec![
-                            (None, Type::Ptr(Type::U8.into())),
-                            (None, Type::Ptr(Type::U8.into())),
-                        ],
-                        vec![],
-                    )
-                });
+            let cctor = self.add_cctor();
             let blocks = cctor.blocks_mut();
             if blocks.is_empty() {
                 blocks.push(BasicBlock::new(vec![CILRoot::VoidRet.into()], 0, None));
@@ -723,15 +725,12 @@ fn link_static_initializers(a: Option<&Method>, b: Option<&Method>) -> Option<Me
         (Some(a), None) => Some(a.clone()),
         (None, Some(b)) => Some(b.clone()),
         (Some(a), Some(b)) => {
-            todo!("Can't link static initializers!");
-            /*
             let mut merged: Method = a.clone();
-            let ops = merged.ops_mut();
-            if !ops.is_empty() && ops[ops.len() - 1] == CILOp::Ret {
-                ops.pop();
-            }
-            ops.extend(b.get_ops().iter().cloned());
-            Some(merged)*/
+            let trees = merged.blocks_mut()[0].trees_mut();
+            trees.pop();
+            trees.extend(b.blocks()[0].trees().iter().cloned());
+
+            Some(merged)
         }
     }
 }

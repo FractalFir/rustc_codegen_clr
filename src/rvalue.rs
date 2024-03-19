@@ -75,14 +75,22 @@ pub fn handle_rvalue<'tcx>(
                     if source_type.as_dotnet().is_none() {
                         eprintln!("source:{source:?}");
                     }
-                    ld_field!(
-                        handle_operand(operand, tyctx, method, method_instance, tycache),
-                        FieldDescriptor::new(
-                            source_type.as_dotnet().unwrap(),
-                            Type::Ptr(Type::Void.into()),
-                            "data_pointer".into(),
-                        )
-                    )
+                    CILNode::TemporaryLocal(Box::new((
+                        source_type.clone(),
+                        [CILRoot::SetTMPLocal {
+                            value: handle_operand(operand, tyctx, method, method_instance, tycache).into(),
+                        }]
+                        .into(),
+                        ld_field!(
+                            CILNode::LoadAddresOfTMPLocal,
+                            FieldDescriptor::new(
+                                source_type.as_dotnet().unwrap(),
+                                Type::Ptr(Type::Void.into()),
+                                "data_pointer".into(),
+                            )
+                        ),
+                    )))
+                    
                 }
                 _ => handle_operand(operand, tyctx, method, method_instance, tycache),
             }

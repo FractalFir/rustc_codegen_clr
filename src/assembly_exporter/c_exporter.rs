@@ -8,6 +8,7 @@ use crate::{
     IString,
 };
 use std::collections::HashMap;
+use std::process::Command;
 use std::{borrow::Cow, collections::HashSet, io::Write};
 pub struct CExporter {
     types: Vec<u8>,
@@ -36,7 +37,7 @@ impl CExporter {
         res.extend(&self.static_defs);
         res.extend(&self.encoded_asm);
         if !is_dll{
-            writeln!(res,"int main(){{entrypoint();}}").unwrap();
+            writeln!(res,"int main(){{_cctor();entrypoint();}}").unwrap();
         }
         res
     }
@@ -44,9 +45,9 @@ impl CExporter {
         //eprintln!("C source:\n{}",String::from_utf8_lossy(&self.as_source()));
         let sig = method.sig();
 
-        let name = method.name();
+        let name = method.name().replace('.',"_");
         // Puts is already defined in C.
-        if name == "puts"{
+        if name == "puts" || name == "malloc"{
             return;
         }
         let output = c_tpe(sig.output());
@@ -70,10 +71,11 @@ impl CExporter {
             code.push_str(&format!("\tBB_{}:\n", bb.id()));
             for tree in bb.trees() {
                 code.push_str(&format!("{}\n", tree_string(tree, method)));
-                code.push_str(&format!("/*{tree:?}*/\n"));
+                //code.push_str(&format!("/*{tree:?}*/\n"));
             }
         }
         if let Some(class) = class {
+            let class = class.replace('.',"_");
             write!(self.method_defs, "{output} {class}{name} {inputs};\n").unwrap();
             write!(
                 self.encoded_asm,
@@ -88,7 +90,7 @@ impl CExporter {
 }
 impl AssemblyExporter for CExporter {
     fn init(asm_info: &super::AssemblyInfo) -> Self {
-        let encoded_asm = Vec::with_capacity(0x1_00);
+        let mut encoded_asm = Vec::with_capacity(0x1_00);
         let types = Vec::with_capacity(0x1_00);
         let type_defs = Vec::with_capacity(0x1_00);
         let method_defs = Vec::with_capacity(0x1_00);
@@ -98,11 +100,16 @@ impl AssemblyExporter for CExporter {
 
         write!(
             headers,
-            "#include  <stdint.h>\n#include <stdbool.h>\n#include <stddef.h>\n#include <stdio.h>\n#include <stdlib.h>\n"
+            "#include  <stdint.h>\n#include <stdbool.h>\n#include <stddef.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <mm_malloc.h>\n"
         )
         .expect("Write error!");
         headers.write_all(include_bytes!("c_header.h")).unwrap();
         write!(headers, "\n").expect("Write error!");
+        writeln!(encoded_asm,"#pragma GCC diagnostic ignored \"-Wmaybe-uninitialized\"").unwrap();
+        writeln!(encoded_asm,"#pragma GCC diagnostic ignored \"-Wunused-label\"").unwrap();
+        writeln!(encoded_asm,"#pragma GCC diagnostic ignored \"-Wunused-but-set-variable\"").unwrap();
+        writeln!(encoded_asm,"#pragma GCC diagnostic ignored \"-Wunused-variable\"").unwrap();
+        writeln!(encoded_asm,"#pragma GCC diagnostic ignored \"-Wpointer-sign\"").unwrap();
         Self {
             types,
             type_defs,
@@ -141,6 +148,9 @@ impl AssemblyExporter for CExporter {
         let mut fields = String::new();
         if let Some(offsets) = tpe.explicit_offsets() {
             for ((field_name, field_type), offset) in tpe.fields().iter().zip(offsets) {
+                if *field_type == Type::Void{
+                    continue;
+                }
                 fields.push_str(&format!(
                     "\tstruct {{char pad[{offset}];{field_type} f;}} {field_name};\n\n",
                     field_type = c_tpe(field_type)
@@ -148,6 +158,9 @@ impl AssemblyExporter for CExporter {
             }
         } else {
             for (field_name, field_type) in tpe.fields() {
+                if *field_type == Type::Void{
+                    continue;
+                }
                 fields.push_str(&format!(
                     "\tstruct {{{field_type} f;}} {field_name};\n",
                     field_type = c_tpe(field_type)
@@ -177,8 +190,20 @@ impl AssemblyExporter for CExporter {
     }
 
     fn add_extern_method(&mut self, lib_path: &str, name: &str, sig: &crate::function_sig::FnSig) {
-        
-        todo!()
+        if name == "puts" || name == "malloc"|| name == "printf"{
+            return;
+        }
+        let output = c_tpe(sig.output());
+        let mut inputs: String = "(".into();
+        let mut input_iter = sig.inputs().iter().enumerate();
+        if let Some((idx, input)) = input_iter.next() {
+            inputs.push_str(&format!("{input} A{idx}", input = c_tpe(input)));
+        }
+        for (idx, input) in input_iter {
+            inputs.push_str(&format!(",{input} A{idx} ", input = c_tpe(input)));
+        }
+        inputs.push(')');
+        write!(self.method_defs, "extern {output} {name} {inputs};\n").unwrap();
     }
 
     fn finalize(
@@ -186,13 +211,22 @@ impl AssemblyExporter for CExporter {
         final_path: &std::path::Path,
         is_dll: bool,
     ) -> Result<(), super::AssemblyExportError> {
-        //eprintln!("C source:\n{}",String::from_utf8_lossy(&self.as_source()));
-        let cil_path = final_path.with_extension("c");
-        std::fs::File::create(cil_path)
-            .unwrap()
-            .write_all(&self.as_source(is_dll))
-            .unwrap();
-        todo!()
+
+
+        let cc = "gcc";
+        let src_path = final_path.with_extension("c");
+        std::fs::File::create(&src_path).unwrap().write_all(&self.as_source(is_dll)).unwrap();
+        let sanitize = if *crate::config::C_SANITIZE{
+            "-fsanitize=undefined"
+        }else{
+            "-O"
+        };
+        let out = Command::new(cc).args(["-g",sanitize,"-o",&final_path.to_string_lossy().to_owned(),&src_path.to_string_lossy().to_owned()]).output().unwrap();
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        if stderr.contains("error") {
+            panic!("C compiler error:{stderr:?}!");
+        }
+        Ok(())
     }
 
     fn add_extern_ref(&mut self, asm_name: &str, info: &crate::assembly::AssemblyExternRef) {
@@ -204,6 +238,7 @@ impl AssemblyExporter for CExporter {
     }
 }
 fn node_string(tree: &CILNode) -> String {
+
     match tree {
         CILNode::LDLoc(loc) => format!("L{loc}"),
         CILNode::LDArg(arg) => format!("A{arg}"),
@@ -239,15 +274,15 @@ fn node_string(tree: &CILNode) -> String {
             owner = c_tpe(&field.owner().clone().into()),
             name = field.name()
         ),
-        CILNode::Add(a, b) => format!("{a} + {b}", a = node_string(a), b = node_string(b)),
-        CILNode::And(a, b) => format!("{a} & {b}", a = node_string(a), b = node_string(b)),
-        CILNode::Sub(a, b) => format!("{a} - {b}", a = node_string(a), b = node_string(b)),
-        CILNode::Mul(a, b) => format!("{a} * {b}", a = node_string(a), b = node_string(b)),
-        CILNode::Div(a, b) => format!("{a} / {b}", a = node_string(a), b = node_string(b)),
+        CILNode::Add(a, b) => format!("({a}) + ({b})", a = node_string(a), b = node_string(b)),
+        CILNode::And(a, b) => format!("({a}) & ({b})", a = node_string(a), b = node_string(b)),
+        CILNode::Sub(a, b) => format!("({a}) - ({b})", a = node_string(a), b = node_string(b)),
+        CILNode::Mul(a, b) => format!("({a}) * ({b})", a = node_string(a), b = node_string(b)),
+        CILNode::Div(a, b) => format!("({a}) / ({b})", a = node_string(a), b = node_string(b)),
         CILNode::Rem(a, b) | CILNode::RemUn(a, b) => {
             format!("{a} % {b}", a = node_string(a), b = node_string(b))
         }
-        CILNode::Or(a, b) => format!("{a} | {b}", a = node_string(a), b = node_string(b)),
+        CILNode::Or(a, b) => format!("({a}) | ({b})", a = node_string(a), b = node_string(b)),
         CILNode::XOr(_, _) => todo!(),
         CILNode::Shr(a, b) => format!("{a} << {b}", a = node_string(a), b = node_string(b)),
         CILNode::Shl(_, _) => todo!(),
@@ -299,7 +334,11 @@ fn node_string(tree: &CILNode) -> String {
             format!("{a} > {b}", a = node_string(a), b = node_string(b))
         }
         CILNode::TemporaryLocal(_) => todo!(),
-        CILNode::SubTrees(_, _) => panic!("A sub-tree still remains!"),
+        CILNode::SubTrees(sub, main) =>{
+            assert!(sub.is_empty(),"A sub-tree still remains!");
+            println!("WARNING: Sub-trees impropely resolved: an empty sub-tree list still remains!");
+            node_string(main)
+        } 
         CILNode::LoadAddresOfTMPLocal => todo!(),
         CILNode::LoadTMPLocal => todo!(),
         CILNode::LDFtn(_) => todo!(),
@@ -323,6 +362,7 @@ fn node_string(tree: &CILNode) -> String {
     }
 }
 fn tree_string(tree: &CILTree, method: &Method) -> String {
+
     match tree.tree() {
         CILRoot::STLoc { local, tree } => {
             let local_ty = &method.locals()[*local as usize].1;
@@ -428,19 +468,20 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
         crate::cil_tree::cil_root::CILRoot::ReThrow => todo!(),
         crate::cil_tree::cil_root::CILRoot::CallI { sig, fn_ptr, args } => todo!(),
         crate::cil_tree::cil_root::CILRoot::JumpingPad { ops } => {
-            todo!("There should be no jumping pads in C")
+            println!("WARNING: There should be no jumping pads in C, jet a jumping pad remains!");
+            "/*Invalid jump pad was here*/abort();\n".into()
         }
         crate::cil_tree::cil_root::CILRoot::SetStaticField { descr, value } => {
             let local_ty = descr.tpe();
             if let Some(_) = local_ty.as_dotnet() {
                 format!(
-                    "{name} = {value_calc}",
+                    "{name} = {value_calc};",
                     name = descr.name(),
                     value_calc = node_string(value)
                 )
             } else {
                 format!(
-                    "{name} = (({local_ty}){value_calc})",
+                    "{name} = (({local_ty}){value_calc});",
                     name = descr.name(),
                     value_calc = node_string(value),
                     local_ty = c_tpe(local_ty)
@@ -469,8 +510,13 @@ fn c_tpe(tpe: &Type) -> Cow<'static, str> {
         Type::U8 => "uint8_t".into(),
         Type::Ptr(inner) => format!("{inner}*", inner = c_tpe(inner)).into(),
         Type::DotnetType(tref) => {
+            
             if tref.asm().is_some() {
                 println!("Type {tref:?} is not supported in C");
+            }
+            // Ugly hack to deal with `c_void`
+            if tref.name_path().contains("c_void") && tref.name_path().contains("ffi") && tref.name_path().contains("core"){
+                return c_tpe(&Type::Void);
             }
             tref.name_path().to_owned().into()
         }
