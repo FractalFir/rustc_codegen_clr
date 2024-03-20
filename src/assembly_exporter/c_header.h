@@ -1,6 +1,10 @@
 
 #define System_Int128op_Addition(a,b) ((a) + (b))
 #define System_UInt128op_Addition(a,b) ((a) + (b))
+
+#define System_Int128op_Multiply(a,b) ((a) * (b))
+#define System_UInt128op_Multiply(a,b) ((a) * (b))
+
 #define System_UInt128op_Equality(a,b) ((a) == (b))
 #define System_Int128op_Equality(a,b) ((a) == (b))
 #define System_ConsoleWriteLine(arg)

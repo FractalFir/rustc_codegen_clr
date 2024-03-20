@@ -1,6 +1,7 @@
 // FIXME: This file may contain unnecesary morphize calls.
 use crate::cil_tree::cil_node::CILNode;
 use crate::cil_tree::cil_root::CILRoot;
+use crate::{conv_usize, ldc_u32, ldc_u64};
 use crate::r#type::{pointer_to_is_fat, DotnetTypeRef};
 
 use rustc_middle::mir::Place;
@@ -12,7 +13,7 @@ mod set;
 pub use adress::*;
 pub use body::*;
 pub use get::*;
-use rustc_middle::ty::{FloatTy, Instance, IntTy, Ty, TyCtxt, TyKind, UintTy};
+use rustc_middle::ty::{FloatTy, Instance, IntTy, Ty, TyCtxt, TyKind, UintTy,ParamEnv};
 pub use set::*;
 fn slice_head<T>(slice: &[T]) -> (&T, &[T]) {
     assert!(!slice.is_empty());
@@ -171,19 +172,29 @@ pub fn deref_op<'ctx>(
 /// Returns the ops for getting the value of  a given place.
 pub fn place_adress<'a>(
     place: &Place<'a>,
-    ctx: TyCtxt<'a>,
+    tyctx: TyCtxt<'a>,
     method: &rustc_middle::mir::Body<'a>,
     method_instance: Instance<'a>,
     type_cache: &mut crate::r#type::TyCache,
 ) -> CILNode {
-    let place_ty = place.ty(method, ctx);
-    let place_ty = crate::utilis::monomorphize(&method_instance, place_ty, ctx).ty;
+    let place_ty = place.ty(method, tyctx);
+    let place_ty = crate::utilis::monomorphize(&method_instance, place_ty, tyctx).ty;
+
+    let layout = tyctx
+        .layout_of(rustc_middle::ty::ParamEnvAnd {
+            param_env: ParamEnv::reveal_all(),
+            value: place_ty,
+        })
+        .expect("Could not get type layout!");
+    if layout.is_zst(){
+        return conv_usize!(ldc_u64!(layout.align.pref.bytes()));
+    }
     if place.projection.is_empty() {
         local_adress(place.local.as_usize(), method)
     } else {
         let (mut addr_calc, mut ty) = local_body(place.local.as_usize(), method);
 
-        ty = crate::utilis::monomorphize(&method_instance, ty, ctx);
+        ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
         let mut ty = ty.into();
 
         let (head, body) = slice_head(place.projection);
@@ -191,19 +202,19 @@ pub fn place_adress<'a>(
             let (curr_ty, curr_ops) = place_elem_body(
                 elem,
                 ty,
-                ctx,
+                tyctx,
                 method_instance,
                 method,
                 type_cache,
                 addr_calc.clone(),
             );
-            ty = curr_ty.monomorphize(&method_instance, ctx);
+            ty = curr_ty.monomorphize(&method_instance, tyctx);
             addr_calc = curr_ops;
         }
         adress::place_elem_adress(
             head,
             ty,
-            ctx,
+            tyctx,
             method_instance,
             method,
             type_cache,

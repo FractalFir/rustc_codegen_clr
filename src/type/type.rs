@@ -237,6 +237,14 @@ impl Type {
             _ => None,
         }
     }
+
+    pub fn as_delegate_ptr(&self) -> Option<&Box<crate::function_sig::FnSig>> {
+        if let Self::DelegatePtr(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
 }
 impl From<&IntTy> for Type {
     fn from(int_tpe: &IntTy) -> Self {
