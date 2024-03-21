@@ -230,15 +230,17 @@ pub fn handle_terminator<'ctx>(
             }
         }
 
-        TerminatorKind::Unreachable => CILRoot::throw("Unreachable reached!").into(),
+        TerminatorKind::Unreachable => {
+            let loc = terminator.source_info.span;
+            rustc_middle::ty::print::with_no_trimmed_paths! {CILRoot::throw(&format!("Unreachable reached at {loc:?}!")).into()}
+        }
         TerminatorKind::InlineAsm {
             template: _,
             operands: _,
             options: _,
             line_spans: _,
-            destination: _,
-            unwind: _,
-        } => {
+
+            unwind: _, targets } => {
             eprintln!("Inline assembly is not yet supported!");
             CILRoot::throw("Inline assembly is not yet supported!").into()
         }

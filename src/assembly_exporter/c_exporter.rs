@@ -1,6 +1,6 @@
 use super::AssemblyExporter;
 use crate::cil_tree::cil_root::CILRoot;
-use crate::function_sig::FnSig;
+
 use crate::r#type::TypeDef;
 use crate::{
     cil_tree::{cil_node::CILNode, CILTree},

@@ -7,37 +7,7 @@ use crate::{
     ldc_i64, ldc_u32, ldc_u64, lt, or,
     r#type::Type,
 };
-add_method_from_trees!(
-    select_usize,
-    &[Type::USize, Type::USize, Type::Bool],
-    &Type::USize,
-    vec![
-        BasicBlock::new(
-            vec![
-                CILRoot::BTrue {
-                    target: 1,
-                    sub_target: 0,
-                    ops: CILNode::LDArg(2),
-                }
-                .into(),
-                CILRoot::Ret {
-                    tree: CILNode::LDArg(1)
-                }
-                .into()
-            ],
-            0,
-            None
-        ),
-        BasicBlock::new(
-            vec![CILRoot::Ret {
-                tree: CILNode::LDArg(0)
-            }
-            .into()],
-            1,
-            None
-        ),
-    ]
-);
+
 add_method_from_trees!(
     cast_i32_to_u64,
     &[Type::I32],
@@ -840,6 +810,5 @@ pub fn casts(asm: &mut Assembly) {
     cast_f64_i64(asm);
     // Int casts
     cast_i32_to_u64(asm);
-    // Select
-    select_usize(asm);
+
 }

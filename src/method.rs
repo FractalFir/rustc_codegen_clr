@@ -1,7 +1,7 @@
 use crate::{
     access_modifier::AccessModifer,
     basic_block::BasicBlock,
-    cil::{CILOp, CallSite},
+    cil::{CallSite},
     function_sig::FnSig,
     r#type::{DotnetTypeRef, Type},
     IString,

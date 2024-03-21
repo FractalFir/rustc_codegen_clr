@@ -1,7 +1,7 @@
 // FIXME: This file may contain unnecesary morphize calls.
 use crate::cil_tree::cil_node::CILNode;
 use crate::cil_tree::cil_root::CILRoot;
-use crate::{conv_usize, ldc_u32, ldc_u64};
+use crate::{conv_usize, ldc_u64};
 use crate::r#type::{pointer_to_is_fat, DotnetTypeRef};
 
 use rustc_middle::mir::Place;
@@ -94,8 +94,10 @@ pub fn deref_op<'ctx>(
                    //_ => todo!("TODO: can't deref int type {int_ty:?} yet"),
             },
             TyKind::Float(float_ty) => match float_ty {
+                FloatTy::F16 => todo!("Can't handle halfs yet!"),
                 FloatTy::F32 => CILNode::LDIndF32 { ptr },
                 FloatTy::F64 => CILNode::LDIndF64 { ptr },
+                FloatTy::F128 => todo!("Can't 128 bit floats yet!"),
             },
             TyKind::Bool => CILNode::LDIndI8 { ptr }, // Both Rust bool and a managed bool are 1 byte wide. .NET bools are 4 byte wide only in the context of Marshaling/PInvoke,
             // due to historic reasons(BOOL was an alias for int in early Windows, and it stayed this way.) - FractalFir

@@ -1,9 +1,9 @@
-use crate::cil::{CILOp, CallSite, FieldDescriptor};
+use crate::cil::{CallSite, FieldDescriptor};
 use crate::cil_tree::cil_node::CILNode;
 use crate::cil_tree::cil_root::CILRoot;
 use crate::function_sig::FnSig;
 use crate::operand::handle_operand;
-use crate::place::deref_op;
+
 use crate::{conv_usize, ld_field, ldc_u32, ldc_u64, size_of};
 
 use crate::r#type::{pointer_to_is_fat, TyCache, Type};
@@ -234,8 +234,10 @@ pub fn handle_rvalue<'tcx>(
                 //let (variant, field) = fields[0];
                 todo!("Can't calc offset of yet!");
             }
+            // We will just always check for UB :).
+            rustc_middle::mir::NullOp::UbCheck(_) => ldc_u32!(1), 
             // TODO: propely set this to 0 or 1 depending if debug assertions are enabled.
-            NullOp::DebugAssertions => ldc_u32!(0), //todo!("Unsuported nullary {op:?}!"),
+            //NullOp::DebugAssertions => ldc_u32!(0), //todo!("Unsuported nullary {op:?}!"),
         },
         Rvalue::Aggregate(aggregate_kind, field_index) => crate::aggregate::handle_aggregate(
             tyctx,

@@ -1,7 +1,7 @@
 use crate::{
     cil::{CallSite, FieldDescriptor},
     cil_tree::{cil_node::CILNode, cil_root::CILRoot},
-    conv_usize, ld_field_address, ldc_u64,
+    conv_usize, ldc_u64,
     operand::handle_operand,
     place::place_get,
     r#type::{DotnetTypeRef, TyCache, Type},

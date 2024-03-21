@@ -4,7 +4,7 @@ use crate::cil_tree::cil_node::CILNode;
 use crate::cil_tree::cil_root::CILRoot;
 use crate::eq;
 use crate::ldc_u64;
-use crate::lt;
+
 use crate::lt_un;
 use crate::r#type::DotnetTypeRef;
 use crate::sub;
@@ -101,8 +101,10 @@ fn primitive_to_type(primitive: rustc_target::abi::Primitive) -> Type {
             (Integer::I64, false) => Type::U64,
             (Integer::I128, false) => Type::U128,
         },
+        Primitive::F16 => Type::F16,
         Primitive::F32 => Type::F32,
         Primitive::F64 => Type::F64,
+        Primitive::F128 => todo!("No support for 128 bit floats yet!"),
         Primitive::Pointer(_) => Type::Ptr(Type::Void.into()),
     }
 }

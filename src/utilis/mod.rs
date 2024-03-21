@@ -210,6 +210,11 @@ pub fn try_resolve_const_size(size: Const) -> Result<usize, &'static str> {
     let value = scalar.to_u64().expect("Could not convert scalar to u64!");
     Ok(usize::try_from(value).expect("Const size value too big."))
 }
+fn dummy_span_propably_unsafe()->rustc_span::Span{
+    let res = rustc_span::Span::with_root_ctxt( rustc_span::BytePos(0), rustc_span::BytePos(0));
+    assert!(res.is_dummy());
+    res
+}
 /// Converts a generic argument to a string, and panics if it could not.
 pub fn garg_to_string<'tyctx>(garg: GenericArg<'tyctx>, ctx: TyCtxt<'tyctx>) -> String {
     let str_const = garg
@@ -217,7 +222,7 @@ pub fn garg_to_string<'tyctx>(garg: GenericArg<'tyctx>, ctx: TyCtxt<'tyctx>) -> 
         .expect("Generic argument was not an constant!");
 
     let val_tree = str_const
-        .eval(ctx, ParamEnv::reveal_all(), None)
+        .eval(ctx, ParamEnv::reveal_all(), dummy_span_propably_unsafe())
         .expect("Could not eval const!");
     let tpe = str_const
         .ty()
@@ -347,18 +352,13 @@ pub(crate) fn alloc_id_to_u64(alloc_id: AllocId) -> u64 {
     unsafe { std::mem::transmute(alloc_id) }
 }
 pub fn is_fn_intrinsic<'tyctx>(fn_ty: Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -> bool {
-    use rustc_target::spec::abi::Abi;
-    let internal_abi = match fn_ty.kind() {
-        TyKind::FnDef(_, _) => fn_ty.fn_sig(tyctx),
-        TyKind::Closure(_, args) => args.as_closure().sig(),
+
+   match fn_ty.kind() {
+        TyKind::FnDef(did, _) => tyctx.is_intrinsic(*did,tyctx. item_name(*did)),
+        TyKind::Closure(_, args) => false,
         _ => todo!("Can't get signature of {fn_ty}"),
     }
-    .abi();
-    // Only those ABIs are supported
-    match internal_abi {
-        Abi::RustIntrinsic => true,
-        _ => false,
-    }
+   
 }
 pub fn align_of<'tcx>(ty: rustc_middle::ty::Ty<'tcx>, tyctx: TyCtxt<'tcx>) -> u64 {
     let layout = tyctx

@@ -2,9 +2,7 @@ use crate::cil::{CallSite, FieldDescriptor};
 use crate::function_sig::FnSig;
 use crate::r#type::{DotnetTypeRef, Type};
 use crate::{
-    add, call, cil_tree::cil_node::CILNode, cil_tree::cil_root::CILRoot, conv_u16, conv_u32,
-    conv_u64, conv_u8, conv_usize, div, eq, ldc_i32, mul, r#type::TyCache, rem, rem_un, size_of,
-    sub,
+    call, cil_tree::cil_node::CILNode, cil_tree::cil_root::CILRoot, conv_usize, r#type::TyCache, size_of,
 };
 use crate::{and, conv_isize, ldc_u32, or};
 use rustc_middle::mir::{BinOp, Operand};

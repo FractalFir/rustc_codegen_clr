@@ -10,6 +10,7 @@ pub enum Type {
     /// Boolean type
     Bool,
     // Floating-point types
+    F16,
     F32,
     F64,
     // Unsigned intiegers
@@ -273,8 +274,10 @@ impl From<&UintTy> for Type {
 impl From<&FloatTy> for Type {
     fn from(float: &FloatTy) -> Self {
         match float {
+            FloatTy::F16 => Self::F16,
             FloatTy::F32 => Self::F32,
             FloatTy::F64 => Self::F64,
+            FloatTy::F128 => todo!("Can't hanlde 128 bit floats yet!"),
         }
     }
 }

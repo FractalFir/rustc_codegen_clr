@@ -1,9 +1,7 @@
 use super::{tuple_name, tuple_typedef, DotnetTypeRef, Type, TypeDef};
 use crate::{
     access_modifier::AccessModifer,
-    cil::{CILOp, CallSite},
     function_sig::FnSig,
-    method::Method,
     r#type::{closure_typedef, escape_field_name},
     IString,
 };
@@ -244,7 +242,7 @@ impl TyCache {
 
         //let mut inner_types = vec![];
         //let mut variants = vec![];
-        let mut inner_types = vec![];
+        let inner_types = vec![];
         for (vidx, variant) in adt.variants().iter().enumerate() {
             let variant_name: IString = variant.name.to_string().into();
             let mut variant_fields = vec![];

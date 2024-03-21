@@ -30,8 +30,8 @@ fn main(){
     simple_enum();
     //let maybe:*mut Maybe = core::ptr::null_mut();
     //test_eq!(maybe,core::ptr::null_mut());
-    let maybe:*mut Option<i32> = unsafe{malloc(5)}.cast();
-    let tag:*mut u8 = maybe.cast();
+    let maybe:*mut Option<i32> = unsafe{malloc(8)}.cast();
+    let tag:*mut i32 = maybe.cast();
     unsafe{*tag = 0};
     if let Some(_) = unsafe{*maybe}{
         core::intrinsics::abort();

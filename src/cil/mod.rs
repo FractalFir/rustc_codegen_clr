@@ -495,8 +495,7 @@ impl CILOp {
             }
     } */
 }
-#[cfg(test)]
-use crate::method::MethodType;
+
 /*
 #[test]
 fn test_tmp_locals() {

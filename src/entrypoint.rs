@@ -1,7 +1,7 @@
 use crate::{
     basic_block::BasicBlock,
     call,
-    cil::{CILOp, CallSite},
+    cil::{CallSite},
     cil_tree::cil_node::CILNode,
     cil_tree::cil_root::CILRoot,
     conv_usize,

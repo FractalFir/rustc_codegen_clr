@@ -536,6 +536,7 @@ pub fn type_cil(tpe: &Type) -> Cow<'static, str> {
         Type::Void => "void".into(),
         Type::I8 => "int8".into(),
         Type::U8 => "uint8".into(),
+        Type::F16 => "valuetype [System.Runtime]System.Numerics.Half".into(),
         Type::I16 => "int16".into(),
         Type::U16 => "uint16".into(),
         Type::F32 => "float32".into(),

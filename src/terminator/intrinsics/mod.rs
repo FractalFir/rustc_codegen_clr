@@ -770,97 +770,36 @@ pub fn handle_intrinsic<'tyctx>(
             place_set(destination, tyctx, ops, body, method_instance, type_cache)
         }
         "abort" => CILRoot::throw("Called abort!"),
-        _ => todo!("Can't handle intrinsic {fn_name}."),
+        _ => intrinsic_slow(fn_name, args, destination, tyctx, body, method_instance, call_instance, type_cache, signature),
     }
 }
-
-/*
-fn saturating_sub<'tyctx>(
-    args: &[Operand<'tyctx>],
+fn intrinsic_slow<'tyctx>(  fn_name: &str,
+    args: &[Spanned<Operand<'tyctx>>],
     destination: &Place<'tyctx>,
     tyctx: TyCtxt<'tyctx>,
     body: &'tyctx Body<'tyctx>,
     method_instance: Instance<'tyctx>,
-    type_cache: &mut TyCache,) ->Vec<CILOp>{
-    debug_assert_eq!(
-        args.len(),
-        2,
-        "The intrinsic `saturating_sub` MUST take in exactly 2 arguments!"
-    );
-    let ty = args[0].ty(body, tyctx);
-    let ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
-    let a = handle_operand(&args[0], tyctx, body, method_instance, type_cache);
-    let b = handle_operand(&args[0], tyctx, body, method_instance, type_cache);
-    place_set(
-        destination,
-        tyctx,
-        match ty.kind() {
-            TyKind::Uint(uint) => match uint {
-                UintTy::U8 => operand,
-                UintTy::U16 => [
-                    operand,
-                    vec![
-                        CILOp::NewTMPLocal(Type::U16.into()),
-                        CILOp::SetTMPLocal,
-                        CILOp::LoadTMPLocal,
-                        CILOp::LdcI32(8),
-                        CILOp::Shr,
-                        CILOp::LoadTMPLocal,
-                        CILOp::LdcI32(8),
-                        CILOp::Shl,
-                        CILOp::Or,
-                        CILOp::FreeTMPLocal,
-                    ],
-                ]
-                .iter()
-                .flatten()
-                .cloned()
-                .collect(),
-                UintTy::U32 => [
-                    operand,
-                    vec![
-                        //CILOp::ConvU32(false),
-                        CILOp::NewTMPLocal(Type::U32.into()),
-                        CILOp::SetTMPLocal,
-                        // 1 byte
-                        CILOp::LoadTMPLocal,
-                        CILOp::LdcI32(24),
-                        CILOp::Shl,
-                        // 4 byte
-                        CILOp::LoadTMPLocal,
-                        CILOp::LdcI32(24),
-                        CILOp::ShrUn,
-                        CILOp::ConvU32(false),
-                        CILOp::Or,
-                        // 2 byte
-                        CILOp::LoadTMPLocal,
-                        CILOp::LdcI32(8),
-                        CILOp::Shl,
-                        CILOp::LdcI32(0xFF<<16),
-                        CILOp::And,
-                        // 3 byte
-                        CILOp::LoadTMPLocal,
-                        CILOp::LdcI32(8),
-                        CILOp::Shr,
-                        CILOp::LdcI32(0xFF<<8),
-                        CILOp::And,
+    call_instance: Instance<'tyctx>,
+    type_cache: &mut TyCache,
+    signature: FnSig,)-> CILRoot{
+    if fn_name.contains("likely"){
+        debug_assert_eq!(
+            args.len(),
+            1,
+            "The intrinsic `fn_name` MUST take in exactly 1 argument!"
+        );
+        // assert_eq!(args.len(),1,"The intrinsic `unlikely` MUST take in exactly 1 argument!");
+        place_set(
+            destination,
+            tyctx,
+            handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
+            body,
+            method_instance,
+            type_cache,
+        )
+    }
+    else{
+        todo!("Unhandled intrinsic {fn_name}.")
+    }
+}
 
-                        CILOp::Or,
-                        CILOp::Or,
-                        //CILOp::ConvU16(false),
-                        CILOp::FreeTMPLocal,
-                    ],
-                ]
-                .iter()
-                .flatten()
-                .cloned()
-                .collect(),
-                _ => todo!("Can't bswap unsigned int {ty:?}"),
-            },
-            _ => todo!("Can't bswap {ty:?}"),
-        },
-        body,
-        method_instance,
-        type_cache,
-    )
-}*/

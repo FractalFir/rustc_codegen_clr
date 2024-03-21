@@ -1,7 +1,6 @@
 use crate::{
-    cil_tree::{cil_node::CILNode, cil_root::CILRoot, CILTree},
-    ldc_i32, mul,
-    r#type::{TyCache, Type},
+    cil_tree::{cil_node::CILNode, cil_root::CILRoot, CILTree}, mul,
+    r#type::{TyCache},
     size_of,
 };
 use rustc_middle::{

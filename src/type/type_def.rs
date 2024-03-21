@@ -4,7 +4,7 @@ use crate::{
     basic_block::BasicBlock,
     cil::{CallSite, FieldDescriptor},
     cil_tree::{cil_node::CILNode, cil_root::CILRoot},
-    conv_usize, ld_field, ld_field_address,
+    conv_usize, ld_field_address,
     method::{Method, MethodType},
     mul,
     r#type::{DotnetTypeRef, Type},
@@ -267,7 +267,7 @@ pub fn tuple_typedef(elements: &[Type], layout: &Layout) -> TypeDef {
 }
 #[must_use]
 pub fn get_array_type(element_count: usize, element: Type) -> TypeDef {
-    use crate::cil::CILOp;
+    
     let name = arr_name(element_count, &element);
     let mut fields = Vec::with_capacity(element_count);
     for field in 0..element_count {
@@ -357,7 +357,7 @@ pub fn get_array_type(element_count: usize, element: Type) -> TypeDef {
         );
         def.add_method(get_adress_usize);
         // get_Item
-        let mut get_item_usize = Method::new(
+        let get_item_usize = Method::new(
             AccessModifer::Public,
             MethodType::Instance,
             crate::function_sig::FnSig::new(

@@ -281,6 +281,7 @@ fn ptr_set_op<'ctx>(
             TyKind::Float(float_ty) => match float_ty {
                 FloatTy::F32 => CILRoot::STIndF32(addr_calc, value_calc),
                 FloatTy::F64 => CILRoot::STIndF64(addr_calc, value_calc),
+                _=>todo!("Can't yet set {float_ty:?} behnind a pointer."),
             },
             TyKind::Bool => CILRoot::STIndI8(addr_calc, value_calc), // Both Rust bool and a managed bool are 1 byte wide. .NET bools are 4 byte wide only in the context of Marshaling/PInvoke,
             // due to historic reasons(BOOL was an alias for int in early Windows, and it stayed this way.) - FractalFir

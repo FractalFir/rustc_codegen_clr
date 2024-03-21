@@ -1,5 +1,5 @@
 use crate::{
-    cil::{CILOp, CallSite, FieldDescriptor, StaticFieldDescriptor},
+    cil::{CallSite, FieldDescriptor, StaticFieldDescriptor},
     cil_tree::{cil_node::CILNode, cil_root::CILRoot},
     conv_u64, conv_usize, ldc_u64,
     r#type::{DotnetTypeRef, TyCache, Type},
@@ -20,7 +20,7 @@ pub fn handle_constant<'ctx>(
     let constant = constant_op.const_;
     let constant = crate::utilis::monomorphize(&method_instance, constant, tyctx);
     let evaluated = constant
-        .eval(tyctx, ParamEnv::reveal_all(), Some(constant_op.span))
+        .eval(tyctx, ParamEnv::reveal_all(), constant_op.span)
         .expect("Could not evaluate constant!");
     load_const_value(
         evaluated,
@@ -351,8 +351,9 @@ fn load_const_scalar<'ctx>(
         _ => todo!("Can't load scalar constants of type {scalar_type:?}!"),
     }
 }
-fn load_const_float(value: u128, int_type: &FloatTy, _tyctx: TyCtxt) -> CILNode {
-    match int_type {
+fn load_const_float(value: u128, float_type: &FloatTy, _tyctx: TyCtxt) -> CILNode {
+    match float_type {
+        FloatTy::F16 => todo!("Can't hanlde 16 bit floats yet!"),
         FloatTy::F32 => {
             let value = f32::from_ne_bytes((value as u32).to_ne_bytes());
             CILNode::LdcF32(value)
@@ -361,6 +362,7 @@ fn load_const_float(value: u128, int_type: &FloatTy, _tyctx: TyCtxt) -> CILNode 
             let value = f64::from_ne_bytes((value as u64).to_ne_bytes());
             CILNode::LdcF64(value)
         }
+        FloatTy::F128 => todo!("Can't hanlde 128 bit floats yet!"),
     }
 }
 pub fn load_const_int(value: u128, int_type: &IntTy) -> CILNode {

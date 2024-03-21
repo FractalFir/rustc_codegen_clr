@@ -7,14 +7,15 @@ use crate::{
     access_modifier::AccessModifer,
     add_method_from_trees,
     assembly::Assembly,
-    cil::{CILOp, CallSite},
+    cil::{CallSite},
     function_sig::FnSig,
     method::Method,
     r#type::Type,
 };
-use crate::{add, call, gt, ldc_u64, lt_un};
+use crate::{add, call, ldc_u64, lt_un};
 use rustc_middle::ty::TyCtxt;
 mod casts;
+mod select;
 add_method_from_trees!(
     bounds_check,
     &[Type::USize, Type::USize],
@@ -128,6 +129,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     //rust_slice(asm);
     io(asm);
     casts::casts(asm);
+    select::selects(asm);
     //malloc(asm);
     let mut marshal = DotnetTypeRef::new(
         Some("System.Runtime.InteropServices"),
@@ -153,7 +155,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
         CILOp::Ret,
     ]);
     asm.add_method(malloc);*/
-    let mut realloc = Method::new(
+    let realloc = Method::new(
         AccessModifer::Private,
         MethodType::Static,
         FnSig::new(

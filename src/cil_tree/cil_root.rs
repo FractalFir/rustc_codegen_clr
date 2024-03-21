@@ -409,6 +409,7 @@ impl CILRoot {
                 ops,
             } => ops.allocate_tmps(curr_local, locals),
             CILRoot::GoTo { target, sub_target } => (),
+            CILRoot::CallVirt { site, args } |
             CILRoot::Call { site, args } => args
                 .iter_mut()
                 .for_each(|arg| arg.allocate_tmps(curr_local, locals)),
@@ -416,7 +417,11 @@ impl CILRoot {
                 addr.allocate_tmps(curr_local, locals);
                 value.allocate_tmps(curr_local, locals);
             }
-            CILRoot::CpBlk { src, dst, len } => todo!(),
+            CILRoot::CpBlk { src, dst, len } => {
+                src.allocate_tmps(curr_local, locals);
+                dst.allocate_tmps(curr_local, locals);
+                len.allocate_tmps(curr_local, locals);
+            }
             CILRoot::STIndI8(addr_calc, value_calc)
             | CILRoot::STIndI16(addr_calc, value_calc)
             | CILRoot::STIndI32(addr_calc, value_calc)
@@ -432,15 +437,24 @@ impl CILRoot {
             CILRoot::STArg { arg, tree } => tree.allocate_tmps(curr_local, locals),
             CILRoot::Break => (),
             CILRoot::Nop => (),
-            CILRoot::InitBlk { dst, val, count } => todo!(),
-            CILRoot::CallVirt { site, args } => todo!(),
+            CILRoot::InitBlk { dst, val, count } => {
+                dst.allocate_tmps(curr_local, locals);
+                val.allocate_tmps(curr_local, locals);
+                count.allocate_tmps(curr_local, locals);
+            }
+           
             CILRoot::Ret { tree } | CILRoot::Pop { tree } | CILRoot::Throw(tree) => {
                 tree.allocate_tmps(curr_local, locals)
             }
             CILRoot::VoidRet => (),
 
             CILRoot::ReThrow => (),
-            CILRoot::CallI { sig, fn_ptr, args } => todo!(),
+            CILRoot::CallI { sig, fn_ptr, args } => {
+                fn_ptr.allocate_tmps(curr_local, locals);
+                args
+                .iter_mut()
+                .for_each(|arg| arg.allocate_tmps(curr_local, locals));
+            }
             CILRoot::JumpingPad { ops } => (),
             CILRoot::SetTMPLocal { value } => {
                 *self = Self::STLoc {
@@ -465,6 +479,7 @@ impl CILRoot {
                 ops,
             } => ops.resolve_global_allocations(asm, tyctx),
             CILRoot::GoTo { target, sub_target } => (),
+            CILRoot::CallVirt { site, args } |
             CILRoot::Call { site, args } => args
                 .iter_mut()
                 .for_each(|arg| arg.resolve_global_allocations(asm, tyctx)),
@@ -489,14 +504,19 @@ impl CILRoot {
             CILRoot::Break => (),
             CILRoot::Nop => (),
             CILRoot::InitBlk { dst, val, count } => todo!(),
-            CILRoot::CallVirt { site, args } => todo!(),
+            
             CILRoot::Ret { tree } | CILRoot::Pop { tree } | CILRoot::Throw(tree) => {
                 tree.resolve_global_allocations(asm, tyctx)
             }
             CILRoot::VoidRet => (),
 
             CILRoot::ReThrow => (),
-            CILRoot::CallI { sig, fn_ptr, args } => todo!(),
+            CILRoot::CallI { sig, fn_ptr, args } =>  {
+                fn_ptr.resolve_global_allocations(asm, tyctx);
+                args
+                .iter_mut()
+                .for_each(|arg| arg.resolve_global_allocations(asm, tyctx));
+            }
             // Jump pads CAN'T ever allocate.
             CILRoot::JumpingPad { ops } => (),
             CILRoot::SetTMPLocal { value } => value.resolve_global_allocations(asm, tyctx),
