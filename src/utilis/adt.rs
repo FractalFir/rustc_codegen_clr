@@ -279,13 +279,14 @@ pub fn get_discr<'tyctx>(
                 //let niche_start = bx.cx().const_uint_big(tag_llty, niche_start);
                 let is_niche = eq!(
                     tag,
-                    ldc_u64!(niche_start
+                    crate::casts::int_to_int(
+                        Type::U64,
+                        disrc_type.clone(),ldc_u64!(niche_start
                         .try_into()
-                        .expect("tag is too big to fit within u64"))
+                        .expect("tag is too big to fit within u64")))
                 ); //bx.icmp(IntPredicate::IntEQ, tag, niche_start);
-                let tagged_discr = ldc_u64!(niche_start
-                    .try_into()
-                    .expect("tag is too big to fit within u64"));
+        
+                let tagged_discr = ldc_u64!( niche_variants.start().as_u32() as u64);
                 (is_niche, tagged_discr, 0)
             } else {
                 // The special cases don't apply, so we'll have to go with
@@ -300,7 +301,9 @@ pub fn get_discr<'tyctx>(
                 //let cast_tag = bx.intcast(relative_discr, cast_to, false);
                 let cast_tag =
                     crate::casts::int_to_int(disrc_type.clone(), Type::U64, relative_discr.clone());
-                let is_niche = lt_un!(relative_discr, ldc_u64!(relative_max as u64));
+                let is_niche = lt_un!(relative_discr, crate::casts::int_to_int(
+                    Type::U64,
+                    disrc_type.clone(),ldc_u64!(relative_max as u64)));
                 (is_niche, cast_tag, niche_variants.start().as_u32() as u128)
             };
 
