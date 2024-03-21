@@ -20,7 +20,7 @@ The project is still very early in development, but it has made significant prog
 - [X] Local struct spliting(significantly speeds up for loops, reduces complexity of CIL) 
 - [X] Auto inlining of trivial functions
 - [ ] Full variable lifetime analysis and optimizations based on it.
-- [ ] Stack unwinding
+- [X] Stack unwinding
 - [ ] Exception handling
 - [X] Setting value of a reference
 - [X] Getting value of a reference
@@ -63,7 +63,7 @@ The project is still very early in development, but it has made significant prog
 - [X] Compiling the `core` Rust crate - *Core now compiles, but is not fully functional.*
 - [X] Compiling the `alloc` Rust crate  - *Alloc now compiles, but is only paritaly functional.*
 - [X] Compiling the `std` Rust crate - *std now compiles, but is only a very small portion of it is functional.*
-- [ ] Stack unwinding
+- [X] Stack unwinding
 
 ## Basic benchmarks
 
