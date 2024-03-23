@@ -14,14 +14,15 @@ use rustc_target::abi::VariantIdx;
 
 use rustc_middle::ty::{AdtDef, Ty, TyCtxt};
 use rustc_target::abi::{FieldIdx, FieldsShape, Layout, LayoutS, TagEncoding};
-pub fn enum_variant_offsets(adt: AdtDef, layout: Layout, vidix: usize) -> FieldOffsetIterator {
-    FieldOffsetIterator::fields(get_variant_at_index(vidix.into(), &layout))
+pub fn enum_variant_offsets(adt: AdtDef, layout: Layout, vidix: VariantIdx) -> FieldOffsetIterator {
+    FieldOffsetIterator::fields(get_variant_at_index(vidix, &layout))
 }
 use rustc_target::abi::Variants;
 #[derive(Clone, Debug)]
 pub(crate) enum FieldOffsetIterator {
     Explicit { offsets: Box<[u32]>, index: usize },
     NoOffset { count: u64 },
+    Empty,
 }
 impl Iterator for FieldOffsetIterator {
     type Item = u32;
@@ -40,42 +41,49 @@ impl Iterator for FieldOffsetIterator {
                     None
                 }
             }
+            Self::Empty => None,
         }
     }
 }
 impl FieldOffsetIterator {
+    pub fn from_fields_shape(fields:&rustc_target::abi::FieldsShape<FieldIdx>)
+        ->Self{
+            match fields {
+                FieldsShape::Arbitrary {
+                    offsets,
+                    memory_index,
+                } => {
+                    let offsets: Box<[_]> = memory_index
+                        .iter()
+                        .enumerate()
+                        .map(|(index, _mem_idx)| {
+                            // DOC_HELP_IDEA: explain what mem_idx actualy does - it is not obvious from a first look. It describes the order of fields in memory.
+                            offsets[FieldIdx::from_u32(index as u32)].bytes() as u32
+                        })
+                        //TODO: ask what does field offset of 4294967295 means.
+                        .map(|offset| if offset > u16::MAX as u32 { 0 } else { offset })
+                        .collect();
+                    FieldOffsetIterator::Explicit { offsets, index: 0 }
+                }
+                FieldsShape::Union(count) => FieldOffsetIterator::NoOffset {
+                    count: Into::<usize>::into(*count) as u64,
+                },
+                FieldsShape::Primitive =>Self::Empty, 
+                _ => todo!("Unhandled fields shape: {fields:?}"),
+            }
+    }
     pub fn fields(
         parent: &LayoutS<FieldIdx, rustc_target::abi::VariantIdx>,
     ) -> FieldOffsetIterator {
-        match &parent.fields {
-            FieldsShape::Arbitrary {
-                offsets,
-                memory_index,
-            } => {
-                let offsets: Box<[_]> = memory_index
-                    .iter()
-                    .enumerate()
-                    .map(|(index, _mem_idx)| {
-                        // DOC_HELP_IDEA: explain what mem_idx actualy does - it is not obvious from a first look. It describes the order of fields in memory.
-                        offsets[FieldIdx::from_u32(index as u32)].bytes() as u32
-                    })
-                    //TODO: ask what does field offset of 4294967295 means.
-                    .map(|offset| if offset > u16::MAX as u32 { 0 } else { offset })
-                    .collect();
-                FieldOffsetIterator::Explicit { offsets, index: 0 }
-            }
-            FieldsShape::Union(count) => FieldOffsetIterator::NoOffset {
-                count: Into::<usize>::into(*count) as u64,
-            },
-            _ => todo!(),
-        }
+        //eprintln!("ADT fields:{:?}",parent.fields);
+        Self::from_fields_shape(&parent.fields)
     }
 }
 /// Takes layout of an enum as input, and returns the type of its tag(Void if no tag) and the size of the tag(0 if no tag).
 pub fn enum_tag_info<'tyctx>(r#enum: &Layout<'tyctx>, tyctx: TyCtxt<'tyctx>) -> (Type, u32) {
     match r#enum.variants() {
-        Variants::Single { .. } => (Type::Void, 0),
-        Variants::Multiple { tag, .. } => (scalr_to_type(*tag), tag.size(&tyctx).bytes() as u32),
+        Variants::Single { .. } => (Type::Void, FieldOffsetIterator::from_fields_shape(r#enum.fields()).next().unwrap_or(0)),
+        Variants::Multiple { tag,tag_field, .. } => (scalr_to_type(*tag), FieldOffsetIterator::from_fields_shape(r#enum.fields()).nth(*tag_field).unwrap_or(0)),
     }
 }
 fn scalr_to_type(scalar: rustc_target::abi::Scalar) -> Type {
@@ -108,7 +116,7 @@ fn primitive_to_type(primitive: rustc_target::abi::Primitive) -> Type {
         Primitive::Pointer(_) => Type::Ptr(Type::Void.into()),
     }
 }
-fn get_variant_at_index(
+pub fn get_variant_at_index(
     variant_index: VariantIdx,
     layout: &LayoutS<FieldIdx, rustc_target::abi::VariantIdx>,
 ) -> &LayoutS<FieldIdx, rustc_target::abi::VariantIdx> {

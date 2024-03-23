@@ -753,6 +753,7 @@ run_test! {arthm,greater_than,stable}
 run_test! {arthm,sub,stable}
 
 run_test! {types,tuple_structs,stable}
+run_test! {types,tuple_enum,stable}
 run_test! {types,enums,stable}
 run_test! {types,arr,stable}
 run_test! {types,adt_enum,stable}
@@ -788,6 +789,7 @@ run_test! {intrinsics,ptr_offset_from_unsigned,stable}
 run_test! {intrinsics,arith_offset,stable}
 run_test! {alloc,abox,stable}
 run_test! {alloc,raw_vec,unstable}
+run_test! {alloc,slice_to_owned,unstable}
 run_test! {fuzz,test0,stable}
 run_test! {fuzz,test1,stable}
 

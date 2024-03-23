@@ -148,7 +148,7 @@ impl TypeDef {
             });
         }
         if let Some(offsets) = self.explicit_offsets() {
-            assert_eq!(offsets.len(), self.fields().len());
+            assert_eq!(offsets.len(), self.fields().len(),"Sanity check failed! Type {name} has a field decl / field offset mismatch.",name = self.name());
         }
     }
 }

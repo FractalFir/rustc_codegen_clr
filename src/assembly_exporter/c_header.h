@@ -29,3 +29,4 @@
 #define ctor_System_UInt128(upper,lower) (((unsigned __int128)lower) | (((unsigned __int128)upper)<<64))
 #define ctor_System_Int128(upper,lower) (((__int128)lower) | (((__int128)upper)<<64))
 #define System_Runtime_InteropServices_NativeMemoryAlignedAlloc _mm_malloc
+#define System_Numerics_BitOperationsPopCount(arg) __builtin_popcount(arg)

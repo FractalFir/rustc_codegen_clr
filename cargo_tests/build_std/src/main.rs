@@ -291,12 +291,13 @@ fn main() {
     };*/
     let s = format!("Hello!\n\0");
     unsafe{printf(s.as_ptr() as *const i8)};
-    //let s = format!("Hello??? WTF is going on???{}\n\0",black_box(65));
-    //unsafe{printf(s.as_ptr() as *const i8)};
+    let s = format!("Hello??? WTF is going on???{}\n\0",black_box(65));
+    unsafe{printf(s.as_ptr() as *const i8)};
 
     let val = std::hint::black_box(*boxed_int);
     //let val = std::hint::black_box(string);
 }
+
 #[test]
 fn fun(){
     

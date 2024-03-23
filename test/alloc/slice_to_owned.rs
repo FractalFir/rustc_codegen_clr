@@ -7,14 +7,21 @@
     alloc_layout_extra,
     unchecked_math
 )]
+use mem::MaybeUninit;
+use slice::SliceIndex;
 use std::alloc::AllocError;
+use std::borrow::Borrow;
 use std::collections::TryReserveError;
 use std::collections::TryReserveErrorKind::CapacityOverflow;
 use std::hint::black_box;
 use std::mem;
 use std::mem::SizedTypeProperties;
+use std::ops;
+use std::ops::Index;
 use std::ptr::NonNull;
 use std::ptr::Unique;
+use std::slice;
+
 struct LayoutError;
 #[derive(Copy, Clone)]
 pub struct Alignment(AlignmentEnum);
@@ -246,35 +253,43 @@ pub(crate) struct RawVec<T> {
     /// `cap` must be in the `0..=isize::MAX` range.
     cap: isize,
     alloc: Allocator,
+    len: usize,
+}
+
+impl<T> ops::Deref for RawVec<T> {
+    type Target = [T];
+
+    #[inline]
+    fn deref(&self) -> &[T] {
+        unsafe { slice::from_raw_parts(self.as_ptr(), self.len) }
+    }
 }
 impl<T> RawVec<T> {
+    pub fn capacity(&self) -> usize {
+        self.cap as usize
+    }
+    pub fn as_mut_ptr(&mut self) -> *mut T {
+        self.ptr.as_ptr()
+    }
+    pub fn as_ptr(&self) -> *const T {
+        self.ptr.as_ptr()
+    }
     pub const fn new_in(alloc: Allocator) -> Self {
         // `cap: 0` means "unallocated". zero-sized types are ignored.
         Self {
             ptr: Unique::dangling(),
             cap: 0,
+            len: 0,
             alloc,
         }
     }
-    fn try_allocate_in_(capacity: usize, alloc: Allocator) -> Result<Self, TryReserveError> {
-        // Don't allocate here because `Drop` will not deallocate when `capacity` is 0.
-
-        // We avoid `unwrap_or_else` here because it bloats the amount of
-        // LLVM IR generated.
-        let layout = match Layout::array::<T>(capacity) {
-            Ok(layout) => layout,
-            Err(_) => return Err(CapacityOverflow.into()),
-        };
-
-        if let Err(err) = alloc_guard(layout.size()) {
-            return Err(err);
+    pub fn spare_capacity_mut(&mut self) -> &mut [MaybeUninit<T>] {
+        unsafe {
+            slice::from_raw_parts_mut(
+                self.as_mut_ptr().add(self.len) as *mut MaybeUninit<T>,
+                self.capacity() - self.len,
+            )
         }
-
-        // Allocators currently return a `NonNull<[u8]>` whose length
-        // matches the size requested. If that ever changes, the capacity
-        // here should change to `ptr.len() / mem::size_of::<T>()`.
-        black_box(6);
-        Ok(Self::new_in(alloc))
     }
     fn try_allocate_in(
         capacity: usize,
@@ -314,6 +329,7 @@ impl<T> RawVec<T> {
                 ptr: Unique::from(ptr.cast()),
                 cap: unsafe { capacity as isize },
                 alloc,
+                len: 0,
             })
         }
     }
@@ -321,9 +337,26 @@ impl<T> RawVec<T> {
         capacity: usize,
         alloc: Allocator,
     ) -> Result<Self, TryReserveError> {
-        Self::try_allocate_in_(capacity, alloc)
+        Self::try_allocate_in(capacity, AllocInit::Uninitialized, alloc)
+    }
+    pub unsafe fn set_len(&mut self, len: usize) {
+        self.len = len;
     }
 }
+impl<T> Borrow<[T]> for RawVec<T> {
+    fn borrow(&self) -> &[T] {
+        &self[..]
+    }
+}
+impl<T, I: SliceIndex<[T]>> Index<I> for RawVec<T> {
+    type Output = I::Output;
+
+    #[inline]
+    fn index(&self, index: I) -> &Self::Output {
+        Index::index(&**self, index)
+    }
+}
+
 struct Allocator;
 impl Allocator {
     #[inline]
@@ -391,34 +424,172 @@ fn alloc_guard(alloc_size: usize) -> Result<(), TryReserveError> {
     }
 }
 
-fn main() {
-    /*let init =  AllocInit::Uninitialized;
-    let mut is_zeroed = match init{
-        AllocInit::Uninitialized => false,
-        AllocInit::Zeroed => true,
-    };
-    black_box(is_zeroed);
-    let layout = match Layout::array::<u64>(4) {
-        Ok(layout) => layout,
-        Err(_) => panic!(),
-    };
-    black_box(layout);*/
-    // Don't allocate here because `Drop` will not deallocate when `capacity` is 0.
+pub const fn as_bytes(stri: &str) -> &[u8] {
+    // SAFETY: const sound because we transmute two types with the same layout
+    unsafe { mem::transmute(stri) }
+}
 
-    // We avoid `unwrap_or_else` here because it bloats the amount of
-    // LLVM IR generated.
-    let layout = match Layout::array::<i32>(4) {
-        Ok(layout) => layout,
-        Err(_) => panic!(),
-    };
-    black_box(layout.size());
-    if let Err(err) = alloc_guard(layout.size()) {
-        panic!();
+fn to_vec<T: Clone>(s: &[T], alloc: Allocator) -> RawVec<T> {
+    struct DropGuard<'a, T> {
+        vec: &'a mut RawVec<T>,
+        num_init: usize,
     }
+    impl<'a, T> Drop for DropGuard<'a, T> {
+        #[inline]
+        fn drop(&mut self) {
+            // SAFETY:
+            // items were marked initialized in the loop below
+            unsafe {
+                self.vec.set_len(self.num_init);
+            }
+        }
+    }
+    let mut vec = RawVec::try_with_capacity_in(s.len(), alloc).unwrap();
+    let mut guard = DropGuard {
+        vec: &mut vec,
+        num_init: 0,
+    };
+    let slots = guard.vec.spare_capacity_mut();
+    // .take(slots.len()) is necessary for LLVM to remove bounds checks
+    // and has better codegen than zip.
+    let count = s.iter().count();
+    unsafe {
+        printf(
+            "Prepraing to coppy. Spare cap %d. Data length %d. Iter count %d\n\0".as_ptr() as *const i8,
+            slots.len() as u32,
+            s.len() as u32,
+            count as u32,
+        )
+    };
+    let mut idx = 0;
+    let mut iter = s.iter();
+    if !iter.next().is_some(){
+        unsafe { printf("Iter should have returned Some but returned None :(.\n\0".as_ptr() as *const i8) };
+        core::intrinsics::abort();
+    }
+    for b in s.iter(){
+        unsafe { printf("Copying\n\0".as_ptr() as *const i8) };
+        guard.num_init = idx;
+      
+        slots[idx].write(b.clone());
+        idx += 1;
+    }
+    unsafe { printf("Coppy done.\n\0".as_ptr() as *const i8) };
+    core::mem::forget(guard);
+    // SAFETY:
+    // the vec was allocated and initialized above to at least this length.
+    unsafe {
+        vec.set_len(s.len());
+    }
+    vec
+}
+pub struct Enumerate<I> {
+    iter: I,
+    count: usize,
+}
+impl<I> Enumerate<I> {
+    pub fn new(iter: I) -> Enumerate<I> {
+        Enumerate { iter, count: 0 }
+    }
+}
 
-    // Allocators currently return a `NonNull<[u8]>` whose length
-    // matches the size requested. If that ever changes, the capacity
-    // here should change to `ptr.len() / mem::size_of::<T>()`.
-    black_box(6);
+impl<I> Iterator for Enumerate<I>
+where
+    I: Iterator,
+{
+    type Item = (usize, <I as Iterator>::Item);
+
+    /// # Overflow Behavior
+    ///
+    /// The method does no guarding against overflows, so enumerating more than
+    /// `usize::MAX` elements either produces the wrong result or panics. If
+    /// debug assertions are enabled, a panic is guaranteed.
+    ///
+    /// # Panics
+    ///
+    /// Might panic if the index of the element overflows a `usize`.
+
+
+    fn next(&mut self) -> Option<(usize, <I as Iterator>::Item)> {
+        //unsafe{printf("Called next!\n\0".as_ptr() as *const i8)};
+        let a = self.iter.next();
+        //unsafe{printf("inner itrer `is_some` = %d!\n\0".as_ptr() as *const i8,a.is_some() as u8 as u32)};
+        let a = a?;
+        //unsafe{printf("is indeed some!\n\0".as_ptr() as *const i8)};
+        let i = self.count;
+        self.count += 1;
+
+        let res = Some((i, a));
+        //unsafe{printf("res `is_some` = %d!\n\0".as_ptr() as *const i8,res.is_some() as u8 as u32)};
+        res
+    }
+}
+fn enumerate_<T>(s: T) -> Enumerate<T>
+where
+    T: Sized,
+{
+    Enumerate::new(s)
+}
+fn slice_iter_test(s: &[u8]) {
+    for b in s.iter() {
+        unsafe { printf("Iter byte %d\n\0".as_ptr() as *const i8, *b as u32) };
+    }
+}
+fn slice_iter_enumerate_test1(s: &[u8]) {
+    for (i, b) in enumerate_(s.iter()) {
+        unsafe {
+            printf(
+                "IterEnum1 byte %d at index %d\n\0".as_ptr() as *const i8,
+                *b as u32,
+                i as u32,
+            )
+        };
+    }
+}
+fn slice_iter_enumerate_test2(s: &[u8]) {
+    
+    for (i, b) in s.iter().enumerate() {
+        unsafe {
+            printf(
+                "Iter Enum2 byte %d at index %d\n\0".as_ptr() as *const i8,
+                *b as u32,
+                i as u32,
+            )
+        };
+    }
+}
+fn enm_tuple_test(){
+    let v = 0;
+    let itr:Option<<std::iter::Enumerate<std::slice::Iter<'_, u8>> as Iterator>::Item> = Some((0_usize,&v));
+    if !black_box(itr).is_some(){
+        unsafe{printf("WTF? Some is... not some?\n\0".as_ptr() as *const i8)};
+        core::intrinsics::abort();
+    }
+    else{
+        unsafe{printf("Ok. Some is some.\n\0".as_ptr() as *const i8)};
+    }
+}
+fn main() {
+  
+    enm_tuple_test();
+
+
     let v = RawVec::<u8>::new_in(Allocator);
+    let original = "Hello.\n\0";
+    let mut owned = to_vec(original.as_bytes(), Allocator);
+    
+    slice_iter_test(original.as_bytes());
+
+    slice_iter_enumerate_test1(original.as_bytes());
+
+    slice_iter_enumerate_test2(original.as_bytes());
+
+    unsafe { printf(owned.as_mut_ptr() as *const i8) };
+    unsafe { printf("\n\0".as_ptr() as *const i8) };
+    if (original.len() != owned.len()) {
+        core::intrinsics::abort();
+    }
+    if (original.as_bytes()[0] != owned[0]) {
+        core::intrinsics::abort();
+    }
 }
