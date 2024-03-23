@@ -308,8 +308,8 @@ fn ptr_set_op<'ctx>(
                     CILRoot::STIndISize(addr_calc, value_calc)
                 }
             }
-            TyKind::RawPtr(ty_and_mut) => {
-                if pointer_to_is_fat(ty_and_mut.ty, tyctx, Some(*method_instance)) {
+            TyKind::RawPtr(ty,muta) => {
+                if pointer_to_is_fat(*ty, tyctx, Some(*method_instance)) {
                     CILRoot::STObj {
                         tpe: type_cache
                             .type_from_cache(pointed_type, tyctx, Some(*method_instance))

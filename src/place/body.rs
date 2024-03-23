@@ -69,10 +69,8 @@ pub fn place_elem_body<'ctx>(
                     let curr_type = type_cache.type_from_cache(
                         Ty::new_ptr(
                             tyctx,
-                            TypeAndMut {
-                                ty: curr_ty,
-                                mutbl: rustc_middle::ty::Mutability::Mut,
-                            },
+                            curr_ty,
+                            rustc_middle::ty::Mutability::Mut,
                         ),
                         tyctx,
                         Some(method_instance),
@@ -80,10 +78,8 @@ pub fn place_elem_body<'ctx>(
                     let field_type = type_cache.type_from_cache(
                         Ty::new_ptr(
                             tyctx,
-                            TypeAndMut {
-                                ty: field_ty,
-                                mutbl: rustc_middle::ty::Mutability::Mut,
-                            },
+                            field_ty,
+                            rustc_middle::ty::Mutability::Mut,
                         ),
                         tyctx,
                         Some(method_instance),

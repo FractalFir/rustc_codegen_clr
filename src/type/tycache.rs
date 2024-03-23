@@ -351,9 +351,9 @@ impl TyCache {
                 DotnetTypeRef::new(None, &name).into()
             }
             TyKind::Never => Type::Void,
-            TyKind::RawPtr(type_and_mut) => {
-                if super::pointer_to_is_fat(type_and_mut.ty, tyctx, method) {
-                    let inner = match type_and_mut.ty.kind() {
+            TyKind::RawPtr(typ,_) => {
+                if super::pointer_to_is_fat(*typ, tyctx, method) {
+                    let inner = match typ.kind() {
                         TyKind::Slice(inner) => {
                             if let Some(method) = method {
                                 crate::utilis::monomorphize(&method, *inner, tyctx)
@@ -364,15 +364,15 @@ impl TyCache {
                         TyKind::Str => u8_ty(tyctx),
                         _ => {
                             if let Some(method) = method {
-                                crate::utilis::monomorphize(&method, type_and_mut.ty, tyctx)
+                                crate::utilis::monomorphize(&method, *typ, tyctx)
                             } else {
-                                type_and_mut.ty
+                                *typ
                             }
                         }
                     };
                     slice_ref_to(tyctx, self, Ty::new_slice(tyctx, inner), method)
                 } else {
-                    Type::Ptr(self.type_from_cache(type_and_mut.ty, tyctx, method).into())
+                    Type::Ptr(self.type_from_cache(*typ, tyctx, method).into())
                 }
             }
             TyKind::Adt(def, subst) => {

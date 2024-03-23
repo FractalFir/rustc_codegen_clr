@@ -39,14 +39,14 @@ pub fn handle_rvalue<'tcx>(
         ) => {
             let target = crate::utilis::monomorphize(&method_instance, *dst, tyctx);
             let target_pointed_to = match target.kind() {
-                TyKind::RawPtr(type_and_mut) => type_and_mut.ty,
+                TyKind::RawPtr(typ,_) => *typ,
                 TyKind::Ref(_, inner, _) => *inner,
                 _ => panic!("Type is not ptr {target:?}."),
             };
             let source =
                 crate::utilis::monomorphize(&method_instance, operand.ty(method, tyctx), tyctx);
             let source_pointed_to = match source.kind() {
-                TyKind::RawPtr(type_and_mut) => type_and_mut.ty,
+                TyKind::RawPtr(typ,_) => *typ,
                 TyKind::Ref(_, inner, _) => *inner,
                 _ => panic!("Type is not ptr {target:?}."),
             };
@@ -104,7 +104,7 @@ pub fn handle_rvalue<'tcx>(
             let target_dotnet = target_type.as_dotnet().unwrap();
             let mut parrent = handle_operand(operand, tyctx, method, method_instance, tycache);
             let derefed_source = match source.kind() {
-                TyKind::RawPtr(tpe) => tpe.ty,
+                TyKind::RawPtr(tpe,_) =>*tpe,
                 TyKind::Ref(_, inner, _) => *inner,
                 TyKind::Adt(_, _) => {
                     if source.is_box() {

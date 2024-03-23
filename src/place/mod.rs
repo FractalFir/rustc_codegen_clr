@@ -24,8 +24,8 @@ fn pointed_type(ty: PlaceTy) -> Ty {
     if let PlaceTy::Ty(ty) = ty {
         if let TyKind::Ref(_region, inner, _mut) = ty.kind() {
             *inner
-        } else if let TyKind::RawPtr(inner_and_mut) = ty.kind() {
-            inner_and_mut.ty
+        } else if let TyKind::RawPtr(ty,_) = ty.kind() {
+           *ty
         } else {
             panic!("{ty:?} is not a pointer type!");
         }
@@ -47,7 +47,7 @@ fn body_ty_is_by_adress(last_ty: Ty) -> bool {
         | TyKind::Float(_)
         | TyKind::Uint(_)
         | TyKind::Ref(_, _, _)
-        | TyKind::RawPtr(_)
+        | TyKind::RawPtr(_,_)
         | TyKind::Bool
         | TyKind::Char => false,
 
@@ -125,8 +125,8 @@ pub fn deref_op<'ctx>(
                     CILNode::LDIndISize { ptr }
                 }
             }
-            TyKind::RawPtr(type_and_mut) => {
-                if pointer_to_is_fat(type_and_mut.ty, tyctx, Some(*method_instance)) {
+            TyKind::RawPtr(typ,muta) => {
+                if pointer_to_is_fat(*typ, tyctx, Some(*method_instance)) {
                     CILNode::LdObj {
                         ptr,
                         obj: Box::new(type_cache.type_from_cache(

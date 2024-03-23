@@ -429,12 +429,12 @@ pub const fn as_bytes(stri: &str) -> &[u8] {
     unsafe { mem::transmute(stri) }
 }
 
-fn to_vec<T: Clone>(s: &[T], alloc: Allocator) -> RawVec<T> {
-    struct DropGuard<'a, T> {
-        vec: &'a mut RawVec<T>,
+fn to_vec(s: &[u8], alloc: Allocator) -> RawVec<u8> {
+    struct DropGuard<'a> {
+        vec: &'a mut RawVec<u8>,
         num_init: usize,
     }
-    impl<'a, T> Drop for DropGuard<'a, T> {
+    impl<'a> Drop for DropGuard<'a> {
         #[inline]
         fn drop(&mut self) {
             // SAFETY:
@@ -468,7 +468,7 @@ fn to_vec<T: Clone>(s: &[T], alloc: Allocator) -> RawVec<T> {
         core::intrinsics::abort();
     }
     for b in s.iter(){
-        unsafe { printf("Copying\n\0".as_ptr() as *const i8) };
+        unsafe { printf("Copying at %d\n\0".as_ptr() as *const i8,idx as u32) };
         guard.num_init = idx;
       
         slots[idx].write(b.clone());

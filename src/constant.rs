@@ -243,7 +243,7 @@ fn load_const_scalar<'ctx>(
         TyKind::Uint(uint_type) => load_const_uint(scalar_u128, uint_type),
         TyKind::Float(ftype) => load_const_float(scalar_u128, ftype, tyctx),
         TyKind::Bool => CILNode::LdcI32(scalar_u128 as i32),
-        TyKind::RawPtr(_) => CILNode::ConvUSize(CILNode::LdcU64(scalar_u128 as u64).into()),
+        TyKind::RawPtr(_,_) => CILNode::ConvUSize(CILNode::LdcU64(scalar_u128 as u64).into()),
         TyKind::Tuple(elements) => {
             if elements.is_empty() {
                 CILNode::TemporaryLocal(Box::new((
