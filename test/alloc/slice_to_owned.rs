@@ -468,10 +468,13 @@ fn to_vec(s: &[u8], alloc: Allocator) -> RawVec<u8> {
         core::intrinsics::abort();
     }
     for b in s.iter(){
-        unsafe { printf("Copying at %d\n\0".as_ptr() as *const i8,idx as u32) };
+        unsafe { printf("Copying at %d:%d\n\0".as_ptr() as *const i8,idx as u32,*b as u32) };
         guard.num_init = idx;
       
-        slots[idx].write(b.clone());
+        //let addr = &mut slots[idx] as *mut _ as *mut u8;
+        slots[idx].write(*b);
+        //unsafe{*addr = *b};
+        
         idx += 1;
     }
     unsafe { printf("Coppy done.\n\0".as_ptr() as *const i8) };
@@ -569,21 +572,38 @@ fn enm_tuple_test(){
         unsafe{printf("Ok. Some is some.\n\0".as_ptr() as *const i8)};
     }
 }
+fn uninit_test(){
+    unsafe{
+   let mut uninit = black_box(MaybeUninit::<u8>::uninit());
+   uninit.write(171);
+   if uninit.assume_init()  != 171{
+   // unsafe{printf("WTF? MaybeUninit is broken.\n\0".as_ptr() as *const i8)};
+        core::intrinsics::abort();
+   }
+    else{
+    //unsafe{printf("Direct MaybeUninit is OK.\n\0".as_ptr() as *const i8)};
+   }
+   //let mut uninit_ref = &mut uninit;
+}
+}
 fn main() {
-  
+  /* 
     enm_tuple_test();
 
 
     let v = RawVec::<u8>::new_in(Allocator);
     let original = "Hello.\n\0";
     let mut owned = to_vec(original.as_bytes(), Allocator);
-    
+
+
     slice_iter_test(original.as_bytes());
 
     slice_iter_enumerate_test1(original.as_bytes());
 
     slice_iter_enumerate_test2(original.as_bytes());
-
+    */
+    uninit_test();
+    /* 
     unsafe { printf(owned.as_mut_ptr() as *const i8) };
     unsafe { printf("\n\0".as_ptr() as *const i8) };
     if (original.len() != owned.len()) {
@@ -591,5 +611,5 @@ fn main() {
     }
     if (original.as_bytes()[0] != owned[0]) {
         core::intrinsics::abort();
-    }
+    }*/
 }

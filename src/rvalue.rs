@@ -406,8 +406,7 @@ pub fn handle_rvalue<'tcx>(
                 Some(method_instance),
             );
             if disrc_type == Type::Void {
-                //CILNode::LDOb
-                todo!();
+                CILNode::TemporaryLocal(Box::new((Type::Void,Box::new([]),CILNode::LdObj{obj:Type::Void.into(),ptr:CILNode::LoadAddresOfTMPLocal.into()})))
             } else {
                 crate::casts::int_to_int(
                     disrc_type.clone(),

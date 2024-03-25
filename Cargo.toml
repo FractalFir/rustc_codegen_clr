@@ -13,6 +13,7 @@ libc = "0.2.153"
 libloading = "0.8.1"
 
 postcard = { version = "1.0.6", features = ["use-std"] }
+
 serde = { version = "1.0.183", features = ["derive"] }
 [lib]
 crate-type=["rlib", "cdylib"]
@@ -24,3 +25,5 @@ bench = false
 members = [
     "mycorrhiza", 
 ]
+[profile.release]
+debug = true

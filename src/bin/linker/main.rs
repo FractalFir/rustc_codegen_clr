@@ -1,5 +1,6 @@
 #![deny(unused_must_use)]
 //use assembly::Assembly;
+use lazy_static::*;
 use rustc_codegen_clr::{
     assembly::Assembly,
     basic_block::BasicBlock,
@@ -218,8 +219,14 @@ fn add_mandatory_statics(asm: &mut Assembly) {
     asm.add_static(Type::U8, "__rust_no_alloc_shim_is_unstable");
     asm.add_static(Type::Ptr(Type::Ptr(Type::U8.into()).into()), "environ");
 }
+fn get_libc()->&'static str{
+    LIBC.as_ref()
+}
+lazy_static!{
+    static ref LIBC:String = get_libc_();
+}
 #[cfg(target_os = "linux")]
-fn get_libc() -> String {
+fn get_libc_() -> String {
     let mut libc = None;
     for entry in std::fs::read_dir("/lib").unwrap() {
         let entry = if let Ok(entry) = entry {
@@ -251,12 +258,12 @@ fn get_libc() -> String {
     //todo!()
 }
 #[cfg(target_os = "windows")]
-fn get_libc() -> String {
-    "ucrtbase.dll".into()
+fn get_libc() ->&'static str {
+    "ucrtbase.dll"
 }
 #[cfg(target_os = "macos")]
-fn get_libc() -> String {
-    "libSystem.B.dylib".into()
+fn get_libc() -> &'static str{
+    "libSystem.B.dylib"
 }
 fn main() {
     // Parse command line arguments

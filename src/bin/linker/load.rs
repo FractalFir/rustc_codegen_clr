@@ -31,7 +31,7 @@ pub fn load_assemblies(raw_files: &[&String], archives: &[&String]) -> Assembly 
             .read_to_end(&mut asm_bytes)
             .expect("ERROR: Could not load the assembly file!");
         let assembly =
-            postcard::from_bytes(&asm_bytes).expect("ERROR:Could not decode the assembly file!");
+        postcard::from_bytes(&asm_bytes).expect("ERROR:Could not decode the assembly file!");
         final_assembly = final_assembly.join(assembly);
     }
     for asm_path in archives {

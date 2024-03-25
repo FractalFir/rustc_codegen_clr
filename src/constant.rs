@@ -181,26 +181,18 @@ fn load_const_scalar<'ctx>(
                         )));
                     }
                     if name == "environ" {
-                        /*
-                        return CILNode::RawOpsParrentless {
-                            ops: [
-                                CILOp::LDStaticField(
-                                    StaticFieldDescriptor::new(
-                                        None,
-                                        Type::Ptr(Type::Ptr(Type::U8.into()).into()),
-                                        name.clone().into(),
-                                    )
-                                    .into(),
+                        
+                        return CILNode::TemporaryLocal(Box::new((
+                            Type::U8,
+                            [CILRoot::SetTMPLocal {
+                                value: CILNode::LDStaticField(
+                                    StaticFieldDescriptor::new(None, Type::U8, name.clone().into())
+                                        .into(),
                                 ),
-                                CILOp::NewTMPLocal(Type::U8.into()),
-                                CILOp::SetTMPLocal,
-                                CILOp::LoadAddresOfTMPLocal,
-                                CILOp::ConvUSize(false),
-                                CILOp::FreeTMPLocal,
-                            ]
+                            }]
                             .into(),
-                        };*/
-                        todo!();
+                            CILNode::LoadAddresOfTMPLocal,
+                        )));
                     }
                     let attrs = tyctx.codegen_fn_attrs(def_id);
 

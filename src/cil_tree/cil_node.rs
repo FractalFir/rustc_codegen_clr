@@ -315,7 +315,7 @@ impl CILNode {
             Self::LDFtn(site) => vec![CILOp::LDFtn(site.clone())],
             Self::LDTypeToken(tpe) => vec![CILOp::LDTypeToken(tpe.clone())],
             Self::TemporaryLocal(tuple) => {
-                panic!("Unresolved temporary local during the CIL flattening phase!")
+                panic!("Unresolved temporary local `{tuple:?}` during the CIL flattening phase!")
             }
             Self::LDLoc(local) => vec![CILOp::LDLoc(*local)],
             Self::LDArg(local) => vec![CILOp::LDArg(*local)],

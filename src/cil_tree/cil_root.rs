@@ -361,8 +361,13 @@ impl CILRoot {
                 assert!(!matches!(value,CILNode::SubTrees(_, _)));
                 res
             }
-            CILRoot::SetTMPLocal { value } => todo!(),
-            CILRoot::CpBlk { src, dst, len } => todo!(),
+            CILRoot::SetTMPLocal { value } => panic!("Unresolved TMP local!"),
+            CILRoot::CpBlk { src, dst, len } => {
+                let mut res = src.sheed_trees();
+                res.extend(dst.sheed_trees());
+                res.extend(len.sheed_trees());
+                res
+            }
             CILRoot::STIndI8(addr_calc, value_calc)
             | CILRoot::STIndI16(addr_calc, value_calc)
             | CILRoot::STIndI32(addr_calc, value_calc)
@@ -382,8 +387,12 @@ impl CILRoot {
             CILRoot::STArg { arg, tree } => tree.sheed_trees(),
             CILRoot::Break => vec![],
             CILRoot::Nop => vec![],
-            CILRoot::InitBlk { dst, val, count } => todo!(),
-
+            CILRoot::InitBlk { dst, val, count } =>{
+                let mut res = dst.sheed_trees();
+                res.extend(val.sheed_trees());
+                res.extend(count.sheed_trees());
+                res
+            }
             CILRoot::Ret { tree } | CILRoot::Pop { tree } => tree.sheed_trees(),
             CILRoot::VoidRet => vec![],
             CILRoot::Throw(tree) => tree.sheed_trees(),
@@ -487,7 +496,11 @@ impl CILRoot {
                 addr.resolve_global_allocations(asm, tyctx);
                 value.resolve_global_allocations(asm, tyctx);
             }
-            CILRoot::CpBlk { src, dst, len } => todo!(),
+            CILRoot::CpBlk { src, dst, len } =>  {
+                src.resolve_global_allocations(asm, tyctx);
+                dst.resolve_global_allocations(asm, tyctx);
+                len.resolve_global_allocations(asm, tyctx);
+            }
             CILRoot::STIndI8(addr_calc, value_calc)
             | CILRoot::STIndI16(addr_calc, value_calc)
             | CILRoot::STIndI32(addr_calc, value_calc)
@@ -503,7 +516,12 @@ impl CILRoot {
             CILRoot::STArg { arg, tree } => tree.resolve_global_allocations(asm, tyctx),
             CILRoot::Break => (),
             CILRoot::Nop => (),
-            CILRoot::InitBlk { dst, val, count } => todo!(),
+            CILRoot::InitBlk { dst, val, count } => {
+                dst.resolve_global_allocations(asm, tyctx);
+                val.resolve_global_allocations(asm, tyctx);
+                count.resolve_global_allocations(asm, tyctx);
+            }
+           
             
             CILRoot::Ret { tree } | CILRoot::Pop { tree } | CILRoot::Throw(tree) => {
                 tree.resolve_global_allocations(asm, tyctx)
