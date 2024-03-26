@@ -134,22 +134,12 @@ macro_rules! compare_tests {
                     // Compiles the test project
                     let mut cmd = std::process::Command::new("rustc");
                     //.env("RUST_TARGET_PATH","../../")
-                    cmd.current_dir(test_dir).args([
-                        "-O",
-                        "-Z",
-                        super::super::backend_path(),
-                        "-C",
-                        &format!(
-                            "linker={}",
-                            super::super::RUSTC_CODEGEN_CLR_LINKER.display()
-                        ),
+                    cmd.current_dir(test_dir).arg("-O")
+                    .args(super::super::rustc_args().into_iter())
+                    .args([
                         concat!("./", stringify!($test_name), ".rs"),
                         "-o",
                         concat!("./", stringify!($test_name), ".exe"),
-                        "--edition",
-                        "2021",
-                        //"--target",
-                        //"clr64-unknown-clr"
                     ]);
                     let out = cmd.output().expect("failed to execute process");
                     // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
@@ -221,21 +211,11 @@ macro_rules! compare_tests {
                     // Compiles the test project
                     let mut cmd = std::process::Command::new("rustc");
                     //.env("RUST_TARGET_PATH","../../")
-                    cmd.current_dir(test_dir).args([
-                        "-Z",
-                        super::super::backend_path(),
-                        "-C",
-                        &format!(
-                            "linker={}",
-                            super::super::RUSTC_CODEGEN_CLR_LINKER.display()
-                        ),
+                    cmd.current_dir(test_dir).args(super::super::rustc_args().into_iter())
+                    .args([
                         concat!("./", stringify!($test_name), ".rs"),
                         "-o",
                         concat!("./", stringify!($test_name), ".exe"),
-                        "--edition",
-                        "2021",
-                        //"--target",
-                        //"clr64-unknown-clr"
                     ]);
                     let out = cmd.output().expect("failed to execute process");
                     // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
@@ -375,22 +355,13 @@ macro_rules! run_test {
                     // Compiles the test project
                     let mut cmd = std::process::Command::new("rustc");
                     //.env("RUST_TARGET_PATH","../../")
-                    cmd.current_dir(test_dir).args([
-                        "-O",
-                        "-Z",
-                        super::super::backend_path(),
-                        "-C",
-                        &format!(
-                            "linker={}",
-                            super::super::RUSTC_CODEGEN_CLR_LINKER.display()
-                        ),
+                    cmd.current_dir(test_dir)
+                    .arg("-O")
+                    .args(super::super::rustc_args().into_iter())
+                    .args([
                         concat!("./", stringify!($test_name), ".rs"),
                         "-o",
                         concat!("./", stringify!($test_name), ".exe"),
-                        "--edition",
-                        "2021",
-                        //"--target",
-                        //"clr64-unknown-clr"
                     ]);
                     eprintln!("Command: {cmd:?}");
                     let out = cmd.output().expect("failed to execute process");
@@ -424,21 +395,12 @@ macro_rules! run_test {
                     let out = std::process::Command::new("rustc")
                         //.env("RUST_TARGET_PATH","../../")
                         .current_dir(test_dir)
+                        .arg("-O")
+                        .args(super::super::rustc_args().into_iter())
                         .args([
-                            "-Z",
-                            super::super::backend_path(),
-                            "-C",
-                            &format!(
-                                "linker={}",
-                                super::super::RUSTC_CODEGEN_CLR_LINKER.display()
-                            ),
                             concat!("./", stringify!($test_name), ".rs"),
                             "-o",
-                            &output_path,
-                            "--edition",
-                            "2021",
-                            //"--target",
-                            //"clr64-unknown-clr"
+                            concat!("./", stringify!($test_name), ".exe"),
                         ])
                         .output()
                         .expect("failed to execute process");
@@ -691,7 +653,7 @@ fn with_stack_size(cmd: &mut std::process::Command, limit_kb: u64) {
         })
     };
 }
-#[cfg(test)]
+
 fn backend_path() -> &'static str {
     if cfg!(debug_assertions) {
         backend_path_debug()
@@ -699,7 +661,7 @@ fn backend_path() -> &'static str {
         backend_path_release()
     }
 }
-#[cfg(test)]
+
 fn backend_path_release() -> &'static str {
     if cfg!(target_os = "linux") {
         "codegen-backend=../../target/release/librustc_codegen_clr.so"
@@ -711,7 +673,7 @@ fn backend_path_release() -> &'static str {
         panic!("Unsupported target OS");
     }
 }
-#[cfg(test)]
+
 fn backend_path_debug() -> &'static str {
     if cfg!(target_os = "linux") {
         "codegen-backend=../../target/debug/librustc_codegen_clr.so"
@@ -991,13 +953,38 @@ lazy_static! {
 
     };
 }
+pub fn rustc_args()->Box<[String]>{
+   if *crate::config::RANDOMIZE_LAYOUT{
+    ["-Z".to_owned(),
+        backend_path().to_owned(),
+        "-C".to_owned(),
+        format!(
+            "linker={}",
+            RUSTC_CODEGEN_CLR_LINKER.display()
+        ),"-Z".to_owned(),"randomize-layout".to_owned(), "--edition".to_owned(),
+        "2021".to_owned(),].into()
+        
+    }else{ [
+        "-Z".to_owned(),
+        backend_path().to_owned(),
+        "-C".to_owned(),
+        format!(
+            "linker={}",
+            RUSTC_CODEGEN_CLR_LINKER.display()
+        ), "--edition".to_owned(),
+        "2021".to_owned(),].into()}
+    
+}
 pub fn cargo_build_env() -> String {
     RUSTC_BUILD_STATUS.as_ref().expect("Could not build rustc!");
     let backend = absolute_backend_path();
     let backend = backend.display();
     let linker = RUSTC_CODEGEN_CLR_LINKER.display();
     let link_args = "--cargo-support";
-    format!("-Z codegen-backend={backend} -C linker={linker} -C link-args={link_args}")
+    let radomize_layout = if *crate::config::RANDOMIZE_LAYOUT{
+        "-Z randomize-layout"
+    }else{""};
+    format!("-Z codegen-backend={backend} -C linker={linker} -C link-args={link_args} {radomize_layout}")
 }
 pub fn runtime_config() -> String {
     RUNTIME_CONFIG.to_string()
