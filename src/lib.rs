@@ -149,7 +149,8 @@ use std::{
 };
 /// Immutable string - used to save a bit of memory on storage.
 pub type IString = Box<str>;
-
+/// Immutable string - used to save a bit of memory on storage.
+pub type AString = std::sync::Arc<Box<str>>;
 use assembly::Assembly;
 /// An instance of the codegen.
 struct MyBackend;

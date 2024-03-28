@@ -50,4 +50,4 @@ config_flag! {C_MODE,false,"Tells the codegen to emmit C source files."}
 config_flag! {C_SANITIZE,false,"Tells the codegen sanitize C."}
 
 config_flag! {RANDOMIZE_LAYOUT,false,"Tells the codegen to randomize TEST type layout."}
-
+config_flag! {NATIVE_PASSTROUGH,false,"Tells the codegen compile linked static libraries into a shared library, which will be bundled with the .NET executable."}

@@ -654,12 +654,7 @@ impl Assembly {
                 }
                 if let Some(method) = self.functions.get(&call).cloned() {
                     to_resurect.insert(call.clone(), method);
-                } else if !crate::native_pastrough::LIBC_FNS
-                    .iter()
-                    .any(|libc_fn| *libc_fn == call.name())
-                {
-                    panic!("Unresolved extern ref: {call:?}");
-                }
+                };
             }
         }
         alive.extend(resurecting);

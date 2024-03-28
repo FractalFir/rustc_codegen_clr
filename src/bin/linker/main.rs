@@ -1,6 +1,7 @@
 #![deny(unused_must_use)]
 //use assembly::Assembly;
 use lazy_static::*;
+use load::LinkableFile;
 use rustc_codegen_clr::{
     assembly::Assembly,
     basic_block::BasicBlock,
@@ -15,8 +16,22 @@ mod cmd;
 mod export;
 mod load;
 
-use std::{env, io::Write};
-
+use std::{collections::HashMap, env, io::Write};
+struct NativePastroughInfo{
+    defs:HashMap<IString,AString>,
+}
+impl NativePastroughInfo {
+    pub fn new() -> Self {
+        Self { defs: HashMap::new() }
+    }
+    pub fn insert(&mut self, k: IString, v: impl Into<AString>) -> Option<AString> {
+        self.defs.insert(k, v.into())
+    }
+    
+    pub fn get(&self, k: &str) -> Option<&AString> {
+        self.defs.get(k)
+    }
+}
 enum AOTCompileMode {
     NoAOT,
     MonoAOT,
@@ -95,7 +110,7 @@ fn patch_missing_method(call_site: &cil::CallSite) -> method::Method {
     //method.set_ops(ops.into());
     method
 }
-fn autopatch(asm: &mut Assembly) {
+fn autopatch(asm: &mut Assembly,native_pastrough:&NativePastroughInfo) {
     let asm_sites = asm.call_sites();
     let call_sites = asm_sites
         .iter()
@@ -192,6 +207,7 @@ fn autopatch(asm: &mut Assembly) {
             );
             continue;
         }
+        #[cfg(not(target_os = "linux"))]
         if rustc_codegen_clr::native_pastrough::LIBC_FNS
             .iter()
             .any(|libc_fn| *libc_fn == name)
@@ -200,6 +216,14 @@ fn autopatch(asm: &mut Assembly) {
                 call.name().into(),
                 call.signature().to_owned(),
                 get_libc().into(),
+            ));
+            continue;
+        }
+        if let Some(lib) = native_pastrough.get(name){
+            externs.push((
+                call.name().into(),
+                call.signature().to_owned(),
+                lib.as_ref().clone(),
             ));
             continue;
         }
@@ -237,7 +261,7 @@ fn get_libc_() -> String {
         if entry.metadata().unwrap().is_file() {
             let name = entry.file_name().to_string_lossy().to_string();
             if name.contains("libc.so.") {
-                libc = Some(name);
+                libc = Some(entry.path().to_str().unwrap().to_owned());
             }
         }
     }
@@ -250,11 +274,11 @@ fn get_libc_() -> String {
         if entry.metadata().unwrap().is_file() {
             let name = entry.file_name().to_string_lossy().to_string();
             if name.contains("libc.so.") {
-                libc = Some(name);
+                libc = Some(entry.path().to_str().unwrap().to_owned());
             }
         }
     }
-    libc.unwrap_or("libc.so.6".into())
+    libc.unwrap()
     //todo!()
 }
 #[cfg(target_os = "windows")]
@@ -265,6 +289,88 @@ fn get_libc() ->&'static str {
 fn get_libc() -> &'static str{
     "libSystem.B.dylib"
 }
+// Detects all the link directiores provided by the linker, 
+fn link_directories2(args: &[String]) -> Vec<String> {
+    let mut directories = Vec::new();
+    let mut after_l = false;
+
+    for string in args.iter() {
+        if after_l {
+            directories.push(string.into());
+            after_l = false;
+        } else if *string == "-L" {
+            directories.push(string.into());
+            after_l = true;
+        }
+    }
+    directories
+}
+// Gets the name of a file without an extension
+fn file_stem(file:&str)->String{
+    std::path::Path::new(file).file_stem().unwrap().to_str().unwrap().to_owned()
+}
+// Gets the extension of a file
+fn file_ext(file:&str)->String{
+    std::path::Path::new(file).extension().unwrap().to_str().unwrap().to_owned()
+}
+// Adds the shared library at `file_path` to the native passtrough list. Also generates the info  neccessary for creating PInvoke declarations used to call the functions within them.  
+// Uses `nm` to get function names from a `.so` file, so it is not cross-platform.
+#[cfg(target_os = "linux")]
+fn add_shared(file_path:&str,native_pastrough:&mut NativePastroughInfo){
+    let nm = std::process::Command::new("nm").arg(file_path).output().unwrap();
+    let file_path = AString::new(format!("{}.{}",file_stem(file_path),file_ext(file_path)).into());
+    if !nm.stderr.is_empty(){
+        eprintln!("nm_error:{}",String::from_utf8_lossy(&nm.stderr));
+    }
+    for line in String::from_utf8_lossy(&nm.stdout).to_string().lines(){
+        let mut line_parts = line.split_whitespace();
+        if line_parts.clone().count() != 3{
+            continue;
+        }
+        let _offset = line_parts.next().unwrap();
+        let sym_ty = line_parts.next().unwrap();
+        let sym_name = line_parts.next().unwrap();
+        if sym_ty == "t" || sym_ty == "T"{
+            native_pastrough.insert(sym_name.to_string().into(),file_path.clone());
+            //eprintln!("Adding symbol {sym_name} from shared lib {file_path}.")
+        }
+    }
+
+}
+// This function should get all the function names from `file_path`, and insert them into `native_pastrough`, with the lib name in such a form, that the .NET runtime is able to handle it.
+// DO NOT USE ABSOLUTE PATHS AS THE LIB NAME. IT WILL WORK, BUT WILL NOT BE PORTABLE.
+#[cfg(not(target_os = "linux"))]
+fn add_shared(file_path:&str,native_pastrough:&mut NativePastroughInfo){
+    panic!("Native passtrough not supported on this platfrom.")
+}
+/// Compiles all the linked object files into one shared lib, and then generates the info neccessary for creating PInvoke declarations used to call the functions within them.  
+/// Uses `gcc`, so may not work on other platforms.
+fn handle_native_passtrough(args:&[String],linkables:&[LinkableFile],out_file:&str,native_pastrough:&mut NativePastroughInfo){
+    let mut link = std::process::Command::new("gcc");
+    link.arg("--shared");
+    
+    for linkable in linkables{
+        std::fs::File::create(format!("./{}.o",linkable.name())).unwrap().write_all(linkable.file()).unwrap();
+        link.arg(format!("./{}.o",linkable.name()));
+    }
+    link.args(link_directories2(args));
+    //link.args(args.iter().filter(|arg| !arg.contains(".bc") && !arg.contains("static") && !arg.contains("symbols")&& !arg.contains("-nodefaultlibs")  && !arg.contains("-pie")  && !arg.contains("-o") && !arg.contains(".exe") ));
+    link.arg("-o");
+    let out_fname = file_stem(&out_file);
+    let rustlibs = format!("rust_native_{out_fname}.so");
+    link.arg(&rustlibs);
+    let link_res = link.output().expect("Could not launch `gcc` to link native libs.");
+    if !link_res.stderr.is_empty(){
+        let estring = String::from_utf8_lossy(&link_res.stderr);
+        if estring.contains("fatal error: no input files"){
+            // Nothing to link, just return without adding the shared lib to the `native_pastrough` list.
+            return;
+        }
+        eprintln!("native linker error:{estring}",);
+    }
+   
+    add_shared(&rustlibs,native_pastrough);
+}
 fn main() {
     // Parse command line arguments
 
@@ -272,23 +378,37 @@ fn main() {
     let args = &args[1..];
     // Input\/output files
     let to_link: Vec<_> = args.iter().filter(|arg| arg.contains(".bc")).collect();
-    let ar_to_link: Vec<_> = args.iter().filter(|arg| arg.contains(".rlib")).collect();
-    let output = &args[1 + args
-        .iter()
-        .position(|arg| arg == "-o")
-        .expect("No output file!")];
+    let mut ar_to_link: Vec<_> = args.iter().filter(|arg| arg.contains(".rlib")).cloned().collect();
+    
+    //ar_to_link.extend(link_dir_files(args));
+    let output_file_path = &args[1 + args
+    .iter()
+    .position(|arg| arg == "-o")
+    .expect("No output file!")];
     // Configs
     let aot_compile_mode = aot_compile_mode(args);
     let cargo_support = args.iter().any(|arg| arg.contains("--cargo-support"));
 
     // Load assemblies from files
 
-    let mut final_assembly = load::load_assemblies(to_link.as_slice(), ar_to_link.as_slice());
+    let (mut final_assembly,linkables) = load::load_assemblies(to_link.as_slice(), ar_to_link.as_slice());
+    
 
-    if !*rustc_codegen_clr::config::ABORT_ON_ERROR {
-        autopatch(&mut final_assembly);
+    let mut native_pastrough = NativePastroughInfo::new();
+    #[cfg(target_os = "linux")]
+    {
+        add_shared(&get_libc(),&mut native_pastrough);
     }
-    let is_lib = output.contains(".dll") || output.contains(".so") || output.contains(".o");
+    if *crate::config::NATIVE_PASSTROUGH{
+        handle_native_passtrough(args, &linkables, output_file_path, &mut native_pastrough);
+    }
+   
+
+   
+    if !*rustc_codegen_clr::config::ABORT_ON_ERROR {
+        autopatch(&mut final_assembly,&native_pastrough);
+    }
+    let is_lib = output_file_path.contains(".dll") || output_file_path.contains(".so") || output_file_path.contains(".o");
     add_mandatory_statics(&mut final_assembly);
     if !is_lib {
         final_assembly.eliminate_dead_code();
@@ -299,21 +419,28 @@ fn main() {
         );
         type EXPORTER = rustc_codegen_clr::assembly_exporter::c_exporter::CExporter;
         use rustc_codegen_clr::assembly_exporter::AssemblyExporter;
-        EXPORTER::export_assembly(&final_assembly, output.as_ref(), is_lib).unwrap();
+        EXPORTER::export_assembly(&final_assembly, output_file_path.as_ref(), is_lib).unwrap();
         return;
     }
+
     // Run ILASM
-    export::export_assembly(&final_assembly, output, is_lib).expect("Assembly export faliure!");
+    export::export_assembly(&final_assembly, output_file_path, is_lib).expect("Assembly export faliure!");
 
     // Run AOT compiler
-    aot_compile_mode.compile(output);
-    let path: std::path::PathBuf = output.into();
+    aot_compile_mode.compile(output_file_path);
+    let path: std::path::PathBuf = output_file_path.into();
     //      Cargo integration
 
     if cargo_support {
         let bootstrap = format!(
             include_str!("dotnet_jumpstart.rs"),
-            exec_file = path.file_name().unwrap().to_string_lossy()
+            exec_file = path.file_name().unwrap().to_string_lossy(),
+            has_native_companion = *crate::config::NATIVE_PASSTROUGH,
+            native_companion_file = if *crate::config::NATIVE_PASSTROUGH{
+                format!("rust_native_{output_file_path}.so")
+            }else{
+                "".to_string()
+            }
         );
         let bootstrap_path = path.with_extension("rs");
         let mut bootstrap_file = std::fs::File::create(&bootstrap_path).unwrap();
@@ -323,7 +450,7 @@ fn main() {
             .arg("-O")
             .arg(bootstrap_path)
             .arg("-o")
-            .arg(output)
+            .arg(output_file_path)
             .env_clear()
             .env("PATH", path)
             .output()
@@ -332,6 +459,5 @@ fn main() {
             panic!("{}", String::from_utf8(out.stderr).unwrap());
         }
     }
-
-    //todo!()
+  
 }
