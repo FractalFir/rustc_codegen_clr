@@ -85,6 +85,7 @@ fn aot_compile_mode(args: &[String]) -> AOTCompileMode {
     }
 }
 fn patch_missing_method(call_site: &cil::CallSite) -> method::Method {
+    eprintln!(" missing method {name}.",name = call_site.name());
     let sig = call_site.signature().clone();
     let method = method::Method::new(
         access_modifier::AccessModifer::Private,
@@ -225,9 +226,11 @@ fn autopatch(asm: &mut Assembly,native_pastrough:&NativePastroughInfo) {
                 call.signature().to_owned(),
                 lib.as_ref().clone(),
             ));
+            eprintln!("Adding symbol {name} from shared lib {lib}.");
             continue;
         }
         if !patched.contains_key(call) {
+            eprintln!("Unknown symbol {name}.");
             patched.insert(call.clone(), patch_missing_method(call));
         }
     }
@@ -309,6 +312,10 @@ fn link_directories2(args: &[String]) -> Vec<String> {
 fn file_stem(file:&str)->String{
     std::path::Path::new(file).file_stem().unwrap().to_str().unwrap().to_owned()
 }
+// Gets the name of a file without an extension
+fn file_dir(file:&str)->String{
+    std::path::Path::new(file).parent().unwrap().canonicalize().unwrap().to_str().unwrap().to_owned()
+}
 // Gets the extension of a file
 fn file_ext(file:&str)->String{
     std::path::Path::new(file).extension().unwrap().to_str().unwrap().to_owned()
@@ -317,8 +324,10 @@ fn file_ext(file:&str)->String{
 // Uses `nm` to get function names from a `.so` file, so it is not cross-platform.
 #[cfg(target_os = "linux")]
 fn add_shared(file_path:&str,native_pastrough:&mut NativePastroughInfo){
-    let nm = std::process::Command::new("nm").arg(file_path).output().unwrap();
-    let file_path = AString::new(format!("{}.{}",file_stem(file_path),file_ext(file_path)).into());
+    let nm = std::process::Command::new("nm").arg("-D").arg(file_path).output().unwrap();
+    //let file_path = AString::new(format!("{}.{}",file_stem(file_path),file_ext(file_path)).into());
+    //eprintln!("file_path:{file_path}");
+    let file_path = AString::new(file_path.into());
     if !nm.stderr.is_empty(){
         eprintln!("nm_error:{}",String::from_utf8_lossy(&nm.stderr));
     }
@@ -332,7 +341,7 @@ fn add_shared(file_path:&str,native_pastrough:&mut NativePastroughInfo){
         let sym_name = line_parts.next().unwrap();
         if sym_ty == "t" || sym_ty == "T"{
             native_pastrough.insert(sym_name.to_string().into(),file_path.clone());
-            //eprintln!("Adding symbol {sym_name} from shared lib {file_path}.")
+           
         }
     }
 
@@ -345,19 +354,46 @@ fn add_shared(file_path:&str,native_pastrough:&mut NativePastroughInfo){
 }
 /// Compiles all the linked object files into one shared lib, and then generates the info neccessary for creating PInvoke declarations used to call the functions within them.  
 /// Uses `gcc`, so may not work on other platforms.
-fn handle_native_passtrough(args:&[String],linkables:&[LinkableFile],out_file:&str,native_pastrough:&mut NativePastroughInfo){
+fn handle_native_passtrough(args:&[String],linkables:&[LinkableFile],output_file_path:&str,native_pastrough:&mut NativePastroughInfo){
     let mut link = std::process::Command::new("gcc");
     link.arg("--shared");
-    
+    link.arg("-fPIC");
+    link.arg("-g");
+    let dir = file_dir(output_file_path);
     for linkable in linkables{
-        std::fs::File::create(format!("./{}.o",linkable.name())).unwrap().write_all(linkable.file()).unwrap();
-        link.arg(format!("./{}.o",linkable.name()));
+        std::fs::File::create(format!("{dir}/{}.o",linkable.name())).unwrap().write_all(linkable.file()).unwrap();
+        link.arg(format!("{dir}/{}.o",linkable.name()));
     }
     link.args(link_directories2(args));
+    std::fs::File::create(format!("{dir}/rustc_defs.c")).unwrap().write_all(b"#include <stdlib.h>\n#include <string.h>\n#include <stdint.h>\n#include <stdio.h>
+    #ifdef _MSC_VER
+    #include <malloc.h>
+    void* __rust_alloc(size_t size, size_t align){return _aligned_malloc(align,size);}
+    void __rust_dealloc(void* ptr, size_t size, size_t align){_aligned_free(ptr);return;}
+    void* __rust_realloc(void* ptr, size_t old_size, size_t align, size_t size){return _aligned_realloc(ptr,size,align);}
+    #else
+    void* __rust_alloc(size_t size, size_t align){return aligned_alloc(align,size);}
+    void __rust_dealloc(void* ptr, size_t size, size_t align){free(ptr);return;}
+    void* __rust_realloc(void* ptr, size_t old_size, size_t align, size_t size){
+        void* new_alloc = __rust_alloc(size,align);
+        memcpy(new_alloc,ptr,old_size);
+        __rust_dealloc(ptr,align,old_size);
+        return new_alloc;
+    }
+    #endif
+    
+    void* __rust_alloc_zeroed(size_t size, size_t align){char* alc = __rust_alloc(size,align);memset(alc,0,size);return alc;}
+    uint8_t __rust_no_alloc_shim_is_unstable = 0;
+    uint8_t __rust_alloc_error_handler_should_panic = 1;
+    void __rust_alloc_error_handler(size_t size, size_t align){printf(\"Allocation of size %x an align %x has failed. Aborting.\\n\",size,align); abort();}
+    ").unwrap();
+    link.arg(format!("{dir}/rustc_defs.c"));
     //link.args(args.iter().filter(|arg| !arg.contains(".bc") && !arg.contains("static") && !arg.contains("symbols")&& !arg.contains("-nodefaultlibs")  && !arg.contains("-pie")  && !arg.contains("-o") && !arg.contains(".exe") ));
     link.arg("-o");
-    let out_fname = file_stem(&out_file);
-    let rustlibs = format!("rust_native_{out_fname}.so");
+    
+    let out_fname = file_stem(&output_file_path);
+   
+    let rustlibs = format!("{dir}/rust_native_{out_fname}.so");
     link.arg(&rustlibs);
     let link_res = link.output().expect("Could not launch `gcc` to link native libs.");
     if !link_res.stderr.is_empty(){
@@ -369,7 +405,7 @@ fn handle_native_passtrough(args:&[String],linkables:&[LinkableFile],out_file:&s
         eprintln!("native linker error:{estring}",);
     }
    
-    add_shared(&rustlibs,native_pastrough);
+    add_shared(&format!("{dir}/rust_native_{out_fname}.so"),native_pastrough);
 }
 fn main() {
     // Parse command line arguments
@@ -437,7 +473,7 @@ fn main() {
             exec_file = path.file_name().unwrap().to_string_lossy(),
             has_native_companion = *crate::config::NATIVE_PASSTROUGH,
             native_companion_file = if *crate::config::NATIVE_PASSTROUGH{
-                format!("rust_native_{output_file_path}.so")
+                format!("rust_native_{output_file_path}.so",output_file_path = file_stem(output_file_path))
             }else{
                 "".to_string()
             }
@@ -459,5 +495,6 @@ fn main() {
             panic!("{}", String::from_utf8(out.stderr).unwrap());
         }
     }
+    //todo!();
   
 }
