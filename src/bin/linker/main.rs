@@ -242,6 +242,7 @@ fn add_mandatory_statics(asm: &mut Assembly) {
     asm.add_static(Type::U8, "__rust_no_alloc_shim_is_unstable");
     asm.add_static(Type::Ptr(Type::Ptr(Type::U8.into()).into()), "environ");
 }
+#[cfg(target_os = "linux")]
 fn get_libc() -> &'static str {
     LIBC.as_ref()
 }
@@ -277,7 +278,7 @@ fn get_libc_() -> String {
             }
         }
     }
-    libc.unwrap()
+    libc.unwrap_or("libc.so.6".into())
     //todo!()
 }
 #[cfg(target_os = "windows")]
