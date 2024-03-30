@@ -11,19 +11,31 @@ use rustc_middle::ty::TyCtxt;
 use serde::{Deserialize, Serialize};
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 pub enum CILNode {
+    /// Loads the value of local variable number `n`.
     LDLoc(u32),
+    /// Loads the value of argument number `n`.
     LDArg(u32),
+    /// Loads the address of local variable number `n`.
     LDLocA(u32),
+    /// Loads the address of argument number `n`.
     LDArgA(u32),
+    /// A black box that prevents the bulit-in optimization engine from doing any optimizations.
     BlackBox(Box<Self>),
+    /// Loads the value of a static variable described by the descripstor.
     LDStaticField(Box<StaticFieldDescriptor>),
+    /// Converts the signed inner value to a 32 bit floating-point number.
     ConvF32(Box<Self>),
+    /// Converts the signed inner value to a 64 bit floating-point number.
     ConvF64(Box<Self>),
+    /// Converts the unsigned inner value to a 64 bit floating-point number.
     ConvF64Un(Box<Self>),
+    /// Returns the size of a type.
     SizeOf(Box<Type>),
+    /// Loads a i8 from a pointer
     LDIndI8 {
         ptr: Box<Self>,
     },
+  
     LDIndI16 {
         ptr: Box<Self>,
     },

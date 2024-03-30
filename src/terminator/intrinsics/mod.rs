@@ -274,6 +274,14 @@ pub fn handle_intrinsic<'tyctx>(
                 type_cache,
             )
         }
+        "compare_bytes"=>{
+            /*let arg0 = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
+            let arg1 = handle_operand(&args[1].node, tyctx, body, method_instance, type_cache);
+            let arg2 = handle_operand(&args[2].node, tyctx, body, method_instance, type_cache);
+         
+            */
+            todo!("Can't use `memcmp` yet!");
+        }
         "bswap" => bswap::bswap(args, destination, tyctx, body, method_instance, type_cache),
         "cttz" | "cttz_nonzero" => {
             debug_assert_eq!(

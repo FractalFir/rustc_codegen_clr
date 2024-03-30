@@ -12,7 +12,7 @@ use crate::{
     method::Method,
     r#type::Type,
 };
-use crate::{add, call, ldc_u64, lt_un};
+use crate::{add, call, eq, ldc_i32, ldc_u64, lt_un};
 use rustc_middle::ty::TyCtxt;
 mod casts;
 mod select;
@@ -385,6 +385,7 @@ add_method_from_trees!(
         BasicBlock::new(vec![CILRoot::VoidRet.into(),], 1, None,)
     ]
 );
+
 /*
 add_method!(
     unlikely,

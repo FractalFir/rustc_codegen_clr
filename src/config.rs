@@ -44,7 +44,7 @@ config_flag! {OPTIMIZE_CIL,true,"Tells the codegen to optmize the emiited CIL."}
 config_flag! {USE_CECIL_EXPORTER,false,"Tells the codegen to use the CECIL based assembly exporter"}
 config_flag! {ESCAPE_NAMES,false,"Tells the codegen to escape class and method names."}
 
-config_flag! {TEST_WITH_MONO,false}
+config_flag! {TEST_WITH_MONO,false,"Tells the codegen to use the mono runtime for tests."}
 
 config_flag! {C_MODE,false,"Tells the codegen to emmit C source files."}
 config_flag! {C_SANITIZE,false,"Tells the codegen sanitize C."}

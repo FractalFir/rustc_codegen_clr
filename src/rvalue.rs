@@ -300,8 +300,6 @@ pub fn handle_rvalue<'tcx>(
             let src = operand.ty(&method.local_decls, tyctx);
             let src = crate::utilis::monomorphize(&method_instance, src, tyctx);
             let src = tycache.type_from_cache(src, tyctx, Some(method_instance));
-
-            let parrent = handle_operand(operand, tyctx, method, method_instance, tycache);
             CILNode::TemporaryLocal(Box::new((
                 Type::Ptr(src.into()),
                 [CILRoot::SetTMPLocal {

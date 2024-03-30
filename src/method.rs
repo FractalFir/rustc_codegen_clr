@@ -1,7 +1,7 @@
 use crate::{
     access_modifier::AccessModifer,
     basic_block::BasicBlock,
-    cil::{CallSite},
+    cil::CallSite,
     function_sig::FnSig,
     r#type::{DotnetTypeRef, Type},
     IString,
@@ -36,6 +36,7 @@ pub enum Attribute {
     EntryPoint,
 }
 impl Method {
+    /// Creates a new method with name `name`, signature `sig`, accessibility of `access`, and consists of `blocks` basic blocks.
     #[must_use]
     pub fn new(
         access: AccessModifer,
@@ -62,21 +63,7 @@ impl Method {
         res.blocks_mut().iter_mut().for_each(|bb| bb.sheed_trees());
         res
     }
-    /*
-    pub(crate) fn ensure_valid(&mut self) {
-        let last = self.ops.iter().last();
-        let last = match last {
-            Some(last) => last,
-            None => return,
-        };
-        match last{
-            CILOp::Ret=>(),
-            CILOp::Throw=>(),
-            CILOp::ReThrow=>(),
-            CILOp::GoTo(_,_)=>(),
-            _=>self.ops.extend(CILOp::throw_msg("Critical error: reached the end of a function not termianted with a return statement")),
-        }
-    }*/
+    /// Calcualtes the maximum number of vairables on the evaulation stack.
     pub fn maxstack(&self) -> usize {
         crate::utilis::max_stack(
             self.blocks
@@ -87,6 +74,7 @@ impl Method {
             *self.sig().output() == Type::Void,
         ) + 10
     }
+    /// Sets the name of this method.
     pub fn set_name(&mut self, name: &str) {
         self.name = name.into();
     }
@@ -104,7 +92,7 @@ impl Method {
             .iter()
             .any(|attr| *attr == Attribute::EntryPoint)
     }
-
+    /// A list of function inputs, in a CIL compatible format. Does not include the implict `this` parameter for instance and virtual methods.
     pub(crate) fn explicit_inputs(&self) -> &[Type] {
         if self.is_static() {
             self.sig().inputs()
@@ -140,6 +128,7 @@ impl Method {
             .filter_map(|op| op.call().cloned())
             .collect()
     }
+    /// Returns a list of type references that are used within this type.
     pub(crate) fn dotnet_types(&self) -> Vec<DotnetTypeRef> {
         self.sig()
             .inputs()
@@ -159,13 +148,11 @@ impl Method {
             )
             .collect()
     }
+    /// Returns a call site that describes this method.
     pub(crate) fn call_site(&self) -> CallSite {
         CallSite::new(None, self.name().into(), self.sig().clone(), true)
     }
-    /*
-    pub(crate) fn failed_to_compile(name:&str,reason:&str)->Self{
-        Self:: new(AccessModifer::Public,true,)
-    }*/
+    /// Alocates all temporary variables within this method.
     pub(crate) fn allocate_temporaries(&mut self) {
         self.blocks
             .iter_mut()
@@ -195,11 +182,11 @@ impl Method {
             .flat_map(|block| block.trees_mut())
             .for_each(|tree| tree.resolve_global_allocations(arg, tyctx));
     }
-
+    /// Returns a reference to a list of basic blocks that make up this method.
     pub fn blocks(&self) -> &[BasicBlock] {
         &self.blocks
     }
-
+    /// Returns a mutable reference to a list of basic block that make up this method.
     pub fn blocks_mut(&mut self) -> &mut Vec<BasicBlock> {
         &mut self.blocks
     }
@@ -207,7 +194,10 @@ impl Method {
 /// Type of this method(static, instance or virtual).
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum MethodType {
+    /// This method belongs to a type. Its first argument MUST be a referenece to that type!
     Instance,
+    /// This is an instance method, and it depends on the exact type of the object it is called on.
     Virtual,
+    /// A "normal" method. 
     Static,
 }

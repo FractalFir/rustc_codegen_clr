@@ -103,16 +103,12 @@ impl FnSig {
             output: output.clone(),
         }
     }
-
+    /// Sets the input list of this method.
     pub fn set_inputs(&mut self, inputs: Vec<Type>) {
         self.inputs = inputs;
     }
 }
-#[derive(Clone, PartialEq, Serialize, Deserialize, Eq, Hash, Debug)]
-pub struct FunctionCallInfo {
-    inputs: Vec<Type>,
-    output: Type,
-}
+/// Checks if this function is variadic.
 pub fn is_fn_variadic<'tyctx>(ty: Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -> bool {
     ty.fn_sig(tyctx).skip_binder().c_variadic
 }

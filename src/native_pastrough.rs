@@ -1,3 +1,4 @@
+/// A list of all functions which are redirected to system libc.
 pub const LIBC_FNS: [&str; 497] = [
     "a64l",
     "abort",

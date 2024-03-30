@@ -66,6 +66,8 @@ fn zero(ty: Ty) -> CILNode {
         TyKind::Int(IntTy::I64) => crate::ldc_i64!(0),
         TyKind::Uint(UintTy::Usize) => conv_usize!(size_of!(Type::USize)),
         TyKind::Int(IntTy::Isize) => conv_isize!(size_of!(Type::USize)),
+        TyKind::Uint(UintTy::U128) => call!(CallSite::new(Some(DotnetTypeRef::uint_128()),"op_Implicit".into(),FnSig::new(&[Type::U32],&Type::U128),true),[ldc_u32!(0)]), 
+        TyKind::Int(IntTy::I128) => call!(CallSite::new(Some(DotnetTypeRef::int_128()),"op_Implicit".into(),FnSig::new(&[Type::I32],&Type::I128),true),[ldc_u32!(0)]), 
         _ => todo!("Can't get zero of {ty:?}"),
     }
 }
@@ -97,7 +99,25 @@ fn min(ty: Ty) -> CILNode {
             ),
             []
         ),
-        _ => todo!("Can't get zero of {ty:?}"),
+        TyKind::Uint(UintTy::U128) => call!(
+            CallSite::new(
+                Some(DotnetTypeRef::uint_128()),
+                "get_MinValue".into(),
+                FnSig::new(&[], &Type::U128),
+                true
+            ),
+            []
+        ),
+        TyKind::Int(IntTy::I128) => call!(
+            CallSite::new(
+                Some(DotnetTypeRef::int_128()),
+                "get_MinValue".into(),
+                FnSig::new(&[], &Type::I128),
+                true
+            ),
+            []
+        ),
+        _ => todo!("Can't get min of {ty:?}"),
     }
 }
 fn max(ty: Ty) -> CILNode {
@@ -128,7 +148,25 @@ fn max(ty: Ty) -> CILNode {
             ),
             []
         ),
-        _ => todo!("Can't get zero of {ty:?}"),
+        TyKind::Uint(UintTy::U128) => call!(
+            CallSite::new(
+                Some(DotnetTypeRef::uint_128()),
+                "get_MaxValue".into(),
+                FnSig::new(&[], &Type::U128),
+                true
+            ),
+            []
+        ),
+        TyKind::Int(IntTy::I128) => call!(
+            CallSite::new(
+                Some(DotnetTypeRef::int_128()),
+                "get_MaxValue".into(),
+                FnSig::new(&[], &Type::I128),
+                true
+            ),
+            []
+        ),
+        _ => todo!("Can't get max of {ty:?}"),
     }
 }
 /*

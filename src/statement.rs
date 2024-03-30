@@ -1,6 +1,6 @@
 use crate::{
     cil_tree::{cil_node::CILNode, cil_root::CILRoot, CILTree}, mul,
-    r#type::{TyCache},
+    r#type::TyCache,
     size_of,
 };
 use rustc_middle::{
@@ -32,7 +32,7 @@ pub fn handle_statement<'tcx>(
                     value: owner_ty,
                 })
                 .expect("Could not get type layout!");
-            let (disrc_type, _) = crate::utilis::adt::enum_tag_info(&layout.layout, tyctx);
+            //let (disrc_type, _) = crate::utilis::adt::enum_tag_info(&layout.layout, tyctx);
             let owner = if let crate::r#type::Type::DotnetType(dotnet_type) = owner {
                 dotnet_type.as_ref().clone()
             } else {

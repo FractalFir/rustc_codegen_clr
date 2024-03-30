@@ -3,10 +3,9 @@
 #![allow(clippy::assertions_on_constants)]
 // Not a big issue.
 #![allow(clippy::module_name_repetitions)]
-// CIL uses the same ops to load signed and unsigned constants, so an usingned number must be first cast to a signed one in order to be stored in CIL.
-#![allow(clippy::cast_possible_wrap)]
-//#![deny(missing_docs)]
-//#![warn(clippy::missing_docs_in_private_items)]
+
+#![warn(missing_docs)]
+#![warn(clippy::missing_docs_in_private_items)]
 //! Rustc Codegen CLR - an experimental rustc backend compiling Rust for .NET. This project aims to bring the speed and memory efficency of Rust to .NET.
 //!
 //! # Explaing the project

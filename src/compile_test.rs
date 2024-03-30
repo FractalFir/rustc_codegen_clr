@@ -392,17 +392,19 @@ macro_rules! run_test {
                     let test_name = concat!("debug_", stringify!($test_name));
                     let output_path = format!("./{test_name}.exe");
                     // Compiles the test project
-                    let out = std::process::Command::new("rustc")
+                    let mut out = std::process::Command::new("rustc");
                         //.env("RUST_TARGET_PATH","../../")
-                        .current_dir(test_dir)
+                        out.current_dir(test_dir)
                         .arg("-O")
                         .args(super::super::rustc_args().into_iter())
                         .args([
                             concat!("./", stringify!($test_name), ".rs"),
                             "-o",
-                            concat!("./", stringify!($test_name), ".exe"),
-                        ])
-                        .output()
+                            concat!("./debug_", stringify!($test_name), ".exe"),
+                        ]);
+                        // /eprintln!("out:{out:?}");
+                        eprintln!("test_name:{test_name:?}");
+                    let out = out.output()
                         .expect("failed to execute process");
                     // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
                     if !out.stderr.is_empty() {

@@ -208,7 +208,7 @@ fn autopatch(asm: &mut Assembly,native_pastrough:&NativePastroughInfo) {
             );
             continue;
         }
-        #[cfg(not(target_os = "linux"))]
+        //#[cfg(not(target_os = "linux"))]
         if rustc_codegen_clr::native_pastrough::LIBC_FNS
             .iter()
             .any(|libc_fn| *libc_fn == name)
@@ -391,7 +391,7 @@ fn handle_native_passtrough(args:&[String],linkables:&[LinkableFile],output_file
     //link.args(args.iter().filter(|arg| !arg.contains(".bc") && !arg.contains("static") && !arg.contains("symbols")&& !arg.contains("-nodefaultlibs")  && !arg.contains("-pie")  && !arg.contains("-o") && !arg.contains(".exe") ));
     link.arg("-o");
     
-    let out_fname = file_stem(&output_file_path);
+    let out_fname = file_stem(output_file_path);
    
     let rustlibs = format!("{dir}/rust_native_{out_fname}.so");
     link.arg(&rustlibs);
@@ -414,7 +414,7 @@ fn main() {
     let args = &args[1..];
     // Input\/output files
     let to_link: Vec<_> = args.iter().filter(|arg| arg.contains(".bc")).collect();
-    let mut ar_to_link: Vec<_> = args.iter().filter(|arg| arg.contains(".rlib")).cloned().collect();
+    let ar_to_link: Vec<_> = args.iter().filter(|arg| arg.contains(".rlib")).cloned().collect();
     
     //ar_to_link.extend(link_dir_files(args));
     let output_file_path = &args[1 + args
@@ -433,7 +433,7 @@ fn main() {
     let mut native_pastrough = NativePastroughInfo::new();
     #[cfg(target_os = "linux")]
     {
-        add_shared(&get_libc(),&mut native_pastrough);
+        add_shared(get_libc(),&mut native_pastrough);
     }
     if *crate::config::NATIVE_PASSTROUGH{
         handle_native_passtrough(args, &linkables, output_file_path, &mut native_pastrough);
