@@ -198,6 +198,6 @@ pub enum MethodType {
     Instance,
     /// This is an instance method, and it depends on the exact type of the object it is called on.
     Virtual,
-    /// A "normal" method. 
+    /// A "normal" method.
     Static,
 }

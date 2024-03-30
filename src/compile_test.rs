@@ -6,7 +6,7 @@ fn test_dotnet_executable(file_path: &str, test_dir: &str) -> String {
 
     let exec_path = &format!("{file_path}.exe");
     let mut stdout = String::new();
-    if *crate::config::C_MODE{
+    if *crate::config::C_MODE {
         let out = std::process::Command::new("timeout")
             .current_dir(test_dir)
             .arg("-v")
@@ -134,13 +134,14 @@ macro_rules! compare_tests {
                     // Compiles the test project
                     let mut cmd = std::process::Command::new("rustc");
                     //.env("RUST_TARGET_PATH","../../")
-                    cmd.current_dir(test_dir).arg("-O")
-                    .args(super::super::rustc_args().into_iter())
-                    .args([
-                        concat!("./", stringify!($test_name), ".rs"),
-                        "-o",
-                        concat!("./", stringify!($test_name), ".exe"),
-                    ]);
+                    cmd.current_dir(test_dir)
+                        .arg("-O")
+                        .args(super::super::rustc_args().into_iter())
+                        .args([
+                            concat!("./", stringify!($test_name), ".rs"),
+                            "-o",
+                            concat!("./", stringify!($test_name), ".exe"),
+                        ]);
                     let out = cmd.output().expect("failed to execute process");
                     // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
                     if !out.stderr.is_empty() {
@@ -211,12 +212,13 @@ macro_rules! compare_tests {
                     // Compiles the test project
                     let mut cmd = std::process::Command::new("rustc");
                     //.env("RUST_TARGET_PATH","../../")
-                    cmd.current_dir(test_dir).args(super::super::rustc_args().into_iter())
-                    .args([
-                        concat!("./", stringify!($test_name), ".rs"),
-                        "-o",
-                        concat!("./", stringify!($test_name), ".exe"),
-                    ]);
+                    cmd.current_dir(test_dir)
+                        .args(super::super::rustc_args().into_iter())
+                        .args([
+                            concat!("./", stringify!($test_name), ".rs"),
+                            "-o",
+                            concat!("./", stringify!($test_name), ".exe"),
+                        ]);
                     let out = cmd.output().expect("failed to execute process");
                     // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
                     if !out.stderr.is_empty() {
@@ -356,13 +358,13 @@ macro_rules! run_test {
                     let mut cmd = std::process::Command::new("rustc");
                     //.env("RUST_TARGET_PATH","../../")
                     cmd.current_dir(test_dir)
-                    .arg("-O")
-                    .args(super::super::rustc_args().into_iter())
-                    .args([
-                        concat!("./", stringify!($test_name), ".rs"),
-                        "-o",
-                        concat!("./", stringify!($test_name), ".exe"),
-                    ]);
+                        .arg("-O")
+                        .args(super::super::rustc_args().into_iter())
+                        .args([
+                            concat!("./", stringify!($test_name), ".rs"),
+                            "-o",
+                            concat!("./", stringify!($test_name), ".exe"),
+                        ]);
                     eprintln!("Command: {cmd:?}");
                     let out = cmd.output().expect("failed to execute process");
                     // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
@@ -390,11 +392,10 @@ macro_rules! run_test {
                         .as_ref()
                         .expect("Could not build rustc!");
                     let test_name = concat!("debug_", stringify!($test_name));
-                    let output_path = format!("./{test_name}.exe");
                     // Compiles the test project
                     let mut out = std::process::Command::new("rustc");
-                        //.env("RUST_TARGET_PATH","../../")
-                        out.current_dir(test_dir)
+                    //.env("RUST_TARGET_PATH","../../")
+                    out.current_dir(test_dir)
                         .arg("-O")
                         .args(super::super::rustc_args().into_iter())
                         .args([
@@ -402,10 +403,9 @@ macro_rules! run_test {
                             "-o",
                             concat!("./debug_", stringify!($test_name), ".exe"),
                         ]);
-                        // /eprintln!("out:{out:?}");
-                        eprintln!("test_name:{test_name:?}");
-                    let out = out.output()
-                        .expect("failed to execute process");
+                    // /eprintln!("out:{out:?}");
+                    eprintln!("test_name:{test_name:?}");
+                    let out = out.output().expect("failed to execute process");
                     // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
                     if !out.stderr.is_empty() {
                         let stdout = String::from_utf8(out.stdout)
@@ -615,6 +615,7 @@ fn build_backend() -> Result<(), String> {
         .expect("could not build the backend");
     Ok(())
 }
+/// Absolute path to the codegen backend shared library.
 pub fn absolute_backend_path() -> PathBuf {
     if cfg!(debug_assertions) {
         if cfg!(target_os = "linux") {
@@ -890,10 +891,12 @@ cargo_test! {glam_test,unstable}
 cargo_test! {fastrand_test,stable}
 
 use lazy_static::*;
+/// Cached runtime configuration string, obtained from calling the .NET runtime.
 pub fn get_runtime_config() -> &'static str {
     &RUNTIME_CONFIG
 }
 lazy_static! {
+    /// Cached runtime configuration file, obtained from calling the .NET runtime.
     static ref RUNTIME_CONFIG: String = {
         let info = std::process::Command::new("dotnet")
             .arg("--info")
@@ -925,10 +928,15 @@ lazy_static! {
           }}"
         )
     };
+    /// Cached information about the presence of the `mono` .NET runtime.
     static ref IS_MONO_PRESENT: bool = std::process::Command::new("mono").output().is_ok();
+    /// Cached information about the presence of the peverify tool.
     static ref IS_PEVERIFY_PRESENT: bool = std::process::Command::new("peverify").output().is_ok();
+    /// Cached information about the presence of the `dotnet` .NET runtime.
     static ref IS_DOTNET_PRESENT: bool = std::process::Command::new("dotnet").output().is_ok();
+    /// Cached information about the result of building the backend.
     static ref RUSTC_BUILD_STATUS: Result<(), String> = build_backend();
+    /// Cached path to the bulit-in linker.
     pub static ref RUSTC_CODEGEN_CLR_LINKER:PathBuf = {
         if cfg!(debug_assertions) {
             std::process::Command::new("cargo").args(["build","--bin","linker"]).output().unwrap();
@@ -955,39 +963,43 @@ lazy_static! {
 
     };
 }
-pub fn rustc_args()->Box<[String]>{
-   if *crate::config::RANDOMIZE_LAYOUT{
-    ["-Z".to_owned(),
-        backend_path().to_owned(),
-        "-C".to_owned(),
-        format!(
-            "linker={}",
-            RUSTC_CODEGEN_CLR_LINKER.display()
-        ),"-Z".to_owned(),"randomize-layout".to_owned(), "--edition".to_owned(),
-        "2021".to_owned(),].into()
-        
-    }else{ [
-        "-Z".to_owned(),
-        backend_path().to_owned(),
-        "-C".to_owned(),
-        format!(
-            "linker={}",
-            RUSTC_CODEGEN_CLR_LINKER.display()
-        ), "--edition".to_owned(),
-        "2021".to_owned(),].into()}
-    
+/// A list of arguments needed for invoking `rustc` with this backend included.
+pub fn rustc_args() -> Box<[String]> {
+    if *crate::config::RANDOMIZE_LAYOUT {
+        [
+            "-Z".to_owned(),
+            backend_path().to_owned(),
+            "-C".to_owned(),
+            format!("linker={}", RUSTC_CODEGEN_CLR_LINKER.display()),
+            "-Z".to_owned(),
+            "randomize-layout".to_owned(),
+            "--edition".to_owned(),
+            "2021".to_owned(),
+        ]
+        .into()
+    } else {
+        [
+            "-Z".to_owned(),
+            backend_path().to_owned(),
+            "-C".to_owned(),
+            format!("linker={}", RUSTC_CODEGEN_CLR_LINKER.display()),
+            "--edition".to_owned(),
+            "2021".to_owned(),
+        ]
+        .into()
+    }
 }
+/// Flags that need to be passed to cargo in order to build a project with this linker.
 pub fn cargo_build_env() -> String {
     RUSTC_BUILD_STATUS.as_ref().expect("Could not build rustc!");
     let backend = absolute_backend_path();
     let backend = backend.display();
     let linker = RUSTC_CODEGEN_CLR_LINKER.display();
     let link_args = "--cargo-support";
-    let radomize_layout = if *crate::config::RANDOMIZE_LAYOUT{
+    let radomize_layout = if *crate::config::RANDOMIZE_LAYOUT {
         "-Z randomize-layout"
-    }else{""};
+    } else {
+        ""
+    };
     format!("-Z codegen-backend={backend} -C linker={linker} -C link-args={link_args} {radomize_layout}")
-}
-pub fn runtime_config() -> String {
-    RUNTIME_CONFIG.to_string()
 }

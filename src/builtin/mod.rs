@@ -4,15 +4,10 @@ use crate::cil_tree::cil_root::CILRoot;
 use crate::method::MethodType;
 use crate::r#type::DotnetTypeRef;
 use crate::{
-    access_modifier::AccessModifer,
-    add_method_from_trees,
-    assembly::Assembly,
-    cil::{CallSite},
-    function_sig::FnSig,
-    method::Method,
-    r#type::Type,
+    access_modifier::AccessModifer, add_method_from_trees, assembly::Assembly, cil::CallSite,
+    function_sig::FnSig, method::Method, r#type::Type,
 };
-use crate::{add, call, eq, ldc_i32, ldc_u64, lt_un};
+use crate::{add, call, ldc_u64, lt_un};
 use rustc_middle::ty::TyCtxt;
 mod casts;
 mod select;
@@ -29,21 +24,18 @@ add_method_from_trees!(
                     ops: lt_un!(CILNode::LDArg(0), CILNode::LDArg(1))
                 }
                 .into(),
-                CILRoot::Throw(
-                    CILNode::NewObj {
-                        site: CallSite::boxed(
-                            Some(DotnetTypeRef::new(
-                                Some("System.Runtime"),
-                                "System.IndexOutOfRangeException"
-                            )),
-                            ".ctor".into(),
-                            FnSig::new(&[], &Type::Void),
-                            true
-                        ),
-                        args: [].into()
-                    }
-                    .into()
-                )
+                CILRoot::Throw(CILNode::NewObj {
+                    site: CallSite::boxed(
+                        Some(DotnetTypeRef::new(
+                            Some("System.Runtime"),
+                            "System.IndexOutOfRangeException"
+                        )),
+                        ".ctor".into(),
+                        FnSig::new(&[], &Type::Void),
+                        true
+                    ),
+                    args: [].into()
+                })
                 .into(),
             ],
             0,
@@ -59,27 +51,13 @@ add_method_from_trees!(
         ),
     ]
 );
-macro_rules! add_method {
-    ($name:ident,$input:expr,$output:expr,$ops:expr) => {
-        fn $name(asm: &mut Assembly) {
-            let mut method = Method::new_empty(
-                AccessModifer::Private,
-                MethodType::Static,
-                FnSig::new($input, $output),
-                stringify!($name),
-                vec![],
-            );
-            method.set_ops(($ops).to_vec());
-            asm.add_method(method);
-        }
-    };
-}
+
 #[macro_export]
 macro_rules! add_method_from_trees {
     ($name:ident,$input:expr,$output:expr,$trees:expr) => {
         fn $name(asm: &mut $crate::assembly::Assembly) {
             let method = $crate::method::Method::new(
-                crate::access_modifier::AccessModifer::Private,
+                $crate::access_modifier::AccessModifer::Private,
                 crate::method::MethodType::Static,
                 crate::function_sig::FnSig::new($input, $output),
                 stringify!($name),
@@ -127,7 +105,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
         BasicBlock::new(vec![CILRoot::Ret{ tree: todo!() }.into()],0,None),
     ]));*/
     //rust_slice(asm);
-    io(asm);
+
     casts::casts(asm);
     select::selects(asm);
     //malloc(asm);
@@ -196,59 +174,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
         "__rust_alloc",
         vec![],
         if *crate::config::CHECK_ALLOCATIONS {
-            /*
-            __rust_alloc.set_ops(vec![
-                CILOp::LdStr("Allocation of size:".into()),
-                CILOp::Call(CallSite::boxed(
-                    Some(DotnetTypeRef::console()),
-                    "Write".into(),
-                    FnSig::new(&[DotnetTypeRef::string_type().into()], &Type::Void),
-                    true,
-                )),
-                CILOp::LDArg(0),
-                CILOp::ConvU64(false),
-                CILOp::Call(CallSite::boxed(
-                    Some(DotnetTypeRef::console()),
-                    "WriteLine".into(),
-                    FnSig::new(&[Type::U64], &Type::Void),
-                    true,
-                )),
-                CILOp::LDArg(0),
-                CILOp::ConvU32(true),
-                CILOp::Pop,
-                CILOp::LDArg(0),
-                CILOp::LDArg(1),
-                CILOp::Call(CallSite::boxed(
-                    native_mem.clone(),
-                    "AlignedAlloc".into(),
-                    FnSig::new(&[Type::USize, Type::USize], &Type::Ptr(Type::Void.into())),
-                    true,
-                )),
-                CILOp::Ret,
-            ]); */
             todo!("Can't check allocations yet");
-            vec![BasicBlock::new(
-                vec![
-                    //CILRoot::Pop { tree: () }.into()
-                    CILRoot::Ret {
-                        tree: call!(
-                            CallSite::new(
-                                native_mem.clone(),
-                                "AlignedAlloc".into(),
-                                FnSig::new(
-                                    &[Type::USize, Type::USize],
-                                    &Type::Ptr(Type::Void.into())
-                                ),
-                                true,
-                            ),
-                            [CILNode::LDArg(0), CILNode::LDArg(1)]
-                        ),
-                    }
-                    .into(),
-                ],
-                0,
-                None,
-            )]
         } else {
             vec![BasicBlock::new(
                 vec![CILRoot::Ret {
@@ -335,9 +261,6 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     //memcmp::add_raw_eq(asm);
     //add_ptr_offset_from_unsigned(asm);
     //caller_location::add_caller_location(asm,tyctx,&mut TyCache::empty());
-}
-fn io(asm: &mut Assembly) {
-    //puts(asm);
 }
 
 add_method_from_trees!(

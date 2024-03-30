@@ -14,7 +14,7 @@ use rustc_target::abi::VariantIdx;
 
 use rustc_middle::ty::{AdtDef, Ty, TyCtxt};
 use rustc_target::abi::{FieldIdx, FieldsShape, Layout, LayoutS, TagEncoding};
-pub fn enum_variant_offsets(adt: AdtDef, layout: Layout, vidix: VariantIdx) -> FieldOffsetIterator {
+pub fn enum_variant_offsets(_: AdtDef, layout: Layout, vidix: VariantIdx) -> FieldOffsetIterator {
     FieldOffsetIterator::fields(get_variant_at_index(vidix, &layout))
 }
 use rustc_target::abi::Variants;
@@ -46,31 +46,30 @@ impl Iterator for FieldOffsetIterator {
     }
 }
 impl FieldOffsetIterator {
-    pub fn from_fields_shape(fields:&rustc_target::abi::FieldsShape<FieldIdx>)
-        ->Self{
-            match fields {
-                FieldsShape::Arbitrary {
-                    offsets,
-                    memory_index,
-                } => {
-                    let offsets: Box<[_]> = memory_index
-                        .iter()
-                        .enumerate()
-                        .map(|(index, _mem_idx)| {
-                            // DOC_HELP_IDEA: explain what mem_idx actualy does - it is not obvious from a first look. It describes the order of fields in memory.
-                            offsets[FieldIdx::from_u32(index as u32)].bytes() as u32
-                        })
-                        //TODO: ask what does field offset of 4294967295 means.
-                        .map(|offset| if offset > u16::MAX as u32 { 0 } else { offset })
-                        .collect();
-                    FieldOffsetIterator::Explicit { offsets, index: 0 }
-                }
-                FieldsShape::Union(count) => FieldOffsetIterator::NoOffset {
-                    count: Into::<usize>::into(*count) as u64,
-                },
-                FieldsShape::Primitive =>Self::Empty, 
-                _ => todo!("Unhandled fields shape: {fields:?}"),
+    pub fn from_fields_shape(fields: &rustc_target::abi::FieldsShape<FieldIdx>) -> Self {
+        match fields {
+            FieldsShape::Arbitrary {
+                offsets,
+                memory_index,
+            } => {
+                let offsets: Box<[_]> = memory_index
+                    .iter()
+                    .enumerate()
+                    .map(|(index, _mem_idx)| {
+                        // DOC_HELP_IDEA: explain what mem_idx actualy does - it is not obvious from a first look. It describes the order of fields in memory.
+                        offsets[FieldIdx::from_u32(index as u32)].bytes() as u32
+                    })
+                    //TODO: ask what does field offset of 4294967295 means.
+                    .map(|offset| if offset > u16::MAX as u32 { 0 } else { offset })
+                    .collect();
+                FieldOffsetIterator::Explicit { offsets, index: 0 }
             }
+            FieldsShape::Union(count) => FieldOffsetIterator::NoOffset {
+                count: Into::<usize>::into(*count) as u64,
+            },
+            FieldsShape::Primitive => Self::Empty,
+            _ => todo!("Unhandled fields shape: {fields:?}"),
+        }
     }
     pub fn fields(
         parent: &LayoutS<FieldIdx, rustc_target::abi::VariantIdx>,
@@ -80,10 +79,20 @@ impl FieldOffsetIterator {
     }
 }
 /// Takes layout of an enum as input, and returns the type of its tag(Void if no tag) and the size of the tag(0 if no tag).
-pub fn enum_tag_info<'tyctx>(r#enum: &Layout<'tyctx>, tyctx: TyCtxt<'tyctx>) -> (Type, u32) {
+pub fn enum_tag_info<'tyctx>(r#enum: &Layout<'tyctx>, _: TyCtxt<'tyctx>) -> (Type, u32) {
     match r#enum.variants() {
-        Variants::Single { .. } => (Type::Void, FieldOffsetIterator::from_fields_shape(r#enum.fields()).next().unwrap_or(0)),
-        Variants::Multiple { tag,tag_field, .. } => (scalr_to_type(*tag), FieldOffsetIterator::from_fields_shape(r#enum.fields()).nth(*tag_field).unwrap_or(0)),
+        Variants::Single { .. } => (
+            Type::Void,
+            FieldOffsetIterator::from_fields_shape(r#enum.fields())
+                .next()
+                .unwrap_or(0),
+        ),
+        Variants::Multiple { tag, tag_field, .. } => (
+            scalr_to_type(*tag),
+            FieldOffsetIterator::from_fields_shape(r#enum.fields())
+                .nth(*tag_field)
+                .unwrap_or(0),
+        ),
     }
 }
 fn scalr_to_type(scalar: rustc_target::abi::Scalar) -> Type {
@@ -151,7 +160,6 @@ pub fn set_discr<'tyctx>(
         }
         Variants::Multiple {
             tag_encoding: TagEncoding::Direct,
-            tag_field,
             ..
         } => {
             let (tag_tpe, _) = enum_tag_info(r#layout, tyctx);
@@ -175,7 +183,6 @@ pub fn set_discr<'tyctx>(
                     ref niche_variants,
                     niche_start,
                 },
-            tag_field,
             ..
         } => {
             if variant_index != untagged_variant {
@@ -211,8 +218,8 @@ pub fn get_discr<'tyctx>(
         //return CILNode::
         panic!("UB: enum layout is unanhibited!");
     }
-    let (tag_tpe, _) = crate::utilis::adt::enum_tag_info(&layout, tyctx);
-    let (tag_scalar, tag_encoding, tag_field) = match layout.variants {
+    let (tag_tpe, _) = crate::utilis::adt::enum_tag_info(layout, tyctx);
+    let tag_encoding = match layout.variants {
         Variants::Single { index } => {
             let discr_val = ty
                 .discriminant_for_variant(tyctx, index)
@@ -222,11 +229,8 @@ pub fn get_discr<'tyctx>(
             return crate::casts::int_to_int(Type::U64, tag_tpe.clone(), tag_val);
         }
         Variants::Multiple {
-            tag,
-            ref tag_encoding,
-            tag_field,
-            ..
-        } => (tag, tag_encoding, tag_field),
+            ref tag_encoding, ..
+        } => tag_encoding,
     };
 
     // Decode the discriminant (specifically if it's niche-encoded).
@@ -248,7 +252,7 @@ pub fn get_discr<'tyctx>(
             ref niche_variants,
             niche_start,
         } => {
-            let (disrc_type, _) = crate::utilis::adt::enum_tag_info(&layout, tyctx);
+            let (disrc_type, _) = crate::utilis::adt::enum_tag_info(layout, tyctx);
             let relative_max = niche_variants.end().as_u32() - niche_variants.start().as_u32();
             let tag = CILNode::LDField {
                 field: crate::cil::FieldDescriptor::new(
@@ -289,12 +293,14 @@ pub fn get_discr<'tyctx>(
                     tag,
                     crate::casts::int_to_int(
                         Type::U64,
-                        disrc_type.clone(),ldc_u64!(niche_start
-                        .try_into()
-                        .expect("tag is too big to fit within u64")))
+                        disrc_type.clone(),
+                        ldc_u64!(niche_start
+                            .try_into()
+                            .expect("tag is too big to fit within u64"))
+                    )
                 ); //bx.icmp(IntPredicate::IntEQ, tag, niche_start);
-        
-                let tagged_discr = ldc_u64!( niche_variants.start().as_u32() as u64);
+
+                let tagged_discr = ldc_u64!(niche_variants.start().as_u32() as u64);
                 (is_niche, tagged_discr, 0)
             } else {
                 // The special cases don't apply, so we'll have to go with
@@ -309,9 +315,14 @@ pub fn get_discr<'tyctx>(
                 //let cast_tag = bx.intcast(relative_discr, cast_to, false);
                 let cast_tag =
                     crate::casts::int_to_int(disrc_type.clone(), Type::U64, relative_discr.clone());
-                let is_niche = lt_un!(relative_discr, crate::casts::int_to_int(
-                    Type::U64,
-                    disrc_type.clone(),ldc_u64!(relative_max as u64)));
+                let is_niche = lt_un!(
+                    relative_discr,
+                    crate::casts::int_to_int(
+                        Type::U64,
+                        disrc_type.clone(),
+                        ldc_u64!(relative_max as u64)
+                    )
+                );
                 (is_niche, cast_tag, niche_variants.start().as_u32() as u128)
             };
 

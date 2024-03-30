@@ -3,7 +3,7 @@ use crate::{
     cil::{CILOp, CallSite, FieldDescriptor},
     cil_tree::cil_node::CILNode,
     function_sig::FnSig,
-    r#type::Type,
+    r#type::{DotnetTypeRef, Type},
 };
 use rustc_middle::ty::TyCtxt;
 use serde::{Deserialize, Serialize};
@@ -93,18 +93,14 @@ pub enum CILRoot {
 impl CILRoot {
     pub fn opt(&mut self) {
         match self {
-            CILRoot::STLoc { local, tree } => tree.opt(),
-            CILRoot::BTrue {
-                target,
-                sub_target,
-                ops,
-            } => ops.opt(),
-            CILRoot::GoTo { target, sub_target } => (),
-            CILRoot::Call { site, args } => args.iter_mut().for_each(|arg| arg.opt()),
+            CILRoot::STLoc { tree, .. } => tree.opt(),
+            CILRoot::BTrue { ops, .. } => ops.opt(),
+            CILRoot::GoTo { .. } => (),
+            CILRoot::Call { args, .. } => args.iter_mut().for_each(|arg| arg.opt()),
             CILRoot::SetField {
                 addr: fld_addr,
                 value,
-                desc,
+                ..
             } => {
                 fld_addr.opt();
                 value.opt();
@@ -134,14 +130,14 @@ impl CILRoot {
                 val.opt();
             }
             CILRoot::STObj {
-                tpe,
                 addr_calc,
                 value_calc,
+                ..
             } => {
                 addr_calc.opt();
                 value_calc.opt();
             }
-            CILRoot::STArg { arg, tree } => tree.opt(),
+            CILRoot::STArg { tree, .. } => tree.opt(),
             CILRoot::Break => (),
             CILRoot::Nop => (),
             CILRoot::InitBlk { dst, val, count } => {
@@ -149,19 +145,23 @@ impl CILRoot {
                 dst.opt();
                 count.opt();
             }
-            CILRoot::CallVirt { site, args } => args.iter_mut().for_each(|arg| arg.opt()),
+            CILRoot::CallVirt { site: _, args } => args.iter_mut().for_each(|arg| arg.opt()),
             CILRoot::Ret { tree } => tree.opt(),
             CILRoot::Pop { tree } => tree.opt(),
             CILRoot::VoidRet => (),
             CILRoot::Throw(ops) => ops.opt(),
             CILRoot::ReThrow => (),
-            CILRoot::CallI { sig, fn_ptr, args } => {
+            CILRoot::CallI {
+                sig: _,
+                fn_ptr,
+                args,
+            } => {
                 args.iter_mut().for_each(|arg| arg.opt());
                 fn_ptr.opt();
             }
-            CILRoot::JumpingPad { ops } => (),
+            CILRoot::JumpingPad { ops: _ } => (),
             CILRoot::SetTMPLocal { value } => value.opt(),
-            CILRoot::SetStaticField { descr, value } => value.opt(),
+            CILRoot::SetStaticField { descr: _, value } => value.opt(),
         }
     }
     pub fn throw(msg: &str) -> Self {
@@ -170,7 +170,7 @@ impl CILRoot {
         class.set_valuetype(false);
         let name = ".ctor".into();
         let signature = crate::function_sig::FnSig::new(
-            &[class.clone().into(), crate::utilis::string_class().into()],
+            &[class.clone().into(), DotnetTypeRef::string_type().into()],
             &crate::r#type::Type::Void,
         );
         Self::Throw(CILNode::NewObj {
@@ -183,7 +183,7 @@ impl CILRoot {
         class.set_valuetype(false);
         let name = "WriteLine".into();
         let signature = crate::function_sig::FnSig::new(
-            &[crate::utilis::string_class().into()],
+            &[DotnetTypeRef::string_type().into()],
             &crate::r#type::Type::Void,
         );
         Self::Call {
@@ -303,7 +303,7 @@ impl CILRoot {
                 res.push(CILOp::STObj(tpe.clone()));
                 res
             }
-            Self::SetTMPLocal { value } => {
+            Self::SetTMPLocal { .. } => {
                 todo!("Can't flatten unresolved root!")
             }
             Self::SetStaticField { descr, value } => {
@@ -354,14 +354,14 @@ impl CILRoot {
             CILRoot::CallVirt { site: _, args } | CILRoot::Call { site: _, args } => {
                 args.iter_mut().flat_map(|arg| arg.sheed_trees()).collect()
             }
-            CILRoot::SetField { addr, value, desc } => {
+            CILRoot::SetField { addr, value, .. } => {
                 let mut res = addr.sheed_trees();
                 res.extend(value.sheed_trees());
                 // Check that trees were propely sheed.
-                assert!(!matches!(value,CILNode::SubTrees(_, _)));
+                assert!(!matches!(value, CILNode::SubTrees(_, _)));
                 res
             }
-            CILRoot::SetTMPLocal { value } => panic!("Unresolved TMP local!"),
+            CILRoot::SetTMPLocal { .. } => panic!("Unresolved TMP local!"),
             CILRoot::CpBlk { src, dst, len } => {
                 let mut res = src.sheed_trees();
                 res.extend(dst.sheed_trees());
@@ -384,10 +384,10 @@ impl CILRoot {
                 res.extend(value_calc.sheed_trees());
                 res
             }
-            CILRoot::STArg { arg, tree } => tree.sheed_trees(),
+            CILRoot::STArg { arg: _, tree } => tree.sheed_trees(),
             CILRoot::Break => vec![],
             CILRoot::Nop => vec![],
-            CILRoot::InitBlk { dst, val, count } =>{
+            CILRoot::InitBlk { dst, val, count } => {
                 let mut res = dst.sheed_trees();
                 res.extend(val.sheed_trees());
                 res.extend(count.sheed_trees());
@@ -397,9 +397,17 @@ impl CILRoot {
             CILRoot::VoidRet => vec![],
             CILRoot::Throw(tree) => tree.sheed_trees(),
             CILRoot::ReThrow => vec![],
-            CILRoot::CallI { sig, fn_ptr, args } => todo!(),
-            CILRoot::JumpingPad { ops } => vec![],
-            CILRoot::SetStaticField { descr, value } => value.sheed_trees(),
+            CILRoot::CallI {
+                sig: _,
+                fn_ptr,
+                args,
+            } => {
+                let mut res = fn_ptr.sheed_trees();
+                res.extend(args.iter_mut().flat_map(|arg| arg.sheed_trees()));
+                res
+            }
+            CILRoot::JumpingPad { ops: _ } => vec![],
+            CILRoot::SetStaticField { descr: _, value } => value.sheed_trees(),
         };
         res.extend(trees);
         res.push(self);
@@ -411,18 +419,17 @@ impl CILRoot {
         locals: &mut Vec<(Option<Box<str>>, Type)>,
     ) {
         match self {
-            CILRoot::STLoc { local, tree } => tree.allocate_tmps(curr_local, locals),
-            CILRoot::BTrue {
-                target,
-                sub_target,
-                ops,
-            } => ops.allocate_tmps(curr_local, locals),
-            CILRoot::GoTo { target, sub_target } => (),
-            CILRoot::CallVirt { site, args } |
-            CILRoot::Call { site, args } => args
+            CILRoot::STLoc { tree, .. } => tree.allocate_tmps(curr_local, locals),
+            CILRoot::BTrue { ops, .. } => ops.allocate_tmps(curr_local, locals),
+            CILRoot::GoTo { .. } => (),
+            CILRoot::CallVirt { site: _, args } | CILRoot::Call { site: _, args } => args
                 .iter_mut()
                 .for_each(|arg| arg.allocate_tmps(curr_local, locals)),
-            CILRoot::SetField { addr, value, desc } => {
+            CILRoot::SetField {
+                addr,
+                value,
+                desc: _,
+            } => {
                 addr.allocate_tmps(curr_local, locals);
                 value.allocate_tmps(curr_local, locals);
             }
@@ -442,8 +449,11 @@ impl CILRoot {
                 addr_calc,
                 value_calc,
                 ..
-            } => addr_calc.allocate_tmps(curr_local, locals),
-            CILRoot::STArg { arg, tree } => tree.allocate_tmps(curr_local, locals),
+            } => {
+                addr_calc.allocate_tmps(curr_local, locals);
+                value_calc.allocate_tmps(curr_local, locals);
+            }
+            CILRoot::STArg { arg: _, tree } => tree.allocate_tmps(curr_local, locals),
             CILRoot::Break => (),
             CILRoot::Nop => (),
             CILRoot::InitBlk { dst, val, count } => {
@@ -451,27 +461,30 @@ impl CILRoot {
                 val.allocate_tmps(curr_local, locals);
                 count.allocate_tmps(curr_local, locals);
             }
-           
+
             CILRoot::Ret { tree } | CILRoot::Pop { tree } | CILRoot::Throw(tree) => {
                 tree.allocate_tmps(curr_local, locals)
             }
             CILRoot::VoidRet => (),
 
             CILRoot::ReThrow => (),
-            CILRoot::CallI { sig, fn_ptr, args } => {
+            CILRoot::CallI {
+                sig: _,
+                fn_ptr,
+                args,
+            } => {
                 fn_ptr.allocate_tmps(curr_local, locals);
-                args
-                .iter_mut()
-                .for_each(|arg| arg.allocate_tmps(curr_local, locals));
+                args.iter_mut()
+                    .for_each(|arg| arg.allocate_tmps(curr_local, locals));
             }
-            CILRoot::JumpingPad { ops } => (),
+            CILRoot::JumpingPad { ops: _ } => (),
             CILRoot::SetTMPLocal { value } => {
                 *self = Self::STLoc {
                     local: curr_local.expect("Referenced a tmp local when none present!"),
-                    tree: value.clone().into(),
+                    tree: value.clone(),
                 };
             }
-            CILRoot::SetStaticField { descr, value } => value.allocate_tmps(curr_local, locals),
+            CILRoot::SetStaticField { descr: _, value } => value.allocate_tmps(curr_local, locals),
         }
     }
 
@@ -481,22 +494,28 @@ impl CILRoot {
         tyctx: TyCtxt,
     ) {
         match self {
-            CILRoot::STLoc { local, tree } => tree.resolve_global_allocations(asm, tyctx),
+            CILRoot::STLoc { local: _, tree } => tree.resolve_global_allocations(asm, tyctx),
             CILRoot::BTrue {
-                target,
-                sub_target,
+                target: _,
+                sub_target: _,
                 ops,
             } => ops.resolve_global_allocations(asm, tyctx),
-            CILRoot::GoTo { target, sub_target } => (),
-            CILRoot::CallVirt { site, args } |
-            CILRoot::Call { site, args } => args
+            CILRoot::GoTo {
+                target: _,
+                sub_target: _,
+            } => (),
+            CILRoot::CallVirt { site: _, args } | CILRoot::Call { site: _, args } => args
                 .iter_mut()
                 .for_each(|arg| arg.resolve_global_allocations(asm, tyctx)),
-            CILRoot::SetField { addr, value, desc } => {
+            CILRoot::SetField {
+                addr,
+                value,
+                desc: _,
+            } => {
                 addr.resolve_global_allocations(asm, tyctx);
                 value.resolve_global_allocations(asm, tyctx);
             }
-            CILRoot::CpBlk { src, dst, len } =>  {
+            CILRoot::CpBlk { src, dst, len } => {
                 src.resolve_global_allocations(asm, tyctx);
                 dst.resolve_global_allocations(asm, tyctx);
                 len.resolve_global_allocations(asm, tyctx);
@@ -512,8 +531,11 @@ impl CILRoot {
                 addr_calc,
                 value_calc,
                 ..
-            } => addr_calc.resolve_global_allocations(asm, tyctx),
-            CILRoot::STArg { arg, tree } => tree.resolve_global_allocations(asm, tyctx),
+            } => {
+                addr_calc.resolve_global_allocations(asm, tyctx);
+                value_calc.resolve_global_allocations(asm, tyctx)
+            }
+            CILRoot::STArg { arg: _, tree } => tree.resolve_global_allocations(asm, tyctx),
             CILRoot::Break => (),
             CILRoot::Nop => (),
             CILRoot::InitBlk { dst, val, count } => {
@@ -521,24 +543,26 @@ impl CILRoot {
                 val.resolve_global_allocations(asm, tyctx);
                 count.resolve_global_allocations(asm, tyctx);
             }
-           
-            
+
             CILRoot::Ret { tree } | CILRoot::Pop { tree } | CILRoot::Throw(tree) => {
                 tree.resolve_global_allocations(asm, tyctx)
             }
             CILRoot::VoidRet => (),
 
             CILRoot::ReThrow => (),
-            CILRoot::CallI { sig, fn_ptr, args } =>  {
+            CILRoot::CallI {
+                sig: _,
+                fn_ptr,
+                args,
+            } => {
                 fn_ptr.resolve_global_allocations(asm, tyctx);
-                args
-                .iter_mut()
-                .for_each(|arg| arg.resolve_global_allocations(asm, tyctx));
+                args.iter_mut()
+                    .for_each(|arg| arg.resolve_global_allocations(asm, tyctx));
             }
             // Jump pads CAN'T ever allocate.
-            CILRoot::JumpingPad { ops } => (),
+            CILRoot::JumpingPad { ops: _ } => (),
             CILRoot::SetTMPLocal { value } => value.resolve_global_allocations(asm, tyctx),
-            CILRoot::SetStaticField { descr, value } => {
+            CILRoot::SetStaticField { descr: _, value } => {
                 value.resolve_global_allocations(asm, tyctx)
             }
         }

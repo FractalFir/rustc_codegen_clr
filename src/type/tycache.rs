@@ -1,6 +1,10 @@
 use super::{tuple_name, tuple_typedef, DotnetTypeRef, Type, TypeDef};
 use crate::{
-    access_modifier::AccessModifer, function_sig::FnSig, r#type::{closure_typedef, escape_field_name}, utilis::adt::FieldOffsetIterator, IString
+    access_modifier::AccessModifer,
+    function_sig::FnSig,
+    r#type::{closure_typedef, escape_field_name},
+    utilis::adt::FieldOffsetIterator,
+    IString,
 };
 use rustc_middle::ty::{
     AdtDef, AdtKind, GenericArg, Instance, List, ParamEnv, Ty, TyCtxt, TyKind, UintTy,
@@ -209,7 +213,7 @@ impl TyCache {
                     rustc_target::abi::TagEncoding::Direct => {
                         let (tag_type, offset) =
                             crate::utilis::adt::enum_tag_info(&layout.layout, tyctx);
-                       
+
                         if tag_type != Type::Void {
                             fields.push(("value__".into(), tag_type));
                             explicit_offsets.push(offset);
@@ -219,18 +223,16 @@ impl TyCache {
                     rustc_target::abi::TagEncoding::Niche {
                         untagged_variant: _,
                         niche_variants: _,
-                        niche_start,
+                        ..
                     } => {
                         let (tag_type, offset) =
                             crate::utilis::adt::enum_tag_info(&layout.layout, tyctx);
                         let offsets = FieldOffsetIterator::fields(&layout.layout);
                         //eprintln!("enum:{adt_ty} layout.fields:{:?}",layout.fields);
-                        assert!(offsets.count() > 0,"layout.fields:{:?}",layout.fields);
+                        assert!(offsets.count() > 0, "layout.fields:{:?}", layout.fields);
                         if tag_type != Type::Void {
                             fields.push(("value__".into(), tag_type));
-                            /*if *niche_start as u64 > layout.layout.size().bytes() {
-                                panic!("Enum niche offset {niche_start} is bigger than {size}",size =  layout.layout.size().bytes());
-                            }*/
+
                             explicit_offsets.push(offset);
                         }
                         offset
@@ -240,7 +242,7 @@ impl TyCache {
                 //todo!("Mult-variant enum!"),
             }
         };
-        assert_eq!(fields.len(),explicit_offsets.len());
+        assert_eq!(fields.len(), explicit_offsets.len());
         for (vidx, variant) in adt.variants().iter_enumerated() {
             let variant_name: IString = variant.name.to_string().into();
             let mut variant_fields = vec![];
@@ -256,18 +258,20 @@ impl TyCache {
 
             let field_offset_iter =
                 crate::utilis::adt::enum_variant_offsets(adt, layout.layout, vidx);
-            let mut field_offsets:Vec<_> = field_offset_iter.collect();
-            // FIXME: this is a hacky fix for `std::option::Option<std::convert::Infallible>`. If an enum contains an enum without variants, stuff breaks(no offset for that field). 
-            // If we know this is `Option` we can just sweep the issue under the rug and pretend it does not happen(even tough it does). 
-            if field_offsets.len() < variant_fields.len() && enum_name.contains("Option")  && enum_name.contains("option") {
+            let mut field_offsets: Vec<_> = field_offset_iter.collect();
+            // FIXME: this is a hacky fix for `std::option::Option<std::convert::Infallible>`. If an enum contains an enum without variants, stuff breaks(no offset for that field).
+            // If we know this is `Option` we can just sweep the issue under the rug and pretend it does not happen(even tough it does).
+            if field_offsets.len() < variant_fields.len()
+                && enum_name.contains("Option")
+                && enum_name.contains("option")
+            {
                 field_offsets.push(0);
             }
             rustc_middle::ty::print::with_no_trimmed_paths! {assert_eq!(field_offsets.len(),variant_fields.len(),"Layout:{:?}", &layout)};
             fields.extend(variant_fields);
             explicit_offsets.extend(field_offsets);
-       
         }
-        assert_eq!(fields.len(),explicit_offsets.len());
+        assert_eq!(fields.len(), explicit_offsets.len());
         TypeDef::new(
             access,
             enum_name.into(),
@@ -351,7 +355,7 @@ impl TyCache {
                 DotnetTypeRef::new(None, &name).into()
             }
             TyKind::Never => Type::Void,
-            TyKind::RawPtr(typ,_) => {
+            TyKind::RawPtr(typ, _) => {
                 if super::pointer_to_is_fat(*typ, tyctx, method) {
                     let inner = match typ.kind() {
                         TyKind::Slice(inner) => {

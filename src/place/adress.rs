@@ -82,7 +82,6 @@ pub fn place_elem_adress<'ctx>(
                 //let field_type = crate::utilis::monomorphize(&method_instance, *field_type, tyctx);
                 let curr_ty = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
                 if crate::r#type::pointer_to_is_fat(curr_ty, tyctx, Some(method_instance)) {
-                    use rustc_middle::ty::TypeAndMut;
                     assert_eq!(
                         index.as_u32(),
                         0,
@@ -90,26 +89,18 @@ pub fn place_elem_adress<'ctx>(
                     );
                     let field_ty = crate::utilis::monomorphize(&method_instance, *field_ty, tyctx);
                     let curr_type = type_cache.type_from_cache(
-                        Ty::new_ptr(
-                            tyctx,
-                            curr_ty,
-                            rustc_middle::ty::Mutability::Mut,
-                        ),
+                        Ty::new_ptr(tyctx, curr_ty, rustc_middle::ty::Mutability::Mut),
                         tyctx,
                         Some(method_instance),
                     );
                     let field_type = type_cache.type_from_cache(
-                        Ty::new_ptr(
-                            tyctx,
-                            field_ty,
-                            rustc_middle::ty::Mutability::Mut,
-                        ),
+                        Ty::new_ptr(tyctx, field_ty, rustc_middle::ty::Mutability::Mut),
                         tyctx,
                         Some(method_instance),
                     );
                     return CILNode::TemporaryLocal(Box::new((
-                        curr_type.into(),
-                        [CILRoot::SetTMPLocal { value: addr_calc }.into()].into(),
+                        curr_type,
+                        [CILRoot::SetTMPLocal { value: addr_calc }].into(),
                         CILNode::LdObj {
                             ptr: CILNode::LoadAddresOfTMPLocal.into(),
                             obj: field_type.into(),
@@ -286,12 +277,12 @@ pub fn place_elem_adress<'ctx>(
                     "data_pointer".into(),
                 );
                 CILNode::TemporaryLocal(Box::new((
-                    curr_type.into(),
+                    curr_type,
                     [
                         CILRoot::SetField {
                             addr: CILNode::LoadAddresOfTMPLocal,
-                            value: conv_usize!(ldc_u64!((to - from) as u64)),
-                            desc: metadata_field.into(),
+                            value: conv_usize!(ldc_u64!(to - from)),
+                            desc: metadata_field,
                         },
                         CILRoot::SetField {
                             addr: CILNode::LoadAddresOfTMPLocal,
@@ -299,7 +290,7 @@ pub fn place_elem_adress<'ctx>(
                                 ld_field!(addr_calc, ptr_field.clone()),
                                 conv_usize!(ldc_u64!(*from))
                             ),
-                            desc: ptr_field.clone().into(),
+                            desc: ptr_field.clone(),
                         },
                     ]
                     .into(),
@@ -315,7 +306,7 @@ pub fn place_elem_adress<'ctx>(
             let curr_ty = curr_type
                 .as_ty()
                 .expect("INVALID PLACE: Indexing into enum variant???");
-            let index = ldc_u64!(*offset as u64);
+            let index = ldc_u64!(*offset);
             //assert!(!from_end, "Indexing slice form end");
             //println!("WARNING: ConstantIndex has required min_length of {min_length}, but bounds checking on const access not supported yet!");
             match curr_ty.kind() {
@@ -333,8 +324,7 @@ pub fn place_elem_adress<'ctx>(
                         Type::Ptr(Type::Void.into()),
                         "data_pointer".into(),
                     );
-                    let len = FieldDescriptor::new(slice.clone(), Type::USize, "metadata".into());
-                    let metadata = FieldDescriptor::new(slice, Type::USize, "metadata".into());
+
                     if *from_end {
                         todo!("Can't index slice from end!");
                     } else {
@@ -357,10 +347,9 @@ pub fn place_elem_adress<'ctx>(
                         //ops.extend(derf_op);
                     }
                 }
-                TyKind::Array(element, length) => {
+                TyKind::Array(element, _) => {
                     let element_ty = crate::utilis::monomorphize(&method_instance, *element, tyctx);
-                    let length = crate::utilis::monomorphize(&method_instance, *length, tyctx);
-                    let length = crate::utilis::try_resolve_const_size(length).unwrap();
+
                     let element =
                         type_cache.type_from_cache(element_ty, tyctx, Some(method_instance));
                     let array_type =

@@ -31,15 +31,15 @@ impl std::io::Write for CExporter {
 }
 
 impl CExporter {
-    fn as_source(&self,is_dll:bool) -> Vec<u8> {
+    fn as_source(&self, is_dll: bool) -> Vec<u8> {
         let mut res = self.headers.clone();
         res.extend(&self.types);
         res.extend(&self.type_defs);
         res.extend(&self.method_defs);
         res.extend(&self.static_defs);
         res.extend(&self.encoded_asm);
-        if !is_dll{
-            writeln!(res,"int main(){{_cctor();entrypoint();}}").unwrap();
+        if !is_dll {
+            writeln!(res, "int main(){{_cctor();entrypoint();}}").unwrap();
         }
         res
     }
@@ -47,14 +47,23 @@ impl CExporter {
         //eprintln!("C source:\n{}",String::from_utf8_lossy(&self.as_source()));
         let sig = method.sig();
 
-        let name = method.name().replace('.',"_");
+        let name = method.name().replace('.', "_");
         // Puts is already defined in C.
-        if name == "puts" || name == "malloc"|| name == "printf" || name == "free" || name == "realloc"{
+        if name == "puts"
+            || name == "malloc"
+            || name == "printf"
+            || name == "free"
+            || name == "realloc"
+        {
             return;
         }
         let output = c_tpe(sig.output());
         let mut inputs: String = "(".into();
-        let mut input_iter = sig.inputs().iter().enumerate().filter(|(_,tpe)|**tpe != Type::Void);
+        let mut input_iter = sig
+            .inputs()
+            .iter()
+            .enumerate()
+            .filter(|(_, tpe)| **tpe != Type::Void);
         if let Some((idx, input)) = input_iter.next() {
             inputs.push_str(&format!("{input} A{idx}", input = c_tpe(input)));
         }
@@ -77,21 +86,21 @@ impl CExporter {
             }
         }
         if let Some(class) = class {
-            let class = class.replace('.',"_");
-            write!(self.method_defs, "{output} {class}{name} {inputs};\n").unwrap();
+            let class = class.replace('.', "_");
+            writeln!(self.method_defs, "{output} {class}{name} {inputs};").unwrap();
             write!(
                 self.encoded_asm,
                 "{output} {class}{name} {inputs}{{\n{code}}}\n"
             )
             .unwrap();
         } else {
-            write!(self.method_defs, "{output} {name} {inputs};\n").unwrap();
+            writeln!(self.method_defs, "{output} {name} {inputs};").unwrap();
             write!(self.encoded_asm, "{output} {name} {inputs}{{\n{code}}}\n").unwrap();
         }
     }
 }
 impl AssemblyExporter for CExporter {
-    fn init(asm_info: &super::AssemblyInfo) -> Self {
+    fn init(_asm_info: &super::AssemblyInfo) -> Self {
         let mut encoded_asm = Vec::with_capacity(0x1_00);
         let types = Vec::with_capacity(0x1_00);
         let type_defs = Vec::with_capacity(0x1_00);
@@ -106,12 +115,32 @@ impl AssemblyExporter for CExporter {
         )
         .expect("Write error!");
         headers.write_all(include_bytes!("c_header.h")).unwrap();
-        write!(headers, "\n").expect("Write error!");
-        writeln!(encoded_asm,"#pragma GCC diagnostic ignored \"-Wmaybe-uninitialized\"").unwrap();
-        writeln!(encoded_asm,"#pragma GCC diagnostic ignored \"-Wunused-label\"").unwrap();
-        writeln!(encoded_asm,"#pragma GCC diagnostic ignored \"-Wunused-but-set-variable\"").unwrap();
-        writeln!(encoded_asm,"#pragma GCC diagnostic ignored \"-Wunused-variable\"").unwrap();
-        writeln!(encoded_asm,"#pragma GCC diagnostic ignored \"-Wpointer-sign\"").unwrap();
+        writeln!(headers).expect("Write error!");
+        writeln!(
+            encoded_asm,
+            "#pragma GCC diagnostic ignored \"-Wmaybe-uninitialized\""
+        )
+        .unwrap();
+        writeln!(
+            encoded_asm,
+            "#pragma GCC diagnostic ignored \"-Wunused-label\""
+        )
+        .unwrap();
+        writeln!(
+            encoded_asm,
+            "#pragma GCC diagnostic ignored \"-Wunused-but-set-variable\""
+        )
+        .unwrap();
+        writeln!(
+            encoded_asm,
+            "#pragma GCC diagnostic ignored \"-Wunused-variable\""
+        )
+        .unwrap();
+        writeln!(
+            encoded_asm,
+            "#pragma GCC diagnostic ignored \"-Wpointer-sign\""
+        )
+        .unwrap();
         Self {
             types,
             type_defs,
@@ -142,18 +171,17 @@ impl AssemblyExporter for CExporter {
         {
             if !self.defined.contains::<Box<_>>(&tpe_name.clone().into()) {
                 //eprintln!("type {tpe_name:?} has unresolved dependencies");
-                self.delayed_typedefs
-                    .insert(name.into(), tpe.clone().into());
+                self.delayed_typedefs.insert(name.into(), tpe.clone());
                 return;
             }
         }
         let mut fields = String::new();
         if let Some(offsets) = tpe.explicit_offsets() {
             for ((field_name, field_type), offset) in tpe.fields().iter().zip(offsets) {
-                if *field_type == Type::Void{
+                if *field_type == Type::Void {
                     continue;
                 }
-        
+
                 fields.push_str(&format!(
                     "\tstruct {{char pad[{offset}];{field_type} f;}} {field_name};\n\n",
                     field_type = c_tpe(field_type)
@@ -161,7 +189,7 @@ impl AssemblyExporter for CExporter {
             }
         } else {
             for (field_name, field_type) in tpe.fields() {
-                if *field_type == Type::Void{
+                if *field_type == Type::Void {
                     continue;
                 }
                 fields.push_str(&format!(
@@ -174,10 +202,10 @@ impl AssemblyExporter for CExporter {
             self.add_method_inner(method, Some(name.to_owned()));
         }
         if tpe.explicit_offsets().is_some() {
-            write!(self.types, "typedef union {name} {name};\n").unwrap();
+            writeln!(self.types, "typedef union {name} {name};").unwrap();
             write!(self.type_defs, "union {name}{{\n{fields}}};\n").unwrap()
         } else {
-            write!(self.types, "typedef struct {name} {name};\n").unwrap();
+            writeln!(self.types, "typedef struct {name} {name};").unwrap();
             write!(self.type_defs, "struct {name}{{\n{fields}}};\n").unwrap()
         }
         self.defined.insert(name.into());
@@ -192,13 +220,17 @@ impl AssemblyExporter for CExporter {
         self.add_method_inner(method, None)
     }
 
-    fn add_extern_method(&mut self, lib_path: &str, name: &str, sig: &crate::function_sig::FnSig) {
-        if name == "puts" || name == "malloc"|| name == "printf" || name == "free"{
+    fn add_extern_method(&mut self, _lib_path: &str, name: &str, sig: &crate::function_sig::FnSig) {
+        if name == "puts" || name == "malloc" || name == "printf" || name == "free" {
             return;
         }
         let output = c_tpe(sig.output());
         let mut inputs: String = "(".into();
-        let mut input_iter = sig.inputs().iter().enumerate().filter(|(_,tpe)|**tpe != Type::Void);;
+        let mut input_iter = sig
+            .inputs()
+            .iter()
+            .enumerate()
+            .filter(|(_, tpe)| **tpe != Type::Void);
         if let Some((idx, input)) = input_iter.next() {
             inputs.push_str(&format!("{input} A{idx}", input = c_tpe(input)));
         }
@@ -206,7 +238,7 @@ impl AssemblyExporter for CExporter {
             inputs.push_str(&format!(",{input} A{idx} ", input = c_tpe(input)));
         }
         inputs.push(')');
-        write!(self.method_defs, "extern {output} {name} {inputs};\n").unwrap();
+        writeln!(self.method_defs, "extern {output} {name} {inputs};").unwrap();
     }
 
     fn finalize(
@@ -214,17 +246,27 @@ impl AssemblyExporter for CExporter {
         final_path: &std::path::Path,
         is_dll: bool,
     ) -> Result<(), super::AssemblyExportError> {
-
-
         let cc = "gcc";
         let src_path = final_path.with_extension("c");
-        std::fs::File::create(&src_path).unwrap().write_all(&self.as_source(is_dll)).unwrap();
-        let sanitize = if *crate::config::C_SANITIZE{
+        std::fs::File::create(&src_path)
+            .unwrap()
+            .write_all(&self.as_source(is_dll))
+            .unwrap();
+        let sanitize = if *crate::config::C_SANITIZE {
             "-fsanitize=undefined"
-        }else{
+        } else {
             "-O"
         };
-        let out = Command::new(cc).args(["-g",sanitize,"-o",&final_path.to_string_lossy().to_owned(),&src_path.to_string_lossy().to_owned()]).output().unwrap();
+        let out = Command::new(cc)
+            .args([
+                "-g",
+                sanitize,
+                "-o",
+                &final_path.to_string_lossy().to_owned(),
+                &src_path.to_string_lossy().to_owned(),
+            ])
+            .output()
+            .unwrap();
         let stderr = String::from_utf8_lossy(&out.stderr);
         if stderr.contains("error") {
             panic!("C compiler error:{stderr:?}!");
@@ -232,16 +274,15 @@ impl AssemblyExporter for CExporter {
         Ok(())
     }
 
-    fn add_extern_ref(&mut self, asm_name: &str, info: &crate::assembly::AssemblyExternRef) {
+    fn add_extern_ref(&mut self, _asm_name: &str, _info: &crate::assembly::AssemblyExternRef) {
         // Not needed in C
     }
 
     fn add_global(&mut self, tpe: &crate::r#type::Type, name: &str) {
-        write!(self.static_defs, "static {tpe} {name};\n", tpe = c_tpe(tpe)).unwrap();
+        writeln!(self.static_defs, "static {tpe} {name};", tpe = c_tpe(tpe)).unwrap();
     }
 }
 fn node_string(tree: &CILNode) -> String {
-
     match tree {
         CILNode::LDLoc(loc) => format!("L{loc}"),
         CILNode::LDArg(arg) => format!("A{arg}"),
@@ -250,8 +291,9 @@ fn node_string(tree: &CILNode) -> String {
         CILNode::BlackBox(inner) => node_string(inner),
         CILNode::LDStaticField(static_field) => static_field.name().into(),
         CILNode::ConvF32(inner) => format!("((float){inner})", inner = node_string(inner)),
-        CILNode::ConvF64(inner) |
-        CILNode::ConvF64Un(inner) => format!("((double){inner})", inner = node_string(inner)),
+        CILNode::ConvF64(inner) | CILNode::ConvF64Un(inner) => {
+            format!("((double){inner})", inner = node_string(inner))
+        }
         CILNode::SizeOf(tpe) => format!("sizeof({tpe})", tpe = c_tpe(tpe)),
         CILNode::LDIndI8 { ptr } => format!("(*((int8_t*){ptr}))", ptr = node_string(ptr)),
         CILNode::LDIndI16 { ptr } => format!("(*((int16_t*){ptr}))", ptr = node_string(ptr)),
@@ -261,7 +303,7 @@ fn node_string(tree: &CILNode) -> String {
         CILNode::LdObj { ptr, obj } => format!(
             "(*({owner}*)({ptr}))",
             ptr = node_string(ptr),
-            owner = c_tpe(&obj)
+            owner = c_tpe(obj)
         ),
         CILNode::LDIndF32 { ptr } => format!("(*((float*){ptr}))", ptr = node_string(ptr)),
         CILNode::LDIndF64 { ptr } => format!("(*((double*){ptr}))", ptr = node_string(ptr)),
@@ -288,15 +330,19 @@ fn node_string(tree: &CILNode) -> String {
         CILNode::Or(a, b) => format!("({a}) | ({b})", a = node_string(a), b = node_string(b)),
         CILNode::XOr(a, b) => format!("({a}) ^ ({b})", a = node_string(a), b = node_string(b)),
         CILNode::Shr(a, b) => format!("{a} >> {b}", a = node_string(a), b = node_string(b)),
-        CILNode::Shl(a, b) |
-        CILNode::ShrUn(a, b)=> format!("{a} << {b}", a = node_string(a), b = node_string(b)),
-        CILNode::RawOpsParrentless { ops } => todo!(),
+        CILNode::Shl(a, b) | CILNode::ShrUn(a, b) => {
+            format!("{a} << {b}", a = node_string(a), b = node_string(b))
+        }
+        CILNode::RawOpsParrentless { .. } => todo!(),
         CILNode::Call { args, site } => {
             let name = site.name();
-            let mut input_iter = args.iter().zip(site.signature().inputs()).filter_map(|(code,tpe)|if *tpe != Type::Void{Some(code)}else{None});
+            let mut input_iter = args
+                .iter()
+                .zip(site.signature().inputs())
+                .filter_map(|(code, tpe)| if *tpe != Type::Void { Some(code) } else { None });
             let mut inputs: String = "(".into();
             if let Some(input) = input_iter.next() {
-                inputs.push_str(&format!("{input}", input = node_string(input)));
+                inputs.push_str(&node_string(input).to_string());
             }
             for input in input_iter {
                 inputs.push_str(&format!(",{input} ", input = node_string(input)));
@@ -305,18 +351,18 @@ fn node_string(tree: &CILNode) -> String {
             let tpe_name = site
                 .class()
                 .map(|tpe| tpe.name_path())
-                .unwrap_or(&"")
+                .unwrap_or("")
                 .replace('.', "_");
             format!("{tpe_name}{name}{inputs}")
         }
-        CILNode::CallVirt { args, site } => todo!(),
+        CILNode::CallVirt { .. } => panic!("Virtual calls not supported in C."),
         CILNode::LdcI64(value) => format!("{value}l"),
         CILNode::LdcU64(value) => format!("{value}ul"),
         CILNode::LdcI32(value) => format!("{value}"),
         CILNode::LdcU32(value) => format!("{value}u"),
         CILNode::LdcF64(value) => format!("{value}"),
         CILNode::LdcF32(value) => format!("{value}"),
-        CILNode::LoadGlobalAllocPtr { alloc_id } => todo!(),
+        CILNode::LoadGlobalAllocPtr { .. } => todo!(),
         CILNode::ConvU8(inner) => format!("((uint8_t){inner})", inner = node_string(inner)),
         CILNode::ConvU16(inner) => format!("((uint16_t){inner})", inner = node_string(inner)),
         CILNode::ConvU32(inner) => format!("((uint32_t){inner})", inner = node_string(inner)),
@@ -327,7 +373,7 @@ fn node_string(tree: &CILNode) -> String {
         CILNode::ConvI32(inner) => format!("((int32_t){inner})", inner = node_string(inner)),
         CILNode::ConvI64(inner) => format!("((int64_t){inner})", inner = node_string(inner)),
         CILNode::ConvISize(inner) => format!("((ptrdiff_t){inner})", inner = node_string(inner)),
-        CILNode::Neg(a) =>format!("-({a})", a = node_string(a)),
+        CILNode::Neg(a) => format!("-({a})", a = node_string(a)),
         CILNode::Not(a) => format!("!({a})", a = node_string(a)),
         CILNode::Eq(a, b) => format!("(({a}) == ({b}))", a = node_string(a), b = node_string(b)),
         CILNode::Lt(a, b) | CILNode::LtUn(a, b) => {
@@ -337,21 +383,25 @@ fn node_string(tree: &CILNode) -> String {
             format!("{a} > {b}", a = node_string(a), b = node_string(b))
         }
         CILNode::TemporaryLocal(_) => todo!(),
-        CILNode::SubTrees(sub, main) =>{
-            assert!(sub.is_empty(),"A sub-tree still remains!");
-            println!("WARNING: Sub-trees impropely resolved: an empty sub-tree list still remains!");
+        CILNode::SubTrees(sub, main) => {
+            assert!(sub.is_empty(), "A sub-tree still remains!");
+            println!(
+                "WARNING: Sub-trees impropely resolved: an empty sub-tree list still remains!"
+            );
             node_string(main)
-        } 
+        }
         CILNode::LoadAddresOfTMPLocal => todo!(),
         CILNode::LoadTMPLocal => todo!(),
         CILNode::LDFtn(_) => todo!(),
         CILNode::LDTypeToken(_) => todo!(),
         CILNode::NewObj { site, args } => {
-            let name = site.name();
-            let mut input_iter = args.iter().zip(site.signature().inputs()).filter_map(|(code,tpe)|if *tpe != Type::Void{Some(code)}else{None});
+            let mut input_iter = args
+                .iter()
+                .zip(site.signature().inputs())
+                .filter_map(|(code, tpe)| if *tpe != Type::Void { Some(code) } else { None });
             let mut inputs: String = "(".into();
             if let Some(input) = input_iter.next() {
-                inputs.push_str(&format!("{input}", input = node_string(input)));
+                inputs.push_str(&node_string(input).to_string());
             }
             for input in input_iter {
                 inputs.push_str(&format!(",{input} ", input = node_string(input)));
@@ -361,12 +411,15 @@ fn node_string(tree: &CILNode) -> String {
             format!("ctor_{tpe_name}{inputs}")
         }
         CILNode::LdStr(string) => format!("{string:?}"),
-        CILNode::CallI { sig, fn_ptr, args } => todo!(),
+        CILNode::CallI {
+            sig: _,
+            fn_ptr: _,
+            args: _,
+        } => todo!(),
     }
 }
 fn tree_string(tree: &CILTree, method: &Method) -> String {
-
-    match tree.tree() {
+    match tree.root() {
         CILRoot::STLoc { local, tree } => {
             let local_ty = &method.locals()[*local as usize].1;
             if let Some(_) = local_ty.as_dotnet() {
@@ -384,45 +437,55 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
             sub_target,
             ops,
         } => {
-           if *sub_target != 0{
+            if *sub_target != 0 {
                 format!("\tif({ops})goto BB_{sub_target};\n", ops = node_string(ops))
-           }else{
+            } else {
                 format!("\tif({ops})goto BB_{target};\n", ops = node_string(ops))
-           }
-            
+            }
         }
         CILRoot::GoTo { target, sub_target } => {
-
-            if *sub_target !=  0{
+            if *sub_target != 0 {
                 format!("goto BB_{sub_target};")
-            }else{
+            } else {
                 format!("goto BB_{target};")
             }
-        },
+        }
         CILRoot::Call { site, args } => {
             let name = site.name();
-            let mut input_iter = args.iter().zip(site.signature().inputs()).filter(|(code,tpe)|**tpe != Type::Void);
+            let mut input_iter = args
+                .iter()
+                .zip(site.signature().inputs())
+                .filter(|(_, tpe)| **tpe != Type::Void);
             let mut inputs: String = "(".into();
-            if let Some((input,arg)) = input_iter.next() {
-                if let Some(arg) = arg.as_dotnet() {
-                    inputs.push_str(&format!("{ops}", ops = node_string(input)));
+            if let Some((input, arg)) = input_iter.next() {
+                if let Some(_) = arg.as_dotnet() {
+                    inputs.push_str(&node_string(input).to_string());
                 } else {
-                    inputs.push_str(&format!("({arg})({ops})", ops = node_string(input),arg = c_tpe(arg)));
+                    inputs.push_str(&format!(
+                        "({arg})({ops})",
+                        ops = node_string(input),
+                        arg = c_tpe(arg)
+                    ));
                 }
-//                inputs.push_str(&format!("{input}", input = node_string(input)));
+                //                inputs.push_str(&format!("{input}", input = node_string(input)));
             }
-            for (input,arg) in input_iter {
-                if let Some(arg) = arg.as_dotnet() {
+            for (input, arg) in input_iter {
+                if let Some(_) = arg.as_dotnet() {
+                    // Can't cast to a struct in C.
                     inputs.push_str(&format!(",{ops}", ops = node_string(input)));
                 } else {
-                    inputs.push_str(&format!(",({arg})({ops})", ops = node_string(input),arg = c_tpe(arg)));
+                    inputs.push_str(&format!(
+                        ",({arg})({ops})",
+                        ops = node_string(input),
+                        arg = c_tpe(arg)
+                    ));
                 }
             }
             inputs.push(')');
             let tpe_name = site
                 .class()
                 .map(|tpe| tpe.name_path())
-                .unwrap_or(&"")
+                .unwrap_or("")
                 .replace('.', "_");
             format!("{tpe_name}{name}{inputs};")
         }
@@ -433,7 +496,9 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
             name = desc.name(),
             value = node_string(value)
         ),
-        CILRoot::SetTMPLocal { value } => todo!(),
+        CILRoot::SetTMPLocal { value } => {
+            panic!("Temporary locals must be resolved before the export stage! value:{value:?}")
+        }
         CILRoot::CpBlk { src, dst, len } => format!(
             "memcpy({src},{dst},{len});",
             src = node_string(src),
@@ -482,25 +547,32 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
         }
         CILRoot::Break => "".into(),
         CILRoot::Nop => "".into(),
-        CILRoot::InitBlk { dst, val, count } => todo!(),
-        CILRoot::CallVirt { site, args } => todo!(),
+        CILRoot::InitBlk { dst, val, count } => {
+            todo!("Can't memset yet. dst:{dst:?} val:{val:?} count:{count:?}")
+        }
+        CILRoot::CallVirt { .. } => panic!("Virtual calls not supported in C."),
         CILRoot::Ret { tree } => {
-            if let Some(ret) = method.sig().output().as_dotnet() {
+            if let Some(_) = method.sig().output().as_dotnet() {
                 format!("\treturn {ops};", ops = node_string(tree))
             } else {
-                format!("\treturn ({ret}){ops};", ops = node_string(tree),ret = c_tpe(method.sig().output()))
+                format!(
+                    "\treturn ({ret}){ops};",
+                    ops = node_string(tree),
+                    ret = c_tpe(method.sig().output())
+                )
             }
-            
         }
         CILRoot::Pop { tree } => {
             format!("\t{ops};", ops = node_string(tree))
         }
         CILRoot::VoidRet => "return;".into(),
-        CILRoot::Throw(_) => format!("abort();"),
+        CILRoot::Throw(_) => "abort();".to_string(),
         CILRoot::ReThrow => todo!(),
-        CILRoot::CallI { sig, fn_ptr, args } => todo!(),
+        CILRoot::CallI { sig, fn_ptr, args } => todo!(
+            "Can't yet call function pointers in C. fn_ptr:{fn_ptr:?} sig:{sig:?} args:{args:?}"
+        ),
         CILRoot::JumpingPad { ops } => {
-            println!("WARNING: There should be no jumping pads in C, jet a jumping pad remains!");
+            println!("WARNING: There should be no jumping pads in C, jet a jumping pad remains! ops:{ops:?}");
             "/*Invalid jump pad was here*/abort();\n".into()
         }
         CILRoot::SetStaticField { descr, value } => {
@@ -542,23 +614,24 @@ fn c_tpe(tpe: &Type) -> Cow<'static, str> {
         Type::U8 => "uint8_t".into(),
         Type::Ptr(inner) => format!("{inner}*", inner = c_tpe(inner)).into(),
         Type::DotnetType(tref) => {
-            
             if let Some(asm) = tref.asm() {
-                match (asm,tref.name_path()){
-                    ("System.Runtime","System.UInt128") => return c_tpe(&Type::U128),
-                    ("System.Runtime","System.Int128") => return c_tpe(&Type::I128),
-                    _=>println!("Type {tref:?} is not supported in C"),
+                match (asm, tref.name_path()) {
+                    ("System.Runtime", "System.UInt128") => return c_tpe(&Type::U128),
+                    ("System.Runtime", "System.Int128") => return c_tpe(&Type::I128),
+                    _ => println!("Type {tref:?} is not supported in C"),
                 }
-                
             }
             // Ugly hack to deal with `c_void`
-            if tref.name_path().contains("c_void") && tref.name_path().contains("ffi") && tref.name_path().contains("core"){
+            if tref.name_path().contains("c_void")
+                && tref.name_path().contains("ffi")
+                && tref.name_path().contains("core")
+            {
                 return c_tpe(&Type::Void);
             }
-            tref.name_path().replace('.',"_").to_owned().into()
+            tref.name_path().replace('.', "_").to_owned().into()
         }
-        Type::DelegatePtr(sig)=>{
-            let mut input_iter = sig.inputs().iter().filter(|tpe|**tpe != Type::Void);
+        Type::DelegatePtr(sig) => {
+            let mut input_iter = sig.inputs().iter().filter(|tpe| **tpe != Type::Void);
             let mut inputs: String = "(".into();
             if let Some(input) = input_iter.next() {
                 inputs.push_str(&format!("{input}", input = c_tpe(input)));
@@ -567,7 +640,7 @@ fn c_tpe(tpe: &Type) -> Cow<'static, str> {
                 inputs.push_str(&format!(",{input} ", input = c_tpe(input)));
             }
             inputs.push(')');
-            format!("({output} (*){inputs})",output = c_tpe(sig.output())).into()
+            format!("({output} (*){inputs})", output = c_tpe(sig.output())).into()
         }
         _ => todo!("Unsuported type {tpe:?}"),
     }

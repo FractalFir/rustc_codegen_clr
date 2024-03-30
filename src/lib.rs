@@ -3,9 +3,11 @@
 #![allow(clippy::assertions_on_constants)]
 // Not a big issue.
 #![allow(clippy::module_name_repetitions)]
+//#![warn(missing_docs)]
+//#![warn(clippy::missing_docs_in_private_items)]
 
-#![warn(missing_docs)]
-#![warn(clippy::missing_docs_in_private_items)]
+//#![deny(dead_code)]
+
 //! Rustc Codegen CLR - an experimental rustc backend compiling Rust for .NET. This project aims to bring the speed and memory efficency of Rust to .NET.
 //!
 //! # Explaing the project
@@ -68,6 +70,7 @@ mod aggregate;
 pub mod assembly;
 /// Module containg ILASM-based exporter and code shared between all IL exporter.
 pub mod assembly_exporter;
+/// Moudle containing defintion of basic blocks and method operating on them.
 pub mod basic_block;
 /// Code handling binary operations
 mod binop;
@@ -79,6 +82,7 @@ mod casts;
 mod checked_binop;
 /// A representation of C# IL op.
 pub mod cil;
+/// A tree based representation of C# CIL.
 pub mod cil_tree;
 /// Runtime errors and utlity functions/macros related to them
 mod codegen_error;

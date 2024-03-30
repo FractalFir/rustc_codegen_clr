@@ -810,5 +810,4 @@ pub fn casts(asm: &mut Assembly) {
     cast_f64_i64(asm);
     // Int casts
     cast_i32_to_u64(asm);
-
 }

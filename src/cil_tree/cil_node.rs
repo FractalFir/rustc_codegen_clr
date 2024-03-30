@@ -33,36 +33,53 @@ pub enum CILNode {
     SizeOf(Box<Type>),
     /// Loads a i8 from a pointer
     LDIndI8 {
+        /// Address of the value
         ptr: Box<Self>,
     },
-  
+    /// Loads a i16 from a pointer
     LDIndI16 {
+        /// Address of the value
         ptr: Box<Self>,
     },
+    /// Loads a i32 from a pointer
     LDIndI32 {
+        /// Address of the value
         ptr: Box<Self>,
     },
+    /// Loads a i64 from a pointer
     LDIndI64 {
+        /// Address of the value
         ptr: Box<Self>,
     },
+    /// Loads a isize from a pointer
     LDIndISize {
+        /// Address of the value
         ptr: Box<Self>,
     },
+    /// Loads an object from a pointer
     LdObj {
+        /// Address of the value
         ptr: Box<Self>,
+        /// Type of the loaded value
         obj: Box<Type>,
     },
+    /// Loads a f32 from a pointer
     LDIndF32 {
+        /// Address of the value
         ptr: Box<Self>,
     },
+    /// Loads a f64 from a pointer
     LDIndF64 {
+        /// Address of the value
         ptr: Box<Self>,
     },
     LDFieldAdress {
+        /// Address of the object
         addr: Box<Self>,
         field: Box<FieldDescriptor>,
     },
     LDField {
+        /// Address of the object
         addr: Box<Self>,
         field: Box<FieldDescriptor>,
     },
@@ -164,7 +181,7 @@ impl CILNode {
                 ),
                 [a, b, predictate]
             ),
-            Type::U32 | Type::I32  => call!(
+            Type::U32 | Type::I32 => call!(
                 CallSite::new(
                     None,
                     "select_u32".into(),
@@ -173,7 +190,7 @@ impl CILNode {
                 ),
                 [a, b, predictate]
             ),
-            Type::U16 | Type::I16  => call!(
+            Type::U16 | Type::I16 => call!(
                 CallSite::new(
                     None,
                     "select_u16".into(),
@@ -213,7 +230,7 @@ impl CILNode {
             | CILNode::LdObj { ptr, .. }
             | CILNode::LDIndF32 { ptr }
             | CILNode::LDIndF64 { ptr } => ptr.opt(),
-            CILNode::LDFieldAdress { addr, field } | CILNode::LDField { addr, field } => addr.opt(),
+            CILNode::LDFieldAdress { addr, field: _ } | CILNode::LDField { addr, field: _ } => addr.opt(),
             CILNode::Add(a, b)
             | CILNode::And(a, b)
             | CILNode::Sub(a, b)
@@ -235,10 +252,10 @@ impl CILNode {
                 b.opt();
             }
 
-            CILNode::RawOpsParrentless { ops } => (),
-            CILNode::Call { args, site }
-            | CILNode::NewObj { site, args }
-            | CILNode::CallVirt { args, site } => args.iter_mut().for_each(|arg| arg.opt()),
+            CILNode::RawOpsParrentless { ops: _ } => (),
+            CILNode::Call { args, site: _ }
+            | CILNode::NewObj { site: _, args }
+            | CILNode::CallVirt { args, site: _ } => args.iter_mut().for_each(|arg| arg.opt()),
             CILNode::LdcI64(_)
             | CILNode::LdcU64(_)
             | CILNode::LdcI32(_)
@@ -259,7 +276,7 @@ impl CILNode {
             //| CILNode::Volatile(inner)
             | CILNode::Neg(inner)
             | CILNode::Not(inner) => inner.opt(),
-            CILNode::TemporaryLocal(inner) => (),
+            CILNode::TemporaryLocal(_inner) => (),
             CILNode::SubTrees(a, b) => {
                 a.iter_mut().for_each(|tree| tree.opt());
                 b.opt()
@@ -269,13 +286,16 @@ impl CILNode {
             CILNode::LDFtn(_) => (),
             CILNode::LDTypeToken(_) => (),
             CILNode::LdStr(_) => (),
-            CILNode::CallI { sig, fn_ptr, args } => {
+            CILNode::CallI { sig: _, fn_ptr, args } => {
                 args.iter_mut().for_each(|arg| arg.opt());
                 fn_ptr.opt();
             }
-            CILNode::LDStaticField(static_field) => (),
+            CILNode::LDStaticField(_static_field) => (),
         }
     }
+    // This fucntion will get expanded, so a single match is a non-issue.
+    #[allow(clippy::single_match)]
+    /// Optimizes this CILNode.
     pub fn opt(&mut self) {
         self.opt_children();
         match self {
@@ -296,7 +316,6 @@ impl CILNode {
                             addr: addr.clone(),
                             field: field.clone(),
                         }))
-                        .into()
                     }
                     _ => (),
                 },
@@ -505,7 +524,9 @@ impl CILNode {
             Self::LdcF32(val) => vec![CILOp::LdcF32(*val)],
             Self::LdStr(string) => vec![CILOp::LdStr(string.clone())],
             Self::LoadGlobalAllocPtr { alloc_id } => {
-                panic!("Unresolved global alloc  during the CIL flattening phase!")
+                panic!(
+                    "Unresolved global alloc with id:{alloc_id}  during the CIL flattening phase!"
+                )
             }
             Self::LDStaticField(sfield) => vec![CILOp::LDStaticField(sfield.clone())],
         };
@@ -537,8 +558,8 @@ impl CILNode {
             CILNode::LdObj { ptr, .. }|
             CILNode::LDIndF32 { ptr } |
             CILNode::LDIndF64 { ptr } => ptr.allocate_tmps(curr_loc, locals),
-            CILNode::LDFieldAdress { addr, field } |
-            CILNode::LDField { addr, field }=> addr.allocate_tmps(curr_loc, locals),
+            CILNode::LDFieldAdress { addr, field: _ } |
+            CILNode::LDField { addr, field: _ }=> addr.allocate_tmps(curr_loc, locals),
             CILNode::Add(a, b)
             | CILNode::And(a, b)
             | CILNode::Sub(a, b)
@@ -559,18 +580,18 @@ impl CILNode {
                 a.allocate_tmps(curr_loc, locals);
                 b.allocate_tmps(curr_loc, locals)
             }
-            CILNode::RawOpsParrentless { ops } => {
+            CILNode::RawOpsParrentless { ops: _ } => {
                 eprintln!("WARNING: allocate_tmps does not work for `RawOpsParrentless`")
             }
-            CILNode::Call { args, site } |
-            CILNode::CallVirt { args, site } =>args.iter_mut().for_each(|arg|arg.allocate_tmps(curr_loc, locals)),
+            CILNode::Call { args, site: _ } |
+            CILNode::CallVirt { args, site: _ } =>args.iter_mut().for_each(|arg|arg.allocate_tmps(curr_loc, locals)),
             CILNode::LdcI64(_) |
             CILNode::LdcU64(_) |
             CILNode::LdcI32(_)  |
             CILNode::LdcU32(_) |
             CILNode::LdcF64(_) |
             CILNode::LdcF32(_) =>(),
-            CILNode::LoadGlobalAllocPtr { alloc_id } => (),
+            CILNode::LoadGlobalAllocPtr { alloc_id: _ } => (),
             CILNode::ConvF64Un(val) |
             CILNode::ConvF32(val)|
             CILNode::ConvF64(val) |
@@ -606,13 +627,15 @@ impl CILNode {
             CILNode::LoadTMPLocal =>*self = CILNode::LDLoc(curr_loc.expect("Temporary local referenced when none present")),
             CILNode::LDFtn(_) => (),
             CILNode::LDTypeToken(_) =>(),
-            CILNode::NewObj { site, args } => args.iter_mut().for_each(|arg|arg.allocate_tmps(curr_loc, locals)),
+            CILNode::NewObj { site: _, args } => args.iter_mut().for_each(|arg|arg.allocate_tmps(curr_loc, locals)),
             CILNode::LdStr(_) => (),
-            CILNode::CallI { sig, fn_ptr, args } => todo!(),
-            Self::LDStaticField(sfield)=>(),
+            CILNode::CallI { sig: _, fn_ptr, args } => {
+               fn_ptr.allocate_tmps(curr_loc, locals);
+                args.iter_mut().for_each(|arg|arg.allocate_tmps(curr_loc, locals))
+            }
+            CILNode::LDStaticField(_sfield)=>(),
         };
     }
-
     pub(crate) fn resolve_global_allocations(
         &mut self,
         asm: &mut crate::assembly::Assembly,
@@ -633,8 +656,8 @@ impl CILNode {
             CILNode::LdObj { ptr, .. }|
             CILNode::LDIndF32 { ptr } |
             CILNode::LDIndF64 { ptr } => ptr.resolve_global_allocations(asm,tyctx),
-            CILNode::LDFieldAdress { addr, field }|
-            CILNode::LDField { addr, field } => addr.resolve_global_allocations(asm,tyctx),
+            CILNode::LDFieldAdress { addr, field: _ }|
+            CILNode::LDField { addr, field: _ } => addr.resolve_global_allocations(asm,tyctx),
             CILNode::Add(a, b)
             | CILNode::And(a, b)
             | CILNode::Sub(a, b)
@@ -655,11 +678,11 @@ impl CILNode {
                 a.resolve_global_allocations(asm,tyctx);
                 b.resolve_global_allocations(asm,tyctx)
             }
-            CILNode::RawOpsParrentless { ops } => {
+            CILNode::RawOpsParrentless { ops: _ } => {
                 eprintln!("WARNING: resolve_global_allocations does not work for `RawOpsParrentless`")
             }
-            CILNode::Call { args, site } |
-            CILNode::CallVirt { args, site } =>args.iter_mut().for_each(|arg|arg.resolve_global_allocations(asm,tyctx)),
+            CILNode::Call { args, site: _ } |
+            CILNode::CallVirt { args, site: _ } =>args.iter_mut().for_each(|arg|arg.resolve_global_allocations(asm,tyctx)),
             CILNode::LdcI64(_) |
             CILNode::LdcU64(_) |
             CILNode::LdcI32(_)  |
@@ -687,8 +710,6 @@ impl CILNode {
             CILNode::Not(val) =>val.resolve_global_allocations(asm,tyctx),
 
             CILNode::TemporaryLocal(tmp_loc) => {
-                let tpe = &mut tmp_loc.0;
-                let roots = &mut tmp_loc.1;
                 tmp_loc.1.iter_mut().for_each(|tree|tree.resolve_global_allocations(asm,tyctx));
                 tmp_loc.2.resolve_global_allocations(asm,tyctx);
             },
@@ -700,15 +721,17 @@ impl CILNode {
             CILNode::LoadTMPLocal => (),
             CILNode::LDFtn(_) => (),
             CILNode::LDTypeToken(_) => (),
-            CILNode::NewObj { site, args } => args.iter_mut().for_each(|arg|arg.resolve_global_allocations(asm,tyctx)),
+            CILNode::NewObj { site: _, args } => args.iter_mut().for_each(|arg|arg.resolve_global_allocations(asm,tyctx)),
             CILNode::LdStr(_) => (),
-            CILNode::CallI { sig, fn_ptr, args } => todo!(),
-            Self::LDStaticField(sfield)=>(),
+            CILNode::CallI { sig: _, fn_ptr, args } => {
+                fn_ptr.resolve_global_allocations(asm, tyctx);
+                args.iter_mut().for_each(|arg|arg.resolve_global_allocations(asm,tyctx));
+            }
+            Self::LDStaticField(_sfield)=>(),
         }
     }
 
     pub(crate) fn sheed_trees(&mut self) -> Vec<CILRoot> {
-       
         match self {
             CILNode::LDLoc(_) | CILNode::LDArg(_) | CILNode::LDLocA(_) | CILNode::LDArgA(_) => {
                 vec![]
@@ -727,7 +750,7 @@ impl CILNode {
             | CILNode::LdObj { ptr, .. }
             | CILNode::LDIndF32 { ptr }
             | CILNode::LDIndF64 { ptr } => ptr.sheed_trees(),
-            CILNode::LDFieldAdress { addr, field } | CILNode::LDField { addr, field } => {
+            CILNode::LDFieldAdress { addr, field: _ } | CILNode::LDField { addr, field: _ } => {
                 addr.sheed_trees()
             }
             CILNode::Add(a, b)
@@ -746,8 +769,8 @@ impl CILNode {
                 res.extend(b.sheed_trees());
                 res
             }
-            CILNode::RawOpsParrentless { ops } => vec![],
-            CILNode::Call { args, site } | CILNode::CallVirt { args, site } => {
+            CILNode::RawOpsParrentless { ops: _ } => vec![],
+            CILNode::Call { args, site: _ } | CILNode::CallVirt { args, site: _ } => {
                 args.iter_mut().flat_map(|arg| arg.sheed_trees()).collect()
             }
             CILNode::LdcI64(_)
@@ -756,7 +779,7 @@ impl CILNode {
             | CILNode::LdcU32(_)
             | CILNode::LdcF64(_)
             | CILNode::LdcF32(_) => vec![],
-            CILNode::LoadGlobalAllocPtr { alloc_id } => vec![],
+            CILNode::LoadGlobalAllocPtr { alloc_id: _ } => vec![],
             CILNode::ConvU8(val)
             | CILNode::ConvU16(val)
             | CILNode::ConvU32(val)
@@ -781,7 +804,7 @@ impl CILNode {
                 panic!("Trees should be sheed after locals are allocated!")
             }
             CILNode::SubTrees(trees, main) => {
-                let clone =  *main.clone();
+                let clone = *main.clone();
                 let res = trees.to_vec();
                 *self = clone;
                 res
@@ -791,11 +814,19 @@ impl CILNode {
             }
             CILNode::LoadTMPLocal => panic!("Trees should be sheed after locals are allocated!"),
             CILNode::LDFtn(_) | CILNode::LDTypeToken(_) => vec![],
-            CILNode::NewObj { site, args } => {
+            CILNode::NewObj { site: _, args } => {
                 args.iter_mut().flat_map(|arg| arg.sheed_trees()).collect()
             }
             CILNode::LdStr(_) => vec![],
-            CILNode::CallI { sig, fn_ptr, args } => todo!(),
+            CILNode::CallI {
+                sig: _,
+                fn_ptr,
+                args,
+            } => {
+                let mut res = fn_ptr.sheed_trees();
+                res.extend(args.iter_mut().flat_map(|arg| arg.sheed_trees()));
+                res
+            }
         }
     }
 }
@@ -1006,12 +1037,14 @@ macro_rules! conv_u8 {
         CILNode::ConvU8($a.into())
     };
 }
+
 #[macro_export]
 macro_rules! conv_f32 {
     ($a:expr) => {
         CILNode::ConvF32($a.into())
     };
 }
+
 #[macro_export]
 macro_rules! conv_f64 {
     ($a:expr) => {
@@ -1024,25 +1057,28 @@ macro_rules! conv_f64_un {
         CILNode::ConvF64Un($a.into())
     };
 }
-
+/// Loads a value of type `i32`.
 #[macro_export]
 macro_rules! ldc_i32 {
     ($val:expr) => {
         $crate::cil_tree::cil_node::CILNode::LdcI32($val)
     };
 }
+/// Loads a value of type `i64`.
 #[macro_export]
 macro_rules! ldc_i64 {
     ($val:expr) => {
         CILNode::LdcI64($val)
     };
 }
+/// Loads a value of type `u32`.
 #[macro_export]
 macro_rules! ldc_u32 {
     ($val:expr) => {
         CILNode::LdcU32($val)
     };
 }
+/// Loads a value of type `u64`.
 #[macro_export]
 macro_rules! ldc_u64 {
     ($val:expr) => {

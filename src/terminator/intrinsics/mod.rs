@@ -274,11 +274,11 @@ pub fn handle_intrinsic<'tyctx>(
                 type_cache,
             )
         }
-        "compare_bytes"=>{
+        "compare_bytes" => {
             /*let arg0 = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
             let arg1 = handle_operand(&args[1].node, tyctx, body, method_instance, type_cache);
             let arg2 = handle_operand(&args[2].node, tyctx, body, method_instance, type_cache);
-         
+
             */
             todo!("Can't use `memcmp` yet!");
         }
@@ -778,19 +778,31 @@ pub fn handle_intrinsic<'tyctx>(
             place_set(destination, tyctx, ops, body, method_instance, type_cache)
         }
         "abort" => CILRoot::throw("Called abort!"),
-        _ => intrinsic_slow(fn_name, args, destination, tyctx, body, method_instance, call_instance, type_cache, signature),
+        _ => intrinsic_slow(
+            fn_name,
+            args,
+            destination,
+            tyctx,
+            body,
+            method_instance,
+            call_instance,
+            type_cache,
+            signature,
+        ),
     }
 }
-fn intrinsic_slow<'tyctx>(  fn_name: &str,
+fn intrinsic_slow<'tyctx>(
+    fn_name: &str,
     args: &[Spanned<Operand<'tyctx>>],
     destination: &Place<'tyctx>,
     tyctx: TyCtxt<'tyctx>,
     body: &'tyctx Body<'tyctx>,
     method_instance: Instance<'tyctx>,
-    call_instance: Instance<'tyctx>,
+    _call_instance: Instance<'tyctx>,
     type_cache: &mut TyCache,
-    signature: FnSig,)-> CILRoot{
-    if fn_name.contains("likely"){
+    _signature: FnSig,
+) -> CILRoot {
+    if fn_name.contains("likely") {
         debug_assert_eq!(
             args.len(),
             1,
@@ -805,9 +817,7 @@ fn intrinsic_slow<'tyctx>(  fn_name: &str,
             method_instance,
             type_cache,
         )
-    }
-    else{
+    } else {
         todo!("Unhandled intrinsic {fn_name}.")
     }
 }
-

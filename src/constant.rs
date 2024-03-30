@@ -97,17 +97,17 @@ fn load_const_value<'ctx>(
             let alloc_id: u64 = crate::utilis::alloc_id_to_u64(alloc_id);
 
             CILNode::TemporaryLocal(Box::new((
-                slice_type.into(),
+                slice_type,
                 [
                     CILRoot::SetField {
                         addr: CILNode::LoadAddresOfTMPLocal,
-                        value: conv_usize!(ldc_u64!(meta as u64)),
-                        desc: metadata_field.into(),
+                        value: conv_usize!(ldc_u64!(meta)),
+                        desc: metadata_field,
                     },
                     CILRoot::SetField {
                         addr: CILNode::LoadAddresOfTMPLocal,
                         value: CILNode::LoadGlobalAllocPtr { alloc_id },
-                        desc: ptr_field.into(),
+                        desc: ptr_field,
                     },
                 ]
                 .into(),
@@ -155,19 +155,6 @@ fn load_const_scalar<'ctx>(
                     if name == "__rust_alloc_error_handler_should_panic"
                         || name == "__rust_no_alloc_shim_is_unstable"
                     {
-                        /*
-                        return CILNode::RawOpsParrentless {
-                            ops: [
-                                CILOp::LDStaticField(
-                                    ,
-                                ),
-                                CILOp::NewTMPLocal(Type::U8.into()),
-                                CILOp::SetTMPLocal,
-                                CILOp::LoadAddresOfTMPLocal,
-                                CILOp::ConvUSize(false),
-                                CILOp::FreeTMPLocal,
-                            ]
-                            .into(),};*/
                         return CILNode::TemporaryLocal(Box::new((
                             Type::U8,
                             [CILRoot::SetTMPLocal {
@@ -181,7 +168,6 @@ fn load_const_scalar<'ctx>(
                         )));
                     }
                     if name == "environ" {
-                        
                         return CILNode::TemporaryLocal(Box::new((
                             Type::U8,
                             [CILRoot::SetTMPLocal {
@@ -235,7 +221,7 @@ fn load_const_scalar<'ctx>(
         TyKind::Uint(uint_type) => load_const_uint(scalar_u128, uint_type),
         TyKind::Float(ftype) => load_const_float(scalar_u128, ftype, tyctx),
         TyKind::Bool => CILNode::LdcI32(scalar_u128 as i32),
-        TyKind::RawPtr(_,_) => CILNode::ConvUSize(CILNode::LdcU64(scalar_u128 as u64).into()),
+        TyKind::RawPtr(_, _) => CILNode::ConvUSize(CILNode::LdcU64(scalar_u128 as u64).into()),
         TyKind::Tuple(elements) => {
             if elements.is_empty() {
                 CILNode::TemporaryLocal(Box::new((
@@ -289,7 +275,7 @@ fn load_const_scalar<'ctx>(
                 let enum_dotnet = tpe.as_dotnet().expect("Enum scalar not an ADT!");
 
                 CILNode::TemporaryLocal(Box::new((
-                    tpe.into(),
+                    tpe,
                     [CILRoot::SetField {
                         addr: CILNode::LoadAddresOfTMPLocal,
                         value: crate::casts::int_to_int(

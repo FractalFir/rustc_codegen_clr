@@ -72,7 +72,7 @@ pub(crate) fn binop_unchecked<'tyctx>(
         BinOp::Ge => eq!(lt_unchecked(ty_a, ops_a, ops_b), ldc_i32!(0)),
         BinOp::Le => eq!(gt_unchecked(ty_a, ops_a, ops_b), ldc_i32!(0)),
         BinOp::Offset => {
-            let pointed_ty = if let TyKind::RawPtr(inner,_) = ty_a.kind() {
+            let pointed_ty = if let TyKind::RawPtr(inner, _) = ty_a.kind() {
                 *inner
             } else {
                 todo!("Can't offset pointer of type {ty_a:?}");

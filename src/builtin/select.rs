@@ -3,13 +3,11 @@ use crate::{
     assembly::Assembly,
     basic_block::BasicBlock,
     cil_tree::{cil_node::CILNode, cil_root::CILRoot},
-    conv_i16, conv_i32, conv_i64, conv_i8, conv_u16, conv_u32, conv_u64, conv_u8, gt, ldc_i32,
-    ldc_i64, ldc_u32, ldc_u64, lt, or,
     r#type::Type,
 };
 
-macro_rules! select{
-    ($tpe:ident, $name:ident)=>{
+macro_rules! select {
+    ($tpe:ident, $name:ident) => {
         add_method_from_trees!(
             $name,
             &[Type::$tpe, Type::$tpe, Type::Bool],
@@ -41,14 +39,14 @@ macro_rules! select{
                 ),
             ]
         );
-    }
+    };
 }
-select!(U128,select_u128);
-select!(USize,select_usize);
-select!(U64,select_u64);
-select!(U32,select_u32);
-select!(U16,select_u16);
-select!(U8,select_u8);
+select!(U128, select_u128);
+select!(USize, select_usize);
+select!(U64, select_u64);
+select!(U32, select_u32);
+select!(U16, select_u16);
+select!(U8, select_u8);
 pub fn selects(asm: &mut Assembly) {
     select_u128(asm);
     select_usize(asm);

@@ -241,25 +241,6 @@ pub enum CILOp {
     Leave(u32),
 }
 impl CILOp {
-    /*
-    /// If this op is a branch operation, and its target is `original`, replaces the target with `replacement`
-    pub fn replace_target(&mut self, orignal: u32, replacement: u32) {
-        match self {
-            CILOp::GoTo(target,))
-            | CILOp::BEq(target)
-            | CILOp::BNe(target)
-            | CILOp::BLt(target)
-            | CILOp::BGe(target)
-            | CILOp::BLe(target)
-            | CILOp::BZero(target)
-            | CILOp::BTrue(target) => {
-                if orignal == *target {
-                    *target = replacement
-                }
-            }
-            _ => (),
-        }
-    } */
     /// If the cil op is a call, virtual call, new object cosntructor OR it loads a pointer to a function, returns the [`CallSite`] representing this function.
     pub fn call(&self) -> Option<&CallSite> {
         match self {
@@ -276,7 +257,7 @@ impl CILOp {
         class.set_valuetype(false);
         let name = ".ctor".into();
         let signature = FnSig::new(
-            &[class.clone().into(), crate::utilis::string_class().into()],
+            &[class.clone().into(), DotnetTypeRef::string_type().into()],
             &crate::r#type::Type::Void,
         );
         [
@@ -292,7 +273,7 @@ impl CILOp {
         class.set_valuetype(false);
         let name = "WriteLine".into();
         let signature = FnSig::new(
-            &[crate::utilis::string_class().into()],
+            &[DotnetTypeRef::string_type().into()],
             &crate::r#type::Type::Void,
         );
         [
@@ -317,7 +298,7 @@ impl CILOp {
         class.set_valuetype(false);
         let name = "Write".into();
         let signature = FnSig::new(
-            &[crate::utilis::string_class().into()],
+            &[DotnetTypeRef::string_type().into()],
             &crate::r#type::Type::Void,
         );
         [
@@ -479,68 +460,4 @@ impl CILOp {
             CILOp::Volatile => 0,
         }
     }
-    /*
-    /// Flips a conditional, changing the order of its arguments. Eg. BLt(a,b) [a < b] becomes BGt(b,a) [b > a].
-    // There may be a bug there.
-    pub fn flip_cond(&self) -> Self {
-        match self{
-                CILOp::BGe(target) =>
-                    CILOp::BLe(*target),
-                CILOp::BLe(target) =>
-                    CILOp::BGe(*target),
-                CILOp::BEq(target)=>CILOp::BEq(*target),
-                CILOp::Eq=>CILOp::Eq,
-                CILOp::BNe(target)=>CILOp::BNe(*target),
-                _=>todo!("Can't filp conditional operation {self:?}, either because it is not a conditional(bug) or it is not supported yet!"),
-            }
-    } */
 }
-
-/*
-#[test]
-fn test_tmp_locals() {
-    use crate::method::Method;
-    use crate::r#type::Type;
-    let mut method = Method::new_empty(
-        crate::access_modifier::AccessModifer::Public,
-        MethodType::Static,
-        FnSig::new(&[], &Type::U32),
-        "meth",
-        vec![],
-    );
-    let ops = vec![
-        CILOp::NewTMPLocal(Type::U32.into()),
-        CILOp::LdcI32(8),
-        CILOp::SetTMPLocal,
-        CILOp::LdcI32(7),
-        CILOp::LoadTMPLocal,
-        CILOp::FreeTMPLocal,
-        CILOp::Ret,
-    ];
-    method.set_ops(ops);
-    let mut expected_method = Method::new_empty(
-        crate::access_modifier::AccessModifer::Public,
-        MethodType::Static,
-        FnSig::new(&[], &Type::U32),
-        "meth",
-        vec![(None, Type::U32)],
-    );
-    let expected_ops = vec![
-        CILOp::LdcI32(8),
-        CILOp::STLoc(0),
-        CILOp::LdcI32(7),
-        CILOp::LDLoc(0),
-        CILOp::Ret,
-    ];
-    expected_method.set_ops(expected_ops);
-    assert_ne!(
-        method, expected_method,
-        "The methods are different at first."
-    );
-    method.allocate_temporaries();
-    assert_ne!(
-        method, expected_method,
-        "Methods match after temporary allocation."
-    );
-}
- */

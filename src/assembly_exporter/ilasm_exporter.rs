@@ -79,7 +79,11 @@ impl AssemblyExporter for ILASMExporter {
         let config = final_path.with_extension("runtimeconfig.json");
         let mut config = std::fs::File::create(config).unwrap();
         config
-            .write_all(crate::compile_test::runtime_config().as_bytes())
+            .write_all(
+                crate::compile_test::get_runtime_config()
+                    .to_string()
+                    .as_bytes(),
+            )
             .expect("Could not write runtime config");
 
         let mut cil = self.encoded_asm;
@@ -257,12 +261,7 @@ fn method_cil(w: &mut impl Write, method: &Method) -> std::io::Result<()> {
         "\n\t)\n.maxstack {maxstack}\n",
         maxstack = method.maxstack()
     )?;
-    for op in method
-        .blocks()
-        .iter()
-        .map(|block| block.into_ops())
-        .flatten()
-    {
+    for op in method.blocks().iter().flat_map(|block| block.into_ops()) {
         writeln!(w, "\t{op_cli}", op_cli = super::ilasm_op::op_cli(&op))?;
     }
     writeln!(w, "}}")

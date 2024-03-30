@@ -1,8 +1,8 @@
 // FIXME: This file may contain unnecesary morphize calls.
 use crate::cil_tree::cil_node::CILNode;
 use crate::cil_tree::cil_root::CILRoot;
-use crate::{conv_usize, ldc_u64};
 use crate::r#type::{pointer_to_is_fat, DotnetTypeRef};
+use crate::{conv_usize, ldc_u64};
 
 use rustc_middle::mir::Place;
 
@@ -13,7 +13,7 @@ mod set;
 pub use adress::*;
 pub use body::*;
 pub use get::*;
-use rustc_middle::ty::{FloatTy, Instance, IntTy, Ty, TyCtxt, TyKind, UintTy,ParamEnv};
+use rustc_middle::ty::{FloatTy, Instance, IntTy, ParamEnv, Ty, TyCtxt, TyKind, UintTy};
 pub use set::*;
 fn slice_head<T>(slice: &[T]) -> (&T, &[T]) {
     assert!(!slice.is_empty());
@@ -24,8 +24,8 @@ fn pointed_type(ty: PlaceTy) -> Ty {
     if let PlaceTy::Ty(ty) = ty {
         if let TyKind::Ref(_region, inner, _mut) = ty.kind() {
             *inner
-        } else if let TyKind::RawPtr(ty,_) = ty.kind() {
-           *ty
+        } else if let TyKind::RawPtr(ty, _) = ty.kind() {
+            *ty
         } else {
             panic!("{ty:?} is not a pointer type!");
         }
@@ -47,7 +47,7 @@ fn body_ty_is_by_adress(last_ty: Ty) -> bool {
         | TyKind::Float(_)
         | TyKind::Uint(_)
         | TyKind::Ref(_, _, _)
-        | TyKind::RawPtr(_,_)
+        | TyKind::RawPtr(_, _)
         | TyKind::Bool
         | TyKind::Char => false,
 
@@ -125,7 +125,7 @@ pub fn deref_op<'ctx>(
                     CILNode::LDIndISize { ptr }
                 }
             }
-            TyKind::RawPtr(typ,muta) => {
+            TyKind::RawPtr(typ, _) => {
                 if pointer_to_is_fat(*typ, tyctx, Some(*method_instance)) {
                     CILNode::LdObj {
                         ptr,
@@ -188,7 +188,7 @@ pub fn place_adress<'a>(
             value: place_ty,
         })
         .expect("Could not get type layout!");
-    if layout.is_zst(){
+    if layout.is_zst() {
         return conv_usize!(ldc_u64!(layout.align.pref.bytes()));
     }
     if place.projection.is_empty() {

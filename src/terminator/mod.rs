@@ -240,13 +240,15 @@ pub fn handle_terminator<'ctx>(
             options: _,
             line_spans: _,
 
-            unwind: _, targets } => {
+            unwind: _,
+            targets: _,
+        } => {
             eprintln!("Inline assembly is not yet supported!");
             CILRoot::throw("Inline assembly is not yet supported!").into()
         }
         _ => todo!("Unhandled terminator kind {kind:?}", kind = terminator.kind),
     };
-    let last = res.last().unwrap().tree();
+    let last = res.last().unwrap().root();
     assert!(
         matches!(
             last,

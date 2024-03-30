@@ -12,6 +12,7 @@ use rustc_middle::{
 };
 use serde::{Deserialize, Serialize};
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
+/// A block of ops that is a valid jump target, and is protected by an exception handler.
 pub struct BasicBlock {
     trees: Vec<CILTree>,
     id: u32,
@@ -33,7 +34,7 @@ impl Handler {
     }
 }
 
-pub fn handler_for_block<'tyctx>(
+pub(crate) fn handler_for_block<'tyctx>(
     block_data: &BasicBlockData,
     blocks: &BasicBlocks<'tyctx>,
     tyctx: TyCtxt<'tyctx>,
@@ -119,7 +120,8 @@ fn simplify_handler<'tyctx>(
         TerminatorKind::UnwindTerminate(_) => Some(handler),
     }
 }
-pub fn handler_from_action(action: &UnwindAction) -> Option<u32> {
+/// Convert an `UnwindAction` into an id of the block this will jump into during an exception.
+pub(crate) fn handler_from_action(action: &UnwindAction) -> Option<u32> {
     match action {
         UnwindAction::Continue => None,
         UnwindAction::Cleanup(handler) => Some(handler.as_u32()),
@@ -165,6 +167,7 @@ fn block_gc(entrypoint: u32, bbs: &[BasicBlock]) -> Vec<BasicBlock> {
         .collect()
 }
 impl BasicBlock {
+    /// Converts all trees containing sub-trees into multiple trees.
     pub fn sheed_trees(&mut self) {
         self.trees = self
             .trees
@@ -180,7 +183,7 @@ impl BasicBlock {
                 .for_each(|bb| bb.sheed_trees());
         }
     }
-    pub fn resolve_exception_handlers(&mut self, handler_bbs: &[BasicBlock]) {
+    pub(crate) fn resolve_exception_handlers(&mut self, handler_bbs: &[BasicBlock]) {
         let handler = if let Some(handler) = &self.handler {
             handler
         } else {
@@ -230,9 +233,11 @@ impl BasicBlock {
             .for_each(|tree| tree.fix_for_exception_handler(id));
         self.handler = Some(Handler::Blocks(handler));
     }
+    /// Creates a new basic block with id `id`, made up from `trees` and with exception handler `handler`.
     pub fn new(trees: Vec<CILTree>, id: u32, handler: Option<Handler>) -> Self {
         Self { trees, id, handler }
     }
+    /// Returns a list of basic blocks this baisc block targets.
     pub fn targets(&self) -> Vec<(u32, u32)> {
         let mut targets = Vec::new();
         self.trees
@@ -240,7 +245,7 @@ impl BasicBlock {
             .for_each(|tree| tree.targets(&mut targets));
         targets
     }
-    pub fn flatten_inner(&self, id: u32, sub_id: u32) -> Vec<CILOp> {
+    fn flatten_inner(&self, id: u32, sub_id: u32) -> Vec<CILOp> {
         let mut ops = vec![CILOp::Label(id, sub_id)];
         if let Some(_) = self.handler {
             ops.push(CILOp::BeginTry);
@@ -261,18 +266,19 @@ impl BasicBlock {
         }
         ops
     }
+    /// Converts this basic block into a list of ops.
     pub fn into_ops(&self) -> Vec<CILOp> {
         self.flatten_inner(self.id(), 0)
     }
-
+    /// Returns the id of this block.
     pub fn id(&self) -> u32 {
         self.id
     }
-
+    /// Returns a mutable reference to the trees that make up this block.
     pub fn trees_mut(&mut self) -> &mut Vec<CILTree> {
         &mut self.trees
     }
-
+    /// Returns a reference to the trees that make up this block.
     pub fn trees(&self) -> &[CILTree] {
         &self.trees
     }

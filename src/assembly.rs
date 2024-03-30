@@ -309,7 +309,6 @@ impl Assembly {
                         rustc_middle::ty::print::with_no_trimmed_paths! {Some(CILRoot::throw(&format!("Tired to run a statement {statement:?} which failed to compile with error message {err:?}.")).into())}
                     }
                 });
-                
 
                 //crate::utilis::check_debugable(&statement_ops, statement, does_return_void);
                 //ops.extend(statement_ops);
@@ -354,16 +353,6 @@ impl Assembly {
             normal_bbs,
         );
         method.resolve_global_allocations(self, tyctx);
-        /*
-        method.ops_mut().iter_mut().for_each(|op| match op {
-            CILOp::LoadGlobalAllocPtr { alloc_id } => {
-                *op = CILOp::LDStaticField(self.add_allocation(*alloc_id, tcx).into());
-            }
-            _ => (),
-        });*/
-        let does_return_void: bool = *method.sig().output() == Type::Void;
-        // Do some basic checks on the method as a whole.
-        //crate::utilis::check_debugable(method.get_ops(), &method, does_return_void);
 
         //println!("Compiled method {name}");
 
@@ -375,29 +364,28 @@ impl Assembly {
     pub fn add_static(&mut self, tpe: Type, name: &str) {
         self.static_fields.insert(name.into(), tpe);
     }
-    fn add_cctor(&mut self)->&mut Method{
-        self
-        .functions
-        .entry(CallSite::new(
-            None,
-            ".cctor".into(),
-            FnSig::new(&[], &Type::Void),
-            true,
-        ))
-        .or_insert_with(|| {
-            Method::new(
-                AccessModifer::Public,
-                MethodType::Static,
+    fn add_cctor(&mut self) -> &mut Method {
+        self.functions
+            .entry(CallSite::new(
+                None,
+                ".cctor".into(),
                 FnSig::new(&[], &Type::Void),
-                ".cctor",
-                vec![
-                    (None, Type::Ptr(Type::U8.into())),
-                    (None, Type::Ptr(Type::U8.into())),
-                ],
-                vec![BasicBlock::new(vec![CILRoot::VoidRet.into()], 0, None)],
-            )
-        })
-    } 
+                true,
+            ))
+            .or_insert_with(|| {
+                Method::new(
+                    AccessModifer::Public,
+                    MethodType::Static,
+                    FnSig::new(&[], &Type::Void),
+                    ".cctor",
+                    vec![
+                        (None, Type::Ptr(Type::U8.into())),
+                        (None, Type::Ptr(Type::U8.into())),
+                    ],
+                    vec![BasicBlock::new(vec![CILRoot::VoidRet.into()], 0, None)],
+                )
+            })
+    }
     /// Adds a static field and initialized for allocation represented by `alloc_id`.
     pub fn add_allocation(
         &mut self,
@@ -798,7 +786,7 @@ fn allocation_initializer_method(
             let offset = ptr.0.bytes_usize() as u32;
             trees.push(
                 CILRoot::STIndISize(
-                    add!(CILNode::LDLoc(1), conv_usize!(ldc_u32!(offset as u32))),
+                    add!(CILNode::LDLoc(1), conv_usize!(ldc_u32!(offset))),
                     CILNode::LDStaticField(ptr_alloc.into()),
                 )
                 .into(),
@@ -812,7 +800,8 @@ fn allocation_initializer_method(
         }
         .into(),
     );
-    let method = Method::new(
+
+    Method::new(
         AccessModifer::Private,
         MethodType::Static,
         FnSig::new(&[], &Type::Ptr(Type::U8.into())),
@@ -822,7 +811,5 @@ fn allocation_initializer_method(
             (Some("alloc_ptr".into()), Type::Ptr(Type::U8.into())),
         ],
         vec![BasicBlock::new(trees, 0, None)],
-    );
-
-    method
+    )
 }

@@ -10,7 +10,7 @@ pub fn is_function_magic(name: &str) -> bool {
     name.contains(CTOR_FN_NAME) || name.contains(MANAGED_CALL_FN_NAME)
 }
 
-use crate::{cil::FieldDescriptor, r#type::DotnetTypeRef, r#type::TyCache, IString};
+use crate::{cil::FieldDescriptor, r#type::TyCache, IString};
 pub mod adt;
 pub fn as_adt(ty: Ty) -> Option<(AdtDef, &List<GenericArg>)> {
     match ty.kind() {
@@ -210,8 +210,8 @@ pub fn try_resolve_const_size(size: Const) -> Result<usize, &'static str> {
     let value = scalar.to_u64().expect("Could not convert scalar to u64!");
     Ok(usize::try_from(value).expect("Const size value too big."))
 }
-fn dummy_span_propably_unsafe()->rustc_span::Span{
-    let res = rustc_span::Span::with_root_ctxt( rustc_span::BytePos(0), rustc_span::BytePos(0));
+fn dummy_span_propably_unsafe() -> rustc_span::Span {
+    let res = rustc_span::Span::with_root_ctxt(rustc_span::BytePos(0), rustc_span::BytePos(0));
     assert!(res.is_dummy());
     res
 }
@@ -293,19 +293,7 @@ macro_rules! assert_morphic {
         );
     };
 }
-/// Returns a [`DotnetTypeRef`] describing the string class.
-pub fn string_class() -> DotnetTypeRef {
-    let mut string = DotnetTypeRef::new(Some("System.Runtime"), "System.String");
-    string.set_valuetype(false);
-    string
-}
-/// Returns a [`DotnetTypeRef`] describing the usize class.
-pub fn usize_class() -> DotnetTypeRef {
-    let mut string = DotnetTypeRef::new(Some("System.Runtime"), "System.UIntPtr");
-    //TODO: Inwestigate this. The valuetype prefix seems to be missing from UIntPtr in compiled C# code
-    string.set_valuetype(false);
-    string
-}
+
 /// Translated MIR statements should have the total stack diff of 0.
 pub fn check_debugable(
     ops: &[crate::cil::CILOp],
@@ -352,13 +340,11 @@ pub(crate) fn alloc_id_to_u64(alloc_id: AllocId) -> u64 {
     unsafe { std::mem::transmute(alloc_id) }
 }
 pub fn is_fn_intrinsic<'tyctx>(fn_ty: Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -> bool {
-
-   match fn_ty.kind() {
-        TyKind::FnDef(did, _) => tyctx.is_intrinsic(*did,tyctx. item_name(*did)),
-        TyKind::Closure(_, args) => false,
+    match fn_ty.kind() {
+        TyKind::FnDef(did, _) => tyctx.is_intrinsic(*did, tyctx.item_name(*did)),
+        TyKind::Closure(_, _) => false,
         _ => todo!("Can't get signature of {fn_ty}"),
     }
-   
 }
 pub fn align_of<'tcx>(ty: rustc_middle::ty::Ty<'tcx>, tyctx: TyCtxt<'tcx>) -> u64 {
     let layout = tyctx

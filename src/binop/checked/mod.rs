@@ -1,10 +1,11 @@
 use crate::cil::{CallSite, FieldDescriptor};
 use crate::function_sig::FnSig;
 use crate::r#type::{DotnetTypeRef, Type};
-use crate::{
-    call, cil_tree::cil_node::CILNode, cil_tree::cil_root::CILRoot, conv_usize, r#type::TyCache, size_of,
-};
 use crate::{and, conv_isize, ldc_u32, or};
+use crate::{
+    call, cil_tree::cil_node::CILNode, cil_tree::cil_root::CILRoot, conv_usize, r#type::TyCache,
+    size_of,
+};
 use rustc_middle::mir::{BinOp, Operand};
 use rustc_middle::ty::{Instance, IntTy, Ty, TyCtxt, TyKind, UintTy};
 
@@ -45,8 +46,7 @@ pub fn result_tuple<'tyctx>(tpe: Type, out_of_range: CILNode, val: CILNode) -> C
                 addr: CILNode::LoadAddresOfTMPLocal,
                 value: out_of_range,
                 desc: FieldDescriptor::new(tuple.clone(), Type::Bool, "Item2".into()),
-            }
-            .into(),
+            },
             CILRoot::SetField {
                 addr: CILNode::LoadAddresOfTMPLocal,
                 value: val,
@@ -66,8 +66,24 @@ fn zero(ty: Ty) -> CILNode {
         TyKind::Int(IntTy::I64) => crate::ldc_i64!(0),
         TyKind::Uint(UintTy::Usize) => conv_usize!(size_of!(Type::USize)),
         TyKind::Int(IntTy::Isize) => conv_isize!(size_of!(Type::USize)),
-        TyKind::Uint(UintTy::U128) => call!(CallSite::new(Some(DotnetTypeRef::uint_128()),"op_Implicit".into(),FnSig::new(&[Type::U32],&Type::U128),true),[ldc_u32!(0)]), 
-        TyKind::Int(IntTy::I128) => call!(CallSite::new(Some(DotnetTypeRef::int_128()),"op_Implicit".into(),FnSig::new(&[Type::I32],&Type::I128),true),[ldc_u32!(0)]), 
+        TyKind::Uint(UintTy::U128) => call!(
+            CallSite::new(
+                Some(DotnetTypeRef::uint_128()),
+                "op_Implicit".into(),
+                FnSig::new(&[Type::U32], &Type::U128),
+                true
+            ),
+            [ldc_u32!(0)]
+        ),
+        TyKind::Int(IntTy::I128) => call!(
+            CallSite::new(
+                Some(DotnetTypeRef::int_128()),
+                "op_Implicit".into(),
+                FnSig::new(&[Type::I32], &Type::I128),
+                true
+            ),
+            [ldc_u32!(0)]
+        ),
         _ => todo!("Can't get zero of {ty:?}"),
     }
 }
@@ -75,12 +91,12 @@ fn min(ty: Ty) -> CILNode {
     match ty.kind() {
         TyKind::Uint(UintTy::U8) => crate::ldc_u32!(u8::MIN as u32),
         TyKind::Uint(UintTy::U16) => crate::ldc_u32!(u16::MIN as u32),
-        TyKind::Uint(UintTy::U32) => crate::ldc_u32!(u32::MIN as u32),
+        TyKind::Uint(UintTy::U32) => crate::ldc_u32!(u32::MIN),
         TyKind::Int(IntTy::I8) => crate::ldc_i32!(i8::MIN as i32),
         TyKind::Int(IntTy::I16) => crate::ldc_i32!(i16::MIN as i32),
-        TyKind::Int(IntTy::I32) => crate::ldc_i32!(i32::MIN as i32),
-        TyKind::Uint(UintTy::U64) => crate::ldc_u64!(u64::MIN as u64),
-        TyKind::Int(IntTy::I64) => crate::ldc_i64!(i64::MIN as i64),
+        TyKind::Int(IntTy::I32) => crate::ldc_i32!(i32::MIN),
+        TyKind::Uint(UintTy::U64) => crate::ldc_u64!(u64::MIN),
+        TyKind::Int(IntTy::I64) => crate::ldc_i64!(i64::MIN),
         TyKind::Uint(UintTy::Usize) => call!(
             CallSite::new(
                 Some(DotnetTypeRef::usize_type()),
@@ -124,12 +140,12 @@ fn max(ty: Ty) -> CILNode {
     match ty.kind() {
         TyKind::Uint(UintTy::U8) => crate::ldc_u32!(u8::MAX as u32),
         TyKind::Uint(UintTy::U16) => crate::ldc_u32!(u16::MAX as u32),
-        TyKind::Uint(UintTy::U32) => crate::ldc_u32!(u32::MAX as u32),
+        TyKind::Uint(UintTy::U32) => crate::ldc_u32!(u32::MAX),
         TyKind::Int(IntTy::I8) => crate::ldc_i32!(i8::MAX as i32),
         TyKind::Int(IntTy::I16) => crate::ldc_i32!(i16::MAX as i32),
-        TyKind::Int(IntTy::I32) => crate::ldc_i32!(i32::MAX as i32),
-        TyKind::Uint(UintTy::U64) => crate::ldc_u64!(u64::MAX as u64),
-        TyKind::Int(IntTy::I64) => crate::ldc_i64!(i64::MAX as i64),
+        TyKind::Int(IntTy::I32) => crate::ldc_i32!(i32::MAX),
+        TyKind::Uint(UintTy::U64) => crate::ldc_u64!(u64::MAX),
+        TyKind::Int(IntTy::I64) => crate::ldc_i64!(i64::MAX),
         TyKind::Uint(UintTy::Usize) => call!(
             CallSite::new(
                 Some(DotnetTypeRef::usize_type()),

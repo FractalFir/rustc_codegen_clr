@@ -60,38 +60,28 @@ pub fn place_elem_body<'ctx>(
             PlaceTy::Ty(curr_ty) => {
                 let field_ty = crate::utilis::monomorphize(&method_instance, *field_ty, tyctx);
                 if crate::r#type::pointer_to_is_fat(curr_ty, tyctx, Some(method_instance)) {
-                    use rustc_middle::ty::TypeAndMut;
                     assert_eq!(
                         index.as_u32(),
                         0,
                         "Can't handle DST with more than 1 field."
                     );
                     let curr_type = type_cache.type_from_cache(
-                        Ty::new_ptr(
-                            tyctx,
-                            curr_ty,
-                            rustc_middle::ty::Mutability::Mut,
-                        ),
+                        Ty::new_ptr(tyctx, curr_ty, rustc_middle::ty::Mutability::Mut),
                         tyctx,
                         Some(method_instance),
                     );
                     let field_type = type_cache.type_from_cache(
-                        Ty::new_ptr(
-                            tyctx,
-                            field_ty,
-                            rustc_middle::ty::Mutability::Mut,
-                        ),
+                        Ty::new_ptr(tyctx, field_ty, rustc_middle::ty::Mutability::Mut),
                         tyctx,
                         Some(method_instance),
                     );
                     return (
                         curr_ty.into(),
                         CILNode::TemporaryLocal(Box::new((
-                            curr_type.into(),
+                            curr_type,
                             [CILRoot::SetTMPLocal {
                                 value: parrent_node,
-                            }
-                            .into()]
+                            }]
                             .into(),
                             CILNode::LdObj {
                                 ptr: CILNode::LoadAddresOfTMPLocal.into(),
@@ -147,7 +137,7 @@ pub fn place_elem_body<'ctx>(
                 )
             }
         },
-        PlaceElem::Downcast(symbol, variant) => {
+        PlaceElem::Downcast(_, variant) => {
             let curr_type = curr_ty
                 .as_ty()
                 .expect("Can't get enum variant of an enum varaint!");
@@ -281,7 +271,7 @@ pub fn place_elem_body<'ctx>(
                         Type::Ptr(Type::Void.into()),
                         "data_pointer".into(),
                     );
-                    let metadata = FieldDescriptor::new(slice, Type::USize, "metadata".into());
+
                     let addr = add!(
                         ld_field!(parrent_node.clone(), desc),
                         mul!(
