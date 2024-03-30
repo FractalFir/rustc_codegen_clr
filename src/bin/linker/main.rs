@@ -1,16 +1,20 @@
 #![deny(unused_must_use)]
 //use assembly::Assembly;
-use lazy_static::*;
+use lazy_static::lazy_static;
 use load::LinkableFile;
 use rustc_codegen_clr::{
+    access_modifier,
     assembly::Assembly,
     basic_block::BasicBlock,
+    cil,
     cil::CallSite,
     cil_tree::{cil_node::CILNode, cil_root::CILRoot},
+    config,
     function_sig::FnSig,
+    method,
     method::{Method, MethodType},
     r#type::{DotnetTypeRef, Type},
-    *,
+    AString, IString,
 };
 mod cmd;
 mod export;
@@ -50,9 +54,7 @@ impl AOTCompileMode {
                     .arg(path)
                     .output()
                     .expect("failed run mono AOT process");
-                if !out.stderr.is_empty() {
-                    panic!("Could not run AOT!");
-                }
+                assert!(out.stderr.is_empty(), "Could not run AOT!");
             }
             Self::FullMonoAOT => {
                 let out = std::process::Command::new("mono")
@@ -61,9 +63,7 @@ impl AOTCompileMode {
                     .arg(path)
                     .output()
                     .expect("failed run mono AOT process");
-                if !out.stderr.is_empty() {
-                    panic!("Could not run AOT!");
-                }
+                assert!(out.stderr.is_empty(), "Could not run AOT!");
             }
         }
     }
@@ -293,7 +293,7 @@ fn link_directories2(args: &[String]) -> Vec<String> {
     let mut directories = Vec::new();
     let mut after_l = false;
 
-    for string in args.iter() {
+    for string in args {
         if after_l {
             directories.push(string.into());
             after_l = false;
@@ -358,7 +358,7 @@ fn add_shared(file_path: &str, native_pastrough: &mut NativePastroughInfo) {
 fn add_shared(file_path: &str, native_pastrough: &mut NativePastroughInfo) {
     panic!("Native passtrough not supported on this platfrom.")
 }
-/// Compiles all the linked object files into one shared lib, and then generates the info neccessary for creating PInvoke declarations used to call the functions within them.  
+/// Compiles all the linked object files into one shared lib, and then generates the info neccessary for creating `PInvoke` declarations used to call the functions within them.  
 /// Uses `gcc`, so may not work on other platforms.
 fn handle_native_passtrough(
     args: &[String],
@@ -502,7 +502,7 @@ fn main() {
                     output_file_path = file_stem(output_file_path)
                 )
             } else {
-                "".to_string()
+                String::new()
             }
         );
         let bootstrap_path = path.with_extension("rs");
@@ -518,9 +518,11 @@ fn main() {
             .env("PATH", path)
             .output()
             .unwrap();
-        if !out.stderr.is_empty() {
-            panic!("{}", String::from_utf8(out.stderr).unwrap());
-        }
+        assert!(
+            out.stderr.is_empty(),
+            "{}",
+            String::from_utf8(out.stderr).unwrap()
+        );
     }
     //todo!();
 }

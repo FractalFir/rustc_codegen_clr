@@ -42,7 +42,7 @@ fn load_ar(r: &mut impl std::io::Read) -> std::io::Result<(Assembly, Vec<Linkabl
                 .expect("ERROR: Could not load the assembly file!");
             linkables.push(LinkableFile::new(name.clone().into(), file_bytes.into()));
         } else if name.contains(".so") {
-            eprintln!("shr:{name}")
+            eprintln!("shr:{name}");
         }
     }
 

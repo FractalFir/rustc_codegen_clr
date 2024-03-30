@@ -697,7 +697,7 @@ test_lib! {closure,stable}
 test_lib! {identity,stable}
 test_lib! {libc,stable}
 run_test! {types,dst,stable}
-
+run_test! {types,maybeuninit,stable}
 test_lib! {references,stable}
 //test_lib! {structs}
 test_lib! {empty_string_slice,stable}
@@ -881,6 +881,7 @@ compare_tests! {fuzz,fail4,stable}
 compare_tests! {fuzz,fail5,stable}
 compare_tests! {fuzz,fail6,stable}
 compare_tests! {fuzz,fail7,unstable}
+compare_tests! {fuzz,fail8,unstable}
 cargo_test! {hello_world,stable}
 cargo_test! {std_hello_world,stable}
 cargo_test_ignored! {build_core}

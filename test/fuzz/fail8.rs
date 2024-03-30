@@ -248,11 +248,9 @@ _15 = _13.1.0 | _10.0.0;
 Goto(bb15)
 }
 bb15 = {
-Call(_16 = dump_var(13_usize, 15_usize, Move(_15), 10_usize, Move(_10), 13_usize, Move(_13), 9_usize, Move(_9)), ReturnTo(bb16), UnwindUnreachable())
+Call(_16 = dump_var(13_usize, 15_usize, Move(_15), 10_usize, Move(_10), 13_usize, Move(_13), 9_usize, Move(_9)), ReturnTo(bb17), UnwindUnreachable())
 }
-bb16 = {
-Call(_16 = dump_var(13_usize, 8_usize, Move(_8), 5_usize, Move(_5), 17_usize, _17, 17_usize, _17), ReturnTo(bb17), UnwindUnreachable())
-}
+
 bb17 = {
 Return()
 }

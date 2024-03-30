@@ -208,7 +208,7 @@ fn aggregate_adt<'tyctx>(
     variant_idx: u32,
     fields: Vec<(u32, CILNode)>,
     method_instance: Instance<'tyctx>,
-    _active_field: &Option<FieldIdx>,
+    active_field: &Option<FieldIdx>,
     type_cache: &mut crate::r#type::TyCache,
 ) -> CILNode {
     let adt_type = crate::utilis::monomorphize(&method_instance, adt_type, tyctx);
@@ -348,30 +348,24 @@ fn aggregate_adt<'tyctx>(
             );
 
             let mut sub_trees = Vec::new();
-            for field in fields {
-                let field_def = adt
-                    .all_fields()
-                    .nth(field.0 as usize)
-                    .expect("Could not find field!");
-                let field_type = field_def.ty(tyctx, subst);
-                let field_type = crate::utilis::monomorphize(&method_instance, field_type, tyctx);
-                let field_type =
-                    type_cache.type_from_cache(field_type, tyctx, Some(method_instance));
-                // Seting a void field is a no-op.
-                if field_type == Type::Void {
-                    continue;
-                }
+            let active_field = active_field.unwrap();
+            assert_eq!(fields.len(), 1);
+            let field_def = adt
+                .all_fields()
+                .nth(active_field.as_u32() as usize)
+                .expect("Could not find field!");
+            let field_type = field_def.ty(tyctx, subst);
+            let field_type = crate::utilis::monomorphize(&method_instance, field_type, tyctx);
+            let field_type = type_cache.type_from_cache(field_type, tyctx, Some(method_instance));
 
-                let field_name = field_name(adt_type, field.0);
+            let field_name = field_name(adt_type, active_field.as_u32());
 
-                let desc = FieldDescriptor::new(adt_type_ref.clone(), field_type, field_name);
-                sub_trees.push(CILRoot::SetField {
-                    addr: obj_getter.clone(),
-                    value: field.1,
-                    desc,
-                });
-            }
-
+            let desc = FieldDescriptor::new(adt_type_ref.clone(), field_type, field_name);
+            sub_trees.push(CILRoot::SetField {
+                addr: obj_getter.clone(),
+                value: fields[0].1.clone(),
+                desc,
+            });
             CILNode::SubTrees(
                 sub_trees.into(),
                 Box::new(crate::place::place_get(
