@@ -457,7 +457,10 @@ fn main() {
     let mut native_pastrough = NativePastroughInfo::new();
     #[cfg(target_os = "linux")]
     {
-        add_shared(get_libc(), &mut native_pastrough);
+        if config::NATIVE_PASSTROUGH{
+            add_shared(get_libc(), &mut native_pastrough);
+        }
+        
     }
     if *crate::config::NATIVE_PASSTROUGH {
         handle_native_passtrough(args, &linkables, output_file_path, &mut native_pastrough);
