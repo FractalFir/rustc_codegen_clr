@@ -242,7 +242,7 @@ fn add_mandatory_statics(asm: &mut Assembly) {
     asm.add_static(Type::U8, "__rust_no_alloc_shim_is_unstable");
     asm.add_static(Type::Ptr(Type::Ptr(Type::U8.into()).into()), "environ");
 }
-#[cfg(target_os = "linux")]
+
 fn get_libc() -> &'static str {
     LIBC.as_ref()
 }
@@ -282,11 +282,11 @@ fn get_libc_() -> String {
     //todo!()
 }
 #[cfg(target_os = "windows")]
-fn get_libc() -> &'static str {
+fn get_libc_() -> &'static str {
     "ucrtbase.dll"
 }
 #[cfg(target_os = "macos")]
-fn get_libc() -> &'static str {
+fn get_libc_() -> &'static str {
     "libSystem.B.dylib"
 }
 // Detects all the link directiores provided by the linker,

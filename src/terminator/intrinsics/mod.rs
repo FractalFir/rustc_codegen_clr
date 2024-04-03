@@ -565,7 +565,7 @@ pub fn handle_intrinsic<'tyctx>(
                 tyctx,
                 call!(
                     CallSite::boxed(
-                        Some(DotnetTypeRef::new("System.Runtime".into(), "System.MathF")),
+                        Some(DotnetTypeRef::mathf()),
                         "Sqrt".into(),
                         FnSig::new(&[Type::F32], &Type::F32),
                         true,
@@ -595,7 +595,7 @@ pub fn handle_intrinsic<'tyctx>(
                 tyctx,
                 call!(
                     CallSite::boxed(
-                        Some(DotnetTypeRef::new("System.Runtime".into(), "System.MathF")),
+                        Some(DotnetTypeRef::mathf()),
                         "Floor".into(),
                         FnSig::new(&[Type::F32], &Type::F32),
                         true,
@@ -625,7 +625,7 @@ pub fn handle_intrinsic<'tyctx>(
                 tyctx,
                 call!(
                     CallSite::boxed(
-                        Some(DotnetTypeRef::new("System.Runtime".into(), "System.MathF")),
+                        Some(DotnetTypeRef::mathf()),
                         "Ceiling".into(),
                         FnSig::new(&[Type::F32], &Type::F32),
                         true,
@@ -655,7 +655,7 @@ pub fn handle_intrinsic<'tyctx>(
                 tyctx,
                 call!(
                     CallSite::boxed(
-                        Some(DotnetTypeRef::new("System.Runtime".into(), "System.MathF")),
+                        Some(DotnetTypeRef::mathf()),
                         "Max".into(),
                         FnSig::new(&[Type::F32, Type::F32], &Type::F32),
                         true,
@@ -681,7 +681,7 @@ pub fn handle_intrinsic<'tyctx>(
                 tyctx,
                 call!(
                     CallSite::boxed(
-                        Some(DotnetTypeRef::new("System.Runtime".into(), "System.MathF")),
+                        Some(DotnetTypeRef::mathf()),
                         "Min".into(),
                         FnSig::new(&[Type::F32, Type::F32], &Type::F32),
                         true,
@@ -708,7 +708,7 @@ pub fn handle_intrinsic<'tyctx>(
                 tyctx,
                 conv_f32!(call!(
                     CallSite::boxed(
-                        Some(DotnetTypeRef::new("System.Runtime".into(), "System.Math")),
+                        Some(DotnetTypeRef::math()),
                         "Pow".into(),
                         FnSig::new(&[Type::F64, Type::F64], &Type::F64),
                         true,
@@ -762,7 +762,7 @@ pub fn handle_intrinsic<'tyctx>(
 
             let ops = call!(
                 CallSite::boxed(
-                    Some(DotnetTypeRef::new("System.Runtime".into(), "System.Math")),
+                    Some(DotnetTypeRef::math()),
                     "Sqrt".into(),
                     FnSig::new(&[Type::F64], &Type::F64),
                     true,

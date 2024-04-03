@@ -7,6 +7,7 @@ use crate::{
 
 pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
     use crate::cil::CILOp;
+    
     match op {
         CILOp::Leave(target) => format!("leave bb_{target}_0").into(),
         CILOp::BeginTry => ".try{".into(),
@@ -31,6 +32,7 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
         CILOp::BTrue(id,sub_id) => format!("brtrue bb_{id}_{sub_id}").into(),
 
         CILOp::Call(call_site) => {
+           
             if call_site.is_nop() {
                 "".into()
             } else {

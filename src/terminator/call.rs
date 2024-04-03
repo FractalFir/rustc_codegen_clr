@@ -44,6 +44,7 @@ fn call_managed<'tyctx>(
     let managed_fn_name = garg_to_string(subst_ref[3], tyctx);
     let mut tpe = DotnetTypeRef::new(asm, &class_name);
     tpe.set_valuetype(is_valuetype);
+    //eprintln!("tpe:{tpe:?}");
     let signature = FnSig::sig_from_instance_(fn_instance, tyctx, type_cache)
         .expect("Can't get the function signature");
 

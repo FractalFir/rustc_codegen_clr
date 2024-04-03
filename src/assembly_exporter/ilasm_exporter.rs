@@ -61,6 +61,7 @@ impl AssemblyExporter for ILASMExporter {
         //let _ = self.types.push(tpe.clone());
     }
     fn add_method(&mut self, method: &Method) {
+        
         method_cil(&mut self.methods, method).expect("Error");
     }
     fn finalize(
@@ -105,7 +106,7 @@ impl AssemblyExporter for ILASMExporter {
             target,
             cil_path.clone().to_string_lossy().to_string(),
         ];
-        let out = std::process::Command::new("ilasm")
+        let out = std::process::Command::new(crate::config::ILASM_PATH.clone())
             .args(args)
             .output()
             .expect("failed run ilasm process");

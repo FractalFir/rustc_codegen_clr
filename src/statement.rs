@@ -1,8 +1,5 @@
 use crate::{
-    cil_tree::{cil_node::CILNode, cil_root::CILRoot, CILTree},
-    mul,
-    r#type::TyCache,
-    size_of,
+    cil_tree::{cil_node::CILNode, cil_root::CILRoot, CILTree}, mul, place::place_get, size_of, r#type::TyCache
 };
 use rustc_middle::{
     mir::{Body, CopyNonOverlapping, NonDivergingIntrinsic, Statement, StatementKind},
@@ -132,8 +129,19 @@ pub fn handle_statement<'tcx>(
                 }
             }
         }
-        _ => {
-            rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Unsuported statement kind {kind:?}")}
-        }
+        StatementKind::FakeRead(_)=>panic!("Fake reads should not be passed from the backend to the forntend!"),
+        StatementKind::PlaceMention(place)=>Some(CILRoot::Pop{tree:place_get(place, tyctx, method, method_instance, type_cache)}.into()),
+        //Since deinitialization writes "uninint" bytes to the place, it is safe to write nothing here. "uninit" bytes can be anything, so they can be what was there previously too.
+        StatementKind::Deinit(_)=>None,
+        //TODO: consider adding some .NET specific coverage info(Is that even possible?).
+        StatementKind::Coverage(_)=>None,
+        // A no-op in non-const scenarions, so safe to do nothing.
+        StatementKind::ConstEvalCounter=>None,
+        // A no-op does nothing, so safe to do... nothing.
+        StatementKind::Nop=>None,
+        // This is related to stacked borrow. TODO:consider emmiting info that would prevent wrong optimizations here.
+        StatementKind::Retag(_,_)=>None,
+        // A no-op at runtime.
+        StatementKind:: AscribeUserType(_, _)=>None,    
     }
 }

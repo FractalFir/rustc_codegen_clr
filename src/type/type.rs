@@ -65,15 +65,19 @@ impl DotnetTypeRef {
         Self::new(
             Some("System.Runtime.InteropServices"),
             "System.Runtime.InteropServices.Marshal",
-        )
+        ).with_valuetype(false)
     }
     #[must_use]
     pub fn console() -> Self {
-        Self::new(Some("System.Console"), "System.Console")
+        Self::new(Some("System.Console"), "System.Console").with_valuetype(false)
     }
     #[must_use]
     pub fn math() -> Self {
-        Self::new(Some("System.Runtime"), "System.Math")
+        Self::new(Some("System.Runtime"), "System.Math").with_valuetype(false)
+    }
+    #[must_use]
+    pub fn mathf() -> Self {
+        Self::new(Some("System.Runtime"), "System.MathF").with_valuetype(false)
     }
     #[must_use]
     pub fn int_128() -> Self {
@@ -84,7 +88,7 @@ impl DotnetTypeRef {
         Self::new(
             Some("System.Memory"),
             "System.Buffers.Binary.BinaryPrimitives",
-        )
+        ).with_valuetype(false)
     }
     #[must_use]
     pub fn uint_128() -> Self {
