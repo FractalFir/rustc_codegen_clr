@@ -457,7 +457,7 @@ fn main() {
     let mut native_pastrough = NativePastroughInfo::new();
     #[cfg(target_os = "linux")]
     {
-        if config::NATIVE_PASSTROUGH{
+        if *config::NATIVE_PASSTROUGH{
             add_shared(get_libc(), &mut native_pastrough);
         }
         
