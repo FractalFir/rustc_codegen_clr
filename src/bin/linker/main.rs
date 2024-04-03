@@ -282,12 +282,12 @@ fn get_libc_() -> String {
     //todo!()
 }
 #[cfg(target_os = "windows")]
-fn get_libc_() -> &'static str {
-    "ucrtbase.dll"
+fn get_libc_() -> String {
+    "ucrtbase.dll".to_string()
 }
 #[cfg(target_os = "macos")]
-fn get_libc_() -> &'static str {
-    "libSystem.B.dylib"
+fn get_libc_() -> String {
+    "libSystem.B.dylib".to_string()
 }
 // Detects all the link directiores provided by the linker,
 fn link_directories2(args: &[String]) -> Vec<String> {
