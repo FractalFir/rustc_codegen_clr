@@ -82,6 +82,7 @@ pub(crate) fn binop_unchecked<'tyctx>(
                 Box::new(tycache.type_from_cache(pointed_ty, tyctx, Some(method_instance)));
             add!(ops_a, mul!(ops_b, conv_usize!(size_of!(pointed_ty))))
         }
+        rustc_middle::mir::BinOp::Cmp => todo!("Three way cmps not supported yet!"),
     }
 }
 /// Preforms unchecked addition
