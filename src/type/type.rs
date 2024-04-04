@@ -29,8 +29,6 @@ pub enum Type {
     ISize,
     /// A refernece to a .NET type
     DotnetType(Box<DotnetTypeRef>),
-    /// A reference to a .NET array type
-    DotnetArray(Box<DotnetArray>),
     // Pointer to a type
     Ptr(Box<Self>),
     /// A managed reference `&`. IS NOT EQUIVALENT TO RUST `&`!
@@ -48,6 +46,7 @@ pub enum Type {
     DelegatePtr(Box<crate::function_sig::FnSig>),
     /// Generic argument of a method
     MethodGenericArg(i32),
+    ManagedArray { element: Box<Self>, dims: std::num::NonZeroU8 },
 }
 #[derive(Serialize, Deserialize, PartialEq, Clone, Eq, Hash, Debug)]
 pub struct DotnetArray {
@@ -182,6 +181,18 @@ impl DotnetTypeRef {
 
     pub(crate) fn interlocked() -> Self {
         Self::new(Some("System.Threading"), "System.Threading.Interlocked").with_valuetype(false)
+    }
+    pub(crate) fn assembly()->Self{
+        Self::new(
+            Some("System.Runtime"),
+            "System.Reflection.Assembly"
+        ).with_valuetype(false)
+    }
+    pub(crate) fn native_mem() -> DotnetTypeRef {
+        DotnetTypeRef::new(
+            Some("System.Runtime.InteropServices"),
+            "System.Runtime.InteropServices.NativeMemory",
+        ).with_valuetype(false)
     }
 }
 impl Type {

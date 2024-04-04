@@ -560,13 +560,14 @@ pub fn type_cil(tpe: &Type) -> Cow<'static, str> {
         Type::GenericArg(idx) => format!("!{idx}").into(),
         Type::CallGenericArg(idx) => format!("!!{idx}").into(),
         Type::Foreign => "valuetype Foreign".into(),
-        Type::DotnetArray(array) => {
-            let arr = if array.dimensions > 0 {
-                (0..(array.dimensions - 1)).map(|_| ",").collect::<String>()
+        Type::ManagedArray { element, dims }=> {
+            let dims = Into::<u8>::into(*dims);
+            let arr = if dims > 0_u8 {
+                (0..(dims  - 1)).map(|_| ",").collect::<String>()
             } else {
                 "".into()
             };
-            format!("{tpe}[{arr}]", tpe = type_cil(&array.element)).into()
+            format!("{tpe}[{arr}]", tpe = type_cil(&element)).into()
         } //_ => todo!("Unsuported type {tpe:?}"),
         Type::MethodGenericArg(idx) => format!("!!{idx}").into(),
     }

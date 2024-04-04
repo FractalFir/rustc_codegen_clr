@@ -225,9 +225,11 @@ impl CodegenBackend for MyBackend {
     fn join_codegen(
         &self,
         ongoing_codegen: Box<dyn Any>,
-        _sess: &Session,
+        sess: &Session,
         outputs: &OutputFilenames,
     ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>) {
+        let entry_name = sess.target.entry_name.as_ref();
+        //eprintln!("entry_name:{entry_name}");
         std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             use std::io::Write;
             let (_asm_name, asm, metadata, crate_info) = *ongoing_codegen

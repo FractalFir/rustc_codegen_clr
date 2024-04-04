@@ -115,52 +115,9 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     );
     marshal.set_valuetype(false);
     let marshal = Some(marshal);
-    /*let mut malloc = Method::new_empty(
-        AccessModifer::Private,
-        MethodType::Static,
-        FnSig::new(&[Type::USize], &Type::Ptr(c_void.clone().into())),
-        "malloc",
-        vec![],
-    );
-    malloc.set_ops(vec![
-        CILOp::LDArg(0),
-        CILOp::Call(CallSite::boxed(
-            marshal.clone(),
-            "AllocHGlobal".into(),
-            FnSig::new(&[Type::ISize], &Type::ISize),
-            true,
-        )),
-        CILOp::Ret,
-    ]);
-    asm.add_method(malloc);*/
-    let realloc = Method::new(
-        AccessModifer::Private,
-        MethodType::Static,
-        FnSig::new(
-            &[Type::Ptr(c_void.clone().into()), Type::USize],
-            &Type::Ptr(c_void.clone().into()),
-        ),
-        "realloc",
-        vec![],
-        vec![BasicBlock::new(
-            vec![CILRoot::Ret {
-                tree: call!(
-                    CallSite::new(
-                        marshal.clone(),
-                        "ReAllocHGlobal".into(),
-                        FnSig::new(&[Type::ISize, Type::ISize], &Type::ISize),
-                        true,
-                    ),
-                    [CILNode::LDArg(0), CILNode::LDArg(1)]
-                ),
-            }
-            .into()],
-            0,
-            None,
-        )],
-    );
+  
+   
 
-    asm.add_method(realloc);
     let mut native_mem = DotnetTypeRef::new(
         Some("System.Runtime.InteropServices"),
         "System.Runtime.InteropServices.NativeMemory",
@@ -179,12 +136,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
             vec![BasicBlock::new(
                 vec![CILRoot::Ret {
                     tree: call!(
-                        CallSite::new(
-                            native_mem.clone(),
-                            "AlignedAlloc".into(),
-                            FnSig::new(&[Type::USize, Type::USize], &Type::Ptr(Type::Void.into())),
-                            true,
-                        ),
+                        CallSite::alloc(),
                         [CILNode::LDArg(0), CILNode::LDArg(1)]
                     ),
                 }
