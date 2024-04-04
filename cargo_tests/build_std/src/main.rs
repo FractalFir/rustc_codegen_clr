@@ -1,6 +1,7 @@
 #![feature(core_intrinsics, adt_const_params)]
 #![feature(slice_ptr_get)]
 #![feature(allocator_api)]
+#![feature(once_cell_try)]
 use std::hint::black_box;
 use std::io::Write;
 use std::ffi::{c_char, c_int};
@@ -241,7 +242,7 @@ fn main() {
     string.push('!');
     string.push('\n');
     string.push('\0');
-
+    unsafe { printf("%s\n\0".as_ptr() as *const i8,string.as_ptr()) };
     //test!(collect_test);
     //test!(map_test);
     //std::hint::black_box(&string);
@@ -281,14 +282,18 @@ fn main() {
             >(*val as u64);
             //unsafe { core::intrinsics::abort() };
         }
-    }/* 
+    }
     let owned = black_box("Test\n\0").to_owned();
     if owned.len() != 6 {
         unsafe { printf(owned.as_ptr() as *const i8) };
         unsafe { core::intrinsics::abort() };
     } else {
         unsafe { printf(owned.as_ptr() as *const i8) };
-    };*/
+    };
+    //lock_test();
+    // test_stdout();
+
+
     let s = format!("Hello!\n\0");
     unsafe{printf(s.as_ptr() as *const i8)};
     let s = format!("Hello??? WTF is going on???{}\n\0",black_box(65));
@@ -296,6 +301,24 @@ fn main() {
 
     let val = std::hint::black_box(*boxed_int);
     //let val = std::hint::black_box(string);
+}
+fn test_stdout(){
+    use std::io::{self, Write};
+    let stdout = io::stdout();
+    let mut handle = stdout.lock();
+
+    handle.write_all(b"hello world").unwrap();
+}
+fn lock_test() {
+    use std::sync::OnceLock;
+
+    static COMPUTATION: OnceLock<u8> = OnceLock::new();
+    if let Some(_) = COMPUTATION.get(){
+        core::intrinsics::abort();
+    }
+    if *COMPUTATION.get_or_try_init(|| Ok::<u8,()>(77)).unwrap() != 77{
+        core::intrinsics::abort();
+    }
 }
 
 #[test]

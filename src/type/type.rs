@@ -46,6 +46,8 @@ pub enum Type {
     /// Rust FnDefs
     FnDef(IString),
     DelegatePtr(Box<crate::function_sig::FnSig>),
+    /// Generic argument of a method
+    MethodGenericArg(i32),
 }
 #[derive(Serialize, Deserialize, PartialEq, Clone, Eq, Hash, Debug)]
 pub struct DotnetArray {
@@ -65,7 +67,8 @@ impl DotnetTypeRef {
         Self::new(
             Some("System.Runtime.InteropServices"),
             "System.Runtime.InteropServices.Marshal",
-        ).with_valuetype(false)
+        )
+        .with_valuetype(false)
     }
     #[must_use]
     pub fn console() -> Self {
@@ -88,7 +91,8 @@ impl DotnetTypeRef {
         Self::new(
             Some("System.Memory"),
             "System.Buffers.Binary.BinaryPrimitives",
-        ).with_valuetype(false)
+        )
+        .with_valuetype(false)
     }
     #[must_use]
     pub fn uint_128() -> Self {
@@ -174,6 +178,10 @@ impl DotnetTypeRef {
     }
     pub fn set_generics(&mut self, generics: impl Into<Vec<Type>>) {
         self.generics = generics.into();
+    }
+
+    pub(crate) fn interlocked() -> Self {
+        Self::new(Some("System.Threading"), "System.Threading.Interlocked").with_valuetype(false)
     }
 }
 impl Type {

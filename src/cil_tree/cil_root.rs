@@ -94,18 +94,16 @@ pub enum CILRoot {
 impl CILRoot {
     pub fn opt(&mut self) {
         match self {
-            CILRoot::STLoc { tree, local } => {
-                tree.opt()
-            },
-            CILRoot::BTrue { ops, sub_target,target } => {
- 
-                ops.opt()
-            },
-            CILRoot::GoTo { .. } =>(),
+            CILRoot::STLoc { tree, local } => tree.opt(),
+            CILRoot::BTrue {
+                ops,
+                sub_target,
+                target,
+            } => ops.opt(),
+            CILRoot::GoTo { .. } => (),
             CILRoot::Call { args, site } => {
                 args.iter_mut().for_each(|arg| arg.opt());
-  
-            },
+            }
             CILRoot::SetField {
                 addr: fld_addr,
                 value,
@@ -113,7 +111,7 @@ impl CILRoot {
             } => {
                 fld_addr.opt();
                 value.opt();
-       
+
                 match fld_addr {
                     CILNode::ConvUSize(addr) => match addr.as_mut() {
                         CILNode::LDLocA(_) | CILNode::LDFieldAdress { .. } => {
@@ -142,16 +140,14 @@ impl CILRoot {
             CILRoot::STObj {
                 addr_calc,
                 value_calc,
-                tpe
+                tpe,
             } => {
-
                 addr_calc.opt();
                 value_calc.opt();
             }
             CILRoot::STArg { tree, arg } => {
-
                 tree.opt();
-            },
+            }
             CILRoot::Break => (),
             CILRoot::Nop => (),
             CILRoot::InitBlk { dst, val, count } => {
@@ -160,7 +156,6 @@ impl CILRoot {
                 count.opt();
             }
             CILRoot::CallVirt { site, args } => {
-   
                 args.iter_mut().for_each(|arg| arg.opt());
             }
             CILRoot::Ret { tree } => tree.opt(),
@@ -168,21 +163,13 @@ impl CILRoot {
             CILRoot::VoidRet => (),
             CILRoot::Throw(ops) => ops.opt(),
             CILRoot::ReThrow => (),
-            CILRoot::CallI {
-                sig,
-                fn_ptr,
-                args,
-            } => {
-    
+            CILRoot::CallI { sig, fn_ptr, args } => {
                 args.iter_mut().for_each(|arg| arg.opt());
                 fn_ptr.opt();
             }
-            CILRoot::JumpingPad { ops:_} => (),
+            CILRoot::JumpingPad { ops: _ } => (),
             CILRoot::SetTMPLocal { value } => value.opt(),
-            CILRoot::SetStaticField { descr, value } => {
-           
-                value.opt()
-            },
+            CILRoot::SetStaticField { descr, value } => value.opt(),
         }
     }
     pub fn throw(msg: &str) -> Self {

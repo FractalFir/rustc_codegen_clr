@@ -61,7 +61,6 @@ impl AssemblyExporter for ILASMExporter {
         //let _ = self.types.push(tpe.clone());
     }
     fn add_method(&mut self, method: &Method) {
-        
         method_cil(&mut self.methods, method).expect("Error");
     }
     fn finalize(

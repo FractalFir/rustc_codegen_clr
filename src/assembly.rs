@@ -440,7 +440,7 @@ impl Assembly {
             let init_method =
                 allocation_initializer_method(const_allocation, &alloc_fld, tcx, self);
             let cctor = self.add_cctor();
-            let blocks = cctor.blocks_mut();
+            let mut blocks = cctor.blocks_mut();
             if blocks.is_empty() {
                 blocks.push(BasicBlock::new(vec![CILRoot::VoidRet.into()], 0, None));
             }
@@ -472,7 +472,7 @@ impl Assembly {
                 // Add return again
                 trees.push(ret);
             }
-
+            drop(blocks);
             self.add_method(init_method);
             self.add_static(Type::Ptr(Type::U8.into()), &alloc_fld);
         }
@@ -709,10 +709,11 @@ fn link_static_initializers(a: Option<&Method>, b: Option<&Method>) -> Option<Me
         (None, Some(b)) => Some(b.clone()),
         (Some(a), Some(b)) => {
             let mut merged: Method = a.clone();
-            let trees = merged.blocks_mut()[0].trees_mut();
+            let mut blocks = merged.blocks_mut();
+            let trees = blocks[0].trees_mut();
             trees.pop();
             trees.extend(b.blocks()[0].trees().iter().cloned());
-
+            drop(blocks);
             Some(merged)
         }
     }

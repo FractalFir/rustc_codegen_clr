@@ -8,7 +8,7 @@ use crate::{
 };
 use rustc_middle::ty::TyCtxt;
 use serde::{Deserialize, Serialize};
-use std::hash::{Hash, Hasher};
+use std::{hash::{Hash, Hasher}, ops::{Deref, DerefMut}};
 /// Represenation of a CIL method.
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 pub struct Method {
@@ -17,7 +17,7 @@ pub struct Method {
     sig: FnSig,
     name: IString,
     locals: Vec<LocalDef>,
-    blocks: Vec<BasicBlock>,
+    pub(in crate::method) blocks: Vec<BasicBlock>,
     attributes: Vec<Attribute>,
 }
 /// Local varaible. Consists of an optional name and type.
@@ -187,8 +187,29 @@ impl Method {
         &self.blocks
     }
     /// Returns a mutable reference to a list of basic block that make up this method.
-    pub fn blocks_mut(&mut self) -> &mut Vec<BasicBlock> {
-        &mut self.blocks
+    pub fn blocks_mut<'a>(&'a mut self) -> BlockMutGuard<'a>{
+        BlockMutGuard{method:self}
+    }
+}
+/// A wrapper around mutably borrowed [`BasicBlock`]s of a method. Prevents certain bugs.
+pub struct BlockMutGuard<'a>{
+    method:&'a mut Method,
+}
+impl<'a> Drop for BlockMutGuard<'a>{
+    fn drop(&mut self) {
+        self.method.allocate_temporaries();
+    }
+}
+impl<'a> DerefMut for BlockMutGuard<'a>{
+    fn deref_mut(&mut self) -> &mut Vec<BasicBlock> {
+        &mut self.method.blocks
+    }
+}
+impl<'a> Deref for BlockMutGuard<'a>{
+    type Target = Vec<BasicBlock>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.method.blocks
     }
 }
 /// Type of this method(static, instance or virtual).

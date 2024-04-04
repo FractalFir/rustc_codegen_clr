@@ -51,7 +51,10 @@ config_flag! {C_SANITIZE,false,"Tells the codegen sanitize C."}
 
 config_flag! {RANDOMIZE_LAYOUT,false,"Tells the codegen to randomize TEST type layout."}
 config_flag! {NATIVE_PASSTROUGH,false,"Tells the codegen compile linked static libraries into a shared library, which will be bundled with the .NET executable."}
-lazy_static!{
+
+config_flag! {ENFORCE_CIL_VALID,false,"Tells the codegen to preform additonal checks before saving the ."}
+
+lazy_static! {
     #[doc = "Specifies the path to the IL assembler."]
     pub static ref ILASM_PATH:String = {
         std::env::vars().into_iter().find_map(|(key,value)|if key == "ILASM_PATH"{Some(value)}else{None}).unwrap_or("ilasm".into())

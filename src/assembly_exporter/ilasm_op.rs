@@ -7,7 +7,7 @@ use crate::{
 
 pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
     use crate::cil::CILOp;
-    
+
     match op {
         CILOp::Leave(target) => format!("leave bb_{target}_0").into(),
         CILOp::BeginTry => ".try{".into(),
@@ -32,7 +32,6 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
         CILOp::BTrue(id,sub_id) => format!("brtrue bb_{id}_{sub_id}").into(),
 
         CILOp::Call(call_site) => {
-           
             if call_site.is_nop() {
                 "".into()
             } else {
@@ -569,6 +568,7 @@ pub fn type_cil(tpe: &Type) -> Cow<'static, str> {
             };
             format!("{tpe}[{arr}]", tpe = type_cil(&array.element)).into()
         } //_ => todo!("Unsuported type {tpe:?}"),
+        Type::MethodGenericArg(idx) => format!("!!{idx}").into(),
     }
 }
 pub fn dotnet_type_ref_cli(dotnet_type: &DotnetTypeRef) -> String {

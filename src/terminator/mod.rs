@@ -9,15 +9,15 @@ Adding those features will not only enable running tests, it will also improve t
 
 At the end of GSoC, this project will deliver the following features:
 
-1. Support for parsing command line arguments in Rust programs running within the .NET runtime. 
+1. Support for parsing command line arguments in Rust programs running within the .NET runtime.
 2. Implementation of atomic intrinsics needed for `std` argument parsing to function properly. They should be implemented using cross-platform .NET APIs, but using architecture-specific functions may be needed to properly handle certain atomics.
 3. Support for dynamic trait objects - creating them, dropping them, calling their member functions.
 4. Support for catching panics, implemented using the .NET exception-handling primitives.
 5. Support for multithreading: launching threads, and getting information about them.
-6. Extended .NET interop, automatic creation of safe GC handles for managed objects. This feature is necessary for safely handling .NET threads, but will be exposed in the `mycorrhiza` interop layer, provided by the codegen. 
+6. Extended .NET interop, automatic creation of safe GC handles for managed objects. This feature is necessary for safely handling .NET threads, but will be exposed in the `mycorrhiza` interop layer, provided by the codegen.
 7. Fixes to string formatting. This feature is necessary for reporting test results. At the end of this proposal, simple formatting, such as `format!("my string is:{string}")` should run within the .NET runtime, without crashing.
 
-The end goal of this proposal is running this simple test within the .NET runtime. 
+The end goal of this proposal is running this simple test within the .NET runtime.
 ```
 #[test]
 fn should_pass(){
@@ -29,7 +29,7 @@ fn should_fail(){
 }
 
 ```
-All the deliverables mentioned above are strictly needed for achieving that goal.  
+All the deliverables mentioned above are strictly needed for achieving that goal.
 
 */
 use crate::{cil::CallSite, function_sig::FnSig, utilis::monomorphize};
@@ -278,18 +278,36 @@ pub fn handle_terminator<'ctx>(
             let loc = terminator.source_info.span;
             rustc_middle::ty::print::with_no_trimmed_paths! {CILRoot::throw(&format!("UnwindTerminate reached at {loc:?}!")).into()}
         }
-        TerminatorKind::FalseEdge { real_target, imaginary_target:_ }=>{
+        TerminatorKind::FalseEdge {
+            real_target,
+            imaginary_target: _,
+        } => {
             // imaginary_target is ignored becase you can't jump to it.
-            CILRoot::GoTo { target: real_target.as_u32(), sub_target: 0 }.into()
+            CILRoot::GoTo {
+                target: real_target.as_u32(),
+                sub_target: 0,
+            }
+            .into()
         }
         // Really just a goto, since it can never unwind.
-        TerminatorKind::FalseUnwind { real_target, unwind:_ }=>{
-             // unwind is ignored becase it can't happen.
-            CILRoot::GoTo { target: real_target.as_u32(), sub_target: 0 }.into()
-        } 
-        TerminatorKind::CoroutineDrop{}=>todo!("Can't drop corutines yet!"),
-        TerminatorKind::Yield { value: _, resume: _, resume_arg: _, drop: _ }=>todo!("Can't yeld yet!")
-        //_ => todo!("Unhandled terminator kind {kind:?}", kind = terminator.kind),
+        TerminatorKind::FalseUnwind {
+            real_target,
+            unwind: _,
+        } => {
+            // unwind is ignored becase it can't happen.
+            CILRoot::GoTo {
+                target: real_target.as_u32(),
+                sub_target: 0,
+            }
+            .into()
+        }
+        TerminatorKind::CoroutineDrop {} => todo!("Can't drop corutines yet!"),
+        TerminatorKind::Yield {
+            value: _,
+            resume: _,
+            resume_arg: _,
+            drop: _,
+        } => todo!("Can't yeld yet!"), //_ => todo!("Unhandled terminator kind {kind:?}", kind = terminator.kind),
     };
     let last = res.last().unwrap().root();
     assert!(

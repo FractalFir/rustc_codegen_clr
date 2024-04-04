@@ -62,7 +62,7 @@ fn test_dotnet_executable(file_path: &str, test_dir: &str) -> String {
     }
 
     assert!(
-        (*IS_DOTNET_PRESENT || *IS_MONO_PRESENT), 
+        (*IS_DOTNET_PRESENT || *IS_MONO_PRESENT),
         "You must have the dotnet runtime installed to run tests."
     );
     stdout
@@ -739,7 +739,7 @@ run_test! {types,self_referential_statics,stable}
 run_test! {types,int128,stable}
 
 run_test! {std,main,unstable}
-
+run_test! {std,futex_test,stable}
 run_test! {control_flow,cf_for,stable}
 run_test! {control_flow,drop,stable}
 
