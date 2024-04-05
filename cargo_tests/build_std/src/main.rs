@@ -112,6 +112,32 @@ fn map_option_test() {
             unsafe { core::intrinsics::abort() };
     }
 }
+fn test_vec(){
+    unsafe{
+        printf("Testing the vec type...\n\0".as_ptr() as *const i8);
+        let mut chars = Vec::with_capacity(1);
+        printf("Allocated the vec type!\n\0".as_ptr() as *const i8);
+        chars.push('H');
+        printf("Pushed a value into the vec type!\n\0".as_ptr() as *const i8);
+        let val = chars.pop().unwrap();
+        printf("Poped a value from the vec type!\n\0".as_ptr() as *const i8);
+
+        printf("The a value is %c!\n\0".as_ptr() as *const i8,val);
+    }
+}
+fn test_string(){
+    unsafe{
+        printf("Testing the String type...\n\0".as_ptr() as *const i8);
+        let mut string = String::with_capacity(1);
+        printf("Allocated the String type!\n\0".as_ptr() as *const i8);
+        string.push('H');
+        printf("Pushed a value into the String type!\n\0".as_ptr() as *const i8);
+        let val = string.pop().unwrap();
+        printf("Poped a value from the String type!\n\0".as_ptr() as *const i8);
+
+        printf("The a value is %c!\n\0".as_ptr() as *const i8,val);
+    }
+}
 fn map_test() {
     for (idx, number) in std::hint::black_box(0..100).map(|i| i * i).enumerate() {
         if std::hint::black_box(number) != idx * idx {
@@ -139,6 +165,8 @@ fn map_test() {
     }
 }
 fn main() {
+    test_vec();
+    test_string();
     let int = std::hint::black_box(8);
     let boxed_int = std::hint::black_box(Box::new(8));
     //let mut file = std::fs::File::create("foo.txt").unwrap();
@@ -252,7 +280,7 @@ fn main() {
     //let mut f = std::fs::File::create("foo.txt").unwrap();
 
     //std::hint::black_box(f);
-    //std::io::stdout().write_all(b"hello world\n").unwrap();
+    std::io::stdout().write_all(b"hello world\n").unwrap();
     let owned = Box::new(black_box(&[0,1,2,3,4,5,6][..]));
     if owned.len() != 7 {
         unsafe { printf("Boxed slice size mismacth!\n\0".as_ptr() as *const i8) };

@@ -427,10 +427,13 @@ impl Assembly {
                 }
             };
         let const_allocation = const_allocation.inner();
+        let bytes: &[u8] = const_allocation
+            .inspect_with_uninit_and_ptr_outside_interpreter(0..const_allocation.len());
+        /// Alloc ids are *not* unique across all crates. Adding the hash here ensures we don't overwrite allocations during linking
+        /// TODO:consider using something better here / making the hashes stable.
+        let byte_hash = calculate_hash(&bytes);
+        let alloc_fld: IString = format!("alloc_{alloc_id:x}_{byte_hash:x}").into();
 
-        //let byte_hash = calculate_hash(&bytes);
-
-        let alloc_fld: IString = format!("alloc_{alloc_id:x}").into();
         let field_desc = crate::cil::StaticFieldDescriptor::new(
             None,
             Type::Ptr(Type::U8.into()),
@@ -813,4 +816,11 @@ fn allocation_initializer_method(
         ],
         vec![BasicBlock::new(trees, 0, None)],
     )
+}
+fn calculate_hash<T: std::hash::Hash>(t: &T) -> u64 {
+    use std::hash::DefaultHasher;
+    use std::hash::Hasher;
+    let mut s = DefaultHasher::new();
+    t.hash(&mut s);
+    s.finish()
 }
