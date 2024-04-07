@@ -280,7 +280,7 @@ fn main() {
     //let mut f = std::fs::File::create("foo.txt").unwrap();
 
     //std::hint::black_box(f);
-    std::io::stdout().write_all(b"hello world\n").unwrap();
+    //std::io::stdout().write_all(b"hello world\n").unwrap();
     let owned = Box::new(black_box(&[0,1,2,3,4,5,6][..]));
     if owned.len() != 7 {
         unsafe { printf("Boxed slice size mismacth!\n\0".as_ptr() as *const i8) };
@@ -320,6 +320,7 @@ fn main() {
     };
     //lock_test();
     // test_stdout();
+    test_stderr();
 
 
     let s = format!("Hello!\n\0");
@@ -329,6 +330,13 @@ fn main() {
 
     let val = std::hint::black_box(*boxed_int);
     //let val = std::hint::black_box(string);
+}
+fn test_stderr(){
+    use std::io::{self, Write};
+    let stdout = io::stderr();
+    let mut handle = stdout;
+
+    handle.write_all(b"hello error").unwrap();
 }
 fn test_stdout(){
     use std::io::{self, Write};

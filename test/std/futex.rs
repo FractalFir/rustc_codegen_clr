@@ -4,7 +4,7 @@ use core::sync::atomic::{
     AtomicU32,
     Ordering::{Acquire, Relaxed, Release},
 };
-enum ExclusiveState{
+enum ExclusiveState {
     Incomplete,
     Complete,
     Poisoned,
@@ -72,7 +72,9 @@ pub struct Once {
 impl Once {
     #[inline]
     pub const fn new() -> Once {
-        Once { state: AtomicU32::new(INCOMPLETE) }
+        Once {
+            state: AtomicU32::new(INCOMPLETE),
+        }
     }
 
     #[inline]
@@ -107,23 +109,24 @@ impl Once {
                 }
                 INCOMPLETE | POISONED => {
                     // Try to register the current thread as the one running.
-                    if let Err(new) =
-                        self.state.compare_exchange_weak(state, RUNNING, Acquire, Acquire)
+                    if let Err(new) = self
+                        .state
+                        .compare_exchange_weak(state, RUNNING, Acquire, Acquire)
                     {
                         state = new;
                         continue;
                     }
                     // `waiter_queue` will manage other waiting threads, and
                     // wake them up on drop.
-                    let mut waiter_queue =
-                        CompletionGuard { state: &self.state, set_state_on_drop_to: POISONED };
+                    let mut waiter_queue = CompletionGuard {
+                        state: &self.state,
+                        set_state_on_drop_to: POISONED,
+                    };
                     // Run the function, letting it know if we're poisoned or not.
-                    let f_state = 
-                        OnceState {
-                            poisoned: state == POISONED,
-                            set_state_to: Cell::new(COMPLETE),
-                        }
-                    ;
+                    let f_state = OnceState {
+                        poisoned: state == POISONED,
+                        set_state_to: Cell::new(COMPLETE),
+                    };
                     f(&f_state);
                     waiter_queue.set_state_on_drop_to = f_state.set_state_to.get();
                     return;
@@ -131,8 +134,9 @@ impl Once {
                 RUNNING | QUEUED => {
                     // Set the state to QUEUED if it is not already.
                     if state == RUNNING
-                        && let Err(new) =
-                            self.state.compare_exchange_weak(RUNNING, QUEUED, Relaxed, Acquire)
+                        && let Err(new) = self
+                            .state
+                            .compare_exchange_weak(RUNNING, QUEUED, Relaxed, Acquire)
                     {
                         state = new;
                         continue;
@@ -147,4 +151,3 @@ impl Once {
         }
     }
 }
-

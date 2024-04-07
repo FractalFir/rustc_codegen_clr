@@ -171,7 +171,7 @@ pub fn deref_op<'ctx>(
     res
 }
 
-/// Returns the ops for getting the value of  a given place.
+/// Returns the ops for getting the address of  a given place.
 pub fn place_adress<'a>(
     place: &Place<'a>,
     tyctx: TyCtxt<'a>,
@@ -213,6 +213,65 @@ pub fn place_adress<'a>(
             ty = curr_ty.monomorphize(&method_instance, tyctx);
             addr_calc = curr_ops;
         }
+        
+        adress::place_elem_adress(
+            head,
+            ty,
+            tyctx,
+            method_instance,
+            method,
+            type_cache,
+            place_ty,
+            addr_calc,
+        )
+    }
+}
+/// Should be only used in certain builit-in features. For unsided types, returns the address of the fat pointer, not the address contained within it.
+pub(crate) fn place_address_raw<'a>(
+    place: &Place<'a>,
+    tyctx: TyCtxt<'a>,
+    method: &rustc_middle::mir::Body<'a>,
+    method_instance: Instance<'a>,
+    type_cache: &mut crate::r#type::TyCache,
+) -> CILNode {
+    let place_ty = place.ty(method, tyctx);
+    let place_ty = crate::utilis::monomorphize(&method_instance, place_ty, tyctx).ty;
+
+    let layout = tyctx
+        .layout_of(rustc_middle::ty::ParamEnvAnd {
+            param_env: ParamEnv::reveal_all(),
+            value: place_ty,
+        })
+        .expect("Could not get type layout!");
+    if layout.is_zst() {
+        return conv_usize!(ldc_u64!(layout.align.pref.bytes()));
+    }
+    if place.projection.is_empty() {
+        local_adress(place.local.as_usize(), method)
+    } else if  place.projection.len() == 1 && matches!(slice_head(place.projection).0,rustc_middle::mir::PlaceElem::Deref){
+        return local_adress(place.local.as_usize(), method);
+    }else {
+       
+        let (mut addr_calc, mut ty) = local_body(place.local.as_usize(), method);
+
+        ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
+        let mut ty = ty.into();
+
+        let (head, body) = slice_head(place.projection);
+        for elem in body {
+            let (curr_ty, curr_ops) = place_elem_body(
+                elem,
+                ty,
+                tyctx,
+                method_instance,
+                method,
+                type_cache,
+                addr_calc.clone(),
+            );
+            ty = curr_ty.monomorphize(&method_instance, tyctx);
+            addr_calc = curr_ops;
+        }
+        
         adress::place_elem_adress(
             head,
             ty,

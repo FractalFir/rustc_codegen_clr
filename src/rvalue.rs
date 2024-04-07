@@ -428,15 +428,16 @@ pub fn handle_rvalue<'tcx>(
                         .unwrap();
                     let descriptor =
                         FieldDescriptor::new(slice_tpe, Type::USize, "metadata".into());
-
+                    let addr = crate::place::place_address_raw(
+                        operand,
+                        tyctx,
+                        method,
+                        method_instance,
+                        tycache
+                    );
+                    assert!(!matches!(addr,CILNode::LDLoc(_)),"improper addr {addr:?}. operand:{operand:?}");
                     ld_field!(
-                        crate::place::place_adress(
-                            operand,
-                            tyctx,
-                            method,
-                            method_instance,
-                            tycache
-                        ),
+                        addr,
                         descriptor
                     )
                 }
