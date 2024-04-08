@@ -307,6 +307,8 @@ fn div_unchecked<'tyctx>(
                 [operand_a, operand_b]
             )
         }
+        TyKind::Uint(UintTy::U128) => CILNode::DivUn(operand_a.into(), operand_b.into()),
+        TyKind::Int(IntTy::I128) => div!(operand_a, operand_b),
         _ => div!(operand_a, operand_b),
     }
 }

@@ -243,6 +243,7 @@ pub enum CILOp {
     LDIndU16,
     LDIndU32,
     LDIndU64,
+    DivUn,
 }
 impl CILOp {
     /// If the cil op is a call, virtual call, new object cosntructor OR it loads a pointer to a function, returns the [`CallSite`] representing this function.
@@ -423,6 +424,7 @@ impl CILOp {
             | CILOp::AddOvfUn
             | CILOp::And
             | CILOp::Div
+            | CILOp::DivUn
             | CILOp::Rem
             | CILOp::RemUn
             | CILOp::Shr

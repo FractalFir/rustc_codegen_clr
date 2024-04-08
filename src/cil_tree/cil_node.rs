@@ -88,6 +88,7 @@ pub enum CILNode {
     Sub(Box<Self>, Box<Self>),
     Mul(Box<Self>, Box<Self>),
     Div(Box<Self>, Box<Self>),
+    DivUn(Box<Self>, Box<Self>),
     Rem(Box<Self>, Box<Self>),
     RemUn(Box<Self>, Box<Self>),
     Or(Box<Self>, Box<Self>),
@@ -150,10 +151,18 @@ pub enum CILNode {
         fn_ptr: Box<CILNode>,
         args: Box<[Self]>,
     },
-    LDIndU8 { ptr: Box<CILNode> },
-    LDIndU16 { ptr: Box<CILNode> },
-    LDIndU32 { ptr: Box<CILNode> },
-    LDIndU64 { ptr: Box<CILNode> },
+    LDIndU8 {
+        ptr: Box<CILNode>,
+    },
+    LDIndU16 {
+        ptr: Box<CILNode>,
+    },
+    LDIndU32 {
+        ptr: Box<CILNode>,
+    },
+    LDIndU64 {
+        ptr: Box<CILNode>,
+    },
 }
 impl CILNode {
     pub fn select(tpe: Type, a: CILNode, b: CILNode, predictate: CILNode) -> Self {
@@ -244,6 +253,7 @@ impl CILNode {
             | CILNode::Sub(a, b)
             | CILNode::Mul(a, b)
             | CILNode::Div(a, b)
+            | CILNode::DivUn(a, b)
             | CILNode::Rem(a, b)
             | CILNode::RemUn(a, b)
             | CILNode::Or(a, b)
@@ -458,6 +468,12 @@ impl CILNode {
                 res.push(CILOp::Div);
                 res
             }
+            Self::DivUn(a, b) => {
+                let mut res = a.flatten();
+                res.extend(b.flatten());
+                res.push(CILOp::DivUn);
+                res
+            }
             Self::Rem(a, b) => {
                 let mut res = a.flatten();
                 res.extend(b.flatten());
@@ -582,6 +598,7 @@ impl CILNode {
             | CILNode::Sub(a, b)
             | CILNode::Mul(a, b)
             | CILNode::Div(a, b)
+            | CILNode::DivUn(a, b)
             | CILNode::Rem(a, b)
             | CILNode::RemUn(a, b)
             | CILNode::Or(a, b)
@@ -684,6 +701,7 @@ impl CILNode {
             | CILNode::Sub(a, b)
             | CILNode::Mul(a, b)
             | CILNode::Div(a, b)
+            | CILNode::DivUn(a, b)
             | CILNode::Rem(a, b)
             | CILNode::RemUn(a, b)
             | CILNode::Or(a, b)
@@ -783,6 +801,7 @@ impl CILNode {
             | CILNode::Sub(a, b)
             | CILNode::Mul(a, b)
             | CILNode::Div(a, b)
+            | CILNode::DivUn(a, b)
             | CILNode::Rem(a, b)
             | CILNode::RemUn(a, b)
             | CILNode::Or(a, b)

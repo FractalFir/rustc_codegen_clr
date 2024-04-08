@@ -186,6 +186,7 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
         CILOp::Mul => "mul".into(),
         CILOp::MulOvf => "mul.ovf".into(),
         CILOp::Div => "div".into(),
+        CILOp::DivUn => "div.un".into(),
         CILOp::Rem => "rem".into(),
         CILOp::RemUn => "rem.un".into(),
         CILOp::Neg => "neg".into(),
@@ -564,10 +565,10 @@ pub fn type_cil(tpe: &Type) -> Cow<'static, str> {
         Type::GenericArg(idx) => format!("!{idx}").into(),
         Type::CallGenericArg(idx) => format!("!!{idx}").into(),
         Type::Foreign => "valuetype Foreign".into(),
-        Type::ManagedArray { element, dims }=> {
+        Type::ManagedArray { element, dims } => {
             let dims = Into::<u8>::into(*dims);
             let arr = if dims > 0_u8 {
-                (0..(dims  - 1)).map(|_| ",").collect::<String>()
+                (0..(dims - 1)).map(|_| ",").collect::<String>()
             } else {
                 "".into()
             };

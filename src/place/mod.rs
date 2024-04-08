@@ -213,7 +213,7 @@ pub fn place_adress<'a>(
             ty = curr_ty.monomorphize(&method_instance, tyctx);
             addr_calc = curr_ops;
         }
-        
+
         adress::place_elem_adress(
             head,
             ty,
@@ -248,10 +248,14 @@ pub(crate) fn place_address_raw<'a>(
     }
     if place.projection.is_empty() {
         local_adress(place.local.as_usize(), method)
-    } else if  place.projection.len() == 1 && matches!(slice_head(place.projection).0,rustc_middle::mir::PlaceElem::Deref){
+    } else if place.projection.len() == 1
+        && matches!(
+            slice_head(place.projection).0,
+            rustc_middle::mir::PlaceElem::Deref
+        )
+    {
         return local_adress(place.local.as_usize(), method);
-    }else {
-       
+    } else {
         let (mut addr_calc, mut ty) = local_body(place.local.as_usize(), method);
 
         ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
@@ -271,7 +275,7 @@ pub(crate) fn place_address_raw<'a>(
             ty = curr_ty.monomorphize(&method_instance, tyctx);
             addr_calc = curr_ops;
         }
-        
+
         adress::place_elem_adress(
             head,
             ty,

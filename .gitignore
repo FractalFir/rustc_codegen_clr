@@ -12,3 +12,4 @@ test/out
 *.bc
 *log.txt
 *.a
+*.c

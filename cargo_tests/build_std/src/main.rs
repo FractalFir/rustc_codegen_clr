@@ -318,6 +318,7 @@ fn main() {
     } else {
         unsafe { printf(owned.as_ptr() as *const i8) };
     };
+    test_thread_local();
     //lock_test();
     // test_stdout();
     test_stderr();
@@ -330,6 +331,19 @@ fn main() {
 
     let val = std::hint::black_box(*boxed_int);
     //let val = std::hint::black_box(string);
+}
+fn test_thread_local(){
+    use std::cell::Cell;
+
+thread_local! {
+    static X: Cell<i32> = panic!("!");
+}
+
+// Calling X.get() here would result in a panic.
+
+X.set(123); // But X.set() is fine, as it skips the initializer above.
+
+assert_eq!(X.get(), 123);
 }
 fn test_stderr(){
     use std::io::{self, Write};

@@ -46,7 +46,10 @@ pub enum Type {
     DelegatePtr(Box<crate::function_sig::FnSig>),
     /// Generic argument of a method
     MethodGenericArg(i32),
-    ManagedArray { element: Box<Self>, dims: std::num::NonZeroU8 },
+    ManagedArray {
+        element: Box<Self>,
+        dims: std::num::NonZeroU8,
+    },
 }
 #[derive(Serialize, Deserialize, PartialEq, Clone, Eq, Hash, Debug)]
 pub struct DotnetArray {
@@ -182,17 +185,15 @@ impl DotnetTypeRef {
     pub(crate) fn interlocked() -> Self {
         Self::new(Some("System.Threading"), "System.Threading.Interlocked").with_valuetype(false)
     }
-    pub(crate) fn assembly()->Self{
-        Self::new(
-            Some("System.Runtime"),
-            "System.Reflection.Assembly"
-        ).with_valuetype(false)
+    pub(crate) fn assembly() -> Self {
+        Self::new(Some("System.Runtime"), "System.Reflection.Assembly").with_valuetype(false)
     }
     pub(crate) fn native_mem() -> DotnetTypeRef {
         DotnetTypeRef::new(
             Some("System.Runtime.InteropServices"),
             "System.Runtime.InteropServices.NativeMemory",
-        ).with_valuetype(false)
+        )
+        .with_valuetype(false)
     }
 }
 impl Type {

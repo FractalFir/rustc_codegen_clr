@@ -115,8 +115,6 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     );
     marshal.set_valuetype(false);
     let marshal = Some(marshal);
-  
-   
 
     let mut native_mem = DotnetTypeRef::new(
         Some("System.Runtime.InteropServices"),
@@ -135,10 +133,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
         } else {
             vec![BasicBlock::new(
                 vec![CILRoot::Ret {
-                    tree: call!(
-                        CallSite::alloc(),
-                        [CILNode::LDArg(0), CILNode::LDArg(1)]
-                    ),
+                    tree: call!(CallSite::alloc(), [CILNode::LDArg(0), CILNode::LDArg(1)]),
                 }
                 .into()],
                 0,
@@ -201,7 +196,27 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
             None,
         )],
     );
+    let mut __rust_realloc = Method::new(
+        AccessModifer::Private,
+        MethodType::Static,
+        FnSig::new(&[Type::Ptr(Type::U8.into()),Type::USize, Type::USize, Type::USize], &Type::Ptr(Type::U8.into())),
+        "__rust_realloc",
+        vec![],
+        if *crate::config::CHECK_ALLOCATIONS {
+            todo!("Can't check allocations yet");
+        } else {
+            vec![BasicBlock::new(
+                vec![CILRoot::Ret {
+                    tree: call!(CallSite::realloc(), [CILNode::LDArg(0), CILNode::LDArg(3), CILNode::LDArg(2)]),
+                }
+                .into()],
+                0,
+                None,
+            )]
+        },
+    );
 
+    asm.add_method(__rust_realloc);
     asm.add_method(free);
     //TODO: add volatile prefix to volatile loads
 

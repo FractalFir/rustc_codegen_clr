@@ -39,7 +39,7 @@ pub fn address_last_dereference<'ctx>(
     // Get the type curr_type points to!
     let curr_points_to = super::pointed_type(curr_type.into());
     let curr_type = tycache.type_from_cache(curr_type, tyctx, Some(method));
-   
+
     match (curr_points_to.kind(), target_type.kind()) {
         (TyKind::Slice(_), TyKind::Slice(_)) => addr_calc,
         (TyKind::Slice(_), _) => CILNode::LDField {

@@ -3,9 +3,10 @@ use crate::operand::operand_address;
 use crate::place::place_adress;
 use crate::utilis::field_descrptor;
 use crate::{
-    add, call, call_virt, conv_f32, conv_f64, conv_usize, div, eq, ld_field, ld_field_address, ldc_i32, ldc_u64, mul, place, size_of, sub
+    add, call, call_virt, conv_f32, conv_f64, conv_usize, div, eq, ld_field, ld_field_address,
+    ldc_i32, ldc_u64, mul, place, size_of, sub,
 };
-fn compare_bytes(a:CILNode,b:CILNode,len:CILNode)->CILNode{
+fn compare_bytes(a: CILNode, b: CILNode, len: CILNode) -> CILNode {
     todo!();
 }
 use crate::{
@@ -403,9 +404,14 @@ pub fn handle_intrinsic<'tyctx>(
             place_set(
                 destination,
                 tyctx,
-                div!(
-                    handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
-                    handle_operand(&args[1].node, tyctx, body, method_instance, type_cache)
+                crate::binop::binop_unchecked(
+                    rustc_middle::mir::BinOp::Div,
+                    &args[0].node,
+                    &args[1].node,
+                    tyctx,
+                    body,
+                    method_instance,
+                    type_cache,
                 ),
                 body,
                 method_instance,
@@ -506,7 +512,7 @@ pub fn handle_intrinsic<'tyctx>(
                 crate::place::deref_op(arg_ty.into(), tyctx, &method_instance, type_cache, ops);
             place_set(destination, tyctx, ops, body, method_instance, type_cache)
         }
-        "atomic_cxchgweak_acquire_acquire" => {
+        "atomic_cxchgweak_acquire_acquire" | "atomic_cxchg_acquire_relaxed" => {
             let interlocked = DotnetTypeRef::interlocked();
             // *T
             let dst = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
@@ -522,7 +528,7 @@ pub fn handle_intrinsic<'tyctx>(
             let src_type =
                 crate::utilis::monomorphize(&method_instance, args[2].node.ty(body, tyctx), tyctx);
             let src_type = type_cache.type_from_cache(src_type, tyctx, Some(method_instance));
-            
+
             let call_site = CallSite::new(
                 Some(interlocked),
                 "CompareExchange".into(),
@@ -539,18 +545,33 @@ pub fn handle_intrinsic<'tyctx>(
             // *T
             let exchange_res = call!(call_site, [dst, old.clone(), src]);
             // Set a field of the destination
-            let dst_ty = destination.ty(body,tyctx);
+            let dst_ty = destination.ty(body, tyctx);
             let fld_desc = field_descrptor(dst_ty.ty, 0, tyctx, method_instance, type_cache);
-            assert_eq!(*fld_desc.tpe(),src_type);
+            assert_eq!(*fld_desc.tpe(), src_type);
             // Set the value of the result.
-            let set_val = CILRoot::SetField { addr: place_adress(destination, tyctx, body, method_instance, type_cache), value:exchange_res, desc: fld_desc.clone() };
+            let set_val = CILRoot::SetField {
+                addr: place_adress(destination, tyctx, body, method_instance, type_cache),
+                value: exchange_res,
+                desc: fld_desc.clone(),
+            };
             // Get the result back
-            let val = CILNode::SubTrees([set_val].into(), ld_field!(place_adress(destination, tyctx, body, method_instance, type_cache),fld_desc).into());
+            let val = CILNode::SubTrees(
+                [set_val].into(),
+                ld_field!(
+                    place_adress(destination, tyctx, body, method_instance, type_cache),
+                    fld_desc
+                )
+                .into(),
+            );
             // Compare the result to comparand(aka `old`)
-            let cmp = eq!(val,old);
+            let cmp = eq!(val, old);
             let fld_desc = field_descrptor(dst_ty.ty, 1, tyctx, method_instance, type_cache);
-            assert_eq!(*fld_desc.tpe(),Type::Bool);
-            let set_bool = CILRoot::SetField { addr: place_adress(destination, tyctx, body, method_instance, type_cache), value:cmp, desc: fld_desc.clone() };
+            assert_eq!(*fld_desc.tpe(), Type::Bool);
+            let set_bool = CILRoot::SetField {
+                addr: place_adress(destination, tyctx, body, method_instance, type_cache),
+                value: cmp,
+                desc: fld_desc.clone(),
+            };
             set_bool
         }
         "atomic_xchg_release" => {
@@ -559,7 +580,7 @@ pub fn handle_intrinsic<'tyctx>(
             let dst = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
             // T
             let new = handle_operand(&args[1].node, tyctx, body, method_instance, type_cache);
- 
+
             debug_assert_eq!(
                 args.len(),
                 2,
@@ -568,7 +589,7 @@ pub fn handle_intrinsic<'tyctx>(
             let src_type =
                 crate::utilis::monomorphize(&method_instance, args[1].node.ty(body, tyctx), tyctx);
             let src_type = type_cache.type_from_cache(src_type, tyctx, Some(method_instance));
-            
+
             let call_site = CallSite::new(
                 Some(interlocked),
                 "Exchange".into(),
@@ -576,14 +597,20 @@ pub fn handle_intrinsic<'tyctx>(
                     &[
                         Type::ManagedReference(src_type.clone().into()),
                         src_type.clone().into(),
-     
                     ],
                     &src_type.clone().into(),
                 ),
                 true,
             );
             // T
-            place_set(destination, tyctx,   call!(call_site, [dst, new]), body, method_instance, type_cache)
+            place_set(
+                destination,
+                tyctx,
+                call!(call_site, [dst, new]),
+                body,
+                method_instance,
+                type_cache,
+            )
         }
         //"bswap"
         "assert_inhabited" => CILRoot::Nop,
@@ -604,12 +631,13 @@ pub fn handle_intrinsic<'tyctx>(
             place_set(
                 destination,
                 tyctx,
-                div!(
+                CILNode::DivUn(
                     sub!(
                         handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
                         handle_operand(&args[1].node, tyctx, body, method_instance, type_cache)
-                    ),
-                    conv_usize!(size_of!(tpe))
+                    )
+                    .into(),
+                    conv_usize!(size_of!(tpe)).into(),
                 ),
                 body,
                 method_instance,
@@ -639,16 +667,14 @@ pub fn handle_intrinsic<'tyctx>(
             )
         }
         // .NET guarantess all loads are tear-free
-        "atomic_load_relaxed"=>{
-            place_set(
-                destination,
-                tyctx,
-                handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
-                body,
-                method_instance,
-                type_cache,
-            )
-        }
+        "atomic_load_relaxed" => place_set(
+            destination,
+            tyctx,
+            handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
+            body,
+            method_instance,
+            type_cache,
+        ),
         "sqrtf32" => {
             debug_assert_eq!(
                 args.len(),

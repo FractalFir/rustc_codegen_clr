@@ -426,9 +426,9 @@ impl Assembly {
                     //todo!("Function/Vtable allocation.");
                 }
             };
-       
+
         let const_allocation = const_allocation.inner();
-       
+
         let bytes: &[u8] = const_allocation
             .inspect_with_uninit_and_ptr_outside_interpreter(0..const_allocation.len());
         /// Alloc ids are *not* unique across all crates. Adding the hash here ensures we don't overwrite allocations during linking

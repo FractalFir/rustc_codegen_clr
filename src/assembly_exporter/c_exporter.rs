@@ -328,6 +328,7 @@ fn node_string(tree: &CILNode) -> String {
         CILNode::Sub(a, b) => format!("({a}) - ({b})", a = node_string(a), b = node_string(b)),
         CILNode::Mul(a, b) => format!("({a}) * ({b})", a = node_string(a), b = node_string(b)),
         CILNode::Div(a, b) => format!("({a}) / ({b})", a = node_string(a), b = node_string(b)),
+        CILNode::DivUn(a, b) => format!("({a}) / ({b})", a = node_string(a), b = node_string(b)),
         CILNode::Rem(a, b) | CILNode::RemUn(a, b) => {
             format!("{a} % {b}", a = node_string(a), b = node_string(b))
         }
@@ -338,7 +339,7 @@ fn node_string(tree: &CILNode) -> String {
             format!("{a} << {b}", a = node_string(a), b = node_string(b))
         }
         CILNode::RawOpsParrentless { .. } => todo!(),
-        CILNode::Call { args, site } | CILNode::CallVirt{ args, site }  => {
+        CILNode::Call { args, site } | CILNode::CallVirt { args, site } => {
             let name = site.name();
             let mut input_iter = args
                 .iter()
@@ -399,15 +400,15 @@ fn node_string(tree: &CILNode) -> String {
         CILNode::LDFtn(fn_sig) => {
             let name = fn_sig.name();
             let tpe_name = fn_sig
-            .class()
-            .map(|tpe| tpe.name_path())
-            .unwrap_or("")
-            .replace('.', "_");
+                .class()
+                .map(|tpe| tpe.name_path())
+                .unwrap_or("")
+                .replace('.', "_");
             format!("(uintptr_t)(&{tpe_name}{name})")
         }
         CILNode::LDTypeToken(tpe) => {
             todo!();
-        },
+        }
         CILNode::NewObj { site, args } => {
             let mut input_iter = args
                 .iter()
@@ -452,9 +453,15 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
             ops,
         } => {
             if *sub_target != 0 {
-                format!("\tif(({ops}) != 0)goto BB_{sub_target};\n", ops = node_string(ops))
+                format!(
+                    "\tif(({ops}) != 0)goto BB_{sub_target};\n",
+                    ops = node_string(ops)
+                )
             } else {
-                format!("\tif(({ops}) != 0)goto BB_{target};\n", ops = node_string(ops))
+                format!(
+                    "\tif(({ops}) != 0)goto BB_{target};\n",
+                    ops = node_string(ops)
+                )
             }
         }
         CILRoot::GoTo { target, sub_target } => {
@@ -503,7 +510,7 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
                 .replace('.', "_");
             format!("{tpe_name}{name}{inputs};")
         }
-        CILRoot::SetField { addr, value, desc } =>{
+        CILRoot::SetField { addr, value, desc } => {
             if let Some(_) = desc.tpe().as_dotnet() {
                 format!(
                     "(({owner}*){ptr})->{name}.f = {value};",
@@ -520,9 +527,10 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
                     name = desc.name(),
                     value = node_string(value),
                     tpe = c_tpe(desc.tpe()),
-                )}
+                )
             }
-        
+        }
+
         CILRoot::SetTMPLocal { value } => {
             panic!("Temporary locals must be resolved before the export stage! value:{value:?}")
         }
@@ -680,7 +688,7 @@ fn c_tpe(tpe: &Type) -> Cow<'static, str> {
         }
         Type::DelegatePtr(_sig) => "void*".into(),
         Type::ManagedArray { element, dims } => {
-            let ptrs:String = (0..(dims.get())).map(|_|{'*'}).collect();
+            let ptrs: String = (0..(dims.get())).map(|_| '*').collect();
             format!("{element}{ptrs}", element = c_tpe(element)).into()
         }
         _ => todo!("Unsuported type {tpe:?}"),

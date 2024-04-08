@@ -433,13 +433,13 @@ pub fn handle_rvalue<'tcx>(
                         tyctx,
                         method,
                         method_instance,
-                        tycache
+                        tycache,
                     );
-                    assert!(!matches!(addr,CILNode::LDLoc(_)),"improper addr {addr:?}. operand:{operand:?}");
-                    ld_field!(
-                        addr,
-                        descriptor
-                    )
+                    assert!(
+                        !matches!(addr, CILNode::LDLoc(_)),
+                        "improper addr {addr:?}. operand:{operand:?}"
+                    );
+                    ld_field!(addr, descriptor)
                 }
                 _ => todo!("Get length of type {ty:?}"),
             }
