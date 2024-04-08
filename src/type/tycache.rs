@@ -17,6 +17,18 @@ pub struct TyCache {
     cycle_prevention: Vec<IString>,
     ptr_components: Option<DefId>,
 }
+fn create_typedef<'tyctx>( cache: &mut TyCache,
+    name: &str,
+    def: AdtDef<'tyctx>,
+
+    tyctx: TyCtxt<'tyctx>,
+    method: Option<Instance<'tyctx>>,)->TypeDef{
+        assert_eq!(def.adt_kind(),AdtKind::Struct,"Only struct types may be used in custom .NET typedefs!");
+        for field in def.all_fields(){
+            
+        }
+        todo!()
+}
 impl TyCache {
     #[must_use]
     pub fn empty() -> Self {
@@ -60,12 +72,19 @@ impl TyCache {
             return DotnetTypeRef::new(None, name);
         }
         self.cycle_prevention.push(name.into());
-        let def = match def.adt_kind() {
-            AdtKind::Struct => self.struct_(name, def, adt_ty, subst, tyctx, method),
-            AdtKind::Enum => self.enum_(name, def, adt_ty, subst, tyctx, method),
-            AdtKind::Union => self.union_(name, def, adt_ty, subst, tyctx, method),
-        };
-        self.type_def_cache.insert(name.into(), def);
+        if crate::r#type::is_name_magic(name){
+            assert!(subst.is_empty(),"A custom typedef may not contain neiter generic arguments nor lifetimes!");
+            let def = create_typedef(self, name, def, tyctx, method);
+            self.type_def_cache.insert(name.into(),def);
+        }
+        else{
+            let def = match def.adt_kind() {
+                AdtKind::Struct => self.struct_(name, def, adt_ty, subst, tyctx, method),
+                AdtKind::Enum => self.enum_(name, def, adt_ty, subst, tyctx, method),
+                AdtKind::Union => self.union_(name, def, adt_ty, subst, tyctx, method),
+            };
+            self.type_def_cache.insert(name.into(), def);
+        }
         self.cycle_prevention.pop();
         DotnetTypeRef::new(None, name)
     }

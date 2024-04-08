@@ -311,7 +311,7 @@ pub fn handle_rvalue<'tcx>(
                 ),
             )))
         }
-        Rvalue::Cast(CastKind::PointerFromExposedAddress, operand, _) => {
+        Rvalue::Cast(CastKind::PointerWithExposedProvenance, operand, _) => {
             //FIXME: the documentation of this cast(https://doc.rust-lang.org/nightly/std/ptr/fn.from_exposed_addr.html) is a bit confusing,
             //since this seems to be something deeply linked to the rust memory model.
             // I assume this to be ALWAYS equivalent to `usize as *const/mut T`, but this may not always be the case.
@@ -320,7 +320,7 @@ pub fn handle_rvalue<'tcx>(
             // Cast from usize/isize to any *T is a NOP, so we just have to load the operand.
             handle_operand(operand, tyctx, method, method_instance, tycache)
         }
-        Rvalue::Cast(CastKind::PointerExposeAddress, operand, _) => {
+        Rvalue::Cast(CastKind::PointerExposeProvenance, operand, _) => {
             //FIXME: the documentation of this cast(https://doc.rust-lang.org/nightly/std/primitive.pointer.html#method.expose_addrl) is a bit confusing,
             //since this seems to be something deeply linked to the rust memory model.
             // I assume this to be ALWAYS equivalent to `*const/mut T as usize`, but this may not always be the case.

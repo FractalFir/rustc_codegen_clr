@@ -9,11 +9,12 @@ type MString = RustcCLRInteropManagedClass<"System.Runtime","System.String">;
 struct RustcCLRInteropFieldDef<T,const ACCESS:u8,const IS_STATIC:bool>{pd:core::marker::PhantomData<T>}
 struct RustcCLRInteropClassAccess<const ACCESS:u8>{}
 //struct RustcCLRInteropCtorDef<Func,const access:u8>{pd:core::marker::PhantomData<Func>}
-//struct RustcCLRInteropMethodDef<const name:&'static str,Func,const access:u8>{pd:core::marker::PhantomData<Func>}
+//struct RustcCLRInteropMethodDef<const name:&'static str,Func:Fn,const access:u8>{pd:core::marker::PhantomData<Func>}
 const PRIVATE:u8 = 0;
 const PROTECTED:u8 = 1;
 const PUBLIC:u8 = 2;
 trait Func{}
+unsafe impl Sync for RustcCLRInteropManagedCustomTypeDef_CustomTypedef{}
 #[allow(non_camel_case_types)]
 struct RustcCLRInteropManagedCustomTypeDef_CustomTypedef{
     // Mandatory
@@ -29,6 +30,9 @@ struct RustcCLRInteropManagedCustomTypeDef_CustomTypedef{
     // Static fields
     total_happy:RustcCLRInteropFieldDef<usize,PUBLIC,true>,
 }
+/* 
+#[no_mangle]
+pub extern fn tydef_custom_typedef(_:&RustcCLRInteropManagedCustomTypeDef_CustomTypedef){}*/
 /* 
 fn is_happy()->MString{
 

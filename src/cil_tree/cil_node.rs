@@ -150,6 +150,10 @@ pub enum CILNode {
         fn_ptr: Box<CILNode>,
         args: Box<[Self]>,
     },
+    LDIndU8 { ptr: Box<CILNode> },
+    LDIndU16 { ptr: Box<CILNode> },
+    LDIndU32 { ptr: Box<CILNode> },
+    LDIndU64 { ptr: Box<CILNode> },
 }
 impl CILNode {
     pub fn select(tpe: Type, a: CILNode, b: CILNode, predictate: CILNode) -> Self {
@@ -226,6 +230,10 @@ impl CILNode {
             | CILNode::LDIndI16 { ptr }
             | CILNode::LDIndI32 { ptr }
             | CILNode::LDIndI64 { ptr }
+            | CILNode::LDIndU8 { ptr }
+            | CILNode::LDIndU16 { ptr }
+            | CILNode::LDIndU32 { ptr }
+            | CILNode::LDIndU64 { ptr }
             | CILNode::LDIndISize { ptr }
             | CILNode::LdObj { ptr, .. }
             | CILNode::LDIndF32 { ptr }
@@ -383,6 +391,11 @@ impl CILNode {
             Self::LDIndI16 { ptr } => append_vec(ptr.flatten(), CILOp::LDIndI16),
             Self::LDIndI32 { ptr } => append_vec(ptr.flatten(), CILOp::LDIndI32),
             Self::LDIndI64 { ptr } => append_vec(ptr.flatten(), CILOp::LDIndI64),
+            Self::LDIndISize { ptr } => append_vec(ptr.flatten(), CILOp::LDIndISize),
+            Self::LDIndU8 { ptr } => append_vec(ptr.flatten(), CILOp::LDIndU8),
+            Self::LDIndU16 { ptr } => append_vec(ptr.flatten(), CILOp::LDIndU16),
+            Self::LDIndU32 { ptr } => append_vec(ptr.flatten(), CILOp::LDIndU32),
+            Self::LDIndU64 { ptr } => append_vec(ptr.flatten(), CILOp::LDIndU64),
             Self::LDIndISize { ptr } => append_vec(ptr.flatten(), CILOp::LDIndISize),
             Self::LdObj { ptr, obj } => append_vec(ptr.flatten(), CILOp::LdObj(obj.clone())),
 
@@ -554,6 +567,10 @@ impl CILNode {
             CILNode::LDIndI16 { ptr }|
             CILNode::LDIndI32 { ptr }|
             CILNode::LDIndI64 { ptr }|
+            CILNode::LDIndU8 { ptr }|
+            CILNode::LDIndU16 { ptr }|
+            CILNode::LDIndU32 { ptr }|
+            CILNode::LDIndU64 { ptr }|
             CILNode::LDIndISize { ptr }|
             CILNode::LdObj { ptr, .. }|
             CILNode::LDIndF32 { ptr } |
@@ -652,6 +669,10 @@ impl CILNode {
             CILNode::LDIndI16 { ptr }|
             CILNode::LDIndI32 { ptr }|
             CILNode::LDIndI64 { ptr }|
+            CILNode::LDIndU8 { ptr }|
+            CILNode::LDIndU16 { ptr }|
+            CILNode::LDIndU32 { ptr }|
+            CILNode::LDIndU64 { ptr }|
             CILNode::LDIndISize { ptr }|
             CILNode::LdObj { ptr, .. }|
             CILNode::LDIndF32 { ptr } |
@@ -746,6 +767,10 @@ impl CILNode {
             | CILNode::LDIndI16 { ptr }
             | CILNode::LDIndI32 { ptr }
             | CILNode::LDIndI64 { ptr }
+            | CILNode::LDIndU8 { ptr }
+            | CILNode::LDIndU16 { ptr }
+            | CILNode::LDIndU32 { ptr }
+            | CILNode::LDIndU64 { ptr }
             | CILNode::LDIndISize { ptr }
             | CILNode::LdObj { ptr, .. }
             | CILNode::LDIndF32 { ptr }

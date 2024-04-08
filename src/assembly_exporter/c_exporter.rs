@@ -299,6 +299,10 @@ fn node_string(tree: &CILNode) -> String {
         CILNode::LDIndI16 { ptr } => format!("(*((int16_t*){ptr}))", ptr = node_string(ptr)),
         CILNode::LDIndI32 { ptr } => format!("(*((int32_t*){ptr}))", ptr = node_string(ptr)),
         CILNode::LDIndI64 { ptr } => format!("(*((int64_t*){ptr}))", ptr = node_string(ptr)),
+        CILNode::LDIndU8 { ptr } => format!("(*((uint8_t*){ptr}))", ptr = node_string(ptr)),
+        CILNode::LDIndU16 { ptr } => format!("(*((uint16_t*){ptr}))", ptr = node_string(ptr)),
+        CILNode::LDIndU32 { ptr } => format!("(*((uint32_t*){ptr}))", ptr = node_string(ptr)),
+        CILNode::LDIndU64 { ptr } => format!("(*((uint64_t*){ptr}))", ptr = node_string(ptr)),
         CILNode::LDIndISize { ptr } => format!("(*((ptrdiff_t*){ptr}))", ptr = node_string(ptr)),
         CILNode::LdObj { ptr, obj } => format!(
             "(*({owner}*)({ptr}))",
@@ -401,7 +405,9 @@ fn node_string(tree: &CILNode) -> String {
             .replace('.', "_");
             format!("(uintptr_t)(&{tpe_name}{name})")
         }
-        CILNode::LDTypeToken(_) => todo!(),
+        CILNode::LDTypeToken(tpe) => {
+            todo!();
+        },
         CILNode::NewObj { site, args } => {
             let mut input_iter = args
                 .iter()
@@ -446,9 +452,9 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
             ops,
         } => {
             if *sub_target != 0 {
-                format!("\tif({ops})goto BB_{sub_target};\n", ops = node_string(ops))
+                format!("\tif(({ops}) != 0)goto BB_{sub_target};\n", ops = node_string(ops))
             } else {
-                format!("\tif({ops})goto BB_{target};\n", ops = node_string(ops))
+                format!("\tif(({ops}) != 0)goto BB_{target};\n", ops = node_string(ops))
             }
         }
         CILRoot::GoTo { target, sub_target } => {

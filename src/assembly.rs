@@ -426,7 +426,9 @@ impl Assembly {
                     //todo!("Function/Vtable allocation.");
                 }
             };
+       
         let const_allocation = const_allocation.inner();
+       
         let bytes: &[u8] = const_allocation
             .inspect_with_uninit_and_ptr_outside_interpreter(0..const_allocation.len());
         /// Alloc ids are *not* unique across all crates. Adding the hash here ensures we don't overwrite allocations during linking
@@ -589,6 +591,7 @@ impl Assembly {
                 let alloc = tcx.eval_static_initializer(stotic).unwrap();
                 let alloc_id = tcx.reserve_and_set_memory_alloc(alloc);
                 self.add_allocation(crate::utilis::alloc_id_to_u64(alloc_id), tcx);
+                //let ty = alloc.0;
                 drop(static_compile_timer);
                 //eprintln!("Unsuported item - Static:{stotic:?}");
                 Ok(())

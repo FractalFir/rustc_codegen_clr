@@ -239,6 +239,10 @@ pub enum CILOp {
     BeginCatch,
     EndTry,
     Leave(u32),
+    LDIndU8,
+    LDIndU16,
+    LDIndU32,
+    LDIndU64,
 }
 impl CILOp {
     /// If the cil op is a call, virtual call, new object cosntructor OR it loads a pointer to a function, returns the [`CallSite`] representing this function.
@@ -388,6 +392,10 @@ impl CILOp {
             | CILOp::LDIndI16
             | CILOp::LDIndI32
             | CILOp::LDIndI64
+            | CILOp::LDIndU8
+            | CILOp::LDIndU16
+            | CILOp::LDIndU32
+            | CILOp::LDIndU64
             | CILOp::LDIndISize
             | CILOp::LDIndF32
             | CILOp::LDIndF64

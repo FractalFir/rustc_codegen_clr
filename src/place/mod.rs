@@ -82,10 +82,10 @@ pub fn deref_op<'ctx>(
                 //_ => todo!("TODO: can't deref int type {int_ty:?} yet"),
             },
             TyKind::Uint(int_ty) => match int_ty {
-                UintTy::U8 => CILNode::LDIndI8 { ptr },
-                UintTy::U16 => CILNode::LDIndI16 { ptr },
-                UintTy::U32 => CILNode::LDIndI32 { ptr },
-                UintTy::U64 => CILNode::LDIndI64 { ptr },
+                UintTy::U8 => CILNode::LDIndU8 { ptr },
+                UintTy::U16 => CILNode::LDIndU16 { ptr },
+                UintTy::U32 => CILNode::LDIndU32 { ptr },
+                UintTy::U64 => CILNode::LDIndU64 { ptr },
                 UintTy::Usize => CILNode::LDIndISize { ptr },
                 UintTy::U128 => CILNode::LdObj {
                     ptr,

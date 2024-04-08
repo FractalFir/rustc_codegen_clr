@@ -256,6 +256,8 @@ impl CodegenBackend for MyBackend {
                 object: Some(serialized_asm_path),
                 bytecode: None,
                 dwarf_object: None,
+                llvm_ir:None,
+                assembly:None,
             }];
             let codegen_results = CodegenResults {
                 modules,
