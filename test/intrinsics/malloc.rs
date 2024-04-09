@@ -1,5 +1,5 @@
 #![feature(lang_items,adt_const_params,associated_type_defaults,core_intrinsics,start)]
-#![allow(internal_features,incomplete_features,unused_variables,dead_code,unused_unsafe)]
+#![allow(internal_features,incomplete_features,unused_variables,dead_code,unused_unsafe,unused_imports)]
 #![no_std]
 include!("../common.rs");
 fn main(){

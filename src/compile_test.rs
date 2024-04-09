@@ -740,7 +740,8 @@ run_test! {types,int128,stable}
 
 run_test! {std,main,unstable}
 run_test! {std,futex_test,unstable}
-
+run_test! {std,tlocal_key_test,unstable}
+run_test! {std,cell_test,stable}
 run_test! {std,once_lock_test,unstable}
 run_test! {control_flow,cf_for,stable}
 run_test! {control_flow,drop,stable}

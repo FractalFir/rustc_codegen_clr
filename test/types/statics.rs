@@ -1,4 +1,4 @@
-#![feature(lang_items,adt_const_params,associated_type_defaults,core_intrinsics,start)]
+#![feature(lang_items,adt_const_params,associated_type_defaults,core_intrinsics,start,unused_imports)]
 #![allow(internal_features,incomplete_features,unused_variables,dead_code)]
 #![no_std]
 include!("../common.rs");

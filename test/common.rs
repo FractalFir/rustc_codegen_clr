@@ -33,32 +33,37 @@ fn start(_argc:isize,_argv: *const *const u8) -> isize{
 }
 use core::intrinsics::black_box;
 #[allow(unused_macros)]
+#[macro_export]
 macro_rules! test{
     ($condition:expr)=>{
-        if !black_box($condition){
-            rustc_clr_interop_managed_call1_::<"System.Console","System.Console",false,"WriteLine",true,(),u32>(line!());
+        if !core::intrinsics::black_box($condition){
+            crate::rustc_clr_interop_managed_call1_::<"System.Console","System.Console",false,"WriteLine",true,(),u32>(line!());
             unsafe{core::intrinsics::breakpoint()};
             core::intrinsics::abort();
         }
     }
 }
 #[allow(unused_macros)]
+#[macro_export]
 macro_rules! test_eq{
     ($a:expr,$b:expr)=>{
-        if black_box($a) != black_box($b){
+        if core::intrinsics::black_box($a) != core::intrinsics::black_box($b){
             //Put::putnl($a);
             //Put::putnl($b);
-            rustc_clr_interop_managed_call1_::<"System.Console","System.Console",false,"WriteLine",true,(),u32>(line!());
+            crate::rustc_clr_interop_managed_call1_::<"System.Console","System.Console",false,"WriteLine",true,(),u32>(line!());
             unsafe{core::intrinsics::breakpoint()};
             core::intrinsics::abort();
         }
     }
 }
 #[allow(unused_macros)]
+#[macro_export]
 macro_rules! test_ne{
     ($a:expr,$b:expr)=>{
-        if black_box($a) == black_box($b){
-            rustc_clr_interop_managed_call1_::<"System.Console","System.Console",false,"WriteLine",true,(),u32>(line!());
+        if core::intrinsics::black_box($a) == core::intrinsics::black_box($b){
+            //Put::putnl($a);
+            //Put::putnl($b);
+            crate::rustc_clr_interop_managed_call1_::<"System.Console","System.Console",false,"WriteLine",true,(),u32>(line!());
             unsafe{core::intrinsics::breakpoint()};
             core::intrinsics::abort();
         }

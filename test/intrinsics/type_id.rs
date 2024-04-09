@@ -1,5 +1,5 @@
 #![feature(lang_items,adt_const_params,associated_type_defaults,core_intrinsics,start)]
-#![allow(internal_features,incomplete_features,unused_variables,dead_code)]
+#![allow(internal_features,incomplete_features,unused_variables,dead_code,unused_imports)]
 #![no_std]
 use core::any::TypeId;
 include!("../common.rs");
