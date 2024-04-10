@@ -36,9 +36,16 @@ pub fn adt_name<'tyctx>(
     let adt_instance = Instance::resolve(tyctx, ParamEnv::reveal_all(), adt.did(), gargs)
         .unwrap()
         .unwrap();
+    // Get the mangled path: it is absolute, and not poluted by types being rexported
     let auto_mangled =
         rustc_symbol_mangling::symbol_name_for_instance_in_crate(tyctx, adt_instance, krate);
-    escape_class_name(&auto_mangled)
+    // Then, demangle the type name, converting it to a Rust-style one (eg. `core::option::Option::h8zc8s`)
+    let demangled = rustc_demangle::demangle(&auto_mangled);
+    // Using formating preserves the generic hash.
+    let demangled = format!("{demangled}");
+    // Replace Rust namespace(module) spearators with C# ones.
+    let dotnet_class_name = demangled.replace("::",".");
+    escape_class_name(&dotnet_class_name)
 }
 pub fn escape_class_name(name: &str) -> IString {
     name.replace('\'', "_ap_").into()

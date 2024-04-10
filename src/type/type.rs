@@ -125,6 +125,10 @@ impl DotnetTypeRef {
         Self::new(Some("System.Runtime"), "System.String").with_valuetype(false)
     }
     #[must_use]
+    pub fn managed_array() -> Self {
+        Self::new(Some("System.Runtime"), "System.Array").with_valuetype(false)
+    }
+    #[must_use]
     pub fn with_valuetype(mut self, valuetype: bool) -> Self {
         self.set_valuetype(valuetype);
         self

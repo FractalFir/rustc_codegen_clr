@@ -59,4 +59,4 @@ static char* exec_fname;
 typedef char* System_String;
 typedef struct TypeInfo{
     int32_t hash;
-}
+};

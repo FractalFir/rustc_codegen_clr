@@ -13,6 +13,7 @@ libc = "0.2.153"
 libloading = "0.8.1"
 
 postcard = { version = "1.0.6", features = ["use-std"] }
+rustc-demangle = "0.1.23"
 
 serde = { version = "1.0.183", features = ["derive"] }
 [lib]

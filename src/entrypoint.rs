@@ -53,10 +53,10 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
                                         add!(
                                             call!(
                                                 CallSite::new(
-                                                    Some(DotnetTypeRef::string_type()),
+                                                    Some(DotnetTypeRef::managed_array()),
                                                     "get_Length".into(),
                                                     FnSig::new(
-                                                        &[DotnetTypeRef::string_type().into()],
+                                                        &[DotnetTypeRef::managed_array().into()],
                                                         &Type::I32
                                                     ),
                                                     false
