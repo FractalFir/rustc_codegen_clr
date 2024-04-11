@@ -53,7 +53,7 @@ The project is still very early in development, but it has made significant prog
 - [X] Closures
 - [X] Function types
 - [X] Function pointers *there are some unhnadled edge cases, related to `#[track_caller]`*
-- [ ] DSTs *Partial support*
+- [X] DSTs *Supported, may still contain bugs.*
 - [ ] Trait objects 
 #### Experimental rust types 
 
