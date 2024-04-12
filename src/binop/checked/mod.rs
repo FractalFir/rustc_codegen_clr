@@ -67,8 +67,8 @@ fn zero(ty: Ty) -> CILNode {
         TyKind::Uint(UintTy::Usize) => conv_usize!(size_of!(Type::USize)),
         TyKind::Int(IntTy::Isize) => conv_isize!(size_of!(Type::USize)),
         TyKind::Uint(UintTy::U128) => call!(
-            CallSite::new(
-                Some(DotnetTypeRef::uint_128()),
+            CallSite::new_extern(
+                DotnetTypeRef::uint_128(),
                 "op_Implicit".into(),
                 FnSig::new(&[Type::U32], &Type::U128),
                 true
@@ -76,8 +76,8 @@ fn zero(ty: Ty) -> CILNode {
             [ldc_u32!(0)]
         ),
         TyKind::Int(IntTy::I128) => call!(
-            CallSite::new(
-                Some(DotnetTypeRef::int_128()),
+            CallSite::new_extern(
+                DotnetTypeRef::int_128(),
                 "op_Implicit".into(),
                 FnSig::new(&[Type::I32], &Type::I128),
                 true
@@ -98,8 +98,8 @@ fn min(ty: Ty) -> CILNode {
         TyKind::Uint(UintTy::U64) => crate::ldc_u64!(u64::MIN),
         TyKind::Int(IntTy::I64) => crate::ldc_i64!(i64::MIN),
         TyKind::Uint(UintTy::Usize) => call!(
-            CallSite::new(
-                Some(DotnetTypeRef::usize_type()),
+            CallSite::new_extern(
+                DotnetTypeRef::usize_type(),
                 "get_MinValue".into(),
                 FnSig::new(&[], &Type::USize),
                 true
@@ -107,8 +107,8 @@ fn min(ty: Ty) -> CILNode {
             []
         ),
         TyKind::Int(IntTy::Isize) => call!(
-            CallSite::new(
-                Some(DotnetTypeRef::usize_type()),
+            CallSite::new_extern(
+                DotnetTypeRef::usize_type(),
                 "get_MinValue".into(),
                 FnSig::new(&[], &Type::USize),
                 true
@@ -116,8 +116,8 @@ fn min(ty: Ty) -> CILNode {
             []
         ),
         TyKind::Uint(UintTy::U128) => call!(
-            CallSite::new(
-                Some(DotnetTypeRef::uint_128()),
+            CallSite::new_extern(
+                DotnetTypeRef::uint_128(),
                 "get_MinValue".into(),
                 FnSig::new(&[], &Type::U128),
                 true
@@ -125,8 +125,8 @@ fn min(ty: Ty) -> CILNode {
             []
         ),
         TyKind::Int(IntTy::I128) => call!(
-            CallSite::new(
-                Some(DotnetTypeRef::int_128()),
+            CallSite::new_extern(
+                DotnetTypeRef::int_128(),
                 "get_MinValue".into(),
                 FnSig::new(&[], &Type::I128),
                 true
@@ -147,8 +147,8 @@ fn max(ty: Ty) -> CILNode {
         TyKind::Uint(UintTy::U64) => crate::ldc_u64!(u64::MAX),
         TyKind::Int(IntTy::I64) => crate::ldc_i64!(i64::MAX),
         TyKind::Uint(UintTy::Usize) => call!(
-            CallSite::new(
-                Some(DotnetTypeRef::usize_type()),
+            CallSite::new_extern(
+                DotnetTypeRef::usize_type(),
                 "get_MaxValue".into(),
                 FnSig::new(&[], &Type::USize),
                 true
@@ -156,8 +156,8 @@ fn max(ty: Ty) -> CILNode {
             []
         ),
         TyKind::Int(IntTy::Isize) => call!(
-            CallSite::new(
-                Some(DotnetTypeRef::usize_type()),
+            CallSite::new_extern(
+                DotnetTypeRef::usize_type(),
                 "get_MaxValue".into(),
                 FnSig::new(&[], &Type::USize),
                 true
@@ -165,8 +165,8 @@ fn max(ty: Ty) -> CILNode {
             []
         ),
         TyKind::Uint(UintTy::U128) => call!(
-            CallSite::new(
-                Some(DotnetTypeRef::uint_128()),
+            CallSite::new_extern(
+                DotnetTypeRef::uint_128(),
                 "get_MaxValue".into(),
                 FnSig::new(&[], &Type::U128),
                 true
@@ -174,8 +174,8 @@ fn max(ty: Ty) -> CILNode {
             []
         ),
         TyKind::Int(IntTy::I128) => call!(
-            CallSite::new(
-                Some(DotnetTypeRef::int_128()),
+            CallSite::new_extern(
+                DotnetTypeRef::int_128(),
                 "get_MaxValue".into(),
                 FnSig::new(&[], &Type::I128),
                 true

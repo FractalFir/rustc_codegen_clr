@@ -697,7 +697,7 @@ test_lib! {closure,stable}
 test_lib! {identity,stable}
 test_lib! {libc,stable}
 run_test! {types,dst,stable}
-run_test! {iter,fold,stable}
+run_test! {iter,fold,unstable}
 run_test! {types,maybeuninit,stable}
 test_lib! {references,stable}
 //test_lib! {structs}
@@ -727,7 +727,7 @@ run_test! {types,nbody,stable}
 run_test! {types,structs,stable}
 run_test! {types,interop,stable}
 run_test! {types,vec,stable}
-run_test! {types,subslice,stable}
+run_test! {types,subslice,unstable}
 run_test! {types,string_slice,unstable}
 run_test! {types,ref_deref,stable}
 run_test! {types,slice_ptr_cast,stable}

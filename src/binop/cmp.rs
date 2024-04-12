@@ -15,8 +15,8 @@ pub fn eq_unchecked(ty_a: Ty<'_>, operand_a: CILNode, operand_b: CILNode) -> CIL
     match ty_a.kind() {
         TyKind::Uint(uint) => match uint {
             UintTy::U128 => call!(
-                CallSite::new(
-                    Some(DotnetTypeRef::uint_128()),
+                CallSite::new_extern(
+                    DotnetTypeRef::uint_128(),
                     "op_Equality".into(),
                     FnSig::new(&[Type::U128, Type::U128], &Type::Bool),
                     true,
@@ -27,8 +27,8 @@ pub fn eq_unchecked(ty_a: Ty<'_>, operand_a: CILNode, operand_b: CILNode) -> CIL
         },
         TyKind::Int(int) => match int {
             IntTy::I128 => call!(
-                CallSite::new(
-                    Some(DotnetTypeRef::int_128()),
+                CallSite::new_extern(
+                    DotnetTypeRef::int_128(),
                     "op_Equality".into(),
                     FnSig::new(&[Type::I128, Type::I128], &Type::Bool),
                     true,
@@ -49,8 +49,8 @@ pub fn lt_unchecked(ty_a: Ty<'_>, operand_a: CILNode, operand_b: CILNode) -> CIL
     match ty_a.kind() {
         TyKind::Uint(uint) => match uint {
             UintTy::U128 => call!(
-                CallSite::new(
-                    Some(DotnetTypeRef::uint_128()),
+                CallSite::new_extern(
+                    DotnetTypeRef::uint_128(),
                     "op_LessThan".into(),
                     FnSig::new(&[Type::U128, Type::U128], &Type::Bool),
                     true,
@@ -61,8 +61,8 @@ pub fn lt_unchecked(ty_a: Ty<'_>, operand_a: CILNode, operand_b: CILNode) -> CIL
         },
         TyKind::Int(int) => match int {
             IntTy::I128 => call!(
-                CallSite::new(
-                    Some(DotnetTypeRef::int_128()),
+                CallSite::new_extern(
+                    DotnetTypeRef::int_128(),
                     "op_LessThan".into(),
                     FnSig::new(&[Type::I128, Type::I128], &Type::Bool),
                     true,
@@ -83,8 +83,8 @@ pub fn gt_unchecked(ty_a: Ty<'_>, operand_a: CILNode, operand_b: CILNode) -> CIL
     match ty_a.kind() {
         TyKind::Uint(uint) => match uint {
             UintTy::U128 => call!(
-                CallSite::new(
-                    Some(DotnetTypeRef::uint_128()),
+                CallSite::new_extern(
+                    DotnetTypeRef::uint_128(),
                     "op_GreaterThan".into(),
                     FnSig::new(&[Type::U128, Type::U128], &Type::Bool),
                     true,
@@ -95,8 +95,8 @@ pub fn gt_unchecked(ty_a: Ty<'_>, operand_a: CILNode, operand_b: CILNode) -> CIL
         },
         TyKind::Int(int) => match int {
             IntTy::I128 => call!(
-                CallSite::new(
-                    Some(DotnetTypeRef::int_128()),
+                CallSite::new_extern(
+                    DotnetTypeRef::int_128(),
                     "op_GreaterThan".into(),
                     FnSig::new(&[Type::I128, Type::I128], &Type::Bool),
                     true,

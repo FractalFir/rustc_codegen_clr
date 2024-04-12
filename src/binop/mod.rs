@@ -101,8 +101,7 @@ pub fn add_unchecked<'tyctx>(
                 let ty_a = tycache.type_from_cache(ty_a, tyctx, Some(*method_instance));
                 let ty_b = tycache.type_from_cache(ty_b, tyctx, Some(*method_instance));
                 call!(
-                    CallSite::new(
-                        Some(DotnetTypeRef::int_128()),
+                    CallSite::new_extern(DotnetTypeRef::int_128(),
                         "op_Addition".into(),
                         FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
                         true,
@@ -118,8 +117,7 @@ pub fn add_unchecked<'tyctx>(
                 let ty_a = tycache.type_from_cache(ty_a, tyctx, Some(*method_instance));
                 let ty_b = tycache.type_from_cache(ty_b, tyctx, Some(*method_instance));
                 call!(
-                    CallSite::new(
-                        Some(DotnetTypeRef::uint_128()),
+                    CallSite::new_extern(DotnetTypeRef::uint_128(),
                         "op_Addition".into(),
                         FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
                         true,
@@ -156,8 +154,7 @@ fn sub_unchecked<'tyctx>(
                 let ty_a = tycache.type_from_cache(ty_a, tyctx, Some(*method_instance));
                 let ty_b = tycache.type_from_cache(ty_b, tyctx, Some(*method_instance));
                 call!(
-                    CallSite::new(
-                        Some(DotnetTypeRef::int_128()),
+                    CallSite::new_extern(DotnetTypeRef::int_128(),
                         "op_Subtraction".into(),
                         FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
                         true,
@@ -173,8 +170,7 @@ fn sub_unchecked<'tyctx>(
                 let ty_a = tycache.type_from_cache(ty_a, tyctx, Some(*method_instance));
                 let ty_b = tycache.type_from_cache(ty_b, tyctx, Some(*method_instance));
                 call!(
-                    CallSite::new(
-                        Some(DotnetTypeRef::uint_128()),
+                    CallSite::new_extern(DotnetTypeRef::uint_128(),
                         "op_Subtraction".into(),
                         FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
                         true,
@@ -204,8 +200,8 @@ fn rem_unchecked<'tyctx>(
             let ty_a = tycache.type_from_cache(ty_a, tyctx, Some(*method_instance));
             let ty_b = tycache.type_from_cache(ty_b, tyctx, Some(*method_instance));
             call!(
-                CallSite::new(
-                    Some(DotnetTypeRef::int_128()),
+                CallSite::new_extern(
+                    DotnetTypeRef::int_128(),
                     "op_Modulus".into(),
                     FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
                     true,
@@ -217,8 +213,8 @@ fn rem_unchecked<'tyctx>(
             let ty_a = tycache.type_from_cache(ty_a, tyctx, Some(*method_instance));
             let ty_b = tycache.type_from_cache(ty_b, tyctx, Some(*method_instance));
             call!(
-                CallSite::new(
-                    Some(DotnetTypeRef::uint_128()),
+                CallSite::new_extern(
+                    DotnetTypeRef::uint_128(),
                     "op_Modulus".into(),
                     FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
                     true,
@@ -246,8 +242,8 @@ fn mul_unchecked<'tyctx>(
             let ty_a = tycache.type_from_cache(ty_a, tyctx, Some(*method_instance));
             let ty_b = tycache.type_from_cache(ty_b, tyctx, Some(*method_instance));
             call!(
-                CallSite::new(
-                    Some(DotnetTypeRef::int_128()),
+                CallSite::new_extern(
+                    DotnetTypeRef::int_128(),
                     "op_Multiply".into(),
                     FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
                     true,
@@ -259,8 +255,8 @@ fn mul_unchecked<'tyctx>(
             let ty_a = tycache.type_from_cache(ty_a, tyctx, Some(*method_instance));
             let ty_b = tycache.type_from_cache(ty_b, tyctx, Some(*method_instance));
             call!(
-                CallSite::new(
-                    Some(DotnetTypeRef::uint_128()),
+                CallSite::new_extern(
+                    DotnetTypeRef::uint_128(),
                     "op_Multiply".into(),
                     FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
                     true,
@@ -285,8 +281,8 @@ fn div_unchecked<'tyctx>(
             let ty_a = tycache.type_from_cache(ty_a, tyctx, Some(*method_instance));
             let ty_b = tycache.type_from_cache(ty_b, tyctx, Some(*method_instance));
             call!(
-                CallSite::new(
-                    Some(DotnetTypeRef::int_128()),
+                CallSite::new_extern(
+                    DotnetTypeRef::int_128(),
                     "op_Division".into(),
                     FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
                     true,
@@ -298,8 +294,8 @@ fn div_unchecked<'tyctx>(
             let ty_a = tycache.type_from_cache(ty_a, tyctx, Some(*method_instance));
             let ty_b = tycache.type_from_cache(ty_b, tyctx, Some(*method_instance));
             call!(
-                CallSite::new(
-                    Some(DotnetTypeRef::uint_128()),
+                CallSite::new_extern(
+                    DotnetTypeRef::uint_128(),
                     "op_Division".into(),
                     FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
                     true,

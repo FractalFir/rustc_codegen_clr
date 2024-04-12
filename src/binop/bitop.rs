@@ -58,8 +58,8 @@ pub fn bit_or_unchecked<'tyctx>(
             let ty_a = tycache.type_from_cache(ty_a, tyctx, Some(*method_instance));
             let ty_b = tycache.type_from_cache(ty_b, tyctx, Some(*method_instance));
             call!(
-                CallSite::new(
-                    Some(DotnetTypeRef::int_128()),
+                CallSite::new_extern(
+                    DotnetTypeRef::int_128(),
                     "op_BitwiseOr".into(),
                     FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
                     true,
@@ -71,8 +71,8 @@ pub fn bit_or_unchecked<'tyctx>(
             let ty_a = tycache.type_from_cache(ty_a, tyctx, Some(*method_instance));
             let ty_b = tycache.type_from_cache(ty_b, tyctx, Some(*method_instance));
             call!(
-                CallSite::new(
-                    Some(DotnetTypeRef::uint_128()),
+                CallSite::new_extern(
+                    DotnetTypeRef::uint_128(),
                     "op_BitwiseOr".into(),
                     FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
                     true,
@@ -97,8 +97,8 @@ pub fn bit_xor_unchecked<'tyctx>(
             let ty_a = tycache.type_from_cache(ty_a, tyctx, Some(*method_instance));
             let ty_b = tycache.type_from_cache(ty_b, tyctx, Some(*method_instance));
             call!(
-                CallSite::new(
-                    Some(DotnetTypeRef::int_128()),
+                CallSite::new_extern(
+                    DotnetTypeRef::int_128(),
                     "op_ExclusiveOr".into(),
                     FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
                     true,
@@ -110,8 +110,8 @@ pub fn bit_xor_unchecked<'tyctx>(
             let ty_a = tycache.type_from_cache(ty_a, tyctx, Some(*method_instance));
             let ty_b = tycache.type_from_cache(ty_b, tyctx, Some(*method_instance));
             call!(
-                CallSite::new(
-                    Some(DotnetTypeRef::uint_128()),
+                CallSite::new_extern(
+                    DotnetTypeRef::uint_128(),
                     "op_ExclusiveOr".into(),
                     FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
                     true,

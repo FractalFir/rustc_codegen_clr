@@ -195,7 +195,7 @@ impl CILRoot {
             &crate::r#type::Type::Void,
         );
         Self::Call {
-            site: CallSite::new(Some(class), name, signature, true),
+            site: CallSite::new_extern(class, name, signature, true),
             args: [CILNode::LdStr(msg.into())].into(),
         }
     }

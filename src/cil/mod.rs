@@ -258,24 +258,24 @@ impl CILOp {
     }
     /// Returns the ops necesary to construct and throw a new `System.Exception` with message `msg`.
     pub fn throw_msg(msg: &str) -> [CILOp; 3] {
-        let mut class = DotnetTypeRef::new(Some("System.Runtime"), "System.Exception");
-        class.set_valuetype(false);
+        let mut exception = DotnetTypeRef::new(Some("System.Runtime"), "System.Exception");
+        exception.set_valuetype(false);
         let name = ".ctor".into();
         let signature = FnSig::new(
-            &[class.clone().into(), DotnetTypeRef::string_type().into()],
+            &[exception.clone().into(), DotnetTypeRef::string_type().into()],
             &crate::r#type::Type::Void,
         );
         [
             CILOp::LdStr(msg.into()),
-            CILOp::NewObj(CallSite::boxed(Some(class), name, signature, false)),
+            CILOp::NewObj(CallSite::new_extern(exception, name, signature, false).into()),
             CILOp::Throw,
         ]
     }
     /// Returns the ops necesary to  write message `msg` to STDOUT. Ends with new line.
     #[must_use]
     pub fn debug_msg(msg: &str) -> [CILOp; 2] {
-        let mut class = DotnetTypeRef::new(Some("System.Console"), "System.Console");
-        class.set_valuetype(false);
+        let mut console = DotnetTypeRef::new(Some("System.Console"), "System.Console");
+        console.set_valuetype(false);
         let name = "WriteLine".into();
         let signature = FnSig::new(
             &[DotnetTypeRef::string_type().into()],
@@ -283,24 +283,24 @@ impl CILOp {
         );
         [
             CILOp::LdStr(msg.into()),
-            CILOp::Call(CallSite::new(Some(class), name, signature, true).into()),
+            CILOp::Call(CallSite::new_extern(console, name, signature, true).into()),
         ]
     }
     /// Returns the ops necesary to  write message `msg` to STDOUT. Ends with new line.
     #[must_use]
     pub fn new_line() -> Self {
-        let mut class = DotnetTypeRef::new(Some("System.Console"), "System.Console");
-        class.set_valuetype(false);
+        let mut console = DotnetTypeRef::new(Some("System.Console"), "System.Console");
+        console.set_valuetype(false);
         let name = "WriteLine".into();
         let signature = FnSig::new(&[], &crate::r#type::Type::Void);
 
-        CILOp::Call(CallSite::new(Some(class), name, signature, true).into())
+        CILOp::Call(CallSite::new_extern(console, name, signature, true).into())
     }
     /// Returns the ops necesary to  write message `msg` to STDOUT. Does not end with new line.
     #[must_use]
     pub fn debug_msg_no_nl(msg: &str) -> [CILOp; 2] {
-        let mut class = DotnetTypeRef::new(Some("System.Console"), "System.Console");
-        class.set_valuetype(false);
+        let mut console = DotnetTypeRef::new(Some("System.Console"), "System.Console");
+        console.set_valuetype(false);
         let name = "Write".into();
         let signature = FnSig::new(
             &[DotnetTypeRef::string_type().into()],
@@ -308,44 +308,44 @@ impl CILOp {
         );
         [
             CILOp::LdStr(msg.into()),
-            CILOp::Call(CallSite::new(Some(class), name, signature, true).into()),
+            CILOp::Call(CallSite::new_extern(console, name, signature, true).into()),
         ]
     }
     /// Returns the ops necesary to  write message bool from stack to stdout. Ends without a new line.
     #[must_use]
     pub fn debug_bool() -> CILOp {
-        let mut class = DotnetTypeRef::new(Some("System.Console"), "System.Console");
-        class.set_valuetype(false);
+        let mut console = DotnetTypeRef::new(Some("System.Console"), "System.Console");
+        console.set_valuetype(false);
         let name = "Write".into();
         let signature = FnSig::new(&[crate::r#type::Type::Bool], &crate::r#type::Type::Void);
-        CILOp::Call(CallSite::new(Some(class), name, signature, true).into())
+        CILOp::Call(CallSite::new_extern(console, name, signature, true).into())
     }
     /// Returns the ops necesary to  write message i32 from stack to stdout. Ends without a new line.
     #[must_use]
     pub fn debug_i32() -> CILOp {
-        let mut class = DotnetTypeRef::new(Some("System.Console"), "System.Console");
-        class.set_valuetype(false);
+        let mut console = DotnetTypeRef::new(Some("System.Console"), "System.Console");
+        console.set_valuetype(false);
         let name = "Write".into();
         let signature = FnSig::new(&[crate::r#type::Type::I32], &crate::r#type::Type::Void);
-        CILOp::Call(CallSite::new(Some(class), name, signature, true).into())
+        CILOp::Call(CallSite::new_extern(console, name, signature, true).into())
     }
     /// Returns the ops necesary to  write message f32 from stack to stdout. Ends without a new line.
     #[must_use]
     pub fn debug_f32() -> CILOp {
-        let mut class = DotnetTypeRef::new(Some("System.Console"), "System.Console");
-        class.set_valuetype(false);
+        let mut console = DotnetTypeRef::new(Some("System.Console"), "System.Console");
+        console.set_valuetype(false);
         let name = "Write".into();
         let signature = FnSig::new(&[crate::r#type::Type::F32], &crate::r#type::Type::Void);
-        CILOp::Call(CallSite::new(Some(class), name, signature, true).into())
+        CILOp::Call(CallSite::new_extern(console, name, signature, true).into())
     }
     /// Returns the ops necesary to u64 write message u64 from stack to stdout. Ends without a new line.
     #[must_use]
     pub fn debug_u64() -> CILOp {
-        let mut class = DotnetTypeRef::new(Some("System.Console"), "System.Console");
-        class.set_valuetype(false);
+        let mut console = DotnetTypeRef::new(Some("System.Console"), "System.Console");
+        console.set_valuetype(false);
         let name = "Write".into();
         let signature = FnSig::new(&[crate::r#type::Type::U64], &crate::r#type::Type::Void);
-        CILOp::Call(CallSite::new(Some(class), name, signature, true).into())
+        CILOp::Call(CallSite::new_extern(console, name, signature, true).into())
     }
     /// Descirbes the difference in stack size before and after the op.
     #[allow(clippy::match_same_arms)]

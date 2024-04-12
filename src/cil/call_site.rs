@@ -16,17 +16,12 @@ pub struct CallSite {
     generics: Vec<Type>,
 }
 impl CallSite {
-    pub fn mstring_to_ptr() -> Self {
-        CallSite::new(
-            Some(DotnetTypeRef::marshal()),
-            "StringToCoTaskMemUTF8".into(),
-            FnSig::new(&[DotnetTypeRef::string_type().into()], &Type::ISize),
-            true,
-        )
+    pub fn mstring_to_ptr()->Self{
+        CallSite::new_extern(DotnetTypeRef::marshal(),"StringToCoTaskMemUTF8".into(),FnSig::new(&[DotnetTypeRef::string_type().into()],&Type::ISize),true)
     }
-    pub fn alloc() -> Self {
-        CallSite::new(
-            Some(DotnetTypeRef::native_mem()),
+    pub fn alloc()->Self{
+        CallSite::new_extern(
+            DotnetTypeRef::native_mem(),
             "AlignedAlloc".into(),
             FnSig::new(&[Type::USize, Type::USize], &Type::Ptr(Type::Void.into())),
             true,
@@ -43,8 +38,8 @@ impl CallSite {
     /// Retruns a call site reffering to void* Unsafe.AsPtr<element>(ref element)
     pub fn ref_as_ptr(element: Type) -> Self {
         let unsafe_services = DotnetTypeRef::compiler_services_unsafe();
-        let mut as_pointer = CallSite::new(
-            unsafe_services.into(),
+        let mut as_pointer = CallSite::new_extern(
+            unsafe_services,
             "AsPointer".into(),
             FnSig::new(
                 &[Type::ManagedReference(Type::CallGenericArg(0).into())],
@@ -65,6 +60,34 @@ impl CallSite {
     ) -> Self {
         Self {
             class,
+            name,
+            signature,
+            is_static,
+            generics: vec![],
+        }
+    }
+    pub fn new_extern(
+        class:DotnetTypeRef,
+        name: IString,
+        signature: FnSig,
+        is_static: bool,
+    ) -> Self {
+        debug_assert!(class.asm().is_some());
+        Self {
+            class:Some(class),
+            name,
+            signature,
+            is_static,
+            generics: vec![],
+        }
+    }
+    pub fn builtin(
+        name: IString,
+        signature: FnSig,
+        is_static: bool,
+    ) -> Self {
+        Self {
+            class:None,
             name,
             signature,
             is_static,

@@ -276,8 +276,7 @@ pub fn place_elem_body<'ctx>(
                         ld_field!(parrent_node.clone(), desc),
                         mul!(
                             call!(
-                                CallSite::new(
-                                    None,
+                                CallSite::builtin(
                                     "bounds_check".into(),
                                     FnSig::new(&[Type::USize, Type::USize], &Type::USize),
                                     true

@@ -168,8 +168,7 @@ impl CILNode {
     pub fn select(tpe: Type, a: CILNode, b: CILNode, predictate: CILNode) -> Self {
         match tpe {
             Type::U128 | Type::I128 => call!(
-                CallSite::new(
-                    None,
+                CallSite::builtin(
                     "select_u128".into(),
                     FnSig::new(&[Type::U128, Type::U128, Type::Bool], &Type::U128),
                     true
@@ -177,8 +176,7 @@ impl CILNode {
                 [a, b, predictate]
             ),
             Type::USize | Type::ISize | Type::Ptr(_) => call!(
-                CallSite::new(
-                    None,
+                CallSite::builtin(
                     "select_usize".into(),
                     FnSig::new(&[Type::USize, Type::USize, Type::Bool], &Type::USize),
                     true
@@ -186,8 +184,7 @@ impl CILNode {
                 [a, b, predictate]
             ),
             Type::U64 | Type::I64 => call!(
-                CallSite::new(
-                    None,
+                CallSite::builtin(
                     "select_u64".into(),
                     FnSig::new(&[Type::U64, Type::U64, Type::Bool], &Type::U64),
                     true
@@ -195,8 +192,7 @@ impl CILNode {
                 [a, b, predictate]
             ),
             Type::U32 | Type::I32 => call!(
-                CallSite::new(
-                    None,
+                CallSite::builtin(
                     "select_u32".into(),
                     FnSig::new(&[Type::U32, Type::U32, Type::Bool], &Type::U32),
                     true
@@ -204,8 +200,7 @@ impl CILNode {
                 [a, b, predictate]
             ),
             Type::U16 | Type::I16 => call!(
-                CallSite::new(
-                    None,
+                CallSite::builtin(
                     "select_u16".into(),
                     FnSig::new(&[Type::U16, Type::U16, Type::Bool], &Type::U16),
                     true
@@ -213,8 +208,7 @@ impl CILNode {
                 [a, b, predictate]
             ),
             Type::U8 | Type::I8 | Type::Bool => call!(
-                CallSite::new(
-                    None,
+                CallSite::builtin(
                     "select_u8".into(),
                     FnSig::new(&[Type::U8, Type::U8, Type::Bool], &Type::U8),
                     true

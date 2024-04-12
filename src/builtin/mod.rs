@@ -114,14 +114,11 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
         "System.Runtime.InteropServices.Marshal",
     );
     marshal.set_valuetype(false);
-    let marshal = Some(marshal);
-
     let mut native_mem = DotnetTypeRef::new(
         Some("System.Runtime.InteropServices"),
         "System.Runtime.InteropServices.NativeMemory",
     );
     native_mem.set_valuetype(false);
-    let native_mem = Some(native_mem);
     let mut __rust_alloc = Method::new(
         AccessModifer::Private,
         MethodType::Static,
@@ -155,8 +152,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
         vec![BasicBlock::new(
             vec![
                 CILRoot::Call {
-                    site: CallSite::new(
-                        native_mem.clone(),
+                    site: CallSite::new_extern(native_mem,
                         "AlignedFree".into(),
                         FnSig::new(&[Type::Ptr(Type::Void.into())], &Type::Void),
                         true,
@@ -181,8 +177,8 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
         vec![BasicBlock::new(
             vec![
                 CILRoot::Call {
-                    site: CallSite::new(
-                        marshal.clone(),
+                    site: CallSite::new_extern(
+                        marshal,
                         "FreeHGlobal".into(),
                         FnSig::new(&[Type::ISize], &Type::Void),
                         true,
@@ -246,8 +242,8 @@ add_method_from_trees!(
                 }
                 .into(),
                 CILRoot::Call {
-                    site: CallSite::new(
-                        Some(DotnetTypeRef::console()),
+                    site: CallSite::new_extern(
+                        DotnetTypeRef::console(),
                         "Write".into(),
                         FnSig::new(&[Type::DotnetChar], &Type::Void),
                         true
@@ -275,64 +271,3 @@ add_method_from_trees!(
         BasicBlock::new(vec![CILRoot::VoidRet.into(),], 1, None,)
     ]
 );
-
-/*
-add_method!(
-    unlikely,
-    &[Type::Bool],
-    &Type::Bool,
-    [CILOp::LDArg(0), CILOp::Ret,]
-);
-//System.Environment.Exit(a_ExitCode)
-add_method!(abort, &[], &Type::Void, CILOp::throw_msg("Called abort!"));
-pub fn add_ptr_offset_from_unsigned(asm: &mut Assembly) {
-    let ptr_offset_from_unsigned_calls: Box<[_]> = asm
-        .call_sites()
-        .filter(|call_site| {
-            call_site.signature().inputs().len() == 2
-                && call_site.name() == "ptr_offset_from_unsigned"
-        })
-        .cloned()
-        .collect();
-    for call in ptr_offset_from_unsigned_calls.iter() {
-        let rtype: &Type = &call.inputs()[0];
-        let mut ptr_offset_from_unsigned = Method::new_empty(
-            AccessModifer::Private,
-            MethodType::Static,
-            call.signature().clone(),
-            "raw_eq",
-            vec![],
-        );
-        ptr_offset_from_unsigned.set_ops(match rtype {
-            Type::Ptr(inner) => {
-                vec![
-                    CILOp::LDArg(0),
-                    CILOp::LDArg(1),
-                    CILOp::Sub,
-                    CILOp::Div,
-                    CILOp::SizeOf(inner.clone()),
-                    CILOp::Ret,
-                ]
-            }
-            Type::DotnetType(type_ref) => {
-                if type_ref.is_valuetype() && type_ref.name_path().contains("PtrComponents") {
-                    todo!();
-                    /*
-                    vec![
-                        CILOp::LDArg(0),
-                        CILOp::LDArg(1),
-                        CILOp::Sub,
-                        CILOp::Div,
-                        CILOp::SizeOf(inner.clone()),
-                        CILOp::Ret,
-                    ]*/
-                } else {
-                    continue;
-                }
-            }
-            _ => continue,
-        });
-        asm.add_method(ptr_offset_from_unsigned);
-    }
-}
-*/
