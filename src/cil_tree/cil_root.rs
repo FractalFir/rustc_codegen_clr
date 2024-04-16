@@ -589,8 +589,10 @@ impl CILRoot {
         let statement_source = tyctx.sess.source_map().span_to_embeddable_string(span);
         let file = tyctx.sess.source_map().span_to_embeddable_string(span);
         let (line,column) = tyctx.sess.source_map().span_to_lines(span).map(|lines|{
-            let pos = lines.lines[0];
-            (pos.line_index,pos.start_col.0)
+            match lines.lines.get(0){
+                Some(pos)=> (pos.line_index,pos.start_col.0),
+                None=>(0,0),
+            }
         }).unwrap_or((0,0));
         Self::source_info(&file, line as u32, column as u32)
     }
