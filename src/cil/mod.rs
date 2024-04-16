@@ -244,6 +244,7 @@ pub enum CILOp {
     LDIndU32,
     LDIndU64,
     DivUn,
+    SourceFileInfo(Box<(u32,u32,IString)>),
 }
 impl CILOp {
     /// If the cil op is a call, virtual call, new object cosntructor OR it loads a pointer to a function, returns the [`CallSite`] representing this function.
@@ -351,6 +352,7 @@ impl CILOp {
     #[allow(clippy::match_same_arms)]
     pub fn stack_diff(&self) -> isize {
         match self {
+            CILOp::SourceFileInfo(_)=>0,
             CILOp::Leave(_) => 0,
             CILOp::BeginTry | CILOp::EndTry => 0,
             CILOp::BeginCatch => 1,

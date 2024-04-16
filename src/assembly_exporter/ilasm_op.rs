@@ -7,8 +7,9 @@ use crate::{
 
 pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
     use crate::cil::CILOp;
-
+  
     match op {
+        CILOp::SourceFileInfo(sfi)=>format!(".line {line}:{col} '{fname}'",line = sfi.0, col = sfi.1,fname = sfi.2).into(),
         CILOp::Leave(target) => format!("leave bb_{target}_0").into(),
         CILOp::BeginTry => ".try{".into(),
         CILOp::BeginCatch=>"}catch [System.Runtime]System.Exception{".into(),
@@ -32,6 +33,7 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
         CILOp::BTrue(id,sub_id) => format!("brtrue bb_{id}_{sub_id}").into(),
 
         CILOp::Call(call_site) => {
+            
             if call_site.is_nop() {
                 "".into()
             } else {
@@ -68,8 +70,21 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
                 }else{
                     function_name.into()
                 };
+                if *crate::config::TRACE_CALLS{
+                    return format!(
+                        "
+                        ldstr \"Callin {function_name}\"
+                        call void [System.Console] System.Console::WriteLine(string)
+                        call {prefix} {output} {owner_name}'{function_name}'{generics}({input_string})
+                        ldstr \"Returned from {function_name}\"
+                        call void [System.Console] System.Console::WriteLine(string)
+                        ",
+                        output = type_cil(call_site.signature().output())
+                    ).into();
+                }
+                //TODO:Remove this `break`! It *mitigagtes* an issue with calls segafulting. I don't know *why* those calls segfault, but they SHOULD NOT DO THAT.
                 format!(
-                    "call {prefix} {output} {owner_name}'{function_name}'{generics}({input_string})",
+                    "break\ncall {prefix} {output} {owner_name}'{function_name}'{generics}({input_string})",
 
                     output = type_cil(call_site.signature().output())
                 )

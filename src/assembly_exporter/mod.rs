@@ -45,12 +45,15 @@ pub trait AssemblyExporter: Sized {
             asm_exporter.add_type(tpe.1);
         }
         for method in asm.methods() {
+            let mut method = method.clone();
+            method.sheed_trees();
+            method.allocate_temporaries();
             if *config::ESCAPE_NAMES {
-                let mut method = method.clone();
+              
                 method.set_name(&escape_class_name(method.name()));
                 asm_exporter.add_method(&method);
             } else {
-                asm_exporter.add_method(method);
+                asm_exporter.add_method(&method);
             }
         }
         for ((name, sig), lib) in asm.extern_fns() {

@@ -41,7 +41,10 @@ impl<T: 'static> LocalKey<T> {
             );
             Put::putnl(reference as *const _ as usize);
             test_ne!(reference as *const _ as usize,0);
-            f(init, reference)
+            Put::putnl(0xDEAD_BEEF_u32);
+            let res = f(init, reference);
+            Put::putnl(0xBEEF_BABE_u32);
+            res
         }
     }
 }
@@ -54,6 +57,7 @@ impl<T: 'static + Put + Copy> LocalKey<Cell<T>> {
                 // initialize it. So we overwrite the current value with the
                 // new one instead.
                 Put::putnl(value.get());
+                
                 cell.set(value.into_inner());
             }
         });

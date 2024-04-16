@@ -9,6 +9,7 @@ use crate::{
     IString,
 };
 use std::collections::HashMap;
+use std::hash::Hasher;
 use std::process::Command;
 use std::{borrow::Cow, collections::HashSet, io::Write};
 pub struct CExporter {
@@ -29,7 +30,9 @@ impl std::io::Write for CExporter {
         self.encoded_asm.flush()
     }
 }
-
+fn escape_type_name(name:&str)->String{
+    name.replace('.', "_").replace(' ',"_").replace('<',"lt").replace('>',"gt").replace('$',"ds").replace(',',"cm").replace('{',"bs").replace('}',"be").replace('+',"ps")
+}
 impl CExporter {
     fn as_source(&self, is_dll: bool) -> Vec<u8> {
         let mut res = self.headers.clone();
@@ -43,7 +46,7 @@ impl CExporter {
         }
         res
     }
-    fn add_method_inner(&mut self, method: &crate::method::Method, class: Option<String>) {
+    fn add_method_inner(&mut self, method: &crate::method::Method, class: Option<&str>) {
         //eprintln!("C source:\n{}",String::from_utf8_lossy(&self.as_source()));
         let sig = method.sig();
 
@@ -54,6 +57,7 @@ impl CExporter {
             || name == "printf"
             || name == "free"
             || name == "realloc"
+            || name == "syscall"
         {
             return;
         }
@@ -86,7 +90,7 @@ impl CExporter {
             }
         }
         if let Some(class) = class {
-            let class = class.replace('.', "_");
+            let class = escape_type_name(class);
             writeln!(self.method_defs, "{output} {class}{name} {inputs};").unwrap();
             write!(
                 self.encoded_asm,
@@ -111,7 +115,7 @@ impl AssemblyExporter for CExporter {
 
         write!(
             headers,
-            "#include  <stdint.h>\n#include <stdbool.h>\n#include <stddef.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <mm_malloc.h>\n"
+            "#include  <stdint.h>\n#include <stdbool.h>\n#include <stddef.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <mm_malloc.h>\n#include <sys/syscall.h>\n"
         )
         .expect("Write error!");
         headers.write_all(include_bytes!("c_header.h")).unwrap();
@@ -153,8 +157,8 @@ impl AssemblyExporter for CExporter {
         }
     }
     fn add_type(&mut self, tpe: &crate::r#type::TypeDef) {
-        let name = tpe.name();
-        if self.defined.contains(name) {
+        let name:IString = escape_type_name(tpe.name()).into();
+        if self.defined.contains(&name) {
             return;
         }
         for tpe_name in tpe
@@ -163,7 +167,7 @@ impl AssemblyExporter for CExporter {
             .filter_map(|field| field.1.as_dotnet())
             .filter_map(|tpe| {
                 if tpe.asm().is_none() {
-                    Some(tpe.name_path().to_owned())
+                    Some(escape_type_name(tpe.name_path()))
                 } else {
                     None
                 }
@@ -199,7 +203,7 @@ impl AssemblyExporter for CExporter {
             }
         }
         for method in tpe.methods() {
-            self.add_method_inner(method, Some(name.to_owned()));
+            self.add_method_inner(method, Some(&name));
         }
         if tpe.explicit_offsets().is_some() {
             writeln!(self.types, "typedef union {name} {name};").unwrap();
@@ -221,7 +225,7 @@ impl AssemblyExporter for CExporter {
     }
 
     fn add_extern_method(&mut self, _lib_path: &str, name: &str, sig: &crate::function_sig::FnSig) {
-        if name == "puts" || name == "malloc" || name == "printf" || name == "free" {
+        if name == "puts" || name == "malloc" || name == "printf" || name == "free"  || name == "syscall" || name == "getenv" || name == "rename"{
             return;
         }
         let output = c_tpe(sig.output());
@@ -355,9 +359,8 @@ fn node_string(tree: &CILNode) -> String {
             inputs.push(')');
             let tpe_name = site
                 .class()
-                .map(|tpe| tpe.name_path())
-                .unwrap_or("")
-                .replace('.', "_");
+                .map(|tpe| escape_type_name(tpe.name_path()))
+                .unwrap_or("".into());
             format!("{tpe_name}{name}{inputs}")
         }
         //CILNode::CallVirt { .. } => panic!("Virtual calls not supported in C."),
@@ -401,13 +404,16 @@ fn node_string(tree: &CILNode) -> String {
             let name = fn_sig.name();
             let tpe_name = fn_sig
                 .class()
-                .map(|tpe| tpe.name_path())
-                .unwrap_or("")
-                .replace('.', "_");
+                .map(|tpe| escape_type_name(tpe.name_path()))
+                .unwrap_or("".into());
             format!("(uintptr_t)(&{tpe_name}{name})")
         }
         CILNode::LDTypeToken(tpe) => {
-            todo!();
+            use std::hash::Hash;
+            let mut hasher = std::hash::DefaultHasher::new();
+            tpe.hash(&mut hasher);
+            let hsh = hasher.finish();
+            format!("{hsh}")
         }
         CILNode::NewObj { site, args } => {
             let mut input_iter = args
@@ -422,7 +428,7 @@ fn node_string(tree: &CILNode) -> String {
                 inputs.push_str(&format!(",{input} ", input = node_string(input)));
             }
             inputs.push(')');
-            let tpe_name = site.class().unwrap().name_path().replace('.', "_");
+            let tpe_name = escape_type_name(site.class().unwrap().name_path());
             format!("ctor_{tpe_name}{inputs}")
         }
         CILNode::LdStr(string) => format!("{string:?}"),
@@ -435,6 +441,7 @@ fn node_string(tree: &CILNode) -> String {
 }
 fn tree_string(tree: &CILTree, method: &Method) -> String {
     match tree.root() {
+        CILRoot::SourceFileInfo(sfi)=>format!("//{fname}:{line}:{col}",line = sfi.0, col = sfi.1,fname = sfi.2),
         CILRoot::STLoc { local, tree } => {
             let local_ty = &method.locals()[*local as usize].1;
             if let Some(_) = local_ty.as_dotnet() {
@@ -505,9 +512,8 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
             inputs.push(')');
             let tpe_name = site
                 .class()
-                .map(|tpe| tpe.name_path())
-                .unwrap_or("")
-                .replace('.', "_");
+                .map(|tpe| escape_type_name(tpe.name_path()))
+                .unwrap_or("".into());
             format!("{tpe_name}{name}{inputs};")
         }
         CILRoot::SetField { addr, value, desc } => {
@@ -604,7 +610,7 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
         CILRoot::Break => "".into(),
         CILRoot::Nop => "".into(),
         CILRoot::InitBlk { dst, val, count } => {
-            todo!("Can't memset yet. dst:{dst:?} val:{val:?} count:{count:?}")
+            format!("memset((void*)({dst}),({val}),(size_t)({count}));",dst = node_string(dst),val = node_string(val),count = node_string(count))
         }
         CILRoot::CallVirt { .. } => panic!("Virtual calls not supported in C."),
         CILRoot::Ret { tree } => {
@@ -684,7 +690,7 @@ fn c_tpe(tpe: &Type) -> Cow<'static, str> {
             {
                 return c_tpe(&Type::Void);
             }
-            tref.name_path().replace('.', "_").to_owned().into()
+            escape_type_name(tref.name_path()).into()
         }
         Type::DelegatePtr(_sig) => "void*".into(),
         Type::ManagedArray { element, dims } => {

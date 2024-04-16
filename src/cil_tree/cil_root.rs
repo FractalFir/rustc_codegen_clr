@@ -1,10 +1,10 @@
 use super::append_vec;
-
 use crate::{
     cil::{CILOp, CallSite, FieldDescriptor},
     cil_tree::cil_node::CILNode,
     function_sig::FnSig,
     r#type::{DotnetTypeRef, Type},
+    IString
 };
 use rustc_middle::ty::TyCtxt;
 use serde::{Deserialize, Serialize};
@@ -88,12 +88,14 @@ pub enum CILRoot {
         descr: crate::cil::StaticFieldDescriptor,
         value: CILNode,
     },
+    SourceFileInfo(Box<(u32,u32,IString)>),
     //LabelStart(u32),
     //LabelEnd(u32),
 }
 impl CILRoot {
     pub fn opt(&mut self) {
         match self {
+            CILRoot::SourceFileInfo(_)=>(),
             CILRoot::STLoc { tree, local } => tree.opt(),
             CILRoot::BTrue {
                 ops,
@@ -201,6 +203,7 @@ impl CILRoot {
     }
     pub fn into_ops(&self) -> Vec<CILOp> {
         match self {
+            Self::SourceFileInfo(sfi)=>vec![CILOp::SourceFileInfo(sfi.clone())],
             //Self::LabelStart(val)=> vec![CILOp::LabelStart(val)],
             //Self::LabelEnd(val)=> vec![CILOp::LabelEnd(val)],
             Self::ReThrow => vec![CILOp::ReThrow],
@@ -349,6 +352,7 @@ impl CILRoot {
     pub fn shed_trees(mut self) -> Vec<Self> {
         let mut res = vec![];
         let trees: Vec<CILRoot> = match &mut self {
+            CILRoot::SourceFileInfo(_)=>vec![],
             CILRoot::STLoc { local: _, tree } => tree.sheed_trees(),
             CILRoot::BTrue {
                 target: _,
@@ -427,6 +431,7 @@ impl CILRoot {
         locals: &mut Vec<(Option<Box<str>>, Type)>,
     ) {
         match self {
+            CILRoot::SourceFileInfo(_)=>(),
             CILRoot::STLoc { tree, .. } => tree.allocate_tmps(curr_local, locals),
             CILRoot::BTrue { ops, .. } => ops.allocate_tmps(curr_local, locals),
             CILRoot::GoTo { .. } => (),
@@ -502,6 +507,7 @@ impl CILRoot {
         tyctx: TyCtxt,
     ) {
         match self {
+            CILRoot::SourceFileInfo(_)=>(),
             CILRoot::STLoc { local: _, tree } => tree.resolve_global_allocations(asm, tyctx),
             CILRoot::BTrue {
                 target: _,
@@ -574,5 +580,18 @@ impl CILRoot {
                 value.resolve_global_allocations(asm, tyctx)
             }
         }
+    }
+    
+    pub(crate) fn source_info(file: &str, line: u32, column: u32) -> Self {
+        Self::SourceFileInfo(Box::new((line,column,file.into())))
+    }
+    pub(crate) fn span_source_info(tyctx:TyCtxt,span:rustc_span::Span)->Self{
+        let statement_source = tyctx.sess.source_map().span_to_embeddable_string(span);
+        let file = tyctx.sess.source_map().span_to_embeddable_string(span);
+        let (line,column) = tyctx.sess.source_map().span_to_lines(span).map(|lines|{
+            let pos = lines.lines[0];
+            (pos.line_index,pos.start_col.0)
+        }).unwrap_or((0,0));
+        Self::source_info(&file, line as u32, column as u32)
     }
 }

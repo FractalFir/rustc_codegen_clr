@@ -53,7 +53,8 @@ static char* exec_fname;
 #define System_Runtime_InteropServices_NativeMemoryAlignedAlloc _mm_malloc
 // Misc
 #define System_Numerics_BitOperationsPopCount(arg) __builtin_popcount(arg)
-
+#define System_TypeGetTypeFromHandle(handle) handle
+#define System_ObjectGetHashCode(object) object
 //Types
 
 typedef char* System_String;

@@ -63,7 +63,7 @@ impl Method {
             attributes: Vec::new(),
         };
         res.allocate_temporaries();
-        res.blocks_mut().iter_mut().for_each(|bb| bb.sheed_trees());
+        res.sheed_trees();
         res
     }
     /// Calcualtes the maximum number of vairables on the evaulation stack.
@@ -102,6 +102,9 @@ impl Method {
         } else {
             &self.sig().inputs()[1..]
         }
+    }
+    pub fn sheed_trees(&mut self){
+        self.blocks.iter_mut().for_each(|block|{block.sheed_trees();});
     }
     /// Returns the access modifier of this function.
     pub fn access(&self) -> AccessModifer {
@@ -201,6 +204,7 @@ pub struct BlockMutGuard<'a> {
 impl<'a> Drop for BlockMutGuard<'a> {
     fn drop(&mut self) {
         self.method.allocate_temporaries();
+        self.method.sheed_trees();
     }
 }
 impl<'a> DerefMut for BlockMutGuard<'a> {

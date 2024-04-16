@@ -18,6 +18,7 @@ include!("../common.rs");
 use core::mem::MaybeUninit;
 
 fn to_static<T: Copy>(tmp: Option<&mut Option<Cell<T>>>) -> Option<&'static Cell<T>> {
+    Put::putnl(0xC0FE_BEFF_u32);
     let mut static_val = unsafe {
         let mut alloc = &mut *(__rust_alloc(
             core::mem::size_of::<Option<Cell<T>>>(),
@@ -26,12 +27,15 @@ fn to_static<T: Copy>(tmp: Option<&mut Option<Cell<T>>>) -> Option<&'static Cell
         alloc.write(None);
         alloc.assume_init_mut()
     };
+    
     if let Some(tmp) = tmp {
         if let Some(tmp) = tmp.as_ref() {
             *static_val = Some(Cell::new(tmp.get()));
         }
     }
-    Put::putnl((static_val.as_ref().unwrap()) as *const _ as usize);
+    
+    //Put::putnl((static_val.as_ref().unwrap()) as *const _ as usize);
+    Put::putnl(0xC0FE_BABE_u32);
     static_val.as_ref()
 }
 fn main() {
