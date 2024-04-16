@@ -104,6 +104,7 @@ impl AssemblyExporter for ILASMExporter {
             asm_type.into(),
             target,
             cil_path.clone().to_string_lossy().to_string(),
+            "-debug".into(),
         ];
         let out = std::process::Command::new(crate::config::ILASM_PATH.clone())
             .args(args)
