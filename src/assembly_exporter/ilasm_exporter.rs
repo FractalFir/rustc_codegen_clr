@@ -100,7 +100,7 @@ impl AssemblyExporter for ILASMExporter {
             "-output:{out_path}",
             out_path = out_path.clone().to_string_lossy()
         );
-        let args: [String; 3] = [
+        let args: [String; 4] = [
             asm_type.into(),
             target,
             cil_path.clone().to_string_lossy().to_string(),
