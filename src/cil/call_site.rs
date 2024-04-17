@@ -16,10 +16,15 @@ pub struct CallSite {
     generics: Vec<Type>,
 }
 impl CallSite {
-    pub fn mstring_to_ptr()->Self{
-        CallSite::new_extern(DotnetTypeRef::marshal(),"StringToCoTaskMemUTF8".into(),FnSig::new(&[DotnetTypeRef::string_type().into()],&Type::ISize),true)
+    pub fn mstring_to_ptr() -> Self {
+        CallSite::new_extern(
+            DotnetTypeRef::marshal(),
+            "StringToCoTaskMemUTF8".into(),
+            FnSig::new(&[DotnetTypeRef::string_type().into()], &Type::ISize),
+            true,
+        )
     }
-    pub fn alloc()->Self{
+    pub fn alloc() -> Self {
         CallSite::new_extern(
             DotnetTypeRef::native_mem(),
             "AlignedAlloc".into(),
@@ -31,7 +36,10 @@ impl CallSite {
         CallSite::new(
             Some(DotnetTypeRef::native_mem()),
             "AlignedRealloc".into(),
-            FnSig::new(&[Type::Ptr(Type::Void.into()),Type::USize, Type::USize], &Type::Ptr(Type::Void.into())),
+            FnSig::new(
+                &[Type::Ptr(Type::Void.into()), Type::USize, Type::USize],
+                &Type::Ptr(Type::Void.into()),
+            ),
             true,
         )
     }
@@ -67,27 +75,23 @@ impl CallSite {
         }
     }
     pub fn new_extern(
-        class:DotnetTypeRef,
+        class: DotnetTypeRef,
         name: IString,
         signature: FnSig,
         is_static: bool,
     ) -> Self {
         debug_assert!(class.asm().is_some());
         Self {
-            class:Some(class),
+            class: Some(class),
             name,
             signature,
             is_static,
             generics: vec![],
         }
     }
-    pub fn builtin(
-        name: IString,
-        signature: FnSig,
-        is_static: bool,
-    ) -> Self {
+    pub fn builtin(name: IString, signature: FnSig, is_static: bool) -> Self {
         Self {
-            class:None,
+            class: None,
             name,
             signature,
             is_static,

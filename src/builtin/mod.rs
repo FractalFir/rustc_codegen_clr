@@ -152,7 +152,8 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
         vec![BasicBlock::new(
             vec![
                 CILRoot::Call {
-                    site: CallSite::new_extern(native_mem,
+                    site: CallSite::new_extern(
+                        native_mem,
                         "AlignedFree".into(),
                         FnSig::new(&[Type::Ptr(Type::Void.into())], &Type::Void),
                         true,
@@ -195,7 +196,15 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     let mut __rust_realloc = Method::new(
         AccessModifer::Private,
         MethodType::Static,
-        FnSig::new(&[Type::Ptr(Type::U8.into()),Type::USize, Type::USize, Type::USize], &Type::Ptr(Type::U8.into())),
+        FnSig::new(
+            &[
+                Type::Ptr(Type::U8.into()),
+                Type::USize,
+                Type::USize,
+                Type::USize,
+            ],
+            &Type::Ptr(Type::U8.into()),
+        ),
         "__rust_realloc",
         vec![],
         if *crate::config::CHECK_ALLOCATIONS {
@@ -203,7 +212,10 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
         } else {
             vec![BasicBlock::new(
                 vec![CILRoot::Ret {
-                    tree: call!(CallSite::realloc(), [CILNode::LDArg(0), CILNode::LDArg(3), CILNode::LDArg(2)]),
+                    tree: call!(
+                        CallSite::realloc(),
+                        [CILNode::LDArg(0), CILNode::LDArg(3), CILNode::LDArg(2)]
+                    ),
                 }
                 .into()],
                 0,

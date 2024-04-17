@@ -30,8 +30,16 @@ impl std::io::Write for CExporter {
         self.encoded_asm.flush()
     }
 }
-fn escape_type_name(name:&str)->String{
-    name.replace('.', "_").replace(' ',"_").replace('<',"lt").replace('>',"gt").replace('$',"ds").replace(',',"cm").replace('{',"bs").replace('}',"be").replace('+',"ps")
+fn escape_type_name(name: &str) -> String {
+    name.replace('.', "_")
+        .replace(' ', "_")
+        .replace('<', "lt")
+        .replace('>', "gt")
+        .replace('$', "ds")
+        .replace(',', "cm")
+        .replace('{', "bs")
+        .replace('}', "be")
+        .replace('+', "ps")
 }
 impl CExporter {
     fn as_source(&self, is_dll: bool) -> Vec<u8> {
@@ -157,7 +165,7 @@ impl AssemblyExporter for CExporter {
         }
     }
     fn add_type(&mut self, tpe: &crate::r#type::TypeDef) {
-        let name:IString = escape_type_name(tpe.name()).into();
+        let name: IString = escape_type_name(tpe.name()).into();
         if self.defined.contains(&name) {
             return;
         }
@@ -225,7 +233,14 @@ impl AssemblyExporter for CExporter {
     }
 
     fn add_extern_method(&mut self, _lib_path: &str, name: &str, sig: &crate::function_sig::FnSig) {
-        if name == "puts" || name == "malloc" || name == "printf" || name == "free"  || name == "syscall" || name == "getenv" || name == "rename"{
+        if name == "puts"
+            || name == "malloc"
+            || name == "printf"
+            || name == "free"
+            || name == "syscall"
+            || name == "getenv"
+            || name == "rename"
+        {
             return;
         }
         let output = c_tpe(sig.output());
@@ -286,61 +301,175 @@ impl AssemblyExporter for CExporter {
         writeln!(self.static_defs, "static {tpe} {name};", tpe = c_tpe(tpe)).unwrap();
     }
 }
-fn node_string(tree: &CILNode) -> String {
+fn node_string(tree: &CILNode, method: &Method) -> String {
     match tree {
         CILNode::LDLoc(loc) => format!("L{loc}"),
         CILNode::LDArg(arg) => format!("A{arg}"),
         CILNode::LDLocA(arg) => format!("((uintptr_t)(void*)&L{arg})"),
         CILNode::LDArgA(loc) => format!("((uintptr_t)(void*)&A{loc})"),
-        CILNode::BlackBox(inner) => node_string(inner),
+        CILNode::BlackBox(inner) => node_string(inner, method),
         CILNode::LDStaticField(static_field) => static_field.name().into(),
-        CILNode::ConvF32(inner) => format!("((float){inner})", inner = node_string(inner)),
+        CILNode::ConvF32(inner) => format!("((float){inner})", inner = node_string(inner, method)),
         CILNode::ConvF64(inner) | CILNode::ConvF64Un(inner) => {
-            format!("((double){inner})", inner = node_string(inner))
+            format!("((double){inner})", inner = node_string(inner, method))
         }
         CILNode::SizeOf(tpe) => format!("sizeof({tpe})", tpe = c_tpe(tpe)),
-        CILNode::LDIndI8 { ptr } => format!("(*((int8_t*){ptr}))", ptr = node_string(ptr)),
-        CILNode::LDIndI16 { ptr } => format!("(*((int16_t*){ptr}))", ptr = node_string(ptr)),
-        CILNode::LDIndI32 { ptr } => format!("(*((int32_t*){ptr}))", ptr = node_string(ptr)),
-        CILNode::LDIndI64 { ptr } => format!("(*((int64_t*){ptr}))", ptr = node_string(ptr)),
-        CILNode::LDIndU8 { ptr } => format!("(*((uint8_t*){ptr}))", ptr = node_string(ptr)),
-        CILNode::LDIndU16 { ptr } => format!("(*((uint16_t*){ptr}))", ptr = node_string(ptr)),
-        CILNode::LDIndU32 { ptr } => format!("(*((uint32_t*){ptr}))", ptr = node_string(ptr)),
-        CILNode::LDIndU64 { ptr } => format!("(*((uint64_t*){ptr}))", ptr = node_string(ptr)),
-        CILNode::LDIndISize { ptr } => format!("(*((ptrdiff_t*){ptr}))", ptr = node_string(ptr)),
+        CILNode::LDIndI8 { ptr } => format!("(*((int8_t*){ptr}))", ptr = node_string(ptr, method)),
+        CILNode::LDIndI16 { ptr } => {
+            format!("(*((int16_t*){ptr}))", ptr = node_string(ptr, method))
+        }
+        CILNode::LDIndI32 { ptr } => {
+            format!("(*((int32_t*){ptr}))", ptr = node_string(ptr, method))
+        }
+        CILNode::LDIndI64 { ptr } => {
+            format!("(*((int64_t*){ptr}))", ptr = node_string(ptr, method))
+        }
+        CILNode::LDIndU8 { ptr } => format!("(*((uint8_t*){ptr}))", ptr = node_string(ptr, method)),
+        CILNode::LDIndU16 { ptr } => {
+            format!("(*((uint16_t*){ptr}))", ptr = node_string(ptr, method))
+        }
+        CILNode::LDIndU32 { ptr } => {
+            format!("(*((uint32_t*){ptr}))", ptr = node_string(ptr, method))
+        }
+        CILNode::LDIndU64 { ptr } => {
+            format!("(*((uint64_t*){ptr}))", ptr = node_string(ptr, method))
+        }
+        CILNode::LDIndISize { ptr } => {
+            format!("(*((ptrdiff_t*){ptr}))", ptr = node_string(ptr, method))
+        }
         CILNode::LdObj { ptr, obj } => format!(
             "(*({owner}*)({ptr}))",
-            ptr = node_string(ptr),
+            ptr = node_string(ptr, method),
             owner = c_tpe(obj)
         ),
-        CILNode::LDIndF32 { ptr } => format!("(*((float*){ptr}))", ptr = node_string(ptr)),
-        CILNode::LDIndF64 { ptr } => format!("(*((double*){ptr}))", ptr = node_string(ptr)),
-        CILNode::LDFieldAdress { addr, field } => format!(
-            "(&(({owner}*){ptr})->{name}.f)",
-            ptr = node_string(addr),
-            owner = c_tpe(&field.owner().clone().into()),
-            name = field.name()
-        ),
-        CILNode::LDField { addr, field } => format!(
-            "//{addr:?}\n(({owner}*){ptr})->{name}.f",
-            ptr = node_string(addr),
-            owner = c_tpe(&field.owner().clone().into()),
-            name = field.name()
-        ),
-        CILNode::Add(a, b) => format!("({a}) + ({b})", a = node_string(a), b = node_string(b)),
-        CILNode::And(a, b) => format!("({a}) & ({b})", a = node_string(a), b = node_string(b)),
-        CILNode::Sub(a, b) => format!("({a}) - ({b})", a = node_string(a), b = node_string(b)),
-        CILNode::Mul(a, b) => format!("({a}) * ({b})", a = node_string(a), b = node_string(b)),
-        CILNode::Div(a, b) => format!("({a}) / ({b})", a = node_string(a), b = node_string(b)),
-        CILNode::DivUn(a, b) => format!("({a}) / ({b})", a = node_string(a), b = node_string(b)),
-        CILNode::Rem(a, b) | CILNode::RemUn(a, b) => {
-            format!("{a} % {b}", a = node_string(a), b = node_string(b))
+        CILNode::LDIndF32 { ptr } => format!("(*((float*){ptr}))", ptr = node_string(ptr, method)),
+        CILNode::LDIndF64 { ptr } => format!("(*((double*){ptr}))", ptr = node_string(ptr, method)),
+        CILNode::LDFieldAdress { addr, field } => {
+            if let CILNode::LDLoc(loc) = addr.as_ref() {
+                if !matches!(
+                    method.locals()[*loc as usize].1,
+                    Type::Ptr(_) | Type::ISize | Type::USize
+                ) {
+                    return format!(
+                        "(&(({owner}*)&{ptr})->{name}.f)",
+                        ptr = node_string(addr, method),
+                        owner = c_tpe(&field.owner().clone().into()),
+                        name = field.name()
+                    );
+                }
+            }
+            if let CILNode::LDArg(arg) = addr.as_ref() {
+                if !matches!(
+                    method.sig().inputs()[*arg as usize],
+                    Type::Ptr(_) | Type::ISize | Type::USize
+                ) {
+                    return format!(
+                        "(&(({owner}*)&{ptr})->{name}.f)",
+                        ptr = node_string(addr, method),
+                        owner = c_tpe(&field.owner().clone().into()),
+                        name = field.name()
+                    );
+                }
+            }
+            format!(
+                "(&(({owner}*){ptr})->{name}.f)",
+                ptr = node_string(addr, method),
+                owner = c_tpe(&field.owner().clone().into()),
+                name = field.name()
+            )
         }
-        CILNode::Or(a, b) => format!("({a}) | ({b})", a = node_string(a), b = node_string(b)),
-        CILNode::XOr(a, b) => format!("({a}) ^ ({b})", a = node_string(a), b = node_string(b)),
-        CILNode::Shr(a, b) => format!("{a} >> {b}", a = node_string(a), b = node_string(b)),
+        CILNode::LDField { addr, field } => {
+            if let CILNode::LDLoc(loc) = addr.as_ref() {
+                if !matches!(
+                    method.locals()[*loc as usize].1,
+                    Type::Ptr(_) | Type::ISize | Type::USize
+                ) {
+                    return format!(
+                        "//{addr:?}\n(({owner}*)&{ptr})->{name}.f",
+                        ptr = node_string(addr, method),
+                        owner = c_tpe(&field.owner().clone().into()),
+                        name = field.name()
+                    );
+                }
+            }
+            if let CILNode::LDArg(arg) = addr.as_ref() {
+                if !matches!(
+                    method.sig().inputs()[*arg as usize],
+                    Type::Ptr(_) | Type::ISize | Type::USize
+                ) {
+                    return format!(
+                        "//{addr:?}\n(({owner}*)&{ptr})->{name}.f",
+                        ptr = node_string(addr, method),
+                        owner = c_tpe(&field.owner().clone().into()),
+                        name = field.name()
+                    );
+                }
+            }
+            format!(
+                "//{addr:?}\n(({owner}*){ptr})->{name}.f",
+                ptr = node_string(addr, method),
+                owner = c_tpe(&field.owner().clone().into()),
+                name = field.name()
+            )
+        }
+        CILNode::Add(a, b) => format!(
+            "({a}) + ({b})",
+            a = node_string(a, method),
+            b = node_string(b, method)
+        ),
+        CILNode::And(a, b) => format!(
+            "({a}) & ({b})",
+            a = node_string(a, method),
+            b = node_string(b, method)
+        ),
+        CILNode::Sub(a, b) => format!(
+            "({a}) - ({b})",
+            a = node_string(a, method),
+            b = node_string(b, method)
+        ),
+        CILNode::Mul(a, b) => format!(
+            "({a}) * ({b})",
+            a = node_string(a, method),
+            b = node_string(b, method)
+        ),
+        CILNode::Div(a, b) => format!(
+            "({a}) / ({b})",
+            a = node_string(a, method),
+            b = node_string(b, method)
+        ),
+        CILNode::DivUn(a, b) => format!(
+            "({a}) / ({b})",
+            a = node_string(a, method),
+            b = node_string(b, method)
+        ),
+        CILNode::Rem(a, b) | CILNode::RemUn(a, b) => {
+            format!(
+                "{a} % {b}",
+                a = node_string(a, method),
+                b = node_string(b, method)
+            )
+        }
+        CILNode::Or(a, b) => format!(
+            "({a}) | ({b})",
+            a = node_string(a, method),
+            b = node_string(b, method)
+        ),
+        CILNode::XOr(a, b) => format!(
+            "({a}) ^ ({b})",
+            a = node_string(a, method),
+            b = node_string(b, method)
+        ),
+        CILNode::Shr(a, b) => format!(
+            "{a} >> {b}",
+            a = node_string(a, method),
+            b = node_string(b, method)
+        ),
         CILNode::Shl(a, b) | CILNode::ShrUn(a, b) => {
-            format!("{a} << {b}", a = node_string(a), b = node_string(b))
+            format!(
+                "{a} << {b}",
+                a = node_string(a, method),
+                b = node_string(b, method)
+            )
         }
         CILNode::RawOpsParrentless { .. } => todo!(),
         CILNode::Call { args, site } | CILNode::CallVirt { args, site } => {
@@ -351,10 +480,10 @@ fn node_string(tree: &CILNode) -> String {
                 .filter_map(|(code, tpe)| if *tpe != Type::Void { Some(code) } else { None });
             let mut inputs: String = "(".into();
             if let Some(input) = input_iter.next() {
-                inputs.push_str(&node_string(input).to_string());
+                inputs.push_str(&node_string(input, method).to_string());
             }
             for input in input_iter {
-                inputs.push_str(&format!(",{input} ", input = node_string(input)));
+                inputs.push_str(&format!(",{input} ", input = node_string(input, method)));
             }
             inputs.push(')');
             let tpe_name = site
@@ -371,24 +500,52 @@ fn node_string(tree: &CILNode) -> String {
         CILNode::LdcF64(value) => format!("{value}"),
         CILNode::LdcF32(value) => format!("{value}"),
         CILNode::LoadGlobalAllocPtr { .. } => todo!(),
-        CILNode::ConvU8(inner) => format!("((uint8_t){inner})", inner = node_string(inner)),
-        CILNode::ConvU16(inner) => format!("((uint16_t){inner})", inner = node_string(inner)),
-        CILNode::ConvU32(inner) => format!("((uint32_t){inner})", inner = node_string(inner)),
-        CILNode::ConvU64(inner) => format!("((uint64_t){inner})", inner = node_string(inner)),
-        CILNode::ConvUSize(inner) => format!("((uintptr_t){inner})", inner = node_string(inner)),
-        CILNode::ConvI8(inner) => format!("((int8_t){inner})", inner = node_string(inner)),
-        CILNode::ConvI16(inner) => format!("((int16_t){inner})", inner = node_string(inner)),
-        CILNode::ConvI32(inner) => format!("((int32_t){inner})", inner = node_string(inner)),
-        CILNode::ConvI64(inner) => format!("((int64_t){inner})", inner = node_string(inner)),
-        CILNode::ConvISize(inner) => format!("((ptrdiff_t){inner})", inner = node_string(inner)),
-        CILNode::Neg(a) => format!("-({a})", a = node_string(a)),
-        CILNode::Not(a) => format!("!({a})", a = node_string(a)),
-        CILNode::Eq(a, b) => format!("(({a}) == ({b}))", a = node_string(a), b = node_string(b)),
+        CILNode::ConvU8(inner) => format!("((uint8_t){inner})", inner = node_string(inner, method)),
+        CILNode::ConvU16(inner) => {
+            format!("((uint16_t){inner})", inner = node_string(inner, method))
+        }
+        CILNode::ConvU32(inner) => {
+            format!("((uint32_t){inner})", inner = node_string(inner, method))
+        }
+        CILNode::ConvU64(inner) => {
+            format!("((uint64_t){inner})", inner = node_string(inner, method))
+        }
+        CILNode::ConvUSize(inner) => {
+            format!("((uintptr_t){inner})", inner = node_string(inner, method))
+        }
+        CILNode::ConvI8(inner) => format!("((int8_t){inner})", inner = node_string(inner, method)),
+        CILNode::ConvI16(inner) => {
+            format!("((int16_t){inner})", inner = node_string(inner, method))
+        }
+        CILNode::ConvI32(inner) => {
+            format!("((int32_t){inner})", inner = node_string(inner, method))
+        }
+        CILNode::ConvI64(inner) => {
+            format!("((int64_t){inner})", inner = node_string(inner, method))
+        }
+        CILNode::ConvISize(inner) => {
+            format!("((ptrdiff_t){inner})", inner = node_string(inner, method))
+        }
+        CILNode::Neg(a) => format!("-({a})", a = node_string(a, method)),
+        CILNode::Not(a) => format!("!({a})", a = node_string(a, method)),
+        CILNode::Eq(a, b) => format!(
+            "(({a}) == ({b}))",
+            a = node_string(a, method),
+            b = node_string(b, method)
+        ),
         CILNode::Lt(a, b) | CILNode::LtUn(a, b) => {
-            format!("{a} < {b}", a = node_string(a), b = node_string(b))
+            format!(
+                "{a} < {b}",
+                a = node_string(a, method),
+                b = node_string(b, method)
+            )
         }
         CILNode::Gt(a, b) | CILNode::GtUn(a, b) => {
-            format!("{a} > {b}", a = node_string(a), b = node_string(b))
+            format!(
+                "{a} > {b}",
+                a = node_string(a, method),
+                b = node_string(b, method)
+            )
         }
         CILNode::TemporaryLocal(_) => todo!(),
         CILNode::SubTrees(sub, main) => {
@@ -396,7 +553,7 @@ fn node_string(tree: &CILNode) -> String {
             println!(
                 "WARNING: Sub-trees impropely resolved: an empty sub-tree list still remains!"
             );
-            node_string(main)
+            node_string(main, method)
         }
         CILNode::LoadAddresOfTMPLocal => todo!(),
         CILNode::LoadTMPLocal => todo!(),
@@ -422,10 +579,10 @@ fn node_string(tree: &CILNode) -> String {
                 .filter_map(|(code, tpe)| if *tpe != Type::Void { Some(code) } else { None });
             let mut inputs: String = "(".into();
             if let Some(input) = input_iter.next() {
-                inputs.push_str(&node_string(input).to_string());
+                inputs.push_str(&node_string(input, method).to_string());
             }
             for input in input_iter {
-                inputs.push_str(&format!(",{input} ", input = node_string(input)));
+                inputs.push_str(&format!(",{input} ", input = node_string(input, method)));
             }
             inputs.push(')');
             let tpe_name = escape_type_name(site.class().unwrap().name_path());
@@ -441,15 +598,20 @@ fn node_string(tree: &CILNode) -> String {
 }
 fn tree_string(tree: &CILTree, method: &Method) -> String {
     match tree.root() {
-        CILRoot::SourceFileInfo(sfi)=>format!("//{fname}:{line}:{col}",line = sfi.0, col = sfi.1,fname = sfi.2),
+        CILRoot::SourceFileInfo(sfi) => format!(
+            "//{fname}:{line}:{col}",
+            line = sfi.0,
+            col = sfi.1,
+            fname = sfi.2
+        ),
         CILRoot::STLoc { local, tree } => {
             let local_ty = &method.locals()[*local as usize].1;
             if let Some(_) = local_ty.as_dotnet() {
-                format!("\tL{local} = {tree};\n", tree = node_string(tree))
+                format!("\tL{local} = {tree};\n", tree = node_string(tree, method))
             } else {
                 format!(
                     "\tL{local} = (({local_ty}){tree});\n",
-                    tree = node_string(tree),
+                    tree = node_string(tree, method),
                     local_ty = c_tpe(local_ty)
                 )
             }
@@ -462,12 +624,12 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
             if *sub_target != 0 {
                 format!(
                     "\tif(({ops}) != 0)goto BB_{sub_target};\n",
-                    ops = node_string(ops)
+                    ops = node_string(ops, method)
                 )
             } else {
                 format!(
                     "\tif(({ops}) != 0)goto BB_{target};\n",
-                    ops = node_string(ops)
+                    ops = node_string(ops, method)
                 )
             }
         }
@@ -487,11 +649,11 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
             let mut inputs: String = "(".into();
             if let Some((input, arg)) = input_iter.next() {
                 if let Some(_) = arg.as_dotnet() {
-                    inputs.push_str(&node_string(input).to_string());
+                    inputs.push_str(&node_string(input, method).to_string());
                 } else {
                     inputs.push_str(&format!(
                         "({arg})({ops})",
-                        ops = node_string(input),
+                        ops = node_string(input, method),
                         arg = c_tpe(arg)
                     ));
                 }
@@ -500,11 +662,11 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
             for (input, arg) in input_iter {
                 if let Some(_) = arg.as_dotnet() {
                     // Can't cast to a struct in C.
-                    inputs.push_str(&format!(",{ops}", ops = node_string(input)));
+                    inputs.push_str(&format!(",{ops}", ops = node_string(input, method)));
                 } else {
                     inputs.push_str(&format!(
                         ",({arg})({ops})",
-                        ops = node_string(input),
+                        ops = node_string(input, method),
                         arg = c_tpe(arg)
                     ));
                 }
@@ -520,18 +682,18 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
             if let Some(_) = desc.tpe().as_dotnet() {
                 format!(
                     "(({owner}*){ptr})->{name}.f = {value};",
-                    ptr = node_string(addr),
+                    ptr = node_string(addr, method),
                     owner = c_tpe(&desc.owner().clone().into()),
                     name = desc.name(),
-                    value = node_string(value)
+                    value = node_string(value, method)
                 )
             } else {
                 format!(
                     "(({owner}*){ptr})->{name}.f = ({tpe}){value};",
-                    ptr = node_string(addr),
+                    ptr = node_string(addr, method),
                     owner = c_tpe(&desc.owner().clone().into()),
                     name = desc.name(),
-                    value = node_string(value),
+                    value = node_string(value, method),
                     tpe = c_tpe(desc.tpe()),
                 )
             }
@@ -542,34 +704,34 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
         }
         CILRoot::CpBlk { src, dst, len } => format!(
             "memcpy({src},{dst},{len});",
-            src = node_string(src),
-            dst = node_string(dst),
-            len = node_string(len)
+            src = node_string(src, method),
+            dst = node_string(dst, method),
+            len = node_string(len, method)
         ),
         CILRoot::STIndI8(addr_calc, value_calc) => format!(
             "*((int8_t*)({addr_calc})) = (int8_t){value_calc};",
-            addr_calc = node_string(addr_calc),
-            value_calc = node_string(value_calc)
+            addr_calc = node_string(addr_calc, method),
+            value_calc = node_string(value_calc, method)
         ),
         CILRoot::STIndI16(addr_calc, value_calc) => format!(
             "*((int16_t*)({addr_calc})) = (int16_t){value_calc};",
-            addr_calc = node_string(addr_calc),
-            value_calc = node_string(value_calc)
+            addr_calc = node_string(addr_calc, method),
+            value_calc = node_string(value_calc, method)
         ),
         CILRoot::STIndI32(addr_calc, value_calc) => format!(
             "*((int32_t*)({addr_calc})) = (int32_t){value_calc};",
-            addr_calc = node_string(addr_calc),
-            value_calc = node_string(value_calc)
+            addr_calc = node_string(addr_calc, method),
+            value_calc = node_string(value_calc, method)
         ),
         CILRoot::STIndI64(addr_calc, value_calc) => format!(
             "*((int64_t*)({addr_calc})) = (int64_t){value_calc};",
-            addr_calc = node_string(addr_calc),
-            value_calc = node_string(value_calc)
+            addr_calc = node_string(addr_calc, method),
+            value_calc = node_string(value_calc, method)
         ),
         CILRoot::STIndISize(addr_calc, value_calc) => format!(
             "*((uintptr_t*)({addr_calc})) = (uintptr_t){value_calc};",
-            addr_calc = node_string(addr_calc),
-            value_calc = node_string(value_calc)
+            addr_calc = node_string(addr_calc, method),
+            value_calc = node_string(value_calc, method)
         ),
         CILRoot::STIndF64(_, _) => todo!(),
         CILRoot::STIndF32(_, _) => todo!(),
@@ -582,15 +744,15 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
             if let Some(_) = local_ty.as_dotnet() {
                 format!(
                     "*(({local_ty}*)({addr_calc})) = {value_calc};",
-                    addr_calc = node_string(addr_calc),
-                    value_calc = node_string(value_calc),
+                    addr_calc = node_string(addr_calc, method),
+                    value_calc = node_string(value_calc, method),
                     local_ty = c_tpe(local_ty)
                 )
             } else {
                 format!(
                     "*(({local_ty}*)({addr_calc})) = (({local_ty}){value_calc});",
-                    addr_calc = node_string(addr_calc),
-                    value_calc = node_string(value_calc),
+                    addr_calc = node_string(addr_calc, method),
+                    value_calc = node_string(value_calc, method),
                     local_ty = c_tpe(local_ty)
                 )
             }
@@ -598,11 +760,11 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
         CILRoot::STArg { arg, tree } => {
             let arg_ty = &method.sig().inputs()[*arg as usize];
             if let Some(_) = arg_ty.as_dotnet() {
-                format!("\tA{arg} = {tree};\n", tree = node_string(tree))
+                format!("\tA{arg} = {tree};\n", tree = node_string(tree, method))
             } else {
                 format!(
                     "\tA{arg} = (({local_ty}){tree});\n",
-                    tree = node_string(tree),
+                    tree = node_string(tree, method),
                     local_ty = c_tpe(arg_ty)
                 )
             }
@@ -610,22 +772,27 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
         CILRoot::Break => "".into(),
         CILRoot::Nop => "".into(),
         CILRoot::InitBlk { dst, val, count } => {
-            format!("memset((void*)({dst}),({val}),(size_t)({count}));",dst = node_string(dst),val = node_string(val),count = node_string(count))
+            format!(
+                "memset((void*)({dst}),({val}),(size_t)({count}));",
+                dst = node_string(dst, method),
+                val = node_string(val, method),
+                count = node_string(count, method)
+            )
         }
         CILRoot::CallVirt { .. } => panic!("Virtual calls not supported in C."),
         CILRoot::Ret { tree } => {
             if let Some(_) = method.sig().output().as_dotnet() {
-                format!("\treturn {ops};", ops = node_string(tree))
+                format!("\treturn {ops};", ops = node_string(tree, method))
             } else {
                 format!(
                     "\treturn ({ret}){ops};",
-                    ops = node_string(tree),
+                    ops = node_string(tree, method),
                     ret = c_tpe(method.sig().output())
                 )
             }
         }
         CILRoot::Pop { tree } => {
-            format!("\t{ops};", ops = node_string(tree))
+            format!("\t{ops};", ops = node_string(tree, method))
         }
         CILRoot::VoidRet => "return;".into(),
         CILRoot::Throw(_) => "abort();".to_string(),
@@ -643,13 +810,13 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
                 format!(
                     "{name} = {value_calc};",
                     name = descr.name(),
-                    value_calc = node_string(value)
+                    value_calc = node_string(value, method)
                 )
             } else {
                 format!(
                     "{name} = (({local_ty}){value_calc});",
                     name = descr.name(),
-                    value_calc = node_string(value),
+                    value_calc = node_string(value, method),
                     local_ty = c_tpe(local_ty)
                 )
             }
@@ -662,6 +829,7 @@ fn c_tpe(tpe: &Type) -> Cow<'static, str> {
         Type::USize => "uintptr_t".into(),
         Type::ISize => "ptrdiff_t".into(),
         Type::Void => "void".into(),
+        Type::DotnetChar => "char".into(),
         Type::I128 => "__int128".into(),
         Type::U128 => "unsigned __int128".into(),
         Type::I64 => "int64_t".into(),

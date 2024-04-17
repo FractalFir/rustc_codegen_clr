@@ -128,7 +128,13 @@ pub fn handle_aggregate<'tyctx>(
             let dotnet_tpe = crate::r#type::simple_tuple(&types);
             let mut sub_trees = Vec::new();
             for field in values.iter() {
+                // Assigining to a Void field is a NOP and must be skipped(since it can have wierd side-effects).
+                if types[field.0 as usize] == Type::Void{
+                    continue;
+                }
                 let name = format!("Item{}", field.0 + 1);
+              
+                
                 sub_trees.push(CILRoot::SetField {
                     addr: tuple_getter.clone(),
                     value: field.1.clone(),
@@ -357,7 +363,16 @@ fn aggregate_adt<'tyctx>(
             let field_type = field_def.ty(tyctx, subst);
             let field_type = crate::utilis::monomorphize(&method_instance, field_type, tyctx);
             let field_type = type_cache.type_from_cache(field_type, tyctx, Some(method_instance));
-
+            // Assgiements to void types are a NOP and should ALWAYS be skipped.
+            if field_type == Type::Void{
+                return crate::place::place_get(
+                    target_location,
+                    tyctx,
+                    method,
+                    method_instance,
+                    type_cache,
+                );
+            }
             let field_name = field_name(adt_type, active_field.as_u32());
 
             let desc = FieldDescriptor::new(adt_type_ref.clone(), field_type, field_name);

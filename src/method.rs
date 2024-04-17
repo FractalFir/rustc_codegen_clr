@@ -22,7 +22,7 @@ pub struct Method {
     locals: Vec<LocalDef>,
     pub(in crate::method) blocks: Vec<BasicBlock>,
     attributes: Vec<Attribute>,
-    arg_names:Vec<Option<IString>>,
+    arg_names: Vec<Option<IString>>,
 }
 /// Local varaible. Consists of an optional name and type.
 pub type LocalDef = (Option<IString>, Type);
@@ -62,7 +62,7 @@ impl Method {
             locals,
             blocks,
             attributes: Vec::new(),
-            arg_names:vec![],
+            arg_names: vec![],
         };
         res.allocate_temporaries();
         res.sheed_trees();
@@ -105,8 +105,10 @@ impl Method {
             &self.sig().inputs()[1..]
         }
     }
-    pub fn sheed_trees(&mut self){
-        self.blocks.iter_mut().for_each(|block|{block.sheed_trees();});
+    pub fn sheed_trees(&mut self) {
+        self.blocks.iter_mut().for_each(|block| {
+            block.sheed_trees();
+        });
     }
     /// Returns the access modifier of this function.
     pub fn access(&self) -> AccessModifer {
@@ -198,12 +200,12 @@ impl Method {
     pub fn blocks_mut<'a>(&'a mut self) -> BlockMutGuard<'a> {
         BlockMutGuard { method: self }
     }
-    
+
     pub(crate) fn with_argnames(mut self, arg_names: Vec<Option<IString>>) -> Self {
         self.arg_names = arg_names;
         self
     }
-    
+
     pub fn arg_names(&self) -> &[Option<IString>] {
         &self.arg_names
     }

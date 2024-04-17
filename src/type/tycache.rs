@@ -374,14 +374,16 @@ impl TyCache {
                     .collect();
                 let name: IString = crate::r#type::closure_name(*def, &fields, &sig).into();
                 let layout = tyctx
-                .layout_of(rustc_middle::ty::ParamEnvAnd {
-                    param_env: ParamEnv::reveal_all(),
-                    value: ty,
-                })
-                .expect("Could not get type layout!");
+                    .layout_of(rustc_middle::ty::ParamEnvAnd {
+                        param_env: ParamEnv::reveal_all(),
+                        value: ty,
+                    })
+                    .expect("Could not get type layout!");
                 if !self.type_def_cache.contains_key(&name) {
-                    self.type_def_cache
-                        .insert(name.clone(), closure_typedef(*def, &fields, sig,&layout.layout));
+                    self.type_def_cache.insert(
+                        name.clone(),
+                        closure_typedef(*def, &fields, sig, &layout.layout),
+                    );
                 }
                 DotnetTypeRef::new(None, &name).into()
             }

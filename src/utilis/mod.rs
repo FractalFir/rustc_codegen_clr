@@ -44,7 +44,7 @@ pub fn adt_name<'tyctx>(
     // Using formating preserves the generic hash.
     let demangled = format!("{demangled}");
     // Replace Rust namespace(module) spearators with C# ones.
-    let dotnet_class_name = demangled.replace("::",".");
+    let dotnet_class_name = demangled.replace("::", ".");
     escape_class_name(&dotnet_class_name)
 }
 pub fn escape_class_name(name: &str) -> IString {

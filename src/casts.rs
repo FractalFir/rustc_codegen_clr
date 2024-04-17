@@ -21,7 +21,8 @@ pub fn int_to_int(src: Type, target: Type, operand: CILNode) -> CILNode {
             panic!();
         }*/
         (Type::ISize, Type::I128) => call!(
-            CallSite::new_extern(DotnetTypeRef::int_128(),
+            CallSite::new_extern(
+                DotnetTypeRef::int_128(),
                 "op_Implicit".into(),
                 FnSig::new(&[Type::I64], &Type::I128),
                 true,
@@ -29,7 +30,8 @@ pub fn int_to_int(src: Type, target: Type, operand: CILNode) -> CILNode {
             [conv_i64!(operand)]
         ),
         (Type::ISize, Type::U128) => call!(
-            CallSite::new_extern(DotnetTypeRef::uint_128(),
+            CallSite::new_extern(
+                DotnetTypeRef::uint_128(),
                 "op_Explicit".into(),
                 FnSig::new(&[Type::I64], &Type::U128),
                 true,
@@ -37,7 +39,8 @@ pub fn int_to_int(src: Type, target: Type, operand: CILNode) -> CILNode {
             [conv_i64!(operand)]
         ),
         (Type::Bool, Type::U128) => call!(
-            CallSite::new_extern(DotnetTypeRef::uint_128(),
+            CallSite::new_extern(
+                DotnetTypeRef::uint_128(),
                 "op_Explicit".into(),
                 FnSig::new(&[Type::I64], &Type::U128),
                 true,
@@ -45,7 +48,8 @@ pub fn int_to_int(src: Type, target: Type, operand: CILNode) -> CILNode {
             [conv_i8!(operand)]
         ),
         (Type::Bool, Type::I128) => call!(
-            CallSite::new_extern(DotnetTypeRef::int_128(),
+            CallSite::new_extern(
+                DotnetTypeRef::int_128(),
                 "op_Implicit".into(),
                 FnSig::new(&[Type::I8], &Type::I128),
                 true,
@@ -103,7 +107,8 @@ pub fn int_to_int(src: Type, target: Type, operand: CILNode) -> CILNode {
         ),
         // i128 bit casts
         (Type::U128, Type::I128) => call!(
-            CallSite::new_extern(DotnetTypeRef::uint_128(),
+            CallSite::new_extern(
+                DotnetTypeRef::uint_128(),
                 "op_Explicit".into(),
                 FnSig::new(&[src], &target),
                 true,
@@ -111,7 +116,8 @@ pub fn int_to_int(src: Type, target: Type, operand: CILNode) -> CILNode {
             [operand]
         ),
         (_, Type::I128) => call!(
-            CallSite::new_extern(DotnetTypeRef::int_128(),
+            CallSite::new_extern(
+                DotnetTypeRef::int_128(),
                 "op_Implicit".into(),
                 FnSig::new(&[src], &target),
                 true,
@@ -119,7 +125,8 @@ pub fn int_to_int(src: Type, target: Type, operand: CILNode) -> CILNode {
             [operand]
         ),
         (Type::I128, Type::U128) => call!(
-            CallSite::new_extern(DotnetTypeRef::int_128(),
+            CallSite::new_extern(
+                DotnetTypeRef::int_128(),
                 "op_Explicit".into(),
                 FnSig::new(&[src], &target),
                 true,
@@ -128,7 +135,8 @@ pub fn int_to_int(src: Type, target: Type, operand: CILNode) -> CILNode {
         ),
 
         (Type::I8 | Type::I16 | Type::I32 | Type::I64, Type::U128) => call!(
-            CallSite::new_extern(DotnetTypeRef::uint_128(),
+            CallSite::new_extern(
+                DotnetTypeRef::uint_128(),
                 "op_Explicit".into(),
                 FnSig::new(&[src], &target),
                 true,
@@ -136,7 +144,8 @@ pub fn int_to_int(src: Type, target: Type, operand: CILNode) -> CILNode {
             [operand]
         ),
         (_, Type::U128) => call!(
-            CallSite::new_extern(DotnetTypeRef::uint_128(),
+            CallSite::new_extern(
+                DotnetTypeRef::uint_128(),
                 "op_Implicit".into(),
                 FnSig::new(&[src], &target),
                 true,
@@ -144,7 +153,8 @@ pub fn int_to_int(src: Type, target: Type, operand: CILNode) -> CILNode {
             [operand]
         ),
         (Type::I128, _) => call!(
-            CallSite::new_extern(DotnetTypeRef::int_128(),
+            CallSite::new_extern(
+                DotnetTypeRef::int_128(),
                 "op_Explicit".into(),
                 FnSig::new(&[src], &target),
                 true,
@@ -152,7 +162,8 @@ pub fn int_to_int(src: Type, target: Type, operand: CILNode) -> CILNode {
             [operand]
         ),
         (Type::U128, _) => call!(
-            CallSite::new_extern(DotnetTypeRef::uint_128(),
+            CallSite::new_extern(
+                DotnetTypeRef::uint_128(),
                 "op_Explicit".into(),
                 FnSig::new(&[src], &target),
                 true,
@@ -167,7 +178,8 @@ pub fn int_to_int(src: Type, target: Type, operand: CILNode) -> CILNode {
 pub fn float_to_int(src: Type, target: Type, operand: CILNode) -> CILNode {
     match target {
         Type::I128 => call!(
-            CallSite::new_extern(DotnetTypeRef::int_128(),
+            CallSite::new_extern(
+                DotnetTypeRef::int_128(),
                 "op_Explicit".into(),
                 FnSig::new(&[src], &target),
                 true,
@@ -175,7 +187,8 @@ pub fn float_to_int(src: Type, target: Type, operand: CILNode) -> CILNode {
             [operand]
         ),
         Type::U128 => call!(
-            CallSite::new_extern(DotnetTypeRef::uint_128(),
+            CallSite::new_extern(
+                DotnetTypeRef::uint_128(),
                 "op_Explicit".into(),
                 FnSig::new(&[src], &target),
                 true,

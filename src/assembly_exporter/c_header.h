@@ -38,7 +38,10 @@ static char* exec_fname;
 
 #define ctor_System_UInt128(upper,lower) (((unsigned __int128)lower) | (((unsigned __int128)upper)<<64))
 #define ctor_System_Int128(upper,lower) (((__int128)lower) | (((__int128)upper)<<64))
-
+// Consts
+#define System_UIntPtrget_MinValue() ((size_t)0)
+#define System_UIntPtrget_MaxValue() (~((size_t)0))
+// Bswap
 #define System_Buffers_Binary_BinaryPrimitivesReverseEndianness(val) __bswap_32(val)
 // Assembly utilis needed for statup
 #define System_Reflection_AssemblyGetEntryAssembly() exec_fname
@@ -49,15 +52,25 @@ static char* exec_fname;
 // IO
 #define System_ConsoleWrite(chr) putc(chr,stdout)
 #define System_ConsoleWriteLine(arg)
-// Allcation
+// Allocation
 #define System_Runtime_InteropServices_NativeMemoryAlignedAlloc _mm_malloc
+#define System_Runtime_InteropServices_NativeMemoryAlignedFree(ptr) _mm_free(ptr)
+//Atomics
+#define System_Threading_InterlockedCompareExchange(addr,value,comparand) ({typeof(comparand) expected = comparand;typeof(value) val = value;  __atomic_compare_exchange((addr),&(expected),&(val),0,__ATOMIC_SEQ_CST,0); expected;})
+#define System_Threading_InterlockedExchange(addr,val) ({typeof(val) value = val;typeof(val) ret; __atomic_exchange((addr),&value,&ret,__ATOMIC_SEQ_CST);ret;})
 // Misc
 #define System_Numerics_BitOperationsPopCount(arg) __builtin_popcount(arg)
+#define System_Numerics_BitOperationsTrailingZeroCount(arg) __builtin_ctz(arg)
 #define System_TypeGetTypeFromHandle(handle) handle
 #define System_ObjectGetHashCode(object) object
+
 //Types
 
 typedef char* System_String;
 typedef struct TypeInfo{
     int32_t hash;
 };
+void *System_Runtime_InteropServices_NativeMemoryAlignedRealloc(void* old, size_t new_size, size_t align){
+	// Reallocating such buffers is not supported yet!
+	abort();
+}

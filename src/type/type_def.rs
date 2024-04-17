@@ -218,15 +218,20 @@ pub fn closure_name(_def_id: DefId, fields: &[Type], _sig: &crate::function_sig:
         field_count = fields.len()
     )
 }
-pub fn closure_typedef(def_id: DefId, fields: &[Type], sig: crate::function_sig::FnSig, layout: &Layout) -> TypeDef {
+pub fn closure_typedef(
+    def_id: DefId,
+    fields: &[Type],
+    sig: crate::function_sig::FnSig,
+    layout: &Layout,
+) -> TypeDef {
     let name = closure_name(def_id, fields, &sig);
-    let fields:Vec<_> = fields
+    let fields: Vec<_> = fields
         .iter()
         .enumerate()
         .map(|(idx, ty)| (format!("f_{idx}").into(), ty.clone()))
         .collect();
-    let offsets:Vec<_> = FieldOffsetIterator::fields(layout).collect();
-    assert_eq!(fields.len(),offsets.len());
+    let offsets: Vec<_> = FieldOffsetIterator::fields(layout).collect();
+    assert_eq!(fields.len(), offsets.len());
     TypeDef::new(
         AccessModifer::Public,
         name.into(),

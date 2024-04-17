@@ -227,27 +227,32 @@ fn method_cil(w: &mut impl Write, method: &Method) -> std::io::Result<()> {
         ".method {access} hidebysig {static_inst} {output} '{name}'("
     )?;
     let mut input_iter = method.explicit_inputs().iter();
-    if method.arg_names().is_empty(){
+    if method.arg_names().is_empty() || method.arg_names().len() != method.explicit_inputs().len(){
+        if method.arg_names().len() != method.explicit_inputs().len(){
+            eprintln!("WARNING: debug arg count invalid!")
+        }
         if let Some(input) = input_iter.next() {
             write!(w, "{}", non_void_type_cil(input))?;
         }
         for input in input_iter {
             write!(w, ",{}", non_void_type_cil(input))?;
         }
-    }
-    else{
-        assert_eq!( method.arg_names().len(),method.explicit_inputs().len());
-        let mut input_iter = method.explicit_inputs().iter().zip(method.arg_names().iter());
-        if let Some((input,name)) = input_iter.next() {
-            match name{
-                Some(name)=>write!(w, "{} '{name}'", non_void_type_cil(input))?,
-                None=>write!(w, "{}", non_void_type_cil(input))?,
+    } else {
+        assert_eq!(method.arg_names().len(), method.explicit_inputs().len());
+        let mut input_iter = method
+            .explicit_inputs()
+            .iter()
+            .zip(method.arg_names().iter());
+        if let Some((input, name)) = input_iter.next() {
+            match name {
+                Some(name) => write!(w, "{} '{name}'", non_void_type_cil(input))?,
+                None => write!(w, "{}", non_void_type_cil(input))?,
             }
         }
-        for (input,name) in input_iter {
-            match name{
-                Some(name)=>write!(w, ",{} '{name}'", non_void_type_cil(input))?,
-                None=>write!(w, ",{}", non_void_type_cil(input))?,
+        for (input, name) in input_iter {
+            match name {
+                Some(name) => write!(w, ",{} '{name}'", non_void_type_cil(input))?,
+                None => write!(w, ",{}", non_void_type_cil(input))?,
             }
         }
     }
@@ -262,28 +267,27 @@ fn method_cil(w: &mut impl Write, method: &Method) -> std::io::Result<()> {
     }
     let mut locals_iter = method.locals().iter().enumerate();
     if let Some((local_id, local)) = locals_iter.next() {
-        match &local.0{
-            None=> write!(
+        match &local.0 {
+            None => write!(
                 w,
                 "\t\t[{local_id}] {escaped_type} v",
                 escaped_type = non_void_type_cil(&local.1)
             )?,
-            Some(name)=> write!(
+            Some(name) => write!(
                 w,
                 "\t\t[{local_id}] {escaped_type} '{name}'",
                 escaped_type = non_void_type_cil(&local.1)
             )?,
         }
-       
     }
     for (local_id, local) in locals_iter {
-        match &local.0{
-            None=> write!(
+        match &local.0 {
+            None => write!(
                 w,
                 ",\n\t\t[{local_id}] {escaped_type} v",
                 escaped_type = non_void_type_cil(&local.1)
             )?,
-            Some(name)=> write!(
+            Some(name) => write!(
                 w,
                 ",\n\t\t[{local_id}] {escaped_type} '{name}'",
                 escaped_type = non_void_type_cil(&local.1)

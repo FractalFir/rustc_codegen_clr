@@ -49,7 +49,6 @@ pub trait AssemblyExporter: Sized {
             method.sheed_trees();
             method.allocate_temporaries();
             if *config::ESCAPE_NAMES {
-              
                 method.set_name(&escape_class_name(method.name()));
                 asm_exporter.add_method(&method);
             } else {
