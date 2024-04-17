@@ -279,11 +279,9 @@ impl Assembly {
 
         // Get locals
         //eprintln!("method")
-        let locals = locals_from_mir(&mir.local_decls, tyctx, mir.arg_count, &instance, cache);
-        // Create method prototype
-
+        let (arg_names,locals) = locals_from_mir(&mir.local_decls, tyctx, mir.arg_count, &instance, cache,&mir.var_debug_info);
+        
        
-        //let source = mir.source_info();
 
         let blocks = &mir.basic_blocks;
         //let mut trees = Vec::new();
@@ -359,7 +357,7 @@ impl Assembly {
             name,
             locals,
             normal_bbs,
-        );
+        ).with_argnames(arg_names);
    
         method.resolve_global_allocations(self, tyctx);
 
@@ -740,8 +738,10 @@ fn locals_from_mir<'tyctx>(
     argc: usize,
     method_instance: &Instance<'tyctx>,
     tycache: &mut TyCache,
-) -> Vec<(Option<IString>, Type)> {
-    let mut local_types: Vec<_> = Vec::with_capacity(locals.len());
+    var_debuginfo:&[rustc_middle::mir::VarDebugInfo<'tyctx>],
+) -> (Vec<Option<IString>>,Vec<(Option<IString>, Type)>) {
+    use rustc_middle::mir::VarDebugInfoContents;
+    let mut local_types: Vec<(Option<IString>,_)> = Vec::with_capacity(locals.len());
     for (local_id, local) in locals.iter().enumerate() {
         if local_id == 0 || local_id > argc {
             let ty = crate::utilis::monomorphize(method_instance, local.ty, tyctx);
@@ -756,7 +756,29 @@ fn locals_from_mir<'tyctx>(
             local_types.push((name, tpe));
         }
     }
-    local_types
+    let mut arg_names: Vec<Option<IString>> = (0..argc).map(|_|None).collect();
+    for var in var_debuginfo{
+        let mir_local = match var.value{
+            VarDebugInfoContents::Place(place)=>{
+                // Check if this is just a "naked" local(eg. just a local varaible, with no indirction)
+                if !place.projection.is_empty(){
+                    continue;
+                }
+                place.local.as_usize()
+            }
+            VarDebugInfoContents::Const(_)=>continue,
+        };
+        if mir_local == 0{
+            local_types[0].0 = Some(var.name.to_string().into());
+        }
+        else if mir_local > argc {
+            local_types[mir_local - argc].0 = Some(var.name.to_string().into());
+        }
+        else{
+            arg_names[mir_local - 1] = Some(var.name.to_string().into());
+        }
+    }
+    (arg_names,local_types)
 }
 
 fn allocation_initializer_method(
@@ -764,6 +786,7 @@ fn allocation_initializer_method(
     name: &str,
     tyctx: TyCtxt,
     asm: &mut Assembly,
+
 ) -> Method {
     let bytes: &[u8] =
         const_allocation.inspect_with_uninit_and_ptr_outside_interpreter(0..const_allocation.len());

@@ -22,6 +22,7 @@ pub struct Method {
     locals: Vec<LocalDef>,
     pub(in crate::method) blocks: Vec<BasicBlock>,
     attributes: Vec<Attribute>,
+    arg_names:Vec<Option<IString>>,
 }
 /// Local varaible. Consists of an optional name and type.
 pub type LocalDef = (Option<IString>, Type);
@@ -61,6 +62,7 @@ impl Method {
             locals,
             blocks,
             attributes: Vec::new(),
+            arg_names:vec![],
         };
         res.allocate_temporaries();
         res.sheed_trees();
@@ -195,6 +197,15 @@ impl Method {
     /// Returns a mutable reference to a list of basic block that make up this method.
     pub fn blocks_mut<'a>(&'a mut self) -> BlockMutGuard<'a> {
         BlockMutGuard { method: self }
+    }
+    
+    pub(crate) fn with_argnames(mut self, arg_names: Vec<Option<IString>>) -> Self {
+        self.arg_names = arg_names;
+        self
+    }
+    
+    pub fn arg_names(&self) -> &[Option<IString>] {
+        &self.arg_names
     }
 }
 /// A wrapper around mutably borrowed [`BasicBlock`]s of a method. Prevents certain bugs.
