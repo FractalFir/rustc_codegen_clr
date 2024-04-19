@@ -53,6 +53,7 @@ config_flag! {RANDOMIZE_LAYOUT,false,"Tells the codegen to randomize TEST type l
 config_flag! {NATIVE_PASSTROUGH,false,"Tells the codegen compile linked static libraries into a shared library, which will be bundled with the .NET executable."}
 
 config_flag! {ENFORCE_CIL_VALID,false,"Tells the codegen to preform additonal checks before saving the ."}
+config_flag! {DEAD_CODE_ELIMINATION,true,"Tells the codegen to remove dead code before export."}
 
 lazy_static! {
     #[doc = "Specifies the path to the IL assembler."]

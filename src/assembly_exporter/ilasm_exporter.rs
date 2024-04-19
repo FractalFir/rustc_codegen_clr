@@ -229,7 +229,7 @@ fn method_cil(w: &mut impl Write, method: &Method) -> std::io::Result<()> {
     let mut input_iter = method.explicit_inputs().iter();
     if method.arg_names().is_empty() || method.arg_names().len() != method.explicit_inputs().len(){
         if method.arg_names().len() != method.explicit_inputs().len(){
-            eprintln!("WARNING: debug arg count invalid!")
+            println!("WARNING: debug arg count invalid!")
         }
         if let Some(input) = input_iter.next() {
             write!(w, "{}", non_void_type_cil(input))?;

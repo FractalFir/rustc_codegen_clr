@@ -35,8 +35,14 @@ pub fn handle_intrinsic<'tyctx>(
     call_instance: Instance<'tyctx>,
     type_cache: &mut TyCache,
     signature: FnSig,
+    span: rustc_span::Span
 ) -> CILRoot {
     match fn_name {
+        "caller_location"=>{
+            let caller_loc = tyctx.span_as_caller_location(span);
+            let caller_loc_ty = tyctx.caller_location_ty();
+            crate::place::place_set(destination, tyctx, crate::constant::load_const_value(caller_loc, caller_loc_ty, tyctx, body, method_instance, type_cache), body, method_instance, type_cache)
+        }
         "breakpoint" => {
             debug_assert_eq!(
                 args.len(),
@@ -388,6 +394,7 @@ pub fn handle_intrinsic<'tyctx>(
             let src = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
             let dst = handle_operand(&args[1].node, tyctx, body, method_instance, type_cache);
             let count = handle_operand(&args[2].node, tyctx, body, method_instance, type_cache);
+            
             CILRoot::CpBlk {
                 src,
                 dst,

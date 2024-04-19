@@ -76,6 +76,7 @@ pub fn handle_terminator<'ctx>(
                         destination,
                         method_instance,
                         type_cache,
+                        terminator.source_info.span,
                     );
                     trees.push(call_ops.into())
                 }
@@ -147,6 +148,7 @@ pub fn handle_terminator<'ctx>(
                             destination,
                             method_instance,
                             type_cache,
+                            terminator.source_info.span,
                         )
                     };
                 }

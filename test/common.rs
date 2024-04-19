@@ -1,5 +1,4 @@
-#[lang = "eh_personality"]
-fn rust_eh_personality() {}
+
 use core::panic::PanicInfo;
 #[allow(unused_imports)]
 use core::intrinsics::sqrtf32;
@@ -19,6 +18,9 @@ extern "C"{
     ) -> *mut u8;
     fn printf(fmt: *const core::ffi::c_char, ...) -> core::ffi::c_int;
 } 
+
+#[lang = "eh_personality"]
+fn rust_eh_personality() {}
 #[panic_handler]
 fn panic(_panic: &PanicInfo<'_>) -> ! {
     core::intrinsics::abort();
@@ -30,7 +32,7 @@ fn start(_argc:isize,_argv: *const *const u8) -> isize{
     let msg = 0x00_21_4B_4F_20_6C_6C_41_i64;
     unsafe{puts(core::ptr::addr_of!(msg).cast())}
     0
-}
+} 
 use core::intrinsics::black_box;
 #[allow(unused_macros)]
 #[macro_export]

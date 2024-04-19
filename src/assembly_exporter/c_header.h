@@ -63,7 +63,8 @@ static char* exec_fname;
 #define System_Numerics_BitOperationsTrailingZeroCount(arg) __builtin_ctz(arg)
 #define System_TypeGetTypeFromHandle(handle) handle
 #define System_ObjectGetHashCode(object) object
-
+//Math
+#define System_MathFSqrt(flot) sqrtf(flot)
 //Types
 
 typedef char* System_String;
@@ -74,3 +75,5 @@ void *System_Runtime_InteropServices_NativeMemoryAlignedRealloc(void* old, size_
 	// Reallocating such buffers is not supported yet!
 	abort();
 }
+// Used for startup
+#define System_Arrayget_Length(_) 0

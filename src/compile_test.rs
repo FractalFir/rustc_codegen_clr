@@ -755,6 +755,8 @@ run_test! {intrinsics,malloc,stable}
 run_test! {intrinsics,offset_of,unstable}
 run_test! {intrinsics,printf,unstable}
 run_test! {intrinsics,type_id,stable}
+run_test! {intrinsics,caller_location,stable}
+run_test! {intrinsics,copy_nonoverlaping,stable}
 run_test! {intrinsics,ptr_offset_from_unsigned,stable}
 run_test! {intrinsics,arith_offset,stable}
 run_test! {alloc,abox,stable}

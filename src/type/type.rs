@@ -213,6 +213,9 @@ impl Type {
             ExportedSymbol::NonGeneric(c_void),
             c_void.krate,
         );
+        let demangled = rustc_demangle::demangle(&name);
+        // Using formating preserves the generic hash.
+        let name = format!("{demangled}");
         let name = crate::utilis::escape_class_name(&name);
         DotnetTypeRef::new(None, &name).into()
     }

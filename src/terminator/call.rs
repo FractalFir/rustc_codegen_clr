@@ -368,6 +368,7 @@ pub fn call<'tyctx>(
     destination: &Place<'tyctx>,
     method_instance: Instance<'tyctx>,
     type_cache: &mut crate::r#type::TyCache,
+    span:rustc_span::Span,
 ) -> CILRoot {
     let fn_type = crate::utilis::monomorphize(&method_instance, fn_type, tyctx);
     let (instance, subst_ref) = if let TyKind::FnDef(def_id, subst_ref) = fn_type.kind() {
@@ -410,6 +411,7 @@ pub fn call<'tyctx>(
             instance,
             type_cache,
             signature,
+            span,
         );
     }
     if function_name.contains("map_or_else") {

@@ -36,8 +36,8 @@ pub enum CILRoot {
         value: CILNode,
     },
     CpBlk {
-        src: CILNode,
         dst: CILNode,
+        src: CILNode,
         len: CILNode,
     },
     STIndI8(CILNode, CILNode),
@@ -246,8 +246,9 @@ impl CILRoot {
                 res
             }
             Self::CpBlk { src, dst, len } => {
-                let mut res = src.flatten();
-                res.extend(dst.flatten());
+                // Argument order: destination, source, length
+                let mut res = dst.flatten();
+                res.extend(src.flatten());
                 res.extend(len.flatten());
                 res.push(CILOp::CpBlk);
                 res

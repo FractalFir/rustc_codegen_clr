@@ -667,7 +667,10 @@ impl Assembly {
         self.functions = alive;
     }
     pub fn eliminate_dead_code(&mut self) {
-        self.eliminate_dead_fn();
+        if *crate::config::DEAD_CODE_ELIMINATION{
+            self.eliminate_dead_fn();
+        }
+       
         //self.eliminate_dead_types();
     }
     pub fn eliminate_dead_types(&mut self) {

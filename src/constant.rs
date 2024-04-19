@@ -65,7 +65,7 @@ fn create_const_from_data<'ctx>(
     crate::place::deref_op(ty.into(), tyctx, &method_instance, tycache, ptr)
 }
 
-fn load_const_value<'ctx>(
+pub(crate) fn load_const_value<'ctx>(
     const_val: ConstValue<'ctx>,
     const_ty: Ty<'ctx>,
     tyctx: TyCtxt<'ctx>,

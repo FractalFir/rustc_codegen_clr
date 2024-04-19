@@ -283,6 +283,8 @@ impl AssemblyExporter for CExporter {
                 "-o",
                 &final_path.to_string_lossy().to_owned(),
                 &src_path.to_string_lossy().to_owned(),
+                "-lm",
+                "-fno-strict-aliasing"
             ])
             .output()
             .unwrap();
