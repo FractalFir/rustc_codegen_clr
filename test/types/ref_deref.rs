@@ -7,7 +7,7 @@ extern "C" {
 }
 
 fn test_ref_deref(){
-    unsafe{core::ptr::read_volatile(&__rust_no_alloc_shim_is_unstable)};
+    black_box(unsafe{core::ptr::read_volatile(&__rust_no_alloc_shim_is_unstable)});
 }
 fn main(){
     let two = black_box(2);

@@ -400,12 +400,8 @@ pub fn handle_rvalue<'tcx>(
                 Some(method_instance),
             );
             if disrc_type == Type::Void {
-               // Just alwways return 0 if the discriminat type is `()` - this seems to work, and be what rustc expects. Wierd, but OK.
-               crate::casts::int_to_int(
-                Type::I32,
-                target,
-                ldc_i32!(0)
-                )
+                // Just alwways return 0 if the discriminat type is `()` - this seems to work, and be what rustc expects. Wierd, but OK.
+                crate::casts::int_to_int(Type::I32, target, ldc_i32!(0))
             } else {
                 crate::casts::int_to_int(
                     disrc_type.clone(),

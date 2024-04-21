@@ -1,7 +1,7 @@
 use core::cell::Cell;
 use crate::*;
 #[derive(Debug)]
-struct AccessError;
+pub struct AccessError;
 pub struct LocalKey<T: 'static> {
     inner: unsafe fn(Option<&mut Option<T>>) -> Option<&'static T>,
 }

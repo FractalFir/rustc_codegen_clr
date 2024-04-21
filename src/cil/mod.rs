@@ -245,6 +245,8 @@ pub enum CILOp {
     LDIndU64,
     DivUn,
     SourceFileInfo(Box<(u32, u32, IString)>),
+    LDLen,
+    LDElelemRef,
 }
 impl CILOp {
     /// If the cil op is a call, virtual call, new object cosntructor OR it loads a pointer to a function, returns the [`CallSite`] representing this function.
@@ -473,6 +475,8 @@ impl CILOp {
                 }
             }
             CILOp::Volatile => 0,
+            CILOp::LDLen => 0,
+            CILOp::LDElelemRef => -1,
         }
     }
 }

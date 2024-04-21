@@ -38,7 +38,10 @@ impl AssemblyExporter for ILASMExporter {
         let mut encoded_asm = Vec::with_capacity(0x1_00);
         let mut methods = Vec::with_capacity(0x1_00);
         write!(encoded_asm, ".assembly {asm_name}{{}}").expect("Write error!");
-        write!(methods, ".class beforefieldinit RustModule{{").expect("Write error!");
+        write!(methods, ".class beforefieldinit RustModule{{\n").expect("Write error!");
+        if *crate::config::PRINT_PTRS {
+            write!(methods, ".method public static native uint watch_ptr(native uint){{ldstr \"Derefing ptr:\"\ncall void [System.Console]System.Console::Write(string)\nldarg.0\nconv.u8\ncall void [System.Console]System.Console::WriteLine(uint64)\nldarg.0\nret\n}}\n").expect("Write error!");
+        }
         Self {
             encoded_asm,
             methods,
@@ -227,8 +230,8 @@ fn method_cil(w: &mut impl Write, method: &Method) -> std::io::Result<()> {
         ".method {access} hidebysig {static_inst} {output} '{name}'("
     )?;
     let mut input_iter = method.explicit_inputs().iter();
-    if method.arg_names().is_empty() || method.arg_names().len() != method.explicit_inputs().len(){
-        if method.arg_names().len() != method.explicit_inputs().len(){
+    if method.arg_names().is_empty() || method.arg_names().len() != method.explicit_inputs().len() {
+        if method.arg_names().len() != method.explicit_inputs().len() {
             println!("WARNING: debug arg count invalid!")
         }
         if let Some(input) = input_iter.next() {

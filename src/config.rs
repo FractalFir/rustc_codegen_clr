@@ -54,6 +54,8 @@ config_flag! {NATIVE_PASSTROUGH,false,"Tells the codegen compile linked static l
 
 config_flag! {ENFORCE_CIL_VALID,false,"Tells the codegen to preform additonal checks before saving the ."}
 config_flag! {DEAD_CODE_ELIMINATION,true,"Tells the codegen to remove dead code before export."}
+config_flag! {PRINT_PTRS,false,"Tells codegen the print each pointer it dereferences."}
+config_flag! {CHECK_REFS,false,"Tells codegen to check if references it assigns are valid."}
 
 lazy_static! {
     #[doc = "Specifies the path to the IL assembler."]

@@ -244,7 +244,7 @@ pub fn place_elem_set<'a>(
     }
 }
 /// Returns a set of instructons to set a pointer to a `pointed_type` to a value from the stack.
-fn ptr_set_op<'ctx>(
+pub fn ptr_set_op<'ctx>(
     pointed_type: PlaceTy<'ctx>,
     tyctx: TyCtxt<'ctx>,
     method_instance: &Instance<'ctx>,

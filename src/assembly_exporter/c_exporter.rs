@@ -284,7 +284,7 @@ impl AssemblyExporter for CExporter {
                 &final_path.to_string_lossy().to_owned(),
                 &src_path.to_string_lossy().to_owned(),
                 "-lm",
-                "-fno-strict-aliasing"
+                "-fno-strict-aliasing",
             ])
             .output()
             .unwrap();
@@ -596,6 +596,8 @@ fn node_string(tree: &CILNode, method: &Method) -> String {
             fn_ptr: _,
             args: _,
         } => todo!(),
+        CILNode::LDLen { arr } => todo!("arr:{arr:?}"),
+        CILNode::LDElelemRef { arr, idx } => todo!("arr:{arr:?} idx:{idx:?}"),
     }
 }
 fn tree_string(tree: &CILTree, method: &Method) -> String {

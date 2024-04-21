@@ -129,12 +129,11 @@ pub fn handle_aggregate<'tyctx>(
             let mut sub_trees = Vec::new();
             for field in values.iter() {
                 // Assigining to a Void field is a NOP and must be skipped(since it can have wierd side-effects).
-                if types[field.0 as usize] == Type::Void{
+                if types[field.0 as usize] == Type::Void {
                     continue;
                 }
                 let name = format!("Item{}", field.0 + 1);
-              
-                
+
                 sub_trees.push(CILRoot::SetField {
                     addr: tuple_getter.clone(),
                     value: field.1.clone(),
@@ -364,7 +363,7 @@ fn aggregate_adt<'tyctx>(
             let field_type = crate::utilis::monomorphize(&method_instance, field_type, tyctx);
             let field_type = type_cache.type_from_cache(field_type, tyctx, Some(method_instance));
             // Assgiements to void types are a NOP and should ALWAYS be skipped.
-            if field_type == Type::Void{
+            if field_type == Type::Void {
                 return crate::place::place_get(
                     target_location,
                     tyctx,

@@ -7,10 +7,11 @@ use crate::{
     access_modifier::AccessModifer, add_method_from_trees, assembly::Assembly, cil::CallSite,
     function_sig::FnSig, method::Method, r#type::Type,
 };
-use crate::{add, call, ldc_u64, lt_un};
+use crate::{add, call, conv_usize, ldc_u64, lt_un};
 use rustc_middle::ty::TyCtxt;
 mod casts;
 mod select;
+const MAX_ALLOC_SIZE: u64 = u32::MAX as u64;
 add_method_from_trees!(
     bounds_check,
     &[Type::USize, Type::USize],
@@ -126,7 +127,34 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
         "__rust_alloc",
         vec![],
         if *crate::config::CHECK_ALLOCATIONS {
-            todo!("Can't check allocations yet");
+            vec![
+                BasicBlock::new(
+                    vec![CILRoot::BTrue {
+                        target: 2,
+                        sub_target: 0,
+                        ops: lt_un!(conv_usize!(ldc_u64!(MAX_ALLOC_SIZE)), CILNode::LDArg(0)),
+                    }
+                    .into()],
+                    0,
+                    None,
+                ),
+                BasicBlock::new(
+                    vec![CILRoot::Ret {
+                        tree: call!(CallSite::alloc(), [CILNode::LDArg(0), CILNode::LDArg(1)]),
+                    }
+                    .into()],
+                    1,
+                    None,
+                ),
+                BasicBlock::new(
+                    vec![
+                        CILRoot::throw(&format!("Max alloc size of {MAX_ALLOC_SIZE} exceeded."))
+                            .into(),
+                    ],
+                    2,
+                    None,
+                ),
+            ]
         } else {
             vec![BasicBlock::new(
                 vec![CILRoot::Ret {
@@ -208,7 +236,37 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
         "__rust_realloc",
         vec![],
         if *crate::config::CHECK_ALLOCATIONS {
-            todo!("Can't check allocations yet");
+            vec![
+                BasicBlock::new(
+                    vec![CILRoot::BTrue {
+                        target: 2,
+                        sub_target: 0,
+                        ops: lt_un!(conv_usize!(ldc_u64!(MAX_ALLOC_SIZE)), CILNode::LDArg(0)),
+                    }
+                    .into()],
+                    0,
+                    None,
+                ),
+                BasicBlock::new(
+                    vec![CILRoot::Ret {
+                        tree: call!(
+                            CallSite::realloc(),
+                            [CILNode::LDArg(0), CILNode::LDArg(3), CILNode::LDArg(2)]
+                        ),
+                    }
+                    .into()],
+                    1,
+                    None,
+                ),
+                BasicBlock::new(
+                    vec![
+                        CILRoot::throw(&format!("Max alloc size of {MAX_ALLOC_SIZE} exceeded."))
+                            .into(),
+                    ],
+                    2,
+                    None,
+                ),
+            ]
         } else {
             vec![BasicBlock::new(
                 vec![CILRoot::Ret {

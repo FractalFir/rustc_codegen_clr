@@ -46,5 +46,6 @@ fn main() {
             ts
         })
     };
+    let _ = KEY.try_with(|_|64);
     KEY.set(64);
 }

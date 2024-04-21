@@ -19,7 +19,7 @@ use rustc_codegen_clr::{
 mod cmd;
 mod export;
 mod load;
-
+mod patch;
 use std::{collections::HashMap, env, io::Write};
 struct NativePastroughInfo {
     defs: HashMap<IString, AString>,
@@ -453,7 +453,8 @@ fn main() {
 
     let (mut final_assembly, linkables) =
         load::load_assemblies(to_link.as_slice(), ar_to_link.as_slice());
-
+    // Aplly certain fixes/workarounds to the final assembly
+    patch::patch_all(&mut final_assembly);
     let mut native_pastrough = NativePastroughInfo::new();
     #[cfg(target_os = "linux")]
     {

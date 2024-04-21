@@ -77,6 +77,10 @@ impl DotnetTypeRef {
         Self::new(Some("System.Console"), "System.Console").with_valuetype(false)
     }
     #[must_use]
+    pub fn enviroment() -> Self {
+        Self::new(Some("System.Runtime"), "System.Environment").with_valuetype(false)
+    }
+    #[must_use]
     pub fn math() -> Self {
         Self::new(Some("System.Runtime"), "System.Math").with_valuetype(false)
     }
@@ -189,7 +193,7 @@ impl DotnetTypeRef {
     pub(crate) fn interlocked() -> Self {
         Self::new(Some("System.Threading"), "System.Threading.Interlocked").with_valuetype(false)
     }
-    pub(crate) fn assembly() -> Self {
+    pub fn assembly() -> Self {
         Self::new(Some("System.Runtime"), "System.Reflection.Assembly").with_valuetype(false)
     }
     pub(crate) fn native_mem() -> DotnetTypeRef {

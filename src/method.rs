@@ -84,8 +84,10 @@ impl Method {
         self.name = name.into();
     }
     /// Adds a local variable of type `local`
-    pub fn add_local(&mut self, local: Type) {
-        self.locals.push((None, local.clone()));
+    pub fn add_local(&mut self, local: Type, name: Option<IString>) -> usize {
+        let loc = self.locals.len();
+        self.locals.push((name, local.clone()));
+        loc
     }
     /// Extends local variables by `iter`.
     pub fn extend_locals<'a>(&mut self, iter: impl Iterator<Item = &'a Type>) {
@@ -208,6 +210,12 @@ impl Method {
 
     pub fn arg_names(&self) -> &[Option<IString>] {
         &self.arg_names
+    }
+
+    pub fn new_bb(&mut self) -> u32 {
+        let new_bb = self.blocks.len() as u32;
+        self.blocks.push(BasicBlock::new(vec![], new_bb, None));
+        new_bb
     }
 }
 /// A wrapper around mutably borrowed [`BasicBlock`]s of a method. Prevents certain bugs.

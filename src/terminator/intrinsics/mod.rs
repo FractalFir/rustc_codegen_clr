@@ -35,13 +35,27 @@ pub fn handle_intrinsic<'tyctx>(
     call_instance: Instance<'tyctx>,
     type_cache: &mut TyCache,
     signature: FnSig,
-    span: rustc_span::Span
+    span: rustc_span::Span,
 ) -> CILRoot {
     match fn_name {
-        "caller_location"=>{
+        "caller_location" => {
             let caller_loc = tyctx.span_as_caller_location(span);
             let caller_loc_ty = tyctx.caller_location_ty();
-            crate::place::place_set(destination, tyctx, crate::constant::load_const_value(caller_loc, caller_loc_ty, tyctx, body, method_instance, type_cache), body, method_instance, type_cache)
+            crate::place::place_set(
+                destination,
+                tyctx,
+                crate::constant::load_const_value(
+                    caller_loc,
+                    caller_loc_ty,
+                    tyctx,
+                    body,
+                    method_instance,
+                    type_cache,
+                ),
+                body,
+                method_instance,
+                type_cache,
+            )
         }
         "breakpoint" => {
             debug_assert_eq!(
@@ -394,7 +408,7 @@ pub fn handle_intrinsic<'tyctx>(
             let src = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
             let dst = handle_operand(&args[1].node, tyctx, body, method_instance, type_cache);
             let count = handle_operand(&args[2].node, tyctx, body, method_instance, type_cache);
-            
+
             CILRoot::CpBlk {
                 src,
                 dst,
@@ -518,6 +532,21 @@ pub fn handle_intrinsic<'tyctx>(
             let ops =
                 crate::place::deref_op(arg_ty.into(), tyctx, &method_instance, type_cache, ops);
             place_set(destination, tyctx, ops, body, method_instance, type_cache)
+        }
+        "atomic_store_relaxed" => {
+            // This is *propably* wrong :)
+            debug_assert_eq!(
+                args.len(),
+                1,
+                "The intrinsic `atomic_load_acquire` MUST take in exactly 1 argument!"
+            );
+            let addr = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
+            let val = handle_operand(&args[1].node, tyctx, body, method_instance, type_cache);
+            let arg_ty =
+                crate::utilis::monomorphize(&method_instance, args[1].node.ty(body, tyctx), tyctx);
+           
+
+            crate::place::ptr_set_op(arg_ty.into(), tyctx, &method_instance, type_cache, addr, val)
         }
         "atomic_cxchgweak_acquire_acquire" | "atomic_cxchg_acquire_relaxed" => {
             let interlocked = DotnetTypeRef::interlocked();
@@ -674,14 +703,20 @@ pub fn handle_intrinsic<'tyctx>(
             )
         }
         // .NET guarantess all loads are tear-free
-        "atomic_load_relaxed" => place_set(
-            destination,
-            tyctx,
-            handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
-            body,
-            method_instance,
-            type_cache,
-        ),
+        "atomic_load_relaxed" => { //I am not sure this is implemented propely
+            debug_assert_eq!(
+                args.len(),
+                1,
+                "The intrinsic `atomic_load_relaxed` MUST take in exactly 1 argument!"
+            );
+            let ops = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
+            let arg =
+                crate::utilis::monomorphize(&method_instance, args[0].node.ty(body, tyctx), tyctx);
+            let arg_ty = arg.builtin_deref(true).unwrap().ty;
+
+            let ops =
+                crate::place::deref_op(arg_ty.into(), tyctx, &method_instance, type_cache, ops);
+            place_set(destination, tyctx, ops, body, method_instance, type_cache)},
         "sqrtf32" => {
             debug_assert_eq!(
                 args.len(),

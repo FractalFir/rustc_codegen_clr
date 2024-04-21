@@ -667,10 +667,10 @@ impl Assembly {
         self.functions = alive;
     }
     pub fn eliminate_dead_code(&mut self) {
-        if *crate::config::DEAD_CODE_ELIMINATION{
+        if *crate::config::DEAD_CODE_ELIMINATION {
             self.eliminate_dead_fn();
         }
-       
+
         //self.eliminate_dead_types();
     }
     pub fn eliminate_dead_types(&mut self) {
@@ -721,6 +721,15 @@ impl Assembly {
             to_resurect = HashMap::new();
         }
         self.types = alive;
+    }
+
+    pub fn cctor_mut(&mut self) -> Option<&mut Method> {
+        self.functions.get_mut(&CallSite::new(
+            None,
+            ".cctor".into(),
+            FnSig::new(&[], &Type::Void),
+            true,
+        ))
     }
 }
 fn link_static_initializers(a: Option<&Method>, b: Option<&Method>) -> Option<Method> {

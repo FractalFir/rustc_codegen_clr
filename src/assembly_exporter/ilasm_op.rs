@@ -31,7 +31,6 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
         CILOp::BLe(id,sub_id) => format!("ble bb_{id}_{sub_id}").into(),
         CILOp::BZero(id,sub_id) => format!("brzero bb_{id}_{sub_id}").into(),
         CILOp::BTrue(id,sub_id) => format!("brtrue bb_{id}_{sub_id}").into(),
-
         CILOp::Call(call_site) => {
             if call_site.is_nop() {
                 "".into()
@@ -83,8 +82,7 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
                 }
                 //TODO:Remove this `break`! It *mitigagtes* an issue with calls segafulting. I don't know *why* those calls segfault, but they SHOULD NOT DO THAT.
                 format!(
-                    "break\ncall {prefix} {output} {owner_name}'{function_name}'{generics}({input_string})",
-
+                    "nop\n\tcall {prefix} {output} {owner_name}'{function_name}'{generics}({input_string})",
                     output = type_cil(call_site.signature().output())
                 )
                 .into()
@@ -413,16 +411,36 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
         CILOp::ConvF64Un =>
             "conv.r.un".into(),
         // Pointer stuff
-        CILOp::LDIndI8 => "ldind.i1".into(),
-        CILOp::LDIndI16 => "ldind.i2".into(),
-        CILOp::LDIndI32 => "ldind.i4".into(),
-        CILOp::LDIndI64 => "ldind.i8".into(),
-        CILOp::LDIndU8 => "ldind.u1".into(),
-        CILOp::LDIndU16 => "ldind.u2".into(),
-        CILOp::LDIndU32 => "ldind.u4".into(),
-        CILOp::LDIndU64 => "ldind.u8".into(),
-        CILOp::LDIndF32 => "ldind.r4".into(),
-        CILOp::LDIndF64 => "ldind.r8".into(),
+        CILOp::LDIndI8 => if *crate::config::PRINT_PTRS{
+            "call native uint RustModule::watch_ptr(native uint) ldind.i1".into()
+        }else{"ldind.i1".into()},
+        CILOp::LDIndI16 => if *crate::config::PRINT_PTRS{
+            "call native uint RustModule::watch_ptr(native uint) ldind.i2".into()
+        }else{"ldind.i2".into()},
+        CILOp::LDIndI32 => if *crate::config::PRINT_PTRS{
+            "call native uint RustModule::watch_ptr(native uint) ldind.i4".into()
+        }else{"ldind.i4".into()},
+        CILOp::LDIndI64 => if *crate::config::PRINT_PTRS{
+            "call native uint RustModule::watch_ptr(native uint) ldind.i8".into()
+        }else{"ldind.i8".into()},
+        CILOp::LDIndU8 => if *crate::config::PRINT_PTRS{
+            "call native uint RustModule::watch_ptr(native uint) ldind.u1".into()
+        }else{"ldind.u1".into()},
+        CILOp::LDIndU16 =>  if *crate::config::PRINT_PTRS{
+            "call native uint RustModule::watch_ptr(native uint) ldind.u2".into()
+        }else{"ldind.u2".into()},
+        CILOp::LDIndU32 =>  if *crate::config::PRINT_PTRS{
+            "call native uint RustModule::watch_ptr(native uint) ldind.u4".into()
+        }else{"ldind.u4".into()},
+        CILOp::LDIndU64 => if *crate::config::PRINT_PTRS{
+            "call native uint RustModule::watch_ptr(native uint) ldind.u8".into()
+        }else{"ldind.u8".into()},
+        CILOp::LDIndF32 =>  if *crate::config::PRINT_PTRS{
+            "call native uint RustModule::watch_ptr(native uint) ldind.r4".into()
+        }else{"ldind.r4".into()},
+        CILOp::LDIndF64 => if *crate::config::PRINT_PTRS{
+            "call native uint RustModule::watch_ptr(native uint) ldind.r8".into()
+        }else{"ldind.r8".into()},
         CILOp::LDIndRef => "ldind.ref".into(),
         CILOp::STIndI8 => "stind.i1".into(),
         CILOp::STIndI16 => "stind.i2".into(),
@@ -526,6 +544,8 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
         }
         CILOp::InitObj(tpe)=>format!("initobj {tpe}",tpe = non_void_type_cil(tpe)).into(),
         CILOp::LDTypeToken(tpe)=>format!("ldtoken {tpe}",tpe = non_void_type_cil(tpe)).into(),
+        CILOp::LDLen=>"ldlen".into(),
+        CILOp::LDElelemRef => "ldelem.ref".into(),
     }
 }
 pub fn non_void_type_cil(tpe: &Type) -> Cow<'static, str> {
