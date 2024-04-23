@@ -199,6 +199,32 @@ pub fn handle_aggregate<'tyctx>(
                 )),
             )
         }
+        AggregateKind::RawPtr(ptr,muta)=>{
+            let fat_ptr = Ty::new_ptr(tyctx,crate::utilis::monomorphize(&method_instance, *ptr, tyctx),*muta);
+            let fat_ptr_type = tycache.type_from_cache(fat_ptr, tyctx, Some(method_instance));
+            // Get the addres of the initialized structure
+            let init_addr = super::place::place_adress(
+                target_location,
+                tyctx,
+                method,
+                method_instance,
+                tycache,
+            );
+            // Assign the components  
+            let assign_ptr = CILRoot::SetField { addr:init_addr.clone(), value: values[0].1.clone(), desc: FieldDescriptor::new(fat_ptr_type.as_dotnet().unwrap(),Type::Ptr(Type::Void.into()),"data_pointer".into()) };
+            let assign_metadata = CILRoot::SetField { addr: init_addr, value: values[1].1.clone(), desc: FieldDescriptor::new(fat_ptr_type.as_dotnet().unwrap(),Type::USize,"metadata".into()) };
+            
+            CILNode::SubTrees(
+                [assign_ptr,assign_metadata].into(),
+                Box::new(place_get(
+                    target_location,
+                    tyctx,
+                    method,
+                    method_instance,
+                    tycache,
+                )),
+            )
+        }
         _ => todo!("Unsuported aggregate kind {aggregate_kind:?}"),
     }
 }

@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 mycorrhiza = {path="../../mycorrhiza"}
-fastrand = {default-features = false}
+fastrand = {version ="*",default-features = false}
 [build]
 
 [workspace]
