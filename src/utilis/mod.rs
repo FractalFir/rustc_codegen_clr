@@ -96,10 +96,10 @@ pub fn function_name(name: SymbolName) -> crate::IString {
     }
 }
 /// Monomorphizes type `ty`
-pub fn monomorphize<'tcx, T: TypeFoldable<TyCtxt<'tcx>> + Clone>(
-    instance: &Instance<'tcx>,
+pub fn monomorphize<'tyctx, T: TypeFoldable<TyCtxt<'tyctx>> + Clone>(
+    instance: &Instance<'tyctx>,
     ty: T,
-    ctx: TyCtxt<'tcx>,
+    ctx: TyCtxt<'tyctx>,
 ) -> T {
     instance.instantiate_mir_and_normalize_erasing_regions(
         ctx,
@@ -353,7 +353,7 @@ pub fn is_fn_intrinsic<'tyctx>(fn_ty: Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -> bool
         _ => todo!("Can't get signature of {fn_ty}"),
     }
 }
-pub fn align_of<'tcx>(ty: rustc_middle::ty::Ty<'tcx>, tyctx: TyCtxt<'tcx>) -> u64 {
+pub fn align_of<'tyctx>(ty: rustc_middle::ty::Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -> u64 {
     let layout = tyctx
         .layout_of(rustc_middle::ty::ParamEnvAnd {
             param_env: ParamEnv::reveal_all(),
@@ -366,4 +366,14 @@ pub fn align_of<'tcx>(ty: rustc_middle::ty::Ty<'tcx>, tyctx: TyCtxt<'tcx>) -> u6
     // FIXME: this field is likely private for a reason. I should not do this get its value. Find a better way to get aligement.
     let pow2 = u64::from(unsafe { std::mem::transmute::<_, u8>(align) });
     1 << pow2
+}
+pub fn is_zst<'tyctx>(ty: rustc_middle::ty::Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -> bool {
+    tyctx
+        .layout_of(rustc_middle::ty::ParamEnvAnd {
+            param_env: ParamEnv::reveal_all(),
+            value: ty,
+        })
+        .expect("Can't get layout of a type.")
+        .layout
+        .is_zst()
 }

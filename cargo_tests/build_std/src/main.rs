@@ -5,6 +5,7 @@
 use std::hint::black_box;
 use std::io::Write;
 use std::ffi::{c_char, c_int};
+mod cstr;
 mod exchange_malloc;
 use crate::exchange_malloc::exchange_malloc_test;
 extern "C" {
@@ -273,6 +274,8 @@ fn main() {
     unsafe { printf("%s\n\0".as_ptr() as *const i8,string.as_ptr()) };
     //test!(collect_test);
     //test!(map_test);
+    use cstr::test_cstr;
+    test!(test_cstr);
     //std::hint::black_box(&string);
     if unsafe { printf("Testing some cool shit\n\0".as_ptr() as *const i8) } < 0{
         std::intrinsics::abort();

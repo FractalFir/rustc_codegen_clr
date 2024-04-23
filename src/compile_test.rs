@@ -728,6 +728,8 @@ run_test! {types,structs,stable}
 run_test! {types,interop,stable}
 run_test! {types,vec,stable}
 run_test! {types,subslice,unstable}
+run_test! {types,slice_index_from_end,unstable}
+
 run_test! {types,string_slice,unstable}
 run_test! {types,ref_deref,stable}
 run_test! {types,slice_ptr_cast,stable}
@@ -741,6 +743,7 @@ run_test! {types,int128,stable}
 run_test! {std,main,unstable}
 run_test! {std,futex_test,unstable}
 run_test! {std,tlocal_key_test,unstable}
+run_test! {std,cstr,unstable}
 run_test! {std,cell_test,stable}
 run_test! {std,once_lock_test,unstable}
 run_test! {control_flow,cf_for,stable}

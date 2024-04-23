@@ -1,7 +1,7 @@
 use crate::{
     access_modifier::AccessModifer,
     basic_block::BasicBlock,
-    cil::CallSite,
+    cil::{CallSite, StaticFieldDescriptor},
     function_sig::FnSig,
     r#type::{DotnetTypeRef, Type},
     IString,
@@ -133,11 +133,21 @@ impl Method {
         &self.locals
     }
     /// Returns the list of external calls this function preforms. Calls may repeat.
+    // TODO: make this not call `into_ops`
     pub(crate) fn calls(&self) -> Vec<CallSite> {
         self.blocks
             .iter()
             .flat_map(|bb| bb.into_ops())
             .filter_map(|op| op.call().cloned())
+            .collect()
+    }
+    /// Returns the list of static fields this function references. Calls may repeat.
+    // TODO: make this not call `into_ops`
+    pub(crate) fn sflds(&self) -> Vec<StaticFieldDescriptor> {
+        self.blocks
+            .iter()
+            .flat_map(|bb| bb.into_ops())
+            .filter_map(|op| op.sflds().cloned())
             .collect()
     }
     /// Returns a list of type references that are used within this type.
@@ -224,6 +234,11 @@ pub struct BlockMutGuard<'a> {
 }
 impl<'a> Drop for BlockMutGuard<'a> {
     fn drop(&mut self) {
+        self.method.blocks.iter_mut().for_each(|block| {
+            block
+                .trees_mut()
+                .retain(|tree| !matches!(tree.root(), crate::cil_tree::cil_root::CILRoot::Nop))
+        });
         self.method.allocate_temporaries();
         self.method.sheed_trees();
     }

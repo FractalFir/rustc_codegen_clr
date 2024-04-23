@@ -1,4 +1,7 @@
-use crate::IString;
+use crate::cil::CallSite;
+use crate::cil_tree::cil_node::CILNode;
+use crate::function_sig::FnSig;
+use crate::{call, IString};
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::ty::{AdtDef, ConstKind, FloatTy, GenericArg, IntTy, Ty, TyCtxt, TyKind, UintTy};
 /// This struct represetnts either a primitive .NET type (F32,F64), or stores information on how to lookup a more complex type (struct,class,array)
@@ -279,6 +282,13 @@ impl Type {
             Some(v)
         } else {
             None
+        }
+    }
+    
+    pub(crate) fn max_value(&self) -> CILNode {
+        match self{
+            Type::USize => call!(CallSite::new_extern(DotnetTypeRef::usize_type(),"get_MaxValue".into(),FnSig::new(&[],&Type::USize),true),[]),
+            _=>todo!("Can't get the max value of {self:?}"),
         }
     }
 }

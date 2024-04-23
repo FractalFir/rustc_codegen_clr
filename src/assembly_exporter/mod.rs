@@ -48,6 +48,8 @@ pub trait AssemblyExporter: Sized {
             let mut method = method.clone();
             method.sheed_trees();
             method.allocate_temporaries();
+            method.sheed_trees();
+            method.allocate_temporaries();
             if *config::ESCAPE_NAMES {
                 method.set_name(&escape_class_name(method.name()));
                 asm_exporter.add_method(&method);

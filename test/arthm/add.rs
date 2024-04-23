@@ -58,6 +58,6 @@ fn main(){
     let val =  7818556801315723626_usize as u64;
     let val2 = black_box(val) as isize;
     test_eq!(val2,7818556801315723626_isize);
-    //let ptr:*mut Test<i32> = core::ptr::null_mut();
-    //black_box(ptr);
+    // Test saturating add
+    test_eq!(core::intrinsics::saturating_add(black_box(2_usize),black_box(2)), 4);
 }

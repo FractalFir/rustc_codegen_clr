@@ -51,7 +51,7 @@ impl CILTree {
     pub fn opt(&mut self) {
         self.tree.opt()
     }
-
+    /// Allocates the temporary variables this tree uses.
     pub(crate) fn allocate_tmps(&mut self, locals: &mut Vec<(Option<Box<str>>, Type)>) {
         self.tree.allocate_tmps(None, locals);
     }
@@ -62,6 +62,10 @@ impl CILTree {
         tyctx: TyCtxt,
     ) {
         self.tree.resolve_global_allocations(arg, tyctx);
+    }
+    // TODO: remember to make this recompute tree metadtata when it is added
+    pub fn root_mut(&mut self) -> &mut CILRoot {
+        &mut self.tree
     }
 }
 /// Appends an op to a vector.

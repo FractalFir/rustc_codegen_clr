@@ -1,4 +1,5 @@
 use crate::basic_block::{handler_for_block, BasicBlock};
+use crate::cil::StaticFieldDescriptor;
 use crate::cil_tree::cil_node::CILNode;
 use crate::cil_tree::cil_root::CILRoot;
 use crate::cil_tree::CILTree;
@@ -374,6 +375,28 @@ impl Assembly {
     }
     /// Adds a global static field named *name* of type *tpe*
     pub fn add_static(&mut self, tpe: Type, name: &str) {
+        fn is_alloc_pattern(input: &str) -> bool {
+            // Split the input string by underscore
+            let parts: Vec<&str> = input.split('_').collect();
+
+            // Check if there are exactly three parts and the first part is "alloc"
+            if parts.len() != 3 || parts[0] != "alloc" {
+                return false;
+            }
+            // Check if the remaining parts are numbers
+            if let (Ok(_), Ok(_)) = (
+                u32::from_str_radix(parts[1], 16),
+                u64::from_str_radix(parts[2], 16),
+            ) {
+                return true;
+            }
+
+            false
+        }
+        assert!(
+            is_alloc_pattern(name) || name.contains("__") || name == "environ",
+            "invalid alloc:{name:?}"
+        );
         self.static_fields.insert(name.into(), tpe);
     }
     fn add_cctor(&mut self) -> &mut Method {
@@ -517,6 +540,37 @@ impl Assembly {
     /// Returns the list of all calls within the method. Calls may repeat.
     pub fn call_sites(&self) -> Vec<CallSite> {
         self.methods().flat_map(|method| method.calls()).collect()
+    }
+    pub fn remove_dead_statics(&mut self) {
+        // Get the set of "alive" fields(fields referenced outside of the static initializer).
+        let alive_fields: std::collections::HashSet<_> = self
+            .methods()
+            .filter(|method| method.name() != ".cctor")
+            .flat_map(|method| method.sflds())
+            .collect();
+        // Remove the definitions of all non-alive fields
+        self.static_fields.retain(|name, tpe| {
+            alive_fields.contains(&StaticFieldDescriptor::new(None, tpe.clone(), name.clone()))
+        });
+        // Remove their initializers from the cctor
+        let cctor = match self.cctor_mut() {
+            Some(cctor) => cctor,
+            None => return,
+        };
+        for tree in cctor
+            .blocks_mut()
+            .iter_mut()
+            .flat_map(|block| block.trees_mut())
+        {
+            if let CILRoot::SetStaticField { descr, value } = tree.root_mut() {
+                // Assigement to a dead static, remove.
+                if !alive_fields.contains(descr) {
+                    debug_assert!(descr.name().contains("alloc"));
+                    debug_assert!(matches!(value, CILNode::Call { site: _, args: _ }));
+                    *tree = CILRoot::Nop.into();
+                }
+            }
+        }
     }
     /// Returns an interator over all methods within the assembly.
     pub fn methods(&self) -> impl Iterator<Item = &Method> {
@@ -668,6 +722,9 @@ impl Assembly {
     }
     pub fn eliminate_dead_code(&mut self) {
         if *crate::config::DEAD_CODE_ELIMINATION {
+            self.eliminate_dead_fn();
+            self.remove_dead_statics();
+            // Call eliminate_dead_fn again, to remove now-dead static initializers.
             self.eliminate_dead_fn();
         }
 

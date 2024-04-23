@@ -202,125 +202,130 @@ impl CILRoot {
         }
     }
     pub fn into_ops(&self) -> Vec<CILOp> {
-        match self {
-            Self::SourceFileInfo(sfi) => vec![CILOp::SourceFileInfo(sfi.clone())],
-            //Self::LabelStart(val)=> vec![CILOp::LabelStart(val)],
-            //Self::LabelEnd(val)=> vec![CILOp::LabelEnd(val)],
-            Self::ReThrow => vec![CILOp::ReThrow],
-            Self::Throw(tree) => append_vec(tree.flatten(), CILOp::Throw),
-            Self::Ret { tree } => append_vec(tree.flatten(), CILOp::Ret),
-            Self::Pop { tree } => append_vec(tree.flatten(), CILOp::Pop),
-            Self::VoidRet => vec![CILOp::Ret],
-            Self::STLoc { local, tree } => append_vec(tree.flatten(), CILOp::STLoc(*local)),
-            Self::STArg { arg, tree } => append_vec(tree.flatten(), CILOp::STArg(*arg)),
-            Self::BTrue {
-                target,
-                ops,
-                sub_target,
-            } => append_vec(ops.flatten(), CILOp::BTrue(*target, *sub_target)),
-            Self::GoTo { target, sub_target } => vec![CILOp::GoTo(*target, *sub_target)],
-            Self::Call { site, args } => {
-                let mut args: Vec<_> = args.iter().flat_map(|arg| arg.flatten()).collect();
-                args.push(CILOp::Call(site.clone().into()));
-                args
+        match std::panic::catch_unwind(|| {
+            match self {
+                Self::SourceFileInfo(sfi) => vec![CILOp::SourceFileInfo(sfi.clone())],
+                //Self::LabelStart(val)=> vec![CILOp::LabelStart(val)],
+                //Self::LabelEnd(val)=> vec![CILOp::LabelEnd(val)],
+                Self::ReThrow => vec![CILOp::ReThrow],
+                Self::Throw(tree) => append_vec(tree.flatten(), CILOp::Throw),
+                Self::Ret { tree } => append_vec(tree.flatten(), CILOp::Ret),
+                Self::Pop { tree } => append_vec(tree.flatten(), CILOp::Pop),
+                Self::VoidRet => vec![CILOp::Ret],
+                Self::STLoc { local, tree } => append_vec(tree.flatten(), CILOp::STLoc(*local)),
+                Self::STArg { arg, tree } => append_vec(tree.flatten(), CILOp::STArg(*arg)),
+                Self::BTrue {
+                    target,
+                    ops,
+                    sub_target,
+                } => append_vec(ops.flatten(), CILOp::BTrue(*target, *sub_target)),
+                Self::GoTo { target, sub_target } => vec![CILOp::GoTo(*target, *sub_target)],
+                Self::Call { site, args } => {
+                    let mut args: Vec<_> = args.iter().flat_map(|arg| arg.flatten()).collect();
+                    args.push(CILOp::Call(site.clone().into()));
+                    args
+                }
+                Self::CallI { sig, fn_ptr, args } => {
+                    let mut ops: Vec<_> = fn_ptr.flatten();
+                    ops.extend(args.iter().flat_map(|arg| arg.flatten()));
+                    ops.push(CILOp::CallI(sig.clone().into()));
+                    ops
+                }
+                Self::CallVirt { site, args } => {
+                    let mut args: Vec<_> = args.iter().flat_map(|arg| arg.flatten()).collect();
+                    args.push(CILOp::CallVirt(site.clone().into()));
+                    args
+                }
+                Self::SetField {
+                    addr,
+                    value: root,
+                    desc,
+                } => {
+                    let mut res = addr.flatten();
+                    res.extend(root.flatten());
+                    res.push(CILOp::STField(desc.clone().into()));
+                    res
+                }
+                Self::CpBlk { src, dst, len } => {
+                    // Argument order: destination, source, length
+                    let mut res = dst.flatten();
+                    res.extend(src.flatten());
+                    res.extend(len.flatten());
+                    res.push(CILOp::CpBlk);
+                    res
+                }
+                Self::InitBlk { dst, val, count } => {
+                    let mut res = dst.flatten();
+                    res.extend(val.flatten());
+                    res.extend(count.flatten());
+                    res.push(CILOp::CpBlk);
+                    res
+                }
+                Self::STIndI8(addr, val) => {
+                    let mut res = addr.flatten();
+                    res.extend(val.flatten());
+                    res.push(CILOp::STIndI8);
+                    res
+                }
+                Self::STIndI16(addr, val) => {
+                    let mut res = addr.flatten();
+                    res.extend(val.flatten());
+                    res.push(CILOp::STIndI16);
+                    res
+                }
+                Self::STIndI32(addr, val) => {
+                    let mut res = addr.flatten();
+                    res.extend(val.flatten());
+                    res.push(CILOp::STIndI32);
+                    res
+                }
+                Self::STIndI64(addr, val) => {
+                    let mut res = addr.flatten();
+                    res.extend(val.flatten());
+                    res.push(CILOp::STIndI64);
+                    res
+                }
+                Self::STIndISize(addr, val) => {
+                    let mut res = addr.flatten();
+                    res.extend(val.flatten());
+                    res.push(CILOp::STIndISize);
+                    res
+                }
+                Self::STIndF64(addr, val) => {
+                    let mut res = addr.flatten();
+                    res.extend(val.flatten());
+                    res.push(CILOp::STIndF64);
+                    res
+                }
+                Self::STIndF32(addr, val) => {
+                    let mut res = addr.flatten();
+                    res.extend(val.flatten());
+                    res.push(CILOp::STIndF32);
+                    res
+                }
+                Self::Break => vec![CILOp::Break],
+                Self::Nop => vec![CILOp::Nop],
+                Self::JumpingPad { ops } => ops.clone().into(),
+                Self::STObj {
+                    tpe,
+                    addr_calc,
+                    value_calc,
+                } => {
+                    let mut res = addr_calc.flatten();
+                    res.extend(value_calc.flatten());
+                    res.push(CILOp::STObj(tpe.clone()));
+                    res
+                }
+                Self::SetTMPLocal { .. } => {
+                    todo!("Can't flatten unresolved root!")
+                }
+                Self::SetStaticField { descr, value } => {
+                    append_vec(value.flatten(), CILOp::STStaticField(descr.clone().into()))
+                }
             }
-            Self::CallI { sig, fn_ptr, args } => {
-                let mut ops: Vec<_> = fn_ptr.flatten();
-                ops.extend(args.iter().flat_map(|arg| arg.flatten()));
-                ops.push(CILOp::CallI(sig.clone().into()));
-                ops
-            }
-            Self::CallVirt { site, args } => {
-                let mut args: Vec<_> = args.iter().flat_map(|arg| arg.flatten()).collect();
-                args.push(CILOp::CallVirt(site.clone().into()));
-                args
-            }
-            Self::SetField {
-                addr,
-                value: root,
-                desc,
-            } => {
-                let mut res = addr.flatten();
-                res.extend(root.flatten());
-                res.push(CILOp::STField(desc.clone().into()));
-                res
-            }
-            Self::CpBlk { src, dst, len } => {
-                // Argument order: destination, source, length
-                let mut res = dst.flatten();
-                res.extend(src.flatten());
-                res.extend(len.flatten());
-                res.push(CILOp::CpBlk);
-                res
-            }
-            Self::InitBlk { dst, val, count } => {
-                let mut res = dst.flatten();
-                res.extend(val.flatten());
-                res.extend(count.flatten());
-                res.push(CILOp::CpBlk);
-                res
-            }
-            Self::STIndI8(addr, val) => {
-                let mut res = addr.flatten();
-                res.extend(val.flatten());
-                res.push(CILOp::STIndI8);
-                res
-            }
-            Self::STIndI16(addr, val) => {
-                let mut res = addr.flatten();
-                res.extend(val.flatten());
-                res.push(CILOp::STIndI16);
-                res
-            }
-            Self::STIndI32(addr, val) => {
-                let mut res = addr.flatten();
-                res.extend(val.flatten());
-                res.push(CILOp::STIndI32);
-                res
-            }
-            Self::STIndI64(addr, val) => {
-                let mut res = addr.flatten();
-                res.extend(val.flatten());
-                res.push(CILOp::STIndI64);
-                res
-            }
-            Self::STIndISize(addr, val) => {
-                let mut res = addr.flatten();
-                res.extend(val.flatten());
-                res.push(CILOp::STIndISize);
-                res
-            }
-            Self::STIndF64(addr, val) => {
-                let mut res = addr.flatten();
-                res.extend(val.flatten());
-                res.push(CILOp::STIndF64);
-                res
-            }
-            Self::STIndF32(addr, val) => {
-                let mut res = addr.flatten();
-                res.extend(val.flatten());
-                res.push(CILOp::STIndF32);
-                res
-            }
-            Self::Break => vec![CILOp::Break],
-            Self::Nop => vec![CILOp::Nop],
-            Self::JumpingPad { ops } => ops.clone().into(),
-            Self::STObj {
-                tpe,
-                addr_calc,
-                value_calc,
-            } => {
-                let mut res = addr_calc.flatten();
-                res.extend(value_calc.flatten());
-                res.push(CILOp::STObj(tpe.clone()));
-                res
-            }
-            Self::SetTMPLocal { .. } => {
-                todo!("Can't flatten unresolved root!")
-            }
-            Self::SetStaticField { descr, value } => {
-                append_vec(value.flatten(), CILOp::STStaticField(descr.clone().into()))
-            }
+        }) {
+            Ok(ok) => ok,
+            Err(_) => panic!("Could not flatten tree {self:?}"),
         }
     }
     pub fn targets(&self, targets: &mut Vec<(u32, u32)>) {
@@ -600,4 +605,53 @@ impl CILRoot {
             .unwrap_or((0, 0));
         Self::source_info(&file, line as u32, column as u32)
     }
+}
+#[test]
+fn allocating_tmps() {
+    let mut original_value = CILRoot::STLoc {
+        local: 11,
+        tree: CILNode::SubTrees(
+            Box::new([CILRoot::STLoc {
+                local: 14,
+                tree: CILNode::TemporaryLocal(Box::new((
+                    Type::DotnetType(
+                        DotnetTypeRef::new(
+                            None,
+                            "core.ptr.metadata.PtrComponents.h2b679e9941d88b2f",
+                        )
+                        .into(),
+                    )
+                    .into(),
+                    [CILRoot::SetTMPLocal {
+                        value: CILNode::LDArg(0),
+                    }]
+                    .into(),
+                    CILNode::LdObj {
+                        ptr: CILNode::LoadAddresOfTMPLocal.into(),
+                        obj: Type::DotnetType(
+                            DotnetTypeRef::new(
+                                None,
+                                "core.ptr.metadata.PtrComponents.h2b679e9941d88b2f",
+                            )
+                            .into(),
+                        )
+                        .into(),
+                    },
+                ))),
+            }]),
+            CILNode::LdObj {
+                ptr: CILNode::LDLocA(14).into(),
+                obj: Type::DotnetType(
+                    DotnetTypeRef::new(None, "core.ptr.metadata.PtrComponents.h2b679e9941d88b2f")
+                        .into(),
+                )
+                .into(),
+            }
+            .into(),
+        ),
+    };
+    //let mut method = crate::method::Method::new(crate::access_modifier::AccessModifer::Private,crate::method::MethodType::Static,FnSig::new(&[Type::I32],&Type::Void),"a",vec![],vec![]);
+    original_value.allocate_tmps(None, &mut vec![]);
+    let trees = original_value.shed_trees();
+    let ops: Vec<_> = trees.iter().map(|tree| tree.into_ops()).collect();
 }

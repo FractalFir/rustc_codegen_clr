@@ -58,15 +58,9 @@ pub fn handle_statement<'tcx>(
             let place = palce_rvalue.as_ref().0;
             let rvalue = &palce_rvalue.as_ref().1;
             // Skip void assigments. Assigining to or from void type is a NOP.
-            if type_cache.type_from_cache(
-                crate::utilis::monomorphize(&method_instance, place.ty(method, tyctx).ty, tyctx),
-                tyctx,
-                Some(method_instance),
-            ) == crate::r#type::Type::Void
-            {
+            if crate::utilis::is_zst(crate::utilis::monomorphize(&method_instance, place.ty(method, tyctx).ty, tyctx), tyctx) {
                 return None;
             }
-
             Some(
                 crate::place::place_set(
                     &place,

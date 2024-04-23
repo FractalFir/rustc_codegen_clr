@@ -5,7 +5,7 @@ use crate::{
     IString,
 };
 
-#[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
+#[derive(Clone, Hash, Eq, PartialEq, Serialize, Deserialize, Debug)]
 /// This struct desribes a static .NET field.  It contains information about the type this static field belongs to, the name of the field, and the fields type.
 pub struct StaticFieldDescriptor {
     owner: Option<DotnetTypeRef>,

@@ -128,9 +128,10 @@ impl AssemblyExporter for ILASMExporter {
     fn add_extern_method(&mut self, lib_path: &str, name: &str, sig: &crate::function_sig::FnSig) {
         // /lib64/libc.so.6
         let output = type_cil(sig.output());
+
         writeln!(
             self.methods,
-            ".method private hidebysig static pinvokeimpl(\"{lib_path}\" cdecl) {output} '{name}'("
+            ".method private hidebysig static pinvokeimpl(\"{lib_path}\" cdecl) {output} '{name}' ("
         )
         .unwrap();
         let mut input_iter = sig.inputs().iter();
@@ -140,7 +141,8 @@ impl AssemblyExporter for ILASMExporter {
         for input in input_iter {
             write!(self.methods, ",{}", non_void_type_cil(input)).unwrap();
         }
-        writeln!(self.methods, "){{}}").unwrap();
+        // The `preservesig` is STRICTLY necesary - without it, the runtime sometimes replaces the result value with a HRESULT.
+        writeln!(self.methods, ") preservesig {{}}").unwrap();
     }
 }
 fn type_def_cli(

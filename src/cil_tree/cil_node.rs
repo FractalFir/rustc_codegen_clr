@@ -1136,14 +1136,14 @@ macro_rules! conv_f64 {
 #[macro_export]
 macro_rules! conv_f64_un {
     ($a:expr) => {
-        CILNode::ConvF64Un($a.into())
+        crate::cil_tree::cil_node::CILNode::ConvF64Un($a.into())
     };
 }
 /// Loads a value of type `i32`.
 #[macro_export]
 macro_rules! ldc_i32 {
     ($val:expr) => {
-        $crate::cil_tree::cil_node::CILNode::LdcI32($val)
+       CILNode::LdcI32($val)
     };
 }
 /// Loads a value of type `i64`.
@@ -1167,3 +1167,18 @@ macro_rules! ldc_u64 {
         CILNode::LdcU64($val)
     };
 }
+impl std::ops::Add<CILNode> for CILNode{
+    type Output = CILNode;
+
+    fn add(self, rhs: CILNode) -> Self::Output {
+        add!(self,rhs)
+    }
+}
+impl std::ops::BitOr<CILNode> for CILNode{
+    type Output = CILNode;
+
+    fn bitor(self, rhs: CILNode) -> Self::Output {
+        or!(self,rhs)
+    }
+}
+

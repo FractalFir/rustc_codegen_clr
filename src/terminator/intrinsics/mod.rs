@@ -3,8 +3,7 @@ use crate::operand::operand_address;
 use crate::place::place_adress;
 use crate::utilis::field_descrptor;
 use crate::{
-    add, call, call_virt, conv_f32, conv_f64, conv_usize, div, eq, ld_field, ld_field_address,
-    ldc_i32, ldc_u64, mul, place, size_of, sub,
+    add, call, call_virt, conv_f32, conv_f64, conv_usize, div, eq, ld_field, ld_field_address, ldc_i32, ldc_u64, lt_un, mul, or, place, size_of, sub
 };
 fn compare_bytes(a: CILNode, b: CILNode, len: CILNode) -> CILNode {
     todo!();
@@ -544,9 +543,15 @@ pub fn handle_intrinsic<'tyctx>(
             let val = handle_operand(&args[1].node, tyctx, body, method_instance, type_cache);
             let arg_ty =
                 crate::utilis::monomorphize(&method_instance, args[1].node.ty(body, tyctx), tyctx);
-           
 
-            crate::place::ptr_set_op(arg_ty.into(), tyctx, &method_instance, type_cache, addr, val)
+            crate::place::ptr_set_op(
+                arg_ty.into(),
+                tyctx,
+                &method_instance,
+                type_cache,
+                addr,
+                val,
+            )
         }
         "atomic_cxchgweak_acquire_acquire" | "atomic_cxchg_acquire_relaxed" => {
             let interlocked = DotnetTypeRef::interlocked();
@@ -680,6 +685,35 @@ pub fn handle_intrinsic<'tyctx>(
                 type_cache,
             )
         }
+        "saturating_add"=>{
+            let a = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
+            let b = handle_operand(&args[1].node, tyctx, body, method_instance, type_cache);
+            let a_type =  type_cache.type_from_cache(crate::utilis::monomorphize(
+                &method_instance,
+                call_instance.args[0]
+                    .as_type()
+                    .expect("needs_drop works only on types!"),
+                tyctx,
+            ), tyctx, Some(method_instance));
+            let calc = match a_type{
+                Type::USize => {
+                    let sum = a.clone() + b.clone();
+                    let or = a | b;
+                    let flag = lt_un!(sum.clone(),or);
+                    let max = a_type.max_value();
+                    CILNode::select(a_type,max,sum,flag)
+                }
+                _=>todo!("Can't use the intrinsic `saturating_add` on {a_type:?}"),
+            };
+            place_set(
+                destination,
+                tyctx,
+                calc,
+                body,
+                method_instance,
+                type_cache,
+            )
+        }
         "min_align_of_val" => {
             debug_assert_eq!(
                 args.len(),
@@ -703,7 +737,8 @@ pub fn handle_intrinsic<'tyctx>(
             )
         }
         // .NET guarantess all loads are tear-free
-        "atomic_load_relaxed" => { //I am not sure this is implemented propely
+        "atomic_load_relaxed" => {
+            //I am not sure this is implemented propely
             debug_assert_eq!(
                 args.len(),
                 1,
@@ -716,7 +751,8 @@ pub fn handle_intrinsic<'tyctx>(
 
             let ops =
                 crate::place::deref_op(arg_ty.into(), tyctx, &method_instance, type_cache, ops);
-            place_set(destination, tyctx, ops, body, method_instance, type_cache)},
+            place_set(destination, tyctx, ops, body, method_instance, type_cache)
+        }
         "sqrtf32" => {
             debug_assert_eq!(
                 args.len(),

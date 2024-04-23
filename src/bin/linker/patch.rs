@@ -14,10 +14,7 @@ fn mstring_to_utf8ptr(mstring: CILNode) -> CILNode {
         CallSite::new_extern(
             DotnetTypeRef::marshal(),
             "StringToCoTaskMemUTF8".into(),
-            FnSig::new(
-                &[DotnetTypeRef::string_type().into()],
-                &Type::ISize
-            ),
+            FnSig::new(&[DotnetTypeRef::string_type().into()], &Type::ISize),
             true
         ),
         [mstring]
@@ -177,7 +174,7 @@ fn hijack_arg_init(asm: &mut Assembly) {
     );
     drop(blocks);
     // Set-up the arg convertion loop
-  
+
     let loop_bb = cctor.new_bb();
     let mut blocks = cctor.blocks_mut();
     let loop_block = &mut blocks[loop_bb as usize];
@@ -193,7 +190,10 @@ fn hijack_arg_init(asm: &mut Assembly) {
         CILRoot::STIndISize(
             add!(
                 CILNode::LDLoc(argv),
-                conv_usize!(mul!(size_of!(Type::ISize), add!(CILNode::LDLoc(arg_idx), ldc_u32!(1))))
+                conv_usize!(mul!(
+                    size_of!(Type::ISize),
+                    add!(CILNode::LDLoc(arg_idx), ldc_u32!(1))
+                ))
             ),
             uarg,
         )
@@ -212,12 +212,15 @@ fn hijack_arg_init(asm: &mut Assembly) {
         CILRoot::BTrue {
             target: loop_bb + 1,
             sub_target: 0,
-            ops: eq!(lt!(
-                CILNode::LDLoc(arg_idx),
-                conv_i32!(CILNode::LDLen {
-                    arr: CILNode::LDLoc(managed_args.into()).into()
-                })
-            ),ldc_i32!(0)),
+            ops: eq!(
+                lt!(
+                    CILNode::LDLoc(arg_idx),
+                    conv_i32!(CILNode::LDLen {
+                        arr: CILNode::LDLoc(managed_args.into()).into()
+                    })
+                ),
+                ldc_i32!(0)
+            ),
         }
         .into(),
     );
@@ -236,8 +239,9 @@ fn hijack_arg_init(asm: &mut Assembly) {
     let final_block = &mut blocks[final_bb as usize];
     if let Some(really_init) = really_init {
         final_block.trees_mut().push(
-            CILRoot::Call{ 
-                site:really_init, args:[CILNode::LDLoc(argc), CILNode::LDLoc(argv)].into(),
+            CILRoot::Call {
+                site: really_init,
+                args: [CILNode::LDLoc(argc), CILNode::LDLoc(argv)].into(),
             }
             .into(),
         )
