@@ -1182,3 +1182,10 @@ impl std::ops::BitOr<CILNode> for CILNode{
     }
 }
 
+impl std::ops::Neg for CILNode{
+    fn neg(self) -> Self::Output {
+        CILNode::Neg(self.into())
+    }
+    
+    type Output = CILNode;
+}

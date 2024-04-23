@@ -305,7 +305,7 @@ fn method_cil(w: &mut impl Write, method: &Method) -> std::io::Result<()> {
         maxstack = method.maxstack()
     )?;
     for op in method.blocks().iter().flat_map(|block| block.into_ops()) {
-        writeln!(w, "\t{op_cli}", op_cli = super::ilasm_op::op_cli(&op))?;
+        writeln!(w, "\t{op_cli}", op_cli = super::ilasm_op::op_cli(&op,method))?;
     }
     writeln!(w, "}}")
 }

@@ -1,11 +1,10 @@
 use std::borrow::Cow;
 
 use crate::{
-    assembly_exporter::escape_class_name,
-    r#type::{DotnetTypeRef, Type},
+    assembly_exporter::escape_class_name, method::Method, r#type::{DotnetTypeRef, Type}
 };
 
-pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
+pub fn op_cli(op: &crate::cil::CILOp,method:&Method) -> Cow<'static, str> {
     use crate::cil::CILOp;
 
     match op {
@@ -71,13 +70,26 @@ pub fn op_cli(op: &crate::cil::CILOp) -> Cow<'static, str> {
                 if *crate::config::TRACE_CALLS{
                     return format!(
                         "
-                        ldstr \"Callin {function_name}\"
+                        ldstr \"Callin \"
+                        call void [System.Console] System.Console::Write(string)
+                        ldstr \"{function_name}\"
+                        call void [System.Console] System.Console::Write(string)
+                        ldstr \" from \"
+                        call void [System.Console] System.Console::Write(string)
+                        ldstr \"{caller_name}\"
                         call void [System.Console] System.Console::WriteLine(string)
                         call {prefix} {output} {owner_name}'{function_name}'{generics}({input_string})
-                        ldstr \"Returned from {function_name}\"
+                        ldstr \"Returned from \"
+                        call void [System.Console] System.Console::Write(string)
+                        ldstr \"{function_name}\"
+                        call void [System.Console] System.Console::Write(string)
+                        ldstr \" to \"
+                        call void [System.Console] System.Console::Write(string)
+                        ldstr \"{caller_name}\"
                         call void [System.Console] System.Console::WriteLine(string)
                         ",
-                        output = type_cil(call_site.signature().output())
+                        output = type_cil(call_site.signature().output()),
+                        caller_name = method.name(),
                     ).into();
                 }
                 //TODO:Remove this `break`! It *mitigagtes* an issue with calls segafulting. I don't know *why* those calls segfault, but they SHOULD NOT DO THAT.
