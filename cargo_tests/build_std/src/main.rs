@@ -2,9 +2,9 @@
 #![feature(slice_ptr_get)]
 #![feature(allocator_api)]
 #![feature(once_cell_try)]
+use std::ffi::{c_char, c_int};
 use std::hint::black_box;
 use std::io::Write;
-use std::ffi::{c_char, c_int};
 mod cstr;
 mod exchange_malloc;
 use crate::exchange_malloc::exchange_malloc_test;
@@ -47,14 +47,20 @@ fn rustc_clr_interop_managed_call1_<
 >(
     arg1: Arg1,
 ) -> Ret {
-    unsafe { printf("Called interop managed call when compiled native code.\n\0".as_ptr() as *const i8) };
+    unsafe {
+        printf("Called interop managed call when compiled native code.\n\0".as_ptr() as *const i8)
+    };
     core::intrinsics::abort();
 }
 macro_rules! test {
     ($name:ident) => {
-        unsafe { printf(concat!("Running test ", stringify!($name), ".\n\0").as_ptr() as *const i8) };
+        unsafe {
+            printf(concat!("Running test ", stringify!($name), ".\n\0").as_ptr() as *const i8)
+        };
         $name();
-        unsafe { printf(concat!("Test ", stringify!($name), " succeded.\n\0").as_ptr() as *const i8) };
+        unsafe {
+            printf(concat!("Test ", stringify!($name), " succeded.\n\0").as_ptr() as *const i8)
+        };
     };
 }
 fn test_ptr_offset_from_unsigned() {
@@ -63,24 +69,24 @@ fn test_ptr_offset_from_unsigned() {
     let ptr2: *const u8 = 0x1004 as *const u8;
 
     // Calculate the offset between ptr2 and ptr1
-    let offset = unsafe {  std::intrinsics::ptr_offset_from_unsigned(ptr2, ptr1) };
+    let offset = unsafe { std::intrinsics::ptr_offset_from_unsigned(ptr2, ptr1) };
 
     // Expected result: 4 bytes (because ptr2 is 4 bytes ahead of ptr1)
     assert_eq!(offset, 4);
-    
+
     // Test with another example
     let ptr3: *const u8 = 0x2000 as *const u8;
     let ptr4: *const u8 = 0x1000 as *const u8;
 
-    let offset2 = unsafe {  std::intrinsics::ptr_offset_from_unsigned(ptr3, ptr4) };
+    let offset2 = unsafe { std::intrinsics::ptr_offset_from_unsigned(ptr3, ptr4) };
 
     // Expected result: 4096 bytes (because ptr4 is 4096 bytes ahead of ptr3)
     assert_eq!(offset2, 4096);
-    
+
     // Additional test case: Pointers are equal
     let ptr5: *const u8 = 0x3000 as *const u8;
 
-    let offset3 = unsafe {  std::intrinsics::ptr_offset_from_unsigned(ptr5, ptr5) };
+    let offset3 = unsafe { std::intrinsics::ptr_offset_from_unsigned(ptr5, ptr5) };
 
     // Expected result: 0 (since both pointers are the same)
     assert_eq!(offset3, 0);
@@ -90,31 +96,31 @@ fn collect_test() {
     std::hint::black_box(&numbers);
     for (number, idx) in numbers.iter().enumerate() {
         if std::hint::black_box(number) != *idx {
-            unsafe { printf("collect_test failed: items not equal.\n\0".as_ptr()  as *const i8) };
+            unsafe { printf("collect_test failed: items not equal.\n\0".as_ptr() as *const i8) };
             unsafe { core::intrinsics::abort() };
         }
     }
 }
 fn map_option_test() {
     let option = Some(std::hint::black_box(2_u64));
-    let option = option.map(|v|v*v);
+    let option = option.map(|v| v * v);
     let number = option.unwrap();
     if std::hint::black_box(number) != 4 {
         rustc_clr_interop_managed_call1_::<
-                "System.Console",
-                "System.Console",
-                false,
-                "WriteLine",
-                true,
-                (),
-                u64,
-            >(number);
-            unsafe { printf("map_option_test failed: items not equal.\n\0".as_ptr() as *const i8) };
-            unsafe { core::intrinsics::abort() };
+            "System.Console",
+            "System.Console",
+            false,
+            "WriteLine",
+            true,
+            (),
+            u64,
+        >(number);
+        unsafe { printf("map_option_test failed: items not equal.\n\0".as_ptr() as *const i8) };
+        unsafe { core::intrinsics::abort() };
     }
 }
-fn test_vec(){
-    unsafe{
+fn test_vec() {
+    unsafe {
         printf("Testing the vec type...\n\0".as_ptr() as *const i8);
         let mut chars = Vec::with_capacity(1);
         printf("Allocated the vec type!\n\0".as_ptr() as *const i8);
@@ -123,11 +129,11 @@ fn test_vec(){
         let val = chars.pop().unwrap();
         printf("Poped a value from the vec type!\n\0".as_ptr() as *const i8);
 
-        printf("The a value is %c!\n\0".as_ptr() as *const i8,val);
+        printf("The a value is %c!\n\0".as_ptr() as *const i8, val);
     }
 }
-fn test_string(){
-    unsafe{
+fn test_string() {
+    unsafe {
         printf("Testing the String type...\n\0".as_ptr() as *const i8);
         let mut string = String::with_capacity(1);
         printf("Allocated the String type!\n\0".as_ptr() as *const i8);
@@ -136,7 +142,7 @@ fn test_string(){
         let val = string.pop().unwrap();
         printf("Poped a value from the String type!\n\0".as_ptr() as *const i8);
 
-        printf("The a value is %c!\n\0".as_ptr() as *const i8,val);
+        printf("The a value is %c!\n\0".as_ptr() as *const i8, val);
     }
 }
 fn map_test() {
@@ -271,27 +277,27 @@ fn main() {
     string.push('!');
     string.push('\n');
     string.push('\0');
-    unsafe { printf("%s\n\0".as_ptr() as *const i8,string.as_ptr()) };
+    unsafe { printf("%s\n\0".as_ptr() as *const i8, string.as_ptr()) };
     //test!(collect_test);
     //test!(map_test);
     use cstr::test_cstr;
     test!(test_cstr);
     //std::hint::black_box(&string);
-    if unsafe { printf("Testing some cool shit\n\0".as_ptr() as *const i8) } < 0{
+    if unsafe { printf("Testing some cool shit\n\0".as_ptr() as *const i8) } < 0 {
         std::intrinsics::abort();
     }
     //let mut f = std::fs::File::create("foo.txt").unwrap();
 
     //std::hint::black_box(f);
     //std::io::stdout().write_all(b"hello world\n").unwrap();
-    let owned = Box::new(black_box(&[0,1,2,3,4,5,6][..]));
+    let owned = Box::new(black_box(&[0, 1, 2, 3, 4, 5, 6][..]));
     if owned.len() != 7 {
         unsafe { printf("Boxed slice size mismacth!\n\0".as_ptr() as *const i8) };
         unsafe { core::intrinsics::abort() };
     }
-    
-    for (idx,val) in owned.iter().enumerate(){
-        if idx != *val{
+
+    for (idx, val) in owned.iter().enumerate() {
+        if idx != *val {
             //unsafe { printf("Slice impropely copied %d %d!\n\0".as_ptr() as *const i8,idx,val) };
             rustc_clr_interop_managed_call1_::<
                 "System.Console",
@@ -326,36 +332,36 @@ fn main() {
     // test_stdout();
     test_stderr();
 
-
     let s = format!("Hello!\n\0");
-    unsafe{printf(s.as_ptr() as *const i8)};
-    let s = format!("Hello??? WTF is going on???{}\n\0",black_box(65));
-    unsafe{printf(s.as_ptr() as *const i8)};
+    unsafe { printf(s.as_ptr() as *const i8) };
+    let s = format!("Hello??? WTF is going on???{}\n\0", black_box(65));
+    unsafe { printf(s.as_ptr() as *const i8) };
 
     let val = std::hint::black_box(*boxed_int);
     //let val = std::hint::black_box(string);
 }
-fn test_thread_local(){
+fn test_thread_local() {
     use std::cell::Cell;
+    unsafe{printf("Testing a thread local.\n\0".as_ptr() as *const i8)};
+    thread_local! {
+        static X: Cell<i32> = panic!("!");
+    }
 
-thread_local! {
-    static X: Cell<i32> = panic!("!");
+    // Calling X.get() here would result in a panic.
+    unsafe{printf("Preparing to set a thread local.\n\0".as_ptr() as *const i8)};
+    X.set(123); // But X.set() is fine, as it skips the initializer above.
+    unsafe{printf("Seting a thread local succeded.\n\0".as_ptr() as *const i8)};
+    assert_eq!(X.get(), 123);
+    unsafe{printf("Acquiring a thread local succeded.\n\0".as_ptr() as *const i8)};
 }
-
-// Calling X.get() here would result in a panic.
-
-X.set(123); // But X.set() is fine, as it skips the initializer above.
-
-assert_eq!(X.get(), 123);
-}
-fn test_stderr(){
+fn test_stderr() {
     use std::io::{self, Write};
     let stdout = io::stderr();
     let mut handle = stdout;
 
     handle.write_all(b"hello error").unwrap();
 }
-fn test_stdout(){
+fn test_stdout() {
     use std::io::{self, Write};
     let stdout = io::stdout();
     let mut handle = stdout.lock();
@@ -366,15 +372,13 @@ fn lock_test() {
     use std::sync::OnceLock;
 
     static COMPUTATION: OnceLock<u8> = OnceLock::new();
-    if let Some(_) = COMPUTATION.get(){
+    if let Some(_) = COMPUTATION.get() {
         core::intrinsics::abort();
     }
-    if *COMPUTATION.get_or_try_init(|| Ok::<u8,()>(77)).unwrap() != 77{
+    if *COMPUTATION.get_or_try_init(|| Ok::<u8, ()>(77)).unwrap() != 77 {
         core::intrinsics::abort();
     }
 }
 
 #[test]
-fn fun(){
-    
-}
+fn fun() {}

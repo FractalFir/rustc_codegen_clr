@@ -284,11 +284,19 @@ impl Type {
             None
         }
     }
-    
+
     pub(crate) fn max_value(&self) -> CILNode {
-        match self{
-            Type::USize => call!(CallSite::new_extern(DotnetTypeRef::usize_type(),"get_MaxValue".into(),FnSig::new(&[],&Type::USize),true),[]),
-            _=>todo!("Can't get the max value of {self:?}"),
+        match self {
+            Type::USize => call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::usize_type(),
+                    "get_MaxValue".into(),
+                    FnSig::new(&[], &Type::USize),
+                    true
+                ),
+                []
+            ),
+            _ => todo!("Can't get the max value of {self:?}"),
         }
     }
 }

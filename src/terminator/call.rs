@@ -291,6 +291,7 @@ pub fn call_closure<'tyctx>(
     let last_arg = args
         .last()
         .expect("Closure must be called with at least 2 arguments(closure + arg tuple)");
+
     let other_args = &args[..args.len() - 1];
     let mut call_args = Vec::new();
     for arg in other_args {
@@ -342,8 +343,8 @@ pub fn call_closure<'tyctx>(
     //assert_eq!(args.len(),signature.inputs().len(),"CALL SIGNATURE ARG COUNT MISMATCH!");
     let is_void = matches!(sig.output(), crate::r#type::Type::Void);
     let call = CallSite::new(None, function_name.into(), sig, true);
-    // Hande
-    if is_void {
+    // Hande the call itself
+    let call = if is_void {
         CILRoot::Call {
             site: call,
             args: call_args.into(),
@@ -357,7 +358,9 @@ pub fn call_closure<'tyctx>(
             method_instance,
             type_cache,
         )
-    }
+    };
+
+    call
 }
 /// Calls `fn_type` with `args`, placing the return value in destination.
 pub fn call<'tyctx>(
@@ -377,15 +380,7 @@ pub fn call<'tyctx>(
         let Some(instance) =
             Instance::resolve(tyctx, env, *def_id, subst).expect("Invalid function def")
         else {
-            // I assume most functions wihc can't be resolved are empty drops.
-            // There propably exists a better way to check if it REALLY is just an empty drop, but this is good enough for now.
-            /*
-            if rustc_middle::ty::print::with_no_trimmed_paths! {format!("{fn_type:?}")}
-                .contains("drop")
-            {
-                rustc_middle::ty::print::with_no_trimmed_paths! {eprintln!("Empty drop {fn_type:?}")};
-                return vec![];
-            }*/
+         
             panic!("ERROR: Could not get function instance. fn type:{fn_type:?}")
         };
 

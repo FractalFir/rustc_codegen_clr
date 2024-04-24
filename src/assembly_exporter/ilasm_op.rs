@@ -1,10 +1,12 @@
 use std::borrow::Cow;
 
 use crate::{
-    assembly_exporter::escape_class_name, method::Method, r#type::{DotnetTypeRef, Type}
+    assembly_exporter::escape_class_name,
+    method::Method,
+    r#type::{DotnetTypeRef, Type},
 };
 
-pub fn op_cli(op: &crate::cil::CILOp,method:&Method) -> Cow<'static, str> {
+pub fn op_cli(op: &crate::cil::CILOp, method: &Method) -> Cow<'static, str> {
     use crate::cil::CILOp;
 
     match op {
@@ -112,7 +114,9 @@ pub fn op_cli(op: &crate::cil::CILOp,method:&Method) -> Cow<'static, str> {
                 }
                 let callconv = "";
             format!(
-                "calli {callconv} {output} ({input_string})",
+                "
+                call native uint RustModule::check_calli_nonull(native uint)
+                calli {callconv} {output} ({input_string})",
                 output = type_cil(sig.output())
             ).into()
         }

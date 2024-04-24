@@ -59,14 +59,17 @@ pub fn handle_terminator<'ctx>(
             fn_span: _,
         } => {
             let mut trees = Vec::new();
+
             match func {
                 Operand::Constant(fn_const) => {
                     let fn_ty = fn_const.ty();
+
                     assert!(
                         fn_ty.is_fn(),
                         "fn_ty{fn_ty:?} in call is not a function type!"
                     );
                     let fn_ty = monomorphize(&method_instance, fn_ty, tyctx);
+                    //eprintln!("calling {fn_ty:?}.");
                     //let fn_instance = Instance::resolve(tyctx,ParamEnv::reveal_all,fn_ty.did,List::empty());
                     let call_ops = call::call(
                         fn_ty,
@@ -99,38 +102,46 @@ pub fn handle_terminator<'ctx>(
                         }
 
                         if *sig.output() == crate::r#type::Type::Void {
-                            CILRoot::CallI {
-                                sig: sig.clone(),
-                                fn_ptr: crate::place::place_get(
-                                    operand,
-                                    tyctx,
-                                    method,
-                                    method_instance,
-                                    type_cache,
-                                ),
-                                args: arg_operands.into(),
-                            }
-                        } else {
-                            place_set(
-                                destination,
-                                tyctx,
-                                CILNode::CallI {
+                            trees.push(
+                                CILRoot::CallI {
                                     sig: sig.clone(),
-                                    fn_ptr: Box::new(crate::place::place_get(
+                                    fn_ptr: crate::place::place_get(
                                         operand,
                                         tyctx,
                                         method,
                                         method_instance,
                                         type_cache,
-                                    )),
+                                    ),
                                     args: arg_operands.into(),
-                                },
-                                method,
-                                method_instance,
-                                type_cache,
-                            )
+                                }
+                                .into(),
+                            );
+                        } else {
+                            trees.push(
+                                place_set(
+                                    destination,
+                                    tyctx,
+                                    CILNode::CallI {
+                                        sig: sig.clone(),
+                                        fn_ptr: Box::new(crate::place::place_get(
+                                            operand,
+                                            tyctx,
+                                            method,
+                                            method_instance,
+                                            type_cache,
+                                        )),
+                                        args: arg_operands.into(),
+                                    },
+                                    method,
+                                    method_instance,
+                                    type_cache,
+                                )
+                                .into(),
+                            );
                         }
                     } else {
+                        //rustc_middle::ty::print::with_no_trimmed_paths! {eprintln!("call terminator {terminator:?}")};
+                        //eprintln!("calling {operand_ty:?} indirectly");
                         let fn_ty = monomorphize(&method_instance, operand_ty, tyctx).ty;
                         //let fn_instance = Instance::resolve(tyctx,ParamEnv::reveal_all,fn_ty.did,List::empty());
                         assert!(
@@ -140,7 +151,7 @@ pub fn handle_terminator<'ctx>(
                         let fn_ty = monomorphize(&method_instance, fn_ty, tyctx);
                         //let fn_instance = Instance::resolve(tyctx,ParamEnv::reveal_all,fn_ty.did,List::empty());
 
-                        call::call(
+                        let call_ops = call::call(
                             fn_ty,
                             body,
                             tyctx,
@@ -149,7 +160,9 @@ pub fn handle_terminator<'ctx>(
                             method_instance,
                             type_cache,
                             terminator.source_info.span,
-                        )
+                        );
+
+                        trees.push(call_ops.into());
                     };
                 }
             }

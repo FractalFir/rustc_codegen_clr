@@ -3,7 +3,7 @@ use crate::{
     basic_block::BasicBlock,
     cil::{CallSite, StaticFieldDescriptor},
     function_sig::FnSig,
-    r#type::{DotnetTypeRef, Type},
+    r#type::{tycache::{self, TyCache}, DotnetTypeRef, Type},
     IString,
 };
 use rustc_middle::ty::TyCtxt;
@@ -198,11 +198,12 @@ impl Method {
         &mut self,
         arg: &mut crate::assembly::Assembly,
         tyctx: TyCtxt,
+        tycache:&mut TyCache
     ) {
         self.blocks
             .iter_mut()
             .flat_map(|block| block.trees_mut())
-            .for_each(|tree| tree.resolve_global_allocations(arg, tyctx));
+            .for_each(|tree| tree.resolve_global_allocations(arg, tyctx,tycache));
     }
     /// Returns a reference to a list of basic blocks that make up this method.
     pub fn blocks(&self) -> &[BasicBlock] {

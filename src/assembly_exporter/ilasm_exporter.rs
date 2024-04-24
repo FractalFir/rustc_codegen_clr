@@ -42,6 +42,7 @@ impl AssemblyExporter for ILASMExporter {
         if *crate::config::PRINT_PTRS {
             write!(methods, ".method public static native uint watch_ptr(native uint){{ldstr \"Derefing ptr:\"\ncall void [System.Console]System.Console::Write(string)\nldarg.0\nconv.u8\ncall void [System.Console]System.Console::WriteLine(uint64)\nldarg.0\nret\n}}\n").expect("Write error!");
         }
+        write!(methods, ".method public static native uint check_calli_nonull(native uint){{\nldarg.0\nbrnull FAILURE\nldarg.0\nret\nFAILURE:newobj instance void [System.Runtime]System.NullReferenceException::.ctor()\nthrow}}\n").expect("Write error!");
         Self {
             encoded_asm,
             methods,
@@ -305,7 +306,11 @@ fn method_cil(w: &mut impl Write, method: &Method) -> std::io::Result<()> {
         maxstack = method.maxstack()
     )?;
     for op in method.blocks().iter().flat_map(|block| block.into_ops()) {
-        writeln!(w, "\t{op_cli}", op_cli = super::ilasm_op::op_cli(&op,method))?;
+        writeln!(
+            w,
+            "\t{op_cli}",
+            op_cli = super::ilasm_op::op_cli(&op, method)
+        )?;
     }
     writeln!(w, "}}")
 }

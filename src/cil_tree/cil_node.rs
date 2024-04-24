@@ -2,7 +2,7 @@ use crate::{
     call,
     cil::{CILOp, CallSite, FieldDescriptor, StaticFieldDescriptor},
     function_sig::FnSig,
-    r#type::Type,
+    r#type::{TyCache, Type},
     IString,
 };
 
@@ -353,8 +353,8 @@ impl CILNode {
     pub fn flatten(&self) -> Vec<CILOp> {
         let mut ops = match self {
             Self::CallI { sig, fn_ptr, args } => {
-                let mut ops: Vec<_> = fn_ptr.flatten();
-                ops.extend(args.iter().flat_map(|arg| arg.flatten()));
+                let mut ops: Vec<_> =  args.iter().flat_map(|arg| arg.flatten()).collect();
+                ops.extend(fn_ptr.flatten());
                 ops.push(CILOp::CallI(sig.clone().into()));
                 ops
             }
@@ -699,6 +699,7 @@ impl CILNode {
         &mut self,
         asm: &mut crate::assembly::Assembly,
         tyctx: TyCtxt,
+        tycahce:&mut TyCache,
     ) {
         match self {
             Self::LDLoc(_) |
@@ -718,9 +719,9 @@ impl CILNode {
             Self::LDIndISize { ptr }|
             Self::LdObj { ptr, .. }|
             Self::LDIndF32 { ptr } |
-            Self::LDIndF64 { ptr } => ptr.resolve_global_allocations(asm,tyctx),
+            Self::LDIndF64 { ptr } => ptr.resolve_global_allocations(asm,tyctx,tycahce),
             Self::LDFieldAdress { addr, field: _ }|
-            Self::LDField { addr, field: _ } => addr.resolve_global_allocations(asm,tyctx),
+            Self::LDField { addr, field: _ } => addr.resolve_global_allocations(asm,tyctx,tycahce),
             Self::Add(a, b)
             | Self::And(a, b)
             | Self::Sub(a, b)
@@ -739,14 +740,14 @@ impl CILNode {
             | Self::LtUn(a, b)
             | Self::Gt(a, b)
             | Self::GtUn(a, b) => {
-                a.resolve_global_allocations(asm,tyctx);
-                b.resolve_global_allocations(asm,tyctx)
+                a.resolve_global_allocations(asm,tyctx,tycahce);
+                b.resolve_global_allocations(asm,tyctx,tycahce)
             }
             Self::RawOpsParrentless { ops: _ } => {
                 eprintln!("WARNING: resolve_global_allocations does not work for `RawOpsParrentless`")
             }
             Self::Call { args, site: _ } |
-            Self::CallVirt { args, site: _ } =>args.iter_mut().for_each(|arg|arg.resolve_global_allocations(asm,tyctx)),
+            Self::CallVirt { args, site: _ } =>args.iter_mut().for_each(|arg|arg.resolve_global_allocations(asm,tyctx,tycahce)),
             Self::LdcI64(_) |
             Self::LdcU64(_) |
             Self::LdcI32(_)  |
@@ -754,7 +755,7 @@ impl CILNode {
             Self::LdcF64(_) |
             Self::LdcF32(_) =>(),
             Self::LoadGlobalAllocPtr { alloc_id } => {
-                *self = Self::LDStaticField(asm.add_allocation(*alloc_id,tyctx).into());
+                *self = Self::LDStaticField(asm.add_allocation(*alloc_id,tyctx,tycahce).into());
             }
             Self::ConvF64Un(val) |
             Self::ConvF32(val)|
@@ -771,33 +772,33 @@ impl CILNode {
             Self::ConvISize(val)|
             //Self::Volatile(_) => todo!(),
             Self::Neg(val) |
-            Self::Not(val) =>val.resolve_global_allocations(asm,tyctx),
+            Self::Not(val) =>val.resolve_global_allocations(asm,tyctx,tycahce),
 
             Self::TemporaryLocal(tmp_loc) => {
-                tmp_loc.1.iter_mut().for_each(|tree|tree.resolve_global_allocations(asm,tyctx));
-                tmp_loc.2.resolve_global_allocations(asm,tyctx);
+                tmp_loc.1.iter_mut().for_each(|tree|tree.resolve_global_allocations(asm,tyctx,tycahce));
+                tmp_loc.2.resolve_global_allocations(asm,tyctx,tycahce);
             },
             Self::SubTrees(trees, main) =>{
-                trees.iter_mut().for_each(|arg|arg.resolve_global_allocations(asm,tyctx));
-                main.resolve_global_allocations(asm,tyctx)
+                trees.iter_mut().for_each(|arg|arg.resolve_global_allocations(asm,tyctx,tycahce));
+                main.resolve_global_allocations(asm,tyctx,tycahce)
             }
             Self::LoadAddresOfTMPLocal => (),
             Self::LoadTMPLocal => (),
             Self::LDFtn(_) => (),
             Self::LDTypeToken(_) => (),
-            Self::NewObj { site: _, args } => args.iter_mut().for_each(|arg|arg.resolve_global_allocations(asm,tyctx)),
+            Self::NewObj { site: _, args } => args.iter_mut().for_each(|arg|arg.resolve_global_allocations(asm,tyctx,tycahce)),
             Self::LdStr(_) => (),
             Self::CallI { sig: _, fn_ptr, args } => {
-                fn_ptr.resolve_global_allocations(asm, tyctx);
-                args.iter_mut().for_each(|arg|arg.resolve_global_allocations(asm,tyctx));
+                fn_ptr.resolve_global_allocations(asm, tyctx,tycahce);
+                args.iter_mut().for_each(|arg|arg.resolve_global_allocations(asm,tyctx,tycahce));
             }
             Self::LDStaticField(_sfield)=>(),
             Self::LDLen { arr } =>{
-                arr.resolve_global_allocations(asm, tyctx);
+                arr.resolve_global_allocations(asm, tyctx,tycahce);
             }
             Self::LDElelemRef { arr, idx }=>{
-                arr.resolve_global_allocations(asm, tyctx);
-                idx.resolve_global_allocations(asm, tyctx);
+                arr.resolve_global_allocations(asm, tyctx,tycahce);
+                idx.resolve_global_allocations(asm, tyctx,tycahce);
             }
         }
     }
@@ -1143,7 +1144,7 @@ macro_rules! conv_f64_un {
 #[macro_export]
 macro_rules! ldc_i32 {
     ($val:expr) => {
-       CILNode::LdcI32($val)
+        CILNode::LdcI32($val)
     };
 }
 /// Loads a value of type `i64`.
@@ -1167,25 +1168,25 @@ macro_rules! ldc_u64 {
         CILNode::LdcU64($val)
     };
 }
-impl std::ops::Add<CILNode> for CILNode{
+impl std::ops::Add<CILNode> for CILNode {
     type Output = CILNode;
 
     fn add(self, rhs: CILNode) -> Self::Output {
-        add!(self,rhs)
+        add!(self, rhs)
     }
 }
-impl std::ops::BitOr<CILNode> for CILNode{
+impl std::ops::BitOr<CILNode> for CILNode {
     type Output = CILNode;
 
     fn bitor(self, rhs: CILNode) -> Self::Output {
-        or!(self,rhs)
+        or!(self, rhs)
     }
 }
 
-impl std::ops::Neg for CILNode{
+impl std::ops::Neg for CILNode {
     fn neg(self) -> Self::Output {
         CILNode::Neg(self.into())
     }
-    
+
     type Output = CILNode;
 }

@@ -124,6 +124,7 @@ mod unop;
 mod utilis;
 
 pub mod config;
+mod unsize;
 // rustc functions used here.
 use crate::rustc_middle::dep_graph::DepContext;
 use rustc_codegen_ssa::{

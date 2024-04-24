@@ -3,7 +3,8 @@ use crate::operand::operand_address;
 use crate::place::place_adress;
 use crate::utilis::field_descrptor;
 use crate::{
-    add, call, call_virt, conv_f32, conv_f64, conv_usize, div, eq, ld_field, ld_field_address, ldc_i32, ldc_u64, lt_un, mul, or, place, size_of, sub
+    add, call, call_virt, conv_f32, conv_f64, conv_usize, div, eq, ld_field, ld_field_address,
+    ldc_i32, ldc_u64, lt_un, mul, or, place, size_of, sub,
 };
 fn compare_bytes(a: CILNode, b: CILNode, len: CILNode) -> CILNode {
     todo!();
@@ -685,34 +686,31 @@ pub fn handle_intrinsic<'tyctx>(
                 type_cache,
             )
         }
-        "saturating_add"=>{
+        "saturating_add" => {
             let a = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
             let b = handle_operand(&args[1].node, tyctx, body, method_instance, type_cache);
-            let a_type =  type_cache.type_from_cache(crate::utilis::monomorphize(
-                &method_instance,
-                call_instance.args[0]
-                    .as_type()
-                    .expect("needs_drop works only on types!"),
+            let a_type = type_cache.type_from_cache(
+                crate::utilis::monomorphize(
+                    &method_instance,
+                    call_instance.args[0]
+                        .as_type()
+                        .expect("needs_drop works only on types!"),
+                    tyctx,
+                ),
                 tyctx,
-            ), tyctx, Some(method_instance));
-            let calc = match a_type{
+                Some(method_instance),
+            );
+            let calc = match a_type {
                 Type::USize => {
                     let sum = a.clone() + b.clone();
                     let or = a | b;
-                    let flag = lt_un!(sum.clone(),or);
+                    let flag = lt_un!(sum.clone(), or);
                     let max = a_type.max_value();
-                    CILNode::select(a_type,max,sum,flag)
+                    CILNode::select(a_type, max, sum, flag)
                 }
-                _=>todo!("Can't use the intrinsic `saturating_add` on {a_type:?}"),
+                _ => todo!("Can't use the intrinsic `saturating_add` on {a_type:?}"),
             };
-            place_set(
-                destination,
-                tyctx,
-                calc,
-                body,
-                method_instance,
-                type_cache,
-            )
+            place_set(destination, tyctx, calc, body, method_instance, type_cache)
         }
         "min_align_of_val" => {
             debug_assert_eq!(

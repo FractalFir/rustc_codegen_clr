@@ -1,6 +1,6 @@
-use rustc_middle::mir::{BinOp, Operand};
-use rustc_middle::ty::{Instance, IntTy, Ty, TyCtxt, TyKind, UintTy,ParamEnv,List};
 use rustc_hir::lang_items::LangItem;
+use rustc_middle::mir::{BinOp, Operand};
+use rustc_middle::ty::{Instance, IntTy, List, ParamEnv, Ty, TyCtxt, TyKind, UintTy};
 
 use crate::cil::{CallSite, FieldDescriptor};
 use crate::cil_tree::cil_node::CILNode;
@@ -85,18 +85,33 @@ pub(crate) fn binop_unchecked<'tyctx>(
             add!(ops_a, mul!(ops_b, conv_usize!(size_of!(pointed_ty))))
         }
         BinOp::Cmp => {
-            let ordering = tyctx.get_lang_items(()).get(LangItem::OrderingEnum).unwrap();
-            let ordering = Instance::resolve(tyctx,ParamEnv::reveal_all(),ordering,List::empty()).unwrap().unwrap();
-            let ordering_ty = ordering.ty(tyctx,ParamEnv::reveal_all());
+            let ordering = tyctx
+                .get_lang_items(())
+                .get(LangItem::OrderingEnum)
+                .unwrap();
+            let ordering =
+                Instance::resolve(tyctx, ParamEnv::reveal_all(), ordering, List::empty())
+                    .unwrap()
+                    .unwrap();
+            let ordering_ty = ordering.ty(tyctx, ParamEnv::reveal_all());
             let ordering_type = tycache.type_from_cache(ordering_ty, tyctx, Some(method_instance));
             let lt = -lt_unchecked(ty_a, ops_a.clone(), ops_b.clone());
             let gt = gt_unchecked(ty_a, ops_a, ops_b);
             let res = lt | gt;
-            CILNode::TemporaryLocal(Box::new((ordering_type.clone(),[
-                CILRoot::SetField{ addr:CILNode::LoadAddresOfTMPLocal, value: res, desc: FieldDescriptor::new(
-                    ordering_type.as_dotnet().unwrap(),Type::I8,"__value".into()
-                ) }
-            ].into(),CILNode::LoadTMPLocal)))
+            CILNode::TemporaryLocal(Box::new((
+                ordering_type.clone(),
+                [CILRoot::SetField {
+                    addr: CILNode::LoadAddresOfTMPLocal,
+                    value: res,
+                    desc: FieldDescriptor::new(
+                        ordering_type.as_dotnet().unwrap(),
+                        Type::I8,
+                        "value__".into(),
+                    ),
+                }]
+                .into(),
+                CILNode::LoadTMPLocal,
+            )))
         }
     }
 }

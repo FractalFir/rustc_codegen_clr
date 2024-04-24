@@ -365,7 +365,7 @@ impl Assembly {
         )
         .with_argnames(arg_names);
 
-        method.resolve_global_allocations(self, tyctx);
+        method.resolve_global_allocations(self, tyctx,cache);
 
         //println!("Compiled method {name}");
 
@@ -426,6 +426,7 @@ impl Assembly {
         &mut self,
         alloc_id: u64,
         tcx: TyCtxt<'_>,
+        tycache:&mut TyCache,
     ) -> crate::cil::StaticFieldDescriptor {
         let const_allocation =
             match tcx.global_alloc(AllocId(alloc_id.try_into().expect("0 alloc id?"))) {
@@ -478,7 +479,7 @@ impl Assembly {
         );
         if self.static_fields.get(&alloc_fld).is_none() {
             let init_method =
-                allocation_initializer_method(const_allocation, &alloc_fld, tcx, self);
+                allocation_initializer_method(const_allocation, &alloc_fld, tcx, self,tycache);
             let cctor = self.add_cctor();
             let mut blocks = cctor.blocks_mut();
             if blocks.is_empty() {
@@ -656,7 +657,8 @@ impl Assembly {
                 );
                 let alloc = tcx.eval_static_initializer(stotic).unwrap();
                 let alloc_id = tcx.reserve_and_set_memory_alloc(alloc);
-                self.add_allocation(crate::utilis::alloc_id_to_u64(alloc_id), tcx);
+      
+                self.add_allocation(crate::utilis::alloc_id_to_u64(alloc_id), tcx,cache);
                 //let ty = alloc.0;
                 drop(static_compile_timer);
                 //eprintln!("Unsuported item - Static:{stotic:?}");
@@ -858,6 +860,7 @@ fn allocation_initializer_method(
     name: &str,
     tyctx: TyCtxt,
     asm: &mut Assembly,
+    tycache: &mut TyCache,
 ) -> Method {
     let bytes: &[u8] =
         const_allocation.inspect_with_uninit_and_ptr_outside_interpreter(0..const_allocation.len());
@@ -891,9 +894,26 @@ fn allocation_initializer_method(
         )
     }
     if !ptrs.is_empty() {
-        for ptr in ptrs.iter() {
-            let ptr_alloc = asm.add_allocation(ptr.1.alloc_id().0.into(), tyctx);
-            let offset = ptr.0.bytes_usize() as u32;
+        for (offset,prov) in ptrs.iter() {
+            let offset = offset.bytes_usize() as u32;
+            // Check if this allocation is a function
+            let reloc_target_alloc = tyctx.global_alloc(prov.alloc_id());
+            if let GlobalAlloc::Function(finstance)  = reloc_target_alloc {
+                // If it is a function, patch its pointer up.
+                let call_info = crate::call_info::CallInfo::sig_from_instance_(finstance, tyctx, tycache).unwrap();
+                let function_name = crate::utilis::function_name(tyctx.symbol_name(finstance));
+                   
+                trees.push(
+                CILRoot::STIndISize(
+                    add!(CILNode::LDLoc(1), conv_usize!(ldc_u32!(offset))),
+                    CILNode::LDFtn(CallSite::new(None,function_name,call_info.sig().clone(),true).into()),
+                )
+                .into(),
+                )
+
+            }else{
+                let ptr_alloc = asm.add_allocation(prov.alloc_id().0.into(), tyctx,tycache);
+            
             trees.push(
                 CILRoot::STIndISize(
                     add!(CILNode::LDLoc(1), conv_usize!(ldc_u32!(offset))),
@@ -901,6 +921,8 @@ fn allocation_initializer_method(
                 )
                 .into(),
             )
+            }
+            
         }
         //eprintln!("Constant requires rellocation support!");
     }
