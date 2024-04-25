@@ -41,5 +41,8 @@ fn main(){{
       }}
   
     }}
-    std::process::Command::new("dotnet").arg(dll_path).status().expect("Could not start the .NET runtime.");
+    let args:Vec<String> = std::env::args().collect();
+    let args = &args[1..];
+    println!("std args:{{args:?}}");
+    std::process::Command::new("dotnet").arg(dll_path).args(args).status().expect("Could not start the .NET runtime.");
 }}

@@ -171,7 +171,19 @@ fn map_test() {
         }
     }
 }
+fn print(string:&str){
+   
+}
+fn print_args(){
+    for (idx,mut arg) in std::env::args().enumerate(){
+        arg.push('\0');
+        unsafe{printf("Arg %d:%s\0\n".as_ptr() as *const i8,idx as u32, arg.as_ptr())};
+        drop(arg);
+    }
+}
 fn main() {
+    print_args();
+    return;
     test_vec();
     test_string();
     let int = std::hint::black_box(8);

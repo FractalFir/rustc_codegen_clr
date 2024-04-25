@@ -93,12 +93,11 @@ fn hijack_arg_init(asm: &mut Assembly) {
     // Calculate argc
     let argc_init = CILRoot::STLoc {
         local: argc,
-        tree: add!(
+        tree: 
             conv_i32!(CILNode::LDLen {
                 arr: CILNode::LDLoc(managed_args.into()).into()
             }),
-            ldc_i32!(1)
-        ),
+          
     };
     // Alloc argv
     let argv_alloc = CILRoot::STLoc {
@@ -130,33 +129,6 @@ fn hijack_arg_init(asm: &mut Assembly) {
     start_block.trees_mut().push(margs_init.into());
     start_block.trees_mut().push(argc_init.into());
     start_block.trees_mut().push(argv_alloc.into());
-    // Set argv[0] to executable path
-    start_block.trees_mut().push(
-        CILRoot::STIndISize(
-            CILNode::LDLoc(argv),
-            mstring_to_utf8ptr(call_virt!(
-                CallSite::new(
-                    Some(DotnetTypeRef::assembly()),
-                    "get_Location".into(),
-                    FnSig::new(
-                        &[DotnetTypeRef::assembly().into()],
-                        &DotnetTypeRef::string_type().into()
-                    ),
-                    false
-                ),
-                [call!(
-                    CallSite::new(
-                        Some(DotnetTypeRef::assembly()),
-                        "GetEntryAssembly".into(),
-                        FnSig::new(&[], &DotnetTypeRef::assembly().into()),
-                        true,
-                    ),
-                    []
-                )]
-            )),
-        )
-        .into(),
-    );
     // Init arg_idx to 0
     start_block.trees_mut().push(
         CILRoot::STLoc {
@@ -174,7 +146,6 @@ fn hijack_arg_init(asm: &mut Assembly) {
     );
     drop(blocks);
     // Set-up the arg convertion loop
-
     let loop_bb = cctor.new_bb();
     let mut blocks = cctor.blocks_mut();
     let loop_block = &mut blocks[loop_bb as usize];
@@ -192,7 +163,7 @@ fn hijack_arg_init(asm: &mut Assembly) {
                 CILNode::LDLoc(argv),
                 conv_usize!(mul!(
                     size_of!(Type::ISize),
-                    add!(CILNode::LDLoc(arg_idx), ldc_u32!(1))
+                    CILNode::LDLoc(arg_idx)
                 ))
             ),
             uarg,
