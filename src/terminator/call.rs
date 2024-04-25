@@ -380,7 +380,6 @@ pub fn call<'tyctx>(
         let Some(instance) =
             Instance::resolve(tyctx, env, *def_id, subst).expect("Invalid function def")
         else {
-         
             panic!("ERROR: Could not get function instance. fn type:{fn_type:?}")
         };
 

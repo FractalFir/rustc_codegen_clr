@@ -353,7 +353,7 @@ impl CILNode {
     pub fn flatten(&self) -> Vec<CILOp> {
         let mut ops = match self {
             Self::CallI { sig, fn_ptr, args } => {
-                let mut ops: Vec<_> =  args.iter().flat_map(|arg| arg.flatten()).collect();
+                let mut ops: Vec<_> = args.iter().flat_map(|arg| arg.flatten()).collect();
                 ops.extend(fn_ptr.flatten());
                 ops.push(CILOp::CallI(sig.clone().into()));
                 ops
@@ -699,7 +699,7 @@ impl CILNode {
         &mut self,
         asm: &mut crate::assembly::Assembly,
         tyctx: TyCtxt,
-        tycahce:&mut TyCache,
+        tycahce: &mut TyCache,
     ) {
         match self {
             Self::LDLoc(_) |
@@ -1175,6 +1175,7 @@ impl std::ops::Add<CILNode> for CILNode {
         add!(self, rhs)
     }
 }
+
 impl std::ops::BitOr<CILNode> for CILNode {
     type Output = CILNode;
 

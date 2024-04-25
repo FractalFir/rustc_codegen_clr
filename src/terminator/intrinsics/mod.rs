@@ -7,7 +7,21 @@ use crate::{
     ldc_i32, ldc_u64, lt_un, mul, or, place, size_of, sub,
 };
 fn compare_bytes(a: CILNode, b: CILNode, len: CILNode) -> CILNode {
-    todo!();
+    call!(
+        CallSite::builtin(
+            "memcmp".into(),
+            FnSig::new(
+                &[
+                    Type::Ptr(Type::U8.into()),
+                    Type::Ptr(Type::U8.into()),
+                    Type::USize
+                ],
+                &Type::I32
+            ),
+            true
+        ),
+        [a, b, len]
+    )
 }
 use crate::{
     cil::{CILOp, CallSite},
@@ -301,13 +315,67 @@ pub fn handle_intrinsic<'tyctx>(
                 type_cache,
             )
         }
-        "compare_bytes" => {
-            /*let arg0 = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
-            let arg1 = handle_operand(&args[1].node, tyctx, body, method_instance, type_cache);
-            let arg2 = handle_operand(&args[2].node, tyctx, body, method_instance, type_cache);
-
-            */
-            todo!("Can't use `memcmp` yet!");
+        "compare_bytes" => place_set(
+            destination,
+            tyctx,
+            compare_bytes(
+                handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
+                handle_operand(&args[1].node, tyctx, body, method_instance, type_cache),
+                handle_operand(&args[2].node, tyctx, body, method_instance, type_cache),
+            ),
+            body,
+            method_instance,
+            type_cache,
+        ),
+        "raw_eq" => {
+            // Raw eq returns 0 if values are not equal, and 1 if they are, unlike memcmp, which does the oposite.
+            let tpe = crate::utilis::monomorphize(
+                &method_instance,
+                call_instance.args[0]
+                    .as_type()
+                    .expect("needs_drop works only on types!"),
+                tyctx,
+            );
+            let tpe = type_cache.type_from_cache(tpe, tyctx, Some(method_instance));
+            let size = match tpe {
+                Type::Bool
+                | Type::U8
+                | Type::I8
+                | Type::U16
+                | Type::I16
+                | Type::U32
+                | Type::I32
+                | Type::U64
+                | Type::I64
+                | Type::USize
+                | Type::ISize
+                | Type::Ptr(_) => {
+                    return place_set(
+                        destination,
+                        tyctx,
+                        eq!(
+                            handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
+                            handle_operand(&args[1].node, tyctx, body, method_instance, type_cache)
+                        ),
+                        body,
+                        method_instance,
+                        type_cache,
+                    );
+                }
+                _ => size_of!(tpe),
+            };
+            place_set(
+                destination,
+                tyctx,
+                eq!(compare_bytes(
+                    handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
+                    handle_operand(&args[1].node, tyctx, body, method_instance, type_cache),
+                    conv_usize!(size),
+                ),ldc_i32!(0)),
+                body,
+                method_instance,
+                type_cache,
+            )
         }
         "bswap" => bswap::bswap(args, destination, tyctx, body, method_instance, type_cache),
         "cttz" | "cttz_nonzero" => {
@@ -656,6 +724,7 @@ pub fn handle_intrinsic<'tyctx>(
         }
         //"bswap"
         "assert_inhabited" => CILRoot::Nop,
+
         "ptr_offset_from_unsigned" => {
             debug_assert_eq!(
                 args.len(),

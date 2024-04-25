@@ -763,6 +763,8 @@ run_test! {intrinsics,caller_location,stable}
 run_test! {intrinsics,copy_nonoverlaping,stable}
 run_test! {intrinsics,ptr_offset_from_unsigned,stable}
 run_test! {intrinsics,arith_offset,stable}
+run_test! {intrinsics,cmp_bytes,stable}
+
 run_test! {alloc,abox,stable}
 run_test! {alloc,raw_vec,unstable}
 run_test! {alloc,slice_to_owned,unstable}

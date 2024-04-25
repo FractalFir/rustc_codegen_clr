@@ -1,4 +1,7 @@
-use crate::{cil::CILOp, r#type::{TyCache, Type}};
+use crate::{
+    cil::CILOp,
+    r#type::{TyCache, Type},
+};
 
 use self::cil_root::CILRoot;
 use rustc_middle::ty::TyCtxt;
@@ -60,9 +63,9 @@ impl CILTree {
         &mut self,
         arg: &mut crate::assembly::Assembly,
         tyctx: TyCtxt,
-        tycache:&mut TyCache,
+        tycache: &mut TyCache,
     ) {
-        self.tree.resolve_global_allocations(arg, tyctx,tycache);
+        self.tree.resolve_global_allocations(arg, tyctx, tycache);
     }
     // TODO: remember to make this recompute tree metadtata when it is added
     pub fn root_mut(&mut self) -> &mut CILRoot {

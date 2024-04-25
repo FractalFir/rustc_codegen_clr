@@ -511,35 +511,37 @@ impl CILRoot {
         &mut self,
         asm: &mut crate::assembly::Assembly,
         tyctx: TyCtxt,
-        tycache:&mut TyCache,
+        tycache: &mut TyCache,
     ) {
         match self {
             CILRoot::SourceFileInfo(_) => (),
-            CILRoot::STLoc { local: _, tree } => tree.resolve_global_allocations(asm, tyctx,tycache),
+            CILRoot::STLoc { local: _, tree } => {
+                tree.resolve_global_allocations(asm, tyctx, tycache)
+            }
             CILRoot::BTrue {
                 target: _,
                 sub_target: _,
                 ops,
-            } => ops.resolve_global_allocations(asm, tyctx,tycache),
+            } => ops.resolve_global_allocations(asm, tyctx, tycache),
             CILRoot::GoTo {
                 target: _,
                 sub_target: _,
             } => (),
             CILRoot::CallVirt { site: _, args } | CILRoot::Call { site: _, args } => args
                 .iter_mut()
-                .for_each(|arg| arg.resolve_global_allocations(asm, tyctx,tycache)),
+                .for_each(|arg| arg.resolve_global_allocations(asm, tyctx, tycache)),
             CILRoot::SetField {
                 addr,
                 value,
                 desc: _,
             } => {
-                addr.resolve_global_allocations(asm, tyctx,tycache);
-                value.resolve_global_allocations(asm, tyctx,tycache);
+                addr.resolve_global_allocations(asm, tyctx, tycache);
+                value.resolve_global_allocations(asm, tyctx, tycache);
             }
             CILRoot::CpBlk { src, dst, len } => {
-                src.resolve_global_allocations(asm, tyctx,tycache);
-                dst.resolve_global_allocations(asm, tyctx,tycache);
-                len.resolve_global_allocations(asm, tyctx,tycache);
+                src.resolve_global_allocations(asm, tyctx, tycache);
+                dst.resolve_global_allocations(asm, tyctx, tycache);
+                len.resolve_global_allocations(asm, tyctx, tycache);
             }
             CILRoot::STIndI8(addr_calc, value_calc)
             | CILRoot::STIndI16(addr_calc, value_calc)
@@ -553,20 +555,20 @@ impl CILRoot {
                 value_calc,
                 ..
             } => {
-                addr_calc.resolve_global_allocations(asm, tyctx,tycache);
-                value_calc.resolve_global_allocations(asm, tyctx,tycache)
+                addr_calc.resolve_global_allocations(asm, tyctx, tycache);
+                value_calc.resolve_global_allocations(asm, tyctx, tycache)
             }
-            CILRoot::STArg { arg: _, tree } => tree.resolve_global_allocations(asm, tyctx,tycache),
+            CILRoot::STArg { arg: _, tree } => tree.resolve_global_allocations(asm, tyctx, tycache),
             CILRoot::Break => (),
             CILRoot::Nop => (),
             CILRoot::InitBlk { dst, val, count } => {
-                dst.resolve_global_allocations(asm, tyctx,tycache);
-                val.resolve_global_allocations(asm, tyctx,tycache);
-                count.resolve_global_allocations(asm, tyctx,tycache);
+                dst.resolve_global_allocations(asm, tyctx, tycache);
+                val.resolve_global_allocations(asm, tyctx, tycache);
+                count.resolve_global_allocations(asm, tyctx, tycache);
             }
 
             CILRoot::Ret { tree } | CILRoot::Pop { tree } | CILRoot::Throw(tree) => {
-                tree.resolve_global_allocations(asm, tyctx,tycache)
+                tree.resolve_global_allocations(asm, tyctx, tycache)
             }
             CILRoot::VoidRet => (),
 
@@ -576,15 +578,15 @@ impl CILRoot {
                 fn_ptr,
                 args,
             } => {
-                fn_ptr.resolve_global_allocations(asm, tyctx,tycache);
+                fn_ptr.resolve_global_allocations(asm, tyctx, tycache);
                 args.iter_mut()
-                    .for_each(|arg| arg.resolve_global_allocations(asm, tyctx,tycache));
+                    .for_each(|arg| arg.resolve_global_allocations(asm, tyctx, tycache));
             }
             // Jump pads CAN'T ever allocate.
             CILRoot::JumpingPad { ops: _ } => (),
-            CILRoot::SetTMPLocal { value } => value.resolve_global_allocations(asm, tyctx,tycache),
+            CILRoot::SetTMPLocal { value } => value.resolve_global_allocations(asm, tyctx, tycache),
             CILRoot::SetStaticField { descr: _, value } => {
-                value.resolve_global_allocations(asm, tyctx,tycache)
+                value.resolve_global_allocations(asm, tyctx, tycache)
             }
         }
     }

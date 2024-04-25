@@ -4,7 +4,7 @@ use crate::cil_tree::cil_root::CILRoot;
 
 use crate::operand::handle_operand;
 
-use crate::{conv_usize, ld_field, ldc_u64};
+use crate::{conv_usize, ld_field, ld_field_address, ldc_u64};
 
 use crate::r#type::{TyCache, Type};
 use rustc_middle::{
@@ -28,10 +28,91 @@ pub fn unsize<'tyctx>(
     let target_type = tycache.type_from_cache(target, tyctx, Some(method_instance));
     // Get the target type as a fat pointer.
     let target_dotnet = target_type.as_dotnet().unwrap();
-    if source.is_box() {
-        panic!("Can't unsize boxes yet");
-    }
     let mut sized_ptr = handle_operand(&operand, tyctx, method, method_instance, tycache);
+    // Unsizing a box
+    if target.is_box() && source.is_box() {
+        // 1. Get Unqiue<Source> from Box<Source>
+        let unique_desc =
+            crate::utilis::field_descrptor(source, 0, tyctx, method_instance, tycache);
+        let source_ptr = ld_field!(sized_ptr, unique_desc);
+        // 2. Get NonNull<Source> from Unuqie<Source>
+        let unique_adt = crate::utilis::as_adt(source).unwrap();
+        let unique_ty = unique_adt.0.all_fields().nth(0).unwrap();
+        let non_null_ptr_desc = crate::utilis::field_descrptor(
+            unique_ty.ty(tyctx, unique_adt.1),
+            0,
+            tyctx,
+            method_instance,
+            tycache,
+        );
+        let source_ptr = ld_field!(source_ptr, non_null_ptr_desc.clone());
+        // 3. Get Source* from NonNull<Source>
+        let non_null_adt = crate::utilis::as_adt(unique_ty.ty(tyctx, unique_adt.1)).unwrap();
+        let non_null_ty = non_null_adt.0.all_fields().nth(0).unwrap();
+        let source_ptr_desc = crate::utilis::field_descrptor(
+            non_null_ty.ty(tyctx, unique_adt.1),
+            0,
+            tyctx,
+            method_instance,
+            tycache,
+        );
+        let source_ptr = ld_field!(source_ptr, source_ptr_desc.clone());
+        // 4. Get Unique<Target> from Box<Target>
+        let unique_desc =
+            crate::utilis::field_descrptor(target, 0, tyctx, method_instance, tycache);
+        let target_ptr = ld_field_address!(CILNode::LoadAddresOfTMPLocal, unique_desc);
+        // 5. Get NonNull<Target>  from Unique<Target>
+        let unique_adt = crate::utilis::as_adt(target).unwrap();
+        let unique_ty = unique_adt.0.all_fields().nth(0).unwrap();
+        let target_ptr_desc = crate::utilis::field_descrptor(
+            unique_ty.ty(tyctx, unique_adt.1),
+            0,
+            tyctx,
+            method_instance,
+            tycache,
+        );
+        let target_ptr = ld_field_address!(target_ptr, target_ptr_desc);
+        // 6. Get Target* from NonNull<Target>
+        let non_null_adt = crate::utilis::as_adt(unique_ty.ty(tyctx, unique_adt.1)).unwrap();
+        let non_null_ty = non_null_adt.0.all_fields().nth(0).unwrap();
+        let non_null_ptr_desc = crate::utilis::field_descrptor(
+            non_null_ty.ty(tyctx, non_null_adt.1),
+            0,
+            tyctx,
+            method_instance,
+            tycache,
+        );
+        let target_ptr = ld_field_address!(target_ptr, non_null_ptr_desc.clone());
+        // 7. Set the target->metatdata = len and target->ptr = source->ptr
+        let length = if let TyKind::Array(_, length) = source.boxed_ty().kind() {
+            crate::utilis::try_resolve_const_size(*length).unwrap()
+        } else {
+            panic!("Non array type. source:{source:?} target:{target:?}")
+        };
+        let set_metadata = CILRoot::SetField {
+            addr: target_ptr.clone(),
+            value: conv_usize!(ldc_u64!(length as u64)),
+            desc: FieldDescriptor::new(
+                non_null_ptr_desc.clone().tpe().as_dotnet().unwrap(),
+                Type::USize,
+                "metadata".into(),
+            ),
+        };
+        let set_ptr = CILRoot::SetField {
+            addr: target_ptr,
+            value: source_ptr,
+            desc: FieldDescriptor::new(
+                non_null_ptr_desc.tpe().as_dotnet().unwrap(),
+                Type::Ptr(Type::Void.into()),
+                "data_pointer".into(),
+            ),
+        };
+        return CILNode::TemporaryLocal(Box::new((
+            target_type,
+            [set_metadata, set_ptr].into(),
+            CILNode::LoadTMPLocal,
+        )));
+    }
     let derefed_source = match source.kind() {
         TyKind::RawPtr(tpe, _) => *tpe,
         TyKind::Ref(_, inner, _) => *inner,
