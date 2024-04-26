@@ -408,18 +408,7 @@ pub fn call<'tyctx>(
             span,
         );
     }
-    if function_name.contains("map_or_else") {
-        println!(
-            "Calling function with name {function_name}. DefId:{:?}, Subst:{:?}",
-            instance.def, instance.args
-        );
-        let sig = crate::utilis::monomorphize(&method_instance, fn_type.fn_sig(tyctx), tyctx);
-        rustc_middle::ty::print::with_no_trimmed_paths! {println!("map_or_else_sig:{:?}",sig)};
-        for input in call_info.sig().inputs() {
-            println!("\t{input:?}");
-        }
-    }
-
+    
     // Checks if function is "magic"
     if function_name.contains(CTOR_FN_NAME) {
         assert!(

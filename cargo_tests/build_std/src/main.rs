@@ -171,9 +171,7 @@ fn map_test() {
         }
     }
 }
-fn print(string:&str){
-   
-}
+
 fn print_args(){
     for (idx,mut arg) in std::env::args().enumerate(){
         arg.push('\0');
@@ -181,8 +179,18 @@ fn print_args(){
         drop(arg);
     }
 }
+fn test_file(){
+    use std::io::Write;
+    let mut file = std::fs::File::create("foo.txt").unwrap();
+    file.write_all(b"Hello, world!").unwrap();
+}
 fn main() {
     print_args();
+    let idx = black_box(64);
+    let s = format!("Hello!\n\0");
+    test_file();
+    unsafe{printf(s.as_ptr() as *const i8)};
+    let _ = s;
     return;
     test_vec();
     test_string();

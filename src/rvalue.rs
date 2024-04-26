@@ -170,7 +170,7 @@ pub fn handle_rvalue<'tcx>(
                 todo!("Can't calc offset of yet!");
             }
             // We will just always check for UB :).
-            rustc_middle::mir::NullOp::UbChecks => ldc_u32!(1),
+            rustc_middle::mir::NullOp::UbChecks => ldc_u32!(if tyctx.sess.ub_checks(){1}else{0}),
             // TODO: propely set this to 0 or 1 depending if debug assertions are enabled.
             //NullOp::DebugAssertions => ldc_u32!(0), //todo!("Unsuported nullary {op:?}!"),
         },

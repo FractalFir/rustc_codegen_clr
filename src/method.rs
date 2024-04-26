@@ -69,6 +69,8 @@ impl Method {
         };
         res.allocate_temporaries();
         res.sheed_trees();
+        
+
         res
     }
     /// Calcualtes the maximum number of vairables on the evaulation stack.

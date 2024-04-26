@@ -366,7 +366,9 @@ impl Assembly {
         .with_argnames(arg_names);
 
         method.resolve_global_allocations(self, tyctx, cache);
-
+        // TODO: Why is this even needed? The temporaries *should* be already allocated, why not all of them are?
+        method.allocate_temporaries();
+        
         //println!("Compiled method {name}");
 
         self.add_method(method);
