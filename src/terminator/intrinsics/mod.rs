@@ -367,11 +367,14 @@ pub fn handle_intrinsic<'tyctx>(
             place_set(
                 destination,
                 tyctx,
-                eq!(compare_bytes(
-                    handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
-                    handle_operand(&args[1].node, tyctx, body, method_instance, type_cache),
-                    conv_usize!(size),
-                ),ldc_i32!(0)),
+                eq!(
+                    compare_bytes(
+                        handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
+                        handle_operand(&args[1].node, tyctx, body, method_instance, type_cache),
+                        conv_usize!(size),
+                    ),
+                    ldc_i32!(0)
+                ),
                 body,
                 method_instance,
                 type_cache,
@@ -554,7 +557,18 @@ pub fn handle_intrinsic<'tyctx>(
                 type_cache,
             )
         }
-        "volatile_load" => volitale_load(fn_name, args, destination, tyctx, body, method_instance, call_instance, type_cache, signature, span),
+        "volatile_load" => volitale_load(
+            fn_name,
+            args,
+            destination,
+            tyctx,
+            body,
+            method_instance,
+            call_instance,
+            type_cache,
+            signature,
+            span,
+        ),
         "atomic_load_unordered" => {
             // This is already implemented by default in .NET when volatile is used. TODO: ensure this is 100% right.
             //TODO:fix volitale prefix!
@@ -1041,7 +1055,7 @@ pub fn handle_intrinsic<'tyctx>(
             call_instance,
             type_cache,
             signature,
-            span
+            span,
         ),
     }
 }
@@ -1055,7 +1069,7 @@ fn intrinsic_slow<'tyctx>(
     call_instance: Instance<'tyctx>,
     type_cache: &mut TyCache,
     signature: FnSig,
-    span: rustc_span::Span
+    span: rustc_span::Span,
 ) -> CILRoot {
     if fn_name.contains("likely") {
         debug_assert_eq!(
@@ -1072,11 +1086,20 @@ fn intrinsic_slow<'tyctx>(
             method_instance,
             type_cache,
         )
-    } 
-    else if fn_name.contains("volitale_load"){
-       return volitale_load(fn_name, args, destination, tyctx, body, method_instance, call_instance, type_cache, signature, span);
-    }
-    else if fn_name.contains("is_val_statically_known"){
+    } else if fn_name.contains("volitale_load") {
+        return volitale_load(
+            fn_name,
+            args,
+            destination,
+            tyctx,
+            body,
+            method_instance,
+            call_instance,
+            type_cache,
+            signature,
+            span,
+        );
+    } else if fn_name.contains("is_val_statically_known") {
         debug_assert_eq!(
             args.len(),
             1,
@@ -1091,12 +1114,12 @@ fn intrinsic_slow<'tyctx>(
             method_instance,
             type_cache,
         )
-    }
-    else {
+    } else {
         todo!("Unhandled intrinsic {fn_name}.")
     }
 }
-fn volitale_load<'tyctx>(   fn_name: &str,
+fn volitale_load<'tyctx>(
+    fn_name: &str,
     args: &[Spanned<Operand<'tyctx>>],
     destination: &Place<'tyctx>,
     tyctx: TyCtxt<'tyctx>,
@@ -1105,18 +1128,17 @@ fn volitale_load<'tyctx>(   fn_name: &str,
     call_instance: Instance<'tyctx>,
     type_cache: &mut TyCache,
     signature: FnSig,
-    span: rustc_span::Span,)->CILRoot {
+    span: rustc_span::Span,
+) -> CILRoot {
     //TODO:fix volitale prefix!
     debug_assert_eq!(
         args.len(),
         1,
         "The intrinsic `volatile_load` MUST take in exactly 1 argument!"
     );
-    let arg =
-        crate::utilis::monomorphize(&method_instance, args[0].node.ty(body, tyctx), tyctx);
+    let arg = crate::utilis::monomorphize(&method_instance, args[0].node.ty(body, tyctx), tyctx);
     let arg_ty = arg.builtin_deref(true).unwrap().ty;
     let arg = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
-    let ops =
-        crate::place::deref_op(arg_ty.into(), tyctx, &method_instance, type_cache, arg);
+    let ops = crate::place::deref_op(arg_ty.into(), tyctx, &method_instance, type_cache, arg);
     place_set(destination, tyctx, ops, body, method_instance, type_cache)
 }

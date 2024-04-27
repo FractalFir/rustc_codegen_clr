@@ -146,11 +146,7 @@ pub enum CILNode {
         args: Box<[CILNode]>,
     },
     LdStr(IString),
-    CallI {
-        sig: FnSig,
-        fn_ptr: Box<CILNode>,
-        args: Box<[Self]>,
-    },
+    CallI(Box<(FnSig, CILNode, Box<[Self]>)>),
     LDIndU8 {
         ptr: Box<CILNode>,
     },
@@ -172,6 +168,7 @@ pub enum CILNode {
         arr: Box<CILNode>,
         idx: Box<CILNode>,
     },
+    PointerToConstValue(u128),
 }
 impl CILNode {
     pub fn select(tpe: Type, a: CILNode, b: CILNode, predictate: CILNode) -> Self {
@@ -283,7 +280,8 @@ impl CILNode {
             | Self::LdcU32(_)
             | Self::LdcF64(_)
             | Self::LdcF32(_)
-            | Self::LoadGlobalAllocPtr { .. } => (),
+            | Self::LoadGlobalAllocPtr { .. }
+            | Self::PointerToConstValue(_)=> (),
             Self::ConvU8(inner)
             | Self::ConvU16(inner)
             | Self::ConvU32(inner)
@@ -307,9 +305,9 @@ impl CILNode {
             Self::LDFtn(_) => (),
             Self::LDTypeToken(_) => (),
             Self::LdStr(_) => (),
-            Self::CallI { sig: _, fn_ptr, args } => {
-                args.iter_mut().for_each(|arg| arg.opt());
-                fn_ptr.opt();
+            Self::CallI (ptr_sig_arg ) => {
+                ptr_sig_arg.2.iter_mut().for_each(|arg| arg.opt());
+                ptr_sig_arg.1.opt();
             }
             Self::LDStaticField(_static_field) => (),
             Self::LDLen { arr } => arr.opt(),
@@ -352,10 +350,17 @@ impl CILNode {
     }
     pub fn flatten(&self) -> Vec<CILOp> {
         let mut ops = match self {
-            Self::CallI { sig, fn_ptr, args } => {
-                let mut ops: Vec<_> = args.iter().flat_map(|arg| arg.flatten()).collect();
-                ops.extend(fn_ptr.flatten());
-                ops.push(CILOp::CallI(sig.clone().into()));
+            Self::PointerToConstValue(value) => {
+                panic!("ERROR: const values must be allocated before CILOp flattening phase")
+            }
+            Self::CallI(sig_ptr_args) => {
+                let mut ops: Vec<_> = sig_ptr_args
+                    .2
+                    .iter()
+                    .flat_map(|arg| arg.flatten())
+                    .collect();
+                ops.extend(sig_ptr_args.1.flatten());
+                ops.push(CILOp::CallI(sig_ptr_args.0.clone().into()));
                 ops
             }
             Self::SubTrees(trees, root) => {
@@ -591,6 +596,8 @@ impl CILNode {
         locals: &mut Vec<(Option<Box<str>>, Type)>,
     ) {
         match self {
+            Self:: PointerToConstValue(arr)=>(),
+            Self::LoadGlobalAllocPtr { alloc_id: _ } => (),
             Self::LDLoc(_) |
             Self::LDArg(_) |
             Self::LDLocA(_)|
@@ -643,7 +650,6 @@ impl CILNode {
             Self::LdcU32(_) |
             Self::LdcF64(_) |
             Self::LdcF32(_) =>(),
-            Self::LoadGlobalAllocPtr { alloc_id: _ } => (),
             Self::ConvF64Un(val) |
             Self::ConvF32(val)|
             Self::ConvF64(val) |
@@ -681,9 +687,9 @@ impl CILNode {
             Self::LDTypeToken(_) =>(),
             Self::NewObj { site: _, args } => args.iter_mut().for_each(|arg|arg.allocate_tmps(curr_loc, locals)),
             Self::LdStr(_) => (),
-            Self::CallI { sig: _, fn_ptr, args } => {
-               fn_ptr.allocate_tmps(curr_loc, locals);
-                args.iter_mut().for_each(|arg|arg.allocate_tmps(curr_loc, locals))
+            Self::CallI (sig_ptr_args) => {
+                sig_ptr_args.1.allocate_tmps(curr_loc, locals);
+                sig_ptr_args.2.iter_mut().for_each(|arg|arg.allocate_tmps(curr_loc, locals))
             }
             Self::LDStaticField(_sfield)=>(),
             Self::LDLen { arr } =>{
@@ -702,6 +708,7 @@ impl CILNode {
         tycahce: &mut TyCache,
     ) {
         match self {
+            Self:: PointerToConstValue(bytes)=> *self = CILNode::LDStaticField(Box::new(asm.add_const_value(*bytes,tyctx))),
             Self::LDLoc(_) |
             Self::LDArg(_) |
             Self::LDLocA(_)|
@@ -788,9 +795,9 @@ impl CILNode {
             Self::LDTypeToken(_) => (),
             Self::NewObj { site: _, args } => args.iter_mut().for_each(|arg|arg.resolve_global_allocations(asm,tyctx,tycahce)),
             Self::LdStr(_) => (),
-            Self::CallI { sig: _, fn_ptr, args } => {
-                fn_ptr.resolve_global_allocations(asm, tyctx,tycahce);
-                args.iter_mut().for_each(|arg|arg.resolve_global_allocations(asm,tyctx,tycahce));
+            Self::CallI(sig_ptr_args) => {
+                sig_ptr_args.1.resolve_global_allocations(asm, tyctx,tycahce);
+                sig_ptr_args.2.iter_mut().for_each(|arg|arg.resolve_global_allocations(asm,tyctx,tycahce));
             }
             Self::LDStaticField(_sfield)=>(),
             Self::LDLen { arr } =>{
@@ -857,6 +864,7 @@ impl CILNode {
             | Self::LdcF64(_)
             | Self::LdcF32(_) => vec![],
             Self::LoadGlobalAllocPtr { alloc_id: _ } => vec![],
+            Self::PointerToConstValue(value) => vec![],
             Self::ConvU8(val)
             | Self::ConvU16(val)
             | Self::ConvU32(val)
@@ -895,13 +903,9 @@ impl CILNode {
                 args.iter_mut().flat_map(|arg| arg.sheed_trees()).collect()
             }
             Self::LdStr(_) => vec![],
-            Self::CallI {
-                sig: _,
-                fn_ptr,
-                args,
-            } => {
-                let mut res = fn_ptr.sheed_trees();
-                res.extend(args.iter_mut().flat_map(|arg| arg.sheed_trees()));
+            Self::CallI(sig_ptr_args) => {
+                let mut res = sig_ptr_args.1.sheed_trees();
+                res.extend(sig_ptr_args.2.iter_mut().flat_map(|arg| arg.sheed_trees()));
                 res
             }
             Self::LDLen { arr } => arr.sheed_trees(),

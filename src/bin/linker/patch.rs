@@ -93,11 +93,9 @@ fn hijack_arg_init(asm: &mut Assembly) {
     // Calculate argc
     let argc_init = CILRoot::STLoc {
         local: argc,
-        tree: 
-            conv_i32!(CILNode::LDLen {
-                arr: CILNode::LDLoc(managed_args.into()).into()
-            }),
-          
+        tree: conv_i32!(CILNode::LDLen {
+            arr: CILNode::LDLoc(managed_args.into()).into()
+        }),
     };
     // Alloc argv
     let argv_alloc = CILRoot::STLoc {
@@ -161,10 +159,7 @@ fn hijack_arg_init(asm: &mut Assembly) {
         CILRoot::STIndISize(
             add!(
                 CILNode::LDLoc(argv),
-                conv_usize!(mul!(
-                    size_of!(Type::ISize),
-                    CILNode::LDLoc(arg_idx)
-                ))
+                conv_usize!(mul!(size_of!(Type::ISize), CILNode::LDLoc(arg_idx)))
             ),
             uarg,
         )

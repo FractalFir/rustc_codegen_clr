@@ -2,9 +2,7 @@
 #![allow(internal_features,incomplete_features,unused_variables,dead_code,unused_imports)]
 #![no_std]
 include!("../common.rs");
-extern "C"{
-    fn printf(fmt:*const core::ffi::c_char,...)->core::ffi::c_int;
-}
+
 fn main(){
     unsafe{printf("Using printf. num0:%i\0".as_ptr() as *const _,64)};
     unsafe{printf("Using printf. bob num0:%f num1:%i\0".as_ptr() as *const _,64.7,55)};

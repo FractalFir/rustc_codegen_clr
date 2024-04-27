@@ -233,97 +233,15 @@ fn load_const_scalar<'ctx>(
                     },
                 )))
             } else {
-                let low = (scalar_u128 & u128::from(u64::MAX)) as u64;
-                let high = (scalar_u128 >> 64) as u64;
-                let ctor_sig = crate::function_sig::FnSig::new(
-                    &[
-                        Type::ManagedReference(Type::U128.into()),
-                        Type::U64,
-                        Type::U64,
-                    ],
-                    &Type::Void,
-                );
-                let value = CILNode::NewObj {
-                    site: CallSite::boxed(
-                        Some(DotnetTypeRef::int_128()),
-                        ".ctor".into(),
-                        ctor_sig,
-                        false,
-                    ),
-                    args: [conv_u64!(ldc_u64!(high)), conv_u64!(ldc_u64!(low))].into(),
-                };
-
-                CILNode::TemporaryLocal(Box::new((
-                    Type::Ptr(tpe.clone().into()),
-                    [CILRoot::SetTMPLocal { value }].into(),
-                    CILNode::LdObj {
-                        ptr: CILNode::LoadAddresOfTMPLocal.into(),
-                        obj: tpe.into(),
-                    },
-                )))
+                CILNode::LdObj {
+                    ptr: Box::new(CILNode::PointerToConstValue(scalar_u128)),
+                    obj: tpe.into(),
+                }
             }
         }
-        TyKind::Adt(adt_def, _subst) => match adt_def.adt_kind() {
-            AdtKind::Enum => {
-                let layout = tyctx
-                    .layout_of(rustc_middle::ty::ParamEnvAnd {
-                        param_env: ParamEnv::reveal_all(),
-                        value: scalar_type,
-                    })
-                    .expect("Could not get type layout!");
-                let (disrc_type, _) = crate::utilis::adt::enum_tag_info(&layout.layout, tyctx);
-                let enum_dotnet = tpe.as_dotnet().expect("Enum scalar not an ADT!");
-
-                CILNode::TemporaryLocal(Box::new((
-                    tpe,
-                    [CILRoot::SetField {
-                        addr: CILNode::LoadAddresOfTMPLocal,
-                        value: crate::casts::int_to_int(
-                            Type::I64,
-                            disrc_type.clone(),
-                            CILNode::LdcI64(scalar_u128 as u64 as i64),
-                        ),
-                        desc: crate::cil::FieldDescriptor::new(
-                            enum_dotnet.clone(),
-                            disrc_type,
-                            "value__".into(),
-                        ),
-                    }]
-                    .into(),
-                    CILNode::LoadTMPLocal,
-                )))
-            }
-            AdtKind::Struct => {
-                let low = (scalar_u128 & u128::from(u64::MAX)) as u64;
-                let high = (scalar_u128 >> 64) as u64;
-                let ctor_sig = crate::function_sig::FnSig::new(
-                    &[
-                        Type::ManagedReference(Type::U128.into()),
-                        Type::U64,
-                        Type::U64,
-                    ],
-                    &Type::Void,
-                );
-                let value = CILNode::NewObj {
-                    site: CallSite::boxed(
-                        Some(DotnetTypeRef::int_128()),
-                        ".ctor".into(),
-                        ctor_sig,
-                        false,
-                    ),
-                    args: [conv_u64!(ldc_u64!(high)), conv_u64!(ldc_u64!(low))].into(),
-                };
-
-                CILNode::TemporaryLocal(Box::new((
-                    Type::I128,
-                    [CILRoot::SetTMPLocal { value }].into(),
-                    CILNode::LdObj {
-                        ptr: CILNode::LoadAddresOfTMPLocal.into(),
-                        obj: tpe.into(),
-                    },
-                )))
-            }
-            _ => todo!("Can't load const ADT scalars of type {scalar_type:?}"),
+        TyKind::Adt(_, _subst) => CILNode::LdObj {
+            ptr: Box::new(CILNode::PointerToConstValue(scalar_u128)),
+            obj: tpe.into(),
         },
         TyKind::Char => CILNode::LdcU32(scalar_u128 as u32),
         _ => todo!("Can't load scalar constants of type {scalar_type:?}!"),

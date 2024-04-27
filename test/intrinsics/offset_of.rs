@@ -13,7 +13,7 @@ struct Quad<T:Default>{
 }
 fn main(){
    
-    test_eq!(offset_of!(Tuple,0),64);
+    test_eq!(black_box(offset_of!(Tuple,0)),64);
     test_eq!(offset_of!(Tuple,1),0);
     test_eq!(offset_of!(Tuple,2),72);
     test_eq!(offset_of!(Tuple,3),80);

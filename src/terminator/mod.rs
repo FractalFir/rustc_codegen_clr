@@ -121,17 +121,17 @@ pub fn handle_terminator<'ctx>(
                                 place_set(
                                     destination,
                                     tyctx,
-                                    CILNode::CallI {
-                                        sig: sig.clone(),
-                                        fn_ptr: Box::new(crate::place::place_get(
+                                    CILNode::CallI(Box::new((
+                                        sig.clone(),
+                                        crate::place::place_get(
                                             operand,
                                             tyctx,
                                             method,
                                             method_instance,
                                             type_cache,
-                                        )),
-                                        args: arg_operands.into(),
-                                    },
+                                        ),
+                                        arg_operands.into(),
+                                    ))),
                                     method,
                                     method_instance,
                                     type_cache,

@@ -408,7 +408,7 @@ pub fn call<'tyctx>(
             span,
         );
     }
-    
+
     // Checks if function is "magic"
     if function_name.contains(CTOR_FN_NAME) {
         assert!(

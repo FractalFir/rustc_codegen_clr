@@ -305,6 +305,9 @@ impl AssemblyExporter for CExporter {
 }
 fn node_string(tree: &CILNode, method: &Method) -> String {
     match tree {
+        CILNode::PointerToConstValue(value) => {
+            panic!("ERROR: const values must be allocated before CIL export phase.")
+        }
         CILNode::LDLoc(loc) => format!("L{loc}"),
         CILNode::LDArg(arg) => format!("A{arg}"),
         CILNode::LDLocA(arg) => format!("((uintptr_t)(void*)&L{arg})"),
@@ -591,11 +594,7 @@ fn node_string(tree: &CILNode, method: &Method) -> String {
             format!("ctor_{tpe_name}{inputs}")
         }
         CILNode::LdStr(string) => format!("{string:?}"),
-        CILNode::CallI {
-            sig: _,
-            fn_ptr: _,
-            args: _,
-        } => todo!(),
+        CILNode::CallI(sig_ptr_args) => todo!(),
         CILNode::LDLen { arr } => todo!("arr:{arr:?}"),
         CILNode::LDElelemRef { arr, idx } => todo!("arr:{arr:?} idx:{idx:?}"),
     }

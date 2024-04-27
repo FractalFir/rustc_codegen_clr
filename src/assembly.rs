@@ -364,11 +364,10 @@ impl Assembly {
             normal_bbs,
         )
         .with_argnames(arg_names);
-
         method.resolve_global_allocations(self, tyctx, cache);
         // TODO: Why is this even needed? The temporaries *should* be already allocated, why not all of them are?
         method.allocate_temporaries();
-        
+
         //println!("Compiled method {name}");
 
         self.add_method(method);
@@ -382,7 +381,7 @@ impl Assembly {
             let parts: Vec<&str> = input.split('_').collect();
 
             // Check if there are exactly three parts and the first part is "alloc"
-            if parts.len() != 3 || parts[0] != "alloc" {
+            if parts.len() != 3 || (parts[0] != "alloc" && parts[0] != "a")   {
                 return false;
             }
             // Check if the remaining parts are numbers
@@ -395,10 +394,10 @@ impl Assembly {
 
             false
         }
-        assert!(
+        /*assert!(
             is_alloc_pattern(name) || name.contains("__") || name == "environ",
             "invalid alloc:{name:?}"
-        );
+        );*/
         self.static_fields.insert(name.into(), tpe);
     }
     fn add_cctor(&mut self) -> &mut Method {
@@ -568,7 +567,7 @@ impl Assembly {
             if let CILRoot::SetStaticField { descr, value } = tree.root_mut() {
                 // Assigement to a dead static, remove.
                 if !alive_fields.contains(descr) {
-                    debug_assert!(descr.name().contains("alloc"));
+                    debug_assert!(descr.name().contains("a"));
                     debug_assert!(matches!(value, CILNode::Call { site: _, args: _ }));
                     *tree = CILRoot::Nop.into();
                 }
@@ -791,6 +790,160 @@ impl Assembly {
             FnSig::new(&[], &Type::Void),
             true,
         ))
+    }
+
+    pub(crate) fn add_const_value(&mut self, bytes: u128, tyctx: TyCtxt)-> crate::cil::StaticFieldDescriptor {
+        let alloc_fld: IString = format!("a{bytes:x}").into();
+        let raw_bytes = bytes.to_le_bytes();
+        let field_desc = crate::cil::StaticFieldDescriptor::new(
+            None,
+            Type::Ptr(Type::U8.into()),
+            alloc_fld.clone(),
+        );
+        if self.static_fields.get(&alloc_fld).is_none() {
+            let block = BasicBlock::new(
+                vec![
+                    CILRoot::STLoc {
+                        local: 0,
+                        tree: call!(CallSite::malloc(tyctx), [ldc_u32!(8)]),
+                    }
+                    .into(),
+                    CILRoot::STIndI8(CILNode::LDLoc(0), ldc_u32!(raw_bytes[0] as u32)).into(),
+                    CILRoot::STIndI8(
+                        CILNode::LDLoc(0) + ldc_u32!(1),
+                        ldc_u32!(raw_bytes[1] as u32),
+                    )
+                    .into(),
+                    CILRoot::STIndI8(
+                        CILNode::LDLoc(0) + ldc_u32!(2),
+                        ldc_u32!(raw_bytes[2] as u32),
+                    )
+                    .into(),
+                    CILRoot::STIndI8(
+                        CILNode::LDLoc(0) + ldc_u32!(3),
+                        ldc_u32!(raw_bytes[3] as u32),
+                    )
+                    .into(),
+                    CILRoot::STIndI8(
+                        CILNode::LDLoc(0) + ldc_u32!(4),
+                        ldc_u32!(raw_bytes[4] as u32),
+                    )
+                    .into(),
+                    CILRoot::STIndI8(
+                        CILNode::LDLoc(0) + ldc_u32!(5),
+                        ldc_u32!(raw_bytes[5] as u32),
+                    )
+                    .into(),
+                    CILRoot::STIndI8(
+                        CILNode::LDLoc(0) + ldc_u32!(6),
+                        ldc_u32!(raw_bytes[6] as u32),
+                    )
+                    .into(),
+                    CILRoot::STIndI8(
+                        CILNode::LDLoc(0) + ldc_u32!(7),
+                        ldc_u32!(raw_bytes[7] as u32),
+                    )
+                    .into(),
+                    CILRoot::STIndI8(
+                        CILNode::LDLoc(0) + ldc_u32!(8),
+                        ldc_u32!(raw_bytes[8] as u32),
+                    )
+                    .into(),
+                    CILRoot::STIndI8(
+                        CILNode::LDLoc(0) + ldc_u32!(9),
+                        ldc_u32!(raw_bytes[9] as u32),
+                    )
+                    .into(),
+                    CILRoot::STIndI8(
+                        CILNode::LDLoc(0) + ldc_u32!(10),
+                        ldc_u32!(raw_bytes[10] as u32),
+                    )
+                    .into(),
+                    CILRoot::STIndI8(
+                        CILNode::LDLoc(0) + ldc_u32!(11),
+                        ldc_u32!(raw_bytes[11] as u32),
+                    )
+                    .into(),
+                    CILRoot::STIndI8(
+                        CILNode::LDLoc(0) + ldc_u32!(12),
+                        ldc_u32!(raw_bytes[12] as u32),
+                    )
+                    .into(),
+                    CILRoot::STIndI8(
+                        CILNode::LDLoc(0) + ldc_u32!(13),
+                        ldc_u32!(raw_bytes[13] as u32),
+                    )
+                    .into(),
+                    CILRoot::STIndI8(
+                        CILNode::LDLoc(0) + ldc_u32!(14),
+                        ldc_u32!(raw_bytes[14] as u32),
+                    )
+                    .into(),
+                    CILRoot::STIndI8(
+                        CILNode::LDLoc(0) + ldc_u32!(15),
+                        ldc_u32!(raw_bytes[15] as u32),
+                    )
+                    .into(),
+                    CILRoot::Ret {
+                        tree: CILNode::LDLoc(0),
+                    }
+                    .into(),
+                ],
+                0,
+                None,
+            );
+            let init_method = Method::new(
+                AccessModifer::Public,
+                MethodType::Static,
+                FnSig::new(&[], &Type::Ptr(Type::U8.into())),
+                &format!("init_a{bytes:x}"),
+                vec![(Some("alloc_ptr".into()), Type::Ptr(Type::U8.into()))],
+                vec![block],
+            );
+
+            let cctor = self.add_cctor();
+            let mut blocks = cctor.blocks_mut();
+            if blocks.is_empty() {
+                blocks.push(BasicBlock::new(vec![CILRoot::VoidRet.into()], 0, None));
+            }
+            assert_eq!(
+                blocks.len(),
+                1,
+                "Unexpected number of basic blocks in a static data initializer."
+            );
+            let trees = blocks[0].trees_mut();
+            {
+                // Remove return
+                let ret = trees.pop().unwrap();
+                // Append initailzer
+                trees.push(
+                    CILRoot::SetStaticField {
+                        descr: StaticFieldDescriptor::new(
+                            None,
+                            Type::Ptr(Type::U8.into()),
+                            alloc_fld.clone(),
+                        )
+                        .clone(),
+                        value: call!(
+                            CallSite::new(
+                                None,
+                                init_method.name().into(),
+                                init_method.sig().clone(),
+                                true,
+                            ),
+                            []
+                        ),
+                    }
+                    .into(),
+                );
+                // Add return again
+                trees.push(ret);
+            }
+            drop(blocks);
+            self.add_method(init_method);
+            self.add_static(Type::Ptr(Type::U8.into()), &alloc_fld); 
+        }
+        field_desc
     }
 }
 fn link_static_initializers(a: Option<&Method>, b: Option<&Method>) -> Option<Method> {

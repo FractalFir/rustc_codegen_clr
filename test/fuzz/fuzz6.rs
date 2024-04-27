@@ -1888,6 +1888,7 @@ _7.1 = 72025999414116491051161218712036640953_u128 as u8;
 _23 = '\u{74b28}';
 _22.0.0 = (-144199373_i32) as u128;
 _29 = _12 | _12;
+
 Call(_9 = fn7(_3, _2, _2, _17, _2, _1, _2, _7.3, _7.3), ReturnTo(bb7), UnwindUnreachable())
 }
 bb7 = {
@@ -2100,6 +2101,10 @@ Return()
 }
 
 }
+}
+pub fn fn7_1(mut _1: bool,mut _2: ((u64, f32), u8, f32, [bool; 2]),mut _3: ((u64, f32), u8, f32, [bool; 2]),mut _4: bool,mut _5: ((u64, f32), u8, f32, [bool; 2]),mut _6: bool,mut _7: ((u64, f32), u8, f32, [bool; 2]),mut _8: [bool; 2],mut _9: [bool; 2]) -> (u64, f32){
+	println!("\n\none:{_1:?} two:{_2:?} three:{_3:?} four:{_4:?} five:{_5:?} six:{_6:?} seven:{_7:?} eight:{_8:?} nine:{_9:?}\n\n");
+	fn7(_1,_2,_3,_4,_5,_6,_7,_8,_9)
 }
 #[custom_mir(dialect = "runtime", phase = "initial")]
 pub fn fn7(mut _1: bool,mut _2: ((u64, f32), u8, f32, [bool; 2]),mut _3: ((u64, f32), u8, f32, [bool; 2]),mut _4: bool,mut _5: ((u64, f32), u8, f32, [bool; 2]),mut _6: bool,mut _7: ((u64, f32), u8, f32, [bool; 2]),mut _8: [bool; 2],mut _9: [bool; 2]) -> (u64, f32) {
