@@ -331,22 +331,16 @@ pub fn op_cli(op: &crate::cil::CILOp, method: &Method) -> Cow<'static, str> {
         }
         CILOp::LdNull => "ldnull".into(), 
         CILOp::LdcF32(f32const) =>{
-            if f32const.is_finite() && format!("{f32const}").len() < 14{
-                format!("ldc.r4 {f32const}").into()
-            }
-            else{
+          
                 let const_literal = f32const.to_le_bytes();
                 format!("ldc.r4 ({:02x} {:02x} {:02x} {:02x})",const_literal[0],const_literal[1],const_literal[2],const_literal[3]).into()
-            }
+            
         }
         CILOp::LdcF64(f64const) => {
-            if f64const.is_finite() && format!("{f64const}").len() < 26{
-                format!("ldc.r8 {f64const}").into()
-            }
-            else{
+          
                 let const_literal = f64const.to_le_bytes();
                 format!("ldc.r8 ({:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x})",const_literal[0],const_literal[1],const_literal[2],const_literal[3],const_literal[4],const_literal[5],const_literal[6],const_literal[7]).into()
-            }
+            
         }
         //Debug
         CILOp::Comment(comment) => format!("//{comment}").into(),

@@ -2,7 +2,7 @@ use crate::{
     call,
     cil::CallSite,
     cil_tree::cil_node::CILNode,
-    conv_f32, conv_f64, conv_f64_un, conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16,
+    conv_f32, conv_f64, conv_f_un, conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16,
     conv_u32, conv_u64, conv_u8, conv_usize,
     function_sig::FnSig,
     r#type::{DotnetTypeRef, Type},
@@ -13,13 +13,10 @@ pub fn int_to_int(src: Type, target: Type, operand: CILNode) -> CILNode {
         return operand;
     }
     match (&src, &target) {
-        /*
-        (Type::DotnetType(tpe), Type::I128) | (Type::I128,Type::DotnetType(tpe))=>{
-            if Some("System.Runtime".into()) == tpe.asm() && tpe.name_path().contains("System.Int128"){
-                return vec![];
-            }
-            panic!();
-        }*/
+        // Unsinged casts are special
+        (Type::U32 | Type::U16 | Type::U8,Type::I64) => conv_i64!(conv_u64!(operand)),
+        (Type::U32 | Type::U16 | Type::U8 | Type::U64,Type::I32) => conv_i32!(conv_u32!(operand)),
+        //
         (Type::ISize, Type::I128) => call!(
             CallSite::new_extern(
                 DotnetTypeRef::int_128(),
@@ -397,11 +394,11 @@ pub fn int_to_float(src: Type, target: Type, parrent: CILNode) -> CILNode {
         todo!("Casting to 128 bit intiegers is not supported!")
     } else {
         match (&src, &target) {
-            (Type::U32 | Type::U64, Type::F32) => conv_f32!(conv_f64_un!(parrent)),
-            (Type::USize, Type::F32) => conv_f32!(conv_f64_un!(conv_u64!(parrent))),
+            (Type::U32 | Type::U64, Type::F32) => conv_f32!(conv_f_un!(parrent)),
+            (Type::USize, Type::F32) => conv_f32!(conv_f_un!(conv_u64!(parrent))),
             (_, Type::F32) => conv_f32!(parrent),
-            (Type::U32 | Type::U64, Type::F64) => conv_f64_un!(parrent),
-            (Type::USize, Type::F64) => conv_f64_un!(conv_u64!(parrent)),
+            (Type::U32 | Type::U64, Type::F64) => conv_f64!(conv_f_un!(parrent)),
+            (Type::USize, Type::F64) => conv_f64!(conv_f_un!(conv_u64!(parrent))),
             (_, Type::F64) => conv_f64!(parrent),
             _ => todo!("Can't  cast {src:?} to {target:?} yet!"),
         }

@@ -1139,7 +1139,7 @@ macro_rules! conv_f64 {
     };
 }
 #[macro_export]
-macro_rules! conv_f64_un {
+macro_rules! conv_f_un {
     ($a:expr) => {
         crate::cil_tree::cil_node::CILNode::ConvF64Un($a.into())
     };

@@ -381,7 +381,7 @@ impl Assembly {
             let parts: Vec<&str> = input.split('_').collect();
 
             // Check if there are exactly three parts and the first part is "alloc"
-            if parts.len() != 3 || (parts[0] != "alloc" && parts[0] != "a")   {
+            if parts.len() != 3 || (parts[0] != "alloc" && parts[0] != "a") {
                 return false;
             }
             // Check if the remaining parts are numbers
@@ -792,7 +792,11 @@ impl Assembly {
         ))
     }
 
-    pub(crate) fn add_const_value(&mut self, bytes: u128, tyctx: TyCtxt)-> crate::cil::StaticFieldDescriptor {
+    pub(crate) fn add_const_value(
+        &mut self,
+        bytes: u128,
+        tyctx: TyCtxt,
+    ) -> crate::cil::StaticFieldDescriptor {
         let alloc_fld: IString = format!("a{bytes:x}").into();
         let raw_bytes = bytes.to_le_bytes();
         let field_desc = crate::cil::StaticFieldDescriptor::new(
@@ -941,7 +945,7 @@ impl Assembly {
             }
             drop(blocks);
             self.add_method(init_method);
-            self.add_static(Type::Ptr(Type::U8.into()), &alloc_fld); 
+            self.add_static(Type::Ptr(Type::U8.into()), &alloc_fld);
         }
         field_desc
     }

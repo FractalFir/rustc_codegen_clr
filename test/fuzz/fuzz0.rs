@@ -1212,7 +1212,8 @@ Return()
 }
 #[custom_mir(dialect = "runtime", phase = "initial")]
 fn fn4(mut _1: i64,mut _2: i64,mut _3: i64,mut _4: i64,mut _5: f64,mut _6: i64,mut _7: isize,mut _8: i64,mut _9: i64,mut _10: i64,mut _11: i64,mut _12: i64,mut _13: i16,mut _14: i64,mut _15: i64) -> u128 {
-mir! {
+
+	mir! {
 type RET = u128;
 let _16: isize;
 let _17: bool;
@@ -1242,6 +1243,7 @@ let _40: isize;
 let _41: ();
 let _42: ();
 {
+
 _10 = !_11;
 _3 = 55_u8 as i64;
 _5 = 13907830427119554310_u64 as f64;
