@@ -786,16 +786,16 @@ compare_tests! {fuzz,fuzz7,stable}
 compare_tests! {fuzz,fuzz8,stable}
 compare_tests! {fuzz,fuzz9,stable}
 
-compare_tests! {fuzz,fuzz10,unstable}
-compare_tests! {fuzz,fuzz11,unstable}
-compare_tests! {fuzz,fuzz12,unstable}
+compare_tests! {fuzz,fuzz10,stable}
+compare_tests! {fuzz,fuzz11,stable}
+compare_tests! {fuzz,fuzz12,stable}
 compare_tests! {fuzz,fuzz13,stable}
 compare_tests! {fuzz,fuzz14,stable}
 compare_tests! {fuzz,fuzz15,stable}
 compare_tests! {fuzz,fuzz16,unstable}
 compare_tests! {fuzz,fuzz17,stable}
 compare_tests! {fuzz,fuzz18,stable}
-compare_tests! {fuzz,fuzz19,unstable}
+compare_tests! {fuzz,fuzz19,stable}
 
 compare_tests! {fuzz,fuzz20,stable}
 compare_tests! {fuzz,fuzz21,unstable}
@@ -810,21 +810,21 @@ compare_tests! {fuzz,fuzz29,unstable}
 
 compare_tests! {fuzz,fuzz30,stable}
 compare_tests! {fuzz,fuzz31,stable}
-compare_tests! {fuzz,fuzz32,unstable}
+compare_tests! {fuzz,fuzz32,stable}
 compare_tests! {fuzz,fuzz33,stable}
 compare_tests! {fuzz,fuzz34,unstable}
 compare_tests! {fuzz,fuzz35,stable}
 compare_tests! {fuzz,fuzz36,stable}
 compare_tests! {fuzz,fuzz37,stable}
 compare_tests! {fuzz,fuzz38,stable}
-compare_tests! {fuzz,fuzz39,unstable}
+compare_tests! {fuzz,fuzz39,stable}
 
 compare_tests! {fuzz,fuzz40,stable}
 compare_tests! {fuzz,fuzz41,stable}
 compare_tests! {fuzz,fuzz42,stable}
 compare_tests! {fuzz,fuzz43,stable}
 compare_tests! {fuzz,fuzz44,stable}
-compare_tests! {fuzz,fuzz45,unstable}
+compare_tests! {fuzz,fuzz45,stable}
 compare_tests! {fuzz,fuzz46,stable}
 compare_tests! {fuzz,fuzz47,unstable}
 compare_tests! {fuzz,fuzz48,stable}
@@ -854,7 +854,7 @@ compare_tests! {fuzz,fuzz69,stable}
 
 compare_tests! {fuzz,fuzz70,stable}
 compare_tests! {fuzz,fuzz71,stable}
-compare_tests! {fuzz,fuzz72,unstable}
+compare_tests! {fuzz,fuzz72,stable}
 compare_tests! {fuzz,fuzz73,stable}
 compare_tests! {fuzz,fuzz74,stable}
 compare_tests! {fuzz,fuzz75,unstable}
@@ -863,14 +863,14 @@ compare_tests! {fuzz,fuzz77,stable}
 compare_tests! {fuzz,fuzz78,stable}
 compare_tests! {fuzz,fuzz79,stable}
 
-compare_tests! {fuzz,fuzz80,unstable}
-compare_tests! {fuzz,fuzz81,unstable}
+compare_tests! {fuzz,fuzz80,stable}
+compare_tests! {fuzz,fuzz81,stable}
 compare_tests! {fuzz,fuzz82,stable}
-compare_tests! {fuzz,fuzz83,unstable}
+compare_tests! {fuzz,fuzz83,stable}
 compare_tests! {fuzz,fuzz84,unstable}
-compare_tests! {fuzz,fuzz85,unstable}
-compare_tests! {fuzz,fuzz86,unstable}
-compare_tests! {fuzz,fuzz87,unstable}
+compare_tests! {fuzz,fuzz85,stable}
+compare_tests! {fuzz,fuzz86,stable}
+compare_tests! {fuzz,fuzz87,stable}
 compare_tests! {fuzz,fuzz88,unstable}
 compare_tests! {fuzz,fuzz89,stable}
 
@@ -878,12 +878,12 @@ compare_tests! {fuzz,fuzz90,unstable}
 compare_tests! {fuzz,fuzz91,stable}
 compare_tests! {fuzz,fuzz92,stable}
 compare_tests! {fuzz,fuzz93,stable}
-compare_tests! {fuzz,fuzz94,unstable}
-compare_tests! {fuzz,fuzz95,unstable}
+compare_tests! {fuzz,fuzz94,stable}
+compare_tests! {fuzz,fuzz95,stable}
 compare_tests! {fuzz,fuzz96,stable}
-compare_tests! {fuzz,fuzz97,unstable}
+compare_tests! {fuzz,fuzz97,stable}
 compare_tests! {fuzz,fuzz98,stable}
-compare_tests! {fuzz,fuzz99,unstable}
+compare_tests! {fuzz,fuzz99,stable}
 compare_tests! {fuzz,fuzz100,unstable}
 
 run_test! {fuzz,fail0,stable}

@@ -14,8 +14,11 @@ pub fn int_to_int(src: Type, target: Type, operand: CILNode) -> CILNode {
     }
     match (&src, &target) {
         // Unsinged casts are special
-        (Type::U32 | Type::U16 | Type::U8,Type::I64) => conv_i64!(conv_u64!(operand)),
-        (Type::U32 | Type::U16 | Type::U8 | Type::U64,Type::I32) => conv_i32!(conv_u32!(operand)),
+        (Type::U32 | Type::U16 | Type::U8 | Type::U64 | Type::USize,Type::ISize) => conv_isize!(conv_usize!(operand)),
+        (Type::U32 | Type::U16 | Type::U8 | Type::U64 | Type::USize,Type::I64) => conv_i64!(conv_u64!(operand)),
+        (Type::U32 | Type::U16 | Type::U8 | Type::U64 | Type::USize,Type::I32) => conv_i32!(conv_u32!(operand)),
+        (Type::U32 | Type::U16 | Type::U8 | Type::U64 | Type::USize,Type::I16) => conv_i16!(conv_u16!(operand)),
+        (Type::U32 | Type::U16 | Type::U8 | Type::U64 | Type::USize,Type::I8) => conv_i8!(conv_u8!(operand)),
         //
         (Type::ISize, Type::I128) => call!(
             CallSite::new_extern(
