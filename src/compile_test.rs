@@ -800,13 +800,13 @@ compare_tests! {fuzz,fuzz19,stable}
 compare_tests! {fuzz,fuzz20,stable}
 compare_tests! {fuzz,fuzz21,unstable}
 compare_tests! {fuzz,fuzz22,stable}
-compare_tests! {fuzz,fuzz23,unstable}
+compare_tests! {fuzz,fuzz23,stable}
 compare_tests! {fuzz,fuzz24,stable}
 compare_tests! {fuzz,fuzz25,stable}
 compare_tests! {fuzz,fuzz26,stable}
 compare_tests! {fuzz,fuzz27,stable}
 compare_tests! {fuzz,fuzz28,stable}
-compare_tests! {fuzz,fuzz29,unstable}
+compare_tests! {fuzz,fuzz29,stable}
 
 compare_tests! {fuzz,fuzz30,stable}
 compare_tests! {fuzz,fuzz31,stable}
@@ -836,7 +836,7 @@ compare_tests! {fuzz,fuzz52,unstable}
 compare_tests! {fuzz,fuzz53,stable}
 compare_tests! {fuzz,fuzz54,unstable}
 compare_tests! {fuzz,fuzz55,stable}
-compare_tests! {fuzz,fuzz56,unstable}
+compare_tests! {fuzz,fuzz56,stable}
 compare_tests! {fuzz,fuzz57,stable}
 compare_tests! {fuzz,fuzz58,unstable}
 compare_tests! {fuzz,fuzz59,stable}
@@ -845,11 +845,11 @@ compare_tests! {fuzz,fuzz60,stable}
 compare_tests! {fuzz,fuzz61,stable}
 compare_tests! {fuzz,fuzz62,stable}
 compare_tests! {fuzz,fuzz63,unstable}
-compare_tests! {fuzz,fuzz64,unstable}
+compare_tests! {fuzz,fuzz64,stable}
 compare_tests! {fuzz,fuzz65,stable}
 compare_tests! {fuzz,fuzz66,stable}
 compare_tests! {fuzz,fuzz67,stable}
-compare_tests! {fuzz,fuzz68,unstable}
+compare_tests! {fuzz,fuzz68,stable}
 compare_tests! {fuzz,fuzz69,stable}
 
 compare_tests! {fuzz,fuzz70,stable}
@@ -867,14 +867,14 @@ compare_tests! {fuzz,fuzz80,stable}
 compare_tests! {fuzz,fuzz81,stable}
 compare_tests! {fuzz,fuzz82,stable}
 compare_tests! {fuzz,fuzz83,stable}
-compare_tests! {fuzz,fuzz84,unstable}
+compare_tests! {fuzz,fuzz84,stable}
 compare_tests! {fuzz,fuzz85,stable}
 compare_tests! {fuzz,fuzz86,stable}
 compare_tests! {fuzz,fuzz87,stable}
 compare_tests! {fuzz,fuzz88,unstable}
 compare_tests! {fuzz,fuzz89,stable}
 
-compare_tests! {fuzz,fuzz90,unstable}
+compare_tests! {fuzz,fuzz90,stable}
 compare_tests! {fuzz,fuzz91,stable}
 compare_tests! {fuzz,fuzz92,stable}
 compare_tests! {fuzz,fuzz93,stable}

@@ -14,15 +14,24 @@ fn main() {
     std::hint::black_box(fn11([false; 5], [false; 5], 'b', [0; 5]));
     std::hint::black_box(fn2());
     std::hint::black_box(fnkt());
+
+    std::hint::black_box(bob(1, 2));
 }
 
-fn fnkt(
-  
-) -> isize {
-
+fn fnkt() -> isize {
     let mut RET: isize = 0;
     let _11 = std::hint::black_box(std::hint::black_box(2206060000_u32)) as isize;
-    dump_var(1_usize,  11_usize, _11, 32_usize, (), 0xFF_usize, (), 0xFF_usize, ());
+    dump_var(
+        1_usize,
+        11_usize,
+        _11,
+        32_usize,
+        (),
+        0xFF_usize,
+        (),
+        0xFF_usize,
+        (),
+    );
     RET
 }
 
@@ -374,15 +383,22 @@ impl<
         printf(")\0".as_ptr() as *const c_char);
     }
 }
-impl<A:PrintFDebug> PrintFDebug for (A,){
-    unsafe fn printf_debug(&self){
+impl<A: PrintFDebug> PrintFDebug for (A,) {
+    unsafe fn printf_debug(&self) {
         printf("(\0".as_ptr() as *const c_char);
         self.0.printf_debug();
         printf(",)\0".as_ptr() as *const c_char);
     }
 }
-impl PrintFDebug for usize{
-    unsafe fn printf_debug(&self){
-        printf("%lu\0".as_ptr() as *const c_char,*self as usize);
+impl PrintFDebug for usize {
+    unsafe fn printf_debug(&self) {
+        printf("%lu\0".as_ptr() as *const c_char, *self as usize);
     }
-} 
+}
+
+fn bob(mut _1: isize, mut _2: i8){
+    let b = std::hint::black_box(-9.000000_f32) as usize;
+    dump_var(0xFF_usize, 1_usize, (), 2_usize, (b),3_usize, (), 0xFF_usize, ());
+    
+   
+}

@@ -1,5 +1,5 @@
 use crate::{
-    add_method_from_trees, assembly::Assembly, basic_block::BasicBlock, call, cil::CallSite, cil_tree::{cil_node::CILNode, cil_root::CILRoot}, conv_f32, conv_f64, conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8, conv_usize, function_sig::FnSig, gt, ldc_i32, ldc_i64, ldc_u32, ldc_u64, lt, or, r#type::{DotnetTypeRef, Type}
+    add_method_from_trees, assembly::Assembly, basic_block::BasicBlock, call, cil::CallSite, cil_tree::{cil_node::CILNode, cil_root::CILRoot}, conv_f32, conv_f64, conv_f_un, conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8, conv_usize, function_sig::FnSig, gt, ldc_i32, ldc_i64, ldc_u32, ldc_u64, lt, or, r#type::{DotnetTypeRef, Type}
 };
 
 add_method_from_trees!(
@@ -231,7 +231,7 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: lt!(CILNode::LDArg(0), conv_f32!(call!(CallSite::new(Some(DotnetTypeRef::usize_type()),"get_MaxValue".into(),FnSig::new(&[],&Type::USize),true),[])))
+                    ops: lt!(CILNode::LDArg(0), conv_f32!(conv_f_un!(call!(CallSite::new(Some(DotnetTypeRef::usize_type()),"get_MaxValue".into(),FnSig::new(&[],&Type::USize),true),[]))))
                 }
                 .into(),
                 CILRoot::Ret {
@@ -278,7 +278,7 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: lt!(CILNode::LDArg(0), conv_f64!(call!(CallSite::new(Some(DotnetTypeRef::usize_type()),"get_MaxValue".into(),FnSig::new(&[],&Type::USize),true),[])))
+                    ops: lt!(CILNode::LDArg(0), conv_f64!(conv_f_un!(call!(CallSite::new(Some(DotnetTypeRef::usize_type()),"get_MaxValue".into(),FnSig::new(&[],&Type::USize),true),[]))))
                 }
                 .into(),
                 CILRoot::Ret {

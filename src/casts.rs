@@ -273,7 +273,7 @@ pub fn float_to_int(src: Type, target: Type, operand: CILNode) -> CILNode {
         },
         Type::USize => match src {
             //TODO: Check why this caused 
-            /*Type::F32 => call!(
+            Type::F32 => call!(
                 CallSite::builtin(
                     "cast_f32_usize".into(),
                     FnSig::new(&[Type::F32], &Type::USize),
@@ -289,9 +289,9 @@ pub fn float_to_int(src: Type, target: Type, operand: CILNode) -> CILNode {
                     true
                 ),
                 [operand]
-            ),*/
-            _=> to_int(target, operand),
-           // _ => panic!("Non-float type!"),
+            ),
+            //_=> to_int(target, operand),
+            _ => panic!("Non-float type!"),
         },
         Type::ISize => match src {
             Type::F32 => call!(
