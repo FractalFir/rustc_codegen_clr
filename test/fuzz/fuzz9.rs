@@ -428,15 +428,12 @@ _10 = 77_u8;
 _2 = '\u{32346}';
 _17 = RET as f32;
 _20 = !_11;
-Goto(bb5)
-/* 
 match _10 {
 0 => bb1,
 77 => bb5,
 _ => bb4
-}*/
 }
-/*
+}
 bb4 = {
 _5 = 1904_i16 >> _3;
 _1 = !true;
@@ -444,7 +441,7 @@ _17 = 353136643_i32 as f32;
 _11 = 34163_u16;
 RET = 139708253440881512949191485117737064051_i128;
 Goto(bb3)
-} */
+}
 bb5 = {
 _17 = _11 as f32;
 _21 = _17 as f64;
@@ -511,23 +508,17 @@ RET = -_8;
 _1 = true ^ true;
 _25.0 = [_5];
 _28.fld1 = _20 as usize;
-Goto(bb14)
-/*
 match _7 {
-
 0 => bb4,
 1 => bb8,
 2 => bb9,
 3 => bb10,
 4 => bb11,
 5 => bb12,
-
 8599598274528185267 => bb14,
 _ => bb13
 }
- */
 }
-/*
 bb8 = {
 _22.fld1 = _9 - _9;
 _17 = 2703716109_u32 as f32;
@@ -577,7 +568,6 @@ _24 = !_3;
 _25.1 = -(-1047728042_i32);
 Call(_25.0 = fn1(_10, _15, _24, _24, _3, _3, _3, _21, _8, _11, _11, _3, _10, _3), ReturnTo(bb6), UnwindUnreachable())
 }
-
 bb10 = {
 _5 = 1904_i16 >> _3;
 _1 = !true;
@@ -586,7 +576,6 @@ _11 = 34163_u16;
 RET = 139708253440881512949191485117737064051_i128;
 Goto(bb3)
 }
-
 bb11 = {
 _16 = _17 as i8;
 _16 = _4;
@@ -624,7 +613,6 @@ _13 = !9036636384959981161_u64;
 _14 = _4 as u128;
 Goto(bb2)
 }
- */
 bb14 = {
 _22 = Adt49 { fld0: _8,fld1: _9,fld2: _28.fld2,fld3: _21,fld4: _28.fld4 };
 _13 = _20 as u64;
@@ -641,9 +629,6 @@ bb17 = {
 Call(_34 = dump_var(0_usize, 29_usize, Move(_29), 4_usize, Move(_4), 35_usize, _35, 35_usize, _35), ReturnTo(bb18), UnwindUnreachable())
 }
 bb18 = {
-Call(_34 = dump_var(0_usize, 9_usize, Move(_9), 17_usize, Move(_17), 35_usize, _35, 35_usize, _35), ReturnTo(bb19), UnwindUnreachable())
-}
-bb19 = {
 Return()
 }
 
@@ -910,10 +895,6 @@ bb19 = {
 Call(_53 = dump_var(1_usize, 33_usize, Move(_33), 54_usize, _54, 54_usize, _54, 54_usize, _54), ReturnTo(bb20), UnwindUnreachable())
 }
 bb20 = {
-Call(_53 = dump_var(1_usize, 9_usize, Move(_9), 54_usize, _54, 54_usize, _54, 54_usize, _54), ReturnTo(bb21), UnwindUnreachable())
-}
-
-bb21 = {
 Return()
 }
 
@@ -4084,7 +4065,7 @@ pub fn main() {
 impl PrintFDebug for Adt42{
 	unsafe fn printf_debug(&self){
 	unsafe{printf("Adt42{ ".as_ptr()  as *const c_char)};
-	unsafe{printf("}".as_ptr() as *const c_char)};}
+	unsafe{printf("}\0".as_ptr() as *const c_char)};}
 }
 #[derive(Copy,Clone)]pub struct Adt42 {
 fld0: u64,
@@ -4092,49 +4073,49 @@ fld0: u64,
 impl PrintFDebug for Adt43{
 	unsafe fn printf_debug(&self){unsafe{printf("Adt43::\0".as_ptr()  as *const c_char)};match self{
 	Self::Variant0{fld0,fld1,fld2,fld3,fld4,fld5,fld6,fld7,}=>{
-unsafe{printf("Variant0{".as_ptr() as *const c_char)};
-		unsafe{printf("fld0:".as_ptr() as *const c_char)};
+unsafe{printf("Variant0{\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld0:\0".as_ptr() as *const c_char)};
 		fld0.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld1:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld1:\0".as_ptr() as *const c_char)};
 		fld1.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld2:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld2:\0".as_ptr() as *const c_char)};
 		fld2.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld3:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld3:\0".as_ptr() as *const c_char)};
 		fld3.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld4:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld4:\0".as_ptr() as *const c_char)};
 		fld4.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld5:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld5:\0".as_ptr() as *const c_char)};
 		fld5.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld6:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld6:\0".as_ptr() as *const c_char)};
 		fld6.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld7:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld7:\0".as_ptr() as *const c_char)};
 		fld7.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
 },
 	Self::Variant1{fld0,fld1,fld2,fld3,}=>{
-unsafe{printf("Variant1{".as_ptr() as *const c_char)};
-		unsafe{printf("fld0:".as_ptr() as *const c_char)};
+unsafe{printf("Variant1{\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld0:\0".as_ptr() as *const c_char)};
 		fld0.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld1:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld1:\0".as_ptr() as *const c_char)};
 		fld1.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld2:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld2:\0".as_ptr() as *const c_char)};
 		fld2.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld3:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld3:\0".as_ptr() as *const c_char)};
 		fld3.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
 },
 		}
-unsafe{printf("}".as_ptr() as *const c_char)};
+unsafe{printf("\0}".as_ptr() as *const c_char)};
 	}
 }
 #[derive(Copy,Clone)]pub enum Adt43 {
@@ -4159,43 +4140,43 @@ fld3: Adt42,
 impl PrintFDebug for Adt44{
 	unsafe fn printf_debug(&self){unsafe{printf("Adt44::\0".as_ptr()  as *const c_char)};match self{
 	Self::Variant0{fld0,fld1,fld2,fld3,fld4,fld5,fld6,}=>{
-unsafe{printf("Variant0{".as_ptr() as *const c_char)};
-		unsafe{printf("fld0:".as_ptr() as *const c_char)};
+unsafe{printf("Variant0{\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld0:\0".as_ptr() as *const c_char)};
 		fld0.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld1:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld1:\0".as_ptr() as *const c_char)};
 		fld1.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld2:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld2:\0".as_ptr() as *const c_char)};
 		fld2.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld3:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld3:\0".as_ptr() as *const c_char)};
 		fld3.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld4:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld4:\0".as_ptr() as *const c_char)};
 		fld4.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld5:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld5:\0".as_ptr() as *const c_char)};
 		fld5.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld6:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld6:\0".as_ptr() as *const c_char)};
 		fld6.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
 },
 	Self::Variant1{fld0,fld1,fld2,}=>{
-unsafe{printf("Variant1{".as_ptr() as *const c_char)};
-		unsafe{printf("fld0:".as_ptr() as *const c_char)};
+unsafe{printf("Variant1{\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld0:\0".as_ptr() as *const c_char)};
 		fld0.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld1:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld1:\0".as_ptr() as *const c_char)};
 		fld1.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld2:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld2:\0".as_ptr() as *const c_char)};
 		fld2.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
 },
 		}
-unsafe{printf("}".as_ptr() as *const c_char)};
+unsafe{printf("\0}".as_ptr() as *const c_char)};
 	}
 }
 #[derive(Copy,Clone)]pub enum Adt44 {
@@ -4218,37 +4199,37 @@ fld2: *mut u16,
 impl PrintFDebug for Adt45{
 	unsafe fn printf_debug(&self){unsafe{printf("Adt45::\0".as_ptr()  as *const c_char)};match self{
 	Self::Variant0{fld0,fld1,}=>{
-unsafe{printf("Variant0{".as_ptr() as *const c_char)};
-		unsafe{printf("fld0:".as_ptr() as *const c_char)};
+unsafe{printf("Variant0{\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld0:\0".as_ptr() as *const c_char)};
 		fld0.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld1:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld1:\0".as_ptr() as *const c_char)};
 		fld1.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
 },
 	Self::Variant1{fld0,fld1,fld2,}=>{
-unsafe{printf("Variant1{".as_ptr() as *const c_char)};
-		unsafe{printf("fld0:".as_ptr() as *const c_char)};
+unsafe{printf("Variant1{\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld0:\0".as_ptr() as *const c_char)};
 		fld0.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld1:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld1:\0".as_ptr() as *const c_char)};
 		fld1.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld2:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld2:\0".as_ptr() as *const c_char)};
 		fld2.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
 },
 	Self::Variant2{fld0,fld1,}=>{
-unsafe{printf("Variant2{".as_ptr() as *const c_char)};
-		unsafe{printf("fld0:".as_ptr() as *const c_char)};
+unsafe{printf("Variant2{\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld0:\0".as_ptr() as *const c_char)};
 		fld0.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld1:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld1:\0".as_ptr() as *const c_char)};
 		fld1.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
 },
 		}
-unsafe{printf("}".as_ptr() as *const c_char)};
+unsafe{printf("\0}".as_ptr() as *const c_char)};
 	}
 }
 #[derive(Copy,Clone)]pub enum Adt45 {
@@ -4271,91 +4252,91 @@ fld1: usize,
 impl PrintFDebug for Adt46{
 	unsafe fn printf_debug(&self){unsafe{printf("Adt46::\0".as_ptr()  as *const c_char)};match self{
 	Self::Variant0{fld0,fld1,fld2,fld3,fld4,fld5,fld6,}=>{
-unsafe{printf("Variant0{".as_ptr() as *const c_char)};
-		unsafe{printf("fld0:".as_ptr() as *const c_char)};
+unsafe{printf("Variant0{\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld0:\0".as_ptr() as *const c_char)};
 		fld0.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld1:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld1:\0".as_ptr() as *const c_char)};
 		fld1.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld2:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld2:\0".as_ptr() as *const c_char)};
 		fld2.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld3:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld3:\0".as_ptr() as *const c_char)};
 		fld3.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld4:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld4:\0".as_ptr() as *const c_char)};
 		fld4.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld5:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld5:\0".as_ptr() as *const c_char)};
 		fld5.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld6:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld6:\0".as_ptr() as *const c_char)};
 		fld6.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
 },
 	Self::Variant1{fld0,fld1,fld2,fld3,fld4,fld5,fld6,}=>{
-unsafe{printf("Variant1{".as_ptr() as *const c_char)};
-		unsafe{printf("fld0:".as_ptr() as *const c_char)};
+unsafe{printf("Variant1{\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld0:\0".as_ptr() as *const c_char)};
 		fld0.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld1:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld1:\0".as_ptr() as *const c_char)};
 		fld1.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld2:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld2:\0".as_ptr() as *const c_char)};
 		fld2.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld3:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld3:\0".as_ptr() as *const c_char)};
 		fld3.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld4:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld4:\0".as_ptr() as *const c_char)};
 		fld4.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld5:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld5:\0".as_ptr() as *const c_char)};
 		fld5.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld6:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld6:\0".as_ptr() as *const c_char)};
 		fld6.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
 },
 	Self::Variant2{fld0,fld1,}=>{
-unsafe{printf("Variant2{".as_ptr() as *const c_char)};
-		unsafe{printf("fld0:".as_ptr() as *const c_char)};
+unsafe{printf("Variant2{\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld0:\0".as_ptr() as *const c_char)};
 		fld0.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld1:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld1:\0".as_ptr() as *const c_char)};
 		fld1.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
 },
 	Self::Variant3{fld0,fld1,fld2,fld3,fld4,fld5,fld6,fld7,}=>{
-unsafe{printf("Variant3{".as_ptr() as *const c_char)};
-		unsafe{printf("fld0:".as_ptr() as *const c_char)};
+unsafe{printf("Variant3{\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld0:\0".as_ptr() as *const c_char)};
 		fld0.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld1:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld1:\0".as_ptr() as *const c_char)};
 		fld1.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld2:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld2:\0".as_ptr() as *const c_char)};
 		fld2.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld3:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld3:\0".as_ptr() as *const c_char)};
 		fld3.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld4:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld4:\0".as_ptr() as *const c_char)};
 		fld4.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld5:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld5:\0".as_ptr() as *const c_char)};
 		fld5.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld6:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld6:\0".as_ptr() as *const c_char)};
 		fld6.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld7:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld7:\0".as_ptr() as *const c_char)};
 		fld7.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
 },
 		}
-unsafe{printf("}".as_ptr() as *const c_char)};
+unsafe{printf("\0}".as_ptr() as *const c_char)};
 	}
 }
 #[derive(Copy,Clone)]pub enum Adt46 {
@@ -4398,34 +4379,34 @@ fld7: [isize; 3],
 impl PrintFDebug for Adt47{
 	unsafe fn printf_debug(&self){unsafe{printf("Adt47::\0".as_ptr()  as *const c_char)};match self{
 	Self::Variant0{fld0,fld1,fld2,}=>{
-unsafe{printf("Variant0{".as_ptr() as *const c_char)};
-		unsafe{printf("fld0:".as_ptr() as *const c_char)};
+unsafe{printf("Variant0{\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld0:\0".as_ptr() as *const c_char)};
 		fld0.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld1:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld1:\0".as_ptr() as *const c_char)};
 		fld1.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld2:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld2:\0".as_ptr() as *const c_char)};
 		fld2.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
 },
 	Self::Variant1{fld0,fld1,fld2,fld3,}=>{
-unsafe{printf("Variant1{".as_ptr() as *const c_char)};
-		unsafe{printf("fld0:".as_ptr() as *const c_char)};
+unsafe{printf("Variant1{\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld0:\0".as_ptr() as *const c_char)};
 		fld0.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld1:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld1:\0".as_ptr() as *const c_char)};
 		fld1.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld2:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld2:\0".as_ptr() as *const c_char)};
 		fld2.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld3:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld3:\0".as_ptr() as *const c_char)};
 		fld3.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
 },
 		}
-unsafe{printf("}".as_ptr() as *const c_char)};
+unsafe{printf("\0}".as_ptr() as *const c_char)};
 	}
 }
 #[derive(Copy,Clone)]pub enum Adt47 {
@@ -4445,28 +4426,28 @@ fld3: (*const i32, u16, [isize; 3], i8),
 impl PrintFDebug for Adt48{
 	unsafe fn printf_debug(&self){unsafe{printf("Adt48::\0".as_ptr()  as *const c_char)};match self{
 	Self::Variant0{fld0,fld1,}=>{
-unsafe{printf("Variant0{".as_ptr() as *const c_char)};
-		unsafe{printf("fld0:".as_ptr() as *const c_char)};
+unsafe{printf("Variant0{\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld0:\0".as_ptr() as *const c_char)};
 		fld0.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld1:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld1:\0".as_ptr() as *const c_char)};
 		fld1.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
 },
 	Self::Variant1{fld0,fld1,fld2,}=>{
-unsafe{printf("Variant1{".as_ptr() as *const c_char)};
-		unsafe{printf("fld0:".as_ptr() as *const c_char)};
+unsafe{printf("Variant1{\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld0:\0".as_ptr() as *const c_char)};
 		fld0.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld1:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld1:\0".as_ptr() as *const c_char)};
 		fld1.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld2:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld2:\0".as_ptr() as *const c_char)};
 		fld2.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
 },
 		}
-unsafe{printf("}".as_ptr() as *const c_char)};
+unsafe{printf("\0}".as_ptr() as *const c_char)};
 	}
 }
 #[derive(Copy,Clone)]pub enum Adt48 {
@@ -4484,7 +4465,7 @@ fld2: u32,
 impl PrintFDebug for Adt49{
 	unsafe fn printf_debug(&self){
 	unsafe{printf("Adt49{ ".as_ptr()  as *const c_char)};
-	unsafe{printf("}".as_ptr() as *const c_char)};}
+	unsafe{printf("}\0".as_ptr() as *const c_char)};}
 }
 #[derive(Copy,Clone)]pub struct Adt49 {
 fld0: i128,
@@ -4496,31 +4477,31 @@ fld4: [i16; 2],
 impl PrintFDebug for Adt50{
 	unsafe fn printf_debug(&self){unsafe{printf("Adt50::\0".as_ptr()  as *const c_char)};match self{
 	Self::Variant0{fld0,fld1,fld2,fld3,fld4,}=>{
-unsafe{printf("Variant0{".as_ptr() as *const c_char)};
-		unsafe{printf("fld0:".as_ptr() as *const c_char)};
+unsafe{printf("Variant0{\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld0:\0".as_ptr() as *const c_char)};
 		fld0.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld1:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld1:\0".as_ptr() as *const c_char)};
 		fld1.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld2:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld2:\0".as_ptr() as *const c_char)};
 		fld2.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld3:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld3:\0".as_ptr() as *const c_char)};
 		fld3.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld4:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld4:\0".as_ptr() as *const c_char)};
 		fld4.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
 },
 	Self::Variant1{fld0,}=>{
-unsafe{printf("Variant1{".as_ptr() as *const c_char)};
-		unsafe{printf("fld0:".as_ptr() as *const c_char)};
+unsafe{printf("Variant1{\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld0:\0".as_ptr() as *const c_char)};
 		fld0.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
 },
 		}
-unsafe{printf("}".as_ptr() as *const c_char)};
+unsafe{printf("\0}".as_ptr() as *const c_char)};
 	}
 }
 #[derive(Copy,Clone)]pub enum Adt50 {
@@ -4539,70 +4520,70 @@ fld0: u32,
 impl PrintFDebug for Adt51{
 	unsafe fn printf_debug(&self){unsafe{printf("Adt51::\0".as_ptr()  as *const c_char)};match self{
 	Self::Variant0{fld0,fld1,fld2,fld3,fld4,fld5,}=>{
-unsafe{printf("Variant0{".as_ptr() as *const c_char)};
-		unsafe{printf("fld0:".as_ptr() as *const c_char)};
+unsafe{printf("Variant0{\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld0:\0".as_ptr() as *const c_char)};
 		fld0.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld1:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld1:\0".as_ptr() as *const c_char)};
 		fld1.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld2:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld2:\0".as_ptr() as *const c_char)};
 		fld2.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld3:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld3:\0".as_ptr() as *const c_char)};
 		fld3.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld4:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld4:\0".as_ptr() as *const c_char)};
 		fld4.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld5:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld5:\0".as_ptr() as *const c_char)};
 		fld5.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
 },
 	Self::Variant1{fld0,fld1,fld2,fld3,}=>{
-unsafe{printf("Variant1{".as_ptr() as *const c_char)};
-		unsafe{printf("fld0:".as_ptr() as *const c_char)};
+unsafe{printf("Variant1{\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld0:\0".as_ptr() as *const c_char)};
 		fld0.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld1:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld1:\0".as_ptr() as *const c_char)};
 		fld1.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld2:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld2:\0".as_ptr() as *const c_char)};
 		fld2.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld3:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld3:\0".as_ptr() as *const c_char)};
 		fld3.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
 },
 	Self::Variant2{fld0,fld1,fld2,fld3,fld4,fld5,fld6,fld7,}=>{
-unsafe{printf("Variant2{".as_ptr() as *const c_char)};
-		unsafe{printf("fld0:".as_ptr() as *const c_char)};
+unsafe{printf("Variant2{\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld0:\0".as_ptr() as *const c_char)};
 		fld0.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld1:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld1:\0".as_ptr() as *const c_char)};
 		fld1.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld2:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld2:\0".as_ptr() as *const c_char)};
 		fld2.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld3:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld3:\0".as_ptr() as *const c_char)};
 		fld3.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld4:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld4:\0".as_ptr() as *const c_char)};
 		fld4.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld5:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld5:\0".as_ptr() as *const c_char)};
 		fld5.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld6:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld6:\0".as_ptr() as *const c_char)};
 		fld6.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld7:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld7:\0".as_ptr() as *const c_char)};
 		fld7.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
 },
 		}
-unsafe{printf("}".as_ptr() as *const c_char)};
+unsafe{printf("\0}".as_ptr() as *const c_char)};
 	}
 }
 #[derive(Copy,Clone)]pub enum Adt51 {
@@ -4636,43 +4617,43 @@ fld7: *const *mut u128,
 impl PrintFDebug for Adt52{
 	unsafe fn printf_debug(&self){unsafe{printf("Adt52::\0".as_ptr()  as *const c_char)};match self{
 	Self::Variant0{fld0,fld1,fld2,fld3,fld4,}=>{
-unsafe{printf("Variant0{".as_ptr() as *const c_char)};
-		unsafe{printf("fld0:".as_ptr() as *const c_char)};
+unsafe{printf("Variant0{\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld0:\0".as_ptr() as *const c_char)};
 		fld0.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld1:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld1:\0".as_ptr() as *const c_char)};
 		fld1.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld2:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld2:\0".as_ptr() as *const c_char)};
 		fld2.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld3:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld3:\0".as_ptr() as *const c_char)};
 		fld3.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld4:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld4:\0".as_ptr() as *const c_char)};
 		fld4.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
 },
 	Self::Variant1{fld0,fld1,}=>{
-unsafe{printf("Variant1{".as_ptr() as *const c_char)};
-		unsafe{printf("fld0:".as_ptr() as *const c_char)};
+unsafe{printf("Variant1{\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld0:\0".as_ptr() as *const c_char)};
 		fld0.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld1:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld1:\0".as_ptr() as *const c_char)};
 		fld1.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
 },
 	Self::Variant2{fld0,fld1,}=>{
-unsafe{printf("Variant2{".as_ptr() as *const c_char)};
-		unsafe{printf("fld0:".as_ptr() as *const c_char)};
+unsafe{printf("Variant2{\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld0:\0".as_ptr() as *const c_char)};
 		fld0.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld1:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld1:\0".as_ptr() as *const c_char)};
 		fld1.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
 },
 		}
-unsafe{printf("}".as_ptr() as *const c_char)};
+unsafe{printf("\0}".as_ptr() as *const c_char)};
 	}
 }
 #[derive(Copy,Clone)]pub enum Adt52 {
@@ -4697,25 +4678,25 @@ fld1: Adt50,
 impl PrintFDebug for Adt53{
 	unsafe fn printf_debug(&self){unsafe{printf("Adt53::\0".as_ptr()  as *const c_char)};match self{
 	Self::Variant0{fld0,fld1,fld2,}=>{
-unsafe{printf("Variant0{".as_ptr() as *const c_char)};
-		unsafe{printf("fld0:".as_ptr() as *const c_char)};
+unsafe{printf("Variant0{\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld0:\0".as_ptr() as *const c_char)};
 		fld0.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld1:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld1:\0".as_ptr() as *const c_char)};
 		fld1.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld2:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld2:\0".as_ptr() as *const c_char)};
 		fld2.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
 },
 	Self::Variant1{fld0,}=>{
-unsafe{printf("Variant1{".as_ptr() as *const c_char)};
-		unsafe{printf("fld0:".as_ptr() as *const c_char)};
+unsafe{printf("Variant1{\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld0:\0".as_ptr() as *const c_char)};
 		fld0.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
 },
 		}
-unsafe{printf("}".as_ptr() as *const c_char)};
+unsafe{printf("\0}".as_ptr() as *const c_char)};
 	}
 }
 #[derive(Copy,Clone)]pub enum Adt53 {
@@ -4732,61 +4713,61 @@ fld0: (*const i32, u16, [isize; 3], i8),
 impl PrintFDebug for Adt54{
 	unsafe fn printf_debug(&self){unsafe{printf("Adt54::\0".as_ptr()  as *const c_char)};match self{
 	Self::Variant0{fld0,}=>{
-unsafe{printf("Variant0{".as_ptr() as *const c_char)};
-		unsafe{printf("fld0:".as_ptr() as *const c_char)};
+unsafe{printf("Variant0{\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld0:\0".as_ptr() as *const c_char)};
 		fld0.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
 },
 	Self::Variant1{fld0,fld1,fld2,fld3,fld4,}=>{
-unsafe{printf("Variant1{".as_ptr() as *const c_char)};
-		unsafe{printf("fld0:".as_ptr() as *const c_char)};
+unsafe{printf("Variant1{\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld0:\0".as_ptr() as *const c_char)};
 		fld0.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld1:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld1:\0".as_ptr() as *const c_char)};
 		fld1.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld2:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld2:\0".as_ptr() as *const c_char)};
 		fld2.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld3:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld3:\0".as_ptr() as *const c_char)};
 		fld3.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld4:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld4:\0".as_ptr() as *const c_char)};
 		fld4.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
 },
 	Self::Variant2{fld0,}=>{
-unsafe{printf("Variant2{".as_ptr() as *const c_char)};
-		unsafe{printf("fld0:".as_ptr() as *const c_char)};
+unsafe{printf("Variant2{\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld0:\0".as_ptr() as *const c_char)};
 		fld0.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
 },
 	Self::Variant3{fld0,fld1,fld2,fld3,fld4,fld5,fld6,}=>{
-unsafe{printf("Variant3{".as_ptr() as *const c_char)};
-		unsafe{printf("fld0:".as_ptr() as *const c_char)};
+unsafe{printf("Variant3{\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld0:\0".as_ptr() as *const c_char)};
 		fld0.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld1:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld1:\0".as_ptr() as *const c_char)};
 		fld1.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld2:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld2:\0".as_ptr() as *const c_char)};
 		fld2.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld3:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld3:\0".as_ptr() as *const c_char)};
 		fld3.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld4:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld4:\0".as_ptr() as *const c_char)};
 		fld4.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld5:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld5:\0".as_ptr() as *const c_char)};
 		fld5.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld6:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld6:\0".as_ptr() as *const c_char)};
 		fld6.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
 },
 		}
-unsafe{printf("}".as_ptr() as *const c_char)};
+unsafe{printf("\0}".as_ptr() as *const c_char)};
 	}
 }
 #[derive(Copy,Clone)]pub enum Adt54 {
@@ -4819,43 +4800,43 @@ fld6: Adt53,
 impl PrintFDebug for Adt55{
 	unsafe fn printf_debug(&self){unsafe{printf("Adt55::\0".as_ptr()  as *const c_char)};match self{
 	Self::Variant0{fld0,fld1,fld2,fld3,fld4,}=>{
-unsafe{printf("Variant0{".as_ptr() as *const c_char)};
-		unsafe{printf("fld0:".as_ptr() as *const c_char)};
+unsafe{printf("Variant0{\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld0:\0".as_ptr() as *const c_char)};
 		fld0.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld1:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld1:\0".as_ptr() as *const c_char)};
 		fld1.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld2:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld2:\0".as_ptr() as *const c_char)};
 		fld2.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld3:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld3:\0".as_ptr() as *const c_char)};
 		fld3.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld4:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld4:\0".as_ptr() as *const c_char)};
 		fld4.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
 },
 	Self::Variant1{fld0,fld1,fld2,fld3,fld4,}=>{
-unsafe{printf("Variant1{".as_ptr() as *const c_char)};
-		unsafe{printf("fld0:".as_ptr() as *const c_char)};
+unsafe{printf("Variant1{\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld0:\0".as_ptr() as *const c_char)};
 		fld0.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld1:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld1:\0".as_ptr() as *const c_char)};
 		fld1.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld2:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld2:\0".as_ptr() as *const c_char)};
 		fld2.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld3:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld3:\0".as_ptr() as *const c_char)};
 		fld3.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld4:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld4:\0".as_ptr() as *const c_char)};
 		fld4.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
 },
 		}
-unsafe{printf("}".as_ptr() as *const c_char)};
+unsafe{printf("\0}".as_ptr() as *const c_char)};
 	}
 }
 #[derive(Copy,Clone)]pub enum Adt55 {
@@ -4878,40 +4859,40 @@ fld4: u8,
 impl PrintFDebug for Adt56{
 	unsafe fn printf_debug(&self){unsafe{printf("Adt56::\0".as_ptr()  as *const c_char)};match self{
 	Self::Variant0{fld0,fld1,fld2,fld3,fld4,}=>{
-unsafe{printf("Variant0{".as_ptr() as *const c_char)};
-		unsafe{printf("fld0:".as_ptr() as *const c_char)};
+unsafe{printf("Variant0{\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld0:\0".as_ptr() as *const c_char)};
 		fld0.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld1:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld1:\0".as_ptr() as *const c_char)};
 		fld1.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld2:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld2:\0".as_ptr() as *const c_char)};
 		fld2.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld3:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld3:\0".as_ptr() as *const c_char)};
 		fld3.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld4:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld4:\0".as_ptr() as *const c_char)};
 		fld4.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
 },
 	Self::Variant1{fld0,fld1,fld2,fld3,}=>{
-unsafe{printf("Variant1{".as_ptr() as *const c_char)};
-		unsafe{printf("fld0:".as_ptr() as *const c_char)};
+unsafe{printf("Variant1{\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld0:\0".as_ptr() as *const c_char)};
 		fld0.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld1:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld1:\0".as_ptr() as *const c_char)};
 		fld1.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld2:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld2:\0".as_ptr() as *const c_char)};
 		fld2.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld3:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld3:\0".as_ptr() as *const c_char)};
 		fld3.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
 },
 		}
-unsafe{printf("}".as_ptr() as *const c_char)};
+unsafe{printf("\0}".as_ptr() as *const c_char)};
 	}
 }
 #[derive(Copy,Clone)]pub enum Adt56 {
@@ -4933,79 +4914,79 @@ fld3: Adt51,
 impl PrintFDebug for Adt57{
 	unsafe fn printf_debug(&self){unsafe{printf("Adt57::\0".as_ptr()  as *const c_char)};match self{
 	Self::Variant0{fld0,fld1,fld2,}=>{
-unsafe{printf("Variant0{".as_ptr() as *const c_char)};
-		unsafe{printf("fld0:".as_ptr() as *const c_char)};
+unsafe{printf("Variant0{\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld0:\0".as_ptr() as *const c_char)};
 		fld0.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld1:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld1:\0".as_ptr() as *const c_char)};
 		fld1.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld2:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld2:\0".as_ptr() as *const c_char)};
 		fld2.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
 },
 	Self::Variant1{fld0,fld1,fld2,fld3,fld4,fld5,fld6,fld7,}=>{
-unsafe{printf("Variant1{".as_ptr() as *const c_char)};
-		unsafe{printf("fld0:".as_ptr() as *const c_char)};
+unsafe{printf("Variant1{\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld0:\0".as_ptr() as *const c_char)};
 		fld0.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld1:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld1:\0".as_ptr() as *const c_char)};
 		fld1.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld2:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld2:\0".as_ptr() as *const c_char)};
 		fld2.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld3:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld3:\0".as_ptr() as *const c_char)};
 		fld3.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld4:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld4:\0".as_ptr() as *const c_char)};
 		fld4.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld5:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld5:\0".as_ptr() as *const c_char)};
 		fld5.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld6:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld6:\0".as_ptr() as *const c_char)};
 		fld6.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld7:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld7:\0".as_ptr() as *const c_char)};
 		fld7.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
 },
 	Self::Variant2{fld0,fld1,}=>{
-unsafe{printf("Variant2{".as_ptr() as *const c_char)};
-		unsafe{printf("fld0:".as_ptr() as *const c_char)};
+unsafe{printf("Variant2{\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld0:\0".as_ptr() as *const c_char)};
 		fld0.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld1:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld1:\0".as_ptr() as *const c_char)};
 		fld1.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
 },
 	Self::Variant3{fld0,fld1,fld2,fld3,fld4,fld5,fld6,}=>{
-unsafe{printf("Variant3{".as_ptr() as *const c_char)};
-		unsafe{printf("fld0:".as_ptr() as *const c_char)};
+unsafe{printf("Variant3{\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld0:\0".as_ptr() as *const c_char)};
 		fld0.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld1:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld1:\0".as_ptr() as *const c_char)};
 		fld1.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld2:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld2:\0".as_ptr() as *const c_char)};
 		fld2.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld3:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld3:\0".as_ptr() as *const c_char)};
 		fld3.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld4:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld4:\0".as_ptr() as *const c_char)};
 		fld4.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld5:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld5:\0".as_ptr() as *const c_char)};
 		fld5.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld6:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld6:\0".as_ptr() as *const c_char)};
 		fld6.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
 },
 		}
-unsafe{printf("}".as_ptr() as *const c_char)};
+unsafe{printf("\0}".as_ptr() as *const c_char)};
 	}
 }
 #[derive(Copy,Clone)]pub enum Adt57 {
@@ -5044,37 +5025,37 @@ fld6: Adt53,
 impl PrintFDebug for Adt58{
 	unsafe fn printf_debug(&self){unsafe{printf("Adt58::\0".as_ptr()  as *const c_char)};match self{
 	Self::Variant0{fld0,}=>{
-unsafe{printf("Variant0{".as_ptr() as *const c_char)};
-		unsafe{printf("fld0:".as_ptr() as *const c_char)};
+unsafe{printf("Variant0{\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld0:\0".as_ptr() as *const c_char)};
 		fld0.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
 },
 	Self::Variant1{fld0,fld1,fld2,fld3,fld4,fld5,fld6,}=>{
-unsafe{printf("Variant1{".as_ptr() as *const c_char)};
-		unsafe{printf("fld0:".as_ptr() as *const c_char)};
+unsafe{printf("Variant1{\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld0:\0".as_ptr() as *const c_char)};
 		fld0.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld1:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld1:\0".as_ptr() as *const c_char)};
 		fld1.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld2:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld2:\0".as_ptr() as *const c_char)};
 		fld2.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld3:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld3:\0".as_ptr() as *const c_char)};
 		fld3.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld4:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld4:\0".as_ptr() as *const c_char)};
 		fld4.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld5:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld5:\0".as_ptr() as *const c_char)};
 		fld5.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
-		unsafe{printf("fld6:".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
+		unsafe{printf("fld6:\0".as_ptr() as *const c_char)};
 		fld6.printf_debug();
-unsafe{printf(",".as_ptr() as *const c_char)};
+unsafe{printf(",\0".as_ptr() as *const c_char)};
 },
 		}
-unsafe{printf("}".as_ptr() as *const c_char)};
+unsafe{printf("\0}".as_ptr() as *const c_char)};
 	}
 }
 #[derive(Copy,Clone)]pub enum Adt58 {
