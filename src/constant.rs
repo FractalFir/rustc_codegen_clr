@@ -208,6 +208,16 @@ fn load_const_scalar<'ctx>(
                         CILNode::ConvUSize(CILNode::LdcU64(offset.bytes()).into()).into(),
                     );
                 }
+                GlobalAlloc::Function(finstance) => {
+                    // If it is a function, patch its pointer up.
+                    let call_info =
+                        crate::call_info::CallInfo::sig_from_instance_(finstance, tyctx, tycache)
+                            .unwrap();
+                    let function_name = crate::utilis::function_name(tyctx.symbol_name(finstance));
+                    return CILNode::LDFtn(
+                        CallSite::new(None, function_name, call_info.sig().clone(), true).into(),
+                    );
+                }
                 _ => todo!("Unhandled global alloc {global_alloc:?}"),
             }
             //panic!("alloc_id:{alloc_id:?}")

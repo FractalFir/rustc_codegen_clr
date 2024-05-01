@@ -194,7 +194,7 @@ pub fn place_adress<'a>(
     if place.projection.is_empty() {
         local_adress(place.local.as_usize(), method)
     } else {
-        let (mut addr_calc, mut ty) = local_body(place.local.as_usize(), method);
+        let (mut addr_calc, mut ty) = local_body(place.local.as_usize(), method,tyctx,&method_instance);
 
         ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
         let mut ty = ty.into();
@@ -256,7 +256,7 @@ pub(crate) fn place_address_raw<'a>(
     {
         return local_adress(place.local.as_usize(), method);
     } else {
-        let (mut addr_calc, mut ty) = local_body(place.local.as_usize(), method);
+        let (mut addr_calc, mut ty) = local_body(place.local.as_usize(), method,tyctx,&method_instance);
 
         ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
         let mut ty = ty.into();
@@ -288,41 +288,41 @@ pub(crate) fn place_address_raw<'a>(
         )
     }
 }
-pub(crate) fn place_set<'a>(
-    place: &Place<'a>,
-    ctx: TyCtxt<'a>,
+pub(crate) fn place_set<'tyctx>(
+    place: &Place<'tyctx>,
+    tyctx: TyCtxt<'tyctx>,
     value_calc: CILNode,
-    method: &rustc_middle::mir::Body<'a>,
-    method_instance: Instance<'a>,
+    method: &rustc_middle::mir::Body<'tyctx>,
+    method_instance: Instance<'tyctx>,
     type_cache: &mut crate::r#type::TyCache,
 ) -> CILRoot {
     if place.projection.is_empty() {
         set::local_set(place.local.as_usize(), method, value_calc)
     } else {
-        let (mut addr_calc, ty) = local_body(place.local.as_usize(), method);
+        let (mut addr_calc, ty) = local_body(place.local.as_usize(), method,tyctx,&method_instance);
         let mut ty: PlaceTy = ty.into();
-        ty = ty.monomorphize(&method_instance, ctx);
+        ty = ty.monomorphize(&method_instance, tyctx);
 
         let (head, body) = slice_head(place.projection);
         for elem in body {
             let (curr_ty, curr_ops) = place_elem_body(
                 elem,
                 ty,
-                ctx,
+                tyctx,
                 method_instance,
                 method,
                 type_cache,
                 addr_calc,
             );
-            ty = curr_ty.monomorphize(&method_instance, ctx);
+            ty = curr_ty.monomorphize(&method_instance, tyctx);
             addr_calc = curr_ops;
         }
         //
-        ty = ty.monomorphize(&method_instance, ctx);
+        ty = ty.monomorphize(&method_instance, tyctx);
         place_elem_set(
             head,
             ty,
-            ctx,
+            tyctx,
             method_instance,
             type_cache,
             addr_calc,

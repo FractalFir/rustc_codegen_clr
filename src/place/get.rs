@@ -20,29 +20,29 @@ pub(super) fn local_get(local: usize, method: &rustc_middle::mir::Body) -> CILNo
     }
 }
 /// Returns the ops for getting the value of place.
-pub fn place_get<'a>(
-    place: &Place<'a>,
-    ctx: TyCtxt<'a>,
-    method: &rustc_middle::mir::Body<'a>,
-    method_instance: Instance<'a>,
+pub fn place_get<'tyctx>(
+    place: &Place<'tyctx>,
+    tyctx: TyCtxt<'tyctx>,
+    method: &rustc_middle::mir::Body<'tyctx>,
+    method_instance: Instance<'tyctx>,
     type_cache: &mut crate::r#type::TyCache,
 ) -> CILNode {
     if place.projection.is_empty() {
         local_get(place.local.as_usize(), method)
     } else {
-        let (mut op, mut ty) = super::local_body(place.local.as_usize(), method);
+        let (mut op, mut ty) = super::local_body(place.local.as_usize(), method,tyctx,&method_instance);
 
-        ty = crate::utilis::monomorphize(&method_instance, ty, ctx);
+        ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
         let mut ty = ty.into();
 
         let (head, body) = super::slice_head(place.projection);
         for elem in body {
             let (curr_ty, curr_ops) =
-                super::place_elem_body(elem, ty, ctx, method_instance, method, type_cache, op);
-            ty = curr_ty.monomorphize(&method_instance, ctx);
+                super::place_elem_body(elem, ty, tyctx, method_instance, method, type_cache, op);
+            ty = curr_ty.monomorphize(&method_instance, tyctx);
             op = curr_ops;
         }
-        place_elem_get(head, ty, ctx, method_instance, type_cache, op)
+        place_elem_get(head, ty, tyctx, method_instance, type_cache, op)
     }
 }
 

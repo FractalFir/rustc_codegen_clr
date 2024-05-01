@@ -331,16 +331,12 @@ pub fn op_cli(op: &crate::cil::CILOp, method: &Method) -> Cow<'static, str> {
         }
         CILOp::LdNull => "ldnull".into(), 
         CILOp::LdcF32(f32const) =>{
-          
-                let const_literal = f32const.to_le_bytes();
-                format!("ldc.r4 ({:02x} {:02x} {:02x} {:02x})",const_literal[0],const_literal[1],const_literal[2],const_literal[3]).into()
-            
+            let const_literal = f32const.to_le_bytes();
+            format!("ldc.r4 ({:02x} {:02x} {:02x} {:02x})",const_literal[0],const_literal[1],const_literal[2],const_literal[3]).into()
         }
         CILOp::LdcF64(f64const) => {
-          
-                let const_literal = f64const.to_le_bytes();
-                format!("ldc.r8 ({:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x})",const_literal[0],const_literal[1],const_literal[2],const_literal[3],const_literal[4],const_literal[5],const_literal[6],const_literal[7]).into()
-            
+            let const_literal = f64const.to_le_bytes();
+            format!("ldc.r8 ({:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x})",const_literal[0],const_literal[1],const_literal[2],const_literal[3],const_literal[4],const_literal[5],const_literal[6],const_literal[7]).into()
         }
         //Debug
         CILOp::Comment(comment) => format!("//{comment}").into(),

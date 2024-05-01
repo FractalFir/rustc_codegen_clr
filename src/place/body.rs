@@ -12,8 +12,11 @@ use rustc_middle::ty::{Instance, Ty, TyCtxt, TyKind};
 pub fn local_body<'tcx>(
     local: usize,
     method: &rustc_middle::mir::Body<'tcx>,
+    tyctx: TyCtxt<'tcx>,
+    method_instance: &Instance<'tcx>
 ) -> (CILNode, Ty<'tcx>) {
     let ty = method.local_decls[local.into()].ty;
+    let ty = crate::utilis::monomorphize(method_instance, ty, tyctx);
     if body_ty_is_by_adress(ty) {
         (super::adress::local_adress(local, method), ty)
     } else {
