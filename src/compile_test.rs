@@ -798,7 +798,7 @@ compare_tests! {fuzz,fuzz18,stable}
 compare_tests! {fuzz,fuzz19,stable}
 
 compare_tests! {fuzz,fuzz20,stable}
-compare_tests! {fuzz,fuzz21,unstable}
+compare_tests! {fuzz,fuzz21,stable}
 compare_tests! {fuzz,fuzz22,stable}
 compare_tests! {fuzz,fuzz23,stable}
 compare_tests! {fuzz,fuzz24,stable}
@@ -812,7 +812,7 @@ compare_tests! {fuzz,fuzz30,stable}
 compare_tests! {fuzz,fuzz31,stable}
 compare_tests! {fuzz,fuzz32,stable}
 compare_tests! {fuzz,fuzz33,stable}
-compare_tests! {fuzz,fuzz34,unstable}
+compare_tests! {fuzz,fuzz34,stable}
 compare_tests! {fuzz,fuzz35,stable}
 compare_tests! {fuzz,fuzz36,stable}
 compare_tests! {fuzz,fuzz37,stable}
@@ -832,9 +832,9 @@ compare_tests! {fuzz,fuzz49,stable}
 
 compare_tests! {fuzz,fuzz50,stable}
 compare_tests! {fuzz,fuzz51,stable}
-compare_tests! {fuzz,fuzz52,unstable}
+compare_tests! {fuzz,fuzz52,stable}
 compare_tests! {fuzz,fuzz53,stable}
-compare_tests! {fuzz,fuzz54,unstable}
+compare_tests! {fuzz,fuzz54,stable}
 compare_tests! {fuzz,fuzz55,stable}
 compare_tests! {fuzz,fuzz56,stable}
 compare_tests! {fuzz,fuzz57,stable}
@@ -857,7 +857,7 @@ compare_tests! {fuzz,fuzz71,stable}
 compare_tests! {fuzz,fuzz72,stable}
 compare_tests! {fuzz,fuzz73,stable}
 compare_tests! {fuzz,fuzz74,stable}
-compare_tests! {fuzz,fuzz75,unstable}
+compare_tests! {fuzz,fuzz75,stable}
 compare_tests! {fuzz,fuzz76,stable}
 compare_tests! {fuzz,fuzz77,stable}
 compare_tests! {fuzz,fuzz78,stable}
@@ -871,7 +871,7 @@ compare_tests! {fuzz,fuzz84,stable}
 compare_tests! {fuzz,fuzz85,stable}
 compare_tests! {fuzz,fuzz86,stable}
 compare_tests! {fuzz,fuzz87,stable}
-compare_tests! {fuzz,fuzz88,unstable}
+compare_tests! {fuzz,fuzz88,stable}
 compare_tests! {fuzz,fuzz89,stable}
 
 compare_tests! {fuzz,fuzz90,stable}
@@ -884,7 +884,7 @@ compare_tests! {fuzz,fuzz96,stable}
 compare_tests! {fuzz,fuzz97,stable}
 compare_tests! {fuzz,fuzz98,stable}
 compare_tests! {fuzz,fuzz99,stable}
-compare_tests! {fuzz,fuzz100,unstable}
+compare_tests! {fuzz,fuzz100,stable}
 
 run_test! {fuzz,fail0,stable}
 run_test! {fuzz,fail1,stable}
@@ -893,10 +893,11 @@ compare_tests! {fuzz,fail4,stable}
 compare_tests! {fuzz,fail5,stable}
 compare_tests! {fuzz,fail6,stable}
 compare_tests! {fuzz,fail7,stable}
-compare_tests! {fuzz,fail8,unstable}
+compare_tests! {fuzz,fail8,stable}
 
 compare_tests! {fuzz,fail9,stable}
 compare_tests! {fuzz,fail10,stable}
+compare_tests! {fuzz,fail11,stable}
 cargo_test! {hello_world,stable}
 cargo_test! {std_hello_world,stable}
 cargo_test_ignored! {build_core}

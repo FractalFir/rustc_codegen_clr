@@ -487,17 +487,24 @@ impl TyCache {
                 let mut length = *length;
                 method
                     .inspect(|method| length = crate::utilis::monomorphize(method, length, tyctx));
-                let length = crate::utilis::try_resolve_const_size(length).unwrap();
+                let length: usize = crate::utilis::try_resolve_const_size(length).unwrap();
                 let mut element = *element;
                 method.inspect(|method| {
                     element = crate::utilis::monomorphize(method, element, tyctx);
                 });
                 let element = self.type_from_cache(element, tyctx, method);
+                let layout = tyctx
+                .layout_of(rustc_middle::ty::ParamEnvAnd {
+                    param_env: ParamEnv::reveal_all(),
+                    value: ty,
+                })
+                .expect("Could not get type layout!");
+                let arr_size = layout.layout.size();
                 let arr_name = crate::r#type::type_def::arr_name(length, &element);
                 if self.type_def_cache.get(&arr_name).is_none() {
                     self.type_def_cache.insert(
                         arr_name.clone(),
-                        crate::r#type::type_def::get_array_type(length, element.clone()),
+                        crate::r#type::type_def::get_array_type(length, element.clone(),arr_size.bytes()),
                     );
                 }
                 DotnetTypeRef::array(element, length).into()

@@ -1008,7 +1008,14 @@ pub fn handle_intrinsic<'tyctx>(
                 1,
                 "The intrinsic `size_of_val` MUST take in exactly 1 argument!"
             );
-            let tpe = args[0].node.ty(body, tyctx);
+
+            let tpe = crate::utilis::monomorphize(
+                &method_instance,
+                call_instance.args[0]
+                    .as_type()
+                    .expect("needs_drop works only on types!"),
+                tyctx,
+            );
             let tpe = crate::utilis::monomorphize(&method_instance, tpe, tyctx);
             let tpe = type_cache.type_from_cache(tpe, tyctx, Some(method_instance));
             place_set(

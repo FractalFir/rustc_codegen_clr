@@ -176,7 +176,7 @@ fn type_def_cli(
     } else {
         ""
     };
-    let explicit = if tpe.explicit_offsets().is_some() {
+    let explicit = if tpe.explicit_offsets().is_some() || tpe.explict_size().is_some() {
         "explicit"
     } else {
         ""

@@ -279,11 +279,15 @@ pub fn tuple_typedef(elements: &[Type], layout: &Layout) -> TypeDef {
     )
 }
 #[must_use]
-pub fn get_array_type(element_count: usize, element: Type) -> TypeDef {
+pub fn get_array_type(element_count: usize, element: Type,explict_size:u64) -> TypeDef {
     let name = arr_name(element_count, &element);
     let mut fields = Vec::with_capacity(element_count);
+    assert!(explict_size % element_count as u64 == 0, "The total array size must be divisible by its element count.");
+    let element_size = explict_size/(element_count as u64);
+    let mut explicit_offsets =  Vec::with_capacity(element_count);
     for field in 0..element_count {
         fields.push((format!("f_{field}").into(), element.clone()));
+        explicit_offsets.push((field as u64 * element_size) as u32);
     }
     let mut def = TypeDef {
         access: AccessModifer::Public,
@@ -291,10 +295,10 @@ pub fn get_array_type(element_count: usize, element: Type) -> TypeDef {
         inner_types: vec![],
         fields,
         functions: vec![],
-        explicit_offsets: None,
+        explicit_offsets: Some(explicit_offsets),
         gargc: 0,
         extends: None,
-        explict_size: None,
+        explict_size: Some(explict_size),
     };
     let _as_pointer = CallSite::ref_as_ptr(element.clone());
     // set_Item(usize offset, G0 value)
