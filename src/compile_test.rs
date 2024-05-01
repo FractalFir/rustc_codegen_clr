@@ -844,7 +844,7 @@ compare_tests! {fuzz,fuzz59,stable}
 compare_tests! {fuzz,fuzz60,stable}
 compare_tests! {fuzz,fuzz61,stable}
 compare_tests! {fuzz,fuzz62,stable}
-compare_tests! {fuzz,fuzz63,unstable}
+compare_tests! {fuzz,fuzz63,stable}
 compare_tests! {fuzz,fuzz64,stable}
 compare_tests! {fuzz,fuzz65,stable}
 compare_tests! {fuzz,fuzz66,stable}

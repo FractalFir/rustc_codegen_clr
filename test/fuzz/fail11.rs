@@ -495,10 +495,8 @@ fn fn6(
 }
 
 pub fn main() {
-
-    fn6(
-       
-    );
+    fn6();
+    fn9();
 }
 
 impl PrintFDebug for Adt50 {
@@ -511,4 +509,24 @@ impl PrintFDebug for Adt50 {
 pub struct Adt50 {
     fld0: i16,
     fld1: [bool; 6],
+}
+
+fn fn9() {
+
+let mut _11: [usize; 5];
+
+
+
+
+let two = std::hint::black_box(2);
+let not_two = std::hint::black_box(!two); 
+let tmp = not_two / two;
+_11 = [tmp,tmp,tmp,tmp,tmp];
+
+
+
+dump_var(9_usize, 9_usize, (tmp), 1_usize, (two), 2_usize, not_two, 0xFF_usize, ());
+
+
+
 }

@@ -175,7 +175,7 @@ fn map_test() {
 fn print_args(){
     for (idx,mut arg) in std::env::args().enumerate(){
         arg.push('\0');
-        unsafe{printf("Arg %d:%s\0\n".as_ptr() as *const i8,idx as u32, arg.as_ptr())};
+        unsafe{printf("Arg %d:%s\n\0".as_ptr() as *const i8,idx as u32, arg.as_ptr())};
         drop(arg);
     }
 }
