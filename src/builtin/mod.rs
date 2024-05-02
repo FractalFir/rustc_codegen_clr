@@ -7,7 +7,7 @@ use crate::{
     access_modifier::AccessModifer, add_method_from_trees, assembly::Assembly, cil::CallSite,
     function_sig::FnSig, method::Method, r#type::Type,
 };
-use crate::{add, call, conv_usize, ldc_u64, lt_un};
+use crate::{call, conv_usize, ldc_u64, lt_un};
 use rustc_middle::ty::TyCtxt;
 mod casts;
 mod select;
@@ -326,7 +326,7 @@ add_method_from_trees!(
                 .into(),
                 CILRoot::STArg {
                     arg: 0,
-                    tree: add!(CILNode::LDArg(0), ldc_u64!(1))
+                    tree: CILNode::LDArg(0) + ldc_u64!(1)
                 }
                 .into(),
                 CILRoot::GoTo {

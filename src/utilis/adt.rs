@@ -1,4 +1,3 @@
-use crate::add;
 use crate::cil::FieldDescriptor;
 use crate::cil_tree::cil_node::CILNode;
 use crate::cil_tree::cil_root::CILRoot;
@@ -348,7 +347,7 @@ pub fn get_discr<'tyctx>(
                         | Type::USize
                         | Type::ISize
                 ));
-                add!(tagged_discr, delta)
+                tagged_discr + delta
             };
 
             // In principle we could insert assumes on the possible range of `discr`, but

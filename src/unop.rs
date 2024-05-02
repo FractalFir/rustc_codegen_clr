@@ -6,6 +6,7 @@ use rustc_middle::mir::{Operand, UnOp};
 use rustc_middle::ty::{Instance, IntTy, TyCtxt, TyKind, UintTy};
 
 use crate::cil::CallSite;
+/// Implements an unary operation, such as negation.
 pub fn unop<'ctx>(
     unnop: UnOp,
     operand: &Operand<'ctx>,

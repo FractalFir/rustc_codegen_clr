@@ -8,10 +8,10 @@ use crate::{conv_usize, ld_field, ld_field_address, ldc_u64};
 
 use crate::r#type::{TyCache, Type};
 use rustc_middle::{
-    mir::{Operand, Place, Rvalue},
+    mir::Operand,
     ty::{Instance, Ty, TyCtxt, TyKind},
 };
-
+/// Preforms an unsizing cast on operand `operand`, converting it to the `target` type.
 pub fn unsize<'tyctx>(
     tyctx: TyCtxt<'tyctx>,
     method: &rustc_middle::mir::Body<'tyctx>,

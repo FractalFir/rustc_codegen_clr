@@ -2,7 +2,7 @@ use crate::cil::{CallSite, FieldDescriptor};
 use crate::cil_tree::cil_node::CILNode;
 use crate::function_sig::FnSig;
 use crate::r#type::Type;
-use crate::{add, call, conv_usize, ld_field, ldc_u64, mul};
+use crate::{call, conv_usize, ld_field, ldc_u64, mul};
 
 use rustc_middle::mir::{Place, PlaceElem};
 use rustc_middle::ty::{Instance, TyCtxt, TyKind};
@@ -30,7 +30,8 @@ pub fn place_get<'tyctx>(
     if place.projection.is_empty() {
         local_get(place.local.as_usize(), method)
     } else {
-        let (mut op, mut ty) = super::local_body(place.local.as_usize(), method,tyctx,&method_instance);
+        let (mut op, mut ty) =
+            super::local_body(place.local.as_usize(), method, tyctx, &method_instance);
 
         ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
         let mut ty = ty.into();
@@ -186,24 +187,19 @@ fn place_elem_get<'a>(
                     );
                     let metadata = FieldDescriptor::new(slice, Type::USize, "metadata".into());
                     // bounds_check
-                    let addr = add!(
-                        ld_field!(addr_calc.clone(), data_pointer),
-                        mul!(
-                            call!(
-                                CallSite::new(
-                                    None,
-                                    "bounds_check".into(),
-                                    FnSig::new(&[Type::USize, Type::USize], &Type::USize),
-                                    true
-                                ),
-                                [
-                                    ld_field!(addr_calc, metadata),
-                                    conv_usize!(ldc_u64!(*min_length))
-                                ]
+                    let addr = ld_field!(addr_calc.clone(), data_pointer)
+                        + call!(
+                            CallSite::new(
+                                None,
+                                "bounds_check".into(),
+                                FnSig::new(&[Type::USize, Type::USize], &Type::USize),
+                                true
                             ),
-                            CILNode::ConvUSize(CILNode::SizeOf(inner_type.into()).into())
-                        )
-                    );
+                            [
+                                ld_field!(addr_calc, metadata),
+                                conv_usize!(ldc_u64!(*min_length))
+                            ]
+                        ) * CILNode::ConvUSize(CILNode::SizeOf(inner_type.into()).into());
                     super::deref_op(
                         super::PlaceTy::Ty(inner),
                         tyctx,

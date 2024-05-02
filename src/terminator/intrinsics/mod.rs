@@ -3,8 +3,8 @@ use crate::operand::operand_address;
 use crate::place::place_adress;
 use crate::utilis::field_descrptor;
 use crate::{
-    add, call, call_virt, conv_f32, conv_f64, conv_usize, div, eq, ld_field, ld_field_address,
-    ldc_i32, ldc_u64, lt_un, mul, or, place, size_of, sub,
+    call, call_virt, conv_f32, conv_f64, conv_usize, div, eq, ld_field, ld_field_address, ldc_i32,
+    ldc_u64, lt_un, mul, or, place, size_of, sub,
 };
 fn compare_bytes(a: CILNode, b: CILNode, len: CILNode) -> CILNode {
     call!(
@@ -108,13 +108,9 @@ pub fn handle_intrinsic<'tyctx>(
             place_set(
                 destination,
                 tyctx,
-                add!(
-                    handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
-                    mul!(
-                        handle_operand(&args[1].node, tyctx, body, method_instance, type_cache),
-                        conv_usize!(size_of!(tpe))
-                    )
-                ),
+                handle_operand(&args[0].node, tyctx, body, method_instance, type_cache)
+                    + handle_operand(&args[1].node, tyctx, body, method_instance, type_cache)
+                        * conv_usize!(size_of!(tpe)),
                 body,
                 method_instance,
                 type_cache,
@@ -192,7 +188,7 @@ pub fn handle_intrinsic<'tyctx>(
             place_set(
                 destination,
                 tyctx,
-                add!(mul!(a, b), c),
+                a * b + c,
                 body,
                 method_instance,
                 type_cache,

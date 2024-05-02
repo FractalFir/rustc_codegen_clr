@@ -1,5 +1,4 @@
 use rustc_codegen_clr::{
-    add,
     assembly::Assembly,
     call,
     cil::CallSite,
@@ -157,10 +156,7 @@ fn hijack_arg_init(asm: &mut Assembly) {
     // Store the converted arg at idx+1
     loop_block.trees_mut().push(
         CILRoot::STIndISize(
-            add!(
-                CILNode::LDLoc(argv),
-                conv_usize!(mul!(size_of!(Type::ISize), CILNode::LDLoc(arg_idx)))
-            ),
+            CILNode::LDLoc(argv) + conv_usize!(size_of!(Type::ISize) * CILNode::LDLoc(arg_idx)),
             uarg,
         )
         .into(),
@@ -169,7 +165,7 @@ fn hijack_arg_init(asm: &mut Assembly) {
     loop_block.trees_mut().push(
         CILRoot::STLoc {
             local: arg_idx,
-            tree: add!(CILNode::LDLoc(arg_idx), ldc_i32!(1)),
+            tree: CILNode::LDLoc(arg_idx) + ldc_i32!(1),
         }
         .into(),
     );

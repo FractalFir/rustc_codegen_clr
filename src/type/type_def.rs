@@ -1,6 +1,5 @@
 use crate::{
     access_modifier::AccessModifer,
-    add,
     basic_block::BasicBlock,
     cil::{CallSite, FieldDescriptor},
     cil_tree::{cil_node::CILNode, cil_root::CILRoot},
@@ -329,17 +328,14 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
                 vec![
                     CILRoot::STObj {
                         tpe: element.clone().into(),
-                        addr_calc: add!(
-                            conv_usize!(ld_field_address!(
-                                CILNode::LDArg(0),
-                                FieldDescriptor::boxed(
-                                    (&def).into(),
-                                    element.clone(),
-                                    "f_0".to_string().into(),
-                                )
-                            )),
-                            mul!(CILNode::LDArg(1), size_of!(element.clone()))
-                        ),
+                        addr_calc: conv_usize!(ld_field_address!(
+                            CILNode::LDArg(0),
+                            FieldDescriptor::boxed(
+                                (&def).into(),
+                                element.clone(),
+                                "f_0".to_string().into(),
+                            )
+                        )) + CILNode::LDArg(1) * size_of!(element.clone()),
                         value_calc: CILNode::LDArg(2),
                     }
                     .into(),
@@ -363,17 +359,14 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
             vec![],
             vec![BasicBlock::new(
                 vec![CILRoot::Ret {
-                    tree: add!(
-                        conv_usize!(ld_field_address!(
-                            CILNode::LDArg(0),
-                            FieldDescriptor::boxed(
-                                (&def).into(),
-                                element.clone(),
-                                "f_0".to_string().into(),
-                            )
-                        )),
-                        mul!(CILNode::LDArg(1), size_of!(element.clone()))
-                    ),
+                    tree: conv_usize!(ld_field_address!(
+                        CILNode::LDArg(0),
+                        FieldDescriptor::boxed(
+                            (&def).into(),
+                            element.clone(),
+                            "f_0".to_string().into(),
+                        )
+                    )) + CILNode::LDArg(1) * size_of!(element.clone()),
                 }
                 .into()],
                 0,
@@ -394,7 +387,7 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
             vec![BasicBlock::new(
                 vec![CILRoot::Ret {
                     tree: CILNode::LdObj {
-                        ptr: add!(
+                        ptr: Box::new(
                             conv_usize!(ld_field_address!(
                                 CILNode::LDArg(0),
                                 FieldDescriptor::boxed(
@@ -402,8 +395,7 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
                                     element.clone(),
                                     "f_0".to_string().into(),
                                 )
-                            )),
-                            mul!(CILNode::LDArg(1), size_of!(element.clone()))
+                            )) + CILNode::LDArg(1) * size_of!(element.clone()),
                         )
                         .into(),
                         obj: Box::new(element),

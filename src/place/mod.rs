@@ -194,7 +194,8 @@ pub fn place_adress<'a>(
     if place.projection.is_empty() {
         local_adress(place.local.as_usize(), method)
     } else {
-        let (mut addr_calc, mut ty) = local_body(place.local.as_usize(), method,tyctx,&method_instance);
+        let (mut addr_calc, mut ty) =
+            local_body(place.local.as_usize(), method, tyctx, &method_instance);
 
         ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
         let mut ty = ty.into();
@@ -256,7 +257,8 @@ pub(crate) fn place_address_raw<'a>(
     {
         return local_adress(place.local.as_usize(), method);
     } else {
-        let (mut addr_calc, mut ty) = local_body(place.local.as_usize(), method,tyctx,&method_instance);
+        let (mut addr_calc, mut ty) =
+            local_body(place.local.as_usize(), method, tyctx, &method_instance);
 
         ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
         let mut ty = ty.into();
@@ -299,7 +301,8 @@ pub(crate) fn place_set<'tyctx>(
     if place.projection.is_empty() {
         set::local_set(place.local.as_usize(), method, value_calc)
     } else {
-        let (mut addr_calc, ty) = local_body(place.local.as_usize(), method,tyctx,&method_instance);
+        let (mut addr_calc, ty) =
+            local_body(place.local.as_usize(), method, tyctx, &method_instance);
         let mut ty: PlaceTy = ty.into();
         ty = ty.monomorphize(&method_instance, tyctx);
 

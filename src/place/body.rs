@@ -5,7 +5,7 @@ use crate::cil_tree::cil_root::CILRoot;
 use crate::function_sig::FnSig;
 use crate::place::{body_ty_is_by_adress, deref_op};
 use crate::r#type::Type;
-use crate::{add, assert_morphic, call, conv_usize, ld_field, ldc_u64, mul};
+use crate::{assert_morphic, call, conv_usize, ld_field, ldc_u64, mul};
 
 use rustc_middle::mir::PlaceElem;
 use rustc_middle::ty::{Instance, Ty, TyCtxt, TyKind};
@@ -13,7 +13,7 @@ pub fn local_body<'tcx>(
     local: usize,
     method: &rustc_middle::mir::Body<'tcx>,
     tyctx: TyCtxt<'tcx>,
-    method_instance: &Instance<'tcx>
+    method_instance: &Instance<'tcx>,
 ) -> (CILNode, Ty<'tcx>) {
     let ty = method.local_decls[local.into()].ty;
     let ty = crate::utilis::monomorphize(method_instance, ty, tyctx);
@@ -275,20 +275,15 @@ pub fn place_elem_body<'ctx>(
                         "data_pointer".into(),
                     );
 
-                    let addr = add!(
-                        ld_field!(parrent_node.clone(), desc),
-                        mul!(
-                            call!(
-                                CallSite::builtin(
-                                    "bounds_check".into(),
-                                    FnSig::new(&[Type::USize, Type::USize], &Type::USize),
-                                    true
-                                ),
-                                [index, conv_usize!(ldc_u64!(*min_length))]
+                    let addr = ld_field!(parrent_node.clone(), desc)
+                        + call!(
+                            CallSite::builtin(
+                                "bounds_check".into(),
+                                FnSig::new(&[Type::USize, Type::USize], &Type::USize),
+                                true
                             ),
-                            conv_usize!(CILNode::SizeOf(inner_type.into()))
-                        )
-                    );
+                            [index, conv_usize!(ldc_u64!(*min_length))]
+                        ) * conv_usize!(CILNode::SizeOf(inner_type.into()));
                     if !body_ty_is_by_adress(inner) {
                         (
                             inner.into(),

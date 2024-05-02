@@ -1,7 +1,6 @@
 use std::num::NonZeroU8;
 
 use crate::{
-    add,
     basic_block::BasicBlock,
     call, call_virt,
     cil::CallSite,
@@ -49,24 +48,19 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
                             tree: call!(
                                 CallSite::alloc(),
                                 [
-                                    mul!(
-                                        add!(
-                                            call!(
-                                                CallSite::new(
-                                                    Some(DotnetTypeRef::managed_array()),
-                                                    "get_Length".into(),
-                                                    FnSig::new(
-                                                        &[DotnetTypeRef::managed_array().into()],
-                                                        &Type::I32
-                                                    ),
-                                                    false
-                                                ),
-                                                [CILNode::LDArg(0)]
+                                    (call!(
+                                        CallSite::new(
+                                            Some(DotnetTypeRef::managed_array()),
+                                            "get_Length".into(),
+                                            FnSig::new(
+                                                &[DotnetTypeRef::managed_array().into()],
+                                                &Type::I32
                                             ),
-                                            conv_usize!(ldc_u32!(1))
+                                            false
                                         ),
-                                        conv_usize!(size_of!(Type::ISize))
-                                    ),
+                                        [CILNode::LDArg(0)]
+                                    ) + conv_usize!(ldc_u32!(1)))
+                                        * conv_usize!(size_of!(Type::ISize)),
                                     conv_usize!(ldc_u32!(8))
                                 ]
                             ),

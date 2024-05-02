@@ -917,12 +917,7 @@ impl CILNode {
         }
     }
 }
-#[macro_export]
-macro_rules! add {
-    ($a:expr,$b:expr) => {
-        CILNode::Add($a.into(), $b.into())
-    };
-}
+
 #[macro_export]
 macro_rules! and {
     ($a:expr,$b:expr) => {
@@ -1176,10 +1171,16 @@ impl std::ops::Add<CILNode> for CILNode {
     type Output = CILNode;
 
     fn add(self, rhs: CILNode) -> Self::Output {
-        add!(self, rhs)
+        CILNode::Add(self.into(), rhs.into())
     }
 }
+impl std::ops::Mul<CILNode> for CILNode {
+    type Output = CILNode;
 
+    fn mul(self, rhs: CILNode) -> Self::Output {
+        CILNode::Mul(self.into(), rhs.into())
+    }
+}
 impl std::ops::BitOr<CILNode> for CILNode {
     type Output = CILNode;
 

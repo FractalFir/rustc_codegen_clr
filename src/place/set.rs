@@ -4,7 +4,7 @@ use crate::cil_tree::cil_node::CILNode;
 use crate::cil_tree::cil_root::CILRoot;
 use crate::function_sig::FnSig;
 use crate::r#type::{pointer_to_is_fat, DotnetTypeRef, Type};
-use crate::{add, call, conv_usize, ld_field, ldc_u64, mul, size_of};
+use crate::{call, conv_usize, ld_field, ldc_u64, mul, size_of};
 
 use rustc_middle::mir::PlaceElem;
 use rustc_middle::ty::{FloatTy, Instance, IntTy, TyCtxt, TyKind, UintTy};
@@ -107,10 +107,7 @@ pub fn place_elem_set<'a>(
                         ctx,
                         &method_instance,
                         type_cache,
-                        add!(
-                            ld_field!(addr_calc, desc),
-                            mul!(index, conv_usize!(size_of!(inner_type)))
-                        ),
+                        ld_field!(addr_calc, desc) + index * conv_usize!(size_of!(inner_type)),
                         value_calc,
                     )
                 }
@@ -167,24 +164,19 @@ pub fn place_elem_set<'a>(
                         "data_pointer".into(),
                     );
                     let metadata = FieldDescriptor::new(slice, Type::USize, "metadata".into());
-                    let addr = add!(
-                        ld_field!(addr_calc.clone(), desc),
-                        mul!(
-                            call!(
-                                CallSite::new(
-                                    None,
-                                    "bounds_check".into(),
-                                    FnSig::new(&[Type::USize, Type::USize], &Type::USize),
-                                    true
-                                ),
-                                [
-                                    ld_field!(addr_calc, metadata),
-                                    conv_usize!(ldc_u64!(*min_length))
-                                ]
+                    let addr = ld_field!(addr_calc.clone(), desc)
+                        + call!(
+                            CallSite::new(
+                                None,
+                                "bounds_check".into(),
+                                FnSig::new(&[Type::USize, Type::USize], &Type::USize),
+                                true
                             ),
-                            conv_usize!(CILNode::SizeOf(inner_type.into()))
-                        )
-                    );
+                            [
+                                ld_field!(addr_calc, metadata),
+                                conv_usize!(ldc_u64!(*min_length))
+                            ]
+                        ) * conv_usize!(CILNode::SizeOf(inner_type.into()));
                     ptr_set_op(
                         super::PlaceTy::Ty(inner),
                         ctx,

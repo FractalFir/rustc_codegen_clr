@@ -1,6 +1,6 @@
 use super::PlaceTy;
 use crate::{
-    add, assert_morphic, call,
+    assert_morphic, call,
     cil::{CallSite, FieldDescriptor},
     cil_tree::{cil_node::CILNode, cil_root::CILRoot},
     conv_usize,
@@ -187,10 +187,9 @@ pub fn place_elem_adress<'ctx>(
                         Type::Ptr(Type::Void.into()),
                         "data_pointer".into(),
                     );
-                    add!(
-                        ld_field! {addr_calc, desc },
-                        mul!(conv_usize!(size_of!(inner_type)), conv_usize!(index))
-                    )
+
+                    (ld_field! {addr_calc, desc }
+                        + conv_usize!(size_of!(inner_type)) * conv_usize!(index))
                 }
                 TyKind::Array(element, _length) => {
                     let element = crate::utilis::monomorphize(&method_instance, *element, tyctx);
@@ -286,10 +285,8 @@ pub fn place_elem_adress<'ctx>(
                         },
                         CILRoot::SetField {
                             addr: CILNode::LoadAddresOfTMPLocal,
-                            value: add!(
-                                ld_field!(addr_calc, ptr_field.clone()),
-                                conv_usize!(ldc_u64!(*from))
-                            ),
+                            value: ld_field!(addr_calc, ptr_field.clone())
+                                + conv_usize!(ldc_u64!(*from)),
                             desc: ptr_field.clone(),
                         },
                     ]
@@ -328,21 +325,16 @@ pub fn place_elem_adress<'ctx>(
                     if *from_end {
                         todo!("Can't index slice from end!");
                     } else {
-                        add!(
-                            ld_field!(addr_calc.clone(), desc),
-                            mul!(
-                                call!(
-                                    CallSite::new(
-                                        None,
-                                        "bounds_check".into(),
-                                        FnSig::new(&[Type::USize, Type::USize], &Type::USize),
-                                        true
-                                    ),
-                                    [index, conv_usize!(ldc_u64!(*min_length))]
+                        ld_field!(addr_calc.clone(), desc)
+                            + call!(
+                                CallSite::new(
+                                    None,
+                                    "bounds_check".into(),
+                                    FnSig::new(&[Type::USize, Type::USize], &Type::USize),
+                                    true
                                 ),
-                                conv_usize!(CILNode::SizeOf(inner_type.into()))
-                            )
-                        )
+                                [index, conv_usize!(ldc_u64!(*min_length))]
+                            ) * conv_usize!(CILNode::SizeOf(inner_type.into()))
 
                         //ops.extend(derf_op);
                     }

@@ -123,7 +123,7 @@ pub fn handle_statement<'tcx>(
                         CILRoot::CpBlk {
                             src: src_op,
                             dst: dst_op,
-                            len: mul!(count_op, size_of!(pointed)),
+                            len: count_op * size_of!(pointed),
                         }
                         .into(),
                     )

@@ -17,7 +17,7 @@ use crate::{
     r#type::TypeDef,
     IString,
 };
-use crate::{add, call, conv_isize, conv_usize, ldc_u32, ldc_u64};
+use crate::{call, conv_isize, conv_usize, ldc_u32, ldc_u64};
 use rustc_middle::mir::interpret::Allocation;
 use rustc_middle::mir::{
     interpret::{AllocId, GlobalAlloc},
@@ -468,8 +468,8 @@ impl Assembly {
 
         let bytes: &[u8] = const_allocation
             .inspect_with_uninit_and_ptr_outside_interpreter(0..const_allocation.len());
-        /// Alloc ids are *not* unique across all crates. Adding the hash here ensures we don't overwrite allocations during linking
-        /// TODO:consider using something better here / making the hashes stable.
+        // Alloc ids are *not* unique across all crates. Adding the hash here ensures we don't overwrite allocations during linking
+        // TODO:consider using something better here / making the hashes stable.
         let byte_hash = calculate_hash(&bytes);
         let alloc_fld: IString = format!("alloc_{alloc_id:x}_{byte_hash:x}").into();
 
@@ -1047,7 +1047,7 @@ fn allocation_initializer_method(
         trees.push(
             CILRoot::STLoc {
                 local: 0,
-                tree: add!(CILNode::LDLoc(0), conv_usize!(ldc_u32!(1))),
+                tree: CILNode::LDLoc(0) + conv_usize!(ldc_u32!(1)),
             }
             .into(),
         )
@@ -1066,7 +1066,7 @@ fn allocation_initializer_method(
 
                 trees.push(
                     CILRoot::STIndISize(
-                        add!(CILNode::LDLoc(1), conv_usize!(ldc_u32!(offset))),
+                        CILNode::LDLoc(1) + conv_usize!(ldc_u32!(offset)),
                         CILNode::LDFtn(
                             CallSite::new(None, function_name, call_info.sig().clone(), true)
                                 .into(),
@@ -1079,7 +1079,7 @@ fn allocation_initializer_method(
 
                 trees.push(
                     CILRoot::STIndISize(
-                        add!(CILNode::LDLoc(1), conv_usize!(ldc_u32!(offset))),
+                        CILNode::LDLoc(1) + conv_usize!(ldc_u32!(offset)),
                         CILNode::LDStaticField(ptr_alloc.into()),
                     )
                     .into(),

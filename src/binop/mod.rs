@@ -13,8 +13,8 @@ pub mod checked;
 pub mod cmp;
 pub mod shift;
 use crate::{
-    add, call, conv_u16, conv_u32, conv_u64, conv_u8, conv_usize, div, eq, ldc_i32, mul, rem,
-    rem_un, size_of, sub,
+    call, conv_u16, conv_u32, conv_u64, conv_u8, conv_usize, div, eq, ldc_i32, mul, rem, rem_un,
+    size_of, sub,
 };
 use bitop::*;
 pub use checked::binop_checked;
@@ -82,7 +82,7 @@ pub(crate) fn binop_unchecked<'tyctx>(
             let pointed_ty = crate::utilis::monomorphize(&method_instance, pointed_ty, tyctx);
             let pointed_ty =
                 Box::new(tycache.type_from_cache(pointed_ty, tyctx, Some(method_instance)));
-            add!(ops_a, mul!(ops_b, conv_usize!(size_of!(pointed_ty))))
+            ops_a + ops_b * conv_usize!(size_of!(pointed_ty))
         }
         BinOp::Cmp => {
             let ordering = tyctx
@@ -140,7 +140,7 @@ pub fn add_unchecked<'tyctx>(
                     [ops_a, ops_b]
                 )
             } else {
-                add!(ops_a, ops_b)
+                ops_a + ops_b
             }
         }
         TyKind::Uint(uint_ty) => {
@@ -158,15 +158,15 @@ pub fn add_unchecked<'tyctx>(
                 )
             } else {
                 match uint_ty {
-                    UintTy::U8 => conv_u8!(add!(ops_a, ops_b)),
-                    UintTy::U16 => conv_u16!(add!(ops_a, ops_b)),
-                    UintTy::U32 => conv_u32!(add!(ops_a, ops_b)),
-                    UintTy::U64 => conv_u64!(add!(ops_a, ops_b)),
-                    _ => add!(ops_a, ops_b),
+                    UintTy::U8 => conv_u8!(ops_a + ops_b),
+                    UintTy::U16 => conv_u16!(ops_a + ops_b),
+                    UintTy::U32 => conv_u32!(ops_a + ops_b),
+                    UintTy::U64 => conv_u64!(ops_a + ops_b),
+                    _ => ops_a + ops_b,
                 }
             }
         }
-        TyKind::Float(_) => add!(ops_a, ops_b),
+        TyKind::Float(_) => ops_a + ops_b,
         _ => todo!("can't add numbers of types {ty_a} and {ty_b}"),
     }
 }
@@ -298,7 +298,7 @@ fn mul_unchecked<'tyctx>(
                 [operand_a, operand_b]
             )
         }
-        _ => mul!(operand_a, operand_b),
+        _ => operand_a * operand_b,
     }
 }
 fn div_unchecked<'tyctx>(

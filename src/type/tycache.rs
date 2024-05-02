@@ -286,10 +286,9 @@ impl TyCache {
             let mut field_offsets: Vec<_> = field_offset_iter.collect();
             // FIXME: this is a hacky fix for `std::option::Option<std::convert::Infallible>`. If an enum contains an enum without variants, stuff breaks(no offset for that field).
             // If we know this is `Option` we can just sweep the issue under the rug and pretend it does not happen(even tough it does).
-            if field_offsets.len() < variant_fields.len() &&
-               ((enum_name.contains("Option")
-               && enum_name.contains("option")) || (enum_name.contains("Result")
-               && enum_name.contains("result")))
+            if field_offsets.len() < variant_fields.len()
+                && ((enum_name.contains("Option") && enum_name.contains("option"))
+                    || (enum_name.contains("Result") && enum_name.contains("result")))
             {
                 field_offsets.push(0);
             }
