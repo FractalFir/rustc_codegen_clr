@@ -696,16 +696,21 @@ test_lib! {casts,stable}
 test_lib! {closure,stable}
 test_lib! {identity,stable}
 test_lib! {libc,stable}
-run_test! {types,dst,stable}
+
 run_test! {iter,fold,stable}
-run_test! {types,maybeuninit,stable}
+
 test_lib! {references,stable}
 //test_lib! {structs}
 test_lib! {empty_string_slice,stable}
-test_lib! {types,stable}
+
 test_lib! {recursive,stable}
 test_lib! {fn_ptr,stable}
 test_lib! {tuple,stable}
+
+run_test! {types,dst,stable}
+run_test! {types,dyns,stable}
+run_test! {types,maybeuninit,stable}
+test_lib! {types,stable}
 
 run_test! {arthm,add,stable}
 run_test! {arthm,max,stable}

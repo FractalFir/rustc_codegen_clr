@@ -40,6 +40,7 @@ use rustc_middle::{
 };
 mod call;
 mod intrinsics;
+
 pub fn handle_terminator<'ctx>(
     terminator: &Terminator<'ctx>,
     body: &'ctx Body<'ctx>,
@@ -59,11 +60,11 @@ pub fn handle_terminator<'ctx>(
             fn_span: _,
         } => {
             let mut trees = Vec::new();
-
+           
             match func {
                 Operand::Constant(fn_const) => {
                     let fn_ty = fn_const.ty();
-
+                    //rustc_middle::ty::print::with_no_trimmed_paths! {eprintln!("Calling func:{func:?} {:?}", fn_ty)};
                     assert!(
                         fn_ty.is_fn(),
                         "fn_ty{fn_ty:?} in call is not a function type!"
@@ -85,7 +86,7 @@ pub fn handle_terminator<'ctx>(
                 }
                 Operand::Copy(operand) | Operand::Move(operand) => {
                     let operand_ty = operand.ty(method, tyctx);
-
+                    //rustc_middle::ty::print::with_no_trimmed_paths! {eprintln!("Calling func:{func:?} {:?}", operand_ty)};
                     if let TyKind::FnPtr(sig) = operand_ty.ty.kind() {
                         let sig = crate::utilis::monomorphize(&method_instance, *sig, tyctx);
                         let sig =
@@ -139,7 +140,13 @@ pub fn handle_terminator<'ctx>(
                                 .into(),
                             );
                         }
-                    } else {
+                    } else 
+                    if let TyKind::Dynamic(_,_,_) = operand_ty.ty.kind() {
+                        todo!()
+                    } else if let TyKind::Ref(_,_,_) = operand_ty.ty.kind() {
+                        todo!()
+                    }
+                    else{
                         //rustc_middle::ty::print::with_no_trimmed_paths! {eprintln!("call terminator {terminator:?}")};
                         //eprintln!("calling {operand_ty:?} indirectly");
                         let fn_ty = monomorphize(&method_instance, operand_ty, tyctx).ty;
@@ -150,7 +157,7 @@ pub fn handle_terminator<'ctx>(
                         );
                         let fn_ty = monomorphize(&method_instance, fn_ty, tyctx);
                         //let fn_instance = Instance::resolve(tyctx,ParamEnv::reveal_all,fn_ty.did,List::empty());
-
+                        
                         let call_ops = call::call(
                             fn_ty,
                             body,
