@@ -60,7 +60,7 @@ pub fn handle_terminator<'ctx>(
             fn_span: _,
         } => {
             let mut trees = Vec::new();
-           
+
             match func {
                 Operand::Constant(fn_const) => {
                     let fn_ty = fn_const.ty();
@@ -140,13 +140,11 @@ pub fn handle_terminator<'ctx>(
                                 .into(),
                             );
                         }
-                    } else 
-                    if let TyKind::Dynamic(_,_,_) = operand_ty.ty.kind() {
+                    } else if let TyKind::Dynamic(_, _, _) = operand_ty.ty.kind() {
                         todo!()
-                    } else if let TyKind::Ref(_,_,_) = operand_ty.ty.kind() {
+                    } else if let TyKind::Ref(_, _, _) = operand_ty.ty.kind() {
                         todo!()
-                    }
-                    else{
+                    } else {
                         //rustc_middle::ty::print::with_no_trimmed_paths! {eprintln!("call terminator {terminator:?}")};
                         //eprintln!("calling {operand_ty:?} indirectly");
                         let fn_ty = monomorphize(&method_instance, operand_ty, tyctx).ty;
@@ -157,7 +155,7 @@ pub fn handle_terminator<'ctx>(
                         );
                         let fn_ty = monomorphize(&method_instance, fn_ty, tyctx);
                         //let fn_instance = Instance::resolve(tyctx,ParamEnv::reveal_all,fn_ty.did,List::empty());
-                        
+
                         let call_ops = call::call(
                             fn_ty,
                             body,

@@ -29,10 +29,33 @@
 //! This does have its drawbacks(it makes allocating additional local variables harder than it needs to be), but its benefits outhgweight the issues it brings,
 //! at least at this point in time.
 //!
+//! One notable exeception to this rule is the `TyCache` - a structure used for caching type translations. Since it needs to perform some expensive work(eg. find `core::ptr::metadata::PtrComponents`)
+//! upfront, reusing the `TyCache` for a whole codegen unit is needed. Thus, it is passed by a mutable reference. `TyCache` can be easily reset after a panic, ensuirng panic recovery is safe.
+//!
 //! ## Faithful to MIR
 //!
-//! The project first translates MIR to CIL in a very precise, but inefficient fasion. This inefficent CIL is then optimized using the functions within the `opt` module.
+//! The project first translates MIR to CIL in a very precise, but inefficient fasion. This is a deliberate choice - it recduces the chance of bugs, and enables easy checking of the resulting CIL.
+//!
+//! Since any given  MIR statement will always result in the same ops, and the ops from each statement are kept separate, any misformed piece of CIL byecode can be easily traced back to a
+//! particular MIR statement.
+//!
 //! This way, it is far less likely that a piece of code will be miscompiled. It also helps with debuging, and allows us to achieve a very high-level translation of MIR.
+//!
+//! This intermediate, inefficent CIL can be optimized using the functions within the `opt` module. Those optimzations are allowed to do things like reorder statements, remove/add locals, etc.
+//! So, when debuging issues, it is recomeded the additional optimzations be turned off by seting the enviroment varaible `OPTIMIZE_CIL` to 0.
+//!
+//! ## Internal IR
+//!
+//! The project-internal IR(CIL trees) is defined in the module [`crate::cil_tree`]. Additional CIL-related data structures, such as call targets and field descriptors can be found in [`crate::cil`].
+//! [`crate::cil_tree`] will also contain a brief overview of the CIL represenation used by the project.
+//!
+//! ## Type represenation
+//!
+//! All type-related data structures are defined in the module [`crate::r#type`]
+//!
+//! ## MIR handling
+//!
+//! Each MIR element is handled by a function defined in a mdoule with the corresponding name. For example, MIR statements are handled by the function [`crate::statement::handle_statement`].
 //!
 //! # Where the compilation starts
 //!
@@ -42,7 +65,7 @@
 //! its .NET representation. The [`crate::assembly::Assembly::add_function`] uses [`crate::assembly::Assembly::add_type`] to add all types needed by a method to the
 //! assembly. `add_function` gets the function name, signature, local varaiables and MIR. It uses `handle_statement` and `handle_terminator` turn MIR statements
 //! and block terminators into CIL ops.
-// TODO: Extend project desctibtion.
+// TODO: Extend project desctiption.
 
 // References to internal rustc crates.
 extern crate rustc_abi;
@@ -241,7 +264,7 @@ impl CodegenBackend for MyBackend {
             //std::fs::create_dir_all(&serialized_asm_path).expect("Could not create the directory temporary files are supposed to be in.");
             if *crate::config::ENFORCE_CIL_VALID {
                 // Calling `maxstack` forces the method to be flattened, which checks the CIL.
-                let _ = asm.methods().map(method::Method::maxstack).for_each(|_| ());
+                asm.methods().map(method::Method::maxstack).for_each(|_| ());
             }
             let mut asm_out = std::fs::File::create(&serialized_asm_path).expect(
                 "Could not create the temporary files necessary for building the assembly!",

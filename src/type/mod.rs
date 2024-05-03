@@ -34,7 +34,7 @@ pub fn mangle(tpe: &Type) -> std::borrow::Cow<'static, str> {
             );
             tpe.name_path().replace('.', "_").into()
         }
-        Type::ManagedArray { element, dims } => format!("a{}{}", dims, mangle(&element)).into(),
+        Type::ManagedArray { element, dims } => format!("a{}{}", dims, mangle(element)).into(),
         Type::DotnetChar => "c".into(),
         Type::GenericArg(_) => todo!("Can't mangle generic type arg"),
         Type::FnDef(name) => format!("fn{}{}", name.len(), name).into(),

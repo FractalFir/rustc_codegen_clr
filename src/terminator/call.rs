@@ -344,7 +344,8 @@ pub fn call_closure<'tyctx>(
     let is_void = matches!(sig.output(), crate::r#type::Type::Void);
     let call = CallSite::new(None, function_name.into(), sig, true);
     // Hande the call itself
-    let call = if is_void {
+
+    if is_void {
         CILRoot::Call {
             site: call,
             args: call_args.into(),
@@ -358,9 +359,7 @@ pub fn call_closure<'tyctx>(
             method_instance,
             type_cache,
         )
-    };
-
-    call
+    }
 }
 /// Calls `fn_type` with `args`, placing the return value in destination.
 pub fn call<'tyctx>(

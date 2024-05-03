@@ -612,7 +612,7 @@ pub fn type_cil(tpe: &Type) -> Cow<'static, str> {
             } else {
                 "".into()
             };
-            format!("{tpe}[{arr}]", tpe = type_cil(&element)).into()
+            format!("{tpe}[{arr}]", tpe = type_cil(element)).into()
         } //_ => todo!("Unsuported type {tpe:?}"),
         Type::MethodGenericArg(idx) => format!("!!{idx}").into(),
     }

@@ -9,7 +9,7 @@ use rustc_middle::mir::{
     interpret::{AllocId, AllocRange, GlobalAlloc, Scalar},
     ConstOperand, ConstValue,
 };
-use rustc_middle::ty::{AdtKind, FloatTy, Instance, IntTy, ParamEnv, Ty, TyCtxt, TyKind, UintTy};
+use rustc_middle::ty::{FloatTy, Instance, IntTy, ParamEnv, Ty, TyCtxt, TyKind, UintTy};
 pub fn handle_constant<'ctx>(
     constant_op: &ConstOperand<'ctx>,
     tyctx: TyCtxt<'ctx>,

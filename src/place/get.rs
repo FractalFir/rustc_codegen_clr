@@ -2,7 +2,7 @@ use crate::cil::{CallSite, FieldDescriptor};
 use crate::cil_tree::cil_node::CILNode;
 use crate::function_sig::FnSig;
 use crate::r#type::Type;
-use crate::{call, conv_usize, ld_field, ldc_u64, mul};
+use crate::{call, conv_usize, ld_field, ldc_u64};
 
 use rustc_middle::mir::{Place, PlaceElem};
 use rustc_middle::ty::{Instance, TyCtxt, TyKind};

@@ -37,7 +37,7 @@ impl<'tyctx> UnsizeInfo<'tyctx> {
         let target_type = tycache.type_from_cache(target, tyctx, Some(method_instance));
         // Get the target type as a fat pointer.
         let target_dotnet = target_type.as_dotnet().unwrap();
-        let mut sized_ptr = handle_operand(&operand, tyctx, method, method_instance, tycache);
+        let mut sized_ptr = handle_operand(operand, tyctx, method, method_instance, tycache);
         // Unsizing a box
         if target.is_box() && source.is_box() {
             // 1. Get Unqiue<Source> from Box<Source>
@@ -99,7 +99,7 @@ impl<'tyctx> UnsizeInfo<'tyctx> {
                 source_points_to: derefed_source,
                 target_ptr,
                 source_ptr,
-                target_dotnet:non_null_ptr_desc.tpe().as_dotnet().unwrap(),
+                target_dotnet: non_null_ptr_desc.tpe().as_dotnet().unwrap(),
                 target_type,
             }
         } else {
@@ -149,8 +149,11 @@ pub fn unsize<'tyctx>(
     target: Ty<'tyctx>,
 ) -> CILNode {
     let info = UnsizeInfo::for_unsize(tyctx, method, method_instance, tycache, operand, target);
-    match (info.source_points_to.kind(),target.builtin_deref(true).unwrap().ty.kind()){
-        (TyKind::Array(_, length),_)=>{
+    match (
+        info.source_points_to.kind(),
+        target.builtin_deref(true).unwrap().ty.kind(),
+    ) {
+        (TyKind::Array(_, length), _) => {
             let length = crate::utilis::try_resolve_const_size(*length).unwrap();
             let metadata_field =
                 FieldDescriptor::new(info.target_dotnet.clone(), Type::USize, "metadata".into());
@@ -177,8 +180,10 @@ pub fn unsize<'tyctx>(
                 CILNode::LoadTMPLocal,
             )))
         }
-        (TyKind::Dynamic(data_a, _, src_dyn_kind), TyKind::Dynamic(data_b, _, target_dyn_kind))=>todo!("dyn to dyn cats not yet supported!"),
-        (_, TyKind::Dynamic(data, _, dyn_kind))=>{
+        (TyKind::Dynamic(data_a, _, src_dyn_kind), TyKind::Dynamic(data_b, _, target_dyn_kind)) => {
+            todo!("dyn to dyn cats not yet supported!")
+        }
+        (_, TyKind::Dynamic(data, _, dyn_kind)) => {
             let alloc_id = tyctx.vtable_allocation((info.source_points_to, data.principal()));
             let metadata_field =
                 FieldDescriptor::new(info.target_dotnet.clone(), Type::USize, "metadata".into());
@@ -192,7 +197,9 @@ pub fn unsize<'tyctx>(
                 [
                     CILRoot::SetField {
                         addr: info.target_ptr.clone(),
-                        value: CILNode::LoadGlobalAllocPtr { alloc_id: alloc_id.0.into() },
+                        value: CILNode::LoadGlobalAllocPtr {
+                            alloc_id: alloc_id.0.into(),
+                        },
                         desc: metadata_field,
                     },
                     CILRoot::SetField {
@@ -204,10 +211,10 @@ pub fn unsize<'tyctx>(
                 .into(),
                 CILNode::LoadTMPLocal,
             )))
-         
         }
-        (_,_)=>todo!("Unhandled unsizing cast:{source:?} -> {target:?}",source = info.source_points_to),
-        
+        (_, _) => todo!(
+            "Unhandled unsizing cast:{source:?} -> {target:?}",
+            source = info.source_points_to
+        ),
     }
-    
 }

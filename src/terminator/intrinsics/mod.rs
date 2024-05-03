@@ -1,10 +1,9 @@
 use crate::cil_tree::cil_root::CILRoot;
-use crate::operand::operand_address;
 use crate::place::place_adress;
 use crate::utilis::field_descrptor;
 use crate::{
-    call, call_virt, conv_f32, conv_f64, conv_usize, div, eq, ld_field, ld_field_address, ldc_i32,
-    ldc_u64, lt_un, mul, or, place, size_of, sub,
+    call, call_virt, conv_f32, conv_f64, conv_usize, eq, ld_field, ldc_i32, ldc_u64, lt_un,
+    size_of, sub,
 };
 fn compare_bytes(a: CILNode, b: CILNode, len: CILNode) -> CILNode {
     call!(
@@ -641,10 +640,10 @@ pub fn handle_intrinsic<'tyctx>(
                 FnSig::new(
                     &[
                         Type::ManagedReference(src_type.clone().into()),
-                        src_type.clone().into(),
-                        src_type.clone().into(),
+                        src_type.clone(),
+                        src_type.clone(),
                     ],
-                    &src_type.clone().into(),
+                    &src_type.clone(),
                 ),
                 true,
             );
@@ -673,12 +672,12 @@ pub fn handle_intrinsic<'tyctx>(
             let cmp = eq!(val, old);
             let fld_desc = field_descrptor(dst_ty.ty, 1, tyctx, method_instance, type_cache);
             assert_eq!(*fld_desc.tpe(), Type::Bool);
-            let set_bool = CILRoot::SetField {
+
+            CILRoot::SetField {
                 addr: place_adress(destination, tyctx, body, method_instance, type_cache),
                 value: cmp,
                 desc: fld_desc.clone(),
-            };
-            set_bool
+            }
         }
         "atomic_xchg_release" => {
             let interlocked = DotnetTypeRef::interlocked();
@@ -702,9 +701,9 @@ pub fn handle_intrinsic<'tyctx>(
                 FnSig::new(
                     &[
                         Type::ManagedReference(src_type.clone().into()),
-                        src_type.clone().into(),
+                        src_type.clone(),
                     ],
-                    &src_type.clone().into(),
+                    &src_type.clone(),
                 ),
                 true,
             );

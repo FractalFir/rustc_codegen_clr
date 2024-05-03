@@ -9,7 +9,6 @@ use crate::{
     function_sig::FnSig,
     ldc_u32,
     method::{Method, MethodType},
-    mul,
     r#type::{DotnetTypeRef, Type},
     size_of,
 };

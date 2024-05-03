@@ -31,8 +31,7 @@ impl std::io::Write for CExporter {
     }
 }
 fn escape_type_name(name: &str) -> String {
-    name.replace('.', "_")
-        .replace(' ', "_")
+    name.replace(['.', ' '], "_")
         .replace('<', "lt")
         .replace('>', "gt")
         .replace('$', "ds")
@@ -183,7 +182,7 @@ impl AssemblyExporter for CExporter {
         {
             if !self.defined.contains::<Box<_>>(&tpe_name.clone().into()) {
                 //eprintln!("type {tpe_name:?} has unresolved dependencies");
-                self.delayed_typedefs.insert(name.into(), tpe.clone());
+                self.delayed_typedefs.insert(name, tpe.clone());
                 return;
             }
         }
@@ -220,7 +219,7 @@ impl AssemblyExporter for CExporter {
             writeln!(self.types, "typedef struct {name} {name};").unwrap();
             write!(self.type_defs, "struct {name}{{\n{fields}}};\n").unwrap()
         }
-        self.defined.insert(name.into());
+        self.defined.insert(name);
         let delayed_typedefs = self.delayed_typedefs.clone();
         self.delayed_typedefs = HashMap::new();
         for (_, tpe) in delayed_typedefs {

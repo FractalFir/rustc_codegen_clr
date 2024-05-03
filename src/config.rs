@@ -60,6 +60,6 @@ config_flag! {CHECK_REFS,false,"Tells codegen to check if references it assigns 
 lazy_static! {
     #[doc = "Specifies the path to the IL assembler."]
     pub static ref ILASM_PATH:String = {
-        std::env::vars().into_iter().find_map(|(key,value)|if key == "ILASM_PATH"{Some(value)}else{None}).unwrap_or("ilasm".into())
+        std::env::vars().find_map(|(key,value)|if key == "ILASM_PATH"{Some(value)}else{None}).unwrap_or("ilasm".into())
     };
 }

@@ -59,7 +59,7 @@ macro_rules! add_method_from_trees {
         fn $name(asm: &mut $crate::assembly::Assembly) {
             let method = $crate::method::Method::new(
                 $crate::access_modifier::AccessModifer::Private,
-                crate::method::MethodType::Static,
+                $crate::method::MethodType::Static,
                 crate::function_sig::FnSig::new($input, $output),
                 stringify!($name),
                 vec![],

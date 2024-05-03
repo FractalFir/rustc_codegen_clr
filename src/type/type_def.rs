@@ -5,7 +5,6 @@ use crate::{
     cil_tree::{cil_node::CILNode, cil_root::CILRoot},
     conv_usize, ld_field_address,
     method::{Method, MethodType},
-    mul,
     r#type::{DotnetTypeRef, Type},
     size_of,
     utilis::adt::FieldOffsetIterator,
@@ -396,8 +395,7 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
                                     "f_0".to_string().into(),
                                 )
                             )) + CILNode::LDArg(1) * size_of!(element.clone()),
-                        )
-                        .into(),
+                        ),
                         obj: Box::new(element),
                     },
                 }

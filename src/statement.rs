@@ -1,6 +1,5 @@
 use crate::{
     cil_tree::{cil_node::CILNode, cil_root::CILRoot, CILTree},
-    mul,
     place::place_get,
     r#type::TyCache,
     size_of,

@@ -13,7 +13,7 @@ pub mod checked;
 pub mod cmp;
 pub mod shift;
 use crate::{
-    call, conv_u16, conv_u32, conv_u64, conv_u8, conv_usize, div, eq, ldc_i32, mul, rem, rem_un,
+    call, conv_u16, conv_u32, conv_u64, conv_u8, conv_usize, div, eq, ldc_i32, rem, rem_un,
     size_of, sub,
 };
 use bitop::*;

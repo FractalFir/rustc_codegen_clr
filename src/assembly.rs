@@ -6,16 +6,9 @@ use crate::cil_tree::CILTree;
 use crate::method::MethodType;
 use crate::rustc_middle::dep_graph::DepContext;
 use crate::{
-    access_modifier::AccessModifer,
-    cil::{CILOp, CallSite},
-    codegen_error::CodegenError,
-    codegen_error::MethodCodegenError,
-    function_sig::FnSig,
-    method::Method,
-    r#type::TyCache,
-    r#type::Type,
-    r#type::TypeDef,
-    IString,
+    access_modifier::AccessModifer, cil::CallSite, codegen_error::CodegenError,
+    codegen_error::MethodCodegenError, function_sig::FnSig, method::Method, r#type::TyCache,
+    r#type::Type, r#type::TypeDef, IString,
 };
 use crate::{call, conv_isize, conv_usize, ldc_u32, ldc_u64};
 use rustc_middle::mir::interpret::Allocation;
@@ -567,7 +560,7 @@ impl Assembly {
             if let CILRoot::SetStaticField { descr, value } = tree.root_mut() {
                 // Assigement to a dead static, remove.
                 if !alive_fields.contains(descr) {
-                    debug_assert!(descr.name().contains("a"));
+                    debug_assert!(descr.name().contains('a'));
                     debug_assert!(matches!(value, CILNode::Call { site: _, args: _ }));
                     *tree = CILRoot::Nop.into();
                 }

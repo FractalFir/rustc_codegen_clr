@@ -3,10 +3,7 @@ use crate::{
     basic_block::BasicBlock,
     cil::{CallSite, StaticFieldDescriptor},
     function_sig::FnSig,
-    r#type::{
-        tycache::{self, TyCache},
-        DotnetTypeRef, Type,
-    },
+    r#type::{tycache::TyCache, DotnetTypeRef, Type},
     IString,
 };
 use rustc_middle::ty::TyCtxt;
@@ -214,7 +211,7 @@ impl Method {
         &self.blocks
     }
     /// Returns a mutable reference to a list of basic block that make up this method.
-    pub fn blocks_mut<'a>(&'a mut self) -> BlockMutGuard<'a> {
+    pub fn blocks_mut(&mut self) -> BlockMutGuard<'_> {
         BlockMutGuard { method: self }
     }
 

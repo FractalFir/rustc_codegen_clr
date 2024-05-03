@@ -4,7 +4,7 @@ use crate::cil_tree::cil_node::CILNode;
 use crate::cil_tree::cil_root::CILRoot;
 use crate::function_sig::FnSig;
 use crate::r#type::{pointer_to_is_fat, DotnetTypeRef, Type};
-use crate::{call, conv_usize, ld_field, ldc_u64, mul, size_of};
+use crate::{call, conv_usize, ld_field, ldc_u64, size_of};
 
 use rustc_middle::mir::PlaceElem;
 use rustc_middle::ty::{FloatTy, Instance, IntTy, TyCtxt, TyKind, UintTy};

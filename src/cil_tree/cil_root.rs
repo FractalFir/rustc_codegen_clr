@@ -601,7 +601,7 @@ impl CILRoot {
             .sess
             .source_map()
             .span_to_lines(span)
-            .map(|lines| match lines.lines.get(0) {
+            .map(|lines| match lines.lines.first() {
                 Some(pos) => (pos.line_index, pos.start_col.0),
                 None => (0, 0),
             })

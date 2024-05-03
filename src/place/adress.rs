@@ -5,7 +5,7 @@ use crate::{
     cil_tree::{cil_node::CILNode, cil_root::CILRoot},
     conv_usize,
     function_sig::FnSig,
-    ld_field, ldc_u64, mul,
+    ld_field, ldc_u64,
     r#type::{TyCache, Type},
     size_of,
 };
@@ -187,7 +187,8 @@ pub fn place_elem_adress<'ctx>(
                         Type::Ptr(Type::Void.into()),
                         "data_pointer".into(),
                     );
-
+                    // This is a false positive
+                    #[allow(unused_parens)]
                     (ld_field! {addr_calc, desc }
                         + conv_usize!(size_of!(inner_type)) * conv_usize!(index))
                 }
