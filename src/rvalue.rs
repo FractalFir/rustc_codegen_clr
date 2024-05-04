@@ -9,7 +9,7 @@ use crate::{conv_usize, ld_field, ldc_i32, ldc_u32, ldc_u64, size_of};
 use crate::r#type::{pointer_to_is_fat, TyCache, Type};
 use rustc_middle::{
     mir::{CastKind, NullOp, Place, Rvalue},
-    ty::{adjustment::PointerCoercion, Instance, ParamEnv, Ty, TyCtxt, TyKind},
+    ty::{adjustment::PointerCoercion, Instance, ParamEnv, Ty, TyCtxt, TyKind,GenericArgs,InstanceDef},
 };
 pub fn handle_rvalue<'tcx>(
     rvalue: &Rvalue<'tcx>,
@@ -419,6 +419,22 @@ pub fn handle_rvalue<'tcx>(
             let branches: Box<_> = branches.into();
             CILNode::TemporaryLocal(Box::new((array.clone(), branches, CILNode::LoadTMPLocal)))
         }
-        _ => rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Unhandled RValue {rvalue:?}")},
+        Rvalue::ThreadLocalRef(def_id)=>{
+            if !def_id.is_local() && tyctx.needs_thread_local_shim(*def_id) {
+                let instance = Instance {
+                    def: InstanceDef::ThreadLocalShim(*def_id),
+                    args: GenericArgs::empty(),
+                };
+                // Call instance
+                todo!("Thread locals with shims unsupported!")
+            } else {
+                let alloc_id = tyctx.reserve_and_set_static_alloc(*def_id);
+                CILNode::LoadGlobalAllocPtr { alloc_id: alloc_id.0.into() }
+                
+            }
+        },
+        Rvalue::Cast(rustc_middle::mir::CastKind::FnPtrToPtr, _, _)=>todo!("Unusported cast kind:FnPtrToPtr"),
+        Rvalue::Cast(rustc_middle::mir::CastKind::DynStar, _, _)=>todo!("Unusported cast kind:DynStar"),
+        _=>todo!()
     }
 }

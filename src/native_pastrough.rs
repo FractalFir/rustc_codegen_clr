@@ -1,5 +1,5 @@
 /// A list of all functions which are redirected to system libc.
-pub const LIBC_FNS: [&str; 497] = [
+pub const LIBC_FNS: [&str; 501] = [
     "a64l",
     "abort",
     "abs",
@@ -38,6 +38,7 @@ pub const LIBC_FNS: [&str; 497] = [
     "confstr",
     "ctermid",
     "ctime",
+    "close",
     "cuserid",
     "daemon",
     "difftime",
@@ -272,7 +273,9 @@ pub const LIBC_FNS: [&str; 497] = [
     "muntrace",
     "nice",
     "nrand48",
+    "open",
     "openlog",
+    "open64",
     "perror",
     "ppoll",
     "preadv",
@@ -496,5 +499,6 @@ pub const LIBC_FNS: [&str; 497] = [
     "wordexp",
     "wordfree",
     "wprintf",
+    "write",
     "wscanf",
 ];

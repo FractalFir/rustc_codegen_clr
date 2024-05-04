@@ -617,7 +617,7 @@ pub fn handle_intrinsic<'tyctx>(
                 val,
             )
         }
-        "atomic_cxchgweak_acquire_acquire" | "atomic_cxchg_acquire_relaxed" => {
+        "atomic_cxchgweak_acquire_acquire" | "atomic_cxchg_acquire_relaxed" | "atomic_cxchgweak_acquire_relaxed" => {
             let interlocked = DotnetTypeRef::interlocked();
             // *T
             let dst = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
@@ -678,6 +678,39 @@ pub fn handle_intrinsic<'tyctx>(
                 value: cmp,
                 desc: fld_desc.clone(),
             }
+        }
+        "atomic_xsub_release"=>{
+            let interlocked = DotnetTypeRef::interlocked();
+            // *T
+            let dst = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
+            // T
+            let sub_ammount = handle_operand(&args[1].node, tyctx, body, method_instance, type_cache);
+            // we sub by adding a negative number 
+            let add_ammount = CILNode::Neg(Box::new(sub_ammount));
+            let src_type =
+                crate::utilis::monomorphize(&method_instance, args[1].node.ty(body, tyctx), tyctx);
+            let src_type = type_cache.type_from_cache(src_type, tyctx, Some(method_instance));
+            let call_site = CallSite::new(
+                Some(interlocked),
+                "Add".into(),
+                FnSig::new(
+                    &[
+                        Type::ManagedReference(src_type.clone().into()),
+                        src_type.clone(),
+                    ],
+                    &src_type.clone(),
+                ),
+                true,
+            );
+            place_set(
+                destination,
+                tyctx,
+                call!(call_site, [dst, add_ammount]),
+                body,
+                method_instance,
+                type_cache,
+            )
+
         }
         "atomic_xchg_release" => {
             let interlocked = DotnetTypeRef::interlocked();
@@ -1045,6 +1078,37 @@ pub fn handle_intrinsic<'tyctx>(
                 )]
             );
             place_set(destination, tyctx, ops, body, method_instance, type_cache)
+        }
+        "catch_unwind"=>{
+            debug_assert_eq!(
+                args.len(),
+                2,
+                "The intrinsic `minnumf32` MUST take in exactly 2 arguments!"
+            );
+            let try_fn = handle_operand(
+                &args[0].node,
+                tyctx,
+                body,
+                method_instance,
+                type_cache
+            );
+            let data_ptr = handle_operand(
+                &args[1].node,
+                tyctx,
+                body,
+                method_instance,
+                type_cache
+            );
+            let catch_fn = handle_operand(
+                &args[2].node,
+                tyctx,
+                body,
+                method_instance,
+                type_cache
+            );
+            let _ = catch_fn;
+            eprintln!("WARNING: catching unwinds currently not supported! the intrinic `catch_unwind` WILL NOT CATCH UNWINDS YET!");
+            CILRoot::CallI { sig: FnSig::new(&[Type::Ptr(Type::U8.into())],&Type::Void), fn_ptr: try_fn, args: Box::new([data_ptr]) }
         }
         "abort" => CILRoot::throw("Called abort!"),
         _ => intrinsic_slow(

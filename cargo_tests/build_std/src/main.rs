@@ -191,7 +191,7 @@ fn main() {
     test_file();
     unsafe{printf(s.as_ptr() as *const i8)};
     let _ = s;
-    return;
+   
     test_vec();
     test_string();
     let int = std::hint::black_box(8);
@@ -349,13 +349,13 @@ fn main() {
     };
     test_thread_local();
     //lock_test();
-    // test_stdout();
+    test_stdout();
     test_stderr();
 
     let s = format!("Hello!\n\0");
     unsafe { printf(s.as_ptr() as *const i8) };
-    let s = format!("Hello??? WTF is going on???{}\n\0", black_box(65));
-    unsafe { printf(s.as_ptr() as *const i8) };
+    //let s = format!("Hello??? WTF is going on???{}\n\0", black_box(65));
+    //unsafe { printf(s.as_ptr() as *const i8) };
 
     let val = std::hint::black_box(*boxed_int);
     //let val = std::hint::black_box(string);

@@ -758,6 +758,7 @@ run_test! {intrinsics,bswap,stable}
 
 run_test! {intrinsics,assert,unstable}
 run_test! {intrinsics,addr_of,stable}
+run_test! {intrinsics,atomics,stable}
 run_test! {intrinsics,alloc,stable}
 run_test! {intrinsics,malloc,stable}
 run_test! {intrinsics,offset_of,stable}
