@@ -244,6 +244,7 @@ impl Assembly {
         name: &str,
         cache: &mut TyCache,
     ) -> Result<(), MethodCodegenError> {
+       
         if crate::utilis::is_function_magic(name) {
             return Ok(());
         }
@@ -608,28 +609,11 @@ impl Assembly {
             );
             return Ok(());
         }*/
+        let name = item.symbol_name(tcx);
         match item {
             MonoItem::Fn(instance) => {
                 //let instance = crate::utilis::monomorphize(&instance,tcx);
-                let symbol_name = crate::utilis::function_name(item.symbol_name(tcx));
-                if symbol_name.contains("map_or_else") {
-                    println!(
-                        "Defining function with name {symbol_name}. DefId:{:?}, Subst:{:?}",
-                        instance.def, instance.args
-                    );
-                    let sig = crate::utilis::monomorphize(
-                        &instance,
-                        instance.ty(tcx, ParamEnv::reveal_all()).fn_sig(tcx),
-                        tcx,
-                    );
-                    rustc_middle::ty::print::with_no_trimmed_paths! {println!("map_or_else_sig:{:?}",sig)};
-                    let call_info =
-                        crate::call_info::CallInfo::sig_from_instance_(instance, tcx, cache)
-                            .expect("Could not resolve function sig");
-                    for input in call_info.sig().inputs() {
-                        println!("\t{input:?}");
-                    }
-                }
+                let symbol_name: Box<str> = crate::utilis::function_name(item.symbol_name(tcx));
 
                 let function_compile_timer = tcx.profiler().generic_activity_with_arg(
                     "compile function",

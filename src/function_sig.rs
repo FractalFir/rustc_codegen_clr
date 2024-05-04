@@ -107,6 +107,10 @@ impl FnSig {
     pub fn set_inputs(&mut self, inputs: Vec<Type>) {
         self.inputs = inputs;
     }
+    
+    pub fn inputs_mut(&mut self) -> &mut Vec<Type> {
+        &mut self.inputs
+    }
 }
 /// Checks if this function is variadic.
 pub fn is_fn_variadic<'tyctx>(ty: Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -> bool {
