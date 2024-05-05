@@ -747,6 +747,7 @@ run_test! {types,int128,stable}
 
 run_test! {std,main,unstable}
 run_test! {std,futex_test,unstable}
+run_test! {std,futexrw_test,unstable}
 run_test! {std,tlocal_key_test,stable}
 run_test! {std,cstr,unstable}
 run_test! {std,cell_test,stable}

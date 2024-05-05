@@ -38,6 +38,7 @@ use rustc_middle::{
 use rustc_span::source_map::Spanned;
 use tycache::TyCache;
 mod bswap;
+mod interop;
 pub fn handle_intrinsic<'tyctx>(
     fn_name: &str,
     args: &[Spanned<Operand<'tyctx>>],
@@ -647,8 +648,11 @@ pub fn handle_intrinsic<'tyctx>(
                 ),
                 true,
             );
-            // *T
-            let exchange_res = call!(call_site, [dst, old.clone(), src]);
+          
+            let location1 = dst.clone();
+            let value = src;
+            let comaprand = old.clone();
+            let exchange_res = call!(call_site, [dst, value, comaprand]);
             // Set a field of the destination
             let dst_ty = destination.ty(body, tyctx);
             let fld_desc = field_descrptor(dst_ty.ty, 0, tyctx, method_instance, type_cache);
@@ -686,7 +690,7 @@ pub fn handle_intrinsic<'tyctx>(
             // T
             let sub_ammount = handle_operand(&args[1].node, tyctx, body, method_instance, type_cache);
             // we sub by adding a negative number 
-            let add_ammount = CILNode::Neg(Box::new(sub_ammount));
+            let add_ammount = CILNode::Neg(Box::new(sub_ammount.clone()));
             let src_type =
                 crate::utilis::monomorphize(&method_instance, args[1].node.ty(body, tyctx), tyctx);
             let src_type = type_cache.type_from_cache(src_type, tyctx, Some(method_instance));
@@ -705,7 +709,7 @@ pub fn handle_intrinsic<'tyctx>(
             place_set(
                 destination,
                 tyctx,
-                call!(call_site, [dst, add_ammount]),
+                call!(call_site, [dst, add_ammount]) + sub_ammount,
                 body,
                 method_instance,
                 type_cache,

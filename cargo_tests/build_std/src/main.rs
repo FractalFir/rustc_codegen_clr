@@ -185,7 +185,7 @@ fn test_file(){
     file.write_all(b"Hello, world!").unwrap();
 }
 fn main() {
-    print_args();
+    //print_args();
     let idx = black_box(64);
     let s = format!("Hello!\n\0");
     test_file();
@@ -349,8 +349,11 @@ fn main() {
     };
     test_thread_local();
     //lock_test();
+    test_mutex();
     test_stdout();
     test_stderr();
+    test_rwlock();
+    test_custom_panic_hook();
 
     let s = format!("Hello!\n\0");
     unsafe { printf(s.as_ptr() as *const i8) };
@@ -373,6 +376,39 @@ fn test_thread_local() {
     unsafe{printf("Seting a thread local succeded.\n\0".as_ptr() as *const i8)};
     assert_eq!(X.get(), 123);
     unsafe{printf("Acquiring a thread local succeded.\n\0".as_ptr() as *const i8)};
+}
+fn test_mutex(){
+    let mutex = std::sync::Mutex::new(0_u64);
+    for i in 0..100{
+        *(mutex.lock().unwrap()) += 1;
+    }
+    let val = mutex.into_inner().unwrap();
+    if val != 100{
+        unsafe{printf("Mutex value invalid. val:%ul \n\0".as_ptr() as *const i8,val)};
+        unsafe { core::intrinsics::abort() };
+    };
+    unsafe{printf("Mutex value is OK! val:%ul \n\0".as_ptr() as *const i8,val)};
+}
+fn test_rwlock(){
+    let rwlock = std::sync::RwLock::new(0_u64);
+    for i in 0..100_u64{
+        *(rwlock.write().unwrap()) += 1;
+        if *rwlock.read().unwrap() != i{
+            unsafe{printf("RWlock value invalid. val:%u, should be %u \n\0".as_ptr() as *const i8,rwlock.read().unwrap(),i)};
+            unsafe { core::intrinsics::abort() };
+        }
+    }
+    let val = rwlock.into_inner().unwrap();
+    if val != 100{
+        unsafe{printf("RWlock value invalid. val:%u  \n\0".as_ptr() as *const i8,val)};
+        unsafe { core::intrinsics::abort() };
+    };
+    unsafe{printf("RWlock value is OK! val:%ul \n\0".as_ptr() as *const i8,val)};
+}
+fn test_custom_panic_hook(){
+    std::panic::set_hook(Box::new(|_| {
+        println!("Custom panic hook");
+    }));
 }
 fn test_stderr() {
     use std::io::{self, Write};
