@@ -25,6 +25,10 @@ add_method_from_trees!(
                     ops: lt_un!(CILNode::LDArg(0), CILNode::LDArg(1))
                 }
                 .into(),
+                CILRoot::Call{ site: crate::cil::CallSite::new_extern(DotnetTypeRef::console(),"Write".into(),FnSig::new(&[DotnetTypeRef::string_type().into()],&Type::Void),true), args: Box::new([CILNode::LdStr("Bounds check failed. idx:".into())]) }.into(),
+                CILRoot::Call{ site: crate::cil::CallSite::new_extern(DotnetTypeRef::console(),"Write".into(),FnSig::new(&[Type::U64],&Type::Void),true), args: Box::new([conv_usize!(CILNode::LDArg(0))]) }.into(),
+                CILRoot::Call{ site: crate::cil::CallSite::new_extern(DotnetTypeRef::console(),"Write".into(),FnSig::new(&[DotnetTypeRef::string_type().into()],&Type::Void),true), args: Box::new([CILNode::LdStr("len:".into())]) }.into(),
+                CILRoot::Call{ site: crate::cil::CallSite::new_extern(DotnetTypeRef::console(),"WriteLine".into(),FnSig::new(&[Type::U64],&Type::Void),true), args: Box::new([conv_usize!(CILNode::LDArg(1))]) }.into(),
                 CILRoot::Throw(CILNode::NewObj {
                     site: CallSite::boxed(
                         Some(DotnetTypeRef::new(

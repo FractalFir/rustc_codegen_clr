@@ -41,7 +41,6 @@ pub fn handle_call_terminator<'tycxt>(
     };
     match func_ty.kind() {
         TyKind::FnDef(_, _) => {
-           
             //rustc_middle::ty::print::with_no_trimmed_paths! {eprintln!("call terminator {terminator:?}")};
             //eprintln!("calling {operand_ty:?} indirectly");
             let fn_ty = monomorphize(&method_instance, func_ty, tyctx);
@@ -52,7 +51,7 @@ pub fn handle_call_terminator<'tycxt>(
             );
             let fn_ty = monomorphize(&method_instance, fn_ty, tyctx);
             //let fn_instance = Instance::resolve(tyctx,ParamEnv::reveal_all,fn_ty.did,List::empty());
-           
+
             let call_ops = call::call(
                 fn_ty,
                 body,

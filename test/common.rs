@@ -50,8 +50,8 @@ macro_rules! test{
 macro_rules! test_eq{
     ($a:expr,$b:expr)=>{
         if core::intrinsics::black_box($a) != core::intrinsics::black_box($b){
-            Put::putnl($a);
-            Put::putnl($b);
+            //Put::putnl($a);
+            //Put::putnl($b);
             crate::rustc_clr_interop_managed_call1_::<"System.Console","System.Console",false,"WriteLine",true,(),u32>(line!());
             unsafe{core::intrinsics::breakpoint()};
             core::intrinsics::abort();

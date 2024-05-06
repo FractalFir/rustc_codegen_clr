@@ -1,1 +1,1 @@
-pub fn handle_managed_intirnisc(){}
+pub fn handle_managed_intirnisc() {}

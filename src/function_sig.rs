@@ -107,7 +107,7 @@ impl FnSig {
     pub fn set_inputs(&mut self, inputs: Vec<Type>) {
         self.inputs = inputs;
     }
-    
+
     pub fn inputs_mut(&mut self) -> &mut Vec<Type> {
         &mut self.inputs
     }

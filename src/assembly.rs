@@ -244,7 +244,6 @@ impl Assembly {
         name: &str,
         cache: &mut TyCache,
     ) -> Result<(), MethodCodegenError> {
-       
         if crate::utilis::is_function_magic(name) {
             return Ok(());
         }

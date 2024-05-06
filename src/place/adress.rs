@@ -1,13 +1,6 @@
 use super::PlaceTy;
 use crate::{
-    assert_morphic, call,
-    cil::{CallSite, FieldDescriptor},
-    cil_tree::{cil_node::CILNode, cil_root::CILRoot},
-    conv_usize,
-    function_sig::FnSig,
-    ld_field, ldc_u64,
-    r#type::{TyCache, Type},
-    size_of,
+    assert_morphic, call, cil::{CallSite, FieldDescriptor}, cil_tree::{cil_node::CILNode, cil_root::CILRoot}, conv_usize, function_sig::FnSig, ld_field, ldc_u32, ldc_u64, size_of, r#type::{TyCache, Type}
 };
 use rustc_middle::{
     mir::PlaceElem,
@@ -322,23 +315,21 @@ pub fn place_elem_adress<'ctx>(
                         Type::Ptr(Type::Void.into()),
                         "data_pointer".into(),
                     );
+                    let index = if *from_end {
+                        let desc = FieldDescriptor::new(
+                            slice.clone(),
+                            Type::USize,
+                            "metadata".into(),
+                        );
+                        //eprintln!("Slice index from end is:{offset}");
+                        CILNode::Sub(Box::new(ld_field!(addr_calc.clone(), desc)),Box::new(conv_usize!(index)))
 
-                    if *from_end {
-                        todo!("Can't index slice from end!");
                     } else {
-                        ld_field!(addr_calc.clone(), desc)
-                            + call!(
-                                CallSite::new(
-                                    None,
-                                    "bounds_check".into(),
-                                    FnSig::new(&[Type::USize, Type::USize], &Type::USize),
-                                    true
-                                ),
-                                [index, conv_usize!(ldc_u64!(*min_length))]
-                            ) * conv_usize!(CILNode::SizeOf(inner_type.into()))
-
+                        conv_usize!(index) 
                         //ops.extend(derf_op);
-                    }
+                    };
+                    ld_field!(addr_calc.clone(), desc)
+                        + (index * conv_usize!(CILNode::SizeOf(inner_type.into())))
                 }
                 TyKind::Array(element, _) => {
                     let element_ty = crate::utilis::monomorphize(&method_instance, *element, tyctx);

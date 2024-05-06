@@ -20,8 +20,9 @@ fn main(){
     slice[black_box(7)] = 0;
     unsafe{puts(ptr)};
     black_box(&slice);
-    let oslice = "Hello, World\n\0";
+    let oslice = b"Hello, World\n\0";
     test_eq!(oslice.len(),14);
+    test_eq!(oslice.last(),Some(&b'\0'));
      //TODOD: Split this bug into separate test case
       /* 
     let slice = slice.as_ascii();

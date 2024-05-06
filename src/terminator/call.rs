@@ -1,5 +1,17 @@
 use crate::{
-    call, call_info::CallInfo, call_virt, cil::{CallSite, FieldDescriptor}, cil_tree::{cil_node::CILNode, cil_root::CILRoot}, conv_usize, function_sig::FnSig, interop::AssemblyRef, ld_field, ldc_u32, operand::operand_address, size_of, r#type::{DotnetTypeRef, Type}, utilis::{garg_to_string, CTOR_FN_NAME, MANAGED_CALL_FN_NAME, MANAGED_CALL_VIRT_FN_NAME}
+    call,
+    call_info::CallInfo,
+    call_virt,
+    cil::{CallSite, FieldDescriptor},
+    cil_tree::{cil_node::CILNode, cil_root::CILRoot},
+    conv_usize,
+    function_sig::FnSig,
+    interop::AssemblyRef,
+    ld_field, ldc_u32,
+    operand::operand_address,
+    r#type::{DotnetTypeRef, Type},
+    size_of,
+    utilis::{garg_to_string, CTOR_FN_NAME, MANAGED_CALL_FN_NAME, MANAGED_CALL_VIRT_FN_NAME},
 };
 use rustc_middle::{
     mir::{Body, Operand, Place},
@@ -377,22 +389,41 @@ pub fn call<'tyctx>(
     } else {
         todo!("Trying to call a type which is not a function definition!");
     };
-    if let rustc_middle::ty::InstanceDef::Virtual(def,fn_idx) = instance.def{
+    if let rustc_middle::ty::InstanceDef::Virtual(def, fn_idx) = instance.def {
         assert!(!args.is_empty());
-        let fat_ptr_ty = crate::utilis::monomorphize(&method_instance, args[0].node.ty(body,tyctx), tyctx);
+        let fat_ptr_ty =
+            crate::utilis::monomorphize(&method_instance, args[0].node.ty(body, tyctx), tyctx);
         let fat_ptr_type = type_cache.type_from_cache(fat_ptr_ty, tyctx, Some(method_instance));
-        let fat_ptr_address = operand_address(&args[0].node, tyctx, body, method_instance, type_cache);
-        let vtable_ptr = ld_field!(fat_ptr_address.clone(),FieldDescriptor::new(fat_ptr_type.as_dotnet().unwrap(),Type::USize,"metadata".into()));
-   
-        let vtable_index = ldc_u32!(u32::try_from(fn_idx).expect("More tahn 2^32 functions in a vtable!"));
+        let fat_ptr_address =
+            operand_address(&args[0].node, tyctx, body, method_instance, type_cache);
+        let vtable_ptr = ld_field!(
+            fat_ptr_address.clone(),
+            FieldDescriptor::new(
+                fat_ptr_type.as_dotnet().unwrap(),
+                Type::USize,
+                "metadata".into()
+            )
+        );
+
+        let vtable_index =
+            ldc_u32!(u32::try_from(fn_idx).expect("More tahn 2^32 functions in a vtable!"));
         let vtable_offset = conv_usize!(vtable_index * size_of!(Type::USize));
         // Get the address of the function ptr, and load it
-        let fn_ptr = CILNode::LDIndISize { ptr: Box::new(vtable_ptr + vtable_offset) };
+        let fn_ptr = CILNode::LDIndISize {
+            ptr: Box::new(vtable_ptr + vtable_offset),
+        };
         // Get the addres of the object
-        let obj_ptr = ld_field!(fat_ptr_address,FieldDescriptor::new(fat_ptr_type.as_dotnet().unwrap(),Type::Ptr(Type::Void.into()),"data_pointer".into()));
+        let obj_ptr = ld_field!(
+            fat_ptr_address,
+            FieldDescriptor::new(
+                fat_ptr_type.as_dotnet().unwrap(),
+                Type::Ptr(Type::Void.into()),
+                "data_pointer".into()
+            )
+        );
         // Get the call info
         let call_info = CallInfo::sig_from_instance_(instance, tyctx, type_cache)
-        .expect("Could not resolve function sig");
+            .expect("Could not resolve function sig");
         let mut signature = call_info.sig().clone();
         signature.inputs_mut()[0] = Type::ISize;
         let mut call_args = [obj_ptr].to_vec();
@@ -405,23 +436,25 @@ pub fn call<'tyctx>(
                 type_cache,
             ));
         }
-        assert_eq!(signature.inputs().len(),call_args.len());
+        assert_eq!(signature.inputs().len(), call_args.len());
         let is_ret_void = matches!(signature.output(), crate::r#type::Type::Void);
-        if is_ret_void{
-            return CILRoot::CallI{sig:signature,fn_ptr, args:call_args.into() };
-        }
-        else{
+        if is_ret_void {
+            return CILRoot::CallI {
+                sig: signature,
+                fn_ptr,
+                args: call_args.into(),
+            };
+        } else {
             return crate::place::place_set(
                 destination,
                 tyctx,
-                CILNode::CallI(Box::new((signature,fn_ptr,call_args.into()))),
+                CILNode::CallI(Box::new((signature, fn_ptr, call_args.into()))),
                 body,
                 method_instance,
                 type_cache,
             );
         }
         //let ind = ;
-      
     }
     let call_info = CallInfo::sig_from_instance_(instance, tyctx, type_cache)
         .expect("Could not resolve function sig");

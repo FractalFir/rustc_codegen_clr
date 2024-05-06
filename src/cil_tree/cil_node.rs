@@ -1174,6 +1174,13 @@ impl std::ops::Add<CILNode> for CILNode {
         CILNode::Add(self.into(), rhs.into())
     }
 }
+impl std::ops::Sub<CILNode> for CILNode {
+    type Output = CILNode;
+
+    fn sub(self, rhs: CILNode) -> Self::Output {
+        CILNode::Sub(self.into(), rhs.into())
+    }
+}
 impl std::ops::Mul<CILNode> for CILNode {
     type Output = CILNode;
 
