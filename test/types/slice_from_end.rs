@@ -1,0 +1,10 @@
+#![feature(lang_items,adt_const_params,associated_type_defaults,core_intrinsics,start,ascii_char)]
+#![allow(internal_features,incomplete_features,unused_variables,dead_code)]
+#![no_std]
+include!("../common.rs");
+fn main(){
+    let oslice = b"a";
+    test_eq!(oslice.len(),black_box(1));
+    test_eq!(oslice[0],b'a');
+    test_eq!(*oslice.last().unwrap(),b'a');
+}
