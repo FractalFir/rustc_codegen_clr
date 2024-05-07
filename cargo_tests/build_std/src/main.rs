@@ -357,8 +357,8 @@ fn main() {
 
     let s = format!("Hello!\n\0");
     unsafe { printf(s.as_ptr() as *const i8) };
-    //let s = format!("Hello??? WTF is going on???{}\n\0", black_box(65));
-    //unsafe { printf(s.as_ptr() as *const i8) };
+    let s = format!("Hello??? WTF is going on???{}\n\0", black_box(65));
+    unsafe { printf(s.as_ptr() as *const i8) };
 
     let val = std::hint::black_box(*boxed_int);
     //let val = std::hint::black_box(string);
@@ -391,7 +391,7 @@ fn test_mutex(){
 }
 fn test_rwlock(){
     let rwlock = std::sync::RwLock::new(0_u64);
-    for i in 0..100_u64{
+    for i in 1..101_u64{
         *(rwlock.write().unwrap()) += 1;
         if *rwlock.read().unwrap() != i{
             unsafe{printf("RWlock value invalid. val:%u, should be %u \n\0".as_ptr() as *const i8,rwlock.read().unwrap(),i)};

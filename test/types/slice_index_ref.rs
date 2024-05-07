@@ -5,8 +5,8 @@ include!("../common.rs");
 pub fn main(){
     let a = [0;8];
     let b = black_box(&a[..]);
-    let c = black_box(&((*b)[8]));
+    let c = black_box(&((*b)[7]));
     let a = [b;8];
     let b = black_box(&a[..]);
-    let c = black_box(&((*b)[8]));
+    let c = black_box(&((*b)[7]));
 }

@@ -497,6 +497,8 @@ fn fn6(
 pub fn main() {
     fn6();
     fn9();
+
+    fn1();
 }
 
 impl PrintFDebug for Adt50 {
@@ -512,21 +514,34 @@ pub struct Adt50 {
 }
 
 fn fn9() {
-
 let mut _11: [usize; 5];
-
-
-
-
 let two = std::hint::black_box(2);
 let not_two = std::hint::black_box(!two); 
 let tmp = not_two / two;
 _11 = [tmp,tmp,tmp,tmp,tmp];
-
-
-
 dump_var(9_usize, 9_usize, (tmp), 1_usize, (two), 2_usize, not_two, 0xFF_usize, ());
 
+}
+#[custom_mir(dialect = "runtime", phase = "initial")]
+fn fn1() -> f64 {
+mir! {
+type RET = f64;
+let _1: (i16, bool);
+let _2: (i16, bool);
+let _3: (i16, bool);
+let _4: (i16, bool);
+let _31: ();
 
+{
+_1 = Checked((-2150_i16) + (-21040_i16));
+_2 = Checked((2150_i16) + (-21040_i16));
+_3 = Checked((2150_i16) + (21040_i16));
+_4 = Checked((-2150_i16) + (21040_i16));
+Call(_31 = dump_var(1_usize, 1_usize, Move(_1), 2_usize, Move(_2), 3_usize, Move(_3), 4_usize, Move(_4)), ReturnTo(bb1), UnwindUnreachable())
+}
+bb1 = {
+Return()
+}
 
+}
 }

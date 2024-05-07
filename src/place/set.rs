@@ -174,7 +174,7 @@ pub fn place_elem_set<'a>(
                             ),
                             [
                                 ld_field!(addr_calc, metadata),
-                                conv_usize!(ldc_u64!(*min_length))
+                                conv_usize!(index)
                             ]
                         ) * conv_usize!(CILNode::SizeOf(inner_type.into()));
                     ptr_set_op(

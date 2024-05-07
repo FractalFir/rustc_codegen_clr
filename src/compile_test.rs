@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
-#[cfg(test)]
-fn test_dotnet_executable(file_path: &str, test_dir: &str) -> String {
+
+pub fn test_dotnet_executable(file_path: &str, test_dir: &str) -> String {
     use std::io::Write;
 
     let exec_path = &format!("{file_path}.exe");
@@ -23,7 +23,12 @@ fn test_dotnet_executable(file_path: &str, test_dir: &str) -> String {
     }
     //println!("exec_path:{exec_path:?}");
     if *IS_DOTNET_PRESENT {
-        let config_path = format!("{test_dir}/{file_path}.runtimeconfig.json");
+        
+        let config_path = if file_path.contains(test_dir){
+            format!("{file_path}.runtimeconfig.json")
+        }else{
+            format!("{test_dir}/{file_path}.runtimeconfig.json")
+        };
         println!("{config_path:?}");
         let mut file = std::fs::File::create(config_path).unwrap();
         file.write_all(RUNTIME_CONFIG.as_bytes())
@@ -295,7 +300,7 @@ macro_rules! test_lib {
                             "-O",
                             "--crate-type=lib",
                             "-Z",
-                            super::super::backend_path(),
+                            &super::super::backend_path(),
                             "-C",
                             &format!(
                                 "linker={}",
@@ -318,7 +323,7 @@ macro_rules! test_lib {
                         &[
                             "--crate-type=lib",
                             "-Z",
-                            super::super::backend_path(),
+                            &super::super::backend_path(),
                             "-C",
                             &format!(
                                 "linker={}",
@@ -619,6 +624,7 @@ fn build_backend() -> Result<(), String> {
 pub fn absolute_backend_path() -> PathBuf {
     if cfg!(debug_assertions) {
         if cfg!(target_os = "linux") {
+           
             std::fs::canonicalize("target/debug/librustc_codegen_clr.so").unwrap()
         } else if cfg!(target_os = "windows") {
             std::fs::canonicalize("target/debug/librustc_codegen_clr.dll").unwrap()
@@ -628,6 +634,7 @@ pub fn absolute_backend_path() -> PathBuf {
             panic!("Unsupported target OS");
         }
     } else if cfg!(target_os = "linux") {
+        
         std::fs::canonicalize("target/release/librustc_codegen_clr.so").unwrap()
     } else if cfg!(target_os = "windows") {
         std::fs::canonicalize("target/release/librustc_codegen_clr.dll").unwrap()
@@ -638,7 +645,7 @@ pub fn absolute_backend_path() -> PathBuf {
     }
 }
 #[cfg(target_family = "unix")]
-#[cfg(test)]
+
 fn with_stack_size(cmd: &mut std::process::Command, limit_kb: u64) {
     use ::libc::{rlimit, setrlimit, RLIMIT_STACK};
     use std::os::unix::process::CommandExt;
@@ -657,37 +664,11 @@ fn with_stack_size(cmd: &mut std::process::Command, limit_kb: u64) {
     };
 }
 
-fn backend_path() -> &'static str {
-    if cfg!(debug_assertions) {
-        backend_path_debug()
-    } else {
-        backend_path_release()
-    }
+fn backend_path() -> String {
+    format!("codegen-backend={}",absolute_backend_path().display())
 }
 
-fn backend_path_release() -> &'static str {
-    if cfg!(target_os = "linux") {
-        "codegen-backend=../../target/release/librustc_codegen_clr.so"
-    } else if cfg!(target_os = "windows") {
-        "codegen-backend=../../target/release/rustc_codegen_clr.dll"
-    } else if cfg!(target_os = "macos") {
-        "codegen-backend=../../target/release/librustc_codegen_clr.dylib"
-    } else {
-        panic!("Unsupported target OS");
-    }
-}
 
-fn backend_path_debug() -> &'static str {
-    if cfg!(target_os = "linux") {
-        "codegen-backend=../../target/debug/librustc_codegen_clr.so"
-    } else if cfg!(target_os = "windows") {
-        "codegen-backend=../../target/debug/rustc_codegen_clr.dll"
-    } else if cfg!(target_os = "macos") {
-        "codegen-backend=../../target/debug/librustc_codegen_clr.dylib"
-    } else {
-        panic!("Unsupported target OS");
-    }
-}
 test_lib! {assign,stable}
 test_lib! {binops,stable}
 test_lib! {branches,stable}
@@ -740,6 +721,7 @@ run_test! {types,ref_deref,stable}
 run_test! {types,slice_ptr_cast,stable}
 run_test! {types,slice_index_ref,stable}
 run_test! {types,slice,stable}
+run_test! {types,slice_from_end,stable}
 run_test! {types,statics,stable}
 run_test! {types,async_types,unstable}
 run_test! {types,self_referential_statics,stable}
@@ -892,7 +874,8 @@ compare_tests! {fuzz,fuzz97,stable}
 compare_tests! {fuzz,fuzz98,stable}
 compare_tests! {fuzz,fuzz99,stable}
 compare_tests! {fuzz,fuzz100,stable}
-
+// Found using built-in fuzzer
+compare_tests! {fuzz,fuzz159,unstable}
 run_test! {fuzz,fail0,stable}
 run_test! {fuzz,fail1,stable}
 compare_tests! {fuzz,fail3,stable}
@@ -959,7 +942,7 @@ lazy_static! {
     /// Cached information about the presence of the `dotnet` .NET runtime.
     static ref IS_DOTNET_PRESENT: bool = std::process::Command::new("dotnet").output().is_ok();
     /// Cached information about the result of building the backend.
-    static ref RUSTC_BUILD_STATUS: Result<(), String> = build_backend();
+    pub static ref RUSTC_BUILD_STATUS: Result<(), String> = build_backend();
     /// Cached path to the bulit-in linker.
     pub static ref RUSTC_CODEGEN_CLR_LINKER:PathBuf = {
         if cfg!(debug_assertions) {
@@ -992,7 +975,7 @@ pub fn rustc_args() -> Box<[String]> {
     if *crate::config::RANDOMIZE_LAYOUT {
         [
             "-Z".to_owned(),
-            backend_path().to_owned(),
+            backend_path().into(),
             "-C".to_owned(),
             format!("linker={}", RUSTC_CODEGEN_CLR_LINKER.display()),
             "-Z".to_owned(),
@@ -1004,7 +987,7 @@ pub fn rustc_args() -> Box<[String]> {
     } else {
         [
             "-Z".to_owned(),
-            backend_path().to_owned(),
+            backend_path().into(),
             "-C".to_owned(),
             format!("linker={}", RUSTC_CODEGEN_CLR_LINKER.display()),
             "--edition".to_owned(),

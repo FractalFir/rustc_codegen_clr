@@ -96,7 +96,13 @@ pub fn op_cli(op: &crate::cil::CILOp, method: &Method) -> Cow<'static, str> {
                 }
                 //TODO:Remove this `break`! It *mitigagtes* an issue with calls segafulting. I don't know *why* those calls segfault, but they SHOULD NOT DO THAT.
                 format!(
-                    "break\n\tcall {prefix} {output} {owner_name}'{function_name}'{generics}({input_string})\nbreak",
+                    "
+          
+                    \n\tcall {prefix} {output} {owner_name}'{function_name}'{generics}({input_string})\n
+                    // Flushes stdout to prevent certain JIT opts
+    
+         
+                    ",
                     output = type_cil(call_site.signature().output())
                 )
                 .into()

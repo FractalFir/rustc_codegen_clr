@@ -197,7 +197,7 @@ fn place_elem_get<'a>(
                             ),
                             [
                                 ld_field!(addr_calc, metadata),
-                                conv_usize!(ldc_u64!(*min_length))
+                                conv_usize!(index)
                             ]
                         ) * CILNode::ConvUSize(CILNode::SizeOf(inner_type.into()).into());
                     super::deref_op(

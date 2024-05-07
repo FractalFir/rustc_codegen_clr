@@ -295,11 +295,21 @@ pub fn add_unsigned<'tyctx>(
         ops_a.clone(),
         ops_b.clone(),
     );
+
     result_tuple(
         tpe,
-        or!(
-            super::cmp::lt_unchecked(ty, res.clone(), ops_a.clone()),
-            super::cmp::lt_unchecked(ty, res.clone(), ops_b.clone())
+        super::cmp::lt_unchecked(
+            ty,
+            res.clone(),
+            super::bit_or_unchecked(
+                ty,
+                ty,
+                tycache,
+                &method_instance,
+                tyctx,
+                ops_a.clone(),
+                ops_b.clone(),
+            ),
         ),
         res,
     )
@@ -324,18 +334,9 @@ pub fn add_signed<'tyctx>(
     );
     result_tuple(
         tpe,
-        super::cmp::lt_unchecked(
-            ty,
-            res.clone(),
-            super::bit_or_unchecked(
-                ty,
-                ty,
-                tycache,
-                &method_instance,
-                tyctx,
-                ops_a.clone(),
-                ops_b.clone(),
-            ),
+        or!(
+            and!(super::lt_unchecked(ty, ops_a.clone(), zero(ty)),and!(super::lt_unchecked(ty, ops_b.clone(), zero(ty)),super::gt_unchecked(ty, res.clone(), zero(ty)))),
+            and!(super::gt_unchecked(ty, ops_a, zero(ty)),and!(super::gt_unchecked(ty, ops_b, zero(ty)),super::lt_unchecked(ty, res.clone(), zero(ty))))
         ),
         res,
     )

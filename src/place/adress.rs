@@ -297,7 +297,7 @@ pub fn place_elem_adress<'ctx>(
             let curr_ty = curr_type
                 .as_ty()
                 .expect("INVALID PLACE: Indexing into enum variant???");
-            let index = ldc_u64!(*offset);
+    
             //assert!(!from_end, "Indexing slice form end");
             //println!("WARNING: ConstantIndex has required min_length of {min_length}, but bounds checking on const access not supported yet!");
             match curr_ty.kind() {
@@ -315,21 +315,33 @@ pub fn place_elem_adress<'ctx>(
                         Type::Ptr(Type::Void.into()),
                         "data_pointer".into(),
                     );
+                    let len = FieldDescriptor::new(
+                        slice.clone(),
+                        Type::USize,
+                        "metadata".into(),
+                    );
                     let index = if *from_end {
-                        let desc = FieldDescriptor::new(
-                            slice.clone(),
-                            Type::USize,
-                            "metadata".into(),
-                        );
+                       
                         //eprintln!("Slice index from end is:{offset}");
-                        CILNode::Sub(Box::new(ld_field!(addr_calc.clone(), desc)),Box::new(conv_usize!(index)))
+                        CILNode::Sub(Box::new(ld_field!(addr_calc.clone(), len.clone())),Box::new(conv_usize!(ldc_u64!(*offset))))
 
                     } else {
-                        conv_usize!(index) 
+                        conv_usize!(ldc_u64!(*offset)) 
                         //ops.extend(derf_op);
                     };
                     ld_field!(addr_calc.clone(), desc)
-                        + (index * conv_usize!(CILNode::SizeOf(inner_type.into())))
+                        + (call!(
+                            CallSite::new(
+                                None,
+                                "bounds_check".into(),
+                                FnSig::new(&[Type::USize, Type::USize], &Type::USize),
+                                true
+                            ),
+                            [
+                                conv_usize!(index),
+                                ld_field!(addr_calc, len),
+                            ]
+                        ) * conv_usize!(CILNode::SizeOf(inner_type.into())))
                 }
                 TyKind::Array(element, _) => {
                     let element_ty = crate::utilis::monomorphize(&method_instance, *element, tyctx);
@@ -353,7 +365,7 @@ pub fn place_elem_adress<'ctx>(
                                 false,
                             )
                             .into(),
-                            args: [addr_calc, CILNode::ConvUSize(index.into())].into(),
+                            args: [addr_calc, CILNode::ConvUSize(ldc_u64!(*offset).into())].into(),
                         }
                     }
                 }

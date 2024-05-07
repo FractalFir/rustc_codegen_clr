@@ -756,9 +756,9 @@ pub fn handle_intrinsic<'tyctx>(
                 type_cache,
             )
         }
-        //"bswap"
-        "assert_inhabited" => CILRoot::Nop,
-
+        // TODO:Those are not stricly neccessary, but SHOULD be implemented at some point.
+        "assert_inhabited" | "assert_zero_valid" => CILRoot::Nop,
+        
         "ptr_offset_from_unsigned" => {
             debug_assert_eq!(
                 args.len(),
