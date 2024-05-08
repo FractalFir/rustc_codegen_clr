@@ -102,7 +102,7 @@ pub mod builtin;
 mod call_info;
 /// Code hansling rust `as` casts.
 mod casts;
-mod checked_binop;
+
 /// A representation of C# IL op.
 pub mod cil;
 /// A tree based representation of C# CIL.

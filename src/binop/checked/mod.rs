@@ -1,7 +1,7 @@
 use crate::cil::{CallSite, FieldDescriptor};
 use crate::function_sig::FnSig;
 use crate::r#type::{DotnetTypeRef, Type};
-use crate::{and, conv_isize, ldc_u32, or};
+use crate::{and, casts, conv_i64, conv_isize, conv_u64, gt, gt_un, ldc_u32, lt, or};
 use crate::{
     call, cil_tree::cil_node::CILNode, cil_tree::cil_root::CILRoot, conv_usize, r#type::TyCache,
     size_of,
@@ -207,10 +207,54 @@ pub fn mul<'tyctx>(
 ) -> CILNode {
     //(b > 0 && a < INT_MIN + b) || (b < 0 && a > INT_MAX + b);
     let tpe = tycache.type_from_cache(ty, tyctx, Some(method_instance));
+    let mul = super::mul_unchecked(ty, ty, tycache, &method_instance, tyctx, ops_a.clone(), ops_b.clone());
+    let ovf = match ty.kind(){
+        // Work without promotions
+        TyKind::Uint(UintTy::U8 | UintTy::U16)=>gt_un!(mul.clone(),max(ty)),
+        TyKind::Int(IntTy::I8 | IntTy::I16)=>or!(gt!(mul.clone(),max(ty)),lt!(mul.clone(),min(ty))),
+        // Works with 32 -> 64 size promotions
+        TyKind::Uint(UintTy::U32)=>{
+            let mul = crate::mul!(conv_u64!(ops_a), conv_u64!(ops_b));
+            gt_un!(mul.clone(),conv_u64!(max(ty)))
+        }
+        TyKind::Int(IntTy::I32)=>{
+            let mul = crate::mul!(conv_i64!(ops_a), conv_i64!(ops_b));
+            or!(gt!(mul.clone(),conv_i64!(max(ty))),lt!(mul.clone(),conv_i64!(min(ty))))
+        }
+        // Use 128 bit ints, not supported in mono.
+        TyKind::Uint(UintTy::U64)=>{
+            let mul = call!(CallSite::new_extern(DotnetTypeRef::uint_128(), "op_Multiply".into(), FnSig::new(&[Type::U128,Type::U128],&Type::U128), true),[casts::int_to_int(Type::U64, Type::U128, ops_a), casts::int_to_int(Type::U64, Type::U128, ops_b)]);
+            call!(CallSite::new_extern(DotnetTypeRef::uint_128(), "op_GreaterThan".into(), FnSig::new(&[Type::U128,Type::U128],&Type::Bool), true),[mul.clone(),casts::int_to_int(Type::U64, Type::U128, max(ty))])
+        }
+        TyKind::Int(IntTy::I64)=>{
+            let mul = call!(CallSite::new_extern(DotnetTypeRef::int_128(), "op_Multiply".into(), FnSig::new(&[Type::I128,Type::I128],&Type::I128), true),[casts::int_to_int(Type::I64, Type::I128, ops_a), casts::int_to_int(Type::I64, Type::I128, ops_b)]);
+            let gt = call!(CallSite::new_extern(DotnetTypeRef::int_128(), "op_GreaterThan".into(), FnSig::new(&[Type::I128,Type::I128],&Type::Bool), true),[mul.clone(),casts::int_to_int(Type::I64, Type::I128, max(ty))]);
+            let lt =  call!(CallSite::new_extern(DotnetTypeRef::int_128(), "op_LessThan".into(), FnSig::new(&[Type::I128,Type::I128],&Type::Bool), true),[mul.clone(),casts::int_to_int(Type::I64, Type::I128, min(ty))]);
+            or!(gt,lt)
+        }
+       
+        TyKind::Uint(UintTy::Usize)=>{
+            let mul = call!(CallSite::new_extern(DotnetTypeRef::uint_128(), "op_Multiply".into(), FnSig::new(&[Type::U128,Type::U128],&Type::U128), true),[casts::int_to_int(Type::USize, Type::U128, ops_a), casts::int_to_int(Type::USize, Type::U128, ops_b)]);
+
+            call!(CallSite::new_extern(DotnetTypeRef::uint_128(), "op_GreaterThan".into(), FnSig::new(&[Type::U128,Type::U128],&Type::Bool), true),[mul.clone(),casts::int_to_int(Type::USize, Type::U128, max(ty))])
+
+        }
+        TyKind::Int(IntTy::Isize)=>{
+            let mul = call!(CallSite::new_extern(DotnetTypeRef::int_128(), "op_Multiply".into(), FnSig::new(&[Type::I128,Type::I128],&Type::I128), true),[casts::int_to_int(Type::ISize, Type::I128, ops_a), casts::int_to_int(Type::ISize, Type::I128, ops_b)]);
+            let gt = call!(CallSite::new_extern(DotnetTypeRef::int_128(), "op_GreaterThan".into(), FnSig::new(&[Type::I128,Type::I128],&Type::Bool), true),[mul.clone(),casts::int_to_int(Type::ISize, Type::I128, max(ty))]);
+            let lt =  call!(CallSite::new_extern(DotnetTypeRef::int_128(), "op_LessThan".into(), FnSig::new(&[Type::I128,Type::I128],&Type::Bool), true),[mul.clone(),casts::int_to_int(Type::ISize, Type::I128, min(ty))]);
+            or!(gt,lt)
+        }
+        _=>{
+           
+            eprintln!("WARINING: can't checked mul type {ty:?}");
+            ldc_u32!(0)
+        }
+    };
     result_tuple(
         tpe,
-        ldc_u32!(0),
-        super::mul_unchecked(ty, ty, tycache, &method_instance, tyctx, ops_a, ops_b),
+        ovf,
+        mul
     )
 }
 pub fn sub_signed<'tyctx>(

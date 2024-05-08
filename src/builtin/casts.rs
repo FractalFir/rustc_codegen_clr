@@ -1,15 +1,5 @@
 use crate::{
-    add_method_from_trees,
-    assembly::Assembly,
-    basic_block::BasicBlock,
-    call,
-    cil::CallSite,
-    cil_tree::{cil_node::CILNode, cil_root::CILRoot},
-    conv_f32, conv_f64, conv_f_un, conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16,
-    conv_u32, conv_u64, conv_u8, conv_usize,
-    function_sig::FnSig,
-    gt, ldc_i32, ldc_i64, ldc_u32, ldc_u64, lt, or,
-    r#type::{DotnetTypeRef, Type},
+    add_method_from_trees, assembly::Assembly, basic_block::BasicBlock, call, cil::CallSite, cil_tree::{cil_node::CILNode, cil_root::CILRoot}, conv_f32, conv_f64, conv_f_un, conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8, conv_usize, eq, function_sig::FnSig, gt, ldc_i32, ldc_i64, ldc_u32, ldc_u64, lt, or, r#type::{DotnetTypeRef, Type}
 };
 
 add_method_from_trees!(
@@ -53,11 +43,11 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF32(u8::MAX as f32))
+                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::single(), "IsNaN".into(), FnSig::new(&[Type::F32],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_u32!(u8::MAX as u32)
+                    tree: ldc_u64!(0)
                 }
                 .into()
             ],
@@ -69,6 +59,22 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 2,
                     sub_target: 0,
+                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF32(u8::MAX as f32))
+                }
+                .into(),
+                CILRoot::Ret {
+                    tree: ldc_u32!(u8::MAX as u32)
+                }
+                .into()
+            ],
+            1,
+            None
+        ),
+        BasicBlock::new(
+            vec![
+                CILRoot::BTrue {
+                    target: 3,
+                    sub_target: 0,
                     ops: gt!(CILNode::LDArg(0), CILNode::LdcF32(u8::MIN as f32))
                 }
                 .into(),
@@ -77,7 +83,7 @@ add_method_from_trees!(
                 }
                 .into()
             ],
-            1,
+            2,
             None
         ),
         BasicBlock::new(
@@ -85,7 +91,7 @@ add_method_from_trees!(
                 tree: conv_u8!(CILNode::LDArg(0))
             }
             .into()],
-            2,
+            3,
             None
         ),
     ]
@@ -100,11 +106,11 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF32(u16::MAX as f32))
+                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::single(), "IsNaN".into(), FnSig::new(&[Type::F32],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_u32!(u16::MAX as u32)
+                    tree: ldc_u64!(0)
                 }
                 .into()
             ],
@@ -116,6 +122,22 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 2,
                     sub_target: 0,
+                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF32(u16::MAX as f32))
+                }
+                .into(),
+                CILRoot::Ret {
+                    tree: ldc_u32!(u16::MAX as u32)
+                }
+                .into()
+            ],
+            1,
+            None
+        ),
+        BasicBlock::new(
+            vec![
+                CILRoot::BTrue {
+                    target: 3,
+                    sub_target: 0,
                     ops: gt!(CILNode::LDArg(0), CILNode::LdcF32(u16::MIN as f32))
                 }
                 .into(),
@@ -124,7 +146,7 @@ add_method_from_trees!(
                 }
                 .into()
             ],
-            1,
+            2,
             None
         ),
         BasicBlock::new(
@@ -132,7 +154,7 @@ add_method_from_trees!(
                 tree: conv_u16!(CILNode::LDArg(0))
             }
             .into()],
-            2,
+            3,
             None
         ),
     ]
@@ -147,11 +169,11 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF32(u32::MAX as f32))
+                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::single(), "IsNaN".into(), FnSig::new(&[Type::F32],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_u32!(u32::MAX)
+                    tree: ldc_u32!(0)
                 }
                 .into()
             ],
@@ -163,6 +185,22 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 2,
                     sub_target: 0,
+                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF32(u32::MAX as f32))
+                }
+                .into(),
+                CILRoot::Ret {
+                    tree: ldc_u32!(u32::MAX)
+                }
+                .into()
+            ],
+            1,
+            None
+        ),
+        BasicBlock::new(
+            vec![
+                CILRoot::BTrue {
+                    target: 3,
+                    sub_target: 0,
                     ops: gt!(CILNode::LDArg(0), CILNode::LdcF32(u32::MIN as f32))
                 }
                 .into(),
@@ -171,7 +209,7 @@ add_method_from_trees!(
                 }
                 .into()
             ],
-            1,
+            2,
             None
         ),
         BasicBlock::new(
@@ -179,7 +217,7 @@ add_method_from_trees!(
                 tree: conv_u32!(CILNode::LDArg(0))
             }
             .into()],
-            2,
+            3,
             None
         ),
     ]
@@ -194,11 +232,11 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF32(u64::MAX as f32))
+                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::single(), "IsNaN".into(), FnSig::new(&[Type::F32],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: conv_u64!(ldc_u64!(u64::MAX))
+                    tree: ldc_u64!(0)
                 }
                 .into()
             ],
@@ -210,6 +248,22 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 2,
                     sub_target: 0,
+                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF32(u64::MAX as f32))
+                }
+                .into(),
+                CILRoot::Ret {
+                    tree: conv_u64!(ldc_u64!(u64::MAX))
+                }
+                .into()
+            ],
+            1,
+            None
+        ),
+        BasicBlock::new(
+            vec![
+                CILRoot::BTrue {
+                    target: 3,
+                    sub_target: 0,
                     ops: gt!(CILNode::LDArg(0), CILNode::LdcF32(u64::MIN as f32))
                 }
                 .into(),
@@ -218,7 +272,7 @@ add_method_from_trees!(
                 }
                 .into()
             ],
-            1,
+            2,
             None
         ),
         BasicBlock::new(
@@ -226,7 +280,7 @@ add_method_from_trees!(
                 tree: conv_u64!(CILNode::LDArg(0))
             }
             .into()],
-            2,
+            3,
             None
         ),
     ]
@@ -240,6 +294,22 @@ add_method_from_trees!(
             vec![
                 CILRoot::BTrue {
                     target: 1,
+                    sub_target: 0,
+                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::single(), "IsNaN".into(), FnSig::new(&[Type::F32],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
+                }
+                .into(),
+                CILRoot::Ret {
+                    tree: ldc_u64!(0)
+                }
+                .into()
+            ],
+            0,
+            None
+        ),
+        BasicBlock::new(
+            vec![
+                CILRoot::BTrue {
+                    target: 2,
                     sub_target: 0,
                     ops: lt!(
                         CILNode::LDArg(0),
@@ -268,13 +338,13 @@ add_method_from_trees!(
                 }
                 .into()
             ],
-            0,
+            1,
             None
         ),
         BasicBlock::new(
             vec![
                 CILRoot::BTrue {
-                    target: 2,
+                    target: 3,
                     sub_target: 0,
                     ops: gt!(CILNode::LDArg(0), CILNode::LdcF32(0 as f32))
                 }
@@ -284,7 +354,7 @@ add_method_from_trees!(
                 }
                 .into()
             ],
-            1,
+            2,
             None
         ),
         BasicBlock::new(
@@ -292,7 +362,7 @@ add_method_from_trees!(
                 tree: conv_usize!(CILNode::LDArg(0))
             }
             .into()],
-            2,
+            3,
             None
         ),
     ]
@@ -306,6 +376,22 @@ add_method_from_trees!(
             vec![
                 CILRoot::BTrue {
                     target: 1,
+                    sub_target: 0,
+                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::single(), "IsNaN".into(), FnSig::new(&[Type::F32],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
+                }
+                .into(),
+                CILRoot::Ret {
+                    tree: ldc_u64!(0)
+                }
+                .into()
+            ],
+            0,
+            None
+        ),
+        BasicBlock::new(
+            vec![
+                CILRoot::BTrue {
+                    target: 2,
                     sub_target: 0,
                     ops: lt!(
                         CILNode::LDArg(0),
@@ -334,13 +420,13 @@ add_method_from_trees!(
                 }
                 .into()
             ],
-            0,
+            1,
             None
         ),
         BasicBlock::new(
             vec![
                 CILRoot::BTrue {
-                    target: 2,
+                    target: 3,
                     sub_target: 0,
                     ops: gt!(CILNode::LDArg(0), CILNode::LdcF32(0 as f32))
                 }
@@ -350,7 +436,7 @@ add_method_from_trees!(
                 }
                 .into()
             ],
-            1,
+            2,
             None
         ),
         BasicBlock::new(
@@ -358,7 +444,7 @@ add_method_from_trees!(
                 tree: conv_usize!(CILNode::LDArg(0))
             }
             .into()],
-            2,
+            3,
             None
         ),
     ]
@@ -373,6 +459,22 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
+                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::single(), "IsNaN".into(), FnSig::new(&[Type::F32],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
+                }
+                .into(),
+                CILRoot::Ret {
+                    tree: ldc_u64!(0)
+                }
+                .into()
+            ],
+            0,
+            None
+        ),
+        BasicBlock::new(
+            vec![
+                CILRoot::BTrue {
+                    target: 2,
+                    sub_target: 0,
                     ops: lt!(
                         CILNode::LDArg(0),
                         conv_f64!(call!(
@@ -400,13 +502,13 @@ add_method_from_trees!(
                 }
                 .into()
             ],
-            0,
+            1,
             None
         ),
         BasicBlock::new(
             vec![
                 CILRoot::BTrue {
-                    target: 2,
+                    target: 3,
                     sub_target: 0,
                     ops: gt!(
                         CILNode::LDArg(0),
@@ -435,7 +537,7 @@ add_method_from_trees!(
                 }
                 .into()
             ],
-            1,
+            2,
             None
         ),
         BasicBlock::new(
@@ -443,7 +545,7 @@ add_method_from_trees!(
                 tree: conv_isize!(CILNode::LDArg(0))
             }
             .into()],
-            2,
+            3,
             None
         ),
     ]
@@ -458,6 +560,22 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
+                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::single(), "IsNaN".into(), FnSig::new(&[Type::F32],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
+                }
+                .into(),
+                CILRoot::Ret {
+                    tree: ldc_u64!(0)
+                }
+                .into()
+            ],
+            0,
+            None
+        ),
+        BasicBlock::new(
+            vec![
+                CILRoot::BTrue {
+                    target: 2,
+                    sub_target: 0,
                     ops: lt!(
                         CILNode::LDArg(0),
                         conv_f32!(call!(
@@ -485,13 +603,13 @@ add_method_from_trees!(
                 }
                 .into()
             ],
-            0,
+            1,
             None
         ),
         BasicBlock::new(
             vec![
                 CILRoot::BTrue {
-                    target: 2,
+                    target: 3,
                     sub_target: 0,
                     ops: gt!(
                         CILNode::LDArg(0),
@@ -520,7 +638,7 @@ add_method_from_trees!(
                 }
                 .into()
             ],
-            1,
+            2,
             None
         ),
         BasicBlock::new(
@@ -528,7 +646,7 @@ add_method_from_trees!(
                 tree: conv_isize!(CILNode::LDArg(0))
             }
             .into()],
-            2,
+            3,
             None
         ),
     ]
@@ -543,11 +661,11 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF32(i8::MAX as f32))
+                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::single(), "IsNaN".into(), FnSig::new(&[Type::F32],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_i32!(i8::MAX as i32)
+                    tree: ldc_i32!(0)
                 }
                 .into()
             ],
@@ -559,6 +677,22 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 2,
                     sub_target: 0,
+                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF32(i8::MAX as f32))
+                }
+                .into(),
+                CILRoot::Ret {
+                    tree: ldc_i32!(i8::MAX as i32)
+                }
+                .into()
+            ],
+            1,
+            None
+        ),
+        BasicBlock::new(
+            vec![
+                CILRoot::BTrue {
+                    target: 3,
+                    sub_target: 0,
                     ops: gt!(CILNode::LDArg(0), CILNode::LdcF32(i8::MIN as f32))
                 }
                 .into(),
@@ -567,7 +701,7 @@ add_method_from_trees!(
                 }
                 .into()
             ],
-            1,
+            2,
             None
         ),
         BasicBlock::new(
@@ -575,7 +709,7 @@ add_method_from_trees!(
                 tree: conv_i8!(CILNode::LDArg(0))
             }
             .into()],
-            2,
+            3,
             None
         ),
     ]
@@ -590,11 +724,11 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF32(i16::MAX as f32))
+                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::single(), "IsNaN".into(), FnSig::new(&[Type::F32],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_i32!(i16::MAX as i32)
+                    tree: ldc_i32!(0)
                 }
                 .into()
             ],
@@ -606,6 +740,22 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 2,
                     sub_target: 0,
+                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF32(i16::MAX as f32))
+                }
+                .into(),
+                CILRoot::Ret {
+                    tree: ldc_i32!(i16::MAX as i32)
+                }
+                .into()
+            ],
+            1,
+            None
+        ),
+        BasicBlock::new(
+            vec![
+                CILRoot::BTrue {
+                    target: 3,
+                    sub_target: 0,
                     ops: gt!(CILNode::LDArg(0), CILNode::LdcF32(i16::MIN as f32))
                 }
                 .into(),
@@ -614,7 +764,7 @@ add_method_from_trees!(
                 }
                 .into()
             ],
-            1,
+            2,
             None
         ),
         BasicBlock::new(
@@ -622,7 +772,7 @@ add_method_from_trees!(
                 tree: conv_i16!(CILNode::LDArg(0))
             }
             .into()],
-            2,
+            3,
             None
         ),
     ]
@@ -637,11 +787,11 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF32(i32::MAX as f32))
+                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::single(), "IsNaN".into(), FnSig::new(&[Type::F32],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_i32!(i32::MAX)
+                    tree: ldc_i32!(0)
                 }
                 .into()
             ],
@@ -653,6 +803,22 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 2,
                     sub_target: 0,
+                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF32(i32::MAX as f32))
+                }
+                .into(),
+                CILRoot::Ret {
+                    tree: ldc_i32!(i32::MAX)
+                }
+                .into()
+            ],
+            1,
+            None
+        ),
+        BasicBlock::new(
+            vec![
+                CILRoot::BTrue {
+                    target: 3,
+                    sub_target: 0,
                     ops: gt!(CILNode::LDArg(0), CILNode::LdcF32(i32::MIN as f32))
                 }
                 .into(),
@@ -661,7 +827,7 @@ add_method_from_trees!(
                 }
                 .into()
             ],
-            1,
+            2,
             None
         ),
         BasicBlock::new(
@@ -669,7 +835,7 @@ add_method_from_trees!(
                 tree: conv_i32!(CILNode::LDArg(0))
             }
             .into()],
-            2,
+            3,
             None
         ),
     ]
@@ -684,11 +850,11 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF32(i64::MAX as f32))
+                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::single(), "IsNaN".into(), FnSig::new(&[Type::F32],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_i64!(i64::MAX)
+                    tree: ldc_i64!(0)
                 }
                 .into()
             ],
@@ -700,6 +866,22 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 2,
                     sub_target: 0,
+                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF32(i64::MAX as f32))
+                }
+                .into(),
+                CILRoot::Ret {
+                    tree: ldc_i64!(i64::MAX)
+                }
+                .into()
+            ],
+            1,
+            None
+        ),
+        BasicBlock::new(
+            vec![
+                CILRoot::BTrue {
+                    target: 3,
+                    sub_target: 0,
                     ops: gt!(CILNode::LDArg(0), CILNode::LdcF32(i64::MIN as f32))
                 }
                 .into(),
@@ -708,7 +890,7 @@ add_method_from_trees!(
                 }
                 .into()
             ],
-            1,
+            2,
             None
         ),
         BasicBlock::new(
@@ -716,7 +898,7 @@ add_method_from_trees!(
                 tree: conv_i64!(CILNode::LDArg(0))
             }
             .into()],
-            2,
+            3,
             None
         ),
     ]
@@ -731,11 +913,11 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF64(u8::MAX as f64))
+                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::double(), "IsNaN".into(), FnSig::new(&[Type::F64],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_u32!(u8::MAX as u32)
+                    tree: ldc_i32!(0)
                 }
                 .into()
             ],
@@ -747,6 +929,22 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 2,
                     sub_target: 0,
+                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF64(u8::MAX as f64))
+                }
+                .into(),
+                CILRoot::Ret {
+                    tree: ldc_u32!(u8::MAX as u32)
+                }
+                .into()
+            ],
+            1,
+            None
+        ),
+        BasicBlock::new(
+            vec![
+                CILRoot::BTrue {
+                    target: 3,
+                    sub_target: 0,
                     ops: gt!(CILNode::LDArg(0), CILNode::LdcF64(u8::MIN as f64))
                 }
                 .into(),
@@ -755,7 +953,7 @@ add_method_from_trees!(
                 }
                 .into()
             ],
-            1,
+            2,
             None
         ),
         BasicBlock::new(
@@ -763,7 +961,7 @@ add_method_from_trees!(
                 tree: conv_u8!(CILNode::LDArg(0))
             }
             .into()],
-            2,
+            3,
             None
         ),
     ]
@@ -778,11 +976,11 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF64(u16::MAX as f64))
+                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::double(), "IsNaN".into(), FnSig::new(&[Type::F64],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_u32!(u16::MAX as u32)
+                    tree: ldc_i32!(0)
                 }
                 .into()
             ],
@@ -794,6 +992,22 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 2,
                     sub_target: 0,
+                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF64(u16::MAX as f64))
+                }
+                .into(),
+                CILRoot::Ret {
+                    tree: ldc_u32!(u16::MAX as u32)
+                }
+                .into()
+            ],
+            1,
+            None
+        ),
+        BasicBlock::new(
+            vec![
+                CILRoot::BTrue {
+                    target: 3,
+                    sub_target: 0,
                     ops: gt!(CILNode::LDArg(0), CILNode::LdcF64(u16::MIN as f64))
                 }
                 .into(),
@@ -802,7 +1016,7 @@ add_method_from_trees!(
                 }
                 .into()
             ],
-            1,
+            2,
             None
         ),
         BasicBlock::new(
@@ -810,7 +1024,7 @@ add_method_from_trees!(
                 tree: conv_u16!(CILNode::LDArg(0))
             }
             .into()],
-            2,
+            3,
             None
         ),
     ]
@@ -825,11 +1039,11 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF64(u32::MAX as f64))
+                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::double(), "IsNaN".into(), FnSig::new(&[Type::F64],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_u32!(u32::MAX)
+                    tree: ldc_i32!(0)
                 }
                 .into()
             ],
@@ -841,6 +1055,22 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 2,
                     sub_target: 0,
+                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF64(u32::MAX as f64))
+                }
+                .into(),
+                CILRoot::Ret {
+                    tree: ldc_u32!(u32::MAX)
+                }
+                .into()
+            ],
+            1,
+            None
+        ),
+        BasicBlock::new(
+            vec![
+                CILRoot::BTrue {
+                    target: 3,
+                    sub_target: 0,
                     ops: gt!(CILNode::LDArg(0), CILNode::LdcF64(u32::MIN as f64))
                 }
                 .into(),
@@ -849,7 +1079,7 @@ add_method_from_trees!(
                 }
                 .into()
             ],
-            1,
+            2,
             None
         ),
         BasicBlock::new(
@@ -857,7 +1087,7 @@ add_method_from_trees!(
                 tree: conv_u32!(CILNode::LDArg(0))
             }
             .into()],
-            2,
+            3,
             None
         ),
     ]
@@ -872,11 +1102,11 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF64(u64::MAX as f64))
+                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::double(), "IsNaN".into(), FnSig::new(&[Type::F64],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: conv_u64!(ldc_u64!(u64::MAX))
+                    tree: ldc_u64!(0)
                 }
                 .into()
             ],
@@ -888,6 +1118,22 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 2,
                     sub_target: 0,
+                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF64(u64::MAX as f64))
+                }
+                .into(),
+                CILRoot::Ret {
+                    tree: conv_u64!(ldc_u64!(u64::MAX))
+                }
+                .into()
+            ],
+            1,
+            None
+        ),
+        BasicBlock::new(
+            vec![
+                CILRoot::BTrue {
+                    target: 3,
+                    sub_target: 0,
                     ops: gt!(CILNode::LDArg(0), CILNode::LdcF64(u64::MIN as f64))
                 }
                 .into(),
@@ -896,7 +1142,7 @@ add_method_from_trees!(
                 }
                 .into()
             ],
-            1,
+            2,
             None
         ),
         BasicBlock::new(
@@ -904,7 +1150,7 @@ add_method_from_trees!(
                 tree: conv_u64!(CILNode::LDArg(0))
             }
             .into()],
-            2,
+            3,
             None
         ),
     ]
@@ -919,11 +1165,11 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF64(i8::MAX as f64))
+                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::double(), "IsNaN".into(), FnSig::new(&[Type::F64],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_i32!(i8::MAX as i32)
+                    tree: ldc_i32!(0)
                 }
                 .into()
             ],
@@ -935,6 +1181,22 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 2,
                     sub_target: 0,
+                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF64(i8::MAX as f64))
+                }
+                .into(),
+                CILRoot::Ret {
+                    tree: ldc_i32!(i8::MAX as i32)
+                }
+                .into()
+            ],
+            1,
+            None
+        ),
+        BasicBlock::new(
+            vec![
+                CILRoot::BTrue {
+                    target: 3,
+                    sub_target: 0,
                     ops: gt!(CILNode::LDArg(0), CILNode::LdcF64(i8::MIN as f64))
                 }
                 .into(),
@@ -943,7 +1205,7 @@ add_method_from_trees!(
                 }
                 .into()
             ],
-            1,
+            2,
             None
         ),
         BasicBlock::new(
@@ -951,7 +1213,7 @@ add_method_from_trees!(
                 tree: conv_i8!(CILNode::LDArg(0))
             }
             .into()],
-            2,
+            3,
             None
         ),
     ]
@@ -966,11 +1228,11 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF64(i16::MAX as f64))
+                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::double(), "IsNaN".into(), FnSig::new(&[Type::F64],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_i32!(i16::MAX as i32)
+                    tree: ldc_i32!(0)
                 }
                 .into()
             ],
@@ -982,6 +1244,22 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 2,
                     sub_target: 0,
+                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF64(i16::MAX as f64))
+                }
+                .into(),
+                CILRoot::Ret {
+                    tree: ldc_i32!(i16::MAX as i32)
+                }
+                .into()
+            ],
+            1,
+            None
+        ),
+        BasicBlock::new(
+            vec![
+                CILRoot::BTrue {
+                    target: 3,
+                    sub_target: 0,
                     ops: gt!(CILNode::LDArg(0), CILNode::LdcF64(i16::MIN as f64))
                 }
                 .into(),
@@ -990,7 +1268,7 @@ add_method_from_trees!(
                 }
                 .into()
             ],
-            1,
+            2,
             None
         ),
         BasicBlock::new(
@@ -998,7 +1276,7 @@ add_method_from_trees!(
                 tree: conv_i16!(CILNode::LDArg(0))
             }
             .into()],
-            2,
+            3,
             None
         ),
     ]
@@ -1013,11 +1291,11 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF64(i32::MAX as f64))
+                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::double(), "IsNaN".into(), FnSig::new(&[Type::F64],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_i32!(i32::MAX)
+                    tree: ldc_i32!(0)
                 }
                 .into()
             ],
@@ -1029,6 +1307,22 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 2,
                     sub_target: 0,
+                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF64(i32::MAX as f64))
+                }
+                .into(),
+                CILRoot::Ret {
+                    tree: ldc_i32!(i32::MAX)
+                }
+                .into()
+            ],
+            1,
+            None
+        ),
+        BasicBlock::new(
+            vec![
+                CILRoot::BTrue {
+                    target: 3,
+                    sub_target: 0,
                     ops: gt!(CILNode::LDArg(0), CILNode::LdcF64(i32::MIN as f64))
                 }
                 .into(),
@@ -1037,15 +1331,16 @@ add_method_from_trees!(
                 }
                 .into()
             ],
-            1,
+            2,
             None
         ),
+    
         BasicBlock::new(
             vec![CILRoot::Ret {
                 tree: conv_i32!(CILNode::LDArg(0))
             }
             .into()],
-            2,
+            3,
             None
         ),
     ]
@@ -1060,11 +1355,11 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF64(i64::MAX as f64))
+                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::double(), "IsNaN".into(), FnSig::new(&[Type::F64],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_i64!(i64::MAX)
+                    tree: ldc_i64!(0)
                 }
                 .into()
             ],
@@ -1076,6 +1371,22 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 2,
                     sub_target: 0,
+                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF64(i64::MAX as f64))
+                }
+                .into(),
+                CILRoot::Ret {
+                    tree: ldc_i64!(i64::MAX)
+                }
+                .into()
+            ],
+            1,
+            None
+        ),
+        BasicBlock::new(
+            vec![
+                CILRoot::BTrue {
+                    target: 3,
+                    sub_target: 0,
                     ops: gt!(CILNode::LDArg(0), CILNode::LdcF64(i64::MIN as f64))
                 }
                 .into(),
@@ -1084,15 +1395,16 @@ add_method_from_trees!(
                 }
                 .into()
             ],
-            1,
+            2,
             None
         ),
+       
         BasicBlock::new(
             vec![CILRoot::Ret {
                 tree: conv_i64!(CILNode::LDArg(0))
             }
             .into()],
-            2,
+            3,
             None
         ),
     ]

@@ -1,7 +1,12 @@
 use std::{io::Write, process::Command};
 
-
-fn run_test(test_id:u64,is_release:bool) ->Option<f64> {
+fn run_test(test_id:u64,is_release:bool) ->Option<f64>{
+    match std::panic::catch_unwind(||run_test_impl(test_id,is_release)){
+        Ok(inner)=>inner,
+        Err(_)=>Some(1.0),
+    }
+}
+fn run_test_impl(test_id:u64,is_release:bool) ->Option<f64> {
     let opt = if is_release{
         "-O"
     }else{
@@ -73,10 +78,15 @@ fn run_test(test_id:u64,is_release:bool) ->Option<f64> {
             .expect("failed to execute process");
     let rust_out = String::from_utf8(rust_out.stdout)
         .expect("rust error contained non-UTF8 characters.");
+   
     if rust_out != dotnet_out{
         Some(strsim::jaro(&rust_out,&dotnet_out))
     }
     else{
+        //std::fs::remove_file(rust_src).unwrap();
+        std::fs::remove_file(dotnet_exe).unwrap();
+        std::fs::remove_file(native_exec).unwrap();
+        //std::fs::remove_file(dotnet_wrapper).unwrap();
         None
     }
   
@@ -102,7 +112,8 @@ fn main(){
 
     let generator = std::env::args().nth(1).unwrap();
     let search_start = str::parse::<u64>(&std::env::args().nth(2).unwrap()).unwrap();
-    let search_end = str::parse::<u64>(&std::env::args().nth(3).unwrap()).unwrap();
+    let search_end =  std::env::args().nth(3).as_ref().map(|str|str::parse::<u64>(str).unwrap()).unwrap_or(search_start + 1);
+    std::fs::create_dir_all("/tmp/fuzz").unwrap();
     let mut faliures:Box<[_]> = (search_start..search_end).into_par_iter().map(|i|test(i,&generator)).flatten().collect();
     faliures.sort_by(|(_,err_a),(_,err_b)|err_a.partial_cmp(err_b).unwrap());
     println!("found faliures:{faliures:?}");

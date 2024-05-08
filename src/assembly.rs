@@ -773,7 +773,7 @@ impl Assembly {
         bytes: u128,
         tyctx: TyCtxt,
     ) -> crate::cil::StaticFieldDescriptor {
-        let alloc_fld: IString = format!("a{bytes:x}").into();
+        let alloc_fld: IString = format!("a_{bytes:x}").into();
         let raw_bytes = bytes.to_le_bytes();
         let field_desc = crate::cil::StaticFieldDescriptor::new(
             None,

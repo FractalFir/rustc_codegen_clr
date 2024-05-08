@@ -624,7 +624,6 @@ fn build_backend() -> Result<(), String> {
 pub fn absolute_backend_path() -> PathBuf {
     if cfg!(debug_assertions) {
         if cfg!(target_os = "linux") {
-           
             std::fs::canonicalize("target/debug/librustc_codegen_clr.so").unwrap()
         } else if cfg!(target_os = "windows") {
             std::fs::canonicalize("target/debug/librustc_codegen_clr.dll").unwrap()
@@ -634,7 +633,6 @@ pub fn absolute_backend_path() -> PathBuf {
             panic!("Unsupported target OS");
         }
     } else if cfg!(target_os = "linux") {
-        
         std::fs::canonicalize("target/release/librustc_codegen_clr.so").unwrap()
     } else if cfg!(target_os = "windows") {
         std::fs::canonicalize("target/release/librustc_codegen_clr.dll").unwrap()
@@ -874,8 +872,16 @@ compare_tests! {fuzz,fuzz97,stable}
 compare_tests! {fuzz,fuzz98,stable}
 compare_tests! {fuzz,fuzz99,stable}
 compare_tests! {fuzz,fuzz100,stable}
-// Found using built-in fuzzer
-compare_tests! {fuzz,fuzz159,unstable}
+// Found later using an integrated version of Rustlantis
+compare_tests! {fuzz,fuzz159,stable}
+
+compare_tests! {fuzz,fuzz333,stable}
+compare_tests! {fuzz,fuzz580,stable}
+// Assembler issue:fuzz952
+
+compare_tests! {fuzz,fuzz952,stable}
+// Faliure list between 0 - 1000:
+// [(511, 0.04589202155894068), (530, 0.08749974898514312), (143, 0.0903143569501278), (608, 0.09970870467230675)]
 run_test! {fuzz,fail0,stable}
 run_test! {fuzz,fail1,stable}
 compare_tests! {fuzz,fail3,stable}
@@ -888,6 +894,8 @@ compare_tests! {fuzz,fail8,stable}
 compare_tests! {fuzz,fail9,stable}
 compare_tests! {fuzz,fail10,stable}
 compare_tests! {fuzz,fail11,stable}
+
+
 cargo_test! {hello_world,stable}
 cargo_test! {std_hello_world,stable}
 cargo_test_ignored! {build_core}

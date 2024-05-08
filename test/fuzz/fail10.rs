@@ -16,10 +16,17 @@ fn main() {
     std::hint::black_box(fnkt());
 
     std::hint::black_box(bob(1, 2));
+    frank(7);
     //fn8();
 }
 
-
+pub fn frank(mut _7: i64){
+   
+    let RET:f64 = f64::NAN;
+    let  _6 = RET as i32;
+  
+    dump_var(0_usize, 6_usize, (_6), 47_usize, (), 47_usize, (), 0xFF_usize, (RET))
+}
 fn fn8(
 ) {
     let mut _9: Adt45 = Adt45::default();
