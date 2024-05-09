@@ -1,7 +1,9 @@
 use crate::{
     cil::{CallSite, FieldDescriptor, StaticFieldDescriptor},
     cil_tree::{cil_node::CILNode, cil_root::CILRoot},
-    conv_u64, conv_usize, ldc_u64,
+    conv_u64, conv_usize,
+    function_sig::FnSig,
+    ldc_u64,
     r#type::{DotnetTypeRef, TyCache, Type},
 };
 use rustc_abi::Size;
@@ -127,6 +129,133 @@ pub(crate) fn load_const_value<'ctx>(
         } //_ => todo!("Unhandled const value {const_val:?} of type {const_ty:?}"),
     }
 }
+fn load_scalar_ptr<'ctx>(
+    tyctx: TyCtxt<'ctx>,
+    tpe: Type,
+    tycache: &mut TyCache,
+    ptr: rustc_middle::mir::interpret::Pointer,
+) -> CILNode {
+    let (alloc_id, offset) = ptr.into_parts();
+    let global_alloc = tyctx.global_alloc(alloc_id.alloc_id());
+    match global_alloc {
+        GlobalAlloc::Static(def_id) => {
+            assert!(tyctx.is_static(def_id));
+
+            let name = tyctx
+                .opt_item_name(def_id)
+                .expect("Static without name")
+                .to_string();
+            /* */
+            if name == "__rust_alloc_error_handler_should_panic"
+                || name == "__rust_no_alloc_shim_is_unstable"
+            {
+                return CILNode::TemporaryLocal(Box::new((
+                    Type::U8,
+                    [CILRoot::SetTMPLocal {
+                        value: CILNode::LDStaticField(
+                            StaticFieldDescriptor::new(None, Type::U8, name.clone().into()).into(),
+                        ),
+                    }]
+                    .into(),
+                    CILNode::LoadAddresOfTMPLocal,
+                )));
+            }
+            if name == "environ" {
+                return CILNode::TemporaryLocal(Box::new((
+                    Type::U8,
+                    [CILRoot::SetTMPLocal {
+                        value: CILNode::LDStaticField(
+                            StaticFieldDescriptor::new(None, Type::U8, name.clone().into()).into(),
+                        ),
+                    }]
+                    .into(),
+                    CILNode::LoadAddresOfTMPLocal,
+                )));
+            }
+            let attrs = tyctx.codegen_fn_attrs(def_id);
+
+            if let Some(import_linkage) = attrs.import_linkage {
+                // Check if this is likely to be a syscall - if so, try importing it from libc.
+
+                if name.contains("statx") {
+                    return CILNode::TemporaryLocal(Box::new((
+                        Type::USize,
+                        [CILRoot::SetTMPLocal {
+                            value: CILNode::LDFtn(Box::new(CallSite::builtin(
+                                "statx".into(),
+                                FnSig::new(
+                                    &[
+                                        Type::I32,
+                                        Type::Ptr(Type::U8.into()),
+                                        Type::I32,
+                                        Type::U32,
+                                        Type::Ptr(Type::Void.into()),
+                                    ],
+                                    &Type::I32,
+                                ),
+                                true,
+                            ))),
+                        }]
+                        .into(),
+                        CILNode::LoadAddresOfTMPLocal,
+                    )));
+                }
+                rustc_middle::ty::print::with_no_trimmed_paths! {
+                    panic!("Static {def_id:?} requires special linkage {import_linkage:?} handling. Its name is:{name:?}")
+                };
+            }
+
+            let alloc = tyctx
+                .eval_static_initializer(def_id)
+                .expect("No initializer??");
+            //def_id.ty();
+            let _tyctx = tyctx.reserve_and_set_memory_alloc(alloc);
+            let alloc_id = crate::utilis::alloc_id_to_u64(alloc_id.alloc_id());
+            return CILNode::LoadGlobalAllocPtr { alloc_id };
+        }
+        GlobalAlloc::Memory(_const_allocation) => {
+            return CILNode::Add(
+                CILNode::LoadGlobalAllocPtr {
+                    alloc_id: alloc_id.alloc_id().0.into(),
+                }
+                .into(),
+                CILNode::ConvUSize(CILNode::LdcU64(offset.bytes()).into()).into(),
+            );
+        }
+        GlobalAlloc::Function(finstance) => {
+            // If it is a function, patch its pointer up.
+            let call_info =
+                crate::call_info::CallInfo::sig_from_instance_(finstance, tyctx, tycache).unwrap();
+            let function_name = crate::utilis::function_name(tyctx.symbol_name(finstance));
+            return CILNode::LDFtn(
+                CallSite::new(None, function_name, call_info.sig().clone(), true).into(),
+            );
+        }
+        _ => todo!("Unhandled global alloc {global_alloc:?}"),
+    }
+    //panic!("alloc_id:{alloc_id:?}")
+}
+
+fn try_import_syscall(name: &str) -> Option<CILNode> {
+    if name.contains("statx") && name.contains("fs") {
+        Some(CILNode::LDFtn(Box::new(CallSite::builtin(
+            "statx".into(),
+            FnSig::new(
+                &[
+                    Type::I32,
+                    Type::Ptr(Type::U8.into()),
+                    Type::I32,
+                    Type::U32,
+                    Type::Ptr(Type::Void.into()),
+                ],
+                &Type::I32,
+            ),
+            true,
+        ))))
+    } else {
+        None
+    }
+}
 fn load_const_scalar<'ctx>(
     scalar: Scalar,
     scalar_type: Ty<'ctx>,
@@ -136,95 +265,15 @@ fn load_const_scalar<'ctx>(
     tycache: &mut TyCache,
 ) -> CILNode {
     let scalar_type = crate::utilis::monomorphize(&method_instance, scalar_type, tyctx);
+    let tpe = crate::utilis::monomorphize(&method_instance, scalar_type, tyctx);
+    let tpe = tycache.type_from_cache(tpe, tyctx, Some(method_instance));
     let scalar_u128 = match scalar {
         Scalar::Int(scalar_int) => scalar_int
             .try_to_uint(scalar.size())
             .expect("IMPOSSIBLE. Size of scalar was not equal to itself."),
-        Scalar::Ptr(ptr, _size) => {
-            let (alloc_id, offset) = ptr.into_parts();
-            let global_alloc = tyctx.global_alloc(alloc_id.alloc_id());
-            match global_alloc {
-                GlobalAlloc::Static(def_id) => {
-                    assert!(tyctx.is_static(def_id));
-
-                    let name = tyctx
-                        .opt_item_name(def_id)
-                        .expect("Static without name")
-                        .to_string();
-                    /* */
-                    if name == "__rust_alloc_error_handler_should_panic"
-                        || name == "__rust_no_alloc_shim_is_unstable"
-                    {
-                        return CILNode::TemporaryLocal(Box::new((
-                            Type::U8,
-                            [CILRoot::SetTMPLocal {
-                                value: CILNode::LDStaticField(
-                                    StaticFieldDescriptor::new(None, Type::U8, name.clone().into())
-                                        .into(),
-                                ),
-                            }]
-                            .into(),
-                            CILNode::LoadAddresOfTMPLocal,
-                        )));
-                    }
-                    if name == "environ" {
-                        return CILNode::TemporaryLocal(Box::new((
-                            Type::U8,
-                            [CILRoot::SetTMPLocal {
-                                value: CILNode::LDStaticField(
-                                    StaticFieldDescriptor::new(None, Type::U8, name.clone().into())
-                                        .into(),
-                                ),
-                            }]
-                            .into(),
-                            CILNode::LoadAddresOfTMPLocal,
-                        )));
-                    }
-                    let attrs = tyctx.codegen_fn_attrs(def_id);
-
-                    if let Some(import_linkage) = attrs.import_linkage {
-                        rustc_middle::ty::print::with_no_trimmed_paths! {
-                            panic!("Static {def_id:?} requires special linkage {import_linkage:?} handling.")
-                        };
-                    }
-
-                    // TODO: figure out why
-                    // internal compiler error: compiler/rustc_const_eval/src/const_eval/machine.rs:395:21: trying to call extern function
-                    // happens.
-                    let alloc = tyctx
-                        .eval_static_initializer(def_id)
-                        .expect("No initializer??");
-                    //def_id.ty();
-                    let _tyctx = tyctx.reserve_and_set_memory_alloc(alloc);
-                    let alloc_id = crate::utilis::alloc_id_to_u64(alloc_id.alloc_id());
-                    return CILNode::LoadGlobalAllocPtr { alloc_id };
-                }
-                GlobalAlloc::Memory(_const_allocation) => {
-                    return CILNode::Add(
-                        CILNode::LoadGlobalAllocPtr {
-                            alloc_id: alloc_id.alloc_id().0.into(),
-                        }
-                        .into(),
-                        CILNode::ConvUSize(CILNode::LdcU64(offset.bytes()).into()).into(),
-                    );
-                }
-                GlobalAlloc::Function(finstance) => {
-                    // If it is a function, patch its pointer up.
-                    let call_info =
-                        crate::call_info::CallInfo::sig_from_instance_(finstance, tyctx, tycache)
-                            .unwrap();
-                    let function_name = crate::utilis::function_name(tyctx.symbol_name(finstance));
-                    return CILNode::LDFtn(
-                        CallSite::new(None, function_name, call_info.sig().clone(), true).into(),
-                    );
-                }
-                _ => todo!("Unhandled global alloc {global_alloc:?}"),
-            }
-            //panic!("alloc_id:{alloc_id:?}")
-        }
+        Scalar::Ptr(ptr, _size) => return load_scalar_ptr(tyctx, tpe, tycache, ptr),
     };
-    let tpe = crate::utilis::monomorphize(&method_instance, scalar_type, tyctx);
-    let tpe = tycache.type_from_cache(tpe, tyctx, Some(method_instance));
+
     //TODO: This assumes a LE target
     match scalar_type.kind() {
         TyKind::Int(int_type) => load_const_int(scalar_u128, int_type),

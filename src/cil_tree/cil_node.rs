@@ -350,7 +350,7 @@ impl CILNode {
     }
     pub fn flatten(&self) -> Vec<CILOp> {
         let mut ops = match self {
-            Self::PointerToConstValue(value) => {
+            Self::PointerToConstValue(_value) => {
                 panic!("ERROR: const values must be allocated before CILOp flattening phase")
             }
             Self::CallI(sig_ptr_args) => {
@@ -596,7 +596,7 @@ impl CILNode {
         locals: &mut Vec<(Option<Box<str>>, Type)>,
     ) {
         match self {
-            Self:: PointerToConstValue(arr)=>(),
+            Self:: PointerToConstValue(_arr)=>(),
             Self::LoadGlobalAllocPtr { alloc_id: _ } => (),
             Self::LDLoc(_) |
             Self::LDArg(_) |
@@ -864,7 +864,7 @@ impl CILNode {
             | Self::LdcF64(_)
             | Self::LdcF32(_) => vec![],
             Self::LoadGlobalAllocPtr { alloc_id: _ } => vec![],
-            Self::PointerToConstValue(value) => vec![],
+            Self::PointerToConstValue(_value) => vec![],
             Self::ConvU8(val)
             | Self::ConvU16(val)
             | Self::ConvU32(val)

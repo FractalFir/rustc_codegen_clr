@@ -96,20 +96,20 @@ impl CILRoot {
     pub fn opt(&mut self) {
         match self {
             CILRoot::SourceFileInfo(_) => (),
-            CILRoot::STLoc { tree, local } => tree.opt(),
+            CILRoot::STLoc { tree, local: _ } => tree.opt(),
             CILRoot::BTrue {
                 ops,
-                sub_target,
-                target,
+                sub_target: _,
+                target: _,
             } => ops.opt(),
             CILRoot::GoTo { .. } => (),
-            CILRoot::Call { args, site } => {
+            CILRoot::Call { args, site: _ } => {
                 args.iter_mut().for_each(|arg| arg.opt());
             }
             CILRoot::SetField {
                 addr: fld_addr,
                 value,
-                desc,
+                desc: _,
             } => {
                 fld_addr.opt();
                 value.opt();
@@ -142,12 +142,12 @@ impl CILRoot {
             CILRoot::STObj {
                 addr_calc,
                 value_calc,
-                tpe,
+                tpe: _,
             } => {
                 addr_calc.opt();
                 value_calc.opt();
             }
-            CILRoot::STArg { tree, arg } => {
+            CILRoot::STArg { tree, arg: _ } => {
                 tree.opt();
             }
             CILRoot::Break => (),
@@ -157,7 +157,7 @@ impl CILRoot {
                 dst.opt();
                 count.opt();
             }
-            CILRoot::CallVirt { site, args } => {
+            CILRoot::CallVirt { site: _, args } => {
                 args.iter_mut().for_each(|arg| arg.opt());
             }
             CILRoot::Ret { tree } => tree.opt(),
@@ -165,13 +165,17 @@ impl CILRoot {
             CILRoot::VoidRet => (),
             CILRoot::Throw(ops) => ops.opt(),
             CILRoot::ReThrow => (),
-            CILRoot::CallI { sig, fn_ptr, args } => {
+            CILRoot::CallI {
+                sig: _,
+                fn_ptr,
+                args,
+            } => {
                 args.iter_mut().for_each(|arg| arg.opt());
                 fn_ptr.opt();
             }
             CILRoot::JumpingPad { ops: _ } => (),
             CILRoot::SetTMPLocal { value } => value.opt(),
-            CILRoot::SetStaticField { descr, value } => value.opt(),
+            CILRoot::SetStaticField { descr: _, value } => value.opt(),
         }
     }
     pub fn throw(msg: &str) -> Self {
@@ -258,7 +262,7 @@ impl CILRoot {
                     let mut res = dst.flatten();
                     res.extend(val.flatten());
                     res.extend(count.flatten());
-                    res.push(CILOp::CpBlk);
+                    res.push(CILOp::InitBlk);
                     res
                 }
                 Self::STIndI8(addr, val) => {
@@ -595,7 +599,6 @@ impl CILRoot {
         Self::SourceFileInfo(Box::new((line, column, file.into())))
     }
     pub(crate) fn span_source_info(tyctx: TyCtxt, span: rustc_span::Span) -> Self {
-        let statement_source = tyctx.sess.source_map().span_to_embeddable_string(span);
         let file = tyctx.sess.source_map().span_to_embeddable_string(span);
         let (line, column) = tyctx
             .sess
@@ -656,5 +659,5 @@ fn allocating_tmps() {
     //let mut method = crate::method::Method::new(crate::access_modifier::AccessModifer::Private,crate::method::MethodType::Static,FnSig::new(&[Type::I32],&Type::Void),"a",vec![],vec![]);
     original_value.allocate_tmps(None, &mut vec![]);
     let trees = original_value.shed_trees();
-    let ops: Vec<_> = trees.iter().map(|tree| tree.into_ops()).collect();
+    let _ops: Vec<_> = trees.iter().map(|tree| tree.into_ops()).collect();
 }

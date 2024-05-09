@@ -21,7 +21,6 @@ fn create_typedef<'tyctx>(
     cache: &mut TyCache,
     name: &str,
     def: AdtDef<'tyctx>,
-
     tyctx: TyCtxt<'tyctx>,
     method: Option<Instance<'tyctx>>,
 ) -> TypeDef {

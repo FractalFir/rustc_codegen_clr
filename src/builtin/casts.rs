@@ -1,5 +1,15 @@
 use crate::{
-    add_method_from_trees, assembly::Assembly, basic_block::BasicBlock, call, cil::CallSite, cil_tree::{cil_node::CILNode, cil_root::CILRoot}, conv_f32, conv_f64, conv_f_un, conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8, conv_usize, eq, function_sig::FnSig, gt, ldc_i32, ldc_i64, ldc_u32, ldc_u64, lt, or, r#type::{DotnetTypeRef, Type}
+    add_method_from_trees,
+    assembly::Assembly,
+    basic_block::BasicBlock,
+    call,
+    cil::CallSite,
+    cil_tree::{cil_node::CILNode, cil_root::CILRoot},
+    conv_f32, conv_f64, conv_f_un, conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16,
+    conv_u32, conv_u64, conv_u8, conv_usize, eq,
+    function_sig::FnSig,
+    gt, ldc_i32, ldc_i64, ldc_u32, ldc_u64, lt, or,
+    r#type::{DotnetTypeRef, Type},
 };
 
 add_method_from_trees!(
@@ -43,13 +53,21 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::single(), "IsNaN".into(), FnSig::new(&[Type::F32],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
+                    ops: eq!(
+                        call!(
+                            CallSite::new_extern(
+                                DotnetTypeRef::single(),
+                                "IsNaN".into(),
+                                FnSig::new(&[Type::F32], &Type::Bool),
+                                true
+                            ),
+                            [CILNode::LDArg(0)]
+                        ),
+                        ldc_u32!(0)
+                    )
                 }
                 .into(),
-                CILRoot::Ret {
-                    tree: ldc_u64!(0)
-                }
-                .into()
+                CILRoot::Ret { tree: ldc_u64!(0) }.into()
             ],
             0,
             None
@@ -106,13 +124,21 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::single(), "IsNaN".into(), FnSig::new(&[Type::F32],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
+                    ops: eq!(
+                        call!(
+                            CallSite::new_extern(
+                                DotnetTypeRef::single(),
+                                "IsNaN".into(),
+                                FnSig::new(&[Type::F32], &Type::Bool),
+                                true
+                            ),
+                            [CILNode::LDArg(0)]
+                        ),
+                        ldc_u32!(0)
+                    )
                 }
                 .into(),
-                CILRoot::Ret {
-                    tree: ldc_u64!(0)
-                }
-                .into()
+                CILRoot::Ret { tree: ldc_u64!(0) }.into()
             ],
             0,
             None
@@ -169,13 +195,21 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::single(), "IsNaN".into(), FnSig::new(&[Type::F32],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
+                    ops: eq!(
+                        call!(
+                            CallSite::new_extern(
+                                DotnetTypeRef::single(),
+                                "IsNaN".into(),
+                                FnSig::new(&[Type::F32], &Type::Bool),
+                                true
+                            ),
+                            [CILNode::LDArg(0)]
+                        ),
+                        ldc_u32!(0)
+                    )
                 }
                 .into(),
-                CILRoot::Ret {
-                    tree: ldc_u32!(0)
-                }
-                .into()
+                CILRoot::Ret { tree: ldc_u32!(0) }.into()
             ],
             0,
             None
@@ -232,13 +266,21 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::single(), "IsNaN".into(), FnSig::new(&[Type::F32],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
+                    ops: eq!(
+                        call!(
+                            CallSite::new_extern(
+                                DotnetTypeRef::single(),
+                                "IsNaN".into(),
+                                FnSig::new(&[Type::F32], &Type::Bool),
+                                true
+                            ),
+                            [CILNode::LDArg(0)]
+                        ),
+                        ldc_u32!(0)
+                    )
                 }
                 .into(),
-                CILRoot::Ret {
-                    tree: ldc_u64!(0)
-                }
-                .into()
+                CILRoot::Ret { tree: ldc_u64!(0) }.into()
             ],
             0,
             None
@@ -295,13 +337,21 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::single(), "IsNaN".into(), FnSig::new(&[Type::F32],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
+                    ops: eq!(
+                        call!(
+                            CallSite::new_extern(
+                                DotnetTypeRef::single(),
+                                "IsNaN".into(),
+                                FnSig::new(&[Type::F32], &Type::Bool),
+                                true
+                            ),
+                            [CILNode::LDArg(0)]
+                        ),
+                        ldc_u32!(0)
+                    )
                 }
                 .into(),
-                CILRoot::Ret {
-                    tree: ldc_u64!(0)
-                }
-                .into()
+                CILRoot::Ret { tree: ldc_u64!(0) }.into()
             ],
             0,
             None
@@ -377,13 +427,21 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::single(), "IsNaN".into(), FnSig::new(&[Type::F32],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
+                    ops: eq!(
+                        call!(
+                            CallSite::new_extern(
+                                DotnetTypeRef::single(),
+                                "IsNaN".into(),
+                                FnSig::new(&[Type::F32], &Type::Bool),
+                                true
+                            ),
+                            [CILNode::LDArg(0)]
+                        ),
+                        ldc_u32!(0)
+                    )
                 }
                 .into(),
-                CILRoot::Ret {
-                    tree: ldc_u64!(0)
-                }
-                .into()
+                CILRoot::Ret { tree: ldc_u64!(0) }.into()
             ],
             0,
             None
@@ -459,13 +517,21 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::single(), "IsNaN".into(), FnSig::new(&[Type::F32],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
+                    ops: eq!(
+                        call!(
+                            CallSite::new_extern(
+                                DotnetTypeRef::single(),
+                                "IsNaN".into(),
+                                FnSig::new(&[Type::F32], &Type::Bool),
+                                true
+                            ),
+                            [CILNode::LDArg(0)]
+                        ),
+                        ldc_u32!(0)
+                    )
                 }
                 .into(),
-                CILRoot::Ret {
-                    tree: ldc_u64!(0)
-                }
-                .into()
+                CILRoot::Ret { tree: ldc_u64!(0) }.into()
             ],
             0,
             None
@@ -560,13 +626,21 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::single(), "IsNaN".into(), FnSig::new(&[Type::F32],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
+                    ops: eq!(
+                        call!(
+                            CallSite::new_extern(
+                                DotnetTypeRef::single(),
+                                "IsNaN".into(),
+                                FnSig::new(&[Type::F32], &Type::Bool),
+                                true
+                            ),
+                            [CILNode::LDArg(0)]
+                        ),
+                        ldc_u32!(0)
+                    )
                 }
                 .into(),
-                CILRoot::Ret {
-                    tree: ldc_u64!(0)
-                }
-                .into()
+                CILRoot::Ret { tree: ldc_u64!(0) }.into()
             ],
             0,
             None
@@ -661,13 +735,21 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::single(), "IsNaN".into(), FnSig::new(&[Type::F32],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
+                    ops: eq!(
+                        call!(
+                            CallSite::new_extern(
+                                DotnetTypeRef::single(),
+                                "IsNaN".into(),
+                                FnSig::new(&[Type::F32], &Type::Bool),
+                                true
+                            ),
+                            [CILNode::LDArg(0)]
+                        ),
+                        ldc_u32!(0)
+                    )
                 }
                 .into(),
-                CILRoot::Ret {
-                    tree: ldc_i32!(0)
-                }
-                .into()
+                CILRoot::Ret { tree: ldc_i32!(0) }.into()
             ],
             0,
             None
@@ -724,13 +806,21 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::single(), "IsNaN".into(), FnSig::new(&[Type::F32],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
+                    ops: eq!(
+                        call!(
+                            CallSite::new_extern(
+                                DotnetTypeRef::single(),
+                                "IsNaN".into(),
+                                FnSig::new(&[Type::F32], &Type::Bool),
+                                true
+                            ),
+                            [CILNode::LDArg(0)]
+                        ),
+                        ldc_u32!(0)
+                    )
                 }
                 .into(),
-                CILRoot::Ret {
-                    tree: ldc_i32!(0)
-                }
-                .into()
+                CILRoot::Ret { tree: ldc_i32!(0) }.into()
             ],
             0,
             None
@@ -787,13 +877,21 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::single(), "IsNaN".into(), FnSig::new(&[Type::F32],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
+                    ops: eq!(
+                        call!(
+                            CallSite::new_extern(
+                                DotnetTypeRef::single(),
+                                "IsNaN".into(),
+                                FnSig::new(&[Type::F32], &Type::Bool),
+                                true
+                            ),
+                            [CILNode::LDArg(0)]
+                        ),
+                        ldc_u32!(0)
+                    )
                 }
                 .into(),
-                CILRoot::Ret {
-                    tree: ldc_i32!(0)
-                }
-                .into()
+                CILRoot::Ret { tree: ldc_i32!(0) }.into()
             ],
             0,
             None
@@ -850,13 +948,21 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::single(), "IsNaN".into(), FnSig::new(&[Type::F32],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
+                    ops: eq!(
+                        call!(
+                            CallSite::new_extern(
+                                DotnetTypeRef::single(),
+                                "IsNaN".into(),
+                                FnSig::new(&[Type::F32], &Type::Bool),
+                                true
+                            ),
+                            [CILNode::LDArg(0)]
+                        ),
+                        ldc_u32!(0)
+                    )
                 }
                 .into(),
-                CILRoot::Ret {
-                    tree: ldc_i64!(0)
-                }
-                .into()
+                CILRoot::Ret { tree: ldc_i64!(0) }.into()
             ],
             0,
             None
@@ -913,13 +1019,21 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::double(), "IsNaN".into(), FnSig::new(&[Type::F64],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
+                    ops: eq!(
+                        call!(
+                            CallSite::new_extern(
+                                DotnetTypeRef::double(),
+                                "IsNaN".into(),
+                                FnSig::new(&[Type::F64], &Type::Bool),
+                                true
+                            ),
+                            [CILNode::LDArg(0)]
+                        ),
+                        ldc_u32!(0)
+                    )
                 }
                 .into(),
-                CILRoot::Ret {
-                    tree: ldc_i32!(0)
-                }
-                .into()
+                CILRoot::Ret { tree: ldc_i32!(0) }.into()
             ],
             0,
             None
@@ -976,13 +1090,21 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::double(), "IsNaN".into(), FnSig::new(&[Type::F64],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
+                    ops: eq!(
+                        call!(
+                            CallSite::new_extern(
+                                DotnetTypeRef::double(),
+                                "IsNaN".into(),
+                                FnSig::new(&[Type::F64], &Type::Bool),
+                                true
+                            ),
+                            [CILNode::LDArg(0)]
+                        ),
+                        ldc_u32!(0)
+                    )
                 }
                 .into(),
-                CILRoot::Ret {
-                    tree: ldc_i32!(0)
-                }
-                .into()
+                CILRoot::Ret { tree: ldc_i32!(0) }.into()
             ],
             0,
             None
@@ -1039,13 +1161,21 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::double(), "IsNaN".into(), FnSig::new(&[Type::F64],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
+                    ops: eq!(
+                        call!(
+                            CallSite::new_extern(
+                                DotnetTypeRef::double(),
+                                "IsNaN".into(),
+                                FnSig::new(&[Type::F64], &Type::Bool),
+                                true
+                            ),
+                            [CILNode::LDArg(0)]
+                        ),
+                        ldc_u32!(0)
+                    )
                 }
                 .into(),
-                CILRoot::Ret {
-                    tree: ldc_i32!(0)
-                }
-                .into()
+                CILRoot::Ret { tree: ldc_i32!(0) }.into()
             ],
             0,
             None
@@ -1102,13 +1232,21 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::double(), "IsNaN".into(), FnSig::new(&[Type::F64],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
+                    ops: eq!(
+                        call!(
+                            CallSite::new_extern(
+                                DotnetTypeRef::double(),
+                                "IsNaN".into(),
+                                FnSig::new(&[Type::F64], &Type::Bool),
+                                true
+                            ),
+                            [CILNode::LDArg(0)]
+                        ),
+                        ldc_u32!(0)
+                    )
                 }
                 .into(),
-                CILRoot::Ret {
-                    tree: ldc_u64!(0)
-                }
-                .into()
+                CILRoot::Ret { tree: ldc_u64!(0) }.into()
             ],
             0,
             None
@@ -1165,13 +1303,21 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::double(), "IsNaN".into(), FnSig::new(&[Type::F64],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
+                    ops: eq!(
+                        call!(
+                            CallSite::new_extern(
+                                DotnetTypeRef::double(),
+                                "IsNaN".into(),
+                                FnSig::new(&[Type::F64], &Type::Bool),
+                                true
+                            ),
+                            [CILNode::LDArg(0)]
+                        ),
+                        ldc_u32!(0)
+                    )
                 }
                 .into(),
-                CILRoot::Ret {
-                    tree: ldc_i32!(0)
-                }
-                .into()
+                CILRoot::Ret { tree: ldc_i32!(0) }.into()
             ],
             0,
             None
@@ -1228,13 +1374,21 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::double(), "IsNaN".into(), FnSig::new(&[Type::F64],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
+                    ops: eq!(
+                        call!(
+                            CallSite::new_extern(
+                                DotnetTypeRef::double(),
+                                "IsNaN".into(),
+                                FnSig::new(&[Type::F64], &Type::Bool),
+                                true
+                            ),
+                            [CILNode::LDArg(0)]
+                        ),
+                        ldc_u32!(0)
+                    )
                 }
                 .into(),
-                CILRoot::Ret {
-                    tree: ldc_i32!(0)
-                }
-                .into()
+                CILRoot::Ret { tree: ldc_i32!(0) }.into()
             ],
             0,
             None
@@ -1291,13 +1445,21 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::double(), "IsNaN".into(), FnSig::new(&[Type::F64],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
+                    ops: eq!(
+                        call!(
+                            CallSite::new_extern(
+                                DotnetTypeRef::double(),
+                                "IsNaN".into(),
+                                FnSig::new(&[Type::F64], &Type::Bool),
+                                true
+                            ),
+                            [CILNode::LDArg(0)]
+                        ),
+                        ldc_u32!(0)
+                    )
                 }
                 .into(),
-                CILRoot::Ret {
-                    tree: ldc_i32!(0)
-                }
-                .into()
+                CILRoot::Ret { tree: ldc_i32!(0) }.into()
             ],
             0,
             None
@@ -1334,7 +1496,6 @@ add_method_from_trees!(
             2,
             None
         ),
-    
         BasicBlock::new(
             vec![CILRoot::Ret {
                 tree: conv_i32!(CILNode::LDArg(0))
@@ -1355,13 +1516,21 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: eq!(call!(CallSite::new_extern(DotnetTypeRef::double(), "IsNaN".into(), FnSig::new(&[Type::F64],&Type::Bool), true),[CILNode::LDArg(0)]),ldc_u32!(0))
+                    ops: eq!(
+                        call!(
+                            CallSite::new_extern(
+                                DotnetTypeRef::double(),
+                                "IsNaN".into(),
+                                FnSig::new(&[Type::F64], &Type::Bool),
+                                true
+                            ),
+                            [CILNode::LDArg(0)]
+                        ),
+                        ldc_u32!(0)
+                    )
                 }
                 .into(),
-                CILRoot::Ret {
-                    tree: ldc_i64!(0)
-                }
-                .into()
+                CILRoot::Ret { tree: ldc_i64!(0) }.into()
             ],
             0,
             None
@@ -1398,7 +1567,6 @@ add_method_from_trees!(
             2,
             None
         ),
-       
         BasicBlock::new(
             vec![CILRoot::Ret {
                 tree: conv_i64!(CILNode::LDArg(0))

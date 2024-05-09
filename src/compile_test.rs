@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 
-
 pub fn test_dotnet_executable(file_path: &str, test_dir: &str) -> String {
     use std::io::Write;
 
@@ -23,10 +22,9 @@ pub fn test_dotnet_executable(file_path: &str, test_dir: &str) -> String {
     }
     //println!("exec_path:{exec_path:?}");
     if *IS_DOTNET_PRESENT {
-        
-        let config_path = if file_path.contains(test_dir){
+        let config_path = if file_path.contains(test_dir) {
             format!("{file_path}.runtimeconfig.json")
-        }else{
+        } else {
             format!("{test_dir}/{file_path}.runtimeconfig.json")
         };
         println!("{config_path:?}");
@@ -663,9 +661,8 @@ fn with_stack_size(cmd: &mut std::process::Command, limit_kb: u64) {
 }
 
 fn backend_path() -> String {
-    format!("codegen-backend={}",absolute_backend_path().display())
+    format!("codegen-backend={}", absolute_backend_path().display())
 }
-
 
 test_lib! {assign,stable}
 test_lib! {binops,stable}

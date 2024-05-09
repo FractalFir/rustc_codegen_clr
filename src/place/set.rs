@@ -143,6 +143,7 @@ pub fn place_elem_set<'a>(
             min_length,
             from_end,
         } => {
+            let _ = min_length;
             let curr_ty = curr_type
                 .as_ty()
                 .expect("INVALID PLACE: Indexing into enum variant???");
@@ -172,10 +173,7 @@ pub fn place_elem_set<'a>(
                                 FnSig::new(&[Type::USize, Type::USize], &Type::USize),
                                 true
                             ),
-                            [
-                                ld_field!(addr_calc, metadata),
-                                conv_usize!(index)
-                            ]
+                            [ld_field!(addr_calc, metadata), conv_usize!(index)]
                         ) * conv_usize!(CILNode::SizeOf(inner_type.into()));
                     ptr_set_op(
                         super::PlaceTy::Ty(inner),

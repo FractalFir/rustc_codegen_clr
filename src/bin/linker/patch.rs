@@ -26,7 +26,7 @@ fn hijack_arg_init(asm: &mut Assembly) {
 
     use std::num::NonZeroU8;
 
-    use rustc_codegen_clr::{call_virt, eq, lt, mul, size_of};
+    use rustc_codegen_clr::{eq, lt, size_of};
     //System.Runtime.InteropServices.Marshal.StringToCoTaskMemUTF8
 
     let mut really_init = None;

@@ -27,7 +27,7 @@ macro_rules! config_flag{
 config_flag! {ABORT_ON_ERROR,false,"Should the codegen stop working when ecountering an error, or try to press on, replacing unusuported code with exceptions throws?"}
 
 config_flag! {TRACE_CALLS,false,"Preapends each function call with a debug message"}
-config_flag! {TRACE_STATEMENTS,false,"Preapends each statement with a debug message"}
+
 
 config_flag! {ALWAYS_INIT_LOCALS,false,"Changes `.locals` into `.locals init`. Causes the runtime to always initialize local variables.\nTry turining on in cause of issues. If it fixes them, then their root cause is use of uninitailized memory."}
 
@@ -56,6 +56,8 @@ config_flag! {ENFORCE_CIL_VALID,false,"Tells the codegen to preform additonal ch
 config_flag! {DEAD_CODE_ELIMINATION,true,"Tells the codegen to remove dead code before export."}
 config_flag! {PRINT_PTRS,false,"Tells codegen the print each pointer it dereferences."}
 config_flag! {CHECK_REFS,false,"Tells codegen to check if references it assigns are valid."}
+
+config_flag! {TRACE_CIL_OPS,false,"Tells the print each CIL op before it is executed."}
 
 lazy_static! {
     #[doc = "Specifies the path to the IL assembler."]

@@ -181,7 +181,7 @@ fn print_args(){
 }
 fn test_file(){
     use std::io::Write;
-    let mut file = std::fs::File::create("foo.txt").unwrap();
+    let mut file = std::fs::File::create("/tmp/foo.txt").unwrap();
     file.write_all(b"Hello, world!").unwrap();
 }
 fn main() {

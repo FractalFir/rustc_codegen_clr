@@ -389,7 +389,7 @@ pub fn call<'tyctx>(
     } else {
         todo!("Trying to call a type which is not a function definition!");
     };
-    if let rustc_middle::ty::InstanceDef::Virtual(def, fn_idx) = instance.def {
+    if let rustc_middle::ty::InstanceDef::Virtual(_def, fn_idx) = instance.def {
         assert!(!args.is_empty());
         let fat_ptr_ty =
             crate::utilis::monomorphize(&method_instance, args[0].node.ty(body, tyctx), tyctx);

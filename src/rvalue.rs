@@ -424,7 +424,7 @@ pub fn handle_rvalue<'tcx>(
         }
         Rvalue::ThreadLocalRef(def_id) => {
             if !def_id.is_local() && tyctx.needs_thread_local_shim(*def_id) {
-                let instance = Instance {
+                let _instance = Instance {
                     def: InstanceDef::ThreadLocalShim(*def_id),
                     args: GenericArgs::empty(),
                 };

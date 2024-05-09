@@ -369,28 +369,6 @@ impl Assembly {
     }
     /// Adds a global static field named *name* of type *tpe*
     pub fn add_static(&mut self, tpe: Type, name: &str) {
-        fn is_alloc_pattern(input: &str) -> bool {
-            // Split the input string by underscore
-            let parts: Vec<&str> = input.split('_').collect();
-
-            // Check if there are exactly three parts and the first part is "alloc"
-            if parts.len() != 3 || (parts[0] != "alloc" && parts[0] != "a") {
-                return false;
-            }
-            // Check if the remaining parts are numbers
-            if let (Ok(_), Ok(_)) = (
-                u32::from_str_radix(parts[1], 16),
-                u64::from_str_radix(parts[2], 16),
-            ) {
-                return true;
-            }
-
-            false
-        }
-        /*assert!(
-            is_alloc_pattern(name) || name.contains("__") || name == "environ",
-            "invalid alloc:{name:?}"
-        );*/
         self.static_fields.insert(name.into(), tpe);
     }
     fn add_cctor(&mut self) -> &mut Method {
@@ -504,6 +482,7 @@ impl Assembly {
                     }
                     .into(),
                 );
+                //trees.push(CILRoot::debug(&format!("Finished initializing allocation {alloc_fld:?}")).into());
                 // Add return again
                 trees.push(ret);
             }
@@ -600,15 +579,6 @@ impl Assembly {
         tcx: TyCtxt<'tcx>,
         cache: &mut TyCache,
     ) -> Result<(), CodegenError> {
-        /*if !item.is_instantiable(tcx) {
-            let name = item.symbol_name(tcx);
-            // TODO: check if this whole if statement is even needed.
-            eprintln!(
-                "WARNING: {name} is not instantiable. Skipping it, since it should not be needed."
-            );
-            return Ok(());
-        }*/
-        let name = item.symbol_name(tcx);
         match item {
             MonoItem::Fn(instance) => {
                 //let instance = crate::utilis::monomorphize(&instance,tcx);
@@ -785,7 +755,7 @@ impl Assembly {
                 vec![
                     CILRoot::STLoc {
                         local: 0,
-                        tree: call!(CallSite::malloc(tyctx), [ldc_u32!(8)]),
+                        tree: call!(CallSite::malloc(tyctx), [ldc_u32!(16)]),
                     }
                     .into(),
                     CILRoot::STIndI8(CILNode::LDLoc(0), ldc_u32!(raw_bytes[0] as u32)).into(),
@@ -1001,6 +971,7 @@ fn allocation_initializer_method(
         const_allocation.inspect_with_uninit_and_ptr_outside_interpreter(0..const_allocation.len());
     let ptrs = const_allocation.provenance().ptrs();
     let mut trees: Vec<CILTree> = Vec::new();
+    //trees.push(CILRoot::debug(&format!("Preparing to initialize allocation with size {}",bytes.len())).into());
     trees.push(
         CILRoot::STLoc {
             local: 0,
@@ -1020,6 +991,7 @@ fn allocation_initializer_method(
     );
     for byte in bytes {
         trees.push(CILRoot::STIndI8(CILNode::LDLoc(0), ldc_u32!(*byte as u32)).into());
+        //trees.push(CILRoot::debug(&format!("Writing the byte {}",byte)).into());
         trees.push(
             CILRoot::STLoc {
                 local: 0,
@@ -1064,6 +1036,7 @@ fn allocation_initializer_method(
         }
         //eprintln!("Constant requires rellocation support!");
     }
+    //trees.push(CILRoot::debug(&format!("Finished initializing an allocation with size {}",bytes.len())).into());
     trees.push(
         CILRoot::Ret {
             tree: CILNode::LDLoc(1),

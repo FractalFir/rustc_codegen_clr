@@ -180,10 +180,13 @@ pub fn unsize<'tyctx>(
                 CILNode::LoadTMPLocal,
             )))
         }
-        (TyKind::Dynamic(data_a, _, src_dyn_kind), TyKind::Dynamic(data_b, _, target_dyn_kind)) => {
+        (
+            TyKind::Dynamic(_data_a, _, _src_dyn_kind),
+            TyKind::Dynamic(_data_b, _, _target_dyn_kind),
+        ) => {
             todo!("dyn to dyn cats not yet supported!")
         }
-        (_, TyKind::Dynamic(data, _, dyn_kind)) => {
+        (_, TyKind::Dynamic(data, _, _dyn_kind)) => {
             let alloc_id = tyctx.vtable_allocation((info.source_points_to, data.principal()));
             let metadata_field =
                 FieldDescriptor::new(info.target_dotnet.clone(), Type::USize, "metadata".into());

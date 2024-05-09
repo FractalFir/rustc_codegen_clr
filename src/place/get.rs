@@ -2,7 +2,7 @@ use crate::cil::{CallSite, FieldDescriptor};
 use crate::cil_tree::cil_node::CILNode;
 use crate::function_sig::FnSig;
 use crate::r#type::Type;
-use crate::{call, conv_usize, ld_field, ldc_u64};
+use crate::{call, conv_usize, ld_field};
 
 use rustc_middle::mir::{Place, PlaceElem};
 use rustc_middle::ty::{Instance, TyCtxt, TyKind};
@@ -166,6 +166,7 @@ fn place_elem_get<'a>(
             min_length,
             from_end,
         } => {
+            let _ = min_length;
             let curr_ty = curr_type
                 .as_ty()
                 .expect("INVALID PLACE: Indexing into enum variant???");
@@ -195,10 +196,7 @@ fn place_elem_get<'a>(
                                 FnSig::new(&[Type::USize, Type::USize], &Type::USize),
                                 true
                             ),
-                            [
-                                ld_field!(addr_calc, metadata),
-                                conv_usize!(index)
-                            ]
+                            [ld_field!(addr_calc, metadata), conv_usize!(index)]
                         ) * CILNode::ConvUSize(CILNode::SizeOf(inner_type.into()).into());
                     super::deref_op(
                         super::PlaceTy::Ty(inner),

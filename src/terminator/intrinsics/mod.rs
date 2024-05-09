@@ -461,9 +461,18 @@ pub fn handle_intrinsic<'tyctx>(
                 3,
                 "The intrinsic `write_bytes` MUST take in exactly 3 argument!"
             );
+            let tpe = crate::utilis::monomorphize(
+                &method_instance,
+                call_instance.args[0]
+                    .as_type()
+                    .expect("needs_drop works only on types!"),
+                tyctx,
+            );
+            let tpe = type_cache.type_from_cache(tpe, tyctx, Some(method_instance));
             let dst = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
             let val = handle_operand(&args[1].node, tyctx, body, method_instance, type_cache);
-            let count = handle_operand(&args[2].node, tyctx, body, method_instance, type_cache);
+            let count = handle_operand(&args[2].node, tyctx, body, method_instance, type_cache)
+                * conv_usize!(size_of!(tpe));
             CILRoot::InitBlk { dst, val, count }
         }
         "copy" => {
@@ -472,9 +481,18 @@ pub fn handle_intrinsic<'tyctx>(
                 3,
                 "The intrinsic `copy` MUST take in exactly 3 argument!"
             );
+            let tpe = crate::utilis::monomorphize(
+                &method_instance,
+                call_instance.args[0]
+                    .as_type()
+                    .expect("needs_drop works only on types!"),
+                tyctx,
+            );
+            let tpe = type_cache.type_from_cache(tpe, tyctx, Some(method_instance));
             let src = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
             let dst = handle_operand(&args[1].node, tyctx, body, method_instance, type_cache);
-            let count = handle_operand(&args[2].node, tyctx, body, method_instance, type_cache);
+            let count = handle_operand(&args[2].node, tyctx, body, method_instance, type_cache)
+                * conv_usize!(size_of!(tpe));
 
             CILRoot::CpBlk {
                 src,
@@ -553,18 +571,9 @@ pub fn handle_intrinsic<'tyctx>(
                 type_cache,
             )
         }
-        "volatile_load" => volitale_load(
-            fn_name,
-            args,
-            destination,
-            tyctx,
-            body,
-            method_instance,
-            call_instance,
-            type_cache,
-            signature,
-            span,
-        ),
+        "volatile_load" => {
+            volitale_load(args, destination, tyctx, body, method_instance, type_cache)
+        }
         "atomic_load_unordered" => {
             // This is already implemented by default in .NET when volatile is used. TODO: ensure this is 100% right.
             //TODO:fix volitale prefix!
@@ -651,7 +660,6 @@ pub fn handle_intrinsic<'tyctx>(
                 true,
             );
 
-            let location1 = dst.clone();
             let value = src;
             let comaprand = old.clone();
             let exchange_res = call!(call_site, [dst, value, comaprand]);
@@ -758,7 +766,7 @@ pub fn handle_intrinsic<'tyctx>(
         }
         // TODO:Those are not stricly neccessary, but SHOULD be implemented at some point.
         "assert_inhabited" | "assert_zero_valid" => CILRoot::Nop,
-        
+
         "ptr_offset_from_unsigned" => {
             debug_assert_eq!(
                 args.len(),
@@ -1129,6 +1137,9 @@ fn intrinsic_slow<'tyctx>(
     signature: FnSig,
     span: rustc_span::Span,
 ) -> CILRoot {
+    let _ = call_instance;
+    let _ = span;
+    let _ = signature;
     if fn_name.contains("likely") {
         debug_assert_eq!(
             args.len(),
@@ -1145,18 +1156,7 @@ fn intrinsic_slow<'tyctx>(
             type_cache,
         )
     } else if fn_name.contains("volitale_load") {
-        return volitale_load(
-            fn_name,
-            args,
-            destination,
-            tyctx,
-            body,
-            method_instance,
-            call_instance,
-            type_cache,
-            signature,
-            span,
-        );
+        return volitale_load(args, destination, tyctx, body, method_instance, type_cache);
     } else if fn_name.contains("is_val_statically_known") {
         debug_assert_eq!(
             args.len(),
@@ -1177,16 +1177,13 @@ fn intrinsic_slow<'tyctx>(
     }
 }
 fn volitale_load<'tyctx>(
-    fn_name: &str,
     args: &[Spanned<Operand<'tyctx>>],
     destination: &Place<'tyctx>,
     tyctx: TyCtxt<'tyctx>,
     body: &'tyctx Body<'tyctx>,
     method_instance: Instance<'tyctx>,
-    call_instance: Instance<'tyctx>,
+
     type_cache: &mut TyCache,
-    signature: FnSig,
-    span: rustc_span::Span,
 ) -> CILRoot {
     //TODO:fix volitale prefix!
     debug_assert_eq!(

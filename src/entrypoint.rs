@@ -151,6 +151,7 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
                         args: [].into(),
                     }
                     .into(),
+                    //CILRoot::debug(&format!("Preparing to execute the main program.")).into(),
                     CILRoot::VoidRet.into(),
                 ],
                 0,

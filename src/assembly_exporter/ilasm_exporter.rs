@@ -306,6 +306,13 @@ fn method_cil(w: &mut impl Write, method: &Method) -> std::io::Result<()> {
         maxstack = method.maxstack()
     )?;
     for op in method.blocks().iter().flat_map(|block| block.into_ops()) {
+        if *crate::config::TRACE_CIL_OPS{
+            let op = format!("{}:{op:?}",method.name());
+            writeln!(
+                w,
+                "\tldstr {op:?}\n\tcall void [System.Console]System.Console::WriteLine(string)",
+            )?;
+        }
         writeln!(
             w,
             "\t{op_cli}",
