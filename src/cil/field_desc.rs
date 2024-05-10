@@ -14,14 +14,17 @@ pub struct FieldDescriptor {
 }
 impl FieldDescriptor {
     /// Returns the name of the field
+    #[must_use]
     pub fn name(&self) -> &str {
         &self.name
     }
     /// Returns the type of the field. For getting the type this field belongs to, see [self.owner]
+    #[must_use]
     pub fn tpe(&self) -> &Type {
         &self.tpe
     }
     /// Returns the the type this field belongs to. For getting the type of this field, see [self.tpe]
+    #[must_use]
     pub fn owner(&self) -> &DotnetTypeRef {
         &self.owner
     }

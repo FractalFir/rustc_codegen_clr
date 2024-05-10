@@ -273,7 +273,7 @@ pub fn garag_to_bool<'tyctx>(garg: GenericArg<'tyctx>, _ctx: TyCtxt<'tyctx>) -> 
     }
 }
 /// This function returns the size of a type at the compile time. This should be used ONLY for handling constants. It currently assumes a 64 bit env
-pub fn compiletime_sizeof<'tyctx>(ty: Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -> usize {
+pub fn compiletime_sizeof<'tyctx>(ty: Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -> u64 {
     let layout = tyctx
         .layout_of(rustc_middle::ty::ParamEnvAnd {
             param_env: ParamEnv::reveal_all(),
@@ -281,7 +281,7 @@ pub fn compiletime_sizeof<'tyctx>(ty: Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -> usiz
         })
         .expect("Can't get layout of a type.")
         .layout;
-    layout.size.bytes() as usize
+    layout.size.bytes()
 }
 /// Ensures that a type is morphic.
 #[macro_export]
@@ -364,7 +364,7 @@ pub fn align_of<'tyctx>(ty: rustc_middle::ty::Ty<'tyctx>, tyctx: TyCtxt<'tyctx>)
 
     let align = layout.align.abi;
     // FIXME: this field is likely private for a reason. I should not do this get its value. Find a better way to get aligement.
-    let pow2 = u64::from(unsafe { std::mem::transmute::<_, u8>(align) });
+    let pow2 = u64::from(unsafe { std::mem::transmute::<rustc_abi::Align, u8>(align) });
     1 << pow2
 }
 pub fn is_zst<'tyctx>(ty: rustc_middle::ty::Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -> bool {

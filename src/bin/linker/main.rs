@@ -253,9 +253,7 @@ lazy_static! {
 fn get_libc_() -> String {
     let mut libc = None;
     for entry in std::fs::read_dir("/lib").unwrap() {
-        let entry = if let Ok(entry) = entry {
-            entry
-        } else {
+        let Ok(entry) = entry else {
             continue;
         };
         if entry.metadata().unwrap().is_file() {
@@ -266,9 +264,7 @@ fn get_libc_() -> String {
         }
     }
     for entry in std::fs::read_dir("/lib64").unwrap() {
-        let entry = if let Ok(entry) = entry {
-            entry
-        } else {
+        let Ok(entry) = entry else {
             continue;
         };
         if entry.metadata().unwrap().is_file() {
@@ -477,11 +473,12 @@ fn main() {
         final_assembly.eliminate_dead_code();
     }
     if *config::C_MODE {
+        type Exporter = rustc_codegen_clr::assembly_exporter::c_exporter::CExporter;
+        use rustc_codegen_clr::assembly_exporter::AssemblyExporter;
         println!(
             "The codegen is now running in C mode. It will emmit C source files and build them."
         );
-        type Exporter = rustc_codegen_clr::assembly_exporter::c_exporter::CExporter;
-        use rustc_codegen_clr::assembly_exporter::AssemblyExporter;
+
         Exporter::export_assembly(&final_assembly, output_file_path.as_ref(), is_lib).unwrap();
         return;
     }

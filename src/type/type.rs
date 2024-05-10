@@ -44,7 +44,7 @@ pub enum Type {
     GenericArg(u32),
     CallGenericArg(u32),
     DotnetChar,
-    /// Rust FnDefs
+    /// Rust `FnDefs`
     FnDef(IString),
     DelegatePtr(Box<crate::function_sig::FnSig>),
     /// Generic argument of a method
@@ -68,6 +68,7 @@ pub struct DotnetTypeRef {
     is_valuetype: bool,
 }
 impl DotnetTypeRef {
+    #[must_use]
     pub fn marshal() -> Self {
         Self::new(
             Some("System.Runtime.InteropServices"),
@@ -204,6 +205,7 @@ impl DotnetTypeRef {
     pub(crate) fn interlocked() -> Self {
         Self::new(Some("System.Threading"), "System.Threading.Interlocked").with_valuetype(false)
     }
+    #[must_use]
     pub fn assembly() -> Self {
         Self::new(Some("System.Runtime"), "System.Reflection.Assembly").with_valuetype(false)
     }
@@ -285,7 +287,8 @@ impl Type {
         }
     }
 
-    pub fn as_delegate_ptr(&self) -> Option<&Box<crate::function_sig::FnSig>> {
+    #[must_use]
+    pub fn as_delegate_ptr(&self) -> Option<&crate::function_sig::FnSig> {
         if let Self::DelegatePtr(v) = self {
             Some(v)
         } else {
@@ -462,6 +465,7 @@ pub fn simple_tuple(elements: &[Type]) -> DotnetTypeRef {
 use crate::utilis::garg_to_string;
 
 use super::tuple_name;
+#[must_use]
 pub fn pointer_to_is_fat<'tyctx>(
     mut pointed_type: Ty<'tyctx>,
     tyctx: TyCtxt<'tyctx>,

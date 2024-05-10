@@ -27,6 +27,7 @@ impl From<CILRoot> for Vec<CILTree> {
 }
 impl CILTree {
     /// Converts a `CILTree` into a list of `CILOp`.
+    #[must_use]
     pub fn into_ops(&self) -> Vec<CILOp> {
         self.tree.into_ops()
     }
@@ -36,23 +37,25 @@ impl CILTree {
     }
     /// Returns a list of blocks this object may jump to.
     pub fn targets(&self, targets: &mut Vec<(u32, u32)>) {
-        self.tree.targets(targets)
+        self.tree.targets(targets);
     }
     /// Converts a tree with subtrees into multiple trees.
+    #[must_use]
     pub fn shed_trees(self) -> Vec<Self> {
         self.tree
             .shed_trees()
             .into_iter()
-            .map(|tree| tree.into())
+            .map(std::convert::Into::into)
             .collect()
     }
     /// Retunrs the root of this tree.
+    #[must_use]
     pub fn root(&self) -> &CILRoot {
         &self.tree
     }
     /// Optimizes this tree
     pub fn opt(&mut self) {
-        self.tree.opt()
+        self.tree.opt();
     }
     /// Allocates the temporary variables this tree uses.
     pub(crate) fn allocate_tmps(&mut self, locals: &mut Vec<(Option<Box<str>>, Type)>) {
@@ -73,6 +76,7 @@ impl CILTree {
     }
 }
 /// Appends an op to a vector.
+#[must_use]
 pub fn append_vec(mut vec: Vec<CILOp>, by: CILOp) -> Vec<CILOp> {
     vec.push(by);
     vec

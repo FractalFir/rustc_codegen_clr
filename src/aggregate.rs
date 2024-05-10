@@ -27,7 +27,7 @@ pub fn handle_aggregate<'tyctx>(
         .enumerate()
         .map(|operand| {
             (
-                operand.0 as u32,
+                u32::try_from(operand.0).unwrap(),
                 crate::operand::handle_operand(operand.1, tyctx, method, method_instance, tycache),
             )
         })
@@ -44,9 +44,7 @@ pub fn handle_aggregate<'tyctx>(
                 .expect("Could not resolve instance")
                 .ty(tyctx, penv);
             let adt_type = monomorphize(&method_instance, adt_type, tyctx);
-            let (adt_def, subst) = if let TyKind::Adt(def_id, subst) = adt_type.kind() {
-                (def_id, subst)
-            } else {
+            let TyKind::Adt(adt_def, subst) = adt_type.kind() else {
                 panic!("Type {adt_type:?} is not a Algebraic Data Type!");
             };
             aggregate_adt(
@@ -89,7 +87,7 @@ pub fn handle_aggregate<'tyctx>(
                     site: site.clone(),
                     args: [
                         array_getter.clone(),
-                        conv_usize!(ldc_u64!(value.0 as u64)),
+                        conv_usize!(ldc_u64!(u64::from(value.0))),
                         value.1,
                     ]
                     .into(),
@@ -127,7 +125,7 @@ pub fn handle_aggregate<'tyctx>(
                 .collect();
             let dotnet_tpe = crate::r#type::simple_tuple(&types);
             let mut sub_trees = Vec::new();
-            for field in values.iter() {
+            for field in &values {
                 // Assigining to a Void field is a NOP and must be skipped(since it can have wierd side-effects).
                 if types[field.0 as usize] == Type::Void {
                     continue;
@@ -185,7 +183,7 @@ pub fn handle_aggregate<'tyctx>(
                         field_ty,
                         format!("f_{}", index.as_u32()).into(),
                     ),
-                })
+                });
             }
 
             CILNode::SubTrees(
@@ -366,16 +364,16 @@ fn aggregate_adt<'tyctx>(
                         value: adt_type,
                     })
                     .expect("Could not get type layout!");
-                let (disrc_type, _) = crate::utilis::adt::enum_tag_info(&layout.layout, tyctx);
+                let (disrc_type, _) = crate::utilis::adt::enum_tag_info(layout.layout, tyctx);
                 if disrc_type != Type::Void {
                     sub_trees.push(set_discr(
-                        &layout.layout,
+                        layout.layout,
                         variant_idx.into(),
                         adt_adress_ops,
-                        adt_type_ref,
+                        &adt_type_ref,
                         tyctx,
                         layout.ty,
-                    ))
+                    ));
                 }
             }
             CILNode::SubTrees(

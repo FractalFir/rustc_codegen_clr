@@ -1,4 +1,4 @@
-use lazy_static::*;
+use lazy_static::lazy_static;
 macro_rules! config_flag{
     ($var:ident,$default:expr)=>{
         lazy_static!{
@@ -27,7 +27,6 @@ macro_rules! config_flag{
 config_flag! {ABORT_ON_ERROR,false,"Should the codegen stop working when ecountering an error, or try to press on, replacing unusuported code with exceptions throws?"}
 
 config_flag! {TRACE_CALLS,false,"Preapends each function call with a debug message"}
-
 
 config_flag! {ALWAYS_INIT_LOCALS,false,"Changes `.locals` into `.locals init`. Causes the runtime to always initialize local variables.\nTry turining on in cause of issues. If it fixes them, then their root cause is use of uninitailized memory."}
 

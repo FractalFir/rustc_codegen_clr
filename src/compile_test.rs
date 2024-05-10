@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+#[must_use]
 pub fn test_dotnet_executable(file_path: &str, test_dir: &str) -> String {
     use std::io::Write;
 
@@ -380,9 +381,7 @@ macro_rules! run_test {
                     }
                     let exec_path = concat!("./", stringify!($test_name));
                     drop(lock);
-                    //super::peverify(exec_path, test_dir);
-
-                    super::super::test_dotnet_executable(exec_path, test_dir);
+                    let _ = super::super::test_dotnet_executable(exec_path, test_dir);
                 }
                 #[test]
                 fn debug() {
@@ -419,8 +418,8 @@ macro_rules! run_test {
                     }
                     let exec_path = format!("./{test_name}");
                     drop(lock);
-                    //super::peverify(&exec_path, test_dir);
-                    super::super::test_dotnet_executable(&exec_path, test_dir);
+
+                    let _ = super::super::test_dotnet_executable(&exec_path, test_dir);
                 }
             }
         }
@@ -619,6 +618,7 @@ fn build_backend() -> Result<(), String> {
     Ok(())
 }
 /// Absolute path to the codegen backend shared library.
+#[must_use]
 pub fn absolute_backend_path() -> PathBuf {
     if cfg!(debug_assertions) {
         if cfg!(target_os = "linux") {
@@ -892,7 +892,6 @@ compare_tests! {fuzz,fail9,stable}
 compare_tests! {fuzz,fail10,stable}
 compare_tests! {fuzz,fail11,stable}
 
-
 cargo_test! {hello_world,stable}
 cargo_test! {std_hello_world,stable}
 cargo_test_ignored! {build_core}
@@ -904,6 +903,7 @@ cargo_test! {fastrand_test,stable}
 
 use lazy_static::*;
 /// Cached runtime configuration string, obtained from calling the .NET runtime.
+#[must_use]
 pub fn get_runtime_config() -> &'static str {
     &RUNTIME_CONFIG
 }
@@ -976,11 +976,12 @@ lazy_static! {
     };
 }
 /// A list of arguments needed for invoking `rustc` with this backend included.
+#[must_use]
 pub fn rustc_args() -> Box<[String]> {
     if *crate::config::RANDOMIZE_LAYOUT {
         [
             "-Z".to_owned(),
-            backend_path().into(),
+            backend_path(),
             "-C".to_owned(),
             format!("linker={}", RUSTC_CODEGEN_CLR_LINKER.display()),
             "-Z".to_owned(),
@@ -992,7 +993,7 @@ pub fn rustc_args() -> Box<[String]> {
     } else {
         [
             "-Z".to_owned(),
-            backend_path().into(),
+            backend_path(),
             "-C".to_owned(),
             format!("linker={}", RUSTC_CODEGEN_CLR_LINKER.display()),
             "--edition".to_owned(),
@@ -1002,6 +1003,7 @@ pub fn rustc_args() -> Box<[String]> {
     }
 }
 /// Flags that need to be passed to cargo in order to build a project with this linker.
+#[must_use]
 pub fn cargo_build_env() -> String {
     RUSTC_BUILD_STATUS.as_ref().expect("Could not build rustc!");
     let backend = absolute_backend_path();

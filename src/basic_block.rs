@@ -173,14 +173,14 @@ impl BasicBlock {
             .trees
             .clone()
             .into_iter()
-            .flat_map(|tree| tree.shed_trees())
+            .flat_map(super::cil_tree::CILTree::shed_trees)
             .collect();
         if let Some(handler) = self.handler.as_mut() {
             handler
                 .as_blocks_mut()
                 .unwrap()
                 .iter_mut()
-                .for_each(|bb| bb.sheed_trees());
+                .for_each(BasicBlock::sheed_trees);
         }
     }
     pub(crate) fn resolve_exception_handlers(&mut self, handler_bbs: &[BasicBlock]) {
@@ -197,11 +197,11 @@ impl BasicBlock {
         // Get alive blovks
         let mut handler = block_gc(*handler_id, handler_bbs);
         // Fix up handler jumps
-        handler.iter_mut().for_each(|bb: &mut BasicBlock| {
+        for bb in handler.iter_mut() {
             bb.trees
                 .iter_mut()
                 .for_each(|tree| tree.fix_for_exception_handler(self.id()));
-        });
+        }
         // Insert the "jumpstarter"
         handler.insert(
             0,
@@ -224,7 +224,7 @@ impl BasicBlock {
                     ops: Box::new([CILOp::Label(id, target), CILOp::Leave(target)]),
                 }
                 .into(),
-            )
+            );
         }
         // Change branches to use lanuching pads.
 
@@ -234,10 +234,12 @@ impl BasicBlock {
         self.handler = Some(Handler::Blocks(handler));
     }
     /// Creates a new basic block with id `id`, made up from `trees` and with exception handler `handler`.
+    #[must_use]
     pub fn new(trees: Vec<CILTree>, id: u32, handler: Option<Handler>) -> Self {
         Self { trees, id, handler }
     }
     /// Returns a list of basic blocks this baisc block targets.
+    #[must_use]
     pub fn targets(&self) -> Vec<(u32, u32)> {
         let mut targets = Vec::new();
         self.trees
@@ -250,7 +252,11 @@ impl BasicBlock {
         if let Some(_) = self.handler {
             ops.push(CILOp::BeginTry);
         };
-        ops.extend(self.trees.iter().flat_map(|tree| tree.into_ops()));
+        ops.extend(
+            self.trees
+                .iter()
+                .flat_map(super::cil_tree::CILTree::into_ops),
+        );
         if let Some(handler) = &self.handler {
             ops.push(CILOp::BeginCatch);
             ops.push(CILOp::Pop);
@@ -262,15 +268,17 @@ impl BasicBlock {
             for block in blocks {
                 ops.extend(block.flatten_inner(self.id, block.id));
             }
-            ops.push(CILOp::EndTry)
+            ops.push(CILOp::EndTry);
         }
         ops
     }
     /// Converts this basic block into a list of ops.
+    #[must_use]
     pub fn into_ops(&self) -> Vec<CILOp> {
         self.flatten_inner(self.id(), 0)
     }
     /// Returns the id of this block.
+    #[must_use]
     pub fn id(&self) -> u32 {
         self.id
     }
@@ -279,6 +287,7 @@ impl BasicBlock {
         &mut self.trees
     }
     /// Returns a reference to the trees that make up this block.
+    #[must_use]
     pub fn trees(&self) -> &[CILTree] {
         &self.trees
     }

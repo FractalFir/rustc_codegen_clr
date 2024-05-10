@@ -214,10 +214,10 @@ impl AssemblyExporter for CExporter {
         }
         if tpe.explicit_offsets().is_some() {
             writeln!(self.types, "typedef union {name} {name};").unwrap();
-            write!(self.type_defs, "union {name}{{\n{fields}}};\n").unwrap()
+            write!(self.type_defs, "union {name}{{\n{fields}}};\n").unwrap();
         } else {
             writeln!(self.types, "typedef struct {name} {name};").unwrap();
-            write!(self.type_defs, "struct {name}{{\n{fields}}};\n").unwrap()
+            write!(self.type_defs, "struct {name}{{\n{fields}}};\n").unwrap();
         }
         self.defined.insert(name);
         let delayed_typedefs = self.delayed_typedefs.clone();
@@ -228,7 +228,7 @@ impl AssemblyExporter for CExporter {
     }
 
     fn add_method(&mut self, method: &crate::method::Method) {
-        self.add_method_inner(method, None)
+        self.add_method_inner(method, None);
     }
 
     fn add_extern_method(&mut self, _lib_path: &str, name: &str, sig: &crate::function_sig::FnSig) {
@@ -288,9 +288,7 @@ impl AssemblyExporter for CExporter {
             .output()
             .unwrap();
         let stderr = String::from_utf8_lossy(&out.stderr);
-        if stderr.contains("error") {
-            panic!("C compiler error:{stderr:?}!");
-        }
+        assert!(!stderr.contains("error"), "C compiler error:{stderr:?}!");
         Ok(())
     }
 
@@ -492,8 +490,7 @@ fn node_string(tree: &CILNode, method: &Method) -> String {
             inputs.push(')');
             let tpe_name = site
                 .class()
-                .map(|tpe| escape_type_name(tpe.name_path()))
-                .unwrap_or("".into());
+                .map_or("".into(), |tpe| escape_type_name(tpe.name_path()));
             format!("{tpe_name}{name}{inputs}")
         }
         //CILNode::CallVirt { .. } => panic!("Virtual calls not supported in C."),
@@ -565,8 +562,7 @@ fn node_string(tree: &CILNode, method: &Method) -> String {
             let name = fn_sig.name();
             let tpe_name = fn_sig
                 .class()
-                .map(|tpe| escape_type_name(tpe.name_path()))
-                .unwrap_or("".into());
+                .map_or("".into(), |tpe| escape_type_name(tpe.name_path()));
             format!("(uintptr_t)(&{tpe_name}{name})")
         }
         CILNode::LDTypeToken(tpe) => {
@@ -676,8 +672,7 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
             inputs.push(')');
             let tpe_name = site
                 .class()
-                .map(|tpe| escape_type_name(tpe.name_path()))
-                .unwrap_or("".into());
+                .map_or("".into(), |tpe| escape_type_name(tpe.name_path()));
             format!("{tpe_name}{name}{inputs};")
         }
         CILRoot::SetField { addr, value, desc } => {
@@ -771,8 +766,8 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
                 )
             }
         }
-        CILRoot::Break => "".into(),
-        CILRoot::Nop => "".into(),
+        CILRoot::Break => String::new(),
+        CILRoot::Nop => String::new(),
         CILRoot::InitBlk { dst, val, count } => {
             format!(
                 "memset((void*)({dst}),({val}),(size_t)({count}));",

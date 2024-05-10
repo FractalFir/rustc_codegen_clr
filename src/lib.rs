@@ -199,9 +199,7 @@ impl CodegenBackend for MyBackend {
             let mut cache = crate::r#type::TyCache::empty();
             for cgu in cgus {
                 //println!("codegen {} has {} items.", cgu.name(), cgu.items().len());
-                for (item, data) in cgu.items() {
-                    // Data will be needed in the future.
-                    let _data = data;
+                for (item, _data) in cgu.items() {
                     codegen
                         .add_item(*item, tcx, &mut cache)
                         .expect("Could not add function");
@@ -249,7 +247,7 @@ impl CodegenBackend for MyBackend {
     fn join_codegen(
         &self,
         ongoing_codegen: Box<dyn Any>,
-        sess: &Session,
+        _sess: &Session,
         outputs: &OutputFilenames,
     ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>) {
         std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {

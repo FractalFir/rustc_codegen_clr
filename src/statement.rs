@@ -43,10 +43,10 @@ pub fn handle_statement<'tcx>(
 
             Some(
                 crate::utilis::adt::set_discr(
-                    &layout.layout,
+                    layout.layout,
                     *variant_index,
                     crate::place::place_adress(place, tyctx, method, method_instance, type_cache),
-                    owner,
+                    &owner,
                     tyctx,
                     owner_ty,
                 )

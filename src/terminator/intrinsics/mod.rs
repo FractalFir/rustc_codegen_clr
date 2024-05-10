@@ -146,7 +146,7 @@ pub fn handle_intrinsic<'tyctx>(
                 tyctx,
             );
             let needs_drop = tpe.needs_drop(tyctx, ParamEnv::reveal_all());
-            let needs_drop = if needs_drop { 1 } else { 0 };
+            let needs_drop = i32::from(needs_drop);
             place_set(
                 destination,
                 tyctx,

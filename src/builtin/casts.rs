@@ -77,11 +77,11 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 2,
                     sub_target: 0,
-                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF32(u8::MAX as f32))
+                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF32(f32::from(u8::MAX)))
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_u32!(u8::MAX as u32)
+                    tree: ldc_u32!(u32::from(u8::MAX))
                 }
                 .into()
             ],
@@ -93,11 +93,11 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 3,
                     sub_target: 0,
-                    ops: gt!(CILNode::LDArg(0), CILNode::LdcF32(u8::MIN as f32))
+                    ops: gt!(CILNode::LDArg(0), CILNode::LdcF32(f32::from(u8::MIN)))
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_u32!(u8::MIN as u32)
+                    tree: ldc_u32!(u32::from(u8::MIN))
                 }
                 .into()
             ],
@@ -148,11 +148,11 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 2,
                     sub_target: 0,
-                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF32(u16::MAX as f32))
+                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF32(f32::from(u16::MAX)))
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_u32!(u16::MAX as u32)
+                    tree: ldc_u32!(u32::from(u16::MAX))
                 }
                 .into()
             ],
@@ -164,11 +164,11 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 3,
                     sub_target: 0,
-                    ops: gt!(CILNode::LDArg(0), CILNode::LdcF32(u16::MIN as f32))
+                    ops: gt!(CILNode::LDArg(0), CILNode::LdcF32(f32::from(u16::MIN)))
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_u32!(u16::MIN as u32)
+                    tree: ldc_u32!(u32::from(u16::MIN))
                 }
                 .into()
             ],
@@ -759,11 +759,11 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 2,
                     sub_target: 0,
-                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF32(i8::MAX as f32))
+                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF32(f32::from(i8::MAX)))
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_i32!(i8::MAX as i32)
+                    tree: ldc_i32!(i32::from(i8::MAX))
                 }
                 .into()
             ],
@@ -775,11 +775,11 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 3,
                     sub_target: 0,
-                    ops: gt!(CILNode::LDArg(0), CILNode::LdcF32(i8::MIN as f32))
+                    ops: gt!(CILNode::LDArg(0), CILNode::LdcF32(f32::from(i8::MIN)))
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_i32!(i8::MIN as i32)
+                    tree: ldc_i32!(i32::from(i8::MIN))
                 }
                 .into()
             ],
@@ -830,11 +830,11 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 2,
                     sub_target: 0,
-                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF32(i16::MAX as f32))
+                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF32(f32::from(i16::MAX)))
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_i32!(i16::MAX as i32)
+                    tree: ldc_i32!(i32::from(i16::MAX))
                 }
                 .into()
             ],
@@ -846,11 +846,11 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 3,
                     sub_target: 0,
-                    ops: gt!(CILNode::LDArg(0), CILNode::LdcF32(i16::MIN as f32))
+                    ops: gt!(CILNode::LDArg(0), CILNode::LdcF32(f32::from(i16::MIN)))
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_i32!(i16::MIN as i32)
+                    tree: ldc_i32!(i32::from(i16::MIN))
                 }
                 .into()
             ],
@@ -1043,11 +1043,11 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 2,
                     sub_target: 0,
-                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF64(u8::MAX as f64))
+                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF64(f64::from(u8::MAX)))
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_u32!(u8::MAX as u32)
+                    tree: ldc_u32!(u32::from(u8::MAX))
                 }
                 .into()
             ],
@@ -1059,11 +1059,11 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 3,
                     sub_target: 0,
-                    ops: gt!(CILNode::LDArg(0), CILNode::LdcF64(u8::MIN as f64))
+                    ops: gt!(CILNode::LDArg(0), CILNode::LdcF64(f64::from(u8::MIN)))
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_u32!(u8::MIN as u32)
+                    tree: ldc_u32!(u32::from(u8::MIN))
                 }
                 .into()
             ],
@@ -1114,11 +1114,11 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 2,
                     sub_target: 0,
-                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF64(u16::MAX as f64))
+                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF64(f64::from(u16::MAX)))
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_u32!(u16::MAX as u32)
+                    tree: ldc_u32!(u32::from(u16::MAX))
                 }
                 .into()
             ],
@@ -1130,11 +1130,11 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 3,
                     sub_target: 0,
-                    ops: gt!(CILNode::LDArg(0), CILNode::LdcF64(u16::MIN as f64))
+                    ops: gt!(CILNode::LDArg(0), CILNode::LdcF64(f64::from(u16::MIN)))
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_u32!(u16::MIN as u32)
+                    tree: ldc_u32!(u32::from(u16::MIN))
                 }
                 .into()
             ],
@@ -1185,7 +1185,7 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 2,
                     sub_target: 0,
-                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF64(u32::MAX as f64))
+                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF64(f64::from(u32::MAX)))
                 }
                 .into(),
                 CILRoot::Ret {
@@ -1201,7 +1201,7 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 3,
                     sub_target: 0,
-                    ops: gt!(CILNode::LDArg(0), CILNode::LdcF64(u32::MIN as f64))
+                    ops: gt!(CILNode::LDArg(0), CILNode::LdcF64(f64::from(u32::MIN)))
                 }
                 .into(),
                 CILRoot::Ret {
@@ -1327,11 +1327,11 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 2,
                     sub_target: 0,
-                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF64(i8::MAX as f64))
+                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF64(f64::from(i8::MAX)))
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_i32!(i8::MAX as i32)
+                    tree: ldc_i32!(i32::from(i8::MAX))
                 }
                 .into()
             ],
@@ -1343,11 +1343,11 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 3,
                     sub_target: 0,
-                    ops: gt!(CILNode::LDArg(0), CILNode::LdcF64(i8::MIN as f64))
+                    ops: gt!(CILNode::LDArg(0), CILNode::LdcF64(f64::from(i8::MIN)))
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_i32!(i8::MIN as i32)
+                    tree: ldc_i32!(i32::from(i8::MIN))
                 }
                 .into()
             ],
@@ -1398,11 +1398,11 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 2,
                     sub_target: 0,
-                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF64(i16::MAX as f64))
+                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF64(f64::from(i16::MAX)))
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_i32!(i16::MAX as i32)
+                    tree: ldc_i32!(i32::from(i16::MAX))
                 }
                 .into()
             ],
@@ -1414,11 +1414,11 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 3,
                     sub_target: 0,
-                    ops: gt!(CILNode::LDArg(0), CILNode::LdcF64(i16::MIN as f64))
+                    ops: gt!(CILNode::LDArg(0), CILNode::LdcF64(f64::from(i16::MIN)))
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_i32!(i16::MIN as i32)
+                    tree: ldc_i32!(i32::from(i16::MIN))
                 }
                 .into()
             ],
@@ -1469,7 +1469,7 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 2,
                     sub_target: 0,
-                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF64(i32::MAX as f64))
+                    ops: lt!(CILNode::LDArg(0), CILNode::LdcF64(f64::from(i32::MAX)))
                 }
                 .into(),
                 CILRoot::Ret {
@@ -1485,7 +1485,7 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 3,
                     sub_target: 0,
-                    ops: gt!(CILNode::LDArg(0), CILNode::LdcF64(i32::MIN as f64))
+                    ops: gt!(CILNode::LDArg(0), CILNode::LdcF64(f64::from(i32::MIN)))
                 }
                 .into(),
                 CILRoot::Ret {

@@ -7,7 +7,7 @@ fn run_test(test_id: u64, is_release: bool) -> Option<f64> {
     }
 }
 fn run_test_impl(test_id: u64, is_release: bool) -> Option<f64> {
-    let opt = if is_release { "-O" } else { "-g" };
+    let rustc_opt_flag = if is_release { "-O" } else { "-g" };
     let test_dir = "/tmp/fuzz/";
     let rust_src = format!("/tmp/fuzz/fuzz{test_id}.rs");
     let dotnet_exe = format!("/tmp/fuzz/fuzz{test_id}.exe");
@@ -22,9 +22,10 @@ fn run_test_impl(test_id: u64, is_release: bool) -> Option<f64> {
     // Compiles the test project
     let mut cmd = std::process::Command::new("rustc");
     //.env("RUST_TARGET_PATH","../../")
+    let rustc_args = rustc_codegen_clr::compile_test::rustc_args();
     cmd.current_dir(test_dir)
         .arg("-O")
-        .args(rustc_codegen_clr::compile_test::rustc_args().into_iter())
+        .args(rustc_args.iter())
         .args([&rust_src, "-o", &dotnet_exe]);
 
     let out = cmd.output().expect("failed to execute process");
@@ -40,12 +41,18 @@ fn run_test_impl(test_id: u64, is_release: bool) -> Option<f64> {
     //super::peverify(exec_path, test_dir);
 
     let dotnet_out =
-        rustc_codegen_clr::compile_test::test_dotnet_executable(&dotnet_wrapper, &test_dir);
+        rustc_codegen_clr::compile_test::test_dotnet_executable(&dotnet_wrapper, test_dir);
     // Compiles the project with native rust
     let mut cmd = std::process::Command::new("rustc");
     //.env("RUST_TARGET_PATH","../../")
-    cmd.current_dir(test_dir)
-        .args([opt, &rust_src, "-o", &native_exec, "--edition", "2021"]);
+    cmd.current_dir(test_dir).args([
+        rustc_opt_flag,
+        &rust_src,
+        "-o",
+        &native_exec,
+        "--edition",
+        "2021",
+    ]);
     let out = cmd.output().expect("failed to execute process");
     // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
     if !out.stderr.is_empty() {
@@ -63,14 +70,14 @@ fn run_test_impl(test_id: u64, is_release: bool) -> Option<f64> {
     let rust_out =
         String::from_utf8(rust_out.stdout).expect("rust error contained non-UTF8 characters.");
 
-    if rust_out != dotnet_out {
-        Some(strsim::jaro(&rust_out, &dotnet_out))
-    } else {
+    if rust_out == dotnet_out {
         //std::fs::remove_file(rust_src).unwrap();
         std::fs::remove_file(dotnet_exe).unwrap();
         std::fs::remove_file(native_exec).unwrap();
         //std::fs::remove_file(dotnet_wrapper).unwrap();
         None
+    } else {
+        Some(strsim::jaro(&rust_out, &dotnet_out))
     }
 }
 fn gen_file(test_id: u64, generator: &str) {
@@ -89,10 +96,9 @@ fn gen_file(test_id: u64, generator: &str) {
 }
 fn test(test_id: u64, generator: &str) -> Option<(u64, f64)> {
     gen_file(test_id, generator);
-    match run_test(test_id, false).or(run_test(test_id, true)) {
-        Some(sim) => Some((test_id, 1.0 - sim)),
-        None => None,
-    }
+    run_test(test_id, false)
+        .or(run_test(test_id, true))
+        .map(|sim| (test_id, 1.0 - sim))
 }
 fn main() {
     use rayon::iter::{IntoParallelIterator, ParallelIterator};
@@ -102,8 +108,8 @@ fn main() {
     let search_end = std::env::args()
         .nth(3)
         .as_ref()
-        .map(|str| str::parse::<u64>(str).unwrap())
-        .unwrap_or(search_start + 1);
+        .map_or(search_start + 1, |str| str::parse::<u64>(str).unwrap());
+
     std::fs::create_dir_all("/tmp/fuzz").unwrap();
     let mut faliures: Box<[_]> = (search_start..search_end)
         .into_par_iter()

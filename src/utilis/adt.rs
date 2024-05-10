@@ -14,7 +14,7 @@ use rustc_target::abi::VariantIdx;
 use rustc_middle::ty::{AdtDef, Ty, TyCtxt};
 use rustc_target::abi::{FieldIdx, FieldsShape, Layout, LayoutS, TagEncoding};
 pub fn enum_variant_offsets(_: AdtDef, layout: Layout, vidix: VariantIdx) -> FieldOffsetIterator {
-    FieldOffsetIterator::fields(get_variant_at_index(vidix, &layout))
+    FieldOffsetIterator::fields(get_variant_at_index(vidix, (*layout.0).clone()))
 }
 use rustc_target::abi::Variants;
 #[derive(Clone, Debug)]
@@ -55,11 +55,16 @@ impl FieldOffsetIterator {
                     .iter()
                     .enumerate()
                     .map(|(index, _mem_idx)| {
-                        // DOC_HELP_IDEA: explain what mem_idx actualy does - it is not obvious from a first look. It describes the order of fields in memory.
-                        offsets[FieldIdx::from_u32(index as u32)].bytes() as u32
+                        u32::try_from(offsets[FieldIdx::from_u32(u32::try_from(index).unwrap())].bytes()).unwrap()
                     })
                     //TODO: ask what does field offset of 4294967295 means.
-                    .map(|offset| if offset > u16::MAX as u32 { 0 } else { offset })
+                    .map(|offset| {
+                        if offset > u32::from(u16::MAX) {
+                            0
+                        } else {
+                            offset
+                        }
+                    })
                     .collect();
                 FieldOffsetIterator::Explicit { offsets, index: 0 }
             }
@@ -67,18 +72,18 @@ impl FieldOffsetIterator {
                 count: Into::<usize>::into(*count) as u64,
             },
             FieldsShape::Primitive => Self::Empty,
-            _ => todo!("Unhandled fields shape: {fields:?}"),
+            FieldsShape::Array{ .. } => todo!("Unhandled fields shape: {fields:?}"),
         }
     }
     pub fn fields(
-        parent: &LayoutS<FieldIdx, rustc_target::abi::VariantIdx>,
+        parent: LayoutS<FieldIdx, rustc_target::abi::VariantIdx>,
     ) -> FieldOffsetIterator {
         //eprintln!("ADT fields:{:?}",parent.fields);
         Self::from_fields_shape(&parent.fields)
     }
 }
 /// Takes layout of an enum as input, and returns the type of its tag(Void if no tag) and the size of the tag(0 if no tag).
-pub fn enum_tag_info<'tyctx>(r#enum: &Layout<'tyctx>, _: TyCtxt<'tyctx>) -> (Type, u32) {
+pub fn enum_tag_info<'tyctx>(r#enum: Layout<'tyctx>, _: TyCtxt<'tyctx>) -> (Type, u32) {
     match r#enum.variants() {
         Variants::Single { .. } => (
             Type::Void,
@@ -96,8 +101,7 @@ pub fn enum_tag_info<'tyctx>(r#enum: &Layout<'tyctx>, _: TyCtxt<'tyctx>) -> (Typ
 }
 fn scalr_to_type(scalar: rustc_target::abi::Scalar) -> Type {
     let primitive = match scalar {
-        rustc_target::abi::Scalar::Union { value } => value,
-        rustc_target::abi::Scalar::Initialized { value, .. } => value,
+        rustc_target::abi::Scalar::Union { value } | rustc_target::abi::Scalar::Initialized { value, .. } => value,
     };
     primitive_to_type(primitive)
 }
@@ -126,22 +130,22 @@ fn primitive_to_type(primitive: rustc_target::abi::Primitive) -> Type {
 }
 pub fn get_variant_at_index(
     variant_index: VariantIdx,
-    layout: &LayoutS<FieldIdx, rustc_target::abi::VariantIdx>,
-) -> &LayoutS<FieldIdx, rustc_target::abi::VariantIdx> {
-    match &layout.variants {
+    layout: LayoutS<FieldIdx, rustc_target::abi::VariantIdx>,
+) -> LayoutS<FieldIdx, rustc_target::abi::VariantIdx> {
+    match layout.variants {
         Variants::Single { .. } => layout,
-        Variants::Multiple { variants, .. } => &variants[variant_index],
+        Variants::Multiple { variants, .. } => variants[variant_index].clone(),
     }
 }
 pub fn set_discr<'tyctx>(
-    layout: &Layout<'tyctx>,
+    layout: Layout<'tyctx>,
     variant_index: VariantIdx,
     enum_addr: CILNode,
-    enum_tpe: DotnetTypeRef,
+    enum_tpe: &DotnetTypeRef,
     tyctx: TyCtxt<'tyctx>,
     ty: Ty<'tyctx>,
 ) -> CILRoot {
-    if get_variant_at_index(variant_index, layout)
+    if get_variant_at_index(variant_index, (*layout.0).clone())
         .abi
         .is_uninhabited()
     {
@@ -161,7 +165,7 @@ pub fn set_discr<'tyctx>(
             tag_encoding: TagEncoding::Direct,
             ..
         } => {
-            let (tag_tpe, _) = enum_tag_info(r#layout, tyctx);
+            let (tag_tpe, _) = enum_tag_info(layout, tyctx);
             let tag_val = crate::ldc_u64!(ty
                 .discriminant_for_variant(tyctx, variant_index)
                 .unwrap()
@@ -184,8 +188,11 @@ pub fn set_discr<'tyctx>(
                 },
             ..
         } => {
-            if variant_index != untagged_variant {
-                let (tag_tpe, _) = enum_tag_info(r#layout, tyctx);
+            if variant_index == untagged_variant {
+                CILRoot::Nop
+               
+            } else {
+                let (tag_tpe, _) = enum_tag_info(layout, tyctx);
                 //let niche = self.project_field(bx, tag_field);
                 //let niche_llty = bx.cx().immediate_backend_type(niche.layout);
                 let niche_value = variant_index.as_u32() - niche_variants.start().as_u32();
@@ -199,24 +206,23 @@ pub fn set_discr<'tyctx>(
                     value: tag_val,
                     desc: FieldDescriptor::new(enum_tpe.clone(), tag_tpe, "value__".into()),
                 }
-            } else {
-                CILRoot::Nop
             }
         }
     }
 }
 
 pub fn get_discr<'tyctx>(
-    layout: &Layout<'tyctx>,
+    layout: Layout<'tyctx>,
     enum_addr: CILNode,
     enum_tpe: DotnetTypeRef,
     tyctx: TyCtxt<'tyctx>,
     ty: Ty<'tyctx>,
 ) -> CILNode {
-    if layout.abi.is_uninhabited() {
-        //return CILNode::
-        panic!("UB: enum layout is unanhibited!");
-    }
+    //return CILNode::
+    assert!(
+        !layout.abi.is_uninhabited(),
+        "UB: enum layout is unanhibited!"
+    );
     let (tag_tpe, _) = crate::utilis::adt::enum_tag_info(layout, tyctx);
     let tag_encoding = match layout.variants {
         Variants::Single { index } => {
@@ -299,7 +305,7 @@ pub fn get_discr<'tyctx>(
                     )
                 ); //bx.icmp(IntPredicate::IntEQ, tag, niche_start);
 
-                let tagged_discr = ldc_u64!(niche_variants.start().as_u32() as u64);
+                let tagged_discr = ldc_u64!(u64::from(niche_variants.start().as_u32()));
                 (is_niche, tagged_discr, 0)
             } else {
                 // The special cases don't apply, so we'll have to go with
@@ -319,7 +325,7 @@ pub fn get_discr<'tyctx>(
                     crate::casts::int_to_int(
                         Type::U64,
                         disrc_type.clone(),
-                        ldc_u64!(relative_max as u64)
+                        ldc_u64!(u64::from(relative_max))
                     )
                 );
                 (is_niche, cast_tag, niche_variants.start().as_u32() as u128)
@@ -359,7 +365,7 @@ pub fn get_discr<'tyctx>(
                 crate::casts::int_to_int(
                     Type::U64,
                     disrc_type,
-                    ldc_u64!(untagged_variant.as_u32() as u64),
+                    ldc_u64!(u64::from(untagged_variant.as_u32())),
                 ),
                 is_niche,
             )

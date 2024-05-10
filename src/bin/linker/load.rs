@@ -25,7 +25,7 @@ fn load_ar(r: &mut impl std::io::Read) -> std::io::Result<(Assembly, Vec<Linkabl
     let mut linkables = Vec::new();
     // Iterate over all entries in the archive:
     while let Some(entry_result) = archive.next_entry() {
-        let mut entry = entry_result.unwrap();
+        let mut entry = entry_result?;
         let name: String = String::from_utf8_lossy(entry.header().identifier()).into();
         if name.contains(".bc") {
             let mut asm_bytes = Vec::with_capacity(0x100);
@@ -45,7 +45,6 @@ fn load_ar(r: &mut impl std::io::Read) -> std::io::Result<(Assembly, Vec<Linkabl
             eprintln!("shr:{name}");
         }
     }
-
     Ok((final_assembly, linkables))
 }
 pub fn load_assemblies(

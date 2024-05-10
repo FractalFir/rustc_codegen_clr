@@ -18,18 +18,18 @@ pub struct TyCache {
     ptr_components: Option<DefId>,
 }
 fn create_typedef<'tyctx>(
-    cache: &mut TyCache,
-    name: &str,
+    _cache: &mut TyCache,
+    _name: &str,
     def: AdtDef<'tyctx>,
-    tyctx: TyCtxt<'tyctx>,
-    method: Option<Instance<'tyctx>>,
+    _tyctx: TyCtxt<'tyctx>,
+    _method: Option<Instance<'tyctx>>,
 ) -> TypeDef {
     assert_eq!(
         def.adt_kind(),
         AdtKind::Struct,
         "Only struct types may be used in custom .NET typedefs!"
     );
-    for field in def.all_fields() {}
+    for _field in def.all_fields() {}
     todo!()
 }
 impl TyCache {
@@ -109,10 +109,9 @@ impl TyCache {
             todo!("Can't yet handle custom typedefs!")
         }
         let mut fields = Vec::new();
-        for field in adt
+        for field in &adt
             .variant(rustc_target::abi::VariantIdx::from_u32(0))
             .fields
-            .iter()
         {
             let name = escape_field_name(&field.name.to_string());
             let mut field_ty = field.ty(tyctx, subst);
@@ -131,7 +130,7 @@ impl TyCache {
             })
             .expect("Could not get type layout!");
         let explicit_offsets =
-            crate::utilis::adt::FieldOffsetIterator::fields(&layout.layout).collect();
+            crate::utilis::adt::FieldOffsetIterator::fields((*layout.layout.0).clone()).collect();
         //let to_string = create_to_string(adt, subst, adt_ty, self, method, tyctx);
         TypeDef::new(
             access,
@@ -173,7 +172,7 @@ impl TyCache {
             })
             .expect("Could not get type layout!");
         let explicit_offsets =
-            crate::utilis::adt::FieldOffsetIterator::fields(&layout.layout).collect();
+            crate::utilis::adt::FieldOffsetIterator::fields((*layout.layout.0).clone()).collect();
 
         TypeDef::new(
             access,
@@ -209,7 +208,7 @@ impl TyCache {
 
         match &layout.variants {
             rustc_target::abi::Variants::Single { index: _ } => {
-                let (tag_type, offset) = crate::utilis::adt::enum_tag_info(&layout.layout, tyctx);
+                let (tag_type, offset) = crate::utilis::adt::enum_tag_info(layout.layout, tyctx);
                 fields.push(("value__".into(), tag_type));
                 explicit_offsets.push(0);
                 offset
@@ -220,23 +219,19 @@ impl TyCache {
                 tag_field,
                 variants: _,
             } => {
-                let _field = adt.all_fields().nth(*tag_field);
-                //panic!("Field:{field:?}");
+             
+            
                 let layout = tyctx
                     .layout_of(rustc_middle::ty::ParamEnvAnd {
                         param_env: ParamEnv::reveal_all(),
                         value: adt_ty,
                     })
                     .expect("Could not get type layout!");
-                //let explicit_offsets:Vec<_> = crate::utilis::adt::FieldOffsetIterator::fields(&layout.layout).collect();
-                //eprintln!("explicit_offsets:{explicit_offsets:?}");
-                //let tag_ty = adt.all_fields().nth(0).unwrap().ty(tyctx,subst); //adt_ty.discriminant_ty(tyctx);
-                // self.type_from_cache(tag_ty, tyctx, method);
-                //assert_eq!(*tag_encoding,rustc_target::abi::TagEncoding::Direct,"Only direct tags supported as of now");
+                
                 match tag_encoding {
                     rustc_target::abi::TagEncoding::Direct => {
                         let (tag_type, offset) =
-                            crate::utilis::adt::enum_tag_info(&layout.layout, tyctx);
+                            crate::utilis::adt::enum_tag_info(layout.layout, tyctx);
 
                         if tag_type != Type::Void {
                             fields.push(("value__".into(), tag_type));
@@ -250,8 +245,8 @@ impl TyCache {
                         ..
                     } => {
                         let (tag_type, offset) =
-                            crate::utilis::adt::enum_tag_info(&layout.layout, tyctx);
-                        let offsets = FieldOffsetIterator::fields(&layout.layout);
+                            crate::utilis::adt::enum_tag_info(layout.layout, tyctx);
+                        let offsets = FieldOffsetIterator::fields((*layout.layout.0).clone());
                         //eprintln!("enum:{adt_ty} layout.fields:{:?}",layout.fields);
                         assert!(offsets.count() > 0, "layout.fields:{:?}", layout.fields);
                         if tag_type != Type::Void {
@@ -348,7 +343,7 @@ impl TyCache {
                         .expect("Could not get type layout!");
                     self.type_def_cache
                         .entry(name)
-                        .or_insert_with(|| tuple_typedef(&types, &layout.layout));
+                        .or_insert_with(|| tuple_typedef(&types, layout.layout));
                     super::simple_tuple(&types).into()
                 }
             }
@@ -381,7 +376,7 @@ impl TyCache {
                 if !self.type_def_cache.contains_key(&name) {
                     self.type_def_cache.insert(
                         name.clone(),
-                        closure_typedef(*def, &fields, sig, &layout.layout),
+                        closure_typedef(*def, &fields, &sig, layout.layout),
                     );
                 }
                 DotnetTypeRef::new(None, &name).into()
@@ -500,7 +495,7 @@ impl TyCache {
                     .expect("Could not get type layout!");
                 let arr_size = layout.layout.size();
                 let arr_name = crate::r#type::type_def::arr_name(length, &element);
-                if self.type_def_cache.get(&arr_name).is_none() {
+                if !self.type_def_cache.contains_key(&arr_name) {
                     self.type_def_cache.insert(
                         arr_name.clone(),
                         crate::r#type::type_def::get_array_type(
@@ -549,6 +544,7 @@ fn u8_ty(tyctx: TyCtxt) -> Ty {
     Ty::new(tyctx, TyKind::Uint(UintTy::U8))
 }
 /// Turns a `ty` into a `generic_arg`
+#[must_use]
 pub fn ty_generic_arg(ty: Ty) -> GenericArg {
     // Shit version, ok only cause type tag is 0b00
     unsafe { std::mem::transmute(ty) }
@@ -620,83 +616,6 @@ fn try_find_ptr_components(ctx: TyCtxt) -> DefId {
 
         //44548
     }
-    //todo!("core:{core:?} max_index:{max_index:?} ptr_components:{ptr_components:?}");
     drop(find_ptr_components_timer);
     ptr_components.expect("Could not find core::ptr::metadata::PtrComponents")
 }
-/*
-fn create_to_string<'tyctx>(
-    adt_def: AdtDef<'tyctx>,
-    gargs: &'tyctx List<GenericArg<'tyctx>>,
-    ty: Ty<'tyctx>,
-    type_cache: &mut TyCache,
-    method: Option<Instance<'tyctx>>,
-    tyctx: TyCtxt<'tyctx>,
-) -> Method {
-    let tpe = type_cache.type_from_cache(ty, tyctx, method);
-
-    let name = crate::utilis::adt_name(adt_def, tyctx, gargs);
-    let trees = Vec::new();
-    trees.push(CILRoot::CILNode::STLoc())
-    let mut ops = vec![CILOp::LdStr(format!("{name}{{").into()), CILOp::STLoc(0)];
-    // Concat string method
-    let concat = CallSite::new(
-        DotnetTypeRef::string_type().into(),
-        "Concat".into(),
-        FnSig::new(
-            &[
-                DotnetTypeRef::string_type().into(),
-                DotnetTypeRef::string_type().into(),
-            ],
-            &DotnetTypeRef::string_type().into(),
-        ),
-        true,
-    );
-
-    // Fields
-    match adt_def.adt_kind() {
-        AdtKind::Enum | AdtKind::Union => {}
-        AdtKind::Struct => {
-            if let Some(method) = method {
-                for (field_index, _field) in adt_def.all_fields().enumerate() {
-                    let field = crate::utilis::field_descrptor(
-                        ty,
-                        field_index as u32,
-                        tyctx,
-                        method,
-                        type_cache,
-                    );
-                    ops.extend([
-                        CILOp::LDLoc(0),
-                        CILOp::LdStr(format!("{name}:", name = field.name()).into()),
-                        CILOp::Call(concat.clone().into()),
-                        CILOp::STLoc(0),
-                    ]);
-                    match field.tpe() {
-                        Type::F32 | Type::F64 => {
-                            //ops.extend([CILOp::LDArg(0),CILOp::LDField(field),CILOp::CallVirt(CallSite::boxed(class, name, signature, is_static))])
-                        }
-                        _ => (),
-                    }
-                }
-            }
-        }
-    }
-
-    ops.extend([
-        CILOp::LDLoc(0),
-        CILOp::LdStr("}".into()),
-        CILOp::Call(concat.into()),
-        CILOp::Ret,
-    ]);
-    let mut to_string = Method::new(
-        AccessModifer::Public,
-        crate::method::MethodType::Virtual,
-        FnSig::new(&[tpe], &DotnetTypeRef::string_type().into()),
-        "ToString",
-        vec![(None, DotnetTypeRef::string_type().into())],
-    );
-    to_string.set_ops(ops);
-    to_string
-}
-*/

@@ -31,6 +31,7 @@ pub struct AssemblyExternRef {
 }
 impl AssemblyExternRef {
     /// Returns the version information of this assembly.
+    #[must_use]
     pub fn version(&self) -> (u16, u16, u16, u16) {
         self.version
     }
@@ -56,6 +57,7 @@ impl Assembly {
         self.static_fields.iter()
     }
     /// Returns the `.cctor` function used to initialize static data
+    #[must_use]
     pub fn cctor(&self) -> Option<&Method> {
         self.functions.get(&CallSite::new(
             None,
@@ -65,10 +67,12 @@ impl Assembly {
         ))
     }
     /// Returns the external assembly reference
+    #[must_use]
     pub fn extern_refs(&self) -> &HashMap<IString, AssemblyExternRef> {
         &self.extern_refs
     }
     /// Creates a new, empty assembly.
+    #[must_use]
     pub fn empty() -> Self {
         let mut res = Self {
             types: HashMap::new(),
@@ -90,6 +94,7 @@ impl Assembly {
         res
     }
     /// Joins 2 assemblies together.
+    #[must_use]
     pub fn join(self, other: Self) -> Self {
         let static_initializer = link_static_initializers(self.cctor(), other.cctor());
         let mut types = self.types;
@@ -111,11 +116,12 @@ impl Assembly {
             functions,
             entrypoint,
             extern_refs,
-            static_fields,
             extern_fns,
+            static_fields,
         }
     }
     /// Gets the typdefef at path `path`.
+    #[must_use]
     pub fn get_typedef_by_path(&self, path: &str) -> Option<&TypeDef> {
         if path.contains('/') {
             let mut path_iter = path.split('/');
@@ -140,7 +146,7 @@ impl Assembly {
             .find(|&tpe| tpe.0.as_ref() == path)
             .map(|t| t.1)
     }
-    /// Turns a terminator into ops, if ABORT_ON_ERROR set to false, will handle and recover from errors.
+    /// Turns a terminator into ops, if `ABORT_ON_ERROR` set to false, will handle and recover from errors.
     pub fn terminator_to_ops<'tcx>(
         term: &Terminator<'tcx>,
         mir: &'tcx rustc_middle::mir::Body<'tcx>,
@@ -181,7 +187,7 @@ impl Assembly {
         }*/
         terminator
     }
-    /// Turns a statement into ops, if ABORT_ON_ERROR set to false, will handle and recover from errors.
+    /// Turns a statement into ops, if `ABORT_ON_ERROR` set to false, will handle and recover from errors.
     pub fn statement_to_ops<'tcx>(
         statement: &Statement<'tcx>,
         tcx: TyCtxt<'tcx>,
@@ -333,7 +339,7 @@ impl Assembly {
                     trees,
                     last_bb_id as u32,
                     handler_for_block(block_data, &mir.basic_blocks, tyctx, &instance, mir),
-                ))
+                ));
             } else {
                 normal_bbs.push(BasicBlock::new(
                     trees,
@@ -493,11 +499,13 @@ impl Assembly {
         field_desc
     }
     /// Returns true if assembly contains function named `name`
+    #[must_use]
     pub fn contains_fn_named(&self, name: &str) -> bool {
         //FIXME:This is inefficient.
         self.methods().any(|m| m.name() == name)
     }
     /// Returns true if assembly contains function named `name`
+    #[must_use]
     pub fn contains_fn(&self, site: &CallSite) -> bool {
         self.functions.contains_key(site)
     }
@@ -512,15 +520,18 @@ impl Assembly {
         self.functions.insert(method.call_site(), method);
     }
     /// Returns the list of all calls within the method. Calls may repeat.
+    #[must_use]
     pub fn call_sites(&self) -> Vec<CallSite> {
-        self.methods().flat_map(|method| method.calls()).collect()
+        self.methods()
+            .flat_map(super::method::Method::calls)
+            .collect()
     }
     pub fn remove_dead_statics(&mut self) {
         // Get the set of "alive" fields(fields referenced outside of the static initializer).
         let alive_fields: std::collections::HashSet<_> = self
             .methods()
             .filter(|method| method.name() != ".cctor")
-            .flat_map(|method| method.sflds())
+            .flat_map(super::method::Method::sflds)
             .collect();
         // Remove the definitions of all non-alive fields
         self.static_fields.retain(|name, tpe| {
@@ -534,7 +545,7 @@ impl Assembly {
         for tree in cctor
             .blocks_mut()
             .iter_mut()
-            .flat_map(|block| block.trees_mut())
+            .flat_map(super::basic_block::BasicBlock::trees_mut)
         {
             if let CILRoot::SetStaticField { descr, value } = tree.root_mut() {
                 // Assigement to a dead static, remove.
@@ -621,6 +632,7 @@ impl Assembly {
         self.add_method(wrapper);
     }
 
+    #[must_use]
     pub fn extern_fns(&self) -> &HashMap<(IString, FnSig), IString> {
         &self.extern_fns
     }
@@ -684,7 +696,7 @@ impl Assembly {
         let mut resurected: HashMap<IString, _> = self
             .functions
             .values()
-            .flat_map(|fnc| fnc.dotnet_types())
+            .flat_map(super::method::Method::dotnet_types)
             .filter_map(|tpe| match tpe.asm() {
                 Some(_) => None,
                 None => Some(IString::from(tpe.name_path())),
@@ -702,7 +714,7 @@ impl Assembly {
                 for (name, type_def) in tpe
                     .1
                     .all_types()
-                    .filter_map(|tpe| tpe.dotnet_refs())
+                    .filter_map(super::r#type::r#type::Type::dotnet_refs)
                     .filter_map(|tpe| match tpe.asm() {
                         Some(_) => None,
                         None => Some(IString::from(tpe.name_path())),
@@ -711,7 +723,7 @@ impl Assembly {
                     //.map(|(a,b)|a.into())
                     .map(|name: IString| {
                         (
-                            name.to_owned(),
+                            name.clone(),
                             self.types
                                 .get(&name)
                                 .unwrap_or_else(|| panic!("Can't find type {name:?}"))
@@ -758,80 +770,80 @@ impl Assembly {
                         tree: call!(CallSite::malloc(tyctx), [ldc_u32!(16)]),
                     }
                     .into(),
-                    CILRoot::STIndI8(CILNode::LDLoc(0), ldc_u32!(raw_bytes[0] as u32)).into(),
+                    CILRoot::STIndI8(CILNode::LDLoc(0), ldc_u32!(u32::from(raw_bytes[0]))).into(),
                     CILRoot::STIndI8(
                         CILNode::LDLoc(0) + ldc_u32!(1),
-                        ldc_u32!(raw_bytes[1] as u32),
+                        ldc_u32!(u32::from(raw_bytes[1])),
                     )
                     .into(),
                     CILRoot::STIndI8(
                         CILNode::LDLoc(0) + ldc_u32!(2),
-                        ldc_u32!(raw_bytes[2] as u32),
+                        ldc_u32!(u32::from(raw_bytes[2])),
                     )
                     .into(),
                     CILRoot::STIndI8(
                         CILNode::LDLoc(0) + ldc_u32!(3),
-                        ldc_u32!(raw_bytes[3] as u32),
+                        ldc_u32!(u32::from(raw_bytes[3])),
                     )
                     .into(),
                     CILRoot::STIndI8(
                         CILNode::LDLoc(0) + ldc_u32!(4),
-                        ldc_u32!(raw_bytes[4] as u32),
+                        ldc_u32!(u32::from(raw_bytes[4])),
                     )
                     .into(),
                     CILRoot::STIndI8(
                         CILNode::LDLoc(0) + ldc_u32!(5),
-                        ldc_u32!(raw_bytes[5] as u32),
+                        ldc_u32!(u32::from(raw_bytes[5])),
                     )
                     .into(),
                     CILRoot::STIndI8(
                         CILNode::LDLoc(0) + ldc_u32!(6),
-                        ldc_u32!(raw_bytes[6] as u32),
+                        ldc_u32!(u32::from(raw_bytes[6])),
                     )
                     .into(),
                     CILRoot::STIndI8(
                         CILNode::LDLoc(0) + ldc_u32!(7),
-                        ldc_u32!(raw_bytes[7] as u32),
+                        ldc_u32!(u32::from(raw_bytes[7])),
                     )
                     .into(),
                     CILRoot::STIndI8(
                         CILNode::LDLoc(0) + ldc_u32!(8),
-                        ldc_u32!(raw_bytes[8] as u32),
+                        ldc_u32!(u32::from(raw_bytes[8])),
                     )
                     .into(),
                     CILRoot::STIndI8(
                         CILNode::LDLoc(0) + ldc_u32!(9),
-                        ldc_u32!(raw_bytes[9] as u32),
+                        ldc_u32!(u32::from(raw_bytes[9])),
                     )
                     .into(),
                     CILRoot::STIndI8(
                         CILNode::LDLoc(0) + ldc_u32!(10),
-                        ldc_u32!(raw_bytes[10] as u32),
+                        ldc_u32!(u32::from(raw_bytes[10])),
                     )
                     .into(),
                     CILRoot::STIndI8(
                         CILNode::LDLoc(0) + ldc_u32!(11),
-                        ldc_u32!(raw_bytes[11] as u32),
+                        ldc_u32!(u32::from(raw_bytes[11])),
                     )
                     .into(),
                     CILRoot::STIndI8(
                         CILNode::LDLoc(0) + ldc_u32!(12),
-                        ldc_u32!(raw_bytes[12] as u32),
+                        ldc_u32!(u32::from(raw_bytes[12])),
                     )
                     .into(),
                     CILRoot::STIndI8(
                         CILNode::LDLoc(0) + ldc_u32!(13),
-                        ldc_u32!(raw_bytes[13] as u32),
+                        ldc_u32!(u32::from(raw_bytes[13])),
                     )
                     .into(),
                     CILRoot::STIndI8(
                         CILNode::LDLoc(0) + ldc_u32!(14),
-                        ldc_u32!(raw_bytes[14] as u32),
+                        ldc_u32!(u32::from(raw_bytes[14])),
                     )
                     .into(),
                     CILRoot::STIndI8(
                         CILNode::LDLoc(0) + ldc_u32!(15),
-                        ldc_u32!(raw_bytes[15] as u32),
+                        ldc_u32!(u32::from(raw_bytes[15])),
                     )
                     .into(),
                     CILRoot::Ret {
@@ -990,7 +1002,7 @@ fn allocation_initializer_method(
         .into(),
     );
     for byte in bytes {
-        trees.push(CILRoot::STIndI8(CILNode::LDLoc(0), ldc_u32!(*byte as u32)).into());
+        trees.push(CILRoot::STIndI8(CILNode::LDLoc(0), ldc_u32!(u32::from(*byte))).into());
         //trees.push(CILRoot::debug(&format!("Writing the byte {}",byte)).into());
         trees.push(
             CILRoot::STLoc {
@@ -998,7 +1010,7 @@ fn allocation_initializer_method(
                 tree: CILNode::LDLoc(0) + conv_usize!(ldc_u32!(1)),
             }
             .into(),
-        )
+        );
     }
     if !ptrs.is_empty() {
         for (offset, prov) in ptrs.iter() {
@@ -1021,7 +1033,7 @@ fn allocation_initializer_method(
                         ),
                     )
                     .into(),
-                )
+                );
             } else {
                 let ptr_alloc = asm.add_allocation(prov.alloc_id().0.into(), tyctx, tycache);
 
@@ -1031,7 +1043,7 @@ fn allocation_initializer_method(
                         CILNode::LDStaticField(ptr_alloc.into()),
                     )
                     .into(),
-                )
+                );
             }
         }
         //eprintln!("Constant requires rellocation support!");

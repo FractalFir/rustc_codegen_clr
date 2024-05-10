@@ -89,14 +89,17 @@ impl FnSig {
         })
     }
     /// Returns the list of function inputs.
+    #[must_use]
     pub fn inputs(&self) -> &[Type] {
         &self.inputs
     }
     /// Returns the function output.
+    #[must_use]
     pub fn output(&self) -> &Type {
         &self.output
     }
     /// Creates a new function signature. For non-static functions, this must include the hidden first `this` argument!
+    #[must_use]
     pub fn new(inputs: &[Type], output: &Type) -> Self {
         Self {
             inputs: inputs.into(),
@@ -113,6 +116,7 @@ impl FnSig {
     }
 }
 /// Checks if this function is variadic.
+#[must_use]
 pub fn is_fn_variadic<'tyctx>(ty: Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -> bool {
     ty.fn_sig(tyctx).skip_binder().c_variadic
 }

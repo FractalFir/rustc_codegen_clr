@@ -34,9 +34,10 @@ pub fn handle_rvalue<'tcx>(
             crate::place::place_adress(place, tyctx, method, method_instance, tycache)
         }
         Rvalue::Cast(
-            CastKind::PointerCoercion(PointerCoercion::MutToConstPointer)
-            | CastKind::PtrToPtr
-            | CastKind::PointerCoercion(PointerCoercion::ArrayToPointer),
+            CastKind::PointerCoercion(
+                PointerCoercion::MutToConstPointer | PointerCoercion::ArrayToPointer,
+            )
+            | CastKind::PtrToPtr,
             operand,
             dst,
         ) => {
@@ -174,7 +175,7 @@ pub fn handle_rvalue<'tcx>(
             }
             // We will just always check for UB :).
             rustc_middle::mir::NullOp::UbChecks => {
-                ldc_u32!(if tyctx.sess.ub_checks() { 1 } else { 0 })
+                ldc_u32!(u32::from(tyctx.sess.ub_checks()))
             } // TODO: propely set this to 0 or 1 depending if debug assertions are enabled.
               //NullOp::DebugAssertions => ldc_u32!(0), //todo!("Unsuported nullary {op:?}!"),
         },
@@ -328,7 +329,7 @@ pub fn handle_rvalue<'tcx>(
                     value: owner_ty,
                 })
                 .expect("Could not get type layout!");
-            let (disrc_type, _) = crate::utilis::adt::enum_tag_info(&layout.layout, tyctx);
+            let (disrc_type, _) = crate::utilis::adt::enum_tag_info(layout.layout, tyctx);
             let owner = if let crate::r#type::Type::DotnetType(dotnet_type) = owner {
                 dotnet_type.as_ref().clone()
             } else {
@@ -347,7 +348,7 @@ pub fn handle_rvalue<'tcx>(
                 crate::casts::int_to_int(
                     disrc_type.clone(),
                     target,
-                    crate::utilis::adt::get_discr(&layout.layout, addr, owner, tyctx, owner_ty),
+                    crate::utilis::adt::get_discr(layout.layout, addr, owner, tyctx, owner_ty),
                 )
             }
         }

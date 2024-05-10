@@ -53,7 +53,7 @@ impl Method {
         blocks
             .iter_mut()
             .flat_map(|blck| blck.trees_mut().iter_mut())
-            .for_each(|tree| tree.opt());
+            .for_each(super::cil_tree::CILTree::opt);
         let mut res = Self {
             access,
             method_type,
@@ -70,11 +70,12 @@ impl Method {
         res
     }
     /// Calcualtes the maximum number of vairables on the evaulation stack.
+    #[must_use]
     pub fn maxstack(&self) -> usize {
         crate::utilis::max_stack(
             self.blocks
                 .iter()
-                .flat_map(|bb| bb.into_ops())
+                .flat_map(super::basic_block::BasicBlock::into_ops)
                 .collect::<Vec<_>>()
                 .as_ref(),
             *self.sig().output() == Type::Void,
@@ -95,6 +96,7 @@ impl Method {
         self.locals.extend(iter.map(|tpe| (None, tpe.clone())));
     }
     /// Checks if the method `self` is the entrypoint.
+    #[must_use]
     pub fn is_entrypoint(&self) -> bool {
         self.attributes
             .iter()
@@ -114,22 +116,27 @@ impl Method {
         });
     }
     /// Returns the access modifier of this function.
+    #[must_use]
     pub fn access(&self) -> AccessModifer {
         self.access
     }
     /// Returns true if this function is static, else it returns false.
+    #[must_use]
     pub fn is_static(&self) -> bool {
         self.method_type == MethodType::Static
     }
     /// Returns the name of this function.
+    #[must_use]
     pub fn name(&self) -> &str {
         &self.name
     }
     /// Returns the signature of `self`.
+    #[must_use]
     pub fn sig(&self) -> &FnSig {
         &self.sig
     }
     /// Returns the list of local types.
+    #[must_use]
     pub fn locals(&self) -> &[(Option<IString>, Type)] {
         &self.locals
     }
@@ -138,7 +145,7 @@ impl Method {
     pub(crate) fn calls(&self) -> Vec<CallSite> {
         self.blocks
             .iter()
-            .flat_map(|bb| bb.into_ops())
+            .flat_map(super::basic_block::BasicBlock::into_ops)
             .filter_map(|op| op.call().cloned())
             .collect()
     }
@@ -147,7 +154,7 @@ impl Method {
     pub(crate) fn sflds(&self) -> Vec<StaticFieldDescriptor> {
         self.blocks
             .iter()
-            .flat_map(|bb| bb.into_ops())
+            .flat_map(super::basic_block::BasicBlock::into_ops)
             .filter_map(|op| op.sflds().cloned())
             .collect()
     }
@@ -156,13 +163,13 @@ impl Method {
         self.sig()
             .inputs()
             .iter()
-            .filter_map(|tpe| tpe.dotnet_refs())
+            .filter_map(super::r#type::r#type::Type::dotnet_refs)
             .chain(self.locals().iter().filter_map(|tpe| tpe.1.dotnet_refs()))
             .chain(
                 self.sig()
                     .inputs()
                     .iter()
-                    .filter_map(|tpe| tpe.dotnet_refs()),
+                    .filter_map(super::r#type::r#type::Type::dotnet_refs),
             )
             .chain(
                 [self.sig().output()]
@@ -179,7 +186,7 @@ impl Method {
     pub(crate) fn allocate_temporaries(&mut self) {
         self.blocks
             .iter_mut()
-            .flat_map(|block| block.trees_mut())
+            .flat_map(super::basic_block::BasicBlock::trees_mut)
             .for_each(|tree| tree.allocate_tmps(&mut self.locals));
     }
     /// Adds method attribute `attr` to self.
@@ -191,6 +198,7 @@ impl Method {
         self.locals = locals.into();
     }
     /// Returns the type of this method(static, instance or virtual)
+    #[must_use]
     pub fn method_type(&self) -> MethodType {
         self.method_type
     }
@@ -203,10 +211,11 @@ impl Method {
     ) {
         self.blocks
             .iter_mut()
-            .flat_map(|block| block.trees_mut())
+            .flat_map(super::basic_block::BasicBlock::trees_mut)
             .for_each(|tree| tree.resolve_global_allocations(arg, tyctx, tycache));
     }
     /// Returns a reference to a list of basic blocks that make up this method.
+    #[must_use]
     pub fn blocks(&self) -> &[BasicBlock] {
         &self.blocks
     }
@@ -220,6 +229,7 @@ impl Method {
         self
     }
 
+    #[must_use]
     pub fn arg_names(&self) -> &[Option<IString>] {
         &self.arg_names
     }
@@ -239,7 +249,7 @@ impl<'a> Drop for BlockMutGuard<'a> {
         self.method.blocks.iter_mut().for_each(|block| {
             block
                 .trees_mut()
-                .retain(|tree| !matches!(tree.root(), crate::cil_tree::cil_root::CILRoot::Nop))
+                .retain(|tree| !matches!(tree.root(), crate::cil_tree::cil_root::CILRoot::Nop));
         });
         self.method.allocate_temporaries();
         self.method.sheed_trees();

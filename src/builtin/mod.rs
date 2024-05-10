@@ -100,7 +100,7 @@ macro_rules! add_method_from_trees {
             let method = $crate::method::Method::new(
                 $crate::access_modifier::AccessModifer::Private,
                 $crate::method::MethodType::Static,
-                crate::function_sig::FnSig::new($input, $output),
+                $crate::function_sig::FnSig::new($input, $output),
                 stringify!($name),
                 vec![],
                 $trees,
@@ -109,11 +109,11 @@ macro_rules! add_method_from_trees {
         }
     };
     ($name:ident,$input:expr,$output:expr,$trees:expr,$locals:expr) => {
-        fn $name(asm: &mut crate::assembly::Assembly) {
-            let mut method = crate::method::Method::new(
-                crate::access_modifier::AccessModifer::Private,
-                crate::method::MethodType::MethodType::Static,
-                crate::function_sig::FnSig::new($input, $output),
+        fn $name(asm: &mut $crate::assembly::Assembly) {
+            let mut method = $crate::method::Method::new(
+                $crate::access_modifier::AccessModifer::Private,
+                $crate::method::MethodType::MethodType::Static,
+                $crate::function_sig::FnSig::new($input, $output),
                 stringify!($name),
                 $locals.into(),
                 $trees,

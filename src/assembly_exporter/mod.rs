@@ -91,6 +91,7 @@ impl From<std::io::Error> for AssemblyExportError {
         Self::IoError(error)
     }
 }
+#[must_use]
 pub fn escape_class_name(name: &str) -> String {
     name.replace("::", ".")
         .replace("..", ".")

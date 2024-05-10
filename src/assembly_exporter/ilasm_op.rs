@@ -52,7 +52,7 @@ pub fn op_cli(op: &crate::cil::CILOp, method: &Method) -> Cow<'static, str> {
                     "instance"
                 };
                 let generics = if call_site.generics().is_empty(){
-                    "".into()
+                    String::new()
                 }else{
                     assert!(call_site.generics().len() == 1,"Methods with multiple generics not supported yet!");
                     format!("<{}>",type_cil(&call_site.generics()[0]))
@@ -143,7 +143,7 @@ pub fn op_cli(op: &crate::cil::CILOp, method: &Method) -> Cow<'static, str> {
                  "instance"
              };
              let generics = if call_site.generics().is_empty(){
-                "".into()
+                String::new()
             }else{
                 assert!(call_site.generics().len() == 1,"Methods with multiple generics not supported yet!");
                 format!("<{}>",type_cil(&call_site.generics()[0]))
@@ -186,7 +186,7 @@ pub fn op_cli(op: &crate::cil::CILOp, method: &Method) -> Cow<'static, str> {
                     "instance"
                 };
                 let generics = if call_site.generics().is_empty(){
-                    "".into()
+                    String::new()
                 }else{
                     assert!(call_site.generics().len() == 1,"Methods with multiple generics not supported yet!");
                     format!("<{}>",type_cil(&call_site.generics()[0]))
@@ -305,7 +305,7 @@ pub fn op_cli(op: &crate::cil::CILOp, method: &Method) -> Cow<'static, str> {
         CILOp::LdcU32(value) => {
             if *value <= 8 {
                 format!("ldc.i4.{value}").into()
-            } else if *value < i8::MAX as u8 as u32 {
+            } else if *value < u32::from(i8::MAX as u8) {
                 format!("ldc.i4.s {value}").into()
             } else {
                 format!("ldc.i4 {value}",value = *value as i32).into()
@@ -327,9 +327,9 @@ pub fn op_cli(op: &crate::cil::CILOp, method: &Method) -> Cow<'static, str> {
         CILOp::LdcU64(value) => {
             if *value <= 8{
                 format!("ldc.i4.{value}").into()
-            } else if *value < i8::MAX as u8 as u64 {
+            } else if *value < u64::from(i8::MAX as u8) {
                 format!("ldc.i4.s {value}\n\t").into()
-            } else if *value < i32::MAX as u32 as u64  {
+            } else if *value < u64::from(i32::MAX as u32)  {
                 format!("ldc.i4 {value}").into()
             } else {
                 format!("ldc.i8 {value}").into()
@@ -520,7 +520,7 @@ pub fn op_cli(op: &crate::cil::CILOp, method: &Method) -> Cow<'static, str> {
                     "instance"
                 };
                 let generics = if call_site.generics().is_empty(){
-                    "".into()
+                    String::new()
                 }else{
                     assert!(call_site.generics().len() == 1,"Methods with multiple generics not supported yet!");
                     format!("<{}>",type_cil(&call_site.generics()[0]))
@@ -616,7 +616,7 @@ pub fn type_cil(tpe: &Type) -> Cow<'static, str> {
             let arr = if dims > 0_u8 {
                 (0..(dims - 1)).map(|_| ",").collect::<String>()
             } else {
-                "".into()
+                String::new()
             };
             format!("{tpe}[{arr}]", tpe = type_cil(element)).into()
         } //_ => todo!("Unsuported type {tpe:?}"),
@@ -634,7 +634,7 @@ pub fn dotnet_type_ref_cli(dotnet_type: &DotnetTypeRef) -> String {
     let asm = if let Some(asm_ref) = dotnet_type.asm() {
         format!("[{asm_ref}]")
     } else {
-        "".into()
+        String::new()
     };
     let name = dotnet_type.name_path();
     let name = if *crate::config::ESCAPE_NAMES {

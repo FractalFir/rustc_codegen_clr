@@ -51,11 +51,8 @@ impl TypeDef {
     }
     pub fn all_types(&self) -> impl Iterator<Item = &Type> {
         //TODO: this breaks if a type contains more than one layer of nested types!
-        self.field_types().chain(
-            self.inner_types()
-                .iter()
-                .flat_map(|sub_tpe| sub_tpe.field_types()),
-        )
+        self.field_types()
+            .chain(self.inner_types().iter().flat_map(TypeDef::field_types))
     }
     #[must_use]
     pub fn gargc(&self) -> u32 {
@@ -136,15 +133,14 @@ impl TypeDef {
         res
     }
 
+    #[must_use]
     pub fn explict_size(&self) -> Option<u64> {
         self.explict_size
     }
 
     fn sanity_check(&self) {
         if let Some(size) = self.explict_size() {
-            self.explicit_offsets().iter().flat_map(|vec|*vec).for_each(|offset|if *offset > size as u32{
-                panic!("Sanity check failed! The size of type {name} is {size}, yet it has a filed at offset {offset}",name = self.name);
-            });
+            self.explicit_offsets().iter().flat_map(|vec|*vec).for_each(|offset|assert!(*offset <= size as u32, "Sanity check failed! The size of type {name} is {size}, yet it has a filed at offset {offset}",name = self.name));
         }
         if let Some(offsets) = self.explicit_offsets() {
             assert_eq!(
@@ -216,19 +212,20 @@ pub fn closure_name(_def_id: DefId, fields: &[Type], _sig: &crate::function_sig:
         field_count = fields.len()
     )
 }
+#[must_use]
 pub fn closure_typedef(
     def_id: DefId,
     fields: &[Type],
-    sig: crate::function_sig::FnSig,
-    layout: &Layout,
+    sig: &crate::function_sig::FnSig,
+    layout: Layout,
 ) -> TypeDef {
-    let name = closure_name(def_id, fields, &sig);
+    let name = closure_name(def_id, fields, sig);
     let fields: Vec<_> = fields
         .iter()
         .enumerate()
         .map(|(idx, ty)| (format!("f_{idx}").into(), ty.clone()))
         .collect();
-    let offsets: Vec<_> = FieldOffsetIterator::fields(layout).collect();
+    let offsets: Vec<_> = FieldOffsetIterator::fields((*layout.0).clone()).collect();
     assert_eq!(fields.len(), offsets.len());
     TypeDef::new(
         AccessModifer::Public,
@@ -242,6 +239,7 @@ pub fn closure_typedef(
         Some(layout.size().bytes()),
     )
 }
+#[must_use]
 pub fn arr_name(element_count: usize, element: &Type) -> IString {
     let element_name = super::mangle(element);
     format!("Arr{element_count}_{element_name}",).into()
@@ -256,14 +254,14 @@ pub fn tuple_name(elements: &[Type]) -> IString {
 }
 
 #[must_use]
-pub fn tuple_typedef(elements: &[Type], layout: &Layout) -> TypeDef {
+pub fn tuple_typedef(elements: &[Type], layout: Layout) -> TypeDef {
     let name = tuple_name(elements);
     let fields: Vec<_> = elements
         .iter()
         .enumerate()
         .map(|(idx, ele)| (format!("Item{}", idx + 1).into(), ele.clone()))
         .collect();
-    let explicit_offsets = FieldOffsetIterator::fields(layout).collect();
+    let explicit_offsets = FieldOffsetIterator::fields((*layout.0).clone()).collect();
     TypeDef::new(
         AccessModifer::Public,
         name,
@@ -294,7 +292,7 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
     let mut explicit_offsets = Vec::with_capacity(element_count);
     for field in 0..element_count {
         fields.push((format!("f_{field}").into(), element.clone()));
-        explicit_offsets.push((field as u64 * element_size) as u32);
+        explicit_offsets.push(u32::try_from(field as u64 * element_size).unwrap());
     }
     let mut def = TypeDef {
         access: AccessModifer::Public,

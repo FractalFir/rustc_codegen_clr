@@ -46,10 +46,7 @@ pub fn shr_unchecked<'tyctx>(
             )
         }
         TyKind::Uint(_) => match shift_type.kind() {
-            TyKind::Uint(UintTy::U128)
-            | TyKind::Int(IntTy::I128)
-            | TyKind::Uint(UintTy::U64)
-            | TyKind::Int(IntTy::I64) => {
+            TyKind::Uint(UintTy::U128 | UintTy::U64) | TyKind::Int(IntTy::I128 | IntTy::I64) => {
                 shr_un!(
                     ops_a,
                     crate::casts::int_to_int(type_b.clone(), Type::I32, ops_b)
@@ -58,10 +55,7 @@ pub fn shr_unchecked<'tyctx>(
             _ => shr_un!(ops_a, ops_b),
         },
         TyKind::Int(_) => match shift_type.kind() {
-            TyKind::Uint(UintTy::U128)
-            | TyKind::Int(IntTy::I128)
-            | TyKind::Uint(UintTy::U64)
-            | TyKind::Int(IntTy::I64) => {
+            TyKind::Uint(UintTy::U128 | UintTy::U64) | TyKind::Int(IntTy::I128 | IntTy::I64) => {
                 shr!(
                     ops_a,
                     crate::casts::int_to_int(type_b.clone(), Type::I32, ops_b)
@@ -121,10 +115,7 @@ pub fn shr_checked<'tyctx>(
             )
         }
         TyKind::Uint(_) => match shift_type.kind() {
-            TyKind::Uint(UintTy::U128)
-            | TyKind::Int(IntTy::I128)
-            | TyKind::Uint(UintTy::U64)
-            | TyKind::Int(IntTy::I64) => {
+            TyKind::Uint(UintTy::U128 | UintTy::U64) | TyKind::Int(IntTy::I128 | IntTy::I64) => {
                 shr_un!(
                     ops_a,
                     rem_un!(
@@ -138,10 +129,7 @@ pub fn shr_checked<'tyctx>(
             }
         },
         TyKind::Int(_) => match shift_type.kind() {
-            TyKind::Uint(UintTy::U128)
-            | TyKind::Int(IntTy::I128)
-            | TyKind::Uint(UintTy::U64)
-            | TyKind::Int(IntTy::I64) => {
+            TyKind::Uint(UintTy::U128 | UintTy::U64) | TyKind::Int(IntTy::I128 | IntTy::I64) => {
                 shr!(
                     ops_a,
                     rem_un!(
@@ -205,10 +193,7 @@ pub fn shl_checked<'tyctx>(
             )
         }
         TyKind::Uint(_) => match shift_type.kind() {
-            TyKind::Uint(UintTy::U128)
-            | TyKind::Int(IntTy::I128)
-            | TyKind::Uint(UintTy::U64)
-            | TyKind::Int(IntTy::I64) => {
+            TyKind::Uint(UintTy::U128 | UintTy::U64) | TyKind::Int(IntTy::I128 | IntTy::I64) => {
                 shl!(
                     ops_a,
                     rem_un!(
@@ -222,10 +207,7 @@ pub fn shl_checked<'tyctx>(
             }
         },
         TyKind::Int(_) => match shift_type.kind() {
-            TyKind::Uint(UintTy::U128)
-            | TyKind::Int(IntTy::I128)
-            | TyKind::Uint(UintTy::U64)
-            | TyKind::Int(IntTy::I64) => {
+            TyKind::Uint(UintTy::U128 | UintTy::U64) | TyKind::Int(IntTy::I128 | IntTy::I64) => {
                 shl!(
                     ops_a,
                     rem_un!(
@@ -283,10 +265,7 @@ pub fn shl_unchecked<'tyctx>(
             )
         }
         TyKind::Uint(_) | TyKind::Int(_) => match shift_type.kind() {
-            TyKind::Uint(UintTy::U128)
-            | TyKind::Int(IntTy::I128)
-            | TyKind::Uint(UintTy::U64)
-            | TyKind::Int(IntTy::I64) => {
+            TyKind::Uint(UintTy::U128 | UintTy::U64) | TyKind::Int(IntTy::I128 | IntTy::I64) => {
                 shl!(
                     ops_a,
                     crate::casts::int_to_int(type_b.clone(), Type::I32, ops_b)

@@ -104,7 +104,7 @@ impl CILRoot {
             } => ops.opt(),
             CILRoot::GoTo { .. } => (),
             CILRoot::Call { args, site: _ } => {
-                args.iter_mut().for_each(|arg| arg.opt());
+                args.iter_mut().for_each(super::cil_node::CILNode::opt);
             }
             CILRoot::SetField {
                 addr: fld_addr,
@@ -117,7 +117,7 @@ impl CILRoot {
                 match fld_addr {
                     CILNode::ConvUSize(addr) => match addr.as_mut() {
                         CILNode::LDLocA(_) | CILNode::LDFieldAdress { .. } => {
-                            *fld_addr = addr.as_ref().clone()
+                            *fld_addr = addr.as_ref().clone();
                         }
                         _ => (),
                     },
@@ -158,7 +158,7 @@ impl CILRoot {
                 count.opt();
             }
             CILRoot::CallVirt { site: _, args } => {
-                args.iter_mut().for_each(|arg| arg.opt());
+                args.iter_mut().for_each(super::cil_node::CILNode::opt);
             }
             CILRoot::Ret { tree } => tree.opt(),
             CILRoot::Pop { tree } => tree.opt(),
@@ -170,7 +170,7 @@ impl CILRoot {
                 fn_ptr,
                 args,
             } => {
-                args.iter_mut().for_each(|arg| arg.opt());
+                args.iter_mut().for_each(super::cil_node::CILNode::opt);
                 fn_ptr.opt();
             }
             CILRoot::JumpingPad { ops: _ } => (),
@@ -178,6 +178,7 @@ impl CILRoot {
             CILRoot::SetStaticField { descr: _, value } => value.opt(),
         }
     }
+    #[must_use]
     pub fn throw(msg: &str) -> Self {
         let mut class =
             crate::r#type::DotnetTypeRef::new(Some("System.Runtime"), "System.Exception");
@@ -192,6 +193,7 @@ impl CILRoot {
             args: [CILNode::LdStr(msg.into())].into(),
         })
     }
+    #[must_use]
     pub fn debug(msg: &str) -> Self {
         let mut class = crate::r#type::DotnetTypeRef::new(Some("System.Console"), "System.Console");
         class.set_valuetype(false);
@@ -205,6 +207,7 @@ impl CILRoot {
             args: [CILNode::LdStr(msg.into())].into(),
         }
     }
+    #[must_use]
     pub fn into_ops(&self) -> Vec<CILOp> {
         match std::panic::catch_unwind(|| {
             match self {
@@ -225,18 +228,27 @@ impl CILRoot {
                 } => append_vec(ops.flatten(), CILOp::BTrue(*target, *sub_target)),
                 Self::GoTo { target, sub_target } => vec![CILOp::GoTo(*target, *sub_target)],
                 Self::Call { site, args } => {
-                    let mut args: Vec<_> = args.iter().flat_map(|arg| arg.flatten()).collect();
+                    let mut args: Vec<_> = args
+                        .iter()
+                        .flat_map(super::cil_node::CILNode::flatten)
+                        .collect();
                     args.push(CILOp::Call(site.clone().into()));
                     args
                 }
                 Self::CallI { sig, fn_ptr, args } => {
-                    let mut ops: Vec<_> = args.iter().flat_map(|arg| arg.flatten()).collect();
+                    let mut ops: Vec<_> = args
+                        .iter()
+                        .flat_map(super::cil_node::CILNode::flatten)
+                        .collect();
                     ops.extend(fn_ptr.flatten());
                     ops.push(CILOp::CallI(sig.clone().into()));
                     ops
                 }
                 Self::CallVirt { site, args } => {
-                    let mut args: Vec<_> = args.iter().flat_map(|arg| arg.flatten()).collect();
+                    let mut args: Vec<_> = args
+                        .iter()
+                        .flat_map(super::cil_node::CILNode::flatten)
+                        .collect();
                     args.push(CILOp::CallVirt(site.clone().into()));
                     args
                 }
@@ -359,6 +371,7 @@ impl CILRoot {
             _ => (),
         }
     }
+    #[must_use]
     pub fn shed_trees(mut self) -> Vec<Self> {
         let mut res = vec![];
         let trees: Vec<CILRoot> = match &mut self {
@@ -373,9 +386,10 @@ impl CILRoot {
                 target: _,
                 sub_target: _,
             } => vec![],
-            CILRoot::CallVirt { site: _, args } | CILRoot::Call { site: _, args } => {
-                args.iter_mut().flat_map(|arg| arg.sheed_trees()).collect()
-            }
+            CILRoot::CallVirt { site: _, args } | CILRoot::Call { site: _, args } => args
+                .iter_mut()
+                .flat_map(super::cil_node::CILNode::sheed_trees)
+                .collect(),
             CILRoot::SetField { addr, value, .. } => {
                 let mut res = addr.sheed_trees();
                 res.extend(value.sheed_trees());
@@ -425,7 +439,10 @@ impl CILRoot {
                 args,
             } => {
                 let mut res = fn_ptr.sheed_trees();
-                res.extend(args.iter_mut().flat_map(|arg| arg.sheed_trees()));
+                res.extend(
+                    args.iter_mut()
+                        .flat_map(super::cil_node::CILNode::sheed_trees),
+                );
                 res
             }
             CILRoot::JumpingPad { ops: _ } => vec![],
@@ -486,7 +503,7 @@ impl CILRoot {
             }
 
             CILRoot::Ret { tree } | CILRoot::Pop { tree } | CILRoot::Throw(tree) => {
-                tree.allocate_tmps(curr_local, locals)
+                tree.allocate_tmps(curr_local, locals);
             }
             CILRoot::VoidRet => (),
 
@@ -520,7 +537,7 @@ impl CILRoot {
         match self {
             CILRoot::SourceFileInfo(_) => (),
             CILRoot::STLoc { local: _, tree } => {
-                tree.resolve_global_allocations(asm, tyctx, tycache)
+                tree.resolve_global_allocations(asm, tyctx, tycache);
             }
             CILRoot::BTrue {
                 target: _,
@@ -560,7 +577,7 @@ impl CILRoot {
                 ..
             } => {
                 addr_calc.resolve_global_allocations(asm, tyctx, tycache);
-                value_calc.resolve_global_allocations(asm, tyctx, tycache)
+                value_calc.resolve_global_allocations(asm, tyctx, tycache);
             }
             CILRoot::STArg { arg: _, tree } => tree.resolve_global_allocations(asm, tyctx, tycache),
             CILRoot::Break => (),
@@ -572,7 +589,7 @@ impl CILRoot {
             }
 
             CILRoot::Ret { tree } | CILRoot::Pop { tree } | CILRoot::Throw(tree) => {
-                tree.resolve_global_allocations(asm, tyctx, tycache)
+                tree.resolve_global_allocations(asm, tyctx, tycache);
             }
             CILRoot::VoidRet => (),
 
@@ -590,7 +607,7 @@ impl CILRoot {
             CILRoot::JumpingPad { ops: _ } => (),
             CILRoot::SetTMPLocal { value } => value.resolve_global_allocations(asm, tyctx, tycache),
             CILRoot::SetStaticField { descr: _, value } => {
-                value.resolve_global_allocations(asm, tyctx, tycache)
+                value.resolve_global_allocations(asm, tyctx, tycache);
             }
         }
     }
@@ -626,8 +643,7 @@ fn allocating_tmps() {
                             "core.ptr.metadata.PtrComponents.h2b679e9941d88b2f",
                         )
                         .into(),
-                    )
-                    .into(),
+                    ),
                     [CILRoot::SetTMPLocal {
                         value: CILNode::LDArg(0),
                     }]
@@ -659,5 +675,5 @@ fn allocating_tmps() {
     //let mut method = crate::method::Method::new(crate::access_modifier::AccessModifer::Private,crate::method::MethodType::Static,FnSig::new(&[Type::I32],&Type::Void),"a",vec![],vec![]);
     original_value.allocate_tmps(None, &mut vec![]);
     let trees = original_value.shed_trees();
-    let _ops: Vec<_> = trees.iter().map(|tree| tree.into_ops()).collect();
+    let _ops: Vec<_> = trees.iter().map(CILRoot::into_ops).collect();
 }

@@ -585,10 +585,7 @@ pub fn call<'tyctx>(
     //assert_eq!(args.len(),signature.inputs().len(),"CALL SIGNATURE ARG COUNT MISMATCH!");
     let is_void = matches!(signature.output(), crate::r#type::Type::Void);
     //rustc_middle::ty::print::with_no_trimmed_paths! {call.push(CILOp::Comment(format!("Calling {instance:?}").into()))};
-    match instance.def {
-        InstanceDef::DropGlue(_def, None) => return CILRoot::Nop,
-        _ => (),
-    }
+    if let InstanceDef::DropGlue(_def, None) = instance.def { return CILRoot::Nop };
     let call_site = CallSite::new(None, function_name, signature, true);
     // Hande
     if is_void {

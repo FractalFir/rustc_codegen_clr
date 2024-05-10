@@ -129,9 +129,9 @@ pub(crate) fn load_const_value<'ctx>(
         } //_ => todo!("Unhandled const value {const_val:?} of type {const_ty:?}"),
     }
 }
-fn load_scalar_ptr<'ctx>(
-    tyctx: TyCtxt<'ctx>,
-    tpe: Type,
+fn load_scalar_ptr(
+    tyctx: TyCtxt<'_>,
+
     tycache: &mut TyCache,
     ptr: rustc_middle::mir::interpret::Pointer,
 ) -> CILNode {
@@ -211,17 +211,15 @@ fn load_scalar_ptr<'ctx>(
             //def_id.ty();
             let _tyctx = tyctx.reserve_and_set_memory_alloc(alloc);
             let alloc_id = crate::utilis::alloc_id_to_u64(alloc_id.alloc_id());
-            return CILNode::LoadGlobalAllocPtr { alloc_id };
+            CILNode::LoadGlobalAllocPtr { alloc_id }
         }
-        GlobalAlloc::Memory(_const_allocation) => {
-            return CILNode::Add(
-                CILNode::LoadGlobalAllocPtr {
-                    alloc_id: alloc_id.alloc_id().0.into(),
-                }
-                .into(),
-                CILNode::ConvUSize(CILNode::LdcU64(offset.bytes()).into()).into(),
-            );
-        }
+        GlobalAlloc::Memory(_const_allocation) => CILNode::Add(
+            CILNode::LoadGlobalAllocPtr {
+                alloc_id: alloc_id.alloc_id().0.into(),
+            }
+            .into(),
+            CILNode::ConvUSize(CILNode::LdcU64(offset.bytes()).into()).into(),
+        ),
         GlobalAlloc::Function(finstance) => {
             // If it is a function, patch its pointer up.
             let call_info =
@@ -236,26 +234,6 @@ fn load_scalar_ptr<'ctx>(
     //panic!("alloc_id:{alloc_id:?}")
 }
 
-fn try_import_syscall(name: &str) -> Option<CILNode> {
-    if name.contains("statx") && name.contains("fs") {
-        Some(CILNode::LDFtn(Box::new(CallSite::builtin(
-            "statx".into(),
-            FnSig::new(
-                &[
-                    Type::I32,
-                    Type::Ptr(Type::U8.into()),
-                    Type::I32,
-                    Type::U32,
-                    Type::Ptr(Type::Void.into()),
-                ],
-                &Type::I32,
-            ),
-            true,
-        ))))
-    } else {
-        None
-    }
-}
 fn load_const_scalar<'ctx>(
     scalar: Scalar,
     scalar_type: Ty<'ctx>,
@@ -271,7 +249,7 @@ fn load_const_scalar<'ctx>(
         Scalar::Int(scalar_int) => scalar_int
             .try_to_uint(scalar.size())
             .expect("IMPOSSIBLE. Size of scalar was not equal to itself."),
-        Scalar::Ptr(ptr, _size) => return load_scalar_ptr(tyctx, tpe, tycache, ptr),
+        Scalar::Ptr(ptr, _size) => return load_scalar_ptr(tyctx, tycache, ptr),
     };
 
     //TODO: This assumes a LE target
@@ -324,11 +302,11 @@ pub fn load_const_int(value: u128, int_type: &IntTy) -> CILNode {
     match int_type {
         IntTy::I8 => {
             let value = i8::from_ne_bytes([value as u8]);
-            CILNode::ConvI8(CILNode::LdcI32(value as i32).into())
+            CILNode::ConvI8(CILNode::LdcI32(i32::from(value)).into())
         }
         IntTy::I16 => {
             let value = i16::from_ne_bytes((value as u16).to_ne_bytes());
-            CILNode::ConvI16(CILNode::LdcI32(value as i32).into())
+            CILNode::ConvI16(CILNode::LdcI32(i32::from(value)).into())
         }
         IntTy::I32 => CILNode::LdcI32(i32::from_ne_bytes((value as u32).to_ne_bytes())),
         IntTy::I64 => CILNode::LdcI64(i64::from_ne_bytes((value as u64).to_ne_bytes())),
@@ -362,11 +340,11 @@ pub fn load_const_uint(value: u128, int_type: &UintTy) -> CILNode {
     match int_type {
         UintTy::U8 => {
             let value = value as u8;
-            CILNode::ConvU8(CILNode::LdcU32(value as u32).into())
+            CILNode::ConvU8(CILNode::LdcU32(u32::from(value)).into())
         }
         UintTy::U16 => {
             let value = value as u16;
-            CILNode::ConvU16(CILNode::LdcU32(value as u32).into())
+            CILNode::ConvU16(CILNode::LdcU32(u32::from(value)).into())
         }
         UintTy::U32 => CILNode::ConvU32(CILNode::LdcU32(value as u32).into()),
         UintTy::U64 => CILNode::ConvU64(CILNode::LdcU64(value as u64).into()),

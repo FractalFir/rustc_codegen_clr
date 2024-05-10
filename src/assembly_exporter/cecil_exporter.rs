@@ -260,9 +260,7 @@ impl DotnetContext {
                     TypeAttributes::default(),
                     handle,
                     tpe.explicit_offsets().is_some(),
-                    tpe.explicit_offsets()
-                        .map(|offsets| offsets[idx])
-                        .unwrap_or(0),
+                    tpe.explicit_offsets().map_or(0, |offsets| offsets[idx]),
                 )
             };
             unsafe { add_field_def(type_def, field_def) };

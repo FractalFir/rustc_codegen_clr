@@ -47,12 +47,9 @@ fn hijack_arg_init(asm: &mut Assembly) {
         }
     }
     // Patch the cctor to call it:
-    let cctor = match asm.cctor_mut() {
-        Some(cctor) => cctor,
-        None => {
-            println!("WARNING: could not patch the arg initializer, because no static initializer is present!");
-            return;
-        }
+    let Some(cctor) = asm.cctor_mut() else {
+        println!("WARNING: could not patch the arg initializer, because no static initializer is present!");
+        return;
     };
     // Allocate the variables necesarry for initializng args.
     let argc = u32::try_from(cctor.add_local(Type::I32, Some("argc".into()))).unwrap();
@@ -93,7 +90,7 @@ fn hijack_arg_init(asm: &mut Assembly) {
     let argc_init = CILRoot::STLoc {
         local: argc,
         tree: conv_i32!(CILNode::LDLen {
-            arr: CILNode::LDLoc(managed_args.into()).into()
+            arr: CILNode::LDLoc(managed_args).into()
         }),
     };
     // Alloc argv
@@ -147,12 +144,12 @@ fn hijack_arg_init(asm: &mut Assembly) {
     let mut blocks = cctor.blocks_mut();
     let loop_block = &mut blocks[loop_bb as usize];
     // Load nth argument
-    let argn = CILNode::LDElelemRef {
+    let arg_nth = CILNode::LDElelemRef {
         arr: CILNode::LDLoc(managed_args).into(),
         idx: CILNode::LDLoc(arg_idx).into(),
     };
     // Convert the nth managed argument to UTF16
-    let uarg = mstring_to_utf8ptr(argn);
+    let uarg = mstring_to_utf8ptr(arg_nth);
     // Store the converted arg at idx+1
     loop_block.trees_mut().push(
         CILRoot::STIndISize(
@@ -178,7 +175,7 @@ fn hijack_arg_init(asm: &mut Assembly) {
                 lt!(
                     CILNode::LDLoc(arg_idx),
                     conv_i32!(CILNode::LDLen {
-                        arr: CILNode::LDLoc(managed_args.into()).into()
+                        arr: CILNode::LDLoc(managed_args).into()
                     })
                 ),
                 ldc_i32!(0)
@@ -206,7 +203,7 @@ fn hijack_arg_init(asm: &mut Assembly) {
                 args: [CILNode::LDLoc(argc), CILNode::LDLoc(argv)].into(),
             }
             .into(),
-        )
+        );
     } else {
         println!("WARNING: could not patch the arg initializer!");
     }

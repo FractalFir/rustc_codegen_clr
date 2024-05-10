@@ -250,6 +250,7 @@ pub enum CILOp {
 }
 impl CILOp {
     /// If the cil op is a call, virtual call, new object cosntructor OR it loads a pointer to a function, returns the [`CallSite`] representing this function.
+    #[must_use]
     pub fn call(&self) -> Option<&CallSite> {
         match self {
             Self::Call(site) => Some(site),
@@ -260,6 +261,7 @@ impl CILOp {
         }
     }
     /// Returns the ops necesary to construct and throw a new `System.Exception` with message `msg`.
+    #[must_use]
     pub fn throw_msg(msg: &str) -> [CILOp; 3] {
         let mut exception = DotnetTypeRef::new(Some("System.Runtime"), "System.Exception");
         exception.set_valuetype(false);
@@ -355,6 +357,7 @@ impl CILOp {
     }
     /// Descirbes the difference in stack size before and after the op.
     #[allow(clippy::match_same_arms)]
+    #[must_use]
     pub fn stack_diff(&self) -> isize {
         match self {
             CILOp::SourceFileInfo(_) => 0,

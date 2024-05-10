@@ -32,7 +32,7 @@ impl AssemblyExporter for ILASMExporter {
             ".field static {tpe} '{name}'",
             tpe = non_void_type_cil(tpe)
         )
-        .expect("Could not write global!")
+        .expect("Could not write global!");
     }
     fn init(asm_name: &str) -> Self {
         let mut encoded_asm = Vec::with_capacity(0x1_00);
@@ -235,7 +235,7 @@ fn method_cil(w: &mut impl Write, method: &Method) -> std::io::Result<()> {
     let mut input_iter = method.explicit_inputs().iter();
     if method.arg_names().is_empty() || method.arg_names().len() != method.explicit_inputs().len() {
         if method.arg_names().len() != method.explicit_inputs().len() {
-            println!("WARNING: debug arg count invalid!")
+            println!("WARNING: debug arg count invalid!");
         }
         if let Some(input) = input_iter.next() {
             write!(w, "{}", non_void_type_cil(input))?;
@@ -305,9 +305,13 @@ fn method_cil(w: &mut impl Write, method: &Method) -> std::io::Result<()> {
         "\n\t)\n.maxstack {maxstack}\n",
         maxstack = method.maxstack()
     )?;
-    for op in method.blocks().iter().flat_map(|block| block.into_ops()) {
-        if *crate::config::TRACE_CIL_OPS{
-            let op = format!("{}:{op:?}",method.name());
+    for op in method
+        .blocks()
+        .iter()
+        .flat_map(super::super::basic_block::BasicBlock::into_ops)
+    {
+        if *crate::config::TRACE_CIL_OPS {
+            let op = format!("{}:{op:?}", method.name());
             writeln!(
                 w,
                 "\tldstr {op:?}\n\tcall void [System.Console]System.Console::WriteLine(string)",

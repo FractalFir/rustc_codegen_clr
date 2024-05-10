@@ -171,6 +171,7 @@ pub enum CILNode {
     PointerToConstValue(u128),
 }
 impl CILNode {
+    #[must_use]
     pub fn select(tpe: Type, a: CILNode, b: CILNode, predictate: CILNode) -> Self {
         match tpe {
             Type::U128 | Type::I128 => call!(
@@ -273,7 +274,7 @@ impl CILNode {
             Self::RawOpsParrentless { ops: _ } => (),
             Self::Call { args, site: _ }
             | Self::NewObj { site: _, args }
-            | Self::CallVirt { args, site: _ } => args.iter_mut().for_each(|arg| arg.opt()),
+            | Self::CallVirt { args, site: _ } => args.iter_mut().for_each(CILNode::opt),
             Self::LdcI64(_)
             | Self::LdcU64(_)
             | Self::LdcI32(_)
@@ -297,8 +298,8 @@ impl CILNode {
             | Self::Not(inner) => inner.opt(),
             Self::TemporaryLocal(_inner) => (),
             Self::SubTrees(a, b) => {
-                a.iter_mut().for_each(|tree| tree.opt());
-                b.opt()
+                a.iter_mut().for_each(super::cil_root::CILRoot::opt);
+                b.opt();
             }
             Self::LoadAddresOfTMPLocal => (),
             Self::LoadTMPLocal => (),
@@ -306,7 +307,7 @@ impl CILNode {
             Self::LDTypeToken(_) => (),
             Self::LdStr(_) => (),
             Self::CallI (ptr_sig_arg ) => {
-                ptr_sig_arg.2.iter_mut().for_each(|arg| arg.opt());
+                ptr_sig_arg.2.iter_mut().for_each(CILNode::opt);
                 ptr_sig_arg.1.opt();
             }
             Self::LDStaticField(_static_field) => (),
@@ -319,7 +320,7 @@ impl CILNode {
     }
     // This fucntion will get expanded, so a single match is a non-issue.
     #[allow(clippy::single_match)]
-    /// Optimizes this CILNode.
+    /// Optimizes this `CILNode`.
     pub fn opt(&mut self) {
         self.opt_children();
         match self {
@@ -339,7 +340,7 @@ impl CILNode {
                         *self = Self::ConvUSize(Box::new(Self::LDFieldAdress {
                             addr: addr.clone(),
                             field: field.clone(),
-                        }))
+                        }));
                     }
                     _ => (),
                 },
@@ -348,23 +349,23 @@ impl CILNode {
             _ => (),
         }
     }
+    #[must_use]
     pub fn flatten(&self) -> Vec<CILOp> {
         let mut ops = match self {
             Self::PointerToConstValue(_value) => {
                 panic!("ERROR: const values must be allocated before CILOp flattening phase")
             }
             Self::CallI(sig_ptr_args) => {
-                let mut ops: Vec<_> = sig_ptr_args
-                    .2
-                    .iter()
-                    .flat_map(|arg| arg.flatten())
-                    .collect();
+                let mut ops: Vec<_> = sig_ptr_args.2.iter().flat_map(CILNode::flatten).collect();
                 ops.extend(sig_ptr_args.1.flatten());
                 ops.push(CILOp::CallI(sig_ptr_args.0.clone().into()));
                 ops
             }
             Self::SubTrees(trees, root) => {
-                let mut flattened: Vec<_> = trees.iter().flat_map(|tree| tree.into_ops()).collect();
+                let mut flattened: Vec<_> = trees
+                    .iter()
+                    .flat_map(super::cil_root::CILRoot::into_ops)
+                    .collect();
                 flattened.extend(root.flatten());
                 flattened
             }
@@ -543,17 +544,17 @@ impl CILNode {
 
             Self::RawOpsParrentless { ops } => ops.clone().into(),
             Self::Call { args, site } => {
-                let mut res: Vec<CILOp> = args.iter().flat_map(|arg| arg.flatten()).collect();
+                let mut res: Vec<CILOp> = args.iter().flat_map(CILNode::flatten).collect();
                 res.push(CILOp::Call(site.clone()));
                 res
             }
             Self::NewObj { args, site } => {
-                let mut res: Vec<CILOp> = args.iter().flat_map(|arg| arg.flatten()).collect();
+                let mut res: Vec<CILOp> = args.iter().flat_map(CILNode::flatten).collect();
                 res.push(CILOp::NewObj(site.clone()));
                 res
             }
             Self::CallVirt { args, site } => {
-                let mut res: Vec<CILOp> = args.iter().flat_map(|arg| arg.flatten()).collect();
+                let mut res: Vec<CILOp> = args.iter().flat_map(CILNode::flatten).collect();
                 res.push(CILOp::CallVirt(site.clone()));
                 res
             }
@@ -637,10 +638,10 @@ impl CILNode {
             | Self::Gt(a, b)
             | Self::GtUn(a, b) => {
                 a.allocate_tmps(curr_loc, locals);
-                b.allocate_tmps(curr_loc, locals)
+                b.allocate_tmps(curr_loc, locals);
             }
             Self::RawOpsParrentless { ops: _ } => {
-                eprintln!("WARNING: allocate_tmps does not work for `RawOpsParrentless`")
+                eprintln!("WARNING: allocate_tmps does not work for `RawOpsParrentless`");
             }
             Self::Call { args, site: _ } |
             Self::CallVirt { args, site: _ } =>args.iter_mut().for_each(|arg|arg.allocate_tmps(curr_loc, locals)),
@@ -679,7 +680,7 @@ impl CILNode {
             },
             Self::SubTrees(trees, main) =>{
                 trees.iter_mut().for_each(|arg|arg.allocate_tmps(curr_loc,locals));
-                main.allocate_tmps(curr_loc, locals)
+                main.allocate_tmps(curr_loc, locals);
             }
             Self::LoadAddresOfTMPLocal => *self = Self::LDLocA(curr_loc.expect("Temporary local referenced when none present")),
             Self::LoadTMPLocal =>*self = Self::LDLoc(curr_loc.expect("Temporary local referenced when none present")),
@@ -689,11 +690,11 @@ impl CILNode {
             Self::LdStr(_) => (),
             Self::CallI (sig_ptr_args) => {
                 sig_ptr_args.1.allocate_tmps(curr_loc, locals);
-                sig_ptr_args.2.iter_mut().for_each(|arg|arg.allocate_tmps(curr_loc, locals))
+                sig_ptr_args.2.iter_mut().for_each(|arg|arg.allocate_tmps(curr_loc, locals));
             }
             Self::LDStaticField(_sfield)=>(),
             Self::LDLen { arr } =>{
-               arr.allocate_tmps(curr_loc, locals)
+               arr.allocate_tmps(curr_loc, locals);
             }
             Self::LDElelemRef { arr, idx }=>{
                 arr.allocate_tmps(curr_loc, locals);
@@ -748,10 +749,10 @@ impl CILNode {
             | Self::Gt(a, b)
             | Self::GtUn(a, b) => {
                 a.resolve_global_allocations(asm,tyctx,tycahce);
-                b.resolve_global_allocations(asm,tyctx,tycahce)
+                b.resolve_global_allocations(asm,tyctx,tycahce);
             }
             Self::RawOpsParrentless { ops: _ } => {
-                eprintln!("WARNING: resolve_global_allocations does not work for `RawOpsParrentless`")
+                eprintln!("WARNING: resolve_global_allocations does not work for `RawOpsParrentless`");
             }
             Self::Call { args, site: _ } |
             Self::CallVirt { args, site: _ } =>args.iter_mut().for_each(|arg|arg.resolve_global_allocations(asm,tyctx,tycahce)),
@@ -787,7 +788,7 @@ impl CILNode {
             },
             Self::SubTrees(trees, main) =>{
                 trees.iter_mut().for_each(|arg|arg.resolve_global_allocations(asm,tyctx,tycahce));
-                main.resolve_global_allocations(asm,tyctx,tycahce)
+                main.resolve_global_allocations(asm,tyctx,tycahce);
             }
             Self::LoadAddresOfTMPLocal => (),
             Self::LoadTMPLocal => (),
@@ -855,7 +856,7 @@ impl CILNode {
             }
             Self::RawOpsParrentless { ops: _ } => vec![],
             Self::Call { args, site: _ } | Self::CallVirt { args, site: _ } => {
-                args.iter_mut().flat_map(|arg| arg.sheed_trees()).collect()
+                args.iter_mut().flat_map(CILNode::sheed_trees).collect()
             }
             Self::LdcI64(_)
             | Self::LdcU64(_)
@@ -900,12 +901,12 @@ impl CILNode {
             Self::LoadTMPLocal => panic!("Trees should be sheed after locals are allocated!"),
             Self::LDFtn(_) | Self::LDTypeToken(_) => vec![],
             Self::NewObj { site: _, args } => {
-                args.iter_mut().flat_map(|arg| arg.sheed_trees()).collect()
+                args.iter_mut().flat_map(CILNode::sheed_trees).collect()
             }
             Self::LdStr(_) => vec![],
             Self::CallI(sig_ptr_args) => {
                 let mut res = sig_ptr_args.1.sheed_trees();
-                res.extend(sig_ptr_args.2.iter_mut().flat_map(|arg| arg.sheed_trees()));
+                res.extend(sig_ptr_args.2.iter_mut().flat_map(CILNode::sheed_trees));
                 res
             }
             Self::LDLen { arr } => arr.sheed_trees(),

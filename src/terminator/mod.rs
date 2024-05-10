@@ -310,11 +310,10 @@ fn handle_switch(ty: Ty, discr: CILNode, switch: &SwitchTargets) -> Vec<CILTree>
         let const_val = match ty.kind() {
             TyKind::Int(int) => crate::constant::load_const_int(value, int),
             TyKind::Uint(uint) => crate::constant::load_const_uint(value, uint),
-            TyKind::Bool => CILNode::LdcI32(
+            TyKind::Bool => CILNode::LdcI32(i32::from(
                 u8::try_from(value)
-                    .expect("Bool value outside of range 0-255. Should be either 0 OR 1.")
-                    as i32,
-            ),
+                    .expect("Bool value outside of range 0-255. Should be either 0 OR 1."),
+            )),
             TyKind::Char => crate::constant::load_const_uint(value, &rustc_middle::ty::UintTy::U64),
             _ => todo!("Unsuported switch discriminant type {ty:?}"),
         };

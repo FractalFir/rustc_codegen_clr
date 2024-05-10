@@ -89,11 +89,11 @@ fn zero(ty: Ty) -> CILNode {
 }
 fn min(ty: Ty) -> CILNode {
     match ty.kind() {
-        TyKind::Uint(UintTy::U8) => crate::ldc_u32!(u8::MIN as u32),
-        TyKind::Uint(UintTy::U16) => crate::ldc_u32!(u16::MIN as u32),
+        TyKind::Uint(UintTy::U8) => crate::ldc_u32!(u32::from(u8::MIN)),
+        TyKind::Uint(UintTy::U16) => crate::ldc_u32!(u32::from(u16::MIN)),
         TyKind::Uint(UintTy::U32) => crate::ldc_u32!(u32::MIN),
-        TyKind::Int(IntTy::I8) => crate::ldc_i32!(i8::MIN as i32),
-        TyKind::Int(IntTy::I16) => crate::ldc_i32!(i16::MIN as i32),
+        TyKind::Int(IntTy::I8) => crate::ldc_i32!(i32::from(i8::MIN)),
+        TyKind::Int(IntTy::I16) => crate::ldc_i32!(i32::from(i16::MIN)),
         TyKind::Int(IntTy::I32) => crate::ldc_i32!(i32::MIN),
         TyKind::Uint(UintTy::U64) => crate::ldc_u64!(u64::MIN),
         TyKind::Int(IntTy::I64) => crate::ldc_i64!(i64::MIN),
@@ -138,11 +138,11 @@ fn min(ty: Ty) -> CILNode {
 }
 fn max(ty: Ty) -> CILNode {
     match ty.kind() {
-        TyKind::Uint(UintTy::U8) => crate::ldc_u32!(u8::MAX as u32),
-        TyKind::Uint(UintTy::U16) => crate::ldc_u32!(u16::MAX as u32),
+        TyKind::Uint(UintTy::U8) => crate::ldc_u32!(u32::from(u8::MAX)),
+        TyKind::Uint(UintTy::U16) => crate::ldc_u32!(u32::from(u16::MAX)),
         TyKind::Uint(UintTy::U32) => crate::ldc_u32!(u32::MAX),
-        TyKind::Int(IntTy::I8) => crate::ldc_i32!(i8::MAX as i32),
-        TyKind::Int(IntTy::I16) => crate::ldc_i32!(i16::MAX as i32),
+        TyKind::Int(IntTy::I8) => crate::ldc_i32!(i32::from(i8::MAX)),
+        TyKind::Int(IntTy::I16) => crate::ldc_i32!(i32::from(i16::MAX)),
         TyKind::Int(IntTy::I32) => crate::ldc_i32!(i32::MAX),
         TyKind::Uint(UintTy::U64) => crate::ldc_u64!(u64::MAX),
         TyKind::Int(IntTy::I64) => crate::ldc_i64!(i64::MAX),
