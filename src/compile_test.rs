@@ -875,10 +875,9 @@ compare_tests! {fuzz,fuzz159,stable}
 compare_tests! {fuzz,fuzz333,stable}
 compare_tests! {fuzz,fuzz580,stable}
 // Assembler issue:fuzz952
-
 compare_tests! {fuzz,fuzz952,stable}
 // Faliure list between 0 - 1000:
-// [(511, 0.04589202155894068), (530, 0.08749974898514312), (143, 0.0903143569501278), (608, 0.09970870467230675)]
+// [(530, 0.08749974898514312), (143, 0.0903143569501278), (608, 0.09970870467230675)]
 run_test! {fuzz,fail0,stable}
 run_test! {fuzz,fail1,stable}
 compare_tests! {fuzz,fail3,stable}

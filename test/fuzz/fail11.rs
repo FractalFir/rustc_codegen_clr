@@ -466,20 +466,23 @@ fn dump_var(
     }
 }
 
-fn fn6(
-  
-) {
-
-   
+fn fn6() {
     let tmp5 = Adt50 {
         fld0: 50,
         fld1: [false; 6],
     };
- 
-    
-    unsafe{
-        printf("offset of fld0:%p. size of fld0:%x\n\0".as_ptr() as *const i8, core::ptr::addr_of!(tmp5.fld0) as usize - core::ptr::addr_of!(tmp5) as usize,core::mem::size_of_val(&tmp5.fld0) as u32);
-        printf("offset of fld1:%p. size of fld1:%x\n\0".as_ptr() as *const i8, core::ptr::addr_of!(tmp5.fld1) as usize - core::ptr::addr_of!(tmp5) as usize,core::mem::size_of_val(&tmp5.fld1) as u32);
+
+    unsafe {
+        printf(
+            "offset of fld0:%p. size of fld0:%x\n\0".as_ptr() as *const i8,
+            core::ptr::addr_of!(tmp5.fld0) as usize - core::ptr::addr_of!(tmp5) as usize,
+            core::mem::size_of_val(&tmp5.fld0) as u32,
+        );
+        printf(
+            "offset of fld1:%p. size of fld1:%x\n\0".as_ptr() as *const i8,
+            core::ptr::addr_of!(tmp5.fld1) as usize - core::ptr::addr_of!(tmp5) as usize,
+            core::mem::size_of_val(&tmp5.fld1) as u32,
+        );
     }
     dump_var(
         6_usize,
@@ -498,6 +501,7 @@ pub fn main() {
     fn6();
     fn9();
 
+    fn16();
     fn1();
 }
 
@@ -507,41 +511,60 @@ impl PrintFDebug for Adt50 {
         unsafe { printf("}\0".as_ptr() as *const c_char) };
     }
 }
-#[derive(Copy, Clone, Debug,Default)]
+#[derive(Copy, Clone, Debug, Default)]
 pub struct Adt50 {
     fld0: i16,
     fld1: [bool; 6],
 }
 
 fn fn9() {
-let mut _11: [usize; 5];
-let two = std::hint::black_box(2);
-let not_two = std::hint::black_box(!two); 
-let tmp = not_two / two;
-_11 = [tmp,tmp,tmp,tmp,tmp];
-dump_var(9_usize, 9_usize, (tmp), 1_usize, (two), 2_usize, not_two, 0xFF_usize, ());
-
+    let mut _11: [usize; 5];
+    let two = std::hint::black_box(2);
+    let not_two = std::hint::black_box(!two);
+    let tmp = not_two / two;
+    _11 = [tmp, tmp, tmp, tmp, tmp];
+    dump_var(
+        9_usize,
+        9_usize,
+        (tmp),
+        1_usize,
+        (two),
+        2_usize,
+        not_two,
+        0xFF_usize,
+        (),
+    );
 }
 #[custom_mir(dialect = "runtime", phase = "initial")]
 fn fn1() -> f64 {
-mir! {
-type RET = f64;
-let _1: (i16, bool);
-let _2: (i16, bool);
-let _3: (i16, bool);
-let _4: (i16, bool);
-let _31: ();
+    mir! {
+    type RET = f64;
+    let _1: (i16, bool);
+    let _2: (i16, bool);
+    let _3: (i16, bool);
+    let _4: (i16, bool);
+    let _31: ();
 
-{
-_1 = Checked((-2150_i16) + (-21040_i16));
-_2 = Checked((2150_i16) + (-21040_i16));
-_3 = Checked((2150_i16) + (21040_i16));
-_4 = Checked((-2150_i16) + (21040_i16));
-Call(_31 = dump_var(1_usize, 1_usize, Move(_1), 2_usize, Move(_2), 3_usize, Move(_3), 4_usize, Move(_4)), ReturnTo(bb1), UnwindUnreachable())
-}
-bb1 = {
-Return()
+    {
+    _1 = Checked((-2150_i16) + (-21040_i16));
+    _2 = Checked((2150_i16) + (-21040_i16));
+    _3 = Checked((2150_i16) + (21040_i16));
+    _4 = Checked((-2150_i16) + (21040_i16));
+    Call(_31 = dump_var(1_usize, 1_usize, Move(_1), 2_usize, Move(_2), 3_usize, Move(_3), 4_usize, Move(_4)), ReturnTo(bb1), UnwindUnreachable())
+    }
+    bb1 = {
+    Return()
+    }
+
+    }
 }
 
-}
+fn fn16(
+   
+) {
+
+    let tmp = (-1886154176_i64) >> std::hint::black_box(35_usize);
+    dump_var(16_usize, 18_usize, (tmp), 23_usize,(), 23_usize, (), 23_usize, ());
+   
+
 }

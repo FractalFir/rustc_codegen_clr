@@ -111,7 +111,7 @@ fn min(ty: Ty) -> CILNode {
             CallSite::new_extern(
                 DotnetTypeRef::isize_type(),
                 "get_MinValue".into(),
-                FnSig::new(&[], &Type::USize),
+                FnSig::new(&[], &Type::ISize),
                 true
             ),
             []
@@ -160,7 +160,7 @@ fn max(ty: Ty) -> CILNode {
             CallSite::new_extern(
                 DotnetTypeRef::isize_type(),
                 "get_MaxValue".into(),
-                FnSig::new(&[], &Type::USize),
+                FnSig::new(&[], &Type::ISize),
                 true
             ),
             []
