@@ -280,8 +280,8 @@ impl AssemblyExporter for CExporter {
                 "-g",
                 sanitize,
                 "-o",
-                &final_path.to_string_lossy().to_owned(),
-                &src_path.to_string_lossy().to_owned(),
+                final_path.to_string_lossy().as_ref(),
+                src_path.to_string_lossy().as_ref(),
                 "-lm",
                 "-fno-strict-aliasing",
             ])
@@ -434,12 +434,7 @@ fn node_string(tree: &CILNode, method: &Method) -> String {
             a = node_string(a, method),
             b = node_string(b, method)
         ),
-        CILNode::Div(a, b) => format!(
-            "({a}) / ({b})",
-            a = node_string(a, method),
-            b = node_string(b, method)
-        ),
-        CILNode::DivUn(a, b) => format!(
+        CILNode::Div(a, b) | CILNode::DivUn(a, b) => format!(
             "({a}) / ({b})",
             a = node_string(a, method),
             b = node_string(b, method)
@@ -479,7 +474,7 @@ fn node_string(tree: &CILNode, method: &Method) -> String {
             let mut input_iter = args
                 .iter()
                 .zip(site.signature().inputs())
-                .filter_map(|(code, tpe)| if *tpe != Type::Void { Some(code) } else { None });
+                .filter_map(|(code, tpe)| if *tpe == Type::Void { Some(code) } else { None });
             let mut inputs: String = "(".into();
             if let Some(input) = input_iter.next() {
                 inputs.push_str(&node_string(input, method).to_string());
@@ -490,7 +485,7 @@ fn node_string(tree: &CILNode, method: &Method) -> String {
             inputs.push(')');
             let tpe_name = site
                 .class()
-                .map_or("".into(), |tpe| escape_type_name(tpe.name_path()));
+                .map_or(String::new(), |tpe| escape_type_name(tpe.name_path()));
             format!("{tpe_name}{name}{inputs}")
         }
         //CILNode::CallVirt { .. } => panic!("Virtual calls not supported in C."),
@@ -562,7 +557,7 @@ fn node_string(tree: &CILNode, method: &Method) -> String {
             let name = fn_sig.name();
             let tpe_name = fn_sig
                 .class()
-                .map_or("".into(), |tpe| escape_type_name(tpe.name_path()));
+                .map_or(String::new(), |tpe| escape_type_name(tpe.name_path()));
             format!("(uintptr_t)(&{tpe_name}{name})")
         }
         CILNode::LDTypeToken(tpe) => {
@@ -576,7 +571,7 @@ fn node_string(tree: &CILNode, method: &Method) -> String {
             let mut input_iter = args
                 .iter()
                 .zip(site.signature().inputs())
-                .filter_map(|(code, tpe)| if *tpe != Type::Void { Some(code) } else { None });
+                .filter_map(|(code, tpe)| if *tpe == Type::Void { None } else { Some(code) });
             let mut inputs: String = "(".into();
             if let Some(input) = input_iter.next() {
                 inputs.push_str(&node_string(input, method).to_string());
@@ -604,7 +599,7 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
         ),
         CILRoot::STLoc { local, tree } => {
             let local_ty = &method.locals()[*local as usize].1;
-            if let Some(_) = local_ty.as_dotnet() {
+            if local_ty.as_dotnet().is_some() {
                 format!("\tL{local} = {tree};\n", tree = node_string(tree, method))
             } else {
                 format!(
@@ -646,7 +641,7 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
                 .filter(|(_, tpe)| **tpe != Type::Void);
             let mut inputs: String = "(".into();
             if let Some((input, arg)) = input_iter.next() {
-                if let Some(_) = arg.as_dotnet() {
+                if arg.as_dotnet().is_some() {
                     inputs.push_str(&node_string(input, method).to_string());
                 } else {
                     inputs.push_str(&format!(
@@ -658,7 +653,7 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
                 //                inputs.push_str(&format!("{input}", input = node_string(input)));
             }
             for (input, arg) in input_iter {
-                if let Some(_) = arg.as_dotnet() {
+                if arg.as_dotnet().is_some() {
                     // Can't cast to a struct in C.
                     inputs.push_str(&format!(",{ops}", ops = node_string(input, method)));
                 } else {
@@ -672,11 +667,11 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
             inputs.push(')');
             let tpe_name = site
                 .class()
-                .map_or("".into(), |tpe| escape_type_name(tpe.name_path()));
+                .map_or(String::new(), |tpe| escape_type_name(tpe.name_path()));
             format!("{tpe_name}{name}{inputs};")
         }
         CILRoot::SetField { addr, value, desc } => {
-            if let Some(_) = desc.tpe().as_dotnet() {
+            if desc.tpe().as_dotnet().is_some() {
                 format!(
                     "(({owner}*){ptr})->{name}.f = {value};",
                     ptr = node_string(addr, method),
@@ -738,7 +733,7 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
             value_calc,
         } => {
             let local_ty = tpe;
-            if let Some(_) = local_ty.as_dotnet() {
+            if local_ty.as_dotnet().is_some() {
                 format!(
                     "*(({local_ty}*)({addr_calc})) = {value_calc};",
                     addr_calc = node_string(addr_calc, method),
@@ -756,7 +751,7 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
         }
         CILRoot::STArg { arg, tree } => {
             let arg_ty = &method.sig().inputs()[*arg as usize];
-            if let Some(_) = arg_ty.as_dotnet() {
+            if arg_ty.as_dotnet().is_some() {
                 format!("\tA{arg} = {tree};\n", tree = node_string(tree, method))
             } else {
                 format!(
@@ -778,7 +773,7 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
         }
         CILRoot::CallVirt { .. } => panic!("Virtual calls not supported in C."),
         CILRoot::Ret { tree } => {
-            if let Some(_) = method.sig().output().as_dotnet() {
+            if method.sig().output().as_dotnet().is_some() {
                 format!("\treturn {ops};", ops = node_string(tree, method))
             } else {
                 format!(
@@ -803,7 +798,7 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
         }
         CILRoot::SetStaticField { descr, value } => {
             let local_ty = descr.tpe();
-            if let Some(_) = local_ty.as_dotnet() {
+            if local_ty.as_dotnet().is_some() {
                 format!(
                     "{name} = {value_calc};",
                     name = descr.name(),

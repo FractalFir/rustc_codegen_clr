@@ -1,10 +1,10 @@
-use crate::cil::{CallSite, FieldDescriptor};
-use crate::function_sig::FnSig;
-use crate::r#type::{DotnetTypeRef, Type};
-use crate::{and, casts, conv_i64, conv_isize, conv_u64, gt, gt_un, ldc_u32, lt, or};
 use crate::{
     call, cil_tree::cil_node::CILNode, cil_tree::cil_root::CILRoot, conv_usize, r#type::TyCache,
+    and, casts, conv_i64, conv_isize, conv_u64, gt, gt_un, ldc_u32, lt, or,
     size_of,
+    cil::{CallSite, FieldDescriptor},
+    function_sig::FnSig,
+    r#type::{DotnetTypeRef, Type},
 };
 use rustc_middle::mir::{BinOp, Operand};
 use rustc_middle::ty::{Instance, IntTy, Ty, TyCtxt, TyKind, UintTy};
@@ -24,20 +24,21 @@ pub fn binop_checked<'tyctx>(
     let ty_b = operand_b.ty(&method.local_decls, tyctx);
     debug_assert_eq!(ty_a, ty_b);
     match binop {
-        BinOp::Sub => match ty_a.is_signed() {
-            true => sub_signed(ops_a, ops_b, ty_a, tyctx, method_instance, tycache),
-            false => sub_unsigned(ops_a, ops_b, ty_a, tyctx, method_instance, tycache),
-        },
-        BinOp::Add => match ty_a.is_signed() {
-            true => add_signed(ops_a, ops_b, ty_a, tyctx, method_instance, tycache),
-            false => add_unsigned(ops_a, ops_b, ty_a, tyctx, method_instance, tycache),
-        },
+        BinOp::Sub => if ty_a.is_signed() {
+            sub_signed(ops_a, ops_b, ty_a, tyctx, method_instance, tycache) }else{
+            sub_unsigned(ops_a, ops_b, ty_a, tyctx, method_instance, tycache)
+            }
+        BinOp::Add => if ty_a.is_signed() {
+            add_signed(ops_a, ops_b, ty_a, tyctx, method_instance, tycache)} else {
+            add_unsigned(ops_a, ops_b, ty_a, tyctx, method_instance, tycache)
+            }
+        ,
         // TODO: Chekced multiplcation is NOT checked
         BinOp::Mul => mul(ops_a, ops_b, ty_a, tyctx, method_instance, tycache),
         _ => todo!("Can't handle checked binop {binop:?}"),
     }
 }
-pub fn result_tuple<'tyctx>(tpe: Type, out_of_range: CILNode, val: CILNode) -> CILNode {
+pub fn result_tuple(tpe: Type, out_of_range: CILNode, val: CILNode) -> CILNode {
     let tuple = crate::r#type::simple_tuple(&[tpe.clone(), Type::Bool]);
     CILNode::TemporaryLocal(Box::new((
         tuple.clone().into(),
@@ -108,7 +109,7 @@ fn min(ty: Ty) -> CILNode {
         ),
         TyKind::Int(IntTy::Isize) => call!(
             CallSite::new_extern(
-                DotnetTypeRef::usize_type(),
+                DotnetTypeRef::isize_type(),
                 "get_MinValue".into(),
                 FnSig::new(&[], &Type::USize),
                 true
@@ -157,7 +158,7 @@ fn max(ty: Ty) -> CILNode {
         ),
         TyKind::Int(IntTy::Isize) => call!(
             CallSite::new_extern(
-                DotnetTypeRef::usize_type(),
+                DotnetTypeRef::isize_type(),
                 "get_MaxValue".into(),
                 FnSig::new(&[], &Type::USize),
                 true

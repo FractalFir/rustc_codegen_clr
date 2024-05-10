@@ -36,12 +36,12 @@ fn pointed_type(ty: PlaceTy) -> Ty {
 fn body_ty_is_by_adress(last_ty: Ty) -> bool {
     crate::assert_morphic!(last_ty);
     match *last_ty.kind() {
-        TyKind::Adt(_, _) | TyKind::Closure(_, _) | TyKind::Array(_, _) => true,
+
         // True for non-0 tuples
         TyKind::Tuple(elements) => !elements.is_empty(),
 
         //TODO: check if slices are handled propely
-        TyKind::Slice(_) | TyKind::Str => true,
+        TyKind::Adt(_, _) | TyKind::Closure(_, _) | TyKind::Array(_, _)  | TyKind::Slice(_) | TyKind::Str => true,
 
         TyKind::Int(_)
         | TyKind::Float(_)
@@ -102,7 +102,7 @@ pub fn deref_op<'ctx>(
             TyKind::Bool => CILNode::LDIndI8 { ptr }, // Both Rust bool and a managed bool are 1 byte wide. .NET bools are 4 byte wide only in the context of Marshaling/PInvoke,
             // due to historic reasons(BOOL was an alias for int in early Windows, and it stayed this way.) - FractalFir
             TyKind::Char => CILNode::LDIndI32 { ptr }, // always 4 bytes wide: https://doc.rust-lang.org/std/primitive.char.html#representation
-            TyKind::Adt(_, _) | TyKind::Tuple(_) => {
+            TyKind::Adt(_, _) | TyKind::Tuple(_) | TyKind::Array(_, _) | TyKind::FnPtr(_) | TyKind::Closure(_, _)  => {
                 let derefed_type =
                     type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance));
 
@@ -139,30 +139,7 @@ pub fn deref_op<'ctx>(
                     CILNode::LDIndISize { ptr }
                 }
             }
-            TyKind::Array(_, _) => {
-                let derefed_type =
-                    type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance));
-                CILNode::LdObj {
-                    ptr,
-                    obj: Box::new(derefed_type),
-                }
-            }
-            TyKind::FnPtr(_) => {
-                let derefed_type =
-                    type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance));
-                CILNode::LdObj {
-                    ptr,
-                    obj: Box::new(derefed_type),
-                }
-            }
-            TyKind::Closure(_, _) => {
-                let derefed_type =
-                    type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance));
-                CILNode::LdObj {
-                    ptr,
-                    obj: Box::new(derefed_type),
-                }
-            }
+           
             _ => todo!("TODO: can't deref type {derefed_type:?} yet"),
         }
     } else {

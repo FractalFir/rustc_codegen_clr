@@ -341,7 +341,8 @@ pub fn max_stack(ops: &[crate::cil::CILOp], does_return_void: bool) -> usize {
             max_stack = max_stack.max(stack);
         }
     }
-    max_stack as usize
+    assert!(max_stack >= 0);
+    usize::try_from(max_stack).expect("Max stack bigger than 2^64.")
 }
 pub(crate) fn alloc_id_to_u64(alloc_id: AllocId) -> u64 {
     unsafe { std::mem::transmute(alloc_id) }

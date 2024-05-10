@@ -23,7 +23,7 @@ pub fn handle_call_terminator<'tycxt>(
     args: &[Spanned<Operand<'tycxt>>],
     destination: &Place<'tycxt>,
     func: &Operand<'tycxt>,
-    target: &Option<BasicBlock>,
+    target: Option<BasicBlock>,
 ) -> Vec<CILTree> {
     let mut trees = Vec::new();
 
@@ -152,7 +152,7 @@ pub fn handle_terminator<'ctx>(
             args,
             destination,
             func,
-            target,
+            *target,
         ),
         TerminatorKind::Return => {
             let ret = crate::utilis::monomorphize(&method_instance, method.return_ty(), tyctx);
@@ -171,7 +171,7 @@ pub fn handle_terminator<'ctx>(
             let ty = crate::utilis::monomorphize(&method_instance, discr.ty(method, tyctx), tyctx);
             let discr =
                 crate::operand::handle_operand(discr, tyctx, method, method_instance, type_cache);
-            handle_switch(ty, discr, targets)
+            handle_switch(ty, &discr, targets)
         }
         TerminatorKind::Assert {
             cond: _,
@@ -302,7 +302,7 @@ pub fn handle_terminator<'ctx>(
     res
 }
 
-fn handle_switch(ty: Ty, discr: CILNode, switch: &SwitchTargets) -> Vec<CILTree> {
+fn handle_switch(ty: Ty, discr: &CILNode, switch: &SwitchTargets) -> Vec<CILTree> {
     let mut trees = Vec::new();
     for (value, target) in switch.iter() {
         //ops.extend(CILOp::debug_msg("Switchin"));

@@ -44,13 +44,14 @@ pub(crate) fn handler_for_block<'tyctx>(
     let term = block_data.terminator.as_ref()?;
     let unwind = term.unwind()?;
     Some(Handler::RawID(simplify_handler(
-        handler_from_action(unwind),
+        handler_from_action(*unwind),
         blocks,
         tyctx,
         method_instance,
         method,
     )?))
 }
+#[allow(clippy::match_same_arms)]
 fn simplify_handler<'tyctx>(
     handler: Option<u32>,
     blocks: &BasicBlocks<'tyctx>,
@@ -70,10 +71,9 @@ fn simplify_handler<'tyctx>(
             method_instance,
             method,
         ),
-        TerminatorKind::UnwindResume => None,
+        // Reaching Unreachable is UB, so we can do whatever, including doing nothing :).
+        TerminatorKind::UnwindResume | TerminatorKind::Unreachable => None,
         TerminatorKind::Return => panic!("Interal error: cleanup(unwind) block returns!"),
-        // Reaching this is UB, so we can do whatever, including doing nothing :).
-        TerminatorKind::Unreachable => None,
         // This block drops, so we **have** to execute it
         TerminatorKind::Drop {
             place,
@@ -121,7 +121,7 @@ fn simplify_handler<'tyctx>(
     }
 }
 /// Convert an `UnwindAction` into an id of the block this will jump into during an exception.
-pub(crate) fn handler_from_action(action: &UnwindAction) -> Option<u32> {
+pub(crate) fn handler_from_action(action: UnwindAction) -> Option<u32> {
     match action {
         UnwindAction::Continue => None,
         UnwindAction::Cleanup(handler) => Some(handler.as_u32()),
@@ -184,20 +184,16 @@ impl BasicBlock {
         }
     }
     pub(crate) fn resolve_exception_handlers(&mut self, handler_bbs: &[BasicBlock]) {
-        let handler = if let Some(handler) = &self.handler {
-            handler
-        } else {
+        let Some(handler) = &self.handler else {
             return;
         };
-        let handler_id = if let Handler::RawID(handler_id) = handler {
-            handler_id
-        } else {
+        let Handler::RawID(handler_id) = handler else {
             panic!("Tired to double-resolve ");
         };
         // Get alive blovks
         let mut handler = block_gc(*handler_id, handler_bbs);
         // Fix up handler jumps
-        for bb in handler.iter_mut() {
+        for bb in &mut handler {
             bb.trees
                 .iter_mut()
                 .for_each(|tree| tree.fix_for_exception_handler(self.id()));
@@ -249,7 +245,7 @@ impl BasicBlock {
     }
     fn flatten_inner(&self, id: u32, sub_id: u32) -> Vec<CILOp> {
         let mut ops = vec![CILOp::Label(id, sub_id)];
-        if let Some(_) = self.handler {
+        if self.handler.is_some() {
             ops.push(CILOp::BeginTry);
         };
         ops.extend(
@@ -260,9 +256,7 @@ impl BasicBlock {
         if let Some(handler) = &self.handler {
             ops.push(CILOp::BeginCatch);
             ops.push(CILOp::Pop);
-            let blocks = if let Handler::Blocks(blocks) = handler {
-                blocks
-            } else {
+            let Handler::Blocks(blocks) = handler else {
                 panic!("Unresolved eception handler blocks!")
             };
             for block in blocks {

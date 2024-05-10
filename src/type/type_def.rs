@@ -140,7 +140,7 @@ impl TypeDef {
 
     fn sanity_check(&self) {
         if let Some(size) = self.explict_size() {
-            self.explicit_offsets().iter().flat_map(|vec|*vec).for_each(|offset|assert!(*offset <= size as u32, "Sanity check failed! The size of type {name} is {size}, yet it has a filed at offset {offset}",name = self.name));
+            self.explicit_offsets().iter().flat_map(|vec|*vec).for_each(|offset|assert!(*offset <= u32::try_from(size).unwrap(), "Sanity check failed! The size of type {name} is {size}, yet it has a filed at offset {offset}",name = self.name));
         }
         if let Some(offsets) = self.explicit_offsets() {
             assert_eq!(

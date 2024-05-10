@@ -51,20 +51,20 @@ pub fn handle_aggregate<'tyctx>(
                 tyctx,
                 target_location,
                 method,
-                adt_def,
+                *adt_def,
                 adt_type,
                 subst,
                 variant_idx.as_u32(),
                 values,
                 method_instance,
-                active_field,
+                *active_field,
                 tycache,
             )
         }
         AggregateKind::Array(element) => {
             let element = crate::utilis::monomorphize(&method_instance, *element, tyctx);
             let element = tycache.type_from_cache(element, tyctx, Some(method_instance));
-            let array_type = DotnetTypeRef::array(element.clone(), value_index.len());
+            let array_type = DotnetTypeRef::array(&element, value_index.len());
             let array_getter = super::place::place_adress(
                 target_location,
                 tyctx,
@@ -251,13 +251,13 @@ fn aggregate_adt<'tyctx>(
     tyctx: TyCtxt<'tyctx>,
     target_location: &Place<'tyctx>,
     method: &rustc_middle::mir::Body<'tyctx>,
-    adt: &AdtDef<'tyctx>,
+    adt: AdtDef<'tyctx>,
     adt_type: Ty<'tyctx>,
     subst: &'tyctx List<GenericArg<'tyctx>>,
     variant_idx: u32,
     fields: Vec<(u32, CILNode)>,
     method_instance: Instance<'tyctx>,
-    active_field: &Option<FieldIdx>,
+    active_field: Option<FieldIdx>,
     type_cache: &mut crate::r#type::TyCache,
 ) -> CILNode {
     let adt_type = crate::utilis::monomorphize(&method_instance, adt_type, tyctx);

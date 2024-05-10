@@ -182,8 +182,8 @@ impl DotnetTypeRef {
         self.is_valuetype = is_valuetype;
     }
     #[must_use]
-    pub fn array(element: Type, length: usize) -> Self {
-        let name = crate::r#type::type_def::arr_name(length, &element);
+    pub fn array(element: &Type, length: usize) -> Self {
+        let name = crate::r#type::type_def::arr_name(length, element);
         DotnetTypeRef::new(None, &name)
     }
 
@@ -281,8 +281,7 @@ impl Type {
     pub fn dotnet_refs(&self) -> Option<DotnetTypeRef> {
         match self {
             Self::DotnetType(inner) => Some(inner.as_ref().clone()),
-            Self::Ptr(inner) => inner.dotnet_refs(),
-            Self::ManagedReference(inner) => inner.dotnet_refs(),
+            Self::Ptr(inner) | Self::ManagedReference(inner) => inner.dotnet_refs(),
             _ => None,
         }
     }

@@ -16,10 +16,10 @@ use crate::{
     call, conv_u16, conv_u32, conv_u64, conv_u8, conv_usize, div, eq, ldc_i32, rem, rem_un,
     size_of, sub,
 };
-use bitop::*;
+use bitop::{bit_and_unchecked, bit_or_unchecked, bit_xor_unchecked};
 pub use checked::binop_checked;
-use cmp::*;
-use shift::*;
+use cmp::{eq_unchecked, gt_unchecked, lt_unchecked, ne_unchecked};
+use shift::{shl_checked, shl_unchecked, shr_checked, shr_unchecked};
 /// Preforms an unchecked binary operation.
 pub(crate) fn binop_unchecked<'tyctx>(
     binop: BinOp,
@@ -256,9 +256,10 @@ fn rem_unchecked<'tyctx>(
                 [ops_a, ops_b]
             )
         }
-        TyKind::Int(_) => rem!(ops_a, ops_b),
+        TyKind::Int(_) | TyKind::Char |TyKind::Float(_)  => rem!(ops_a, ops_b),
         TyKind::Uint(_) => rem_un!(ops_a, ops_b),
-        _ => rem!(ops_a, ops_b),
+
+        _=>todo!(),
     }
 }
 
@@ -338,7 +339,7 @@ fn div_unchecked<'tyctx>(
             )
         }
         TyKind::Uint(_) => CILNode::DivUn(operand_a.into(), operand_b.into()),
-        TyKind::Int(_) => div!(operand_a, operand_b),
-        _ => div!(operand_a, operand_b),
+        TyKind::Int(_) | TyKind::Char | TyKind::Float(_) => div!(operand_a, operand_b),
+        _ => todo!(),
     }
 }

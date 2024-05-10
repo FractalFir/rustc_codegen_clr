@@ -8,6 +8,7 @@ use rustc_middle::{
     mir::{Body, CopyNonOverlapping, NonDivergingIntrinsic, Statement, StatementKind},
     ty::{Instance, ParamEnv, TyCtxt},
 };
+#[allow(clippy::match_same_arms)]
 pub fn handle_statement<'tcx>(
     statement: &Statement<'tcx>,
     tyctx: TyCtxt<'tcx>,

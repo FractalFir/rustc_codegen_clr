@@ -1,12 +1,6 @@
 use super::{pointed_type, PlaceTy};
-use crate::cil::{CallSite, FieldDescriptor};
-use crate::cil_tree::cil_node::CILNode;
-use crate::cil_tree::cil_root::CILRoot;
-use crate::function_sig::FnSig;
-use crate::place::{body_ty_is_by_adress, deref_op};
-use crate::r#type::Type;
-use crate::{assert_morphic, call, conv_usize, ld_field, ldc_u64};
 
+use crate::{cil_tree::{cil_node::CILNode,cil_root::CILRoot},cil::{CallSite, FieldDescriptor},function_sig::FnSig,place::{body_ty_is_by_adress, deref_op},r#type::Type,{assert_morphic, call, conv_usize, ld_field, ldc_u64}};
 use rustc_middle::mir::PlaceElem;
 use rustc_middle::ty::{Instance, Ty, TyCtxt, TyKind};
 pub fn local_body<'tcx>(
@@ -146,13 +140,7 @@ pub fn place_elem_body<'ctx>(
                 .expect("Can't get enum variant of an enum varaint!");
             let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
             let variant_type = PlaceTy::EnumVariant(curr_type, variant.as_u32());
-            /*(
-                variant_type,
-                CILNode::LDFieldAdress {
-                    field: field_desc,
-                    addr: parrent_node.into(),
-                },
-            )*/
+           
             (variant_type, parrent_node)
         }
         PlaceElem::Index(index) => {
@@ -191,7 +179,10 @@ pub fn place_elem_body<'ctx>(
                         .into(),
                     );
 
-                    if !body_ty_is_by_adress(inner) {
+                    if body_ty_is_by_adress(inner) {
+                        (inner.into(), addr)
+                        
+                    } else {
                         (
                             inner.into(),
                             super::deref_op(
@@ -202,8 +193,6 @@ pub fn place_elem_body<'ctx>(
                                 addr,
                             ),
                         )
-                    } else {
-                        (inner.into(), addr)
                     }
                 }
                 TyKind::Array(element, _length) => {
@@ -284,7 +273,10 @@ pub fn place_elem_body<'ctx>(
                             ),
                             [index, conv_usize!(ldc_u64!(*min_length))]
                         ) * conv_usize!(CILNode::SizeOf(inner_type.into()));
-                    if !body_ty_is_by_adress(inner) {
+                    if body_ty_is_by_adress(inner) {
+                        (inner.into(), addr)
+                       
+                    } else {
                         (
                             inner.into(),
                             super::deref_op(
@@ -295,8 +287,6 @@ pub fn place_elem_body<'ctx>(
                                 addr,
                             ),
                         )
-                    } else {
-                        (inner.into(), addr)
                     }
                 }
                 TyKind::Array(element, _length) => {
@@ -306,19 +296,7 @@ pub fn place_elem_body<'ctx>(
                     let array_type =
                         type_cache.type_from_cache(curr_ty, tyctx, Some(method_instance));
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
-                    if !body_ty_is_by_adress(element_ty) {
-                        let ops = CILNode::Call {
-                            site: crate::cil::CallSite::new(
-                                Some(array_dotnet),
-                                "get_Item".into(),
-                                FnSig::new(&[Type::Ptr(array_type.into()), Type::USize], &element),
-                                false,
-                            )
-                            .into(),
-                            args: [parrent_node, CILNode::ConvUSize(index.into())].into(),
-                        };
-                        ((element_ty).into(), ops)
-                    } else {
+                    if body_ty_is_by_adress(element_ty) {
                         let ops = CILNode::Call {
                             site: crate::cil::CallSite::new(
                                 Some(array_dotnet),
@@ -327,6 +305,19 @@ pub fn place_elem_body<'ctx>(
                                     &[Type::Ptr(array_type.into()), Type::USize],
                                     &Type::Ptr(element.into()),
                                 ),
+                                false,
+                            )
+                            .into(),
+                            args: [parrent_node, CILNode::ConvUSize(index.into())].into(),
+                        };
+                        ((element_ty).into(), ops)
+                        
+                    } else {
+                        let ops = CILNode::Call {
+                            site: crate::cil::CallSite::new(
+                                Some(array_dotnet),
+                                "get_Item".into(),
+                                FnSig::new(&[Type::Ptr(array_type.into()), Type::USize], &element),
                                 false,
                             )
                             .into(),

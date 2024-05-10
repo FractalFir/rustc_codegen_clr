@@ -1,6 +1,7 @@
 #![allow(non_upper_case_globals, dead_code)]
+#![allow(clippy::trivially_copy_pass_by_ref)]
 use core::num::NonZeroI32;
-use lazy_static::*;
+use lazy_static::lazy_static;
 
 use crate::r#type::Type;
 

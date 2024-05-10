@@ -55,7 +55,10 @@ impl FieldOffsetIterator {
                     .iter()
                     .enumerate()
                     .map(|(index, _mem_idx)| {
-                        u32::try_from(offsets[FieldIdx::from_u32(u32::try_from(index).unwrap())].bytes()).unwrap()
+                        u32::try_from(
+                            offsets[FieldIdx::from_u32(u32::try_from(index).unwrap())].bytes(),
+                        )
+                        .unwrap()
                     })
                     //TODO: ask what does field offset of 4294967295 means.
                     .map(|offset| {
@@ -72,12 +75,10 @@ impl FieldOffsetIterator {
                 count: Into::<usize>::into(*count) as u64,
             },
             FieldsShape::Primitive => Self::Empty,
-            FieldsShape::Array{ .. } => todo!("Unhandled fields shape: {fields:?}"),
+            FieldsShape::Array { .. } => todo!("Unhandled fields shape: {fields:?}"),
         }
     }
-    pub fn fields(
-        parent: LayoutS<FieldIdx, rustc_target::abi::VariantIdx>,
-    ) -> FieldOffsetIterator {
+    pub fn fields(parent: LayoutS<FieldIdx, rustc_target::abi::VariantIdx>) -> FieldOffsetIterator {
         //eprintln!("ADT fields:{:?}",parent.fields);
         Self::from_fields_shape(&parent.fields)
     }
@@ -101,7 +102,8 @@ pub fn enum_tag_info<'tyctx>(r#enum: Layout<'tyctx>, _: TyCtxt<'tyctx>) -> (Type
 }
 fn scalr_to_type(scalar: rustc_target::abi::Scalar) -> Type {
     let primitive = match scalar {
-        rustc_target::abi::Scalar::Union { value } | rustc_target::abi::Scalar::Initialized { value, .. } => value,
+        rustc_target::abi::Scalar::Union { value }
+        | rustc_target::abi::Scalar::Initialized { value, .. } => value,
     };
     primitive_to_type(primitive)
 }
@@ -190,7 +192,6 @@ pub fn set_discr<'tyctx>(
         } => {
             if variant_index == untagged_variant {
                 CILRoot::Nop
-               
             } else {
                 let (tag_tpe, _) = enum_tag_info(layout, tyctx);
                 //let niche = self.project_field(bx, tag_field);

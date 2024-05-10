@@ -1,3 +1,5 @@
+#![allow(clippy::cast_precision_loss)]
+
 use crate::{
     add_method_from_trees,
     assembly::Assembly,
@@ -11,7 +13,6 @@ use crate::{
     gt, ldc_i32, ldc_i64, ldc_u32, ldc_u64, lt, or,
     r#type::{DotnetTypeRef, Type},
 };
-
 add_method_from_trees!(
     cast_i32_to_u64,
     &[Type::I32],

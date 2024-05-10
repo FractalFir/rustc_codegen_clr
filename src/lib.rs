@@ -1,8 +1,15 @@
 #![feature(rustc_private, box_patterns)]
 // Used for handling some configs. Will be refactored later.
 #![allow(clippy::assertions_on_constants)]
+// The complexity is managable for now.
+#![allow(
+    clippy::too_many_lines,
+    clippy::too_many_arguments,
+    clippy::too_many_lines
+)]
 // Not a big issue.
 #![allow(clippy::module_name_repetitions)]
+#![allow(clippy::missing_panics_doc, clippy::missing_errors_doc,clippy::module_inception)]
 //#![warn(missing_docs)]
 //#![warn(clippy::missing_docs_in_private_items)]
 
@@ -223,7 +230,7 @@ impl CodegenBackend for MyBackend {
                 let symbol = tcx.symbol_name(entrypoint);
                 let symbol = format!("{symbol:?}");
                 let cs = cil::CallSite::new(None, symbol.into(), sig, true);
-                codegen.set_entrypoint(cs);
+                codegen.set_entrypoint(&cs);
             }
             codegen.opt();
             // Done twice for inlining!

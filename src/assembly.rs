@@ -337,13 +337,13 @@ impl Assembly {
             if block_data.is_cleanup {
                 cleanup_bbs.push(BasicBlock::new(
                     trees,
-                    last_bb_id as u32,
+                    u32::try_from(last_bb_id).unwrap(),
                     handler_for_block(block_data, &mir.basic_blocks, tyctx, &instance, mir),
                 ));
             } else {
                 normal_bbs.push(BasicBlock::new(
                     trees,
-                    last_bb_id as u32,
+                    u32::try_from(last_bb_id).unwrap(),
                     handler_for_block(block_data, &mir.basic_blocks, tyctx, &instance, mir),
                 ));
             }
@@ -455,7 +455,7 @@ impl Assembly {
             Type::Ptr(Type::U8.into()),
             alloc_fld.clone(),
         );
-        if self.static_fields.get(&alloc_fld).is_none() {
+        if !self.static_fields.contains_key(&alloc_fld) {
             let init_method =
                 allocation_initializer_method(const_allocation, &alloc_fld, tcx, self, tycache);
             let cctor = self.add_cctor();
@@ -538,9 +538,8 @@ impl Assembly {
             alive_fields.contains(&StaticFieldDescriptor::new(None, tpe.clone(), name.clone()))
         });
         // Remove their initializers from the cctor
-        let cctor = match self.cctor_mut() {
-            Some(cctor) => cctor,
-            None => return,
+        let Some(cctor) = self.cctor_mut() else {
+            return;
         };
         for tree in cctor
             .blocks_mut()
@@ -625,9 +624,9 @@ impl Assembly {
         }
     }
     /// Sets the entrypoint of the assembly to the method behind `CallSite`.
-    pub fn set_entrypoint(&mut self, entrypoint: CallSite) {
+    pub fn set_entrypoint(&mut self, entrypoint: &CallSite) {
         assert!(self.entrypoint.is_none(), "ERROR: Multiple entrypoints");
-        let wrapper = crate::entrypoint::wrapper(&entrypoint);
+        let wrapper = crate::entrypoint::wrapper(entrypoint);
         self.entrypoint = Some(wrapper.call_site());
         self.add_method(wrapper);
     }
@@ -762,7 +761,7 @@ impl Assembly {
             Type::Ptr(Type::U8.into()),
             alloc_fld.clone(),
         );
-        if self.static_fields.get(&alloc_fld).is_none() {
+        if !self.static_fields.contains_key(&alloc_fld) {
             let block = BasicBlock::new(
                 vec![
                     CILRoot::STLoc {
@@ -924,6 +923,8 @@ fn link_static_initializers(a: Option<&Method>, b: Option<&Method>) -> Option<Me
         }
     }
 }
+type LocalDefList = Vec<(Option<IString>, Type)>;
+type ArgsDebugInfo = Vec<Option<IString>>;
 /// Returns the list of all local variables within MIR of a function, and converts them to the internal type represenation `Type`
 fn locals_from_mir<'tyctx>(
     locals: &rustc_index::IndexVec<Local, LocalDecl<'tyctx>>,
@@ -932,7 +933,7 @@ fn locals_from_mir<'tyctx>(
     method_instance: &Instance<'tyctx>,
     tycache: &mut TyCache,
     var_debuginfo: &[rustc_middle::mir::VarDebugInfo<'tyctx>],
-) -> (Vec<Option<IString>>, Vec<(Option<IString>, Type)>) {
+) -> (ArgsDebugInfo, LocalDefList) {
     use rustc_middle::mir::VarDebugInfoContents;
     let mut local_types: Vec<(Option<IString>, _)> = Vec::with_capacity(locals.len());
     for (local_id, local) in locals.iter().enumerate() {
@@ -1014,7 +1015,7 @@ fn allocation_initializer_method(
     }
     if !ptrs.is_empty() {
         for (offset, prov) in ptrs.iter() {
-            let offset = offset.bytes_usize() as u32;
+            let offset = u32::try_from(offset.bytes_usize()).unwrap();
             // Check if this allocation is a function
             let reloc_target_alloc = tyctx.global_alloc(prov.alloc_id());
             if let GlobalAlloc::Function(finstance) = reloc_target_alloc {

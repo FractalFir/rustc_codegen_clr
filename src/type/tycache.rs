@@ -64,7 +64,7 @@ impl TyCache {
         tyctx: TyCtxt<'tyctx>,
         method: Option<Instance<'tyctx>>,
     ) -> DotnetTypeRef {
-        if self.type_def_cache.get(name).is_some() {
+        if self.type_def_cache.contains_key(name) {
             return DotnetTypeRef::new(None, name);
         }
         if self
@@ -216,18 +216,16 @@ impl TyCache {
             rustc_target::abi::Variants::Multiple {
                 tag: _,
                 tag_encoding,
-                tag_field,
+                tag_field: _,
                 variants: _,
             } => {
-             
-            
                 let layout = tyctx
                     .layout_of(rustc_middle::ty::ParamEnvAnd {
                         param_env: ParamEnv::reveal_all(),
                         value: adt_ty,
                     })
                     .expect("Could not get type layout!");
-                
+
                 match tag_encoding {
                     rustc_target::abi::TagEncoding::Direct => {
                         let (tag_type, offset) =
@@ -505,7 +503,7 @@ impl TyCache {
                         ),
                     );
                 }
-                DotnetTypeRef::array(element, length).into()
+                DotnetTypeRef::array(&element, length).into()
             }
             TyKind::Alias(_, _) => {
                 //self.cycle_prevention.push("ALIAS_PREV")
@@ -558,10 +556,11 @@ pub fn ty_generic_arg(ty: Ty) -> GenericArg {
 
 fn try_find_ptr_components(ctx: TyCtxt) -> DefId {
     use crate::rustc_middle::dep_graph::DepContext;
+    use rustc_middle::middle::exported_symbols::ExportedSymbol;
     let find_ptr_components_timer = ctx
         .profiler()
         .generic_activity("ptr::metadata::PtrComponents");
-    use rustc_middle::middle::exported_symbols::ExportedSymbol;
+    
     let mut core = None;
     for krate in ctx.crates(()) {
         let name = ctx.crate_name(*krate);

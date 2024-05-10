@@ -438,23 +438,22 @@ pub fn call<'tyctx>(
         }
         assert_eq!(signature.inputs().len(), call_args.len());
         let is_ret_void = matches!(signature.output(), crate::r#type::Type::Void);
-        if is_ret_void {
-            return CILRoot::CallI {
+        return if is_ret_void {
+            CILRoot::CallI {
                 sig: signature,
                 fn_ptr,
                 args: call_args.into(),
-            };
+            }
         } else {
-            return crate::place::place_set(
+            crate::place::place_set(
                 destination,
                 tyctx,
                 CILNode::CallI(Box::new((signature, fn_ptr, call_args.into()))),
                 body,
                 method_instance,
                 type_cache,
-            );
-        }
-        //let ind = ;
+            )
+        };
     }
     let call_info = CallInfo::sig_from_instance_(instance, tyctx, type_cache)
         .expect("Could not resolve function sig");
@@ -585,7 +584,9 @@ pub fn call<'tyctx>(
     //assert_eq!(args.len(),signature.inputs().len(),"CALL SIGNATURE ARG COUNT MISMATCH!");
     let is_void = matches!(signature.output(), crate::r#type::Type::Void);
     //rustc_middle::ty::print::with_no_trimmed_paths! {call.push(CILOp::Comment(format!("Calling {instance:?}").into()))};
-    if let InstanceDef::DropGlue(_def, None) = instance.def { return CILRoot::Nop };
+    if let InstanceDef::DropGlue(_def, None) = instance.def {
+        return CILRoot::Nop;
+    };
     let call_site = CallSite::new(None, function_name, signature, true);
     // Hande
     if is_void {
