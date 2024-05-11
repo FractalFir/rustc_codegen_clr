@@ -306,6 +306,8 @@ pub fn call_closure<'tyctx>(
             type_cache,
         ));
     }
+    // "Rust call" is wierd, and not at all optimized for .NET. Passing all the arguments in a tuple is bad for performance and simplicty. Thus, unpacking this tuple and forcing "Rust call" to be
+    // "normal" is far easier and better for performance.
     let last_arg_type =
         crate::utilis::monomorphize(&method_instance, last_arg.node.ty(body, tyctx), tyctx);
     match last_arg_type.kind() {

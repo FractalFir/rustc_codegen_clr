@@ -1,4 +1,5 @@
-#![feature(rustc_private, box_patterns)]
+#![feature(rustc_private)]
+#![feature(let_chains)]
 // Used for handling some configs. Will be refactored later.
 #![allow(clippy::assertions_on_constants)]
 // The complexity is managable for now.
@@ -9,7 +10,11 @@
 )]
 // Not a big issue.
 #![allow(clippy::module_name_repetitions)]
-#![allow(clippy::missing_panics_doc, clippy::missing_errors_doc,clippy::module_inception)]
+#![allow(
+    clippy::missing_panics_doc,
+    clippy::missing_errors_doc,
+    clippy::module_inception
+)]
 //#![warn(missing_docs)]
 //#![warn(clippy::missing_docs_in_private_items)]
 

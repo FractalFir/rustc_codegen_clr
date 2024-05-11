@@ -37,7 +37,9 @@ pub fn eq_unchecked(ty_a: Ty<'_>, operand_a: CILNode, operand_b: CILNode) -> CIL
             ),
             _ => eq!(operand_a, operand_b),
         },
-        TyKind::Bool |  TyKind::Char  | TyKind::Float(_) | TyKind::RawPtr(_, _)  => eq!(operand_a, operand_b),
+        TyKind::Bool | TyKind::Char | TyKind::Float(_) | TyKind::RawPtr(_, _) => {
+            eq!(operand_a, operand_b)
+        }
         _ => panic!("Can't eq type  {ty_a:?}"),
     }
 }
@@ -101,7 +103,7 @@ pub fn gt_unchecked(ty_a: Ty<'_>, operand_a: CILNode, operand_b: CILNode) -> CIL
             _ => gt!(operand_a, operand_b),
         },
         // TODO: are chars considered signed or unsigned?
-        TyKind::Bool |  TyKind::Char  | TyKind::Float(_) => gt!(operand_a, operand_b),
+        TyKind::Bool | TyKind::Char | TyKind::Float(_) => gt!(operand_a, operand_b),
         TyKind::RawPtr(_, _) => gt_un!(operand_a, operand_b),
         _ => panic!("Can't eq type  {ty_a:?}"),
     }

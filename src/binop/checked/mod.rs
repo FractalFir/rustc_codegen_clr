@@ -1,10 +1,14 @@
 use crate::{
-    call, cil_tree::cil_node::CILNode, cil_tree::cil_root::CILRoot, conv_usize, r#type::TyCache,
-    and, casts, conv_i64, conv_isize, conv_u64, gt, gt_un, ldc_u32, lt, or,
-    size_of,
+    and, call, casts,
     cil::{CallSite, FieldDescriptor},
+    cil_tree::cil_node::CILNode,
+    cil_tree::cil_root::CILRoot,
+    conv_i64, conv_isize, conv_u64, conv_usize,
     function_sig::FnSig,
+    gt, gt_un, ldc_u32, lt, or,
+    r#type::TyCache,
     r#type::{DotnetTypeRef, Type},
+    size_of,
 };
 use rustc_middle::mir::{BinOp, Operand};
 use rustc_middle::ty::{Instance, IntTy, Ty, TyCtxt, TyKind, UintTy};

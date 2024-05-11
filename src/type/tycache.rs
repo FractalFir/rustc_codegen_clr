@@ -560,7 +560,7 @@ fn try_find_ptr_components(ctx: TyCtxt) -> DefId {
     let find_ptr_components_timer = ctx
         .profiler()
         .generic_activity("ptr::metadata::PtrComponents");
-    
+
     let mut core = None;
     for krate in ctx.crates(()) {
         let name = ctx.crate_name(*krate);

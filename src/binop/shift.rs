@@ -78,7 +78,8 @@ pub fn shr_checked<'tyctx>(
     ops_b: CILNode,
 ) -> CILNode {
     let type_b = tycache.type_from_cache(shift_type, tyctx, Some(*method_instance));
-    let bit_cap = u32::try_from(compiletime_sizeof(value_type, tyctx) * 8).expect("Intiger size over 2^32 bits.");
+    let bit_cap = u32::try_from(compiletime_sizeof(value_type, tyctx) * 8)
+        .expect("Intiger size over 2^32 bits.");
     match value_type.kind() {
         TyKind::Uint(UintTy::U128) => {
             call!(
@@ -156,7 +157,8 @@ pub fn shl_checked<'tyctx>(
     ops_b: CILNode,
 ) -> CILNode {
     let type_b = tycache.type_from_cache(shift_type, tyctx, Some(*method_instance));
-    let bit_cap = u32::try_from(compiletime_sizeof(value_type, tyctx) * 8).expect("Intiger has over 2^32 bits.");
+    let bit_cap = u32::try_from(compiletime_sizeof(value_type, tyctx) * 8)
+        .expect("Intiger has over 2^32 bits.");
     match value_type.kind() {
         TyKind::Uint(UintTy::U128) => {
             call!(

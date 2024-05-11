@@ -309,7 +309,9 @@ pub fn load_const_int(value: u128, int_type: &IntTy) -> CILNode {
             CILNode::ConvI16(CILNode::LdcI32(i32::from(value)).into())
         }
         IntTy::I32 => CILNode::LdcI32(i32::from_ne_bytes((value as u32).to_ne_bytes())),
-        IntTy::I64 => CILNode::ConvI64(CILNode::LdcI64(i64::from_ne_bytes((value as u64).to_ne_bytes())).into()),
+        IntTy::I64 => CILNode::ConvI64(
+            CILNode::LdcI64(i64::from_ne_bytes((value as u64).to_ne_bytes())).into(),
+        ),
         IntTy::Isize => CILNode::ConvISize(
             CILNode::LdcI64(i64::from_ne_bytes((value as u64).to_ne_bytes())).into(),
         ),

@@ -1,5 +1,5 @@
 /// A list of all functions which are redirected to system libc.
-pub const LIBC_FNS: [&str; 501] = [
+pub const LIBC_FNS: [&str; 502] = [
     "a64l",
     "abort",
     "abs",
@@ -501,4 +501,5 @@ pub const LIBC_FNS: [&str; 501] = [
     "wprintf",
     "write",
     "wscanf",
+    "__errno_location",
 ];

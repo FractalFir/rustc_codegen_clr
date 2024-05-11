@@ -444,6 +444,6 @@ pub fn handle_rvalue<'tcx>(
         Rvalue::Cast(rustc_middle::mir::CastKind::DynStar, _, _) => {
             todo!("Unusported cast kind:DynStar")
         }
-        Rvalue::Cast(_,_,_) => todo!(),
+        Rvalue::Cast(_, _, _) => todo!(),
     }
 }

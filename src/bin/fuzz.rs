@@ -1,5 +1,5 @@
-use std::{io::Write, process::Command};
-
+use std::{io::Write, process::Command, sync::atomic::AtomicU64};
+static LINES: AtomicU64 = AtomicU64::new(0);
 fn run_test(test_id: u64, is_release: bool) -> Option<f64> {
     match std::panic::catch_unwind(|| run_test_impl(test_id, is_release)) {
         Ok(inner) => inner,
@@ -89,6 +89,10 @@ fn gen_file(test_id: u64, generator: &str) {
         .unwrap();
     assert!(cout.stderr.is_empty());
     let src = cout.stdout;
+    LINES.fetch_add(
+        src.iter().filter(|ascii| **ascii == b'\n').count() as u64,
+        std::sync::atomic::Ordering::Relaxed,
+    );
     let mut file = std::fs::File::create(rust_src).unwrap();
     file.write_all(b"#![allow(dead_code,unused_variables)]")
         .unwrap();
@@ -96,9 +100,17 @@ fn gen_file(test_id: u64, generator: &str) {
 }
 fn test(test_id: u64, generator: &str) -> Option<(u64, f64)> {
     gen_file(test_id, generator);
-    run_test(test_id, false)
+    let res = run_test(test_id, false)
         .or(run_test(test_id, true))
-        .map(|sim| (test_id, 1.0 - sim))
+        .map(|sim| (test_id, 1.0 - sim));
+    if res.is_none() {
+        std::fs::remove_file(format!("/tmp/fuzz/fuzz{test_id}.rs")).unwrap();
+    }
+    std::fs::remove_file(format!("/tmp/fuzz/fuzz{test_id}.il")).unwrap();
+    std::fs::remove_file(format!("/tmp/fuzz/fuzz{test_id}.runtimeconfig.json")).unwrap();
+    // Try removing the .mdb, if present.
+    let _ = std::fs::remove_file(format!("/tmp/fuzz/fuzz{test_id}.exe.mdb"));
+    res
 }
 fn main() {
     use rayon::iter::{IntoParallelIterator, ParallelIterator};
@@ -117,5 +129,8 @@ fn main() {
         .flatten()
         .collect();
     faliures.sort_by(|(_, err_a), (_, err_b)| err_a.partial_cmp(err_b).unwrap());
-    println!("found faliures:{faliures:?}");
+    let test_cases = search_end - search_start;
+    println!(
+        "Created {test_cases} test cases, totaling {LINES:?} LOC, found faliures:{faliures:?}"
+    );
 }

@@ -27,12 +27,57 @@ pub fn place_get<'tyctx>(
     method_instance: Instance<'tyctx>,
     type_cache: &mut crate::r#type::TyCache,
 ) -> CILNode {
+    if let Some(spread_arg) = method.spread_arg {
+        if spread_arg == place.local {
+            if place.projection.is_empty() {
+                panic!("spread_arg is true, jet the argument being spread is directly accessed???");
+            }
+            let (head, mut body) = super::slice_head(place.projection);
+            let (mut op, mut ty) = if body.is_empty() {
+                if let rustc_middle::mir::PlaceElem::Field(idx, ty) = head {
+                    return CILNode::LDArg(spread_arg.as_u32() + idx.as_u32() - 1);
+                } else {
+                    panic!()
+                }
+            } else {
+                if let rustc_middle::mir::PlaceElem::Field(idx, ty) = body[0] {
+                    let res = (CILNode::LDArg(spread_arg.as_u32() + idx.as_u32() - 1), ty);
+                    body = &body[1..];
+                    res
+                } else {
+                    panic!()
+                }
+            };
+            ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
+            let mut ty = ty.into();
+
+            let (head, body) = super::slice_head(place.projection);
+            for elem in body {
+                let (curr_ty, curr_ops) = super::place_elem_body(
+                    elem,
+                    ty,
+                    tyctx,
+                    method_instance,
+                    method,
+                    type_cache,
+                    op,
+                );
+                ty = curr_ty.monomorphize(&method_instance, tyctx);
+                op = curr_ops;
+            }
+            return place_elem_get(head, ty, tyctx, method_instance, type_cache, op);
+        }
+        assert_eq!(
+            spread_arg.as_usize(),
+            method.arg_count,
+            "Spread arg is only supported if the argument being spread is the last one :)."
+        );
+    }
     if place.projection.is_empty() {
         local_get(place.local.as_usize(), method)
     } else {
         let (mut op, mut ty) =
             super::local_body(place.local.as_usize(), method, tyctx, &method_instance);
-
         ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
         let mut ty = ty.into();
 

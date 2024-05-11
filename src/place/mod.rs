@@ -36,12 +36,15 @@ fn pointed_type(ty: PlaceTy) -> Ty {
 fn body_ty_is_by_adress(last_ty: Ty) -> bool {
     crate::assert_morphic!(last_ty);
     match *last_ty.kind() {
-
         // True for non-0 tuples
         TyKind::Tuple(elements) => !elements.is_empty(),
 
         //TODO: check if slices are handled propely
-        TyKind::Adt(_, _) | TyKind::Closure(_, _) | TyKind::Array(_, _)  | TyKind::Slice(_) | TyKind::Str => true,
+        TyKind::Adt(_, _)
+        | TyKind::Closure(_, _)
+        | TyKind::Array(_, _)
+        | TyKind::Slice(_)
+        | TyKind::Str => true,
 
         TyKind::Int(_)
         | TyKind::Float(_)
@@ -102,7 +105,11 @@ pub fn deref_op<'ctx>(
             TyKind::Bool => CILNode::LDIndI8 { ptr }, // Both Rust bool and a managed bool are 1 byte wide. .NET bools are 4 byte wide only in the context of Marshaling/PInvoke,
             // due to historic reasons(BOOL was an alias for int in early Windows, and it stayed this way.) - FractalFir
             TyKind::Char => CILNode::LDIndI32 { ptr }, // always 4 bytes wide: https://doc.rust-lang.org/std/primitive.char.html#representation
-            TyKind::Adt(_, _) | TyKind::Tuple(_) | TyKind::Array(_, _) | TyKind::FnPtr(_) | TyKind::Closure(_, _)  => {
+            TyKind::Adt(_, _)
+            | TyKind::Tuple(_)
+            | TyKind::Array(_, _)
+            | TyKind::FnPtr(_)
+            | TyKind::Closure(_, _) => {
                 let derefed_type =
                     type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance));
 
@@ -139,7 +146,7 @@ pub fn deref_op<'ctx>(
                     CILNode::LDIndISize { ptr }
                 }
             }
-           
+
             _ => todo!("TODO: can't deref type {derefed_type:?} yet"),
         }
     } else {
@@ -156,6 +163,16 @@ pub fn place_adress<'a>(
     method_instance: Instance<'a>,
     type_cache: &mut crate::r#type::TyCache,
 ) -> CILNode {
+    if let Some(spread_arg) = method.spread_arg {
+        if spread_arg == place.local {
+            todo!("TODO: undo the wierdness of RustCall");
+        }
+        assert_eq!(
+            spread_arg.as_usize(),
+            method.arg_count,
+            "Spread arg is only supported if the argument being spread is the last one :)."
+        );
+    }
     let place_ty = place.ty(method, tyctx);
     let place_ty = crate::utilis::monomorphize(&method_instance, place_ty, tyctx).ty;
 
@@ -212,6 +229,16 @@ pub(crate) fn place_address_raw<'a>(
     method_instance: Instance<'a>,
     type_cache: &mut crate::r#type::TyCache,
 ) -> CILNode {
+    if let Some(spread_arg) = method.spread_arg {
+        if spread_arg == place.local {
+            todo!("TODO: undo the wierdness of RustCall");
+        }
+        assert_eq!(
+            spread_arg.as_usize(),
+            method.arg_count,
+            "Spread arg is only supported if the argument being spread is the last one :)."
+        );
+    }
     let place_ty = place.ty(method, tyctx);
     let place_ty = crate::utilis::monomorphize(&method_instance, place_ty, tyctx).ty;
 
@@ -275,6 +302,16 @@ pub(crate) fn place_set<'tyctx>(
     method_instance: Instance<'tyctx>,
     type_cache: &mut crate::r#type::TyCache,
 ) -> CILRoot {
+    if let Some(spread_arg) = method.spread_arg {
+        if spread_arg == place.local {
+            todo!("TODO: undo the wierdness of RustCall");
+        }
+        assert_eq!(
+            spread_arg.as_usize(),
+            method.arg_count,
+            "Spread arg is only supported if the argument being spread is the last one :)."
+        );
+    }
     if place.projection.is_empty() {
         set::local_set(place.local.as_usize(), method, value_calc)
     } else {

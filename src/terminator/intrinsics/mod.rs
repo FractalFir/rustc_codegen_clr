@@ -2,7 +2,8 @@ use crate::cil_tree::cil_root::CILRoot;
 use crate::place::place_adress;
 use crate::utilis::field_descrptor;
 use crate::{
-    call, call_virt, conv_f32, conv_f64, conv_usize, eq, ld_field, ldc_i32, ldc_u32, ldc_u64, lt_un, size_of, sub
+    call, call_virt, conv_f32, conv_f64, conv_usize, eq, ld_field, ldc_i32, ldc_u32, ldc_u64,
+    lt_un, size_of, sub,
 };
 fn compare_bytes(a: CILNode, b: CILNode, len: CILNode) -> CILNode {
     call!(
@@ -262,8 +263,10 @@ pub fn handle_intrinsic<'tyctx>(
             let tpe = type_cache.type_from_cache(tpe, tyctx, Some(method_instance));
             // TODO: this assumes a 64 bit system!
             let sub = match tpe {
-                Type::ISize | Type::USize | Type::Ptr(_) => ldc_i32!(64) - (conv_usize!(size_of!(tpe.clone())) * ldc_u32!(8)),
-                Type::I64 | Type::U64  => ldc_i32!(0),
+                Type::ISize | Type::USize | Type::Ptr(_) => {
+                    ldc_i32!(64) - (conv_usize!(size_of!(tpe.clone())) * ldc_u32!(8))
+                }
+                Type::I64 | Type::U64 => ldc_i32!(0),
                 Type::I32 | Type::U32 => ldc_i32!(32),
                 Type::I16 | Type::U16 => ldc_i32!(48),
                 Type::I8 | Type::U8 => ldc_i32!(56),

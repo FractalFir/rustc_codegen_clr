@@ -1,6 +1,13 @@
 use super::{pointed_type, PlaceTy};
 
-use crate::{cil_tree::{cil_node::CILNode,cil_root::CILRoot},cil::{CallSite, FieldDescriptor},function_sig::FnSig,place::{body_ty_is_by_adress, deref_op},r#type::Type,{assert_morphic, call, conv_usize, ld_field, ldc_u64}};
+use crate::{
+    cil::{CallSite, FieldDescriptor},
+    cil_tree::{cil_node::CILNode, cil_root::CILRoot},
+    function_sig::FnSig,
+    place::{body_ty_is_by_adress, deref_op},
+    r#type::Type,
+    {assert_morphic, call, conv_usize, ld_field, ldc_u64},
+};
 use rustc_middle::mir::PlaceElem;
 use rustc_middle::ty::{Instance, Ty, TyCtxt, TyKind};
 pub fn local_body<'tcx>(
@@ -140,7 +147,7 @@ pub fn place_elem_body<'ctx>(
                 .expect("Can't get enum variant of an enum varaint!");
             let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
             let variant_type = PlaceTy::EnumVariant(curr_type, variant.as_u32());
-           
+
             (variant_type, parrent_node)
         }
         PlaceElem::Index(index) => {
@@ -181,7 +188,6 @@ pub fn place_elem_body<'ctx>(
 
                     if body_ty_is_by_adress(inner) {
                         (inner.into(), addr)
-                        
                     } else {
                         (
                             inner.into(),
@@ -275,7 +281,6 @@ pub fn place_elem_body<'ctx>(
                         ) * conv_usize!(CILNode::SizeOf(inner_type.into()));
                     if body_ty_is_by_adress(inner) {
                         (inner.into(), addr)
-                       
                     } else {
                         (
                             inner.into(),
@@ -311,7 +316,6 @@ pub fn place_elem_body<'ctx>(
                             args: [parrent_node, CILNode::ConvUSize(index.into())].into(),
                         };
                         ((element_ty).into(), ops)
-                        
                     } else {
                         let ops = CILNode::Call {
                             site: crate::cil::CallSite::new(
