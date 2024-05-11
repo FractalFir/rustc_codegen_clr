@@ -575,7 +575,7 @@ pub fn handle_intrinsic<'tyctx>(
             );
             let arg =
                 crate::utilis::monomorphize(&method_instance, args[0].node.ty(body, tyctx), tyctx);
-            let arg_ty = arg.builtin_deref(true).unwrap().ty;
+            let arg_ty = arg.builtin_deref(true).unwrap();
             let arg = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
             let ops =
                 crate::place::deref_op(arg_ty.into(), tyctx, &method_instance, type_cache, arg);
@@ -591,7 +591,7 @@ pub fn handle_intrinsic<'tyctx>(
             let ops = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
             let arg =
                 crate::utilis::monomorphize(&method_instance, args[0].node.ty(body, tyctx), tyctx);
-            let arg_ty = arg.builtin_deref(true).unwrap().ty;
+            let arg_ty = arg.builtin_deref(true).unwrap();
 
             let ops =
                 crate::place::deref_op(arg_ty.into(), tyctx, &method_instance, type_cache, ops);
@@ -847,7 +847,7 @@ pub fn handle_intrinsic<'tyctx>(
             let ops = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
             let arg =
                 crate::utilis::monomorphize(&method_instance, args[0].node.ty(body, tyctx), tyctx);
-            let arg_ty = arg.builtin_deref(true).unwrap().ty;
+            let arg_ty = arg.builtin_deref(true).unwrap();
 
             let ops =
                 crate::place::deref_op(arg_ty.into(), tyctx, &method_instance, type_cache, ops);
@@ -1183,7 +1183,7 @@ fn volitale_load<'tyctx>(
         "The intrinsic `volatile_load` MUST take in exactly 1 argument!"
     );
     let arg = crate::utilis::monomorphize(&method_instance, args[0].node.ty(body, tyctx), tyctx);
-    let arg_ty = arg.builtin_deref(true).unwrap().ty;
+    let arg_ty = arg.builtin_deref(true).unwrap();
     let arg = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
     let ops = crate::place::deref_op(arg_ty.into(), tyctx, &method_instance, type_cache, arg);
     place_set(destination, tyctx, ops, body, method_instance, type_cache)

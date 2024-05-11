@@ -37,7 +37,7 @@ pub fn handle_call_terminator<'tycxt>(
     // Get the pointed type, if byref;
     let func_ty = match func_ty.builtin_deref(true) {
         None => func_ty,
-        Some(inner) => inner.ty,
+        Some(inner) => inner,
     };
     match func_ty.kind() {
         TyKind::FnDef(_, _) => {

@@ -151,7 +151,7 @@ pub fn unsize<'tyctx>(
     let info = UnsizeInfo::for_unsize(tyctx, method, method_instance, tycache, operand, target);
     match (
         info.source_points_to.kind(),
-        target.builtin_deref(true).unwrap().ty.kind(),
+        target.builtin_deref(true).unwrap().kind(),
     ) {
         (TyKind::Array(_, length), _) => {
             let length = crate::utilis::try_resolve_const_size(*length).unwrap();

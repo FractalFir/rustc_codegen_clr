@@ -236,7 +236,7 @@ pub fn garg_to_string<'tyctx>(garg: GenericArg<'tyctx>, ctx: TyCtxt<'tyctx>) -> 
         .builtin_deref(true)
         .expect("Type of generic argument was not a reference, can't resolve as string!");
     assert!(
-        tpe.ty.is_str(),
+        tpe.is_str(),
         "Generic argument was not a string, but {str_const:?}!"
     );
 

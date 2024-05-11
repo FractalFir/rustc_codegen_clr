@@ -123,10 +123,10 @@ fn primitive_to_type(primitive: rustc_target::abi::Primitive) -> Type {
             (Integer::I64, false) => Type::U64,
             (Integer::I128, false) => Type::U128,
         },
-        Primitive::F16 => Type::F16,
-        Primitive::F32 => Type::F32,
-        Primitive::F64 => Type::F64,
-        Primitive::F128 => todo!("No support for 128 bit floats yet!"),
+        Primitive::Float(rustc_abi::Float::F16) => Type::F16,
+        Primitive::Float(rustc_abi::Float::F32) => Type::F32,
+        Primitive::Float(rustc_abi::Float::F64) => Type::F64,
+        Primitive::Float(rustc_abi::Float::F128) => todo!("No support for 128 bit floats yet!"),
         Primitive::Pointer(_) => Type::Ptr(Type::Void.into()),
     }
 }
