@@ -203,7 +203,6 @@ pub fn handle_aggregate<'tyctx>(
                 crate::utilis::monomorphize(&method_instance, *ptr, tyctx),
                 *muta,
             );
-            let fat_ptr_type = tycache.type_from_cache(fat_ptr, tyctx, Some(method_instance));
             // Get the addres of the initialized structure
             let init_addr = super::place::place_adress(
                 target_location,
@@ -212,6 +211,21 @@ pub fn handle_aggregate<'tyctx>(
                 method_instance,
                 tycache,
             );
+            if !crate::r#type::pointer_to_is_fat(fat_ptr,tyctx,Some(method_instance)){
+                // Pointer is thin, just directly assign 
+                return CILNode::SubTrees(
+                    [CILRoot::STIndISize(init_addr, values[0].1.clone())].into(),
+                    Box::new(place_get(
+                        target_location,
+                        tyctx,
+                        method,
+                        method_instance,
+                        tycache,
+                    )),
+                );
+            }
+            let fat_ptr_type = tycache.type_from_cache(fat_ptr, tyctx, Some(method_instance));
+            
             // Assign the components
             let assign_ptr = CILRoot::SetField {
                 addr: init_addr.clone(),
