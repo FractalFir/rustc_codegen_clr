@@ -13,8 +13,7 @@ pub mod checked;
 pub mod cmp;
 pub mod shift;
 use crate::{
-    call, conv_u16, conv_u32, conv_u64, conv_u8, conv_usize, div, eq, ldc_i32, rem, rem_un,
-    size_of, sub,
+    call, conv_u16, conv_u32, conv_u64, conv_u8, conv_usize, div, eq, gt_un, ldc_i32, lt_un, rem, rem_un, size_of, sub
 };
 use bitop::{bit_and_unchecked, bit_or_unchecked, bit_xor_unchecked};
 pub use checked::binop_checked;
@@ -71,8 +70,16 @@ pub(crate) fn binop_unchecked<'tyctx>(
 
         BinOp::Div => div_unchecked(ty_a, ty_b, tycache, &method_instance, tyctx, ops_a, ops_b),
 
-        BinOp::Ge => eq!(lt_unchecked(ty_a, ops_a, ops_b), ldc_i32!(0)),
-        BinOp::Le => eq!(gt_unchecked(ty_a, ops_a, ops_b), ldc_i32!(0)),
+        BinOp::Ge => match ty_a.kind(){
+            // Unordered, to handle NaNs propely
+            TyKind::Float(_)=>eq!(lt_un!(ops_a, ops_b), ldc_i32!(0)),
+            _=>eq!(lt_unchecked(ty_a, ops_a, ops_b), ldc_i32!(0)),
+        }
+        BinOp::Le => match ty_a.kind(){
+            // Unordered, to handle NaNs propely
+            TyKind::Float(_)=>eq!(gt_un!(ops_a, ops_b), ldc_i32!(0)),
+            _=>eq!(gt_unchecked(ty_a, ops_a, ops_b), ldc_i32!(0)),
+        }
         BinOp::Offset => {
             let pointed_ty = if let TyKind::RawPtr(inner, _) = ty_a.kind() {
                 *inner

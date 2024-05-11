@@ -132,8 +132,10 @@ pub enum CILNode {
     Not(Box<Self>),
     Eq(Box<Self>, Box<Self>),
     Lt(Box<Self>, Box<Self>),
+    /// Compares two operands, returning true if lhs < rhs. Unsigned for intigers, unordered(in respect to NaNs) for floats.
     LtUn(Box<Self>, Box<Self>),
     Gt(Box<Self>, Box<Self>),
+    /// Compares two operands, returning true if lhs < rhs. Unsigned for intigers, unordered(in respect to NaNs) for floats.
     GtUn(Box<Self>, Box<Self>),
     TemporaryLocal(Box<(Type, Box<[CILRoot]>, Self)>),
     SubTrees(Box<[CILRoot]>, Box<Self>),
