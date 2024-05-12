@@ -163,16 +163,7 @@ pub fn place_adress<'a>(
     method_instance: Instance<'a>,
     type_cache: &mut crate::r#type::TyCache,
 ) -> CILNode {
-    if let Some(spread_arg) = method.spread_arg {
-        if spread_arg == place.local {
-            todo!("TODO: undo the wierdness of RustCall");
-        }
-        assert_eq!(
-            spread_arg.as_usize(),
-            method.arg_count,
-            "Spread arg is only supported if the argument being spread is the last one :)."
-        );
-    }
+    
     let place_ty = place.ty(method, tyctx);
     let place_ty = crate::utilis::monomorphize(&method_instance, place_ty, tyctx).ty;
 
@@ -229,16 +220,7 @@ pub(crate) fn place_address_raw<'a>(
     method_instance: Instance<'a>,
     type_cache: &mut crate::r#type::TyCache,
 ) -> CILNode {
-    if let Some(spread_arg) = method.spread_arg {
-        if spread_arg == place.local {
-            todo!("TODO: undo the wierdness of RustCall");
-        }
-        assert_eq!(
-            spread_arg.as_usize(),
-            method.arg_count,
-            "Spread arg is only supported if the argument being spread is the last one :)."
-        );
-    }
+   
     let place_ty = place.ty(method, tyctx);
     let place_ty = crate::utilis::monomorphize(&method_instance, place_ty, tyctx).ty;
 
@@ -302,16 +284,7 @@ pub(crate) fn place_set<'tyctx>(
     method_instance: Instance<'tyctx>,
     type_cache: &mut crate::r#type::TyCache,
 ) -> CILRoot {
-    if let Some(spread_arg) = method.spread_arg {
-        if spread_arg == place.local {
-            todo!("TODO: undo the wierdness of RustCall");
-        }
-        assert_eq!(
-            spread_arg.as_usize(),
-            method.arg_count,
-            "Spread arg is only supported if the argument being spread is the last one :)."
-        );
-    }
+    
     if place.projection.is_empty() {
         set::local_set(place.local.as_usize(), method, value_calc)
     } else {

@@ -5,6 +5,7 @@ use crate::cil_tree::cil_root::CILRoot;
 use crate::cil_tree::CILTree;
 use crate::method::MethodType;
 use crate::rustc_middle::dep_graph::DepContext;
+use crate::utilis::field_descrptor;
 use crate::{
     access_modifier::AccessModifer, cil::CallSite, codegen_error::CodegenError,
     codegen_error::MethodCodegenError, function_sig::FnSig, method::Method, r#type::TyCache,
@@ -278,7 +279,7 @@ impl Assembly {
 
         // Get locals
         //eprintln!("method")
-        let (arg_names, locals) = locals_from_mir(
+        let (arg_names, mut locals) = locals_from_mir(
             &mir.local_decls,
             tyctx,
             mir.arg_count,
@@ -349,11 +350,33 @@ impl Assembly {
             }
             //ops.extend(trees.iter().flat_map(|tree| tree.flatten()))
         }
+        if let Some(spread_arg) = mir.spread_arg{
+            // Prepare for repacking the argument tuple, by allocating a local
+            let repacked = locals.len();
+            let repacked_ty:rustc_middle::ty::Ty = crate::utilis::monomorphize(&instance, mir.local_decls[spread_arg].ty, tyctx);
+            let repacked_type = cache.type_from_cache(repacked_ty, tyctx, Some(instance));
+            locals.push((Some("repacked_arg".into()),repacked_type));
+            let mut repack_cil = Vec::new();
+            // For each element of the tuple, get the argument spread_arg + n
+            let packed_count = if let TyKind::Tuple(tup) = repacked_ty.kind(){
+                tup.len()
+            }else{
+                panic!("Arg to spread not a tuple???")
+            };
+            for arg_id in 0..packed_count{
+                let arg_field = field_descrptor(repacked_ty, arg_id as u32, tyctx, instance, cache);
+                repack_cil.push(CILRoot::SetField { addr: CILNode::LDLocA(repacked as u32), value: CILNode::LDArg(((spread_arg.as_usize() - 1) + arg_id).try_into().unwrap()), desc: arg_field }.into());
+            }
+            // Get the first bb, and append repack_cil at its start
+            let first_bb = &mut normal_bbs[0];
+            repack_cil.append(first_bb.trees_mut());
+            *first_bb.trees_mut() = repack_cil;
+
+        }
         normal_bbs
             .iter_mut()
             .for_each(|bb| bb.resolve_exception_handlers(&cleanup_bbs));
-        #[allow(clippy::single_match)]
-        // This will be slowly expanded with support for new types of allocations.
+
         let mut method = Method::new(
             access_modifier,
             MethodType::Static,

@@ -722,7 +722,7 @@ run_test! {types,async_types,unstable}
 run_test! {types,self_referential_statics,stable}
 run_test! {types,int128,stable}
 
-run_test! {std,main,unstable}
+run_test! {std,main,stable}
 run_test! {std,futex_test,unstable}
 run_test! {std,futexrw_test,unstable}
 run_test! {std,tlocal_key_test,stable}
@@ -734,7 +734,7 @@ run_test! {control_flow,drop,stable}
 
 run_test! {intrinsics,bswap,stable}
 
-run_test! {intrinsics,assert,unstable}
+run_test! {intrinsics,assert,stable}
 run_test! {intrinsics,addr_of,stable}
 run_test! {intrinsics,atomics,stable}
 run_test! {intrinsics,alloc,stable}
@@ -746,7 +746,7 @@ run_test! {intrinsics,caller_location,stable}
 run_test! {intrinsics,copy_nonoverlaping,stable}
 run_test! {intrinsics,ptr_offset_from_unsigned,stable}
 run_test! {intrinsics,arith_offset,stable}
-run_test! {intrinsics,cmp_bytes,unstable}
+run_test! {intrinsics,cmp_bytes,stable}
 
 run_test! {alloc,abox,stable}
 run_test! {alloc,raw_vec,unstable}
@@ -776,7 +776,7 @@ compare_tests! {fuzz,fuzz12,stable}
 compare_tests! {fuzz,fuzz13,stable}
 compare_tests! {fuzz,fuzz14,stable}
 compare_tests! {fuzz,fuzz15,stable}
-compare_tests! {fuzz,fuzz16,unstable}
+compare_tests! {fuzz,fuzz16,stable}
 compare_tests! {fuzz,fuzz17,stable}
 compare_tests! {fuzz,fuzz18,stable}
 compare_tests! {fuzz,fuzz19,stable}
@@ -810,7 +810,7 @@ compare_tests! {fuzz,fuzz43,stable}
 compare_tests! {fuzz,fuzz44,stable}
 compare_tests! {fuzz,fuzz45,stable}
 compare_tests! {fuzz,fuzz46,stable}
-compare_tests! {fuzz,fuzz47,unstable}
+compare_tests! {fuzz,fuzz47,stable}
 compare_tests! {fuzz,fuzz48,stable}
 compare_tests! {fuzz,fuzz49,stable}
 
@@ -822,7 +822,7 @@ compare_tests! {fuzz,fuzz54,stable}
 compare_tests! {fuzz,fuzz55,stable}
 compare_tests! {fuzz,fuzz56,stable}
 compare_tests! {fuzz,fuzz57,stable}
-compare_tests! {fuzz,fuzz58,unstable}
+compare_tests! {fuzz,fuzz58,stable}
 compare_tests! {fuzz,fuzz59,stable}
 
 compare_tests! {fuzz,fuzz60,stable}

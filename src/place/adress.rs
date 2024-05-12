@@ -14,6 +14,9 @@ use rustc_middle::{
     ty::{Instance, Ty, TyCtxt, TyKind},
 };
 pub fn local_adress(local: usize, method: &rustc_middle::mir::Body) -> CILNode {
+    if let Some(spread_arg) = method.spread_arg && local == spread_arg.as_usize(){
+        return  CILNode::ConvUSize(Box::new(CILNode::LDLocA((method.local_decls.len() -  method.arg_count).try_into().unwrap())));
+    }
     if local == 0 {
         CILNode::ConvUSize(CILNode::LDLocA(0).into())
     } else if local > method.arg_count {

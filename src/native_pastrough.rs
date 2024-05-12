@@ -1,5 +1,5 @@
 /// A list of all functions which are redirected to system libc.
-pub const LIBC_FNS: [&str; 502] = [
+pub const LIBC_FNS: [&str; 503] = [
     "a64l",
     "abort",
     "abs",
@@ -79,6 +79,7 @@ pub const LIBC_FNS: [&str; 502] = [
     "fchflags",
     "fchmodat",
     "fchownat",
+    "fcntl",
     "fcvt",
     "fdatasync",
     "fexecve",
