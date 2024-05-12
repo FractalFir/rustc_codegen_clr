@@ -474,13 +474,7 @@ pub fn pointer_to_is_fat<'tyctx>(
     method.inspect(|method| {
         pointed_type = crate::utilis::monomorphize(method, pointed_type, tyctx);
     });
-    /*
-    let (_metadata, _fat_if_not_sized) = pointed_type.ptr_metadata_ty(tyctx, |mut ty| {
-        method.inspect(|method| {
-            ty = crate::utilis::monomorphize(method, ty, tyctx);
-        });
-        ty
-    });*/
+   
     let is_trivialy_sized = pointed_type.is_trivially_sized(tyctx);
     if is_trivialy_sized {
         // Sized types don't need fat pointers

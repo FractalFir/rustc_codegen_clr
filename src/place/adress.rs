@@ -227,47 +227,33 @@ pub fn place_elem_adress<'ctx>(
             );
             let curr_dotnet = curr_type.as_dotnet().unwrap();
             if *from_end {
-                /*CILNode::RawOps {
-                    parrent: addr_calc.into(),
-                    ops: [CILNode::TemporaryLocal(Box::new((
-                        CILOp::NewTMPLocal(Box::new(curr_type.clone())),
-                        CILOp::SetTMPLocal,
-                        CILOp::LoadAddresOfTMPLocal,
-                        CILOp::LoadAddresOfTMPLocal,
-                        CILOp::LDField(FieldDescriptor::boxed(
-                            curr_dotnet.clone(),
-                            Type::Ptr(Type::Void.into()),
-                            "data_pointer".into(),
-                        )),
-                        CILOp::LdcI64(*from as i64),
-                        CILOp::ConvUSize(false),
-                        CILOp::Add,
-                        CILOp::STField(FieldDescriptor::boxed(
-                            curr_dotnet.clone(),
-                            Type::Ptr(Type::Void.into()),
-                            "data_pointer".into(),
-                        )),
-                        CILOp::LoadAddresOfTMPLocal,
-                        CILOp::LoadAddresOfTMPLocal,
-                        CILOp::LDField(FieldDescriptor::boxed(
-                            curr_dotnet.clone(),
-                            Type::USize,
-                            "metadata".into(),
-                        )),
-                        CILOp::LdcI64(*to as i64),
-                        CILOp::ConvUSize(false),
-                        CILOp::Sub,
-                        CILOp::STField(FieldDescriptor::boxed(
-                            curr_dotnet,
-                            Type::USize,
-                            "metadata".into(),
-                        )),
-                        CILOp::LoadTMPLocal,
-                        CILOp::FreeTMPLocal,
-                    ]
-                    .into(),
-                }*/
-                todo!("Can't subslice from end")
+               
+                let metadata_field =
+                FieldDescriptor::new(curr_dotnet.clone(), Type::USize, "metadata".into());
+            let ptr_field = FieldDescriptor::new(
+                curr_dotnet.clone(),
+                Type::Ptr(Type::Void.into()),
+                "data_pointer".into(),
+            );
+            CILNode::TemporaryLocal(Box::new((
+                curr_type,
+                [
+                    CILRoot::SetField {
+                        addr: CILNode::LoadAddresOfTMPLocal,
+                        value: CILNode::Sub(Box::new(ld_field!(addr_calc.clone(),metadata_field.clone())),Box::new(conv_usize!(ldc_u64!(*to + 1)))),
+                        desc: metadata_field,
+                    },
+                    CILRoot::SetField {
+                        addr: CILNode::LoadAddresOfTMPLocal,
+                        value: ld_field!(addr_calc, ptr_field.clone())
+                            + conv_usize!(ldc_u64!(*from)),
+                        desc: ptr_field.clone(),
+                    },
+                ]
+                .into(),
+                CILNode::LoadTMPLocal,
+            )))
+              
             } else {
                 let metadata_field =
                     FieldDescriptor::new(curr_dotnet.clone(), Type::USize, "metadata".into());

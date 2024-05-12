@@ -23,6 +23,12 @@ fn main(){
     let oslice = b"Hello, World\n\0";
     test_eq!(oslice.len(),14);
     test_eq!(oslice.last(),Some(&b'\0'));
+    if let Some((first,rem)) = oslice.split_first(){
+        unsafe{printf(rem.as_ptr() as *const i8)};
+        test_eq!(rem.len(),oslice.len() - 1);
+        unsafe{printf("%c\n\0".as_ptr() as *const i8,*first  as i32)};
+    }
+    test_eq!(oslice.split_first(),Some((&b'H',b"ello, World\n\0")));
     dump_var(0,0,true,1,1,2,2,3,false);
     
 }
