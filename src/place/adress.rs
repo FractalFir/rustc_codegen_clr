@@ -14,8 +14,14 @@ use rustc_middle::{
     ty::{Instance, Ty, TyCtxt, TyKind},
 };
 pub fn local_adress(local: usize, method: &rustc_middle::mir::Body) -> CILNode {
-    if let Some(spread_arg) = method.spread_arg && local == spread_arg.as_usize(){
-        return  CILNode::ConvUSize(Box::new(CILNode::LDLocA((method.local_decls.len() -  method.arg_count).try_into().unwrap())));
+    if let Some(spread_arg) = method.spread_arg
+        && local == spread_arg.as_usize()
+    {
+        return CILNode::ConvUSize(Box::new(CILNode::LDLocA(
+            (method.local_decls.len() - method.arg_count)
+                .try_into()
+                .unwrap(),
+        )));
     }
     if local == 0 {
         CILNode::ConvUSize(CILNode::LDLocA(0).into())
@@ -230,33 +236,34 @@ pub fn place_elem_adress<'ctx>(
             );
             let curr_dotnet = curr_type.as_dotnet().unwrap();
             if *from_end {
-               
                 let metadata_field =
-                FieldDescriptor::new(curr_dotnet.clone(), Type::USize, "metadata".into());
-            let ptr_field = FieldDescriptor::new(
-                curr_dotnet.clone(),
-                Type::Ptr(Type::Void.into()),
-                "data_pointer".into(),
-            );
-            CILNode::TemporaryLocal(Box::new((
-                curr_type,
-                [
-                    CILRoot::SetField {
-                        addr: CILNode::LoadAddresOfTMPLocal,
-                        value: CILNode::Sub(Box::new(ld_field!(addr_calc.clone(),metadata_field.clone())),Box::new(conv_usize!(ldc_u64!(*to + 1)))),
-                        desc: metadata_field,
-                    },
-                    CILRoot::SetField {
-                        addr: CILNode::LoadAddresOfTMPLocal,
-                        value: ld_field!(addr_calc, ptr_field.clone())
-                            + conv_usize!(ldc_u64!(*from)),
-                        desc: ptr_field.clone(),
-                    },
-                ]
-                .into(),
-                CILNode::LoadTMPLocal,
-            )))
-              
+                    FieldDescriptor::new(curr_dotnet.clone(), Type::USize, "metadata".into());
+                let ptr_field = FieldDescriptor::new(
+                    curr_dotnet.clone(),
+                    Type::Ptr(Type::Void.into()),
+                    "data_pointer".into(),
+                );
+                CILNode::TemporaryLocal(Box::new((
+                    curr_type,
+                    [
+                        CILRoot::SetField {
+                            addr: CILNode::LoadAddresOfTMPLocal,
+                            value: CILNode::Sub(
+                                Box::new(ld_field!(addr_calc.clone(), metadata_field.clone())),
+                                Box::new(conv_usize!(ldc_u64!(*to + 1))),
+                            ),
+                            desc: metadata_field,
+                        },
+                        CILRoot::SetField {
+                            addr: CILNode::LoadAddresOfTMPLocal,
+                            value: ld_field!(addr_calc, ptr_field.clone())
+                                + conv_usize!(ldc_u64!(*from)),
+                            desc: ptr_field.clone(),
+                        },
+                    ]
+                    .into(),
+                    CILNode::LoadTMPLocal,
+                )))
             } else {
                 let metadata_field =
                     FieldDescriptor::new(curr_dotnet.clone(), Type::USize, "metadata".into());

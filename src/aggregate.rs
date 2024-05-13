@@ -212,11 +212,11 @@ pub fn handle_aggregate<'tyctx>(
                 tycache,
             );
             let fat_ptr_type = tycache.type_from_cache(fat_ptr, tyctx, Some(method_instance));
-            if !crate::r#type::pointer_to_is_fat(*ptr,tyctx,Some(method_instance)){
+            if !crate::r#type::pointer_to_is_fat(*ptr, tyctx, Some(method_instance)) {
                 // Double-check the pointer is REALLY thin
                 assert!(fat_ptr_type.as_dotnet().is_none());
-                // Pointer is thin, just directly assign 
-                
+                // Pointer is thin, just directly assign
+
                 return CILNode::SubTrees(
                     [CILRoot::STIndISize(init_addr, values[0].1.clone())].into(),
                     Box::new(place_get(
@@ -228,8 +228,7 @@ pub fn handle_aggregate<'tyctx>(
                     )),
                 );
             }
-            
-            
+
             // Assign the components
             let assign_ptr = CILRoot::SetField {
                 addr: init_addr.clone(),

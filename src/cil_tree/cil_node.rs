@@ -2,7 +2,7 @@ use crate::{
     call,
     cil::{CILOp, CallSite, FieldDescriptor, StaticFieldDescriptor},
     function_sig::FnSig,
-    r#type::{TyCache, Type},
+    r#type::{DotnetTypeRef, TyCache, Type},
     IString,
 };
 
@@ -171,8 +171,111 @@ pub enum CILNode {
         idx: Box<CILNode>,
     },
     PointerToConstValue(u128),
+    /// Unsafe, low-level internal op for checking the state of the CIL eval stack. WILL cause serious issues if not used **very** carefully, and only inside the `inspect` arm of InspectValue.
+    GetStackTop,
+    /// Unsafe, low-level internal op for inspecting the state of the CIL eval stack. Must be paired with exactly one `GetStackTop`, in the `inspect` arm.
+    InspectValue {
+        val: Box<Self>,
+        inspect: Box<[CILRoot]>,
+    },
 }
+
 impl CILNode {
+    pub fn print_debug_val(
+        format_start: &str,
+        value: CILNode,
+        format_end: &str,
+        tpe: Type,
+    ) -> Self {
+
+        match tpe {
+            Type::U64 | Type::I64 | Type::U32 | Type::I32 => CILNode::InspectValue {
+                val: Box::new(value),
+                inspect: Box::new([
+                    CILRoot::debug(format_start),
+                    CILRoot::Call {
+                        site: CallSite::new_extern(
+                            DotnetTypeRef::console(),
+                            "Write".into(),
+                            FnSig::new(&[tpe], &Type::Void),
+                            true,
+                        ),
+                        args: Box::new([CILNode::GetStackTop]),
+                    },
+                    CILRoot::debug(format_end),
+                ]),
+            },
+            Type::U8  | Type::U16 => CILNode::InspectValue {
+                val: Box::new(value),
+                inspect: Box::new([
+                    CILRoot::debug(format_start),
+                    CILRoot::Call {
+                        site: CallSite::new_extern(
+                            DotnetTypeRef::console(),
+                            "Write".into(),
+                            FnSig::new(&[Type::U32], &Type::Void),
+                            true,
+                        ),
+                        args: Box::new([CILNode::ConvU32(Box::new(CILNode::GetStackTop))]),
+                    },
+                    CILRoot::debug(format_end),
+                ]),
+            },
+            Type::I8  | Type::I16 => CILNode::InspectValue {
+                val: Box::new(value),
+                inspect: Box::new([
+                    CILRoot::debug(format_start),
+                    CILRoot::Call {
+                        site: CallSite::new_extern(
+                            DotnetTypeRef::console(),
+                            "Write".into(),
+                            FnSig::new(&[Type::I32], &Type::Void),
+                            true,
+                        ),
+                        args: Box::new([CILNode::ConvI32(Box::new(CILNode::GetStackTop))]),
+                    },
+                    CILRoot::debug(format_end),
+                ]),
+            },
+            Type::USize => CILNode::InspectValue {
+                val: Box::new(value),
+                inspect: Box::new([
+                    CILRoot::debug(format_start),
+                    CILRoot::Call {
+                        site: CallSite::new_extern(
+                            DotnetTypeRef::console(),
+                            "Write".into(),
+                            FnSig::new(&[Type::U64], &Type::Void),
+                            true,
+                        ),
+                        args: Box::new([CILNode::ConvUSize(Box::new(CILNode::GetStackTop))]),
+                    },
+                    CILRoot::debug(format_end),
+                ]),
+            },
+            Type::ISize => CILNode::InspectValue {
+                val: Box::new(value),
+                inspect: Box::new([
+                    CILRoot::debug(format_start),
+                    CILRoot::Call {
+                        site: CallSite::new_extern(
+                            DotnetTypeRef::console(),
+                            "Write".into(),
+                            FnSig::new(&[Type::I64], &Type::Void),
+                            true,
+                        ),
+                        args: Box::new([CILNode::ConvISize(Box::new(CILNode::GetStackTop))]),
+                    },
+                    CILRoot::debug(format_end),
+                ]),
+            },
+            Type::Void => value,
+            _ => CILNode::InspectValue {
+                val: Box::new(value),
+                inspect: Box::new([CILRoot::debug(format_start), CILRoot::Pop{ tree: CILNode::GetStackTop },CILRoot::debug(format_end)]),
+            },
+        }
+    }
     #[must_use]
     pub fn select(tpe: Type, a: CILNode, b: CILNode, predictate: CILNode) -> Self {
         match tpe {
@@ -229,6 +332,8 @@ impl CILNode {
     }
     fn opt_children(&mut self) {
         match self {
+            Self::GetStackTop=>(),
+            Self::InspectValue { val, inspect }=>{val.opt_children();inspect.iter_mut().for_each(|rot|rot.opt())},
             Self::LDLoc(_) => (),
             Self::LDArg(_) => (),
             Self::LDLocA(_) => (),
@@ -354,6 +459,13 @@ impl CILNode {
     #[must_use]
     pub fn flatten(&self) -> Vec<CILOp> {
         let mut ops = match self {
+            Self::GetStackTop => vec![],
+            Self::InspectValue { val, inspect } => {
+                let mut ops = val.flatten();
+                ops.push(CILOp::Dup);
+                ops.extend(inspect.iter().flat_map(CILRoot::into_ops));
+                ops
+            }
             Self::PointerToConstValue(_value) => {
                 panic!("ERROR: const values must be allocated before CILOp flattening phase")
             }
@@ -599,6 +711,11 @@ impl CILNode {
         locals: &mut Vec<(Option<Box<str>>, Type)>,
     ) {
         match self {
+            Self::GetStackTop =>(),
+            Self::InspectValue { val, inspect }=>{
+                val.allocate_tmps(curr_loc, locals);
+                inspect.iter_mut().for_each(|root|root.allocate_tmps(curr_loc, locals))
+            },
             Self:: PointerToConstValue(_arr)=>(),
             Self::LoadGlobalAllocPtr { alloc_id: _ } => (),
             Self::LDLoc(_) |
@@ -708,9 +825,14 @@ impl CILNode {
         &mut self,
         asm: &mut crate::assembly::Assembly,
         tyctx: TyCtxt,
-        tycahce: &mut TyCache,
+        tycache: &mut TyCache,
     ) {
         match self {
+            Self::GetStackTop => (),
+            Self::InspectValue { val, inspect }=>{
+                val.resolve_global_allocations(asm, tyctx, tycache);
+                inspect.iter_mut().for_each(|i|i.resolve_global_allocations(asm, tyctx, tycache))
+            }
             Self:: PointerToConstValue(bytes)=> *self = CILNode::LDStaticField(Box::new(asm.add_const_value(*bytes,tyctx))),
             Self::LDLoc(_) |
             Self::LDArg(_) |
@@ -729,9 +851,9 @@ impl CILNode {
             Self::LDIndISize { ptr }|
             Self::LdObj { ptr, .. }|
             Self::LDIndF32 { ptr } |
-            Self::LDIndF64 { ptr } => ptr.resolve_global_allocations(asm,tyctx,tycahce),
+            Self::LDIndF64 { ptr } => ptr.resolve_global_allocations(asm,tyctx,tycache),
             Self::LDFieldAdress { addr, field: _ }|
-            Self::LDField { addr, field: _ } => addr.resolve_global_allocations(asm,tyctx,tycahce),
+            Self::LDField { addr, field: _ } => addr.resolve_global_allocations(asm,tyctx,tycache),
             Self::Add(a, b)
             | Self::And(a, b)
             | Self::Sub(a, b)
@@ -750,14 +872,14 @@ impl CILNode {
             | Self::LtUn(a, b)
             | Self::Gt(a, b)
             | Self::GtUn(a, b) => {
-                a.resolve_global_allocations(asm,tyctx,tycahce);
-                b.resolve_global_allocations(asm,tyctx,tycahce);
+                a.resolve_global_allocations(asm,tyctx,tycache);
+                b.resolve_global_allocations(asm,tyctx,tycache);
             }
             Self::RawOpsParrentless { ops: _ } => {
                 eprintln!("WARNING: resolve_global_allocations does not work for `RawOpsParrentless`");
             }
             Self::Call { args, site: _ } |
-            Self::CallVirt { args, site: _ } =>args.iter_mut().for_each(|arg|arg.resolve_global_allocations(asm,tyctx,tycahce)),
+            Self::CallVirt { args, site: _ } =>args.iter_mut().for_each(|arg|arg.resolve_global_allocations(asm,tyctx,tycache)),
             Self::LdcI64(_) |
             Self::LdcU64(_) |
             Self::LdcI32(_)  |
@@ -765,7 +887,7 @@ impl CILNode {
             Self::LdcF64(_) |
             Self::LdcF32(_) =>(),
             Self::LoadGlobalAllocPtr { alloc_id } => {
-                *self = Self::LDStaticField(asm.add_allocation(*alloc_id,tyctx,tycahce).into());
+                *self = Self::LDStaticField(asm.add_allocation(*alloc_id,tyctx,tycache).into());
             }
             Self::ConvF64Un(val) |
             Self::ConvF32(val)|
@@ -782,39 +904,45 @@ impl CILNode {
             Self::ConvISize(val)|
             //Self::Volatile(_) => todo!(),
             Self::Neg(val) |
-            Self::Not(val) =>val.resolve_global_allocations(asm,tyctx,tycahce),
+            Self::Not(val) =>val.resolve_global_allocations(asm,tyctx,tycache),
 
             Self::TemporaryLocal(tmp_loc) => {
-                tmp_loc.1.iter_mut().for_each(|tree|tree.resolve_global_allocations(asm,tyctx,tycahce));
-                tmp_loc.2.resolve_global_allocations(asm,tyctx,tycahce);
+                tmp_loc.1.iter_mut().for_each(|tree|tree.resolve_global_allocations(asm,tyctx,tycache));
+                tmp_loc.2.resolve_global_allocations(asm,tyctx,tycache);
             },
             Self::SubTrees(trees, main) =>{
-                trees.iter_mut().for_each(|arg|arg.resolve_global_allocations(asm,tyctx,tycahce));
-                main.resolve_global_allocations(asm,tyctx,tycahce);
+                trees.iter_mut().for_each(|arg|arg.resolve_global_allocations(asm,tyctx,tycache));
+                main.resolve_global_allocations(asm,tyctx,tycache);
             }
             Self::LoadAddresOfTMPLocal => (),
             Self::LoadTMPLocal => (),
             Self::LDFtn(_) => (),
             Self::LDTypeToken(_) => (),
-            Self::NewObj { site: _, args } => args.iter_mut().for_each(|arg|arg.resolve_global_allocations(asm,tyctx,tycahce)),
+            Self::NewObj { site: _, args } => args.iter_mut().for_each(|arg|arg.resolve_global_allocations(asm,tyctx,tycache)),
             Self::LdStr(_) => (),
             Self::CallI(sig_ptr_args) => {
-                sig_ptr_args.1.resolve_global_allocations(asm, tyctx,tycahce);
-                sig_ptr_args.2.iter_mut().for_each(|arg|arg.resolve_global_allocations(asm,tyctx,tycahce));
+                sig_ptr_args.1.resolve_global_allocations(asm, tyctx,tycache);
+                sig_ptr_args.2.iter_mut().for_each(|arg|arg.resolve_global_allocations(asm,tyctx,tycache));
             }
             Self::LDStaticField(_sfield)=>(),
             Self::LDLen { arr } =>{
-                arr.resolve_global_allocations(asm, tyctx,tycahce);
+                arr.resolve_global_allocations(asm, tyctx,tycache);
             }
             Self::LDElelemRef { arr, idx }=>{
-                arr.resolve_global_allocations(asm, tyctx,tycahce);
-                idx.resolve_global_allocations(asm, tyctx,tycahce);
+                arr.resolve_global_allocations(asm, tyctx,tycache);
+                idx.resolve_global_allocations(asm, tyctx,tycache);
             }
         }
     }
 
     pub(crate) fn sheed_trees(&mut self) -> Vec<CILRoot> {
         match self {
+            Self::GetStackTop => vec![],
+            Self::InspectValue { val, inspect } => {
+                let mut val = val.sheed_trees();
+                
+                val
+            }
             Self::LDLoc(_) | Self::LDArg(_) | Self::LDLocA(_) | Self::LDArgA(_) => {
                 vec![]
             }

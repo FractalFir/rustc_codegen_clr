@@ -345,11 +345,13 @@ pub fn handle_rvalue<'tcx>(
                 // Just alwways return 0 if the discriminat type is `()` - this seems to work, and be what rustc expects. Wierd, but OK.
                 crate::casts::int_to_int(Type::I32, target, ldc_i32!(0))
             } else {
-                crate::casts::int_to_int(
+                let res = crate::casts::int_to_int(
                     disrc_type.clone(),
-                    target,
+                    target.clone(),
                     crate::utilis::adt::get_discr(layout.layout, addr, owner, tyctx, owner_ty),
-                )
+                );
+                res
+                
             }
         }
         Rvalue::Len(operand) => {

@@ -587,6 +587,8 @@ fn node_string(tree: &CILNode, method: &Method) -> String {
         CILNode::CallI(_sig_ptr_args) => todo!(),
         CILNode::LDLen { arr } => todo!("arr:{arr:?}"),
         CILNode::LDElelemRef { arr, idx } => todo!("arr:{arr:?} idx:{idx:?}"),
+        CILNode::GetStackTop => todo!(),
+        CILNode::InspectValue { val, inspect } => node_string(val, method),
     }
 }
 fn tree_string(tree: &CILTree, method: &Method) -> String {

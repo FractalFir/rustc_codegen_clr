@@ -3,68 +3,40 @@
 > [!WARNING]
 > This project is still early in its developement. Bugs, crashes and miscompilations are expected. DO NOT USE IT FOR ANYTHING SERIOUS.
 
-## Project progress
+`rustc_codegen_clr` is an experimental Rust to .NET compiler backend. It allows the Rust compiler to turn Rust code into .NET assemblies. This translation is very high-level, and preserves things like types,
+field/varaible names. 
 
-The project is still very early in development, but it has made significant progress in recent months. The codegen can now compile a wide range of Rust code to CLR, and it is able to generate code that is efficient and interoperable with C#/F# code. However, there are still some issues with the codegen, such as its inability to understand some Rust optimizations and its tendency to crash when it encounters something not yet supported.
+The project aims to provide a way to easily use Rust libraries in .NET. It comes with a Rust/.NET interop layer, which allows you to easily interact with .NET code from Rust:
+```
+use mychorizza::*;
+fn main(){
+    // Alocate a new GC-managed string builder
+    let stringBuilder = StringBuilder::empty();
+    // You can easily operate on GC-managed types
+    mstring.AppendChar('H');
+    mstring.AppendChar('i');
+    mstring.AppendChar('.');
+}
+```
+The project will also include support for defining .NET classes from Rust. This is currently heavily WIP, and any feedback is appreciated.
+```
+#[dotnet_typedef]
+struct Test{
+    inherits:System::Object,
+    count:i32,
+    #[fnimpl(Test_ToString)]
+    ToString: fn(Self)->System::String,
+    #[fnimpl(Test_GetCount)]
+    GetCount: fn(Self)->System::String,
+    #[fnimpl(Test_SayHello)]
+    SayHello: fn(),
+}
+```
+## Current state of the project
 
-### Functionality
+The project currently supports most Rust features(besides async), but it is not bug-free. It can compile a partially working version of Rust std, but the many minor bugs make such `std` highly unstable.
 
-- [X] Basic functions get translated properly.
-- [X] Arithmetic operations work
-- [X] Most `if`'s work.
-- [X] Basic `match` works.
-- [X] While loops work.
-- [X] Calls
-- [X] Basic IL optimization(replacing some instruction sequences with shorter ones).
-- [X] IL local variable merging(reduces the complexity of generated CIL)
-- [X] Local struct spliting(significantly speeds up for loops, reduces complexity of CIL) 
-- [X] Auto inlining of trivial functions
-- [ ] Full variable lifetime analysis and optimizations based on it.
-- [X] Stack unwinding
-- [ ] Exception handling
-- [X] Setting value of a reference
-- [X] Getting value of a reference
-- [X] Creating slices from arrays
-- [X] Creating arrays
-- [X] Indexing arrays
-- [X] Getting values of fields
-- [X] Setting fields
-- [X] Pointer dereferencing
-- [X] Generics *GATS don't work in some edge cases, the generic handling will need to be reworked*
-- [X] for loops 
-- [X] constant values
-
-### Types
-
-> [!NOTE]
-> This section says only if a type can be translated for .NET to understand. This **does not** mean the type is fully usable.
-
-- [X] All integer and float types are supported. Support for math with 128-bit integers is very limited
-- [X] References are supported
-- [X] Arrays
-- [X] Slices
-- [X] Void type
-- [X] Combinations of all of the above.
-- [X] Structs
-- [X] Enums
-- [X] Tuples
-- [X] Traits *Most should work*
-- [X] Iterators
-- [X] Closures
-- [X] Function types
-- [X] Function pointers *there are some unhnadled edge cases, related to `#[track_caller]`*
-- [X] DSTs *Supported, may still contain bugs.*
-- [ ] Trait objects 
-#### Experimental rust types 
-
-## Milestones
-
-- [X] Draft version of the `mycorrhiza` interop layer, capable of creating managed objects, and calling methods. 
-- [X] Compiling the `core` Rust crate - *Core now compiles, but is not fully functional.*
-- [X] Compiling the `alloc` Rust crate  - *Alloc now compiles, but is only paritaly functional.*
-- [X] Compiling the `std` Rust crate - *std now compiles, but is only a very small portion of it is functional.*
-- [X] Stack unwinding
-
+So, you *can* compile a lot of existing Rust code, but it may not necessarily *work*.
 ## Basic benchmarks
 
 > [!NOTE]
@@ -85,9 +57,9 @@ The project is still very early in development, but it has made significant prog
 | C# release (pure IL)                       | 250 ns          |
 | C# debug (pure IL)                         | 370 ns          |
 
-As you can see, the difference between optimized C# and optimized .NET Rust code is not all that big. It is noticeable(~10%), but I would say it is a pretty good result considering how few optimizations are done right now. With a couple bigger changes coming further down the line, the gap could become non-existent in the future. Since this benchmark is meant to show the worst case scenario, Rust could already outperform C# in a wide range of more memory-intensive scenarios.
+As you can see, the difference between optimized C# and optimized .NET Rust code is not all that big. It is noticeable(~10%), but I would say it is a pretty good result considering how few optimizations are done right now. With a couple of bigger changes coming further down the line, the gap could become non-existent in the future. Since this benchmark is meant to show the worst case scenario, Rust could already outperform C# in a wide range of more memory-intensive scenarios.
 
-**However**, you should take all of those results with a pinch of salt. Since there is currently no way to use "proper" .NET benchmarking tools, I am relying on the `Stopwatch` class for time and have no way to control for the behavior of the JIT. It seems to optimize the Rust code after enough runs, all while the speed of C# dropped significantly. This is not due to thermal throttling or any other variable I can think of - both tests were run multiple times back-to-back (Rust then C# the Rust then C# again), and the results remain consistent. Such oddities point at issues with the testing setup, but the results can still serve as a rough guide about what kinds of performance can be expected.
+**However**, you should take all of those results with a pinch of salt. Since there is currently no way to use "proper" .NET benchmarking tools, I am relying on the `Stopwatch` class for time measurements and have no way to control the behavior of the JIT. It seems to optimize the Rust code after enough runs, all while the speed of C# dropped significantly. This is not due to thermal throttling or any other variable I can think of - both tests were run multiple times back-to-back (Rust then C# the Rust then C# again), and the results remain consistent. Such oddities point at issues with the testing setup, but the results can still serve as a **very** rough guide about what kinds of performance can be expected.
 
 | Test Method                       | Avg of 100M runs |
 | --------------------------------- | ---------------- |
@@ -115,17 +87,15 @@ As you can see, the difference between optimized C# and optimized .NET Rust code
 
 ### Q: Compatibility?
 
-**A**: *`rustc_codegen_clr` is only tested on Linux x86_64, with the Mono and CoreCLR (more commonly known as simply the .NET runtime). It may work on other platforms, but it is not guaranteed.
+**A**: *`rustc_codegen_clr` is only tested on Linux x86_64, with the Mono and CoreCLR (more commonly known as simply the .NET runtime). It may should on other platforms, but it is not guaranteed.
 
 **A** The support for the Mono runtime is not as good as it could be. Due to not supported features and differences, 128-bit integers and checked 64-bit integer arithmetic are not supported on Mono.
 
 ### Q: Are there any issues?
 
-**A**: *The backend still does not understand some Rust optimizations, and you may need to disable them to allow for compilation*.
+**A**: *While the backend is extensively tested, it is still far from perfect, and there are still many edge cases that may break this backend.*
+**A**: *Currently, there are no .NET-specific versions of `std` or .NET specific target triples. This means that you will need separate .NET assemblies for each OS.*
 
-**A**: *While testing is more extensive, there are still many edge cases that may break this backend.*
-
-**A**: *The backend can recover from encountering errors/unsupported features, but it still sometimes crashes when it fails to compile something not supported yet*.
 
 ## Licensing
 

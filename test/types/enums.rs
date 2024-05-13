@@ -25,6 +25,11 @@ fn simple_enum(){
     let simple_enum = black_box(simple_enum);
     test_eq!(simple_enum, SimpleEnum::A);
     test_ne!(simple_enum, SimpleEnum::B);
+    let some_0_usize = black_box(Some(0_usize));
+    match some_0_usize{
+        Some(some)=>{black_box(some);},
+        None=>black_box(()),
+    }
 }
 fn main(){
     simple_enum();

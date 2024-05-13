@@ -10,9 +10,13 @@ use rustc_middle::mir::PlaceElem;
 use rustc_middle::ty::{FloatTy, Instance, IntTy, TyCtxt, TyKind, UintTy};
 
 pub fn local_set(local: usize, method: &rustc_middle::mir::Body, tree: CILNode) -> CILRoot {
-    if let Some(spread_arg) = method.spread_arg && local == spread_arg.as_usize(){
-        return  CILRoot::STLoc {
-            local: (method.local_decls.len() -  method.arg_count).try_into().unwrap(),
+    if let Some(spread_arg) = method.spread_arg
+        && local == spread_arg.as_usize()
+    {
+        return CILRoot::STLoc {
+            local: (method.local_decls.len() - method.arg_count)
+                .try_into()
+                .unwrap(),
             tree,
         };
     }

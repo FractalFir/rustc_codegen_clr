@@ -8,8 +8,14 @@ use rustc_middle::mir::{Place, PlaceElem};
 use rustc_middle::ty::{Instance, TyCtxt, TyKind};
 
 pub(super) fn local_get(local: usize, method: &rustc_middle::mir::Body) -> CILNode {
-    if let Some(spread_arg) = method.spread_arg && local == spread_arg.as_usize(){
-        return CILNode::LDLoc((method.local_decls.len() -  method.arg_count).try_into().unwrap());
+    if let Some(spread_arg) = method.spread_arg
+        && local == spread_arg.as_usize()
+    {
+        return CILNode::LDLoc(
+            (method.local_decls.len() - method.arg_count)
+                .try_into()
+                .unwrap(),
+        );
     }
     if local == 0 {
         CILNode::LDLoc(0)
@@ -30,7 +36,6 @@ pub fn place_get<'tyctx>(
     method_instance: Instance<'tyctx>,
     type_cache: &mut crate::r#type::TyCache,
 ) -> CILNode {
-  
     if place.projection.is_empty() {
         local_get(place.local.as_usize(), method)
     } else {

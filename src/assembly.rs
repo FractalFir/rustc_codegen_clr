@@ -350,28 +350,37 @@ impl Assembly {
             }
             //ops.extend(trees.iter().flat_map(|tree| tree.flatten()))
         }
-        if let Some(spread_arg) = mir.spread_arg{
+        if let Some(spread_arg) = mir.spread_arg {
             // Prepare for repacking the argument tuple, by allocating a local
             let repacked = locals.len();
-            let repacked_ty:rustc_middle::ty::Ty = crate::utilis::monomorphize(&instance, mir.local_decls[spread_arg].ty, tyctx);
+            let repacked_ty: rustc_middle::ty::Ty =
+                crate::utilis::monomorphize(&instance, mir.local_decls[spread_arg].ty, tyctx);
             let repacked_type = cache.type_from_cache(repacked_ty, tyctx, Some(instance));
-            locals.push((Some("repacked_arg".into()),repacked_type));
+            locals.push((Some("repacked_arg".into()), repacked_type));
             let mut repack_cil = Vec::new();
             // For each element of the tuple, get the argument spread_arg + n
-            let packed_count = if let TyKind::Tuple(tup) = repacked_ty.kind(){
+            let packed_count = if let TyKind::Tuple(tup) = repacked_ty.kind() {
                 tup.len()
-            }else{
+            } else {
                 panic!("Arg to spread not a tuple???")
             };
-            for arg_id in 0..packed_count{
+            for arg_id in 0..packed_count {
                 let arg_field = field_descrptor(repacked_ty, arg_id as u32, tyctx, instance, cache);
-                repack_cil.push(CILRoot::SetField { addr: CILNode::LDLocA(repacked as u32), value: CILNode::LDArg(((spread_arg.as_usize() - 1) + arg_id).try_into().unwrap()), desc: arg_field }.into());
+                repack_cil.push(
+                    CILRoot::SetField {
+                        addr: CILNode::LDLocA(repacked as u32),
+                        value: CILNode::LDArg(
+                            ((spread_arg.as_usize() - 1) + arg_id).try_into().unwrap(),
+                        ),
+                        desc: arg_field,
+                    }
+                    .into(),
+                );
             }
             // Get the first bb, and append repack_cil at its start
             let first_bb = &mut normal_bbs[0];
             repack_cil.append(first_bb.trees_mut());
             *first_bb.trees_mut() = repack_cil;
-
         }
         normal_bbs
             .iter_mut()

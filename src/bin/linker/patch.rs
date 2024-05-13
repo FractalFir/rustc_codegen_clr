@@ -42,8 +42,11 @@ fn hijack_arg_init(asm: &mut Assembly) {
             && name.contains("sys")
             && name.contains("std")
         {
-            if let Some(really_init) = really_init{
-                assert_eq!(really_init,site, "ERROR: Two arg initialziers found! really_init:{really_init:?} site:{site:?}");
+            if let Some(really_init) = really_init {
+                assert_eq!(
+                    really_init, site,
+                    "ERROR: Two arg initialziers found! really_init:{really_init:?} site:{site:?}"
+                );
             }
             really_init = Some(site);
         }

@@ -240,14 +240,14 @@ pub fn get_discr<'tyctx>(
     };
 
     // Decode the discriminant (specifically if it's niche-encoded).
-    match *tag_encoding {
+    let discr = match *tag_encoding {
         TagEncoding::Direct => {
             if tag_tpe == Type::Void {
                 //CILNode::LDOb
                 todo!();
             } else {
                 CILNode::LDField {
-                    field: crate::cil::FieldDescriptor::new(enum_tpe, tag_tpe, "value__".into())
+                    field: crate::cil::FieldDescriptor::new(enum_tpe.clone(), tag_tpe.clone(), "value__".into())
                         .into(),
                     addr: enum_addr.into(),
                 }
@@ -262,7 +262,7 @@ pub fn get_discr<'tyctx>(
             let relative_max = niche_variants.end().as_u32() - niche_variants.start().as_u32();
             let tag = CILNode::LDField {
                 field: crate::cil::FieldDescriptor::new(
-                    enum_tpe,
+                    enum_tpe.clone(),
                     disrc_type.clone(),
                     "value__".into(),
                 )
@@ -371,5 +371,12 @@ pub fn get_discr<'tyctx>(
                 is_niche,
             )
         }
+    };
+    if *crate::config::INSERT_MIR_DEBUG_COMMENTS{
+        rustc_middle::ty::print::with_no_trimmed_paths! {CILNode::print_debug_val(&format!("Discriminant of type {enum_tpe:?}({tag_tpe:?}) is "), discr, ".",tag_tpe)}
+    }else{
+        discr
     }
+   
+    //discr
 }

@@ -163,7 +163,6 @@ pub fn place_adress<'a>(
     method_instance: Instance<'a>,
     type_cache: &mut crate::r#type::TyCache,
 ) -> CILNode {
-    
     let place_ty = place.ty(method, tyctx);
     let place_ty = crate::utilis::monomorphize(&method_instance, place_ty, tyctx).ty;
 
@@ -220,7 +219,6 @@ pub(crate) fn place_address_raw<'a>(
     method_instance: Instance<'a>,
     type_cache: &mut crate::r#type::TyCache,
 ) -> CILNode {
-   
     let place_ty = place.ty(method, tyctx);
     let place_ty = crate::utilis::monomorphize(&method_instance, place_ty, tyctx).ty;
 
@@ -284,7 +282,6 @@ pub(crate) fn place_set<'tyctx>(
     method_instance: Instance<'tyctx>,
     type_cache: &mut crate::r#type::TyCache,
 ) -> CILRoot {
-    
     if place.projection.is_empty() {
         set::local_set(place.local.as_usize(), method, value_calc)
     } else {
