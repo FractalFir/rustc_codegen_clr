@@ -195,7 +195,7 @@ fn place_elem_get<'a>(
                         "data_pointer".into(),
                     );
                     let metadata = FieldDescriptor::new(slice, Type::USize, "metadata".into());
-                    // bounds_check
+
                     let addr = ld_field!(addr_calc.clone(), data_pointer)
                         + call!(
                             CallSite::new(
@@ -204,7 +204,7 @@ fn place_elem_get<'a>(
                                 FnSig::new(&[Type::USize, Type::USize], &Type::USize),
                                 true
                             ),
-                            [ld_field!(addr_calc, metadata), conv_usize!(index)]
+                            [ conv_usize!(index),ld_field!(addr_calc, metadata),]
                         ) * CILNode::ConvUSize(CILNode::SizeOf(inner_type.into()).into());
                     super::deref_op(
                         super::PlaceTy::Ty(inner),

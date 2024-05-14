@@ -1,5 +1,5 @@
 /// A list of all functions which are redirected to system libc.
-pub const LIBC_FNS: [&str; 503] = [
+pub const LIBC_FNS: [&str; 504] = [
     "a64l",
     "abort",
     "abs",
@@ -242,6 +242,7 @@ pub const LIBC_FNS: [&str; 503] = [
     "mbstowcs",
     "mbtowc",
     "mcheck",
+    "mcheck_check_all",
     "memcmp",
     "memcpy",
     "memfrob",

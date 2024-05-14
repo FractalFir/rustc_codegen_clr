@@ -1,16 +1,7 @@
 use std::num::NonZeroU8;
 
 use crate::{
-    basic_block::BasicBlock,
-    call, call_virt,
-    cil::CallSite,
-    cil_tree::{cil_node::CILNode, cil_root::CILRoot},
-    conv_usize,
-    function_sig::FnSig,
-    ldc_u32,
-    method::{Method, MethodType},
-    r#type::{DotnetTypeRef, Type},
-    size_of,
+    basic_block::BasicBlock, call, call_virt, cil::CallSite, cil_tree::{cil_node::CILNode, cil_root::CILRoot}, conv_usize, function_sig::FnSig, ldc_u32, ldc_u64, method::{Method, MethodType}, size_of, r#type::{DotnetTypeRef, Type}
 };
 /// Creates a wrapper method around entypoint represented by `CallSite`
 pub fn wrapper(entrypoint: &CallSite) -> Method {
@@ -28,7 +19,12 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
             }],
             &Type::Void,
         );
-
+        let mem_checks = if *crate::config::MEM_CHECKS{
+            CILRoot::Pop {tree:CILNode::Call{ site: Box::new(CallSite::mcheck()), args: [conv_usize!(ldc_u64!(0))].into() }}
+        }
+        else{
+            CILRoot::Nop
+        };
         let mut method = Method::new(
             crate::access_modifier::AccessModifer::Public,
             MethodType::Static,
@@ -117,6 +113,7 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
                 ),
                 BasicBlock::new(
                     vec![
+                        mem_checks.into(),
                         CILRoot::Pop {
                             tree: call!(
                                 Box::new(entrypoint.clone()),

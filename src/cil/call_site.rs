@@ -16,6 +16,12 @@ pub struct CallSite {
     generics: Vec<Type>,
 }
 impl CallSite {
+    pub fn mcheck()->Self{
+        CallSite::builtin("mcheck".into(), FnSig::new(&[Type::ISize],&Type::I32), true)
+    }
+    pub fn mcheck_check_all()->Self{
+        CallSite::builtin("mcheck_check_all".into(), FnSig::new(&[],&Type::Void), true)
+    }
     #[must_use]
     pub fn mstring_to_ptr() -> Self {
         CallSite::new_extern(

@@ -202,9 +202,14 @@ impl CILRoot {
             &[DotnetTypeRef::string_type().into()],
             &crate::r#type::Type::Void,
         );
+        let message_or_check = if *crate::config::MEM_CHECKS{
+            CILNode::SubTrees([CILRoot::Call { site: CallSite::mcheck_check_all(), args: [].into() }].into(),Box::new(CILNode::LdStr(msg.into())))
+        }else{
+            CILNode::LdStr(msg.into())
+        };
         Self::Call {
             site: CallSite::new_extern(class, name, signature, true),
-            args: [CILNode::LdStr(msg.into())].into(),
+            args: [message_or_check].into(),
         }
     }
     #[must_use]

@@ -110,7 +110,9 @@ pub fn handle_call_terminator<'tycxt>(
         }
         _ => todo!("Can't call type {func_ty:?}"),
     }
-
+    if *crate::config::MEM_CHECKS{
+        trees.push(CILRoot::Call { site: CallSite::mcheck_check_all(), args: [].into() }.into());
+    }
     // Final Jump
     if let Some(target) = target {
         trees.push(

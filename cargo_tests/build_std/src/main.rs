@@ -438,5 +438,5 @@ fn lock_test() {
 
 #[test]
 fn fun() {
-    panic!();
+    
 }

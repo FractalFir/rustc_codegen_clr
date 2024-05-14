@@ -55,6 +55,8 @@ config_flag! {ENFORCE_CIL_VALID,false,"Tells the codegen to preform additonal ch
 config_flag! {DEAD_CODE_ELIMINATION,true,"Tells the codegen to remove dead code before export."}
 config_flag! {PRINT_PTRS,false,"Tells codegen the print each pointer it dereferences."}
 config_flag! {CHECK_REFS,false,"Tells codegen to check if references it assigns are valid."}
+config_flag! {MEM_CHECKS,false,"Tells codegen to insert memory consistency checks after each call. If INSERT_MIR_DEBUG_COMMENTS is enabled, the consistency checks will be run also after each MIR statement."}
+
 
 config_flag! {TRACE_CIL_OPS,false,"Tells the print each CIL op before it is executed."}
 

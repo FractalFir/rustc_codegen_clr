@@ -337,7 +337,7 @@ pub fn place_elem_adress<'ctx>(
                                 FnSig::new(&[Type::USize, Type::USize], &Type::USize),
                                 true
                             ),
-                            [conv_usize!(index), ld_field!(addr_calc, len),]
+                            [conv_usize!(index), ld_field!(addr_calc, len)]
                         ) * conv_usize!(CILNode::SizeOf(inner_type.into())))
                 }
                 TyKind::Array(element, _) => {
