@@ -8,7 +8,7 @@ use crate::r#type::{DotnetTypeRef, Type};
 use crate::{call, eq, gt, gt_un, ldc_i32, lt, lt_un};
 pub fn ne_unchecked(ty_a: Ty<'_>, operand_a: CILNode, operand_b: CILNode) -> CILNode {
     //vec![eq_unchecked(ty_a), CILOp::LdcI32(0), CILOp::Eq]
-    eq!(eq_unchecked(ty_a, operand_a, operand_b), ldc_i32!(0))
+    eq!(eq_unchecked(ty_a, operand_a, operand_b), CILNode::LdFalse)
 }
 pub fn eq_unchecked(ty_a: Ty<'_>, operand_a: CILNode, operand_b: CILNode) -> CILNode {
     //vec![CILOp::Eq]

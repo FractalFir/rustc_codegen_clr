@@ -18,7 +18,7 @@ macro_rules! select {
                         CILRoot::BTrue {
                             target: 1,
                             sub_target: 0,
-                            ops: CILNode::LDArg(2),
+                            cond: CILNode::LDArg(2),
                         }
                         .into(),
                         CILRoot::Ret {

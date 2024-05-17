@@ -309,6 +309,18 @@ impl Type {
             _ => todo!("Can't get the max value of {self:?}"),
         }
     }
+    // Checks if a type can be operated on by CIL numeric instructions.
+    pub(crate) fn is_primitive_numeric(&self) -> bool {
+        match self{
+            Self::I8 | Self::I16 | Self::I32 | Self::I64 | Self::ISize | Self::U8 | Self::U16 | Self::U32 | Self::U64 | Self::USize  =>true,
+            Self::Bool => true,
+            Self::F32 | Self::F64 => true,
+            Self::Ptr(_)=>true,
+            // 128 bit ints are NOT primitve CIL types!
+            Self::I128 | Type::U128=>true,
+            _=>false,
+        }
+    }
 }
 impl From<&IntTy> for Type {
     fn from(int_tpe: &IntTy) -> Self {

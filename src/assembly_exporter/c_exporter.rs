@@ -589,6 +589,13 @@ fn node_string(tree: &CILNode, method: &Method) -> String {
         CILNode::LDElelemRef { arr, idx } => todo!("arr:{arr:?} idx:{idx:?}"),
         CILNode::GetStackTop => todo!(),
         CILNode::InspectValue { val, inspect } => node_string(val, method),
+        CILNode::TransmutePtr { val, new_ptr } => format!(
+            "({new_ptr}){val}",
+            new_ptr = c_tpe(new_ptr),
+            val = node_string(val, method)
+        ),
+        CILNode::LdFalse=>"0".into(),
+        CILNode::LdTrue=>"0".into(),
     }
 }
 fn tree_string(tree: &CILTree, method: &Method) -> String {
@@ -614,7 +621,7 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
         CILRoot::BTrue {
             target,
             sub_target,
-            ops,
+            cond: ops,
         } => {
             if *sub_target != 0 {
                 format!(

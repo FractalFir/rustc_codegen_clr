@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use crate::{
     cil::CILOp,
     cil_tree::{cil_root::CILRoot, CILTree},
+    method::Method,
 };
 use rustc_middle::mir::BasicBlockData;
 use rustc_middle::mir::UnwindAction;
@@ -167,6 +168,24 @@ fn block_gc(entrypoint: u32, bbs: &[BasicBlock]) -> Vec<BasicBlock> {
         .collect()
 }
 impl BasicBlock {
+    pub fn validate(&self, method: &Method) -> Result<(), String> {
+        let errs: Vec<String> = self
+            .trees()
+            .iter()
+            .map(|tree| {
+                tree.validate(method)
+                    .map_err(|err| format!("{tree:?}:\n\n{err}"))
+            })
+            .flat_map(|err| match err {
+                Ok(_) => None,
+                Err(err) => Some(err),
+            })
+            .collect::<Vec<_>>();
+        if !errs.is_empty() {
+            return Err(errs[0].clone());
+        }
+        Ok(())
+    }
     /// Converts all trees containing sub-trees into multiple trees.
     pub fn sheed_trees(&mut self) {
         self.trees = self

@@ -172,7 +172,7 @@ pub fn unsize<'tyctx>(
                     },
                     CILRoot::SetField {
                         addr: info.target_ptr,
-                        value: info.source_ptr,
+                        value: CILNode::TransmutePtr { val: Box::new(info.source_ptr), new_ptr: Box::new(Type::Ptr(Box::new(Type::Void))) },
                         desc: ptr_field,
                     },
                 ]

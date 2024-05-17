@@ -2,6 +2,7 @@ use crate::{
     call,
     cil::{CILOp, CallSite, FieldDescriptor, StaticFieldDescriptor},
     function_sig::FnSig,
+    method::Method,
     r#type::{DotnetTypeRef, TyCache, Type},
     IString,
 };
@@ -178,6 +179,15 @@ pub enum CILNode {
         val: Box<Self>,
         inspect: Box<[CILRoot]>,
     },
+    /// Tells the codegen a pointer value type is changed. Used during verification, to implement things like`transmute`.
+    TransmutePtr {
+        val: Box<Self>,
+        new_ptr: Box<Type>,
+    },
+    /// Equivalent to CILNode::LdcI32(0), but with addtional typechecking info.
+    LdFalse,
+    /// Equivalent to CILNode::LdcI32(1), but with addtional typechecking info.
+    LdTrue,
 }
 
 impl CILNode {
@@ -187,7 +197,6 @@ impl CILNode {
         format_end: &str,
         tpe: Type,
     ) -> Self {
-
         match tpe {
             Type::U64 | Type::I64 | Type::U32 | Type::I32 => CILNode::InspectValue {
                 val: Box::new(value),
@@ -205,7 +214,7 @@ impl CILNode {
                     CILRoot::debug(format_end),
                 ]),
             },
-            Type::U8  | Type::U16 => CILNode::InspectValue {
+            Type::U8 | Type::U16 => CILNode::InspectValue {
                 val: Box::new(value),
                 inspect: Box::new([
                     CILRoot::debug(format_start),
@@ -221,7 +230,7 @@ impl CILNode {
                     CILRoot::debug(format_end),
                 ]),
             },
-            Type::I8  | Type::I16 => CILNode::InspectValue {
+            Type::I8 | Type::I16 => CILNode::InspectValue {
                 val: Box::new(value),
                 inspect: Box::new([
                     CILRoot::debug(format_start),
@@ -272,7 +281,13 @@ impl CILNode {
             Type::Void => value,
             _ => CILNode::InspectValue {
                 val: Box::new(value),
-                inspect: Box::new([CILRoot::debug(format_start), CILRoot::Pop{ tree: CILNode::GetStackTop },CILRoot::debug(format_end)]),
+                inspect: Box::new([
+                    CILRoot::debug(format_start),
+                    CILRoot::Pop {
+                        tree: CILNode::GetStackTop,
+                    },
+                    CILRoot::debug(format_end),
+                ]),
             },
         }
     }
@@ -332,6 +347,9 @@ impl CILNode {
     }
     fn opt_children(&mut self) {
         match self {
+            Self::LdFalse=>(),
+            Self::LdTrue=>(),
+            Self::TransmutePtr { val, new_ptr }=>val.opt(),
             Self::GetStackTop=>(),
             Self::InspectValue { val, inspect }=>{val.opt_children();inspect.iter_mut().for_each(|rot|rot.opt())},
             Self::LDLoc(_) => (),
@@ -459,6 +477,9 @@ impl CILNode {
     #[must_use]
     pub fn flatten(&self) -> Vec<CILOp> {
         let mut ops = match self {
+            Self::LdFalse=>vec![CILOp::LdcI32(0)],
+            Self::LdTrue=>vec![CILOp::LdcI32(1)],
+            Self::TransmutePtr { val, new_ptr: _ } => val.flatten(),
             Self::GetStackTop => vec![],
             Self::InspectValue { val, inspect } => {
                 let mut ops = val.flatten();
@@ -711,6 +732,9 @@ impl CILNode {
         locals: &mut Vec<(Option<Box<str>>, Type)>,
     ) {
         match self {
+            Self::LdFalse=>(),
+            Self::LdTrue=>(),
+            Self::TransmutePtr { val, new_ptr }=>val.allocate_tmps(curr_loc, locals),
             Self::GetStackTop =>(),
             Self::InspectValue { val, inspect }=>{
                 val.allocate_tmps(curr_loc, locals);
@@ -828,6 +852,9 @@ impl CILNode {
         tycache: &mut TyCache,
     ) {
         match self {
+            Self::LdFalse=>(),
+            Self::LdTrue=>(),
+            Self::TransmutePtr { val, new_ptr }=>val.resolve_global_allocations(asm, tyctx, tycache),
             Self::GetStackTop => (),
             Self::InspectValue { val, inspect }=>{
                 val.resolve_global_allocations(asm, tyctx, tycache);
@@ -937,10 +964,13 @@ impl CILNode {
 
     pub(crate) fn sheed_trees(&mut self) -> Vec<CILRoot> {
         match self {
+            Self::LdFalse=>vec![],
+            Self::LdTrue=>vec![],
+            Self::TransmutePtr { val, new_ptr: _ } => val.sheed_trees(),
             Self::GetStackTop => vec![],
             Self::InspectValue { val, inspect } => {
                 let mut val = val.sheed_trees();
-                
+
                 val
             }
             Self::LDLoc(_) | Self::LDArg(_) | Self::LDLocA(_) | Self::LDArgA(_) => {
@@ -1045,6 +1075,277 @@ impl CILNode {
                 res.extend(idx.sheed_trees());
                 res
             }
+        }
+    }
+
+    pub(crate) fn validate(&self, method: &Method) -> Result<Type, String> {
+        match self {
+            Self::LdTrue=>Ok(Type::Bool),
+            Self::InspectValue { val, inspect: _ }=>{
+                val.validate(method)
+            }
+            Self::LDField{ addr, field }=>{
+                let addr = addr.validate(method)?;
+                match addr{
+                    Type::ManagedReference(tpe) | Type::Ptr(tpe) =>if tpe.as_dotnet() != Some(field.owner().clone()){
+                        return  Err(format!(
+                            "Mismatched pointer type. Expected {field:?} got {tpe:?}"
+                        ))
+                    },
+                    _=>return Err(format!("Tired to load a field of a non-pointer type! addr:{addr:?}")),
+                }
+                Ok(field.tpe().clone())
+            },
+            Self::LDFieldAdress{ addr, field }=>{
+                let addr = addr.validate(method)?;
+                match addr{
+                    Type::ManagedReference(tpe) =>if tpe.as_dotnet() != Some(field.owner().clone()){
+                        Err(format!(
+                            "Mismatched pointer type. Expected {field:?} got {tpe:?}"
+                        ))
+                    }else{
+                        Ok(Type::ManagedReference(Box::new(field.tpe().clone())))
+                    },
+                    Type::Ptr(tpe)=>if tpe.as_dotnet() != Some(field.owner().clone()){
+                        Err(format!(
+                            "Mismatched pointer type. Expected {field:?} got {tpe:?}"
+                        ))
+                    } else{
+                        Ok(Type::Ptr(Box::new(field.tpe().clone())))
+                    },
+                    _=>Err(format!("Tired to load a field of a non-pointer type! addr:{addr:?}")),
+                }
+                
+            },
+            Self::LDStaticField(sfd)=>Ok(sfd.tpe().clone()),
+            Self::LDLocA(loc) => match method.locals().get(*loc as usize) {
+                Some(local) => Ok(Type::ManagedReference(Box::new(local.1.clone()))),
+                None => Err(format!("Local {loc }out of range.")),
+            },
+            Self::LDLoc(loc) => match method.locals().get(*loc as usize) {
+                Some(local) => Ok(local.1.clone()),
+                None => Err(format!("Local {loc }out of range.")),
+            },
+            Self::LDArg(arg) => match method.sig().inputs().get(*arg as usize) {
+                Some(arg) => Ok(arg.clone()),
+                None => Err(format!("Argument {arg} out of range.")),
+            },
+            Self::LDArgA(arg) => match method.sig().inputs().get(*arg as usize) {
+                Some(arg) => Ok(Type::ManagedReference(Box::new(arg.clone()))),
+                None => Err(format!("Argument {arg} out of range.")),
+            },
+            Self::LdObj { ptr, obj }=>{
+                let ptr = ptr.validate(method)?;
+                match ptr{
+                    Type::Ptr(pointed) | Type::ManagedReference(pointed)=>if pointed != *obj{
+                        Err(format!("Tried to load a object of type {obj:?} from a pointer to type {pointed:?}"))
+                    }else{
+                        Ok(*obj.clone())
+                    },
+                    _=>Err(format!("{ptr:?} is not a pointer type, so LdObj can't operate on it.")),
+                }
+            },
+            Self::LDIndISize { ptr }=>{
+                let ptr = ptr.validate(method)?;
+                if ptr != Type::Ptr(Box::new(Type::ISize)) || ptr != Type::ManagedReference(Box::new(Type::ISize)){
+                    return Err(format!("Tried to load isize from pointer of type {ptr:?}"));
+                }
+                Ok(Type::ISize)
+            }
+            Self::LDIndU32 { ptr }=>{
+                let ptr = ptr.validate(method)?;
+                if ptr != Type::Ptr(Box::new(Type::U32)) || ptr != Type::ManagedReference(Box::new(Type::U32)){
+                    return Err(format!("Tried to load isize from pointer of type {ptr:?}"));
+                }
+                Ok(Type::U32)
+            }
+            Self::LdcU64(_) => Ok(Type::U64),
+            Self::LdcI64(_) => Ok(Type::I64),
+            Self::LdcU32(_) => Ok(Type::U32),
+            Self::LdcI32(_) => Ok(Type::I32),
+            Self::LdcF32(_)=>Ok(Type::F32),
+            Self::LdcF64(_)=>Ok(Type::F64),
+            Self::ConvISize(src) => {
+                src.validate(method)?;
+                Ok(Type::ISize)
+            }
+            Self::ConvI64(src) => {
+                src.validate(method)?;
+                Ok(Type::I64)
+            }
+            Self::ConvUSize(src) => {
+                let tpe = src.validate(method)?;
+                if let Type::ManagedReference(pointed) = tpe {
+                    Ok(Type::Ptr(pointed))
+                } else {
+                    Ok(Type::USize)
+                }
+            }
+            Self::ConvU64(src) => {
+                src.validate(method)?;
+                Ok(Type::U64)
+            }
+            Self::ConvU32(src) => {
+                src.validate(method)?;
+                Ok(Type::U32)
+            }
+            Self::ConvI32(src) => {
+                src.validate(method)?;
+                Ok(Type::I32)
+            }
+            Self::ConvF32(src) => {
+                src.validate(method)?;
+                Ok(Type::F32)
+            }
+            Self::ConvU16(src) => {
+                src.validate(method)?;
+                Ok(Type::U16)
+            }
+            Self::ConvI16(src) => {
+                src.validate(method)?;
+                Ok(Type::I16)
+            }
+            Self::ConvU8(src) => {
+                src.validate(method)?;
+                Ok(Type::U8)
+            }
+            Self::ConvI8(src) => {
+                src.validate(method)?;
+                Ok(Type::I8)
+            }
+            Self::LtUn(a,b) |  Self::Lt(a,b) | Self::GtUn(a,b) |  Self::Gt(a,b) | Self::Eq(a,b)=>{
+                let a = a.validate(method)?;
+                let b = b.validate(method)?;
+                if a != b{
+                    return Err(format!("Invalid arguments of the {self:?} instruction. {a:?} != {b:?}"));
+                }
+
+                if !a.is_primitive_numeric(){
+                    return Err(format!("The instruction {self:?} can't operate on a non-primitve CIL type {a:?}."));
+                }
+                Ok(Type::Bool)
+            }
+            Self::Add(a,b) | Self::Mul(a,b) | Self::And(a,b) | Self::Sub(a,b) | Self::Or(a,b) | Self::Rem(a,b) | Self::RemUn(a,b) | Self::Div(a,b) | Self::DivUn(a,b)=>{
+                let a = a.validate(method)?;
+                let b = b.validate(method)?;
+                if a != b{
+                    match (&a,&b){
+                        (Type::Ptr(_),Type::ISize | Type::USize)=>return Ok(a),
+                        _=>return Err(format!("Invalid arguments of the Add instruction. {a:?} != {b:?}")),
+                    }
+                    
+                }
+
+                if !a.is_primitive_numeric(){
+                    return Err(format!("The instruction Add can't operate on a non-primitve CIL type {a:?}."));
+                }
+                Ok(a)
+            }
+            Self::Not(a) | Self::Neg(a)=>{
+                let a = a.validate(method)?;
+                if !a.is_primitive_numeric(){
+                    return Err(format!("The instruction Add can't operate on a non-primitve CIL type {a:?}."));
+                }
+                Ok(a)
+            }
+            Self::Shr(a,b) | Self::ShrUn(a,b) |Self::Shl(a,b) =>{
+                let a = a.validate(method)?;
+                let b = b.validate(method)?;
+                if !a.is_primitive_numeric(){
+                    return Err(format!("The instruction Add can't operate on a non-primitve CIL type {a:?}."));
+                }
+                if !b.is_primitive_numeric(){
+                    return Err(format!("The instruction Add can't operate on a non-primitve CIL type {a:?}."));
+                }
+                Ok(a)
+            }
+            Self::LdStr(_) => Ok(Type::DotnetType(DotnetTypeRef::string_type().into())),
+            Self::NewObj { site, args } => {
+                if site.explicit_inputs().len() != args.len() {
+                    return Err(format!(
+                        "Expected {} arguments, got {}",
+                        site.explicit_inputs().len(),
+                        args.len()
+                    ));
+                }
+                for (arg, tpe) in args.iter().zip(site.explicit_inputs().iter()) {
+                    let arg = arg.validate(method)?;
+                    if arg != *tpe {
+                        return Err(format!(
+                            "Expected an argument of type {tpe:?}, but got {arg:?}"
+                        ));
+                    }
+                }
+                match site.class() {
+                    Some(class) => {
+                        if class.asm() == Some("System.Runtime"){
+                            if *class == DotnetTypeRef::int_128(){
+                                return Ok(Type::I128);
+                            }
+                            if *class == DotnetTypeRef::uint_128(){
+                                return Ok(Type::U128);
+                            }
+                        }
+                        Ok(Type::DotnetType(class.clone().into()))
+                    },
+                    None => Err("Newobj instruction witn no class specified".into()),
+                }
+            }
+            Self::Call { site, args } => {
+                if site.inputs().len() != args.len() {
+                    return Err(format!(
+                        "Expected {} arguments, got {}",
+                        site.inputs().len(),
+                        args.len()
+                    ));
+                }
+                for (arg, tpe) in args.iter().zip(site.inputs().iter()) {
+                    let arg = arg.validate(method)?;
+                    if arg != *tpe {
+                        return Err(format!(
+                            "Expected an argument of type {tpe:?}, but got {arg:?}"
+                        ));
+                    }
+                }
+                Ok(site.signature().output().clone())
+            }
+            Self::CallI(packed) => {
+                let (sig,ptr,args) = packed.as_ref();
+                let ptr = ptr.validate(method)?;
+                if sig.inputs().len() != args.len() {
+                    return Err(format!(
+                        "Expected {} arguments, got {}",
+                        sig.inputs().len(),
+                        args.len()
+                    ));
+                }
+                for (arg, tpe) in args.iter().zip(sig.inputs().iter()) {
+                    let arg = arg.validate(method)?;
+                    if arg != *tpe {
+                        return Err(format!(
+                            "Expected an argument of type {tpe:?}, but got {arg:?}"
+                        ));
+                    }
+                }
+                Ok(sig.output().clone())
+            }
+            Self::TransmutePtr { val, new_ptr } => {
+                let val = val.validate(method)?;
+                match val {
+                    Type::USize => (),
+                    Type::ISize => (),
+                    Type::Ptr(_) => (),
+                    _ => {
+                        return Err(format!(
+                            "Invalid TransmutePtr input: {val:?} is not a pointer or usize/isize"
+                        ))
+                    }
+                }
+                Ok(*new_ptr.clone())
+            }
+            Self::LdFalse=>Ok(Type::Bool),
+            Self::SizeOf(_)=>Ok(Type::I32),
+            _ => todo!("Can't check the type safety of {self:?}"),
         }
     }
 }

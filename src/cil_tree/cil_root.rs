@@ -17,7 +17,7 @@ pub enum CILRoot {
     BTrue {
         target: u32,
         sub_target: u32,
-        ops: CILNode,
+        cond: CILNode,
     },
     GoTo {
         target: u32,
@@ -98,7 +98,7 @@ impl CILRoot {
             CILRoot::SourceFileInfo(_) => (),
             CILRoot::STLoc { tree, local: _ } => tree.opt(),
             CILRoot::BTrue {
-                ops,
+                cond: ops,
                 sub_target: _,
                 target: _,
             } => ops.opt(),
@@ -202,9 +202,16 @@ impl CILRoot {
             &[DotnetTypeRef::string_type().into()],
             &crate::r#type::Type::Void,
         );
-        let message_or_check = if *crate::config::MEM_CHECKS{
-            CILNode::SubTrees([CILRoot::Call { site: CallSite::mcheck_check_all(), args: [].into() }].into(),Box::new(CILNode::LdStr(msg.into())))
-        }else{
+        let message_or_check = if *crate::config::MEM_CHECKS {
+            CILNode::SubTrees(
+                [CILRoot::Call {
+                    site: CallSite::mcheck_check_all(),
+                    args: [].into(),
+                }]
+                .into(),
+                Box::new(CILNode::LdStr(msg.into())),
+            )
+        } else {
             CILNode::LdStr(msg.into())
         };
         Self::Call {
@@ -228,7 +235,7 @@ impl CILRoot {
                 Self::STArg { arg, tree } => append_vec(tree.flatten(), CILOp::STArg(*arg)),
                 Self::BTrue {
                     target,
-                    ops,
+                    cond: ops,
                     sub_target,
                 } => append_vec(ops.flatten(), CILOp::BTrue(*target, *sub_target)),
                 Self::GoTo { target, sub_target } => vec![CILOp::GoTo(*target, *sub_target)],
@@ -385,7 +392,7 @@ impl CILRoot {
             CILRoot::BTrue {
                 target: _,
                 sub_target: _,
-                ops,
+                cond: ops,
             } => ops.sheed_trees(),
             CILRoot::GoTo {
                 target: _,
@@ -465,7 +472,7 @@ impl CILRoot {
         match self {
             CILRoot::SourceFileInfo(_) => (),
             CILRoot::STLoc { tree, .. } => tree.allocate_tmps(curr_local, locals),
-            CILRoot::BTrue { ops, .. } => ops.allocate_tmps(curr_local, locals),
+            CILRoot::BTrue { cond: ops, .. } => ops.allocate_tmps(curr_local, locals),
             CILRoot::GoTo { .. } => (),
             CILRoot::CallVirt { site: _, args } | CILRoot::Call { site: _, args } => args
                 .iter_mut()
@@ -547,7 +554,7 @@ impl CILRoot {
             CILRoot::BTrue {
                 target: _,
                 sub_target: _,
-                ops,
+                cond: ops,
             } => ops.resolve_global_allocations(asm, tyctx, tycache),
             CILRoot::GoTo {
                 target: _,
@@ -632,6 +639,144 @@ impl CILRoot {
             })
             .unwrap_or((0, 0));
         Self::source_info(&file, line as u32, column as u32)
+    }
+
+    pub(crate) fn validate(&self, method: &crate::method::Method) -> Result<(), String> {
+        match self {
+            Self::STIndI8(addr,val)=>{
+                let addr = addr.validate(method)?;
+                let val = val.validate(method)?;
+                match &addr{
+                    Type::Ptr(inner) | Type::ManagedReference(inner)=>match inner.as_ref(){
+                        Type::I8 | Type::U8 => (),
+                        _=>return Err(format!("Can't set a vaule of type i8/u8 at address of type {addr:?}")),
+                    }
+                    _=>return Err(format!("Can't set a vaule of type i8/u8 at address of type {addr:?}")),
+                }
+                match val{
+                    Type::I8 | Type::U8 => Ok(()),
+                    _=>return Err(format!("Can't indirectly set a valur of type i8/u8 because the provided value is {val:?}")),
+                }
+            }
+            Self::Break=>Ok(()),
+            Self::BTrue { target, sub_target, cond }=>{
+                // Just check that `cond` is a boolean.
+                let cond = cond.validate(method)?;
+                if cond != Type::Bool{
+                    Err(format!("BTrue must have a boolean argument. cond is:{cond:?}"))
+                }else{
+                    Ok(())
+                }
+            },
+            Self::GoTo {
+                target: _,
+                sub_target: _,
+            } => Ok(()),
+            Self::STLoc { local, tree } => {
+                let expected_tpe = if let Some(loc) = method.locals().get(*local as usize) {
+                    loc
+                } else {
+                    return Err(format!("Local out of range! Local{local:?}"));
+                };
+                let got = tree.validate(method)?;
+                if expected_tpe.1 != got {
+                    Err(format!("Expected a value of {expected_tpe:?}, but got {got:?} when seting local {local:?}"))
+                } else {
+                    Ok(())
+                }
+            }
+            Self::STArg { arg, tree } => {
+                let expected_tpe = if let Some(arg) = method.locals().get(*arg as usize) {
+                    arg
+                } else {
+                    return Err(format!("Arg out of range! Arg {arg:?}"));
+                };
+                let got = tree.validate(method)?;
+                if expected_tpe.1 != got {
+                    Err(format!("Expected a value of {expected_tpe:?}, but got {got:?} when seting local {arg:?}"))
+                } else {
+                    Ok(())
+                }
+            }
+            Self::Call { site, args } => {
+                if site.inputs().len() != args.len() {
+                    return Err(format!(
+                        "Expected {} arguments, got {}",
+                        site.explicit_inputs().len(),
+                        args.len()
+                    ));
+                }
+                for (arg, tpe) in args.iter().zip(site.inputs().iter()) {
+                    let arg = arg.validate(method)?;
+                    if arg != *tpe {
+                        return Err(format!(
+                            "Expected an argument of type {tpe:?}, but got {arg:?}"
+                        ));
+                    }
+                }
+                Ok(())
+            }
+            Self::CallI {args, sig, fn_ptr } => {
+                let ptr = fn_ptr.validate(method)?;
+                if sig.inputs().len() != args.len() {
+                    return Err(format!(
+                        "Expected {} arguments, got {}",
+                        sig.inputs().len(),
+                        args.len()
+                    ));
+                }
+                for (arg, tpe) in args.iter().zip(sig.inputs().iter()) {
+                    let arg = arg.validate(method)?;
+                    if arg != *tpe {
+                        return Err(format!(
+                            "Expected an argument of type {tpe:?}, but got {arg:?}"
+                        ));
+                    }
+                }
+                Ok(())
+            }
+            Self::VoidRet => Ok(()),
+            Self::SourceFileInfo(_) => Ok(()),
+            Self::Nop => Ok(()),
+            Self::Throw(execption) => {
+                let tpe = execption.validate(method)?;
+                if let Some(_) = tpe.as_dotnet() {
+                    Ok(())
+                } else {
+                    Err("`throw` instruction suplied with a non-object type.".into())
+                }
+            }
+            Self::Ret { tree } => {
+                let expected = method.sig().output();
+                let got = tree.validate(method)?;
+                if got != *expected {
+                    Err(format!(
+                        "Mismatched return type. Expected {expected:?} got {got:?}"
+                    ))
+                } else {
+                    Ok(())
+                }
+            }
+            Self::SetField { addr, value, desc }=>{
+                let addr = addr.validate(method)?;
+                let value = value.validate(method)?;
+                if *desc.tpe() != value{
+                    return Err(format!(
+                        "Mismatched field type. Expected {expected:?} got {value:?}",expected = desc.tpe(),
+                    ));
+                }
+                match addr{
+                    Type::ManagedReference(tpe) | Type::Ptr(tpe) =>if tpe.as_dotnet() != Some(desc.owner().clone()){
+                        return  Err(format!(
+                            "Mismatched pointer type. Expected {desc:?} got {tpe:?}"
+                        ))
+                    },
+                    _=>(),
+                }
+                Ok(())
+            },
+            _ => todo!("Can't check the type safety of cil root {self:?}"),
+        }
     }
 }
 #[test]

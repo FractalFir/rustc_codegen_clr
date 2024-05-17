@@ -40,6 +40,21 @@ pub enum Attribute {
     EntryPoint,
 }
 impl Method {
+    pub fn validate(&self) -> Result<(), String> {
+        let errs: Vec<String> = self
+            .blocks()
+            .iter()
+            .map(|tree| tree.validate(self))
+            .flat_map(|err| match err {
+                Ok(_) => None,
+                Err(err) => Some(err),
+            })
+            .collect::<Vec<_>>();
+        if !errs.is_empty() {
+            return Err(errs[0].clone());
+        }
+        Ok(())
+    }
     /// Creates a new method with name `name`, signature `sig`, accessibility of `access`, and consists of `blocks` basic blocks.
     #[must_use]
     pub fn new(

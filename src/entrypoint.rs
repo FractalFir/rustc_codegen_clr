@@ -1,7 +1,16 @@
 use std::num::NonZeroU8;
 
 use crate::{
-    basic_block::BasicBlock, call, call_virt, cil::CallSite, cil_tree::{cil_node::CILNode, cil_root::CILRoot}, conv_usize, function_sig::FnSig, ldc_u32, ldc_u64, method::{Method, MethodType}, size_of, r#type::{DotnetTypeRef, Type}
+    basic_block::BasicBlock,
+    call, call_virt,
+    cil::CallSite,
+    cil_tree::{cil_node::CILNode, cil_root::CILRoot},
+    conv_usize,
+    function_sig::FnSig,
+    ldc_u32, ldc_u64,
+    method::{Method, MethodType},
+    r#type::{DotnetTypeRef, Type},
+    size_of,
 };
 /// Creates a wrapper method around entypoint represented by `CallSite`
 pub fn wrapper(entrypoint: &CallSite) -> Method {
@@ -19,10 +28,14 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
             }],
             &Type::Void,
         );
-        let mem_checks = if *crate::config::MEM_CHECKS{
-            CILRoot::Pop {tree:CILNode::Call{ site: Box::new(CallSite::mcheck()), args: [conv_usize!(ldc_u64!(0))].into() }}
-        }
-        else{
+        let mem_checks = if *crate::config::MEM_CHECKS {
+            CILRoot::Pop {
+                tree: CILNode::Call {
+                    site: Box::new(CallSite::mcheck()),
+                    args: [conv_usize!(ldc_u64!(0))].into(),
+                },
+            }
+        } else {
             CILRoot::Nop
         };
         let mut method = Method::new(
@@ -40,25 +53,28 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
                         // Allocate argc(mamaged arguments + exec path)
                         CILRoot::STLoc {
                             local: 0,
-                            tree: call!(
-                                CallSite::alloc(),
-                                [
-                                    (call!(
-                                        CallSite::new(
-                                            Some(DotnetTypeRef::managed_array()),
-                                            "get_Length".into(),
-                                            FnSig::new(
-                                                &[DotnetTypeRef::managed_array().into()],
-                                                &Type::I32
+                            tree: CILNode::TransmutePtr {
+                                val: Box::new(call!(
+                                    CallSite::alloc(),
+                                    [
+                                        (call!(
+                                            CallSite::new(
+                                                Some(DotnetTypeRef::managed_array()),
+                                                "get_Length".into(),
+                                                FnSig::new(
+                                                    &[DotnetTypeRef::managed_array().into()],
+                                                    &Type::I32
+                                                ),
+                                                false
                                             ),
-                                            false
-                                        ),
-                                        [CILNode::LDArg(0)]
-                                    ) + conv_usize!(ldc_u32!(1)))
-                                        * conv_usize!(size_of!(Type::ISize)),
-                                    conv_usize!(ldc_u32!(8))
-                                ]
-                            ),
+                                            [CILNode::LDArg(0)]
+                                        ) + conv_usize!(ldc_u32!(1)))
+                                            * conv_usize!(size_of!(Type::ISize)),
+                                        conv_usize!(ldc_u32!(8))
+                                    ]
+                                )),
+                                new_ptr: Box::new(Type::Ptr(Box::new(Type::U8))),
+                            },
                         }
                         .into(),
                         // Set the first arg to exec path

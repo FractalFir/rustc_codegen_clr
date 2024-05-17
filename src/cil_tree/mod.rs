@@ -1,5 +1,6 @@
 use crate::{
     cil::CILOp,
+    method::Method,
     r#type::{TyCache, Type},
 };
 
@@ -26,6 +27,9 @@ impl From<CILRoot> for Vec<CILTree> {
     }
 }
 impl CILTree {
+    pub fn validate(&self, method: &Method) -> Result<(), String> {
+        self.tree.validate(method)
+    }
     /// Converts a `CILTree` into a list of `CILOp`.
     #[must_use]
     pub fn into_ops(&self) -> Vec<CILOp> {

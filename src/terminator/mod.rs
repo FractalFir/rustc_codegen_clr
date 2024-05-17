@@ -110,8 +110,14 @@ pub fn handle_call_terminator<'tycxt>(
         }
         _ => todo!("Can't call type {func_ty:?}"),
     }
-    if *crate::config::MEM_CHECKS{
-        trees.push(CILRoot::Call { site: CallSite::mcheck_check_all(), args: [].into() }.into());
+    if *crate::config::MEM_CHECKS {
+        trees.push(
+            CILRoot::Call {
+                site: CallSite::mcheck_check_all(),
+                args: [].into(),
+            }
+            .into(),
+        );
     }
     // Final Jump
     if let Some(target) = target {
@@ -312,10 +318,11 @@ fn handle_switch(ty: Ty, discr: &CILNode, switch: &SwitchTargets) -> Vec<CILTree
         let const_val = match ty.kind() {
             TyKind::Int(int) => crate::constant::load_const_int(value, int),
             TyKind::Uint(uint) => crate::constant::load_const_uint(value, uint),
-            TyKind::Bool => CILNode::LdcI32(i32::from(
-                u8::try_from(value)
-                    .expect("Bool value outside of range 0-255. Should be either 0 OR 1."),
-            )),
+            TyKind::Bool => if value == 0{
+                CILNode::LdFalse 
+            }else{
+                CILNode::LdTrue
+            }
             TyKind::Char => crate::constant::load_const_uint(value, &rustc_middle::ty::UintTy::U64),
             _ => todo!("Unsuported switch discriminant type {ty:?}"),
         };
@@ -323,7 +330,7 @@ fn handle_switch(ty: Ty, discr: &CILNode, switch: &SwitchTargets) -> Vec<CILTree
         trees.push(
             CILRoot::BTrue {
                 target: target.into(),
-                ops: crate::binop::cmp::eq_unchecked(ty, discr.clone(), const_val),
+                cond: crate::binop::cmp::eq_unchecked(ty, discr.clone(), const_val),
                 sub_target: 0,
             }
             .into(),

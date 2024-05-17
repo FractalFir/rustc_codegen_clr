@@ -183,7 +183,7 @@ pub fn place_elem_set<'a>(
                                 FnSig::new(&[Type::USize, Type::USize], &Type::USize),
                                 true
                             ),
-                            [conv_usize!(index),ld_field!(addr_calc, metadata), ]
+                            [conv_usize!(index), ld_field!(addr_calc, metadata),]
                         ) * conv_usize!(CILNode::SizeOf(inner_type.into()));
                     ptr_set_op(
                         super::PlaceTy::Ty(inner),

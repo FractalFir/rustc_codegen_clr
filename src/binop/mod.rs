@@ -13,8 +13,7 @@ pub mod checked;
 pub mod cmp;
 pub mod shift;
 use crate::{
-    call, conv_u16, conv_u32, conv_u64, conv_u8, conv_usize, div, eq, gt_un, ldc_i32, lt_un, rem,
-    rem_un, size_of, sub,
+    call, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8, conv_usize, div, eq, gt_un, ldc_i32, lt_un, rem, rem_un, size_of, sub
 };
 use bitop::{bit_and_unchecked, bit_or_unchecked, bit_xor_unchecked};
 pub use checked::binop_checked;
@@ -90,7 +89,7 @@ pub(crate) fn binop_unchecked<'tyctx>(
             let pointed_ty = crate::utilis::monomorphize(&method_instance, pointed_ty, tyctx);
             let pointed_ty =
                 Box::new(tycache.type_from_cache(pointed_ty, tyctx, Some(method_instance)));
-            ops_a + ops_b * conv_usize!(size_of!(pointed_ty))
+            ops_a + ops_b * conv_isize!(size_of!(pointed_ty))
         }
         BinOp::Cmp => {
             let ordering = tyctx

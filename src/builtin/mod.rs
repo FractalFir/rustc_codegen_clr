@@ -22,7 +22,7 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: lt_un!(CILNode::LDArg(0), CILNode::LDArg(1))
+                    cond: lt_un!(CILNode::LDArg(0), CILNode::LDArg(1))
                 }
                 .into(),
                 CILRoot::Call {
@@ -172,7 +172,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
                     vec![CILRoot::BTrue {
                         target: 2,
                         sub_target: 0,
-                        ops: lt_un!(conv_usize!(ldc_u64!(MAX_ALLOC_SIZE)), CILNode::LDArg(0)),
+                        cond: lt_un!(conv_usize!(ldc_u64!(MAX_ALLOC_SIZE)), CILNode::LDArg(0)),
                     }
                     .into()],
                     0,
@@ -281,7 +281,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
                     vec![CILRoot::BTrue {
                         target: 2,
                         sub_target: 0,
-                        ops: lt_un!(conv_usize!(ldc_u64!(MAX_ALLOC_SIZE)), CILNode::LDArg(0)),
+                        cond: lt_un!(conv_usize!(ldc_u64!(MAX_ALLOC_SIZE)), CILNode::LDArg(0)),
                     }
                     .into()],
                     0,
@@ -346,7 +346,7 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 1,
                     sub_target: 0,
-                    ops: CILNode::LDIndI8 {
+                    cond: CILNode::LDIndI8 {
                         ptr: CILNode::LDArg(0).into()
                     }
                 }

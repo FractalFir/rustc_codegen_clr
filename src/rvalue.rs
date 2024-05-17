@@ -55,6 +55,7 @@ pub fn handle_rvalue<'tcx>(
                 _ => panic!("Type is not ptr {target:?}."),
             };
             let source_type = tycache.type_from_cache(source, tyctx, Some(method_instance));
+            let target_type = tycache.type_from_cache(target, tyctx, Some(method_instance));
             //let target_type = tycache.type_from_cache(target, tyctx, Some(method_instance));
             let src_fat = pointer_to_is_fat(source_pointed_to, tyctx, Some(method_instance));
             let target_fat = pointer_to_is_fat(target_pointed_to, tyctx, Some(method_instance));
@@ -94,7 +95,16 @@ pub fn handle_rvalue<'tcx>(
                         ),
                     )))
                 }
-                _ => handle_operand(operand, tyctx, method, method_instance, tycache),
+                _ => CILNode::TransmutePtr {
+                    val: Box::new(handle_operand(
+                        operand,
+                        tyctx,
+                        method,
+                        method_instance,
+                        tycache,
+                    )),
+                    new_ptr: Box::new(target_type),
+                },
             }
         }
         Rvalue::Cast(CastKind::PointerCoercion(PointerCoercion::Unsize), operand, target) => {
@@ -253,23 +263,25 @@ pub fn handle_rvalue<'tcx>(
                 ),
             )))
         }
-        Rvalue::Cast(CastKind::PointerWithExposedProvenance, operand, _) => {
+        Rvalue::Cast(CastKind::PointerWithExposedProvenance, operand, target) => {
             //FIXME: the documentation of this cast(https://doc.rust-lang.org/nightly/std/ptr/fn.from_exposed_addr.html) is a bit confusing,
             //since this seems to be something deeply linked to the rust memory model.
             // I assume this to be ALWAYS equivalent to `usize as *const/mut T`, but this may not always be the case.
             // If something breaks in the fututre, this is a place that needs checking.
-
+            let target = crate::utilis::monomorphize(&method_instance, *target, tyctx);
+            let target = tycache.type_from_cache(target, tyctx, Some(method_instance));
             // Cast from usize/isize to any *T is a NOP, so we just have to load the operand.
-            handle_operand(operand, tyctx, method, method_instance, tycache)
+            CILNode::TransmutePtr{val:Box::new(handle_operand(operand, tyctx, method, method_instance, tycache)),new_ptr:Box::new(target)}
         }
-        Rvalue::Cast(CastKind::PointerExposeProvenance, operand, _) => {
+        Rvalue::Cast(CastKind::PointerExposeProvenance, operand, target) => {
             //FIXME: the documentation of this cast(https://doc.rust-lang.org/nightly/std/primitive.pointer.html#method.expose_addrl) is a bit confusing,
             //since this seems to be something deeply linked to the rust memory model.
             // I assume this to be ALWAYS equivalent to `*const/mut T as usize`, but this may not always be the case.
             // If something breaks in the fututre, this is a place that needs checking.
-
+            let target = crate::utilis::monomorphize(&method_instance, *target, tyctx);
+            let target = tycache.type_from_cache(target, tyctx, Some(method_instance));
             // Cast to usize/isize from any *T is a NOP, so we just have to load the operand.
-            handle_operand(operand, tyctx, method, method_instance, tycache)
+            CILNode::TransmutePtr{val:Box::new(handle_operand(operand, tyctx, method, method_instance, tycache)),new_ptr:Box::new(target)}
         }
         Rvalue::Cast(CastKind::FloatToFloat, operand, target) => {
             let target = crate::utilis::monomorphize(&method_instance, *target, tyctx);
@@ -351,7 +363,6 @@ pub fn handle_rvalue<'tcx>(
                     crate::utilis::adt::get_discr(layout.layout, addr, owner, tyctx, owner_ty),
                 );
                 res
-                
             }
         }
         Rvalue::Len(operand) => {

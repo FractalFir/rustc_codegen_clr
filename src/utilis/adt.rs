@@ -247,8 +247,12 @@ pub fn get_discr<'tyctx>(
                 todo!();
             } else {
                 CILNode::LDField {
-                    field: crate::cil::FieldDescriptor::new(enum_tpe.clone(), tag_tpe.clone(), "value__".into())
-                        .into(),
+                    field: crate::cil::FieldDescriptor::new(
+                        enum_tpe.clone(),
+                        tag_tpe.clone(),
+                        "value__".into(),
+                    )
+                    .into(),
                     addr: enum_addr.into(),
                 }
             }
@@ -372,11 +376,11 @@ pub fn get_discr<'tyctx>(
             )
         }
     };
-    if *crate::config::INSERT_MIR_DEBUG_COMMENTS{
+    if *crate::config::INSERT_MIR_DEBUG_COMMENTS {
         rustc_middle::ty::print::with_no_trimmed_paths! {CILNode::print_debug_val(&format!("Discriminant of type {enum_tpe:?}({tag_tpe:?}) is "), discr, ".",tag_tpe)}
-    }else{
+    } else {
         discr
     }
-   
+
     //discr
 }

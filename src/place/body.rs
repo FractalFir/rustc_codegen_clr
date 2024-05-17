@@ -277,7 +277,7 @@ pub fn place_elem_body<'ctx>(
                                 FnSig::new(&[Type::USize, Type::USize], &Type::USize),
                                 true
                             ),
-                            [index,ld_field!(parrent_node.clone(), metadata)]
+                            [index, ld_field!(parrent_node.clone(), metadata)]
                         ) * conv_usize!(CILNode::SizeOf(inner_type.into()));
                     if body_ty_is_by_adress(inner) {
                         (inner.into(), addr)

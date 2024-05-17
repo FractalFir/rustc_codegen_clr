@@ -176,7 +176,7 @@ fn hijack_arg_init(asm: &mut Assembly) {
         CILRoot::BTrue {
             target: loop_bb + 1,
             sub_target: 0,
-            ops: eq!(
+            cond: eq!(
                 lt!(
                     CILNode::LDLoc(arg_idx),
                     conv_i32!(CILNode::LDLen {
