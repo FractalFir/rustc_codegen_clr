@@ -64,7 +64,8 @@ fn create_const_from_data<'ctx>(
         alloc_id: alloc_id.0.into(),
     };
     let ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
-    crate::place::deref_op(ty.into(), tyctx, &method_instance, tycache, ptr)
+    let tpe = tycache.type_from_cache(ty, tyctx, Some(method_instance));
+    crate::place::deref_op(ty.into(), tyctx, &method_instance, tycache, CILNode::TransmutePtr { val:Box::new(ptr), new_ptr: Box::new(tpe) })
 }
 
 pub(crate) fn load_const_value<'ctx>(
@@ -108,7 +109,7 @@ pub(crate) fn load_const_value<'ctx>(
                     },
                     CILRoot::SetField {
                         addr: CILNode::LoadAddresOfTMPLocal,
-                        value: CILNode::LoadGlobalAllocPtr { alloc_id },
+                        value: CILNode::TransmutePtr { val: Box::new(CILNode::LoadGlobalAllocPtr { alloc_id }), new_ptr: Box::new(Type::Ptr(Type::Void.into())) },
                         desc: ptr_field,
                     },
                 ]
@@ -249,10 +250,10 @@ fn load_const_scalar<'ctx>(
         Scalar::Int(scalar_int) => scalar_int
             .try_to_uint(scalar.size())
             .expect("IMPOSSIBLE. Size of scalar was not equal to itself."),
-        Scalar::Ptr(ptr, _size) => return load_scalar_ptr(tyctx, tycache, ptr),
+        Scalar::Ptr(ptr, _size) => return CILNode::TransmutePtr{val:Box::new(load_scalar_ptr(tyctx, tycache, ptr)),new_ptr:Box::new(tpe)},
     };
 
-    //TODO: This assumes a LE target
+  
     match scalar_type.kind() {
         TyKind::Int(int_type) => load_const_int(scalar_u128, int_type),
         TyKind::Uint(uint_type) => load_const_uint(scalar_u128, uint_type),
@@ -275,13 +276,13 @@ fn load_const_scalar<'ctx>(
                 )))
             } else {
                 CILNode::LdObj {
-                    ptr: Box::new(CILNode::PointerToConstValue(scalar_u128)),
+                    ptr: Box::new(CILNode::TransmutePtr{val:Box::new(CILNode::PointerToConstValue(scalar_u128)), new_ptr: Box::new(Type::Ptr(Box::new(tpe.clone()))) }),
                     obj: tpe.into(),
                 }
             }
         }
         TyKind::Adt(_, _subst) => CILNode::LdObj {
-            ptr: Box::new(CILNode::PointerToConstValue(scalar_u128)),
+            ptr: Box::new(CILNode::TransmutePtr{val:Box::new(CILNode::PointerToConstValue(scalar_u128)), new_ptr: Box::new(Type::Ptr(Box::new(tpe.clone()))) }),
             obj: tpe.into(),
         },
         TyKind::Char => CILNode::LdcU32(scalar_u128 as u32),

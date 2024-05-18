@@ -57,6 +57,11 @@ pub enum CILNode {
         /// Address of the value
         ptr: Box<Self>,
     },
+    /// Loads a isize from a pointer
+    LDIndUSize {
+        /// Address of the value
+        ptr: Box<Self>,
+    },
     /// Loads an object from a pointer
     LdObj {
         /// Address of the value
@@ -123,6 +128,7 @@ pub enum CILNode {
     ConvU32(Box<Self>),
     ConvU64(Box<Self>),
     ConvUSize(Box<Self>),
+    MRefToRawPtr(Box<Self>),
     ConvI8(Box<Self>),
     ConvI16(Box<Self>),
     ConvI32(Box<Self>),
@@ -370,6 +376,7 @@ impl CILNode {
             | Self::LDIndU32 { ptr }
             | Self::LDIndU64 { ptr }
             | Self::LDIndISize { ptr }
+            | Self::LDIndUSize { ptr }
             | Self::LdObj { ptr, .. }
             | Self::LDIndF32 { ptr }
             | Self::LDIndF64 { ptr } => ptr.opt(),
@@ -413,6 +420,7 @@ impl CILNode {
             | Self::ConvU32(inner)
             | Self::ConvU64(inner)
             | Self::ConvUSize(inner)
+            | Self::MRefToRawPtr(inner)
             | Self::ConvI8(inner)
             | Self::ConvI16(inner)
             | Self::ConvI32(inner)
@@ -450,7 +458,7 @@ impl CILNode {
         self.opt_children();
         match self {
             Self::LDField { addr: fld_addr, .. } => match fld_addr.as_mut() {
-                Self::ConvUSize(addr) => match addr.as_mut() {
+                Self::MRefToRawPtr(addr) => match addr.as_mut() {
                     Self::LDLocA(_) | Self::LDFieldAdress { .. } => *fld_addr = addr.clone(),
                     _ => (),
                 },
@@ -460,9 +468,9 @@ impl CILNode {
                 addr: fld_addr,
                 field,
             } => match fld_addr.as_mut() {
-                Self::ConvUSize(addr) => match addr.as_mut() {
+                Self::MRefToRawPtr(addr) => match addr.as_mut() {
                     Self::LDLocA(_) | Self::LDFieldAdress { .. } => {
-                        *self = Self::ConvUSize(Box::new(Self::LDFieldAdress {
+                        *self = Self::MRefToRawPtr(Box::new(Self::LDFieldAdress {
                             addr: addr.clone(),
                             field: field.clone(),
                         }));
@@ -525,13 +533,10 @@ impl CILNode {
             Self::LDLocA(local) => vec![CILOp::LDLocA(*local)],
 
             Self::BlackBox(inner) => inner.flatten(),
-            /*
-            Self::Volatile(inner) => {
-                let mut res = vec![CILOp::Volatile];
-                res.extend(inner.flatten());
-                res
-            } */
+          
             Self::ConvUSize(inner) => append_vec(inner.flatten(), CILOp::ConvUSize(false)),
+            Self::MRefToRawPtr(inner) => append_vec(inner.flatten(), CILOp::ConvUSize(false)),
+            
             Self::ConvU8(inner) => append_vec(inner.flatten(), CILOp::ConvU8(false)),
             Self::ConvU16(inner) => append_vec(inner.flatten(), CILOp::ConvU16(false)),
             Self::ConvU32(inner) => append_vec(inner.flatten(), CILOp::ConvU32(false)),
@@ -551,6 +556,7 @@ impl CILNode {
             Self::LDIndI32 { ptr } => append_vec(ptr.flatten(), CILOp::LDIndI32),
             Self::LDIndI64 { ptr } => append_vec(ptr.flatten(), CILOp::LDIndI64),
             Self::LDIndISize { ptr } => append_vec(ptr.flatten(), CILOp::LDIndISize),
+            Self::LDIndUSize { ptr } => append_vec(ptr.flatten(), CILOp::LDIndISize),
             Self::LDIndU8 { ptr } => append_vec(ptr.flatten(), CILOp::LDIndU8),
             Self::LDIndU16 { ptr } => append_vec(ptr.flatten(), CILOp::LDIndU16),
             Self::LDIndU32 { ptr } => append_vec(ptr.flatten(), CILOp::LDIndU32),
@@ -757,6 +763,7 @@ impl CILNode {
             Self::LDIndU32 { ptr }|
             Self::LDIndU64 { ptr }|
             Self::LDIndISize { ptr }|
+            Self::LDIndUSize { ptr }|
             Self::LdObj { ptr, .. }|
             Self::LDIndF32 { ptr } |
             Self::LDIndF64 { ptr } => ptr.allocate_tmps(curr_loc, locals),
@@ -801,6 +808,7 @@ impl CILNode {
             Self::ConvU16(val)|
             Self::ConvU32(val)|
             Self::ConvU64(val)|
+            Self::MRefToRawPtr(val) | 
             Self::ConvUSize(val)|
             Self::ConvI8(val) |
             Self::ConvI16(val)|
@@ -876,6 +884,7 @@ impl CILNode {
             Self::LDIndU32 { ptr }|
             Self::LDIndU64 { ptr }|
             Self::LDIndISize { ptr }|
+            Self::LDIndUSize { ptr }|
             Self::LdObj { ptr, .. }|
             Self::LDIndF32 { ptr } |
             Self::LDIndF64 { ptr } => ptr.resolve_global_allocations(asm,tyctx,tycache),
@@ -924,6 +933,7 @@ impl CILNode {
             Self::ConvU32(val)|
             Self::ConvU64(val)|
             Self::ConvUSize(val)|
+            Self::MRefToRawPtr(val) | 
             Self::ConvI8(val) |
             Self::ConvI16(val)|
             Self::ConvI32(val)|
@@ -991,6 +1001,7 @@ impl CILNode {
             | Self::LDIndU32 { ptr }
             | Self::LDIndU64 { ptr }
             | Self::LDIndISize { ptr }
+            | Self::LDIndUSize { ptr }
             | Self::LdObj { ptr, .. }
             | Self::LDIndF32 { ptr }
             | Self::LDIndF64 { ptr } => ptr.sheed_trees(),
@@ -1031,6 +1042,7 @@ impl CILNode {
             | Self::ConvU32(val)
             | Self::ConvU64(val)
             | Self::ConvUSize(val)
+            | Self::MRefToRawPtr(val)
             | Self::ConvI8(val)
             | Self::ConvI16(val)
             | Self::ConvI32(val)
@@ -1080,6 +1092,12 @@ impl CILNode {
 
     pub(crate) fn validate(&self, method: &Method) -> Result<Type, String> {
         match self {
+            Self::SubTrees(trees,main)=>{
+                for tree in trees.iter(){
+                    tree.validate(method)?;
+                }
+                main.validate(method)
+            }
             Self::LdTrue=>Ok(Type::Bool),
             Self::InspectValue { val, inspect: _ }=>{
                 val.validate(method)
@@ -1152,12 +1170,54 @@ impl CILNode {
                 }
                 Ok(Type::ISize)
             }
+            Self::LDIndUSize { ptr }=>{
+                let ptr = ptr.validate(method)?;
+                if ptr != Type::Ptr(Box::new(Type::USize)) || ptr != Type::ManagedReference(Box::new(Type::USize)){
+                    return Err(format!("Tried to load isize from pointer of type {ptr:?}"));
+                }
+                Ok(Type::USize)
+            }
             Self::LDIndU32 { ptr }=>{
                 let ptr = ptr.validate(method)?;
                 if ptr != Type::Ptr(Box::new(Type::U32)) || ptr != Type::ManagedReference(Box::new(Type::U32)){
                     return Err(format!("Tried to load isize from pointer of type {ptr:?}"));
                 }
                 Ok(Type::U32)
+            }
+            Self::LDIndI32 { ptr }=>{
+                let ptr = ptr.validate(method)?;
+                if ptr != Type::Ptr(Box::new(Type::I32)) || ptr != Type::ManagedReference(Box::new(Type::I32)){
+                    return Err(format!("Tried to load isize from pointer of type {ptr:?}"));
+                }
+                Ok(Type::I32)
+            }
+            Self::LDIndU16 { ptr }=>{
+                let ptr = ptr.validate(method)?;
+                if ptr != Type::Ptr(Box::new(Type::U16)) || ptr != Type::ManagedReference(Box::new(Type::U16)){
+                    return Err(format!("Tried to load isize from pointer of type {ptr:?}"));
+                }
+                Ok(Type::U16)
+            }
+            Self::LDIndI16 { ptr }=>{
+                let ptr = ptr.validate(method)?;
+                if ptr != Type::Ptr(Box::new(Type::I16)) || ptr != Type::ManagedReference(Box::new(Type::I16)){
+                    return Err(format!("Tried to load isize from pointer of type {ptr:?}"));
+                }
+                Ok(Type::I16)
+            }
+            Self::LDIndU8 { ptr }=>{
+                let ptr = ptr.validate(method)?;
+                if ptr != Type::Ptr(Box::new(Type::U8)) || ptr != Type::ManagedReference(Box::new(Type::U8)){
+                    return Err(format!("Tried to load isize from pointer of type {ptr:?}"));
+                }
+                Ok(Type::U8)
+            }
+            Self::LDIndI8 { ptr }=>{
+                let ptr = ptr.validate(method)?;
+                if ptr != Type::Ptr(Box::new(Type::I8)) || ptr != Type::ManagedReference(Box::new(Type::I8)){
+                    return Err(format!("Tried to load isize from pointer of type {ptr:?}"));
+                }
+                Ok(Type::I8)
             }
             Self::LdcU64(_) => Ok(Type::U64),
             Self::LdcI64(_) => Ok(Type::I64),
@@ -1181,6 +1241,14 @@ impl CILNode {
                     Ok(Type::USize)
                 }
             }
+            Self::MRefToRawPtr(src) => {
+                let tpe = src.validate(method)?;
+                if let Type::ManagedReference(pointed) = tpe {
+                    Ok(Type::Ptr(pointed))
+                }else{
+                    Err(format!("MRefToRawPtr expected a managed ref, but got {tpe:?}"))
+                }
+            }
             Self::ConvU64(src) => {
                 src.validate(method)?;
                 Ok(Type::U64)
@@ -1196,6 +1264,10 @@ impl CILNode {
             Self::ConvF32(src) => {
                 src.validate(method)?;
                 Ok(Type::F32)
+            }
+            Self::ConvF64(src) | Self::ConvF64Un(src) => {
+                src.validate(method)?;
+                Ok(Type::F64)
             }
             Self::ConvU16(src) => {
                 src.validate(method)?;
@@ -1225,7 +1297,7 @@ impl CILNode {
                 }
                 Ok(Type::Bool)
             }
-            Self::Add(a,b) | Self::Mul(a,b) | Self::And(a,b) | Self::Sub(a,b) | Self::Or(a,b) | Self::Rem(a,b) | Self::RemUn(a,b) | Self::Div(a,b) | Self::DivUn(a,b)=>{
+            Self::Add(a,b) | Self::Mul(a,b) | Self::And(a,b) | Self::Sub(a,b) | Self::Or(a,b) | Self::Rem(a,b) | Self::RemUn(a,b) | Self::Div(a,b) | Self::DivUn(a,b)| Self::XOr(a,b) =>{
                 let a = a.validate(method)?;
                 let b = b.validate(method)?;
                 if a != b{
@@ -1345,6 +1417,7 @@ impl CILNode {
             }
             Self::LdFalse=>Ok(Type::Bool),
             Self::SizeOf(_)=>Ok(Type::I32),
+            Self::LDFtn(ftn)=>Ok(Type::DelegatePtr(Box::new(ftn.signature().clone()))),
             _ => todo!("Can't check the type safety of {self:?}"),
         }
     }

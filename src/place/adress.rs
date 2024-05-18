@@ -1,13 +1,6 @@
 use super::PlaceTy;
 use crate::{
-    assert_morphic, call,
-    cil::{CallSite, FieldDescriptor},
-    cil_tree::{cil_node::CILNode, cil_root::CILRoot},
-    conv_usize,
-    function_sig::FnSig,
-    ld_field, ldc_u64,
-    r#type::{TyCache, Type},
-    size_of,
+    assert_morphic, call, cil::{CallSite, FieldDescriptor}, cil_tree::{cil_node::CILNode, cil_root::CILRoot}, conv_usize, function_sig::FnSig, ld_field, ldc_u64, size_of, r#type::{pointer_to_is_fat, TyCache, Type}
 };
 use rustc_middle::{
     mir::PlaceElem,
@@ -17,18 +10,18 @@ pub fn local_adress(local: usize, method: &rustc_middle::mir::Body) -> CILNode {
     if let Some(spread_arg) = method.spread_arg
         && local == spread_arg.as_usize()
     {
-        return CILNode::ConvUSize(Box::new(CILNode::LDLocA(
+        return CILNode::MRefToRawPtr(Box::new(CILNode::LDLocA(
             (method.local_decls.len() - method.arg_count)
                 .try_into()
                 .unwrap(),
         )));
     }
     if local == 0 {
-        CILNode::ConvUSize(CILNode::LDLocA(0).into())
+        CILNode::MRefToRawPtr(CILNode::LDLocA(0).into())
     } else if local > method.arg_count {
-        CILNode::ConvUSize(CILNode::LDLocA((local - method.arg_count) as u32).into())
+        CILNode::MRefToRawPtr(CILNode::LDLocA((local - method.arg_count) as u32).into())
     } else {
-        CILNode::ConvUSize(CILNode::LDArgA((local - 1) as u32).into())
+        CILNode::MRefToRawPtr(CILNode::LDArgA((local - 1) as u32).into())
     }
 }
 pub fn address_last_dereference<'ctx>(
@@ -48,8 +41,22 @@ pub fn address_last_dereference<'ctx>(
     // Get the type curr_type points to!
     let curr_points_to = super::pointed_type(curr_type.into());
     let curr_type = tycache.type_from_cache(curr_type, tyctx, Some(method));
-
-    match (curr_points_to.kind(), target_type.kind()) {
+    
+    match (pointer_to_is_fat(curr_points_to, tyctx, Some(method)),pointer_to_is_fat(target_type, tyctx, Some(method))) {
+        (true,true) => addr_calc,
+        (true, false) => CILNode::LDField {
+            field: FieldDescriptor::new(
+                curr_type.as_dotnet().unwrap(),
+                Type::Ptr(Type::Void.into()),
+                "data_pointer".into(),
+            )
+            .into(),
+            addr: addr_calc.into(),
+        },
+        (false,true)=>panic!("Invalid last dereference in address!"),
+        _ => addr_calc,
+    }
+    /*match (curr_points_to.kind(), target_type.kind()) {
         (TyKind::Slice(_), TyKind::Slice(_)) => addr_calc,
         (TyKind::Slice(_), _) => CILNode::LDField {
             field: FieldDescriptor::new(
@@ -61,7 +68,7 @@ pub fn address_last_dereference<'ctx>(
             addr: addr_calc.into(),
         },
         _ => addr_calc,
-    }
+    }*/
     //println!("casting {source:?} source_pointed_to:{source_pointed_to:?} to {target:?} target_pointed_to:{target_pointed_to:?}. ops:{ops:?}");
 }
 pub fn place_elem_adress<'ctx>(

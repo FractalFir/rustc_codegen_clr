@@ -658,7 +658,24 @@ impl CILRoot {
                     _=>return Err(format!("Can't indirectly set a valur of type i8/u8 because the provided value is {val:?}")),
                 }
             }
+            
+            Self::STIndISize(addr,val)=>{
+                let addr = addr.validate(method)?;
+                let val = val.validate(method)?;
+                match &addr{
+                    Type::Ptr(inner) | Type::ManagedReference(inner)=>match inner.as_ref(){
+                        Type::Ptr(_) | Type::ManagedReference(_) | Type::USize | Type::ISize => (),
+                        _=>return Err(format!("Can't set a vaule of type i8/u8 at address of type {addr:?}")),
+                    }
+                    _=>return Err(format!("Can't set a vaule of type i8/u8 at address of type {addr:?}")),
+                }
+                match val{
+                    Type::I8 | Type::U8 => Ok(()),
+                    _=>return Err(format!("Can't indirectly set a valur of type i8/u8 because the provided value is {val:?}")),
+                }
+            }
             Self::Break=>Ok(()),
+            Self::JumpingPad{ ops: _ }=>Ok(()),
             Self::BTrue { target, sub_target, cond }=>{
                 // Just check that `cond` is a boolean.
                 let cond = cond.validate(method)?;

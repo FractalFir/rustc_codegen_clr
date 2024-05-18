@@ -402,7 +402,7 @@ impl Assembly {
             match method.validate() {
                 Ok(_) => (),
                 Err(msg) => eprintln!(
-                    "Method {} failed compilation with message {msg}",
+                    "\n\nMethod {} failed compilation with message:\ns {msg}",
                     method.name()
                 ),
             }   

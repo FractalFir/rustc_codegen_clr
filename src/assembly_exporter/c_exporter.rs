@@ -339,6 +339,9 @@ fn node_string(tree: &CILNode, method: &Method) -> String {
         CILNode::LDIndISize { ptr } => {
             format!("(*((ptrdiff_t*){ptr}))", ptr = node_string(ptr, method))
         }
+        CILNode::LDIndUSize { ptr } => {
+            format!("(*((ptrdiff_t*){ptr}))", ptr = node_string(ptr, method))
+        }
         CILNode::LdObj { ptr, obj } => format!(
             "(*({owner}*)({ptr}))",
             ptr = node_string(ptr, method),
@@ -509,6 +512,9 @@ fn node_string(tree: &CILNode, method: &Method) -> String {
         CILNode::ConvUSize(inner) => {
             format!("((uintptr_t){inner})", inner = node_string(inner, method))
         }
+        CILNode::MRefToRawPtr(inner) => 
+            node_string(inner, method)
+        ,
         CILNode::ConvI8(inner) => format!("((int8_t){inner})", inner = node_string(inner, method)),
         CILNode::ConvI16(inner) => {
             format!("((int16_t){inner})", inner = node_string(inner, method))
