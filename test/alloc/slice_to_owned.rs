@@ -4,9 +4,9 @@
     sized_type_properties,
     ptr_internals,
     core_intrinsics,
-    alloc_layout_extra,
-    unchecked_math
+    alloc_layout_extra
 )]
+#![allow(internal_features,unreachable_code,unused_unsafe,private_interfaces,dead_code)]
 use mem::MaybeUninit;
 use slice::SliceIndex;
 use std::alloc::AllocError;

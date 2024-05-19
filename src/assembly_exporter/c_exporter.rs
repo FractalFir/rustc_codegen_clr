@@ -317,6 +317,7 @@ fn node_string(tree: &CILNode, method: &Method) -> String {
         }
         CILNode::SizeOf(tpe) => format!("sizeof({tpe})", tpe = c_tpe(tpe)),
         CILNode::LDIndI8 { ptr } => format!("(*((int8_t*){ptr}))", ptr = node_string(ptr, method)),
+        CILNode::LDIndBool { ptr } => format!("(*((bool*){ptr}))", ptr = node_string(ptr, method)),
         CILNode::LDIndI16 { ptr } => {
             format!("(*((int16_t*){ptr}))", ptr = node_string(ptr, method))
         }
@@ -338,6 +339,9 @@ fn node_string(tree: &CILNode, method: &Method) -> String {
         }
         CILNode::LDIndISize { ptr } => {
             format!("(*((ptrdiff_t*){ptr}))", ptr = node_string(ptr, method))
+        }
+        CILNode::LDIndPtr { ptr, loaded_ptr: loaded_points_to } => {
+            format!("(*(({loaded_points_to}){ptr}))", ptr = node_string(ptr, method),loaded_points_to = c_tpe(loaded_points_to))
         }
         CILNode::LDIndUSize { ptr } => {
             format!("(*((ptrdiff_t*){ptr}))", ptr = node_string(ptr, method))

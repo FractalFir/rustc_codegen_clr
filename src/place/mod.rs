@@ -1,7 +1,7 @@
 // FIXME: This file may contain unnecesary morphize calls.
 use crate::cil_tree::cil_node::CILNode;
 use crate::cil_tree::cil_root::CILRoot;
-use crate::r#type::{pointer_to_is_fat, DotnetTypeRef};
+use crate::r#type::{pointer_to_is_fat, tycache, DotnetTypeRef};
 use crate::{conv_usize, ldc_u64};
 
 use rustc_middle::mir::Place;
@@ -102,7 +102,7 @@ pub fn deref_op<'ctx>(
                 FloatTy::F64 => CILNode::LDIndF64 { ptr },
                 FloatTy::F128 => todo!("Can't 128 bit floats yet!"),
             },
-            TyKind::Bool => CILNode::LDIndI8 { ptr }, // Both Rust bool and a managed bool are 1 byte wide. .NET bools are 4 byte wide only in the context of Marshaling/PInvoke,
+            TyKind::Bool => CILNode::LDIndBool { ptr }, // Both Rust bool and a managed bool are 1 byte wide. .NET bools are 4 byte wide only in the context of Marshaling/PInvoke,
             // due to historic reasons(BOOL was an alias for int in early Windows, and it stayed this way.) - FractalFir
             TyKind::Char => CILNode::LDIndI32 { ptr }, // always 4 bytes wide: https://doc.rust-lang.org/std/primitive.char.html#representation
             TyKind::Adt(_, _)
@@ -129,7 +129,8 @@ pub fn deref_op<'ctx>(
                         )),
                     }
                 } else {
-                    CILNode::LDIndISize { ptr }
+                    let inner = type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance));
+                    CILNode::LDIndPtr { ptr: ptr, loaded_ptr: Box::new(inner) } 
                 }
             }
             TyKind::RawPtr(typ, _) => {
@@ -143,7 +144,8 @@ pub fn deref_op<'ctx>(
                         )),
                     }
                 } else {
-                    CILNode::LDIndISize { ptr }
+                    let typ = type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance));
+                    CILNode::LDIndPtr { ptr: ptr, loaded_ptr: Box::new(typ) } 
                 }
             }
 
@@ -155,7 +157,7 @@ pub fn deref_op<'ctx>(
     res
 }
 
-/// Returns the ops for getting the address of  a given place.
+/// Returns the ops for getting the address of a given place.
 pub fn place_adress<'a>(
     place: &Place<'a>,
     tyctx: TyCtxt<'a>,

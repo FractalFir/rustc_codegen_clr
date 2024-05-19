@@ -37,6 +37,11 @@ pub enum CILNode {
         /// Address of the value
         ptr: Box<Self>,
     },
+    /// Loads a bool from a pointer
+    LDIndBool {
+        /// Address of the value
+        ptr: Box<Self>,
+    },
     /// Loads a i16 from a pointer
     LDIndI16 {
         /// Address of the value
@@ -56,6 +61,12 @@ pub enum CILNode {
     LDIndISize {
         /// Address of the value
         ptr: Box<Self>,
+    },
+    /// Loads a isize from a pointer
+    LDIndPtr {
+        /// Address of the value
+        ptr: Box<Self>,
+        loaded_ptr:Box<Type>,
     },
     /// Loads a isize from a pointer
     LDIndUSize {
@@ -368,6 +379,7 @@ impl CILNode {
             | Self::ConvF64Un(inner) => inner.opt(),
             Self::SizeOf(_) => (),
             Self::LDIndI8 { ptr }
+            | Self::LDIndBool { ptr }
             | Self::LDIndI16 { ptr }
             | Self::LDIndI32 { ptr }
             | Self::LDIndI64 { ptr }
@@ -375,6 +387,7 @@ impl CILNode {
             | Self::LDIndU16 { ptr }
             | Self::LDIndU32 { ptr }
             | Self::LDIndU64 { ptr }
+            | Self::LDIndPtr{ ptr, .. }
             | Self::LDIndISize { ptr }
             | Self::LDIndUSize { ptr }
             | Self::LdObj { ptr, .. }
@@ -551,11 +564,12 @@ impl CILNode {
             Self::ConvF32(inner) => append_vec(inner.flatten(), CILOp::ConvF32),
             Self::ConvF64(inner) => append_vec(inner.flatten(), CILOp::ConvF64),
             Self::ConvF64Un(inner) => append_vec(inner.flatten(), CILOp::ConvF64Un),
-            Self::LDIndI8 { ptr } => append_vec(ptr.flatten(), CILOp::LDIndI8),
+            Self::LDIndI8 { ptr } | Self::LDIndBool { ptr }=> append_vec(ptr.flatten(), CILOp::LDIndI8),
             Self::LDIndI16 { ptr } => append_vec(ptr.flatten(), CILOp::LDIndI16),
             Self::LDIndI32 { ptr } => append_vec(ptr.flatten(), CILOp::LDIndI32),
             Self::LDIndI64 { ptr } => append_vec(ptr.flatten(), CILOp::LDIndI64),
             Self::LDIndISize { ptr } => append_vec(ptr.flatten(), CILOp::LDIndISize),
+            Self::LDIndPtr { ptr,.. } => append_vec(ptr.flatten(), CILOp::LDIndISize),
             Self::LDIndUSize { ptr } => append_vec(ptr.flatten(), CILOp::LDIndISize),
             Self::LDIndU8 { ptr } => append_vec(ptr.flatten(), CILOp::LDIndU8),
             Self::LDIndU16 { ptr } => append_vec(ptr.flatten(), CILOp::LDIndU16),
@@ -755,6 +769,7 @@ impl CILNode {
             Self::BlackBox(_) => todo!(),
             Self::SizeOf(_) => (),
             Self::LDIndI8 { ptr }|
+            Self::LDIndBool { ptr }|
             Self::LDIndI16 { ptr }|
             Self::LDIndI32 { ptr }|
             Self::LDIndI64 { ptr }|
@@ -763,6 +778,7 @@ impl CILNode {
             Self::LDIndU32 { ptr }|
             Self::LDIndU64 { ptr }|
             Self::LDIndISize { ptr }|
+            Self::LDIndPtr { ptr, .. }|
             Self::LDIndUSize { ptr }|
             Self::LdObj { ptr, .. }|
             Self::LDIndF32 { ptr } |
@@ -876,6 +892,7 @@ impl CILNode {
             Self::BlackBox(_) => todo!(),
             Self::SizeOf(_) => (),
             Self::LDIndI8 { ptr }|
+            Self::LDIndBool { ptr }|
             Self::LDIndI16 { ptr }|
             Self::LDIndI32 { ptr }|
             Self::LDIndI64 { ptr }|
@@ -884,6 +901,7 @@ impl CILNode {
             Self::LDIndU32 { ptr }|
             Self::LDIndU64 { ptr }|
             Self::LDIndISize { ptr }|
+            Self::LDIndPtr { ptr, .. }|
             Self::LDIndUSize { ptr }|
             Self::LdObj { ptr, .. }|
             Self::LDIndF32 { ptr } |
@@ -992,7 +1010,8 @@ impl CILNode {
                 inner.sheed_trees()
             }
             Self::SizeOf(_) => vec![],
-            Self::LDIndI8 { ptr }
+            Self::LDIndI8 { ptr } |
+            Self::LDIndBool { ptr }
             | Self::LDIndI16 { ptr }
             | Self::LDIndI32 { ptr }
             | Self::LDIndI64 { ptr }
@@ -1001,6 +1020,7 @@ impl CILNode {
             | Self::LDIndU32 { ptr }
             | Self::LDIndU64 { ptr }
             | Self::LDIndISize { ptr }
+            | Self::LDIndPtr { ptr, .. }
             | Self::LDIndUSize { ptr }
             | Self::LdObj { ptr, .. }
             | Self::LDIndF32 { ptr }
@@ -1165,59 +1185,73 @@ impl CILNode {
             },
             Self::LDIndISize { ptr }=>{
                 let ptr = ptr.validate(method)?;
-                if ptr != Type::Ptr(Box::new(Type::ISize)) || ptr != Type::ManagedReference(Box::new(Type::ISize)){
+                if ptr != Type::Ptr(Box::new(Type::ISize)) && ptr != Type::ManagedReference(Box::new(Type::ISize)){
                     return Err(format!("Tried to load isize from pointer of type {ptr:?}"));
                 }
                 Ok(Type::ISize)
             }
+            Self::LDIndPtr { ptr, loaded_ptr }=>{
+                let ptr = ptr.validate(method)?;
+                if ptr != Type::Ptr(loaded_ptr.clone()) && ptr != Type::ManagedReference(loaded_ptr.clone()){
+                    return Err(format!("Tried to load {loaded_ptr:?} from pointer of type {ptr:?}"));
+                }
+                Ok(*(loaded_ptr).clone())
+            }
             Self::LDIndUSize { ptr }=>{
                 let ptr = ptr.validate(method)?;
-                if ptr != Type::Ptr(Box::new(Type::USize)) || ptr != Type::ManagedReference(Box::new(Type::USize)){
-                    return Err(format!("Tried to load isize from pointer of type {ptr:?}"));
+                if ptr != Type::Ptr(Box::new(Type::USize)) && ptr != Type::ManagedReference(Box::new(Type::USize)){
+                    return Err(format!("Tried to load usize from pointer of type {ptr:?}"));
                 }
                 Ok(Type::USize)
             }
             Self::LDIndU32 { ptr }=>{
                 let ptr = ptr.validate(method)?;
-                if ptr != Type::Ptr(Box::new(Type::U32)) || ptr != Type::ManagedReference(Box::new(Type::U32)){
+                if ptr != Type::Ptr(Box::new(Type::U32)) && ptr != Type::ManagedReference(Box::new(Type::U32)){
                     return Err(format!("Tried to load isize from pointer of type {ptr:?}"));
                 }
                 Ok(Type::U32)
             }
             Self::LDIndI32 { ptr }=>{
                 let ptr = ptr.validate(method)?;
-                if ptr != Type::Ptr(Box::new(Type::I32)) || ptr != Type::ManagedReference(Box::new(Type::I32)){
-                    return Err(format!("Tried to load isize from pointer of type {ptr:?}"));
+                if ptr != Type::Ptr(Box::new(Type::I32)) && ptr != Type::ManagedReference(Box::new(Type::I32)){
+                    return Err(format!("Tried to load i32 from pointer of type {ptr:?}"));
                 }
                 Ok(Type::I32)
             }
             Self::LDIndU16 { ptr }=>{
                 let ptr = ptr.validate(method)?;
-                if ptr != Type::Ptr(Box::new(Type::U16)) || ptr != Type::ManagedReference(Box::new(Type::U16)){
-                    return Err(format!("Tried to load isize from pointer of type {ptr:?}"));
+                if ptr != Type::Ptr(Box::new(Type::U16)) && ptr != Type::ManagedReference(Box::new(Type::U16)){
+                    return Err(format!("Tried to load u16 from pointer of type {ptr:?}"));
                 }
                 Ok(Type::U16)
             }
             Self::LDIndI16 { ptr }=>{
                 let ptr = ptr.validate(method)?;
-                if ptr != Type::Ptr(Box::new(Type::I16)) || ptr != Type::ManagedReference(Box::new(Type::I16)){
-                    return Err(format!("Tried to load isize from pointer of type {ptr:?}"));
+                if ptr != Type::Ptr(Box::new(Type::I16)) && ptr != Type::ManagedReference(Box::new(Type::I16)){
+                    return Err(format!("Tried to load i16 from pointer of type {ptr:?}"));
                 }
                 Ok(Type::I16)
             }
             Self::LDIndU8 { ptr }=>{
                 let ptr = ptr.validate(method)?;
-                if ptr != Type::Ptr(Box::new(Type::U8)) || ptr != Type::ManagedReference(Box::new(Type::U8)){
-                    return Err(format!("Tried to load isize from pointer of type {ptr:?}"));
+                if ptr != Type::Ptr(Box::new(Type::U8)) && ptr != Type::ManagedReference(Box::new(Type::U8)){
+                    return Err(format!("Tried to load u8 from pointer of type {ptr:?}"));
                 }
                 Ok(Type::U8)
             }
             Self::LDIndI8 { ptr }=>{
                 let ptr = ptr.validate(method)?;
-                if ptr != Type::Ptr(Box::new(Type::I8)) || ptr != Type::ManagedReference(Box::new(Type::I8)){
-                    return Err(format!("Tried to load isize from pointer of type {ptr:?}"));
+                if ptr != Type::Ptr(Box::new(Type::I8)) && ptr != Type::ManagedReference(Box::new(Type::I8)){
+                    return Err(format!("Tried to load i8 from pointer of type {ptr:?}"));
                 }
                 Ok(Type::I8)
+            }
+            Self::LDIndBool { ptr }=>{
+                let ptr = ptr.validate(method)?;
+                if ptr != Type::Ptr(Box::new(Type::Bool)) && ptr != Type::ManagedReference(Box::new(Type::Bool)){
+                    return Err(format!("Tried to load bool from pointer of type {ptr:?}"));
+                }
+                Ok(Type::Bool)
             }
             Self::LdcU64(_) => Ok(Type::U64),
             Self::LdcI64(_) => Ok(Type::I64),

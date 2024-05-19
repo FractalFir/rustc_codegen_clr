@@ -67,54 +67,8 @@ pub fn int_to_int(src: Type, target: Type, operand: CILNode) -> CILNode {
             [conv_i8!(operand)]
         ),
         // Fixes sign casts
-        (Type::I32, Type::USize) => conv_usize!(call!(
-            CallSite::builtin(
-                "cast_i32_to_u64".into(),
-                FnSig::new(&[Type::I32], &Type::U64),
-                true
-            ),
-            [operand]
-        )),
-        (Type::I32, Type::U64) => call!(
-            CallSite::builtin(
-                "cast_i32_to_u64".into(),
-                FnSig::new(&[Type::I32], &Type::U64),
-                true
-            ),
-            [operand]
-        ),
-        (Type::I16, Type::USize) => conv_usize!(call!(
-            CallSite::builtin(
-                "cast_i32_to_u64".into(),
-                FnSig::new(&[Type::I32], &Type::U64),
-                true
-            ),
-            [operand]
-        )),
-        (Type::I16, Type::U64) => call!(
-            CallSite::builtin(
-                "cast_i32_to_u64".into(),
-                FnSig::new(&[Type::I32], &Type::U64),
-                true
-            ),
-            [operand]
-        ),
-        (Type::I8, Type::USize) => conv_usize!(call!(
-            CallSite::builtin(
-                "cast_i32_to_u64".into(),
-                FnSig::new(&[Type::I32], &Type::U64),
-                true
-            ),
-            [operand]
-        )),
-        (Type::I8, Type::U64) => call!(
-            CallSite::builtin(
-                "cast_i32_to_u64".into(),
-                FnSig::new(&[Type::I32], &Type::U64),
-                true
-            ),
-            [operand]
-        ),
+        (Type::I64 | Type::I32 | Type::I16 | Type::I8, Type::USize) => conv_isize!(operand),
+        (Type::I64 |Type::I32 | Type::I16 | Type::I8, Type::U64) => conv_i64!(operand),
         // i128 bit casts
         (Type::U128, Type::I128) => call!(
             CallSite::new_extern(

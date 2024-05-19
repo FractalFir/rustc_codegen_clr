@@ -200,9 +200,10 @@ pub fn unsize<'tyctx>(
                 [
                     CILRoot::SetField {
                         addr: info.target_ptr.clone(),
-                        value: CILNode::LoadGlobalAllocPtr {
+                        value: CILNode::TransmutePtr { val: Box::new(CILNode::LoadGlobalAllocPtr {
                             alloc_id: alloc_id.0.into(),
-                        },
+                        }),
+                            new_ptr: Box::new(Type::USize), },
                         desc: metadata_field,
                     },
                     CILRoot::SetField {

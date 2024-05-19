@@ -85,14 +85,17 @@ pub fn handle_rvalue<'tcx>(
                             value: handle_operand(operand, tyctx, method, method_instance, tycache),
                         }]
                         .into(),
-                        ld_field!(
+                        CILNode::TransmutePtr {
+                            val:Box::new(ld_field!(
                             CILNode::LoadAddresOfTMPLocal,
                             FieldDescriptor::new(
                                 source_type.as_dotnet().unwrap(),
                                 Type::Ptr(Type::Void.into()),
                                 "data_pointer".into(),
-                            )
+                            ))
                         ),
+                        new_ptr: Box::new(target_type)
+                    }
                     )))
                 }
                 _ => CILNode::TransmutePtr {
@@ -183,13 +186,12 @@ pub fn handle_rvalue<'tcx>(
                 //let (variant, field) = fields[0];
                 todo!("Can't calc offset of yet!");
             }
-            // We will just always check for UB :).
+
             rustc_middle::mir::NullOp::UbChecks => if tyctx.sess.ub_checks(){
                 CILNode::LdTrue
             }else{
                 CILNode::LdFalse
-            } // TODO: propely set this to 0 or 1 depending if debug assertions are enabled.
-              //NullOp::DebugAssertions => ldc_u32!(0), //todo!("Unsuported nullary {op:?}!"),
+            } 
         },
         Rvalue::Aggregate(aggregate_kind, field_index) => crate::aggregate::handle_aggregate(
             tyctx,
@@ -211,12 +213,11 @@ pub fn handle_rvalue<'tcx>(
                 (
                     Type::ISize | Type::USize | Type::Ptr(_),
                     Type::ISize | Type::USize | Type::Ptr(_),
-                ) => handle_operand(operand, tyctx, method, method_instance, tycache),
+                ) => CILNode::TransmutePtr{val:Box::new(handle_operand(operand, tyctx, method, method_instance, tycache)),new_ptr:Box::new(dst)},
                 (Type::U16, Type::DotnetChar) => {
                     handle_operand(operand, tyctx, method, method_instance, tycache)
                 }
-                /*
-                 */
+          
                 (_, Type::F64) => CILNode::TemporaryLocal(Box::new((
                     src,
                     [CILRoot::SetTMPLocal {
@@ -238,7 +239,7 @@ pub fn handle_rvalue<'tcx>(
                         tyctx,
                         &method_instance,
                         tycache,
-                        CILNode::LoadAddresOfTMPLocal,
+                        CILNode::TransmutePtr{val:Box::new(CILNode::LoadAddresOfTMPLocal),new_ptr:Box::new(Type::Ptr(Box::new(dst)))},
                     ),
                 ))),
             }

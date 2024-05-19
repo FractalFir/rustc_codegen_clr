@@ -41,10 +41,10 @@ pub fn address_last_dereference<'ctx>(
     // Get the type curr_type points to!
     let curr_points_to = super::pointed_type(curr_type.into());
     let curr_type = tycache.type_from_cache(curr_type, tyctx, Some(method));
-    
+    let target_tpe = tycache.type_from_cache(target_type, tyctx, Some(method));
     match (pointer_to_is_fat(curr_points_to, tyctx, Some(method)),pointer_to_is_fat(target_type, tyctx, Some(method))) {
         (true,true) => addr_calc,
-        (true, false) => CILNode::LDField {
+        (true, false) => CILNode::LDIndPtr { ptr:Box::new(CILNode::LDField {
             field: FieldDescriptor::new(
                 curr_type.as_dotnet().unwrap(),
                 Type::Ptr(Type::Void.into()),
@@ -52,7 +52,7 @@ pub fn address_last_dereference<'ctx>(
             )
             .into(),
             addr: addr_calc.into(),
-        },
+        }), loaded_ptr: Box::new(Type::Ptr(Box::new(target_tpe))) },
         (false,true)=>panic!("Invalid last dereference in address!"),
         _ => addr_calc,
     }

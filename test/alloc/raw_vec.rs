@@ -4,9 +4,9 @@
     sized_type_properties,
     ptr_internals,
     core_intrinsics,
-    alloc_layout_extra,
-    unchecked_math
+    alloc_layout_extra
 )]
+#![allow(internal_features,unused_unsafe,unused_variables,private_interfaces,unreachable_code,dead_code)]
 use std::alloc::AllocError;
 use std::collections::TryReserveError;
 use std::collections::TryReserveErrorKind::CapacityOverflow;

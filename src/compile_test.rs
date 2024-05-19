@@ -750,8 +750,8 @@ run_test! {intrinsics,arith_offset,stable}
 run_test! {intrinsics,cmp_bytes,stable}
 
 run_test! {alloc,abox,stable}
-run_test! {alloc,raw_vec,unstable}
-run_test! {alloc,slice_to_owned,unstable}
+run_test! {alloc,raw_vec,stable}
+run_test! {alloc,slice_to_owned,stable}
 run_test! {fuzz,test0,stable}
 run_test! {fuzz,test1,stable}
 
