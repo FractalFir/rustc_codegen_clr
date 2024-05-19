@@ -115,7 +115,7 @@ impl CILRoot {
                 value.opt();
 
                 match fld_addr {
-                    CILNode::ConvUSize(addr) => match addr.as_mut() {
+                    CILNode::ZeroExtendToUSize(addr) => match addr.as_mut() {
                         CILNode::LDLocA(_) | CILNode::LDFieldAdress { .. } => {
                             *fld_addr = addr.as_ref().clone();
                         }
@@ -643,48 +643,70 @@ impl CILRoot {
 
     pub(crate) fn validate(&self, method: &crate::method::Method) -> Result<(), String> {
         match self {
-            Self::STIndI8(addr,val)=>{
+            Self::STIndI8(addr, val) => {
                 let addr = addr.validate(method)?;
                 let val = val.validate(method)?;
-                match &addr{
-                    Type::Ptr(inner) | Type::ManagedReference(inner)=>match inner.as_ref(){
+                match &addr {
+                    Type::Ptr(inner) | Type::ManagedReference(inner) => match inner.as_ref() {
                         Type::I8 | Type::U8 => (),
-                        _=>return Err(format!("Can't set a vaule of type i8/u8 at address of type {addr:?}")),
+                        _ => {
+                            return Err(format!(
+                                "Can't set a vaule of type i8/u8 at address of type {addr:?}"
+                            ))
+                        }
+                    },
+                    _ => {
+                        return Err(format!(
+                            "Can't set a vaule of type i8/u8 at address of type {addr:?}"
+                        ))
                     }
-                    _=>return Err(format!("Can't set a vaule of type i8/u8 at address of type {addr:?}")),
                 }
                 match val{
                     Type::I8 | Type::U8 => Ok(()),
                     _=>return Err(format!("Can't indirectly set a valur of type i8/u8 because the provided value is {val:?}")),
                 }
             }
-            
-            Self::STIndISize(addr,val)=>{
+
+            Self::STIndISize(addr, val) => {
                 let addr = addr.validate(method)?;
                 let val = val.validate(method)?;
-                match &addr{
-                    Type::Ptr(inner) | Type::ManagedReference(inner)=>match inner.as_ref(){
+                match &addr {
+                    Type::Ptr(inner) | Type::ManagedReference(inner) => match inner.as_ref() {
                         Type::Ptr(_) | Type::ManagedReference(_) | Type::USize | Type::ISize => (),
-                        _=>return Err(format!("Can't set a vaule of type i8/u8 at address of type {addr:?}")),
+                        _ => {
+                            return Err(format!(
+                                "Can't set a vaule of type i8/u8 at address of type {addr:?}"
+                            ))
+                        }
+                    },
+                    _ => {
+                        return Err(format!(
+                            "Can't set a vaule of type i8/u8 at address of type {addr:?}"
+                        ))
                     }
-                    _=>return Err(format!("Can't set a vaule of type i8/u8 at address of type {addr:?}")),
                 }
                 match val{
                     Type::I8 | Type::U8 => Ok(()),
                     _=>return Err(format!("Can't indirectly set a valur of type i8/u8 because the provided value is {val:?}")),
                 }
             }
-            Self::Break=>Ok(()),
-            Self::JumpingPad{ ops: _ }=>Ok(()),
-            Self::BTrue { target, sub_target, cond }=>{
+            Self::Break => Ok(()),
+            Self::JumpingPad { ops: _ } => Ok(()),
+            Self::BTrue {
+                target,
+                sub_target,
+                cond,
+            } => {
                 // Just check that `cond` is a boolean.
                 let cond = cond.validate(method)?;
-                if cond != Type::Bool{
-                    Err(format!("BTrue must have a boolean argument. cond is:{cond:?}"))
-                }else{
+                if cond != Type::Bool {
+                    Err(format!(
+                        "BTrue must have a boolean argument. cond is:{cond:?}"
+                    ))
+                } else {
                     Ok(())
                 }
-            },
+            }
             Self::GoTo {
                 target: _,
                 sub_target: _,
@@ -733,7 +755,7 @@ impl CILRoot {
                 }
                 Ok(())
             }
-            Self::CallI {args, sig, fn_ptr } => {
+            Self::CallI { args, sig, fn_ptr } => {
                 let ptr = fn_ptr.validate(method)?;
                 if sig.inputs().len() != args.len() {
                     return Err(format!(
@@ -774,24 +796,27 @@ impl CILRoot {
                     Ok(())
                 }
             }
-            Self::SetField { addr, value, desc }=>{
+            Self::SetField { addr, value, desc } => {
                 let addr = addr.validate(method)?;
                 let value = value.validate(method)?;
-                if *desc.tpe() != value{
+                if *desc.tpe() != value {
                     return Err(format!(
-                        "Mismatched field type. Expected {expected:?} got {value:?}",expected = desc.tpe(),
+                        "Mismatched field type. Expected {expected:?} got {value:?}",
+                        expected = desc.tpe(),
                     ));
                 }
-                match addr{
-                    Type::ManagedReference(tpe) | Type::Ptr(tpe) =>if tpe.as_dotnet() != Some(desc.owner().clone()){
-                        return  Err(format!(
-                            "Mismatched pointer type. Expected {desc:?} got {tpe:?}"
-                        ))
-                    },
-                    _=>(),
+                match addr {
+                    Type::ManagedReference(tpe) | Type::Ptr(tpe) => {
+                        if tpe.as_dotnet() != Some(desc.owner().clone()) {
+                            return Err(format!(
+                                "Mismatched pointer type. Expected {desc:?} got {tpe:?}"
+                            ));
+                        }
+                    }
+                    _ => (),
                 }
                 Ok(())
-            },
+            }
             _ => todo!("Can't check the type safety of cil root {self:?}"),
         }
     }

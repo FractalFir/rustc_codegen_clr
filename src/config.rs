@@ -58,7 +58,6 @@ config_flag! {CHECK_REFS,false,"Tells codegen to check if references it assigns 
 config_flag! {MEM_CHECKS,false,"Tells codegen to insert memory consistency checks after each call. If INSERT_MIR_DEBUG_COMMENTS is enabled, the consistency checks will be run also after each MIR statement."}
 config_flag! {TYPECHECK_CIL,false,"Checks the geneareted CIL for type safety."}
 
-
 config_flag! {TRACE_CIL_OPS,false,"Tells the print each CIL op before it is executed."}
 
 lazy_static! {

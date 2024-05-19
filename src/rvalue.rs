@@ -86,16 +86,16 @@ pub fn handle_rvalue<'tcx>(
                         }]
                         .into(),
                         CILNode::TransmutePtr {
-                            val:Box::new(ld_field!(
-                            CILNode::LoadAddresOfTMPLocal,
-                            FieldDescriptor::new(
-                                source_type.as_dotnet().unwrap(),
-                                Type::Ptr(Type::Void.into()),
-                                "data_pointer".into(),
-                            ))
-                        ),
-                        new_ptr: Box::new(target_type)
-                    }
+                            val: Box::new(ld_field!(
+                                CILNode::LoadAddresOfTMPLocal,
+                                FieldDescriptor::new(
+                                    source_type.as_dotnet().unwrap(),
+                                    Type::Ptr(Type::Void.into()),
+                                    "data_pointer".into(),
+                                )
+                            )),
+                            new_ptr: Box::new(target_type),
+                        },
                     )))
                 }
                 _ => CILNode::TransmutePtr {
@@ -187,11 +187,13 @@ pub fn handle_rvalue<'tcx>(
                 todo!("Can't calc offset of yet!");
             }
 
-            rustc_middle::mir::NullOp::UbChecks => if tyctx.sess.ub_checks(){
-                CILNode::LdTrue
-            }else{
-                CILNode::LdFalse
-            } 
+            rustc_middle::mir::NullOp::UbChecks => {
+                if tyctx.sess.ub_checks() {
+                    CILNode::LdTrue
+                } else {
+                    CILNode::LdFalse
+                }
+            }
         },
         Rvalue::Aggregate(aggregate_kind, field_index) => crate::aggregate::handle_aggregate(
             tyctx,
@@ -213,11 +215,20 @@ pub fn handle_rvalue<'tcx>(
                 (
                     Type::ISize | Type::USize | Type::Ptr(_),
                     Type::ISize | Type::USize | Type::Ptr(_),
-                ) => CILNode::TransmutePtr{val:Box::new(handle_operand(operand, tyctx, method, method_instance, tycache)),new_ptr:Box::new(dst)},
+                ) => CILNode::TransmutePtr {
+                    val: Box::new(handle_operand(
+                        operand,
+                        tyctx,
+                        method,
+                        method_instance,
+                        tycache,
+                    )),
+                    new_ptr: Box::new(dst),
+                },
                 (Type::U16, Type::DotnetChar) => {
                     handle_operand(operand, tyctx, method, method_instance, tycache)
                 }
-          
+
                 (_, Type::F64) => CILNode::TemporaryLocal(Box::new((
                     src,
                     [CILRoot::SetTMPLocal {
@@ -239,7 +250,10 @@ pub fn handle_rvalue<'tcx>(
                         tyctx,
                         &method_instance,
                         tycache,
-                        CILNode::TransmutePtr{val:Box::new(CILNode::LoadAddresOfTMPLocal),new_ptr:Box::new(Type::Ptr(Box::new(dst)))},
+                        CILNode::TransmutePtr {
+                            val: Box::new(CILNode::LoadAddresOfTMPLocal),
+                            new_ptr: Box::new(Type::Ptr(Box::new(dst))),
+                        },
                     ),
                 ))),
             }
@@ -274,7 +288,16 @@ pub fn handle_rvalue<'tcx>(
             let target = crate::utilis::monomorphize(&method_instance, *target, tyctx);
             let target = tycache.type_from_cache(target, tyctx, Some(method_instance));
             // Cast from usize/isize to any *T is a NOP, so we just have to load the operand.
-            CILNode::TransmutePtr{val:Box::new(handle_operand(operand, tyctx, method, method_instance, tycache)),new_ptr:Box::new(target)}
+            CILNode::TransmutePtr {
+                val: Box::new(handle_operand(
+                    operand,
+                    tyctx,
+                    method,
+                    method_instance,
+                    tycache,
+                )),
+                new_ptr: Box::new(target),
+            }
         }
         Rvalue::Cast(CastKind::PointerExposeProvenance, operand, target) => {
             //FIXME: the documentation of this cast(https://doc.rust-lang.org/nightly/std/primitive.pointer.html#method.expose_addrl) is a bit confusing,
@@ -284,7 +307,16 @@ pub fn handle_rvalue<'tcx>(
             let target = crate::utilis::monomorphize(&method_instance, *target, tyctx);
             let target = tycache.type_from_cache(target, tyctx, Some(method_instance));
             // Cast to usize/isize from any *T is a NOP, so we just have to load the operand.
-            CILNode::TransmutePtr{val:Box::new(handle_operand(operand, tyctx, method, method_instance, tycache)),new_ptr:Box::new(target)}
+            CILNode::TransmutePtr {
+                val: Box::new(handle_operand(
+                    operand,
+                    tyctx,
+                    method,
+                    method_instance,
+                    tycache,
+                )),
+                new_ptr: Box::new(target),
+            }
         }
         Rvalue::Cast(CastKind::FloatToFloat, operand, target) => {
             let target = crate::utilis::monomorphize(&method_instance, *target, tyctx);

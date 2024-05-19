@@ -13,7 +13,8 @@ pub mod checked;
 pub mod cmp;
 pub mod shift;
 use crate::{
-    call, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8, conv_usize, div, eq, gt_un, ldc_i32, lt_un, rem, rem_un, size_of, sub
+    call, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8, conv_usize, div, eq, gt_un, ldc_i32,
+    lt_un, rem, rem_un, size_of, sub,
 };
 use bitop::{bit_and_unchecked, bit_or_unchecked, bit_xor_unchecked};
 pub use checked::binop_checked;

@@ -51,7 +51,7 @@ pub fn place_get<'tyctx>(
             ty = curr_ty.monomorphize(&method_instance, tyctx);
             op = curr_ops;
         }
-        place_elem_get(head, ty, tyctx, method_instance, type_cache, op)
+        place_elem_get(head, ty, tyctx, method_instance, method,type_cache, op)
     }
 }
 
@@ -60,6 +60,7 @@ fn place_elem_get<'a>(
     curr_type: super::PlaceTy<'a>,
     tyctx: TyCtxt<'a>,
     method_instance: Instance<'a>,
+    method: &rustc_middle::mir::Body<'a>,
     type_cache: &mut crate::r#type::TyCache,
     addr_calc: CILNode,
 ) -> CILNode {
@@ -108,10 +109,12 @@ fn place_elem_get<'a>(
             let curr_ty = curr_type
                 .as_ty()
                 .expect("INVALID PLACE: Indexing into enum variant???");
+            let index_is_signed = method.local_decls[*index].ty.is_signed();
             let index = crate::place::local_get(
                 index.as_usize(),
                 tyctx.optimized_mir(method_instance.def_id()),
             );
+            
             match curr_ty.kind() {
                 TyKind::Slice(inner) => {
                     let inner = crate::utilis::monomorphize(&method_instance, *inner, tyctx);
@@ -126,7 +129,7 @@ fn place_elem_get<'a>(
                         Type::Ptr(Type::Void.into()),
                         "data_pointer".into(),
                     );
-
+                    let size = if index_is_signed{ CILNode::ZeroExtendToUSize(CILNode::SizeOf(inner_type.into()).into())}else{ CILNode::ConvISize(CILNode::SizeOf(inner_type.into()).into())};
                     let addr = CILNode::Add(
                         CILNode::LDField {
                             addr: addr_calc.into(),
@@ -135,7 +138,7 @@ fn place_elem_get<'a>(
                         .into(),
                         CILNode::Mul(
                             index.into(),
-                            CILNode::ConvUSize(CILNode::SizeOf(inner_type.into()).into()).into(),
+                            size.into(),
                         )
                         .into(),
                     );
@@ -161,7 +164,7 @@ fn place_elem_get<'a>(
                             false,
                         )
                         .into(),
-                        args: [addr_calc, CILNode::ConvUSize(index.into())].into(),
+                        args: [addr_calc, CILNode::ZeroExtendToUSize(index.into())].into(),
                     }
                 }
                 _ => {
@@ -195,7 +198,7 @@ fn place_elem_get<'a>(
                         "data_pointer".into(),
                     );
                     let metadata = FieldDescriptor::new(slice, Type::USize, "metadata".into());
-
+                    
                     let addr = ld_field!(addr_calc.clone(), data_pointer)
                         + call!(
                             CallSite::new(
@@ -205,7 +208,7 @@ fn place_elem_get<'a>(
                                 true
                             ),
                             [conv_usize!(index), ld_field!(addr_calc, metadata),]
-                        ) * CILNode::ConvUSize(CILNode::SizeOf(inner_type.into()).into());
+                        ) * CILNode::ZeroExtendToUSize(CILNode::SizeOf(inner_type.into()).into());
                     super::deref_op(
                         super::PlaceTy::Ty(inner),
                         tyctx,
@@ -229,7 +232,7 @@ fn place_elem_get<'a>(
                             false,
                         )
                         .into(),
-                        args: [addr_calc, CILNode::ConvUSize(index.into())].into(),
+                        args: [addr_calc, CILNode::ZeroExtendToUSize(index.into())].into(),
                     }
                 }
                 _ => {

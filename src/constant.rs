@@ -65,7 +65,16 @@ fn create_const_from_data<'ctx>(
     };
     let ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
     let tpe = tycache.type_from_cache(ty, tyctx, Some(method_instance));
-    crate::place::deref_op(ty.into(), tyctx, &method_instance, tycache, CILNode::TransmutePtr { val:Box::new(ptr), new_ptr: Box::new(tpe) })
+    crate::place::deref_op(
+        ty.into(),
+        tyctx,
+        &method_instance,
+        tycache,
+        CILNode::TransmutePtr {
+            val: Box::new(ptr),
+            new_ptr: Box::new(Type::Ptr(Box::new(tpe))),
+        },
+    )
 }
 
 pub(crate) fn load_const_value<'ctx>(
@@ -109,7 +118,10 @@ pub(crate) fn load_const_value<'ctx>(
                     },
                     CILRoot::SetField {
                         addr: CILNode::LoadAddresOfTMPLocal,
-                        value: CILNode::TransmutePtr { val: Box::new(CILNode::LoadGlobalAllocPtr { alloc_id }), new_ptr: Box::new(Type::Ptr(Type::Void.into())) },
+                        value: CILNode::TransmutePtr {
+                            val: Box::new(CILNode::LoadGlobalAllocPtr { alloc_id }),
+                            new_ptr: Box::new(Type::Ptr(Type::Void.into())),
+                        },
                         desc: ptr_field,
                     },
                 ]
@@ -219,7 +231,7 @@ fn load_scalar_ptr(
                 alloc_id: alloc_id.alloc_id().0.into(),
             }
             .into(),
-            CILNode::ConvUSize(CILNode::LdcU64(offset.bytes()).into()).into(),
+            CILNode::ZeroExtendToUSize(CILNode::LdcU64(offset.bytes()).into()).into(),
         ),
         GlobalAlloc::Function(finstance) => {
             // If it is a function, patch its pointer up.
@@ -250,20 +262,28 @@ fn load_const_scalar<'ctx>(
         Scalar::Int(scalar_int) => scalar_int
             .try_to_uint(scalar.size())
             .expect("IMPOSSIBLE. Size of scalar was not equal to itself."),
-        Scalar::Ptr(ptr, _size) => return CILNode::TransmutePtr{val:Box::new(load_scalar_ptr(tyctx, tycache, ptr)),new_ptr:Box::new(tpe)},
+        Scalar::Ptr(ptr, _size) => {
+            return CILNode::TransmutePtr {
+                val: Box::new(load_scalar_ptr(tyctx, tycache, ptr)),
+                new_ptr: Box::new(tpe),
+            }
+        }
     };
 
-  
     match scalar_type.kind() {
         TyKind::Int(int_type) => load_const_int(scalar_u128, int_type),
         TyKind::Uint(uint_type) => load_const_uint(scalar_u128, uint_type),
         TyKind::Float(ftype) => load_const_float(scalar_u128, ftype, tyctx),
-        TyKind::Bool => if scalar_u128 == 0{
-            CILNode::LdFalse 
-        }else{
-            CILNode::LdTrue
-        },
-        TyKind::RawPtr(_, _) => CILNode::ConvUSize(CILNode::LdcU64(scalar_u128 as u64).into()),
+        TyKind::Bool => {
+            if scalar_u128 == 0 {
+                CILNode::LdFalse
+            } else {
+                CILNode::LdTrue
+            }
+        }
+        TyKind::RawPtr(_, _) => {
+            CILNode::ZeroExtendToUSize(CILNode::LdcU64(scalar_u128 as u64).into())
+        }
         TyKind::Tuple(elements) => {
             if elements.is_empty() {
                 CILNode::TemporaryLocal(Box::new((
@@ -276,13 +296,19 @@ fn load_const_scalar<'ctx>(
                 )))
             } else {
                 CILNode::LdObj {
-                    ptr: Box::new(CILNode::TransmutePtr{val:Box::new(CILNode::PointerToConstValue(scalar_u128)), new_ptr: Box::new(Type::Ptr(Box::new(tpe.clone()))) }),
+                    ptr: Box::new(CILNode::TransmutePtr {
+                        val: Box::new(CILNode::PointerToConstValue(scalar_u128)),
+                        new_ptr: Box::new(Type::Ptr(Box::new(tpe.clone()))),
+                    }),
                     obj: tpe.into(),
                 }
             }
         }
         TyKind::Adt(_, _subst) => CILNode::LdObj {
-            ptr: Box::new(CILNode::TransmutePtr{val:Box::new(CILNode::PointerToConstValue(scalar_u128)), new_ptr: Box::new(Type::Ptr(Box::new(tpe.clone()))) }),
+            ptr: Box::new(CILNode::TransmutePtr {
+                val: Box::new(CILNode::PointerToConstValue(scalar_u128)),
+                new_ptr: Box::new(Type::Ptr(Box::new(tpe.clone()))),
+            }),
             obj: tpe.into(),
         },
         TyKind::Char => CILNode::LdcU32(scalar_u128 as u32),
@@ -355,7 +381,7 @@ pub fn load_const_uint(value: u128, int_type: &UintTy) -> CILNode {
         }
         UintTy::U32 => CILNode::ConvU32(CILNode::LdcU32(value as u32).into()),
         UintTy::U64 => CILNode::ConvU64(CILNode::LdcU64(value as u64).into()),
-        UintTy::Usize => CILNode::ConvUSize(CILNode::LdcU64(value as u64).into()),
+        UintTy::Usize => CILNode::ZeroExtendToUSize(CILNode::LdcU64(value as u64).into()),
         UintTy::U128 => {
             let low = (value & u128::from(u64::MAX)) as u64;
             let high = (value >> 64) as u64;

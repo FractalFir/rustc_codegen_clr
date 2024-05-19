@@ -1,6 +1,13 @@
 use super::PlaceTy;
 use crate::{
-    assert_morphic, call, cil::{CallSite, FieldDescriptor}, cil_tree::{cil_node::CILNode, cil_root::CILRoot}, conv_usize, function_sig::FnSig, ld_field, ldc_u64, size_of, r#type::{pointer_to_is_fat, TyCache, Type}
+    assert_morphic, call,
+    cil::{CallSite, FieldDescriptor},
+    cil_tree::{cil_node::CILNode, cil_root::CILRoot},
+    conv_usize,
+    function_sig::FnSig,
+    ld_field, ldc_u64,
+    r#type::{pointer_to_is_fat, TyCache, Type},
+    size_of,
 };
 use rustc_middle::{
     mir::PlaceElem,
@@ -42,18 +49,24 @@ pub fn address_last_dereference<'ctx>(
     let curr_points_to = super::pointed_type(curr_type.into());
     let curr_type = tycache.type_from_cache(curr_type, tyctx, Some(method));
     let target_tpe = tycache.type_from_cache(target_type, tyctx, Some(method));
-    match (pointer_to_is_fat(curr_points_to, tyctx, Some(method)),pointer_to_is_fat(target_type, tyctx, Some(method))) {
-        (true,true) => addr_calc,
-        (true, false) => CILNode::LDIndPtr { ptr:Box::new(CILNode::LDField {
-            field: FieldDescriptor::new(
-                curr_type.as_dotnet().unwrap(),
-                Type::Ptr(Type::Void.into()),
-                "data_pointer".into(),
-            )
-            .into(),
-            addr: addr_calc.into(),
-        }), loaded_ptr: Box::new(Type::Ptr(Box::new(target_tpe))) },
-        (false,true)=>panic!("Invalid last dereference in address!"),
+    match (
+        pointer_to_is_fat(curr_points_to, tyctx, Some(method)),
+        pointer_to_is_fat(target_type, tyctx, Some(method)),
+    ) {
+        (true, true) => addr_calc,
+        (true, false) => CILNode::LDIndPtr {
+            ptr: Box::new(CILNode::LDField {
+                field: FieldDescriptor::new(
+                    curr_type.as_dotnet().unwrap(),
+                    Type::Ptr(Type::Void.into()),
+                    "data_pointer".into(),
+                )
+                .into(),
+                addr: addr_calc.into(),
+            }),
+            loaded_ptr: Box::new(Type::Ptr(Box::new(target_tpe))),
+        },
+        (false, true) => panic!("Invalid last dereference in address!"),
         _ => addr_calc,
     }
     /*match (curr_points_to.kind(), target_type.kind()) {
@@ -369,7 +382,11 @@ pub fn place_elem_adress<'ctx>(
                                 false,
                             )
                             .into(),
-                            args: [addr_calc, CILNode::ConvUSize(ldc_u64!(*offset).into())].into(),
+                            args: [
+                                addr_calc,
+                                CILNode::ZeroExtendToUSize(ldc_u64!(*offset).into()),
+                            ]
+                            .into(),
                         }
                     }
                 }

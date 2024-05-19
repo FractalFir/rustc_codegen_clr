@@ -340,8 +340,15 @@ fn node_string(tree: &CILNode, method: &Method) -> String {
         CILNode::LDIndISize { ptr } => {
             format!("(*((ptrdiff_t*){ptr}))", ptr = node_string(ptr, method))
         }
-        CILNode::LDIndPtr { ptr, loaded_ptr: loaded_points_to } => {
-            format!("(*(({loaded_points_to}){ptr}))", ptr = node_string(ptr, method),loaded_points_to = c_tpe(loaded_points_to))
+        CILNode::LDIndPtr {
+            ptr,
+            loaded_ptr: loaded_points_to,
+        } => {
+            format!(
+                "(*(({loaded_points_to}){ptr}))",
+                ptr = node_string(ptr, method),
+                loaded_points_to = c_tpe(loaded_points_to)
+            )
         }
         CILNode::LDIndUSize { ptr } => {
             format!("(*((ptrdiff_t*){ptr}))", ptr = node_string(ptr, method))
@@ -513,12 +520,13 @@ fn node_string(tree: &CILNode, method: &Method) -> String {
         CILNode::ConvU64(inner) => {
             format!("((uint64_t){inner})", inner = node_string(inner, method))
         }
-        CILNode::ConvUSize(inner) => {
+        CILNode::ZeroExtendToUSize(inner) => {
             format!("((uintptr_t){inner})", inner = node_string(inner, method))
         }
-        CILNode::MRefToRawPtr(inner) => 
-            node_string(inner, method)
-        ,
+        CILNode::ZeroExtendToISize(inner) => {
+            format!("((intptr_t)((uintptr_t){inner}))", inner = node_string(inner, method))
+        }
+        CILNode::MRefToRawPtr(inner) => node_string(inner, method),
         CILNode::ConvI8(inner) => format!("((int8_t){inner})", inner = node_string(inner, method)),
         CILNode::ConvI16(inner) => {
             format!("((int16_t){inner})", inner = node_string(inner, method))
@@ -604,8 +612,8 @@ fn node_string(tree: &CILNode, method: &Method) -> String {
             new_ptr = c_tpe(new_ptr),
             val = node_string(val, method)
         ),
-        CILNode::LdFalse=>"0".into(),
-        CILNode::LdTrue=>"0".into(),
+        CILNode::LdFalse => "0".into(),
+        CILNode::LdTrue => "0".into(),
     }
 }
 fn tree_string(tree: &CILTree, method: &Method) -> String {

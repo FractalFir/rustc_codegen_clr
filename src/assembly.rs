@@ -398,16 +398,16 @@ impl Assembly {
         method.resolve_global_allocations(self, tyctx, cache);
         // TODO: Why is this even needed? The temporaries *should* be already allocated, why not all of them are?
         method.allocate_temporaries();
-        if *crate::config::TYPECHECK_CIL{
+        if *crate::config::TYPECHECK_CIL {
             match method.validate() {
                 Ok(_) => (),
                 Err(msg) => eprintln!(
                     "\n\nMethod {} failed compilation with message:\ns {msg}",
                     method.name()
                 ),
-            }   
+            }
         }
-      
+
         //println!("Compiled method {name}");
 
         self.add_method(method);
@@ -1029,10 +1029,13 @@ fn allocation_initializer_method(
     trees.push(
         CILRoot::STLoc {
             local: 0,
-            tree: CILNode::TransmutePtr { val: Box::new(call!(
-                CallSite::malloc(tyctx),
-                [conv_isize!(ldc_u64!(bytes.len() as u64))]
-    )), new_ptr: Box::new(Type::Ptr(Box::new(Type::U8))) },
+            tree: CILNode::TransmutePtr {
+                val: Box::new(call!(
+                    CallSite::malloc(tyctx),
+                    [conv_isize!(ldc_u64!(bytes.len() as u64))]
+                )),
+                new_ptr: Box::new(Type::Ptr(Box::new(Type::U8))),
+            },
         }
         .into(),
     );

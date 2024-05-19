@@ -172,7 +172,6 @@ pub fn place_elem_body<'ctx>(
                         Type::Ptr(Type::Void.into()),
                         "data_pointer".into(),
                     );
-
                     let addr = CILNode::Add(
                         CILNode::LDField {
                             addr: parrent_node.into(),
@@ -181,7 +180,8 @@ pub fn place_elem_body<'ctx>(
                         .into(),
                         CILNode::Mul(
                             index.into(),
-                            CILNode::ConvUSize(CILNode::SizeOf(inner_type.into()).into()).into(),
+                            CILNode::ZeroExtendToUSize(CILNode::SizeOf(inner_type.into()).into())
+                                .into(),
                         )
                         .into(),
                     );
@@ -220,7 +220,7 @@ pub fn place_elem_body<'ctx>(
                                 false,
                             )
                             .into(),
-                            args: [parrent_node, CILNode::ConvUSize(index.into())].into(),
+                            args: [parrent_node, CILNode::ZeroExtendToUSize(index.into())].into(),
                         };
                         ((element).into(), ops)
                     } else {
@@ -235,7 +235,7 @@ pub fn place_elem_body<'ctx>(
                                 false,
                             )
                             .into(),
-                            args: [parrent_node, CILNode::ConvUSize(index.into())].into(),
+                            args: [parrent_node, CILNode::ZeroExtendToUSize(index.into())].into(),
                         };
                         ((element).into(), ops)
                     }
@@ -313,7 +313,7 @@ pub fn place_elem_body<'ctx>(
                                 false,
                             )
                             .into(),
-                            args: [parrent_node, CILNode::ConvUSize(index.into())].into(),
+                            args: [parrent_node, CILNode::ZeroExtendToUSize(index.into())].into(),
                         };
                         ((element_ty).into(), ops)
                     } else {
@@ -325,7 +325,7 @@ pub fn place_elem_body<'ctx>(
                                 false,
                             )
                             .into(),
-                            args: [parrent_node, CILNode::ConvUSize(index.into())].into(),
+                            args: [parrent_node, CILNode::ZeroExtendToUSize(index.into())].into(),
                         };
                         ((element_ty).into(), ops)
                     }

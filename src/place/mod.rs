@@ -89,7 +89,7 @@ pub fn deref_op<'ctx>(
                 UintTy::U16 => CILNode::LDIndU16 { ptr },
                 UintTy::U32 => CILNode::LDIndU32 { ptr },
                 UintTy::U64 => CILNode::LDIndU64 { ptr },
-                UintTy::Usize => CILNode::LDIndISize { ptr },
+                UintTy::Usize => CILNode::LDIndUSize { ptr },
                 UintTy::U128 => CILNode::LdObj {
                     ptr,
                     obj: Box::new(DotnetTypeRef::uint_128().into()),
@@ -129,8 +129,12 @@ pub fn deref_op<'ctx>(
                         )),
                     }
                 } else {
-                    let inner = type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance));
-                    CILNode::LDIndPtr { ptr: ptr, loaded_ptr: Box::new(inner) } 
+                    let inner =
+                        type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance));
+                    CILNode::LDIndPtr {
+                        ptr: ptr,
+                        loaded_ptr: Box::new(inner),
+                    }
                 }
             }
             TyKind::RawPtr(typ, _) => {
@@ -144,8 +148,12 @@ pub fn deref_op<'ctx>(
                         )),
                     }
                 } else {
-                    let typ = type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance));
-                    CILNode::LDIndPtr { ptr: ptr, loaded_ptr: Box::new(typ) } 
+                    let typ =
+                        type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance));
+                    CILNode::LDIndPtr {
+                        ptr: ptr,
+                        loaded_ptr: Box::new(typ),
+                    }
                 }
             }
 

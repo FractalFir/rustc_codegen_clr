@@ -172,7 +172,10 @@ pub fn unsize<'tyctx>(
                     },
                     CILRoot::SetField {
                         addr: info.target_ptr,
-                        value: CILNode::TransmutePtr { val: Box::new(info.source_ptr), new_ptr: Box::new(Type::Ptr(Box::new(Type::Void))) },
+                        value: CILNode::TransmutePtr {
+                            val: Box::new(info.source_ptr),
+                            new_ptr: Box::new(Type::Ptr(Box::new(Type::Void))),
+                        },
                         desc: ptr_field,
                     },
                 ]
@@ -200,15 +203,20 @@ pub fn unsize<'tyctx>(
                 [
                     CILRoot::SetField {
                         addr: info.target_ptr.clone(),
-                        value: CILNode::TransmutePtr { val: Box::new(CILNode::LoadGlobalAllocPtr {
-                            alloc_id: alloc_id.0.into(),
-                        }),
-                            new_ptr: Box::new(Type::USize), },
+                        value: CILNode::TransmutePtr {
+                            val: Box::new(CILNode::LoadGlobalAllocPtr {
+                                alloc_id: alloc_id.0.into(),
+                            }),
+                            new_ptr: Box::new(Type::USize),
+                        },
                         desc: metadata_field,
                     },
                     CILRoot::SetField {
                         addr: info.target_ptr,
-                        value: CILNode::TransmutePtr { val: Box::new(info.source_ptr), new_ptr: Box::new(Type::Ptr(Box::new(Type::Void))) },
+                        value: CILNode::TransmutePtr {
+                            val: Box::new(info.source_ptr),
+                            new_ptr: Box::new(Type::Ptr(Box::new(Type::Void))),
+                        },
                         desc: ptr_field,
                     },
                 ]
