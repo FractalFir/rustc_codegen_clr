@@ -23,7 +23,7 @@ fn compare_bytes(a: CILNode, b: CILNode, len: CILNode) -> CILNode {
     )
 }
 use crate::{
-    cil::{CILOp, CallSite},
+    cil::CallSite,
     cil_tree::cil_node::CILNode,
     conv_u64,
     function_sig::FnSig,

@@ -51,7 +51,7 @@ pub fn place_get<'tyctx>(
             ty = curr_ty.monomorphize(&method_instance, tyctx);
             op = curr_ops;
         }
-        place_elem_get(head, ty, tyctx, method_instance, method,type_cache, op)
+        place_elem_get(head, ty, tyctx, method_instance, method, type_cache, op)
     }
 }
 
@@ -114,7 +114,7 @@ fn place_elem_get<'a>(
                 index.as_usize(),
                 tyctx.optimized_mir(method_instance.def_id()),
             );
-            
+
             match curr_ty.kind() {
                 TyKind::Slice(inner) => {
                     let inner = crate::utilis::monomorphize(&method_instance, *inner, tyctx);
@@ -129,18 +129,18 @@ fn place_elem_get<'a>(
                         Type::Ptr(Type::Void.into()),
                         "data_pointer".into(),
                     );
-                    let size = if index_is_signed{ CILNode::ZeroExtendToUSize(CILNode::SizeOf(inner_type.into()).into())}else{ CILNode::ConvISize(CILNode::SizeOf(inner_type.into()).into())};
+                    let size = if index_is_signed {
+                        CILNode::ZeroExtendToUSize(CILNode::SizeOf(inner_type.into()).into())
+                    } else {
+                        CILNode::ConvISize(CILNode::SizeOf(inner_type.into()).into())
+                    };
                     let addr = CILNode::Add(
                         CILNode::LDField {
                             addr: addr_calc.into(),
                             field: desc.into(),
                         }
                         .into(),
-                        CILNode::Mul(
-                            index.into(),
-                            size.into(),
-                        )
-                        .into(),
+                        CILNode::Mul(index.into(), size.into()).into(),
                     );
                     super::deref_op(
                         super::PlaceTy::Ty(inner),
@@ -198,7 +198,7 @@ fn place_elem_get<'a>(
                         "data_pointer".into(),
                     );
                     let metadata = FieldDescriptor::new(slice, Type::USize, "metadata".into());
-                    
+
                     let addr = ld_field!(addr_calc.clone(), data_pointer)
                         + call!(
                             CallSite::new(

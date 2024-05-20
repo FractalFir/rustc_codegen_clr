@@ -4,7 +4,7 @@ use crate::cil_tree::cil_root::CILRoot;
 use crate::function_sig::FnSig;
 use crate::operand::handle_operand;
 
-use crate::{conv_usize, ld_field, ldc_i32, ldc_u32, ldc_u64, size_of};
+use crate::{conv_usize, ld_field, ldc_i32, ldc_u64, size_of};
 
 use crate::r#type::{pointer_to_is_fat, TyCache, Type};
 use rustc_middle::{
@@ -392,12 +392,11 @@ pub fn handle_rvalue<'tcx>(
                 // Just alwways return 0 if the discriminat type is `()` - this seems to work, and be what rustc expects. Wierd, but OK.
                 crate::casts::int_to_int(Type::I32, target, ldc_i32!(0))
             } else {
-                let res = crate::casts::int_to_int(
+                crate::casts::int_to_int(
                     disrc_type.clone(),
                     target.clone(),
                     crate::utilis::adt::get_discr(layout.layout, addr, owner, tyctx, owner_ty),
-                );
-                res
+                )
             }
         }
         Rvalue::Len(operand) => {

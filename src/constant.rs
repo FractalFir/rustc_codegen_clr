@@ -6,12 +6,14 @@ use crate::{
     ldc_u64,
     r#type::{DotnetTypeRef, TyCache, Type},
 };
-use rustc_abi::Size;
-use rustc_middle::mir::{
-    interpret::{AllocId, AllocRange, GlobalAlloc, Scalar},
-    ConstOperand, ConstValue,
+
+use rustc_middle::{
+    mir::{
+        interpret::{AllocId, GlobalAlloc, Scalar},
+        ConstOperand, ConstValue,
+    },
+    ty::{FloatTy, Instance, IntTy, ParamEnv, Ty, TyCtxt, TyKind, UintTy},
 };
-use rustc_middle::ty::{FloatTy, Instance, IntTy, ParamEnv, Ty, TyCtxt, TyKind, UintTy};
 pub fn handle_constant<'ctx>(
     constant_op: &ConstOperand<'ctx>,
     tyctx: TyCtxt<'ctx>,
@@ -42,24 +44,6 @@ fn create_const_from_data<'ctx>(
     method_instance: Instance<'ctx>,
     tycache: &mut TyCache,
 ) -> CILNode {
-    let alloc = tyctx.global_alloc(alloc_id);
-    // Constant should be memory:
-    let memory = alloc.unwrap_memory();
-    let len = memory.0.len();
-    let range = AllocRange {
-        start: Size::from_bytes(offset_bytes),
-        size: Size::from_bytes((len as u64) - offset_bytes),
-    };
-
-    //TODO: fix layout issues!
-    if memory.0.provenance().ptrs().is_empty() && true {
-        let _bytes = memory.0.get_bytes_unchecked(range);
-        //eprintln!("Creating const {ty:?} from data of length {len}.");
-        //create_const_from_slice(ty, tyctx, bytes, method_instance, tycache)
-    } else {
-
-        //panic!("Constant requires rellocation support!");
-    }
     let ptr = CILNode::LoadGlobalAllocPtr {
         alloc_id: alloc_id.0.into(),
     };
@@ -188,8 +172,6 @@ fn load_scalar_ptr(
             let attrs = tyctx.codegen_fn_attrs(def_id);
 
             if let Some(import_linkage) = attrs.import_linkage {
-                // Check if this is likely to be a syscall - if so, try importing it from libc.
-
                 if name.contains("statx") {
                     return CILNode::TemporaryLocal(Box::new((
                         Type::USize,

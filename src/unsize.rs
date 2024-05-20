@@ -162,24 +162,22 @@ pub fn unsize<'tyctx>(
                 Type::Ptr(Type::Void.into()),
                 "data_pointer".into(),
             );
+            let init_len = CILRoot::SetField {
+                addr: info.target_ptr.clone(),
+                value: conv_usize!(ldc_u64!(length as u64)),
+                desc: metadata_field,
+            };
+            let init_ptr = CILRoot::SetField {
+                addr: info.target_ptr,
+                value: CILNode::TransmutePtr {
+                    val: Box::new(info.source_ptr),
+                    new_ptr: Box::new(Type::Ptr(Box::new(Type::Void))),
+                },
+                desc: ptr_field,
+            };
             CILNode::TemporaryLocal(Box::new((
                 info.target_type,
-                [
-                    CILRoot::SetField {
-                        addr: info.target_ptr.clone(),
-                        value: conv_usize!(ldc_u64!(length as u64)),
-                        desc: metadata_field,
-                    },
-                    CILRoot::SetField {
-                        addr: info.target_ptr,
-                        value: CILNode::TransmutePtr {
-                            val: Box::new(info.source_ptr),
-                            new_ptr: Box::new(Type::Ptr(Box::new(Type::Void))),
-                        },
-                        desc: ptr_field,
-                    },
-                ]
-                .into(),
+                [init_len, init_ptr].into(),
                 CILNode::LoadTMPLocal,
             )))
         }
@@ -198,29 +196,27 @@ pub fn unsize<'tyctx>(
                 Type::Ptr(Type::Void.into()),
                 "data_pointer".into(),
             );
+            let init_vtable_ptr = CILRoot::SetField {
+                addr: info.target_ptr.clone(),
+                value: CILNode::TransmutePtr {
+                    val: Box::new(CILNode::LoadGlobalAllocPtr {
+                        alloc_id: alloc_id.0.into(),
+                    }),
+                    new_ptr: Box::new(Type::USize),
+                },
+                desc: metadata_field,
+            };
+            let init_obj_ptr = CILRoot::SetField {
+                addr: info.target_ptr,
+                value: CILNode::TransmutePtr {
+                    val: Box::new(info.source_ptr),
+                    new_ptr: Box::new(Type::Ptr(Box::new(Type::Void))),
+                },
+                desc: ptr_field,
+            };
             CILNode::TemporaryLocal(Box::new((
                 info.target_type,
-                [
-                    CILRoot::SetField {
-                        addr: info.target_ptr.clone(),
-                        value: CILNode::TransmutePtr {
-                            val: Box::new(CILNode::LoadGlobalAllocPtr {
-                                alloc_id: alloc_id.0.into(),
-                            }),
-                            new_ptr: Box::new(Type::USize),
-                        },
-                        desc: metadata_field,
-                    },
-                    CILRoot::SetField {
-                        addr: info.target_ptr,
-                        value: CILNode::TransmutePtr {
-                            val: Box::new(info.source_ptr),
-                            new_ptr: Box::new(Type::Ptr(Box::new(Type::Void))),
-                        },
-                        desc: ptr_field,
-                    },
-                ]
-                .into(),
+                [init_vtable_ptr, init_obj_ptr].into(),
                 CILNode::LoadTMPLocal,
             )))
         }

@@ -6,7 +6,7 @@ use crate::{
     function_sig::FnSig,
     place::{body_ty_is_by_adress, deref_op},
     r#type::Type,
-    {assert_morphic, call, conv_usize, ld_field, ldc_u64},
+    {assert_morphic, call, conv_usize, ld_field},
 };
 use rustc_middle::mir::PlaceElem;
 use rustc_middle::ty::{Instance, Ty, TyCtxt, TyKind};

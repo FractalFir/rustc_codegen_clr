@@ -345,7 +345,7 @@ pub fn max_stack(ops: &[crate::cil::CILOp], does_return_void: bool) -> usize {
     usize::try_from(max_stack).expect("Max stack bigger than 2^64.")
 }
 pub(crate) fn alloc_id_to_u64(alloc_id: AllocId) -> u64 {
-    unsafe { std::mem::transmute(alloc_id) }
+    alloc_id.0.into()
 }
 pub fn is_fn_intrinsic<'tyctx>(fn_ty: Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -> bool {
     match fn_ty.kind() {
@@ -364,8 +364,7 @@ pub fn align_of<'tyctx>(ty: rustc_middle::ty::Ty<'tyctx>, tyctx: TyCtxt<'tyctx>)
         .layout;
 
     let align = layout.align.abi;
-    // FIXME: this field is likely private for a reason. I should not do this get its value. Find a better way to get aligement.
-    let pow2 = u64::from(unsafe { std::mem::transmute::<rustc_abi::Align, u8>(align) });
+    let pow2 = align.bytes();
     1 << pow2
 }
 pub fn is_zst<'tyctx>(ty: rustc_middle::ty::Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -> bool {

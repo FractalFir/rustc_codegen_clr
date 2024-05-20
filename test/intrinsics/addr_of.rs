@@ -47,5 +47,7 @@ fn main(){
     test_eq!(black_box(addr_of!(a) as usize + 80),addr_of!(a.3) as usize);
     let a = black_box(a);
     test_eq!(a.0,f0);
+    let a:() = ();
+    black_box(addr_of!(a) as usize);
 }
     

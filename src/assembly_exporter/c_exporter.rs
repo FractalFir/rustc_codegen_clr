@@ -524,7 +524,10 @@ fn node_string(tree: &CILNode, method: &Method) -> String {
             format!("((uintptr_t){inner})", inner = node_string(inner, method))
         }
         CILNode::ZeroExtendToISize(inner) => {
-            format!("((intptr_t)((uintptr_t){inner}))", inner = node_string(inner, method))
+            format!(
+                "((intptr_t)((uintptr_t){inner}))",
+                inner = node_string(inner, method)
+            )
         }
         CILNode::MRefToRawPtr(inner) => node_string(inner, method),
         CILNode::ConvI8(inner) => format!("((int8_t){inner})", inner = node_string(inner, method)),

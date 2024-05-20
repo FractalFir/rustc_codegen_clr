@@ -107,6 +107,93 @@ fn patch_missing_method(call_site: &cil::CallSite) -> method::Method {
     );
     method
 }
+/// Replaces `malloc` with a direct call to `AllocHGlobal`
+fn override_malloc(patched:&mut HashMap<CallSite,Method>,call:&CallSite){
+    patched.insert(
+        call.clone(),
+        Method::new(
+            access_modifier::AccessModifer::Private,
+            MethodType::Static,
+            call.signature().clone(),
+            "malloc",
+            vec![],
+            vec![BasicBlock::new(
+                vec![CILRoot::Ret {
+                    tree: CILNode::Call {
+                        args: [CILNode::LDArg(0)].into(),
+                        site: CallSite::boxed(
+                            DotnetTypeRef::marshal().into(),
+                            "AllocHGlobal".into(),
+                            FnSig::new(&[Type::ISize], &Type::ISize),
+                            true,
+                        ),
+                    },
+                }
+                .into()],
+                0,
+                None,
+            )],
+        ),
+    );
+}
+/// Replaces `free` with a direct call to `FreeHGlobal`
+fn override_free(patched:&mut HashMap<CallSite,Method>,call:&CallSite){
+    patched.insert(
+        call.clone(),
+        Method::new(
+            access_modifier::AccessModifer::Private,
+            MethodType::Static,
+            call.signature().clone(),
+            "free",
+            vec![],
+            vec![BasicBlock::new(
+                vec![CILRoot::Ret {
+                    tree: CILNode::Call {
+                        args: [CILNode::LDArg(0)].into(),
+                        site: CallSite::boxed(
+                            DotnetTypeRef::marshal().into(),
+                            "FreeHGlobal".into(),
+                            FnSig::new(&[Type::ISize], &Type::Void),
+                            true,
+                        ),
+                    },
+                }
+                .into()],
+                0,
+                None,
+            )],
+        ),
+    );
+}
+/// Replaces `realloc` with a direct call to `ReAllocHGlobal`
+fn override_realloc(patched:&mut HashMap<CallSite,Method>,call:&CallSite){
+    patched.insert(
+        call.clone(),
+        Method::new(
+            access_modifier::AccessModifer::Private,
+            MethodType::Static,
+            call.signature().clone(),
+            "realloc",
+            vec![],
+            vec![BasicBlock::new(
+                vec![CILRoot::Ret {
+                    tree: CILNode::Call {
+                        args: [CILNode::LDArg(0), CILNode::LDArg(1)].into(),
+                        site: CallSite::boxed(
+                            DotnetTypeRef::marshal().into(),
+                            "ReAllocHGlobal".into(),
+                            FnSig::new(&[Type::ISize, Type::ISize], &Type::ISize),
+                            true,
+                        ),
+                    },
+                }
+                .into()],
+                0,
+                None,
+            )],
+        ),
+    );
+}
 fn autopatch(asm: &mut Assembly, native_pastrough: &NativePastroughInfo) {
     let asm_sites = asm.call_sites();
     let call_sites = asm_sites
@@ -118,90 +205,15 @@ fn autopatch(asm: &mut Assembly, native_pastrough: &NativePastroughInfo) {
     for call in call_sites {
         let name = call.name();
         if name == "malloc" {
-            patched.insert(
-                call.clone(),
-                Method::new(
-                    access_modifier::AccessModifer::Private,
-                    MethodType::Static,
-                    call.signature().clone(),
-                    "malloc",
-                    vec![],
-                    vec![BasicBlock::new(
-                        vec![CILRoot::Ret {
-                            tree: CILNode::Call {
-                                args: [CILNode::LDArg(0)].into(),
-                                site: CallSite::boxed(
-                                    DotnetTypeRef::marshal().into(),
-                                    "AllocHGlobal".into(),
-                                    FnSig::new(&[Type::ISize], &Type::ISize),
-                                    true,
-                                ),
-                            },
-                        }
-                        .into()],
-                        0,
-                        None,
-                    )],
-                ),
-            );
+            override_malloc(&mut patched, call);
             continue;
         }
         if name == "free" {
-            patched.insert(
-                call.clone(),
-                Method::new(
-                    access_modifier::AccessModifer::Private,
-                    MethodType::Static,
-                    call.signature().clone(),
-                    "free",
-                    vec![],
-                    vec![BasicBlock::new(
-                        vec![CILRoot::Ret {
-                            tree: CILNode::Call {
-                                args: [CILNode::LDArg(0)].into(),
-                                site: CallSite::boxed(
-                                    DotnetTypeRef::marshal().into(),
-                                    "FreeHGlobal".into(),
-                                    FnSig::new(&[Type::ISize], &Type::Void),
-                                    true,
-                                ),
-                            },
-                        }
-                        .into()],
-                        0,
-                        None,
-                    )],
-                ),
-            );
+            override_free(&mut patched, call);
             continue;
         }
         if name == "realloc" {
-            patched.insert(
-                call.clone(),
-                Method::new(
-                    access_modifier::AccessModifer::Private,
-                    MethodType::Static,
-                    call.signature().clone(),
-                    "realloc",
-                    vec![],
-                    vec![BasicBlock::new(
-                        vec![CILRoot::Ret {
-                            tree: CILNode::Call {
-                                args: [CILNode::LDArg(0), CILNode::LDArg(1)].into(),
-                                site: CallSite::boxed(
-                                    DotnetTypeRef::marshal().into(),
-                                    "ReAllocHGlobal".into(),
-                                    FnSig::new(&[Type::ISize, Type::ISize], &Type::ISize),
-                                    true,
-                                ),
-                            },
-                        }
-                        .into()],
-                        0,
-                        None,
-                    )],
-                ),
-            );
+            override_realloc(&mut patched, call);
             continue;
         }
         //#[cfg(not(target_os = "linux"))]
@@ -222,11 +234,9 @@ fn autopatch(asm: &mut Assembly, native_pastrough: &NativePastroughInfo) {
                 call.signature().to_owned(),
                 lib.as_ref().clone(),
             ));
-            eprintln!("Adding symbol {name} from shared lib {lib}.");
             continue;
         }
         if !patched.contains_key(call) {
-            eprintln!("Unknown symbol {name}.");
             patched.insert(call.clone(), patch_missing_method(call));
         }
     }

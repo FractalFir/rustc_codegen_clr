@@ -1,7 +1,7 @@
 // FIXME: This file may contain unnecesary morphize calls.
 use crate::cil_tree::cil_node::CILNode;
 use crate::cil_tree::cil_root::CILRoot;
-use crate::r#type::{pointer_to_is_fat, tycache, DotnetTypeRef};
+use crate::r#type::{pointer_to_is_fat, DotnetTypeRef};
 use crate::{conv_usize, ldc_u64};
 
 use rustc_middle::mir::Place;
@@ -132,7 +132,7 @@ pub fn deref_op<'ctx>(
                     let inner =
                         type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance));
                     CILNode::LDIndPtr {
-                        ptr: ptr,
+                        ptr,
                         loaded_ptr: Box::new(inner),
                     }
                 }
@@ -151,7 +151,7 @@ pub fn deref_op<'ctx>(
                     let typ =
                         type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance));
                     CILNode::LDIndPtr {
-                        ptr: ptr,
+                        ptr,
                         loaded_ptr: Box::new(typ),
                     }
                 }

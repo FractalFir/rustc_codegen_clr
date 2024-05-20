@@ -8,12 +8,7 @@ pub enum CodegenError {
     Method(MethodCodegenError),
     FunctionABIUnsuported(&'static str),
 }
-impl From<CodegenError> for rustc_errors::ErrorGuaranteed {
-    fn from(val: CodegenError) -> Self {
-        val.report_error();
-        error_guaranteed()
-    }
-}
+
 impl From<MethodCodegenError> for CodegenError {
     fn from(value: MethodCodegenError) -> Self {
         Self::Method(value)
@@ -27,9 +22,7 @@ impl CodegenError {
         Self::Error(msg.into())
     }
 }
-fn error_guaranteed() -> rustc_errors::ErrorGuaranteed {
-    unsafe { std::mem::transmute(()) }
-}
+
 pub struct MethodCodegenError {
     file: String,
     line: u32,

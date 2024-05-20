@@ -114,14 +114,13 @@ impl CILRoot {
                 fld_addr.opt();
                 value.opt();
 
-                match fld_addr {
-                    CILNode::ZeroExtendToUSize(addr) => match addr.as_mut() {
+                if let CILNode::ZeroExtendToUSize(addr) = fld_addr {
+                    match addr.as_mut() {
                         CILNode::LDLocA(_) | CILNode::LDFieldAdress { .. } => {
                             *fld_addr = addr.as_ref().clone();
                         }
                         _ => (),
-                    },
-                    _ => (),
+                    }
                 }
             }
             CILRoot::CpBlk { src, dst, len } => {
@@ -663,7 +662,7 @@ impl CILRoot {
                 }
                 match val{
                     Type::I8 | Type::U8 => Ok(()),
-                    _=>return Err(format!("Can't indirectly set a valur of type i8/u8 because the provided value is {val:?}")),
+                    _=>Err(format!("Can't indirectly set a valur of type i8/u8 because the provided value is {val:?}")),
                 }
             }
 
@@ -687,7 +686,7 @@ impl CILRoot {
                 }
                 match val{
                     Type::I8 | Type::U8 => Ok(()),
-                    _=>return Err(format!("Can't indirectly set a valur of type i8/u8 because the provided value is {val:?}")),
+                    _=>Err(format!("Can't indirectly set a valur of type i8/u8 because the provided value is {val:?}")),
                 }
             }
             Self::Break => Ok(()),
@@ -779,7 +778,7 @@ impl CILRoot {
             Self::Nop => Ok(()),
             Self::Throw(execption) => {
                 let tpe = execption.validate(method)?;
-                if let Some(_) = tpe.as_dotnet() {
+                if tpe.as_dotnet().is_some() {
                     Ok(())
                 } else {
                     Err("`throw` instruction suplied with a non-object type.".into())

@@ -1005,11 +1005,7 @@ impl CILNode {
             Self::LdTrue => vec![],
             Self::TransmutePtr { val, new_ptr: _ } => val.sheed_trees(),
             Self::GetStackTop => vec![],
-            Self::InspectValue { val, inspect } => {
-                let mut val = val.sheed_trees();
-
-                val
-            }
+            Self::InspectValue { val, inspect } => val.sheed_trees(),
             Self::LDLoc(_) | Self::LDArg(_) | Self::LDLocA(_) | Self::LDArgA(_) => {
                 vec![]
             }
@@ -1517,8 +1513,8 @@ impl CILNode {
                     Type::USize => (),
                     Type::ISize => (),
                     Type::Ptr(_) => (),
-                    // ManagedReference is accepted, because sometimes we use this to transmute local 
-                    Type::ManagedReference(_)=>(),
+                    // ManagedReference is accepted, because sometimes we use this to transmute local
+                    Type::ManagedReference(_) => (),
                     _ => {
                         return Err(format!(
                             "Invalid TransmutePtr input: {val:?} is not a pointer or usize/isize"

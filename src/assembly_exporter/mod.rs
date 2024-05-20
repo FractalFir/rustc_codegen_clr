@@ -11,7 +11,7 @@ use crate::{
     IString,
 };
 pub mod c_exporter;
-pub mod cecil_exporter;
+
 /// ILASM-based assembly exporter.
 pub mod ilasm_exporter;
 mod ilasm_op;

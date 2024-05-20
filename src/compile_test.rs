@@ -463,8 +463,6 @@ macro_rules! cargo_test {
                     }
                 }
                 drop(lock);
-                //let exec_path = concat!("../", stringify!($test_name));
-                //test_dotnet_executable(exec_path, test_dir);
             }
             #[test]
             fn cargo_release() {
@@ -500,8 +498,6 @@ macro_rules! cargo_test {
                     }
                 }
                 drop(lock);
-                //let exec_path = concat!("../", stringify!($test_name));
-                //test_dotnet_executable(exec_path, test_dir);
             }
         }}
     };
@@ -545,8 +541,6 @@ macro_rules! cargo_test_ignored {
                     }
                 }
                 drop(lock);
-                //let exec_path = concat!("../", stringify!($test_name));
-                //test_dotnet_executable(exec_path, test_dir);
             }
             #[ignore]
             #[test]
@@ -582,9 +576,6 @@ macro_rules! cargo_test_ignored {
                     }
                 }
                 drop(lock);
-
-                //let exec_path = concat!("../", stringify!($test_name));
-                //test_dotnet_executable(exec_path, test_dir);
             }
         }
     };
@@ -599,10 +590,6 @@ fn build_backend() -> Result<(), String> {
         .args(["build", "--bin", "linker"])
         .output()
         .expect("could not build the backend");
-    /*
-    if out.stderr.len() > 0{
-        return Err(String::from_utf8(out.stderr).expect("Non UTF8 error message!"));
-    }*/
     Ok(())
 }
 #[cfg(not(debug_assertions))]
@@ -641,7 +628,6 @@ pub fn absolute_backend_path() -> PathBuf {
     }
 }
 #[cfg(target_family = "unix")]
-
 fn with_stack_size(cmd: &mut std::process::Command, limit_kb: u64) {
     use ::libc::{rlimit, setrlimit, RLIMIT_STACK};
     use std::os::unix::process::CommandExt;
@@ -659,11 +645,9 @@ fn with_stack_size(cmd: &mut std::process::Command, limit_kb: u64) {
         })
     };
 }
-
 fn backend_path() -> String {
     format!("codegen-backend={}", absolute_backend_path().display())
 }
-
 test_lib! {assign,stable}
 test_lib! {binops,stable}
 test_lib! {branches,stable}

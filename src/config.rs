@@ -40,7 +40,6 @@ config_flag! {ALLOW_MISCOMPILATIONS,true,"Should the codegen continue working af
 config_flag! {INSERT_MIR_DEBUG_COMMENTS,false,"Tells the codegen to insert comments containing the MIR statemtens after each one of them."}
 config_flag! {PRINT_LOCAL_TYPES,false,"Prints local types of all compiled MIR functions."}
 config_flag! {OPTIMIZE_CIL,true,"Tells the codegen to optmize the emiited CIL."}
-config_flag! {USE_CECIL_EXPORTER,false,"Tells the codegen to use the CECIL based assembly exporter"}
 config_flag! {ESCAPE_NAMES,false,"Tells the codegen to escape class and method names."}
 
 config_flag! {TEST_WITH_MONO,false,"Tells the codegen to use the mono runtime for tests."}
