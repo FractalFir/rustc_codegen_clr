@@ -20,8 +20,10 @@ use bitop::{bit_and_unchecked, bit_or_unchecked, bit_xor_unchecked};
 pub use checked::binop_checked;
 use cmp::{eq_unchecked, gt_unchecked, lt_unchecked, ne_unchecked};
 use shift::{shl_checked, shl_unchecked, shr_checked, shr_unchecked};
+
+use self::checked::{add_signed, add_unsigned, sub_signed, sub_unsigned};
 /// Preforms an unchecked binary operation.
-pub(crate) fn binop_unchecked<'tyctx>(
+pub(crate) fn binop<'tyctx>(
     binop: BinOp,
     operand_a: &Operand<'tyctx>,
     operand_b: &Operand<'tyctx>,
@@ -35,10 +37,17 @@ pub(crate) fn binop_unchecked<'tyctx>(
     let ty_a = operand_a.ty(&method.local_decls, tyctx);
     let ty_b = operand_b.ty(&method.local_decls, tyctx);
     match binop {
-        BinOp::Add | BinOp::AddUnchecked => {
+        BinOp::AddWithOverflow => if ty_a.is_signed() {
+            add_signed(&ops_a, &ops_b, ty_a, tyctx, method_instance, tycache)} else {
+            add_unsigned(&ops_a, &ops_b, ty_a, tyctx, method_instance, tycache)
+            }
+        BinOp::Add |BinOp::AddUnchecked => {
             add_unchecked(ty_a, ty_b, tyctx, &method_instance, tycache, ops_a, ops_b)
         }
-
+        BinOp::SubWithOverflow=> if ty_a.is_signed() {
+            sub_signed(&ops_a, &ops_b, ty_a, tyctx, method_instance, tycache) }else{
+            sub_unsigned(&ops_a, &ops_b, ty_a, tyctx, method_instance, tycache)
+            },
         BinOp::Sub | BinOp::SubUnchecked => {
             sub_unchecked(ty_a, ty_b, tyctx, &method_instance, tycache, ops_a, ops_b)
         }
@@ -68,7 +77,7 @@ pub(crate) fn binop_unchecked<'tyctx>(
         BinOp::Mul | BinOp::MulUnchecked => {
             mul_unchecked(ty_a, ty_b, tycache, &method_instance, tyctx, ops_a, ops_b)
         }
-
+        BinOp::MulWithOverflow => checked::mul(&ops_a, &ops_b, ty_a, tyctx, method_instance, tycache),
         BinOp::Div => div_unchecked(ty_a, ty_b, tycache, &method_instance, tyctx, ops_a, ops_b),
 
         BinOp::Ge => match ty_a.kind() {

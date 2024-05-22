@@ -113,7 +113,7 @@ pub fn handle_rvalue<'tcx>(
         Rvalue::Cast(CastKind::PointerCoercion(PointerCoercion::Unsize), operand, target) => {
             crate::unsize::unsize(tyctx, method, method_instance, tycache, operand, *target)
         }
-        Rvalue::BinaryOp(binop, operands) => crate::binop::binop_unchecked(
+        Rvalue::BinaryOp(binop, operands) => crate::binop::binop(
             *binop,
             &operands.0,
             &operands.1,
@@ -122,15 +122,7 @@ pub fn handle_rvalue<'tcx>(
             method_instance,
             tycache,
         ),
-        Rvalue::CheckedBinaryOp(binop, operands) => crate::binop::binop_checked(
-            *binop,
-            &operands.0,
-            &operands.1,
-            tyctx,
-            method,
-            method_instance,
-            tycache,
-        ),
+       
         Rvalue::UnaryOp(binop, operand) => {
             crate::unop::unop(*binop, operand, tyctx, method, method_instance, tycache)
         }

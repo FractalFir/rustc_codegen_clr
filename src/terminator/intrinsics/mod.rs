@@ -501,7 +501,7 @@ pub fn handle_intrinsic<'tyctx>(
             place_set(
                 destination,
                 tyctx,
-                crate::binop::binop_unchecked(
+                crate::binop::binop(
                     rustc_middle::mir::BinOp::Div,
                     &args[0].node,
                     &args[1].node,
