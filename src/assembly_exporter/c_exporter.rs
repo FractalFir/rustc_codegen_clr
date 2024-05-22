@@ -309,7 +309,7 @@ fn node_string(tree: &CILNode, method: &Method) -> String {
         CILNode::LDArg(arg) => format!("A{arg}"),
         CILNode::LDLocA(arg) => format!("((uintptr_t)(void*)&L{arg})"),
         CILNode::LDArgA(loc) => format!("((uintptr_t)(void*)&A{loc})"),
-        CILNode::BlackBox(inner) => node_string(inner, method),
+        CILNode::BlackBox(inner) => format!("black_box({val})", val = node_string(inner, method)),
         CILNode::LDStaticField(static_field) => static_field.name().into(),
         CILNode::ConvF32(inner) => format!("((float){inner})", inner = node_string(inner, method)),
         CILNode::ConvF64(inner) | CILNode::ConvF64Un(inner) => {
@@ -338,7 +338,7 @@ fn node_string(tree: &CILNode, method: &Method) -> String {
             format!("(*((uint64_t*){ptr}))", ptr = node_string(ptr, method))
         }
         CILNode::LDIndISize { ptr } => {
-            format!("(*((ptrdiff_t*){ptr}))", ptr = node_string(ptr, method))
+            format!("(*((size_t*){ptr}))", ptr = node_string(ptr, method))
         }
         CILNode::LDIndPtr {
             ptr,
@@ -609,14 +609,14 @@ fn node_string(tree: &CILNode, method: &Method) -> String {
         CILNode::LDLen { arr } => todo!("arr:{arr:?}"),
         CILNode::LDElelemRef { arr, idx } => todo!("arr:{arr:?} idx:{idx:?}"),
         CILNode::GetStackTop => todo!(),
-        CILNode::InspectValue { val, inspect } => node_string(val, method),
+        CILNode::InspectValue { val, inspect: _ } => node_string(val, method),
         CILNode::TransmutePtr { val, new_ptr } => format!(
             "({new_ptr}){val}",
             new_ptr = c_tpe(new_ptr),
             val = node_string(val, method)
         ),
-        CILNode::LdFalse => "0".into(),
-        CILNode::LdTrue => "0".into(),
+        CILNode::LdFalse => "false".into(),
+        CILNode::LdTrue => "true".into(),
     }
 }
 fn tree_string(tree: &CILTree, method: &Method) -> String {
@@ -791,7 +791,7 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
                 )
             }
         }
-        CILRoot::Break => String::new(),
+        CILRoot::Break => "__debug_break()".into(),
         CILRoot::Nop => String::new(),
         CILRoot::InitBlk { dst, val, count } => {
             format!(

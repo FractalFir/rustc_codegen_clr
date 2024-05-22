@@ -692,8 +692,8 @@ impl CILRoot {
             Self::Break => Ok(()),
             Self::JumpingPad { ops: _ } => Ok(()),
             Self::BTrue {
-                target,
-                sub_target,
+                target: _,
+                sub_target: _,
                 cond,
             } => {
                 // Just check that `cond` is a boolean.
@@ -755,7 +755,7 @@ impl CILRoot {
                 Ok(())
             }
             Self::CallI { args, sig, fn_ptr } => {
-                let ptr = fn_ptr.validate(method)?;
+                let _ptr = fn_ptr.validate(method)?;
                 if sig.inputs().len() != args.len() {
                     return Err(format!(
                         "Expected {} arguments, got {}",

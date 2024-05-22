@@ -29,7 +29,7 @@ pub fn bit_and_unchecked<'tyctx>(
             ),
             [
                 operand_a,
-                crate::casts::int_to_int(type_b.clone(), Type::U128, operand_b)
+                crate::casts::int_to_int(type_b.clone(), &Type::U128, operand_b)
             ]
         ),
         TyKind::Int(IntTy::I128) => call!(
@@ -41,7 +41,7 @@ pub fn bit_and_unchecked<'tyctx>(
             ),
             [
                 operand_a,
-                crate::casts::int_to_int(type_b.clone(), Type::I128, operand_b)
+                crate::casts::int_to_int(type_b.clone(), &Type::I128, operand_b)
             ]
         ),
         _ => and!(operand_a, operand_b),

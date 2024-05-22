@@ -29,16 +29,16 @@ pub fn binop_checked<'tyctx>(
     debug_assert_eq!(ty_a, ty_b);
     match binop {
         BinOp::Sub => if ty_a.is_signed() {
-            sub_signed(ops_a, ops_b, ty_a, tyctx, method_instance, tycache) }else{
-            sub_unsigned(ops_a, ops_b, ty_a, tyctx, method_instance, tycache)
+            sub_signed(&ops_a, &ops_b, ty_a, tyctx, method_instance, tycache) }else{
+            sub_unsigned(&ops_a, &ops_b, ty_a, tyctx, method_instance, tycache)
             }
         BinOp::Add => if ty_a.is_signed() {
-            add_signed(ops_a, ops_b, ty_a, tyctx, method_instance, tycache)} else {
-            add_unsigned(ops_a, ops_b, ty_a, tyctx, method_instance, tycache)
+            add_signed(&ops_a, &ops_b, ty_a, tyctx, method_instance, tycache)} else {
+            add_unsigned(&ops_a, &ops_b, ty_a, tyctx, method_instance, tycache)
             }
         ,
         // TODO: Chekced multiplcation is NOT checked
-        BinOp::Mul => mul(ops_a, ops_b, ty_a, tyctx, method_instance, tycache),
+        BinOp::Mul => mul(&ops_a, &ops_b, ty_a, tyctx, method_instance, tycache),
         _ => todo!("Can't handle checked binop {binop:?}"),
     }
 }
@@ -190,21 +190,10 @@ fn max(ty: Ty) -> CILNode {
         _ => todo!("Can't get max of {ty:?}"),
     }
 }
-/*
-result_tuple(
-            crate::r#type::simple_tuple(&[
-                tycache
-                    .type_from_cache(ty_a, tyctx, Some(method_instance))
-                    .clone(),
-                Type::Bool,
-            ])
-            .into(),
-            ldc_i32!(0),
-            super::mul_unchecked(ty_a, ty_b, tycache, &method_instance, tyctx, ops_a, ops_b),
-        ), */
+
 pub fn mul<'tyctx>(
-    ops_a: CILNode,
-    ops_b: CILNode,
+    ops_a: &CILNode,
+    ops_b: &CILNode,
     ty: Ty<'tyctx>,
     tyctx: TyCtxt<'tyctx>,
     method_instance: Instance<'tyctx>,
@@ -229,11 +218,11 @@ pub fn mul<'tyctx>(
         }
         // Works with 32 -> 64 size promotions
         TyKind::Uint(UintTy::U32) => {
-            let mul = crate::mul!(conv_u64!(ops_a), conv_u64!(ops_b));
+            let mul = crate::mul!(conv_u64!(ops_a.clone()), conv_u64!(ops_b.clone()));
             gt_un!(mul.clone(), conv_u64!(max(ty)))
         }
         TyKind::Int(IntTy::I32) => {
-            let mul = crate::mul!(conv_i64!(ops_a), conv_i64!(ops_b));
+            let mul = crate::mul!(conv_i64!(ops_a.clone()), conv_i64!(ops_b.clone()));
             or!(
                 gt!(mul.clone(), conv_i64!(max(ty))),
                 lt!(mul.clone(), conv_i64!(min(ty)))
@@ -249,8 +238,8 @@ pub fn mul<'tyctx>(
                     true
                 ),
                 [
-                    casts::int_to_int(Type::U64, Type::U128, ops_a),
-                    casts::int_to_int(Type::U64, Type::U128, ops_b)
+                    casts::int_to_int(Type::U64, &Type::U128, ops_a.clone()),
+                    casts::int_to_int(Type::U64, &Type::U128, ops_b.clone())
                 ]
             );
             call!(
@@ -262,7 +251,7 @@ pub fn mul<'tyctx>(
                 ),
                 [
                     mul.clone(),
-                    casts::int_to_int(Type::U64, Type::U128, max(ty))
+                    casts::int_to_int(Type::U64, &Type::U128, max(ty))
                 ]
             )
         }
@@ -275,8 +264,8 @@ pub fn mul<'tyctx>(
                     true
                 ),
                 [
-                    casts::int_to_int(Type::I64, Type::I128, ops_a),
-                    casts::int_to_int(Type::I64, Type::I128, ops_b)
+                    casts::int_to_int(Type::I64, &Type::I128, ops_a.clone()),
+                    casts::int_to_int(Type::I64, &Type::I128, ops_b.clone())
                 ]
             );
             let gt = call!(
@@ -288,7 +277,7 @@ pub fn mul<'tyctx>(
                 ),
                 [
                     mul.clone(),
-                    casts::int_to_int(Type::I64, Type::I128, max(ty))
+                    casts::int_to_int(Type::I64, &Type::I128, max(ty))
                 ]
             );
             let lt = call!(
@@ -300,7 +289,7 @@ pub fn mul<'tyctx>(
                 ),
                 [
                     mul.clone(),
-                    casts::int_to_int(Type::I64, Type::I128, min(ty))
+                    casts::int_to_int(Type::I64, &Type::I128, min(ty))
                 ]
             );
             or!(gt, lt)
@@ -315,8 +304,8 @@ pub fn mul<'tyctx>(
                     true
                 ),
                 [
-                    casts::int_to_int(Type::USize, Type::U128, ops_a),
-                    casts::int_to_int(Type::USize, Type::U128, ops_b)
+                    casts::int_to_int(Type::USize, &Type::U128, ops_a.clone()),
+                    casts::int_to_int(Type::USize, &Type::U128, ops_b.clone())
                 ]
             );
 
@@ -329,7 +318,7 @@ pub fn mul<'tyctx>(
                 ),
                 [
                     mul.clone(),
-                    casts::int_to_int(Type::USize, Type::U128, max(ty))
+                    casts::int_to_int(Type::USize, &Type::U128, max(ty))
                 ]
             )
         }
@@ -342,8 +331,8 @@ pub fn mul<'tyctx>(
                     true
                 ),
                 [
-                    casts::int_to_int(Type::ISize, Type::I128, ops_a),
-                    casts::int_to_int(Type::ISize, Type::I128, ops_b)
+                    casts::int_to_int(Type::ISize, &Type::I128, ops_a.clone()),
+                    casts::int_to_int(Type::ISize, &Type::I128, ops_b.clone())
                 ]
             );
             let gt = call!(
@@ -355,7 +344,7 @@ pub fn mul<'tyctx>(
                 ),
                 [
                     mul.clone(),
-                    casts::int_to_int(Type::ISize, Type::I128, max(ty))
+                    casts::int_to_int(Type::ISize, &Type::I128, max(ty))
                 ]
             );
             let lt = call!(
@@ -367,7 +356,7 @@ pub fn mul<'tyctx>(
                 ),
                 [
                     mul.clone(),
-                    casts::int_to_int(Type::ISize, Type::I128, min(ty))
+                    casts::int_to_int(Type::ISize, &Type::I128, min(ty))
                 ]
             );
             or!(gt, lt)
@@ -380,14 +369,13 @@ pub fn mul<'tyctx>(
     result_tuple(tpe, ovf, mul)
 }
 pub fn sub_signed<'tyctx>(
-    ops_a: CILNode,
-    ops_b: CILNode,
+    ops_a: &CILNode,
+    ops_b: &CILNode,
     ty: Ty<'tyctx>,
     tyctx: TyCtxt<'tyctx>,
     method_instance: Instance<'tyctx>,
     tycache: &mut TyCache,
 ) -> CILNode {
-    //(b > 0 && a < INT_MIN + b) || (b < 0 && a > INT_MAX + b);
     let tpe = tycache.type_from_cache(ty, tyctx, Some(method_instance));
     result_tuple(
         tpe,
@@ -425,12 +413,20 @@ pub fn sub_signed<'tyctx>(
                 )
             )
         ),
-        super::sub_unchecked(ty, ty, tyctx, &method_instance, tycache, ops_a, ops_b),
+        super::sub_unchecked(
+            ty,
+            ty,
+            tyctx,
+            &method_instance,
+            tycache,
+            ops_a.clone(),
+            ops_b.clone(),
+        ),
     )
 }
 pub fn sub_unsigned<'tyctx>(
-    ops_a: CILNode,
-    ops_b: CILNode,
+    ops_a: &CILNode,
+    ops_b: &CILNode,
     ty: Ty<'tyctx>,
     tyctx: TyCtxt<'tyctx>,
     method_instance: Instance<'tyctx>,
@@ -440,12 +436,20 @@ pub fn sub_unsigned<'tyctx>(
     result_tuple(
         tpe,
         super::cmp::lt_unchecked(ty, ops_a.clone(), ops_b.clone()),
-        super::sub_unchecked(ty, ty, tyctx, &method_instance, tycache, ops_a, ops_b),
+        super::sub_unchecked(
+            ty,
+            ty,
+            tyctx,
+            &method_instance,
+            tycache,
+            ops_a.clone(),
+            ops_b.clone(),
+        ),
     )
 }
 pub fn add_unsigned<'tyctx>(
-    ops_a: CILNode,
-    ops_b: CILNode,
+    ops_a: &CILNode,
+    ops_b: &CILNode,
     ty: Ty<'tyctx>,
     tyctx: TyCtxt<'tyctx>,
     method_instance: Instance<'tyctx>,
@@ -481,8 +485,8 @@ pub fn add_unsigned<'tyctx>(
     )
 }
 pub fn add_signed<'tyctx>(
-    ops_a: CILNode,
-    ops_b: CILNode,
+    ops_a: &CILNode,
+    ops_b: &CILNode,
     ty: Ty<'tyctx>,
     tyctx: TyCtxt<'tyctx>,
     method_instance: Instance<'tyctx>,
@@ -509,9 +513,9 @@ pub fn add_signed<'tyctx>(
                 )
             ),
             and!(
-                super::gt_unchecked(ty, ops_a, zero(ty)),
+                super::gt_unchecked(ty, ops_a.clone(), zero(ty)),
                 and!(
-                    super::gt_unchecked(ty, ops_b, zero(ty)),
+                    super::gt_unchecked(ty, ops_b.clone(), zero(ty)),
                     super::lt_unchecked(ty, res.clone(), zero(ty))
                 )
             )

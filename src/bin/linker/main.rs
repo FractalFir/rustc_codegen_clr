@@ -1,4 +1,5 @@
 #![deny(unused_must_use)]
+#![allow(clippy::module_name_repetitions)]
 //use assembly::Assembly;
 use lazy_static::lazy_static;
 use load::LinkableFile;
@@ -108,7 +109,7 @@ fn patch_missing_method(call_site: &cil::CallSite) -> method::Method {
     method
 }
 /// Replaces `malloc` with a direct call to `AllocHGlobal`
-fn override_malloc(patched:&mut HashMap<CallSite,Method>,call:&CallSite){
+fn override_malloc(patched: &mut HashMap<CallSite, Method>, call: &CallSite) {
     patched.insert(
         call.clone(),
         Method::new(
@@ -137,7 +138,7 @@ fn override_malloc(patched:&mut HashMap<CallSite,Method>,call:&CallSite){
     );
 }
 /// Replaces `free` with a direct call to `FreeHGlobal`
-fn override_free(patched:&mut HashMap<CallSite,Method>,call:&CallSite){
+fn override_free(patched: &mut HashMap<CallSite, Method>, call: &CallSite) {
     patched.insert(
         call.clone(),
         Method::new(
@@ -166,7 +167,7 @@ fn override_free(patched:&mut HashMap<CallSite,Method>,call:&CallSite){
     );
 }
 /// Replaces `realloc` with a direct call to `ReAllocHGlobal`
-fn override_realloc(patched:&mut HashMap<CallSite,Method>,call:&CallSite){
+fn override_realloc(patched: &mut HashMap<CallSite, Method>, call: &CallSite) {
     patched.insert(
         call.clone(),
         Method::new(

@@ -90,7 +90,7 @@ fn gen_file(test_id: u64, generator: &str) {
     assert!(cout.stderr.is_empty());
     let src = cout.stdout;
     LINES.fetch_add(
-        src.iter().filter(|ascii| **ascii == b'\n').count() as u64,
+        bytecount::count(&src, b'\n') as u64,
         std::sync::atomic::Ordering::Relaxed,
     );
     let mut file = std::fs::File::create(rust_src).unwrap();

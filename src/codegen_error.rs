@@ -15,9 +15,6 @@ impl From<MethodCodegenError> for CodegenError {
     }
 }
 impl CodegenError {
-    fn report_error(&self) {
-        eprintln!("Codegen faliled with error:{self:?}");
-    }
     pub fn from_panic_message(msg: &str) -> Self {
         Self::Error(msg.into())
     }

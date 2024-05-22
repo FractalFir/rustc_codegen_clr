@@ -27,7 +27,7 @@ pub fn shr_unchecked<'tyctx>(
                 ),
                 [
                     ops_a,
-                    crate::casts::int_to_int(type_b.clone(), Type::I32, ops_b)
+                    crate::casts::int_to_int(type_b.clone(), &Type::I32, ops_b)
                 ]
             )
         }
@@ -41,7 +41,7 @@ pub fn shr_unchecked<'tyctx>(
                 ),
                 [
                     ops_a,
-                    crate::casts::int_to_int(type_b.clone(), Type::I32, ops_b)
+                    crate::casts::int_to_int(type_b.clone(), &Type::I32, ops_b)
                 ]
             )
         }
@@ -49,7 +49,7 @@ pub fn shr_unchecked<'tyctx>(
             TyKind::Uint(UintTy::U128 | UintTy::U64) | TyKind::Int(IntTy::I128 | IntTy::I64) => {
                 shr_un!(
                     ops_a,
-                    crate::casts::int_to_int(type_b.clone(), Type::I32, ops_b)
+                    crate::casts::int_to_int(type_b.clone(), &Type::I32, ops_b)
                 )
             }
             _ => shr_un!(ops_a, ops_b),
@@ -58,7 +58,7 @@ pub fn shr_unchecked<'tyctx>(
             TyKind::Uint(UintTy::U128 | UintTy::U64) | TyKind::Int(IntTy::I128 | IntTy::I64) => {
                 shr!(
                     ops_a,
-                    crate::casts::int_to_int(type_b.clone(), Type::I32, ops_b)
+                    crate::casts::int_to_int(type_b.clone(), &Type::I32, ops_b)
                 )
             }
 
@@ -92,7 +92,7 @@ pub fn shr_checked<'tyctx>(
                 [
                     ops_a,
                     rem_un!(
-                        conv_u32!(crate::casts::int_to_int(type_b.clone(), Type::I32, ops_b)),
+                        conv_u32!(crate::casts::int_to_int(type_b.clone(), &Type::I32, ops_b)),
                         ldc_u32!(128)
                     )
                 ]
@@ -109,7 +109,7 @@ pub fn shr_checked<'tyctx>(
                 [
                     ops_a,
                     rem_un!(
-                        conv_u32!(crate::casts::int_to_int(type_b.clone(), Type::I32, ops_b)),
+                        conv_u32!(crate::casts::int_to_int(type_b.clone(), &Type::I32, ops_b)),
                         ldc_u32!(128)
                     )
                 ]
@@ -120,7 +120,7 @@ pub fn shr_checked<'tyctx>(
                 shr_un!(
                     ops_a,
                     rem_un!(
-                        conv_u32!(crate::casts::int_to_int(type_b.clone(), Type::I32, ops_b)),
+                        conv_u32!(crate::casts::int_to_int(type_b.clone(), &Type::I32, ops_b)),
                         ldc_u32!(bit_cap)
                     )
                 )
@@ -134,7 +134,7 @@ pub fn shr_checked<'tyctx>(
                 shr!(
                     ops_a,
                     rem_un!(
-                        conv_u32!(crate::casts::int_to_int(type_b.clone(), Type::I32, ops_b)),
+                        conv_u32!(crate::casts::int_to_int(type_b.clone(), &Type::I32, ops_b)),
                         ldc_u32!(bit_cap)
                     )
                 )
@@ -171,7 +171,7 @@ pub fn shl_checked<'tyctx>(
                 [
                     ops_a,
                     rem_un!(
-                        conv_u32!(crate::casts::int_to_int(type_b.clone(), Type::I32, ops_b)),
+                        conv_u32!(crate::casts::int_to_int(type_b.clone(), &Type::I32, ops_b)),
                         ldc_u32!(bit_cap)
                     )
                 ]
@@ -188,7 +188,7 @@ pub fn shl_checked<'tyctx>(
                 [
                     ops_a,
                     rem_un!(
-                        conv_u32!(crate::casts::int_to_int(type_b.clone(), Type::I32, ops_b)),
+                        conv_u32!(crate::casts::int_to_int(type_b.clone(), &Type::I32, ops_b)),
                         ldc_u32!(bit_cap)
                     )
                 ]
@@ -199,7 +199,7 @@ pub fn shl_checked<'tyctx>(
                 shl!(
                     ops_a,
                     rem_un!(
-                        conv_u32!(crate::casts::int_to_int(type_b.clone(), Type::I32, ops_b)),
+                        conv_u32!(crate::casts::int_to_int(type_b.clone(), &Type::I32, ops_b)),
                         ldc_u32!(bit_cap)
                     )
                 )
@@ -213,7 +213,7 @@ pub fn shl_checked<'tyctx>(
                 shl!(
                     ops_a,
                     rem_un!(
-                        conv_u32!(crate::casts::int_to_int(type_b.clone(), Type::I32, ops_b)),
+                        conv_u32!(crate::casts::int_to_int(type_b.clone(), &Type::I32, ops_b)),
                         ldc_u32!(bit_cap)
                     )
                 )
@@ -248,7 +248,7 @@ pub fn shl_unchecked<'tyctx>(
                 ),
                 [
                     ops_a,
-                    crate::casts::int_to_int(type_b.clone(), Type::I32, ops_b)
+                    crate::casts::int_to_int(type_b.clone(), &Type::I32, ops_b)
                 ]
             )
         }
@@ -262,7 +262,7 @@ pub fn shl_unchecked<'tyctx>(
                 ),
                 [
                     ops_a,
-                    crate::casts::int_to_int(type_b.clone(), Type::I32, ops_b)
+                    crate::casts::int_to_int(type_b.clone(), &Type::I32, ops_b)
                 ]
             )
         }
@@ -270,7 +270,7 @@ pub fn shl_unchecked<'tyctx>(
             TyKind::Uint(UintTy::U128 | UintTy::U64) | TyKind::Int(IntTy::I128 | IntTy::I64) => {
                 shl!(
                     ops_a,
-                    crate::casts::int_to_int(type_b.clone(), Type::I32, ops_b)
+                    crate::casts::int_to_int(type_b.clone(), &Type::I32, ops_b)
                 )
             }
             _ => shl!(ops_a, ops_b),

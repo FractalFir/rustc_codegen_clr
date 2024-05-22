@@ -33,6 +33,7 @@ fn main(){
     test_eq!(black_box(2_i8) * black_box(-2), -4);
     test_eq!(black_box(2_i16) * black_box(-2), -4);
     test_eq!(black_box(2_i32) * black_box(-2), -4);
+    test_eq!(black_box(2_usize) * black_box(2), 4);
     //test_eq!(black_box(2_i64) * black_box(-2), 0);
     test_eq!(black_box(2_f32) * black_box(-2.0), -4.0);
     test_eq!(black_box(2_f64) * black_box(-2.0), -4.0);
@@ -47,4 +48,8 @@ fn main(){
     //test_eq!(black_box(9_223_372_036_854_775_807i64).wrapping_add(1_i64),-9_223_372_036_854_775_808i64);
     //let ptr:*mut Test<i32> = core::ptr::null_mut();
     //black_box(ptr);
+    match black_box(222_222_usize).checked_mul(2){
+        Some(val)=>test_eq!(val,444_444),
+        None=>test_eq!(0,1),
+    }
 }

@@ -269,13 +269,7 @@ impl Assembly {
         let access_modifier = AccessModifer::Public;
         // Handle the function signature
         let call_site = crate::call_info::CallInfo::sig_from_instance_(instance, tyctx, cache);
-        let sig = match call_site {
-            Ok(call_site) => call_site.sig().clone(),
-            Err(err) => {
-                eprintln!("Could not get the signature of function {name} because {err:?}");
-                return Ok(());
-            }
-        };
+        let sig = call_site.sig().clone();
 
         // Get locals
         //eprintln!("method")
@@ -352,7 +346,8 @@ impl Assembly {
         }
         if let Some(spread_arg) = mir.spread_arg {
             // Prepare for repacking the argument tuple, by allocating a local
-            let repacked = locals.len();
+            let repacked =
+                u32::try_from(locals.len()).expect("More than 2^32 arguments of a function");
             let repacked_ty: rustc_middle::ty::Ty =
                 crate::utilis::monomorphize(&instance, mir.local_decls[spread_arg].ty, tyctx);
             let repacked_type = cache.type_from_cache(repacked_ty, tyctx, Some(instance));
@@ -360,18 +355,16 @@ impl Assembly {
             let mut repack_cil = Vec::new();
             // For each element of the tuple, get the argument spread_arg + n
             let packed_count = if let TyKind::Tuple(tup) = repacked_ty.kind() {
-                tup.len()
+                u32::try_from(tup.len()).expect("More than 2^32 arguments of a function")
             } else {
                 panic!("Arg to spread not a tuple???")
             };
             for arg_id in 0..packed_count {
-                let arg_field = field_descrptor(repacked_ty, arg_id as u32, tyctx, instance, cache);
+                let arg_field = field_descrptor(repacked_ty, arg_id, tyctx, instance, cache);
                 repack_cil.push(
                     CILRoot::SetField {
-                        addr: CILNode::LDLocA(repacked as u32),
-                        value: CILNode::LDArg(
-                            ((spread_arg.as_usize() - 1) + arg_id).try_into().unwrap(),
-                        ),
+                        addr: CILNode::LDLocA(repacked),
+                        value: CILNode::LDArg((spread_arg.as_u32() - 1) + arg_id),
                         desc: arg_field,
                     }
                     .into(),
@@ -400,7 +393,7 @@ impl Assembly {
         method.allocate_temporaries();
         if *crate::config::TYPECHECK_CIL {
             match method.validate() {
-                Ok(_) => (),
+                Ok(()) => (),
                 Err(msg) => eprintln!(
                     "\n\nMethod {} failed compilation with message:\ns {msg}",
                     method.name()
@@ -1065,8 +1058,7 @@ fn allocation_initializer_method(
             if let GlobalAlloc::Function(finstance) = reloc_target_alloc {
                 // If it is a function, patch its pointer up.
                 let call_info =
-                    crate::call_info::CallInfo::sig_from_instance_(finstance, tyctx, tycache)
-                        .unwrap();
+                    crate::call_info::CallInfo::sig_from_instance_(finstance, tyctx, tycache);
                 let function_name = crate::utilis::function_name(tyctx.symbol_name(finstance));
 
                 trees.push(

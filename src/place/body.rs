@@ -247,7 +247,7 @@ pub fn place_elem_body<'ctx>(
         }
         PlaceElem::ConstantIndex {
             offset,
-            min_length,
+            min_length: _,
             from_end,
         } => {
             let curr_ty = curr_ty

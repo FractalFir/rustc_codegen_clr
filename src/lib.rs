@@ -10,6 +10,7 @@
 )]
 // Not a big issue.
 #![allow(clippy::module_name_repetitions)]
+// docs are WIP
 #![allow(
     clippy::missing_panics_doc,
     clippy::missing_errors_doc,
@@ -41,7 +42,7 @@
 //! This does have its drawbacks(it makes allocating additional local variables harder than it needs to be), but its benefits outhgweight the issues it brings,
 //! at least at this point in time.
 //!
-//! One notable exeception to this rule is the `TyCache` - a structure used for caching type translations. Since it needs to perform some expensive work(eg. find `core::ptr::metadata::PtrComponents`)
+//! One notable exeception to this rule is the [`crate::type::tycache::TyCache`] - a structure used for caching type translations. Since it needs to perform some expensive work(eg. find `core::ptr::metadata::PtrComponents`)
 //! upfront, reusing the `TyCache` for a whole codegen unit is needed. Thus, it is passed by a mutable reference. `TyCache` can be easily reset after a panic, ensuirng panic recovery is safe.
 //!
 //! ## Faithful to MIR
@@ -53,7 +54,7 @@
 //!
 //! This way, it is far less likely that a piece of code will be miscompiled. It also helps with debuging, and allows us to achieve a very high-level translation of MIR.
 //!
-//! This intermediate, inefficent CIL can be optimized using the functions within the `opt` module. Those optimzations are allowed to do things like reorder statements, remove/add locals, etc.
+//! This intermediate, inefficent CIL can be optimized using the functions within the [`crate::opt`] module. Those optimzations are allowed to do things like reorder statements, remove/add locals, etc.
 //! So, when debuging issues, it is recomeded the additional optimzations be turned off by seting the enviroment varaible `OPTIMIZE_CIL` to 0.
 //!
 //! ## Internal IR
@@ -63,19 +64,19 @@
 //!
 //! ## Type represenation
 //!
-//! All type-related data structures are defined in the module [`crate::r#type`]
+//! All type-related data structures are defined in the module [`crate::type`]
 //!
 //! ## MIR handling
 //!
-//! Each MIR element is handled by a function defined in a mdoule with the corresponding name. For example, MIR statements are handled by the function [`crate::statement::handle_statement`].
+//! Each MIR element is handled by a function defined in a module with the corresponding name. For example, MIR statements are handled by the function [`crate::statement::handle_statement`].
 //!
 //! # Where the compilation starts
 //!
 //! Almost everyting in this file is related to things specific to the rust compiler - reciving MIR from rustc, loading/saving intermediate data,
 //! linking the final executable.
 //! The compilation process really begins in [`crate::assembly::Assembly::add_item`] - this is where an item - static, function, or inline assembly - gets turned into
-//! its .NET representation. The [`crate::assembly::Assembly::add_function`] uses [`crate::assembly::Assembly::add_type`] to add all types needed by a method to the
-//! assembly. `add_function` gets the function name, signature, local varaiables and MIR. It uses `handle_statement` and `handle_terminator` turn MIR statements
+//! its .NET representation. The [`crate::assembly::Assembly::add_fn`] uses [`crate::assembly::Assembly::add_typedef`] to add all types needed by a method to the
+//! assembly. `add_fn` gets the function name, signature, local varaiables and MIR. It uses `handle_statement` and `handle_terminator` turn MIR statements
 //! and block terminators into CIL ops.
 // TODO: Extend project desctiption.
 
@@ -139,13 +140,13 @@ pub mod method;
 /// Handles a MIR operand.
 mod operand;
 /// Method-level CIL opitimizations
-mod opt;
+pub mod opt;
 /// Code handling getting/setting/adressing memory locations.
 mod place;
 /// Converts righthandside of a MIR statement into CIL ops.
 mod rvalue;
 /// Code dealing with truning an individual MIR statement into CIL ops.
-mod statement;
+pub mod statement;
 /// Converts a terminator of a basic block into CIL ops.
 mod terminator;
 /// Code handling transmutes.

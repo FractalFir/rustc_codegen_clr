@@ -1,4 +1,4 @@
-use crate::{codegen_error::CodegenError, function_sig::FnSig, r#type::TyCache};
+use crate::{function_sig::FnSig, r#type::TyCache};
 use rustc_middle::ty::{Instance, List, ParamEnv, ParamEnvAnd, TyCtxt, TyKind};
 use rustc_target::abi::call::Conv;
 use rustc_target::spec::abi::Abi as TargetAbi;
@@ -12,7 +12,7 @@ impl CallInfo {
         function: Instance<'tyctx>,
         tyctx: TyCtxt<'tyctx>,
         tycache: &mut TyCache,
-    ) -> Result<Self, CodegenError> {
+    ) -> Self {
         let fn_abi = tyctx.fn_abi_of_instance(ParamEnvAnd {
             param_env: ParamEnv::reveal_all(),
             value: (function, List::empty()),
@@ -23,8 +23,7 @@ impl CallInfo {
         };
         let conv = fn_abi.conv;
         match conv {
-            Conv::Rust => (),
-            Conv::C => (),
+            Conv::C | Conv::Rust => (),
             _ => panic!("ERROR:calling using convention {conv:?} is not supported!"),
         }
         //assert!(!fn_abi.c_variadic);
@@ -43,11 +42,12 @@ impl CallInfo {
         .abi();
         // Only those ABIs are supported
         let split_last_tuple = match internal_abi {
-            TargetAbi::C { unwind: _ } => false,
-            TargetAbi::Cdecl { unwind: _ } => false,
-            TargetAbi::RustIntrinsic => false,
-            TargetAbi::Rust => false,
-            TargetAbi::RustCold => false,
+            TargetAbi::C { unwind: _ }
+            | TargetAbi::Cdecl { unwind: _ }
+            | TargetAbi::RustIntrinsic
+            | TargetAbi::Rust
+            | TargetAbi::RustCold => false,
+
             TargetAbi::RustCall => true, /*Err(CodegenError::FunctionABIUnsuported(
             "\"rust_call\" ABI, used for things like clsoures, is not supported yet!",
             ))?,*/
@@ -68,10 +68,10 @@ impl CallInfo {
             inputs.extend(remaining);
             sig.set_inputs(inputs);
         }
-        Ok(Self {
+        Self {
             sig,
             split_last_tuple,
-        })
+        }
     }
 
     pub fn sig(&self) -> &FnSig {

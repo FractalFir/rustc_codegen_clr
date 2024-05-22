@@ -16,6 +16,7 @@ pub struct CallSite {
     generics: Vec<Type>,
 }
 impl CallSite {
+    #[must_use]
     pub fn mcheck() -> Self {
         CallSite::builtin(
             "mcheck".into(),
@@ -23,6 +24,7 @@ impl CallSite {
             true,
         )
     }
+    #[must_use]
     pub fn mcheck_check_all() -> Self {
         CallSite::builtin(
             "mcheck_check_all".into(),
@@ -59,22 +61,6 @@ impl CallSite {
             ),
             true,
         )
-    }
-    /// Retruns a call site reffering to void* Unsafe.AsPtr<element>(ref element)
-    #[must_use]
-    pub fn ref_as_ptr(element: Type) -> Self {
-        let unsafe_services = DotnetTypeRef::compiler_services_unsafe();
-        let mut as_pointer = CallSite::new_extern(
-            unsafe_services,
-            "AsPointer".into(),
-            FnSig::new(
-                &[Type::ManagedReference(Type::CallGenericArg(0).into())],
-                &Type::Ptr(Type::Void.into()),
-            ),
-            true,
-        );
-        as_pointer.set_generics(vec![element.clone()]);
-        as_pointer
     }
     /// Constructs a new call site targeting method `name`, with signature `signature` and bleonging to class `class`. If `class` is [`None`], then the `<Module>` class
     /// is assumed.

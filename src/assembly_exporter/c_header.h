@@ -77,3 +77,4 @@ void *System_Runtime_InteropServices_NativeMemoryAlignedRealloc(void* old, size_
 }
 // Used for startup
 #define System_Arrayget_Length(_) 0
+#define black_box(val) val

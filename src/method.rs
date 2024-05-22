@@ -45,8 +45,8 @@ impl Method {
             .blocks()
             .iter()
             .map(|tree| tree.validate(self))
-            .flat_map(|err| match err {
-                Ok(_) => None,
+            .filter_map(|err| match err {
+                Ok(()) => None,
                 Err(err) => Some(err),
             })
             .collect::<Vec<_>>();

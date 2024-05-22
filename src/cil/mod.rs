@@ -29,9 +29,9 @@ pub enum CILOp {
     BZero(u32, u32),
     /// Jump to target if the top value on the stack is zero, continue otherwise. WARING: make sure the compared values have the same type, othewise IL is invalid.
     BTrue(u32, u32),
-    /// Call the metod behind `call_site`.`
+    /// Call the metod behind `call_site`.
     Call(Box<CallSite>),
-    /// Call the virtual method behind `call_site`.`
+    /// Call the virtual method behind `call_site`.
     CallVirt(Box<CallSite>),
     /// Throw the top value on the stack as an exception
     Throw,
@@ -253,10 +253,9 @@ impl CILOp {
     #[must_use]
     pub fn call(&self) -> Option<&CallSite> {
         match self {
-            Self::Call(site) => Some(site),
-            Self::CallVirt(site) => Some(site),
-            Self::NewObj(site) => Some(site),
-            Self::LDFtn(site) => Some(site),
+            Self::Call(site) | Self::CallVirt(site) | Self::NewObj(site) | Self::LDFtn(site) => {
+                Some(site)
+            }
             _ => None,
         }
     }

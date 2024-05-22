@@ -8,7 +8,7 @@ pub enum AccessModifer {
     Public,
 }
 impl AccessModifer {
-    /// Converts Rust visibilty type to [`AccessModifier`]
+    /// Converts Rust visibilty type to [`AccessModifer`]
     pub fn from_visibility<T>(visibility: &rustc_middle::ty::Visibility<T>) -> Self {
         if let rustc_middle::ty::Visibility::Public = visibility {
             Self::Public

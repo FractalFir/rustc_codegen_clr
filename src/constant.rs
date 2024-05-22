@@ -44,6 +44,7 @@ fn create_const_from_data<'ctx>(
     method_instance: Instance<'ctx>,
     tycache: &mut TyCache,
 ) -> CILNode {
+    let _ = offset_bytes;
     let ptr = CILNode::LoadGlobalAllocPtr {
         alloc_id: alloc_id.0.into(),
     };
@@ -218,7 +219,7 @@ fn load_scalar_ptr(
         GlobalAlloc::Function(finstance) => {
             // If it is a function, patch its pointer up.
             let call_info =
-                crate::call_info::CallInfo::sig_from_instance_(finstance, tyctx, tycache).unwrap();
+                crate::call_info::CallInfo::sig_from_instance_(finstance, tyctx, tycache);
             let function_name = crate::utilis::function_name(tyctx.symbol_name(finstance));
             return CILNode::LDFtn(
                 CallSite::new(None, function_name, call_info.sig().clone(), true).into(),

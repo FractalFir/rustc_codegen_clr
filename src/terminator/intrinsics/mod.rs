@@ -222,7 +222,7 @@ pub fn handle_intrinsic<'tyctx>(
                 tyctx,
                 crate::casts::int_to_int(
                     Type::I32,
-                    tpe,
+                    &tpe,
                     conv_u64!(call!(
                         CallSite::boxed(
                             bit_operations.clone(),
@@ -277,7 +277,7 @@ pub fn handle_intrinsic<'tyctx>(
                 tyctx,
                 crate::casts::int_to_int(
                     Type::I32,
-                    tpe,
+                    &tpe,
                     sub!(
                         call!(
                             CallSite::boxed(
@@ -393,7 +393,7 @@ pub fn handle_intrinsic<'tyctx>(
                 tyctx,
                 crate::casts::int_to_int(
                     Type::I32,
-                    tpe.clone(),
+                    &tpe.clone(),
                     call!(
                         CallSite::boxed(
                             bit_operations.clone(),

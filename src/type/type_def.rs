@@ -1,7 +1,7 @@
 use crate::{
     access_modifier::AccessModifer,
     basic_block::BasicBlock,
-    cil::{CallSite, FieldDescriptor},
+    cil::FieldDescriptor,
     cil_tree::{cil_node::CILNode, cil_root::CILRoot},
     conv_usize, ld_field_address,
     method::{Method, MethodType},
@@ -305,8 +305,7 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
         extends: None,
         explict_size: Some(explict_size),
     };
-    let _as_pointer = CallSite::ref_as_ptr(element.clone());
-    // set_Item(usize offset, G0 value)
+
     if element_count > 0 {
         let set_usize = Method::new(
             AccessModifer::Public,

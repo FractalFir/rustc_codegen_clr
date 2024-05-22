@@ -424,8 +424,7 @@ pub fn call<'tyctx>(
             )
         );
         // Get the call info
-        let call_info = CallInfo::sig_from_instance_(instance, tyctx, type_cache)
-            .expect("Could not resolve function sig");
+        let call_info = CallInfo::sig_from_instance_(instance, tyctx, type_cache);
         let mut signature = call_info.sig().clone();
         signature.inputs_mut()[0] = Type::ISize;
         let mut call_args = [obj_ptr].to_vec();
@@ -457,8 +456,7 @@ pub fn call<'tyctx>(
             )
         };
     }
-    let call_info = CallInfo::sig_from_instance_(instance, tyctx, type_cache)
-        .expect("Could not resolve function sig");
+    let call_info = CallInfo::sig_from_instance_(instance, tyctx, type_cache);
     // SHOULD NOT BE MUTABLE BUT VARIADICS ARE FUCKING WIERD.
     let mut signature = call_info.sig().clone();
 

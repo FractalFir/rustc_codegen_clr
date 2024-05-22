@@ -122,6 +122,8 @@ fn simplify_handler<'tyctx>(
     }
 }
 /// Convert an `UnwindAction` into an id of the block this will jump into during an exception.
+//  We match same arms on purpose here.
+#[allow(clippy::match_same_arms)]
 pub(crate) fn handler_from_action(action: UnwindAction) -> Option<u32> {
     match action {
         UnwindAction::Continue => None,
@@ -172,13 +174,14 @@ impl BasicBlock {
         let errs: Vec<String> = self
             .trees()
             .iter()
-            .map(|tree| {
-                tree.validate(method)
+            .filter_map(|tree| {
+                match tree
+                    .validate(method)
                     .map_err(|err| format!("{tree:?}:\n\n{err}"))
-            })
-            .flat_map(|err| match err {
-                Ok(_) => None,
-                Err(err) => Some(err),
+                {
+                    Ok(()) => None,
+                    Err(err) => Some(err),
+                }
             })
             .collect::<Vec<_>>();
         if !errs.is_empty() {

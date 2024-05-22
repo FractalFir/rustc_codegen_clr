@@ -32,7 +32,7 @@ pub fn local_adress(local: usize, method: &rustc_middle::mir::Body) -> CILNode {
     }
 }
 pub fn address_last_dereference<'ctx>(
-    target_type: Ty<'ctx>,
+    target_ty: Ty<'ctx>,
     curr_type: PlaceTy<'ctx>,
     tycache: &mut TyCache,
     tyctx: TyCtxt<'ctx>,
@@ -48,10 +48,10 @@ pub fn address_last_dereference<'ctx>(
     // Get the type curr_type points to!
     let curr_points_to = super::pointed_type(curr_type.into());
     let curr_type = tycache.type_from_cache(curr_type, tyctx, Some(method));
-    let target_tpe = tycache.type_from_cache(target_type, tyctx, Some(method));
+    let target_type = tycache.type_from_cache(target_ty, tyctx, Some(method));
     match (
         pointer_to_is_fat(curr_points_to, tyctx, Some(method)),
-        pointer_to_is_fat(target_type, tyctx, Some(method)),
+        pointer_to_is_fat(target_ty, tyctx, Some(method)),
     ) {
         (true, true) => addr_calc,
         (true, false) => CILNode::LDIndPtr {
@@ -64,7 +64,7 @@ pub fn address_last_dereference<'ctx>(
                 .into(),
                 addr: addr_calc.into(),
             }),
-            loaded_ptr: Box::new(Type::Ptr(Box::new(target_tpe))),
+            loaded_ptr: Box::new(Type::Ptr(Box::new(target_type))),
         },
         (false, true) => panic!("Invalid last dereference in address!"),
         _ => addr_calc,

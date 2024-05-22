@@ -890,7 +890,7 @@ cargo_test! {benchmarks,stable}
 cargo_test! {glam_test,unstable}
 cargo_test! {fastrand_test,stable}
 
-use lazy_static::*;
+use lazy_static::lazy_static;
 /// Cached runtime configuration string, obtained from calling the .NET runtime.
 #[must_use]
 pub fn get_runtime_config() -> &'static str {

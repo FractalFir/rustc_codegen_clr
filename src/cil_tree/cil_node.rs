@@ -190,7 +190,7 @@ pub enum CILNode {
         idx: Box<CILNode>,
     },
     PointerToConstValue(u128),
-    /// Unsafe, low-level internal op for checking the state of the CIL eval stack. WILL cause serious issues if not used **very** carefully, and only inside the `inspect` arm of InspectValue.
+    /// Unsafe, low-level internal op for checking the state of the CIL eval stack. WILL cause serious issues if not used **very** carefully, and only inside the `inspect` arm of `InspectValue`.
     GetStackTop,
     /// Unsafe, low-level internal op for inspecting the state of the CIL eval stack. Must be paired with exactly one `GetStackTop`, in the `inspect` arm.
     InspectValue {
@@ -202,13 +202,14 @@ pub enum CILNode {
         val: Box<Self>,
         new_ptr: Box<Type>,
     },
-    /// Equivalent to CILNode::LdcI32(0), but with addtional typechecking info.
+    /// Equivalent to `CILNode::LdcI32(0`), but with addtional typechecking info.
     LdFalse,
-    /// Equivalent to CILNode::LdcI32(1), but with addtional typechecking info.
+    /// Equivalent to `CILNode::LdcI32(1`), but with addtional typechecking info.
     LdTrue,
 }
 
 impl CILNode {
+    #[must_use]
     pub fn print_debug_val(
         format_start: &str,
         value: CILNode,
@@ -369,9 +370,9 @@ impl CILNode {
         match self {
             Self::LdFalse=>(),
             Self::LdTrue=>(),
-            Self::TransmutePtr { val, new_ptr }=>val.opt(),
+            Self::TransmutePtr { val, new_ptr: _ }=>val.opt(),
             Self::GetStackTop=>(),
-            Self::InspectValue { val, inspect }=>{val.opt_children();inspect.iter_mut().for_each(|rot|rot.opt())},
+            Self::InspectValue { val, inspect }=>{val.opt_children();inspect.iter_mut().for_each(super::cil_root::CILRoot::opt)},
             Self::LDLoc(_) => (),
             Self::LDArg(_) => (),
             Self::LDLocA(_) => (),
@@ -470,6 +471,8 @@ impl CILNode {
     }
     // This fucntion will get expanded, so a single match is a non-issue.
     #[allow(clippy::single_match)]
+    // This clippy lint is wrong
+    #[allow(clippy::assigning_clones)]
     /// Optimizes this `CILNode`.
     pub fn opt(&mut self) {
         self.opt_children();
@@ -761,11 +764,11 @@ impl CILNode {
         match self {
             Self::LdFalse=>(),
             Self::LdTrue=>(),
-            Self::TransmutePtr { val, new_ptr }=>val.allocate_tmps(curr_loc, locals),
+            Self::TransmutePtr { val, new_ptr: _ }=>val.allocate_tmps(curr_loc, locals),
             Self::GetStackTop =>(),
             Self::InspectValue { val, inspect }=>{
                 val.allocate_tmps(curr_loc, locals);
-                inspect.iter_mut().for_each(|root|root.allocate_tmps(curr_loc, locals))
+                inspect.iter_mut().for_each(|root|root.allocate_tmps(curr_loc, locals));
             },
             Self:: PointerToConstValue(_arr)=>(),
             Self::LoadGlobalAllocPtr { alloc_id: _ } => (),
@@ -886,11 +889,11 @@ impl CILNode {
         match self {
             Self::LdFalse=>(),
             Self::LdTrue=>(),
-            Self::TransmutePtr { val, new_ptr }=>val.resolve_global_allocations(asm, tyctx, tycache),
+            Self::TransmutePtr { val, new_ptr: _ }=>val.resolve_global_allocations(asm, tyctx, tycache),
             Self::GetStackTop => (),
             Self::InspectValue { val, inspect }=>{
                 val.resolve_global_allocations(asm, tyctx, tycache);
-                inspect.iter_mut().for_each(|i|i.resolve_global_allocations(asm, tyctx, tycache))
+                inspect.iter_mut().for_each(|i|i.resolve_global_allocations(asm, tyctx, tycache));
             }
             Self:: PointerToConstValue(bytes)=> *self = CILNode::LDStaticField(Box::new(asm.add_const_value(*bytes,tyctx))),
             Self::LDLoc(_) |
@@ -1005,7 +1008,7 @@ impl CILNode {
             Self::LdTrue => vec![],
             Self::TransmutePtr { val, new_ptr: _ } => val.sheed_trees(),
             Self::GetStackTop => vec![],
-            Self::InspectValue { val, inspect } => val.sheed_trees(),
+            Self::InspectValue { val, inspect: _ } => val.sheed_trees(),
             Self::LDLoc(_) | Self::LDArg(_) | Self::LDLocA(_) | Self::LDArgA(_) => {
                 vec![]
             }
@@ -1309,12 +1312,11 @@ impl CILNode {
                 Ok(Type::I64)
             }
             Self::ZeroExtendToUSize(src) => {
-                let tpe = src.validate(method)?;
+                let _tpe = src.validate(method)?;
                 Ok(Type::USize)
             }
             Self::ZeroExtendToISize(src) => {
-                let tpe = src.validate(method)?;
-
+                let _tpe = src.validate(method)?;
                 Ok(Type::ISize)
             }
             Self::MRefToRawPtr(src) => {
@@ -1489,7 +1491,7 @@ impl CILNode {
             }
             Self::CallI(packed) => {
                 let (sig, ptr, args) = packed.as_ref();
-                let ptr = ptr.validate(method)?;
+                let _ptr = ptr.validate(method)?;
                 if sig.inputs().len() != args.len() {
                     return Err(format!(
                         "Expected {} arguments, got {}",

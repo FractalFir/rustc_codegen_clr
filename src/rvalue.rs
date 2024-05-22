@@ -142,7 +142,7 @@ pub fn handle_rvalue<'tcx>(
             let src = tycache.type_from_cache(src, tyctx, Some(method_instance));
             crate::casts::int_to_int(
                 src,
-                target,
+                &target,
                 handle_operand(operand, tyctx, method, method_instance, tycache),
             )
         }
@@ -155,7 +155,7 @@ pub fn handle_rvalue<'tcx>(
 
             crate::casts::float_to_int(
                 src,
-                target,
+                &target,
                 handle_operand(operand, tyctx, method, method_instance, tycache),
             )
         }
@@ -167,7 +167,7 @@ pub fn handle_rvalue<'tcx>(
             let src = tycache.type_from_cache(src, tyctx, Some(method_instance));
             crate::casts::int_to_float(
                 src,
-                target,
+                &target,
                 handle_operand(operand, tyctx, method, method_instance, tycache),
             )
         }
@@ -390,11 +390,11 @@ pub fn handle_rvalue<'tcx>(
             );
             if disrc_type == Type::Void {
                 // Just alwways return 0 if the discriminat type is `()` - this seems to work, and be what rustc expects. Wierd, but OK.
-                crate::casts::int_to_int(Type::I32, target, ldc_i32!(0))
+                crate::casts::int_to_int(Type::I32, &target, ldc_i32!(0))
             } else {
                 crate::casts::int_to_int(
                     disrc_type.clone(),
-                    target.clone(),
+                    &target,
                     crate::utilis::adt::get_discr(layout.layout, addr, owner, tyctx, owner_ty),
                 )
             }

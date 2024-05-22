@@ -302,6 +302,8 @@ pub fn op_cli(op: &crate::cil::CILOp, method: &Method) -> Cow<'static, str> {
             } else if *value < u32::from(i8::MAX as u8) {
                 format!("ldc.i4.s {value}").into()
             } else {
+                // This is intended behaviour
+                #[allow(clippy::cast_possible_wrap)]
                 format!("ldc.i4 {value}",value = *value as i32).into()
             }
         }

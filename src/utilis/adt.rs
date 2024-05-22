@@ -174,7 +174,7 @@ pub fn set_discr<'tyctx>(
                 .val
                 .try_into()
                 .expect("Enum varaint id can't fit in u64."));
-            let tag_val = crate::casts::int_to_int(Type::U64, tag_tpe.clone(), tag_val);
+            let tag_val = crate::casts::int_to_int(Type::U64, &tag_tpe, tag_val);
             CILRoot::SetField {
                 addr: enum_addr,
                 value: tag_val,
@@ -201,7 +201,7 @@ pub fn set_discr<'tyctx>(
                 let tag_val = crate::ldc_u64!(niche_value
                     .try_into()
                     .expect("Enum varaint id can't fit in u64."));
-                let tag_val = crate::casts::int_to_int(Type::U64, tag_tpe.clone(), tag_val);
+                let tag_val = crate::casts::int_to_int(Type::U64, &tag_tpe, tag_val);
                 CILRoot::SetField {
                     addr: enum_addr,
                     value: tag_val,
@@ -232,7 +232,7 @@ pub fn get_discr<'tyctx>(
                 .map_or(index.as_u32() as u128, |discr| discr.val);
             let tag_val =
                 crate::ldc_u64!(discr_val.try_into().expect("Tag does not fit within a u64"));
-            return crate::casts::int_to_int(Type::U64, tag_tpe.clone(), tag_val);
+            return crate::casts::int_to_int(Type::U64, &tag_tpe, tag_val);
         }
         Variants::Multiple {
             ref tag_encoding, ..
@@ -297,13 +297,13 @@ pub fn get_discr<'tyctx>(
                 // } else {
                 //     untagged_variant
                 // }
-                let tag = crate::casts::int_to_int(disrc_type.clone(), Type::U64, tag);
+                let tag = crate::casts::int_to_int(disrc_type.clone(), &Type::U64, tag);
                 //let niche_start = bx.cx().const_uint_big(tag_llty, niche_start);
                 let is_niche = eq!(
                     tag,
                     crate::casts::int_to_int(
                         Type::U64,
-                        disrc_type.clone(),
+                        &disrc_type,
                         ldc_u64!(niche_start
                             .try_into()
                             .expect("tag is too big to fit within u64"))
@@ -315,7 +315,7 @@ pub fn get_discr<'tyctx>(
             } else {
                 // The special cases don't apply, so we'll have to go with
                 // the general algorithm.
-                let tag = crate::casts::int_to_int(disrc_type.clone(), Type::U64, tag);
+                let tag = crate::casts::int_to_int(disrc_type.clone(), &Type::U64, tag);
                 let relative_discr = sub!(
                     tag,
                     ldc_u64!(niche_start
@@ -323,13 +323,16 @@ pub fn get_discr<'tyctx>(
                         .expect("tag is too big to fit within u64"))
                 );
                 //let cast_tag = bx.intcast(relative_discr, cast_to, false);
-                let cast_tag =
-                    crate::casts::int_to_int(disrc_type.clone(), Type::U64, relative_discr.clone());
+                let cast_tag = crate::casts::int_to_int(
+                    disrc_type.clone(),
+                    &Type::U64,
+                    relative_discr.clone(),
+                );
                 let is_niche = lt_un!(
                     relative_discr,
                     crate::casts::int_to_int(
                         Type::U64,
-                        disrc_type.clone(),
+                        &disrc_type,
                         ldc_u64!(u64::from(relative_max))
                     )
                 );
@@ -341,7 +344,7 @@ pub fn get_discr<'tyctx>(
             } else {
                 let delta = crate::casts::int_to_int(
                     Type::U64,
-                    disrc_type.clone(),
+                    &disrc_type,
                     ldc_u64!(delta.try_into().expect("Tag does not fit within u64")),
                 );
                 assert!(matches!(
@@ -369,7 +372,7 @@ pub fn get_discr<'tyctx>(
                 tagged_discr,
                 crate::casts::int_to_int(
                     Type::U64,
-                    disrc_type,
+                    &disrc_type,
                     ldc_u64!(u64::from(untagged_variant.as_u32())),
                 ),
                 is_niche,
