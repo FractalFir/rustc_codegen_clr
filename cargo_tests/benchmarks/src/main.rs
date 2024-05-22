@@ -19,33 +19,33 @@ trait BenchmarkableFn {
     fn benchmark() -> f64 {
         use mycorrhiza::system::diagnostics::Stopwatch;
         // Let the JIT warm up.
-        for _ in 0..1000_000 {
+        for _ in 0..100_000_000 {
             Self::run();
         }
         let stopwatch = Stopwatch::new();
         stopwatch.start();
-        for _ in 0..1000_000 {
+        for _ in 0..100_000_000 {
             Self::run();
         }
         stopwatch.stop();
         let ms = stopwatch.elapsed_milliseconds();
         let ns = (ms * 1_000_000) as f64;
-        let ns_per_iter = ns / (1000_000 as f64);
+        let ns_per_iter = ns / (100_000_000 as f64);
         ns_per_iter
     }
     #[cfg(test)]
     fn benchmark() -> f64 {
         // Here just to elimnate any wierd codegen flukes
-        for _ in 0..1000_000 {
+        for _ in 0..100_000_000 {
             Self::run();
         }
         let stopwatch = std::time::Instant::now();
-        for _ in 0..1000_000 {
+        for _ in 0..100_000_000 {
             Self::run();
         }
         let ms = stopwatch.elapsed().as_millis();
         let ns = (ms * 1_000_000) as f64;
-        let ns_per_iter = ns / (1000_000 as f64);
+        let ns_per_iter = ns / (100_000_000 as f64);
         ns_per_iter
     }
 }
@@ -62,6 +62,7 @@ impl BenchmarkableFn for Fibonachi {
         black_box(fibonacci(black_box(10)));
     }
 }
+struct So;
 #[cfg(test)]
 #[test]
 fn native_bench() {

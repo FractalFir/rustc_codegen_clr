@@ -1018,14 +1018,15 @@ fn allocation_initializer_method(
         const_allocation.inspect_with_uninit_and_ptr_outside_interpreter(0..const_allocation.len());
     let ptrs = const_allocation.provenance().ptrs();
     let mut trees: Vec<CILTree> = Vec::new();
+    let align = const_allocation.align.bytes().max(1);
     //trees.push(CILRoot::debug(&format!("Preparing to initialize allocation with size {}",bytes.len())).into());
     trees.push(
         CILRoot::STLoc {
             local: 0,
             tree: CILNode::TransmutePtr {
                 val: Box::new(call!(
-                    CallSite::malloc(tyctx),
-                    [conv_isize!(ldc_u64!(bytes.len() as u64))]
+                    CallSite::alloc(),
+                    [conv_isize!(ldc_u64!(bytes.len() as u64)),conv_isize!(ldc_u64!(align as u64))]
                 )),
                 new_ptr: Box::new(Type::Ptr(Box::new(Type::U8))),
             },

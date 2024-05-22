@@ -17,7 +17,7 @@ use crate::{
     rem_un, size_of, sub,
 };
 use bitop::{bit_and_unchecked, bit_or_unchecked, bit_xor_unchecked};
-pub use checked::binop_checked;
+
 use cmp::{eq_unchecked, gt_unchecked, lt_unchecked, ne_unchecked};
 use shift::{shl_checked, shl_unchecked, shr_checked, shr_unchecked};
 

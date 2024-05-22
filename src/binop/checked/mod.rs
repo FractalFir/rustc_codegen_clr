@@ -13,35 +13,7 @@ use crate::{
 use rustc_middle::mir::{BinOp, Operand};
 use rustc_middle::ty::{Instance, IntTy, Ty, TyCtxt, TyKind, UintTy};
 
-pub fn binop_checked<'tyctx>(
-    binop: BinOp,
-    operand_a: &Operand<'tyctx>,
-    operand_b: &Operand<'tyctx>,
-    tyctx: TyCtxt<'tyctx>,
-    method: &rustc_middle::mir::Body<'tyctx>,
-    method_instance: Instance<'tyctx>,
-    tycache: &mut TyCache,
-) -> CILNode {
-    let ops_a = crate::operand::handle_operand(operand_a, tyctx, method, method_instance, tycache);
-    let ops_b = crate::operand::handle_operand(operand_b, tyctx, method, method_instance, tycache);
-    let ty_a = operand_a.ty(&method.local_decls, tyctx);
-    let ty_b = operand_b.ty(&method.local_decls, tyctx);
-    debug_assert_eq!(ty_a, ty_b);
-    match binop {
-        BinOp::Sub => if ty_a.is_signed() {
-            sub_signed(&ops_a, &ops_b, ty_a, tyctx, method_instance, tycache) }else{
-            sub_unsigned(&ops_a, &ops_b, ty_a, tyctx, method_instance, tycache)
-            }
-        BinOp::Add => if ty_a.is_signed() {
-            add_signed(&ops_a, &ops_b, ty_a, tyctx, method_instance, tycache)} else {
-            add_unsigned(&ops_a, &ops_b, ty_a, tyctx, method_instance, tycache)
-            }
-        ,
-        // TODO: Chekced multiplcation is NOT checked
-        BinOp::Mul => mul(&ops_a, &ops_b, ty_a, tyctx, method_instance, tycache),
-        _ => todo!("Can't handle checked binop {binop:?}"),
-    }
-}
+
 pub fn result_tuple(tpe: Type, out_of_range: CILNode, val: CILNode) -> CILNode {
     let tuple = crate::r#type::simple_tuple(&[tpe.clone(), Type::Bool]);
     CILNode::TemporaryLocal(Box::new((

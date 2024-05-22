@@ -52,20 +52,20 @@ So, you *can* compile a lot of existing Rust code, but it may not necessarily *w
 | ------------------------------------------ | --------------- |
 | Rust native (release)                      | 100 ns          |
 | Rust native (debug)                        | 360 ns          |
-| Rust .NET (default optimizations)          | 270 ns          |
+| Rust .NET (default optimizations)          | 240 ns          |
 | Rust .NET (codegen optimizations disabled) | 330 ns          |
-| C# release (pure IL)                       | 250 ns          |
+| C# release (pure IL)                       | 230 ns          |
 | C# debug (pure IL)                         | 370 ns          |
 
 As you can see, the difference between optimized C# and optimized .NET Rust code is not all that big. It is noticeable(~10%), but I would say it is a pretty good result considering how few optimizations are done right now. With a couple of bigger changes coming further down the line, the gap could become non-existent in the future. Since this benchmark is meant to show the worst case scenario, Rust could already outperform C# in a wide range of more memory-intensive scenarios.
 
-**However**, you should take all of those results with a pinch of salt. Since there is currently no way to use "proper" .NET benchmarking tools, I am relying on the `Stopwatch` class for time measurements and have no way to control the behavior of the JIT. It seems to optimize the Rust code after enough runs, all while the speed of C# dropped significantly. This is not due to thermal throttling or any other variable I can think of - both tests were run multiple times back-to-back (Rust then C# the Rust then C# again), and the results remain consistent. Such oddities point at issues with the testing setup, but the results can still serve as a **very** rough guide about what kinds of performance can be expected.
+**However**, you should take all of those results with a pinch of salt. Since there is currently no way to use "proper" .NET benchmarking tools, I am relying on the `Stopwatch` class for time measurements and have no way to control the behavior of the JIT. 
 
 | Test Method                       | Avg of 100M runs |
 | --------------------------------- | ---------------- |
 | Rust native (release)             | 107 ns           |
-| Rust .NET (default optimizations) | 252.3 ns         |
-| C# release (pure IL)              | 281.66 ns        |
+| Rust .NET (default optimizations) | 240 ns           |
+| C# release (pure IL)              | 220 ns           |
 
 ## FAQ
 
