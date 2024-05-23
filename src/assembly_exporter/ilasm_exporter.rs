@@ -11,12 +11,12 @@ use crate::{
     r#type::TypeDef,
 };
 use lazy_static::lazy_static;
-pub(crate) enum IlasmFlavour{
+pub enum IlasmFlavour{
     Clasic,
     Modern,
 }
 lazy_static!{
-    pub(crate) static ref ILASM_FLAVOUR: IlasmFlavour ={
+    pub static ref ILASM_FLAVOUR: IlasmFlavour ={
         if String::from_utf8_lossy(&std::process::Command::new(&*crate::config::ILASM_PATH).output().unwrap().stdout).contains("PDB"){
             IlasmFlavour::Modern
         }else{

@@ -2,6 +2,7 @@
 #![allow(clippy::module_name_repetitions)]
 //use assembly::Assembly;
 use lazy_static::lazy_static;
+use rustc_codegen_clr::assembly_exporter::ilasm_exporter::*;
 use load::LinkableFile;
 use rustc_codegen_clr::{
     access_modifier,
@@ -508,6 +509,14 @@ fn main() {
             include_str!("dotnet_jumpstart.rs"),
             exec_file = path.file_name().unwrap().to_string_lossy(),
             has_native_companion = *crate::config::NATIVE_PASSTROUGH,
+            has_pdb = match *ILASM_FLAVOUR{
+                IlasmFlavour::Clasic=>false,
+                IlasmFlavour::Modern=>true,
+            },
+            pdb_file = match *ILASM_FLAVOUR{
+                IlasmFlavour::Clasic=>String::new(),
+                IlasmFlavour::Modern=>format!("{output_file_path}.pdb", output_file_path = path.file_name().unwrap().to_string_lossy()),
+            },
             native_companion_file = if *crate::config::NATIVE_PASSTROUGH {
                 format!(
                     "rust_native_{output_file_path}.so",

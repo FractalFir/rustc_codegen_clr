@@ -21,6 +21,7 @@ macro_rules! include_bytes_if{{
 }}
 
 static BUNDLED_SHARED_LIB:&[u8] = include_bytes_if!({has_native_companion},"{native_companion_file}");
+static BUNDLED_PDB:&[u8] = include_bytes_if!({has_pdb},"{pdb_file}");
 fn main(){{
     let curr_path = std::env::current_exe().unwrap();
     let dll_path = curr_path.with_extension("dll");
@@ -40,6 +41,16 @@ fn main(){{
           file.write_all(BUNDLED_SHARED_LIB).expect("Could create a file to provide the native companion");
       }}
   
+    }}
+    if {has_pdb}{{
+      if !std::path::Path::new("{pdb_file}").exists(){{
+          println!("creating the pdb file");
+          let mut file = std::fs::File::create("{pdb_file}").expect("Could not create a file to provide the pdb debug info.");
+          file.write_all(BUNDLED_PDB).expect("Could create a file to provide the pdb debug info.");
+      }}
+      else{{
+          println!("Not creating the pdb file");
+      }}
     }}
     let args:Vec<String> = std::env::args().collect();
     let args = &args[1..];
