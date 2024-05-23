@@ -25,6 +25,7 @@ pub struct TypeDef {
     gargc: u32,
     extends: Option<DotnetTypeRef>,
     explict_size: Option<u64>,
+    //requires_aligement_adjustements:bool,
 }
 impl TypeDef {
     #[must_use]
@@ -272,6 +273,7 @@ pub fn tuple_typedef(elements: &[Type], layout: Layout) -> TypeDef {
         0,
         None,
         None,
+        
     )
 }
 #[must_use]
@@ -294,6 +296,8 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
         fields.push((format!("f_{field}").into(), element.clone()));
         explicit_offsets.push(u32::try_from(field as u64 * element_size).unwrap());
     }
+    //TODO:check array aligement
+
     let mut def = TypeDef {
         access: AccessModifer::Public,
         name,
@@ -304,6 +308,7 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
         gargc: 0,
         extends: None,
         explict_size: Some(explict_size),
+        //requires_aligement_adjustements,
     };
 
     if element_count > 0 {

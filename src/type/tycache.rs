@@ -129,7 +129,7 @@ impl TyCache {
                 value: adt_ty,
             })
             .expect("Could not get type layout!");
-        assert!(layout.align.abi.bytes() <= 16);
+
         let explicit_offsets =
             crate::utilis::adt::FieldOffsetIterator::fields((*layout.layout.0).clone()).collect();
         //let to_string = create_to_string(adt, subst, adt_ty, self, method, tyctx);
@@ -174,7 +174,7 @@ impl TyCache {
             .expect("Could not get type layout!");
         let explicit_offsets =
             crate::utilis::adt::FieldOffsetIterator::fields((*layout.layout.0).clone()).collect();
-        assert!(layout.align.abi.bytes() <= 16);
+
         TypeDef::new(
             access,
             name.into(),
@@ -206,7 +206,7 @@ impl TyCache {
             })
             .expect("Could not get type layout!");
         let mut fields = vec![];
-        assert!(layout.align.abi.bytes() <= 16);
+   
         match &layout.variants {
             rustc_target::abi::Variants::Single { index: _ } => {
                 let (tag_type, offset) = crate::utilis::adt::enum_tag_info(layout.layout, tyctx);

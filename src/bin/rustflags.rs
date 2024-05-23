@@ -1,3 +1,10 @@
+fn ilasm_check(){
+    match std::process::Command::new(&*rustc_codegen_clr::config::ILASM_PATH).output(){
+        Ok(_)=>println!("An CIL assembler has been detected."),
+        Err(err)=>panic!("Could not find the CIL assembler at name/path {:?}, due to {err:?}. 
+Please instal the CIL assembler, and/or set the ILASM_PATH enviroment variable to point to your CIL assembler.",*rustc_codegen_clr::config::ILASM_PATH)
+    }
+}
 fn main() {
     let build_env = rustc_codegen_clr::compile_test::cargo_build_env();
     let print_raw_env = std::env::args().any(|arg| arg == "--print_raw_env");
@@ -15,6 +22,11 @@ fn main() {
     }
     println!("Welcome to the `rustc_codegen_clr` environment setup helper!");
     println!("This tool will help you use the codegen to compile Rust projects.");
+    println!();
+    println!("Doing dependency checks...");
+    ilasm_check();
+    println!("Dependency checks succeded.");
+    println!();
     println!("WARNING: Please note, the project is currently in the early stages of development.  Bugs, crashes and miscompilations will occur.");
     println!("Currently, there is no way to permanently install the codegen. It is enabled on a per-shell-session basis (enabled for your particular command prompt window).");
     println!();

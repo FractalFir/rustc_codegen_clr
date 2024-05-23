@@ -254,6 +254,13 @@ impl Method {
         self.blocks.push(BasicBlock::new(vec![], new_bb, None));
         new_bb
     }
+    
+    pub(crate) fn adjust_aligement(&self, adjust: Vec<Option<u64>>) {
+        if !adjust.iter().any(|adjust|adjust.is_some()){
+            return;
+        }
+        todo!()
+    }
 }
 /// A wrapper around mutably borrowed [`BasicBlock`]s of a method. Prevents certain bugs.
 pub struct BlockMutGuard<'a> {

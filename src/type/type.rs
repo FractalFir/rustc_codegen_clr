@@ -78,11 +78,11 @@ impl DotnetTypeRef {
     }
     #[must_use]
     pub fn single() -> Self {
-        Self::new(Some("System.Runtime"), "System.Single").with_valuetype(false)
+        Self::new(Some("System.Runtime"), "System.Single").with_valuetype(true)
     }
     #[must_use]
     pub fn double() -> Self {
-        Self::new(Some("System.Runtime"), "System.Double").with_valuetype(false)
+        Self::new(Some("System.Runtime"), "System.Double").with_valuetype(true)
     }
     #[must_use]
     pub fn console() -> Self {

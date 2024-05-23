@@ -401,8 +401,8 @@ impl Assembly {
             }
         }
 
-        //println!("Compiled method {name}");
-
+        let adjust = check_align_adjust(&mir.local_decls, tyctx, &instance);
+        method.adjust_aligement(adjust);
         self.add_method(method);
         Ok(())
         //todo!("Can't add function")
@@ -959,6 +959,22 @@ fn link_static_initializers(a: Option<&Method>, b: Option<&Method>) -> Option<Me
 }
 type LocalDefList = Vec<(Option<IString>, Type)>;
 type ArgsDebugInfo = Vec<Option<IString>>;
+fn check_align_adjust<'tyctx>(locals: &rustc_index::IndexVec<Local, LocalDecl<'tyctx>>,
+tyctx: TyCtxt<'tyctx>,method_instance:&Instance<'tyctx>,)->Vec<Option<u64>>{
+    let mut adjusts:Vec<Option<u64>> = Vec::with_capacity(locals.len());
+    for (_, local) in locals.iter().enumerate() {
+        let ty = crate::utilis::monomorphize(method_instance, local.ty, tyctx);
+        let adjust = crate::utilis::requries_align_adjustement(ty,tyctx,);
+        if let Some(adjust) = adjust{
+            eprintln!(
+                "type {ty} requires algiement adjustements. Its algement should be {adjust:?}.",
+            );
+        }
+       
+        adjusts.push(adjust);
+    }
+    adjusts
+}
 /// Returns the list of all local variables within MIR of a function, and converts them to the internal type represenation `Type`
 fn locals_from_mir<'tyctx>(
     locals: &rustc_index::IndexVec<Local, LocalDecl<'tyctx>>,

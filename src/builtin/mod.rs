@@ -70,7 +70,7 @@ add_method_from_trees!(
                         Some(DotnetTypeRef::new(
                             Some("System.Runtime"),
                             "System.IndexOutOfRangeException"
-                        )),
+                        ).with_valuetype(false)),
                         ".ctor".into(),
                         FnSig::new(&[], &Type::Void),
                         true
