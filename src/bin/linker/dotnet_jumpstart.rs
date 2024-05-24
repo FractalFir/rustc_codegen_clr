@@ -26,7 +26,7 @@ fn main(){{
     let curr_path = std::env::current_exe().unwrap();
     let dll_path = curr_path.with_extension("dll");
     let config = curr_path.with_extension("runtimeconfig.json");
-
+    let pdb_file = curr_path.with_file_name("{pdb_file}");
     if !dll_path.exists(){{
         let mut file = std::fs::File::create(dll_path.clone()).expect("Could not create a file to unpack the .NET assembly");
         file.write_all(DOTNET_ASSEMBLY).expect("Could not unpack the .NET assembly");
@@ -43,9 +43,9 @@ fn main(){{
   
     }}
     if {has_pdb}{{
-      if !std::path::Path::new("{pdb_file}").exists(){{
+      if !pdb_file.exists(){{
           println!("creating the pdb file");
-          let mut file = std::fs::File::create("{pdb_file}").expect("Could not create a file to provide the pdb debug info.");
+          let mut file = std::fs::File::create(pdb_file).expect("Could not create a file to provide the pdb debug info.");
           file.write_all(BUNDLED_PDB).expect("Could create a file to provide the pdb debug info.");
       }}
       else{{

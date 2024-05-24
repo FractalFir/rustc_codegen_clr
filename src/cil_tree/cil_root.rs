@@ -88,7 +88,7 @@ pub enum CILRoot {
         descr: crate::cil::StaticFieldDescriptor,
         value: CILNode,
     },
-    SourceFileInfo(Box<(u32, u32, IString)>),
+    SourceFileInfo(Box<(std::ops::Range<u64>, std::ops::Range<u64>, IString)>),
     //LabelStart(u32),
     //LabelEnd(u32),
 }
@@ -623,21 +623,18 @@ impl CILRoot {
         }
     }
 
-    pub(crate) fn source_info(file: &str, line: u32, column: u32) -> Self {
+    pub(crate) fn source_info(file: &str, line: std::ops::Range<u64>, column:  std::ops::Range<u64>) -> Self {
+        assert!(column.start < column.end, "PDB files must have columns that contain at least one element ");
         Self::SourceFileInfo(Box::new((line, column, file.into())))
     }
     pub(crate) fn span_source_info(tyctx: TyCtxt, span: rustc_span::Span) -> Self {
-        let file = tyctx.sess.source_map().span_to_embeddable_string(span);
-        let (line, column) = tyctx
-            .sess
-            .source_map()
-            .span_to_lines(span)
-            .map(|lines| match lines.lines.first() {
-                Some(pos) => (pos.line_index, pos.start_col.0),
-                None => (0, 0),
-            })
-            .unwrap_or((0, 0));
-        Self::source_info(&file, line as u32, column as u32)
+        let (file, lstart,cstart,lend,mut cend) = tyctx.sess.source_map().span_to_location_info(span);
+        let file = file.map(|file|file.name.display(rustc_span::FileNameDisplayPreference::Short).to_string()).unwrap_or("".to_string());
+       
+        if cstart >= cend{
+            cend = cstart + 1;
+        }
+        Self::source_info(&file, (lstart as u64)..(lend as u64), (cstart as u64)..(cend as u64))
     }
 
     pub(crate) fn validate(&self, method: &crate::method::Method) -> Result<(), String> {

@@ -244,7 +244,7 @@ pub enum CILOp {
     LDIndU32,
     LDIndU64,
     DivUn,
-    SourceFileInfo(Box<(u32, u32, IString)>),
+    SourceFileInfo(Box<(std::ops::Range<u64>, std::ops::Range<u64>, IString)>),
     LDLen,
     LDElelemRef,
 }

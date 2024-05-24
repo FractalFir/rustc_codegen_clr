@@ -624,8 +624,8 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
     match tree.root() {
         CILRoot::SourceFileInfo(sfi) => format!(
             "//{fname}:{line}:{col}",
-            line = sfi.0,
-            col = sfi.1,
+            line = sfi.0.start,
+            col = sfi.1.start,
             fname = sfi.2
         ),
         CILRoot::STLoc { local, tree } => {
