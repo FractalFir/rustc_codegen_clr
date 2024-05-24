@@ -629,8 +629,7 @@ impl CILRoot {
     }
     pub(crate) fn span_source_info(tyctx: TyCtxt, span: rustc_span::Span) -> Self {
         let (file, lstart,cstart,lend,mut cend) = tyctx.sess.source_map().span_to_location_info(span);
-        let file = file.map(|file|file.name.display(rustc_span::FileNameDisplayPreference::Short).to_string()).unwrap_or("".to_string());
-       
+        let file = file.map(|file|file.name.display(rustc_span::FileNameDisplayPreference::Local).to_string()).unwrap_or("".to_string());
         if cstart >= cend{
             cend = cstart + 1;
         }
