@@ -206,12 +206,7 @@ pub enum CILNode {
 
 impl CILNode {
     #[must_use]
-    pub fn print_debug_val(
-        format_start: &str,
-        value: Self,
-        format_end: &str,
-        tpe: Type,
-    ) -> Self {
+    pub fn print_debug_val(format_start: &str, value: Self, format_end: &str, tpe: Type) -> Self {
         match tpe {
             Type::U64 | Type::I64 | Type::U32 | Type::I32 => Self::InspectValue {
                 val: Box::new(value),
@@ -272,9 +267,7 @@ impl CILNode {
                             FnSig::new(&[Type::U64], Type::Void),
                             true,
                         ),
-                        args: Box::new([Self::ZeroExtendToUSize(Box::new(
-                            Self::GetStackTop,
-                        ))]),
+                        args: Box::new([Self::ZeroExtendToUSize(Box::new(Self::GetStackTop))]),
                     },
                     CILRoot::debug(format_end),
                 ]),
@@ -366,12 +359,9 @@ impl CILNode {
         match self {
             Self::LocAllocAligned { .. }=>(),
             Self::LdFalse | Self::LdTrue=>(),
-     
             Self::TransmutePtr { val, new_ptr: _ }=>val.opt(),
-
             Self::InspectValue { val, inspect }=>{val.opt_children();inspect.iter_mut().for_each(super::cil_root::CILRoot::opt)},
             Self::LDLoc(_) |  Self::GetStackTop | Self::LDArg(_) | Self::LDLocA(_) | Self::LDArgA(_)=> (),
-       
             Self::BlackBox(inner)
             | Self::ConvF32(inner)
             | Self::ConvF64(inner)
@@ -719,9 +709,7 @@ impl CILNode {
             }
             Self::LoadTMPLocal => panic!("Trees should be sheed after locals are allocated!"),
             Self::LDFtn(_) | Self::LDTypeToken(_) => vec![],
-            Self::NewObj { site: _, args } => {
-                args.iter_mut().flat_map(Self::sheed_trees).collect()
-            }
+            Self::NewObj { site: _, args } => args.iter_mut().flat_map(Self::sheed_trees).collect(),
             Self::LdStr(_) => vec![],
             Self::CallI(sig_ptr_args) => {
                 let mut res = sig_ptr_args.1.sheed_trees();
@@ -1435,4 +1423,221 @@ impl std::ops::Neg for CILNode {
     }
 
     type Output = Self;
+}
+#[derive(Debug, Clone, Copy)]
+pub enum CILIterElem<'a> {
+    Node(&'a CILNode),
+    Root(&'a CILRoot),
+}
+pub struct CILIter<'a> {
+    elems: Vec<(usize, CILIterElem<'a>)>,
+}
+impl<'a> Iterator for CILIter<'a> {
+    type Item = CILIterElem<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let (idx, elem) = self.elems.iter_mut().last()?;
+        if *idx == 0 {
+            *idx += 1;
+            return Some(*elem);
+        }
+        match elem {
+            CILIterElem::Node(
+                CILNode::Add(a, b) | CILNode::Mul(a, b) | CILNode::Eq(a, b) | CILNode::LtUn(a, b) | CILNode::Or(a,b) | CILNode::Sub(a,b)
+            ) => match idx {
+                1 => {
+                    *idx += 1;
+                    self.elems.push((0, CILIterElem::Node(a)));
+                    self.next()
+                }
+                2 => {
+                    *idx += 1;
+                    self.elems.push((0, CILIterElem::Node(b)));
+                    self.next()
+                }
+                _ => {
+                    self.elems.pop();
+                    self.next()
+                }
+            },
+            CILIterElem::Node(
+                CILNode::ConvU64(a)
+                | CILNode::ConvI64(a)
+                | CILNode::ConvF64(a)
+                | CILNode::ConvU32(a)
+                | CILNode::ConvI32(a)
+                | CILNode::ConvF32(a)
+                | CILNode::ConvISize(a)
+                | CILNode::MRefToRawPtr(a)
+                | CILNode::ConvU16(a)
+                | CILNode::ConvI16(a)
+                | CILNode::ConvU8(a)
+                | CILNode::ConvI8(a)
+                | CILNode::ZeroExtendToUSize(a)
+                | CILNode::TransmutePtr { val: a, .. },
+            ) => match idx {
+                1 => {
+                    *idx += 1;
+                    self.elems.push((0, CILIterElem::Node(a)));
+                    self.next()
+                }
+                _ => {
+                    self.elems.pop();
+                    self.next()
+                }
+            },
+            CILIterElem::Node(
+                CILNode::LDLoc(_)
+                | CILNode::LDLocA(_)
+                | CILNode::SizeOf(_)
+                | CILNode::LdcI32(_)
+                | CILNode::LdcF32(_)
+                | CILNode::LdcI64(_)
+                | CILNode::LdcF64(_)
+                | CILNode::LdcU32(_)
+                | CILNode::LdcU64(_)
+                | CILNode::LdStr(_)
+                | CILNode::LdFalse
+                | CILNode::LdTrue,
+            ) => {
+                self.elems.pop();
+                self.next()
+            }
+            CILIterElem::Root(
+                CILRoot::STLoc { tree, .. }
+                | CILRoot::Ret { tree }
+                | CILRoot::BTrue { cond: tree, .. }
+                | CILRoot::Throw(tree),
+            ) => match idx {
+                1 => {
+                    *idx += 1;
+                    self.elems.push((0, CILIterElem::Node(tree)));
+                    self.next()
+                }
+                _ => {
+                    self.elems.pop();
+                    self.next()
+                }
+            },
+            CILIterElem::Root(
+                CILRoot::SourceFileInfo(_)
+                | CILRoot::GoTo { .. }
+                | CILRoot::VoidRet
+                | CILRoot::Break,
+            ) => {
+                self.elems.pop();
+                self.next()
+            }
+            CILIterElem::Root(CILRoot::Call { site: _, args }) => {
+                if *idx - 1 < args.len() {
+                    let arg = &args[*idx - 1];
+                    *idx += 1;
+                    self.elems.push((0, CILIterElem::Node(arg)));
+                    self.next()
+                } else {
+                    self.elems.pop();
+                    self.next()
+                }
+            }
+            CILIterElem::Node(
+                CILNode::Call { site: _, args } | CILNode::NewObj { site: _, args },
+            ) => {
+                if *idx - 1 < args.len() {
+                    let arg = &args[*idx - 1];
+                    *idx += 1;
+                    self.elems.push((0, CILIterElem::Node(arg)));
+                    self.next()
+                } else {
+                    self.elems.pop();
+                    self.next()
+                }
+            }
+            _ => todo!("Unhandled iter elem {elem:?}"),
+        }
+    }
+}
+impl<'a> CILIter<'a> {
+    pub fn new_node(node: &'a CILNode) -> Self {
+        Self {
+            elems: vec![(0, CILIterElem::Node(node))],
+        }
+    }
+    pub fn new_root(node: &'a CILRoot) -> Self {
+        Self {
+            elems: vec![(0, CILIterElem::Root(node))],
+        }
+    }
+}
+impl<'a> IntoIterator for &'a CILNode {
+    type Item = CILIterElem<'a>;
+
+    type IntoIter = CILIter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        CILIter::new_node(self)
+    }
+}
+impl<'a> IntoIterator for &'a CILRoot {
+    type Item = CILIterElem<'a>;
+
+    type IntoIter = CILIter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        CILIter::new_root(self)
+    }
+}
+#[test]
+fn iter() {
+    let node = CILNode::Add(
+        Box::new(CILNode::Mul(
+            Box::new(CILNode::LDLoc(0)),
+            Box::new(CILNode::SizeOf(Box::new(Type::U8))),
+        )),
+        Box::new(CILNode::LDLoc(1)),
+    );
+    let mut iter = node.into_iter();
+    assert!(matches!(
+        iter.next(),
+        Some(CILIterElem::Node(CILNode::Add(_, _)))
+    ));
+    assert!(matches!(
+        iter.next(),
+        Some(CILIterElem::Node(CILNode::Mul(_, _)))
+    ));
+    assert!(matches!(
+        iter.next(),
+        Some(CILIterElem::Node(CILNode::LDLoc(_)))
+    ));
+    assert!(matches!(
+        iter.next(),
+        Some(CILIterElem::Node(CILNode::SizeOf(_)))
+    ));
+    assert!(matches!(
+        iter.next(),
+        Some(CILIterElem::Node(CILNode::LDLoc(1)))
+    ));
+    assert!(matches!(iter.next(), None));
+    let root = CILRoot::Call {
+        site: CallSite::new(
+            None,
+            "bob".into(),
+            FnSig::new(&[Type::I32, Type::F32], Type::Void),
+            true,
+        ),
+        args: [CILNode::LdcI32(-77), CILNode::LdcF32(3.14159)].into(),
+    };
+    let mut iter = root.into_iter();
+    assert!(matches!(
+        iter.next(),
+        Some(CILIterElem::Root(CILRoot::Call { .. }))
+    ));
+    assert!(matches!(
+        iter.next(),
+        Some(CILIterElem::Node(CILNode::LdcI32(-77)))
+    ));
+    assert!(matches!(
+        iter.next(),
+        Some(CILIterElem::Node(CILNode::LdcF32(3.14159)))
+    ));
+    assert!(matches!(iter.next(), None));
 }

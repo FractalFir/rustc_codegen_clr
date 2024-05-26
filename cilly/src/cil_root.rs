@@ -172,7 +172,7 @@ impl CILRoot {
 
             Self::SetTMPLocal { value } => value.opt(),
             Self::SetStaticField { descr: _, value } => value.opt(),
-            Self::JumpingPad { ..} => (),
+            Self::JumpingPad { .. } => (),
         }
     }
     #[must_use]
@@ -398,7 +398,8 @@ impl CILRoot {
         }
     }
 
-    #[must_use] pub fn source_info(
+    #[must_use]
+    pub fn source_info(
         file: &str,
         line: std::ops::Range<u64>,
         column: std::ops::Range<u64>,

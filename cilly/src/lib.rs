@@ -67,7 +67,8 @@ pub fn mangle(tpe: &Type) -> std::borrow::Cow<'static, str> {
         //_ => todo!("Can't mangle type {tpe:?}"),
     }
 }
-#[must_use] pub fn mem_checks() -> bool {
+#[must_use]
+pub fn mem_checks() -> bool {
     *crate::MEM_CHECKS
 }
 use lazy_static::lazy_static;

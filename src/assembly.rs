@@ -406,6 +406,10 @@ impl Assembly {
 
         let adjust = check_align_adjust(&mir.local_decls, tyctx, &instance);
         method.adjust_aligement(adjust);
+        /*
+        for node in method.blocks().into_iter().flat_map(|block|block.trees()).flat_map(|tree|tree.root().into_iter()){
+            println!("node:{node:?}");
+        } */
         self.add_method(method);
         Ok(())
         //todo!("Can't add function")
