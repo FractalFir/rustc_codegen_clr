@@ -302,7 +302,10 @@ impl AssemblyExporter for CExporter {
 }
 fn node_string(tree: &CILNode, method: &Method) -> String {
     match tree {
-        CILNode::LocAllocAligned { tpe, align }=>format!("(((uintptr_t)alloca(sizeof({tpe})) + {align})) + ({align} - 1)) & (-{align}))",tpe = c_tpe(tpe)),
+        CILNode::LocAllocAligned { tpe, align } => format!(
+            "(((uintptr_t)alloca(sizeof({tpe})) + {align})) + ({align} - 1)) & (-{align}))",
+            tpe = c_tpe(tpe)
+        ),
         CILNode::PointerToConstValue(_value) => {
             panic!("ERROR: const values must be allocated before CIL export phase.")
         }

@@ -206,7 +206,7 @@ impl TyCache {
             })
             .expect("Could not get type layout!");
         let mut fields = vec![];
-   
+
         match &layout.variants {
             rustc_target::abi::Variants::Single { index: _ } => {
                 let (tag_type, offset) = crate::utilis::adt::enum_tag_info(layout.layout, tyctx);

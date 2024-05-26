@@ -37,7 +37,8 @@ macro_rules! select {
                     1,
                     None
                 ),
-            ]
+            ],
+            vec![Some("if_true".into()),Some("if_false".into()),Some("cond".into())]
         );
     };
 }

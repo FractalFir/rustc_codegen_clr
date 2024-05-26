@@ -42,7 +42,8 @@ add_method_from_trees!(
             1,
             None
         ),
-    ]
+    ],
+    vec![Some("cast_from".into())]
 );
 add_method_from_trees!(
     cast_f32_u8,
@@ -113,7 +114,8 @@ add_method_from_trees!(
             3,
             None
         ),
-    ]
+    ],
+    vec![Some("cast_from".into())]
 );
 add_method_from_trees!(
     cast_f32_u16,
@@ -184,7 +186,8 @@ add_method_from_trees!(
             3,
             None
         ),
-    ]
+    ],
+    vec![Some("cast_from".into())]
 );
 add_method_from_trees!(
     cast_f32_u32,
@@ -255,7 +258,8 @@ add_method_from_trees!(
             3,
             None
         ),
-    ]
+    ],
+    vec![Some("cast_from".into())]
 );
 add_method_from_trees!(
     cast_f32_u64,
@@ -326,7 +330,8 @@ add_method_from_trees!(
             3,
             None
         ),
-    ]
+    ],
+    vec![Some("cast_from".into())]
 );
 add_method_from_trees!(
     cast_f32_usize,
@@ -416,7 +421,8 @@ add_method_from_trees!(
             3,
             None
         ),
-    ]
+    ],
+    vec![Some("cast_from".into())]
 );
 add_method_from_trees!(
     cast_f64_usize,
@@ -506,7 +512,8 @@ add_method_from_trees!(
             3,
             None
         ),
-    ]
+    ],
+    vec![Some("cast_from".into())]
 );
 add_method_from_trees!(
     cast_f64_isize,
@@ -615,7 +622,8 @@ add_method_from_trees!(
             3,
             None
         ),
-    ]
+    ],
+    vec![Some("cast_from".into())]
 );
 add_method_from_trees!(
     cast_f32_isize,
@@ -724,7 +732,8 @@ add_method_from_trees!(
             3,
             None
         ),
-    ]
+    ],
+    vec![Some("cast_from".into())]
 );
 add_method_from_trees!(
     cast_f32_i8,
@@ -795,7 +804,8 @@ add_method_from_trees!(
             3,
             None
         ),
-    ]
+    ],
+    vec![Some("cast_from".into())]
 );
 add_method_from_trees!(
     cast_f32_i16,
@@ -866,7 +876,8 @@ add_method_from_trees!(
             3,
             None
         ),
-    ]
+    ],
+    vec![Some("cast_from".into())]
 );
 add_method_from_trees!(
     cast_f32_i32,
@@ -937,7 +948,8 @@ add_method_from_trees!(
             3,
             None
         ),
-    ]
+    ],
+    vec![Some("cast_from".into())]
 );
 add_method_from_trees!(
     cast_f32_i64,
@@ -1008,7 +1020,8 @@ add_method_from_trees!(
             3,
             None
         ),
-    ]
+    ],
+    vec![Some("cast_from".into())]
 );
 add_method_from_trees!(
     cast_f64_u8,
@@ -1079,7 +1092,8 @@ add_method_from_trees!(
             3,
             None
         ),
-    ]
+    ],
+    vec![Some("cast_from".into())]
 );
 add_method_from_trees!(
     cast_f64_u16,
@@ -1150,7 +1164,8 @@ add_method_from_trees!(
             3,
             None
         ),
-    ]
+    ],
+    vec![Some("cast_from".into())]
 );
 add_method_from_trees!(
     cast_f64_u32,
@@ -1221,7 +1236,8 @@ add_method_from_trees!(
             3,
             None
         ),
-    ]
+    ],
+    vec![Some("cast_from".into())]
 );
 add_method_from_trees!(
     cast_f64_u64,
@@ -1292,7 +1308,8 @@ add_method_from_trees!(
             3,
             None
         ),
-    ]
+    ],
+    vec![Some("cast_from".into())]
 );
 add_method_from_trees!(
     cast_f64_i8,
@@ -1363,7 +1380,8 @@ add_method_from_trees!(
             3,
             None
         ),
-    ]
+    ],
+    vec![Some("cast_from".into())]
 );
 add_method_from_trees!(
     cast_f64_i16,
@@ -1434,7 +1452,8 @@ add_method_from_trees!(
             3,
             None
         ),
-    ]
+    ],
+    vec![Some("cast_from".into())]
 );
 add_method_from_trees!(
     cast_f64_i32,
@@ -1505,7 +1524,8 @@ add_method_from_trees!(
             3,
             None
         ),
-    ]
+    ],
+    vec![Some("cast_from".into())]
 );
 add_method_from_trees!(
     cast_f64_i64,
@@ -1576,7 +1596,8 @@ add_method_from_trees!(
             3,
             None
         ),
-    ]
+    ],
+    vec![Some("cast_from".into())]
 );
 pub fn casts(asm: &mut Assembly) {
     cast_f32_u8(asm);

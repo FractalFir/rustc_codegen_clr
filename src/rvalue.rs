@@ -122,7 +122,7 @@ pub fn handle_rvalue<'tcx>(
             method_instance,
             tycache,
         ),
-       
+
         Rvalue::UnaryOp(binop, operand) => {
             crate::unop::unop(*binop, operand, tyctx, method, method_instance, tycache)
         }

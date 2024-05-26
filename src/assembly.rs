@@ -225,19 +225,20 @@ impl Assembly {
         name: &str,
         cache: &mut TyCache,
     ) -> Result<(), MethodCodegenError> {
-        match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            self.add_fn(instance, tcx, name, cache)
-        })) {
-            Ok(success) => success,
-            Err(payload) => {
-                cache.recover_from_panic();
-                if let Some(msg) = payload.downcast_ref::<&str>() {
-                    eprintln!("could not compile method {name}. fn_add panicked with unhandled message: {msg:?}");
-                    //self.add_method(Method::missing_because(format!("could not compile method {name}. fn_add panicked with unhandled message: {msg:?}")));
-                    Ok(())
-                } else {
-                    eprintln!("could not compile method {name}. fn_add panicked with no message.");
-                    Ok(())
+        rustc_middle::ty::print::with_no_trimmed_paths! {match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                self.add_fn(instance, tcx, name, cache)
+            })) {
+                Ok(success) => success,
+                Err(payload) => {
+                    cache.recover_from_panic();
+                    if let Some(msg) = payload.downcast_ref::<&str>() {
+                        eprintln!("could not compile method {name}. fn_add panicked with unhandled message: {msg:?}");
+                        //self.add_method(Method::missing_because(format!("could not compile method {name}. fn_add panicked with unhandled message: {msg:?}")));
+                        Ok(())
+                    } else {
+                        eprintln!("could not compile method {name}. fn_add panicked with no message.");
+                        Ok(())
+                    }
                 }
             }
         }
@@ -386,8 +387,9 @@ impl Assembly {
             name,
             locals,
             normal_bbs,
+            arg_names,
         )
-        .with_argnames(arg_names);
+        ;
         method.resolve_global_allocations(self, tyctx, cache);
         // TODO: Why is this even needed? The temporaries *should* be already allocated, why not all of them are?
         method.allocate_temporaries();
@@ -430,6 +432,7 @@ impl Assembly {
                         (None, Type::Ptr(Type::U8.into())),
                     ],
                     vec![BasicBlock::new(vec![CILRoot::VoidRet.into()], 0, None)],
+                    vec![],
                 )
             })
     }
@@ -894,6 +897,7 @@ impl Assembly {
                 &format!("init_a{bytes:x}"),
                 vec![(Some("alloc_ptr".into()), Type::Ptr(Type::U8.into()))],
                 vec![block],
+                vec![],
             );
 
             let cctor = self.add_cctor();
@@ -959,18 +963,21 @@ fn link_static_initializers(a: Option<&Method>, b: Option<&Method>) -> Option<Me
 }
 type LocalDefList = Vec<(Option<IString>, Type)>;
 type ArgsDebugInfo = Vec<Option<IString>>;
-fn check_align_adjust<'tyctx>(locals: &rustc_index::IndexVec<Local, LocalDecl<'tyctx>>,
-tyctx: TyCtxt<'tyctx>,method_instance:&Instance<'tyctx>,)->Vec<Option<u64>>{
-    let mut adjusts:Vec<Option<u64>> = Vec::with_capacity(locals.len());
+fn check_align_adjust<'tyctx>(
+    locals: &rustc_index::IndexVec<Local, LocalDecl<'tyctx>>,
+    tyctx: TyCtxt<'tyctx>,
+    method_instance: &Instance<'tyctx>,
+) -> Vec<Option<u64>> {
+    let mut adjusts: Vec<Option<u64>> = Vec::with_capacity(locals.len());
     for (_, local) in locals.iter().enumerate() {
         let ty = crate::utilis::monomorphize(method_instance, local.ty, tyctx);
-        let adjust = crate::utilis::requries_align_adjustement(ty,tyctx,);
-        if let Some(adjust) = adjust{
+        let adjust = crate::utilis::requries_align_adjustement(ty, tyctx);
+        if let Some(adjust) = adjust {
             eprintln!(
                 "type {ty} requires algiement adjustements. Its algement should be {adjust:?}.",
             );
         }
-       
+
         adjusts.push(adjust);
     }
     adjusts
@@ -1042,7 +1049,10 @@ fn allocation_initializer_method(
             tree: CILNode::TransmutePtr {
                 val: Box::new(call!(
                     CallSite::alloc(),
-                    [conv_isize!(ldc_u64!(bytes.len() as u64)),conv_isize!(ldc_u64!(align as u64))]
+                    [
+                        conv_isize!(ldc_u64!(bytes.len() as u64)),
+                        conv_isize!(ldc_u64!(align as u64))
+                    ]
                 )),
                 new_ptr: Box::new(Type::Ptr(Box::new(Type::U8))),
             },
@@ -1120,6 +1130,7 @@ fn allocation_initializer_method(
             (Some("alloc_ptr".into()), Type::Ptr(Type::U8.into())),
         ],
         vec![BasicBlock::new(trees, 0, None)],
+        vec![],
     )
 }
 fn calculate_hash<T: std::hash::Hash>(t: &T) -> u64 {

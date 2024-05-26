@@ -11,15 +11,22 @@ use crate::{
     r#type::TypeDef,
 };
 use lazy_static::lazy_static;
-pub enum IlasmFlavour{
+pub enum IlasmFlavour {
     Clasic,
     Modern,
 }
-lazy_static!{
-    pub static ref ILASM_FLAVOUR: IlasmFlavour ={
-        if String::from_utf8_lossy(&std::process::Command::new(&*crate::config::ILASM_PATH).output().unwrap().stdout).contains("PDB"){
+lazy_static! {
+    pub static ref ILASM_FLAVOUR: IlasmFlavour = {
+        if String::from_utf8_lossy(
+            &std::process::Command::new(&*crate::config::ILASM_PATH)
+                .output()
+                .unwrap()
+                .stdout,
+        )
+        .contains("PDB")
+        {
             IlasmFlavour::Modern
-        }else{
+        } else {
             IlasmFlavour::Clasic
         }
     };
@@ -126,7 +133,7 @@ impl AssemblyExporter for ILASMExporter {
             "-OPTIMIZE".into(),
             "-FOLD".into(),
         ];
-      
+
         let out = std::process::Command::new(crate::config::ILASM_PATH.clone())
             .args(args)
             .output()
@@ -293,7 +300,7 @@ fn method_cil(w: &mut impl Write, method: &Method) -> std::io::Result<()> {
         match &local.0 {
             None => write!(
                 w,
-                "\t\t[{local_id}] {escaped_type} v",
+                "\t\t[{local_id}] {escaped_type}",
                 escaped_type = non_void_type_cil(&local.1)
             )?,
             Some(name) => write!(
@@ -307,7 +314,7 @@ fn method_cil(w: &mut impl Write, method: &Method) -> std::io::Result<()> {
         match &local.0 {
             None => write!(
                 w,
-                ",\n\t\t[{local_id}] {escaped_type} v",
+                ",\n\t\t[{local_id}] {escaped_type}",
                 escaped_type = non_void_type_cil(&local.1)
             )?,
             Some(name) => write!(

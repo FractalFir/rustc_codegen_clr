@@ -273,7 +273,6 @@ pub fn tuple_typedef(elements: &[Type], layout: Layout) -> TypeDef {
         0,
         None,
         None,
-        
     )
 }
 #[must_use]
@@ -345,6 +344,7 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
                 0,
                 None,
             )],
+            vec![Some("this".into()),Some("idx".into()),Some("val".into())],
         );
         def.add_method(set_usize);
 
@@ -373,6 +373,7 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
                 0,
                 None,
             )],
+            vec![Some("this".into()),Some("idx".into())],
         );
         def.add_method(get_adress_usize);
         // get_Item
@@ -405,6 +406,7 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
                 0,
                 None,
             )],
+            vec![Some("this".into()),Some("idx".into())],
         );
 
         def.add_method(get_item_usize);

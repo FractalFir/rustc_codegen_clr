@@ -67,10 +67,13 @@ add_method_from_trees!(
                 .into(),
                 CILRoot::Throw(CILNode::NewObj {
                     site: CallSite::boxed(
-                        Some(DotnetTypeRef::new(
-                            Some("System.Runtime"),
-                            "System.IndexOutOfRangeException"
-                        ).with_valuetype(false)),
+                        Some(
+                            DotnetTypeRef::new(
+                                Some("System.Runtime"),
+                                "System.IndexOutOfRangeException"
+                            )
+                            .with_valuetype(false)
+                        ),
                         ".ctor".into(),
                         FnSig::new(&[], &Type::Void),
                         true
@@ -90,12 +93,13 @@ add_method_from_trees!(
             1,
             None
         ),
-    ]
+    ],
+    vec![Some("idx".into()),Some("bound".into())]
 );
 
 #[macro_export]
 macro_rules! add_method_from_trees {
-    ($name:ident,$input:expr,$output:expr,$trees:expr) => {
+    ($name:ident,$input:expr,$output:expr,$trees:expr,$args:expr) => {
         fn $name(asm: &mut $crate::assembly::Assembly) {
             let method = $crate::method::Method::new(
                 $crate::access_modifier::AccessModifer::Private,
@@ -104,11 +108,12 @@ macro_rules! add_method_from_trees {
                 stringify!($name),
                 vec![],
                 $trees,
+                $args,
             );
             asm.add_method(method);
         }
     };
-    ($name:ident,$input:expr,$output:expr,$trees:expr,$locals:expr) => {
+    ($name:ident,$input:expr,$output:expr,$trees:expr,$locals:expr,$args:expr) => {
         fn $name(asm: &mut $crate::assembly::Assembly) {
             let mut method = $crate::method::Method::new(
                 $crate::access_modifier::AccessModifer::Private,
@@ -117,6 +122,7 @@ macro_rules! add_method_from_trees {
                 stringify!($name),
                 $locals.into(),
                 $trees,
+                $args,
             );
             asm.add_method(method);
         }
@@ -205,9 +211,62 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
                 None,
             )]
         },
+        vec![Some("size".into()),Some("align".into())]
     );
 
     asm.add_method(__rust_alloc);
+    let mut __rust_alloc_zeroed = Method::new(
+        AccessModifer::Private,
+        MethodType::Static,
+        FnSig::new(&[Type::USize, Type::USize], &Type::Ptr(Type::U8.into())),
+        "__rust_alloc_zeroed",
+        vec![(Some("alloc_ptr".into()),Type::Ptr(Box::new(Type::U8)))],
+        if *crate::config::CHECK_ALLOCATIONS {
+            vec![
+                BasicBlock::new(
+                    vec![CILRoot::BTrue {
+                        target: 2,
+                        sub_target: 0,
+                        cond: lt_un!(conv_usize!(ldc_u64!(MAX_ALLOC_SIZE)), CILNode::LDArg(0)),
+                    }
+                    .into()],
+                    0,
+                    None,
+                ),
+                BasicBlock::new(
+                    vec![
+                        CILRoot::STLoc { local: 0, tree: call!(CallSite::alloc(), [CILNode::LDArg(0), CILNode::LDArg(1)]) }.into(),
+                        CILRoot::InitBlk{dst:CILNode::LDLoc(0),val:CILNode::LdcU32(0),count:CILNode::LDArg(0)}.into(),
+                        CILRoot::Ret {
+                        tree: CILNode::LDLoc(0),
+                    }
+                    .into()],
+                    1,
+                    None,
+                ),
+                BasicBlock::new(
+                    vec![
+                        CILRoot::throw(&format!("Max alloc size of {MAX_ALLOC_SIZE} exceeded."))
+                            .into(),
+                    ],
+                    2,
+                    None,
+                ),
+            ]
+        } else {
+            vec![BasicBlock::new(
+                vec![CILRoot::Ret {
+                    tree: call!(CallSite::alloc(), [CILNode::LDArg(0), CILNode::LDArg(1)]),
+                }
+                .into()],
+                0,
+                None,
+            )]
+        },
+        vec![Some("size".into()),Some("align".into())]
+    );
+
+    asm.add_method(__rust_alloc_zeroed);
     let mut __rust_dealloc = Method::new(
         AccessModifer::Private,
         MethodType::Static,
@@ -234,6 +293,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
             0,
             None,
         )],
+        vec![Some("ptr".into()),Some("align".into()),Some("size".into())],
     );
     puts(asm);
     asm.add_method(__rust_dealloc);
@@ -260,6 +320,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
             0,
             None,
         )],
+        vec![Some("ptr".into())],
     );
     let mut __rust_realloc = Method::new(
         AccessModifer::Private,
@@ -320,6 +381,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
                 None,
             )]
         },
+        vec![Some("ptr".into()),Some("old_size".into()),Some("new_size".into()),Some("align".into())],
     );
 
     asm.add_method(__rust_realloc);
@@ -379,5 +441,6 @@ add_method_from_trees!(
             None,
         ),
         BasicBlock::new(vec![CILRoot::VoidRet.into(),], 1, None,)
-    ]
+    ],
+    vec![Some("str".into())]
 );

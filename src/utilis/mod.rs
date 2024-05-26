@@ -377,17 +377,20 @@ pub fn is_zst<'tyctx>(ty: rustc_middle::ty::Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -
         .layout
         .is_zst()
 }
-pub fn requries_align_adjustement<'tyctx>(ty: rustc_middle::ty::Ty<'tyctx>, tyctx: TyCtxt<'tyctx>)->Option<u64>{
-    let layout =  tyctx
-    .layout_of(rustc_middle::ty::ParamEnvAnd {
-        param_env: ParamEnv::reveal_all(),
-        value: ty,
-    }).unwrap();
+pub fn requries_align_adjustement<'tyctx>(
+    ty: rustc_middle::ty::Ty<'tyctx>,
+    tyctx: TyCtxt<'tyctx>,
+) -> Option<u64> {
+    let layout = tyctx
+        .layout_of(rustc_middle::ty::ParamEnvAnd {
+            param_env: ParamEnv::reveal_all(),
+            value: ty,
+        })
+        .unwrap();
     //TODO: some types requre aligement smaller than 16 bytes but larger than their size. Handle that. Requires reimplemting .NETs algiement clacualtions.
-    if layout.align.abi.bytes() > 16{
+    if layout.align.abi.bytes() > 16 {
         Some(layout.align.abi.bytes())
-    }
-    else{
+    } else {
         None
     }
 }

@@ -9,8 +9,7 @@ use crate::{
 use rustc_middle::ty::TyCtxt;
 use serde::{Deserialize, Serialize};
 use std::{
-    hash::{Hash, Hasher},
-    ops::{Deref, DerefMut},
+    collections::HashSet, hash::{Hash, Hasher}, ops::{Deref, DerefMut}
 };
 /// Represenation of a CIL method.
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
@@ -62,13 +61,25 @@ impl Method {
         method_type: MethodType,
         sig: FnSig,
         name: &str,
-        locals: Vec<LocalDef>,
+        mut locals: Vec<LocalDef>,
         mut blocks: Vec<BasicBlock>,
+        mut arg_names:Vec<Option<IString>>,
     ) -> Self {
         blocks
             .iter_mut()
             .flat_map(|blck| blck.trees_mut().iter_mut())
             .for_each(super::cil_tree::CILTree::opt);
+        let mut used_names = HashSet::new();
+        for name in arg_names.iter_mut().chain(locals.iter_mut().map(|loc|&mut loc.0)).filter_map(|name|name.as_mut()){
+            let mut postfix = 0;
+            while used_names.get(&if postfix == 0 {name.clone()}else{format!("{name}{postfix}").into()}).is_some(){
+                postfix+=1;
+            }
+            if postfix != 0{
+                *name = format!("{name}{postfix}").into();
+            }
+            used_names.insert(name.clone());
+        }
         let mut res = Self {
             access,
             method_type,
@@ -77,7 +88,7 @@ impl Method {
             locals,
             blocks,
             attributes: Vec::new(),
-            arg_names: vec![],
+            arg_names,
         };
         res.allocate_temporaries();
         res.sheed_trees();
@@ -239,10 +250,6 @@ impl Method {
         BlockMutGuard { method: self }
     }
 
-    pub(crate) fn with_argnames(mut self, arg_names: Vec<Option<IString>>) -> Self {
-        self.arg_names = arg_names;
-        self
-    }
 
     #[must_use]
     pub fn arg_names(&self) -> &[Option<IString>] {
@@ -254,9 +261,9 @@ impl Method {
         self.blocks.push(BasicBlock::new(vec![], new_bb, None));
         new_bb
     }
-    
+
     pub(crate) fn adjust_aligement(&self, adjust: Vec<Option<u64>>) {
-        if !adjust.iter().any(|adjust|adjust.is_some()){
+        if !adjust.iter().any(|adjust| adjust.is_some()) {
             return;
         }
         todo!()

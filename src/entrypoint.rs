@@ -142,7 +142,7 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
                     2,
                     None,
                 ),
-            ],
+            ],vec![Some("args".into())]
         );
         //method.set_ops(ops);
         method.add_attribute(crate::method::Attribute::EntryPoint);
@@ -170,6 +170,7 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
                 0,
                 None,
             )],
+            vec![],
         );
 
         method.add_attribute(crate::method::Attribute::EntryPoint);

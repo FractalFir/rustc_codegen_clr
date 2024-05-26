@@ -11,22 +11,28 @@ class Test{
             return fibonacci(n-1) + fibonacci(n-2);
     }
 }
-    public static void Run(){
+    public static void RunFib(){
         fibonacci(10);
     }
-    public static void Main(string[] args){
+  
+    public static void FibBench(){
         for(int i = 0; i< 100_000_000; i++){
-            Run();
+            RunFib();
         }
         var stopwatch = new Stopwatch();
         stopwatch.Start();
         for(int i = 0; i< 100_000_000; i++){
-           Run();
+           RunFib();
         }
         stopwatch.Stop();
         var ms = stopwatch.ElapsedMilliseconds;
         var ns = (double)(ms*1_000_000);
         var ns_per_iter = ns/((double)(100_000_000));
         Console.WriteLine(ns_per_iter);
+    }
+   
+    public static void Main(string[] args){
+        FibBench();
+  
     }
 }

@@ -1,4 +1,4 @@
-fn ilasm_check(){
+fn ilasm_check() {
     match std::process::Command::new(&*rustc_codegen_clr::config::ILASM_PATH).output(){
         Ok(_)=>println!("An CIL assembler has been detected."),
         Err(err)=>panic!("Could not find the CIL assembler at name/path {:?}, due to {err:?}. 

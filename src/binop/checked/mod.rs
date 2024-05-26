@@ -13,7 +13,6 @@ use crate::{
 use rustc_middle::mir::{BinOp, Operand};
 use rustc_middle::ty::{Instance, IntTy, Ty, TyCtxt, TyKind, UintTy};
 
-
 pub fn result_tuple(tpe: Type, out_of_range: CILNode, val: CILNode) -> CILNode {
     let tuple = crate::r#type::simple_tuple(&[tpe.clone(), Type::Bool]);
     CILNode::TemporaryLocal(Box::new((

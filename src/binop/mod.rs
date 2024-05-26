@@ -37,17 +37,23 @@ pub(crate) fn binop<'tyctx>(
     let ty_a = operand_a.ty(&method.local_decls, tyctx);
     let ty_b = operand_b.ty(&method.local_decls, tyctx);
     match binop {
-        BinOp::AddWithOverflow => if ty_a.is_signed() {
-            add_signed(&ops_a, &ops_b, ty_a, tyctx, method_instance, tycache)} else {
-            add_unsigned(&ops_a, &ops_b, ty_a, tyctx, method_instance, tycache)
+        BinOp::AddWithOverflow => {
+            if ty_a.is_signed() {
+                add_signed(&ops_a, &ops_b, ty_a, tyctx, method_instance, tycache)
+            } else {
+                add_unsigned(&ops_a, &ops_b, ty_a, tyctx, method_instance, tycache)
             }
-        BinOp::Add |BinOp::AddUnchecked => {
+        }
+        BinOp::Add | BinOp::AddUnchecked => {
             add_unchecked(ty_a, ty_b, tyctx, &method_instance, tycache, ops_a, ops_b)
         }
-        BinOp::SubWithOverflow=> if ty_a.is_signed() {
-            sub_signed(&ops_a, &ops_b, ty_a, tyctx, method_instance, tycache) }else{
-            sub_unsigned(&ops_a, &ops_b, ty_a, tyctx, method_instance, tycache)
-            },
+        BinOp::SubWithOverflow => {
+            if ty_a.is_signed() {
+                sub_signed(&ops_a, &ops_b, ty_a, tyctx, method_instance, tycache)
+            } else {
+                sub_unsigned(&ops_a, &ops_b, ty_a, tyctx, method_instance, tycache)
+            }
+        }
         BinOp::Sub | BinOp::SubUnchecked => {
             sub_unchecked(ty_a, ty_b, tyctx, &method_instance, tycache, ops_a, ops_b)
         }
@@ -77,7 +83,9 @@ pub(crate) fn binop<'tyctx>(
         BinOp::Mul | BinOp::MulUnchecked => {
             mul_unchecked(ty_a, ty_b, tycache, &method_instance, tyctx, ops_a, ops_b)
         }
-        BinOp::MulWithOverflow => checked::mul(&ops_a, &ops_b, ty_a, tyctx, method_instance, tycache),
+        BinOp::MulWithOverflow => {
+            checked::mul(&ops_a, &ops_b, ty_a, tyctx, method_instance, tycache)
+        }
         BinOp::Div => div_unchecked(ty_a, ty_b, tycache, &method_instance, tyctx, ops_a, ops_b),
 
         BinOp::Ge => match ty_a.kind() {

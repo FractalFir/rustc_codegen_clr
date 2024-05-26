@@ -207,7 +207,10 @@ pub enum CILNode {
     /// Equivalent to `CILNode::LdcI32(1`), but with addtional typechecking info.
     LdTrue,
     /// Allocates a buffer of size at least `sizeof(tpe)` with aligement of `align`
-    LocAllocAligned{tpe:Box<Type>,align:u64},
+    LocAllocAligned {
+        tpe: Box<Type>,
+        align: u64,
+    },
 }
 
 impl CILNode {
@@ -508,7 +511,7 @@ impl CILNode {
     #[must_use]
     pub fn flatten(&self) -> Vec<CILOp> {
         let mut ops = match self {
-            Self::LocAllocAligned { tpe, align }=>vec![
+            Self::LocAllocAligned { tpe, align } => vec![
                 CILOp::SizeOf(tpe.clone()),
                 CILOp::LdcU64(*align),
                 CILOp::ConvISize(false),
@@ -516,7 +519,12 @@ impl CILNode {
                 CILOp::LocAlloc,
                 CILOp::LdcU64(*align - 1),
                 CILOp::Add,
-                CILOp::LdcU64(*align),CILOp::Rem,CILOp::Sub,CILOp::LdcU64(*align),CILOp::Add],
+                CILOp::LdcU64(*align),
+                CILOp::Rem,
+                CILOp::Sub,
+                CILOp::LdcU64(*align),
+                CILOp::Add,
+            ],
             Self::LdFalse => vec![CILOp::LdcI32(0)],
             Self::LdTrue => vec![CILOp::LdcI32(1)],
             Self::TransmutePtr { val, new_ptr: _ } => val.flatten(),
@@ -1018,7 +1026,7 @@ impl CILNode {
 
     pub(crate) fn sheed_trees(&mut self) -> Vec<CILRoot> {
         match self {
-            Self::LocAllocAligned {..}=>vec![],
+            Self::LocAllocAligned { .. } => vec![],
             Self::LdFalse => vec![],
             Self::LdTrue => vec![],
             Self::TransmutePtr { val, new_ptr: _ } => val.sheed_trees(),
