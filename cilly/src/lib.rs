@@ -8,8 +8,10 @@ pub mod dotnet_type;
 pub use dotnet_type::*;
 pub mod fn_sig;
 pub use fn_sig::*;
-pub mod static_field_desc;
 pub mod call_site;
+pub mod cil_node;
+pub mod cil_root;
+pub mod static_field_desc;
 #[must_use]
 /// Returns the name of a fixed-size array
 pub fn arr_name(element_count: usize, element: &Type) -> IString {
@@ -64,4 +66,19 @@ pub fn mangle(tpe: &Type) -> std::borrow::Cow<'static, str> {
         Type::MethodGenericArg(_) => "h".into(),
         //_ => todo!("Can't mangle type {tpe:?}"),
     }
+}
+#[must_use] pub fn mem_checks() -> bool {
+    *crate::MEM_CHECKS
+}
+use lazy_static::lazy_static;
+lazy_static! {
+    #[doc = "Tells codegen to insert memory consistency checks after each call. If INSERT_MIR_DEBUG_COMMENTS is enabled, the consistency checks will be run also after each MIR statement."]pub static ref MEM_CHECKS:bool = {
+        std::env::vars().find_map(|(key,value)|if key == stringify!(MEM_CHECKS){
+            Some(value)
+        }else {
+            None
+        }).is_some_and(|value|match value.as_ref(){
+            "0"|"false"|"False"|"FALSE" => false,"1"|"true"|"True"|"TRUE" => true,_ => panic!("Boolean enviroment variable {} has invalid value {}",stringify!(MEM_CHECKS),value),
+        })
+    };
 }

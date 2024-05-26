@@ -1,11 +1,6 @@
-use crate::{
-    add_method_from_trees,
-    assembly::Assembly,
-    basic_block::BasicBlock,
-    cil_tree::{cil_node::CILNode, cil_root::CILRoot},
-    r#type::Type,
-};
-
+use crate::{add_method_from_trees, assembly::Assembly, basic_block::BasicBlock, r#type::Type};
+use cilly::cil_node::CILNode;
+use cilly::cil_root::CILRoot;
 macro_rules! select {
     ($tpe:ident, $name:ident) => {
         add_method_from_trees!(

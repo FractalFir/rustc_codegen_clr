@@ -1,10 +1,24 @@
-use crate::cil_tree::cil_root::CILRoot;
 use crate::place::place_adress;
 use crate::utilis::field_descrptor;
-use crate::{
-    call, call_virt, conv_f32, conv_f64, conv_isize, conv_usize, eq, ld_field, ldc_i32, ldc_u32,
-    ldc_u64, lt_un, size_of, sub,
+use cilly::cil_node::CILNode;
+use cilly::cil_root::CILRoot;
+use cilly::{
+    call, call_virt, conv_f32, conv_f64, conv_isize, conv_u64, conv_usize, eq, ld_field, ldc_i32,
+    ldc_u32, ldc_u64, lt_un, size_of, sub,
 };
+
+use crate::r#type::tycache::TyCache;
+use crate::{operand::handle_operand, place::place_set};
+use cilly::call_site::CallSite;
+use cilly::fn_sig::FnSig;
+use cilly::{DotnetTypeRef, Type};
+use rustc_middle::{
+    mir::{Body, Operand, Place},
+    ty::{Instance, ParamEnv, TyCtxt},
+};
+use rustc_span::source_map::Spanned;
+mod bswap;
+mod interop;
 fn compare_bytes(a: CILNode, b: CILNode, len: CILNode) -> CILNode {
     call!(
         CallSite::builtin(
@@ -22,20 +36,6 @@ fn compare_bytes(a: CILNode, b: CILNode, len: CILNode) -> CILNode {
         [a, b, len]
     )
 }
-use crate::r#type::tycache::TyCache;
-use crate::{
-    cil_tree::cil_node::CILNode, conv_u64, operand::handle_operand, place::place_set,
-};
-use cilly::call_site::CallSite;
-use cilly::fn_sig::FnSig;
-use cilly::{DotnetTypeRef, Type};
-use rustc_middle::{
-    mir::{Body, Operand, Place},
-    ty::{Instance, ParamEnv, TyCtxt},
-};
-use rustc_span::source_map::Spanned;
-mod bswap;
-mod interop;
 pub fn handle_intrinsic<'tyctx>(
     fn_name: &str,
     args: &[Spanned<Operand<'tyctx>>],
@@ -246,10 +246,6 @@ pub fn handle_intrinsic<'tyctx>(
                     .with_valuetype(false);
             let bit_operations = Some(bit_operations);
 
-            let mut res = Vec::new();
-            res.extend(
-                handle_operand(&args[0].node, tyctx, body, method_instance, type_cache).flatten(),
-            );
             let tpe = crate::utilis::monomorphize(
                 &method_instance,
                 call_instance.args[0]

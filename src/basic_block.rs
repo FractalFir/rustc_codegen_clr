@@ -1,10 +1,7 @@
 use std::collections::HashSet;
 
-use crate::{
-    cil::CILOp,
-    cil_tree::{cil_root::CILRoot, CILTree},
-    method::Method,
-};
+use crate::{cil::CILOp, cil_tree::CILTree, method::Method};
+use cilly::cil_root::CILRoot;
 use rustc_middle::mir::BasicBlockData;
 use rustc_middle::mir::UnwindAction;
 use rustc_middle::{
@@ -237,12 +234,7 @@ impl BasicBlock {
         let id = self.id();
         for (target, sub_target) in self.targets() {
             assert_eq!(sub_target, 0);
-            self.trees.push(
-                CILRoot::JumpingPad {
-                    ops: Box::new([CILOp::Label(id, target), CILOp::Leave(target)]),
-                }
-                .into(),
-            );
+            self.trees.push(CILRoot::JumpingPad { target, source:id }.into());
         }
         // Change branches to use lanuching pads.
 

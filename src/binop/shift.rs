@@ -1,11 +1,10 @@
-
-use crate::cil_tree::cil_node::CILNode;
 use crate::r#type::TyCache;
 use crate::utilis::compiletime_sizeof;
-use crate::{call, conv_u32, ldc_u32, rem_un, shl, shr, shr_un};
-use cilly::call_site::CallSite;
-use cilly::fn_sig::FnSig;
-use cilly::{DotnetTypeRef, Type};
+
+use cilly::{
+    call, call_site::CallSite, cil_node::CILNode, conv_u32, fn_sig::FnSig, ldc_u32, rem_un, shl,
+    shr, shr_un, DotnetTypeRef, Type,
+};
 
 use rustc_middle::ty::{Instance, IntTy, Ty, TyCtxt, TyKind, UintTy};
 pub fn shr_unchecked<'tyctx>(

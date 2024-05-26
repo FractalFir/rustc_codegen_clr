@@ -1,8 +1,9 @@
 // FIXME: This file may contain unnecesary morphize calls.
-use crate::cil_tree::cil_node::CILNode;
-use crate::cil_tree::cil_root::CILRoot;
+
 use crate::r#type::pointer_to_is_fat;
-use crate::{conv_usize, ldc_u64};
+use cilly::cil_node::CILNode;
+use cilly::cil_root::CILRoot;
+use cilly::{conv_usize, ldc_u64};
 
 use cilly::DotnetTypeRef;
 use rustc_middle::mir::Place;

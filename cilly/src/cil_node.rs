@@ -1,15 +1,8 @@
-use super::{append_vec, cil_root::CILRoot};
 use crate::{
-    call,
-    cil::{CILOp, },
-    method::Method,
-    r#type::TyCache,
-    IString,
+    call, call_site::CallSite, cil_root::CILRoot, field_desc::FieldDescriptor, fn_sig::FnSig,
+    static_field_desc::StaticFieldDescriptor, DotnetTypeRef, IString, Type,
 };
-use cilly::{
-    call_site::CallSite, field_desc::FieldDescriptor, fn_sig::FnSig, static_field_desc::StaticFieldDescriptor, DotnetTypeRef, Type
-};
-use rustc_middle::ty::TyCtxt;
+
 use serde::{Deserialize, Serialize};
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 pub enum CILNode {
@@ -114,10 +107,7 @@ pub enum CILNode {
     Shr(Box<Self>, Box<Self>),
     Shl(Box<Self>, Box<Self>),
     ShrUn(Box<Self>, Box<Self>),
-    // TODO: Remove this
-    RawOpsParrentless {
-        ops: Box<[CILOp]>,
-    },
+
     Call {
         args: Box<[Self]>,
         site: Box<CallSite>,
@@ -165,30 +155,30 @@ pub enum CILNode {
     LDTypeToken(Box<Type>),
     NewObj {
         site: Box<CallSite>,
-        args: Box<[CILNode]>,
+        args: Box<[Self]>,
     },
     LdStr(IString),
-    CallI(Box<(FnSig, CILNode, Box<[Self]>)>),
+    CallI(Box<(FnSig, Self, Box<[Self]>)>),
     LDIndU8 {
-        ptr: Box<CILNode>,
+        ptr: Box<Self>,
     },
     LDIndU16 {
-        ptr: Box<CILNode>,
+        ptr: Box<Self>,
     },
     LDIndU32 {
-        ptr: Box<CILNode>,
+        ptr: Box<Self>,
     },
     LDIndU64 {
-        ptr: Box<CILNode>,
+        ptr: Box<Self>,
     },
     /// Loads the length of an array - as a nint.
     LDLen {
-        arr: Box<CILNode>,
+        arr: Box<Self>,
     },
     /// Loads an object reference from a managed array
     LDElelemRef {
-        arr: Box<CILNode>,
-        idx: Box<CILNode>,
+        arr: Box<Self>,
+        idx: Box<Self>,
     },
     PointerToConstValue(u128),
     /// Unsafe, low-level internal op for checking the state of the CIL eval stack. WILL cause serious issues if not used **very** carefully, and only inside the `inspect` arm of `InspectValue`.
@@ -218,12 +208,12 @@ impl CILNode {
     #[must_use]
     pub fn print_debug_val(
         format_start: &str,
-        value: CILNode,
+        value: Self,
         format_end: &str,
         tpe: Type,
     ) -> Self {
         match tpe {
-            Type::U64 | Type::I64 | Type::U32 | Type::I32 => CILNode::InspectValue {
+            Type::U64 | Type::I64 | Type::U32 | Type::I32 => Self::InspectValue {
                 val: Box::new(value),
                 inspect: Box::new([
                     CILRoot::debug(format_start),
@@ -234,12 +224,12 @@ impl CILNode {
                             FnSig::new(&[tpe], Type::Void),
                             true,
                         ),
-                        args: Box::new([CILNode::GetStackTop]),
+                        args: Box::new([Self::GetStackTop]),
                     },
                     CILRoot::debug(format_end),
                 ]),
             },
-            Type::U8 | Type::U16 => CILNode::InspectValue {
+            Type::U8 | Type::U16 => Self::InspectValue {
                 val: Box::new(value),
                 inspect: Box::new([
                     CILRoot::debug(format_start),
@@ -250,12 +240,12 @@ impl CILNode {
                             FnSig::new(&[Type::U32], Type::Void),
                             true,
                         ),
-                        args: Box::new([CILNode::ConvU32(Box::new(CILNode::GetStackTop))]),
+                        args: Box::new([Self::ConvU32(Box::new(Self::GetStackTop))]),
                     },
                     CILRoot::debug(format_end),
                 ]),
             },
-            Type::I8 | Type::I16 => CILNode::InspectValue {
+            Type::I8 | Type::I16 => Self::InspectValue {
                 val: Box::new(value),
                 inspect: Box::new([
                     CILRoot::debug(format_start),
@@ -266,12 +256,12 @@ impl CILNode {
                             FnSig::new(&[Type::I32], Type::Void),
                             true,
                         ),
-                        args: Box::new([CILNode::ConvI32(Box::new(CILNode::GetStackTop))]),
+                        args: Box::new([Self::ConvI32(Box::new(Self::GetStackTop))]),
                     },
                     CILRoot::debug(format_end),
                 ]),
             },
-            Type::USize => CILNode::InspectValue {
+            Type::USize => Self::InspectValue {
                 val: Box::new(value),
                 inspect: Box::new([
                     CILRoot::debug(format_start),
@@ -282,14 +272,14 @@ impl CILNode {
                             FnSig::new(&[Type::U64], Type::Void),
                             true,
                         ),
-                        args: Box::new([CILNode::ZeroExtendToUSize(Box::new(
-                            CILNode::GetStackTop,
+                        args: Box::new([Self::ZeroExtendToUSize(Box::new(
+                            Self::GetStackTop,
                         ))]),
                     },
                     CILRoot::debug(format_end),
                 ]),
             },
-            Type::ISize => CILNode::InspectValue {
+            Type::ISize => Self::InspectValue {
                 val: Box::new(value),
                 inspect: Box::new([
                     CILRoot::debug(format_start),
@@ -300,18 +290,18 @@ impl CILNode {
                             FnSig::new(&[Type::I64], Type::Void),
                             true,
                         ),
-                        args: Box::new([CILNode::ConvISize(Box::new(CILNode::GetStackTop))]),
+                        args: Box::new([Self::ConvISize(Box::new(Self::GetStackTop))]),
                     },
                     CILRoot::debug(format_end),
                 ]),
             },
             Type::Void => value,
-            _ => CILNode::InspectValue {
+            _ => Self::InspectValue {
                 val: Box::new(value),
                 inspect: Box::new([
                     CILRoot::debug(format_start),
                     CILRoot::Pop {
-                        tree: CILNode::GetStackTop,
+                        tree: Self::GetStackTop,
                     },
                     CILRoot::debug(format_end),
                 ]),
@@ -319,7 +309,7 @@ impl CILNode {
         }
     }
     #[must_use]
-    pub fn select(tpe: Type, a: CILNode, b: CILNode, predictate: CILNode) -> Self {
+    pub fn select(tpe: Type, a: Self, b: Self, predictate: Self) -> Self {
         match tpe {
             Type::U128 | Type::I128 => call!(
                 CallSite::builtin(
@@ -375,15 +365,13 @@ impl CILNode {
     fn opt_children(&mut self) {
         match self {
             Self::LocAllocAligned { .. }=>(),
-            Self::LdFalse=>(),
-            Self::LdTrue=>(),
+            Self::LdFalse | Self::LdTrue=>(),
+     
             Self::TransmutePtr { val, new_ptr: _ }=>val.opt(),
-            Self::GetStackTop=>(),
+
             Self::InspectValue { val, inspect }=>{val.opt_children();inspect.iter_mut().for_each(super::cil_root::CILRoot::opt)},
-            Self::LDLoc(_) => (),
-            Self::LDArg(_) => (),
-            Self::LDLocA(_) => (),
-            Self::LDArgA(_) => (),
+            Self::LDLoc(_) |  Self::GetStackTop | Self::LDArg(_) | Self::LDLocA(_) | Self::LDArgA(_)=> (),
+       
             Self::BlackBox(inner)
             | Self::ConvF32(inner)
             | Self::ConvF64(inner)
@@ -426,11 +414,9 @@ impl CILNode {
                 a.opt();
                 b.opt();
             }
-
-            Self::RawOpsParrentless { ops: _ } => (),
             Self::Call { args, site: _ }
             | Self::NewObj { site: _, args }
-            | Self::CallVirt { args, site: _ } => args.iter_mut().for_each(CILNode::opt),
+            | Self::CallVirt { args, site: _ } => args.iter_mut().for_each(Self::opt),
             Self::LdcI64(_)
             | Self::LdcU64(_)
             | Self::LdcI32(_)
@@ -465,7 +451,7 @@ impl CILNode {
             Self::LDTypeToken(_) => (),
             Self::LdStr(_) => (),
             Self::CallI (ptr_sig_arg ) => {
-                ptr_sig_arg.2.iter_mut().for_each(CILNode::opt);
+                ptr_sig_arg.2.iter_mut().for_each(Self::opt);
                 ptr_sig_arg.1.opt();
             }
             Self::LDStaticField(_static_field) => (),
@@ -508,273 +494,6 @@ impl CILNode {
             },
             _ => (),
         }
-    }
-    #[must_use]
-    pub fn flatten(&self) -> Vec<CILOp> {
-        let mut ops = match self {
-            Self::LocAllocAligned { tpe, align } => vec![
-                CILOp::SizeOf(tpe.clone()),
-                CILOp::LdcU64(*align),
-                CILOp::ConvISize(false),
-                CILOp::Add,
-                CILOp::LocAlloc,
-                CILOp::LdcU64(*align - 1),
-                CILOp::Add,
-                CILOp::LdcU64(*align),
-                CILOp::Rem,
-                CILOp::Sub,
-                CILOp::LdcU64(*align),
-                CILOp::Add,
-            ],
-            Self::LdFalse => vec![CILOp::LdcI32(0)],
-            Self::LdTrue => vec![CILOp::LdcI32(1)],
-            Self::TransmutePtr { val, new_ptr: _ } => val.flatten(),
-            Self::GetStackTop => vec![],
-            Self::InspectValue { val, inspect } => {
-                let mut ops = val.flatten();
-                ops.push(CILOp::Dup);
-                ops.extend(inspect.iter().flat_map(CILRoot::into_ops));
-                ops
-            }
-            Self::PointerToConstValue(_value) => {
-                panic!("ERROR: const values must be allocated before CILOp flattening phase")
-            }
-            Self::CallI(sig_ptr_args) => {
-                let mut ops: Vec<_> = sig_ptr_args.2.iter().flat_map(CILNode::flatten).collect();
-                ops.extend(sig_ptr_args.1.flatten());
-                ops.push(CILOp::CallI(sig_ptr_args.0.clone().into()));
-                ops
-            }
-            Self::SubTrees(trees, root) => {
-                let mut flattened: Vec<_> = trees
-                    .iter()
-                    .flat_map(super::cil_root::CILRoot::into_ops)
-                    .collect();
-                flattened.extend(root.flatten());
-                flattened
-            }
-            Self::LoadTMPLocal => {
-                panic!("Unresolved temporary local during the CIL flattening phase!")
-            }
-            Self::LoadAddresOfTMPLocal => {
-                panic!("Unresolved temporary local during the CIL flattening phase!")
-            }
-            Self::LDFtn(site) => vec![CILOp::LDFtn(site.clone())],
-            Self::LDTypeToken(tpe) => vec![CILOp::LDTypeToken(tpe.clone())],
-            Self::TemporaryLocal(tuple) => {
-                panic!("Unresolved temporary local `{tuple:?}` during the CIL flattening phase!")
-            }
-            Self::LDLoc(local) => vec![CILOp::LDLoc(*local)],
-            Self::LDArg(local) => vec![CILOp::LDArg(*local)],
-            Self::SizeOf(tpe) => match **tpe {
-                Type::Void => vec![CILOp::LdcU32(0)],
-                _ => vec![CILOp::SizeOf(tpe.clone())],
-            },
-            Self::LDArgA(local) => vec![CILOp::LDArgA(*local)],
-            Self::LDLocA(local) => vec![CILOp::LDLocA(*local)],
-
-            Self::BlackBox(inner) => inner.flatten(),
-
-            Self::ZeroExtendToUSize(inner) => append_vec(inner.flatten(), CILOp::ConvUSize(false)),
-            Self::ZeroExtendToISize(inner) => append_vec(inner.flatten(), CILOp::ConvUSize(false)),
-            Self::MRefToRawPtr(inner) => append_vec(inner.flatten(), CILOp::ConvUSize(false)),
-
-            Self::ConvU8(inner) => append_vec(inner.flatten(), CILOp::ConvU8(false)),
-            Self::ConvU16(inner) => append_vec(inner.flatten(), CILOp::ConvU16(false)),
-            Self::ConvU32(inner) => append_vec(inner.flatten(), CILOp::ConvU32(false)),
-            Self::ConvU64(inner) => append_vec(inner.flatten(), CILOp::ConvU64(false)),
-
-            Self::ConvISize(inner) => append_vec(inner.flatten(), CILOp::ConvISize(false)),
-            Self::ConvI8(inner) => append_vec(inner.flatten(), CILOp::ConvI8(false)),
-            Self::ConvI16(inner) => append_vec(inner.flatten(), CILOp::ConvI16(false)),
-            Self::ConvI32(inner) => append_vec(inner.flatten(), CILOp::ConvI32(false)),
-            Self::ConvI64(inner) => append_vec(inner.flatten(), CILOp::ConvI64(false)),
-
-            Self::ConvF32(inner) => append_vec(inner.flatten(), CILOp::ConvF32),
-            Self::ConvF64(inner) => append_vec(inner.flatten(), CILOp::ConvF64),
-            Self::ConvF64Un(inner) => append_vec(inner.flatten(), CILOp::ConvF64Un),
-            Self::LDIndI8 { ptr } | Self::LDIndBool { ptr } => {
-                append_vec(ptr.flatten(), CILOp::LDIndI8)
-            }
-            Self::LDIndI16 { ptr } => append_vec(ptr.flatten(), CILOp::LDIndI16),
-            Self::LDIndI32 { ptr } => append_vec(ptr.flatten(), CILOp::LDIndI32),
-            Self::LDIndI64 { ptr } => append_vec(ptr.flatten(), CILOp::LDIndI64),
-            Self::LDIndISize { ptr } => append_vec(ptr.flatten(), CILOp::LDIndISize),
-            Self::LDIndPtr { ptr, .. } => append_vec(ptr.flatten(), CILOp::LDIndISize),
-            Self::LDIndUSize { ptr } => append_vec(ptr.flatten(), CILOp::LDIndISize),
-            Self::LDIndU8 { ptr } => append_vec(ptr.flatten(), CILOp::LDIndU8),
-            Self::LDIndU16 { ptr } => append_vec(ptr.flatten(), CILOp::LDIndU16),
-            Self::LDIndU32 { ptr } => append_vec(ptr.flatten(), CILOp::LDIndU32),
-            Self::LDIndU64 { ptr } => append_vec(ptr.flatten(), CILOp::LDIndU64),
-            Self::LdObj { ptr, obj } => append_vec(ptr.flatten(), CILOp::LdObj(obj.clone())),
-
-            Self::Neg(inner) => append_vec(inner.flatten(), CILOp::Neg),
-            Self::Not(inner) => append_vec(inner.flatten(), CILOp::Not),
-
-            Self::LDFieldAdress { addr, field } => {
-                append_vec(addr.flatten(), CILOp::LDFieldAdress(field.clone()))
-            }
-            Self::LDField { addr, field } => {
-                append_vec(addr.flatten(), CILOp::LDField(field.clone()))
-            }
-            Self::LDIndF32 { ptr } => append_vec(ptr.flatten(), CILOp::LDIndF32),
-            Self::LDIndF64 { ptr } => append_vec(ptr.flatten(), CILOp::LDIndF64),
-            Self::Add(a, b) => {
-                let mut res = a.flatten();
-                res.extend(b.flatten());
-                res.push(CILOp::Add);
-                res
-            }
-            Self::And(a, b) => {
-                let mut res = a.flatten();
-                res.extend(b.flatten());
-                res.push(CILOp::And);
-                res
-            }
-            Self::Shr(a, b) => {
-                let mut res = a.flatten();
-                res.extend(b.flatten());
-                res.push(CILOp::Shr);
-                res
-            }
-            Self::Shl(a, b) => {
-                let mut res = a.flatten();
-                res.extend(b.flatten());
-                res.push(CILOp::Shl);
-                res
-            }
-            Self::ShrUn(a, b) => {
-                let mut res = a.flatten();
-                res.extend(b.flatten());
-                res.push(CILOp::ShrUn);
-                res
-            }
-            Self::Or(a, b) => {
-                let mut res = a.flatten();
-                res.extend(b.flatten());
-                res.push(CILOp::Or);
-                res
-            }
-            Self::XOr(a, b) => {
-                let mut res = a.flatten();
-                res.extend(b.flatten());
-                res.push(CILOp::XOr);
-                res
-            }
-            Self::Div(a, b) => {
-                let mut res = a.flatten();
-                res.extend(b.flatten());
-                res.push(CILOp::Div);
-                res
-            }
-            Self::DivUn(a, b) => {
-                let mut res = a.flatten();
-                res.extend(b.flatten());
-                res.push(CILOp::DivUn);
-                res
-            }
-            Self::Rem(a, b) => {
-                let mut res = a.flatten();
-                res.extend(b.flatten());
-                res.push(CILOp::Rem);
-                res
-            }
-            Self::RemUn(a, b) => {
-                let mut res = a.flatten();
-                res.extend(b.flatten());
-                res.push(CILOp::RemUn);
-                res
-            }
-            Self::Sub(a, b) => {
-                let mut res = a.flatten();
-                res.extend(b.flatten());
-                res.push(CILOp::Sub);
-                res
-            }
-            Self::Eq(a, b) => {
-                let mut res = a.flatten();
-                res.extend(b.flatten());
-                res.push(CILOp::Eq);
-                res
-            }
-            Self::Lt(a, b) => {
-                let mut res = a.flatten();
-                res.extend(b.flatten());
-                res.push(CILOp::Lt);
-                res
-            }
-            Self::LtUn(a, b) => {
-                let mut res = a.flatten();
-                res.extend(b.flatten());
-                res.push(CILOp::LtUn);
-                res
-            }
-            Self::Gt(a, b) => {
-                let mut res = a.flatten();
-                res.extend(b.flatten());
-                res.push(CILOp::Gt);
-                res
-            }
-            Self::GtUn(a, b) => {
-                let mut res = a.flatten();
-                res.extend(b.flatten());
-                res.push(CILOp::GtUn);
-                res
-            }
-            Self::Mul(a, b) => {
-                let mut res = a.flatten();
-                res.extend(b.flatten());
-                res.push(CILOp::Mul);
-                res
-            }
-
-            Self::RawOpsParrentless { ops } => ops.clone().into(),
-            Self::Call { args, site } => {
-                let mut res: Vec<CILOp> = args.iter().flat_map(CILNode::flatten).collect();
-                res.push(CILOp::Call(site.clone()));
-                res
-            }
-            Self::NewObj { args, site } => {
-                let mut res: Vec<CILOp> = args.iter().flat_map(CILNode::flatten).collect();
-                res.push(CILOp::NewObj(site.clone()));
-                res
-            }
-            Self::CallVirt { args, site } => {
-                let mut res: Vec<CILOp> = args.iter().flat_map(CILNode::flatten).collect();
-                res.push(CILOp::CallVirt(site.clone()));
-                res
-            }
-            Self::LdcI64(val) => vec![CILOp::LdcI64(*val)],
-            Self::LdcU64(val) => vec![CILOp::LdcU64(*val)],
-            Self::LdcI32(val) => vec![CILOp::LdcI32(*val)],
-            Self::LdcU32(val) => vec![CILOp::LdcU32(*val)],
-            Self::LdcF64(val) => vec![CILOp::LdcF64(*val)],
-            Self::LdcF32(val) => vec![CILOp::LdcF32(*val)],
-            Self::LdStr(string) => vec![CILOp::LdStr(string.clone())],
-            Self::LoadGlobalAllocPtr { alloc_id } => {
-                panic!(
-                    "Unresolved global alloc with id:{alloc_id}  during the CIL flattening phase!"
-                )
-            }
-            Self::LDStaticField(sfield) => vec![CILOp::LDStaticField(sfield.clone())],
-            Self::LDLen { arr } => {
-                let mut res = arr.flatten();
-                res.push(CILOp::LDLen);
-                res
-            }
-            Self::LDElelemRef { arr, idx } => {
-                let mut res = arr.flatten();
-                res.extend(idx.flatten());
-                res.push(CILOp::LDElelemRef);
-                res
-            }
-        };
-        {
-            ops.push(CILOp::Pop);
-            crate::utilis::check_debugable(&ops, self, false);
-            ops.pop();
-        }
-        ops
     }
 
     pub(crate) fn allocate_tmps(
@@ -838,9 +557,6 @@ impl CILNode {
                 a.allocate_tmps(curr_loc, locals);
                 b.allocate_tmps(curr_loc, locals);
             }
-            Self::RawOpsParrentless { ops: _ } => {
-                eprintln!("WARNING: allocate_tmps does not work for `RawOpsParrentless`");
-            }
             Self::Call { args, site: _ } |
             Self::CallVirt { args, site: _ } =>args.iter_mut().for_each(|arg|arg.allocate_tmps(curr_loc, locals)),
             Self::LdcI64(_) |
@@ -902,128 +618,6 @@ impl CILNode {
             }
         };
     }
-    pub(crate) fn resolve_global_allocations(
-        &mut self,
-        asm: &mut crate::assembly::Assembly,
-        tyctx: TyCtxt,
-        tycache: &mut TyCache,
-    ) {
-        match self {
-            Self::LocAllocAligned {..}=>(),
-            Self::LdFalse=>(),
-            Self::LdTrue=>(),
-            Self::TransmutePtr { val, new_ptr: _ }=>val.resolve_global_allocations(asm, tyctx, tycache),
-            Self::GetStackTop => (),
-            Self::InspectValue { val, inspect }=>{
-                val.resolve_global_allocations(asm, tyctx, tycache);
-                inspect.iter_mut().for_each(|i|i.resolve_global_allocations(asm, tyctx, tycache));
-            }
-            Self:: PointerToConstValue(bytes)=> *self = CILNode::LDStaticField(Box::new(asm.add_const_value(*bytes,tyctx))),
-            Self::LDLoc(_) |
-            Self::LDArg(_) |
-            Self::LDLocA(_)|
-            Self::LDArgA(_) => (),
-            Self::BlackBox(_) => todo!(),
-            Self::SizeOf(_) => (),
-            Self::LDIndI8 { ptr }|
-            Self::LDIndBool { ptr }|
-            Self::LDIndI16 { ptr }|
-            Self::LDIndI32 { ptr }|
-            Self::LDIndI64 { ptr }|
-            Self::LDIndU8 { ptr }|
-            Self::LDIndU16 { ptr }|
-            Self::LDIndU32 { ptr }|
-            Self::LDIndU64 { ptr }|
-            Self::LDIndISize { ptr }|
-            Self::LDIndPtr { ptr, .. }|
-            Self::LDIndUSize { ptr }|
-            Self::LdObj { ptr, .. }|
-            Self::LDIndF32 { ptr } |
-            Self::LDIndF64 { ptr } => ptr.resolve_global_allocations(asm,tyctx,tycache),
-            Self::LDFieldAdress { addr, field: _ }|
-            Self::LDField { addr, field: _ } => addr.resolve_global_allocations(asm,tyctx,tycache),
-            Self::Add(a, b)
-            | Self::And(a, b)
-            | Self::Sub(a, b)
-            | Self::Mul(a, b)
-            | Self::Div(a, b)
-            | Self::DivUn(a, b)
-            | Self::Rem(a, b)
-            | Self::RemUn(a, b)
-            | Self::Or(a, b)
-            | Self::XOr(a, b)
-            | Self::Shr(a, b)
-            | Self::Shl(a, b)
-            | Self::ShrUn(a, b)
-            | Self::Eq(a, b)
-            | Self::Lt(a, b)
-            | Self::LtUn(a, b)
-            | Self::Gt(a, b)
-            | Self::GtUn(a, b) => {
-                a.resolve_global_allocations(asm,tyctx,tycache);
-                b.resolve_global_allocations(asm,tyctx,tycache);
-            }
-            Self::RawOpsParrentless { ops: _ } => {
-                eprintln!("WARNING: resolve_global_allocations does not work for `RawOpsParrentless`");
-            }
-            Self::Call { args, site: _ } |
-            Self::CallVirt { args, site: _ } =>args.iter_mut().for_each(|arg|arg.resolve_global_allocations(asm,tyctx,tycache)),
-            Self::LdcI64(_) |
-            Self::LdcU64(_) |
-            Self::LdcI32(_)  |
-            Self::LdcU32(_) |
-            Self::LdcF64(_) |
-            Self::LdcF32(_) =>(),
-            Self::LoadGlobalAllocPtr { alloc_id } => {
-                *self = Self::LDStaticField(asm.add_allocation(*alloc_id,tyctx,tycache).into());
-            }
-            Self::ConvF64Un(val) |
-            Self::ConvF32(val)|
-            Self::ConvF64(val) |
-            Self::ConvU8(val)|
-            Self::ConvU16(val)|
-            Self::ConvU32(val)|
-            Self::ConvU64(val)|
-            Self::ZeroExtendToUSize(val)|
-            Self::ZeroExtendToISize(val)|
-            Self::MRefToRawPtr(val) |
-            Self::ConvI8(val) |
-            Self::ConvI16(val)|
-            Self::ConvI32(val)|
-            Self::ConvI64(val) |
-            Self::ConvISize(val)|
-            //Self::Volatile(_) => todo!(),
-            Self::Neg(val) |
-            Self::Not(val) =>val.resolve_global_allocations(asm,tyctx,tycache),
-
-            Self::TemporaryLocal(tmp_loc) => {
-                tmp_loc.1.iter_mut().for_each(|tree|tree.resolve_global_allocations(asm,tyctx,tycache));
-                tmp_loc.2.resolve_global_allocations(asm,tyctx,tycache);
-            },
-            Self::SubTrees(trees, main) =>{
-                trees.iter_mut().for_each(|arg|arg.resolve_global_allocations(asm,tyctx,tycache));
-                main.resolve_global_allocations(asm,tyctx,tycache);
-            }
-            Self::LoadAddresOfTMPLocal => (),
-            Self::LoadTMPLocal => (),
-            Self::LDFtn(_) => (),
-            Self::LDTypeToken(_) => (),
-            Self::NewObj { site: _, args } => args.iter_mut().for_each(|arg|arg.resolve_global_allocations(asm,tyctx,tycache)),
-            Self::LdStr(_) => (),
-            Self::CallI(sig_ptr_args) => {
-                sig_ptr_args.1.resolve_global_allocations(asm, tyctx,tycache);
-                sig_ptr_args.2.iter_mut().for_each(|arg|arg.resolve_global_allocations(asm,tyctx,tycache));
-            }
-            Self::LDStaticField(_sfield)=>(),
-            Self::LDLen { arr } =>{
-                arr.resolve_global_allocations(asm, tyctx,tycache);
-            }
-            Self::LDElelemRef { arr, idx }=>{
-                arr.resolve_global_allocations(asm, tyctx,tycache);
-                idx.resolve_global_allocations(asm, tyctx,tycache);
-            }
-        }
-    }
 
     pub(crate) fn sheed_trees(&mut self) -> Vec<CILRoot> {
         match self {
@@ -1077,9 +671,9 @@ impl CILNode {
                 res.extend(b.sheed_trees());
                 res
             }
-            Self::RawOpsParrentless { ops: _ } => vec![],
+
             Self::Call { args, site: _ } | Self::CallVirt { args, site: _ } => {
-                args.iter_mut().flat_map(CILNode::sheed_trees).collect()
+                args.iter_mut().flat_map(Self::sheed_trees).collect()
             }
             Self::LdcI64(_)
             | Self::LdcU64(_)
@@ -1126,12 +720,12 @@ impl CILNode {
             Self::LoadTMPLocal => panic!("Trees should be sheed after locals are allocated!"),
             Self::LDFtn(_) | Self::LDTypeToken(_) => vec![],
             Self::NewObj { site: _, args } => {
-                args.iter_mut().flat_map(CILNode::sheed_trees).collect()
+                args.iter_mut().flat_map(Self::sheed_trees).collect()
             }
             Self::LdStr(_) => vec![],
             Self::CallI(sig_ptr_args) => {
                 let mut res = sig_ptr_args.1.sheed_trees();
-                res.extend(sig_ptr_args.2.iter_mut().flat_map(CILNode::sheed_trees));
+                res.extend(sig_ptr_args.2.iter_mut().flat_map(Self::sheed_trees));
                 res
             }
             Self::LDLen { arr } => arr.sheed_trees(),
@@ -1142,7 +736,7 @@ impl CILNode {
             }
         }
     }
-
+    /*
     pub(crate) fn validate(&self, method: &Method) -> Result<Type, String> {
         match self {
             Self::SubTrees(trees, main) => {
@@ -1554,7 +1148,7 @@ impl CILNode {
             Self::LDFtn(ftn) => Ok(Type::DelegatePtr(Box::new(ftn.signature().clone()))),
             _ => todo!("Can't check the type safety of {self:?}"),
         }
-    }
+    }*/
 }
 
 #[macro_export]
@@ -1775,7 +1369,7 @@ macro_rules! conv_f64 {
 #[macro_export]
 macro_rules! conv_f_un {
     ($a:expr) => {
-        $crate::cil_tree::cil_node::CILNode::ConvF64Un($a.into())
+        CILNode::ConvF64Un($a.into())
     };
 }
 /// Loads a value of type `i32`.
@@ -1806,39 +1400,39 @@ macro_rules! ldc_u64 {
         CILNode::LdcU64($val)
     };
 }
-impl std::ops::Add<CILNode> for CILNode {
-    type Output = CILNode;
+impl std::ops::Add<Self> for CILNode {
+    type Output = Self;
 
-    fn add(self, rhs: CILNode) -> Self::Output {
-        CILNode::Add(self.into(), rhs.into())
+    fn add(self, rhs: Self) -> Self::Output {
+        Self::Add(self.into(), rhs.into())
     }
 }
-impl std::ops::Sub<CILNode> for CILNode {
-    type Output = CILNode;
+impl std::ops::Sub<Self> for CILNode {
+    type Output = Self;
 
-    fn sub(self, rhs: CILNode) -> Self::Output {
-        CILNode::Sub(self.into(), rhs.into())
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self::Sub(self.into(), rhs.into())
     }
 }
-impl std::ops::Mul<CILNode> for CILNode {
-    type Output = CILNode;
+impl std::ops::Mul<Self> for CILNode {
+    type Output = Self;
 
-    fn mul(self, rhs: CILNode) -> Self::Output {
-        CILNode::Mul(self.into(), rhs.into())
+    fn mul(self, rhs: Self) -> Self::Output {
+        Self::Mul(self.into(), rhs.into())
     }
 }
-impl std::ops::BitOr<CILNode> for CILNode {
-    type Output = CILNode;
+impl std::ops::BitOr<Self> for CILNode {
+    type Output = Self;
 
-    fn bitor(self, rhs: CILNode) -> Self::Output {
+    fn bitor(self, rhs: Self) -> Self::Output {
         or!(self, rhs)
     }
 }
 
 impl std::ops::Neg for CILNode {
     fn neg(self) -> Self::Output {
-        CILNode::Neg(self.into())
+        Self::Neg(self.into())
     }
 
-    type Output = CILNode;
+    type Output = Self;
 }

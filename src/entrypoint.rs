@@ -1,16 +1,15 @@
 use std::num::NonZeroU8;
 
-use cilly::{call_site::CallSite, DotnetTypeRef, FnSig, Type};
+use cilly::{
+    call, call_site::CallSite, call_virt, cil_node::CILNode, cil_root::CILRoot, conv_usize,
+    ldc_u32, ldc_u64, size_of, DotnetTypeRef, FnSig, Type,
+};
 
 use crate::{
     basic_block::BasicBlock,
-    call, call_virt,
-   
-    cil_tree::{cil_node::CILNode, cil_root::CILRoot},
-    conv_usize, ldc_u32, ldc_u64,
     method::{Method, MethodType},
-    size_of,
 };
+
 /// Creates a wrapper method around entypoint represented by `CallSite`
 pub fn wrapper(entrypoint: &CallSite) -> Method {
     if entrypoint.signature().inputs()
@@ -27,7 +26,7 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
             }],
             Type::Void,
         );
-        let mem_checks = if *crate::config::MEM_CHECKS {
+        let mem_checks = if cilly::mem_checks() {
             CILRoot::Pop {
                 tree: CILNode::Call {
                     site: Box::new(CallSite::mcheck()),

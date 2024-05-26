@@ -1,13 +1,10 @@
+use cilly::cil_node::CILNode;
+use cilly::cil_root::CILRoot;
+
 use super::AssemblyExporter;
-use crate::cil_tree::cil_root::CILRoot;
 
 use crate::r#type::TypeDef;
-use crate::{
-    cil_tree::{cil_node::CILNode, CILTree},
-    method::Method,
-    r#type::Type,
-    IString,
-};
+use crate::{cil_tree::CILTree, method::Method, r#type::Type, IString};
 use std::collections::HashMap;
 use std::hash::Hasher;
 use std::process::Command;
@@ -486,7 +483,7 @@ fn node_string(tree: &CILNode, method: &Method) -> String {
                 b = node_string(b, method)
             )
         }
-        CILNode::RawOpsParrentless { .. } => todo!(),
+
         CILNode::Call { args, site } | CILNode::CallVirt { args, site } => {
             let name = site.name();
             let mut input_iter = args
@@ -826,8 +823,8 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
         CILRoot::CallI { sig, fn_ptr, args } => todo!(
             "Can't yet call function pointers in C. fn_ptr:{fn_ptr:?} sig:{sig:?} args:{args:?}"
         ),
-        CILRoot::JumpingPad { ops } => {
-            println!("WARNING: There should be no jumping pads in C, jet a jumping pad remains! ops:{ops:?}");
+        CILRoot::JumpingPad { .. } => {
+            println!("WARNING: There should be no jumping pads in C, jet a jumping pad remains!");
             "/*Invalid jump pad was here*/abort();\n".into()
         }
         CILRoot::SetStaticField { descr, value } => {

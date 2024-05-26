@@ -1,14 +1,12 @@
 use cilly::call_site::CallSite;
+use cilly::cil_node::CILNode;
+use cilly::cil_root::CILRoot;
 use cilly::field_desc::FieldDescriptor;
 use cilly::{DotnetTypeRef, Type};
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::{BinOp, Operand};
 use rustc_middle::ty::{Instance, IntTy, List, ParamEnv, Ty, TyCtxt, TyKind, UintTy};
 
-
-
-use crate::cil_tree::cil_node::CILNode;
-use crate::cil_tree::cil_root::CILRoot;
 use crate::r#type::TyCache;
 use cilly::fn_sig::FnSig;
 
@@ -16,11 +14,11 @@ pub mod bitop;
 pub mod checked;
 pub mod cmp;
 pub mod shift;
-use crate::{
+use bitop::{bit_and_unchecked, bit_or_unchecked, bit_xor_unchecked};
+use cilly::{
     call, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8, div, eq, gt_un, ldc_i32, lt_un, rem,
     rem_un, size_of, sub,
 };
-use bitop::{bit_and_unchecked, bit_or_unchecked, bit_xor_unchecked};
 
 use cmp::{eq_unchecked, gt_unchecked, lt_unchecked, ne_unchecked};
 use shift::{shl_checked, shl_unchecked, shr_checked, shr_unchecked};

@@ -1,12 +1,10 @@
-
-use crate::cil_tree::cil_node::CILNode;
-use crate::cil_tree::cil_root::CILRoot;
-use cilly::call_site::CallSite;
-use cilly::field_desc::FieldDescriptor;
-use cilly::   fn_sig::FnSig;
 use crate::operand::handle_operand;
+use cilly::cil_root::CILRoot;
+use cilly::field_desc::FieldDescriptor;
+use cilly::fn_sig::FnSig;
+use cilly::{call_site::CallSite, cil_node::CILNode};
 
-use crate::{conv_usize, ld_field, ldc_i32, ldc_u64, size_of};
+use cilly::{conv_usize, ld_field, ldc_i32, ldc_u64, size_of};
 
 use crate::r#type::{pointer_to_is_fat, TyCache, Type};
 use rustc_middle::{

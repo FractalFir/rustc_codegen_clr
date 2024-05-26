@@ -1,15 +1,11 @@
-use crate::r#type::tycache::TyCache;
-use crate::{
-    call, cil_tree::cil_node::CILNode, cil_tree::cil_root::CILRoot,
-    operand::handle_operand, place::place_set,
-};
-use cilly::call_site::CallSite;
-use cilly::{fn_sig::FnSig, DotnetTypeRef};
+use crate::{operand::handle_operand, place::place_set, r#type::tycache::TyCache};
+use cilly::{call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, fn_sig::FnSig, DotnetTypeRef};
 use rustc_middle::{
     mir::{Body, Operand, Place},
     ty::{Instance, TyCtxt, TyKind, UintTy},
 };
 use rustc_span::source_map::Spanned;
+
 pub fn bswap<'tyctx>(
     args: &[Spanned<Operand<'tyctx>>],
     destination: &Place<'tyctx>,

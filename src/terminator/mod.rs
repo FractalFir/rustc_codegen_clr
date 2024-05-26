@@ -1,8 +1,6 @@
-use crate::cil_tree::cil_node::CILNode;
-use crate::cil_tree::cil_root::CILRoot;
 use crate::cil_tree::CILTree;
 use crate::place::place_set;
-use cilly::call_site::CallSite;
+use cilly::{call_site::CallSite, cil_node::CILNode, cil_root::CILRoot};
 use rustc_span::source_map::Spanned;
 
 use crate::utilis::monomorphize;
@@ -112,7 +110,7 @@ pub fn handle_call_terminator<'tycxt>(
         }
         _ => todo!("Can't call type {func_ty:?}"),
     }
-    if *crate::config::MEM_CHECKS {
+    if cilly::mem_checks() {
         trees.push(
             CILRoot::Call {
                 site: CallSite::mcheck_check_all(),
@@ -169,12 +167,12 @@ pub fn handle_terminator<'ctx>(
             if type_cache.type_from_cache(ret, tyctx, Some(method_instance))
                 == crate::r#type::Type::Void
             {
-                CILRoot::VoidRet.into()
+                vec![CILRoot::VoidRet.into()]
             } else {
-                CILRoot::Ret {
+                vec![CILRoot::Ret {
                     tree: CILNode::LDLoc(0),
                 }
-                .into()
+                .into()]
             }
         }
         TerminatorKind::SwitchInt { discr, targets } => {
@@ -249,7 +247,9 @@ pub fn handle_terminator<'ctx>(
         }
         TerminatorKind::Unreachable => {
             let loc = terminator.source_info.span;
-            rustc_middle::ty::print::with_no_trimmed_paths! {CILRoot::throw(&format!("Unreachable reached at {loc:?}!")).into()}
+            vec![
+                rustc_middle::ty::print::with_no_trimmed_paths! {CILRoot::throw(&format!("Unreachable reached at {loc:?}!")).into()},
+            ]
         }
         TerminatorKind::InlineAsm {
             template: _,
@@ -261,22 +261,24 @@ pub fn handle_terminator<'ctx>(
             targets: _,
         } => {
             eprintln!("Inline assembly is not yet supported!");
-            CILRoot::throw("Inline assembly is not yet supported!").into()
+            vec![CILRoot::throw("Inline assembly is not yet supported!").into()]
         }
         TerminatorKind::UnwindTerminate(_) => {
             let loc = terminator.source_info.span;
-            rustc_middle::ty::print::with_no_trimmed_paths! {CILRoot::throw(&format!("UnwindTerminate reached at {loc:?}!")).into()}
+            vec![
+                rustc_middle::ty::print::with_no_trimmed_paths! {CILRoot::throw(&format!("UnwindTerminate reached at {loc:?}!")).into()},
+            ]
         }
         TerminatorKind::FalseEdge {
             real_target,
             imaginary_target: _,
         } => {
             // imaginary_target is ignored becase you can't jump to it.
-            CILRoot::GoTo {
+            vec![CILRoot::GoTo {
                 target: real_target.as_u32(),
                 sub_target: 0,
             }
-            .into()
+            .into()]
         }
         // Really just a goto, since it can never unwind.
         TerminatorKind::FalseUnwind {
@@ -284,11 +286,11 @@ pub fn handle_terminator<'ctx>(
             unwind: _,
         } => {
             // unwind is ignored becase it can't happen.
-            CILRoot::GoTo {
+            vec![CILRoot::GoTo {
                 target: real_target.as_u32(),
                 sub_target: 0,
             }
-            .into()
+            .into()]
         }
         TerminatorKind::CoroutineDrop {} => todo!("Can't drop corutines yet!"),
         TerminatorKind::Yield {

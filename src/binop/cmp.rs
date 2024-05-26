@@ -1,10 +1,9 @@
+use cilly::cil_node::CILNode;
 use rustc_middle::ty::{IntTy, Ty, TyKind, UintTy};
 
-
-use crate::cil_tree::cil_node::CILNode;
 use cilly::{call_site::CallSite, fn_sig::FnSig, DotnetTypeRef, Type};
 
-use crate::{call, eq, gt, gt_un, lt, lt_un};
+use cilly::{call, eq, gt, gt_un, lt, lt_un};
 pub fn ne_unchecked(ty_a: Ty<'_>, operand_a: CILNode, operand_b: CILNode) -> CILNode {
     //vec![eq_unchecked(ty_a), CILOp::LdcI32(0), CILOp::Eq]
     eq!(eq_unchecked(ty_a, operand_a, operand_b), CILNode::LdFalse)

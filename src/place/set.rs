@@ -1,13 +1,11 @@
 use super::{pointed_type, PlaceTy};
 
-use crate::cil_tree::cil_node::CILNode;
-use crate::cil_tree::cil_root::CILRoot;
 use crate::r#type::pointer_to_is_fat;
-use crate::{call, conv_usize, ld_field, ldc_u64, size_of};
-use cilly::call_site::CallSite;
-use cilly::field_desc::FieldDescriptor;
-use cilly::fn_sig::FnSig;
-use cilly::{DotnetTypeRef, Type};
+use cilly::cil_node::CILNode;
+use cilly::{
+    call, call_site::CallSite, cil_root::CILRoot, conv_usize, field_desc::FieldDescriptor,
+    fn_sig::FnSig, ld_field, ldc_u64, size_of, DotnetTypeRef, Type,
+};
 
 use rustc_middle::mir::PlaceElem;
 use rustc_middle::ty::{FloatTy, Instance, IntTy, TyCtxt, TyKind, UintTy};

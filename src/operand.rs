@@ -1,6 +1,5 @@
-use crate::cil_tree::cil_node::CILNode;
-use crate::cil_tree::cil_root::CILRoot;
-
+use cilly::cil_node::CILNode;
+use cilly::cil_root::CILRoot;
 use rustc_middle::mir::Operand;
 use rustc_middle::ty::{Instance, TyCtxt};
 pub(crate) fn handle_operand<'ctx>(

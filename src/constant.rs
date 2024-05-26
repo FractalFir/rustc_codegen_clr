@@ -1,12 +1,9 @@
-use crate::{
-
-    cil_tree::{cil_node::CILNode, cil_root::CILRoot},
-    conv_u64, conv_usize, ldc_u64,
-    r#type::TyCache,
-};
+use crate::r#type::TyCache;
 
 use cilly::{
-    call_site::CallSite, field_desc::FieldDescriptor, static_field_desc::StaticFieldDescriptor, DotnetTypeRef, FnSig, Type
+    call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_u64, conv_usize,
+    field_desc::FieldDescriptor, ldc_u64, static_field_desc::StaticFieldDescriptor, DotnetTypeRef,
+    FnSig, Type,
 };
 use rustc_middle::{
     mir::{

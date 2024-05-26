@@ -1,11 +1,6 @@
-use crate::cil_tree::cil_node::CILNode;
-use crate::cil_tree::cil_root::CILRoot;
-use crate::eq;
-use crate::ldc_u64;
-
-use crate::lt_un;
-
-use crate::sub;
+use cilly::cil_node::CILNode;
+use cilly::cil_root::CILRoot;
+use cilly::{eq, ldc_u64, lt_un, sub};
 
 use crate::r#type::Type;
 use cilly::field_desc::FieldDescriptor;
@@ -169,7 +164,7 @@ pub fn set_discr<'tyctx>(
             ..
         } => {
             let (tag_tpe, _) = enum_tag_info(layout, tyctx);
-            let tag_val = crate::ldc_u64!(ty
+            let tag_val = ldc_u64!(ty
                 .discriminant_for_variant(tyctx, variant_index)
                 .unwrap()
                 .val
@@ -199,7 +194,7 @@ pub fn set_discr<'tyctx>(
                 //let niche_llty = bx.cx().immediate_backend_type(niche.layout);
                 let niche_value = variant_index.as_u32() - niche_variants.start().as_u32();
                 let niche_value = (niche_value as u128).wrapping_add(niche_start);
-                let tag_val = crate::ldc_u64!(niche_value
+                let tag_val = ldc_u64!(niche_value
                     .try_into()
                     .expect("Enum varaint id can't fit in u64."));
                 let tag_val = crate::casts::int_to_int(Type::U64, &tag_tpe, tag_val);
@@ -231,8 +226,7 @@ pub fn get_discr<'tyctx>(
             let discr_val = ty
                 .discriminant_for_variant(tyctx, index)
                 .map_or(index.as_u32() as u128, |discr| discr.val);
-            let tag_val =
-                crate::ldc_u64!(discr_val.try_into().expect("Tag does not fit within a u64"));
+            let tag_val = ldc_u64!(discr_val.try_into().expect("Tag does not fit within a u64"));
             return crate::casts::int_to_int(Type::U64, &tag_tpe, tag_val);
         }
         Variants::Multiple {

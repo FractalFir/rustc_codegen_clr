@@ -1,9 +1,7 @@
-use crate::call;
-
-use crate::cil_tree::cil_node::CILNode;
 use cilly::call_site::CallSite;
+use cilly::cil_node::CILNode;
 use cilly::fn_sig::FnSig;
-use cilly::{DotnetTypeRef, Type};
+use cilly::{call, DotnetTypeRef, Type};
 
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::ty::{AdtDef, ConstKind, GenericArg, Ty, TyCtxt, TyKind};

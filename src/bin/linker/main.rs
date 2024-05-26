@@ -1,6 +1,8 @@
 #![deny(unused_must_use)]
 #![allow(clippy::module_name_repetitions)]
 use cilly::call_site::CallSite;
+use cilly::cil_node::CILNode;
+use cilly::cil_root::CILRoot;
 use cilly::{DotnetTypeRef, FnSig, Type};
 //use assembly::Assembly;
 use lazy_static::lazy_static;
@@ -10,9 +12,8 @@ use rustc_codegen_clr::{
     access_modifier,
     assembly::Assembly,
     basic_block::BasicBlock,
-    cil,
- 
-    cil_tree::{cil_node::CILNode, cil_root::CILRoot},
+  
+
     config, method,
     method::{Method, MethodType},
     AString, IString,

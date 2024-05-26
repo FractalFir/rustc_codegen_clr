@@ -1,7 +1,7 @@
 
-use crate::cil_tree::cil_node::CILNode;
 use crate::r#type::Type;
-use crate::{call, conv_usize, ld_field};
+use cilly::cil_node::CILNode;
+use cilly::{call, conv_usize, ld_field};
 use cilly::call_site::CallSite;
 use cilly::field_desc::FieldDescriptor;
 use cilly::fn_sig::FnSig;

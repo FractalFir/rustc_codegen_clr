@@ -1,11 +1,15 @@
-use crate::{
-    and, call, casts,  cil_tree::cil_node::CILNode, cil_tree::cil_root::CILRoot,
-    conv_i64, conv_isize, conv_u64, conv_usize, gt, gt_un, ldc_u32, lt, or, r#type::TyCache,
-    size_of,
+use cilly::cil_node::CILNode;
+use cilly::cil_root::CILRoot;
+use cilly::{
+    and, call, conv_i64, conv_isize, conv_u64, conv_usize, gt, gt_un, ldc_i32, ldc_i64, ldc_u32,
+    ldc_u64, lt, mul, or, size_of,
 };
 use cilly::{call_site::CallSite, field_desc::FieldDescriptor, DotnetTypeRef, FnSig, Type};
 
 use rustc_middle::ty::{Instance, IntTy, Ty, TyCtxt, TyKind, UintTy};
+
+use crate::casts;
+use crate::r#type::TyCache;
 
 pub fn result_tuple(tpe: Type, out_of_range: CILNode, val: CILNode) -> CILNode {
     let tuple = crate::r#type::simple_tuple(&[tpe.clone(), Type::Bool]);
@@ -30,10 +34,10 @@ pub fn result_tuple(tpe: Type, out_of_range: CILNode, val: CILNode) -> CILNode {
 }
 fn zero(ty: Ty) -> CILNode {
     match ty.kind() {
-        TyKind::Uint(UintTy::U8 | UintTy::U16 | UintTy::U32) => crate::ldc_u32!(0),
-        TyKind::Int(IntTy::I8 | IntTy::I16 | IntTy::I32) => crate::ldc_i32!(0),
-        TyKind::Uint(UintTy::U64) => crate::ldc_u64!(0),
-        TyKind::Int(IntTy::I64) => crate::ldc_i64!(0),
+        TyKind::Uint(UintTy::U8 | UintTy::U16 | UintTy::U32) => ldc_u32!(0),
+        TyKind::Int(IntTy::I8 | IntTy::I16 | IntTy::I32) => ldc_i32!(0),
+        TyKind::Uint(UintTy::U64) => ldc_u64!(0),
+        TyKind::Int(IntTy::I64) => ldc_i64!(0),
         TyKind::Uint(UintTy::Usize) => conv_usize!(size_of!(Type::USize)),
         TyKind::Int(IntTy::Isize) => conv_isize!(size_of!(Type::USize)),
         TyKind::Uint(UintTy::U128) => call!(
@@ -59,14 +63,14 @@ fn zero(ty: Ty) -> CILNode {
 }
 fn min(ty: Ty) -> CILNode {
     match ty.kind() {
-        TyKind::Uint(UintTy::U8) => crate::ldc_u32!(u32::from(u8::MIN)),
-        TyKind::Uint(UintTy::U16) => crate::ldc_u32!(u32::from(u16::MIN)),
-        TyKind::Uint(UintTy::U32) => crate::ldc_u32!(u32::MIN),
-        TyKind::Int(IntTy::I8) => crate::ldc_i32!(i32::from(i8::MIN)),
-        TyKind::Int(IntTy::I16) => crate::ldc_i32!(i32::from(i16::MIN)),
-        TyKind::Int(IntTy::I32) => crate::ldc_i32!(i32::MIN),
-        TyKind::Uint(UintTy::U64) => crate::ldc_u64!(u64::MIN),
-        TyKind::Int(IntTy::I64) => crate::ldc_i64!(i64::MIN),
+        TyKind::Uint(UintTy::U8) => ldc_u32!(u32::from(u8::MIN)),
+        TyKind::Uint(UintTy::U16) => ldc_u32!(u32::from(u16::MIN)),
+        TyKind::Uint(UintTy::U32) => ldc_u32!(u32::MIN),
+        TyKind::Int(IntTy::I8) => ldc_i32!(i32::from(i8::MIN)),
+        TyKind::Int(IntTy::I16) => ldc_i32!(i32::from(i16::MIN)),
+        TyKind::Int(IntTy::I32) => ldc_i32!(i32::MIN),
+        TyKind::Uint(UintTy::U64) => ldc_u64!(u64::MIN),
+        TyKind::Int(IntTy::I64) => ldc_i64!(i64::MIN),
         TyKind::Uint(UintTy::Usize) => call!(
             CallSite::new_extern(
                 DotnetTypeRef::usize_type(),
@@ -108,14 +112,14 @@ fn min(ty: Ty) -> CILNode {
 }
 fn max(ty: Ty) -> CILNode {
     match ty.kind() {
-        TyKind::Uint(UintTy::U8) => crate::ldc_u32!(u32::from(u8::MAX)),
-        TyKind::Uint(UintTy::U16) => crate::ldc_u32!(u32::from(u16::MAX)),
-        TyKind::Uint(UintTy::U32) => crate::ldc_u32!(u32::MAX),
-        TyKind::Int(IntTy::I8) => crate::ldc_i32!(i32::from(i8::MAX)),
-        TyKind::Int(IntTy::I16) => crate::ldc_i32!(i32::from(i16::MAX)),
-        TyKind::Int(IntTy::I32) => crate::ldc_i32!(i32::MAX),
-        TyKind::Uint(UintTy::U64) => crate::ldc_u64!(u64::MAX),
-        TyKind::Int(IntTy::I64) => crate::ldc_i64!(i64::MAX),
+        TyKind::Uint(UintTy::U8) => ldc_u32!(u32::from(u8::MAX)),
+        TyKind::Uint(UintTy::U16) => ldc_u32!(u32::from(u16::MAX)),
+        TyKind::Uint(UintTy::U32) => ldc_u32!(u32::MAX),
+        TyKind::Int(IntTy::I8) => ldc_i32!(i32::from(i8::MAX)),
+        TyKind::Int(IntTy::I16) => ldc_i32!(i32::from(i16::MAX)),
+        TyKind::Int(IntTy::I32) => ldc_i32!(i32::MAX),
+        TyKind::Uint(UintTy::U64) => ldc_u64!(u64::MAX),
+        TyKind::Int(IntTy::I64) => ldc_i64!(i64::MAX),
         TyKind::Uint(UintTy::Usize) => call!(
             CallSite::new_extern(
                 DotnetTypeRef::usize_type(),
@@ -183,11 +187,11 @@ pub fn mul<'tyctx>(
         }
         // Works with 32 -> 64 size promotions
         TyKind::Uint(UintTy::U32) => {
-            let mul = crate::mul!(conv_u64!(ops_a.clone()), conv_u64!(ops_b.clone()));
+            let mul = mul!(conv_u64!(ops_a.clone()), conv_u64!(ops_b.clone()));
             gt_un!(mul.clone(), conv_u64!(max(ty)))
         }
         TyKind::Int(IntTy::I32) => {
-            let mul = crate::mul!(conv_i64!(ops_a.clone()), conv_i64!(ops_b.clone()));
+            let mul = mul!(conv_i64!(ops_a.clone()), conv_i64!(ops_b.clone()));
             or!(
                 gt!(mul.clone(), conv_i64!(max(ty))),
                 lt!(mul.clone(), conv_i64!(min(ty)))

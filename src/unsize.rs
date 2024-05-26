@@ -1,9 +1,8 @@
-use crate::cil_tree::cil_node::CILNode;
-use crate::cil_tree::cil_root::CILRoot;
-
 use crate::operand::handle_operand;
 
-use crate::{conv_usize, ld_field, ld_field_address, ldc_u64};
+use cilly::cil_node::CILNode;
+use cilly::cil_root::CILRoot;
+use cilly::{conv_usize, ld_field, ld_field_address, ldc_u64};
 
 use crate::r#type::TyCache;
 use cilly::field_desc::FieldDescriptor;

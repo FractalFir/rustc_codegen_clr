@@ -1,6 +1,6 @@
-use crate::cil_tree::cil_node::CILNode;
 use crate::r#type::tycache::TyCache;
 use cilly::call_site::CallSite;
+use cilly::cil_node::CILNode;
 use cilly::fn_sig::FnSig;
 use cilly::{DotnetTypeRef, Type};
 

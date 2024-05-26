@@ -1,8 +1,10 @@
 use crate::{
-    access_modifier::AccessModifer, basic_block::BasicBlock, 
-    r#type::tycache::TyCache, IString,
+    access_modifier::AccessModifer, basic_block::BasicBlock, r#type::tycache::TyCache, IString,
 };
-use cilly::{call_site::CallSite, fn_sig::FnSig, static_field_desc::StaticFieldDescriptor, DotnetTypeRef, Type};
+use cilly::{
+    call_site::CallSite, fn_sig::FnSig, static_field_desc::StaticFieldDescriptor, DotnetTypeRef,
+    Type,
+};
 use rustc_middle::ty::TyCtxt;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -76,12 +78,12 @@ impl Method {
         {
             let mut postfix = 0;
             while used_names
-                .get(&if postfix == 0 {
+                .contains(&if postfix == 0 {
                     name.clone()
                 } else {
                     format!("{name}{postfix}").into()
                 })
-                .is_some()
+            
             {
                 postfix += 1;
             }
@@ -287,7 +289,7 @@ impl<'a> Drop for BlockMutGuard<'a> {
         self.method.blocks.iter_mut().for_each(|block| {
             block
                 .trees_mut()
-                .retain(|tree| !matches!(tree.root(), crate::cil_tree::cil_root::CILRoot::Nop));
+                .retain(|tree| !matches!(tree.root(), cilly::cil_root::CILRoot::Nop));
         });
         self.method.allocate_temporaries();
         self.method.sheed_trees();

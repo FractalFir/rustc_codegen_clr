@@ -3,7 +3,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::IString;
 
-
 /// Represenation of a target of a call.
 #[derive(Clone, PartialEq, Serialize, Deserialize, Eq, Hash, Debug)]
 pub struct CallSite {
@@ -16,15 +15,15 @@ pub struct CallSite {
 impl CallSite {
     #[must_use]
     pub fn mcheck() -> Self {
-        CallSite::builtin("mcheck".into(), FnSig::new(&[Type::ISize], Type::I32), true)
+        Self::builtin("mcheck".into(), FnSig::new(&[Type::ISize], Type::I32), true)
     }
     #[must_use]
     pub fn mcheck_check_all() -> Self {
-        CallSite::builtin("mcheck_check_all".into(), FnSig::new(&[], Type::Void), true)
+        Self::builtin("mcheck_check_all".into(), FnSig::new(&[], Type::Void), true)
     }
     #[must_use]
     pub fn mstring_to_ptr() -> Self {
-        CallSite::new_extern(
+        Self::new_extern(
             DotnetTypeRef::marshal(),
             "StringToCoTaskMemUTF8".into(),
             FnSig::new(&[DotnetTypeRef::string_type().into()], Type::ISize),
@@ -33,7 +32,7 @@ impl CallSite {
     }
     #[must_use]
     pub fn alloc() -> Self {
-        CallSite::new_extern(
+        Self::new_extern(
             DotnetTypeRef::native_mem(),
             "AlignedAlloc".into(),
             FnSig::new(&[Type::USize, Type::USize], Type::Ptr(Type::Void.into())),
@@ -42,7 +41,7 @@ impl CallSite {
     }
     #[must_use]
     pub fn realloc() -> Self {
-        CallSite::new(
+        Self::new(
             Some(DotnetTypeRef::native_mem()),
             "AlignedRealloc".into(),
             FnSig::new(
@@ -114,23 +113,23 @@ impl CallSite {
     }
     /// Returns the signature of the function this call site targets.
     #[must_use]
-    pub fn signature(&self) -> &FnSig {
+    pub const fn signature(&self) -> &FnSig {
         &self.signature
     }
-   
+
     /// Returns the class the targeted method belongs to.
     #[must_use]
-    pub fn class(&self) -> Option<&DotnetTypeRef> {
+    pub const fn class(&self) -> Option<&DotnetTypeRef> {
         self.class.as_ref()
     }
     /// Returns `true` if the method in question is static.
     #[must_use]
-    pub fn is_static(&self) -> bool {
+    pub const fn is_static(&self) -> bool {
         self.is_static
     }
     /// Returns the name of the targteted method.
     #[must_use]
-    pub fn name(&self) -> &str {
+    pub const fn name(&self) -> &str {
         &self.name
     }
     /// Returns true if a call is equivalent to a No-Op. Used to handle `black_box`.

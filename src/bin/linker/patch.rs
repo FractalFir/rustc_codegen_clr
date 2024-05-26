@@ -1,10 +1,6 @@
-use cilly::{call_site::CallSite, DotnetTypeRef, FnSig, Type};
-use rustc_codegen_clr::{
-    assembly::Assembly,
-    call,
-    cil_tree::{cil_node::CILNode, cil_root::CILRoot},
-    conv_i32, conv_usize, ldc_i32, ldc_u32,
-};
+use cilly::{call_site::CallSite, cil_node::CILNode, DotnetTypeRef, FnSig, Type};
+use rustc_codegen_clr::assembly::Assembly;
+use cilly::{conv_i32, conv_usize, ldc_i32, ldc_u32,    call,};
 fn mstring_to_utf8ptr(mstring: CILNode) -> CILNode {
     call!(
         CallSite::new_extern(
@@ -23,7 +19,7 @@ fn hijack_arg_init(asm: &mut Assembly) {
 
     use std::num::NonZeroU8;
 
-    use rustc_codegen_clr::{eq, lt, size_of};
+    use cilly::{cil_root::CILRoot, eq, lt, size_of};
     //System.Runtime.InteropServices.Marshal.StringToCoTaskMemUTF8
 
     let mut really_init = None;

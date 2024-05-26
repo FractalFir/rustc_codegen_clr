@@ -1,19 +1,20 @@
 use crate::basic_block::{handler_for_block, BasicBlock};
-use crate::cil_tree::cil_node::CILNode;
-use crate::cil_tree::cil_root::CILRoot;
+
+use crate::cil::span_source_info;
 use crate::cil_tree::CILTree;
 use crate::method::MethodType;
 use crate::rustc_middle::dep_graph::DepContext;
 use crate::utilis::field_descrptor;
 use crate::{
-    access_modifier::AccessModifer, codegen_error::CodegenError,
-    codegen_error::MethodCodegenError, method::Method, r#type::TyCache, r#type::Type,
-    r#type::TypeDef, IString,
+    access_modifier::AccessModifer, codegen_error::CodegenError, codegen_error::MethodCodegenError,
+    method::Method, r#type::TyCache, r#type::Type, r#type::TypeDef, IString,
 };
-use crate::{call, conv_isize, conv_usize, ldc_u32, ldc_u64};
 use cilly::call_site::CallSite;
+use cilly::cil_node::CILNode;
+use cilly::cil_root::CILRoot;
 use cilly::static_field_desc::StaticFieldDescriptor;
 use cilly::FnSig;
+use cilly::{call, conv_isize, conv_usize, ldc_u32, ldc_u64};
 use rustc_middle::mir::interpret::Allocation;
 use rustc_middle::mir::{
     interpret::{AllocId, GlobalAlloc},
@@ -175,7 +176,7 @@ impl Assembly {
                         format!("Tried to execute terminator {term:?} whose compialtion failed with a no-string message!")
                         }
                     };
-                    CILRoot::throw(&msg).into()
+                    vec![CILRoot::throw(&msg).into()]
                 }
             }
         };
@@ -310,7 +311,7 @@ impl Assembly {
                 };
                 // Only save debuginfo for statements which result in ops.
                 if statement_tree.is_some() {
-                    trees.push(CILRoot::span_source_info(tyctx, statement.source_info.span).into());
+                    trees.push(span_source_info(tyctx, statement.source_info.span).into());
                 }
                 trees.extend(statement_tree);
 
@@ -325,7 +326,7 @@ impl Assembly {
                     }
                     let term_trees = Self::terminator_to_ops(term, mir, tyctx, instance, cache);
                     if !term_trees.is_empty() {
-                        trees.push(CILRoot::span_source_info(tyctx, term.source_info.span).into());
+                        trees.push(span_source_info(tyctx, term.source_info.span).into());
                     }
                     trees.extend(term_trees);
                 }
@@ -577,7 +578,7 @@ impl Assembly {
         {
             if let CILRoot::SetStaticField { descr, value } = tree.root_mut() {
                 // Assigement to a dead static, remove.
-                if !alive_fields.contains(&descr) {
+                if !alive_fields.contains(descr) {
                     debug_assert!(descr.name().contains('a'));
                     debug_assert!(matches!(value, CILNode::Call { site: _, args: _ }));
                     *tree = CILRoot::Nop.into();
@@ -954,7 +955,7 @@ fn check_align_adjust<'tyctx>(
     method_instance: &Instance<'tyctx>,
 ) -> Vec<Option<u64>> {
     let mut adjusts: Vec<Option<u64>> = Vec::with_capacity(locals.len());
-    for (_, local) in locals.iter().enumerate() {
+    for local in locals.iter() {
         let ty = crate::utilis::monomorphize(method_instance, local.ty, tyctx);
         let adjust = crate::utilis::requries_align_adjustement(ty, tyctx);
         if let Some(adjust) = adjust {
@@ -1036,7 +1037,7 @@ fn allocation_initializer_method(
                     CallSite::alloc(),
                     [
                         conv_isize!(ldc_u64!(bytes.len() as u64)),
-                        conv_isize!(ldc_u64!(align as u64))
+                        conv_isize!(ldc_u64!(align))
                     ]
                 )),
                 new_ptr: Box::new(Type::Ptr(Box::new(Type::U8))),
