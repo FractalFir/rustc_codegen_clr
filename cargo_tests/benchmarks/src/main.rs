@@ -6,8 +6,8 @@ use mycorrhiza::{panic_handler, start};
 fn main() {
     let time = black_box(Fibonachi::benchmark());
     mycorrhiza::system::console::Console::writeln_f64(time);
-    let time = black_box(BigAlloc::benchmark());
-    mycorrhiza::system::console::Console::writeln_f64(time);
+    //let time = black_box(BigAlloc::benchmark());
+    //mycorrhiza::system::console::Console::writeln_f64(time);
 }
 trait BenchmarkableFn {
     const RUNS:usize;
@@ -79,6 +79,6 @@ impl BenchmarkableFn for BigAlloc {
 #[test]
 fn native_bench() {
     let time1 = black_box(Fibonachi::benchmark());
-    let time2 = black_box(BigAlloc::benchmark());
-    panic!("{time1} {time2}");
+   // let time2 = black_box(BigAlloc::benchmark());
+    panic!("{time1}");
 }

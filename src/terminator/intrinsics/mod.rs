@@ -15,7 +15,7 @@ fn compare_bytes(a: CILNode, b: CILNode, len: CILNode) -> CILNode {
                     Type::Ptr(Type::U8.into()),
                     Type::USize
                 ],
-                &Type::I32
+                Type::I32
             ),
             true
         ),
@@ -26,17 +26,17 @@ use crate::{
     cil::CallSite,
     cil_tree::cil_node::CILNode,
     conv_u64,
-    function_sig::FnSig,
     operand::handle_operand,
     place::place_set,
-    r#type::{tycache, DotnetTypeRef, Type},
 };
+use cilly::   fn_sig::FnSig;
+use cilly::{DotnetTypeRef, Type};
 use rustc_middle::{
     mir::{Body, Operand, Place},
     ty::{Instance, ParamEnv, TyCtxt},
 };
 use rustc_span::source_map::Spanned;
-use tycache::TyCache;
+use crate::r#type::tycache::TyCache;
 mod bswap;
 mod interop;
 pub fn handle_intrinsic<'tyctx>(
@@ -162,7 +162,7 @@ pub fn handle_intrinsic<'tyctx>(
                 1,
                 "The intrinsic `black_box` MUST take in exactly 1 argument!"
             );
-            if signature.output() == &Type::Void {
+            if *signature.output() == Type::Void {
                 return CILRoot::Nop;
             }
             // assert_eq!(args.len(),1,"The intrinsic `unlikely` MUST take in exactly 1 argument!");
@@ -227,7 +227,7 @@ pub fn handle_intrinsic<'tyctx>(
                         CallSite::boxed(
                             bit_operations.clone(),
                             "PopCount".into(),
-                            FnSig::new(&[Type::U64], &Type::I32),
+                            FnSig::new(&[Type::U64], Type::I32),
                             true,
                         ),
                         [operand]
@@ -283,7 +283,7 @@ pub fn handle_intrinsic<'tyctx>(
                             CallSite::boxed(
                                 bit_operations.clone(),
                                 "LeadingZeroCount".into(),
-                                FnSig::new(&[Type::U64], &Type::I32),
+                                FnSig::new(&[Type::U64], Type::I32),
                                 true,
                             ),
                             [conv_u64!(handle_operand(
@@ -398,7 +398,7 @@ pub fn handle_intrinsic<'tyctx>(
                         CallSite::boxed(
                             bit_operations.clone(),
                             "TrailingZeroCount".into(),
-                            FnSig::new(&[tpe], &Type::I32),
+                            FnSig::new(&[tpe], Type::I32),
                             true,
                         ),
                         [operand]
@@ -427,7 +427,7 @@ pub fn handle_intrinsic<'tyctx>(
                     CallSite::boxed(
                         bit_operations.clone(),
                         "RotateLeft".into(),
-                        FnSig::new(&[Type::U64, Type::U64], &Type::I32),
+                        FnSig::new(&[Type::U64, Type::U64], Type::I32),
                         true,
                     ),
                     [
@@ -526,9 +526,9 @@ pub fn handle_intrinsic<'tyctx>(
             let tpe = type_cache.type_from_cache(tpe, tyctx, Some(method_instance));
             let sig = FnSig::new(
                 &[DotnetTypeRef::type_handle_type().into()],
-                &DotnetTypeRef::type_type().into(),
+                DotnetTypeRef::type_type(),
             );
-            let gethash_sig = FnSig::new(&[DotnetTypeRef::type_type().into()], &Type::I32);
+            let gethash_sig = FnSig::new(&[DotnetTypeRef::type_type().into()], Type::I32);
             place_set(
                 destination,
                 tyctx,
@@ -536,7 +536,7 @@ pub fn handle_intrinsic<'tyctx>(
                     CallSite::boxed(
                         Some(DotnetTypeRef::uint_128()),
                         "op_Implicit".into(),
-                        crate::function_sig::FnSig::new(&[Type::U32], &Type::U128),
+                        FnSig::new(&[Type::U32], Type::U128),
                         true,
                     ),
                     [call_virt!(
@@ -646,7 +646,7 @@ pub fn handle_intrinsic<'tyctx>(
                         src_type.clone(),
                         src_type.clone(),
                     ],
-                    &src_type.clone(),
+                    src_type.clone(),
                 ),
                 true,
             );
@@ -704,7 +704,7 @@ pub fn handle_intrinsic<'tyctx>(
                         Type::ManagedReference(src_type.clone().into()),
                         src_type.clone(),
                     ],
-                    &src_type.clone(),
+                    src_type.clone(),
                 ),
                 true,
             );
@@ -741,7 +741,7 @@ pub fn handle_intrinsic<'tyctx>(
                         Type::ManagedReference(src_type.clone().into()),
                         src_type.clone(),
                     ],
-                    &src_type.clone(),
+                    src_type.clone(),
                 ),
                 true,
             );
@@ -807,7 +807,7 @@ pub fn handle_intrinsic<'tyctx>(
                     let sum = a.clone() + b.clone();
                     let or = a | b;
                     let flag = lt_un!(sum.clone(), or);
-                    let max = a_type.max_value();
+                    let max = crate::r#type::max_value(&a_type);
                     CILNode::select(a_type, max, sum, flag)
                 }
                 _ => todo!("Can't use the intrinsic `saturating_add` on {a_type:?}"),
@@ -867,7 +867,7 @@ pub fn handle_intrinsic<'tyctx>(
                     CallSite::boxed(
                         Some(DotnetTypeRef::mathf()),
                         "Sqrt".into(),
-                        FnSig::new(&[Type::F32], &Type::F32),
+                        FnSig::new(&[Type::F32], Type::F32),
                         true,
                     ),
                     [handle_operand(
@@ -897,7 +897,7 @@ pub fn handle_intrinsic<'tyctx>(
                     CallSite::boxed(
                         Some(DotnetTypeRef::mathf()),
                         "Floor".into(),
-                        FnSig::new(&[Type::F32], &Type::F32),
+                        FnSig::new(&[Type::F32], Type::F32),
                         true,
                     ),
                     [handle_operand(
@@ -927,7 +927,7 @@ pub fn handle_intrinsic<'tyctx>(
                     CallSite::boxed(
                         Some(DotnetTypeRef::mathf()),
                         "Ceiling".into(),
-                        FnSig::new(&[Type::F32], &Type::F32),
+                        FnSig::new(&[Type::F32], Type::F32),
                         true,
                     ),
                     [handle_operand(
@@ -957,7 +957,7 @@ pub fn handle_intrinsic<'tyctx>(
                     CallSite::boxed(
                         Some(DotnetTypeRef::mathf()),
                         "Max".into(),
-                        FnSig::new(&[Type::F32, Type::F32], &Type::F32),
+                        FnSig::new(&[Type::F32, Type::F32], Type::F32),
                         true,
                     ),
                     [
@@ -983,7 +983,7 @@ pub fn handle_intrinsic<'tyctx>(
                     CallSite::boxed(
                         Some(DotnetTypeRef::mathf()),
                         "Min".into(),
-                        FnSig::new(&[Type::F32, Type::F32], &Type::F32),
+                        FnSig::new(&[Type::F32, Type::F32], Type::F32),
                         true,
                     ),
                     [
@@ -1010,7 +1010,7 @@ pub fn handle_intrinsic<'tyctx>(
                     CallSite::boxed(
                         Some(DotnetTypeRef::math()),
                         "Pow".into(),
-                        FnSig::new(&[Type::F64, Type::F64], &Type::F64),
+                        FnSig::new(&[Type::F64, Type::F64], Type::F64),
                         true,
                     ),
                     [
@@ -1071,7 +1071,7 @@ pub fn handle_intrinsic<'tyctx>(
                 CallSite::boxed(
                     Some(DotnetTypeRef::math()),
                     "Sqrt".into(),
-                    FnSig::new(&[Type::F64], &Type::F64),
+                    FnSig::new(&[Type::F64], Type::F64),
                     true,
                 ),
                 [handle_operand(
@@ -1096,7 +1096,7 @@ pub fn handle_intrinsic<'tyctx>(
             let _ = catch_fn;
             eprintln!("WARNING: catching unwinds currently not supported! the intrinic `catch_unwind` WILL NOT CATCH UNWINDS YET!");
             CILRoot::CallI {
-                sig: FnSig::new(&[Type::Ptr(Type::U8.into())], &Type::Void),
+                sig: FnSig::new(&[Type::Ptr(Type::U8.into())], Type::Void),
                 fn_ptr: try_fn,
                 args: Box::new([data_ptr]),
             }

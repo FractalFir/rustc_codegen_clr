@@ -4,13 +4,14 @@ use crate::{
     cil_tree::cil_node::CILNode,
     cil_tree::cil_root::CILRoot,
     conv_i64, conv_isize, conv_u64, conv_usize,
-    function_sig::FnSig,
+
     gt, gt_un, ldc_u32, lt, or,
     r#type::TyCache,
-    r#type::{DotnetTypeRef, Type},
+
     size_of,
 };
-use rustc_middle::mir::{BinOp, Operand};
+use cilly::{DotnetTypeRef, FnSig, Type};
+
 use rustc_middle::ty::{Instance, IntTy, Ty, TyCtxt, TyKind, UintTy};
 
 pub fn result_tuple(tpe: Type, out_of_range: CILNode, val: CILNode) -> CILNode {
@@ -46,7 +47,7 @@ fn zero(ty: Ty) -> CILNode {
             CallSite::new_extern(
                 DotnetTypeRef::uint_128(),
                 "op_Implicit".into(),
-                FnSig::new(&[Type::U32], &Type::U128),
+                FnSig::new(&[Type::U32], Type::U128),
                 true
             ),
             [ldc_u32!(0)]
@@ -55,7 +56,7 @@ fn zero(ty: Ty) -> CILNode {
             CallSite::new_extern(
                 DotnetTypeRef::int_128(),
                 "op_Implicit".into(),
-                FnSig::new(&[Type::I32], &Type::I128),
+                FnSig::new(&[Type::I32], Type::I128),
                 true
             ),
             [ldc_u32!(0)]
@@ -77,7 +78,7 @@ fn min(ty: Ty) -> CILNode {
             CallSite::new_extern(
                 DotnetTypeRef::usize_type(),
                 "get_MinValue".into(),
-                FnSig::new(&[], &Type::USize),
+                FnSig::new(&[], Type::USize),
                 true
             ),
             []
@@ -86,7 +87,7 @@ fn min(ty: Ty) -> CILNode {
             CallSite::new_extern(
                 DotnetTypeRef::isize_type(),
                 "get_MinValue".into(),
-                FnSig::new(&[], &Type::ISize),
+                FnSig::new(&[], Type::ISize),
                 true
             ),
             []
@@ -95,7 +96,7 @@ fn min(ty: Ty) -> CILNode {
             CallSite::new_extern(
                 DotnetTypeRef::uint_128(),
                 "get_MinValue".into(),
-                FnSig::new(&[], &Type::U128),
+                FnSig::new(&[], Type::U128),
                 true
             ),
             []
@@ -104,7 +105,7 @@ fn min(ty: Ty) -> CILNode {
             CallSite::new_extern(
                 DotnetTypeRef::int_128(),
                 "get_MinValue".into(),
-                FnSig::new(&[], &Type::I128),
+                FnSig::new(&[], Type::I128),
                 true
             ),
             []
@@ -126,7 +127,7 @@ fn max(ty: Ty) -> CILNode {
             CallSite::new_extern(
                 DotnetTypeRef::usize_type(),
                 "get_MaxValue".into(),
-                FnSig::new(&[], &Type::USize),
+                FnSig::new(&[], Type::USize),
                 true
             ),
             []
@@ -135,7 +136,7 @@ fn max(ty: Ty) -> CILNode {
             CallSite::new_extern(
                 DotnetTypeRef::isize_type(),
                 "get_MaxValue".into(),
-                FnSig::new(&[], &Type::ISize),
+                FnSig::new(&[], Type::ISize),
                 true
             ),
             []
@@ -144,7 +145,7 @@ fn max(ty: Ty) -> CILNode {
             CallSite::new_extern(
                 DotnetTypeRef::uint_128(),
                 "get_MaxValue".into(),
-                FnSig::new(&[], &Type::U128),
+                FnSig::new(&[], Type::U128),
                 true
             ),
             []
@@ -153,7 +154,7 @@ fn max(ty: Ty) -> CILNode {
             CallSite::new_extern(
                 DotnetTypeRef::int_128(),
                 "get_MaxValue".into(),
-                FnSig::new(&[], &Type::I128),
+                FnSig::new(&[], Type::I128),
                 true
             ),
             []
@@ -205,7 +206,7 @@ pub fn mul<'tyctx>(
                 CallSite::new_extern(
                     DotnetTypeRef::uint_128(),
                     "op_Multiply".into(),
-                    FnSig::new(&[Type::U128, Type::U128], &Type::U128),
+                    FnSig::new(&[Type::U128, Type::U128], Type::U128),
                     true
                 ),
                 [
@@ -217,7 +218,7 @@ pub fn mul<'tyctx>(
                 CallSite::new_extern(
                     DotnetTypeRef::uint_128(),
                     "op_GreaterThan".into(),
-                    FnSig::new(&[Type::U128, Type::U128], &Type::Bool),
+                    FnSig::new(&[Type::U128, Type::U128], Type::Bool),
                     true
                 ),
                 [
@@ -231,7 +232,7 @@ pub fn mul<'tyctx>(
                 CallSite::new_extern(
                     DotnetTypeRef::int_128(),
                     "op_Multiply".into(),
-                    FnSig::new(&[Type::I128, Type::I128], &Type::I128),
+                    FnSig::new(&[Type::I128, Type::I128], Type::I128),
                     true
                 ),
                 [
@@ -243,7 +244,7 @@ pub fn mul<'tyctx>(
                 CallSite::new_extern(
                     DotnetTypeRef::int_128(),
                     "op_GreaterThan".into(),
-                    FnSig::new(&[Type::I128, Type::I128], &Type::Bool),
+                    FnSig::new(&[Type::I128, Type::I128], Type::Bool),
                     true
                 ),
                 [
@@ -255,7 +256,7 @@ pub fn mul<'tyctx>(
                 CallSite::new_extern(
                     DotnetTypeRef::int_128(),
                     "op_LessThan".into(),
-                    FnSig::new(&[Type::I128, Type::I128], &Type::Bool),
+                    FnSig::new(&[Type::I128, Type::I128], Type::Bool),
                     true
                 ),
                 [
@@ -271,7 +272,7 @@ pub fn mul<'tyctx>(
                 CallSite::new_extern(
                     DotnetTypeRef::uint_128(),
                     "op_Multiply".into(),
-                    FnSig::new(&[Type::U128, Type::U128], &Type::U128),
+                    FnSig::new(&[Type::U128, Type::U128], Type::U128),
                     true
                 ),
                 [
@@ -284,7 +285,7 @@ pub fn mul<'tyctx>(
                 CallSite::new_extern(
                     DotnetTypeRef::uint_128(),
                     "op_GreaterThan".into(),
-                    FnSig::new(&[Type::U128, Type::U128], &Type::Bool),
+                    FnSig::new(&[Type::U128, Type::U128], Type::Bool),
                     true
                 ),
                 [
@@ -298,7 +299,7 @@ pub fn mul<'tyctx>(
                 CallSite::new_extern(
                     DotnetTypeRef::int_128(),
                     "op_Multiply".into(),
-                    FnSig::new(&[Type::I128, Type::I128], &Type::I128),
+                    FnSig::new(&[Type::I128, Type::I128], Type::I128),
                     true
                 ),
                 [
@@ -310,7 +311,7 @@ pub fn mul<'tyctx>(
                 CallSite::new_extern(
                     DotnetTypeRef::int_128(),
                     "op_GreaterThan".into(),
-                    FnSig::new(&[Type::I128, Type::I128], &Type::Bool),
+                    FnSig::new(&[Type::I128, Type::I128], Type::Bool),
                     true
                 ),
                 [
@@ -322,7 +323,7 @@ pub fn mul<'tyctx>(
                 CallSite::new_extern(
                     DotnetTypeRef::int_128(),
                     "op_LessThan".into(),
-                    FnSig::new(&[Type::I128, Type::I128], &Type::Bool),
+                    FnSig::new(&[Type::I128, Type::I128], Type::Bool),
                     true
                 ),
                 [

@@ -1,7 +1,8 @@
 use crate::cil_tree::cil_node::CILNode;
-use crate::function_sig::FnSig;
+use cilly::   fn_sig::FnSig;
+use cilly::{DotnetTypeRef, Type};
 use crate::r#type::tycache::TyCache;
-use crate::r#type::{DotnetTypeRef, Type};
+
 use rustc_middle::mir::{Operand, UnOp};
 use rustc_middle::ty::{Instance, IntTy, TyCtxt, TyKind, UintTy};
 
@@ -24,7 +25,7 @@ pub fn unop<'ctx>(
                 site: CallSite::boxed(
                     DotnetTypeRef::int_128().into(),
                     "op_UnaryNegation".into(),
-                    FnSig::new(&[Type::I128], &Type::I128),
+                    FnSig::new(&[Type::I128], Type::I128),
                     true,
                 ),
                 args: [parrent_node].into(),
@@ -35,7 +36,7 @@ pub fn unop<'ctx>(
                 site: CallSite::boxed(
                     DotnetTypeRef::uint_128().into(),
                     "op_UnaryNegation".into(),
-                    FnSig::new(&[Type::U128], &Type::U128),
+                    FnSig::new(&[Type::U128], Type::U128),
                     true,
                 ),
                 args: [parrent_node].into(),
@@ -48,7 +49,7 @@ pub fn unop<'ctx>(
                 site: CallSite::boxed(
                     DotnetTypeRef::uint_128().into(),
                     "op_OnesComplement".into(),
-                    FnSig::new(&[Type::U128], &Type::U128),
+                    FnSig::new(&[Type::U128], Type::U128),
                     true,
                 ),
                 args: [parrent_node].into(),
@@ -57,7 +58,7 @@ pub fn unop<'ctx>(
                 site: CallSite::boxed(
                     DotnetTypeRef::int_128().into(),
                     "op_OnesComplement".into(),
-                    FnSig::new(&[Type::I128], &Type::I128),
+                    FnSig::new(&[Type::I128], Type::I128),
                     true,
                 ),
                 args: [parrent_node].into(),

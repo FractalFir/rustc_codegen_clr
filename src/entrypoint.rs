@@ -1,15 +1,17 @@
 use std::num::NonZeroU8;
 
+use cilly::{DotnetTypeRef, FnSig, Type};
+
 use crate::{
     basic_block::BasicBlock,
     call, call_virt,
     cil::CallSite,
     cil_tree::{cil_node::CILNode, cil_root::CILRoot},
     conv_usize,
-    function_sig::FnSig,
+
     ldc_u32, ldc_u64,
     method::{Method, MethodType},
-    r#type::{DotnetTypeRef, Type},
+
     size_of,
 };
 /// Creates a wrapper method around entypoint represented by `CallSite`
@@ -26,7 +28,7 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
                 element: Box::new(DotnetTypeRef::string_type().into()),
                 dims: NonZeroU8::new(1).unwrap(),
             }],
-            &Type::Void,
+            Type::Void,
         );
         let mem_checks = if *crate::config::MEM_CHECKS {
             CILRoot::Pop {
@@ -63,7 +65,7 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
                                                 "get_Length".into(),
                                                 FnSig::new(
                                                     &[DotnetTypeRef::managed_array().into()],
-                                                    &Type::I32
+                                                    Type::I32
                                                 ),
                                                 false
                                             ),
@@ -88,7 +90,7 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
                                         "get_Location".into(),
                                         FnSig::new(
                                             &[DotnetTypeRef::assembly().into()],
-                                            &DotnetTypeRef::string_type().into()
+                                            DotnetTypeRef::string_type()
                                         ),
                                         false
                                     ),
@@ -96,7 +98,7 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
                                         CallSite::new(
                                             Some(DotnetTypeRef::assembly()),
                                             "GetEntryAssembly".into(),
-                                            FnSig::new(&[], &DotnetTypeRef::assembly().into()),
+                                            FnSig::new(&[], DotnetTypeRef::assembly()),
                                             true,
                                         ),
                                         []
@@ -142,7 +144,8 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
                     2,
                     None,
                 ),
-            ],vec![Some("args".into())]
+            ],
+            vec![Some("args".into())],
         );
         //method.set_ops(ops);
         method.add_attribute(crate::method::Attribute::EntryPoint);
@@ -150,7 +153,7 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
     } else if entrypoint.signature().inputs().is_empty()
         && entrypoint.signature().output() == &Type::Void
     {
-        let sig = FnSig::new(&[], &Type::Void);
+        let sig = FnSig::new(&[], Type::Void);
         let mut method = Method::new(
             crate::access_modifier::AccessModifer::Public,
             MethodType::Static,

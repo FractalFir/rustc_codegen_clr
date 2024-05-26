@@ -8,10 +8,11 @@ use crate::rustc_middle::dep_graph::DepContext;
 use crate::utilis::field_descrptor;
 use crate::{
     access_modifier::AccessModifer, cil::CallSite, codegen_error::CodegenError,
-    codegen_error::MethodCodegenError, function_sig::FnSig, method::Method, r#type::TyCache,
+    codegen_error::MethodCodegenError,  method::Method, r#type::TyCache,
     r#type::Type, r#type::TypeDef, IString,
 };
 use crate::{call, conv_isize, conv_usize, ldc_u32, ldc_u64};
+use cilly::FnSig;
 use rustc_middle::mir::interpret::Allocation;
 use rustc_middle::mir::{
     interpret::{AllocId, GlobalAlloc},
@@ -63,7 +64,7 @@ impl Assembly {
         self.functions.get(&CallSite::new(
             None,
             ".cctor".into(),
-            FnSig::new(&[], &Type::Void),
+            FnSig::new(&[], Type::Void),
             true,
         ))
     }
@@ -225,7 +226,7 @@ impl Assembly {
         name: &str,
         cache: &mut TyCache,
     ) -> Result<(), MethodCodegenError> {
-        rustc_middle::ty::print::with_no_trimmed_paths! {match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                 self.add_fn(instance, tcx, name, cache)
             })) {
                 Ok(success) => success,
@@ -241,7 +242,6 @@ impl Assembly {
                     }
                 }
             }
-        }
     }
     //fn terminator_to_ops()
     /// Adds a rust MIR function to the assembly.
@@ -388,8 +388,7 @@ impl Assembly {
             locals,
             normal_bbs,
             arg_names,
-        )
-        ;
+        );
         method.resolve_global_allocations(self, tyctx, cache);
         // TODO: Why is this even needed? The temporaries *should* be already allocated, why not all of them are?
         method.allocate_temporaries();
@@ -418,14 +417,14 @@ impl Assembly {
             .entry(CallSite::new(
                 None,
                 ".cctor".into(),
-                FnSig::new(&[], &Type::Void),
+                FnSig::new(&[], Type::Void),
                 true,
             ))
             .or_insert_with(|| {
                 Method::new(
                     AccessModifer::Public,
                     MethodType::Static,
-                    FnSig::new(&[], &Type::Void),
+                    FnSig::new(&[], Type::Void),
                     ".cctor",
                     vec![
                         (None, Type::Ptr(Type::U8.into())),
@@ -585,7 +584,7 @@ impl Assembly {
         {
             if let CILRoot::SetStaticField { descr, value } = tree.root_mut() {
                 // Assigement to a dead static, remove.
-                if !alive_fields.contains(descr) {
+                if !alive_fields.contains(&descr) {
                     debug_assert!(descr.name().contains('a'));
                     debug_assert!(matches!(value, CILNode::Call { site: _, args: _ }));
                     *tree = CILRoot::Nop.into();
@@ -684,7 +683,7 @@ impl Assembly {
         }
         if let Some(cctor) = self.cctor() {
             externs.insert(
-                CallSite::new(None, ".cctor".into(), FnSig::new(&[], &Type::Void), true),
+                CallSite::new(None, ".cctor".into(), FnSig::new(&[], Type::Void), true),
                 cctor.clone(),
             );
         }
@@ -750,7 +749,7 @@ impl Assembly {
                 for (name, type_def) in tpe
                     .1
                     .all_types()
-                    .filter_map(super::r#type::r#type::Type::dotnet_refs)
+                    .filter_map(cilly::Type::dotnet_refs)
                     .filter_map(|tpe| match tpe.asm() {
                         Some(_) => None,
                         None => Some(IString::from(tpe.name_path())),
@@ -781,7 +780,7 @@ impl Assembly {
         self.functions.get_mut(&CallSite::new(
             None,
             ".cctor".into(),
-            FnSig::new(&[], &Type::Void),
+            FnSig::new(&[],Type::Void),
             true,
         ))
     }
@@ -893,7 +892,7 @@ impl Assembly {
             let init_method = Method::new(
                 AccessModifer::Public,
                 MethodType::Static,
-                FnSig::new(&[], &Type::Ptr(Type::U8.into())),
+                FnSig::new(&[], Type::Ptr(Type::U8.into())),
                 &format!("init_a{bytes:x}"),
                 vec![(Some("alloc_ptr".into()), Type::Ptr(Type::U8.into()))],
                 vec![block],
@@ -1123,7 +1122,7 @@ fn allocation_initializer_method(
     Method::new(
         AccessModifer::Private,
         MethodType::Static,
-        FnSig::new(&[], &Type::Ptr(Type::U8.into())),
+        FnSig::new(&[], Type::Ptr(Type::U8.into())),
         &format!("init_{name}"),
         vec![
             (Some("curr".into()), Type::Ptr(Type::U8.into())),

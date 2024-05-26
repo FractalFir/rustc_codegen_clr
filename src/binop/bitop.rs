@@ -1,12 +1,13 @@
+use cilly::{DotnetTypeRef, FnSig, Type};
 use rustc_middle::ty::{Instance, IntTy, Ty, TyCtxt, TyKind, UintTy};
 
 use crate::{
     and, call,
     cil::CallSite,
     cil_tree::cil_node::CILNode,
-    function_sig::FnSig,
+
     or,
-    r#type::{DotnetTypeRef, TyCache, Type},
+    r#type::{ TyCache},
     xor,
 };
 pub fn bit_and_unchecked<'tyctx>(
@@ -24,7 +25,7 @@ pub fn bit_and_unchecked<'tyctx>(
             CallSite::boxed(
                 DotnetTypeRef::uint_128().into(),
                 "op_BitwiseAnd".into(),
-                FnSig::new(&[Type::U128, Type::U128], &Type::U128),
+                FnSig::new(&[Type::U128, Type::U128], Type::U128),
                 true,
             ),
             [
@@ -36,7 +37,7 @@ pub fn bit_and_unchecked<'tyctx>(
             CallSite::boxed(
                 DotnetTypeRef::int_128().into(),
                 "op_BitwiseAnd".into(),
-                FnSig::new(&[Type::I128, Type::I128], &Type::I128),
+                FnSig::new(&[Type::I128, Type::I128], Type::I128),
                 true,
             ),
             [
@@ -64,7 +65,7 @@ pub fn bit_or_unchecked<'tyctx>(
                 CallSite::new_extern(
                     DotnetTypeRef::int_128(),
                     "op_BitwiseOr".into(),
-                    FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
+                    FnSig::new(&[ty_a.clone(), ty_b], ty_a),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -77,7 +78,7 @@ pub fn bit_or_unchecked<'tyctx>(
                 CallSite::new_extern(
                     DotnetTypeRef::uint_128(),
                     "op_BitwiseOr".into(),
-                    FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
+                    FnSig::new(&[ty_a.clone(), ty_b], ty_a),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -103,7 +104,7 @@ pub fn bit_xor_unchecked<'tyctx>(
                 CallSite::new_extern(
                     DotnetTypeRef::int_128(),
                     "op_ExclusiveOr".into(),
-                    FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
+                    FnSig::new(&[ty_a.clone(), ty_b], ty_a),
                     true,
                 ),
                 [ops_a, ops_b]
@@ -116,7 +117,7 @@ pub fn bit_xor_unchecked<'tyctx>(
                 CallSite::new_extern(
                     DotnetTypeRef::uint_128(),
                     "op_ExclusiveOr".into(),
-                    FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
+                    FnSig::new(&[ty_a.clone(), ty_b], ty_a),
                     true,
                 ),
                 [ops_a, ops_b]

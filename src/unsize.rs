@@ -6,7 +6,8 @@ use crate::operand::handle_operand;
 
 use crate::{conv_usize, ld_field, ld_field_address, ldc_u64};
 
-use crate::r#type::{DotnetTypeRef, TyCache, Type};
+use crate::r#type::{TyCache};
+use cilly::{DotnetTypeRef, Type};
 use rustc_middle::{
     mir::Operand,
     ty::{Instance, Ty, TyCtxt, TyKind},

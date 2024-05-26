@@ -11,7 +11,7 @@ macro_rules! select {
         add_method_from_trees!(
             $name,
             &[Type::$tpe, Type::$tpe, Type::Bool],
-            &Type::$tpe,
+            Type::$tpe,
             vec![
                 BasicBlock::new(
                     vec![
@@ -38,7 +38,11 @@ macro_rules! select {
                     None
                 ),
             ],
-            vec![Some("if_true".into()),Some("if_false".into()),Some("cond".into())]
+            vec![
+                Some("if_true".into()),
+                Some("if_false".into()),
+                Some("cond".into())
+            ]
         );
     };
 }

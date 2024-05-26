@@ -1,18 +1,18 @@
 use crate::{
     call,
     cil::CallSite,
-    cil_tree::{cil_node::CILNode, cil_root::CILRoot},
-    function_sig::FnSig,
+    cil_tree::cil_root::CILRoot,
     operand::handle_operand,
-    place::place_set,
-    r#type::{tycache, DotnetTypeRef},
+    place::place_set, 
+    cil_tree::cil_node::CILNode,
 };
+use cilly::{   fn_sig::FnSig, DotnetTypeRef};
 use rustc_middle::{
     mir::{Body, Operand, Place},
     ty::{Instance, TyCtxt, TyKind, UintTy},
 };
 use rustc_span::source_map::Spanned;
-use tycache::TyCache;
+use crate::r#type::tycache::TyCache;
 pub fn bswap<'tyctx>(
     args: &[Spanned<Operand<'tyctx>>],
     destination: &Place<'tyctx>,
@@ -40,7 +40,7 @@ pub fn bswap<'tyctx>(
                     CallSite::boxed(
                         Some(DotnetTypeRef::binary_primitives()),
                         "ReverseEndianness".into(),
-                        FnSig::new(&[tpe.clone()], &tpe),
+                        FnSig::new(&[tpe.clone()], tpe),
                         true,
                     ),
                     [operand]

@@ -1,9 +1,10 @@
-use crate::{function_sig::FnSig, r#type::DotnetTypeRef, IString};
+use crate::{IString};
 mod call_site;
 pub use call_site::*;
 mod field_desc;
 pub use field_desc::*;
 mod static_field_desc;
+use cilly::{fn_sig::FnSig, DotnetTypeRef};
 use serde::{Deserialize, Serialize};
 pub use static_field_desc::*;
 /// Represenation of a CIL opcode.
@@ -270,7 +271,7 @@ impl CILOp {
                 exception.clone().into(),
                 DotnetTypeRef::string_type().into(),
             ],
-            &crate::r#type::Type::Void,
+            cilly::Type::Void,
         );
         [
             CILOp::LdStr(msg.into()),
@@ -286,7 +287,7 @@ impl CILOp {
         let name = "WriteLine".into();
         let signature = FnSig::new(
             &[DotnetTypeRef::string_type().into()],
-            &crate::r#type::Type::Void,
+            cilly::Type::Void,
         );
         [
             CILOp::LdStr(msg.into()),
@@ -299,7 +300,7 @@ impl CILOp {
         let mut console = DotnetTypeRef::new(Some("System.Console"), "System.Console");
         console.set_valuetype(false);
         let name = "WriteLine".into();
-        let signature = FnSig::new(&[], &crate::r#type::Type::Void);
+        let signature = FnSig::new(&[], cilly::Type::Void);
 
         CILOp::Call(CallSite::new_extern(console, name, signature, true).into())
     }
@@ -311,7 +312,7 @@ impl CILOp {
         let name = "Write".into();
         let signature = FnSig::new(
             &[DotnetTypeRef::string_type().into()],
-            &crate::r#type::Type::Void,
+            cilly::Type::Void,
         );
         [
             CILOp::LdStr(msg.into()),
@@ -324,7 +325,7 @@ impl CILOp {
         let mut console = DotnetTypeRef::new(Some("System.Console"), "System.Console");
         console.set_valuetype(false);
         let name = "Write".into();
-        let signature = FnSig::new(&[crate::r#type::Type::Bool], &crate::r#type::Type::Void);
+        let signature = FnSig::new(&[crate::r#type::Type::Bool], cilly::Type::Void);
         CILOp::Call(CallSite::new_extern(console, name, signature, true).into())
     }
     /// Returns the ops necesary to  write message i32 from stack to stdout. Ends without a new line.
@@ -333,7 +334,7 @@ impl CILOp {
         let mut console = DotnetTypeRef::new(Some("System.Console"), "System.Console");
         console.set_valuetype(false);
         let name = "Write".into();
-        let signature = FnSig::new(&[crate::r#type::Type::I32], &crate::r#type::Type::Void);
+        let signature = FnSig::new(&[crate::r#type::Type::I32], cilly::Type::Void);
         CILOp::Call(CallSite::new_extern(console, name, signature, true).into())
     }
     /// Returns the ops necesary to  write message f32 from stack to stdout. Ends without a new line.
@@ -342,7 +343,7 @@ impl CILOp {
         let mut console = DotnetTypeRef::new(Some("System.Console"), "System.Console");
         console.set_valuetype(false);
         let name = "Write".into();
-        let signature = FnSig::new(&[crate::r#type::Type::F32], &crate::r#type::Type::Void);
+        let signature = FnSig::new(&[crate::r#type::Type::F32], cilly::Type::Void);
         CILOp::Call(CallSite::new_extern(console, name, signature, true).into())
     }
     /// Returns the ops necesary to u64 write message u64 from stack to stdout. Ends without a new line.
@@ -351,7 +352,7 @@ impl CILOp {
         let mut console = DotnetTypeRef::new(Some("System.Console"), "System.Console");
         console.set_valuetype(false);
         let name = "Write".into();
-        let signature = FnSig::new(&[crate::r#type::Type::U64], &crate::r#type::Type::Void);
+        let signature = FnSig::new(&[crate::r#type::Type::U64], cilly::Type::Void);
         CILOp::Call(CallSite::new_extern(console, name, signature, true).into())
     }
     /// Descirbes the difference in stack size before and after the op.
@@ -470,7 +471,7 @@ impl CILOp {
             CILOp::LDFtn(_) => 1,
 
             CILOp::CallI(fn_sig) => {
-                if fn_sig.output() == &crate::r#type::Type::Void {
+                if *fn_sig.output() == cilly::Type::Void {
                     -(1 + fn_sig.inputs().len() as isize)
                 } else {
                     1 - (1 + fn_sig.inputs().len() as isize)

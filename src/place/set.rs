@@ -2,8 +2,9 @@ use super::{pointed_type, PlaceTy};
 use crate::cil::{CallSite, FieldDescriptor};
 use crate::cil_tree::cil_node::CILNode;
 use crate::cil_tree::cil_root::CILRoot;
-use crate::function_sig::FnSig;
-use crate::r#type::{pointer_to_is_fat, DotnetTypeRef, Type};
+use cilly::   fn_sig::FnSig;
+use cilly::{DotnetTypeRef, Type};
+use crate::r#type::{pointer_to_is_fat};
 use crate::{call, conv_usize, ld_field, ldc_u64, size_of};
 
 use rustc_middle::mir::PlaceElem;
@@ -136,7 +137,7 @@ pub fn place_elem_set<'a>(
                             "set_Item".into(),
                             FnSig::new(
                                 &[Type::Ptr(array_type.into()), Type::USize, element_type],
-                                &Type::Void,
+                                Type::Void,
                             ),
                             false,
                         ),
@@ -180,7 +181,7 @@ pub fn place_elem_set<'a>(
                             CallSite::new(
                                 None,
                                 "bounds_check".into(),
-                                FnSig::new(&[Type::USize, Type::USize], &Type::USize),
+                                FnSig::new(&[Type::USize, Type::USize], Type::USize),
                                 true
                             ),
                             [conv_usize!(index), ld_field!(addr_calc, metadata),]
@@ -207,7 +208,7 @@ pub fn place_elem_set<'a>(
                             "set_Item".into(),
                             FnSig::new(
                                 &[Type::Ptr(array_type.into()), Type::USize, element],
-                                &Type::Void,
+                                Type::Void,
                             ),
                             false,
                         ),

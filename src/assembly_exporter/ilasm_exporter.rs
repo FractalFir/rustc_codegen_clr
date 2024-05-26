@@ -150,7 +150,7 @@ impl AssemblyExporter for ILASMExporter {
         Ok(())
     }
 
-    fn add_extern_method(&mut self, lib_path: &str, name: &str, sig: &crate::function_sig::FnSig) {
+    fn add_extern_method(&mut self, lib_path: &str, name: &str, sig: &cilly::fn_sig::FnSig) {
         // /lib64/libc.so.6
         let output = type_cil(sig.output());
 

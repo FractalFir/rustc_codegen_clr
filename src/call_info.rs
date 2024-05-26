@@ -1,4 +1,5 @@
-use crate::{function_sig::FnSig, r#type::TyCache};
+use crate::r#type::TyCache;
+use cilly::FnSig;
 use rustc_middle::ty::{Instance, List, ParamEnv, ParamEnvAnd, TyCtxt, TyKind};
 use rustc_target::abi::call::Conv;
 use rustc_target::spec::abi::Abi as TargetAbi;
@@ -53,7 +54,7 @@ impl CallInfo {
             ))?,*/
             _ => todo!("Unsuported ABI:{internal_abi:?}"),
         };
-        let mut sig = FnSig::new(&args, &ret);
+        let mut sig = FnSig::new(args, ret);
         if fn_abi.c_variadic {
             let remaining = fn_abi.args[(fn_abi.fixed_count as usize)..]
                 .iter()

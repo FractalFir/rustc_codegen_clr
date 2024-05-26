@@ -2,11 +2,12 @@ use crate::basic_block::BasicBlock;
 use crate::cil_tree::cil_node::CILNode;
 use crate::cil_tree::cil_root::CILRoot;
 use crate::method::MethodType;
-use crate::r#type::DotnetTypeRef;
+use cilly::DotnetTypeRef;
 use crate::{
     access_modifier::AccessModifer, add_method_from_trees, assembly::Assembly, cil::CallSite,
-    function_sig::FnSig, method::Method, r#type::Type,
+    method::Method, r#type::Type,
 };
+use cilly::fn_sig::FnSig;
 use crate::{call, conv_usize, ldc_u64, lt_un};
 use rustc_middle::ty::TyCtxt;
 mod casts;
@@ -15,7 +16,7 @@ const MAX_ALLOC_SIZE: u64 = u32::MAX as u64;
 add_method_from_trees!(
     bounds_check,
     &[Type::USize, Type::USize],
-    &Type::USize,
+    Type::USize,
     vec![
         BasicBlock::new(
             vec![
@@ -29,7 +30,7 @@ add_method_from_trees!(
                     site: crate::cil::CallSite::new_extern(
                         DotnetTypeRef::console(),
                         "Write".into(),
-                        FnSig::new(&[DotnetTypeRef::string_type().into()], &Type::Void),
+                        FnSig::new(&[DotnetTypeRef::string_type().into()], Type::Void),
                         true
                     ),
                     args: Box::new([CILNode::LdStr("Bounds check failed. idx:".into())])
@@ -39,7 +40,7 @@ add_method_from_trees!(
                     site: crate::cil::CallSite::new_extern(
                         DotnetTypeRef::console(),
                         "Write".into(),
-                        FnSig::new(&[Type::U64], &Type::Void),
+                        FnSig::new(&[Type::U64], Type::Void),
                         true
                     ),
                     args: Box::new([conv_usize!(CILNode::LDArg(0))])
@@ -49,7 +50,7 @@ add_method_from_trees!(
                     site: crate::cil::CallSite::new_extern(
                         DotnetTypeRef::console(),
                         "Write".into(),
-                        FnSig::new(&[DotnetTypeRef::string_type().into()], &Type::Void),
+                        FnSig::new(&[DotnetTypeRef::string_type().into()], Type::Void),
                         true
                     ),
                     args: Box::new([CILNode::LdStr("len:".into())])
@@ -59,7 +60,7 @@ add_method_from_trees!(
                     site: crate::cil::CallSite::new_extern(
                         DotnetTypeRef::console(),
                         "WriteLine".into(),
-                        FnSig::new(&[Type::U64], &Type::Void),
+                        FnSig::new(&[Type::U64], Type::Void),
                         true
                     ),
                     args: Box::new([conv_usize!(CILNode::LDArg(1))])
@@ -75,7 +76,7 @@ add_method_from_trees!(
                             .with_valuetype(false)
                         ),
                         ".ctor".into(),
-                        FnSig::new(&[], &Type::Void),
+                        FnSig::new(&[], Type::Void),
                         true
                     ),
                     args: [].into()
@@ -94,7 +95,7 @@ add_method_from_trees!(
             None
         ),
     ],
-    vec![Some("idx".into()),Some("bound".into())]
+    vec![Some("idx".into()), Some("bound".into())]
 );
 
 #[macro_export]
@@ -104,7 +105,7 @@ macro_rules! add_method_from_trees {
             let method = $crate::method::Method::new(
                 $crate::access_modifier::AccessModifer::Private,
                 $crate::method::MethodType::Static,
-                $crate::function_sig::FnSig::new($input, $output),
+                cilly::fn_sig::FnSig::new($input, $output),
                 stringify!($name),
                 vec![],
                 $trees,
@@ -118,7 +119,7 @@ macro_rules! add_method_from_trees {
             let mut method = $crate::method::Method::new(
                 $crate::access_modifier::AccessModifer::Private,
                 $crate::method::MethodType::MethodType::Static,
-                $crate::function_sig::FnSig::new($input, $output),
+                cilly::fn_sig::FnSig::new($input, $output),
                 stringify!($name),
                 $locals.into(),
                 $trees,
@@ -132,7 +133,7 @@ macro_rules! add_method_from_trees {
 /// Inserts a small subset of libc and some standard types into an assembly.
 pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     bounds_check(asm);
-    let c_void = Type::c_void(tyctx);
+    let c_void = crate::r#type::c_void(tyctx);
     asm.add_typedef(crate::r#type::TypeDef::new(
         AccessModifer::Public,
         c_void.as_dotnet().unwrap().name_path().into(),
@@ -148,7 +149,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     asm.add_typedef(crate::r#type::TypeDef::nameonly("RustVoid"));
     asm.add_typedef(crate::r#type::TypeDef::nameonly("Foreign"));
     asm.add_typedef(crate::r#type::TypeDef::nameonly("RustStr"));
-    /*asm.add_method(Method::new(AccessModifer::Public,MethodType::Static,FnSig::new(&[Type::U64,Type::U64],&Type::U128),"new_u128",vec![],vec![
+    /*asm.add_method(Method::new(AccessModifer::Public,MethodType::Static,FnSig::new(&[Type::U64,Type::U64],Type::U128),"new_u128",vec![],vec![
         BasicBlock::new(vec![CILRoot::Ret{ tree: todo!() }.into()],0,None),
     ]));*/
     //rust_slice(asm);
@@ -169,7 +170,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     let mut __rust_alloc = Method::new(
         AccessModifer::Private,
         MethodType::Static,
-        FnSig::new(&[Type::USize, Type::USize], &Type::Ptr(Type::U8.into())),
+        FnSig::new(&[Type::USize, Type::USize], Type::Ptr(Type::U8.into())),
         "__rust_alloc",
         vec![],
         if *crate::config::CHECK_ALLOCATIONS {
@@ -211,16 +212,16 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
                 None,
             )]
         },
-        vec![Some("size".into()),Some("align".into())]
+        vec![Some("size".into()), Some("align".into())],
     );
 
     asm.add_method(__rust_alloc);
     let mut __rust_alloc_zeroed = Method::new(
         AccessModifer::Private,
         MethodType::Static,
-        FnSig::new(&[Type::USize, Type::USize], &Type::Ptr(Type::U8.into())),
+        FnSig::new(&[Type::USize, Type::USize], Type::Ptr(Type::U8.into())),
         "__rust_alloc_zeroed",
-        vec![(Some("alloc_ptr".into()),Type::Ptr(Box::new(Type::U8)))],
+        vec![(Some("alloc_ptr".into()), Type::Ptr(Box::new(Type::U8)))],
         if *crate::config::CHECK_ALLOCATIONS {
             vec![
                 BasicBlock::new(
@@ -235,12 +236,22 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
                 ),
                 BasicBlock::new(
                     vec![
-                        CILRoot::STLoc { local: 0, tree: call!(CallSite::alloc(), [CILNode::LDArg(0), CILNode::LDArg(1)]) }.into(),
-                        CILRoot::InitBlk{dst:CILNode::LDLoc(0),val:CILNode::LdcU32(0),count:CILNode::LDArg(0)}.into(),
+                        CILRoot::STLoc {
+                            local: 0,
+                            tree: call!(CallSite::alloc(), [CILNode::LDArg(0), CILNode::LDArg(1)]),
+                        }
+                        .into(),
+                        CILRoot::InitBlk {
+                            dst: CILNode::LDLoc(0),
+                            val: CILNode::LdcU32(0),
+                            count: CILNode::LDArg(0),
+                        }
+                        .into(),
                         CILRoot::Ret {
-                        tree: CILNode::LDLoc(0),
-                    }
-                    .into()],
+                            tree: CILNode::LDLoc(0),
+                        }
+                        .into(),
+                    ],
                     1,
                     None,
                 ),
@@ -263,7 +274,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
                 None,
             )]
         },
-        vec![Some("size".into()),Some("align".into())]
+        vec![Some("size".into()), Some("align".into())],
     );
 
     asm.add_method(__rust_alloc_zeroed);
@@ -272,7 +283,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
         MethodType::Static,
         FnSig::new(
             &[Type::Ptr(Type::U8.into()), Type::USize, Type::USize],
-            &Type::Void,
+            Type::Void,
         ),
         "__rust_dealloc",
         vec![],
@@ -282,7 +293,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
                     site: CallSite::new_extern(
                         native_mem,
                         "AlignedFree".into(),
-                        FnSig::new(&[Type::Ptr(Type::Void.into())], &Type::Void),
+                        FnSig::new(&[Type::Ptr(Type::Void.into())], Type::Void),
                         true,
                     ),
                     args: [CILNode::LDArg(0)].into(),
@@ -293,14 +304,18 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
             0,
             None,
         )],
-        vec![Some("ptr".into()),Some("align".into()),Some("size".into())],
+        vec![
+            Some("ptr".into()),
+            Some("align".into()),
+            Some("size".into()),
+        ],
     );
     puts(asm);
     asm.add_method(__rust_dealloc);
     let free = Method::new(
         AccessModifer::Private,
         MethodType::Static,
-        FnSig::new(&[Type::Ptr(c_void.clone().into())], &Type::Void),
+        FnSig::new(&[Type::Ptr(c_void.clone().into())], Type::Void),
         "free",
         vec![],
         vec![BasicBlock::new(
@@ -309,7 +324,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
                     site: CallSite::new_extern(
                         marshal,
                         "FreeHGlobal".into(),
-                        FnSig::new(&[Type::ISize], &Type::Void),
+                        FnSig::new(&[Type::ISize], Type::Void),
                         true,
                     ),
                     args: [CILNode::LDArg(0)].into(),
@@ -332,7 +347,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
                 Type::USize,
                 Type::USize,
             ],
-            &Type::Ptr(Type::U8.into()),
+            Type::Ptr(Type::U8.into()),
         ),
         "__rust_realloc",
         vec![],
@@ -381,7 +396,12 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
                 None,
             )]
         },
-        vec![Some("ptr".into()),Some("old_size".into()),Some("new_size".into()),Some("align".into())],
+        vec![
+            Some("ptr".into()),
+            Some("old_size".into()),
+            Some("new_size".into()),
+            Some("align".into()),
+        ],
     );
 
     asm.add_method(__rust_realloc);
@@ -401,7 +421,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
 add_method_from_trees!(
     puts,
     &[Type::Ptr(Box::new(Type::U8))],
-    &Type::Void,
+    Type::Void,
     vec![
         BasicBlock::new(
             vec![
@@ -417,7 +437,7 @@ add_method_from_trees!(
                     site: CallSite::new_extern(
                         DotnetTypeRef::console(),
                         "Write".into(),
-                        FnSig::new(&[Type::DotnetChar], &Type::Void),
+                        FnSig::new(&[Type::DotnetChar], Type::Void),
                         true
                     ),
                     args: [CILNode::LDIndI8 {

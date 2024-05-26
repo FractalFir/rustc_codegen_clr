@@ -1,19 +1,20 @@
+use cilly::{DotnetTypeRef, FnSig, Type};
 use rustc_codegen_clr::{
     assembly::Assembly,
     call,
     cil::CallSite,
     cil_tree::{cil_node::CILNode, cil_root::CILRoot},
     conv_i32, conv_usize,
-    function_sig::FnSig,
+  
     ldc_i32, ldc_u32,
-    r#type::{DotnetTypeRef, Type},
+
 };
 fn mstring_to_utf8ptr(mstring: CILNode) -> CILNode {
     call!(
         CallSite::new_extern(
             DotnetTypeRef::marshal(),
             "StringToCoTaskMemUTF8".into(),
-            FnSig::new(&[DotnetTypeRef::string_type().into()], &Type::ISize),
+            FnSig::new(&[DotnetTypeRef::string_type().into()], Type::ISize),
             true
         ),
         [mstring]
@@ -81,7 +82,7 @@ fn hijack_arg_init(asm: &mut Assembly) {
                 "GetCommandLineArgs".into(),
                 FnSig::new(
                     &[],
-                    &Type::ManagedArray {
+                    Type::ManagedArray {
                         element: Box::new(DotnetTypeRef::string_type().into()),
                         dims: NonZeroU8::new(1).unwrap()
                     }

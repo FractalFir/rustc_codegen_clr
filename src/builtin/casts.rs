@@ -9,14 +9,14 @@ use crate::{
     cil_tree::{cil_node::CILNode, cil_root::CILRoot},
     conv_f32, conv_f64, conv_f_un, conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16,
     conv_u32, conv_u64, conv_u8, conv_usize, eq,
-    function_sig::FnSig,
     gt, ldc_i32, ldc_i64, ldc_u32, ldc_u64, lt, or,
-    r#type::{DotnetTypeRef, Type},
+
 };
+use cilly::{fn_sig::FnSig, DotnetTypeRef, Type};
 add_method_from_trees!(
     cast_i32_to_u64,
     &[Type::I32],
-    &Type::U64,
+    Type::U64,
     vec![
         BasicBlock::new(
             vec![
@@ -48,7 +48,7 @@ add_method_from_trees!(
 add_method_from_trees!(
     cast_f32_u8,
     &[Type::F32],
-    &Type::U8,
+    Type::U8,
     vec![
         BasicBlock::new(
             vec![
@@ -60,7 +60,7 @@ add_method_from_trees!(
                             CallSite::new_extern(
                                 DotnetTypeRef::single(),
                                 "IsNaN".into(),
-                                FnSig::new(&[Type::F32], &Type::Bool),
+                                FnSig::new(&[Type::F32], Type::Bool),
                                 true
                             ),
                             [CILNode::LDArg(0)]
@@ -120,7 +120,7 @@ add_method_from_trees!(
 add_method_from_trees!(
     cast_f32_u16,
     &[Type::F32],
-    &Type::U16,
+    Type::U16,
     vec![
         BasicBlock::new(
             vec![
@@ -132,7 +132,7 @@ add_method_from_trees!(
                             CallSite::new_extern(
                                 DotnetTypeRef::single(),
                                 "IsNaN".into(),
-                                FnSig::new(&[Type::F32], &Type::Bool),
+                                FnSig::new(&[Type::F32], Type::Bool),
                                 true
                             ),
                             [CILNode::LDArg(0)]
@@ -192,7 +192,7 @@ add_method_from_trees!(
 add_method_from_trees!(
     cast_f32_u32,
     &[Type::F32],
-    &Type::U32,
+    Type::U32,
     vec![
         BasicBlock::new(
             vec![
@@ -204,7 +204,7 @@ add_method_from_trees!(
                             CallSite::new_extern(
                                 DotnetTypeRef::single(),
                                 "IsNaN".into(),
-                                FnSig::new(&[Type::F32], &Type::Bool),
+                                FnSig::new(&[Type::F32], Type::Bool),
                                 true
                             ),
                             [CILNode::LDArg(0)]
@@ -264,7 +264,7 @@ add_method_from_trees!(
 add_method_from_trees!(
     cast_f32_u64,
     &[Type::F32],
-    &Type::U64,
+    Type::U64,
     vec![
         BasicBlock::new(
             vec![
@@ -276,7 +276,7 @@ add_method_from_trees!(
                             CallSite::new_extern(
                                 DotnetTypeRef::single(),
                                 "IsNaN".into(),
-                                FnSig::new(&[Type::F32], &Type::Bool),
+                                FnSig::new(&[Type::F32], Type::Bool),
                                 true
                             ),
                             [CILNode::LDArg(0)]
@@ -336,7 +336,7 @@ add_method_from_trees!(
 add_method_from_trees!(
     cast_f32_usize,
     &[Type::F32],
-    &Type::USize,
+    Type::USize,
     vec![
         BasicBlock::new(
             vec![
@@ -348,7 +348,7 @@ add_method_from_trees!(
                             CallSite::new_extern(
                                 DotnetTypeRef::single(),
                                 "IsNaN".into(),
-                                FnSig::new(&[Type::F32], &Type::Bool),
+                                FnSig::new(&[Type::F32], Type::Bool),
                                 true
                             ),
                             [CILNode::LDArg(0)]
@@ -373,7 +373,7 @@ add_method_from_trees!(
                             CallSite::new(
                                 Some(DotnetTypeRef::usize_type()),
                                 "get_MaxValue".into(),
-                                FnSig::new(&[], &Type::USize),
+                                FnSig::new(&[], Type::USize),
                                 true
                             ),
                             []
@@ -386,7 +386,7 @@ add_method_from_trees!(
                         CallSite::new(
                             Some(DotnetTypeRef::usize_type()),
                             "get_MaxValue".into(),
-                            FnSig::new(&[], &Type::USize),
+                            FnSig::new(&[], Type::USize),
                             true
                         ),
                         []
@@ -427,7 +427,7 @@ add_method_from_trees!(
 add_method_from_trees!(
     cast_f64_usize,
     &[Type::F64],
-    &Type::USize,
+    Type::USize,
     vec![
         BasicBlock::new(
             vec![
@@ -439,7 +439,7 @@ add_method_from_trees!(
                             CallSite::new_extern(
                                 DotnetTypeRef::single(),
                                 "IsNaN".into(),
-                                FnSig::new(&[Type::F32], &Type::Bool),
+                                FnSig::new(&[Type::F32], Type::Bool),
                                 true
                             ),
                             [CILNode::LDArg(0)]
@@ -464,7 +464,7 @@ add_method_from_trees!(
                             CallSite::new(
                                 Some(DotnetTypeRef::usize_type()),
                                 "get_MaxValue".into(),
-                                FnSig::new(&[], &Type::USize),
+                                FnSig::new(&[], Type::USize),
                                 true
                             ),
                             []
@@ -477,7 +477,7 @@ add_method_from_trees!(
                         CallSite::new(
                             Some(DotnetTypeRef::usize_type()),
                             "get_MaxValue".into(),
-                            FnSig::new(&[], &Type::USize),
+                            FnSig::new(&[], Type::USize),
                             true
                         ),
                         []
@@ -518,7 +518,7 @@ add_method_from_trees!(
 add_method_from_trees!(
     cast_f64_isize,
     &[Type::F64],
-    &Type::ISize,
+    Type::ISize,
     vec![
         BasicBlock::new(
             vec![
@@ -530,7 +530,7 @@ add_method_from_trees!(
                             CallSite::new_extern(
                                 DotnetTypeRef::single(),
                                 "IsNaN".into(),
-                                FnSig::new(&[Type::F32], &Type::Bool),
+                                FnSig::new(&[Type::F32], Type::Bool),
                                 true
                             ),
                             [CILNode::LDArg(0)]
@@ -555,7 +555,7 @@ add_method_from_trees!(
                             CallSite::new(
                                 Some(DotnetTypeRef::isize_type()),
                                 "get_MaxValue".into(),
-                                FnSig::new(&[], &Type::ISize),
+                                FnSig::new(&[], Type::ISize),
                                 true
                             ),
                             []
@@ -568,7 +568,7 @@ add_method_from_trees!(
                         CallSite::new(
                             Some(DotnetTypeRef::isize_type()),
                             "get_MaxValue".into(),
-                            FnSig::new(&[], &Type::ISize),
+                            FnSig::new(&[], Type::ISize),
                             true
                         ),
                         []
@@ -590,7 +590,7 @@ add_method_from_trees!(
                             CallSite::new(
                                 Some(DotnetTypeRef::isize_type()),
                                 "get_MinValue".into(),
-                                FnSig::new(&[], &Type::ISize),
+                                FnSig::new(&[], Type::ISize),
                                 true
                             ),
                             []
@@ -603,7 +603,7 @@ add_method_from_trees!(
                         CallSite::new(
                             Some(DotnetTypeRef::isize_type()),
                             "get_MinValue".into(),
-                            FnSig::new(&[], &Type::ISize),
+                            FnSig::new(&[], Type::ISize),
                             true
                         ),
                         []
@@ -628,7 +628,7 @@ add_method_from_trees!(
 add_method_from_trees!(
     cast_f32_isize,
     &[Type::F32],
-    &Type::ISize,
+    Type::ISize,
     vec![
         BasicBlock::new(
             vec![
@@ -640,7 +640,7 @@ add_method_from_trees!(
                             CallSite::new_extern(
                                 DotnetTypeRef::single(),
                                 "IsNaN".into(),
-                                FnSig::new(&[Type::F32], &Type::Bool),
+                                FnSig::new(&[Type::F32], Type::Bool),
                                 true
                             ),
                             [CILNode::LDArg(0)]
@@ -665,7 +665,7 @@ add_method_from_trees!(
                             CallSite::new(
                                 Some(DotnetTypeRef::isize_type()),
                                 "get_MaxValue".into(),
-                                FnSig::new(&[], &Type::ISize),
+                                FnSig::new(&[], Type::ISize),
                                 true
                             ),
                             []
@@ -678,7 +678,7 @@ add_method_from_trees!(
                         CallSite::new(
                             Some(DotnetTypeRef::isize_type()),
                             "get_MaxValue".into(),
-                            FnSig::new(&[], &Type::ISize),
+                            FnSig::new(&[], Type::ISize),
                             true
                         ),
                         []
@@ -700,7 +700,7 @@ add_method_from_trees!(
                             CallSite::new(
                                 Some(DotnetTypeRef::isize_type()),
                                 "get_MinValue".into(),
-                                FnSig::new(&[], &Type::ISize),
+                                FnSig::new(&[], Type::ISize),
                                 true
                             ),
                             []
@@ -713,7 +713,7 @@ add_method_from_trees!(
                         CallSite::new(
                             Some(DotnetTypeRef::isize_type()),
                             "get_MinValue".into(),
-                            FnSig::new(&[], &Type::ISize),
+                            FnSig::new(&[], Type::ISize),
                             true
                         ),
                         []
@@ -738,7 +738,7 @@ add_method_from_trees!(
 add_method_from_trees!(
     cast_f32_i8,
     &[Type::F32],
-    &Type::I8,
+    Type::I8,
     vec![
         BasicBlock::new(
             vec![
@@ -750,7 +750,7 @@ add_method_from_trees!(
                             CallSite::new_extern(
                                 DotnetTypeRef::single(),
                                 "IsNaN".into(),
-                                FnSig::new(&[Type::F32], &Type::Bool),
+                                FnSig::new(&[Type::F32], Type::Bool),
                                 true
                             ),
                             [CILNode::LDArg(0)]
@@ -810,7 +810,7 @@ add_method_from_trees!(
 add_method_from_trees!(
     cast_f32_i16,
     &[Type::F32],
-    &Type::I16,
+    Type::I16,
     vec![
         BasicBlock::new(
             vec![
@@ -822,7 +822,7 @@ add_method_from_trees!(
                             CallSite::new_extern(
                                 DotnetTypeRef::single(),
                                 "IsNaN".into(),
-                                FnSig::new(&[Type::F32], &Type::Bool),
+                                FnSig::new(&[Type::F32], Type::Bool),
                                 true
                             ),
                             [CILNode::LDArg(0)]
@@ -882,7 +882,7 @@ add_method_from_trees!(
 add_method_from_trees!(
     cast_f32_i32,
     &[Type::F32],
-    &Type::I32,
+    Type::I32,
     vec![
         BasicBlock::new(
             vec![
@@ -894,7 +894,7 @@ add_method_from_trees!(
                             CallSite::new_extern(
                                 DotnetTypeRef::single(),
                                 "IsNaN".into(),
-                                FnSig::new(&[Type::F32], &Type::Bool),
+                                FnSig::new(&[Type::F32], Type::Bool),
                                 true
                             ),
                             [CILNode::LDArg(0)]
@@ -954,7 +954,7 @@ add_method_from_trees!(
 add_method_from_trees!(
     cast_f32_i64,
     &[Type::F32],
-    &Type::I64,
+    Type::I64,
     vec![
         BasicBlock::new(
             vec![
@@ -966,7 +966,7 @@ add_method_from_trees!(
                             CallSite::new_extern(
                                 DotnetTypeRef::single(),
                                 "IsNaN".into(),
-                                FnSig::new(&[Type::F32], &Type::Bool),
+                                FnSig::new(&[Type::F32], Type::Bool),
                                 true
                             ),
                             [CILNode::LDArg(0)]
@@ -1026,7 +1026,7 @@ add_method_from_trees!(
 add_method_from_trees!(
     cast_f64_u8,
     &[Type::F64],
-    &Type::U8,
+    Type::U8,
     vec![
         BasicBlock::new(
             vec![
@@ -1038,7 +1038,7 @@ add_method_from_trees!(
                             CallSite::new_extern(
                                 DotnetTypeRef::double(),
                                 "IsNaN".into(),
-                                FnSig::new(&[Type::F64], &Type::Bool),
+                                FnSig::new(&[Type::F64], Type::Bool),
                                 true
                             ),
                             [CILNode::LDArg(0)]
@@ -1098,7 +1098,7 @@ add_method_from_trees!(
 add_method_from_trees!(
     cast_f64_u16,
     &[Type::F64],
-    &Type::U16,
+    Type::U16,
     vec![
         BasicBlock::new(
             vec![
@@ -1110,7 +1110,7 @@ add_method_from_trees!(
                             CallSite::new_extern(
                                 DotnetTypeRef::double(),
                                 "IsNaN".into(),
-                                FnSig::new(&[Type::F64], &Type::Bool),
+                                FnSig::new(&[Type::F64], Type::Bool),
                                 true
                             ),
                             [CILNode::LDArg(0)]
@@ -1170,7 +1170,7 @@ add_method_from_trees!(
 add_method_from_trees!(
     cast_f64_u32,
     &[Type::F64],
-    &Type::U32,
+    Type::U32,
     vec![
         BasicBlock::new(
             vec![
@@ -1182,7 +1182,7 @@ add_method_from_trees!(
                             CallSite::new_extern(
                                 DotnetTypeRef::double(),
                                 "IsNaN".into(),
-                                FnSig::new(&[Type::F64], &Type::Bool),
+                                FnSig::new(&[Type::F64], Type::Bool),
                                 true
                             ),
                             [CILNode::LDArg(0)]
@@ -1242,7 +1242,7 @@ add_method_from_trees!(
 add_method_from_trees!(
     cast_f64_u64,
     &[Type::F64],
-    &Type::U64,
+    Type::U64,
     vec![
         BasicBlock::new(
             vec![
@@ -1254,7 +1254,7 @@ add_method_from_trees!(
                             CallSite::new_extern(
                                 DotnetTypeRef::double(),
                                 "IsNaN".into(),
-                                FnSig::new(&[Type::F64], &Type::Bool),
+                                FnSig::new(&[Type::F64], Type::Bool),
                                 true
                             ),
                             [CILNode::LDArg(0)]
@@ -1314,7 +1314,7 @@ add_method_from_trees!(
 add_method_from_trees!(
     cast_f64_i8,
     &[Type::F64],
-    &Type::I8,
+    Type::I8,
     vec![
         BasicBlock::new(
             vec![
@@ -1326,7 +1326,7 @@ add_method_from_trees!(
                             CallSite::new_extern(
                                 DotnetTypeRef::double(),
                                 "IsNaN".into(),
-                                FnSig::new(&[Type::F64], &Type::Bool),
+                                FnSig::new(&[Type::F64], Type::Bool),
                                 true
                             ),
                             [CILNode::LDArg(0)]
@@ -1386,7 +1386,7 @@ add_method_from_trees!(
 add_method_from_trees!(
     cast_f64_i16,
     &[Type::F64],
-    &Type::I16,
+    Type::I16,
     vec![
         BasicBlock::new(
             vec![
@@ -1398,7 +1398,7 @@ add_method_from_trees!(
                             CallSite::new_extern(
                                 DotnetTypeRef::double(),
                                 "IsNaN".into(),
-                                FnSig::new(&[Type::F64], &Type::Bool),
+                                FnSig::new(&[Type::F64], Type::Bool),
                                 true
                             ),
                             [CILNode::LDArg(0)]
@@ -1458,7 +1458,7 @@ add_method_from_trees!(
 add_method_from_trees!(
     cast_f64_i32,
     &[Type::F64],
-    &Type::I32,
+    Type::I32,
     vec![
         BasicBlock::new(
             vec![
@@ -1470,7 +1470,7 @@ add_method_from_trees!(
                             CallSite::new_extern(
                                 DotnetTypeRef::double(),
                                 "IsNaN".into(),
-                                FnSig::new(&[Type::F64], &Type::Bool),
+                                FnSig::new(&[Type::F64], Type::Bool),
                                 true
                             ),
                             [CILNode::LDArg(0)]
@@ -1530,7 +1530,7 @@ add_method_from_trees!(
 add_method_from_trees!(
     cast_f64_i64,
     &[Type::F64],
-    &Type::I64,
+    Type::I64,
     vec![
         BasicBlock::new(
             vec![
@@ -1542,7 +1542,7 @@ add_method_from_trees!(
                             CallSite::new_extern(
                                 DotnetTypeRef::double(),
                                 "IsNaN".into(),
-                                FnSig::new(&[Type::F64], &Type::Bool),
+                                FnSig::new(&[Type::F64], Type::Bool),
                                 true
                             ),
                             [CILNode::LDArg(0)]

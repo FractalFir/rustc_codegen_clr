@@ -1,12 +1,12 @@
 use crate::{
     call,
     cil::{CILOp, CallSite, FieldDescriptor, StaticFieldDescriptor},
-    function_sig::FnSig,
+    
     method::Method,
-    r#type::{DotnetTypeRef, TyCache, Type},
+    r#type::TyCache,
     IString,
 };
-
+use cilly::{fn_sig::FnSig, DotnetTypeRef, Type};
 use super::{append_vec, cil_root::CILRoot};
 use rustc_middle::ty::TyCtxt;
 use serde::{Deserialize, Serialize};
@@ -230,7 +230,7 @@ impl CILNode {
                         site: CallSite::new_extern(
                             DotnetTypeRef::console(),
                             "Write".into(),
-                            FnSig::new(&[tpe], &Type::Void),
+                            FnSig::new(&[tpe], Type::Void),
                             true,
                         ),
                         args: Box::new([CILNode::GetStackTop]),
@@ -246,7 +246,7 @@ impl CILNode {
                         site: CallSite::new_extern(
                             DotnetTypeRef::console(),
                             "Write".into(),
-                            FnSig::new(&[Type::U32], &Type::Void),
+                            FnSig::new(&[Type::U32], Type::Void),
                             true,
                         ),
                         args: Box::new([CILNode::ConvU32(Box::new(CILNode::GetStackTop))]),
@@ -262,7 +262,7 @@ impl CILNode {
                         site: CallSite::new_extern(
                             DotnetTypeRef::console(),
                             "Write".into(),
-                            FnSig::new(&[Type::I32], &Type::Void),
+                            FnSig::new(&[Type::I32], Type::Void),
                             true,
                         ),
                         args: Box::new([CILNode::ConvI32(Box::new(CILNode::GetStackTop))]),
@@ -278,7 +278,7 @@ impl CILNode {
                         site: CallSite::new_extern(
                             DotnetTypeRef::console(),
                             "Write".into(),
-                            FnSig::new(&[Type::U64], &Type::Void),
+                            FnSig::new(&[Type::U64], Type::Void),
                             true,
                         ),
                         args: Box::new([CILNode::ZeroExtendToUSize(Box::new(
@@ -296,7 +296,7 @@ impl CILNode {
                         site: CallSite::new_extern(
                             DotnetTypeRef::console(),
                             "Write".into(),
-                            FnSig::new(&[Type::I64], &Type::Void),
+                            FnSig::new(&[Type::I64], Type::Void),
                             true,
                         ),
                         args: Box::new([CILNode::ConvISize(Box::new(CILNode::GetStackTop))]),
@@ -323,7 +323,7 @@ impl CILNode {
             Type::U128 | Type::I128 => call!(
                 CallSite::builtin(
                     "select_u128".into(),
-                    FnSig::new(&[Type::U128, Type::U128, Type::Bool], &Type::U128),
+                    FnSig::new(&[Type::U128, Type::U128, Type::Bool], Type::U128),
                     true
                 ),
                 [a, b, predictate]
@@ -331,7 +331,7 @@ impl CILNode {
             Type::USize | Type::ISize | Type::Ptr(_) => call!(
                 CallSite::builtin(
                     "select_usize".into(),
-                    FnSig::new(&[Type::USize, Type::USize, Type::Bool], &Type::USize),
+                    FnSig::new(&[Type::USize, Type::USize, Type::Bool], Type::USize),
                     true
                 ),
                 [a, b, predictate]
@@ -339,7 +339,7 @@ impl CILNode {
             Type::U64 | Type::I64 => call!(
                 CallSite::builtin(
                     "select_u64".into(),
-                    FnSig::new(&[Type::U64, Type::U64, Type::Bool], &Type::U64),
+                    FnSig::new(&[Type::U64, Type::U64, Type::Bool], Type::U64),
                     true
                 ),
                 [a, b, predictate]
@@ -347,7 +347,7 @@ impl CILNode {
             Type::U32 | Type::I32 => call!(
                 CallSite::builtin(
                     "select_u32".into(),
-                    FnSig::new(&[Type::U32, Type::U32, Type::Bool], &Type::U32),
+                    FnSig::new(&[Type::U32, Type::U32, Type::Bool], Type::U32),
                     true
                 ),
                 [a, b, predictate]
@@ -355,7 +355,7 @@ impl CILNode {
             Type::U16 | Type::I16 => call!(
                 CallSite::builtin(
                     "select_u16".into(),
-                    FnSig::new(&[Type::U16, Type::U16, Type::Bool], &Type::U16),
+                    FnSig::new(&[Type::U16, Type::U16, Type::Bool], Type::U16),
                     true
                 ),
                 [a, b, predictate]
@@ -363,7 +363,7 @@ impl CILNode {
             Type::U8 | Type::I8 | Type::Bool => call!(
                 CallSite::builtin(
                     "select_u8".into(),
-                    FnSig::new(&[Type::U8, Type::U8, Type::Bool], &Type::U8),
+                    FnSig::new(&[Type::U8, Type::U8, Type::Bool], Type::U8),
                     true
                 ),
                 [a, b, predictate]

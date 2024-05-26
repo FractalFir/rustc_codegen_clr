@@ -2,14 +2,16 @@ use crate::{
     access_modifier::AccessModifer,
     basic_block::BasicBlock,
     cil::{CallSite, StaticFieldDescriptor},
-    function_sig::FnSig,
-    r#type::{tycache::TyCache, DotnetTypeRef, Type},
+    r#type::{tycache::TyCache,},
     IString,
 };
+use cilly::{   fn_sig::FnSig, DotnetTypeRef, Type};
 use rustc_middle::ty::TyCtxt;
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::HashSet, hash::{Hash, Hasher}, ops::{Deref, DerefMut}
+    collections::HashSet,
+    hash::{Hash, Hasher},
+    ops::{Deref, DerefMut},
 };
 /// Represenation of a CIL method.
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
@@ -63,19 +65,30 @@ impl Method {
         name: &str,
         mut locals: Vec<LocalDef>,
         mut blocks: Vec<BasicBlock>,
-        mut arg_names:Vec<Option<IString>>,
+        mut arg_names: Vec<Option<IString>>,
     ) -> Self {
         blocks
             .iter_mut()
             .flat_map(|blck| blck.trees_mut().iter_mut())
             .for_each(super::cil_tree::CILTree::opt);
         let mut used_names = HashSet::new();
-        for name in arg_names.iter_mut().chain(locals.iter_mut().map(|loc|&mut loc.0)).filter_map(|name|name.as_mut()){
+        for name in arg_names
+            .iter_mut()
+            .chain(locals.iter_mut().map(|loc| &mut loc.0))
+            .filter_map(|name| name.as_mut())
+        {
             let mut postfix = 0;
-            while used_names.get(&if postfix == 0 {name.clone()}else{format!("{name}{postfix}").into()}).is_some(){
-                postfix+=1;
+            while used_names
+                .get(&if postfix == 0 {
+                    name.clone()
+                } else {
+                    format!("{name}{postfix}").into()
+                })
+                .is_some()
+            {
+                postfix += 1;
             }
-            if postfix != 0{
+            if postfix != 0 {
                 *name = format!("{name}{postfix}").into();
             }
             used_names.insert(name.clone());
@@ -189,13 +202,13 @@ impl Method {
         self.sig()
             .inputs()
             .iter()
-            .filter_map(super::r#type::r#type::Type::dotnet_refs)
+            .filter_map(cilly::Type::dotnet_refs)
             .chain(self.locals().iter().filter_map(|tpe| tpe.1.dotnet_refs()))
             .chain(
                 self.sig()
                     .inputs()
                     .iter()
-                    .filter_map(super::r#type::r#type::Type::dotnet_refs),
+                    .filter_map(cilly::Type::dotnet_refs),
             )
             .chain(
                 [self.sig().output()]
@@ -249,7 +262,6 @@ impl Method {
     pub fn blocks_mut(&mut self) -> BlockMutGuard<'_> {
         BlockMutGuard { method: self }
     }
-
 
     #[must_use]
     pub fn arg_names(&self) -> &[Option<IString>] {

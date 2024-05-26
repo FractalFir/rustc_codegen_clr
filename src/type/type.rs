@@ -1,370 +1,51 @@
 use crate::cil::CallSite;
 use crate::cil_tree::cil_node::CILNode;
-use crate::function_sig::FnSig;
-use crate::{call, IString};
+use cilly::fn_sig::FnSig;
+use crate::call;
+use cilly::{DotnetTypeRef, Type};
+
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
-use rustc_middle::ty::{AdtDef, ConstKind, FloatTy, GenericArg, IntTy, Ty, TyCtxt, TyKind, UintTy};
+use rustc_middle::ty::{AdtDef, ConstKind, GenericArg, Ty, TyCtxt, TyKind};
 /// This struct represetnts either a primitive .NET type (F32,F64), or stores information on how to lookup a more complex type (struct,class,array)
 use serde::{Deserialize, Serialize};
-#[derive(Serialize, Deserialize, PartialEq, Clone, Eq, Hash, Debug)]
-pub enum Type {
-    /// Void type
-    Void,
-    /// Boolean type
-    Bool,
-    // Floating-point types
-    F16,
-    F32,
-    F64,
-    // Unsigned intiegers
-    U8,
-    U16,
-    U32,
-    U64,
-    U128,
-    USize,
-    // Signed intiegers
-    I8,
-    I16,
-    I32,
-    I64,
-    I128,
-    ISize,
-    /// A refernece to a .NET type
-    DotnetType(Box<DotnetTypeRef>),
-    // Pointer to a type
-    Ptr(Box<Self>),
-    /// A managed reference `&`. IS NOT EQUIVALENT TO RUST `&`!
-    ManagedReference(Box<Self>),
-    // Speical type marking an unresoved type. This is a work around some issues with corelib types. Nothing can ever interact directly with this type.
-    Unresolved,
-    /// Foregin type. Will never be interacted with directly
-    Foreign,
-    /// Generic argument
-    GenericArg(u32),
-    CallGenericArg(u32),
-    DotnetChar,
-    /// Rust `FnDefs`
-    FnDef(IString),
-    DelegatePtr(Box<crate::function_sig::FnSig>),
-    /// Generic argument of a method
-    MethodGenericArg(i32),
-    ManagedArray {
-        element: Box<Self>,
-        dims: std::num::NonZeroU8,
-    },
-}
 #[derive(Serialize, Deserialize, PartialEq, Clone, Eq, Hash, Debug)]
 pub struct DotnetArray {
     pub element: Type,
     pub dimensions: u64,
 }
-#[derive(Serialize, Deserialize, PartialEq, Clone, Eq, Hash, Debug)]
-pub struct DotnetTypeRef {
-    assembly: Option<IString>,
-    name_path: IString,
-    generics: Vec<Type>,
-    // In cause of `System.BadImageFormatException: Expected value type but got type kind 14` check if `is_valuetype` is always correct!
-    is_valuetype: bool,
+#[must_use]
+/// Finds the `c_void` type.
+/// # Panics
+/// Will panic if `c_void` is not defined.
+pub fn c_void(tyctx: TyCtxt) -> Type {
+    let lang_items = tyctx.lang_items();
+    let c_void = lang_items.c_void().expect("c_void not defined.");
+    let name = rustc_codegen_ssa::back::symbol_export::symbol_name_for_instance_in_crate(
+        tyctx,
+        ExportedSymbol::NonGeneric(c_void),
+        c_void.krate,
+    );
+    let demangled = rustc_demangle::demangle(&name);
+    // Using formating preserves the generic hash.
+    let name = format!("{demangled}");
+    let name = crate::utilis::escape_class_name(&name);
+    DotnetTypeRef::new::<&str,_>(None, name).into()
 }
-impl DotnetTypeRef {
-    #[must_use]
-    pub fn marshal() -> Self {
-        Self::new(
-            Some("System.Runtime.InteropServices"),
-            "System.Runtime.InteropServices.Marshal",
-        )
-        .with_valuetype(false)
-    }
-    #[must_use]
-    pub fn single() -> Self {
-        Self::new(Some("System.Runtime"), "System.Single").with_valuetype(true)
-    }
-    #[must_use]
-    pub fn double() -> Self {
-        Self::new(Some("System.Runtime"), "System.Double").with_valuetype(true)
-    }
-    #[must_use]
-    pub fn console() -> Self {
-        Self::new(Some("System.Console"), "System.Console").with_valuetype(false)
-    }
-    #[must_use]
-    pub fn enviroment() -> Self {
-        Self::new(Some("System.Runtime"), "System.Environment").with_valuetype(false)
-    }
-    #[must_use]
-    pub fn math() -> Self {
-        Self::new(Some("System.Runtime"), "System.Math").with_valuetype(false)
-    }
-    #[must_use]
-    pub fn mathf() -> Self {
-        Self::new(Some("System.Runtime"), "System.MathF").with_valuetype(false)
-    }
-    #[must_use]
-    pub fn int_128() -> Self {
-        Self::new(Some("System.Runtime"), "System.Int128")
-    }
-    #[must_use]
-    pub fn binary_primitives() -> Self {
-        Self::new(
-            Some("System.Memory"),
-            "System.Buffers.Binary.BinaryPrimitives",
-        )
-        .with_valuetype(false)
-    }
-    #[must_use]
-    pub fn uint_128() -> Self {
-        Self::new(Some("System.Runtime"), "System.UInt128")
-    }
-    #[must_use]
-    pub fn usize_type() -> Self {
-        Self::new(Some("System.Runtime"), "System.UIntPtr")
-    }
-    #[must_use]
-    pub fn isize_type() -> Self {
-        Self::new(Some("System.Runtime"), "System.IntPtr")
-    }
-    #[must_use]
-    pub fn type_handle_type() -> Self {
-        Self::new(Some("System.Runtime"), "System.RuntimeTypeHandle")
-    }
-    #[must_use]
-    pub fn type_type() -> Self {
-        Self::new(Some("System.Runtime"), "System.Type").with_valuetype(false)
-    }
-    #[must_use]
-    pub fn object_type() -> Self {
-        Self::new(Some("System.Runtime"), "System.Object").with_valuetype(false)
-    }
-    #[must_use]
-    pub fn string_type() -> Self {
-        Self::new(Some("System.Runtime"), "System.String").with_valuetype(false)
-    }
-    #[must_use]
-    pub fn managed_array() -> Self {
-        Self::new(Some("System.Runtime"), "System.Array").with_valuetype(false)
-    }
-    #[must_use]
-    pub fn with_valuetype(mut self, valuetype: bool) -> Self {
-        self.set_valuetype(valuetype);
-        self
-    }
-    #[must_use]
-    pub fn compiler_services_unsafe() -> Self {
-        DotnetTypeRef::new(
-            Some("System.Runtime"),
-            "System.Runtime.CompilerServices.Unsafe",
-        )
-        .with_valuetype(false)
-    }
-    pub fn new(assembly: Option<&str>, name_path: &str) -> Self {
-        assert!(!name_path.contains('/'));
-        Self {
-            assembly: assembly.map(std::convert::Into::into),
-            name_path: name_path.into(),
-            generics: Vec::new(),
-            is_valuetype: true,
-        }
-    }
-    #[must_use]
-    pub fn is_valuetype(&self) -> bool {
-        self.is_valuetype
-    }
-    #[must_use]
-    pub fn tpe_prefix(&self) -> &'static str {
-        if self.is_valuetype() {
-            "valuetype"
-        } else {
-            "class"
-        }
-    }
-    pub fn set_valuetype(&mut self, is_valuetype: bool) {
-        self.is_valuetype = is_valuetype;
-    }
-    #[must_use]
-    pub fn array(element: &Type, length: usize) -> Self {
-        let name = crate::r#type::type_def::arr_name(length, element);
-        DotnetTypeRef::new(None, &name)
-    }
-
-    pub fn asm(&self) -> Option<&str> {
-        self.assembly.as_ref().map(std::convert::AsRef::as_ref)
-    }
-    #[must_use]
-    pub fn name_path(&self) -> &str {
-        self.name_path.as_ref()
-    }
-    #[must_use]
-    pub fn generics(&self) -> &[Type] {
-        self.generics.as_ref()
-    }
-    pub fn set_generics(&mut self, generics: impl Into<Vec<Type>>) {
-        self.generics = generics.into();
-    }
-
-    pub(crate) fn interlocked() -> Self {
-        Self::new(Some("System.Threading"), "System.Threading.Interlocked").with_valuetype(false)
-    }
-    #[must_use]
-    pub fn assembly() -> Self {
-        Self::new(Some("System.Runtime"), "System.Reflection.Assembly").with_valuetype(false)
-    }
-    pub(crate) fn native_mem() -> DotnetTypeRef {
-        DotnetTypeRef::new(
-            Some("System.Runtime.InteropServices"),
-            "System.Runtime.InteropServices.NativeMemory",
-        )
-        .with_valuetype(false)
-    }
-}
-impl Type {
-    #[must_use]
-    /// Finds the `c_void` type.
-    /// # Panics
-    /// Will panic if `c_void` is not defined.
-    pub fn c_void(tyctx: TyCtxt) -> Type {
-        let lang_items = tyctx.lang_items();
-        let c_void = lang_items.c_void().expect("c_void not defined.");
-        let name = rustc_codegen_ssa::back::symbol_export::symbol_name_for_instance_in_crate(
-            tyctx,
-            ExportedSymbol::NonGeneric(c_void),
-            c_void.krate,
-        );
-        let demangled = rustc_demangle::demangle(&name);
-        // Using formating preserves the generic hash.
-        let name = format!("{demangled}");
-        let name = crate::utilis::escape_class_name(&name);
-        DotnetTypeRef::new(None, &name).into()
-    }
-    #[must_use]
-    pub fn map_generic(&self, generics: &[Type]) -> Option<Type> {
-        match self {
-            Self::GenericArg(arg) => generics.get(*arg as usize).cloned(),
-            Self::DotnetType(dref) => {
-                let mut dref = dref.clone();
-                let dref_generics: Option<Vec<_>> = dref
-                    .generics()
-                    .iter()
-                    .map(|gtype| gtype.map_generic(generics))
-                    .collect();
-                dref.set_generics(dref_generics?);
-                Some(Self::DotnetType(dref))
-            }
-            _ => Some(self.clone()),
-        }
-    }
-    #[must_use]
-    pub fn ref_to(&self) -> Self {
-        match self {
-            Self::DotnetType(dotnet) => todo!("Can't create reference to type {dotnet:?}"),
-            _ => Self::Ptr(self.clone().into()),
-        }
-    }
-    #[must_use]
-    pub fn metadata(&self) -> Self {
-        match self {
-            Self::DotnetType(dotnet) => match dotnet.name_path() {
-                "PtrComponents" => Type::USize,
-                _ => Type::Void,
-            },
-            _ => Self::Void,
-        }
-    }
-    #[must_use]
-    pub fn as_dotnet(&self) -> Option<DotnetTypeRef> {
-        match self {
-            Self::DotnetType(inner) => Some(inner.as_ref().clone()),
-            _ => None,
-        }
-    }
-    #[must_use]
-    pub fn dotnet_refs(&self) -> Option<DotnetTypeRef> {
-        match self {
-            Self::DotnetType(inner) => Some(inner.as_ref().clone()),
-            Self::Ptr(inner) | Self::ManagedReference(inner) => inner.dotnet_refs(),
-            _ => None,
-        }
-    }
-
-    #[must_use]
-    pub fn as_delegate_ptr(&self) -> Option<&crate::function_sig::FnSig> {
-        if let Self::DelegatePtr(v) = self {
-            Some(v)
-        } else {
-            None
-        }
-    }
-
-    pub(crate) fn max_value(&self) -> CILNode {
-        match self {
-            Type::USize => call!(
-                CallSite::new_extern(
-                    DotnetTypeRef::usize_type(),
-                    "get_MaxValue".into(),
-                    FnSig::new(&[], &Type::USize),
-                    true
-                ),
-                []
+pub fn max_value(tpe:&Type) -> CILNode {
+    match tpe {
+        Type::USize => call!(
+            CallSite::new_extern(
+                DotnetTypeRef::usize_type(),
+                "get_MaxValue".into(),
+                FnSig::new(&[], Type::USize),
+                true
             ),
-            _ => todo!("Can't get the max value of {self:?}"),
-        }
-    }
-    // Checks if a type can be operated on by CIL numeric instructions.
-    pub(crate) fn is_primitive_numeric(&self) -> bool {
-        match self {
-            Self::I8
-            | Self::I16
-            | Self::I32
-            | Self::I64
-            | Self::ISize
-            | Self::U8
-            | Self::U16
-            | Self::U32
-            | Self::U64
-            | Self::USize => true,
-            Self::Bool => true,
-            Self::F32 | Self::F64 => true,
-            Self::Ptr(_) => true,
-            // 128 bit ints are NOT primitve CIL types!
-            Self::I128 | Type::U128 => true,
-            _ => false,
-        }
+            []
+        ),
+        _ => todo!("Can't get the max value of {tpe:?}"),
     }
 }
-impl From<&IntTy> for Type {
-    fn from(int_tpe: &IntTy) -> Self {
-        match int_tpe {
-            IntTy::I8 => Self::I8,
-            IntTy::I16 => Self::I16,
-            IntTy::I32 => Self::I32,
-            IntTy::I64 => Self::I64,
-            IntTy::I128 => Self::I128,
-            IntTy::Isize => Self::ISize,
-        }
-    }
-}
-impl From<&UintTy> for Type {
-    fn from(uint_tpe: &UintTy) -> Self {
-        match uint_tpe {
-            UintTy::U8 => Self::U8,
-            UintTy::U16 => Self::U16,
-            UintTy::U32 => Self::U32,
-            UintTy::U64 => Self::U64,
-            UintTy::U128 => Self::U128,
-            UintTy::Usize => Self::USize,
-        }
-    }
-}
-impl From<&FloatTy> for Type {
-    fn from(float: &FloatTy) -> Self {
-        match float {
-            FloatTy::F16 => Self::F16,
-            FloatTy::F32 => Self::F32,
-            FloatTy::F64 => Self::F64,
-            FloatTy::F128 => todo!("Can't hanlde 128 bit floats yet!"),
-        }
-    }
-}
+
 /// Gets the element type of a slice OR array.
 /// # Panics
 /// Panics if type is not a slice or an array.
@@ -373,11 +54,6 @@ pub fn element_type(src: Ty<'_>) -> Ty<'_> {
     match src.kind() {
         TyKind::Slice(element) | TyKind::Array(element, _) => *element,
         _ => panic!("Can't get element type of {src:?}"),
-    }
-}
-impl From<DotnetTypeRef> for Type {
-    fn from(value: DotnetTypeRef) -> Self {
-        Self::DotnetType(Box::new(value))
     }
 }
 const INTEROP_CLASS_TPE_NAME: &str = "RustcCLRInteropManagedClass";
@@ -407,13 +83,8 @@ pub fn magic_type<'tyctx>(
         );
         let assembly: Box<str> = garg_to_string(subst[0], ctx).into();
         let assembly = Some(assembly).filter(|assembly| !assembly.is_empty());
-        let name = garg_to_string(subst[1], ctx).into();
-        let dotnet_tpe = DotnetTypeRef {
-            assembly,
-            name_path: name,
-            generics: vec![],
-            is_valuetype: false,
-        };
+        let name = garg_to_string(subst[1], ctx);
+        let dotnet_tpe = DotnetTypeRef::new(assembly,name).with_valuetype(false);
         Type::DotnetType(dotnet_tpe.into())
     } else if name.contains(INTEROP_STRUCT_TPE_NAME) {
         assert!(
@@ -422,28 +93,15 @@ pub fn magic_type<'tyctx>(
         );
         let assembly: Box<str> = garg_to_string(subst[0], ctx).into();
         let assembly = Some(assembly).filter(|assembly| !assembly.is_empty());
-        let name = garg_to_string(subst[1], ctx).into();
-        let dotnet_tpe = DotnetTypeRef {
-            assembly,
-            name_path: name,
-            generics: vec![],
-            is_valuetype: true,
-        };
+        let name = garg_to_string(subst[1], ctx);
+        let dotnet_tpe = DotnetTypeRef::new(assembly,name);
         Type::DotnetType(dotnet_tpe.into())
     } else if name.contains(INTEROP_ARR_TPE_NAME) {
         assert!(subst.len() == 2, "Managed array reference must have exactly 2 generic arguments: type and dimension count!");
         let element = &subst[0].as_type().expect("Array type must be specified!");
         let dimensions = garag_to_usize(subst[1], ctx);
         let _ = (element, dimensions);
-        /*
-
-        Type::DotnetArray(
-            DotnetArray {
-                element,
-                dimensions,
-            }
-            .into(),
-        )*/
+       
         todo!()
     } else if name.contains(INTEROP_CHR_TPE_NAME) {
         Type::DotnetChar
@@ -480,7 +138,7 @@ pub fn simple_tuple(elements: &[Type]) -> DotnetTypeRef {
     //assert!(elements.len() <= 8,"Tuple ({elements:?}) contains more than 8 elements, so it can't be stored inside a simple tuple.");
     let name = tuple_name(elements);
 
-    DotnetTypeRef::new(None, &name)
+    DotnetTypeRef::new::<&str,_>(None, name)
 }
 use crate::utilis::garg_to_string;
 

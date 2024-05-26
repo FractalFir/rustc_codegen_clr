@@ -2,11 +2,12 @@ use crate::{
     cil::{CallSite, FieldDescriptor, StaticFieldDescriptor},
     cil_tree::{cil_node::CILNode, cil_root::CILRoot},
     conv_u64, conv_usize,
-    function_sig::FnSig,
+
     ldc_u64,
-    r#type::{DotnetTypeRef, TyCache, Type},
+    r#type::{ TyCache},
 };
 
+use cilly::{DotnetTypeRef, FnSig, Type};
 use rustc_middle::{
     mir::{
         interpret::{AllocId, GlobalAlloc, Scalar},
@@ -187,7 +188,7 @@ fn load_scalar_ptr(
                                         Type::U32,
                                         Type::Ptr(Type::Void.into()),
                                     ],
-                                    &Type::I32,
+                                    Type::I32,
                                 ),
                                 true,
                             ))),
@@ -332,13 +333,13 @@ pub fn load_const_int(value: u128, int_type: &IntTy) -> CILNode {
         IntTy::I128 => {
             let low = (value & u128::from(u64::MAX)) as u64;
             let high = (value >> 64) as u64;
-            let ctor_sig = crate::function_sig::FnSig::new(
+            let ctor_sig = FnSig::new(
                 &[
                     Type::ManagedReference(Type::U128.into()),
                     Type::U64,
                     Type::U64,
                 ],
-                &Type::Void,
+                Type::Void,
             );
             CILNode::NewObj {
                 site: CallSite::boxed(
@@ -368,13 +369,13 @@ pub fn load_const_uint(value: u128, int_type: &UintTy) -> CILNode {
         UintTy::U128 => {
             let low = (value & u128::from(u64::MAX)) as u64;
             let high = (value >> 64) as u64;
-            let ctor_sig = crate::function_sig::FnSig::new(
+            let ctor_sig = FnSig::new(
                 &[
                     Type::ManagedReference(Type::U128.into()),
                     Type::U64,
                     Type::U64,
                 ],
-                &Type::Void,
+                Type::Void,
             );
             CILNode::NewObj {
                 site: CallSite::boxed(

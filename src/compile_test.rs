@@ -140,7 +140,7 @@ macro_rules! compare_tests {
                     //.env("RUST_TARGET_PATH","../../")
                     cmd.current_dir(test_dir)
                         .arg("-O")
-                        .args(super::super::rustc_args().into_iter())
+                        .args(super::super::rustc_args().iter())
                         .args([
                             concat!("./", stringify!($test_name), ".rs"),
                             "-o",
@@ -217,7 +217,7 @@ macro_rules! compare_tests {
                     let mut cmd = std::process::Command::new("rustc");
                     //.env("RUST_TARGET_PATH","../../")
                     cmd.current_dir(test_dir)
-                        .args(super::super::rustc_args().into_iter())
+                        .args(super::super::rustc_args().iter())
                         .args([
                             concat!("./", stringify!($test_name), ".rs"),
                             "-o",
@@ -363,7 +363,7 @@ macro_rules! run_test {
                     //.env("RUST_TARGET_PATH","../../")
                     cmd.current_dir(test_dir)
                         .arg("-O")
-                        .args(super::super::rustc_args().into_iter())
+                        .args(super::super::rustc_args().iter())
                         .args([
                             concat!("./", stringify!($test_name), ".rs"),
                             "-o",
@@ -399,7 +399,7 @@ macro_rules! run_test {
                     //.env("RUST_TARGET_PATH","../../")
                     out.current_dir(test_dir)
                         .arg("-O")
-                        .args(super::super::rustc_args().into_iter())
+                        .args(super::super::rustc_args().iter())
                         .args([
                             concat!("./", stringify!($test_name), ".rs"),
                             "-o",

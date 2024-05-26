@@ -1,9 +1,9 @@
+use cilly::{DotnetTypeRef, Type};
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    r#type::{DotnetTypeRef, Type},
-    IString,
-};
+use crate::IString;
+
+
 
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 /// This struct descibes a .NET field. It contains information about the type this field belongs to, the name of the field, and the fields type.

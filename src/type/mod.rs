@@ -4,48 +4,44 @@ pub(crate) mod tycache;
 pub mod r#type;
 /// Contains a reperesentation of a non-primitve .NET type(class,struct)
 pub(crate) mod type_def;
-
+pub use cilly::Type;
 pub use r#type::*;
 pub use tycache::*;
 pub use type_def::*;
+use rustc_middle::ty::{FloatTy, IntTy,  UintTy};
 pub fn mangle(tpe: &Type) -> std::borrow::Cow<'static, str> {
-    match tpe {
-        Type::Bool => "b".into(),
-        Type::Void => "v".into(),
-        Type::U8 => "u8".into(),
-        Type::U16 => "u16".into(),
-        Type::U32 => "u32".into(),
-        Type::U64 => "u64".into(),
-        Type::U128 => "u128".into(),
-        Type::USize => "us".into(),
-        Type::I8 => "i8".into(),
-        Type::I16 => "i16".into(),
-        Type::I32 => "i32".into(),
-        Type::I64 => "i64".into(),
-        Type::I128 => "i128".into(),
-        Type::ISize => "is".into(),
-        Type::F32 => "f32".into(),
-        Type::F64 => "f64".into(),
-        Type::Ptr(inner) => format!("p{inner}", inner = mangle(inner)).into(),
-        Type::DotnetType(tpe) => {
-            assert!(
-                tpe.generics().is_empty(),
-                "Arrays of generic .NET types not supported yet"
-            );
-            tpe.name_path().replace('.', "_").into()
-        }
-        Type::ManagedArray { element, dims } => format!("a{}{}", dims, mangle(element)).into(),
-        Type::DotnetChar => "c".into(),
-        Type::GenericArg(_) => todo!("Can't mangle generic type arg"),
-        Type::FnDef(name) => format!("fn{}{}", name.len(), name).into(),
-        Type::Unresolved => "un".into(),
-        Type::DelegatePtr(sig) => format!(
-            "d{output}{input_count}{input_string}",
-            output = mangle(sig.output()),
-            input_count = sig.inputs().len(),
-            input_string = sig.inputs().iter().map(mangle).collect::<String>()
-        )
-        .into(),
-        _ => todo!("Can't mangle type {tpe:?}"),
+    cilly::mangle(tpe)
+}
+
+pub fn from_int(int_tpe: &IntTy) -> Type {
+    match int_tpe {
+        IntTy::I8 => Type::I8,
+        IntTy::I16 => Type::I16,
+        IntTy::I32 => Type::I32,
+        IntTy::I64 => Type::I64,
+        IntTy::I128 => Type::I128,
+        IntTy::Isize => Type::ISize,
+    }
+}
+
+
+pub fn from_uint(uint_tpe: &UintTy) -> Type {
+    match uint_tpe {
+        UintTy::U8 => Type::U8,
+        UintTy::U16 => Type::U16,
+        UintTy::U32 => Type::U32,
+        UintTy::U64 => Type::U64,
+        UintTy::U128 => Type::U128,
+        UintTy::Usize => Type::USize,
+    }
+}
+
+
+pub fn from_float(float: &FloatTy) -> Type {
+    match float {
+        FloatTy::F16 => Type::F16,
+        FloatTy::F32 => Type::F32,
+        FloatTy::F64 => Type::F64,
+        FloatTy::F128 => todo!("Can't hanlde 128 bit floats yet!"),
     }
 }

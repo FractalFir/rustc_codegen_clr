@@ -4,9 +4,10 @@ use crate::{
     conv_usize, ldc_u64,
     operand::handle_operand,
     place::place_get,
-    r#type::{DotnetTypeRef, TyCache, Type},
+    r#type::TyCache,
     utilis::{adt::set_discr, field_name, monomorphize},
 };
+use cilly::{DotnetTypeRef, Type};
 use rustc_index::IndexVec;
 use rustc_middle::mir::{AggregateKind, Operand, Place};
 use rustc_middle::ty::{AdtDef, AdtKind, GenericArg, Instance, List, ParamEnv, Ty, TyCtxt, TyKind};
@@ -72,13 +73,13 @@ pub fn handle_aggregate<'tyctx>(
                 method_instance,
                 tycache,
             );
-            let sig = crate::function_sig::FnSig::new(
+            let sig = cilly::fn_sig::FnSig::new(
                 &[
                     Type::Ptr(Into::<Type>::into(array_type.clone()).into()),
                     Type::USize,
                     element,
                 ],
-                &Type::Void,
+                Type::Void,
             );
             let site = CallSite::new(Some(array_type), "set_Item".into(), sig, false);
             let mut sub_trees = Vec::new();

@@ -16,7 +16,7 @@ libloading = "0.8.1"
 postcard = { version = "1.0.6", features = ["use-std"] }
 rayon = "1.10.0"
 rustc-demangle = "0.1.23"
-
+cilly = {path = "./cilly"}
 serde = { version = "1.0.183", features = ["derive"] }
 strsim = "0.11.1"
 [lib]
@@ -26,7 +26,7 @@ name = "linker"
 test = false
 bench = false
 [workspace]
-members = [
+members = [ "cilly",
     "mycorrhiza", 
 ]
 [profile.release]

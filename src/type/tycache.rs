@@ -1,11 +1,12 @@
-use super::{tuple_name, tuple_typedef, DotnetTypeRef, Type, TypeDef};
+use super::{tuple_name, tuple_typedef,TypeDef};
+
 use crate::{
     access_modifier::AccessModifer,
-    function_sig::FnSig,
     r#type::{closure_typedef, escape_field_name},
     utilis::adt::FieldOffsetIterator,
     IString,
 };
+use cilly::{   fn_sig::FnSig, DotnetTypeRef, Type};
 use rustc_middle::ty::{
     AdtDef, AdtKind, GenericArg, Instance, List, ParamEnv, Ty, TyCtxt, TyKind, UintTy,
 };
@@ -65,14 +66,14 @@ impl TyCache {
         method: Option<Instance<'tyctx>>,
     ) -> DotnetTypeRef {
         if self.type_def_cache.contains_key(name) {
-            return DotnetTypeRef::new(None, name);
+            return DotnetTypeRef::new::<&str,_>(None, name);
         }
         if self
             .cycle_prevention
             .iter()
             .any(|c_name| c_name.as_ref() == name)
         {
-            return DotnetTypeRef::new(None, name);
+            return DotnetTypeRef::new::<&str,_>(None, name);
         }
         self.cycle_prevention.push(name.into());
         if crate::r#type::is_name_magic(name) {
@@ -91,7 +92,7 @@ impl TyCache {
             self.type_def_cache.insert(name.into(), def);
         }
         self.cycle_prevention.pop();
-        DotnetTypeRef::new(None, name)
+        DotnetTypeRef::new::<&str,_>(None, name)
     }
     pub fn recover_from_panic(&mut self) {
         self.cycle_prevention.clear();
@@ -321,10 +322,10 @@ impl TyCache {
     ) -> Type {
         match ty.kind() {
             TyKind::Bool => Type::Bool,
-            TyKind::Int(int) => int.into(),
-            TyKind::Uint(uint) => uint.into(),
+            TyKind::Int(int) => crate::r#type::from_int(int),
+            TyKind::Uint(uint) =>  crate::r#type::from_uint(uint),
             TyKind::Char => Type::U32,
-            TyKind::Float(float) => float.into(),
+            TyKind::Float(float) =>  crate::r#type::from_float(float),
             TyKind::Tuple(types) => {
                 let types: Vec<_> = types
                     .iter()
@@ -359,7 +360,7 @@ impl TyCache {
                     .collect();
 
                 let output = self.type_from_cache(sig.output(), tyctx, method);
-                let sig = FnSig::new(&inputs, &output);
+                let sig = FnSig::new(inputs, output);
                 let fields: Box<[_]> = closure
                     .upvar_tys()
                     .iter()
@@ -378,7 +379,7 @@ impl TyCache {
                         closure_typedef(*def, &fields, &sig, layout.layout),
                     );
                 }
-                DotnetTypeRef::new(None, &name).into()
+                DotnetTypeRef::new::<&str,_>(None, name).into()
             }
             TyKind::Never => Type::Void,
             TyKind::RawPtr(typ, _) => {
@@ -454,7 +455,7 @@ impl TyCache {
             }
             TyKind::Bound(_, _inner) => Type::Foreign,
             TyKind::FnPtr(sig) => {
-                let sig = FnSig::from_poly_sig(method, tyctx, self, *sig);
+                let sig = crate::function_sig::from_poly_sig(method, tyctx, self, *sig);
                 Type::DelegatePtr(sig.into())
             }
             TyKind::FnDef(_did, _subst) => {
@@ -563,7 +564,7 @@ fn try_find_ptr_components(ctx: TyCtxt) -> DefId {
         .generic_activity("ptr::metadata::PtrComponents");
 
     let mut core = None;
-    for krate in ctx.crates(()) {
+    for krate in ctx.used_crates(()) {
         let name = ctx.crate_name(*krate);
         if name.as_str() == "core" {
             core = Some(krate);
@@ -574,11 +575,11 @@ fn try_find_ptr_components(ctx: TyCtxt) -> DefId {
         *core
     } else {
         // If no crates, assume we are compiling core.
-        if ctx.crates(()).is_empty() {
+        if ctx.used_crates(()).is_empty() {
             use rustc_span::def_id::CrateNum;
             CrateNum::from_u32(0)
         } else {
-            panic!("Could not find core. Crates:{:?}", ctx.crates(()));
+            panic!("Could not find core. Crates:{:?}", ctx.used_crates(()));
         }
     };
     let core_symbols = ctx.exported_symbols(core);

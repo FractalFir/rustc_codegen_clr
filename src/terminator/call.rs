@@ -5,14 +5,15 @@ use crate::{
     cil::{CallSite, FieldDescriptor},
     cil_tree::{cil_node::CILNode, cil_root::CILRoot},
     conv_usize,
-    function_sig::FnSig,
+
     interop::AssemblyRef,
     ld_field, ldc_u32,
     operand::operand_address,
-    r#type::{DotnetTypeRef, Type},
+
     size_of,
     utilis::{garg_to_string, CTOR_FN_NAME, MANAGED_CALL_FN_NAME, MANAGED_CALL_VIRT_FN_NAME},
 };
+use cilly::{fn_sig::FnSig, DotnetTypeRef, Type};
 use rustc_middle::{
     mir::{Body, Operand, Place},
     ty::{GenericArg, Instance, InstanceDef, ParamEnv, Ty, TyCtxt, TyKind},
@@ -45,10 +46,10 @@ fn call_managed<'tyctx>(
     let class_name = garg_to_string(subst_ref[1], tyctx);
     let is_valuetype = crate::utilis::garag_to_bool(subst_ref[2], tyctx);
     let managed_fn_name = garg_to_string(subst_ref[3], tyctx);
-    let mut tpe = DotnetTypeRef::new(asm, &class_name);
+    let mut tpe = DotnetTypeRef::new(asm, class_name);
     tpe.set_valuetype(is_valuetype);
     //eprintln!("tpe:{tpe:?}");
-    let signature = FnSig::sig_from_instance_(fn_instance, tyctx, type_cache)
+    let signature = crate::function_sig::sig_from_instance_(fn_instance, tyctx, type_cache)
         .expect("Can't get the function signature");
 
     if argument_count == 0 {
@@ -56,7 +57,7 @@ fn call_managed<'tyctx>(
         let call_site = CallSite::new(
             Some(tpe.clone()),
             managed_fn_name.into(),
-            FnSig::new(&[], &ret),
+            FnSig::new(&[], ret),
             true,
         );
         if *signature.output() == crate::r#type::Type::Void {
@@ -136,16 +137,16 @@ fn callvirt_managed<'tyctx>(
     let managed_fn_garg = crate::utilis::monomorphize(&method_instance, *managed_fn_garg, tyctx);
     let managed_fn_name = garg_to_string(managed_fn_garg, tyctx);
 
-    let mut tpe = DotnetTypeRef::new(asm, &class_name);
+    let mut tpe = DotnetTypeRef::new(asm, class_name);
     tpe.set_valuetype(is_valuetype);
-    let signature = FnSig::sig_from_instance_(fn_instance, tyctx, type_cache)
+    let signature = crate::function_sig::sig_from_instance_(fn_instance, tyctx, type_cache)
         .expect("Can't get the function signature");
     if argument_count == 0 {
         let ret = crate::r#type::Type::Void;
         let call = CallSite::new(
             Some(tpe.clone()),
             managed_fn_name.into(),
-            FnSig::new(&[], &ret),
+            FnSig::new(&[], ret),
             true,
         );
         if *signature.output() == crate::r#type::Type::Void {
@@ -222,7 +223,7 @@ fn call_ctor<'tyctx>(
     let class_name = garg_to_string(subst_ref[1], tyctx);
     // Check if the costructed object is valuetype. TODO: this may be unnecesary. Are valuetpes constructed using newobj?
     let is_valuetype = crate::utilis::garag_to_bool(subst_ref[2], tyctx);
-    let mut tpe = DotnetTypeRef::new(asm, &class_name);
+    let mut tpe = DotnetTypeRef::new(asm, class_name);
     tpe.set_valuetype(is_valuetype);
     // If no arguments, inputs don't have to be handled, so a simpler call handling is used.
     if argument_count == 0 {
@@ -233,7 +234,7 @@ fn call_ctor<'tyctx>(
                 site: CallSite::boxed(
                     Some(tpe.clone()),
                     ".ctor".into(),
-                    FnSig::new(&[], &crate::r#type::Type::Void),
+                    FnSig::new(&[], cilly::r#type::Type::Void),
                     false,
                 ),
                 args: [].into(),
@@ -256,7 +257,7 @@ fn call_ctor<'tyctx>(
             })
             .collect();
         inputs.insert(0, tpe.clone().into());
-        let sig = FnSig::new(&inputs, &crate::r#type::Type::Void);
+        let sig = FnSig::new(inputs,cilly::Type::Void);
         let mut call = Vec::new();
         for arg in args {
             call.push(crate::operand::handle_operand(

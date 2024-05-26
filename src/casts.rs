@@ -1,11 +1,12 @@
+use cilly::{DotnetTypeRef, FnSig, Type};
+
 use crate::{
     call,
     cil::CallSite,
     cil_tree::cil_node::CILNode,
     conv_f32, conv_f64, conv_f_un, conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16,
     conv_u32, conv_u64, conv_u8, conv_usize,
-    function_sig::FnSig,
-    r#type::{DotnetTypeRef, Type},
+
 };
 /// Casts from intiger type `src` to target `target`
 pub fn int_to_int(src: Type, target: &Type, operand: CILNode) -> CILNode {
@@ -34,7 +35,7 @@ pub fn int_to_int(src: Type, target: &Type, operand: CILNode) -> CILNode {
             CallSite::new_extern(
                 DotnetTypeRef::int_128(),
                 "op_Implicit".into(),
-                FnSig::new(&[Type::I64], &Type::I128),
+                FnSig::new(&[Type::I64], Type::I128),
                 true,
             ),
             [conv_i64!(operand)]
@@ -43,7 +44,7 @@ pub fn int_to_int(src: Type, target: &Type, operand: CILNode) -> CILNode {
             CallSite::new_extern(
                 DotnetTypeRef::uint_128(),
                 "op_Explicit".into(),
-                FnSig::new(&[Type::I64], &Type::U128),
+                FnSig::new(&[Type::I64], Type::U128),
                 true,
             ),
             [conv_i64!(operand)]
@@ -52,7 +53,7 @@ pub fn int_to_int(src: Type, target: &Type, operand: CILNode) -> CILNode {
             CallSite::new_extern(
                 DotnetTypeRef::uint_128(),
                 "op_Explicit".into(),
-                FnSig::new(&[Type::I64], &Type::U128),
+                FnSig::new(&[Type::I64], Type::U128),
                 true,
             ),
             [conv_i8!(operand)]
@@ -61,7 +62,7 @@ pub fn int_to_int(src: Type, target: &Type, operand: CILNode) -> CILNode {
             CallSite::new_extern(
                 DotnetTypeRef::int_128(),
                 "op_Implicit".into(),
-                FnSig::new(&[Type::I8], &Type::I128),
+                FnSig::new(&[Type::I8], Type::I128),
                 true,
             ),
             [conv_i8!(operand)]
@@ -75,7 +76,7 @@ pub fn int_to_int(src: Type, target: &Type, operand: CILNode) -> CILNode {
                 CallSite::new_extern(
                     DotnetTypeRef::uint_128(),
                     "op_Explicit".into(),
-                    FnSig::new(&[src], target),
+                    FnSig::new(&[src], target.clone()),
                     true,
                 ),
                 [operand]
@@ -85,7 +86,7 @@ pub fn int_to_int(src: Type, target: &Type, operand: CILNode) -> CILNode {
             CallSite::new_extern(
                 DotnetTypeRef::int_128(),
                 "op_Implicit".into(),
-                FnSig::new(&[src], target),
+                FnSig::new(&[src], target.clone()),
                 true,
             ),
             [operand]
@@ -94,7 +95,7 @@ pub fn int_to_int(src: Type, target: &Type, operand: CILNode) -> CILNode {
             CallSite::new_extern(
                 DotnetTypeRef::int_128(),
                 "op_Explicit".into(),
-                FnSig::new(&[src], target),
+                FnSig::new(&[src], target.clone()),
                 true,
             ),
             [operand]
@@ -103,7 +104,7 @@ pub fn int_to_int(src: Type, target: &Type, operand: CILNode) -> CILNode {
             CallSite::new_extern(
                 DotnetTypeRef::uint_128(),
                 "op_Implicit".into(),
-                FnSig::new(&[src], target),
+                FnSig::new(&[src], target.clone()),
                 true,
             ),
             [operand]
@@ -112,7 +113,7 @@ pub fn int_to_int(src: Type, target: &Type, operand: CILNode) -> CILNode {
             CallSite::new_extern(
                 DotnetTypeRef::int_128(),
                 "op_Explicit".into(),
-                FnSig::new(&[src], target),
+                FnSig::new(&[src], target.clone()),
                 true,
             ),
             [operand]
@@ -121,7 +122,7 @@ pub fn int_to_int(src: Type, target: &Type, operand: CILNode) -> CILNode {
             CallSite::new_extern(
                 DotnetTypeRef::uint_128(),
                 "op_Explicit".into(),
-                FnSig::new(&[src], target),
+                FnSig::new(&[src], target.clone()),
                 true,
             ),
             [operand]
@@ -137,7 +138,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode) -> CILNode {
             CallSite::new_extern(
                 DotnetTypeRef::int_128(),
                 "op_Explicit".into(),
-                FnSig::new(&[src], target),
+                FnSig::new(&[src], target.clone()),
                 true,
             ),
             [operand]
@@ -146,7 +147,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode) -> CILNode {
             CallSite::new_extern(
                 DotnetTypeRef::uint_128(),
                 "op_Explicit".into(),
-                FnSig::new(&[src], target),
+                FnSig::new(&[src], target.clone()),
                 true,
             ),
             [operand]
@@ -155,7 +156,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode) -> CILNode {
             Type::F32 => call!(
                 CallSite::builtin(
                     "cast_f32_u8".into(),
-                    FnSig::new(&[Type::F32], &Type::U8),
+                    FnSig::new(&[Type::F32], Type::U8),
                     true
                 ),
                 [operand]
@@ -163,7 +164,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode) -> CILNode {
             Type::F64 => call!(
                 CallSite::builtin(
                     "cast_f64_u8".into(),
-                    FnSig::new(&[Type::F64], &Type::U8),
+                    FnSig::new(&[Type::F64], Type::U8),
                     true
                 ),
                 [operand]
@@ -174,7 +175,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode) -> CILNode {
             Type::F32 => call!(
                 CallSite::builtin(
                     "cast_f32_u16".into(),
-                    FnSig::new(&[Type::F32], &Type::U16),
+                    FnSig::new(&[Type::F32], Type::U16),
                     true
                 ),
                 [operand]
@@ -182,7 +183,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode) -> CILNode {
             Type::F64 => call!(
                 CallSite::builtin(
                     "cast_f64_u16".into(),
-                    FnSig::new(&[Type::F64], &Type::U16),
+                    FnSig::new(&[Type::F64], Type::U16),
                     true
                 ),
                 [operand]
@@ -193,7 +194,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode) -> CILNode {
             Type::F32 => call!(
                 CallSite::builtin(
                     "cast_f32_u32".into(),
-                    FnSig::new(&[Type::F32], &Type::U32),
+                    FnSig::new(&[Type::F32], Type::U32),
                     true
                 ),
                 [operand]
@@ -201,7 +202,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode) -> CILNode {
             Type::F64 => call!(
                 CallSite::builtin(
                     "cast_f64_u32".into(),
-                    FnSig::new(&[Type::F64], &Type::U32),
+                    FnSig::new(&[Type::F64], Type::U32),
                     true
                 ),
                 [operand]
@@ -212,7 +213,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode) -> CILNode {
             Type::F32 => call!(
                 CallSite::builtin(
                     "cast_f32_u64".into(),
-                    FnSig::new(&[Type::F32], &Type::U64),
+                    FnSig::new(&[Type::F32], Type::U64),
                     true
                 ),
                 [operand]
@@ -220,7 +221,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode) -> CILNode {
             Type::F64 => call!(
                 CallSite::builtin(
                     "cast_f64_u64".into(),
-                    FnSig::new(&[Type::F64], &Type::U64),
+                    FnSig::new(&[Type::F64], Type::U64),
                     true
                 ),
                 [operand]
@@ -232,7 +233,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode) -> CILNode {
             Type::F32 => call!(
                 CallSite::builtin(
                     "cast_f32_usize".into(),
-                    FnSig::new(&[Type::F32], &Type::USize),
+                    FnSig::new(&[Type::F32], Type::USize),
                     true
                 ),
                 [operand]
@@ -241,7 +242,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode) -> CILNode {
             Type::F64 => call!(
                 CallSite::builtin(
                     "cast_f64_usize".into(),
-                    FnSig::new(&[Type::F64], &Type::USize),
+                    FnSig::new(&[Type::F64], Type::USize),
                     true
                 ),
                 [operand]
@@ -253,7 +254,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode) -> CILNode {
             Type::F32 => call!(
                 CallSite::builtin(
                     "cast_f32_isize".into(),
-                    FnSig::new(&[Type::F32], &Type::ISize),
+                    FnSig::new(&[Type::F32], Type::ISize),
                     true
                 ),
                 [operand]
@@ -261,7 +262,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode) -> CILNode {
             Type::F64 => call!(
                 CallSite::builtin(
                     "cast_f64_isize".into(),
-                    FnSig::new(&[Type::F64], &Type::ISize),
+                    FnSig::new(&[Type::F64], Type::ISize),
                     true
                 ),
                 [operand]
@@ -272,7 +273,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode) -> CILNode {
             Type::F32 => call!(
                 CallSite::builtin(
                     "cast_f32_i8".into(),
-                    FnSig::new(&[Type::F32], &Type::I8),
+                    FnSig::new(&[Type::F32], Type::I8),
                     true
                 ),
                 [operand]
@@ -280,7 +281,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode) -> CILNode {
             Type::F64 => call!(
                 CallSite::builtin(
                     "cast_f64_i8".into(),
-                    FnSig::new(&[Type::F64], &Type::I8),
+                    FnSig::new(&[Type::F64], Type::I8),
                     true
                 ),
                 [operand]
@@ -291,7 +292,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode) -> CILNode {
             Type::F32 => call!(
                 CallSite::builtin(
                     "cast_f32_i16".into(),
-                    FnSig::new(&[Type::F32], &Type::I16),
+                    FnSig::new(&[Type::F32], Type::I16),
                     true
                 ),
                 [operand]
@@ -299,7 +300,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode) -> CILNode {
             Type::F64 => call!(
                 CallSite::builtin(
                     "cast_f64_i16".into(),
-                    FnSig::new(&[Type::F64], &Type::I16),
+                    FnSig::new(&[Type::F64], Type::I16),
                     true
                 ),
                 [operand]
@@ -310,7 +311,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode) -> CILNode {
             Type::F32 => call!(
                 CallSite::builtin(
                     "cast_f32_i32".into(),
-                    FnSig::new(&[Type::F32], &Type::I32),
+                    FnSig::new(&[Type::F32], Type::I32),
                     true
                 ),
                 [operand]
@@ -318,7 +319,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode) -> CILNode {
             Type::F64 => call!(
                 CallSite::builtin(
                     "cast_f64_i32".into(),
-                    FnSig::new(&[Type::F64], &Type::I32),
+                    FnSig::new(&[Type::F64], Type::I32),
                     true
                 ),
                 [operand]
@@ -329,7 +330,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode) -> CILNode {
             Type::F32 => call!(
                 CallSite::builtin(
                     "cast_f32_i64".into(),
-                    FnSig::new(&[Type::F32], &Type::I64),
+                    FnSig::new(&[Type::F32], Type::I64),
                     true
                 ),
                 [operand]
@@ -337,7 +338,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode) -> CILNode {
             Type::F64 => call!(
                 CallSite::builtin(
                     "cast_f64_i64".into(),
-                    FnSig::new(&[Type::F64], &Type::I64),
+                    FnSig::new(&[Type::F64], Type::I64),
                     true
                 ),
                 [operand]
@@ -373,7 +374,7 @@ pub fn int_to_float(src: Type, target: &Type, parrent: CILNode) -> CILNode {
             CallSite::boxed(
                 DotnetTypeRef::int_128().into(),
                 "op_Explicit".into(),
-                FnSig::new(&[src], target),
+                FnSig::new(&[src], target.clone()),
                 true,
             ),
             [parrent]
@@ -384,7 +385,7 @@ pub fn int_to_float(src: Type, target: &Type, parrent: CILNode) -> CILNode {
             CallSite::boxed(
                 DotnetTypeRef::uint_128().into(),
                 "op_Explicit".into(),
-                FnSig::new(&[src], target),
+                FnSig::new(&[src], target.clone()),
                 true,
             ),
             [parrent]

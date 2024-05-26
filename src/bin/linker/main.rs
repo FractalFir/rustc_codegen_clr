@@ -1,5 +1,6 @@
 #![deny(unused_must_use)]
 #![allow(clippy::module_name_repetitions)]
+use cilly::{DotnetTypeRef, FnSig, Type};
 //use assembly::Assembly;
 use lazy_static::lazy_static;
 use load::LinkableFile;
@@ -12,10 +13,10 @@ use rustc_codegen_clr::{
     cil::CallSite,
     cil_tree::{cil_node::CILNode, cil_root::CILRoot},
     config,
-    function_sig::FnSig,
+
     method,
     method::{Method, MethodType},
-    r#type::{DotnetTypeRef, Type},
+
     AString, IString,
 };
 mod cmd;
@@ -127,7 +128,7 @@ fn override_malloc(patched: &mut HashMap<CallSite, Method>, call: &CallSite) {
                         site: CallSite::boxed(
                             DotnetTypeRef::marshal().into(),
                             "AllocHGlobal".into(),
-                            FnSig::new(&[Type::ISize], &Type::ISize),
+                            FnSig::new(&[Type::ISize], Type::ISize),
                             true,
                         ),
                     },
@@ -157,7 +158,7 @@ fn override_free(patched: &mut HashMap<CallSite, Method>, call: &CallSite) {
                         site: CallSite::boxed(
                             DotnetTypeRef::marshal().into(),
                             "FreeHGlobal".into(),
-                            FnSig::new(&[Type::ISize], &Type::Void),
+                            FnSig::new(&[Type::ISize], Type::Void),
                             true,
                         ),
                     },
@@ -168,7 +169,6 @@ fn override_free(patched: &mut HashMap<CallSite, Method>, call: &CallSite) {
             )],
             vec![Some("free".into())],
         ),
-       
     );
 }
 /// Replaces `realloc` with a direct call to `ReAllocHGlobal`
@@ -188,7 +188,7 @@ fn override_realloc(patched: &mut HashMap<CallSite, Method>, call: &CallSite) {
                         site: CallSite::boxed(
                             DotnetTypeRef::marshal().into(),
                             "ReAllocHGlobal".into(),
-                            FnSig::new(&[Type::ISize, Type::ISize], &Type::ISize),
+                            FnSig::new(&[Type::ISize, Type::ISize], Type::ISize),
                             true,
                         ),
                     },
@@ -197,7 +197,7 @@ fn override_realloc(patched: &mut HashMap<CallSite, Method>, call: &CallSite) {
                 0,
                 None,
             )],
-            vec![Some("ptr".into()),Some("new_size".into())],
+            vec![Some("ptr".into()), Some("new_size".into())],
         ),
     );
 }

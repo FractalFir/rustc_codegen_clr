@@ -5,11 +5,12 @@ type AssemblyInfo = str;
 use crate::{
     assembly::Assembly,
     config,
-    function_sig::FnSig,
+    
     method::Method,
     r#type::{Type, TypeDef},
     IString,
 };
+use cilly::fn_sig::FnSig;
 pub mod c_exporter;
 
 /// ILASM-based assembly exporter.

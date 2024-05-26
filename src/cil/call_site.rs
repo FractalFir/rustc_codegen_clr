@@ -1,10 +1,11 @@
+use cilly::{DotnetTypeRef, FnSig, Type};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    function_sig::FnSig,
-    r#type::{DotnetTypeRef, Type},
+   
     IString,
 };
+
 use rustc_middle::ty::TyCtxt;
 /// Represenation of a target of a call.
 #[derive(Clone, PartialEq, Serialize, Deserialize, Eq, Hash, Debug)]
@@ -20,7 +21,7 @@ impl CallSite {
     pub fn mcheck() -> Self {
         CallSite::builtin(
             "mcheck".into(),
-            FnSig::new(&[Type::ISize], &Type::I32),
+            FnSig::new(&[Type::ISize], Type::I32),
             true,
         )
     }
@@ -28,7 +29,7 @@ impl CallSite {
     pub fn mcheck_check_all() -> Self {
         CallSite::builtin(
             "mcheck_check_all".into(),
-            FnSig::new(&[], &Type::Void),
+            FnSig::new(&[], Type::Void),
             true,
         )
     }
@@ -37,7 +38,7 @@ impl CallSite {
         CallSite::new_extern(
             DotnetTypeRef::marshal(),
             "StringToCoTaskMemUTF8".into(),
-            FnSig::new(&[DotnetTypeRef::string_type().into()], &Type::ISize),
+            FnSig::new(&[DotnetTypeRef::string_type().into()], Type::ISize),
             true,
         )
     }
@@ -46,7 +47,7 @@ impl CallSite {
         CallSite::new_extern(
             DotnetTypeRef::native_mem(),
             "AlignedAlloc".into(),
-            FnSig::new(&[Type::USize, Type::USize], &Type::Ptr(Type::Void.into())),
+            FnSig::new(&[Type::USize, Type::USize], Type::Ptr(Type::Void.into())),
             true,
         )
     }
@@ -57,7 +58,7 @@ impl CallSite {
             "AlignedRealloc".into(),
             FnSig::new(
                 &[Type::Ptr(Type::Void.into()), Type::USize, Type::USize],
-                &Type::Ptr(Type::Void.into()),
+                Type::Ptr(Type::Void.into()),
             ),
             true,
         )
@@ -133,7 +134,7 @@ impl CallSite {
         Self::new(
             None,
             "malloc".into(),
-            FnSig::new(&[Type::USize], &Type::Ptr(Type::c_void(ctx).into())),
+            FnSig::new(&[Type::USize], Type::Ptr(crate::r#type::c_void(ctx).into())),
             true,
         )
     }

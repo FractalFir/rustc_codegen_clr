@@ -1,3 +1,4 @@
+use cilly::{DotnetTypeRef, Type};
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::{BinOp, Operand};
 use rustc_middle::ty::{Instance, IntTy, List, ParamEnv, Ty, TyCtxt, TyKind, UintTy};
@@ -5,8 +6,8 @@ use rustc_middle::ty::{Instance, IntTy, List, ParamEnv, Ty, TyCtxt, TyKind, Uint
 use crate::cil::{CallSite, FieldDescriptor};
 use crate::cil_tree::cil_node::CILNode;
 use crate::cil_tree::cil_root::CILRoot;
-use crate::function_sig::FnSig;
-use crate::r#type::{DotnetTypeRef, TyCache, Type};
+use cilly::fn_sig::FnSig;
+use crate::r#type::{ TyCache};
 
 pub mod bitop;
 pub mod checked;
@@ -159,7 +160,7 @@ pub fn add_unchecked<'tyctx>(
                     CallSite::new_extern(
                         DotnetTypeRef::int_128(),
                         "op_Addition".into(),
-                        FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
+                        FnSig::new(&[ty_a.clone(), ty_b], ty_a),
                         true,
                     ),
                     [ops_a, ops_b]
@@ -176,7 +177,7 @@ pub fn add_unchecked<'tyctx>(
                     CallSite::new_extern(
                         DotnetTypeRef::uint_128(),
                         "op_Addition".into(),
-                        FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
+                        FnSig::new(&[ty_a.clone(), ty_b], ty_a),
                         true,
                     ),
                     [ops_a, ops_b]
@@ -214,7 +215,7 @@ fn sub_unchecked<'tyctx>(
                     CallSite::new_extern(
                         DotnetTypeRef::int_128(),
                         "op_Subtraction".into(),
-                        FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
+                        FnSig::new(&[ty_a.clone(), ty_b], ty_a),
                         true,
                     ),
                     [ops_a, ops_b]
@@ -231,7 +232,7 @@ fn sub_unchecked<'tyctx>(
                     CallSite::new_extern(
                         DotnetTypeRef::uint_128(),
                         "op_Subtraction".into(),
-                        FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
+                        FnSig::new(&[ty_a.clone(), ty_b], ty_a),
                         true,
                     ),
                     [ops_a, ops_b]
@@ -262,7 +263,7 @@ fn rem_unchecked<'tyctx>(
                 CallSite::new_extern(
                     DotnetTypeRef::int_128(),
                     "op_Modulus".into(),
-                    FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
+                    FnSig::new(&[ty_a.clone(), ty_b], ty_a),
                     true,
                 ),
                 [ops_a, ops_b]
@@ -275,7 +276,7 @@ fn rem_unchecked<'tyctx>(
                 CallSite::new_extern(
                     DotnetTypeRef::uint_128(),
                     "op_Modulus".into(),
-                    FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
+                    FnSig::new(&[ty_a.clone(), ty_b], ty_a),
                     true,
                 ),
                 [ops_a, ops_b]
@@ -305,7 +306,7 @@ fn mul_unchecked<'tyctx>(
                 CallSite::new_extern(
                     DotnetTypeRef::int_128(),
                     "op_Multiply".into(),
-                    FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
+                    FnSig::new(&[ty_a.clone(), ty_b], ty_a),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -318,7 +319,7 @@ fn mul_unchecked<'tyctx>(
                 CallSite::new_extern(
                     DotnetTypeRef::uint_128(),
                     "op_Multiply".into(),
-                    FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
+                    FnSig::new(&[ty_a.clone(), ty_b], ty_a),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -344,7 +345,7 @@ fn div_unchecked<'tyctx>(
                 CallSite::new_extern(
                     DotnetTypeRef::int_128(),
                     "op_Division".into(),
-                    FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
+                    FnSig::new(&[ty_a.clone(), ty_b], ty_a),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -357,7 +358,7 @@ fn div_unchecked<'tyctx>(
                 CallSite::new_extern(
                     DotnetTypeRef::uint_128(),
                     "op_Division".into(),
-                    FnSig::new(&[ty_a.clone(), ty_b], &ty_a),
+                    FnSig::new(&[ty_a.clone(), ty_b], ty_a),
                     true,
                 ),
                 [operand_a, operand_b]

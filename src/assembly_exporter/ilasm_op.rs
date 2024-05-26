@@ -1,9 +1,11 @@
 use std::borrow::Cow;
 
+use cilly::{DotnetTypeRef, Type};
+
 use crate::{
     assembly_exporter::escape_class_name,
     method::Method,
-    r#type::{DotnetTypeRef, Type},
+
 };
 
 pub fn op_cli(op: &crate::cil::CILOp, method: &Method) -> Cow<'static, str> {

@@ -1,7 +1,7 @@
 use crate::cil::{CallSite, FieldDescriptor};
 use crate::cil_tree::cil_node::CILNode;
 use crate::cil_tree::cil_root::CILRoot;
-use crate::function_sig::FnSig;
+use cilly::   fn_sig::FnSig;
 use crate::operand::handle_operand;
 
 use crate::{conv_usize, ld_field, ldc_i32, ldc_u64, size_of};
@@ -347,7 +347,7 @@ pub fn handle_rvalue<'tcx>(
                 todo!("Trying to call a type which is not a function definition!");
             };
             let function_name = crate::utilis::function_name(tyctx.symbol_name(instance));
-            let function_sig = FnSig::sig_from_instance_(instance, tyctx, tycache)
+            let function_sig = crate::function_sig::sig_from_instance_(instance, tyctx, tycache)
                 .expect("Could not get function signature when trying to get a function pointer!");
             //FIXME: propely handle `#[track_caller]`
             let call_site = CallSite::new(None, function_name, function_sig, true);
@@ -447,7 +447,7 @@ pub fn handle_rvalue<'tcx>(
                                 Type::USize,
                                 operand_type.clone(),
                             ],
-                            &Type::Void,
+                            Type::Void,
                         ),
                         false,
                     ),

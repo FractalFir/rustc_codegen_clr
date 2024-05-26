@@ -5,11 +5,12 @@ use crate::{
     cil_tree::{cil_node::CILNode, cil_root::CILRoot},
     conv_usize, ld_field_address,
     method::{Method, MethodType},
-    r#type::{DotnetTypeRef, Type},
+
     size_of,
     utilis::adt::FieldOffsetIterator,
     IString,
 };
+use cilly::{DotnetTypeRef, Type};
 use rustc_span::def_id::DefId;
 use rustc_target::abi::Layout;
 use serde::{Deserialize, Serialize};
@@ -155,22 +156,22 @@ impl TypeDef {
 }
 impl From<TypeDef> for Type {
     fn from(val: TypeDef) -> Type {
-        Type::DotnetType(DotnetTypeRef::new(None, val.name()).into())
+        Type::DotnetType(DotnetTypeRef::new::<&str,_>(None, val.name()).into())
     }
 }
 impl From<&TypeDef> for Type {
     fn from(val: &TypeDef) -> Type {
-        Type::DotnetType(DotnetTypeRef::new(None, val.name()).into())
+        Type::DotnetType(DotnetTypeRef::new::<&str,_>(None, val.name()).into())
     }
 }
 impl From<TypeDef> for DotnetTypeRef {
     fn from(val: TypeDef) -> DotnetTypeRef {
-        DotnetTypeRef::new(None, val.name())
+        DotnetTypeRef::new::<&str,_>(None, val.name())
     }
 }
 impl From<&TypeDef> for DotnetTypeRef {
     fn from(val: &TypeDef) -> DotnetTypeRef {
-        DotnetTypeRef::new(None, val.name())
+        DotnetTypeRef::new::<&str,_>(None, val.name())
     }
 }
 #[must_use]
@@ -206,7 +207,7 @@ pub fn escape_field_name(name: &str) -> IString {
         }
     }
 }
-pub fn closure_name(_def_id: DefId, fields: &[Type], _sig: &crate::function_sig::FnSig) -> String {
+pub fn closure_name(_def_id: DefId, fields: &[Type], _sig: &cilly::fn_sig::FnSig) -> String {
     let mangled_fields: String = fields.iter().map(crate::r#type::mangle).collect();
     format!(
         "Closure{field_count}{mangled_fields}",
@@ -217,7 +218,7 @@ pub fn closure_name(_def_id: DefId, fields: &[Type], _sig: &crate::function_sig:
 pub fn closure_typedef(
     def_id: DefId,
     fields: &[Type],
-    sig: &crate::function_sig::FnSig,
+    sig: &cilly::fn_sig::FnSig,
     layout: Layout,
 ) -> TypeDef {
     let name = closure_name(def_id, fields, sig);
@@ -242,8 +243,7 @@ pub fn closure_typedef(
 }
 #[must_use]
 pub fn arr_name(element_count: usize, element: &Type) -> IString {
-    let element_name = super::mangle(element);
-    format!("Arr{element_count}_{element_name}",).into()
+    cilly::arr_name(element_count, element)
 }
 pub fn tuple_name(elements: &[Type]) -> IString {
     let generics: String = elements.iter().map(super::mangle).collect();
@@ -314,13 +314,13 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
         let set_usize = Method::new(
             AccessModifer::Public,
             MethodType::Instance,
-            crate::function_sig::FnSig::new(
+            cilly::fn_sig::FnSig::new(
                 &[
                     Type::Ptr(Box::new(def.clone().into())),
                     Type::USize,
                     element.clone(),
                 ],
-                &Type::Void,
+                Type::Void,
             ),
             "set_Item",
             vec![],
@@ -344,7 +344,7 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
                 0,
                 None,
             )],
-            vec![Some("this".into()),Some("idx".into()),Some("val".into())],
+            vec![Some("this".into()), Some("idx".into()), Some("val".into())],
         );
         def.add_method(set_usize);
 
@@ -352,9 +352,9 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
         let get_adress_usize = Method::new(
             AccessModifer::Public,
             MethodType::Instance,
-            crate::function_sig::FnSig::new(
+            cilly::fn_sig::FnSig::new(
                 &[Type::Ptr(Box::new(def.clone().into())), Type::USize],
-                &Type::Ptr(element.clone().into()),
+                Type::Ptr(element.clone().into()),
             ),
             "get_Address",
             vec![],
@@ -373,16 +373,16 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
                 0,
                 None,
             )],
-            vec![Some("this".into()),Some("idx".into())],
+            vec![Some("this".into()), Some("idx".into())],
         );
         def.add_method(get_adress_usize);
         // get_Item
         let get_item_usize = Method::new(
             AccessModifer::Public,
             MethodType::Instance,
-            crate::function_sig::FnSig::new(
+            cilly::fn_sig::FnSig::new(
                 &[Type::Ptr(Box::new(def.clone().into())), Type::USize],
-                &element.clone(),
+                element.clone(),
             ),
             "get_Item",
             vec![],
@@ -406,7 +406,7 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
                 0,
                 None,
             )],
-            vec![Some("this".into()),Some("idx".into())],
+            vec![Some("this".into()), Some("idx".into())],
         );
 
         def.add_method(get_item_usize);

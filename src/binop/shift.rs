@@ -1,7 +1,8 @@
 use crate::cil::CallSite;
 use crate::cil_tree::cil_node::CILNode;
-use crate::function_sig::FnSig;
-use crate::r#type::{DotnetTypeRef, TyCache, Type};
+use cilly::fn_sig::FnSig;
+use cilly::{DotnetTypeRef, Type};
+use crate::r#type::{ TyCache, };
 use crate::utilis::compiletime_sizeof;
 use crate::{call, conv_u32, ldc_u32, rem_un, shl, shr, shr_un};
 
@@ -22,7 +23,7 @@ pub fn shr_unchecked<'tyctx>(
                 CallSite::boxed(
                     DotnetTypeRef::uint_128().into(),
                     "op_RightShift".into(),
-                    FnSig::new(&[Type::U128, Type::I32], &Type::U128),
+                    FnSig::new(&[Type::U128, Type::I32], Type::U128),
                     true,
                 ),
                 [
@@ -36,7 +37,7 @@ pub fn shr_unchecked<'tyctx>(
                 CallSite::boxed(
                     DotnetTypeRef::int_128().into(),
                     "op_RightShift".into(),
-                    FnSig::new(&[Type::I128, Type::I32], &Type::I128),
+                    FnSig::new(&[Type::I128, Type::I32], Type::I128),
                     true,
                 ),
                 [
@@ -86,7 +87,7 @@ pub fn shr_checked<'tyctx>(
                 CallSite::boxed(
                     DotnetTypeRef::uint_128().into(),
                     "op_RightShift".into(),
-                    FnSig::new(&[Type::U128, Type::I32], &Type::U128),
+                    FnSig::new(&[Type::U128, Type::I32], Type::U128),
                     true,
                 ),
                 [
@@ -103,7 +104,7 @@ pub fn shr_checked<'tyctx>(
                 CallSite::boxed(
                     DotnetTypeRef::int_128().into(),
                     "op_RightShift".into(),
-                    FnSig::new(&[Type::I128, Type::I32], &Type::I128),
+                    FnSig::new(&[Type::I128, Type::I32], Type::I128),
                     true,
                 ),
                 [
@@ -165,7 +166,7 @@ pub fn shl_checked<'tyctx>(
                 CallSite::boxed(
                     DotnetTypeRef::uint_128().into(),
                     "op_LeftShift".into(),
-                    FnSig::new(&[Type::U128, Type::I32], &Type::U128),
+                    FnSig::new(&[Type::U128, Type::I32], Type::U128),
                     true,
                 ),
                 [
@@ -182,7 +183,7 @@ pub fn shl_checked<'tyctx>(
                 CallSite::boxed(
                     DotnetTypeRef::int_128().into(),
                     "op_LeftShift".into(),
-                    FnSig::new(&[Type::I128, Type::I32], &Type::I128),
+                    FnSig::new(&[Type::I128, Type::I32], Type::I128),
                     true,
                 ),
                 [
@@ -243,7 +244,7 @@ pub fn shl_unchecked<'tyctx>(
                 CallSite::boxed(
                     DotnetTypeRef::uint_128().into(),
                     "op_LeftShift".into(),
-                    FnSig::new(&[Type::U128, Type::I32], &Type::U128),
+                    FnSig::new(&[Type::U128, Type::I32], Type::U128),
                     true,
                 ),
                 [
@@ -257,7 +258,7 @@ pub fn shl_unchecked<'tyctx>(
                 CallSite::boxed(
                     DotnetTypeRef::int_128().into(),
                     "op_LeftShift".into(),
-                    FnSig::new(&[Type::I128, Type::I32], &Type::I128),
+                    FnSig::new(&[Type::I128, Type::I32], Type::I128),
                     true,
                 ),
                 [

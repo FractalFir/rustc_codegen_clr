@@ -5,10 +5,11 @@ use crate::eq;
 use crate::ldc_u64;
 
 use crate::lt_un;
-use crate::r#type::DotnetTypeRef;
+
 use crate::sub;
 
 use crate::r#type::Type;
+use cilly::DotnetTypeRef;
 use rustc_target::abi::VariantIdx;
 
 use rustc_middle::ty::{AdtDef, Ty, TyCtxt};

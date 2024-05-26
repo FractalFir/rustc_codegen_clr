@@ -2,8 +2,8 @@ use rustc_middle::ty::{IntTy, Ty, TyKind, UintTy};
 
 use crate::cil::CallSite;
 use crate::cil_tree::cil_node::CILNode;
-use crate::function_sig::FnSig;
-use crate::r#type::{DotnetTypeRef, Type};
+use cilly::{fn_sig::FnSig, DotnetTypeRef, Type};
+
 
 use crate::{call, eq, gt, gt_un, lt, lt_un};
 pub fn ne_unchecked(ty_a: Ty<'_>, operand_a: CILNode, operand_b: CILNode) -> CILNode {
@@ -18,7 +18,7 @@ pub fn eq_unchecked(ty_a: Ty<'_>, operand_a: CILNode, operand_b: CILNode) -> CIL
                 CallSite::new_extern(
                     DotnetTypeRef::uint_128(),
                     "op_Equality".into(),
-                    FnSig::new(&[Type::U128, Type::U128], &Type::Bool),
+                    FnSig::new(&[Type::U128, Type::U128], Type::Bool),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -30,7 +30,7 @@ pub fn eq_unchecked(ty_a: Ty<'_>, operand_a: CILNode, operand_b: CILNode) -> CIL
                 CallSite::new_extern(
                     DotnetTypeRef::int_128(),
                     "op_Equality".into(),
-                    FnSig::new(&[Type::I128, Type::I128], &Type::Bool),
+                    FnSig::new(&[Type::I128, Type::I128], Type::Bool),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -51,7 +51,7 @@ pub fn lt_unchecked(ty_a: Ty<'_>, operand_a: CILNode, operand_b: CILNode) -> CIL
                 CallSite::new_extern(
                     DotnetTypeRef::uint_128(),
                     "op_LessThan".into(),
-                    FnSig::new(&[Type::U128, Type::U128], &Type::Bool),
+                    FnSig::new(&[Type::U128, Type::U128], Type::Bool),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -63,7 +63,7 @@ pub fn lt_unchecked(ty_a: Ty<'_>, operand_a: CILNode, operand_b: CILNode) -> CIL
                 CallSite::new_extern(
                     DotnetTypeRef::int_128(),
                     "op_LessThan".into(),
-                    FnSig::new(&[Type::I128, Type::I128], &Type::Bool),
+                    FnSig::new(&[Type::I128, Type::I128], Type::Bool),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -83,7 +83,7 @@ pub fn gt_unchecked(ty_a: Ty<'_>, operand_a: CILNode, operand_b: CILNode) -> CIL
                 CallSite::new_extern(
                     DotnetTypeRef::uint_128(),
                     "op_GreaterThan".into(),
-                    FnSig::new(&[Type::U128, Type::U128], &Type::Bool),
+                    FnSig::new(&[Type::U128, Type::U128], Type::Bool),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -95,7 +95,7 @@ pub fn gt_unchecked(ty_a: Ty<'_>, operand_a: CILNode, operand_b: CILNode) -> CIL
                 CallSite::new_extern(
                     DotnetTypeRef::int_128(),
                     "op_GreaterThan".into(),
-                    FnSig::new(&[Type::I128, Type::I128], &Type::Bool),
+                    FnSig::new(&[Type::I128, Type::I128], Type::Bool),
                     true,
                 ),
                 [operand_a, operand_b]
