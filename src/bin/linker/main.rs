@@ -1,5 +1,6 @@
 #![deny(unused_must_use)]
 #![allow(clippy::module_name_repetitions)]
+use cilly::call_site::CallSite;
 use cilly::{DotnetTypeRef, FnSig, Type};
 //use assembly::Assembly;
 use lazy_static::lazy_static;
@@ -10,7 +11,7 @@ use rustc_codegen_clr::{
     assembly::Assembly,
     basic_block::BasicBlock,
     cil,
-    cil::CallSite,
+ 
     cil_tree::{cil_node::CILNode, cil_root::CILRoot},
     config, method,
     method::{Method, MethodType},
@@ -86,7 +87,7 @@ fn aot_compile_mode(args: &[String]) -> AOTCompileMode {
         AOTCompileMode::NoAOT
     }
 }
-fn patch_missing_method(call_site: &cil::CallSite) -> method::Method {
+fn patch_missing_method(call_site: &cilly::call_site::CallSite) -> method::Method {
     eprintln!(" missing method {name}.", name = call_site.name());
     let sig = call_site.signature().clone();
     let method = method::Method::new(

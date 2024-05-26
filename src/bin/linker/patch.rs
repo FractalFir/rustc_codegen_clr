@@ -1,8 +1,7 @@
-use cilly::{DotnetTypeRef, FnSig, Type};
+use cilly::{call_site::CallSite, DotnetTypeRef, FnSig, Type};
 use rustc_codegen_clr::{
     assembly::Assembly,
     call,
-    cil::CallSite,
     cil_tree::{cil_node::CILNode, cil_root::CILRoot},
     conv_i32, conv_usize, ldc_i32, ldc_u32,
 };
