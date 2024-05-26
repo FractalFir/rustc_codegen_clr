@@ -1,8 +1,10 @@
-use crate::cil::{CallSite, FieldDescriptor};
+
 use crate::cil_tree::cil_node::CILNode;
-use cilly::   fn_sig::FnSig;
 use crate::r#type::Type;
 use crate::{call, conv_usize, ld_field};
+use cilly::call_site::CallSite;
+use cilly::field_desc::FieldDescriptor;
+use cilly::fn_sig::FnSig;
 
 use rustc_middle::mir::{Place, PlaceElem};
 use rustc_middle::ty::{Instance, TyCtxt, TyKind};
@@ -157,7 +159,7 @@ fn place_elem_get<'a>(
                         type_cache.type_from_cache(curr_ty, tyctx, Some(method_instance));
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
                     CILNode::Call {
-                        site: crate::cil::CallSite::new(
+                        site: CallSite::new(
                             Some(array_dotnet),
                             "get_Item".into(),
                             FnSig::new(&[Type::Ptr(array_type.into()), Type::USize], element),
@@ -225,7 +227,7 @@ fn place_elem_get<'a>(
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
                     //eprintln!("WARNING: ConstantIndex has required min_length of {min_length}, but bounds checking on const access not supported yet!");
                     CILNode::Call {
-                        site: crate::cil::CallSite::new(
+                        site: CallSite::new(
                             Some(array_dotnet),
                             "get_Item".into(),
                             FnSig::new(&[Type::Ptr(array_type.into()), Type::USize], element),

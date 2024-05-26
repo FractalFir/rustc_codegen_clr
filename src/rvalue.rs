@@ -1,6 +1,8 @@
-use crate::cil::{CallSite, FieldDescriptor};
+
 use crate::cil_tree::cil_node::CILNode;
 use crate::cil_tree::cil_root::CILRoot;
+use cilly::call_site::CallSite;
+use cilly::field_desc::FieldDescriptor;
 use cilly::   fn_sig::FnSig;
 use crate::operand::handle_operand;
 

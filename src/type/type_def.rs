@@ -1,16 +1,14 @@
 use crate::{
     access_modifier::AccessModifer,
     basic_block::BasicBlock,
-    cil::FieldDescriptor,
     cil_tree::{cil_node::CILNode, cil_root::CILRoot},
     conv_usize, ld_field_address,
     method::{Method, MethodType},
-
     size_of,
     utilis::adt::FieldOffsetIterator,
     IString,
 };
-use cilly::{DotnetTypeRef, Type};
+use cilly::{field_desc::FieldDescriptor, DotnetTypeRef, Type};
 use rustc_span::def_id::DefId;
 use rustc_target::abi::Layout;
 use serde::{Deserialize, Serialize};
@@ -36,14 +34,7 @@ impl TypeDef {
         ptr_components.add_field("metadata".into(), metadata);
         ptr_components
     }
-    pub fn morphic_fields<'a>(
-        &'a self,
-        generics: &'a [Type],
-    ) -> impl Iterator<Item = Option<(&'a str, Type)>> + 'a {
-        self.fields()
-            .iter()
-            .map(|(name, tpe)| Some((name.as_ref(), tpe.map_generic(generics)?)))
-    }
+
     pub fn set_generic_count(&mut self, generic_count: u32) {
         self.gargc = generic_count;
     }
@@ -156,22 +147,22 @@ impl TypeDef {
 }
 impl From<TypeDef> for Type {
     fn from(val: TypeDef) -> Type {
-        Type::DotnetType(DotnetTypeRef::new::<&str,_>(None, val.name()).into())
+        Type::DotnetType(DotnetTypeRef::new::<&str, _>(None, val.name()).into())
     }
 }
 impl From<&TypeDef> for Type {
     fn from(val: &TypeDef) -> Type {
-        Type::DotnetType(DotnetTypeRef::new::<&str,_>(None, val.name()).into())
+        Type::DotnetType(DotnetTypeRef::new::<&str, _>(None, val.name()).into())
     }
 }
 impl From<TypeDef> for DotnetTypeRef {
     fn from(val: TypeDef) -> DotnetTypeRef {
-        DotnetTypeRef::new::<&str,_>(None, val.name())
+        DotnetTypeRef::new::<&str, _>(None, val.name())
     }
 }
 impl From<&TypeDef> for DotnetTypeRef {
     fn from(val: &TypeDef) -> DotnetTypeRef {
-        DotnetTypeRef::new::<&str,_>(None, val.name())
+        DotnetTypeRef::new::<&str, _>(None, val.name())
     }
 }
 #[must_use]

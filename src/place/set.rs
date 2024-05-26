@@ -1,11 +1,13 @@
 use super::{pointed_type, PlaceTy};
-use crate::cil::{CallSite, FieldDescriptor};
+
 use crate::cil_tree::cil_node::CILNode;
 use crate::cil_tree::cil_root::CILRoot;
-use cilly::   fn_sig::FnSig;
-use cilly::{DotnetTypeRef, Type};
-use crate::r#type::{pointer_to_is_fat};
+use crate::r#type::pointer_to_is_fat;
 use crate::{call, conv_usize, ld_field, ldc_u64, size_of};
+use cilly::call_site::CallSite;
+use cilly::field_desc::FieldDescriptor;
+use cilly::fn_sig::FnSig;
+use cilly::{DotnetTypeRef, Type};
 
 use rustc_middle::mir::PlaceElem;
 use rustc_middle::ty::{FloatTy, Instance, IntTy, TyCtxt, TyKind, UintTy};
@@ -132,7 +134,7 @@ pub fn place_elem_set<'a>(
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
 
                     CILRoot::Call {
-                        site: crate::cil::CallSite::new(
+                        site: CallSite::new(
                             Some(array_dotnet),
                             "set_Item".into(),
                             FnSig::new(
@@ -203,7 +205,7 @@ pub fn place_elem_set<'a>(
                         type_cache.type_from_cache(curr_ty, ctx, Some(method_instance));
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
                     CILRoot::Call {
-                        site: crate::cil::CallSite::new(
+                        site: CallSite::new(
                             Some(array_dotnet),
                             "set_Item".into(),
                             FnSig::new(

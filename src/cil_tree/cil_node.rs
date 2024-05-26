@@ -1,13 +1,14 @@
+use super::{append_vec, cil_root::CILRoot};
 use crate::{
     call,
-    cil::{CILOp, CallSite, FieldDescriptor, StaticFieldDescriptor},
-    
+    cil::{CILOp, },
     method::Method,
     r#type::TyCache,
     IString,
 };
-use cilly::{fn_sig::FnSig, DotnetTypeRef, Type};
-use super::{append_vec, cil_root::CILRoot};
+use cilly::{
+    call_site::CallSite, field_desc::FieldDescriptor, fn_sig::FnSig, static_field_desc::StaticFieldDescriptor, DotnetTypeRef, Type
+};
 use rustc_middle::ty::TyCtxt;
 use serde::{Deserialize, Serialize};
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]

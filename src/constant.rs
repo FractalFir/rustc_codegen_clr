@@ -1,13 +1,13 @@
 use crate::{
-    cil::{CallSite, FieldDescriptor, StaticFieldDescriptor},
-    cil_tree::{cil_node::CILNode, cil_root::CILRoot},
-    conv_u64, conv_usize,
 
-    ldc_u64,
-    r#type::{ TyCache},
+    cil_tree::{cil_node::CILNode, cil_root::CILRoot},
+    conv_u64, conv_usize, ldc_u64,
+    r#type::TyCache,
 };
 
-use cilly::{DotnetTypeRef, FnSig, Type};
+use cilly::{
+    call_site::CallSite, field_desc::FieldDescriptor, static_field_desc::StaticFieldDescriptor, DotnetTypeRef, FnSig, Type
+};
 use rustc_middle::{
     mir::{
         interpret::{AllocId, GlobalAlloc, Scalar},

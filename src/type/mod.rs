@@ -6,9 +6,9 @@ pub mod r#type;
 pub(crate) mod type_def;
 pub use cilly::Type;
 pub use r#type::*;
+use rustc_middle::ty::{FloatTy, IntTy, UintTy};
 pub use tycache::*;
 pub use type_def::*;
-use rustc_middle::ty::{FloatTy, IntTy,  UintTy};
 pub fn mangle(tpe: &Type) -> std::borrow::Cow<'static, str> {
     cilly::mangle(tpe)
 }
@@ -24,7 +24,6 @@ pub fn from_int(int_tpe: &IntTy) -> Type {
     }
 }
 
-
 pub fn from_uint(uint_tpe: &UintTy) -> Type {
     match uint_tpe {
         UintTy::U8 => Type::U8,
@@ -35,7 +34,6 @@ pub fn from_uint(uint_tpe: &UintTy) -> Type {
         UintTy::Usize => Type::USize,
     }
 }
-
 
 pub fn from_float(float: &FloatTy) -> Type {
     match float {

@@ -7,8 +7,6 @@ use rustc_middle::ty::{Instance, List, ParamEnv, ParamEnvAnd, PolyFnSig, Ty, TyC
 use rustc_target::abi::call::Conv;
 use rustc_target::spec::abi::Abi as TargetAbi;
 
-
-
 /// Creates a `FnSig` from ``. May not match the result of `sig_from_instance_`!
 /// Use ONLY for function pointers!
 pub fn from_poly_sig<'tyctx>(

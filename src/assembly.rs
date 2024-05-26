@@ -1,5 +1,4 @@
 use crate::basic_block::{handler_for_block, BasicBlock};
-use crate::cil::StaticFieldDescriptor;
 use crate::cil_tree::cil_node::CILNode;
 use crate::cil_tree::cil_root::CILRoot;
 use crate::cil_tree::CILTree;
@@ -7,11 +6,13 @@ use crate::method::MethodType;
 use crate::rustc_middle::dep_graph::DepContext;
 use crate::utilis::field_descrptor;
 use crate::{
-    access_modifier::AccessModifer, cil::CallSite, codegen_error::CodegenError,
-    codegen_error::MethodCodegenError,  method::Method, r#type::TyCache,
-    r#type::Type, r#type::TypeDef, IString,
+    access_modifier::AccessModifer, codegen_error::CodegenError,
+    codegen_error::MethodCodegenError, method::Method, r#type::TyCache, r#type::Type,
+    r#type::TypeDef, IString,
 };
 use crate::{call, conv_isize, conv_usize, ldc_u32, ldc_u64};
+use cilly::call_site::CallSite;
+use cilly::static_field_desc::StaticFieldDescriptor;
 use cilly::FnSig;
 use rustc_middle::mir::interpret::Allocation;
 use rustc_middle::mir::{
@@ -227,21 +228,21 @@ impl Assembly {
         cache: &mut TyCache,
     ) -> Result<(), MethodCodegenError> {
         match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                self.add_fn(instance, tcx, name, cache)
-            })) {
-                Ok(success) => success,
-                Err(payload) => {
-                    cache.recover_from_panic();
-                    if let Some(msg) = payload.downcast_ref::<&str>() {
-                        eprintln!("could not compile method {name}. fn_add panicked with unhandled message: {msg:?}");
-                        //self.add_method(Method::missing_because(format!("could not compile method {name}. fn_add panicked with unhandled message: {msg:?}")));
-                        Ok(())
-                    } else {
-                        eprintln!("could not compile method {name}. fn_add panicked with no message.");
-                        Ok(())
-                    }
+            self.add_fn(instance, tcx, name, cache)
+        })) {
+            Ok(success) => success,
+            Err(payload) => {
+                cache.recover_from_panic();
+                if let Some(msg) = payload.downcast_ref::<&str>() {
+                    eprintln!("could not compile method {name}. fn_add panicked with unhandled message: {msg:?}");
+                    //self.add_method(Method::missing_because(format!("could not compile method {name}. fn_add panicked with unhandled message: {msg:?}")));
+                    Ok(())
+                } else {
+                    eprintln!("could not compile method {name}. fn_add panicked with no message.");
+                    Ok(())
                 }
             }
+        }
     }
     //fn terminator_to_ops()
     /// Adds a rust MIR function to the assembly.
@@ -441,41 +442,36 @@ impl Assembly {
         alloc_id: u64,
         tcx: TyCtxt<'_>,
         tycache: &mut TyCache,
-    ) -> crate::cil::StaticFieldDescriptor {
-        let const_allocation =
-            match tcx.global_alloc(AllocId(alloc_id.try_into().expect("0 alloc id?"))) {
-                GlobalAlloc::Memory(alloc) => alloc,
-                GlobalAlloc::Static(def_id) => {
-                    let alloc = tcx.eval_static_initializer(def_id).unwrap();
-                    //tcx.reserve_and_set_memory_alloc(alloc)
-                    alloc
-                }
-                GlobalAlloc::VTable(..) => {
-                    //TODO: handle VTables
-                    let alloc_fld: IString = format!("alloc_{alloc_id:x}").into();
-                    let field_desc = crate::cil::StaticFieldDescriptor::new(
-                        None,
-                        Type::Ptr(Type::U8.into()),
-                        alloc_fld.clone(),
-                    );
-                    self.static_fields
-                        .insert(alloc_fld, Type::Ptr(Type::U8.into()));
-                    return field_desc;
-                }
-                GlobalAlloc::Function(_) => {
-                    //TODO: handle constant functions
-                    let alloc_fld: IString = format!("alloc_{alloc_id:x}").into();
-                    let field_desc = crate::cil::StaticFieldDescriptor::new(
-                        None,
-                        Type::Ptr(Type::U8.into()),
-                        alloc_fld.clone(),
-                    );
-                    self.static_fields
-                        .insert(alloc_fld, Type::Ptr(Type::U8.into()));
-                    return field_desc;
-                    //todo!("Function/Vtable allocation.");
-                }
-            };
+    ) -> StaticFieldDescriptor {
+        let const_allocation = match tcx
+            .global_alloc(AllocId(alloc_id.try_into().expect("0 alloc id?")))
+        {
+            GlobalAlloc::Memory(alloc) => alloc,
+            GlobalAlloc::Static(def_id) => {
+                let alloc = tcx.eval_static_initializer(def_id).unwrap();
+                //tcx.reserve_and_set_memory_alloc(alloc)
+                alloc
+            }
+            GlobalAlloc::VTable(..) => {
+                //TODO: handle VTables
+                let alloc_fld: IString = format!("alloc_{alloc_id:x}").into();
+                let field_desc =
+                    StaticFieldDescriptor::new(None, Type::Ptr(Type::U8.into()), alloc_fld.clone());
+                self.static_fields
+                    .insert(alloc_fld, Type::Ptr(Type::U8.into()));
+                return field_desc;
+            }
+            GlobalAlloc::Function(_) => {
+                //TODO: handle constant functions
+                let alloc_fld: IString = format!("alloc_{alloc_id:x}").into();
+                let field_desc =
+                    StaticFieldDescriptor::new(None, Type::Ptr(Type::U8.into()), alloc_fld.clone());
+                self.static_fields
+                    .insert(alloc_fld, Type::Ptr(Type::U8.into()));
+                return field_desc;
+                //todo!("Function/Vtable allocation.");
+            }
+        };
 
         let const_allocation = const_allocation.inner();
 
@@ -486,11 +482,8 @@ impl Assembly {
         let byte_hash = calculate_hash(&bytes);
         let alloc_fld: IString = format!("alloc_{alloc_id:x}_{byte_hash:x}").into();
 
-        let field_desc = crate::cil::StaticFieldDescriptor::new(
-            None,
-            Type::Ptr(Type::U8.into()),
-            alloc_fld.clone(),
-        );
+        let field_desc =
+            StaticFieldDescriptor::new(None, Type::Ptr(Type::U8.into()), alloc_fld.clone());
         if !self.static_fields.contains_key(&alloc_fld) {
             let init_method =
                 allocation_initializer_method(const_allocation, &alloc_fld, tcx, self, tycache);
@@ -780,29 +773,22 @@ impl Assembly {
         self.functions.get_mut(&CallSite::new(
             None,
             ".cctor".into(),
-            FnSig::new(&[],Type::Void),
+            FnSig::new(&[], Type::Void),
             true,
         ))
     }
 
-    pub(crate) fn add_const_value(
-        &mut self,
-        bytes: u128,
-        tyctx: TyCtxt,
-    ) -> crate::cil::StaticFieldDescriptor {
+    pub(crate) fn add_const_value(&mut self, bytes: u128, tyctx: TyCtxt) -> StaticFieldDescriptor {
         let alloc_fld: IString = format!("a_{bytes:x}").into();
         let raw_bytes = bytes.to_le_bytes();
-        let field_desc = crate::cil::StaticFieldDescriptor::new(
-            None,
-            Type::Ptr(Type::U8.into()),
-            alloc_fld.clone(),
-        );
+        let field_desc =
+            StaticFieldDescriptor::new(None, Type::Ptr(Type::U8.into()), alloc_fld.clone());
         if !self.static_fields.contains_key(&alloc_fld) {
             let block = BasicBlock::new(
                 vec![
                     CILRoot::STLoc {
                         local: 0,
-                        tree: call!(CallSite::malloc(tyctx), [ldc_u32!(16)]),
+                        tree: call!(crate::cil::malloc(tyctx), [ldc_u32!(16)]),
                     }
                     .into(),
                     CILRoot::STIndI8(CILNode::LDLoc(0), ldc_u32!(u32::from(raw_bytes[0]))).into(),

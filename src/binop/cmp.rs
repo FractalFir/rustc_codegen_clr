@@ -1,9 +1,8 @@
 use rustc_middle::ty::{IntTy, Ty, TyKind, UintTy};
 
-use crate::cil::CallSite;
-use crate::cil_tree::cil_node::CILNode;
-use cilly::{fn_sig::FnSig, DotnetTypeRef, Type};
 
+use crate::cil_tree::cil_node::CILNode;
+use cilly::{call_site::CallSite, fn_sig::FnSig, DotnetTypeRef, Type};
 
 use crate::{call, eq, gt, gt_un, lt, lt_un};
 pub fn ne_unchecked(ty_a: Ty<'_>, operand_a: CILNode, operand_b: CILNode) -> CILNode {

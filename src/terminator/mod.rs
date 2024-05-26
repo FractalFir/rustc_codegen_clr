@@ -2,9 +2,10 @@ use crate::cil_tree::cil_node::CILNode;
 use crate::cil_tree::cil_root::CILRoot;
 use crate::cil_tree::CILTree;
 use crate::place::place_set;
+use cilly::call_site::CallSite;
 use rustc_span::source_map::Spanned;
 
-use crate::{cil::CallSite, utilis::monomorphize};
+use crate::utilis::monomorphize;
 
 use rustc_middle::{
     mir::{BasicBlock, Body, Operand, Place, SwitchTargets, Terminator, TerminatorKind},
@@ -68,7 +69,8 @@ pub fn handle_call_terminator<'tycxt>(
         TyKind::FnPtr(sig) => {
             //eprintln!("Calling FnPtr:{func_ty:?}");
             let sig = crate::utilis::monomorphize(&method_instance, *sig, tyctx);
-            let sig = crate::function_sig::from_poly_sig(Some(method_instance), tyctx, type_cache, sig);
+            let sig =
+                crate::function_sig::from_poly_sig(Some(method_instance), tyctx, type_cache, sig);
             let mut arg_operands = Vec::new();
             for arg in args {
                 arg_operands.push(crate::operand::handle_operand(
@@ -219,7 +221,8 @@ pub fn handle_terminator<'ctx>(
                 }
                 .into()]
             } else {
-                let sig = crate::function_sig::sig_from_instance_(drop_instance, tyctx, type_cache).unwrap();
+                let sig = crate::function_sig::sig_from_instance_(drop_instance, tyctx, type_cache)
+                    .unwrap();
 
                 let function_name = crate::utilis::function_name(tyctx.symbol_name(drop_instance));
 

@@ -1,3 +1,4 @@
+use cilly::field_desc::FieldDescriptor;
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::ty::{
     AdtDef, Const, ConstKind, EarlyBinder, GenericArg, Instance, List, ParamEnv, SymbolName, Ty,
@@ -10,7 +11,7 @@ pub fn is_function_magic(name: &str) -> bool {
     name.contains(CTOR_FN_NAME) || name.contains(MANAGED_CALL_FN_NAME)
 }
 
-use crate::{cil::FieldDescriptor, r#type::TyCache, IString};
+use crate::{r#type::TyCache, IString};
 pub mod adt;
 pub fn as_adt(ty: Ty) -> Option<(AdtDef, &List<GenericArg>)> {
     match ty.kind() {
@@ -198,14 +199,6 @@ pub fn field_descrptor<'tyctx>(
         .as_dotnet()
         .expect("Error: tried to set a field of a non-object type!");
     FieldDescriptor::new(owner_ty, field_ty, field_name)
-    /*
-    let def = type_cache.type_def_from_cache(owner_ty, ctx, Some(method_instance)); //TypeDef::from_ty(owner_ty, ctx, &method_instance);
-    let def = def.clone();
-    let type_ref = type_cache
-        .type_from_cache(owner_ty, ctx, Some(method_instance)) //
-        .as_dotnet()
-        .expect("Field owner not a dotnet type!");
-    def.field_desc_from_rust_field_idx(type_ref, field_idx)*/
 }
 
 /// Tires to get the value of Const `size` as usize.

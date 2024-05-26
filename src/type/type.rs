@@ -1,7 +1,8 @@
-use crate::cil::CallSite;
-use crate::cil_tree::cil_node::CILNode;
-use cilly::fn_sig::FnSig;
 use crate::call;
+
+use crate::cil_tree::cil_node::CILNode;
+use cilly::call_site::CallSite;
+use cilly::fn_sig::FnSig;
 use cilly::{DotnetTypeRef, Type};
 
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
@@ -29,9 +30,9 @@ pub fn c_void(tyctx: TyCtxt) -> Type {
     // Using formating preserves the generic hash.
     let name = format!("{demangled}");
     let name = crate::utilis::escape_class_name(&name);
-    DotnetTypeRef::new::<&str,_>(None, name).into()
+    DotnetTypeRef::new::<&str, _>(None, name).into()
 }
-pub fn max_value(tpe:&Type) -> CILNode {
+pub fn max_value(tpe: &Type) -> CILNode {
     match tpe {
         Type::USize => call!(
             CallSite::new_extern(
@@ -84,7 +85,7 @@ pub fn magic_type<'tyctx>(
         let assembly: Box<str> = garg_to_string(subst[0], ctx).into();
         let assembly = Some(assembly).filter(|assembly| !assembly.is_empty());
         let name = garg_to_string(subst[1], ctx);
-        let dotnet_tpe = DotnetTypeRef::new(assembly,name).with_valuetype(false);
+        let dotnet_tpe = DotnetTypeRef::new(assembly, name).with_valuetype(false);
         Type::DotnetType(dotnet_tpe.into())
     } else if name.contains(INTEROP_STRUCT_TPE_NAME) {
         assert!(
@@ -94,14 +95,14 @@ pub fn magic_type<'tyctx>(
         let assembly: Box<str> = garg_to_string(subst[0], ctx).into();
         let assembly = Some(assembly).filter(|assembly| !assembly.is_empty());
         let name = garg_to_string(subst[1], ctx);
-        let dotnet_tpe = DotnetTypeRef::new(assembly,name);
+        let dotnet_tpe = DotnetTypeRef::new(assembly, name);
         Type::DotnetType(dotnet_tpe.into())
     } else if name.contains(INTEROP_ARR_TPE_NAME) {
         assert!(subst.len() == 2, "Managed array reference must have exactly 2 generic arguments: type and dimension count!");
         let element = &subst[0].as_type().expect("Array type must be specified!");
         let dimensions = garag_to_usize(subst[1], ctx);
         let _ = (element, dimensions);
-       
+
         todo!()
     } else if name.contains(INTEROP_CHR_TPE_NAME) {
         Type::DotnetChar
@@ -138,7 +139,7 @@ pub fn simple_tuple(elements: &[Type]) -> DotnetTypeRef {
     //assert!(elements.len() <= 8,"Tuple ({elements:?}) contains more than 8 elements, so it can't be stored inside a simple tuple.");
     let name = tuple_name(elements);
 
-    DotnetTypeRef::new::<&str,_>(None, name)
+    DotnetTypeRef::new::<&str, _>(None, name)
 }
 use crate::utilis::garg_to_string;
 

@@ -1,12 +1,12 @@
 use crate::cil_tree::cil_node::CILNode;
-use cilly::   fn_sig::FnSig;
-use cilly::{DotnetTypeRef, Type};
 use crate::r#type::tycache::TyCache;
+use cilly::call_site::CallSite;
+use cilly::fn_sig::FnSig;
+use cilly::{DotnetTypeRef, Type};
 
 use rustc_middle::mir::{Operand, UnOp};
 use rustc_middle::ty::{Instance, IntTy, TyCtxt, TyKind, UintTy};
 
-use crate::cil::CallSite;
 /// Implements an unary operation, such as negation.
 pub fn unop<'ctx>(
     unnop: UnOp,

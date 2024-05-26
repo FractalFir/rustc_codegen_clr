@@ -50,40 +50,7 @@ pub enum Type {
     },
 }
 impl Type {
-    #[must_use]
-    pub fn map_generic(&self, generics: &[Type]) -> Option<Type> {
-        match self {
-            Self::GenericArg(arg) => generics.get(*arg as usize).cloned(),
-            Self::DotnetType(dref) => {
-                let mut dref = dref.clone();
-                let dref_generics: Option<Vec<_>> = dref
-                    .generics()
-                    .iter()
-                    .map(|gtype| gtype.map_generic(generics))
-                    .collect();
-                dref.set_generics(dref_generics?);
-                Some(Self::DotnetType(dref))
-            }
-            _ => Some(self.clone()),
-        }
-    }
-    #[must_use]
-    pub fn ref_to(&self) -> Self {
-        match self {
-            Self::DotnetType(dotnet) => todo!("Can't create reference to type {dotnet:?}"),
-            _ => Self::Ptr(self.clone().into()),
-        }
-    }
-    #[must_use]
-    pub fn metadata(&self) -> Self {
-        match self {
-            Self::DotnetType(dotnet) => match dotnet.name_path() {
-                "PtrComponents" => Type::USize,
-                _ => Type::Void,
-            },
-            _ => Self::Void,
-        }
-    }
+    /// If this is a reference to a dotnet type, return that type. Will not work with pointers/references.
     #[must_use]
     pub fn as_dotnet(&self) -> Option<DotnetTypeRef> {
         match self {
@@ -91,6 +58,7 @@ impl Type {
             _ => None,
         }
     }
+    /// If this is a reference to a dotnet type, return that type. Works with pointers/references.
     #[must_use]
     pub fn dotnet_refs(&self) -> Option<DotnetTypeRef> {
         match self {
@@ -102,15 +70,18 @@ impl Type {
 
     #[must_use]
     /// If this type is a pointer to a unction type, return its signature.
-    pub fn as_delegate_ptr(&self) -> Option<&crate::fn_sig::FnSig> {
+    pub const fn as_delegate_ptr(&self) -> Option<&crate::fn_sig::FnSig> {
         if let Self::DelegatePtr(v) = self {
             Some(v)
         } else {
             None
         }
     }
+    #[must_use]
     /// Checks if a type can be operated on by CIL numeric instructions.
-    pub fn is_primitive_numeric(&self) -> bool {
+    pub const fn is_primitive_numeric(&self) -> bool {
+        // match_same_arms disabled, since we want to document the variants explicitly.
+        #[allow(clippy::match_same_arms)]
         match self {
             Self::I8
             | Self::I16
@@ -126,7 +97,7 @@ impl Type {
             Self::F32 | Self::F64 => true,
             Self::Ptr(_) => true,
             // 128 bit ints are NOT primitve CIL types!
-            Self::I128 | Type::U128 => true,
+            Self::I128 | Self::U128 => true,
             _ => false,
         }
     }

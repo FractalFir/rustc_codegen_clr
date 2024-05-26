@@ -1,4 +1,4 @@
-use super::{tuple_name, tuple_typedef,TypeDef};
+use super::{tuple_name, tuple_typedef, TypeDef};
 
 use crate::{
     access_modifier::AccessModifer,
@@ -6,7 +6,7 @@ use crate::{
     utilis::adt::FieldOffsetIterator,
     IString,
 };
-use cilly::{   fn_sig::FnSig, DotnetTypeRef, Type};
+use cilly::{fn_sig::FnSig, DotnetTypeRef, Type};
 use rustc_middle::ty::{
     AdtDef, AdtKind, GenericArg, Instance, List, ParamEnv, Ty, TyCtxt, TyKind, UintTy,
 };
@@ -66,14 +66,14 @@ impl TyCache {
         method: Option<Instance<'tyctx>>,
     ) -> DotnetTypeRef {
         if self.type_def_cache.contains_key(name) {
-            return DotnetTypeRef::new::<&str,_>(None, name);
+            return DotnetTypeRef::new::<&str, _>(None, name);
         }
         if self
             .cycle_prevention
             .iter()
             .any(|c_name| c_name.as_ref() == name)
         {
-            return DotnetTypeRef::new::<&str,_>(None, name);
+            return DotnetTypeRef::new::<&str, _>(None, name);
         }
         self.cycle_prevention.push(name.into());
         if crate::r#type::is_name_magic(name) {
@@ -92,7 +92,7 @@ impl TyCache {
             self.type_def_cache.insert(name.into(), def);
         }
         self.cycle_prevention.pop();
-        DotnetTypeRef::new::<&str,_>(None, name)
+        DotnetTypeRef::new::<&str, _>(None, name)
     }
     pub fn recover_from_panic(&mut self) {
         self.cycle_prevention.clear();
@@ -323,9 +323,9 @@ impl TyCache {
         match ty.kind() {
             TyKind::Bool => Type::Bool,
             TyKind::Int(int) => crate::r#type::from_int(int),
-            TyKind::Uint(uint) =>  crate::r#type::from_uint(uint),
+            TyKind::Uint(uint) => crate::r#type::from_uint(uint),
             TyKind::Char => Type::U32,
-            TyKind::Float(float) =>  crate::r#type::from_float(float),
+            TyKind::Float(float) => crate::r#type::from_float(float),
             TyKind::Tuple(types) => {
                 let types: Vec<_> = types
                     .iter()
@@ -379,7 +379,7 @@ impl TyCache {
                         closure_typedef(*def, &fields, &sig, layout.layout),
                     );
                 }
-                DotnetTypeRef::new::<&str,_>(None, name).into()
+                DotnetTypeRef::new::<&str, _>(None, name).into()
             }
             TyKind::Never => Type::Void,
             TyKind::RawPtr(typ, _) => {

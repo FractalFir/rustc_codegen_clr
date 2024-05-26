@@ -1,4 +1,3 @@
-use crate::cil::FieldDescriptor;
 use crate::cil_tree::cil_node::CILNode;
 use crate::cil_tree::cil_root::CILRoot;
 use crate::eq;
@@ -9,6 +8,7 @@ use crate::lt_un;
 use crate::sub;
 
 use crate::r#type::Type;
+use cilly::field_desc::FieldDescriptor;
 use cilly::DotnetTypeRef;
 use rustc_target::abi::VariantIdx;
 
@@ -248,7 +248,7 @@ pub fn get_discr<'tyctx>(
                 todo!();
             } else {
                 CILNode::LDField {
-                    field: crate::cil::FieldDescriptor::new(
+                    field: FieldDescriptor::new(
                         enum_tpe.clone(),
                         tag_tpe.clone(),
                         "value__".into(),
@@ -266,12 +266,8 @@ pub fn get_discr<'tyctx>(
             let (disrc_type, _) = crate::utilis::adt::enum_tag_info(layout, tyctx);
             let relative_max = niche_variants.end().as_u32() - niche_variants.start().as_u32();
             let tag = CILNode::LDField {
-                field: crate::cil::FieldDescriptor::new(
-                    enum_tpe.clone(),
-                    disrc_type.clone(),
-                    "value__".into(),
-                )
-                .into(),
+                field: FieldDescriptor::new(enum_tpe.clone(), disrc_type.clone(), "value__".into())
+                    .into(),
                 addr: enum_addr.into(),
             };
             // We have a subrange `niche_start..=niche_end` inside `range`.

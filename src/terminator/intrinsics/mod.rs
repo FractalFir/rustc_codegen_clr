@@ -22,21 +22,18 @@ fn compare_bytes(a: CILNode, b: CILNode, len: CILNode) -> CILNode {
         [a, b, len]
     )
 }
+use crate::r#type::tycache::TyCache;
 use crate::{
-    cil::CallSite,
-    cil_tree::cil_node::CILNode,
-    conv_u64,
-    operand::handle_operand,
-    place::place_set,
+    cil_tree::cil_node::CILNode, conv_u64, operand::handle_operand, place::place_set,
 };
-use cilly::   fn_sig::FnSig;
+use cilly::call_site::CallSite;
+use cilly::fn_sig::FnSig;
 use cilly::{DotnetTypeRef, Type};
 use rustc_middle::{
     mir::{Body, Operand, Place},
     ty::{Instance, ParamEnv, TyCtxt},
 };
 use rustc_span::source_map::Spanned;
-use crate::r#type::tycache::TyCache;
 mod bswap;
 mod interop;
 pub fn handle_intrinsic<'tyctx>(

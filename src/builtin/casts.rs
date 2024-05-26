@@ -5,14 +5,12 @@ use crate::{
     assembly::Assembly,
     basic_block::BasicBlock,
     call,
-    cil::CallSite,
+
     cil_tree::{cil_node::CILNode, cil_root::CILRoot},
     conv_f32, conv_f64, conv_f_un, conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16,
-    conv_u32, conv_u64, conv_u8, conv_usize, eq,
-    gt, ldc_i32, ldc_i64, ldc_u32, ldc_u64, lt, or,
-
+    conv_u32, conv_u64, conv_u8, conv_usize, eq, gt, ldc_i32, ldc_i64, ldc_u32, ldc_u64, lt, or,
 };
-use cilly::{fn_sig::FnSig, DotnetTypeRef, Type};
+use cilly::{call_site::CallSite, fn_sig::FnSig, DotnetTypeRef, Type};
 add_method_from_trees!(
     cast_i32_to_u64,
     &[Type::I32],

@@ -5,7 +5,6 @@ type AssemblyInfo = str;
 use crate::{
     assembly::Assembly,
     config,
-    
     method::Method,
     r#type::{Type, TypeDef},
     IString,

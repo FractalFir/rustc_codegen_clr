@@ -235,7 +235,7 @@ impl CodegenBackend for MyBackend {
                     .expect("Could not get the signature of the entrypoint.");
                 let symbol = tcx.symbol_name(entrypoint);
                 let symbol = format!("{symbol:?}");
-                let cs = cil::CallSite::new(None, symbol.into(), sig, true);
+                let cs = cilly::call_site::CallSite::new(None, symbol.into(), sig, true);
                 codegen.set_entrypoint(&cs);
             }
             codegen.opt();

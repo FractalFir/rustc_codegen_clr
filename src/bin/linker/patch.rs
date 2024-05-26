@@ -4,10 +4,7 @@ use rustc_codegen_clr::{
     call,
     cil::CallSite,
     cil_tree::{cil_node::CILNode, cil_root::CILRoot},
-    conv_i32, conv_usize,
-  
-    ldc_i32, ldc_u32,
-
+    conv_i32, conv_usize, ldc_i32, ldc_u32,
 };
 fn mstring_to_utf8ptr(mstring: CILNode) -> CILNode {
     call!(

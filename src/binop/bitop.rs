@@ -1,15 +1,7 @@
-use cilly::{DotnetTypeRef, FnSig, Type};
+use cilly::{call_site::CallSite, DotnetTypeRef, FnSig, Type};
 use rustc_middle::ty::{Instance, IntTy, Ty, TyCtxt, TyKind, UintTy};
 
-use crate::{
-    and, call,
-    cil::CallSite,
-    cil_tree::cil_node::CILNode,
-
-    or,
-    r#type::{ TyCache},
-    xor,
-};
+use crate::{and, call,  cil_tree::cil_node::CILNode, or, r#type::TyCache, xor};
 pub fn bit_and_unchecked<'tyctx>(
     ty_a: Ty<'tyctx>,
     ty_b: Ty<'tyctx>,

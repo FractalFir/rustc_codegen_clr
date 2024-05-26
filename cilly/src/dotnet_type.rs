@@ -94,13 +94,16 @@ impl DotnetTypeRef {
     }
     #[must_use]
     pub fn compiler_services_unsafe() -> Self {
-        DotnetTypeRef::new(
+        Self::new(
             Some("System.Runtime"),
             "System.Runtime.CompilerServices.Unsafe",
         )
         .with_valuetype(false)
     }
-    pub fn new<S:Into<Box<str>>,S2:Into<Box<str>> + std::borrow::Borrow<str>>(assembly: Option<S>, name_path: S2) -> Self {
+    pub fn new<S: Into<Box<str>>, S2: Into<Box<str>> + std::borrow::Borrow<str>>(
+        assembly: Option<S>,
+        name_path: S2,
+    ) -> Self {
         assert!(!name_path.borrow().contains('/'));
         Self {
             assembly: assembly.map(std::convert::Into::into),
@@ -110,11 +113,11 @@ impl DotnetTypeRef {
         }
     }
     #[must_use]
-    pub fn is_valuetype(&self) -> bool {
+    pub const fn is_valuetype(&self) -> bool {
         self.is_valuetype
     }
     #[must_use]
-    pub fn tpe_prefix(&self) -> &'static str {
+    pub const fn tpe_prefix(&self) -> &'static str {
         if self.is_valuetype() {
             "valuetype"
         } else {
@@ -127,7 +130,7 @@ impl DotnetTypeRef {
     #[must_use]
     pub fn array(element: &Type, length: usize) -> Self {
         let name = crate::arr_name(length, element);
-        DotnetTypeRef::new::<Box<str>,_>(None, name)
+        Self::new::<Box<str>, _>(None, name)
     }
 
     pub fn asm(&self) -> Option<&str> {
@@ -144,7 +147,7 @@ impl DotnetTypeRef {
     pub fn set_generics(&mut self, generics: impl Into<Vec<Type>>) {
         self.generics = generics.into();
     }
-
+    #[must_use]
     pub fn interlocked() -> Self {
         Self::new(Some("System.Threading"), "System.Threading.Interlocked").with_valuetype(false)
     }
@@ -152,8 +155,9 @@ impl DotnetTypeRef {
     pub fn assembly() -> Self {
         Self::new(Some("System.Runtime"), "System.Reflection.Assembly").with_valuetype(false)
     }
-    pub fn native_mem() -> DotnetTypeRef {
-        DotnetTypeRef::new(
+    #[must_use]
+    pub fn native_mem() -> Self {
+        Self::new(
             Some("System.Runtime.InteropServices"),
             "System.Runtime.InteropServices.NativeMemory",
         )

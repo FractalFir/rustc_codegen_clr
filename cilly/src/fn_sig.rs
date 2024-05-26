@@ -15,7 +15,7 @@ impl FnSig {
     }
     /// Returns the function output.
     #[must_use]
-    pub fn output(&self) -> &Type {
+    pub const fn output(&self) -> &Type {
         &self.output
     }
     /// Creates a new function signature. For non-static functions, this must include the hidden first `this` argument!

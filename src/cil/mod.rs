@@ -1,12 +1,12 @@
-use crate::{IString};
-mod call_site;
-pub use call_site::*;
-mod field_desc;
-pub use field_desc::*;
-mod static_field_desc;
-use cilly::{fn_sig::FnSig, DotnetTypeRef};
+use crate::IString;
+
+
+use rustc_middle::ty::TyCtxt;
+use cilly::{
+    call_site::CallSite, field_desc::FieldDescriptor, fn_sig::FnSig, static_field_desc::StaticFieldDescriptor, DotnetTypeRef, Type
+};
 use serde::{Deserialize, Serialize};
-pub use static_field_desc::*;
+
 /// Represenation of a CIL opcode.
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 pub enum CILOp {
@@ -285,10 +285,7 @@ impl CILOp {
         let mut console = DotnetTypeRef::new(Some("System.Console"), "System.Console");
         console.set_valuetype(false);
         let name = "WriteLine".into();
-        let signature = FnSig::new(
-            &[DotnetTypeRef::string_type().into()],
-            cilly::Type::Void,
-        );
+        let signature = FnSig::new(&[DotnetTypeRef::string_type().into()], cilly::Type::Void);
         [
             CILOp::LdStr(msg.into()),
             CILOp::Call(CallSite::new_extern(console, name, signature, true).into()),
@@ -310,10 +307,7 @@ impl CILOp {
         let mut console = DotnetTypeRef::new(Some("System.Console"), "System.Console");
         console.set_valuetype(false);
         let name = "Write".into();
-        let signature = FnSig::new(
-            &[DotnetTypeRef::string_type().into()],
-            cilly::Type::Void,
-        );
+        let signature = FnSig::new(&[DotnetTypeRef::string_type().into()], cilly::Type::Void);
         [
             CILOp::LdStr(msg.into()),
             CILOp::Call(CallSite::new_extern(console, name, signature, true).into()),
@@ -491,3 +485,13 @@ impl CILOp {
         }
     }
 }
+ /// Returns the call site refering to the function malloc.
+ #[must_use]
+ pub fn malloc(ctx: TyCtxt) -> CallSite {
+    CallSite::new(
+         None,
+         "malloc".into(),
+         FnSig::new(&[Type::USize], Type::Ptr(crate::r#type::c_void(ctx).into())),
+         true,
+     )
+ }

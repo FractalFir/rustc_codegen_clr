@@ -2,13 +2,14 @@ use crate::basic_block::BasicBlock;
 use crate::cil_tree::cil_node::CILNode;
 use crate::cil_tree::cil_root::CILRoot;
 use crate::method::MethodType;
-use cilly::DotnetTypeRef;
 use crate::{
-    access_modifier::AccessModifer, add_method_from_trees, assembly::Assembly, cil::CallSite,
+    access_modifier::AccessModifer, add_method_from_trees, assembly::Assembly,
     method::Method, r#type::Type,
 };
-use cilly::fn_sig::FnSig;
 use crate::{call, conv_usize, ldc_u64, lt_un};
+use cilly::call_site::CallSite;
+use cilly::fn_sig::FnSig;
+use cilly::DotnetTypeRef;
 use rustc_middle::ty::TyCtxt;
 mod casts;
 mod select;
@@ -27,7 +28,7 @@ add_method_from_trees!(
                 }
                 .into(),
                 CILRoot::Call {
-                    site: crate::cil::CallSite::new_extern(
+                    site: CallSite::new_extern(
                         DotnetTypeRef::console(),
                         "Write".into(),
                         FnSig::new(&[DotnetTypeRef::string_type().into()], Type::Void),
@@ -37,7 +38,7 @@ add_method_from_trees!(
                 }
                 .into(),
                 CILRoot::Call {
-                    site: crate::cil::CallSite::new_extern(
+                    site: CallSite::new_extern(
                         DotnetTypeRef::console(),
                         "Write".into(),
                         FnSig::new(&[Type::U64], Type::Void),
@@ -47,7 +48,7 @@ add_method_from_trees!(
                 }
                 .into(),
                 CILRoot::Call {
-                    site: crate::cil::CallSite::new_extern(
+                    site: CallSite::new_extern(
                         DotnetTypeRef::console(),
                         "Write".into(),
                         FnSig::new(&[DotnetTypeRef::string_type().into()], Type::Void),
@@ -57,7 +58,7 @@ add_method_from_trees!(
                 }
                 .into(),
                 CILRoot::Call {
-                    site: crate::cil::CallSite::new_extern(
+                    site: CallSite::new_extern(
                         DotnetTypeRef::console(),
                         "WriteLine".into(),
                         FnSig::new(&[Type::U64], Type::Void),

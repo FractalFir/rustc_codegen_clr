@@ -1,11 +1,11 @@
 use super::append_vec;
 use crate::{
-    cil::{CILOp, CallSite, FieldDescriptor},
+    cil::{CILOp},
     cil_tree::cil_node::CILNode,
-    r#type::{TyCache, },
+    r#type::TyCache,
     IString,
 };
-use cilly::{ fn_sig::FnSig, DotnetTypeRef, Type};
+use cilly::{call_site::CallSite, field_desc::FieldDescriptor, fn_sig::FnSig, DotnetTypeRef, Type};
 use rustc_middle::ty::TyCtxt;
 use serde::{Deserialize, Serialize};
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
@@ -85,7 +85,7 @@ pub enum CILRoot {
         ops: Box<[CILOp]>,
     },
     SetStaticField {
-        descr: crate::cil::StaticFieldDescriptor,
+        descr: cilly::static_field_desc::StaticFieldDescriptor,
         value: CILNode,
     },
     SourceFileInfo(Box<(std::ops::Range<u64>, std::ops::Range<u64>, IString)>),
@@ -179,8 +179,7 @@ impl CILRoot {
     }
     #[must_use]
     pub fn throw(msg: &str) -> Self {
-        let mut class =
-            DotnetTypeRef::new(Some("System.Runtime"), "System.Exception");
+        let mut class = DotnetTypeRef::new(Some("System.Runtime"), "System.Exception");
         class.set_valuetype(false);
         let name = ".ctor".into();
         let signature = FnSig::new(
@@ -197,10 +196,7 @@ impl CILRoot {
         let mut class = DotnetTypeRef::new(Some("System.Console"), "System.Console");
         class.set_valuetype(false);
         let name = "WriteLine".into();
-        let signature = FnSig::new(
-            &[DotnetTypeRef::string_type().into()],
-            cilly::Type::Void,
-        );
+        let signature = FnSig::new(&[DotnetTypeRef::string_type().into()], cilly::Type::Void);
         let message_or_check = if *crate::config::MEM_CHECKS {
             CILNode::SubTrees(
                 [CILRoot::Call {
@@ -843,7 +839,7 @@ fn allocating_tmps() {
                 local: 14,
                 tree: CILNode::TemporaryLocal(Box::new((
                     Type::DotnetType(
-                        DotnetTypeRef::new::<&str,_>(
+                        DotnetTypeRef::new::<&str, _>(
                             None,
                             "core.ptr.metadata.PtrComponents.h2b679e9941d88b2f",
                         )
@@ -856,7 +852,7 @@ fn allocating_tmps() {
                     CILNode::LdObj {
                         ptr: CILNode::LoadAddresOfTMPLocal.into(),
                         obj: Type::DotnetType(
-                            DotnetTypeRef::new::<&str,_>(
+                            DotnetTypeRef::new::<&str, _>(
                                 None,
                                 "core.ptr.metadata.PtrComponents.h2b679e9941d88b2f",
                             )
@@ -869,8 +865,11 @@ fn allocating_tmps() {
             CILNode::LdObj {
                 ptr: CILNode::LDLocA(14).into(),
                 obj: Type::DotnetType(
-                    DotnetTypeRef::new::<&str,_>(None, "core.ptr.metadata.PtrComponents.h2b679e9941d88b2f")
-                        .into(),
+                    DotnetTypeRef::new::<&str, _>(
+                        None,
+                        "core.ptr.metadata.PtrComponents.h2b679e9941d88b2f",
+                    )
+                    .into(),
                 )
                 .into(),
             }

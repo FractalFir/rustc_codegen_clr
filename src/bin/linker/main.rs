@@ -12,11 +12,8 @@ use rustc_codegen_clr::{
     cil,
     cil::CallSite,
     cil_tree::{cil_node::CILNode, cil_root::CILRoot},
-    config,
-
-    method,
+    config, method,
     method::{Method, MethodType},
-
     AString, IString,
 };
 mod cmd;
