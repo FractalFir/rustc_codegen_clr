@@ -98,8 +98,7 @@ extern crate rustc_ty_utils;
 extern crate stable_mir;
 pub mod native_pastrough;
 // Modules
-/// Specifies if a method/type is private or public.
-pub mod access_modifier;
+
 /// Code handling the creation of aggreate values (Arrays, enums,structs,tuples,etc.)
 mod aggregate;
 /// Representation of a .NET assembly

@@ -1,6 +1,5 @@
 use super::AssemblyExporter;
 use crate::{
-    access_modifier::AccessModifer,
     assembly_exporter::{
         escape_class_name,
         ilasm_op::{non_void_type_cil, type_cil},
@@ -10,6 +9,7 @@ use crate::{
     r#type::Type,
     r#type::TypeDef,
 };
+use cilly::{access_modifier::AccessModifer, basic_block::BasicBlock};
 use lazy_static::lazy_static;
 pub enum IlasmFlavour {
     Clasic,
@@ -332,7 +332,7 @@ fn method_cil(w: &mut impl Write, method: &Method) -> std::io::Result<()> {
     for op in method
         .blocks()
         .iter()
-        .flat_map(super::super::basic_block::BasicBlock::into_ops)
+        .flat_map(crate::basic_block::into_ops)
     {
         if *crate::config::TRACE_CIL_OPS {
             let op = format!("{}:{op:?}", method.name());

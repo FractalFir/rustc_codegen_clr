@@ -8,12 +8,16 @@ pub mod dotnet_type;
 pub use dotnet_type::*;
 pub mod fn_sig;
 pub use fn_sig::*;
+pub mod access_modifier;
+pub mod basic_block;
 pub mod call_site;
 pub mod cil_iter;
 pub mod cil_iter_mut;
 pub mod cil_node;
 pub mod cil_root;
+pub mod cil_tree;
 pub mod static_field_desc;
+pub mod type_def;
 #[must_use]
 /// Returns the name of a fixed-size array
 pub fn arr_name(element_count: usize, element: &Type) -> IString {

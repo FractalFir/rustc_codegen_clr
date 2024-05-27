@@ -1,17 +1,16 @@
 #![deny(unused_must_use)]
 #![allow(clippy::module_name_repetitions)]
+use cilly::basic_block::BasicBlock;
 use cilly::call_site::CallSite;
 use cilly::cil_node::CILNode;
 use cilly::cil_root::CILRoot;
-use cilly::{DotnetTypeRef, FnSig, Type};
+use cilly::{access_modifier, DotnetTypeRef, FnSig, Type};
 //use assembly::Assembly;
 use lazy_static::lazy_static;
 use load::LinkableFile;
 use rustc_codegen_clr::assembly_exporter::ilasm_exporter::*;
 use rustc_codegen_clr::{
-    access_modifier,
     assembly::Assembly,
-    basic_block::BasicBlock,
     config, method,
     method::{Method, MethodType},
     AString, IString,

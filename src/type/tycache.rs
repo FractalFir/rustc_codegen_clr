@@ -1,12 +1,11 @@
 use super::{tuple_name, tuple_typedef, TypeDef};
 
 use crate::{
-    access_modifier::AccessModifer,
     r#type::{closure_typedef, escape_field_name},
     utilis::adt::FieldOffsetIterator,
     IString,
 };
-use cilly::{fn_sig::FnSig, DotnetTypeRef, Type};
+use cilly::{access_modifier::AccessModifer, fn_sig::FnSig, DotnetTypeRef, Type};
 use rustc_middle::ty::{
     AdtDef, AdtKind, GenericArg, Instance, List, ParamEnv, Ty, TyCtxt, TyKind, UintTy,
 };

@@ -1,6 +1,5 @@
-use crate::cil_tree::CILTree;
 use crate::place::place_set;
-use cilly::{call_site::CallSite, cil_node::CILNode, cil_root::CILRoot};
+use cilly::{call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, cil_tree::CILTree};
 use rustc_span::source_map::Spanned;
 
 use crate::utilis::monomorphize;

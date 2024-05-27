@@ -1,17 +1,20 @@
-use crate::basic_block::{handler_for_block, BasicBlock};
+use crate::basic_block::handler_for_block;
 
 use crate::cil::span_source_info;
-use crate::cil_tree::CILTree;
+
 use crate::method::MethodType;
 use crate::rustc_middle::dep_graph::DepContext;
 use crate::utilis::field_descrptor;
 use crate::{
-    access_modifier::AccessModifer, codegen_error::CodegenError, codegen_error::MethodCodegenError,
-    method::Method, r#type::TyCache, r#type::Type, r#type::TypeDef, IString,
+    codegen_error::CodegenError, codegen_error::MethodCodegenError, method::Method,
+    r#type::TyCache, r#type::Type, r#type::TypeDef, IString,
 };
+use cilly::access_modifier::AccessModifer;
+use cilly::basic_block::BasicBlock;
 use cilly::call_site::CallSite;
 use cilly::cil_node::CILNode;
 use cilly::cil_root::CILRoot;
+use cilly::cil_tree::CILTree;
 use cilly::static_field_desc::StaticFieldDescriptor;
 use cilly::FnSig;
 use cilly::{call, conv_isize, conv_usize, ldc_u32, ldc_u64};
@@ -408,7 +411,7 @@ impl Assembly {
 
         let adjust = check_align_adjust(&mir.local_decls, tyctx, &instance);
         method.adjust_aligement(adjust);
-      
+
         method.realloc_locals();
         self.add_method(method);
         Ok(())
@@ -578,11 +581,11 @@ impl Assembly {
         for tree in cctor
             .blocks_mut()
             .iter_mut()
-            .flat_map(super::basic_block::BasicBlock::trees_mut)
+            .flat_map(BasicBlock::trees_mut)
         {
             if let CILRoot::SetStaticField { descr, value } = tree.root_mut() {
                 // Assigement to a dead static, remove.
-                if !alive_fields.contains(descr) {
+                if !alive_fields.contains(&descr) {
                     debug_assert!(descr.name().contains('a'));
                     debug_assert!(matches!(value, CILNode::Call { site: _, args: _ }));
                     *tree = CILRoot::Nop.into();
@@ -633,7 +636,7 @@ impl Assembly {
                     item.symbol_name(tcx).to_string(),
                 );
                 rustc_middle::ty::print::with_no_trimmed_paths! {self.checked_add_fn(instance, tcx, &symbol_name, cache)
-                    .expect("Could not add function!")};
+                .expect("Could not add function!")};
                 drop(function_compile_timer);
                 Ok(())
             }

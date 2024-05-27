@@ -57,16 +57,13 @@ impl<'a> Iterator for CILIter<'a> {
                     | CILNode::ConvI8(a)
                     | CILNode::ZeroExtendToUSize(a)
                     | CILNode::TransmutePtr { val: a, .. },
-                ) => match idx {
-                    1 => {
-                        *idx += 1;
-                        self.elems.push((0, CILIterElem::Node(a)));
-                        continue;
-                    }
-                    _ => {
-                        self.elems.pop();
-                        continue;
-                    }
+                ) => if idx == &1 {
+                    *idx += 1;
+                    self.elems.push((0, CILIterElem::Node(a)));
+                    continue;
+                } else {
+                    self.elems.pop();
+                    continue;
                 },
                 CILIterElem::Node(
                     CILNode::LDLoc(_)
@@ -90,16 +87,13 @@ impl<'a> Iterator for CILIter<'a> {
                     | CILRoot::Ret { tree }
                     | CILRoot::BTrue { cond: tree, .. }
                     | CILRoot::Throw(tree),
-                ) => match idx {
-                    1 => {
-                        *idx += 1;
-                        self.elems.push((0, CILIterElem::Node(tree)));
-                        continue;
-                    }
-                    _ => {
-                        self.elems.pop();
-                        continue;
-                    }
+                ) => if idx == &1 {
+                    *idx += 1;
+                    self.elems.push((0, CILIterElem::Node(tree)));
+                    continue;
+                } else {
+                    self.elems.pop();
+                    continue;
                 },
                 CILIterElem::Root(
                     CILRoot::SourceFileInfo(_)
@@ -141,12 +135,12 @@ impl<'a> Iterator for CILIter<'a> {
     }
 }
 impl<'a> CILIter<'a> {
-    pub fn new_node(node: &'a CILNode) -> Self {
+    #[must_use] pub fn new_node(node: &'a CILNode) -> Self {
         Self {
             elems: vec![(0, CILIterElem::Node(node))],
         }
     }
-    pub fn new_root(root: &'a CILRoot) -> Self {
+    #[must_use] pub fn new_root(root: &'a CILRoot) -> Self {
         Self {
             elems: vec![(0, CILIterElem::Root(root))],
         }

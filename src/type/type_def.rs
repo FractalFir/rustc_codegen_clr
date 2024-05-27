@@ -1,13 +1,11 @@
 use crate::{
-    access_modifier::AccessModifer,
-    basic_block::BasicBlock,
     method::{Method, MethodType},
     utilis::adt::FieldOffsetIterator,
     IString,
 };
 use cilly::{
-    cil_node::CILNode, cil_root::CILRoot, conv_usize, field_desc::FieldDescriptor,
-    ld_field_address, size_of, DotnetTypeRef, Type,
+    access_modifier::AccessModifer, basic_block::BasicBlock, cil_node::CILNode, cil_root::CILRoot,
+    conv_usize, field_desc::FieldDescriptor, ld_field_address, size_of, DotnetTypeRef, Type,
 };
 use rustc_span::def_id::DefId;
 use rustc_target::abi::Layout;
@@ -27,14 +25,6 @@ pub struct TypeDef {
     //requires_aligement_adjustements:bool,
 }
 impl TypeDef {
-    #[must_use]
-    pub fn ptr_components(name: &str, metadata: Type) -> Self {
-        let mut ptr_components = crate::r#type::TypeDef::nameonly(name);
-        ptr_components.add_field("data_pointer".into(), Type::Ptr(Type::Void.into()));
-        ptr_components.add_field("metadata".into(), metadata);
-        ptr_components
-    }
-
     pub fn set_generic_count(&mut self, generic_count: u32) {
         self.gargc = generic_count;
     }

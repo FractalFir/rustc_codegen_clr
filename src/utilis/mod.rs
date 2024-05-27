@@ -374,7 +374,7 @@ pub fn requries_align_adjustement<'tyctx>(
     tyctx: TyCtxt<'tyctx>,
 ) -> Option<u64> {
     //TODO: some types requre aligement smaller than 16 bytes but larger than their size. Handle that. Requires reimplemting .NETs algiement clacualtions.
-    let align = align_of(ty,tyctx);
+    let align = align_of(ty, tyctx);
     if align > 16 {
         Some(align)
     } else {

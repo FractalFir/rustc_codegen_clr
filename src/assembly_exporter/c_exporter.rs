@@ -1,10 +1,11 @@
 use cilly::cil_node::CILNode;
 use cilly::cil_root::CILRoot;
+use cilly::cil_tree::CILTree;
 
 use super::AssemblyExporter;
 
 use crate::r#type::TypeDef;
-use crate::{cil_tree::CILTree, method::Method, r#type::Type, IString};
+use crate::{method::Method, r#type::Type, IString};
 use std::collections::HashMap;
 use std::hash::Hasher;
 use std::process::Command;

@@ -1,45 +1,13 @@
-use std::collections::HashSet;
 
-use crate::{cil::CILOp, cil_tree::CILTree, method::Method};
-use cilly::cil_iter::CILIterElem;
-use cilly::cil_iter_mut::CILIterElemMut;
-use cilly::cil_root::CILRoot;
+use crate::cil_tree::validate;
+use crate::{cil::CILOp, method::Method};
+use cilly::basic_block::{BasicBlock, Handler};
 use rustc_middle::mir::BasicBlockData;
 use rustc_middle::mir::UnwindAction;
 use rustc_middle::{
     mir::{BasicBlocks, Body, TerminatorKind},
     ty::{Instance, InstanceDef, TyCtxt},
 };
-use serde::{Deserialize, Serialize};
-#[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
-/// A block of ops that is a valid jump target, and is protected by an exception handler.
-pub struct BasicBlock {
-    trees: Vec<CILTree>,
-    id: u32,
-    handler: Option<Handler>,
-}
-#[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
-pub enum Handler {
-    RawID(u32),
-    Blocks(Vec<BasicBlock>),
-}
-
-impl Handler {
-    pub fn as_blocks_mut(&mut self) -> Option<&mut Vec<BasicBlock>> {
-        if let Self::Blocks(v) = self {
-            Some(v)
-        } else {
-            None
-        }
-    }
-    pub fn as_blocks(&self) -> Option<&[BasicBlock]> {
-        if let Self::Blocks(v) = self {
-            Some(v)
-        } else {
-            None
-        }
-    }
-}
 
 pub(crate) fn handler_for_block<'tyctx>(
     block_data: &BasicBlockData,
@@ -142,186 +110,50 @@ pub(crate) fn handler_from_action(action: UnwindAction) -> Option<u32> {
         UnwindAction::Unreachable => None,
     }
 }
-fn find_bb(id: u32, bbs: &[BasicBlock]) -> &BasicBlock {
-    bbs.iter().find(|bb| bb.id() == id).unwrap()
-}
-fn block_gc(entrypoint: u32, bbs: &[BasicBlock]) -> Vec<BasicBlock> {
-    //debug_assert!(crate::utilis::is_sorted(bbs.iter(),|a,b|a.id + 1 == b.id));
-    let mut alive: HashSet<u32> = HashSet::new();
-    let mut resurecting = HashSet::new();
-    let mut to_resurect = HashSet::new();
-    to_resurect.insert(entrypoint);
-    while !to_resurect.is_empty() {
-        alive.extend(&resurecting);
-        resurecting.clear();
-        resurecting.extend(&to_resurect);
-        to_resurect.clear();
-        for (target, sub_target) in resurecting
-            .iter()
-            .flat_map(|bb| find_bb(*bb, bbs).targets())
-        {
-            assert_eq!(
-                sub_target, 0,
-                "No block can have subblocks before the exception handler resolving phase!"
-            );
-            if !alive.contains(&target) && !resurecting.contains(&target) {
-                to_resurect.insert(target);
+
+pub fn validate_bb(block: &BasicBlock, method: &Method) -> Result<(), String> {
+    let errs: Vec<String> = block
+        .trees()
+        .iter()
+        .filter_map(|tree| {
+            match validate(tree, method).map_err(|err| format!("{tree:?}:\n\n{err}")) {
+                Ok(()) => None,
+                Err(err) => Some(err),
             }
-        }
+        })
+        .collect::<Vec<_>>();
+    if !errs.is_empty() {
+        return Err(errs[0].clone());
     }
-    alive.extend(&resurecting);
-    bbs.iter()
-        .filter(|bb| alive.contains(&bb.id))
-        .cloned()
-        .collect()
+    Ok(())
 }
-impl BasicBlock {
-    pub fn validate(&self, method: &Method) -> Result<(), String> {
-        let errs: Vec<String> = self
+
+fn flatten_inner(self_block: &BasicBlock, id: u32, sub_id: u32) -> Vec<CILOp> {
+    let mut ops = vec![CILOp::Label(id, sub_id)];
+    if self_block.handler().is_some() {
+        ops.push(CILOp::BeginTry);
+    };
+    ops.extend(
+        self_block
             .trees()
             .iter()
-            .filter_map(|tree| {
-                match tree
-                    .validate(method)
-                    .map_err(|err| format!("{tree:?}:\n\n{err}"))
-                {
-                    Ok(()) => None,
-                    Err(err) => Some(err),
-                }
-            })
-            .collect::<Vec<_>>();
-        if !errs.is_empty() {
-            return Err(errs[0].clone());
-        }
-        Ok(())
-    }
-    /// Converts all trees containing sub-trees into multiple trees.
-    pub fn sheed_trees(&mut self) {
-        self.trees = self
-            .trees
-            .clone()
-            .into_iter()
-            .flat_map(super::cil_tree::CILTree::shed_trees)
-            .collect();
-        if let Some(handler) = self.handler.as_mut() {
-            handler
-                .as_blocks_mut()
-                .unwrap()
-                .iter_mut()
-                .for_each(BasicBlock::sheed_trees);
-        }
-    }
-    pub(crate) fn resolve_exception_handlers(&mut self, handler_bbs: &[BasicBlock]) {
-        let Some(handler) = &self.handler else {
-            return;
+            .flat_map(crate::cil_tree::into_ops_tree),
+    );
+    if let Some(handler) = &self_block.handler() {
+        ops.push(CILOp::BeginCatch);
+        ops.push(CILOp::Pop);
+        let Handler::Blocks(blocks) = handler else {
+            panic!("Unresolved eception handler blocks!")
         };
-        let Handler::RawID(handler_id) = handler else {
-            panic!("Tired to double-resolve ");
-        };
-        // Get alive blovks
-        let mut handler = block_gc(*handler_id, handler_bbs);
-        // Fix up handler jumps
-        for bb in &mut handler {
-            bb.trees
-                .iter_mut()
-                .for_each(|tree| tree.fix_for_exception_handler(self.id()));
+        for block in blocks {
+            ops.extend(flatten_inner(&block, self_block.id(), block.id()));
         }
-        // Insert the "jumpstarter"
-        handler.insert(
-            0,
-            BasicBlock::new(
-                vec![CILRoot::GoTo {
-                    target: self.id(),
-                    sub_target: *handler_id,
-                }
-                .into()],
-                u32::MAX,
-                None,
-            ),
-        );
-        // Generate launching pads for cross-block branches!
-        let id = self.id();
-        for (target, sub_target) in self.targets() {
-            assert_eq!(sub_target, 0);
-            self.trees
-                .push(CILRoot::JumpingPad { target, source: id }.into());
-        }
-        // Change branches to use lanuching pads.
-
-        self.trees
-            .iter_mut()
-            .for_each(|tree| tree.fix_for_exception_handler(id));
-        self.handler = Some(Handler::Blocks(handler));
+        ops.push(CILOp::EndTry);
     }
-    /// Creates a new basic block with id `id`, made up from `trees` and with exception handler `handler`.
-    #[must_use]
-    pub fn new(trees: Vec<CILTree>, id: u32, handler: Option<Handler>) -> Self {
-        Self { trees, id, handler }
-    }
-    /// Returns a list of basic blocks this baisc block targets.
-    #[must_use]
-    pub fn targets(&self) -> Vec<(u32, u32)> {
-        let mut targets = Vec::new();
-        self.trees
-            .iter()
-            .for_each(|tree| tree.targets(&mut targets));
-        targets
-    }
-    fn flatten_inner(&self, id: u32, sub_id: u32) -> Vec<CILOp> {
-        let mut ops = vec![CILOp::Label(id, sub_id)];
-        if self.handler.is_some() {
-            ops.push(CILOp::BeginTry);
-        };
-        ops.extend(
-            self.trees
-                .iter()
-                .flat_map(super::cil_tree::CILTree::into_ops),
-        );
-        if let Some(handler) = &self.handler {
-            ops.push(CILOp::BeginCatch);
-            ops.push(CILOp::Pop);
-            let Handler::Blocks(blocks) = handler else {
-                panic!("Unresolved eception handler blocks!")
-            };
-            for block in blocks {
-                ops.extend(block.flatten_inner(self.id, block.id));
-            }
-            ops.push(CILOp::EndTry);
-        }
-        ops
-    }
-    /// Converts this basic block into a list of ops.
-    #[must_use]
-    pub fn into_ops(&self) -> Vec<CILOp> {
-        self.flatten_inner(self.id(), 0)
-    }
-    /// Returns the id of this block.
-    #[must_use]
-    pub fn id(&self) -> u32 {
-        self.id
-    }
-    /// Returns a mutable reference to the trees that make up this block.
-    pub fn trees_mut(&mut self) -> &mut Vec<CILTree> {
-        &mut self.trees
-    }
-    /// Returns a reference to the trees that make up this block.
-    #[must_use]
-    pub fn trees(&self) -> &[CILTree] {
-        &self.trees
-    }
-    /// Returns a iterator over `CILIterElem`
-    pub fn iter_cil(&self) -> impl Iterator<Item = CILIterElem> {
-        let handler_bbs = self.handler.iter().flat_map(|handler|handler.as_blocks()).flat_map(|bb|bb);
-        let sref:&Self = self;
-        let self_blocks = Some(sref).into_iter();
-        let block_iter = self_blocks.chain(handler_bbs);
-        block_iter.flat_map(|block|block.trees.iter()).flat_map(|tree| tree.root().into_iter())
-    }
-    /// Returns a iterator over `CILIterElemMut`
-    pub fn iter_cil_mut(&mut self) -> impl Iterator<Item = CILIterElemMut> {
-        let handler_bbs = self.handler.iter_mut().flat_map(|handler|handler.as_blocks_mut()).flat_map(|bb|bb).flat_map(|block|block.trees.iter_mut());
-        let self_blocks = self.trees.iter_mut();
-        let block_iter = self_blocks.chain(handler_bbs);
-        block_iter.flat_map(|tree| tree.root_mut().into_iter())
-    }
+    ops
+}
+/// Converts this basic block into a list of ops.
+#[must_use]
+pub fn into_ops(bb: &BasicBlock) -> Vec<CILOp> {
+    flatten_inner(bb, bb.id(), 0)
 }

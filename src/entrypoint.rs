@@ -1,14 +1,12 @@
 use std::num::NonZeroU8;
 
 use cilly::{
-    call, call_site::CallSite, call_virt, cil_node::CILNode, cil_root::CILRoot, conv_usize,
-    ldc_u32, ldc_u64, size_of, DotnetTypeRef, FnSig, Type,
+    access_modifier::AccessModifer, basic_block::BasicBlock, call, call_site::CallSite, call_virt,
+    cil_node::CILNode, cil_root::CILRoot, conv_usize, ldc_u32, ldc_u64, size_of, DotnetTypeRef,
+    FnSig, Type,
 };
 
-use crate::{
-    basic_block::BasicBlock,
-    method::{Method, MethodType},
-};
+use crate::method::{Method, MethodType};
 
 /// Creates a wrapper method around entypoint represented by `CallSite`
 pub fn wrapper(entrypoint: &CallSite) -> Method {
@@ -37,7 +35,7 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
             CILRoot::Nop
         };
         let mut method = Method::new(
-            crate::access_modifier::AccessModifer::Public,
+            AccessModifer::Public,
             MethodType::Static,
             sig,
             "entrypoint",
@@ -151,7 +149,7 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
     {
         let sig = FnSig::new(&[], Type::Void);
         let mut method = Method::new(
-            crate::access_modifier::AccessModifer::Public,
+            AccessModifer::Public,
             MethodType::Static,
             sig,
             "entrypoint",

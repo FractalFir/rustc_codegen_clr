@@ -1,12 +1,10 @@
-use crate::basic_block::BasicBlock;
-
 use crate::method::MethodType;
-use crate::{
-    access_modifier::AccessModifer, add_method_from_trees, assembly::Assembly, method::Method,
-    r#type::Type,
-};
+use crate::{add_method_from_trees, assembly::Assembly, method::Method, r#type::Type};
+use cilly::access_modifier::AccessModifer;
+use cilly::basic_block::BasicBlock;
 use cilly::call_site::CallSite;
 use cilly::cil_node::CILNode;
+
 use cilly::cil_root::CILRoot;
 use cilly::fn_sig::FnSig;
 use cilly::DotnetTypeRef;
@@ -105,7 +103,7 @@ macro_rules! add_method_from_trees {
     ($name:ident,$input:expr,$output:expr,$trees:expr,$args:expr) => {
         fn $name(asm: &mut $crate::assembly::Assembly) {
             let method = $crate::method::Method::new(
-                $crate::access_modifier::AccessModifer::Private,
+                AccessModifer::Private,
                 $crate::method::MethodType::Static,
                 cilly::fn_sig::FnSig::new($input, $output),
                 stringify!($name),
@@ -119,7 +117,7 @@ macro_rules! add_method_from_trees {
     ($name:ident,$input:expr,$output:expr,$trees:expr,$locals:expr,$args:expr) => {
         fn $name(asm: &mut $crate::assembly::Assembly) {
             let mut method = $crate::method::Method::new(
-                $crate::access_modifier::AccessModifer::Private,
+                AccessModifer::Private,
                 $crate::method::MethodType::MethodType::Static,
                 cilly::fn_sig::FnSig::new($input, $output),
                 stringify!($name),
