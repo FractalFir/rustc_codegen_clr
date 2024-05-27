@@ -394,6 +394,8 @@ impl Assembly {
         method.resolve_global_allocations(self, tyctx, cache);
         // TODO: Why is this even needed? The temporaries *should* be already allocated, why not all of them are?
         method.allocate_temporaries();
+        method.allocate_temporaries();
+        method.allocate_temporaries();
         if *crate::config::TYPECHECK_CIL {
             match method.validate() {
                 Ok(()) => (),
@@ -406,10 +408,7 @@ impl Assembly {
 
         let adjust = check_align_adjust(&mir.local_decls, tyctx, &instance);
         method.adjust_aligement(adjust);
-        /*
-        for node in method.blocks().into_iter().flat_map(|block|block.trees()).flat_map(|tree|tree.root().into_iter()){
-            println!("node:{node:?}");
-        } */
+      
         method.realloc_locals();
         self.add_method(method);
         Ok(())
