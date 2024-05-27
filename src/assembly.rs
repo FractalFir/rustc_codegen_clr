@@ -410,6 +410,7 @@ impl Assembly {
         for node in method.blocks().into_iter().flat_map(|block|block.trees()).flat_map(|tree|tree.root().into_iter()){
             println!("node:{node:?}");
         } */
+        method.realloc_locals();
         self.add_method(method);
         Ok(())
         //todo!("Can't add function")

@@ -1,12 +1,12 @@
 use super::PlaceTy;
 use crate::{
     assert_morphic,
-
-    
     r#type::{pointer_to_is_fat, TyCache, Type},
-    
 };
-use cilly::{call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_usize, field_desc::FieldDescriptor, fn_sig::FnSig, ld_field, ldc_u64, size_of};
+use cilly::{
+    call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_usize,
+    field_desc::FieldDescriptor, fn_sig::FnSig, ld_field, ldc_u64, size_of,
+};
 use rustc_middle::{
     mir::PlaceElem,
     ty::{Instance, Ty, TyCtxt, TyKind},

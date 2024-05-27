@@ -1,6 +1,8 @@
 use std::collections::HashSet;
 
 use crate::{cil::CILOp, cil_tree::CILTree, method::Method};
+use cilly::cil_iter::CILIterElem;
+use cilly::cil_iter_mut::CILIterElemMut;
 use cilly::cil_root::CILRoot;
 use rustc_middle::mir::BasicBlockData;
 use rustc_middle::mir::UnwindAction;
@@ -24,6 +26,13 @@ pub enum Handler {
 
 impl Handler {
     pub fn as_blocks_mut(&mut self) -> Option<&mut Vec<BasicBlock>> {
+        if let Self::Blocks(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+    pub fn as_blocks(&self) -> Option<&[BasicBlock]> {
         if let Self::Blocks(v) = self {
             Some(v)
         } else {
@@ -234,7 +243,8 @@ impl BasicBlock {
         let id = self.id();
         for (target, sub_target) in self.targets() {
             assert_eq!(sub_target, 0);
-            self.trees.push(CILRoot::JumpingPad { target, source:id }.into());
+            self.trees
+                .push(CILRoot::JumpingPad { target, source: id }.into());
         }
         // Change branches to use lanuching pads.
 
@@ -298,5 +308,20 @@ impl BasicBlock {
     #[must_use]
     pub fn trees(&self) -> &[CILTree] {
         &self.trees
+    }
+    /// Returns a iterator over `CILIterElem`
+    pub fn iter_cil(&self) -> impl Iterator<Item = CILIterElem> {
+        let handler_bbs = self.handler.iter().flat_map(|handler|handler.as_blocks()).flat_map(|bb|bb);
+        let sref:&Self = self;
+        let self_blocks = Some(sref).into_iter();
+        let block_iter = self_blocks.chain(handler_bbs);
+        block_iter.flat_map(|block|block.trees.iter()).flat_map(|tree| tree.root().into_iter())
+    }
+    /// Returns a iterator over `CILIterElemMut`
+    pub fn iter_cil_mut(&mut self) -> impl Iterator<Item = CILIterElemMut> {
+        let handler_bbs = self.handler.iter_mut().flat_map(|handler|handler.as_blocks_mut()).flat_map(|bb|bb).flat_map(|block|block.trees.iter_mut());
+        let self_blocks = self.trees.iter_mut();
+        let block_iter = self_blocks.chain(handler_bbs);
+        block_iter.flat_map(|tree| tree.root_mut().into_iter())
     }
 }

@@ -9,6 +9,8 @@ pub use dotnet_type::*;
 pub mod fn_sig;
 pub use fn_sig::*;
 pub mod call_site;
+pub mod cil_iter;
+pub mod cil_iter_mut;
 pub mod cil_node;
 pub mod cil_root;
 pub mod static_field_desc;

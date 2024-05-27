@@ -1,12 +1,14 @@
 use super::{pointed_type, PlaceTy};
 
 use crate::{
-
+    assert_morphic,
     place::{body_ty_is_by_adress, deref_op},
     r#type::Type,
-    assert_morphic,
 };
-use cilly::{call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_usize, field_desc::FieldDescriptor, fn_sig::FnSig, ld_field};
+use cilly::{
+    call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_usize,
+    field_desc::FieldDescriptor, fn_sig::FnSig, ld_field,
+};
 use rustc_middle::mir::PlaceElem;
 use rustc_middle::ty::{Instance, Ty, TyCtxt, TyKind};
 pub fn local_body<'tcx>(

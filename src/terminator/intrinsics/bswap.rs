@@ -1,5 +1,7 @@
 use crate::{operand::handle_operand, place::place_set, r#type::tycache::TyCache};
-use cilly::{call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, fn_sig::FnSig, DotnetTypeRef};
+use cilly::{
+    call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, fn_sig::FnSig, DotnetTypeRef,
+};
 use rustc_middle::{
     mir::{Body, Operand, Place},
     ty::{Instance, TyCtxt, TyKind, UintTy},

@@ -12,8 +12,6 @@ use rustc_codegen_clr::{
     access_modifier,
     assembly::Assembly,
     basic_block::BasicBlock,
-  
-
     config, method,
     method::{Method, MethodType},
     AString, IString,

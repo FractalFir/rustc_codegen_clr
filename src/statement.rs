@@ -1,5 +1,5 @@
 use crate::{cil_tree::CILTree, place::place_get, r#type::TyCache};
-use cilly::{cil_root::CILRoot, size_of,cil_node::CILNode};
+use cilly::{cil_node::CILNode, cil_root::CILRoot, size_of};
 
 use rustc_middle::{
     mir::{Body, CopyNonOverlapping, NonDivergingIntrinsic, Statement, StatementKind},

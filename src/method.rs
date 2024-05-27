@@ -2,13 +2,14 @@ use crate::{
     access_modifier::AccessModifer, basic_block::BasicBlock, r#type::tycache::TyCache, IString,
 };
 use cilly::{
-    call_site::CallSite, fn_sig::FnSig, static_field_desc::StaticFieldDescriptor, DotnetTypeRef,
+    call_site::CallSite, cil_iter::CILIterElem, cil_iter_mut::CILIterElemMut, cil_node::CILNode,
+    cil_root::CILRoot, fn_sig::FnSig, static_field_desc::StaticFieldDescriptor, DotnetTypeRef,
     Type,
 };
 use rustc_middle::ty::TyCtxt;
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     hash::{Hash, Hasher},
     ops::{Deref, DerefMut},
 };
@@ -39,7 +40,37 @@ pub enum Attribute {
     /// Set if the function is the assemblys entrypoint.
     EntryPoint,
 }
+
 impl Method {
+    /// Iterates over each `CILNode` and `CILRoot`.
+    pub fn iter_cil(&self) -> impl Iterator<Item = CILIterElem> {
+        self.blocks().iter().flat_map(|block| block.iter_cil())
+    }
+    /// Reallocates the local variables, removing any dead ones.
+    pub fn realloc_locals(&mut self) {
+        let blocks = &mut self.blocks;
+        let mut locals = Vec::new();
+        let mut local_map: HashMap<u32, u32> = HashMap::new();
+        blocks
+            .iter_mut()
+            .flat_map(|block| block.iter_cil_mut())
+            .for_each(|node| match node {
+                CILIterElemMut::Node(CILNode::LDLoc(loc) | CILNode::LDLocA(loc))
+                | CILIterElemMut::Root(CILRoot::STLoc { local: loc, .. }) => {
+                    if let Some(new_loc) = local_map.get(loc) {
+                        *loc = *new_loc;
+                    } else {
+                        let new_loc = locals.len() as u32;
+                        locals.push(self.locals[*loc as usize].clone());
+                        local_map.insert(*loc, new_loc);
+                        *loc = new_loc;
+                    }
+                }
+
+                _ => (),
+            });
+        self.locals = locals;
+    }
     pub fn validate(&self) -> Result<(), String> {
         let errs: Vec<String> = self
             .blocks()
@@ -77,14 +108,11 @@ impl Method {
             .filter_map(|name| name.as_mut())
         {
             let mut postfix = 0;
-            while used_names
-                .contains(&if postfix == 0 {
-                    name.clone()
-                } else {
-                    format!("{name}{postfix}").into()
-                })
-            
-            {
+            while used_names.contains(&if postfix == 0 {
+                name.clone()
+            } else {
+                format!("{name}{postfix}").into()
+            }) {
                 postfix += 1;
             }
             if postfix != 0 {
@@ -307,6 +335,7 @@ impl<'a> Deref for BlockMutGuard<'a> {
         &self.method.blocks
     }
 }
+
 /// Type of this method(static, instance or virtual).
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum MethodType {
