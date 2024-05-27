@@ -1,11 +1,12 @@
 use cilly::cil_node::CILNode;
 use cilly::cil_root::CILRoot;
 use cilly::cil_tree::CILTree;
+use cilly::method::Method;
 
 use super::AssemblyExporter;
 
 use crate::r#type::TypeDef;
-use crate::{method::Method, r#type::Type, IString};
+use crate::{r#type::Type, IString};
 use std::collections::HashMap;
 use std::hash::Hasher;
 use std::process::Command;
@@ -51,7 +52,7 @@ impl CExporter {
         }
         res
     }
-    fn add_method_inner(&mut self, method: &crate::method::Method, class: Option<&str>) {
+    fn add_method_inner(&mut self, method: &Method, class: Option<&str>) {
         //eprintln!("C source:\n{}",String::from_utf8_lossy(&self.as_source()));
         let sig = method.sig();
 
@@ -225,7 +226,7 @@ impl AssemblyExporter for CExporter {
         }
     }
 
-    fn add_method(&mut self, method: &crate::method::Method) {
+    fn add_method(&mut self, method: &Method) {
         self.add_method_inner(method, None);
     }
 

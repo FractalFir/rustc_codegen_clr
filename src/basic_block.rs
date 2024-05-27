@@ -1,6 +1,5 @@
 
-use crate::cil_tree::validate;
-use crate::{cil::CILOp, method::Method};
+
 use cilly::basic_block::{BasicBlock, Handler};
 use rustc_middle::mir::BasicBlockData;
 use rustc_middle::mir::UnwindAction;
@@ -8,6 +7,8 @@ use rustc_middle::{
     mir::{BasicBlocks, Body, TerminatorKind},
     ty::{Instance, InstanceDef, TyCtxt},
 };
+
+use crate::cil::CILOp;
 
 pub(crate) fn handler_for_block<'tyctx>(
     block_data: &BasicBlockData,
@@ -111,22 +112,7 @@ pub(crate) fn handler_from_action(action: UnwindAction) -> Option<u32> {
     }
 }
 
-pub fn validate_bb(block: &BasicBlock, method: &Method) -> Result<(), String> {
-    let errs: Vec<String> = block
-        .trees()
-        .iter()
-        .filter_map(|tree| {
-            match validate(tree, method).map_err(|err| format!("{tree:?}:\n\n{err}")) {
-                Ok(()) => None,
-                Err(err) => Some(err),
-            }
-        })
-        .collect::<Vec<_>>();
-    if !errs.is_empty() {
-        return Err(errs[0].clone());
-    }
-    Ok(())
-}
+
 
 fn flatten_inner(self_block: &BasicBlock, id: u32, sub_id: u32) -> Vec<CILOp> {
     let mut ops = vec![CILOp::Label(id, sub_id)];

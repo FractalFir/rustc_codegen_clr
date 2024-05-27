@@ -5,11 +5,11 @@ use crate::{
         ilasm_op::{non_void_type_cil, type_cil},
         AssemblyExportError,
     },
-    method::{Method, MethodType},
+
     r#type::Type,
     r#type::TypeDef,
 };
-use cilly::{access_modifier::AccessModifer, basic_block::BasicBlock};
+use cilly::{access_modifier::AccessModifer, basic_block::BasicBlock, method::{Method, MethodType}};
 use lazy_static::lazy_static;
 pub enum IlasmFlavour {
     Clasic,
@@ -327,7 +327,7 @@ fn method_cil(w: &mut impl Write, method: &Method) -> std::io::Result<()> {
     writeln!(
         w,
         "\n\t)\n.maxstack {maxstack}\n",
-        maxstack = method.maxstack()
+        maxstack = crate::method::maxstack(method)
     )?;
     for op in method
         .blocks()

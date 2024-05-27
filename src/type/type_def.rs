@@ -1,11 +1,10 @@
 use crate::{
-    method::{Method, MethodType},
+   
     utilis::adt::FieldOffsetIterator,
     IString,
 };
 use cilly::{
-    access_modifier::AccessModifer, basic_block::BasicBlock, cil_node::CILNode, cil_root::CILRoot,
-    conv_usize, field_desc::FieldDescriptor, ld_field_address, size_of, DotnetTypeRef, Type,
+    access_modifier::AccessModifer, basic_block::BasicBlock, cil_node::CILNode, cil_root::CILRoot, conv_usize, field_desc::FieldDescriptor, ld_field_address, method::{Method, MethodType}, size_of, DotnetTypeRef, Type
 };
 use rustc_span::def_id::DefId;
 use rustc_target::abi::Layout;

@@ -16,6 +16,7 @@ pub mod cil_iter_mut;
 pub mod cil_node;
 pub mod cil_root;
 pub mod cil_tree;
+pub mod method;
 pub mod static_field_desc;
 pub mod type_def;
 #[must_use]

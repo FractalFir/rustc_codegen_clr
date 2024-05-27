@@ -4,6 +4,7 @@ use cilly::basic_block::BasicBlock;
 use cilly::call_site::CallSite;
 use cilly::cil_node::CILNode;
 use cilly::cil_root::CILRoot;
+use cilly::method::{Method, MethodType};
 use cilly::{access_modifier, DotnetTypeRef, FnSig, Type};
 //use assembly::Assembly;
 use lazy_static::lazy_static;
@@ -12,7 +13,7 @@ use rustc_codegen_clr::assembly_exporter::ilasm_exporter::*;
 use rustc_codegen_clr::{
     assembly::Assembly,
     config, method,
-    method::{Method, MethodType},
+    
     AString, IString,
 };
 mod cmd;
@@ -85,10 +86,10 @@ fn aot_compile_mode(args: &[String]) -> AOTCompileMode {
         AOTCompileMode::NoAOT
     }
 }
-fn patch_missing_method(call_site: &cilly::call_site::CallSite) -> method::Method {
+fn patch_missing_method(call_site: &cilly::call_site::CallSite) -> Method {
     eprintln!(" missing method {name}.", name = call_site.name());
     let sig = call_site.signature().clone();
-    let method = method::Method::new(
+    let method = Method::new(
         access_modifier::AccessModifer::Private,
         MethodType::Static,
         sig,
@@ -240,7 +241,7 @@ fn autopatch(asm: &mut Assembly, native_pastrough: &NativePastroughInfo) {
             continue;
         }
         if !patched.contains_key(call) {
-            patched.insert(call.clone(), patch_missing_method(call));
+            patched.insert((*call).clone(), patch_missing_method(call));
         }
     }
     externs

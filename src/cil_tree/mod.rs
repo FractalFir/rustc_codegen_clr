@@ -1,6 +1,6 @@
 use crate::{
     cil::CILOp,
-    method::Method,
+  
     r#type::{TyCache, Type},
 };
 
@@ -9,10 +9,7 @@ use rustc_middle::ty::TyCtxt;
 
 
 
-pub fn validate(_tree: &CILTree, method: &Method) -> Result<(), String> {
-    //self.tree.validate(method)
-    todo!("method:{method:?}");
-}
+
 
 pub(crate) fn resolve_global_allocations_tree(
     tree: &mut CILTree,

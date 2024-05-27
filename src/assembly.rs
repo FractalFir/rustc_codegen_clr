@@ -2,11 +2,11 @@ use crate::basic_block::handler_for_block;
 
 use crate::cil::span_source_info;
 
-use crate::method::MethodType;
+
 use crate::rustc_middle::dep_graph::DepContext;
 use crate::utilis::field_descrptor;
 use crate::{
-    codegen_error::CodegenError, codegen_error::MethodCodegenError, method::Method,
+    codegen_error::CodegenError, codegen_error::MethodCodegenError,
     r#type::TyCache, r#type::Type, r#type::TypeDef, IString,
 };
 use cilly::access_modifier::AccessModifer;
@@ -15,6 +15,7 @@ use cilly::call_site::CallSite;
 use cilly::cil_node::CILNode;
 use cilly::cil_root::CILRoot;
 use cilly::cil_tree::CILTree;
+use cilly::method::{Method, MethodType};
 use cilly::static_field_desc::StaticFieldDescriptor;
 use cilly::FnSig;
 use cilly::{call, conv_isize, conv_usize, ldc_u32, ldc_u64};
@@ -394,7 +395,7 @@ impl Assembly {
             normal_bbs,
             arg_names,
         );
-        method.resolve_global_allocations(self, tyctx, cache);
+        crate::method::resolve_global_allocations(&mut method,self, tyctx, cache);
         // TODO: Why is this even needed? The temporaries *should* be already allocated, why not all of them are?
         method.allocate_temporaries();
         method.allocate_temporaries();
@@ -558,9 +559,9 @@ impl Assembly {
     }
     /// Returns the list of all calls within the method. Calls may repeat.
     #[must_use]
-    pub fn call_sites(&self) -> Vec<CallSite> {
+    pub fn call_sites(&self) -> Vec<&CallSite> {
         self.methods()
-            .flat_map(super::method::Method::calls)
+            .flat_map(Method::calls)
             .collect()
     }
     pub fn remove_dead_statics(&mut self) {
@@ -568,7 +569,8 @@ impl Assembly {
         let alive_fields: std::collections::HashSet<_> = self
             .methods()
             .filter(|method| method.name() != ".cctor")
-            .flat_map(super::method::Method::sflds)
+            .flat_map(Method::sflds)
+            .cloned()
             .collect();
         // Remove the definitions of all non-alive fields
         self.static_fields.retain(|name, tpe| {
@@ -585,7 +587,7 @@ impl Assembly {
         {
             if let CILRoot::SetStaticField { descr, value } = tree.root_mut() {
                 // Assigement to a dead static, remove.
-                if !alive_fields.contains(&descr) {
+                if !alive_fields.contains(descr) {
                     debug_assert!(descr.name().contains('a'));
                     debug_assert!(matches!(value, CILNode::Call { site: _, args: _ }));
                     *tree = CILRoot::Nop.into();
@@ -732,7 +734,7 @@ impl Assembly {
         let mut resurected: HashMap<IString, _> = self
             .functions
             .values()
-            .flat_map(super::method::Method::dotnet_types)
+            .flat_map(Method::dotnet_types)
             .filter_map(|tpe| match tpe.asm() {
                 Some(_) => None,
                 None => Some(IString::from(tpe.name_path())),

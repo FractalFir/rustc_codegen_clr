@@ -1,5 +1,5 @@
-use crate::method::MethodType;
-use crate::{add_method_from_trees, assembly::Assembly, method::Method, r#type::Type};
+
+use crate::{add_method_from_trees, assembly::Assembly, r#type::Type};
 use cilly::access_modifier::AccessModifer;
 use cilly::basic_block::BasicBlock;
 use cilly::call_site::CallSite;
@@ -7,6 +7,7 @@ use cilly::cil_node::CILNode;
 
 use cilly::cil_root::CILRoot;
 use cilly::fn_sig::FnSig;
+use cilly::method::{Method, MethodType};
 use cilly::DotnetTypeRef;
 use cilly::{call, conv_usize, ldc_u64, lt_un};
 use rustc_middle::ty::TyCtxt;
@@ -102,9 +103,9 @@ add_method_from_trees!(
 macro_rules! add_method_from_trees {
     ($name:ident,$input:expr,$output:expr,$trees:expr,$args:expr) => {
         fn $name(asm: &mut $crate::assembly::Assembly) {
-            let method = $crate::method::Method::new(
+            let method = cilly::method::Method::new(
                 AccessModifer::Private,
-                $crate::method::MethodType::Static,
+                cilly::method::MethodType::Static,
                 cilly::fn_sig::FnSig::new($input, $output),
                 stringify!($name),
                 vec![],
@@ -116,9 +117,9 @@ macro_rules! add_method_from_trees {
     };
     ($name:ident,$input:expr,$output:expr,$trees:expr,$locals:expr,$args:expr) => {
         fn $name(asm: &mut $crate::assembly::Assembly) {
-            let mut method = $crate::method::Method::new(
+            let mut method = cilly::method::Method::new(
                 AccessModifer::Private,
-                $crate::method::MethodType::MethodType::Static,
+                cilly::method::MethodType::MethodType::Static,
                 cilly::fn_sig::FnSig::new($input, $output),
                 stringify!($name),
                 $locals.into(),

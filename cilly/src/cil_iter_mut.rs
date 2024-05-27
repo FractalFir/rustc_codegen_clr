@@ -82,7 +82,9 @@ impl<'a> Iterator for CILIterMut<'a> {
                             continue;
                         }
                     },
-                    CILNode::ConvU64(a)
+                    CILNode::BlackBox(a)  
+                    | CILNode::ZeroExtendToISize(a)
+                    | CILNode::ConvU64(a)
                     | CILNode::ConvI64(a)
                     | CILNode::ConvF64(a)
                     | CILNode::ConvF64Un(a)
@@ -118,17 +120,19 @@ impl<'a> Iterator for CILIterMut<'a> {
                     | CILNode::LDIndISize { ptr: a }
                     | CILNode::LDIndUSize { ptr: a }
                     | CILNode::Not(a)
-                    | CILNode::Neg(a) => if *idx == 1 {
-                        *idx += 1;
-                        self.elems.push((
-                            0,
-                            CILIterElemUnsafe::Node(std::ptr::from_mut(&mut **a), PhantomData),
-                        ));
-                        continue;
-                    } else {
-                        self.elems.pop();
-                        continue;
-                    },
+                    | CILNode::Neg(a) => {
+                        if *idx == 1 {
+                            *idx += 1;
+                            self.elems.push((
+                                0,
+                                CILIterElemUnsafe::Node(std::ptr::from_mut(&mut **a), PhantomData),
+                            ));
+                            continue;
+                        } else {
+                            self.elems.pop();
+                            continue;
+                        }
+                    }
                     CILNode::LDLoc(_)
                     | CILNode::LDLocA(_)
                     | CILNode::LDArg(_)
@@ -146,7 +150,10 @@ impl<'a> Iterator for CILIterMut<'a> {
                     | CILNode::LDStaticField(_)
                     | CILNode::LDFtn(_)
                     | CILNode::LDTypeToken(_)
-                    | CILNode::LocAllocAligned { tpe: _, align: _ } => {
+                    | CILNode::LoadAddresOfTMPLocal
+                    | CILNode::LoadTMPLocal
+                    | CILNode::LocAllocAligned { tpe: _, align: _ }
+                    | CILNode::LoadGlobalAllocPtr { alloc_id:_ } => {
                         self.elems.pop();
                         continue;
                     }
@@ -156,8 +163,10 @@ impl<'a> Iterator for CILIterMut<'a> {
                         if *idx - 1 < args.len() {
                             let arg = &mut args[*idx - 1];
                             *idx += 1;
-                            self.elems
-                                .push((0, CILIterElemUnsafe::Node(std::ptr::from_mut(arg), PhantomData)));
+                            self.elems.push((
+                                0,
+                                CILIterElemUnsafe::Node(std::ptr::from_mut(arg), PhantomData),
+                            ));
                             continue;
                         } else {
                             self.elems.pop();
@@ -168,15 +177,20 @@ impl<'a> Iterator for CILIterMut<'a> {
                         if *idx - 1 < trees.len() {
                             let arg = &mut trees[*idx - 1];
                             *idx += 1;
-                            self.elems
-                                .push((0, CILIterElemUnsafe::Root(std::ptr::from_mut(arg), PhantomData)));
+                            self.elems.push((
+                                0,
+                                CILIterElemUnsafe::Root(std::ptr::from_mut(arg), PhantomData),
+                            ));
                             continue;
                         }
                         if *idx - 1 < trees.len() + 1 {
                             *idx += 1;
                             self.elems.push((
                                 0,
-                                CILIterElemUnsafe::Node(std::ptr::from_mut(node.as_mut()), PhantomData),
+                                CILIterElemUnsafe::Node(
+                                    std::ptr::from_mut(node.as_mut()),
+                                    PhantomData,
+                                ),
                             ));
                             continue;
                         } else {
@@ -188,8 +202,10 @@ impl<'a> Iterator for CILIterMut<'a> {
                         if *idx - 1 < fn_sig_and_args.2.len() {
                             let arg = &mut fn_sig_and_args.2[*idx - 1];
                             *idx += 1;
-                            self.elems
-                                .push((0, CILIterElemUnsafe::Node(std::ptr::from_mut(arg), PhantomData)));
+                            self.elems.push((
+                                0,
+                                CILIterElemUnsafe::Node(std::ptr::from_mut(arg), PhantomData),
+                            ));
                             continue;
                         } else if *idx - 1 < fn_sig_and_args.2.len() + 1 {
                             *idx += 1;
@@ -205,27 +221,33 @@ impl<'a> Iterator for CILIterMut<'a> {
                             continue;
                         }
                     }
-                    _ => todo!(
-                        "Unhandled iter elem {node_ptr:?}",
-                        node_ptr = unsafe { &**node_ptr }
-                    ),
+                    _=>todo!("Can't iter node:{node:?}",node = unsafe{ &**node_ptr } ),
+                    
                 },
                 CILIterElemUnsafe::Root(root_ptr, _) => match unsafe { &mut **root_ptr } {
+                    CILRoot::SetTMPLocal { value:tree } |
+                    CILRoot::SetStaticField {value:tree, descr:_ } |
                     CILRoot::STLoc { tree, local: _ }
                     | CILRoot::STArg { tree, arg: _ }
                     | CILRoot::Ret { tree }
+                    | CILRoot::Pop { tree }
                     | CILRoot::BTrue { cond: tree, .. }
-                    | CILRoot::Throw(tree) => if *idx == 1 {
-                        *idx += 1;
-                        self.elems.push((
-                            0,
-                            CILIterElemUnsafe::Node(std::ptr::from_mut(&mut *tree), PhantomData),
-                        ));
-                        continue;
-                    } else {
-                        self.elems.pop();
-                        continue;
-                    },
+                    | CILRoot::Throw(tree) => {
+                        if *idx == 1 {
+                            *idx += 1;
+                            self.elems.push((
+                                0,
+                                CILIterElemUnsafe::Node(
+                                    std::ptr::from_mut(&mut *tree),
+                                    PhantomData,
+                                ),
+                            ));
+                            continue;
+                        } else {
+                            self.elems.pop();
+                            continue;
+                        }
+                    }
                     CILRoot::SetField {
                         addr: a, value: b, ..
                     }
@@ -243,14 +265,18 @@ impl<'a> Iterator for CILIterMut<'a> {
                     } => match *idx {
                         1 => {
                             *idx += 1;
-                            self.elems
-                                .push((0, CILIterElemUnsafe::Node(std::ptr::from_mut(&mut *a), PhantomData)));
+                            self.elems.push((
+                                0,
+                                CILIterElemUnsafe::Node(std::ptr::from_mut(&mut *a), PhantomData),
+                            ));
                             continue;
                         }
                         2 => {
                             *idx += 1;
-                            self.elems
-                                .push((0, CILIterElemUnsafe::Node(std::ptr::from_mut(&mut *b), PhantomData)));
+                            self.elems.push((
+                                0,
+                                CILIterElemUnsafe::Node(std::ptr::from_mut(&mut *b), PhantomData),
+                            ));
                             continue;
                         }
                         _ => {
@@ -270,20 +296,26 @@ impl<'a> Iterator for CILIterMut<'a> {
                     } => match *idx {
                         1 => {
                             *idx += 1;
-                            self.elems
-                                .push((0, CILIterElemUnsafe::Node(std::ptr::from_mut(&mut *a), PhantomData)));
+                            self.elems.push((
+                                0,
+                                CILIterElemUnsafe::Node(std::ptr::from_mut(&mut *a), PhantomData),
+                            ));
                             continue;
                         }
                         2 => {
                             *idx += 1;
-                            self.elems
-                                .push((0, CILIterElemUnsafe::Node(std::ptr::from_mut(&mut *b), PhantomData)));
+                            self.elems.push((
+                                0,
+                                CILIterElemUnsafe::Node(std::ptr::from_mut(&mut *b), PhantomData),
+                            ));
                             continue;
                         }
                         3 => {
                             *idx += 1;
-                            self.elems
-                                .push((0, CILIterElemUnsafe::Node(std::ptr::from_mut(&mut *c), PhantomData)));
+                            self.elems.push((
+                                0,
+                                CILIterElemUnsafe::Node(std::ptr::from_mut(&mut *c), PhantomData),
+                            ));
                             continue;
                         }
                         _ => {
@@ -301,12 +333,14 @@ impl<'a> Iterator for CILIterMut<'a> {
                         self.elems.pop();
                         continue;
                     }
-                    CILRoot::Call { site: _, args } => {
+                    CILRoot::Call { site: _, args } | CILRoot::CallVirt{ site: _, args } => {
                         if *idx - 1 < args.len() {
                             let arg = &mut args[*idx - 1];
                             *idx += 1;
-                            self.elems
-                                .push((0, CILIterElemUnsafe::Node(std::ptr::from_mut(arg), PhantomData)));
+                            self.elems.push((
+                                0,
+                                CILIterElemUnsafe::Node(std::ptr::from_mut(arg), PhantomData),
+                            ));
                             continue;
                         } else {
                             self.elems.pop();
@@ -321,22 +355,26 @@ impl<'a> Iterator for CILIterMut<'a> {
                         if *idx - 1 < args.len() {
                             let arg = &mut args[*idx - 1];
                             *idx += 1;
-                            self.elems
-                                .push((0, CILIterElemUnsafe::Node(std::ptr::from_mut(arg), PhantomData)));
+                            self.elems.push((
+                                0,
+                                CILIterElemUnsafe::Node(std::ptr::from_mut(arg), PhantomData),
+                            ));
                             continue;
                         } else if *idx - 1 < args.len() + 1 {
                             *idx += 1;
-                            self.elems
-                                .push((0, CILIterElemUnsafe::Node(std::ptr::from_mut(fn_ptr), PhantomData)));
+                            self.elems.push((
+                                0,
+                                CILIterElemUnsafe::Node(std::ptr::from_mut(fn_ptr), PhantomData),
+                            ));
                         } else {
                             self.elems.pop();
                             continue;
                         }
                     }
-                    _ => todo!(
+                    /*_ => todo!(
                         "Unhandled iter elem {root_ptr:?}",
                         root_ptr = unsafe { &**root_ptr }
-                    ),
+                    ),*/
                 },
             }
         }
@@ -346,13 +384,19 @@ impl<'a> Iterator for CILIterMut<'a> {
 impl<'a> CILIterMut<'a> {
     pub fn new_node(node: &'a mut CILNode) -> Self {
         Self {
-            elems: vec![(0, CILIterElemUnsafe::Node(std::ptr::from_mut(node), PhantomData))],
+            elems: vec![(
+                0,
+                CILIterElemUnsafe::Node(std::ptr::from_mut(node), PhantomData),
+            )],
         }
     }
 
     pub fn new_root(root: &'a mut CILRoot) -> Self {
         Self {
-            elems: vec![(0, CILIterElemUnsafe::Root(std::ptr::from_mut(root), PhantomData))],
+            elems: vec![(
+                0,
+                CILIterElemUnsafe::Root(std::ptr::from_mut(root), PhantomData),
+            )],
         }
     }
 }

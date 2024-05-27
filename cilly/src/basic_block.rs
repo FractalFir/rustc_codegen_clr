@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     cil_iter::CILIterElem, cil_iter_mut::CILIterElemMut, cil_root::CILRoot, cil_tree::CILTree,
+    method::Method,
 };
 
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
@@ -27,7 +28,8 @@ impl Handler {
             None
         }
     }
-    #[must_use] pub fn as_blocks(&self) -> Option<&[BasicBlock]> {
+    #[must_use]
+    pub fn as_blocks(&self) -> Option<&[BasicBlock]> {
         if let Self::Blocks(v) = self {
             Some(v)
         } else {
@@ -183,7 +185,27 @@ impl BasicBlock {
         block_iter.flat_map(|tree| tree.root_mut().into_iter())
     }
 
-    #[must_use] pub fn handler(&self) -> Option<&Handler> {
+    #[must_use]
+    pub fn handler(&self) -> Option<&Handler> {
         self.handler.as_ref()
+    }
+    pub fn validate(&self, method: &Method) -> Result<(), String> {
+        let errs: Vec<String> = self
+            .trees()
+            .iter()
+            .filter_map(|tree| {
+                match tree
+                    .validate(method)
+                    .map_err(|err| format!("{tree:?}:\n\n{err}"))
+                {
+                    Ok(()) => None,
+                    Err(err) => Some(err),
+                }
+            })
+            .collect::<Vec<_>>();
+        if !errs.is_empty() {
+            return Err(errs[0].clone());
+        }
+        Ok(())
     }
 }

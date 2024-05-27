@@ -1,5 +1,7 @@
 #![allow(clippy::similar_names)]
 
-use crate::{assembly::Assembly, method::Method};
+use cilly::method::Method;
+
+use crate::{assembly::Assembly};
 
 pub fn opt_method(_: &mut Method, _: &Assembly) {}

@@ -272,7 +272,7 @@ impl CodegenBackend for MyBackend {
             //std::fs::create_dir_all(&serialized_asm_path).expect("Could not create the directory temporary files are supposed to be in.");
             if *crate::config::ENFORCE_CIL_VALID {
                 // Calling `maxstack` forces the method to be flattened, which checks the CIL.
-                asm.methods().map(method::Method::maxstack).for_each(|_| ());
+                asm.methods().map(method::maxstack).for_each(|_| ());
             }
             let mut asm_out = std::fs::File::create(&serialized_asm_path).expect(
                 "Could not create the temporary files necessary for building the assembly!",
