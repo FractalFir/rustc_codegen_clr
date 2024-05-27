@@ -688,6 +688,8 @@ run_test! {types,tuple_structs,stable}
 run_test! {types,tuple_enum,stable}
 run_test! {types,enums,stable}
 run_test! {types,arr,stable}
+run_test! {types,aligned,stable}
+
 run_test! {types,adt_enum,stable}
 run_test! {types,nbody,stable}
 run_test! {types,structs,stable}

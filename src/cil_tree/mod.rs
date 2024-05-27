@@ -83,17 +83,20 @@ pub fn append_vec(mut vec: Vec<CILOp>, by: CILOp) -> Vec<CILOp> {
 pub fn flatten(node: &CILNode) -> Vec<CILOp> {
     let mut ops = match node {
         CILNode::LocAllocAligned { tpe, align } => vec![
+            // Alloc buff
             CILOp::SizeOf(tpe.clone()),
             CILOp::LdcU64(*align),
             CILOp::ConvISize(false),
             CILOp::Add,
             CILOp::LocAlloc,
+            // Adjust align
+            CILOp::Dup,
             CILOp::LdcU64(*align - 1),
             CILOp::Add,
             CILOp::LdcU64(*align),
             CILOp::Rem,
             CILOp::Sub,
-            CILOp::LdcU64(*align),
+            CILOp::LdcU64(*align - 1),
             CILOp::Add,
         ],
         CILNode::LdFalse => vec![CILOp::LdcI32(0)],

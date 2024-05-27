@@ -145,7 +145,8 @@ impl<'a> Iterator for CILIterMut<'a> {
                     | CILNode::LdTrue
                     | CILNode::LDStaticField(_)
                     | CILNode::LDFtn(_)
-                    | CILNode::LDTypeToken(_) => {
+                    | CILNode::LDTypeToken(_)
+                    | CILNode::LocAllocAligned { tpe:_, align:_ } => {
                         self.elems.pop();
                         continue;
                     }

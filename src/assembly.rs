@@ -633,8 +633,8 @@ impl Assembly {
                     "compile function",
                     item.symbol_name(tcx).to_string(),
                 );
-                self.checked_add_fn(instance, tcx, &symbol_name, cache)
-                    .expect("Could not add function!");
+                rustc_middle::ty::print::with_no_trimmed_paths! {self.checked_add_fn(instance, tcx, &symbol_name, cache)
+                    .expect("Could not add function!")};
                 drop(function_compile_timer);
                 Ok(())
             }
@@ -963,12 +963,6 @@ fn check_align_adjust<'tyctx>(
     for local in locals.iter() {
         let ty = crate::utilis::monomorphize(method_instance, local.ty, tyctx);
         let adjust = crate::utilis::requries_align_adjustement(ty, tyctx);
-        if let Some(adjust) = adjust {
-            eprintln!(
-                "type {ty} requires algiement adjustements. Its algement should be {adjust:?}.",
-            );
-        }
-
         adjusts.push(adjust);
     }
     adjusts

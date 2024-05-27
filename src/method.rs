@@ -1,5 +1,5 @@
 use crate::{
-    access_modifier::AccessModifer, basic_block::BasicBlock, r#type::tycache::TyCache, IString,
+    access_modifier::AccessModifer, basic_block::BasicBlock, cil_tree::CILTree, r#type::tycache::TyCache, IString
 };
 use cilly::{
     call_site::CallSite, cil_iter::CILIterElem, cil_iter_mut::CILIterElemMut, cil_node::CILNode,
@@ -300,12 +300,50 @@ impl Method {
         self.blocks.push(BasicBlock::new(vec![], new_bb, None));
         new_bb
     }
-
-    pub(crate) fn adjust_aligement(&self, adjust: Vec<Option<u64>>) {
+    pub(crate) fn append_preamble(&mut self, tree:CILTree){
+        let trees = (&mut self.blocks).iter_mut().next().unwrap().trees_mut();
+        trees.insert(0,tree);
+    }
+    pub fn alloc_local(&mut self,tpe:Type,name:Option<IString>)->usize{
+        let new_loc = self.locals.len();
+        self.locals.push((name,tpe));
+        new_loc
+    }
+    pub(crate) fn adjust_aligement(&mut self, adjust: Vec<Option<u64>>) {
         if !adjust.iter().any(|adjust| adjust.is_some()) {
             return;
         }
-        todo!()
+        for (unaligned_local,align) in adjust.iter().enumerate().filter_map(|(local_id,o)|match o{
+            Some(align)=>Some((local_id,*align)),
+            None=>None,
+        }){
+            let (name,tpe) = &self.locals[unaligned_local ];
+            let unaligned_local = unaligned_local as u32;
+            let (name,tpe) = (name.clone(),tpe.clone());
+            let new_loc = self.alloc_local(Type::Ptr(Box::new(tpe.clone())),name.clone()) as u32;
+            self.append_preamble(CILRoot::STLoc { local: new_loc, tree: CILNode::LocAllocAligned { tpe: Box::new(tpe.clone()), align: align } }.into());
+            self.blocks.iter_mut().flat_map(|blck|blck.iter_cil_mut()).for_each(|node|match node{
+                CILIterElemMut::Root(root)=>match root{
+                    CILRoot::STLoc{local,tree}=>if *local == unaligned_local{
+                        // We replace seting *a* with an indirect wirte to allocation pointed to by *b*.
+                       *root = CILRoot::STObj{addr_calc:CILNode::LDLoc(new_loc),value_calc:tree.clone(),tpe:Box::new(tpe.clone())};
+                    }
+                    _=>(),
+                },
+                CILIterElemMut::Node(node)=>match node{
+                    CILNode::LDLocA(local)=>if *local == unaligned_local{
+                        // We replace getting the adress of *a* with loading the pointer *b*, which points to our aligned local
+                       *node = CILNode::LDLoc(new_loc);
+                    },
+                    CILNode::LDLoc(local)=>if *local == unaligned_local{
+                        // We replace getting the value of *a* with a read of the value *b* points to.
+                       *node = CILNode::LdObj{ptr:Box::new(CILNode::LDLoc(new_loc)),obj: Box::new(tpe.clone()) };
+                    },
+                    _=>(),
+                }
+            });
+        }
+
     }
 }
 /// A wrapper around mutably borrowed [`BasicBlock`]s of a method. Prevents certain bugs.
