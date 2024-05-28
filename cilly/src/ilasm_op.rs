@@ -592,7 +592,7 @@ pub fn export_root(
             )
         }
         CILRoot::SetTMPLocal { value } => todo!(),
-        CILRoot::CpBlk { dst, src, len } =>{
+        CILRoot::CpBlk { dst, src, len } => {
             export_node(out, dst, depth, il_flavour)?;
             export_node(out, src, depth, il_flavour)?;
             export_node(out, len, depth, il_flavour)?;
@@ -658,7 +658,10 @@ pub fn export_root(
             depth.pad(out)?;
             write!(out, "throw")
         }
-        CILRoot::ReThrow => todo!(),
+        CILRoot::ReThrow => {
+            depth.pad(out)?;
+            write!(out, "rethrow")
+        }
         CILRoot::CallI { sig, fn_ptr, args } => {
             for arg in args {
                 export_node(out, arg, depth.incremented(), il_flavour)?;

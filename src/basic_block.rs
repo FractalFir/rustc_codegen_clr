@@ -6,8 +6,6 @@ use rustc_middle::{
     ty::{Instance, InstanceDef, TyCtxt},
 };
 
-use crate::cil::CILOp;
-
 pub(crate) fn handler_for_block<'tyctx>(
     block_data: &BasicBlockData,
     blocks: &BasicBlocks<'tyctx>,
@@ -108,34 +106,4 @@ pub(crate) fn handler_from_action(action: UnwindAction) -> Option<u32> {
         // continuing unwinding seems like an OK option.
         UnwindAction::Unreachable => None,
     }
-}
-
-fn flatten_inner(self_block: &BasicBlock, id: u32, sub_id: u32) -> Vec<CILOp> {
-    let mut ops = vec![CILOp::Label(id, sub_id)];
-    if self_block.handler().is_some() {
-        ops.push(CILOp::BeginTry);
-    };
-    ops.extend(
-        self_block
-            .trees()
-            .iter()
-            .flat_map(crate::cil_tree::into_ops_tree),
-    );
-    if let Some(handler) = &self_block.handler() {
-        ops.push(CILOp::BeginCatch);
-        ops.push(CILOp::Pop);
-        let Handler::Blocks(blocks) = handler else {
-            panic!("Unresolved eception handler blocks!")
-        };
-        for block in blocks {
-            ops.extend(flatten_inner(&block, self_block.id(), block.id()));
-        }
-        ops.push(CILOp::EndTry);
-    }
-    ops
-}
-/// Converts this basic block into a list of ops.
-#[must_use]
-pub fn into_ops(bb: &BasicBlock) -> Vec<CILOp> {
-    flatten_inner(bb, bb.id(), 0)
 }

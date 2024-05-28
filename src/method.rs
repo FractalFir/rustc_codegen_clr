@@ -3,15 +3,9 @@ use cilly::{asm::Assembly, basic_block::BasicBlock, method::Method, Type};
 use rustc_middle::ty::TyCtxt;
 
 pub fn maxstack(method: &Method) -> usize {
-    crate::utilis::max_stack(
-        method
-            .blocks()
-            .iter()
-            .flat_map(crate::basic_block::into_ops)
-            .collect::<Vec<_>>()
-            .as_ref(),
-        *method.sig().output() == Type::Void,
-    ) + 10
+    let trees = method.blocks().iter().flat_map(|block| block.trees());
+    let max = trees.map(|tree| tree.root().into_iter().count() + 5).max();
+    max.unwrap_or(10)
 }
 
 pub(crate) fn resolve_global_allocations(

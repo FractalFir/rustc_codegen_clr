@@ -7,7 +7,6 @@ use crate::type_def::TypeDef;
 
 use crate::asm_exporter::{AssemblyExportError, AssemblyExporter, AssemblyInfo};
 
-
 use crate::{r#type::Type, IString};
 use std::collections::HashMap;
 use std::hash::Hasher;
@@ -271,8 +270,8 @@ impl AssemblyExporter for CExporter {
             .unwrap()
             .write_all(&self.as_source(is_dll))
             .unwrap();
-        let san_undef =false;//*crate::config::C_SANITIZE
-        let sanitize = if  san_undef{
+        let san_undef = false; //*crate::config::C_SANITIZE
+        let sanitize = if san_undef {
             "-fsanitize=undefined"
         } else {
             "-O"

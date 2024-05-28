@@ -19,7 +19,6 @@ use cilly::{
     conv_isize, conv_usize, ldc_u32, ldc_u64,
     method::{Method, MethodType},
     static_field_desc::StaticFieldDescriptor,
-    type_def::TypeDef,
     FnSig,
 };
 use rustc_middle::{
@@ -30,8 +29,6 @@ use rustc_middle::{
     },
     ty::{Instance, ParamEnv, TyCtxt, TyKind},
 };
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 type LocalDefList = Vec<(Option<IString>, Type)>;
 type ArgsDebugInfo = Vec<Option<IString>>;
@@ -430,9 +427,14 @@ pub fn add_fn<'tyctx>(
     }
 
     let adjust = check_align_adjust(&mir.local_decls, tyctx, &instance);
+    // TODO: find a better way of checking if we are in release
     method.adjust_aligement(adjust);
-
-    method.realloc_locals();
+    if tyctx.sess.opts.optimize !=  rustc_session::config::OptLevel::No{
+        method.opt();
+        method.realloc_locals();
+    }
+  
+   
     asm.add_method(method);
     drop(_timer);
     Ok(())

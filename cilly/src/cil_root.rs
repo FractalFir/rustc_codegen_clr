@@ -90,26 +90,26 @@ pub enum CILRoot {
     //LabelEnd(u32),
 }
 impl CILRoot {
-    pub fn opt(&mut self) {
+    pub fn opt(&mut self,opt_count:&mut usize) {
         match self {
             Self::SourceFileInfo(_) => (),
-            Self::STLoc { tree, local: _ } => tree.opt(),
+            Self::STLoc { tree, local: _ } => tree.opt(opt_count),
             Self::BTrue {
                 cond: ops,
                 sub_target: _,
                 target: _,
-            } => ops.opt(),
+            } => ops.opt(opt_count),
             Self::GoTo { .. } => (),
             Self::Call { args, site: _ } => {
-                args.iter_mut().for_each(super::cil_node::CILNode::opt);
+                args.iter_mut().for_each(|arg|arg.opt(opt_count));
             }
             Self::SetField {
                 addr: fld_addr,
                 value,
                 desc: _,
             } => {
-                fld_addr.opt();
-                value.opt();
+                fld_addr.opt(opt_count);
+                value.opt(opt_count);
 
                 if let CILNode::ZeroExtendToUSize(addr) = fld_addr {
                     match addr.as_mut() {
@@ -121,9 +121,9 @@ impl CILRoot {
                 }
             }
             Self::CpBlk { src, dst, len } => {
-                src.opt();
-                dst.opt();
-                len.opt();
+                src.opt(opt_count);
+                dst.opt(opt_count);
+                len.opt(opt_count);
             }
             Self::STIndI8(addr, val)
             | Self::STIndI16(addr, val)
@@ -132,46 +132,46 @@ impl CILRoot {
             | Self::STIndISize(addr, val)
             | Self::STIndF64(addr, val)
             | Self::STIndF32(addr, val) => {
-                addr.opt();
-                val.opt();
+                addr.opt(opt_count);
+                val.opt(opt_count);
             }
             Self::STObj {
                 addr_calc,
                 value_calc,
                 tpe: _,
             } => {
-                addr_calc.opt();
-                value_calc.opt();
+                addr_calc.opt(opt_count);
+                value_calc.opt(opt_count);
             }
             Self::STArg { tree, arg: _ } => {
-                tree.opt();
+                tree.opt(opt_count);
             }
             Self::Break => (),
             Self::Nop => (),
             Self::InitBlk { dst, val, count } => {
-                val.opt();
-                dst.opt();
-                count.opt();
+                val.opt(opt_count);
+                dst.opt(opt_count);
+                count.opt(opt_count);
             }
             Self::CallVirt { site: _, args } => {
-                args.iter_mut().for_each(super::cil_node::CILNode::opt);
+                args.iter_mut().for_each(|arg|arg.opt(opt_count));
             }
-            Self::Ret { tree } => tree.opt(),
-            Self::Pop { tree } => tree.opt(),
+            Self::Ret { tree } => tree.opt(opt_count),
+            Self::Pop { tree } => tree.opt(opt_count),
             Self::VoidRet => (),
-            Self::Throw(ops) => ops.opt(),
+            Self::Throw(ops) => ops.opt(opt_count),
             Self::ReThrow => (),
             Self::CallI {
                 sig: _,
                 fn_ptr,
                 args,
             } => {
-                args.iter_mut().for_each(super::cil_node::CILNode::opt);
-                fn_ptr.opt();
+                args.iter_mut().for_each(|arg|arg.opt(opt_count));
+                fn_ptr.opt(opt_count);
             }
 
-            Self::SetTMPLocal { value } => value.opt(),
-            Self::SetStaticField { descr: _, value } => value.opt(),
+            Self::SetTMPLocal { value } => value.opt(opt_count),
+            Self::SetStaticField { descr: _, value } => value.opt(opt_count),
             Self::JumpingPad { .. } => (),
         }
     }

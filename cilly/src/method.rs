@@ -49,6 +49,17 @@ pub enum Attribute {
 }
 
 impl Method {
+    pub fn opt(&mut self){
+        for block in self.blocks.iter_mut(){
+            let mut opt_counter:usize = 1;
+            while opt_counter > 0{
+                // Reset `opt_counter`
+                opt_counter = 0;
+                block.trees_mut().iter_mut().for_each(|tree|tree.opt(&mut opt_counter));
+            }
+            
+        }
+    }
     /// Iterates over each `CILNode` and `CILRoot`.
     pub fn iter_cil(&self) -> impl Iterator<Item = CILIterElem> {
         self.blocks().iter().flat_map(|block| block.iter_cil())
@@ -101,13 +112,10 @@ impl Method {
         sig: FnSig,
         name: &str,
         mut locals: Vec<LocalDef>,
-        mut blocks: Vec<BasicBlock>,
+         blocks: Vec<BasicBlock>,
         mut arg_names: Vec<Option<IString>>,
     ) -> Self {
-        blocks
-            .iter_mut()
-            .flat_map(|blck| blck.trees_mut().iter_mut())
-            .for_each(CILTree::opt);
+        
         let mut used_names = HashSet::new();
         for name in arg_names
             .iter_mut()

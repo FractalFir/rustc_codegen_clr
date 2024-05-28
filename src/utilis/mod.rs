@@ -294,49 +294,6 @@ macro_rules! assert_morphic {
     };
 }
 
-/// Translated MIR statements should have the total stack diff of 0.
-pub fn check_debugable(
-    ops: &[crate::cil::CILOp],
-    debugable: impl std::fmt::Debug,
-    does_return_void: bool,
-) {
-    let mut stack = 0;
-    for op in ops {
-        if !(does_return_void && *op == crate::cil::CILOp::Ret) {
-            stack += op.stack_diff();
-        }
-    }
-    if stack != 0 {
-        rustc_middle::ty::print::with_no_trimmed_paths! {eprintln!("Propable miscompilation: {debugable:?} resulted in ops {ops:?} and did not pass the stack check.")};
-        let mut stack = 0;
-        for (index, op) in ops.iter().enumerate() {
-            if does_return_void && *op == crate::cil::CILOp::Ret {
-                eprintln!("{index}:\t{op:?} changed stack by 0, to {stack}");
-            } else {
-                let diff = op.stack_diff();
-                stack += diff;
-                eprintln!("{index}:\t{op:?} changed stack by {diff}, to {stack}");
-            }
-        }
-        assert!(
-            *crate::config::ALLOW_MISCOMPILATIONS,
-            "Miscompiled  {debugable:?}."
-        );
-    }
-}
-
-pub fn max_stack(ops: &[crate::cil::CILOp], does_return_void: bool) -> usize {
-    let mut stack = 0;
-    let mut max_stack = 0;
-    for op in ops {
-        if !(does_return_void && *op == crate::cil::CILOp::Ret) {
-            stack += op.stack_diff();
-            max_stack = max_stack.max(stack);
-        }
-    }
-    assert!(max_stack >= 0);
-    usize::try_from(max_stack).expect("Max stack bigger than 2^64.")
-}
 pub(crate) fn alloc_id_to_u64(alloc_id: AllocId) -> u64 {
     alloc_id.0.into()
 }

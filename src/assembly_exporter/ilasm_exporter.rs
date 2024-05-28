@@ -1,5 +1,12 @@
 use cilly::{
-    access_modifier::AccessModifer, asm::AssemblyExternRef, asm_exporter::{escape_class_name, AssemblyExportError, AssemblyExporter}, basic_block::BasicBlock, ilasm_op::DepthSetting, method::{Method, MethodType}, type_def::TypeDef, IlasmFlavour, Type
+    access_modifier::AccessModifer,
+    asm::AssemblyExternRef,
+    asm_exporter::{escape_class_name, AssemblyExportError, AssemblyExporter},
+    basic_block::BasicBlock,
+    ilasm_op::DepthSetting,
+    method::{Method, MethodType},
+    type_def::TypeDef,
+    IlasmFlavour, Type,
 };
 use lazy_static::lazy_static;
 
@@ -317,17 +324,38 @@ fn method_cil(w: &mut impl Write, method: &Method) -> std::io::Result<()> {
     )?;
     for block in method.blocks().iter() {
         use std::fmt::Write;
-        assert!(block.handler().is_none());
         let mut string = String::new();
+        // If it has a handler, use preable with .try
+        let depth = if block.handler().is_some() {
+            write!(string, ".try{{").unwrap();
+            DepthSetting::with_pading().incremented()
+        } else {
+            DepthSetting::with_pading()
+        };
+        // Basic block
         writeln!(string, "bb_{id}_0:", id = block.id()).unwrap();
         for tree in block.trees() {
-            cilly::ilasm_op::export_root(
-                &mut string,
-                tree.root(),
-                DepthSetting::with_pading(),
-                *ILASM_FLAVOUR,
-            )
-            .unwrap();
+            cilly::ilasm_op::export_root(&mut string, tree.root(), depth, *ILASM_FLAVOUR).unwrap();
+        }
+        if let Some(handler) = block.handler() {
+            let handler = handler.as_blocks().unwrap();
+            write!(string, "}}catch [System.Runtime]System.Object{{\npop").unwrap();
+            for handler_block in handler {
+                writeln!(
+                    string,
+                    "bb_{main_id}_{sub_id}:",
+                    main_id = block.id(),
+                    sub_id = handler_block.id()
+                )
+                .unwrap();
+                for tree in handler_block.trees() {
+                    cilly::ilasm_op::export_root(&mut string, tree.root(), depth, *ILASM_FLAVOUR)
+                        .unwrap();
+                }
+                DepthSetting::with_pading().pad(&mut string).unwrap();
+            }
+
+            write!(string, "}}").unwrap();
         }
         //eprintln!("{string}");
         DepthSetting::with_pading().pad(&mut string).unwrap();
@@ -353,19 +381,4 @@ fn method_cil(w: &mut impl Write, method: &Method) -> std::io::Result<()> {
         )?;
     }*/
     writeln!(w, "}}")
-}
-fn old_block_to_string(block:&BasicBlock,method: &Method)->String{
-    let mut string = String::new();
-    use std::fmt::Write;
-    for op in crate::basic_block::into_ops(block){
-        writeln!(
-            string,
-            "\t{op_cli}",
-            op_cli = super::ilasm_op::op_cli(&op, method)
-        ).unwrap();
-    }
-    string
-}
-fn remove_whitespace(s: &str) -> String {
-    s.chars().filter(|c| !c.is_whitespace()).collect()
 }

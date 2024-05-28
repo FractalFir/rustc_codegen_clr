@@ -356,17 +356,17 @@ impl CILNode {
             _ => todo!("Can't select type {tpe:?}"),
         }
     }
-    fn opt_children(&mut self) {
+    fn opt_children(&mut self,opt_count:&mut usize) {
         match self {
             Self::LocAllocAligned { .. }=>(),
             Self::LdFalse | Self::LdTrue=>(),
-            Self::TransmutePtr { val, new_ptr: _ }=>val.opt(),
-            Self::InspectValue { val, inspect }=>{val.opt_children();inspect.iter_mut().for_each(super::cil_root::CILRoot::opt)},
+            Self::TransmutePtr { val, new_ptr: _ }=>val.opt(opt_count),
+            Self::InspectValue { val, inspect }=>{val.opt_children(opt_count);inspect.iter_mut().for_each(|arg|arg.opt(opt_count))},
             Self::LDLoc(_) |  Self::GetStackTop | Self::LDArg(_) | Self::LDLocA(_) | Self::LDArgA(_)=> (),
             Self::BlackBox(inner)
             | Self::ConvF32(inner)
             | Self::ConvF64(inner)
-            | Self::ConvF64Un(inner) => inner.opt(),
+            | Self::ConvF64Un(inner) => inner.opt(opt_count),
             Self::SizeOf(_) => (),
             Self::LDIndI8 { ptr }
             | Self::LDIndBool { ptr }
@@ -382,8 +382,8 @@ impl CILNode {
             | Self::LDIndUSize { ptr }
             | Self::LdObj { ptr, .. }
             | Self::LDIndF32 { ptr }
-            | Self::LDIndF64 { ptr } => ptr.opt(),
-            Self::LDFieldAdress { addr, field: _ } | Self::LDField { addr, field: _ } => addr.opt(),
+            | Self::LDIndF64 { ptr } => ptr.opt(opt_count),
+            Self::LDFieldAdress { addr, field: _ } | Self::LDField { addr, field: _ } => addr.opt(opt_count),
             Self::Add(a, b)
             | Self::And(a, b)
             | Self::Sub(a, b)
@@ -402,12 +402,12 @@ impl CILNode {
             | Self::LtUn(a, b)
             | Self::Gt(a, b)
             | Self::GtUn(a, b) => {
-                a.opt();
-                b.opt();
+                a.opt(opt_count);
+                b.opt(opt_count);
             }
             Self::Call { args, site: _ }
             | Self::NewObj { site: _, args }
-            | Self::CallVirt { args, site: _ } => args.iter_mut().for_each(Self::opt),
+            | Self::CallVirt { args, site: _ } => args.iter_mut().for_each(|arg|arg.opt(opt_count)),
             Self::LdcI64(_)
             | Self::LdcU64(_)
             | Self::LdcI32(_)
@@ -430,11 +430,11 @@ impl CILNode {
             | Self::ConvISize(inner)
             //| Self::Volatile(inner)
             | Self::Neg(inner)
-            | Self::Not(inner) => inner.opt(),
+            | Self::Not(inner) => inner.opt(opt_count),
             Self::TemporaryLocal(_inner) => (),
             Self::SubTrees(a, b) => {
-                a.iter_mut().for_each(super::cil_root::CILRoot::opt);
-                b.opt();
+                a.iter_mut().for_each(|root|root.opt(opt_count));
+                b.opt(opt_count);
             }
             Self::LoadAddresOfTMPLocal => (),
             Self::LoadTMPLocal => (),
@@ -442,14 +442,14 @@ impl CILNode {
             Self::LDTypeToken(_) => (),
             Self::LdStr(_) => (),
             Self::CallI (ptr_sig_arg ) => {
-                ptr_sig_arg.2.iter_mut().for_each(Self::opt);
-                ptr_sig_arg.1.opt();
+                ptr_sig_arg.2.iter_mut().for_each(|arg|arg.opt(opt_count));
+                ptr_sig_arg.1.opt(opt_count);
             }
             Self::LDStaticField(_static_field) => (),
-            Self::LDLen { arr } => arr.opt(),
+            Self::LDLen { arr } => arr.opt(opt_count),
             Self::LDElelemRef { arr, idx } =>{
-                idx.opt();
-                arr.opt();
+                idx.opt(opt_count);
+                arr.opt(opt_count);
             },
         }
     }
@@ -474,8 +474,8 @@ impl CILNode {
     // This clippy lint is wrong
     #[allow(clippy::assigning_clones)]
     /// Optimizes this `CILNode`.
-    pub fn opt(&mut self) {
-        self.opt_children();
+    pub fn opt(&mut self,opt_count:&mut usize) {
+        self.opt_children(opt_count);
         match self {
             Self::LDField { addr: fld_addr, .. } => match fld_addr.as_mut() {
                 Self::MRefToRawPtr(addr) => match addr.as_mut() {

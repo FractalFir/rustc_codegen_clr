@@ -2,9 +2,13 @@ pub type AssemblyInfo = str;
 
 use std::path::Path;
 
-use crate::{asm::{Assembly, AssemblyExternRef}, fn_sig::FnSig, method::Method, type_def::TypeDef, IString, Type};
-
-
+use crate::{
+    asm::{Assembly, AssemblyExternRef},
+    fn_sig::FnSig,
+    method::Method,
+    type_def::TypeDef,
+    IString, Type,
+};
 
 /// This trait represents an interface implemented by all .NET assembly exporters. (Currently only ilasm)
 pub trait AssemblyExporter: Sized {
@@ -27,7 +31,7 @@ pub trait AssemblyExporter: Sized {
         asm: &Assembly,
         final_path: &Path,
         is_dll: bool,
-        escape_names:bool,
+        escape_names: bool,
     ) -> Result<(), AssemblyExportError> {
         let mut asm_exporter = Self::init("asm");
         for (asm_name, asm_ref) in asm.extern_refs() {
@@ -42,7 +46,7 @@ pub trait AssemblyExporter: Sized {
             method.allocate_temporaries();
             method.sheed_trees();
             method.allocate_temporaries();
-            if escape_names{
+            if escape_names {
                 method.set_name(&escape_class_name(method.name()));
                 asm_exporter.add_method(&method);
             } else {
@@ -108,4 +112,3 @@ pub fn escape_class_name(name: &str) -> String {
         .replace('!', "_excl_")
         .replace('\"', "_qt_")
 }
-
