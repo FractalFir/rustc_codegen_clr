@@ -1,4 +1,4 @@
-use crate::{add_method_from_trees};
+use crate::add_method_from_trees;
 use cilly::access_modifier::AccessModifer;
 use cilly::asm::Assembly;
 use cilly::basic_block::BasicBlock;
@@ -10,7 +10,7 @@ use cilly::fn_sig::FnSig;
 use cilly::method::{Method, MethodType};
 use cilly::type_def::TypeDef;
 use cilly::DotnetTypeRef;
-use cilly::{call, conv_usize, ldc_u64, lt_un,r#type::Type};
+use cilly::{call, conv_usize, ldc_u64, lt_un, r#type::Type};
 use rustc_middle::ty::TyCtxt;
 mod casts;
 mod select;

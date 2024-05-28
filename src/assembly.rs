@@ -8,7 +8,19 @@ use crate::{
     IString,
 };
 use cilly::{
-    access_modifier::AccessModifer, asm::Assembly, basic_block::BasicBlock, call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, cil_tree::CILTree, conv_isize, conv_usize, ldc_u32, ldc_u64, method::{Method, MethodType}, static_field_desc::StaticFieldDescriptor, type_def::TypeDef, FnSig
+    access_modifier::AccessModifer,
+    asm::Assembly,
+    basic_block::BasicBlock,
+    call,
+    call_site::CallSite,
+    cil_node::CILNode,
+    cil_root::CILRoot,
+    cil_tree::CILTree,
+    conv_isize, conv_usize, ldc_u32, ldc_u64,
+    method::{Method, MethodType},
+    static_field_desc::StaticFieldDescriptor,
+    type_def::TypeDef,
+    FnSig,
 };
 use rustc_middle::{
     mir::{
@@ -20,7 +32,6 @@ use rustc_middle::{
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-
 
 type LocalDefList = Vec<(Option<IString>, Type)>;
 type ArgsDebugInfo = Vec<Option<IString>>;
@@ -154,7 +165,7 @@ fn allocation_initializer_method(
                     .into(),
                 );
             } else {
-                let ptr_alloc = add_allocation(asm,prov.alloc_id().0.into(), tyctx, tycache);
+                let ptr_alloc = add_allocation(asm, prov.alloc_id().0.into(), tyctx, tycache);
 
                 trees.push(
                     CILRoot::STIndISize(
@@ -195,8 +206,8 @@ fn calculate_hash<T: std::hash::Hash>(t: &T) -> u64 {
     t.hash(&mut s);
     s.finish()
 }
- /// Turns a terminator into ops, if `ABORT_ON_ERROR` set to false, will handle and recover from errors.
- pub fn terminator_to_ops<'tcx>(
+/// Turns a terminator into ops, if `ABORT_ON_ERROR` set to false, will handle and recover from errors.
+pub fn terminator_to_ops<'tcx>(
     term: &Terminator<'tcx>,
     mir: &'tcx rustc_middle::mir::Body<'tcx>,
     tcx: TyCtxt<'tcx>,
@@ -225,11 +236,11 @@ fn calculate_hash<T: std::hash::Hash>(t: &T) -> u64 {
             }
         }
     };
-   
+
     terminator
 }
- /// Turns a statement into ops, if `ABORT_ON_ERROR` set to false, will handle and recover from errors.
- pub fn statement_to_ops<'tcx>(
+/// Turns a statement into ops, if `ABORT_ON_ERROR` set to false, will handle and recover from errors.
+pub fn statement_to_ops<'tcx>(
     statement: &Statement<'tcx>,
     tcx: TyCtxt<'tcx>,
     mir: &rustc_middle::mir::Body<'tcx>,
@@ -259,7 +270,7 @@ fn calculate_hash<T: std::hash::Hash>(t: &T) -> u64 {
 }
 /// Adds a rust MIR function to the assembly.
 pub fn add_fn<'tyctx>(
-    asm:&mut Assembly,
+    asm: &mut Assembly,
     instance: Instance<'tyctx>,
     tyctx: TyCtxt<'tyctx>,
     name: &str,
@@ -312,9 +323,7 @@ pub fn add_fn<'tyctx>(
                 rustc_middle::ty::print::with_no_trimmed_paths! {trees.push(CILRoot::debug(&format!("{statement:?}")).into())};
             }
 
-            let statement_tree = match statement_to_ops(
-                statement, tyctx, mir, instance, cache,
-            ) {
+            let statement_tree = match statement_to_ops(statement, tyctx, mir, instance, cache) {
                 Ok(ops) => ops,
                 Err(err) => {
                     cache.recover_from_panic();
@@ -364,8 +373,7 @@ pub fn add_fn<'tyctx>(
     }
     if let Some(spread_arg) = mir.spread_arg {
         // Prepare for repacking the argument tuple, by allocating a local
-        let repacked =
-            u32::try_from(locals.len()).expect("More than 2^32 arguments of a function");
+        let repacked = u32::try_from(locals.len()).expect("More than 2^32 arguments of a function");
         let repacked_ty: rustc_middle::ty::Ty =
             crate::utilis::monomorphize(&instance, mir.local_decls[spread_arg].ty, tyctx);
         let repacked_type = cache.type_from_cache(repacked_ty, tyctx, Some(instance));
@@ -430,16 +438,16 @@ pub fn add_fn<'tyctx>(
     Ok(())
     //todo!("Can't add function")
 }
- /// This is used *ONLY* to catch uncaught errors.
- pub fn checked_add_fn<'tcx>(
-    asm:&mut Assembly,
+/// This is used *ONLY* to catch uncaught errors.
+pub fn checked_add_fn<'tcx>(
+    asm: &mut Assembly,
     instance: Instance<'tcx>,
     tcx: TyCtxt<'tcx>,
     name: &str,
     cache: &mut TyCache,
 ) -> Result<(), MethodCodegenError> {
     match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        add_fn(asm,instance, tcx, name, cache)
+        add_fn(asm, instance, tcx, name, cache)
     })) {
         Ok(success) => success,
         Err(payload) => {
@@ -457,7 +465,7 @@ pub fn add_fn<'tyctx>(
 }
 /// Adds a MIR item (method,inline assembly code, etc.) to the assembly.
 pub fn add_item<'tcx>(
-    asm:&mut Assembly,
+    asm: &mut Assembly,
     item: MonoItem<'tcx>,
     tcx: TyCtxt<'tcx>,
     cache: &mut TyCache,
@@ -467,10 +475,9 @@ pub fn add_item<'tcx>(
             //let instance = crate::utilis::monomorphize(&instance,tcx);
             let symbol_name: Box<str> = crate::utilis::function_name(item.symbol_name(tcx));
 
-            let function_compile_timer = tcx.profiler().generic_activity_with_arg(
-                "compile function",
-                item.symbol_name(tcx).to_string(),
-            );
+            let function_compile_timer = tcx
+                .profiler()
+                .generic_activity_with_arg("compile function", item.symbol_name(tcx).to_string());
             rustc_middle::ty::print::with_no_trimmed_paths! {checked_add_fn(asm,instance, tcx, &symbol_name, cache)
             .expect("Could not add function!")};
             drop(function_compile_timer);
@@ -488,7 +495,7 @@ pub fn add_item<'tcx>(
             let alloc = tcx.eval_static_initializer(stotic).unwrap();
             let alloc_id = tcx.reserve_and_set_memory_alloc(alloc);
 
-            add_allocation(asm,crate::utilis::alloc_id_to_u64(alloc_id), tcx, cache);
+            add_allocation(asm, crate::utilis::alloc_id_to_u64(alloc_id), tcx, cache);
             //let ty = alloc.0;
             drop(static_compile_timer);
             //eprintln!("Unsuported item - Static:{stotic:?}");
@@ -496,47 +503,46 @@ pub fn add_item<'tcx>(
         }
     }
 }
- /// Adds a static field and initialized for allocation represented by `alloc_id`.
- pub fn add_allocation(
-    asm:&mut Assembly,
+/// Adds a static field and initialized for allocation represented by `alloc_id`.
+pub fn add_allocation(
+    asm: &mut Assembly,
     alloc_id: u64,
     tcx: TyCtxt<'_>,
     tycache: &mut TyCache,
 ) -> StaticFieldDescriptor {
-    let const_allocation = match tcx
-        .global_alloc(AllocId(alloc_id.try_into().expect("0 alloc id?")))
-    {
-        GlobalAlloc::Memory(alloc) => alloc,
-        GlobalAlloc::Static(def_id) => {
-            let alloc = tcx.eval_static_initializer(def_id).unwrap();
-            //tcx.reserve_and_set_memory_alloc(alloc)
-            alloc
-        }
-        GlobalAlloc::VTable(..) => {
-            //TODO: handle VTables
-            let alloc_fld: IString = format!("alloc_{alloc_id:x}").into();
-            let field_desc =
-                StaticFieldDescriptor::new(None, Type::Ptr(Type::U8.into()), alloc_fld.clone());
-            asm.static_fields_mut()
-                .insert(alloc_fld, Type::Ptr(Type::U8.into()));
-            return field_desc;
-        }
-        GlobalAlloc::Function(_) => {
-            //TODO: handle constant functions
-            let alloc_fld: IString = format!("alloc_{alloc_id:x}").into();
-            let field_desc =
-                StaticFieldDescriptor::new(None, Type::Ptr(Type::U8.into()), alloc_fld.clone());
-            asm.static_fields_mut()
-                .insert(alloc_fld, Type::Ptr(Type::U8.into()));
-            return field_desc;
-            //todo!("Function/Vtable allocation.");
-        }
-    };
+    let const_allocation =
+        match tcx.global_alloc(AllocId(alloc_id.try_into().expect("0 alloc id?"))) {
+            GlobalAlloc::Memory(alloc) => alloc,
+            GlobalAlloc::Static(def_id) => {
+                let alloc = tcx.eval_static_initializer(def_id).unwrap();
+                //tcx.reserve_and_set_memory_alloc(alloc)
+                alloc
+            }
+            GlobalAlloc::VTable(..) => {
+                //TODO: handle VTables
+                let alloc_fld: IString = format!("alloc_{alloc_id:x}").into();
+                let field_desc =
+                    StaticFieldDescriptor::new(None, Type::Ptr(Type::U8.into()), alloc_fld.clone());
+                asm.static_fields_mut()
+                    .insert(alloc_fld, Type::Ptr(Type::U8.into()));
+                return field_desc;
+            }
+            GlobalAlloc::Function(_) => {
+                //TODO: handle constant functions
+                let alloc_fld: IString = format!("alloc_{alloc_id:x}").into();
+                let field_desc =
+                    StaticFieldDescriptor::new(None, Type::Ptr(Type::U8.into()), alloc_fld.clone());
+                asm.static_fields_mut()
+                    .insert(alloc_fld, Type::Ptr(Type::U8.into()));
+                return field_desc;
+                //todo!("Function/Vtable allocation.");
+            }
+        };
 
     let const_allocation = const_allocation.inner();
 
-    let bytes: &[u8] = const_allocation
-        .inspect_with_uninit_and_ptr_outside_interpreter(0..const_allocation.len());
+    let bytes: &[u8] =
+        const_allocation.inspect_with_uninit_and_ptr_outside_interpreter(0..const_allocation.len());
     // Alloc ids are *not* unique across all crates. Adding the hash here ensures we don't overwrite allocations during linking
     // TODO:consider using something better here / making the hashes stable.
     let byte_hash = calculate_hash(&bytes);
@@ -587,7 +593,7 @@ pub fn add_item<'tcx>(
     }
     field_desc
 }
-pub fn add_const_value(asm:&mut Assembly, bytes: u128, tyctx: TyCtxt) -> StaticFieldDescriptor {
+pub fn add_const_value(asm: &mut Assembly, bytes: u128, tyctx: TyCtxt) -> StaticFieldDescriptor {
     let alloc_fld: IString = format!("a_{bytes:x}").into();
     let raw_bytes = bytes.to_le_bytes();
     let field_desc =

@@ -1,11 +1,11 @@
-use cilly::asm::AssemblyExternRef;
-use cilly::cil_node::CILNode;
-use cilly::cil_root::CILRoot;
-use cilly::cil_tree::CILTree;
-use cilly::method::Method;
-use cilly::type_def::TypeDef;
+use crate::asm::AssemblyExternRef;
+use crate::cil_node::CILNode;
+use crate::cil_root::CILRoot;
+use crate::cil_tree::CILTree;
+use crate::method::Method;
+use crate::type_def::TypeDef;
 
-use super::AssemblyExporter;
+use crate::asm_exporter::{AssemblyExportError, AssemblyExporter, AssemblyInfo};
 
 
 use crate::{r#type::Type, IString};
@@ -112,7 +112,7 @@ impl CExporter {
     }
 }
 impl AssemblyExporter for CExporter {
-    fn init(_asm_info: &super::AssemblyInfo) -> Self {
+    fn init(_asm_info: &AssemblyInfo) -> Self {
         let mut encoded_asm = Vec::with_capacity(0x1_00);
         let types = Vec::with_capacity(0x1_00);
         let type_defs = Vec::with_capacity(0x1_00);
@@ -232,7 +232,7 @@ impl AssemblyExporter for CExporter {
         self.add_method_inner(method, None);
     }
 
-    fn add_extern_method(&mut self, _lib_path: &str, name: &str, sig: &cilly::FnSig) {
+    fn add_extern_method(&mut self, _lib_path: &str, name: &str, sig: &crate::FnSig) {
         if name == "puts"
             || name == "malloc"
             || name == "printf"
@@ -264,14 +264,15 @@ impl AssemblyExporter for CExporter {
         self,
         final_path: &std::path::Path,
         is_dll: bool,
-    ) -> Result<(), super::AssemblyExportError> {
+    ) -> Result<(), AssemblyExportError> {
         let cc = "gcc";
         let src_path = final_path.with_extension("c");
         std::fs::File::create(&src_path)
             .unwrap()
             .write_all(&self.as_source(is_dll))
             .unwrap();
-        let sanitize = if *crate::config::C_SANITIZE {
+        let san_undef =false;//*crate::config::C_SANITIZE
+        let sanitize = if  san_undef{
             "-fsanitize=undefined"
         } else {
             "-O"

@@ -1,4 +1,7 @@
-use cilly::{asm::Assembly, call, call_site::CallSite, cil_node::CILNode, conv_i32, conv_usize, ldc_i32, ldc_u32, DotnetTypeRef, FnSig, Type};
+use cilly::{
+    asm::Assembly, call, call_site::CallSite, cil_node::CILNode, conv_i32, conv_usize, ldc_i32,
+    ldc_u32, DotnetTypeRef, FnSig, Type,
+};
 fn mstring_to_utf8ptr(mstring: CILNode) -> CILNode {
     call!(
         CallSite::new_extern(

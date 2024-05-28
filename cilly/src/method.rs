@@ -8,10 +8,16 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    access_modifier::AccessModifer, basic_block::BasicBlock, call_site::CallSite,
-    cil_iter::CILIterElem, cil_iter_mut::CILIterElemMut, cil_node::CILNode, cil_root::CILRoot,
-    cil_tree::CILTree, static_field_desc::StaticFieldDescriptor, DotnetTypeRef, FnSig, IString,
-    Type,
+    access_modifier::AccessModifer,
+    basic_block::BasicBlock,
+    call_site::CallSite,
+    cil_iter::{CILIterElem, CILIterTrait},
+    cil_iter_mut::CILIterElemMut,
+    cil_node::CILNode,
+    cil_root::CILRoot,
+    cil_tree::CILTree,
+    static_field_desc::StaticFieldDescriptor,
+    DotnetTypeRef, FnSig, IString, Type,
 };
 
 /// Represenation of a CIL method.
@@ -201,18 +207,7 @@ impl Method {
         self.blocks
             .iter()
             .flat_map(|block| block.iter_cil())
-            .filter_map(|node| match node {
-                CILIterElem::Node(
-                    CILNode::Call { args: _, site }
-                    | CILNode::CallVirt { args: _, site }
-                    | CILNode::NewObj { args: _, site }
-                    | CILNode::LDFtn(site),
-                ) => Some(site.as_ref()),
-                CILIterElem::Root(
-                    CILRoot::Call { site, args: _ } | CILRoot::CallVirt { site, args: _ },
-                ) => Some(site),
-                _ => None,
-            })
+            .call_sites()
             .collect()
     }
     /// Returns the list of static fields this function references. Calls may repeat.

@@ -1,21 +1,8 @@
-use super::AssemblyExporter;
-use crate::{
-    assembly_exporter::{
-        escape_class_name,
-        ilasm_op::{non_void_type_cil, type_cil},
-        AssemblyExportError,
-    },
-    r#type::Type,
-
-};
 use cilly::{
-    access_modifier::AccessModifer, asm::AssemblyExternRef, basic_block::BasicBlock, method::{Method, MethodType}, type_def::TypeDef
+    access_modifier::AccessModifer, asm::AssemblyExternRef, asm_exporter::{escape_class_name, AssemblyExportError, AssemblyExporter}, basic_block::BasicBlock, ilasm_op::DepthSetting, method::{Method, MethodType}, type_def::TypeDef, IlasmFlavour, Type
 };
 use lazy_static::lazy_static;
-pub enum IlasmFlavour {
-    Clasic,
-    Modern,
-}
+
 lazy_static! {
     pub static ref ILASM_FLAVOUR: IlasmFlavour = {
         if String::from_utf8_lossy(
@@ -33,6 +20,8 @@ lazy_static! {
     };
 }
 use std::io::Write;
+
+use crate::assembly_exporter::ilasm_op::{non_void_type_cil, type_cil};
 #[must_use]
 /// A struct used to export an asssembly using the ILASM tool as a .NET assembly creator.
 pub struct ILASMExporter {
@@ -52,7 +41,7 @@ impl AssemblyExporter for ILASMExporter {
         writeln!(
             self.methods,
             ".field static {tpe} '{name}'",
-            tpe = non_void_type_cil(tpe)
+            tpe = super::ilasm_op::non_void_type_cil(tpe)
         )
         .expect("Could not write global!");
     }
@@ -70,11 +59,7 @@ impl AssemblyExporter for ILASMExporter {
             methods,
         }
     }
-    fn add_extern_ref(
-        &mut self,
-        asm_name: &str,
-        asm_ref_data: &AssemblyExternRef,
-    ) {
+    fn add_extern_ref(&mut self, asm_name: &str, asm_ref_data: &AssemblyExternRef) {
         let (v1, v2, v3, v4) = asm_ref_data.version();
         write!(
             self.encoded_asm,
@@ -175,7 +160,7 @@ fn type_def_cli(
     w: &mut impl Write,
     tpe: &TypeDef,
     is_nested: bool,
-) -> Result<(), super::AssemblyExportError> {
+) -> Result<(), AssemblyExportError> {
     let name = tpe.name();
     let name = if *crate::config::ESCAPE_NAMES {
         escape_class_name(name)
@@ -330,7 +315,26 @@ fn method_cil(w: &mut impl Write, method: &Method) -> std::io::Result<()> {
         "\n\t)\n.maxstack {maxstack}\n",
         maxstack = crate::method::maxstack(method)
     )?;
-    for op in method
+    for block in method.blocks().iter() {
+        use std::fmt::Write;
+        assert!(block.handler().is_none());
+        let mut string = String::new();
+        writeln!(string, "bb_{id}_0:", id = block.id()).unwrap();
+        for tree in block.trees() {
+            cilly::ilasm_op::export_root(
+                &mut string,
+                tree.root(),
+                DepthSetting::with_pading(),
+                *ILASM_FLAVOUR,
+            )
+            .unwrap();
+        }
+        //eprintln!("{string}");
+        DepthSetting::with_pading().pad(&mut string).unwrap();
+        //assert_eq!(remove_whitespace(&old_block_to_string(block,method)),remove_whitespace(&string));
+        w.write(string.as_bytes())?;
+    }
+    /*for op in method
         .blocks()
         .iter()
         .flat_map(crate::basic_block::into_ops)
@@ -347,6 +351,21 @@ fn method_cil(w: &mut impl Write, method: &Method) -> std::io::Result<()> {
             "\t{op_cli}",
             op_cli = super::ilasm_op::op_cli(&op, method)
         )?;
-    }
+    }*/
     writeln!(w, "}}")
+}
+fn old_block_to_string(block:&BasicBlock,method: &Method)->String{
+    let mut string = String::new();
+    use std::fmt::Write;
+    for op in crate::basic_block::into_ops(block){
+        writeln!(
+            string,
+            "\t{op_cli}",
+            op_cli = super::ilasm_op::op_cli(&op, method)
+        ).unwrap();
+    }
+    string
+}
+fn remove_whitespace(s: &str) -> String {
+    s.chars().filter(|c| !c.is_whitespace()).collect()
 }

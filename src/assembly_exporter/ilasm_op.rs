@@ -1,16 +1,14 @@
 use std::borrow::Cow;
 
-use cilly::{method::Method, DotnetTypeRef, Type};
-
-use crate::assembly_exporter::escape_class_name;
+use cilly::{asm_exporter::escape_class_name, method::Method, DotnetTypeRef, IlasmFlavour, Type};
 
 pub fn op_cli(op: &crate::cil::CILOp, method: &Method) -> Cow<'static, str> {
     use crate::cil::CILOp;
 
     match op {
         CILOp::SourceFileInfo(sfi)=>match *super::ilasm_exporter::ILASM_FLAVOUR{
-            super::ilasm_exporter::IlasmFlavour::Clasic=>format!(".line {line}:{col} '{fname}'",line = sfi.0.start, col = sfi.1.start,fname = sfi.2).into(),
-            super::ilasm_exporter::IlasmFlavour::Modern=>format!(".line {ls},{le}:{cs},{ce} '{fname}'",ls = sfi.0.start,le = sfi.0.end,cs = sfi.1.start,ce = sfi.1.end,fname = sfi.2).into(),
+            IlasmFlavour::Clasic=>format!(".line {line}:{col} '{fname}'",line = sfi.0.start, col = sfi.1.start,fname = sfi.2).into(),
+            IlasmFlavour::Modern=>format!(".line {ls},{le}:{cs},{ce} '{fname}'",ls = sfi.0.start,le = sfi.0.end,cs = sfi.1.start,ce = sfi.1.end,fname = sfi.2).into(),
         }
         CILOp::Leave(target) => format!("leave bb_{target}_0").into(),
         CILOp::BeginTry => ".try{".into(),

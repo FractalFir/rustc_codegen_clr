@@ -9,18 +9,21 @@ pub use dotnet_type::*;
 pub mod fn_sig;
 pub use fn_sig::*;
 pub mod access_modifier;
+pub mod asm;
+pub mod asm_exporter;
 pub mod basic_block;
+pub mod c_exporter;
 pub mod call_site;
 pub mod cil_iter;
 pub mod cil_iter_mut;
 pub mod cil_node;
 pub mod cil_root;
 pub mod cil_tree;
+pub mod entrypoint;
+pub mod ilasm_op;
 pub mod method;
 pub mod static_field_desc;
 pub mod type_def;
-pub mod asm;
-pub mod entrypoint;
 #[must_use]
 /// Returns the name of a fixed-size array
 pub fn arr_name(element_count: usize, element: &Type) -> IString {
@@ -91,4 +94,9 @@ lazy_static! {
             "0"|"false"|"False"|"FALSE" => false,"1"|"true"|"True"|"TRUE" => true,_ => panic!("Boolean enviroment variable {} has invalid value {}",stringify!(MEM_CHECKS),value),
         })
     };
+}
+#[derive(Clone, Copy)]
+pub enum IlasmFlavour {
+    Clasic,
+    Modern,
 }

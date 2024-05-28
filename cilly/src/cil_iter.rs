@@ -1,4 +1,4 @@
-use crate::{cil_node::CILNode, cil_root::CILRoot};
+use crate::{call_site::CallSite, cil_node::CILNode, cil_root::CILRoot};
 
 #[derive(Debug, Clone, Copy)]
 pub enum CILIterElem<'a> {
@@ -311,6 +311,25 @@ impl<'a> CILIter<'a> {
         Self {
             elems: vec![(0, CILIterElem::Root(root))],
         }
+    }
+}
+pub trait CILIterTrait<'a> {
+    fn call_sites(self) -> impl Iterator<Item = &'a CallSite>;
+}
+impl<'a, T: Iterator<Item = CILIterElem<'a>>> CILIterTrait<'a> for T {
+    fn call_sites(self) -> impl Iterator<Item = &'a CallSite> {
+        self.filter_map(|node| match node {
+            CILIterElem::Node(
+                CILNode::Call { args: _, site }
+                | CILNode::CallVirt { args: _, site }
+                | CILNode::NewObj { args: _, site }
+                | CILNode::LDFtn(site),
+            ) => Some(site.as_ref()),
+            CILIterElem::Root(
+                CILRoot::Call { site, args: _ } | CILRoot::CallVirt { site, args: _ },
+            ) => Some(site),
+            _ => None,
+        })
     }
 }
 impl<'a> IntoIterator for &'a CILNode {

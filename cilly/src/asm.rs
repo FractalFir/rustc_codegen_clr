@@ -2,7 +2,17 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{access_modifier::AccessModifer, basic_block::BasicBlock, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, method::{Method, MethodType}, static_field_desc::StaticFieldDescriptor, type_def::TypeDef, FnSig, IString, Type};
+use crate::{
+    access_modifier::AccessModifer,
+    basic_block::BasicBlock,
+    call_site::CallSite,
+    cil_node::CILNode,
+    cil_root::CILRoot,
+    method::{Method, MethodType},
+    static_field_desc::StaticFieldDescriptor,
+    type_def::TypeDef,
+    FnSig, IString, Type,
+};
 
 #[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 /// Data representing a reference to an external assembly.
@@ -130,8 +140,7 @@ impl Assembly {
             .find(|&tpe| tpe.0.as_ref() == path)
             .map(|t| t.1)
     }
-   
-    
+
     /// Adds a global static field named *name* of type *tpe*
     pub fn add_static(&mut self, tpe: Type, name: &str) {
         self.static_fields.insert(name.into(), tpe);
@@ -159,7 +168,7 @@ impl Assembly {
                 )
             })
     }
-   
+
     /// Returns true if assembly contains function named `name`
     #[must_use]
     pub fn contains_fn_named(&self, name: &str) -> bool {
@@ -175,7 +184,6 @@ impl Assembly {
     pub fn add_method(&mut self, mut method: Method) {
         method.allocate_temporaries();
         //method.ensure_valid();
-        
 
         self.functions.insert(method.call_site(), method);
     }
@@ -241,7 +249,7 @@ impl Assembly {
     pub fn add_typedef(&mut self, type_def: TypeDef) {
         self.types.insert(type_def.name().into(), type_def);
     }
-    
+
     /// Sets the entrypoint of the assembly to the method behind `CallSite`.
     pub fn set_entrypoint(&mut self, entrypoint: &CallSite) {
         assert!(self.entrypoint.is_none(), "ERROR: Multiple entrypoints");
@@ -367,15 +375,13 @@ impl Assembly {
             true,
         ))
     }
-    
+
     pub fn static_fields_mut(&mut self) -> &mut HashMap<IString, Type> {
         &mut self.static_fields
     }
-
-    
 }
 use lazy_static::*;
-lazy_static!{
+lazy_static! {
     #[doc = "Tells the codegen to remove dead code before export."]pub static ref DEAD_CODE_ELIMINATION:bool = {
         std::env::vars().into_iter().find_map(|(key,value)|if key == stringify!(DEAD_CODE_ELIMINATION){
             Some(value)

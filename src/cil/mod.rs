@@ -476,14 +476,6 @@ impl CILOp {
             CILOp::LDElelemRef => -1,
         }
     }
-
-    pub(crate) fn sflds(&self) -> Option<&StaticFieldDescriptor> {
-        match self {
-            CILOp::LDStaticField(sflds) => Some(sflds.as_ref()),
-            CILOp::STStaticField(sflds) => Some(sflds.as_ref()),
-            _ => None,
-        }
-    }
 }
 /// Returns the call site refering to the function malloc.
 #[must_use]

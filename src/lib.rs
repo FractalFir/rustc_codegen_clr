@@ -212,8 +212,8 @@ impl CodegenBackend for MyBackend {
             for cgu in cgus {
                 //println!("codegen {} has {} items.", cgu.name(), cgu.items().len());
                 for (item, _data) in cgu.items() {
-                    assembly::add_item(&mut asm,*item, tcx, &mut cache)
-                    .expect("Could not add function");
+                    assembly::add_item(&mut asm, *item, tcx, &mut cache)
+                        .expect("Could not add function");
                 }
             }
             for type_def in cache.defs() {
@@ -246,12 +246,7 @@ impl CodegenBackend for MyBackend {
             drop(ffi_compile_timer);
             let name: IString = cgus.iter().next().unwrap().name().to_string().into();
 
-            Box::new((
-                name,
-                asm,
-                metadata,
-                CrateInfo::new(tcx, "clr".to_string()),
-            ))
+            Box::new((name, asm, metadata, CrateInfo::new(tcx, "clr".to_string())))
         }
     }
     /// Saves an in-memory assemably to codegen specific IR in a .bc file.

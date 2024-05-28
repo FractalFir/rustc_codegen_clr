@@ -1,7 +1,9 @@
 use std::path::Path;
 
-use cilly::asm::Assembly;
-use rustc_codegen_clr::assembly_exporter::{AssemblyExportError, AssemblyExporter};
+use cilly::{
+    asm::Assembly,
+    asm_exporter::{AssemblyExportError, AssemblyExporter},
+};
 
 pub fn export_assembly(
     asm: &Assembly,
@@ -12,5 +14,6 @@ pub fn export_assembly(
         asm,
         path.as_ref(),
         is_lib,
+        *crate::config::ESCAPE_NAMES,
     )
 }

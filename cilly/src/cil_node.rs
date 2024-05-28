@@ -1,6 +1,7 @@
 use crate::{
-    call, call_site::CallSite, cil_root::CILRoot, field_desc::FieldDescriptor, fn_sig::FnSig,
-    static_field_desc::StaticFieldDescriptor, DotnetTypeRef, IString, Type,
+    call, call_site::CallSite, cil_iter::CILIterTrait, cil_root::CILRoot,
+    field_desc::FieldDescriptor, fn_sig::FnSig, static_field_desc::StaticFieldDescriptor,
+    DotnetTypeRef, IString, Type,
 };
 
 use serde::{Deserialize, Serialize};
@@ -451,6 +452,22 @@ impl CILNode {
                 arr.opt();
             },
         }
+    }
+    /// Checks if this node may have side effects. `false` means that the node can't have side effects, `true` means that the node *may* have side effects, but it does not have to.
+    pub fn has_side_effects(&self) -> bool {
+        let contains_calls = self.into_iter().call_sites().next().is_some();
+        if contains_calls {
+            return true;
+        }
+        let contains_subtrees = self.into_iter().any(|node| {
+            matches!(
+                node,
+                crate::cil_iter::CILIterElem::Node(
+                    CILNode::SubTrees(_, _) | CILNode::TemporaryLocal(_)
+                )
+            )
+        });
+        return contains_subtrees;
     }
     // This fucntion will get expanded, so a single match is a non-issue.
     #[allow(clippy::single_match)]

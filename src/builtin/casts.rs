@@ -2,7 +2,11 @@
 
 use crate::add_method_from_trees;
 use cilly::{
-    access_modifier::AccessModifer, asm::Assembly, basic_block::BasicBlock, call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_f32, conv_f64, conv_f_un, conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8, conv_usize, eq, fn_sig::FnSig, gt, ldc_i32, ldc_i64, ldc_u32, ldc_u64, lt, or, DotnetTypeRef, Type
+    access_modifier::AccessModifer, asm::Assembly, basic_block::BasicBlock, call,
+    call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_f32, conv_f64, conv_f_un,
+    conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8,
+    conv_usize, eq, fn_sig::FnSig, gt, ldc_i32, ldc_i64, ldc_u32, ldc_u64, lt, or, DotnetTypeRef,
+    Type,
 };
 add_method_from_trees!(
     cast_i32_to_u64,
