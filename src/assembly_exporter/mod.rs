@@ -3,13 +3,12 @@ use std::path::Path;
 type AssemblyInfo = str;
 
 use crate::{
-    assembly::Assembly,
-    config,
 
-    r#type::{Type, TypeDef},
+    config,
+    r#type::Type,
     IString,
 };
-use cilly::{fn_sig::FnSig, method::Method};
+use cilly::{asm::{Assembly, AssemblyExternRef}, fn_sig::FnSig, method::Method, type_def::TypeDef};
 pub mod c_exporter;
 
 /// ILASM-based assembly exporter.
@@ -28,7 +27,7 @@ pub trait AssemblyExporter: Sized {
     /// Finishes exporting the assembly.
     fn finalize(self, final_path: &Path, is_dll: bool) -> Result<(), AssemblyExportError>;
     /// Adds a reference to assembly `asm_name` with info `info`
-    fn add_extern_ref(&mut self, asm_name: &str, info: &crate::assembly::AssemblyExternRef);
+    fn add_extern_ref(&mut self, asm_name: &str, info: &AssemblyExternRef);
     /// Adds a global field
     fn add_global(&mut self, tpe: &Type, name: &str);
     /// Handles the whole assembly export process all at once.

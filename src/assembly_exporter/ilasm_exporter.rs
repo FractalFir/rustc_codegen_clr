@@ -5,11 +5,12 @@ use crate::{
         ilasm_op::{non_void_type_cil, type_cil},
         AssemblyExportError,
     },
-
     r#type::Type,
-    r#type::TypeDef,
+
 };
-use cilly::{access_modifier::AccessModifer, basic_block::BasicBlock, method::{Method, MethodType}};
+use cilly::{
+    access_modifier::AccessModifer, asm::AssemblyExternRef, basic_block::BasicBlock, method::{Method, MethodType}, type_def::TypeDef
+};
 use lazy_static::lazy_static;
 pub enum IlasmFlavour {
     Clasic,
@@ -72,7 +73,7 @@ impl AssemblyExporter for ILASMExporter {
     fn add_extern_ref(
         &mut self,
         asm_name: &str,
-        asm_ref_data: &crate::assembly::AssemblyExternRef,
+        asm_ref_data: &AssemblyExternRef,
     ) {
         let (v1, v2, v3, v4) = asm_ref_data.version();
         write!(

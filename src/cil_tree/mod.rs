@@ -1,19 +1,14 @@
 use crate::{
     cil::CILOp,
-  
     r#type::{TyCache, Type},
 };
 
-use cilly::{cil_node::CILNode, cil_root::CILRoot, cil_tree::CILTree};
+use cilly::{asm::Assembly, cil_node::CILNode, cil_root::CILRoot, cil_tree::CILTree};
 use rustc_middle::ty::TyCtxt;
-
-
-
-
 
 pub(crate) fn resolve_global_allocations_tree(
     tree: &mut CILTree,
-    arg: &mut crate::assembly::Assembly,
+    arg: &mut Assembly,
     tyctx: TyCtxt,
     tycache: &mut TyCache,
 ) {
@@ -298,7 +293,7 @@ pub fn flatten(node: &CILNode) -> Vec<CILOp> {
 }
 pub(crate) fn resolve_global_allocations_node(
     node: &mut CILNode,
-    asm: &mut crate::assembly::Assembly,
+    asm: &mut Assembly,
     tyctx: TyCtxt,
     tycache: &mut TyCache,
 ) {
@@ -312,7 +307,7 @@ pub(crate) fn resolve_global_allocations_node(
                 resolve_global_allocations_node(val,asm, tyctx, tycache);
                 inspect.iter_mut().for_each(|i|resolve_global_allocations(i,asm, tyctx, tycache));
             }
-            CILNode:: PointerToConstValue(bytes)=> *node = CILNode::LDStaticField(Box::new(asm.add_const_value(*bytes,tyctx))),
+            CILNode:: PointerToConstValue(bytes)=> *node = CILNode::LDStaticField(Box::new(crate::assembly::add_const_value(asm,*bytes,tyctx))),
             CILNode::LDLoc(_) |
             CILNode::LDArg(_) |
             CILNode::LDLocA(_)|
@@ -366,7 +361,7 @@ pub(crate) fn resolve_global_allocations_node(
             CILNode::LdcF64(_) |
             CILNode::LdcF32(_) =>(),
             CILNode::LoadGlobalAllocPtr { alloc_id } => {
-                *node = CILNode::LDStaticField(asm.add_allocation(*alloc_id,tyctx,tycache).into());
+                *node = CILNode::LDStaticField(crate::assembly::add_allocation(asm, *alloc_id,tyctx,tycache).into());
             }
             CILNode::ConvF64Un(val) |
             CILNode::ConvF32(val)|
@@ -548,7 +543,7 @@ pub fn into_ops(node: &CILRoot) -> Vec<CILOp> {
 
 pub(crate) fn resolve_global_allocations(
     root: &mut CILRoot,
-    asm: &mut crate::assembly::Assembly,
+    asm: &mut Assembly,
     tyctx: TyCtxt,
     tycache: &mut TyCache,
 ) {

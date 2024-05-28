@@ -3,7 +3,7 @@
 pub mod field_desc;
 pub mod r#type;
 pub use r#type::*;
-type IString = Box<str>;
+pub type IString = Box<str>;
 pub mod dotnet_type;
 pub use dotnet_type::*;
 pub mod fn_sig;
@@ -19,6 +19,8 @@ pub mod cil_tree;
 pub mod method;
 pub mod static_field_desc;
 pub mod type_def;
+pub mod asm;
+pub mod entrypoint;
 #[must_use]
 /// Returns the name of a fixed-size array
 pub fn arr_name(element_count: usize, element: &Type) -> IString {

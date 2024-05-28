@@ -1,6 +1,6 @@
-use crate::{add_method_from_trees, assembly::Assembly, r#type::Type};
+use crate::{add_method_from_trees,  r#type::Type};
 use cilly::{
-    access_modifier::AccessModifer, basic_block::BasicBlock, cil_node::CILNode, cil_root::CILRoot,
+    access_modifier::AccessModifer, asm::Assembly, basic_block::BasicBlock, cil_node::CILNode, cil_root::CILRoot
 };
 macro_rules! select {
     ($tpe:ident, $name:ident) => {

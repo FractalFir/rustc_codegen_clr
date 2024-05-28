@@ -1,9 +1,7 @@
 use std::path::Path;
 
-use rustc_codegen_clr::{
-    assembly::Assembly,
-    assembly_exporter::{AssemblyExportError, AssemblyExporter},
-};
+use cilly::asm::Assembly;
+use rustc_codegen_clr::assembly_exporter::{AssemblyExportError, AssemblyExporter};
 
 pub fn export_assembly(
     asm: &Assembly,

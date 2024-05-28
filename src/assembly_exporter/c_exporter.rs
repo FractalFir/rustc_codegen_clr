@@ -1,11 +1,13 @@
+use cilly::asm::AssemblyExternRef;
 use cilly::cil_node::CILNode;
 use cilly::cil_root::CILRoot;
 use cilly::cil_tree::CILTree;
 use cilly::method::Method;
+use cilly::type_def::TypeDef;
 
 use super::AssemblyExporter;
 
-use crate::r#type::TypeDef;
+
 use crate::{r#type::Type, IString};
 use std::collections::HashMap;
 use std::hash::Hasher;
@@ -162,7 +164,7 @@ impl AssemblyExporter for CExporter {
             delayed_typedefs: HashMap::new(),
         }
     }
-    fn add_type(&mut self, tpe: &crate::r#type::TypeDef) {
+    fn add_type(&mut self, tpe: &TypeDef) {
         let name: IString = escape_type_name(tpe.name()).into();
         if self.defined.contains(&name) {
             return;
@@ -291,7 +293,7 @@ impl AssemblyExporter for CExporter {
         Ok(())
     }
 
-    fn add_extern_ref(&mut self, _asm_name: &str, _info: &crate::assembly::AssemblyExternRef) {
+    fn add_extern_ref(&mut self, _asm_name: &str, _info: &AssemblyExternRef) {
         // Not needed in C
     }
 

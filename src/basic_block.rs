@@ -1,5 +1,3 @@
-
-
 use cilly::basic_block::{BasicBlock, Handler};
 use rustc_middle::mir::BasicBlockData;
 use rustc_middle::mir::UnwindAction;
@@ -111,8 +109,6 @@ pub(crate) fn handler_from_action(action: UnwindAction) -> Option<u32> {
         UnwindAction::Unreachable => None,
     }
 }
-
-
 
 fn flatten_inner(self_block: &BasicBlock, id: u32, sub_id: u32) -> Vec<CILOp> {
     let mut ops = vec![CILOp::Label(id, sub_id)];

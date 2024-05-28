@@ -74,8 +74,8 @@
 //!
 //! Almost everyting in this file is related to things specific to the rust compiler - reciving MIR from rustc, loading/saving intermediate data,
 //! linking the final executable.
-//! The compilation process really begins in [`crate::assembly::Assembly::add_item`] - this is where an item - static, function, or inline assembly - gets turned into
-//! its .NET representation. The [`crate::assembly::Assembly::add_fn`] uses [`crate::assembly::Assembly::add_typedef`] to add all types needed by a method to the
+//! The compilation process really begins in [`crate::assembly::add_item`] - this is where an item - static, function, or inline assembly - gets turned into
+//! its .NET representation. The [`crate::assembly::add_fn`] uses [`cilly::asm::Assembly::add_typedef`] to add all types needed by a method to the
 //! assembly. `add_fn` gets the function name, signature, local varaiables and MIR. It uses `handle_statement` and `handle_terminator` turn MIR statements
 //! and block terminators into CIL ops.
 // TODO: Extend project desctiption.
@@ -125,8 +125,7 @@ mod codegen_error;
 pub mod compile_test;
 /// Code handling loading constant values in CIL.
 mod constant;
-/// Code detecting and inserting wrappers around entrypoints.
-mod entrypoint;
+
 /// Signature of a function (inputs)->output
 pub mod function_sig;
 /// Interop type handling.
@@ -162,6 +161,7 @@ pub mod config;
 mod unsize;
 // rustc functions used here.
 use crate::rustc_middle::dep_graph::DepContext;
+use cilly::asm::Assembly;
 use rustc_codegen_ssa::{
     back::archive::{
         get_native_object_symbols, ArArchiveBuilder, ArchiveBuilder, ArchiveBuilderBuilder,
@@ -187,10 +187,10 @@ use std::{
     path::{Path, PathBuf},
 };
 /// Immutable string - used to save a bit of memory on storage.
-pub type IString = Box<str>;
+pub type IString = cilly::IString;
 /// Immutable string - used to save a bit of memory on storage.
 pub type AString = std::sync::Arc<Box<str>>;
-use assembly::Assembly;
+
 /// An instance of the codegen.
 struct MyBackend;
 impl CodegenBackend for MyBackend {
@@ -207,18 +207,17 @@ impl CodegenBackend for MyBackend {
         {
             let (_defid_set, cgus) = tcx.collect_and_partition_mono_items(());
 
-            let mut codegen = Assembly::empty();
+            let mut asm = Assembly::empty();
             let mut cache = crate::r#type::TyCache::empty();
             for cgu in cgus {
                 //println!("codegen {} has {} items.", cgu.name(), cgu.items().len());
                 for (item, _data) in cgu.items() {
-                    codegen
-                        .add_item(*item, tcx, &mut cache)
-                        .expect("Could not add function");
+                    assembly::add_item(&mut asm,*item, tcx, &mut cache)
+                    .expect("Could not add function");
                 }
             }
             for type_def in cache.defs() {
-                codegen.add_typedef(type_def.clone());
+                asm.add_typedef(type_def.clone());
             }
             if let Some((entrypoint, _kind)) = tcx.entry_fn(()) {
                 let penv = rustc_middle::ty::ParamEnv::reveal_all();
@@ -235,21 +234,21 @@ impl CodegenBackend for MyBackend {
                 let symbol = tcx.symbol_name(entrypoint);
                 let symbol = format!("{symbol:?}");
                 let cs = cilly::call_site::CallSite::new(None, symbol.into(), sig, true);
-                codegen.set_entrypoint(&cs);
+                asm.set_entrypoint(&cs);
             }
-            codegen.opt();
+            asm.opt();
             // Done twice for inlining!
-            codegen.opt();
+            asm.opt();
             let ffi_compile_timer = tcx
                 .profiler()
                 .generic_activity("insert .NET FFI functions/types");
-            builtin::insert_ffi_functions(&mut codegen, tcx);
+            builtin::insert_ffi_functions(&mut asm, tcx);
             drop(ffi_compile_timer);
             let name: IString = cgus.iter().next().unwrap().name().to_string().into();
 
             Box::new((
                 name,
-                codegen,
+                asm,
                 metadata,
                 CrateInfo::new(tcx, "clr".to_string()),
             ))

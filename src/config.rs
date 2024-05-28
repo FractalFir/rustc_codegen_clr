@@ -51,7 +51,7 @@ config_flag! {RANDOMIZE_LAYOUT,false,"Tells the codegen to randomize TEST type l
 config_flag! {NATIVE_PASSTROUGH,false,"Tells the codegen compile linked static libraries into a shared library, which will be bundled with the .NET executable."}
 
 config_flag! {ENFORCE_CIL_VALID,false,"Tells the codegen to preform additonal checks before saving the ."}
-config_flag! {DEAD_CODE_ELIMINATION,true,"Tells the codegen to remove dead code before export."}
+
 config_flag! {PRINT_PTRS,false,"Tells codegen the print each pointer it dereferences."}
 config_flag! {CHECK_REFS,false,"Tells codegen to check if references it assigns are valid."}
 

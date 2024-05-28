@@ -574,7 +574,7 @@ pub fn handle_intrinsic<'tyctx>(
                 crate::place::deref_op(arg_ty.into(), tyctx, &method_instance, type_cache, arg);
             place_set(destination, tyctx, ops, body, method_instance, type_cache)
         }
-        "atomic_load_acquire" => {
+        "atomic_load_acquire" | "atomic_load_seqcst" => {
             //I am not sure this is implemented propely
             debug_assert_eq!(
                 args.len(),
@@ -590,7 +590,7 @@ pub fn handle_intrinsic<'tyctx>(
                 crate::place::deref_op(arg_ty.into(), tyctx, &method_instance, type_cache, ops);
             place_set(destination, tyctx, ops, body, method_instance, type_cache)
         }
-        "atomic_store_relaxed" => {
+        "atomic_store_relaxed" | "atomic_store_seqcst" => {
             // This is *propably* wrong :)
             debug_assert_eq!(
                 args.len(),

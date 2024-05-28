@@ -38,7 +38,7 @@ impl<'a> Iterator for CILIter<'a> {
                     | CILNode::Shr(a, b)
                     | CILNode::ShrUn(a, b)
                     | CILNode::XOr(a, b)
-                    | CILNode::LDElelemRef{ arr:a, idx:b }
+                    | CILNode::LDElelemRef { arr: a, idx: b },
                 ) => match idx {
                     1 => {
                         *idx += 1;
@@ -93,7 +93,7 @@ impl<'a> Iterator for CILIter<'a> {
                     | CILNode::LDIndUSize { ptr: a }
                     | CILNode::Not(a)
                     | CILNode::Neg(a)
-                    | CILNode::LDLen{ arr:a }
+                    | CILNode::LDLen { arr: a },
                 ) => {
                     if idx == &1 {
                         *idx += 1;
@@ -104,7 +104,7 @@ impl<'a> Iterator for CILIter<'a> {
                         continue;
                     }
                 }
-                CILIterElem::Root(CILRoot::Pop{tree:a }) => {
+                CILIterElem::Root(CILRoot::Pop { tree: a }) => {
                     if idx == &1 {
                         *idx += 1;
                         self.elems.push((0, CILIterElem::Node(a)));
@@ -132,8 +132,7 @@ impl<'a> Iterator for CILIter<'a> {
                     | CILNode::LDStaticField(_)
                     | CILNode::LDFtn(_)
                     | CILNode::LDTypeToken(_)
-                    | CILNode::LocAllocAligned { tpe: _, align: _ 
-                    }
+                    | CILNode::LocAllocAligned { tpe: _, align: _ },
                 ) => {
                     self.elems.pop();
                     continue;
@@ -143,8 +142,11 @@ impl<'a> Iterator for CILIter<'a> {
                     | CILRoot::STArg { tree, arg: _ }
                     | CILRoot::Ret { tree }
                     | CILRoot::BTrue { cond: tree, .. }
-                    | CILRoot::Throw(tree)|
-                    CILRoot::SetStaticField{ descr:_, value:tree }
+                    | CILRoot::Throw(tree)
+                    | CILRoot::SetStaticField {
+                        descr: _,
+                        value: tree,
+                    },
                 ) => {
                     if idx == &1 {
                         *idx += 1;
@@ -155,21 +157,23 @@ impl<'a> Iterator for CILIter<'a> {
                         continue;
                     }
                 }
-                CILIterElem::Root(CILRoot::SetField {
-                    addr: a, value: b, ..
-                }
-                | CILRoot::STIndI8(a, b)
-                | CILRoot::STIndI16(a, b)
-                | CILRoot::STIndI32(a, b)
-                | CILRoot::STIndI64(a, b)
-                | CILRoot::STIndISize(a, b)
-                | CILRoot::STIndF32(a, b)
-                | CILRoot::STIndF64(a, b)
-                | CILRoot::STObj {
-                    tpe: _,
-                    addr_calc: a,
-                    value_calc: b,
-                })=>match idx {
+                CILIterElem::Root(
+                    CILRoot::SetField {
+                        addr: a, value: b, ..
+                    }
+                    | CILRoot::STIndI8(a, b)
+                    | CILRoot::STIndI16(a, b)
+                    | CILRoot::STIndI32(a, b)
+                    | CILRoot::STIndI64(a, b)
+                    | CILRoot::STIndISize(a, b)
+                    | CILRoot::STIndF32(a, b)
+                    | CILRoot::STIndF64(a, b)
+                    | CILRoot::STObj {
+                        tpe: _,
+                        addr_calc: a,
+                        value_calc: b,
+                    },
+                ) => match idx {
                     1 => {
                         *idx += 1;
                         self.elems.push((0, CILIterElem::Node(a)));
@@ -192,36 +196,29 @@ impl<'a> Iterator for CILIter<'a> {
                     | CILRoot::Break
                     | CILRoot::Nop
                     | CILRoot::ReThrow
-                    | CILRoot::JumpingPad{..},
+                    | CILRoot::JumpingPad { .. },
                 ) => {
                     self.elems.pop();
                     continue;
                 }
-                CILIterElem::Node(CILNode::CallI(fn_sig_and_args) )=> {
+                CILIterElem::Node(CILNode::CallI(fn_sig_and_args)) => {
                     if *idx - 1 < fn_sig_and_args.2.len() {
-                        let arg = & fn_sig_and_args.2[*idx - 1];
+                        let arg = &fn_sig_and_args.2[*idx - 1];
                         *idx += 1;
-                        self.elems.push((
-                            0,
-                            CILIterElem::Node(arg),
-                        ));
+                        self.elems.push((0, CILIterElem::Node(arg)));
                         continue;
                     } else if *idx - 1 < fn_sig_and_args.2.len() + 1 {
                         *idx += 1;
-                        self.elems.push((
-                            0,
-                            CILIterElem::Node(
-                                &fn_sig_and_args.1,
-                             
-                            ),
-                        ));
+                        self.elems.push((0, CILIterElem::Node(&fn_sig_and_args.1)));
                     } else {
                         self.elems.pop();
                         continue;
                     }
                 }
-              
-                CILIterElem::Root(CILRoot::Call { site: _, args } | CILRoot::CallVirt { site: _, args }) => {
+
+                CILIterElem::Root(
+                    CILRoot::Call { site: _, args } | CILRoot::CallVirt { site: _, args },
+                ) => {
                     if *idx - 1 < args.len() {
                         let arg = &args[*idx - 1];
                         *idx += 1;
@@ -233,7 +230,9 @@ impl<'a> Iterator for CILIter<'a> {
                     }
                 }
                 CILIterElem::Node(
-                    CILNode::Call { site: _, args } | CILNode::NewObj { site: _, args } |  CILNode::CallVirt { site: _, args },
+                    CILNode::Call { site: _, args }
+                    | CILNode::NewObj { site: _, args }
+                    | CILNode::CallVirt { site: _, args },
                 ) => {
                     if *idx - 1 < args.len() {
                         let arg = &args[*idx - 1];
@@ -249,58 +248,45 @@ impl<'a> Iterator for CILIter<'a> {
                     sig: _,
                     args,
                     fn_ptr,
-                } )=> {
+                }) => {
                     if *idx - 1 < args.len() {
                         let arg = &args[*idx - 1];
                         *idx += 1;
-                        self.elems.push((
-                            0,
-                            CILIterElem::Node(arg),
-                        ));
+                        self.elems.push((0, CILIterElem::Node(arg)));
                         continue;
                     } else if *idx - 1 < args.len() + 1 {
                         *idx += 1;
-                        self.elems.push((
-                            0,
-                            CILIterElem::Node(fn_ptr),
-                        ));
+                        self.elems.push((0, CILIterElem::Node(fn_ptr)));
                     } else {
                         self.elems.pop();
                         continue;
                     }
                 }
-                CILIterElem::Root(CILRoot::CpBlk {
-                    dst: a,
-                    src: b,
-                    len: c,
-                }
-                | CILRoot::InitBlk {
-                    dst: a,
-                    val: b,
-                    count: c,
-                }) => match *idx {
+                CILIterElem::Root(
+                    CILRoot::CpBlk {
+                        dst: a,
+                        src: b,
+                        len: c,
+                    }
+                    | CILRoot::InitBlk {
+                        dst: a,
+                        val: b,
+                        count: c,
+                    },
+                ) => match *idx {
                     1 => {
                         *idx += 1;
-                        self.elems.push((
-                            0,
-                            CILIterElem::Node(a),
-                        ));
+                        self.elems.push((0, CILIterElem::Node(a)));
                         continue;
                     }
                     2 => {
                         *idx += 1;
-                        self.elems.push((
-                            0,
-                            CILIterElem::Node(b),
-                        ));
+                        self.elems.push((0, CILIterElem::Node(b)));
                         continue;
                     }
                     3 => {
                         *idx += 1;
-                        self.elems.push((
-                            0,
-                            CILIterElem::Node(c),
-                        ));
+                        self.elems.push((0, CILIterElem::Node(c)));
                         continue;
                     }
                     _ => {

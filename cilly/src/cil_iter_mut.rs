@@ -82,7 +82,7 @@ impl<'a> Iterator for CILIterMut<'a> {
                             continue;
                         }
                     },
-                    CILNode::BlackBox(a)  
+                    CILNode::BlackBox(a)
                     | CILNode::ZeroExtendToISize(a)
                     | CILNode::ConvU64(a)
                     | CILNode::ConvI64(a)
@@ -153,7 +153,7 @@ impl<'a> Iterator for CILIterMut<'a> {
                     | CILNode::LoadAddresOfTMPLocal
                     | CILNode::LoadTMPLocal
                     | CILNode::LocAllocAligned { tpe: _, align: _ }
-                    | CILNode::LoadGlobalAllocPtr { alloc_id:_ } => {
+                    | CILNode::LoadGlobalAllocPtr { alloc_id: _ } => {
                         self.elems.pop();
                         continue;
                     }
@@ -221,13 +221,15 @@ impl<'a> Iterator for CILIterMut<'a> {
                             continue;
                         }
                     }
-                    _=>todo!("Can't iter node:{node:?}",node = unsafe{ &**node_ptr } ),
-                    
+                    _ => todo!("Can't iter node:{node:?}", node = unsafe { &**node_ptr }),
                 },
                 CILIterElemUnsafe::Root(root_ptr, _) => match unsafe { &mut **root_ptr } {
-                    CILRoot::SetTMPLocal { value:tree } |
-                    CILRoot::SetStaticField {value:tree, descr:_ } |
-                    CILRoot::STLoc { tree, local: _ }
+                    CILRoot::SetTMPLocal { value: tree }
+                    | CILRoot::SetStaticField {
+                        value: tree,
+                        descr: _,
+                    }
+                    | CILRoot::STLoc { tree, local: _ }
                     | CILRoot::STArg { tree, arg: _ }
                     | CILRoot::Ret { tree }
                     | CILRoot::Pop { tree }
@@ -333,7 +335,7 @@ impl<'a> Iterator for CILIterMut<'a> {
                         self.elems.pop();
                         continue;
                     }
-                    CILRoot::Call { site: _, args } | CILRoot::CallVirt{ site: _, args } => {
+                    CILRoot::Call { site: _, args } | CILRoot::CallVirt { site: _, args } => {
                         if *idx - 1 < args.len() {
                             let arg = &mut args[*idx - 1];
                             *idx += 1;
@@ -370,11 +372,10 @@ impl<'a> Iterator for CILIterMut<'a> {
                             self.elems.pop();
                             continue;
                         }
-                    }
-                    /*_ => todo!(
-                        "Unhandled iter elem {root_ptr:?}",
-                        root_ptr = unsafe { &**root_ptr }
-                    ),*/
+                    } /*_ => todo!(
+                          "Unhandled iter elem {root_ptr:?}",
+                          root_ptr = unsafe { &**root_ptr }
+                      ),*/
                 },
             }
         }

@@ -1,6 +1,6 @@
-
-use crate::{add_method_from_trees, assembly::Assembly, r#type::Type};
+use crate::{add_method_from_trees};
 use cilly::access_modifier::AccessModifer;
+use cilly::asm::Assembly;
 use cilly::basic_block::BasicBlock;
 use cilly::call_site::CallSite;
 use cilly::cil_node::CILNode;
@@ -8,8 +8,9 @@ use cilly::cil_node::CILNode;
 use cilly::cil_root::CILRoot;
 use cilly::fn_sig::FnSig;
 use cilly::method::{Method, MethodType};
+use cilly::type_def::TypeDef;
 use cilly::DotnetTypeRef;
-use cilly::{call, conv_usize, ldc_u64, lt_un};
+use cilly::{call, conv_usize, ldc_u64, lt_un,r#type::Type};
 use rustc_middle::ty::TyCtxt;
 mod casts;
 mod select;
@@ -102,7 +103,7 @@ add_method_from_trees!(
 #[macro_export]
 macro_rules! add_method_from_trees {
     ($name:ident,$input:expr,$output:expr,$trees:expr,$args:expr) => {
-        fn $name(asm: &mut $crate::assembly::Assembly) {
+        fn $name(asm: &mut cilly::asm::Assembly) {
             let method = cilly::method::Method::new(
                 AccessModifer::Private,
                 cilly::method::MethodType::Static,
@@ -116,7 +117,7 @@ macro_rules! add_method_from_trees {
         }
     };
     ($name:ident,$input:expr,$output:expr,$trees:expr,$locals:expr,$args:expr) => {
-        fn $name(asm: &mut $crate::assembly::Assembly) {
+        fn $name(asm: &mut cilly::asm::Assembly) {
             let mut method = cilly::method::Method::new(
                 AccessModifer::Private,
                 cilly::method::MethodType::MethodType::Static,
@@ -135,7 +136,7 @@ macro_rules! add_method_from_trees {
 pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     bounds_check(asm);
     let c_void = crate::r#type::c_void(tyctx);
-    asm.add_typedef(crate::r#type::TypeDef::new(
+    asm.add_typedef(TypeDef::new(
         AccessModifer::Public,
         c_void.as_dotnet().unwrap().name_path().into(),
         vec![],
@@ -146,10 +147,10 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
         None,
         None,
     ));
-    asm.add_typedef(crate::r#type::TypeDef::nameonly("Unresolved"));
-    asm.add_typedef(crate::r#type::TypeDef::nameonly("RustVoid"));
-    asm.add_typedef(crate::r#type::TypeDef::nameonly("Foreign"));
-    asm.add_typedef(crate::r#type::TypeDef::nameonly("RustStr"));
+    asm.add_typedef(TypeDef::nameonly("Unresolved"));
+    asm.add_typedef(TypeDef::nameonly("RustVoid"));
+    asm.add_typedef(TypeDef::nameonly("Foreign"));
+    asm.add_typedef(TypeDef::nameonly("RustStr"));
     /*asm.add_method(Method::new(AccessModifer::Public,MethodType::Static,FnSig::new(&[Type::U64,Type::U64],Type::U128),"new_u128",vec![],vec![
         BasicBlock::new(vec![CILRoot::Ret{ tree: todo!() }.into()],0,None),
     ]));*/

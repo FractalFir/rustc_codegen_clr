@@ -1,5 +1,6 @@
 use ar::Archive;
-use rustc_codegen_clr::{assembly::Assembly, IString};
+use cilly::asm::Assembly;
+use cilly::IString;
 use std::io::Read;
 pub struct LinkableFile {
     name: IString,
