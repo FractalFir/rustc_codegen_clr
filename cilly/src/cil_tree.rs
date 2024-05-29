@@ -35,7 +35,7 @@ impl CILTree {
         &self.tree
     }
     /// Optimizes this tree
-    pub fn opt(&mut self,opt_count:&mut usize) {
+    pub fn opt(&mut self, opt_count: &mut usize) {
         self.tree.opt(opt_count);
     }
     /// Allocates the temporary variables this tree uses.

@@ -2,7 +2,7 @@ use std::path::Path;
 
 use cilly::{
     asm::Assembly,
-    asm_exporter::{AssemblyExportError, AssemblyExporter},
+    asm_exporter::{AssemblyExportError, AssemblyExporter}, ilasm_exporter::ILASMExporter,
 };
 
 pub fn export_assembly(
@@ -10,7 +10,8 @@ pub fn export_assembly(
     path: impl AsRef<Path>,
     is_lib: bool,
 ) -> Result<(), AssemblyExportError> {
-    rustc_codegen_clr::assembly_exporter::ilasm_exporter::ILASMExporter::export_assembly(
+    ILASMExporter::export_assembly(
+        ILASMExporter::default(),
         asm,
         path.as_ref(),
         is_lib,

@@ -15,6 +15,23 @@ pub enum CILRoot {
         sub_target: u32,
         cond: CILNode,
     },
+    BFalse {
+        target: u32,
+        sub_target: u32,
+        cond: CILNode,
+    },
+    BEq {
+        target: u32,
+        sub_target: u32,
+        a: CILNode,
+        b: CILNode,
+    },
+    BNe {
+        target: u32,
+        sub_target: u32,
+        a: CILNode,
+        b: CILNode,
+    },
     GoTo {
         target: u32,
         sub_target: u32,
@@ -90,18 +107,70 @@ pub enum CILRoot {
     //LabelEnd(u32),
 }
 impl CILRoot {
-    pub fn opt(&mut self,opt_count:&mut usize) {
+    pub fn opt(&mut self, opt_count: &mut usize) {
         match self {
             Self::SourceFileInfo(_) => (),
             Self::STLoc { tree, local: _ } => tree.opt(opt_count),
             Self::BTrue {
                 cond: ops,
+                sub_target,
+                target,
+            } => {
+                ops.opt(opt_count);
+                match ops {
+                    CILNode::Eq(a, b) => {
+                        *self = CILRoot::BEq {
+                            target: *target,
+                            sub_target: *sub_target,
+                            a: *a.clone(),
+                            b: *b.clone(),
+                        };
+                        *opt_count += 1;
+                    }
+
+                    _ => (),
+                }
+            }
+            Self::BFalse {
+                cond: ops,
+                sub_target,
+                target,
+            } => {
+                ops.opt(opt_count);
+            }
+            Self::BEq {
+                a,
+                b,
+                sub_target,
+                target,
+            } => {
+                a.opt(opt_count);
+                b.opt(opt_count);
+                match (a, b) {
+                    (CILNode::LdcU32(0) | CILNode::LdFalse, cond)
+                    | (cond, CILNode::LdcU32(0) | CILNode::LdFalse) => {
+                        *self = CILRoot::BFalse {
+                            target: *target,
+                            sub_target: *sub_target,
+                            cond: cond.clone(),
+                        };
+                        *opt_count += 1;
+                    }
+                    _ => (),
+                }
+            }
+            Self::BNe {
+                a,
+                b,
                 sub_target: _,
                 target: _,
-            } => ops.opt(opt_count),
+            } => {
+                a.opt(opt_count);
+                b.opt(opt_count);
+            }
             Self::GoTo { .. } => (),
             Self::Call { args, site: _ } => {
-                args.iter_mut().for_each(|arg|arg.opt(opt_count));
+                args.iter_mut().for_each(|arg| arg.opt(opt_count));
             }
             Self::SetField {
                 addr: fld_addr,
@@ -154,7 +223,7 @@ impl CILRoot {
                 count.opt(opt_count);
             }
             Self::CallVirt { site: _, args } => {
-                args.iter_mut().for_each(|arg|arg.opt(opt_count));
+                args.iter_mut().for_each(|arg| arg.opt(opt_count));
             }
             Self::Ret { tree } => tree.opt(opt_count),
             Self::Pop { tree } => tree.opt(opt_count),
@@ -166,7 +235,7 @@ impl CILRoot {
                 fn_ptr,
                 args,
             } => {
-                args.iter_mut().for_each(|arg|arg.opt(opt_count));
+                args.iter_mut().for_each(|arg| arg.opt(opt_count));
                 fn_ptr.opt(opt_count);
             }
 
@@ -217,6 +286,15 @@ impl CILRoot {
             Self::BTrue {
                 target, sub_target, ..
             }
+            | Self::BFalse {
+                target, sub_target, ..
+            }
+            | Self::BEq {
+                target, sub_target, ..
+            }
+            | Self::BNe {
+                target, sub_target, ..
+            }
             | Self::GoTo { target, sub_target } => {
                 targets.push((*target, *sub_target));
             }
@@ -226,6 +304,15 @@ impl CILRoot {
     pub fn fix_for_exception_handler(&mut self, id: u32) {
         match self {
             Self::BTrue {
+                target, sub_target, ..
+            }
+            | Self::BFalse {
+                target, sub_target, ..
+            }
+            | Self::BEq {
+                target, sub_target, ..
+            }
+            | Self::BNe {
                 target, sub_target, ..
             }
             | Self::GoTo { target, sub_target } => {
@@ -249,7 +336,28 @@ impl CILRoot {
                 target: _,
                 sub_target: _,
                 cond: ops,
+            }
+            | Self::BFalse {
+                target: _,
+                sub_target: _,
+                cond: ops,
             } => ops.sheed_trees(),
+            Self::BEq {
+                target: _,
+                sub_target: _,
+                a,
+                b,
+            }
+            | Self::BNe {
+                target: _,
+                sub_target: _,
+                a,
+                b,
+            } => {
+                let mut res = a.sheed_trees();
+                res.extend(b.sheed_trees());
+                res
+            }
             Self::GoTo {
                 target: _,
                 sub_target: _,
@@ -288,6 +396,7 @@ impl CILRoot {
                 res.extend(value_calc.sheed_trees());
                 res
             }
+
             Self::STArg { arg: _, tree } => tree.sheed_trees(),
             Self::Break => vec![],
             Self::Nop => vec![],
@@ -330,6 +439,11 @@ impl CILRoot {
             Self::SourceFileInfo(_) => (),
             Self::STLoc { tree, .. } => tree.allocate_tmps(curr_local, locals),
             Self::BTrue { cond: ops, .. } => ops.allocate_tmps(curr_local, locals),
+            Self::BFalse { cond: ops, .. } => ops.allocate_tmps(curr_local, locals),
+            Self::BEq { a, b, .. } | Self::BNe { a, b, .. } => {
+                a.allocate_tmps(curr_local, locals);
+                b.allocate_tmps(curr_local, locals);
+            }
             Self::GoTo { .. } => (),
             Self::CallVirt { site: _, args } | Self::Call { site: _, args } => args
                 .iter_mut()

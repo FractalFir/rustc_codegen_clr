@@ -429,12 +429,11 @@ pub fn add_fn<'tyctx>(
     let adjust = check_align_adjust(&mir.local_decls, tyctx, &instance);
     // TODO: find a better way of checking if we are in release
     method.adjust_aligement(adjust);
-    if tyctx.sess.opts.optimize !=  rustc_session::config::OptLevel::No{
+    if tyctx.sess.opts.optimize != rustc_session::config::OptLevel::No {
         method.opt();
         method.realloc_locals();
     }
-  
-   
+
     asm.add_method(method);
     drop(_timer);
     Ok(())

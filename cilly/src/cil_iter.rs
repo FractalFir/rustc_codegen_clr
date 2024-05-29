@@ -142,6 +142,7 @@ impl<'a> Iterator for CILIter<'a> {
                     | CILRoot::STArg { tree, arg: _ }
                     | CILRoot::Ret { tree }
                     | CILRoot::BTrue { cond: tree, .. }
+                    | CILRoot::BFalse { cond: tree, .. }
                     | CILRoot::Throw(tree)
                     | CILRoot::SetStaticField {
                         descr: _,
@@ -287,6 +288,35 @@ impl<'a> Iterator for CILIter<'a> {
                     3 => {
                         *idx += 1;
                         self.elems.push((0, CILIterElem::Node(c)));
+                        continue;
+                    }
+                    _ => {
+                        self.elems.pop();
+                        continue;
+                    }
+                },
+                CILIterElem::Root(
+                    CILRoot::BEq {
+                        target: _,
+                        sub_target: _,
+                        a,
+                        b,
+                    }
+                    | CILRoot::BNe {
+                        target: _,
+                        sub_target: _,
+                        a,
+                        b,
+                    },
+                ) => match idx {
+                    1 => {
+                        *idx += 1;
+                        self.elems.push((0, CILIterElem::Node(a)));
+                        continue;
+                    }
+                    2 => {
+                        *idx += 1;
+                        self.elems.push((0, CILIterElem::Node(b)));
                         continue;
                     }
                     _ => {

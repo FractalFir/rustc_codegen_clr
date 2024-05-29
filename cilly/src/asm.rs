@@ -233,18 +233,12 @@ impl Assembly {
     }
     /// Optimizes all the methods witin the assembly.
     pub fn opt(&mut self) {
-        self
-            .functions
-            .iter_mut()
-            .for_each(|method| {
-                let (site, method) = method;
-                let mut method = method.clone();
-                method.opt();
-                //crate::opt::opt_method(&mut method, self);
-                
-            });
-          
-   
+        self.functions.iter_mut().for_each(|method| {
+            let (site, method) = method;
+            let mut method = method.clone();
+            method.opt();
+            //crate::opt::opt_method(&mut method, self);
+        });
     }
     /// Adds a definition of a type to the assembly.
     pub fn add_typedef(&mut self, type_def: TypeDef) {

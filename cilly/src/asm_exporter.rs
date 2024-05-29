@@ -12,8 +12,7 @@ use crate::{
 
 /// This trait represents an interface implemented by all .NET assembly exporters. (Currently only ilasm)
 pub trait AssemblyExporter: Sized {
-    /// Initializes an assembly exporter.
-    fn init(asm_info: &AssemblyInfo) -> Self;
+
     /// Adds type definition `tpe` to the assembly.
     fn add_type(&mut self, tpe: &TypeDef);
     /// Adds method to assembly.
@@ -28,17 +27,18 @@ pub trait AssemblyExporter: Sized {
     fn add_global(&mut self, tpe: &Type, name: &str);
     /// Handles the whole assembly export process all at once.
     fn export_assembly(
+        mut self,
         asm: &Assembly,
         final_path: &Path,
         is_dll: bool,
         escape_names: bool,
     ) -> Result<(), AssemblyExportError> {
-        let mut asm_exporter = Self::init("asm");
+      
         for (asm_name, asm_ref) in asm.extern_refs() {
-            asm_exporter.add_extern_ref(asm_name, asm_ref);
+            self.add_extern_ref(asm_name, asm_ref);
         }
         for tpe in asm.types() {
-            asm_exporter.add_type(tpe.1);
+            self.add_type(tpe.1);
         }
         for method in asm.methods() {
             let mut method = method.clone();
@@ -48,23 +48,19 @@ pub trait AssemblyExporter: Sized {
             method.allocate_temporaries();
             if escape_names {
                 method.set_name(&escape_class_name(method.name()));
-                asm_exporter.add_method(&method);
+                self.add_method(&method);
             } else {
-                asm_exporter.add_method(&method);
+                self.add_method(&method);
             }
         }
         for ((name, sig), lib) in asm.extern_fns() {
-            asm_exporter.add_extern_method(lib, name, sig);
+            self.add_extern_method(lib, name, sig);
         }
         for global in asm.globals() {
-            asm_exporter.add_global(global.1, global.0);
+            self.add_global(global.1, global.0);
         }
-        /*
-        crate::libc::insert_libc(&mut asm_exporter);
-        if let Some(entrypoint) = asm.entrypoint() {
-            asm_exporter.add_method(crate::codegen::entrypoint::wrapper(entrypoint));
-        }*/
-        asm_exporter
+  
+        self
             .finalize(final_path, is_dll)
             .expect("Could not export assembly");
         Ok(())
@@ -81,10 +77,17 @@ pub enum AssemblyExportError {
     IoError(std::io::Error),
     /// The exporter command (ILASM) failed with an error message.
     ExporterError(IString),
+      /// A generic formatter error happended when exporting the assembly.
+      FmtError(std::fmt::Error),
 }
 impl From<std::io::Error> for AssemblyExportError {
     fn from(error: std::io::Error) -> Self {
         Self::IoError(error)
+    }
+}
+impl From<std::fmt::Error> for AssemblyExportError {
+    fn from(error: std::fmt::Error) -> Self {
+        Self::FmtError(error)
     }
 }
 #[must_use]

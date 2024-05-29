@@ -103,8 +103,6 @@ pub mod native_pastrough;
 mod aggregate;
 /// Representation of a .NET assembly
 pub mod assembly;
-/// Module containg ILASM-based exporter and code shared between all IL exporter.
-pub mod assembly_exporter;
 /// Moudle containing defintion of basic blocks and method operating on them.
 pub mod basic_block;
 /// Code handling binary operations
@@ -264,10 +262,7 @@ impl CodegenBackend for MyBackend {
             let asm_name = "";
             let serialized_asm_path = outputs.temp_path(OutputType::Bitcode, Some(asm_name));
             //std::fs::create_dir_all(&serialized_asm_path).expect("Could not create the directory temporary files are supposed to be in.");
-            if *crate::config::ENFORCE_CIL_VALID {
-                // Calling `maxstack` forces the method to be flattened, which checks the CIL.
-                asm.methods().map(method::maxstack).for_each(|_| ());
-            }
+          
             let mut asm_out = std::fs::File::create(&serialized_asm_path).expect(
                 "Could not create the temporary files necessary for building the assembly!",
             );

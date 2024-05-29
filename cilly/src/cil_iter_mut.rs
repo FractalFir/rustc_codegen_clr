@@ -234,6 +234,7 @@ impl<'a> Iterator for CILIterMut<'a> {
                     | CILRoot::Ret { tree }
                     | CILRoot::Pop { tree }
                     | CILRoot::BTrue { cond: tree, .. }
+                    | CILRoot::BFalse { cond: tree, .. }
                     | CILRoot::Throw(tree) => {
                         if *idx == 1 {
                             *idx += 1;
@@ -243,6 +244,26 @@ impl<'a> Iterator for CILIterMut<'a> {
                                     std::ptr::from_mut(&mut *tree),
                                     PhantomData,
                                 ),
+                            ));
+                            continue;
+                        } else {
+                            self.elems.pop();
+                            continue;
+                        }
+                    }
+                    CILRoot::BEq { a, b, .. } | CILRoot::BNe { a, b, .. } => {
+                        if *idx == 1 {
+                            *idx += 1;
+                            self.elems.push((
+                                0,
+                                CILIterElemUnsafe::Node(std::ptr::from_mut(&mut *a), PhantomData),
+                            ));
+                            continue;
+                        } else if *idx == 2 {
+                            *idx += 1;
+                            self.elems.push((
+                                0,
+                                CILIterElemUnsafe::Node(std::ptr::from_mut(&mut *b), PhantomData),
                             ));
                             continue;
                         } else {

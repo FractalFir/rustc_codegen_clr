@@ -3,8 +3,7 @@ use std::collections::HashSet;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    cil_iter::CILIterElem, cil_iter_mut::CILIterElemMut, cil_root::CILRoot, cil_tree::CILTree,
-    method::Method,
+    cil_iter::CILIterElem, cil_iter_mut::CILIterElemMut, cil_root::CILRoot, cil_tree::CILTree, ilasm_op::DepthSetting, method::Method, IlasmFlavour
 };
 
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
@@ -153,6 +152,16 @@ impl BasicBlock {
     pub fn trees_mut(&mut self) -> &mut Vec<CILTree> {
         &mut self.trees
     }
+    /// Returns a mutable reference to the trees that make up this block, and its exception handler.
+    pub fn all_trees_mut(&mut self) -> impl Iterator<Item = &mut CILTree> {
+        let trees = self.trees.iter_mut();
+        let blocks = if let Some(handler) = &mut self.handler {
+            handler.as_blocks_mut().expect("ERROR: tried to iterate trough the handler of a block with unresolved handlers.").iter_mut()
+        } else {
+            std::slice::IterMut::default()
+        };
+        trees.chain(blocks.flat_map(|block| block.trees_mut()))
+    }
     /// Returns a reference to the trees that make up this block.
     #[must_use]
     pub fn trees(&self) -> &[CILTree] {
@@ -208,4 +217,41 @@ impl BasicBlock {
         }
         Ok(())
     }
+}
+pub fn export(out:&mut impl std::fmt::Write,block:&BasicBlock,depth:DepthSetting,flavour:IlasmFlavour)->std::fmt::Result{
+    let this_depth = if block.handler().is_some() {
+        write!(out, ".try{{").unwrap();
+        depth.incremented()
+    } else {
+        depth
+    };
+    // Basic block
+    writeln!(out, "bb_{id}_0:", id = block.id()).unwrap();
+    for tree in block.trees() {
+        crate::ilasm_op::export_root(out, tree.root(), this_depth, flavour).unwrap();
+    }
+    if let Some(handler) = block.handler() {
+        let handler = handler.as_blocks().unwrap();
+        write!(out, "}}catch [System.Runtime]System.Object{{\npop").unwrap();
+        DepthSetting::with_pading().pad(out).unwrap();
+        for handler_block in handler {
+            writeln!(
+                out,
+                "bb_{main_id}_{sub_id}:",
+                main_id = block.id(),
+                sub_id = handler_block.id()
+            )
+            .unwrap();
+            for tree in handler_block.trees() {
+                crate::ilasm_op::export_root(out, tree.root(), this_depth, flavour)
+                    .unwrap();
+            }
+            this_depth.pad(out).unwrap();
+        }
+
+        write!(out, "}}")?;
+    }
+    //eprintln!("{string}");
+    depth.pad(out)?;
+    Ok(())
 }

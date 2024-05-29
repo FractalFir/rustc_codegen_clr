@@ -356,7 +356,7 @@ impl CILNode {
             _ => todo!("Can't select type {tpe:?}"),
         }
     }
-    fn opt_children(&mut self,opt_count:&mut usize) {
+    fn opt_children(&mut self, opt_count: &mut usize) {
         match self {
             Self::LocAllocAligned { .. }=>(),
             Self::LdFalse | Self::LdTrue=>(),
@@ -474,12 +474,15 @@ impl CILNode {
     // This clippy lint is wrong
     #[allow(clippy::assigning_clones)]
     /// Optimizes this `CILNode`.
-    pub fn opt(&mut self,opt_count:&mut usize) {
+    pub fn opt(&mut self, opt_count: &mut usize) {
         self.opt_children(opt_count);
         match self {
             Self::LDField { addr: fld_addr, .. } => match fld_addr.as_mut() {
                 Self::MRefToRawPtr(addr) => match addr.as_mut() {
-                    Self::LDLocA(_) | Self::LDFieldAdress { .. } => *fld_addr = addr.clone(),
+                    Self::LDLocA(_) | Self::LDFieldAdress { .. } => {
+                        *fld_addr = addr.clone();
+                        *opt_count += 1;
+                    }
                     _ => (),
                 },
                 _ => (),
@@ -494,6 +497,7 @@ impl CILNode {
                             addr: addr.clone(),
                             field: field.clone(),
                         }));
+                        *opt_count += 1;
                     }
                     _ => (),
                 },

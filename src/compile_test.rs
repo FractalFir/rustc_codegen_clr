@@ -30,7 +30,7 @@ pub fn test_dotnet_executable(file_path: &str, test_dir: &str) -> String {
         };
         println!("{config_path:?}");
         let mut file = std::fs::File::create(config_path).unwrap();
-        file.write_all(RUNTIME_CONFIG.as_bytes())
+        file.write_all(cilly::ilasm_exporter::get_runtime_config().as_bytes())
             .expect("Could not write runtime config");
         //RUNTIME_CONFIG
         let mut cmd = std::process::Command::new("timeout");
@@ -889,48 +889,13 @@ cargo_test_ignored! {build_core}
 cargo_test_ignored! {build_alloc}
 cargo_test_ignored! {build_std}
 cargo_test! {benchmarks,stable}
-cargo_test! {glam_test,unstable}
+cargo_test! {glam_test,stable}
 cargo_test! {fastrand_test,stable}
 
 use lazy_static::lazy_static;
-/// Cached runtime configuration string, obtained from calling the .NET runtime.
-#[must_use]
-pub fn get_runtime_config() -> &'static str {
-    &RUNTIME_CONFIG
-}
+
 lazy_static! {
-    /// Cached runtime configuration file, obtained from calling the .NET runtime.
-    static ref RUNTIME_CONFIG: String = {
-        let info = std::process::Command::new("dotnet")
-            .arg("--info")
-            .output()
-            .expect("Could not run `dotnet --info`");
-        if !info.stderr.is_empty() {
-            let stderr = std::str::from_utf8(&info.stderr).expect("Error message not utf8");
-            panic!("dotnet --info panicked with {stderr}")
-        }
-        let info = std::str::from_utf8(&info.stdout).expect("Error message not utf8");
-        let version_start = info.find("Host:").unwrap_or_default();
-        let version_start = version_start + info[version_start..].find("Version:").unwrap();
-        let version_start = version_start + "Version:".len();
-        let version_end = info.find("Architecture:").unwrap();
-        let version = &info[version_start..version_end].trim();
-        format!(
-            "{{
-            \"runtimeOptions\": {{
-              \"tfm\": \"netcoreapp3.1\",
-              \"framework\": {{
-                \"name\": \"Microsoft.NETCore.App\",
-                \"version\": \"{version}\"
-              }},
-              \"configProperties\": {{
-                \"System.Threading.ThreadPool.MinThreads\": 4,
-                \"System.Threading.ThreadPool.MaxThreads\": 25
-              }}
-            }}
-          }}"
-        )
-    };
+  
     /// Cached information about the presence of the `mono` .NET runtime.
     static ref IS_MONO_PRESENT: bool = std::process::Command::new("mono").output().is_ok();
     /// Cached information about the presence of the peverify tool.

@@ -534,6 +534,35 @@ pub fn export_root(
             depth.pad(out)?;
             write!(out, "brtrue bb_{target}_{sub_target}")
         }
+        CILRoot::BFalse {
+            target,
+            sub_target,
+            cond,
+        } => {
+            export_node(out, cond, depth.incremented(), il_flavour)?;
+            depth.pad(out)?;
+            write!(out, "brfalse bb_{target}_{sub_target}")
+        }
+        CILRoot::BEq {
+            target,
+            sub_target,
+            a,
+            b,
+        } => {
+            export_2_nodes(out, a, b, depth.incremented(), il_flavour)?;
+            depth.pad(out)?;
+            write!(out, "beq bb_{target}_{sub_target}")
+        }
+        CILRoot::BNe {
+            target,
+            sub_target,
+            a,
+            b,
+        } => {
+            export_2_nodes(out, a, b, depth.incremented(), il_flavour)?;
+            depth.pad(out)?;
+            write!(out, "bne bb_{target}_{sub_target}")
+        }
         CILRoot::GoTo { target, sub_target } => {
             depth.pad(out)?;
             write!(out, "br bb_{target}_{sub_target}")

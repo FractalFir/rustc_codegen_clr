@@ -1,19 +1,12 @@
 #![deny(unused_must_use)]
 #![allow(clippy::module_name_repetitions)]
 use cilly::{
-    access_modifier,
-    asm::Assembly,
-    basic_block::BasicBlock,
-    call_site::CallSite,
-    cil_node::CILNode,
-    cil_root::CILRoot,
-    method::{Method, MethodType},
-    DotnetTypeRef, FnSig, IlasmFlavour, Type,
+    access_modifier, asm::Assembly, basic_block::BasicBlock, c_exporter::CExporter, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, ilasm_exporter::ILASM_FLAVOUR, method::{Method, MethodType}, DotnetTypeRef, FnSig, IlasmFlavour, Type
 };
 //use assembly::Assembly;
 use lazy_static::lazy_static;
 use load::LinkableFile;
-use rustc_codegen_clr::{assembly_exporter::ilasm_exporter::*, config, AString, IString};
+use rustc_codegen_clr::{ config, AString, IString};
 mod cmd;
 mod export;
 mod load;
@@ -491,7 +484,7 @@ fn main() {
             "The codegen is now running in C mode. It will emmit C source files and build them."
         );
 
-        Exporter::export_assembly(&final_assembly, output_file_path.as_ref(), is_lib, true)
+        Exporter::export_assembly(CExporter::init("rust_module"),&final_assembly, output_file_path.as_ref(), is_lib, true)
             .unwrap();
         return;
     }

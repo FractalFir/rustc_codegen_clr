@@ -8,16 +8,7 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    access_modifier::AccessModifer,
-    basic_block::BasicBlock,
-    call_site::CallSite,
-    cil_iter::{CILIterElem, CILIterTrait},
-    cil_iter_mut::CILIterElemMut,
-    cil_node::CILNode,
-    cil_root::CILRoot,
-    cil_tree::CILTree,
-    static_field_desc::StaticFieldDescriptor,
-    DotnetTypeRef, FnSig, IString, Type,
+    access_modifier::AccessModifer, basic_block::BasicBlock, call_site::CallSite, cil_iter::{CILIterElem, CILIterTrait}, cil_iter_mut::CILIterElemMut, cil_node::CILNode, cil_root::CILRoot, cil_tree::CILTree, ilasm_op::{non_void_type_cil, type_cil, DepthSetting}, static_field_desc::StaticFieldDescriptor, DotnetTypeRef, FnSig, IString, IlasmFlavour, Type
 };
 
 /// Represenation of a CIL method.
@@ -49,15 +40,24 @@ pub enum Attribute {
 }
 
 impl Method {
-    pub fn opt(&mut self){
-        for block in self.blocks.iter_mut(){
-            let mut opt_counter:usize = 1;
-            while opt_counter > 0{
+    pub fn maxstack(&self) -> usize {
+        let trees = self.blocks().iter().flat_map(|block| block.trees());
+        let max = trees.map(|tree| tree.root().into_iter().count() + 3).max();
+        max.unwrap_or(6)
+    }
+    
+    pub fn opt(&mut self) {
+        for tree in self
+            .blocks
+            .iter_mut()
+            .flat_map(|block| block.all_trees_mut())
+        {
+            let mut opt_counter: usize = 1;
+            while opt_counter > 0 {
                 // Reset `opt_counter`
                 opt_counter = 0;
-                block.trees_mut().iter_mut().for_each(|tree|tree.opt(&mut opt_counter));
+                tree.opt(&mut opt_counter);
             }
-            
         }
     }
     /// Iterates over each `CILNode` and `CILRoot`.
@@ -112,10 +112,9 @@ impl Method {
         sig: FnSig,
         name: &str,
         mut locals: Vec<LocalDef>,
-         blocks: Vec<BasicBlock>,
+        blocks: Vec<BasicBlock>,
         mut arg_names: Vec<Option<IString>>,
     ) -> Self {
-        
         let mut used_names = HashSet::new();
         for name in arg_names
             .iter_mut()
@@ -364,6 +363,105 @@ impl Method {
                 });
         }
     }
+    pub fn export(&self,w: &mut impl std::fmt::Write,flavour:IlasmFlavour,init_locals:bool) -> std::fmt::Result {
+        let access = if let AccessModifer::Private = self.access() {
+            "private"
+        } else {
+            "public"
+        };
+        let static_inst = match self.method_type() {
+            MethodType::Static => "static",
+            MethodType::Virtual => "virtual instance",
+            MethodType::Instance => "instance",
+        };
+        let output = type_cil(self.sig().output());
+        let name = self.name();
+        write!(
+            w,
+            ".method {access} hidebysig {static_inst} {output} '{name}'("
+        )?;
+        let mut input_iter = self.explicit_inputs().iter();
+        if self.arg_names().is_empty() || self.arg_names().len() != self.explicit_inputs().len() {
+            if self.arg_names().len() != self.explicit_inputs().len() {
+                println!("WARNING: debug arg count invalid!");
+            }
+            if let Some(input) = input_iter.next() {
+                write!(w, "{}", non_void_type_cil(input))?;
+            }
+            for input in input_iter {
+                write!(w, ",{}", non_void_type_cil(input))?;
+            }
+        } else {
+            assert_eq!(self.arg_names().len(), self.explicit_inputs().len());
+            let mut input_iter = self
+                .explicit_inputs()
+                .iter()
+                .zip(self.arg_names().iter());
+            if let Some((input, name)) = input_iter.next() {
+                match name {
+                    Some(name) => write!(w, "{} '{name}'", non_void_type_cil(input))?,
+                    None => write!(w, "{}", non_void_type_cil(input))?,
+                }
+            }
+            for (input, name) in input_iter {
+                match name {
+                    Some(name) => write!(w, ",{} '{name}'", non_void_type_cil(input))?,
+                    None => write!(w, ",{}", non_void_type_cil(input))?,
+                }
+            }
+        }
+        writeln!(w, "){{")?;
+        if self.is_entrypoint() {
+            writeln!(w, ".entrypoint")?;
+        }
+        if init_locals{
+            writeln!(w, "\t.locals init(")?;
+        } else {
+            writeln!(w, "\t.locals (")?;
+        }
+        let mut locals_iter = self.locals().iter().enumerate();
+        if let Some((local_id, local)) = locals_iter.next() {
+            match &local.0 {
+                None => write!(
+                    w,
+                    "\t\t[{local_id}] {escaped_type}",
+                    escaped_type = non_void_type_cil(&local.1)
+                )?,
+                Some(name) => write!(
+                    w,
+                    "\t\t[{local_id}] {escaped_type} '{name}'",
+                    escaped_type = non_void_type_cil(&local.1)
+                )?,
+            }
+        }
+        for (local_id, local) in locals_iter {
+            match &local.0 {
+                None => write!(
+                    w,
+                    ",\n\t\t[{local_id}] {escaped_type}",
+                    escaped_type = non_void_type_cil(&local.1)
+                )?,
+                Some(name) => write!(
+                    w,
+                    ",\n\t\t[{local_id}] {escaped_type} '{name}'",
+                    escaped_type = non_void_type_cil(&local.1)
+                )?,
+            }
+        }
+        writeln!(
+            w,
+            "\n\t)\n.maxstack {maxstack}\n",
+            maxstack = self.maxstack()
+        )?;
+        for block in self.blocks().iter() {
+            crate::basic_block::export(w,block,DepthSetting::with_pading(),flavour).unwrap();
+            //assert_eq!(remove_whitespace(&old_block_to_string(block,method)),remove_whitespace(&string));
+           
+        }
+     
+        writeln!(w, "}}")
+    }
+    
 }
 
 /// A wrapper around mutably borrowed [`BasicBlock`]s of a method. Prevents certain bugs.

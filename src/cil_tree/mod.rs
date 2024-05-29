@@ -147,7 +147,27 @@ pub(crate) fn resolve_global_allocations(
             target: _,
             sub_target: _,
             cond: ops,
+        }
+        | CILRoot::BFalse {
+            target: _,
+            sub_target: _,
+            cond: ops,
         } => resolve_global_allocations_node(ops, asm, tyctx, tycache),
+        CILRoot::BEq {
+            target: _,
+            sub_target: _,
+            a,
+            b,
+        }
+        | CILRoot::BNe {
+            target: _,
+            sub_target: _,
+            a,
+            b,
+        } => {
+            resolve_global_allocations_node(a, asm, tyctx, tycache);
+            resolve_global_allocations_node(b, asm, tyctx, tycache);
+        }
         CILRoot::GoTo {
             target: _,
             sub_target: _,
