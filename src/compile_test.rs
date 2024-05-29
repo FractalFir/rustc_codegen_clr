@@ -586,8 +586,18 @@ fn build_backend() -> Result<(), String> {
         .args(["build", "--lib"])
         .output()
         .map_err(|err| err.to_string())?;
-    std::process::Command::new("cargo")
+    let _out = std::process::Command::new("cargo")
+    .args(["build", "--lib","--release"])
+    .output()
+    .map_err(|err| err.to_string())?;
+    let _out = std::process::Command::new("cargo")
+        .current_dir("cilly")
         .args(["build", "--bin", "linker"])
+        .output()
+        .expect("could not build the backend");
+    let _out = std::process::Command::new("cargo")
+        .current_dir("cilly")
+        .args(["build", "--bin", "linker","--release"])
         .output()
         .expect("could not build the backend");
     Ok(())
@@ -906,6 +916,7 @@ lazy_static! {
     pub static ref RUSTC_BUILD_STATUS: Result<(), String> = build_backend();
     /// Cached path to the bulit-in linker.
     pub static ref RUSTC_CODEGEN_CLR_LINKER:PathBuf = {
+        let _ = *RUSTC_BUILD_STATUS;
         if cfg!(debug_assertions) {
             std::process::Command::new("cargo").args(["build","--bin","linker"]).output().unwrap();
             //TODO: Fix this for other platforms

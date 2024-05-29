@@ -1,4 +1,4 @@
-use crate::r#type::{TyCache, Type};
+use crate::r#type::TyCache;
 
 use cilly::{asm::Assembly, cil_node::CILNode, cil_root::CILRoot, cil_tree::CILTree};
 use rustc_middle::ty::TyCtxt;

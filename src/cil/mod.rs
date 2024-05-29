@@ -1,11 +1,9 @@
-use crate::IString;
 
 use cilly::{
-    call_site::CallSite, cil_root::CILRoot, field_desc::FieldDescriptor, fn_sig::FnSig,
-    static_field_desc::StaticFieldDescriptor, DotnetTypeRef, Type,
+    call_site::CallSite, cil_root::CILRoot, fn_sig::FnSig, Type,
 };
 use rustc_middle::ty::TyCtxt;
-use serde::{Deserialize, Serialize};
+
 
 /// Returns the call site refering to the function malloc.
 #[must_use]

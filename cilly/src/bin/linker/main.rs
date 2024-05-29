@@ -1,19 +1,20 @@
 #![deny(unused_must_use)]
 #![allow(clippy::module_name_repetitions)]
 use cilly::{
-    access_modifier, asm::Assembly, basic_block::BasicBlock, c_exporter::CExporter, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, ilasm_exporter::ILASM_FLAVOUR, method::{Method, MethodType}, DotnetTypeRef, FnSig, IlasmFlavour, Type
+    access_modifier, asm::Assembly, basic_block::BasicBlock, c_exporter::CExporter, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, ilasm_exporter::ILASM_FLAVOUR, method::{Method, MethodType}, DotnetTypeRef, FnSig, IString, IlasmFlavour, Type
 };
 //use assembly::Assembly;
 use lazy_static::lazy_static;
 use load::LinkableFile;
-use rustc_codegen_clr::{ config, AString, IString};
+
 mod cmd;
 mod export;
 mod load;
 mod patch;
+mod libc_fns;
 use std::{collections::HashMap, env, io::Write};
 struct NativePastroughInfo {
-    defs: HashMap<IString, AString>,
+    defs: HashMap<IString, IString>,
 }
 impl NativePastroughInfo {
     pub fn new() -> Self {
@@ -21,11 +22,11 @@ impl NativePastroughInfo {
             defs: HashMap::new(),
         }
     }
-    pub fn insert(&mut self, k: IString, v: impl Into<AString>) -> Option<AString> {
+    pub fn insert(&mut self, k: IString, v: impl Into<IString>) -> Option<IString> {
         self.defs.insert(k, v.into())
     }
 
-    pub fn get(&self, k: &str) -> Option<&AString> {
+    pub fn get(&self, k: &str) -> Option<&IString> {
         self.defs.get(k)
     }
 }
@@ -212,7 +213,7 @@ fn autopatch(asm: &mut Assembly, native_pastrough: &NativePastroughInfo) {
             continue;
         }
         //#[cfg(not(target_os = "linux"))]
-        if rustc_codegen_clr::native_pastrough::LIBC_FNS
+        if libc_fns::LIBC_FNS
             .iter()
             .any(|libc_fn| *libc_fn == name)
         {
@@ -227,7 +228,7 @@ fn autopatch(asm: &mut Assembly, native_pastrough: &NativePastroughInfo) {
             externs.push((
                 call.name().into(),
                 call.signature().to_owned(),
-                lib.as_ref().clone(),
+                lib.as_ref(),
             ));
             continue;
         }
@@ -237,7 +238,7 @@ fn autopatch(asm: &mut Assembly, native_pastrough: &NativePastroughInfo) {
     }
     externs
         .into_iter()
-        .for_each(|(name, sig, lib)| asm.add_extern_fn(name, sig, lib));
+        .for_each(|(name, sig, lib)| asm.add_extern_fn(name, sig, lib.into()));
     patched
         .values()
         .for_each(|method| asm.add_method(method.clone()));
@@ -337,7 +338,7 @@ fn add_shared(file_path: &str, native_pastrough: &mut NativePastroughInfo) {
         .unwrap();
     //let file_path = AString::new(format!("{}.{}",file_stem(file_path),file_ext(file_path)).into());
     //eprintln!("file_path:{file_path}");
-    let file_path = AString::new(file_path.into());
+    let file_path:IString = file_path.into();
     if !nm.stderr.is_empty() {
         eprintln!("nm_error:{}", String::from_utf8_lossy(&nm.stderr));
     }
@@ -459,15 +460,15 @@ fn main() {
     let mut native_pastrough = NativePastroughInfo::new();
     #[cfg(target_os = "linux")]
     {
-        if *config::NATIVE_PASSTROUGH {
+        if *NATIVE_PASSTROUGH {
             add_shared(get_libc(), &mut native_pastrough);
         }
     }
-    if *crate::config::NATIVE_PASSTROUGH {
+    if *NATIVE_PASSTROUGH {
         handle_native_passtrough(args, &linkables, output_file_path, &mut native_pastrough);
     }
 
-    if !*rustc_codegen_clr::config::ABORT_ON_ERROR {
+    if !*ABORT_ON_ERROR {
         autopatch(&mut final_assembly, &native_pastrough);
     }
     let is_lib = output_file_path.contains(".dll")
@@ -477,7 +478,7 @@ fn main() {
     if !is_lib {
         final_assembly.eliminate_dead_code();
     }
-    if *config::C_MODE {
+    if *C_MODE {
         type Exporter = cilly::c_exporter::CExporter;
         use cilly::asm_exporter::AssemblyExporter;
         println!(
@@ -502,7 +503,7 @@ fn main() {
         let bootstrap = format!(
             include_str!("dotnet_jumpstart.rs"),
             exec_file = path.file_name().unwrap().to_string_lossy(),
-            has_native_companion = *crate::config::NATIVE_PASSTROUGH,
+            has_native_companion = *NATIVE_PASSTROUGH,
             has_pdb = match *ILASM_FLAVOUR {
                 IlasmFlavour::Clasic => false,
                 IlasmFlavour::Modern => true,
@@ -514,7 +515,7 @@ fn main() {
                     output_file_path = path.file_name().unwrap().to_string_lossy()
                 ),
             },
-            native_companion_file = if *crate::config::NATIVE_PASSTROUGH {
+            native_companion_file = if *NATIVE_PASSTROUGH {
                 format!(
                     "rust_native_{output_file_path}.so",
                     output_file_path = file_stem(output_file_path)
@@ -543,4 +544,37 @@ fn main() {
         );
     }
     //todo!();
+}
+lazy_static!{
+    #[doc = "Tells the codegen compile linked static libraries into a shared library, which will be bundled with the .NET executable."]pub static ref NATIVE_PASSTROUGH:bool = {
+        std::env::vars().into_iter().find_map(|(key,value)|if key == stringify!(NATIVE_PASSTROUGH){
+            Some(value)
+        }else {
+            None
+        }).map(|value|match value.as_ref(){
+            "0"|"false"|"False"|"FALSE" => false,"1"|"true"|"True"|"TRUE" => true,_ => panic!("Boolean enviroment variable {} has invalid value {}",stringify!(NATIVE_PASSTROUGH),value),
+        }).unwrap_or(false)
+    };
+}
+lazy_static!{
+    #[doc = "Should the codegen stop working when ecountering an error, or try to press on, replacing unusuported code with exceptions throws?"]pub static ref ABORT_ON_ERROR:bool = {
+        std::env::vars().into_iter().find_map(|(key,value)|if key == stringify!(ABORT_ON_ERROR){
+            Some(value)
+        }else {
+            None
+        }).map(|value|match value.as_ref(){
+            "0"|"false"|"False"|"FALSE" => false,"1"|"true"|"True"|"TRUE" => true,_ => panic!("Boolean enviroment variable {} has invalid value {}",stringify!(ABORT_ON_ERROR),value),
+        }).unwrap_or(false)
+    };
+}
+lazy_static!{
+    #[doc = "Tells the codegen to emmit C source files."]pub static ref C_MODE:bool = {
+        std::env::vars().into_iter().find_map(|(key,value)|if key == stringify!(C_MODE){
+            Some(value)
+        }else {
+            None
+        }).map(|value|match value.as_ref(){
+            "0"|"false"|"False"|"FALSE" => false,"1"|"true"|"True"|"TRUE" => true,_ => panic!("Boolean enviroment variable {} has invalid value {}",stringify!(C_MODE),value),
+        }).unwrap_or(false)
+    };
 }

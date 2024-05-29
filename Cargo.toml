@@ -22,10 +22,7 @@ serde = { version = "1.0.183", features = ["derive"] }
 strsim = "0.11.1"
 [lib]
 crate-type=["rlib", "cdylib"]
-[[bin]]
-name = "linker"
-test = false
-bench = false
+
 [workspace]
 members = [ "cilly",
     "mycorrhiza", 
