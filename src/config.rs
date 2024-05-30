@@ -28,7 +28,6 @@ config_flag! {ABORT_ON_ERROR,false,"Should the codegen stop working when ecounte
 
 config_flag! {TRACE_CALLS,false,"Preapends each function call with a debug message"}
 
-
 config_flag! {INLINE_SIMPLE_FUNCTIONS,false,"Allows the optimizer to inline very simple functions. It is buggy."}
 config_flag! {REMOVE_UNSUED_LOCALS,false,"Turns on the local removal optimization."}
 config_flag! {CHECK_ALLOCATIONS,false,"Turns on allocation checks/debug info."}
@@ -39,7 +38,7 @@ config_flag! {ALLOW_MISCOMPILATIONS,true,"Should the codegen continue working af
 config_flag! {INSERT_MIR_DEBUG_COMMENTS,false,"Tells the codegen to insert comments containing the MIR statemtens after each one of them."}
 config_flag! {PRINT_LOCAL_TYPES,false,"Prints local types of all compiled MIR functions."}
 config_flag! {OPTIMIZE_CIL,true,"Tells the codegen to optmize the emiited CIL."}
-lazy_static!{
+lazy_static! {
     #[doc = "Tells the codegen to escape class and method names."]pub static ref ESCAPE_NAMES:bool = {
         std::env::vars().into_iter().find_map(|(key,value)|if key == stringify!(ESCAPE_NAMES){
             Some(value)
@@ -57,7 +56,7 @@ config_flag! {C_MODE,false,"Tells the codegen to emmit C source files."}
 config_flag! {C_SANITIZE,false,"Tells the codegen sanitize C."}
 
 config_flag! {RANDOMIZE_LAYOUT,false,"Tells the codegen to randomize TEST type layout."}
-lazy_static!{
+lazy_static! {
     #[doc = "Tells the codegen compile linked static libraries into a shared library, which will be bundled with the .NET executable."]pub static ref NATIVE_PASSTROUGH:bool = {
         std::env::vars().into_iter().find_map(|(key,value)|if key == stringify!(NATIVE_PASSTROUGH){
             Some(value)
@@ -71,10 +70,8 @@ lazy_static!{
 
 config_flag! {ENFORCE_CIL_VALID,false,"Tells the codegen to preform additonal checks before saving the ."}
 
-
 config_flag! {CHECK_REFS,false,"Tells codegen to check if references it assigns are valid."}
 
 config_flag! {TYPECHECK_CIL,false,"Checks the geneareted CIL for type safety."}
 
 config_flag! {TRACE_CIL_OPS,false,"Tells the print each CIL op before it is executed."}
-

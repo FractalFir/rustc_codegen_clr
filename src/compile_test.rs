@@ -587,9 +587,9 @@ fn build_backend() -> Result<(), String> {
         .output()
         .map_err(|err| err.to_string())?;
     let _out = std::process::Command::new("cargo")
-    .args(["build", "--lib","--release"])
-    .output()
-    .map_err(|err| err.to_string())?;
+        .args(["build", "--lib", "--release"])
+        .output()
+        .map_err(|err| err.to_string())?;
     let _out = std::process::Command::new("cargo")
         .current_dir("cilly")
         .args(["build", "--bin", "linker"])
@@ -597,7 +597,7 @@ fn build_backend() -> Result<(), String> {
         .expect("could not build the backend");
     let _out = std::process::Command::new("cargo")
         .current_dir("cilly")
-        .args(["build", "--bin", "linker","--release"])
+        .args(["build", "--bin", "linker", "--release"])
         .output()
         .expect("could not build the backend");
     Ok(())
@@ -905,7 +905,7 @@ cargo_test! {fastrand_test,stable}
 use lazy_static::lazy_static;
 
 lazy_static! {
-  
+
     /// Cached information about the presence of the `mono` .NET runtime.
     static ref IS_MONO_PRESENT: bool = std::process::Command::new("mono").output().is_ok();
     /// Cached information about the presence of the peverify tool.

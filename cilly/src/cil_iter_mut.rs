@@ -60,7 +60,8 @@ impl<'a> Iterator for CILIterMut<'a> {
                     | CILNode::Shl(a, b)
                     | CILNode::Shr(a, b)
                     | CILNode::ShrUn(a, b)
-                    | CILNode::XOr(a, b) => match *idx {
+                    | CILNode::XOr(a, b)
+                    | CILNode::LDElelemRef { arr: a, idx: b } => match *idx {
                         1 => {
                             *idx += 1;
                             self.elems.push((
@@ -120,7 +121,8 @@ impl<'a> Iterator for CILIterMut<'a> {
                     | CILNode::LDIndISize { ptr: a }
                     | CILNode::LDIndUSize { ptr: a }
                     | CILNode::Not(a)
-                    | CILNode::Neg(a) => {
+                    | CILNode::Neg(a)
+                    | CILNode::LDLen { arr: a } => {
                         if *idx == 1 {
                             *idx += 1;
                             self.elems.push((
@@ -153,7 +155,8 @@ impl<'a> Iterator for CILIterMut<'a> {
                     | CILNode::LoadAddresOfTMPLocal
                     | CILNode::LoadTMPLocal
                     | CILNode::LocAllocAligned { tpe: _, align: _ }
-                    | CILNode::LoadGlobalAllocPtr { alloc_id: _ } => {
+                    | CILNode::LoadGlobalAllocPtr { alloc_id: _ }
+                    | CILNode::PointerToConstValue(_) => {
                         self.elems.pop();
                         continue;
                     }
@@ -191,6 +194,29 @@ impl<'a> Iterator for CILIterMut<'a> {
                                     std::ptr::from_mut(node.as_mut()),
                                     PhantomData,
                                 ),
+                            ));
+                            continue;
+                        } else {
+                            self.elems.pop();
+                            continue;
+                        }
+                    }
+                    CILNode::TemporaryLocal(pack) => {
+                        let (_, roots, node) = pack.as_mut();
+                        if *idx - 1 < roots.len() {
+                            let arg = &mut roots[*idx - 1];
+                            *idx += 1;
+                            self.elems.push((
+                                0,
+                                CILIterElemUnsafe::Root(std::ptr::from_mut(arg), PhantomData),
+                            ));
+                            continue;
+                        }
+                        if *idx - 1 < roots.len() + 1 {
+                            *idx += 1;
+                            self.elems.push((
+                                0,
+                                CILIterElemUnsafe::Node(std::ptr::from_mut(node), PhantomData),
                             ));
                             continue;
                         } else {

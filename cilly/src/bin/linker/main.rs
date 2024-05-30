@@ -1,7 +1,16 @@
 #![deny(unused_must_use)]
 #![allow(clippy::module_name_repetitions)]
 use cilly::{
-    access_modifier, asm::Assembly, basic_block::BasicBlock, c_exporter::CExporter, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, ilasm_exporter::ILASM_FLAVOUR, method::{Method, MethodType}, DotnetTypeRef, FnSig, IString, IlasmFlavour, Type
+    access_modifier,
+    asm::Assembly,
+    basic_block::BasicBlock,
+    c_exporter::CExporter,
+    call_site::CallSite,
+    cil_node::CILNode,
+    cil_root::CILRoot,
+    ilasm_exporter::ILASM_FLAVOUR,
+    method::{Method, MethodType},
+    DotnetTypeRef, FnSig, IString, IlasmFlavour, Type,
 };
 //use assembly::Assembly;
 use lazy_static::lazy_static;
@@ -9,9 +18,9 @@ use load::LinkableFile;
 
 mod cmd;
 mod export;
+mod libc_fns;
 mod load;
 mod patch;
-mod libc_fns;
 use std::{collections::HashMap, env, io::Write};
 struct NativePastroughInfo {
     defs: HashMap<IString, IString>,
@@ -213,10 +222,7 @@ fn autopatch(asm: &mut Assembly, native_pastrough: &NativePastroughInfo) {
             continue;
         }
         //#[cfg(not(target_os = "linux"))]
-        if libc_fns::LIBC_FNS
-            .iter()
-            .any(|libc_fn| *libc_fn == name)
-        {
+        if libc_fns::LIBC_FNS.iter().any(|libc_fn| *libc_fn == name) {
             externs.push((
                 call.name().into(),
                 call.signature().to_owned(),
@@ -338,7 +344,7 @@ fn add_shared(file_path: &str, native_pastrough: &mut NativePastroughInfo) {
         .unwrap();
     //let file_path = AString::new(format!("{}.{}",file_stem(file_path),file_ext(file_path)).into());
     //eprintln!("file_path:{file_path}");
-    let file_path:IString = file_path.into();
+    let file_path: IString = file_path.into();
     if !nm.stderr.is_empty() {
         eprintln!("nm_error:{}", String::from_utf8_lossy(&nm.stderr));
     }
@@ -485,8 +491,14 @@ fn main() {
             "The codegen is now running in C mode. It will emmit C source files and build them."
         );
 
-        Exporter::export_assembly(CExporter::init("rust_module"),&final_assembly, output_file_path.as_ref(), is_lib, true)
-            .unwrap();
+        Exporter::export_assembly(
+            CExporter::init("rust_module"),
+            &final_assembly,
+            output_file_path.as_ref(),
+            is_lib,
+            true,
+        )
+        .unwrap();
         return;
     }
 
@@ -545,7 +557,7 @@ fn main() {
     }
     //todo!();
 }
-lazy_static!{
+lazy_static! {
     #[doc = "Tells the codegen compile linked static libraries into a shared library, which will be bundled with the .NET executable."]pub static ref NATIVE_PASSTROUGH:bool = {
         std::env::vars().into_iter().find_map(|(key,value)|if key == stringify!(NATIVE_PASSTROUGH){
             Some(value)
@@ -556,7 +568,7 @@ lazy_static!{
         }).unwrap_or(false)
     };
 }
-lazy_static!{
+lazy_static! {
     #[doc = "Should the codegen stop working when ecountering an error, or try to press on, replacing unusuported code with exceptions throws?"]pub static ref ABORT_ON_ERROR:bool = {
         std::env::vars().into_iter().find_map(|(key,value)|if key == stringify!(ABORT_ON_ERROR){
             Some(value)
@@ -567,7 +579,7 @@ lazy_static!{
         }).unwrap_or(false)
     };
 }
-lazy_static!{
+lazy_static! {
     #[doc = "Tells the codegen to emmit C source files."]pub static ref C_MODE:bool = {
         std::env::vars().into_iter().find_map(|(key,value)|if key == stringify!(C_MODE){
             Some(value)

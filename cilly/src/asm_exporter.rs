@@ -12,7 +12,6 @@ use crate::{
 
 /// This trait represents an interface implemented by all .NET assembly exporters. (Currently only ilasm)
 pub trait AssemblyExporter: Sized {
-
     /// Adds type definition `tpe` to the assembly.
     fn add_type(&mut self, tpe: &TypeDef);
     /// Adds method to assembly.
@@ -33,7 +32,6 @@ pub trait AssemblyExporter: Sized {
         is_dll: bool,
         escape_names: bool,
     ) -> Result<(), AssemblyExportError> {
-      
         for (asm_name, asm_ref) in asm.extern_refs() {
             self.add_extern_ref(asm_name, asm_ref);
         }
@@ -59,9 +57,8 @@ pub trait AssemblyExporter: Sized {
         for global in asm.globals() {
             self.add_global(global.1, global.0);
         }
-  
-        self
-            .finalize(final_path, is_dll)
+
+        self.finalize(final_path, is_dll)
             .expect("Could not export assembly");
         Ok(())
     }
@@ -77,8 +74,8 @@ pub enum AssemblyExportError {
     IoError(std::io::Error),
     /// The exporter command (ILASM) failed with an error message.
     ExporterError(IString),
-      /// A generic formatter error happended when exporting the assembly.
-      FmtError(std::fmt::Error),
+    /// A generic formatter error happended when exporting the assembly.
+    FmtError(std::fmt::Error),
 }
 impl From<std::io::Error> for AssemblyExportError {
     fn from(error: std::io::Error) -> Self {

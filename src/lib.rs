@@ -262,7 +262,7 @@ impl CodegenBackend for MyBackend {
             let asm_name = "";
             let serialized_asm_path = outputs.temp_path(OutputType::Bitcode, Some(asm_name));
             //std::fs::create_dir_all(&serialized_asm_path).expect("Could not create the directory temporary files are supposed to be in.");
-          
+
             let mut asm_out = std::fs::File::create(&serialized_asm_path).expect(
                 "Could not create the temporary files necessary for building the assembly!",
             );

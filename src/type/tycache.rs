@@ -6,7 +6,8 @@ use crate::{
     IString,
 };
 use cilly::{
-    access_modifier::AccessModifer, fn_sig::FnSig, type_def::TypeDef, DotnetTypeRef, Type,
+    access_modifier::AccessModifer, cil_node::CILNode, fn_sig::FnSig, type_def::TypeDef,
+    DotnetTypeRef, Type,
 };
 use rustc_middle::ty::{
     AdtDef, AdtKind, GenericArg, Instance, List, ParamEnv, Ty, TyCtxt, TyKind, UintTy,
@@ -620,4 +621,7 @@ fn try_find_ptr_components(ctx: TyCtxt) -> DefId {
     }
     drop(find_ptr_components_timer);
     ptr_components.expect("Could not find core::ptr::metadata::PtrComponents")
+}
+pub fn validity_check(addr: CILNode) -> CILNode {
+    todo!("{addr:?}");
 }

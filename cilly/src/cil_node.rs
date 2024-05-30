@@ -603,7 +603,32 @@ impl CILNode {
                 let main = &mut tmp_loc.2;
                 roots.iter_mut().for_each(|tree|tree.allocate_tmps(Some(end_loc as u32), locals));
                 main.allocate_tmps(Some(end_loc as u32), locals);
-                *self= Self::SubTrees(roots.clone(), Box::new(main.clone()));
+                assert!(
+                    !(&*main).into_iter().any(|node| {
+                        match node {
+                            crate::cil_iter::CILIterElem::Node(
+                                crate::cil_node::CILNode::TemporaryLocal(_),
+                            ) => true,
+                            _ => false,
+                        }
+                    }),
+                    "self:{self:?}"
+                    
+                );
+                assert!(
+                    !(&*roots).iter().flat_map(|root|root.into_iter()).any(|node| {
+                        match node {
+                            crate::cil_iter::CILIterElem::Node(
+                                crate::cil_node::CILNode::TemporaryLocal(_),
+                            ) => true,
+                            _ => false,
+                        }
+                    }),
+                    "self:{self:?}"
+                    
+                );
+                *self=  Self::SubTrees(roots.clone(), Box::new(main.clone()));
+               
             },
             Self::SubTrees(trees, main) =>{
                 trees.iter_mut().for_each(|arg|arg.allocate_tmps(curr_loc,locals));
@@ -628,122 +653,6 @@ impl CILNode {
                 idx.allocate_tmps(curr_loc, locals);
             }
         };
-    }
-
-    pub(crate) fn sheed_trees(&mut self) -> Vec<CILRoot> {
-        match self {
-            Self::LocAllocAligned { .. } => vec![],
-            Self::LdFalse => vec![],
-            Self::LdTrue => vec![],
-            Self::TransmutePtr { val, new_ptr: _ } => val.sheed_trees(),
-            Self::GetStackTop => vec![],
-            Self::InspectValue { val, inspect: _ } => val.sheed_trees(),
-            Self::LDLoc(_) | Self::LDArg(_) | Self::LDLocA(_) | Self::LDArgA(_) => {
-                vec![]
-            }
-            Self::BlackBox(inner) => inner.sheed_trees(),
-            Self::LDStaticField(_) => vec![],
-            Self::ConvF32(inner) | Self::ConvF64(inner) | Self::ConvF64Un(inner) => {
-                inner.sheed_trees()
-            }
-            Self::SizeOf(_) => vec![],
-            Self::LDIndI8 { ptr }
-            | Self::LDIndBool { ptr }
-            | Self::LDIndI16 { ptr }
-            | Self::LDIndI32 { ptr }
-            | Self::LDIndI64 { ptr }
-            | Self::LDIndU8 { ptr }
-            | Self::LDIndU16 { ptr }
-            | Self::LDIndU32 { ptr }
-            | Self::LDIndU64 { ptr }
-            | Self::LDIndISize { ptr }
-            | Self::LDIndPtr { ptr, .. }
-            | Self::LDIndUSize { ptr }
-            | Self::LdObj { ptr, .. }
-            | Self::LDIndF32 { ptr }
-            | Self::LDIndF64 { ptr } => ptr.sheed_trees(),
-            Self::LDFieldAdress { addr, field: _ } | Self::LDField { addr, field: _ } => {
-                addr.sheed_trees()
-            }
-            Self::Add(a, b)
-            | Self::And(a, b)
-            | Self::Sub(a, b)
-            | Self::Mul(a, b)
-            | Self::Div(a, b)
-            | Self::DivUn(a, b)
-            | Self::Rem(a, b)
-            | Self::RemUn(a, b)
-            | Self::Or(a, b)
-            | Self::XOr(a, b)
-            | Self::Shr(a, b)
-            | Self::Shl(a, b)
-            | Self::ShrUn(a, b) => {
-                let mut res = a.sheed_trees();
-                res.extend(b.sheed_trees());
-                res
-            }
-
-            Self::Call { args, site: _ } | Self::CallVirt { args, site: _ } => {
-                args.iter_mut().flat_map(Self::sheed_trees).collect()
-            }
-            Self::LdcI64(_)
-            | Self::LdcU64(_)
-            | Self::LdcI32(_)
-            | Self::LdcU32(_)
-            | Self::LdcF64(_)
-            | Self::LdcF32(_) => vec![],
-            Self::LoadGlobalAllocPtr { alloc_id: _ } => vec![],
-            Self::PointerToConstValue(_value) => vec![],
-            Self::ConvU8(val)
-            | Self::ConvU16(val)
-            | Self::ConvU32(val)
-            | Self::ConvU64(val)
-            | Self::ZeroExtendToUSize(val)
-            | Self::ZeroExtendToISize(val)
-            | Self::MRefToRawPtr(val)
-            | Self::ConvI8(val)
-            | Self::ConvI16(val)
-            | Self::ConvI32(val)
-            | Self::ConvI64(val)
-            | Self::ConvISize(val) => val.sheed_trees(),
-            Self::Neg(val) | Self::Not(val) => val.sheed_trees(),
-            Self::Eq(a, b)
-            | Self::Lt(a, b)
-            | Self::LtUn(a, b)
-            | Self::Gt(a, b)
-            | Self::GtUn(a, b) => {
-                let mut res = a.sheed_trees();
-                res.extend(b.sheed_trees());
-                res
-            }
-            Self::TemporaryLocal(_) => {
-                panic!("Trees should be sheed after locals are allocated!")
-            }
-            Self::SubTrees(trees, main) => {
-                let clone = *main.clone();
-                let res = trees.to_vec();
-                *self = clone;
-                res
-            }
-            Self::LoadAddresOfTMPLocal => {
-                panic!("Trees should be sheed after locals are allocated!")
-            }
-            Self::LoadTMPLocal => panic!("Trees should be sheed after locals are allocated!"),
-            Self::LDFtn(_) | Self::LDTypeToken(_) => vec![],
-            Self::NewObj { site: _, args } => args.iter_mut().flat_map(Self::sheed_trees).collect(),
-            Self::LdStr(_) => vec![],
-            Self::CallI(sig_ptr_args) => {
-                let mut res = sig_ptr_args.1.sheed_trees();
-                res.extend(sig_ptr_args.2.iter_mut().flat_map(Self::sheed_trees));
-                res
-            }
-            Self::LDLen { arr } => arr.sheed_trees(),
-            Self::LDElelemRef { arr, idx } => {
-                let mut res = arr.sheed_trees();
-                res.extend(idx.sheed_trees());
-                res
-            }
-        }
     }
     /*
     pub(crate) fn validate(&self, method: &Method) -> Result<Type, String> {

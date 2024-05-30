@@ -22,7 +22,7 @@ pub struct CExporter {
     defined: HashSet<IString>,
     delayed_typedefs: HashMap<IString, TypeDef>,
 }
-impl CExporter{
+impl CExporter {
     pub fn init(_asm_info: &AssemblyInfo) -> Self {
         let mut encoded_asm = Vec::with_capacity(0x1_00);
         let types = Vec::with_capacity(0x1_00);
@@ -165,7 +165,6 @@ impl CExporter {
     }
 }
 impl AssemblyExporter for CExporter {
-    
     fn add_type(&mut self, tpe: &TypeDef) {
         let name: IString = escape_type_name(tpe.name()).into();
         if self.defined.contains(&name) {

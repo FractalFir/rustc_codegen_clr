@@ -1,4 +1,4 @@
-use cilly::basic_block::{BasicBlock, Handler};
+use cilly::basic_block::Handler;
 use rustc_middle::mir::BasicBlockData;
 use rustc_middle::mir::UnwindAction;
 use rustc_middle::{

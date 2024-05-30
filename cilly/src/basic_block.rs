@@ -3,7 +3,8 @@ use std::collections::HashSet;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    cil_iter::CILIterElem, cil_iter_mut::CILIterElemMut, cil_root::CILRoot, cil_tree::CILTree, ilasm_op::DepthSetting, method::Method, IlasmFlavour
+    cil_iter::CILIterElem, cil_iter_mut::CILIterElemMut, cil_root::CILRoot, cil_tree::CILTree,
+    ilasm_op::DepthSetting, method::Method, IlasmFlavour,
 };
 
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
@@ -218,7 +219,12 @@ impl BasicBlock {
         Ok(())
     }
 }
-pub fn export(out:&mut impl std::fmt::Write,block:&BasicBlock,depth:DepthSetting,flavour:IlasmFlavour)->std::fmt::Result{
+pub fn export(
+    out: &mut impl std::fmt::Write,
+    block: &BasicBlock,
+    depth: DepthSetting,
+    flavour: IlasmFlavour,
+) -> std::fmt::Result {
     let this_depth = if block.handler().is_some() {
         write!(out, ".try{{").unwrap();
         depth.incremented()
@@ -243,8 +249,7 @@ pub fn export(out:&mut impl std::fmt::Write,block:&BasicBlock,depth:DepthSetting
             )
             .unwrap();
             for tree in handler_block.trees() {
-                crate::ilasm_op::export_root(out, tree.root(), this_depth, flavour)
-                    .unwrap();
+                crate::ilasm_op::export_root(out, tree.root(), this_depth, flavour).unwrap();
             }
             this_depth.pad(out).unwrap();
         }

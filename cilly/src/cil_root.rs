@@ -1,6 +1,6 @@
 use crate::{
-    call_site::CallSite, cil_node::CILNode, field_desc::FieldDescriptor, fn_sig::FnSig,
-    static_field_desc::StaticFieldDescriptor, DotnetTypeRef, IString, Type,
+    call_site::CallSite, cil_iter_mut::CILIterMut, cil_node::CILNode, field_desc::FieldDescriptor,
+    fn_sig::FnSig, static_field_desc::StaticFieldDescriptor, DotnetTypeRef, IString, Type,
 };
 
 use serde::{Deserialize, Serialize};
@@ -327,139 +327,60 @@ impl CILRoot {
         }
     }
     #[must_use]
-    pub fn shed_trees(mut self) -> Vec<Self> {
-        let mut res = vec![];
-        let trees: Vec<Self> = match &mut self {
-            Self::SourceFileInfo(_) => vec![],
-            Self::STLoc { local: _, tree } => tree.sheed_trees(),
-            Self::BTrue {
-                target: _,
-                sub_target: _,
-                cond: ops,
-            }
-            | Self::BFalse {
-                target: _,
-                sub_target: _,
-                cond: ops,
-            } => ops.sheed_trees(),
-            Self::BEq {
-                target: _,
-                sub_target: _,
-                a,
-                b,
-            }
-            | Self::BNe {
-                target: _,
-                sub_target: _,
-                a,
-                b,
-            } => {
-                let mut res = a.sheed_trees();
-                res.extend(b.sheed_trees());
-                res
-            }
-            Self::GoTo {
-                target: _,
-                sub_target: _,
-            } => vec![],
-            Self::CallVirt { site: _, args } | Self::Call { site: _, args } => args
-                .iter_mut()
-                .flat_map(super::cil_node::CILNode::sheed_trees)
-                .collect(),
-            Self::SetField { addr, value, .. } => {
-                let mut res = addr.sheed_trees();
-                res.extend(value.sheed_trees());
-                // Check that trees were propely sheed.
-                assert!(!matches!(value, CILNode::SubTrees(_, _)));
-                res
-            }
-            Self::SetTMPLocal { .. } => panic!("Unresolved TMP local!"),
-            Self::CpBlk { src, dst, len } => {
-                let mut res = src.sheed_trees();
-                res.extend(dst.sheed_trees());
-                res.extend(len.sheed_trees());
-                res
-            }
-            Self::STIndI8(addr_calc, value_calc)
-            | Self::STIndI16(addr_calc, value_calc)
-            | Self::STIndI32(addr_calc, value_calc)
-            | Self::STIndI64(addr_calc, value_calc)
-            | Self::STIndISize(addr_calc, value_calc)
-            | Self::STIndF64(addr_calc, value_calc)
-            | Self::STIndF32(addr_calc, value_calc)
-            | Self::STObj {
-                addr_calc,
-                value_calc,
-                ..
-            } => {
-                let mut res = addr_calc.sheed_trees();
-                res.extend(value_calc.sheed_trees());
-                res
-            }
-
-            Self::STArg { arg: _, tree } => tree.sheed_trees(),
-            Self::Break => vec![],
-            Self::Nop => vec![],
-            Self::InitBlk { dst, val, count } => {
-                let mut res = dst.sheed_trees();
-                res.extend(val.sheed_trees());
-                res.extend(count.sheed_trees());
-                res
-            }
-            Self::Ret { tree } | Self::Pop { tree } => tree.sheed_trees(),
-            Self::VoidRet => vec![],
-            Self::Throw(tree) => tree.sheed_trees(),
-            Self::ReThrow => vec![],
-            Self::CallI {
-                sig: _,
-                fn_ptr,
-                args,
-            } => {
-                let mut res = fn_ptr.sheed_trees();
-                res.extend(
-                    args.iter_mut()
-                        .flat_map(super::cil_node::CILNode::sheed_trees),
-                );
-                res
-            }
-
-            Self::SetStaticField { descr: _, value } => value.sheed_trees(),
-            Self::JumpingPad { .. } => vec![],
-        };
-        res.extend(trees);
+    pub fn sheed_trees(mut self) -> Vec<Self> {
+        let iter_mut = (&mut self).into_iter();
+        let mut res: Vec<CILRoot> = iter_mut
+            .map(|tree| match tree {
+                crate::cil_iter_mut::CILIterElemMut::Node(node) => match node {
+                    CILNode::SubTrees(trees, main) => {
+                        let vec = trees.to_vec();
+                        let iter = vec.into_iter();
+                        let trees = iter.flat_map(|tree| tree.sheed_trees()).collect();
+                        *node = *main.clone();
+                        trees
+                    }
+                    _ => vec![],
+                },
+                _ => vec![],
+            })
+            .flat_map(|vec| vec)
+            .collect();
         res.push(self);
         res
     }
     pub fn allocate_tmps(
         &mut self,
-        curr_local: Option<u32>,
+        curr_loc: Option<u32>,
         locals: &mut Vec<(Option<Box<str>>, Type)>,
     ) {
         match self {
             Self::SourceFileInfo(_) => (),
-            Self::STLoc { tree, .. } => tree.allocate_tmps(curr_local, locals),
-            Self::BTrue { cond: ops, .. } => ops.allocate_tmps(curr_local, locals),
-            Self::BFalse { cond: ops, .. } => ops.allocate_tmps(curr_local, locals),
+            Self::STLoc { tree, .. } => {
+                tree.allocate_tmps(curr_loc, locals);
+               
+            }
+            Self::BTrue { cond: ops, .. } => ops.allocate_tmps(curr_loc, locals),
+            Self::BFalse { cond: ops, .. } => ops.allocate_tmps(curr_loc, locals),
             Self::BEq { a, b, .. } | Self::BNe { a, b, .. } => {
-                a.allocate_tmps(curr_local, locals);
-                b.allocate_tmps(curr_local, locals);
+                a.allocate_tmps(curr_loc, locals);
+                b.allocate_tmps(curr_loc, locals);
             }
             Self::GoTo { .. } => (),
             Self::CallVirt { site: _, args } | Self::Call { site: _, args } => args
                 .iter_mut()
-                .for_each(|arg| arg.allocate_tmps(curr_local, locals)),
+                .for_each(|arg| arg.allocate_tmps(curr_loc, locals)),
             Self::SetField {
                 addr,
                 value,
                 desc: _,
             } => {
-                addr.allocate_tmps(curr_local, locals);
-                value.allocate_tmps(curr_local, locals);
+                addr.allocate_tmps(curr_loc, locals);
+                value.allocate_tmps(curr_loc, locals);
             }
             Self::CpBlk { src, dst, len } => {
-                src.allocate_tmps(curr_local, locals);
-                dst.allocate_tmps(curr_local, locals);
-                len.allocate_tmps(curr_local, locals);
+                src.allocate_tmps(curr_loc, locals);
+                dst.allocate_tmps(curr_loc, locals);
+                len.allocate_tmps(curr_loc, locals);
             }
             Self::STIndI8(addr_calc, value_calc)
             | Self::STIndI16(addr_calc, value_calc)
@@ -473,20 +394,20 @@ impl CILRoot {
                 value_calc,
                 ..
             } => {
-                addr_calc.allocate_tmps(curr_local, locals);
-                value_calc.allocate_tmps(curr_local, locals);
+                addr_calc.allocate_tmps(curr_loc, locals);
+                value_calc.allocate_tmps(curr_loc, locals);
             }
-            Self::STArg { arg: _, tree } => tree.allocate_tmps(curr_local, locals),
+            Self::STArg { arg: _, tree } => tree.allocate_tmps(curr_loc, locals),
             Self::Break => (),
             Self::Nop => (),
             Self::InitBlk { dst, val, count } => {
-                dst.allocate_tmps(curr_local, locals);
-                val.allocate_tmps(curr_local, locals);
-                count.allocate_tmps(curr_local, locals);
+                dst.allocate_tmps(curr_loc, locals);
+                val.allocate_tmps(curr_loc, locals);
+                count.allocate_tmps(curr_loc, locals);
             }
 
             Self::Ret { tree } | Self::Pop { tree } | Self::Throw(tree) => {
-                tree.allocate_tmps(curr_local, locals);
+                tree.allocate_tmps(curr_loc, locals);
             }
             Self::VoidRet => (),
 
@@ -496,20 +417,22 @@ impl CILRoot {
                 fn_ptr,
                 args,
             } => {
-                fn_ptr.allocate_tmps(curr_local, locals);
+                fn_ptr.allocate_tmps(curr_loc, locals);
                 args.iter_mut()
-                    .for_each(|arg| arg.allocate_tmps(curr_local, locals));
+                    .for_each(|arg| arg.allocate_tmps(curr_loc, locals));
             }
 
             Self::SetTMPLocal { value } => {
+                value.allocate_tmps(curr_loc, locals);
                 *self = Self::STLoc {
-                    local: curr_local.expect("Referenced a tmp local when none present!"),
+                    local: curr_loc.expect("Referenced a tmp local when none present!"),
                     tree: value.clone(),
                 };
             }
-            Self::SetStaticField { descr: _, value } => value.allocate_tmps(curr_local, locals),
+            Self::SetStaticField { descr: _, value } => value.allocate_tmps(curr_loc, locals),
             Self::JumpingPad { .. } => (),
-        }
+        };
+       
     }
 
     #[must_use]
@@ -527,9 +450,7 @@ impl CILRoot {
 }
 #[test]
 fn allocating_tmps() {
-    let mut original_value = CILRoot::STLoc {
-        local: 11,
-        tree: CILNode::SubTrees(
+    let mut original_value = CILNode::SubTrees(
             Box::new([CILRoot::STLoc {
                 local: 14,
                 tree: CILNode::TemporaryLocal(Box::new((
@@ -544,35 +465,14 @@ fn allocating_tmps() {
                         value: CILNode::LDArg(0),
                     }]
                     .into(),
-                    CILNode::LdObj {
-                        ptr: CILNode::LoadAddresOfTMPLocal.into(),
-                        obj: Type::DotnetType(
-                            DotnetTypeRef::new::<&str, _>(
-                                None,
-                                "core.ptr.metadata.PtrComponents.h2b679e9941d88b2f",
-                            )
-                            .into(),
-                        )
-                        .into(),
-                    },
+                    CILNode::LDLoc(3),
                 ))),
             }]),
-            CILNode::LdObj {
-                ptr: CILNode::LDLocA(14).into(),
-                obj: Type::DotnetType(
-                    DotnetTypeRef::new::<&str, _>(
-                        None,
-                        "core.ptr.metadata.PtrComponents.h2b679e9941d88b2f",
-                    )
-                    .into(),
-                )
-                .into(),
-            }
-            .into(),
-        ),
-    };
+            CILNode::LDLoc(2).into(),
+        );
     //let mut method = crate::method::Method::new(crate::access_modifier::AccessModifer::Private,crate::method::MethodType::Static,FnSig::new(&[Type::I32],&Type::Void),"a",vec![],vec![]);
     original_value.allocate_tmps(None, &mut vec![]);
-    let _trees = original_value.shed_trees();
+    println!("original_value:{original_value:?}");
+    //let _trees = original_value.sheed_trees();
     //let _ops: Vec<_> = trees.iter().map(CILRoot::into_ops).collect();
 }

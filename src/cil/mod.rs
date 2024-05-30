@@ -1,9 +1,5 @@
-
-use cilly::{
-    call_site::CallSite, cil_root::CILRoot, fn_sig::FnSig, Type,
-};
+use cilly::{call_site::CallSite, cil_root::CILRoot, fn_sig::FnSig, Type};
 use rustc_middle::ty::TyCtxt;
-
 
 /// Returns the call site refering to the function malloc.
 #[must_use]

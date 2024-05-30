@@ -412,10 +412,9 @@ pub fn add_fn<'tyctx>(
         arg_names,
     );
     crate::method::resolve_global_allocations(&mut method, asm, tyctx, cache);
-    // TODO: Why is this even needed? The temporaries *should* be already allocated, why not all of them are?
+
     method.allocate_temporaries();
-    method.allocate_temporaries();
-    method.allocate_temporaries();
+
     if *crate::config::TYPECHECK_CIL {
         match method.validate() {
             Ok(()) => (),

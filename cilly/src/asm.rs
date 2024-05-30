@@ -46,7 +46,7 @@ pub struct Assembly {
     static_fields: HashMap<IString, Type>,
 }
 impl Assembly {
-    pub fn save_tmp<W:std::io::Write>(&self,w:&mut W)->std::io::Result<()>{
+    pub fn save_tmp<W: std::io::Write>(&self, w: &mut W) -> std::io::Result<()> {
         w.write_all(&postcard::to_stdvec(&self).unwrap())
     }
     /// Returns iterator over all global fields

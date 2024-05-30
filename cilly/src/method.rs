@@ -8,7 +8,17 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    access_modifier::AccessModifer, basic_block::BasicBlock, call_site::CallSite, cil_iter::{CILIterElem, CILIterTrait}, cil_iter_mut::CILIterElemMut, cil_node::CILNode, cil_root::CILRoot, cil_tree::CILTree, ilasm_op::{non_void_type_cil, type_cil, DepthSetting}, static_field_desc::StaticFieldDescriptor, DotnetTypeRef, FnSig, IString, IlasmFlavour, Type
+    access_modifier::AccessModifer,
+    basic_block::BasicBlock,
+    call_site::CallSite,
+    cil_iter::{CILIterElem, CILIterTrait},
+    cil_iter_mut::CILIterElemMut,
+    cil_node::CILNode,
+    cil_root::CILRoot,
+    cil_tree::CILTree,
+    ilasm_op::{non_void_type_cil, type_cil, DepthSetting},
+    static_field_desc::StaticFieldDescriptor,
+    DotnetTypeRef, FnSig, IString, IlasmFlavour, Type,
 };
 
 /// Represenation of a CIL method.
@@ -45,7 +55,7 @@ impl Method {
         let max = trees.map(|tree| tree.root().into_iter().count() + 3).max();
         max.unwrap_or(6)
     }
-    
+
     pub fn opt(&mut self) {
         for tree in self
             .blocks
@@ -363,7 +373,12 @@ impl Method {
                 });
         }
     }
-    pub fn export(&self,w: &mut impl std::fmt::Write,flavour:IlasmFlavour,init_locals:bool) -> std::fmt::Result {
+    pub fn export(
+        &self,
+        w: &mut impl std::fmt::Write,
+        flavour: IlasmFlavour,
+        init_locals: bool,
+    ) -> std::fmt::Result {
         let access = if let AccessModifer::Private = self.access() {
             "private"
         } else {
@@ -393,10 +408,7 @@ impl Method {
             }
         } else {
             assert_eq!(self.arg_names().len(), self.explicit_inputs().len());
-            let mut input_iter = self
-                .explicit_inputs()
-                .iter()
-                .zip(self.arg_names().iter());
+            let mut input_iter = self.explicit_inputs().iter().zip(self.arg_names().iter());
             if let Some((input, name)) = input_iter.next() {
                 match name {
                     Some(name) => write!(w, "{} '{name}'", non_void_type_cil(input))?,
@@ -414,7 +426,7 @@ impl Method {
         if self.is_entrypoint() {
             writeln!(w, ".entrypoint")?;
         }
-        if init_locals{
+        if init_locals {
             writeln!(w, "\t.locals init(")?;
         } else {
             writeln!(w, "\t.locals (")?;
@@ -454,14 +466,11 @@ impl Method {
             maxstack = self.maxstack()
         )?;
         for block in self.blocks().iter() {
-            crate::basic_block::export(w,block,DepthSetting::with_pading(),flavour).unwrap();
-            //assert_eq!(remove_whitespace(&old_block_to_string(block,method)),remove_whitespace(&string));
-           
+            crate::basic_block::export(w, block, DepthSetting::with_pading(), flavour).unwrap();
         }
-     
+
         writeln!(w, "}}")
     }
-    
 }
 
 /// A wrapper around mutably borrowed [`BasicBlock`]s of a method. Prevents certain bugs.

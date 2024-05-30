@@ -12,7 +12,10 @@ impl<'a> Iterator for CILIter<'a> {
     type Item = CILIterElem<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
+        let mut iter_count = 0;
         loop {
+            iter_count += 1;
+            assert!(iter_count < 100);
             let (idx, elem) = self.elems.iter_mut().last()?;
             if *idx == 0 {
                 *idx += 1;
@@ -132,13 +135,17 @@ impl<'a> Iterator for CILIter<'a> {
                     | CILNode::LDStaticField(_)
                     | CILNode::LDFtn(_)
                     | CILNode::LDTypeToken(_)
-                    | CILNode::LocAllocAligned { tpe: _, align: _ },
+                    | CILNode::LocAllocAligned { tpe: _, align: _ }
+                    | CILNode::LoadGlobalAllocPtr { alloc_id: _ }
+                    | CILNode::LoadAddresOfTMPLocal
+                    | CILNode::PointerToConstValue(_),
                 ) => {
                     self.elems.pop();
                     continue;
                 }
                 CILIterElem::Root(
                     CILRoot::STLoc { tree, local: _ }
+                    | CILRoot::SetTMPLocal { value: tree }
                     | CILRoot::STArg { tree, arg: _ }
                     | CILRoot::Ret { tree }
                     | CILRoot::BTrue { cond: tree, .. }
@@ -239,6 +246,41 @@ impl<'a> Iterator for CILIter<'a> {
                         let arg = &args[*idx - 1];
                         *idx += 1;
                         self.elems.push((0, CILIterElem::Node(arg)));
+                        continue;
+                    } else {
+                        self.elems.pop();
+                        continue;
+                    }
+                }
+                CILIterElem::Node(CILNode::SubTrees(roots, node)) => {
+                    if *idx - 1 < roots.len() {
+                        let root: &CILRoot = &roots[*idx - 1];
+                        *idx += 1;
+                        self.elems.push((0, CILIterElem::Root(root)));
+
+                        continue;
+                    } else if *idx - 1 == roots.len() {
+                        *idx += 1;
+                        self.elems.push((0, CILIterElem::Node(node)));
+
+                        continue;
+                    } else {
+                        self.elems.pop();
+                        continue;
+                    }
+                }
+                CILIterElem::Node(CILNode::TemporaryLocal(pack)) => {
+                    let (_, roots, node) = pack.as_ref();
+                    if *idx - 1 < roots.len() {
+                        let root: &CILRoot = &roots[*idx - 1];
+                        *idx += 1;
+                        self.elems.push((0, CILIterElem::Root(root)));
+
+                        continue;
+                    } else if *idx - 1 == roots.len() {
+                        *idx += 1;
+                        self.elems.push((0, CILIterElem::Node(node)));
+
                         continue;
                     } else {
                         self.elems.pop();

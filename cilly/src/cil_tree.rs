@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{cil_root::CILRoot, method::Method, Type};
+use crate::{cil_iter::CILIterElem, cil_node::CILNode, cil_root::CILRoot, method::Method, Type};
 
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 /// A root of a CIL Tree with metadata about local variables it reads/writes into.  
@@ -23,11 +23,16 @@ impl CILTree {
     /// Converts a tree with subtrees into multiple trees.
     #[must_use]
     pub fn shed_trees(self) -> Vec<Self> {
-        self.tree
-            .shed_trees()
+  
+        let trees: Vec<Self> = self
+            .tree
+            .sheed_trees()
             .into_iter()
             .map(std::convert::Into::into)
-            .collect()
+            .collect();
+
+       
+        trees
     }
     /// Retunrs the root of this tree.
     #[must_use]
@@ -40,7 +45,10 @@ impl CILTree {
     }
     /// Allocates the temporary variables this tree uses.
     pub fn allocate_tmps(&mut self, locals: &mut Vec<(Option<Box<str>>, Type)>) {
+        let cloned = self.clone();
         self.tree.allocate_tmps(None, locals);
+
+       
     }
     pub fn validate(&self, method: &Method) -> Result<(), String> {
         //self.tree.validate(method)
@@ -50,4 +58,68 @@ impl CILTree {
     pub fn root_mut(&mut self) -> &mut CILRoot {
         &mut self.tree
     }
+}
+#[test]
+fn test_sheed() {
+    let node = CILNode::SubTrees(
+        [CILRoot::STLoc {
+            local: 11,
+            tree: CILNode::TemporaryLocal(Box::new((
+                Type::DotnetType(Box::new(crate::DotnetTypeRef::new::<&str, _>(
+                    None,
+                    "core.ptr.metadata.PtrComponents.h4c1f0d773746020e",
+                ))),
+                Box::new([CILRoot::SetTMPLocal {
+                    value: CILNode::LDLoc(1),
+                }]),
+                CILNode::LdObj {
+                    ptr: Box::new(CILNode::LoadAddresOfTMPLocal),
+                    obj: Box::new(Type::DotnetType(Box::new(crate::DotnetTypeRef::new::<
+                        &str,
+                        _,
+                    >(
+                        None,
+                        "core.ptr.metadata.PtrComponents.h4c1f0d773746020e",
+                    )))),
+                },
+            ))),
+        }]
+        .into(),
+        Box::new(CILNode::LdObj {
+            ptr: Box::new(CILNode::LDLocA(11)),
+            obj: Box::new(Type::DotnetType(Box::new(crate::DotnetTypeRef::new::<
+                &str,
+                _,
+            >(
+                None,
+                "core.ptr.metadata.PtrComponents.h4c1f0d773746020e",
+            )))),
+        }),
+    );
+    let tree = CILTree {
+        tree: CILRoot::STLoc {
+            local: 7,
+            tree: node,
+        },
+    };
+    let trees = tree.shed_trees();
+}
+#[test]
+fn test_alloc() {
+    let mut tree: CILNode = CILNode::TemporaryLocal(Box::new((
+        Type::U8,
+        [CILRoot::SetTMPLocal {
+            value: CILNode::TemporaryLocal(Box::new((
+                Type::U8,
+                []
+                .into(),
+                CILNode::LDLoc(0),
+            ))),
+        }]
+        .into(),
+        CILNode::LDLoc(0),
+    )));
+
+    let mut locs = vec![];
+    tree.allocate_tmps(None, &mut locs);
 }

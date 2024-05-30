@@ -1,22 +1,37 @@
-use std::fmt::Write;
+use crate::{
+    access_modifier::AccessModifer,
+    asm::AssemblyExternRef,
+    asm_exporter::{AssemblyExportError, AssemblyExporter},
+    ilasm_op::{non_void_type_cil, type_cil},
+    method::Method,
+    type_def::TypeDef,
+    IString, IlasmFlavour, Type,
+};
 use lazy_static::*;
-use crate::{access_modifier::AccessModifer, asm::AssemblyExternRef, asm_exporter::{AssemblyExportError, AssemblyExporter}, ilasm_op::{non_void_type_cil, type_cil}, method::Method, type_def::TypeDef, IString, IlasmFlavour, Type};
-
+use std::fmt::Write;
 
 #[must_use]
 /// A struct used to export an asssembly using the ILASM tool as a .NET assembly creator.
 pub struct ILASMExporter {
     encoded_asm: String,
     methods: String,
-    init_locals:bool,
-    flavour:IlasmFlavour,
-    ilasm_path:IString,
-    escape_names:bool,
-    runtime_config:IString,
+    init_locals: bool,
+    flavour: IlasmFlavour,
+    ilasm_path: IString,
+    escape_names: bool,
+    runtime_config: IString,
 }
-impl Default for ILASMExporter{
+impl Default for ILASMExporter {
     fn default() -> Self {
-        Self::init("rust_mod",always_init_locals(),*ILASM_FLAVOUR,*PRINT_PTRS,ilasm_path(),*ESCAPE_NAMES,get_runtime_config())
+        Self::init(
+            "rust_mod",
+            always_init_locals(),
+            *ILASM_FLAVOUR,
+            *PRINT_PTRS,
+            ilasm_path(),
+            *ESCAPE_NAMES,
+            get_runtime_config(),
+        )
     }
 }
 /// Cached runtime configuration string, obtained from calling the .NET runtime.
@@ -24,7 +39,7 @@ impl Default for ILASMExporter{
 pub fn get_runtime_config() -> &'static str {
     RUNTIME_CONFIG.as_ref()
 }
-lazy_static!{
+lazy_static! {
   /// Cached runtime configuration file, obtained from calling the .NET runtime.
   static ref RUNTIME_CONFIG: String = {
     let info = std::process::Command::new("dotnet")
@@ -58,7 +73,7 @@ lazy_static!{
     )
     };
 }
-lazy_static!{
+lazy_static! {
     #[doc = "Tells the codegen to escape class and method names."]pub static ref ESCAPE_NAMES:bool = {
         std::env::vars().into_iter().find_map(|(key,value)|if key == stringify!(ESCAPE_NAMES){
             Some(value)
@@ -93,7 +108,7 @@ lazy_static! {
     };
 }
 
-lazy_static!{
+lazy_static! {
     #[doc = "Changes `.locals` into `.locals init`. Causes the runtime to always initialize local variables.\nTry turining on in cause of issues. If it fixes them, then their root cause is use of uninitailized memory."]pub static ref ALWAYS_INIT_LOCALS:bool = {
         std::env::vars().into_iter().find_map(|(key,value)|if key == stringify!(ALWAYS_INIT_LOCALS){
             Some(value)
@@ -104,7 +119,7 @@ lazy_static!{
         }).unwrap_or(false)
     };
 }
-lazy_static!{
+lazy_static! {
     #[doc = "Tells codegen the print each pointer it dereferences."]
     pub static ref PRINT_PTRS:bool = {
         std::env::vars().into_iter().find_map(|(key,value)|if key == stringify!(PRINT_PTRS){
@@ -117,19 +132,27 @@ lazy_static!{
     };
 }
 
-pub fn ilasm_path()->&'static str{
+pub fn ilasm_path() -> &'static str {
     ILASM_PATH.as_str()
 }
-pub fn always_init_locals()->bool{
+pub fn always_init_locals() -> bool {
     *ALWAYS_INIT_LOCALS
 }
 impl ILASMExporter {
-    pub fn init(asm_name: &str, init_locals: bool, flavour: IlasmFlavour,print_ptrs:bool,ilasm_path:&str,escape_names:bool,runtime_config:&str) -> Self {
+    pub fn init(
+        asm_name: &str,
+        init_locals: bool,
+        flavour: IlasmFlavour,
+        print_ptrs: bool,
+        ilasm_path: &str,
+        escape_names: bool,
+        runtime_config: &str,
+    ) -> Self {
         let mut encoded_asm = String::with_capacity(0x1_00);
         let mut methods = String::with_capacity(0x1_00);
         write!(encoded_asm, ".assembly {asm_name}{{}}").expect("Write error!");
         writeln!(methods, ".class beforefieldinit RustModule{{").expect("Write error!");
-        if print_ptrs{
+        if print_ptrs {
             write!(methods, ".method public static native uint watch_ptr(native uint){{ldstr \"Derefing ptr:\"\ncall void [System.Console]System.Console::Write(string)\nldarg.0\nconv.u8\ncall void [System.Console]System.Console::WriteLine(uint64)\nldarg.0\nret\n}}\n").expect("Write error!");
         }
         write!(methods, ".method public static native uint check_calli_nonull(native uint){{\nldarg.0\nbrnull FAILURE\nldarg.0\nret\nFAILURE:newobj instance void [System.Runtime]System.NullReferenceException::.ctor()\nthrow}}\n").expect("Write error!");
@@ -138,9 +161,9 @@ impl ILASMExporter {
             methods,
             init_locals,
             flavour,
-            ilasm_path:ilasm_path.into(),
+            ilasm_path: ilasm_path.into(),
             escape_names,
-            runtime_config:runtime_config.into(),
+            runtime_config: runtime_config.into(),
         }
     }
 }
@@ -154,7 +177,7 @@ impl AssemblyExporter for ILASMExporter {
         )
         .expect("Could not write global!");
     }
-   
+
     fn add_extern_ref(&mut self, asm_name: &str, asm_ref_data: &AssemblyExternRef) {
         let (v1, v2, v3, v4) = asm_ref_data.version();
         write!(
@@ -164,11 +187,21 @@ impl AssemblyExporter for ILASMExporter {
         .expect("Write error!");
     }
     fn add_type(&mut self, tpe: &TypeDef) {
-        type_def_cli(&mut self.encoded_asm, tpe, false,self.escape_names,self.flavour,self.init_locals).expect("Error");
+        type_def_cli(
+            &mut self.encoded_asm,
+            tpe,
+            false,
+            self.escape_names,
+            self.flavour,
+            self.init_locals,
+        )
+        .expect("Error");
         //let _ = self.types.push(tpe.clone());
     }
     fn add_method(&mut self, method: &Method) {
-        method.export(&mut self.methods,self.flavour, self.init_locals).expect("Error");
+        method
+            .export(&mut self.methods, self.flavour, self.init_locals)
+            .expect("Error");
     }
     fn finalize(
         self,
@@ -187,9 +220,7 @@ impl AssemblyExporter for ILASMExporter {
         let config = final_path.with_extension("runtimeconfig.json");
         let mut config = std::fs::File::create(config).unwrap();
         config
-            .write_all(
-                self.runtime_config.as_bytes()
-            )
+            .write_all(self.runtime_config.as_bytes())
             .expect("Could not write runtime config");
 
         let mut cil = self.encoded_asm;
@@ -255,10 +286,10 @@ fn type_def_cli(
     w: &mut impl Write,
     tpe: &TypeDef,
     is_nested: bool,
-    escape_names:bool,
-    flavour:IlasmFlavour,
-    init_locals:bool,
-) -> std::fmt::Result{
+    escape_names: bool,
+    flavour: IlasmFlavour,
+    init_locals: bool,
+) -> std::fmt::Result {
     let name = tpe.name();
     let name = if escape_names {
         crate::asm_exporter::escape_class_name(name)
@@ -298,7 +329,7 @@ fn type_def_cli(
         writeln!(w, ".size {size}")?;
     }
     for inner_type in tpe.inner_types() {
-        type_def_cli(w, inner_type, true,escape_names,flavour,init_locals)?;
+        type_def_cli(w, inner_type, true, escape_names, flavour, init_locals)?;
     }
     if let Some(offsets) = tpe.explicit_offsets() {
         for ((field_name, field_type), offset) in tpe.fields().iter().zip(offsets.iter()) {
@@ -318,9 +349,7 @@ fn type_def_cli(
         }
     }
     for method in tpe.methods() {
-      
-        method.export(w,flavour,init_locals)?;
-
+        method.export(w, flavour, init_locals)?;
     }
     writeln!(w, "}}")?;
     Ok(())

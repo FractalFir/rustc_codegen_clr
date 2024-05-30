@@ -1,9 +1,10 @@
-use std::path::Path;
-use lazy_static::*;
 use cilly::{
     asm::Assembly,
-    asm_exporter::{AssemblyExportError, AssemblyExporter}, ilasm_exporter::ILASMExporter,
+    asm_exporter::{AssemblyExportError, AssemblyExporter},
+    ilasm_exporter::ILASMExporter,
 };
+use lazy_static::*;
+use std::path::Path;
 
 pub fn export_assembly(
     asm: &Assembly,
@@ -18,7 +19,7 @@ pub fn export_assembly(
         *ESCAPE_NAMES,
     )
 }
-lazy_static!{
+lazy_static! {
     #[doc = "Tells the codegen to escape class and method names."]pub static ref ESCAPE_NAMES:bool = {
         std::env::vars().into_iter().find_map(|(key,value)|if key == stringify!(ESCAPE_NAMES){
             Some(value)
@@ -29,4 +30,3 @@ lazy_static!{
         }).unwrap_or(false)
     };
 }
-
