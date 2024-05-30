@@ -54,25 +54,35 @@ pub fn handle_statement<'tcx>(
         StatementKind::Assign(palce_rvalue) => {
             let place = palce_rvalue.as_ref().0;
             let rvalue = &palce_rvalue.as_ref().1;
+            let ty =
+                crate::utilis::monomorphize(&method_instance, place.ty(method, tyctx).ty, tyctx);
             // Skip void assigments. Assigining to or from void type is a NOP.
             if crate::utilis::is_zst(
-                crate::utilis::monomorphize(&method_instance, place.ty(method, tyctx).ty, tyctx),
+                crate::utilis::monomorphize(&method_instance, ty, tyctx),
                 tyctx,
             ) {
                 return None;
             }
+            let value_calc = crate::rvalue::handle_rvalue(
+                rvalue,
+                tyctx,
+                &place,
+                method,
+                method_instance,
+                type_cache,
+            );
+            let value_calc = crate::r#type::tycache::validity_check(
+                value_calc,
+                ty,
+                type_cache,
+                method_instance,
+                tyctx,
+            );
             Some(
                 crate::place::place_set(
                     &place,
                     tyctx,
-                    crate::rvalue::handle_rvalue(
-                        rvalue,
-                        tyctx,
-                        &place,
-                        method,
-                        method_instance,
-                        type_cache,
-                    ),
+                    value_calc,
                     method,
                     method_instance,
                     type_cache,

@@ -538,13 +538,14 @@ pub fn call<'tyctx>(
 
     let mut call_args = Vec::new();
     for arg in args {
-        call_args.push(crate::operand::handle_operand(
-            &arg.node,
-            tyctx,
-            body,
-            method_instance,
+        let res_calc = crate::r#type::tycache::validity_check(
+            crate::operand::handle_operand(&arg.node, tyctx, body, method_instance, type_cache),
+            crate::utilis::monomorphize(&method_instance, arg.node.ty(body, tyctx), tyctx),
             type_cache,
-        ));
+            method_instance,
+            tyctx,
+        );
+        call_args.push(res_calc);
     }
     if crate::function_sig::is_fn_variadic(fn_type, tyctx) {
         signature.set_inputs(
@@ -590,10 +591,17 @@ pub fn call<'tyctx>(
             args: call_args.into(),
         }
     } else {
+        let res_calc = crate::r#type::tycache::validity_check(
+            call!(call_site, call_args),
+            crate::utilis::monomorphize(&method_instance, destination.ty(body, tyctx).ty, tyctx),
+            type_cache,
+            method_instance,
+            tyctx,
+        );
         crate::place::place_set(
             destination,
             tyctx,
-            call!(call_site, call_args),
+            res_calc,
             body,
             method_instance,
             type_cache,

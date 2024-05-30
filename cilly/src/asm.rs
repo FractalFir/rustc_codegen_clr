@@ -186,6 +186,7 @@ impl Assembly {
     /// Adds a method to the assebmly.
     pub fn add_method(&mut self, mut method: Method) {
         method.allocate_temporaries();
+        method.allocate_temporaries();
         //method.ensure_valid();
 
         self.functions.insert(method.call_site(), method);
@@ -275,6 +276,11 @@ impl Assembly {
                 CallSite::new(None, ".cctor".into(), FnSig::new(&[], Type::Void), true),
                 cctor.clone(),
             );
+        }
+        for call in self.types().flat_map(|(_,type_def)|type_def.methods()).flat_map(|method|(method.calls())){
+            if let Some(method) = self.functions.get(&call).cloned() {
+                externs.insert(call.clone(), method);
+            };
         }
         externs
     }

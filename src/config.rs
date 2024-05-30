@@ -37,6 +37,7 @@ config_flag! {SPLIT_LOCAL_STRUCTS,false,"Turns on the struct spliting optimzatio
 config_flag! {ALLOW_MISCOMPILATIONS,true,"Should the codegen continue working after it encoutnered a miscompilation?"}
 config_flag! {INSERT_MIR_DEBUG_COMMENTS,false,"Tells the codegen to insert comments containing the MIR statemtens after each one of them."}
 config_flag! {PRINT_LOCAL_TYPES,false,"Prints local types of all compiled MIR functions."}
+config_flag! {VALIDTE_VALUES,false,"Tells the codegen to insert additional checks on each variable asigement."}
 config_flag! {OPTIMIZE_CIL,true,"Tells the codegen to optmize the emiited CIL."}
 lazy_static! {
     #[doc = "Tells the codegen to escape class and method names."]pub static ref ESCAPE_NAMES:bool = {

@@ -2,6 +2,8 @@
 use std::io::Write;
 use std::fmt::Debug;
 fn main(){
+    use std::fmt::Write;
+
     println!("Hello from Rust to .NET!");
     std::fs::File::create("/tmp/rust_on_dotnet.txt").unwrap().write_all(b"Hi from Rust, .NET").unwrap();
     eprintln!("We are writing to stderr!");
@@ -12,17 +14,24 @@ fn main(){
     let mut buff = String::with_capacity(0x100);
     let mut formatter = std::fmt::Formatter::new(&mut buff);
     test_fomratter(&formatter);
-    //formatter.pad_integral(true,"p","100");
-    (std::hint::black_box(8_i32)).fmt(&mut formatter);
+    formatter.write_str("OK");
     test_fomratter(&formatter);
-    std::hint::black_box(&formatter);
-    //std::io::stderr().write_all(buff.as_bytes());
-    //let mut buffer = String::new();
-    //std::io::stdin().read_line(&mut buffer).unwrap();
-  
-    //std::io::stderr().write_all(buffer.as_bytes());
-    eprintln!("TestFmtEmpty:{:?}",std::hint::black_box(TestFmtEmpty));
-    eprintln!("We are writing to stderr! eight:{eight}",eight = std::hint::black_box("eight"));
+    formatter.write_char('O');
+    test_fomratter(&formatter);
+    let arg = std::hint::black_box(TestFmtEmpty);
+    {
+        use std::fmt::Debug;
+        formatter.write_str("Hello ").unwrap();
+        Debug::fmt(&arg, &mut formatter).unwrap();
+        formatter.write_str("\n").unwrap();
+        Debug::fmt(&arg, &mut formatter).unwrap();
+        formatter.write_str("!").unwrap();
+    }
+    test_fomratter(&formatter);
+    formatter.write_fmt(format_args!("arg:{arg:?}"));
+    test_fomratter(&formatter);
+
+   
 }
 struct TestFmtEmpty;
 impl Debug for TestFmtEmpty{
@@ -56,6 +65,11 @@ fn test_fomratter<'a>(fmt:&std::fmt::Formatter<'a>){
         }
         None=> eprintln!("None"),
     }
+}
+fn test_writr_str<'a>(fmt:&mut std::fmt::Formatter<'a>){
+    eprintln!("Testing write_str");
+    fmt.write_str("Bob.");
+    test_fomratter(&*fmt);
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

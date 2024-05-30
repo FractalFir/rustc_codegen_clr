@@ -207,102 +207,6 @@ pub enum CILNode {
 
 impl CILNode {
     #[must_use]
-    pub fn print_debug_val(format_start: &str, value: Self, format_end: &str, tpe: Type) -> Self {
-        match tpe {
-            Type::U64 | Type::I64 | Type::U32 | Type::I32 => Self::InspectValue {
-                val: Box::new(value),
-                inspect: Box::new([
-                    CILRoot::debug(format_start),
-                    CILRoot::Call {
-                        site: CallSite::new_extern(
-                            DotnetTypeRef::console(),
-                            "Write".into(),
-                            FnSig::new(&[tpe], Type::Void),
-                            true,
-                        ),
-                        args: Box::new([Self::GetStackTop]),
-                    },
-                    CILRoot::debug(format_end),
-                ]),
-            },
-            Type::U8 | Type::U16 => Self::InspectValue {
-                val: Box::new(value),
-                inspect: Box::new([
-                    CILRoot::debug(format_start),
-                    CILRoot::Call {
-                        site: CallSite::new_extern(
-                            DotnetTypeRef::console(),
-                            "Write".into(),
-                            FnSig::new(&[Type::U32], Type::Void),
-                            true,
-                        ),
-                        args: Box::new([Self::ConvU32(Box::new(Self::GetStackTop))]),
-                    },
-                    CILRoot::debug(format_end),
-                ]),
-            },
-            Type::I8 | Type::I16 => Self::InspectValue {
-                val: Box::new(value),
-                inspect: Box::new([
-                    CILRoot::debug(format_start),
-                    CILRoot::Call {
-                        site: CallSite::new_extern(
-                            DotnetTypeRef::console(),
-                            "Write".into(),
-                            FnSig::new(&[Type::I32], Type::Void),
-                            true,
-                        ),
-                        args: Box::new([Self::ConvI32(Box::new(Self::GetStackTop))]),
-                    },
-                    CILRoot::debug(format_end),
-                ]),
-            },
-            Type::USize => Self::InspectValue {
-                val: Box::new(value),
-                inspect: Box::new([
-                    CILRoot::debug(format_start),
-                    CILRoot::Call {
-                        site: CallSite::new_extern(
-                            DotnetTypeRef::console(),
-                            "Write".into(),
-                            FnSig::new(&[Type::U64], Type::Void),
-                            true,
-                        ),
-                        args: Box::new([Self::ZeroExtendToUSize(Box::new(Self::GetStackTop))]),
-                    },
-                    CILRoot::debug(format_end),
-                ]),
-            },
-            Type::ISize => Self::InspectValue {
-                val: Box::new(value),
-                inspect: Box::new([
-                    CILRoot::debug(format_start),
-                    CILRoot::Call {
-                        site: CallSite::new_extern(
-                            DotnetTypeRef::console(),
-                            "Write".into(),
-                            FnSig::new(&[Type::I64], Type::Void),
-                            true,
-                        ),
-                        args: Box::new([Self::ConvISize(Box::new(Self::GetStackTop))]),
-                    },
-                    CILRoot::debug(format_end),
-                ]),
-            },
-            Type::Void => value,
-            _ => Self::InspectValue {
-                val: Box::new(value),
-                inspect: Box::new([
-                    CILRoot::debug(format_start),
-                    CILRoot::Pop {
-                        tree: Self::GetStackTop,
-                    },
-                    CILRoot::debug(format_end),
-                ]),
-            },
-        }
-    }
-    #[must_use]
     pub fn select(tpe: Type, a: Self, b: Self, predictate: Self) -> Self {
         match tpe {
             Type::U128 | Type::I128 => call!(
@@ -613,7 +517,6 @@ impl CILNode {
                         }
                     }),
                     "self:{self:?}"
-                    
                 );
                 assert!(
                     !(&*roots).iter().flat_map(|root|root.into_iter()).any(|node| {
@@ -625,10 +528,8 @@ impl CILNode {
                         }
                     }),
                     "self:{self:?}"
-                    
                 );
                 *self=  Self::SubTrees(roots.clone(), Box::new(main.clone()));
-               
             },
             Self::SubTrees(trees, main) =>{
                 trees.iter_mut().for_each(|arg|arg.allocate_tmps(curr_loc,locals));

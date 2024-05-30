@@ -349,7 +349,20 @@ fn export_node(
         CILNode::LtUn(a, b) => bi_op!(out, a, b, depth, il_flavour, "clt.un"),
         CILNode::Gt(a, b) => bi_op!(out, a, b, depth, il_flavour, "cgt"),
         CILNode::GtUn(a, b) => bi_op!(out, a, b, depth, il_flavour, "cgt.un"),
-        CILNode::TemporaryLocal(_) => todo!(),
+        CILNode::TemporaryLocal(_) => {
+            depth.pad(out)?;
+            write!(
+                out,
+                "ldstr \"Unresolved tmp local at the export stage ???\""
+            )?;
+            depth.pad(out)?;
+            write!(
+                out,
+                "newobj instance void [System.Runtime]System.Exception::.ctor()"
+            )?;
+            depth.pad(out)?;
+            write!(out, "throw")
+        }
         CILNode::SubTrees(_, _) => todo!(),
         CILNode::LoadAddresOfTMPLocal => todo!(),
         CILNode::LoadTMPLocal => todo!(),
@@ -462,8 +475,19 @@ fn export_node(
         CILNode::LDLen { arr } => un_op!(out, arr, depth, il_flavour, "ldlen"),
         CILNode::LDElelemRef { arr, idx } => bi_op!(out, arr, idx, depth, il_flavour, "ldelem.ref"),
         CILNode::PointerToConstValue(_) => todo!(),
-        CILNode::GetStackTop => todo!(),
-        CILNode::InspectValue { val, inspect } => todo!(),
+        CILNode::GetStackTop => {
+            depth.pad(out)?;
+            write!(out, "// unsafe builtin GetStackTop.")
+        }
+        CILNode::InspectValue { val, inspect } => {
+            export_node(out, val, depth.incremented(), il_flavour)?;
+            depth.pad(out)?;
+            write!(out, "dup")?;
+            for root in inspect {
+                export_root(out, root, depth.incremented(), il_flavour)?;
+            }
+            Ok(())
+        }
         CILNode::TransmutePtr { val, new_ptr } => {
             export_node(out, val, depth.incremented(), il_flavour)
         }

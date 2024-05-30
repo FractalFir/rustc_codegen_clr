@@ -357,7 +357,6 @@ impl CILRoot {
             Self::SourceFileInfo(_) => (),
             Self::STLoc { tree, .. } => {
                 tree.allocate_tmps(curr_loc, locals);
-               
             }
             Self::BTrue { cond: ops, .. } => ops.allocate_tmps(curr_loc, locals),
             Self::BFalse { cond: ops, .. } => ops.allocate_tmps(curr_loc, locals),
@@ -432,7 +431,6 @@ impl CILRoot {
             Self::SetStaticField { descr: _, value } => value.allocate_tmps(curr_loc, locals),
             Self::JumpingPad { .. } => (),
         };
-       
     }
 
     #[must_use]
@@ -451,25 +449,25 @@ impl CILRoot {
 #[test]
 fn allocating_tmps() {
     let mut original_value = CILNode::SubTrees(
-            Box::new([CILRoot::STLoc {
-                local: 14,
-                tree: CILNode::TemporaryLocal(Box::new((
-                    Type::DotnetType(
-                        DotnetTypeRef::new::<&str, _>(
-                            None,
-                            "core.ptr.metadata.PtrComponents.h2b679e9941d88b2f",
-                        )
-                        .into(),
-                    ),
-                    [CILRoot::SetTMPLocal {
-                        value: CILNode::LDArg(0),
-                    }]
+        Box::new([CILRoot::STLoc {
+            local: 14,
+            tree: CILNode::TemporaryLocal(Box::new((
+                Type::DotnetType(
+                    DotnetTypeRef::new::<&str, _>(
+                        None,
+                        "core.ptr.metadata.PtrComponents.h2b679e9941d88b2f",
+                    )
                     .into(),
-                    CILNode::LDLoc(3),
-                ))),
-            }]),
-            CILNode::LDLoc(2).into(),
-        );
+                ),
+                [CILRoot::SetTMPLocal {
+                    value: CILNode::LDArg(0),
+                }]
+                .into(),
+                CILNode::LDLoc(3),
+            ))),
+        }]),
+        CILNode::LDLoc(2).into(),
+    );
     //let mut method = crate::method::Method::new(crate::access_modifier::AccessModifer::Private,crate::method::MethodType::Static,FnSig::new(&[Type::I32],&Type::Void),"a",vec![],vec![]);
     original_value.allocate_tmps(None, &mut vec![]);
     println!("original_value:{original_value:?}");

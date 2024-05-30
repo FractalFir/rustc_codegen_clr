@@ -73,6 +73,7 @@ impl<'a> Iterator for CILIter<'a> {
                     | CILNode::ConvU8(a)
                     | CILNode::ConvI8(a)
                     | CILNode::ZeroExtendToUSize(a)
+                    | CILNode::ZeroExtendToISize(a)
                     | CILNode::LDFieldAdress { addr: a, field: _ }
                     | CILNode::LDField { addr: a, field: _ }
                     | CILNode::TransmutePtr { val: a, .. }
@@ -96,7 +97,8 @@ impl<'a> Iterator for CILIter<'a> {
                     | CILNode::LDIndUSize { ptr: a }
                     | CILNode::Not(a)
                     | CILNode::Neg(a)
-                    | CILNode::LDLen { arr: a },
+                    | CILNode::LDLen { arr: a }
+                    | CILNode::BlackBox(a),
                 ) => {
                     if idx == &1 {
                         *idx += 1;
@@ -138,7 +140,9 @@ impl<'a> Iterator for CILIter<'a> {
                     | CILNode::LocAllocAligned { tpe: _, align: _ }
                     | CILNode::LoadGlobalAllocPtr { alloc_id: _ }
                     | CILNode::LoadAddresOfTMPLocal
-                    | CILNode::PointerToConstValue(_),
+                    | CILNode::PointerToConstValue(_)
+                    | CILNode::LoadTMPLocal
+                    | CILNode::GetStackTop,
                 ) => {
                     self.elems.pop();
                     continue;
@@ -269,6 +273,23 @@ impl<'a> Iterator for CILIter<'a> {
                         continue;
                     }
                 }
+                CILIterElem::Node(CILNode::InspectValue { val, inspect }) => {
+                    if *idx - 1 < inspect.len() {
+                        let root = &inspect[*idx - 1];
+                        *idx += 1;
+                        self.elems.push((0, CILIterElem::Root(root)));
+
+                        continue;
+                    } else if *idx - 1 == inspect.len() {
+                        *idx += 1;
+                        self.elems.push((0, CILIterElem::Node(val)));
+
+                        continue;
+                    } else {
+                        self.elems.pop();
+                        continue;
+                    }
+                }
                 CILIterElem::Node(CILNode::TemporaryLocal(pack)) => {
                     let (_, roots, node) = pack.as_ref();
                     if *idx - 1 < roots.len() {
@@ -366,7 +387,7 @@ impl<'a> Iterator for CILIter<'a> {
                         continue;
                     }
                 },
-                _ => todo!("Unhandled iter elem {elem:?}"),
+                //_ => todo!("Unhandled iter elem {elem:?}"),
             }
         }
     }

@@ -2,7 +2,10 @@ use super::{tuple_name, tuple_typedef};
 
 use crate::{
     r#type::{closure_typedef, escape_field_name},
-    utilis::adt::FieldOffsetIterator,
+    utilis::{
+        adt::{get_discr, FieldOffsetIterator},
+        is_zst,
+    },
     IString,
 };
 use cilly::{
@@ -293,7 +296,7 @@ impl TyCache {
             explicit_offsets.extend(field_offsets);
         }
         assert_eq!(fields.len(), explicit_offsets.len());
-        TypeDef::new(
+        let mut def = TypeDef::new(
             access,
             enum_name.into(),
             vec![],
@@ -303,7 +306,26 @@ impl TyCache {
             0,
             None,
             Some(layout.layout.size().bytes()),
-        )
+        );
+        if *crate::config::VALIDTE_VALUES{
+            let tpe = self.type_from_cache(adt_ty, tyctx, method);
+            let check = cilly::method::Method::new(
+                AccessModifer::MoudlePublic,
+                cilly::method::MethodType::Static,
+                FnSig::new(&[tpe.clone()], tpe),
+                "check_valid",
+                vec![],
+                vec![cilly::basic_block::BasicBlock::new(
+                    enum_bound_check(adt, self, method.unwrap(), tyctx, adt_ty),
+                    0,
+                    None,
+                )],
+                vec![Some("tpe".into())],
+            );
+            def.add_method(check);
+        }
+        def
+        
     }
     pub fn slice_ty<'tyctx>(
         &mut self,
@@ -622,6 +644,110 @@ fn try_find_ptr_components(ctx: TyCtxt) -> DefId {
     drop(find_ptr_components_timer);
     ptr_components.expect("Could not find core::ptr::metadata::PtrComponents")
 }
-pub fn validity_check(addr: CILNode) -> CILNode {
-    todo!("{addr:?}");
+pub fn validity_check<'tyctx>(
+    val: CILNode,
+    ty: Ty<'tyctx>,
+    type_cache: &mut TyCache,
+    method_instance: Instance<'tyctx>,
+    tyctx: TyCtxt<'tyctx>,
+) -> CILNode {
+    let ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
+    let tpe = type_cache.type_from_cache(ty, tyctx, Some(method_instance));
+    if !*crate::config::VALIDTE_VALUES {
+        return val;
+    }
+    match ty.kind() {
+        TyKind::Adt(def, _subst) => match def.adt_kind() {
+            rustc_middle::ty::AdtKind::Struct | rustc_middle::ty::AdtKind::Union => val,
+            rustc_middle::ty::AdtKind::Enum => {
+                cilly::call!(cilly::call_site::CallSite::new(Some(tpe.as_dotnet().unwrap()),"check_valid".into(),FnSig::new(&[tpe.clone()],tpe),true),[val])   
+            }
+        },
+        /*TyKind::Ref(_, pointed_ty, _) => {
+            let pointed_ty = crate::utilis::monomorphize(&method_instance, *pointed_ty, tyctx);
+            if super::pointer_to_is_fat(pointed_ty, tyctx, Some(method_instance)) || is_zst(pointed_ty, tyctx){
+                return val;
+            }
+            let deref = crate::place::deref_op(
+                pointed_ty.into(),
+                tyctx,
+                &method_instance,
+                type_cache,
+                CILNode::LoadTMPLocal,
+            );
+            let ptr_type = type_cache.type_from_cache(ty, tyctx, Some(method_instance));
+
+            CILNode::TemporaryLocal(Box::new((
+                ptr_type,
+                [
+                    cilly::cil_root::CILRoot::SetTMPLocal { value: val },
+                    cilly::cil_root::CILRoot::Pop {
+                        tree: validity_check(deref, pointed_ty, type_cache, method_instance, tyctx),
+                    },
+                ]
+                .into(),
+                CILNode::LoadTMPLocal,
+            )))
+        }*/
+        _ => val,
+    }
+}
+fn enum_bound_check<'tyctx>(
+    def: AdtDef<'tyctx>,
+    type_cache: &mut TyCache,
+    method_instance: Instance<'tyctx>,
+    tyctx: TyCtxt<'tyctx>,
+    ty: Ty<'tyctx>,
+) -> Vec<cilly::cil_tree::CILTree> {
+    // If explit discriminants, we can't relly on `bounds_check` to check the value. So, we will just ignore this.
+    if def
+        .variants()
+        .iter()
+        .any(|vdef| matches!(vdef.discr, rustc_middle::ty::VariantDiscr::Explicit(_)))
+    {
+        return vec![cilly::cil_root::CILRoot::Ret {
+            tree: CILNode::LDArg(0),
+        }
+        .into()];
+    }
+    let layout = tyctx
+        .layout_of(rustc_middle::ty::ParamEnvAnd {
+            param_env: ParamEnv::reveal_all(),
+            value: ty,
+        })
+        .expect("Could not get type layout!")
+        .layout;
+    let (disrc_type, _) = crate::utilis::adt::enum_tag_info(layout, tyctx);
+    // If discr void, just ignore.
+    if disrc_type == Type::Void {
+        return vec![cilly::cil_root::CILRoot::Ret {
+            tree: CILNode::LDArg(0),
+        }
+        .into()];
+    }
+    let addr = CILNode::LDArgA(0);
+
+    let enum_tpe = type_cache.type_from_cache(ty, tyctx, Some(method_instance));
+    let discr = get_discr(layout, addr, enum_tpe.as_dotnet().unwrap(), tyctx, ty);
+    let root = cilly::cil_root::CILRoot::Pop {
+        tree: cilly::call!(
+            cilly::call_site::CallSite::new(
+                None,
+                "bounds_check".into(),
+                FnSig::new(&[Type::USize, Type::USize], Type::USize),
+                true
+            ),
+            [
+                cilly::conv_usize!(discr),
+                cilly::conv_usize!(cilly::ldc_u64!(def.variants().iter().count() as u64))
+            ]
+        ),
+    };
+    return vec![
+        root.into(),
+        cilly::cil_root::CILRoot::Ret {
+            tree: CILNode::LDArg(0),
+        }
+        .into(),
+    ];
 }

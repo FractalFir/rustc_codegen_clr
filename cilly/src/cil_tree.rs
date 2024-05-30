@@ -23,7 +23,6 @@ impl CILTree {
     /// Converts a tree with subtrees into multiple trees.
     #[must_use]
     pub fn shed_trees(self) -> Vec<Self> {
-  
         let trees: Vec<Self> = self
             .tree
             .sheed_trees()
@@ -31,7 +30,6 @@ impl CILTree {
             .map(std::convert::Into::into)
             .collect();
 
-       
         trees
     }
     /// Retunrs the root of this tree.
@@ -47,8 +45,6 @@ impl CILTree {
     pub fn allocate_tmps(&mut self, locals: &mut Vec<(Option<Box<str>>, Type)>) {
         let cloned = self.clone();
         self.tree.allocate_tmps(None, locals);
-
-       
     }
     pub fn validate(&self, method: &Method) -> Result<(), String> {
         //self.tree.validate(method)
@@ -109,12 +105,7 @@ fn test_alloc() {
     let mut tree: CILNode = CILNode::TemporaryLocal(Box::new((
         Type::U8,
         [CILRoot::SetTMPLocal {
-            value: CILNode::TemporaryLocal(Box::new((
-                Type::U8,
-                []
-                .into(),
-                CILNode::LDLoc(0),
-            ))),
+            value: CILNode::TemporaryLocal(Box::new((Type::U8, [].into(), CILNode::LDLoc(0)))),
         }]
         .into(),
         CILNode::LDLoc(0),

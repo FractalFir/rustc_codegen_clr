@@ -247,7 +247,35 @@ impl<'a> Iterator for CILIterMut<'a> {
                             continue;
                         }
                     }
-                    _ => todo!("Can't iter node:{node:?}", node = unsafe { &**node_ptr }),
+                    CILNode::GetStackTop => {
+                        self.elems.pop();
+                        continue;
+                    }
+                    CILNode::InspectValue { val, inspect } => {
+                        if *idx - 1 < inspect.len() {
+                            let arg = &mut inspect[*idx - 1];
+                            *idx += 1;
+                            self.elems.push((
+                                0,
+                                CILIterElemUnsafe::Root(std::ptr::from_mut(arg), PhantomData),
+                            ));
+                            continue;
+                        }
+                        if *idx - 1 < inspect.len() + 1 {
+                            *idx += 1;
+                            self.elems.push((
+                                0,
+                                CILIterElemUnsafe::Node(
+                                    std::ptr::from_mut(val.as_mut()),
+                                    PhantomData,
+                                ),
+                            ));
+                            continue;
+                        } else {
+                            self.elems.pop();
+                            continue;
+                        }
+                    } // /_ => todo!("Can't iter node:{node:?}", node = unsafe { &**node_ptr }),
                 },
                 CILIterElemUnsafe::Root(root_ptr, _) => match unsafe { &mut **root_ptr } {
                     CILRoot::SetTMPLocal { value: tree }

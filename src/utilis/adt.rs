@@ -370,11 +370,7 @@ pub fn get_discr<'tyctx>(
             )
         }
     };
-    if *crate::config::INSERT_MIR_DEBUG_COMMENTS {
-        rustc_middle::ty::print::with_no_trimmed_paths! {CILNode::print_debug_val(&format!("Discriminant of type {enum_tpe:?}({tag_tpe:?}) is "), discr, ".",tag_tpe)}
-    } else {
-        discr
-    }
+    discr
 
     //discr
 }
