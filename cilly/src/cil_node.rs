@@ -203,9 +203,41 @@ pub enum CILNode {
         tpe: Box<Type>,
         align: u64,
     },
+    /// Creates a delegate to an object method, and places a managed reference to that delegate on the stack.
+    CreateDelegate {
+        obj: Box<Self>,
+        site: Box<CallSite>,
+    },
 }
 
 impl CILNode {
+    /// Allocates a GC handle to the object, and converts that handle to a nint sized handleID.
+    pub fn managed_ref_to_handle(self) -> Self {
+        let gc_handle = call!(
+            CallSite::new(
+                Some(DotnetTypeRef::gc_handle()),
+                "Alloc".into(),
+                FnSig::new(
+                    &[Type::DotnetType(Box::new(DotnetTypeRef::object_type()))],
+                    Type::DotnetType(Box::new(DotnetTypeRef::gc_handle()))
+                ),
+                true
+            ),
+            [self]
+        );
+        call!(
+            CallSite::new(
+                Some(DotnetTypeRef::gc_handle()),
+                "op_Explicit".into(),
+                FnSig::new(
+                    &[Type::DotnetType(Box::new(DotnetTypeRef::gc_handle()))],
+                    Type::ISize
+                ),
+                true,
+            ),
+            [gc_handle]
+        )
+    }
     #[must_use]
     pub fn select(tpe: Type, a: Self, b: Self, predictate: Self) -> Self {
         match tpe {
@@ -332,6 +364,7 @@ impl CILNode {
             | Self::ConvI32(inner)
             | Self::ConvI64(inner)
             | Self::ConvISize(inner)
+            | Self::CreateDelegate { obj:inner, site:_ }
             //| Self::Volatile(inner)
             | Self::Neg(inner)
             | Self::Not(inner) => inner.opt(opt_count),
@@ -498,7 +531,9 @@ impl CILNode {
             //Self::Volatile(_) => todo!(),
             Self::Neg(val) |
             Self::Not(val) =>val.allocate_tmps(curr_loc, locals),
-
+            Self::CreateDelegate { obj, site: _ }=>{
+                obj.allocate_tmps(curr_loc, locals);
+            }
             Self::TemporaryLocal(tmp_loc) => {
                 let tpe = &mut tmp_loc.0;
                 let end_loc = locals.len();

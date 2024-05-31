@@ -277,7 +277,11 @@ impl Assembly {
                 cctor.clone(),
             );
         }
-        for call in self.types().flat_map(|(_,type_def)|type_def.methods()).flat_map(|method|(method.calls())){
+        for call in self
+            .types()
+            .flat_map(|(_, type_def)| type_def.methods())
+            .flat_map(|method| (method.calls()))
+        {
             if let Some(method) = self.functions.get(&call).cloned() {
                 externs.insert(call.clone(), method);
             };

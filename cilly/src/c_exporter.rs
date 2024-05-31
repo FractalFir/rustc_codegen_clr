@@ -581,6 +581,7 @@ fn node_string(tree: &CILNode, method: &Method) -> String {
         }
         CILNode::LoadAddresOfTMPLocal => todo!(),
         CILNode::LoadTMPLocal => todo!(),
+        CILNode::CreateDelegate { obj, site } => todo!(),
         CILNode::LDFtn(fn_sig) => {
             let name = fn_sig.name();
             let tpe_name = fn_sig

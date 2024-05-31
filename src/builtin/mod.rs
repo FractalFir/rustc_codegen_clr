@@ -1,17 +1,23 @@
 use crate::add_method_from_trees;
-use cilly::access_modifier::AccessModifer;
-use cilly::asm::Assembly;
-use cilly::basic_block::BasicBlock;
-use cilly::call_site::CallSite;
-use cilly::cil_node::CILNode;
-
-use cilly::cil_root::CILRoot;
-use cilly::fn_sig::FnSig;
-use cilly::method::{Method, MethodType};
-use cilly::type_def::TypeDef;
-use cilly::DotnetTypeRef;
-use cilly::{call, conv_usize, ldc_u64, lt_un, r#type::Type};
+use cilly::{
+    access_modifier::AccessModifer,
+    asm::Assembly,
+    basic_block::BasicBlock,
+    call,
+    call_site::CallSite,
+    cil_node::CILNode,
+    cil_root::CILRoot,
+    conv_usize,
+    field_desc::FieldDescriptor,
+    fn_sig::FnSig,
+    ld_field, ldc_u64, lt_un,
+    method::{Method, MethodType},
+    r#type::Type,
+    type_def::TypeDef,
+    DotnetTypeRef,
+};
 use rustc_middle::ty::TyCtxt;
+mod atomic;
 mod casts;
 mod select;
 const MAX_ALLOC_SIZE: u64 = u32::MAX as u64;
@@ -120,7 +126,7 @@ macro_rules! add_method_from_trees {
         fn $name(asm: &mut cilly::asm::Assembly) {
             let mut method = cilly::method::Method::new(
                 AccessModifer::MoudlePublic,
-                cilly::method::MethodType::MethodType::Static,
+                cilly::method::MethodType::Static,
                 cilly::fn_sig::FnSig::new($input, $output),
                 stringify!($name),
                 $locals.into(),
@@ -135,6 +141,7 @@ macro_rules! add_method_from_trees {
 /// Inserts a small subset of libc and some standard types into an assembly.
 pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     bounds_check(asm);
+    atomic::atomics(asm);
     let c_void = crate::r#type::c_void(tyctx);
     asm.add_typedef(TypeDef::new(
         AccessModifer::Public,
@@ -418,6 +425,116 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     //memcmp::add_raw_eq(asm);
     //add_ptr_offset_from_unsigned(asm);
     //caller_location::add_caller_location(asm,tyctx,&mut TyCache::empty());
+    pthread_create(asm);
+    let unmanaged_start = TypeDef::new(
+        AccessModifer::MoudlePublic,
+        "UnmanagedThreadStart".into(),
+        vec![],
+        vec![
+            (
+                "start_fn".into(),
+                Type::DelegatePtr(Box::new(FnSig::new(
+                    &[Type::Ptr(Box::new(Type::Void))],
+                    Type::Void,
+                ))),
+            ),
+            ("data".into(), Type::Ptr(Box::new(Type::Void))),
+        ],
+        vec![
+            Method::new(
+                AccessModifer::MoudlePublic,
+                MethodType::Instance,
+                FnSig::new(
+                    &[
+                        Type::DotnetType(Box::new(unmanaged_start())),
+                        Type::DelegatePtr(Box::new(FnSig::new(
+                            &[Type::Ptr(Box::new(Type::Void))],
+                            Type::Void,
+                        ))),
+                        Type::Ptr(Box::new(Type::Void)),
+                    ],
+                    Type::Void,
+                ),
+                ".ctor".into(),
+                vec![],
+                vec![BasicBlock::new(
+                    vec![
+                        CILRoot::SetField {
+                            addr: CILNode::LDArg(0),
+                            value: CILNode::LDArg(1),
+                            desc: FieldDescriptor::new(
+                                unmanaged_start(),
+                                Type::DelegatePtr(Box::new(FnSig::new(
+                                    &[Type::Ptr(Box::new(Type::Void))],
+                                    Type::Void,
+                                ))),
+                                "start_fn".into(),
+                            ),
+                        }
+                        .into(),
+                        CILRoot::SetField {
+                            addr: CILNode::LDArg(0),
+                            value: CILNode::LDArg(2),
+                            desc: FieldDescriptor::new(
+                                unmanaged_start(),
+                                Type::Ptr(Box::new(Type::Void)),
+                                "data".into(),
+                            ),
+                        }
+                        .into(),
+                        CILRoot::VoidRet.into(),
+                    ],
+                    0,
+                    None,
+                )],
+                vec![Some("start_routine".into()), Some("data".into())],
+            ),
+            Method::new(
+                AccessModifer::MoudlePublic,
+                MethodType::Instance,
+                FnSig::new(&[Type::DotnetType(Box::new(unmanaged_start()))], Type::Void),
+                "Start",
+                vec![],
+                vec![BasicBlock::new(
+                    vec![
+                        CILRoot::CallI {
+                            sig: FnSig::new(&[Type::Ptr(Box::new(Type::Void))], Type::Void),
+                            fn_ptr: ld_field!(
+                                CILNode::LDArg(0),
+                                FieldDescriptor::new(
+                                    unmanaged_start(),
+                                    Type::DelegatePtr(Box::new(FnSig::new(
+                                        &[Type::Ptr(Box::new(Type::Void))],
+                                        Type::Void,
+                                    ))),
+                                    "start_fn".into(),
+                                )
+                            ),
+                            args: [ld_field!(
+                                CILNode::LDArg(0),
+                                FieldDescriptor::new(
+                                    unmanaged_start(),
+                                    Type::Ptr(Box::new(Type::Void)),
+                                    "data".into(),
+                                )
+                            )]
+                            .into(),
+                        }
+                        .into(),
+                        CILRoot::VoidRet.into(),
+                    ],
+                    0,
+                    None,
+                )],
+                vec![],
+            ),
+        ],
+        None,
+        0,
+        Some(DotnetTypeRef::object_type()),
+        None,
+    );
+    asm.add_typedef(unmanaged_start);
 }
 
 add_method_from_trees!(
@@ -466,3 +583,149 @@ add_method_from_trees!(
     ],
     vec![Some("str".into())]
 );
+add_method_from_trees!(
+    pthread_create,
+    &[
+        Type::Ptr(Box::new(Type::ISize)),
+        Type::Ptr(Box::new(Type::Void)),
+        Type::DelegatePtr(Box::new(FnSig::new(
+            &[Type::Ptr(Box::new(Type::Void))],
+            Type::Void
+        ))),
+        Type::Ptr(Box::new(Type::Void))
+    ],
+    Type::I32,
+    vec![BasicBlock::new(
+        vec![
+            CILRoot::STLoc {
+                local: 0,
+                tree: CILNode::NewObj {
+                    args: [CILNode::NewObj {
+                        args: [
+                            CILNode::NewObj {
+                                site: Box::new(CallSite::new(
+                                    Some(unmanaged_start()),
+                                    ".ctor".into(),
+                                    FnSig::new(
+                                        &[
+                                            Type::DotnetType(Box::new(unmanaged_start())),
+                                            Type::DelegatePtr(Box::new(FnSig::new(
+                                                &[Type::Ptr(Box::new(Type::Void))],
+                                                Type::Void
+                                            ))),
+                                            Type::Ptr(Box::new(Type::Void))
+                                        ],
+                                        Type::Void
+                                    ),
+                                    false
+                                )),
+                                args: [CILNode::LDArg(2), CILNode::LDArg(3),].into()
+                            },
+                            CILNode::LDFtn(Box::new(CallSite::new(
+                                Some(unmanaged_start()),
+                                "Start".into(),
+                                FnSig::new(
+                                    &[Type::DotnetType(Box::new(unmanaged_start()))],
+                                    Type::Void
+                                ),
+                                false
+                            )))
+                        ]
+                        .into(),
+                        site: Box::new(CallSite::new(
+                            Some(DotnetTypeRef::thread_start()),
+                            ".ctor".into(),
+                            FnSig::new(
+                                &[
+                                    Type::DotnetType(Box::new(DotnetTypeRef::thread_start())),
+                                    Type::DotnetType(Box::new(DotnetTypeRef::object_type())),
+                                    Type::ISize
+                                ],
+                                Type::Void
+                            ),
+                            false
+                        )),
+                    }]
+                    .into(),
+                    site: Box::new(CallSite::new(
+                        Some(DotnetTypeRef::thread()),
+                        ".ctor".into(),
+                        FnSig::new(
+                            &[
+                                Type::DotnetType(Box::new(DotnetTypeRef::thread())),
+                                Type::DotnetType(Box::new(DotnetTypeRef::thread_start())),
+                            ],
+                            Type::Void
+                        ),
+                        false
+                    )),
+                }
+            }
+            .into(),
+            CILRoot::CallVirt {
+                site: CallSite::new(
+                    Some(DotnetTypeRef::thread()),
+                    "Start".into(),
+                    FnSig::new(
+                        &[Type::DotnetType(Box::new(DotnetTypeRef::thread()))],
+                        Type::Void
+                    ),
+                    false
+                ),
+                args: [CILNode::LDLoc(0)].into(),
+            }
+            .into(),
+            CILRoot::STIndISize(
+                CILNode::LDArg(0),
+                CILNode::Call {
+                    args: [CILNode::Call {
+                        site: Box::new(CallSite::new(
+                            Some(DotnetTypeRef::gc_handle()),
+                            "Alloc".into(),
+                            FnSig::new(
+                                &[Type::DotnetType(Box::new(DotnetTypeRef::object_type()))],
+                                Type::DotnetType(Box::new(DotnetTypeRef::gc_handle()))
+                            ),
+                            true
+                        )),
+                        args: Box::new([CILNode::LDLoc(0)])
+                    }]
+                    .into(),
+                    site: Box::new(CallSite::new(
+                        Some(DotnetTypeRef::gc_handle()),
+                        "op_Explicit".into(),
+                        FnSig::new(
+                            &[Type::DotnetType(Box::new(DotnetTypeRef::gc_handle()))],
+                            Type::ISize
+                        ),
+                        true
+                    ))
+                }
+            )
+            .into(),
+            CILRoot::Ret { tree: ldc_u64!(0) }.into(),
+        ],
+        0,
+        None
+    )],
+    vec![(
+        Some("thread_handle".into()),
+        Type::DotnetType(Box::new(DotnetTypeRef::thread()))
+    )],
+    vec![
+        Some("thread".into()),
+        Some("attr".into()),
+        Some("start_routine".into()),
+        Some("arg".into()),
+    ]
+);
+/*
+ "pthread_attr_init",
+    "pthread_attr_destroy",
+    "pthread_attr_setstacksize",
+    "pthread_create",
+    "pthread_detach",
+*/
+fn unmanaged_start() -> DotnetTypeRef {
+    DotnetTypeRef::new::<&str, _>(None, "UnmanagedThreadStart").with_valuetype(false)
+}

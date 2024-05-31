@@ -139,7 +139,7 @@ impl TyCache {
         let explicit_offsets =
             crate::utilis::adt::FieldOffsetIterator::fields((*layout.layout.0).clone()).collect();
         //let to_string = create_to_string(adt, subst, adt_ty, self, method, tyctx);
-        TypeDef::new(
+        let mut def = TypeDef::new(
             access,
             name.into(),
             vec![],
@@ -149,7 +149,57 @@ impl TyCache {
             0,
             None,
             Some(layout.layout.size().bytes()),
-        )
+        );
+        let owner_ty = self
+            .type_from_cache(adt_ty, tyctx, method)
+            .as_dotnet()
+            .unwrap();
+        if *crate::config::VALIDTE_VALUES {
+            let tpe = self.type_from_cache(adt_ty, tyctx, method);
+            let mut roots = vec![];
+            for field in &adt
+                .variant(rustc_target::abi::VariantIdx::from_u32(0))
+                .fields
+            {
+                let name = escape_field_name(&field.name.to_string());
+                let field_ty = field.ty(tyctx, subst);
+                if is_zst(field_ty, tyctx) {
+                    continue;
+                };
+                let field_type = self.type_from_cache(field_ty, tyctx, method);
+                let val = CILNode::LDField {
+                    addr: Box::new(CILNode::LDArg(0)),
+                    field: Box::new(cilly::field_desc::FieldDescriptor::new(
+                        owner_ty.clone(),
+                        field_type,
+                        name,
+                    )),
+                };
+                roots.push(
+                    cilly::cil_root::CILRoot::Pop {
+                        tree: validity_check(val, field_ty, self, method.unwrap(), tyctx),
+                    }
+                    .into(),
+                );
+            }
+            roots.push(
+                cilly::cil_root::CILRoot::Ret {
+                    tree: CILNode::LDArg(0),
+                }
+                .into(),
+            );
+            let check = cilly::method::Method::new(
+                AccessModifer::MoudlePublic,
+                cilly::method::MethodType::Static,
+                FnSig::new(&[tpe.clone()], tpe),
+                "check_valid",
+                vec![],
+                vec![cilly::basic_block::BasicBlock::new(roots, 0, None)],
+                vec![Some("tpe".into())],
+            );
+            def.add_method(check);
+        }
+        def
     }
     fn union_<'tyctx>(
         &mut self,
@@ -307,7 +357,7 @@ impl TyCache {
             None,
             Some(layout.layout.size().bytes()),
         );
-        if *crate::config::VALIDTE_VALUES{
+        if *crate::config::VALIDTE_VALUES {
             let tpe = self.type_from_cache(adt_ty, tyctx, method);
             let check = cilly::method::Method::new(
                 AccessModifer::MoudlePublic,
@@ -325,7 +375,6 @@ impl TyCache {
             def.add_method(check);
         }
         def
-        
     }
     pub fn slice_ty<'tyctx>(
         &mut self,
@@ -658,14 +707,29 @@ pub fn validity_check<'tyctx>(
     }
     match ty.kind() {
         TyKind::Adt(def, _subst) => match def.adt_kind() {
-            rustc_middle::ty::AdtKind::Struct | rustc_middle::ty::AdtKind::Union => val,
-            rustc_middle::ty::AdtKind::Enum => {
-                cilly::call!(cilly::call_site::CallSite::new(Some(tpe.as_dotnet().unwrap()),"check_valid".into(),FnSig::new(&[tpe.clone()],tpe),true),[val])   
+            rustc_middle::ty::AdtKind::Union => val,
+            rustc_middle::ty::AdtKind::Struct | rustc_middle::ty::AdtKind::Enum => {
+                if let Some(d_tpe) = tpe.as_dotnet() {
+                    cilly::call!(
+                        cilly::call_site::CallSite::new(
+                            Some(d_tpe),
+                            "check_valid".into(),
+                            FnSig::new(&[tpe.clone()], tpe),
+                            true
+                        ),
+                        [val]
+                    )
+                } else {
+                    val
+                }
             }
         },
-        /*TyKind::Ref(_, pointed_ty, _) => {
+        TyKind::Ref(_, pointed_ty, _) => {
             let pointed_ty = crate::utilis::monomorphize(&method_instance, *pointed_ty, tyctx);
-            if super::pointer_to_is_fat(pointed_ty, tyctx, Some(method_instance)) || is_zst(pointed_ty, tyctx){
+            if super::pointer_to_is_fat(pointed_ty, tyctx, Some(method_instance))
+                || is_zst(pointed_ty, tyctx)
+                || matches!(pointed_ty.kind(), TyKind::Ref(_, _, _))
+            {
                 return val;
             }
             let deref = crate::place::deref_op(
@@ -688,7 +752,7 @@ pub fn validity_check<'tyctx>(
                 .into(),
                 CILNode::LoadTMPLocal,
             )))
-        }*/
+        }
         _ => val,
     }
 }

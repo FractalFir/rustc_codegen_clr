@@ -20,6 +20,26 @@ impl DotnetTypeRef {
         .with_valuetype(false)
     }
     #[must_use]
+    pub fn gc_handle() -> Self {
+        Self::new(
+            Some("System.Runtime"),
+            "System.Runtime.InteropServices.GCHandle",
+        )
+        .with_valuetype(true)
+    }
+    #[must_use]
+    pub fn thread() -> Self {
+        Self::new(Some("System.Threading.Thread"), "System.Threading.Thread").with_valuetype(false)
+    }
+    #[must_use]
+    pub fn thread_start() -> Self {
+        Self::new(
+            Some("System.Threading.Thread"),
+            "System.Threading.ThreadStart",
+        )
+        .with_valuetype(false)
+    }
+    #[must_use]
     pub fn single() -> Self {
         Self::new(Some("System.Runtime"), "System.Single").with_valuetype(true)
     }

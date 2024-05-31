@@ -22,6 +22,16 @@ impl<'a> Iterator for CILIter<'a> {
                 return Some(*elem);
             }
             match elem {
+                CILIterElem::Node(CILNode::CreateDelegate { obj, site: _ }) => {
+                    if idx == &1 {
+                        *idx += 1;
+                        self.elems.push((0, CILIterElem::Node(obj)));
+                        continue;
+                    } else {
+                        self.elems.pop();
+                        continue;
+                    }
+                }
                 CILIterElem::Node(
                     CILNode::Add(a, b)
                     | CILNode::And(a, b)

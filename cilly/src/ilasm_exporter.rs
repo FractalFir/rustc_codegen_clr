@@ -300,10 +300,10 @@ fn type_def_cli(
         tpe.gargc() == 0,
         "Generic typedefs not supported yet. tpe:{tpe:?}"
     );
-    let extends = if let Some(extended) = tpe.extends() {
-        todo!("Can't handle inheretence yet. Typedef inherits from {extended:?}!");
+    let extends: IString = if let Some(extended) = tpe.extends() {
+        type_cil(&extended.clone().into()).into()
     } else {
-        "[System.Runtime]System.ValueType"
+        "[System.Runtime]System.ValueType".into()
     };
     let access = if let AccessModifer::Public = tpe.access_modifier() {
         "public"

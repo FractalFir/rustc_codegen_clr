@@ -1,5 +1,5 @@
 /// A list of all functions which are redirected to system libc.
-pub const LIBC_FNS: [&str; 504] = [
+pub const LIBC_FNS: [&str; 506] = [
     "a64l",
     "abort",
     "abs",
@@ -45,6 +45,7 @@ pub const LIBC_FNS: [&str; 504] = [
     "dirfd",
     "dirname",
     "div",
+    "dlsym",
     "dprintf",
     "drand48",
     "dysize",
@@ -273,6 +274,7 @@ pub const LIBC_FNS: [&str; 504] = [
     "munlock",
     "munlockall",
     "muntrace",
+    "nanosleep",
     "nice",
     "nrand48",
     "open",

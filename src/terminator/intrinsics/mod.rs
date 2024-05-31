@@ -19,6 +19,50 @@ use rustc_middle::{
 use rustc_span::source_map::Spanned;
 mod bswap;
 mod interop;
+pub fn interlocked_add(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
+    match tpe {
+        Type::U64 | Type::I64 => {
+            call!(
+                CallSite::new(
+                    Some(DotnetTypeRef::interlocked()),
+                    "Add".into(),
+                    FnSig::new(
+                        &[Type::ManagedReference(Box::new(Type::U64)), Type::U64],
+                        Type::U64
+                    ),
+                    true
+                ),
+                [addr, addend]
+            )
+        }
+        Type::U32 | Type::I32 => {
+            call!(
+                CallSite::new(
+                    Some(DotnetTypeRef::interlocked()),
+                    "Add".into(),
+                    FnSig::new(
+                        &[Type::ManagedReference(Box::new(Type::U32)), Type::U32],
+                        Type::U32
+                    ),
+                    true
+                ),
+                [addr, addend]
+            )
+        }
+        Type::USize | Type::ISize => call!(
+            CallSite::builtin(
+                "interlocked_add_usize".into(),
+                FnSig::new(
+                    &[Type::ManagedReference(Box::new(Type::USize)), Type::USize],
+                    Type::USize
+                ),
+                true
+            ),
+            [addr, addend]
+        ),
+        _ => todo!(),
+    }
+}
 fn compare_bytes(a: CILNode, b: CILNode, len: CILNode) -> CILNode {
     call!(
         CallSite::builtin(
@@ -590,7 +634,7 @@ pub fn handle_intrinsic<'tyctx>(
                 crate::place::deref_op(arg_ty.into(), tyctx, &method_instance, type_cache, ops);
             place_set(destination, tyctx, ops, body, method_instance, type_cache)
         }
-        "atomic_store_relaxed" | "atomic_store_seqcst" => {
+        "atomic_store_relaxed" | "atomic_store_seqcst" | "atomic_store_release" => {
             // This is *propably* wrong :)
             debug_assert_eq!(
                 args.len(),
@@ -613,7 +657,8 @@ pub fn handle_intrinsic<'tyctx>(
         }
         "atomic_cxchgweak_acquire_acquire"
         | "atomic_cxchg_acquire_relaxed"
-        | "atomic_cxchgweak_acquire_relaxed" => {
+        | "atomic_cxchgweak_acquire_relaxed"
+        | "atomic_cxchgweak_relaxed_relaxed" => {
             let interlocked = DotnetTypeRef::interlocked();
             // *T
             let dst = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
@@ -678,7 +723,6 @@ pub fn handle_intrinsic<'tyctx>(
             }
         }
         "atomic_xsub_release" => {
-            let interlocked = DotnetTypeRef::interlocked();
             // *T
             let dst = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
             // T
@@ -689,22 +733,44 @@ pub fn handle_intrinsic<'tyctx>(
             let src_type =
                 crate::utilis::monomorphize(&method_instance, args[1].node.ty(body, tyctx), tyctx);
             let src_type = type_cache.type_from_cache(src_type, tyctx, Some(method_instance));
-            let call_site = CallSite::new(
-                Some(interlocked),
-                "Add".into(),
-                FnSig::new(
-                    &[
-                        Type::ManagedReference(src_type.clone().into()),
-                        src_type.clone(),
-                    ],
-                    src_type.clone(),
-                ),
-                true,
-            );
+
             place_set(
                 destination,
                 tyctx,
-                call!(call_site, [dst, add_ammount]) + sub_ammount,
+                interlocked_add(dst, add_ammount, src_type) + sub_ammount,
+                body,
+                method_instance,
+                type_cache,
+            )
+        }
+        "atomic_fence_acquire" => {
+            let thread = DotnetTypeRef::thread();
+            CILRoot::Call {
+                site: CallSite::new(
+                    Some(thread),
+                    "MemoryBarrier".into(),
+                    FnSig::new(&[], Type::Void),
+                    true,
+                ),
+                args: [].into(),
+            }
+        }
+        "atomic_xadd_release" | "atomic_xadd_relaxed" => {
+            // *T
+            let dst = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
+            // T
+            let add_ammount =
+                handle_operand(&args[1].node, tyctx, body, method_instance, type_cache);
+            // we sub by adding a negative number
+
+            let src_type =
+                crate::utilis::monomorphize(&method_instance, args[1].node.ty(body, tyctx), tyctx);
+            let src_type = type_cache.type_from_cache(src_type, tyctx, Some(method_instance));
+
+            place_set(
+                destination,
+                tyctx,
+                interlocked_add(dst, add_ammount, src_type),
                 body,
                 method_instance,
                 type_cache,

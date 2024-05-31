@@ -69,6 +69,43 @@ fn export_node(
     il_flavour: IlasmFlavour,
 ) -> std::fmt::Result {
     match tree {
+        CILNode::CreateDelegate { obj, site } => {
+            export_node(out, obj, depth, il_flavour)?;
+            depth.pad(out)?;
+            //assert!(sig.inputs.is_empty());
+            let mut inputs_iter = site.explicit_inputs().iter();
+            let mut input_string = String::new();
+            if let Some(firts_arg) = inputs_iter.next() {
+                input_string.push_str(&non_void_type_cil(firts_arg));
+            }
+            for arg in inputs_iter {
+                input_string.push(',');
+                input_string.push_str(&non_void_type_cil(arg));
+            }
+            let prefix = if site.is_static() { "" } else { "instance" };
+            let generics = if site.generics().is_empty() {
+                String::new()
+            } else {
+                assert!(
+                    site.generics().len() == 1,
+                    "Methods with multiple generics not supported yet!"
+                );
+                format!("<{}>", type_cil(&site.generics()[0]))
+            };
+
+            let owner_name = match site.class() {
+                Some(owner) => {
+                    format!("{}::", type_cil(&owner.clone().into()))
+                }
+                None => "RustModule::".into(),
+            };
+            let function_name = site.name();
+            write!(
+                out,
+                "ldftn {prefix} {output} {owner_name}'{function_name}'{generics}({input_string})",
+                output = type_cil(site.signature().output())
+            )
+        }
         CILNode::LDLoc(local) => {
             depth.pad(out)?;
             match local {
@@ -691,7 +728,44 @@ pub fn export_root(
             depth.pad(out)?;
             write!(out, "initblk")
         }
-        CILRoot::CallVirt { site, args } => todo!(),
+        CILRoot::CallVirt { site, args } => {
+            for arg in args {
+                export_node(out, arg, depth.incremented(), il_flavour)?;
+            }
+            depth.pad(out)?;
+            //assert!(sig.inputs.is_empty());
+            let mut inputs_iter = site.explicit_inputs().iter();
+            let mut input_string = String::new();
+            if let Some(firts_arg) = inputs_iter.next() {
+                input_string.push_str(&non_void_type_cil(firts_arg));
+            }
+            for arg in inputs_iter {
+                input_string.push(',');
+                input_string.push_str(&non_void_type_cil(arg));
+            }
+            let prefix = if site.is_static() { "" } else { "instance" };
+            let generics = if site.generics().is_empty() {
+                String::new()
+            } else {
+                assert!(
+                    site.generics().len() == 1,
+                    "Methods with multiple generics not supported yet!"
+                );
+                format!("<{}>", type_cil(&site.generics()[0]))
+            };
+
+            let owner_name = match site.class() {
+                Some(owner) => {
+                    format!("{}::", type_cil(&owner.clone().into()))
+                }
+                None => "RustModule::".into(),
+            };
+            let function_name = site.name();
+            write!(out,
+            "callvirt {prefix} {output} {owner_name}'{function_name}'{generics}({input_string})",
+            output = type_cil(site.signature().output())
+        )
+        }
         CILRoot::Ret { tree } => {
             export_node(out, tree, depth.incremented(), il_flavour)?;
             depth.pad(out)?;
@@ -870,6 +944,12 @@ pub fn dotnet_type_ref_cli(dotnet_type: &DotnetTypeRef) -> String {
         && !dotnet_type.is_valuetype()
     {
         return "string".into();
+    }
+    if Some("System.Runtime") == dotnet_type.asm()
+        && "System.Object" == dotnet_type.name_path()
+        && !dotnet_type.is_valuetype()
+    {
+        return "object".into();
     }
     let asm = if let Some(asm_ref) = dotnet_type.asm() {
         format!("[{asm_ref}]")
