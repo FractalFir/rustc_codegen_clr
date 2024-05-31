@@ -38,7 +38,7 @@ fn main() {
             std::thread::sleep(std::time::Duration::from_millis(1));
         }
     });
-    std::thread::sleep(std::time::Duration::from_millis(100));
+    std::thread::sleep(std::time::Duration::from_millis(1000));
     /*formatter.write_fmt(format_args!("arg:{arg:?}\n"));
     test_fomratter(&formatter);*/
 }

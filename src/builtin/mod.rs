@@ -10,9 +10,10 @@ use cilly::{
     conv_usize,
     field_desc::FieldDescriptor,
     fn_sig::FnSig,
-    ld_field, ldc_u64, lt_un,
+    ld_field, ldc_i32, ldc_u32, ldc_u64, lt_un,
     method::{Method, MethodType},
     r#type::Type,
+    size_of,
     type_def::TypeDef,
     DotnetTypeRef,
 };
@@ -426,6 +427,10 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     //add_ptr_offset_from_unsigned(asm);
     //caller_location::add_caller_location(asm,tyctx,&mut TyCache::empty());
     pthread_create(asm);
+    pthread_attr_init(asm);
+    pthread_attr_destroy(asm);
+    pthread_attr_setstacksize(asm);
+    pthread_detach(asm);
     let unmanaged_start = TypeDef::new(
         AccessModifer::MoudlePublic,
         "UnmanagedThreadStart".into(),
@@ -726,6 +731,70 @@ add_method_from_trees!(
     "pthread_create",
     "pthread_detach",
 */
+add_method_from_trees!(
+    pthread_attr_init,
+    &[Type::Ptr(Box::new(Type::ISize)),],
+    Type::I32,
+    vec![BasicBlock::new(
+        vec![
+            CILRoot::InitBlk {
+                dst: CILNode::LDArg(0),
+                val: ldc_u32!(0),
+                count: size_of!(Type::USize) * ldc_i32!(3)
+            }
+            .into(),
+            CILRoot::Ret { tree: ldc_i32!(0) }.into()
+        ],
+        0,
+        None
+    )],
+    vec![],
+    vec![Some("thread_attr".into()),]
+);
+add_method_from_trees!(
+    pthread_attr_setstacksize,
+    &[Type::Ptr(Box::new(Type::ISize)), Type::USize],
+    Type::I32,
+    vec![BasicBlock::new(
+        vec![
+            CILRoot::STIndISize(
+                CILNode::LDArg(0) + size_of!(Type::USize) * ldc_i32!(2),
+                CILNode::LDArg(1)
+            )
+            .into(),
+            CILRoot::Ret { tree: ldc_i32!(0) }.into()
+        ],
+        0,
+        None
+    )],
+    vec![],
+    vec![Some("thread_attr".into()), Some("size".into())]
+);
+// detaching a thread in .NET does nothing(since the runtime manages everyting) - so this is safe.
+add_method_from_trees!(
+    pthread_detach,
+    &[Type::ISize],
+    Type::I32,
+    vec![BasicBlock::new(
+        vec![CILRoot::Ret { tree: ldc_i32!(0) }.into()],
+        0,
+        None
+    )],
+    vec![],
+    vec![Some("thread_attr".into()), Some("size".into())]
+);
+add_method_from_trees!(
+    pthread_attr_destroy,
+    &[Type::Ptr(Box::new(Type::ISize)),],
+    Type::I32,
+    vec![BasicBlock::new(
+        vec![CILRoot::Ret { tree: ldc_i32!(0) }.into()],
+        0,
+        None
+    )],
+    vec![],
+    vec![Some("thread_attr".into()),]
+);
 fn unmanaged_start() -> DotnetTypeRef {
     DotnetTypeRef::new::<&str, _>(None, "UnmanagedThreadStart").with_valuetype(false)
 }

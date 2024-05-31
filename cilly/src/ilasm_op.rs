@@ -961,6 +961,19 @@ pub fn dotnet_type_ref_cli(dotnet_type: &DotnetTypeRef) -> String {
     let generics = generics_str(dotnet_type.generics());
     format!("{prefix} {asm}'{name}'{generics}")
 }
+pub fn dotnet_type_ref_extends(dotnet_type: &DotnetTypeRef) -> String {
+    //let prefix = dotnet_type.tpe_prefix();
+
+    let asm = if let Some(asm_ref) = dotnet_type.asm() {
+        format!("[{asm_ref}]")
+    } else {
+        String::new()
+    };
+    let name = dotnet_type.name_path();
+
+    let generics = generics_str(dotnet_type.generics());
+    format!("{asm}'{name}'{generics}")
+}
 fn generics_str(generics: &[Type]) -> Cow<'static, str> {
     if generics.is_empty() {
         "".into()

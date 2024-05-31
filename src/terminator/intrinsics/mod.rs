@@ -1,10 +1,11 @@
 use crate::place::place_adress;
+use crate::r#type::pointer_to_is_fat;
 use crate::utilis::field_descrptor;
 use cilly::cil_node::CILNode;
-use cilly::cil_root::CILRoot;
+use cilly::field_desc::FieldDescriptor;
 use cilly::{
-    call, call_virt, conv_f32, conv_f64, conv_isize, conv_u64, conv_usize, eq, ld_field, ldc_i32,
-    ldc_u32, ldc_u64, lt_un, size_of, sub,
+    call, call_virt, cil_root::CILRoot, conv_f32, conv_f64, conv_isize, conv_u64, conv_usize, eq,
+    ld_field, ldc_i32, ldc_u32, ldc_u64, lt_un, size_of, sub,
 };
 
 use crate::r#type::tycache::TyCache;
@@ -14,7 +15,7 @@ use cilly::fn_sig::FnSig;
 use cilly::{DotnetTypeRef, Type};
 use rustc_middle::{
     mir::{Body, Operand, Place},
-    ty::{Instance, ParamEnv, TyCtxt},
+    ty::{Instance, ParamEnv, TyCtxt, TyKind},
 };
 use rustc_span::source_map::Spanned;
 mod bswap;
@@ -1101,14 +1102,84 @@ pub fn handle_intrinsic<'tyctx>(
                 "The intrinsic `size_of_val` MUST take in exactly 1 argument!"
             );
 
-            let tpe = crate::utilis::monomorphize(
+            let pointed_ty = crate::utilis::monomorphize(
                 &method_instance,
                 call_instance.args[0]
                     .as_type()
                     .expect("needs_drop works only on types!"),
                 tyctx,
             );
-            let tpe = crate::utilis::monomorphize(&method_instance, tpe, tyctx);
+            if crate::utilis::is_zst(pointed_ty, tyctx) {
+                return place_set(
+                    destination,
+                    tyctx,
+                    conv_usize!(ldc_u32!(0)),
+                    body,
+                    method_instance,
+                    type_cache,
+                );
+            }
+            if pointer_to_is_fat(pointed_ty, tyctx, Some(method_instance)) {
+                let ptr_ty = crate::utilis::monomorphize(
+                    &method_instance,
+                    args[0].node.ty(body, tyctx),
+                    tyctx,
+                );
+                match pointed_ty.kind() {
+                    TyKind::Slice(inner) => {
+                        let slice_tpe: DotnetTypeRef = type_cache
+                        .type_from_cache(ptr_ty, tyctx, Some(method_instance))
+                            .as_dotnet()
+                            .unwrap();
+                        let inner = crate::utilis::monomorphize(&method_instance, *inner, tyctx);
+                        let inner_type =
+                            type_cache.type_from_cache(inner, tyctx, Some(method_instance));
+                        let descriptor =
+                            FieldDescriptor::new(slice_tpe, Type::USize, "metadata".into());
+                        let addr = crate::operand::operand_address(
+                            &args[0].node,
+                            tyctx,
+                            body,
+                            method_instance,
+                            type_cache,
+                        );
+                        return place_set(
+                            destination,
+                            tyctx,
+                            ld_field!(addr, descriptor) * conv_usize!(size_of!(inner_type)),
+                            body,
+                            method_instance,
+                            type_cache,
+                        );
+                    }
+                    TyKind::Dynamic(_,_,_) => {
+                        let slice_tpe: DotnetTypeRef = type_cache.type_from_cache(ptr_ty, tyctx, Some(method_instance))
+                            .as_dotnet()
+                            .unwrap();
+                        
+                    
+                        let descriptor =
+                            FieldDescriptor::new(slice_tpe, Type::USize, "metadata".into());
+                        let addr = crate::operand::operand_address(
+                            &args[0].node,
+                            tyctx,
+                            body,
+                            method_instance,
+                            type_cache,
+                        );
+                        return place_set(
+                            destination,
+                            tyctx,
+                            CILNode::LDIndISize { ptr: Box::new((ld_field!(addr, descriptor) + (size_of!(Type::ISize)))) },
+                            body,
+                            method_instance,
+                            type_cache,
+                        );
+                    }
+                    _ => todo!("Can't yet get `size_of_val` on non-slice dst. dst:{ptr_ty}"),
+                }
+            }
+            let tpe = crate::utilis::monomorphize(&method_instance, pointed_ty, tyctx);
             let tpe = type_cache.type_from_cache(tpe, tyctx, Some(method_instance));
             place_set(
                 destination,

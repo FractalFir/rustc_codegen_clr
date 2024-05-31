@@ -432,7 +432,7 @@ pub fn call<'tyctx>(
                 type_cache,
             ));
         }
-        assert_eq!(signature.inputs().len(), call_args.len());
+        assert_eq!(signature.inputs().len(), call_args.len(),"sig:{signature:?} call_args:{call_args:?}");
         let is_ret_void = matches!(signature.output(), crate::r#type::Type::Void);
         return if is_ret_void {
             CILRoot::CallI {

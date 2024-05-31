@@ -139,6 +139,175 @@ fn override_malloc(patched: &mut HashMap<CallSite, Method>, call: &CallSite) {
         ),
     );
 }
+/// Fixes calls to `pthread_attr_init`
+fn override_pthread_attr_init(patched: &mut HashMap<CallSite, Method>, call: &CallSite) {
+    patched.insert(
+        call.clone(),
+        Method::new(
+            access_modifier::AccessModifer::Private,
+            MethodType::Static,
+            call.signature().clone(),
+            "pthread_attr_init",
+            vec![],
+            vec![BasicBlock::new(
+                vec![CILRoot::Ret {
+                    tree: CILNode::Call {
+                        args: [CILNode::LDArg(0)].into(),
+                        site: Box::new(CallSite::builtin(
+                            "pthread_attr_init".into(),
+                            FnSig::new(&[Type::Ptr(Type::ISize.into())], Type::I32),
+                            true,
+                        )),
+                    },
+                }
+                .into()],
+                0,
+                None,
+            )],
+            vec![Some("attr".into())],
+        ),
+    );
+}
+/// Fixes calls to `pthread_attr_destroy`
+fn override_pthread_attr_destroy(patched: &mut HashMap<CallSite, Method>, call: &CallSite) {
+    patched.insert(
+        call.clone(),
+        Method::new(
+            access_modifier::AccessModifer::Private,
+            MethodType::Static,
+            call.signature().clone(),
+            "pthread_attr_destroy",
+            vec![],
+            vec![BasicBlock::new(
+                vec![CILRoot::Ret {
+                    tree: CILNode::Call {
+                        args: [CILNode::LDArg(0)].into(),
+                        site: Box::new(CallSite::builtin(
+                            "pthread_attr_destroy".into(),
+                            FnSig::new(&[Type::Ptr(Type::ISize.into())], Type::I32),
+                            true,
+                        )),
+                    },
+                }
+                .into()],
+                0,
+                None,
+            )],
+            vec![Some("attr".into())],
+        ),
+    );
+}
+/// Fixes calls to `pthread_detach`
+fn override_pthread_detach(patched: &mut HashMap<CallSite, Method>, call: &CallSite) {
+    patched.insert(
+        call.clone(),
+        Method::new(
+            access_modifier::AccessModifer::Private,
+            MethodType::Static,
+            call.signature().clone(),
+            "pthread_detach",
+            vec![],
+            vec![BasicBlock::new(
+                vec![CILRoot::Ret {
+                    tree: CILNode::Call {
+                        args: [CILNode::LDArg(0)].into(),
+                        site: Box::new(CallSite::builtin(
+                            "pthread_detach".into(),
+                            FnSig::new(&[Type::ISize], Type::I32),
+                            true,
+                        )),
+                    },
+                }
+                .into()],
+                0,
+                None,
+            )],
+            vec![Some("attr".into())],
+        ),
+    );
+}
+/// Fixes calls to `pthread_attr_setstacksize`
+fn override_pthread_attr_setstacksize(patched: &mut HashMap<CallSite, Method>, call: &CallSite) {
+    patched.insert(
+        call.clone(),
+        Method::new(
+            access_modifier::AccessModifer::Private,
+            MethodType::Static,
+            call.signature().clone(),
+            "pthread_attr_setstacksize",
+            vec![],
+            vec![BasicBlock::new(
+                vec![CILRoot::Ret {
+                    tree: CILNode::Call {
+                        args: [CILNode::LDArg(0), CILNode::LDArg(1)].into(),
+                        site: Box::new(CallSite::builtin(
+                            "pthread_attr_setstacksize".into(),
+                            FnSig::new(&[Type::Ptr(Type::ISize.into()), Type::USize], Type::I32),
+                            true,
+                        )),
+                    },
+                }
+                .into()],
+                0,
+                None,
+            )],
+            vec![Some("attr".into()), Some("size".into())],
+        ),
+    );
+}
+/// Fixes calls to `pthread_create`
+fn override_pthread_create(patched: &mut HashMap<CallSite, Method>, call: &CallSite) {
+    patched.insert(
+        call.clone(),
+        Method::new(
+            access_modifier::AccessModifer::Private,
+            MethodType::Static,
+            call.signature().clone(),
+            "pthread_create",
+            vec![],
+            vec![BasicBlock::new(
+                vec![CILRoot::Ret {
+                    tree: CILNode::Call {
+                        args: [
+                            CILNode::LDArg(0),
+                            CILNode::LDArg(1),
+                            CILNode::LDIndISize {
+                                ptr: Box::new(CILNode::LDArgA(2)),
+                            },
+                            CILNode::LDArg(3),
+                        ]
+                        .into(),
+                        site: Box::new(CallSite::builtin(
+                            "pthread_create".into(),
+                            FnSig::new(
+                                &[
+                                    Type::Ptr(Box::new(Type::ISize)),
+                                    Type::Ptr(Box::new(Type::Void)),
+                                    Type::DelegatePtr(Box::new(FnSig::new(
+                                        &[Type::Ptr(Box::new(Type::Void))],
+                                        Type::Void,
+                                    ))),
+                                    Type::Ptr(Box::new(Type::Void)),
+                                ],
+                                Type::I32,
+                            ),
+                            true,
+                        )),
+                    },
+                }
+                .into()],
+                0,
+                None,
+            )],
+            vec![
+                Some("thread".into()),
+                Some("attr".into()),
+                Some("start_routine".into()),
+                Some("arg".into()),
+            ],
+        ),
+    );
+}
 /// Replaces `free` with a direct call to `FreeHGlobal`
 fn override_free(patched: &mut HashMap<CallSite, Method>, call: &CallSite) {
     patched.insert(
@@ -219,6 +388,26 @@ fn autopatch(asm: &mut Assembly, native_pastrough: &NativePastroughInfo) {
         }
         if name == "realloc" {
             override_realloc(&mut patched, call);
+            continue;
+        }
+        if name == "pthread_attr_init" {
+            override_pthread_attr_init(&mut patched, call);
+            continue;
+        }
+        if name == "pthread_attr_destroy" {
+            override_pthread_attr_destroy(&mut patched, call);
+            continue;
+        }
+        if name == "pthread_attr_setstacksize" {
+            override_pthread_attr_setstacksize(&mut patched, call);
+            continue;
+        }
+        if name == "pthread_create" {
+            override_pthread_create(&mut patched, call);
+            continue;
+        }
+        if name == "pthread_detach" {
+            override_pthread_detach(&mut patched, call);
             continue;
         }
         //#[cfg(not(target_os = "linux"))]

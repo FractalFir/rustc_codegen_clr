@@ -301,7 +301,7 @@ fn type_def_cli(
         "Generic typedefs not supported yet. tpe:{tpe:?}"
     );
     let extends: IString = if let Some(extended) = tpe.extends() {
-        type_cil(&extended.clone().into()).into()
+        crate::ilasm_op::dotnet_type_ref_extends(&extended).into()
     } else {
         "[System.Runtime]System.ValueType".into()
     };
