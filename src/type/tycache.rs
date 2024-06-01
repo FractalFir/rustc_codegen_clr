@@ -411,7 +411,6 @@ impl TyCache {
                 }
             }
             TyKind::Dynamic(_list,_,_)=>{
-               
                 let name:IString = format!("Dyn").into();
                 if !self.type_def_cache.contains_key(&name){
                     self.type_def_cache.insert(name.clone(),TypeDef::nameonly(&name));

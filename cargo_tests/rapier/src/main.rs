@@ -1,6 +1,7 @@
-#![feature(fmt_internals)]
+#![feature(fmt_internals,sync_unsafe_cell,numfmt,core_intrinsics,flt2dec,no_sanitize,extern_types,specialization,maybe_uninit_uninit_array,maybe_uninit_slice,never_type,exposed_provenance)]
 use std::fmt::Debug;
 use std::io::Write;
+mod fmt;
 fn main() {
     use std::fmt::Write;
 
@@ -32,15 +33,16 @@ fn main() {
         formatter.write_str("!").unwrap();
     }
     test_fomratter(&formatter);
-    std::thread::spawn(|| {
+    /*std::thread::spawn(|| {
         for i in 1..10 {
             eprintln!("hi number from the spawned thread!");
             std::thread::sleep(std::time::Duration::from_millis(1));
         }
     });
     std::thread::sleep(std::time::Duration::from_millis(1000));
-    /*formatter.write_fmt(format_args!("arg:{arg:?}\n"));
-    test_fomratter(&formatter);*/
+    */
+    unsafe{fmt::write(std::mem::transmute::<&mut std::fmt::Formatter,&mut fmt::Formatter>(&mut formatter),std::mem::transmute::<std::fmt::Arguments<'_>,fmt::Arguments<'_>>(format_args!("arg:{arg:?}\n")))};
+    test_fomratter(&formatter);
 }
 struct TestFmtEmpty;
 impl Debug for TestFmtEmpty {

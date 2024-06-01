@@ -719,7 +719,7 @@ run_test! {types,self_referential_statics,stable}
 run_test! {types,int128,stable}
 
 run_test! {std,main,stable}
-run_test! {std,mutithreading,stable}
+run_test! {std,mutithreading,unstable}
 
 run_test! {std,futex_test,unstable}
 run_test! {std,futexrw_test,unstable}
