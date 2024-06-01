@@ -410,17 +410,10 @@ impl TyCache {
                     super::simple_tuple(&types).into()
                 }
             }
-            TyKind::Dynamic(list,_,_)=>{
-                use std::collections::hash_map::DefaultHasher;
-                use std::hash::{Hash, Hasher};
-                //TODO: make hashes consitant!
-                fn calculate_hash<T: Hash>(t: &T) -> u64 {
-                    let mut s = DefaultHasher::new();
-                    t.hash(&mut s);
-                    s.finish()
-                }
-                let name:IString = format!("Dyn{hash}",hash = calculate_hash(list)).into();
-                if self.type_def_cache.contains_key(&name){
+            TyKind::Dynamic(_list,_,_)=>{
+               
+                let name:IString = format!("Dyn").into();
+                if !self.type_def_cache.contains_key(&name){
                     self.type_def_cache.insert(name.clone(),TypeDef::nameonly(&name));
                 }
                 Type::DotnetType(Box::new(DotnetTypeRef::new::<&str,_>(None,name)))
@@ -610,7 +603,7 @@ impl TyCache {
         method.inspect(|method| inner = crate::utilis::monomorphize(method, inner, tyctx));
         let inner_tpe = self.type_from_cache(inner, tyctx, method);
         let name:IString = format!("FatPtr{elem}",elem = cilly::mangle(&inner_tpe)).into();
-        if! self.type_def_cache.contains_key(&name){
+        if !self.type_def_cache.contains_key(&name){
             let def = TypeDef::new(AccessModifer::MoudlePublic, name.clone(), vec![], vec![
                 ("data_pointer".into(),Type::Ptr(Type::Void.into(),)),
                 ("metadata".into(),Type::USize)
@@ -625,8 +618,6 @@ impl TyCache {
 fn u8_ty(tyctx: TyCtxt) -> Ty {
     Ty::new(tyctx, TyKind::Uint(UintTy::U8))
 }
-
-
 pub fn validity_check<'tyctx>(
     val: CILNode,
     ty: Ty<'tyctx>,

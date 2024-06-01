@@ -20,6 +20,7 @@ rustc-demangle = "0.1.23"
 cilly = {path = "./cilly"}
 serde = { version = "1.0.183", features = ["derive"] }
 strsim = "0.11.1"
+fasthash = "0.4.0"
 [lib]
 crate-type=["rlib", "cdylib"]
 

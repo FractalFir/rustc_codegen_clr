@@ -14,8 +14,8 @@ fn main() {
         std::io::stderr().write_all(arg.as_bytes());
         println!();
     }
-    let mut buff = String::with_capacity(0x100);
-    let mut formatter = std::fmt::Formatter::new(&mut buff);
+    let mut buf = String::with_capacity(0x100);
+    let mut formatter = std::fmt::Formatter::new(&mut buf);
     test_fomratter(&formatter);
     formatter.write_str("OK");
     test_fomratter(&formatter);
