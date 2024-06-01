@@ -34,7 +34,7 @@ struct Test{
 ```
 ## Current state of the project
 
-The project currently supports most Rust features(besides async), but it is not bug-free. It can compile a partially working version of Rust std, but the many minor bugs make such `std` highly unstable.
+The project currently supports most Rust features (except async), but it is not bug-free. It can compile a partially working version of Rust std, but the many minor bugs make such `std` highly unstable.
 
 So, you *can* compile a lot of existing Rust code, but it may not necessarily *work*.
 ## Basic benchmarks
