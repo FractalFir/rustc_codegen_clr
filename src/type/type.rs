@@ -158,8 +158,7 @@ pub fn pointer_to_is_fat<'tyctx>(
         // Sized types don't need fat pointers
         false
     } else {
-        // TODO: PROPELY check if type is sized
-        !pointed_type.is_sized(tyctx, ParamEnv::reveal_all())
-        //true
+        // FOREGIN TYPES ARE NOT SIZED!
+        !pointed_type.is_sized(tyctx, ParamEnv::reveal_all()) && !matches!(pointed_type.kind(),TyKind::Foreign(_))
     }
 }

@@ -17,7 +17,7 @@ mod float;
 #[cfg(no_fp_fmt_parse)]
 mod nofloat;
 mod num;
-mod rt;
+pub mod rt;
 
 
 /// Possible alignments returned by `Formatter::align`
@@ -327,7 +327,7 @@ pub struct Arguments<'a> {
 
     // Dynamic arguments for interpolation, to be interleaved with string
     // pieces. (Every argument is preceded by a string piece.)
-    args: &'a [rt::Argument<'a>],
+    pub args: &'a [rt::Argument<'a>],
 }
 
 /// Used by the format_args!() macro to create a fmt::Arguments object.
@@ -2629,4 +2629,25 @@ impl EscapeDebugExtArgs {
         escape_double_quote: true,
     };
     
+}
+pub fn test_fomratter<'a>(fmt: &Formatter<'a>) {
+    use std::io::Write;
+    
+    let raw_width: (usize, usize) = unsafe { std::mem::transmute(fmt.width()) };
+    unsafe{printf("raw_width is %p,tag is %p.\n\0".as_ptr() as *const i8,raw_width.0,raw_width.1);
+    printf("addr is %p\n\0".as_ptr() as *const i8,fmt as *const _ as usize);}
+    match fmt.align() {
+        Some(_) => eprintln!("align is Some"),
+        None => eprintln!("align is None"),
+    }
+    match fmt.width() {
+        Some(width) => {
+            eprintln!("Some, ");
+            std::io::stderr().write_all(width.to_string().as_bytes());
+        }
+        None => eprintln!("None"),
+    }
+}
+extern "C" {
+    fn printf(_: *const core::ffi::c_char, _: ...) -> core::ffi::c_int;
 }

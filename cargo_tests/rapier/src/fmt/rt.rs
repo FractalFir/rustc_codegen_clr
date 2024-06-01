@@ -83,13 +83,13 @@ enum ArgumentType<'a> {
 
 #[derive(Copy, Clone)]
 pub struct Argument<'a> {
-    ty: ArgumentType<'a>,
+    pub ty: ArgumentType<'a>,
 }
 
 
 impl<'a> Argument<'a> {
     #[inline(always)]
-    fn new<'b, T>(x: &'b T, f: fn(&T, &mut Formatter<'_>) -> Result) -> Argument<'b> {
+    pub fn new<'b, T>(x: &'b T, f: fn(&T, &mut Formatter<'_>) -> Result) -> Argument<'b> {
         // SAFETY: `mem::transmute(x)` is safe because
         //     1. `&'b T` keeps the lifetime it originated with `'b`
         //              (so as to not have an unbounded lifetime)
@@ -160,11 +160,13 @@ impl<'a> Argument<'a> {
     #[allow(inline_no_sanitize)]
     #[no_sanitize(cfi, kcfi)]
     #[inline(always)]
-    pub(super) unsafe fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+    pub unsafe fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        super::test_fomratter(f);
+       
         match self.ty {
             ArgumentType::Placeholder { formatter, value } => formatter(value, f),
             // SAFETY: the caller promised this.
-            ArgumentType::Count(_) => unsafe { unreachable_unchecked() },
+            ArgumentType::Count(_) => unsafe { panic!() },
         }
     }
 
