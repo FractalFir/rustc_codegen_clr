@@ -1,8 +1,9 @@
 use crate::r#type::tycache::TyCache;
 use cilly::call_site::CallSite;
 use cilly::cil_node::CILNode;
+use cilly::field_desc::FieldDescriptor;
 use cilly::fn_sig::FnSig;
-use cilly::{DotnetTypeRef, Type};
+use cilly::{ld_field, DotnetTypeRef, Type};
 
 use rustc_middle::mir::{Operand, UnOp};
 use rustc_middle::ty::{Instance, IntTy, TyCtxt, TyKind, UintTy};
@@ -11,14 +12,14 @@ use rustc_middle::ty::{Instance, IntTy, TyCtxt, TyKind, UintTy};
 pub fn unop<'ctx>(
     unnop: UnOp,
     operand: &Operand<'ctx>,
-    tcx: TyCtxt<'ctx>,
+    tyctx: TyCtxt<'ctx>,
     method: &rustc_middle::mir::Body<'ctx>,
     method_instance: Instance<'ctx>,
     tycache: &mut TyCache,
 ) -> CILNode {
     let parrent_node =
-        crate::operand::handle_operand(operand, tcx, method, method_instance, tycache);
-    let ty = operand.ty(&method.local_decls, tcx);
+        crate::operand::handle_operand(operand, tyctx, method, method_instance, tycache);
+    let ty = operand.ty(&method.local_decls, tyctx);
     match unnop {
         UnOp::Neg => match ty.kind() {
             TyKind::Int(IntTy::I128) => CILNode::Call {
@@ -67,5 +68,10 @@ pub fn unop<'ctx>(
             //TyKind::U128 => ops.extend([CILOp::LdcI32(0), CILOp::Eq]),
             _ => CILNode::Not(parrent_node.into()),
         },
+        rustc_middle::mir::UnOp::PtrMetadata => {
+            let tpe = tycache.type_from_cache(ty, tyctx, Some(method_instance)).as_dotnet().unwrap();
+            ld_field!(parrent_node,FieldDescriptor::new(tpe,Type::USize,"metadata".into()))
+
+        }
     }
 }

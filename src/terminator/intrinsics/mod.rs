@@ -1170,7 +1170,7 @@ pub fn handle_intrinsic<'tyctx>(
                         return place_set(
                             destination,
                             tyctx,
-                            CILNode::LDIndISize { ptr: Box::new((ld_field!(addr, descriptor) + (size_of!(Type::ISize)))) },
+                            CILNode::LDIndISize { ptr: Box::new(ld_field!(addr, descriptor) + (size_of!(Type::ISize))) },
                             body,
                             method_instance,
                             type_cache,

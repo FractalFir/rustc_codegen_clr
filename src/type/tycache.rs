@@ -21,7 +21,7 @@ use std::collections::HashMap;
 pub struct TyCache {
     type_def_cache: HashMap<IString, TypeDef>,
     cycle_prevention: Vec<IString>,
-    ptr_components: Option<DefId>,
+
 }
 fn create_typedef<'tyctx>(
     _cache: &mut TyCache,
@@ -44,23 +44,13 @@ impl TyCache {
         Self {
             type_def_cache: HashMap::new(),
             cycle_prevention: vec![],
-            ptr_components: None,
+        
         }
     }
     pub fn defs(&self) -> impl Iterator<Item = &TypeDef> {
         self.type_def_cache.values()
     }
-    #[must_use]
-    /// Gets the definition ID of the `PtrComponents` type.
-    /// # Panics
-    /// Will panic if the `PtrComponents` type is missing.
-    pub fn ptr_components(&mut self, tyctx: TyCtxt) -> DefId {
-        if self.ptr_components.is_none() {
-            self.ptr_components = Some(try_find_ptr_components(tyctx));
-        }
-        self.ptr_components
-            .expect("Could not find `PtrComponents`.")
-    }
+   
     fn adt<'tyctx>(
         &mut self,
         name: &str,
@@ -382,7 +372,7 @@ impl TyCache {
         tyctx: TyCtxt<'tyctx>,
         method: Option<Instance<'tyctx>>,
     ) -> Type {
-        slice_ref_to(tyctx, self, Ty::new_slice(tyctx, inner), method)
+        self.slice_ref_to(tyctx, Ty::new_slice(tyctx, inner), method)
     }
     /// Converts a [`Ty`] to a dotnet-compatible [`Type`]. It is cached.
     /// # Panics
@@ -419,6 +409,21 @@ impl TyCache {
                         .or_insert_with(|| tuple_typedef(&types, layout.layout));
                     super::simple_tuple(&types).into()
                 }
+            }
+            TyKind::Dynamic(list,_,_)=>{
+                use std::collections::hash_map::DefaultHasher;
+                use std::hash::{Hash, Hasher};
+                //TODO: make hashes consitant!
+                fn calculate_hash<T: Hash>(t: &T) -> u64 {
+                    let mut s = DefaultHasher::new();
+                    t.hash(&mut s);
+                    s.finish()
+                }
+                let name:IString = format!("Dyn{hash}",hash = calculate_hash(list)).into();
+                if self.type_def_cache.contains_key(&name){
+                    self.type_def_cache.insert(name.clone(),TypeDef::nameonly(&name));
+                }
+                Type::DotnetType(Box::new(DotnetTypeRef::new::<&str,_>(None,name)))
             }
             TyKind::Closure(def, args) => {
                 let closure = args.as_closure();
@@ -474,7 +479,7 @@ impl TyCache {
                             }
                         }
                     };
-                    slice_ref_to(tyctx, self, Ty::new_slice(tyctx, inner), method)
+                    self.slice_ref_to(tyctx, Ty::new_slice(tyctx, inner), method)
                 } else {
                     Type::Ptr(self.type_from_cache(*typ, tyctx, method).into())
                 }
@@ -506,7 +511,7 @@ impl TyCache {
                             }
                         }
                     };
-                    slice_ref_to(tyctx, self, Ty::new_slice(tyctx, inner), method)
+                    self.slice_ref_to(tyctx, Ty::new_slice(tyctx, inner), method)
                 } else {
                     Type::Ptr(self.type_from_cache(*inner, tyctx, method).into())
                 }
@@ -595,104 +600,33 @@ impl TyCache {
             _ => todo!("Can't yet get type {ty:?} from type cache."),
         }
     }
+    pub fn slice_ref_to<'tyctx>(
+        &mut self,
+        tyctx: TyCtxt<'tyctx>,
+        
+        mut inner: Ty<'tyctx>,
+        method: Option<Instance<'tyctx>>,
+    ) -> Type {
+        method.inspect(|method| inner = crate::utilis::monomorphize(method, inner, tyctx));
+        let inner_tpe = self.type_from_cache(inner, tyctx, method);
+        let name:IString = format!("FatPtr{elem}",elem = cilly::mangle(&inner_tpe)).into();
+        if! self.type_def_cache.contains_key(&name){
+            let def = TypeDef::new(AccessModifer::MoudlePublic, name.clone(), vec![], vec![
+                ("data_pointer".into(),Type::Ptr(Type::Void.into(),)),
+                ("metadata".into(),Type::USize)
+    
+            ], vec![], None, 0, None, None); 
+            self.type_def_cache.insert(name.clone(),def);
+        }
+        return Type::DotnetType(Box::new(DotnetTypeRef:: new::<&str,_>(None,name)));
+    }
 }
-pub fn slice_ref_to<'tyctx>(
-    tyctx: TyCtxt<'tyctx>,
-    cache: &mut TyCache,
-    mut inner: Ty<'tyctx>,
-    method: Option<Instance<'tyctx>>,
-) -> Type {
-    method.inspect(|method| inner = crate::utilis::monomorphize(method, inner, tyctx));
-    let inner = ty_generic_arg(inner);
-    // TODO: ensure this function call is valid.
-    let list = tyctx.mk_args(&[inner]);
 
-    let ptr_components = cache.ptr_components(tyctx);
-    //std::process::exit(-1);
-    let adt_def = tyctx.adt_def(ptr_components);
-    let ty = Ty::new(tyctx, TyKind::Adt(adt_def, list));
-    cache.type_from_cache(ty, tyctx, method)
-}
 fn u8_ty(tyctx: TyCtxt) -> Ty {
     Ty::new(tyctx, TyKind::Uint(UintTy::U8))
 }
-/// Turns a `ty` into a `generic_arg`
-#[must_use]
-pub fn ty_generic_arg(ty: Ty) -> GenericArg {
-    // Shit version, ok only cause type tag is 0b00
-    unsafe { std::mem::transmute(ty) }
-    // Good version
-    /*
-    rustc_middle::ty::GenericArgKind::Type(ty).pack()
-    */
-}
-// WARING: This function is hacky as shit. It assumes the index of defid of PtrComponents is smaller than the index of the last public function. This *should* almost always be the case,
-// but it might not be.
 
-fn try_find_ptr_components(ctx: TyCtxt) -> DefId {
-    use crate::rustc_middle::dep_graph::DepContext;
-    use rustc_middle::middle::exported_symbols::ExportedSymbol;
-    let find_ptr_components_timer = ctx
-        .profiler()
-        .generic_activity("ptr::metadata::PtrComponents");
 
-    let mut core = None;
-    for krate in ctx.used_crates(()) {
-        let name = ctx.crate_name(*krate);
-        if name.as_str() == "core" {
-            core = Some(krate);
-            break;
-        }
-    }
-    let core = if let Some(core) = core {
-        *core
-    } else {
-        // If no crates, assume we are compiling core.
-        if ctx.used_crates(()).is_empty() {
-            use rustc_span::def_id::CrateNum;
-            CrateNum::from_u32(0)
-        } else {
-            panic!("Could not find core. Crates:{:?}", ctx.used_crates(()));
-        }
-    };
-    let core_symbols = ctx.exported_symbols(core);
-    let mut max_index = 0;
-    for symbol in core_symbols {
-        match symbol.0 {
-            ExportedSymbol::ThreadLocalShim(def_id)
-            | ExportedSymbol::Generic(def_id, _)
-            | ExportedSymbol::NonGeneric(def_id) => {
-                max_index = max_index.max(def_id.index.as_u32());
-            }
-            _ => (),
-        }
-    }
-    let mut ptr_components = None;
-    for index in 0..max_index {
-        let did = DefId {
-            index: index.into(),
-            krate: core,
-        };
-        let name = format!("{did:?}");
-
-        if name.contains("ptr::metadata::PtrComponents")
-            && !name.contains("PtrComponents::data_pointer")
-            && !name.contains("PtrComponents::metadata")
-            && !name.contains("PtrComponents::T")
-        {
-            assert!(
-                ptr_components.is_none(),
-                "Found more than one defintin of PtrComponents"
-            );
-            ptr_components = Some(did);
-            break;
-        }
-
-        //44548
-    }
-    drop(find_ptr_components_timer);
-    ptr_components.expect("Could not find core::ptr::metadata::PtrComponents")
-}
 pub fn validity_check<'tyctx>(
     val: CILNode,
     ty: Ty<'tyctx>,

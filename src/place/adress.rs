@@ -246,9 +246,8 @@ pub fn place_elem_adress<'ctx>(
             }
         }
         PlaceElem::Subslice { from, to, from_end } => {
-            let curr_type = crate::r#type::tycache::slice_ref_to(
+            let curr_type = type_cache.slice_ref_to(
                 tyctx,
-                type_cache,
                 curr_type.as_ty().expect("Can't index into an enum!"),
                 Some(method_instance),
             );
