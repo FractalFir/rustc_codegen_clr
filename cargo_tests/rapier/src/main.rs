@@ -7,7 +7,7 @@ use std::io::{self, Write, Read};
 use std::net::TcpStream;
 fn main() {
    
-    eprintln!("Formatting in .NET! Test int: {int} Test float:{float}
+    println!("Formatting in .NET! Test int: {int} Test float:{float}
     dur:{dur:?}",int = std::hint::black_box(64),float = std::hint::black_box(3.14159),dur = std::hint::black_box(std::time::Duration::from_millis(1000)));
 
     let five = std::rc::Rc::new(std::cell::UnsafeCell::new(5));
