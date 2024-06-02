@@ -1,5 +1,5 @@
 /// A list of all functions which are redirected to system libc.
-pub const LIBC_FNS: [&str; 506] = [
+pub const LIBC_FNS: [&str; 510] = [
     "a64l",
     "abort",
     "abs",
@@ -36,6 +36,7 @@ pub const LIBC_FNS: [&str; 506] = [
     "clock",
     "closelog",
     "confstr",
+    "connect",
     "ctermid",
     "ctime",
     "close",
@@ -291,6 +292,7 @@ pub const LIBC_FNS: [&str; 506] = [
     "prlimit64",
     "psiginfo",
     "psignal",
+
     "ptrace",
     "ptsname",
     "putchar",
@@ -319,6 +321,7 @@ pub const LIBC_FNS: [&str; 506] = [
     "readlinkat",
     "realloc",
     "reboot",
+    "recv",
     "remove",
     "removexattr",
     "remque",
@@ -336,6 +339,7 @@ pub const LIBC_FNS: [&str; 506] = [
     "seekdir",
     "semget",
     "semop",
+    "send",
     "sendfile",
     "sendfile64",
     "setaliasent",
@@ -394,6 +398,7 @@ pub const LIBC_FNS: [&str; 506] = [
     "sigset",
     "sigstack",
     "sockatmark",
+    "socket",
     "splice",
     "sprintf",
     "srand48",

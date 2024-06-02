@@ -33,6 +33,7 @@ pub fn handle_rvalue<'tcx>(
         Rvalue::AddressOf(_mutability, place) => {
             crate::place::place_adress(place, tyctx, method, method_instance, tycache)
         }
+        Rvalue::Cast(CastKind::PointerCoercion(PointerCoercion::UnsafeFnPointer),operand,_dst)=>handle_operand(operand, tyctx, method, method_instance, tycache),
         Rvalue::Cast(
             CastKind::PointerCoercion(
                 PointerCoercion::MutToConstPointer | PointerCoercion::ArrayToPointer,

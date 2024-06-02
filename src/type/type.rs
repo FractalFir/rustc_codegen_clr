@@ -1,7 +1,7 @@
 use cilly::call_site::CallSite;
 use cilly::cil_node::CILNode;
 use cilly::fn_sig::FnSig;
-use cilly::{call, DotnetTypeRef, Type};
+use cilly::{call, ldc_u32, ldc_u64, DotnetTypeRef, Type};
 
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::ty::{AdtDef, ConstKind, GenericArg, Ty, TyCtxt, TyKind};
@@ -41,6 +41,8 @@ pub fn max_value(tpe: &Type) -> CILNode {
             ),
             []
         ),
+        Type::U64 => ldc_u64!(u64::MAX),
+        Type::U32 => ldc_u32!(u32::MAX),
         _ => todo!("Can't get the max value of {tpe:?}"),
     }
 }

@@ -1,16 +1,7 @@
 #![deny(unused_must_use)]
 #![allow(clippy::module_name_repetitions)]
 use cilly::{
-    access_modifier,
-    asm::Assembly,
-    basic_block::BasicBlock,
-    c_exporter::CExporter,
-    call_site::CallSite,
-    cil_node::CILNode,
-    cil_root::CILRoot,
-    ilasm_exporter::ILASM_FLAVOUR,
-    method::{Method, MethodType},
-    DotnetTypeRef, FnSig, IString, IlasmFlavour, Type,
+    access_modifier, asm::Assembly, basic_block::BasicBlock, c_exporter::CExporter, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, ilasm_exporter::ILASM_FLAVOUR, ldc_i32, method::{Method, MethodType}, DotnetTypeRef, FnSig, IString, IlasmFlavour, Type
 };
 //use assembly::Assembly;
 use lazy_static::lazy_static;
@@ -226,6 +217,29 @@ fn override_pthread_detach(patched: &mut HashMap<CallSite, Method>, call: &CallS
         ),
     );
 }
+/// Replaces calls to `pthread_atfork` with nops.
+/// TODO: this can cause issues. 
+fn override_pthread_atfork(patched: &mut HashMap<CallSite, Method>, call: &CallSite) {
+    patched.insert(
+        call.clone(),
+        Method::new(
+            access_modifier::AccessModifer::Private,
+            MethodType::Static,
+            call.signature().clone(),
+            "pthread_atfork",
+            vec![],
+            vec![BasicBlock::new(
+                vec![CILRoot::Ret {
+                    tree: ldc_i32!(0),
+                }
+                .into()],
+                0,
+                None,
+            )],
+            vec![Some("prepare".into()),Some("parent".into()),Some("child".into())],
+        ),
+    );
+}
 /// Fixes calls to `pthread_attr_setstacksize`
 fn override_pthread_attr_setstacksize(patched: &mut HashMap<CallSite, Method>, call: &CallSite) {
     patched.insert(
@@ -408,6 +422,10 @@ fn autopatch(asm: &mut Assembly, native_pastrough: &NativePastroughInfo) {
         }
         if name == "pthread_detach" {
             override_pthread_detach(&mut patched, call);
+            continue;
+        }
+        if name == "pthread_atfork"{
+            override_pthread_atfork(&mut patched, call);
             continue;
         }
         //#[cfg(not(target_os = "linux"))]

@@ -431,6 +431,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     pthread_attr_destroy(asm);
     pthread_attr_setstacksize(asm);
     pthread_detach(asm);
+    __cxa_thread_atexit_impl(asm);
     let unmanaged_start = TypeDef::new(
         AccessModifer::MoudlePublic,
         "UnmanagedThreadStart".into(),
@@ -798,3 +799,18 @@ add_method_from_trees!(
 fn unmanaged_start() -> DotnetTypeRef {
     DotnetTypeRef::new::<&str, _>(None, "UnmanagedThreadStart").with_valuetype(false)
 }
+// TODO: Can't yet register thread-local deconstructors.
+add_method_from_trees!(
+    __cxa_thread_atexit_impl,
+    [Type::DelegatePtr(Box::new(FnSig::new([Type::Ptr(Box::new(Type::Void))],Type::Void))),Type::Ptr(Box::new(Type::Void)),Type::Ptr(Box::new(Type::Void))],
+    Type::Void,
+    vec![BasicBlock::new(
+        vec![
+            CILRoot::VoidRet.into()
+        ],
+        0,
+        None
+    )],
+    vec![],
+    vec![Some("dtor".into()),Some("obj".into()),Some("dso_handle".into())]
+);

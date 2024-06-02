@@ -171,7 +171,8 @@ fn load_scalar_ptr(
             let attrs = tyctx.codegen_fn_attrs(def_id);
 
             if let Some(import_linkage) = attrs.import_linkage {
-                if name.contains("statx") {
+                // TODO: this could cause issues if the pointer to the static is not imediatly dereferenced. 
+                if name == "statx" {
                     return CILNode::TemporaryLocal(Box::new((
                         Type::USize,
                         [CILRoot::SetTMPLocal {
@@ -194,11 +195,45 @@ fn load_scalar_ptr(
                         CILNode::LoadAddresOfTMPLocal,
                     )));
                 }
+                if name == "__dso_handle"{
+                    return CILNode::TemporaryLocal(Box::new((
+                        Type::USize,
+                        [CILRoot::SetTMPLocal {
+                            value: CILNode::LDFtn(Box::new(CallSite::builtin(
+                                "__dso_handle".into(),
+                                FnSig::new(
+                                    &[],
+                                    Type::Void,
+                                ),
+                                true,
+                            ))),
+                        }]
+                        .into(),
+                        CILNode::LoadAddresOfTMPLocal,
+                    )));
+                }
+                if name == "__cxa_thread_atexit_impl"{
+                    return CILNode::TemporaryLocal(Box::new((
+                        Type::USize,
+                        [CILRoot::SetTMPLocal {
+                            value: CILNode::LDFtn(Box::new(CallSite::builtin(
+                                "__cxa_thread_atexit_impl".into(),
+                                FnSig::new(
+                                    &[Type::DelegatePtr(Box::new(FnSig::new([Type::Ptr(Box::new(Type::Void))],Type::Void))),Type::Ptr(Box::new(Type::Void)),Type::Ptr(Box::new(Type::Void))],
+                                    Type::Void,
+                                ),
+                                true,
+                            ))),
+                        }]
+                        .into(),
+                        CILNode::LoadAddresOfTMPLocal,
+                    )));
+                }
                 rustc_middle::ty::print::with_no_trimmed_paths! {
                     panic!("Static {def_id:?} requires special linkage {import_linkage:?} handling. Its name is:{name:?}")
                 };
             }
-
+            
             let alloc = tyctx
                 .eval_static_initializer(def_id)
                 .expect("No initializer??");

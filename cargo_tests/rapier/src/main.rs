@@ -1,57 +1,56 @@
 #![feature(fmt_internals,sync_unsafe_cell,numfmt,core_intrinsics,flt2dec,no_sanitize,extern_types,specialization,maybe_uninit_uninit_array,maybe_uninit_slice,never_type,exposed_provenance)]
 use std::fmt::Debug;
-use std::io::Write;
+
 //mod fmt;
+use std::fs::File;
+use std::io::{self, Write, Read};
+use std::net::TcpStream;
 fn main() {
-    /*use std::fmt::Write;
-
-    println!("Hello from Rust to .NET!");
-    std::fs::File::create("/tmp/rust_on_dotnet.txt")
-        .unwrap()
-        .write_all(b"Hi from Rust, .NET")
-        .unwrap();
-    eprintln!("We are writing to stderr!");
-    for arg in std::env::args() {
-        std::io::stderr().write_all(arg.as_bytes());
-        println!();
-    }
- 
-    test_fomratter(&formatter);
-    formatter.write_str("OK");
-    test_fomratter(&formatter);
-    formatter.write_char('O');
-    test_fomratter(&formatter);
    
-    let arg2 = std::hint::black_box(TestFmtEmpty(1));
-    {
-        use std::fmt::Debug;
-        formatter.write_str("Hello ").unwrap();
-        Debug::fmt(&arg, &mut formatter).unwrap();
-        formatter.write_str("\n").unwrap();
-        Debug::fmt(&arg2, &mut formatter).unwrap();
-        formatter.write_str("!").unwrap();
-    }
-    test_fomratter(&formatter);
-    call_dyn(&arg, &mut formatter);
-    /*std::thread::spawn(|| {
-        for i in 1..10 {
-            eprintln!("hi number from the spawned thread!");
-            std::thread::sleep(std::time::Duration::from_millis(1));
-        }
-    });
-    std::thread::sleep();
-    */
-    //unsafe{fmt::write(std::mem::transmute::<&mut std::fmt::Formatter,&mut fmt::Formatter>(&mut formatter),)};
-    //test_fomratter(&formatter);
-    */
-    /*let arg = std::hint::black_box(TestFmtEmpty(0));
-    let mut buf = String::with_capacity(0x100);
-    let mut formatter = std::fmt::Formatter::new(&mut buf);
-    let args = unsafe{std::mem::transmute::<std::fmt::Arguments<'_>,fmt::Arguments<'_>>(format_args!("arg:{arg:?}\n"))};
-    unsafe{args.args[0].fmt(std::mem::transmute::<&mut std::fmt::Formatter,&mut fmt::Formatter>(&mut formatter))};*/
-
     eprintln!("Formatting in .NET! Test int: {int} Test float:{float}
     dur:{dur:?}",int = std::hint::black_box(64),float = std::hint::black_box(3.14159),dur = std::hint::black_box(std::time::Duration::from_millis(1000)));
+
+    let five = std::rc::Rc::new(std::cell::UnsafeCell::new(5));
+
+    std::hint::black_box(five.clone());
+    net_main().unwrap();
+
+
+
+}fn net_main() -> io::Result<()> {
+    // The URL we want to download (without "http://")
+    let host = "example.com";
+    let path = "/";
+    
+    // Establish a TCP connection to the server
+    let mut stream = TcpStream::connect((host, 80))?;
+
+    // Send an HTTP GET request
+    let request = format!(
+        "GET {} HTTP/1.1\r\nHost: {}\r\nConnection: close\r\n\r\n",
+        path, host
+    );
+    stream.write_all(request.as_bytes())?;
+
+    // Read the response from the server
+    let mut response = Vec::new();
+    stream.read_to_end(&mut response)?;
+
+    // Convert the response to a string
+    let response = String::from_utf8_lossy(&response);
+
+    // Separate headers from the body
+    if let Some(body_start) = response.find("\r\n\r\n") {
+        let body = &response[(body_start + 4)..];
+
+        // Write the body to a file
+        let mut file = File::create("downloaded.html")?;
+        file.write_all(body.as_bytes())?;
+    } else {
+        eprintln!("Failed to find the body in the response");
+    }
+
+    Ok(())
 }
 struct TestFmtEmpty(u32);
 impl Debug for TestFmtEmpty {

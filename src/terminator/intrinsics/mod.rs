@@ -12,7 +12,7 @@ use crate::r#type::tycache::TyCache;
 use crate::{operand::handle_operand, place::place_set};
 use cilly::call_site::CallSite;
 use cilly::fn_sig::FnSig;
-use cilly::{DotnetTypeRef, Type};
+use cilly::{or, DotnetTypeRef, Type};
 use rustc_middle::{
     mir::{Body, Operand, Place},
     ty::{Instance, ParamEnv, TyCtxt, TyKind},
@@ -863,7 +863,7 @@ pub fn handle_intrinsic<'tyctx>(
                 Some(method_instance),
             );
             let calc = match a_type {
-                Type::USize => {
+                Type::USize | Type::U64 | Type::U32 | Type::U16 | Type::U8=> {
                     let sum = a.clone() + b.clone();
                     let or = a | b;
                     let flag = lt_un!(sum.clone(), or);
@@ -1214,6 +1214,39 @@ pub fn handle_intrinsic<'tyctx>(
             );
             place_set(destination, tyctx, ops, body, method_instance, type_cache)
         }
+        "rotate_right" =>{
+            debug_assert_eq!(
+                args.len(),
+                1,
+                "The intrinsic `sqrtf64` MUST take in exactly 1 argument!"
+            );
+            let val_tpe = crate::utilis::monomorphize(
+                &method_instance,
+                call_instance.args[0]
+                    .as_type()
+                    .expect("needs_drop works only on types!"),
+                tyctx,
+            );
+            let val_tpe = type_cache.type_from_cache(val_tpe, tyctx, Some(method_instance));
+            let val = handle_operand(
+                &args[0].node,
+                tyctx,
+                body,
+                method_instance,
+                type_cache
+            );
+            let rot = handle_operand(
+                &args[0].node,
+                tyctx,
+                body,
+                method_instance,
+                type_cache
+            );
+            match val_tpe{
+                Type::U32=>place_set(destination, tyctx, or!(CILNode::ShrUn(Box::new(val.clone()), Box::new(rot.clone())),CILNode::Shl(Box::new(val), Box::new(ldc_u32!(32) - rot))), body, method_instance, type_cache),
+                _=>todo!("Can't ror {val_tpe:?}"),
+            }
+        },
         "catch_unwind" => {
             debug_assert_eq!(
                 args.len(),
