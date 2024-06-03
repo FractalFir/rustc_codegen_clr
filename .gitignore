@@ -16,5 +16,6 @@ test/out
 *.mdb
 *.pdb
 *.out
+*.cilly
 .cargo/
 config.toml

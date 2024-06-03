@@ -367,7 +367,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
                     vec![CILRoot::BTrue {
                         target: 2,
                         sub_target: 0,
-                        cond: lt_un!(conv_usize!(ldc_u64!(MAX_ALLOC_SIZE)), CILNode::LDArg(0)),
+                        cond: lt_un!(conv_usize!(ldc_u64!(MAX_ALLOC_SIZE)), CILNode::LDArg(2)),
                     }
                     .into()],
                     0,

@@ -31,6 +31,9 @@ fn simplify_handler<'tyctx>(
     method_instance: &Instance<'tyctx>,
     method: &Body<'tyctx>,
 ) -> Option<u32> {
+    if *crate::config::NO_UNWIND{
+        return None;
+    }
     let handler = handler?;
     if !blocks[handler.into()].statements.is_empty() {
         return Some(handler);

@@ -30,6 +30,7 @@ impl AssemblyExternRef {
         self.version
     }
 }
+pub type ExternFnDef = (IString, FnSig, bool);
 #[derive(Serialize, Deserialize, Debug)]
 /// Representation of a .NET assembly.
 pub struct Assembly {
@@ -41,7 +42,7 @@ pub struct Assembly {
     entrypoint: Option<CallSite>,
     /// List of references to external assemblies
     extern_refs: HashMap<IString, AssemblyExternRef>,
-    extern_fns: HashMap<(IString, FnSig), IString>,
+    extern_fns: HashMap<ExternFnDef, IString>,
     /// List of all static fields within the assembly
     static_fields: HashMap<IString, Type>,
 }
@@ -231,6 +232,10 @@ impl Assembly {
     pub fn methods(&self) -> impl Iterator<Item = &Method> {
         self.functions.values()
     }
+    /// Returns an interator over all methods within the assembly.
+    pub fn methods_mut(&mut self) -> impl Iterator<Item = &mut Method> {
+        self.functions.values_mut()
+    }
     /// Returns an iterator over all types witin the assembly.
     pub fn types(&self) -> impl Iterator<Item = (&IString, &TypeDef)> {
         self.types.iter()
@@ -258,12 +263,12 @@ impl Assembly {
     }
 
     #[must_use]
-    pub fn extern_fns(&self) -> &HashMap<(IString, FnSig), IString> {
+    pub fn extern_fns(&self) -> &HashMap<ExternFnDef, IString> {
         &self.extern_fns
     }
 
-    pub fn add_extern_fn(&mut self, name: IString, sig: FnSig, lib: IString) {
-        self.extern_fns.insert((name, sig), lib);
+    pub fn add_extern_fn(&mut self, name: IString, sig: FnSig, lib: IString, preserve_errno: bool) {
+        self.extern_fns.insert((name, sig, preserve_errno), lib);
     }
     fn get_exported_fn(&self) -> HashMap<CallSite, Method> {
         let mut externs = HashMap::new();
@@ -386,6 +391,10 @@ impl Assembly {
 
     pub fn static_fields_mut(&mut self) -> &mut HashMap<IString, Type> {
         &mut self.static_fields
+    }
+
+    pub fn functions(&self) -> &HashMap<CallSite, Method> {
+        &self.functions
     }
 }
 use lazy_static::*;

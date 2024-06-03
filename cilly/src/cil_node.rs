@@ -1106,13 +1106,14 @@ macro_rules! gt_un {
 
 #[macro_export]
 macro_rules! size_of {
-    ($a:expr) => {
-        {
-            let tmp:Box<Type> = $a.into();
-            if *tmp.as_ref() == Type::Void{CILNode::LdcI32(0)} else {CILNode::SizeOf(tmp)}
+    ($a:expr) => {{
+        let tmp: Box<Type> = $a.into();
+        if *tmp.as_ref() == Type::Void {
+            CILNode::LdcI32(0)
+        } else {
+            CILNode::SizeOf(tmp)
         }
-        
-    };
+    }};
 }
 #[macro_export]
 macro_rules! ld_field {

@@ -2,6 +2,19 @@
 #![allow(internal_features,incomplete_features,unused_variables,dead_code)]
 #![no_std]
 include!("../common.rs");
+// 7 bytes
+#[derive(Default,Clone,Copy)]
+struct SizeNotAligned{
+    data:[u8;3],
+    val:u32,
+}
+fn test_index(){
+    let arr = [SizeNotAligned::default();4];
+    test_eq!(black_box(core::mem::size_of::<[SizeNotAligned;4]>()) % black_box(core::mem::align_of::<SizeNotAligned>()),0);
+    for &elem in &arr{
+        test_eq!(black_box(&elem as *const SizeNotAligned as usize) % black_box(core::mem::align_of::<SizeNotAligned>()),0);
+    }
+}
 fn main(){
     let ptr = unsafe{malloc(64) as *mut _};
     black_box(ptr);
@@ -31,7 +44,7 @@ fn main(){
     test_eq!(oslice.split_first(),Some((&b'H',b"ello, World\n\0")));
     test_eq!(memrchr(b'W',b"Hello, World\n\0"),Some(7));
     dump_var(0,0,true,1,1,2,2,3,false);
-    
+    test_index();
 }
 #[must_use]
 pub fn memrchr(x: u8, text: &[u8]) -> Option<usize> {

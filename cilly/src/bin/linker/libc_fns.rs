@@ -292,7 +292,6 @@ pub const LIBC_FNS: [&str; 510] = [
     "prlimit64",
     "psiginfo",
     "psignal",
-
     "ptrace",
     "ptsname",
     "putchar",
@@ -403,6 +402,7 @@ pub const LIBC_FNS: [&str; 510] = [
     "sprintf",
     "srand48",
     "sscanf",
+    "stat64",
     "statx",
     "strcat",
     "strchr",
@@ -510,5 +510,7 @@ pub const LIBC_FNS: [&str; 510] = [
     "wprintf",
     "write",
     "wscanf",
-    "__errno_location",
+];
+pub const LIBC_MODIFIES_ERRNO: &[&str] = &[
+    "read", "write", "open", "stat64", "create", "open64", "statx",
 ];

@@ -27,6 +27,7 @@ macro_rules! config_flag{
 config_flag! {ABORT_ON_ERROR,false,"Should the codegen stop working when ecountering an error, or try to press on, replacing unusuported code with exceptions throws?"}
 
 config_flag! {TRACE_CALLS,false,"Preapends each function call with a debug message"}
+config_flag! {NO_UNWIND,false,"Tells the codegen to never emmit try/catch statements."}
 
 config_flag! {INLINE_SIMPLE_FUNCTIONS,false,"Allows the optimizer to inline very simple functions. It is buggy."}
 config_flag! {REMOVE_UNSUED_LOCALS,false,"Turns on the local removal optimization."}

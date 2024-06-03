@@ -1,4 +1,5 @@
 #![feature(fmt_internals,sync_unsafe_cell,numfmt,core_intrinsics,flt2dec,no_sanitize,extern_types,specialization,maybe_uninit_uninit_array,maybe_uninit_slice,never_type,exposed_provenance)]
+#![feature(adt_const_params)]
 use std::fmt::Debug;
 
 //mod fmt;
@@ -86,4 +87,19 @@ fn test_writr_str<'a>(fmt: &mut std::fmt::Formatter<'a>) {
 }
 extern "C" {
     fn printf(_: *const core::ffi::c_char, _: ...) -> core::ffi::c_int;
+}
+#[test]
+fn test(){
+    rustc_clr_interop_managed_call0_::<"System.Console","System.Console",false,"WriteLine",()>();
+    rustc_clr_interop_managed_call1_::<"System.Console","System.Console",false,"WriteLine",true,(),i32>(64);
+}
+#[allow(dead_code)]
+#[inline(never)]
+fn rustc_clr_interop_managed_call0_<const ASSEMBLY:&'static str,const CLASS_PATH:&'static str,const IS_VALUETYPE:bool,const METHOD:&'static str,Ret>()->Ret{
+    core::intrinsics::abort();
+}
+#[allow(dead_code)]
+#[inline(never)]
+fn rustc_clr_interop_managed_call1_<const ASSEMBLY:&'static str,const CLASS_PATH:&'static str,const IS_VALUETYPE:bool,const METHOD:&'static str,const IS_STATIC:bool,Ret,Arg1>(arg1:Arg1)->Ret{
+    core::intrinsics::abort();
 }

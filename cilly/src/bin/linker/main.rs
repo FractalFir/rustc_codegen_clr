@@ -1,7 +1,17 @@
 #![deny(unused_must_use)]
 #![allow(clippy::module_name_repetitions)]
 use cilly::{
-    access_modifier, asm::Assembly, basic_block::BasicBlock, c_exporter::CExporter, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, ilasm_exporter::ILASM_FLAVOUR, ldc_i32, method::{Method, MethodType}, DotnetTypeRef, FnSig, IString, IlasmFlavour, Type
+    access_modifier,
+    asm::Assembly,
+    basic_block::BasicBlock,
+    c_exporter::CExporter,
+    call_site::CallSite,
+    cil_node::CILNode,
+    cil_root::CILRoot,
+    ilasm_exporter::ILASM_FLAVOUR,
+    ldc_i32,
+    method::{Method, MethodType},
+    DotnetTypeRef, FnSig, IString, IlasmFlavour, Type,
 };
 //use assembly::Assembly;
 use lazy_static::lazy_static;
@@ -218,7 +228,7 @@ fn override_pthread_detach(patched: &mut HashMap<CallSite, Method>, call: &CallS
     );
 }
 /// Replaces calls to `pthread_atfork` with nops.
-/// TODO: this can cause issues. 
+/// TODO: this can cause issues.
 fn override_pthread_atfork(patched: &mut HashMap<CallSite, Method>, call: &CallSite) {
     patched.insert(
         call.clone(),
@@ -229,17 +239,19 @@ fn override_pthread_atfork(patched: &mut HashMap<CallSite, Method>, call: &CallS
             "pthread_atfork",
             vec![],
             vec![BasicBlock::new(
-                vec![CILRoot::Ret {
-                    tree: ldc_i32!(0),
-                }
-                .into()],
+                vec![CILRoot::Ret { tree: ldc_i32!(0) }.into()],
                 0,
                 None,
             )],
-            vec![Some("prepare".into()),Some("parent".into()),Some("child".into())],
+            vec![
+                Some("prepare".into()),
+                Some("parent".into()),
+                Some("child".into()),
+            ],
         ),
     );
 }
+
 /// Fixes calls to `pthread_attr_setstacksize`
 fn override_pthread_attr_setstacksize(patched: &mut HashMap<CallSite, Method>, call: &CallSite) {
     patched.insert(
@@ -424,7 +436,7 @@ fn autopatch(asm: &mut Assembly, native_pastrough: &NativePastroughInfo) {
             override_pthread_detach(&mut patched, call);
             continue;
         }
-        if name == "pthread_atfork"{
+        if name == "pthread_atfork" {
             override_pthread_atfork(&mut patched, call);
             continue;
         }
@@ -434,6 +446,9 @@ fn autopatch(asm: &mut Assembly, native_pastrough: &NativePastroughInfo) {
                 call.name().into(),
                 call.signature().to_owned(),
                 get_libc().into(),
+                libc_fns::LIBC_MODIFIES_ERRNO
+                    .iter()
+                    .any(|libc_fn| *libc_fn == name),
             ));
             continue;
         }
@@ -442,16 +457,20 @@ fn autopatch(asm: &mut Assembly, native_pastrough: &NativePastroughInfo) {
                 call.name().into(),
                 call.signature().to_owned(),
                 lib.as_ref(),
+                false,
             ));
             continue;
         }
+
         if !patched.contains_key(call) {
             patched.insert((*call).clone(), patch_missing_method(call));
         }
     }
     externs
         .into_iter()
-        .for_each(|(name, sig, lib)| asm.add_extern_fn(name, sig, lib.into()));
+        .for_each(|(name, sig, lib, preserve_errno)| {
+            asm.add_extern_fn(name, sig, lib.into(), preserve_errno)
+        });
     patched
         .values()
         .for_each(|method| asm.add_method(method.clone()));
@@ -669,6 +688,7 @@ fn main() {
     let (mut final_assembly, linkables) =
         load::load_assemblies(to_link.as_slice(), ar_to_link.as_slice());
     // Aplly certain fixes/workarounds to the final assembly
+    override_errno(&mut final_assembly);
     patch::patch_all(&mut final_assembly);
     let mut native_pastrough = NativePastroughInfo::new();
     #[cfg(target_os = "linux")]
@@ -712,10 +732,13 @@ fn main() {
     // Run ILASM
     export::export_assembly(&final_assembly, output_file_path, is_lib)
         .expect("Assembly export faliure!");
-
+    let path: std::path::PathBuf = output_file_path.into();
+    final_assembly
+        .save_tmp(&mut std::fs::File::create(path.with_extension("cilly")).unwrap())
+        .unwrap();
     // Run AOT compiler
     aot_compile_mode.compile(output_file_path);
-    let path: std::path::PathBuf = output_file_path.into();
+
     //      Cargo integration
 
     if cargo_support {
@@ -796,4 +819,40 @@ lazy_static! {
             "0"|"false"|"False"|"FALSE" => false,"1"|"true"|"True"|"TRUE" => true,_ => panic!("Boolean enviroment variable {} has invalid value {}",stringify!(C_MODE),value),
         }).unwrap_or(false)
     };
+}
+fn override_errno(asm: &mut Assembly) {
+    for method in asm.methods_mut() {
+        if method.name().contains("errno")
+            && method.name().contains("os")
+            && method.name().contains("unix")
+            && method.name().contains("pal")
+            && method.name().contains("sys")
+            && method.name().contains("std")
+        {
+            *method = Method::new(
+                access_modifier::AccessModifer::Private,
+                MethodType::Static,
+                method.call_site().signature().clone(),
+                method.name(),
+                vec![],
+                vec![BasicBlock::new(
+                    vec![CILRoot::Ret {
+                        tree: cilly::call!(
+                            CallSite::new(
+                                Some(DotnetTypeRef::marshal()),
+                                "GetLastWin32Error".into(),
+                                FnSig::new(&[], Type::I32),
+                                true
+                            ),
+                            []
+                        ),
+                    }
+                    .into()],
+                    0,
+                    None,
+                )],
+                vec![],
+            );
+        }
+    }
 }

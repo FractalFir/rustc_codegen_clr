@@ -233,7 +233,13 @@ impl AssemblyExporter for CExporter {
         self.add_method_inner(method, None);
     }
 
-    fn add_extern_method(&mut self, _lib_path: &str, name: &str, sig: &crate::FnSig) {
+    fn add_extern_method(
+        &mut self,
+        _lib_path: &str,
+        name: &str,
+        sig: &crate::FnSig,
+        preserve_errno: bool,
+    ) {
         if name == "puts"
             || name == "malloc"
             || name == "printf"

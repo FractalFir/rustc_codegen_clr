@@ -16,7 +16,7 @@ pub trait AssemblyExporter: Sized {
     fn add_type(&mut self, tpe: &TypeDef);
     /// Adds method to assembly.
     fn add_method(&mut self, method: &Method);
-    fn add_extern_method(&mut self, lib_path: &str, name: &str, sig: &FnSig);
+    fn add_extern_method(&mut self, lib_path: &str, name: &str, sig: &FnSig, preserve_errno: bool);
     //fn extern_asm(&mut self,asm:&str);
     /// Finishes exporting the assembly.
     fn finalize(self, final_path: &Path, is_dll: bool) -> Result<(), AssemblyExportError>;
@@ -51,8 +51,8 @@ pub trait AssemblyExporter: Sized {
                 self.add_method(&method);
             }
         }
-        for ((name, sig), lib) in asm.extern_fns() {
-            self.add_extern_method(lib, name, sig);
+        for ((name, sig, preserve_errno), lib) in asm.extern_fns() {
+            self.add_extern_method(lib, name, sig, *preserve_errno);
         }
         for global in asm.globals() {
             self.add_global(global.1, global.0);

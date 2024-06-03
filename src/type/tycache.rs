@@ -1,4 +1,4 @@
-use super::{tuple_name, tuple_typedef};
+use super::{pointer_to_is_fat, tuple_name, tuple_typedef};
 
 use crate::{
     r#type::{closure_typedef, escape_field_name},
@@ -652,7 +652,8 @@ pub fn validity_check<'tyctx>(
             let pointed_ty = crate::utilis::monomorphize(&method_instance, *pointed_ty, tyctx);
             if super::pointer_to_is_fat(pointed_ty, tyctx, Some(method_instance))
                 || is_zst(pointed_ty, tyctx)
-                || matches!(pointed_ty.kind(), TyKind::Ref(_, _, _))
+                || pointer_to_is_fat(pointed_ty, tyctx, Some(method_instance))
+                || matches!(pointed_ty.kind(), TyKind::Ref(_, _, _) | TyKind::Foreign(_))
             {
                 return val;
             }

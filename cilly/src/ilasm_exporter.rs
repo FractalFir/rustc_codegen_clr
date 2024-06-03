@@ -262,13 +262,19 @@ impl AssemblyExporter for ILASMExporter {
         Ok(())
     }
 
-    fn add_extern_method(&mut self, lib_path: &str, name: &str, sig: &crate::fn_sig::FnSig) {
+    fn add_extern_method(
+        &mut self,
+        lib_path: &str,
+        name: &str,
+        sig: &crate::fn_sig::FnSig,
+        preserve_errno: bool,
+    ) {
         // /lib64/libc.so.6
         let output = type_cil(sig.output());
-
+        let preserve_errno = if preserve_errno { "lasterr" } else { "" };
         writeln!(
             self.methods,
-            ".method private hidebysig static pinvokeimpl(\"{lib_path}\" cdecl) {output} '{name}' ("
+            ".method private hidebysig static pinvokeimpl(\"{lib_path}\" cdecl {preserve_errno}) {output} '{name}' ("
         )
         .unwrap();
         let mut input_iter = sig.inputs().iter();
