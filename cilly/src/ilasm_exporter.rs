@@ -20,6 +20,7 @@ pub struct ILASMExporter {
     ilasm_path: IString,
     escape_names: bool,
     runtime_config: IString,
+    print_stack_traces:bool,
 }
 impl Default for ILASMExporter {
     fn default() -> Self {
@@ -31,6 +32,7 @@ impl Default for ILASMExporter {
             ilasm_path(),
             *ESCAPE_NAMES,
             get_runtime_config(),
+            *TRACE_CALLS,
         )
     }
 }
@@ -147,6 +149,7 @@ impl ILASMExporter {
         ilasm_path: &str,
         escape_names: bool,
         runtime_config: &str,
+        print_stack_traces:bool,
     ) -> Self {
         let mut encoded_asm = String::with_capacity(0x1_00);
         let mut methods = String::with_capacity(0x1_00);
@@ -164,6 +167,7 @@ impl ILASMExporter {
             ilasm_path: ilasm_path.into(),
             escape_names,
             runtime_config: runtime_config.into(),
+            print_stack_traces,
         }
     }
 }
@@ -194,13 +198,14 @@ impl AssemblyExporter for ILASMExporter {
             self.escape_names,
             self.flavour,
             self.init_locals,
+            self.print_stack_traces,
         )
         .expect("Error");
         //let _ = self.types.push(tpe.clone());
     }
     fn add_method(&mut self, method: &Method) {
         method
-            .export(&mut self.methods, self.flavour, self.init_locals)
+            .export(&mut self.methods, self.flavour, self.init_locals,self.print_stack_traces)
             .expect("Error");
     }
     fn finalize(
@@ -295,6 +300,7 @@ fn type_def_cli(
     escape_names: bool,
     flavour: IlasmFlavour,
     init_locals: bool,
+    print_stack_traces:bool,
 ) -> std::fmt::Result {
     let name = tpe.name();
     let name = if escape_names {
@@ -335,7 +341,7 @@ fn type_def_cli(
         writeln!(w, ".size {size}")?;
     }
     for inner_type in tpe.inner_types() {
-        type_def_cli(w, inner_type, true, escape_names, flavour, init_locals)?;
+        type_def_cli(w, inner_type, true, escape_names, flavour, init_locals,print_stack_traces)?;
     }
     if let Some(offsets) = tpe.explicit_offsets() {
         for ((field_name, field_type), offset) in tpe.fields().iter().zip(offsets.iter()) {
@@ -355,8 +361,20 @@ fn type_def_cli(
         }
     }
     for method in tpe.methods() {
-        method.export(w, flavour, init_locals)?;
+        method.export(w, flavour, init_locals,print_stack_traces)?;
     }
     writeln!(w, "}}")?;
     Ok(())
+}
+
+lazy_static!{
+    #[doc = "Preapends each function call with a debug message"]pub static ref TRACE_CALLS:bool = {
+        std::env::vars().into_iter().find_map(|(key,value)|if key == stringify!(TRACE_CALLS){
+            Some(value)
+        }else {
+            None
+        }).map(|value|match value.as_ref(){
+            "0"|"false"|"False"|"FALSE" => false,"1"|"true"|"True"|"TRUE" => true,_ => panic!("Boolean enviroment variable {} has invalid value {}",stringify!(TRACE_CALLS),value),
+        }).unwrap_or(false)
+    };
 }

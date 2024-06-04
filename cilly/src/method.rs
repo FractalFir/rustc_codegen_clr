@@ -378,6 +378,7 @@ impl Method {
         w: &mut impl std::fmt::Write,
         flavour: IlasmFlavour,
         init_locals: bool,
+        print_stack_traces:bool,
     ) -> std::fmt::Result {
         let access = if let AccessModifer::Private = self.access() {
             "private"
@@ -395,6 +396,7 @@ impl Method {
             w,
             ".method {access} hidebysig {static_inst} {output} '{name}'("
         )?;
+       
         let mut input_iter = self.explicit_inputs().iter();
         if self.arg_names().is_empty() || self.arg_names().len() != self.explicit_inputs().len() {
             if self.arg_names().len() != self.explicit_inputs().len() {
@@ -465,12 +467,20 @@ impl Method {
             "\n\t)\n.maxstack {maxstack}\n",
             maxstack = self.maxstack()
         )?;
+        if print_stack_traces{
+            write!(w,"call string [System.Runtime]System.Environment::get_StackTrace()\ncall void [System.Console]System.Console::WriteLine(string)")?;
+        }
         for block in self.blocks().iter() {
             crate::basic_block::export(w, block, DepthSetting::with_pading(), flavour).unwrap();
         }
 
         writeln!(w, "}}")
     }
+    
+    pub fn attributes(&self) -> &[Attribute] {
+        &self.attributes
+    }
+   
 }
 
 /// A wrapper around mutably borrowed [`BasicBlock`]s of a method. Prevents certain bugs.

@@ -1,24 +1,33 @@
 #![feature(fmt_internals,sync_unsafe_cell,numfmt,core_intrinsics,flt2dec,no_sanitize,extern_types,specialization,maybe_uninit_uninit_array,maybe_uninit_slice,never_type,exposed_provenance)]
-#![feature(adt_const_params)]
+#![feature(adt_const_params,test)]
 use std::fmt::Debug;
 
 //mod fmt;
+mod term;
 use std::fs::File;
+use std::hint;
 use std::io::{self, Write, Read};
 use std::net::TcpStream;
+
+use term::terminfo::searcher::get_dbpath_for_term;
 fn main() {
-   
-    println!("Formatting in .NET! Test int: {int} Test float:{float}
+    let strings:Vec<String> = vec!["Hi".into(),"Bob".into(),"John".into()];
+    drop(std::hint::black_box(strings));
+    
+    eprintln!("Formatting in .NET! Test int: {int} Test float:{float}
     dur:{dur:?}",int = std::hint::black_box(64),float = std::hint::black_box(3.14159),dur = std::hint::black_box(std::time::Duration::from_millis(1000)));
 
-    let five = std::rc::Rc::new(std::cell::UnsafeCell::new(5));
+    let five: std::rc::Rc<std::cell::UnsafeCell<i32>> = std::rc::Rc::new(std::cell::UnsafeCell::new(5));
 
     std::hint::black_box(five.clone());
-    net_main().unwrap();
-
-
-
-}fn net_main() -> io::Result<()> {
+    //net_main().unwrap();
+    get_dbpath_for_term("xterm-256color");
+    /*println!("preparing to create term.");
+    let term = term::terminfo::TermInfo::from_env();
+    println!("Created term.");
+    println!("{term:?}");*/
+}
+fn net_main() -> io::Result<()> {
     // The URL we want to download (without "http://")
     let host = "example.com";
     let path = "/";

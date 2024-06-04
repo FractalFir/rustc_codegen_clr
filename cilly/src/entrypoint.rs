@@ -51,90 +51,11 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
             vec![
                 BasicBlock::new(
                     vec![
-                        // Allocate argc(mamaged arguments + exec path)
-                        CILRoot::STLoc {
-                            local: 0,
-                            tree: CILNode::TransmutePtr {
-                                val: Box::new(call!(
-                                    CallSite::alloc(),
-                                    [
-                                        (call!(
-                                            CallSite::new(
-                                                Some(DotnetTypeRef::managed_array()),
-                                                "get_Length".into(),
-                                                FnSig::new(
-                                                    &[DotnetTypeRef::managed_array().into()],
-                                                    Type::I32
-                                                ),
-                                                false
-                                            ),
-                                            [CILNode::LDArg(0)]
-                                        ) + conv_usize!(ldc_u32!(1)))
-                                            * conv_usize!(size_of!(Type::ISize)),
-                                        conv_usize!(ldc_u32!(8))
-                                    ]
-                                )),
-                                new_ptr: Box::new(Type::Ptr(Box::new(Type::U8))),
-                            },
-                        }
-                        .into(),
-                        // Set the first arg to exec path
-                        CILRoot::STIndISize(
-                            CILNode::LDLoc(0),
-                            call!(
-                                CallSite::mstring_to_ptr(),
-                                [call_virt!(
-                                    CallSite::new(
-                                        Some(DotnetTypeRef::assembly()),
-                                        "get_Location".into(),
-                                        FnSig::new(
-                                            &[DotnetTypeRef::assembly().into()],
-                                            DotnetTypeRef::string_type()
-                                        ),
-                                        false
-                                    ),
-                                    [call!(
-                                        CallSite::new(
-                                            Some(DotnetTypeRef::assembly()),
-                                            "GetEntryAssembly".into(),
-                                            FnSig::new(&[], DotnetTypeRef::assembly()),
-                                            true,
-                                        ),
-                                        []
-                                    )]
-                                )]
-                            ),
-                        )
-                        .into(),
-                        // FIXME: This exec path is absolute!
-                        CILRoot::GoTo {
-                            target: 1,
-                            sub_target: 0,
-                        }
-                        .into(),
-                    ],
-                    0,
-                    None,
-                ),
-                BasicBlock::new(
-                    vec![
-                        // TODOD: iter trough args!
-                        CILRoot::GoTo {
-                            target: 2,
-                            sub_target: 0,
-                        }
-                        .into(),
-                    ],
-                    1,
-                    None,
-                ),
-                BasicBlock::new(
-                    vec![
                         mem_checks.into(),
                         CILRoot::Pop {
                             tree: call!(
                                 Box::new(entrypoint.clone()),
-                                [conv_usize!(CILNode::LDLoc(0)), conv_usize!(ldc_u32!(1))]
+                                [conv_usize!(ldc_u32!(0)), conv_usize!(ldc_u32!(0))]
                             ),
                         }
                         .into(),

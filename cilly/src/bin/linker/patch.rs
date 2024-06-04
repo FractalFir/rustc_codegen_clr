@@ -20,7 +20,7 @@ fn hijack_arg_init(asm: &mut Assembly) {
 
     use std::num::NonZeroU8;
 
-    use cilly::{cil_root::CILRoot, eq, lt, size_of};
+    use cilly::{cil_root::CILRoot, eq, lt, mul, size_of};
     //System.Runtime.InteropServices.Marshal.StringToCoTaskMemUTF8
 
     let mut really_init = None;
@@ -97,7 +97,13 @@ fn hijack_arg_init(asm: &mut Assembly) {
         local: argv,
         tree: call!(
             CallSite::alloc(),
-            [conv_usize!(CILNode::LDLoc(argc)), conv_usize!(ldc_u32!(8))]
+            [
+                mul!(
+                    conv_usize!(CILNode::LDLoc(argc)),
+                    conv_usize!(size_of!(Type::USize))
+                ),
+                conv_usize!(ldc_u32!(8))
+            ]
         ),
     };
     // Create the block which allocates argv and calculates argc.

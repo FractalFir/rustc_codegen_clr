@@ -102,10 +102,11 @@ pub enum CILRoot {
         descr: StaticFieldDescriptor,
         value: CILNode,
     },
-    SourceFileInfo(Box<(std::ops::Range<u64>, std::ops::Range<u64>, IString)>),
+    SourceFileInfo(SFI),
     //LabelStart(u32),
     //LabelEnd(u32),
 }
+pub type SFI = Box<(std::ops::Range<u64>, std::ops::Range<u64>, IString)>;
 impl CILRoot {
     pub fn opt(&mut self, opt_count: &mut usize) {
         match self {
