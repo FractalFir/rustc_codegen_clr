@@ -198,7 +198,7 @@ pub fn add_unchecked<'tyctx>(
     }
 }
 /// Preforms unchecked subtraction
-fn sub_unchecked<'tyctx>(
+pub fn sub_unchecked<'tyctx>(
     ty_a: Ty<'tyctx>,
     ty_b: Ty<'tyctx>,
     tyctx: TyCtxt<'tyctx>,
