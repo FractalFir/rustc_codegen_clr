@@ -739,4 +739,23 @@ mod tests {
             }
         ))
     }
+    #[test]
+    fn optimize_ne_branch() {
+        let mut opt_count = 0;
+        let mut comparison = CILRoot::BFalse {
+            target: 1,
+            sub_target: 0,
+            cond: CILNode::Eq(Box::new(CILNode::LDArg(0)), Box::new(CILNode::LDArg(1))),
+        };
+        comparison.opt(&mut opt_count);
+        assert!(matches!(
+            comparison,
+            CILRoot::BNe {
+                target: 1,
+                sub_target: 0,
+                a: CILNode::LDArg(0),
+                b: CILNode::LDArg(1)
+            }
+        ))
+    }
 }
