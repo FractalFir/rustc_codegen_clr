@@ -48,23 +48,21 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
                 Some("argc".into()),
                 Type::Ptr(Type::Ptr(Type::U8.into()).into()),
             )],
-            vec![
-                BasicBlock::new(
-                    vec![
-                        mem_checks.into(),
-                        CILRoot::Pop {
-                            tree: call!(
-                                Box::new(entrypoint.clone()),
-                                [conv_usize!(ldc_u32!(0)), conv_usize!(ldc_u32!(0))]
-                            ),
-                        }
-                        .into(),
-                        CILRoot::VoidRet.into(),
-                    ],
-                    2,
-                    None,
-                ),
-            ],
+            vec![BasicBlock::new(
+                vec![
+                    mem_checks.into(),
+                    CILRoot::Pop {
+                        tree: call!(
+                            Box::new(entrypoint.clone()),
+                            [conv_usize!(ldc_u32!(0)), conv_usize!(ldc_u32!(0))]
+                        ),
+                    }
+                    .into(),
+                    CILRoot::VoidRet.into(),
+                ],
+                2,
+                None,
+            )],
             vec![Some("args".into())],
         );
         //method.set_ops(ops);

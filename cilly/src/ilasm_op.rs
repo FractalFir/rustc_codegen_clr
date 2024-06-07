@@ -890,6 +890,10 @@ pub fn export_root(
         }
         CILRoot::SourceFileInfo(sfi) => {
             depth.pad(out)?;
+            if crate::debig_sfi(){
+                write!(out,"{}",crate::sfi_debug_print(sfi))?;
+                depth.pad(out)?;
+            }
             match il_flavour {
                 IlasmFlavour::Clasic => write!(
                     out,
