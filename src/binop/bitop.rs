@@ -13,7 +13,7 @@ pub fn bit_and_unchecked<'tyctx>(
     operand_a: CILNode,
     operand_b: CILNode,
 ) -> CILNode {
-    let type_b = tycache.type_from_cache(ty_b, tyctx, Some(*method_instance));
+    let type_b = tycache.type_from_cache(ty_b, tyctx, *method_instance);
     match ty_a.kind() {
         TyKind::Uint(UintTy::U128) => call!(
             CallSite::boxed(
@@ -53,8 +53,8 @@ pub fn bit_or_unchecked<'tyctx>(
 ) -> CILNode {
     match ty_a.kind() {
         TyKind::Int(IntTy::I128) => {
-            let ty_a = tycache.type_from_cache(ty_a, tyctx, Some(*method_instance));
-            let ty_b = tycache.type_from_cache(ty_b, tyctx, Some(*method_instance));
+            let ty_a = tycache.type_from_cache(ty_a, tyctx, *method_instance);
+            let ty_b = tycache.type_from_cache(ty_b, tyctx, *method_instance);
             call!(
                 CallSite::new_extern(
                     DotnetTypeRef::int_128(),
@@ -66,8 +66,8 @@ pub fn bit_or_unchecked<'tyctx>(
             )
         }
         TyKind::Uint(UintTy::U128) => {
-            let ty_a = tycache.type_from_cache(ty_a, tyctx, Some(*method_instance));
-            let ty_b = tycache.type_from_cache(ty_b, tyctx, Some(*method_instance));
+            let ty_a = tycache.type_from_cache(ty_a, tyctx, *method_instance);
+            let ty_b = tycache.type_from_cache(ty_b, tyctx, *method_instance);
             call!(
                 CallSite::new_extern(
                     DotnetTypeRef::uint_128(),
@@ -92,8 +92,8 @@ pub fn bit_xor_unchecked<'tyctx>(
 ) -> CILNode {
     match ty_a.kind() {
         TyKind::Int(IntTy::I128) => {
-            let ty_a = tycache.type_from_cache(ty_a, tyctx, Some(*method_instance));
-            let ty_b = tycache.type_from_cache(ty_b, tyctx, Some(*method_instance));
+            let ty_a = tycache.type_from_cache(ty_a, tyctx, *method_instance);
+            let ty_b = tycache.type_from_cache(ty_b, tyctx, *method_instance);
             call!(
                 CallSite::new_extern(
                     DotnetTypeRef::int_128(),
@@ -105,8 +105,8 @@ pub fn bit_xor_unchecked<'tyctx>(
             )
         }
         TyKind::Uint(UintTy::U128) => {
-            let ty_a = tycache.type_from_cache(ty_a, tyctx, Some(*method_instance));
-            let ty_b = tycache.type_from_cache(ty_b, tyctx, Some(*method_instance));
+            let ty_a = tycache.type_from_cache(ty_a, tyctx, *method_instance);
+            let ty_b = tycache.type_from_cache(ty_b, tyctx, *method_instance);
             call!(
                 CallSite::new_extern(
                     DotnetTypeRef::uint_128(),

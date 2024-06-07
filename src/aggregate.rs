@@ -64,7 +64,7 @@ pub fn handle_aggregate<'tyctx>(
         }
         AggregateKind::Array(element) => {
             let element = crate::utilis::monomorphize(&method_instance, *element, tyctx);
-            let element = tycache.type_from_cache(element, tyctx, Some(method_instance));
+            let element = tycache.type_from_cache(element, tyctx, method_instance);
             let array_type = DotnetTypeRef::array(&element, value_index.len());
             let array_getter = super::place::place_adress(
                 target_location,
@@ -121,7 +121,7 @@ pub fn handle_aggregate<'tyctx>(
                         operand.ty(method, tyctx),
                         tyctx,
                     );
-                    tycache.type_from_cache(operand_ty, tyctx, Some(method_instance))
+                    tycache.type_from_cache(operand_ty, tyctx, method_instance)
                 })
                 .collect();
             let dotnet_tpe = crate::r#type::simple_tuple(&types);
@@ -161,7 +161,7 @@ pub fn handle_aggregate<'tyctx>(
                 tyctx,
             )
             .ty;
-            let closure_type = tycache.type_from_cache(closure_ty, tyctx, Some(method_instance));
+            let closure_type = tycache.type_from_cache(closure_ty, tyctx, method_instance);
             let closure_dotnet = closure_type.as_dotnet().expect("Invalid closure type!");
             let closure_getter = super::place::place_adress(
                 target_location,
@@ -174,7 +174,7 @@ pub fn handle_aggregate<'tyctx>(
             for (index, value) in value_index.iter_enumerated() {
                 let field_ty =
                     crate::utilis::monomorphize(&method_instance, value.ty(method, tyctx), tyctx);
-                let field_ty = tycache.type_from_cache(field_ty, tyctx, Some(method_instance));
+                let field_ty = tycache.type_from_cache(field_ty, tyctx, method_instance);
                 if field_ty == Type::Void{
                     continue;
                 }
@@ -214,8 +214,8 @@ pub fn handle_aggregate<'tyctx>(
                 method_instance,
                 tycache,
             );
-            let fat_ptr_type = tycache.type_from_cache(fat_ptr, tyctx, Some(method_instance));
-            if !crate::r#type::pointer_to_is_fat(*ptr, tyctx, Some(method_instance)) {
+            let fat_ptr_type = tycache.type_from_cache(fat_ptr, tyctx, method_instance);
+            if !crate::r#type::pointer_to_is_fat(*ptr, tyctx, method_instance) {
                 // Double-check the pointer is REALLY thin
                 assert!(fat_ptr_type.as_dotnet().is_none());
                 // Pointer is thin, just directly assign
@@ -281,7 +281,7 @@ fn aggregate_adt<'tyctx>(
     type_cache: &mut crate::r#type::TyCache,
 ) -> CILNode {
     let adt_type = crate::utilis::monomorphize(&method_instance, adt_type, tyctx);
-    let adt_type_ref = type_cache.type_from_cache(adt_type, tyctx, Some(method_instance));
+    let adt_type_ref = type_cache.type_from_cache(adt_type, tyctx, method_instance);
     let adt_type_ref = if let Type::DotnetType(type_ref) = adt_type_ref {
         type_ref.as_ref().clone()
     } else {
@@ -306,7 +306,7 @@ fn aggregate_adt<'tyctx>(
                 let field_type = field_def.ty(tyctx, subst);
                 let field_type = crate::utilis::monomorphize(&method_instance, field_type, tyctx);
                 let field_type =
-                    type_cache.type_from_cache(field_type, tyctx, Some(method_instance));
+                    type_cache.type_from_cache(field_type, tyctx, method_instance);
                 // Seting a void field is a no-op.
                 if field_type == Type::Void {
                     continue;
@@ -363,7 +363,7 @@ fn aggregate_adt<'tyctx>(
                 let field_type = type_cache.type_from_cache(
                     field.ty(tyctx, subst),
                     tyctx,
-                    Some(method_instance),
+                    method_instance,
                 );
                 // Seting a void field is a no-op.
                 if field_type == Type::Void {
@@ -425,7 +425,7 @@ fn aggregate_adt<'tyctx>(
                 .expect("Could not find field!");
             let field_type = field_def.ty(tyctx, subst);
             let field_type = crate::utilis::monomorphize(&method_instance, field_type, tyctx);
-            let field_type = type_cache.type_from_cache(field_type, tyctx, Some(method_instance));
+            let field_type = type_cache.type_from_cache(field_type, tyctx, method_instance);
             // Assgiements to void types are a NOP and should ALWAYS be skipped.
             if field_type == Type::Void {
                 return crate::place::place_get(

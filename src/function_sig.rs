@@ -10,16 +10,12 @@ use rustc_target::spec::abi::Abi as TargetAbi;
 /// Creates a `FnSig` from ``. May not match the result of `sig_from_instance_`!
 /// Use ONLY for function pointers!
 pub fn from_poly_sig<'tyctx>(
-    method_instance: Option<Instance<'tyctx>>,
+    method_instance: Instance<'tyctx>,
     tyctx: TyCtxt<'tyctx>,
     tycache: &mut TyCache,
     sig: PolyFnSig<'tyctx>,
 ) -> FnSig {
-    let sig = if let Some(method_instance) = method_instance {
-        crate::utilis::monomorphize(&method_instance, sig, tyctx)
-    } else {
-        sig
-    };
+    crate::utilis::monomorphize(&method_instance, sig, tyctx);
     let sig = tyctx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), sig);
     let output = tycache.type_from_cache(sig.output(), tyctx, method_instance);
     let inputs: Box<[Type]> = sig
@@ -51,11 +47,11 @@ pub fn sig_from_instance_<'tyctx>(
     }
     //assert!(!fn_abi.c_variadic);
     let ret = crate::utilis::monomorphize(&function, fn_abi.ret.layout.ty, tyctx);
-    let ret = tycache.type_from_cache(ret, tyctx, Some(function));
+    let ret = tycache.type_from_cache(ret, tyctx, function);
     let mut args = Vec::with_capacity(fn_abi.args.len());
     for arg in fn_abi.args.iter() {
         let arg = crate::utilis::monomorphize(&function, arg.layout.ty, tyctx);
-        args.push(tycache.type_from_cache(arg, tyctx, Some(function)));
+        args.push(tycache.type_from_cache(arg, tyctx, function));
     }
     // There are 2 ABI enums for some reasons(they differ in what memebers they have)
     let fn_ty = function.ty(tyctx, ParamEnv::reveal_all());

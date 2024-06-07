@@ -55,11 +55,11 @@ pub fn handle_rvalue<'tcx>(
                 TyKind::Ref(_, inner, _) => *inner,
                 _ => panic!("Type is not ptr {target:?}."),
             };
-            let source_type = tycache.type_from_cache(source, tyctx, Some(method_instance));
-            let target_type = tycache.type_from_cache(target, tyctx, Some(method_instance));
-            //let target_type = tycache.type_from_cache(target, tyctx, Some(method_instance));
-            let src_fat = pointer_to_is_fat(source_pointed_to, tyctx, Some(method_instance));
-            let target_fat = pointer_to_is_fat(target_pointed_to, tyctx, Some(method_instance));
+            let source_type = tycache.type_from_cache(source, tyctx, method_instance);
+            let target_type = tycache.type_from_cache(target, tyctx, method_instance);
+            //let target_type = tycache.type_from_cache(target, tyctx, method_instance);
+            let src_fat = pointer_to_is_fat(source_pointed_to, tyctx, method_instance);
+            let target_fat = pointer_to_is_fat(target_pointed_to, tyctx, method_instance);
             match (src_fat, target_fat) {
                 (true, true) => {
                     let parrent = handle_operand(operand, tyctx, method, method_instance, tycache);
@@ -129,10 +129,10 @@ pub fn handle_rvalue<'tcx>(
         }
         Rvalue::Cast(CastKind::IntToInt, operand, target) => {
             let target = crate::utilis::monomorphize(&method_instance, *target, tyctx);
-            let target = tycache.type_from_cache(target, tyctx, Some(method_instance));
+            let target = tycache.type_from_cache(target, tyctx, method_instance);
             let src = operand.ty(&method.local_decls, tyctx);
             let src = crate::utilis::monomorphize(&method_instance, src, tyctx);
-            let src = tycache.type_from_cache(src, tyctx, Some(method_instance));
+            let src = tycache.type_from_cache(src, tyctx, method_instance);
             crate::casts::int_to_int(
                 src,
                 &target,
@@ -141,10 +141,10 @@ pub fn handle_rvalue<'tcx>(
         }
         Rvalue::Cast(CastKind::FloatToInt, operand, target) => {
             let target = crate::utilis::monomorphize(&method_instance, *target, tyctx);
-            let target = tycache.type_from_cache(target, tyctx, Some(method_instance));
+            let target = tycache.type_from_cache(target, tyctx, method_instance);
             let src = operand.ty(&method.local_decls, tyctx);
             let src = crate::utilis::monomorphize(&method_instance, src, tyctx);
-            let src = tycache.type_from_cache(src, tyctx, Some(method_instance));
+            let src = tycache.type_from_cache(src, tyctx, method_instance);
 
             crate::casts::float_to_int(
                 src,
@@ -154,10 +154,10 @@ pub fn handle_rvalue<'tcx>(
         }
         Rvalue::Cast(CastKind::IntToFloat, operand, target) => {
             let target = crate::utilis::monomorphize(&method_instance, *target, tyctx);
-            let target = tycache.type_from_cache(target, tyctx, Some(method_instance));
+            let target = tycache.type_from_cache(target, tyctx, method_instance);
             let src = operand.ty(&method.local_decls, tyctx);
             let src = crate::utilis::monomorphize(&method_instance, src, tyctx);
-            let src = tycache.type_from_cache(src, tyctx, Some(method_instance));
+            let src = tycache.type_from_cache(src, tyctx, method_instance);
             crate::casts::int_to_float(
                 src,
                 &target,
@@ -167,7 +167,7 @@ pub fn handle_rvalue<'tcx>(
         Rvalue::NullaryOp(op, ty) => match op {
             NullOp::SizeOf => {
                 let ty = crate::utilis::monomorphize(&method_instance, *ty, tyctx);
-                let ty = tycache.type_from_cache(ty, tyctx, Some(method_instance));
+                let ty = tycache.type_from_cache(ty, tyctx, method_instance);
                 conv_usize!(size_of!(ty))
             }
             NullOp::AlignOf => {
@@ -200,10 +200,10 @@ pub fn handle_rvalue<'tcx>(
         Rvalue::Cast(CastKind::Transmute, operand, dst) => {
             let dst = crate::utilis::monomorphize(&method_instance, *dst, tyctx);
             let dst_ty = dst;
-            let dst = tycache.type_from_cache(dst, tyctx, Some(method_instance));
+            let dst = tycache.type_from_cache(dst, tyctx, method_instance);
             let src = operand.ty(&method.local_decls, tyctx);
             let src = crate::utilis::monomorphize(&method_instance, src, tyctx);
-            let src = tycache.type_from_cache(src, tyctx, Some(method_instance));
+            let src = tycache.type_from_cache(src, tyctx, method_instance);
             match (&src, &dst) {
                 (
                     Type::ISize | Type::USize | Type::Ptr(_),
@@ -254,10 +254,10 @@ pub fn handle_rvalue<'tcx>(
         Rvalue::ShallowInitBox(operand, dst) => {
             let dst = crate::utilis::monomorphize(&method_instance, *dst, tyctx);
             let boxed_dst = Ty::new_box(tyctx, dst);
-            //let dst = tycache.type_from_cache(dst, tyctx, Some(method_instance));
+            //let dst = tycache.type_from_cache(dst, tyctx, method_instance);
             let src = operand.ty(&method.local_decls, tyctx);
             let src = crate::utilis::monomorphize(&method_instance, src, tyctx);
-            let src = tycache.type_from_cache(src, tyctx, Some(method_instance));
+            let src = tycache.type_from_cache(src, tyctx, method_instance);
             CILNode::TemporaryLocal(Box::new((
                 Type::Ptr(src.into()),
                 [CILRoot::SetTMPLocal {
@@ -279,7 +279,7 @@ pub fn handle_rvalue<'tcx>(
             // I assume this to be ALWAYS equivalent to `usize as *const/mut T`, but this may not always be the case.
             // If something breaks in the fututre, this is a place that needs checking.
             let target = crate::utilis::monomorphize(&method_instance, *target, tyctx);
-            let target = tycache.type_from_cache(target, tyctx, Some(method_instance));
+            let target = tycache.type_from_cache(target, tyctx, method_instance);
             // Cast from usize/isize to any *T is a NOP, so we just have to load the operand.
             CILNode::TransmutePtr {
                 val: Box::new(handle_operand(
@@ -298,7 +298,7 @@ pub fn handle_rvalue<'tcx>(
             // I assume this to be ALWAYS equivalent to `*const/mut T as usize`, but this may not always be the case.
             // If something breaks in the fututre, this is a place that needs checking.
             let target = crate::utilis::monomorphize(&method_instance, *target, tyctx);
-            let target = tycache.type_from_cache(target, tyctx, Some(method_instance));
+            let target = tycache.type_from_cache(target, tyctx, method_instance);
             // Cast to usize/isize from any *T is a NOP, so we just have to load the operand.
             CILNode::TransmutePtr {
                 val: Box::new(handle_operand(
@@ -313,7 +313,7 @@ pub fn handle_rvalue<'tcx>(
         }
         Rvalue::Cast(CastKind::FloatToFloat, operand, target) => {
             let target = crate::utilis::monomorphize(&method_instance, *target, tyctx);
-            let target = tycache.type_from_cache(target, tyctx, Some(method_instance));
+            let target = tycache.type_from_cache(target, tyctx, method_instance);
             let mut ops = handle_operand(operand, tyctx, method, method_instance, tycache);
             match target {
                 Type::F32 => ops = CILNode::ConvF32(ops.into()),
@@ -359,10 +359,10 @@ pub fn handle_rvalue<'tcx>(
             let addr = crate::place::place_adress(place, tyctx, method, method_instance, tycache);
             let owner_ty = place.ty(method, tyctx).ty;
             let owner_ty = crate::utilis::monomorphize(&method_instance, owner_ty, tyctx);
-            let owner = tycache.type_from_cache(owner_ty, tyctx, Some(method_instance));
+            let owner = tycache.type_from_cache(owner_ty, tyctx, method_instance);
             //TODO: chose proper tag type based on variant count of `owner`
             //let discr_ty = owner_ty.discriminant_ty(tyctx);
-            //let discr_type = tycache.type_from_cache(discr_ty, tyctx, Some(method_instance));
+            //let discr_type = tycache.type_from_cache(discr_ty, tyctx, method_instance);
             let layout = tyctx
                 .layout_of(rustc_middle::ty::ParamEnvAnd {
                     param_env: ParamEnv::reveal_all(),
@@ -372,7 +372,7 @@ pub fn handle_rvalue<'tcx>(
             let target = tycache.type_from_cache(
                 owner_ty.discriminant_ty(tyctx),
                 tyctx,
-                Some(method_instance),
+                method_instance,
             );
             let (disrc_type, _) = crate::utilis::adt::enum_tag_info(layout.layout, tyctx);
             let owner = if let crate::r#type::Type::DotnetType(dotnet_type) = owner {
@@ -401,11 +401,11 @@ pub fn handle_rvalue<'tcx>(
         Rvalue::Len(operand) => {
             let ty = operand.ty(method, tyctx);
             let ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
-            // let tpe = tycache.type_from_cache(ty.ty, tyctx, Some(method_instance));
+            // let tpe = tycache.type_from_cache(ty.ty, tyctx, method_instance);
             match ty.ty.kind() {
                 TyKind::Slice(inner) => {
                     let slice_tpe = tycache
-                        .slice_ty(*inner, tyctx, Some(method_instance))
+                        .slice_ty(*inner, tyctx, method_instance)
                         .as_dotnet()
                         .unwrap();
                     let descriptor =
@@ -433,13 +433,13 @@ pub fn handle_rvalue<'tcx>(
                 .expect("Could not evalute array size as usize.");
             let array =
                 crate::utilis::monomorphize(&method_instance, rvalue.ty(method, tyctx), tyctx);
-            let array = tycache.type_from_cache(array, tyctx, Some(method_instance));
+            let array = tycache.type_from_cache(array, tyctx, method_instance);
             let array_dotnet = array.clone().as_dotnet().expect("Invalid array type.");
 
             let operand_type = tycache.type_from_cache(
                 crate::utilis::monomorphize(&method_instance, operand.ty(method, tyctx), tyctx),
                 tyctx,
-                Some(method_instance),
+                method_instance,
             );
             let operand = handle_operand(operand, tyctx, method, method_instance, tycache);
             let mut branches = Vec::new();

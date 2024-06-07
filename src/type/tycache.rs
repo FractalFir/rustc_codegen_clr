@@ -28,7 +28,7 @@ fn create_typedef<'tyctx>(
     _name: &str,
     def: AdtDef<'tyctx>,
     _tyctx: TyCtxt<'tyctx>,
-    _method: Option<Instance<'tyctx>>,
+    _method: Instance<'tyctx>,
 ) -> TypeDef {
     assert_eq!(
         def.adt_kind(),
@@ -58,7 +58,7 @@ impl TyCache {
         adt_ty: Ty<'tyctx>,
         subst: &'tyctx List<rustc_middle::ty::GenericArg<'tyctx>>,
         tyctx: TyCtxt<'tyctx>,
-        method: Option<Instance<'tyctx>>,
+        method: Instance<'tyctx>,
     ) -> DotnetTypeRef {
         if self.type_def_cache.contains_key(name) {
             return DotnetTypeRef::new::<&str, _>(None, name);
@@ -99,7 +99,7 @@ impl TyCache {
         adt_ty: Ty<'tyctx>,
         subst: &'tyctx List<rustc_middle::ty::GenericArg<'tyctx>>,
         tyctx: TyCtxt<'tyctx>,
-        method: Option<Instance<'tyctx>>,
+        method: Instance<'tyctx>,
     ) -> TypeDef {
         assert!(!is_zst(adt_ty, tyctx));
         if name.contains(super::type_def::CUSTOM_INTEROP_TYPE_DEF) {
@@ -122,9 +122,7 @@ impl TyCache {
         {
             let name = escape_field_name(&field.name.to_string());
             let mut field_ty = field.ty(tyctx, subst);
-            method.inspect(|method_instance| {
-                field_ty = crate::utilis::monomorphize(method_instance, field_ty, tyctx);
-            });
+            field_ty = crate::utilis::monomorphize(&method, field_ty, tyctx);
             let field_ty = self.type_from_cache(field_ty, tyctx, method);
             if field_ty == Type::Void{
                 continue;
@@ -176,7 +174,7 @@ impl TyCache {
                 };
                 roots.push(
                     cilly::cil_root::CILRoot::Pop {
-                        tree: validity_check(val, field_ty, self, method.unwrap(), tyctx),
+                        tree: validity_check(val, field_ty, self, method, tyctx),
                     }
                     .into(),
                 );
@@ -207,7 +205,7 @@ impl TyCache {
         adt_ty: Ty<'tyctx>,
         subst: &'tyctx List<rustc_middle::ty::GenericArg<'tyctx>>,
         tyctx: TyCtxt<'tyctx>,
-        method: Option<Instance<'tyctx>>,
+        method: Instance<'tyctx>,
     ) -> TypeDef {
         let layout = tyctx
             .layout_of(rustc_middle::ty::ParamEnvAnd {
@@ -221,9 +219,7 @@ impl TyCache {
         for (field,offset) in adt.all_fields().zip(crate::utilis::adt::FieldOffsetIterator::fields((*layout.layout.0).clone())) {
             let name = escape_field_name(&field.name.to_string());
             let mut field_ty = field.ty(tyctx, subst);
-            method.inspect(|method_instance| {
-                field_ty = crate::utilis::monomorphize(method_instance, field_ty, tyctx);
-            });
+            field_ty = crate::utilis::monomorphize(&method, field_ty, tyctx);
             let field_ty = self.type_from_cache(field_ty, tyctx, method);
             if field_ty == Type::Void{
                 continue;
@@ -255,7 +251,7 @@ impl TyCache {
         adt_ty: Ty<'tyctx>,
         subst: &'tyctx List<rustc_middle::ty::GenericArg<'tyctx>>,
         tyctx: TyCtxt<'tyctx>,
-        method: Option<Instance<'tyctx>>,
+        method: Instance<'tyctx>,
     ) -> TypeDef {
         let access = AccessModifer::Public;
         let mut explicit_offsets: Vec<u32> = vec![];
@@ -380,7 +376,7 @@ impl TyCache {
                 "check_valid",
                 vec![],
                 vec![cilly::basic_block::BasicBlock::new(
-                    enum_bound_check(adt, self, method.unwrap(), tyctx, adt_ty),
+                    enum_bound_check(adt, self, method, tyctx, adt_ty),
                     0,
                     None,
                 )],
@@ -394,7 +390,7 @@ impl TyCache {
         &mut self,
         inner: Ty<'tyctx>,
         tyctx: TyCtxt<'tyctx>,
-        method: Option<Instance<'tyctx>>,
+        method: Instance<'tyctx>,
     ) -> Type {
         self.slice_ref_to(tyctx, Ty::new_slice(tyctx, inner), method)
     }
@@ -405,8 +401,9 @@ impl TyCache {
         &mut self,
         ty: Ty<'tyctx>,
         tyctx: TyCtxt<'tyctx>,
-        method: Option<Instance<'tyctx>>,
+        method: Instance<'tyctx>,
     ) -> Type {
+        let ty = crate::utilis::monomorphize(&method, ty, tyctx);
         if crate::utilis::is_zst(ty, tyctx){
             return Type::Void;
         }
@@ -448,7 +445,7 @@ impl TyCache {
                 
                 let closure = args.as_closure();
                 let mut sig = closure.sig();
-                method.inspect(|method| sig = crate::utilis::monomorphize(method, sig, tyctx));
+                sig = crate::utilis::monomorphize(&method, sig, tyctx);
                 ////FIXME: This should be OK(since the signature is monomorphized and we don't care about lifetimes anyway), but it would be nice to have a better solution for this.
                 let sig = tyctx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), sig);
                 let inputs: Box<_> = sig
@@ -484,7 +481,7 @@ impl TyCache {
                 if super::pointer_to_is_fat(*typ, tyctx, method) {
                     let inner = match typ.kind() {
                         TyKind::Slice(inner) => {
-                            if let Some(method) = method {
+                            if let method = method {
                                 crate::utilis::monomorphize(&method, *inner, tyctx)
                             } else {
                                 *inner
@@ -492,7 +489,7 @@ impl TyCache {
                         }
                         TyKind::Str => u8_ty(tyctx),
                         _ => {
-                            if let Some(method) = method {
+                            if let method = method {
                                 crate::utilis::monomorphize(&method, *typ, tyctx)
                             } else {
                                 *typ
@@ -516,7 +513,7 @@ impl TyCache {
                 if super::pointer_to_is_fat(*inner, tyctx, method) {
                     let inner = match inner.kind() {
                         TyKind::Slice(inner) => {
-                            if let Some(method) = method {
+                            if let method = method {
                                 crate::utilis::monomorphize(&method, *inner, tyctx)
                             } else {
                                 *inner
@@ -524,7 +521,7 @@ impl TyCache {
                         }
                         TyKind::Str => u8_ty(tyctx),
                         _ => {
-                            if let Some(method) = method {
+                            if let method = method {
                                 crate::utilis::monomorphize(&method, *inner, tyctx)
                             } else {
                                 *inner
@@ -540,7 +537,7 @@ impl TyCache {
             // a DST.
             TyKind::Str => Type::U8,
             TyKind::Slice(inner) => {
-                let inner = if let Some(method) = method {
+                let inner = if let method = method {
                     crate::utilis::monomorphize(&method, *inner, tyctx)
                 } else {
                     *inner
@@ -558,7 +555,7 @@ impl TyCache {
             }
             TyKind::FnDef(_did, _subst) => {
                 /*
-                let subst = if let Some(method) = method {
+                let subst = if let method = method {
                     crate::utilis::monomorphize(&method, *subst, tyctx)
                 } else {
                     subst
@@ -577,13 +574,12 @@ impl TyCache {
             }
             TyKind::Array(element, length) => {
                 let mut length = *length;
-                method
-                    .inspect(|method| length = crate::utilis::monomorphize(method, length, tyctx));
+                length = crate::utilis::monomorphize(&method, length, tyctx);
                 let length: usize = crate::utilis::try_resolve_const_size(length).unwrap();
                 let mut element = *element;
-                method.inspect(|method| {
-                    element = crate::utilis::monomorphize(method, element, tyctx);
-                });
+    
+                    element = crate::utilis::monomorphize(&method, element, tyctx);
+                ;
                 let element = self.type_from_cache(element, tyctx, method);
                 let layout = tyctx
                     .layout_of(rustc_middle::ty::ParamEnvAnd {
@@ -607,11 +603,11 @@ impl TyCache {
             }
             TyKind::Alias(_, _) => {
                 //self.cycle_prevention.push("ALIAS_PREV")
-                if let Some(method) = method {
+                if let method = method {
                     self.type_from_cache(
                         crate::utilis::monomorphize(&method, ty, tyctx),
                         tyctx,
-                        Some(method),
+                        method,
                     )
                 } else {
                     panic!("Unmorphized alias {ty:?}")
@@ -625,9 +621,9 @@ impl TyCache {
         tyctx: TyCtxt<'tyctx>,
         
         mut inner: Ty<'tyctx>,
-        method: Option<Instance<'tyctx>>,
+        method: Instance<'tyctx>,
     ) -> Type {
-        method.inspect(|method| inner = crate::utilis::monomorphize(method, inner, tyctx));
+        inner = crate::utilis::monomorphize(&method, inner, tyctx);
         let inner_tpe = self.type_from_cache(inner, tyctx, method);
         let name:IString = format!("FatPtr{elem}",elem = cilly::mangle(&inner_tpe)).into();
         if !self.type_def_cache.contains_key(&name){
@@ -653,7 +649,7 @@ pub fn validity_check<'tyctx>(
     tyctx: TyCtxt<'tyctx>,
 ) -> CILNode {
     let ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
-    let tpe = type_cache.type_from_cache(ty, tyctx, Some(method_instance));
+    let tpe = type_cache.type_from_cache(ty, tyctx, method_instance);
     if !*crate::config::VALIDTE_VALUES {
         return val;
     }
@@ -661,10 +657,10 @@ pub fn validity_check<'tyctx>(
         TyKind::Adt(def, _subst) => match def.adt_kind() {
             rustc_middle::ty::AdtKind::Union => val,
             rustc_middle::ty::AdtKind::Struct | rustc_middle::ty::AdtKind::Enum => {
-                if let Some(d_tpe) = tpe.as_dotnet() {
+                if let d_tpe = tpe.as_dotnet() {
                     cilly::call!(
                         cilly::call_site::CallSite::new(
-                            Some(d_tpe),
+                            d_tpe,
                             "check_valid".into(),
                             FnSig::new(&[tpe.clone()], tpe),
                             true
@@ -678,9 +674,9 @@ pub fn validity_check<'tyctx>(
         },
         TyKind::Ref(_, pointed_ty, _) => {
             let pointed_ty = crate::utilis::monomorphize(&method_instance, *pointed_ty, tyctx);
-            if super::pointer_to_is_fat(pointed_ty, tyctx, Some(method_instance))
+            if super::pointer_to_is_fat(pointed_ty, tyctx, method_instance)
                 || is_zst(pointed_ty, tyctx)
-                || pointer_to_is_fat(pointed_ty, tyctx, Some(method_instance))
+                || pointer_to_is_fat(pointed_ty, tyctx, method_instance)
                 || matches!(pointed_ty.kind(), TyKind::Ref(_, _, _) | TyKind::Foreign(_))
             {
                 return val;
@@ -692,7 +688,7 @@ pub fn validity_check<'tyctx>(
                 type_cache,
                 CILNode::LoadTMPLocal,
             );
-            let ptr_type = type_cache.type_from_cache(ty, tyctx, Some(method_instance));
+            let ptr_type = type_cache.type_from_cache(ty, tyctx, method_instance);
 
             CILNode::TemporaryLocal(Box::new((
                 ptr_type,
@@ -744,7 +740,7 @@ fn enum_bound_check<'tyctx>(
     }
     let addr = CILNode::LDArgA(0);
 
-    let enum_tpe = type_cache.type_from_cache(ty, tyctx, Some(method_instance));
+    let enum_tpe = type_cache.type_from_cache(ty, tyctx, method_instance);
     let discr = get_discr(layout, addr, enum_tpe.as_dotnet().unwrap(), tyctx, ty);
     let root = cilly::cil_root::CILRoot::Pop {
         tree: cilly::call!(

@@ -160,6 +160,7 @@ pub const LIBC_FNS: &[&str] = &[
     "getpwent",
     "getpwnam",
     "getpwuid",
+    "getrandom",
     "getrpcbyname",
     "getrpcbynumber",
     "getrpcent",
@@ -516,5 +517,5 @@ pub const LIBC_FNS: &[&str] = &[
     "wscanf",
 ];
 pub const LIBC_MODIFIES_ERRNO: &[&str] = &[
-    "read", "write", "open", "stat64", "create", "open64", "statx","fstat64","lseek64","sched_getaffinity","isatty"
+    "read", "write", "open", "stat64", "create", "open64", "statx","fstat64","lseek64","sched_getaffinity","isatty","getrandom"
 ];

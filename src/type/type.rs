@@ -148,12 +148,12 @@ use super::tuple_name;
 pub fn pointer_to_is_fat<'tyctx>(
     mut pointed_type: Ty<'tyctx>,
     tyctx: TyCtxt<'tyctx>,
-    method: Option<rustc_middle::ty::Instance<'tyctx>>,
+    method: rustc_middle::ty::Instance<'tyctx>,
 ) -> bool {
     use rustc_middle::ty::ParamEnv;
-    method.inspect(|method| {
-        pointed_type = crate::utilis::monomorphize(method, pointed_type, tyctx);
-    });
+
+    pointed_type = crate::utilis::monomorphize(&method, pointed_type, tyctx);
+
 
     let is_trivialy_sized = pointed_type.is_trivially_sized(tyctx);
     if is_trivialy_sized {

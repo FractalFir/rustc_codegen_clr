@@ -145,7 +145,7 @@ pub fn handle_intrinsic<'tyctx>(
                     .expect("needs_drop works only on types!"),
                 tyctx,
             );
-            let tpe = type_cache.type_from_cache(tpe, tyctx, Some(method_instance));
+            let tpe = type_cache.type_from_cache(tpe, tyctx, method_instance);
 
             place_set(
                 destination,
@@ -251,7 +251,7 @@ pub fn handle_intrinsic<'tyctx>(
                     tyctx,
                 ),
                 tyctx,
-                Some(method_instance),
+                method_instance,
             );
             let bit_operations =
                 DotnetTypeRef::new("System.Runtime".into(), "System.Numerics.BitOperations")
@@ -298,7 +298,7 @@ pub fn handle_intrinsic<'tyctx>(
                     .expect("needs_drop works only on types!"),
                 tyctx,
             );
-            let tpe = type_cache.type_from_cache(tpe, tyctx, Some(method_instance));
+            let tpe = type_cache.type_from_cache(tpe, tyctx, method_instance);
             // TODO: this assumes a 64 bit system!
             let sub = match tpe {
                 Type::ISize | Type::USize | Type::Ptr(_) => {
@@ -361,7 +361,7 @@ pub fn handle_intrinsic<'tyctx>(
                     .expect("needs_drop works only on types!"),
                 tyctx,
             );
-            let tpe = type_cache.type_from_cache(tpe, tyctx, Some(method_instance));
+            let tpe = type_cache.type_from_cache(tpe, tyctx, method_instance);
             let size = match tpe {
                 Type::Bool
                 | Type::U8
@@ -422,7 +422,7 @@ pub fn handle_intrinsic<'tyctx>(
                     .expect("needs_drop works only on types!"),
                 tyctx,
             );
-            let tpe = type_cache.type_from_cache(tpe, tyctx, Some(method_instance));
+            let tpe = type_cache.type_from_cache(tpe, tyctx, method_instance);
             let bit_operations = Some(bit_operations);
             let operand = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
 
@@ -497,7 +497,7 @@ pub fn handle_intrinsic<'tyctx>(
                     .expect("needs_drop works only on types!"),
                 tyctx,
             );
-            let tpe = type_cache.type_from_cache(tpe, tyctx, Some(method_instance));
+            let tpe = type_cache.type_from_cache(tpe, tyctx, method_instance);
             let dst = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
             let val = handle_operand(&args[1].node, tyctx, body, method_instance, type_cache);
             let count = handle_operand(&args[2].node, tyctx, body, method_instance, type_cache)
@@ -517,7 +517,7 @@ pub fn handle_intrinsic<'tyctx>(
                     .expect("needs_drop works only on types!"),
                 tyctx,
             );
-            let tpe = type_cache.type_from_cache(tpe, tyctx, Some(method_instance));
+            let tpe = type_cache.type_from_cache(tpe, tyctx, method_instance);
             let src = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
             let dst = handle_operand(&args[1].node, tyctx, body, method_instance, type_cache);
             let count = handle_operand(&args[2].node, tyctx, body, method_instance, type_cache)
@@ -561,7 +561,7 @@ pub fn handle_intrinsic<'tyctx>(
                     .expect("needs_drop works only on types!"),
                 tyctx,
             );
-            let tpe = type_cache.type_from_cache(tpe, tyctx, Some(method_instance));
+            let tpe = type_cache.type_from_cache(tpe, tyctx, method_instance);
             let sig = FnSig::new(
                 &[DotnetTypeRef::type_handle_type().into()],
                 DotnetTypeRef::type_type(),
@@ -674,7 +674,7 @@ pub fn handle_intrinsic<'tyctx>(
             );
             let src_type =
                 crate::utilis::monomorphize(&method_instance, args[2].node.ty(body, tyctx), tyctx);
-            let src_type = type_cache.type_from_cache(src_type, tyctx, Some(method_instance));
+            let src_type = type_cache.type_from_cache(src_type, tyctx, method_instance);
 
             let call_site = CallSite::new(
                 Some(interlocked),
@@ -733,7 +733,7 @@ pub fn handle_intrinsic<'tyctx>(
             let add_ammount = CILNode::Neg(Box::new(sub_ammount.clone()));
             let src_type =
                 crate::utilis::monomorphize(&method_instance, args[1].node.ty(body, tyctx), tyctx);
-            let src_type = type_cache.type_from_cache(src_type, tyctx, Some(method_instance));
+            let src_type = type_cache.type_from_cache(src_type, tyctx, method_instance);
 
             place_set(
                 destination,
@@ -766,7 +766,7 @@ pub fn handle_intrinsic<'tyctx>(
 
             let src_type =
                 crate::utilis::monomorphize(&method_instance, args[1].node.ty(body, tyctx), tyctx);
-            let src_type = type_cache.type_from_cache(src_type, tyctx, Some(method_instance));
+            let src_type = type_cache.type_from_cache(src_type, tyctx, method_instance);
 
             place_set(
                 destination,
@@ -791,7 +791,7 @@ pub fn handle_intrinsic<'tyctx>(
             );
             let src_type =
                 crate::utilis::monomorphize(&method_instance, args[1].node.ty(body, tyctx), tyctx);
-            let src_type = type_cache.type_from_cache(src_type, tyctx, Some(method_instance));
+            let src_type = type_cache.type_from_cache(src_type, tyctx, method_instance);
 
             let call_site = CallSite::new(
                 Some(interlocked),
@@ -831,7 +831,7 @@ pub fn handle_intrinsic<'tyctx>(
                     .expect("needs_drop works only on types!"),
                 tyctx,
             );
-            let tpe = type_cache.type_from_cache(tpe, tyctx, Some(method_instance));
+            let tpe = type_cache.type_from_cache(tpe, tyctx, method_instance);
             place_set(
                 destination,
                 tyctx,
@@ -860,7 +860,7 @@ pub fn handle_intrinsic<'tyctx>(
                     tyctx,
                 ),
                 tyctx,
-                Some(method_instance),
+                method_instance,
             );
             let calc = match a_type {
                 Type::USize | Type::U64 | Type::U32 | Type::U16 | Type::U8=> {
@@ -887,7 +887,7 @@ pub fn handle_intrinsic<'tyctx>(
             let a_type = type_cache.type_from_cache(
                 a_ty,
                 tyctx,
-                Some(method_instance),
+                method_instance,
             );
             let calc = match a_type {
                 Type::U128 | Type::U64 | Type::U32 | Type::U16 | Type::U8 | Type::USize =>{
@@ -1146,7 +1146,7 @@ pub fn handle_intrinsic<'tyctx>(
                     type_cache,
                 );
             }
-            if pointer_to_is_fat(pointed_ty, tyctx, Some(method_instance)) {
+            if pointer_to_is_fat(pointed_ty, tyctx, method_instance) {
                 let ptr_ty = crate::utilis::monomorphize(
                     &method_instance,
                     args[0].node.ty(body, tyctx),
@@ -1155,12 +1155,12 @@ pub fn handle_intrinsic<'tyctx>(
                 match pointed_ty.kind() {
                     TyKind::Slice(inner) => {
                         let slice_tpe: DotnetTypeRef = type_cache
-                        .type_from_cache(ptr_ty, tyctx, Some(method_instance))
+                        .type_from_cache(ptr_ty, tyctx, method_instance)
                             .as_dotnet()
                             .unwrap();
                         let inner = crate::utilis::monomorphize(&method_instance, *inner, tyctx);
                         let inner_type =
-                            type_cache.type_from_cache(inner, tyctx, Some(method_instance));
+                            type_cache.type_from_cache(inner, tyctx, method_instance);
                         let descriptor =
                             FieldDescriptor::new(slice_tpe, Type::USize, "metadata".into());
                         let addr = crate::operand::operand_address(
@@ -1180,7 +1180,7 @@ pub fn handle_intrinsic<'tyctx>(
                         );
                     }
                     TyKind::Dynamic(_,_,_) => {
-                        let slice_tpe: DotnetTypeRef = type_cache.type_from_cache(ptr_ty, tyctx, Some(method_instance))
+                        let slice_tpe: DotnetTypeRef = type_cache.type_from_cache(ptr_ty, tyctx, method_instance)
                             .as_dotnet()
                             .unwrap();
                         
@@ -1207,7 +1207,7 @@ pub fn handle_intrinsic<'tyctx>(
                 }
             }
             let tpe = crate::utilis::monomorphize(&method_instance, pointed_ty, tyctx);
-            let tpe = type_cache.type_from_cache(tpe, tyctx, Some(method_instance));
+            let tpe = type_cache.type_from_cache(tpe, tyctx, method_instance);
             place_set(
                 destination,
                 tyctx,
@@ -1254,7 +1254,7 @@ pub fn handle_intrinsic<'tyctx>(
                     .expect("needs_drop works only on types!"),
                 tyctx,
             );
-            let val_tpe = type_cache.type_from_cache(val_tpe, tyctx, Some(method_instance));
+            let val_tpe = type_cache.type_from_cache(val_tpe, tyctx, method_instance);
             let val = handle_operand(
                 &args[0].node,
                 tyctx,

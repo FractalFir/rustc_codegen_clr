@@ -102,9 +102,9 @@ pub fn place_elem_set<'a>(
             match curr_ty.kind() {
                 TyKind::Slice(inner) => {
                     let inner = crate::utilis::monomorphize(&method_instance, *inner, ctx);
-                    let inner_type = type_cache.type_from_cache(inner, ctx, Some(method_instance));
+                    let inner_type = type_cache.type_from_cache(inner, ctx, method_instance);
                     let slice = type_cache
-                        .slice_ty(inner, ctx, Some(method_instance))
+                        .slice_ty(inner, ctx, method_instance)
                         .as_dotnet()
                         .unwrap();
                     let desc = FieldDescriptor::new(
@@ -125,9 +125,9 @@ pub fn place_elem_set<'a>(
                 TyKind::Array(element, _length) => {
                     let element = crate::utilis::monomorphize(&method_instance, *element, ctx);
                     let array_type =
-                        type_cache.type_from_cache(curr_ty, ctx, Some(method_instance));
+                        type_cache.type_from_cache(curr_ty, ctx, method_instance);
                     let element_type =
-                        type_cache.type_from_cache(element, ctx, Some(method_instance));
+                        type_cache.type_from_cache(element, ctx, method_instance);
 
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
 
@@ -165,9 +165,9 @@ pub fn place_elem_set<'a>(
                 TyKind::Slice(inner) => {
                     let inner = crate::utilis::monomorphize(&method_instance, *inner, ctx);
 
-                    let inner_type = type_cache.type_from_cache(inner, ctx, Some(method_instance));
+                    let inner_type = type_cache.type_from_cache(inner, ctx, method_instance);
                     let slice = type_cache
-                        .slice_ty(inner, ctx, Some(method_instance))
+                        .slice_ty(inner, ctx, method_instance)
                         .as_dotnet()
                         .unwrap();
                     let desc = FieldDescriptor::new(
@@ -198,9 +198,9 @@ pub fn place_elem_set<'a>(
                 TyKind::Array(element, _length) => {
                     //println!("WARNING: ConstantIndex has required min_length of {min_length}, but bounds checking on const access not supported yet!");
                     let element = crate::utilis::monomorphize(&method_instance, *element, ctx);
-                    let element = type_cache.type_from_cache(element, ctx, Some(method_instance));
+                    let element = type_cache.type_from_cache(element, ctx, method_instance);
                     let array_type =
-                        type_cache.type_from_cache(curr_ty, ctx, Some(method_instance));
+                        type_cache.type_from_cache(curr_ty, ctx, method_instance);
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
                     CILRoot::Call {
                         site: CallSite::new(
@@ -289,7 +289,7 @@ pub fn ptr_set_op<'ctx>(
             TyKind::Char => CILRoot::STIndI32(addr_calc, value_calc), // always 4 bytes wide: https://doc.rust-lang.org/std/primitive.char.html#representation
             TyKind::Adt(_, _) | TyKind::Tuple(_) | TyKind::Array(_, _) | TyKind::Closure(_, _) => {
                 let pointed_type =
-                    type_cache.type_from_cache(pointed_type, tyctx, Some(*method_instance));
+                    type_cache.type_from_cache(pointed_type, tyctx, *method_instance);
                 CILRoot::STObj {
                     tpe: pointed_type.into(),
                     addr_calc,
@@ -297,10 +297,10 @@ pub fn ptr_set_op<'ctx>(
                 }
             }
             TyKind::Ref(_, inner, _) => {
-                if pointer_to_is_fat(*inner, tyctx, Some(*method_instance)) {
+                if pointer_to_is_fat(*inner, tyctx, *method_instance) {
                     CILRoot::STObj {
                         tpe: type_cache
-                            .type_from_cache(pointed_type, tyctx, Some(*method_instance))
+                            .type_from_cache(pointed_type, tyctx, *method_instance)
                             .into(),
                         addr_calc,
                         value_calc,
@@ -310,10 +310,10 @@ pub fn ptr_set_op<'ctx>(
                 }
             }
             TyKind::RawPtr(ty, _) => {
-                if pointer_to_is_fat(*ty, tyctx, Some(*method_instance)) {
+                if pointer_to_is_fat(*ty, tyctx, *method_instance) {
                     CILRoot::STObj {
                         tpe: type_cache
-                            .type_from_cache(pointed_type, tyctx, Some(*method_instance))
+                            .type_from_cache(pointed_type, tyctx, *method_instance)
                             .into(),
                         addr_calc,
                         value_calc,

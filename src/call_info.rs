@@ -28,10 +28,10 @@ impl CallInfo {
             _ => panic!("ERROR:calling using convention {conv:?} is not supported!"),
         }
         //assert!(!fn_abi.c_variadic);
-        let ret = tycache.type_from_cache(fn_abi.ret.layout.ty, tyctx, Some(function));
+        let ret = tycache.type_from_cache(fn_abi.ret.layout.ty, tyctx, function);
         let mut args = Vec::with_capacity(fn_abi.args.len());
         for arg in fn_abi.args.iter() {
-            args.push(tycache.type_from_cache(arg.layout.ty, tyctx, Some(function)));
+            args.push(tycache.type_from_cache(arg.layout.ty, tyctx, function));
         }
         // There are 2 ABI enums for some reasons(they differ in what memebers they have)
         let fn_ty = function.ty(tyctx, ParamEnv::reveal_all());
@@ -62,7 +62,7 @@ impl CallInfo {
                     tycache.type_from_cache(
                         crate::utilis::monomorphize(&function, ty.layout.ty, tyctx),
                         tyctx,
-                        Some(function),
+                        function,
                     )
                 });
             let mut inputs = sig.inputs().to_vec();

@@ -246,7 +246,7 @@ fn call_ctor<'tyctx>(
                     ty.as_type()
                         .expect("Expceted generic type but got something that was not a type!"),
                     tyctx,
-                    Some(method_instance),
+                    method_instance,
                 )
             })
             .collect();
@@ -310,11 +310,11 @@ pub fn call_closure<'tyctx>(
             if elements.is_empty() {
             } else {
                 let tuple_type =
-                    type_cache.type_from_cache(last_arg_type, tyctx, Some(method_instance));
+                    type_cache.type_from_cache(last_arg_type, tyctx, method_instance);
 
                 for (index, element) in elements.iter().enumerate() {
                     let element_type =
-                        type_cache.type_from_cache(element, tyctx, Some(method_instance));
+                        type_cache.type_from_cache(element, tyctx, method_instance);
                     if element_type == Type::Void{
                         call_args.push(CILNode::TemporaryLocal(Box::new((Type::Void,[].into(),CILNode::LoadTMPLocal))));
                         continue;
@@ -394,7 +394,7 @@ pub fn call<'tyctx>(
         assert!(!args.is_empty());
         let fat_ptr_ty =
             crate::utilis::monomorphize(&method_instance, args[0].node.ty(body, tyctx), tyctx);
-        let fat_ptr_type = type_cache.type_from_cache(fat_ptr_ty, tyctx, Some(method_instance));
+        let fat_ptr_type = type_cache.type_from_cache(fat_ptr_ty, tyctx, method_instance);
         let fat_ptr_address =
             operand_address(&args[0].node, tyctx, body, method_instance, type_cache);
         let vtable_ptr = ld_field!(
@@ -562,7 +562,7 @@ pub fn call<'tyctx>(
                             tyctx,
                         ),
                         tyctx,
-                        Some(method_instance),
+                        method_instance,
                     )
                 })
                 .collect(),

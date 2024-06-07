@@ -69,7 +69,7 @@ pub fn unop<'ctx>(
             _ => CILNode::Not(parrent_node.into()),
         },
         rustc_middle::mir::UnOp::PtrMetadata => {
-            let tpe = tycache.type_from_cache(ty, tyctx, Some(method_instance)).as_dotnet().unwrap();
+            let tpe = tycache.type_from_cache(ty, tyctx, method_instance).as_dotnet().unwrap();
             ld_field!(parrent_node,FieldDescriptor::new(tpe,Type::USize,"metadata".into()))
 
         }

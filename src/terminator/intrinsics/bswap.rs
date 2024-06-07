@@ -23,7 +23,7 @@ pub fn bswap<'tyctx>(
     );
     let ty = args[0].node.ty(body, tyctx);
     let ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
-    let tpe = type_cache.type_from_cache(ty, tyctx, Some(method_instance));
+    let tpe = type_cache.type_from_cache(ty, tyctx, method_instance);
     let operand = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
     place_set(
         destination,

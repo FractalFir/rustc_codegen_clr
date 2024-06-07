@@ -66,7 +66,7 @@ fn locals_from_mir<'tyctx>(
                 );
             }
             let name = None;
-            let tpe = tycache.type_from_cache(ty, tyctx, Some(*method_instance));
+            let tpe = tycache.type_from_cache(ty, tyctx, *method_instance);
             local_types.push((name, tpe));
         }
     }
@@ -373,7 +373,7 @@ pub fn add_fn<'tyctx>(
         let repacked = u32::try_from(locals.len()).expect("More than 2^32 arguments of a function");
         let repacked_ty: rustc_middle::ty::Ty =
             crate::utilis::monomorphize(&instance, mir.local_decls[spread_arg].ty, tyctx);
-        let repacked_type = cache.type_from_cache(repacked_ty, tyctx, Some(instance));
+        let repacked_type = cache.type_from_cache(repacked_ty, tyctx, instance);
         locals.push((Some("repacked_arg".into()), repacked_type));
         let mut repack_cil = Vec::new();
         // For each element of the tuple, get the argument spread_arg + n

@@ -120,9 +120,9 @@ fn place_elem_get<'a>(
                 TyKind::Slice(inner) => {
                     let inner = crate::utilis::monomorphize(&method_instance, *inner, tyctx);
                     let inner_type =
-                        type_cache.type_from_cache(inner, tyctx, Some(method_instance));
+                        type_cache.type_from_cache(inner, tyctx, method_instance);
                     let slice = type_cache
-                        .slice_ty(inner, tyctx, Some(method_instance))
+                        .slice_ty(inner, tyctx, method_instance)
                         .as_dotnet()
                         .unwrap();
                     let desc = FieldDescriptor::new(
@@ -153,9 +153,9 @@ fn place_elem_get<'a>(
                 }
                 TyKind::Array(element, _length) => {
                     let element = crate::utilis::monomorphize(&method_instance, *element, tyctx);
-                    let element = type_cache.type_from_cache(element, tyctx, Some(method_instance));
+                    let element = type_cache.type_from_cache(element, tyctx, method_instance);
                     let array_type =
-                        type_cache.type_from_cache(curr_ty, tyctx, Some(method_instance));
+                        type_cache.type_from_cache(curr_ty, tyctx, method_instance);
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
                     CILNode::Call {
                         site: CallSite::new(
@@ -188,9 +188,9 @@ fn place_elem_get<'a>(
                 TyKind::Slice(inner) => {
                     let inner = crate::utilis::monomorphize(&method_instance, *inner, tyctx);
                     let inner_type =
-                        type_cache.type_from_cache(inner, tyctx, Some(method_instance));
+                        type_cache.type_from_cache(inner, tyctx, method_instance);
                     let slice = type_cache
-                        .slice_ty(inner, tyctx, Some(method_instance))
+                        .slice_ty(inner, tyctx, method_instance)
                         .as_dotnet()
                         .unwrap();
                     let data_pointer = FieldDescriptor::new(
@@ -220,9 +220,9 @@ fn place_elem_get<'a>(
                 }
                 TyKind::Array(element, _length) => {
                     let element = crate::utilis::monomorphize(&method_instance, *element, tyctx);
-                    let element = type_cache.type_from_cache(element, tyctx, Some(method_instance));
+                    let element = type_cache.type_from_cache(element, tyctx, method_instance);
                     let array_type =
-                        type_cache.type_from_cache(curr_ty, tyctx, Some(method_instance));
+                        type_cache.type_from_cache(curr_ty, tyctx, method_instance);
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
                     //eprintln!("WARNING: ConstantIndex has required min_length of {min_length}, but bounds checking on const access not supported yet!");
                     CILNode::Call {

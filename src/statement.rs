@@ -24,7 +24,7 @@ pub fn handle_statement<'tcx>(
         } => {
             let owner_ty = place.ty(method, tyctx).ty;
             let owner_ty = crate::utilis::monomorphize(&method_instance, owner_ty, tyctx);
-            let owner = type_cache.type_from_cache(owner_ty, tyctx, Some(method_instance));
+            let owner = type_cache.type_from_cache(owner_ty, tyctx, method_instance);
 
             let layout = tyctx
                 .layout_of(rustc_middle::ty::ParamEnvAnd {
@@ -122,7 +122,7 @@ pub fn handle_statement<'tcx>(
                     );
                     let src_ty = src.ty(method, tyctx);
                     let src_ty = crate::utilis::monomorphize(&method_instance, src_ty, tyctx);
-                    let ptr_type = type_cache.type_from_cache(src_ty, tyctx, Some(method_instance));
+                    let ptr_type = type_cache.type_from_cache(src_ty, tyctx, method_instance);
                     let crate::r#type::Type::Ptr(pointed) = ptr_type else {
                         rustc_middle::ty::print::with_no_trimmed_paths! { panic!("Copy nonoverlaping called with non-pointer type {src_ty:?}")};
                     };

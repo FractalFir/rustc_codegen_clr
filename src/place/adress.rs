@@ -45,11 +45,11 @@ pub fn address_last_dereference<'ctx>(
     //eprintln!("target_type:{target_type:?} curr_type:{curr_type:?}");
     // Get the type curr_type points to!
     let curr_points_to = super::pointed_type(curr_type.into());
-    let curr_type = tycache.type_from_cache(curr_type, tyctx, Some(method));
-    let target_type = tycache.type_from_cache(target_ty, tyctx, Some(method));
+    let curr_type = tycache.type_from_cache(curr_type, tyctx, method);
+    let target_type = tycache.type_from_cache(target_ty, tyctx, method);
     match (
-        pointer_to_is_fat(curr_points_to, tyctx, Some(method)),
-        pointer_to_is_fat(target_ty, tyctx, Some(method)),
+        pointer_to_is_fat(curr_points_to, tyctx, method),
+        pointer_to_is_fat(target_ty, tyctx, method),
     ) {
         (true, true) => addr_calc,
         (true, false) => CILNode::LDIndPtr {
@@ -108,7 +108,7 @@ pub fn place_elem_adress<'ctx>(
                 //TODO: Why was this commented out?
                 //let field_type = crate::utilis::monomorphize(&method_instance, *field_type, tyctx);
                 let curr_ty = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
-                if crate::r#type::pointer_to_is_fat(curr_ty, tyctx, Some(method_instance)) {
+                if crate::r#type::pointer_to_is_fat(curr_ty, tyctx, method_instance) {
                     assert_eq!(
                         index.as_u32(),
                         0,
@@ -118,12 +118,12 @@ pub fn place_elem_adress<'ctx>(
                     let curr_type = type_cache.type_from_cache(
                         Ty::new_ptr(tyctx, curr_ty, rustc_middle::ty::Mutability::Mut),
                         tyctx,
-                        Some(method_instance),
+                        method_instance,
                     );
                     let field_type = type_cache.type_from_cache(
                         Ty::new_ptr(tyctx, field_ty, rustc_middle::ty::Mutability::Mut),
                         tyctx,
-                        Some(method_instance),
+                        method_instance,
                     );
                     return CILNode::TemporaryLocal(Box::new((
                         curr_type,
@@ -170,7 +170,7 @@ pub fn place_elem_adress<'ctx>(
                 .expect("Can't get enum variant of an enum varaint!");
             let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
             let curr_dotnet_type =
-                type_cache.type_from_cache(curr_type, tyctx, Some(method_instance));
+                type_cache.type_from_cache(curr_type, tyctx, method_instance);
             let curr_dotnet_type =
                 if let crate::r#type::Type::DotnetType(dotnet_type) = curr_dotnet_type {
                     dotnet_type.as_ref().clone()
@@ -204,9 +204,9 @@ pub fn place_elem_adress<'ctx>(
                 TyKind::Slice(inner) => {
                     let inner = crate::utilis::monomorphize(&method_instance, *inner, tyctx);
                     let inner_type =
-                        type_cache.type_from_cache(inner, tyctx, Some(method_instance));
+                        type_cache.type_from_cache(inner, tyctx, method_instance);
                     let slice = type_cache
-                        .slice_ty(inner, tyctx, Some(method_instance))
+                        .slice_ty(inner, tyctx, method_instance)
                         .as_dotnet()
                         .unwrap();
                     let desc = FieldDescriptor::new(
@@ -222,9 +222,9 @@ pub fn place_elem_adress<'ctx>(
                 TyKind::Array(element, _length) => {
                     let element = crate::utilis::monomorphize(&method_instance, *element, tyctx);
                     let element_type =
-                        type_cache.type_from_cache(element, tyctx, Some(method_instance));
+                        type_cache.type_from_cache(element, tyctx, method_instance);
                     let array_type =
-                        type_cache.type_from_cache(curr_ty, tyctx, Some(method_instance));
+                        type_cache.type_from_cache(curr_ty, tyctx, method_instance);
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
 
                     call!(
@@ -249,7 +249,7 @@ pub fn place_elem_adress<'ctx>(
             let curr_type = type_cache.slice_ref_to(
                 tyctx,
                 curr_type.as_ty().expect("Can't index into an enum!"),
-                Some(method_instance),
+                method_instance,
             );
             let curr_dotnet = curr_type.as_dotnet().unwrap();
             if *from_end {
@@ -325,9 +325,9 @@ pub fn place_elem_adress<'ctx>(
                     let inner = crate::utilis::monomorphize(&method_instance, *inner, tyctx);
 
                     let inner_type =
-                        type_cache.type_from_cache(inner, tyctx, Some(method_instance));
+                        type_cache.type_from_cache(inner, tyctx, method_instance);
                     let slice = type_cache
-                        .slice_ty(inner, tyctx, Some(method_instance))
+                        .slice_ty(inner, tyctx, method_instance)
                         .as_dotnet()
                         .unwrap();
                     let desc = FieldDescriptor::new(
@@ -361,9 +361,9 @@ pub fn place_elem_adress<'ctx>(
                     let element_ty = crate::utilis::monomorphize(&method_instance, *element, tyctx);
 
                     let element =
-                        type_cache.type_from_cache(element_ty, tyctx, Some(method_instance));
+                        type_cache.type_from_cache(element_ty, tyctx, method_instance);
                     let array_type =
-                        type_cache.type_from_cache(curr_ty, tyctx, Some(method_instance));
+                        type_cache.type_from_cache(curr_ty, tyctx, method_instance);
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
                     if *from_end {
                         todo!("Can't index array from end!");

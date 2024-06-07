@@ -33,8 +33,8 @@ impl<'tyctx> UnsizeInfo<'tyctx> {
         let source =
             crate::utilis::monomorphize(&method_instance, operand.ty(method, tyctx), tyctx);
         // Get the source and target types as .NET types
-        let source_type = tycache.type_from_cache(source, tyctx, Some(method_instance));
-        let target_type = tycache.type_from_cache(target, tyctx, Some(method_instance));
+        let source_type = tycache.type_from_cache(source, tyctx, method_instance);
+        let target_type = tycache.type_from_cache(target, tyctx, method_instance);
         // Get the target type as a fat pointer.
         let target_dotnet = target_type.as_dotnet().unwrap();
         let mut sized_ptr = handle_operand(operand, tyctx, method, method_instance, tycache);

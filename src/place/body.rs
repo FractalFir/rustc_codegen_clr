@@ -64,7 +64,7 @@ pub fn place_elem_body<'ctx>(
         PlaceElem::Field(index, field_ty) => match curr_ty {
             PlaceTy::Ty(curr_ty) => {
                 let field_ty = crate::utilis::monomorphize(&method_instance, *field_ty, tyctx);
-                if crate::r#type::pointer_to_is_fat(curr_ty, tyctx, Some(method_instance)) {
+                if crate::r#type::pointer_to_is_fat(curr_ty, tyctx, method_instance) {
                     assert_eq!(
                         index.as_u32(),
                         0,
@@ -73,12 +73,12 @@ pub fn place_elem_body<'ctx>(
                     let curr_type = type_cache.type_from_cache(
                         Ty::new_ptr(tyctx, curr_ty, rustc_middle::ty::Mutability::Mut),
                         tyctx,
-                        Some(method_instance),
+                        method_instance,
                     );
                     let field_type = type_cache.type_from_cache(
                         Ty::new_ptr(tyctx, field_ty, rustc_middle::ty::Mutability::Mut),
                         tyctx,
-                        Some(method_instance),
+                        method_instance,
                     );
                     return (
                         curr_ty.into(),
@@ -163,9 +163,9 @@ pub fn place_elem_body<'ctx>(
                 TyKind::Slice(inner) => {
                     let inner = crate::utilis::monomorphize(&method_instance, *inner, tyctx);
                     let inner_type =
-                        type_cache.type_from_cache(inner, tyctx, Some(method_instance));
+                        type_cache.type_from_cache(inner, tyctx, method_instance);
                     let slice = type_cache
-                        .slice_ty(inner, tyctx, Some(method_instance))
+                        .slice_ty(inner, tyctx, method_instance)
                         .as_dotnet()
                         .unwrap();
                     let desc = FieldDescriptor::new(
@@ -205,9 +205,9 @@ pub fn place_elem_body<'ctx>(
                 TyKind::Array(element, _length) => {
                     let element = crate::utilis::monomorphize(&method_instance, *element, tyctx);
                     let element_type =
-                        type_cache.type_from_cache(element, tyctx, Some(method_instance));
+                        type_cache.type_from_cache(element, tyctx, method_instance);
                     let array_type =
-                        type_cache.type_from_cache(curr_ty, tyctx, Some(method_instance));
+                        type_cache.type_from_cache(curr_ty, tyctx, method_instance);
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
                     if body_ty_is_by_adress(element) {
                         let ops = CILNode::Call {
@@ -260,9 +260,9 @@ pub fn place_elem_body<'ctx>(
                 TyKind::Slice(inner) => {
                     let inner = crate::utilis::monomorphize(&method_instance, *inner, tyctx);
                     let inner_type =
-                        type_cache.type_from_cache(inner, tyctx, Some(method_instance));
+                        type_cache.type_from_cache(inner, tyctx, method_instance);
                     let slice = type_cache
-                        .slice_ty(inner, tyctx, Some(method_instance))
+                        .slice_ty(inner, tyctx, method_instance)
                         .as_dotnet()
                         .unwrap();
                     let desc = FieldDescriptor::new(
@@ -298,9 +298,9 @@ pub fn place_elem_body<'ctx>(
                 TyKind::Array(element, _length) => {
                     let element_ty = crate::utilis::monomorphize(&method_instance, *element, tyctx);
                     let element =
-                        type_cache.type_from_cache(element_ty, tyctx, Some(method_instance));
+                        type_cache.type_from_cache(element_ty, tyctx, method_instance);
                     let array_type =
-                        type_cache.type_from_cache(curr_ty, tyctx, Some(method_instance));
+                        type_cache.type_from_cache(curr_ty, tyctx, method_instance);
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
                     if body_ty_is_by_adress(element_ty) {
                         let ops = CILNode::Call {

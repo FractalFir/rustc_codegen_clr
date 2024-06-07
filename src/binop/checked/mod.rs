@@ -169,7 +169,7 @@ pub fn mul<'tyctx>(
     tycache: &mut TyCache,
 ) -> CILNode {
     //(b > 0 && a < INT_MIN + b) || (b < 0 && a > INT_MAX + b);
-    let tpe = tycache.type_from_cache(ty, tyctx, Some(method_instance));
+    let tpe = tycache.type_from_cache(ty, tyctx, method_instance);
     let mul = super::mul_unchecked(
         ty,
         ty,
@@ -345,7 +345,7 @@ pub fn sub_signed<'tyctx>(
     method_instance: Instance<'tyctx>,
     tycache: &mut TyCache,
 ) -> CILNode {
-    let tpe = tycache.type_from_cache(ty, tyctx, Some(method_instance));
+    let tpe = tycache.type_from_cache(ty, tyctx, method_instance);
     result_tuple(
         tpe,
         or!(
@@ -401,7 +401,7 @@ pub fn sub_unsigned<'tyctx>(
     method_instance: Instance<'tyctx>,
     tycache: &mut TyCache,
 ) -> CILNode {
-    let tpe = tycache.type_from_cache(ty, tyctx, Some(method_instance));
+    let tpe = tycache.type_from_cache(ty, tyctx, method_instance);
     result_tuple(
         tpe,
         super::cmp::lt_unchecked(ty, ops_a.clone(), ops_b.clone()),
@@ -424,7 +424,7 @@ pub fn add_unsigned<'tyctx>(
     method_instance: Instance<'tyctx>,
     tycache: &mut TyCache,
 ) -> CILNode {
-    let tpe = tycache.type_from_cache(ty, tyctx, Some(method_instance));
+    let tpe = tycache.type_from_cache(ty, tyctx, method_instance);
     let res = super::add_unchecked(
         ty,
         ty,
@@ -461,7 +461,7 @@ pub fn add_signed<'tyctx>(
     method_instance: Instance<'tyctx>,
     tycache: &mut TyCache,
 ) -> CILNode {
-    let tpe = tycache.type_from_cache(ty, tyctx, Some(method_instance));
+    let tpe = tycache.type_from_cache(ty, tyctx, method_instance);
     let res = super::add_unchecked(
         ty,
         ty,

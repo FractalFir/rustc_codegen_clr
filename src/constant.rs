@@ -47,7 +47,7 @@ fn create_const_from_data<'ctx>(
         alloc_id: alloc_id.0.into(),
     };
     let ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
-    let tpe = tycache.type_from_cache(ty, tyctx, Some(method_instance));
+    let tpe = tycache.type_from_cache(ty, tyctx, method_instance);
     crate::place::deref_op(
         ty.into(),
         tyctx,
@@ -74,11 +74,11 @@ pub(crate) fn load_const_value<'ctx>(
         }
         ConstValue::ZeroSized => {
             let tpe = crate::utilis::monomorphize(&method_instance, const_ty, tyctx);
-            let tpe = tycache.type_from_cache(tpe, tyctx, Some(method_instance));
+            let tpe = tycache.type_from_cache(tpe, tyctx, method_instance);
             CILNode::TemporaryLocal(Box::new((tpe, [].into(), CILNode::LoadTMPLocal)))
         }
         ConstValue::Slice { data, meta } => {
-            let slice_type = tycache.type_from_cache(const_ty, tyctx, Some(method_instance));
+            let slice_type = tycache.type_from_cache(const_ty, tyctx, method_instance);
             let slice_dotnet = slice_type.as_dotnet().expect("Slice type invalid!");
             let metadata_field =
                 FieldDescriptor::new(slice_dotnet.clone(), Type::USize, "metadata".into());
@@ -195,6 +195,29 @@ fn load_scalar_ptr(
                         CILNode::LoadAddresOfTMPLocal,
                     )));
                 }
+                if name == "getrandom"{
+                    return CILNode::TemporaryLocal(Box::new((
+                        Type::USize,
+                        [CILRoot::SetTMPLocal {
+                            value: CILNode::LDFtn(Box::new(CallSite::builtin(
+                                "getrandom".into(),
+                                FnSig::new(
+                                    &[
+                                        Type::Ptr(Type::U8.into()),
+                                        Type::USize,
+                                        
+                                        Type::U32,
+                        
+                                    ],
+                                    Type::USize,
+                                ),
+                                true,
+                            ))),
+                        }]
+                        .into(),
+                        CILNode::LoadAddresOfTMPLocal,
+                    )));
+                }
                 if name == "__dso_handle"{
                     return CILNode::TemporaryLocal(Box::new((
                         Type::USize,
@@ -273,7 +296,7 @@ fn load_const_scalar<'ctx>(
 ) -> CILNode {
     let scalar_type = crate::utilis::monomorphize(&method_instance, scalar_type, tyctx);
     let tpe = crate::utilis::monomorphize(&method_instance, scalar_type, tyctx);
-    let tpe = tycache.type_from_cache(tpe, tyctx, Some(method_instance));
+    let tpe = tycache.type_from_cache(tpe, tyctx, method_instance);
     let scalar_u128 = match scalar {
         Scalar::Int(scalar_int) => scalar_int
             .try_to_uint(scalar.size())

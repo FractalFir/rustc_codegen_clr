@@ -135,9 +135,9 @@ pub fn enum_field_descriptor<'ctx>(
     .into();
     let field_ty = field.ty(ctx, subst);
     let field_ty = crate::utilis::monomorphize(&method_instance, field_ty, ctx);
-    let field_ty = type_cache.type_from_cache(field_ty, ctx, Some(method_instance));
+    let field_ty = type_cache.type_from_cache(field_ty, ctx, method_instance);
     let owner_ty = type_cache
-        .type_from_cache(owner_ty, ctx, Some(method_instance))
+        .type_from_cache(owner_ty, ctx, method_instance)
         .as_dotnet()
         .expect("Error: tried to set a field of a non-object type!");
 
@@ -153,14 +153,14 @@ pub fn field_descrptor<'tyctx>(
     if let TyKind::Tuple(elements) = owner_ty.kind() {
         let element = elements[field_idx as usize];
         let element = monomorphize(&method_instance, element, tyctx);
-        let element = type_cache.type_from_cache(element, tyctx, Some(method_instance));
+        let element = type_cache.type_from_cache(element, tyctx, method_instance);
         return FieldDescriptor::new(
             crate::r#type::simple_tuple(
                 &elements
                     .iter()
                     .map(|tpe| {
                         let tpe = crate::utilis::monomorphize(&method_instance, tpe, tyctx);
-                        type_cache.type_from_cache(tpe, tyctx, Some(method_instance))
+                        type_cache.type_from_cache(tpe, tyctx, method_instance)
                     })
                     .collect::<Vec<_>>(),
             ),
@@ -175,9 +175,9 @@ pub fn field_descrptor<'tyctx>(
             .nth(field_idx as usize)
             .expect("Could not find closure fields!");
         let field_type = crate::utilis::monomorphize(&method_instance, field_type, tyctx);
-        let field_type = type_cache.type_from_cache(field_type, tyctx, Some(method_instance));
+        let field_type = type_cache.type_from_cache(field_type, tyctx, method_instance);
         let owner_ty = crate::utilis::monomorphize(&method_instance, owner_ty, tyctx);
-        let owner_type = type_cache.type_from_cache(owner_ty, tyctx, Some(method_instance));
+        let owner_type = type_cache.type_from_cache(owner_ty, tyctx, method_instance);
         let field_name = format!("f_{field_idx}").into();
         return FieldDescriptor::new(
             owner_type.as_dotnet().expect("Closure type invalid!"),
@@ -193,9 +193,9 @@ pub fn field_descrptor<'tyctx>(
     let field_name = crate::r#type::escape_field_name(&field.name.to_string());
     let field_ty = field.ty(tyctx, subst);
     let field_ty = crate::utilis::monomorphize(&method_instance, field_ty, tyctx);
-    let field_ty = type_cache.type_from_cache(field_ty, tyctx, Some(method_instance));
+    let field_ty = type_cache.type_from_cache(field_ty, tyctx, method_instance);
     let owner_ty = type_cache
-        .type_from_cache(owner_ty, tyctx, Some(method_instance))
+        .type_from_cache(owner_ty, tyctx, method_instance)
         .as_dotnet()
         .expect("Error: tried to set a field of a non-object type!");
     FieldDescriptor::new(owner_ty, field_ty, field_name)

@@ -113,7 +113,7 @@ pub fn deref_op<'ctx>(
             | TyKind::FnPtr(_)
             | TyKind::Closure(_, _) => {
                 let derefed_type =
-                    type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance));
+                    type_cache.type_from_cache(derefed_type, tyctx, *method_instance);
 
                 CILNode::LdObj {
                     ptr,
@@ -121,18 +121,18 @@ pub fn deref_op<'ctx>(
                 }
             }
             TyKind::Ref(_, inner, _) => {
-                if pointer_to_is_fat(*inner, tyctx, Some(*method_instance)) {
+                if pointer_to_is_fat(*inner, tyctx, *method_instance) {
                     CILNode::LdObj {
                         ptr,
                         obj: Box::new(type_cache.type_from_cache(
                             derefed_type,
                             tyctx,
-                            Some(*method_instance),
+                            *method_instance,
                         )),
                     }
                 } else {
                     let inner =
-                        type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance));
+                        type_cache.type_from_cache(derefed_type, tyctx, *method_instance);
                     CILNode::LDIndPtr {
                         ptr,
                         loaded_ptr: Box::new(inner),
@@ -140,18 +140,18 @@ pub fn deref_op<'ctx>(
                 }
             }
             TyKind::RawPtr(typ, _) => {
-                if pointer_to_is_fat(*typ, tyctx, Some(*method_instance)) {
+                if pointer_to_is_fat(*typ, tyctx, *method_instance) {
                     CILNode::LdObj {
                         ptr,
                         obj: Box::new(type_cache.type_from_cache(
                             derefed_type,
                             tyctx,
-                            Some(*method_instance),
+                            *method_instance,
                         )),
                     }
                 } else {
                     let typ =
-                        type_cache.type_from_cache(derefed_type, tyctx, Some(*method_instance));
+                        type_cache.type_from_cache(derefed_type, tyctx, *method_instance);
                     CILNode::LDIndPtr {
                         ptr,
                         loaded_ptr: Box::new(typ),
