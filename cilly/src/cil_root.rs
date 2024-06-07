@@ -32,6 +32,24 @@ pub enum CILRoot {
         a: CILNode,
         b: CILNode,
     },
+    BGt {
+        target: u32,
+        sub_target: u32,
+        a: CILNode,
+        b: CILNode,
+    },
+    BLe {
+        target: u32,
+        sub_target: u32,
+        a: CILNode,
+        b: CILNode,
+    },
+    BGe {
+        target: u32,
+        sub_target: u32,
+        a: CILNode,
+        b: CILNode,
+    },
     BNe {
         target: u32,
         sub_target: u32,
@@ -140,18 +158,57 @@ impl CILRoot {
                             sub_target: *sub_target,
                             a: *a.clone(),
                             b: *b.clone(),
-                        }
+                        };
+                        *opt_count += 1;
                     }
-
+                    CILNode::Gt(a, b) => {
+                        *self = CILRoot::BGt {
+                            target: *target,
+                            sub_target: *sub_target,
+                            a: *a.clone(),
+                            b: *b.clone(),
+                        };
+                        *opt_count += 1;
+                    }
                     _ => (),
                 }
             }
             Self::BFalse {
                 cond: ops,
-                sub_target: _,
-                target: _,
+                sub_target,
+                target,
             } => {
                 ops.opt(opt_count);
+                match ops {
+                    CILNode::Eq(a, b) => {
+                        *self = CILRoot::BNe {
+                            target: *target,
+                            sub_target: *sub_target,
+                            a: *a.clone(),
+                            b: *b.clone(),
+                        };
+                        *opt_count += 1;
+                    }
+                    CILNode::Lt(a, b) => {
+                        *self = CILRoot::BLe {
+                            target: *target,
+                            sub_target: *sub_target,
+                            a: *a.clone(),
+                            b: *b.clone(),
+                        };
+                        *opt_count += 1;
+                    }
+                    CILNode::Gt(a, b) => {
+                        *self = CILRoot::BGe {
+                            target: *target,
+                            sub_target: *sub_target,
+                            a: *a.clone(),
+                            b: *b.clone(),
+                        };
+                        *opt_count += 1;
+                    }
+                    _ => (),
+                }
             }
             Self::BEq {
                 a,
@@ -175,6 +232,33 @@ impl CILRoot {
                 }
             }
             Self::BLt {
+                a,
+                b,
+                target: _,
+                sub_target: _,
+            } => {
+                a.opt(opt_count);
+                b.opt(opt_count)
+            }
+            Self::BGt {
+                a,
+                b,
+                target: _,
+                sub_target: _,
+            } => {
+                a.opt(opt_count);
+                b.opt(opt_count)
+            }
+            Self::BLe {
+                a,
+                b,
+                target: _,
+                sub_target: _,
+            } => {
+                a.opt(opt_count);
+                b.opt(opt_count)
+            }
+            Self::BGe {
                 a,
                 b,
                 target: _,
@@ -384,7 +468,12 @@ impl CILRoot {
             }
             Self::BTrue { cond: ops, .. } => ops.allocate_tmps(curr_loc, locals),
             Self::BFalse { cond: ops, .. } => ops.allocate_tmps(curr_loc, locals),
-            Self::BEq { a, b, .. } | Self::BNe { a, b, .. } | Self::BLt { a, b, .. } => {
+            Self::BEq { a, b, .. }
+            | Self::BNe { a, b, .. }
+            | Self::BLt { a, b, .. }
+            | Self::BGt { a, b, .. }
+            | Self::BLe { a, b, .. }
+            | Self::BGe { a, b, .. } => {
                 a.allocate_tmps(curr_loc, locals);
                 b.allocate_tmps(curr_loc, locals);
             }
