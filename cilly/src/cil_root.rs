@@ -26,6 +26,12 @@ pub enum CILRoot {
         a: CILNode,
         b: CILNode,
     },
+    BLt {
+        target: u32,
+        sub_target: u32,
+        a: CILNode,
+        b: CILNode,
+    },
     BNe {
         target: u32,
         sub_target: u32,
@@ -128,14 +134,22 @@ impl CILRoot {
                         };
                         *opt_count += 1;
                     }
+                    CILNode::Lt(a, b) => {
+                        *self = CILRoot::BLt {
+                            target: *target,
+                            sub_target: *sub_target,
+                            a: *a.clone(),
+                            b: *b.clone(),
+                        }
+                    }
 
                     _ => (),
                 }
             }
             Self::BFalse {
                 cond: ops,
-                sub_target,
-                target,
+                sub_target: _,
+                target: _,
             } => {
                 ops.opt(opt_count);
             }
@@ -159,6 +173,15 @@ impl CILRoot {
                     }
                     _ => (),
                 }
+            }
+            Self::BLt {
+                a,
+                b,
+                target: _,
+                sub_target: _,
+            } => {
+                a.opt(opt_count);
+                b.opt(opt_count)
             }
             Self::BNe {
                 a,
@@ -361,7 +384,7 @@ impl CILRoot {
             }
             Self::BTrue { cond: ops, .. } => ops.allocate_tmps(curr_loc, locals),
             Self::BFalse { cond: ops, .. } => ops.allocate_tmps(curr_loc, locals),
-            Self::BEq { a, b, .. } | Self::BNe { a, b, .. } => {
+            Self::BEq { a, b, .. } | Self::BNe { a, b, .. } | Self::BLt { a, b, .. } => {
                 a.allocate_tmps(curr_loc, locals);
                 b.allocate_tmps(curr_loc, locals);
             }
