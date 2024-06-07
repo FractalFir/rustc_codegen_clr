@@ -890,7 +890,7 @@ pub fn handle_intrinsic<'tyctx>(
                 Some(method_instance),
             );
             let calc = match a_type {
-                Type::U128 | Type::U64 | Type::U32 | Type::U16 | Type::U8 =>{
+                Type::U128 | Type::U64 | Type::U32 | Type::U16 | Type::U8 | Type::USize =>{
                     let undeflow = crate::binop::cmp::lt_unchecked(a_ty, a.clone(), b.clone());
                     let diff = crate::binop::sub_unchecked(a_ty,a_ty,tyctx,&method_instance,type_cache,a,b);
                     let max = crate::binop::checked::zero(a_ty);

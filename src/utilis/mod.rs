@@ -317,14 +317,14 @@ pub fn align_of<'tyctx>(ty: rustc_middle::ty::Ty<'tyctx>, tyctx: TyCtxt<'tyctx>)
     return align.bytes();
 }
 pub fn is_zst<'tyctx>(ty: rustc_middle::ty::Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -> bool {
-    tyctx
-        .layout_of(rustc_middle::ty::ParamEnvAnd {
-            param_env: ParamEnv::reveal_all(),
-            value: ty,
-        })
-        .expect("Can't get layout of a type.")
-        .layout
-        .is_zst()
+    let layout =   tyctx
+    .layout_of(rustc_middle::ty::ParamEnvAnd {
+        param_env: ParamEnv::reveal_all(),
+        value: ty,
+    })
+    .expect("Can't get layout of a type.")
+    .layout;
+    layout.size.bytes() == 0
 }
 pub fn requries_align_adjustement<'tyctx>(
     ty: rustc_middle::ty::Ty<'tyctx>,

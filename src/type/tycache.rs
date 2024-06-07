@@ -16,7 +16,7 @@ use rustc_middle::ty::{
     AdtDef, AdtKind, GenericArg, Instance, List, ParamEnv, Ty, TyCtxt, TyKind, UintTy,
 };
 use rustc_span::def_id::DefId;
-use std::collections::HashMap;
+use std::{collections::HashMap, num::NonZeroU64};
 // CAN'T BE SERAILIZED!
 pub struct TyCache {
     type_def_cache: HashMap<IString, TypeDef>,
@@ -101,13 +101,24 @@ impl TyCache {
         tyctx: TyCtxt<'tyctx>,
         method: Option<Instance<'tyctx>>,
     ) -> TypeDef {
+        assert!(!is_zst(adt_ty, tyctx));
         if name.contains(super::type_def::CUSTOM_INTEROP_TYPE_DEF) {
             todo!("Can't yet handle custom typedefs!")
         }
         let mut fields = Vec::new();
-        for field in &adt
+        let layout = tyctx
+        .layout_of(rustc_middle::ty::ParamEnvAnd {
+            param_env: ParamEnv::reveal_all(),
+            value: adt_ty,
+        })
+        .expect("Could not get type layout!");
+
+        let explicit_offset_iter =
+            crate::utilis::adt::FieldOffsetIterator::fields((*layout.layout.0).clone());
+        let mut explicit_offsets = Vec::new();
+        for (field,offset) in (&adt
             .variant(rustc_target::abi::VariantIdx::from_u32(0))
-            .fields
+            .fields).iter().zip(explicit_offset_iter)
         {
             let name = escape_field_name(&field.name.to_string());
             let mut field_ty = field.ty(tyctx, subst);
@@ -115,20 +126,17 @@ impl TyCache {
                 field_ty = crate::utilis::monomorphize(method_instance, field_ty, tyctx);
             });
             let field_ty = self.type_from_cache(field_ty, tyctx, method);
+            if field_ty == Type::Void{
+                continue;
+            }
             fields.push((name, field_ty));
+            explicit_offsets.push(offset);
         }
 
         let access = AccessModifer::Public;
-        let layout = tyctx
-            .layout_of(rustc_middle::ty::ParamEnvAnd {
-                param_env: ParamEnv::reveal_all(),
-                value: adt_ty,
-            })
-            .expect("Could not get type layout!");
-
-        let explicit_offsets =
-            crate::utilis::adt::FieldOffsetIterator::fields((*layout.layout.0).clone()).collect();
+      
         //let to_string = create_to_string(adt, subst, adt_ty, self, method, tyctx);
+
         let mut def = TypeDef::new(
             access,
             name.into(),
@@ -138,7 +146,7 @@ impl TyCache {
             Some(explicit_offsets),
             0,
             None,
-            Some(layout.layout.size().bytes()),
+            Some(NonZeroU64::new(layout.layout.size().bytes()).unwrap()),
         );
         let owner_ty = self
             .type_from_cache(adt_ty, tyctx, method)
@@ -157,6 +165,7 @@ impl TyCache {
                     continue;
                 };
                 let field_type = self.type_from_cache(field_ty, tyctx, method);
+                
                 let val = CILNode::LDField {
                     addr: Box::new(CILNode::LDArg(0)),
                     field: Box::new(cilly::field_desc::FieldDescriptor::new(
@@ -200,26 +209,32 @@ impl TyCache {
         tyctx: TyCtxt<'tyctx>,
         method: Option<Instance<'tyctx>>,
     ) -> TypeDef {
-        let mut fields = Vec::new();
-        for field in adt.all_fields() {
-            let name = escape_field_name(&field.name.to_string());
-            let mut field_ty = field.ty(tyctx, subst);
-            method.inspect(|method_instance| {
-                field_ty = crate::utilis::monomorphize(method_instance, field_ty, tyctx);
-            });
-            let field_ty = self.type_from_cache(field_ty, tyctx, method);
-            fields.push((name, field_ty));
-        }
-
-        let access = AccessModifer::Public;
         let layout = tyctx
             .layout_of(rustc_middle::ty::ParamEnvAnd {
                 param_env: ParamEnv::reveal_all(),
                 value: adt_ty,
             })
             .expect("Could not get type layout!");
-        let explicit_offsets =
-            crate::utilis::adt::FieldOffsetIterator::fields((*layout.layout.0).clone()).collect();
+        let mut fields = Vec::new();
+        let mut explicit_offsets =
+        Vec::new();
+        for (field,offset) in adt.all_fields().zip(crate::utilis::adt::FieldOffsetIterator::fields((*layout.layout.0).clone())) {
+            let name = escape_field_name(&field.name.to_string());
+            let mut field_ty = field.ty(tyctx, subst);
+            method.inspect(|method_instance| {
+                field_ty = crate::utilis::monomorphize(method_instance, field_ty, tyctx);
+            });
+            let field_ty = self.type_from_cache(field_ty, tyctx, method);
+            if field_ty == Type::Void{
+                continue;
+            }
+            fields.push((name, field_ty));
+            explicit_offsets.push(offset)
+        }
+
+        let access = AccessModifer::Public;
+        
+      
 
         TypeDef::new(
             access,
@@ -230,7 +245,7 @@ impl TyCache {
             Some(explicit_offsets),
             0,
             None,
-            Some(layout.layout.size().bytes()),
+            Some(NonZeroU64::new(layout.layout.size().bytes()).unwrap()),
         )
     }
     fn enum_<'tyctx>(
@@ -256,9 +271,10 @@ impl TyCache {
         match &layout.variants {
             rustc_target::abi::Variants::Single { index: _ } => {
                 let (tag_type, offset) = crate::utilis::adt::enum_tag_info(layout.layout, tyctx);
-                fields.push(("value__".into(), tag_type));
-                explicit_offsets.push(0);
-                offset
+                if tag_type != Type::Void {
+                    fields.push(("value__".into(), tag_type));
+                    explicit_offsets.push(offset);
+                }
             }
             rustc_target::abi::Variants::Multiple {
                 tag: _,
@@ -282,7 +298,7 @@ impl TyCache {
                             fields.push(("value__".into(), tag_type));
                             explicit_offsets.push(offset);
                         }
-                        offset
+
                     }
                     rustc_target::abi::TagEncoding::Niche {
                         untagged_variant: _,
@@ -299,30 +315,37 @@ impl TyCache {
 
                             explicit_offsets.push(offset);
                         }
-                        offset
+
                     }
                 }
 
                 //todo!("Mult-variant enum!"),
             }
         };
+        fields.iter().for_each(|(_,tpe)|assert_ne!(*tpe,Type::Void));
         assert_eq!(fields.len(), explicit_offsets.len());
         for (vidx, variant) in adt.variants().iter_enumerated() {
             let variant_name: IString = variant.name.to_string().into();
             let mut variant_fields = vec![];
-            for field in &variant.fields {
+            let field_offset_iter =
+            crate::utilis::adt::enum_variant_offsets(adt, layout.layout, vidx);
+            let mut field_offsets: Vec<_> = Vec::new();
+            for (field,offset) in (&variant.fields).iter().zip(field_offset_iter) {
                 let name = format!(
                     "{variant_name}_{fname}",
                     fname = escape_field_name(&field.name.to_string())
                 )
                 .into();
                 let field_ty = self.type_from_cache(field.ty(tyctx, subst), tyctx, method);
+                if field_ty == Type::Void{
+                    continue;
+                }
+                field_offsets.push(offset);
                 variant_fields.push((name, field_ty));
             }
 
-            let field_offset_iter =
-                crate::utilis::adt::enum_variant_offsets(adt, layout.layout, vidx);
-            let mut field_offsets: Vec<_> = field_offset_iter.collect();
+          
+           
             // FIXME: this is a hacky fix for `std::option::Option<std::convert::Infallible>`. If an enum contains an enum without variants, stuff breaks(no offset for that field).
             // If we know this is `Option` we can just sweep the issue under the rug and pretend it does not happen(even tough it does).
             if field_offsets.len() < variant_fields.len()
@@ -335,6 +358,7 @@ impl TyCache {
             fields.extend(variant_fields);
             explicit_offsets.extend(field_offsets);
         }
+        fields.iter().for_each(|(_,tpe)|assert_ne!(*tpe,Type::Void));
         assert_eq!(fields.len(), explicit_offsets.len());
         let mut def = TypeDef::new(
             access,
@@ -345,7 +369,7 @@ impl TyCache {
             Some(explicit_offsets),
             0,
             None,
-            Some(layout.layout.size().bytes()),
+            Some(NonZeroU64::new(layout.layout.size().bytes()).unwrap()),
         );
         if *crate::config::VALIDTE_VALUES {
             let tpe = self.type_from_cache(adt_ty, tyctx, method);
@@ -383,6 +407,9 @@ impl TyCache {
         tyctx: TyCtxt<'tyctx>,
         method: Option<Instance<'tyctx>>,
     ) -> Type {
+        if crate::utilis::is_zst(ty, tyctx){
+            return Type::Void;
+        }
         match ty.kind() {
             TyKind::Bool => Type::Bool,
             TyKind::Int(int) => crate::r#type::from_int(int),
@@ -418,6 +445,7 @@ impl TyCache {
                 Type::DotnetType(Box::new(DotnetTypeRef::new::<&str,_>(None,name)))
             }
             TyKind::Closure(def, args) => {
+                
                 let closure = args.as_closure();
                 let mut sig = closure.sig();
                 method.inspect(|method| sig = crate::utilis::monomorphize(method, sig, tyctx));
@@ -740,3 +768,16 @@ fn enum_bound_check<'tyctx>(
         .into(),
     ];
 }
+/*
+ compile_test::closure::stable::debug
+    compile_test::closure::stable::release
+    compile_test::dst::stable::debug
+    compile_test::dst::stable::release
+    compile_test::fold::stable::debug
+    compile_test::fold::stable::release
+    compile_test::slice::stable::debug
+    compile_test::slice::stable::release
+    compile_test::tlocal_key_test::stable::debug
+    compile_test::tlocal_key_test::stable::release
+
+*/

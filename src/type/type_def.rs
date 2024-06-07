@@ -1,3 +1,5 @@
+use std::num::NonZeroU64;
+
 use crate::{utilis::adt::FieldOffsetIterator, IString};
 use cilly::{
     access_modifier::AccessModifer,
@@ -11,6 +13,9 @@ use cilly::{
     size_of,
     type_def::TypeDef,
     Type,
+};
+use rustc_middle::ty::{
+    AdtDef, AdtKind, GenericArg, Instance, List, ParamEnv, Ty, TyCtxt, TyKind, UintTy,
 };
 use rustc_span::def_id::DefId;
 use rustc_target::abi::Layout;
@@ -81,7 +86,7 @@ pub fn closure_typedef(
         Some(offsets),
         0,
         None,
-        Some(layout.size().bytes()),
+        Some(NonZeroU64::new(layout.size().bytes()).unwrap()),
     )
 }
 #[must_use]
@@ -98,14 +103,25 @@ pub fn tuple_name(elements: &[Type]) -> IString {
 }
 
 #[must_use]
-pub fn tuple_typedef(elements: &[Type], layout: Layout) -> TypeDef {
+pub fn tuple_typedef<'tyctx>(elements: &[Type], layout: Layout) -> TypeDef {
     let name = tuple_name(elements);
-    let fields: Vec<_> = elements
+    let  field_iter = elements
         .iter()
         .enumerate()
         .map(|(idx, ele)| (format!("Item{}", idx + 1).into(), ele.clone()))
-        .collect();
-    let explicit_offsets = FieldOffsetIterator::fields((*layout.0).clone()).collect();
+       ;
+    let explicit_offset_iter = FieldOffsetIterator::fields((*layout.0).clone());
+    let mut explicit_offsets = Vec::new();
+    let mut fields = Vec::new();
+    for ((name,field),offset) in (field_iter).zip(explicit_offset_iter)
+    {
+        if field == Type::Void{
+            continue;
+        }
+        fields.push((name, field));
+        explicit_offsets.push(offset);
+    }
+   
     TypeDef::new(
         AccessModifer::Public,
         name,
@@ -148,7 +164,7 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
         Some(explicit_offsets),
         0,
         None,
-        Some(explict_size),
+        Some(NonZeroU64::new(explict_size).unwrap()),
     );
     if element_count > 0 {
         let set_usize = Method::new(

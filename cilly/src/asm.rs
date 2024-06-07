@@ -60,7 +60,7 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n");
         res.push('}');
         res
     }
-    pub fn sizeof_tpedef(&self,tpe:&crate::DotnetTypeRef)->u64{
+    pub fn sizeof_tpedef(&self,tpe:&crate::DotnetTypeRef)->std::num::NonZeroU64{
         assert!(tpe.asm().is_none());
         self.types.get(tpe.name_path()).unwrap()
         .explict_size().unwrap()

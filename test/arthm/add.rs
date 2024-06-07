@@ -60,4 +60,11 @@ fn main(){
     test_eq!(val2,7818556801315723626_isize);
     // Test saturating add
     test_eq!(core::intrinsics::saturating_add(black_box(2_usize),black_box(2)), 4);
+    // Test checked add
+    test_eq!(black_box(2_usize).checked_add(black_box(2)), Some(4));
+    test_eq!(black_box(2_usize).checked_add(black_box(usize::MAX)), None);
+    test_eq!(black_box(2_usize).checked_sub(black_box(2)), Some(0));
+    test_eq!(black_box(2_usize).checked_sub(black_box(3)), None);
+    // Test saturating sub
+    test_eq!(core::intrinsics::saturating_sub(black_box(2_usize),black_box(2)), 0);
 }

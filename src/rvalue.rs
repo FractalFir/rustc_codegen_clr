@@ -373,7 +373,7 @@ pub fn handle_rvalue<'tcx>(
             let owner = if let crate::r#type::Type::DotnetType(dotnet_type) = owner {
                 dotnet_type.as_ref().clone()
             } else {
-                panic!();
+                panic!("Can't get the discirminant of type {owner_ty:?}, because it is a zst. Size:{} Discr type:{:?}",layout.layout.size.bytes(), owner_ty.discriminant_ty(tyctx));
             };
 
             let target = tycache.type_from_cache(

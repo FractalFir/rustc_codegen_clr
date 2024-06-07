@@ -1,3 +1,5 @@
+use std::num::NonZeroU64;
+
 use serde::{Deserialize, Serialize};
 
 use crate::{access_modifier::AccessModifer, method::Method, DotnetTypeRef, IString, Type};
@@ -12,7 +14,7 @@ pub struct TypeDef {
     explicit_offsets: Option<Vec<u32>>,
     gargc: u32,
     extends: Option<DotnetTypeRef>,
-    explict_size: Option<u64>,
+    explict_size: Option<NonZeroU64>,
     //requires_aligement_adjustements:bool,
 }
 impl TypeDef {
@@ -89,7 +91,7 @@ impl TypeDef {
         explicit_offsets: Option<Vec<u32>>,
         gargc: u32,
         extends: Option<DotnetTypeRef>,
-        explict_size: Option<u64>,
+        explict_size: Option<NonZeroU64>,
     ) -> Self {
         let res = Self {
             access,
@@ -108,13 +110,13 @@ impl TypeDef {
     }
 
     #[must_use]
-    pub fn explict_size(&self) -> Option<u64> {
+    pub fn explict_size(&self) -> Option<NonZeroU64> {
         self.explict_size
     }
 
     fn sanity_check(&self) {
         if let Some(size) = self.explict_size() {
-            self.explicit_offsets().iter().flat_map(|vec|*vec).for_each(|offset|assert!(*offset <= u32::try_from(size).unwrap(), "Sanity check failed! The size of type {name} is {size}, yet it has a filed at offset {offset}",name = self.name));
+            self.explicit_offsets().iter().flat_map(|vec|*vec).for_each(|offset|assert!(*offset <= u32::try_from(size.get()).unwrap(), "Sanity check failed! The size of type {name} is {size}, yet it has a filed at offset {offset}",name = self.name));
         }
         if let Some(offsets) = self.explicit_offsets() {
             assert_eq!(
@@ -124,6 +126,7 @@ impl TypeDef {
                 name = self.name()
             );
         }
+        self.field_types().for_each(|tpe|assert_ne!(*tpe,Type::Void));
     }
 }
 impl From<TypeDef> for Type {
