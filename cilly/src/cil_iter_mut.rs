@@ -318,7 +318,9 @@ impl<'a> Iterator for CILIterMut<'a> {
                             continue;
                         }
                     }
-                    CILRoot::BEq { a, b, .. } | CILRoot::BNe { a, b, .. } => {
+                    CILRoot::BEq { a, b, .. }
+                    | CILRoot::BNe { a, b, .. }
+                    | CILRoot::BLt { a, b, .. } => {
                         if *idx == 1 {
                             *idx += 1;
                             self.elems.push((

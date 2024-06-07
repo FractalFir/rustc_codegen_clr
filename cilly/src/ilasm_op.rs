@@ -624,6 +624,16 @@ pub fn export_root(
             depth.pad(out)?;
             write!(out, "bne bb_{target}_{sub_target}")
         }
+        CILRoot::BLt {
+            target,
+            sub_target,
+            a,
+            b,
+        } => {
+            export_2_nodes(out, a, b, depth.incremented(), il_flavour)?;
+            depth.pad(out)?;
+            write!(out, "blt bb_{target}_{sub_target}")
+        }
         CILRoot::GoTo { target, sub_target } => {
             depth.pad(out)?;
             write!(out, "br bb_{target}_{sub_target}")

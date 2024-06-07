@@ -380,6 +380,12 @@ impl<'a> Iterator for CILIter<'a> {
                         sub_target: _,
                         a,
                         b,
+                    }
+                    | CILRoot::BLt {
+                        target: _,
+                        sub_target: _,
+                        a,
+                        b,
                     },
                 ) => match idx {
                     1 => {
