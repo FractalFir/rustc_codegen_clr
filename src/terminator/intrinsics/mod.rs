@@ -453,36 +453,40 @@ pub fn handle_intrinsic<'tyctx>(
                 2,
                 "The intrinsic `rotate_left` MUST take in exactly 2 arguments!"
             );
-            //TODO: ROL is buggy for some int types!
-            let bit_operations =
-                DotnetTypeRef::new("System.Runtime".into(), "System.Numerics.BitOperations")
-                    .with_valuetype(false);
-            let bit_operations = Some(bit_operations);
-            place_set(
-                destination,
+            debug_assert_eq!(
+                args.len(),
+                1,
+                "The intrinsic `sqrtf64` MUST take in exactly 1 argument!"
+            );
+            let val_tpe = crate::utilis::monomorphize(
+                &method_instance,
+                call_instance.args[0]
+                    .as_type()
+                    .expect("needs_drop works only on types!"),
                 tyctx,
-                call!(
-                    CallSite::boxed(
-                        bit_operations.clone(),
-                        "RotateLeft".into(),
-                        FnSig::new(&[Type::U64, Type::U64], Type::I32),
-                        true,
-                    ),
-                    [
-                        handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
-                        conv_u64!(handle_operand(
-                            &args[1].node,
-                            tyctx,
-                            body,
-                            method_instance,
-                            type_cache
-                        ))
-                    ]
-                ),
+            );
+            let val_tpe = type_cache.type_from_cache(val_tpe, tyctx, method_instance);
+            let val = handle_operand(
+                &args[0].node,
+                tyctx,
                 body,
                 method_instance,
-                type_cache,
-            )
+                type_cache
+            );
+            let rot = handle_operand(
+                &args[0].node,
+                tyctx,
+                body,
+                method_instance,
+                type_cache
+            );
+            match val_tpe{
+                Type::U32=>place_set(destination, tyctx, or!(CILNode::Shl(Box::new(val.clone()), Box::new(rot.clone())),CILNode::ShrUn(Box::new(val), Box::new(ldc_u32!(32) - rot))),
+                 body, method_instance, type_cache),
+                 Type::U64=>place_set(destination, tyctx, or!(CILNode::Shl(Box::new(val.clone()), Box::new(rot.clone())),CILNode::ShrUn(Box::new(val), Box::new(ldc_u32!(64) - rot))),
+                 body, method_instance, type_cache),
+                _=>todo!("Can't ror {val_tpe:?}"),
+            }
         }
         "write_bytes" => {
             debug_assert_eq!(

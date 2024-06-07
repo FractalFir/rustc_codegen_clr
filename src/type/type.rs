@@ -114,24 +114,24 @@ fn garag_to_usize<'tyctx>(garg: GenericArg<'tyctx>, _ctx: TyCtxt<'tyctx>) -> u64
     let usize_const = garg
         .as_const()
         .expect("Generic argument was not an constant!");
-    if usize_const.ty().is_integral() {
-        let kind = usize_const.kind();
-        match kind {
-            ConstKind::Value(value) => {
-                let scalar = value
-                    .try_to_scalar_int()
-                    .expect("String const did not contain valid scalar!");
-                u64::try_from(scalar.try_to_uint(scalar.size()).unwrap())
-                    .expect("Scalar of type usize has value over 2^64")
+    let kind = usize_const.kind();
+    match kind {
+        ConstKind::Value(ty,value) => {
+            let scalar = value
+                .try_to_scalar_int()
+                .expect("String const did not contain valid scalar!");
+            if !ty.is_integral() {
+                panic!(
+                    "Generic argument was not a unit type! ty:{:?}",
+                    ty
+                );
             }
-            _ => todo!("Can't convert generic arg of const kind {kind:?} to string!"),
+            u64::try_from(scalar.try_to_uint(scalar.size()).unwrap())
+                .expect("Scalar of type usize has value over 2^64")
         }
-    } else {
-        panic!(
-            "Generic argument was not a unit type! ty:{:?}",
-            usize_const.ty()
-        );
+        _ => todo!("Can't convert generic arg of const kind {kind:?} to string!"),
     }
+    
 }
 /// Creates a tuple with no more than 8 elements.
 #[must_use]
