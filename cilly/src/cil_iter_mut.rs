@@ -320,7 +320,10 @@ impl<'a> Iterator for CILIterMut<'a> {
                     }
                     CILRoot::BEq { a, b, .. }
                     | CILRoot::BNe { a, b, .. }
-                    | CILRoot::BLt { a, b, .. } => {
+                    | CILRoot::BLt { a, b, .. }
+                    | CILRoot::BGt { a, b, .. }
+                    | CILRoot::BLe { a, b, .. }
+                    | CILRoot::BGe { a, b, .. } => {
                         if *idx == 1 {
                             *idx += 1;
                             self.elems.push((

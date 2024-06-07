@@ -386,6 +386,24 @@ impl<'a> Iterator for CILIter<'a> {
                         sub_target: _,
                         a,
                         b,
+                    }
+                    | CILRoot::BGt {
+                        target: _,
+                        sub_target: _,
+                        a,
+                        b,
+                    }
+                    | CILRoot::BLe {
+                        target: _,
+                        sub_target: _,
+                        a,
+                        b,
+                    }
+                    | CILRoot::BGe {
+                        target: _,
+                        sub_target: _,
+                        a,
+                        b,
                     },
                 ) => match idx {
                     1 => {

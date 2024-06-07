@@ -747,6 +747,66 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
                 )
             }
         }
+        CILRoot::BGt {
+            target,
+            sub_target,
+            a,
+            b,
+        } => {
+            if *sub_target != 0 {
+                format!(
+                    "\tif(({a}) > ({b}))goto BB_{sub_target};\n",
+                    a = node_string(a, method),
+                    b = node_string(b, method)
+                )
+            } else {
+                format!(
+                    "\tif(({a}) > ({b}))goto BB_{target};\n",
+                    a = node_string(a, method),
+                    b = node_string(b, method)
+                )
+            }
+        }
+        CILRoot::BLe {
+            target,
+            sub_target,
+            a,
+            b,
+        } => {
+            if *sub_target != 0 {
+                format!(
+                    "\tif(({a}) <= ({b}))goto BB_{sub_target};\n",
+                    a = node_string(a, method),
+                    b = node_string(b, method)
+                )
+            } else {
+                format!(
+                    "\tif(({a}) <= ({b}))goto BB_{target};\n",
+                    a = node_string(a, method),
+                    b = node_string(b, method)
+                )
+            }
+        }
+        CILRoot::BGe {
+            target,
+            sub_target,
+            a,
+            b,
+        } => {
+            if *sub_target != 0 {
+                format!(
+                    "\tif(({a}) >= ({b}))goto BB_{sub_target};\n",
+                    a = node_string(a, method),
+                    b = node_string(b, method)
+                )
+            } else {
+                format!(
+                    "\tif(({a}) >= ({b}))goto BB_{target};\n",
+                    a = node_string(a, method),
+                    b = node_string(b, method)
+                )
+            }
+        }
         CILRoot::GoTo { target, sub_target } => {
             if *sub_target != 0 {
                 format!("goto BB_{sub_target};")

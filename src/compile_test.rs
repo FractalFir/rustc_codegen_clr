@@ -730,7 +730,7 @@ run_test! {std,cell_test,stable}
 run_test! {std,once_lock_test,unstable}
 run_test! {control_flow,cf_for,stable}
 run_test! {control_flow,drop,stable}
-
+run_test! {control_flow, lt, stable}
 run_test! {intrinsics,bswap,stable}
 
 run_test! {intrinsics,assert,stable}
