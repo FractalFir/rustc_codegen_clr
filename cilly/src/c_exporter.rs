@@ -732,6 +732,12 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
             sub_target,
             a,
             b,
+        }
+        | CILRoot::BLtUn {
+            target,
+            sub_target,
+            a,
+            b,
         } => {
             if *sub_target != 0 {
                 format!(
@@ -748,6 +754,12 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
             }
         }
         CILRoot::BGt {
+            target,
+            sub_target,
+            a,
+            b,
+        }
+        | CILRoot::BGtUn {
             target,
             sub_target,
             a,

@@ -32,7 +32,19 @@ pub enum CILRoot {
         a: CILNode,
         b: CILNode,
     },
+    BLtUn {
+        target: u32,
+        sub_target: u32,
+        a: CILNode,
+        b: CILNode,
+    },
     BGt {
+        target: u32,
+        sub_target: u32,
+        a: CILNode,
+        b: CILNode,
+    },
+    BGtUn {
         target: u32,
         sub_target: u32,
         a: CILNode,
@@ -161,8 +173,26 @@ impl CILRoot {
                         };
                         *opt_count += 1;
                     }
+                    CILNode::LtUn(a, b) => {
+                        *self = CILRoot::BLtUn {
+                            target: *target,
+                            sub_target: *sub_target,
+                            a: *a.clone(),
+                            b: *b.clone(),
+                        };
+                        *opt_count += 1;
+                    }
                     CILNode::Gt(a, b) => {
                         *self = CILRoot::BGt {
+                            target: *target,
+                            sub_target: *sub_target,
+                            a: *a.clone(),
+                            b: *b.clone(),
+                        };
+                        *opt_count += 1;
+                    }
+                    CILNode::GtUn(a, b) => {
+                        *self = CILRoot::BGtUn {
                             target: *target,
                             sub_target: *sub_target,
                             a: *a.clone(),
@@ -240,7 +270,25 @@ impl CILRoot {
                 a.opt(opt_count);
                 b.opt(opt_count)
             }
+            Self::BLtUn {
+                a,
+                b,
+                target: _,
+                sub_target: _,
+            } => {
+                a.opt(opt_count);
+                b.opt(opt_count)
+            }
             Self::BGt {
+                a,
+                b,
+                target: _,
+                sub_target: _,
+            } => {
+                a.opt(opt_count);
+                b.opt(opt_count)
+            }
+            Self::BGtUn {
                 a,
                 b,
                 target: _,
@@ -471,7 +519,9 @@ impl CILRoot {
             Self::BEq { a, b, .. }
             | Self::BNe { a, b, .. }
             | Self::BLt { a, b, .. }
+            | Self::BLtUn { a, b, .. }
             | Self::BGt { a, b, .. }
+            | Self::BGtUn { a, b, .. }
             | Self::BLe { a, b, .. }
             | Self::BGe { a, b, .. } => {
                 a.allocate_tmps(curr_loc, locals);
@@ -559,31 +609,134 @@ impl CILRoot {
         Self::SourceFileInfo(Box::new((line, column, file.into())))
     }
 }
-#[test]
-fn allocating_tmps() {
-    let mut original_value = CILNode::SubTrees(
-        Box::new([CILRoot::STLoc {
-            local: 14,
-            tree: CILNode::TemporaryLocal(Box::new((
-                Type::DotnetType(
-                    DotnetTypeRef::new::<&str, _>(
-                        None,
-                        "core.ptr.metadata.PtrComponents.h2b679e9941d88b2f",
-                    )
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn allocating_tmps() {
+        let mut original_value = CILNode::SubTrees(
+            Box::new([CILRoot::STLoc {
+                local: 14,
+                tree: CILNode::TemporaryLocal(Box::new((
+                    Type::DotnetType(
+                        DotnetTypeRef::new::<&str, _>(
+                            None,
+                            "core.ptr.metadata.PtrComponents.h2b679e9941d88b2f",
+                        )
+                        .into(),
+                    ),
+                    [CILRoot::SetTMPLocal {
+                        value: CILNode::LDArg(0),
+                    }]
                     .into(),
-                ),
-                [CILRoot::SetTMPLocal {
-                    value: CILNode::LDArg(0),
-                }]
-                .into(),
-                CILNode::LDLoc(3),
-            ))),
-        }]),
-        CILNode::LDLoc(2).into(),
-    );
-    //let mut method = crate::method::Method::new(crate::access_modifier::AccessModifer::Private,crate::method::MethodType::Static,FnSig::new(&[Type::I32],&Type::Void),"a",vec![],vec![]);
-    original_value.allocate_tmps(None, &mut vec![]);
-    println!("original_value:{original_value:?}");
-    //let _trees = original_value.sheed_trees();
-    //let _ops: Vec<_> = trees.iter().map(CILRoot::into_ops).collect();
+                    CILNode::LDLoc(3),
+                ))),
+            }]),
+            CILNode::LDLoc(2).into(),
+        );
+        //let mut method = crate::method::Method::new(crate::access_modifier::AccessModifer::Private,crate::method::MethodType::Static,FnSig::new(&[Type::I32],&Type::Void),"a",vec![],vec![]);
+        original_value.allocate_tmps(None, &mut vec![]);
+        println!("original_value:{original_value:?}");
+        //let _trees = original_value.sheed_trees();
+        //let _ops: Vec<_> = trees.iter().map(CILRoot::into_ops).collect();
+    }
+
+    // Test comparison optimizations
+    #[test]
+    fn optimize_equality_branch() {
+        let mut opt_count = 0;
+        let mut comparison = CILRoot::BTrue {
+            target: 1,
+            sub_target: 0,
+            cond: CILNode::Eq(Box::new(CILNode::LDArg(0)), Box::new(CILNode::LDArg(1))),
+        };
+        comparison.opt(&mut opt_count);
+        assert!(matches!(
+            comparison,
+            CILRoot::BEq {
+                target: 1,
+                sub_target: 0,
+                a: CILNode::LDArg(0),
+                b: CILNode::LDArg(1)
+            }
+        ))
+    }
+    #[test]
+    fn optimize_lt_branch() {
+        let mut opt_count = 0;
+        let mut comparison = CILRoot::BTrue {
+            target: 1,
+            sub_target: 0,
+            cond: CILNode::Lt(Box::new(CILNode::LDArg(0)), Box::new(CILNode::LDArg(1))),
+        };
+        comparison.opt(&mut opt_count);
+        assert!(matches!(
+            comparison,
+            CILRoot::BLt {
+                target: 1,
+                sub_target: 0,
+                a: CILNode::LDArg(0),
+                b: CILNode::LDArg(1)
+            }
+        ))
+    }
+    #[test]
+    fn optimize_gt_branch() {
+        let mut opt_count = 0;
+        let mut comparison = CILRoot::BTrue {
+            target: 1,
+            sub_target: 0,
+            cond: CILNode::Gt(Box::new(CILNode::LDArg(0)), Box::new(CILNode::LDArg(1))),
+        };
+        comparison.opt(&mut opt_count);
+        assert!(matches!(
+            comparison,
+            CILRoot::BGt {
+                target: 1,
+                sub_target: 0,
+                a: CILNode::LDArg(0),
+                b: CILNode::LDArg(1)
+            }
+        ))
+    }
+    #[test]
+    fn optimize_lt_un_branch() {
+        let mut opt_count = 0;
+        let mut comparison = CILRoot::BTrue {
+            target: 1,
+            sub_target: 0,
+            cond: CILNode::LtUn(Box::new(CILNode::LDArg(0)), Box::new(CILNode::LDArg(1))),
+        };
+        comparison.opt(&mut opt_count);
+        assert!(matches!(
+            comparison,
+            CILRoot::BLtUn {
+                target: 1,
+                sub_target: 0,
+                a: CILNode::LDArg(0),
+                b: CILNode::LDArg(1)
+            }
+        ))
+    }
+    #[test]
+    fn optimize_gt_un_branch() {
+        let mut opt_count = 0;
+        let mut comparison = CILRoot::BTrue {
+            target: 1,
+            sub_target: 0,
+            cond: CILNode::GtUn(Box::new(CILNode::LDArg(0)), Box::new(CILNode::LDArg(1))),
+        };
+        comparison.opt(&mut opt_count);
+        assert!(matches!(
+            comparison,
+            CILRoot::BGtUn {
+                target: 1,
+                sub_target: 0,
+                a: CILNode::LDArg(0),
+                b: CILNode::LDArg(1)
+            }
+        ))
+    }
 }
