@@ -387,7 +387,19 @@ impl<'a> Iterator for CILIter<'a> {
                         a,
                         b,
                     }
+                    | CILRoot::BLtUn {
+                        target: _,
+                        sub_target: _,
+                        a,
+                        b,
+                    }
                     | CILRoot::BGt {
+                        target: _,
+                        sub_target: _,
+                        a,
+                        b,
+                    }
+                    | CILRoot::BGtUn {
                         target: _,
                         sub_target: _,
                         a,
