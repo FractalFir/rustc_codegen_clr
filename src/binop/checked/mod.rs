@@ -32,7 +32,7 @@ pub fn result_tuple(tpe: Type, out_of_range: CILNode, val: CILNode) -> CILNode {
     )))
     //CILNode::T
 }
-fn zero(ty: Ty) -> CILNode {
+pub fn zero(ty: Ty) -> CILNode {
     match ty.kind() {
         TyKind::Uint(UintTy::U8 | UintTy::U16 | UintTy::U32) => ldc_u32!(0),
         TyKind::Int(IntTy::I8 | IntTy::I16 | IntTy::I32) => ldc_i32!(0),

@@ -2,6 +2,7 @@
 #![allow(clippy::module_name_repetitions)]
 pub mod field_desc;
 pub mod r#type;
+use cil_root::SFI;
 pub use r#type::*;
 pub type IString = Box<str>;
 pub mod dotnet_type;
@@ -84,6 +85,10 @@ pub fn mangle(tpe: &Type) -> std::borrow::Cow<'static, str> {
 pub fn mem_checks() -> bool {
     *crate::MEM_CHECKS
 }
+#[must_use]
+pub fn debig_sfi() -> bool {
+    *crate::DEBUG_SFI
+}
 use lazy_static::lazy_static;
 lazy_static! {
     #[doc = "Tells codegen to insert memory consistency checks after each call. If INSERT_MIR_DEBUG_COMMENTS is enabled, the consistency checks will be run also after each MIR statement."]pub static ref MEM_CHECKS:bool = {
@@ -100,4 +105,38 @@ lazy_static! {
 pub enum IlasmFlavour {
     Clasic,
     Modern,
+}
+pub fn sfi_debug_print(sfi:&SFI)->String{
+    format!(
+        "ldstr {name:?}
+        call void [System.Console]System.Console::Write(string)
+        ldstr \": \"
+        call void [System.Console]System.Console::Write(string)
+        ldc.i4 {ls}
+        call void [System.Console]System.Console::Write(uint32)
+        ldstr \"..\"
+        call void [System.Console]System.Console::Write(string)
+        ldc.i4 {le}
+        call void [System.Console]System.Console::WriteLine(uint32)
+        call class [System.Runtime]System.Reflection.MethodBase [System.Runtime]System.Reflection.MethodBase::GetCurrentMethod()
+        callvirt instance string [System.Runtime]System.Reflection.MemberInfo::get_Name()
+        call void [System.Console]System.Console::WriteLine(string)
+        ",
+        name = sfi.2,
+        ls = sfi.0.start,
+        le = sfi.0.start,
+       // col = sfi.1,
+    )
+}
+
+lazy_static! {
+    #[doc = "Tells codegen to display source file info when executing each statement. "]pub static ref DEBUG_SFI:bool = {
+        std::env::vars().find_map(|(key,value)|if key == stringify!(DEBUG_SFI){
+            Some(value)
+        }else {
+            None
+        }).is_some_and(|value|match value.as_ref(){
+            "0"|"false"|"False"|"FALSE" => false,"1"|"true"|"True"|"TRUE" => true,_ => panic!("Boolean enviroment variable {} has invalid value {}",stringify!(DEBUG_SFI),value),
+        })
+    };
 }
