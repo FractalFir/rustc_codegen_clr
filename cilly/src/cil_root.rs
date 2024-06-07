@@ -220,7 +220,7 @@ impl CILRoot {
                         *opt_count += 1;
                     }
                     CILNode::Lt(a, b) => {
-                        *self = CILRoot::BLe {
+                        *self = CILRoot::BGe {
                             target: *target,
                             sub_target: *sub_target,
                             a: *a.clone(),
@@ -229,7 +229,7 @@ impl CILRoot {
                         *opt_count += 1;
                     }
                     CILNode::Gt(a, b) => {
-                        *self = CILRoot::BGe {
+                        *self = CILRoot::BLe {
                             target: *target,
                             sub_target: *sub_target,
                             a: *a.clone(),
@@ -751,6 +751,44 @@ mod tests {
         assert!(matches!(
             comparison,
             CILRoot::BNe {
+                target: 1,
+                sub_target: 0,
+                a: CILNode::LDArg(0),
+                b: CILNode::LDArg(1)
+            }
+        ))
+    }
+    #[test]
+    fn optimize_not_lt_branch() {
+        let mut opt_count = 0;
+        let mut comparison = CILRoot::BFalse {
+            target: 1,
+            sub_target: 0,
+            cond: CILNode::Lt(Box::new(CILNode::LDArg(0)), Box::new(CILNode::LDArg(1))),
+        };
+        comparison.opt(&mut opt_count);
+        assert!(matches!(
+            comparison,
+            CILRoot::BGe {
+                target: 1,
+                sub_target: 0,
+                a: CILNode::LDArg(0),
+                b: CILNode::LDArg(1)
+            }
+        ))
+    }
+    #[test]
+    fn optimize_not_gt_branch() {
+        let mut opt_count = 0;
+        let mut comparison = CILRoot::BFalse {
+            target: 1,
+            sub_target: 0,
+            cond: CILNode::Gt(Box::new(CILNode::LDArg(0)), Box::new(CILNode::LDArg(1))),
+        };
+        comparison.opt(&mut opt_count);
+        assert!(matches!(
+            comparison,
+            CILRoot::BLe {
                 target: 1,
                 sub_target: 0,
                 a: CILNode::LDArg(0),
