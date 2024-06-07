@@ -1,5 +1,5 @@
 /// A list of all functions which are redirected to system libc.
-pub const LIBC_FNS: [&str; 510] = [
+pub const LIBC_FNS: &[&str] = &[
     "a64l",
     "abort",
     "abs",
@@ -111,6 +111,7 @@ pub const LIBC_FNS: [&str; 510] = [
     "fsmount",
     "fsopen",
     "fspick",
+    "fstat64",
     "fsync",
     "ftime",
     "ftok",
@@ -203,6 +204,7 @@ pub const LIBC_FNS: [&str; 510] = [
     "isalnum",
     "isalpha",
     "isascii",
+    "isatty",
     "isblank",
     "iscntrl",
     "isdigit",
@@ -235,6 +237,7 @@ pub const LIBC_FNS: [&str; 510] = [
     "lrand48",
     "lremovexattr",
     "lsearch",
+    "lseek64",
     "lsetxattr",
     "malloc",
     "mblen",
@@ -334,6 +337,7 @@ pub const LIBC_FNS: [&str; 510] = [
     "scandir",
     "scandirat64",
     "scanf",
+    "sched_getaffinity",
     "seed48",
     "seekdir",
     "semget",
@@ -512,5 +516,5 @@ pub const LIBC_FNS: [&str; 510] = [
     "wscanf",
 ];
 pub const LIBC_MODIFIES_ERRNO: &[&str] = &[
-    "read", "write", "open", "stat64", "create", "open64", "statx",
+    "read", "write", "open", "stat64", "create", "open64", "statx","fstat64","lseek64","sched_getaffinity","isatty"
 ];
