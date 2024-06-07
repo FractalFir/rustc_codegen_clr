@@ -315,6 +315,10 @@ pub fn call_closure<'tyctx>(
                 for (index, element) in elements.iter().enumerate() {
                     let element_type =
                         type_cache.type_from_cache(element, tyctx, Some(method_instance));
+                    if element_type == Type::Void{
+                        call_args.push(CILNode::TemporaryLocal(Box::new((Type::Void,[].into(),CILNode::LoadTMPLocal))));
+                        continue;
+                    }
                     let tuple_element_name = format!("Item{}", index + 1);
                     let field_descriptor = FieldDescriptor::boxed(
                         tuple_type.as_dotnet().expect("Invalid tuple type"),

@@ -175,7 +175,9 @@ pub fn handle_aggregate<'tyctx>(
                 let field_ty =
                     crate::utilis::monomorphize(&method_instance, value.ty(method, tyctx), tyctx);
                 let field_ty = tycache.type_from_cache(field_ty, tyctx, Some(method_instance));
-
+                if field_ty == Type::Void{
+                    continue;
+                }
                 sub_trees.push(CILRoot::SetField {
                     addr: closure_getter.clone(),
                     value: handle_operand(value, tyctx, method, method_instance, tycache),

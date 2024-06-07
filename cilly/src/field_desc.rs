@@ -26,6 +26,7 @@ impl FieldDescriptor {
     /// Constructs a new fieldref, reffering to field of type `tpe`, belonging to `owner`, and named `name`
     #[must_use]
     pub fn new(owner: DotnetTypeRef, tpe: Type, name: IString) -> Self {
+        assert_ne!(tpe,Type::Void);
         Self { owner, tpe, name }
     }
     /// The same as [`Self::new`], but also boxes the field descriptor.

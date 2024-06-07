@@ -70,20 +70,30 @@ pub fn closure_typedef(
     layout: Layout,
 ) -> TypeDef {
     let name = closure_name(def_id, fields, sig);
-    let fields: Vec<_> = fields
-        .iter()
-        .enumerate()
-        .map(|(idx, ty)| (format!("f_{idx}").into(), ty.clone()))
-        .collect();
-    let offsets: Vec<_> = FieldOffsetIterator::fields((*layout.0).clone()).collect();
-    assert_eq!(fields.len(), offsets.len());
+    let field_iter = fields
+    .iter()
+    .enumerate()
+    .map(|(idx, ty)| (format!("f_{idx}").into(), ty.clone()));
+    
+    let offset_iter = FieldOffsetIterator::fields((*layout.0).clone());
+    let mut explicit_offsets = Vec::new();
+    let mut fields = Vec::new();
+    for ((name,field),offset) in (field_iter).zip(offset_iter)
+    {
+        if field == Type::Void{
+            continue;
+        }
+        fields.push((name, field));
+        explicit_offsets.push(offset);
+    }
+    assert_eq!(fields.len(), explicit_offsets.len());
     TypeDef::new(
         AccessModifer::Public,
         name.into(),
         vec![],
         fields,
         vec![],
-        Some(offsets),
+        Some(explicit_offsets),
         0,
         None,
         Some(NonZeroU64::new(layout.size().bytes()).unwrap()),
