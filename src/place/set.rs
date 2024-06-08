@@ -124,10 +124,8 @@ pub fn place_elem_set<'a>(
                 }
                 TyKind::Array(element, _length) => {
                     let element = crate::utilis::monomorphize(&method_instance, *element, ctx);
-                    let array_type =
-                        type_cache.type_from_cache(curr_ty, ctx, method_instance);
-                    let element_type =
-                        type_cache.type_from_cache(element, ctx, method_instance);
+                    let array_type = type_cache.type_from_cache(curr_ty, ctx, method_instance);
+                    let element_type = type_cache.type_from_cache(element, ctx, method_instance);
 
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
 
@@ -199,8 +197,7 @@ pub fn place_elem_set<'a>(
                     //println!("WARNING: ConstantIndex has required min_length of {min_length}, but bounds checking on const access not supported yet!");
                     let element = crate::utilis::monomorphize(&method_instance, *element, ctx);
                     let element = type_cache.type_from_cache(element, ctx, method_instance);
-                    let array_type =
-                        type_cache.type_from_cache(curr_ty, ctx, method_instance);
+                    let array_type = type_cache.type_from_cache(curr_ty, ctx, method_instance);
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
                     CILRoot::Call {
                         site: CallSite::new(

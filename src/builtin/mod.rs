@@ -23,6 +23,57 @@ mod casts;
 mod select;
 const MAX_ALLOC_SIZE: u64 = u32::MAX as u64;
 add_method_from_trees!(
+    swap_at_generic,
+    &[
+        Type::Ptr(Box::new(Type::Void)),
+        Type::Ptr(Box::new(Type::Void)),
+        Type::USize
+    ],
+    Type::Void,
+    vec![BasicBlock::new(
+        vec![
+            // Alloc tmp buffer
+            CILRoot::STLoc {
+                local: 0,
+                tree: CILNode::LocAlloc {
+                    size: Box::new(CILNode::LDArg(2))
+                }
+            }
+            .into(),
+            // Blit loc1 into buffer
+            CILRoot::CpBlk {
+                dst: CILNode::LDLoc(0),
+                src: CILNode::LDArg(0),
+                len: CILNode::LDArg(2)
+            }
+            .into(),
+            // Blit loc2 into loc1
+            CILRoot::CpBlk {
+                dst: CILNode::LDArg(0),
+                src: CILNode::LDArg(1),
+                len: CILNode::LDArg(2)
+            }
+            .into(),
+            // Blit buffer into loc2
+            CILRoot::CpBlk {
+                dst: CILNode::LDArg(1),
+                src: CILNode::LDLoc(0),
+                len: CILNode::LDArg(2)
+            }
+            .into(),
+            CILRoot::VoidRet.into(),
+        ],
+        0,
+        None
+    )],
+    vec![(Some("loc_buff".into()), Type::Ptr(Box::new(Type::Void)))],
+    vec![
+        Some("buf1".into()),
+        Some("buf2".into()),
+        Some("size".into())
+    ]
+);
+add_method_from_trees!(
     bounds_check,
     &[Type::USize, Type::USize],
     Type::USize,
@@ -141,6 +192,7 @@ macro_rules! add_method_from_trees {
 
 /// Inserts a small subset of libc and some standard types into an assembly.
 pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
+    swap_at_generic(asm);
     bounds_check(asm);
     atomic::atomics(asm);
     let c_void = crate::r#type::c_void(tyctx);
@@ -802,15 +854,20 @@ fn unmanaged_start() -> DotnetTypeRef {
 // TODO: Can't yet register thread-local deconstructors.
 add_method_from_trees!(
     __cxa_thread_atexit_impl,
-    [Type::DelegatePtr(Box::new(FnSig::new([Type::Ptr(Box::new(Type::Void))],Type::Void))),Type::Ptr(Box::new(Type::Void)),Type::Ptr(Box::new(Type::Void))],
+    [
+        Type::DelegatePtr(Box::new(FnSig::new(
+            [Type::Ptr(Box::new(Type::Void))],
+            Type::Void
+        ))),
+        Type::Ptr(Box::new(Type::Void)),
+        Type::Ptr(Box::new(Type::Void))
+    ],
     Type::Void,
-    vec![BasicBlock::new(
-        vec![
-            CILRoot::VoidRet.into()
-        ],
-        0,
-        None
-    )],
+    vec![BasicBlock::new(vec![CILRoot::VoidRet.into()], 0, None)],
     vec![],
-    vec![Some("dtor".into()),Some("obj".into()),Some("dso_handle".into())]
+    vec![
+        Some("dtor".into()),
+        Some("obj".into()),
+        Some("dso_handle".into())
+    ]
 );

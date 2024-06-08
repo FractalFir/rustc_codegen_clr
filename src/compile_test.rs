@@ -734,6 +734,7 @@ run_test! {intrinsics,bswap,stable}
 
 run_test! {intrinsics,assert,stable}
 run_test! {intrinsics,addr_of,stable}
+run_test! {intrinsics,ctpop,stable}
 run_test! {intrinsics,atomics,stable}
 run_test! {intrinsics,alloc,stable}
 run_test! {intrinsics,malloc,stable}

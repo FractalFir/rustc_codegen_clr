@@ -107,8 +107,7 @@ pub(crate) fn binop<'tyctx>(
                 todo!("Can't offset pointer of type {ty_a:?}");
             };
             let pointed_ty = crate::utilis::monomorphize(&method_instance, pointed_ty, tyctx);
-            let pointed_ty =
-                Box::new(tycache.type_from_cache(pointed_ty, tyctx, method_instance));
+            let pointed_ty = Box::new(tycache.type_from_cache(pointed_ty, tyctx, method_instance));
             ops_a + ops_b * conv_isize!(size_of!(pointed_ty))
         }
         BinOp::Cmp => {

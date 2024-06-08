@@ -203,8 +203,7 @@ pub fn place_elem_adress<'ctx>(
             match curr_ty.kind() {
                 TyKind::Slice(inner) => {
                     let inner = crate::utilis::monomorphize(&method_instance, *inner, tyctx);
-                    let inner_type =
-                        type_cache.type_from_cache(inner, tyctx, method_instance);
+                    let inner_type = type_cache.type_from_cache(inner, tyctx, method_instance);
                     let slice = type_cache
                         .slice_ty(inner, tyctx, method_instance)
                         .as_dotnet()
@@ -221,10 +220,8 @@ pub fn place_elem_adress<'ctx>(
                 }
                 TyKind::Array(element, _length) => {
                     let element = crate::utilis::monomorphize(&method_instance, *element, tyctx);
-                    let element_type =
-                        type_cache.type_from_cache(element, tyctx, method_instance);
-                    let array_type =
-                        type_cache.type_from_cache(curr_ty, tyctx, method_instance);
+                    let element_type = type_cache.type_from_cache(element, tyctx, method_instance);
+                    let array_type = type_cache.type_from_cache(curr_ty, tyctx, method_instance);
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
 
                     call!(
@@ -324,8 +321,7 @@ pub fn place_elem_adress<'ctx>(
                 TyKind::Slice(inner) => {
                     let inner = crate::utilis::monomorphize(&method_instance, *inner, tyctx);
 
-                    let inner_type =
-                        type_cache.type_from_cache(inner, tyctx, method_instance);
+                    let inner_type = type_cache.type_from_cache(inner, tyctx, method_instance);
                     let slice = type_cache
                         .slice_ty(inner, tyctx, method_instance)
                         .as_dotnet()
@@ -360,10 +356,8 @@ pub fn place_elem_adress<'ctx>(
                 TyKind::Array(element, _) => {
                     let element_ty = crate::utilis::monomorphize(&method_instance, *element, tyctx);
 
-                    let element =
-                        type_cache.type_from_cache(element_ty, tyctx, method_instance);
-                    let array_type =
-                        type_cache.type_from_cache(curr_ty, tyctx, method_instance);
+                    let element = type_cache.type_from_cache(element_ty, tyctx, method_instance);
+                    let array_type = type_cache.type_from_cache(curr_ty, tyctx, method_instance);
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
                     if *from_end {
                         todo!("Can't index array from end!");

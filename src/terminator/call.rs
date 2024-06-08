@@ -309,14 +309,16 @@ pub fn call_closure<'tyctx>(
         TyKind::Tuple(elements) => {
             if elements.is_empty() {
             } else {
-                let tuple_type =
-                    type_cache.type_from_cache(last_arg_type, tyctx, method_instance);
+                let tuple_type = type_cache.type_from_cache(last_arg_type, tyctx, method_instance);
 
                 for (index, element) in elements.iter().enumerate() {
-                    let element_type =
-                        type_cache.type_from_cache(element, tyctx, method_instance);
-                    if element_type == Type::Void{
-                        call_args.push(CILNode::TemporaryLocal(Box::new((Type::Void,[].into(),CILNode::LoadTMPLocal))));
+                    let element_type = type_cache.type_from_cache(element, tyctx, method_instance);
+                    if element_type == Type::Void {
+                        call_args.push(CILNode::TemporaryLocal(Box::new((
+                            Type::Void,
+                            [].into(),
+                            CILNode::LoadTMPLocal,
+                        ))));
                         continue;
                     }
                     let tuple_element_name = format!("Item{}", index + 1);
@@ -436,7 +438,11 @@ pub fn call<'tyctx>(
                 type_cache,
             ));
         }
-        assert_eq!(signature.inputs().len(), call_args.len(),"sig:{signature:?} call_args:{call_args:?}");
+        assert_eq!(
+            signature.inputs().len(),
+            call_args.len(),
+            "sig:{signature:?} call_args:{call_args:?}"
+        );
         let is_ret_void = matches!(signature.output(), crate::r#type::Type::Void);
         return if is_ret_void {
             CILRoot::CallI {

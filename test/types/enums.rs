@@ -57,5 +57,6 @@ fn main(){
     }
     let animal = Animal::Cow(black_box(8));
     black_box(animal);
+    test_eq!(core::mem::size_of::<Option<u8>>(),2);
 }
 

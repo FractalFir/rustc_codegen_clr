@@ -66,8 +66,7 @@ pub fn handle_call_terminator<'tycxt>(
         TyKind::FnPtr(sig) => {
             //eprintln!("Calling FnPtr:{func_ty:?}");
             let sig = crate::utilis::monomorphize(&method_instance, *sig, tyctx);
-            let sig =
-                crate::function_sig::from_poly_sig(method_instance, tyctx, type_cache, sig);
+            let sig = crate::function_sig::from_poly_sig(method_instance, tyctx, type_cache, sig);
             let mut arg_operands = Vec::new();
             for arg in args {
                 arg_operands.push(crate::operand::handle_operand(
@@ -163,8 +162,7 @@ pub fn handle_terminator<'ctx>(
         ),
         TerminatorKind::Return => {
             let ret = crate::utilis::monomorphize(&method_instance, method.return_ty(), tyctx);
-            if type_cache.type_from_cache(ret, tyctx, method_instance)
-                == crate::r#type::Type::Void
+            if type_cache.type_from_cache(ret, tyctx, method_instance) == crate::r#type::Type::Void
             {
                 vec![CILRoot::VoidRet.into()]
             } else {

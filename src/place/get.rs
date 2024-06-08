@@ -119,8 +119,7 @@ fn place_elem_get<'a>(
             match curr_ty.kind() {
                 TyKind::Slice(inner) => {
                     let inner = crate::utilis::monomorphize(&method_instance, *inner, tyctx);
-                    let inner_type =
-                        type_cache.type_from_cache(inner, tyctx, method_instance);
+                    let inner_type = type_cache.type_from_cache(inner, tyctx, method_instance);
                     let slice = type_cache
                         .slice_ty(inner, tyctx, method_instance)
                         .as_dotnet()
@@ -154,8 +153,7 @@ fn place_elem_get<'a>(
                 TyKind::Array(element, _length) => {
                     let element = crate::utilis::monomorphize(&method_instance, *element, tyctx);
                     let element = type_cache.type_from_cache(element, tyctx, method_instance);
-                    let array_type =
-                        type_cache.type_from_cache(curr_ty, tyctx, method_instance);
+                    let array_type = type_cache.type_from_cache(curr_ty, tyctx, method_instance);
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
                     CILNode::Call {
                         site: CallSite::new(
@@ -187,8 +185,7 @@ fn place_elem_get<'a>(
             match curr_ty.kind() {
                 TyKind::Slice(inner) => {
                     let inner = crate::utilis::monomorphize(&method_instance, *inner, tyctx);
-                    let inner_type =
-                        type_cache.type_from_cache(inner, tyctx, method_instance);
+                    let inner_type = type_cache.type_from_cache(inner, tyctx, method_instance);
                     let slice = type_cache
                         .slice_ty(inner, tyctx, method_instance)
                         .as_dotnet()
@@ -221,8 +218,7 @@ fn place_elem_get<'a>(
                 TyKind::Array(element, _length) => {
                     let element = crate::utilis::monomorphize(&method_instance, *element, tyctx);
                     let element = type_cache.type_from_cache(element, tyctx, method_instance);
-                    let array_type =
-                        type_cache.type_from_cache(curr_ty, tyctx, method_instance);
+                    let array_type = type_cache.type_from_cache(curr_ty, tyctx, method_instance);
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
                     //eprintln!("WARNING: ConstantIndex has required min_length of {min_length}, but bounds checking on const access not supported yet!");
                     CILNode::Call {
@@ -240,6 +236,16 @@ fn place_elem_get<'a>(
                     rustc_middle::ty::print::with_no_trimmed_paths! { todo!("Can't index into {curr_ty}!")}
                 }
             }
+        }
+        PlaceElem::Subtype(tpe) => {
+            let tpe = crate::utilis::monomorphize(&method_instance, *tpe, tyctx);
+            super::deref_op(
+                super::PlaceTy::Ty(tpe),
+                tyctx,
+                &method_instance,
+                type_cache,
+                addr_calc,
+            )
         }
         _ => todo!("Can't handle porojection {place_elem:?} in get"),
     }

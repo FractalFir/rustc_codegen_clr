@@ -43,19 +43,6 @@ impl<'a> Iterator for CILIterMut<'a> {
             }
             match elem {
                 CILIterElemUnsafe::Node(node_ptr, _) => match unsafe { &mut **node_ptr } {
-                    CILNode::CreateDelegate { obj, site: _ } => {
-                        if idx == &1 {
-                            *idx += 1;
-                            self.elems.push((
-                                0,
-                                CILIterElemUnsafe::Node(std::ptr::from_mut(obj), PhantomData),
-                            ));
-                            continue;
-                        } else {
-                            self.elems.pop();
-                            continue;
-                        }
-                    }
                     CILNode::Add(a, b)
                     | CILNode::And(a, b)
                     | CILNode::Div(a, b)
@@ -135,7 +122,8 @@ impl<'a> Iterator for CILIterMut<'a> {
                     | CILNode::LDIndUSize { ptr: a }
                     | CILNode::Not(a)
                     | CILNode::Neg(a)
-                    | CILNode::LDLen { arr: a } => {
+                    | CILNode::LDLen { arr: a }
+                    | CILNode::LocAlloc { size: a } => {
                         if *idx == 1 {
                             *idx += 1;
                             self.elems.push((

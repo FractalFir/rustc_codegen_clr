@@ -106,7 +106,7 @@ pub enum IlasmFlavour {
     Clasic,
     Modern,
 }
-pub fn sfi_debug_print(sfi:&SFI)->String{
+pub fn sfi_debug_print(sfi: &SFI) -> String {
     format!(
         "ldstr {name:?}
         call void [System.Console]System.Console::Write(string)

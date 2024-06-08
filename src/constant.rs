@@ -171,7 +171,7 @@ fn load_scalar_ptr(
             let attrs = tyctx.codegen_fn_attrs(def_id);
 
             if let Some(import_linkage) = attrs.import_linkage {
-                // TODO: this could cause issues if the pointer to the static is not imediatly dereferenced. 
+                // TODO: this could cause issues if the pointer to the static is not imediatly dereferenced.
                 if name == "statx" {
                     return CILNode::TemporaryLocal(Box::new((
                         Type::USize,
@@ -195,20 +195,14 @@ fn load_scalar_ptr(
                         CILNode::LoadAddresOfTMPLocal,
                     )));
                 }
-                if name == "getrandom"{
+                if name == "getrandom" {
                     return CILNode::TemporaryLocal(Box::new((
                         Type::USize,
                         [CILRoot::SetTMPLocal {
                             value: CILNode::LDFtn(Box::new(CallSite::builtin(
                                 "getrandom".into(),
                                 FnSig::new(
-                                    &[
-                                        Type::Ptr(Type::U8.into()),
-                                        Type::USize,
-                                        
-                                        Type::U32,
-                        
-                                    ],
+                                    &[Type::Ptr(Type::U8.into()), Type::USize, Type::U32],
                                     Type::USize,
                                 ),
                                 true,
@@ -218,16 +212,13 @@ fn load_scalar_ptr(
                         CILNode::LoadAddresOfTMPLocal,
                     )));
                 }
-                if name == "__dso_handle"{
+                if name == "__dso_handle" {
                     return CILNode::TemporaryLocal(Box::new((
                         Type::USize,
                         [CILRoot::SetTMPLocal {
                             value: CILNode::LDFtn(Box::new(CallSite::builtin(
                                 "__dso_handle".into(),
-                                FnSig::new(
-                                    &[],
-                                    Type::Void,
-                                ),
+                                FnSig::new(&[], Type::Void),
                                 true,
                             ))),
                         }]
@@ -235,14 +226,21 @@ fn load_scalar_ptr(
                         CILNode::LoadAddresOfTMPLocal,
                     )));
                 }
-                if name == "__cxa_thread_atexit_impl"{
+                if name == "__cxa_thread_atexit_impl" {
                     return CILNode::TemporaryLocal(Box::new((
                         Type::USize,
                         [CILRoot::SetTMPLocal {
                             value: CILNode::LDFtn(Box::new(CallSite::builtin(
                                 "__cxa_thread_atexit_impl".into(),
                                 FnSig::new(
-                                    &[Type::DelegatePtr(Box::new(FnSig::new([Type::Ptr(Box::new(Type::Void))],Type::Void))),Type::Ptr(Box::new(Type::Void)),Type::Ptr(Box::new(Type::Void))],
+                                    &[
+                                        Type::DelegatePtr(Box::new(FnSig::new(
+                                            [Type::Ptr(Box::new(Type::Void))],
+                                            Type::Void,
+                                        ))),
+                                        Type::Ptr(Box::new(Type::Void)),
+                                        Type::Ptr(Box::new(Type::Void)),
+                                    ],
                                     Type::Void,
                                 ),
                                 true,
@@ -256,7 +254,7 @@ fn load_scalar_ptr(
                     panic!("Static {def_id:?} requires special linkage {import_linkage:?} handling. Its name is:{name:?}")
                 };
             }
-            
+
             let alloc = tyctx
                 .eval_static_initializer(def_id)
                 .expect("No initializer??");

@@ -70,7 +70,7 @@ fn eval_node<'asm>(
         } => {
             let mut call_args: Box<[_]> = call_args
                 .iter()
-                .map(|arg| eval_node(arg, state, args).map(|arg|arg.pass_as_arg(state)))
+                .map(|arg| eval_node(arg, state, args).map(|arg| arg.pass_as_arg(state)))
                 .try_collect()?;
             assert_eq!(state.locals.len(), state.call_stack.len());
             match state.run(site, &mut call_args) {
@@ -112,16 +112,16 @@ fn eval_node<'asm>(
             let a = eval_node(a, state, args)?;
             let b = eval_node(b, state, args)?;
             match (&a, &b) {
-                (Value::I16(a),Value::U32(b))=>Ok(Value::I32((*a as i32) << b)),
-                _=>todo!("Can't yet shift right {a:?} by {b:?}"),
+                (Value::I16(a), Value::U32(b)) => Ok(Value::I32((*a as i32) << b)),
+                _ => todo!("Can't yet shift right {a:?} by {b:?}"),
             }
         }
         CILNode::RemUn(a, b) => {
             let a = eval_node(a, state, args)?;
             let b = eval_node(b, state, args)?;
             match (&a, &b) {
-                (Value::U32(a),Value::U32(b))=>Ok(Value::U32(a % b)),
-                _=>todo!("Can't yet rem unsigned {a:?} by {b:?}"),
+                (Value::U32(a), Value::U32(b)) => Ok(Value::U32(a % b)),
+                _ => todo!("Can't yet rem unsigned {a:?} by {b:?}"),
             }
         }
         CILNode::Add(a, b) => {
@@ -450,9 +450,11 @@ impl<'asm> InterpreterState<'asm> {
         assert_eq!(self.locals.len(), self.call_stack.len());
         assert!(args.len() >= self.method(call)?.sig().inputs().len());
         let locals = self.method(call)?.locals().clone();
-        let locals = locals.iter().map(|(_name,tpe)|Value::default_for_type(tpe,self)).collect();
-        self.locals
-            .push(locals);
+        let locals = locals
+            .iter()
+            .map(|(_name, tpe)| Value::default_for_type(tpe, self))
+            .collect();
+        self.locals.push(locals);
         let sfi: SFI = Box::new((0..1, 0..1, "".into()));
         self.call_stack.push((call, 0, 0, sfi));
         loop {
@@ -509,13 +511,13 @@ impl<'asm> InterpreterState<'asm> {
                     assert_eq!(self.locals.len(), self.call_stack.len());
                     let val = eval_node(tree, self, args)?;
                     let mut cloned = self.locals.last().unwrap()[*local as usize].clone();
-                    cloned.set(val,self);
+                    cloned.set(val, self);
                     self.locals.last_mut().unwrap()[*local as usize] = cloned;
                 }
                 CILRoot::STArg { arg, tree } => {
                     assert_eq!(self.locals.len(), self.call_stack.len());
                     let val = eval_node(tree, self, args)?;
-                    args[*arg as usize].set(val,self);
+                    args[*arg as usize].set(val, self);
                 }
                 CILRoot::SetField { addr, value, desc } => {
                     assert_eq!(self.locals.len(), self.call_stack.len());
@@ -570,7 +572,7 @@ impl<'asm> InterpreterState<'asm> {
                 } => {
                     let mut call_args: Box<[_]> = call_args
                         .iter()
-                        .map(|arg| eval_node(arg, self, args).map(|arg|arg.pass_as_arg(self)))
+                        .map(|arg| eval_node(arg, self, args).map(|arg| arg.pass_as_arg(self)))
                         .try_collect()?;
                     assert_eq!(self.locals.len(), self.call_stack.len());
                     match self.run(site, &mut call_args) {
@@ -619,9 +621,11 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     let path = &args[1];
     let asm = load_asm(std::fs::File::open(path).unwrap());
-    std::fs::File::create("cgraph.dot").unwrap().write_all(asm.call_graph().as_bytes()).unwrap();
+    std::fs::File::create("cgraph.dot")
+        .unwrap()
+        .write_all(asm.call_graph().as_bytes())
+        .unwrap();
     let mut interpreter = InterpreterState::new(&asm);
     interpreter.run_cctor().unwrap();
     interpreter.run_entypoint().unwrap();
-   
 }

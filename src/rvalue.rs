@@ -33,7 +33,11 @@ pub fn handle_rvalue<'tcx>(
         Rvalue::AddressOf(_mutability, place) => {
             crate::place::place_adress(place, tyctx, method, method_instance, tycache)
         }
-        Rvalue::Cast(CastKind::PointerCoercion(PointerCoercion::UnsafeFnPointer),operand,_dst)=>handle_operand(operand, tyctx, method, method_instance, tycache),
+        Rvalue::Cast(
+            CastKind::PointerCoercion(PointerCoercion::UnsafeFnPointer),
+            operand,
+            _dst,
+        ) => handle_operand(operand, tyctx, method, method_instance, tycache),
         Rvalue::Cast(
             CastKind::PointerCoercion(
                 PointerCoercion::MutToConstPointer | PointerCoercion::ArrayToPointer,
@@ -369,24 +373,16 @@ pub fn handle_rvalue<'tcx>(
                     value: owner_ty,
                 })
                 .expect("Could not get type layout!");
-            let target = tycache.type_from_cache(
-                owner_ty.discriminant_ty(tyctx),
-                tyctx,
-                method_instance,
-            );
+            let target =
+                tycache.type_from_cache(owner_ty.discriminant_ty(tyctx), tyctx, method_instance);
             let (disrc_type, _) = crate::utilis::adt::enum_tag_info(layout.layout, tyctx);
             let owner = if let crate::r#type::Type::DotnetType(dotnet_type) = owner {
                 dotnet_type.as_ref().clone()
             } else {
                 eprintln!("Can't get the discirminant of type {owner_ty:?}, because it is a zst. Size:{} Discr type:{:?}",layout.layout.size.bytes(), owner_ty.discriminant_ty(tyctx));
-                return crate::casts::int_to_int(
-                    Type::I32,
-                    &target,
-                    ldc_i32!(0),
-                ); 
+                return crate::casts::int_to_int(Type::I32, &target, ldc_i32!(0));
             };
 
-            
             if disrc_type == Type::Void {
                 // Just alwways return 0 if the discriminat type is `()` - this seems to work, and be what rustc expects. Wierd, but OK.
                 crate::casts::int_to_int(Type::I32, &target, ldc_i32!(0))

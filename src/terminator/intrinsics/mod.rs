@@ -12,7 +12,7 @@ use crate::r#type::tycache::TyCache;
 use crate::{operand::handle_operand, place::place_set};
 use cilly::call_site::CallSite;
 use cilly::fn_sig::FnSig;
-use cilly::{or, DotnetTypeRef, Type};
+use cilly::{conv_u32, or, DotnetTypeRef, Type};
 use rustc_middle::{
     mir::{Body, Operand, Place},
     ty::{Instance, ParamEnv, TyCtxt, TyKind},
@@ -258,14 +258,11 @@ pub fn handle_intrinsic<'tyctx>(
                     .with_valuetype(false);
             let bit_operations = Some(bit_operations);
             let operand = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
-
             place_set(
                 destination,
                 tyctx,
-                crate::casts::int_to_int(
-                    Type::I32,
-                    &tpe,
-                    conv_u64!(call!(
+                match tpe {
+                    Type::U64 => conv_u64!(call!(
                         CallSite::boxed(
                             bit_operations.clone(),
                             "PopCount".into(),
@@ -274,7 +271,26 @@ pub fn handle_intrinsic<'tyctx>(
                         ),
                         [operand]
                     )),
-                ),
+                    Type::U32 => conv_u32!(call!(
+                        CallSite::boxed(
+                            bit_operations.clone(),
+                            "PopCount".into(),
+                            FnSig::new(&[Type::U32], Type::I32),
+                            true,
+                        ),
+                        [operand]
+                    )),
+                    Type::USize => conv_usize!(call!(
+                        CallSite::boxed(
+                            bit_operations.clone(),
+                            "PopCount".into(),
+                            FnSig::new(&[Type::USize], Type::I32),
+                            true,
+                        ),
+                        [operand]
+                    )),
+                    _ => todo!("Unsported pop count type {tpe:?}"),
+                },
                 body,
                 method_instance,
                 type_cache,
@@ -466,26 +482,32 @@ pub fn handle_intrinsic<'tyctx>(
                 tyctx,
             );
             let val_tpe = type_cache.type_from_cache(val_tpe, tyctx, method_instance);
-            let val = handle_operand(
-                &args[0].node,
-                tyctx,
-                body,
-                method_instance,
-                type_cache
-            );
-            let rot = handle_operand(
-                &args[0].node,
-                tyctx,
-                body,
-                method_instance,
-                type_cache
-            );
-            match val_tpe{
-                Type::U32=>place_set(destination, tyctx, or!(CILNode::Shl(Box::new(val.clone()), Box::new(rot.clone())),CILNode::ShrUn(Box::new(val), Box::new(ldc_u32!(32) - rot))),
-                 body, method_instance, type_cache),
-                 Type::U64=>place_set(destination, tyctx, or!(CILNode::Shl(Box::new(val.clone()), Box::new(rot.clone())),CILNode::ShrUn(Box::new(val), Box::new(ldc_u32!(64) - rot))),
-                 body, method_instance, type_cache),
-                _=>todo!("Can't ror {val_tpe:?}"),
+            let val = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
+            let rot = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
+            match val_tpe {
+                Type::U32 => place_set(
+                    destination,
+                    tyctx,
+                    or!(
+                        CILNode::Shl(Box::new(val.clone()), Box::new(rot.clone())),
+                        CILNode::ShrUn(Box::new(val), Box::new(ldc_u32!(32) - rot))
+                    ),
+                    body,
+                    method_instance,
+                    type_cache,
+                ),
+                Type::U64 => place_set(
+                    destination,
+                    tyctx,
+                    or!(
+                        CILNode::Shl(Box::new(val.clone()), Box::new(rot.clone())),
+                        CILNode::ShrUn(Box::new(val), Box::new(ldc_u32!(64) - rot))
+                    ),
+                    body,
+                    method_instance,
+                    type_cache,
+                ),
+                _ => todo!("Can't ror {val_tpe:?}"),
             }
         }
         "write_bytes" => {
@@ -867,7 +889,7 @@ pub fn handle_intrinsic<'tyctx>(
                 method_instance,
             );
             let calc = match a_type {
-                Type::USize | Type::U64 | Type::U32 | Type::U16 | Type::U8=> {
+                Type::USize | Type::U64 | Type::U32 | Type::U16 | Type::U8 => {
                     let sum = a.clone() + b.clone();
                     let or = a | b;
                     let flag = lt_un!(sum.clone(), or);
@@ -888,18 +910,21 @@ pub fn handle_intrinsic<'tyctx>(
                     .expect("saturating_sub works only on types!"),
                 tyctx,
             );
-            let a_type = type_cache.type_from_cache(
-                a_ty,
-                tyctx,
-                method_instance,
-            );
+            let a_type = type_cache.type_from_cache(a_ty, tyctx, method_instance);
             let calc = match a_type {
-                Type::U128 | Type::U64 | Type::U32 | Type::U16 | Type::U8 | Type::USize =>{
+                Type::U128 | Type::U64 | Type::U32 | Type::U16 | Type::U8 | Type::USize => {
                     let undeflow = crate::binop::cmp::lt_unchecked(a_ty, a.clone(), b.clone());
-                    let diff = crate::binop::sub_unchecked(a_ty,a_ty,tyctx,&method_instance,type_cache,a,b);
+                    let diff = crate::binop::sub_unchecked(
+                        a_ty,
+                        a_ty,
+                        tyctx,
+                        &method_instance,
+                        type_cache,
+                        a,
+                        b,
+                    );
                     let max = crate::binop::checked::zero(a_ty);
                     CILNode::select(a_type, max, diff, undeflow)
-            
                 }
                 _ => todo!("Can't use the intrinsic `saturating_sub` on {a_type:?}"),
             };
@@ -1159,12 +1184,11 @@ pub fn handle_intrinsic<'tyctx>(
                 match pointed_ty.kind() {
                     TyKind::Slice(inner) => {
                         let slice_tpe: DotnetTypeRef = type_cache
-                        .type_from_cache(ptr_ty, tyctx, method_instance)
+                            .type_from_cache(ptr_ty, tyctx, method_instance)
                             .as_dotnet()
                             .unwrap();
                         let inner = crate::utilis::monomorphize(&method_instance, *inner, tyctx);
-                        let inner_type =
-                            type_cache.type_from_cache(inner, tyctx, method_instance);
+                        let inner_type = type_cache.type_from_cache(inner, tyctx, method_instance);
                         let descriptor =
                             FieldDescriptor::new(slice_tpe, Type::USize, "metadata".into());
                         let addr = crate::operand::operand_address(
@@ -1183,12 +1207,12 @@ pub fn handle_intrinsic<'tyctx>(
                             type_cache,
                         );
                     }
-                    TyKind::Dynamic(_,_,_) => {
-                        let slice_tpe: DotnetTypeRef = type_cache.type_from_cache(ptr_ty, tyctx, method_instance)
+                    TyKind::Dynamic(_, _, _) => {
+                        let slice_tpe: DotnetTypeRef = type_cache
+                            .type_from_cache(ptr_ty, tyctx, method_instance)
                             .as_dotnet()
                             .unwrap();
-                        
-                    
+
                         let descriptor =
                             FieldDescriptor::new(slice_tpe, Type::USize, "metadata".into());
                         let addr = crate::operand::operand_address(
@@ -1201,7 +1225,11 @@ pub fn handle_intrinsic<'tyctx>(
                         return place_set(
                             destination,
                             tyctx,
-                            CILNode::LDIndISize { ptr: Box::new(ld_field!(addr, descriptor) + (size_of!(Type::ISize))) },
+                            CILNode::LDIndISize {
+                                ptr: Box::new(
+                                    ld_field!(addr, descriptor) + (size_of!(Type::ISize)),
+                                ),
+                            },
                             body,
                             method_instance,
                             type_cache,
@@ -1220,6 +1248,37 @@ pub fn handle_intrinsic<'tyctx>(
                 method_instance,
                 type_cache,
             )
+        }
+        "typed_swap" => {
+            let pointed_ty = crate::utilis::monomorphize(
+                &method_instance,
+                call_instance.args[0]
+                    .as_type()
+                    .expect("needs_drop works only on types!"),
+                tyctx,
+            );
+            let tpe = crate::utilis::monomorphize(&method_instance, pointed_ty, tyctx);
+            let tpe = type_cache.type_from_cache(tpe, tyctx, method_instance);
+            CILRoot::Call {
+                site: CallSite::builtin(
+                    "swap_at_generic".into(),
+                    FnSig::new(
+                        [
+                            Type::Ptr(Box::new(Type::Void)),
+                            Type::Ptr(Box::new(Type::Void)),
+                            Type::USize,
+                        ],
+                        Type::Void,
+                    ),
+                    true,
+                ),
+                args: [
+                    handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
+                    handle_operand(&args[1].node, tyctx, body, method_instance, type_cache),
+                    conv_usize!(size_of!(tpe)),
+                ]
+                .into(),
+            }
         }
         "sqrtf64" => {
             debug_assert_eq!(
@@ -1245,7 +1304,7 @@ pub fn handle_intrinsic<'tyctx>(
             );
             place_set(destination, tyctx, ops, body, method_instance, type_cache)
         }
-        "rotate_right" =>{
+        "rotate_right" => {
             debug_assert_eq!(
                 args.len(),
                 1,
@@ -1259,25 +1318,23 @@ pub fn handle_intrinsic<'tyctx>(
                 tyctx,
             );
             let val_tpe = type_cache.type_from_cache(val_tpe, tyctx, method_instance);
-            let val = handle_operand(
-                &args[0].node,
-                tyctx,
-                body,
-                method_instance,
-                type_cache
-            );
-            let rot = handle_operand(
-                &args[0].node,
-                tyctx,
-                body,
-                method_instance,
-                type_cache
-            );
-            match val_tpe{
-                Type::U32=>place_set(destination, tyctx, or!(CILNode::ShrUn(Box::new(val.clone()), Box::new(rot.clone())),CILNode::Shl(Box::new(val), Box::new(ldc_u32!(32) - rot))), body, method_instance, type_cache),
-                _=>todo!("Can't ror {val_tpe:?}"),
+            let val = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
+            let rot = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
+            match val_tpe {
+                Type::U32 => place_set(
+                    destination,
+                    tyctx,
+                    or!(
+                        CILNode::ShrUn(Box::new(val.clone()), Box::new(rot.clone())),
+                        CILNode::Shl(Box::new(val), Box::new(ldc_u32!(32) - rot))
+                    ),
+                    body,
+                    method_instance,
+                    type_cache,
+                ),
+                _ => todo!("Can't ror {val_tpe:?}"),
             }
-        },
+        }
         "catch_unwind" => {
             debug_assert_eq!(
                 args.len(),
@@ -1357,6 +1414,36 @@ fn intrinsic_slow<'tyctx>(
             method_instance,
             type_cache,
         )
+    } else if fn_name.contains("typed_swap") {
+        let pointed_ty = crate::utilis::monomorphize(
+            &method_instance,
+            call_instance.args[0]
+                .as_type()
+                .expect("needs_drop works only on types!"),
+            tyctx,
+        );
+        let tpe = crate::utilis::monomorphize(&method_instance, pointed_ty, tyctx);
+        let tpe = type_cache.type_from_cache(tpe, tyctx, method_instance);
+        CILRoot::Call {
+            site: CallSite::builtin(
+                "swap_at_generic".into(),
+                FnSig::new(
+                    [
+                        Type::Ptr(Box::new(Type::Void)),
+                        Type::Ptr(Box::new(Type::Void)),
+                        Type::USize,
+                    ],
+                    Type::Void,
+                ),
+                true,
+            ),
+            args: [
+                handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
+                handle_operand(&args[1].node, tyctx, body, method_instance, type_cache),
+                conv_usize!(size_of!(tpe)),
+            ]
+            .into(),
+        }
     } else {
         todo!("Unhandled intrinsic {fn_name}.")
     }

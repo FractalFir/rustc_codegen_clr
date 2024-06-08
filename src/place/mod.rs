@@ -131,8 +131,7 @@ pub fn deref_op<'ctx>(
                         )),
                     }
                 } else {
-                    let inner =
-                        type_cache.type_from_cache(derefed_type, tyctx, *method_instance);
+                    let inner = type_cache.type_from_cache(derefed_type, tyctx, *method_instance);
                     CILNode::LDIndPtr {
                         ptr,
                         loaded_ptr: Box::new(inner),
@@ -150,8 +149,7 @@ pub fn deref_op<'ctx>(
                         )),
                     }
                 } else {
-                    let typ =
-                        type_cache.type_from_cache(derefed_type, tyctx, *method_instance);
+                    let typ = type_cache.type_from_cache(derefed_type, tyctx, *method_instance);
                     CILNode::LDIndPtr {
                         ptr,
                         loaded_ptr: Box::new(typ),

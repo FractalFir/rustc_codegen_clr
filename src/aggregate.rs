@@ -175,7 +175,7 @@ pub fn handle_aggregate<'tyctx>(
                 let field_ty =
                     crate::utilis::monomorphize(&method_instance, value.ty(method, tyctx), tyctx);
                 let field_ty = tycache.type_from_cache(field_ty, tyctx, method_instance);
-                if field_ty == Type::Void{
+                if field_ty == Type::Void {
                     continue;
                 }
                 sub_trees.push(CILRoot::SetField {
@@ -305,8 +305,7 @@ fn aggregate_adt<'tyctx>(
                     .expect("Could not find field!");
                 let field_type = field_def.ty(tyctx, subst);
                 let field_type = crate::utilis::monomorphize(&method_instance, field_type, tyctx);
-                let field_type =
-                    type_cache.type_from_cache(field_type, tyctx, method_instance);
+                let field_type = type_cache.type_from_cache(field_type, tyctx, method_instance);
                 // Seting a void field is a no-op.
                 if field_type == Type::Void {
                     continue;
@@ -360,11 +359,8 @@ fn aggregate_adt<'tyctx>(
                     fname = crate::r#type::escape_field_name(&field.name.to_string())
                 )
                 .into();
-                let field_type = type_cache.type_from_cache(
-                    field.ty(tyctx, subst),
-                    tyctx,
-                    method_instance,
-                );
+                let field_type =
+                    type_cache.type_from_cache(field.ty(tyctx, subst), tyctx, method_instance);
                 // Seting a void field is a no-op.
                 if field_type == Type::Void {
                     continue;

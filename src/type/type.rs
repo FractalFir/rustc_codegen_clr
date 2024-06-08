@@ -116,22 +116,18 @@ fn garag_to_usize<'tyctx>(garg: GenericArg<'tyctx>, _ctx: TyCtxt<'tyctx>) -> u64
         .expect("Generic argument was not an constant!");
     let kind = usize_const.kind();
     match kind {
-        ConstKind::Value(ty,value) => {
+        ConstKind::Value(ty, value) => {
             let scalar = value
                 .try_to_scalar_int()
                 .expect("String const did not contain valid scalar!");
             if !ty.is_integral() {
-                panic!(
-                    "Generic argument was not a unit type! ty:{:?}",
-                    ty
-                );
+                panic!("Generic argument was not a unit type! ty:{:?}", ty);
             }
             u64::try_from(scalar.try_to_uint(scalar.size()).unwrap())
                 .expect("Scalar of type usize has value over 2^64")
         }
         _ => todo!("Can't convert generic arg of const kind {kind:?} to string!"),
     }
-    
 }
 /// Creates a tuple with no more than 8 elements.
 #[must_use]
@@ -154,13 +150,13 @@ pub fn pointer_to_is_fat<'tyctx>(
 
     pointed_type = crate::utilis::monomorphize(&method, pointed_type, tyctx);
 
-
     let is_trivialy_sized = pointed_type.is_trivially_sized(tyctx);
     if is_trivialy_sized {
         // Sized types don't need fat pointers
         false
     } else {
         // FOREGIN TYPES ARE NOT SIZED!
-        !pointed_type.is_sized(tyctx, ParamEnv::reveal_all()) && !matches!(pointed_type.kind(),TyKind::Foreign(_))
+        !pointed_type.is_sized(tyctx, ParamEnv::reveal_all())
+            && !matches!(pointed_type.kind(), TyKind::Foreign(_))
     }
 }

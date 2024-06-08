@@ -126,7 +126,8 @@ impl TypeDef {
                 name = self.name()
             );
         }
-        self.field_types().for_each(|tpe|assert_ne!(*tpe,Type::Void));
+        self.field_types()
+            .for_each(|tpe| assert_ne!(*tpe, Type::Void));
     }
 }
 impl From<TypeDef> for Type {

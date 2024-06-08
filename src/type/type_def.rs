@@ -71,16 +71,15 @@ pub fn closure_typedef(
 ) -> TypeDef {
     let name = closure_name(def_id, fields, sig);
     let field_iter = fields
-    .iter()
-    .enumerate()
-    .map(|(idx, ty)| (format!("f_{idx}").into(), ty.clone()));
-    
+        .iter()
+        .enumerate()
+        .map(|(idx, ty)| (format!("f_{idx}").into(), ty.clone()));
+
     let offset_iter = FieldOffsetIterator::fields((*layout.0).clone());
     let mut explicit_offsets = Vec::new();
     let mut fields = Vec::new();
-    for ((name,field),offset) in (field_iter).zip(offset_iter)
-    {
-        if field == Type::Void{
+    for ((name, field), offset) in (field_iter).zip(offset_iter) {
+        if field == Type::Void {
             continue;
         }
         fields.push((name, field));
@@ -115,23 +114,21 @@ pub fn tuple_name(elements: &[Type]) -> IString {
 #[must_use]
 pub fn tuple_typedef<'tyctx>(elements: &[Type], layout: Layout) -> TypeDef {
     let name = tuple_name(elements);
-    let  field_iter = elements
+    let field_iter = elements
         .iter()
         .enumerate()
-        .map(|(idx, ele)| (format!("Item{}", idx + 1).into(), ele.clone()))
-       ;
+        .map(|(idx, ele)| (format!("Item{}", idx + 1).into(), ele.clone()));
     let explicit_offset_iter = FieldOffsetIterator::fields((*layout.0).clone());
     let mut explicit_offsets = Vec::new();
     let mut fields = Vec::new();
-    for ((name,field),offset) in (field_iter).zip(explicit_offset_iter)
-    {
-        if field == Type::Void{
+    for ((name, field), offset) in (field_iter).zip(explicit_offset_iter) {
+        if field == Type::Void {
             continue;
         }
         fields.push((name, field));
         explicit_offsets.push(offset);
     }
-   
+
     TypeDef::new(
         AccessModifer::Public,
         name,

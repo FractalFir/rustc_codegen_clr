@@ -69,43 +69,6 @@ fn export_node(
     il_flavour: IlasmFlavour,
 ) -> std::fmt::Result {
     match tree {
-        CILNode::CreateDelegate { obj, site } => {
-            export_node(out, obj, depth, il_flavour)?;
-            depth.pad(out)?;
-            //assert!(sig.inputs.is_empty());
-            let mut inputs_iter = site.explicit_inputs().iter();
-            let mut input_string = String::new();
-            if let Some(firts_arg) = inputs_iter.next() {
-                input_string.push_str(&non_void_type_cil(firts_arg));
-            }
-            for arg in inputs_iter {
-                input_string.push(',');
-                input_string.push_str(&non_void_type_cil(arg));
-            }
-            let prefix = if site.is_static() { "" } else { "instance" };
-            let generics = if site.generics().is_empty() {
-                String::new()
-            } else {
-                assert!(
-                    site.generics().len() == 1,
-                    "Methods with multiple generics not supported yet!"
-                );
-                format!("<{}>", type_cil(&site.generics()[0]))
-            };
-
-            let owner_name = match site.class() {
-                Some(owner) => {
-                    format!("{}::", type_cil(&owner.clone().into()))
-                }
-                None => "RustModule::".into(),
-            };
-            let function_name = site.name();
-            write!(
-                out,
-                "ldftn {prefix} {output} {owner_name}'{function_name}'{generics}({input_string})",
-                output = type_cil(site.signature().output())
-            )
-        }
         CILNode::LDLoc(local) => {
             depth.pad(out)?;
             match local {
@@ -503,7 +466,9 @@ fn export_node(
                 input_string.push_str(&non_void_type_cil(arg));
             }
             let callconv = "";
-            write!(out,"call native uint RustModule::check_calli_nonull(native uint)\ncalli {callconv} {output} ({input_string})",output = type_cil(fn_ptr_and_sig.0.output()))
+            //call native uint RustModule::check_calli_nonull(native uint)\n
+            write!(out,"
+            calli {callconv} {output} ({input_string})",output = type_cil(fn_ptr_and_sig.0.output()))
         }
         CILNode::LDIndU8 { ptr } => un_op!(out, ptr, depth, il_flavour, "ldind.u1"),
         CILNode::LDIndU16 { ptr } => un_op!(out, ptr, depth, il_flavour, "ldind.u2"),
@@ -566,6 +531,11 @@ fn export_node(
             write!(out, "ldc.i8 {align}")?;
             depth.pad(out)?;
             write!(out, "add")
+        }
+        CILNode::LocAlloc { size } => {
+            export_node(out, size, depth, il_flavour)?;
+            depth.pad(out)?;
+            write!(out, "localloc")
         }
     }
 }
@@ -890,8 +860,8 @@ pub fn export_root(
         }
         CILRoot::SourceFileInfo(sfi) => {
             depth.pad(out)?;
-            if crate::debig_sfi(){
-                write!(out,"{}",crate::sfi_debug_print(sfi))?;
+            if crate::debig_sfi() {
+                write!(out, "{}", crate::sfi_debug_print(sfi))?;
                 depth.pad(out)?;
             }
             match il_flavour {

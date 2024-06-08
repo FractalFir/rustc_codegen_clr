@@ -21,7 +21,6 @@ use std::{collections::HashMap, num::NonZeroU64};
 pub struct TyCache {
     type_def_cache: HashMap<IString, TypeDef>,
     cycle_prevention: Vec<IString>,
-
 }
 fn create_typedef<'tyctx>(
     _cache: &mut TyCache,
@@ -44,13 +43,12 @@ impl TyCache {
         Self {
             type_def_cache: HashMap::new(),
             cycle_prevention: vec![],
-        
         }
     }
     pub fn defs(&self) -> impl Iterator<Item = &TypeDef> {
         self.type_def_cache.values()
     }
-   
+
     fn adt<'tyctx>(
         &mut self,
         name: &str,
@@ -107,24 +105,26 @@ impl TyCache {
         }
         let mut fields = Vec::new();
         let layout = tyctx
-        .layout_of(rustc_middle::ty::ParamEnvAnd {
-            param_env: ParamEnv::reveal_all(),
-            value: adt_ty,
-        })
-        .expect("Could not get type layout!");
+            .layout_of(rustc_middle::ty::ParamEnvAnd {
+                param_env: ParamEnv::reveal_all(),
+                value: adt_ty,
+            })
+            .expect("Could not get type layout!");
 
         let explicit_offset_iter =
             crate::utilis::adt::FieldOffsetIterator::fields((*layout.layout.0).clone());
         let mut explicit_offsets = Vec::new();
-        for (field,offset) in (&adt
+        for (field, offset) in (&adt
             .variant(rustc_target::abi::VariantIdx::from_u32(0))
-            .fields).iter().zip(explicit_offset_iter)
+            .fields)
+            .iter()
+            .zip(explicit_offset_iter)
         {
             let name = escape_field_name(&field.name.to_string());
             let mut field_ty = field.ty(tyctx, subst);
             field_ty = crate::utilis::monomorphize(&method, field_ty, tyctx);
             let field_ty = self.type_from_cache(field_ty, tyctx, method);
-            if field_ty == Type::Void{
+            if field_ty == Type::Void {
                 continue;
             }
             fields.push((name, field_ty));
@@ -132,7 +132,7 @@ impl TyCache {
         }
 
         let access = AccessModifer::Public;
-      
+
         //let to_string = create_to_string(adt, subst, adt_ty, self, method, tyctx);
 
         let mut def = TypeDef::new(
@@ -163,7 +163,7 @@ impl TyCache {
                     continue;
                 };
                 let field_type = self.type_from_cache(field_ty, tyctx, method);
-                
+
                 let val = CILNode::LDField {
                     addr: Box::new(CILNode::LDArg(0)),
                     field: Box::new(cilly::field_desc::FieldDescriptor::new(
@@ -214,14 +214,18 @@ impl TyCache {
             })
             .expect("Could not get type layout!");
         let mut fields = Vec::new();
-        let mut explicit_offsets =
-        Vec::new();
-        for (field,offset) in adt.all_fields().zip(crate::utilis::adt::FieldOffsetIterator::fields((*layout.layout.0).clone())) {
+        let mut explicit_offsets = Vec::new();
+        for (field, offset) in
+            adt.all_fields()
+                .zip(crate::utilis::adt::FieldOffsetIterator::fields(
+                    (*layout.layout.0).clone(),
+                ))
+        {
             let name = escape_field_name(&field.name.to_string());
             let mut field_ty = field.ty(tyctx, subst);
             field_ty = crate::utilis::monomorphize(&method, field_ty, tyctx);
             let field_ty = self.type_from_cache(field_ty, tyctx, method);
-            if field_ty == Type::Void{
+            if field_ty == Type::Void {
                 continue;
             }
             fields.push((name, field_ty));
@@ -229,8 +233,6 @@ impl TyCache {
         }
 
         let access = AccessModifer::Public;
-        
-      
 
         TypeDef::new(
             access,
@@ -294,7 +296,6 @@ impl TyCache {
                             fields.push(("value__".into(), tag_type));
                             explicit_offsets.push(offset);
                         }
-
                     }
                     rustc_target::abi::TagEncoding::Niche {
                         untagged_variant: _,
@@ -311,37 +312,36 @@ impl TyCache {
 
                             explicit_offsets.push(offset);
                         }
-
                     }
                 }
 
                 //todo!("Mult-variant enum!"),
             }
         };
-        fields.iter().for_each(|(_,tpe)|assert_ne!(*tpe,Type::Void));
+        fields
+            .iter()
+            .for_each(|(_, tpe)| assert_ne!(*tpe, Type::Void));
         assert_eq!(fields.len(), explicit_offsets.len());
         for (vidx, variant) in adt.variants().iter_enumerated() {
             let variant_name: IString = variant.name.to_string().into();
             let mut variant_fields = vec![];
             let field_offset_iter =
-            crate::utilis::adt::enum_variant_offsets(adt, layout.layout, vidx);
+                crate::utilis::adt::enum_variant_offsets(adt, layout.layout, vidx);
             let mut field_offsets: Vec<_> = Vec::new();
-            for (field,offset) in (&variant.fields).iter().zip(field_offset_iter) {
+            for (field, offset) in (&variant.fields).iter().zip(field_offset_iter) {
                 let name = format!(
                     "{variant_name}_{fname}",
                     fname = escape_field_name(&field.name.to_string())
                 )
                 .into();
                 let field_ty = self.type_from_cache(field.ty(tyctx, subst), tyctx, method);
-                if field_ty == Type::Void{
+                if field_ty == Type::Void {
                     continue;
                 }
                 field_offsets.push(offset);
                 variant_fields.push((name, field_ty));
             }
 
-          
-           
             // FIXME: this is a hacky fix for `std::option::Option<std::convert::Infallible>`. If an enum contains an enum without variants, stuff breaks(no offset for that field).
             // If we know this is `Option` we can just sweep the issue under the rug and pretend it does not happen(even tough it does).
             if field_offsets.len() < variant_fields.len()
@@ -354,7 +354,9 @@ impl TyCache {
             fields.extend(variant_fields);
             explicit_offsets.extend(field_offsets);
         }
-        fields.iter().for_each(|(_,tpe)|assert_ne!(*tpe,Type::Void));
+        fields
+            .iter()
+            .for_each(|(_, tpe)| assert_ne!(*tpe, Type::Void));
         assert_eq!(fields.len(), explicit_offsets.len());
         let mut def = TypeDef::new(
             access,
@@ -404,7 +406,7 @@ impl TyCache {
         method: Instance<'tyctx>,
     ) -> Type {
         let ty = crate::utilis::monomorphize(&method, ty, tyctx);
-        if crate::utilis::is_zst(ty, tyctx){
+        if crate::utilis::is_zst(ty, tyctx) {
             return Type::Void;
         }
         match ty.kind() {
@@ -434,15 +436,15 @@ impl TyCache {
                     super::simple_tuple(&types).into()
                 }
             }
-            TyKind::Dynamic(_list,_,_)=>{
-                let name:IString = format!("Dyn").into();
-                if !self.type_def_cache.contains_key(&name){
-                    self.type_def_cache.insert(name.clone(),TypeDef::nameonly(&name));
+            TyKind::Dynamic(_list, _, _) => {
+                let name: IString = format!("Dyn").into();
+                if !self.type_def_cache.contains_key(&name) {
+                    self.type_def_cache
+                        .insert(name.clone(), TypeDef::nameonly(&name));
                 }
-                Type::DotnetType(Box::new(DotnetTypeRef::new::<&str,_>(None,name)))
+                Type::DotnetType(Box::new(DotnetTypeRef::new::<&str, _>(None, name)))
             }
             TyKind::Closure(def, args) => {
-                
                 let closure = args.as_closure();
                 let mut sig = closure.sig();
                 sig = crate::utilis::monomorphize(&method, sig, tyctx);
@@ -577,9 +579,8 @@ impl TyCache {
                 length = crate::utilis::monomorphize(&method, length, tyctx);
                 let length: usize = crate::utilis::try_resolve_const_size(length).unwrap();
                 let mut element = *element;
-    
-                    element = crate::utilis::monomorphize(&method, element, tyctx);
-                ;
+
+                element = crate::utilis::monomorphize(&method, element, tyctx);
                 let element = self.type_from_cache(element, tyctx, method);
                 let layout = tyctx
                     .layout_of(rustc_middle::ty::ParamEnvAnd {
@@ -619,22 +620,31 @@ impl TyCache {
     pub fn slice_ref_to<'tyctx>(
         &mut self,
         tyctx: TyCtxt<'tyctx>,
-        
+
         mut inner: Ty<'tyctx>,
         method: Instance<'tyctx>,
     ) -> Type {
         inner = crate::utilis::monomorphize(&method, inner, tyctx);
         let inner_tpe = self.type_from_cache(inner, tyctx, method);
-        let name:IString = format!("FatPtr{elem}",elem = cilly::mangle(&inner_tpe)).into();
-        if !self.type_def_cache.contains_key(&name){
-            let def = TypeDef::new(AccessModifer::MoudlePublic, name.clone(), vec![], vec![
-                ("data_pointer".into(),Type::Ptr(Type::Void.into(),)),
-                ("metadata".into(),Type::USize)
-    
-            ], vec![], None, 0, None, None); 
-            self.type_def_cache.insert(name.clone(),def);
+        let name: IString = format!("FatPtr{elem}", elem = cilly::mangle(&inner_tpe)).into();
+        if !self.type_def_cache.contains_key(&name) {
+            let def = TypeDef::new(
+                AccessModifer::MoudlePublic,
+                name.clone(),
+                vec![],
+                vec![
+                    ("data_pointer".into(), Type::Ptr(Type::Void.into())),
+                    ("metadata".into(), Type::USize),
+                ],
+                vec![],
+                None,
+                0,
+                None,
+                None,
+            );
+            self.type_def_cache.insert(name.clone(), def);
         }
-        return Type::DotnetType(Box::new(DotnetTypeRef:: new::<&str,_>(None,name)));
+        return Type::DotnetType(Box::new(DotnetTypeRef::new::<&str, _>(None, name)));
     }
 }
 

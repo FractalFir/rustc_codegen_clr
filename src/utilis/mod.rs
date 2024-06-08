@@ -222,17 +222,17 @@ pub fn garg_to_string<'tyctx>(garg: GenericArg<'tyctx>, ctx: TyCtxt<'tyctx>) -> 
         .expect("Generic argument was not an constant!");
     let kind = str_const.kind();
     match kind {
-        ConstKind::Value(ty,val_tree) => {
+        ConstKind::Value(ty, val_tree) => {
             let raw_bytes = val_tree
                 .try_to_raw_bytes(ctx, ty)
                 .expect("String const did not contain valid string!");
             let tpe = ty
-            .builtin_deref(true)
-            .expect("Type of generic argument was not a reference, can't resolve as string!");
-        assert!(
-            tpe.is_str(),
-            "Generic argument was not a string, but {str_const:?}!"
-        );
+                .builtin_deref(true)
+                .expect("Type of generic argument was not a reference, can't resolve as string!");
+            assert!(
+                tpe.is_str(),
+                "Generic argument was not a string, but {str_const:?}!"
+            );
             String::from_utf8(raw_bytes.into()).expect("String constant invalid!")
         }
         _ => todo!("Can't convert generic arg of const kind {kind:?} to string!"),
@@ -243,10 +243,10 @@ pub fn garag_to_bool<'tyctx>(garg: GenericArg<'tyctx>, _ctx: TyCtxt<'tyctx>) -> 
     let usize_const = garg
         .as_const()
         .expect("Generic argument was not an constant!");
-   
+
     let kind = usize_const.kind();
     match kind {
-        ConstKind::Value(ty,val_tree) => {
+        ConstKind::Value(ty, val_tree) => {
             let scalar = val_tree
                 .try_to_scalar_int()
                 .expect("String const did not contain valid scalar!");
@@ -312,13 +312,13 @@ pub fn align_of<'tyctx>(ty: rustc_middle::ty::Ty<'tyctx>, tyctx: TyCtxt<'tyctx>)
     return align.bytes();
 }
 pub fn is_zst<'tyctx>(ty: rustc_middle::ty::Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -> bool {
-    let layout =   tyctx
-    .layout_of(rustc_middle::ty::ParamEnvAnd {
-        param_env: ParamEnv::reveal_all(),
-        value: ty,
-    })
-    .expect("Can't get layout of a type.")
-    .layout;
+    let layout = tyctx
+        .layout_of(rustc_middle::ty::ParamEnvAnd {
+            param_env: ParamEnv::reveal_all(),
+            value: ty,
+        })
+        .expect("Can't get layout of a type.")
+        .layout;
     layout.size.bytes() == 0
 }
 pub fn requries_align_adjustement<'tyctx>(

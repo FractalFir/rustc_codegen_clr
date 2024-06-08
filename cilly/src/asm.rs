@@ -47,23 +47,36 @@ pub struct Assembly {
     static_fields: HashMap<IString, Type>,
 }
 impl Assembly {
-    pub fn call_graph(&self)->String{
+    pub fn call_graph(&self) -> String {
         let mut res = format!("digraph mygraph {{\nfontname=\"Helvetica,Arial,sans-serif\"\nnode [fontname=\"Helvetica,Arial,sans-serif\"]
 edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n");
-        for (_,function) in self.functions(){
+        for (_, function) in self.functions() {
             let name = function.name();
-            let calls:std::collections::HashSet<_> = function.calls().iter().filter_map(|site|if site.class().is_none(){Some(site.name())}else{None}).collect();
-            for called in calls{
+            let calls: std::collections::HashSet<_> = function
+                .calls()
+                .iter()
+                .filter_map(|site| {
+                    if site.class().is_none() {
+                        Some(site.name())
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            for called in calls {
                 res.push_str(&format!("\"{name}\"->\"{called}\"\n"))
             }
         }
         res.push('}');
         res
     }
-    pub fn sizeof_tpedef(&self,tpe:&crate::DotnetTypeRef)->std::num::NonZeroU64{
+    pub fn sizeof_tpedef(&self, tpe: &crate::DotnetTypeRef) -> std::num::NonZeroU64 {
         assert!(tpe.asm().is_none());
-        self.types.get(tpe.name_path()).unwrap()
-        .explict_size().unwrap()
+        self.types
+            .get(tpe.name_path())
+            .unwrap()
+            .explict_size()
+            .unwrap()
     }
     pub fn save_tmp<W: std::io::Write>(&self, w: &mut W) -> std::io::Result<()> {
         w.write_all(&postcard::to_stdvec(&self).unwrap())

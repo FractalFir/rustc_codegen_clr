@@ -203,10 +203,9 @@ pub enum CILNode {
         tpe: Box<Type>,
         align: u64,
     },
-    /// Creates a delegate to an object method, and places a managed reference to that delegate on the stack.
-    CreateDelegate {
-        obj: Box<Self>,
-        site: Box<CallSite>,
+    /// Allocates a local buffer of size
+    LocAlloc {
+        size: Box<Self>,
     },
 }
 
@@ -294,6 +293,7 @@ impl CILNode {
     }
     fn opt_children(&mut self, opt_count: &mut usize) {
         match self {
+            Self::LocAlloc{size}=>size.opt(opt_count),
             Self::LocAllocAligned { .. }=>(),
             Self::LdFalse | Self::LdTrue=>(),
             Self::TransmutePtr { val, new_ptr: _ }=>val.opt(opt_count),
@@ -364,7 +364,6 @@ impl CILNode {
             | Self::ConvI32(inner)
             | Self::ConvI64(inner)
             | Self::ConvISize(inner)
-            | Self::CreateDelegate { obj:inner, site:_ }
             //| Self::Volatile(inner)
             | Self::Neg(inner)
             | Self::Not(inner) => inner.opt(opt_count),
@@ -450,6 +449,7 @@ impl CILNode {
         locals: &mut Vec<(Option<Box<str>>, Type)>,
     ) {
         match self {
+            Self::LocAlloc{..}=>(),
             Self::LocAllocAligned {..}=>(),
             Self::LdFalse=>(),
             Self::LdTrue=>(),
@@ -531,9 +531,7 @@ impl CILNode {
             //Self::Volatile(_) => todo!(),
             Self::Neg(val) |
             Self::Not(val) =>val.allocate_tmps(curr_loc, locals),
-            Self::CreateDelegate { obj, site: _ }=>{
-                obj.allocate_tmps(curr_loc, locals);
-            }
+            
             Self::TemporaryLocal(tmp_loc) => {
                 let tpe = &mut tmp_loc.0;
                 let end_loc = locals.len();

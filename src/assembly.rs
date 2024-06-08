@@ -384,7 +384,7 @@ pub fn add_fn<'tyctx>(
         };
         for arg_id in 0..packed_count {
             let arg_field = field_descrptor(repacked_ty, arg_id, tyctx, instance, cache);
-            if *arg_field.tpe() == Type::Void{
+            if *arg_field.tpe() == Type::Void {
                 continue;
             }
             repack_cil.push(
