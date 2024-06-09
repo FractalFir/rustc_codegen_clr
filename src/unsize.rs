@@ -149,10 +149,9 @@ pub fn unsize<'tyctx>(
     target: Ty<'tyctx>,
 ) -> CILNode {
     let info = UnsizeInfo::for_unsize(tyctx, method, method_instance, tycache, operand, target);
-    match (
-        info.source_points_to.kind(),
-        target.builtin_deref(true).unwrap().kind(),
-    ) {
+    let src_points_to = info.source_points_to;
+    let target_points_to = target.builtin_deref(true).unwrap();
+    match (src_points_to.kind(), target_points_to.kind()) {
         (TyKind::Array(_, length), _) => {
             let length = crate::utilis::try_resolve_const_size(*length).unwrap();
             let metadata_field =
@@ -182,10 +181,45 @@ pub fn unsize<'tyctx>(
             )))
         }
         (
-            TyKind::Dynamic(_data_a, _, _src_dyn_kind),
-            TyKind::Dynamic(_data_b, _, _target_dyn_kind),
+            TyKind::Dynamic(data_a, _, _src_dyn_kind),
+            TyKind::Dynamic(data_b, _, _target_dyn_kind),
         ) => {
-            todo!("dyn to dyn cats not yet supported!")
+            if data_a.principal_def_id() == data_b.principal_def_id() {
+                return CILNode::TemporaryLocal(Box::new((
+                    info.target_type.clone(),
+                    [CILRoot::SetTMPLocal {
+                        value: CILNode::LdObj {
+                            ptr: Box::new(CILNode::TransmutePtr {
+                                val: Box::new(info.source_ptr),
+                                new_ptr: Box::new(Type::Ptr(Box::new(info.target_type.clone()))),
+                            }),
+                            obj: Box::new(info.target_type),
+                        },
+                    }]
+                    .into(),
+                    CILNode::LoadTMPLocal,
+                )));
+            }
+            let vptr_entry_idx = tyctx
+                .vtable_trait_upcasting_coercion_new_vptr_slot((operand.ty(method, tyctx), target));
+            if let Some(entry_idx) = vptr_entry_idx {
+                todo!("dyn to dyn cats not yet supported. src_points_to:{src_points_to:?} target_points_to:{target_points_to:?} entry_idx:{entry_idx:?}")
+            } else {
+                CILNode::TemporaryLocal(Box::new((
+                    info.target_type.clone(),
+                    [CILRoot::SetTMPLocal {
+                        value: CILNode::LdObj {
+                            ptr: Box::new(CILNode::TransmutePtr {
+                                val: Box::new(info.source_ptr),
+                                new_ptr: Box::new(Type::Ptr(Box::new(info.target_type.clone()))),
+                            }),
+                            obj: Box::new(info.target_type),
+                        },
+                    }]
+                    .into(),
+                    CILNode::LoadTMPLocal,
+                )))
+            }
         }
         (_, TyKind::Dynamic(data, _, _dyn_kind)) => {
             let alloc_id = tyctx.vtable_allocation((info.source_points_to, data.principal()));

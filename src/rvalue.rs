@@ -419,6 +419,14 @@ pub fn handle_rvalue<'tcx>(
                     );
                     ld_field!(addr, descriptor)
                 }
+                TyKind::Array(_ty,length)=>
+                {
+                    let mut length = *length;
+                    length = crate::utilis::monomorphize(&method_instance, length, tyctx);
+                    let length: usize = crate::utilis::try_resolve_const_size(length).unwrap();
+            
+                    conv_usize!(ldc_u64!(length as u64))
+                },
                 _ => todo!("Get length of type {ty:?}"),
             }
         }
@@ -480,8 +488,8 @@ pub fn handle_rvalue<'tcx>(
                 }
             }
         }
-        Rvalue::Cast(rustc_middle::mir::CastKind::FnPtrToPtr, _, _) => {
-            todo!("Unusported cast kind:FnPtrToPtr")
+        Rvalue::Cast(rustc_middle::mir::CastKind::FnPtrToPtr, operand, _) => {
+            handle_operand(operand, tyctx, method, method_instance, tycache)
         }
         Rvalue::Cast(rustc_middle::mir::CastKind::DynStar, _, _) => {
             todo!("Unusported cast kind:DynStar")

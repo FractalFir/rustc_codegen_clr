@@ -228,7 +228,11 @@ pub fn handle_terminator<'ctx>(
                             method_instance,
                             type_cache,
                         );
-                        let fat_ptr_type = type_cache.type_from_cache(Ty::new_ptr(tyctx,ty,rustc_middle::ty::Mutability::Mut), tyctx, method_instance);
+                        let fat_ptr_type = type_cache.type_from_cache(
+                            Ty::new_ptr(tyctx, ty, rustc_middle::ty::Mutability::Mut),
+                            tyctx,
+                            method_instance,
+                        );
                         eprintln!("fat_ptr_type:{fat_ptr_type:?} ty:{ty:?}");
                         // Get the vtable
                         let vtable_ptr = ld_field!(

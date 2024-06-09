@@ -7,6 +7,7 @@ use cilly::{
     call, call_virt, cil_root::CILRoot, conv_f32, conv_f64, conv_isize, conv_u64, conv_usize, eq,
     ld_field, ldc_i32, ldc_u32, ldc_u64, lt_un, size_of, sub,
 };
+use libc::READ_IMPLIES_EXEC;
 
 use crate::r#type::tycache::TyCache;
 use crate::{operand::handle_operand, place::place_set};
@@ -324,6 +325,54 @@ pub fn handle_intrinsic<'tyctx>(
                 Type::I32 | Type::U32 => ldc_i32!(32),
                 Type::I16 | Type::U16 => ldc_i32!(48),
                 Type::I8 | Type::U8 => ldc_i32!(56),
+                Type::I128 => {
+                    return place_set(
+                        destination,
+                        tyctx,
+                        call!(
+                            CallSite::new_extern(
+                                DotnetTypeRef::int_128(),
+                                "LeadingZeroCount".into(),
+                                FnSig::new([Type::I128], Type::I128),
+                                true
+                            ),
+                            [handle_operand(
+                                &args[0].node,
+                                tyctx,
+                                body,
+                                method_instance,
+                                type_cache
+                            )]
+                        ),
+                        body,
+                        method_instance,
+                        type_cache,
+                    )
+                }
+                Type::U128 => {
+                    return place_set(
+                        destination,
+                        tyctx,
+                        call!(
+                            CallSite::new_extern(
+                                DotnetTypeRef::uint_128(),
+                                "LeadingZeroCount".into(),
+                                FnSig::new([Type::U128], Type::U128),
+                                true
+                            ),
+                            [handle_operand(
+                                &args[0].node,
+                                tyctx,
+                                body,
+                                method_instance,
+                                type_cache
+                            )]
+                        ),
+                        body,
+                        method_instance,
+                        type_cache,
+                    )
+                }
                 _ => todo!("Can't `ctlz`  type {tpe:?} yet!"),
             };
             place_set(
@@ -485,6 +534,28 @@ pub fn handle_intrinsic<'tyctx>(
             let val = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
             let rot = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
             match val_tpe {
+                Type::U8 => place_set(
+                    destination,
+                    tyctx,
+                    or!(
+                        CILNode::Shl(Box::new(val.clone()), Box::new(rot.clone())),
+                        CILNode::ShrUn(Box::new(val), Box::new(ldc_u32!(32) - rot))
+                    ),
+                    body,
+                    method_instance,
+                    type_cache,
+                ),
+                Type::U16 => place_set(
+                    destination,
+                    tyctx,
+                    or!(
+                        CILNode::Shl(Box::new(val.clone()), Box::new(rot.clone())),
+                        CILNode::ShrUn(Box::new(val), Box::new(ldc_u32!(32) - rot))
+                    ),
+                    body,
+                    method_instance,
+                    type_cache,
+                ),
                 Type::U32 => place_set(
                     destination,
                     tyctx,
@@ -502,6 +573,72 @@ pub fn handle_intrinsic<'tyctx>(
                     or!(
                         CILNode::Shl(Box::new(val.clone()), Box::new(rot.clone())),
                         CILNode::ShrUn(Box::new(val), Box::new(ldc_u32!(64) - rot))
+                    ),
+                    body,
+                    method_instance,
+                    type_cache,
+                ),
+                Type::USize => place_set(
+                    destination,
+                    tyctx,
+                    or!(
+                        CILNode::Shl(Box::new(val.clone()), Box::new(rot.clone())),
+                        CILNode::ShrUn(Box::new(val), Box::new(size_of!(Type::USize)*ldc_i32!(8) - rot))
+                    ),
+                    body,
+                    method_instance,
+                    type_cache,
+                ),
+                Type::I8 => place_set(
+                    destination,
+                    tyctx,
+                    or!(
+                        CILNode::Shl(Box::new(val.clone()), Box::new(rot.clone())),
+                        CILNode::Shr(Box::new(val), Box::new(ldc_u32!(32) - rot))
+                    ),
+                    body,
+                    method_instance,
+                    type_cache,
+                ),
+                Type::I16 => place_set(
+                    destination,
+                    tyctx,
+                    or!(
+                        CILNode::Shl(Box::new(val.clone()), Box::new(rot.clone())),
+                        CILNode::Shr(Box::new(val), Box::new(ldc_u32!(32) - rot))
+                    ),
+                    body,
+                    method_instance,
+                    type_cache,
+                ),
+                Type::I32 => place_set(
+                    destination,
+                    tyctx,
+                    or!(
+                        CILNode::Shl(Box::new(val.clone()), Box::new(rot.clone())),
+                        CILNode::Shr(Box::new(val), Box::new(ldc_u32!(32) - rot))
+                    ),
+                    body,
+                    method_instance,
+                    type_cache,
+                ),
+                Type::I64 => place_set(
+                    destination,
+                    tyctx,
+                    or!(
+                        CILNode::Shl(Box::new(val.clone()), Box::new(rot.clone())),
+                        CILNode::Shr(Box::new(val), Box::new(ldc_u32!(64) - rot))
+                    ),
+                    body,
+                    method_instance,
+                    type_cache,
+                ),
+                Type::ISize => place_set(
+                    destination,
+                    tyctx,
+                    or!(
+                        CILNode::Shl(Box::new(val.clone()), Box::new(rot.clone())),
+                        CILNode::Shr(Box::new(val), Box::new(size_of!(Type::ISize)*ldc_i32!(8) - rot))
                     ),
                     body,
                     method_instance,
@@ -661,7 +798,10 @@ pub fn handle_intrinsic<'tyctx>(
                 crate::place::deref_op(arg_ty.into(), tyctx, &method_instance, type_cache, ops);
             place_set(destination, tyctx, ops, body, method_instance, type_cache)
         }
-        "atomic_store_relaxed" | "atomic_store_seqcst" | "atomic_store_release" => {
+        "atomic_store_relaxed"
+        | "atomic_store_seqcst"
+        | "atomic_store_release"
+        | "atomic_store_unordered" => {
             // This is *propably* wrong :)
             debug_assert_eq!(
                 args.len(),

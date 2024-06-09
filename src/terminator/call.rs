@@ -402,7 +402,9 @@ pub fn call<'tyctx>(
         let vtable_ptr = ld_field!(
             fat_ptr_address.clone(),
             FieldDescriptor::new(
-                fat_ptr_type.as_dotnet().unwrap(),
+                fat_ptr_type.as_dotnet().unwrap_or_else(||{
+                    panic!("Invalid fat pointer. fat_ptr_ty:{fat_ptr_ty:?} fat_ptr_type:{fat_ptr_type:?}")
+                }),
                 Type::USize,
                 "metadata".into()
             )
