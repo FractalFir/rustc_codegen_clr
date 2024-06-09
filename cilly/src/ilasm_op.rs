@@ -467,8 +467,12 @@ fn export_node(
             }
             let callconv = "";
             //call native uint RustModule::check_calli_nonull(native uint)\n
-            write!(out,"
-            calli {callconv} {output} ({input_string})",output = type_cil(fn_ptr_and_sig.0.output()))
+            write!(
+                out,
+                "
+            calli {callconv} {output} ({input_string})",
+                output = type_cil(fn_ptr_and_sig.0.output())
+            )
         }
         CILNode::LDIndU8 { ptr } => un_op!(out, ptr, depth, il_flavour, "ldind.u1"),
         CILNode::LDIndU16 { ptr } => un_op!(out, ptr, depth, il_flavour, "ldind.u2"),

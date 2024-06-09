@@ -1,5 +1,8 @@
 use crate::place::place_set;
-use cilly::{call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, cil_tree::CILTree};
+use cilly::{
+    call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, cil_tree::CILTree,
+    field_desc::FieldDescriptor, ld_field, FnSig, Type,
+};
 use rustc_span::source_map::Spanned;
 
 use crate::utilis::monomorphize;
@@ -216,30 +219,95 @@ pub fn handle_terminator<'ctx>(
                 }
                 .into()]
             } else {
-                let sig = crate::function_sig::sig_from_instance_(drop_instance, tyctx, type_cache)
-                    .unwrap();
-
-                let function_name = crate::utilis::function_name(tyctx.symbol_name(drop_instance));
-
-                vec![
-                    CILRoot::Call {
-                        site: CallSite::new(None, function_name, sig, true),
-                        args: [crate::place::place_adress(
+                match ty.kind() {
+                    TyKind::Dynamic(_, _, rustc_middle::ty::DynKind::Dyn) => {
+                        let fat_ptr_address = crate::place::place_adress(
                             place,
                             tyctx,
                             method,
                             method_instance,
                             type_cache,
-                        )]
-                        .into(),
+                        );
+                        let fat_ptr_type = type_cache.type_from_cache(Ty::new_ptr(tyctx,ty,rustc_middle::ty::Mutability::Mut), tyctx, method_instance);
+                        eprintln!("fat_ptr_type:{fat_ptr_type:?} ty:{ty:?}");
+                        // Get the vtable
+                        let vtable_ptr = ld_field!(
+                            fat_ptr_address.clone(),
+                            FieldDescriptor::new(
+                                fat_ptr_type.as_dotnet().unwrap(),
+                                Type::USize,
+                                "metadata".into()
+                            )
+                        );
+                        // Get the addres of the object
+                        let obj_ptr = ld_field!(
+                            fat_ptr_address,
+                            FieldDescriptor::new(
+                                fat_ptr_type.as_dotnet().unwrap(),
+                                Type::Ptr(Type::Void.into()),
+                                "data_pointer".into()
+                            )
+                        );
+                        // We asusme the drop is the first method in the vtable
+                        assert_eq!(
+                            rustc_middle::ty::vtable::COMMON_VTABLE_ENTRIES_DROPINPLACE,
+                            0
+                        );
+                        let drop_fn_ptr = CILNode::LDIndPtr {
+                            ptr: Box::new(vtable_ptr),
+                            loaded_ptr: Box::new(Type::DelegatePtr(Box::new(FnSig::new(
+                                [Type::Ptr(Box::new(Type::Void))],
+                                Type::Void,
+                            )))),
+                        };
+                        vec![
+                            CILRoot::CallI {
+                                sig: FnSig::new([Type::Ptr(Box::new(Type::Void))], Type::Void),
+                                fn_ptr: drop_fn_ptr,
+                                args: [obj_ptr].into(),
+                            }
+                            .into(),
+                            CILRoot::GoTo {
+                                target: target.as_u32(),
+                                sub_target: 0,
+                            }
+                            .into(),
+                        ]
                     }
-                    .into(),
-                    CILRoot::GoTo {
-                        target: target.as_u32(),
-                        sub_target: 0,
+                    TyKind::Dynamic(_, _, rustc_middle::ty::DynKind::DynStar) => {
+                        todo!("Can't drop dyn star yet!")
                     }
-                    .into(),
-                ]
+                    _ => {
+                        let sig = crate::function_sig::sig_from_instance_(
+                            drop_instance,
+                            tyctx,
+                            type_cache,
+                        )
+                        .unwrap();
+
+                        let function_name =
+                            crate::utilis::function_name(tyctx.symbol_name(drop_instance));
+                        vec![
+                            CILRoot::Call {
+                                site: CallSite::new(None, function_name, sig, true),
+                                args: [crate::place::place_adress(
+                                    place,
+                                    tyctx,
+                                    method,
+                                    method_instance,
+                                    type_cache,
+                                )]
+                                .into(),
+                            }
+                            .into(),
+                            CILRoot::GoTo {
+                                target: target.as_u32(),
+                                sub_target: 0,
+                            }
+                            .into(),
+                        ]
+                    }
+                }
             }
         }
         TerminatorKind::Unreachable => {

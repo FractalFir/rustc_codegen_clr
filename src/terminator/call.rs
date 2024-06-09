@@ -426,17 +426,82 @@ pub fn call<'tyctx>(
         );
         // Get the call info
         let call_info = CallInfo::sig_from_instance_(instance, tyctx, type_cache);
+
         let mut signature = call_info.sig().clone();
         signature.inputs_mut()[0] = Type::ISize;
         let mut call_args = [obj_ptr].to_vec();
-        for arg in args.iter().skip(1) {
-            call_args.push(crate::operand::handle_operand(
-                &arg.node,
-                tyctx,
-                body,
-                method_instance,
-                type_cache,
-            ));
+        if call_info.split_last_tuple() {
+            let last_arg = args
+                .last()
+                .expect("Closure must be called with at least 2 arguments(closure + arg tuple)");
+
+            let other_args = &args[..args.len() - 1];
+
+            for arg in other_args.into_iter().skip(1) {
+                call_args.push(crate::operand::handle_operand(
+                    &arg.node,
+                    tyctx,
+                    body,
+                    method_instance,
+                    type_cache,
+                ));
+            }
+            // "Rust call" is wierd, and not at all optimized for .NET. Passing all the arguments in a tuple is bad for performance and simplicty. Thus, unpacking this tuple and forcing "Rust call" to be
+            // "normal" is far easier and better for performance.
+            let last_arg_type =
+                crate::utilis::monomorphize(&method_instance, last_arg.node.ty(body, tyctx), tyctx);
+            match last_arg_type.kind() {
+                TyKind::Tuple(elements) => {
+                    if elements.is_empty() {
+                    } else {
+                        let tuple_type =
+                            type_cache.type_from_cache(last_arg_type, tyctx, method_instance);
+
+                        for (index, element) in elements.iter().enumerate() {
+                            let element_type =
+                                type_cache.type_from_cache(element, tyctx, method_instance);
+                            if element_type == Type::Void {
+                                call_args.push(CILNode::TemporaryLocal(Box::new((
+                                    Type::Void,
+                                    [].into(),
+                                    CILNode::LoadTMPLocal,
+                                ))));
+                                continue;
+                            }
+                            let tuple_element_name = format!("Item{}", index + 1);
+                            let field_descriptor = FieldDescriptor::boxed(
+                                tuple_type.as_dotnet().expect("Invalid tuple type"),
+                                element_type,
+                                tuple_element_name.into(),
+                            );
+
+                            call_args.push(ld_field!(
+                                crate::operand::handle_operand(
+                                    &last_arg.node,
+                                    tyctx,
+                                    body,
+                                    method_instance,
+                                    type_cache
+                                ),
+                                field_descriptor
+                            ));
+                        }
+
+                        //todo!("Can't unbox tupels yet!")
+                    }
+                }
+                _ => panic!("Can't unbox type {last_arg_type:?}!"),
+            }
+        } else {
+            for arg in args.iter().skip(1) {
+                call_args.push(crate::operand::handle_operand(
+                    &arg.node,
+                    tyctx,
+                    body,
+                    method_instance,
+                    type_cache,
+                ));
+            }
         }
         assert_eq!(
             signature.inputs().len(),
