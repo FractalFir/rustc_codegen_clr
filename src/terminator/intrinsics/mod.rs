@@ -7,7 +7,7 @@ use cilly::{
     call, call_virt, cil_root::CILRoot, conv_f32, conv_f64, conv_isize, conv_u64, conv_usize, eq,
     ld_field, ldc_i32, ldc_u32, ldc_u64, lt_un, size_of, sub,
 };
-use libc::READ_IMPLIES_EXEC;
+
 
 use crate::r#type::tycache::TyCache;
 use crate::{operand::handle_operand, place::place_set};
