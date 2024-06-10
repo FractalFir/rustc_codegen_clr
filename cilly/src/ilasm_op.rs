@@ -1,8 +1,6 @@
-use std::{any::type_name, borrow::Cow, fmt::Write, fs::write};
+use std::{borrow::Cow, fmt::Write};
 
-use crate::{
-    cil_iter::CILIterTrait, cil_node::CILNode, cil_root::CILRoot, DotnetTypeRef, IlasmFlavour, Type,
-};
+use crate::{cil_node::CILNode, cil_root::CILRoot, DotnetTypeRef, IlasmFlavour, Type};
 #[derive(Copy, Clone)]
 pub struct DepthSetting(u32);
 impl DepthSetting {
@@ -299,7 +297,9 @@ fn export_node(
             } else {
                 // This is intended behaviour
                 #[allow(clippy::cast_possible_wrap)]
-                write!(out, "ldc.i4 {value}", value = *value as i32)
+                {
+                    write!(out, "ldc.i4 {value}", value = *value as i32)
+                }
             }
         }
         CILNode::LdcF64(f64const) => {
@@ -329,14 +329,18 @@ fn export_node(
             )
             .into()
         }
-        CILNode::LoadGlobalAllocPtr { alloc_id } => todo!(),
+        CILNode::LoadGlobalAllocPtr { alloc_id } => {
+            panic!("Global allocs should be resolved before export")
+        }
         CILNode::ConvU8(val) => un_op!(out, val, depth, il_flavour, "conv.u1"),
         CILNode::ConvU16(val) => un_op!(out, val, depth, il_flavour, "conv.u2"),
         CILNode::ConvU32(val) => un_op!(out, val, depth, il_flavour, "conv.u4"),
         CILNode::ConvU64(val) => un_op!(out, val, depth, il_flavour, "conv.u8"),
         CILNode::ZeroExtendToUSize(val) => un_op!(out, val, depth, il_flavour, "conv.u"),
         CILNode::ZeroExtendToISize(val) => un_op!(out, val, depth, il_flavour, "conv.u"),
-        CILNode::MRefToRawPtr(val) => un_op!(out, val, depth, il_flavour, "conv.u"),
+        CILNode::MRefToRawPtr(val) => {
+            un_op!(out, val, depth, il_flavour, "conv.u // mreftorawptr ")
+        }
         CILNode::ConvI8(val) => un_op!(out, val, depth, il_flavour, "conv.i1"),
         CILNode::ConvI16(val) => un_op!(out, val, depth, il_flavour, "conv.i2"),
         CILNode::ConvI32(val) => un_op!(out, val, depth, il_flavour, "conv.i4"),
@@ -956,8 +960,7 @@ pub fn type_cil(tpe: &Type) -> Cow<'static, str> {
         Type::Ptr(inner) => format!("{inner}*", inner = type_cil(inner)).into(),
         Type::ManagedReference(inner) => format!("{inner}&", inner = type_cil(inner)).into(),
         Type::DotnetType(dotnet_type) => dotnet_type_ref_cli(dotnet_type).into(),
-        //Special type
-        Type::Unresolved => "valuetype Unresolved".into(),
+
         Type::Bool => "bool".into(),
         Type::DotnetChar => "char".into(),
         Type::GenericArg(idx) => format!("!{idx}").into(),

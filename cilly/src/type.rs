@@ -31,8 +31,7 @@ pub enum Type {
     Ptr(Box<Self>),
     /// A managed reference `&`. IS NOT EQUIVALENT TO RUST `&`!
     ManagedReference(Box<Self>),
-    // Speical type marking an unresoved type. This is a work around some issues with corelib types. Nothing can ever interact directly with this type.
-    Unresolved,
+
     /// Foregin type. Will never be interacted with directly
     Foreign,
     /// Generic argument

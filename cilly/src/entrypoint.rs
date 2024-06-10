@@ -5,12 +5,11 @@ use crate::{
     basic_block::BasicBlock,
     call,
     call_site::CallSite,
-    call_virt,
     cil_node::CILNode,
     cil_root::CILRoot,
     conv_usize, ldc_u32, ldc_u64,
     method::{Attribute, Method, MethodType},
-    size_of, DotnetTypeRef, FnSig, Type,
+    DotnetTypeRef, FnSig, Type,
 };
 
 /// Creates a wrapper method around entypoint represented by `CallSite`

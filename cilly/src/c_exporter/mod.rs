@@ -12,6 +12,7 @@ use std::collections::HashMap;
 use std::hash::Hasher;
 use std::process::Command;
 use std::{borrow::Cow, collections::HashSet, io::Write};
+mod varaible;
 pub struct CExporter {
     types: Vec<u8>,
     type_defs: Vec<u8>,
@@ -983,9 +984,11 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
         CILRoot::VoidRet => "return;".into(),
         CILRoot::Throw(_) => "abort();".to_string(),
         CILRoot::ReThrow => todo!(),
-        CILRoot::CallI { sig, fn_ptr, args } => todo!(
+        CILRoot::CallI { sig, fn_ptr, args } => {
+            todo!(
             "Can't yet call function pointers in C. fn_ptr:{fn_ptr:?} sig:{sig:?} args:{args:?}"
-        ),
+            )
+        }
         CILRoot::JumpingPad { .. } => {
             println!("WARNING: There should be no jumping pads in C, jet a jumping pad remains!");
             "/*Invalid jump pad was here*/abort();\n".into()

@@ -419,14 +419,13 @@ pub fn handle_rvalue<'tcx>(
                     );
                     ld_field!(addr, descriptor)
                 }
-                TyKind::Array(_ty,length)=>
-                {
+                TyKind::Array(_ty, length) => {
                     let mut length = *length;
                     length = crate::utilis::monomorphize(&method_instance, length, tyctx);
                     let length: usize = crate::utilis::try_resolve_const_size(length).unwrap();
-            
+
                     conv_usize!(ldc_u64!(length as u64))
-                },
+                }
                 _ => todo!("Get length of type {ty:?}"),
             }
         }

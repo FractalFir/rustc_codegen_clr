@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{cil_iter::CILIterElem, cil_node::CILNode, cil_root::CILRoot, method::Method, Type};
+use crate::{cil_root::CILRoot, method::Method, Type};
 
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 /// A root of a CIL Tree with metadata about local variables it reads/writes into.  
@@ -43,7 +43,6 @@ impl CILTree {
     }
     /// Allocates the temporary variables this tree uses.
     pub fn allocate_tmps(&mut self, locals: &mut Vec<(Option<Box<str>>, Type)>) {
-        let cloned = self.clone();
         self.tree.allocate_tmps(None, locals);
     }
     pub fn validate(&self, method: &Method) -> Result<(), String> {
@@ -57,6 +56,7 @@ impl CILTree {
 }
 #[test]
 fn test_sheed() {
+    use crate::cil_node::CILNode;
     let node = CILNode::SubTrees(
         [CILRoot::STLoc {
             local: 11,
@@ -98,10 +98,11 @@ fn test_sheed() {
             tree: node,
         },
     };
-    let trees = tree.shed_trees();
+    let _trees = tree.shed_trees();
 }
 #[test]
 fn test_alloc() {
+    use crate::cil_node::CILNode;
     let mut tree: CILNode = CILNode::TemporaryLocal(Box::new((
         Type::U8,
         [CILRoot::SetTMPLocal {

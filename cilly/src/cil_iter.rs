@@ -442,6 +442,13 @@ impl<'a> CILIter<'a> {
             elems: vec![(0, CILIterElem::Root(root))],
         }
     }
+    #[must_use]
+    pub fn nodes(self) -> impl Iterator<Item = &'a CILNode> {
+        self.filter_map(|node_or_root| match node_or_root {
+            CILIterElem::Node(node) => Some(node),
+            CILIterElem::Root(_) => None,
+        })
+    }
 }
 pub trait CILIterTrait<'a> {
     fn call_sites(self) -> impl Iterator<Item = &'a CallSite>;

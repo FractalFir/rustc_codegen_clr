@@ -1,6 +1,6 @@
 use crate::{
-    call_site::CallSite, cil_iter_mut::CILIterMut, cil_node::CILNode, field_desc::FieldDescriptor,
-    fn_sig::FnSig, static_field_desc::StaticFieldDescriptor, DotnetTypeRef, IString, Type,
+    call_site::CallSite, cil_node::CILNode, field_desc::FieldDescriptor, fn_sig::FnSig,
+    static_field_desc::StaticFieldDescriptor, DotnetTypeRef, IString, Type,
 };
 
 use serde::{Deserialize, Serialize};

@@ -583,7 +583,10 @@ pub fn handle_intrinsic<'tyctx>(
                     tyctx,
                     or!(
                         CILNode::Shl(Box::new(val.clone()), Box::new(rot.clone())),
-                        CILNode::ShrUn(Box::new(val), Box::new(size_of!(Type::USize)*ldc_i32!(8) - rot))
+                        CILNode::ShrUn(
+                            Box::new(val),
+                            Box::new(size_of!(Type::USize) * ldc_i32!(8) - rot)
+                        )
                     ),
                     body,
                     method_instance,
@@ -638,7 +641,10 @@ pub fn handle_intrinsic<'tyctx>(
                     tyctx,
                     or!(
                         CILNode::Shl(Box::new(val.clone()), Box::new(rot.clone())),
-                        CILNode::Shr(Box::new(val), Box::new(size_of!(Type::ISize)*ldc_i32!(8) - rot))
+                        CILNode::Shr(
+                            Box::new(val),
+                            Box::new(size_of!(Type::ISize) * ldc_i32!(8) - rot)
+                        )
                     ),
                     body,
                     method_instance,
