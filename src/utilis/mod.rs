@@ -253,7 +253,7 @@ pub fn garag_to_bool<'tyctx>(garg: GenericArg<'tyctx>, _ctx: TyCtxt<'tyctx>) -> 
                 tpe.is_bool(),
                 "Generic argument was not a bool type! ty:{tpe:?}"
             );
-            scalar.try_to_uint(scalar.size()).unwrap() != 0
+            scalar.to_uint(scalar.size()) != 0
         }
         _ => todo!("Can't convert generic arg of const kind {kind:?} to string!"),
     }

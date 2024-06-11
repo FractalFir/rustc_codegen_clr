@@ -301,9 +301,7 @@ fn load_const_scalar<'ctx>(
     let tpe = crate::utilis::monomorphize(&method_instance, scalar_type, tyctx);
     let tpe = tycache.type_from_cache(tpe, tyctx, method_instance);
     let scalar_u128 = match scalar {
-        Scalar::Int(scalar_int) => scalar_int
-            .try_to_uint(scalar.size())
-            .expect("IMPOSSIBLE. Size of scalar was not equal to itself."),
+        Scalar::Int(scalar_int) => scalar_int.to_uint(scalar.size()),
         Scalar::Ptr(ptr, _size) => {
             return CILNode::TransmutePtr {
                 val: Box::new(load_scalar_ptr(tyctx, tycache, ptr)),

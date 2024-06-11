@@ -125,7 +125,7 @@ fn garag_to_usize<'tyctx>(garg: GenericArg<'tyctx>, _ctx: TyCtxt<'tyctx>) -> u64
             if !ty.is_integral() {
                 panic!("Generic argument was not a unit type! ty:{:?}", ty);
             }
-            u64::try_from(scalar.try_to_uint(scalar.size()).unwrap())
+            u64::try_from(scalar.to_uint(scalar.size()))
                 .expect("Scalar of type usize has value over 2^64")
         }
         _ => todo!("Can't convert generic arg of const kind {kind:?} to string!"),
