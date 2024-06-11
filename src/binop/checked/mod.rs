@@ -17,14 +17,18 @@ pub fn result_tuple(tpe: Type, out_of_range: CILNode, val: CILNode) -> CILNode {
         tuple.clone().into(),
         [
             CILRoot::SetField {
-                addr: CILNode::LoadAddresOfTMPLocal,
-                value: out_of_range,
-                desc: FieldDescriptor::new(tuple.clone(), Type::Bool, "Item2".into()),
+                addr: Box::new(CILNode::LoadAddresOfTMPLocal),
+                value: Box::new(out_of_range),
+                desc: Box::new(FieldDescriptor::new(
+                    tuple.clone(),
+                    Type::Bool,
+                    "Item2".into(),
+                )),
             },
             CILRoot::SetField {
-                addr: CILNode::LoadAddresOfTMPLocal,
-                value: val,
-                desc: FieldDescriptor::new(tuple.clone(), tpe, "Item1".into()),
+                addr: Box::new(CILNode::LoadAddresOfTMPLocal),
+                value: Box::new(val),
+                desc: Box::new(FieldDescriptor::new(tuple.clone(), tpe, "Item1".into())),
             },
         ]
         .into(),

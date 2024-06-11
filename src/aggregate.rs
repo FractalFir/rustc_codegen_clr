@@ -87,7 +87,7 @@ pub fn handle_aggregate<'tyctx>(
             let mut sub_trees = Vec::new();
             for value in values {
                 sub_trees.push(CILRoot::Call {
-                    site: site.clone(),
+                    site: Box::new(site.clone()),
                     args: [
                         array_getter.clone(),
                         conv_usize!(ldc_u64!(u64::from(value.0))),
@@ -136,13 +136,13 @@ pub fn handle_aggregate<'tyctx>(
                 let name = format!("Item{}", field.0 + 1);
 
                 sub_trees.push(CILRoot::SetField {
-                    addr: tuple_getter.clone(),
-                    value: field.1.clone(),
-                    desc: FieldDescriptor::new(
+                    addr: Box::new(tuple_getter.clone()),
+                    value: Box::new(field.1.clone()),
+                    desc: Box::new(FieldDescriptor::new(
                         dotnet_tpe.clone(),
                         types[field.0 as usize].clone(),
                         name.into(),
-                    ),
+                    )),
                 });
             }
             CILNode::SubTrees(Box::new((
@@ -181,13 +181,19 @@ pub fn handle_aggregate<'tyctx>(
                     continue;
                 }
                 sub_trees.push(CILRoot::SetField {
-                    addr: closure_getter.clone(),
-                    value: handle_operand(value, tyctx, method, method_instance, tycache),
-                    desc: FieldDescriptor::new(
+                    addr: Box::new(closure_getter.clone()),
+                    value: Box::new(handle_operand(
+                        value,
+                        tyctx,
+                        method,
+                        method_instance,
+                        tycache,
+                    )),
+                    desc: Box::new(FieldDescriptor::new(
                         closure_dotnet.clone(),
                         field_ty,
                         format!("f_{}", index.as_u32()).into(),
-                    ),
+                    )),
                 });
             }
 
@@ -236,22 +242,22 @@ pub fn handle_aggregate<'tyctx>(
 
             // Assign the components
             let assign_ptr = CILRoot::SetField {
-                addr: init_addr.clone(),
-                value: values[0].1.clone(),
-                desc: FieldDescriptor::new(
+                addr: Box::new(init_addr.clone()),
+                value: Box::new(values[0].1.clone()),
+                desc: Box::new(FieldDescriptor::new(
                     fat_ptr_type.as_dotnet().unwrap(),
                     Type::Ptr(Type::Void.into()),
                     "data_pointer".into(),
-                ),
+                )),
             };
             let assign_metadata = CILRoot::SetField {
-                addr: init_addr,
-                value: values[1].1.clone(),
-                desc: FieldDescriptor::new(
+                addr: Box::new(init_addr),
+                value: Box::new(values[1].1.clone()),
+                desc: Box::new(FieldDescriptor::new(
                     fat_ptr_type.as_dotnet().unwrap(),
                     Type::USize,
                     "metadata".into(),
-                ),
+                )),
             };
 
             CILNode::SubTrees(Box::new((
@@ -321,9 +327,9 @@ fn aggregate_adt<'tyctx>(
                 );
 
                 sub_trees.push(CILRoot::SetField {
-                    addr: obj_getter.clone(),
-                    value: field.1,
-                    desc: field_desc,
+                    addr: Box::new(obj_getter.clone()),
+                    value: Box::new(field.1),
+                    desc: Box::new(field_desc),
                 });
             }
             CILNode::SubTrees(Box::new((
@@ -369,9 +375,13 @@ fn aggregate_adt<'tyctx>(
                 }
 
                 sub_trees.push(CILRoot::SetField {
-                    addr: variant_address.clone(),
-                    value: field_value.1.clone(),
-                    desc: FieldDescriptor::new(adt_type_ref.clone(), field_type, field_name),
+                    addr: Box::new(variant_address.clone()),
+                    value: Box::new(field_value.1.clone()),
+                    desc: Box::new(FieldDescriptor::new(
+                        adt_type_ref.clone(),
+                        field_type,
+                        field_name,
+                    )),
                 });
             }
             // Set tag
@@ -438,9 +448,9 @@ fn aggregate_adt<'tyctx>(
 
             let desc = FieldDescriptor::new(adt_type_ref.clone(), field_type, field_name);
             sub_trees.push(CILRoot::SetField {
-                addr: obj_getter.clone(),
-                value: fields[0].1.clone(),
-                desc,
+                addr: Box::new(obj_getter.clone()),
+                value: Box::new(fields[0].1.clone()),
+                desc: Box::new(desc),
             });
             CILNode::SubTrees(Box::new((
                 sub_trees.into(),

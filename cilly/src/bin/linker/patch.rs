@@ -204,7 +204,7 @@ fn hijack_arg_init(asm: &mut Assembly) {
     if let Some(really_init) = really_init {
         final_block.trees_mut().push(
             CILRoot::Call {
-                site: really_init,
+                site: Box::new(really_init),
                 args: [CILNode::LDLoc(argc), CILNode::LDLoc(argv)].into(),
             }
             .into(),

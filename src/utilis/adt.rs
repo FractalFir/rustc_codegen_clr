@@ -172,9 +172,13 @@ pub fn set_discr<'tyctx>(
                 .expect("Enum varaint id can't fit in u64."));
             let tag_val = crate::casts::int_to_int(Type::U64, &tag_tpe, tag_val);
             CILRoot::SetField {
-                addr: enum_addr,
-                value: tag_val,
-                desc: FieldDescriptor::new(enum_tpe.clone(), tag_tpe, "value__".into()),
+                addr: Box::new(enum_addr),
+                value: Box::new(tag_val),
+                desc: Box::new(FieldDescriptor::new(
+                    enum_tpe.clone(),
+                    tag_tpe,
+                    "value__".into(),
+                )),
             }
         }
         Variants::Multiple {
@@ -199,9 +203,13 @@ pub fn set_discr<'tyctx>(
                     .expect("Enum varaint id can't fit in u64."));
                 let tag_val = crate::casts::int_to_int(Type::U64, &tag_tpe, tag_val);
                 CILRoot::SetField {
-                    addr: enum_addr,
-                    value: tag_val,
-                    desc: FieldDescriptor::new(enum_tpe.clone(), tag_tpe, "value__".into()),
+                    addr: Box::new(enum_addr),
+                    value: Box::new(tag_val),
+                    desc: Box::new(FieldDescriptor::new(
+                        enum_tpe.clone(),
+                        tag_tpe,
+                        "value__".into(),
+                    )),
                 }
             }
         }

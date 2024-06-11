@@ -306,16 +306,38 @@ impl<'a> Iterator for CILIterMut<'a> {
                             continue;
                         }
                     }
-                    CILRoot::SetField {
-                        addr: a, value: b, ..
-                    }
-                    | CILRoot::STIndI8(a, b)
+
+                    CILRoot::STIndI8(a, b)
                     | CILRoot::STIndI16(a, b)
                     | CILRoot::STIndI32(a, b)
                     | CILRoot::STIndI64(a, b)
                     | CILRoot::STIndISize(a, b)
                     | CILRoot::STIndF32(a, b)
-                    | CILRoot::STIndF64(a, b)
+                    | CILRoot::STIndF64(a, b) => match *idx {
+                        1 => {
+                            *idx += 1;
+                            self.elems.push((
+                                0,
+                                CILIterElemUnsafe::Node(std::ptr::from_mut(&mut *a), PhantomData),
+                            ));
+                            continue;
+                        }
+                        2 => {
+                            *idx += 1;
+                            self.elems.push((
+                                0,
+                                CILIterElemUnsafe::Node(std::ptr::from_mut(&mut *b), PhantomData),
+                            ));
+                            continue;
+                        }
+                        _ => {
+                            self.elems.pop();
+                            continue;
+                        }
+                    },
+                    CILRoot::SetField {
+                        addr: a, value: b, ..
+                    }
                     | CILRoot::STObj {
                         tpe: _,
                         addr_calc: a,
@@ -510,12 +532,12 @@ fn iter() {
     ));
     assert!(iter.next().is_none());
     let mut root = CILRoot::Call {
-        site: CallSite::new(
+        site: Box::new(CallSite::new(
             None,
             "bob".into(),
             FnSig::new(&[Type::I32, Type::F32], Type::Void),
             true,
-        ),
+        )),
         args: [CILNode::LdcI32(-77), CILNode::LdcF32(3.119765)].into(),
     };
     let mut iter = (&mut root).into_iter();

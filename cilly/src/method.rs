@@ -340,8 +340,8 @@ impl Method {
                             if *local == unaligned_local {
                                 // We replace seting *a* with an indirect wirte to allocation pointed to by *b*.
                                 *root = CILRoot::STObj {
-                                    addr_calc: CILNode::LDLoc(new_loc),
-                                    value_calc: tree.clone(),
+                                    addr_calc: Box::new(CILNode::LDLoc(new_loc)),
+                                    value_calc: Box::new(tree.clone()),
                                     tpe: Box::new(tpe.clone()),
                                 };
                             }
@@ -483,13 +483,13 @@ pub struct BlockMutGuard<'a> {
 }
 impl<'a> Drop for BlockMutGuard<'a> {
     fn drop(&mut self) {
-        self.method.blocks.iter_mut().for_each(|block| {
+        /*self.method.blocks.iter_mut().for_each(|block| {
             block
                 .trees_mut()
                 .retain(|tree| !matches!(tree.root(), CILRoot::Nop));
-        });
-        self.method.allocate_temporaries();
-        self.method.sheed_trees();
+        });*/
+        //self.method.allocate_temporaries();
+        //self.method.sheed_trees();
     }
 }
 impl<'a> DerefMut for BlockMutGuard<'a> {

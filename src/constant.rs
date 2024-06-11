@@ -100,17 +100,17 @@ pub(crate) fn load_const_value<'ctx>(
                 slice_type,
                 [
                     CILRoot::SetField {
-                        addr: CILNode::LoadAddresOfTMPLocal,
-                        value: conv_usize!(ldc_u64!(meta)),
-                        desc: metadata_field,
+                        addr: Box::new(CILNode::LoadAddresOfTMPLocal),
+                        value: Box::new(conv_usize!(ldc_u64!(meta))),
+                        desc: Box::new(metadata_field),
                     },
                     CILRoot::SetField {
-                        addr: CILNode::LoadAddresOfTMPLocal,
-                        value: CILNode::TransmutePtr {
+                        addr: Box::new(CILNode::LoadAddresOfTMPLocal),
+                        value: Box::new(CILNode::TransmutePtr {
                             val: Box::new(CILNode::LoadGlobalAllocPtr { alloc_id }),
                             new_ptr: Box::new(Type::Ptr(Type::Void.into())),
-                        },
-                        desc: ptr_field,
+                        }),
+                        desc: Box::new(ptr_field),
                     },
                 ]
                 .into(),

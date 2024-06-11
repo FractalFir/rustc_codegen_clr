@@ -448,7 +448,7 @@ pub fn handle_rvalue<'tcx>(
             let mut branches = Vec::new();
             for idx in 0..times {
                 branches.push(CILRoot::Call {
-                    site: CallSite::new(
+                    site: Box::new(CallSite::new(
                         Some(array_dotnet.clone()),
                         "set_Item".into(),
                         FnSig::new(
@@ -460,7 +460,7 @@ pub fn handle_rvalue<'tcx>(
                             Type::Void,
                         ),
                         false,
-                    ),
+                    )),
                     args: [
                         CILNode::LoadAddresOfTMPLocal,
                         conv_usize!(ldc_u64!(idx)),

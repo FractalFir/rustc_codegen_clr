@@ -14,8 +14,8 @@ crate::add_method_from_trees!(
                 CILRoot::BEq {
                     target: 1,
                     sub_target: 0,
-                    a: size_of!(Type::USize),
-                    b: size_of!(Type::U32)
+                    a: Box::new(size_of!(Type::USize)),
+                    b: Box::new(size_of!(Type::U32))
                 }
                 .into(),
                 CILRoot::Ret {

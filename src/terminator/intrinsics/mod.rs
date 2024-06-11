@@ -666,7 +666,11 @@ pub fn handle_intrinsic<'tyctx>(
             let val = handle_operand(&args[1].node, tyctx, body, method_instance, type_cache);
             let count = handle_operand(&args[2].node, tyctx, body, method_instance, type_cache)
                 * conv_usize!(size_of!(tpe));
-            CILRoot::InitBlk { dst, val, count }
+            CILRoot::InitBlk {
+                dst: Box::new(dst),
+                val: Box::new(val),
+                count: Box::new(count),
+            }
         }
         "copy" => {
             debug_assert_eq!(
@@ -688,9 +692,9 @@ pub fn handle_intrinsic<'tyctx>(
                 * conv_usize!(size_of!(tpe));
 
             CILRoot::CpBlk {
-                src,
-                dst,
-                len: count,
+                src: Box::new(src),
+                dst: Box::new(dst),
+                len: Box::new(count),
             }
         }
         "exact_div" => {
@@ -866,9 +870,15 @@ pub fn handle_intrinsic<'tyctx>(
             assert_eq!(*fld_desc.tpe(), src_type);
             // Set the value of the result.
             let set_val = CILRoot::SetField {
-                addr: place_adress(destination, tyctx, body, method_instance, type_cache),
-                value: exchange_res,
-                desc: fld_desc.clone(),
+                addr: Box::new(place_adress(
+                    destination,
+                    tyctx,
+                    body,
+                    method_instance,
+                    type_cache,
+                )),
+                value: Box::new(exchange_res),
+                desc: Box::new(fld_desc.clone()),
             };
             // Get the result back
             let val = CILNode::SubTrees(Box::new((
@@ -885,9 +895,15 @@ pub fn handle_intrinsic<'tyctx>(
             assert_eq!(*fld_desc.tpe(), Type::Bool);
 
             CILRoot::SetField {
-                addr: place_adress(destination, tyctx, body, method_instance, type_cache),
-                value: cmp,
-                desc: fld_desc.clone(),
+                addr: Box::new(place_adress(
+                    destination,
+                    tyctx,
+                    body,
+                    method_instance,
+                    type_cache,
+                )),
+                value: Box::new(cmp),
+                desc: Box::new(fld_desc.clone()),
             }
         }
         "atomic_xsub_release" => {
@@ -914,12 +930,12 @@ pub fn handle_intrinsic<'tyctx>(
         "atomic_fence_acquire" => {
             let thread = DotnetTypeRef::thread();
             CILRoot::Call {
-                site: CallSite::new(
+                site: Box::new(CallSite::new(
                     Some(thread),
                     "MemoryBarrier".into(),
                     FnSig::new(&[], Type::Void),
                     true,
-                ),
+                )),
                 args: [].into(),
             }
         }
@@ -1401,7 +1417,7 @@ pub fn handle_intrinsic<'tyctx>(
             let tpe = crate::utilis::monomorphize(&method_instance, pointed_ty, tyctx);
             let tpe = type_cache.type_from_cache(tpe, tyctx, method_instance);
             CILRoot::Call {
-                site: CallSite::builtin(
+                site: Box::new(CallSite::builtin(
                     "swap_at_generic".into(),
                     FnSig::new(
                         [
@@ -1412,7 +1428,7 @@ pub fn handle_intrinsic<'tyctx>(
                         Type::Void,
                     ),
                     true,
-                ),
+                )),
                 args: [
                     handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
                     handle_operand(&args[1].node, tyctx, body, method_instance, type_cache),
@@ -1488,8 +1504,8 @@ pub fn handle_intrinsic<'tyctx>(
             let _ = catch_fn;
             eprintln!("WARNING: catching unwinds currently not supported! the intrinic `catch_unwind` WILL NOT CATCH UNWINDS YET!");
             CILRoot::CallI {
-                sig: FnSig::new(&[Type::Ptr(Type::U8.into())], Type::Void),
-                fn_ptr: try_fn,
+                sig: Box::new(FnSig::new(&[Type::Ptr(Type::U8.into())], Type::Void)),
+                fn_ptr: Box::new(try_fn),
                 args: Box::new([data_ptr]),
             }
         }
@@ -1566,7 +1582,7 @@ fn intrinsic_slow<'tyctx>(
         let tpe = crate::utilis::monomorphize(&method_instance, pointed_ty, tyctx);
         let tpe = type_cache.type_from_cache(tpe, tyctx, method_instance);
         CILRoot::Call {
-            site: CallSite::builtin(
+            site: Box::new(CallSite::builtin(
                 "swap_at_generic".into(),
                 FnSig::new(
                     [
@@ -1577,7 +1593,7 @@ fn intrinsic_slow<'tyctx>(
                     Type::Void,
                 ),
                 true,
-            ),
+            )),
             args: [
                 handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
                 handle_operand(&args[1].node, tyctx, body, method_instance, type_cache),

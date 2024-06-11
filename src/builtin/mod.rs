@@ -42,23 +42,23 @@ add_method_from_trees!(
             .into(),
             // Blit loc1 into buffer
             CILRoot::CpBlk {
-                dst: CILNode::LDLoc(0),
-                src: CILNode::LDArg(0),
-                len: CILNode::LDArg(2)
+                dst: Box::new(CILNode::LDLoc(0)),
+                src: Box::new(CILNode::LDArg(0)),
+                len: Box::new(CILNode::LDArg(2))
             }
             .into(),
             // Blit loc2 into loc1
             CILRoot::CpBlk {
-                dst: CILNode::LDArg(0),
-                src: CILNode::LDArg(1),
-                len: CILNode::LDArg(2)
+                dst: Box::new(CILNode::LDArg(0)),
+                src: Box::new(CILNode::LDArg(1)),
+                len: Box::new(CILNode::LDArg(2))
             }
             .into(),
             // Blit buffer into loc2
             CILRoot::CpBlk {
-                dst: CILNode::LDArg(1),
-                src: CILNode::LDLoc(0),
-                len: CILNode::LDArg(2)
+                dst: Box::new(CILNode::LDArg(1)),
+                src: Box::new(CILNode::LDLoc(0)),
+                len: Box::new(CILNode::LDArg(2))
             }
             .into(),
             CILRoot::VoidRet.into(),
@@ -87,42 +87,42 @@ add_method_from_trees!(
                 }
                 .into(),
                 CILRoot::Call {
-                    site: CallSite::new_extern(
+                    site: Box::new(CallSite::new_extern(
                         DotnetTypeRef::console(),
                         "Write".into(),
                         FnSig::new(&[DotnetTypeRef::string_type().into()], Type::Void),
                         true
-                    ),
+                    )),
                     args: Box::new([CILNode::LdStr("Bounds check failed. idx:".into())])
                 }
                 .into(),
                 CILRoot::Call {
-                    site: CallSite::new_extern(
+                    site: Box::new(CallSite::new_extern(
                         DotnetTypeRef::console(),
                         "Write".into(),
                         FnSig::new(&[Type::U64], Type::Void),
                         true
-                    ),
+                    )),
                     args: Box::new([conv_usize!(CILNode::LDArg(0))])
                 }
                 .into(),
                 CILRoot::Call {
-                    site: CallSite::new_extern(
+                    site: Box::new(CallSite::new_extern(
                         DotnetTypeRef::console(),
                         "Write".into(),
                         FnSig::new(&[DotnetTypeRef::string_type().into()], Type::Void),
                         true
-                    ),
+                    )),
                     args: Box::new([CILNode::LdStr("len:".into())])
                 }
                 .into(),
                 CILRoot::Call {
-                    site: CallSite::new_extern(
+                    site: Box::new(CallSite::new_extern(
                         DotnetTypeRef::console(),
                         "WriteLine".into(),
                         FnSig::new(&[Type::U64], Type::Void),
                         true
-                    ),
+                    )),
                     args: Box::new([conv_usize!(CILNode::LDArg(1))])
                 }
                 .into(),
@@ -304,9 +304,9 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
                         }
                         .into(),
                         CILRoot::InitBlk {
-                            dst: CILNode::LDLoc(0),
-                            val: CILNode::LdcU32(0),
-                            count: CILNode::LDArg(0),
+                            dst: Box::new(CILNode::LDLoc(0)),
+                            val: Box::new(CILNode::LdcU32(0)),
+                            count: Box::new(CILNode::LDArg(0)),
                         }
                         .into(),
                         CILRoot::Ret {
@@ -352,12 +352,12 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
         vec![BasicBlock::new(
             vec![
                 CILRoot::Call {
-                    site: CallSite::new_extern(
+                    site: Box::new(CallSite::new_extern(
                         native_mem,
                         "AlignedFree".into(),
                         FnSig::new(&[Type::Ptr(Type::Void.into())], Type::Void),
                         true,
-                    ),
+                    )),
                     args: [CILNode::LDArg(0)].into(),
                 }
                 .into(),
@@ -383,12 +383,12 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
         vec![BasicBlock::new(
             vec![
                 CILRoot::Call {
-                    site: CallSite::new_extern(
+                    site: Box::new(CallSite::new_extern(
                         marshal,
                         "FreeHGlobal".into(),
                         FnSig::new(&[Type::ISize], Type::Void),
                         true,
-                    ),
+                    )),
                     args: [CILNode::LDArg(0)].into(),
                 }
                 .into(),
@@ -518,26 +518,26 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
                 vec![BasicBlock::new(
                     vec![
                         CILRoot::SetField {
-                            addr: CILNode::LDArg(0),
-                            value: CILNode::LDArg(1),
-                            desc: FieldDescriptor::new(
+                            addr: Box::new(CILNode::LDArg(0)),
+                            value: Box::new(CILNode::LDArg(1)),
+                            desc: Box::new(FieldDescriptor::new(
                                 unmanaged_start(),
                                 Type::DelegatePtr(Box::new(FnSig::new(
                                     &[Type::Ptr(Box::new(Type::Void))],
                                     Type::Void,
                                 ))),
                                 "start_fn".into(),
-                            ),
+                            )),
                         }
                         .into(),
                         CILRoot::SetField {
-                            addr: CILNode::LDArg(0),
-                            value: CILNode::LDArg(2),
-                            desc: FieldDescriptor::new(
+                            addr: Box::new(CILNode::LDArg(0)),
+                            value: Box::new(CILNode::LDArg(2)),
+                            desc: Box::new(FieldDescriptor::new(
                                 unmanaged_start(),
                                 Type::Ptr(Box::new(Type::Void)),
                                 "data".into(),
-                            ),
+                            )),
                         }
                         .into(),
                         CILRoot::VoidRet.into(),
@@ -556,8 +556,11 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
                 vec![BasicBlock::new(
                     vec![
                         CILRoot::CallI {
-                            sig: FnSig::new(&[Type::Ptr(Box::new(Type::Void))], Type::Void),
-                            fn_ptr: ld_field!(
+                            sig: Box::new(FnSig::new(
+                                &[Type::Ptr(Box::new(Type::Void))],
+                                Type::Void,
+                            )),
+                            fn_ptr: Box::new(ld_field!(
                                 CILNode::LDArg(0),
                                 FieldDescriptor::new(
                                     unmanaged_start(),
@@ -567,7 +570,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
                                     ))),
                                     "start_fn".into(),
                                 )
-                            ),
+                            )),
                             args: [ld_field!(
                                 CILNode::LDArg(0),
                                 FieldDescriptor::new(
@@ -611,12 +614,12 @@ add_method_from_trees!(
                 }
                 .into(),
                 CILRoot::Call {
-                    site: CallSite::new_extern(
+                    site: Box::new(CallSite::new_extern(
                         DotnetTypeRef::console(),
                         "Write".into(),
                         FnSig::new(&[Type::DotnetChar], Type::Void),
                         true
-                    ),
+                    )),
                     args: [CILNode::LDIndI8 {
                         ptr: CILNode::LDArg(0).into()
                     }]
@@ -721,7 +724,7 @@ add_method_from_trees!(
             }
             .into(),
             CILRoot::CallVirt {
-                site: CallSite::new(
+                site: Box::new(CallSite::new(
                     Some(DotnetTypeRef::thread()),
                     "Start".into(),
                     FnSig::new(
@@ -729,7 +732,7 @@ add_method_from_trees!(
                         Type::Void
                     ),
                     false
-                ),
+                )),
                 args: [CILNode::LDLoc(0)].into(),
             }
             .into(),
@@ -790,9 +793,9 @@ add_method_from_trees!(
     vec![BasicBlock::new(
         vec![
             CILRoot::InitBlk {
-                dst: CILNode::LDArg(0),
-                val: ldc_u32!(0),
-                count: size_of!(Type::USize) * ldc_i32!(3)
+                dst: Box::new(CILNode::LDArg(0)),
+                val: Box::new(ldc_u32!(0)),
+                count: Box::new(size_of!(Type::USize) * ldc_i32!(3))
             }
             .into(),
             CILRoot::Ret { tree: ldc_i32!(0) }.into()

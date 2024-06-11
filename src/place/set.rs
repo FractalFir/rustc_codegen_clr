@@ -68,9 +68,9 @@ pub fn place_elem_set<'a>(
                     type_cache,
                 );
                 CILRoot::SetField {
-                    addr: addr_calc,
-                    value: value_calc,
-                    desc: field_desc,
+                    addr: Box::new(addr_calc),
+                    value: Box::new(value_calc),
+                    desc: Box::new(field_desc),
                 }
             }
             super::PlaceTy::EnumVariant(enm, var_idx) => {
@@ -85,9 +85,9 @@ pub fn place_elem_set<'a>(
                 );
 
                 CILRoot::SetField {
-                    addr: addr_calc,
-                    value: value_calc,
-                    desc: field_desc,
+                    addr: Box::new(addr_calc),
+                    value: Box::new(value_calc),
+                    desc: Box::new(field_desc),
                 }
             }
         },
@@ -130,7 +130,7 @@ pub fn place_elem_set<'a>(
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
 
                     CILRoot::Call {
-                        site: CallSite::new(
+                        site: Box::new(CallSite::new(
                             Some(array_dotnet),
                             "set_Item".into(),
                             FnSig::new(
@@ -138,7 +138,7 @@ pub fn place_elem_set<'a>(
                                 Type::Void,
                             ),
                             false,
-                        ),
+                        )),
                         args: [addr_calc, index, value_calc].into(),
                     }
                 }
@@ -200,7 +200,7 @@ pub fn place_elem_set<'a>(
                     let array_type = type_cache.type_from_cache(curr_ty, ctx, method_instance);
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
                     CILRoot::Call {
-                        site: CallSite::new(
+                        site: Box::new(CallSite::new(
                             Some(array_dotnet),
                             "set_Item".into(),
                             FnSig::new(
@@ -208,7 +208,7 @@ pub fn place_elem_set<'a>(
                                 Type::Void,
                             ),
                             false,
-                        ),
+                        )),
                         args: [addr_calc, conv_usize!(index), value_calc].into(),
                     }
                 }
@@ -260,8 +260,8 @@ pub fn ptr_set_op<'ctx>(
                 IntTy::Isize => CILRoot::STIndISize(addr_calc, value_calc),
                 IntTy::I128 => CILRoot::STObj {
                     tpe: Box::new(DotnetTypeRef::int_128().into()),
-                    addr_calc,
-                    value_calc,
+                    addr_calc: Box::new(addr_calc),
+                    value_calc: Box::new(value_calc),
                 },
             },
             TyKind::Uint(int_ty) => match int_ty {
@@ -272,8 +272,8 @@ pub fn ptr_set_op<'ctx>(
                 UintTy::Usize => CILRoot::STIndISize(addr_calc, value_calc),
                 UintTy::U128 => CILRoot::STObj {
                     tpe: Box::new(DotnetTypeRef::uint_128().into()),
-                    addr_calc,
-                    value_calc,
+                    addr_calc: Box::new(addr_calc),
+                    value_calc: Box::new(value_calc),
                 },
             },
             TyKind::Float(float_ty) => match float_ty {
@@ -289,8 +289,8 @@ pub fn ptr_set_op<'ctx>(
                     type_cache.type_from_cache(pointed_type, tyctx, *method_instance);
                 CILRoot::STObj {
                     tpe: pointed_type.into(),
-                    addr_calc,
-                    value_calc,
+                    addr_calc: Box::new(addr_calc),
+                    value_calc: Box::new(value_calc),
                 }
             }
             TyKind::Ref(_, inner, _) => {
@@ -299,8 +299,8 @@ pub fn ptr_set_op<'ctx>(
                         tpe: type_cache
                             .type_from_cache(pointed_type, tyctx, *method_instance)
                             .into(),
-                        addr_calc,
-                        value_calc,
+                        addr_calc: Box::new(addr_calc),
+                        value_calc: Box::new(value_calc),
                     }
                 } else {
                     CILRoot::STIndISize(addr_calc, value_calc)
@@ -312,8 +312,8 @@ pub fn ptr_set_op<'ctx>(
                         tpe: type_cache
                             .type_from_cache(pointed_type, tyctx, *method_instance)
                             .into(),
-                        addr_calc,
-                        value_calc,
+                        addr_calc: Box::new(addr_calc),
+                        value_calc: Box::new(value_calc),
                     }
                 } else {
                     CILRoot::STIndISize(addr_calc, value_calc)

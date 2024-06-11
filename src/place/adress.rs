@@ -261,18 +261,20 @@ pub fn place_elem_adress<'ctx>(
                     curr_type,
                     [
                         CILRoot::SetField {
-                            addr: CILNode::LoadAddresOfTMPLocal,
-                            value: CILNode::Sub(
+                            addr: Box::new(CILNode::LoadAddresOfTMPLocal),
+                            value: Box::new(CILNode::Sub(
                                 Box::new(ld_field!(addr_calc.clone(), metadata_field.clone())),
                                 Box::new(conv_usize!(ldc_u64!(*to + 1))),
-                            ),
-                            desc: metadata_field,
+                            )),
+                            desc: Box::new(metadata_field),
                         },
                         CILRoot::SetField {
-                            addr: CILNode::LoadAddresOfTMPLocal,
-                            value: ld_field!(addr_calc, ptr_field.clone())
-                                + conv_usize!(ldc_u64!(*from)),
-                            desc: ptr_field.clone(),
+                            addr: Box::new(CILNode::LoadAddresOfTMPLocal),
+                            value: Box::new(
+                                ld_field!(addr_calc, ptr_field.clone())
+                                    + conv_usize!(ldc_u64!(*from)),
+                            ),
+                            desc: Box::new(ptr_field.clone()),
                         },
                     ]
                     .into(),
@@ -290,15 +292,17 @@ pub fn place_elem_adress<'ctx>(
                     curr_type,
                     [
                         CILRoot::SetField {
-                            addr: CILNode::LoadAddresOfTMPLocal,
-                            value: conv_usize!(ldc_u64!(to - from)),
-                            desc: metadata_field,
+                            addr: Box::new(CILNode::LoadAddresOfTMPLocal),
+                            value: Box::new(conv_usize!(ldc_u64!(to - from))),
+                            desc: Box::new(metadata_field),
                         },
                         CILRoot::SetField {
-                            addr: CILNode::LoadAddresOfTMPLocal,
-                            value: ld_field!(addr_calc, ptr_field.clone())
-                                + conv_usize!(ldc_u64!(*from)),
-                            desc: ptr_field.clone(),
+                            addr: Box::new(CILNode::LoadAddresOfTMPLocal),
+                            value: Box::new(
+                                ld_field!(addr_calc, ptr_field.clone())
+                                    + conv_usize!(ldc_u64!(*from)),
+                            ),
+                            desc: Box::new(ptr_field.clone()),
                         },
                     ]
                     .into(),

@@ -389,9 +389,9 @@ pub fn add_fn<'tyctx>(
             }
             repack_cil.push(
                 CILRoot::SetField {
-                    addr: CILNode::LDLocA(repacked),
-                    value: CILNode::LDArg((spread_arg.as_u32() - 1) + arg_id),
-                    desc: arg_field,
+                    addr: Box::new(CILNode::LDLocA(repacked)),
+                    value: Box::new(CILNode::LDArg((spread_arg.as_u32() - 1) + arg_id)),
+                    desc: Box::new(arg_field),
                 }
                 .into(),
             );
@@ -573,7 +573,7 @@ pub fn add_allocation(
             // Append initailzer
             trees.push(
                 CILRoot::SetStaticField {
-                    descr: field_desc.clone(),
+                    descr: Box::new(field_desc.clone()),
                     value: call!(
                         CallSite::new(
                             None,
@@ -720,12 +720,14 @@ pub fn add_const_value(asm: &mut Assembly, bytes: u128, tyctx: TyCtxt) -> Static
             // Append initailzer
             trees.push(
                 CILRoot::SetStaticField {
-                    descr: StaticFieldDescriptor::new(
-                        None,
-                        Type::Ptr(Type::U8.into()),
-                        alloc_fld.clone(),
-                    )
-                    .clone(),
+                    descr: Box::new(
+                        StaticFieldDescriptor::new(
+                            None,
+                            Type::Ptr(Type::U8.into()),
+                            alloc_fld.clone(),
+                        )
+                        .clone(),
+                    ),
                     value: call!(
                         CallSite::new(
                             None,

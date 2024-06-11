@@ -77,7 +77,7 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
             vec![BasicBlock::new(
                 vec![
                     CILRoot::Call {
-                        site: entrypoint.clone(),
+                        site: Box::new(entrypoint.clone()),
                         args: [].into(),
                     }
                     .into(),

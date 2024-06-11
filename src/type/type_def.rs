@@ -187,15 +187,17 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
                 vec![
                     CILRoot::STObj {
                         tpe: element.clone().into(),
-                        addr_calc: conv_usize!(ld_field_address!(
-                            CILNode::LDArg(0),
-                            FieldDescriptor::boxed(
-                                (&def).into(),
-                                element.clone(),
-                                "f_0".to_string().into(),
-                            )
-                        )) + CILNode::LDArg(1) * size_of!(element.clone()),
-                        value_calc: CILNode::LDArg(2),
+                        addr_calc: Box::new(
+                            conv_usize!(ld_field_address!(
+                                CILNode::LDArg(0),
+                                FieldDescriptor::boxed(
+                                    (&def).into(),
+                                    element.clone(),
+                                    "f_0".to_string().into(),
+                                )
+                            )) + CILNode::LDArg(1) * size_of!(element.clone()),
+                        ),
+                        value_calc: Box::new(CILNode::LDArg(2)),
                     }
                     .into(),
                     CILRoot::VoidRet.into(),

@@ -127,13 +127,13 @@ pub(crate) fn binop<'tyctx>(
             CILNode::TemporaryLocal(Box::new((
                 ordering_type.clone(),
                 [CILRoot::SetField {
-                    addr: CILNode::LoadAddresOfTMPLocal,
-                    value: res,
-                    desc: FieldDescriptor::new(
+                    addr: Box::new(CILNode::LoadAddresOfTMPLocal),
+                    value: Box::new(res),
+                    desc: Box::new(FieldDescriptor::new(
                         ordering_type.as_dotnet().unwrap(),
                         Type::I8,
                         "value__".into(),
-                    ),
+                    )),
                 }]
                 .into(),
                 CILNode::LoadTMPLocal,

@@ -85,8 +85,8 @@ pub fn handle_call_terminator<'tycxt>(
             if *sig.output() == crate::r#type::Type::Void {
                 trees.push(
                     CILRoot::CallI {
-                        sig: sig.clone(),
-                        fn_ptr: called_operand,
+                        sig: Box::new(sig.clone()),
+                        fn_ptr: Box::new(called_operand),
                         args: arg_operands.into(),
                     }
                     .into(),
@@ -114,7 +114,7 @@ pub fn handle_call_terminator<'tycxt>(
     if cilly::mem_checks() {
         trees.push(
             CILRoot::Call {
-                site: CallSite::mcheck_check_all(),
+                site: Box::new(CallSite::mcheck_check_all()),
                 args: [].into(),
             }
             .into(),
@@ -266,8 +266,11 @@ pub fn handle_terminator<'ctx>(
                         };
                         vec![
                             CILRoot::CallI {
-                                sig: FnSig::new([Type::Ptr(Box::new(Type::Void))], Type::Void),
-                                fn_ptr: drop_fn_ptr,
+                                sig: Box::new(FnSig::new(
+                                    [Type::Ptr(Box::new(Type::Void))],
+                                    Type::Void,
+                                )),
+                                fn_ptr: Box::new(drop_fn_ptr),
                                 args: [obj_ptr].into(),
                             }
                             .into(),
@@ -293,7 +296,7 @@ pub fn handle_terminator<'ctx>(
                             crate::utilis::function_name(tyctx.symbol_name(drop_instance));
                         vec![
                             CILRoot::Call {
-                                site: CallSite::new(None, function_name, sig, true),
+                                site: Box::new(CallSite::new(None, function_name, sig, true)),
                                 args: [crate::place::place_adress(
                                     place,
                                     tyctx,

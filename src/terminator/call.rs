@@ -59,7 +59,7 @@ fn call_managed<'tyctx>(
         );
         if *signature.output() == crate::r#type::Type::Void {
             CILRoot::Call {
-                site: call_site,
+                site: Box::new(call_site),
                 args: [].into(),
             }
         } else {
@@ -93,7 +93,7 @@ fn call_managed<'tyctx>(
         );
         if *signature.output() == crate::r#type::Type::Void {
             CILRoot::Call {
-                site: call,
+                site: Box::new(call),
                 args: call_args.into(),
             }
         } else {
@@ -148,7 +148,7 @@ fn callvirt_managed<'tyctx>(
         );
         if *signature.output() == crate::r#type::Type::Void {
             CILRoot::CallVirt {
-                site: call,
+                site: Box::new(call),
                 args: [].into(),
             }
         } else {
@@ -182,7 +182,7 @@ fn callvirt_managed<'tyctx>(
         );
         if *signature.output() == crate::r#type::Type::Void {
             CILRoot::CallVirt {
-                site: call,
+                site: Box::new(call),
                 args: call_args.into(),
             }
         } else {
@@ -356,7 +356,7 @@ pub fn call_closure<'tyctx>(
 
     if is_void {
         CILRoot::Call {
-            site: call,
+            site: Box::new(call),
             args: call_args.into(),
         }
     } else {
@@ -516,8 +516,8 @@ pub fn call<'tyctx>(
         let is_ret_void = matches!(signature.output(), crate::r#type::Type::Void);
         return if is_ret_void {
             CILRoot::CallI {
-                sig: signature,
-                fn_ptr,
+                sig: Box::new(signature),
+                fn_ptr: Box::new(fn_ptr),
                 args: call_args.into(),
             }
         } else {
@@ -667,7 +667,7 @@ pub fn call<'tyctx>(
     // Hande
     if is_void {
         CILRoot::Call {
-            site: call_site,
+            site: Box::new(call_site),
             args: call_args.into(),
         }
     } else {

@@ -27,71 +27,72 @@ pub enum CILRoot {
     BEq {
         target: u32,
         sub_target: u32,
-        a: CILNode,
-        b: CILNode,
+        a: Box<CILNode>,
+        b: Box<CILNode>,
     },
     BLt {
         target: u32,
         sub_target: u32,
-        a: CILNode,
-        b: CILNode,
+        a: Box<CILNode>,
+        b: Box<CILNode>,
     },
     BLtUn {
         target: u32,
         sub_target: u32,
-        a: CILNode,
-        b: CILNode,
+        a: Box<CILNode>,
+        b: Box<CILNode>,
     },
     BGt {
         target: u32,
         sub_target: u32,
-        a: CILNode,
-        b: CILNode,
+        a: Box<CILNode>,
+        b: Box<CILNode>,
     },
     BGtUn {
         target: u32,
         sub_target: u32,
-        a: CILNode,
-        b: CILNode,
+        a: Box<CILNode>,
+        b: Box<CILNode>,
     },
     BLe {
         target: u32,
         sub_target: u32,
-        a: CILNode,
-        b: CILNode,
+        a: Box<CILNode>,
+        b: Box<CILNode>,
     },
     BGe {
         target: u32,
         sub_target: u32,
-        a: CILNode,
-        b: CILNode,
+        a: Box<CILNode>,
+        b: Box<CILNode>,
     },
     BNe {
         target: u32,
         sub_target: u32,
-        a: CILNode,
-        b: CILNode,
+        a: Box<CILNode>,
+        b: Box<CILNode>,
     },
     GoTo {
         target: u32,
         sub_target: u32,
     },
+
     Call {
-        site: CallSite,
+        site: Box<CallSite>,
         args: Box<[CILNode]>,
     },
     SetField {
-        addr: CILNode,
-        value: CILNode,
-        desc: FieldDescriptor,
+        addr: Box<CILNode>,
+        value: Box<CILNode>,
+        desc: Box<FieldDescriptor>,
     },
     SetTMPLocal {
         value: CILNode,
     },
     CpBlk {
-        dst: CILNode,
-        src: CILNode,
-        len: CILNode,
+        dst: Box<CILNode>,
+        src: Box<CILNode>,
+        len: Box<CILNode>,
     },
     STIndI8(CILNode, CILNode),
     STIndI16(CILNode, CILNode),
@@ -102,8 +103,8 @@ pub enum CILRoot {
     STIndF32(CILNode, CILNode),
     STObj {
         tpe: Box<Type>,
-        addr_calc: CILNode,
-        value_calc: CILNode,
+        addr_calc: Box<CILNode>,
+        value_calc: Box<CILNode>,
     },
     STArg {
         arg: u32,
@@ -112,12 +113,12 @@ pub enum CILRoot {
     Break,
     Nop,
     InitBlk {
-        dst: CILNode,
-        val: CILNode,
-        count: CILNode,
+        dst: Box<CILNode>,
+        val: Box<CILNode>,
+        count: Box<CILNode>,
     },
     CallVirt {
-        site: CallSite,
+        site: Box<CallSite>,
         args: Box<[CILNode]>,
     },
     Ret {
@@ -130,8 +131,8 @@ pub enum CILRoot {
     Throw(CILNode),
     ReThrow,
     CallI {
-        sig: FnSig,
-        fn_ptr: CILNode,
+        sig: Box<FnSig>,
+        fn_ptr: Box<CILNode>,
         args: Box<[CILNode]>,
     },
     JumpingPad {
@@ -139,7 +140,7 @@ pub enum CILRoot {
         target: u32,
     },
     SetStaticField {
-        descr: StaticFieldDescriptor,
+        descr: Box<StaticFieldDescriptor>,
         value: CILNode,
     },
     SourceFileInfo(SFI),
@@ -163,8 +164,8 @@ impl CILRoot {
                         *self = CILRoot::BEq {
                             target: *target,
                             sub_target: *sub_target,
-                            a: *a.clone(),
-                            b: *b.clone(),
+                            a: Box::new(*a.clone()),
+                            b: Box::new(*b.clone()),
                         };
                         *opt_count += 1;
                     }
@@ -172,8 +173,8 @@ impl CILRoot {
                         *self = CILRoot::BLt {
                             target: *target,
                             sub_target: *sub_target,
-                            a: *a.clone(),
-                            b: *b.clone(),
+                            a: Box::new(*a.clone()),
+                            b: Box::new(*b.clone()),
                         };
                         *opt_count += 1;
                     }
@@ -181,8 +182,8 @@ impl CILRoot {
                         *self = CILRoot::BLtUn {
                             target: *target,
                             sub_target: *sub_target,
-                            a: *a.clone(),
-                            b: *b.clone(),
+                            a: Box::new(*a.clone()),
+                            b: Box::new(*b.clone()),
                         };
                         *opt_count += 1;
                     }
@@ -190,8 +191,8 @@ impl CILRoot {
                         *self = CILRoot::BGt {
                             target: *target,
                             sub_target: *sub_target,
-                            a: *a.clone(),
-                            b: *b.clone(),
+                            a: Box::new(*a.clone()),
+                            b: Box::new(*b.clone()),
                         };
                         *opt_count += 1;
                     }
@@ -199,8 +200,8 @@ impl CILRoot {
                         *self = CILRoot::BGtUn {
                             target: *target,
                             sub_target: *sub_target,
-                            a: *a.clone(),
-                            b: *b.clone(),
+                            a: Box::new(*a.clone()),
+                            b: Box::new(*b.clone()),
                         };
                         *opt_count += 1;
                     }
@@ -218,8 +219,8 @@ impl CILRoot {
                         *self = CILRoot::BNe {
                             target: *target,
                             sub_target: *sub_target,
-                            a: *a.clone(),
-                            b: *b.clone(),
+                            a: Box::new(*a.clone()),
+                            b: Box::new(*b.clone()),
                         };
                         *opt_count += 1;
                     }
@@ -227,8 +228,8 @@ impl CILRoot {
                         *self = CILRoot::BGe {
                             target: *target,
                             sub_target: *sub_target,
-                            a: *a.clone(),
-                            b: *b.clone(),
+                            a: Box::new(*a.clone()),
+                            b: Box::new(*b.clone()),
                         };
                         *opt_count += 1;
                     }
@@ -236,8 +237,8 @@ impl CILRoot {
                         *self = CILRoot::BLe {
                             target: *target,
                             sub_target: *sub_target,
-                            a: *a.clone(),
-                            b: *b.clone(),
+                            a: Box::new(*a.clone()),
+                            b: Box::new(*b.clone()),
                         };
                         *opt_count += 1;
                     }
@@ -252,7 +253,7 @@ impl CILRoot {
             } => {
                 a.opt(opt_count);
                 b.opt(opt_count);
-                match (a, b) {
+                match (a.as_mut(), b.as_mut()) {
                     (CILNode::LdcU32(0) | CILNode::LdFalse, cond)
                     | (cond, CILNode::LdcU32(0) | CILNode::LdFalse) => {
                         *self = CILRoot::BFalse {
@@ -340,10 +341,10 @@ impl CILRoot {
                 fld_addr.opt(opt_count);
                 value.opt(opt_count);
 
-                if let CILNode::ZeroExtendToUSize(addr) = fld_addr {
+                if let CILNode::MRefToRawPtr(addr) = fld_addr.as_mut() {
                     match addr.as_mut() {
                         CILNode::LDLocA(_) | CILNode::LDFieldAdress { .. } => {
-                            *fld_addr = addr.as_ref().clone();
+                            *fld_addr = Box::new(addr.as_ref().clone());
                         }
                         _ => (),
                     }
@@ -427,7 +428,7 @@ impl CILRoot {
         let message_or_check = if crate::mem_checks() {
             CILNode::SubTrees(Box::new((
                 [Self::Call {
-                    site: CallSite::mcheck_check_all(),
+                    site: Box::new(CallSite::mcheck_check_all()),
                     args: [].into(),
                 }]
                 .into(),
@@ -437,7 +438,7 @@ impl CILRoot {
             CILNode::LdStr(msg.into())
         };
         Self::Call {
-            site: CallSite::new_extern(class, name, signature, true),
+            site: Box::new(CallSite::new_extern(class, name, signature, true)),
             args: [message_or_check].into(),
         }
     }
@@ -554,8 +555,11 @@ impl CILRoot {
             | Self::STIndI64(addr_calc, value_calc)
             | Self::STIndISize(addr_calc, value_calc)
             | Self::STIndF64(addr_calc, value_calc)
-            | Self::STIndF32(addr_calc, value_calc)
-            | Self::STObj {
+            | Self::STIndF32(addr_calc, value_calc) => {
+                addr_calc.allocate_tmps(curr_loc, locals);
+                value_calc.allocate_tmps(curr_loc, locals);
+            }
+            Self::STObj {
                 addr_calc,
                 value_calc,
                 ..
@@ -657,15 +661,15 @@ mod tests {
             cond: CILNode::Eq(Box::new(CILNode::LDArg(0)), Box::new(CILNode::LDArg(1))),
         };
         comparison.opt(&mut opt_count);
-        assert!(matches!(
+        assert_eq!(
             comparison,
             CILRoot::BEq {
                 target: 1,
                 sub_target: 0,
-                a: CILNode::LDArg(0),
-                b: CILNode::LDArg(1)
+                a: Box::new(CILNode::LDArg(0)),
+                b: Box::new(CILNode::LDArg(1))
             }
-        ))
+        )
     }
     #[test]
     fn optimize_lt_branch() {
@@ -676,15 +680,15 @@ mod tests {
             cond: CILNode::Lt(Box::new(CILNode::LDArg(0)), Box::new(CILNode::LDArg(1))),
         };
         comparison.opt(&mut opt_count);
-        assert!(matches!(
+        assert_eq!(
             comparison,
             CILRoot::BLt {
                 target: 1,
                 sub_target: 0,
-                a: CILNode::LDArg(0),
-                b: CILNode::LDArg(1)
+                a: Box::new(CILNode::LDArg(0)),
+                b: Box::new(CILNode::LDArg(1))
             }
-        ))
+        )
     }
     #[test]
     fn optimize_gt_branch() {
@@ -695,15 +699,15 @@ mod tests {
             cond: CILNode::Gt(Box::new(CILNode::LDArg(0)), Box::new(CILNode::LDArg(1))),
         };
         comparison.opt(&mut opt_count);
-        assert!(matches!(
+        assert_eq!(
             comparison,
             CILRoot::BGt {
                 target: 1,
                 sub_target: 0,
-                a: CILNode::LDArg(0),
-                b: CILNode::LDArg(1)
+                a: Box::new(CILNode::LDArg(0)),
+                b: Box::new(CILNode::LDArg(1))
             }
-        ))
+        )
     }
     #[test]
     fn optimize_lt_un_branch() {
@@ -714,15 +718,15 @@ mod tests {
             cond: CILNode::LtUn(Box::new(CILNode::LDArg(0)), Box::new(CILNode::LDArg(1))),
         };
         comparison.opt(&mut opt_count);
-        assert!(matches!(
+        assert_eq!(
             comparison,
             CILRoot::BLtUn {
                 target: 1,
                 sub_target: 0,
-                a: CILNode::LDArg(0),
-                b: CILNode::LDArg(1)
+                a: Box::new(CILNode::LDArg(0)),
+                b: Box::new(CILNode::LDArg(1))
             }
-        ))
+        )
     }
     #[test]
     fn optimize_gt_un_branch() {
@@ -733,15 +737,15 @@ mod tests {
             cond: CILNode::GtUn(Box::new(CILNode::LDArg(0)), Box::new(CILNode::LDArg(1))),
         };
         comparison.opt(&mut opt_count);
-        assert!(matches!(
+        assert_eq!(
             comparison,
             CILRoot::BGtUn {
                 target: 1,
                 sub_target: 0,
-                a: CILNode::LDArg(0),
-                b: CILNode::LDArg(1)
+                a: Box::new(CILNode::LDArg(0)),
+                b: Box::new(CILNode::LDArg(1))
             }
-        ))
+        )
     }
     #[test]
     fn optimize_ne_branch() {
@@ -752,15 +756,15 @@ mod tests {
             cond: CILNode::Eq(Box::new(CILNode::LDArg(0)), Box::new(CILNode::LDArg(1))),
         };
         comparison.opt(&mut opt_count);
-        assert!(matches!(
+        assert_eq!(
             comparison,
             CILRoot::BNe {
                 target: 1,
                 sub_target: 0,
-                a: CILNode::LDArg(0),
-                b: CILNode::LDArg(1)
+                a: Box::new(CILNode::LDArg(0)),
+                b: Box::new(CILNode::LDArg(1))
             }
-        ))
+        )
     }
     #[test]
     fn optimize_not_lt_branch() {
@@ -771,15 +775,15 @@ mod tests {
             cond: CILNode::Lt(Box::new(CILNode::LDArg(0)), Box::new(CILNode::LDArg(1))),
         };
         comparison.opt(&mut opt_count);
-        assert!(matches!(
+        assert_eq!(
             comparison,
             CILRoot::BGe {
                 target: 1,
                 sub_target: 0,
-                a: CILNode::LDArg(0),
-                b: CILNode::LDArg(1)
+                a: Box::new(CILNode::LDArg(0)),
+                b: Box::new(CILNode::LDArg(1))
             }
-        ))
+        )
     }
     #[test]
     fn optimize_not_gt_branch() {
@@ -790,14 +794,14 @@ mod tests {
             cond: CILNode::Gt(Box::new(CILNode::LDArg(0)), Box::new(CILNode::LDArg(1))),
         };
         comparison.opt(&mut opt_count);
-        assert!(matches!(
+        assert_eq!(
             comparison,
             CILRoot::BLe {
                 target: 1,
                 sub_target: 0,
-                a: CILNode::LDArg(0),
-                b: CILNode::LDArg(1)
+                a: Box::new(CILNode::LDArg(0)),
+                b: Box::new(CILNode::LDArg(1))
             }
-        ))
+        )
     }
 }

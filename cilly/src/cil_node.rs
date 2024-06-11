@@ -64,6 +64,7 @@ pub enum CILNode {
         ptr: Box<Self>,
     },
     /// Loads a isize from a pointer
+    // 24 bytes, consider shrinking?
     LDIndPtr {
         /// Address of the value
         ptr: Box<Self>,
@@ -75,6 +76,7 @@ pub enum CILNode {
         ptr: Box<Self>,
     },
     /// Loads an object from a pointer
+    // 24 bytes, consider shrinking?
     LdObj {
         /// Address of the value
         ptr: Box<Self>,
@@ -91,18 +93,23 @@ pub enum CILNode {
         /// Address of the value
         ptr: Box<Self>,
     },
+    /// Loads the address of `field` of the object `addr` points to
     LDFieldAdress {
         /// Address of the object
         addr: Box<Self>,
         field: Box<FieldDescriptor>,
     },
+    /// Loads the value of `field` of the object `addr` points to
     LDField {
         /// Address of the object
         addr: Box<Self>,
         field: Box<FieldDescriptor>,
     },
+    /// Adds 2 values together
     Add(Box<Self>, Box<Self>),
+    /// Binary-ands 2 values together
     And(Box<Self>, Box<Self>),
+    /// Subtracts lhs from rhs
     Sub(Box<Self>, Box<Self>),
     Mul(Box<Self>, Box<Self>),
     Div(Box<Self>, Box<Self>),
@@ -139,7 +146,7 @@ pub enum CILNode {
     ConvI32(Box<Self>),
     ConvI64(Box<Self>),
     ConvISize(Box<Self>),
-    //Volatile(Box<Self>),
+
     Neg(Box<Self>),
     Not(Box<Self>),
     Eq(Box<Self>, Box<Self>),

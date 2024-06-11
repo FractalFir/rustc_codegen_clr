@@ -518,7 +518,7 @@ impl<'asm> InterpreterState<'asm> {
                 CILRoot::SetStaticField { descr, value } => {
                     assert_eq!(self.locals.len(), self.call_stack.len());
                     let val = eval_node(value, self, args)?;
-                    self.fields.insert(descr.clone(), val);
+                    self.fields.insert(*descr.clone(), val);
                 }
                 CILRoot::Pop { tree } => {
                     assert_eq!(self.locals.len(), self.call_stack.len());

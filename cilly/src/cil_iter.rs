@@ -173,18 +173,35 @@ impl<'a> Iterator for CILIter<'a> {
                     CILRoot::SetField {
                         addr: a, value: b, ..
                     }
-                    | CILRoot::STIndI8(a, b)
-                    | CILRoot::STIndI16(a, b)
-                    | CILRoot::STIndI32(a, b)
-                    | CILRoot::STIndI64(a, b)
-                    | CILRoot::STIndISize(a, b)
-                    | CILRoot::STIndF32(a, b)
-                    | CILRoot::STIndF64(a, b)
                     | CILRoot::STObj {
                         tpe: _,
                         addr_calc: a,
                         value_calc: b,
                     },
+                ) => match idx {
+                    1 => {
+                        *idx += 1;
+                        self.elems.push((0, CILIterElem::Node(a)));
+                        continue;
+                    }
+                    2 => {
+                        *idx += 1;
+                        self.elems.push((0, CILIterElem::Node(b)));
+                        continue;
+                    }
+                    _ => {
+                        self.elems.pop();
+                        continue;
+                    }
+                },
+                CILIterElem::Root(
+                    CILRoot::STIndI8(a, b)
+                    | CILRoot::STIndI16(a, b)
+                    | CILRoot::STIndI32(a, b)
+                    | CILRoot::STIndI64(a, b)
+                    | CILRoot::STIndISize(a, b)
+                    | CILRoot::STIndF32(a, b)
+                    | CILRoot::STIndF64(a, b),
                 ) => match idx {
                     1 => {
                         *idx += 1;
@@ -496,12 +513,12 @@ fn iter() {
     ));
     assert!(matches!(iter.next(), None));
     let root = CILRoot::Call {
-        site: CallSite::new(
+        site: Box::new(CallSite::new(
             None,
             "bob".into(),
             FnSig::new(&[Type::I32, Type::F32], Type::Void),
             true,
-        ),
+        )),
         args: [CILNode::LdcI32(-77), CILNode::LdcF32(3.119765)].into(),
     };
     let mut iter = root.into_iter();

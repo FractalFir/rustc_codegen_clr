@@ -129,9 +129,9 @@ pub fn handle_statement<'tcx>(
 
                     Some(
                         CILRoot::CpBlk {
-                            src: src_op,
-                            dst: dst_op,
-                            len: count_op * size_of!(pointed),
+                            src: Box::new(src_op),
+                            dst: Box::new(dst_op),
+                            len: Box::new(count_op * size_of!(pointed)),
                         }
                         .into(),
                     )
