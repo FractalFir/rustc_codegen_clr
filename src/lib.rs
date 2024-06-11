@@ -1,5 +1,6 @@
 #![feature(rustc_private)]
 #![feature(let_chains)]
+#![warn(clippy::pedantic)]
 // Used for handling some configs. Will be refactored later.
 #![allow(clippy::assertions_on_constants)]
 // The complexity is managable for now.

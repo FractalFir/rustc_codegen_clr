@@ -1,4 +1,3 @@
-#![warn(clippy::all, clippy::pedantic, clippy::nursery)]
 #![allow(clippy::module_name_repetitions)]
 pub mod field_desc;
 pub mod r#type;
@@ -65,7 +64,6 @@ pub fn mangle(tpe: &Type) -> std::borrow::Cow<'static, str> {
         Type::ManagedArray { element, dims } => format!("a{}{}", dims, mangle(element)).into(),
         Type::DotnetChar => "c".into(),
         Type::GenericArg(_) => todo!("Can't mangle generic type arg"),
-        Type::FnDef(name) => format!("fn{}{}", name.len(), name).into(),
 
         Type::DelegatePtr(sig) => format!(
             "d{output}{input_count}{input_string}",

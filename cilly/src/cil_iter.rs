@@ -262,34 +262,26 @@ impl<'a> Iterator for CILIter<'a> {
                         let root: &CILRoot = &roots[*idx - 1];
                         *idx += 1;
                         self.elems.push((0, CILIterElem::Root(root)));
-
-                        continue;
                     } else if *idx - 1 == roots.len() {
                         *idx += 1;
                         self.elems.push((0, CILIterElem::Node(node)));
-
-                        continue;
                     } else {
                         self.elems.pop();
-                        continue;
                     }
+                    continue;
                 }
                 CILIterElem::Node(CILNode::InspectValue { val, inspect }) => {
                     if *idx - 1 < inspect.len() {
                         let root = &inspect[*idx - 1];
                         *idx += 1;
                         self.elems.push((0, CILIterElem::Root(root)));
-
-                        continue;
                     } else if *idx - 1 == inspect.len() {
                         *idx += 1;
                         self.elems.push((0, CILIterElem::Node(val)));
-
-                        continue;
                     } else {
                         self.elems.pop();
-                        continue;
                     }
+                    continue;
                 }
                 CILIterElem::Node(CILNode::TemporaryLocal(pack)) => {
                     let (_, roots, node) = pack.as_ref();
@@ -297,17 +289,13 @@ impl<'a> Iterator for CILIter<'a> {
                         let root: &CILRoot = &roots[*idx - 1];
                         *idx += 1;
                         self.elems.push((0, CILIterElem::Root(root)));
-
-                        continue;
                     } else if *idx - 1 == roots.len() {
                         *idx += 1;
                         self.elems.push((0, CILIterElem::Node(node)));
-
-                        continue;
                     } else {
                         self.elems.pop();
-                        continue;
                     }
+                    continue;
                 }
                 CILIterElem::Root(CILRoot::CallI {
                     sig: _,
@@ -526,7 +514,7 @@ fn iter() {
             FnSig::new(&[Type::I32, Type::F32], Type::Void),
             true,
         ),
-        args: [CILNode::LdcI32(-77), CILNode::LdcF32(3.14159)].into(),
+        args: [CILNode::LdcI32(-77), CILNode::LdcF32(3.119765)].into(),
     };
     let mut iter = root.into_iter();
     assert!(matches!(
@@ -539,7 +527,7 @@ fn iter() {
     ));
     assert!(matches!(
         iter.next(),
-        Some(CILIterElem::Node(CILNode::LdcF32(3.14159)))
+        Some(CILIterElem::Node(CILNode::LdcF32(3.119765)))
     ));
     assert!(matches!(iter.next(), None));
 }

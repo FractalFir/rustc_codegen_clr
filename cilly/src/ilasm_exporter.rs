@@ -77,7 +77,7 @@ lazy_static! {
 }
 lazy_static! {
     #[doc = "Tells the codegen to escape class and method names."]pub static ref ESCAPE_NAMES:bool = {
-        std::env::vars().into_iter().find_map(|(key,value)|if key == stringify!(ESCAPE_NAMES){
+        std::env::vars().find_map(|(key,value)|if key == stringify!(ESCAPE_NAMES){
             Some(value)
         }else {
             None
@@ -112,7 +112,7 @@ lazy_static! {
 
 lazy_static! {
     #[doc = "Changes `.locals` into `.locals init`. Causes the runtime to always initialize local variables.\nTry turining on in cause of issues. If it fixes them, then their root cause is use of uninitailized memory."]pub static ref ALWAYS_INIT_LOCALS:bool = {
-        std::env::vars().into_iter().find_map(|(key,value)|if key == stringify!(ALWAYS_INIT_LOCALS){
+        std::env::vars().find_map(|(key,value)|if key == stringify!(ALWAYS_INIT_LOCALS){
             Some(value)
         }else {
             None
@@ -124,7 +124,7 @@ lazy_static! {
 lazy_static! {
     #[doc = "Tells codegen the print each pointer it dereferences."]
     pub static ref PRINT_PTRS:bool = {
-        std::env::vars().into_iter().find_map(|(key,value)|if key == stringify!(PRINT_PTRS){
+        std::env::vars().find_map(|(key,value)|if key == stringify!(PRINT_PTRS){
             Some(value)
         }else {
             None
@@ -240,7 +240,7 @@ impl AssemblyExporter for ILASMExporter {
             Ok(ok) => ok,
             Err(err) => panic!("Can't create file at path {cil_path:?} because {err:?}"),
         }
-        .write_all(&cil.as_bytes())
+        .write_all(cil.as_bytes())
         .expect("Could not write bytes");
         let asm_type = if is_dll { "-dll" } else { "-exe" };
         let target = format!(
@@ -318,7 +318,7 @@ fn type_def_cli(
         "Generic typedefs not supported yet. tpe:{tpe:?}"
     );
     let extends: IString = if let Some(extended) = tpe.extends() {
-        crate::ilasm_op::dotnet_type_ref_extends(&extended).into()
+        crate::ilasm_op::dotnet_type_ref_extends(extended).into()
     } else {
         "[System.Runtime]System.ValueType".into()
     };
@@ -382,7 +382,7 @@ fn type_def_cli(
 
 lazy_static! {
     #[doc = "Preapends each function call with a debug message"]pub static ref TRACE_CALLS:bool = {
-        std::env::vars().into_iter().find_map(|(key,value)|if key == stringify!(TRACE_CALLS){
+        std::env::vars().find_map(|(key,value)|if key == stringify!(TRACE_CALLS){
             Some(value)
         }else {
             None

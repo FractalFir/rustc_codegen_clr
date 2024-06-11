@@ -21,7 +21,7 @@ pub fn export_assembly(
 }
 lazy_static! {
     #[doc = "Tells the codegen to escape class and method names."]pub static ref ESCAPE_NAMES:bool = {
-        std::env::vars().into_iter().find_map(|(key,value)|if key == stringify!(ESCAPE_NAMES){
+        std::env::vars().find_map(|(key,value)|if key == stringify!(ESCAPE_NAMES){
             Some(value)
         }else {
             None

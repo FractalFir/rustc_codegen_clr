@@ -1,10 +1,12 @@
-use cilly::call_site::CallSite;
-use cilly::cil_node::CILNode;
-use cilly::fn_sig::FnSig;
-use cilly::{call, ldc_u32, ldc_u64, DotnetTypeRef, Type};
+use cilly::{
+    call, call_site::CallSite, cil_node::CILNode, fn_sig::FnSig, ldc_u32, ldc_u64, DotnetTypeRef,
+    Type,
+};
 
-use rustc_middle::middle::exported_symbols::ExportedSymbol;
-use rustc_middle::ty::{AdtDef, ConstKind, GenericArg, Ty, TyCtxt, TyKind};
+use rustc_middle::{
+    middle::exported_symbols::ExportedSymbol,
+    ty::{AdtDef, ConstKind, GenericArg, Ty, TyCtxt, TyKind},
+};
 /// This struct represetnts either a primitive .NET type (F32,F64), or stores information on how to lookup a more complex type (struct,class,array)
 use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, PartialEq, Clone, Eq, Hash, Debug)]

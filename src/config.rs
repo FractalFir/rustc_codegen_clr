@@ -3,7 +3,7 @@ macro_rules! config_flag{
     ($var:ident,$default:expr)=>{
         lazy_static!{
             pub static ref $var:bool = {
-                std::env::vars().into_iter().find_map(|(key,value)|if key == stringify!($var){Some(value)}else{None}).map(|value|match value.as_ref(){
+                std::env::vars().find_map(|(key,value)|if key == stringify!($var){Some(value)}else{None}).map(|value|match value.as_ref(){
                     "0" | "false" | "False" | "FALSE" =>false,
                     "1" | "true" | "True" | "TRUE" =>true,
                     _=>panic!("Boolean enviroment variable {} has invalid value {}",stringify!($var),value),
@@ -15,7 +15,7 @@ macro_rules! config_flag{
         lazy_static!{
             #[doc = $comment]
             pub static ref $var:bool = {
-                std::env::vars().into_iter().find_map(|(key,value)|if key == stringify!($var){Some(value)}else{None}).map(|value|match value.as_ref(){
+                std::env::vars().find_map(|(key,value)|if key == stringify!($var){Some(value)}else{None}).map(|value|match value.as_ref(){
                     "0" | "false" | "False" | "FALSE" =>false,
                     "1" | "true" | "True" | "TRUE" =>true,
                     _=>panic!("Boolean enviroment variable {} has invalid value {}",stringify!($var),value),
@@ -41,7 +41,7 @@ config_flag! {VALIDTE_VALUES,false,"Tells the codegen to insert additional check
 config_flag! {OPTIMIZE_CIL,true,"Tells the codegen to optmize the emiited CIL."}
 lazy_static! {
     #[doc = "Tells the codegen to escape class and method names."]pub static ref ESCAPE_NAMES:bool = {
-        std::env::vars().into_iter().find_map(|(key,value)|if key == stringify!(ESCAPE_NAMES){
+        std::env::vars().find_map(|(key,value)|if key == stringify!(ESCAPE_NAMES){
             Some(value)
         }else {
             None
@@ -59,7 +59,7 @@ config_flag! {C_SANITIZE,false,"Tells the codegen sanitize C."}
 config_flag! {RANDOMIZE_LAYOUT,false,"Tells the codegen to randomize TEST type layout."}
 lazy_static! {
     #[doc = "Tells the codegen compile linked static libraries into a shared library, which will be bundled with the .NET executable."]pub static ref NATIVE_PASSTROUGH:bool = {
-        std::env::vars().into_iter().find_map(|(key,value)|if key == stringify!(NATIVE_PASSTROUGH){
+        std::env::vars().find_map(|(key,value)|if key == stringify!(NATIVE_PASSTROUGH){
             Some(value)
         }else {
             None

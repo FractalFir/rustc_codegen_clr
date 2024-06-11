@@ -48,9 +48,9 @@ pub struct Assembly {
 }
 impl Assembly {
     pub fn call_graph(&self) -> String {
-        let mut res = format!("digraph mygraph {{\nfontname=\"Helvetica,Arial,sans-serif\"\nnode [fontname=\"Helvetica,Arial,sans-serif\"]
-edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n");
-        for (_, function) in self.functions() {
+        let mut res = "digraph mygraph {\nfontname=\"Helvetica,Arial,sans-serif\"\nnode [fontname=\"Helvetica,Arial,sans-serif\"]
+edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string();
+        for function in self.functions().values() {
             let name = function.name();
             let calls: std::collections::HashSet<_> = function
                 .calls()
@@ -274,7 +274,7 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n");
     /// Optimizes all the methods witin the assembly.
     pub fn opt(&mut self) {
         self.functions.iter_mut().for_each(|method| {
-            let (site, method) = method;
+            let (_site, method) = method;
             let mut method = method.clone();
             method.opt();
             //crate::opt::opt_method(&mut method, self);
@@ -318,7 +318,7 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n");
             .flat_map(|(_, type_def)| type_def.methods())
             .flat_map(|method| (method.calls()))
         {
-            if let Some(method) = self.functions.get(&call).cloned() {
+            if let Some(method) = self.functions.get(call).cloned() {
                 externs.insert(call.clone(), method);
             };
         }
@@ -339,11 +339,11 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n");
                     // Methods reference by methods inside types are NOT tracked.
                     continue;
                 }
-                if alive.contains_key(&call) || resurecting.contains_key(&call) {
+                if alive.contains_key(call) || resurecting.contains_key(call) {
                     // Already alive, ignore!
                     continue;
                 }
-                if let Some(method) = self.functions.get(&call).cloned() {
+                if let Some(method) = self.functions.get(call).cloned() {
                     to_resurect.insert(call.clone(), method);
                 };
             }
@@ -431,7 +431,7 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n");
 use lazy_static::*;
 lazy_static! {
     #[doc = "Tells the codegen to remove dead code before export."]pub static ref DEAD_CODE_ELIMINATION:bool = {
-        std::env::vars().into_iter().find_map(|(key,value)|if key == stringify!(DEAD_CODE_ELIMINATION){
+        std::env::vars().find_map(|(key,value)|if key == stringify!(DEAD_CODE_ELIMINATION){
             Some(value)
         }else {
             None

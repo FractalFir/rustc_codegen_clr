@@ -9,8 +9,10 @@ use cilly::{
     field_desc::FieldDescriptor, ldc_u64, DotnetTypeRef, Type,
 };
 use rustc_index::IndexVec;
-use rustc_middle::mir::{AggregateKind, Operand, Place};
-use rustc_middle::ty::{AdtDef, AdtKind, GenericArg, Instance, List, ParamEnv, Ty, TyCtxt, TyKind};
+use rustc_middle::{
+    mir::{AggregateKind, Operand, Place},
+    ty::{AdtDef, AdtKind, GenericArg, Instance, List, ParamEnv, Ty, TyCtxt, TyKind},
+};
 use rustc_target::abi::FieldIdx;
 /// Returns the CIL ops to create the aggreagate value specifed by `aggregate_kind` at `target_location`. Uses indivlidual values specifed by `value_index`
 pub fn handle_aggregate<'tyctx>(

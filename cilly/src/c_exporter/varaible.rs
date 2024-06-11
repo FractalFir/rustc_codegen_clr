@@ -36,7 +36,7 @@ fn variable(out: &mut impl Write, tpe: &Type, name: &str) -> Result {
         Type::GenericArg(_) => todo!(),
         Type::CallGenericArg(_) => todo!(),
         Type::DotnetChar => todo!(),
-        Type::FnDef(_) => todo!(),
+
         Type::DelegatePtr(_) => todo!(),
         Type::MethodGenericArg(_) => todo!(),
         Type::ManagedArray { element, dims } => todo!(),

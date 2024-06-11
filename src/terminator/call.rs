@@ -439,7 +439,7 @@ pub fn call<'tyctx>(
 
             let other_args = &args[..args.len() - 1];
 
-            for arg in other_args.into_iter().skip(1) {
+            for arg in other_args.iter().skip(1) {
                 call_args.push(crate::operand::handle_operand(
                     &arg.node,
                     tyctx,

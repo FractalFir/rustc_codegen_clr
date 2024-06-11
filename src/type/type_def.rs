@@ -1,5 +1,3 @@
-use std::num::NonZeroU64;
-
 use crate::{utilis::adt::FieldOffsetIterator, IString};
 use cilly::{
     access_modifier::AccessModifer,
@@ -14,11 +12,9 @@ use cilly::{
     type_def::TypeDef,
     Type,
 };
-use rustc_middle::ty::{
-    AdtDef, AdtKind, GenericArg, Instance, List, ParamEnv, Ty, TyCtxt, TyKind, UintTy,
-};
 use rustc_span::def_id::DefId;
 use rustc_target::abi::Layout;
+use std::num::NonZeroU64;
 
 pub(crate) const CUSTOM_INTEROP_TYPE_DEF: &str = "RustcCLRInteropManagedCustomTypeDef";
 
@@ -112,7 +108,7 @@ pub fn tuple_name(elements: &[Type]) -> IString {
 }
 
 #[must_use]
-pub fn tuple_typedef<'tyctx>(elements: &[Type], layout: Layout) -> TypeDef {
+pub fn tuple_typedef(elements: &[Type], layout: Layout) -> TypeDef {
     let name = tuple_name(elements);
     let field_iter = elements
         .iter()

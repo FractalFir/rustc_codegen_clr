@@ -445,7 +445,7 @@ fn autopatch(asm: &mut Assembly, native_pastrough: &NativePastroughInfo) {
             externs.push((
                 call.name().into(),
                 call.signature().to_owned(),
-                get_libc().into(),
+                get_libc(),
                 libc_fns::LIBC_MODIFIES_ERRNO
                     .iter()
                     .any(|libc_fn| *libc_fn == name),
@@ -789,7 +789,7 @@ fn main() {
 }
 lazy_static! {
     #[doc = "Tells the codegen compile linked static libraries into a shared library, which will be bundled with the .NET executable."]pub static ref NATIVE_PASSTROUGH:bool = {
-        std::env::vars().into_iter().find_map(|(key,value)|if key == stringify!(NATIVE_PASSTROUGH){
+        std::env::vars().find_map(|(key,value)|if key == stringify!(NATIVE_PASSTROUGH){
             Some(value)
         }else {
             None
@@ -800,7 +800,7 @@ lazy_static! {
 }
 lazy_static! {
     #[doc = "Should the codegen stop working when ecountering an error, or try to press on, replacing unusuported code with exceptions throws?"]pub static ref ABORT_ON_ERROR:bool = {
-        std::env::vars().into_iter().find_map(|(key,value)|if key == stringify!(ABORT_ON_ERROR){
+        std::env::vars().find_map(|(key,value)|if key == stringify!(ABORT_ON_ERROR){
             Some(value)
         }else {
             None
@@ -811,7 +811,7 @@ lazy_static! {
 }
 lazy_static! {
     #[doc = "Tells the codegen to emmit C source files."]pub static ref C_MODE:bool = {
-        std::env::vars().into_iter().find_map(|(key,value)|if key == stringify!(C_MODE){
+        std::env::vars().find_map(|(key,value)|if key == stringify!(C_MODE){
             Some(value)
         }else {
             None

@@ -6,10 +6,9 @@ use cilly::{
     call_site::CallSite,
     cil_node::CILNode,
     cil_root::{CILRoot, SFI},
-    field_desc,
     method::Method,
     static_field_desc::StaticFieldDescriptor,
-    FnSig, IString, Type,
+    FnSig, Type,
 };
 mod value;
 use value::Value;
@@ -457,12 +456,8 @@ impl<'asm> InterpreterState<'asm> {
         self.locals.push(locals);
         let sfi: SFI = Box::new((0..1, 0..1, "".into()));
         self.call_stack.push((call, 0, 0, sfi));
-        loop {
-            let (method, block, tree, curr_sfi) = if let Some(method) = self.call_stack.last_mut() {
-                method
-            } else {
-                break;
-            };
+        while let Some(method) = self.call_stack.last_mut() {
+            let (method, block, tree, curr_sfi) = method;
             let method = self
                 .asm
                 .functions()
@@ -613,9 +608,8 @@ fn load_asm(mut file: impl std::io::Read) -> Assembly {
     let mut asm_bytes = Vec::with_capacity(0x100);
     file.read_to_end(&mut asm_bytes)
         .expect("ERROR: Could not load the assembly file!");
-    let assembly =
-        postcard::from_bytes(&asm_bytes).expect("ERROR:Could not decode the assembly file!");
-    assembly
+
+    postcard::from_bytes(&asm_bytes).expect("ERROR:Could not decode the assembly file!")
 }
 fn main() {
     let args: Vec<String> = std::env::args().collect();

@@ -1,17 +1,15 @@
-use std::path::PrefixComponent;
-use std::thread;
-use std::time::Duration;
-use std::path::{Path,Component,Prefix};
 use std::ffi::OsStr;
 use std::fmt;
+use std::path::PrefixComponent;
+use std::path::{Component, Path, Prefix};
+use std::thread;
+use std::time::Duration;
 
 fn main() {
-
     let path = Path::new("/etc/passwd");
-    for elem in (path.iter()){
+    for elem in iter_pth(path) {
         println!("elem:{elem:?}. path:{path:?}")
     }
-    
 }
 #[derive(Clone)]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
@@ -47,7 +45,6 @@ pub struct Iter<'a> {
     inner: Components<'a>,
 }
 
-
 impl fmt::Debug for Components<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         struct DebugHelper<'a>(&'a Path);
@@ -58,7 +55,9 @@ impl fmt::Debug for Components<'_> {
             }
         }
 
-        f.debug_tuple("Components").field(&DebugHelper(self.as_path())).finish()
+        f.debug_tuple("Components")
+            .field(&DebugHelper(self.as_path()))
+            .finish()
     }
 }
 
@@ -71,20 +70,35 @@ impl<'a> Components<'a> {
 
     #[inline]
     fn prefix_verbatim(&self) -> bool {
-        self.prefix.as_ref().map(Prefix::is_verbatim).unwrap_or(false)
+        self.prefix
+            .as_ref()
+            .map(Prefix::is_verbatim)
+            .unwrap_or(false)
     }
 
     /// how much of the prefix is left from the point of view of iteration?
     #[inline]
     fn prefix_remaining(&self) -> usize {
-        if self.front == State::Prefix { self.prefix_len() } else { 0 }
+        if self.front == State::Prefix {
+            self.prefix_len()
+        } else {
+            0
+        }
     }
 
     // Given the iteration so far, how much of the pre-State::Body path is left?
     #[inline]
     fn len_before_body(&self) -> usize {
-        let root = if self.front <= State::StartDir && self.has_physical_root { 1 } else { 0 };
-        let cur_dir = if self.front <= State::StartDir && self.include_cur_dir() { 1 } else { 0 };
+        let root = if self.front <= State::StartDir && self.has_physical_root {
+            1
+        } else {
+            0
+        };
+        let cur_dir = if self.front <= State::StartDir && self.include_cur_dir() {
+            1
+        } else {
+            0
+        };
         self.prefix_remaining() + root + cur_dir
     }
 
@@ -96,7 +110,11 @@ impl<'a> Components<'a> {
 
     #[inline]
     fn is_sep_byte(&self, b: u8) -> bool {
-        if self.prefix_verbatim() { is_verbatim_sep(b) } else { is_sep_byte(b) }
+        if self.prefix_verbatim() {
+            is_verbatim_sep(b)
+        } else {
+            is_sep_byte(b)
+        }
     }
 
     /// Extracts a slice corresponding to the portion of the path remaining for iteration.
@@ -113,7 +131,7 @@ impl<'a> Components<'a> {
     /// assert_eq!(Path::new("foo/bar.txt"), components.as_path());
     /// ```
     #[must_use]
-    
+
     pub fn as_path(&self) -> &'a Path {
         let mut comps = self.clone();
         if comps.front == State::Body {
@@ -161,7 +179,9 @@ impl<'a> Components<'a> {
             // separately via `include_cur_dir`
             b".." => Some(Component::ParentDir),
             b"" => None,
-            _ => Some(Component::Normal(unsafe { OsStr::from_encoded_bytes_unchecked(comp) })),
+            _ => Some(Component::Normal(unsafe {
+                OsStr::from_encoded_bytes_unchecked(comp)
+            })),
         }
     }
 
@@ -174,7 +194,9 @@ impl<'a> Components<'a> {
             Some(i) => (1, &self.path[..i]),
         };
         // SAFETY: `comp` is a valid substring, since it is split on a separator.
-        (comp.len() + extra, unsafe { self.parse_single_component(comp) })
+        (comp.len() + extra, unsafe {
+            self.parse_single_component(comp)
+        })
     }
 
     // parse a component from the right, saying how many bytes to consume to
@@ -182,12 +204,17 @@ impl<'a> Components<'a> {
     fn parse_next_component_back(&self) -> (usize, Option<Component<'a>>) {
         debug_assert!(self.back == State::Body);
         let start = self.len_before_body();
-        let (extra, comp) = match self.path[start..].iter().rposition(|b| self.is_sep_byte(*b)) {
+        let (extra, comp) = match self.path[start..]
+            .iter()
+            .rposition(|b| self.is_sep_byte(*b))
+        {
             None => (0, &self.path[start..]),
             Some(i) => (1, &self.path[start + i + 1..]),
         };
         // SAFETY: `comp` is a valid substring, since it is split on a separator.
-        (comp.len() + extra, unsafe { self.parse_single_component(comp) })
+        (comp.len() + extra, unsafe {
+            self.parse_single_component(comp)
+        })
     }
 
     // trim away repeated separators (i.e., empty components) on the left
@@ -215,7 +242,6 @@ impl<'a> Components<'a> {
     }
 }
 
-
 impl AsRef<Path> for Components<'_> {
     #[inline]
     fn as_ref(&self) -> &Path {
@@ -223,14 +249,12 @@ impl AsRef<Path> for Components<'_> {
     }
 }
 
-
 impl AsRef<OsStr> for Components<'_> {
     #[inline]
     fn as_ref(&self) -> &OsStr {
         self.as_path().as_os_str()
     }
 }
-
 
 impl fmt::Debug for Iter<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -242,7 +266,9 @@ impl fmt::Debug for Iter<'_> {
             }
         }
 
-        f.debug_tuple("Iter").field(&DebugHelper(self.as_path())).finish()
+        f.debug_tuple("Iter")
+            .field(&DebugHelper(self.as_path()))
+            .finish()
     }
 }
 
@@ -260,14 +286,13 @@ impl<'a> Iter<'a> {
     ///
     /// assert_eq!(Path::new("foo/bar.txt"), iter.as_path());
     /// ```
-    
+
     #[must_use]
     #[inline]
     pub fn as_path(&self) -> &'a Path {
         self.inner.as_path()
     }
 }
-
 
 impl AsRef<Path> for Iter<'_> {
     #[inline]
@@ -276,14 +301,12 @@ impl AsRef<Path> for Iter<'_> {
     }
 }
 
-
 impl AsRef<OsStr> for Iter<'_> {
     #[inline]
     fn as_ref(&self) -> &OsStr {
         self.as_path().as_os_str()
     }
 }
-
 
 impl<'a> Iterator for Iter<'a> {
     type Item = &'a OsStr;
@@ -306,7 +329,7 @@ enum State {
     Body = 2,     // foo/bar/baz
     Done = 3,
 }
-fn prefix_len(pfx:&Prefix) -> usize {
+fn prefix_len(pfx: &Prefix) -> usize {
     use std::path::Prefix::*;
     fn os_str_len(s: &OsStr) -> usize {
         s.as_encoded_bytes().len()
@@ -314,10 +337,22 @@ fn prefix_len(pfx:&Prefix) -> usize {
     match *pfx {
         Verbatim(x) => 4 + os_str_len(x),
         VerbatimUNC(x, y) => {
-            8 + os_str_len(x) + if os_str_len(y) > 0 { 1 + os_str_len(y) } else { 0 }
+            8 + os_str_len(x)
+                + if os_str_len(y) > 0 {
+                    1 + os_str_len(y)
+                } else {
+                    0
+                }
         }
         VerbatimDisk(_) => 6,
-        UNC(x, y) => 2 + os_str_len(x) + if os_str_len(y) > 0 { 1 + os_str_len(y) } else { 0 },
+        UNC(x, y) => {
+            2 + os_str_len(x)
+                + if os_str_len(y) > 0 {
+                    1 + os_str_len(y)
+                } else {
+                    0
+                }
+        }
         DeviceNS(x) => 4 + os_str_len(x),
         Disk(_) => 2,
     }
@@ -331,10 +366,10 @@ pub fn is_sep_byte(b: u8) -> bool {
 unsafe fn path_from_u8_slice(s: &[u8]) -> &Path {
     unsafe { Path::new(OsStr::from_encoded_bytes_unchecked(s)) }
 }
-fn has_implicit_root(pfx:&Prefix) -> bool {
+fn has_implicit_root(pfx: &Prefix) -> bool {
     !is_drive(pfx)
 }
-fn is_drive(pfx:&Prefix) -> bool {
+fn is_drive(pfx: &Prefix) -> bool {
     matches!(*pfx, Prefix::Disk(_))
 }
 impl<'a> Iterator for Components<'a> {
@@ -434,15 +469,20 @@ impl<'a> DoubleEndedIterator for Components<'a> {
         None
     }
 }
-fn construct<'a>(raw: &'a OsStr,
-parsed: Prefix<'a>)->std::path::PrefixComponent<'a>{
+fn construct<'a>(raw: &'a OsStr, parsed: Prefix<'a>) -> std::path::PrefixComponent<'a> {
     pub struct PrefixComponent<'a> {
         raw: &'a OsStr,
         parsed: Prefix<'a>,
     }
-    let res = PrefixComponent{raw,parsed};
-    unsafe{std::mem::transmute::<PrefixComponent,std::path::PrefixComponent>(res)}
+    let res = PrefixComponent { raw, parsed };
+    unsafe { std::mem::transmute::<PrefixComponent, std::path::PrefixComponent>(res) }
 }
-pub fn iter_pth(pth:&Path) -> Iter<'_> {
-    unsafe{Iter { inner: std::mem::transmute::<std::path::Components<'_>,Components<'_>>(pth.components()) }}
+pub fn iter_pth(pth: &Path) -> Iter<'_> {
+    unsafe {
+        Iter {
+            inner: std::mem::transmute::<std::path::Components<'_>, Components<'_>>(
+                pth.components(),
+            ),
+        }
+    }
 }

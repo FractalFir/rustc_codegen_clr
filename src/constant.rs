@@ -309,8 +309,8 @@ fn load_const_scalar<'ctx>(
 
     match scalar_type.kind() {
         TyKind::Int(int_type) => load_const_int(scalar_u128, int_type),
-        TyKind::Uint(uint_type) => load_const_uint(scalar_u128, uint_type),
-        TyKind::Float(ftype) => load_const_float(scalar_u128, ftype, tyctx),
+        TyKind::Uint(uint_type) => load_const_uint(scalar_u128, *uint_type),
+        TyKind::Float(ftype) => load_const_float(scalar_u128, *ftype, tyctx),
         TyKind::Bool => {
             if scalar_u128 == 0 {
                 CILNode::LdFalse
@@ -318,9 +318,12 @@ fn load_const_scalar<'ctx>(
                 CILNode::LdTrue
             }
         }
-        TyKind::RawPtr(_, _) => {
-            CILNode::ZeroExtendToUSize(CILNode::LdcU64(scalar_u128 as u64).into())
-        }
+        TyKind::RawPtr(_, _) => CILNode::ZeroExtendToUSize(
+            CILNode::LdcU64(
+                u64::try_from(scalar_u128).expect("pointers must be smaller than 2^64"),
+            )
+            .into(),
+        ),
         TyKind::Tuple(elements) => {
             if elements.is_empty() {
                 CILNode::TemporaryLocal(Box::new((
@@ -352,7 +355,7 @@ fn load_const_scalar<'ctx>(
         _ => todo!("Can't load scalar constants of type {scalar_type:?}!"),
     }
 }
-fn load_const_float(value: u128, float_type: &FloatTy, _tyctx: TyCtxt) -> CILNode {
+fn load_const_float(value: u128, float_type: FloatTy, _tyctx: TyCtxt) -> CILNode {
     match float_type {
         FloatTy::F16 => todo!("Can't hanlde 16 bit floats yet!"),
         FloatTy::F32 => {
@@ -384,7 +387,7 @@ pub fn load_const_int(value: u128, int_type: &IntTy) -> CILNode {
             CILNode::LdcI64(i64::from_ne_bytes((value as u64).to_ne_bytes())).into(),
         ),
         IntTy::I128 => {
-            let low = (value & u128::from(u64::MAX)) as u64;
+            let low = u128_low_u64(value);
             let high = (value >> 64) as u64;
             let ctor_sig = FnSig::new(
                 &[
@@ -406,7 +409,7 @@ pub fn load_const_int(value: u128, int_type: &IntTy) -> CILNode {
         }
     }
 }
-pub fn load_const_uint(value: u128, int_type: &UintTy) -> CILNode {
+pub fn load_const_uint(value: u128, int_type: UintTy) -> CILNode {
     match int_type {
         UintTy::U8 => {
             let value = value as u8;
@@ -420,7 +423,7 @@ pub fn load_const_uint(value: u128, int_type: &UintTy) -> CILNode {
         UintTy::U64 => CILNode::ConvU64(CILNode::LdcU64(value as u64).into()),
         UintTy::Usize => CILNode::ZeroExtendToUSize(CILNode::LdcU64(value as u64).into()),
         UintTy::U128 => {
-            let low = (value & u128::from(u64::MAX)) as u64;
+            let low = u128_low_u64(value);
             let high = (value >> 64) as u64;
             let ctor_sig = FnSig::new(
                 &[
@@ -441,4 +444,7 @@ pub fn load_const_uint(value: u128, int_type: &UintTy) -> CILNode {
             }
         }
     }
+}
+fn u128_low_u64(value: u128) -> u64 {
+    u64::try_from(value & u128::from(u64::MAX)).expect("trucating cast error")
 }

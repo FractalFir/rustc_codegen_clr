@@ -110,7 +110,7 @@ impl TypeDef {
     }
 
     #[must_use]
-    pub fn explict_size(&self) -> Option<NonZeroU64> {
+    pub const fn explict_size(&self) -> Option<NonZeroU64> {
         self.explict_size
     }
 

@@ -288,7 +288,7 @@ pub fn add_fn<'tyctx>(
                                                     tyctx.optimized_mir(instance.def_id())
                                                 }else{}
                                                 ;*/
-    let _timer = tyctx.prof.generic_activity_with_arg("codegen fn", &*name);
+    let _timer = tyctx.prof.generic_activity_with_arg("codegen fn", name);
     // Check if function is public or not.
     // FIXME: figure out the source of the bug causing visibility to not be read propely.
     // let access_modifier = AccessModifer::from_visibility(tcx.visibility(instance.def_id()));

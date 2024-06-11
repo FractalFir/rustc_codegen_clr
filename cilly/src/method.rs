@@ -300,7 +300,7 @@ impl Method {
         new_bb
     }
     pub fn append_preamble(&mut self, tree: CILTree) {
-        let trees = (&mut self.blocks).iter_mut().next().unwrap().trees_mut();
+        let trees = self.blocks.iter_mut().next().unwrap().trees_mut();
         trees.insert(0, tree);
     }
     pub fn alloc_local(&mut self, tpe: Type, name: Option<IString>) -> usize {
@@ -312,14 +312,10 @@ impl Method {
         if !adjust.iter().any(|adjust| adjust.is_some()) {
             return;
         }
-        for (unaligned_local, align) in
-            adjust
-                .iter()
-                .enumerate()
-                .filter_map(|(local_id, o)| match o {
-                    Some(align) => Some((local_id, *align)),
-                    None => None,
-                })
+        for (unaligned_local, align) in adjust
+            .iter()
+            .enumerate()
+            .filter_map(|(local_id, o)| o.as_ref().map(|align| (local_id, *align)))
         {
             let (name, tpe) = &self.locals[unaligned_local];
             let unaligned_local = unaligned_local as u32;
@@ -330,7 +326,7 @@ impl Method {
                     local: new_loc,
                     tree: CILNode::LocAllocAligned {
                         tpe: Box::new(tpe.clone()),
-                        align: align,
+                        align,
                     },
                 }
                 .into(),
@@ -339,8 +335,8 @@ impl Method {
                 .iter_mut()
                 .flat_map(|blck| blck.iter_cil_mut())
                 .for_each(|node| match node {
-                    CILIterElemMut::Root(root) => match root {
-                        CILRoot::STLoc { local, tree } => {
+                    CILIterElemMut::Root(root) => {
+                        if let CILRoot::STLoc { local, tree } = root {
                             if *local == unaligned_local {
                                 // We replace seting *a* with an indirect wirte to allocation pointed to by *b*.
                                 *root = CILRoot::STObj {
@@ -350,8 +346,7 @@ impl Method {
                                 };
                             }
                         }
-                        _ => (),
-                    },
+                    }
                     CILIterElemMut::Node(node) => match node {
                         CILNode::LDLocA(local) => {
                             if *local == unaligned_local {

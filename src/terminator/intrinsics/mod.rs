@@ -1,19 +1,14 @@
-use crate::place::place_adress;
-use crate::r#type::pointer_to_is_fat;
-use crate::utilis::field_descrptor;
-use cilly::cil_node::CILNode;
-use cilly::field_desc::FieldDescriptor;
-use cilly::{
-    call, call_virt, cil_root::CILRoot, conv_f32, conv_f64, conv_isize, conv_u64, conv_usize, eq,
-    ld_field, ldc_i32, ldc_u32, ldc_u64, lt_un, size_of, sub,
+use crate::{
+    operand::handle_operand,
+    place::{place_adress, place_set},
+    r#type::{pointer_to_is_fat, tycache::TyCache},
+    utilis::field_descrptor,
 };
-
-
-use crate::r#type::tycache::TyCache;
-use crate::{operand::handle_operand, place::place_set};
-use cilly::call_site::CallSite;
-use cilly::fn_sig::FnSig;
-use cilly::{conv_u32, or, DotnetTypeRef, Type};
+use cilly::{
+    call, call_site::CallSite, call_virt, cil_node::CILNode, cil_root::CILRoot, conv_f32, conv_f64,
+    conv_isize, conv_u32, conv_u64, conv_usize, eq, field_desc::FieldDescriptor, fn_sig::FnSig,
+    ld_field, ldc_i32, ldc_u32, ldc_u64, lt_un, or, size_of, sub, DotnetTypeRef, Type,
+};
 use rustc_middle::{
     mir::{Body, Operand, Place},
     ty::{Instance, ParamEnv, TyCtxt, TyKind},
@@ -539,7 +534,7 @@ pub fn handle_intrinsic<'tyctx>(
                     tyctx,
                     or!(
                         CILNode::Shl(Box::new(val.clone()), Box::new(rot.clone())),
-                        CILNode::ShrUn(Box::new(val), Box::new(ldc_u32!(32) - rot))
+                        CILNode::ShrUn(Box::new(val), Box::new(ldc_u32!(8) - rot))
                     ),
                     body,
                     method_instance,
@@ -550,7 +545,7 @@ pub fn handle_intrinsic<'tyctx>(
                     tyctx,
                     or!(
                         CILNode::Shl(Box::new(val.clone()), Box::new(rot.clone())),
-                        CILNode::ShrUn(Box::new(val), Box::new(ldc_u32!(32) - rot))
+                        CILNode::ShrUn(Box::new(val), Box::new(ldc_u32!(16) - rot))
                     ),
                     body,
                     method_instance,
@@ -597,7 +592,7 @@ pub fn handle_intrinsic<'tyctx>(
                     tyctx,
                     or!(
                         CILNode::Shl(Box::new(val.clone()), Box::new(rot.clone())),
-                        CILNode::Shr(Box::new(val), Box::new(ldc_u32!(32) - rot))
+                        CILNode::Shr(Box::new(val), Box::new(ldc_u32!(8) - rot))
                     ),
                     body,
                     method_instance,
@@ -608,7 +603,7 @@ pub fn handle_intrinsic<'tyctx>(
                     tyctx,
                     or!(
                         CILNode::Shl(Box::new(val.clone()), Box::new(rot.clone())),
-                        CILNode::Shr(Box::new(val), Box::new(ldc_u32!(32) - rot))
+                        CILNode::Shr(Box::new(val), Box::new(ldc_u32!(16) - rot))
                     ),
                     body,
                     method_instance,
@@ -1508,7 +1503,7 @@ pub fn handle_intrinsic<'tyctx>(
             method_instance,
             call_instance,
             type_cache,
-            signature,
+            &signature,
             span,
         ),
     }
@@ -1522,7 +1517,7 @@ fn intrinsic_slow<'tyctx>(
     method_instance: Instance<'tyctx>,
     call_instance: Instance<'tyctx>,
     type_cache: &mut TyCache,
-    signature: FnSig,
+    signature: &FnSig,
     span: rustc_span::Span,
 ) -> CILRoot {
     let _ = call_instance;

@@ -239,7 +239,7 @@ impl AssemblyExporter for CExporter {
         _lib_path: &str,
         name: &str,
         sig: &crate::FnSig,
-        preserve_errno: bool,
+        _preserve_errno: bool,
     ) {
         if name == "puts"
             || name == "malloc"
@@ -632,7 +632,7 @@ fn node_string(tree: &CILNode, method: &Method) -> String {
         ),
         CILNode::LdFalse => "false".into(),
         CILNode::LdTrue => "true".into(),
-        CILNode::LocAlloc { size } => todo!(),
+        CILNode::LocAlloc { size: _ } => todo!(),
     }
 }
 fn tree_string(tree: &CILTree, method: &Method) -> String {

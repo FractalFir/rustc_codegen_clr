@@ -513,7 +513,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
                     ],
                     Type::Void,
                 ),
-                ".ctor".into(),
+                ".ctor",
                 vec![],
                 vec![BasicBlock::new(
                     vec![

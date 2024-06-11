@@ -535,7 +535,7 @@ fn iter() {
         iter.next(),
         Some(CILIterElemMut::Node(CILNode::LDLoc(1)))
     ));
-    assert!(matches!(iter.next(), None));
+    assert!(iter.next().is_none());
     let mut root = CILRoot::Call {
         site: CallSite::new(
             None,
@@ -543,7 +543,7 @@ fn iter() {
             FnSig::new(&[Type::I32, Type::F32], Type::Void),
             true,
         ),
-        args: [CILNode::LdcI32(-77), CILNode::LdcF32(3.14159)].into(),
+        args: [CILNode::LdcI32(-77), CILNode::LdcF32(3.119765)].into(),
     };
     let mut iter = (&mut root).into_iter();
     assert!(matches!(
@@ -556,7 +556,7 @@ fn iter() {
     ));
     assert!(matches!(
         iter.next(),
-        Some(CILIterElemMut::Node(CILNode::LdcF32(3.14159)))
+        Some(CILIterElemMut::Node(CILNode::LdcF32(3.119765)))
     ));
-    assert!(matches!(iter.next(), None));
+    assert!(iter.next().is_none());
 }

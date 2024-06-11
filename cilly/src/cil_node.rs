@@ -108,11 +108,12 @@ pub enum CILNode {
     Shr(Box<Self>, Box<Self>),
     Shl(Box<Self>, Box<Self>),
     ShrUn(Box<Self>, Box<Self>),
-
+    // 32 bytes - too big!
     Call {
         args: Box<[Self]>,
         site: Box<CallSite>,
     },
+    // 32 bytes - too big!
     CallVirt {
         args: Box<[Self]>,
         site: Box<CallSite>,
@@ -154,10 +155,12 @@ pub enum CILNode {
     LoadTMPLocal,
     LDFtn(Box<CallSite>),
     LDTypeToken(Box<Type>),
+    // 32 bytes - too big!
     NewObj {
         site: Box<CallSite>,
         args: Box<[Self]>,
     },
+    // 24 bytes - too big!
     LdStr(IString),
     CallI(Box<(FnSig, Self, Box<[Self]>)>),
     LDIndU8 {
@@ -177,6 +180,7 @@ pub enum CILNode {
         arr: Box<Self>,
     },
     /// Loads an object reference from a managed array
+    // 24 bytes - too big!
     LDElelemRef {
         arr: Box<Self>,
         idx: Box<Self>,
@@ -403,7 +407,7 @@ impl CILNode {
                 )
             )
         });
-        return contains_subtrees;
+        contains_subtrees
     }
     // This fucntion will get expanded, so a single match is a non-issue.
     #[allow(clippy::single_match)]
@@ -531,7 +535,6 @@ impl CILNode {
             //Self::Volatile(_) => todo!(),
             Self::Neg(val) |
             Self::Not(val) =>val.allocate_tmps(curr_loc, locals),
-            
             Self::TemporaryLocal(tmp_loc) => {
                 let tpe = &mut tmp_loc.0;
                 let end_loc = locals.len();
@@ -540,25 +543,19 @@ impl CILNode {
                 let main = &mut tmp_loc.2;
                 roots.iter_mut().for_each(|tree|tree.allocate_tmps(Some(end_loc as u32), locals));
                 main.allocate_tmps(Some(end_loc as u32), locals);
-                assert!(
+                debug_assert!(
                     !(&*main).into_iter().any(|node| {
-                        match node {
-                            crate::cil_iter::CILIterElem::Node(
+                        matches!(node, crate::cil_iter::CILIterElem::Node(
                                 crate::cil_node::CILNode::TemporaryLocal(_),
-                            ) => true,
-                            _ => false,
-                        }
+                            ))
                     }),
                     "self:{self:?}"
                 );
-                assert!(
-                    !(&*roots).iter().flat_map(|root|root.into_iter()).any(|node| {
-                        match node {
-                            crate::cil_iter::CILIterElem::Node(
+                debug_assert!(
+                    !roots.iter().flat_map(|root|root.into_iter()).any(|node| {
+                        matches!(node, crate::cil_iter::CILIterElem::Node(
                                 crate::cil_node::CILNode::TemporaryLocal(_),
-                            ) => true,
-                            _ => false,
-                        }
+                            ))
                     }),
                     "self:{self:?}"
                 );

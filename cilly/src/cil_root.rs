@@ -486,7 +486,7 @@ impl CILRoot {
     pub fn sheed_trees(mut self) -> Vec<Self> {
         let iter_mut = (&mut self).into_iter();
         let mut res: Vec<CILRoot> = iter_mut
-            .map(|tree| match tree {
+            .flat_map(|tree| match tree {
                 crate::cil_iter_mut::CILIterElemMut::Node(node) => match node {
                     CILNode::SubTrees(trees, main) => {
                         let vec = trees.to_vec();
@@ -499,7 +499,6 @@ impl CILRoot {
                 },
                 _ => vec![],
             })
-            .flat_map(|vec| vec)
             .collect();
         res.push(self);
         res

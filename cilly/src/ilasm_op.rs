@@ -11,7 +11,7 @@ impl DepthSetting {
         Self(0)
     }
     pub fn pad(&self, out: &mut impl Write) -> std::fmt::Result {
-        write!(out, "\n")?;
+        writeln!(out)?;
         if self.0 == u32::MAX {
             return Ok(());
         }
@@ -22,7 +22,7 @@ impl DepthSetting {
     }
     pub fn incremented(self) -> Self {
         if self.0 == u32::MAX {
-            return self;
+            self
         } else {
             Self(self.0 + 1)
         }
@@ -51,7 +51,7 @@ fn export_2_nodes(
     il_flavour: IlasmFlavour,
 ) -> std::fmt::Result {
     // a and b are the same, and have no side effects, we  to use dup to save on space.
-    if a == b && !a.has_side_effects() && false {
+    if a == b && !a.has_side_effects() {
         export_node(out, a, depth, il_flavour)?;
         depth.pad(out)?;
         write!(out, "dup")
@@ -107,8 +107,7 @@ fn export_node(
                     "ldsfld {tpe} RustModule::{name}",
                     tpe = non_void_type_cil(static_field.tpe()),
                     name = static_field.name()
-                )
-                .into(),
+                ),
             }
         }
         CILNode::ConvF32(val) => un_op!(out, val, depth, il_flavour, "conv.r4"),
@@ -317,7 +316,6 @@ fn export_node(
                 const_literal[6],
                 const_literal[7]
             )
-            .into()
         }
         CILNode::LdcF32(f32const) => {
             depth.pad(out)?;
@@ -327,9 +325,8 @@ fn export_node(
                 "ldc.r4 ({:02x} {:02x} {:02x} {:02x})",
                 const_literal[0], const_literal[1], const_literal[2], const_literal[3]
             )
-            .into()
         }
-        CILNode::LoadGlobalAllocPtr { alloc_id } => {
+        CILNode::LoadGlobalAllocPtr { alloc_id: _ } => {
             panic!("Global allocs should be resolved before export")
         }
         CILNode::ConvU8(val) => un_op!(out, val, depth, il_flavour, "conv.u1"),
@@ -498,7 +495,7 @@ fn export_node(
             }
             Ok(())
         }
-        CILNode::TransmutePtr { val, new_ptr } => {
+        CILNode::TransmutePtr { val, new_ptr: _ } => {
             export_node(out, val, depth.incremented(), il_flavour)
         }
         CILNode::LdFalse => {
@@ -719,7 +716,9 @@ pub fn export_root(
                 field_name = desc.name()
             )
         }
-        CILRoot::SetTMPLocal { value } => todo!(),
+        CILRoot::SetTMPLocal { value: _ } => {
+            panic!("Temporary locals should be resolved before export.")
+        }
         CILRoot::CpBlk { dst, src, len } => {
             export_node(out, dst, depth, il_flavour)?;
             export_node(out, src, depth, il_flavour)?;
@@ -862,8 +861,7 @@ pub fn export_root(
                     "stsfld {tpe} RustModule::{name}",
                     tpe = non_void_type_cil(descr.tpe()),
                     name = descr.name()
-                )
-                .into(),
+                ),
             }
         }
         CILRoot::SourceFileInfo(sfi) => {
@@ -895,7 +893,7 @@ pub fn export_root(
 }
 #[test]
 fn node_to_il() {
-    use crate::{call_site::CallSite, FnSig, Type};
+    use crate::Type;
     let node = CILNode::Add(
         Box::new(CILNode::Mul(
             Box::new(CILNode::LDLoc(0)),
@@ -940,7 +938,7 @@ pub fn type_cil(tpe: &Type) -> Cow<'static, str> {
             )
             .into()
         }
-        Type::FnDef(name) => format!("valuetype 'fn_{name}'").into(),
+
         Type::Void => "void".into(),
         Type::I8 => "int8".into(),
         Type::U8 => "uint8".into(),

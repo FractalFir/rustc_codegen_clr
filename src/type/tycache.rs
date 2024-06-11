@@ -12,10 +12,8 @@ use cilly::{
     access_modifier::AccessModifer, cil_node::CILNode, fn_sig::FnSig, type_def::TypeDef,
     DotnetTypeRef, Type,
 };
-use rustc_middle::ty::{
-    AdtDef, AdtKind, GenericArg, Instance, List, ParamEnv, Ty, TyCtxt, TyKind, UintTy,
-};
-use rustc_span::def_id::DefId;
+use rustc_middle::ty::{AdtDef, AdtKind, Instance, List, ParamEnv, Ty, TyCtxt, TyKind, UintTy};
+
 use std::{collections::HashMap, num::NonZeroU64};
 // CAN'T BE SERAILIZED!
 pub struct TyCache {
@@ -114,9 +112,9 @@ impl TyCache {
         let explicit_offset_iter =
             crate::utilis::adt::FieldOffsetIterator::fields((*layout.layout.0).clone());
         let mut explicit_offsets = Vec::new();
-        for (field, offset) in (&adt
+        for (field, offset) in adt
             .variant(rustc_target::abi::VariantIdx::from_u32(0))
-            .fields)
+            .fields
             .iter()
             .zip(explicit_offset_iter)
         {
@@ -328,7 +326,7 @@ impl TyCache {
             let field_offset_iter =
                 crate::utilis::adt::enum_variant_offsets(adt, layout.layout, vidx);
             let mut field_offsets: Vec<_> = Vec::new();
-            for (field, offset) in (&variant.fields).iter().zip(field_offset_iter) {
+            for (field, offset) in variant.fields.iter().zip(field_offset_iter) {
                 let name = format!(
                     "{variant_name}_{fname}",
                     fname = escape_field_name(&field.name.to_string())
@@ -437,7 +435,7 @@ impl TyCache {
                 }
             }
             TyKind::Dynamic(_list, _, _) => {
-                let name: IString = format!("Dyn").into();
+                let name: IString = "Dyn".into();
                 if !self.type_def_cache.contains_key(&name) {
                     self.type_def_cache
                         .insert(name.clone(), TypeDef::nameonly(&name));
@@ -482,21 +480,9 @@ impl TyCache {
             TyKind::RawPtr(typ, _) => {
                 if super::pointer_to_is_fat(*typ, tyctx, method) {
                     let inner = match typ.kind() {
-                        TyKind::Slice(inner) => {
-                            if let method = method {
-                                crate::utilis::monomorphize(&method, *inner, tyctx)
-                            } else {
-                                *inner
-                            }
-                        }
+                        TyKind::Slice(inner) => crate::utilis::monomorphize(&method, *inner, tyctx),
                         TyKind::Str => u8_ty(tyctx),
-                        _ => {
-                            if let method = method {
-                                crate::utilis::monomorphize(&method, *typ, tyctx)
-                            } else {
-                                *typ
-                            }
-                        }
+                        _ => crate::utilis::monomorphize(&method, *typ, tyctx),
                     };
                     self.slice_ref_to(tyctx, Ty::new_slice(tyctx, inner), method)
                 } else {
@@ -514,21 +500,9 @@ impl TyCache {
             TyKind::Ref(_region, inner, _mut) => {
                 if super::pointer_to_is_fat(*inner, tyctx, method) {
                     let inner = match inner.kind() {
-                        TyKind::Slice(inner) => {
-                            if let method = method {
-                                crate::utilis::monomorphize(&method, *inner, tyctx)
-                            } else {
-                                *inner
-                            }
-                        }
+                        TyKind::Slice(inner) => crate::utilis::monomorphize(&method, *inner, tyctx),
                         TyKind::Str => u8_ty(tyctx),
-                        _ => {
-                            if let method = method {
-                                crate::utilis::monomorphize(&method, *inner, tyctx)
-                            } else {
-                                *inner
-                            }
-                        }
+                        _ => crate::utilis::monomorphize(&method, *inner, tyctx),
                     };
                     self.slice_ref_to(tyctx, Ty::new_slice(tyctx, inner), method)
                 } else {
@@ -539,11 +513,7 @@ impl TyCache {
             // a DST.
             TyKind::Str => Type::U8,
             TyKind::Slice(inner) => {
-                let inner = if let method = method {
-                    crate::utilis::monomorphize(&method, *inner, tyctx)
-                } else {
-                    *inner
-                };
+                let inner = crate::utilis::monomorphize(&method, *inner, tyctx);
                 self.type_from_cache(inner, tyctx, method)
             }
             TyKind::Foreign(foregin) => {
@@ -602,18 +572,7 @@ impl TyCache {
                 }
                 DotnetTypeRef::array(&element, length).into()
             }
-            TyKind::Alias(_, _) => {
-                //self.cycle_prevention.push("ALIAS_PREV")
-                if let method = method {
-                    self.type_from_cache(
-                        crate::utilis::monomorphize(&method, ty, tyctx),
-                        tyctx,
-                        method,
-                    )
-                } else {
-                    panic!("Unmorphized alias {ty:?}")
-                }
-            }
+            TyKind::Alias(_, _) => panic!("Attempted to get the .NET type of an unmorphized type"),
             _ => todo!("Can't yet get type {ty:?} from type cache."),
         }
     }
@@ -644,7 +603,7 @@ impl TyCache {
             );
             self.type_def_cache.insert(name.clone(), def);
         }
-        return Type::DotnetType(Box::new(DotnetTypeRef::new::<&str, _>(None, name)));
+        Type::DotnetType(Box::new(DotnetTypeRef::new::<&str, _>(None, name)))
     }
 }
 
@@ -663,14 +622,17 @@ pub fn validity_check<'tyctx>(
     if !*crate::config::VALIDTE_VALUES {
         return val;
     }
+    if is_zst(ty, tyctx) {
+        return val;
+    }
     match ty.kind() {
         TyKind::Adt(def, _subst) => match def.adt_kind() {
             rustc_middle::ty::AdtKind::Union => val,
             rustc_middle::ty::AdtKind::Struct | rustc_middle::ty::AdtKind::Enum => {
-                if let d_tpe = tpe.as_dotnet() {
+                if let Some(d_tpe) = tpe.as_dotnet() {
                     cilly::call!(
                         cilly::call_site::CallSite::new(
-                            d_tpe,
+                            Some(d_tpe),
                             "check_valid".into(),
                             FnSig::new(&[tpe.clone()], tpe),
                             true
@@ -766,24 +728,11 @@ fn enum_bound_check<'tyctx>(
             ]
         ),
     };
-    return vec![
+    vec![
         root.into(),
         cilly::cil_root::CILRoot::Ret {
             tree: CILNode::LDArg(0),
         }
         .into(),
-    ];
+    ]
 }
-/*
- compile_test::closure::stable::debug
-    compile_test::closure::stable::release
-    compile_test::dst::stable::debug
-    compile_test::dst::stable::release
-    compile_test::fold::stable::debug
-    compile_test::fold::stable::release
-    compile_test::slice::stable::debug
-    compile_test::slice::stable::release
-    compile_test::tlocal_key_test::stable::debug
-    compile_test::tlocal_key_test::stable::release
-
-*/

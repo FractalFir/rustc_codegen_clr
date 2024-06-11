@@ -39,7 +39,6 @@ pub enum Type {
     CallGenericArg(u32),
     DotnetChar,
     /// Rust `FnDefs`
-    FnDef(IString),
     DelegatePtr(Box<FnSig>),
     /// Generic argument of a method
     MethodGenericArg(i32),

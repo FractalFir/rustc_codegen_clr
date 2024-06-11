@@ -1,8 +1,10 @@
 use cilly::field_desc::FieldDescriptor;
-use rustc_middle::mir::interpret::AllocId;
-use rustc_middle::ty::{
-    AdtDef, Const, ConstKind, EarlyBinder, GenericArg, Instance, List, ParamEnv, SymbolName, Ty,
-    TyCtxt, TyKind, TypeFoldable,
+use rustc_middle::{
+    mir::interpret::AllocId,
+    ty::{
+        AdtDef, Const, ConstKind, EarlyBinder, GenericArg, Instance, List, ParamEnv, SymbolName,
+        Ty, TyCtxt, TyKind, TypeFoldable,
+    },
 };
 pub const CTOR_FN_NAME: &str = "rustc_clr_interop_managed_ctor";
 pub const MANAGED_CALL_FN_NAME: &str = "rustc_clr_interop_managed_call";
@@ -210,11 +212,7 @@ pub fn try_resolve_const_size(size: Const) -> Result<usize, &'static str> {
     let value = scalar.to_u64().expect("Could not convert scalar to u64!");
     Ok(usize::try_from(value).expect("Const size value too big."))
 }
-fn dummy_span_propably_unsafe() -> rustc_span::Span {
-    let res = rustc_span::Span::with_root_ctxt(rustc_span::BytePos(0), rustc_span::BytePos(0));
-    assert!(res.is_dummy());
-    res
-}
+
 /// Converts a generic argument to a string, and panics if it could not.
 pub fn garg_to_string<'tyctx>(garg: GenericArg<'tyctx>, ctx: TyCtxt<'tyctx>) -> String {
     let str_const = garg
@@ -309,7 +307,7 @@ pub fn align_of<'tyctx>(ty: rustc_middle::ty::Ty<'tyctx>, tyctx: TyCtxt<'tyctx>)
         .layout;
 
     let align = layout.align.abi;
-    return align.bytes();
+    align.bytes()
 }
 pub fn is_zst<'tyctx>(ty: rustc_middle::ty::Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -> bool {
     let layout = tyctx

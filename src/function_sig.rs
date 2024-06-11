@@ -7,7 +7,7 @@ use rustc_middle::ty::{Instance, List, ParamEnv, ParamEnvAnd, PolyFnSig, Ty, TyC
 use rustc_target::abi::call::Conv;
 use rustc_target::spec::abi::Abi as TargetAbi;
 
-/// Creates a `FnSig` from ``. May not match the result of `sig_from_instance_`!
+/// Creates a `FnSig` from ` `. May not match the result of `sig_from_instance_`!
 /// Use ONLY for function pointers!
 pub fn from_poly_sig<'tyctx>(
     method_instance: Instance<'tyctx>,
@@ -41,15 +41,14 @@ pub fn sig_from_instance_<'tyctx>(
     };
     let conv = fn_abi.conv;
     match conv {
-        Conv::Rust => (),
-        Conv::C => (),
+        Conv::Rust | Conv::C => (),
         _ => panic!("ERROR:calling using convention {conv:?} is not supported!"),
     }
     //assert!(!fn_abi.c_variadic);
     let ret = crate::utilis::monomorphize(&function, fn_abi.ret.layout.ty, tyctx);
     let ret = tycache.type_from_cache(ret, tyctx, function);
     let mut args = Vec::with_capacity(fn_abi.args.len());
-    for arg in fn_abi.args.iter() {
+    for arg in &fn_abi.args {
         let arg = crate::utilis::monomorphize(&function, arg.layout.ty, tyctx);
         args.push(tycache.type_from_cache(arg, tyctx, function));
     }
@@ -63,12 +62,12 @@ pub fn sig_from_instance_<'tyctx>(
     .abi();
     // Only those ABIs are supported
     match internal_abi {
-        TargetAbi::C { unwind: _ } => (),
-        TargetAbi::Cdecl { unwind: _ } => (),
-        TargetAbi::RustIntrinsic => (),
-        TargetAbi::Rust => (),
-        TargetAbi::RustCold => (),
-        TargetAbi::RustCall => (), /*Err(CodegenError::FunctionABIUnsuported(
+        TargetAbi::C { unwind: _ }
+        | TargetAbi::Cdecl { unwind: _ }
+        | TargetAbi::RustIntrinsic
+        | TargetAbi::Rust
+        | TargetAbi::RustCold
+        | TargetAbi::RustCall => (), /*Err(CodegenError::FunctionABIUnsuported(
         "\"rust_call\" ABI, used for things like clsoures, is not supported yet!",
         ))?,*/
         _ => todo!("Unsuported ABI:{internal_abi:?}"),
