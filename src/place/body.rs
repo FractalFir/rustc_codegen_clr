@@ -207,8 +207,8 @@ pub fn place_elem_body<'ctx>(
                     let array_type = type_cache.type_from_cache(curr_ty, tyctx, method_instance);
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
                     if body_ty_is_by_adress(element) {
-                        let ops = CILNode::Call {
-                            site: CallSite::new(
+                        let ops = call!(
+                            CallSite::new(
                                 Some(array_dotnet),
                                 "get_Address".into(),
                                 FnSig::new(
@@ -216,14 +216,13 @@ pub fn place_elem_body<'ctx>(
                                     Type::Ptr(element_type.into()),
                                 ),
                                 false,
-                            )
-                            .into(),
-                            args: [parrent_node, CILNode::ZeroExtendToUSize(index.into())].into(),
-                        };
+                            ),
+                            [parrent_node, CILNode::ZeroExtendToUSize(index.into())]
+                        );
                         ((element).into(), ops)
                     } else {
-                        let ops = CILNode::Call {
-                            site: CallSite::new(
+                        let ops = call!(
+                            CallSite::new(
                                 Some(array_dotnet),
                                 "get_Item".into(),
                                 FnSig::new(
@@ -231,10 +230,9 @@ pub fn place_elem_body<'ctx>(
                                     element_type,
                                 ),
                                 false,
-                            )
-                            .into(),
-                            args: [parrent_node, CILNode::ZeroExtendToUSize(index.into())].into(),
-                        };
+                            ),
+                            [parrent_node, CILNode::ZeroExtendToUSize(index.into())]
+                        );
                         ((element).into(), ops)
                     }
                 }
@@ -297,8 +295,8 @@ pub fn place_elem_body<'ctx>(
                     let array_type = type_cache.type_from_cache(curr_ty, tyctx, method_instance);
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
                     if body_ty_is_by_adress(element_ty) {
-                        let ops = CILNode::Call {
-                            site: CallSite::new(
+                        let ops = call!(
+                            CallSite::new(
                                 Some(array_dotnet),
                                 "get_Address".into(),
                                 FnSig::new(
@@ -306,22 +304,20 @@ pub fn place_elem_body<'ctx>(
                                     Type::Ptr(element.into()),
                                 ),
                                 false,
-                            )
-                            .into(),
-                            args: [parrent_node, CILNode::ZeroExtendToUSize(index.into())].into(),
-                        };
+                            ),
+                            [parrent_node, CILNode::ZeroExtendToUSize(index.into())]
+                        );
                         ((element_ty).into(), ops)
                     } else {
-                        let ops = CILNode::Call {
-                            site: CallSite::new(
+                        let ops = call!(
+                            CallSite::new(
                                 Some(array_dotnet),
                                 "get_Item".into(),
                                 FnSig::new(&[Type::Ptr(array_type.into()), Type::USize], element),
                                 false,
-                            )
-                            .into(),
-                            args: [parrent_node, CILNode::ZeroExtendToUSize(index.into())].into(),
-                        };
+                            ),
+                            [parrent_node, CILNode::ZeroExtendToUSize(index.into())]
+                        );
                         ((element_ty).into(), ops)
                     }
                 }

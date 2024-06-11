@@ -55,29 +55,24 @@ fn eval_node<'asm>(
             Value::Ptr(alloc_id, offset) => Ok(Value::Ptr(alloc_id, offset)),
             _ => todo!("Can't transmute {val:?} to pointer."),
         },
-        CILNode::Call {
-            args: call_args,
-            site,
-        }
-        | CILNode::CallVirt {
-            args: call_args,
-            site,
-        }
-        | CILNode::NewObj {
-            args: call_args,
-            site,
-        } => {
-            let mut call_args: Box<[_]> = call_args
+        CILNode::Call(call_op_args)
+        | CILNode::CallVirt(call_op_args)
+        | CILNode::NewObj(call_op_args) => {
+            let mut call_args: Box<[_]> = call_op_args
+                .args
                 .iter()
                 .map(|arg| eval_node(arg, state, args).map(|arg| arg.pass_as_arg(state)))
                 .try_collect()?;
             assert_eq!(state.locals.len(), state.call_stack.len());
-            match state.run(site, &mut call_args) {
+            match state.run(&call_op_args.site, &mut call_args) {
                 Ok(val) => Ok(val),
-                Err(Exception::MethodNotFound(_)) => state.try_call_extern(site, &mut call_args),
+                Err(Exception::MethodNotFound(_)) => {
+                    state.try_call_extern(&call_op_args.site, &mut call_args)
+                }
                 Err(err) => Err(err),
             }
         }
+
         CILNode::Eq(a, b) => {
             let a = eval_node(a, state, args)?;
             let b = eval_node(b, state, args)?;

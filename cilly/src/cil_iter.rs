@@ -142,8 +142,7 @@ impl<'a> Iterator for CILIter<'a> {
                     | CILNode::LoadGlobalAllocPtr { alloc_id: _ }
                     | CILNode::LoadAddresOfTMPLocal
                     | CILNode::PointerToConstValue(_)
-                    | CILNode::LoadTMPLocal
-                    | CILNode::GetStackTop,
+                    | CILNode::LoadTMPLocal,
                 ) => {
                     self.elems.pop();
                     continue;
@@ -243,12 +242,12 @@ impl<'a> Iterator for CILIter<'a> {
                     }
                 }
                 CILIterElem::Node(
-                    CILNode::Call { site: _, args }
-                    | CILNode::NewObj { site: _, args }
-                    | CILNode::CallVirt { site: _, args },
+                    CILNode::Call(call_op_args)
+                    | CILNode::NewObj(call_op_args)
+                    | CILNode::CallVirt(call_op_args),
                 ) => {
-                    if *idx - 1 < args.len() {
-                        let arg = &args[*idx - 1];
+                    if *idx - 1 < call_op_args.args.len() {
+                        let arg = &call_op_args.args[*idx - 1];
                         *idx += 1;
                         self.elems.push((0, CILIterElem::Node(arg)));
                         continue;
@@ -257,7 +256,8 @@ impl<'a> Iterator for CILIter<'a> {
                         continue;
                     }
                 }
-                CILIterElem::Node(CILNode::SubTrees(roots, node)) => {
+                CILIterElem::Node(CILNode::SubTrees(rn)) => {
+                    let (roots, node) = rn.as_ref();
                     if *idx - 1 < roots.len() {
                         let root: &CILRoot = &roots[*idx - 1];
                         *idx += 1;
@@ -270,19 +270,7 @@ impl<'a> Iterator for CILIter<'a> {
                     }
                     continue;
                 }
-                CILIterElem::Node(CILNode::InspectValue { val, inspect }) => {
-                    if *idx - 1 < inspect.len() {
-                        let root = &inspect[*idx - 1];
-                        *idx += 1;
-                        self.elems.push((0, CILIterElem::Root(root)));
-                    } else if *idx - 1 == inspect.len() {
-                        *idx += 1;
-                        self.elems.push((0, CILIterElem::Node(val)));
-                    } else {
-                        self.elems.pop();
-                    }
-                    continue;
-                }
+
                 CILIterElem::Node(CILNode::TemporaryLocal(pack)) => {
                     let (_, roots, node) = pack.as_ref();
                     if *idx - 1 < roots.len() {
@@ -445,11 +433,11 @@ impl<'a, T: Iterator<Item = CILIterElem<'a>>> CILIterTrait<'a> for T {
     fn call_sites(self) -> impl Iterator<Item = &'a CallSite> {
         self.filter_map(|node| match node {
             CILIterElem::Node(
-                CILNode::Call { args: _, site }
-                | CILNode::CallVirt { args: _, site }
-                | CILNode::NewObj { args: _, site }
-                | CILNode::LDFtn(site),
-            ) => Some(site.as_ref()),
+                CILNode::Call(call_op_args)
+                | CILNode::CallVirt(call_op_args)
+                | CILNode::NewObj(call_op_args),
+            ) => Some(call_op_args.site.as_ref()),
+            CILIterElem::Node(CILNode::LDFtn(site)) => Some(site.as_ref()),
             CILIterElem::Root(
                 CILRoot::Call { site, args: _ } | CILRoot::CallVirt { site, args: _ },
             ) => Some(site),

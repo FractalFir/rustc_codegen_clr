@@ -25,7 +25,7 @@ pub(crate) fn resolve_global_allocations(
                     }
                     CILNode::PointerToConstValue(bytes) => {
                         *node = CILNode::LDStaticField(Box::new(crate::assembly::add_const_value(
-                            asm, *bytes, tyctx,
+                            asm, **bytes, tyctx,
                         )));
                     }
                     _ => (),

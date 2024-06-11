@@ -155,16 +155,15 @@ fn place_elem_get<'a>(
                     let element = type_cache.type_from_cache(element, tyctx, method_instance);
                     let array_type = type_cache.type_from_cache(curr_ty, tyctx, method_instance);
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
-                    CILNode::Call {
-                        site: CallSite::new(
+                    call!(
+                        CallSite::new(
                             Some(array_dotnet),
                             "get_Item".into(),
                             FnSig::new(&[Type::Ptr(array_type.into()), Type::USize], element),
                             false,
-                        )
-                        .into(),
-                        args: [addr_calc, CILNode::ZeroExtendToUSize(index.into())].into(),
-                    }
+                        ),
+                        [addr_calc, CILNode::ZeroExtendToUSize(index.into())]
+                    )
                 }
                 _ => {
                     rustc_middle::ty::print::with_no_trimmed_paths! {todo!("Can't index into {curr_ty}!")}
@@ -221,16 +220,15 @@ fn place_elem_get<'a>(
                     let array_type = type_cache.type_from_cache(curr_ty, tyctx, method_instance);
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
                     //eprintln!("WARNING: ConstantIndex has required min_length of {min_length}, but bounds checking on const access not supported yet!");
-                    CILNode::Call {
-                        site: CallSite::new(
+                    call!(
+                        CallSite::new(
                             Some(array_dotnet),
                             "get_Item".into(),
                             FnSig::new(&[Type::Ptr(array_type.into()), Type::USize], element),
                             false,
-                        )
-                        .into(),
-                        args: [addr_calc, CILNode::ZeroExtendToUSize(index.into())].into(),
-                    }
+                        ),
+                        [addr_calc, CILNode::ZeroExtendToUSize(index.into())]
+                    )
                 }
                 _ => {
                     rustc_middle::ty::print::with_no_trimmed_paths! { todo!("Can't index into {curr_ty}!")}

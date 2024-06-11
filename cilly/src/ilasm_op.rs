@@ -167,7 +167,9 @@ fn export_node(
         CILNode::Shr(a, b) => bi_op!(out, a, b, depth, il_flavour, "shr"),
         CILNode::Shl(a, b) => bi_op!(out, a, b, depth, il_flavour, "shl"),
         CILNode::ShrUn(a, b) => bi_op!(out, a, b, depth, il_flavour, "shr.un"),
-        CILNode::Call { args, site } => {
+        CILNode::Call(call_op_args) => {
+            let site = &call_op_args.site;
+            let args = &call_op_args.args;
             if site.is_nop() {
                 assert_eq!(args.len(), 1);
                 export_node(out, &args[0], depth.incremented(), il_flavour)
@@ -210,13 +212,13 @@ fn export_node(
                 )
             }
         }
-        CILNode::CallVirt { args, site } => {
-            for arg in args {
+        CILNode::CallVirt(call_op_args) => {
+            for arg in &call_op_args.args {
                 export_node(out, arg, depth.incremented(), il_flavour)?;
             }
             depth.pad(out)?;
             //assert!(sig.inputs.is_empty());
-            let mut inputs_iter = site.explicit_inputs().iter();
+            let mut inputs_iter = call_op_args.site.explicit_inputs().iter();
             let mut input_string = String::new();
             if let Some(firts_arg) = inputs_iter.next() {
                 input_string.push_str(&non_void_type_cil(firts_arg));
@@ -225,27 +227,31 @@ fn export_node(
                 input_string.push(',');
                 input_string.push_str(&non_void_type_cil(arg));
             }
-            let prefix = if site.is_static() { "" } else { "instance" };
-            let generics = if site.generics().is_empty() {
+            let prefix = if call_op_args.site.is_static() {
+                ""
+            } else {
+                "instance"
+            };
+            let generics = if call_op_args.site.generics().is_empty() {
                 String::new()
             } else {
                 assert!(
-                    site.generics().len() == 1,
+                    call_op_args.site.generics().len() == 1,
                     "Methods with multiple generics not supported yet!"
                 );
-                format!("<{}>", type_cil(&site.generics()[0]))
+                format!("<{}>", type_cil(&call_op_args.site.generics()[0]))
             };
 
-            let owner_name = match site.class() {
+            let owner_name = match call_op_args.site.class() {
                 Some(owner) => {
                     format!("{}::", type_cil(&owner.clone().into()))
                 }
                 None => "RustModule::".into(),
             };
-            let function_name = site.name();
+            let function_name = call_op_args.site.name();
             write!(out,
                 "callvirt {prefix} {output} {owner_name}'{function_name}'{generics}({input_string})",
-                output = type_cil(site.signature().output())
+                output = type_cil(call_op_args.site.signature().output())
             )
         }
 
@@ -364,7 +370,7 @@ fn export_node(
             depth.pad(out)?;
             write!(out, "throw")
         }
-        CILNode::SubTrees(_, _) => todo!(),
+        CILNode::SubTrees(_) => todo!(),
         CILNode::LoadAddresOfTMPLocal => todo!(),
         CILNode::LoadTMPLocal => todo!(),
         CILNode::LDFtn(site) => {
@@ -407,13 +413,13 @@ fn export_node(
             depth.pad(out)?;
             write!(out, "ldtoken {tpe}", tpe = non_void_type_cil(tpe))
         }
-        CILNode::NewObj { site, args } => {
-            for arg in args {
+        CILNode::NewObj(call_op_args) => {
+            for arg in &call_op_args.args {
                 export_node(out, arg, depth.incremented(), il_flavour)?;
             }
             depth.pad(out)?;
             //assert!(sig.inputs.is_empty());
-            let mut inputs_iter = site.explicit_inputs().iter();
+            let mut inputs_iter = call_op_args.site.explicit_inputs().iter();
             let mut input_string = String::new();
             if let Some(firts_arg) = inputs_iter.next() {
                 input_string.push_str(&non_void_type_cil(firts_arg));
@@ -422,28 +428,32 @@ fn export_node(
                 input_string.push(',');
                 input_string.push_str(&non_void_type_cil(arg));
             }
-            let prefix = if site.is_static() { "" } else { "instance" };
-            let generics = if site.generics().is_empty() {
+            let prefix = if call_op_args.site.is_static() {
+                ""
+            } else {
+                "instance"
+            };
+            let generics = if call_op_args.site.generics().is_empty() {
                 String::new()
             } else {
                 assert!(
-                    site.generics().len() == 1,
+                    call_op_args.site.generics().len() == 1,
                     "Methods with multiple generics not supported yet!"
                 );
-                format!("<{}>", type_cil(&site.generics()[0]))
+                format!("<{}>", type_cil(&call_op_args.site.generics()[0]))
             };
 
-            let owner_name = match site.class() {
+            let owner_name = match call_op_args.site.class() {
                 Some(owner) => {
                     format!("{}::", type_cil(&owner.clone().into()))
                 }
                 None => "RustModule::".into(),
             };
-            let function_name = site.name();
+            let function_name = call_op_args.site.name();
             write!(
                 out,
                 "newobj {prefix} {output} {owner_name}'{function_name}'{generics}({input_string})",
-                output = type_cil(site.signature().output())
+                output = type_cil(call_op_args.site.signature().output())
             )
         }
         CILNode::LdStr(string) => {
@@ -482,19 +492,7 @@ fn export_node(
         CILNode::LDLen { arr } => un_op!(out, arr, depth, il_flavour, "ldlen"),
         CILNode::LDElelemRef { arr, idx } => bi_op!(out, arr, idx, depth, il_flavour, "ldelem.ref"),
         CILNode::PointerToConstValue(_) => todo!(),
-        CILNode::GetStackTop => {
-            depth.pad(out)?;
-            write!(out, "// unsafe builtin GetStackTop.")
-        }
-        CILNode::InspectValue { val, inspect } => {
-            export_node(out, val, depth.incremented(), il_flavour)?;
-            depth.pad(out)?;
-            write!(out, "dup")?;
-            for root in inspect {
-                export_root(out, root, depth.incremented(), il_flavour)?;
-            }
-            Ok(())
-        }
+
         CILNode::TransmutePtr { val, new_ptr: _ } => {
             export_node(out, val, depth.incremented(), il_flavour)
         }

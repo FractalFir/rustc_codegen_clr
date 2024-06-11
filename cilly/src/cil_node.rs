@@ -3,8 +3,14 @@ use crate::{
     field_desc::FieldDescriptor, fn_sig::FnSig, static_field_desc::StaticFieldDescriptor,
     DotnetTypeRef, IString, Type,
 };
-
 use serde::{Deserialize, Serialize};
+/// A container for the arguments of a call, callvirt, or newobj instruction.
+#[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
+pub struct CallOpArgs {
+    pub args: Box<[CILNode]>,
+    pub site: Box<CallSite>,
+}
+
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 pub enum CILNode {
     /// Loads the value of local variable number `n`.
@@ -108,16 +114,10 @@ pub enum CILNode {
     Shr(Box<Self>, Box<Self>),
     Shl(Box<Self>, Box<Self>),
     ShrUn(Box<Self>, Box<Self>),
-    // 32 bytes - too big!
-    Call {
-        args: Box<[Self]>,
-        site: Box<CallSite>,
-    },
-    // 32 bytes - too big!
-    CallVirt {
-        args: Box<[Self]>,
-        site: Box<CallSite>,
-    },
+
+    Call(Box<CallOpArgs>),
+
+    CallVirt(Box<CallOpArgs>),
     LdcI64(i64),
     LdcU64(u64),
     LdcI32(i32),
@@ -150,16 +150,13 @@ pub enum CILNode {
     /// Compares two operands, returning true if lhs < rhs. Unsigned for intigers, unordered(in respect to NaNs) for floats.
     GtUn(Box<Self>, Box<Self>),
     TemporaryLocal(Box<(Type, Box<[CILRoot]>, Self)>),
-    SubTrees(Box<[CILRoot]>, Box<Self>),
+
+    SubTrees(Box<(Box<[CILRoot]>, Box<Self>)>),
     LoadAddresOfTMPLocal,
     LoadTMPLocal,
     LDFtn(Box<CallSite>),
     LDTypeToken(Box<Type>),
-    // 32 bytes - too big!
-    NewObj {
-        site: Box<CallSite>,
-        args: Box<[Self]>,
-    },
+    NewObj(Box<CallOpArgs>),
     // 24 bytes - too big!
     LdStr(IString),
     CallI(Box<(FnSig, Self, Box<[Self]>)>),
@@ -185,14 +182,8 @@ pub enum CILNode {
         arr: Box<Self>,
         idx: Box<Self>,
     },
-    PointerToConstValue(u128),
-    /// Unsafe, low-level internal op for checking the state of the CIL eval stack. WILL cause serious issues if not used **very** carefully, and only inside the `inspect` arm of `InspectValue`.
-    GetStackTop,
-    /// Unsafe, low-level internal op for inspecting the state of the CIL eval stack. Must be paired with exactly one `GetStackTop`, in the `inspect` arm.
-    InspectValue {
-        val: Box<Self>,
-        inspect: Box<[CILRoot]>,
-    },
+    PointerToConstValue(Box<u128>),
+
     /// Tells the codegen a pointer value type is changed. Used during verification, to implement things like`transmute`.
     TransmutePtr {
         val: Box<Self>,
@@ -301,8 +292,8 @@ impl CILNode {
             Self::LocAllocAligned { .. }=>(),
             Self::LdFalse | Self::LdTrue=>(),
             Self::TransmutePtr { val, new_ptr: _ }=>val.opt(opt_count),
-            Self::InspectValue { val, inspect }=>{val.opt_children(opt_count);inspect.iter_mut().for_each(|arg|arg.opt(opt_count))},
-            Self::LDLoc(_) |  Self::GetStackTop | Self::LDArg(_) | Self::LDLocA(_) | Self::LDArgA(_)=> (),
+
+            Self::LDLoc(_)| Self::LDArg(_) | Self::LDLocA(_) | Self::LDArgA(_)=> (),
             Self::BlackBox(inner)
             | Self::ConvF32(inner)
             | Self::ConvF64(inner)
@@ -345,9 +336,10 @@ impl CILNode {
                 a.opt(opt_count);
                 b.opt(opt_count);
             }
-            Self::Call { args, site: _ }
-            | Self::NewObj { site: _, args }
-            | Self::CallVirt { args, site: _ } => args.iter_mut().for_each(|arg|arg.opt(opt_count)),
+         
+            Self::Call (call_op_args) | Self::NewObj(call_op_args) | Self::CallVirt(call_op_args)=> call_op_args.args.iter_mut().for_each(|arg|arg.opt(opt_count)),
+        
+          
             Self::LdcI64(_)
             | Self::LdcU64(_)
             | Self::LdcI32(_)
@@ -372,7 +364,8 @@ impl CILNode {
             | Self::Neg(inner)
             | Self::Not(inner) => inner.opt(opt_count),
             Self::TemporaryLocal(_inner) => (),
-            Self::SubTrees(a, b) => {
+            Self::SubTrees(sub_trees) => {
+                let (a,b) = sub_trees.as_mut();
                 a.iter_mut().for_each(|root|root.opt(opt_count));
                 b.opt(opt_count);
             }
@@ -399,15 +392,14 @@ impl CILNode {
         if contains_calls {
             return true;
         }
-        let contains_subtrees = self.into_iter().any(|node| {
+        self.into_iter().any(|node| {
             matches!(
                 node,
                 crate::cil_iter::CILIterElem::Node(
-                    CILNode::SubTrees(_, _) | CILNode::TemporaryLocal(_)
+                    CILNode::SubTrees(_) | CILNode::TemporaryLocal(_)
                 )
             )
-        });
-        contains_subtrees
+        })
     }
     // This fucntion will get expanded, so a single match is a non-issue.
     #[allow(clippy::single_match)]
@@ -458,11 +450,7 @@ impl CILNode {
             Self::LdFalse=>(),
             Self::LdTrue=>(),
             Self::TransmutePtr { val, new_ptr: _ }=>val.allocate_tmps(curr_loc, locals),
-            Self::GetStackTop =>(),
-            Self::InspectValue { val, inspect }=>{
-                val.allocate_tmps(curr_loc, locals);
-                inspect.iter_mut().for_each(|root|root.allocate_tmps(curr_loc, locals));
-            },
+           
             Self:: PointerToConstValue(_arr)=>(),
             Self::LoadGlobalAllocPtr { alloc_id: _ } => (),
             Self::LDLoc(_) |
@@ -509,8 +497,8 @@ impl CILNode {
                 a.allocate_tmps(curr_loc, locals);
                 b.allocate_tmps(curr_loc, locals);
             }
-            Self::Call { args, site: _ } |
-            Self::CallVirt { args, site: _ } =>args.iter_mut().for_each(|arg|arg.allocate_tmps(curr_loc, locals)),
+            Self::Call (call_op_args)  |  Self::CallVirt (call_op_args)  |  Self::NewObj (call_op_args) =>call_op_args.args.iter_mut().for_each(|arg|arg.allocate_tmps(curr_loc, locals)),
+          
             Self::LdcI64(_) |
             Self::LdcU64(_) |
             Self::LdcI32(_)  |
@@ -559,9 +547,10 @@ impl CILNode {
                     }),
                     "self:{self:?}"
                 );
-                *self=  Self::SubTrees(roots.clone(), Box::new(main.clone()));
+                *self=  Self::SubTrees(Box::new((roots.clone(), Box::new(main.clone()))));
             },
-            Self::SubTrees(trees, main) =>{
+            Self::SubTrees(sub_trees) =>{
+                let (trees, main) = sub_trees.as_mut();
                 trees.iter_mut().for_each(|arg|arg.allocate_tmps(curr_loc,locals));
                 main.allocate_tmps(curr_loc, locals);
             }
@@ -569,7 +558,7 @@ impl CILNode {
             Self::LoadTMPLocal =>*self = Self::LDLoc(curr_loc.expect("Temporary local referenced when none present")),
             Self::LDFtn(_) => (),
             Self::LDTypeToken(_) =>(),
-            Self::NewObj { site: _, args } => args.iter_mut().for_each(|arg|arg.allocate_tmps(curr_loc, locals)),
+
             Self::LdStr(_) => (),
             Self::CallI (sig_ptr_args) => {
                 sig_ptr_args.1.allocate_tmps(curr_loc, locals);
@@ -1131,19 +1120,19 @@ macro_rules! ld_field_address {
 #[macro_export]
 macro_rules! call {
     ($call_site:expr,$args:expr) => {
-        CILNode::Call {
+        CILNode::Call(Box::new($crate::cil_node::CallOpArgs {
             args: $args.into(),
             site: $call_site.into(),
-        }
+        }))
     };
 }
 #[macro_export]
 macro_rules! call_virt {
     ($call_site:expr,$args:expr) => {
-        CILNode::CallVirt {
+        CILNode::CallVirt(Box::new($crate::cil_node::CallOpArgs {
             args: $args.into(),
             site: $call_site.into(),
-        }
+        }))
     };
 }
 #[macro_export]

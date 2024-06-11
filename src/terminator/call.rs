@@ -5,7 +5,10 @@ use crate::{
     utilis::{garg_to_string, CTOR_FN_NAME, MANAGED_CALL_FN_NAME, MANAGED_CALL_VIRT_FN_NAME},
 };
 use cilly::{
-    call, call_virt, cil_node::CILNode, cil_root::CILRoot, conv_usize, ld_field, ldc_u32, size_of,
+    call, call_virt,
+    cil_node::{CILNode, CallOpArgs},
+    cil_root::CILRoot,
+    conv_usize, ld_field, ldc_u32, size_of,
 };
 use cilly::{call_site::CallSite, field_desc::FieldDescriptor, fn_sig::FnSig, DotnetTypeRef, Type};
 use rustc_middle::{
@@ -224,7 +227,7 @@ fn call_ctor<'tyctx>(
         crate::place::place_set(
             destination,
             tyctx,
-            CILNode::NewObj {
+            CILNode::NewObj(Box::new(CallOpArgs {
                 site: CallSite::boxed(
                     Some(tpe.clone()),
                     ".ctor".into(),
@@ -232,7 +235,7 @@ fn call_ctor<'tyctx>(
                     false,
                 ),
                 args: [].into(),
-            },
+            })),
             method,
             method_instance,
             type_cache,
@@ -266,10 +269,10 @@ fn call_ctor<'tyctx>(
         crate::place::place_set(
             destination,
             tyctx,
-            CILNode::NewObj {
+            CILNode::NewObj(Box::new(CallOpArgs {
                 site: CallSite::boxed(Some(tpe.clone()), ".ctor".into(), sig, false),
                 args: call.into(),
-            },
+            })),
             method,
             method_instance,
             type_cache,

@@ -5,7 +5,7 @@ use cilly::{
     basic_block::BasicBlock,
     call,
     call_site::CallSite,
-    cil_node::CILNode,
+    cil_node::{CILNode, CallOpArgs},
     cil_root::CILRoot,
     conv_usize,
     field_desc::FieldDescriptor,
@@ -126,7 +126,7 @@ add_method_from_trees!(
                     args: Box::new([conv_usize!(CILNode::LDArg(1))])
                 }
                 .into(),
-                CILRoot::Throw(CILNode::NewObj {
+                CILRoot::Throw(CILNode::NewObj(Box::new(CallOpArgs {
                     site: CallSite::boxed(
                         Some(
                             DotnetTypeRef::new(
@@ -140,7 +140,7 @@ add_method_from_trees!(
                         true
                     ),
                     args: [].into()
-                })
+                })))
                 .into(),
             ],
             0,
@@ -657,10 +657,10 @@ add_method_from_trees!(
         vec![
             CILRoot::STLoc {
                 local: 0,
-                tree: CILNode::NewObj {
-                    args: [CILNode::NewObj {
+                tree: CILNode::NewObj(Box::new(CallOpArgs {
+                    args: [CILNode::NewObj(Box::new(CallOpArgs {
                         args: [
-                            CILNode::NewObj {
+                            CILNode::NewObj(Box::new(CallOpArgs {
                                 site: Box::new(CallSite::new(
                                     Some(unmanaged_start()),
                                     ".ctor".into(),
@@ -678,7 +678,7 @@ add_method_from_trees!(
                                     false
                                 )),
                                 args: [CILNode::LDArg(2), CILNode::LDArg(3),].into()
-                            },
+                            })),
                             CILNode::LDFtn(Box::new(CallSite::new(
                                 Some(unmanaged_start()),
                                 "Start".into(),
@@ -703,7 +703,7 @@ add_method_from_trees!(
                             ),
                             false
                         )),
-                    }]
+                    }))]
                     .into(),
                     site: Box::new(CallSite::new(
                         Some(DotnetTypeRef::thread()),
@@ -717,7 +717,7 @@ add_method_from_trees!(
                         ),
                         false
                     )),
-                }
+                }))
             }
             .into(),
             CILRoot::CallVirt {
@@ -735,9 +735,18 @@ add_method_from_trees!(
             .into(),
             CILRoot::STIndISize(
                 CILNode::LDArg(0),
-                CILNode::Call {
-                    args: [CILNode::Call {
-                        site: Box::new(CallSite::new(
+                call!(
+                    Box::new(CallSite::new(
+                        Some(DotnetTypeRef::gc_handle()),
+                        "op_Explicit".into(),
+                        FnSig::new(
+                            &[Type::DotnetType(Box::new(DotnetTypeRef::gc_handle()))],
+                            Type::ISize
+                        ),
+                        true
+                    )),
+                    [call!(
+                        Box::new(CallSite::new(
                             Some(DotnetTypeRef::gc_handle()),
                             "Alloc".into(),
                             FnSig::new(
@@ -746,19 +755,9 @@ add_method_from_trees!(
                             ),
                             true
                         )),
-                        args: Box::new([CILNode::LDLoc(0)])
-                    }]
-                    .into(),
-                    site: Box::new(CallSite::new(
-                        Some(DotnetTypeRef::gc_handle()),
-                        "op_Explicit".into(),
-                        FnSig::new(
-                            &[Type::DotnetType(Box::new(DotnetTypeRef::gc_handle()))],
-                            Type::ISize
-                        ),
-                        true
-                    ))
-                }
+                        [CILNode::LDLoc(0)]
+                    )]
+                )
             )
             .into(),
             CILRoot::Ret { tree: ldc_u64!(0) }.into(),

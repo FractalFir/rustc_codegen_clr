@@ -362,8 +362,8 @@ pub fn place_elem_adress<'ctx>(
                     if *from_end {
                         todo!("Can't index array from end!");
                     } else {
-                        CILNode::Call {
-                            site: CallSite::new(
+                        call!(
+                            CallSite::new(
                                 Some(array_dotnet),
                                 "get_Address".into(),
                                 FnSig::new(
@@ -371,14 +371,12 @@ pub fn place_elem_adress<'ctx>(
                                     Type::Ptr(element.into()),
                                 ),
                                 false,
-                            )
-                            .into(),
-                            args: [
+                            ),
+                            [
                                 addr_calc,
                                 CILNode::ZeroExtendToUSize(ldc_u64!(*offset).into()),
                             ]
-                            .into(),
-                        }
+                        )
                     }
                 }
                 _ => {

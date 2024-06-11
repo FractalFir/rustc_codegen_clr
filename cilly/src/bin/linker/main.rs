@@ -5,6 +5,7 @@ use cilly::{
     asm::Assembly,
     basic_block::BasicBlock,
     c_exporter::CExporter,
+    call,
     call_site::CallSite,
     cil_node::CILNode,
     cil_root::CILRoot,
@@ -122,15 +123,15 @@ fn override_malloc(patched: &mut HashMap<CallSite, Method>, call: &CallSite) {
             vec![],
             vec![BasicBlock::new(
                 vec![CILRoot::Ret {
-                    tree: CILNode::Call {
-                        args: [CILNode::LDArg(0)].into(),
-                        site: CallSite::boxed(
+                    tree: call!(
+                        CallSite::boxed(
                             DotnetTypeRef::marshal().into(),
                             "AllocHGlobal".into(),
                             FnSig::new(&[Type::ISize], Type::ISize),
                             true,
                         ),
-                    },
+                        [CILNode::LDArg(0)]
+                    ),
                 }
                 .into()],
                 0,
@@ -152,14 +153,14 @@ fn override_pthread_attr_init(patched: &mut HashMap<CallSite, Method>, call: &Ca
             vec![],
             vec![BasicBlock::new(
                 vec![CILRoot::Ret {
-                    tree: CILNode::Call {
-                        args: [CILNode::LDArg(0)].into(),
-                        site: Box::new(CallSite::builtin(
+                    tree: call!(
+                        Box::new(CallSite::builtin(
                             "pthread_attr_init".into(),
                             FnSig::new(&[Type::Ptr(Type::ISize.into())], Type::I32),
                             true,
                         )),
-                    },
+                        [CILNode::LDArg(0)]
+                    ),
                 }
                 .into()],
                 0,
@@ -181,14 +182,14 @@ fn override_pthread_attr_destroy(patched: &mut HashMap<CallSite, Method>, call: 
             vec![],
             vec![BasicBlock::new(
                 vec![CILRoot::Ret {
-                    tree: CILNode::Call {
-                        args: [CILNode::LDArg(0)].into(),
-                        site: Box::new(CallSite::builtin(
+                    tree: call!(
+                        Box::new(CallSite::builtin(
                             "pthread_attr_destroy".into(),
                             FnSig::new(&[Type::Ptr(Type::ISize.into())], Type::I32),
                             true,
                         )),
-                    },
+                        [CILNode::LDArg(0)]
+                    ),
                 }
                 .into()],
                 0,
@@ -210,14 +211,14 @@ fn override_pthread_detach(patched: &mut HashMap<CallSite, Method>, call: &CallS
             vec![],
             vec![BasicBlock::new(
                 vec![CILRoot::Ret {
-                    tree: CILNode::Call {
-                        args: [CILNode::LDArg(0)].into(),
-                        site: Box::new(CallSite::builtin(
+                    tree: call!(
+                        Box::new(CallSite::builtin(
                             "pthread_detach".into(),
                             FnSig::new(&[Type::ISize], Type::I32),
                             true,
                         )),
-                    },
+                        [CILNode::LDArg(0)]
+                    ),
                 }
                 .into()],
                 0,
@@ -264,14 +265,14 @@ fn override_pthread_attr_setstacksize(patched: &mut HashMap<CallSite, Method>, c
             vec![],
             vec![BasicBlock::new(
                 vec![CILRoot::Ret {
-                    tree: CILNode::Call {
-                        args: [CILNode::LDArg(0), CILNode::LDArg(1)].into(),
-                        site: Box::new(CallSite::builtin(
+                    tree: call!(
+                        Box::new(CallSite::builtin(
                             "pthread_attr_setstacksize".into(),
                             FnSig::new(&[Type::Ptr(Type::ISize.into()), Type::USize], Type::I32),
                             true,
                         )),
-                    },
+                        [CILNode::LDArg(0), CILNode::LDArg(1)]
+                    ),
                 }
                 .into()],
                 0,
@@ -293,17 +294,8 @@ fn override_pthread_create(patched: &mut HashMap<CallSite, Method>, call: &CallS
             vec![],
             vec![BasicBlock::new(
                 vec![CILRoot::Ret {
-                    tree: CILNode::Call {
-                        args: [
-                            CILNode::LDArg(0),
-                            CILNode::LDArg(1),
-                            CILNode::LDIndISize {
-                                ptr: Box::new(CILNode::LDArgA(2)),
-                            },
-                            CILNode::LDArg(3),
-                        ]
-                        .into(),
-                        site: Box::new(CallSite::builtin(
+                    tree: call!(
+                        Box::new(CallSite::builtin(
                             "pthread_create".into(),
                             FnSig::new(
                                 &[
@@ -319,7 +311,15 @@ fn override_pthread_create(patched: &mut HashMap<CallSite, Method>, call: &CallS
                             ),
                             true,
                         )),
-                    },
+                        [
+                            CILNode::LDArg(0),
+                            CILNode::LDArg(1),
+                            CILNode::LDIndISize {
+                                ptr: Box::new(CILNode::LDArgA(2)),
+                            },
+                            CILNode::LDArg(3),
+                        ]
+                    ),
                 }
                 .into()],
                 0,
@@ -346,15 +346,15 @@ fn override_free(patched: &mut HashMap<CallSite, Method>, call: &CallSite) {
             vec![],
             vec![BasicBlock::new(
                 vec![CILRoot::Ret {
-                    tree: CILNode::Call {
-                        args: [CILNode::LDArg(0)].into(),
-                        site: CallSite::boxed(
+                    tree: call!(
+                        CallSite::boxed(
                             DotnetTypeRef::marshal().into(),
                             "FreeHGlobal".into(),
                             FnSig::new(&[Type::ISize], Type::Void),
                             true,
                         ),
-                    },
+                        [CILNode::LDArg(0)]
+                    ),
                 }
                 .into()],
                 0,
@@ -376,15 +376,15 @@ fn override_realloc(patched: &mut HashMap<CallSite, Method>, call: &CallSite) {
             vec![],
             vec![BasicBlock::new(
                 vec![CILRoot::Ret {
-                    tree: CILNode::Call {
-                        args: [CILNode::LDArg(0), CILNode::LDArg(1)].into(),
-                        site: CallSite::boxed(
+                    tree: call!(
+                        CallSite::boxed(
                             DotnetTypeRef::marshal().into(),
                             "ReAllocHGlobal".into(),
                             FnSig::new(&[Type::ISize, Type::ISize], Type::ISize),
                             true,
                         ),
-                    },
+                        [CILNode::LDArg(0), CILNode::LDArg(1)]
+                    ),
                 }
                 .into()],
                 0,

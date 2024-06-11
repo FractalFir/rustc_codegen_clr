@@ -1,6 +1,10 @@
 use crate::{
-    call_site::CallSite, cil_node::CILNode, field_desc::FieldDescriptor, fn_sig::FnSig,
-    static_field_desc::StaticFieldDescriptor, DotnetTypeRef, IString, Type,
+    call_site::CallSite,
+    cil_node::{CILNode, CallOpArgs},
+    field_desc::FieldDescriptor,
+    fn_sig::FnSig,
+    static_field_desc::StaticFieldDescriptor,
+    DotnetTypeRef, IString, Type,
 };
 
 use serde::{Deserialize, Serialize};
@@ -409,10 +413,10 @@ impl CILRoot {
             &[class.clone().into(), DotnetTypeRef::string_type().into()],
             Type::Void,
         );
-        Self::Throw(CILNode::NewObj {
+        Self::Throw(CILNode::NewObj(Box::new(CallOpArgs {
             site: CallSite::boxed(Some(class), name, signature, false),
             args: [CILNode::LdStr(msg.into())].into(),
-        })
+        })))
     }
     #[must_use]
     pub fn debug(msg: &str) -> Self {
@@ -421,14 +425,14 @@ impl CILRoot {
         let name = "WriteLine".into();
         let signature = FnSig::new(&[DotnetTypeRef::string_type().into()], Type::Void);
         let message_or_check = if crate::mem_checks() {
-            CILNode::SubTrees(
+            CILNode::SubTrees(Box::new((
                 [Self::Call {
                     site: CallSite::mcheck_check_all(),
                     args: [].into(),
                 }]
                 .into(),
                 Box::new(CILNode::LdStr(msg.into())),
-            )
+            )))
         } else {
             CILNode::LdStr(msg.into())
         };
@@ -488,7 +492,8 @@ impl CILRoot {
         let mut res: Vec<CILRoot> = iter_mut
             .flat_map(|tree| match tree {
                 crate::cil_iter_mut::CILIterElemMut::Node(node) => match node {
-                    CILNode::SubTrees(trees, main) => {
+                    CILNode::SubTrees(tm) => {
+                        let (trees, main) = tm.as_mut();
                         let vec = trees.to_vec();
                         let iter = vec.into_iter();
                         let trees = iter.flat_map(|tree| tree.sheed_trees()).collect();
@@ -615,7 +620,7 @@ mod tests {
 
     #[test]
     fn allocating_tmps() {
-        let mut original_value = CILNode::SubTrees(
+        let mut original_value = CILNode::SubTrees(Box::new((
             Box::new([CILRoot::STLoc {
                 local: 14,
                 tree: CILNode::TemporaryLocal(Box::new((
@@ -634,7 +639,7 @@ mod tests {
                 ))),
             }]),
             CILNode::LDLoc(2).into(),
-        );
+        )));
         //let mut method = crate::method::Method::new(crate::access_modifier::AccessModifer::Private,crate::method::MethodType::Static,FnSig::new(&[Type::I32],&Type::Void),"a",vec![],vec![]);
         original_value.allocate_tmps(None, &mut vec![]);
         println!("original_value:{original_value:?}");

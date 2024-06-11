@@ -871,14 +871,14 @@ pub fn handle_intrinsic<'tyctx>(
                 desc: fld_desc.clone(),
             };
             // Get the result back
-            let val = CILNode::SubTrees(
+            let val = CILNode::SubTrees(Box::new((
                 [set_val].into(),
                 ld_field!(
                     place_adress(destination, tyctx, body, method_instance, type_cache),
                     fld_desc
                 )
                 .into(),
-            );
+            )));
             // Compare the result to comparand(aka `old`)
             let cmp = eq!(val, old);
             let fld_desc = field_descrptor(dst_ty.ty, 1, tyctx, method_instance, type_cache);

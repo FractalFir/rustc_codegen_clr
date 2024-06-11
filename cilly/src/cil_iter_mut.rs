@@ -161,11 +161,11 @@ impl<'a> Iterator for CILIterMut<'a> {
                         self.elems.pop();
                         continue;
                     }
-                    CILNode::Call { site: _, args }
-                    | CILNode::CallVirt { args, site: _ }
-                    | CILNode::NewObj { site: _, args } => {
-                        if *idx - 1 < args.len() {
-                            let arg = &mut args[*idx - 1];
+                    CILNode::Call(call_op_args)
+                    | CILNode::CallVirt(call_op_args)
+                    | CILNode::NewObj(call_op_args) => {
+                        if *idx - 1 < call_op_args.args.len() {
+                            let arg = &mut call_op_args.args[*idx - 1];
                             *idx += 1;
                             self.elems.push((
                                 0,
@@ -177,7 +177,9 @@ impl<'a> Iterator for CILIterMut<'a> {
                             continue;
                         }
                     }
-                    CILNode::SubTrees(trees, node) => {
+
+                    CILNode::SubTrees(tnodes) => {
+                        let (trees, node) = tnodes.as_mut();
                         if *idx - 1 < trees.len() {
                             let arg = &mut trees[*idx - 1];
                             *idx += 1;
@@ -248,35 +250,6 @@ impl<'a> Iterator for CILIterMut<'a> {
                             continue;
                         }
                     }
-                    CILNode::GetStackTop => {
-                        self.elems.pop();
-                        continue;
-                    }
-                    CILNode::InspectValue { val, inspect } => {
-                        if *idx - 1 < inspect.len() {
-                            let arg = &mut inspect[*idx - 1];
-                            *idx += 1;
-                            self.elems.push((
-                                0,
-                                CILIterElemUnsafe::Root(std::ptr::from_mut(arg), PhantomData),
-                            ));
-                            continue;
-                        }
-                        if *idx - 1 < inspect.len() + 1 {
-                            *idx += 1;
-                            self.elems.push((
-                                0,
-                                CILIterElemUnsafe::Node(
-                                    std::ptr::from_mut(val.as_mut()),
-                                    PhantomData,
-                                ),
-                            ));
-                            continue;
-                        } else {
-                            self.elems.pop();
-                            continue;
-                        }
-                    } // /_ => todo!("Can't iter node:{node:?}", node = unsafe { &**node_ptr }),
                 },
                 CILIterElemUnsafe::Root(root_ptr, _) => match unsafe { &mut **root_ptr } {
                     CILRoot::SetTMPLocal { value: tree }

@@ -1,9 +1,14 @@
 use crate::r#type::TyCache;
 
 use cilly::{
-    call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_u64, conv_usize,
-    field_desc::FieldDescriptor, ldc_u64, static_field_desc::StaticFieldDescriptor, DotnetTypeRef,
-    FnSig, Type,
+    call_site::CallSite,
+    cil_node::{CILNode, CallOpArgs},
+    cil_root::CILRoot,
+    conv_u64, conv_usize,
+    field_desc::FieldDescriptor,
+    ldc_u64,
+    static_field_desc::StaticFieldDescriptor,
+    DotnetTypeRef, FnSig, Type,
 };
 use rustc_middle::{
     mir::{
@@ -337,7 +342,7 @@ fn load_const_scalar<'ctx>(
             } else {
                 CILNode::LdObj {
                     ptr: Box::new(CILNode::TransmutePtr {
-                        val: Box::new(CILNode::PointerToConstValue(scalar_u128)),
+                        val: Box::new(CILNode::PointerToConstValue(Box::new(scalar_u128))),
                         new_ptr: Box::new(Type::Ptr(Box::new(tpe.clone()))),
                     }),
                     obj: tpe.into(),
@@ -346,7 +351,7 @@ fn load_const_scalar<'ctx>(
         }
         TyKind::Adt(_, _subst) => CILNode::LdObj {
             ptr: Box::new(CILNode::TransmutePtr {
-                val: Box::new(CILNode::PointerToConstValue(scalar_u128)),
+                val: Box::new(CILNode::PointerToConstValue(Box::new(scalar_u128))),
                 new_ptr: Box::new(Type::Ptr(Box::new(tpe.clone()))),
             }),
             obj: tpe.into(),
@@ -397,7 +402,7 @@ pub fn load_const_int(value: u128, int_type: &IntTy) -> CILNode {
                 ],
                 Type::Void,
             );
-            CILNode::NewObj {
+            CILNode::NewObj(Box::new(CallOpArgs {
                 site: CallSite::boxed(
                     Some(DotnetTypeRef::int_128()),
                     ".ctor".into(),
@@ -405,7 +410,7 @@ pub fn load_const_int(value: u128, int_type: &IntTy) -> CILNode {
                     false,
                 ),
                 args: [conv_u64!(ldc_u64!(high)), conv_u64!(ldc_u64!(low))].into(),
-            }
+            }))
         }
     }
 }
@@ -433,7 +438,7 @@ pub fn load_const_uint(value: u128, int_type: UintTy) -> CILNode {
                 ],
                 Type::Void,
             );
-            CILNode::NewObj {
+            CILNode::NewObj(Box::new(CallOpArgs {
                 site: CallSite::boxed(
                     Some(DotnetTypeRef::uint_128()),
                     ".ctor".into(),
@@ -441,7 +446,7 @@ pub fn load_const_uint(value: u128, int_type: UintTy) -> CILNode {
                     false,
                 ),
                 args: [conv_u64!(ldc_u64!(high)), conv_u64!(ldc_u64!(low))].into(),
-            }
+            }))
         }
     }
 }

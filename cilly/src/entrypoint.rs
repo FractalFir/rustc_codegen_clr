@@ -30,10 +30,7 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
         );
         let mem_checks = if crate::mem_checks() {
             CILRoot::Pop {
-                tree: CILNode::Call {
-                    site: Box::new(CallSite::mcheck()),
-                    args: [conv_usize!(ldc_u64!(0))].into(),
-                },
+                tree: call!(CallSite::mcheck(), [conv_usize!(ldc_u64!(0))]),
             }
         } else {
             CILRoot::Nop

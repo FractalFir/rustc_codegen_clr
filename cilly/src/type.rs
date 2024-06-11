@@ -105,3 +105,8 @@ impl From<DotnetTypeRef> for Type {
         Self::DotnetType(Box::new(value))
     }
 }
+#[test]
+fn type_repr_size_ok() {
+    // Type should not grow without a good reason.
+    assert!(std::mem::size_of::<Type>() <= 16);
+}

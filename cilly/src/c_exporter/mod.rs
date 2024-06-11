@@ -496,12 +496,12 @@ fn node_string(tree: &CILNode, method: &Method) -> String {
                 b = node_string(b, method)
             )
         }
-
-        CILNode::Call { args, site } | CILNode::CallVirt { args, site } => {
-            let name = site.name();
-            let mut input_iter = args
+        CILNode::Call(call_op_args) => {
+            let name = call_op_args.site.name();
+            let mut input_iter = call_op_args
+                .args
                 .iter()
-                .zip(site.signature().inputs())
+                .zip(call_op_args.site.signature().inputs())
                 .filter_map(|(code, tpe)| if *tpe == Type::Void { Some(code) } else { None });
             let mut inputs: String = "(".into();
             if let Some(input) = input_iter.next() {
@@ -511,7 +511,29 @@ fn node_string(tree: &CILNode, method: &Method) -> String {
                 inputs.push_str(&format!(",{input} ", input = node_string(input, method)));
             }
             inputs.push(')');
-            let tpe_name = site
+            let tpe_name = call_op_args
+                .site
+                .class()
+                .map_or(String::new(), |tpe| escape_type_name(tpe.name_path()));
+            format!("{tpe_name}{name}{inputs}")
+        }
+        CILNode::CallVirt(call_op_args) => {
+            let name = call_op_args.site.name();
+            let mut input_iter = call_op_args
+                .args
+                .iter()
+                .zip(call_op_args.site.signature().inputs())
+                .filter_map(|(code, tpe)| if *tpe == Type::Void { Some(code) } else { None });
+            let mut inputs: String = "(".into();
+            if let Some(input) = input_iter.next() {
+                inputs.push_str(&node_string(input, method).to_string());
+            }
+            for input in input_iter {
+                inputs.push_str(&format!(",{input} ", input = node_string(input, method)));
+            }
+            inputs.push(')');
+            let tpe_name = call_op_args
+                .site
                 .class()
                 .map_or(String::new(), |tpe| escape_type_name(tpe.name_path()));
             format!("{tpe_name}{name}{inputs}")
@@ -579,13 +601,7 @@ fn node_string(tree: &CILNode, method: &Method) -> String {
             )
         }
         CILNode::TemporaryLocal(_) => todo!(),
-        CILNode::SubTrees(sub, main) => {
-            assert!(sub.is_empty(), "A sub-tree still remains!");
-            println!(
-                "WARNING: Sub-trees impropely resolved: an empty sub-tree list still remains!"
-            );
-            node_string(main, method)
-        }
+        CILNode::SubTrees(_) => panic!(" subtree remains during export!"),
         CILNode::LoadAddresOfTMPLocal => todo!(),
         CILNode::LoadTMPLocal => todo!(),
 
@@ -603,10 +619,11 @@ fn node_string(tree: &CILNode, method: &Method) -> String {
             let hsh = hasher.finish();
             format!("{hsh}")
         }
-        CILNode::NewObj { site, args } => {
-            let mut input_iter = args
+        CILNode::NewObj(call_op_args) => {
+            let mut input_iter = call_op_args
+                .args
                 .iter()
-                .zip(site.signature().inputs())
+                .zip(call_op_args.site.signature().inputs())
                 .filter_map(|(code, tpe)| if *tpe == Type::Void { None } else { Some(code) });
             let mut inputs: String = "(".into();
             if let Some(input) = input_iter.next() {
@@ -616,15 +633,13 @@ fn node_string(tree: &CILNode, method: &Method) -> String {
                 inputs.push_str(&format!(",{input} ", input = node_string(input, method)));
             }
             inputs.push(')');
-            let tpe_name = escape_type_name(site.class().unwrap().name_path());
+            let tpe_name = escape_type_name(call_op_args.site.class().unwrap().name_path());
             format!("ctor_{tpe_name}{inputs}")
         }
         CILNode::LdStr(string) => format!("{string:?}"),
         CILNode::CallI(_sig_ptr_args) => todo!(),
         CILNode::LDLen { arr } => todo!("arr:{arr:?}"),
         CILNode::LDElelemRef { arr, idx } => todo!("arr:{arr:?} idx:{idx:?}"),
-        CILNode::GetStackTop => todo!(),
-        CILNode::InspectValue { val, inspect: _ } => node_string(val, method),
         CILNode::TransmutePtr { val, new_ptr } => format!(
             "({new_ptr}){val}",
             new_ptr = c_tpe(new_ptr),

@@ -57,7 +57,7 @@ impl CILTree {
 #[test]
 fn test_sheed() {
     use crate::cil_node::CILNode;
-    let node = CILNode::SubTrees(
+    let node = CILNode::SubTrees(Box::new((
         [CILRoot::STLoc {
             local: 11,
             tree: CILNode::TemporaryLocal(Box::new((
@@ -91,7 +91,7 @@ fn test_sheed() {
                 "core.ptr.metadata.PtrComponents.h4c1f0d773746020e",
             )))),
         }),
-    );
+    )));
     let tree = CILTree {
         tree: CILRoot::STLoc {
             local: 7,

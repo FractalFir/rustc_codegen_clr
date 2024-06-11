@@ -96,7 +96,7 @@ pub fn handle_aggregate<'tyctx>(
                     .into(),
                 });
             }
-            CILNode::SubTrees(
+            CILNode::SubTrees(Box::new((
                 sub_trees.into(),
                 Box::new(super::place::place_get(
                     target_location,
@@ -105,7 +105,7 @@ pub fn handle_aggregate<'tyctx>(
                     method_instance,
                     tycache,
                 )),
-            )
+            )))
         }
         AggregateKind::Tuple => {
             let tuple_getter = super::place::place_adress(
@@ -145,7 +145,7 @@ pub fn handle_aggregate<'tyctx>(
                     ),
                 });
             }
-            CILNode::SubTrees(
+            CILNode::SubTrees(Box::new((
                 sub_trees.into(),
                 Box::new(super::place::place_get(
                     target_location,
@@ -154,7 +154,7 @@ pub fn handle_aggregate<'tyctx>(
                     method_instance,
                     tycache,
                 )),
-            )
+            )))
         }
         AggregateKind::Closure(_def_id, _args) => {
             let closure_ty = crate::utilis::monomorphize(
@@ -191,7 +191,7 @@ pub fn handle_aggregate<'tyctx>(
                 });
             }
 
-            CILNode::SubTrees(
+            CILNode::SubTrees(Box::new((
                 sub_trees.into(),
                 Box::new(place_get(
                     target_location,
@@ -200,7 +200,7 @@ pub fn handle_aggregate<'tyctx>(
                     method_instance,
                     tycache,
                 )),
-            )
+            )))
         }
         AggregateKind::RawPtr(ptr, muta) => {
             let fat_ptr = Ty::new_ptr(
@@ -222,7 +222,7 @@ pub fn handle_aggregate<'tyctx>(
                 assert!(fat_ptr_type.as_dotnet().is_none());
                 // Pointer is thin, just directly assign
 
-                return CILNode::SubTrees(
+                return CILNode::SubTrees(Box::new((
                     [CILRoot::STIndISize(init_addr, values[0].1.clone())].into(),
                     Box::new(place_get(
                         target_location,
@@ -231,7 +231,7 @@ pub fn handle_aggregate<'tyctx>(
                         method_instance,
                         tycache,
                     )),
-                );
+                )));
             }
 
             // Assign the components
@@ -254,7 +254,7 @@ pub fn handle_aggregate<'tyctx>(
                 ),
             };
 
-            CILNode::SubTrees(
+            CILNode::SubTrees(Box::new((
                 [assign_ptr, assign_metadata].into(),
                 Box::new(place_get(
                     target_location,
@@ -263,7 +263,7 @@ pub fn handle_aggregate<'tyctx>(
                     method_instance,
                     tycache,
                 )),
-            )
+            )))
         }
         _ => todo!("Unsuported aggregate kind {aggregate_kind:?}"),
     }
@@ -326,7 +326,7 @@ fn aggregate_adt<'tyctx>(
                     desc: field_desc,
                 });
             }
-            CILNode::SubTrees(
+            CILNode::SubTrees(Box::new((
                 sub_trees.into(),
                 Box::new(crate::place::place_get(
                     target_location,
@@ -335,7 +335,7 @@ fn aggregate_adt<'tyctx>(
                     method_instance,
                     type_cache,
                 )),
-            )
+            )))
         }
         AdtKind::Enum => {
             let adt_adress_ops = crate::place::place_adress(
@@ -394,7 +394,7 @@ fn aggregate_adt<'tyctx>(
                     ));
                 }
             }
-            CILNode::SubTrees(
+            CILNode::SubTrees(Box::new((
                 sub_trees.into(),
                 Box::new(crate::place::place_get(
                     target_location,
@@ -403,7 +403,7 @@ fn aggregate_adt<'tyctx>(
                     method_instance,
                     type_cache,
                 )),
-            )
+            )))
         }
         AdtKind::Union => {
             let obj_getter = crate::place::place_adress(
@@ -442,7 +442,7 @@ fn aggregate_adt<'tyctx>(
                 value: fields[0].1.clone(),
                 desc,
             });
-            CILNode::SubTrees(
+            CILNode::SubTrees(Box::new((
                 sub_trees.into(),
                 Box::new(crate::place::place_get(
                     target_location,
@@ -451,7 +451,7 @@ fn aggregate_adt<'tyctx>(
                     method_instance,
                     type_cache,
                 )),
-            )
+            )))
         }
     }
 }
