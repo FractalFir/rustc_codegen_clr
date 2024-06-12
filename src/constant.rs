@@ -311,7 +311,7 @@ fn load_const_scalar<'ctx>(
     };
 
     match scalar_type.kind() {
-        TyKind::Int(int_type) => load_const_int(scalar_u128, int_type),
+        TyKind::Int(int_type) => load_const_int(scalar_u128, *int_type),
         TyKind::Uint(uint_type) => load_const_uint(scalar_u128, *uint_type),
         TyKind::Float(ftype) => load_const_float(scalar_u128, *ftype, tyctx),
         TyKind::Bool => {
@@ -354,7 +354,7 @@ fn load_const_scalar<'ctx>(
             }),
             obj: tpe.into(),
         },
-        TyKind::Char => CILNode::LdcU32(scalar_u128 as u32),
+        TyKind::Char => CILNode::LdcU32(u32::try_from(scalar_u128).unwrap()),
         _ => todo!("Can't load scalar constants of type {scalar_type:?}!"),
     }
 }
@@ -362,32 +362,40 @@ fn load_const_float(value: u128, float_type: FloatTy, _tyctx: TyCtxt) -> CILNode
     match float_type {
         FloatTy::F16 => todo!("Can't hanlde 16 bit floats yet!"),
         FloatTy::F32 => {
-            let value = f32::from_ne_bytes((value as u32).to_ne_bytes());
+            let value = f32::from_ne_bytes((u32::try_from(value).unwrap()).to_ne_bytes());
             CILNode::LdcF32(value)
         }
         FloatTy::F64 => {
-            let value = f64::from_ne_bytes((value as u64).to_ne_bytes());
+            let value = f64::from_ne_bytes((u64::try_from(value).unwrap()).to_ne_bytes());
             CILNode::LdcF64(value)
         }
         FloatTy::F128 => todo!("Can't hanlde 128 bit floats yet!"),
     }
 }
-pub fn load_const_int(value: u128, int_type: &IntTy) -> CILNode {
+pub fn load_const_int(value: u128, int_type: IntTy) -> CILNode {
     match int_type {
         IntTy::I8 => {
-            let value = i8::from_ne_bytes([value as u8]);
-            CILNode::ConvI8(CILNode::LdcI32(i32::from(value)).into())
+            let value = i8::from_ne_bytes([u8::try_from(value).unwrap()]);
+            CILNode::LdcI8(value)
         }
         IntTy::I16 => {
-            let value = i16::from_ne_bytes((value as u16).to_ne_bytes());
+            let value = i16::from_ne_bytes((u16::try_from(value).unwrap()).to_ne_bytes());
             CILNode::ConvI16(CILNode::LdcI32(i32::from(value)).into())
         }
-        IntTy::I32 => CILNode::LdcI32(i32::from_ne_bytes((value as u32).to_ne_bytes())),
-        IntTy::I64 => CILNode::ConvI64(
-            CILNode::LdcI64(i64::from_ne_bytes((value as u64).to_ne_bytes())).into(),
+        IntTy::I32 => CILNode::LdcI32(i32::from_ne_bytes(
+            (u32::try_from(value).unwrap()).to_ne_bytes(),
+        )),
+        IntTy::I64 => CILNode::SignExtendToI64(
+            CILNode::LdcI64(i64::from_ne_bytes(
+                (u64::try_from(value).unwrap()).to_ne_bytes(),
+            ))
+            .into(),
         ),
-        IntTy::Isize => CILNode::ConvISize(
-            CILNode::LdcI64(i64::from_ne_bytes((value as u64).to_ne_bytes())).into(),
+        IntTy::Isize => CILNode::SignExtendToISize(
+            CILNode::LdcI64(i64::from_ne_bytes(
+                (u64::try_from(value).unwrap()).to_ne_bytes(),
+            ))
+            .into(),
         ),
         IntTy::I128 => {
             let low = u128_low_u64(value);
@@ -415,16 +423,20 @@ pub fn load_const_int(value: u128, int_type: &IntTy) -> CILNode {
 pub fn load_const_uint(value: u128, int_type: UintTy) -> CILNode {
     match int_type {
         UintTy::U8 => {
-            let value = value as u8;
+            let value = u8::try_from(value).unwrap();
             CILNode::ConvU8(CILNode::LdcU32(u32::from(value)).into())
         }
         UintTy::U16 => {
-            let value = value as u16;
+            let value = u16::try_from(value).unwrap();
             CILNode::ConvU16(CILNode::LdcU32(u32::from(value)).into())
         }
-        UintTy::U32 => CILNode::ConvU32(CILNode::LdcU32(value as u32).into()),
-        UintTy::U64 => CILNode::ConvU64(CILNode::LdcU64(value as u64).into()),
-        UintTy::Usize => CILNode::ZeroExtendToUSize(CILNode::LdcU64(value as u64).into()),
+        UintTy::U32 => CILNode::ConvU32(CILNode::LdcU32(u32::try_from(value).unwrap()).into()),
+        UintTy::U64 => {
+            CILNode::ZeroExtendToU64(CILNode::LdcU64(u64::try_from(value).unwrap()).into())
+        }
+        UintTy::Usize => {
+            CILNode::ZeroExtendToUSize(CILNode::LdcU64(u64::try_from(value).unwrap()).into())
+        }
         UintTy::U128 => {
             let low = u128_low_u64(value);
             let high = (value >> 64) as u64;

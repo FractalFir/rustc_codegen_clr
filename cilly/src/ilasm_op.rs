@@ -307,6 +307,16 @@ fn export_node(
                 }
             }
         }
+        CILNode::LdcI8(value) => {
+            depth.pad(out)?;
+            if *value <= 8 && *value >= 0 {
+                write!(out, "ldc.i4.{value}")
+            } else if *value == -1 {
+                write!(out, "ldc.i4.m1")
+            } else {
+                write!(out, "ldc.i4.s {value}")
+            }
+        }
         CILNode::LdcF64(f64const) => {
             depth.pad(out)?;
             let const_literal = f64const.to_le_bytes();
@@ -338,7 +348,7 @@ fn export_node(
         CILNode::ConvU8(val) => un_op!(out, val, depth, il_flavour, "conv.u1"),
         CILNode::ConvU16(val) => un_op!(out, val, depth, il_flavour, "conv.u2"),
         CILNode::ConvU32(val) => un_op!(out, val, depth, il_flavour, "conv.u4"),
-        CILNode::ConvU64(val) => un_op!(out, val, depth, il_flavour, "conv.u8"),
+        CILNode::ZeroExtendToU64(val) => un_op!(out, val, depth, il_flavour, "conv.u8"),
         CILNode::ZeroExtendToUSize(val) => un_op!(out, val, depth, il_flavour, "conv.u"),
         CILNode::ZeroExtendToISize(val) => un_op!(out, val, depth, il_flavour, "conv.u"),
         CILNode::MRefToRawPtr(val) => {
@@ -347,8 +357,10 @@ fn export_node(
         CILNode::ConvI8(val) => un_op!(out, val, depth, il_flavour, "conv.i1"),
         CILNode::ConvI16(val) => un_op!(out, val, depth, il_flavour, "conv.i2"),
         CILNode::ConvI32(val) => un_op!(out, val, depth, il_flavour, "conv.i4"),
-        CILNode::ConvI64(val) => un_op!(out, val, depth, il_flavour, "conv.i8"),
-        CILNode::ConvISize(val) => un_op!(out, val, depth, il_flavour, "conv.i"),
+        CILNode::SignExtendToI64(val) => un_op!(out, val, depth, il_flavour, "conv.i8"),
+        CILNode::SignExtendToU64(val) => un_op!(out, val, depth, il_flavour, "conv.i8"),
+        CILNode::SignExtendToISize(val) => un_op!(out, val, depth, il_flavour, "conv.i"),
+        CILNode::SignExtendToUSize(val) => un_op!(out, val, depth, il_flavour, "conv.i"),
         CILNode::Neg(val) => un_op!(out, val, depth, il_flavour, "neg"),
         CILNode::Not(val) => un_op!(out, val, depth, il_flavour, "not"),
         CILNode::Eq(a, b) => bi_op!(out, a, b, depth, il_flavour, "ceq"),
@@ -729,6 +741,7 @@ pub fn export_root(
         CILRoot::STIndI32(a, b) => bi_op!(out, a, b, depth, il_flavour, "stind.i4"),
         CILRoot::STIndI64(a, b) => bi_op!(out, a, b, depth, il_flavour, "stind.i8"),
         CILRoot::STIndISize(a, b) => bi_op!(out, a, b, depth, il_flavour, "stind.i"),
+        CILRoot::STIndPtr(a, b, _) => bi_op!(out, a, b, depth, il_flavour, "stind.i"),
         CILRoot::STIndF64(a, b) => bi_op!(out, a, b, depth, il_flavour, "stind.r8"),
         CILRoot::STIndF32(a, b) => bi_op!(out, a, b, depth, il_flavour, "stind.r4"),
         CILRoot::STObj {

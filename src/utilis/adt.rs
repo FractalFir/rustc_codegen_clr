@@ -250,12 +250,7 @@ pub fn get_discr<'tyctx>(
                 todo!();
             } else {
                 CILNode::LDField {
-                    field: FieldDescriptor::new(
-                        enum_tpe.clone(),
-                        tag_tpe.clone(),
-                        "value__".into(),
-                    )
-                    .into(),
+                    field: FieldDescriptor::new(enum_tpe, tag_tpe.clone(), "value__".into()).into(),
                     addr: enum_addr.into(),
                 }
             }
@@ -268,8 +263,7 @@ pub fn get_discr<'tyctx>(
             let (disrc_type, _) = crate::utilis::adt::enum_tag_info(layout, tyctx);
             let relative_max = niche_variants.end().as_u32() - niche_variants.start().as_u32();
             let tag = CILNode::LDField {
-                field: FieldDescriptor::new(enum_tpe.clone(), disrc_type.clone(), "value__".into())
-                    .into(),
+                field: FieldDescriptor::new(enum_tpe, disrc_type.clone(), "value__".into()).into(),
                 addr: enum_addr.into(),
             };
             // We have a subrange `niche_start..=niche_end` inside `range`.
@@ -296,8 +290,7 @@ pub fn get_discr<'tyctx>(
                 // } else {
                 //     untagged_variant
                 // }
-                let tag = crate::casts::int_to_int(disrc_type.clone(), &Type::U64, tag);
-                //let niche_start = bx.cx().const_uint_big(tag_llty, niche_start);
+
                 let is_niche = eq!(
                     tag,
                     crate::casts::int_to_int(
@@ -309,7 +302,11 @@ pub fn get_discr<'tyctx>(
                     )
                 ); //bx.icmp(IntPredicate::IntEQ, tag, niche_start);
 
-                let tagged_discr = ldc_u64!(u64::from(niche_variants.start().as_u32()));
+                let tagged_discr = crate::casts::int_to_int(
+                    Type::U64,
+                    &disrc_type,
+                    ldc_u64!(u64::from(niche_variants.start().as_u32())),
+                );
                 (is_niche, tagged_discr, 0)
             } else {
                 // The special cases don't apply, so we'll have to go with

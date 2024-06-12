@@ -132,7 +132,7 @@ fn place_elem_get<'a>(
                     let size = if index_is_signed {
                         CILNode::ZeroExtendToUSize(CILNode::SizeOf(inner_type.into()).into())
                     } else {
-                        CILNode::ConvISize(CILNode::SizeOf(inner_type.into()).into())
+                        CILNode::SignExtendToISize(CILNode::SizeOf(inner_type.into()).into())
                     };
                     let addr = CILNode::Add(
                         CILNode::LDField {

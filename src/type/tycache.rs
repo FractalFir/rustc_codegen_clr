@@ -227,7 +227,7 @@ impl TyCache {
                 continue;
             }
             fields.push((name, field_ty));
-            explicit_offsets.push(offset)
+            explicit_offsets.push(offset);
         }
 
         let access = AccessModifer::Public;

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{DotnetTypeRef, FnSig, IString};
+use crate::{DotnetTypeRef, FnSig};
 #[derive(Serialize, Deserialize, PartialEq, Clone, Eq, Hash, Debug)]
 pub enum Type {
     /// Void type

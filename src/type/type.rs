@@ -5,7 +5,7 @@ use cilly::{
 
 use rustc_middle::{
     middle::exported_symbols::ExportedSymbol,
-    ty::{AdtDef, ConstKind, GenericArg, Ty, TyCtxt, TyKind},
+    ty::{AdtDef, ConstKind, GenericArg, ParamEnv, Ty, TyCtxt, TyKind},
 };
 /// This struct represetnts either a primitive .NET type (F32,F64), or stores information on how to lookup a more complex type (struct,class,array)
 use serde::{Deserialize, Serialize};
@@ -32,6 +32,7 @@ pub fn c_void(tyctx: TyCtxt) -> Type {
     let name = crate::utilis::escape_class_name(&name);
     DotnetTypeRef::new::<&str, _>(None, name).into()
 }
+#[must_use]
 pub fn max_value(tpe: &Type) -> CILNode {
     match tpe {
         Type::USize => call!(
@@ -122,9 +123,10 @@ fn garag_to_usize<'tyctx>(garg: GenericArg<'tyctx>, _ctx: TyCtxt<'tyctx>) -> u64
             let scalar = value
                 .try_to_scalar_int()
                 .expect("String const did not contain valid scalar!");
-            if !ty.is_integral() {
-                panic!("Generic argument was not a unit type! ty:{:?}", ty);
-            }
+            assert!(
+                ty.is_integral(),
+                "Generic argument was not a unit type! ty:{ty:?}",
+            );
             u64::try_from(scalar.to_uint(scalar.size()))
                 .expect("Scalar of type usize has value over 2^64")
         }
@@ -139,26 +141,28 @@ pub fn simple_tuple(elements: &[Type]) -> DotnetTypeRef {
 
     DotnetTypeRef::new::<&str, _>(None, name)
 }
-use crate::utilis::garg_to_string;
+use crate::utilis::{garg_to_string, monomorphize};
 
 use super::tuple_name;
 #[must_use]
 pub fn pointer_to_is_fat<'tyctx>(
-    mut pointed_type: Ty<'tyctx>,
+    pointed_type: Ty<'tyctx>,
     tyctx: TyCtxt<'tyctx>,
     method: rustc_middle::ty::Instance<'tyctx>,
 ) -> bool {
-    use rustc_middle::ty::ParamEnv;
-
-    pointed_type = crate::utilis::monomorphize(&method, pointed_type, tyctx);
-
-    let is_trivialy_sized = pointed_type.is_trivially_sized(tyctx);
-    if is_trivialy_sized {
-        // Sized types don't need fat pointers
-        false
-    } else {
-        // FOREGIN TYPES ARE NOT SIZED!
-        !pointed_type.is_sized(tyctx, ParamEnv::reveal_all())
-            && !matches!(pointed_type.kind(), TyKind::Foreign(_))
+    use rustc_target::abi::Abi;
+    let pointed_type = monomorphize(&method, pointed_type, tyctx);
+    let layout = tyctx
+        .layout_of(rustc_middle::ty::ParamEnvAnd {
+            param_env: ParamEnv::reveal_all(),
+            value: Ty::new_ptr(tyctx, pointed_type, rustc_hir::Mutability::Mut),
+        })
+        .expect("Can't get layout of a type.")
+        .layout;
+    let abi = layout.abi();
+    match abi {
+        Abi::Scalar(_) => false,
+        Abi::ScalarPair(_, _) => true,
+        _ => panic!("Unexpected abi of pointer to {pointed_type:?}. The ABI was:{abi:?}"),
     }
 }

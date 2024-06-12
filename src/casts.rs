@@ -50,23 +50,27 @@ pub fn int_to_int(src: Type, target: &Type, operand: CILNode) -> CILNode {
             CallSite::new_extern(
                 DotnetTypeRef::uint_128(),
                 "op_Explicit".into(),
-                FnSig::new(&[Type::I64], Type::U128),
+                FnSig::new(&[Type::I32], Type::U128),
                 true,
             ),
-            [conv_i8!(operand)]
+            [conv_i32!(operand)]
         ),
         (Type::Bool, Type::I128) => call!(
             CallSite::new_extern(
                 DotnetTypeRef::int_128(),
                 "op_Implicit".into(),
-                FnSig::new(&[Type::I8], Type::I128),
+                FnSig::new(&[Type::I32], Type::I128),
                 true,
             ),
-            [conv_i8!(operand)]
+            [conv_i32!(operand)]
         ),
         // Fixes sign casts
-        (Type::I64 | Type::I32 | Type::I16 | Type::I8, Type::USize) => conv_isize!(operand),
-        (Type::I64 | Type::I32 | Type::I16 | Type::I8, Type::U64) => conv_i64!(operand),
+        (Type::I64 | Type::I32 | Type::I16 | Type::I8, Type::USize) => {
+            CILNode::SignExtendToUSize(operand.into())
+        }
+        (Type::I64 | Type::I32 | Type::I16 | Type::I8, Type::U64) => {
+            CILNode::SignExtendToU64(operand.into())
+        }
         // i128 bit casts
         (Type::U128, Type::I128) | (Type::I8 | Type::I16 | Type::I32 | Type::I64, Type::U128) => {
             call!(
@@ -360,7 +364,11 @@ fn to_int(target: &Type, operand: CILNode) -> CILNode {
         Type::I64 => conv_i64!(operand),
         Type::U64 => conv_u64!(operand),
         Type::ISize => conv_isize!(operand),
-        Type::USize | Type::Ptr(_) => conv_usize!(operand),
+        Type::USize => conv_usize!(operand),
+        Type::Ptr(tpe) => CILNode::TransmutePtr {
+            val: Box::new(conv_usize!(operand)),
+            new_ptr: Box::new(Type::Ptr(tpe.clone())),
+        },
         _ => todo!("Can't cast to {target:?} yet!"),
     }
 }

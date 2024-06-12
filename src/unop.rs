@@ -45,7 +45,7 @@ pub fn unop<'ctx>(
             _ => CILNode::Neg(parrent_node.into()),
         },
         UnOp::Not => match ty.kind() {
-            TyKind::Bool => CILNode::Eq(CILNode::LdcI32(0).into(), parrent_node.into()),
+            TyKind::Bool => CILNode::Eq(CILNode::LdFalse.into(), parrent_node.into()),
             TyKind::Uint(UintTy::U128) => call!(
                 CallSite::boxed(
                     DotnetTypeRef::uint_128().into(),

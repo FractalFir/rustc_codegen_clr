@@ -227,7 +227,6 @@ pub fn handle_aggregate<'tyctx>(
                 // Double-check the pointer is REALLY thin
                 assert!(fat_ptr_type.as_dotnet().is_none());
                 // Pointer is thin, just directly assign
-
                 return CILNode::SubTrees(Box::new((
                     [CILRoot::STIndISize(init_addr, values[0].1.clone())].into(),
                     Box::new(place_get(
@@ -243,7 +242,10 @@ pub fn handle_aggregate<'tyctx>(
             // Assign the components
             let assign_ptr = CILRoot::SetField {
                 addr: Box::new(init_addr.clone()),
-                value: Box::new(values[0].1.clone()),
+                value: Box::new(CILNode::TransmutePtr {
+                    val: Box::new(values[0].1.clone()),
+                    new_ptr: Box::new(Type::Ptr(Type::Void.into())),
+                }),
                 desc: Box::new(FieldDescriptor::new(
                     fat_ptr_type.as_dotnet().unwrap(),
                     Type::Ptr(Type::Void.into()),

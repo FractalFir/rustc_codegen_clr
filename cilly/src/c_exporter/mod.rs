@@ -365,7 +365,7 @@ fn node_string(tree: &CILNode, method: &Method) -> String {
             )
         }
         CILNode::LDIndUSize { ptr } => {
-            format!("(*((ptrdiff_t*){ptr}))", ptr = node_string(ptr, method))
+            format!("(*((intptr_t*){ptr}))", ptr = node_string(ptr, method))
         }
         CILNode::LdObj { ptr, obj } => format!(
             "(*({owner}*)({ptr}))",
@@ -542,6 +542,7 @@ fn node_string(tree: &CILNode, method: &Method) -> String {
         CILNode::LdcI64(value) => format!("{value}l"),
         CILNode::LdcU64(value) => format!("{value}ul"),
         CILNode::LdcI32(value) => format!("{value}"),
+        CILNode::LdcI8(value) => format!("{value}"),
         CILNode::LdcU32(value) => format!("{value}u"),
         CILNode::LdcF64(value) => format!("{value}"),
         CILNode::LdcF32(value) => format!("{value}"),
@@ -553,7 +554,7 @@ fn node_string(tree: &CILNode, method: &Method) -> String {
         CILNode::ConvU32(inner) => {
             format!("((uint32_t){inner})", inner = node_string(inner, method))
         }
-        CILNode::ConvU64(inner) => {
+        CILNode::ZeroExtendToU64(inner) => {
             format!("((uint64_t){inner})", inner = node_string(inner, method))
         }
         CILNode::ZeroExtendToUSize(inner) => {
@@ -573,11 +574,23 @@ fn node_string(tree: &CILNode, method: &Method) -> String {
         CILNode::ConvI32(inner) => {
             format!("((int32_t){inner})", inner = node_string(inner, method))
         }
-        CILNode::ConvI64(inner) => {
+        CILNode::SignExtendToI64(inner) => {
             format!("((int64_t){inner})", inner = node_string(inner, method))
         }
-        CILNode::ConvISize(inner) => {
-            format!("((ptrdiff_t){inner})", inner = node_string(inner, method))
+        CILNode::SignExtendToU64(inner) => {
+            format!(
+                "((uint64_t)(int64_t){inner})",
+                inner = node_string(inner, method)
+            )
+        }
+        CILNode::SignExtendToISize(inner) => {
+            format!("((intptr_t){inner})", inner = node_string(inner, method))
+        }
+        CILNode::SignExtendToUSize(inner) => {
+            format!(
+                "((uintptr_t)(intptr_t){inner})",
+                inner = node_string(inner, method)
+            )
         }
         CILNode::Neg(a) => format!("-({a})", a = node_string(a, method)),
         CILNode::Not(a) => format!("!({a})", a = node_string(a, method)),
@@ -935,6 +948,11 @@ fn tree_string(tree: &CILTree, method: &Method) -> String {
             addr_calc = node_string(addr_calc, method),
             value_calc = node_string(value_calc, method)
         ),
+        CILRoot::STIndPtr(addr_calc, value_calc, _) => format!(
+            "*((uintptr_t*)({addr_calc})) = (uintptr_t){value_calc};",
+            addr_calc = node_string(addr_calc, method),
+            value_calc = node_string(value_calc, method)
+        ),
         CILRoot::STIndF64(_, _) => todo!(),
         CILRoot::STIndF32(_, _) => todo!(),
         CILRoot::STObj {
@@ -1031,7 +1049,7 @@ fn c_tpe(tpe: &Type) -> Cow<'static, str> {
     match tpe {
         Type::Bool => "bool".into(),
         Type::USize => "uintptr_t".into(),
-        Type::ISize => "ptrdiff_t".into(),
+        Type::ISize => "intptr_t".into(),
         Type::Void => "void".into(),
         Type::DotnetChar => "char".into(),
         Type::I128 => "__int128".into(),

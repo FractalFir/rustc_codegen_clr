@@ -13,7 +13,7 @@ use cilly::{
     basic_block::BasicBlock,
     call,
     call_site::CallSite,
-    cil_node::CILNode,
+    cil_node::{CILNode, ValidationContext},
     cil_root::CILRoot,
     cil_tree::CILTree,
     conv_isize, conv_usize, ldc_u32, ldc_u64,
@@ -38,7 +38,7 @@ fn check_align_adjust<'tyctx>(
     method_instance: &Instance<'tyctx>,
 ) -> Vec<Option<u64>> {
     let mut adjusts: Vec<Option<u64>> = Vec::with_capacity(locals.len());
-    for local in locals.iter() {
+    for local in locals {
         let ty = crate::utilis::monomorphize(method_instance, local.ty, tyctx);
         let adjust = crate::utilis::requries_align_adjustement(ty, tyctx);
         adjusts.push(adjust);
@@ -243,6 +243,7 @@ pub fn statement_to_ops<'tcx>(
     mir: &rustc_middle::mir::Body<'tcx>,
     instance: Instance<'tcx>,
     type_cache: &mut TyCache,
+    validation_context: ValidationContext,
 ) -> Result<Option<CILTree>, CodegenError> {
     if *crate::config::ABORT_ON_ERROR {
         Ok(crate::statement::handle_statement(
@@ -252,7 +253,19 @@ pub fn statement_to_ops<'tcx>(
         match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             crate::statement::handle_statement(statement, tcx, mir, instance, type_cache)
         })) {
-            Ok(success) => Ok(success),
+            Ok(success) => {
+                match &success {
+                    Some(ops) => {
+                        if let Err(msg) = ops.validate(validation_context) {
+                            Err(crate::codegen_error::CodegenError::from_panic_message(
+                                &format!("{msg} ops:{ops:?}"),
+                            ))?;
+                        }
+                    }
+                    None => (),
+                }
+                Ok(success)
+            }
             Err(payload) => {
                 if let Some(msg) = payload.downcast_ref::<&str>() {
                     Err(crate::codegen_error::CodegenError::from_panic_message(msg))
@@ -284,11 +297,8 @@ pub fn add_fn<'tyctx>(
         eprintln!("fn item {instance:?} is not a function definition type. Skippping.");
         return Ok(());
     }
-    let mir = tyctx.instance_mir(instance.def); /*if tyctx.sess.mir_opt_level() > 1{
-                                                    tyctx.optimized_mir(instance.def_id())
-                                                }else{}
-                                                ;*/
-    let _timer = tyctx.prof.generic_activity_with_arg("codegen fn", name);
+    let mir = tyctx.instance_mir(instance.def);
+    let timer = tyctx.prof.generic_activity_with_arg("codegen fn", name);
     // Check if function is public or not.
     // FIXME: figure out the source of the bug causing visibility to not be read propely.
     // let access_modifier = AccessModifer::from_visibility(tcx.visibility(instance.def_id()));
@@ -298,7 +308,6 @@ pub fn add_fn<'tyctx>(
     let sig = call_site.sig().clone();
 
     // Get locals
-    //eprintln!("method")
     let (arg_names, mut locals) = locals_from_mir(
         &mir.local_decls,
         tyctx,
@@ -307,25 +316,32 @@ pub fn add_fn<'tyctx>(
         cache,
         &mir.var_debug_info,
     );
+    // Used for type-checking the CIL to ensure its validity.
+    let validation_context = ValidationContext::new(&sig, &locals);
 
     let blocks = &mir.basic_blocks;
-    //let mut trees = Vec::new();
     let mut normal_bbs = Vec::new();
     let mut cleanup_bbs = Vec::new();
     for (last_bb_id, block_data) in blocks.into_iter().enumerate() {
-        //ops.push(CILOp::Label(last_bb_id as u32));
         let mut trees = Vec::new();
         for statement in &block_data.statements {
             if *crate::config::INSERT_MIR_DEBUG_COMMENTS {
                 rustc_middle::ty::print::with_no_trimmed_paths! {trees.push(CILRoot::debug(&format!("{statement:?}")).into())};
             }
 
-            let statement_tree = match statement_to_ops(statement, tyctx, mir, instance, cache) {
+            let statement_tree = match statement_to_ops(
+                statement,
+                tyctx,
+                mir,
+                instance,
+                cache,
+                validation_context,
+            ) {
                 Ok(ops) => ops,
                 Err(err) => {
                     cache.recover_from_panic();
                     rustc_middle::ty::print::with_no_trimmed_paths! {eprintln!(
-                        "Method \"{name}\" failed to compile statement {statement:?} with message {err:?}"
+                        "Method \"{name}\" failed to compile statement {statement:?} with message {err:?}\n"
                     )};
                     rustc_middle::ty::print::with_no_trimmed_paths! {Some(CILRoot::throw(&format!("Tired to run a statement {statement:?} which failed to compile with error message {err:?}.")).into())}
                 }
@@ -437,7 +453,7 @@ pub fn add_fn<'tyctx>(
     }
 
     asm.add_method(method);
-    drop(_timer);
+    drop(timer);
     Ok(())
     //todo!("Can't add function")
 }

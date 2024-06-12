@@ -1,4 +1,4 @@
-use cilly::{DotnetTypeRef, IString, Type};
+use cilly::{IString, Type};
 
 use crate::{AllocID, InterpreterState};
 
@@ -37,7 +37,7 @@ impl Value {
         }
     }
     pub fn set(&mut self, other: Self, state: &mut InterpreterState) {
-        match (self) {
+        match self {
             Value::Undef
             | Value::StringArray(_)
             | Value::String(_)

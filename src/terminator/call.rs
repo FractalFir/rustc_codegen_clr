@@ -533,7 +533,6 @@ pub fn call<'tyctx>(
     }
     let call_info = CallInfo::sig_from_instance_(instance, tyctx, type_cache);
     // SHOULD NOT BE MUTABLE BUT VARIADICS ARE FUCKING WIERD.
-    let mut signature = call_info.sig().clone();
 
     let function_name = crate::utilis::function_name(tyctx.symbol_name(instance));
     if crate::utilis::is_fn_intrinsic(fn_type, tyctx) {
@@ -546,11 +545,10 @@ pub fn call<'tyctx>(
             method_instance,
             instance,
             type_cache,
-            signature,
             span,
         );
     }
-
+    let mut signature = call_info.sig().clone();
     // Checks if function is "magic"
     if function_name.contains(CTOR_FN_NAME) {
         assert!(

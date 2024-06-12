@@ -393,7 +393,7 @@ fn handle_switch(ty: Ty, discr: &CILNode, switch: &SwitchTargets) -> Vec<CILTree
         //ops.extend(CILOp::debug_msg("Switchin"));
 
         let const_val = match ty.kind() {
-            TyKind::Int(int) => crate::constant::load_const_int(value, int),
+            TyKind::Int(int) => crate::constant::load_const_int(value, *int),
             TyKind::Uint(uint) => crate::constant::load_const_uint(value, *uint),
             TyKind::Bool => {
                 if value == 0 {

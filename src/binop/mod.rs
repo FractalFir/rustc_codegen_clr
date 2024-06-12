@@ -2,7 +2,7 @@ use cilly::call_site::CallSite;
 use cilly::cil_node::CILNode;
 use cilly::cil_root::CILRoot;
 use cilly::field_desc::FieldDescriptor;
-use cilly::{DotnetTypeRef, Type};
+use cilly::{conv_i8, conv_usize, ld_false, DotnetTypeRef, Type};
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::{BinOp, Operand};
 use rustc_middle::ty::{Instance, IntTy, List, ParamEnv, Ty, TyCtxt, TyKind, UintTy};
@@ -16,8 +16,8 @@ pub mod cmp;
 pub mod shift;
 use bitop::{bit_and_unchecked, bit_or_unchecked, bit_xor_unchecked};
 use cilly::{
-    call, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8, div, eq, gt_un, ldc_i32, lt_un, rem,
-    rem_un, size_of, sub,
+    call, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8, div, eq, gt_un, lt_un, rem, rem_un,
+    size_of, sub,
 };
 
 use cmp::{eq_unchecked, gt_unchecked, lt_unchecked, ne_unchecked};
@@ -92,13 +92,13 @@ pub(crate) fn binop<'tyctx>(
 
         BinOp::Ge => match ty_a.kind() {
             // Unordered, to handle NaNs propely
-            TyKind::Float(_) => eq!(lt_un!(ops_a, ops_b), ldc_i32!(0)),
-            _ => eq!(lt_unchecked(ty_a, ops_a, ops_b), ldc_i32!(0)),
+            TyKind::Float(_) => eq!(lt_un!(ops_a, ops_b), ld_false!()),
+            _ => eq!(lt_unchecked(ty_a, ops_a, ops_b), ld_false!()),
         },
         BinOp::Le => match ty_a.kind() {
             // Unordered, to handle NaNs propely
-            TyKind::Float(_) => eq!(gt_un!(ops_a, ops_b), ldc_i32!(0)),
-            _ => eq!(gt_unchecked(ty_a, ops_a, ops_b), ldc_i32!(0)),
+            TyKind::Float(_) => eq!(gt_un!(ops_a, ops_b), ld_false!()),
+            _ => eq!(gt_unchecked(ty_a, ops_a, ops_b), ld_false!()),
         },
         BinOp::Offset => {
             let pointed_ty = if let TyKind::RawPtr(inner, _) = ty_a.kind() {
@@ -108,7 +108,7 @@ pub(crate) fn binop<'tyctx>(
             };
             let pointed_ty = crate::utilis::monomorphize(&method_instance, pointed_ty, tyctx);
             let pointed_ty = Box::new(tycache.type_from_cache(pointed_ty, tyctx, method_instance));
-            ops_a + ops_b * conv_isize!(size_of!(pointed_ty))
+            ops_a + ops_b * conv_usize!(size_of!(pointed_ty))
         }
         BinOp::Cmp => {
             let ordering = tyctx
@@ -123,7 +123,7 @@ pub(crate) fn binop<'tyctx>(
             let ordering_type = tycache.type_from_cache(ordering_ty, tyctx, method_instance);
             let lt = -lt_unchecked(ty_a, ops_a.clone(), ops_b.clone());
             let gt = gt_unchecked(ty_a, ops_a, ops_b);
-            let res = lt | gt;
+            let res = conv_i8!(lt | gt);
             CILNode::TemporaryLocal(Box::new((
                 ordering_type.clone(),
                 [CILRoot::SetField {

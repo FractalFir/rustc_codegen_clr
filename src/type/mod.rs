@@ -9,10 +9,12 @@ pub use r#type::*;
 use rustc_middle::ty::{FloatTy, IntTy, UintTy};
 pub use tycache::*;
 pub use type_def::*;
+#[must_use]
 pub fn mangle(tpe: &Type) -> std::borrow::Cow<'static, str> {
     cilly::mangle(tpe)
 }
 
+#[must_use]
 pub fn from_int(int_tpe: &IntTy) -> Type {
     match int_tpe {
         IntTy::I8 => Type::I8,
@@ -24,6 +26,7 @@ pub fn from_int(int_tpe: &IntTy) -> Type {
     }
 }
 
+#[must_use]
 pub fn from_uint(uint_tpe: &UintTy) -> Type {
     match uint_tpe {
         UintTy::U8 => Type::U8,
@@ -35,6 +38,7 @@ pub fn from_uint(uint_tpe: &UintTy) -> Type {
     }
 }
 
+#[must_use]
 pub fn from_float(float: &FloatTy) -> Type {
     match float {
         FloatTy::F16 => Type::F16,

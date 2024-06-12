@@ -129,6 +129,7 @@ pub enum CILNode {
     LdcU64(u64),
     LdcI32(i32),
     LdcU32(u32),
+    LdcI8(i8),
     LdcF64(f64),
     LdcF32(f32),
     LoadGlobalAllocPtr {
@@ -137,16 +138,17 @@ pub enum CILNode {
     ConvU8(Box<Self>),
     ConvU16(Box<Self>),
     ConvU32(Box<Self>),
-    ConvU64(Box<Self>),
+    ZeroExtendToU64(Box<Self>),
     ZeroExtendToUSize(Box<Self>),
     ZeroExtendToISize(Box<Self>),
     MRefToRawPtr(Box<Self>),
     ConvI8(Box<Self>),
     ConvI16(Box<Self>),
     ConvI32(Box<Self>),
-    ConvI64(Box<Self>),
-    ConvISize(Box<Self>),
-
+    SignExtendToI64(Box<Self>),
+    SignExtendToU64(Box<Self>),
+    SignExtendToISize(Box<Self>),
+    SignExtendToUSize(Box<Self>),
     Neg(Box<Self>),
     Not(Box<Self>),
     Eq(Box<Self>, Box<Self>),
@@ -343,13 +345,11 @@ impl CILNode {
                 a.opt(opt_count);
                 b.opt(opt_count);
             }
-         
             Self::Call (call_op_args) | Self::NewObj(call_op_args) | Self::CallVirt(call_op_args)=> call_op_args.args.iter_mut().for_each(|arg|arg.opt(opt_count)),
-        
-          
             Self::LdcI64(_)
             | Self::LdcU64(_)
             | Self::LdcI32(_)
+            | Self::LdcI8(_)
             | Self::LdcU32(_)
             | Self::LdcF64(_)
             | Self::LdcF32(_)
@@ -358,15 +358,17 @@ impl CILNode {
             Self::ConvU8(inner)
             | Self::ConvU16(inner)
             | Self::ConvU32(inner)
-            | Self::ConvU64(inner)
+            | Self::ZeroExtendToU64(inner)
             | Self::ZeroExtendToUSize(inner)
             | Self::ZeroExtendToISize(inner)
             | Self::MRefToRawPtr(inner)
             | Self::ConvI8(inner)
             | Self::ConvI16(inner)
             | Self::ConvI32(inner)
-            | Self::ConvI64(inner)
-            | Self::ConvISize(inner)
+            | Self::SignExtendToI64(inner)
+            | Self::SignExtendToU64(inner)
+            | Self::SignExtendToISize(inner)
+            | Self::SignExtendToUSize(inner)
             //| Self::Volatile(inner)
             | Self::Neg(inner)
             | Self::Not(inner) => inner.opt(opt_count),
@@ -457,7 +459,6 @@ impl CILNode {
             Self::LdFalse=>(),
             Self::LdTrue=>(),
             Self::TransmutePtr { val, new_ptr: _ }=>val.allocate_tmps(curr_loc, locals),
-           
             Self:: PointerToConstValue(_arr)=>(),
             Self::LoadGlobalAllocPtr { alloc_id: _ } => (),
             Self::LDLoc(_) |
@@ -505,11 +506,11 @@ impl CILNode {
                 b.allocate_tmps(curr_loc, locals);
             }
             Self::Call (call_op_args)  |  Self::CallVirt (call_op_args)  |  Self::NewObj (call_op_args) =>call_op_args.args.iter_mut().for_each(|arg|arg.allocate_tmps(curr_loc, locals)),
-          
             Self::LdcI64(_) |
             Self::LdcU64(_) |
             Self::LdcI32(_)  |
             Self::LdcU32(_) |
+            Self::LdcI8(_) |
             Self::LdcF64(_) |
             Self::LdcF32(_) =>(),
             Self::ConvF64Un(val) |
@@ -518,15 +519,17 @@ impl CILNode {
             Self::ConvU8(val)|
             Self::ConvU16(val)|
             Self::ConvU32(val)|
-            Self::ConvU64(val)|
+            Self::ZeroExtendToU64(val)|
             Self::MRefToRawPtr(val) |
             Self::ZeroExtendToUSize(val)|
             Self::ZeroExtendToISize(val)|
             Self::ConvI8(val) |
             Self::ConvI16(val)|
             Self::ConvI32(val)|
-            Self::ConvI64(val) |
-            Self::ConvISize(val)|
+            Self::SignExtendToI64(val) |
+            Self::SignExtendToU64(val) |
+            Self::SignExtendToISize(val)|
+            Self::SignExtendToUSize(val)|
             //Self::Volatile(_) => todo!(),
             Self::Neg(val) |
             Self::Not(val) =>val.allocate_tmps(curr_loc, locals),
@@ -581,19 +584,23 @@ impl CILNode {
             }
         };
     }
-    /*
-    pub(crate) fn validate(&self, method: &Method) -> Result<Type, String> {
+
+    pub(crate) fn validate(
+        &self,
+        vctx: ValidationContext,
+        tmp_loc: Option<&Type>,
+    ) -> Result<Type, String> {
         match self {
-            Self::SubTrees(trees, main) => {
+            Self::SubTrees(tm) => {
+                let (trees, main) = tm.as_ref();
                 for tree in trees.iter() {
-                    tree.validate(method)?;
+                    tree.validate(vctx, tmp_loc)?;
                 }
-                main.validate(method)
+                main.validate(vctx, tmp_loc)
             }
             Self::LdTrue => Ok(Type::Bool),
-            Self::InspectValue { val, inspect: _ } => val.validate(method),
             Self::LDField { addr, field } => {
-                let addr = addr.validate(method)?;
+                let addr = addr.validate(vctx, tmp_loc)?;
                 match addr {
                     Type::ManagedReference(tpe) | Type::Ptr(tpe) => {
                         if tpe.as_dotnet() != Some(field.owner().clone()) {
@@ -611,7 +618,7 @@ impl CILNode {
                 Ok(field.tpe().clone())
             }
             Self::LDFieldAdress { addr, field } => {
-                let addr = addr.validate(method)?;
+                let addr = addr.validate(vctx, tmp_loc)?;
                 match addr {
                     Type::ManagedReference(tpe) => {
                         if tpe.as_dotnet() != Some(field.owner().clone()) {
@@ -637,27 +644,33 @@ impl CILNode {
                 }
             }
             Self::LDStaticField(sfd) => Ok(sfd.tpe().clone()),
-            Self::LDLocA(loc) => match method.locals().get(*loc as usize) {
+            Self::LDLocA(loc) => match vctx.locals().get(*loc as usize) {
                 Some(local) => Ok(Type::ManagedReference(Box::new(local.1.clone()))),
                 None => Err(format!("Local {loc }out of range.")),
             },
-            Self::LDLoc(loc) => match method.locals().get(*loc as usize) {
+            Self::LDLoc(loc) => match vctx.locals().get(*loc as usize) {
                 Some(local) => Ok(local.1.clone()),
                 None => Err(format!("Local {loc }out of range.")),
             },
-            Self::LDArg(arg) => match method.sig().inputs().get(*arg as usize) {
+            Self::LDArg(arg) => match vctx.sig().inputs().get(*arg as usize) {
                 Some(arg) => Ok(arg.clone()),
                 None => Err(format!("Argument {arg} out of range.")),
             },
-            Self::LDArgA(arg) => match method.sig().inputs().get(*arg as usize) {
+            Self::LDArgA(arg) => match vctx.sig().inputs().get(*arg as usize) {
                 Some(arg) => Ok(Type::ManagedReference(Box::new(arg.clone()))),
                 None => Err(format!("Argument {arg} out of range.")),
             },
             Self::LdObj { ptr, obj } => {
-                let ptr = ptr.validate(method)?;
+                let ptr = ptr.validate(vctx, tmp_loc)?;
                 match ptr {
                     Type::Ptr(pointed) | Type::ManagedReference(pointed) => {
                         if pointed != *obj {
+                            if matches!(*pointed, Type::I128) {
+                                return Ok(Type::I128);
+                            }
+                            if matches!(*pointed, Type::U128) {
+                                return Ok(Type::U128);
+                            }
                             Err(format!("Tried to load a object of type {obj:?} from a pointer to type {pointed:?}"))
                         } else {
                             Ok(*obj.clone())
@@ -669,7 +682,7 @@ impl CILNode {
                 }
             }
             Self::LDIndISize { ptr } => {
-                let ptr = ptr.validate(method)?;
+                let ptr = ptr.validate(vctx, tmp_loc)?;
                 if ptr != Type::Ptr(Box::new(Type::ISize))
                     && ptr != Type::ManagedReference(Box::new(Type::ISize))
                 {
@@ -678,7 +691,7 @@ impl CILNode {
                 Ok(Type::ISize)
             }
             Self::LDIndPtr { ptr, loaded_ptr } => {
-                let ptr = ptr.validate(method)?;
+                let ptr = ptr.validate(vctx, tmp_loc)?;
                 if ptr != Type::Ptr(loaded_ptr.clone())
                     && ptr != Type::ManagedReference(loaded_ptr.clone())
                 {
@@ -689,7 +702,7 @@ impl CILNode {
                 Ok(*(loaded_ptr).clone())
             }
             Self::LDIndUSize { ptr } => {
-                let ptr = ptr.validate(method)?;
+                let ptr = ptr.validate(vctx, tmp_loc)?;
                 if ptr != Type::Ptr(Box::new(Type::USize))
                     && ptr != Type::ManagedReference(Box::new(Type::USize))
                 {
@@ -698,7 +711,7 @@ impl CILNode {
                 Ok(Type::USize)
             }
             Self::LDIndU32 { ptr } => {
-                let ptr = ptr.validate(method)?;
+                let ptr = ptr.validate(vctx, tmp_loc)?;
                 if ptr != Type::Ptr(Box::new(Type::U32))
                     && ptr != Type::ManagedReference(Box::new(Type::U32))
                 {
@@ -707,7 +720,7 @@ impl CILNode {
                 Ok(Type::U32)
             }
             Self::LDIndI32 { ptr } => {
-                let ptr = ptr.validate(method)?;
+                let ptr = ptr.validate(vctx, tmp_loc)?;
                 if ptr != Type::Ptr(Box::new(Type::I32))
                     && ptr != Type::ManagedReference(Box::new(Type::I32))
                 {
@@ -715,8 +728,26 @@ impl CILNode {
                 }
                 Ok(Type::I32)
             }
+            Self::LDIndF32 { ptr } => {
+                let ptr = ptr.validate(vctx, tmp_loc)?;
+                if ptr != Type::Ptr(Box::new(Type::F32))
+                    && ptr != Type::ManagedReference(Box::new(Type::F32))
+                {
+                    return Err(format!("Tried to load f32 from pointer of type {ptr:?}"));
+                }
+                Ok(Type::F32)
+            }
+            Self::LDIndF64 { ptr } => {
+                let ptr = ptr.validate(vctx, tmp_loc)?;
+                if ptr != Type::Ptr(Box::new(Type::F64))
+                    && ptr != Type::ManagedReference(Box::new(Type::F64))
+                {
+                    return Err(format!("Tried to load f64 from pointer of type {ptr:?}"));
+                }
+                Ok(Type::F64)
+            }
             Self::LDIndU16 { ptr } => {
-                let ptr = ptr.validate(method)?;
+                let ptr = ptr.validate(vctx, tmp_loc)?;
                 if ptr != Type::Ptr(Box::new(Type::U16))
                     && ptr != Type::ManagedReference(Box::new(Type::U16))
                 {
@@ -725,7 +756,7 @@ impl CILNode {
                 Ok(Type::U16)
             }
             Self::LDIndI16 { ptr } => {
-                let ptr = ptr.validate(method)?;
+                let ptr = ptr.validate(vctx, tmp_loc)?;
                 if ptr != Type::Ptr(Box::new(Type::I16))
                     && ptr != Type::ManagedReference(Box::new(Type::I16))
                 {
@@ -734,7 +765,7 @@ impl CILNode {
                 Ok(Type::I16)
             }
             Self::LDIndU8 { ptr } => {
-                let ptr = ptr.validate(method)?;
+                let ptr = ptr.validate(vctx, tmp_loc)?;
                 if ptr != Type::Ptr(Box::new(Type::U8))
                     && ptr != Type::ManagedReference(Box::new(Type::U8))
                 {
@@ -743,7 +774,7 @@ impl CILNode {
                 Ok(Type::U8)
             }
             Self::LDIndI8 { ptr } => {
-                let ptr = ptr.validate(method)?;
+                let ptr = ptr.validate(vctx, tmp_loc)?;
                 if ptr != Type::Ptr(Box::new(Type::I8))
                     && ptr != Type::ManagedReference(Box::new(Type::I8))
                 {
@@ -751,8 +782,26 @@ impl CILNode {
                 }
                 Ok(Type::I8)
             }
+            Self::LDIndI64 { ptr } => {
+                let ptr = ptr.validate(vctx, tmp_loc)?;
+                if ptr != Type::Ptr(Box::new(Type::I64))
+                    && ptr != Type::ManagedReference(Box::new(Type::I64))
+                {
+                    return Err(format!("Tried to load i8 from pointer of type {ptr:?}"));
+                }
+                Ok(Type::I64)
+            }
+            Self::LDIndU64 { ptr } => {
+                let ptr = ptr.validate(vctx, tmp_loc)?;
+                if ptr != Type::Ptr(Box::new(Type::U64))
+                    && ptr != Type::ManagedReference(Box::new(Type::U64))
+                {
+                    return Err(format!("Tried to load i8 from pointer of type {ptr:?}"));
+                }
+                Ok(Type::U64)
+            }
             Self::LDIndBool { ptr } => {
-                let ptr = ptr.validate(method)?;
+                let ptr = ptr.validate(vctx, tmp_loc)?;
                 if ptr != Type::Ptr(Box::new(Type::Bool))
                     && ptr != Type::ManagedReference(Box::new(Type::Bool))
                 {
@@ -764,26 +813,36 @@ impl CILNode {
             Self::LdcI64(_) => Ok(Type::I64),
             Self::LdcU32(_) => Ok(Type::U32),
             Self::LdcI32(_) => Ok(Type::I32),
+            Self::LdcI8(_) => Ok(Type::I8),
             Self::LdcF32(_) => Ok(Type::F32),
             Self::LdcF64(_) => Ok(Type::F64),
-            Self::ConvISize(src) => {
-                src.validate(method)?;
+            Self::SignExtendToISize(src) => {
+                src.validate(vctx, tmp_loc)?;
                 Ok(Type::ISize)
             }
-            Self::ConvI64(src) => {
-                src.validate(method)?;
+            Self::SignExtendToI64(src) => {
+                src.validate(vctx, tmp_loc)?;
                 Ok(Type::I64)
             }
+            Self::SignExtendToU64(src) => {
+                src.validate(vctx, tmp_loc)?;
+                Ok(Type::U64)
+            }
             Self::ZeroExtendToUSize(src) => {
-                let _tpe = src.validate(method)?;
+                let _tpe = src.validate(vctx, tmp_loc)?;
                 Ok(Type::USize)
             }
             Self::ZeroExtendToISize(src) => {
-                let _tpe = src.validate(method)?;
+                let _tpe = src.validate(vctx, tmp_loc)?;
                 Ok(Type::ISize)
             }
+            Self::SignExtendToUSize(src) => {
+                let _tpe = src.validate(vctx, tmp_loc)?;
+                Ok(Type::USize)
+            }
+
             Self::MRefToRawPtr(src) => {
-                let tpe = src.validate(method)?;
+                let tpe = src.validate(vctx, tmp_loc)?;
                 if let Type::ManagedReference(pointed) = tpe {
                     Ok(Type::Ptr(pointed))
                 } else {
@@ -792,40 +851,40 @@ impl CILNode {
                     ))
                 }
             }
-            Self::ConvU64(src) => {
-                src.validate(method)?;
+            Self::ZeroExtendToU64(src) => {
+                src.validate(vctx, tmp_loc)?;
                 Ok(Type::U64)
             }
             Self::ConvU32(src) => {
-                src.validate(method)?;
+                src.validate(vctx, tmp_loc)?;
                 Ok(Type::U32)
             }
             Self::ConvI32(src) => {
-                src.validate(method)?;
+                src.validate(vctx, tmp_loc)?;
                 Ok(Type::I32)
             }
             Self::ConvF32(src) => {
-                src.validate(method)?;
+                src.validate(vctx, tmp_loc)?;
                 Ok(Type::F32)
             }
             Self::ConvF64(src) | Self::ConvF64Un(src) => {
-                src.validate(method)?;
+                src.validate(vctx, tmp_loc)?;
                 Ok(Type::F64)
             }
             Self::ConvU16(src) => {
-                src.validate(method)?;
+                src.validate(vctx, tmp_loc)?;
                 Ok(Type::U16)
             }
             Self::ConvI16(src) => {
-                src.validate(method)?;
+                src.validate(vctx, tmp_loc)?;
                 Ok(Type::I16)
             }
             Self::ConvU8(src) => {
-                src.validate(method)?;
+                src.validate(vctx, tmp_loc)?;
                 Ok(Type::U8)
             }
             Self::ConvI8(src) => {
-                src.validate(method)?;
+                src.validate(vctx, tmp_loc)?;
                 Ok(Type::I8)
             }
             Self::LtUn(a, b)
@@ -833,8 +892,8 @@ impl CILNode {
             | Self::GtUn(a, b)
             | Self::Gt(a, b)
             | Self::Eq(a, b) => {
-                let a = a.validate(method)?;
-                let b = b.validate(method)?;
+                let a = a.validate(vctx, tmp_loc)?;
+                let b = b.validate(vctx, tmp_loc)?;
                 if a != b {
                     return Err(format!(
                         "Invalid arguments of the {self:?} instruction. {a:?} != {b:?}"
@@ -858,8 +917,8 @@ impl CILNode {
             | Self::Div(a, b)
             | Self::DivUn(a, b)
             | Self::XOr(a, b) => {
-                let a = a.validate(method)?;
-                let b = b.validate(method)?;
+                let a = a.validate(vctx, tmp_loc)?;
+                let b = b.validate(vctx, tmp_loc)?;
                 if a != b {
                     match (&a, &b) {
                         (Type::Ptr(_), Type::ISize | Type::USize) => return Ok(a),
@@ -879,7 +938,7 @@ impl CILNode {
                 Ok(a)
             }
             Self::Not(a) | Self::Neg(a) => {
-                let a = a.validate(method)?;
+                let a = a.validate(vctx, tmp_loc)?;
                 if !a.is_primitive_numeric() {
                     return Err(format!(
                         "The instruction Add can't operate on a non-primitve CIL type {a:?}."
@@ -888,8 +947,8 @@ impl CILNode {
                 Ok(a)
             }
             Self::Shr(a, b) | Self::ShrUn(a, b) | Self::Shl(a, b) => {
-                let a = a.validate(method)?;
-                let b = b.validate(method)?;
+                let a = a.validate(vctx, tmp_loc)?;
+                let b = b.validate(vctx, tmp_loc)?;
                 if !a.is_primitive_numeric() {
                     return Err(format!(
                         "The instruction Add can't operate on a non-primitve CIL type {a:?}."
@@ -902,24 +961,41 @@ impl CILNode {
                 }
                 Ok(a)
             }
+            Self::PointerToConstValue(_) => Ok(Type::Ptr(Box::new(Type::U8))),
             Self::LdStr(_) => Ok(Type::DotnetType(DotnetTypeRef::string_type().into())),
-            Self::NewObj { site, args } => {
-                if site.explicit_inputs().len() != args.len() {
+            Self::LoadGlobalAllocPtr { alloc_id: _ } => Ok(Type::Ptr(Box::new(Type::U8))),
+            Self::NewObj(call_op_args) => {
+                if call_op_args.site.explicit_inputs().len() != call_op_args.args.len() {
                     return Err(format!(
                         "Expected {} arguments, got {}",
-                        site.explicit_inputs().len(),
-                        args.len()
+                        call_op_args.site.explicit_inputs().len(),
+                        call_op_args.args.len()
                     ));
                 }
-                for (arg, tpe) in args.iter().zip(site.explicit_inputs().iter()) {
-                    let arg = arg.validate(method)?;
+                for (arg, tpe) in call_op_args
+                    .args
+                    .iter()
+                    .zip(call_op_args.site.explicit_inputs().iter())
+                {
+                    let arg = arg.validate(vctx, tmp_loc)?;
                     if arg != *tpe {
-                        return Err(format!(
-                            "Expected an argument of type {tpe:?}, but got {arg:?}"
-                        ));
+                        match (&arg, &tpe) {
+                            (Type::ManagedReference(arg), Type::Ptr(tpe)) => {
+                                if arg != tpe {
+                                    return Err(format!(
+                                        "Expected an argument of type {tpe:?}, but got {arg:?}"
+                                    ));
+                                }
+                            }
+                            _ => {
+                                return Err(format!(
+                                    "Expected an argument of type {tpe:?}, but got {arg:?}"
+                                ))
+                            }
+                        };
                     }
                 }
-                match site.class() {
+                match call_op_args.site.class() {
                     Some(class) => {
                         if class.asm() == Some("System.Runtime") {
                             if *class == DotnetTypeRef::int_128() {
@@ -934,27 +1010,42 @@ impl CILNode {
                     None => Err("Newobj instruction witn no class specified".into()),
                 }
             }
-            Self::Call { site, args } => {
-                if site.inputs().len() != args.len() {
+            Self::Call(call_op_args) => {
+                if call_op_args.site.inputs().len() != call_op_args.args.len() {
                     return Err(format!(
                         "Expected {} arguments, got {}",
-                        site.inputs().len(),
-                        args.len()
+                        call_op_args.site.inputs().len(),
+                        call_op_args.args.len()
                     ));
                 }
-                for (arg, tpe) in args.iter().zip(site.inputs().iter()) {
-                    let arg = arg.validate(method)?;
-                    if arg != *tpe {
+                for (arg_node, arg_tpe) in call_op_args
+                    .args
+                    .iter()
+                    .zip(call_op_args.site.inputs().iter())
+                {
+                    let got = arg_node.validate(vctx, tmp_loc)?;
+                    if got != *arg_tpe {
+                        if matches!(arg_tpe, Type::USize) && matches!(got, Type::Ptr(_)) {
+                            continue;
+                        }
+                        if (matches!(arg_tpe, Type::ManagedReference(_))
+                            && matches!(got, Type::Ptr(_)))
+                            || (matches!(arg_tpe, Type::Ptr(_))
+                                && matches!(got, Type::ManagedReference(_)))
+                        {
+                            // TODO: check the mref and ptr point to the same mem.
+                            continue;
+                        }
                         return Err(format!(
-                            "Expected an argument of type {tpe:?}, but got {arg:?}"
+                            "Expected an argument of type {arg_tpe:?}, but got {got:?}"
                         ));
                     }
                 }
-                Ok(site.signature().output().clone())
+                Ok(call_op_args.site.signature().output().clone())
             }
             Self::CallI(packed) => {
                 let (sig, ptr, args) = packed.as_ref();
-                let _ptr = ptr.validate(method)?;
+                let _ptr = ptr.validate(vctx, tmp_loc)?;
                 if sig.inputs().len() != args.len() {
                     return Err(format!(
                         "Expected {} arguments, got {}",
@@ -963,7 +1054,7 @@ impl CILNode {
                     ));
                 }
                 for (arg, tpe) in args.iter().zip(sig.inputs().iter()) {
-                    let arg = arg.validate(method)?;
+                    let arg = arg.validate(vctx, tmp_loc)?;
                     if arg != *tpe {
                         return Err(format!(
                             "Expected an argument of type {tpe:?}, but got {arg:?}"
@@ -973,7 +1064,7 @@ impl CILNode {
                 Ok(sig.output().clone())
             }
             Self::TransmutePtr { val, new_ptr } => {
-                let val = val.validate(method)?;
+                let val = val.validate(vctx, tmp_loc)?;
                 match val {
                     Type::USize => (),
                     Type::ISize => (),
@@ -991,9 +1082,24 @@ impl CILNode {
             Self::LdFalse => Ok(Type::Bool),
             Self::SizeOf(_) => Ok(Type::I32),
             Self::LDFtn(ftn) => Ok(Type::DelegatePtr(Box::new(ftn.signature().clone()))),
+            Self::TemporaryLocal(tmp) => {
+                let (tpe, roots, main) = tmp.as_ref();
+                for root in roots {
+                    root.validate(vctx, Some(tpe))?;
+                }
+                main.validate(vctx, Some(tpe))
+            }
+            Self::LoadAddresOfTMPLocal => Ok(Type::ManagedReference(Box::new(
+                tmp_loc
+                    .cloned()
+                    .ok_or_else(|| ("TMP local requred when no tmp locals!".to_string()))?,
+            ))),
+            Self::LoadTMPLocal => tmp_loc
+                .cloned()
+                .ok_or_else(|| ("TMP local requred when no tmp locals!".to_string())),
             _ => todo!("Can't check the type safety of {self:?}"),
         }
-    }*/
+    }
 }
 
 #[macro_export]
@@ -1151,19 +1257,19 @@ macro_rules! conv_usize {
 #[macro_export]
 macro_rules! conv_isize {
     ($a:expr) => {
-        CILNode::ConvISize($a.into())
+        CILNode::SignExtendToISize($a.into())
     };
 }
 #[macro_export]
 macro_rules! conv_u64 {
     ($a:expr) => {
-        CILNode::ConvU64($a.into())
+        CILNode::ZeroExtendToU64($a.into())
     };
 }
 #[macro_export]
 macro_rules! conv_i64 {
     ($a:expr) => {
-        CILNode::ConvI64($a.into())
+        CILNode::SignExtendToI64($a.into())
     };
 }
 #[macro_export]
@@ -1229,6 +1335,13 @@ macro_rules! ldc_i32 {
         CILNode::LdcI32($val)
     };
 }
+/// Loads a false bool.
+#[macro_export]
+macro_rules! ld_false {
+    () => {
+        CILNode::LdFalse
+    };
+}
 /// Loads a value of type `i64`.
 #[macro_export]
 macro_rules! ldc_i64 {
@@ -1285,4 +1398,23 @@ impl std::ops::Neg for CILNode {
     }
 
     type Output = Self;
+}
+#[derive(Clone, Copy)]
+pub struct ValidationContext<'a> {
+    sig: &'a FnSig,
+    locals: &'a [(Option<IString>, Type)],
+}
+
+impl<'a> ValidationContext<'a> {
+    pub fn new(sig: &'a FnSig, locals: &'a [(Option<IString>, Type)]) -> Self {
+        Self { sig, locals }
+    }
+
+    pub fn sig(&self) -> &FnSig {
+        self.sig
+    }
+
+    pub fn locals(&self) -> &[(Option<IString>, Type)] {
+        self.locals
+    }
 }

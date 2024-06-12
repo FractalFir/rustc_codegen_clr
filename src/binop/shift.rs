@@ -2,8 +2,8 @@ use crate::r#type::TyCache;
 use crate::utilis::compiletime_sizeof;
 
 use cilly::{
-    call, call_site::CallSite, cil_node::CILNode, conv_u32, fn_sig::FnSig, ldc_u32, rem_un, shl,
-    shr, shr_un, DotnetTypeRef, Type,
+    call, call_site::CallSite, cil_node::CILNode, conv_i32, conv_u32, fn_sig::FnSig, ldc_u32,
+    rem_un, shl, shr, shr_un, DotnetTypeRef, Type,
 };
 
 use rustc_middle::ty::{Instance, IntTy, Ty, TyCtxt, TyKind, UintTy};
@@ -92,10 +92,10 @@ pub fn shr_checked<'tyctx>(
                 ),
                 [
                     ops_a,
-                    rem_un!(
-                        conv_u32!(crate::casts::int_to_int(type_b.clone(), &Type::I32, ops_b)),
+                    conv_i32!(rem_un!(
+                        crate::casts::int_to_int(type_b.clone(), &Type::U32, ops_b),
                         ldc_u32!(128)
-                    )
+                    ))
                 ]
             )
         }
@@ -109,10 +109,10 @@ pub fn shr_checked<'tyctx>(
                 ),
                 [
                     ops_a,
-                    rem_un!(
-                        conv_u32!(crate::casts::int_to_int(type_b.clone(), &Type::I32, ops_b)),
+                    conv_i32!(rem_un!(
+                        crate::casts::int_to_int(type_b.clone(), &Type::U32, ops_b),
                         ldc_u32!(128)
-                    )
+                    ))
                 ]
             )
         }
@@ -171,10 +171,10 @@ pub fn shl_checked<'tyctx>(
                 ),
                 [
                     ops_a,
-                    rem_un!(
-                        conv_u32!(crate::casts::int_to_int(type_b.clone(), &Type::I32, ops_b)),
+                    conv_i32!(rem_un!(
+                        conv_u32!(crate::casts::int_to_int(type_b.clone(), &Type::U32, ops_b)),
                         ldc_u32!(bit_cap)
-                    )
+                    ))
                 ]
             )
         }
@@ -188,10 +188,10 @@ pub fn shl_checked<'tyctx>(
                 ),
                 [
                     ops_a,
-                    rem_un!(
-                        conv_u32!(crate::casts::int_to_int(type_b.clone(), &Type::I32, ops_b)),
+                    conv_i32!(rem_un!(
+                        conv_u32!(crate::casts::int_to_int(type_b.clone(), &Type::U32, ops_b)),
                         ldc_u32!(bit_cap)
-                    )
+                    ))
                 ]
             )
         }

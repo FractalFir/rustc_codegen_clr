@@ -1,6 +1,6 @@
 use crate::{place::place_get, r#type::TyCache};
-use cilly::Type;
 use cilly::{cil_node::CILNode, cil_root::CILRoot, cil_tree::CILTree, size_of};
+use cilly::{conv_usize, Type};
 
 use rustc_middle::{
     mir::{Body, CopyNonOverlapping, NonDivergingIntrinsic, Statement, StatementKind},
@@ -131,7 +131,7 @@ pub fn handle_statement<'tcx>(
                         CILRoot::CpBlk {
                             src: Box::new(src_op),
                             dst: Box::new(dst_op),
-                            len: Box::new(count_op * size_of!(pointed)),
+                            len: Box::new(count_op * conv_usize!(size_of!(pointed))),
                         }
                         .into(),
                     )

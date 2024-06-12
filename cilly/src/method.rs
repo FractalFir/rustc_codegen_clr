@@ -13,7 +13,7 @@ use crate::{
     call_site::CallSite,
     cil_iter::{CILIterElem, CILIterTrait},
     cil_iter_mut::CILIterElemMut,
-    cil_node::CILNode,
+    cil_node::{CILNode, ValidationContext},
     cil_root::CILRoot,
     cil_tree::CILTree,
     ilasm_op::{non_void_type_cil, type_cil, DepthSetting},
@@ -103,7 +103,7 @@ impl Method {
         let errs: Vec<String> = self
             .blocks()
             .iter()
-            .map(|tree| tree.validate(self))
+            .map(|tree| tree.validate(self.into()))
             .filter_map(|err| match err {
                 Ok(()) => None,
                 Err(err) => Some(err),
@@ -514,4 +514,9 @@ pub enum MethodType {
     Virtual,
     /// A "normal" method.
     Static,
+}
+impl<'a> Into<ValidationContext<'a>> for &'a Method {
+    fn into(self) -> ValidationContext<'a> {
+        ValidationContext::new(self.sig(), self.locals())
+    }
 }

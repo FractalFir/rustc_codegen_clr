@@ -45,9 +45,9 @@ lazy_static! {
             Some(value)
         }else {
             None
-        }).map(|value|match value.as_ref(){
+        }).is_some_and(|value|match value.as_ref(){
             "0"|"false"|"False"|"FALSE" => false,"1"|"true"|"True"|"TRUE" => true,_ => panic!("Boolean enviroment variable {} has invalid value {}",stringify!(ESCAPE_NAMES),value),
-        }).unwrap_or(false)
+        })
     };
 }
 
@@ -63,9 +63,9 @@ lazy_static! {
             Some(value)
         }else {
             None
-        }).map(|value|match value.as_ref(){
+        }).is_some_and(|value|match value.as_ref(){
             "0"|"false"|"False"|"FALSE" => false,"1"|"true"|"True"|"TRUE" => true,_ => panic!("Boolean enviroment variable {} has invalid value {}",stringify!(NATIVE_PASSTROUGH),value),
-        }).unwrap_or(false)
+        })
     };
 }
 

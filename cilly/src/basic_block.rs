@@ -3,8 +3,8 @@ use std::collections::HashSet;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    cil_iter::CILIterElem, cil_iter_mut::CILIterElemMut, cil_root::CILRoot, cil_tree::CILTree,
-    ilasm_op::DepthSetting, method::Method, IlasmFlavour,
+    cil_iter::CILIterElem, cil_iter_mut::CILIterElemMut, cil_node::ValidationContext,
+    cil_root::CILRoot, cil_tree::CILTree, ilasm_op::DepthSetting, method::Method, IlasmFlavour,
 };
 
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
@@ -199,7 +199,7 @@ impl BasicBlock {
     pub fn handler(&self) -> Option<&Handler> {
         self.handler.as_ref()
     }
-    pub fn validate(&self, method: &Method) -> Result<(), String> {
+    pub fn validate(&self, method: ValidationContext) -> Result<(), String> {
         let errs: Vec<String> = self
             .trees()
             .iter()

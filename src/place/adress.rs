@@ -24,9 +24,11 @@ pub fn local_adress(local: usize, method: &rustc_middle::mir::Body) -> CILNode {
     if local == 0 {
         CILNode::MRefToRawPtr(CILNode::LDLocA(0).into())
     } else if local > method.arg_count {
-        CILNode::MRefToRawPtr(CILNode::LDLocA((local - method.arg_count) as u32).into())
+        CILNode::MRefToRawPtr(
+            CILNode::LDLocA(u32::try_from(local - method.arg_count).unwrap()).into(),
+        )
     } else {
-        CILNode::MRefToRawPtr(CILNode::LDArgA((local - 1) as u32).into())
+        CILNode::MRefToRawPtr(CILNode::LDArgA(u32::try_from(local - 1).unwrap()).into())
     }
 }
 pub fn address_last_dereference<'ctx>(
@@ -51,7 +53,6 @@ pub fn address_last_dereference<'ctx>(
         pointer_to_is_fat(curr_points_to, tyctx, method),
         pointer_to_is_fat(target_ty, tyctx, method),
     ) {
-        (true, true) => addr_calc,
         (true, false) => CILNode::LDIndPtr {
             ptr: Box::new(CILNode::LDField {
                 field: FieldDescriptor::new(
@@ -65,7 +66,7 @@ pub fn address_last_dereference<'ctx>(
             loaded_ptr: Box::new(Type::Ptr(Box::new(target_type))),
         },
         (false, true) => panic!("Invalid last dereference in address!"),
-        _ => addr_calc,
+        (false, false) | (true, true) => addr_calc,
     }
     /*match (curr_points_to.kind(), target_type.kind()) {
         (TyKind::Slice(_), TyKind::Slice(_)) => addr_calc,
@@ -376,10 +377,7 @@ pub fn place_elem_adress<'ctx>(
                                 ),
                                 false,
                             ),
-                            [
-                                addr_calc,
-                                CILNode::ZeroExtendToUSize(ldc_u64!(*offset).into()),
-                            ]
+                            [addr_calc, CILNode::MRefToRawPtr(ldc_u64!(*offset).into()),]
                         )
                     }
                 }

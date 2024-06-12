@@ -175,7 +175,7 @@ fn eval_node<'asm>(
         CILNode::ConvI8(value) => {
             let value = eval_node(value, state, args)?;
             match value {
-                Value::I8(val) => Ok(Value::I8(val as i8)),
+                Value::I8(val) => Ok(Value::I8(val)),
                 Value::U8(val) => Ok(Value::I8(val as i8)),
                 Value::I16(val) => Ok(Value::I8(val as i8)),
                 Value::U16(val) => Ok(Value::I8(val as i8)),
@@ -189,7 +189,7 @@ fn eval_node<'asm>(
             let value = eval_node(value, state, args)?;
             match value {
                 Value::I8(val) => Ok(Value::U8(val as u8)),
-                Value::U8(val) => Ok(Value::U8(val as u8)),
+                Value::U8(val) => Ok(Value::U8(val)),
                 Value::I16(val) => Ok(Value::U8(val as u8)),
                 Value::U16(val) => Ok(Value::U8(val as u8)),
                 Value::I32(val) => Ok(Value::U8(val as u8)),
@@ -273,21 +273,21 @@ fn eval_node<'asm>(
                 _ => todo!("Can't convert a value of type {value:?} to f32"),
             }
         }
-        CILNode::ConvU64(value) => {
+        CILNode::ZeroExtendToU64(value) => {
             let value = eval_node(value, state, args)?;
             match value {
                 Value::U64(val) => Ok(Value::U64(val)),
                 _ => todo!("Can't convert a value of type {value:?} to u64"),
             }
         }
-        CILNode::ConvI64(value) => {
+        CILNode::SignExtendToI64(value) => {
             let value = eval_node(value, state, args)?;
             match value {
                 Value::I64(val) => Ok(Value::I64(val)),
                 _ => todo!("Can't convert a value of type {value:?} to u64"),
             }
         }
-        CILNode::ConvISize(value) => {
+        CILNode::SignExtendToISize(value) => {
             let value = eval_node(value, state, args)?;
             match value {
                 Value::U64(val) => Ok(Value::ISize(val as i64 as isize)),

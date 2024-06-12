@@ -59,14 +59,16 @@ impl<'a> Iterator for CILIter<'a> {
                     }
                 },
                 CILIterElem::Node(
-                    CILNode::ConvU64(a)
-                    | CILNode::ConvI64(a)
+                    CILNode::ZeroExtendToU64(a)
+                    | CILNode::SignExtendToI64(a)
+                    | CILNode::SignExtendToU64(a)
                     | CILNode::ConvF64(a)
                     | CILNode::ConvF64Un(a)
                     | CILNode::ConvU32(a)
                     | CILNode::ConvI32(a)
                     | CILNode::ConvF32(a)
-                    | CILNode::ConvISize(a)
+                    | CILNode::SignExtendToISize(a)
+                    | CILNode::SignExtendToUSize(a)
                     | CILNode::MRefToRawPtr(a)
                     | CILNode::ConvU16(a)
                     | CILNode::ConvI16(a)
@@ -126,6 +128,7 @@ impl<'a> Iterator for CILIter<'a> {
                     | CILNode::LDArg(_)
                     | CILNode::LDArgA(_)
                     | CILNode::SizeOf(_)
+                    | CILNode::LdcI8(_)
                     | CILNode::LdcI32(_)
                     | CILNode::LdcF32(_)
                     | CILNode::LdcI64(_)
@@ -200,6 +203,7 @@ impl<'a> Iterator for CILIter<'a> {
                     | CILRoot::STIndI32(a, b)
                     | CILRoot::STIndI64(a, b)
                     | CILRoot::STIndISize(a, b)
+                    | CILRoot::STIndPtr(a, b, _)
                     | CILRoot::STIndF32(a, b)
                     | CILRoot::STIndF64(a, b),
                 ) => match idx {
@@ -435,7 +439,6 @@ impl<'a> CILIter<'a> {
             elems: vec![(0, CILIterElem::Root(root))],
         }
     }
-    #[must_use]
     pub fn nodes(self) -> impl Iterator<Item = &'a CILNode> {
         self.filter_map(|node_or_root| match node_or_root {
             CILIterElem::Node(node) => Some(node),
@@ -511,7 +514,7 @@ fn iter() {
         iter.next(),
         Some(CILIterElem::Node(CILNode::LDLoc(1)))
     ));
-    assert!(matches!(iter.next(), None));
+    assert!(iter.next().is_none());
     let root = CILRoot::Call {
         site: Box::new(CallSite::new(
             None,
@@ -534,5 +537,5 @@ fn iter() {
         iter.next(),
         Some(CILIterElem::Node(CILNode::LdcF32(3.119765)))
     ));
-    assert!(matches!(iter.next(), None));
+    assert!(iter.next().is_none());
 }

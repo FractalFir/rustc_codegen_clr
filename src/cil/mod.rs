@@ -14,13 +14,11 @@ pub fn malloc(ctx: TyCtxt) -> CallSite {
 pub(crate) fn span_source_info(tyctx: TyCtxt, span: rustc_span::Span) -> CILRoot {
     let (file, lstart, cstart, lend, mut cend) =
         tyctx.sess.source_map().span_to_location_info(span);
-    let file = file
-        .map(|file| {
-            file.name
-                .display(rustc_span::FileNameDisplayPreference::Local)
-                .to_string()
-        })
-        .unwrap_or("".to_string());
+    let file = file.map_or(String::new(), |file| {
+        file.name
+            .display(rustc_span::FileNameDisplayPreference::Local)
+            .to_string()
+    });
     if cstart >= cend {
         cend = cstart + 1;
     }

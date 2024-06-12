@@ -303,7 +303,8 @@ pub fn ptr_set_op<'ctx>(
                         value_calc: Box::new(value_calc),
                     }
                 } else {
-                    CILRoot::STIndISize(addr_calc, value_calc)
+                    let inner = type_cache.type_from_cache(*inner, tyctx, *method_instance);
+                    CILRoot::STIndPtr(addr_calc, value_calc, Box::new(inner))
                 }
             }
             TyKind::RawPtr(ty, _) => {
@@ -316,7 +317,8 @@ pub fn ptr_set_op<'ctx>(
                         value_calc: Box::new(value_calc),
                     }
                 } else {
-                    CILRoot::STIndISize(addr_calc, value_calc)
+                    let inner = type_cache.type_from_cache(*ty, tyctx, *method_instance);
+                    CILRoot::STIndPtr(addr_calc, value_calc, Box::new(inner))
                 }
             }
             _ => todo!(" can't deref type {pointed_type:?} yet"),

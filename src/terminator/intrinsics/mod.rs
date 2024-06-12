@@ -86,7 +86,7 @@ pub fn handle_intrinsic<'tyctx>(
     method_instance: Instance<'tyctx>,
     call_instance: Instance<'tyctx>,
     type_cache: &mut TyCache,
-    signature: FnSig,
+
     span: rustc_span::Span,
 ) -> CILRoot {
     match fn_name {
@@ -200,7 +200,15 @@ pub fn handle_intrinsic<'tyctx>(
                 1,
                 "The intrinsic `black_box` MUST take in exactly 1 argument!"
             );
-            if *signature.output() == Type::Void {
+            let tpe = crate::utilis::monomorphize(
+                &method_instance,
+                call_instance.args[0]
+                    .as_type()
+                    .expect("needs_drop works only on types!"),
+                tyctx,
+            );
+            let tpe = type_cache.type_from_cache(tpe, tyctx, method_instance);
+            if tpe == Type::Void {
                 return CILRoot::Nop;
             }
             // assert_eq!(args.len(),1,"The intrinsic `unlikely` MUST take in exactly 1 argument!");
@@ -1519,7 +1527,6 @@ pub fn handle_intrinsic<'tyctx>(
             method_instance,
             call_instance,
             type_cache,
-            &signature,
             span,
         ),
     }
@@ -1533,12 +1540,12 @@ fn intrinsic_slow<'tyctx>(
     method_instance: Instance<'tyctx>,
     call_instance: Instance<'tyctx>,
     type_cache: &mut TyCache,
-    signature: &FnSig,
+
     span: rustc_span::Span,
 ) -> CILRoot {
     let _ = call_instance;
     let _ = span;
-    let _ = signature;
+
     if fn_name.contains("likely") {
         debug_assert_eq!(
             args.len(),

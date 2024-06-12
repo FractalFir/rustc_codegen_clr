@@ -3,7 +3,7 @@
 use crate::r#type::pointer_to_is_fat;
 use cilly::cil_node::CILNode;
 use cilly::cil_root::CILRoot;
-use cilly::{conv_usize, ldc_u64};
+use cilly::{conv_usize, ldc_u64, Type};
 
 use cilly::DotnetTypeRef;
 use rustc_middle::mir::Place;
@@ -106,7 +106,7 @@ pub fn deref_op<'ctx>(
             },
             TyKind::Bool => CILNode::LDIndBool { ptr }, // Both Rust bool and a managed bool are 1 byte wide. .NET bools are 4 byte wide only in the context of Marshaling/PInvoke,
             // due to historic reasons(BOOL was an alias for int in early Windows, and it stayed this way.) - FractalFir
-            TyKind::Char => CILNode::LDIndI32 { ptr }, // always 4 bytes wide: https://doc.rust-lang.org/std/primitive.char.html#representation
+            TyKind::Char => CILNode::LDIndU32 { ptr }, // always 4 bytes wide: https://doc.rust-lang.org/std/primitive.char.html#representation
             TyKind::Adt(_, _)
             | TyKind::Tuple(_)
             | TyKind::Array(_, _)
@@ -183,7 +183,11 @@ pub fn place_adress<'a>(
         })
         .expect("Could not get type layout!");
     if layout.is_zst() {
-        return conv_usize!(ldc_u64!(layout.align.pref.bytes()));
+        let place_type = type_cache.type_from_cache(place_ty, tyctx, method_instance);
+        return CILNode::TransmutePtr {
+            val: Box::new(conv_usize!(ldc_u64!(layout.align.pref.bytes()))),
+            new_ptr: Box::new(Type::Ptr(Box::new(place_type))),
+        };
     }
     if place.projection.is_empty() {
         local_adress(place.local.as_usize(), method)
