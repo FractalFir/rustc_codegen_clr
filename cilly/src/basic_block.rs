@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     cil_iter::CILIterElem, cil_iter_mut::CILIterElemMut, cil_node::ValidationContext,
-    cil_root::CILRoot, cil_tree::CILTree, ilasm_op::DepthSetting, method::Method, IlasmFlavour,
+    cil_root::CILRoot, cil_tree::CILTree, ilasm_op::DepthSetting, IlasmFlavour,
 };
 
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]

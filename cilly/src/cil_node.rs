@@ -127,9 +127,11 @@ pub enum CILNode {
     CallVirt(Box<CallOpArgs>),
     LdcI64(i64),
     LdcU64(u64),
+    LdcU16(u16),
     LdcI32(i32),
     LdcU32(u32),
     LdcI8(i8),
+    LdcI16(i16),
     LdcF64(f64),
     LdcF32(f32),
     LoadGlobalAllocPtr {
@@ -350,7 +352,9 @@ impl CILNode {
             | Self::LdcU64(_)
             | Self::LdcI32(_)
             | Self::LdcI8(_)
+            | Self::LdcI16(_)
             | Self::LdcU32(_)
+            | Self::LdcU16(_)
             | Self::LdcF64(_)
             | Self::LdcF32(_)
             | Self::LoadGlobalAllocPtr { .. }
@@ -509,7 +513,9 @@ impl CILNode {
             Self::LdcI64(_) |
             Self::LdcU64(_) |
             Self::LdcI32(_)  |
+            Self::LdcU16(_) |
             Self::LdcU32(_) |
+            Self::LdcI16(_) |
             Self::LdcI8(_) |
             Self::LdcF64(_) |
             Self::LdcF32(_) =>(),
@@ -604,6 +610,13 @@ impl CILNode {
                 match addr {
                     Type::ManagedReference(tpe) | Type::Ptr(tpe) => {
                         if tpe.as_dotnet() != Some(field.owner().clone()) {
+                            return Err(format!(
+                                "Mismatched pointer type. Expected {field:?} got {tpe:?}"
+                            ));
+                        }
+                    }
+                    Type::DotnetType(tpe) => {
+                        if tpe.as_ref() != field.owner() {
                             return Err(format!(
                                 "Mismatched pointer type. Expected {field:?} got {tpe:?}"
                             ));
@@ -811,9 +824,11 @@ impl CILNode {
             }
             Self::LdcU64(_) => Ok(Type::U64),
             Self::LdcI64(_) => Ok(Type::I64),
+            Self::LdcU16(_) => Ok(Type::U16),
             Self::LdcU32(_) => Ok(Type::U32),
             Self::LdcI32(_) => Ok(Type::I32),
             Self::LdcI8(_) => Ok(Type::I8),
+            Self::LdcI16(_) => Ok(Type::I16),
             Self::LdcF32(_) => Ok(Type::F32),
             Self::LdcF64(_) => Ok(Type::F64),
             Self::SignExtendToISize(src) => {

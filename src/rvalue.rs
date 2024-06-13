@@ -225,17 +225,6 @@ pub fn handle_rvalue<'tcx>(
                 (Type::U16, Type::DotnetChar) => {
                     handle_operand(operand, tyctx, method, method_instance, tycache)
                 }
-
-                (_, Type::F64) => CILNode::TemporaryLocal(Box::new((
-                    src,
-                    [CILRoot::SetTMPLocal {
-                        value: handle_operand(operand, tyctx, method, method_instance, tycache),
-                    }]
-                    .into(),
-                    CILNode::LDIndF64 {
-                        ptr: CILNode::LoadAddresOfTMPLocal.into(),
-                    },
-                ))),
                 (_, _) => CILNode::TemporaryLocal(Box::new((
                     src,
                     [CILRoot::SetTMPLocal {

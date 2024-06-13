@@ -347,16 +347,18 @@ pub fn place_elem_adress<'ctx>(
                         conv_usize!(ldc_u64!(*offset))
                         //ops.extend(derf_op);
                     };
-                    ld_field!(addr_calc.clone(), desc)
-                        + (call!(
-                            CallSite::new(
-                                None,
-                                "bounds_check".into(),
-                                FnSig::new(&[Type::USize, Type::USize], Type::USize),
-                                true
-                            ),
-                            [conv_usize!(index), ld_field!(addr_calc, len)]
-                        ) * conv_usize!(CILNode::SizeOf(inner_type.into())))
+                    CILNode::TransmutePtr {
+                        val: Box::new(ld_field!(addr_calc.clone(), desc)),
+                        new_ptr: Box::new(Type::Ptr(Box::new(inner_type.clone()))),
+                    } + (call!(
+                        CallSite::new(
+                            None,
+                            "bounds_check".into(),
+                            FnSig::new(&[Type::USize, Type::USize], Type::USize),
+                            true
+                        ),
+                        [conv_usize!(index), ld_field!(addr_calc, len)]
+                    ) * conv_usize!(CILNode::SizeOf(inner_type.into())))
                 }
                 TyKind::Array(element, _) => {
                     let element_ty = crate::utilis::monomorphize(&method_instance, *element, tyctx);
@@ -377,7 +379,10 @@ pub fn place_elem_adress<'ctx>(
                                 ),
                                 false,
                             ),
-                            [addr_calc, CILNode::MRefToRawPtr(ldc_u64!(*offset).into()),]
+                            [
+                                addr_calc,
+                                CILNode::ZeroExtendToUSize(ldc_u64!(*offset).into()),
+                            ]
                         )
                     }
                 }

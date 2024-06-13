@@ -293,6 +293,18 @@ fn export_node(
                 write!(out, "ldc.i4 {value}")
             }
         }
+        CILNode::LdcI16(value) => {
+            depth.pad(out)?;
+            if *value == -1 {
+                write!(out, "ldc.i4.m1")
+            } else if *value <= 8 && *value >= 0 {
+                write!(out, "ldc.i4.{value}")
+            } else if i8::try_from(*value).is_ok() {
+                write!(out, "ldc.i4.s {value}")
+            } else {
+                write!(out, "ldc.i4 {value}")
+            }
+        }
         CILNode::LdcU32(value) => {
             depth.pad(out)?;
             if *value <= 8 {
@@ -305,6 +317,16 @@ fn export_node(
                 {
                     write!(out, "ldc.i4 {value}", value = *value as i32)
                 }
+            }
+        }
+        CILNode::LdcU16(value) => {
+            depth.pad(out)?;
+            if *value <= 8 {
+                write!(out, "ldc.i4.{value}")
+            } else if *value < u16::from(i8::MAX as u8) {
+                write!(out, "ldc.i4.s {value}")
+            } else {
+                write!(out, "ldc.i4 {value}", value = *value)
             }
         }
         CILNode::LdcI8(value) => {

@@ -108,7 +108,8 @@ pub(crate) fn binop<'tyctx>(
             };
             let pointed_ty = crate::utilis::monomorphize(&method_instance, pointed_ty, tyctx);
             let pointed_ty = Box::new(tycache.type_from_cache(pointed_ty, tyctx, method_instance));
-            ops_a + ops_b * conv_usize!(size_of!(pointed_ty))
+            let offset_tpe = tycache.type_from_cache(ty_b, tyctx, method_instance);
+            ops_a + ops_b * crate::casts::int_to_int(Type::U64, &offset_tpe, size_of!(pointed_ty))
         }
         BinOp::Cmp => {
             let ordering = tyctx

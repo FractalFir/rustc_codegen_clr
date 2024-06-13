@@ -1,4 +1,5 @@
 use crate::r#type::Type;
+use crate::utilis::monomorphize;
 use cilly::call_site::CallSite;
 use cilly::cil_node::CILNode;
 use cilly::field_desc::FieldDescriptor;
@@ -73,14 +74,14 @@ fn place_elem_get<'a>(
             type_cache,
             addr_calc,
         ),
-        PlaceElem::Field(index, _field_type) => match curr_type {
+        PlaceElem::Field(field_index, _field_type) => match curr_type {
             super::PlaceTy::Ty(curr_type) => {
                 let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
                 let _field_type = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
 
                 let field_desc = crate::utilis::field_descrptor(
                     curr_type,
-                    (*index).into(),
+                    (*field_index).into(),
                     tyctx,
                     method_instance,
                     type_cache,
@@ -94,7 +95,7 @@ fn place_elem_get<'a>(
                 let owner = crate::utilis::monomorphize(&method_instance, enm, tyctx);
                 let field_desc = crate::utilis::enum_field_descriptor(
                     owner,
-                    index.as_u32(),
+                    field_index.as_u32(),
                     var_idx,
                     tyctx,
                     method_instance,
@@ -110,11 +111,9 @@ fn place_elem_get<'a>(
             let curr_ty = curr_type
                 .as_ty()
                 .expect("INVALID PLACE: Indexing into enum variant???");
-            let index_is_signed = method.local_decls[*index].ty.is_signed();
-            let index = crate::place::local_get(
-                index.as_usize(),
-                tyctx.optimized_mir(method_instance.def_id()),
-            );
+
+            let index_type = monomorphize(&method_instance, method.local_decls[*index].ty, tyctx);
+            let index = crate::place::local_get(index.as_usize(), method);
 
             match curr_ty.kind() {
                 TyKind::Slice(inner) => {
@@ -124,22 +123,27 @@ fn place_elem_get<'a>(
                         .slice_ty(inner, tyctx, method_instance)
                         .as_dotnet()
                         .unwrap();
+
+                    let index_type = type_cache.type_from_cache(index_type, tyctx, method_instance);
                     let desc = FieldDescriptor::new(
                         slice,
                         Type::Ptr(Type::Void.into()),
                         "data_pointer".into(),
                     );
-                    let size = if index_is_signed {
-                        CILNode::ZeroExtendToUSize(CILNode::SizeOf(inner_type.into()).into())
-                    } else {
-                        CILNode::SignExtendToISize(CILNode::SizeOf(inner_type.into()).into())
-                    };
+                    let size = crate::casts::int_to_int(
+                        Type::I32,
+                        &index_type,
+                        CILNode::SizeOf(inner_type.clone().into()),
+                    );
                     let addr = CILNode::Add(
-                        CILNode::LDField {
-                            addr: addr_calc.into(),
-                            field: desc.into(),
-                        }
-                        .into(),
+                        Box::new(CILNode::TransmutePtr {
+                            val: CILNode::LDField {
+                                addr: addr_calc.into(),
+                                field: desc.into(),
+                            }
+                            .into(),
+                            new_ptr: Box::new(Type::Ptr(Box::new(inner_type))),
+                        }),
                         CILNode::Mul(index.into(), size.into()).into(),
                     );
                     super::deref_op(
@@ -196,16 +200,20 @@ fn place_elem_get<'a>(
                     );
                     let metadata = FieldDescriptor::new(slice, Type::USize, "metadata".into());
 
-                    let addr = ld_field!(addr_calc.clone(), data_pointer)
-                        + call!(
-                            CallSite::new(
-                                None,
-                                "bounds_check".into(),
-                                FnSig::new(&[Type::USize, Type::USize], Type::USize),
-                                true
-                            ),
-                            [conv_usize!(index), ld_field!(addr_calc, metadata),]
-                        ) * CILNode::ZeroExtendToUSize(CILNode::SizeOf(inner_type.into()).into());
+                    let addr = CILNode::TransmutePtr {
+                        val: Box::new(ld_field!(addr_calc.clone(), data_pointer)),
+                        new_ptr: Box::new(Type::Ptr(Box::new(inner_type.clone()))),
+                    } + call!(
+                        CallSite::new(
+                            None,
+                            "bounds_check".into(),
+                            FnSig::new(&[Type::USize, Type::USize], Type::USize),
+                            true
+                        ),
+                        [conv_usize!(index), ld_field!(addr_calc, metadata),]
+                    ) * CILNode::ZeroExtendToUSize(
+                        CILNode::SizeOf(inner_type.into()).into(),
+                    );
                     super::deref_op(
                         super::PlaceTy::Ty(inner),
                         tyctx,

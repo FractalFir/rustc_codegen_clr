@@ -57,12 +57,12 @@ pub fn place_elem_set<'a>(
                 value_calc,
             )
         }
-        PlaceElem::Field(index, _field_type) => match curr_type {
+        PlaceElem::Field(field_index, _field_type) => match curr_type {
             PlaceTy::Ty(curr_type) => {
                 let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, ctx);
                 let field_desc = crate::utilis::field_descrptor(
                     curr_type,
-                    (*index).into(),
+                    (*field_index).into(),
                     ctx,
                     method_instance,
                     type_cache,
@@ -77,7 +77,7 @@ pub fn place_elem_set<'a>(
                 let enm = crate::utilis::monomorphize(&method_instance, enm, ctx);
                 let field_desc = crate::utilis::enum_field_descriptor(
                     enm,
-                    index.as_u32(),
+                    field_index.as_u32(),
                     var_idx,
                     ctx,
                     method_instance,
@@ -112,13 +112,15 @@ pub fn place_elem_set<'a>(
                         Type::Ptr(Type::Void.into()),
                         "data_pointer".into(),
                     );
-
                     ptr_set_op(
                         super::PlaceTy::Ty(inner),
                         ctx,
                         &method_instance,
                         type_cache,
-                        ld_field!(addr_calc, desc) + index * conv_usize!(size_of!(inner_type)),
+                        CILNode::TransmutePtr {
+                            val: Box::new(ld_field!(addr_calc, desc)),
+                            new_ptr: Box::new(Type::Ptr(Box::new(inner_type.clone()))),
+                        } + index * conv_usize!(size_of!(inner_type)),
                         value_calc,
                     )
                 }
@@ -174,16 +176,18 @@ pub fn place_elem_set<'a>(
                         "data_pointer".into(),
                     );
                     let metadata = FieldDescriptor::new(slice, Type::USize, "metadata".into());
-                    let addr = ld_field!(addr_calc.clone(), desc)
-                        + call!(
-                            CallSite::new(
-                                None,
-                                "bounds_check".into(),
-                                FnSig::new(&[Type::USize, Type::USize], Type::USize),
-                                true
-                            ),
-                            [conv_usize!(index), ld_field!(addr_calc, metadata),]
-                        ) * conv_usize!(CILNode::SizeOf(inner_type.into()));
+                    let addr = CILNode::TransmutePtr {
+                        val: Box::new(ld_field!(addr_calc.clone(), desc)),
+                        new_ptr: Box::new(Type::Ptr(Box::new(inner_type.clone()))),
+                    } + call!(
+                        CallSite::new(
+                            None,
+                            "bounds_check".into(),
+                            FnSig::new(&[Type::USize, Type::USize], Type::USize),
+                            true
+                        ),
+                        [conv_usize!(index), ld_field!(addr_calc, metadata),]
+                    ) * conv_usize!(CILNode::SizeOf(inner_type.into()));
                     ptr_set_op(
                         super::PlaceTy::Ty(inner),
                         ctx,

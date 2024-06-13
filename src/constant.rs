@@ -321,12 +321,15 @@ fn load_const_scalar<'ctx>(
                 CILNode::LdTrue
             }
         }
-        TyKind::RawPtr(_, _) => CILNode::ZeroExtendToUSize(
-            CILNode::LdcU64(
-                u64::try_from(scalar_u128).expect("pointers must be smaller than 2^64"),
-            )
-            .into(),
-        ),
+        TyKind::RawPtr(_, _) => CILNode::TransmutePtr {
+            val: Box::new(CILNode::ZeroExtendToUSize(
+                CILNode::LdcU64(
+                    u64::try_from(scalar_u128).expect("pointers must be smaller than 2^64"),
+                )
+                .into(),
+            )),
+            new_ptr: Box::new(tpe),
+        },
         TyKind::Tuple(elements) => {
             if elements.is_empty() {
                 CILNode::TemporaryLocal(Box::new((
@@ -380,7 +383,7 @@ pub fn load_const_int(value: u128, int_type: IntTy) -> CILNode {
         }
         IntTy::I16 => {
             let value = i16::from_ne_bytes((u16::try_from(value).unwrap()).to_ne_bytes());
-            CILNode::ConvI16(CILNode::LdcI32(i32::from(value)).into())
+            CILNode::LdcI16(value)
         }
         IntTy::I32 => CILNode::LdcI32(i32::from_ne_bytes(
             (u32::try_from(value).unwrap()).to_ne_bytes(),

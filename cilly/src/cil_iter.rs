@@ -129,11 +129,13 @@ impl<'a> Iterator for CILIter<'a> {
                     | CILNode::LDArgA(_)
                     | CILNode::SizeOf(_)
                     | CILNode::LdcI8(_)
+                    | CILNode::LdcI16(_)
                     | CILNode::LdcI32(_)
                     | CILNode::LdcF32(_)
                     | CILNode::LdcI64(_)
                     | CILNode::LdcF64(_)
                     | CILNode::LdcU32(_)
+                    | CILNode::LdcU16(_)
                     | CILNode::LdcU64(_)
                     | CILNode::LdStr(_)
                     | CILNode::LdFalse

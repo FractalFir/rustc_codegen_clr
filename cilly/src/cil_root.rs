@@ -867,6 +867,9 @@ impl CILRoot {
                 };
                 let got = tree.validate(vctx, tmp_loc)?;
                 if expected_tpe.1 != got {
+                    if expected_tpe.1 == Type::DotnetChar && got == Type::U16 {
+                        return Ok(());
+                    }
                     Err(format!("Expected a value of {expected_tpe:?}, but got {got:?} when seting local {local:?}"))
                 } else {
                     Ok(())
@@ -1192,68 +1195,12 @@ mod tests {
     }
 }
 /*
-compile_test::addr_of::stable::debug
-    compile_test::addr_of::stable::release
+
     compile_test::assign::stable::debug
     compile_test::assign::stable::release
-    compile_test::caller_location::stable::debug
-    compile_test::caller_location::stable::release
 
-    compile_test::fail11::stable::debug
-    compile_test::fuzz159::stable::debug
-    compile_test::fuzz15::stable::debug
-    compile_test::fuzz16::stable::debug
-    compile_test::fuzz18::stable::debug
-    compile_test::fuzz18::stable::release
-    compile_test::fuzz23::stable::debug
-    compile_test::fuzz27::stable::debug
-    compile_test::fuzz27::stable::release
-    compile_test::fuzz30::stable::debug
-    compile_test::fuzz30::stable::release
-    compile_test::fuzz333::stable::debug
-    compile_test::fuzz333::stable::release
-    compile_test::fuzz34::stable::debug
-    compile_test::fuzz37::stable::debug
-    compile_test::fuzz40::stable::debug
-    compile_test::fuzz43::stable::debug
-    compile_test::fuzz48::stable::debug
-    compile_test::fuzz49::stable::debug
-    compile_test::fuzz49::stable::release
-    compile_test::fuzz50::stable::debug
-    compile_test::fuzz50::stable::release
-    compile_test::fuzz54::stable::debug
-    compile_test::fuzz60::stable::debug
-    compile_test::fuzz60::stable::release
-    compile_test::fuzz64::stable::debug
-    compile_test::fuzz64::stable::release
-    compile_test::fuzz71::stable::debug
-    compile_test::fuzz71::stable::release
-    compile_test::fuzz79::stable::debug
-    compile_test::fuzz82::stable::debug
-    compile_test::fuzz82::stable::release
-    compile_test::fuzz86::stable::debug
-    compile_test::fuzz86::stable::release
-    compile_test::fuzz88::stable::debug
-    compile_test::fuzz88::stable::release
-    compile_test::fuzz93::stable::debug
-    compile_test::fuzz96::stable::debug
-    compile_test::fuzz96::stable::release
-    compile_test::interop::stable::debug
-    compile_test::interop::stable::release
-    compile_test::max::stable::debug
-    compile_test::max::stable::release
-    compile_test::recursive::stable::debug
-    compile_test::recursive::stable::release
     compile_test::slice::stable::debug
     compile_test::slice::stable::release
-    compile_test::slice_from_end::stable::debug
-    compile_test::slice_from_end::stable::release
-    compile_test::slice_index_ref::stable::debug
-    compile_test::slice_index_ref::stable::release
-    compile_test::subslice::stable::debug
-    compile_test::subslice::stable::release
-    compile_test::types::stable::debug
-    compile_test::vec::stable::debug
-    compile_test::vec::stable::release
+
 
 */
