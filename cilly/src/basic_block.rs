@@ -87,6 +87,22 @@ impl BasicBlock {
                 .for_each(Self::sheed_trees);
         }
     }
+    pub fn final_uncond_jump(&self) -> Option<u32> {
+        self.trees()
+            .last()
+            .into_iter()
+            .filter_map(|tree| match tree.root() {
+                CILRoot::GoTo { target, sub_target } => {
+                    if *sub_target != 0 {
+                        None
+                    } else {
+                        Some(*target)
+                    }
+                }
+                _ => None,
+            })
+            .next()
+    }
     pub fn resolve_exception_handlers(&mut self, handler_bbs: &[Self]) {
         let Some(handler) = &self.handler else {
             return;

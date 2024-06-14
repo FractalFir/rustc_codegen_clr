@@ -612,6 +612,10 @@ impl CILRoot {
         tmp_loc: Option<&Type>,
     ) -> Result<(), String> {
         match self {
+            Self::Pop { tree } => {
+                tree.validate(vctx, tmp_loc)?;
+                Ok(())
+            }
             Self::STIndI8(addr, val) => {
                 let addr = addr.validate(vctx, tmp_loc)?;
                 let val = val.validate(vctx, tmp_loc)?;
@@ -922,7 +926,7 @@ impl CILRoot {
                             continue;
                         }
                         return Err(format!(
-                            "Expected an argument of type {arg_tpe:?}, but got {got:?}"
+                            "Expected a call argument of type {arg_tpe:?}, but got {got:?} calling{site:?}"
                         ));
                     }
                 }
@@ -941,7 +945,7 @@ impl CILRoot {
                     let arg = arg.validate(vctx, tmp_loc)?;
                     if arg != *tpe {
                         return Err(format!(
-                            "Expected an argument of type {tpe:?}, but got {arg:?}"
+                            "Expected a call argument of type {tpe:?}, but got {arg:?}"
                         ));
                     }
                 }

@@ -49,6 +49,12 @@ select!(U64, select_u64);
 select!(U32, select_u32);
 select!(U16, select_u16);
 select!(U8, select_u8);
+select!(I128, select_i128);
+select!(ISize, select_isize);
+select!(I64, select_i64);
+select!(I32, select_i32);
+select!(I16, select_i16);
+select!(I8, select_i8);
 pub fn selects(asm: &mut Assembly) {
     select_u128(asm);
     select_usize(asm);
@@ -56,4 +62,10 @@ pub fn selects(asm: &mut Assembly) {
     select_u32(asm);
     select_u16(asm);
     select_u8(asm);
+    select_i128(asm);
+    select_isize(asm);
+    select_i64(asm);
+    select_i32(asm);
+    select_i16(asm);
+    select_i8(asm);
 }

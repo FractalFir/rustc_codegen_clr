@@ -311,28 +311,31 @@ pub fn get_discr<'tyctx>(
             } else {
                 // The special cases don't apply, so we'll have to go with
                 // the general algorithm.
-                let tag = crate::casts::int_to_int(disrc_type.clone(), &Type::U64, tag);
+                //let tag = crate::casts::int_to_int(disrc_type.clone(), &Type::U64, tag);
                 let relative_discr = sub!(
                     tag,
-                    ldc_u64!(niche_start
-                        .try_into()
-                        .expect("tag is too big to fit within u64"))
+                    crate::casts::int_to_int(
+                        Type::U64,
+                        &disrc_type,
+                        ldc_u64!(niche_start
+                            .try_into()
+                            .expect("tag is too big to fit within u64"))
+                    )
                 );
-                //let cast_tag = bx.intcast(relative_discr, cast_to, false);
-                let cast_tag = crate::casts::int_to_int(
-                    disrc_type.clone(),
-                    &Type::U64,
-                    relative_discr.clone(),
-                );
+
                 let is_niche = lt_un!(
-                    relative_discr,
+                    relative_discr.clone(),
                     crate::casts::int_to_int(
                         Type::U64,
                         &disrc_type,
                         ldc_u64!(u64::from(relative_max))
                     )
                 );
-                (is_niche, cast_tag, niche_variants.start().as_u32() as u128)
+                (
+                    is_niche,
+                    relative_discr,
+                    niche_variants.start().as_u32() as u128,
+                )
             };
 
             let tagged_discr = if delta == 0 {

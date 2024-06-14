@@ -135,6 +135,7 @@ impl<'a> Iterator for CILIter<'a> {
                     | CILNode::LdcI64(_)
                     | CILNode::LdcF64(_)
                     | CILNode::LdcU32(_)
+                    | CILNode::LdcU8(_)
                     | CILNode::LdcU16(_)
                     | CILNode::LdcU64(_)
                     | CILNode::LdStr(_)

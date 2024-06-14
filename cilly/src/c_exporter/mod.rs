@@ -546,6 +546,7 @@ fn node_string(tree: &CILNode, method: &Method) -> String {
         CILNode::LdcI16(value) => format!("{value}"),
         CILNode::LdcU32(value) => format!("{value}u"),
         CILNode::LdcU16(value) => format!("{value}u"),
+        CILNode::LdcU8(value) => format!("{value}u"),
         CILNode::LdcF64(value) => format!("{value}"),
         CILNode::LdcF32(value) => format!("{value}"),
         CILNode::LoadGlobalAllocPtr { .. } => todo!(),

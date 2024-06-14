@@ -89,7 +89,10 @@ pub fn place_elem_body<'ctx>(
                             }]
                             .into(),
                             CILNode::LdObj {
-                                ptr: CILNode::LoadAddresOfTMPLocal.into(),
+                                ptr: Box::new(CILNode::TransmutePtr {
+                                    val: CILNode::LoadAddresOfTMPLocal.into(),
+                                    new_ptr: Box::new(Type::Ptr(Box::new(field_type.clone()))),
+                                }),
                                 obj: field_type.into(),
                             },
                         ))),
@@ -173,11 +176,14 @@ pub fn place_elem_body<'ctx>(
                         "data_pointer".into(),
                     );
                     let addr = CILNode::Add(
-                        CILNode::LDField {
-                            addr: parrent_node.into(),
-                            field: desc.into(),
-                        }
-                        .into(),
+                        Box::new(CILNode::TransmutePtr {
+                            val: CILNode::LDField {
+                                addr: parrent_node.into(),
+                                field: desc.into(),
+                            }
+                            .into(),
+                            new_ptr: Box::new(Type::Ptr(Box::new(inner_type.clone()))),
+                        }),
                         CILNode::Mul(
                             index.into(),
                             CILNode::ZeroExtendToUSize(CILNode::SizeOf(inner_type.into()).into())
@@ -265,15 +271,17 @@ pub fn place_elem_body<'ctx>(
                         "data_pointer".into(),
                     );
                     let metadata = FieldDescriptor::new(slice, Type::USize, "metadata".into());
-                    let addr = ld_field!(parrent_node.clone(), desc)
-                        + call!(
-                            CallSite::builtin(
-                                "bounds_check".into(),
-                                FnSig::new(&[Type::USize, Type::USize], Type::USize),
-                                true
-                            ),
-                            [index, ld_field!(parrent_node.clone(), metadata)]
-                        ) * conv_usize!(CILNode::SizeOf(inner_type.into()));
+                    let addr = CILNode::TransmutePtr {
+                        val: Box::new(ld_field!(parrent_node.clone(), desc)),
+                        new_ptr: Box::new(Type::Ptr(Box::new(inner_type.clone()))),
+                    } + call!(
+                        CallSite::builtin(
+                            "bounds_check".into(),
+                            FnSig::new(&[Type::USize, Type::USize], Type::USize),
+                            true
+                        ),
+                        [index, ld_field!(parrent_node.clone(), metadata)]
+                    ) * conv_usize!(CILNode::SizeOf(inner_type.into()));
                     if body_ty_is_by_adress(inner) {
                         (inner.into(), addr)
                     } else {

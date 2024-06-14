@@ -149,6 +149,7 @@ impl<'a> Iterator for CILIterMut<'a> {
                     | CILNode::LdcF32(_)
                     | CILNode::LdcI64(_)
                     | CILNode::LdcF64(_)
+                    | CILNode::LdcU8(_)
                     | CILNode::LdcU16(_)
                     | CILNode::LdcU32(_)
                     | CILNode::LdcU64(_)

@@ -317,7 +317,7 @@ pub fn is_zst<'tyctx>(ty: rustc_middle::ty::Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -
         })
         .expect("Can't get layout of a type.")
         .layout;
-    layout.size.bytes() == 0
+    layout.is_zst()
 }
 pub fn requries_align_adjustement<'tyctx>(
     ty: rustc_middle::ty::Ty<'tyctx>,
@@ -330,4 +330,14 @@ pub fn requries_align_adjustement<'tyctx>(
     } else {
         None
     }
+}
+pub fn is_unsized<'tyctx>(ty: rustc_middle::ty::Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -> bool {
+    let layout = tyctx
+        .layout_of(rustc_middle::ty::ParamEnvAnd {
+            param_env: ParamEnv::reveal_all(),
+            value: ty,
+        })
+        .expect("Can't get layout of a type.")
+        .layout;
+    layout.is_unsized()
 }

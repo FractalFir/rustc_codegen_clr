@@ -1,7 +1,7 @@
 use crate::{
     operand::handle_operand,
     place::place_get,
-    r#type::TyCache,
+    r#type::{pointer_to_is_fat, TyCache},
     utilis::{adt::set_discr, field_name, monomorphize},
 };
 use cilly::{
@@ -208,11 +208,14 @@ pub fn handle_aggregate<'tyctx>(
                 )),
             )))
         }
-        AggregateKind::RawPtr(ptr, muta) => {
+        AggregateKind::RawPtr(pointee, mutability) => {
+            let [data, meta] = &*value_index.raw else {
+                panic!("RawPtr fields: {value_index:?}");
+            };
             let fat_ptr = Ty::new_ptr(
                 tyctx,
-                crate::utilis::monomorphize(&method_instance, *ptr, tyctx),
-                *muta,
+                crate::utilis::monomorphize(&method_instance, *pointee, tyctx),
+                *mutability,
             );
             // Get the addres of the initialized structure
             let init_addr = super::place::place_adress(
@@ -222,13 +225,23 @@ pub fn handle_aggregate<'tyctx>(
                 method_instance,
                 tycache,
             );
+            let meta_ty = Ty::new_ptr(
+                tyctx,
+                crate::utilis::monomorphize(&method_instance, meta.ty(method, tyctx), tyctx),
+                *mutability,
+            );
             let fat_ptr_type = tycache.type_from_cache(fat_ptr, tyctx, method_instance);
-            if !crate::r#type::pointer_to_is_fat(*ptr, tyctx, method_instance) {
+            if crate::utilis::is_zst(meta_ty, tyctx) {
                 // Double-check the pointer is REALLY thin
                 assert!(fat_ptr_type.as_dotnet().is_none());
                 // Pointer is thin, just directly assign
                 return CILNode::SubTrees(Box::new((
-                    [CILRoot::STIndISize(init_addr, values[0].1.clone())].into(),
+                    [CILRoot::STIndPtr(
+                        init_addr,
+                        values[0].1.clone(),
+                        Box::new(Type::Ptr(Box::new(fat_ptr_type))),
+                    )]
+                    .into(),
                     Box::new(place_get(
                         target_location,
                         tyctx,
@@ -239,6 +252,7 @@ pub fn handle_aggregate<'tyctx>(
                 )));
             }
 
+            assert!(pointer_to_is_fat(*pointee, tyctx, method_instance), "A pointer to {pointee:?} is not fat, but its metadata is {meta_ty:?}, and not a zst:{is_meta_zst}",is_meta_zst = crate::utilis::is_zst(meta_ty, tyctx));
             // Assign the components
             let assign_ptr = CILRoot::SetField {
                 addr: Box::new(init_addr.clone()),

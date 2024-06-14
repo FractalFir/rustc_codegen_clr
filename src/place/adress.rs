@@ -107,7 +107,7 @@ pub fn place_elem_adress<'ctx>(
         PlaceElem::Field(index, field_ty) => match curr_type {
             PlaceTy::Ty(curr_type) => {
                 //TODO: Why was this commented out?
-                //let field_type = crate::utilis::monomorphize(&method_instance, *field_type, tyctx);
+
                 let curr_ty = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
                 if crate::r#type::pointer_to_is_fat(curr_ty, tyctx, method_instance) {
                     assert_eq!(
@@ -130,7 +130,10 @@ pub fn place_elem_adress<'ctx>(
                         curr_type,
                         [CILRoot::SetTMPLocal { value: addr_calc }].into(),
                         CILNode::LdObj {
-                            ptr: CILNode::LoadAddresOfTMPLocal.into(),
+                            ptr: Box::new(CILNode::TransmutePtr {
+                                val: CILNode::LoadAddresOfTMPLocal.into(),
+                                new_ptr: Box::new(Type::Ptr(Box::new(field_type.clone()))),
+                            }),
                             obj: field_type.into(),
                         },
                     )));
@@ -164,35 +167,6 @@ pub fn place_elem_adress<'ctx>(
                 }
             }
         },
-        /*
-        PlaceElem::Downcast(symbol, _) => {
-            let curr_type = curr_type
-                .as_ty()
-                .expect("Can't get enum variant of an enum varaint!");
-            let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, tyctx);
-            let curr_dotnet_type =
-                type_cache.type_from_cache(curr_type, tyctx, method_instance);
-            let curr_dotnet_type =
-                if let crate::r#type::Type::DotnetType(dotnet_type) = curr_dotnet_type {
-                    dotnet_type.as_ref().clone()
-                } else {
-                    panic!();
-                };
-            let variant_name = symbol.unwrap();
-            let field_name = format!("v_{variant_name}").into();
-            let _curr_type_name = (curr_dotnet_type).name_path();
-            let mut field_type = curr_dotnet_type.clone();
-            field_type.append_path(&format!("/{variant_name}"));
-            let field_desc = FieldDescriptor::boxed(
-                curr_dotnet_type.clone(),
-                crate::r#type::Type::DotnetType(Box::new(field_type)),
-                field_name,
-            );
-            CILNode::LDFieldAdress {
-                addr: addr_calc.into(),
-                field: field_desc,
-            }
-        }*/
         PlaceElem::Index(index) => {
             let curr_ty = curr_type
                 .as_ty()
@@ -216,8 +190,10 @@ pub fn place_elem_adress<'ctx>(
                     );
                     // This is a false positive
                     #[allow(unused_parens)]
-                    (ld_field! {addr_calc, desc }
-                        + conv_usize!(size_of!(inner_type)) * conv_usize!(index))
+                    (CILNode::TransmutePtr {
+                        val: Box::new(ld_field!(addr_calc.clone(), desc)),
+                        new_ptr: Box::new(Type::Ptr(Box::new(inner_type.clone()))),
+                    } + conv_usize!(size_of!(inner_type)) * conv_usize!(index))
                 }
                 TyKind::Array(element, _length) => {
                     let element = crate::utilis::monomorphize(&method_instance, *element, tyctx);

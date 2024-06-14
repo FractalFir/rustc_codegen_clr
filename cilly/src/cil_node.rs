@@ -127,6 +127,7 @@ pub enum CILNode {
     CallVirt(Box<CallOpArgs>),
     LdcI64(i64),
     LdcU64(u64),
+    LdcU8(u8),
     LdcU16(u16),
     LdcI32(i32),
     LdcU32(u32),
@@ -246,7 +247,7 @@ impl CILNode {
     #[must_use]
     pub fn select(tpe: Type, a: Self, b: Self, predictate: Self) -> Self {
         match tpe {
-            Type::U128 | Type::I128 => call!(
+            Type::U128 => call!(
                 CallSite::builtin(
                     "select_u128".into(),
                     FnSig::new(&[Type::U128, Type::U128, Type::Bool], Type::U128),
@@ -254,7 +255,15 @@ impl CILNode {
                 ),
                 [a, b, predictate]
             ),
-            Type::USize | Type::ISize | Type::Ptr(_) => call!(
+            Type::I128 => call!(
+                CallSite::builtin(
+                    "select_i128".into(),
+                    FnSig::new(&[Type::I128, Type::I128, Type::Bool], Type::I128),
+                    true
+                ),
+                [a, b, predictate]
+            ),
+            Type::USize | Type::Ptr(_) => call!(
                 CallSite::builtin(
                     "select_usize".into(),
                     FnSig::new(&[Type::USize, Type::USize, Type::Bool], Type::USize),
@@ -262,7 +271,15 @@ impl CILNode {
                 ),
                 [a, b, predictate]
             ),
-            Type::U64 | Type::I64 => call!(
+            Type::ISize => call!(
+                CallSite::builtin(
+                    "select_isize".into(),
+                    FnSig::new(&[Type::ISize, Type::ISize, Type::Bool], Type::ISize),
+                    true
+                ),
+                [a, b, predictate]
+            ),
+            Type::U64 => call!(
                 CallSite::builtin(
                     "select_u64".into(),
                     FnSig::new(&[Type::U64, Type::U64, Type::Bool], Type::U64),
@@ -270,7 +287,15 @@ impl CILNode {
                 ),
                 [a, b, predictate]
             ),
-            Type::U32 | Type::I32 => call!(
+            Type::I64 => call!(
+                CallSite::builtin(
+                    "select_i64".into(),
+                    FnSig::new(&[Type::I64, Type::I64, Type::Bool], Type::I64),
+                    true
+                ),
+                [a, b, predictate]
+            ),
+            Type::U32 => call!(
                 CallSite::builtin(
                     "select_u32".into(),
                     FnSig::new(&[Type::U32, Type::U32, Type::Bool], Type::U32),
@@ -278,7 +303,15 @@ impl CILNode {
                 ),
                 [a, b, predictate]
             ),
-            Type::U16 | Type::I16 => call!(
+            Type::I32 => call!(
+                CallSite::builtin(
+                    "select_i32".into(),
+                    FnSig::new(&[Type::I32, Type::I32, Type::Bool], Type::I32),
+                    true
+                ),
+                [a, b, predictate]
+            ),
+            Type::U16 => call!(
                 CallSite::builtin(
                     "select_u16".into(),
                     FnSig::new(&[Type::U16, Type::U16, Type::Bool], Type::U16),
@@ -286,10 +319,26 @@ impl CILNode {
                 ),
                 [a, b, predictate]
             ),
-            Type::U8 | Type::I8 | Type::Bool => call!(
+            Type::I16 => call!(
+                CallSite::builtin(
+                    "select_i16".into(),
+                    FnSig::new(&[Type::I16, Type::I16, Type::Bool], Type::I16),
+                    true
+                ),
+                [a, b, predictate]
+            ),
+            Type::U8 | Type::Bool => call!(
                 CallSite::builtin(
                     "select_u8".into(),
                     FnSig::new(&[Type::U8, Type::U8, Type::Bool], Type::U8),
+                    true
+                ),
+                [a, b, predictate]
+            ),
+            Type::I8 => call!(
+                CallSite::builtin(
+                    "select_i8".into(),
+                    FnSig::new(&[Type::I8, Type::I8, Type::Bool], Type::I8),
                     true
                 ),
                 [a, b, predictate]
@@ -352,6 +401,7 @@ impl CILNode {
             | Self::LdcU64(_)
             | Self::LdcI32(_)
             | Self::LdcI8(_)
+            | Self::LdcU8(_)
             | Self::LdcI16(_)
             | Self::LdcU32(_)
             | Self::LdcU16(_)
@@ -513,6 +563,7 @@ impl CILNode {
             Self::LdcI64(_) |
             Self::LdcU64(_) |
             Self::LdcI32(_)  |
+            Self::LdcU8(_) |
             Self::LdcU16(_) |
             Self::LdcU32(_) |
             Self::LdcI16(_) |
@@ -611,14 +662,16 @@ impl CILNode {
                     Type::ManagedReference(tpe) | Type::Ptr(tpe) => {
                         if tpe.as_dotnet() != Some(field.owner().clone()) {
                             return Err(format!(
-                                "Mismatched pointer type. Expected {field:?} got {tpe:?}"
+                                "Mismatched pointer type. Expected {field:?} got {tpe:?}",
+                                field = field.owner().clone()
                             ));
                         }
                     }
                     Type::DotnetType(tpe) => {
                         if tpe.as_ref() != field.owner() {
                             return Err(format!(
-                                "Mismatched pointer type. Expected {field:?} got {tpe:?}"
+                                "Mismatched pointer type. Expected {field:?} got {tpe:?}",
+                                field = field.owner().clone()
                             ));
                         }
                     }
@@ -636,7 +689,8 @@ impl CILNode {
                     Type::ManagedReference(tpe) => {
                         if tpe.as_dotnet() != Some(field.owner().clone()) {
                             Err(format!(
-                                "Mismatched pointer type. Expected {field:?} got {tpe:?}"
+                                "Mismatched pointer type. Expected {field:?} got {tpe:?}",
+                                field = field.owner().clone()
                             ))
                         } else {
                             Ok(Type::ManagedReference(Box::new(field.tpe().clone())))
@@ -645,7 +699,8 @@ impl CILNode {
                     Type::Ptr(tpe) => {
                         if tpe.as_dotnet() != Some(field.owner().clone()) {
                             Err(format!(
-                                "Mismatched pointer type. Expected {field:?} got {tpe:?}"
+                                "Mismatched pointer type. Expected {field:?} got {tpe:?}",
+                                field = field.owner().clone()
                             ))
                         } else {
                             Ok(Type::Ptr(Box::new(field.tpe().clone())))
@@ -826,6 +881,7 @@ impl CILNode {
             Self::LdcI64(_) => Ok(Type::I64),
             Self::LdcU16(_) => Ok(Type::U16),
             Self::LdcU32(_) => Ok(Type::U32),
+            Self::LdcU8(_) => Ok(Type::U8),
             Self::LdcI32(_) => Ok(Type::I32),
             Self::LdcI8(_) => Ok(Type::I8),
             Self::LdcI16(_) => Ok(Type::I16),
@@ -998,13 +1054,13 @@ impl CILNode {
                             (Type::ManagedReference(arg), Type::Ptr(tpe)) => {
                                 if arg != tpe {
                                     return Err(format!(
-                                        "Expected an argument of type {tpe:?}, but got {arg:?}"
+                                        "Expected an argument of type {tpe:?}, but got {arg:?} when calling the ctor of {class:?}", class = call_op_args.site.class() 
                                     ));
                                 }
                             }
                             _ => {
                                 return Err(format!(
-                                    "Expected an argument of type {tpe:?}, but got {arg:?}"
+                                    "Expected an argument of type {tpe:?}, but got {arg:?} when calling the ctor of {class:?}", class = call_op_args.site.class()
                                 ))
                             }
                         };
@@ -1052,7 +1108,7 @@ impl CILNode {
                             continue;
                         }
                         return Err(format!(
-                            "Expected an argument of type {arg_tpe:?}, but got {got:?}"
+                            "Expected an argument of type {arg_tpe:?}, but got {got:?} when calling {name}",name = call_op_args.site.name()
                         ));
                     }
                 }
@@ -1086,6 +1142,7 @@ impl CILNode {
                     Type::Ptr(_) => (),
                     // ManagedReference is accepted, because sometimes we use this to transmute local
                     Type::ManagedReference(_) => (),
+                    Type::DelegatePtr(_) => (),
                     _ => {
                         return Err(format!(
                             "Invalid TransmutePtr input: {val:?} is not a pointer or usize/isize"

@@ -69,6 +69,7 @@ impl Method {
                 tree.opt(&mut opt_counter);
             }
         }
+        self.opt_merge_bbs();
     }
     /// Iterates over each `CILNode` and `CILRoot`.
     pub fn iter_cil(&self) -> impl Iterator<Item = CILIterElem> {
@@ -471,7 +472,60 @@ impl Method {
 
         writeln!(w, "}}")
     }
+    fn count_jumps_to(&self, block_id: u32) -> usize {
+        self.blocks()
+            .iter()
+            .flat_map(|block| block.targets())
+            .filter(|(target, sub_target)| {
+                if *sub_target != 0 {
+                    *sub_target == block_id
+                } else {
+                    *target == block_id
+                }
+            })
+            .count()
+    }
+    pub fn block_with_id(&self, id: u32) -> Option<usize> {
+        self.blocks.iter().position(|block| block.id() == id)
+    }
+    pub fn opt_merge_bbs(&mut self) {
+        for block in 0..self.blocks().len() {
+            // Get the last uncond jump, if present
+            let Some(target_id) = self.blocks[block].final_uncond_jump() else {
+                continue;
+            };
+            let target_index = self.block_with_id(target_id).unwrap();
+            // Check if this is the only block jumping to target. If target_id is 0, then the entrypoint "jumps" to that target, so we are not the only ones jumping there.
+            // We also can't optimize if we are jumping to ourselves
+            if target_id == 0 || target_index == block {
+                continue;
+            }
+            if self.count_jumps_to(target_id) > 1 {
+                continue;
+            }
 
+            // Since only we jump to this block, we can append the target block at the end of this block, if our handlers match
+            if self.blocks()[block].handler() == self.blocks()[target_index].handler() {
+                // Remove the last unconditional jump
+                self.blocks[block].trees_mut().pop();
+                // Append the block
+                let cloned = self.blocks[target_index].trees().to_vec();
+                self.blocks[block].trees_mut().extend(cloned);
+                // We empty out the now unnedded block
+                *self.blocks[target_index].trees_mut() = vec![];
+                // 6.5
+            }
+        }
+        // Remove unneded blocks
+        // let prev_c = self.blocks.len();
+        self.blocks.retain(|block| !block.trees().is_empty());
+        /*let new_c = self.blocks.len();
+        eprintln!(
+            "block opt result: removed {rem} out of {prev_c} blocks. Removed {prec}% of blocks.",
+            rem = prev_c - new_c,
+            prec = ((prev_c - new_c) as f64 / prev_c as f64) * 100.0
+        );*/
+    }
     pub fn attributes(&self) -> &[Attribute] {
         &self.attributes
     }

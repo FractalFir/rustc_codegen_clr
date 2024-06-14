@@ -76,7 +76,10 @@ pub fn handle_rvalue<'tcx>(
                         CILNode::TemporaryLocal(Box::new((
                             source_type,
                             [CILRoot::SetTMPLocal { value: parrent }].into(),
-                            CILNode::LoadAddresOfTMPLocal,
+                            CILNode::TransmutePtr {
+                                val: Box::new(CILNode::LoadAddresOfTMPLocal),
+                                new_ptr: Box::new(Type::Ptr(Box::new(target_type))),
+                            },
                         ))),
                     )
                 }
@@ -102,6 +105,9 @@ pub fn handle_rvalue<'tcx>(
                             new_ptr: Box::new(target_type),
                         },
                     )))
+                }
+                (false, true) => {
+                    panic!("ERROR: a non-unsizing cast turned a sized ptr into an unsized one")
                 }
                 _ => CILNode::TransmutePtr {
                     val: Box::new(handle_operand(
@@ -249,10 +255,16 @@ pub fn handle_rvalue<'tcx>(
             let boxed_dst = Ty::new_box(tyctx, dst);
             //let dst = tycache.type_from_cache(dst, tyctx, method_instance);
             let src = operand.ty(&method.local_decls, tyctx);
+            let boxed_dst_type = tycache.type_from_cache(boxed_dst, tyctx, method_instance);
             let src = crate::utilis::monomorphize(&method_instance, src, tyctx);
+            assert!(
+                !pointer_to_is_fat(dst, tyctx, method_instance),
+                "ERROR: shallow init box used to initialze a fat box!"
+            );
             let src = tycache.type_from_cache(src, tyctx, method_instance);
+
             CILNode::TemporaryLocal(Box::new((
-                Type::Ptr(src.into()),
+                src,
                 [CILRoot::SetTMPLocal {
                     value: handle_operand(operand, tyctx, method, method_instance, tycache),
                 }]
@@ -262,7 +274,10 @@ pub fn handle_rvalue<'tcx>(
                     tyctx,
                     &method_instance,
                     tycache,
-                    CILNode::LoadAddresOfTMPLocal,
+                    CILNode::TransmutePtr {
+                        val: Box::new(CILNode::LoadAddresOfTMPLocal),
+                        new_ptr: Box::new(Type::Ptr(Box::new(boxed_dst_type))),
+                    },
                 ),
             )))
         }

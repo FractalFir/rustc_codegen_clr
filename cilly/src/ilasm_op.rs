@@ -319,6 +319,14 @@ fn export_node(
                 }
             }
         }
+        CILNode::LdcU8(value) => {
+            depth.pad(out)?;
+            if *value <= 8 {
+                write!(out, "ldc.i4.{value}")
+            } else {
+                write!(out, "ldc.i4.s {value}")
+            }
+        }
         CILNode::LdcU16(value) => {
             depth.pad(out)?;
             if *value <= 8 {

@@ -258,7 +258,7 @@ pub fn statement_to_ops<'tcx>(
                     Some(ops) => {
                         if let Err(msg) = ops.validate(validation_context) {
                             Err(crate::codegen_error::CodegenError::from_panic_message(
-                                &format!("{msg} ops:{ops:?}"),
+                                &format!("VERIFICATION FALIURE:\"{msg}\" ops:{ops:?}"),
                             ))?;
                         }
                     }

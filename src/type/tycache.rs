@@ -97,18 +97,22 @@ impl TyCache {
         tyctx: TyCtxt<'tyctx>,
         method: Instance<'tyctx>,
     ) -> TypeDef {
+        // Double-check is not a ZST.
         assert!(!is_zst(adt_ty, tyctx));
-        if name.contains(super::type_def::CUSTOM_INTEROP_TYPE_DEF) {
-            todo!("Can't yet handle custom typedefs!")
-        }
-        let mut fields = Vec::new();
+        // Get the layout
         let layout = tyctx
             .layout_of(rustc_middle::ty::ParamEnvAnd {
                 param_env: ParamEnv::reveal_all(),
                 value: adt_ty,
             })
             .expect("Could not get type layout!");
-
+        // if it is a DST, check it has a size of 0, and treat it as a name-only
+        if layout.layout.is_unsized() {
+            assert_eq!(layout.layout.size().bytes(), 0);
+            return TypeDef::nameonly(name);
+        }
+        // Go torugh fields, collectiing them and their offsets
+        let mut fields = Vec::new();
         let explicit_offset_iter =
             crate::utilis::adt::FieldOffsetIterator::fields((*layout.layout.0).clone());
         let mut explicit_offsets = Vec::new();
@@ -128,11 +132,9 @@ impl TyCache {
             fields.push((name, field_ty));
             explicit_offsets.push(offset);
         }
-
+        // For now, assume public access.
         let access = AccessModifer::Public;
-
-        //let to_string = create_to_string(adt, subst, adt_ty, self, method, tyctx);
-
+        // Create the type definition
         let mut def = TypeDef::new(
             access,
             name.into(),
@@ -142,13 +144,14 @@ impl TyCache {
             Some(explicit_offsets),
             0,
             None,
-            Some(NonZeroU64::new(layout.layout.size().bytes()).unwrap()),
+            Some(NonZeroU64::new(layout.layout.size().bytes()).expect("Type size can't be 0!")),
         );
-        let owner_ty = self
-            .type_from_cache(adt_ty, tyctx, method)
-            .as_dotnet()
-            .unwrap();
+        // If validation enabled, insert validation code.
         if *crate::config::VALIDTE_VALUES {
+            let owner_ty = self
+                .type_from_cache(adt_ty, tyctx, method)
+                .as_dotnet()
+                .unwrap();
             let tpe = self.type_from_cache(adt_ty, tyctx, method);
             let mut roots = vec![];
             for field in &adt

@@ -32,10 +32,19 @@ pub fn int_to_int(src: Type, target: &Type, operand: CILNode) -> CILNode {
             CallSite::new_extern(
                 DotnetTypeRef::int_128(),
                 "op_Implicit".into(),
-                FnSig::new(&[Type::I64], Type::I128),
+                FnSig::new(&[Type::ISize], Type::I128),
                 true,
             ),
-            [conv_i64!(operand)]
+            [operand]
+        ),
+        (Type::U32, Type::I128) => call!(
+            CallSite::new_extern(
+                DotnetTypeRef::int_128(),
+                "op_Implicit".into(),
+                FnSig::new(&[Type::U32], Type::I128),
+                true,
+            ),
+            [operand]
         ),
         (Type::ISize, Type::U128) => call!(
             CallSite::new_extern(
