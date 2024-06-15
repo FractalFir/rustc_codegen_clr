@@ -241,7 +241,7 @@ impl Method {
             })
             .collect()
     }
-    /// Returns a list of type references that are used within this type.
+    /// Returns a list of type references that are used within this method.
     pub fn dotnet_types(&self) -> Vec<DotnetTypeRef> {
         self.sig()
             .inputs()
@@ -254,6 +254,10 @@ impl Method {
                     .iter()
                     .filter_map(|tpe| tpe.dotnet_refs()),
             )
+            .chain(self.iter_cil().filter_map(|node| match node {
+                CILIterElem::Node(CILNode::SizeOf(tpe)) => tpe.dotnet_refs(),
+                _ => None,
+            }))
             .collect()
     }
     /// Returns a call site that describes this method.

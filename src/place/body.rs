@@ -81,7 +81,7 @@ pub fn place_elem_body<'ctx>(
                         method_instance,
                     );
                     return (
-                        curr_ty.into(),
+                        field_ty.into(),
                         CILNode::TemporaryLocal(Box::new((
                             curr_type,
                             [CILRoot::SetTMPLocal {
@@ -100,7 +100,7 @@ pub fn place_elem_body<'ctx>(
 
                     //todo!("Handle DST fields. DST:")
                 }
-                let _curr_type = crate::utilis::monomorphize(&method_instance, curr_ty, tyctx);
+
                 let field_desc = crate::utilis::field_descrptor(
                     curr_ty,
                     (*index).into(),

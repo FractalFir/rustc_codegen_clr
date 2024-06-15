@@ -352,14 +352,14 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
         self.functions = alive;
     }
     pub fn eliminate_dead_code(&mut self) {
-        if *DEAD_CODE_ELIMINATION {
-            self.eliminate_dead_fn();
-            self.remove_dead_statics();
-            // Call eliminate_dead_fn again, to remove now-dead static initializers.
-            self.eliminate_dead_fn();
+        if !*DEAD_CODE_ELIMINATION {
+            return;
         }
-
-        //self.eliminate_dead_types();
+        self.eliminate_dead_fn();
+        self.eliminate_dead_types();
+        self.remove_dead_statics();
+        // Call eliminate_dead_fn again, to remove now-dead static initializers.
+        self.eliminate_dead_fn();
     }
     pub fn eliminate_dead_types(&mut self) {
         let mut alive = HashMap::new();
@@ -373,11 +373,33 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
             })
             .map(|name| (name.clone(), self.types.get(&name).unwrap().clone()))
             .collect();
+        resurected.extend(
+            self.extern_fns
+                .iter()
+                .flat_map(|exte| {
+                    exte.0
+                         .1
+                        .inputs()
+                        .iter()
+                        .chain(Some(exte.0 .1.output()))
+                        .flat_map(|tpe| tpe.dotnet_refs())
+                })
+                .filter_map(|tpe| match tpe.asm() {
+                    Some(_) => None,
+                    None => Some(IString::from(tpe.name_path())),
+                })
+                .map(|name| (name.clone(), self.types.get(&name).unwrap().clone())),
+        );
         resurected.insert(
             "RustVoid".into(),
             self.types.get("RustVoid").cloned().unwrap(),
         );
+        resurected.insert(
+            "Foreign".into(),
+            self.types.get("Foreign").cloned().unwrap(),
+        );
         let mut to_resurect: HashMap<IString, _> = HashMap::new();
+        let mut cycle_count = 0;
         while !resurected.is_empty() {
             for tpe in &resurected {
                 alive.insert(tpe.0.clone(), tpe.1.clone());
@@ -389,7 +411,6 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
                         Some(_) => None,
                         None => Some(IString::from(tpe.name_path())),
                     })
-                    .filter_map(|name| name.split_once('\\').map(|(a, _)| a.into()))
                     //.map(|(a,b)|a.into())
                     .map(|name: IString| {
                         (
@@ -402,9 +423,15 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
                     })
                 {
                     let name: IString = IString::from(name);
-                    to_resurect.insert(name, type_def);
+                    if !alive.contains_key(&name) {
+                        to_resurect.insert(name, type_def);
+                    }
                 }
             }
+            eprintln!("ressurecting {} types", resurected.len());
+            cycle_count += 1;
+            assert!(cycle_count < 1000);
+
             resurected = to_resurect;
             to_resurect = HashMap::new();
         }

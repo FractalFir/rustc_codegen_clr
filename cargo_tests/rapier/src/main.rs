@@ -7,7 +7,7 @@ use std::time::Duration;
 
 fn main() {
     let path = Path::new("/etc/passwd");
-    for elem in iter_pth(path) {
+    for elem in path.components() {
         println!("elem:{elem:?}. path:{path:?}")
     }
 }
