@@ -234,12 +234,24 @@ pub fn handle_aggregate<'tyctx>(
                     !crate::utilis::is_zst(data_ty, tyctx),
                     "data_ty:{data_ty:?} is a zst. That is bizzare, cause it should be a pointer?"
                 );
-                eprintln!("data_ty:{data_ty:?}");
+                let data_type = tycache.type_from_cache(data_ty, tyctx, method_instance);
+                assert_ne!(data_type, Type::Void);
                 // Pointer is thin, just directly assign
                 return CILNode::SubTrees(Box::new((
                     [CILRoot::STIndPtr(
                         init_addr,
-                        handle_operand(data, tyctx, method, method_instance, tycache),
+                        CILNode::TransmutePtr {
+                            val: Box::new(handle_operand(
+                                data,
+                                tyctx,
+                                method,
+                                method_instance,
+                                tycache,
+                            )),
+                            new_ptr: Box::new(Type::Ptr(Box::new(Type::Ptr(Box::new(
+                                fat_ptr_type.clone(),
+                            ))))),
+                        },
                         Box::new(Type::Ptr(Box::new(fat_ptr_type))),
                     )]
                     .into(),
@@ -252,7 +264,6 @@ pub fn handle_aggregate<'tyctx>(
                     )),
                 )));
             }
-            eprintln!("meta:{meta_ty:?} pointee:{pointee:?}");
             assert!(pointer_to_is_fat(pointee, tyctx, method_instance), "A pointer to {pointee:?} is not fat, but its metadata is {meta_ty:?}, and not a zst:{is_meta_zst}",is_meta_zst = crate::utilis::is_zst(meta_ty, tyctx));
             // Assign the components
             let assign_ptr = CILRoot::SetField {

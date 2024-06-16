@@ -483,3 +483,18 @@ fn link_static_initializers(a: Option<&Method>, b: Option<&Method>) -> Option<Me
         }
     }
 }
+#[test]
+fn validate_checks() {
+    let root = CILRoot::STLoc {
+        local: 0,
+        tree: CILNode::SubTrees(Box::new((
+            [CILRoot::STIndPtr(
+                CILNode::MRefToRawPtr(Type::LDLocA(0)),
+                CILNode::LDArg(0),
+                Box::new(Type::Ptr(Type::Ptr(U8))),
+            )]
+            .into(),
+            Box::new(CILNode::LDLoc(0)),
+        ))),
+    };
+}

@@ -811,11 +811,11 @@ impl CILRoot {
                 }
                 match val{
                     Type::Ptr(val) | Type::ManagedReference(val) =>if val != *points_to {
-                        Err(format!("Can't indirectly set a value of type ptr because the provided value is {val:?}, and it should be {points_to:?}"))
+                        Err(format!("Can't indirectly set a value of type ptr because the provided value is a pointer to {val:?}, and it should be {points_to:?}"))
                     } else {
                         Ok(())
                     },
-                    _=> Err(format!("Can't indirectly set a value of type ptr because the provided value is {val:?}, and it should be {points_to:?}"))
+                    _=> Err(format!("Can't indirectly set a value of type ptr because the provided value is a pointer to {val:?}, and it should be {points_to:?}"))
                 }
             }
             Self::STObj {

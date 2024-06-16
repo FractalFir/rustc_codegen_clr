@@ -352,7 +352,6 @@ impl CILNode {
             Self::LocAllocAligned { .. }=>(),
             Self::LdFalse | Self::LdTrue=>(),
             Self::TransmutePtr { val, new_ptr: _ }=>val.opt(opt_count),
-
             Self::LDLoc(_)| Self::LDArg(_) | Self::LDLocA(_) | Self::LDArgA(_)=> (),
             Self::BlackBox(inner)
             | Self::ConvF32(inner)
