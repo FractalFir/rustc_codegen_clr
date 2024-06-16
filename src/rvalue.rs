@@ -486,8 +486,13 @@ pub fn handle_rvalue<'tcx>(
                 todo!("Thread locals with shims unsupported!")
             } else {
                 let alloc_id = tyctx.reserve_and_set_static_alloc(*def_id);
-                CILNode::LoadGlobalAllocPtr {
-                    alloc_id: alloc_id.0.into(),
+                let rvalue_ty = rvalue.ty(method, tyctx);
+                let rvalue_type = tycache.type_from_cache(rvalue_ty, tyctx, method_instance);
+                CILNode::TransmutePtr {
+                    val: Box::new(CILNode::LoadGlobalAllocPtr {
+                        alloc_id: alloc_id.0.into(),
+                    }),
+                    new_ptr: Box::new(rvalue_type),
                 }
             }
         }

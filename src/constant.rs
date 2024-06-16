@@ -208,7 +208,10 @@ fn load_scalar_ptr(
                 }
                 if name == "getrandom" {
                     return CILNode::TemporaryLocal(Box::new((
-                        Type::USize,
+                        Type::DelegatePtr(Box::new(FnSig::new(
+                            &[Type::Ptr(Type::U8.into()), Type::USize, Type::U32],
+                            Type::USize,
+                        ))),
                         [CILRoot::SetTMPLocal {
                             value: CILNode::LDFtn(Box::new(CallSite::builtin(
                                 "getrandom".into(),

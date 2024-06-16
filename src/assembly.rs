@@ -369,7 +369,7 @@ pub fn add_fn<'tyctx>(
     };
     // Used for type-checking the CIL to ensure its validity.
     let validation_context = ValidationContext::new(&sig, &locals);
-    eprintln!("inputs:{:?}", validation_context.sig().inputs());
+
     for (last_bb_id, block_data) in blocks.into_iter().enumerate() {
         let mut trees = Vec::new();
         for statement in &block_data.statements {
