@@ -1,18 +1,18 @@
 use crate::{
     operand::handle_operand,
     place::{place_adress, place_set},
-    r#type::{pointer_to_is_fat, tycache::TyCache},
+    r#type::tycache::TyCache,
     utilis::field_descrptor,
 };
 use cilly::{
     call, call_site::CallSite, call_virt, cil_node::CILNode, cil_root::CILRoot, conv_f32, conv_f64,
-    conv_isize, conv_u32, conv_u64, conv_usize, eq, field_desc::FieldDescriptor, fn_sig::FnSig,
-    ld_field, ldc_i32, ldc_u32, ldc_u64, lt_un, or, size_of, sub, DotnetTypeRef, Type,
+    conv_isize, conv_u32, conv_usize, eq, fn_sig::FnSig, ld_field, ldc_i32, ldc_u64, size_of, sub,
+    DotnetTypeRef, Type,
 };
 use ints::{ctlz, rotate_left, rotate_right};
 use rustc_middle::{
     mir::{Body, Operand, Place},
-    ty::{Instance, ParamEnv, TyCtxt, TyKind},
+    ty::{Instance, ParamEnv, TyCtxt},
 };
 use rustc_span::source_map::Spanned;
 use saturating::{saturating_add, saturating_sub};
@@ -233,8 +233,26 @@ pub fn handle_intrinsic<'tyctx>(
                 tyctx,
                 eq!(
                     compare_bytes(
-                        handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
-                        handle_operand(&args[1].node, tyctx, body, method_instance, type_cache),
+                        CILNode::TransmutePtr {
+                            val: Box::new(handle_operand(
+                                &args[0].node,
+                                tyctx,
+                                body,
+                                method_instance,
+                                type_cache
+                            )),
+                            new_ptr: Box::new(Type::Ptr(Box::new(Type::U8))),
+                        },
+                        CILNode::TransmutePtr {
+                            val: Box::new(handle_operand(
+                                &args[1].node,
+                                tyctx,
+                                body,
+                                method_instance,
+                                type_cache
+                            )),
+                            new_ptr: Box::new(Type::Ptr(Box::new(Type::U8))),
+                        },
                         conv_usize!(size),
                     ),
                     ldc_i32!(0)
@@ -360,7 +378,7 @@ pub fn handle_intrinsic<'tyctx>(
                         FnSig::new(&[Type::U32], Type::U128),
                         true,
                     ),
-                    [call_virt!(
+                    [conv_u32!(call_virt!(
                         CallSite::boxed(
                             DotnetTypeRef::object_type().into(),
                             "GetHashCode".into(),
@@ -376,7 +394,7 @@ pub fn handle_intrinsic<'tyctx>(
                             ),
                             [CILNode::LDTypeToken(tpe.into())]
                         )]
-                    )]
+                    ))]
                 ),
                 body,
                 method_instance,
@@ -633,10 +651,14 @@ pub fn handle_intrinsic<'tyctx>(
                 destination,
                 tyctx,
                 CILNode::DivUn(
-                    sub!(
-                        handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
-                        handle_operand(&args[1].node, tyctx, body, method_instance, type_cache)
-                    )
+                    CILNode::TransmutePtr {
+                        val: sub!(
+                            handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
+                            handle_operand(&args[1].node, tyctx, body, method_instance, type_cache)
+                        )
+                        .into(),
+                        new_ptr: Box::new(Type::USize),
+                    }
                     .into(),
                     conv_usize!(size_of!(tpe)).into(),
                 ),
@@ -1019,20 +1041,7 @@ fn intrinsic_slow<'tyctx>(
     } else if fn_name.contains("volitale_load") {
         return volitale_load(args, destination, tyctx, body, method_instance, type_cache);
     } else if fn_name.contains("is_val_statically_known") {
-        debug_assert_eq!(
-            args.len(),
-            1,
-            "The intrinsic `is_val_statically_known` MUST take in exactly 1 argument!"
-        );
-        // assert_eq!(args.len(),1,"The intrinsic `unlikely` MUST take in exactly 1 argument!");
-        place_set(
-            destination,
-            tyctx,
-            ldc_i32!(0),
-            body,
-            method_instance,
-            type_cache,
-        )
+        is_val_statically_known(args, destination, tyctx, body, method_instance, type_cache)
     } else if fn_name.contains("typed_swap") {
         let pointed_ty = crate::utilis::monomorphize(
             &method_instance,
@@ -1105,7 +1114,6 @@ fn caller_location<'tyctx>(
             caller_loc,
             caller_loc_ty,
             tyctx,
-            body,
             method_instance,
             type_cache,
         ),

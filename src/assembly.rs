@@ -210,14 +210,24 @@ pub fn terminator_to_ops<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
     type_cache: &mut TyCache,
-) -> Vec<CILTree> {
+    validation_context: ValidationContext,
+) -> Result<Vec<CILTree>, CodegenError> {
     let terminator = if *crate::config::ABORT_ON_ERROR {
         crate::terminator::handle_terminator(term, mir, tcx, mir, instance, type_cache)
     } else {
         match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             crate::terminator::handle_terminator(term, mir, tcx, mir, instance, type_cache)
         })) {
-            Ok(ok) => ok,
+            Ok(ok) => {
+                for op in &ok {
+                    if let Err(msg) = op.validate(validation_context) {
+                        Err(crate::codegen_error::CodegenError::from_panic_message(
+                            &format!("VERIFICATION FALIURE:\"{msg}\" op:{op:?}"),
+                        ))?;
+                    }
+                }
+                ok
+            }
             Err(payload) => {
                 type_cache.recover_from_panic();
                 let msg = if let Some(msg) = payload.downcast_ref::<&str>() {
@@ -234,7 +244,7 @@ pub fn terminator_to_ops<'tcx>(
         }
     };
 
-    terminator
+    Ok(terminator)
 }
 /// Turns a statement into ops, if `ABORT_ON_ERROR` set to false, will handle and recover from errors.
 pub fn statement_to_ops<'tcx>(
@@ -316,12 +326,46 @@ pub fn add_fn<'tyctx>(
         cache,
         &mir.var_debug_info,
     );
-    // Used for type-checking the CIL to ensure its validity.
-    let validation_context = ValidationContext::new(&sig, &locals);
 
     let blocks = &mir.basic_blocks;
     let mut normal_bbs = Vec::new();
     let mut cleanup_bbs = Vec::new();
+    // Used for funcrions with the rust_call ABI
+    let mut repack_cil = if let Some(spread_arg) = mir.spread_arg {
+        // Prepare for repacking the argument tuple, by allocating a local
+        let repacked = u32::try_from(locals.len()).expect("More than 2^32 arguments of a function");
+        let repacked_ty: rustc_middle::ty::Ty =
+            crate::utilis::monomorphize(&instance, mir.local_decls[spread_arg].ty, tyctx);
+        let repacked_type = cache.type_from_cache(repacked_ty, tyctx, instance);
+        locals.push((Some("repacked_arg".into()), repacked_type));
+        let mut repack_cil: Vec<CILTree> = Vec::new();
+        // For each element of the tuple, get the argument spread_arg + n
+        let packed_count = if let TyKind::Tuple(tup) = repacked_ty.kind() {
+            u32::try_from(tup.len()).expect("More than 2^32 arguments of a function")
+        } else {
+            panic!("Arg to spread not a tuple???")
+        };
+        for arg_id in 0..packed_count {
+            let arg_field = field_descrptor(repacked_ty, arg_id, tyctx, instance, cache);
+            if *arg_field.tpe() == Type::Void {
+                continue;
+            }
+            repack_cil.push(
+                CILRoot::SetField {
+                    addr: Box::new(CILNode::LDLocA(repacked)),
+                    value: Box::new(CILNode::LDArg((spread_arg.as_u32() - 1) + arg_id)),
+                    desc: Box::new(arg_field),
+                }
+                .into(),
+            );
+        }
+        repack_cil
+    } else {
+        vec![]
+    };
+    // Used for type-checking the CIL to ensure its validity.
+    let validation_context = ValidationContext::new(&sig, &locals);
+
     for (last_bb_id, block_data) in blocks.into_iter().enumerate() {
         let mut trees = Vec::new();
         for statement in &block_data.statements {
@@ -361,7 +405,11 @@ pub fn add_fn<'tyctx>(
                 if *crate::config::INSERT_MIR_DEBUG_COMMENTS {
                     rustc_middle::ty::print::with_no_trimmed_paths! {trees.push(CILRoot::debug(&format!("{term:?}")).into())};
                 }
-                let term_trees = terminator_to_ops(term, mir, tyctx, instance, cache);
+                let term_trees =
+                    terminator_to_ops(term, mir, tyctx, instance, cache, validation_context)
+                        .unwrap_or_else(|err| {
+                            panic!("Could not compile terminator {term:?} because {err:?}")
+                        });
                 if !term_trees.is_empty() {
                     trees.push(span_source_info(tyctx, term.source_info.span).into());
                 }
@@ -384,43 +432,14 @@ pub fn add_fn<'tyctx>(
         }
         //ops.extend(trees.iter().flat_map(|tree| tree.flatten()))
     }
-    if let Some(spread_arg) = mir.spread_arg {
-        // Prepare for repacking the argument tuple, by allocating a local
-        let repacked = u32::try_from(locals.len()).expect("More than 2^32 arguments of a function");
-        let repacked_ty: rustc_middle::ty::Ty =
-            crate::utilis::monomorphize(&instance, mir.local_decls[spread_arg].ty, tyctx);
-        let repacked_type = cache.type_from_cache(repacked_ty, tyctx, instance);
-        locals.push((Some("repacked_arg".into()), repacked_type));
-        let mut repack_cil = Vec::new();
-        // For each element of the tuple, get the argument spread_arg + n
-        let packed_count = if let TyKind::Tuple(tup) = repacked_ty.kind() {
-            u32::try_from(tup.len()).expect("More than 2^32 arguments of a function")
-        } else {
-            panic!("Arg to spread not a tuple???")
-        };
-        for arg_id in 0..packed_count {
-            let arg_field = field_descrptor(repacked_ty, arg_id, tyctx, instance, cache);
-            if *arg_field.tpe() == Type::Void {
-                continue;
-            }
-            repack_cil.push(
-                CILRoot::SetField {
-                    addr: Box::new(CILNode::LDLocA(repacked)),
-                    value: Box::new(CILNode::LDArg((spread_arg.as_u32() - 1) + arg_id)),
-                    desc: Box::new(arg_field),
-                }
-                .into(),
-            );
-        }
-        // Get the first bb, and append repack_cil at its start
-        let first_bb = &mut normal_bbs[0];
-        repack_cil.append(first_bb.trees_mut());
-        *first_bb.trees_mut() = repack_cil;
-    }
+
     normal_bbs
         .iter_mut()
         .for_each(|bb| bb.resolve_exception_handlers(&cleanup_bbs));
-
+    // Get the first bb, and append repack_cil at its start
+    let first_bb: &mut BasicBlock = &mut normal_bbs[0];
+    repack_cil.append(first_bb.trees_mut());
+    *first_bb.trees_mut() = repack_cil;
     let mut method = Method::new(
         access_modifier,
         MethodType::Static,
@@ -430,6 +449,7 @@ pub fn add_fn<'tyctx>(
         normal_bbs,
         arg_names,
     );
+
     crate::method::resolve_global_allocations(&mut method, asm, tyctx, cache);
 
     method.allocate_temporaries();
@@ -765,3 +785,19 @@ pub fn add_const_value(asm: &mut Assembly, bytes: u128, tyctx: TyCtxt) -> Static
     }
     field_desc
 }
+/*
+
+    compile_test::ctpop::stable::debug
+    compile_test::ctpop::stable::release
+    compile_test::dyns::stable::debug
+    compile_test::dyns::stable::release
+
+
+    compile_test::slice::stable::debug
+    compile_test::slice::stable::release
+    compile_test::test1::stable::debug
+    compile_test::test1::stable::release
+    compile_test::type_id::stable::debug
+    compile_test::type_id::stable::release
+
+*/

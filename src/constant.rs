@@ -20,7 +20,7 @@ use rustc_middle::{
 pub fn handle_constant<'ctx>(
     constant_op: &ConstOperand<'ctx>,
     tyctx: TyCtxt<'ctx>,
-    method: &rustc_middle::mir::Body<'ctx>,
+
     method_instance: Instance<'ctx>,
     tycache: &mut TyCache,
 ) -> CILNode {
@@ -29,14 +29,7 @@ pub fn handle_constant<'ctx>(
     let evaluated = constant
         .eval(tyctx, ParamEnv::reveal_all(), constant_op.span)
         .expect("Could not evaluate constant!");
-    load_const_value(
-        evaluated,
-        constant.ty(),
-        tyctx,
-        method,
-        method_instance,
-        tycache,
-    )
+    load_const_value(evaluated, constant.ty(), tyctx, method_instance, tycache)
 }
 /// Returns the ops neceasry to create constant value of type `ty` with byte values matching the ones in the allocation
 fn create_const_from_data<'ctx>(
@@ -69,13 +62,13 @@ pub(crate) fn load_const_value<'ctx>(
     const_val: ConstValue<'ctx>,
     const_ty: Ty<'ctx>,
     tyctx: TyCtxt<'ctx>,
-    method: &rustc_middle::mir::Body<'ctx>,
+
     method_instance: Instance<'ctx>,
     tycache: &mut TyCache,
 ) -> CILNode {
     match const_val {
         ConstValue::Scalar(scalar) => {
-            load_const_scalar(scalar, const_ty, tyctx, method, method_instance, tycache)
+            load_const_scalar(scalar, const_ty, tyctx, method_instance, tycache)
         }
         ConstValue::ZeroSized => {
             let tpe = crate::utilis::monomorphize(&method_instance, const_ty, tyctx);
@@ -141,7 +134,7 @@ fn load_scalar_ptr(
     match global_alloc {
         GlobalAlloc::Static(def_id) => {
             assert!(tyctx.is_static(def_id));
-
+            assert_eq!(offset.bytes(), 0);
             let name = tyctx
                 .opt_item_name(def_id)
                 .expect("Static without name")
@@ -268,14 +261,23 @@ fn load_scalar_ptr(
             let alloc_id = crate::utilis::alloc_id_to_u64(alloc_id.alloc_id());
             CILNode::LoadGlobalAllocPtr { alloc_id }
         }
-        GlobalAlloc::Memory(_const_allocation) => CILNode::Add(
-            CILNode::LoadGlobalAllocPtr {
-                alloc_id: alloc_id.alloc_id().0.into(),
+        GlobalAlloc::Memory(_const_allocation) => {
+            if offset.bytes() != 0 {
+                CILNode::Add(
+                    CILNode::LoadGlobalAllocPtr {
+                        alloc_id: alloc_id.alloc_id().0.into(),
+                    }
+                    .into(),
+                    CILNode::ZeroExtendToUSize(CILNode::LdcU64(offset.bytes()).into()).into(),
+                )
+            } else {
+                CILNode::LoadGlobalAllocPtr {
+                    alloc_id: alloc_id.alloc_id().0.into(),
+                }
             }
-            .into(),
-            CILNode::ZeroExtendToUSize(CILNode::LdcU64(offset.bytes()).into()).into(),
-        ),
+        }
         GlobalAlloc::Function(finstance) => {
+            assert_eq!(offset.bytes(), 0);
             // If it is a function, patch its pointer up.
             let call_info =
                 crate::call_info::CallInfo::sig_from_instance_(finstance, tyctx, tycache);
@@ -284,16 +286,14 @@ fn load_scalar_ptr(
                 CallSite::new(None, function_name, call_info.sig().clone(), true).into(),
             );
         }
-        _ => todo!("Unhandled global alloc {global_alloc:?}"),
+        GlobalAlloc::VTable(..) => todo!("Unhandled global alloc {global_alloc:?}"),
     }
     //panic!("alloc_id:{alloc_id:?}")
 }
-
 fn load_const_scalar<'ctx>(
     scalar: Scalar,
     scalar_type: Ty<'ctx>,
     tyctx: TyCtxt<'ctx>,
-    _method: &rustc_middle::mir::Body<'ctx>,
     method_instance: Instance<'ctx>,
     tycache: &mut TyCache,
 ) -> CILNode {
@@ -303,10 +303,11 @@ fn load_const_scalar<'ctx>(
     let scalar_u128 = match scalar {
         Scalar::Int(scalar_int) => scalar_int.to_uint(scalar.size()),
         Scalar::Ptr(ptr, _size) => {
+            assert!(matches!(tpe, Type::Ptr(_)), "Invalid const ptr: {tpe:?}");
             return CILNode::TransmutePtr {
                 val: Box::new(load_scalar_ptr(tyctx, tycache, ptr)),
                 new_ptr: Box::new(tpe),
-            }
+            };
         }
     };
 

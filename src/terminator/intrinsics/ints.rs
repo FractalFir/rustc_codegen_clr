@@ -42,7 +42,7 @@ pub fn ctpop<'tyctx>(
         destination,
         tyctx,
         match tpe {
-            Type::U64 => conv_u64!(call!(
+            Type::U64 => conv_u32!(call!(
                 CallSite::boxed(
                     bit_operations.clone(),
                     "PopCount".into(),
@@ -60,7 +60,7 @@ pub fn ctpop<'tyctx>(
                 ),
                 [operand]
             )),
-            Type::USize => conv_usize!(call!(
+            Type::USize => conv_u32!(call!(
                 CallSite::boxed(
                     bit_operations.clone(),
                     "PopCount".into(),
@@ -106,7 +106,7 @@ pub fn ctlz<'tyctx>(
     // TODO: this assumes a 64 bit system!
     let sub = match tpe {
         Type::ISize | Type::USize | Type::Ptr(_) => {
-            ldc_i32!(64) - (conv_usize!(size_of!(tpe.clone())) * ldc_u32!(8))
+            ldc_i32!(64) - (size_of!(tpe.clone()) * ldc_i32!(8))
         }
         Type::I64 | Type::U64 => ldc_i32!(0),
         Type::I32 | Type::U32 => ldc_i32!(32),
@@ -116,7 +116,7 @@ pub fn ctlz<'tyctx>(
             return place_set(
                 destination,
                 tyctx,
-                call!(
+                conv_u32!(call!(
                     CallSite::new_extern(
                         DotnetTypeRef::int_128(),
                         "LeadingZeroCount".into(),
@@ -130,7 +130,7 @@ pub fn ctlz<'tyctx>(
                         method_instance,
                         type_cache
                     )]
-                ),
+                )),
                 body,
                 method_instance,
                 type_cache,
@@ -140,7 +140,7 @@ pub fn ctlz<'tyctx>(
             return place_set(
                 destination,
                 tyctx,
-                call!(
+                conv_u32!(call!(
                     CallSite::new_extern(
                         DotnetTypeRef::uint_128(),
                         "LeadingZeroCount".into(),
@@ -154,7 +154,7 @@ pub fn ctlz<'tyctx>(
                         method_instance,
                         type_cache
                     )]
-                ),
+                )),
                 body,
                 method_instance,
                 type_cache,
@@ -165,28 +165,24 @@ pub fn ctlz<'tyctx>(
     place_set(
         destination,
         tyctx,
-        crate::casts::int_to_int(
-            Type::I32,
-            &tpe,
-            sub!(
-                call!(
-                    CallSite::boxed(
-                        bit_operations.clone(),
-                        "LeadingZeroCount".into(),
-                        FnSig::new(&[Type::U64], Type::I32),
-                        true,
-                    ),
-                    [conv_u64!(handle_operand(
-                        &args[0].node,
-                        tyctx,
-                        body,
-                        method_instance,
-                        type_cache
-                    ))]
+        conv_u32!(sub!(
+            call!(
+                CallSite::boxed(
+                    bit_operations.clone(),
+                    "LeadingZeroCount".into(),
+                    FnSig::new(&[Type::U64], Type::I32),
+                    true,
                 ),
-                sub
+                [conv_u64!(handle_operand(
+                    &args[0].node,
+                    tyctx,
+                    body,
+                    method_instance,
+                    type_cache
+                ))]
             ),
-        ),
+            sub
+        )),
         body,
         method_instance,
         type_cache,
@@ -223,19 +219,15 @@ pub fn cttz<'tyctx>(
     place_set(
         destination,
         tyctx,
-        crate::casts::int_to_int(
-            Type::I32,
-            &tpe.clone(),
-            call!(
-                CallSite::boxed(
-                    bit_operations.clone(),
-                    "TrailingZeroCount".into(),
-                    FnSig::new(&[tpe], Type::I32),
-                    true,
-                ),
-                [operand]
+        conv_u32!(call!(
+            CallSite::boxed(
+                bit_operations.clone(),
+                "TrailingZeroCount".into(),
+                FnSig::new(&[tpe], Type::I32),
+                true,
             ),
-        ),
+            [operand]
+        )),
         body,
         method_instance,
         type_cache,

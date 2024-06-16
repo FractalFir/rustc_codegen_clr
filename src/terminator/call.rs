@@ -8,7 +8,7 @@ use cilly::{
     call, call_virt,
     cil_node::{CILNode, CallOpArgs},
     cil_root::CILRoot,
-    conv_usize, ld_field, ldc_u32, size_of,
+    conv_usize, ld_field, ldc_i32, ldc_u32, size_of,
 };
 use cilly::{call_site::CallSite, field_desc::FieldDescriptor, fn_sig::FnSig, DotnetTypeRef, Type};
 use rustc_middle::{
@@ -414,11 +414,14 @@ pub fn call<'tyctx>(
         );
 
         let vtable_index =
-            ldc_u32!(u32::try_from(fn_idx).expect("More tahn 2^32 functions in a vtable!"));
+            ldc_i32!(i32::try_from(fn_idx).expect("More tahn 2^31 functions in a vtable!"));
         let vtable_offset = conv_usize!(vtable_index * size_of!(Type::USize));
         // Get the address of the function ptr, and load it
         let fn_ptr = CILNode::LDIndISize {
-            ptr: Box::new(vtable_ptr + vtable_offset),
+            ptr: Box::new(CILNode::TransmutePtr {
+                val: Box::new(vtable_ptr + vtable_offset),
+                new_ptr: Box::new(Type::Ptr(Box::new(Type::ISize))),
+            }),
         };
         // Get the addres of the object
         let obj_ptr = ld_field!(
@@ -433,7 +436,7 @@ pub fn call<'tyctx>(
         let call_info = CallInfo::sig_from_instance_(instance, tyctx, type_cache);
 
         let mut signature = call_info.sig().clone();
-        signature.inputs_mut()[0] = Type::ISize;
+        signature.inputs_mut()[0] = Type::Ptr(Box::new(Type::Void));
         let mut call_args = [obj_ptr].to_vec();
         if call_info.split_last_tuple() {
             let last_arg = args
@@ -441,7 +444,6 @@ pub fn call<'tyctx>(
                 .expect("Closure must be called with at least 2 arguments(closure + arg tuple)");
 
             let other_args = &args[..args.len() - 1];
-
             for arg in other_args.iter().skip(1) {
                 call_args.push(crate::operand::handle_operand(
                     &arg.node,
@@ -479,7 +481,6 @@ pub fn call<'tyctx>(
                                 element_type,
                                 tuple_element_name.into(),
                             );
-
                             call_args.push(ld_field!(
                                 crate::operand::handle_operand(
                                     &last_arg.node,
@@ -491,8 +492,6 @@ pub fn call<'tyctx>(
                                 field_descriptor
                             ));
                         }
-
-                        //todo!("Can't unbox tupels yet!")
                     }
                 }
                 _ => panic!("Can't unbox type {last_arg_type:?}!"),

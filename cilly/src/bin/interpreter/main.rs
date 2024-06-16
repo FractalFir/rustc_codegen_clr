@@ -1,4 +1,5 @@
 #![feature(iterator_try_collect)]
+#![allow(dead_code)]
 use std::{collections::HashMap, io::Write};
 
 use cilly::{
@@ -95,12 +96,12 @@ fn eval_node<'asm>(
         CILNode::Lt(a, b) => {
             let a = eval_node(a, state, args)?;
             let b = eval_node(b, state, args)?;
-            let res = match (&a, &b) {
+
+            match (&a, &b) {
                 (Value::I32(a), Value::I32(b)) => Ok(Value::Bool(*a < *b)),
                 (Value::F32(a), Value::F32(b)) => Ok(Value::Bool(*a < *b)),
                 _ => todo!("Can't yet lt {a:?} and {b:?}"),
-            };
-            res
+            }
         }
         CILNode::Shr(a, b) => {
             let a = eval_node(a, state, args)?;
@@ -204,7 +205,7 @@ fn eval_node<'asm>(
             match value {
                 Value::I8(val) => Ok(Value::I16(val as i16)),
                 Value::U8(val) => Ok(Value::I16(val as i16)),
-                Value::I16(val) => Ok(Value::I16(val as i16)),
+                Value::I16(val) => Ok(Value::I16(val)),
                 Value::U16(val) => Ok(Value::I16(val as i16)),
                 Value::I32(val) => Ok(Value::I16(val as i16)),
                 Value::U32(val) => Ok(Value::I16(val as i16)),
@@ -232,7 +233,7 @@ fn eval_node<'asm>(
                 Value::I8(val) => Ok(Value::U16(val as u16)),
                 Value::U8(val) => Ok(Value::U16(val as u16)),
                 Value::I16(val) => Ok(Value::U16(val as u16)),
-                Value::U16(val) => Ok(Value::U16(val as u16)),
+                Value::U16(val) => Ok(Value::U16(val)),
                 Value::I32(val) => Ok(Value::U16(val as u16)),
                 Value::U32(val) => Ok(Value::U16(val as u16)),
                 _ => todo!("Can't convert a value of type {value:?} to u16"),
@@ -245,7 +246,7 @@ fn eval_node<'asm>(
                 Value::U8(val) => Ok(Value::I32(val as i32)),
                 Value::I16(val) => Ok(Value::I32(val as i32)),
                 Value::U16(val) => Ok(Value::I32(val as i32)),
-                Value::I32(val) => Ok(Value::I32(val as i32)),
+                Value::I32(val) => Ok(Value::I32(val)),
                 Value::U32(val) => Ok(Value::I32(val as i32)),
                 Value::USize(val) => Ok(Value::I32(val as i32)),
                 Value::I64(val) => Ok(Value::I32(val as i32)),
@@ -261,7 +262,7 @@ fn eval_node<'asm>(
                 Value::I16(val) => Ok(Value::U32(val as u32)),
                 Value::U16(val) => Ok(Value::U32(val as u32)),
                 Value::I32(val) => Ok(Value::U32(val as u32)),
-                Value::U32(val) => Ok(Value::U32(val as u32)),
+                Value::U32(val) => Ok(Value::U32(val)),
                 _ => todo!("Can't convert a value of type {value:?} to u32"),
             }
         }
@@ -320,7 +321,7 @@ fn eval_node<'asm>(
             }),
         CILNode::LDStaticField(field_desc) => Ok(state
             .fields
-            .get(&field_desc)
+            .get(field_desc)
             .cloned()
             .unwrap_or(Value::Undef)),
         CILNode::LDLoc(loc) => state
@@ -398,7 +399,7 @@ impl<'asm> InterpreterState<'asm> {
                 Ok(alloc)
             }
 
-            (Some(class), name, sig) => todo!("Can't yet call extern {call:?}"),
+            (Some(_class), _name, _sig) => todo!("Can't yet call extern {call:?}"),
             _ => Err(Exception::MethodNotFound(call.clone())),
         };
 

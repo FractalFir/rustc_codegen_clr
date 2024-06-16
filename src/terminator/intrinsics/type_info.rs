@@ -1,17 +1,14 @@
 use crate::{
-    operand::handle_operand,
-    place::{place_adress, place_set},
+    place::place_set,
     r#type::{pointer_to_is_fat, tycache::TyCache},
-    utilis::field_descrptor,
 };
 use cilly::{
-    call, call_site::CallSite, call_virt, cil_node::CILNode, cil_root::CILRoot, conv_f32, conv_f64,
-    conv_isize, conv_u32, conv_u64, conv_usize, eq, field_desc::FieldDescriptor, fn_sig::FnSig,
-    ld_field, ldc_i32, ldc_u32, ldc_u64, lt_un, or, size_of, sub, DotnetTypeRef, Type,
+    cil_node::CILNode, cil_root::CILRoot, conv_usize, field_desc::FieldDescriptor, ld_field,
+    ldc_u32, size_of, DotnetTypeRef, Type,
 };
 use rustc_middle::{
     mir::{Body, Operand, Place},
-    ty::{Instance, ParamEnv, TyCtxt, TyKind},
+    ty::{Instance, TyCtxt, TyKind},
 };
 use rustc_span::source_map::Spanned;
 pub fn is_val_statically_known<'tyctx>(
@@ -32,7 +29,7 @@ pub fn is_val_statically_known<'tyctx>(
     place_set(
         destination,
         tyctx,
-        ldc_i32!(0),
+        CILNode::LdFalse,
         body,
         method_instance,
         type_cache,

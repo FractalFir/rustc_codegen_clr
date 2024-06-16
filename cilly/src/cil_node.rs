@@ -648,6 +648,9 @@ impl CILNode {
         tmp_loc: Option<&Type>,
     ) -> Result<Type, String> {
         match self {
+            Self::LDTypeToken(_) => Ok(Type::DotnetType(Box::new(
+                DotnetTypeRef::type_handle_type(),
+            ))),
             Self::SubTrees(tm) => {
                 let (trees, main) = tm.as_ref();
                 for tree in trees.iter() {
@@ -714,11 +717,11 @@ impl CILNode {
             Self::LDStaticField(sfd) => Ok(sfd.tpe().clone()),
             Self::LDLocA(loc) => match vctx.locals().get(*loc as usize) {
                 Some(local) => Ok(Type::ManagedReference(Box::new(local.1.clone()))),
-                None => Err(format!("Local {loc }out of range.")),
+                None => Err(format!("Local {loc} out of range.")),
             },
             Self::LDLoc(loc) => match vctx.locals().get(*loc as usize) {
                 Some(local) => Ok(local.1.clone()),
-                None => Err(format!("Local {loc }out of range.")),
+                None => Err(format!("Local {loc} out of range.")),
             },
             Self::LDArg(arg) => match vctx.sig().inputs().get(*arg as usize) {
                 Some(arg) => Ok(arg.clone()),
@@ -1081,7 +1084,7 @@ impl CILNode {
                     None => Err("Newobj instruction witn no class specified".into()),
                 }
             }
-            Self::Call(call_op_args) => {
+            Self::Call(call_op_args) | Self::CallVirt(call_op_args) => {
                 if call_op_args.site.inputs().len() != call_op_args.args.len() {
                     return Err(format!(
                         "Expected {} arguments, got {}",
@@ -1128,7 +1131,7 @@ impl CILNode {
                     let arg = arg.validate(vctx, tmp_loc)?;
                     if arg != *tpe {
                         return Err(format!(
-                            "Expected an argument of type {tpe:?}, but got {arg:?}"
+                            "Expected an argument of type {tpe:?}, but got {arg:?} in indirect call."
                         ));
                     }
                 }

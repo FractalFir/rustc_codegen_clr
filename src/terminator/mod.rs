@@ -291,7 +291,6 @@ pub fn handle_terminator<'ctx>(
                             type_cache,
                         )
                         .unwrap();
-
                         let function_name =
                             crate::utilis::function_name(tyctx.symbol_name(drop_instance));
                         vec![
@@ -328,7 +327,6 @@ pub fn handle_terminator<'ctx>(
             operands: _,
             options: _,
             line_spans: _,
-
             unwind: _,
             targets: _,
         } => {
@@ -402,7 +400,7 @@ fn handle_switch(ty: Ty, discr: &CILNode, switch: &SwitchTargets) -> Vec<CILTree
                     CILNode::LdTrue
                 }
             }
-            TyKind::Char => crate::constant::load_const_uint(value, rustc_middle::ty::UintTy::U64),
+            TyKind::Char => crate::constant::load_const_uint(value, rustc_middle::ty::UintTy::U32),
             _ => todo!("Unsuported switch discriminant type {ty:?}"),
         };
         //ops.push(CILOp::LdcI64(value as i64));

@@ -945,12 +945,13 @@ impl CILRoot {
                     let arg = arg.validate(vctx, tmp_loc)?;
                     if arg != *tpe {
                         return Err(format!(
-                            "Expected a call argument of type {tpe:?}, but got {arg:?}"
+                            "Expected a call argument of type {tpe:?}, but got {arg:?} in indirect call."
                         ));
                     }
                 }
                 Ok(())
             }
+            Self::ReThrow => Ok(()),
             Self::VoidRet => Ok(()),
             Self::SourceFileInfo(_) => Ok(()),
             Self::Nop => Ok(()),

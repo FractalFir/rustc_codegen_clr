@@ -14,7 +14,7 @@ pub(crate) fn handle_operand<'ctx>(
             crate::place::place_get(place, tyctx, method, method_instance, tycache)
         }
         Operand::Constant(const_val) => {
-            crate::constant::handle_constant(const_val, tyctx, method, method_instance, tycache)
+            crate::constant::handle_constant(const_val, tyctx, method_instance, tycache)
         }
     }
 }
@@ -33,7 +33,7 @@ pub(crate) fn operand_address<'ctx>(
             let local_type =
                 tycache.type_from_cache(operand.ty(body, tyctx), tyctx, method_instance);
             let constant =
-                crate::constant::handle_constant(const_val, tyctx, body, method_instance, tycache);
+                crate::constant::handle_constant(const_val, tyctx, method_instance, tycache);
             crate::place::deref_op(
                 crate::place::PlaceTy::Ty(operand.ty(body, tyctx)),
                 tyctx,

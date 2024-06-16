@@ -6,10 +6,11 @@ use std::thread;
 use std::time::Duration;
 
 fn main() {
-    let path = Path::new("/etc/passwd");
-    for elem in path.components() {
-        println!("elem:{elem:?}. path:{path:?}")
-    }
+    let os_str = unsafe { OsStr::from_encoded_bytes_unchecked(b"etc") };
+    println!("os_str:{os_str:?}");
+    let com = Some(Component::Normal(os_str));
+    println!("Preparing to print com.");
+    println!("com:{com:?}.");
 }
 #[derive(Clone)]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
@@ -172,31 +173,58 @@ impl<'a> Components<'a> {
     // parse a given byte sequence following the OsStr encoding into the
     // corresponding path component
     unsafe fn parse_single_component<'b>(&self, comp: &'b [u8]) -> Option<Component<'b>> {
-        match comp {
-            b"." if self.prefix_verbatim() => Some(Component::CurDir),
-            b"." => None, // . components are normalized away, except at
+        println!("parse_single_component called with {comp:?}");
+        let comp = match comp {
+            b"." if self.prefix_verbatim() => {
+                println!("scd");
+                Some(Component::CurDir)
+            }
+            b"." => {
+                println!("nun");
+                None
+            } // . components are normalized away, except at
             // the beginning of a path, which is treated
             // separately via `include_cur_dir`
-            b".." => Some(Component::ParentDir),
-            b"" => None,
-            _ => Some(Component::Normal(unsafe {
-                OsStr::from_encoded_bytes_unchecked(comp)
-            })),
-        }
+            b".." => {
+                println!("par dir");
+                Some(Component::ParentDir)
+            }
+            b"" => {
+                println!("nun2");
+                None
+            }
+            _ => {
+                println!("other aka normal");
+                let os_str = unsafe { OsStr::from_encoded_bytes_unchecked(b"etc") };
+                println!("os_str:{os_str:?}");
+                let com = Some(Component::Normal(os_str));
+                println!("Preparing to print com.");
+                println!("com:{com:?}.");
+                com
+            }
+        };
+        println!("Preparing to print comp.");
+        println!("comp:{comp:?}");
+        comp
     }
 
     // parse a component from the left, saying how many bytes to consume to
     // remove the component
     fn parse_next_component(&self) -> (usize, Option<Component<'a>>) {
         debug_assert!(self.front == State::Body);
+        println!("Parse next component called");
         let (extra, comp) = match self.path.iter().position(|b| self.is_sep_byte(*b)) {
             None => (0, self.path),
             Some(i) => (1, &self.path[..i]),
         };
+        println!("comp:{comp:?}");
         // SAFETY: `comp` is a valid substring, since it is split on a separator.
-        (comp.len() + extra, unsafe {
+        let (a, b) = (comp.len() + extra, unsafe {
             self.parse_single_component(comp)
-        })
+        });
+        println!("a:{a:?}");
+        println!("b:{b:?}");
+        (a, b)
     }
 
     // parse a component from the right, saying how many bytes to consume to
@@ -376,6 +404,7 @@ impl<'a> Iterator for Components<'a> {
     type Item = Component<'a>;
 
     fn next(&mut self) -> Option<Component<'a>> {
+        println!("Iter.next");
         while !self.finished() {
             match self.front {
                 State::Prefix if self.prefix_len() > 0 => {
@@ -383,6 +412,7 @@ impl<'a> Iterator for Components<'a> {
                     debug_assert!(self.prefix_len() <= self.path.len());
                     let raw = &self.path[..self.prefix_len()];
                     self.path = &self.path[self.prefix_len()..];
+                    println!("construct");
                     return Some(Component::Prefix(construct(
                         unsafe { OsStr::from_encoded_bytes_unchecked(raw) },
                         self.prefix.unwrap(),
@@ -396,14 +426,17 @@ impl<'a> Iterator for Components<'a> {
                     if self.has_physical_root {
                         debug_assert!(!self.path.is_empty());
                         self.path = &self.path[1..];
+                        println!("rd");
                         return Some(Component::RootDir);
                     } else if let Some(p) = self.prefix {
                         if has_implicit_root(&p) && !p.is_verbatim() {
+                            println!("rd");
                             return Some(Component::RootDir);
                         }
                     } else if self.include_cur_dir() {
                         debug_assert!(!self.path.is_empty());
                         self.path = &self.path[1..];
+                        println!("cd");
                         return Some(Component::CurDir);
                     }
                 }
@@ -411,21 +444,25 @@ impl<'a> Iterator for Components<'a> {
                     let (size, comp) = self.parse_next_component();
                     self.path = &self.path[size..];
                     if comp.is_some() {
+                        println!("Body");
+                        println!("comp:{comp:?}");
                         return comp;
                     }
                 }
                 State::Body => {
                     self.front = State::Done;
                 }
-                State::Done => unreachable!(),
+                State::Done => panic!(),
             }
         }
+        println!("Iter returning NONE.");
         None
     }
 }
 
 impl<'a> DoubleEndedIterator for Components<'a> {
     fn next_back(&mut self) -> Option<Component<'a>> {
+        println!("Iter.next_back");
         while !self.finished() {
             match self.back {
                 State::Body if self.path.len() > self.len_before_body() => {
@@ -439,6 +476,7 @@ impl<'a> DoubleEndedIterator for Components<'a> {
                     self.back = State::StartDir;
                 }
                 State::StartDir => {
+                    println!("StartDir");
                     self.back = State::Prefix;
                     if self.has_physical_root {
                         self.path = &self.path[..self.path.len() - 1];
@@ -453,6 +491,7 @@ impl<'a> DoubleEndedIterator for Components<'a> {
                     }
                 }
                 State::Prefix if self.prefix_len() > 0 => {
+                    println!("Prefix & Done");
                     self.back = State::Done;
                     return Some(Component::Prefix(construct(
                         unsafe { OsStr::from_encoded_bytes_unchecked(self.path) },
@@ -460,12 +499,14 @@ impl<'a> DoubleEndedIterator for Components<'a> {
                     )));
                 }
                 State::Prefix => {
+                    println!("NoPrefix & Done");
                     self.back = State::Done;
                     return None;
                 }
                 State::Done => unreachable!(),
             }
         }
+        println!("Done");
         None
     }
 }
@@ -480,9 +521,50 @@ fn construct<'a>(raw: &'a OsStr, parsed: Prefix<'a>) -> std::path::PrefixCompone
 pub fn iter_pth(pth: &Path) -> Iter<'_> {
     unsafe {
         Iter {
-            inner: std::mem::transmute::<std::path::Components<'_>, Components<'_>>(
-                pth.components(),
-            ),
+            inner: components(pth),
         }
     }
+}
+
+pub fn components(pth: &Path) -> Components<'_> {
+    eprintln!("preparing to print the prefix.");
+    let prefix = parse_prefix(pth.as_os_str());
+    eprintln!("prefix:{prefix:?}");
+    let slice = as_u8_slice(pth);
+    println!("slice:{slice:?}");
+    let cpts = Components {
+        path: slice,
+        prefix: None,
+        has_physical_root: has_physical_root(slice, prefix),
+        front: State::Prefix,
+        back: State::Body,
+    };
+    eprintln!("prefix:{prefix:?},", prefix = cpts.prefix);
+    match cpts.prefix {
+        Some(_) => eprintln!("Some"),
+        None => eprintln!("None"),
+    }
+    eprintln!("preparing to print the components.");
+    //println!("cpts:{cpts:?}");
+    cpts
+}
+#[inline]
+pub fn parse_prefix(_: &OsStr) -> Option<Prefix<'_>> {
+    None
+}
+fn has_physical_root(s: &[u8], prefix: Option<Prefix<'_>>) -> bool {
+    let path = if let Some(p) = prefix {
+        &s[prefix_len(&p)..]
+    } else {
+        s
+    };
+    !path.is_empty() && is_sep_byte(path[0])
+}
+fn has_redox_scheme(s: &[u8]) -> bool {
+    cfg!(target_os = "redox") && s.contains(&b':')
+}
+fn as_u8_slice(pth: &Path) -> &[u8] {
+    use std::os::unix::ffi::OsStrExt;
+
+    pth.as_os_str().as_bytes()
 }

@@ -209,7 +209,7 @@ pub fn handle_aggregate<'tyctx>(
             )))
         }
         AggregateKind::RawPtr(pointee, mutability) => {
-            let [data, meta] = &*value_index.raw else {
+            let [_data, meta] = &*value_index.raw else {
                 panic!("RawPtr fields: {value_index:?}");
             };
             let fat_ptr = Ty::new_ptr(
