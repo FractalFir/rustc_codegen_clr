@@ -1,6 +1,6 @@
 use cilly::cil_node::CILNode;
 use cilly::cil_root::CILRoot;
-use cilly::{eq, ldc_u64, lt_un, sub};
+use cilly::{eq, gt_un, ldc_u64, lt_un, sub};
 
 use crate::r#type::Type;
 use cilly::field_desc::FieldDescriptor;
@@ -309,6 +309,7 @@ pub fn get_discr<'tyctx>(
                 );
                 (is_niche, tagged_discr, 0)
             } else {
+                eprintln!("General alg used for {ty:?}");
                 // The special cases don't apply, so we'll have to go with
                 // the general algorithm.
                 //let tag = crate::casts::int_to_int(disrc_type.clone(), &Type::U64, tag);
@@ -323,13 +324,16 @@ pub fn get_discr<'tyctx>(
                     )
                 );
 
-                let is_niche = lt_un!(
-                    relative_discr.clone(),
-                    crate::casts::int_to_int(
-                        Type::U64,
-                        &disrc_type,
-                        ldc_u64!(u64::from(relative_max))
-                    )
+                let is_niche = eq!(
+                    gt_un!(
+                        relative_discr.clone(),
+                        crate::casts::int_to_int(
+                            Type::U64,
+                            &disrc_type,
+                            ldc_u64!(u64::from(relative_max))
+                        )
+                    ),
+                    CILNode::LdFalse
                 );
                 (
                     is_niche,

@@ -256,6 +256,10 @@ impl Method {
             )
             .chain(self.iter_cil().filter_map(|node| match node {
                 CILIterElem::Node(CILNode::SizeOf(tpe)) => tpe.dotnet_refs(),
+                CILIterElem::Node(CILNode::NewObj(call_op_args)) => {
+                    call_op_args.site.class().cloned()
+                }
+                CILIterElem::Node(CILNode::LDField { addr, field }) => Some(field.owner().clone()),
                 _ => None,
             }))
             .collect()

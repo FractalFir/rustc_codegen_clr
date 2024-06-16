@@ -2,7 +2,7 @@ use crate::{
     operand::handle_operand,
     place::place_get,
     r#type::{pointer_to_is_fat, TyCache},
-    utilis::{adt::set_discr, field_name, monomorphize},
+    utilis::{adt::set_discr, field_name, is_zst, monomorphize},
 };
 use cilly::{
     call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_usize,
@@ -209,14 +209,11 @@ pub fn handle_aggregate<'tyctx>(
             )))
         }
         AggregateKind::RawPtr(pointee, mutability) => {
-            let [_data, meta] = &*value_index.raw else {
+            let pointee = crate::utilis::monomorphize(&method_instance, *pointee, tyctx);
+            let [data, meta] = &*value_index.raw else {
                 panic!("RawPtr fields: {value_index:?}");
             };
-            let fat_ptr = Ty::new_ptr(
-                tyctx,
-                crate::utilis::monomorphize(&method_instance, *pointee, tyctx),
-                *mutability,
-            );
+            let fat_ptr = Ty::new_ptr(tyctx, pointee, *mutability);
             // Get the addres of the initialized structure
             let init_addr = super::place::place_adress(
                 target_location,
@@ -225,20 +222,24 @@ pub fn handle_aggregate<'tyctx>(
                 method_instance,
                 tycache,
             );
-            let meta_ty = Ty::new_ptr(
-                tyctx,
-                crate::utilis::monomorphize(&method_instance, meta.ty(method, tyctx), tyctx),
-                *mutability,
-            );
+            let meta_ty =
+                crate::utilis::monomorphize(&method_instance, meta.ty(method, tyctx), tyctx);
+            let data_ty =
+                crate::utilis::monomorphize(&method_instance, data.ty(method, tyctx), tyctx);
             let fat_ptr_type = tycache.type_from_cache(fat_ptr, tyctx, method_instance);
-            if crate::utilis::is_zst(meta_ty, tyctx) {
+            if !pointer_to_is_fat(pointee, tyctx, method_instance) {
                 // Double-check the pointer is REALLY thin
                 assert!(fat_ptr_type.as_dotnet().is_none());
+                assert!(
+                    !crate::utilis::is_zst(data_ty, tyctx),
+                    "data_ty:{data_ty:?} is a zst. That is bizzare, cause it should be a pointer?"
+                );
+                eprintln!("data_ty:{data_ty:?}");
                 // Pointer is thin, just directly assign
                 return CILNode::SubTrees(Box::new((
                     [CILRoot::STIndPtr(
                         init_addr,
-                        values[0].1.clone(),
+                        handle_operand(data, tyctx, method, method_instance, tycache),
                         Box::new(Type::Ptr(Box::new(fat_ptr_type))),
                     )]
                     .into(),
@@ -251,8 +252,8 @@ pub fn handle_aggregate<'tyctx>(
                     )),
                 )));
             }
-
-            assert!(pointer_to_is_fat(*pointee, tyctx, method_instance), "A pointer to {pointee:?} is not fat, but its metadata is {meta_ty:?}, and not a zst:{is_meta_zst}",is_meta_zst = crate::utilis::is_zst(meta_ty, tyctx));
+            eprintln!("meta:{meta_ty:?} pointee:{pointee:?}");
+            assert!(pointer_to_is_fat(pointee, tyctx, method_instance), "A pointer to {pointee:?} is not fat, but its metadata is {meta_ty:?}, and not a zst:{is_meta_zst}",is_meta_zst = crate::utilis::is_zst(meta_ty, tyctx));
             // Assign the components
             let assign_ptr = CILRoot::SetField {
                 addr: Box::new(init_addr.clone()),
@@ -268,7 +269,13 @@ pub fn handle_aggregate<'tyctx>(
             };
             let assign_metadata = CILRoot::SetField {
                 addr: Box::new(init_addr),
-                value: Box::new(values[1].1.clone()),
+                value: Box::new(handle_operand(
+                    meta,
+                    tyctx,
+                    method,
+                    method_instance,
+                    tycache,
+                )),
                 desc: Box::new(FieldDescriptor::new(
                     fat_ptr_type.as_dotnet().unwrap(),
                     Type::USize,

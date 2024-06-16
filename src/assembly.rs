@@ -219,11 +219,13 @@ pub fn terminator_to_ops<'tcx>(
             crate::terminator::handle_terminator(term, mir, tcx, mir, instance, type_cache)
         })) {
             Ok(ok) => {
-                for op in &ok {
-                    if let Err(msg) = op.validate(validation_context) {
-                        Err(crate::codegen_error::CodegenError::from_panic_message(
-                            &format!("VERIFICATION FALIURE:\"{msg}\" op:{op:?}"),
-                        ))?;
+                if *crate::config::TYPECHECK_CIL {
+                    for op in &ok {
+                        if let Err(msg) = op.validate(validation_context) {
+                            Err(crate::codegen_error::CodegenError::from_panic_message(
+                                &format!("VERIFICATION FALIURE:\"{msg}\" op:{op:?}"),
+                            ))?;
+                        }
                     }
                 }
                 ok
@@ -266,10 +268,12 @@ pub fn statement_to_ops<'tcx>(
             Ok(success) => {
                 match &success {
                     Some(ops) => {
-                        if let Err(msg) = ops.validate(validation_context) {
-                            Err(crate::codegen_error::CodegenError::from_panic_message(
-                                &format!("VERIFICATION FALIURE:\"{msg}\" ops:{ops:?}"),
-                            ))?;
+                        if *crate::config::TYPECHECK_CIL {
+                            if let Err(msg) = ops.validate(validation_context) {
+                                Err(crate::codegen_error::CodegenError::from_panic_message(
+                                    &format!("VERIFICATION FALIURE:\"{msg}\" ops:{ops:?}"),
+                                ))?;
+                            }
                         }
                     }
                     None => (),

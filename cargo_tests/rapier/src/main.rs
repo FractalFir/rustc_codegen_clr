@@ -1,17 +1,18 @@
 use std::ffi::OsStr;
+use std::ffi::OsString;
 use std::fmt;
 use std::path::PrefixComponent;
 use std::path::{Component, Path, Prefix};
 use std::thread;
 use std::time::Duration;
-
 fn main() {
-    let os_str = unsafe { OsStr::from_encoded_bytes_unchecked(b"etc") };
-    println!("os_str:{os_str:?}");
-    let com = Some(Component::Normal(os_str));
-    println!("Preparing to print com.");
-    println!("com:{com:?}.");
+    use std::path::Path;
+    let path = Path::new("/etc/passwd");
+    for elem in path.iter() {
+        println!("elem:{elem:?}")
+    }
 }
+
 #[derive(Clone)]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 

@@ -72,6 +72,10 @@ pub(crate) fn load_const_value<'ctx>(
         }
         ConstValue::ZeroSized => {
             let tpe = crate::utilis::monomorphize(&method_instance, const_ty, tyctx);
+            assert!(
+                crate::utilis::is_zst(tpe, tyctx),
+                "Zero sized const with a non-zero size. It is {tpe:?}"
+            );
             let tpe = tycache.type_from_cache(tpe, tyctx, method_instance);
             CILNode::TemporaryLocal(Box::new((tpe, [].into(), CILNode::LoadTMPLocal)))
         }
@@ -172,7 +176,16 @@ fn load_scalar_ptr(
                 // TODO: this could cause issues if the pointer to the static is not imediatly dereferenced.
                 if name == "statx" {
                     return CILNode::TemporaryLocal(Box::new((
-                        Type::USize,
+                        Type::DelegatePtr(Box::new(FnSig::new(
+                            [
+                                Type::I32,
+                                Type::Ptr(Box::new(Type::U8)),
+                                Type::I32,
+                                Type::U32,
+                                Type::Ptr(Box::new(Type::Void)),
+                            ],
+                            Type::I32,
+                        ))),
                         [CILRoot::SetTMPLocal {
                             value: CILNode::LDFtn(Box::new(CallSite::builtin(
                                 "statx".into(),
@@ -303,7 +316,10 @@ fn load_const_scalar<'ctx>(
     let scalar_u128 = match scalar {
         Scalar::Int(scalar_int) => scalar_int.to_uint(scalar.size()),
         Scalar::Ptr(ptr, _size) => {
-            assert!(matches!(tpe, Type::Ptr(_)), "Invalid const ptr: {tpe:?}");
+            assert!(
+                matches!(tpe, Type::Ptr(_) | Type::DelegatePtr(_)),
+                "Invalid const ptr: {tpe:?}"
+            );
             return CILNode::TransmutePtr {
                 val: Box::new(load_scalar_ptr(tyctx, tycache, ptr)),
                 new_ptr: Box::new(tpe),
