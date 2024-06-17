@@ -569,3 +569,5 @@ fn as_u8_slice(pth: &Path) -> &[u8] {
 
     pth.as_os_str().as_bytes()
 }
+#[test]
+fn tost() {}

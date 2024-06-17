@@ -200,8 +200,7 @@ pub fn unsize<'tyctx>(
                     CILNode::LoadTMPLocal,
                 )));
             }
-            let vptr_entry_idx = tyctx
-                .vtable_trait_upcasting_coercion_new_vptr_slot((operand.ty(method, tyctx), target));
+            let vptr_entry_idx = tyctx.supertrait_vtable_slot((operand.ty(method, tyctx), target));
             if let Some(entry_idx) = vptr_entry_idx {
                 todo!("dyn to dyn cats not yet supported. src_points_to:{src_points_to:?} target_points_to:{target_points_to:?} entry_idx:{entry_idx:?}")
             } else {

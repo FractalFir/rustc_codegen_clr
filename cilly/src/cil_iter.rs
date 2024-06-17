@@ -15,7 +15,7 @@ impl<'a> Iterator for CILIter<'a> {
         let mut iter_count = 0;
         loop {
             iter_count += 1;
-            assert!(iter_count < 100);
+            assert!(iter_count < 1000);
             let (idx, elem) = self.elems.iter_mut().last()?;
             if *idx == 0 {
                 *idx += 1;

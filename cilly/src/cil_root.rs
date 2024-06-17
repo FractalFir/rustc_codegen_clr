@@ -1,4 +1,5 @@
 use crate::{
+    call,
     call_site::CallSite,
     cil_node::{CILNode, CallOpArgs, ValidationContext},
     field_desc::FieldDescriptor,
@@ -427,21 +428,10 @@ impl CILRoot {
         class.set_valuetype(false);
         let name = "WriteLine".into();
         let signature = FnSig::new(&[DotnetTypeRef::string_type().into()], Type::Void);
-        let message_or_check = if crate::mem_checks() {
-            CILNode::SubTrees(Box::new((
-                [Self::Call {
-                    site: Box::new(CallSite::mcheck_check_all()),
-                    args: [].into(),
-                }]
-                .into(),
-                Box::new(CILNode::LdStr(msg.into())),
-            )))
-        } else {
-            CILNode::LdStr(msg.into())
-        };
+        let message = tiny_message(msg);
         Self::Call {
             site: Box::new(CallSite::new_extern(class, name, signature, true)),
-            args: [message_or_check].into(),
+            args: [message].into(),
         }
     }
     pub fn targets(&self, targets: &mut Vec<(u32, u32)>) {
@@ -1199,13 +1189,31 @@ mod tests {
         )
     }
 }
-/*
-
-    compile_test::assign::stable::debug
-    compile_test::assign::stable::release
-
-    compile_test::slice::stable::debug
-    compile_test::slice::stable::release
-
-
-*/
+fn tiny_message(msg: &str) -> CILNode {
+    let pieces: Vec<_> = msg.split_whitespace().collect();
+    runtime_string(&pieces)
+}
+fn runtime_string(pieces: &[&str]) -> CILNode {
+    let curr = CILNode::LdStr(pieces[0].clone().into());
+    let rem = &pieces[1..];
+    if rem.is_empty() {
+        curr
+    } else {
+        let next = runtime_string(rem);
+        call!(
+            CallSite::new_extern(
+                DotnetTypeRef::string_type(),
+                "Concat".into(),
+                FnSig::new(
+                    [
+                        DotnetTypeRef::string_type().into(),
+                        DotnetTypeRef::string_type().into()
+                    ],
+                    Type::DotnetType(Box::new(DotnetTypeRef::string_type()))
+                ),
+                true
+            ),
+            [curr, next]
+        )
+    }
+}
