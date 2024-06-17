@@ -243,16 +243,7 @@ fn place_elem_get<'a>(
                 }
             }
         }
-        PlaceElem::Subtype(tpe) => {
-            let tpe = crate::utilis::monomorphize(&method_instance, *tpe, tyctx);
-            super::deref_op(
-                super::PlaceTy::Ty(tpe),
-                tyctx,
-                &method_instance,
-                type_cache,
-                addr_calc,
-            )
-        }
+        PlaceElem::Subtype(tpe) => addr_calc,
         _ => todo!("Can't handle porojection {place_elem:?} in get"),
     }
 }

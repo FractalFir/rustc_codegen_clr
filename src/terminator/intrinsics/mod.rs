@@ -937,8 +937,26 @@ pub fn handle_intrinsic<'tyctx>(
                     true,
                 )),
                 args: [
-                    handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
-                    handle_operand(&args[1].node, tyctx, body, method_instance, type_cache),
+                    CILNode::TransmutePtr {
+                        val: Box::new(handle_operand(
+                            &args[0].node,
+                            tyctx,
+                            body,
+                            method_instance,
+                            type_cache,
+                        )),
+                        new_ptr: Box::new(Type::Ptr(Box::new(Type::Void))),
+                    },
+                    CILNode::TransmutePtr {
+                        val: Box::new(handle_operand(
+                            &args[1].node,
+                            tyctx,
+                            body,
+                            method_instance,
+                            type_cache,
+                        )),
+                        new_ptr: Box::new(Type::Ptr(Box::new(Type::Void))),
+                    },
                     conv_usize!(size_of!(tpe)),
                 ]
                 .into(),
@@ -1066,8 +1084,26 @@ fn intrinsic_slow<'tyctx>(
                 true,
             )),
             args: [
-                handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
-                handle_operand(&args[1].node, tyctx, body, method_instance, type_cache),
+                CILNode::TransmutePtr {
+                    val: Box::new(handle_operand(
+                        &args[0].node,
+                        tyctx,
+                        body,
+                        method_instance,
+                        type_cache,
+                    )),
+                    new_ptr: Box::new(Type::Ptr(Box::new(Type::Void))),
+                },
+                CILNode::TransmutePtr {
+                    val: Box::new(handle_operand(
+                        &args[1].node,
+                        tyctx,
+                        body,
+                        method_instance,
+                        type_cache,
+                    )),
+                    new_ptr: Box::new(Type::Ptr(Box::new(Type::Void))),
+                },
                 conv_usize!(size_of!(tpe)),
             ]
             .into(),

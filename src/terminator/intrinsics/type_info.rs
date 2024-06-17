@@ -112,8 +112,13 @@ pub fn size_of_val<'tyctx>(
                 return place_set(
                     destination,
                     tyctx,
-                    CILNode::LDIndISize {
-                        ptr: Box::new(ld_field!(addr, descriptor) + (size_of!(Type::ISize))),
+                    CILNode::LDIndUSize {
+                        ptr: Box::new(
+                            CILNode::TransmutePtr {
+                                val: Box::new(ld_field!(addr, descriptor)),
+                                new_ptr: Box::new(Type::Ptr(Box::new(Type::USize))),
+                            } + conv_usize!((size_of!(Type::ISize))),
+                        ),
                     },
                     body,
                     method_instance,

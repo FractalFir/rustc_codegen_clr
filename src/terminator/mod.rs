@@ -258,7 +258,15 @@ pub fn handle_terminator<'ctx>(
                             0
                         );
                         let drop_fn_ptr = CILNode::LDIndPtr {
-                            ptr: Box::new(vtable_ptr),
+                            ptr: Box::new(CILNode::TransmutePtr {
+                                val: Box::new(vtable_ptr),
+                                new_ptr: Box::new(Type::Ptr(Box::new(Type::DelegatePtr(
+                                    Box::new(FnSig::new(
+                                        [Type::Ptr(Box::new(Type::Void))],
+                                        Type::Void,
+                                    )),
+                                )))),
+                            }),
                             loaded_ptr: Box::new(Type::DelegatePtr(Box::new(FnSig::new(
                                 [Type::Ptr(Box::new(Type::Void))],
                                 Type::Void,
