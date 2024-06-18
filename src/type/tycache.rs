@@ -582,7 +582,6 @@ impl TyCache {
     pub fn slice_ref_to<'tyctx>(
         &mut self,
         tyctx: TyCtxt<'tyctx>,
-
         mut inner: Ty<'tyctx>,
         method: Instance<'tyctx>,
     ) -> Type {
@@ -647,6 +646,7 @@ pub fn validity_check<'tyctx>(
                 }
             }
         },
+        /*
         TyKind::Ref(_, pointed_ty, _) => {
             let pointed_ty = crate::utilis::monomorphize(&method_instance, *pointed_ty, tyctx);
             if super::pointer_to_is_fat(pointed_ty, tyctx, method_instance)
@@ -676,7 +676,7 @@ pub fn validity_check<'tyctx>(
                 .into(),
                 CILNode::LoadTMPLocal,
             )))
-        }
+        }*/
         _ => val,
     }
 }

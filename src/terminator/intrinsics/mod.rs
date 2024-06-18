@@ -1,4 +1,5 @@
 use crate::{
+    assembly::MethodCompileCtx,
     operand::handle_operand,
     place::{place_adress, place_set},
     r#type::tycache::TyCache,
@@ -28,34 +29,24 @@ pub fn handle_intrinsic<'tyctx>(
     fn_name: &str,
     args: &[Spanned<Operand<'tyctx>>],
     destination: &Place<'tyctx>,
-    tyctx: TyCtxt<'tyctx>,
-    body: &'tyctx Body<'tyctx>,
-    method_instance: Instance<'tyctx>,
     call_instance: Instance<'tyctx>,
-    type_cache: &mut TyCache,
-
     span: rustc_span::Span,
+    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
 ) -> CILRoot {
     match fn_name {
         "arith_offset" => {
-            let tpe = crate::utilis::monomorphize(
-                &method_instance,
+            let tpe = ctx.monomorphize(
                 call_instance.args[0]
                     .as_type()
                     .expect("needs_drop works only on types!"),
-                tyctx,
             );
-            let tpe = type_cache.type_from_cache(tpe, tyctx, method_instance);
+            let tpe = ctx.type_from_cache(tpe);
 
             place_set(
                 destination,
-                tyctx,
-                handle_operand(&args[0].node, tyctx, body, method_instance, type_cache)
-                    + handle_operand(&args[1].node, tyctx, body, method_instance, type_cache)
-                        * conv_isize!(size_of!(tpe)),
-                body,
-                method_instance,
-                type_cache,
+                handle_operand(&args[0].node, ctx)
+                    + handle_operand(&args[1].node, ctx) * conv_isize!(size_of!(tpe)),
+                ctx,
             )
         }
         "breakpoint" => {
@@ -72,61 +63,30 @@ pub fn handle_intrinsic<'tyctx>(
                 1,
                 "The intrinsic `black_box` MUST take in exactly 1 argument!"
             );
-            let tpe = crate::utilis::monomorphize(
-                &method_instance,
+            let tpe = ctx.monomorphize(
                 call_instance.args[0]
                     .as_type()
                     .expect("needs_drop works only on types!"),
-                tyctx,
             );
-            let tpe = type_cache.type_from_cache(tpe, tyctx, method_instance);
+            let tpe = ctx.type_from_cache(tpe);
             if tpe == Type::Void {
                 return CILRoot::Nop;
             }
             // assert_eq!(args.len(),1,"The intrinsic `unlikely` MUST take in exactly 1 argument!");
-            place_set(
-                destination,
-                tyctx,
-                handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
-                body,
-                method_instance,
-                type_cache,
-            )
+            place_set(destination, handle_operand(&args[0].node, ctx), ctx)
         }
-        "caller_location" => {
-            caller_location(destination, tyctx, body, method_instance, span, type_cache)
-        }
+        "caller_location" => caller_location(destination, ctx, span),
         "compare_bytes" => place_set(
             destination,
-            tyctx,
             compare_bytes(
-                handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
-                handle_operand(&args[1].node, tyctx, body, method_instance, type_cache),
-                handle_operand(&args[2].node, tyctx, body, method_instance, type_cache),
+                handle_operand(&args[0].node, ctx),
+                handle_operand(&args[1].node, ctx),
+                handle_operand(&args[2].node, ctx),
             ),
-            body,
-            method_instance,
-            type_cache,
+            ctx,
         ),
-        "ctpop" => ints::ctpop(
-            args,
-            destination,
-            tyctx,
-            body,
-            method_instance,
-            call_instance,
-            type_cache,
-        ),
-        "ctlz" | "ctlz_nonzero" => ctlz(
-            args,
-            destination,
-            tyctx,
-            body,
-            method_instance,
-            call_instance,
-            type_cache,
-        ),
-
+        "ctpop" => ints::ctpop(args, destination, call_instance, ctx),
+        "ctlz" | "ctlz_nonzero" => ctlz(args, destination, call_instance, ctx),
         "unlikely" | "likely" => {
             debug_assert_eq!(
                 args.len(),
@@ -134,41 +94,23 @@ pub fn handle_intrinsic<'tyctx>(
                 "The intrinsic `unlikely` MUST take in exactly 1 argument!"
             );
             // assert_eq!(args.len(),1,"The intrinsic `unlikely` MUST take in exactly 1 argument!");
-            place_set(
-                destination,
-                tyctx,
-                handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
-                body,
-                method_instance,
-                type_cache,
-            )
+            place_set(destination, handle_operand(&args[0].node, ctx), ctx)
         }
-        "is_val_statically_known" => {
-            is_val_statically_known(args, destination, tyctx, body, method_instance, type_cache)
-        }
+        "is_val_statically_known" => is_val_statically_known(args, destination, ctx),
         "needs_drop" => {
             debug_assert_eq!(
                 args.len(),
                 0,
                 "The intrinsic `needs_drop` MUST take in exactly 0 argument!"
             );
-            let tpe = crate::utilis::monomorphize(
-                &method_instance,
+            let tpe = ctx.monomorphize(
                 call_instance.args[0]
                     .as_type()
                     .expect("needs_drop works only on types!"),
-                tyctx,
             );
-            let needs_drop = tpe.needs_drop(tyctx, ParamEnv::reveal_all());
+            let needs_drop = tpe.needs_drop(ctx.tyctx(), ParamEnv::reveal_all());
             let needs_drop = i32::from(needs_drop);
-            place_set(
-                destination,
-                tyctx,
-                ldc_i32!(needs_drop),
-                body,
-                method_instance,
-                type_cache,
-            )
+            place_set(destination, ldc_i32!(needs_drop), ctx)
         }
 
         "fmaf64" => {
@@ -177,30 +119,21 @@ pub fn handle_intrinsic<'tyctx>(
                 3,
                 "The intrinsic `fmaf64` MUST take in exactly 1 argument!"
             );
-            let a = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
-            let b = handle_operand(&args[1].node, tyctx, body, method_instance, type_cache);
-            let c = handle_operand(&args[2].node, tyctx, body, method_instance, type_cache);
+            let a = handle_operand(&args[0].node, ctx);
+            let b = handle_operand(&args[1].node, ctx);
+            let c = handle_operand(&args[2].node, ctx);
 
-            place_set(
-                destination,
-                tyctx,
-                a * b + c,
-                body,
-                method_instance,
-                type_cache,
-            )
+            place_set(destination, a * b + c, ctx)
         }
 
         "raw_eq" => {
             // Raw eq returns 0 if values are not equal, and 1 if they are, unlike memcmp, which does the oposite.
-            let tpe = crate::utilis::monomorphize(
-                &method_instance,
+            let tpe = ctx.monomorphize(
                 call_instance.args[0]
                     .as_type()
                     .expect("needs_drop works only on types!"),
-                tyctx,
             );
-            let tpe = type_cache.type_from_cache(tpe, tyctx, method_instance);
+            let tpe = ctx.type_from_cache(tpe);
             let size = match tpe {
                 Type::Bool
                 | Type::U8
@@ -216,89 +149,52 @@ pub fn handle_intrinsic<'tyctx>(
                 | Type::Ptr(_) => {
                     return place_set(
                         destination,
-                        tyctx,
                         eq!(
-                            handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
-                            handle_operand(&args[1].node, tyctx, body, method_instance, type_cache)
+                            handle_operand(&args[0].node, ctx),
+                            handle_operand(&args[1].node, ctx)
                         ),
-                        body,
-                        method_instance,
-                        type_cache,
+                        ctx,
                     );
                 }
                 _ => size_of!(tpe),
             };
             place_set(
                 destination,
-                tyctx,
                 eq!(
                     compare_bytes(
                         CILNode::TransmutePtr {
-                            val: Box::new(handle_operand(
-                                &args[0].node,
-                                tyctx,
-                                body,
-                                method_instance,
-                                type_cache
-                            )),
+                            val: Box::new(handle_operand(&args[0].node, ctx)),
                             new_ptr: Box::new(Type::Ptr(Box::new(Type::U8))),
                         },
                         CILNode::TransmutePtr {
-                            val: Box::new(handle_operand(
-                                &args[1].node,
-                                tyctx,
-                                body,
-                                method_instance,
-                                type_cache
-                            )),
+                            val: Box::new(handle_operand(&args[1].node, ctx)),
                             new_ptr: Box::new(Type::Ptr(Box::new(Type::U8))),
                         },
                         conv_usize!(size),
                     ),
                     ldc_i32!(0)
                 ),
-                body,
-                method_instance,
-                type_cache,
+                ctx,
             )
         }
-        "bswap" => bswap::bswap(args, destination, tyctx, body, method_instance, type_cache),
-        "cttz" | "cttz_nonzero" => ints::cttz(
-            args,
-            destination,
-            tyctx,
-            body,
-            method_instance,
-            call_instance,
-            type_cache,
-        ),
-        "rotate_left" => rotate_left(
-            args,
-            destination,
-            tyctx,
-            body,
-            method_instance,
-            call_instance,
-            type_cache,
-        ),
+        "bswap" => bswap::bswap(args, destination, ctx),
+        "cttz" | "cttz_nonzero" => ints::cttz(args, destination, ctx, call_instance),
+        "rotate_left" => rotate_left(args, destination, ctx, call_instance),
         "write_bytes" => {
             debug_assert_eq!(
                 args.len(),
                 3,
                 "The intrinsic `write_bytes` MUST take in exactly 3 argument!"
             );
-            let tpe = crate::utilis::monomorphize(
-                &method_instance,
+            let tpe = ctx.monomorphize(
                 call_instance.args[0]
                     .as_type()
                     .expect("needs_drop works only on types!"),
-                tyctx,
             );
-            let tpe = type_cache.type_from_cache(tpe, tyctx, method_instance);
-            let dst = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
-            let val = handle_operand(&args[1].node, tyctx, body, method_instance, type_cache);
-            let count = handle_operand(&args[2].node, tyctx, body, method_instance, type_cache)
-                * conv_usize!(size_of!(tpe));
+            let tpe = ctx.type_from_cache(tpe);
+            let dst = handle_operand(&args[0].node, ctx);
+            let val = handle_operand(&args[1].node, ctx);
+            let count = handle_operand(&args[2].node, ctx) * conv_usize!(size_of!(tpe));
             CILRoot::InitBlk {
                 dst: Box::new(dst),
                 val: Box::new(val),
@@ -311,18 +207,15 @@ pub fn handle_intrinsic<'tyctx>(
                 3,
                 "The intrinsic `copy` MUST take in exactly 3 argument!"
             );
-            let tpe = crate::utilis::monomorphize(
-                &method_instance,
+            let tpe = ctx.monomorphize(
                 call_instance.args[0]
                     .as_type()
                     .expect("needs_drop works only on types!"),
-                tyctx,
             );
-            let tpe = type_cache.type_from_cache(tpe, tyctx, method_instance);
-            let src = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
-            let dst = handle_operand(&args[1].node, tyctx, body, method_instance, type_cache);
-            let count = handle_operand(&args[2].node, tyctx, body, method_instance, type_cache)
-                * conv_usize!(size_of!(tpe));
+            let tpe = ctx.type_from_cache(tpe);
+            let src = handle_operand(&args[0].node, ctx);
+            let dst = handle_operand(&args[1].node, ctx);
+            let count = handle_operand(&args[2].node, ctx) * conv_usize!(size_of!(tpe));
 
             CILRoot::CpBlk {
                 src: Box::new(src),
@@ -339,30 +232,22 @@ pub fn handle_intrinsic<'tyctx>(
 
             place_set(
                 destination,
-                tyctx,
                 crate::binop::binop(
                     rustc_middle::mir::BinOp::Div,
                     &args[0].node,
                     &args[1].node,
-                    tyctx,
-                    body,
-                    method_instance,
-                    type_cache,
+                    ctx,
                 ),
-                body,
-                method_instance,
-                type_cache,
+                ctx,
             )
         }
         "type_id" => {
-            let tpe = crate::utilis::monomorphize(
-                &method_instance,
+            let tpe = ctx.monomorphize(
                 call_instance.args[0]
                     .as_type()
                     .expect("needs_drop works only on types!"),
-                tyctx,
             );
-            let tpe = type_cache.type_from_cache(tpe, tyctx, method_instance);
+            let tpe = ctx.type_from_cache(tpe);
             let sig = FnSig::new(
                 &[DotnetTypeRef::type_handle_type().into()],
                 DotnetTypeRef::type_type(),
@@ -370,7 +255,6 @@ pub fn handle_intrinsic<'tyctx>(
             let gethash_sig = FnSig::new(&[DotnetTypeRef::type_type().into()], Type::I32);
             place_set(
                 destination,
-                tyctx,
                 call!(
                     CallSite::boxed(
                         Some(DotnetTypeRef::uint_128()),
@@ -396,14 +280,10 @@ pub fn handle_intrinsic<'tyctx>(
                         )]
                     ))]
                 ),
-                body,
-                method_instance,
-                type_cache,
+                ctx,
             )
         }
-        "volatile_load" => {
-            volitale_load(args, destination, tyctx, body, method_instance, type_cache)
-        }
+        "volatile_load" => volitale_load(args, destination, ctx),
         "atomic_load_unordered" => {
             // This is already implemented by default in .NET when volatile is used. TODO: ensure this is 100% right.
             //TODO:fix volitale prefix!
@@ -412,13 +292,11 @@ pub fn handle_intrinsic<'tyctx>(
                 1,
                 "The intrinsic `atomic_load_unordered` MUST take in exactly 1 argument!"
             );
-            let arg =
-                crate::utilis::monomorphize(&method_instance, args[0].node.ty(body, tyctx), tyctx);
+            let arg = ctx.monomorphize(args[0].node.ty(ctx.method(), ctx.tyctx()));
             let arg_ty = arg.builtin_deref(true).unwrap();
-            let arg = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
-            let ops =
-                crate::place::deref_op(arg_ty.into(), tyctx, &method_instance, type_cache, arg);
-            place_set(destination, tyctx, ops, body, method_instance, type_cache)
+            let arg = handle_operand(&args[0].node, ctx);
+            let ops = crate::place::deref_op(arg_ty.into(), ctx, arg);
+            place_set(destination, ops, ctx)
         }
         "atomic_load_acquire" | "atomic_load_seqcst" => {
             //I am not sure this is implemented propely
@@ -427,14 +305,12 @@ pub fn handle_intrinsic<'tyctx>(
                 1,
                 "The intrinsic `atomic_load_acquire` MUST take in exactly 1 argument!"
             );
-            let ops = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
-            let arg =
-                crate::utilis::monomorphize(&method_instance, args[0].node.ty(body, tyctx), tyctx);
+            let ops = handle_operand(&args[0].node, ctx);
+            let arg = ctx.monomorphize(args[0].node.ty(ctx.method(), ctx.tyctx()));
             let arg_ty = arg.builtin_deref(true).unwrap();
 
-            let ops =
-                crate::place::deref_op(arg_ty.into(), tyctx, &method_instance, type_cache, ops);
-            place_set(destination, tyctx, ops, body, method_instance, type_cache)
+            let ops = crate::place::deref_op(arg_ty.into(), ctx, ops);
+            place_set(destination, ops, ctx)
         }
         "atomic_store_relaxed"
         | "atomic_store_seqcst"
@@ -446,19 +322,11 @@ pub fn handle_intrinsic<'tyctx>(
                 1,
                 "The intrinsic `atomic_load_acquire` MUST take in exactly 1 argument!"
             );
-            let addr = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
-            let val = handle_operand(&args[1].node, tyctx, body, method_instance, type_cache);
-            let arg_ty =
-                crate::utilis::monomorphize(&method_instance, args[1].node.ty(body, tyctx), tyctx);
+            let addr = handle_operand(&args[0].node, ctx);
+            let val = handle_operand(&args[1].node, ctx);
+            let arg_ty = ctx.monomorphize(args[1].node.ty(ctx.method(), ctx.tyctx()));
 
-            crate::place::ptr_set_op(
-                arg_ty.into(),
-                tyctx,
-                &method_instance,
-                type_cache,
-                addr,
-                val,
-            )
+            crate::place::ptr_set_op(arg_ty.into(), ctx, addr, val)
         }
         "atomic_cxchgweak_acquire_acquire"
         | "atomic_cxchg_acquire_relaxed"
@@ -466,19 +334,18 @@ pub fn handle_intrinsic<'tyctx>(
         | "atomic_cxchgweak_relaxed_relaxed" => {
             let interlocked = DotnetTypeRef::interlocked();
             // *T
-            let dst = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
+            let dst = handle_operand(&args[0].node, ctx);
             // T
-            let old = handle_operand(&args[1].node, tyctx, body, method_instance, type_cache);
+            let old = handle_operand(&args[1].node, ctx);
             // T
-            let src = handle_operand(&args[2].node, tyctx, body, method_instance, type_cache);
+            let src = handle_operand(&args[2].node, ctx);
             debug_assert_eq!(
                 args.len(),
                 3,
                 "The intrinsic `atomic_cxchgweak_acquire_acquire` MUST take in exactly 3 argument!"
             );
-            let src_type =
-                crate::utilis::monomorphize(&method_instance, args[2].node.ty(body, tyctx), tyctx);
-            let src_type = type_cache.type_from_cache(src_type, tyctx, method_instance);
+            let src_type = ctx.monomorphize(args[2].node.ty(ctx.method(), ctx.tyctx()));
+            let src_type = ctx.type_from_cache(src_type);
 
             let call_site = CallSite::new(
                 Some(interlocked),
@@ -498,66 +365,45 @@ pub fn handle_intrinsic<'tyctx>(
             let comaprand = old.clone();
             let exchange_res = call!(call_site, [dst, value, comaprand]);
             // Set a field of the destination
-            let dst_ty = destination.ty(body, tyctx);
-            let fld_desc = field_descrptor(dst_ty.ty, 0, tyctx, method_instance, type_cache);
+            let dst_ty = destination.ty(ctx.method(), ctx.tyctx());
+            let fld_desc = field_descrptor(dst_ty.ty, 0, ctx);
             assert_eq!(*fld_desc.tpe(), src_type);
             // Set the value of the result.
             let set_val = CILRoot::SetField {
-                addr: Box::new(place_adress(
-                    destination,
-                    tyctx,
-                    body,
-                    method_instance,
-                    type_cache,
-                )),
+                addr: Box::new(place_adress(destination, ctx)),
                 value: Box::new(exchange_res),
                 desc: Box::new(fld_desc.clone()),
             };
             // Get the result back
             let val = CILNode::SubTrees(Box::new((
                 [set_val].into(),
-                ld_field!(
-                    place_adress(destination, tyctx, body, method_instance, type_cache),
-                    fld_desc
-                )
-                .into(),
+                ld_field!(place_adress(destination, ctx), fld_desc).into(),
             )));
             // Compare the result to comparand(aka `old`)
             let cmp = eq!(val, old);
-            let fld_desc = field_descrptor(dst_ty.ty, 1, tyctx, method_instance, type_cache);
+            let fld_desc = field_descrptor(dst_ty.ty, 1, ctx);
             assert_eq!(*fld_desc.tpe(), Type::Bool);
 
             CILRoot::SetField {
-                addr: Box::new(place_adress(
-                    destination,
-                    tyctx,
-                    body,
-                    method_instance,
-                    type_cache,
-                )),
+                addr: Box::new(place_adress(destination, ctx)),
                 value: Box::new(cmp),
                 desc: Box::new(fld_desc.clone()),
             }
         }
         "atomic_xsub_release" => {
             // *T
-            let dst = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
+            let dst = handle_operand(&args[0].node, ctx);
             // T
-            let sub_ammount =
-                handle_operand(&args[1].node, tyctx, body, method_instance, type_cache);
+            let sub_ammount = handle_operand(&args[1].node, ctx);
             // we sub by adding a negative number
             let add_ammount = CILNode::Neg(Box::new(sub_ammount.clone()));
-            let src_type =
-                crate::utilis::monomorphize(&method_instance, args[1].node.ty(body, tyctx), tyctx);
-            let src_type = type_cache.type_from_cache(src_type, tyctx, method_instance);
+            let src_type = ctx.monomorphize(args[1].node.ty(ctx.method(), ctx.tyctx()));
+            let src_type = ctx.type_from_cache(src_type);
 
             place_set(
                 destination,
-                tyctx,
                 interlocked_add(dst, add_ammount, src_type) + sub_ammount,
-                body,
-                method_instance,
-                type_cache,
+                ctx,
             )
         }
         "atomic_fence_acquire" => {
@@ -574,40 +420,34 @@ pub fn handle_intrinsic<'tyctx>(
         }
         "atomic_xadd_release" | "atomic_xadd_relaxed" => {
             // *T
-            let dst = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
+            let dst = handle_operand(&args[0].node, ctx);
             // T
-            let add_ammount =
-                handle_operand(&args[1].node, tyctx, body, method_instance, type_cache);
+            let add_ammount = handle_operand(&args[1].node, ctx);
             // we sub by adding a negative number
 
-            let src_type =
-                crate::utilis::monomorphize(&method_instance, args[1].node.ty(body, tyctx), tyctx);
-            let src_type = type_cache.type_from_cache(src_type, tyctx, method_instance);
+            let src_type = ctx.monomorphize(args[1].node.ty(ctx.method(), ctx.tyctx()));
+            let src_type = ctx.type_from_cache(src_type);
 
             place_set(
                 destination,
-                tyctx,
                 interlocked_add(dst, add_ammount, src_type),
-                body,
-                method_instance,
-                type_cache,
+                ctx,
             )
         }
         "atomic_xchg_release" => {
             let interlocked = DotnetTypeRef::interlocked();
             // *T
-            let dst = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
+            let dst = handle_operand(&args[0].node, ctx);
             // T
-            let new = handle_operand(&args[1].node, tyctx, body, method_instance, type_cache);
+            let new = handle_operand(&args[1].node, ctx);
 
             debug_assert_eq!(
                 args.len(),
                 2,
                 "The intrinsic `atomic_xchg_release` MUST take in exactly 3 argument!"
             );
-            let src_type =
-                crate::utilis::monomorphize(&method_instance, args[1].node.ty(body, tyctx), tyctx);
-            let src_type = type_cache.type_from_cache(src_type, tyctx, method_instance);
+            let src_type = ctx.monomorphize(args[1].node.ty(ctx.method(), ctx.tyctx()));
+            let src_type = ctx.type_from_cache(src_type);
 
             let call_site = CallSite::new(
                 Some(interlocked),
@@ -622,14 +462,7 @@ pub fn handle_intrinsic<'tyctx>(
                 true,
             );
             // T
-            place_set(
-                destination,
-                tyctx,
-                call!(call_site, [dst, new]),
-                body,
-                method_instance,
-                type_cache,
-            )
+            place_set(destination, call!(call_site, [dst, new]), ctx)
         }
         // TODO:Those are not stricly neccessary, but SHOULD be implemented at some point.
         "assert_inhabited" | "assert_zero_valid" => CILRoot::Nop,
@@ -639,22 +472,19 @@ pub fn handle_intrinsic<'tyctx>(
                 2,
                 "The intrinsic `min_align_of_val` MUST take in exactly 1 argument!"
             );
-            let tpe = crate::utilis::monomorphize(
-                &method_instance,
+            let tpe = ctx.monomorphize(
                 call_instance.args[0]
                     .as_type()
                     .expect("needs_drop works only on types!"),
-                tyctx,
             );
-            let tpe = type_cache.type_from_cache(tpe, tyctx, method_instance);
+            let tpe = ctx.type_from_cache(tpe);
             place_set(
                 destination,
-                tyctx,
                 CILNode::DivUn(
                     CILNode::TransmutePtr {
                         val: sub!(
-                            handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
-                            handle_operand(&args[1].node, tyctx, body, method_instance, type_cache)
+                            handle_operand(&args[0].node, ctx),
+                            handle_operand(&args[1].node, ctx)
                         )
                         .into(),
                         new_ptr: Box::new(Type::USize),
@@ -662,49 +492,26 @@ pub fn handle_intrinsic<'tyctx>(
                     .into(),
                     conv_usize!(size_of!(tpe)).into(),
                 ),
-                body,
-                method_instance,
-                type_cache,
+                ctx,
             )
         }
-        "saturating_add" => saturating_add(
-            args,
-            destination,
-            tyctx,
-            body,
-            method_instance,
-            call_instance,
-            type_cache,
-        ),
-        "saturating_sub" => saturating_sub(
-            args,
-            destination,
-            tyctx,
-            body,
-            method_instance,
-            call_instance,
-            type_cache,
-        ),
+        "saturating_add" => saturating_add(args, destination, ctx, call_instance),
+        "saturating_sub" => saturating_sub(args, destination, ctx, call_instance),
         "min_align_of_val" => {
             debug_assert_eq!(
                 args.len(),
                 1,
                 "The intrinsic `min_align_of_val` MUST take in exactly 1 argument!"
             );
-            let tpe = crate::utilis::monomorphize(
-                &method_instance,
+            let tpe = ctx.monomorphize(
                 call_instance.args[0]
                     .as_type()
                     .expect("needs_drop works only on types!"),
-                tyctx,
             );
             place_set(
                 destination,
-                tyctx,
-                conv_usize!(ldc_u64!(crate::utilis::align_of(tpe, tyctx) as u64)),
-                body,
-                method_instance,
-                type_cache,
+                conv_usize!(ldc_u64!(crate::utilis::align_of(tpe, ctx.tyctx()) as u64)),
+                ctx,
             )
         }
         // .NET guarantess all loads are tear-free
@@ -715,14 +522,12 @@ pub fn handle_intrinsic<'tyctx>(
                 1,
                 "The intrinsic `atomic_load_relaxed` MUST take in exactly 1 argument!"
             );
-            let ops = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
-            let arg =
-                crate::utilis::monomorphize(&method_instance, args[0].node.ty(body, tyctx), tyctx);
+            let ops = handle_operand(&args[0].node, ctx);
+            let arg = ctx.monomorphize(args[0].node.ty(ctx.method(), ctx.tyctx()));
             let arg_ty = arg.builtin_deref(true).unwrap();
 
-            let ops =
-                crate::place::deref_op(arg_ty.into(), tyctx, &method_instance, type_cache, ops);
-            place_set(destination, tyctx, ops, body, method_instance, type_cache)
+            let ops = crate::place::deref_op(arg_ty.into(), ctx, ops);
+            place_set(destination, ops, ctx)
         }
         "sqrtf32" => {
             debug_assert_eq!(
@@ -732,7 +537,6 @@ pub fn handle_intrinsic<'tyctx>(
             );
             place_set(
                 destination,
-                tyctx,
                 call!(
                     CallSite::boxed(
                         Some(DotnetTypeRef::mathf()),
@@ -740,17 +544,9 @@ pub fn handle_intrinsic<'tyctx>(
                         FnSig::new(&[Type::F32], Type::F32),
                         true,
                     ),
-                    [handle_operand(
-                        &args[0].node,
-                        tyctx,
-                        body,
-                        method_instance,
-                        type_cache
-                    )]
+                    [handle_operand(&args[0].node, ctx)]
                 ),
-                body,
-                method_instance,
-                type_cache,
+                ctx,
             )
         }
         "floorf32" => {
@@ -761,7 +557,6 @@ pub fn handle_intrinsic<'tyctx>(
             );
             place_set(
                 destination,
-                tyctx,
                 call!(
                     CallSite::boxed(
                         Some(DotnetTypeRef::mathf()),
@@ -769,17 +564,9 @@ pub fn handle_intrinsic<'tyctx>(
                         FnSig::new(&[Type::F32], Type::F32),
                         true,
                     ),
-                    [handle_operand(
-                        &args[0].node,
-                        tyctx,
-                        body,
-                        method_instance,
-                        type_cache
-                    )]
+                    [handle_operand(&args[0].node, ctx)]
                 ),
-                body,
-                method_instance,
-                type_cache,
+                ctx,
             )
         }
         "ceilf32" => {
@@ -791,7 +578,6 @@ pub fn handle_intrinsic<'tyctx>(
 
             place_set(
                 destination,
-                tyctx,
                 call!(
                     CallSite::boxed(
                         Some(DotnetTypeRef::mathf()),
@@ -799,17 +585,9 @@ pub fn handle_intrinsic<'tyctx>(
                         FnSig::new(&[Type::F32], Type::F32),
                         true,
                     ),
-                    [handle_operand(
-                        &args[0].node,
-                        tyctx,
-                        body,
-                        method_instance,
-                        type_cache
-                    )]
+                    [handle_operand(&args[0].node, ctx)]
                 ),
-                body,
-                method_instance,
-                type_cache,
+                ctx,
             )
         }
         "maxnumf32" => {
@@ -821,7 +599,6 @@ pub fn handle_intrinsic<'tyctx>(
 
             place_set(
                 destination,
-                tyctx,
                 call!(
                     CallSite::boxed(
                         Some(DotnetTypeRef::mathf()),
@@ -830,13 +607,11 @@ pub fn handle_intrinsic<'tyctx>(
                         true,
                     ),
                     [
-                        handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
-                        handle_operand(&args[1].node, tyctx, body, method_instance, type_cache)
+                        handle_operand(&args[0].node, ctx),
+                        handle_operand(&args[1].node, ctx)
                     ]
                 ),
-                body,
-                method_instance,
-                type_cache,
+                ctx,
             )
         }
         "minnumf32" => {
@@ -847,7 +622,6 @@ pub fn handle_intrinsic<'tyctx>(
             );
             place_set(
                 destination,
-                tyctx,
                 call!(
                     CallSite::boxed(
                         Some(DotnetTypeRef::mathf()),
@@ -856,13 +630,11 @@ pub fn handle_intrinsic<'tyctx>(
                         true,
                     ),
                     [
-                        handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
-                        handle_operand(&args[1].node, tyctx, body, method_instance, type_cache)
+                        handle_operand(&args[0].node, ctx),
+                        handle_operand(&args[1].node, ctx)
                     ]
                 ),
-                body,
-                method_instance,
-                type_cache,
+                ctx,
             )
         }
         "powif32" => {
@@ -874,7 +646,6 @@ pub fn handle_intrinsic<'tyctx>(
 
             place_set(
                 destination,
-                tyctx,
                 conv_f32!(call!(
                     CallSite::boxed(
                         Some(DotnetTypeRef::math()),
@@ -883,46 +654,22 @@ pub fn handle_intrinsic<'tyctx>(
                         true,
                     ),
                     [
-                        conv_f64!(handle_operand(
-                            &args[0].node,
-                            tyctx,
-                            body,
-                            method_instance,
-                            type_cache
-                        )),
-                        conv_f64!(handle_operand(
-                            &args[1].node,
-                            tyctx,
-                            body,
-                            method_instance,
-                            type_cache
-                        ))
+                        conv_f64!(handle_operand(&args[0].node, ctx)),
+                        conv_f64!(handle_operand(&args[1].node, ctx))
                     ]
                 )),
-                body,
-                method_instance,
-                type_cache,
+                ctx,
             )
         }
-        "size_of_val" => size_of_val(
-            args,
-            destination,
-            tyctx,
-            body,
-            method_instance,
-            call_instance,
-            type_cache,
-        ),
+        "size_of_val" => size_of_val(args, destination, ctx, call_instance),
         "typed_swap" => {
-            let pointed_ty = crate::utilis::monomorphize(
-                &method_instance,
+            let pointed_ty = ctx.monomorphize(
                 call_instance.args[0]
                     .as_type()
                     .expect("needs_drop works only on types!"),
-                tyctx,
             );
-            let tpe = crate::utilis::monomorphize(&method_instance, pointed_ty, tyctx);
-            let tpe = type_cache.type_from_cache(tpe, tyctx, method_instance);
+            let tpe = ctx.monomorphize(pointed_ty);
+            let tpe = ctx.type_from_cache(tpe);
             CILRoot::Call {
                 site: Box::new(CallSite::builtin(
                     "swap_at_generic".into(),
@@ -938,23 +685,11 @@ pub fn handle_intrinsic<'tyctx>(
                 )),
                 args: [
                     CILNode::TransmutePtr {
-                        val: Box::new(handle_operand(
-                            &args[0].node,
-                            tyctx,
-                            body,
-                            method_instance,
-                            type_cache,
-                        )),
+                        val: Box::new(handle_operand(&args[0].node, ctx)),
                         new_ptr: Box::new(Type::Ptr(Box::new(Type::Void))),
                     },
                     CILNode::TransmutePtr {
-                        val: Box::new(handle_operand(
-                            &args[1].node,
-                            tyctx,
-                            body,
-                            method_instance,
-                            type_cache,
-                        )),
+                        val: Box::new(handle_operand(&args[1].node, ctx)),
                         new_ptr: Box::new(Type::Ptr(Box::new(Type::Void))),
                     },
                     conv_usize!(size_of!(tpe)),
@@ -976,34 +711,20 @@ pub fn handle_intrinsic<'tyctx>(
                     FnSig::new(&[Type::F64], Type::F64),
                     true,
                 ),
-                [handle_operand(
-                    &args[0].node,
-                    tyctx,
-                    body,
-                    method_instance,
-                    type_cache
-                )]
+                [handle_operand(&args[0].node, ctx)]
             );
-            place_set(destination, tyctx, ops, body, method_instance, type_cache)
+            place_set(destination, ops, ctx)
         }
-        "rotate_right" => rotate_right(
-            args,
-            destination,
-            tyctx,
-            body,
-            method_instance,
-            call_instance,
-            type_cache,
-        ),
+        "rotate_right" => rotate_right(args, destination, ctx, call_instance),
         "catch_unwind" => {
             debug_assert_eq!(
                 args.len(),
                 2,
                 "The intrinsic `minnumf32` MUST take in exactly 2 arguments!"
             );
-            let try_fn = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
-            let data_ptr = handle_operand(&args[1].node, tyctx, body, method_instance, type_cache);
-            let catch_fn = handle_operand(&args[2].node, tyctx, body, method_instance, type_cache);
+            let try_fn = handle_operand(&args[0].node, ctx);
+            let data_ptr = handle_operand(&args[1].node, ctx);
+            let catch_fn = handle_operand(&args[2].node, ctx);
             let _ = catch_fn;
             eprintln!("WARNING: catching unwinds currently not supported! the intrinic `catch_unwind` WILL NOT CATCH UNWINDS YET!");
             CILRoot::CallI {
@@ -1013,32 +734,17 @@ pub fn handle_intrinsic<'tyctx>(
             }
         }
         "abort" => CILRoot::throw("Called abort!"),
-        _ => intrinsic_slow(
-            fn_name,
-            args,
-            destination,
-            tyctx,
-            body,
-            method_instance,
-            call_instance,
-            type_cache,
-            span,
-        ),
+        _ => intrinsic_slow(fn_name, args, destination, ctx, call_instance, span),
     }
 }
 fn intrinsic_slow<'tyctx>(
     fn_name: &str,
     args: &[Spanned<Operand<'tyctx>>],
     destination: &Place<'tyctx>,
-    tyctx: TyCtxt<'tyctx>,
-    body: &'tyctx Body<'tyctx>,
-    method_instance: Instance<'tyctx>,
+    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
     call_instance: Instance<'tyctx>,
-    type_cache: &mut TyCache,
-
     span: rustc_span::Span,
 ) -> CILRoot {
-    let _ = call_instance;
     let _ = span;
 
     if fn_name.contains("likely") {
@@ -1048,28 +754,19 @@ fn intrinsic_slow<'tyctx>(
             "The intrinsic `fn_name` MUST take in exactly 1 argument!"
         );
         // assert_eq!(args.len(),1,"The intrinsic `unlikely` MUST take in exactly 1 argument!");
-        place_set(
-            destination,
-            tyctx,
-            handle_operand(&args[0].node, tyctx, body, method_instance, type_cache),
-            body,
-            method_instance,
-            type_cache,
-        )
+        place_set(destination, handle_operand(&args[0].node, ctx), ctx)
     } else if fn_name.contains("volitale_load") {
-        return volitale_load(args, destination, tyctx, body, method_instance, type_cache);
+        return volitale_load(args, destination, ctx);
     } else if fn_name.contains("is_val_statically_known") {
-        is_val_statically_known(args, destination, tyctx, body, method_instance, type_cache)
+        is_val_statically_known(args, destination, ctx)
     } else if fn_name.contains("typed_swap") {
-        let pointed_ty = crate::utilis::monomorphize(
-            &method_instance,
+        let pointed_ty = ctx.monomorphize(
             call_instance.args[0]
                 .as_type()
                 .expect("needs_drop works only on types!"),
-            tyctx,
         );
-        let tpe = crate::utilis::monomorphize(&method_instance, pointed_ty, tyctx);
-        let tpe = type_cache.type_from_cache(tpe, tyctx, method_instance);
+        let tpe = ctx.monomorphize(pointed_ty);
+        let tpe = ctx.type_from_cache(tpe);
         CILRoot::Call {
             site: Box::new(CallSite::builtin(
                 "swap_at_generic".into(),
@@ -1085,23 +782,11 @@ fn intrinsic_slow<'tyctx>(
             )),
             args: [
                 CILNode::TransmutePtr {
-                    val: Box::new(handle_operand(
-                        &args[0].node,
-                        tyctx,
-                        body,
-                        method_instance,
-                        type_cache,
-                    )),
+                    val: Box::new(handle_operand(&args[0].node, ctx)),
                     new_ptr: Box::new(Type::Ptr(Box::new(Type::Void))),
                 },
                 CILNode::TransmutePtr {
-                    val: Box::new(handle_operand(
-                        &args[1].node,
-                        tyctx,
-                        body,
-                        method_instance,
-                        type_cache,
-                    )),
+                    val: Box::new(handle_operand(&args[1].node, ctx)),
                     new_ptr: Box::new(Type::Ptr(Box::new(Type::Void))),
                 },
                 conv_usize!(size_of!(tpe)),
@@ -1115,11 +800,7 @@ fn intrinsic_slow<'tyctx>(
 fn volitale_load<'tyctx>(
     args: &[Spanned<Operand<'tyctx>>],
     destination: &Place<'tyctx>,
-    tyctx: TyCtxt<'tyctx>,
-    body: &'tyctx Body<'tyctx>,
-    method_instance: Instance<'tyctx>,
-
-    type_cache: &mut TyCache,
+    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
 ) -> CILRoot {
     //TODO:fix volitale prefix!
     debug_assert_eq!(
@@ -1127,34 +808,22 @@ fn volitale_load<'tyctx>(
         1,
         "The intrinsic `volatile_load` MUST take in exactly 1 argument!"
     );
-    let arg = crate::utilis::monomorphize(&method_instance, args[0].node.ty(body, tyctx), tyctx);
+    let arg = ctx.monomorphize(args[0].node.ty(ctx.method(), ctx.tyctx()));
     let arg_ty = arg.builtin_deref(true).unwrap();
-    let arg = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
-    let ops = crate::place::deref_op(arg_ty.into(), tyctx, &method_instance, type_cache, arg);
-    place_set(destination, tyctx, ops, body, method_instance, type_cache)
+    let arg = handle_operand(&args[0].node, ctx);
+    let ops = crate::place::deref_op(arg_ty.into(), ctx, arg);
+    place_set(destination, ops, ctx)
 }
 fn caller_location<'tyctx>(
     destination: &Place<'tyctx>,
-    tyctx: TyCtxt<'tyctx>,
-    body: &'tyctx Body<'tyctx>,
-    method_instance: Instance<'tyctx>,
+    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
     span: rustc_span::Span,
-    type_cache: &mut TyCache,
 ) -> CILRoot {
-    let caller_loc = tyctx.span_as_caller_location(span);
-    let caller_loc_ty = tyctx.caller_location_ty();
+    let caller_loc = ctx.tyctx().span_as_caller_location(span);
+    let caller_loc_ty = ctx.tyctx().caller_location_ty();
     crate::place::place_set(
         destination,
-        tyctx,
-        crate::constant::load_const_value(
-            caller_loc,
-            caller_loc_ty,
-            tyctx,
-            method_instance,
-            type_cache,
-        ),
-        body,
-        method_instance,
-        type_cache,
+        crate::constant::load_const_value(caller_loc, caller_loc_ty, ctx),
+        ctx,
     )
 }

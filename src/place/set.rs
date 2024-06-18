@@ -1,5 +1,6 @@
 use super::{pointed_type, PlaceTy};
 
+use crate::assembly::MethodCompileCtx;
 use crate::r#type::pointer_to_is_fat;
 use cilly::cil_node::CILNode;
 use cilly::{
@@ -38,9 +39,7 @@ pub fn local_set(local: usize, method: &rustc_middle::mir::Body, tree: CILNode) 
 pub fn place_elem_set<'a>(
     place_elem: &PlaceElem<'a>,
     curr_type: PlaceTy<'a>,
-    ctx: TyCtxt<'a>,
-    method_instance: Instance<'a>,
-    type_cache: &mut crate::r#type::TyCache,
+    ctx: &mut MethodCompileCtx<'a, '_, '_>,
     addr_calc: CILNode,
     value_calc: CILNode,
 ) -> CILRoot {
@@ -48,25 +47,13 @@ pub fn place_elem_set<'a>(
         PlaceElem::Deref => {
             let pointed_type = pointed_type(curr_type);
 
-            ptr_set_op(
-                pointed_type.into(),
-                ctx,
-                &method_instance,
-                type_cache,
-                addr_calc,
-                value_calc,
-            )
+            ptr_set_op(pointed_type.into(), ctx, addr_calc, value_calc)
         }
         PlaceElem::Field(field_index, _field_type) => match curr_type {
             PlaceTy::Ty(curr_type) => {
-                let curr_type = crate::utilis::monomorphize(&method_instance, curr_type, ctx);
-                let field_desc = crate::utilis::field_descrptor(
-                    curr_type,
-                    (*field_index).into(),
-                    ctx,
-                    method_instance,
-                    type_cache,
-                );
+                let curr_type = ctx.monomorphize(curr_type);
+                let field_desc =
+                    crate::utilis::field_descrptor(curr_type, (*field_index).into(), ctx);
                 CILRoot::SetField {
                     addr: Box::new(addr_calc),
                     value: Box::new(value_calc),
@@ -74,15 +61,9 @@ pub fn place_elem_set<'a>(
                 }
             }
             super::PlaceTy::EnumVariant(enm, var_idx) => {
-                let enm = crate::utilis::monomorphize(&method_instance, enm, ctx);
-                let field_desc = crate::utilis::enum_field_descriptor(
-                    enm,
-                    field_index.as_u32(),
-                    var_idx,
-                    ctx,
-                    method_instance,
-                    type_cache,
-                );
+                let enm = ctx.monomorphize(enm);
+                let field_desc =
+                    crate::utilis::enum_field_descriptor(enm, field_index.as_u32(), var_idx, ctx);
 
                 CILRoot::SetField {
                     addr: Box::new(addr_calc),
@@ -95,18 +76,12 @@ pub fn place_elem_set<'a>(
             let curr_ty = curr_type
                 .as_ty()
                 .expect("INVALID PLACE: Indexing into enum variant???");
-            let index = crate::place::local_get(
-                index.as_usize(),
-                ctx.optimized_mir(method_instance.def_id()),
-            );
+            let index = crate::place::local_get(index.as_usize(), ctx.method());
             match curr_ty.kind() {
                 TyKind::Slice(inner) => {
-                    let inner = crate::utilis::monomorphize(&method_instance, *inner, ctx);
-                    let inner_type = type_cache.type_from_cache(inner, ctx, method_instance);
-                    let slice = type_cache
-                        .slice_ty(inner, ctx, method_instance)
-                        .as_dotnet()
-                        .unwrap();
+                    let inner = ctx.monomorphize(*inner);
+                    let inner_type = ctx.type_from_cache(inner);
+                    let slice = ctx.slice_ty(inner).as_dotnet().unwrap();
                     let desc = FieldDescriptor::new(
                         slice,
                         Type::Ptr(Type::Void.into()),
@@ -115,8 +90,6 @@ pub fn place_elem_set<'a>(
                     ptr_set_op(
                         super::PlaceTy::Ty(inner),
                         ctx,
-                        &method_instance,
-                        type_cache,
                         CILNode::TransmutePtr {
                             val: Box::new(ld_field!(addr_calc, desc)),
                             new_ptr: Box::new(Type::Ptr(Box::new(inner_type.clone()))),
@@ -125,9 +98,9 @@ pub fn place_elem_set<'a>(
                     )
                 }
                 TyKind::Array(element, _length) => {
-                    let element = crate::utilis::monomorphize(&method_instance, *element, ctx);
-                    let array_type = type_cache.type_from_cache(curr_ty, ctx, method_instance);
-                    let element_type = type_cache.type_from_cache(element, ctx, method_instance);
+                    let element = ctx.monomorphize(*element);
+                    let array_type = ctx.type_from_cache(curr_ty);
+                    let element_type = ctx.type_from_cache(element);
 
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
 
@@ -163,13 +136,10 @@ pub fn place_elem_set<'a>(
 
             match curr_ty.kind() {
                 TyKind::Slice(inner) => {
-                    let inner = crate::utilis::monomorphize(&method_instance, *inner, ctx);
+                    let inner = ctx.monomorphize(*inner);
 
-                    let inner_type = type_cache.type_from_cache(inner, ctx, method_instance);
-                    let slice = type_cache
-                        .slice_ty(inner, ctx, method_instance)
-                        .as_dotnet()
-                        .unwrap();
+                    let inner_type = ctx.type_from_cache(inner);
+                    let slice = ctx.slice_ty(inner).as_dotnet().unwrap();
                     let desc = FieldDescriptor::new(
                         slice.clone(),
                         Type::Ptr(Type::Void.into()),
@@ -188,20 +158,13 @@ pub fn place_elem_set<'a>(
                         ),
                         [conv_usize!(index), ld_field!(addr_calc, metadata),]
                     ) * conv_usize!(CILNode::SizeOf(inner_type.into()));
-                    ptr_set_op(
-                        super::PlaceTy::Ty(inner),
-                        ctx,
-                        &method_instance,
-                        type_cache,
-                        addr,
-                        value_calc,
-                    )
+                    ptr_set_op(super::PlaceTy::Ty(inner), ctx, addr, value_calc)
                 }
                 TyKind::Array(element, _length) => {
                     //println!("WARNING: ConstantIndex has required min_length of {min_length}, but bounds checking on const access not supported yet!");
-                    let element = crate::utilis::monomorphize(&method_instance, *element, ctx);
-                    let element = type_cache.type_from_cache(element, ctx, method_instance);
-                    let array_type = type_cache.type_from_cache(curr_ty, ctx, method_instance);
+                    let element = ctx.monomorphize(*element);
+                    let element = ctx.type_from_cache(element);
+                    let array_type = ctx.type_from_cache(curr_ty);
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
                     CILRoot::Call {
                         site: Box::new(CallSite::new(
@@ -248,9 +211,7 @@ pub fn place_elem_set<'a>(
 /// Returns a set of instructons to set a pointer to a `pointed_type` to a value from the stack.
 pub fn ptr_set_op<'ctx>(
     pointed_type: PlaceTy<'ctx>,
-    tyctx: TyCtxt<'ctx>,
-    method_instance: &Instance<'ctx>,
-    type_cache: &mut crate::r#type::TyCache,
+    ctx: &mut MethodCompileCtx<'ctx, '_, '_>,
     addr_calc: CILNode,
     value_calc: CILNode,
 ) -> CILRoot {
@@ -289,8 +250,7 @@ pub fn ptr_set_op<'ctx>(
             // due to historic reasons(BOOL was an alias for int in early Windows, and it stayed this way.) - FractalFir
             TyKind::Char => CILRoot::STIndI32(addr_calc, value_calc), // always 4 bytes wide: https://doc.rust-lang.org/std/primitive.char.html#representation
             TyKind::Adt(_, _) | TyKind::Tuple(_) | TyKind::Array(_, _) | TyKind::Closure(_, _) => {
-                let pointed_type =
-                    type_cache.type_from_cache(pointed_type, tyctx, *method_instance);
+                let pointed_type = ctx.type_from_cache(pointed_type);
                 CILRoot::STObj {
                     tpe: pointed_type.into(),
                     addr_calc: Box::new(addr_calc),
@@ -298,30 +258,26 @@ pub fn ptr_set_op<'ctx>(
                 }
             }
             TyKind::Ref(_, inner, _) => {
-                if pointer_to_is_fat(*inner, tyctx, *method_instance) {
+                if pointer_to_is_fat(*inner, ctx.tyctx(), ctx.method_instance()) {
                     CILRoot::STObj {
-                        tpe: type_cache
-                            .type_from_cache(pointed_type, tyctx, *method_instance)
-                            .into(),
+                        tpe: ctx.type_from_cache(pointed_type).into(),
                         addr_calc: Box::new(addr_calc),
                         value_calc: Box::new(value_calc),
                     }
                 } else {
-                    let inner = type_cache.type_from_cache(*inner, tyctx, *method_instance);
+                    let inner = ctx.type_from_cache(*inner);
                     CILRoot::STIndPtr(addr_calc, value_calc, Box::new(inner))
                 }
             }
             TyKind::RawPtr(ty, _) => {
-                if pointer_to_is_fat(*ty, tyctx, *method_instance) {
+                if pointer_to_is_fat(*ty, ctx.tyctx(), ctx.method_instance()) {
                     CILRoot::STObj {
-                        tpe: type_cache
-                            .type_from_cache(pointed_type, tyctx, *method_instance)
-                            .into(),
+                        tpe: ctx.type_from_cache(pointed_type).into(),
                         addr_calc: Box::new(addr_calc),
                         value_calc: Box::new(value_calc),
                     }
                 } else {
-                    let inner = type_cache.type_from_cache(*ty, tyctx, *method_instance);
+                    let inner = ctx.type_from_cache(*ty);
                     CILRoot::STIndPtr(addr_calc, value_calc, Box::new(inner))
                 }
             }

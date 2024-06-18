@@ -1,5 +1,6 @@
 // FIXME: This file may contain unnecesary morphize calls.
 
+use crate::assembly::MethodCompileCtx;
 use crate::r#type::pointer_to_is_fat;
 use cilly::cil_node::CILNode;
 use cilly::cil_root::CILRoot;
@@ -15,7 +16,7 @@ mod set;
 pub use adress::*;
 pub use body::*;
 pub use get::*;
-use rustc_middle::ty::{FloatTy, Instance, IntTy, ParamEnv, Ty, TyCtxt, TyKind, UintTy};
+use rustc_middle::ty::{FloatTy, IntTy, Ty, TyKind, UintTy};
 pub use set::*;
 fn slice_head<T>(slice: &[T]) -> (&T, &[T]) {
     assert!(!slice.is_empty());
@@ -66,9 +67,7 @@ fn body_ty_is_by_adress(last_ty: Ty) -> bool {
 /// Given a type `derefed_type`, it retuns a set of instructions to get a value behind a pointer to `derefed_type`.
 pub fn deref_op<'ctx>(
     derefed_type: PlaceTy<'ctx>,
-    tyctx: TyCtxt<'ctx>,
-    method_instance: &Instance<'ctx>,
-    type_cache: &mut crate::r#type::TyCache,
+    ctx: &mut MethodCompileCtx<'ctx, '_, '_>,
     ptr: CILNode,
 ) -> CILNode {
     let ptr = Box::new(ptr);
@@ -112,8 +111,7 @@ pub fn deref_op<'ctx>(
             | TyKind::Array(_, _)
             | TyKind::FnPtr(_)
             | TyKind::Closure(_, _) => {
-                let derefed_type =
-                    type_cache.type_from_cache(derefed_type, tyctx, *method_instance);
+                let derefed_type = ctx.type_from_cache(derefed_type);
 
                 CILNode::LdObj {
                     ptr,
@@ -121,17 +119,13 @@ pub fn deref_op<'ctx>(
                 }
             }
             TyKind::Ref(_, inner, _) => {
-                if pointer_to_is_fat(*inner, tyctx, *method_instance) {
+                if pointer_to_is_fat(*inner, ctx.tyctx(), ctx.method_instance()) {
                     CILNode::LdObj {
                         ptr,
-                        obj: Box::new(type_cache.type_from_cache(
-                            derefed_type,
-                            tyctx,
-                            *method_instance,
-                        )),
+                        obj: Box::new(ctx.type_from_cache(derefed_type)),
                     }
                 } else {
-                    let inner = type_cache.type_from_cache(derefed_type, tyctx, *method_instance);
+                    let inner = ctx.type_from_cache(derefed_type);
                     CILNode::LDIndPtr {
                         ptr,
                         loaded_ptr: Box::new(inner),
@@ -139,17 +133,13 @@ pub fn deref_op<'ctx>(
                 }
             }
             TyKind::RawPtr(typ, _) => {
-                if pointer_to_is_fat(*typ, tyctx, *method_instance) {
+                if pointer_to_is_fat(*typ, ctx.tyctx(), ctx.method_instance()) {
                     CILNode::LdObj {
                         ptr,
-                        obj: Box::new(type_cache.type_from_cache(
-                            derefed_type,
-                            tyctx,
-                            *method_instance,
-                        )),
+                        obj: Box::new(ctx.type_from_cache(derefed_type)),
                     }
                 } else {
-                    let typ = type_cache.type_from_cache(derefed_type, tyctx, *method_instance);
+                    let typ = ctx.type_from_cache(derefed_type);
                     CILNode::LDIndPtr {
                         ptr,
                         loaded_ptr: Box::new(typ),
@@ -166,169 +156,94 @@ pub fn deref_op<'ctx>(
 }
 
 /// Returns the ops for getting the address of a given place.
-pub fn place_adress<'a>(
-    place: &Place<'a>,
-    tyctx: TyCtxt<'a>,
-    method: &rustc_middle::mir::Body<'a>,
-    method_instance: Instance<'a>,
-    type_cache: &mut crate::r#type::TyCache,
-) -> CILNode {
-    let place_ty = place.ty(method, tyctx);
-    let place_ty = crate::utilis::monomorphize(&method_instance, place_ty, tyctx).ty;
+pub fn place_adress<'a>(place: &Place<'a>, ctx: &mut MethodCompileCtx<'a, '_, '_>) -> CILNode {
+    let place_ty = place.ty(ctx.method(), ctx.tyctx());
+    let place_ty = ctx.monomorphize(place_ty).ty;
 
-    let layout = tyctx
-        .layout_of(rustc_middle::ty::ParamEnvAnd {
-            param_env: ParamEnv::reveal_all(),
-            value: place_ty,
-        })
-        .expect("Could not get type layout!");
+    let layout = ctx.layout_of(place_ty);
     if layout.is_zst() {
-        let place_type = type_cache.type_from_cache(place_ty, tyctx, method_instance);
+        let place_type = ctx.type_from_cache(place_ty);
         return CILNode::TransmutePtr {
             val: Box::new(conv_usize!(ldc_u64!(layout.align.pref.bytes()))),
             new_ptr: Box::new(Type::Ptr(Box::new(place_type))),
         };
     }
     if place.projection.is_empty() {
-        local_adress(place.local.as_usize(), method)
+        local_adress(place.local.as_usize(), ctx.method())
     } else {
-        let (mut addr_calc, mut ty) =
-            local_body(place.local.as_usize(), method, tyctx, &method_instance);
+        let (mut addr_calc, mut ty) = local_body(place.local.as_usize(), ctx);
 
-        ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
+        ty = ctx.monomorphize(ty);
         let mut ty = ty.into();
 
         let (head, body) = slice_head(place.projection);
         for elem in body {
-            let (curr_ty, curr_ops) = place_elem_body(
-                elem,
-                ty,
-                tyctx,
-                method_instance,
-                method,
-                type_cache,
-                addr_calc.clone(),
-            );
-            ty = curr_ty.monomorphize(&method_instance, tyctx);
+            let (curr_ty, curr_ops) = place_elem_body(elem, ty, ctx, addr_calc.clone());
+            ty = curr_ty.monomorphize(ctx);
             addr_calc = curr_ops;
         }
 
-        adress::place_elem_adress(
-            head,
-            ty,
-            tyctx,
-            method_instance,
-            method,
-            type_cache,
-            place_ty,
-            addr_calc,
-        )
+        adress::place_elem_adress(head, ty, ctx, place_ty, addr_calc)
     }
 }
 /// Should be only used in certain builit-in features. For unsided types, returns the address of the fat pointer, not the address contained within it.
 pub(crate) fn place_address_raw<'a>(
     place: &Place<'a>,
-    tyctx: TyCtxt<'a>,
-    method: &rustc_middle::mir::Body<'a>,
-    method_instance: Instance<'a>,
-    type_cache: &mut crate::r#type::TyCache,
+    ctx: &mut MethodCompileCtx<'a, '_, '_>,
 ) -> CILNode {
-    let place_ty = place.ty(method, tyctx);
-    let place_ty = crate::utilis::monomorphize(&method_instance, place_ty, tyctx).ty;
+    let place_ty = place.ty(ctx.method(), ctx.tyctx());
+    let place_ty = ctx.monomorphize(place_ty).ty;
 
-    let layout = tyctx
-        .layout_of(rustc_middle::ty::ParamEnvAnd {
-            param_env: ParamEnv::reveal_all(),
-            value: place_ty,
-        })
-        .expect("Could not get type layout!");
+    let layout = ctx.layout_of(place_ty);
     if layout.is_zst() {
         return conv_usize!(ldc_u64!(layout.align.pref.bytes()));
     }
     if place.projection.is_empty() {
-        local_adress(place.local.as_usize(), method)
+        local_adress(place.local.as_usize(), ctx.method())
     } else if place.projection.len() == 1
         && matches!(
             slice_head(place.projection).0,
             rustc_middle::mir::PlaceElem::Deref
         )
     {
-        return local_adress(place.local.as_usize(), method);
+        return local_adress(place.local.as_usize(), ctx.method());
     } else {
-        let (mut addr_calc, mut ty) =
-            local_body(place.local.as_usize(), method, tyctx, &method_instance);
+        let (mut addr_calc, mut ty) = local_body(place.local.as_usize(), ctx);
 
-        ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
+        ty = ctx.monomorphize(ty);
         let mut ty = ty.into();
 
         let (head, body) = slice_head(place.projection);
         for elem in body {
-            let (curr_ty, curr_ops) = place_elem_body(
-                elem,
-                ty,
-                tyctx,
-                method_instance,
-                method,
-                type_cache,
-                addr_calc.clone(),
-            );
-            ty = curr_ty.monomorphize(&method_instance, tyctx);
+            let (curr_ty, curr_ops) = place_elem_body(elem, ty, ctx, addr_calc.clone());
+            ty = curr_ty.monomorphize(ctx);
             addr_calc = curr_ops;
         }
 
-        adress::place_elem_adress(
-            head,
-            ty,
-            tyctx,
-            method_instance,
-            method,
-            type_cache,
-            place_ty,
-            addr_calc,
-        )
+        adress::place_elem_adress(head, ty, ctx, place_ty, addr_calc)
     }
 }
 pub(crate) fn place_set<'tyctx>(
     place: &Place<'tyctx>,
-    tyctx: TyCtxt<'tyctx>,
     value_calc: CILNode,
-    method: &rustc_middle::mir::Body<'tyctx>,
-    method_instance: Instance<'tyctx>,
-    type_cache: &mut crate::r#type::TyCache,
+    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
 ) -> CILRoot {
     if place.projection.is_empty() {
-        set::local_set(place.local.as_usize(), method, value_calc)
+        set::local_set(place.local.as_usize(), ctx.method(), value_calc)
     } else {
-        let (mut addr_calc, ty) =
-            local_body(place.local.as_usize(), method, tyctx, &method_instance);
+        let (mut addr_calc, ty) = local_body(place.local.as_usize(), ctx);
         let mut ty: PlaceTy = ty.into();
-        ty = ty.monomorphize(&method_instance, tyctx);
+        ty = ty.monomorphize(ctx);
 
         let (head, body) = slice_head(place.projection);
         for elem in body {
-            let (curr_ty, curr_ops) = place_elem_body(
-                elem,
-                ty,
-                tyctx,
-                method_instance,
-                method,
-                type_cache,
-                addr_calc,
-            );
-            ty = curr_ty.monomorphize(&method_instance, tyctx);
+            let (curr_ty, curr_ops) = place_elem_body(elem, ty, ctx, addr_calc);
+            ty = curr_ty.monomorphize(ctx);
             addr_calc = curr_ops;
         }
         //
-        ty = ty.monomorphize(&method_instance, tyctx);
-        place_elem_set(
-            head,
-            ty,
-            tyctx,
-            method_instance,
-            type_cache,
-            addr_calc,
-            value_calc,
-        )
+        ty = ty.monomorphize(ctx);
+        place_elem_set(head, ty, ctx, addr_calc, value_calc)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -342,13 +257,10 @@ impl<'ctx> From<Ty<'ctx>> for PlaceTy<'ctx> {
     }
 }
 impl<'ctx> PlaceTy<'ctx> {
-    pub fn monomorphize(&self, method_instance: &Instance<'ctx>, ctx: TyCtxt<'ctx>) -> Self {
+    pub fn monomorphize(&self, ctx: &mut MethodCompileCtx<'ctx, '_, '_>) -> Self {
         match self {
-            Self::Ty(inner) => Self::Ty(crate::utilis::monomorphize(method_instance, *inner, ctx)),
-            Self::EnumVariant(enm, variant) => Self::EnumVariant(
-                crate::utilis::monomorphize(method_instance, *enm, ctx),
-                *variant,
-            ),
+            Self::Ty(inner) => Self::Ty(ctx.monomorphize(*inner)),
+            Self::EnumVariant(enm, variant) => Self::EnumVariant(ctx.monomorphize(*enm), *variant),
         }
     }
     pub fn as_ty(&self) -> Option<Ty<'ctx>> {

@@ -1,4 +1,5 @@
 use crate::{
+    assembly::MethodCompileCtx,
     call_info::CallInfo,
     interop::AssemblyRef,
     operand::operand_address,
@@ -8,12 +9,13 @@ use cilly::{
     call, call_virt,
     cil_node::{CILNode, CallOpArgs},
     cil_root::CILRoot,
-    conv_usize, ld_field, ldc_i32, ldc_u32, size_of,
+    conv_usize, ld_field, ldc_i32, size_of,
 };
 use cilly::{call_site::CallSite, field_desc::FieldDescriptor, fn_sig::FnSig, DotnetTypeRef, Type};
+use rustc_middle::ty::InstanceDef;
 use rustc_middle::{
-    mir::{Body, Operand, Place},
-    ty::{GenericArg, Instance, InstanceDef, ParamEnv, Ty, TyCtxt, TyKind},
+    mir::{Operand, Place},
+    ty::{GenericArg, Instance, ParamEnv, Ty, TyKind},
 };
 use rustc_span::source_map::Spanned;
 fn argc_from_fn_name(function_name: &str, prefix: &str) -> u32 {
@@ -24,30 +26,28 @@ fn argc_from_fn_name(function_name: &str, prefix: &str) -> u32 {
 }
 /// Calls a non-virtual managed function(used for interop)
 fn call_managed<'tyctx>(
-    tyctx: TyCtxt<'tyctx>,
     subst_ref: &[GenericArg<'tyctx>],
     function_name: &str,
     args: &[Spanned<Operand<'tyctx>>],
     destination: &Place<'tyctx>,
-    method: &'tyctx Body<'tyctx>,
-    method_instance: Instance<'tyctx>,
     fn_instance: Instance<'tyctx>,
-    type_cache: &mut crate::r#type::TyCache,
+    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
 ) -> CILRoot {
     let argument_count = argc_from_fn_name(function_name, MANAGED_CALL_FN_NAME);
     //FIXME: figure out the proper argc.
     //assert!(subst_ref.len() as u32 == argc + 3 || subst_ref.len() as u32 == argc + 4);
     assert!(args.len() == argument_count as usize);
-    let asm = AssemblyRef::decode_assembly_ref(subst_ref[0], tyctx);
+    let asm = AssemblyRef::decode_assembly_ref(subst_ref[0], ctx.tyctx());
     let asm = asm.name();
-    let class_name = garg_to_string(subst_ref[1], tyctx);
-    let is_valuetype = crate::utilis::garag_to_bool(subst_ref[2], tyctx);
-    let managed_fn_name = garg_to_string(subst_ref[3], tyctx);
+    let class_name = garg_to_string(subst_ref[1], ctx.tyctx());
+    let is_valuetype = crate::utilis::garag_to_bool(subst_ref[2], ctx.tyctx());
+    let managed_fn_name = garg_to_string(subst_ref[3], ctx.tyctx());
     let mut tpe = DotnetTypeRef::new(asm, class_name);
     tpe.set_valuetype(is_valuetype);
     //eprintln!("tpe:{tpe:?}");
-    let signature = crate::function_sig::sig_from_instance_(fn_instance, tyctx, type_cache)
-        .expect("Can't get the function signature");
+    let signature =
+        crate::function_sig::sig_from_instance_(fn_instance, ctx.tyctx(), ctx.type_cache())
+            .expect("Can't get the function signature");
 
     if argument_count == 0 {
         let ret = crate::r#type::Type::Void;
@@ -63,27 +63,14 @@ fn call_managed<'tyctx>(
                 args: [].into(),
             }
         } else {
-            crate::place::place_set(
-                destination,
-                tyctx,
-                call!(call_site, []),
-                method,
-                method_instance,
-                type_cache,
-            )
+            crate::place::place_set(destination, call!(call_site, []), ctx)
         }
     } else {
-        let is_static = crate::utilis::garag_to_bool(subst_ref[4], tyctx);
+        let is_static = crate::utilis::garag_to_bool(subst_ref[4], ctx.tyctx());
 
         let mut call_args = Vec::new();
         for arg in args {
-            call_args.push(crate::operand::handle_operand(
-                &arg.node,
-                tyctx,
-                method,
-                method_instance,
-                type_cache,
-            ));
+            call_args.push(crate::operand::handle_operand(&arg.node, ctx));
         }
         let call = CallSite::new(
             Some(tpe.clone()),
@@ -97,47 +84,38 @@ fn call_managed<'tyctx>(
                 args: call_args.into(),
             }
         } else {
-            crate::place::place_set(
-                destination,
-                tyctx,
-                call!(call, call_args),
-                method,
-                method_instance,
-                type_cache,
-            )
+            crate::place::place_set(destination, call!(call, call_args), ctx)
         }
     }
 }
 /// Calls a virtual managed function(used for interop)
 fn callvirt_managed<'tyctx>(
-    tyctx: TyCtxt<'tyctx>,
     subst_ref: &[GenericArg<'tyctx>],
     function_name: &str,
     args: &[Spanned<Operand<'tyctx>>],
     destination: &Place<'tyctx>,
-    method: &'tyctx Body<'tyctx>,
-    method_instance: Instance<'tyctx>,
     fn_instance: Instance<'tyctx>,
-    type_cache: &mut crate::r#type::TyCache,
+    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
 ) -> CILRoot {
     let argument_count = argc_from_fn_name(function_name, MANAGED_CALL_VIRT_FN_NAME);
     //assert!(subst_ref.len() as u32 == argc + 3 || subst_ref.len() as u32 == argc + 4);
     assert!(
         u32::try_from(args.len()).expect("More than 2^32 function arguments.") == argument_count
     );
-    let asm = AssemblyRef::decode_assembly_ref(subst_ref[0], tyctx);
+    let asm = AssemblyRef::decode_assembly_ref(subst_ref[0], ctx.tyctx());
     let asm = asm.name();
-    let class_name = garg_to_string(subst_ref[1], tyctx);
-    let is_valuetype = crate::utilis::garag_to_bool(subst_ref[2], tyctx);
+    let class_name = garg_to_string(subst_ref[1], ctx.tyctx());
+    let is_valuetype = crate::utilis::garag_to_bool(subst_ref[2], ctx.tyctx());
 
     let managed_fn_garg = &subst_ref[3];
-    let managed_fn_garg = crate::utilis::monomorphize(&method_instance, *managed_fn_garg, tyctx);
-    let managed_fn_name = garg_to_string(managed_fn_garg, tyctx);
+    let managed_fn_garg = ctx.monomorphize(*managed_fn_garg);
+    let managed_fn_name = garg_to_string(managed_fn_garg, ctx.tyctx());
 
     let mut tpe = DotnetTypeRef::new(asm, class_name);
     tpe.set_valuetype(is_valuetype);
-    let signature = crate::function_sig::sig_from_instance_(fn_instance, tyctx, type_cache)
-        .expect("Can't get the function signature");
+    let signature =
+        crate::function_sig::sig_from_instance_(fn_instance, ctx.tyctx(), ctx.type_cache())
+            .expect("Can't get the function signature");
     if argument_count == 0 {
         let ret = crate::r#type::Type::Void;
         let call = CallSite::new(
@@ -152,27 +130,14 @@ fn callvirt_managed<'tyctx>(
                 args: [].into(),
             }
         } else {
-            crate::place::place_set(
-                destination,
-                tyctx,
-                call_virt!(call, []),
-                method,
-                method_instance,
-                type_cache,
-            )
+            crate::place::place_set(destination, call_virt!(call, []), ctx)
         }
     } else {
-        let is_static = crate::utilis::garag_to_bool(subst_ref[4], tyctx);
+        let is_static = crate::utilis::garag_to_bool(subst_ref[4], ctx.tyctx());
 
         let mut call_args = Vec::new();
         for arg in args {
-            call_args.push(crate::operand::handle_operand(
-                &arg.node,
-                tyctx,
-                method,
-                method_instance,
-                type_cache,
-            ));
+            call_args.push(crate::operand::handle_operand(&arg.node, ctx));
         }
         let call = CallSite::new(
             Some(tpe.clone()),
@@ -186,27 +151,17 @@ fn callvirt_managed<'tyctx>(
                 args: call_args.into(),
             }
         } else {
-            crate::place::place_set(
-                destination,
-                tyctx,
-                call_virt!(call, call_args),
-                method,
-                method_instance,
-                type_cache,
-            )
+            crate::place::place_set(destination, call_virt!(call, call_args), ctx)
         }
     }
 }
 /// Creates a new managed object, and places a reference to it in destination
 fn call_ctor<'tyctx>(
-    tyctx: TyCtxt<'tyctx>,
     subst_ref: &[GenericArg<'tyctx>],
     function_name: &str,
     args: &[Spanned<Operand<'tyctx>>],
     destination: &Place<'tyctx>,
-    method: &'tyctx Body<'tyctx>,
-    method_instance: Instance<'tyctx>,
-    type_cache: &mut crate::r#type::TyCache,
+    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
 ) -> CILRoot {
     let argument_count = argc_from_fn_name(function_name, CTOR_FN_NAME);
     // Check that there are enough function path and argument specifers
@@ -214,19 +169,18 @@ fn call_ctor<'tyctx>(
     // Check that a proper number of arguments is used
     assert!(args.len() == argument_count as usize);
     // Get the name of the assembly the constructed object resides in
-    let asm = AssemblyRef::decode_assembly_ref(subst_ref[0], tyctx);
+    let asm = AssemblyRef::decode_assembly_ref(subst_ref[0], ctx.tyctx());
     let asm = asm.name();
     // Get the name of the constructed object
-    let class_name = garg_to_string(subst_ref[1], tyctx);
+    let class_name = garg_to_string(subst_ref[1], ctx.tyctx());
     // Check if the costructed object is valuetype. TODO: this may be unnecesary. Are valuetpes constructed using newobj?
-    let is_valuetype = crate::utilis::garag_to_bool(subst_ref[2], tyctx);
+    let is_valuetype = crate::utilis::garag_to_bool(subst_ref[2], ctx.tyctx());
     let mut tpe = DotnetTypeRef::new(asm, class_name);
     tpe.set_valuetype(is_valuetype);
     // If no arguments, inputs don't have to be handled, so a simpler call handling is used.
     if argument_count == 0 {
         crate::place::place_set(
             destination,
-            tyctx,
             CILNode::NewObj(Box::new(CallOpArgs {
                 site: CallSite::boxed(
                     Some(tpe.clone()),
@@ -236,20 +190,16 @@ fn call_ctor<'tyctx>(
                 ),
                 args: [].into(),
             })),
-            method,
-            method_instance,
-            type_cache,
+            ctx,
         )
     } else {
         let mut inputs: Vec<_> = subst_ref[3..]
             .iter()
             .map(|ty| {
-                let ty = crate::utilis::monomorphize(&method_instance, *ty, tyctx);
-                type_cache.type_from_cache(
-                    ty.as_type()
+                ctx.type_from_cache(
+                    ctx.monomorphize(*ty)
+                        .as_type()
                         .expect("Expceted generic type but got something that was not a type!"),
-                    tyctx,
-                    method_instance,
                 )
             })
             .collect();
@@ -257,37 +207,25 @@ fn call_ctor<'tyctx>(
         let sig = FnSig::new(inputs, cilly::Type::Void);
         let mut call = Vec::new();
         for arg in args {
-            call.push(crate::operand::handle_operand(
-                &arg.node,
-                tyctx,
-                method,
-                method_instance,
-                type_cache,
-            ));
+            call.push(crate::operand::handle_operand(&arg.node, ctx));
         }
 
         crate::place::place_set(
             destination,
-            tyctx,
             CILNode::NewObj(Box::new(CallOpArgs {
                 site: CallSite::boxed(Some(tpe.clone()), ".ctor".into(), sig, false),
                 args: call.into(),
             })),
-            method,
-            method_instance,
-            type_cache,
+            ctx,
         )
     }
 }
 pub fn call_closure<'tyctx>(
     args: &[Spanned<Operand<'tyctx>>],
     destination: &Place<'tyctx>,
-    tyctx: TyCtxt<'tyctx>,
     sig: FnSig,
-    body: &'tyctx Body<'tyctx>,
     function_name: &str,
-    method_instance: Instance<'tyctx>,
-    type_cache: &mut crate::r#type::TyCache,
+    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
 ) -> CILRoot {
     let last_arg = args
         .last()
@@ -296,26 +234,19 @@ pub fn call_closure<'tyctx>(
     let other_args = &args[..args.len() - 1];
     let mut call_args = Vec::new();
     for arg in other_args {
-        call_args.push(crate::operand::handle_operand(
-            &arg.node,
-            tyctx,
-            body,
-            method_instance,
-            type_cache,
-        ));
+        call_args.push(crate::operand::handle_operand(&arg.node, ctx));
     }
     // "Rust call" is wierd, and not at all optimized for .NET. Passing all the arguments in a tuple is bad for performance and simplicty. Thus, unpacking this tuple and forcing "Rust call" to be
     // "normal" is far easier and better for performance.
-    let last_arg_type =
-        crate::utilis::monomorphize(&method_instance, last_arg.node.ty(body, tyctx), tyctx);
+    let last_arg_type = ctx.monomorphize(last_arg.node.ty(ctx.method(), ctx.tyctx()));
     match last_arg_type.kind() {
         TyKind::Tuple(elements) => {
             if elements.is_empty() {
             } else {
-                let tuple_type = type_cache.type_from_cache(last_arg_type, tyctx, method_instance);
+                let tuple_type = ctx.type_from_cache(last_arg_type);
 
                 for (index, element) in elements.iter().enumerate() {
-                    let element_type = type_cache.type_from_cache(element, tyctx, method_instance);
+                    let element_type = ctx.type_from_cache(element);
                     if element_type == Type::Void {
                         call_args.push(CILNode::TemporaryLocal(Box::new((
                             Type::Void,
@@ -332,13 +263,7 @@ pub fn call_closure<'tyctx>(
                     );
 
                     call_args.push(ld_field!(
-                        crate::operand::handle_operand(
-                            &last_arg.node,
-                            tyctx,
-                            body,
-                            method_instance,
-                            type_cache
-                        ),
+                        crate::operand::handle_operand(&last_arg.node, ctx),
                         field_descriptor
                     ));
                 }
@@ -360,33 +285,23 @@ pub fn call_closure<'tyctx>(
             args: call_args.into(),
         }
     } else {
-        crate::place::place_set(
-            destination,
-            tyctx,
-            call!(call, call_args),
-            body,
-            method_instance,
-            type_cache,
-        )
+        crate::place::place_set(destination, call!(call, call_args), ctx)
     }
 }
 /// Calls `fn_type` with `args`, placing the return value in destination.
 pub fn call<'tyctx>(
     fn_type: Ty<'tyctx>,
-    body: &'tyctx Body<'tyctx>,
-    tyctx: TyCtxt<'tyctx>,
+    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
     args: &[Spanned<Operand<'tyctx>>],
     destination: &Place<'tyctx>,
-    method_instance: Instance<'tyctx>,
-    type_cache: &mut crate::r#type::TyCache,
     span: rustc_span::Span,
 ) -> CILRoot {
-    let fn_type = crate::utilis::monomorphize(&method_instance, fn_type, tyctx);
+    let fn_type = ctx.monomorphize(fn_type);
     let (instance, subst_ref) = if let TyKind::FnDef(def_id, subst_ref) = fn_type.kind() {
-        let subst = crate::utilis::monomorphize(&method_instance, *subst_ref, tyctx);
+        let subst = ctx.monomorphize(*subst_ref);
         let env = ParamEnv::reveal_all();
         let Some(instance) =
-            Instance::resolve(tyctx, env, *def_id, subst).expect("Invalid function def")
+            Instance::resolve(ctx.tyctx(), env, *def_id, subst).expect("Invalid function def")
         else {
             panic!("ERROR: Could not get function instance. fn type:{fn_type:?}")
         };
@@ -397,11 +312,9 @@ pub fn call<'tyctx>(
     };
     if let rustc_middle::ty::InstanceDef::Virtual(_def, fn_idx) = instance.def {
         assert!(!args.is_empty());
-        let fat_ptr_ty =
-            crate::utilis::monomorphize(&method_instance, args[0].node.ty(body, tyctx), tyctx);
-        let fat_ptr_type = type_cache.type_from_cache(fat_ptr_ty, tyctx, method_instance);
-        let fat_ptr_address =
-            operand_address(&args[0].node, tyctx, body, method_instance, type_cache);
+        let fat_ptr_ty = ctx.monomorphize(args[0].node.ty(ctx.method(), ctx.tyctx()));
+        let fat_ptr_type = ctx.type_from_cache(fat_ptr_ty);
+        let fat_ptr_address = operand_address(&args[0].node, ctx);
         let vtable_ptr = ld_field!(
             fat_ptr_address.clone(),
             FieldDescriptor::new(
@@ -433,7 +346,7 @@ pub fn call<'tyctx>(
             )
         );
         // Get the call info
-        let call_info = CallInfo::sig_from_instance_(instance, tyctx, type_cache);
+        let call_info = CallInfo::sig_from_instance_(instance, ctx.tyctx(), ctx.type_cache());
 
         let mut signature = call_info.sig().clone();
         signature.inputs_mut()[0] = Type::Ptr(Box::new(Type::Void));
@@ -445,28 +358,19 @@ pub fn call<'tyctx>(
 
             let other_args = &args[..args.len() - 1];
             for arg in other_args.iter().skip(1) {
-                call_args.push(crate::operand::handle_operand(
-                    &arg.node,
-                    tyctx,
-                    body,
-                    method_instance,
-                    type_cache,
-                ));
+                call_args.push(crate::operand::handle_operand(&arg.node, ctx));
             }
             // "Rust call" is wierd, and not at all optimized for .NET. Passing all the arguments in a tuple is bad for performance and simplicty. Thus, unpacking this tuple and forcing "Rust call" to be
             // "normal" is far easier and better for performance.
-            let last_arg_type =
-                crate::utilis::monomorphize(&method_instance, last_arg.node.ty(body, tyctx), tyctx);
+            let last_arg_type = ctx.monomorphize(last_arg.node.ty(ctx.method(), ctx.tyctx()));
             match last_arg_type.kind() {
                 TyKind::Tuple(elements) => {
                     if elements.is_empty() {
                     } else {
-                        let tuple_type =
-                            type_cache.type_from_cache(last_arg_type, tyctx, method_instance);
+                        let tuple_type = ctx.type_from_cache(last_arg_type);
 
                         for (index, element) in elements.iter().enumerate() {
-                            let element_type =
-                                type_cache.type_from_cache(element, tyctx, method_instance);
+                            let element_type = ctx.type_from_cache(element);
                             if element_type == Type::Void {
                                 call_args.push(CILNode::TemporaryLocal(Box::new((
                                     Type::Void,
@@ -482,13 +386,7 @@ pub fn call<'tyctx>(
                                 tuple_element_name.into(),
                             );
                             call_args.push(ld_field!(
-                                crate::operand::handle_operand(
-                                    &last_arg.node,
-                                    tyctx,
-                                    body,
-                                    method_instance,
-                                    type_cache
-                                ),
+                                crate::operand::handle_operand(&last_arg.node, ctx),
                                 field_descriptor
                             ));
                         }
@@ -498,13 +396,7 @@ pub fn call<'tyctx>(
             }
         } else {
             for arg in args.iter().skip(1) {
-                call_args.push(crate::operand::handle_operand(
-                    &arg.node,
-                    tyctx,
-                    body,
-                    method_instance,
-                    type_cache,
-                ));
+                call_args.push(crate::operand::handle_operand(&arg.node, ctx));
             }
         }
         assert_eq!(
@@ -522,29 +414,23 @@ pub fn call<'tyctx>(
         } else {
             crate::place::place_set(
                 destination,
-                tyctx,
                 CILNode::CallI(Box::new((signature, fn_ptr, call_args.into()))),
-                body,
-                method_instance,
-                type_cache,
+                ctx,
             )
         };
     }
-    let call_info = CallInfo::sig_from_instance_(instance, tyctx, type_cache);
+    let call_info = CallInfo::sig_from_instance_(instance, ctx.tyctx(), ctx.type_cache());
     // SHOULD NOT BE MUTABLE BUT VARIADICS ARE FUCKING WIERD.
 
-    let function_name = crate::utilis::function_name(tyctx.symbol_name(instance));
-    if crate::utilis::is_fn_intrinsic(fn_type, tyctx) {
+    let function_name = crate::utilis::function_name(ctx.tyctx().symbol_name(instance));
+    if crate::utilis::is_fn_intrinsic(fn_type, ctx.tyctx()) {
         return super::intrinsics::handle_intrinsic(
             &function_name,
             args,
             destination,
-            tyctx,
-            body,
-            method_instance,
             instance,
-            type_cache,
             span,
+            ctx,
         );
     }
     let mut signature = call_info.sig().clone();
@@ -555,87 +441,45 @@ pub fn call<'tyctx>(
             "Constructors may not use the `rust_call` calling convention!"
         );
         // Constructor
-        return call_ctor(
-            tyctx,
-            subst_ref,
-            &function_name,
-            args,
-            destination,
-            body,
-            method_instance,
-            type_cache,
-        );
+        return call_ctor(subst_ref, &function_name, args, destination, ctx);
     } else if function_name.contains(MANAGED_CALL_VIRT_FN_NAME) {
         assert!(
             !call_info.split_last_tuple(),
             "Managed virtual calls may not use the `rust_call` calling convention!"
         );
         // Virtual (for interop)
-        return callvirt_managed(
-            tyctx,
-            subst_ref,
-            &function_name,
-            args,
-            destination,
-            body,
-            method_instance,
-            instance,
-            type_cache,
-        );
+        return callvirt_managed(subst_ref, &function_name, args, destination, instance, ctx);
     } else if function_name.contains(MANAGED_CALL_FN_NAME) {
         assert!(
             !call_info.split_last_tuple(),
             "Managed calls may not use the `rust_call` calling convention!"
         );
         // Not-Virtual (for interop)
-        return call_managed(
-            tyctx,
-            subst_ref,
-            &function_name,
-            args,
-            destination,
-            body,
-            method_instance,
-            instance,
-            type_cache,
-        );
+        return call_managed(subst_ref, &function_name, args, destination, instance, ctx);
     }
     if call_info.split_last_tuple() {
-        return call_closure(
-            args,
-            destination,
-            tyctx,
-            signature,
-            body,
-            &function_name,
-            method_instance,
-            type_cache,
-        );
+        return call_closure(args, destination, signature, &function_name, ctx);
     }
 
     let mut call_args = Vec::new();
     for arg in args {
+        let method_instance = ctx.method_instance();
+        let tyctx = ctx.tyctx();
         let res_calc = crate::r#type::tycache::validity_check(
-            crate::operand::handle_operand(&arg.node, tyctx, body, method_instance, type_cache),
-            crate::utilis::monomorphize(&method_instance, arg.node.ty(body, tyctx), tyctx),
-            type_cache,
+            crate::operand::handle_operand(&arg.node, ctx),
+            ctx.monomorphize(arg.node.ty(ctx.method(), ctx.tyctx())),
+            ctx.type_cache(),
             method_instance,
             tyctx,
         );
         call_args.push(res_calc);
     }
-    if crate::function_sig::is_fn_variadic(fn_type, tyctx) {
+    if crate::function_sig::is_fn_variadic(fn_type, ctx.tyctx()) {
         signature.set_inputs(
             args.iter()
                 .map(|operand| {
-                    type_cache.type_from_cache(
-                        crate::utilis::monomorphize(
-                            &method_instance,
-                            operand.node.ty(body, tyctx),
-                            tyctx,
-                        ),
-                        tyctx,
-                        method_instance,
+                    ctx.type_from_cache(
+                        ctx.monomorphize(operand.node.ty(ctx.method(), ctx.tyctx())),
                     )
                 })
                 .collect(),
@@ -668,20 +512,15 @@ pub fn call<'tyctx>(
             args: call_args.into(),
         }
     } else {
+        let method_instance = ctx.method_instance();
+        let tyctx = ctx.tyctx();
         let res_calc = crate::r#type::tycache::validity_check(
             call!(call_site, call_args),
-            crate::utilis::monomorphize(&method_instance, destination.ty(body, tyctx).ty, tyctx),
-            type_cache,
+            ctx.monomorphize(destination.ty(ctx.method(), ctx.tyctx()).ty),
+            ctx.type_cache(),
             method_instance,
             tyctx,
         );
-        crate::place::place_set(
-            destination,
-            tyctx,
-            res_calc,
-            body,
-            method_instance,
-            type_cache,
-        )
+        crate::place::place_set(destination, res_calc, ctx)
     }
 }

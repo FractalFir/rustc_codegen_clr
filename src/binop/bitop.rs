@@ -3,17 +3,15 @@ use rustc_middle::ty::{Instance, IntTy, Ty, TyCtxt, TyKind, UintTy};
 
 use cilly::{and, call, or, xor};
 
-use crate::r#type::TyCache;
+use crate::{assembly::MethodCompileCtx, r#type::TyCache};
 pub fn bit_and_unchecked<'tyctx>(
     ty_a: Ty<'tyctx>,
     ty_b: Ty<'tyctx>,
-    tycache: &mut TyCache,
-    method_instance: &Instance<'tyctx>,
-    tyctx: TyCtxt<'tyctx>,
+    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
     operand_a: CILNode,
     operand_b: CILNode,
 ) -> CILNode {
-    let type_b = tycache.type_from_cache(ty_b, tyctx, *method_instance);
+    let type_b = ctx.type_from_cache(ty_b);
     match ty_a.kind() {
         TyKind::Uint(UintTy::U128) => call!(
             CallSite::boxed(
@@ -45,16 +43,14 @@ pub fn bit_and_unchecked<'tyctx>(
 pub fn bit_or_unchecked<'tyctx>(
     ty_a: Ty<'tyctx>,
     ty_b: Ty<'tyctx>,
-    tycache: &mut TyCache,
-    method_instance: &Instance<'tyctx>,
-    tyctx: TyCtxt<'tyctx>,
+    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
     operand_a: CILNode,
     operand_b: CILNode,
 ) -> CILNode {
     match ty_a.kind() {
         TyKind::Int(IntTy::I128) => {
-            let ty_a = tycache.type_from_cache(ty_a, tyctx, *method_instance);
-            let ty_b = tycache.type_from_cache(ty_b, tyctx, *method_instance);
+            let ty_a = ctx.type_from_cache(ty_a);
+            let ty_b = ctx.type_from_cache(ty_b);
             call!(
                 CallSite::new_extern(
                     DotnetTypeRef::int_128(),
@@ -66,8 +62,8 @@ pub fn bit_or_unchecked<'tyctx>(
             )
         }
         TyKind::Uint(UintTy::U128) => {
-            let ty_a = tycache.type_from_cache(ty_a, tyctx, *method_instance);
-            let ty_b = tycache.type_from_cache(ty_b, tyctx, *method_instance);
+            let ty_a = ctx.type_from_cache(ty_a);
+            let ty_b = ctx.type_from_cache(ty_b);
             call!(
                 CallSite::new_extern(
                     DotnetTypeRef::uint_128(),
@@ -84,16 +80,14 @@ pub fn bit_or_unchecked<'tyctx>(
 pub fn bit_xor_unchecked<'tyctx>(
     ty_a: Ty<'tyctx>,
     ty_b: Ty<'tyctx>,
-    tycache: &mut TyCache,
-    method_instance: &Instance<'tyctx>,
-    tyctx: TyCtxt<'tyctx>,
+    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
     ops_a: CILNode,
     ops_b: CILNode,
 ) -> CILNode {
     match ty_a.kind() {
         TyKind::Int(IntTy::I128) => {
-            let ty_a = tycache.type_from_cache(ty_a, tyctx, *method_instance);
-            let ty_b = tycache.type_from_cache(ty_b, tyctx, *method_instance);
+            let ty_a = ctx.type_from_cache(ty_a);
+            let ty_b = ctx.type_from_cache(ty_b);
             call!(
                 CallSite::new_extern(
                     DotnetTypeRef::int_128(),
@@ -105,8 +99,8 @@ pub fn bit_xor_unchecked<'tyctx>(
             )
         }
         TyKind::Uint(UintTy::U128) => {
-            let ty_a = tycache.type_from_cache(ty_a, tyctx, *method_instance);
-            let ty_b = tycache.type_from_cache(ty_b, tyctx, *method_instance);
+            let ty_a = ctx.type_from_cache(ty_a);
+            let ty_b = ctx.type_from_cache(ty_b);
             call!(
                 CallSite::new_extern(
                     DotnetTypeRef::uint_128(),

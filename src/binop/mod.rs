@@ -7,6 +7,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::{BinOp, Operand};
 use rustc_middle::ty::{Instance, IntTy, List, ParamEnv, Ty, TyCtxt, TyKind, UintTy};
 
+use crate::assembly::MethodCompileCtx;
 use crate::r#type::TyCache;
 use cilly::fn_sig::FnSig;
 
@@ -16,8 +17,7 @@ pub mod cmp;
 pub mod shift;
 use bitop::{bit_and_unchecked, bit_or_unchecked, bit_xor_unchecked};
 use cilly::{
-    call, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8, div, eq, gt_un, lt_un, rem, rem_un,
-    size_of, sub,
+    call, conv_u16, conv_u32, conv_u64, conv_u8, div, eq, gt_un, lt_un, rem, rem_un, size_of, sub,
 };
 
 use cmp::{eq_unchecked, gt_unchecked, lt_unchecked, ne_unchecked};
@@ -29,66 +29,45 @@ pub(crate) fn binop<'tyctx>(
     binop: BinOp,
     operand_a: &Operand<'tyctx>,
     operand_b: &Operand<'tyctx>,
-    tyctx: TyCtxt<'tyctx>,
-    method: &rustc_middle::mir::Body<'tyctx>,
-    method_instance: Instance<'tyctx>,
-    tycache: &mut TyCache,
+    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
 ) -> CILNode {
-    let ops_a = crate::operand::handle_operand(operand_a, tyctx, method, method_instance, tycache);
-    let ops_b = crate::operand::handle_operand(operand_b, tyctx, method, method_instance, tycache);
-    let ty_a = operand_a.ty(&method.local_decls, tyctx);
-    let ty_b = operand_b.ty(&method.local_decls, tyctx);
+    let ops_a = crate::operand::handle_operand(operand_a, ctx);
+    let ops_b = crate::operand::handle_operand(operand_b, ctx);
+    let ty_a = operand_a.ty(&ctx.method().local_decls, ctx.tyctx());
+    let ty_b = operand_b.ty(&ctx.method().local_decls, ctx.tyctx());
     match binop {
         BinOp::AddWithOverflow => {
             if ty_a.is_signed() {
-                add_signed(&ops_a, &ops_b, ty_a, tyctx, method_instance, tycache)
+                add_signed(&ops_a, &ops_b, ty_a, ctx)
             } else {
-                add_unsigned(&ops_a, &ops_b, ty_a, tyctx, method_instance, tycache)
+                add_unsigned(&ops_a, &ops_b, ty_a, ctx)
             }
         }
-        BinOp::Add | BinOp::AddUnchecked => {
-            add_unchecked(ty_a, ty_b, tyctx, &method_instance, tycache, ops_a, ops_b)
-        }
+        BinOp::Add | BinOp::AddUnchecked => add_unchecked(ty_a, ty_b, ctx, ops_a, ops_b),
         BinOp::SubWithOverflow => {
             if ty_a.is_signed() {
-                sub_signed(&ops_a, &ops_b, ty_a, tyctx, method_instance, tycache)
+                sub_signed(&ops_a, &ops_b, ty_a, ctx)
             } else {
-                sub_unsigned(&ops_a, &ops_b, ty_a, tyctx, method_instance, tycache)
+                sub_unsigned(&ops_a, &ops_b, ty_a, ctx)
             }
         }
-        BinOp::Sub | BinOp::SubUnchecked => {
-            sub_unchecked(ty_a, ty_b, tyctx, &method_instance, tycache, ops_a, ops_b)
-        }
+        BinOp::Sub | BinOp::SubUnchecked => sub_unchecked(ty_a, ty_b, ctx, ops_a, ops_b),
         BinOp::Ne => ne_unchecked(ty_a, ops_a, ops_b),
         BinOp::Eq => eq_unchecked(ty_a, ops_a, ops_b),
         BinOp::Lt => lt_unchecked(ty_a, ops_a, ops_b),
         BinOp::Gt => gt_unchecked(ty_a, ops_a, ops_b),
-        BinOp::BitAnd => {
-            bit_and_unchecked(ty_a, ty_b, tycache, &method_instance, tyctx, ops_a, ops_b)
-        }
-        BinOp::BitOr => {
-            bit_or_unchecked(ty_a, ty_b, tycache, &method_instance, tyctx, ops_a, ops_b)
-        }
-        BinOp::BitXor => {
-            bit_xor_unchecked(ty_a, ty_b, tycache, &method_instance, tyctx, ops_a, ops_b)
-        }
-        BinOp::Rem => rem_unchecked(ty_a, ty_b, tycache, &method_instance, tyctx, ops_a, ops_b),
-        BinOp::Shl => shl_checked(ty_a, ty_b, tycache, &method_instance, tyctx, ops_a, ops_b),
-        BinOp::ShlUnchecked => {
-            shl_unchecked(ty_a, ty_b, tycache, &method_instance, tyctx, ops_a, ops_b)
-        }
-        BinOp::Shr => shr_checked(ty_a, ty_b, tycache, &method_instance, tyctx, ops_a, ops_b),
-        BinOp::ShrUnchecked => {
-            shr_unchecked(ty_a, ty_b, tycache, &method_instance, tyctx, ops_a, ops_b)
-        }
+        BinOp::BitAnd => bit_and_unchecked(ty_a, ty_b, ctx, ops_a, ops_b),
+        BinOp::BitOr => bit_or_unchecked(ty_a, ty_b, ctx, ops_a, ops_b),
+        BinOp::BitXor => bit_xor_unchecked(ty_a, ty_b, ctx, ops_a, ops_b),
+        BinOp::Rem => rem_unchecked(ty_a, ty_b, ctx, ops_a, ops_b),
+        BinOp::Shl => shl_checked(ty_a, ty_b, ctx, ops_a, ops_b),
+        BinOp::ShlUnchecked => shl_unchecked(ty_a, ty_b, ctx, ops_a, ops_b),
+        BinOp::Shr => shr_checked(ty_a, ty_b, ctx, ops_a, ops_b),
+        BinOp::ShrUnchecked => shr_unchecked(ty_a, ty_b, ctx, ops_a, ops_b),
 
-        BinOp::Mul | BinOp::MulUnchecked => {
-            mul_unchecked(ty_a, ty_b, tycache, &method_instance, tyctx, ops_a, ops_b)
-        }
-        BinOp::MulWithOverflow => {
-            checked::mul(&ops_a, &ops_b, ty_a, tyctx, method_instance, tycache)
-        }
-        BinOp::Div => div_unchecked(ty_a, ty_b, tycache, &method_instance, tyctx, ops_a, ops_b),
+        BinOp::Mul | BinOp::MulUnchecked => mul_unchecked(ty_a, ty_b, ctx, ops_a, ops_b),
+        BinOp::MulWithOverflow => checked::mul(&ops_a, &ops_b, ty_a, ctx),
+        BinOp::Div => div_unchecked(ty_a, ty_b, ctx, ops_a, ops_b),
 
         BinOp::Ge => match ty_a.kind() {
             // Unordered, to handle NaNs propely
@@ -106,22 +85,23 @@ pub(crate) fn binop<'tyctx>(
             } else {
                 todo!("Can't offset pointer of type {ty_a:?}");
             };
-            let pointed_ty = crate::utilis::monomorphize(&method_instance, pointed_ty, tyctx);
-            let pointed_ty = Box::new(tycache.type_from_cache(pointed_ty, tyctx, method_instance));
-            let offset_tpe = tycache.type_from_cache(ty_b, tyctx, method_instance);
+            let pointed_ty = ctx.monomorphize(pointed_ty);
+            let pointed_ty = Box::new(ctx.type_from_cache(pointed_ty));
+            let offset_tpe = ctx.type_from_cache(ty_b);
             ops_a + ops_b * crate::casts::int_to_int(Type::U64, &offset_tpe, size_of!(pointed_ty))
         }
         BinOp::Cmp => {
-            let ordering = tyctx
+            let ordering = ctx
+                .tyctx()
                 .get_lang_items(())
                 .get(LangItem::OrderingEnum)
                 .unwrap();
             let ordering =
-                Instance::resolve(tyctx, ParamEnv::reveal_all(), ordering, List::empty())
+                Instance::resolve(ctx.tyctx(), ParamEnv::reveal_all(), ordering, List::empty())
                     .unwrap()
                     .unwrap();
-            let ordering_ty = ordering.ty(tyctx, ParamEnv::reveal_all());
-            let ordering_type = tycache.type_from_cache(ordering_ty, tyctx, method_instance);
+            let ordering_ty = ordering.ty(ctx.tyctx(), ParamEnv::reveal_all());
+            let ordering_type = ctx.type_from_cache(ordering_ty);
             let lt = -lt_unchecked(ty_a, ops_a.clone(), ops_b.clone());
             let gt = gt_unchecked(ty_a, ops_a, ops_b);
             let res = conv_i8!(lt | gt);
@@ -146,17 +126,15 @@ pub(crate) fn binop<'tyctx>(
 pub fn add_unchecked<'tyctx>(
     ty_a: Ty<'tyctx>,
     ty_b: Ty<'tyctx>,
-    tyctx: TyCtxt<'tyctx>,
-    method_instance: &Instance<'tyctx>,
-    tycache: &mut TyCache,
+    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
     ops_a: CILNode,
     ops_b: CILNode,
 ) -> CILNode {
     match ty_a.kind() {
         TyKind::Int(int_ty) => {
             if let IntTy::I128 = int_ty {
-                let ty_a = tycache.type_from_cache(ty_a, tyctx, *method_instance);
-                let ty_b = tycache.type_from_cache(ty_b, tyctx, *method_instance);
+                let ty_a = ctx.type_from_cache(ty_a);
+                let ty_b = ctx.type_from_cache(ty_b);
                 call!(
                     CallSite::new_extern(
                         DotnetTypeRef::int_128(),
@@ -172,8 +150,8 @@ pub fn add_unchecked<'tyctx>(
         }
         TyKind::Uint(uint_ty) => {
             if let UintTy::U128 = uint_ty {
-                let ty_a = tycache.type_from_cache(ty_a, tyctx, *method_instance);
-                let ty_b = tycache.type_from_cache(ty_b, tyctx, *method_instance);
+                let ty_a = ctx.type_from_cache(ty_a);
+                let ty_b = ctx.type_from_cache(ty_b);
                 call!(
                     CallSite::new_extern(
                         DotnetTypeRef::uint_128(),
@@ -201,17 +179,15 @@ pub fn add_unchecked<'tyctx>(
 pub fn sub_unchecked<'tyctx>(
     ty_a: Ty<'tyctx>,
     ty_b: Ty<'tyctx>,
-    tyctx: TyCtxt<'tyctx>,
-    method_instance: &Instance<'tyctx>,
-    tycache: &mut TyCache,
+    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
     ops_a: CILNode,
     ops_b: CILNode,
 ) -> CILNode {
     match ty_a.kind() {
         TyKind::Int(int_ty) => {
             if let IntTy::I128 = int_ty {
-                let ty_a = tycache.type_from_cache(ty_a, tyctx, *method_instance);
-                let ty_b = tycache.type_from_cache(ty_b, tyctx, *method_instance);
+                let ty_a = ctx.type_from_cache(ty_a);
+                let ty_b = ctx.type_from_cache(ty_b);
                 call!(
                     CallSite::new_extern(
                         DotnetTypeRef::int_128(),
@@ -227,8 +203,8 @@ pub fn sub_unchecked<'tyctx>(
         }
         TyKind::Uint(uint_ty) => {
             if let UintTy::U128 = uint_ty {
-                let ty_a = tycache.type_from_cache(ty_a, tyctx, *method_instance);
-                let ty_b = tycache.type_from_cache(ty_b, tyctx, *method_instance);
+                let ty_a = ctx.type_from_cache(ty_a);
+                let ty_b = ctx.type_from_cache(ty_b);
                 call!(
                     CallSite::new_extern(
                         DotnetTypeRef::uint_128(),
@@ -250,16 +226,14 @@ pub fn sub_unchecked<'tyctx>(
 fn rem_unchecked<'tyctx>(
     ty_a: Ty<'tyctx>,
     ty_b: Ty<'tyctx>,
-    tycache: &mut TyCache,
-    method_instance: &Instance<'tyctx>,
-    tyctx: TyCtxt<'tyctx>,
+    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
     ops_a: CILNode,
     ops_b: CILNode,
 ) -> CILNode {
     match ty_a.kind() {
         TyKind::Int(IntTy::I128) => {
-            let ty_a = tycache.type_from_cache(ty_a, tyctx, *method_instance);
-            let ty_b = tycache.type_from_cache(ty_b, tyctx, *method_instance);
+            let ty_a = ctx.type_from_cache(ty_a);
+            let ty_b = ctx.type_from_cache(ty_b);
             call!(
                 CallSite::new_extern(
                     DotnetTypeRef::int_128(),
@@ -271,8 +245,8 @@ fn rem_unchecked<'tyctx>(
             )
         }
         TyKind::Uint(UintTy::U128) => {
-            let ty_a = tycache.type_from_cache(ty_a, tyctx, *method_instance);
-            let ty_b = tycache.type_from_cache(ty_b, tyctx, *method_instance);
+            let ty_a = ctx.type_from_cache(ty_a);
+            let ty_b = ctx.type_from_cache(ty_b);
             call!(
                 CallSite::new_extern(
                     DotnetTypeRef::uint_128(),
@@ -293,16 +267,14 @@ fn rem_unchecked<'tyctx>(
 fn mul_unchecked<'tyctx>(
     ty_a: Ty<'tyctx>,
     ty_b: Ty<'tyctx>,
-    tycache: &mut TyCache,
-    method_instance: &Instance<'tyctx>,
-    tyctx: TyCtxt<'tyctx>,
+    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
     operand_a: CILNode,
     operand_b: CILNode,
 ) -> CILNode {
     match ty_a.kind() {
         TyKind::Int(IntTy::I128) => {
-            let ty_a = tycache.type_from_cache(ty_a, tyctx, *method_instance);
-            let ty_b = tycache.type_from_cache(ty_b, tyctx, *method_instance);
+            let ty_a = ctx.type_from_cache(ty_a);
+            let ty_b = ctx.type_from_cache(ty_b);
             call!(
                 CallSite::new_extern(
                     DotnetTypeRef::int_128(),
@@ -314,8 +286,8 @@ fn mul_unchecked<'tyctx>(
             )
         }
         TyKind::Uint(UintTy::U128) => {
-            let ty_a = tycache.type_from_cache(ty_a, tyctx, *method_instance);
-            let ty_b = tycache.type_from_cache(ty_b, tyctx, *method_instance);
+            let ty_a = ctx.type_from_cache(ty_a);
+            let ty_b = ctx.type_from_cache(ty_b);
             call!(
                 CallSite::new_extern(
                     DotnetTypeRef::uint_128(),
@@ -332,16 +304,14 @@ fn mul_unchecked<'tyctx>(
 fn div_unchecked<'tyctx>(
     ty_a: Ty<'tyctx>,
     ty_b: Ty<'tyctx>,
-    tycache: &mut TyCache,
-    method_instance: &Instance<'tyctx>,
-    tyctx: TyCtxt<'tyctx>,
+    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
     operand_a: CILNode,
     operand_b: CILNode,
 ) -> CILNode {
     match ty_a.kind() {
         TyKind::Int(IntTy::I128) => {
-            let ty_a = tycache.type_from_cache(ty_a, tyctx, *method_instance);
-            let ty_b = tycache.type_from_cache(ty_b, tyctx, *method_instance);
+            let ty_a = ctx.type_from_cache(ty_a);
+            let ty_b = ctx.type_from_cache(ty_b);
             call!(
                 CallSite::new_extern(
                     DotnetTypeRef::int_128(),
@@ -353,8 +323,8 @@ fn div_unchecked<'tyctx>(
             )
         }
         TyKind::Uint(UintTy::U128) => {
-            let ty_a = tycache.type_from_cache(ty_a, tyctx, *method_instance);
-            let ty_b = tycache.type_from_cache(ty_b, tyctx, *method_instance);
+            let ty_a = ctx.type_from_cache(ty_a);
+            let ty_b = ctx.type_from_cache(ty_b);
             call!(
                 CallSite::new_extern(
                     DotnetTypeRef::uint_128(),

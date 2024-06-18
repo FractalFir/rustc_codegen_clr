@@ -1,15 +1,15 @@
+use crate::assembly::MethodCompileCtx;
 use crate::operand::handle_operand;
 
 use cilly::cil_node::CILNode;
 use cilly::cil_root::CILRoot;
 use cilly::{conv_usize, ld_field, ld_field_address, ldc_u64};
 
-use crate::r#type::TyCache;
 use cilly::field_desc::FieldDescriptor;
 use cilly::{DotnetTypeRef, Type};
 use rustc_middle::{
     mir::Operand,
-    ty::{Instance, Ty, TyCtxt, TyKind},
+    ty::{Ty, TyKind},
 };
 struct UnsizeInfo<'tyctx> {
     /// Type the source pointer points to
@@ -21,76 +21,52 @@ struct UnsizeInfo<'tyctx> {
 }
 impl<'tyctx> UnsizeInfo<'tyctx> {
     pub fn for_unsize(
-        tyctx: TyCtxt<'tyctx>,
-        method: &rustc_middle::mir::Body<'tyctx>,
-        method_instance: Instance<'tyctx>,
-        tycache: &mut TyCache,
+        ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
         operand: &Operand<'tyctx>,
         target: Ty<'tyctx>,
     ) -> Self {
         // Get the monomorphized source and target type
-        let target = crate::utilis::monomorphize(&method_instance, target, tyctx);
-        let source =
-            crate::utilis::monomorphize(&method_instance, operand.ty(method, tyctx), tyctx);
+        let target = ctx.monomorphize(target);
+        let source = ctx.monomorphize(operand.ty(ctx.method(), ctx.tyctx()));
         // Get the source and target types as .NET types
-        let source_type = tycache.type_from_cache(source, tyctx, method_instance);
-        let target_type = tycache.type_from_cache(target, tyctx, method_instance);
+        let source_type = ctx.type_from_cache(source);
+        let target_type = ctx.type_from_cache(target);
         // Get the target type as a fat pointer.
         let target_dotnet = target_type.as_dotnet().unwrap();
-        let mut sized_ptr = handle_operand(operand, tyctx, method, method_instance, tycache);
+        let mut sized_ptr = handle_operand(operand, ctx);
         // Unsizing a box
         if target.is_box() && source.is_box() {
             // 1. Get Unqiue<Source> from Box<Source>
-            let unique_desc =
-                crate::utilis::field_descrptor(source, 0, tyctx, method_instance, tycache);
+            let unique_desc = crate::utilis::field_descrptor(source, 0, ctx);
             let source_ptr = ld_field!(sized_ptr, unique_desc);
             // 2. Get NonNull<Source> from Unuqie<Source>
             let unique_adt = crate::utilis::as_adt(source).unwrap();
             let unique_ty = unique_adt.0.all_fields().nth(0).unwrap();
-            let non_null_ptr_desc = crate::utilis::field_descrptor(
-                unique_ty.ty(tyctx, unique_adt.1),
-                0,
-                tyctx,
-                method_instance,
-                tycache,
-            );
+            let non_null_ptr_desc =
+                crate::utilis::field_descrptor(unique_ty.ty(ctx.tyctx(), unique_adt.1), 0, ctx);
             let source_ptr = ld_field!(source_ptr, non_null_ptr_desc.clone());
             // 3. Get Source* from NonNull<Source>
-            let non_null_adt = crate::utilis::as_adt(unique_ty.ty(tyctx, unique_adt.1)).unwrap();
+            let non_null_adt =
+                crate::utilis::as_adt(unique_ty.ty(ctx.tyctx(), unique_adt.1)).unwrap();
             let non_null_ty = non_null_adt.0.all_fields().nth(0).unwrap();
-            let source_ptr_desc = crate::utilis::field_descrptor(
-                non_null_ty.ty(tyctx, unique_adt.1),
-                0,
-                tyctx,
-                method_instance,
-                tycache,
-            );
+            let source_ptr_desc =
+                crate::utilis::field_descrptor(non_null_ty.ty(ctx.tyctx(), unique_adt.1), 0, ctx);
             let source_ptr = ld_field!(source_ptr, source_ptr_desc.clone());
             // 4. Get Unique<Target> from Box<Target>
-            let unique_desc =
-                crate::utilis::field_descrptor(target, 0, tyctx, method_instance, tycache);
+            let unique_desc = crate::utilis::field_descrptor(target, 0, ctx);
             let target_ptr = ld_field_address!(CILNode::LoadAddresOfTMPLocal, unique_desc);
             // 5. Get NonNull<Target>  from Unique<Target>
             let unique_adt = crate::utilis::as_adt(target).unwrap();
             let unique_ty = unique_adt.0.all_fields().nth(0).unwrap();
-            let target_ptr_desc = crate::utilis::field_descrptor(
-                unique_ty.ty(tyctx, unique_adt.1),
-                0,
-                tyctx,
-                method_instance,
-                tycache,
-            );
+            let target_ptr_desc =
+                crate::utilis::field_descrptor(unique_ty.ty(ctx.tyctx(), unique_adt.1), 0, ctx);
             let target_ptr = ld_field_address!(target_ptr, target_ptr_desc);
             // 6. Get Target* from NonNull<Target>
-            let non_null_adt = crate::utilis::as_adt(unique_ty.ty(tyctx, unique_adt.1)).unwrap();
+            let non_null_adt =
+                crate::utilis::as_adt(unique_ty.ty(ctx.tyctx(), unique_adt.1)).unwrap();
             let non_null_ty = non_null_adt.0.all_fields().nth(0).unwrap();
-            let non_null_ptr_desc = crate::utilis::field_descrptor(
-                non_null_ty.ty(tyctx, non_null_adt.1),
-                0,
-                tyctx,
-                method_instance,
-                tycache,
-            );
+            let non_null_ptr_desc =
+                crate::utilis::field_descrptor(non_null_ty.ty(ctx.tyctx(), non_null_adt.1), 0, ctx);
             let target_ptr = ld_field_address!(target_ptr, non_null_ptr_desc.clone());
             // 7. Set the target->metatdata = len and target->ptr = source->ptr
             let derefed_source = source.boxed_ty();
@@ -109,13 +85,7 @@ impl<'tyctx> UnsizeInfo<'tyctx> {
                 TyKind::Adt(_, _) => {
                     if source.is_box() {
                         let inner = source.boxed_ty();
-                        let field_descriptor = crate::utilis::field_descrptor(
-                            source,
-                            0,
-                            tyctx,
-                            method_instance,
-                            tycache,
-                        );
+                        let field_descriptor = crate::utilis::field_descrptor(source, 0, ctx);
                         sized_ptr = CILNode::TemporaryLocal(Box::new((
                             source_type,
                             [CILRoot::SetTMPLocal { value: sized_ptr }].into(),
@@ -141,14 +111,11 @@ impl<'tyctx> UnsizeInfo<'tyctx> {
 
 /// Preforms an unsizing cast on operand `operand`, converting it to the `target` type.
 pub fn unsize<'tyctx>(
-    tyctx: TyCtxt<'tyctx>,
-    method: &rustc_middle::mir::Body<'tyctx>,
-    method_instance: Instance<'tyctx>,
-    tycache: &mut TyCache,
+    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
     operand: &Operand<'tyctx>,
     target: Ty<'tyctx>,
 ) -> CILNode {
-    let info = UnsizeInfo::for_unsize(tyctx, method, method_instance, tycache, operand, target);
+    let info = UnsizeInfo::for_unsize(ctx, operand, target);
     let src_points_to = info.source_points_to;
     let target_points_to = target.builtin_deref(true).unwrap();
     match (src_points_to.kind(), target_points_to.kind()) {
@@ -200,7 +167,9 @@ pub fn unsize<'tyctx>(
                     CILNode::LoadTMPLocal,
                 )));
             }
-            let vptr_entry_idx = tyctx.supertrait_vtable_slot((operand.ty(method, tyctx), target));
+            let vptr_entry_idx = ctx
+                .tyctx()
+                .supertrait_vtable_slot((operand.ty(ctx.method(), ctx.tyctx()), target));
             if let Some(entry_idx) = vptr_entry_idx {
                 todo!("dyn to dyn cats not yet supported. src_points_to:{src_points_to:?} target_points_to:{target_points_to:?} entry_idx:{entry_idx:?}")
             } else {
@@ -221,7 +190,9 @@ pub fn unsize<'tyctx>(
             }
         }
         (_, TyKind::Dynamic(data, _, _dyn_kind)) => {
-            let alloc_id = tyctx.vtable_allocation((info.source_points_to, data.principal()));
+            let alloc_id = ctx
+                .tyctx()
+                .vtable_allocation((info.source_points_to, data.principal()));
             let metadata_field =
                 FieldDescriptor::new(info.target_dotnet.clone(), Type::USize, "metadata".into());
             let ptr_field = FieldDescriptor::new(

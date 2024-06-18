@@ -13,7 +13,7 @@ pub fn is_function_magic(name: &str) -> bool {
     name.contains(CTOR_FN_NAME) || name.contains(MANAGED_CALL_FN_NAME)
 }
 
-use crate::{r#type::TyCache, IString};
+use crate::{assembly::MethodCompileCtx, r#type::TyCache, IString};
 pub mod adt;
 pub fn as_adt(ty: Ty) -> Option<(AdtDef, &List<GenericArg>)> {
     match ty.kind() {
@@ -114,9 +114,7 @@ pub fn enum_field_descriptor<'ctx>(
     owner_ty: Ty<'ctx>,
     field_idx: u32,
     variant_idx: u32,
-    ctx: TyCtxt<'ctx>,
-    method_instance: Instance<'ctx>,
-    type_cache: &mut TyCache,
+    ctx: &mut MethodCompileCtx<'ctx, '_, '_>,
 ) -> FieldDescriptor {
     let (adt, subst) = as_adt(owner_ty).expect("Tried to get a field of a non ADT or tuple type!");
     let variant = adt
@@ -135,11 +133,11 @@ pub fn enum_field_descriptor<'ctx>(
         fname = crate::r#type::escape_field_name(&field.name.to_string())
     )
     .into();
-    let field_ty = field.ty(ctx, subst);
-    let field_ty = crate::utilis::monomorphize(&method_instance, field_ty, ctx);
-    let field_ty = type_cache.type_from_cache(field_ty, ctx, method_instance);
-    let owner_ty = type_cache
-        .type_from_cache(owner_ty, ctx, method_instance)
+    let field_ty = field.ty(ctx.tyctx(), subst);
+    let field_ty = ctx.monomorphize(field_ty);
+    let field_ty = ctx.type_from_cache(field_ty);
+    let owner_ty = ctx
+        .type_from_cache(owner_ty)
         .as_dotnet()
         .expect("Error: tried to set a field of a non-object type!");
 
@@ -148,21 +146,19 @@ pub fn enum_field_descriptor<'ctx>(
 pub fn field_descrptor<'tyctx>(
     owner_ty: Ty<'tyctx>,
     field_idx: u32,
-    tyctx: TyCtxt<'tyctx>,
-    method_instance: Instance<'tyctx>,
-    type_cache: &mut TyCache,
+    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
 ) -> FieldDescriptor {
     if let TyKind::Tuple(elements) = owner_ty.kind() {
         let element = elements[field_idx as usize];
-        let element = monomorphize(&method_instance, element, tyctx);
-        let element = type_cache.type_from_cache(element, tyctx, method_instance);
+        let element = ctx.monomorphize(element);
+        let element = ctx.type_from_cache(element);
         return FieldDescriptor::new(
             crate::r#type::simple_tuple(
                 &elements
                     .iter()
                     .map(|tpe| {
-                        let tpe = crate::utilis::monomorphize(&method_instance, tpe, tyctx);
-                        type_cache.type_from_cache(tpe, tyctx, method_instance)
+                        let tpe = ctx.monomorphize(tpe);
+                        ctx.type_from_cache(tpe)
                     })
                     .collect::<Vec<_>>(),
             ),
@@ -176,10 +172,10 @@ pub fn field_descrptor<'tyctx>(
             .iter()
             .nth(field_idx as usize)
             .expect("Could not find closure fields!");
-        let field_type = crate::utilis::monomorphize(&method_instance, field_type, tyctx);
-        let field_type = type_cache.type_from_cache(field_type, tyctx, method_instance);
-        let owner_ty = crate::utilis::monomorphize(&method_instance, owner_ty, tyctx);
-        let owner_type = type_cache.type_from_cache(owner_ty, tyctx, method_instance);
+        let field_type = ctx.monomorphize(field_type);
+        let field_type = ctx.type_from_cache(field_type);
+        let owner_ty = ctx.monomorphize(owner_ty);
+        let owner_type = ctx.type_from_cache(owner_ty);
         let field_name = format!("f_{field_idx}").into();
         return FieldDescriptor::new(
             owner_type.as_dotnet().expect("Closure type invalid!"),
@@ -193,11 +189,11 @@ pub fn field_descrptor<'tyctx>(
         .nth(field_idx as usize)
         .expect("No field with provided index!");
     let field_name = crate::r#type::escape_field_name(&field.name.to_string());
-    let field_ty = field.ty(tyctx, subst);
-    let field_ty = crate::utilis::monomorphize(&method_instance, field_ty, tyctx);
-    let field_ty = type_cache.type_from_cache(field_ty, tyctx, method_instance);
-    let owner_ty = type_cache
-        .type_from_cache(owner_ty, tyctx, method_instance)
+    let field_ty = field.ty(ctx.tyctx(), subst);
+    let field_ty = ctx.monomorphize(field_ty);
+    let field_ty = ctx.type_from_cache(field_ty);
+    let owner_ty = ctx
+        .type_from_cache(owner_ty)
         .as_dotnet()
         .expect("Error: tried to set a field of a non-object type!");
     FieldDescriptor::new(owner_ty, field_ty, field_name)

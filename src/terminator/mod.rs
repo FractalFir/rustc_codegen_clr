@@ -1,4 +1,4 @@
-use crate::place::place_set;
+use crate::{assembly::MethodCompileCtx, place::place_set};
 use cilly::{
     call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, cil_tree::CILTree,
     field_desc::FieldDescriptor, ld_field, FnSig, Type,
@@ -16,11 +16,7 @@ mod call;
 mod intrinsics;
 pub fn handle_call_terminator<'tycxt>(
     terminator: &Terminator<'tycxt>,
-    body: &'tycxt Body<'tycxt>,
-    tyctx: TyCtxt<'tycxt>,
-    method: &rustc_middle::mir::Body<'tycxt>,
-    method_instance: Instance<'tycxt>,
-    type_cache: &mut crate::r#type::TyCache,
+    ctx: &mut MethodCompileCtx<'tycxt, '_, '_>,
     args: &[Spanned<Operand<'tycxt>>],
     destination: &Place<'tycxt>,
     func: &Operand<'tycxt>,
@@ -31,7 +27,7 @@ pub fn handle_call_terminator<'tycxt>(
     let func_ty = match func {
         Operand::Constant(fn_const) => fn_const.ty(),
         Operand::Copy(called) | Operand::Move(called) => {
-            called.ty(method, tyctx).ty
+            called.ty(ctx.method(), ctx.tyctx()).ty
             //rustc_middle::ty::print::with_no_trimmed_paths! {eprintln!("Calling func:{func:?} {:?}", operand_ty)};
         }
     };
@@ -44,44 +40,33 @@ pub fn handle_call_terminator<'tycxt>(
         TyKind::FnDef(_, _) => {
             //rustc_middle::ty::print::with_no_trimmed_paths! {eprintln!("call terminator {terminator:?}")};
             //eprintln!("calling {operand_ty:?} indirectly");
-            let fn_ty = monomorphize(&method_instance, func_ty, tyctx);
+            let fn_ty = ctx.monomorphize(func_ty);
             //let fn_instance = Instance::resolve(tyctx,ParamEnv::reveal_all,fn_ty.did,List::empty());
             assert!(
                 fn_ty.is_fn(),
                 "fn_ty{fn_ty:?} in call is not a function type!"
             );
-            let fn_ty = monomorphize(&method_instance, fn_ty, tyctx);
+            let fn_ty = ctx.monomorphize(fn_ty);
             //let fn_instance = Instance::resolve(tyctx,ParamEnv::reveal_all,fn_ty.did,List::empty());
 
-            let call_ops = call::call(
-                fn_ty,
-                body,
-                tyctx,
-                args,
-                destination,
-                method_instance,
-                type_cache,
-                terminator.source_info.span,
-            );
+            let call_ops = call::call(fn_ty, ctx, args, destination, terminator.source_info.span);
             //eprintln!("\nCalling FnDef:{fn_ty:?}. call_ops:{call_ops:?}");
             trees.push(call_ops.into());
         }
         TyKind::FnPtr(sig) => {
             //eprintln!("Calling FnPtr:{func_ty:?}");
-            let sig = crate::utilis::monomorphize(&method_instance, *sig, tyctx);
-            let sig = crate::function_sig::from_poly_sig(method_instance, tyctx, type_cache, sig);
+            let sig = ctx.monomorphize(*sig);
+            let sig = crate::function_sig::from_poly_sig(
+                ctx.method_instance(),
+                ctx.tyctx(),
+                ctx.type_cache(),
+                sig,
+            );
             let mut arg_operands = Vec::new();
             for arg in args {
-                arg_operands.push(crate::operand::handle_operand(
-                    &arg.node,
-                    tyctx,
-                    body,
-                    method_instance,
-                    type_cache,
-                ));
+                arg_operands.push(crate::operand::handle_operand(&arg.node, ctx));
             }
-            let called_operand =
-                crate::operand::handle_operand(func, tyctx, method, method_instance, type_cache);
+            let called_operand = crate::operand::handle_operand(func, ctx);
             if *sig.output() == crate::r#type::Type::Void {
                 trees.push(
                     CILRoot::CallI {
@@ -95,15 +80,12 @@ pub fn handle_call_terminator<'tycxt>(
                 trees.push(
                     place_set(
                         destination,
-                        tyctx,
                         CILNode::CallI(Box::new((
                             sig.clone(),
                             called_operand,
                             arg_operands.into(),
                         ))),
-                        method,
-                        method_instance,
-                        type_cache,
+                        ctx,
                     )
                     .into(),
                 );
@@ -136,11 +118,7 @@ pub fn handle_call_terminator<'tycxt>(
 }
 pub fn handle_terminator<'ctx>(
     terminator: &Terminator<'ctx>,
-    body: &'ctx Body<'ctx>,
-    tyctx: TyCtxt<'ctx>,
-    method: &rustc_middle::mir::Body<'ctx>,
-    method_instance: Instance<'ctx>,
-    type_cache: &mut crate::r#type::TyCache,
+    ctx: &mut MethodCompileCtx<'ctx, '_, '_>,
 ) -> Vec<CILTree> {
     let res = match &terminator.kind {
         TerminatorKind::Call {
@@ -151,22 +129,10 @@ pub fn handle_terminator<'ctx>(
             unwind: _,
             call_source: _,
             fn_span: _,
-        } => handle_call_terminator(
-            terminator,
-            body,
-            tyctx,
-            method,
-            method_instance,
-            type_cache,
-            args,
-            destination,
-            func,
-            *target,
-        ),
+        } => handle_call_terminator(terminator, ctx, args, destination, func, *target),
         TerminatorKind::Return => {
-            let ret = crate::utilis::monomorphize(&method_instance, method.return_ty(), tyctx);
-            if type_cache.type_from_cache(ret, tyctx, method_instance) == crate::r#type::Type::Void
-            {
+            let ret = ctx.monomorphize(ctx.method().return_ty());
+            if ctx.type_from_cache(ret) == crate::r#type::Type::Void {
                 vec![CILRoot::VoidRet.into()]
             } else {
                 vec![CILRoot::Ret {
@@ -176,9 +142,8 @@ pub fn handle_terminator<'ctx>(
             }
         }
         TerminatorKind::SwitchInt { discr, targets } => {
-            let ty = crate::utilis::monomorphize(&method_instance, discr.ty(method, tyctx), tyctx);
-            let discr =
-                crate::operand::handle_operand(discr, tyctx, method, method_instance, type_cache);
+            let ty = ctx.monomorphize(discr.ty(ctx.method(), ctx.tyctx()));
+            let discr = crate::operand::handle_operand(discr, ctx);
             handle_switch(ty, &discr, targets)
         }
         TerminatorKind::Assert {
@@ -208,9 +173,10 @@ pub fn handle_terminator<'ctx>(
             unwind: _,
             replace: _,
         } => {
-            let ty = monomorphize(&method_instance, place.ty(method, tyctx).ty, tyctx);
+            let ty = ctx.monomorphize(place.ty(ctx.method(), ctx.tyctx()).ty);
 
-            let drop_instance = Instance::resolve_drop_in_place(tyctx, ty).polymorphize(tyctx);
+            let drop_instance =
+                Instance::resolve_drop_in_place(ctx.tyctx(), ty).polymorphize(ctx.tyctx());
             if let InstanceDef::DropGlue(_, None) = drop_instance.def {
                 //Empty drop, nothing needs to happen.
                 vec![CILRoot::GoTo {
@@ -221,18 +187,12 @@ pub fn handle_terminator<'ctx>(
             } else {
                 match ty.kind() {
                     TyKind::Dynamic(_, _, rustc_middle::ty::DynKind::Dyn) => {
-                        let fat_ptr_address = crate::place::place_adress(
-                            place,
-                            tyctx,
-                            method,
-                            method_instance,
-                            type_cache,
-                        );
-                        let fat_ptr_type = type_cache.type_from_cache(
-                            Ty::new_ptr(tyctx, ty, rustc_middle::ty::Mutability::Mut),
-                            tyctx,
-                            method_instance,
-                        );
+                        let fat_ptr_address = crate::place::place_adress(place, ctx);
+                        let fat_ptr_type = ctx.type_from_cache(Ty::new_ptr(
+                            ctx.tyctx(),
+                            ty,
+                            rustc_middle::ty::Mutability::Mut,
+                        ));
                         eprintln!("fat_ptr_type:{fat_ptr_type:?} ty:{ty:?}");
                         // Get the vtable
                         let vtable_ptr = ld_field!(
@@ -295,23 +255,16 @@ pub fn handle_terminator<'ctx>(
                     _ => {
                         let sig = crate::function_sig::sig_from_instance_(
                             drop_instance,
-                            tyctx,
-                            type_cache,
+                            ctx.tyctx(),
+                            ctx.type_cache(),
                         )
                         .unwrap();
                         let function_name =
-                            crate::utilis::function_name(tyctx.symbol_name(drop_instance));
+                            crate::utilis::function_name(ctx.tyctx().symbol_name(drop_instance));
                         vec![
                             CILRoot::Call {
                                 site: Box::new(CallSite::new(None, function_name, sig, true)),
-                                args: [crate::place::place_adress(
-                                    place,
-                                    tyctx,
-                                    method,
-                                    method_instance,
-                                    type_cache,
-                                )]
-                                .into(),
+                                args: [crate::place::place_adress(place, ctx)].into(),
                             }
                             .into(),
                             CILRoot::GoTo {

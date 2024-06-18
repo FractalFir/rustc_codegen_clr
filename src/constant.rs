@@ -1,4 +1,4 @@
-use crate::r#type::TyCache;
+use crate::assembly::MethodCompileCtx;
 
 use cilly::{
     call_site::CallSite,
@@ -15,42 +15,35 @@ use rustc_middle::{
         interpret::{AllocId, GlobalAlloc, Scalar},
         ConstOperand, ConstValue,
     },
-    ty::{FloatTy, Instance, IntTy, ParamEnv, Ty, TyCtxt, TyKind, UintTy},
+    ty::{FloatTy, IntTy, ParamEnv, Ty, TyCtxt, TyKind, UintTy},
 };
 pub fn handle_constant<'ctx>(
     constant_op: &ConstOperand<'ctx>,
-    tyctx: TyCtxt<'ctx>,
-
-    method_instance: Instance<'ctx>,
-    tycache: &mut TyCache,
+    ctx: &mut MethodCompileCtx<'ctx, '_, '_>,
 ) -> CILNode {
     let constant = constant_op.const_;
-    let constant = crate::utilis::monomorphize(&method_instance, constant, tyctx);
+    let constant = ctx.monomorphize(constant);
     let evaluated = constant
-        .eval(tyctx, ParamEnv::reveal_all(), constant_op.span)
+        .eval(ctx.tyctx(), ParamEnv::reveal_all(), constant_op.span)
         .expect("Could not evaluate constant!");
-    load_const_value(evaluated, constant.ty(), tyctx, method_instance, tycache)
+    load_const_value(evaluated, constant.ty(), ctx)
 }
 /// Returns the ops neceasry to create constant value of type `ty` with byte values matching the ones in the allocation
 fn create_const_from_data<'ctx>(
     ty: Ty<'ctx>,
-    tyctx: TyCtxt<'ctx>,
     alloc_id: AllocId,
     offset_bytes: u64,
-    method_instance: Instance<'ctx>,
-    tycache: &mut TyCache,
+    ctx: &mut MethodCompileCtx<'ctx, '_, '_>,
 ) -> CILNode {
     let _ = offset_bytes;
     let ptr = CILNode::LoadGlobalAllocPtr {
         alloc_id: alloc_id.0.into(),
     };
-    let ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
-    let tpe = tycache.type_from_cache(ty, tyctx, method_instance);
+    let ty = ctx.monomorphize(ty);
+    let tpe = ctx.type_from_cache(ty);
     crate::place::deref_op(
         ty.into(),
-        tyctx,
-        &method_instance,
-        tycache,
+        ctx,
         CILNode::TransmutePtr {
             val: Box::new(ptr),
             new_ptr: Box::new(Type::Ptr(Box::new(tpe))),
@@ -61,26 +54,21 @@ fn create_const_from_data<'ctx>(
 pub(crate) fn load_const_value<'ctx>(
     const_val: ConstValue<'ctx>,
     const_ty: Ty<'ctx>,
-    tyctx: TyCtxt<'ctx>,
-
-    method_instance: Instance<'ctx>,
-    tycache: &mut TyCache,
+    ctx: &mut MethodCompileCtx<'ctx, '_, '_>,
 ) -> CILNode {
     match const_val {
-        ConstValue::Scalar(scalar) => {
-            load_const_scalar(scalar, const_ty, tyctx, method_instance, tycache)
-        }
+        ConstValue::Scalar(scalar) => load_const_scalar(scalar, const_ty, ctx),
         ConstValue::ZeroSized => {
-            let tpe = crate::utilis::monomorphize(&method_instance, const_ty, tyctx);
+            let tpe = ctx.monomorphize(const_ty);
             assert!(
-                crate::utilis::is_zst(tpe, tyctx),
+                crate::utilis::is_zst(tpe, ctx.tyctx()),
                 "Zero sized const with a non-zero size. It is {tpe:?}"
             );
-            let tpe = tycache.type_from_cache(tpe, tyctx, method_instance);
+            let tpe = ctx.type_from_cache(tpe);
             CILNode::TemporaryLocal(Box::new((tpe, [].into(), CILNode::LoadTMPLocal)))
         }
         ConstValue::Slice { data, meta } => {
-            let slice_type = tycache.type_from_cache(const_ty, tyctx, method_instance);
+            let slice_type = ctx.type_from_cache(const_ty);
             let slice_dotnet = slice_type.as_dotnet().expect("Slice type invalid!");
             let metadata_field =
                 FieldDescriptor::new(slice_dotnet.clone(), Type::USize, "metadata".into());
@@ -90,7 +78,7 @@ pub(crate) fn load_const_value<'ctx>(
                 "data_pointer".into(),
             );
             // TODO: find a better way to get an alloc_id. This is likely to be incoreect.
-            let alloc_id = tyctx.reserve_and_set_memory_alloc(data);
+            let alloc_id = ctx.tyctx().reserve_and_set_memory_alloc(data);
             let alloc_id: u64 = crate::utilis::alloc_id_to_u64(alloc_id);
 
             CILNode::TemporaryLocal(Box::new((
@@ -115,31 +103,23 @@ pub(crate) fn load_const_value<'ctx>(
             )))
         }
         ConstValue::Indirect { alloc_id, offset } => {
-            create_const_from_data(
-                const_ty,
-                tyctx,
-                alloc_id,
-                offset.bytes(),
-                method_instance,
-                tycache,
-            )
+            create_const_from_data(const_ty, alloc_id, offset.bytes(), ctx)
             //todo!("Can't handle by-ref allocation {alloc_id:?} {offset:?}")
         } //_ => todo!("Unhandled const value {const_val:?} of type {const_ty:?}"),
     }
 }
 fn load_scalar_ptr(
-    tyctx: TyCtxt<'_>,
-
-    tycache: &mut TyCache,
+    ctx: &mut MethodCompileCtx<'_, '_, '_>,
     ptr: rustc_middle::mir::interpret::Pointer,
 ) -> CILNode {
     let (alloc_id, offset) = ptr.into_parts();
-    let global_alloc = tyctx.global_alloc(alloc_id.alloc_id());
+    let global_alloc = ctx.tyctx().global_alloc(alloc_id.alloc_id());
     match global_alloc {
         GlobalAlloc::Static(def_id) => {
-            assert!(tyctx.is_static(def_id));
+            assert!(ctx.tyctx().is_static(def_id));
             assert_eq!(offset.bytes(), 0);
-            let name = tyctx
+            let name = ctx
+                .tyctx()
                 .opt_item_name(def_id)
                 .expect("Static without name")
                 .to_string();
@@ -170,7 +150,7 @@ fn load_scalar_ptr(
                     CILNode::LoadAddresOfTMPLocal,
                 )));
             }
-            let attrs = tyctx.codegen_fn_attrs(def_id);
+            let attrs = ctx.tyctx().codegen_fn_attrs(def_id);
 
             if let Some(import_linkage) = attrs.import_linkage {
                 // TODO: this could cause issues if the pointer to the static is not imediatly dereferenced.
@@ -269,11 +249,12 @@ fn load_scalar_ptr(
                 };
             }
 
-            let alloc = tyctx
+            let alloc = ctx
+                .tyctx()
                 .eval_static_initializer(def_id)
                 .expect("No initializer??");
             //def_id.ty();
-            let _tyctx = tyctx.reserve_and_set_memory_alloc(alloc);
+            let _memory = ctx.tyctx().reserve_and_set_memory_alloc(alloc);
             let alloc_id = crate::utilis::alloc_id_to_u64(alloc_id.alloc_id());
             CILNode::LoadGlobalAllocPtr { alloc_id }
         }
@@ -295,9 +276,12 @@ fn load_scalar_ptr(
         GlobalAlloc::Function(finstance) => {
             assert_eq!(offset.bytes(), 0);
             // If it is a function, patch its pointer up.
-            let call_info =
-                crate::call_info::CallInfo::sig_from_instance_(finstance, tyctx, tycache);
-            let function_name = crate::utilis::function_name(tyctx.symbol_name(finstance));
+            let call_info = crate::call_info::CallInfo::sig_from_instance_(
+                finstance,
+                ctx.tyctx(),
+                ctx.type_cache(),
+            );
+            let function_name = crate::utilis::function_name(ctx.tyctx().symbol_name(finstance));
             return CILNode::LDFtn(
                 CallSite::new(None, function_name, call_info.sig().clone(), true).into(),
             );
@@ -309,31 +293,29 @@ fn load_scalar_ptr(
 fn load_const_scalar<'ctx>(
     scalar: Scalar,
     scalar_type: Ty<'ctx>,
-    tyctx: TyCtxt<'ctx>,
-    method_instance: Instance<'ctx>,
-    tycache: &mut TyCache,
+    ctx: &mut MethodCompileCtx<'ctx, '_, '_>,
 ) -> CILNode {
-    let scalar_type = crate::utilis::monomorphize(&method_instance, scalar_type, tyctx);
-    let tpe = crate::utilis::monomorphize(&method_instance, scalar_type, tyctx);
-    let tpe = tycache.type_from_cache(tpe, tyctx, method_instance);
+    let scalar_ty = ctx.monomorphize(scalar_type);
+
+    let scalar_type = ctx.type_from_cache(scalar_ty);
     let scalar_u128 = match scalar {
         Scalar::Int(scalar_int) => scalar_int.to_uint(scalar.size()),
         Scalar::Ptr(ptr, _size) => {
             assert!(
-                matches!(tpe, Type::Ptr(_) | Type::DelegatePtr(_)),
-                "Invalid const ptr: {tpe:?}"
+                matches!(scalar_type, Type::Ptr(_) | Type::DelegatePtr(_)),
+                "Invalid const ptr: {scalar_type:?}"
             );
             return CILNode::TransmutePtr {
-                val: Box::new(load_scalar_ptr(tyctx, tycache, ptr)),
-                new_ptr: Box::new(tpe),
+                val: Box::new(load_scalar_ptr(ctx, ptr)),
+                new_ptr: Box::new(scalar_type),
             };
         }
     };
 
-    match scalar_type.kind() {
+    match scalar_ty.kind() {
         TyKind::Int(int_type) => load_const_int(scalar_u128, *int_type),
         TyKind::Uint(uint_type) => load_const_uint(scalar_u128, *uint_type),
-        TyKind::Float(ftype) => load_const_float(scalar_u128, *ftype, tyctx),
+        TyKind::Float(ftype) => load_const_float(scalar_u128, *ftype, ctx.tyctx()),
         TyKind::Bool => {
             if scalar_u128 == 0 {
                 CILNode::LdFalse
@@ -348,12 +330,12 @@ fn load_const_scalar<'ctx>(
                 )
                 .into(),
             )),
-            new_ptr: Box::new(tpe),
+            new_ptr: Box::new(scalar_type),
         },
         TyKind::Tuple(elements) => {
             if elements.is_empty() {
                 CILNode::TemporaryLocal(Box::new((
-                    Type::Ptr(tpe.clone().into()),
+                    Type::Ptr(scalar_type.clone().into()),
                     [].into(),
                     CILNode::LdObj {
                         ptr: CILNode::LoadTMPLocal.into(),
@@ -364,21 +346,21 @@ fn load_const_scalar<'ctx>(
                 CILNode::LdObj {
                     ptr: Box::new(CILNode::TransmutePtr {
                         val: Box::new(CILNode::PointerToConstValue(Box::new(scalar_u128))),
-                        new_ptr: Box::new(Type::Ptr(Box::new(tpe.clone()))),
+                        new_ptr: Box::new(Type::Ptr(Box::new(scalar_type.clone()))),
                     }),
-                    obj: tpe.into(),
+                    obj: scalar_type.into(),
                 }
             }
         }
         TyKind::Adt(_, _subst) => CILNode::LdObj {
             ptr: Box::new(CILNode::TransmutePtr {
                 val: Box::new(CILNode::PointerToConstValue(Box::new(scalar_u128))),
-                new_ptr: Box::new(Type::Ptr(Box::new(tpe.clone()))),
+                new_ptr: Box::new(Type::Ptr(Box::new(scalar_type.clone()))),
             }),
-            obj: tpe.into(),
+            obj: scalar_type.into(),
         },
         TyKind::Char => CILNode::LdcU32(u32::try_from(scalar_u128).unwrap()),
-        _ => todo!("Can't load scalar constants of type {scalar_type:?}!"),
+        _ => todo!("Can't load scalar constants of type {scalar_ty:?}!"),
     }
 }
 fn load_const_float(value: u128, float_type: FloatTy, _tyctx: TyCtxt) -> CILNode {

@@ -206,22 +206,18 @@ fn calculate_hash<T: std::hash::Hash>(t: &T) -> u64 {
 /// Turns a terminator into ops, if `ABORT_ON_ERROR` set to false, will handle and recover from errors.
 pub fn terminator_to_ops<'tcx>(
     term: &Terminator<'tcx>,
-    mir: &'tcx rustc_middle::mir::Body<'tcx>,
-    tcx: TyCtxt<'tcx>,
-    instance: Instance<'tcx>,
-    type_cache: &mut TyCache,
-    validation_context: ValidationContext,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
 ) -> Result<Vec<CILTree>, CodegenError> {
     let terminator = if *crate::config::ABORT_ON_ERROR {
-        crate::terminator::handle_terminator(term, mir, tcx, mir, instance, type_cache)
+        crate::terminator::handle_terminator(term, ctx)
     } else {
         match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            crate::terminator::handle_terminator(term, mir, tcx, mir, instance, type_cache)
+            crate::terminator::handle_terminator(term, ctx)
         })) {
             Ok(ok) => {
                 if *crate::config::TYPECHECK_CIL {
                     for op in &ok {
-                        if let Err(msg) = op.validate(validation_context) {
+                        if let Err(msg) = op.validate(ctx.validator()) {
                             Err(crate::codegen_error::CodegenError::from_panic_message(
                                 &format!("VERIFICATION FALIURE:\"{msg}\" op:{op:?}"),
                             ))?;
@@ -231,7 +227,7 @@ pub fn terminator_to_ops<'tcx>(
                 ok
             }
             Err(payload) => {
-                type_cache.recover_from_panic();
+                ctx.type_cache().recover_from_panic();
                 let msg = if let Some(msg) = payload.downcast_ref::<&str>() {
                     rustc_middle::ty::print::with_no_trimmed_paths! {
                     format!("Tried to execute terminator {term:?} whose compialtion message {msg:?}!")}
@@ -251,25 +247,19 @@ pub fn terminator_to_ops<'tcx>(
 /// Turns a statement into ops, if `ABORT_ON_ERROR` set to false, will handle and recover from errors.
 pub fn statement_to_ops<'tcx>(
     statement: &Statement<'tcx>,
-    tcx: TyCtxt<'tcx>,
-    mir: &rustc_middle::mir::Body<'tcx>,
-    instance: Instance<'tcx>,
-    type_cache: &mut TyCache,
-    validation_context: ValidationContext,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
 ) -> Result<Option<CILTree>, CodegenError> {
     if *crate::config::ABORT_ON_ERROR {
-        Ok(crate::statement::handle_statement(
-            statement, tcx, mir, instance, type_cache,
-        ))
+        Ok(crate::statement::handle_statement(statement, ctx))
     } else {
         match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            crate::statement::handle_statement(statement, tcx, mir, instance, type_cache)
+            crate::statement::handle_statement(statement, ctx)
         })) {
             Ok(success) => {
                 match &success {
                     Some(ops) => {
                         if *crate::config::TYPECHECK_CIL {
-                            if let Err(msg) = ops.validate(validation_context) {
+                            if let Err(msg) = ops.validate(ctx.validator()) {
                                 Err(crate::codegen_error::CodegenError::from_panic_message(
                                     &format!("VERIFICATION FALIURE:\"{msg}\" ops:{ops:?}"),
                                 ))?;
@@ -350,7 +340,10 @@ pub fn add_fn<'tyctx>(
             panic!("Arg to spread not a tuple???")
         };
         for arg_id in 0..packed_count {
-            let arg_field = field_descrptor(repacked_ty, arg_id, tyctx, instance, cache);
+            let validation_context = ValidationContext::new(&sig, &locals);
+            let mut method_context =
+                MethodCompileCtx::new(tyctx, mir, instance, validation_context, cache);
+            let arg_field = field_descrptor(repacked_ty, arg_id, &mut method_context);
             if *arg_field.tpe() == Type::Void {
                 continue;
             }
@@ -369,7 +362,7 @@ pub fn add_fn<'tyctx>(
     };
     // Used for type-checking the CIL to ensure its validity.
     let validation_context = ValidationContext::new(&sig, &locals);
-
+    let mut method_context = MethodCompileCtx::new(tyctx, mir, instance, validation_context, cache);
     for (last_bb_id, block_data) in blocks.into_iter().enumerate() {
         let mut trees = Vec::new();
         for statement in &block_data.statements {
@@ -377,17 +370,10 @@ pub fn add_fn<'tyctx>(
                 rustc_middle::ty::print::with_no_trimmed_paths! {trees.push(CILRoot::debug(&format!("{statement:?}")).into())};
             }
 
-            let statement_tree = match statement_to_ops(
-                statement,
-                tyctx,
-                mir,
-                instance,
-                cache,
-                validation_context,
-            ) {
+            let statement_tree = match statement_to_ops(statement, &mut method_context) {
                 Ok(ops) => ops,
                 Err(err) => {
-                    cache.recover_from_panic();
+                    method_context.type_cache().recover_from_panic();
                     rustc_middle::ty::print::with_no_trimmed_paths! {eprintln!(
                         "Method \"{name}\" failed to compile statement {statement:?} with message {err:?}\n"
                     )};
@@ -410,10 +396,9 @@ pub fn add_fn<'tyctx>(
                     rustc_middle::ty::print::with_no_trimmed_paths! {trees.push(CILRoot::debug(&format!("{term:?}")).into())};
                 }
                 let term_trees =
-                    terminator_to_ops(term, mir, tyctx, instance, cache, validation_context)
-                        .unwrap_or_else(|err| {
-                            panic!("Could not compile terminator {term:?} because {err:?}")
-                        });
+                    terminator_to_ops(term, &mut method_context).unwrap_or_else(|err| {
+                        panic!("Could not compile terminator {term:?} because {err:?}")
+                    });
                 if !term_trees.is_empty() {
                     trees.push(span_source_info(tyctx, term.source_info.span).into());
                 }
@@ -789,19 +774,81 @@ pub fn add_const_value(asm: &mut Assembly, bytes: u128, tyctx: TyCtxt) -> Static
     }
     field_desc
 }
-/*
+pub struct MethodCompileCtx<'tyctx, 'validator, 'type_cache> {
+    tyctx: TyCtxt<'tyctx>,
+    method: &'tyctx rustc_middle::mir::Body<'tyctx>,
+    method_instance: Instance<'tyctx>,
+    validator: ValidationContext<'validator>,
+    type_cache: &'type_cache mut TyCache,
+}
 
-    compile_test::ctpop::stable::debug
-    compile_test::ctpop::stable::release
-    compile_test::dyns::stable::debug
-    compile_test::dyns::stable::release
+impl<'tyctx, 'validator, 'type_cache> MethodCompileCtx<'tyctx, 'validator, 'type_cache> {
+    pub fn new(
+        tyctx: TyCtxt<'tyctx>,
+        method: &'tyctx rustc_middle::mir::Body<'tyctx>,
+        method_instance: Instance<'tyctx>,
+        validator: ValidationContext<'validator>,
+        type_cache: &'type_cache mut TyCache,
+    ) -> Self {
+        Self {
+            tyctx,
+            method,
+            method_instance,
+            validator,
+            type_cache,
+        }
+    }
+    pub fn slice_ty(&mut self, inner: rustc_middle::ty::Ty<'tyctx>) -> Type {
+        self.type_cache
+            .slice_ty(inner, self.tyctx, self.method_instance)
+    }
+    pub fn slice_ref_to(&mut self, inner: rustc_middle::ty::Ty<'tyctx>) -> Type {
+        self.type_cache
+            .slice_ref_to(self.tyctx, inner, self.method_instance)
+    }
+    pub fn tyctx(&self) -> TyCtxt<'tyctx> {
+        self.tyctx
+    }
 
+    pub fn method(&self) -> &'tyctx rustc_middle::mir::Body<'tyctx> {
+        self.method
+    }
 
-    compile_test::slice::stable::debug
-    compile_test::slice::stable::release
-    compile_test::test1::stable::debug
-    compile_test::test1::stable::release
-    compile_test::type_id::stable::debug
-    compile_test::type_id::stable::release
+    pub fn method_instance(&self) -> Instance<'tyctx> {
+        self.method_instance
+    }
 
-*/
+    pub fn type_cache(&mut self) -> &mut &'type_cache mut TyCache {
+        &mut self.type_cache
+    }
+
+    pub fn validator(&self) -> ValidationContext<'validator> {
+        self.validator
+    }
+    pub fn monomorphize<T: rustc_middle::ty::TypeFoldable<TyCtxt<'tyctx>> + Clone>(
+        &self,
+        ty: T,
+    ) -> T {
+        self.method_instance()
+            .instantiate_mir_and_normalize_erasing_regions(
+                self.tyctx(),
+                ParamEnv::reveal_all(),
+                rustc_middle::ty::EarlyBinder::bind(ty),
+            )
+    }
+    pub fn type_from_cache(&mut self, ty: rustc_middle::ty::Ty<'tyctx>) -> Type {
+        self.type_cache
+            .type_from_cache(ty, self.tyctx, self.method_instance)
+    }
+    pub fn layout_of(
+        &self,
+        ty: rustc_middle::ty::Ty<'tyctx>,
+    ) -> rustc_middle::ty::layout::TyAndLayout<'tyctx> {
+        self.tyctx
+            .layout_of(rustc_middle::ty::ParamEnvAnd {
+                param_env: ParamEnv::reveal_all(),
+                value: ty,
+            })
+            .expect("Could not get type layout!")
+    }
+}

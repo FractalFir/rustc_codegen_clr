@@ -1,18 +1,13 @@
-use crate::{place::place_get, r#type::TyCache};
+use crate::assembly::MethodCompileCtx;
+use crate::place::place_get;
 use cilly::{cil_node::CILNode, cil_root::CILRoot, cil_tree::CILTree, size_of};
 use cilly::{conv_usize, Type};
 
-use rustc_middle::{
-    mir::{Body, CopyNonOverlapping, NonDivergingIntrinsic, Statement, StatementKind},
-    ty::{Instance, ParamEnv, TyCtxt},
-};
+use rustc_middle::mir::{CopyNonOverlapping, NonDivergingIntrinsic, Statement, StatementKind};
 #[allow(clippy::match_same_arms)]
 pub fn handle_statement<'tcx>(
     statement: &Statement<'tcx>,
-    tyctx: TyCtxt<'tcx>,
-    method: &Body<'tcx>,
-    method_instance: Instance<'tcx>,
-    type_cache: &mut TyCache,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
 ) -> Option<CILTree> {
     let kind = &statement.kind;
     match kind {
@@ -22,16 +17,11 @@ pub fn handle_statement<'tcx>(
             place,
             variant_index,
         } => {
-            let owner_ty = place.ty(method, tyctx).ty;
-            let owner_ty = crate::utilis::monomorphize(&method_instance, owner_ty, tyctx);
-            let owner = type_cache.type_from_cache(owner_ty, tyctx, method_instance);
+            let owner_ty = place.ty(ctx.method(), ctx.tyctx()).ty;
+            let owner_ty = ctx.monomorphize(owner_ty);
+            let owner = ctx.type_from_cache(owner_ty);
 
-            let layout = tyctx
-                .layout_of(rustc_middle::ty::ParamEnvAnd {
-                    param_env: ParamEnv::reveal_all(),
-                    value: owner_ty,
-                })
-                .expect("Could not get type layout!");
+            let layout = ctx.layout_of(owner_ty);
             //let (disrc_type, _) = crate::utilis::adt::enum_tag_info(&layout.layout, tyctx);
             let owner = if let crate::r#type::Type::DotnetType(dotnet_type) = owner {
                 dotnet_type.as_ref().clone()
@@ -44,9 +34,9 @@ pub fn handle_statement<'tcx>(
                 crate::utilis::adt::set_discr(
                     layout.layout,
                     *variant_index,
-                    crate::place::place_adress(place, tyctx, method, method_instance, type_cache),
+                    crate::place::place_adress(place, ctx),
                     &owner,
-                    tyctx,
+                    ctx.tyctx(),
                     owner_ty,
                 )
                 .into(),
@@ -55,41 +45,22 @@ pub fn handle_statement<'tcx>(
         StatementKind::Assign(palce_rvalue) => {
             let place = palce_rvalue.as_ref().0;
             let rvalue = &palce_rvalue.as_ref().1;
-            let ty =
-                crate::utilis::monomorphize(&method_instance, place.ty(method, tyctx).ty, tyctx);
+            let ty = ctx.monomorphize(place.ty(ctx.method(), ctx.tyctx()).ty);
             // Skip void assigments. Assigining to or from void type is a NOP.
-            if crate::utilis::is_zst(
-                crate::utilis::monomorphize(&method_instance, ty, tyctx),
-                tyctx,
-            ) {
+            if crate::utilis::is_zst(ctx.monomorphize(ty), ctx.tyctx()) {
                 return None;
             }
-            let value_calc = crate::rvalue::handle_rvalue(
-                rvalue,
-                tyctx,
-                &place,
-                method,
-                method_instance,
-                type_cache,
-            );
+            let value_calc = crate::rvalue::handle_rvalue(rvalue, &place, ctx);
+            let method = ctx.method_instance();
+            let tyctx = ctx.tyctx();
             let value_calc = crate::r#type::tycache::validity_check(
                 value_calc,
                 ty,
-                type_cache,
-                method_instance,
+                ctx.type_cache(),
+                method,
                 tyctx,
             );
-            Some(
-                crate::place::place_set(
-                    &place,
-                    tyctx,
-                    value_calc,
-                    method,
-                    method_instance,
-                    type_cache,
-                )
-                .into(),
-            )
+            Some(crate::place::place_set(&place, value_calc, ctx).into())
         }
         StatementKind::Intrinsic(non_diverging_intirinsic) => {
             match non_diverging_intirinsic.as_ref() {
@@ -99,30 +70,12 @@ pub fn handle_statement<'tcx>(
                     dst,
                     count,
                 }) => {
-                    let dst_op = crate::operand::handle_operand(
-                        dst,
-                        tyctx,
-                        method,
-                        method_instance,
-                        type_cache,
-                    );
-                    let src_op = crate::operand::handle_operand(
-                        src,
-                        tyctx,
-                        method,
-                        method_instance,
-                        type_cache,
-                    );
-                    let count_op = crate::operand::handle_operand(
-                        count,
-                        tyctx,
-                        method,
-                        method_instance,
-                        type_cache,
-                    );
-                    let src_ty = src.ty(method, tyctx);
-                    let src_ty = crate::utilis::monomorphize(&method_instance, src_ty, tyctx);
-                    let ptr_type = type_cache.type_from_cache(src_ty, tyctx, method_instance);
+                    let dst_op = crate::operand::handle_operand(dst, ctx);
+                    let src_op = crate::operand::handle_operand(src, ctx);
+                    let count_op = crate::operand::handle_operand(count, ctx);
+                    let src_ty = src.ty(ctx.method(), ctx.tyctx());
+                    let src_ty = ctx.monomorphize(src_ty);
+                    let ptr_type = ctx.type_from_cache(src_ty);
                     let crate::r#type::Type::Ptr(pointed) = ptr_type else {
                         rustc_middle::ty::print::with_no_trimmed_paths! { panic!("Copy nonoverlaping called with non-pointer type {src_ty:?}")};
                     };
@@ -143,7 +96,7 @@ pub fn handle_statement<'tcx>(
         }
         StatementKind::PlaceMention(place) => Some(
             CILRoot::Pop {
-                tree: place_get(place, tyctx, method, method_instance, type_cache),
+                tree: place_get(place, ctx),
             }
             .into(),
         ),

@@ -1,33 +1,29 @@
-use crate::{operand::handle_operand, place::place_set, r#type::tycache::TyCache};
+use crate::{assembly::MethodCompileCtx, operand::handle_operand, place::place_set};
 use cilly::{
     call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, fn_sig::FnSig, DotnetTypeRef,
 };
 use rustc_middle::{
-    mir::{Body, Operand, Place},
-    ty::{Instance, TyCtxt, TyKind, UintTy},
+    mir::{Operand, Place},
+    ty::{TyKind, UintTy},
 };
 use rustc_span::source_map::Spanned;
 
 pub fn bswap<'tyctx>(
     args: &[Spanned<Operand<'tyctx>>],
     destination: &Place<'tyctx>,
-    tyctx: TyCtxt<'tyctx>,
-    body: &'tyctx Body<'tyctx>,
-    method_instance: Instance<'tyctx>,
-    type_cache: &mut TyCache,
+    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
 ) -> CILRoot {
     debug_assert_eq!(
         args.len(),
         1,
         "The intrinsic `bswap` MUST take in exactly 1 argument!"
     );
-    let ty = args[0].node.ty(body, tyctx);
-    let ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
-    let tpe = type_cache.type_from_cache(ty, tyctx, method_instance);
-    let operand = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
+    let ty = args[0].node.ty(ctx.method(), ctx.tyctx());
+    let ty = ctx.monomorphize(ty);
+    let tpe = ctx.type_from_cache(ty);
+    let operand = handle_operand(&args[0].node, ctx);
     place_set(
         destination,
-        tyctx,
         match ty.kind() {
             TyKind::Uint(UintTy::U8) => operand,
             TyKind::Uint(_) | TyKind::Int(_) => {
@@ -43,17 +39,7 @@ pub fn bswap<'tyctx>(
             }
 
             _ => todo!("Can't bswap {tpe:?}"),
-            /*_ => [
-                operand,
-                stupid_bswap(ty, tyctx, type_cache, method_instance),
-            ]
-            .iter()
-            .flatten()
-            .cloned()
-            .collect(),*/
         },
-        body,
-        method_instance,
-        type_cache,
+        ctx,
     )
 }

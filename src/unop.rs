@@ -1,4 +1,4 @@
-use crate::r#type::tycache::TyCache;
+use crate::assembly::MethodCompileCtx;
 use cilly::call_site::CallSite;
 use cilly::cil_node::CILNode;
 use cilly::field_desc::FieldDescriptor;
@@ -6,20 +6,16 @@ use cilly::fn_sig::FnSig;
 use cilly::{call, ld_field, DotnetTypeRef, Type};
 
 use rustc_middle::mir::{Operand, UnOp};
-use rustc_middle::ty::{Instance, IntTy, TyCtxt, TyKind, UintTy};
+use rustc_middle::ty::{IntTy, TyKind, UintTy};
 
 /// Implements an unary operation, such as negation.
 pub fn unop<'ctx>(
     unnop: UnOp,
     operand: &Operand<'ctx>,
-    tyctx: TyCtxt<'ctx>,
-    method: &rustc_middle::mir::Body<'ctx>,
-    method_instance: Instance<'ctx>,
-    tycache: &mut TyCache,
+    ctx: &mut MethodCompileCtx<'ctx, '_, '_>,
 ) -> CILNode {
-    let parrent_node =
-        crate::operand::handle_operand(operand, tyctx, method, method_instance, tycache);
-    let ty = operand.ty(&method.local_decls, tyctx);
+    let parrent_node = crate::operand::handle_operand(operand, ctx);
+    let ty = operand.ty(&ctx.method().local_decls, ctx.tyctx());
     match unnop {
         UnOp::Neg => match ty.kind() {
             TyKind::Int(IntTy::I128) => call!(
@@ -69,10 +65,7 @@ pub fn unop<'ctx>(
             _ => CILNode::Not(parrent_node.into()),
         },
         rustc_middle::mir::UnOp::PtrMetadata => {
-            let tpe = tycache
-                .type_from_cache(ty, tyctx, method_instance)
-                .as_dotnet()
-                .unwrap();
+            let tpe = ctx.type_from_cache(ty).as_dotnet().unwrap();
             ld_field!(
                 parrent_node,
                 FieldDescriptor::new(tpe, Type::USize, "metadata".into())

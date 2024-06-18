@@ -1,4 +1,6 @@
-use crate::{operand::handle_operand, place::place_set, r#type::tycache::TyCache};
+use crate::{
+    assembly::MethodCompileCtx, operand::handle_operand, place::place_set, r#type::tycache::TyCache,
+};
 use cilly::{
     call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_u32, conv_u64,
     conv_usize, fn_sig::FnSig, ldc_i32, ldc_i64, ldc_u32, ldc_u64, or, size_of, sub, DotnetTypeRef,
@@ -12,36 +14,29 @@ use rustc_span::source_map::Spanned;
 pub fn ctpop<'tyctx>(
     args: &[Spanned<Operand<'tyctx>>],
     destination: &Place<'tyctx>,
-    tyctx: TyCtxt<'tyctx>,
-    body: &'tyctx Body<'tyctx>,
-    method_instance: Instance<'tyctx>,
+
     call_instance: Instance<'tyctx>,
-    type_cache: &mut TyCache,
+    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
 ) -> CILRoot {
     debug_assert_eq!(
         args.len(),
         1,
         "The intrinsic `ctpop` MUST take in exactly 1 argument!"
     );
-    let tpe = type_cache.type_from_cache(
-        crate::utilis::monomorphize(
-            &method_instance,
+    let tpe = ctx.type_from_cache(
+        ctx.monomorphize(
             call_instance.args[0]
                 .as_type()
                 .expect("needs_drop works only on types!"),
-            tyctx,
         ),
-        tyctx,
-        method_instance,
     );
     let bit_operations =
         DotnetTypeRef::new("System.Runtime".into(), "System.Numerics.BitOperations")
             .with_valuetype(false);
     let bit_operations = Some(bit_operations);
-    let operand = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
+    let operand = handle_operand(&args[0].node, ctx);
     place_set(
         destination,
-        tyctx,
         match tpe {
             Type::U64 => conv_u32!(call!(
                 CallSite::boxed(
@@ -72,19 +67,14 @@ pub fn ctpop<'tyctx>(
             )),
             _ => todo!("Unsported pop count type {tpe:?}"),
         },
-        body,
-        method_instance,
-        type_cache,
+        ctx,
     )
 }
 pub fn ctlz<'tyctx>(
     args: &[Spanned<Operand<'tyctx>>],
     destination: &Place<'tyctx>,
-    tyctx: TyCtxt<'tyctx>,
-    body: &'tyctx Body<'tyctx>,
-    method_instance: Instance<'tyctx>,
     call_instance: Instance<'tyctx>,
-    type_cache: &mut TyCache,
+    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
 ) -> CILRoot {
     debug_assert_eq!(
         args.len(),
@@ -96,14 +86,12 @@ pub fn ctlz<'tyctx>(
             .with_valuetype(false);
     let bit_operations = Some(bit_operations);
 
-    let tpe = crate::utilis::monomorphize(
-        &method_instance,
+    let tpe = ctx.monomorphize(
         call_instance.args[0]
             .as_type()
             .expect("needs_drop works only on types!"),
-        tyctx,
     );
-    let tpe = type_cache.type_from_cache(tpe, tyctx, method_instance);
+    let tpe = ctx.type_from_cache(tpe);
     // TODO: this assumes a 64 bit system!
     let sub = match tpe {
         Type::ISize | Type::USize | Type::Ptr(_) => {
@@ -116,7 +104,6 @@ pub fn ctlz<'tyctx>(
         Type::I128 => {
             return place_set(
                 destination,
-                tyctx,
                 conv_u32!(call!(
                     CallSite::new_extern(
                         DotnetTypeRef::int_128(),
@@ -124,23 +111,14 @@ pub fn ctlz<'tyctx>(
                         FnSig::new([Type::I128], Type::I128),
                         true
                     ),
-                    [handle_operand(
-                        &args[0].node,
-                        tyctx,
-                        body,
-                        method_instance,
-                        type_cache
-                    )]
+                    [handle_operand(&args[0].node, ctx)]
                 )),
-                body,
-                method_instance,
-                type_cache,
+                ctx,
             )
         }
         Type::U128 => {
             return place_set(
                 destination,
-                tyctx,
                 conv_u32!(call!(
                     CallSite::new_extern(
                         DotnetTypeRef::uint_128(),
@@ -148,24 +126,15 @@ pub fn ctlz<'tyctx>(
                         FnSig::new([Type::U128], Type::U128),
                         true
                     ),
-                    [handle_operand(
-                        &args[0].node,
-                        tyctx,
-                        body,
-                        method_instance,
-                        type_cache
-                    )]
+                    [handle_operand(&args[0].node, ctx)]
                 )),
-                body,
-                method_instance,
-                type_cache,
+                ctx,
             )
         }
         _ => todo!("Can't `ctlz`  type {tpe:?} yet!"),
     };
     place_set(
         destination,
-        tyctx,
         conv_u32!(sub!(
             call!(
                 CallSite::boxed(
@@ -174,29 +143,18 @@ pub fn ctlz<'tyctx>(
                     FnSig::new(&[Type::U64], Type::I32),
                     true,
                 ),
-                [conv_u64!(handle_operand(
-                    &args[0].node,
-                    tyctx,
-                    body,
-                    method_instance,
-                    type_cache
-                ))]
+                [conv_u64!(handle_operand(&args[0].node, ctx))]
             ),
             sub
         )),
-        body,
-        method_instance,
-        type_cache,
+        ctx,
     )
 }
 pub fn cttz<'tyctx>(
     args: &[Spanned<Operand<'tyctx>>],
     destination: &Place<'tyctx>,
-    tyctx: TyCtxt<'tyctx>,
-    body: &'tyctx Body<'tyctx>,
-    method_instance: Instance<'tyctx>,
+    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
     call_instance: Instance<'tyctx>,
-    type_cache: &mut TyCache,
 ) -> CILRoot {
     debug_assert_eq!(
         args.len(),
@@ -206,20 +164,17 @@ pub fn cttz<'tyctx>(
     let bit_operations =
         DotnetTypeRef::new("System.Runtime".into(), "System.Numerics.BitOperations")
             .with_valuetype(false);
-    let tpe = crate::utilis::monomorphize(
-        &method_instance,
+    let tpe = ctx.monomorphize(
         call_instance.args[0]
             .as_type()
             .expect("needs_drop works only on types!"),
-        tyctx,
     );
-    let tpe = type_cache.type_from_cache(tpe, tyctx, method_instance);
+    let tpe = ctx.type_from_cache(tpe);
     let bit_operations = Some(bit_operations);
-    let operand = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
+    let operand = handle_operand(&args[0].node, ctx);
 
     place_set(
         destination,
-        tyctx,
         conv_u32!(call!(
             CallSite::boxed(
                 bit_operations.clone(),
@@ -229,19 +184,14 @@ pub fn cttz<'tyctx>(
             ),
             [operand]
         )),
-        body,
-        method_instance,
-        type_cache,
+        ctx,
     )
 }
 pub fn rotate_left<'tyctx>(
     args: &[Spanned<Operand<'tyctx>>],
     destination: &Place<'tyctx>,
-    tyctx: TyCtxt<'tyctx>,
-    body: &'tyctx Body<'tyctx>,
-    method_instance: Instance<'tyctx>,
+    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
     call_instance: Instance<'tyctx>,
-    type_cache: &mut TyCache,
 ) -> CILRoot {
     debug_assert_eq!(
         args.len(),
@@ -253,64 +203,49 @@ pub fn rotate_left<'tyctx>(
         1,
         "The intrinsic `sqrtf64` MUST take in exactly 1 argument!"
     );
-    let val_tpe = crate::utilis::monomorphize(
-        &method_instance,
+    let val_tpe = ctx.monomorphize(
         call_instance.args[0]
             .as_type()
             .expect("needs_drop works only on types!"),
-        tyctx,
     );
-    let val_tpe = type_cache.type_from_cache(val_tpe, tyctx, method_instance);
-    let val = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
-    let rot = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
+    let val_tpe = ctx.type_from_cache(val_tpe);
+    let val = handle_operand(&args[0].node, ctx);
+    let rot = handle_operand(&args[0].node, ctx);
     match val_tpe {
         Type::U8 => place_set(
             destination,
-            tyctx,
             or!(
                 CILNode::Shl(Box::new(val.clone()), Box::new(rot.clone())),
                 CILNode::ShrUn(Box::new(val), Box::new(ldc_u32!(8) - rot))
             ),
-            body,
-            method_instance,
-            type_cache,
+            ctx,
         ),
         Type::U16 => place_set(
             destination,
-            tyctx,
             or!(
                 CILNode::Shl(Box::new(val.clone()), Box::new(rot.clone())),
                 CILNode::ShrUn(Box::new(val), Box::new(ldc_u32!(16) - rot))
             ),
-            body,
-            method_instance,
-            type_cache,
+            ctx,
         ),
         Type::U32 => place_set(
             destination,
-            tyctx,
             or!(
                 CILNode::Shl(Box::new(val.clone()), Box::new(rot.clone())),
                 CILNode::ShrUn(Box::new(val), Box::new(ldc_u32!(32) - rot))
             ),
-            body,
-            method_instance,
-            type_cache,
+            ctx,
         ),
         Type::U64 => place_set(
             destination,
-            tyctx,
             or!(
                 CILNode::Shl(Box::new(val.clone()), Box::new(rot.clone())),
                 CILNode::ShrUn(Box::new(val), Box::new(ldc_u64!(64) - rot))
             ),
-            body,
-            method_instance,
-            type_cache,
+            ctx,
         ),
         Type::USize => place_set(
             destination,
-            tyctx,
             or!(
                 CILNode::Shl(Box::new(val.clone()), Box::new(rot.clone())),
                 CILNode::ShrUn(
@@ -318,57 +253,42 @@ pub fn rotate_left<'tyctx>(
                     Box::new(size_of!(Type::USize) * ldc_i32!(8) - rot)
                 )
             ),
-            body,
-            method_instance,
-            type_cache,
+            ctx,
         ),
         Type::I8 => place_set(
             destination,
-            tyctx,
             or!(
                 CILNode::Shl(Box::new(val.clone()), Box::new(rot.clone())),
                 CILNode::Shr(Box::new(val), Box::new(ldc_u32!(8) - rot))
             ),
-            body,
-            method_instance,
-            type_cache,
+            ctx,
         ),
         Type::I16 => place_set(
             destination,
-            tyctx,
             or!(
                 CILNode::Shl(Box::new(val.clone()), Box::new(rot.clone())),
                 CILNode::Shr(Box::new(val), Box::new(ldc_u32!(16) - rot))
             ),
-            body,
-            method_instance,
-            type_cache,
+            ctx,
         ),
         Type::I32 => place_set(
             destination,
-            tyctx,
             or!(
                 CILNode::Shl(Box::new(val.clone()), Box::new(rot.clone())),
                 CILNode::Shr(Box::new(val), Box::new(ldc_u32!(32) - rot))
             ),
-            body,
-            method_instance,
-            type_cache,
+            ctx,
         ),
         Type::I64 => place_set(
             destination,
-            tyctx,
             or!(
                 CILNode::Shl(Box::new(val.clone()), Box::new(rot.clone())),
                 CILNode::Shr(Box::new(val), Box::new(ldc_i64!(64) - rot))
             ),
-            body,
-            method_instance,
-            type_cache,
+            ctx,
         ),
         Type::ISize => place_set(
             destination,
-            tyctx,
             or!(
                 CILNode::Shl(Box::new(val.clone()), Box::new(rot.clone())),
                 CILNode::Shr(
@@ -376,9 +296,7 @@ pub fn rotate_left<'tyctx>(
                     Box::new(size_of!(Type::ISize) * ldc_i32!(8) - rot)
                 )
             ),
-            body,
-            method_instance,
-            type_cache,
+            ctx,
         ),
         _ => todo!("Can't ror {val_tpe:?}"),
     }
@@ -386,38 +304,30 @@ pub fn rotate_left<'tyctx>(
 pub fn rotate_right<'tyctx>(
     args: &[Spanned<Operand<'tyctx>>],
     destination: &Place<'tyctx>,
-    tyctx: TyCtxt<'tyctx>,
-    body: &'tyctx Body<'tyctx>,
-    method_instance: Instance<'tyctx>,
+    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
     call_instance: Instance<'tyctx>,
-    type_cache: &mut TyCache,
 ) -> CILRoot {
     debug_assert_eq!(
         args.len(),
         1,
         "The intrinsic `sqrtf64` MUST take in exactly 1 argument!"
     );
-    let val_tpe = crate::utilis::monomorphize(
-        &method_instance,
+    let val_tpe = ctx.monomorphize(
         call_instance.args[0]
             .as_type()
             .expect("needs_drop works only on types!"),
-        tyctx,
     );
-    let val_tpe = type_cache.type_from_cache(val_tpe, tyctx, method_instance);
-    let val = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
-    let rot = handle_operand(&args[0].node, tyctx, body, method_instance, type_cache);
+    let val_tpe = ctx.type_from_cache(val_tpe);
+    let val = handle_operand(&args[0].node, ctx);
+    let rot = handle_operand(&args[0].node, ctx);
     match val_tpe {
         Type::U32 => place_set(
             destination,
-            tyctx,
             or!(
                 CILNode::ShrUn(Box::new(val.clone()), Box::new(rot.clone())),
                 CILNode::Shl(Box::new(val), Box::new(ldc_u32!(32) - rot))
             ),
-            body,
-            method_instance,
-            type_cache,
+            ctx,
         ),
         _ => todo!("Can't ror {val_tpe:?}"),
     }

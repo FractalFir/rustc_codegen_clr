@@ -1,4 +1,4 @@
-use crate::r#type::TyCache;
+use crate::assembly::MethodCompileCtx;
 use crate::utilis::compiletime_sizeof;
 
 use cilly::{
@@ -6,17 +6,15 @@ use cilly::{
     rem_un, shl, shr, shr_un, DotnetTypeRef, Type,
 };
 
-use rustc_middle::ty::{Instance, IntTy, Ty, TyCtxt, TyKind, UintTy};
+use rustc_middle::ty::{IntTy, Ty, TyKind, UintTy};
 pub fn shr_unchecked<'tyctx>(
     value_type: Ty<'tyctx>,
     shift_type: Ty<'tyctx>,
-    tycache: &mut TyCache,
-    method_instance: &Instance<'tyctx>,
-    tyctx: TyCtxt<'tyctx>,
+    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
     ops_a: CILNode,
     ops_b: CILNode,
 ) -> CILNode {
-    let type_b = tycache.type_from_cache(shift_type, tyctx, *method_instance);
+    let type_b = ctx.type_from_cache(shift_type);
     match value_type.kind() {
         TyKind::Uint(UintTy::U128) => {
             call!(
@@ -72,14 +70,12 @@ pub fn shr_unchecked<'tyctx>(
 pub fn shr_checked<'tyctx>(
     value_type: Ty<'tyctx>,
     shift_type: Ty<'tyctx>,
-    tycache: &mut TyCache,
-    method_instance: &Instance<'tyctx>,
-    tyctx: TyCtxt<'tyctx>,
+    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
     ops_a: CILNode,
     ops_b: CILNode,
 ) -> CILNode {
-    let type_b = tycache.type_from_cache(shift_type, tyctx, *method_instance);
-    let bit_cap = u32::try_from(compiletime_sizeof(value_type, tyctx) * 8)
+    let type_b = ctx.type_from_cache(shift_type);
+    let bit_cap = u32::try_from(compiletime_sizeof(value_type, ctx.tyctx()) * 8)
         .expect("Intiger size over 2^32 bits.");
     match value_type.kind() {
         TyKind::Uint(UintTy::U128) => {
@@ -151,14 +147,12 @@ pub fn shr_checked<'tyctx>(
 pub fn shl_checked<'tyctx>(
     value_type: Ty<'tyctx>,
     shift_type: Ty<'tyctx>,
-    tycache: &mut TyCache,
-    method_instance: &Instance<'tyctx>,
-    tyctx: TyCtxt<'tyctx>,
+    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
     ops_a: CILNode,
     ops_b: CILNode,
 ) -> CILNode {
-    let type_b = tycache.type_from_cache(shift_type, tyctx, *method_instance);
-    let bit_cap = u32::try_from(compiletime_sizeof(value_type, tyctx) * 8)
+    let type_b = ctx.type_from_cache(shift_type);
+    let bit_cap = u32::try_from(compiletime_sizeof(value_type, ctx.tyctx()) * 8)
         .expect("Intiger has over 2^32 bits.");
     match value_type.kind() {
         TyKind::Uint(UintTy::U128) => {
@@ -231,13 +225,11 @@ pub fn shl_checked<'tyctx>(
 pub fn shl_unchecked<'tyctx>(
     value_type: Ty<'tyctx>,
     shift_type: Ty<'tyctx>,
-    tycache: &mut TyCache,
-    method_instance: &Instance<'tyctx>,
-    tyctx: TyCtxt<'tyctx>,
+    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
     ops_a: CILNode,
     ops_b: CILNode,
 ) -> CILNode {
-    let type_b = tycache.type_from_cache(shift_type, tyctx, *method_instance);
+    let type_b = ctx.type_from_cache(shift_type);
     match value_type.kind() {
         TyKind::Uint(UintTy::U128) => {
             call!(
