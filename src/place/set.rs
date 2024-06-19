@@ -1,16 +1,16 @@
-use super::{pointed_type, PlaceTy};
-
-use crate::assembly::MethodCompileCtx;
-use crate::r#type::pointer_to_is_fat;
-use cilly::cil_node::CILNode;
-use cilly::{
-    call, call_site::CallSite, cil_root::CILRoot, conv_usize, field_desc::FieldDescriptor,
-    fn_sig::FnSig, ld_field, ldc_u64, size_of, DotnetTypeRef, Type,
+use crate::{
+    assembly::MethodCompileCtx,
+    place::{pointed_type, PlaceTy},
+    r#type::pointer_to_is_fat,
 };
-
-use rustc_middle::mir::PlaceElem;
-use rustc_middle::ty::{FloatTy, Instance, IntTy, TyCtxt, TyKind, UintTy};
-
+use cilly::{
+    call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_usize,
+    field_desc::FieldDescriptor, fn_sig::FnSig, ld_field, ldc_u64, size_of, DotnetTypeRef, Type,
+};
+use rustc_middle::{
+    mir::PlaceElem,
+    ty::{FloatTy, IntTy, TyKind, UintTy},
+};
 pub fn local_set(local: usize, method: &rustc_middle::mir::Body, tree: CILNode) -> CILRoot {
     if let Some(spread_arg) = method.spread_arg
         && local == spread_arg.as_usize()
@@ -76,7 +76,7 @@ pub fn place_elem_set<'a>(
             let curr_ty = curr_type
                 .as_ty()
                 .expect("INVALID PLACE: Indexing into enum variant???");
-            let index = crate::place::local_get(index.as_usize(), ctx.method());
+            let index = crate::place::local_get(index.as_usize(), ctx.body());
             match curr_ty.kind() {
                 TyKind::Slice(inner) => {
                     let inner = ctx.monomorphize(*inner);
@@ -258,7 +258,7 @@ pub fn ptr_set_op<'ctx>(
                 }
             }
             TyKind::Ref(_, inner, _) => {
-                if pointer_to_is_fat(*inner, ctx.tyctx(), ctx.method_instance()) {
+                if pointer_to_is_fat(*inner, ctx.tyctx(), ctx.instance()) {
                     CILRoot::STObj {
                         tpe: ctx.type_from_cache(pointed_type).into(),
                         addr_calc: Box::new(addr_calc),
@@ -270,7 +270,7 @@ pub fn ptr_set_op<'ctx>(
                 }
             }
             TyKind::RawPtr(ty, _) => {
-                if pointer_to_is_fat(*ty, ctx.tyctx(), ctx.method_instance()) {
+                if pointer_to_is_fat(*ty, ctx.tyctx(), ctx.instance()) {
                     CILRoot::STObj {
                         tpe: ctx.type_from_cache(pointed_type).into(),
                         addr_calc: Box::new(addr_calc),

@@ -12,7 +12,7 @@ use cilly::{
     conv_usize, ld_field, ldc_i32, size_of,
 };
 use cilly::{call_site::CallSite, field_desc::FieldDescriptor, fn_sig::FnSig, DotnetTypeRef, Type};
-use rustc_middle::ty::InstanceDef;
+use rustc_middle::ty::InstanceKind;
 use rustc_middle::{
     mir::{Operand, Place},
     ty::{GenericArg, Instance, ParamEnv, Ty, TyKind},
@@ -238,7 +238,7 @@ pub fn call_closure<'tyctx>(
     }
     // "Rust call" is wierd, and not at all optimized for .NET. Passing all the arguments in a tuple is bad for performance and simplicty. Thus, unpacking this tuple and forcing "Rust call" to be
     // "normal" is far easier and better for performance.
-    let last_arg_type = ctx.monomorphize(last_arg.node.ty(ctx.method(), ctx.tyctx()));
+    let last_arg_type = ctx.monomorphize(last_arg.node.ty(ctx.body(), ctx.tyctx()));
     match last_arg_type.kind() {
         TyKind::Tuple(elements) => {
             if elements.is_empty() {
@@ -310,9 +310,9 @@ pub fn call<'tyctx>(
     } else {
         todo!("Trying to call a type which is not a function definition!");
     };
-    if let rustc_middle::ty::InstanceDef::Virtual(_def, fn_idx) = instance.def {
+    if let rustc_middle::ty::InstanceKind::Virtual(_def, fn_idx) = instance.def {
         assert!(!args.is_empty());
-        let fat_ptr_ty = ctx.monomorphize(args[0].node.ty(ctx.method(), ctx.tyctx()));
+        let fat_ptr_ty = ctx.monomorphize(args[0].node.ty(ctx.body(), ctx.tyctx()));
         let fat_ptr_type = ctx.type_from_cache(fat_ptr_ty);
         let fat_ptr_address = operand_address(&args[0].node, ctx);
         let vtable_ptr = ld_field!(
@@ -362,7 +362,7 @@ pub fn call<'tyctx>(
             }
             // "Rust call" is wierd, and not at all optimized for .NET. Passing all the arguments in a tuple is bad for performance and simplicty. Thus, unpacking this tuple and forcing "Rust call" to be
             // "normal" is far easier and better for performance.
-            let last_arg_type = ctx.monomorphize(last_arg.node.ty(ctx.method(), ctx.tyctx()));
+            let last_arg_type = ctx.monomorphize(last_arg.node.ty(ctx.body(), ctx.tyctx()));
             match last_arg_type.kind() {
                 TyKind::Tuple(elements) => {
                     if elements.is_empty() {
@@ -463,11 +463,11 @@ pub fn call<'tyctx>(
 
     let mut call_args = Vec::new();
     for arg in args {
-        let method_instance = ctx.method_instance();
+        let method_instance = ctx.instance();
         let tyctx = ctx.tyctx();
         let res_calc = crate::r#type::tycache::validity_check(
             crate::operand::handle_operand(&arg.node, ctx),
-            ctx.monomorphize(arg.node.ty(ctx.method(), ctx.tyctx())),
+            ctx.monomorphize(arg.node.ty(ctx.body(), ctx.tyctx())),
             ctx.type_cache(),
             method_instance,
             tyctx,
@@ -478,9 +478,7 @@ pub fn call<'tyctx>(
         signature.set_inputs(
             args.iter()
                 .map(|operand| {
-                    ctx.type_from_cache(
-                        ctx.monomorphize(operand.node.ty(ctx.method(), ctx.tyctx())),
-                    )
+                    ctx.type_from_cache(ctx.monomorphize(operand.node.ty(ctx.body(), ctx.tyctx())))
                 })
                 .collect(),
         );
@@ -501,7 +499,7 @@ pub fn call<'tyctx>(
     //assert_eq!(args.len(),signature.inputs().len(),"CALL SIGNATURE ARG COUNT MISMATCH!");
     let is_void = matches!(signature.output(), crate::r#type::Type::Void);
     //rustc_middle::ty::print::with_no_trimmed_paths! {call.push(CILOp::Comment(format!("Calling {instance:?}").into()))};
-    if let InstanceDef::DropGlue(_def, None) = instance.def {
+    if let InstanceKind::DropGlue(_def, None) = instance.def {
         return CILRoot::Nop;
     };
     let call_site = CallSite::new(None, function_name, signature, true);
@@ -512,11 +510,11 @@ pub fn call<'tyctx>(
             args: call_args.into(),
         }
     } else {
-        let method_instance = ctx.method_instance();
+        let method_instance = ctx.instance();
         let tyctx = ctx.tyctx();
         let res_calc = crate::r#type::tycache::validity_check(
             call!(call_site, call_args),
-            ctx.monomorphize(destination.ty(ctx.method(), ctx.tyctx()).ty),
+            ctx.monomorphize(destination.ty(ctx.body(), ctx.tyctx()).ty),
             ctx.type_cache(),
             method_instance,
             tyctx,

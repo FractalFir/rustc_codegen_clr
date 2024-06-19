@@ -3,7 +3,7 @@ use rustc_middle::mir::BasicBlockData;
 use rustc_middle::mir::UnwindAction;
 use rustc_middle::{
     mir::{BasicBlocks, Body, TerminatorKind},
-    ty::{Instance, InstanceDef, TyCtxt},
+    ty::{Instance, InstanceKind, TyCtxt},
 };
 
 pub(crate) fn handler_for_block<'tyctx>(
@@ -60,7 +60,7 @@ fn simplify_handler<'tyctx>(
                 crate::utilis::monomorphize(method_instance, place.ty(method, tyctx).ty, tyctx);
 
             let drop_instance = Instance::resolve_drop_in_place(tyctx, ty).polymorphize(tyctx);
-            if let InstanceDef::DropGlue(_, None) = drop_instance.def {
+            if let InstanceKind::DropGlue(_, None) = drop_instance.def {
                 //Empty drop, nothing needs to happen.
                 simplify_handler(
                     Some(target.as_u32()),

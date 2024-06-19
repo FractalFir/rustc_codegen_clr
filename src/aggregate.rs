@@ -12,7 +12,7 @@ use cilly::{
 use rustc_index::IndexVec;
 use rustc_middle::{
     mir::{AggregateKind, Operand, Place},
-    ty::{AdtDef, AdtKind, GenericArg, Instance, List, ParamEnv, Ty, TyCtxt, TyKind},
+    ty::{AdtDef, AdtKind, GenericArg, Instance, List, ParamEnv, Ty, TyKind},
 };
 use rustc_target::abi::FieldIdx;
 /// Returns the CIL ops to create the aggreagate value specifed by `aggregate_kind` at `target_location`. Uses indivlidual values specifed by `value_index`
@@ -95,7 +95,7 @@ pub fn handle_aggregate<'tyctx>(
             let types: Vec<_> = value_index
                 .iter()
                 .map(|operand| {
-                    let operand_ty = ctx.monomorphize(operand.ty(ctx.method(), ctx.tyctx()));
+                    let operand_ty = ctx.monomorphize(operand.ty(ctx.body(), ctx.tyctx()));
                     ctx.type_from_cache(operand_ty)
                 })
                 .collect();
@@ -125,14 +125,14 @@ pub fn handle_aggregate<'tyctx>(
         }
         AggregateKind::Closure(_def_id, _args) => {
             let closure_ty = ctx
-                .monomorphize(target_location.ty(ctx.method(), ctx.tyctx()))
+                .monomorphize(target_location.ty(ctx.body(), ctx.tyctx()))
                 .ty;
             let closure_type = ctx.type_from_cache(closure_ty);
             let closure_dotnet = closure_type.as_dotnet().expect("Invalid closure type!");
             let closure_getter = super::place::place_adress(target_location, ctx);
             let mut sub_trees = vec![];
             for (index, value) in value_index.iter_enumerated() {
-                let field_ty = ctx.monomorphize(value.ty(ctx.method(), ctx.tyctx()));
+                let field_ty = ctx.monomorphize(value.ty(ctx.body(), ctx.tyctx()));
                 let field_ty = ctx.type_from_cache(field_ty);
                 if field_ty == Type::Void {
                     continue;
@@ -161,10 +161,10 @@ pub fn handle_aggregate<'tyctx>(
             let fat_ptr = Ty::new_ptr(ctx.tyctx(), pointee, *mutability);
             // Get the addres of the initialized structure
             let init_addr = super::place::place_adress(target_location, ctx);
-            let meta_ty = ctx.monomorphize(meta.ty(ctx.method(), ctx.tyctx()));
-            let data_ty = ctx.monomorphize(data.ty(ctx.method(), ctx.tyctx()));
+            let meta_ty = ctx.monomorphize(meta.ty(ctx.body(), ctx.tyctx()));
+            let data_ty = ctx.monomorphize(data.ty(ctx.body(), ctx.tyctx()));
             let fat_ptr_type = ctx.type_from_cache(fat_ptr);
-            if !pointer_to_is_fat(pointee, ctx.tyctx(), ctx.method_instance()) {
+            if !pointer_to_is_fat(pointee, ctx.tyctx(), ctx.instance()) {
                 // Double-check the pointer is REALLY thin
                 assert!(fat_ptr_type.as_dotnet().is_none());
                 assert!(
@@ -189,7 +189,7 @@ pub fn handle_aggregate<'tyctx>(
                     Box::new(place_get(target_location, ctx)),
                 )));
             }
-            assert!(pointer_to_is_fat(pointee,ctx.tyctx(), ctx.method_instance()), "A pointer to {pointee:?} is not fat, but its metadata is {meta_ty:?}, and not a zst:{is_meta_zst}",is_meta_zst = crate::utilis::is_zst(meta_ty,  ctx.tyctx()));
+            assert!(pointer_to_is_fat(pointee,ctx.tyctx(), ctx.instance()), "A pointer to {pointee:?} is not fat, but its metadata is {meta_ty:?}, and not a zst:{is_meta_zst}",is_meta_zst = crate::utilis::is_zst(meta_ty,  ctx.tyctx()));
             // Assign the components
             let assign_ptr = CILRoot::SetField {
                 addr: Box::new(init_addr.clone()),

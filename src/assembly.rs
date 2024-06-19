@@ -197,8 +197,7 @@ fn allocation_initializer_method(
     )
 }
 fn calculate_hash<T: std::hash::Hash>(t: &T) -> u64 {
-    use std::hash::DefaultHasher;
-    use std::hash::Hasher;
+    use std::hash::{DefaultHasher, Hasher};
     let mut s = DefaultHasher::new();
     t.hash(&mut s);
     s.finish()
@@ -806,18 +805,22 @@ impl<'tyctx, 'validator, 'type_cache> MethodCompileCtx<'tyctx, 'validator, 'type
         self.type_cache
             .slice_ref_to(self.tyctx, inner, self.method_instance)
     }
+    /// Returns the type context this method is compiled in.
+    #[must_use]
     pub fn tyctx(&self) -> TyCtxt<'tyctx> {
         self.tyctx
     }
-
-    pub fn method(&self) -> &'tyctx rustc_middle::mir::Body<'tyctx> {
+    /// Returns the MIR body of this method is compiled.
+    #[must_use]
+    pub fn body(&self) -> &'tyctx rustc_middle::mir::Body<'tyctx> {
         self.method
     }
-
-    pub fn method_instance(&self) -> Instance<'tyctx> {
+    #[must_use]
+    /// Returns the Instance representing the current method
+    pub fn instance(&self) -> Instance<'tyctx> {
         self.method_instance
     }
-
+    /// Returns a Type cache.
     pub fn type_cache(&mut self) -> &mut &'type_cache mut TyCache {
         &mut self.type_cache
     }
@@ -829,7 +832,7 @@ impl<'tyctx, 'validator, 'type_cache> MethodCompileCtx<'tyctx, 'validator, 'type
         &self,
         ty: T,
     ) -> T {
-        self.method_instance()
+        self.instance()
             .instantiate_mir_and_normalize_erasing_regions(
                 self.tyctx(),
                 ParamEnv::reveal_all(),

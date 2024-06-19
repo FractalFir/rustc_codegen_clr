@@ -2,7 +2,6 @@ use crate::{
     assembly::MethodCompileCtx,
     operand::handle_operand,
     place::{place_adress, place_set},
-    r#type::tycache::TyCache,
     utilis::field_descrptor,
 };
 use cilly::{
@@ -12,8 +11,8 @@ use cilly::{
 };
 use ints::{ctlz, rotate_left, rotate_right};
 use rustc_middle::{
-    mir::{Body, Operand, Place},
-    ty::{Instance, ParamEnv, TyCtxt},
+    mir::{Operand, Place},
+    ty::{Instance, ParamEnv},
 };
 use rustc_span::source_map::Spanned;
 use saturating::{saturating_add, saturating_sub};
@@ -292,7 +291,7 @@ pub fn handle_intrinsic<'tyctx>(
                 1,
                 "The intrinsic `atomic_load_unordered` MUST take in exactly 1 argument!"
             );
-            let arg = ctx.monomorphize(args[0].node.ty(ctx.method(), ctx.tyctx()));
+            let arg = ctx.monomorphize(args[0].node.ty(ctx.body(), ctx.tyctx()));
             let arg_ty = arg.builtin_deref(true).unwrap();
             let arg = handle_operand(&args[0].node, ctx);
             let ops = crate::place::deref_op(arg_ty.into(), ctx, arg);
@@ -306,7 +305,7 @@ pub fn handle_intrinsic<'tyctx>(
                 "The intrinsic `atomic_load_acquire` MUST take in exactly 1 argument!"
             );
             let ops = handle_operand(&args[0].node, ctx);
-            let arg = ctx.monomorphize(args[0].node.ty(ctx.method(), ctx.tyctx()));
+            let arg = ctx.monomorphize(args[0].node.ty(ctx.body(), ctx.tyctx()));
             let arg_ty = arg.builtin_deref(true).unwrap();
 
             let ops = crate::place::deref_op(arg_ty.into(), ctx, ops);
@@ -324,7 +323,7 @@ pub fn handle_intrinsic<'tyctx>(
             );
             let addr = handle_operand(&args[0].node, ctx);
             let val = handle_operand(&args[1].node, ctx);
-            let arg_ty = ctx.monomorphize(args[1].node.ty(ctx.method(), ctx.tyctx()));
+            let arg_ty = ctx.monomorphize(args[1].node.ty(ctx.body(), ctx.tyctx()));
 
             crate::place::ptr_set_op(arg_ty.into(), ctx, addr, val)
         }
@@ -344,7 +343,7 @@ pub fn handle_intrinsic<'tyctx>(
                 3,
                 "The intrinsic `atomic_cxchgweak_acquire_acquire` MUST take in exactly 3 argument!"
             );
-            let src_type = ctx.monomorphize(args[2].node.ty(ctx.method(), ctx.tyctx()));
+            let src_type = ctx.monomorphize(args[2].node.ty(ctx.body(), ctx.tyctx()));
             let src_type = ctx.type_from_cache(src_type);
 
             let call_site = CallSite::new(
@@ -365,7 +364,7 @@ pub fn handle_intrinsic<'tyctx>(
             let comaprand = old.clone();
             let exchange_res = call!(call_site, [dst, value, comaprand]);
             // Set a field of the destination
-            let dst_ty = destination.ty(ctx.method(), ctx.tyctx());
+            let dst_ty = destination.ty(ctx.body(), ctx.tyctx());
             let fld_desc = field_descrptor(dst_ty.ty, 0, ctx);
             assert_eq!(*fld_desc.tpe(), src_type);
             // Set the value of the result.
@@ -397,7 +396,7 @@ pub fn handle_intrinsic<'tyctx>(
             let sub_ammount = handle_operand(&args[1].node, ctx);
             // we sub by adding a negative number
             let add_ammount = CILNode::Neg(Box::new(sub_ammount.clone()));
-            let src_type = ctx.monomorphize(args[1].node.ty(ctx.method(), ctx.tyctx()));
+            let src_type = ctx.monomorphize(args[1].node.ty(ctx.body(), ctx.tyctx()));
             let src_type = ctx.type_from_cache(src_type);
 
             place_set(
@@ -425,7 +424,7 @@ pub fn handle_intrinsic<'tyctx>(
             let add_ammount = handle_operand(&args[1].node, ctx);
             // we sub by adding a negative number
 
-            let src_type = ctx.monomorphize(args[1].node.ty(ctx.method(), ctx.tyctx()));
+            let src_type = ctx.monomorphize(args[1].node.ty(ctx.body(), ctx.tyctx()));
             let src_type = ctx.type_from_cache(src_type);
 
             place_set(
@@ -446,7 +445,7 @@ pub fn handle_intrinsic<'tyctx>(
                 2,
                 "The intrinsic `atomic_xchg_release` MUST take in exactly 3 argument!"
             );
-            let src_type = ctx.monomorphize(args[1].node.ty(ctx.method(), ctx.tyctx()));
+            let src_type = ctx.monomorphize(args[1].node.ty(ctx.body(), ctx.tyctx()));
             let src_type = ctx.type_from_cache(src_type);
 
             let call_site = CallSite::new(
@@ -510,7 +509,7 @@ pub fn handle_intrinsic<'tyctx>(
             );
             place_set(
                 destination,
-                conv_usize!(ldc_u64!(crate::utilis::align_of(tpe, ctx.tyctx()) as u64)),
+                conv_usize!(ldc_u64!(crate::utilis::align_of(tpe, ctx.tyctx()))),
                 ctx,
             )
         }
@@ -523,7 +522,7 @@ pub fn handle_intrinsic<'tyctx>(
                 "The intrinsic `atomic_load_relaxed` MUST take in exactly 1 argument!"
             );
             let ops = handle_operand(&args[0].node, ctx);
-            let arg = ctx.monomorphize(args[0].node.ty(ctx.method(), ctx.tyctx()));
+            let arg = ctx.monomorphize(args[0].node.ty(ctx.body(), ctx.tyctx()));
             let arg_ty = arg.builtin_deref(true).unwrap();
 
             let ops = crate::place::deref_op(arg_ty.into(), ctx, ops);
@@ -808,7 +807,7 @@ fn volitale_load<'tyctx>(
         1,
         "The intrinsic `volatile_load` MUST take in exactly 1 argument!"
     );
-    let arg = ctx.monomorphize(args[0].node.ty(ctx.method(), ctx.tyctx()));
+    let arg = ctx.monomorphize(args[0].node.ty(ctx.body(), ctx.tyctx()));
     let arg_ty = arg.builtin_deref(true).unwrap();
     let arg = handle_operand(&args[0].node, ctx);
     let ops = crate::place::deref_op(arg_ty.into(), ctx, arg);

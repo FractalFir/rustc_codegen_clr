@@ -1,15 +1,11 @@
-use crate::{
-    assembly::MethodCompileCtx,
-    place::place_set,
-    r#type::{pointer_to_is_fat, tycache::TyCache},
-};
+use crate::{assembly::MethodCompileCtx, place::place_set, r#type::pointer_to_is_fat};
 use cilly::{
     cil_node::CILNode, cil_root::CILRoot, conv_usize, field_desc::FieldDescriptor, ld_field,
     ldc_u32, size_of, DotnetTypeRef, Type,
 };
 use rustc_middle::{
-    mir::{Body, Operand, Place},
-    ty::{Instance, TyCtxt, TyKind},
+    mir::{Operand, Place},
+    ty::{Instance, TyKind},
 };
 use rustc_span::source_map::Spanned;
 pub fn is_val_statically_known<'tyctx>(
@@ -45,8 +41,8 @@ pub fn size_of_val<'tyctx>(
     if crate::utilis::is_zst(pointed_ty, ctx.tyctx()) {
         return place_set(destination, conv_usize!(ldc_u32!(0)), ctx);
     }
-    if pointer_to_is_fat(pointed_ty, ctx.tyctx(), ctx.method_instance()) {
-        let ptr_ty = ctx.monomorphize(args[0].node.ty(ctx.method(), ctx.tyctx()));
+    if pointer_to_is_fat(pointed_ty, ctx.tyctx(), ctx.instance()) {
+        let ptr_ty = ctx.monomorphize(args[0].node.ty(ctx.body(), ctx.tyctx()));
         match pointed_ty.kind() {
             TyKind::Slice(inner) => {
                 let slice_tpe: DotnetTypeRef = ctx.type_from_cache(ptr_ty).as_dotnet().unwrap();

@@ -119,7 +119,7 @@ pub fn deref_op<'ctx>(
                 }
             }
             TyKind::Ref(_, inner, _) => {
-                if pointer_to_is_fat(*inner, ctx.tyctx(), ctx.method_instance()) {
+                if pointer_to_is_fat(*inner, ctx.tyctx(), ctx.instance()) {
                     CILNode::LdObj {
                         ptr,
                         obj: Box::new(ctx.type_from_cache(derefed_type)),
@@ -133,7 +133,7 @@ pub fn deref_op<'ctx>(
                 }
             }
             TyKind::RawPtr(typ, _) => {
-                if pointer_to_is_fat(*typ, ctx.tyctx(), ctx.method_instance()) {
+                if pointer_to_is_fat(*typ, ctx.tyctx(), ctx.instance()) {
                     CILNode::LdObj {
                         ptr,
                         obj: Box::new(ctx.type_from_cache(derefed_type)),
@@ -157,7 +157,7 @@ pub fn deref_op<'ctx>(
 
 /// Returns the ops for getting the address of a given place.
 pub fn place_adress<'a>(place: &Place<'a>, ctx: &mut MethodCompileCtx<'a, '_, '_>) -> CILNode {
-    let place_ty = place.ty(ctx.method(), ctx.tyctx());
+    let place_ty = place.ty(ctx.body(), ctx.tyctx());
     let place_ty = ctx.monomorphize(place_ty).ty;
 
     let layout = ctx.layout_of(place_ty);
@@ -169,7 +169,7 @@ pub fn place_adress<'a>(place: &Place<'a>, ctx: &mut MethodCompileCtx<'a, '_, '_
         };
     }
     if place.projection.is_empty() {
-        local_adress(place.local.as_usize(), ctx.method())
+        local_adress(place.local.as_usize(), ctx.body())
     } else {
         let (mut addr_calc, mut ty) = local_body(place.local.as_usize(), ctx);
 
@@ -186,12 +186,12 @@ pub fn place_adress<'a>(place: &Place<'a>, ctx: &mut MethodCompileCtx<'a, '_, '_
         adress::place_elem_adress(head, ty, ctx, place_ty, addr_calc)
     }
 }
-/// Should be only used in certain builit-in features. For unsided types, returns the address of the fat pointer, not the address contained within it.
+/// Should be only used in certain builit-in features. For unsized types, returns the address of the fat pointer, not the address contained within it.
 pub(crate) fn place_address_raw<'a>(
     place: &Place<'a>,
     ctx: &mut MethodCompileCtx<'a, '_, '_>,
 ) -> CILNode {
-    let place_ty = place.ty(ctx.method(), ctx.tyctx());
+    let place_ty = place.ty(ctx.body(), ctx.tyctx());
     let place_ty = ctx.monomorphize(place_ty).ty;
 
     let layout = ctx.layout_of(place_ty);
@@ -199,14 +199,14 @@ pub(crate) fn place_address_raw<'a>(
         return conv_usize!(ldc_u64!(layout.align.pref.bytes()));
     }
     if place.projection.is_empty() {
-        local_adress(place.local.as_usize(), ctx.method())
+        local_adress(place.local.as_usize(), ctx.body())
     } else if place.projection.len() == 1
         && matches!(
             slice_head(place.projection).0,
             rustc_middle::mir::PlaceElem::Deref
         )
     {
-        return local_adress(place.local.as_usize(), ctx.method());
+        return local_adress(place.local.as_usize(), ctx.body());
     } else {
         let (mut addr_calc, mut ty) = local_body(place.local.as_usize(), ctx);
 
@@ -229,7 +229,7 @@ pub(crate) fn place_set<'tyctx>(
     ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
 ) -> CILRoot {
     if place.projection.is_empty() {
-        set::local_set(place.local.as_usize(), ctx.method(), value_calc)
+        set::local_set(place.local.as_usize(), ctx.body(), value_calc)
     } else {
         let (mut addr_calc, ty) = local_body(place.local.as_usize(), ctx);
         let mut ty: PlaceTy = ty.into();

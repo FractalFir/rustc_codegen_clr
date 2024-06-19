@@ -3,14 +3,11 @@ use cilly::{
     call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, cil_tree::CILTree,
     field_desc::FieldDescriptor, ld_field, FnSig, Type,
 };
-use rustc_span::source_map::Spanned;
-
-use crate::utilis::monomorphize;
-
 use rustc_middle::{
-    mir::{BasicBlock, Body, Operand, Place, SwitchTargets, Terminator, TerminatorKind},
-    ty::{Instance, InstanceDef, Ty, TyCtxt, TyKind},
+    mir::{BasicBlock, Operand, Place, SwitchTargets, Terminator, TerminatorKind},
+    ty::{Instance, InstanceKind, Ty, TyKind},
 };
+use rustc_span::source_map::Spanned;
 
 mod call;
 mod intrinsics;
@@ -27,7 +24,7 @@ pub fn handle_call_terminator<'tycxt>(
     let func_ty = match func {
         Operand::Constant(fn_const) => fn_const.ty(),
         Operand::Copy(called) | Operand::Move(called) => {
-            called.ty(ctx.method(), ctx.tyctx()).ty
+            called.ty(ctx.body(), ctx.tyctx()).ty
             //rustc_middle::ty::print::with_no_trimmed_paths! {eprintln!("Calling func:{func:?} {:?}", operand_ty)};
         }
     };
@@ -57,7 +54,7 @@ pub fn handle_call_terminator<'tycxt>(
             //eprintln!("Calling FnPtr:{func_ty:?}");
             let sig = ctx.monomorphize(*sig);
             let sig = crate::function_sig::from_poly_sig(
-                ctx.method_instance(),
+                ctx.instance(),
                 ctx.tyctx(),
                 ctx.type_cache(),
                 sig,
@@ -131,7 +128,7 @@ pub fn handle_terminator<'ctx>(
             fn_span: _,
         } => handle_call_terminator(terminator, ctx, args, destination, func, *target),
         TerminatorKind::Return => {
-            let ret = ctx.monomorphize(ctx.method().return_ty());
+            let ret = ctx.monomorphize(ctx.body().return_ty());
             if ctx.type_from_cache(ret) == crate::r#type::Type::Void {
                 vec![CILRoot::VoidRet.into()]
             } else {
@@ -142,7 +139,7 @@ pub fn handle_terminator<'ctx>(
             }
         }
         TerminatorKind::SwitchInt { discr, targets } => {
-            let ty = ctx.monomorphize(discr.ty(ctx.method(), ctx.tyctx()));
+            let ty = ctx.monomorphize(discr.ty(ctx.body(), ctx.tyctx()));
             let discr = crate::operand::handle_operand(discr, ctx);
             handle_switch(ty, &discr, targets)
         }
@@ -173,11 +170,11 @@ pub fn handle_terminator<'ctx>(
             unwind: _,
             replace: _,
         } => {
-            let ty = ctx.monomorphize(place.ty(ctx.method(), ctx.tyctx()).ty);
+            let ty = ctx.monomorphize(place.ty(ctx.body(), ctx.tyctx()).ty);
 
             let drop_instance =
                 Instance::resolve_drop_in_place(ctx.tyctx(), ty).polymorphize(ctx.tyctx());
-            if let InstanceDef::DropGlue(_, None) = drop_instance.def {
+            if let InstanceKind::DropGlue(_, None) = drop_instance.def {
                 //Empty drop, nothing needs to happen.
                 vec![CILRoot::GoTo {
                     target: target.as_u32(),

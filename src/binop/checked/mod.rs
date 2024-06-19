@@ -1,15 +1,10 @@
-use cilly::cil_node::CILNode;
-use cilly::cil_root::CILRoot;
+use crate::{assembly::MethodCompileCtx, casts};
 use cilly::{
-    and, call, conv_i64, conv_isize, conv_u64, conv_usize, gt, gt_un, ldc_i32, ldc_i64, ldc_u32,
-    ldc_u64, lt, mul, or, size_of,
+    and, call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_i64, conv_isize,
+    conv_u64, conv_usize, field_desc::FieldDescriptor, gt, gt_un, ldc_i32, ldc_i64, ldc_u32,
+    ldc_u64, lt, mul, or, size_of, DotnetTypeRef, FnSig, Type,
 };
-use cilly::{call_site::CallSite, field_desc::FieldDescriptor, DotnetTypeRef, FnSig, Type};
-
 use rustc_middle::ty::{IntTy, Ty, TyKind, UintTy};
-
-use crate::assembly::MethodCompileCtx;
-use crate::casts;
 
 pub fn result_tuple(tpe: Type, out_of_range: CILNode, val: CILNode) -> CILNode {
     let tuple = crate::r#type::simple_tuple(&[tpe.clone(), Type::Bool]);

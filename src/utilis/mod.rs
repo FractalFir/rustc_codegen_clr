@@ -1,3 +1,4 @@
+use crate::{assembly::MethodCompileCtx, IString};
 use cilly::field_desc::FieldDescriptor;
 use rustc_middle::{
     mir::interpret::AllocId,
@@ -6,15 +7,13 @@ use rustc_middle::{
         Ty, TyCtxt, TyKind, TypeFoldable,
     },
 };
+pub mod adt;
 pub const CTOR_FN_NAME: &str = "rustc_clr_interop_managed_ctor";
 pub const MANAGED_CALL_FN_NAME: &str = "rustc_clr_interop_managed_call";
 pub const MANAGED_CALL_VIRT_FN_NAME: &str = "rustc_clr_interop_managed_call_virt";
 pub fn is_function_magic(name: &str) -> bool {
     name.contains(CTOR_FN_NAME) || name.contains(MANAGED_CALL_FN_NAME)
 }
-
-use crate::{assembly::MethodCompileCtx, r#type::TyCache, IString};
-pub mod adt;
 pub fn as_adt(ty: Ty) -> Option<(AdtDef, &List<GenericArg>)> {
     match ty.kind() {
         TyKind::Adt(adt, subst) => Some((*adt, subst)),
@@ -326,14 +325,4 @@ pub fn requries_align_adjustement<'tyctx>(
     } else {
         None
     }
-}
-pub fn is_unsized<'tyctx>(ty: rustc_middle::ty::Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -> bool {
-    let layout = tyctx
-        .layout_of(rustc_middle::ty::ParamEnvAnd {
-            param_env: ParamEnv::reveal_all(),
-            value: ty,
-        })
-        .expect("Can't get layout of a type.")
-        .layout;
-    layout.is_unsized()
 }

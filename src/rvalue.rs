@@ -1,16 +1,15 @@
-use crate::assembly::MethodCompileCtx;
-use crate::operand::handle_operand;
-use cilly::cil_root::CILRoot;
-use cilly::field_desc::FieldDescriptor;
-use cilly::fn_sig::FnSig;
-use cilly::{call_site::CallSite, cil_node::CILNode};
-
-use cilly::{conv_usize, ld_field, ldc_i32, ldc_u64, size_of};
-
-use crate::r#type::{pointer_to_is_fat, Type};
+use crate::{
+    assembly::MethodCompileCtx,
+    operand::handle_operand,
+    r#type::{pointer_to_is_fat, Type},
+};
+use cilly::{
+    call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_usize,
+    field_desc::FieldDescriptor, fn_sig::FnSig, ld_field, ldc_i32, ldc_u64, size_of,
+};
 use rustc_middle::{
     mir::{CastKind, NullOp, Place, Rvalue},
-    ty::{adjustment::PointerCoercion, GenericArgs, Instance, InstanceDef, ParamEnv, Ty, TyKind},
+    ty::{adjustment::PointerCoercion, GenericArgs, Instance, InstanceKind, ParamEnv, Ty, TyKind},
 };
 pub fn handle_rvalue<'tyctx>(
     rvalue: &Rvalue<'tyctx>,
@@ -41,7 +40,7 @@ pub fn handle_rvalue<'tyctx>(
                 TyKind::Ref(_, inner, _) => *inner,
                 _ => panic!("Type is not ptr {target:?}."),
             };
-            let source = ctx.monomorphize(operand.ty(ctx.method(), ctx.tyctx()));
+            let source = ctx.monomorphize(operand.ty(ctx.body(), ctx.tyctx()));
             let source_pointed_to = match source.kind() {
                 TyKind::RawPtr(typ, _) => *typ,
                 TyKind::Ref(_, inner, _) => *inner,
@@ -50,9 +49,8 @@ pub fn handle_rvalue<'tyctx>(
             let source_type = ctx.type_from_cache(source);
             let target_type = ctx.type_from_cache(target);
 
-            let src_fat = pointer_to_is_fat(source_pointed_to, ctx.tyctx(), ctx.method_instance());
-            let target_fat =
-                pointer_to_is_fat(target_pointed_to, ctx.tyctx(), ctx.method_instance());
+            let src_fat = pointer_to_is_fat(source_pointed_to, ctx.tyctx(), ctx.instance());
+            let target_fat = pointer_to_is_fat(target_pointed_to, ctx.tyctx(), ctx.instance());
             match (src_fat, target_fat) {
                 (true, true) => {
                     let parrent = handle_operand(operand, ctx);
@@ -113,7 +111,7 @@ pub fn handle_rvalue<'tyctx>(
         Rvalue::Cast(CastKind::IntToInt, operand, target) => {
             let target = ctx.monomorphize(*target);
             let target = ctx.type_from_cache(target);
-            let src = operand.ty(&ctx.method().local_decls, ctx.tyctx());
+            let src = operand.ty(&ctx.body().local_decls, ctx.tyctx());
             let src = ctx.monomorphize(src);
             let src = ctx.type_from_cache(src);
             crate::casts::int_to_int(src, &target, handle_operand(operand, ctx))
@@ -121,7 +119,7 @@ pub fn handle_rvalue<'tyctx>(
         Rvalue::Cast(CastKind::FloatToInt, operand, target) => {
             let target = ctx.monomorphize(*target);
             let target = ctx.type_from_cache(target);
-            let src = operand.ty(&ctx.method().local_decls, ctx.tyctx());
+            let src = operand.ty(&ctx.body().local_decls, ctx.tyctx());
             let src = ctx.monomorphize(src);
             let src = ctx.type_from_cache(src);
 
@@ -130,7 +128,7 @@ pub fn handle_rvalue<'tyctx>(
         Rvalue::Cast(CastKind::IntToFloat, operand, target) => {
             let target = ctx.monomorphize(*target);
             let target = ctx.type_from_cache(target);
-            let src = operand.ty(&ctx.method().local_decls, ctx.tyctx());
+            let src = operand.ty(&ctx.body().local_decls, ctx.tyctx());
             let src = ctx.monomorphize(src);
             let src = ctx.type_from_cache(src);
             crate::casts::int_to_float(src, &target, handle_operand(operand, ctx))
@@ -143,7 +141,7 @@ pub fn handle_rvalue<'tyctx>(
             }
             NullOp::AlignOf => {
                 let ty = ctx.monomorphize(*ty);
-                conv_usize!(ldc_u64!(crate::utilis::align_of(ty, ctx.tyctx()) as u64))
+                conv_usize!(ldc_u64!(crate::utilis::align_of(ty, ctx.tyctx())))
             }
             NullOp::OffsetOf(fields) => {
                 assert_eq!(fields.len(), 1);
@@ -169,7 +167,7 @@ pub fn handle_rvalue<'tyctx>(
             let dst = ctx.monomorphize(*dst);
             let dst_ty = dst;
             let dst = ctx.type_from_cache(dst);
-            let src = operand.ty(&ctx.method().local_decls, ctx.tyctx());
+            let src = operand.ty(&ctx.body().local_decls, ctx.tyctx());
             let src = ctx.monomorphize(src);
             let src = ctx.type_from_cache(src);
             match (&src, &dst) {
@@ -202,11 +200,11 @@ pub fn handle_rvalue<'tyctx>(
             let dst = ctx.monomorphize(*dst);
             let boxed_dst = Ty::new_box(ctx.tyctx(), dst);
             //let dst = tycache.type_from_cache(dst, tyctx, method_instance);
-            let src = operand.ty(&ctx.method().local_decls, ctx.tyctx());
+            let src = operand.ty(&ctx.body().local_decls, ctx.tyctx());
             let boxed_dst_type = ctx.type_from_cache(boxed_dst);
             let src = ctx.monomorphize(src);
             assert!(
-                !pointer_to_is_fat(dst, ctx.tyctx(), ctx.method_instance()),
+                !pointer_to_is_fat(dst, ctx.tyctx(), ctx.instance()),
                 "ERROR: shallow init box used to initialze a fat box!"
             );
             let src = ctx.type_from_cache(src);
@@ -269,7 +267,7 @@ pub fn handle_rvalue<'tyctx>(
             operand,
             _target,
         ) => {
-            let operand_ty = operand.ty(ctx.method(), ctx.tyctx());
+            let operand_ty = operand.ty(ctx.body(), ctx.tyctx());
             operand
                 .constant()
                 .expect("function must be constant in order to take its adress!");
@@ -301,7 +299,7 @@ pub fn handle_rvalue<'tyctx>(
         //Rvalue::Cast(kind, _operand, _) => todo!("Unhandled cast kind {kind:?}, rvalue:{rvalue:?}"),
         Rvalue::Discriminant(place) => {
             let addr = crate::place::place_adress(place, ctx);
-            let owner_ty = ctx.monomorphize(place.ty(ctx.method(), ctx.tyctx()).ty);
+            let owner_ty = ctx.monomorphize(place.ty(ctx.body(), ctx.tyctx()).ty);
             let owner = ctx.type_from_cache(owner_ty);
             //TODO: chose proper tag type based on variant count of `owner`
             //let discr_ty = owner_ty.discriminant_ty(tyctx);
@@ -334,7 +332,7 @@ pub fn handle_rvalue<'tyctx>(
             }
         }
         Rvalue::Len(operand) => {
-            let ty = operand.ty(ctx.method(), ctx.tyctx());
+            let ty = operand.ty(ctx.body(), ctx.tyctx());
             let ty = ctx.monomorphize(ty);
             // let tpe = tycache.type_from_cache(ty.ty, tyctx, method_instance);
             match ty.ty.kind() {
@@ -364,12 +362,12 @@ pub fn handle_rvalue<'tyctx>(
             let times = times
                 .try_eval_target_usize(ctx.tyctx(), ParamEnv::reveal_all())
                 .expect("Could not evalute array size as usize.");
-            let array = ctx.monomorphize(rvalue.ty(ctx.method(), ctx.tyctx()));
+            let array = ctx.monomorphize(rvalue.ty(ctx.body(), ctx.tyctx()));
             let array = ctx.type_from_cache(array);
             let array_dotnet = array.clone().as_dotnet().expect("Invalid array type.");
 
             let operand_type =
-                ctx.type_from_cache(ctx.monomorphize(operand.ty(ctx.method(), ctx.tyctx())));
+                ctx.type_from_cache(ctx.monomorphize(operand.ty(ctx.body(), ctx.tyctx())));
             let operand = handle_operand(operand, ctx);
             let mut branches = Vec::new();
             for idx in 0..times {
@@ -401,14 +399,14 @@ pub fn handle_rvalue<'tyctx>(
         Rvalue::ThreadLocalRef(def_id) => {
             if !def_id.is_local() && ctx.tyctx().needs_thread_local_shim(*def_id) {
                 let _instance = Instance {
-                    def: InstanceDef::ThreadLocalShim(*def_id),
+                    def: InstanceKind::ThreadLocalShim(*def_id),
                     args: GenericArgs::empty(),
                 };
                 // Call instance
                 todo!("Thread locals with shims unsupported!")
             } else {
                 let alloc_id = ctx.tyctx().reserve_and_set_static_alloc(*def_id);
-                let rvalue_ty = rvalue.ty(ctx.method(), ctx.tyctx());
+                let rvalue_ty = rvalue.ty(ctx.body(), ctx.tyctx());
                 let rvalue_type = ctx.type_from_cache(rvalue_ty);
                 CILNode::TransmutePtr {
                     val: Box::new(CILNode::LoadGlobalAllocPtr {

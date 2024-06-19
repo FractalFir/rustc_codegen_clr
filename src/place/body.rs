@@ -16,12 +16,12 @@ pub fn local_body<'tcx>(
     local: usize,
     ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
 ) -> (CILNode, Ty<'tcx>) {
-    let ty = ctx.method().local_decls[local.into()].ty;
+    let ty = ctx.body().local_decls[local.into()].ty;
     let ty = ctx.monomorphize(ty);
     if body_ty_is_by_adress(ty) {
-        (super::adress::local_adress(local, ctx.method()), ty)
+        (super::adress::local_adress(local, ctx.body()), ty)
     } else {
-        (super::get::local_get(local, ctx.method()), ty)
+        (super::get::local_get(local, ctx.body()), ty)
     }
 }
 pub fn place_elem_body<'ctx>(
@@ -48,7 +48,7 @@ pub fn place_elem_body<'ctx>(
         PlaceElem::Field(index, field_ty) => match curr_ty {
             PlaceTy::Ty(curr_ty) => {
                 let field_ty = ctx.monomorphize(*field_ty);
-                if crate::r#type::pointer_to_is_fat(curr_ty, ctx.tyctx(), ctx.method_instance()) {
+                if crate::r#type::pointer_to_is_fat(curr_ty, ctx.tyctx(), ctx.instance()) {
                     assert_eq!(
                         index.as_u32(),
                         0,
@@ -130,7 +130,7 @@ pub fn place_elem_body<'ctx>(
             let curr_ty = curr_ty
                 .as_ty()
                 .expect("INVALID PLACE: Indexing into enum variant???");
-            let index = crate::place::local_get(index.as_usize(), ctx.method());
+            let index = crate::place::local_get(index.as_usize(), ctx.body());
             match curr_ty.kind() {
                 TyKind::Slice(inner) => {
                     let inner = ctx.monomorphize(*inner);

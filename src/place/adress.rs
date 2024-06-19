@@ -49,8 +49,8 @@ pub fn address_last_dereference<'ctx>(
     let curr_type = ctx.type_from_cache(curr_type);
     let target_type = ctx.type_from_cache(target_ty);
     match (
-        pointer_to_is_fat(curr_points_to, ctx.tyctx(), ctx.method_instance()),
-        pointer_to_is_fat(target_ty, ctx.tyctx(), ctx.method_instance()),
+        pointer_to_is_fat(curr_points_to, ctx.tyctx(), ctx.instance()),
+        pointer_to_is_fat(target_ty, ctx.tyctx(), ctx.instance()),
     ) {
         (true, false) => CILNode::LDIndPtr {
             ptr: Box::new(CILNode::LDField {
@@ -98,7 +98,7 @@ pub fn place_elem_adress<'ctx>(
                 //TODO: Why was this commented out?
 
                 let curr_ty = ctx.monomorphize(curr_type);
-                if crate::r#type::pointer_to_is_fat(curr_ty, ctx.tyctx(), ctx.method_instance()) {
+                if crate::r#type::pointer_to_is_fat(curr_ty, ctx.tyctx(), ctx.instance()) {
                     assert_eq!(
                         index.as_u32(),
                         0,
@@ -148,7 +148,7 @@ pub fn place_elem_adress<'ctx>(
             let curr_ty = curr_type
                 .as_ty()
                 .expect("INVALID PLACE: Indexing into enum variant???");
-            let index = crate::place::local_get(index.as_usize(), ctx.method());
+            let index = crate::place::local_get(index.as_usize(), ctx.body());
             match curr_ty.kind() {
                 TyKind::Slice(inner) => {
                     let inner = ctx.monomorphize(*inner);

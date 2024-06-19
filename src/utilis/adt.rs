@@ -1,18 +1,15 @@
-use cilly::cil_node::CILNode;
-use cilly::cil_root::CILRoot;
-use cilly::{eq, gt_un, ldc_u64, lt_un, sub};
-
-use crate::r#type::Type;
-use cilly::field_desc::FieldDescriptor;
-use cilly::DotnetTypeRef;
-use rustc_target::abi::VariantIdx;
-
+use cilly::{
+    cil_node::CILNode, cil_root::CILRoot, eq, field_desc::FieldDescriptor, gt_un, ldc_u64, sub,
+    DotnetTypeRef, Type,
+};
 use rustc_middle::ty::{AdtDef, Ty, TyCtxt};
-use rustc_target::abi::{FieldIdx, FieldsShape, Layout, LayoutS, TagEncoding};
+use rustc_target::abi::{
+    FieldIdx, FieldsShape, Layout, LayoutS, TagEncoding, VariantIdx, Variants,
+};
 pub fn enum_variant_offsets(_: AdtDef, layout: Layout, vidix: VariantIdx) -> FieldOffsetIterator {
     FieldOffsetIterator::fields(get_variant_at_index(vidix, (*layout.0).clone()))
 }
-use rustc_target::abi::Variants;
+
 #[derive(Clone, Debug)]
 pub(crate) enum FieldOffsetIterator {
     Explicit { offsets: Box<[u32]>, index: usize },

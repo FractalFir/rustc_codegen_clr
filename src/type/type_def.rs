@@ -16,8 +16,6 @@ use rustc_span::def_id::DefId;
 use rustc_target::abi::Layout;
 use std::num::NonZeroU64;
 
-pub(crate) const CUSTOM_INTEROP_TYPE_DEF: &str = "RustcCLRInteropManagedCustomTypeDef";
-
 #[must_use]
 pub fn escape_field_name(name: &str) -> IString {
     match name.chars().next() {

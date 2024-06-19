@@ -27,7 +27,7 @@ impl<'tyctx> UnsizeInfo<'tyctx> {
     ) -> Self {
         // Get the monomorphized source and target type
         let target = ctx.monomorphize(target);
-        let source = ctx.monomorphize(operand.ty(ctx.method(), ctx.tyctx()));
+        let source = ctx.monomorphize(operand.ty(ctx.body(), ctx.tyctx()));
         // Get the source and target types as .NET types
         let source_type = ctx.type_from_cache(source);
         let target_type = ctx.type_from_cache(target);
@@ -169,7 +169,7 @@ pub fn unsize<'tyctx>(
             }
             let vptr_entry_idx = ctx
                 .tyctx()
-                .supertrait_vtable_slot((operand.ty(ctx.method(), ctx.tyctx()), target));
+                .supertrait_vtable_slot((operand.ty(ctx.body(), ctx.tyctx()), target));
             if let Some(entry_idx) = vptr_entry_idx {
                 todo!("dyn to dyn cats not yet supported. src_points_to:{src_points_to:?} target_points_to:{target_points_to:?} entry_idx:{entry_idx:?}")
             } else {

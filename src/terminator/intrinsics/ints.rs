@@ -1,14 +1,11 @@
-use crate::{
-    assembly::MethodCompileCtx, operand::handle_operand, place::place_set, r#type::tycache::TyCache,
-};
+use crate::{assembly::MethodCompileCtx, operand::handle_operand, place::place_set};
 use cilly::{
     call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_u32, conv_u64,
-    conv_usize, fn_sig::FnSig, ldc_i32, ldc_i64, ldc_u32, ldc_u64, or, size_of, sub, DotnetTypeRef,
-    Type,
+    fn_sig::FnSig, ldc_i32, ldc_i64, ldc_u32, ldc_u64, or, size_of, sub, DotnetTypeRef, Type,
 };
 use rustc_middle::{
-    mir::{Body, Operand, Place},
-    ty::{Instance, TyCtxt},
+    mir::{Operand, Place},
+    ty::Instance,
 };
 use rustc_span::source_map::Spanned;
 pub fn ctpop<'tyctx>(

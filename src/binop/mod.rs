@@ -1,29 +1,24 @@
-use cilly::call_site::CallSite;
-use cilly::cil_node::CILNode;
-use cilly::cil_root::CILRoot;
-use cilly::field_desc::FieldDescriptor;
-use cilly::{conv_i8, conv_usize, ld_false, DotnetTypeRef, Type};
-use rustc_hir::lang_items::LangItem;
-use rustc_middle::mir::{BinOp, Operand};
-use rustc_middle::ty::{Instance, IntTy, List, ParamEnv, Ty, TyCtxt, TyKind, UintTy};
-
+use self::checked::{add_signed, add_unsigned, sub_signed, sub_unsigned};
 use crate::assembly::MethodCompileCtx;
-use crate::r#type::TyCache;
-use cilly::fn_sig::FnSig;
+use bitop::{bit_and_unchecked, bit_or_unchecked, bit_xor_unchecked};
+use cilly::{
+    call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_i8, conv_u16, conv_u32,
+    conv_u64, conv_u8, div, eq, field_desc::FieldDescriptor, fn_sig::FnSig, gt_un, ld_false, lt_un,
+    rem, rem_un, size_of, sub, DotnetTypeRef, Type,
+};
+use cmp::{eq_unchecked, gt_unchecked, lt_unchecked, ne_unchecked};
+use rustc_hir::lang_items::LangItem;
+use rustc_middle::{
+    mir::{BinOp, Operand},
+    ty::{Instance, IntTy, List, ParamEnv, Ty, TyKind, UintTy},
+};
+use shift::{shl_checked, shl_unchecked, shr_checked, shr_unchecked};
 
 pub mod bitop;
 pub mod checked;
 pub mod cmp;
 pub mod shift;
-use bitop::{bit_and_unchecked, bit_or_unchecked, bit_xor_unchecked};
-use cilly::{
-    call, conv_u16, conv_u32, conv_u64, conv_u8, div, eq, gt_un, lt_un, rem, rem_un, size_of, sub,
-};
 
-use cmp::{eq_unchecked, gt_unchecked, lt_unchecked, ne_unchecked};
-use shift::{shl_checked, shl_unchecked, shr_checked, shr_unchecked};
-
-use self::checked::{add_signed, add_unsigned, sub_signed, sub_unsigned};
 /// Preforms an unchecked binary operation.
 pub(crate) fn binop<'tyctx>(
     binop: BinOp,
@@ -33,8 +28,8 @@ pub(crate) fn binop<'tyctx>(
 ) -> CILNode {
     let ops_a = crate::operand::handle_operand(operand_a, ctx);
     let ops_b = crate::operand::handle_operand(operand_b, ctx);
-    let ty_a = operand_a.ty(&ctx.method().local_decls, ctx.tyctx());
-    let ty_b = operand_b.ty(&ctx.method().local_decls, ctx.tyctx());
+    let ty_a = operand_a.ty(&ctx.body().local_decls, ctx.tyctx());
+    let ty_b = operand_b.ty(&ctx.body().local_decls, ctx.tyctx());
     match binop {
         BinOp::AddWithOverflow => {
             if ty_a.is_signed() {

@@ -15,7 +15,7 @@ pub fn unop<'ctx>(
     ctx: &mut MethodCompileCtx<'ctx, '_, '_>,
 ) -> CILNode {
     let parrent_node = crate::operand::handle_operand(operand, ctx);
-    let ty = operand.ty(&ctx.method().local_decls, ctx.tyctx());
+    let ty = operand.ty(&ctx.body().local_decls, ctx.tyctx());
     match unnop {
         UnOp::Neg => match ty.kind() {
             TyKind::Int(IntTy::I128) => call!(

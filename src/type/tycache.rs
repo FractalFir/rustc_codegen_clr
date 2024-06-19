@@ -1,7 +1,5 @@
-use super::{pointer_to_is_fat, tuple_name, tuple_typedef};
-
 use crate::{
-    r#type::{closure_typedef, escape_field_name},
+    r#type::{closure_typedef, escape_field_name, tuple_name, tuple_typedef},
     utilis::{
         adt::{get_discr, FieldOffsetIterator},
         is_zst,
@@ -13,7 +11,6 @@ use cilly::{
     DotnetTypeRef, Type,
 };
 use rustc_middle::ty::{AdtDef, AdtKind, Instance, List, ParamEnv, Ty, TyCtxt, TyKind, UintTy};
-
 use std::{collections::HashMap, num::NonZeroU64};
 // CAN'T BE SERAILIZED!
 pub struct TyCache {

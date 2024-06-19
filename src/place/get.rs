@@ -1,14 +1,12 @@
-use crate::assembly::MethodCompileCtx;
-use crate::r#type::Type;
-
-use cilly::call_site::CallSite;
-use cilly::cil_node::CILNode;
-use cilly::field_desc::FieldDescriptor;
-use cilly::fn_sig::FnSig;
-use cilly::{call, conv_usize, ld_field};
-
-use rustc_middle::mir::{Place, PlaceElem};
-use rustc_middle::ty::TyKind;
+use crate::{assembly::MethodCompileCtx, r#type::Type};
+use cilly::{
+    call, call_site::CallSite, cil_node::CILNode, conv_usize, field_desc::FieldDescriptor,
+    fn_sig::FnSig, ld_field,
+};
+use rustc_middle::{
+    mir::{Place, PlaceElem},
+    ty::TyKind,
+};
 
 pub(super) fn local_get(local: usize, method: &rustc_middle::mir::Body) -> CILNode {
     if let Some(spread_arg) = method.spread_arg
@@ -37,7 +35,7 @@ pub fn place_get<'tyctx>(
     ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
 ) -> CILNode {
     if place.projection.is_empty() {
-        local_get(place.local.as_usize(), ctx.method())
+        local_get(place.local.as_usize(), ctx.body())
     } else {
         let (mut op, mut ty) = super::local_body(place.local.as_usize(), ctx);
         ty = ctx.monomorphize(ty);
@@ -88,8 +86,8 @@ fn place_elem_get<'a>(
                 .as_ty()
                 .expect("INVALID PLACE: Indexing into enum variant???");
 
-            let index_type = ctx.monomorphize(ctx.method().local_decls[*index].ty);
-            let index = crate::place::local_get(index.as_usize(), ctx.method());
+            let index_type = ctx.monomorphize(ctx.body().local_decls[*index].ty);
+            let index = crate::place::local_get(index.as_usize(), ctx.body());
 
             match curr_ty.kind() {
                 TyKind::Slice(inner) => {
@@ -201,7 +199,7 @@ fn place_elem_get<'a>(
                 }
             }
         }
-        PlaceElem::Subtype(tpe) => addr_calc,
+        PlaceElem::Subtype(_tpe) => addr_calc,
         _ => todo!("Can't handle porojection {place_elem:?} in get"),
     }
 }

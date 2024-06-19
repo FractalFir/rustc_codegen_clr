@@ -17,7 +17,7 @@ pub fn handle_statement<'tcx>(
             place,
             variant_index,
         } => {
-            let owner_ty = place.ty(ctx.method(), ctx.tyctx()).ty;
+            let owner_ty = place.ty(ctx.body(), ctx.tyctx()).ty;
             let owner_ty = ctx.monomorphize(owner_ty);
             let owner = ctx.type_from_cache(owner_ty);
 
@@ -45,13 +45,13 @@ pub fn handle_statement<'tcx>(
         StatementKind::Assign(palce_rvalue) => {
             let place = palce_rvalue.as_ref().0;
             let rvalue = &palce_rvalue.as_ref().1;
-            let ty = ctx.monomorphize(place.ty(ctx.method(), ctx.tyctx()).ty);
+            let ty = ctx.monomorphize(place.ty(ctx.body(), ctx.tyctx()).ty);
             // Skip void assigments. Assigining to or from void type is a NOP.
             if crate::utilis::is_zst(ctx.monomorphize(ty), ctx.tyctx()) {
                 return None;
             }
             let value_calc = crate::rvalue::handle_rvalue(rvalue, &place, ctx);
-            let method = ctx.method_instance();
+            let method = ctx.instance();
             let tyctx = ctx.tyctx();
             let value_calc = crate::r#type::tycache::validity_check(
                 value_calc,
@@ -73,7 +73,7 @@ pub fn handle_statement<'tcx>(
                     let dst_op = crate::operand::handle_operand(dst, ctx);
                     let src_op = crate::operand::handle_operand(src, ctx);
                     let count_op = crate::operand::handle_operand(count, ctx);
-                    let src_ty = src.ty(ctx.method(), ctx.tyctx());
+                    let src_ty = src.ty(ctx.body(), ctx.tyctx());
                     let src_ty = ctx.monomorphize(src_ty);
                     let ptr_type = ctx.type_from_cache(src_ty);
                     let crate::r#type::Type::Ptr(pointed) = ptr_type else {

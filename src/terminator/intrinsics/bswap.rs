@@ -18,7 +18,7 @@ pub fn bswap<'tyctx>(
         1,
         "The intrinsic `bswap` MUST take in exactly 1 argument!"
     );
-    let ty = args[0].node.ty(ctx.method(), ctx.tyctx());
+    let ty = args[0].node.ty(ctx.body(), ctx.tyctx());
     let ty = ctx.monomorphize(ty);
     let tpe = ctx.type_from_cache(ty);
     let operand = handle_operand(&args[0].node, ctx);
