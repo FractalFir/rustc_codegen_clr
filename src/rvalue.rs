@@ -8,9 +8,19 @@ use cilly::{
     field_desc::FieldDescriptor, fn_sig::FnSig, ld_field, ldc_i32, ldc_u64, size_of,
 };
 use rustc_middle::{
-    mir::{CastKind, NullOp, Place, Rvalue},
+    mir::{CastKind, NullOp, Operand, Place, Rvalue},
     ty::{adjustment::PointerCoercion, GenericArgs, Instance, InstanceKind, ParamEnv, Ty, TyKind},
 };
+macro_rules! cast {
+    ($ctx:ident,$operand:ident,$target:ident,$cast_name:path) => {{
+        let target = $ctx.monomorphize(*$target);
+        let target = $ctx.type_from_cache(target);
+        let src = $operand.ty(&$ctx.body().local_decls, $ctx.tyctx());
+        let src = $ctx.monomorphize(src);
+        let src = $ctx.type_from_cache(src);
+        $cast_name(src, &target, handle_operand($operand, $ctx))
+    }};
+}
 pub fn handle_rvalue<'tyctx>(
     rvalue: &Rvalue<'tyctx>,
     target_location: &Place<'tyctx>,
@@ -33,122 +43,38 @@ pub fn handle_rvalue<'tyctx>(
             | CastKind::PtrToPtr,
             operand,
             dst,
-        ) => {
-            let target = ctx.monomorphize(*dst);
-            let target_pointed_to = match target.kind() {
-                TyKind::RawPtr(typ, _) => *typ,
-                TyKind::Ref(_, inner, _) => *inner,
-                _ => panic!("Type is not ptr {target:?}."),
-            };
-            let source = ctx.monomorphize(operand.ty(ctx.body(), ctx.tyctx()));
-            let source_pointed_to = match source.kind() {
-                TyKind::RawPtr(typ, _) => *typ,
-                TyKind::Ref(_, inner, _) => *inner,
-                _ => panic!("Type is not ptr {target:?}."),
-            };
-            let source_type = ctx.type_from_cache(source);
-            let target_type = ctx.type_from_cache(target);
-
-            let src_fat = pointer_to_is_fat(source_pointed_to, ctx.tyctx(), ctx.instance());
-            let target_fat = pointer_to_is_fat(target_pointed_to, ctx.tyctx(), ctx.instance());
-            match (src_fat, target_fat) {
-                (true, true) => {
-                    let parrent = handle_operand(operand, ctx);
-
-                    crate::place::deref_op(
-                        crate::place::PlaceTy::Ty(target),
-                        ctx,
-                        CILNode::TemporaryLocal(Box::new((
-                            source_type,
-                            [CILRoot::SetTMPLocal { value: parrent }].into(),
-                            CILNode::TransmutePtr {
-                                val: Box::new(CILNode::LoadAddresOfTMPLocal),
-                                new_ptr: Box::new(Type::Ptr(Box::new(target_type))),
-                            },
-                        ))),
-                    )
-                }
-                (true, false) => {
-                    if source_type.as_dotnet().is_none() {
-                        eprintln!("source:{source:?}");
-                    }
-                    CILNode::TemporaryLocal(Box::new((
-                        source_type.clone(),
-                        [CILRoot::SetTMPLocal {
-                            value: handle_operand(operand, ctx),
-                        }]
-                        .into(),
-                        CILNode::TransmutePtr {
-                            val: Box::new(ld_field!(
-                                CILNode::LoadAddresOfTMPLocal,
-                                FieldDescriptor::new(
-                                    source_type.as_dotnet().unwrap(),
-                                    Type::Ptr(Type::Void.into()),
-                                    "data_pointer".into(),
-                                )
-                            )),
-                            new_ptr: Box::new(target_type),
-                        },
-                    )))
-                }
-                (false, true) => {
-                    panic!("ERROR: a non-unsizing cast turned a sized ptr into an unsized one")
-                }
-                _ => CILNode::TransmutePtr {
-                    val: Box::new(handle_operand(operand, ctx)),
-                    new_ptr: Box::new(target_type),
-                },
-            }
-        }
+        ) => ptr_to_ptr(ctx, operand, dst),
         Rvalue::Cast(CastKind::PointerCoercion(PointerCoercion::Unsize), operand, target) => {
             crate::unsize::unsize(ctx, operand, *target)
         }
         Rvalue::BinaryOp(binop, operands) => {
             crate::binop::binop(*binop, &operands.0, &operands.1, ctx)
         }
-
         Rvalue::UnaryOp(binop, operand) => crate::unop::unop(*binop, operand, ctx),
         Rvalue::Cast(CastKind::IntToInt, operand, target) => {
-            let target = ctx.monomorphize(*target);
-            let target = ctx.type_from_cache(target);
-            let src = operand.ty(&ctx.body().local_decls, ctx.tyctx());
-            let src = ctx.monomorphize(src);
-            let src = ctx.type_from_cache(src);
-            crate::casts::int_to_int(src, &target, handle_operand(operand, ctx))
+            cast!(ctx, operand, target, crate::casts::int_to_int)
         }
         Rvalue::Cast(CastKind::FloatToInt, operand, target) => {
-            let target = ctx.monomorphize(*target);
-            let target = ctx.type_from_cache(target);
-            let src = operand.ty(&ctx.body().local_decls, ctx.tyctx());
-            let src = ctx.monomorphize(src);
-            let src = ctx.type_from_cache(src);
-
-            crate::casts::float_to_int(src, &target, handle_operand(operand, ctx))
+            cast!(ctx, operand, target, crate::casts::float_to_int)
         }
         Rvalue::Cast(CastKind::IntToFloat, operand, target) => {
-            let target = ctx.monomorphize(*target);
-            let target = ctx.type_from_cache(target);
-            let src = operand.ty(&ctx.body().local_decls, ctx.tyctx());
-            let src = ctx.monomorphize(src);
-            let src = ctx.type_from_cache(src);
-            crate::casts::int_to_float(src, &target, handle_operand(operand, ctx))
+            cast!(ctx, operand, target, crate::casts::int_to_float)
         }
         Rvalue::NullaryOp(op, ty) => match op {
             NullOp::SizeOf => {
-                let ty = ctx.monomorphize(*ty);
-                let ty = ctx.type_from_cache(ty);
+                let ty = ctx.type_from_cache(ctx.monomorphize(*ty));
                 conv_usize!(size_of!(ty))
             }
             NullOp::AlignOf => {
-                let ty = ctx.monomorphize(*ty);
-                conv_usize!(ldc_u64!(crate::utilis::align_of(ty, ctx.tyctx())))
+                conv_usize!(ldc_u64!(crate::utilis::align_of(
+                    ctx.monomorphize(*ty),
+                    ctx.tyctx()
+                )))
             }
             NullOp::OffsetOf(fields) => {
                 assert_eq!(fields.len(), 1);
-                //let (variant, field) = fields[0];
                 todo!("Can't calc offset of yet!");
             }
-
             rustc_middle::mir::NullOp::UbChecks => {
                 if ctx.tyctx().sess.ub_checks() {
                     CILNode::LdTrue
@@ -301,9 +227,7 @@ pub fn handle_rvalue<'tyctx>(
             let addr = crate::place::place_adress(place, ctx);
             let owner_ty = ctx.monomorphize(place.ty(ctx.body(), ctx.tyctx()).ty);
             let owner = ctx.type_from_cache(owner_ty);
-            //TODO: chose proper tag type based on variant count of `owner`
-            //let discr_ty = owner_ty.discriminant_ty(tyctx);
-            //let discr_type = tycache.type_from_cache(discr_ty, tyctx, method_instance);
+
             let layout = ctx.layout_of(owner_ty);
             let target = ctx.type_from_cache(owner_ty.discriminant_ty(ctx.tyctx()));
             let (disrc_type, _) = crate::utilis::adt::enum_tag_info(layout.layout, ctx.tyctx());
@@ -332,9 +256,7 @@ pub fn handle_rvalue<'tyctx>(
             }
         }
         Rvalue::Len(operand) => {
-            let ty = operand.ty(ctx.body(), ctx.tyctx());
-            let ty = ctx.monomorphize(ty);
-            // let tpe = tycache.type_from_cache(ty.ty, tyctx, method_instance);
+            let ty = ctx.monomorphize(operand.ty(ctx.body(), ctx.tyctx()));
             match ty.ty.kind() {
                 TyKind::Slice(inner) => {
                     let slice_tpe = ctx.slice_ty(*inner).as_dotnet().unwrap();
@@ -348,54 +270,15 @@ pub fn handle_rvalue<'tyctx>(
                     ld_field!(addr, descriptor)
                 }
                 TyKind::Array(_ty, length) => {
-                    let mut length = *length;
-                    length = ctx.monomorphize(length);
-                    let length: usize = crate::utilis::try_resolve_const_size(length).unwrap();
-
-                    conv_usize!(ldc_u64!(length as u64))
+                    conv_usize!(ldc_u64!(crate::utilis::try_resolve_const_size(
+                        ctx.monomorphize(*length)
+                    )
+                    .unwrap() as u64))
                 }
                 _ => todo!("Get length of type {ty:?}"),
             }
         }
-        Rvalue::Repeat(operand, times) => {
-            let times = ctx.monomorphize(*times);
-            let times = times
-                .try_eval_target_usize(ctx.tyctx(), ParamEnv::reveal_all())
-                .expect("Could not evalute array size as usize.");
-            let array = ctx.monomorphize(rvalue.ty(ctx.body(), ctx.tyctx()));
-            let array = ctx.type_from_cache(array);
-            let array_dotnet = array.clone().as_dotnet().expect("Invalid array type.");
-
-            let operand_type =
-                ctx.type_from_cache(ctx.monomorphize(operand.ty(ctx.body(), ctx.tyctx())));
-            let operand = handle_operand(operand, ctx);
-            let mut branches = Vec::new();
-            for idx in 0..times {
-                branches.push(CILRoot::Call {
-                    site: Box::new(CallSite::new(
-                        Some(array_dotnet.clone()),
-                        "set_Item".into(),
-                        FnSig::new(
-                            &[
-                                Type::Ptr(array.clone().into()),
-                                Type::USize,
-                                operand_type.clone(),
-                            ],
-                            Type::Void,
-                        ),
-                        false,
-                    )),
-                    args: [
-                        CILNode::LoadAddresOfTMPLocal,
-                        conv_usize!(ldc_u64!(idx)),
-                        operand.clone(),
-                    ]
-                    .into(),
-                });
-            }
-            let branches: Box<_> = branches.into();
-            CILNode::TemporaryLocal(Box::new((array.clone(), branches, CILNode::LoadTMPLocal)))
-        }
+        Rvalue::Repeat(operand, times) => repeat(rvalue, ctx, operand, *times),
         Rvalue::ThreadLocalRef(def_id) => {
             if !def_id.is_local() && ctx.tyctx().needs_thread_local_shim(*def_id) {
                 let _instance = Instance {
@@ -408,12 +291,10 @@ pub fn handle_rvalue<'tyctx>(
                 let alloc_id = ctx.tyctx().reserve_and_set_static_alloc(*def_id);
                 let rvalue_ty = rvalue.ty(ctx.body(), ctx.tyctx());
                 let rvalue_type = ctx.type_from_cache(rvalue_ty);
-                CILNode::TransmutePtr {
-                    val: Box::new(CILNode::LoadGlobalAllocPtr {
-                        alloc_id: alloc_id.0.into(),
-                    }),
-                    new_ptr: Box::new(rvalue_type),
+                CILNode::LoadGlobalAllocPtr {
+                    alloc_id: alloc_id.0.into(),
                 }
+                .cast_ptr(rvalue_type)
             }
         }
         Rvalue::Cast(rustc_middle::mir::CastKind::FnPtrToPtr, operand, _) => {
@@ -423,5 +304,119 @@ pub fn handle_rvalue<'tyctx>(
             todo!("Unusported cast kind:DynStar")
         }
         Rvalue::Cast(_, _, _) => todo!(),
+    }
+}
+fn repeat<'tyctx>(
+    rvalue: &Rvalue<'tyctx>,
+    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
+    operand: &Operand<'tyctx>,
+    times: rustc_middle::ty::Const<'tyctx>,
+) -> CILNode {
+    let times = ctx.monomorphize(times);
+    let times = times
+        .try_eval_target_usize(ctx.tyctx(), ParamEnv::reveal_all())
+        .expect("Could not evalute array size as usize.");
+    let array = ctx.monomorphize(rvalue.ty(ctx.body(), ctx.tyctx()));
+    let array = ctx.type_from_cache(array);
+    let array_dotnet = array.clone().as_dotnet().expect("Invalid array type.");
+
+    let operand_type = ctx.type_from_cache(ctx.monomorphize(operand.ty(ctx.body(), ctx.tyctx())));
+    let operand = handle_operand(operand, ctx);
+    let mut branches = Vec::new();
+    for idx in 0..times {
+        branches.push(CILRoot::Call {
+            site: Box::new(CallSite::new(
+                Some(array_dotnet.clone()),
+                "set_Item".into(),
+                FnSig::new(
+                    &[
+                        Type::Ptr(array.clone().into()),
+                        Type::USize,
+                        operand_type.clone(),
+                    ],
+                    Type::Void,
+                ),
+                false,
+            )),
+            args: [
+                CILNode::LoadAddresOfTMPLocal,
+                conv_usize!(ldc_u64!(idx)),
+                operand.clone(),
+            ]
+            .into(),
+        });
+    }
+    let branches: Box<_> = branches.into();
+    CILNode::TemporaryLocal(Box::new((array.clone(), branches, CILNode::LoadTMPLocal)))
+}
+fn ptr_to_ptr<'tyctx>(
+    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
+    operand: &Operand<'tyctx>,
+    dst: &Ty<'tyctx>,
+) -> CILNode {
+    let target = ctx.monomorphize(*dst);
+    let target_pointed_to = match target.kind() {
+        TyKind::RawPtr(typ, _) => *typ,
+        TyKind::Ref(_, inner, _) => *inner,
+        _ => panic!("Type is not ptr {target:?}."),
+    };
+    let source = ctx.monomorphize(operand.ty(ctx.body(), ctx.tyctx()));
+    let source_pointed_to = match source.kind() {
+        TyKind::RawPtr(typ, _) => *typ,
+        TyKind::Ref(_, inner, _) => *inner,
+        _ => panic!("Type is not ptr {target:?}."),
+    };
+    let source_type = ctx.type_from_cache(source);
+    let target_type = ctx.type_from_cache(target);
+
+    let src_fat = pointer_to_is_fat(source_pointed_to, ctx.tyctx(), ctx.instance());
+    let target_fat = pointer_to_is_fat(target_pointed_to, ctx.tyctx(), ctx.instance());
+    match (src_fat, target_fat) {
+        (true, true) => {
+            let parrent = handle_operand(operand, ctx);
+
+            crate::place::deref_op(
+                crate::place::PlaceTy::Ty(target),
+                ctx,
+                CILNode::TemporaryLocal(Box::new((
+                    source_type,
+                    [CILRoot::SetTMPLocal { value: parrent }].into(),
+                    CILNode::TransmutePtr {
+                        val: Box::new(CILNode::LoadAddresOfTMPLocal),
+                        new_ptr: Box::new(Type::Ptr(Box::new(target_type))),
+                    },
+                ))),
+            )
+        }
+        (true, false) => {
+            if source_type.as_dotnet().is_none() {
+                eprintln!("source:{source:?}");
+            }
+            CILNode::TemporaryLocal(Box::new((
+                source_type.clone(),
+                [CILRoot::SetTMPLocal {
+                    value: handle_operand(operand, ctx),
+                }]
+                .into(),
+                CILNode::TransmutePtr {
+                    val: Box::new(ld_field!(
+                        CILNode::LoadAddresOfTMPLocal,
+                        FieldDescriptor::new(
+                            source_type.as_dotnet().unwrap(),
+                            Type::Ptr(Type::Void.into()),
+                            "data_pointer".into(),
+                        )
+                    )),
+                    new_ptr: Box::new(target_type),
+                },
+            )))
+        }
+        (false, true) => {
+            panic!("ERROR: a non-unsizing cast turned a sized ptr into an unsized one")
+        }
+        _ => CILNode::TransmutePtr {
+            val: Box::new(handle_operand(operand, ctx)),
+            new_ptr: Box::new(target_type),
+        },
     }
 }

@@ -4,11 +4,7 @@
 // Used for handling some configs. Will be refactored later.
 #![allow(clippy::assertions_on_constants)]
 // The complexity is managable for now.
-#![allow(
-    clippy::too_many_lines,
-    clippy::too_many_arguments,
-    clippy::too_many_lines
-)]
+#![allow(clippy::too_many_lines)]
 // Not a big issue.
 #![allow(clippy::module_name_repetitions)]
 // docs are WIP

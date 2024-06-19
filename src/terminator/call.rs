@@ -2,7 +2,7 @@ use crate::{
     assembly::MethodCompileCtx,
     call_info::CallInfo,
     interop::AssemblyRef,
-    operand::operand_address,
+    operand::handle_operand,
     utilis::{garg_to_string, CTOR_FN_NAME, MANAGED_CALL_FN_NAME, MANAGED_CALL_VIRT_FN_NAME},
 };
 use cilly::{
@@ -313,14 +313,14 @@ pub fn call<'tyctx>(
     if let rustc_middle::ty::InstanceKind::Virtual(_def, fn_idx) = instance.def {
         assert!(!args.is_empty());
         let fat_ptr_ty = ctx.monomorphize(args[0].node.ty(ctx.body(), ctx.tyctx()));
+
         let fat_ptr_type = ctx.type_from_cache(fat_ptr_ty);
-        let fat_ptr_address = operand_address(&args[0].node, ctx);
+        let fat_ptr_address = handle_operand(&args[0].node, ctx);
+
         let vtable_ptr = ld_field!(
             fat_ptr_address.clone(),
             FieldDescriptor::new(
-                fat_ptr_type.as_dotnet().unwrap_or_else(||{
-                    panic!("Invalid fat pointer. fat_ptr_ty:{fat_ptr_ty:?} fat_ptr_type:{fat_ptr_type:?}")
-                }),
+                DotnetTypeRef::new::<&str, _>(None, "FatPtrDyn"),
                 Type::USize,
                 "metadata".into()
             )
@@ -340,7 +340,7 @@ pub fn call<'tyctx>(
         let obj_ptr = ld_field!(
             fat_ptr_address,
             FieldDescriptor::new(
-                fat_ptr_type.as_dotnet().unwrap(),
+                DotnetTypeRef::new::<&str, _>(None, "FatPtrDyn"),
                 Type::Ptr(Type::Void.into()),
                 "data_pointer".into()
             )

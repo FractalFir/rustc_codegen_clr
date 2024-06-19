@@ -105,7 +105,12 @@ impl TyCache {
             .expect("Could not get type layout!");
         // if it is a DST, check it has a size of 0, and treat it as a name-only
         if layout.layout.is_unsized() {
-            assert_eq!(layout.layout.size().bytes(), 0);
+            if layout.layout.size().bytes() != 0 {
+                eprintln!(
+                    "WARNING: adt_ty:{adt_ty:?} is a dst with a size {}. This could mean it has fields.",
+                    layout.layout.size().bytes()
+                );
+            };
             return TypeDef::nameonly(name);
         }
         // Go torugh fields, collectiing them and their offsets
@@ -516,10 +521,7 @@ impl TyCache {
                 let inner = crate::utilis::monomorphize(&method, *inner, tyctx);
                 self.type_from_cache(inner, tyctx, method)
             }
-            TyKind::Foreign(foregin) => {
-                println!("foregin:{foregin:?}");
-                Type::Foreign
-            }
+            TyKind::Foreign(_foregin) => Type::Foreign,
             TyKind::Bound(_, _inner) => Type::Foreign,
             TyKind::FnPtr(sig) => {
                 let sig = crate::function_sig::from_poly_sig(method, tyctx, self, *sig);

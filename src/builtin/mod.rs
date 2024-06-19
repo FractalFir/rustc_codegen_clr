@@ -484,6 +484,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     pthread_attr_setstacksize(asm);
     pthread_detach(asm);
     __cxa_thread_atexit_impl(asm);
+    llvm_x86_sse2_pause(asm);
     let unmanaged_start = TypeDef::new(
         AccessModifer::MoudlePublic,
         "UnmanagedThreadStart".into(),
@@ -873,3 +874,16 @@ add_method_from_trees!(
         Some("dso_handle".into())
     ]
 );
+// TODO: this instruction waits for a small ammount of time. Implementing it could improve performance.
+fn llvm_x86_sse2_pause(asm: &mut cilly::asm::Assembly) {
+    let method = cilly::method::Method::new(
+        AccessModifer::MoudlePublic,
+        cilly::method::MethodType::Static,
+        cilly::fn_sig::FnSig::new([], Type::Void),
+        "llvm.x86.sse2.pause",
+        vec![],
+        vec![BasicBlock::new(vec![CILRoot::VoidRet.into()], 0, None)],
+        vec![],
+    );
+    asm.add_method(method);
+}

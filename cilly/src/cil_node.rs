@@ -501,6 +501,16 @@ impl CILNode {
         }
     }
 
+    pub fn cast_ptr(self, new_ptr: Type) -> Self {
+        assert!(matches!(
+            new_ptr,
+            Type::Ptr(_) | Type::DelegatePtr(_) | Type::USize | Type::ISize
+        ));
+        Self::TransmutePtr {
+            val: Box::new(self),
+            new_ptr: Box::new(new_ptr),
+        }
+    }
     pub(crate) fn allocate_tmps(
         &mut self,
         curr_loc: Option<u32>,
@@ -641,7 +651,7 @@ impl CILNode {
         };
     }
 
-    pub(crate) fn validate(
+    pub fn validate(
         &self,
         vctx: ValidationContext,
         tmp_loc: Option<&Type>,

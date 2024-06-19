@@ -1,9 +1,10 @@
 use crate::assembly::MethodCompileCtx;
 use crate::operand::handle_operand;
+use crate::r#type::pointer_to_is_fat;
 
 use cilly::cil_node::CILNode;
 use cilly::cil_root::CILRoot;
-use cilly::{conv_usize, ld_field, ld_field_address, ldc_u64};
+use cilly::{conv_usize, ld_field, ld_field_address, ldc_u64, ptr};
 
 use cilly::field_desc::FieldDescriptor;
 use cilly::{DotnetTypeRef, Type};
@@ -14,7 +15,9 @@ use rustc_middle::{
 struct UnsizeInfo<'tyctx> {
     /// Type the source pointer points to
     source_points_to: Ty<'tyctx>,
+    /// The address of the rarget pointer. This pointer should always be a thin pointer, pointing to a fat pointer.
     target_ptr: CILNode,
+    /// The source pointer. If the source pointer is fat, this will be a fat pointer!
     source_ptr: CILNode,
     target_dotnet: DotnetTypeRef,
     target_type: Type,
@@ -51,6 +54,7 @@ impl<'tyctx> UnsizeInfo<'tyctx> {
             let non_null_ty = non_null_adt.0.all_fields().nth(0).unwrap();
             let source_ptr_desc =
                 crate::utilis::field_descrptor(non_null_ty.ty(ctx.tyctx(), unique_adt.1), 0, ctx);
+
             let source_ptr = ld_field!(source_ptr, source_ptr_desc.clone());
             // 4. Get Unique<Target> from Box<Target>
             let unique_desc = crate::utilis::field_descrptor(target, 0, ctx);
@@ -87,7 +91,7 @@ impl<'tyctx> UnsizeInfo<'tyctx> {
                         let inner = source.boxed_ty();
                         let field_descriptor = crate::utilis::field_descrptor(source, 0, ctx);
                         sized_ptr = CILNode::TemporaryLocal(Box::new((
-                            source_type,
+                            source_type.clone(),
                             [CILRoot::SetTMPLocal { value: sized_ptr }].into(),
                             ld_field!(CILNode::LoadAddresOfTMPLocal, field_descriptor),
                         )));
@@ -98,6 +102,7 @@ impl<'tyctx> UnsizeInfo<'tyctx> {
                 }
                 _ => panic!("Non ptr type:{source:?}"),
             };
+
             Self {
                 source_points_to: derefed_source,
                 target_ptr: CILNode::LoadAddresOfTMPLocal,
@@ -116,9 +121,8 @@ pub fn unsize<'tyctx>(
     target: Ty<'tyctx>,
 ) -> CILNode {
     let info = UnsizeInfo::for_unsize(ctx, operand, target);
-    let src_points_to = info.source_points_to;
     let target_points_to = target.builtin_deref(true).unwrap();
-    match (src_points_to.kind(), target_points_to.kind()) {
+    match (info.source_points_to.kind(), target_points_to.kind()) {
         (TyKind::Array(_, length), _) => {
             let length = crate::utilis::try_resolve_const_size(*length).unwrap();
             let metadata_field =
@@ -135,10 +139,7 @@ pub fn unsize<'tyctx>(
             };
             let init_ptr = CILRoot::SetField {
                 addr: Box::new(info.target_ptr),
-                value: Box::new(CILNode::TransmutePtr {
-                    val: Box::new(info.source_ptr),
-                    new_ptr: Box::new(Type::Ptr(Box::new(Type::Void))),
-                }),
+                value: Box::new(info.source_ptr.cast_ptr(ptr!(Type::Void))),
                 desc: Box::new(ptr_field),
             };
             CILNode::TemporaryLocal(Box::new((
@@ -151,36 +152,51 @@ pub fn unsize<'tyctx>(
             TyKind::Dynamic(data_a, _, _src_dyn_kind),
             TyKind::Dynamic(data_b, _, _target_dyn_kind),
         ) => {
+            // source_ptr should be fat
+            ctx.assert_fat_pointer_type(&info.source_ptr, &());
+            // info.target_ptr should be a thin pointer to a fat pointer.
+            //ctx.assert_raw_pointer_type(&info.target_ptr, &());
             if data_a.principal_def_id() == data_b.principal_def_id() {
                 return CILNode::TemporaryLocal(Box::new((
-                    info.target_type.clone(),
+                    Type::DotnetType(Box::new(DotnetTypeRef::new::<&str, _>(None, "FatPtrDyn"))),
                     [CILRoot::SetTMPLocal {
-                        value: CILNode::LdObj {
-                            ptr: Box::new(CILNode::TransmutePtr {
-                                val: Box::new(info.source_ptr),
-                                new_ptr: Box::new(Type::Ptr(Box::new(info.target_type.clone()))),
-                            }),
-                            obj: Box::new(info.target_type),
-                        },
+                        value: *Box::new(info.source_ptr),
                     }]
                     .into(),
-                    CILNode::LoadTMPLocal,
+                    CILNode::LdObj {
+                        ptr: Box::new(
+                            CILNode::LoadAddresOfTMPLocal.cast_ptr(ptr!(info.target_type.clone())),
+                        ),
+                        obj: Box::new(info.target_type),
+                    },
                 )));
             }
             let vptr_entry_idx = ctx
                 .tyctx()
                 .supertrait_vtable_slot((operand.ty(ctx.body(), ctx.tyctx()), target));
             if let Some(entry_idx) = vptr_entry_idx {
-                todo!("dyn to dyn cats not yet supported. src_points_to:{src_points_to:?} target_points_to:{target_points_to:?} entry_idx:{entry_idx:?}")
+                todo!("dyn to dyn cats not yet supported. src_points_to:{src_points_to:?} target_points_to:{target_points_to:?} entry_idx:{entry_idx:?}",src_points_to = info.source_points_to)
             } else {
                 CILNode::TemporaryLocal(Box::new((
                     info.target_type.clone(),
                     [CILRoot::SetTMPLocal {
                         value: CILNode::LdObj {
-                            ptr: Box::new(CILNode::TransmutePtr {
-                                val: Box::new(info.source_ptr),
-                                new_ptr: Box::new(Type::Ptr(Box::new(info.target_type.clone()))),
-                            }),
+                            ptr: Box::new(
+                                ld_field!(
+                                    info.source_ptr,
+                                    FieldDescriptor::new(
+                                        Type::DotnetType(Box::new(DotnetTypeRef::new::<&str, _>(
+                                            None,
+                                            "FatPtrDyn"
+                                        )))
+                                        .as_dotnet()
+                                        .unwrap(),
+                                        ptr!(Type::Void),
+                                        "data_pointer".into(),
+                                    )
+                                )
+                                .cast_ptr(ptr!(info.target_type.clone())),
+                            ),
                             obj: Box::new(info.target_type),
                         },
                     }]
@@ -195,27 +211,22 @@ pub fn unsize<'tyctx>(
                 .vtable_allocation((info.source_points_to, data.principal()));
             let metadata_field =
                 FieldDescriptor::new(info.target_dotnet.clone(), Type::USize, "metadata".into());
-            let ptr_field = FieldDescriptor::new(
-                info.target_dotnet,
-                Type::Ptr(Type::Void.into()),
-                "data_pointer".into(),
-            );
+            let ptr_field =
+                FieldDescriptor::new(info.target_dotnet, ptr!(Type::Void), "data_pointer".into());
             let init_vtable_ptr = CILRoot::SetField {
                 addr: Box::new(info.target_ptr.clone()),
-                value: Box::new(CILNode::TransmutePtr {
-                    val: Box::new(CILNode::LoadGlobalAllocPtr {
+                value: Box::new(
+                    CILNode::LoadGlobalAllocPtr {
                         alloc_id: alloc_id.0.into(),
-                    }),
-                    new_ptr: Box::new(Type::USize),
-                }),
+                    }
+                    .cast_ptr(Type::USize),
+                ),
                 desc: Box::new(metadata_field),
             };
+
             let init_obj_ptr = CILRoot::SetField {
                 addr: Box::new(info.target_ptr),
-                value: Box::new(CILNode::TransmutePtr {
-                    val: Box::new(info.source_ptr),
-                    new_ptr: Box::new(Type::Ptr(Box::new(Type::Void))),
-                }),
+                value: Box::new(info.source_ptr.cast_ptr(ptr!(Type::Void))),
                 desc: Box::new(ptr_field),
             };
             CILNode::TemporaryLocal(Box::new((
@@ -225,8 +236,8 @@ pub fn unsize<'tyctx>(
             )))
         }
         (_, _) => todo!(
-            "Unhandled unsizing cast:{source:?} -> {target:?}",
-            source = info.source_points_to
+            "Unhandled unsizing cast:{:?} -> {target:?}",
+            info.source_points_to
         ),
     }
 }

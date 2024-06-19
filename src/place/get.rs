@@ -1,4 +1,8 @@
-use crate::{assembly::MethodCompileCtx, r#type::Type};
+use crate::{
+    assembly::MethodCompileCtx,
+    r#type::{pointer_to_is_fat, Type},
+    utilis::is_zst,
+};
 use cilly::{
     call, call_site::CallSite, cil_node::CILNode, conv_usize, field_desc::FieldDescriptor,
     fn_sig::FnSig, ld_field,
@@ -47,6 +51,7 @@ pub fn place_get<'tyctx>(
             ty = curr_ty.monomorphize(ctx);
             op = curr_ops;
         }
+
         place_elem_get(head, ty, ctx, op)
     }
 }
@@ -58,7 +63,14 @@ fn place_elem_get<'a>(
     addr_calc: CILNode,
 ) -> CILNode {
     match place_elem {
-        PlaceElem::Deref => super::deref_op(super::pointed_type(curr_type).into(), ctx, addr_calc),
+        PlaceElem::Deref => {
+            if curr_type.as_ty().is_some_and(|ty| {
+                pointer_to_is_fat(ty.builtin_deref(true).unwrap(), ctx.tyctx(), ctx.instance())
+            }) {
+                return addr_calc;
+            }
+            super::deref_op(super::pointed_type(curr_type).into(), ctx, addr_calc)
+        }
         PlaceElem::Field(field_index, _field_type) => match curr_type {
             super::PlaceTy::Ty(curr_type) => {
                 let curr_type = ctx.monomorphize(curr_type);

@@ -110,3 +110,9 @@ fn type_repr_size_ok() {
     // Type should not grow without a good reason.
     assert!(std::mem::size_of::<Type>() <= 16);
 }
+#[macro_export]
+macro_rules! ptr {
+    ($tpe:expr) => {
+        Type::Ptr(Box::new($tpe))
+    };
+}

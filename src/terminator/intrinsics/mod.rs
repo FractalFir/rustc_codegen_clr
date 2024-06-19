@@ -330,7 +330,8 @@ pub fn handle_intrinsic<'tyctx>(
         "atomic_cxchgweak_acquire_acquire"
         | "atomic_cxchg_acquire_relaxed"
         | "atomic_cxchgweak_acquire_relaxed"
-        | "atomic_cxchgweak_relaxed_relaxed" => {
+        | "atomic_cxchgweak_relaxed_relaxed"
+        | "atomic_cxchgweak_relaxed_acquire" => {
             let interlocked = DotnetTypeRef::interlocked();
             // *T
             let dst = handle_operand(&args[0].node, ctx);
@@ -433,7 +434,7 @@ pub fn handle_intrinsic<'tyctx>(
                 ctx,
             )
         }
-        "atomic_xchg_release" => {
+        "atomic_xchg_release" | "atomic_xchg_acquire" => {
             let interlocked = DotnetTypeRef::interlocked();
             // *T
             let dst = handle_operand(&args[0].node, ctx);

@@ -231,7 +231,7 @@ pub fn terminator_to_ops<'tcx>(
                     rustc_middle::ty::print::with_no_trimmed_paths! {
                     format!("Tried to execute terminator {term:?} whose compialtion message {msg:?}!")}
                 } else {
-                    eprintln!("handle_terminator panicked with a non-string message!");
+                    eprintln!("handle_terminator panicked with a non-string message when trying to compile {term:?} !");
                     rustc_middle::ty::print::with_no_trimmed_paths! {
                     format!("Tried to execute terminator {term:?} whose compialtion failed with a no-string message!")
                     }
@@ -333,23 +333,22 @@ pub fn add_fn<'tyctx>(
         locals.push((Some("repacked_arg".into()), repacked_type));
         let mut repack_cil: Vec<CILTree> = Vec::new();
         // For each element of the tuple, get the argument spread_arg + n
-        let packed_count = if let TyKind::Tuple(tup) = repacked_ty.kind() {
-            u32::try_from(tup.len()).expect("More than 2^32 arguments of a function")
-        } else {
+        let TyKind::Tuple(packed) = repacked_ty.kind() else {
             panic!("Arg to spread not a tuple???")
         };
-        for arg_id in 0..packed_count {
+        for (arg_id, ty) in packed.iter().enumerate() {
             let validation_context = ValidationContext::new(&sig, &locals);
             let mut method_context =
                 MethodCompileCtx::new(tyctx, mir, instance, validation_context, cache);
-            let arg_field = field_descrptor(repacked_ty, arg_id, &mut method_context);
-            if *arg_field.tpe() == Type::Void {
+            if crate::utilis::is_zst(ty, tyctx) {
                 continue;
             }
+            let arg_field = field_descrptor(repacked_ty, arg_id as u32, &mut method_context);
+
             repack_cil.push(
                 CILRoot::SetField {
                     addr: Box::new(CILNode::LDLocA(repacked)),
-                    value: Box::new(CILNode::LDArg((spread_arg.as_u32() - 1) + arg_id)),
+                    value: Box::new(CILNode::LDArg((spread_arg.as_u32() - 1) + (arg_id as u32))),
                     desc: Box::new(arg_field),
                 }
                 .into(),
@@ -838,6 +837,30 @@ impl<'tyctx, 'validator, 'type_cache> MethodCompileCtx<'tyctx, 'validator, 'type
                 ParamEnv::reveal_all(),
                 rustc_middle::ty::EarlyBinder::bind(ty),
             )
+    }
+    pub fn assert_raw_pointer_type(&self, ptr: &CILNode, node_from: &impl std::fmt::Debug) {
+        let ptr_tpe = match ptr.validate(self.validator(), None) {
+            Ok(ptr_tpe) => ptr_tpe,
+            Err(err) => {
+                panic!("VALIDATION falied: {err}. ops create from {node_from:?} weren't valid.")
+            }
+        };
+        match ptr_tpe{
+            Type::USize | Type::ISize | Type::DelegatePtr(_) | Type::Ptr(_) => (),
+            _=>panic!("VALIDATION failed. {ptr_tpe:?} is not a raw pointer type. It is the result of {ptr:?}, compiled from MIR item {node_from:?}")  
+        }
+    }
+    pub fn assert_fat_pointer_type(&self, ptr: &CILNode, node_from: &impl std::fmt::Debug) {
+        let ptr_tpe = match ptr.validate(self.validator(), None) {
+            Ok(ptr_tpe) => ptr_tpe,
+            Err(err) => {
+                panic!("VALIDATION falied: {err}. ops create from {node_from:?} weren't valid.")
+            }
+        };
+        match ptr_tpe{
+            Type::DotnetType(tpe) if tpe.name_path().contains("FatPtr")=> (),
+            _=>panic!("VALIDATION failed. {ptr_tpe:?} is not a raw pointer type. It is the result of {ptr:?}, compiled from MIR item {node_from:?}")  
+        }
     }
     pub fn type_from_cache(&mut self, ty: rustc_middle::ty::Ty<'tyctx>) -> Type {
         self.type_cache
