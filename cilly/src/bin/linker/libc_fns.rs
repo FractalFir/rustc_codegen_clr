@@ -34,6 +34,7 @@ pub const LIBC_FNS: &[&str] = &[
     "chroot",
     "clearerr",
     "clock",
+    "clock_gettime",
     "closelog",
     "confstr",
     "connect",
@@ -529,4 +530,5 @@ pub const LIBC_MODIFIES_ERRNO: &[&str] = &[
     "sched_getaffinity",
     "isatty",
     "getrandom",
+    "clock_gettime",
 ];

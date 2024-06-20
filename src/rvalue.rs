@@ -43,7 +43,7 @@ pub fn handle_rvalue<'tyctx>(
             | CastKind::PtrToPtr,
             operand,
             dst,
-        ) => ptr_to_ptr(ctx, operand, dst),
+        ) => ptr_to_ptr(ctx, operand, *dst),
         Rvalue::Cast(CastKind::PointerCoercion(PointerCoercion::Unsize), operand, target) => {
             crate::unsize::unsize(ctx, operand, *target)
         }
@@ -352,12 +352,12 @@ fn repeat<'tyctx>(
 fn ptr_to_ptr<'tyctx>(
     ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
     operand: &Operand<'tyctx>,
-    dst: &Ty<'tyctx>,
+    dst: Ty<'tyctx>,
 ) -> CILNode {
-    let target = ctx.monomorphize(*dst);
+    let target = ctx.monomorphize(dst);
     let target_pointed_to = match target.kind() {
-        TyKind::RawPtr(typ, _) => *typ,
-        TyKind::Ref(_, inner, _) => *inner,
+        TyKind::RawPtr(typ, _) => typ,
+        TyKind::Ref(_, inner, _) => inner,
         _ => panic!("Type is not ptr {target:?}."),
     };
     let source = ctx.monomorphize(operand.ty(ctx.body(), ctx.tyctx()));
@@ -370,7 +370,7 @@ fn ptr_to_ptr<'tyctx>(
     let target_type = ctx.type_from_cache(target);
 
     let src_fat = pointer_to_is_fat(source_pointed_to, ctx.tyctx(), ctx.instance());
-    let target_fat = pointer_to_is_fat(target_pointed_to, ctx.tyctx(), ctx.instance());
+    let target_fat = pointer_to_is_fat(*target_pointed_to, ctx.tyctx(), ctx.instance());
     match (src_fat, target_fat) {
         (true, true) => {
             let parrent = handle_operand(operand, ctx);

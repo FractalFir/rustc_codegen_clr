@@ -172,6 +172,10 @@ impl DotnetTypeRef {
         Self::new(Some("System.Threading"), "System.Threading.Interlocked").with_valuetype(false)
     }
     #[must_use]
+    pub fn monitor() -> Self {
+        Self::new(Some("System.Threading"), "System.Threading.Monitor").with_valuetype(false)
+    }
+    #[must_use]
     pub fn assembly() -> Self {
         Self::new(Some("System.Runtime"), "System.Reflection.Assembly").with_valuetype(false)
     }

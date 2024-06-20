@@ -6,12 +6,12 @@ use crate::{
     access_modifier::AccessModifer,
     basic_block::BasicBlock,
     call_site::CallSite,
-    cil_node::CILNode,
+    cil_node::{CILNode, CallOpArgs},
     cil_root::CILRoot,
     method::{Method, MethodType},
     static_field_desc::StaticFieldDescriptor,
     type_def::TypeDef,
-    FnSig, IString, Type,
+    DotnetTypeRef, FnSig, IString, Type,
 };
 
 #[derive(Clone, Copy, Serialize, Deserialize, Debug)]
@@ -111,6 +111,10 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
             static_fields: HashMap::new(),
             extern_fns: HashMap::new(),
         };
+        res.static_fields.insert(
+            "GlobalAtomicLock".into(),
+            Type::DotnetType(Box::new(DotnetTypeRef::object_type())),
+        );
         let dotnet_ver = AssemblyExternRef {
             version: (6, 12, 0, 0),
         };
@@ -198,7 +202,30 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
                         (None, Type::Ptr(Type::U8.into())),
                         (None, Type::Ptr(Type::U8.into())),
                     ],
-                    vec![BasicBlock::new(vec![CILRoot::VoidRet.into()], 0, None)],
+                    vec![BasicBlock::new(
+                        vec![
+                            CILRoot::SetStaticField {
+                                descr: Box::new(StaticFieldDescriptor::new(
+                                    None,
+                                    Type::DotnetType(Box::new(DotnetTypeRef::object_type())),
+                                    "GlobalAtomicLock".into(),
+                                )),
+                                value: CILNode::NewObj(Box::new(CallOpArgs {
+                                    args: [].into(),
+                                    site: Box::new(CallSite::new(
+                                        Some(DotnetTypeRef::object_type()),
+                                        ".ctor".into(),
+                                        FnSig::new(&[], Type::Void),
+                                        true,
+                                    )),
+                                })),
+                            }
+                            .into(),
+                            CILRoot::VoidRet.into(),
+                        ],
+                        0,
+                        None,
+                    )],
                     vec![],
                 )
             })

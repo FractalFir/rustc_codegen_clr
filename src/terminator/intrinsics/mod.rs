@@ -17,7 +17,7 @@ use rustc_middle::{
 use rustc_span::source_map::Spanned;
 use saturating::{saturating_add, saturating_sub};
 use type_info::{is_val_statically_known, size_of_val};
-use utilis::{compare_bytes, interlocked_add};
+use utilis::{compare_bytes, interlocked_add, interlocked_or};
 mod bswap;
 mod interop;
 mod ints;
@@ -390,7 +390,7 @@ pub fn handle_intrinsic<'tyctx>(
                 desc: Box::new(fld_desc.clone()),
             }
         }
-        "atomic_xsub_release" => {
+        "atomic_xsub_release" | "atomic_xsub_acqrel" => {
             // *T
             let dst = handle_operand(&args[0].node, ctx);
             // T
@@ -403,6 +403,22 @@ pub fn handle_intrinsic<'tyctx>(
             place_set(
                 destination,
                 interlocked_add(dst, add_ammount, src_type) + sub_ammount,
+                ctx,
+            )
+        }
+        "atomic_or_seqcst" => {
+            // *T
+            let dst = handle_operand(&args[0].node, ctx);
+            // T
+            let sub_ammount = handle_operand(&args[1].node, ctx);
+            // we sub by adding a negative number
+            let add_ammount = CILNode::Neg(Box::new(sub_ammount.clone()));
+            let src_type = ctx.monomorphize(args[1].node.ty(ctx.body(), ctx.tyctx()));
+            let src_type = ctx.type_from_cache(src_type);
+
+            place_set(
+                destination,
+                interlocked_or(dst, add_ammount, src_type) + sub_ammount,
                 ctx,
             )
         }
@@ -434,7 +450,7 @@ pub fn handle_intrinsic<'tyctx>(
                 ctx,
             )
         }
-        "atomic_xchg_release" | "atomic_xchg_acquire" => {
+        "atomic_xchg_release" | "atomic_xchg_acquire" | "atomic_xchg_acqrel" => {
             let interlocked = DotnetTypeRef::interlocked();
             // *T
             let dst = handle_operand(&args[0].node, ctx);
@@ -448,7 +464,29 @@ pub fn handle_intrinsic<'tyctx>(
             );
             let src_type = ctx.monomorphize(args[1].node.ty(ctx.body(), ctx.tyctx()));
             let src_type = ctx.type_from_cache(src_type);
-
+            match src_type {
+                Type::U8 => {
+                    return place_set(
+                        destination,
+                        call!(
+                            CallSite::builtin(
+                                "interlocked_emulate_xchng_byte".into(),
+                                FnSig::new(
+                                    &[Type::ManagedReference(Box::new(Type::U8)), Type::U8],
+                                    Type::U8
+                                ),
+                                true
+                            ),
+                            []
+                        ),
+                        ctx,
+                    )
+                }
+                Type::I8 | Type::Bool | Type::U16 | Type::I16 | Type::DotnetChar => {
+                    todo!("can't {fn_name} {src_type:?}")
+                }
+                _ => (),
+            }
             let call_site = CallSite::new(
                 Some(interlocked),
                 "Exchange".into(),

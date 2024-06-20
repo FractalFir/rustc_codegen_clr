@@ -14,3 +14,5 @@ fn main() {
         thread::sleep(Duration::from_millis(1));
     }
 }
+#[test]
+fn test() {}

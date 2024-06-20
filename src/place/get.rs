@@ -12,6 +12,8 @@ use rustc_middle::{
     ty::TyKind,
 };
 
+use super::body_ty_is_by_adress;
+
 pub(super) fn local_get(local: usize, method: &rustc_middle::mir::Body) -> CILNode {
     if let Some(spread_arg) = method.spread_arg
         && local == spread_arg.as_usize()
@@ -211,7 +213,13 @@ fn place_elem_get<'a>(
                 }
             }
         }
-        PlaceElem::Subtype(_tpe) => addr_calc,
+        PlaceElem::Subtype(tpe) => {
+            if body_ty_is_by_adress(curr_type.as_ty().unwrap()) {
+                super::deref_op((*tpe).into(), ctx, addr_calc)
+            } else {
+                addr_calc
+            }
+        }
         _ => todo!("Can't handle porojection {place_elem:?} in get"),
     }
 }

@@ -1,8 +1,56 @@
 use cilly::{
     access_modifier::AccessModifer, asm::Assembly, basic_block::BasicBlock, call,
     call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_u32, conv_u64, conv_usize,
-    size_of, DotnetTypeRef, FnSig, Type,
+    size_of, static_field_desc::StaticFieldDescriptor, DotnetTypeRef, FnSig, Type,
 };
+macro_rules! monitor_enter {
+    () => {{
+        CILRoot::Call {
+            site: Box::new(CallSite::new(
+                Some(DotnetTypeRef::monitor()),
+                "Enter".into(),
+                FnSig::new(
+                    &[Type::DotnetType(Box::new(DotnetTypeRef::object_type()))],
+                    Type::Void,
+                ),
+                true,
+            )),
+            args: [CILNode::LDStaticField(Box::new(
+                StaticFieldDescriptor::new(
+                    None,
+                    Type::DotnetType(Box::new(DotnetTypeRef::object_type())),
+                    "GlobalAtomicLock".into(),
+                ),
+            ))]
+            .into(),
+        }
+        .into()
+    }};
+}
+macro_rules! monitor_exit {
+    () => {{
+        CILRoot::Call {
+            site: Box::new(CallSite::new(
+                Some(DotnetTypeRef::monitor()),
+                "Exit".into(),
+                FnSig::new(
+                    &[Type::DotnetType(Box::new(DotnetTypeRef::object_type()))],
+                    Type::Void,
+                ),
+                true,
+            )),
+            args: [CILNode::LDStaticField(Box::new(
+                StaticFieldDescriptor::new(
+                    None,
+                    Type::DotnetType(Box::new(DotnetTypeRef::object_type())),
+                    "GlobalAtomicLock".into(),
+                ),
+            ))]
+            .into(),
+        }
+        .into()
+    }};
+}
 
 crate::add_method_from_trees!(
     interlocked_add_usize,
@@ -60,6 +108,124 @@ crate::add_method_from_trees!(
     ],
     vec![Some("addr".into()), Some("addend".into())]
 );
+crate::add_method_from_trees!(
+    interlocked_or_usize,
+    &[Type::ManagedReference(Box::new(Type::USize)), Type::USize],
+    Type::USize,
+    vec![
+        BasicBlock::new(
+            vec![
+                CILRoot::BEq {
+                    target: 1,
+                    sub_target: 0,
+                    a: Box::new(size_of!(Type::USize)),
+                    b: Box::new(size_of!(Type::U32))
+                }
+                .into(),
+                CILRoot::Ret {
+                    tree: conv_usize!(call!(
+                        CallSite::new(
+                            Some(DotnetTypeRef::interlocked()),
+                            "Or".into(),
+                            FnSig::new(
+                                &[Type::ManagedReference(Box::new(Type::U64)), Type::U64],
+                                Type::U64
+                            ),
+                            true
+                        ),
+                        [CILNode::LDArg(0), conv_u64!(CILNode::LDArg(1))]
+                    ))
+                }
+                .into(),
+            ],
+            0,
+            None
+        ),
+        // sizeof::<usize>() == sizeof::<u32>()
+        BasicBlock::new(
+            vec![CILRoot::Ret {
+                tree: conv_usize!(call!(
+                    CallSite::new(
+                        Some(DotnetTypeRef::interlocked()),
+                        "Or".into(),
+                        FnSig::new(
+                            &[Type::ManagedReference(Box::new(Type::U32)), Type::U32],
+                            Type::U32
+                        ),
+                        true
+                    ),
+                    [CILNode::LDArg(0), conv_u32!(CILNode::LDArg(1))]
+                ))
+            }
+            .into(),],
+            1,
+            None
+        )
+    ],
+    vec![Some("addr".into()), Some("orend".into())]
+);
 pub fn atomics(asm: &mut Assembly) {
     interlocked_add_usize(asm);
+    interlocked_or_usize(asm);
+    interlocked_emulate_xchng_byte(asm);
+}
+crate::add_method_from_trees!(
+    interlocked_emulate_xchng_byte,
+    &[Type::ManagedReference(Box::new(Type::U8)), Type::U8],
+    Type::U8,
+    vec![
+        BasicBlock::new(
+            vec![
+                monitor_enter!(),
+                CILRoot::GoTo {
+                    target: 1,
+                    sub_target: 0
+                }
+                .into()
+            ],
+            0,
+            None
+        ),
+        BasicBlock::new(
+            vec![
+                CILRoot::STLoc {
+                    tree: CILNode::LDIndU8 {
+                        ptr: Box::new(CILNode::LDArg(0))
+                    },
+                    local: 0,
+                }
+                .into(),
+                CILRoot::STIndI8(CILNode::LDArg(0), CILNode::LDArg(1)).into(),
+                CILRoot::GoTo {
+                    target: 2,
+                    sub_target: 0
+                }
+                .into()
+            ],
+            1,
+            Some(cilly::basic_block::Handler::Blocks(vec![BasicBlock::new(
+                vec![monitor_exit!(), CILRoot::ReThrow.into()],
+                3,
+                None
+            )]))
+        ),
+        BasicBlock::new(
+            vec![
+                monitor_exit!(),
+                CILRoot::Ret {
+                    tree: CILNode::LDLoc(0)
+                }
+                .into()
+            ],
+            2,
+            None
+        ),
+    ],
+    vec![(Some("val".into()), Type::U8)],
+    vec![Some("addr".into()), Some("new_val".into())]
+);
+#[test]
+fn test_interlocked_emu() {
+    let mut asm = Assembly::empty();
+    interlocked_emulate_xchng_byte(&mut asm);
 }
