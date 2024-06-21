@@ -24,12 +24,12 @@ pub fn local_body<'tcx>(
         (super::get::local_get(local, ctx.body()), ty)
     }
 }
-pub fn place_elem_body<'ctx>(
-    place_elem: &PlaceElem<'ctx>,
-    curr_type: PlaceTy<'ctx>,
-    ctx: &mut MethodCompileCtx<'ctx, '_, '_>,
+pub fn place_elem_body<'tcx>(
+    place_elem: &PlaceElem<'tcx>,
+    curr_type: PlaceTy<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
     parrent_node: CILNode,
-) -> (PlaceTy<'ctx>, CILNode) {
+) -> (PlaceTy<'tcx>, CILNode) {
     let curr_ty = match curr_type {
         PlaceTy::Ty(ty) => PlaceTy::Ty(ctx.monomorphize(ty)),
         PlaceTy::EnumVariant(enm, idx) => PlaceTy::EnumVariant(ctx.monomorphize(enm), idx),
@@ -48,19 +48,19 @@ pub fn place_elem_body<'ctx>(
         PlaceElem::Field(index, field_ty) => match curr_ty {
             PlaceTy::Ty(curr_ty) => {
                 let field_ty = ctx.monomorphize(*field_ty);
-                if crate::r#type::pointer_to_is_fat(curr_ty, ctx.tyctx(), ctx.instance()) {
+                if crate::r#type::pointer_to_is_fat(curr_ty, ctx.tcx(), ctx.instance()) {
                     assert_eq!(
                         index.as_u32(),
                         0,
                         "Can't handle DST with more than 1 field."
                     );
                     let curr_type = ctx.type_from_cache(Ty::new_ptr(
-                        ctx.tyctx(),
+                        ctx.tcx(),
                         curr_ty,
                         rustc_middle::ty::Mutability::Mut,
                     ));
                     let field_type = ctx.type_from_cache(Ty::new_ptr(
-                        ctx.tyctx(),
+                        ctx.tcx(),
                         field_ty,
                         rustc_middle::ty::Mutability::Mut,
                     ));

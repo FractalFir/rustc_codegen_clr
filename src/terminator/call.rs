@@ -25,28 +25,28 @@ fn argc_from_fn_name(function_name: &str, prefix: &str) -> u32 {
     argument_count.parse::<u32>().unwrap()
 }
 /// Calls a non-virtual managed function(used for interop)
-fn call_managed<'tyctx>(
-    subst_ref: &[GenericArg<'tyctx>],
+fn call_managed<'tcx>(
+    subst_ref: &[GenericArg<'tcx>],
     function_name: &str,
-    args: &[Spanned<Operand<'tyctx>>],
-    destination: &Place<'tyctx>,
-    fn_instance: Instance<'tyctx>,
-    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
+    args: &[Spanned<Operand<'tcx>>],
+    destination: &Place<'tcx>,
+    fn_instance: Instance<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
 ) -> CILRoot {
     let argument_count = argc_from_fn_name(function_name, MANAGED_CALL_FN_NAME);
     //FIXME: figure out the proper argc.
     //assert!(subst_ref.len() as u32 == argc + 3 || subst_ref.len() as u32 == argc + 4);
     assert!(args.len() == argument_count as usize);
-    let asm = AssemblyRef::decode_assembly_ref(subst_ref[0], ctx.tyctx());
+    let asm = AssemblyRef::decode_assembly_ref(subst_ref[0], ctx.tcx());
     let asm = asm.name();
-    let class_name = garg_to_string(subst_ref[1], ctx.tyctx());
-    let is_valuetype = crate::utilis::garag_to_bool(subst_ref[2], ctx.tyctx());
-    let managed_fn_name = garg_to_string(subst_ref[3], ctx.tyctx());
+    let class_name = garg_to_string(subst_ref[1], ctx.tcx());
+    let is_valuetype = crate::utilis::garag_to_bool(subst_ref[2], ctx.tcx());
+    let managed_fn_name = garg_to_string(subst_ref[3], ctx.tcx());
     let mut tpe = DotnetTypeRef::new(asm, class_name);
     tpe.set_valuetype(is_valuetype);
     //eprintln!("tpe:{tpe:?}");
     let signature =
-        crate::function_sig::sig_from_instance_(fn_instance, ctx.tyctx(), ctx.type_cache())
+        crate::function_sig::sig_from_instance_(fn_instance, ctx.tcx(), ctx.type_cache())
             .expect("Can't get the function signature");
 
     if argument_count == 0 {
@@ -66,7 +66,7 @@ fn call_managed<'tyctx>(
             crate::place::place_set(destination, call!(call_site, []), ctx)
         }
     } else {
-        let is_static = crate::utilis::garag_to_bool(subst_ref[4], ctx.tyctx());
+        let is_static = crate::utilis::garag_to_bool(subst_ref[4], ctx.tcx());
 
         let mut call_args = Vec::new();
         for arg in args {
@@ -89,32 +89,32 @@ fn call_managed<'tyctx>(
     }
 }
 /// Calls a virtual managed function(used for interop)
-fn callvirt_managed<'tyctx>(
-    subst_ref: &[GenericArg<'tyctx>],
+fn callvirt_managed<'tcx>(
+    subst_ref: &[GenericArg<'tcx>],
     function_name: &str,
-    args: &[Spanned<Operand<'tyctx>>],
-    destination: &Place<'tyctx>,
-    fn_instance: Instance<'tyctx>,
-    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
+    args: &[Spanned<Operand<'tcx>>],
+    destination: &Place<'tcx>,
+    fn_instance: Instance<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
 ) -> CILRoot {
     let argument_count = argc_from_fn_name(function_name, MANAGED_CALL_VIRT_FN_NAME);
     //assert!(subst_ref.len() as u32 == argc + 3 || subst_ref.len() as u32 == argc + 4);
     assert!(
         u32::try_from(args.len()).expect("More than 2^32 function arguments.") == argument_count
     );
-    let asm = AssemblyRef::decode_assembly_ref(subst_ref[0], ctx.tyctx());
+    let asm = AssemblyRef::decode_assembly_ref(subst_ref[0], ctx.tcx());
     let asm = asm.name();
-    let class_name = garg_to_string(subst_ref[1], ctx.tyctx());
-    let is_valuetype = crate::utilis::garag_to_bool(subst_ref[2], ctx.tyctx());
+    let class_name = garg_to_string(subst_ref[1], ctx.tcx());
+    let is_valuetype = crate::utilis::garag_to_bool(subst_ref[2], ctx.tcx());
 
     let managed_fn_garg = &subst_ref[3];
     let managed_fn_garg = ctx.monomorphize(*managed_fn_garg);
-    let managed_fn_name = garg_to_string(managed_fn_garg, ctx.tyctx());
+    let managed_fn_name = garg_to_string(managed_fn_garg, ctx.tcx());
 
     let mut tpe = DotnetTypeRef::new(asm, class_name);
     tpe.set_valuetype(is_valuetype);
     let signature =
-        crate::function_sig::sig_from_instance_(fn_instance, ctx.tyctx(), ctx.type_cache())
+        crate::function_sig::sig_from_instance_(fn_instance, ctx.tcx(), ctx.type_cache())
             .expect("Can't get the function signature");
     if argument_count == 0 {
         let ret = crate::r#type::Type::Void;
@@ -133,7 +133,7 @@ fn callvirt_managed<'tyctx>(
             crate::place::place_set(destination, call_virt!(call, []), ctx)
         }
     } else {
-        let is_static = crate::utilis::garag_to_bool(subst_ref[4], ctx.tyctx());
+        let is_static = crate::utilis::garag_to_bool(subst_ref[4], ctx.tcx());
 
         let mut call_args = Vec::new();
         for arg in args {
@@ -156,12 +156,12 @@ fn callvirt_managed<'tyctx>(
     }
 }
 /// Creates a new managed object, and places a reference to it in destination
-fn call_ctor<'tyctx>(
-    subst_ref: &[GenericArg<'tyctx>],
+fn call_ctor<'tcx>(
+    subst_ref: &[GenericArg<'tcx>],
     function_name: &str,
-    args: &[Spanned<Operand<'tyctx>>],
-    destination: &Place<'tyctx>,
-    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
+    args: &[Spanned<Operand<'tcx>>],
+    destination: &Place<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
 ) -> CILRoot {
     let argument_count = argc_from_fn_name(function_name, CTOR_FN_NAME);
     // Check that there are enough function path and argument specifers
@@ -169,12 +169,12 @@ fn call_ctor<'tyctx>(
     // Check that a proper number of arguments is used
     assert!(args.len() == argument_count as usize);
     // Get the name of the assembly the constructed object resides in
-    let asm = AssemblyRef::decode_assembly_ref(subst_ref[0], ctx.tyctx());
+    let asm = AssemblyRef::decode_assembly_ref(subst_ref[0], ctx.tcx());
     let asm = asm.name();
     // Get the name of the constructed object
-    let class_name = garg_to_string(subst_ref[1], ctx.tyctx());
+    let class_name = garg_to_string(subst_ref[1], ctx.tcx());
     // Check if the costructed object is valuetype. TODO: this may be unnecesary. Are valuetpes constructed using newobj?
-    let is_valuetype = crate::utilis::garag_to_bool(subst_ref[2], ctx.tyctx());
+    let is_valuetype = crate::utilis::garag_to_bool(subst_ref[2], ctx.tcx());
     let mut tpe = DotnetTypeRef::new(asm, class_name);
     tpe.set_valuetype(is_valuetype);
     // If no arguments, inputs don't have to be handled, so a simpler call handling is used.
@@ -220,12 +220,12 @@ fn call_ctor<'tyctx>(
         )
     }
 }
-pub fn call_closure<'tyctx>(
-    args: &[Spanned<Operand<'tyctx>>],
-    destination: &Place<'tyctx>,
+pub fn call_closure<'tcx>(
+    args: &[Spanned<Operand<'tcx>>],
+    destination: &Place<'tcx>,
     sig: FnSig,
     function_name: &str,
-    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
 ) -> CILRoot {
     let last_arg = args
         .last()
@@ -238,7 +238,7 @@ pub fn call_closure<'tyctx>(
     }
     // "Rust call" is wierd, and not at all optimized for .NET. Passing all the arguments in a tuple is bad for performance and simplicty. Thus, unpacking this tuple and forcing "Rust call" to be
     // "normal" is far easier and better for performance.
-    let last_arg_type = ctx.monomorphize(last_arg.node.ty(ctx.body(), ctx.tyctx()));
+    let last_arg_type = ctx.monomorphize(last_arg.node.ty(ctx.body(), ctx.tcx()));
     match last_arg_type.kind() {
         TyKind::Tuple(elements) => {
             if elements.is_empty() {
@@ -289,11 +289,11 @@ pub fn call_closure<'tyctx>(
     }
 }
 /// Calls `fn_type` with `args`, placing the return value in destination.
-pub fn call<'tyctx>(
-    fn_type: Ty<'tyctx>,
-    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
-    args: &[Spanned<Operand<'tyctx>>],
-    destination: &Place<'tyctx>,
+pub fn call<'tcx>(
+    fn_type: Ty<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    args: &[Spanned<Operand<'tcx>>],
+    destination: &Place<'tcx>,
     span: rustc_span::Span,
 ) -> CILRoot {
     let fn_type = ctx.monomorphize(fn_type);
@@ -301,7 +301,7 @@ pub fn call<'tyctx>(
         let subst = ctx.monomorphize(*subst_ref);
         let env = ParamEnv::reveal_all();
         let Some(instance) =
-            Instance::resolve(ctx.tyctx(), env, *def_id, subst).expect("Invalid function def")
+            Instance::resolve(ctx.tcx(), env, *def_id, subst).expect("Invalid function def")
         else {
             panic!("ERROR: Could not get function instance. fn type:{fn_type:?}")
         };
@@ -312,7 +312,7 @@ pub fn call<'tyctx>(
     };
     if let rustc_middle::ty::InstanceKind::Virtual(_def, fn_idx) = instance.def {
         assert!(!args.is_empty());
-        let fat_ptr_ty = ctx.monomorphize(args[0].node.ty(ctx.body(), ctx.tyctx()));
+        let fat_ptr_ty = ctx.monomorphize(args[0].node.ty(ctx.body(), ctx.tcx()));
 
         let fat_ptr_type = ctx.type_from_cache(fat_ptr_ty);
         let fat_ptr_address = handle_operand(&args[0].node, ctx);
@@ -346,7 +346,7 @@ pub fn call<'tyctx>(
             )
         );
         // Get the call info
-        let call_info = CallInfo::sig_from_instance_(instance, ctx.tyctx(), ctx.type_cache());
+        let call_info = CallInfo::sig_from_instance_(instance, ctx.tcx(), ctx.type_cache());
 
         let mut signature = call_info.sig().clone();
         signature.inputs_mut()[0] = Type::Ptr(Box::new(Type::Void));
@@ -362,7 +362,7 @@ pub fn call<'tyctx>(
             }
             // "Rust call" is wierd, and not at all optimized for .NET. Passing all the arguments in a tuple is bad for performance and simplicty. Thus, unpacking this tuple and forcing "Rust call" to be
             // "normal" is far easier and better for performance.
-            let last_arg_type = ctx.monomorphize(last_arg.node.ty(ctx.body(), ctx.tyctx()));
+            let last_arg_type = ctx.monomorphize(last_arg.node.ty(ctx.body(), ctx.tcx()));
             match last_arg_type.kind() {
                 TyKind::Tuple(elements) => {
                     if elements.is_empty() {
@@ -419,11 +419,11 @@ pub fn call<'tyctx>(
             )
         };
     }
-    let call_info = CallInfo::sig_from_instance_(instance, ctx.tyctx(), ctx.type_cache());
+    let call_info = CallInfo::sig_from_instance_(instance, ctx.tcx(), ctx.type_cache());
     // SHOULD NOT BE MUTABLE BUT VARIADICS ARE FUCKING WIERD.
 
-    let function_name = crate::utilis::function_name(ctx.tyctx().symbol_name(instance));
-    if crate::utilis::is_fn_intrinsic(fn_type, ctx.tyctx()) {
+    let function_name = crate::utilis::function_name(ctx.tcx().symbol_name(instance));
+    if crate::utilis::is_fn_intrinsic(fn_type, ctx.tcx()) {
         return super::intrinsics::handle_intrinsic(
             &function_name,
             args,
@@ -464,21 +464,21 @@ pub fn call<'tyctx>(
     let mut call_args = Vec::new();
     for arg in args {
         let method_instance = ctx.instance();
-        let tyctx = ctx.tyctx();
+        let tcx = ctx.tcx();
         let res_calc = crate::r#type::tycache::validity_check(
             crate::operand::handle_operand(&arg.node, ctx),
-            ctx.monomorphize(arg.node.ty(ctx.body(), ctx.tyctx())),
+            ctx.monomorphize(arg.node.ty(ctx.body(), ctx.tcx())),
             ctx.type_cache(),
             method_instance,
-            tyctx,
+            tcx,
         );
         call_args.push(res_calc);
     }
-    if crate::function_sig::is_fn_variadic(fn_type, ctx.tyctx()) {
+    if crate::function_sig::is_fn_variadic(fn_type, ctx.tcx()) {
         signature.set_inputs(
             args.iter()
                 .map(|operand| {
-                    ctx.type_from_cache(ctx.monomorphize(operand.node.ty(ctx.body(), ctx.tyctx())))
+                    ctx.type_from_cache(ctx.monomorphize(operand.node.ty(ctx.body(), ctx.tcx())))
                 })
                 .collect(),
         );
@@ -511,13 +511,13 @@ pub fn call<'tyctx>(
         }
     } else {
         let method_instance = ctx.instance();
-        let tyctx = ctx.tyctx();
+        let tcx = ctx.tcx();
         let res_calc = crate::r#type::tycache::validity_check(
             call!(call_site, call_args),
-            ctx.monomorphize(destination.ty(ctx.body(), ctx.tyctx()).ty),
+            ctx.monomorphize(destination.ty(ctx.body(), ctx.tcx()).ty),
             ctx.type_cache(),
             method_instance,
-            tyctx,
+            tcx,
         );
         crate::place::place_set(destination, res_calc, ctx)
     }

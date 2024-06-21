@@ -4,10 +4,10 @@ use cilly::{
 };
 use rustc_middle::ty::{IntTy, Ty, TyKind, UintTy};
 
-pub fn bit_and_unchecked<'tyctx>(
-    ty_a: Ty<'tyctx>,
-    ty_b: Ty<'tyctx>,
-    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
+pub fn bit_and_unchecked<'tcx>(
+    ty_a: Ty<'tcx>,
+    ty_b: Ty<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
     operand_a: CILNode,
     operand_b: CILNode,
 ) -> CILNode {
@@ -40,10 +40,10 @@ pub fn bit_and_unchecked<'tyctx>(
         _ => and!(operand_a, operand_b),
     }
 }
-pub fn bit_or_unchecked<'tyctx>(
-    ty_a: Ty<'tyctx>,
-    ty_b: Ty<'tyctx>,
-    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
+pub fn bit_or_unchecked<'tcx>(
+    ty_a: Ty<'tcx>,
+    ty_b: Ty<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
     operand_a: CILNode,
     operand_b: CILNode,
 ) -> CILNode {
@@ -77,10 +77,10 @@ pub fn bit_or_unchecked<'tyctx>(
         _ => or!(operand_a, operand_b),
     }
 }
-pub fn bit_xor_unchecked<'tyctx>(
-    ty_a: Ty<'tyctx>,
-    ty_b: Ty<'tyctx>,
-    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
+pub fn bit_xor_unchecked<'tcx>(
+    ty_a: Ty<'tcx>,
+    ty_b: Ty<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
     ops_a: CILNode,
     ops_b: CILNode,
 ) -> CILNode {

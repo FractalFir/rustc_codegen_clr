@@ -8,17 +8,17 @@ use rustc_middle::{
 };
 use rustc_span::source_map::Spanned;
 
-pub fn bswap<'tyctx>(
-    args: &[Spanned<Operand<'tyctx>>],
-    destination: &Place<'tyctx>,
-    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
+pub fn bswap<'tcx>(
+    args: &[Spanned<Operand<'tcx>>],
+    destination: &Place<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
 ) -> CILRoot {
     debug_assert_eq!(
         args.len(),
         1,
         "The intrinsic `bswap` MUST take in exactly 1 argument!"
     );
-    let ty = args[0].node.ty(ctx.body(), ctx.tyctx());
+    let ty = args[0].node.ty(ctx.body(), ctx.tcx());
     let ty = ctx.monomorphize(ty);
     let tpe = ctx.type_from_cache(ty);
     let operand = handle_operand(&args[0].node, ctx);

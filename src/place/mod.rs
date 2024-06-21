@@ -65,9 +65,9 @@ fn body_ty_is_by_adress(last_ty: Ty) -> bool {
 }
 
 /// Given a type `derefed_type`, it retuns a set of instructions to get a value behind a pointer to `derefed_type`.
-pub fn deref_op<'ctx>(
-    derefed_type: PlaceTy<'ctx>,
-    ctx: &mut MethodCompileCtx<'ctx, '_, '_>,
+pub fn deref_op<'tcx>(
+    derefed_type: PlaceTy<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
     ptr: CILNode,
 ) -> CILNode {
     let ptr = Box::new(ptr);
@@ -119,7 +119,7 @@ pub fn deref_op<'ctx>(
                 }
             }
             TyKind::Ref(_, inner, _) => {
-                if pointer_to_is_fat(*inner, ctx.tyctx(), ctx.instance()) {
+                if pointer_to_is_fat(*inner, ctx.tcx(), ctx.instance()) {
                     CILNode::LdObj {
                         ptr,
                         obj: Box::new(ctx.type_from_cache(derefed_type)),
@@ -133,7 +133,7 @@ pub fn deref_op<'ctx>(
                 }
             }
             TyKind::RawPtr(typ, _) => {
-                if pointer_to_is_fat(*typ, ctx.tyctx(), ctx.instance()) {
+                if pointer_to_is_fat(*typ, ctx.tcx(), ctx.instance()) {
                     CILNode::LdObj {
                         ptr,
                         obj: Box::new(ctx.type_from_cache(derefed_type)),
@@ -157,7 +157,7 @@ pub fn deref_op<'ctx>(
 
 /// Returns the ops for getting the address of a given place.
 pub fn place_adress<'a>(place: &Place<'a>, ctx: &mut MethodCompileCtx<'a, '_, '_>) -> CILNode {
-    let place_ty = place.ty(ctx.body(), ctx.tyctx());
+    let place_ty = place.ty(ctx.body(), ctx.tcx());
     let place_ty = ctx.monomorphize(place_ty).ty;
 
     let layout = ctx.layout_of(place_ty);
@@ -191,7 +191,7 @@ pub(crate) fn place_address_raw<'a>(
     place: &Place<'a>,
     ctx: &mut MethodCompileCtx<'a, '_, '_>,
 ) -> CILNode {
-    let place_ty = place.ty(ctx.body(), ctx.tyctx());
+    let place_ty = place.ty(ctx.body(), ctx.tcx());
     let place_ty = ctx.monomorphize(place_ty).ty;
 
     let layout = ctx.layout_of(place_ty);
@@ -223,10 +223,10 @@ pub(crate) fn place_address_raw<'a>(
         adress::place_elem_adress(head, ty, ctx, place_ty, addr_calc)
     }
 }
-pub(crate) fn place_set<'tyctx>(
-    place: &Place<'tyctx>,
+pub(crate) fn place_set<'tcx>(
+    place: &Place<'tcx>,
     value_calc: CILNode,
-    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
 ) -> CILRoot {
     if place.projection.is_empty() {
         set::local_set(place.local.as_usize(), ctx.body(), value_calc)
@@ -247,30 +247,30 @@ pub(crate) fn place_set<'tyctx>(
     }
 }
 #[derive(Debug, Clone, Copy)]
-pub enum PlaceTy<'ctx> {
-    Ty(Ty<'ctx>),
-    EnumVariant(Ty<'ctx>, u32),
+pub enum PlaceTy<'tcx> {
+    Ty(Ty<'tcx>),
+    EnumVariant(Ty<'tcx>, u32),
 }
-impl<'ctx> From<Ty<'ctx>> for PlaceTy<'ctx> {
-    fn from(ty: Ty<'ctx>) -> Self {
+impl<'tcx> From<Ty<'tcx>> for PlaceTy<'tcx> {
+    fn from(ty: Ty<'tcx>) -> Self {
         Self::Ty(ty)
     }
 }
-impl<'ctx> PlaceTy<'ctx> {
-    pub fn monomorphize(&self, ctx: &mut MethodCompileCtx<'ctx, '_, '_>) -> Self {
+impl<'tcx> PlaceTy<'tcx> {
+    pub fn monomorphize(&self, ctx: &mut MethodCompileCtx<'tcx, '_, '_>) -> Self {
         match self {
             Self::Ty(inner) => Self::Ty(ctx.monomorphize(*inner)),
             Self::EnumVariant(enm, variant) => Self::EnumVariant(ctx.monomorphize(*enm), *variant),
         }
     }
-    pub fn as_ty(&self) -> Option<Ty<'ctx>> {
+    pub fn as_ty(&self) -> Option<Ty<'tcx>> {
         match self {
             Self::Ty(inner) => Some(*inner),
             Self::EnumVariant(..) => None,
         }
     }
     /// Returns the kind of the underlyting Ty.
-    pub fn kind(&self) -> &TyKind<'ctx> {
+    pub fn kind(&self) -> &TyKind<'tcx> {
         match self {
             Self::Ty(ty) => ty.kind(),
             //TODO: find a better way to get the emum variant!

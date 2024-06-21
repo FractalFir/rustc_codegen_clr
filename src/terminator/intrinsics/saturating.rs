@@ -6,11 +6,11 @@ use rustc_middle::{
     ty::Instance,
 };
 use rustc_span::source_map::Spanned;
-pub fn saturating_add<'tyctx>(
-    args: &[Spanned<Operand<'tyctx>>],
-    destination: &Place<'tyctx>,
-    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
-    call_instance: Instance<'tyctx>,
+pub fn saturating_add<'tcx>(
+    args: &[Spanned<Operand<'tcx>>],
+    destination: &Place<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    call_instance: Instance<'tcx>,
 ) -> CILRoot {
     let a = handle_operand(&args[0].node, ctx);
     let b = handle_operand(&args[1].node, ctx);
@@ -33,11 +33,11 @@ pub fn saturating_add<'tyctx>(
     };
     place_set(destination, calc, ctx)
 }
-pub fn saturating_sub<'tyctx>(
-    args: &[Spanned<Operand<'tyctx>>],
-    destination: &Place<'tyctx>,
-    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
-    call_instance: Instance<'tyctx>,
+pub fn saturating_sub<'tcx>(
+    args: &[Spanned<Operand<'tcx>>],
+    destination: &Place<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    call_instance: Instance<'tcx>,
 ) -> CILRoot {
     let a = handle_operand(&args[0].node, ctx);
     let b = handle_operand(&args[1].node, ctx);

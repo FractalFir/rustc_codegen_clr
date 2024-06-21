@@ -20,16 +20,16 @@ pub mod cmp;
 pub mod shift;
 
 /// Preforms an unchecked binary operation.
-pub(crate) fn binop<'tyctx>(
+pub(crate) fn binop<'tcx>(
     binop: BinOp,
-    operand_a: &Operand<'tyctx>,
-    operand_b: &Operand<'tyctx>,
-    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
+    operand_a: &Operand<'tcx>,
+    operand_b: &Operand<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
 ) -> CILNode {
     let ops_a = crate::operand::handle_operand(operand_a, ctx);
     let ops_b = crate::operand::handle_operand(operand_b, ctx);
-    let ty_a = operand_a.ty(&ctx.body().local_decls, ctx.tyctx());
-    let ty_b = operand_b.ty(&ctx.body().local_decls, ctx.tyctx());
+    let ty_a = operand_a.ty(&ctx.body().local_decls, ctx.tcx());
+    let ty_b = operand_b.ty(&ctx.body().local_decls, ctx.tcx());
     match binop {
         BinOp::AddWithOverflow => {
             if ty_a.is_signed() {
@@ -87,15 +87,15 @@ pub(crate) fn binop<'tyctx>(
         }
         BinOp::Cmp => {
             let ordering = ctx
-                .tyctx()
+                .tcx()
                 .get_lang_items(())
                 .get(LangItem::OrderingEnum)
                 .unwrap();
             let ordering =
-                Instance::resolve(ctx.tyctx(), ParamEnv::reveal_all(), ordering, List::empty())
+                Instance::resolve(ctx.tcx(), ParamEnv::reveal_all(), ordering, List::empty())
                     .unwrap()
                     .unwrap();
-            let ordering_ty = ordering.ty(ctx.tyctx(), ParamEnv::reveal_all());
+            let ordering_ty = ordering.ty(ctx.tcx(), ParamEnv::reveal_all());
             let ordering_type = ctx.type_from_cache(ordering_ty);
             let lt = -lt_unchecked(ty_a, ops_a.clone(), ops_b.clone());
             let gt = gt_unchecked(ty_a, ops_a, ops_b);
@@ -118,10 +118,10 @@ pub(crate) fn binop<'tyctx>(
     }
 }
 /// Preforms unchecked addition
-pub fn add_unchecked<'tyctx>(
-    ty_a: Ty<'tyctx>,
-    ty_b: Ty<'tyctx>,
-    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
+pub fn add_unchecked<'tcx>(
+    ty_a: Ty<'tcx>,
+    ty_b: Ty<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
     ops_a: CILNode,
     ops_b: CILNode,
 ) -> CILNode {
@@ -171,10 +171,10 @@ pub fn add_unchecked<'tyctx>(
     }
 }
 /// Preforms unchecked subtraction
-pub fn sub_unchecked<'tyctx>(
-    ty_a: Ty<'tyctx>,
-    ty_b: Ty<'tyctx>,
-    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
+pub fn sub_unchecked<'tcx>(
+    ty_a: Ty<'tcx>,
+    ty_b: Ty<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
     ops_a: CILNode,
     ops_b: CILNode,
 ) -> CILNode {
@@ -218,10 +218,10 @@ pub fn sub_unchecked<'tyctx>(
     }
 }
 
-fn rem_unchecked<'tyctx>(
-    ty_a: Ty<'tyctx>,
-    ty_b: Ty<'tyctx>,
-    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
+fn rem_unchecked<'tcx>(
+    ty_a: Ty<'tcx>,
+    ty_b: Ty<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
     ops_a: CILNode,
     ops_b: CILNode,
 ) -> CILNode {
@@ -259,10 +259,10 @@ fn rem_unchecked<'tyctx>(
     }
 }
 
-fn mul_unchecked<'tyctx>(
-    ty_a: Ty<'tyctx>,
-    ty_b: Ty<'tyctx>,
-    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
+fn mul_unchecked<'tcx>(
+    ty_a: Ty<'tcx>,
+    ty_b: Ty<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
     operand_a: CILNode,
     operand_b: CILNode,
 ) -> CILNode {
@@ -296,10 +296,10 @@ fn mul_unchecked<'tyctx>(
         _ => operand_a * operand_b,
     }
 }
-fn div_unchecked<'tyctx>(
-    ty_a: Ty<'tyctx>,
-    ty_b: Ty<'tyctx>,
-    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
+fn div_unchecked<'tcx>(
+    ty_a: Ty<'tcx>,
+    ty_b: Ty<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
     operand_a: CILNode,
     operand_b: CILNode,
 ) -> CILNode {

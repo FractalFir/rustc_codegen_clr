@@ -9,12 +9,12 @@ pub struct CallInfo {
 }
 impl CallInfo {
     /// Returns the signature of function behind `function`.
-    pub fn sig_from_instance_<'tyctx>(
-        function: Instance<'tyctx>,
-        tyctx: TyCtxt<'tyctx>,
+    pub fn sig_from_instance_<'tcx>(
+        function: Instance<'tcx>,
+        tcx: TyCtxt<'tcx>,
         tycache: &mut TyCache,
     ) -> Self {
-        let fn_abi = tyctx.fn_abi_of_instance(ParamEnvAnd {
+        let fn_abi = tcx.fn_abi_of_instance(ParamEnvAnd {
             param_env: ParamEnv::reveal_all(),
             value: (function, List::empty()),
         });
@@ -28,15 +28,15 @@ impl CallInfo {
             _ => panic!("ERROR:calling using convention {conv:?} is not supported!"),
         }
         //assert!(!fn_abi.c_variadic);
-        let ret = tycache.type_from_cache(fn_abi.ret.layout.ty, tyctx, function);
+        let ret = tycache.type_from_cache(fn_abi.ret.layout.ty, tcx, function);
         let mut args = Vec::with_capacity(fn_abi.args.len());
         for arg in &fn_abi.args {
-            args.push(tycache.type_from_cache(arg.layout.ty, tyctx, function));
+            args.push(tycache.type_from_cache(arg.layout.ty, tcx, function));
         }
         // There are 2 ABI enums for some reasons(they differ in what memebers they have)
-        let fn_ty = function.ty(tyctx, ParamEnv::reveal_all());
+        let fn_ty = function.ty(tcx, ParamEnv::reveal_all());
         let internal_abi = match fn_ty.kind() {
-            TyKind::FnDef(_, _) => fn_ty.fn_sig(tyctx),
+            TyKind::FnDef(_, _) => fn_ty.fn_sig(tcx),
             TyKind::Closure(_, args) => args.as_closure().sig(),
             _ => todo!("Can't get signature of {fn_ty}"),
         }
@@ -60,8 +60,8 @@ impl CallInfo {
                 .iter()
                 .map(|ty| {
                     tycache.type_from_cache(
-                        crate::utilis::monomorphize(&function, ty.layout.ty, tyctx),
-                        tyctx,
+                        crate::utilis::monomorphize(&function, ty.layout.ty, tcx),
+                        tcx,
                         function,
                     )
                 });

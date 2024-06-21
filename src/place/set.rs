@@ -209,9 +209,9 @@ pub fn place_elem_set<'a>(
     }
 }
 /// Returns a set of instructons to set a pointer to a `pointed_type` to a value from the stack.
-pub fn ptr_set_op<'ctx>(
-    pointed_type: PlaceTy<'ctx>,
-    ctx: &mut MethodCompileCtx<'ctx, '_, '_>,
+pub fn ptr_set_op<'tcx>(
+    pointed_type: PlaceTy<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
     addr_calc: CILNode,
     value_calc: CILNode,
 ) -> CILRoot {
@@ -258,7 +258,7 @@ pub fn ptr_set_op<'ctx>(
                 }
             }
             TyKind::Ref(_, inner, _) => {
-                if pointer_to_is_fat(*inner, ctx.tyctx(), ctx.instance()) {
+                if pointer_to_is_fat(*inner, ctx.tcx(), ctx.instance()) {
                     CILRoot::STObj {
                         tpe: ctx.type_from_cache(pointed_type).into(),
                         addr_calc: Box::new(addr_calc),
@@ -270,7 +270,7 @@ pub fn ptr_set_op<'ctx>(
                 }
             }
             TyKind::RawPtr(ty, _) => {
-                if pointer_to_is_fat(*ty, ctx.tyctx(), ctx.instance()) {
+                if pointer_to_is_fat(*ty, ctx.tcx(), ctx.instance()) {
                     CILRoot::STObj {
                         tpe: ctx.type_from_cache(pointed_type).into(),
                         addr_calc: Box::new(addr_calc),

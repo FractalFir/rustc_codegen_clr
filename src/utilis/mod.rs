@@ -20,27 +20,27 @@ pub fn as_adt(ty: Ty) -> Option<(AdtDef, &List<GenericArg>)> {
         _ => None,
     }
 }
-pub fn adt_name<'tyctx>(
-    adt: AdtDef<'tyctx>,
-    tyctx: TyCtxt<'tyctx>,
-    gargs: &'tyctx List<GenericArg<'tyctx>>,
+pub fn adt_name<'tcx>(
+    adt: AdtDef<'tcx>,
+    tcx: TyCtxt<'tcx>,
+    gargs: &'tcx List<GenericArg<'tcx>>,
 ) -> crate::IString {
     //TODO: find a better way to get adt name!
     let _gdef_str = if gargs
         .iter()
         .any(|garg| garg.as_type().is_some() || garg.as_const().is_some())
     {
-        rustc_middle::ty::print::with_no_trimmed_paths! {tyctx.def_path_str_with_args(adt.did(),gargs)}
+        rustc_middle::ty::print::with_no_trimmed_paths! {tcx.def_path_str_with_args(adt.did(),gargs)}
     } else {
-        rustc_middle::ty::print::with_no_trimmed_paths! {tyctx.def_path_str(adt.did())}
+        rustc_middle::ty::print::with_no_trimmed_paths! {tcx.def_path_str(adt.did())}
     };
     let krate = adt.did().krate;
-    let adt_instance = Instance::resolve(tyctx, ParamEnv::reveal_all(), adt.did(), gargs)
+    let adt_instance = Instance::resolve(tcx, ParamEnv::reveal_all(), adt.did(), gargs)
         .unwrap()
         .unwrap();
     // Get the mangled path: it is absolute, and not poluted by types being rexported
     let auto_mangled =
-        rustc_symbol_mangling::symbol_name_for_instance_in_crate(tyctx, adt_instance, krate);
+        rustc_symbol_mangling::symbol_name_for_instance_in_crate(tcx, adt_instance, krate);
     // Then, demangle the type name, converting it to a Rust-style one (eg. `core::option::Option::h8zc8s`)
     let demangled = rustc_demangle::demangle(&auto_mangled);
     // Using formating preserves the generic hash.
@@ -98,10 +98,10 @@ pub fn function_name(name: SymbolName) -> crate::IString {
     }
 }
 /// Monomorphizes type `ty`
-pub fn monomorphize<'tyctx, T: TypeFoldable<TyCtxt<'tyctx>> + Clone>(
-    instance: &Instance<'tyctx>,
+pub fn monomorphize<'tcx, T: TypeFoldable<TyCtxt<'tcx>> + Clone>(
+    instance: &Instance<'tcx>,
     ty: T,
-    ctx: TyCtxt<'tyctx>,
+    ctx: TyCtxt<'tcx>,
 ) -> T {
     instance.instantiate_mir_and_normalize_erasing_regions(
         ctx,
@@ -109,11 +109,11 @@ pub fn monomorphize<'tyctx, T: TypeFoldable<TyCtxt<'tyctx>> + Clone>(
         EarlyBinder::bind(ty),
     )
 }
-pub fn enum_field_descriptor<'ctx>(
-    owner_ty: Ty<'ctx>,
+pub fn enum_field_descriptor<'tcx>(
+    owner_ty: Ty<'tcx>,
     field_idx: u32,
     variant_idx: u32,
-    ctx: &mut MethodCompileCtx<'ctx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
 ) -> FieldDescriptor {
     let (adt, subst) = as_adt(owner_ty).expect("Tried to get a field of a non ADT or tuple type!");
     let variant = adt
@@ -132,7 +132,7 @@ pub fn enum_field_descriptor<'ctx>(
         fname = crate::r#type::escape_field_name(&field.name.to_string())
     )
     .into();
-    let field_ty = field.ty(ctx.tyctx(), subst);
+    let field_ty = field.ty(ctx.tcx(), subst);
     let field_ty = ctx.monomorphize(field_ty);
     let field_ty = ctx.type_from_cache(field_ty);
     let owner_ty = ctx
@@ -142,10 +142,10 @@ pub fn enum_field_descriptor<'ctx>(
 
     FieldDescriptor::new(owner_ty, field_ty, field_name)
 }
-pub fn field_descrptor<'tyctx>(
-    owner_ty: Ty<'tyctx>,
+pub fn field_descrptor<'tcx>(
+    owner_ty: Ty<'tcx>,
     field_idx: u32,
-    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
 ) -> FieldDescriptor {
     if let TyKind::Tuple(elements) = owner_ty.kind() {
         let element = elements[field_idx as usize];
@@ -188,7 +188,7 @@ pub fn field_descrptor<'tyctx>(
         .nth(field_idx as usize)
         .expect("No field with provided index!");
     let field_name = crate::r#type::escape_field_name(&field.name.to_string());
-    let field_ty = field.ty(ctx.tyctx(), subst);
+    let field_ty = field.ty(ctx.tcx(), subst);
     let field_ty = ctx.monomorphize(field_ty);
     let field_ty = ctx.type_from_cache(field_ty);
     let owner_ty = ctx
@@ -209,7 +209,7 @@ pub fn try_resolve_const_size(size: Const) -> Result<usize, &'static str> {
 }
 
 /// Converts a generic argument to a string, and panics if it could not.
-pub fn garg_to_string<'tyctx>(garg: GenericArg<'tyctx>, ctx: TyCtxt<'tyctx>) -> String {
+pub fn garg_to_string<'tcx>(garg: GenericArg<'tcx>, ctx: TyCtxt<'tcx>) -> String {
     let str_const = garg
         .as_const()
         .expect("Generic argument was not an constant!");
@@ -232,7 +232,7 @@ pub fn garg_to_string<'tyctx>(garg: GenericArg<'tyctx>, ctx: TyCtxt<'tyctx>) -> 
     }
 }
 /// Converts a generic argument to a boolean, and panics if it could not.
-pub fn garag_to_bool<'tyctx>(garg: GenericArg<'tyctx>, _ctx: TyCtxt<'tyctx>) -> bool {
+pub fn garag_to_bool<'tcx>(garg: GenericArg<'tcx>, _ctx: TyCtxt<'tcx>) -> bool {
     let usize_const = garg
         .as_const()
         .expect("Generic argument was not an constant!");
@@ -254,8 +254,8 @@ pub fn garag_to_bool<'tyctx>(garg: GenericArg<'tyctx>, _ctx: TyCtxt<'tyctx>) -> 
     }
 }
 /// This function returns the size of a type at the compile time. This should be used ONLY for handling constants. It currently assumes a 64 bit env
-pub fn compiletime_sizeof<'tyctx>(ty: Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -> u64 {
-    let layout = tyctx
+pub fn compiletime_sizeof<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> u64 {
+    let layout = tcx
         .layout_of(rustc_middle::ty::ParamEnvAnd {
             param_env: ParamEnv::reveal_all(),
             value: ty,
@@ -285,15 +285,15 @@ macro_rules! assert_morphic {
 pub(crate) fn alloc_id_to_u64(alloc_id: AllocId) -> u64 {
     alloc_id.0.into()
 }
-pub fn is_fn_intrinsic<'tyctx>(fn_ty: Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -> bool {
+pub fn is_fn_intrinsic<'tcx>(fn_ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
     match fn_ty.kind() {
-        TyKind::FnDef(did, _) => tyctx.is_intrinsic(*did, tyctx.item_name(*did)),
+        TyKind::FnDef(did, _) => tcx.is_intrinsic(*did, tcx.item_name(*did)),
         TyKind::Closure(_, _) => false,
         _ => todo!("Can't get signature of {fn_ty}"),
     }
 }
-pub fn align_of<'tyctx>(ty: rustc_middle::ty::Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -> u64 {
-    let layout = tyctx
+pub fn align_of<'tcx>(ty: rustc_middle::ty::Ty<'tcx>, tcx: TyCtxt<'tcx>) -> u64 {
+    let layout = tcx
         .layout_of(rustc_middle::ty::ParamEnvAnd {
             param_env: ParamEnv::reveal_all(),
             value: ty,
@@ -304,8 +304,8 @@ pub fn align_of<'tyctx>(ty: rustc_middle::ty::Ty<'tyctx>, tyctx: TyCtxt<'tyctx>)
     let align = layout.align.abi;
     align.bytes()
 }
-pub fn is_zst<'tyctx>(ty: rustc_middle::ty::Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -> bool {
-    let layout = tyctx
+pub fn is_zst<'tcx>(ty: rustc_middle::ty::Ty<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
+    let layout = tcx
         .layout_of(rustc_middle::ty::ParamEnvAnd {
             param_env: ParamEnv::reveal_all(),
             value: ty,
@@ -314,12 +314,12 @@ pub fn is_zst<'tyctx>(ty: rustc_middle::ty::Ty<'tyctx>, tyctx: TyCtxt<'tyctx>) -
         .layout;
     layout.is_zst()
 }
-pub fn requries_align_adjustement<'tyctx>(
-    ty: rustc_middle::ty::Ty<'tyctx>,
-    tyctx: TyCtxt<'tyctx>,
+pub fn requries_align_adjustement<'tcx>(
+    ty: rustc_middle::ty::Ty<'tcx>,
+    tcx: TyCtxt<'tcx>,
 ) -> Option<u64> {
     //TODO: some types requre aligement smaller than 16 bytes but larger than their size. Handle that. Requires reimplemting .NETs algiement clacualtions.
-    let align = align_of(ty, tyctx);
+    let align = align_of(ty, tcx);
     if align > 16 {
         Some(align)
     } else {

@@ -16,11 +16,11 @@ use rustc_middle::{
 };
 use rustc_target::abi::FieldIdx;
 /// Returns the CIL ops to create the aggreagate value specifed by `aggregate_kind` at `target_location`. Uses indivlidual values specifed by `value_index`
-pub fn handle_aggregate<'tyctx>(
-    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
-    target_location: &Place<'tyctx>,
-    aggregate_kind: &AggregateKind<'tyctx>,
-    value_index: &IndexVec<FieldIdx, Operand<'tyctx>>,
+pub fn handle_aggregate<'tcx>(
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    target_location: &Place<'tcx>,
+    aggregate_kind: &AggregateKind<'tcx>,
+    value_index: &IndexVec<FieldIdx, Operand<'tcx>>,
 ) -> CILNode {
     // Get CIL ops for each value
     let values: Vec<_> = value_index
@@ -38,12 +38,12 @@ pub fn handle_aggregate<'tyctx>(
             let penv = ParamEnv::reveal_all();
             let subst = ctx.monomorphize(*subst);
             //eprintln!("Preparing to resolve {adt_def:?} {subst:?}");
-            let adt_type = Instance::resolve(ctx.tyctx(), penv, *adt_def, subst);
+            let adt_type = Instance::resolve(ctx.tcx(), penv, *adt_def, subst);
 
             let adt_type = adt_type
                 .expect("Could not resolve instance")
                 .expect("Could not resolve instance")
-                .ty(ctx.tyctx(), penv);
+                .ty(ctx.tcx(), penv);
             let adt_type = ctx.monomorphize(adt_type);
             let TyKind::Adt(adt_def, subst) = adt_type.kind() else {
                 panic!("Type {adt_type:?} is not a Algebraic Data Type!");
@@ -95,7 +95,7 @@ pub fn handle_aggregate<'tyctx>(
             let types: Vec<_> = value_index
                 .iter()
                 .map(|operand| {
-                    let operand_ty = ctx.monomorphize(operand.ty(ctx.body(), ctx.tyctx()));
+                    let operand_ty = ctx.monomorphize(operand.ty(ctx.body(), ctx.tcx()));
                     ctx.type_from_cache(operand_ty)
                 })
                 .collect();
@@ -125,14 +125,14 @@ pub fn handle_aggregate<'tyctx>(
         }
         AggregateKind::Closure(_def_id, _args) => {
             let closure_ty = ctx
-                .monomorphize(target_location.ty(ctx.body(), ctx.tyctx()))
+                .monomorphize(target_location.ty(ctx.body(), ctx.tcx()))
                 .ty;
             let closure_type = ctx.type_from_cache(closure_ty);
             let closure_dotnet = closure_type.as_dotnet().expect("Invalid closure type!");
             let closure_getter = super::place::place_adress(target_location, ctx);
             let mut sub_trees = vec![];
             for (index, value) in value_index.iter_enumerated() {
-                let field_ty = ctx.monomorphize(value.ty(ctx.body(), ctx.tyctx()));
+                let field_ty = ctx.monomorphize(value.ty(ctx.body(), ctx.tcx()));
                 let field_ty = ctx.type_from_cache(field_ty);
                 if field_ty == Type::Void {
                     continue;
@@ -158,17 +158,17 @@ pub fn handle_aggregate<'tyctx>(
             let [data, meta] = &*value_index.raw else {
                 panic!("RawPtr fields: {value_index:?}");
             };
-            let fat_ptr = Ty::new_ptr(ctx.tyctx(), pointee, *mutability);
+            let fat_ptr = Ty::new_ptr(ctx.tcx(), pointee, *mutability);
             // Get the addres of the initialized structure
             let init_addr = super::place::place_adress(target_location, ctx);
-            let meta_ty = ctx.monomorphize(meta.ty(ctx.body(), ctx.tyctx()));
-            let data_ty = ctx.monomorphize(data.ty(ctx.body(), ctx.tyctx()));
+            let meta_ty = ctx.monomorphize(meta.ty(ctx.body(), ctx.tcx()));
+            let data_ty = ctx.monomorphize(data.ty(ctx.body(), ctx.tcx()));
             let fat_ptr_type = ctx.type_from_cache(fat_ptr);
-            if !pointer_to_is_fat(pointee, ctx.tyctx(), ctx.instance()) {
+            if !pointer_to_is_fat(pointee, ctx.tcx(), ctx.instance()) {
                 // Double-check the pointer is REALLY thin
                 assert!(fat_ptr_type.as_dotnet().is_none());
                 assert!(
-                    !crate::utilis::is_zst(data_ty, ctx.tyctx()),
+                    !crate::utilis::is_zst(data_ty, ctx.tcx()),
                     "data_ty:{data_ty:?} is a zst. That is bizzare, cause it should be a pointer?"
                 );
                 let data_type = ctx.type_from_cache(data_ty);
@@ -189,7 +189,7 @@ pub fn handle_aggregate<'tyctx>(
                     Box::new(place_get(target_location, ctx)),
                 )));
             }
-            assert!(pointer_to_is_fat(pointee,ctx.tyctx(), ctx.instance()), "A pointer to {pointee:?} is not fat, but its metadata is {meta_ty:?}, and not a zst:{is_meta_zst}",is_meta_zst = crate::utilis::is_zst(meta_ty,  ctx.tyctx()));
+            assert!(pointer_to_is_fat(pointee,ctx.tcx(), ctx.instance()), "A pointer to {pointee:?} is not fat, but its metadata is {meta_ty:?}, and not a zst:{is_meta_zst}",is_meta_zst = crate::utilis::is_zst(meta_ty,  ctx.tcx()));
             // Assign the components
             let assign_ptr = CILRoot::SetField {
                 addr: Box::new(init_addr.clone()),
@@ -222,12 +222,12 @@ pub fn handle_aggregate<'tyctx>(
     }
 }
 /// Builds an Algebraic Data Type (struct,enum,union) at location `target_location`, with fields set using ops in `fields`.
-fn aggregate_adt<'tyctx>(
-    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
-    target_location: &Place<'tyctx>,
-    adt: AdtDef<'tyctx>,
-    adt_type: Ty<'tyctx>,
-    subst: &'tyctx List<GenericArg<'tyctx>>,
+fn aggregate_adt<'tcx>(
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    target_location: &Place<'tcx>,
+    adt: AdtDef<'tcx>,
+    adt_type: Ty<'tcx>,
+    subst: &'tcx List<GenericArg<'tcx>>,
     variant_idx: u32,
     fields: Vec<(u32, CILNode)>,
     active_field: Option<FieldIdx>,
@@ -249,7 +249,7 @@ fn aggregate_adt<'tyctx>(
                     .all_fields()
                     .nth(field.0 as usize)
                     .expect("Could not find field!");
-                let field_type = field_def.ty(ctx.tyctx(), subst);
+                let field_type = field_def.ty(ctx.tcx(), subst);
                 let field_type = ctx.monomorphize(field_type);
                 let field_type = ctx.type_from_cache(field_type);
                 // Seting a void field is a no-op.
@@ -287,7 +287,7 @@ fn aggregate_adt<'tyctx>(
                     fname = crate::r#type::escape_field_name(&field.name.to_string())
                 )
                 .into();
-                let field_type = ctx.type_from_cache(field.ty(ctx.tyctx(), subst));
+                let field_type = ctx.type_from_cache(field.ty(ctx.tcx(), subst));
                 // Seting a void field is a no-op.
                 if field_type == Type::Void {
                     continue;
@@ -306,14 +306,14 @@ fn aggregate_adt<'tyctx>(
             // Set tag
             {
                 let layout = ctx.layout_of(adt_type);
-                let (disrc_type, _) = crate::utilis::adt::enum_tag_info(layout.layout, ctx.tyctx());
+                let (disrc_type, _) = crate::utilis::adt::enum_tag_info(layout.layout, ctx.tcx());
                 if disrc_type != Type::Void {
                     sub_trees.push(set_discr(
                         layout.layout,
                         variant_idx.into(),
                         adt_adress_ops,
                         &adt_type_ref,
-                        ctx.tyctx(),
+                        ctx.tcx(),
                         layout.ty,
                     ));
                 }
@@ -333,7 +333,7 @@ fn aggregate_adt<'tyctx>(
                 .all_fields()
                 .nth(active_field.as_u32() as usize)
                 .expect("Could not find field!");
-            let field_type = field_def.ty(ctx.tyctx(), subst);
+            let field_type = field_def.ty(ctx.tcx(), subst);
             let field_type = ctx.monomorphize(field_type);
             let field_type = ctx.type_from_cache(field_type);
             // Assgiements to void types are a NOP and should ALWAYS be skipped.

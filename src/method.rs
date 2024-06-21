@@ -8,7 +8,7 @@ use rustc_middle::ty::TyCtxt;
 pub(crate) fn resolve_global_allocations(
     method: &mut Method,
     asm: &mut Assembly,
-    tyctx: TyCtxt,
+    tcx: TyCtxt,
     tycache: &mut TyCache,
 ) {
     method
@@ -20,12 +20,12 @@ pub(crate) fn resolve_global_allocations(
                 match node {
                     CILNode::LoadGlobalAllocPtr { alloc_id } => {
                         *node = CILNode::LDStaticField(
-                            crate::assembly::add_allocation(asm, *alloc_id, tyctx, tycache).into(),
+                            crate::assembly::add_allocation(asm, *alloc_id, tcx, tycache).into(),
                         );
                     }
                     CILNode::PointerToConstValue(bytes) => {
                         *node = CILNode::LDStaticField(Box::new(crate::assembly::add_const_value(
-                            asm, **bytes, tyctx,
+                            asm, **bytes, tcx,
                         )));
                     }
                     _ => (),

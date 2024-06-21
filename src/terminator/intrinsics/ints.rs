@@ -8,12 +8,12 @@ use rustc_middle::{
     ty::Instance,
 };
 use rustc_span::source_map::Spanned;
-pub fn ctpop<'tyctx>(
-    args: &[Spanned<Operand<'tyctx>>],
-    destination: &Place<'tyctx>,
+pub fn ctpop<'tcx>(
+    args: &[Spanned<Operand<'tcx>>],
+    destination: &Place<'tcx>,
 
-    call_instance: Instance<'tyctx>,
-    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
+    call_instance: Instance<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
 ) -> CILRoot {
     debug_assert_eq!(
         args.len(),
@@ -67,11 +67,11 @@ pub fn ctpop<'tyctx>(
         ctx,
     )
 }
-pub fn ctlz<'tyctx>(
-    args: &[Spanned<Operand<'tyctx>>],
-    destination: &Place<'tyctx>,
-    call_instance: Instance<'tyctx>,
-    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
+pub fn ctlz<'tcx>(
+    args: &[Spanned<Operand<'tcx>>],
+    destination: &Place<'tcx>,
+    call_instance: Instance<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
 ) -> CILRoot {
     debug_assert_eq!(
         args.len(),
@@ -147,11 +147,11 @@ pub fn ctlz<'tyctx>(
         ctx,
     )
 }
-pub fn cttz<'tyctx>(
-    args: &[Spanned<Operand<'tyctx>>],
-    destination: &Place<'tyctx>,
-    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
-    call_instance: Instance<'tyctx>,
+pub fn cttz<'tcx>(
+    args: &[Spanned<Operand<'tcx>>],
+    destination: &Place<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    call_instance: Instance<'tcx>,
 ) -> CILRoot {
     debug_assert_eq!(
         args.len(),
@@ -184,11 +184,11 @@ pub fn cttz<'tyctx>(
         ctx,
     )
 }
-pub fn rotate_left<'tyctx>(
-    args: &[Spanned<Operand<'tyctx>>],
-    destination: &Place<'tyctx>,
-    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
-    call_instance: Instance<'tyctx>,
+pub fn rotate_left<'tcx>(
+    args: &[Spanned<Operand<'tcx>>],
+    destination: &Place<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    call_instance: Instance<'tcx>,
 ) -> CILRoot {
     debug_assert_eq!(
         args.len(),
@@ -298,11 +298,11 @@ pub fn rotate_left<'tyctx>(
         _ => todo!("Can't ror {val_tpe:?}"),
     }
 }
-pub fn rotate_right<'tyctx>(
-    args: &[Spanned<Operand<'tyctx>>],
-    destination: &Place<'tyctx>,
-    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
-    call_instance: Instance<'tyctx>,
+pub fn rotate_right<'tcx>(
+    args: &[Spanned<Operand<'tcx>>],
+    destination: &Place<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    call_instance: Instance<'tcx>,
 ) -> CILRoot {
     debug_assert_eq!(
         args.len(),

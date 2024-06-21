@@ -14,7 +14,7 @@ use cilly::{
 };
 use rustc_span::def_id::DefId;
 use rustc_target::abi::Layout;
-use std::num::NonZeroU64;
+use std::num::{NonZero, NonZeroU64};
 
 #[must_use]
 pub fn escape_field_name(name: &str) -> IString {
@@ -132,7 +132,7 @@ pub fn tuple_typedef(elements: &[Type], layout: Layout) -> TypeDef {
         Some(explicit_offsets),
         0,
         None,
-        None,
+        Some(NonZero::new(layout.size().bytes()).expect("Zero-sized tuple!")),
     )
 }
 #[must_use]

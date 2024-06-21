@@ -15,4 +15,9 @@ fn main() {
     }
 }
 #[test]
-fn test() {}
+fn test() {
+    extern "C" {
+        fn printf(fmt: *const core::ffi::c_char, ...) -> core::ffi::c_int;
+    }
+    unsafe { printf("The test is propely run\n\0".as_ptr() as *const i8) };
+}

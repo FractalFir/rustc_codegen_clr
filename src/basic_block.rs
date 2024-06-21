@@ -6,30 +6,30 @@ use rustc_middle::{
     ty::{Instance, InstanceKind, TyCtxt},
 };
 
-pub(crate) fn handler_for_block<'tyctx>(
+pub(crate) fn handler_for_block<'tcx>(
     block_data: &BasicBlockData,
-    blocks: &BasicBlocks<'tyctx>,
-    tyctx: TyCtxt<'tyctx>,
-    method_instance: &Instance<'tyctx>,
-    method: &Body<'tyctx>,
+    blocks: &BasicBlocks<'tcx>,
+    tcx: TyCtxt<'tcx>,
+    method_instance: &Instance<'tcx>,
+    method: &Body<'tcx>,
 ) -> Option<Handler> {
     let term = block_data.terminator.as_ref()?;
     let unwind = term.unwind()?;
     Some(Handler::RawID(simplify_handler(
         handler_from_action(*unwind),
         blocks,
-        tyctx,
+        tcx,
         method_instance,
         method,
     )?))
 }
 #[allow(clippy::match_same_arms)]
-fn simplify_handler<'tyctx>(
+fn simplify_handler<'tcx>(
     handler: Option<u32>,
-    blocks: &BasicBlocks<'tyctx>,
-    tyctx: TyCtxt<'tyctx>,
-    method_instance: &Instance<'tyctx>,
-    method: &Body<'tyctx>,
+    blocks: &BasicBlocks<'tcx>,
+    tcx: TyCtxt<'tcx>,
+    method_instance: &Instance<'tcx>,
+    method: &Body<'tcx>,
 ) -> Option<u32> {
     if *crate::config::NO_UNWIND {
         return None;
@@ -42,7 +42,7 @@ fn simplify_handler<'tyctx>(
         TerminatorKind::Goto { target } => simplify_handler(
             Some(target.as_u32()),
             blocks,
-            tyctx,
+            tcx,
             method_instance,
             method,
         ),
@@ -57,15 +57,15 @@ fn simplify_handler<'tyctx>(
             replace: _,
         } => {
             let ty =
-                crate::utilis::monomorphize(method_instance, place.ty(method, tyctx).ty, tyctx);
+                crate::utilis::monomorphize(method_instance, place.ty(method, tcx).ty, tcx);
 
-            let drop_instance = Instance::resolve_drop_in_place(tyctx, ty).polymorphize(tyctx);
+            let drop_instance = Instance::resolve_drop_in_place(tcx, ty).polymorphize(tcx);
             if let InstanceKind::DropGlue(_, None) = drop_instance.def {
                 //Empty drop, nothing needs to happen.
                 simplify_handler(
                     Some(target.as_u32()),
                     blocks,
-                    tyctx,
+                    tcx,
                     method_instance,
                     method,
                 )

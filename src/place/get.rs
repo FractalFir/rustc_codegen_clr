@@ -36,9 +36,9 @@ pub(super) fn local_get(local: usize, method: &rustc_middle::mir::Body) -> CILNo
     }
 }
 /// Returns the ops for getting the value of place.
-pub fn place_get<'tyctx>(
-    place: &Place<'tyctx>,
-    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
+pub fn place_get<'tcx>(
+    place: &Place<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
 ) -> CILNode {
     if place.projection.is_empty() {
         local_get(place.local.as_usize(), ctx.body())
@@ -67,7 +67,7 @@ fn place_elem_get<'a>(
     match place_elem {
         PlaceElem::Deref => {
             if curr_type.as_ty().is_some_and(|ty| {
-                pointer_to_is_fat(ty.builtin_deref(true).unwrap(), ctx.tyctx(), ctx.instance())
+                pointer_to_is_fat(ty.builtin_deref(true).unwrap(), ctx.tcx(), ctx.instance())
             }) {
                 return addr_calc;
             }

@@ -8,10 +8,10 @@ use rustc_middle::{
     ty::{Instance, TyKind},
 };
 use rustc_span::source_map::Spanned;
-pub fn is_val_statically_known<'tyctx>(
-    args: &[Spanned<Operand<'tyctx>>],
-    destination: &Place<'tyctx>,
-    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
+pub fn is_val_statically_known<'tcx>(
+    args: &[Spanned<Operand<'tcx>>],
+    destination: &Place<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
 ) -> CILRoot {
     debug_assert_eq!(
         args.len(),
@@ -21,11 +21,11 @@ pub fn is_val_statically_known<'tyctx>(
     // assert_eq!(args.len(),1,"The intrinsic `unlikely` MUST take in exactly 1 argument!");
     place_set(destination, CILNode::LdFalse, ctx)
 }
-pub fn size_of_val<'tyctx>(
-    args: &[Spanned<Operand<'tyctx>>],
-    destination: &Place<'tyctx>,
-    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
-    call_instance: Instance<'tyctx>,
+pub fn size_of_val<'tcx>(
+    args: &[Spanned<Operand<'tcx>>],
+    destination: &Place<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    call_instance: Instance<'tcx>,
 ) -> CILRoot {
     debug_assert_eq!(
         args.len(),
@@ -38,11 +38,11 @@ pub fn size_of_val<'tyctx>(
             .as_type()
             .expect("needs_drop works only on types!"),
     );
-    if crate::utilis::is_zst(pointed_ty, ctx.tyctx()) {
+    if crate::utilis::is_zst(pointed_ty, ctx.tcx()) {
         return place_set(destination, conv_usize!(ldc_u32!(0)), ctx);
     }
-    if pointer_to_is_fat(pointed_ty, ctx.tyctx(), ctx.instance()) {
-        let ptr_ty = ctx.monomorphize(args[0].node.ty(ctx.body(), ctx.tyctx()));
+    if pointer_to_is_fat(pointed_ty, ctx.tcx(), ctx.instance()) {
+        let ptr_ty = ctx.monomorphize(args[0].node.ty(ctx.body(), ctx.tcx()));
         match pointed_ty.kind() {
             TyKind::Slice(inner) => {
                 let slice_tpe: DotnetTypeRef = ctx.type_from_cache(ptr_ty).as_dotnet().unwrap();

@@ -17,23 +17,23 @@ use rustc_middle::{
     },
     ty::{FloatTy, IntTy, ParamEnv, Ty, TyCtxt, TyKind, UintTy},
 };
-pub fn handle_constant<'ctx>(
-    constant_op: &ConstOperand<'ctx>,
-    ctx: &mut MethodCompileCtx<'ctx, '_, '_>,
+pub fn handle_constant<'tcx>(
+    constant_op: &ConstOperand<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
 ) -> CILNode {
     let constant = constant_op.const_;
     let constant = ctx.monomorphize(constant);
     let evaluated = constant
-        .eval(ctx.tyctx(), ParamEnv::reveal_all(), constant_op.span)
+        .eval(ctx.tcx(), ParamEnv::reveal_all(), constant_op.span)
         .expect("Could not evaluate constant!");
     load_const_value(evaluated, constant.ty(), ctx)
 }
 /// Returns the ops neceasry to create constant value of type `ty` with byte values matching the ones in the allocation
-fn create_const_from_data<'ctx>(
-    ty: Ty<'ctx>,
+fn create_const_from_data<'tcx>(
+    ty: Ty<'tcx>,
     alloc_id: AllocId,
     offset_bytes: u64,
-    ctx: &mut MethodCompileCtx<'ctx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
 ) -> CILNode {
     let _ = offset_bytes;
     let ptr = CILNode::LoadGlobalAllocPtr {
@@ -51,17 +51,17 @@ fn create_const_from_data<'ctx>(
     )
 }
 
-pub(crate) fn load_const_value<'ctx>(
-    const_val: ConstValue<'ctx>,
-    const_ty: Ty<'ctx>,
-    ctx: &mut MethodCompileCtx<'ctx, '_, '_>,
+pub(crate) fn load_const_value<'tcx>(
+    const_val: ConstValue<'tcx>,
+    const_ty: Ty<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
 ) -> CILNode {
     match const_val {
         ConstValue::Scalar(scalar) => load_const_scalar(scalar, const_ty, ctx),
         ConstValue::ZeroSized => {
             let tpe = ctx.monomorphize(const_ty);
             assert!(
-                crate::utilis::is_zst(tpe, ctx.tyctx()),
+                crate::utilis::is_zst(tpe, ctx.tcx()),
                 "Zero sized const with a non-zero size. It is {tpe:?}"
             );
             let tpe = ctx.type_from_cache(tpe);
@@ -78,7 +78,7 @@ pub(crate) fn load_const_value<'ctx>(
                 "data_pointer".into(),
             );
             // TODO: find a better way to get an alloc_id. This is likely to be incoreect.
-            let alloc_id = ctx.tyctx().reserve_and_set_memory_alloc(data);
+            let alloc_id = ctx.tcx().reserve_and_set_memory_alloc(data);
             let alloc_id: u64 = crate::utilis::alloc_id_to_u64(alloc_id);
 
             CILNode::TemporaryLocal(Box::new((
@@ -113,13 +113,13 @@ fn load_scalar_ptr(
     ptr: rustc_middle::mir::interpret::Pointer,
 ) -> CILNode {
     let (alloc_id, offset) = ptr.into_parts();
-    let global_alloc = ctx.tyctx().global_alloc(alloc_id.alloc_id());
+    let global_alloc = ctx.tcx().global_alloc(alloc_id.alloc_id());
     match global_alloc {
         GlobalAlloc::Static(def_id) => {
-            assert!(ctx.tyctx().is_static(def_id));
+            assert!(ctx.tcx().is_static(def_id));
             assert_eq!(offset.bytes(), 0);
             let name = ctx
-                .tyctx()
+                .tcx()
                 .opt_item_name(def_id)
                 .expect("Static without name")
                 .to_string();
@@ -150,7 +150,7 @@ fn load_scalar_ptr(
                     CILNode::LoadAddresOfTMPLocal,
                 )));
             }
-            let attrs = ctx.tyctx().codegen_fn_attrs(def_id);
+            let attrs = ctx.tcx().codegen_fn_attrs(def_id);
 
             if let Some(import_linkage) = attrs.import_linkage {
                 // TODO: this could cause issues if the pointer to the static is not imediatly dereferenced.
@@ -208,7 +208,7 @@ fn load_scalar_ptr(
                 }
                 if name == "__dso_handle" {
                     return CILNode::TemporaryLocal(Box::new((
-                        Type::USize,
+                        Type::DelegatePtr(Box::new(FnSig::new(&[], Type::Void))),
                         [CILRoot::SetTMPLocal {
                             value: CILNode::LDFtn(Box::new(CallSite::builtin(
                                 "__dso_handle".into(),
@@ -222,7 +222,17 @@ fn load_scalar_ptr(
                 }
                 if name == "__cxa_thread_atexit_impl" {
                     return CILNode::TemporaryLocal(Box::new((
-                        Type::USize,
+                        Type::DelegatePtr(Box::new(FnSig::new(
+                            &[
+                                Type::DelegatePtr(Box::new(FnSig::new(
+                                    [Type::Ptr(Box::new(Type::Void))],
+                                    Type::Void,
+                                ))),
+                                Type::Ptr(Box::new(Type::Void)),
+                                Type::Ptr(Box::new(Type::Void)),
+                            ],
+                            Type::Void,
+                        ))),
                         [CILRoot::SetTMPLocal {
                             value: CILNode::LDFtn(Box::new(CallSite::builtin(
                                 "__cxa_thread_atexit_impl".into(),
@@ -250,11 +260,11 @@ fn load_scalar_ptr(
             }
 
             let alloc = ctx
-                .tyctx()
+                .tcx()
                 .eval_static_initializer(def_id)
                 .expect("No initializer??");
             //def_id.ty();
-            let _memory = ctx.tyctx().reserve_and_set_memory_alloc(alloc);
+            let _memory = ctx.tcx().reserve_and_set_memory_alloc(alloc);
             let alloc_id = crate::utilis::alloc_id_to_u64(alloc_id.alloc_id());
             CILNode::LoadGlobalAllocPtr { alloc_id }
         }
@@ -278,10 +288,10 @@ fn load_scalar_ptr(
             // If it is a function, patch its pointer up.
             let call_info = crate::call_info::CallInfo::sig_from_instance_(
                 finstance,
-                ctx.tyctx(),
+                ctx.tcx(),
                 ctx.type_cache(),
             );
-            let function_name = crate::utilis::function_name(ctx.tyctx().symbol_name(finstance));
+            let function_name = crate::utilis::function_name(ctx.tcx().symbol_name(finstance));
             return CILNode::LDFtn(
                 CallSite::new(None, function_name, call_info.sig().clone(), true).into(),
             );
@@ -290,10 +300,10 @@ fn load_scalar_ptr(
     }
     //panic!("alloc_id:{alloc_id:?}")
 }
-fn load_const_scalar<'ctx>(
+fn load_const_scalar<'tcx>(
     scalar: Scalar,
-    scalar_type: Ty<'ctx>,
-    ctx: &mut MethodCompileCtx<'ctx, '_, '_>,
+    scalar_type: Ty<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
 ) -> CILNode {
     let scalar_ty = ctx.monomorphize(scalar_type);
 
@@ -315,7 +325,7 @@ fn load_const_scalar<'ctx>(
     match scalar_ty.kind() {
         TyKind::Int(int_type) => load_const_int(scalar_u128, *int_type),
         TyKind::Uint(uint_type) => load_const_uint(scalar_u128, *uint_type),
-        TyKind::Float(ftype) => load_const_float(scalar_u128, *ftype, ctx.tyctx()),
+        TyKind::Float(ftype) => load_const_float(scalar_u128, *ftype, ctx.tcx()),
         TyKind::Bool => {
             if scalar_u128 == 0 {
                 CILNode::LdFalse
@@ -363,7 +373,7 @@ fn load_const_scalar<'ctx>(
         _ => todo!("Can't load scalar constants of type {scalar_ty:?}!"),
     }
 }
-fn load_const_float(value: u128, float_type: FloatTy, _tyctx: TyCtxt) -> CILNode {
+fn load_const_float(value: u128, float_type: FloatTy, _tcx: TyCtxt) -> CILNode {
     match float_type {
         FloatTy::F16 => todo!("Can't hanlde 16 bit floats yet!"),
         FloatTy::F32 => {

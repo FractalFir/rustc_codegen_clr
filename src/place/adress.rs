@@ -32,10 +32,10 @@ pub fn local_adress(local: usize, method: &rustc_middle::mir::Body) -> CILNode {
         CILNode::MRefToRawPtr(CILNode::LDArgA(u32::try_from(local - 1).unwrap()).into())
     }
 }
-pub fn address_last_dereference<'ctx>(
-    target_ty: Ty<'ctx>,
-    curr_type: PlaceTy<'ctx>,
-    ctx: &mut MethodCompileCtx<'ctx, '_, '_>,
+pub fn address_last_dereference<'tcx>(
+    target_ty: Ty<'tcx>,
+    curr_type: PlaceTy<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
     addr_calc: CILNode,
 ) -> CILNode {
     let curr_type = match curr_type {
@@ -49,8 +49,8 @@ pub fn address_last_dereference<'ctx>(
     let curr_type = ctx.type_from_cache(curr_type);
     let target_type = ctx.type_from_cache(target_ty);
     match (
-        pointer_to_is_fat(curr_points_to, ctx.tyctx(), ctx.instance()),
-        pointer_to_is_fat(target_ty, ctx.tyctx(), ctx.instance()),
+        pointer_to_is_fat(curr_points_to, ctx.tcx(), ctx.instance()),
+        pointer_to_is_fat(target_ty, ctx.tcx(), ctx.instance()),
     ) {
         (true, false) => CILNode::LDIndPtr {
             ptr: Box::new(CILNode::LDField {
@@ -82,11 +82,11 @@ pub fn address_last_dereference<'ctx>(
     }*/
     //println!("casting {source:?} source_pointed_to:{source_pointed_to:?} to {target:?} target_pointed_to:{target_pointed_to:?}. ops:{ops:?}");
 }
-pub fn place_elem_adress<'ctx>(
-    place_elem: &PlaceElem<'ctx>,
-    curr_type: PlaceTy<'ctx>,
-    ctx: &mut MethodCompileCtx<'ctx, '_, '_>,
-    place_ty: Ty<'ctx>,
+pub fn place_elem_adress<'tcx>(
+    place_elem: &PlaceElem<'tcx>,
+    curr_type: PlaceTy<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    place_ty: Ty<'tcx>,
     addr_calc: CILNode,
 ) -> CILNode {
     let curr_type = curr_type.monomorphize(ctx);
@@ -98,7 +98,7 @@ pub fn place_elem_adress<'ctx>(
                 //TODO: Why was this commented out?
 
                 let curr_ty = ctx.monomorphize(curr_type);
-                if crate::r#type::pointer_to_is_fat(curr_ty, ctx.tyctx(), ctx.instance()) {
+                if crate::r#type::pointer_to_is_fat(curr_ty, ctx.tcx(), ctx.instance()) {
                     assert_eq!(
                         index.as_u32(),
                         0,
@@ -106,12 +106,12 @@ pub fn place_elem_adress<'ctx>(
                     );
                     let field_ty = ctx.monomorphize(*field_ty);
                     let curr_type = ctx.type_from_cache(Ty::new_ptr(
-                        ctx.tyctx(),
+                        ctx.tcx(),
                         curr_ty,
                         rustc_middle::ty::Mutability::Mut,
                     ));
                     let field_type = ctx.type_from_cache(Ty::new_ptr(
-                        ctx.tyctx(),
+                        ctx.tcx(),
                         field_ty,
                         rustc_middle::ty::Mutability::Mut,
                     ));

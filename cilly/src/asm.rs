@@ -280,7 +280,7 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
                 // Assigement to a dead static, remove.
                 if !alive_fields.contains(descr) {
                     debug_assert!(descr.name().contains('a'));
-                    debug_assert!(matches!(value, CILNode::Call(_)));
+                    debug_assert!(matches!(value, CILNode::Call(_) | CILNode::NewObj(_)));
                     *tree = CILRoot::Nop.into();
                 }
             }

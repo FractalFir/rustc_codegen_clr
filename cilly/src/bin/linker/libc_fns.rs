@@ -297,6 +297,8 @@ pub const LIBC_FNS: &[&str] = &[
     "prlimit64",
     "psiginfo",
     "psignal",
+    "pthread_self",
+    "pthread_setname_np",
     "ptrace",
     "ptsname",
     "putchar",
@@ -531,4 +533,6 @@ pub const LIBC_MODIFIES_ERRNO: &[&str] = &[
     "isatty",
     "getrandom",
     "clock_gettime",
+    "pthread_self",
+    "pthread_setname_np",
 ];

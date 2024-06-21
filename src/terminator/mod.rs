@@ -24,7 +24,7 @@ pub fn handle_call_terminator<'tycxt>(
     let func_ty = match func {
         Operand::Constant(fn_const) => fn_const.ty(),
         Operand::Copy(called) | Operand::Move(called) => {
-            called.ty(ctx.body(), ctx.tyctx()).ty
+            called.ty(ctx.body(), ctx.tcx()).ty
             //rustc_middle::ty::print::with_no_trimmed_paths! {eprintln!("Calling func:{func:?} {:?}", operand_ty)};
         }
     };
@@ -38,13 +38,13 @@ pub fn handle_call_terminator<'tycxt>(
             //rustc_middle::ty::print::with_no_trimmed_paths! {eprintln!("call terminator {terminator:?}")};
             //eprintln!("calling {operand_ty:?} indirectly");
             let fn_ty = ctx.monomorphize(func_ty);
-            //let fn_instance = Instance::resolve(tyctx,ParamEnv::reveal_all,fn_ty.did,List::empty());
+            //let fn_instance = Instance::resolve(tcx,ParamEnv::reveal_all,fn_ty.did,List::empty());
             assert!(
                 fn_ty.is_fn(),
                 "fn_ty{fn_ty:?} in call is not a function type!"
             );
             let fn_ty = ctx.monomorphize(fn_ty);
-            //let fn_instance = Instance::resolve(tyctx,ParamEnv::reveal_all,fn_ty.did,List::empty());
+            //let fn_instance = Instance::resolve(tcx,ParamEnv::reveal_all,fn_ty.did,List::empty());
 
             let call_ops = call::call(fn_ty, ctx, args, destination, terminator.source_info.span);
             //eprintln!("\nCalling FnDef:{fn_ty:?}. call_ops:{call_ops:?}");
@@ -55,7 +55,7 @@ pub fn handle_call_terminator<'tycxt>(
             let sig = ctx.monomorphize(*sig);
             let sig = crate::function_sig::from_poly_sig(
                 ctx.instance(),
-                ctx.tyctx(),
+                ctx.tcx(),
                 ctx.type_cache(),
                 sig,
             );
@@ -113,9 +113,9 @@ pub fn handle_call_terminator<'tycxt>(
     }
     trees
 }
-pub fn handle_terminator<'ctx>(
-    terminator: &Terminator<'ctx>,
-    ctx: &mut MethodCompileCtx<'ctx, '_, '_>,
+pub fn handle_terminator<'tcx>(
+    terminator: &Terminator<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
 ) -> Vec<CILTree> {
     let res = match &terminator.kind {
         TerminatorKind::Call {
@@ -139,7 +139,7 @@ pub fn handle_terminator<'ctx>(
             }
         }
         TerminatorKind::SwitchInt { discr, targets } => {
-            let ty = ctx.monomorphize(discr.ty(ctx.body(), ctx.tyctx()));
+            let ty = ctx.monomorphize(discr.ty(ctx.body(), ctx.tcx()));
             let discr = crate::operand::handle_operand(discr, ctx);
             handle_switch(ty, &discr, targets)
         }
@@ -170,10 +170,10 @@ pub fn handle_terminator<'ctx>(
             unwind: _,
             replace: _,
         } => {
-            let ty = ctx.monomorphize(place.ty(ctx.body(), ctx.tyctx()).ty);
+            let ty = ctx.monomorphize(place.ty(ctx.body(), ctx.tcx()).ty);
 
             let drop_instance =
-                Instance::resolve_drop_in_place(ctx.tyctx(), ty).polymorphize(ctx.tyctx());
+                Instance::resolve_drop_in_place(ctx.tcx(), ty).polymorphize(ctx.tcx());
             if let InstanceKind::DropGlue(_, None) = drop_instance.def {
                 //Empty drop, nothing needs to happen.
                 vec![CILRoot::GoTo {
@@ -186,7 +186,7 @@ pub fn handle_terminator<'ctx>(
                     TyKind::Dynamic(_, _, rustc_middle::ty::DynKind::Dyn) => {
                         let fat_ptr_address = crate::place::place_adress(place, ctx);
                         let fat_ptr_type = ctx.type_from_cache(Ty::new_ptr(
-                            ctx.tyctx(),
+                            ctx.tcx(),
                             ty,
                             rustc_middle::ty::Mutability::Mut,
                         ));
@@ -252,12 +252,12 @@ pub fn handle_terminator<'ctx>(
                     _ => {
                         let sig = crate::function_sig::sig_from_instance_(
                             drop_instance,
-                            ctx.tyctx(),
+                            ctx.tcx(),
                             ctx.type_cache(),
                         )
                         .unwrap();
                         let function_name =
-                            crate::utilis::function_name(ctx.tyctx().symbol_name(drop_instance));
+                            crate::utilis::function_name(ctx.tcx().symbol_name(drop_instance));
                         vec![
                             CILRoot::Call {
                                 site: Box::new(CallSite::new(None, function_name, sig, true)),

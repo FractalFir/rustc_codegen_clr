@@ -17,12 +17,12 @@ pub fn handle_statement<'tcx>(
             place,
             variant_index,
         } => {
-            let owner_ty = place.ty(ctx.body(), ctx.tyctx()).ty;
+            let owner_ty = place.ty(ctx.body(), ctx.tcx()).ty;
             let owner_ty = ctx.monomorphize(owner_ty);
             let owner = ctx.type_from_cache(owner_ty);
 
             let layout = ctx.layout_of(owner_ty);
-            //let (disrc_type, _) = crate::utilis::adt::enum_tag_info(&layout.layout, tyctx);
+            //let (disrc_type, _) = crate::utilis::adt::enum_tag_info(&layout.layout, tcx);
             let owner = if let crate::r#type::Type::DotnetType(dotnet_type) = owner {
                 dotnet_type.as_ref().clone()
             } else {
@@ -36,7 +36,7 @@ pub fn handle_statement<'tcx>(
                     *variant_index,
                     crate::place::place_adress(place, ctx),
                     &owner,
-                    ctx.tyctx(),
+                    ctx.tcx(),
                     owner_ty,
                 )
                 .into(),
@@ -45,20 +45,20 @@ pub fn handle_statement<'tcx>(
         StatementKind::Assign(palce_rvalue) => {
             let place = palce_rvalue.as_ref().0;
             let rvalue = &palce_rvalue.as_ref().1;
-            let ty = ctx.monomorphize(place.ty(ctx.body(), ctx.tyctx()).ty);
+            let ty = ctx.monomorphize(place.ty(ctx.body(), ctx.tcx()).ty);
             // Skip void assigments. Assigining to or from void type is a NOP.
-            if crate::utilis::is_zst(ctx.monomorphize(ty), ctx.tyctx()) {
+            if crate::utilis::is_zst(ctx.monomorphize(ty), ctx.tcx()) {
                 return None;
             }
             let value_calc = crate::rvalue::handle_rvalue(rvalue, &place, ctx);
             let method = ctx.instance();
-            let tyctx = ctx.tyctx();
+            let tcx = ctx.tcx();
             let value_calc = crate::r#type::tycache::validity_check(
                 value_calc,
                 ty,
                 ctx.type_cache(),
                 method,
-                tyctx,
+                tcx,
             );
             Some(crate::place::place_set(&place, value_calc, ctx).into())
         }
@@ -73,7 +73,7 @@ pub fn handle_statement<'tcx>(
                     let dst_op = crate::operand::handle_operand(dst, ctx);
                     let src_op = crate::operand::handle_operand(src, ctx);
                     let count_op = crate::operand::handle_operand(count, ctx);
-                    let src_ty = src.ty(ctx.body(), ctx.tyctx());
+                    let src_ty = src.ty(ctx.body(), ctx.tcx());
                     let src_ty = ctx.monomorphize(src_ty);
                     let ptr_type = ctx.type_from_cache(src_ty);
                     let crate::r#type::Type::Ptr(pointed) = ptr_type else {

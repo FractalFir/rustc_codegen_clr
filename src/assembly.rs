@@ -32,33 +32,33 @@ use rustc_middle::{
 
 type LocalDefList = Vec<(Option<IString>, Type)>;
 type ArgsDebugInfo = Vec<Option<IString>>;
-fn check_align_adjust<'tyctx>(
-    locals: &rustc_index::IndexVec<Local, LocalDecl<'tyctx>>,
-    tyctx: TyCtxt<'tyctx>,
-    method_instance: &Instance<'tyctx>,
+fn check_align_adjust<'tcx>(
+    locals: &rustc_index::IndexVec<Local, LocalDecl<'tcx>>,
+    tcx: TyCtxt<'tcx>,
+    method_instance: &Instance<'tcx>,
 ) -> Vec<Option<u64>> {
     let mut adjusts: Vec<Option<u64>> = Vec::with_capacity(locals.len());
     for local in locals {
-        let ty = crate::utilis::monomorphize(method_instance, local.ty, tyctx);
-        let adjust = crate::utilis::requries_align_adjustement(ty, tyctx);
+        let ty = crate::utilis::monomorphize(method_instance, local.ty, tcx);
+        let adjust = crate::utilis::requries_align_adjustement(ty, tcx);
         adjusts.push(adjust);
     }
     adjusts
 }
 /// Returns the list of all local variables within MIR of a function, and converts them to the internal type represenation `Type`
-fn locals_from_mir<'tyctx>(
-    locals: &rustc_index::IndexVec<Local, LocalDecl<'tyctx>>,
-    tyctx: TyCtxt<'tyctx>,
+fn locals_from_mir<'tcx>(
+    locals: &rustc_index::IndexVec<Local, LocalDecl<'tcx>>,
+    tcx: TyCtxt<'tcx>,
     argc: usize,
-    method_instance: &Instance<'tyctx>,
+    method_instance: &Instance<'tcx>,
     tycache: &mut TyCache,
-    var_debuginfo: &[rustc_middle::mir::VarDebugInfo<'tyctx>],
+    var_debuginfo: &[rustc_middle::mir::VarDebugInfo<'tcx>],
 ) -> (ArgsDebugInfo, LocalDefList) {
     use rustc_middle::mir::VarDebugInfoContents;
     let mut local_types: Vec<(Option<IString>, _)> = Vec::with_capacity(locals.len());
     for (local_id, local) in locals.iter().enumerate() {
         if local_id == 0 || local_id > argc {
-            let ty = crate::utilis::monomorphize(method_instance, local.ty, tyctx);
+            let ty = crate::utilis::monomorphize(method_instance, local.ty, tcx);
             if *crate::config::PRINT_LOCAL_TYPES {
                 println!(
                     "Local type {ty:?},non-morphic: {non_morph}",
@@ -66,7 +66,7 @@ fn locals_from_mir<'tyctx>(
                 );
             }
             let name = None;
-            let tpe = tycache.type_from_cache(ty, tyctx, *method_instance);
+            let tpe = tycache.type_from_cache(ty, tcx, *method_instance);
             local_types.push((name, tpe));
         }
     }
@@ -96,7 +96,7 @@ fn locals_from_mir<'tyctx>(
 fn allocation_initializer_method(
     const_allocation: &Allocation,
     name: &str,
-    tyctx: TyCtxt,
+    tcx: TyCtxt,
     asm: &mut Assembly,
     tycache: &mut TyCache,
 ) -> Method {
@@ -144,12 +144,12 @@ fn allocation_initializer_method(
         for (offset, prov) in ptrs.iter() {
             let offset = u32::try_from(offset.bytes_usize()).unwrap();
             // Check if this allocation is a function
-            let reloc_target_alloc = tyctx.global_alloc(prov.alloc_id());
+            let reloc_target_alloc = tcx.global_alloc(prov.alloc_id());
             if let GlobalAlloc::Function(finstance) = reloc_target_alloc {
                 // If it is a function, patch its pointer up.
                 let call_info =
-                    crate::call_info::CallInfo::sig_from_instance_(finstance, tyctx, tycache);
-                let function_name = crate::utilis::function_name(tyctx.symbol_name(finstance));
+                    crate::call_info::CallInfo::sig_from_instance_(finstance, tcx, tycache);
+                let function_name = crate::utilis::function_name(tcx.symbol_name(finstance));
 
                 trees.push(
                     CILRoot::STIndISize(
@@ -162,7 +162,7 @@ fn allocation_initializer_method(
                     .into(),
                 );
             } else {
-                let ptr_alloc = add_allocation(asm, prov.alloc_id().0.into(), tyctx, tycache);
+                let ptr_alloc = add_allocation(asm, prov.alloc_id().0.into(), tcx, tycache);
 
                 trees.push(
                     CILRoot::STIndISize(
@@ -282,38 +282,38 @@ pub fn statement_to_ops<'tcx>(
     }
 }
 /// Adds a rust MIR function to the assembly.
-pub fn add_fn<'tyctx>(
+pub fn add_fn<'tcx>(
     asm: &mut Assembly,
-    instance: Instance<'tyctx>,
-    tyctx: TyCtxt<'tyctx>,
+    instance: Instance<'tcx>,
+    tcx: TyCtxt<'tcx>,
     name: &str,
     cache: &mut TyCache,
 ) -> Result<(), MethodCodegenError> {
     if crate::utilis::is_function_magic(name) {
         return Ok(());
     }
-    if let TyKind::FnDef(_, _) = instance.ty(tyctx, ParamEnv::reveal_all()).kind() {
+    if let TyKind::FnDef(_, _) = instance.ty(tcx, ParamEnv::reveal_all()).kind() {
         //ALL OK.
-    } else if let TyKind::Closure(_, _) = instance.ty(tyctx, ParamEnv::reveal_all()).kind() {
+    } else if let TyKind::Closure(_, _) = instance.ty(tcx, ParamEnv::reveal_all()).kind() {
         //println!("CLOSURE")
     } else {
         eprintln!("fn item {instance:?} is not a function definition type. Skippping.");
         return Ok(());
     }
-    let mir = tyctx.instance_mir(instance.def);
-    let timer = tyctx.prof.generic_activity_with_arg("codegen fn", name);
+    let mir = tcx.instance_mir(instance.def);
+    let timer = tcx.prof.generic_activity_with_arg("codegen fn", name);
     // Check if function is public or not.
     // FIXME: figure out the source of the bug causing visibility to not be read propely.
     // let access_modifier = AccessModifer::from_visibility(tcx.visibility(instance.def_id()));
     let access_modifier = AccessModifer::Public;
     // Handle the function signature
-    let call_site = crate::call_info::CallInfo::sig_from_instance_(instance, tyctx, cache);
+    let call_site = crate::call_info::CallInfo::sig_from_instance_(instance, tcx, cache);
     let sig = call_site.sig().clone();
 
     // Get locals
     let (arg_names, mut locals) = locals_from_mir(
         &mir.local_decls,
-        tyctx,
+        tcx,
         mir.arg_count,
         &instance,
         cache,
@@ -328,8 +328,8 @@ pub fn add_fn<'tyctx>(
         // Prepare for repacking the argument tuple, by allocating a local
         let repacked = u32::try_from(locals.len()).expect("More than 2^32 arguments of a function");
         let repacked_ty: rustc_middle::ty::Ty =
-            crate::utilis::monomorphize(&instance, mir.local_decls[spread_arg].ty, tyctx);
-        let repacked_type = cache.type_from_cache(repacked_ty, tyctx, instance);
+            crate::utilis::monomorphize(&instance, mir.local_decls[spread_arg].ty, tcx);
+        let repacked_type = cache.type_from_cache(repacked_ty, tcx, instance);
         locals.push((Some("repacked_arg".into()), repacked_type));
         let mut repack_cil: Vec<CILTree> = Vec::new();
         // For each element of the tuple, get the argument spread_arg + n
@@ -339,8 +339,8 @@ pub fn add_fn<'tyctx>(
         for (arg_id, ty) in packed.iter().enumerate() {
             let validation_context = ValidationContext::new(&sig, &locals);
             let mut method_context =
-                MethodCompileCtx::new(tyctx, mir, instance, validation_context, cache);
-            if crate::utilis::is_zst(ty, tyctx) {
+                MethodCompileCtx::new(tcx, mir, instance, validation_context, cache);
+            if crate::utilis::is_zst(ty, tcx) {
                 continue;
             }
             let arg_field = field_descrptor(repacked_ty, arg_id as u32, &mut method_context);
@@ -360,7 +360,7 @@ pub fn add_fn<'tyctx>(
     };
     // Used for type-checking the CIL to ensure its validity.
     let validation_context = ValidationContext::new(&sig, &locals);
-    let mut method_context = MethodCompileCtx::new(tyctx, mir, instance, validation_context, cache);
+    let mut method_context = MethodCompileCtx::new(tcx, mir, instance, validation_context, cache);
     for (last_bb_id, block_data) in blocks.into_iter().enumerate() {
         let mut trees = Vec::new();
         for statement in &block_data.statements {
@@ -380,7 +380,7 @@ pub fn add_fn<'tyctx>(
             };
             // Only save debuginfo for statements which result in ops.
             if statement_tree.is_some() {
-                trees.push(span_source_info(tyctx, statement.source_info.span).into());
+                trees.push(span_source_info(tcx, statement.source_info.span).into());
             }
             trees.extend(statement_tree);
 
@@ -398,7 +398,7 @@ pub fn add_fn<'tyctx>(
                         panic!("Could not compile terminator {term:?} because {err:?}")
                     });
                 if !term_trees.is_empty() {
-                    trees.push(span_source_info(tyctx, term.source_info.span).into());
+                    trees.push(span_source_info(tcx, term.source_info.span).into());
                 }
                 trees.extend(term_trees);
             }
@@ -408,13 +408,13 @@ pub fn add_fn<'tyctx>(
             cleanup_bbs.push(BasicBlock::new(
                 trees,
                 u32::try_from(last_bb_id).unwrap(),
-                handler_for_block(block_data, &mir.basic_blocks, tyctx, &instance, mir),
+                handler_for_block(block_data, &mir.basic_blocks, tcx, &instance, mir),
             ));
         } else {
             normal_bbs.push(BasicBlock::new(
                 trees,
                 u32::try_from(last_bb_id).unwrap(),
-                handler_for_block(block_data, &mir.basic_blocks, tyctx, &instance, mir),
+                handler_for_block(block_data, &mir.basic_blocks, tcx, &instance, mir),
             ));
         }
         //ops.extend(trees.iter().flat_map(|tree| tree.flatten()))
@@ -437,7 +437,7 @@ pub fn add_fn<'tyctx>(
         arg_names,
     );
 
-    crate::method::resolve_global_allocations(&mut method, asm, tyctx, cache);
+    crate::method::resolve_global_allocations(&mut method, asm, tcx, cache);
 
     method.allocate_temporaries();
 
@@ -451,10 +451,10 @@ pub fn add_fn<'tyctx>(
         }
     }
 
-    let adjust = check_align_adjust(&mir.local_decls, tyctx, &instance);
+    let adjust = check_align_adjust(&mir.local_decls, tcx, &instance);
     // TODO: find a better way of checking if we are in release
     method.adjust_aligement(adjust);
-    if tyctx.sess.opts.optimize != rustc_session::config::OptLevel::No {
+    if tcx.sess.opts.optimize != rustc_session::config::OptLevel::No {
         method.opt();
         method.realloc_locals();
     }
@@ -619,7 +619,7 @@ pub fn add_allocation(
     }
     field_desc
 }
-pub fn add_const_value(asm: &mut Assembly, bytes: u128, tyctx: TyCtxt) -> StaticFieldDescriptor {
+pub fn add_const_value(asm: &mut Assembly, bytes: u128, tcx: TyCtxt) -> StaticFieldDescriptor {
     let alloc_fld: IString = format!("a_{bytes:x}").into();
     let raw_bytes = bytes.to_le_bytes();
     let field_desc =
@@ -629,7 +629,7 @@ pub fn add_const_value(asm: &mut Assembly, bytes: u128, tyctx: TyCtxt) -> Static
             vec![
                 CILRoot::STLoc {
                     local: 0,
-                    tree: call!(crate::cil::malloc(tyctx), [ldc_u32!(16)]),
+                    tree: call!(crate::cil::malloc(tcx), [ldc_u32!(16)]),
                 }
                 .into(),
                 CILRoot::STIndI8(CILNode::LDLoc(0), ldc_u32!(u32::from(raw_bytes[0]))).into(),
@@ -772,51 +772,51 @@ pub fn add_const_value(asm: &mut Assembly, bytes: u128, tyctx: TyCtxt) -> Static
     }
     field_desc
 }
-pub struct MethodCompileCtx<'tyctx, 'validator, 'type_cache> {
-    tyctx: TyCtxt<'tyctx>,
-    method: &'tyctx rustc_middle::mir::Body<'tyctx>,
-    method_instance: Instance<'tyctx>,
+pub struct MethodCompileCtx<'tcx, 'validator, 'type_cache> {
+    tcx: TyCtxt<'tcx>,
+    method: &'tcx rustc_middle::mir::Body<'tcx>,
+    method_instance: Instance<'tcx>,
     validator: ValidationContext<'validator>,
     type_cache: &'type_cache mut TyCache,
 }
 
-impl<'tyctx, 'validator, 'type_cache> MethodCompileCtx<'tyctx, 'validator, 'type_cache> {
+impl<'tcx, 'validator, 'type_cache> MethodCompileCtx<'tcx, 'validator, 'type_cache> {
     pub fn new(
-        tyctx: TyCtxt<'tyctx>,
-        method: &'tyctx rustc_middle::mir::Body<'tyctx>,
-        method_instance: Instance<'tyctx>,
+        tcx: TyCtxt<'tcx>,
+        method: &'tcx rustc_middle::mir::Body<'tcx>,
+        method_instance: Instance<'tcx>,
         validator: ValidationContext<'validator>,
         type_cache: &'type_cache mut TyCache,
     ) -> Self {
         Self {
-            tyctx,
+            tcx,
             method,
             method_instance,
             validator,
             type_cache,
         }
     }
-    pub fn slice_ty(&mut self, inner: rustc_middle::ty::Ty<'tyctx>) -> Type {
+    pub fn slice_ty(&mut self, inner: rustc_middle::ty::Ty<'tcx>) -> Type {
         self.type_cache
-            .slice_ty(inner, self.tyctx, self.method_instance)
+            .slice_ty(inner, self.tcx, self.method_instance)
     }
-    pub fn slice_ref_to(&mut self, inner: rustc_middle::ty::Ty<'tyctx>) -> Type {
+    pub fn slice_ref_to(&mut self, inner: rustc_middle::ty::Ty<'tcx>) -> Type {
         self.type_cache
-            .slice_ref_to(self.tyctx, inner, self.method_instance)
+            .slice_ref_to(self.tcx, inner, self.method_instance)
     }
     /// Returns the type context this method is compiled in.
     #[must_use]
-    pub fn tyctx(&self) -> TyCtxt<'tyctx> {
-        self.tyctx
+    pub fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
     }
     /// Returns the MIR body of this method is compiled.
     #[must_use]
-    pub fn body(&self) -> &'tyctx rustc_middle::mir::Body<'tyctx> {
+    pub fn body(&self) -> &'tcx rustc_middle::mir::Body<'tcx> {
         self.method
     }
     #[must_use]
     /// Returns the Instance representing the current method
-    pub fn instance(&self) -> Instance<'tyctx> {
+    pub fn instance(&self) -> Instance<'tcx> {
         self.method_instance
     }
     /// Returns a Type cache.
@@ -827,13 +827,13 @@ impl<'tyctx, 'validator, 'type_cache> MethodCompileCtx<'tyctx, 'validator, 'type
     pub fn validator(&self) -> ValidationContext<'validator> {
         self.validator
     }
-    pub fn monomorphize<T: rustc_middle::ty::TypeFoldable<TyCtxt<'tyctx>> + Clone>(
+    pub fn monomorphize<T: rustc_middle::ty::TypeFoldable<TyCtxt<'tcx>> + Clone>(
         &self,
         ty: T,
     ) -> T {
         self.instance()
             .instantiate_mir_and_normalize_erasing_regions(
-                self.tyctx(),
+                self.tcx(),
                 ParamEnv::reveal_all(),
                 rustc_middle::ty::EarlyBinder::bind(ty),
             )
@@ -862,15 +862,15 @@ impl<'tyctx, 'validator, 'type_cache> MethodCompileCtx<'tyctx, 'validator, 'type
             _=>panic!("VALIDATION failed. {ptr_tpe:?} is not a raw pointer type. It is the result of {ptr:?}, compiled from MIR item {node_from:?}")  
         }
     }
-    pub fn type_from_cache(&mut self, ty: rustc_middle::ty::Ty<'tyctx>) -> Type {
+    pub fn type_from_cache(&mut self, ty: rustc_middle::ty::Ty<'tcx>) -> Type {
         self.type_cache
-            .type_from_cache(ty, self.tyctx, self.method_instance)
+            .type_from_cache(ty, self.tcx, self.method_instance)
     }
     pub fn layout_of(
         &self,
-        ty: rustc_middle::ty::Ty<'tyctx>,
-    ) -> rustc_middle::ty::layout::TyAndLayout<'tyctx> {
-        self.tyctx
+        ty: rustc_middle::ty::Ty<'tcx>,
+    ) -> rustc_middle::ty::layout::TyAndLayout<'tcx> {
+        self.tcx
             .layout_of(rustc_middle::ty::ParamEnvAnd {
                 param_env: ParamEnv::reveal_all(),
                 value: ty,

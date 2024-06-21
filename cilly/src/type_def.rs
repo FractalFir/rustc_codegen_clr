@@ -125,6 +125,20 @@ impl TypeDef {
                 "Sanity check failed! Type {name} has a field decl / field offset mismatch.",
                 name = self.name()
             );
+            let max_offset = offsets.iter().max().unwrap_or(&0);
+
+            assert!(
+                (*max_offset as u64)
+                    < self
+                        .explict_size()
+                        .unwrap_or_else(|| {
+                            panic!(
+                                "Explict offsets provided without explicit size. Type: {}",
+                                self.name()
+                            )
+                        })
+                        .get()
+            );
         }
         self.field_types()
             .for_each(|tpe| assert_ne!(*tpe, Type::Void));

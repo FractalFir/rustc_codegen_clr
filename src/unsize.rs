@@ -12,9 +12,9 @@ use rustc_middle::{
     mir::Operand,
     ty::{Ty, TyKind},
 };
-struct UnsizeInfo<'tyctx> {
+struct UnsizeInfo<'tcx> {
     /// Type the source pointer points to
-    source_points_to: Ty<'tyctx>,
+    source_points_to: Ty<'tcx>,
     /// The address of the rarget pointer. This pointer should always be a thin pointer, pointing to a fat pointer.
     target_ptr: CILNode,
     /// The source pointer. If the source pointer is fat, this will be a fat pointer!
@@ -22,15 +22,15 @@ struct UnsizeInfo<'tyctx> {
     target_dotnet: DotnetTypeRef,
     target_type: Type,
 }
-impl<'tyctx> UnsizeInfo<'tyctx> {
+impl<'tcx> UnsizeInfo<'tcx> {
     pub fn for_unsize(
-        ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
-        operand: &Operand<'tyctx>,
-        target: Ty<'tyctx>,
+        ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+        operand: &Operand<'tcx>,
+        target: Ty<'tcx>,
     ) -> Self {
         // Get the monomorphized source and target type
         let target = ctx.monomorphize(target);
-        let source = ctx.monomorphize(operand.ty(ctx.body(), ctx.tyctx()));
+        let source = ctx.monomorphize(operand.ty(ctx.body(), ctx.tcx()));
         // Get the source and target types as .NET types
         let source_type = ctx.type_from_cache(source);
         let target_type = ctx.type_from_cache(target);
@@ -46,14 +46,14 @@ impl<'tyctx> UnsizeInfo<'tyctx> {
             let unique_adt = crate::utilis::as_adt(source).unwrap();
             let unique_ty = unique_adt.0.all_fields().nth(0).unwrap();
             let non_null_ptr_desc =
-                crate::utilis::field_descrptor(unique_ty.ty(ctx.tyctx(), unique_adt.1), 0, ctx);
+                crate::utilis::field_descrptor(unique_ty.ty(ctx.tcx(), unique_adt.1), 0, ctx);
             let source_ptr = ld_field!(source_ptr, non_null_ptr_desc.clone());
             // 3. Get Source* from NonNull<Source>
             let non_null_adt =
-                crate::utilis::as_adt(unique_ty.ty(ctx.tyctx(), unique_adt.1)).unwrap();
+                crate::utilis::as_adt(unique_ty.ty(ctx.tcx(), unique_adt.1)).unwrap();
             let non_null_ty = non_null_adt.0.all_fields().nth(0).unwrap();
             let source_ptr_desc =
-                crate::utilis::field_descrptor(non_null_ty.ty(ctx.tyctx(), unique_adt.1), 0, ctx);
+                crate::utilis::field_descrptor(non_null_ty.ty(ctx.tcx(), unique_adt.1), 0, ctx);
 
             let source_ptr = ld_field!(source_ptr, source_ptr_desc.clone());
             // 4. Get Unique<Target> from Box<Target>
@@ -63,14 +63,14 @@ impl<'tyctx> UnsizeInfo<'tyctx> {
             let unique_adt = crate::utilis::as_adt(target).unwrap();
             let unique_ty = unique_adt.0.all_fields().nth(0).unwrap();
             let target_ptr_desc =
-                crate::utilis::field_descrptor(unique_ty.ty(ctx.tyctx(), unique_adt.1), 0, ctx);
+                crate::utilis::field_descrptor(unique_ty.ty(ctx.tcx(), unique_adt.1), 0, ctx);
             let target_ptr = ld_field_address!(target_ptr, target_ptr_desc);
             // 6. Get Target* from NonNull<Target>
             let non_null_adt =
-                crate::utilis::as_adt(unique_ty.ty(ctx.tyctx(), unique_adt.1)).unwrap();
+                crate::utilis::as_adt(unique_ty.ty(ctx.tcx(), unique_adt.1)).unwrap();
             let non_null_ty = non_null_adt.0.all_fields().nth(0).unwrap();
             let non_null_ptr_desc =
-                crate::utilis::field_descrptor(non_null_ty.ty(ctx.tyctx(), non_null_adt.1), 0, ctx);
+                crate::utilis::field_descrptor(non_null_ty.ty(ctx.tcx(), non_null_adt.1), 0, ctx);
             let target_ptr = ld_field_address!(target_ptr, non_null_ptr_desc.clone());
             // 7. Set the target->metatdata = len and target->ptr = source->ptr
             let derefed_source = source.boxed_ty();
@@ -115,10 +115,10 @@ impl<'tyctx> UnsizeInfo<'tyctx> {
 }
 
 /// Preforms an unsizing cast on operand `operand`, converting it to the `target` type.
-pub fn unsize<'tyctx>(
-    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
-    operand: &Operand<'tyctx>,
-    target: Ty<'tyctx>,
+pub fn unsize<'tcx>(
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    operand: &Operand<'tcx>,
+    target: Ty<'tcx>,
 ) -> CILNode {
     let info = UnsizeInfo::for_unsize(ctx, operand, target);
     let target_points_to = target.builtin_deref(true).unwrap();
@@ -172,8 +172,8 @@ pub fn unsize<'tyctx>(
                 )));
             }
             let vptr_entry_idx = ctx
-                .tyctx()
-                .supertrait_vtable_slot((operand.ty(ctx.body(), ctx.tyctx()), target));
+                .tcx()
+                .supertrait_vtable_slot((operand.ty(ctx.body(), ctx.tcx()), target));
             if let Some(entry_idx) = vptr_entry_idx {
                 todo!("dyn to dyn cats not yet supported. src_points_to:{src_points_to:?} target_points_to:{target_points_to:?} entry_idx:{entry_idx:?}",src_points_to = info.source_points_to)
             } else {
@@ -207,7 +207,7 @@ pub fn unsize<'tyctx>(
         }
         (_, TyKind::Dynamic(data, _, _dyn_kind)) => {
             let alloc_id = ctx
-                .tyctx()
+                .tcx()
                 .vtable_allocation((info.source_points_to, data.principal()));
             let metadata_field =
                 FieldDescriptor::new(info.target_dotnet.clone(), Type::USize, "metadata".into());

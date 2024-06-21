@@ -191,11 +191,11 @@ macro_rules! add_method_from_trees {
 }
 
 /// Inserts a small subset of libc and some standard types into an assembly.
-pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
+pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
     swap_at_generic(asm);
     bounds_check(asm);
     atomic::atomics(asm);
-    let c_void = crate::r#type::c_void(tyctx);
+    let c_void = crate::r#type::c_void(tcx);
     asm.add_typedef(TypeDef::new(
         AccessModifer::Public,
         c_void.as_dotnet().unwrap().name_path().into(),
@@ -477,7 +477,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tyctx: TyCtxt) {
     //memcmp::add_memcmp(asm);
     //memcmp::add_raw_eq(asm);
     //add_ptr_offset_from_unsigned(asm);
-    //caller_location::add_caller_location(asm,tyctx,&mut TyCache::empty());
+    //caller_location::add_caller_location(asm,tcx,&mut TyCache::empty());
     pthread_create(asm);
     pthread_attr_init(asm);
     pthread_attr_destroy(asm);

@@ -163,11 +163,11 @@ fn max(ty: Ty) -> CILNode {
     }
 }
 
-pub fn mul<'tyctx>(
+pub fn mul<'tcx>(
     ops_a: &CILNode,
     ops_b: &CILNode,
-    ty: Ty<'tyctx>,
-    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
+    ty: Ty<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
 ) -> CILNode {
     //(b > 0 && a < INT_MIN + b) || (b < 0 && a > INT_MAX + b);
     let tpe = ctx.type_from_cache(ty);
@@ -330,11 +330,11 @@ pub fn mul<'tyctx>(
     };
     result_tuple(tpe, ovf, mul)
 }
-pub fn sub_signed<'tyctx>(
+pub fn sub_signed<'tcx>(
     ops_a: &CILNode,
     ops_b: &CILNode,
-    ty: Ty<'tyctx>,
-    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
+    ty: Ty<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
 ) -> CILNode {
     let tpe = ctx.type_from_cache(ty);
     result_tuple(
@@ -360,11 +360,11 @@ pub fn sub_signed<'tyctx>(
         super::sub_unchecked(ty, ty, ctx, ops_a.clone(), ops_b.clone()),
     )
 }
-pub fn sub_unsigned<'tyctx>(
+pub fn sub_unsigned<'tcx>(
     ops_a: &CILNode,
     ops_b: &CILNode,
-    ty: Ty<'tyctx>,
-    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
+    ty: Ty<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
 ) -> CILNode {
     let tpe = ctx.type_from_cache(ty);
     result_tuple(
@@ -373,11 +373,11 @@ pub fn sub_unsigned<'tyctx>(
         super::sub_unchecked(ty, ty, ctx, ops_a.clone(), ops_b.clone()),
     )
 }
-pub fn add_unsigned<'tyctx>(
+pub fn add_unsigned<'tcx>(
     ops_a: &CILNode,
     ops_b: &CILNode,
-    ty: Ty<'tyctx>,
-    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
+    ty: Ty<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
 ) -> CILNode {
     let tpe = ctx.type_from_cache(ty);
     let res = super::add_unchecked(ty, ty, ctx, ops_a.clone(), ops_b.clone());
@@ -392,11 +392,11 @@ pub fn add_unsigned<'tyctx>(
         res,
     )
 }
-pub fn add_signed<'tyctx>(
+pub fn add_signed<'tcx>(
     ops_a: &CILNode,
     ops_b: &CILNode,
-    ty: Ty<'tyctx>,
-    ctx: &mut MethodCompileCtx<'tyctx, '_, '_>,
+    ty: Ty<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
 ) -> CILNode {
     let tpe = ctx.type_from_cache(ty);
     let res = super::add_unchecked(ty, ty, ctx, ops_a.clone(), ops_b.clone());

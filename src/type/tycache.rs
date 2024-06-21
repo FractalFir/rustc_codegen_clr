@@ -17,12 +17,12 @@ pub struct TyCache {
     type_def_cache: HashMap<IString, TypeDef>,
     cycle_prevention: Vec<IString>,
 }
-fn create_typedef<'tyctx>(
+fn create_typedef<'tcx>(
     _cache: &mut TyCache,
     _name: &str,
-    def: AdtDef<'tyctx>,
-    _tyctx: TyCtxt<'tyctx>,
-    _method: Instance<'tyctx>,
+    def: AdtDef<'tcx>,
+    _tcx: TyCtxt<'tcx>,
+    _method: Instance<'tcx>,
 ) -> TypeDef {
     assert_eq!(
         def.adt_kind(),
@@ -44,14 +44,14 @@ impl TyCache {
         self.type_def_cache.values()
     }
 
-    fn adt<'tyctx>(
+    fn adt<'tcx>(
         &mut self,
         name: &str,
-        def: AdtDef<'tyctx>,
-        adt_ty: Ty<'tyctx>,
-        subst: &'tyctx List<rustc_middle::ty::GenericArg<'tyctx>>,
-        tyctx: TyCtxt<'tyctx>,
-        method: Instance<'tyctx>,
+        def: AdtDef<'tcx>,
+        adt_ty: Ty<'tcx>,
+        subst: &'tcx List<rustc_middle::ty::GenericArg<'tcx>>,
+        tcx: TyCtxt<'tcx>,
+        method: Instance<'tcx>,
     ) -> DotnetTypeRef {
         if self.type_def_cache.contains_key(name) {
             return DotnetTypeRef::new::<&str, _>(None, name);
@@ -69,13 +69,13 @@ impl TyCache {
                 subst.is_empty(),
                 "A custom typedef may not contain neiter generic arguments nor lifetimes!"
             );
-            let def = create_typedef(self, name, def, tyctx, method);
+            let def = create_typedef(self, name, def, tcx, method);
             self.type_def_cache.insert(name.into(), def);
         } else {
             let def = match def.adt_kind() {
-                AdtKind::Struct => self.struct_(name, def, adt_ty, subst, tyctx, method),
-                AdtKind::Enum => self.enum_(name, def, adt_ty, subst, tyctx, method),
-                AdtKind::Union => self.union_(name, def, adt_ty, subst, tyctx, method),
+                AdtKind::Struct => self.struct_(name, def, adt_ty, subst, tcx, method),
+                AdtKind::Enum => self.enum_(name, def, adt_ty, subst, tcx, method),
+                AdtKind::Union => self.union_(name, def, adt_ty, subst, tcx, method),
             };
             self.type_def_cache.insert(name.into(), def);
         }
@@ -85,19 +85,19 @@ impl TyCache {
     pub fn recover_from_panic(&mut self) {
         self.cycle_prevention.clear();
     }
-    fn struct_<'tyctx>(
+    fn struct_<'tcx>(
         &mut self,
         name: &str,
-        adt: AdtDef<'tyctx>,
-        adt_ty: Ty<'tyctx>,
-        subst: &'tyctx List<rustc_middle::ty::GenericArg<'tyctx>>,
-        tyctx: TyCtxt<'tyctx>,
-        method: Instance<'tyctx>,
+        adt: AdtDef<'tcx>,
+        adt_ty: Ty<'tcx>,
+        subst: &'tcx List<rustc_middle::ty::GenericArg<'tcx>>,
+        tcx: TyCtxt<'tcx>,
+        method: Instance<'tcx>,
     ) -> TypeDef {
         // Double-check is not a ZST.
-        assert!(!is_zst(adt_ty, tyctx));
+        assert!(!is_zst(adt_ty, tcx));
         // Get the layout
-        let layout = tyctx
+        let layout = tcx
             .layout_of(rustc_middle::ty::ParamEnvAnd {
                 param_env: ParamEnv::reveal_all(),
                 value: adt_ty,
@@ -125,9 +125,9 @@ impl TyCache {
             .zip(explicit_offset_iter)
         {
             let name = escape_field_name(&field.name.to_string());
-            let mut field_ty = field.ty(tyctx, subst);
-            field_ty = crate::utilis::monomorphize(&method, field_ty, tyctx);
-            let field_ty = self.type_from_cache(field_ty, tyctx, method);
+            let mut field_ty = field.ty(tcx, subst);
+            field_ty = crate::utilis::monomorphize(&method, field_ty, tcx);
+            let field_ty = self.type_from_cache(field_ty, tcx, method);
             if field_ty == Type::Void {
                 continue;
             }
@@ -151,21 +151,21 @@ impl TyCache {
         // If validation enabled, insert validation code.
         if *crate::config::VALIDTE_VALUES {
             let owner_ty = self
-                .type_from_cache(adt_ty, tyctx, method)
+                .type_from_cache(adt_ty, tcx, method)
                 .as_dotnet()
                 .unwrap();
-            let tpe = self.type_from_cache(adt_ty, tyctx, method);
+            let tpe = self.type_from_cache(adt_ty, tcx, method);
             let mut roots = vec![];
             for field in &adt
                 .variant(rustc_target::abi::VariantIdx::from_u32(0))
                 .fields
             {
                 let name = escape_field_name(&field.name.to_string());
-                let field_ty = field.ty(tyctx, subst);
-                if is_zst(field_ty, tyctx) {
+                let field_ty = field.ty(tcx, subst);
+                if is_zst(field_ty, tcx) {
                     continue;
                 };
-                let field_type = self.type_from_cache(field_ty, tyctx, method);
+                let field_type = self.type_from_cache(field_ty, tcx, method);
 
                 let val = CILNode::LDField {
                     addr: Box::new(CILNode::LDArg(0)),
@@ -177,7 +177,7 @@ impl TyCache {
                 };
                 roots.push(
                     cilly::cil_root::CILRoot::Pop {
-                        tree: validity_check(val, field_ty, self, method, tyctx),
+                        tree: validity_check(val, field_ty, self, method, tcx),
                     }
                     .into(),
                 );
@@ -201,16 +201,16 @@ impl TyCache {
         }
         def
     }
-    fn union_<'tyctx>(
+    fn union_<'tcx>(
         &mut self,
         name: &str,
-        adt: AdtDef<'tyctx>,
-        adt_ty: Ty<'tyctx>,
-        subst: &'tyctx List<rustc_middle::ty::GenericArg<'tyctx>>,
-        tyctx: TyCtxt<'tyctx>,
-        method: Instance<'tyctx>,
+        adt: AdtDef<'tcx>,
+        adt_ty: Ty<'tcx>,
+        subst: &'tcx List<rustc_middle::ty::GenericArg<'tcx>>,
+        tcx: TyCtxt<'tcx>,
+        method: Instance<'tcx>,
     ) -> TypeDef {
-        let layout = tyctx
+        let layout = tcx
             .layout_of(rustc_middle::ty::ParamEnvAnd {
                 param_env: ParamEnv::reveal_all(),
                 value: adt_ty,
@@ -225,9 +225,9 @@ impl TyCache {
                 ))
         {
             let name = escape_field_name(&field.name.to_string());
-            let mut field_ty = field.ty(tyctx, subst);
-            field_ty = crate::utilis::monomorphize(&method, field_ty, tyctx);
-            let field_ty = self.type_from_cache(field_ty, tyctx, method);
+            let mut field_ty = field.ty(tcx, subst);
+            field_ty = crate::utilis::monomorphize(&method, field_ty, tcx);
+            let field_ty = self.type_from_cache(field_ty, tcx, method);
             if field_ty == Type::Void {
                 continue;
             }
@@ -249,19 +249,19 @@ impl TyCache {
             Some(NonZeroU64::new(layout.layout.size().bytes()).unwrap()),
         )
     }
-    fn enum_<'tyctx>(
+    fn enum_<'tcx>(
         &mut self,
         enum_name: &str,
-        adt: AdtDef<'tyctx>,
-        adt_ty: Ty<'tyctx>,
-        subst: &'tyctx List<rustc_middle::ty::GenericArg<'tyctx>>,
-        tyctx: TyCtxt<'tyctx>,
-        method: Instance<'tyctx>,
+        adt: AdtDef<'tcx>,
+        adt_ty: Ty<'tcx>,
+        subst: &'tcx List<rustc_middle::ty::GenericArg<'tcx>>,
+        tcx: TyCtxt<'tcx>,
+        method: Instance<'tcx>,
     ) -> TypeDef {
         let access = AccessModifer::Public;
         let mut explicit_offsets: Vec<u32> = vec![];
 
-        let layout = tyctx
+        let layout = tcx
             .layout_of(rustc_middle::ty::ParamEnvAnd {
                 param_env: ParamEnv::reveal_all(),
                 value: adt_ty,
@@ -271,7 +271,7 @@ impl TyCache {
 
         match &layout.variants {
             rustc_target::abi::Variants::Single { index: _ } => {
-                let (tag_type, offset) = crate::utilis::adt::enum_tag_info(layout.layout, tyctx);
+                let (tag_type, offset) = crate::utilis::adt::enum_tag_info(layout.layout, tcx);
                 if tag_type != Type::Void {
                     fields.push(("value__".into(), tag_type));
                     explicit_offsets.push(offset);
@@ -283,7 +283,7 @@ impl TyCache {
                 tag_field: _,
                 variants: _,
             } => {
-                let layout = tyctx
+                let layout = tcx
                     .layout_of(rustc_middle::ty::ParamEnvAnd {
                         param_env: ParamEnv::reveal_all(),
                         value: adt_ty,
@@ -293,7 +293,7 @@ impl TyCache {
                 match tag_encoding {
                     rustc_target::abi::TagEncoding::Direct => {
                         let (tag_type, offset) =
-                            crate::utilis::adt::enum_tag_info(layout.layout, tyctx);
+                            crate::utilis::adt::enum_tag_info(layout.layout, tcx);
 
                         if tag_type != Type::Void {
                             fields.push(("value__".into(), tag_type));
@@ -306,7 +306,7 @@ impl TyCache {
                         ..
                     } => {
                         let (tag_type, offset) =
-                            crate::utilis::adt::enum_tag_info(layout.layout, tyctx);
+                            crate::utilis::adt::enum_tag_info(layout.layout, tcx);
                         let offsets = FieldOffsetIterator::fields((*layout.layout.0).clone());
                         //eprintln!("enum:{adt_ty} layout.fields:{:?}",layout.fields);
                         assert!(offsets.count() > 0, "layout.fields:{:?}", layout.fields);
@@ -337,7 +337,7 @@ impl TyCache {
                     fname = escape_field_name(&field.name.to_string())
                 )
                 .into();
-                let field_ty = self.type_from_cache(field.ty(tyctx, subst), tyctx, method);
+                let field_ty = self.type_from_cache(field.ty(tcx, subst), tcx, method);
                 if field_ty == Type::Void {
                     continue;
                 }
@@ -373,7 +373,7 @@ impl TyCache {
             Some(NonZeroU64::new(layout.layout.size().bytes()).unwrap()),
         );
         if *crate::config::VALIDTE_VALUES {
-            let tpe = self.type_from_cache(adt_ty, tyctx, method);
+            let tpe = self.type_from_cache(adt_ty, tcx, method);
             let check = cilly::method::Method::new(
                 AccessModifer::MoudlePublic,
                 cilly::method::MethodType::Static,
@@ -381,7 +381,7 @@ impl TyCache {
                 "check_valid",
                 vec![],
                 vec![cilly::basic_block::BasicBlock::new(
-                    enum_bound_check(adt, self, method, tyctx, adt_ty),
+                    enum_bound_check(adt, self, method, tcx, adt_ty),
                     0,
                     None,
                 )],
@@ -391,25 +391,25 @@ impl TyCache {
         }
         def
     }
-    pub fn slice_ty<'tyctx>(
+    pub fn slice_ty<'tcx>(
         &mut self,
-        inner: Ty<'tyctx>,
-        tyctx: TyCtxt<'tyctx>,
-        method: Instance<'tyctx>,
+        inner: Ty<'tcx>,
+        tcx: TyCtxt<'tcx>,
+        method: Instance<'tcx>,
     ) -> Type {
-        self.slice_ref_to(tyctx, Ty::new_slice(tyctx, inner), method)
+        self.slice_ref_to(tcx, Ty::new_slice(tcx, inner), method)
     }
     /// Converts a [`Ty`] to a dotnet-compatible [`Type`]. It is cached.
     /// # Panics
     /// Will panic if type invalid/unsuported.
-    pub fn type_from_cache<'tyctx>(
+    pub fn type_from_cache<'tcx>(
         &mut self,
-        ty: Ty<'tyctx>,
-        tyctx: TyCtxt<'tyctx>,
-        method: Instance<'tyctx>,
+        ty: Ty<'tcx>,
+        tcx: TyCtxt<'tcx>,
+        method: Instance<'tcx>,
     ) -> Type {
-        let ty = crate::utilis::monomorphize(&method, ty, tyctx);
-        if crate::utilis::is_zst(ty, tyctx) {
+        let ty = crate::utilis::monomorphize(&method, ty, tcx);
+        if crate::utilis::is_zst(ty, tcx) {
             return Type::Void;
         }
         match ty.kind() {
@@ -421,13 +421,13 @@ impl TyCache {
             TyKind::Tuple(types) => {
                 let types: Vec<_> = types
                     .iter()
-                    .map(|ty| self.type_from_cache(ty, tyctx, method))
+                    .map(|ty| self.type_from_cache(ty, tcx, method))
                     .collect();
                 if types.is_empty() {
                     Type::Void
                 } else {
                     let name = tuple_name(&types);
-                    let layout = tyctx
+                    let layout = tcx
                         .layout_of(rustc_middle::ty::ParamEnvAnd {
                             param_env: ParamEnv::reveal_all(),
                             value: ty,
@@ -450,24 +450,24 @@ impl TyCache {
             TyKind::Closure(def, args) => {
                 let closure = args.as_closure();
                 let mut sig = closure.sig();
-                sig = crate::utilis::monomorphize(&method, sig, tyctx);
+                sig = crate::utilis::monomorphize(&method, sig, tcx);
                 ////FIXME: This should be OK(since the signature is monomorphized and we don't care about lifetimes anyway), but it would be nice to have a better solution for this.
-                let sig = tyctx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), sig);
+                let sig = tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), sig);
                 let inputs: Box<_> = sig
                     .inputs()
                     .iter()
-                    .map(|ty| self.type_from_cache(*ty, tyctx, method))
+                    .map(|ty| self.type_from_cache(*ty, tcx, method))
                     .collect();
 
-                let output = self.type_from_cache(sig.output(), tyctx, method);
+                let output = self.type_from_cache(sig.output(), tcx, method);
                 let sig = FnSig::new(inputs, output);
                 let fields: Box<[_]> = closure
                     .upvar_tys()
                     .iter()
-                    .map(|ty| self.type_from_cache(ty, tyctx, method))
+                    .map(|ty| self.type_from_cache(ty, tcx, method))
                     .collect();
                 let name: IString = crate::r#type::closure_name(*def, &fields, &sig).into();
-                let layout = tyctx
+                let layout = tcx
                     .layout_of(rustc_middle::ty::ParamEnvAnd {
                         param_env: ParamEnv::reveal_all(),
                         value: ty,
@@ -483,61 +483,61 @@ impl TyCache {
             }
             TyKind::Never => Type::Void,
             TyKind::RawPtr(typ, _) => {
-                if super::pointer_to_is_fat(*typ, tyctx, method) {
+                if super::pointer_to_is_fat(*typ, tcx, method) {
                     let inner = match typ.kind() {
-                        TyKind::Slice(inner) => crate::utilis::monomorphize(&method, *inner, tyctx),
-                        TyKind::Str => u8_ty(tyctx),
-                        _ => crate::utilis::monomorphize(&method, *typ, tyctx),
+                        TyKind::Slice(inner) => crate::utilis::monomorphize(&method, *inner, tcx),
+                        TyKind::Str => u8_ty(tcx),
+                        _ => crate::utilis::monomorphize(&method, *typ, tcx),
                     };
-                    self.slice_ref_to(tyctx, Ty::new_slice(tyctx, inner), method)
+                    self.slice_ref_to(tcx, Ty::new_slice(tcx, inner), method)
                 } else {
-                    Type::Ptr(self.type_from_cache(*typ, tyctx, method).into())
+                    Type::Ptr(self.type_from_cache(*typ, tcx, method).into())
                 }
             }
             TyKind::Adt(def, subst) => {
-                let name = crate::utilis::adt_name(*def, tyctx, subst);
+                let name = crate::utilis::adt_name(*def, tcx, subst);
                 if super::is_name_magic(name.as_ref()) {
-                    return super::magic_type(name.as_ref(), def, subst, tyctx);
+                    return super::magic_type(name.as_ref(), def, subst, tcx);
                 }
-                self.adt(&name, *def, ty, subst, tyctx, method).into()
+                self.adt(&name, *def, ty, subst, tcx, method).into()
             }
 
             TyKind::Ref(_region, inner, _mut) => {
-                if super::pointer_to_is_fat(*inner, tyctx, method) {
+                if super::pointer_to_is_fat(*inner, tcx, method) {
                     let inner = match inner.kind() {
-                        TyKind::Slice(inner) => crate::utilis::monomorphize(&method, *inner, tyctx),
-                        TyKind::Str => u8_ty(tyctx),
-                        _ => crate::utilis::monomorphize(&method, *inner, tyctx),
+                        TyKind::Slice(inner) => crate::utilis::monomorphize(&method, *inner, tcx),
+                        TyKind::Str => u8_ty(tcx),
+                        _ => crate::utilis::monomorphize(&method, *inner, tcx),
                     };
-                    self.slice_ref_to(tyctx, Ty::new_slice(tyctx, inner), method)
+                    self.slice_ref_to(tcx, Ty::new_slice(tcx, inner), method)
                 } else {
-                    Type::Ptr(self.type_from_cache(*inner, tyctx, method).into())
+                    Type::Ptr(self.type_from_cache(*inner, tcx, method).into())
                 }
             }
             // Slice type is almost never refered to directly, and should pop up here ONLY in the case of
             // a DST.
             TyKind::Str => Type::U8,
             TyKind::Slice(inner) => {
-                let inner = crate::utilis::monomorphize(&method, *inner, tyctx);
-                self.type_from_cache(inner, tyctx, method)
+                let inner = crate::utilis::monomorphize(&method, *inner, tcx);
+                self.type_from_cache(inner, tcx, method)
             }
             TyKind::Foreign(_foregin) => Type::Foreign,
             TyKind::Bound(_, _inner) => Type::Foreign,
             TyKind::FnPtr(sig) => {
-                let sig = crate::function_sig::from_poly_sig(method, tyctx, self, *sig);
+                let sig = crate::function_sig::from_poly_sig(method, tcx, self, *sig);
                 Type::DelegatePtr(sig.into())
             }
             TyKind::FnDef(_did, _subst) => {
                 /*
                 let subst = if let method = method {
-                    crate::utilis::monomorphize(&method, *subst, tyctx)
+                    crate::utilis::monomorphize(&method, *subst, tcx)
                 } else {
                     subst
                 };
-                let instance = Instance::resolve(tyctx, ParamEnv::reveal_all(), *did, subst)
+                let instance = Instance::resolve(tcx, ParamEnv::reveal_all(), *did, subst)
                     .expect("Could not get function instance due to error")
                     .expect("Could not get function instance.");
-                let function_name = crate::utilis::function_name(tyctx.symbol_name(instance));
+                let function_name = crate::utilis::function_name(tcx.symbol_name(instance));
                 self.type_def_cache.insert(
                     format!("fn_{function_name}").into(),
                     TypeDef::nameonly(&format!("fn_{function_name}")),
@@ -548,13 +548,13 @@ impl TyCache {
             }
             TyKind::Array(element, length) => {
                 let mut length = *length;
-                length = crate::utilis::monomorphize(&method, length, tyctx);
+                length = crate::utilis::monomorphize(&method, length, tcx);
                 let length: usize = crate::utilis::try_resolve_const_size(length).unwrap();
                 let mut element = *element;
 
-                element = crate::utilis::monomorphize(&method, element, tyctx);
-                let element = self.type_from_cache(element, tyctx, method);
-                let layout = tyctx
+                element = crate::utilis::monomorphize(&method, element, tcx);
+                let element = self.type_from_cache(element, tcx, method);
+                let layout = tcx
                     .layout_of(rustc_middle::ty::ParamEnvAnd {
                         param_env: ParamEnv::reveal_all(),
                         value: ty,
@@ -578,14 +578,14 @@ impl TyCache {
             _ => todo!("Can't yet get type {ty:?} from type cache."),
         }
     }
-    pub fn slice_ref_to<'tyctx>(
+    pub fn slice_ref_to<'tcx>(
         &mut self,
-        tyctx: TyCtxt<'tyctx>,
-        mut inner: Ty<'tyctx>,
-        method: Instance<'tyctx>,
+        tcx: TyCtxt<'tcx>,
+        mut inner: Ty<'tcx>,
+        method: Instance<'tcx>,
     ) -> Type {
-        inner = crate::utilis::monomorphize(&method, inner, tyctx);
-        let inner_tpe = self.type_from_cache(inner, tyctx, method);
+        inner = crate::utilis::monomorphize(&method, inner, tcx);
+        let inner_tpe = self.type_from_cache(inner, tcx, method);
         let name: IString = format!("FatPtr{elem}", elem = cilly::mangle(&inner_tpe)).into();
         if !self.type_def_cache.contains_key(&name) {
             let def = TypeDef::new(
@@ -608,22 +608,22 @@ impl TyCache {
     }
 }
 
-fn u8_ty(tyctx: TyCtxt) -> Ty {
-    Ty::new(tyctx, TyKind::Uint(UintTy::U8))
+fn u8_ty(tcx: TyCtxt) -> Ty {
+    Ty::new(tcx, TyKind::Uint(UintTy::U8))
 }
-pub fn validity_check<'tyctx>(
+pub fn validity_check<'tcx>(
     val: CILNode,
-    ty: Ty<'tyctx>,
+    ty: Ty<'tcx>,
     type_cache: &mut TyCache,
-    method_instance: Instance<'tyctx>,
-    tyctx: TyCtxt<'tyctx>,
+    method_instance: Instance<'tcx>,
+    tcx: TyCtxt<'tcx>,
 ) -> CILNode {
-    let ty = crate::utilis::monomorphize(&method_instance, ty, tyctx);
-    let tpe = type_cache.type_from_cache(ty, tyctx, method_instance);
+    let ty = crate::utilis::monomorphize(&method_instance, ty, tcx);
+    let tpe = type_cache.type_from_cache(ty, tcx, method_instance);
     if !*crate::config::VALIDTE_VALUES {
         return val;
     }
-    if is_zst(ty, tyctx) {
+    if is_zst(ty, tcx) {
         return val;
     }
     match ty.kind() {
@@ -647,29 +647,29 @@ pub fn validity_check<'tyctx>(
         },
         /*
         TyKind::Ref(_, pointed_ty, _) => {
-            let pointed_ty = crate::utilis::monomorphize(&method_instance, *pointed_ty, tyctx);
-            if super::pointer_to_is_fat(pointed_ty, tyctx, method_instance)
-                || is_zst(pointed_ty, tyctx)
-                || pointer_to_is_fat(pointed_ty, tyctx, method_instance)
+            let pointed_ty = crate::utilis::monomorphize(&method_instance, *pointed_ty, tcx);
+            if super::pointer_to_is_fat(pointed_ty, tcx, method_instance)
+                || is_zst(pointed_ty, tcx)
+                || pointer_to_is_fat(pointed_ty, tcx, method_instance)
                 || matches!(pointed_ty.kind(), TyKind::Ref(_, _, _) | TyKind::Foreign(_))
             {
                 return val;
             }
             let deref = crate::place::deref_op(
                 pointed_ty.into(),
-                tyctx,
+                tcx,
                 &method_instance,
                 type_cache,
                 CILNode::LoadTMPLocal,
             );
-            let ptr_type = type_cache.type_from_cache(ty, tyctx, method_instance);
+            let ptr_type = type_cache.type_from_cache(ty, tcx, method_instance);
 
             CILNode::TemporaryLocal(Box::new((
                 ptr_type,
                 [
                     cilly::cil_root::CILRoot::SetTMPLocal { value: val },
                     cilly::cil_root::CILRoot::Pop {
-                        tree: validity_check(deref, pointed_ty, type_cache, method_instance, tyctx),
+                        tree: validity_check(deref, pointed_ty, type_cache, method_instance, tcx),
                     },
                 ]
                 .into(),
@@ -679,12 +679,12 @@ pub fn validity_check<'tyctx>(
         _ => val,
     }
 }
-fn enum_bound_check<'tyctx>(
-    def: AdtDef<'tyctx>,
+fn enum_bound_check<'tcx>(
+    def: AdtDef<'tcx>,
     type_cache: &mut TyCache,
-    method_instance: Instance<'tyctx>,
-    tyctx: TyCtxt<'tyctx>,
-    ty: Ty<'tyctx>,
+    method_instance: Instance<'tcx>,
+    tcx: TyCtxt<'tcx>,
+    ty: Ty<'tcx>,
 ) -> Vec<cilly::cil_tree::CILTree> {
     // If explit discriminants, we can't relly on `bounds_check` to check the value. So, we will just ignore this.
     if def
@@ -697,14 +697,14 @@ fn enum_bound_check<'tyctx>(
         }
         .into()];
     }
-    let layout = tyctx
+    let layout = tcx
         .layout_of(rustc_middle::ty::ParamEnvAnd {
             param_env: ParamEnv::reveal_all(),
             value: ty,
         })
         .expect("Could not get type layout!")
         .layout;
-    let (disrc_type, _) = crate::utilis::adt::enum_tag_info(layout, tyctx);
+    let (disrc_type, _) = crate::utilis::adt::enum_tag_info(layout, tcx);
     // If discr void, just ignore.
     if disrc_type == Type::Void {
         return vec![cilly::cil_root::CILRoot::Ret {
@@ -714,8 +714,8 @@ fn enum_bound_check<'tyctx>(
     }
     let addr = CILNode::LDArgA(0);
 
-    let enum_tpe = type_cache.type_from_cache(ty, tyctx, method_instance);
-    let discr = get_discr(layout, addr, enum_tpe.as_dotnet().unwrap(), tyctx, ty);
+    let enum_tpe = type_cache.type_from_cache(ty, tcx, method_instance);
+    let discr = get_discr(layout, addr, enum_tpe.as_dotnet().unwrap(), tcx, ty);
     let root = cilly::cil_root::CILRoot::Pop {
         tree: cilly::call!(
             cilly::call_site::CallSite::new(

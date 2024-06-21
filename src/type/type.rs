@@ -18,11 +18,11 @@ pub struct DotnetArray {
 /// Finds the `c_void` type.
 /// # Panics
 /// Will panic if `c_void` is not defined.
-pub fn c_void(tyctx: TyCtxt) -> Type {
-    let lang_items = tyctx.lang_items();
+pub fn c_void(tcx: TyCtxt) -> Type {
+    let lang_items = tcx.lang_items();
     let c_void = lang_items.c_void().expect("c_void not defined.");
     let name = rustc_codegen_ssa::back::symbol_export::symbol_name_for_instance_in_crate(
-        tyctx,
+        tcx,
         ExportedSymbol::NonGeneric(c_void),
         c_void.krate,
     );
@@ -73,12 +73,12 @@ pub fn is_name_magic(name: &str) -> bool {
 /// # Panics
 /// Will panic if interop type is invalid.
 #[must_use]
-pub fn magic_type<'tyctx>(
+pub fn magic_type<'tcx>(
     name: &str,
-    _adt: &AdtDef<'tyctx>,
-    subst: &[GenericArg<'tyctx>],
-    ctx: TyCtxt<'tyctx>,
-    //method: &Instance<'tyctx>,
+    _adt: &AdtDef<'tcx>,
+    subst: &[GenericArg<'tcx>],
+    ctx: TyCtxt<'tcx>,
+    //method: &Instance<'tcx>,
 ) -> Type {
     if name.contains(INTEROP_CLASS_TPE_NAME) {
         assert!(
@@ -113,7 +113,7 @@ pub fn magic_type<'tyctx>(
         todo!("Interop type {name:?} is not yet supported!")
     }
 }
-fn garag_to_usize<'tyctx>(garg: GenericArg<'tyctx>, _ctx: TyCtxt<'tyctx>) -> u64 {
+fn garag_to_usize<'tcx>(garg: GenericArg<'tcx>, _ctx: TyCtxt<'tcx>) -> u64 {
     let usize_const = garg
         .as_const()
         .expect("Generic argument was not an constant!");
@@ -145,17 +145,17 @@ use crate::utilis::{garg_to_string, monomorphize};
 
 use super::tuple_name;
 #[must_use]
-pub fn pointer_to_is_fat<'tyctx>(
-    pointed_type: Ty<'tyctx>,
-    tyctx: TyCtxt<'tyctx>,
-    method: rustc_middle::ty::Instance<'tyctx>,
+pub fn pointer_to_is_fat<'tcx>(
+    pointed_type: Ty<'tcx>,
+    tcx: TyCtxt<'tcx>,
+    method: rustc_middle::ty::Instance<'tcx>,
 ) -> bool {
     use rustc_target::abi::Abi;
-    let pointed_type = monomorphize(&method, pointed_type, tyctx);
-    let layout = tyctx
+    let pointed_type = monomorphize(&method, pointed_type, tcx);
+    let layout = tcx
         .layout_of(rustc_middle::ty::ParamEnvAnd {
             param_env: ParamEnv::reveal_all(),
-            value: Ty::new_ptr(tyctx, pointed_type, rustc_hir::Mutability::Mut),
+            value: Ty::new_ptr(tcx, pointed_type, rustc_hir::Mutability::Mut),
         })
         .expect("Can't get layout of a type.")
         .layout;

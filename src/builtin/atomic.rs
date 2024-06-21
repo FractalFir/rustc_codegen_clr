@@ -197,10 +197,15 @@ crate::add_method_from_trees!(
                 .into(),
                 CILRoot::STIndI8(CILNode::LDArg(0), CILNode::LDArg(1)).into(),
                 CILRoot::GoTo {
-                    target: 2,
-                    sub_target: 0
+                    target: 1,
+                    sub_target: 2
                 }
-                .into()
+                .into(),
+                CILRoot::JumpingPad {
+                    source: 1,
+                    target: 2
+                }
+                .into(),
             ],
             1,
             Some(cilly::basic_block::Handler::Blocks(vec![BasicBlock::new(

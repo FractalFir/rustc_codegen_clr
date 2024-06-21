@@ -77,7 +77,7 @@ impl FieldOffsetIterator {
     }
 }
 /// Takes layout of an enum as input, and returns the type of its tag(Void if no tag) and the size of the tag(0 if no tag).
-pub fn enum_tag_info<'tyctx>(r#enum: Layout<'tyctx>, _: TyCtxt<'tyctx>) -> (Type, u32) {
+pub fn enum_tag_info<'tcx>(r#enum: Layout<'tcx>, _: TyCtxt<'tcx>) -> (Type, u32) {
     match r#enum.variants() {
         Variants::Single { .. } => (
             Type::Void,
@@ -132,13 +132,13 @@ pub fn get_variant_at_index(
         Variants::Multiple { variants, .. } => variants[variant_index].clone(),
     }
 }
-pub fn set_discr<'tyctx>(
-    layout: Layout<'tyctx>,
+pub fn set_discr<'tcx>(
+    layout: Layout<'tcx>,
     variant_index: VariantIdx,
     enum_addr: CILNode,
     enum_tpe: &DotnetTypeRef,
-    tyctx: TyCtxt<'tyctx>,
-    ty: Ty<'tyctx>,
+    tcx: TyCtxt<'tcx>,
+    ty: Ty<'tcx>,
 ) -> CILRoot {
     if get_variant_at_index(variant_index, (*layout.0).clone())
         .abi
@@ -160,9 +160,9 @@ pub fn set_discr<'tyctx>(
             tag_encoding: TagEncoding::Direct,
             ..
         } => {
-            let (tag_tpe, _) = enum_tag_info(layout, tyctx);
+            let (tag_tpe, _) = enum_tag_info(layout, tcx);
             let tag_val = ldc_u64!(ty
-                .discriminant_for_variant(tyctx, variant_index)
+                .discriminant_for_variant(tcx, variant_index)
                 .unwrap()
                 .val
                 .try_into()
@@ -190,7 +190,7 @@ pub fn set_discr<'tyctx>(
             if variant_index == untagged_variant {
                 CILRoot::Nop
             } else {
-                let (tag_tpe, _) = enum_tag_info(layout, tyctx);
+                let (tag_tpe, _) = enum_tag_info(layout, tcx);
                 //let niche = self.project_field(bx, tag_field);
                 //let niche_llty = bx.cx().immediate_backend_type(niche.layout);
                 let niche_value = variant_index.as_u32() - niche_variants.start().as_u32();
@@ -213,23 +213,23 @@ pub fn set_discr<'tyctx>(
     }
 }
 
-pub fn get_discr<'tyctx>(
-    layout: Layout<'tyctx>,
+pub fn get_discr<'tcx>(
+    layout: Layout<'tcx>,
     enum_addr: CILNode,
     enum_tpe: DotnetTypeRef,
-    tyctx: TyCtxt<'tyctx>,
-    ty: Ty<'tyctx>,
+    tcx: TyCtxt<'tcx>,
+    ty: Ty<'tcx>,
 ) -> CILNode {
     //return CILNode::
     assert!(
         !layout.abi.is_uninhabited(),
         "UB: enum layout is unanhibited!"
     );
-    let (tag_tpe, _) = crate::utilis::adt::enum_tag_info(layout, tyctx);
+    let (tag_tpe, _) = crate::utilis::adt::enum_tag_info(layout, tcx);
     let tag_encoding = match layout.variants {
         Variants::Single { index } => {
             let discr_val = ty
-                .discriminant_for_variant(tyctx, index)
+                .discriminant_for_variant(tcx, index)
                 .map_or(index.as_u32() as u128, |discr| discr.val);
             let tag_val = ldc_u64!(discr_val.try_into().expect("Tag does not fit within a u64"));
             return crate::casts::int_to_int(Type::U64, &tag_tpe, tag_val);
@@ -257,7 +257,7 @@ pub fn get_discr<'tyctx>(
             ref niche_variants,
             niche_start,
         } => {
-            let (disrc_type, _) = crate::utilis::adt::enum_tag_info(layout, tyctx);
+            let (disrc_type, _) = crate::utilis::adt::enum_tag_info(layout, tcx);
             let relative_max = niche_variants.end().as_u32() - niche_variants.start().as_u32();
             let tag = CILNode::LDField {
                 field: FieldDescriptor::new(enum_tpe, disrc_type.clone(), "value__".into()).into(),

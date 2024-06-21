@@ -9,13 +9,13 @@ use rustc_middle::mir::{Operand, UnOp};
 use rustc_middle::ty::{IntTy, TyKind, UintTy};
 
 /// Implements an unary operation, such as negation.
-pub fn unop<'ctx>(
+pub fn unop<'tcx>(
     unnop: UnOp,
-    operand: &Operand<'ctx>,
-    ctx: &mut MethodCompileCtx<'ctx, '_, '_>,
+    operand: &Operand<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
 ) -> CILNode {
     let parrent_node = crate::operand::handle_operand(operand, ctx);
-    let ty = operand.ty(&ctx.body().local_decls, ctx.tyctx());
+    let ty = operand.ty(&ctx.body().local_decls, ctx.tcx());
     match unnop {
         UnOp::Neg => match ty.kind() {
             TyKind::Int(IntTy::I128) => call!(
