@@ -1,7 +1,7 @@
 use crate::{assembly::MethodCompileCtx, place::place_set};
 use cilly::{
-    call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, cil_tree::CILTree,
-    field_desc::FieldDescriptor, ld_field, FnSig, Type,
+    call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, cil_tree::CILTree, conv_usize,
+    field_desc::FieldDescriptor, ld_field, ldc_u32, FnSig, Type,
 };
 use rustc_middle::{
     mir::{BasicBlock, Operand, Place, SwitchTargets, Terminator, TerminatorKind},
@@ -230,6 +230,13 @@ pub fn handle_terminator<'tcx>(
                             )))),
                         };
                         vec![
+                            CILRoot::BEq {
+                                target: target.as_u32(),
+                                sub_target: 0,
+                                a: Box::new(drop_fn_ptr.clone().cast_ptr(Type::USize)),
+                                b: Box::new(conv_usize!(ldc_u32!(0))),
+                            }
+                            .into(),
                             CILRoot::CallI {
                                 sig: Box::new(FnSig::new(
                                     [Type::Ptr(Box::new(Type::Void))],

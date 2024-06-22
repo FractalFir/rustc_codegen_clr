@@ -468,6 +468,24 @@ impl CILRoot {
             | Self::BNe {
                 target, sub_target, ..
             }
+            | Self::BLt {
+                target, sub_target, ..
+            }
+            | Self::BLtUn {
+                target, sub_target, ..
+            }
+            | Self::BLe {
+                target, sub_target, ..
+            }
+            | Self::BGt {
+                target, sub_target, ..
+            }
+            | Self::BGtUn {
+                target, sub_target, ..
+            }
+            | Self::BGe {
+                target, sub_target, ..
+            }
             | Self::GoTo { target, sub_target } => {
                 assert_eq!(
                     *sub_target, 0,
@@ -845,6 +863,20 @@ impl CILRoot {
                     Err(format!(
                         "BTrue must have a boolean argument. cond is:{cond:?}"
                     ))
+                } else {
+                    Ok(())
+                }
+            }
+            Self::BEq {
+                target: _,
+                sub_target: _,
+                a,
+                b,
+            } => {
+                let a = a.validate(vctx, tmp_loc)?;
+                let b = b.validate(vctx, tmp_loc)?;
+                if a != b {
+                    Err(format!("Can't compare {a:?} and {b:?}"))
                 } else {
                     Ok(())
                 }

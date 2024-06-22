@@ -502,10 +502,17 @@ impl CILNode {
     }
 
     pub fn cast_ptr(self, new_ptr: Type) -> Self {
-        assert!(matches!(
-            new_ptr,
-            Type::Ptr(_) | Type::DelegatePtr(_) | Type::USize | Type::ISize
-        ));
+        assert!(
+            matches!(
+                new_ptr,
+                Type::Ptr(_)
+                    | Type::ManagedReference(_)
+                    | Type::DelegatePtr(_)
+                    | Type::USize
+                    | Type::ISize
+            ),
+            "Invalid new ptr {new_ptr:?}"
+        );
         Self::TransmutePtr {
             val: Box::new(self),
             new_ptr: Box::new(new_ptr),

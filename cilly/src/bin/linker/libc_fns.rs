@@ -342,6 +342,7 @@ pub const LIBC_FNS: &[&str] = &[
     "scandirat64",
     "scanf",
     "sched_getaffinity",
+    "sched_yield",
     "seed48",
     "seekdir",
     "semget",

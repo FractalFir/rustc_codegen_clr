@@ -12,7 +12,7 @@ use cilly::{
 use ints::{ctlz, rotate_left, rotate_right};
 use rustc_middle::{
     mir::{Operand, Place},
-    ty::{Instance, ParamEnv},
+    ty::{Instance, ParamEnv, Ty},
 };
 use rustc_span::source_map::Spanned;
 use saturating::{saturating_add, saturating_sub};
@@ -331,7 +331,11 @@ pub fn handle_intrinsic<'tcx>(
         | "atomic_cxchg_acquire_relaxed"
         | "atomic_cxchgweak_acquire_relaxed"
         | "atomic_cxchgweak_relaxed_relaxed"
-        | "atomic_cxchgweak_relaxed_acquire" => {
+        | "atomic_cxchgweak_relaxed_acquire"
+        | "atomic_cxchg_acquire_seqcst"
+        | "atomic_cxchg_release_relaxed"
+        | "atomic_cxchgweak_seqcst_acquire"
+        | "atomic_cxchg_acqrel_acquire" => {
             let interlocked = DotnetTypeRef::interlocked();
             // *T
             let dst = handle_operand(&args[0].node, ctx);
@@ -347,23 +351,53 @@ pub fn handle_intrinsic<'tcx>(
             let src_type = ctx.monomorphize(args[2].node.ty(ctx.body(), ctx.tcx()));
             let src_type = ctx.type_from_cache(src_type);
 
-            let call_site = CallSite::new(
-                Some(interlocked),
-                "CompareExchange".into(),
-                FnSig::new(
-                    &[
-                        Type::ManagedReference(src_type.clone().into()),
-                        src_type.clone(),
-                        src_type.clone(),
-                    ],
-                    src_type.clone(),
-                ),
-                true,
-            );
-
             let value = src;
             let comaprand = old.clone();
-            let exchange_res = call!(call_site, [dst, value, comaprand]);
+            #[allow(clippy::single_match_else)]
+            let exchange_res = match &src_type {
+                Type::Ptr(_) => {
+                    let call_site = CallSite::new(
+                        Some(interlocked),
+                        "CompareExchange".into(),
+                        FnSig::new(
+                            &[
+                                Type::ManagedReference(Type::USize.clone().into()),
+                                Type::USize.clone(),
+                                Type::USize.clone(),
+                            ],
+                            Type::USize.clone(),
+                        ),
+                        true,
+                    );
+                    call!(
+                        call_site,
+                        [
+                            Box::new(dst)
+                                .cast_ptr(Type::ManagedReference(Type::USize.clone().into())),
+                            conv_usize!(value),
+                            conv_usize!(comaprand)
+                        ]
+                    )
+                    .cast_ptr(src_type.clone())
+                }
+                _ => {
+                    let call_site = CallSite::new(
+                        Some(interlocked),
+                        "CompareExchange".into(),
+                        FnSig::new(
+                            &[
+                                Type::ManagedReference(src_type.clone().into()),
+                                src_type.clone(),
+                                src_type.clone(),
+                            ],
+                            src_type.clone(),
+                        ),
+                        true,
+                    );
+                    call!(call_site, [dst, value, comaprand])
+                }
+            };
+
             // Set a field of the destination
             let dst_ty = destination.ty(ctx.body(), ctx.tcx());
             let fld_desc = field_descrptor(dst_ty.ty, 0, ctx);
@@ -406,21 +440,17 @@ pub fn handle_intrinsic<'tcx>(
                 ctx,
             )
         }
-        "atomic_or_seqcst" => {
+        "atomic_or_seqcst" | "atomic_or_release" | "atomic_or_acqrel" => {
             // *T
             let dst = handle_operand(&args[0].node, ctx);
             // T
-            let sub_ammount = handle_operand(&args[1].node, ctx);
+            let orand = handle_operand(&args[1].node, ctx);
             // we sub by adding a negative number
-            let add_ammount = CILNode::Neg(Box::new(sub_ammount.clone()));
+
             let src_type = ctx.monomorphize(args[1].node.ty(ctx.body(), ctx.tcx()));
             let src_type = ctx.type_from_cache(src_type);
 
-            place_set(
-                destination,
-                interlocked_or(dst, add_ammount, src_type) + sub_ammount,
-                ctx,
-            )
+            place_set(destination, interlocked_or(dst, orand, src_type), ctx)
         }
         "atomic_fence_acquire" | "atomic_fence_seqcst" => {
             let thread = DotnetTypeRef::thread();
@@ -450,7 +480,10 @@ pub fn handle_intrinsic<'tcx>(
                 ctx,
             )
         }
-        "atomic_xchg_release" | "atomic_xchg_acquire" | "atomic_xchg_acqrel" => {
+        "atomic_xchg_release"
+        | "atomic_xchg_acquire"
+        | "atomic_xchg_acqrel"
+        | "atomic_xchg_relaxed" => {
             let interlocked = DotnetTypeRef::interlocked();
             // *T
             let dst = handle_operand(&args[0].node, ctx);
@@ -734,6 +767,22 @@ pub fn handle_intrinsic<'tcx>(
                 ]
                 .into(),
             }
+        }
+        "type_name" => {
+            let ty = ctx.monomorphize(
+                call_instance.args[0]
+                    .as_type()
+                    .expect("needs_drop works only on types!"),
+            );
+            let const_val = ctx
+                .tcx()
+                .const_eval_instance(ParamEnv::reveal_all(), call_instance, span)
+                .unwrap();
+            place_set(
+                destination,
+                crate::constant::load_const_value(const_val, Ty::new_static_str(ctx.tcx()), ctx),
+                ctx,
+            )
         }
         "sqrtf64" => {
             debug_assert_eq!(

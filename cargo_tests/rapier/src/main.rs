@@ -1,23 +1,48 @@
-use std::thread;
-use std::time::Duration;
-
+#![feature(test)]
+extern crate test;
+use test::test::parse_opts;
+use test::*;
 fn main() {
-    thread::spawn(|| {
-        for i in 1..10 {
-            println!("hi number {i} from the spawned thread!");
-            thread::sleep(Duration::from_millis(1));
-        }
-    });
+    let fake_args = vec![String::new()];
+    let opts = parse_opts(&fake_args).unwrap().unwrap();
 
-    for i in 1..5 {
-        println!("hi number {i} from the main thread!");
-        thread::sleep(Duration::from_millis(1));
-    }
+    run_tests_console(&opts, one_ignored_one_unignored_test());
 }
-#[test]
-fn test() {
-    extern "C" {
-        fn printf(fmt: *const core::ffi::c_char, ...) -> core::ffi::c_int;
-    }
-    unsafe { printf("The test is propely run\n\0".as_ptr() as *const i8) };
+fn one_ignored_one_unignored_test() -> Vec<TestDescAndFn> {
+    vec![
+        TestDescAndFn {
+            desc: TestDesc {
+                name: StaticTestName("1"),
+                ignore: true,
+                ignore_message: None,
+                source_file: "",
+                start_line: 0,
+                start_col: 0,
+                end_line: 0,
+                end_col: 0,
+                should_panic: ShouldPanic::No,
+                compile_fail: false,
+                no_run: false,
+                test_type: TestType::Unknown,
+            },
+            testfn: DynTestFn(Box::new(move || Ok(()))),
+        },
+        TestDescAndFn {
+            desc: TestDesc {
+                name: StaticTestName("2"),
+                ignore: false,
+                ignore_message: None,
+                source_file: "",
+                start_line: 0,
+                start_col: 0,
+                end_line: 0,
+                end_col: 0,
+                should_panic: ShouldPanic::No,
+                compile_fail: false,
+                no_run: false,
+                test_type: TestType::Unknown,
+            },
+            testfn: DynTestFn(Box::new(move || Ok(()))),
+        },
+    ]
 }
