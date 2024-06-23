@@ -1,5 +1,6 @@
 use cilly::cil_node::CILNode;
 use cilly::cil_root::CILRoot;
+use cilly::Type;
 use rustc_middle::mir::Operand;
 
 use crate::assembly::MethodCompileCtx;
@@ -7,6 +8,10 @@ pub(crate) fn handle_operand<'tcx>(
     operand: &Operand<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
 ) -> CILNode {
+    let res = ctx.type_from_cache(ctx.monomorphize(operand.ty(ctx.body(), ctx.tcx())));
+    if res == Type::Void {
+        return CILNode::TemporaryLocal(Box::new((Type::Void, [].into(), CILNode::LoadTMPLocal)));
+    }
     match operand {
         Operand::Copy(place) | Operand::Move(place) => crate::place::place_get(place, ctx),
         Operand::Constant(const_val) => crate::constant::handle_constant(const_val, ctx),

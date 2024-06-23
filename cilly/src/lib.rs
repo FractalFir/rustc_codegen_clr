@@ -138,3 +138,6 @@ lazy_static! {
         })
     };
 }
+pub fn async_drop<T: Drop + Send + 'static>(val: T) {
+    std::thread::spawn(move || drop(val));
+}

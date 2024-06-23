@@ -566,6 +566,35 @@ pub fn handle_intrinsic<'tcx>(
                 ctx,
             )
         }
+        "ptr_offset_from" => {
+            debug_assert_eq!(
+                args.len(),
+                2,
+                "The intrinsic `min_align_of_val` MUST take in exactly 1 argument!"
+            );
+            let tpe = ctx.monomorphize(
+                call_instance.args[0]
+                    .as_type()
+                    .expect("needs_drop works only on types!"),
+            );
+            let tpe = ctx.type_from_cache(tpe);
+            place_set(
+                destination,
+                CILNode::Div(
+                    CILNode::TransmutePtr {
+                        val: sub!(
+                            handle_operand(&args[0].node, ctx),
+                            handle_operand(&args[1].node, ctx)
+                        )
+                        .into(),
+                        new_ptr: Box::new(Type::ISize),
+                    }
+                    .into(),
+                    conv_isize!(size_of!(tpe)).into(),
+                ),
+                ctx,
+            )
+        }
         "saturating_add" => saturating_add(args, destination, ctx, call_instance),
         "saturating_sub" => saturating_sub(args, destination, ctx, call_instance),
         "min_align_of_val" => {
@@ -814,11 +843,19 @@ pub fn handle_intrinsic<'tcx>(
             let catch_fn = handle_operand(&args[2].node, ctx);
             let _ = catch_fn;
             eprintln!("WARNING: catching unwinds currently not supported! the intrinic `catch_unwind` WILL NOT CATCH UNWINDS YET!");
-            CILRoot::CallI {
-                sig: Box::new(FnSig::new(&[Type::Ptr(Type::U8.into())], Type::Void)),
-                fn_ptr: Box::new(try_fn),
-                args: Box::new([data_ptr]),
-            }
+            let return_code = ldc_i32!(0);
+            place_set(
+                destination,
+                CILNode::SubTrees(Box::new((
+                    Box::new([CILRoot::CallI {
+                        sig: Box::new(FnSig::new(&[Type::Ptr(Type::U8.into())], Type::Void)),
+                        fn_ptr: Box::new(try_fn),
+                        args: Box::new([data_ptr]),
+                    }]),
+                    Box::new(return_code),
+                ))),
+                ctx,
+            )
         }
         "abort" => CILRoot::throw("Called abort!"),
         _ => intrinsic_slow(fn_name, args, destination, ctx, call_instance, span),

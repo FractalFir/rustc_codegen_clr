@@ -54,7 +54,6 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
             let name = function.name();
             let calls: std::collections::HashSet<_> = function
                 .calls()
-                .iter()
                 .filter_map(|site| {
                     if site.class().is_none() {
                         Some(site.name())
@@ -356,10 +355,10 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
         let mut resurecting: HashMap<CallSite, Method> = HashMap::new();
         let mut to_resurect: HashMap<CallSite, Method> = self.get_exported_fn();
         while !to_resurect.is_empty() {
-            alive.extend(resurecting.clone());
-            resurecting.clear();
-            resurecting.extend(to_resurect.clone());
-            to_resurect.clear();
+            alive.extend(resurecting);
+            resurecting = HashMap::new();
+            resurecting.extend(to_resurect);
+            to_resurect = HashMap::new();
             for call in resurecting.iter().flat_map(|fnc| fnc.1.calls()) {
                 if let Some(_class) = call.class() {
                     // TODO: if dead code elimination too agressive check this
@@ -370,12 +369,13 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
                     // Already alive, ignore!
                     continue;
                 }
-                if let Some(method) = self.functions.get(call).cloned() {
+                if let Some(method) = self.functions.remove(call) {
                     to_resurect.insert(call.clone(), method);
                 };
             }
         }
         alive.extend(resurecting);
+
         self.functions = alive;
     }
     pub fn eliminate_dead_code(&mut self) {

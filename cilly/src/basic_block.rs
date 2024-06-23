@@ -73,12 +73,9 @@ fn block_gc(entrypoint: u32, bbs: &[BasicBlock]) -> Vec<BasicBlock> {
 impl BasicBlock {
     /// Converts all trees containing sub-trees into multiple trees.
     pub fn sheed_trees(&mut self) {
-        self.trees = self
-            .trees
-            .clone()
-            .into_iter()
-            .flat_map(CILTree::shed_trees)
-            .collect();
+        // Get the current trees
+        let trees = swap_out(&mut self.trees);
+        self.trees = trees.into_iter().flat_map(CILTree::shed_trees).collect();
         if let Some(handler) = self.handler.as_mut() {
             handler
                 .as_blocks_mut()
@@ -133,10 +130,17 @@ impl BasicBlock {
         );
         // Generate launching pads for cross-block branches!
         let id = self.id();
-        for (target, sub_target) in self.targets() {
-            assert_eq!(sub_target, 0);
-            self.trees
-                .push(CILRoot::JumpingPad { target, source: id }.into());
+        let targets = self.targets();
+        let targets: HashSet<_> = targets.iter().collect();
+        for (target, sub_target) in targets {
+            assert_eq!(*sub_target, 0);
+            self.trees.push(
+                CILRoot::JumpingPad {
+                    target: *target,
+                    source: id,
+                }
+                .into(),
+            );
         }
         // Change branches to use lanuching pads.
 
@@ -275,4 +279,10 @@ pub fn export(
     //eprintln!("{string}");
     depth.pad(out)?;
     Ok(())
+}
+#[inline]
+pub fn swap_out<T>(val: &mut Vec<T>) -> Vec<T> {
+    let mut tmp = Vec::new();
+    std::mem::swap(&mut tmp, val);
+    tmp
 }

@@ -221,12 +221,11 @@ impl Method {
     }
     /// Returns the list of external calls this function preforms. Calls may repeat.
     // TODO: make this not call `into_ops`
-    pub fn calls(&self) -> Vec<&CallSite> {
+    pub fn calls(&self) -> impl Iterator<Item = &CallSite> {
         self.blocks
             .iter()
             .flat_map(|block| block.iter_cil())
             .call_sites()
-            .collect()
     }
     /// Returns the list of static fields this function references. Calls may repeat.
     // TODO: make this not call `into_ops`

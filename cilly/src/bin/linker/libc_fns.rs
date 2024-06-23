@@ -299,6 +299,7 @@ pub const LIBC_FNS: &[&str] = &[
     "psignal",
     "pthread_self",
     "pthread_setname_np",
+    "pthread_join",
     "ptrace",
     "ptsname",
     "putchar",
@@ -519,6 +520,7 @@ pub const LIBC_FNS: &[&str] = &[
     "wprintf",
     "write",
     "wscanf",
+    "__xpg_strerror_r",
 ];
 pub const LIBC_MODIFIES_ERRNO: &[&str] = &[
     "read",
@@ -536,4 +538,5 @@ pub const LIBC_MODIFIES_ERRNO: &[&str] = &[
     "clock_gettime",
     "pthread_self",
     "pthread_setname_np",
+    "pthread_join",
 ];

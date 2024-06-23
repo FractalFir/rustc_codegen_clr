@@ -314,7 +314,6 @@ pub fn call<'tcx>(
         assert!(!args.is_empty());
         let fat_ptr_ty = ctx.monomorphize(args[0].node.ty(ctx.body(), ctx.tcx()));
 
-        let fat_ptr_type = ctx.type_from_cache(fat_ptr_ty);
         let fat_ptr_address = handle_operand(&args[0].node, ctx);
 
         let vtable_ptr = ld_field!(

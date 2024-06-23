@@ -764,7 +764,21 @@ add_method_from_trees!(
                 )
             )
             .into(),
-            CILRoot::Ret { tree: ldc_u64!(0) }.into(),
+            CILRoot::Ret {
+                tree: call!(
+                    CallSite::new(
+                        Some(DotnetTypeRef::thread()),
+                        "get_ManagedThreadId".into(),
+                        FnSig::new(
+                            &[Type::DotnetType(Box::new(DotnetTypeRef::thread()))],
+                            Type::I32
+                        ),
+                        false
+                    ),
+                    [CILNode::LDLoc(0)]
+                )
+            }
+            .into(),
         ],
         0,
         None

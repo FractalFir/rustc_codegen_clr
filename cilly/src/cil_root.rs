@@ -1033,6 +1033,101 @@ impl CILRoot {
         Self::SourceFileInfo(Box::new((line, column, file.into())))
     }
 }
+fn tiny_message(msg: &str) -> CILNode {
+    let pieces: Vec<_> = msg.split_whitespace().collect();
+    runtime_string(&pieces)
+}
+fn runtime_string(pieces: &[&str]) -> CILNode {
+    match pieces.len() {
+        0 => panic!("Incorrect piece count"),
+        1 => CILNode::LdStr(pieces[0].into()),
+        2 => call!(
+            CallSite::new_extern(
+                DotnetTypeRef::string_type(),
+                "Concat".into(),
+                FnSig::new(
+                    &[
+                        Type::DotnetType(Box::new(DotnetTypeRef::string_type())),
+                        Type::DotnetType(Box::new(DotnetTypeRef::string_type()))
+                    ],
+                    Type::DotnetType(Box::new(DotnetTypeRef::string_type()))
+                ),
+                true
+            ),
+            [
+                CILNode::LdStr(pieces[0].into()),
+                CILNode::LdStr(pieces[1].into())
+            ]
+        ),
+        3 => call!(
+            CallSite::new_extern(
+                DotnetTypeRef::string_type(),
+                "Concat".into(),
+                FnSig::new(
+                    &[
+                        Type::DotnetType(Box::new(DotnetTypeRef::string_type())),
+                        Type::DotnetType(Box::new(DotnetTypeRef::string_type())),
+                        Type::DotnetType(Box::new(DotnetTypeRef::string_type()))
+                    ],
+                    Type::DotnetType(Box::new(DotnetTypeRef::string_type()))
+                ),
+                true
+            ),
+            [
+                CILNode::LdStr(pieces[0].into()),
+                CILNode::LdStr(pieces[1].into()),
+                CILNode::LdStr(pieces[2].into())
+            ]
+        ),
+        4 => call!(
+            CallSite::new_extern(
+                DotnetTypeRef::string_type(),
+                "Concat".into(),
+                FnSig::new(
+                    &[
+                        Type::DotnetType(Box::new(DotnetTypeRef::string_type())),
+                        Type::DotnetType(Box::new(DotnetTypeRef::string_type())),
+                        Type::DotnetType(Box::new(DotnetTypeRef::string_type())),
+                        Type::DotnetType(Box::new(DotnetTypeRef::string_type()))
+                    ],
+                    Type::DotnetType(Box::new(DotnetTypeRef::string_type()))
+                ),
+                true
+            ),
+            [
+                CILNode::LdStr(pieces[0].into()),
+                CILNode::LdStr(pieces[1].into()),
+                CILNode::LdStr(pieces[2].into()),
+                CILNode::LdStr(pieces[3].into())
+            ]
+        ),
+        _ => {
+            let sub_part = pieces.len() / 4;
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::string_type(),
+                    "Concat".into(),
+                    FnSig::new(
+                        &[
+                            Type::DotnetType(Box::new(DotnetTypeRef::string_type())),
+                            Type::DotnetType(Box::new(DotnetTypeRef::string_type())),
+                            Type::DotnetType(Box::new(DotnetTypeRef::string_type())),
+                            Type::DotnetType(Box::new(DotnetTypeRef::string_type()))
+                        ],
+                        Type::DotnetType(Box::new(DotnetTypeRef::string_type()))
+                    ),
+                    true
+                ),
+                [
+                    runtime_string(&pieces[..sub_part]),
+                    runtime_string(&pieces[sub_part..(sub_part * 2)]),
+                    runtime_string(&pieces[(sub_part * 2)..(sub_part * 3)]),
+                    runtime_string(&pieces[(sub_part * 3)..])
+                ]
+            )
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -1218,34 +1313,6 @@ mod tests {
                 a: Box::new(CILNode::LDArg(0)),
                 b: Box::new(CILNode::LDArg(1))
             }
-        )
-    }
-}
-fn tiny_message(msg: &str) -> CILNode {
-    let pieces: Vec<_> = msg.split_whitespace().collect();
-    runtime_string(&pieces)
-}
-fn runtime_string(pieces: &[&str]) -> CILNode {
-    let curr = CILNode::LdStr(pieces[0].clone().into());
-    let rem = &pieces[1..];
-    if rem.is_empty() {
-        curr
-    } else {
-        let next = runtime_string(rem);
-        call!(
-            CallSite::new_extern(
-                DotnetTypeRef::string_type(),
-                "Concat".into(),
-                FnSig::new(
-                    [
-                        DotnetTypeRef::string_type().into(),
-                        DotnetTypeRef::string_type().into()
-                    ],
-                    Type::DotnetType(Box::new(DotnetTypeRef::string_type()))
-                ),
-                true
-            ),
-            [curr, next]
         )
     }
 }

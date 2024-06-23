@@ -247,13 +247,14 @@ impl AssemblyExporter for ILASMExporter {
             "-output:{out_path}",
             out_path = out_path.clone().to_string_lossy()
         );
-        let args: [String; 6] = [
+        let args: [String; 7] = [
             asm_type.into(),
             target,
             cil_path.clone().to_string_lossy().to_string(),
             "-debug".into(),
             "-OPTIMIZE".into(),
             "-FOLD".into(),
+            "-quiet".into(),
         ];
 
         let out = std::process::Command::new(self.ilasm_path.as_ref())
@@ -261,7 +262,8 @@ impl AssemblyExporter for ILASMExporter {
             .output()
             .expect("failed run ilasm process");
         let stdout = String::from_utf8_lossy(&out.stdout);
-        if !stdout.contains("\nOperation completed successfully\n") {
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        if stderr.contains("\nError\n") {
             let err = format!(
                 "stdout:{} stderr:{}",
                 stdout,

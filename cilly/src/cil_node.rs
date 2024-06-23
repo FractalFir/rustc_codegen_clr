@@ -748,6 +748,9 @@ impl CILNode {
                 None => Err(format!("Argument {arg} out of range.")),
             },
             Self::LdObj { ptr, obj } => {
+                if **obj == Type::Void {
+                    return Err("Using ldobj to load void is not allowed".to_owned());
+                }
                 let ptr = ptr.validate(vctx, tmp_loc)?;
                 match ptr {
                     Type::Ptr(pointed) | Type::ManagedReference(pointed) => {

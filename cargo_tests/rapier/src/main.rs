@@ -10,7 +10,7 @@ fn main() {
 }
 fn one_ignored_one_unignored_test() -> Vec<TestDescAndFn> {
     vec![
-        TestDescAndFn {
+        /*TestDescAndFn {
             desc: TestDesc {
                 name: StaticTestName("1"),
                 ignore: true,
@@ -26,7 +26,7 @@ fn one_ignored_one_unignored_test() -> Vec<TestDescAndFn> {
                 test_type: TestType::Unknown,
             },
             testfn: DynTestFn(Box::new(move || Ok(()))),
-        },
+        },*/
         TestDescAndFn {
             desc: TestDesc {
                 name: StaticTestName("2"),
@@ -44,5 +44,41 @@ fn one_ignored_one_unignored_test() -> Vec<TestDescAndFn> {
             },
             testfn: DynTestFn(Box::new(move || Ok(()))),
         },
+        /*TestDescAndFn {
+            desc: TestDesc {
+                name: StaticTestName("3"),
+                ignore: false,
+                ignore_message: None,
+                source_file: "",
+                start_line: 0,
+                start_col: 0,
+                end_line: 0,
+                end_col: 0,
+                should_panic: ShouldPanic::No,
+                compile_fail: false,
+                no_run: false,
+                test_type: TestType::Unknown,
+            },
+            testfn: DynTestFn(Box::new(move || Ok(()))),
+        },
+        TestDescAndFn {
+            desc: TestDesc {
+                name: StaticTestName("4"),
+                ignore: false,
+                ignore_message: None,
+                source_file: "",
+                start_line: 0,
+                start_col: 0,
+                end_line: 0,
+                end_col: 0,
+                should_panic: ShouldPanic::No,
+                compile_fail: false,
+                no_run: false,
+                test_type: TestType::Unknown,
+            },
+            testfn: DynTestFn(Box::new(move || Ok(()))),
+        },*/
     ]
-}
+} /*
+  #[test]
+  fn test() {}*/
