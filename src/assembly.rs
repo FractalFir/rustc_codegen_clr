@@ -823,7 +823,7 @@ impl<'tcx, 'validator, 'type_cache> MethodCompileCtx<'tcx, 'validator, 'type_cac
     pub fn type_cache(&mut self) -> &mut &'type_cache mut TyCache {
         &mut self.type_cache
     }
-
+    #[must_use]
     pub fn validator(&self) -> ValidationContext<'validator> {
         self.validator
     }
@@ -866,6 +866,7 @@ impl<'tcx, 'validator, 'type_cache> MethodCompileCtx<'tcx, 'validator, 'type_cac
         self.type_cache
             .type_from_cache(ty, self.tcx, self.method_instance)
     }
+    #[must_use]
     pub fn layout_of(
         &self,
         ty: rustc_middle::ty::Ty<'tcx>,

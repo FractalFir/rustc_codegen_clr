@@ -506,6 +506,24 @@ impl<'a> IntoIterator for &'a mut CILRoot {
         CILIterMut::new_root(self)
     }
 }
+pub trait CILIterMutTrait<'a> {
+    fn nodes(self) -> impl Iterator<Item = &'a mut CILNode>;
+    fn roots(self) -> impl Iterator<Item = &'a mut CILRoot>;
+}
+impl<'a, T: Iterator<Item = CILIterElemMut<'a>>> CILIterMutTrait<'a> for T {
+    fn nodes(self) -> impl Iterator<Item = &'a mut CILNode> {
+        self.filter_map(|elem| match elem {
+            CILIterElemMut::Node(node) => Some(node),
+            CILIterElemMut::Root(_) => None,
+        })
+    }
+    fn roots(self) -> impl Iterator<Item = &'a mut CILRoot> {
+        self.filter_map(|elem| match elem {
+            CILIterElemMut::Node(_) => None,
+            CILIterElemMut::Root(root) => Some(root),
+        })
+    }
+}
 #[test]
 fn iter() {
     use crate::{call_site::CallSite, FnSig, Type};

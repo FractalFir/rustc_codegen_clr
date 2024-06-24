@@ -7,7 +7,7 @@ use cilly::{
     call_site::CallSite,
     cil_node::{CILNode, CallOpArgs},
     cil_root::CILRoot,
-    conv_usize,
+    conv_u64, conv_usize,
     field_desc::FieldDescriptor,
     fn_sig::FnSig,
     ld_field, ldc_i32, ldc_u32, ldc_u64, lt_un,
@@ -737,35 +737,9 @@ add_method_from_trees!(
                 args: [CILNode::LDLoc(0)].into(),
             }
             .into(),
-            CILRoot::STIndISize(
+            CILRoot::STIndI64(
                 CILNode::LDArg(0),
-                call!(
-                    Box::new(CallSite::new(
-                        Some(DotnetTypeRef::gc_handle()),
-                        "op_Explicit".into(),
-                        FnSig::new(
-                            &[Type::DotnetType(Box::new(DotnetTypeRef::gc_handle()))],
-                            Type::ISize
-                        ),
-                        true
-                    )),
-                    [call!(
-                        Box::new(CallSite::new(
-                            Some(DotnetTypeRef::gc_handle()),
-                            "Alloc".into(),
-                            FnSig::new(
-                                &[Type::DotnetType(Box::new(DotnetTypeRef::object_type()))],
-                                Type::DotnetType(Box::new(DotnetTypeRef::gc_handle()))
-                            ),
-                            true
-                        )),
-                        [CILNode::LDLoc(0)]
-                    )]
-                )
-            )
-            .into(),
-            CILRoot::Ret {
-                tree: call!(
+                conv_u64!(call!(
                     CallSite::new(
                         Some(DotnetTypeRef::thread()),
                         "get_ManagedThreadId".into(),
@@ -776,9 +750,10 @@ add_method_from_trees!(
                         false
                     ),
                     [CILNode::LDLoc(0)]
-                )
-            }
+                ))
+            )
             .into(),
+            CILRoot::Ret { tree: ldc_i32!(0) }.into(),
         ],
         0,
         None

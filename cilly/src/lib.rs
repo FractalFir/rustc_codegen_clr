@@ -138,6 +138,16 @@ lazy_static! {
         })
     };
 }
-pub fn async_drop<T: Drop + Send + 'static>(val: T) {
+pub(crate) fn async_drop<T: Drop + Send + 'static>(val: T) {
     std::thread::spawn(move || drop(val));
+}
+pub(crate) fn iter_take_one<T>(mut iter: impl Iterator<Item = T>) -> T {
+    let val = iter
+        .next()
+        .expect("iter_take_one recived an empty iterator");
+    debug_assert!(
+        iter.next().is_none(),
+        "iter_take_one recived an iterator wich returned more than one element"
+    );
+    val
 }

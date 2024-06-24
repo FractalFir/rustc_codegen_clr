@@ -6,8 +6,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+libc = "0.2.155"
+
 mycorrhiza = {path="../../mycorrhiza"}
-test = {path="./test"}
+
 [workspace]
 [profile.release.build-override]
 codegen-units = 1

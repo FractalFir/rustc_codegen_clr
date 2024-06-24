@@ -1194,6 +1194,13 @@ impl CILNode {
             _ => todo!("Can't check the type safety of {self:?}"),
         }
     }
+
+    pub(crate) fn try_const_eval(&self) -> Option<Self> {
+        match self {
+            CILNode::LdFalse | CILNode::LdTrue => Some(self.clone()),
+            _ => None,
+        }
+    }
 }
 
 #[macro_export]

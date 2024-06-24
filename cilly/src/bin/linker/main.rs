@@ -416,7 +416,7 @@ fn autopatch(asm: &mut Assembly, native_pastrough: &NativePastroughInfo) {
             override_realloc(&mut patched, call);
             continue;
         }
-        if name == "pthread_attr_init" {
+        /*if name == "pthread_attr_init" {
             override_pthread_attr_init(&mut patched, call);
             continue;
         }
@@ -439,7 +439,7 @@ fn autopatch(asm: &mut Assembly, native_pastrough: &NativePastroughInfo) {
         if name == "pthread_atfork" {
             override_pthread_atfork(&mut patched, call);
             continue;
-        }
+        }*/
         //#[cfg(not(target_os = "linux"))]
         if libc_fns::LIBC_FNS.iter().any(|libc_fn| *libc_fn == name) {
             externs.push((

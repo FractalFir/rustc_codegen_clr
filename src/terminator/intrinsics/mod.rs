@@ -515,6 +515,33 @@ pub fn handle_intrinsic<'tcx>(
                         ctx,
                     )
                 }
+                Type::Ptr(_) => {
+                    let call_site = CallSite::new(
+                        Some(interlocked),
+                        "Exchange".into(),
+                        FnSig::new(
+                            &[
+                                Type::ManagedReference(Type::USize.clone().into()),
+                                Type::USize.clone(),
+                            ],
+                            Type::USize.clone(),
+                        ),
+                        true,
+                    );
+                    return place_set(
+                        destination,
+                        call!(
+                            call_site,
+                            [
+                                Box::new(dst)
+                                    .cast_ptr(Type::ManagedReference(Type::USize.clone().into())),
+                                conv_usize!(new),
+                            ]
+                        )
+                        .cast_ptr(src_type.clone()),
+                        ctx,
+                    );
+                }
                 Type::I8 | Type::Bool | Type::U16 | Type::I16 | Type::DotnetChar => {
                     todo!("can't {fn_name} {src_type:?}")
                 }

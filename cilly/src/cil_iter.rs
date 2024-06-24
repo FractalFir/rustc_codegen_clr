@@ -451,6 +451,8 @@ impl<'a> CILIter<'a> {
 }
 pub trait CILIterTrait<'a> {
     fn call_sites(self) -> impl Iterator<Item = &'a CallSite>;
+    fn nodes(self) -> impl Iterator<Item = &'a CILNode>;
+    fn roots(self) -> impl Iterator<Item = &'a CILRoot>;
 }
 impl<'a, T: Iterator<Item = CILIterElem<'a>>> CILIterTrait<'a> for T {
     fn call_sites(self) -> impl Iterator<Item = &'a CallSite> {
@@ -465,6 +467,18 @@ impl<'a, T: Iterator<Item = CILIterElem<'a>>> CILIterTrait<'a> for T {
                 CILRoot::Call { site, args: _ } | CILRoot::CallVirt { site, args: _ },
             ) => Some(site),
             _ => None,
+        })
+    }
+    fn nodes(self) -> impl Iterator<Item = &'a CILNode> {
+        self.filter_map(|elem| match elem {
+            CILIterElem::Node(node) => Some(node),
+            CILIterElem::Root(_) => None,
+        })
+    }
+    fn roots(self) -> impl Iterator<Item = &'a CILRoot> {
+        self.filter_map(|elem| match elem {
+            CILIterElem::Node(_) => None,
+            CILIterElem::Root(root) => Some(root),
         })
     }
 }

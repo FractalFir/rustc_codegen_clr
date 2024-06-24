@@ -12,7 +12,7 @@ use crate::{
     basic_block::BasicBlock,
     call_site::CallSite,
     cil_iter::{CILIterElem, CILIterTrait},
-    cil_iter_mut::CILIterElemMut,
+    cil_iter_mut::{CILIterElemMut, CILIterMutTrait},
     cil_node::{CILNode, ValidationContext},
     cil_root::CILRoot,
     cil_tree::CILTree,
@@ -55,7 +55,51 @@ impl Method {
         let max = trees.map(|tree| tree.root().into_iter().count() + 3).max();
         max.unwrap_or(6)
     }
-
+    pub fn is_address_taken(&self, local: u32) -> bool {
+        self.iter_cil()
+            .nodes()
+            .any(|node| matches!(node, CILNode::LDLocA(loc) if *loc == local))
+    }
+    /// For a `local`, returns the *values* of all its assigements. This *will not include the root, only the nodes*!
+    pub fn local_sets(&self, local: u32) -> impl Iterator<Item = &CILNode> {
+        self.iter_cil().roots().filter_map(move |node| match node {
+            CILRoot::STLoc { local: loc, tree } if (*loc == local) => Some(tree),
+            _ => None,
+        })
+    }
+    pub fn direct_set_count(&self, local: u32) -> usize {
+        self.local_sets(local).count()
+    }
+    pub fn const_opt_pass(&mut self) {
+        // If a local is set only once, and its address is never taken, it is likely to be const
+        // TODO: this is inefficient Consider checking all locals at once?
+        let locals_address_not_taken: Box<[_]> = (0..(self.locals().len() as u32))
+            .enumerate()
+            .filter_map(|(idx, loc)| {
+                if !self.is_address_taken(loc) {
+                    Some(idx)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        for local in locals_address_not_taken {
+            let sets = self.local_sets(local as u32);
+            if let Some(val) = all_evals_identical(sets) {
+                self.blocks
+                    .iter_mut()
+                    .flat_map(|block| block.all_trees_mut())
+                    .flat_map(|tree| tree.root_mut().into_iter().nodes())
+                    .for_each(|node| match node {
+                        CILNode::LDLoc(loc) if *loc == local as u32 => *node = val.clone(),
+                        CILNode::LDLocA(loc) if *loc == local as u32 => {
+                            panic!("const propagation failed: the address of const taken")
+                        }
+                        _ => (),
+                    });
+            }
+        }
+    }
     pub fn opt(&mut self) {
         for tree in self
             .blocks
@@ -69,6 +113,7 @@ impl Method {
                 tree.opt(&mut opt_counter);
             }
         }
+        self.const_opt_pass();
         self.opt_merge_bbs();
     }
     /// Iterates over each `CILNode` and `CILRoot`.
@@ -229,7 +274,7 @@ impl Method {
     }
     /// Returns the list of static fields this function references. Calls may repeat.
     // TODO: make this not call `into_ops`
-    pub fn sflds(&self) -> Vec<&StaticFieldDescriptor> {
+    pub fn sflds(&self) -> impl Iterator<Item = &StaticFieldDescriptor> {
         self.blocks
             .iter()
             .flat_map(|block| block.iter_cil())
@@ -238,30 +283,26 @@ impl Method {
                 CILIterElem::Root(CILRoot::SetStaticField { descr, value: _ }) => Some(descr),
                 _ => None,
             })
-            .collect()
     }
     /// Returns a list of type references that are used within this method.
-    pub fn dotnet_types(&self) -> Vec<DotnetTypeRef> {
+    pub fn dotnet_types(&self) -> impl Iterator<Item = DotnetTypeRef> + '_ {
         self.sig()
             .inputs()
             .iter()
             .filter_map(Type::dotnet_refs)
             .chain(self.locals().iter().filter_map(|tpe| tpe.1.dotnet_refs()))
             .chain(self.sig().inputs().iter().filter_map(Type::dotnet_refs))
-            .chain(
-                [self.sig().output()]
-                    .iter()
-                    .filter_map(|tpe| tpe.dotnet_refs()),
-            )
+            .chain(self.sig().output().dotnet_refs())
             .chain(self.iter_cil().filter_map(|node| match node {
                 CILIterElem::Node(CILNode::SizeOf(tpe)) => tpe.dotnet_refs(),
                 CILIterElem::Node(CILNode::NewObj(call_op_args)) => {
                     call_op_args.site.class().cloned()
                 }
-                CILIterElem::Node(CILNode::LDField { addr, field }) => Some(field.owner().clone()),
+                CILIterElem::Node(CILNode::LDField { addr: _, field }) => {
+                    Some(field.owner().clone())
+                }
                 _ => None,
             }))
-            .collect()
     }
     /// Returns a call site that describes this method.
     pub fn call_site(&self) -> CallSite {
@@ -526,12 +567,6 @@ impl Method {
         // Remove unneded blocks
         // let prev_c = self.blocks.len();
         self.blocks.retain(|block| !block.trees().is_empty());
-        /*let new_c = self.blocks.len();
-        eprintln!(
-            "block opt result: removed {rem} out of {prev_c} blocks. Removed {prec}% of blocks.",
-            rem = prev_c - new_c,
-            prec = ((prev_c - new_c) as f64 / prev_c as f64) * 100.0
-        );*/
     }
     pub fn attributes(&self) -> &[Attribute] {
         &self.attributes
@@ -576,8 +611,24 @@ pub enum MethodType {
     /// A "normal" method.
     Static,
 }
-impl<'a> Into<ValidationContext<'a>> for &'a Method {
-    fn into(self) -> ValidationContext<'a> {
-        ValidationContext::new(self.sig(), self.locals())
+impl<'a> From<&'a Method> for ValidationContext<'a> {
+    fn from(val: &'a Method) -> Self {
+        ValidationContext::new(val.sig(), val.locals())
+    }
+}
+pub(crate) fn all_evals_identical<'a>(
+    mut nodes: impl Iterator<Item = &'a CILNode>,
+) -> Option<CILNode> {
+    let first = nodes.next()?;
+    let first_val = first.try_const_eval()?;
+    if nodes.all(|node| {
+        let Some(val) = node.try_const_eval() else {
+            return false;
+        };
+        val == first_val
+    }) {
+        Some(first_val)
+    } else {
+        None
     }
 }
