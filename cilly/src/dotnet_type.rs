@@ -176,6 +176,10 @@ impl DotnetTypeRef {
         Self::new(Some("System.Threading"), "System.Threading.Monitor").with_valuetype(false)
     }
     #[must_use]
+    pub fn exception() -> Self {
+        Self::new(Some("System.Runtime"), "System.Exception").with_valuetype(false)
+    }
+    #[must_use]
     pub fn assembly() -> Self {
         Self::new(Some("System.Runtime"), "System.Reflection.Assembly").with_valuetype(false)
     }

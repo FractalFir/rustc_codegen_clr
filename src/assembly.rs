@@ -36,12 +36,15 @@ fn check_align_adjust<'tcx>(
     locals: &rustc_index::IndexVec<Local, LocalDecl<'tcx>>,
     tcx: TyCtxt<'tcx>,
     method_instance: &Instance<'tcx>,
+    argc: usize,
 ) -> Vec<Option<u64>> {
     let mut adjusts: Vec<Option<u64>> = Vec::with_capacity(locals.len());
-    for local in locals {
-        let ty = crate::utilis::monomorphize(method_instance, local.ty, tcx);
-        let adjust = crate::utilis::requries_align_adjustement(ty, tcx);
-        adjusts.push(adjust);
+    for (local_id, local) in locals.iter().enumerate() {
+        if local_id == 0 || local_id > argc {
+            let ty = crate::utilis::monomorphize(method_instance, local.ty, tcx);
+            let adjust = crate::utilis::requries_align_adjustement(ty, tcx);
+            adjusts.push(adjust);
+        }
     }
     adjusts
 }
@@ -451,7 +454,7 @@ pub fn add_fn<'tcx>(
         }
     }
 
-    let adjust = check_align_adjust(&mir.local_decls, tcx, &instance);
+    let adjust = check_align_adjust(&mir.local_decls, tcx, &instance, mir.arg_count);
     // TODO: find a better way of checking if we are in release
     method.adjust_aligement(adjust);
     if tcx.sess.opts.optimize != rustc_session::config::OptLevel::No {

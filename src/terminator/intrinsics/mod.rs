@@ -6,8 +6,8 @@ use crate::{
 };
 use cilly::{
     call, call_site::CallSite, call_virt, cil_node::CILNode, cil_root::CILRoot, conv_f32, conv_f64,
-    conv_isize, conv_u32, conv_usize, eq, fn_sig::FnSig, ld_field, ldc_i32, ldc_u64, size_of, sub,
-    DotnetTypeRef, Type,
+    conv_isize, conv_u32, conv_usize, eq, fn_sig::FnSig, ld_field, ldc_i32, ldc_u64, ptr, size_of,
+    sub, DotnetTypeRef, Type,
 };
 use ints::{ctlz, rotate_left, rotate_right};
 use rustc_middle::{
@@ -328,14 +328,35 @@ pub fn handle_intrinsic<'tcx>(
             crate::place::ptr_set_op(arg_ty.into(), ctx, addr, val)
         }
         "atomic_cxchgweak_acquire_acquire"
-        | "atomic_cxchg_acquire_relaxed"
         | "atomic_cxchgweak_acquire_relaxed"
         | "atomic_cxchgweak_relaxed_relaxed"
         | "atomic_cxchgweak_relaxed_acquire"
+        | "atomic_cxchgweak_seqcst_acquire"
+        | "atomic_cxchgweak_seqcst_seqcst"
+        | "atomic_cxchgweak_seqcst_relaxed"
+        | "atomic_cxchg_acqrel_acquire"
         | "atomic_cxchg_acquire_seqcst"
         | "atomic_cxchg_release_relaxed"
-        | "atomic_cxchgweak_seqcst_acquire"
-        | "atomic_cxchg_acqrel_acquire" => {
+        | "atomic_cxchg_relaxed_acquire"
+        | "atomic_cxchg_acquire_relaxed"
+        | "atomic_cxchg_relaxed_seqcst"
+        | "atomic_cxchg_acquire_acquire"
+        | "atomic_cxchg_release_acquire"
+        | "atomic_cxchg_release_seqcst"
+        | "atomic_cxchgweak_relaxed_seqcst"
+        | "atomic_cxchgweak_acquire_seqcst"
+        | "atomic_cxchgweak_release_relaxed"
+        | "atomic_cxchgweak_release_acquire"
+        | "atomic_cxchgweak_release_seqcst"
+        | "atomic_cxchgweak_acqrel_relaxed"
+        | "atomic_cxchgweak_acqrel_acquire"
+        | "atomic_cxchgweak_acqrel_seqcst"
+        | "atomic_cxchg_seqcst_seqcst"
+        | "atomic_cxchg_seqcst_acquire"
+        | "atomic_cxchg_seqcst_relaxed"
+        | "atomic_cxchg_acqrel_relaxed"
+        | "atomic_cxchg_relaxed_relaxed"
+        | "atomic_cxchg_acqrel_seqcst" => {
             let interlocked = DotnetTypeRef::interlocked();
             // *T
             let dst = handle_operand(&args[0].node, ctx);
@@ -424,7 +445,11 @@ pub fn handle_intrinsic<'tcx>(
                 desc: Box::new(fld_desc.clone()),
             }
         }
-        "atomic_xsub_release" | "atomic_xsub_acqrel" | "atomic_xsub_acquire" => {
+        "atomic_xsub_release"
+        | "atomic_xsub_acqrel"
+        | "atomic_xsub_acquire"
+        | "atomic_xsub_relaxed"
+        | "atomic_xsub_seqcst" => {
             // *T
             let dst = handle_operand(&args[0].node, ctx);
             // T
@@ -440,7 +465,8 @@ pub fn handle_intrinsic<'tcx>(
                 ctx,
             )
         }
-        "atomic_or_seqcst" | "atomic_or_release" | "atomic_or_acqrel" => {
+        "atomic_or_seqcst" | "atomic_or_release" | "atomic_or_acqrel" | "atomic_or_acquire"
+        | "atomic_or_relaxed" => {
             // *T
             let dst = handle_operand(&args[0].node, ctx);
             // T
@@ -452,7 +478,10 @@ pub fn handle_intrinsic<'tcx>(
 
             place_set(destination, interlocked_or(dst, orand, src_type), ctx)
         }
-        "atomic_fence_acquire" | "atomic_fence_seqcst" => {
+        "atomic_fence_acquire"
+        | "atomic_fence_seqcst"
+        | "atomic_fence_release"
+        | "atomic_fence_acqrel" => {
             let thread = DotnetTypeRef::thread();
             CILRoot::Call {
                 site: Box::new(CallSite::new(
@@ -464,7 +493,11 @@ pub fn handle_intrinsic<'tcx>(
                 args: [].into(),
             }
         }
-        "atomic_xadd_release" | "atomic_xadd_relaxed" => {
+        "atomic_xadd_release"
+        | "atomic_xadd_relaxed"
+        | "atomic_xadd_seqcst"
+        | "atomic_xadd_acqrel"
+        | "atomic_xadd_acquire" => {
             // *T
             let dst = handle_operand(&args[0].node, ctx);
             // T
@@ -483,7 +516,8 @@ pub fn handle_intrinsic<'tcx>(
         "atomic_xchg_release"
         | "atomic_xchg_acquire"
         | "atomic_xchg_acqrel"
-        | "atomic_xchg_relaxed" => {
+        | "atomic_xchg_relaxed"
+        | "atomic_xchg_seqcst" => {
             let interlocked = DotnetTypeRef::interlocked();
             // *T
             let dst = handle_operand(&args[0].node, ctx);
@@ -862,25 +896,36 @@ pub fn handle_intrinsic<'tcx>(
         "catch_unwind" => {
             debug_assert_eq!(
                 args.len(),
-                2,
-                "The intrinsic `minnumf32` MUST take in exactly 2 arguments!"
+                3,
+                "The intrinsic `catch_unwind` MUST take in exactly 3 arguments!"
             );
             let try_fn = handle_operand(&args[0].node, ctx);
             let data_ptr = handle_operand(&args[1].node, ctx);
             let catch_fn = handle_operand(&args[2].node, ctx);
-            let _ = catch_fn;
-            eprintln!("WARNING: catching unwinds currently not supported! the intrinic `catch_unwind` WILL NOT CATCH UNWINDS YET!");
-            let return_code = ldc_i32!(0);
+
             place_set(
                 destination,
-                CILNode::SubTrees(Box::new((
-                    Box::new([CILRoot::CallI {
-                        sig: Box::new(FnSig::new(&[Type::Ptr(Type::U8.into())], Type::Void)),
-                        fn_ptr: Box::new(try_fn),
-                        args: Box::new([data_ptr]),
-                    }]),
-                    Box::new(return_code),
-                ))),
+                call!(
+                    CallSite::builtin(
+                        "catch_unwind".into(),
+                        FnSig::new(
+                            &[
+                                Type::DelegatePtr(Box::new(FnSig::new(
+                                    &[ptr!(Type::U8)],
+                                    Type::Void
+                                ))),
+                                ptr!(Type::U8),
+                                Type::DelegatePtr(Box::new(FnSig::new(
+                                    &[ptr!(Type::U8), ptr!(Type::U8)],
+                                    Type::Void
+                                ))),
+                            ],
+                            Type::I32,
+                        ),
+                        true
+                    ),
+                    [try_fn, data_ptr, catch_fn]
+                ),
                 ctx,
             )
         }

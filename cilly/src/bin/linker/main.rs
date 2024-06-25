@@ -7,8 +7,9 @@ use cilly::{
     c_exporter::CExporter,
     call,
     call_site::CallSite,
-    cil_node::CILNode,
+    cil_node::{CILNode, CallOpArgs},
     cil_root::CILRoot,
+    conv_usize,
     ilasm_exporter::ILASM_FLAVOUR,
     ldc_i32,
     method::{Method, MethodType},
@@ -394,6 +395,59 @@ fn override_realloc(patched: &mut HashMap<CallSite, Method>, call: &CallSite) {
         ),
     );
 }
+/// Replaces `_Unwind_RaiseException` with a throw of a special object.
+fn override_raise_exception(patched: &mut HashMap<CallSite, Method>, call: &CallSite) {
+    patched.insert(
+        call.clone(),
+        Method::new(
+            access_modifier::AccessModifer::Private,
+            MethodType::Static,
+            call.signature().clone(),
+            "_Unwind_RaiseException",
+            vec![],
+            vec![BasicBlock::new(
+                vec![CILRoot::Throw(CILNode::NewObj(Box::new(CallOpArgs {
+                    args: Box::new([conv_usize!(CILNode::LDArg(0))]),
+                    site: Box::new(CallSite::new(
+                        Some(
+                            DotnetTypeRef::new::<&str, _>(None, "RustException")
+                                .with_valuetype(false),
+                        ),
+                        ".ctor".into(),
+                        FnSig::new(&[Type::USize], Type::Void),
+                        true,
+                    )),
+                })))
+                .into()],
+                0,
+                None,
+            )],
+            vec![Some("ptr".into())],
+        ),
+    );
+}
+/// Replaces `_UnwindBacktrace` with a nop.
+fn override_backtrace(patched: &mut HashMap<CallSite, Method>, call: &CallSite) {
+    patched.insert(
+        call.clone(),
+        Method::new(
+            access_modifier::AccessModifer::Private,
+            MethodType::Static,
+            call.signature().clone(),
+            "_Unwind_Backtrace",
+            vec![],
+            vec![BasicBlock::new(
+                vec![
+                    CILRoot::debug("called _Unwind_Backtrace").into(),
+                    CILRoot::Ret { tree: ldc_i32!(4) }.into(),
+                ],
+                0,
+                None,
+            )],
+            vec![Some("trace".into()), Some("trace_arg".into())],
+        ),
+    );
+}
 fn autopatch(asm: &mut Assembly, native_pastrough: &NativePastroughInfo) {
     let asm_sites = asm.call_sites();
     let call_sites = asm_sites
@@ -416,30 +470,19 @@ fn autopatch(asm: &mut Assembly, native_pastrough: &NativePastroughInfo) {
             override_realloc(&mut patched, call);
             continue;
         }
-        /*if name == "pthread_attr_init" {
-            override_pthread_attr_init(&mut patched, call);
-            continue;
-        }
-        if name == "pthread_attr_destroy" {
-            override_pthread_attr_destroy(&mut patched, call);
-            continue;
-        }
-        if name == "pthread_attr_setstacksize" {
-            override_pthread_attr_setstacksize(&mut patched, call);
-            continue;
-        }
-        if name == "pthread_create" {
-            override_pthread_create(&mut patched, call);
-            continue;
-        }
-        if name == "pthread_detach" {
-            override_pthread_detach(&mut patched, call);
-            continue;
-        }
         if name == "pthread_atfork" {
             override_pthread_atfork(&mut patched, call);
             continue;
-        }*/
+        }
+
+        if name == "_Unwind_RaiseException" {
+            override_raise_exception(&mut patched, call);
+            continue;
+        }
+        if name == "_Unwind_Backtrace" {
+            override_backtrace(&mut patched, call);
+            continue;
+        }
         //#[cfg(not(target_os = "linux"))]
         if libc_fns::LIBC_FNS.iter().any(|libc_fn| *libc_fn == name) {
             externs.push((

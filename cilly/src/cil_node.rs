@@ -214,6 +214,12 @@ pub enum CILNode {
     LocAlloc {
         size: Box<Self>,
     },
+    /// Gets the exception. Can only be used in handlers, only once per handler.
+    GetException,
+    /// Checks if `lhs` is of type `rhs`. If not, throws.
+    CheckedCast(Box<(CILNode, DotnetTypeRef)>),
+    // Checks if `lhs` is of type `rhs`.  Returns a boolean.
+    IsInst(Box<(CILNode, DotnetTypeRef)>),
 }
 
 impl CILNode {
@@ -348,6 +354,9 @@ impl CILNode {
     }
     fn opt_children(&mut self, opt_count: &mut usize) {
         match self {
+            Self::CheckedCast(inner)=>inner.0.opt(opt_count),
+            Self::IsInst(inner)=>inner.0.opt(opt_count),
+            Self::GetException=>(),
             Self::LocAlloc{size}=>size.opt(opt_count),
             Self::LocAllocAligned { .. }=>(),
             Self::LdFalse | Self::LdTrue=>(),
@@ -458,7 +467,7 @@ impl CILNode {
             matches!(
                 node,
                 crate::cil_iter::CILIterElem::Node(
-                    CILNode::SubTrees(_) | CILNode::TemporaryLocal(_)
+                    CILNode::SubTrees(_) | CILNode::TemporaryLocal(_) | CILNode::GetException
                 )
             )
         })
@@ -524,6 +533,9 @@ impl CILNode {
         locals: &mut Vec<(Option<Box<str>>, Type)>,
     ) {
         match self {
+            Self::CheckedCast(inner)=>inner.0.allocate_tmps(curr_loc, locals),
+            Self::IsInst(inner)=>inner.0.allocate_tmps(curr_loc, locals),
+            Self::GetException=>(),
             Self::LocAlloc{..}=>(),
             Self::LocAllocAligned {..}=>(),
             Self::LdFalse=>(),

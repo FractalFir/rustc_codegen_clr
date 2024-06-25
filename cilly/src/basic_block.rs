@@ -3,8 +3,13 @@ use std::collections::HashSet;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    cil_iter::CILIterElem, cil_iter_mut::CILIterElemMut, cil_node::ValidationContext,
-    cil_root::CILRoot, cil_tree::CILTree, ilasm_op::DepthSetting, IlasmFlavour,
+    cil_iter::{CILIterElem, CILIterTrait},
+    cil_iter_mut::CILIterElemMut,
+    cil_node::{CILNode, ValidationContext},
+    cil_root::CILRoot,
+    cil_tree::CILTree,
+    ilasm_op::DepthSetting,
+    IlasmFlavour,
 };
 
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
@@ -258,7 +263,16 @@ pub fn export(
     }
     if let Some(handler) = block.handler() {
         let handler = handler.as_blocks().unwrap();
-        write!(out, "}}catch [System.Runtime]System.Object{{\npop").unwrap();
+        match handler
+            .iter()
+            .flat_map(|block| block.iter_cil().nodes())
+            .filter(|node| matches!(node, CILNode::GetException))
+            .count()
+        {
+            0 => write!(out, "}}catch [System.Runtime]System.Exception{{\npop").unwrap(),
+            1 => write!(out, "}}catch [System.Runtime]System.Exception{{\n").unwrap(),
+            _ => panic!("Error: More than 1 GetException in a handler."),
+        };
         DepthSetting::with_pading().pad(out).unwrap();
         for handler_block in handler {
             writeln!(

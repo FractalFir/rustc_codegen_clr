@@ -664,6 +664,9 @@ fn node_string(tree: &CILNode, method: &Method) -> String {
         CILNode::LdFalse => "false".into(),
         CILNode::LdTrue => "true".into(),
         CILNode::LocAlloc { size: _ } => todo!(),
+        CILNode::GetException => todo!(),
+        CILNode::CheckedCast(_) => todo!(),
+        CILNode::IsInst(_) => todo!(),
     }
 }
 fn tree_string(tree: &CILTree, method: &Method) -> String {

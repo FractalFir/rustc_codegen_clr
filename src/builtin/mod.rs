@@ -2,7 +2,7 @@ use crate::add_method_from_trees;
 use cilly::{
     access_modifier::AccessModifer,
     asm::Assembly,
-    basic_block::BasicBlock,
+    basic_block::{BasicBlock, Handler},
     call,
     call_site::CallSite,
     cil_node::{CILNode, CallOpArgs},
@@ -12,6 +12,7 @@ use cilly::{
     fn_sig::FnSig,
     ld_field, ldc_i32, ldc_u32, ldc_u64, lt_un,
     method::{Method, MethodType},
+    ptr,
     r#type::Type,
     size_of,
     type_def::TypeDef,
@@ -192,6 +193,7 @@ macro_rules! add_method_from_trees {
 
 /// Inserts a small subset of libc and some standard types into an assembly.
 pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
+    catch_unwind(asm);
     swap_at_generic(asm);
     bounds_check(asm);
     atomic::atomics(asm);
@@ -485,6 +487,51 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
     pthread_detach(asm);
     __cxa_thread_atexit_impl(asm);
     llvm_x86_sse2_pause(asm);
+    let rust_exception = TypeDef::new(
+        AccessModifer::MoudlePublic,
+        "RustException".into(),
+        vec![],
+        vec![("data_pointer".into(), Type::USize)],
+        vec![Method::new(
+            AccessModifer::MoudlePublic,
+            MethodType::Instance,
+            FnSig::new(
+                &[
+                    Type::DotnetType(Box::new(
+                        DotnetTypeRef::new::<&str, _>(None, "RustException").with_valuetype(false),
+                    )),
+                    Type::USize,
+                ],
+                Type::Void,
+            ),
+            ".ctor",
+            vec![],
+            vec![BasicBlock::new(
+                vec![
+                    CILRoot::SetField {
+                        addr: Box::new(CILNode::LDArg(0)),
+                        value: Box::new(CILNode::LDArg(1)),
+                        desc: Box::new(FieldDescriptor::new(
+                            DotnetTypeRef::new::<&str, _>(None, "RustException")
+                                .with_valuetype(false),
+                            Type::USize,
+                            "data_pointer".into(),
+                        )),
+                    }
+                    .into(),
+                    CILRoot::VoidRet.into(),
+                ],
+                0,
+                None,
+            )],
+            vec![Some("data_pointer".into())],
+        )],
+        None,
+        0,
+        Some(DotnetTypeRef::exception()),
+        None,
+    );
+    asm.add_typedef(rust_exception);
     let unmanaged_start = TypeDef::new(
         AccessModifer::MoudlePublic,
         "UnmanagedThreadStart".into(),
@@ -815,6 +862,7 @@ add_method_from_trees!(
     vec![],
     vec![Some("thread_attr".into()), Some("size".into())]
 );
+
 // detaching a thread in .NET does nothing(since the runtime manages everyting) - so this is safe.
 add_method_from_trees!(
     pthread_detach,
@@ -876,3 +924,135 @@ fn llvm_x86_sse2_pause(asm: &mut cilly::asm::Assembly) {
     );
     asm.add_method(method);
 }
+add_method_from_trees!(
+    catch_unwind,
+    &[
+        Type::DelegatePtr(Box::new(FnSig::new(&[ptr!(Type::U8)], Type::Void))),
+        ptr!(Type::U8),
+        Type::DelegatePtr(Box::new(FnSig::new(
+            &[ptr!(Type::U8), ptr!(Type::U8)],
+            Type::Void
+        ))),
+    ],
+    Type::I32,
+    vec![
+        BasicBlock::new(
+            vec![
+                CILRoot::CallI {
+                    sig: Box::new(FnSig::new(&[ptr!(Type::U8)], Type::Void)),
+                    fn_ptr: Box::new(CILNode::LDArg(0)),
+                    args: Box::new([CILNode::LDArg(1)])
+                }
+                .into(),
+                CILRoot::JumpingPad {
+                    source: 0,
+                    target: 3
+                }
+                .into()
+            ],
+            0,
+            Some(Handler::Blocks(vec![
+                BasicBlock::new(
+                    vec![
+                        CILRoot::STLoc {
+                            local: 1,
+                            tree: CILNode::GetException,
+                        }
+                        .into(),
+                        CILRoot::BFalse {
+                            target: 0,
+                            sub_target: 4,
+                            cond: CILNode::IsInst(Box::new((
+                                CILNode::LDLoc(1),
+                                DotnetTypeRef::new::<&str, _>(None, "RustException")
+                                    .with_valuetype(false)
+                            ))),
+                        }
+                        .into(),
+                        CILRoot::STLoc {
+                            local: 0,
+                            tree: ld_field!(
+                                CILNode::CheckedCast(Box::new((
+                                    CILNode::LDLoc(1),
+                                    DotnetTypeRef::new::<&str, _>(None, "RustException")
+                                        .with_valuetype(false)
+                                ))),
+                                FieldDescriptor::new(
+                                    DotnetTypeRef::new::<&str, _>(None, "RustException")
+                                        .with_valuetype(false),
+                                    Type::USize,
+                                    "data_pointer".into()
+                                )
+                            ),
+                        }
+                        .into(),
+                        CILRoot::CallI {
+                            sig: Box::new(FnSig::new(
+                                &[ptr!(Type::U8), ptr!(Type::U8)],
+                                Type::Void
+                            )),
+                            fn_ptr: Box::new(CILNode::LDArg(2)),
+                            args: Box::new([CILNode::LDArg(1), CILNode::LDLoc(0)])
+                        }
+                        .into(),
+                        CILRoot::GoTo {
+                            target: 0,
+                            sub_target: 2
+                        }
+                        .into()
+                    ],
+                    1,
+                    None
+                ),
+                BasicBlock::new(
+                    vec![
+                        CILRoot::debug("Can't yet cacth .NET exceptions.").into(),
+                        CILRoot::Call {
+                            site: Box::new(CallSite::new_extern(
+                                DotnetTypeRef::console(),
+                                "WriteLine".into(),
+                                FnSig::new(
+                                    &[Type::DotnetType(Box::new(DotnetTypeRef::object_type()))],
+                                    Type::Void
+                                ),
+                                true
+                            )),
+                            args: Box::new([CILNode::LDLoc(1)])
+                        }
+                        .into(),
+                        CILRoot::CallI {
+                            sig: Box::new(FnSig::new(
+                                &[ptr!(Type::U8), ptr!(Type::U8)],
+                                Type::Void
+                            )),
+                            fn_ptr: Box::new(CILNode::LDArg(2)),
+                            args: Box::new([CILNode::LDArg(1), conv_usize!(ldc_u32!(0))])
+                        }
+                        .into(),
+                        CILRoot::JumpingPad {
+                            source: 0,
+                            target: 2
+                        }
+                        .into()
+                    ],
+                    4,
+                    None
+                )
+            ]))
+        ),
+        BasicBlock::new(vec![CILRoot::Ret { tree: ldc_i32!(1) }.into()], 2, None),
+        BasicBlock::new(vec![CILRoot::Ret { tree: ldc_i32!(0) }.into()], 3, None)
+    ],
+    vec![
+        (Some("data_ptr".into()), Type::USize),
+        (
+            Some("exception".into()),
+            Type::DotnetType(Box::new(DotnetTypeRef::exception())),
+        )
+    ],
+    vec![
+        Some("try_fn".into()),
+        Some("data".into()),
+        Some("catch_fn".into()),
+    ]
+);

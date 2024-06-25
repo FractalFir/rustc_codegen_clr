@@ -1,15 +1,39 @@
-[package]
-name = "build_std"
-version = "0.1.0"
-edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-libc = "0.2.155"
-
-mycorrhiza = {path="../../mycorrhiza"}
-
 [workspace]
-[profile.release.build-override]
-codegen-units = 1
+members = ["crates/rapier2d", "crates/rapier2d-f64", "crates/rapier_testbed2d", "crates/rapier_testbed2d-f64", "examples2d", "benchmarks2d",
+    "crates/rapier3d", "crates/rapier3d-f64", "crates/rapier_testbed3d", "crates/rapier_testbed3d-f64", "examples3d", "examples3d-f64", "benchmarks3d", "crates/rapier3d-urdf", "crates/rapier3d-stl"]
+resolver = "2"
+
+[patch.crates-io]
+#wrapped2d = { git = "https://github.com/Bastacyclop/rust_box2d.git" }
+#xurdf = { path = "../xurdf/xurdf" }
+
+#simba = { path = "../simba" }
+#kiss3d = { path = "../kiss3d" }
+#parry2d = { path = "../parry/crates/parry2d" }
+#parry3d = { path = "../parry/crates/parry3d" }
+#parry2d-f64 = { path = "../parry/crates/parry2d-f64" }
+#parry3d-f64 = { path = "../parry/crates/parry3d-f64" }
+#nalgebra = { path = "../nalgebra" }
+
+
+#kiss3d = { git = "https://github.com/sebcrozet/kiss3d" }
+#nalgebra = { git = "https://github.com/dimforge/nalgebra", branch = "dev" }
+#parry2d = { git = "https://github.com/dimforge/parry", branch = "master" }
+#parry3d = { git = "https://github.com/dimforge/parry", branch = "master" }
+#parry2d-f64 = { git = "https://github.com/dimforge/parry", branch = "master" }
+#parry3d-f64 = { git = "https://github.com/dimforge/parry", branch = "master" }
+
+[profile.release]
+#debug = true
+#codegen-units = 1
+#lto = true
+
+[profile.dev]
+opt-level = 1
+
+
+#[profile.dev.package.rapier3d]
+#opt-level = 3
+#
+#[profile.dev.package.kiss3d]
+#opt-level = 3

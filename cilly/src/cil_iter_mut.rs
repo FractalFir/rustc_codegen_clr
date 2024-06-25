@@ -83,6 +83,22 @@ impl<'a> Iterator for CILIterMut<'a> {
                             continue;
                         }
                     },
+                    CILNode::CheckedCast(inner) | CILNode::IsInst(inner) => {
+                        if idx == &1 {
+                            *idx += 1;
+                            self.elems.push((
+                                0,
+                                CILIterElemUnsafe::Node(
+                                    std::ptr::from_mut(&mut inner.0),
+                                    PhantomData,
+                                ),
+                            ));
+                            continue;
+                        } else {
+                            self.elems.pop();
+                            continue;
+                        }
+                    }
                     CILNode::BlackBox(a)
                     | CILNode::ZeroExtendToISize(a)
                     | CILNode::ZeroExtendToU64(a)
@@ -163,7 +179,8 @@ impl<'a> Iterator for CILIterMut<'a> {
                     | CILNode::LoadTMPLocal
                     | CILNode::LocAllocAligned { tpe: _, align: _ }
                     | CILNode::LoadGlobalAllocPtr { alloc_id: _ }
-                    | CILNode::PointerToConstValue(_) => {
+                    | CILNode::PointerToConstValue(_)
+                    | CILNode::GetException => {
                         self.elems.pop();
                         continue;
                     }

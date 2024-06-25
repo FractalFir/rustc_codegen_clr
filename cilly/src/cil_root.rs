@@ -1034,7 +1034,7 @@ impl CILRoot {
     }
 }
 fn tiny_message(msg: &str) -> CILNode {
-    let pieces: Vec<_> = msg.split_whitespace().collect();
+    let pieces: Vec<_> = msg.split_inclusive(char::is_whitespace).collect();
     runtime_string(&pieces)
 }
 fn runtime_string(pieces: &[&str]) -> CILNode {

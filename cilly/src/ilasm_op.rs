@@ -67,6 +67,20 @@ fn export_node(
     il_flavour: IlasmFlavour,
 ) -> std::fmt::Result {
     match tree {
+        CILNode::GetException => {
+            depth.pad(out)?;
+            write!(out, "// Internal GetException op")
+        }
+        CILNode::CheckedCast(inner) => {
+            export_node(out, &inner.0, depth.incremented(), il_flavour)?;
+            depth.pad(out)?;
+            write!(out, "castclass {}", dotnet_type_ref_cli(&inner.1))
+        }
+        CILNode::IsInst(inner) => {
+            export_node(out, &inner.0, depth.incremented(), il_flavour)?;
+            depth.pad(out)?;
+            write!(out, "isinst {}", dotnet_type_ref_cli(&inner.1))
+        }
         CILNode::LDLoc(local) => {
             depth.pad(out)?;
             match local {

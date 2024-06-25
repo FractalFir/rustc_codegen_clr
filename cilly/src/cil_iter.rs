@@ -112,6 +112,17 @@ impl<'a> Iterator for CILIter<'a> {
                         continue;
                     }
                 }
+                CILIterElem::Node(CILNode::CheckedCast(inner))
+                | CILIterElem::Node(CILNode::IsInst(inner)) => {
+                    if idx == &1 {
+                        *idx += 1;
+                        self.elems.push((0, CILIterElem::Node(&inner.0)));
+                        continue;
+                    } else {
+                        self.elems.pop();
+                        continue;
+                    }
+                }
                 CILIterElem::Root(CILRoot::Pop { tree: a }) => {
                     if idx == &1 {
                         *idx += 1;
@@ -148,7 +159,8 @@ impl<'a> Iterator for CILIter<'a> {
                     | CILNode::LoadGlobalAllocPtr { alloc_id: _ }
                     | CILNode::LoadAddresOfTMPLocal
                     | CILNode::PointerToConstValue(_)
-                    | CILNode::LoadTMPLocal,
+                    | CILNode::LoadTMPLocal
+                    | CILNode::GetException,
                 ) => {
                     self.elems.pop();
                     continue;

@@ -10,6 +10,7 @@
 #![allow(internal_features, incomplete_features, unused_variables, dead_code)]
 #![no_std]
 include!("../common.rs");
+
 use core::ptr::addr_of;
 use core::ptr::addr_of_mut;
 #[derive(Default)]

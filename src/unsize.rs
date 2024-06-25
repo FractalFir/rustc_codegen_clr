@@ -206,6 +206,7 @@ pub fn unsize<'tcx>(
             }
         }
         (_, TyKind::Dynamic(data, _, _dyn_kind)) => {
+            eprintln!("info.source_points_to:{:?}", info.source_points_to);
             let alloc_id = ctx
                 .tcx()
                 .vtable_allocation((info.source_points_to, data.principal()));
