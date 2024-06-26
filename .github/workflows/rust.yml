@@ -33,13 +33,11 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Build 
-      run: cargo build --verbose
+      run: cargo build
     - name: Setup dotnet
       uses: actions/setup-dotnet@v3
       with:
         dotnet-version: '8.0.x'
-    #- name: Install ILASM
-      #run: dotnet add package Microsoft.NETCore.ILAsm --version 8.0.0
     - name: Check ILASM
       run: ilasm --version
     - name: Run cargo tests
@@ -52,8 +50,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Build 
-      run: cargo build --verbose
-  
+      run: cargo build
     - name: Run cargo tests
       run: cargo test --verbose add::
 
