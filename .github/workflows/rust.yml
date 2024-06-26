@@ -1,58 +1,47 @@
 name: Rust
-
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
   pull_request:
-    branches: [ "main" ]
-
+    branches:
+      - main
 env:
   CARGO_TERM_COLOR: always
-
 jobs:
   linux_build:
-
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v3
-    - name: Build on Linux
-      run: cargo build --verbose
+      - uses: actions/checkout@v3
+      - name: Build on Linux
+        run: cargo build --verbose
   windows_build:
-
     runs-on: windows-latest
-
     steps:
-    - uses: actions/checkout@v3
-    - name: Build on Windows
-      run: cargo build --verbose
+      - uses: actions/checkout@v3
+      - name: Build on Windows
+        run: cargo build --verbose
   linux_test:
-
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v3
-    - name: Build 
-      run: cargo build
-    - name: Setup dotnet
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: '8.0.x'
-    - name: Check ILASM
-      run: ilasm --version
-    - name: Run cargo tests
-      run: cargo test --verbose ::stable
+      - uses: actions/checkout@v3
+      - name: Build
+        run: cargo build
+      - name: Setup dotnet
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: 8.0.x
+      - name: Check ILASM
+        run: ilasm --version
+      - name: Run cargo tests
+        run: cargo test --verbose ::stable
   linux_test_c:
-
     runs-on: ubuntu-latest
     env:
-     C_MODE: 1
+      C_MODE: 1
     steps:
-    - uses: actions/checkout@v3
-    - name: Build 
-      run: cargo build
-    - name: Run cargo tests
-      run: cargo test --verbose add::
-
-
-
+      - uses: actions/checkout@v3
+      - name: Build
+        run: cargo build
+      - name: Run cargo tests
+        run: "cargo test --verbose add::"
