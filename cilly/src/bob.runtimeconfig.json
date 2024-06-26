@@ -1,0 +1,13 @@
+{
+        "runtimeOptions": {
+          "tfm": "netcoreapp3.1",
+          "framework": {
+            "name": "Microsoft.NETCore.App",
+            "version": "8.0.4"
+          },
+          "configProperties": {
+            "System.Threading.ThreadPool.MinThreads": 4,
+            "System.Threading.ThreadPool.MaxThreads": 25
+          }
+        }
+      }

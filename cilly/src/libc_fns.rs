@@ -313,6 +313,7 @@ pub const LIBC_FNS: &[&str] = &[
     "putenv",
     "putgrent",
     "putpwent",
+    "puts",
     "putsgent",
     "putspent",
     "pututxline",

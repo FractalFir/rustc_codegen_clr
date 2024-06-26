@@ -108,3 +108,8 @@ pub fn escape_class_name(name: &str) -> String {
         .replace('!', "_excl_")
         .replace('\"', "_qt_")
 }
+#[test]
+fn escaped_left_alone() {
+    let escaped = "_ZN70_dsLTdscore__option__OptiondsLTdsTdsGTdsdsu20dsasdsu20dscore__cmp__PartialEqdsGTds2eq17h63ae1ba4b0f01183E";
+    assert_eq!(escape_class_name(escaped), escaped);
+}

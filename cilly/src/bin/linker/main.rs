@@ -21,7 +21,7 @@ use load::LinkableFile;
 
 mod cmd;
 mod export;
-mod libc_fns;
+use cilly::libc_fns;
 mod load;
 mod patch;
 use std::{collections::HashMap, env, io::Write};
@@ -766,7 +766,7 @@ fn main() {
             &final_assembly,
             output_file_path.as_ref(),
             is_lib,
-            true,
+            false,
         )
         .unwrap();
         return;

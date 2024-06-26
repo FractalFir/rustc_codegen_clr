@@ -8,8 +8,7 @@ use crate::{
     cil_node::{CILNode, ValidationContext},
     cil_root::CILRoot,
     cil_tree::CILTree,
-    ilasm_op::DepthSetting,
-    IlasmFlavour,
+    DepthSetting, IlasmFlavour,
 };
 
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]

@@ -22,6 +22,7 @@ pub mod cil_tree;
 pub mod entrypoint;
 pub mod ilasm_exporter;
 pub mod ilasm_op;
+pub mod libc_fns;
 pub mod method;
 pub mod static_field_desc;
 pub mod type_def;
@@ -150,4 +151,31 @@ pub(crate) fn iter_take_one<T>(mut iter: impl Iterator<Item = T>) -> T {
         "iter_take_one recived an iterator wich returned more than one element"
     );
     val
+}
+#[derive(Copy, Clone)]
+pub(crate) struct DepthSetting(u32);
+impl DepthSetting {
+    pub fn with_pading() -> Self {
+        Self(0)
+    }
+    pub fn no_pading() -> Self {
+        Self(u32::MAX)
+    }
+    pub fn pad(&self, out: &mut impl std::fmt::Write) -> std::fmt::Result {
+        writeln!(out)?;
+        if self.0 == u32::MAX {
+            return Ok(());
+        }
+        for _ in 0..self.0 {
+            write!(out, " ")?;
+        }
+        Ok(())
+    }
+    pub fn incremented(self) -> Self {
+        if self.0 == u32::MAX {
+            self
+        } else {
+            Self(self.0 + 1)
+        }
+    }
 }

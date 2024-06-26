@@ -1,33 +1,9 @@
 use std::{borrow::Cow, fmt::Write};
 
-use crate::{cil_node::CILNode, cil_root::CILRoot, DotnetTypeRef, IlasmFlavour, Type};
-#[derive(Copy, Clone)]
-pub struct DepthSetting(u32);
-impl DepthSetting {
-    pub fn with_pading() -> Self {
-        Self(0)
-    }
-    pub fn no_pading() -> Self {
-        Self(0)
-    }
-    pub fn pad(&self, out: &mut impl Write) -> std::fmt::Result {
-        writeln!(out)?;
-        if self.0 == u32::MAX {
-            return Ok(());
-        }
-        for _ in 0..self.0 {
-            write!(out, " ")?;
-        }
-        Ok(())
-    }
-    pub fn incremented(self) -> Self {
-        if self.0 == u32::MAX {
-            self
-        } else {
-            Self(self.0 + 1)
-        }
-    }
-}
+use crate::{
+    cil_node::CILNode, cil_root::CILRoot, DepthSetting, DotnetTypeRef, IlasmFlavour, Type,
+};
+
 macro_rules! un_op {
     ($out:ident,$val:ident,$depth:ident,$il_flavour:ident,$op:literal) => {{
         export_node($out, $val, $depth.incremented(), $il_flavour)?;

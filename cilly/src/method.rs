@@ -16,9 +16,9 @@ use crate::{
     cil_node::{CILNode, ValidationContext},
     cil_root::CILRoot,
     cil_tree::CILTree,
-    ilasm_op::{non_void_type_cil, type_cil, DepthSetting},
+    ilasm_op::{non_void_type_cil, type_cil},
     static_field_desc::StaticFieldDescriptor,
-    DotnetTypeRef, FnSig, IString, IlasmFlavour, Type,
+    DepthSetting, DotnetTypeRef, FnSig, IString, IlasmFlavour, Type,
 };
 
 /// Represenation of a CIL method.
@@ -570,6 +570,10 @@ impl Method {
     }
     pub fn attributes(&self) -> &[Attribute] {
         &self.attributes
+    }
+
+    pub(crate) fn vctx(&self) -> ValidationContext {
+        ValidationContext::new(&self.sig, &self.locals)
     }
 }
 
