@@ -29,6 +29,24 @@ jobs:
   linux_test:
 
     runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build 
+      run: cargo build --verbose
+    - name: Setup dotnet
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '8.0.x'
+    #- name: Install ILASM
+      #run: dotnet add package Microsoft.NETCore.ILAsm --version 8.0.0
+    - name: Check ILASM
+      run: ilasm --version
+    - name: Run cargo tests
+      run: cargo test --verbose ::stable
+  linux_test_c:
+
+    runs-on: ubuntu-latest
     env:
      C_MODE: 1
     steps:
@@ -37,6 +55,7 @@ jobs:
       run: cargo build --verbose
   
     - name: Run cargo tests
-      run: cargo test --verbose add
+      run: cargo test --verbose add::
+
 
 
