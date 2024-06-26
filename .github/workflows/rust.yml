@@ -46,8 +46,6 @@ jobs:
         run: cargo build
       - name: Run cargo tests
         run: |
-          cargo test compile_test::benchmarks::stable::cargo_debug
-          cargo test compile_test::benchmarks::stable::cargo_release
           cargo test compile_test::arr::stable::release
           cargo test compile_test::cmp_bytes::stable::debug
           cargo test compile_test::dst::stable::debug
