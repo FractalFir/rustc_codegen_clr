@@ -1,5 +1,5 @@
 use crate::{assembly::MethodCompileCtx, IString};
-use cilly::field_desc::FieldDescriptor;
+use cilly::{asm_exporter::escape_class_name, field_desc::FieldDescriptor};
 use rustc_middle::{
     mir::interpret::AllocId,
     ty::{
@@ -47,11 +47,9 @@ pub fn adt_name<'tcx>(
     let demangled = format!("{demangled}");
     // Replace Rust namespace(module) spearators with C# ones.
     let dotnet_class_name = demangled.replace("::", ".");
-    escape_class_name(&dotnet_class_name)
+    escape_class_name(&dotnet_class_name).into()
 }
-pub fn escape_class_name(name: &str) -> IString {
-    name.replace('\'', "_ap_").into()
-}
+
 /// Gets the name of a field with index `idx`
 pub fn field_name(ty: Ty, idx: u32) -> crate::IString {
     match ty.kind() {

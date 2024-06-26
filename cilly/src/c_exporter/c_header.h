@@ -9,10 +9,12 @@ static char *exec_fname;
 #define System_UInt128_op_Addition_u128u128(a, b) ((a) + (b))
 
 #define System_Int128op_Subtraction(a, b) ((a) - (b))
-#define System_UInt128op_Subtraction(a, b) ((a) - (b))
+#define System_UInt128_op_Subtraction_u128u128(a, b) ((a) - (b))
 
-#define System_Int128op_Multiply(a, b) ((a) * (b))
+#define System_Int128_op_Multiply_i128i128(a, b) ((a) * (b))
 #define System_UInt128op_Multiply(a, b) ((a) * (b))
+
+#define System_UInt128_op_Division_u128u128(a, b) ((a) / (b))
 
 #define System_UInt128_op_Equality_u128u128(a, b) ((a) == (b))
 #define System_Int128_op_Equality_i128i128(a, b) ((a) == (b))
@@ -20,21 +22,40 @@ static char *exec_fname;
 #define System_UInt128op_LessThan(a, b) ((a) < (b))
 #define System_Int128op_LessThan(a, b) ((a) < (b))
 
-#define System_UInt128op_ExclusiveOr(a, b) ((a) ^ (b))
+#define System_UInt128_op_ExclusiveOr_u128u128(a, b) ((a) ^ (b))
 #define System_Int128op_ExclusiveOr(a, b) ((a) ^ (b))
 
-#define System_UInt128op_RightShift(a, b) ((a) >> (b))
-#define System_Int128op_RightShift(a, b) ((a) >> (b))
+#define System_UInt128_op_RightShift_u128i32(a, b) ((a) >> (b))
+#define System_UInt128_op_RightShift_u128i32(a, b) ((a) >> (b))
+#define System_Int128_op_RightShift_i128i32(a, b) ((a) >> (b))
 
-#define System_UInt128op_OnesComplement(a) (~(a))
-#define System_Int128op_OnesComplement(a) (~(a))
+#define System_UInt128_op_LeftShift_u128i32(a, b) ((a) << (b))
+#define System_Int128_op_LeftShift_i128i32(a, b) ((a) << (b))
+
+#define System_UInt128_op_OnesComplement_u128(a) (~(a))
+#define System_Int128_op_OnesComplement_i128(a) (~(a))
+
+#define System_UInt128_op_BitwiseAnd_u128u128(a, b) ((a) & (b))
+#define System_Int128_op_BitwiseAnd_i128i128(a, b) ((a) & (b))
+
+#define System_Int128_op_BitwiseOr_i128i128(a, b) ((a) | (b))
 
 #define System_Int128op_UnaryNegation(a) (-(a))
 
 #define System_Int128op_Explicit(arg) ((__int128)(arg))
-#define System_UInt128op_Explicit(arg) ((unsigned __int128)(arg))
-#define System_Int128op_Implicit(arg) ((__int128)(arg))
-#define System_UInt128op_Implicit(arg) ((unsigned __int128)(arg))
+#define System_UInt128_op_Explicit_i64(arg) ((unsigned __int128)(arg))
+#define System_Int128_op_Implicit_i64(arg) ((__int128)(arg))
+#define System_Int128_op_Implicit_u64(arg) ((__int128)(arg))
+
+#define System_Int128_op_Implicit_i128(arg) ((__int128)(arg))
+
+#define System_UInt128_op_Explicit_u128(arg) ((unsigned __int128)(arg))
+#define System_Int128_op_Explicit_i128(arg) (__int128)(arg)
+#define System_UInt128_op_Implicit_u32(arg) ((unsigned __int128)(arg))
+#define System_UInt128_op_Implicit_u64(arg) ((unsigned __int128)(arg))
+#define System_UInt128_op_Implicit_us(arg) ((unsigned __int128)(arg))
+
+#define System_Int128_op_UnaryNegation_i128(val) -(val)
 
 #define System_UInt128__ctor_mu128u64u64(upper, lower) (((unsigned __int128)lower) | (((unsigned __int128)upper) << 64))
 #define System_Int128__ctor_mu128u64u64(upper, lower) (((__int128)lower) | (((__int128)upper) << 64))
@@ -48,7 +69,7 @@ static char *exec_fname;
 #define System_Reflection_Assemblyget_Location(arg) (arg)
 // String
 #define System_Stringget_Length(arg) (strlen(arg) - 1)
-#define System_Runtime_InteropServices_MarshalStringToCoTaskMemUTF8(arg) arg
+#define System_Runtime_InteropServices_Marshal_StringToCoTaskMemUTF8_System_String(arg) (uint8_t *)arg
 // IO
 #define System_ConsoleWrite(chr) putc(chr, stdout)
 
@@ -82,5 +103,8 @@ void *System_Runtime_InteropServices_NativeMemoryAlignedRealloc(void *old, size_
 #define System_Arrayget_Length(_) 0
 #define black_box(val) val
 #define System_Environment_GetCommandLineArgs_(_) commandLineArgs;
-static char **commandLineArgs = {};
+static char **commandLineArgs = {0};
 #define System_Single_IsNaN_f32(val) isnan(val)
+#define System_Double_IsNaN_f64(val) isnan(val)
+
+#define System_Buffers_Binary_BinaryPrimitives_ReverseEndianness_i64

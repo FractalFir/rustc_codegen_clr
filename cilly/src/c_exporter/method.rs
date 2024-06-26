@@ -10,11 +10,17 @@ use crate::{mangle, DepthSetting, IString};
 
 use super::escape_type_name;
 pub(crate) fn arg_name(method: &Method, arg: u32) -> IString {
-    if let Some(name) = &method.arg_names()[arg as usize] {
+    if let Some(name) = &method
+        .arg_names()
+        .get(arg as usize)
+        .into_iter()
+        .flatten()
+        .next()
+    {
         if is_reserved(name) {
             format!("A{arg}").into()
         } else {
-            name.clone()
+            (*name).clone()
         }
     } else {
         format!("A{arg}").into()
@@ -89,6 +95,11 @@ fn local_defs(method: &Method, ds: DepthSetting) -> String {
     let mut local_defs = String::new();
     for (id, (_name, local)) in method.locals().iter().enumerate() {
         if *local == Type::Void {
+            ds.pad(&mut local_defs).unwrap();
+            local_defs.push_str(&format!(
+                "RustVoid {lname};",
+                lname = loc_name(method, id as u32),
+            ));
             continue;
         }
         ds.pad(&mut local_defs).unwrap();
@@ -205,6 +216,15 @@ fn tree_code(
                 local = loc_name(method, *local)
             )
         }
+        CILRoot::STArg { tree, arg } => {
+            ds.pad(code)?;
+            write!(
+                code,
+                "{local} = {node};",
+                node = node_code(method, tree),
+                local = arg_name(method, *arg)
+            )
+        }
         CILRoot::SetStaticField { descr, value } => {
             ds.pad(code)?;
             write!(
@@ -233,13 +253,29 @@ fn tree_code(
             ds.pad(code)?;
             write!(code, "goto bb_{target}_{sub_target};")
         }
-        CILRoot::STIndI8(addr, val) => {
+        CILRoot::STIndI8(addr_calc, value_calc)
+        | CILRoot::STIndISize(addr_calc, value_calc)
+        | CILRoot::STIndF64(addr_calc, value_calc)
+        | CILRoot::STIndF32(addr_calc, value_calc) => {
             ds.pad(code)?;
             write!(
                 code,
-                "*({addr}) = {val};",
-                addr = node_code(method, addr),
-                val = node_code(method, val)
+                "*({addr_calc}) = {value_calc};",
+                addr_calc = node_code(method, addr_calc),
+                value_calc = node_code(method, value_calc)
+            )
+        }
+        CILRoot::STObj {
+            tpe: _,
+            addr_calc,
+            value_calc,
+        } => {
+            ds.pad(code)?;
+            write!(
+                code,
+                "*({addr_calc}) = {value_calc};",
+                addr_calc = node_code(method, addr_calc),
+                value_calc = node_code(method, value_calc)
             )
         }
         // SFI is not implementable in C, and does nothing.
@@ -249,9 +285,14 @@ fn tree_code(
             let mut arg_iter = args.iter();
             let mut call_inner = String::new();
             if let Some(arg) = arg_iter.next() {
-                call_inner.push_str(&node_code(method, arg));
+                if arg.validate(method.vctx(), None).unwrap() != Type::Void {
+                    call_inner.push_str(&node_code(method, arg));
+                }
             }
             for arg in arg_iter {
+                if arg.validate(method.vctx(), None).unwrap() == Type::Void {
+                    continue;
+                }
                 call_inner.push(',');
                 call_inner.push_str(&node_code(method, arg));
             }
@@ -302,18 +343,30 @@ fn node_code(method: &Method, node: &crate::cil_node::CILNode) -> IString {
             let arr = node_code(method, arr);
             format!("({tpe}_getLength({arr}))").into()
         }
-        CILNode::LDIndUSize { ptr } => format!("(*({ptr}))", ptr = node_code(method, ptr)).into(),
+        CILNode::LDIndUSize { ptr }
+        | CILNode::LDIndU8 { ptr }
+        | CILNode::LDIndU16 { ptr }
+        | CILNode::LDIndI32 { ptr }
+        | CILNode::LDIndU32 { ptr }
+        | CILNode::LDIndU64 { ptr }
+        | CILNode::LDIndI64 { ptr }
+        | CILNode::LDIndBool { ptr }
+        | CILNode::LDIndISize { ptr }
+        | CILNode::LDIndI8 { ptr }
+        | CILNode::LDIndI16 { ptr } => format!("(*({ptr}))", ptr = node_code(method, ptr)).into(),
         CILNode::LdObj { ptr, obj: _ } => {
             format!("(*({ptr}))", ptr = node_code(method, ptr)).into()
         }
-        CILNode::ConvU8(val) => format!("((uint8_t)({val}))", val = node_code(method, val)).into(),
+        CILNode::ConvF64Un(val) => format!("(double)({val})", val = node_code(method, val)).into(),
+        CILNode::ConvU8(val) => format!("(uint8_t)({val})", val = node_code(method, val)).into(),
         CILNode::ConvU16(val) => {
             format!("((uint16_t)({val}))", val = node_code(method, val)).into()
         }
         CILNode::ConvU32(val) => {
             format!("((uint32_t)({val}))", val = node_code(method, val)).into()
         }
-
+        CILNode::ConvI8(val) => format!("((int8_t)({val}))", val = node_code(method, val)).into(),
+        CILNode::ConvI16(val) => format!("((int16_t)({val}))", val = node_code(method, val)).into(),
         CILNode::ConvI32(val) => {
             format!("((uint32_t)({val}))", val = node_code(method, val)).into()
         }
@@ -323,11 +376,26 @@ fn node_code(method: &Method, node: &crate::cil_node::CILNode) -> IString {
             let tpe = val.validate(method.vctx(), None).expect("ERROR: type info is necceary for exporting C code, but the type checker could not validate a node.");
             let val = node_code(method, val);
             match tpe {
-                Type::I64 => format!("((intptr_t)({val}))").into(),
+                Type::I64 | Type::I32 | Type::I16 | Type::I8 | Type::Bool => {
+                    format!("((intptr_t)({val}))").into()
+                }
                 Type::U64 => format!("((intptr_t)(int64_t)({val}))").into(),
                 Type::ISize => format!("{val}").into(),
-                Type::USize => format!("(intptr_t)({val})").into(),
+                Type::USize | Type::Ptr(_) => format!("(intptr_t)({val})").into(),
                 _ => todo!("Can't yet `SignExtendToISize` {tpe:?}"),
+            }
+        }
+        CILNode::SignExtendToUSize(val) => {
+            let tpe = val.validate(method.vctx(), None).expect("ERROR: type info is necceary for exporting C code, but the type checker could not validate a node.");
+            let val = node_code(method, val);
+            match tpe {
+                Type::I64 | Type::I32 | Type::I16 | Type::I8 | Type::Bool => {
+                    format!("(uintptr_t)(intptr_t)({val})").into()
+                }
+                Type::U64 => format!("(uintptr_t)(intptr_t)({val})").into(),
+                Type::ISize => format!("(uintptr_t){val}").into(),
+                Type::USize => val,
+                _ => todo!("Can't yet `SignExtendToUSize` {tpe:?}"),
             }
         }
         CILNode::SignExtendToI64(val) => {
@@ -335,8 +403,30 @@ fn node_code(method: &Method, node: &crate::cil_node::CILNode) -> IString {
             let val = node_code(method, val);
             match tpe {
                 Type::I64 => format!("{val}").into(),
-                Type::U64 => format!("((int64_t)({val}))").into(),
+                Type::U64
+                | Type::F64
+                | Type::F32
+                | Type::ISize
+                | Type::I8
+                | Type::I32
+                | Type::Bool => format!("((int64_t)({val}))").into(),
                 _ => todo!("Can't yet `SignExtendToI64` {tpe:?}"),
+            }
+        }
+        CILNode::SignExtendToU64(val) => {
+            let tpe = val.validate(method.vctx(), None).expect("ERROR: type info is necceary for exporting C code, but the type checker could not validate a node.");
+            let val = node_code(method, val);
+            match tpe {
+                Type::I64 => format!("(uint64_t){val}").into(),
+                Type::U64
+                | Type::F64
+                | Type::F32
+                | Type::ISize
+                | Type::I8
+                | Type::I16
+                | Type::I32
+                | Type::Bool => format!("(uint64_t)(int64_t)({val})").into(),
+                _ => todo!("Can't yet `SignExtendToU64` {tpe:?}"),
             }
         }
         CILNode::ZeroExtendToISize(val) => {
@@ -350,8 +440,11 @@ fn node_code(method: &Method, node: &crate::cil_node::CILNode) -> IString {
             let tpe = val.validate(method.vctx(), None).expect("ERROR: type info is necceary for exporting C code, but the type checker could not validate a node.");
             let val = node_code(method, val);
             match tpe {
-                Type::U32 => format!("(uintptr_t)({val})").into(),
-                Type::U64 => format!("(uintptr_t)({val})").into(),
+                Type::U64 | Type::U32 | Type::U16 | Type::U8 => {
+                    format!("(uintptr_t)({val})").into()
+                }
+                Type::Ptr(_) | Type::ISize => format!("(uintptr_t)({val})").into(),
+
                 Type::I32 => format!("(uintptr_t)((uint32_t)({val}))").into(),
                 Type::I64 => format!("(uintptr_t)((uint64_t)({val}))").into(),
                 Type::USize => val,
@@ -364,6 +457,7 @@ fn node_code(method: &Method, node: &crate::cil_node::CILNode) -> IString {
             match tpe {
                 Type::U32 => format!("(uint64_t)({val})").into(),
                 Type::USize => format!("(uint64_t)({val})").into(),
+                Type::ISize => format!("(uint64_t)(uintptr_t)({val})").into(),
                 Type::U64 => val,
                 Type::I32 => format!("((uint64_t)((uint32_t)({val})))").into(),
                 Type::I64 => format!("((uint64_t)({val}))").into(),
@@ -407,6 +501,8 @@ fn node_code(method: &Method, node: &crate::cil_node::CILNode) -> IString {
                 _ => panic!("{addr_tpe:?} is *not a pointer*!"),
             }
         }
+        CILNode::Neg(a) => format!("-({a})", a = node_code(method, a),).into(),
+        CILNode::Not(a) => format!("!({a})", a = node_code(method, a),).into(),
         CILNode::Eq(a, b) => format!(
             "({a}) == ({b})",
             a = node_code(method, a),
@@ -415,6 +511,30 @@ fn node_code(method: &Method, node: &crate::cil_node::CILNode) -> IString {
         .into(),
         CILNode::Or(a, b) => format!(
             "({a}) | ({b})",
+            a = node_code(method, a),
+            b = node_code(method, b)
+        )
+        .into(),
+        CILNode::XOr(a, b) => format!(
+            "({a}) ^ ({b})",
+            a = node_code(method, a),
+            b = node_code(method, b)
+        )
+        .into(),
+        CILNode::Shl(a, b) => format!(
+            "({a}) << ({b})",
+            a = node_code(method, a),
+            b = node_code(method, b)
+        )
+        .into(),
+        CILNode::Shr(a, b) | CILNode::ShrUn(a, b) => format!(
+            "({a}) << ({b})",
+            a = node_code(method, a),
+            b = node_code(method, b)
+        )
+        .into(),
+        CILNode::And(a, b) => format!(
+            "({a}) & ({b})",
             a = node_code(method, a),
             b = node_code(method, b)
         )
@@ -433,6 +553,18 @@ fn node_code(method: &Method, node: &crate::cil_node::CILNode) -> IString {
         .into(),
         CILNode::Mul(a, b) => format!(
             "({a}) * ({b})",
+            a = node_code(method, a),
+            b = node_code(method, b)
+        )
+        .into(),
+        CILNode::Div(a, b) | CILNode::DivUn(a, b) => format!(
+            "({a}) / ({b})",
+            a = node_code(method, a),
+            b = node_code(method, b)
+        )
+        .into(),
+        CILNode::Rem(a, b) | CILNode::RemUn(a, b) => format!(
+            "({a}) % ({b})",
             a = node_code(method, a),
             b = node_code(method, b)
         )
@@ -477,14 +609,25 @@ fn node_code(method: &Method, node: &crate::cil_node::CILNode) -> IString {
             let mut arg_iter = call_op_args.args.iter();
             let mut call_inner = String::new();
             if let Some(arg) = arg_iter.next() {
-                call_inner.push_str(&node_code(method, arg));
+                if arg.validate(method.vctx(), None).unwrap() != Type::Void {
+                    call_inner.push_str(&node_code(method, arg));
+                }
             }
             for arg in arg_iter {
+                if arg.validate(method.vctx(), None).unwrap() == Type::Void {
+                    continue;
+                }
                 call_inner.push(',');
                 call_inner.push_str(&node_code(method, arg));
             }
             format!("{name}({call_inner})").into()
         }
+        CILNode::LDElelemRef { arr, idx } => format!(
+            "&({arr})[{idx}]",
+            arr = node_code(method, arr),
+            idx = node_code(method, idx)
+        )
+        .into(),
         _ => todo!("Can't yet export the CILNode node {node:?}"),
     }
 }

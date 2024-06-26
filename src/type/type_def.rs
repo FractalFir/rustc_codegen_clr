@@ -186,14 +186,15 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
                     CILRoot::STObj {
                         tpe: element.clone().into(),
                         addr_calc: Box::new(
-                            conv_usize!(ld_field_address!(
+                            (conv_usize!(ld_field_address!(
                                 CILNode::LDArg(0),
                                 FieldDescriptor::boxed(
                                     (&def).into(),
                                     element.clone(),
                                     "f_0".to_string().into(),
                                 )
-                            )) + CILNode::LDArg(1) * size_of!(element.clone()),
+                            )) + CILNode::LDArg(1) * conv_usize!(size_of!(element.clone())))
+                            .cast_ptr(Type::Ptr(Box::new(element.clone()))),
                         ),
                         value_calc: Box::new(CILNode::LDArg(2)),
                     }
@@ -205,6 +206,7 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
             )],
             vec![Some("this".into()), Some("idx".into()), Some("val".into())],
         );
+        set_usize.validate().unwrap();
         def.add_method(set_usize);
 
         // get_Address(usize offset)
@@ -219,14 +221,15 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
             vec![],
             vec![BasicBlock::new(
                 vec![CILRoot::Ret {
-                    tree: conv_usize!(ld_field_address!(
+                    tree: (conv_usize!(ld_field_address!(
                         CILNode::LDArg(0),
                         FieldDescriptor::boxed(
                             (&def).into(),
                             element.clone(),
                             "f_0".to_string().into(),
                         )
-                    )) + CILNode::LDArg(1) * size_of!(element.clone()),
+                    )) + CILNode::LDArg(1) * conv_usize!(size_of!(element.clone())))
+                    .cast_ptr(Type::Ptr(Box::new(element.clone()))),
                 }
                 .into()],
                 0,
@@ -234,7 +237,9 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
             )],
             vec![Some("this".into()), Some("idx".into())],
         );
+        get_adress_usize.validate().unwrap();
         def.add_method(get_adress_usize);
+
         // get_Item
         let get_item_usize = Method::new(
             AccessModifer::Public,
@@ -249,14 +254,15 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
                 vec![CILRoot::Ret {
                     tree: CILNode::LdObj {
                         ptr: Box::new(
-                            conv_usize!(ld_field_address!(
+                            (conv_usize!(ld_field_address!(
                                 CILNode::LDArg(0),
                                 FieldDescriptor::boxed(
                                     (&def).into(),
                                     element.clone(),
                                     "f_0".to_string().into(),
                                 )
-                            )) + CILNode::LDArg(1) * size_of!(element.clone()),
+                            )) + CILNode::LDArg(1) * conv_usize!(size_of!(element.clone())))
+                            .cast_ptr(Type::Ptr(Box::new(element.clone()))),
                         ),
                         obj: Box::new(element),
                     },
@@ -267,7 +273,7 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
             )],
             vec![Some("this".into()), Some("idx".into())],
         );
-
+        get_item_usize.validate().unwrap();
         def.add_method(get_item_usize);
 
         //to_string.set_ops(ops);

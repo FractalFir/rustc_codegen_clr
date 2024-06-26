@@ -2,6 +2,7 @@ use crate::add_method_from_trees;
 use cilly::{
     access_modifier::AccessModifer,
     asm::Assembly,
+    asm_exporter::escape_class_name,
     basic_block::{BasicBlock, Handler},
     call,
     call_site::CallSite,
@@ -198,9 +199,10 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
     bounds_check(asm);
     atomic::atomics(asm);
     let c_void = crate::r#type::c_void(tcx);
+
     asm.add_typedef(TypeDef::new(
         AccessModifer::Public,
-        c_void.as_dotnet().unwrap().name_path().into(),
+        escape_class_name(c_void.as_dotnet().unwrap().name_path()).into(),
         vec![],
         vec![],
         vec![],

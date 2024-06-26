@@ -29,7 +29,7 @@ pub fn c_void(tcx: TyCtxt) -> Type {
     let demangled = rustc_demangle::demangle(&name);
     // Using formating preserves the generic hash.
     let name = format!("{demangled}");
-    let name = crate::utilis::escape_class_name(&name);
+    let name = cilly::asm_exporter::escape_class_name(&name);
     DotnetTypeRef::new::<&str, _>(None, name).into()
 }
 #[must_use]

@@ -269,7 +269,7 @@ impl CILNode {
                 ),
                 [a, b, predictate]
             ),
-            Type::USize | Type::Ptr(_) => call!(
+            Type::USize => call!(
                 CallSite::builtin(
                     "select_usize".into(),
                     FnSig::new(&[Type::USize, Type::USize, Type::Bool], Type::USize),
@@ -277,6 +277,15 @@ impl CILNode {
                 ),
                 [a, b, predictate]
             ),
+            Type::Ptr(_) => call!(
+                CallSite::builtin(
+                    "select_usize".into(),
+                    FnSig::new(&[Type::USize, Type::USize, Type::Bool], Type::USize),
+                    true
+                ),
+                [a.cast_ptr(Type::USize), b.cast_ptr(Type::USize), predictate]
+            )
+            .cast_ptr(tpe),
             Type::ISize => call!(
                 CallSite::builtin(
                     "select_isize".into(),
@@ -1203,6 +1212,14 @@ impl CILNode {
             Self::LoadTMPLocal => tmp_loc
                 .cloned()
                 .ok_or_else(|| ("TMP local requred when no tmp locals!".to_string())),
+            Self::LDElelemRef { arr, idx } => {
+                let arr = arr.validate(vctx, tmp_loc)?;
+                let idx = idx.validate(vctx, tmp_loc)?;
+                match arr {
+                    Type::ManagedArray { element, dims } => Ok(Type::ManagedReference(element)),
+                    _ => panic!("{arr:?} is not an array!"),
+                }
+            }
             _ => todo!("Can't check the type safety of {self:?}"),
         }
     }
