@@ -254,6 +254,9 @@ fn tree_code(
             write!(code, "goto bb_{target}_{sub_target};")
         }
         CILRoot::STIndI8(addr_calc, value_calc)
+        | CILRoot::STIndI16(addr_calc, value_calc)
+        | CILRoot::STIndI32(addr_calc, value_calc)
+        | CILRoot::STIndI64(addr_calc, value_calc)
         | CILRoot::STIndISize(addr_calc, value_calc)
         | CILRoot::STIndF64(addr_calc, value_calc)
         | CILRoot::STIndF32(addr_calc, value_calc) => {
@@ -316,7 +319,7 @@ fn tree_code(
                 call_inner.push_str(&node_code(method, arg));
             }
             let ptr = node_code(method, fn_ptr);
-            write!(code, "(({ptr_ty}){ptr})({call_inner})")
+            write!(code, "(({ptr_ty}){ptr})({call_inner});")
         }
         _ => {
             ds.pad(code)?;
@@ -353,8 +356,20 @@ fn node_code(method: &Method, node: &crate::cil_node::CILNode) -> IString {
         CILNode::LdcI16(val) => format!("(int16_t){val}").into(),
         CILNode::LdcU8(val) => format!("(uint8_t){val}").into(),
         CILNode::LdcI8(val) => format!("(int8_t){val}").into(),
-        CILNode::LdcF32(val) => format!("{val:?}f").into(),
-        CILNode::LdcF64(val) => format!("{val:?}").into(),
+        CILNode::LdcF32(val) => {
+            if val.is_nan() {
+                "NAN".into()
+            } else {
+                format!("{val:?}f").into()
+            }
+        }
+        CILNode::LdcF64(val) => {
+            if val.is_nan() {
+                "NAN".into()
+            } else {
+                format!("{val:?}").into()
+            }
+        }
         CILNode::SizeOf(tpe) => format!("sizeof({tpe})", tpe = c_tpe(tpe)).into(),
         CILNode::LDStaticField(sfd) => sfd.name().to_string().into(),
         CILNode::LDLen { arr } => {

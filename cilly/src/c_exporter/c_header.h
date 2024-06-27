@@ -1,3 +1,4 @@
+#include <pthread.h>
 // Statics
 
 static char *exec_fname;
@@ -60,8 +61,11 @@ static char *exec_fname;
 #define System_UInt128__ctor_mu128u64u64(upper, lower) (((unsigned __int128)lower) | (((unsigned __int128)upper) << 64))
 #define System_Int128__ctor_mu128u64u64(upper, lower) (((__int128)lower) | (((__int128)upper) << 64))
 // Consts
-#define System_UIntPtr_get_MinValue_() ((size_t)0)
-#define System_UIntPtr_get_MaxValue_() (~((size_t)0))
+#define System_UIntPtr_get_MinValue_() ((uintptr_t)0)
+#define System_UIntPtr_get_MaxValue_() (~((uintptr_t)0))
+#define System_IntPtr_get_MaxValue_() ((intptr_t)0)
+#define System_IntPtr_get_MinValue_() (~((intptr_t)0))
+
 // Bswap
 #define System_Buffers_Binary_BinaryPrimitivesReverseEndianness(val) __bswap_32(val)
 // Assembly utilis needed for statup
@@ -76,12 +80,17 @@ static char *exec_fname;
 #define System_Console_WriteLine_u32(arg) printf("%u\n", arg)
 #define System_Console_WriteLine_u64(arg) printf("%lu\n", arg)
 #define System_Console_WriteLine_i32(arg) printf("%d\n", arg)
+#define System_Console_Write_System_String(arg) printf("%s\n", arg)
 // Allocation
 #define System_Runtime_InteropServices_NativeMemory_AlignedAlloc_usus _mm_malloc
-#define System_Runtime_InteropServices_NativeMemoryAlignedFree(ptr) _mm_free(ptr)
+// #define System_Runtime_InteropServices_NativeMemory_AlignedRealloc_pvusus _mm_realloc
+#define System_Runtime_InteropServices_NativeMemory_AlignedFree_pv(ptr) _mm_free(ptr)
 // Atomics
 #define System_Threading_InterlockedCompareExchange(addr, value, comparand) ({typeof(comparand) expected = comparand;typeof(value) val = value;  __atomic_compare_exchange((addr),&(expected),&(val),0,__ATOMIC_SEQ_CST,0); expected; })
 #define System_Threading_InterlockedExchange(addr, val) ({typeof(val) value = val;typeof(val) ret; __atomic_exchange((addr),&value,&ret,__ATOMIC_SEQ_CST);ret; })
+
+#define atomic_fetch_or
+
 // Misc
 #define System_Numerics_BitOperationsPopCount(arg) __builtin_popcount(arg)
 #define System_Numerics_BitOperationsTrailingZeroCount(arg) __builtin_ctz(arg)
@@ -91,7 +100,7 @@ static char *exec_fname;
 #define System_MathFSqrt(flot) sqrtf(flot)
 // Types
 #define a1System_String_getLength(_) 0
-typedef char *System_String;
+typedef char System_String;
 typedef struct TypeInfo
 {
 	int32_t hash;
@@ -111,3 +120,15 @@ static char **commandLineArgs = {0};
 
 #define System_Buffers_Binary_BinaryPrimitives_ReverseEndianness_i64 __builtin_bswap64(val)
 #define System_Exception__ctor_System_ExceptionSystem_String(msg) msg
+typedef struct System_Object
+{
+};
+#define System_Object__ctor_() \
+	System_Object              \
+	{                          \
+	}
+// other
+
+#define System_Threading_Monitor_Enter_System_Object(_) pthread_mutex_lock(&global_lock)
+#define System_Threading_Monitor_Exit_System_Object(_) pthread_mutex_unlock(&global_lock)
+pthread_mutex_t global_lock;

@@ -345,14 +345,11 @@ fn c_tpe(tpe: &Type) -> Cow<'static, str> {
                     _ => println!("Type {tref:?} is not supported in C"),
                 }
             }
-            // Ugly hack to deal with `c_void`
-            if tref.name_path().contains("c_void")
-                && tref.name_path().contains("ffi")
-                && tref.name_path().contains("core")
-            {
-                return c_tpe(&Type::Void);
+            if tref.is_valuetype() {
+                escape_type_name(tref.name_path()).into()
+            } else {
+                format!("{name}*", name = escape_type_name(tref.name_path())).into()
             }
-            escape_type_name(tref.name_path()).into()
         }
         Type::DelegatePtr(_sig) => "void*".into(),
         Type::ManagedArray { element, dims } => {

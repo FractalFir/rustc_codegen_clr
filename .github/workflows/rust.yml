@@ -50,8 +50,7 @@ jobs:
           cargo test compile_test::dst::stable
           cargo test compile_test::cmp_bytes
           cargo test compile_test::fail0
-          cargo test compile_test::add
-          cargo test compile_test::enums
+          cargo test compile_test::add::
           cargo test compile_test::fail5
           cargo test compile_test::fail4::stable::release
           cargo test compile_test::fail6::stable::release
@@ -80,6 +79,7 @@ jobs:
           cargo test compile_test::sub
           cargo test compile_test::subslice
           cargo test compile_test::structs
-          cargo test compile_test::tuple_structs
-          cargo test compile_test::tuple_enum
+          cargo test tuple
+          cargo test enum
           cargo test compile_test::xor
+          cargo test statics

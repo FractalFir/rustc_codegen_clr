@@ -172,8 +172,9 @@ fn allocation_initializer_method(
 
                 trees.push(
                     CILRoot::STIndISize(
-                        CILNode::LDLoc(1) + conv_usize!(ldc_u32!(offset)),
-                        CILNode::LDStaticField(ptr_alloc.into()),
+                        (CILNode::LDLoc(1) + conv_usize!(ldc_u32!(offset)))
+                            .cast_ptr(ptr!(Type::USize)),
+                        CILNode::LDStaticField(ptr_alloc.into()).cast_ptr(Type::USize),
                     )
                     .into(),
                 );

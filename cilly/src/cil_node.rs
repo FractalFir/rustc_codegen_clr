@@ -1224,6 +1224,7 @@ impl CILNode {
                 size.validate(vctx, tmp_loc)?;
                 Ok(ptr!(Type::Void))
             }
+            Self::LocAllocAligned { tpe, align } => Ok(ptr!(tpe.as_ref().clone())),
             _ => todo!("Can't check the type safety of {self:?}"),
         }
     }
