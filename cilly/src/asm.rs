@@ -245,8 +245,12 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
     pub fn add_method(&mut self, mut method: Method) {
         method.allocate_temporaries();
         method.allocate_temporaries();
-        //method.ensure_valid();
-
+        if let Err(err) = method.validate() {
+            /*eprintln!(
+                "Could not validate the method {name} because {err}",
+                name = method.name()
+            );*/
+        }
         self.functions.insert(method.call_site(), method);
     }
     /// Returns the list of all calls within the method. Calls may repeat.

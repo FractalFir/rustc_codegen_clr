@@ -105,7 +105,7 @@ add_method_from_trees!(
                         FnSig::new(&[Type::U64], Type::Void),
                         true
                     )),
-                    args: Box::new([conv_usize!(CILNode::LDArg(0))])
+                    args: Box::new([conv_u64!(CILNode::LDArg(0))])
                 }
                 .into(),
                 CILRoot::Call {
@@ -125,7 +125,7 @@ add_method_from_trees!(
                         FnSig::new(&[Type::U64], Type::Void),
                         true
                     )),
-                    args: Box::new([conv_usize!(CILNode::LDArg(1))])
+                    args: Box::new([conv_u64!(CILNode::LDArg(1))])
                 }
                 .into(),
                 CILRoot::Throw(CILNode::NewObj(Box::new(CallOpArgs {
@@ -222,7 +222,6 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
 
     casts::casts(asm);
     select::selects(asm);
-    //malloc(asm);
     let mut marshal = DotnetTypeRef::new(
         Some("System.Runtime.InteropServices"),
         "System.Runtime.InteropServices.Marshal",
@@ -271,7 +270,8 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
         } else {
             vec![BasicBlock::new(
                 vec![CILRoot::Ret {
-                    tree: call!(CallSite::alloc(), [CILNode::LDArg(0), CILNode::LDArg(1)]),
+                    tree: call!(CallSite::alloc(), [CILNode::LDArg(0), CILNode::LDArg(1)])
+                        .cast_ptr(ptr!(Type::U8)),
                 }
                 .into()],
                 0,
@@ -333,7 +333,8 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
         } else {
             vec![BasicBlock::new(
                 vec![CILRoot::Ret {
-                    tree: call!(CallSite::alloc(), [CILNode::LDArg(0), CILNode::LDArg(1)]),
+                    tree: call!(CallSite::alloc(), [CILNode::LDArg(0), CILNode::LDArg(1)])
+                        .cast_ptr(ptr!(Type::U8)),
                 }
                 .into()],
                 0,

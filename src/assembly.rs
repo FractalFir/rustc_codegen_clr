@@ -18,6 +18,7 @@ use cilly::{
     cil_tree::CILTree,
     conv_isize, conv_usize, ldc_u32, ldc_u64,
     method::{Method, MethodType},
+    ptr,
     static_field_desc::StaticFieldDescriptor,
     FnSig,
 };
@@ -116,8 +117,8 @@ fn allocation_initializer_method(
                 val: Box::new(call!(
                     CallSite::alloc(),
                     [
-                        conv_isize!(ldc_u64!(bytes.len() as u64)),
-                        conv_isize!(ldc_u64!(align))
+                        conv_usize!(ldc_u64!(bytes.len() as u64)),
+                        conv_usize!(ldc_u64!(align))
                     ]
                 )),
                 new_ptr: Box::new(Type::Ptr(Box::new(Type::U8))),
@@ -133,7 +134,7 @@ fn allocation_initializer_method(
         .into(),
     );
     for byte in bytes {
-        trees.push(CILRoot::STIndI8(CILNode::LDLoc(0), ldc_u32!(u32::from(*byte))).into());
+        trees.push(CILRoot::STIndI8(CILNode::LDLoc(0), CILNode::LdcU8(*byte)).into());
         //trees.push(CILRoot::debug(&format!("Writing the byte {}",byte)).into());
         trees.push(
             CILRoot::STLoc {
@@ -156,11 +157,13 @@ fn allocation_initializer_method(
 
                 trees.push(
                     CILRoot::STIndISize(
-                        CILNode::LDLoc(1) + conv_usize!(ldc_u32!(offset)),
+                        (CILNode::LDLoc(1) + conv_usize!(ldc_u32!(offset)))
+                            .cast_ptr(ptr!(Type::USize)),
                         CILNode::LDFtn(
                             CallSite::new(None, function_name, call_info.sig().clone(), true)
                                 .into(),
-                        ),
+                        )
+                        .cast_ptr(Type::USize),
                     )
                     .into(),
                 );

@@ -334,7 +334,9 @@ fn c_tpe(tpe: &Type) -> Cow<'static, str> {
         Type::U16 => "uint16_t".into(),
         Type::I8 => "int8_t".into(),
         Type::U8 => "uint8_t".into(),
-        Type::Ptr(inner) => format!("{inner}*", inner = c_tpe(inner)).into(),
+        Type::Ptr(inner) | Type::ManagedReference(inner) => {
+            format!("{inner}*", inner = c_tpe(inner)).into()
+        }
         Type::DotnetType(tref) => {
             if let Some(asm) = tref.asm() {
                 match (asm, tref.name_path()) {

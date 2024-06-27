@@ -1,6 +1,6 @@
 use crate::{
     call, call_site::CallSite, cil_iter::CILIterTrait, cil_root::CILRoot,
-    field_desc::FieldDescriptor, fn_sig::FnSig, static_field_desc::StaticFieldDescriptor,
+    field_desc::FieldDescriptor, fn_sig::FnSig, ptr, static_field_desc::StaticFieldDescriptor,
     DotnetTypeRef, IString, Type,
 };
 use serde::{Deserialize, Serialize};
@@ -1219,6 +1219,10 @@ impl CILNode {
                     Type::ManagedArray { element, dims } => Ok(Type::ManagedReference(element)),
                     _ => panic!("{arr:?} is not an array!"),
                 }
+            }
+            Self::LocAlloc { size } => {
+                size.validate(vctx, tmp_loc)?;
+                Ok(ptr!(Type::Void))
             }
             _ => todo!("Can't check the type safety of {self:?}"),
         }

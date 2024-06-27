@@ -73,7 +73,9 @@ static char *exec_fname;
 // IO
 #define System_ConsoleWrite(chr) putc(chr, stdout)
 
-#define System_Console_WriteLine_u32(arg) printf("%u", arg)
+#define System_Console_WriteLine_u32(arg) printf("%u\n", arg)
+#define System_Console_WriteLine_u64(arg) printf("%lu\n", arg)
+#define System_Console_WriteLine_i32(arg) printf("%d\n", arg)
 // Allocation
 #define System_Runtime_InteropServices_NativeMemory_AlignedAlloc_usus _mm_malloc
 #define System_Runtime_InteropServices_NativeMemoryAlignedFree(ptr) _mm_free(ptr)
@@ -107,4 +109,5 @@ static char **commandLineArgs = {0};
 #define System_Single_IsNaN_f32(val) isnan(val)
 #define System_Double_IsNaN_f64(val) isnan(val)
 
-#define System_Buffers_Binary_BinaryPrimitives_ReverseEndianness_i64
+#define System_Buffers_Binary_BinaryPrimitives_ReverseEndianness_i64 __builtin_bswap64(val)
+#define System_Exception__ctor_System_ExceptionSystem_String(msg) msg

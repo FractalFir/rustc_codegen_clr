@@ -7,9 +7,9 @@ use crate::{
     call_site::CallSite,
     cil_node::CILNode,
     cil_root::CILRoot,
-    conv_usize, ldc_u32, ldc_u64,
+    conv_isize, conv_usize, ldc_u32, ldc_u64,
     method::{Attribute, Method, MethodType},
-    DotnetTypeRef, FnSig, Type,
+    ptr, DotnetTypeRef, FnSig, Type,
 };
 
 /// Creates a wrapper method around entypoint represented by `CallSite`
@@ -50,7 +50,10 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
                     CILRoot::Pop {
                         tree: call!(
                             Box::new(entrypoint.clone()),
-                            [conv_usize!(ldc_u32!(0)), conv_usize!(ldc_u32!(0))]
+                            [
+                                conv_isize!(ldc_u32!(0)),
+                                conv_usize!(ldc_u32!(0)).cast_ptr(ptr!(ptr!(Type::U8)))
+                            ]
                         ),
                     }
                     .into(),

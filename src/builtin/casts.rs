@@ -60,11 +60,14 @@ add_method_from_trees!(
                             ),
                             [CILNode::LDArg(0)]
                         ),
-                        ldc_u32!(0)
+                        CILNode::LdFalse
                     )
                 }
                 .into(),
-                CILRoot::Ret { tree: ldc_u64!(0) }.into()
+                CILRoot::Ret {
+                    tree: CILNode::LdcU8(0)
+                }
+                .into()
             ],
             0,
             None
@@ -132,7 +135,7 @@ add_method_from_trees!(
                             ),
                             [CILNode::LDArg(0)]
                         ),
-                        ldc_u32!(0)
+                        CILNode::LdFalse
                     )
                 }
                 .into(),
@@ -204,7 +207,7 @@ add_method_from_trees!(
                             ),
                             [CILNode::LDArg(0)]
                         ),
-                        ldc_u32!(0)
+                        CILNode::LdFalse
                     )
                 }
                 .into(),
@@ -276,7 +279,7 @@ add_method_from_trees!(
                             ),
                             [CILNode::LDArg(0)]
                         ),
-                        ldc_u32!(0)
+                        CILNode::LdFalse
                     )
                 }
                 .into(),
@@ -348,7 +351,7 @@ add_method_from_trees!(
                             ),
                             [CILNode::LDArg(0)]
                         ),
-                        ldc_u32!(0)
+                        CILNode::LdFalse
                     )
                 }
                 .into(),
@@ -439,7 +442,7 @@ add_method_from_trees!(
                             ),
                             [CILNode::LDArg(0)]
                         ),
-                        ldc_u32!(0)
+                        CILNode::LdFalse
                     )
                 }
                 .into(),
@@ -530,7 +533,7 @@ add_method_from_trees!(
                             ),
                             [CILNode::LDArg(0)]
                         ),
-                        ldc_u32!(0)
+                        CILNode::LdFalse
                     )
                 }
                 .into(),
@@ -640,7 +643,7 @@ add_method_from_trees!(
                             ),
                             [CILNode::LDArg(0)]
                         ),
-                        ldc_u32!(0)
+                        CILNode::LdFalse
                     )
                 }
                 .into(),
@@ -750,7 +753,7 @@ add_method_from_trees!(
                             ),
                             [CILNode::LDArg(0)]
                         ),
-                        ldc_u32!(0)
+                        CILNode::LdFalse
                     )
                 }
                 .into(),
@@ -822,7 +825,7 @@ add_method_from_trees!(
                             ),
                             [CILNode::LDArg(0)]
                         ),
-                        ldc_u32!(0)
+                        CILNode::LdFalse
                     )
                 }
                 .into(),
@@ -894,7 +897,7 @@ add_method_from_trees!(
                             ),
                             [CILNode::LDArg(0)]
                         ),
-                        ldc_u32!(0)
+                        CILNode::LdFalse
                     )
                 }
                 .into(),
@@ -966,7 +969,7 @@ add_method_from_trees!(
                             ),
                             [CILNode::LDArg(0)]
                         ),
-                        ldc_u32!(0)
+                        CILNode::LdFalse
                     )
                 }
                 .into(),
@@ -1038,7 +1041,7 @@ add_method_from_trees!(
                             ),
                             [CILNode::LDArg(0)]
                         ),
-                        ldc_u32!(0)
+                        CILNode::LdFalse
                     )
                 }
                 .into(),
@@ -1110,7 +1113,7 @@ add_method_from_trees!(
                             ),
                             [CILNode::LDArg(0)]
                         ),
-                        ldc_u32!(0)
+                        CILNode::LdFalse
                     )
                 }
                 .into(),
@@ -1182,7 +1185,7 @@ add_method_from_trees!(
                             ),
                             [CILNode::LDArg(0)]
                         ),
-                        ldc_u32!(0)
+                        CILNode::LdFalse
                     )
                 }
                 .into(),
@@ -1254,7 +1257,7 @@ add_method_from_trees!(
                             ),
                             [CILNode::LDArg(0)]
                         ),
-                        ldc_u32!(0)
+                        CILNode::LdFalse
                     )
                 }
                 .into(),
@@ -1326,7 +1329,7 @@ add_method_from_trees!(
                             ),
                             [CILNode::LDArg(0)]
                         ),
-                        ldc_u32!(0)
+                        CILNode::LdFalse
                     )
                 }
                 .into(),
@@ -1398,7 +1401,7 @@ add_method_from_trees!(
                             ),
                             [CILNode::LDArg(0)]
                         ),
-                        ldc_u32!(0)
+                        CILNode::LdFalse
                     )
                 }
                 .into(),
@@ -1470,7 +1473,7 @@ add_method_from_trees!(
                             ),
                             [CILNode::LDArg(0)]
                         ),
-                        ldc_u32!(0)
+                        CILNode::LdFalse
                     )
                 }
                 .into(),
@@ -1542,7 +1545,7 @@ add_method_from_trees!(
                             ),
                             [CILNode::LDArg(0)]
                         ),
-                        ldc_u32!(0)
+                        CILNode::LdFalse
                     )
                 }
                 .into(),

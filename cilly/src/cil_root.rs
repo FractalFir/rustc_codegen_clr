@@ -867,6 +867,21 @@ impl CILRoot {
                     Ok(())
                 }
             }
+            Self::BFalse {
+                target,
+                sub_target,
+                cond,
+            } => {
+                // Just check that `cond` is a boolean.
+                let cond = cond.validate(vctx, tmp_loc)?;
+                if cond != Type::Bool {
+                    Err(format!(
+                        "BTrue must have a boolean argument. cond is:{cond:?}"
+                    ))
+                } else {
+                    Ok(())
+                }
+            }
             Self::BEq {
                 target: _,
                 sub_target: _,
@@ -928,7 +943,7 @@ impl CILRoot {
                     Ok(())
                 }
             }
-            Self::Call { site, args } => {
+            Self::Call { site, args } | Self::CallVirt { site, args } => {
                 if site.inputs().len() != args.len() {
                     return Err(format!(
                         "Expected {} arguments, got {}",

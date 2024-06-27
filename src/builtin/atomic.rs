@@ -77,7 +77,10 @@ crate::add_method_from_trees!(
                             ),
                             true
                         ),
-                        [CILNode::LDArg(0), conv_u64!(CILNode::LDArg(1))]
+                        [
+                            CILNode::LDArg(0).cast_ptr(Type::ManagedReference(Box::new(Type::U64))),
+                            conv_u64!(CILNode::LDArg(1))
+                        ]
                     ))
                 }
                 .into(),
@@ -98,7 +101,10 @@ crate::add_method_from_trees!(
                         ),
                         true
                     ),
-                    [CILNode::LDArg(0), conv_u32!(CILNode::LDArg(1))]
+                    [
+                        CILNode::LDArg(0).cast_ptr(Type::ManagedReference(Box::new(Type::U32))),
+                        conv_u32!(CILNode::LDArg(1))
+                    ]
                 ))
             }
             .into(),],
@@ -133,7 +139,10 @@ crate::add_method_from_trees!(
                             ),
                             true
                         ),
-                        [CILNode::LDArg(0), conv_u64!(CILNode::LDArg(1))]
+                        [
+                            CILNode::LDArg(0).cast_ptr(Type::ManagedReference(Box::new(Type::U64))),
+                            conv_u64!(CILNode::LDArg(1))
+                        ]
                     ))
                 }
                 .into(),
@@ -154,7 +163,10 @@ crate::add_method_from_trees!(
                         ),
                         true
                     ),
-                    [CILNode::LDArg(0), conv_u32!(CILNode::LDArg(1))]
+                    [
+                        CILNode::LDArg(0).cast_ptr(Type::ManagedReference(Box::new(Type::U32))),
+                        conv_u32!(CILNode::LDArg(1))
+                    ]
                 ))
             }
             .into(),],

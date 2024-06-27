@@ -6,7 +6,7 @@ use crate::cil_root::CILRoot;
 use crate::ilasm_op::type_cil;
 use crate::method::Method;
 use crate::{c_exporter::c_tpe, Type};
-use crate::{mangle, DepthSetting, IString};
+use crate::{mangle, DepthSetting, FnSig, IString};
 
 use super::escape_type_name;
 pub(crate) fn arg_name(method: &Method, arg: u32) -> IString {
@@ -242,8 +242,8 @@ fn tree_code(
             ds.pad(code)?;
             write!(
                 code,
-                "fprintf(stderr,\"%s\",{inner:?});",
-                inner = format!("{inner:?}")
+                "fprintf(stderr,\"%s\",{inner});",
+                inner = node_code(method, inner)
             )?;
             ds.pad(code)?;
             write!(code, "abort();")
@@ -281,7 +281,7 @@ fn tree_code(
         // SFI is not implementable in C, and does nothing.
         CILRoot::SourceFileInfo(_) => Ok(()),
         CILRoot::Call { site, args } | CILRoot::CallVirt { site, args } => {
-            let name = call_site_to_name(&site);
+            let name = call_site_to_name(site);
             let mut arg_iter = args.iter();
             let mut call_inner = String::new();
             if let Some(arg) = arg_iter.next() {
@@ -298,6 +298,25 @@ fn tree_code(
             }
             ds.pad(code)?;
             write!(code, "{name}({call_inner});")
+        }
+        CILRoot::CallI { sig, fn_ptr, args } => {
+            let ptr_ty = fn_ptr_ty(sig);
+            let mut arg_iter = args.iter();
+            let mut call_inner = String::new();
+            if let Some(arg) = arg_iter.next() {
+                if arg.validate(method.vctx(), None).unwrap() != Type::Void {
+                    call_inner.push_str(&node_code(method, arg));
+                }
+            }
+            for arg in arg_iter {
+                if arg.validate(method.vctx(), None).unwrap() == Type::Void {
+                    continue;
+                }
+                call_inner.push(',');
+                call_inner.push_str(&node_code(method, arg));
+            }
+            let ptr = node_code(method, fn_ptr);
+            write!(code, "(({ptr_ty}){ptr})({call_inner})")
         }
         _ => {
             ds.pad(code)?;
@@ -319,6 +338,7 @@ fn call_site_to_name(call_site: &CallSite) -> String {
 }
 fn node_code(method: &Method, node: &crate::cil_node::CILNode) -> IString {
     match node {
+        CILNode::LdStr(string) => format!("{string:?}").into(),
         CILNode::LdTrue => "true".into(),
         CILNode::LdFalse => "false".into(),
         CILNode::LDArg(arg) => arg_name(method, *arg),
@@ -353,7 +373,9 @@ fn node_code(method: &Method, node: &crate::cil_node::CILNode) -> IString {
         | CILNode::LDIndBool { ptr }
         | CILNode::LDIndISize { ptr }
         | CILNode::LDIndI8 { ptr }
-        | CILNode::LDIndI16 { ptr } => format!("(*({ptr}))", ptr = node_code(method, ptr)).into(),
+        | CILNode::LDIndI16 { ptr }
+        | CILNode::LDIndF64 { ptr }
+        | CILNode::LDIndF32 { ptr } => format!("(*({ptr}))", ptr = node_code(method, ptr)).into(),
         CILNode::LdObj { ptr, obj: _ } => {
             format!("(*({ptr}))", ptr = node_code(method, ptr)).into()
         }
@@ -372,14 +394,22 @@ fn node_code(method: &Method, node: &crate::cil_node::CILNode) -> IString {
         }
         CILNode::ConvF32(val) => format!("((float)({val}))", val = node_code(method, val)).into(),
         CILNode::ConvF64(val) => format!("((double)({val}))", val = node_code(method, val)).into(),
+        CILNode::LDFtn(call_site) => {
+            format!("(void*)&{name}", name = call_site_to_name(call_site)).into()
+        }
         CILNode::SignExtendToISize(val) => {
             let tpe = val.validate(method.vctx(), None).expect("ERROR: type info is necceary for exporting C code, but the type checker could not validate a node.");
             let val = node_code(method, val);
             match tpe {
-                Type::I64 | Type::I32 | Type::I16 | Type::I8 | Type::Bool => {
-                    format!("((intptr_t)({val}))").into()
-                }
+                Type::I64
+                | Type::I32
+                | Type::I16
+                | Type::I8
+                | Type::Bool
+                | Type::F32
+                | Type::F64 => format!("((intptr_t)({val}))").into(),
                 Type::U64 => format!("((intptr_t)(int64_t)({val}))").into(),
+                Type::U32 => format!("((intptr_t)(int32_t)({val}))").into(),
                 Type::ISize => format!("{val}").into(),
                 Type::USize | Type::Ptr(_) => format!("(intptr_t)({val})").into(),
                 _ => todo!("Can't yet `SignExtendToISize` {tpe:?}"),
@@ -440,12 +470,17 @@ fn node_code(method: &Method, node: &crate::cil_node::CILNode) -> IString {
             let tpe = val.validate(method.vctx(), None).expect("ERROR: type info is necceary for exporting C code, but the type checker could not validate a node.");
             let val = node_code(method, val);
             match tpe {
-                Type::U64 | Type::U32 | Type::U16 | Type::U8 => {
-                    format!("(uintptr_t)({val})").into()
-                }
+                Type::U64
+                | Type::U32
+                | Type::U16
+                | Type::Bool
+                | Type::U8
+                | Type::F32
+                | Type::F64 => format!("(uintptr_t)({val})").into(),
                 Type::Ptr(_) | Type::ISize => format!("(uintptr_t)({val})").into(),
 
                 Type::I32 => format!("(uintptr_t)((uint32_t)({val}))").into(),
+
                 Type::I64 => format!("(uintptr_t)((uint64_t)({val}))").into(),
                 Type::USize => val,
                 _ => todo!("Can't yet `ZeroExtendToUSize` {tpe:?}"),
@@ -455,12 +490,12 @@ fn node_code(method: &Method, node: &crate::cil_node::CILNode) -> IString {
             let tpe = val.validate(method.vctx(), None).expect("ERROR: type info is necceary for exporting C code, but the type checker could not validate a node.");
             let val = node_code(method, val);
             match tpe {
-                Type::U32 => format!("(uint64_t)({val})").into(),
+                Type::U32 | Type::U16 | Type::U8 => format!("(uint64_t)({val})").into(),
                 Type::USize => format!("(uint64_t)({val})").into(),
                 Type::ISize => format!("(uint64_t)(uintptr_t)({val})").into(),
                 Type::U64 => val,
                 Type::I32 => format!("((uint64_t)((uint32_t)({val})))").into(),
-                Type::I64 => format!("((uint64_t)({val}))").into(),
+                Type::I64 | Type::F64 | Type::F32 => format!("((uint64_t)({val}))").into(),
                 _ => todo!("Can't yet `ZeroExtendToU64` {tpe:?}"),
             }
         }
@@ -493,7 +528,7 @@ fn node_code(method: &Method, node: &crate::cil_node::CILNode) -> IString {
             let addr_tpe = addr.validate(method.vctx(), None).expect("ERROR: type info is necceary for exporting C code, but the type checker could not validate a node.");
             match addr_tpe {
                 Type::Ptr(_) | Type::ManagedReference(_) => format!(
-                    "&({addr})->{name}.f",
+                    "&(({addr})->{name}.f)",
                     addr = node_code(method, addr),
                     name = field.name()
                 )
@@ -601,7 +636,25 @@ fn node_code(method: &Method, node: &crate::cil_node::CILNode) -> IString {
                 .into(),
             }
         }
-
+        CILNode::CallI(sig_ptr_args) => {
+            let ptr_ty = fn_ptr_ty(&sig_ptr_args.0);
+            let mut arg_iter = sig_ptr_args.2.iter();
+            let mut call_inner = String::new();
+            if let Some(arg) = arg_iter.next() {
+                if arg.validate(method.vctx(), None).unwrap() != Type::Void {
+                    call_inner.push_str(&node_code(method, arg));
+                }
+            }
+            for arg in arg_iter {
+                if arg.validate(method.vctx(), None).unwrap() == Type::Void {
+                    continue;
+                }
+                call_inner.push(',');
+                call_inner.push_str(&node_code(method, arg));
+            }
+            let ptr = node_code(method, &sig_ptr_args.1);
+            format!("(({ptr_ty}){ptr})({call_inner})").into()
+        }
         CILNode::Call(call_op_args)
         | CILNode::NewObj(call_op_args)
         | CILNode::CallVirt(call_op_args) => {
@@ -628,6 +681,27 @@ fn node_code(method: &Method, node: &crate::cil_node::CILNode) -> IString {
             idx = node_code(method, idx)
         )
         .into(),
+        CILNode::LocAlloc { size } => {
+            format!("alloca({size})", size = node_code(method, size)).into()
+        }
         _ => todo!("Can't yet export the CILNode node {node:?}"),
     }
+}
+pub(crate) fn fn_ptr_ty(sig: &FnSig) -> String {
+    let output = c_tpe(sig.output());
+    let mut inputs: String = "(".into();
+    let mut input_iter = sig
+        .inputs()
+        .iter()
+        .enumerate()
+        .filter(|(_, tpe)| **tpe != Type::Void);
+    if let Some((idx, input)) = input_iter.next() {
+        inputs.push_str(&format!("{input}", input = c_tpe(input),));
+    }
+    for (idx, input) in input_iter {
+        inputs.push_str(&format!(",{input}", input = c_tpe(input),));
+    }
+    inputs.push(')');
+
+    format!("{output}(*){inputs}")
 }
