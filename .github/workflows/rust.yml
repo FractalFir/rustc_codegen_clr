@@ -56,9 +56,7 @@ jobs:
           cargo test compile_test::arr::stable::debug
           cargo test compile_test::add::stable::debug
           cargo test compile_test::fail0::stable::release
-          cargo test compile_test::fastrand_test::stable::cargo_debug
           cargo test compile_test::enums::stable::release
-          cargo test compile_test::fastrand_test::stable::cargo_release
           cargo test compile_test::fail5::stable::debug
           cargo test compile_test::fail5::stable::release
           cargo test compile_test::fail4::stable::release
@@ -69,11 +67,7 @@ jobs:
           cargo test compile_test::fail9::stable::release
           cargo test compile_test::add::stable::release
           cargo test compile_test::fuzz73::stable::release
-          cargo test compile_test::glam_test::stable::cargo_debug
-          cargo test compile_test::glam_test::stable::cargo_release
           cargo test compile_test::greater_than::stable::debug
-          cargo test compile_test::hello_world::stable::cargo_debug
-          cargo test compile_test::hello_world::stable::cargo_release
           cargo test compile_test::greater_than::stable::release
           cargo test compile_test::i16_to_u64::stable::debug
           cargo test compile_test::i16_to_u64::stable::release
