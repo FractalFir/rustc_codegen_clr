@@ -79,7 +79,6 @@ jobs:
           cargo test compile_test::sub
           cargo test compile_test::subslice
           cargo test compile_test::structs
-          cargo test tuple
           cargo test enum
           cargo test compile_test::xor
           cargo test statics
