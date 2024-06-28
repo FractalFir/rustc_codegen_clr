@@ -296,6 +296,9 @@ pub fn add_fn<'tcx>(
     name: &str,
     cache: &mut TyCache,
 ) -> Result<(), MethodCodegenError> {
+    if name.contains("rustc_codegen_clr_comptime_entrypoint") {
+        todo!("Can't yet start the comptime interpreter.")
+    }
     if crate::utilis::is_function_magic(name) {
         return Ok(());
     }

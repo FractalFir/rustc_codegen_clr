@@ -704,6 +704,7 @@ run_test! {types,adt_enum,stable}
 run_test! {types,nbody,stable}
 run_test! {types,structs,stable}
 run_test! {types,interop,stable}
+run_test! {types,interop_typedef,unstable}
 run_test! {types,vec,stable}
 run_test! {types,subslice,stable}
 
