@@ -143,6 +143,7 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
         static_fields.extend(other.static_fields);
         extern_refs.extend(other.extern_refs);
         extern_fns.extend(other.extern_fns);
+
         Self {
             types,
             functions,
@@ -178,7 +179,27 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
             .find(|&tpe| tpe.0.as_ref() == path)
             .map(|t| t.1)
     }
-
+    pub fn finalize(&mut self) {
+        for method in self
+            .types
+            .iter_mut()
+            .flat_map(|(_name, tdef)| tdef.methods_mut())
+        {
+            if let Some(site) = method
+                .attributes()
+                .iter()
+                .flat_map(|attr| attr.as_alias_for())
+                .next()
+            {
+                let Some(target) = self.functions.get(site) else {
+                    panic!("can't find  {site:?}");
+                    continue;
+                };
+                method.set_locals(target.locals());
+                method.set_blocks(target.blocks());
+            }
+        }
+    }
     /// Adds a global static field named *name* of type *tpe*
     pub fn add_static(&mut self, tpe: Type, name: &str) {
         self.static_fields.insert(name.into(), tpe);
@@ -251,6 +272,7 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
                 name = method.name()
             );*/
         }
+
         self.functions.insert(method.call_site(), method);
     }
     /// Returns the list of all calls within the method. Calls may repeat.

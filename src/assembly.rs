@@ -296,21 +296,24 @@ pub fn add_fn<'tcx>(
     name: &str,
     cache: &mut TyCache,
 ) -> Result<(), MethodCodegenError> {
-    if name.contains("rustc_codegen_clr_comptime_entrypoint") {
-        todo!("Can't yet start the comptime interpreter.")
-    }
-    if crate::utilis::is_function_magic(name) {
-        return Ok(());
-    }
     if let TyKind::FnDef(_, _) = instance.ty(tcx, ParamEnv::reveal_all()).kind() {
         //ALL OK.
     } else if let TyKind::Closure(_, _) = instance.ty(tcx, ParamEnv::reveal_all()).kind() {
         //println!("CLOSURE")
     } else {
-        eprintln!("fn item {instance:?} is not a function definition type. Skippping.");
+        println!("fn item {instance:?} is not a function definition type or a closure. Skippping.");
         return Ok(());
     }
     let mir = tcx.instance_mir(instance.def);
+    if name.contains("rustc_codegen_clr_comptime_entrypoint") {
+        crate::comptime::interpret(asm, instance, tcx, mir, cache);
+        return Ok(());
+    }
+    if crate::utilis::is_function_magic(name) {
+        println!("fn item {instance:?} is magic and is being skiped.");
+        return Ok(());
+    }
+
     let timer = tcx.prof.generic_activity_with_arg("codegen fn", name);
     // Check if function is public or not.
     // FIXME: figure out the source of the bug causing visibility to not be read propely.

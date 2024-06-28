@@ -47,9 +47,38 @@ impl Hash for Method {
 pub enum Attribute {
     /// Set if the function is the assemblys entrypoint.
     EntryPoint,
+    /// This method is nothing more than an alias for another method.
+    AliasFor(Box<CallSite>),
+}
+
+impl Attribute {
+    pub fn as_alias_for(&self) -> Option<&Box<CallSite>> {
+        if let Self::AliasFor(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
 }
 
 impl Method {
+    pub fn alias_for(
+        access: AccessModifer,
+        method_type: MethodType,
+        name: IString,
+        alias_for: CallSite,
+    ) -> Self {
+        Self {
+            access,
+            method_type,
+            sig: alias_for.signature().clone(),
+            name,
+            locals: vec![],
+            blocks: vec![],
+            attributes: vec![Attribute::AliasFor(Box::new(alias_for))],
+            arg_names: vec![],
+        }
+    }
     pub fn maxstack(&self) -> usize {
         let trees = self.blocks().iter().flat_map(|block| block.trees());
         let max = trees.map(|tree| tree.root().into_iter().count() + 3).max();
@@ -574,6 +603,10 @@ impl Method {
 
     pub(crate) fn vctx(&self) -> ValidationContext {
         ValidationContext::new(&self.sig, &self.locals)
+    }
+
+    pub(crate) fn set_blocks(&mut self, blocks: impl Into<Vec<BasicBlock>>) {
+        self.blocks = blocks.into();
     }
 }
 

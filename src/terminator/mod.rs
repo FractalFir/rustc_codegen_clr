@@ -21,13 +21,7 @@ pub fn handle_call_terminator<'tycxt>(
 ) -> Vec<CILTree> {
     let mut trees = Vec::new();
 
-    let func_ty = match func {
-        Operand::Constant(fn_const) => fn_const.ty(),
-        Operand::Copy(called) | Operand::Move(called) => {
-            called.ty(ctx.body(), ctx.tcx()).ty
-            //rustc_middle::ty::print::with_no_trimmed_paths! {eprintln!("Calling func:{func:?} {:?}", operand_ty)};
-        }
-    };
+    let func_ty = func.ty(ctx.body(), ctx.tcx());
     // Get the pointed type, if byref;
     let func_ty = match func_ty.builtin_deref(true) {
         None => func_ty,

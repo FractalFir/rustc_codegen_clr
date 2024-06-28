@@ -27,5 +27,6 @@ crate-type=["rlib", "cdylib"]
 members = [ "cilly",
     "mycorrhiza", 
 ]
+exclude = ["rust/src/bootstrap"]
 [profile.release]
 debug = true

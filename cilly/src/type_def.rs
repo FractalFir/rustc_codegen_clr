@@ -67,6 +67,9 @@ impl TypeDef {
     pub fn methods(&self) -> impl Iterator<Item = &Method> {
         self.functions.iter()
     }
+    pub fn methods_mut(&mut self) -> impl Iterator<Item = &mut Method> {
+        self.functions.iter_mut()
+    }
     #[must_use]
     pub fn nameonly(name: &str) -> Self {
         Self {

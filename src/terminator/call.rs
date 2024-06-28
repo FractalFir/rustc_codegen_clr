@@ -312,7 +312,6 @@ pub fn call<'tcx>(
     };
     if let rustc_middle::ty::InstanceKind::Virtual(_def, fn_idx) = instance.def {
         assert!(!args.is_empty());
-        let fat_ptr_ty = ctx.monomorphize(args[0].node.ty(ctx.body(), ctx.tcx()));
 
         let fat_ptr_address = handle_operand(&args[0].node, ctx);
 
