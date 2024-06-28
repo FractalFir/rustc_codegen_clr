@@ -753,7 +753,7 @@ fn main() {
     add_mandatory_statics(&mut final_assembly);
     final_assembly.finalize();
     if !is_lib {
-        //final_assembly.eliminate_dead_code();
+        final_assembly.eliminate_dead_code();
     }
     if *C_MODE {
         type Exporter = cilly::c_exporter::CExporter;
