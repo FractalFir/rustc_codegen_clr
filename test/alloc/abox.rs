@@ -1,14 +1,32 @@
-#![feature(lang_items,adt_const_params,associated_type_defaults,core_intrinsics,start,fundamental,ptr_internals,sized_type_properties)]
-#![allow(internal_features,incomplete_features,unused_variables,dead_code,unused_unsafe,unused_imports,private_interfaces,unused_mut)]
+#![feature(
+    lang_items,
+    adt_const_params,
+    associated_type_defaults,
+    core_intrinsics,
+    start,
+    fundamental,
+    ptr_internals,
+    sized_type_properties
+)]
+#![allow(
+    internal_features,
+    incomplete_features,
+    unused_variables,
+    dead_code,
+    unused_unsafe,
+    unused_imports,
+    private_interfaces,
+    unused_mut
+)]
 #![no_std]
 include!("../common.rs");
-use core::ptr::{self, NonNull, Unique};
-use core::mem::SizedTypeProperties;
 use core::mem;
-#[derive(Copy,Clone)]
+use core::mem::SizedTypeProperties;
+use core::ptr::{self, NonNull, Unique};
+#[derive(Copy, Clone)]
 pub struct Alignment(AlignmentEnum);
 #[repr(usize)]
-#[derive(Copy,Clone)]
+#[derive(Copy, Clone)]
 enum AlignmentEnum {
     _Align1Shl0 = 1 << 0,
     _Align1Shl1 = 1 << 1,
@@ -68,7 +86,7 @@ pub struct Layout {
     align: Alignment,
 }
 
-impl Alignment{
+impl Alignment {
     #[inline]
     pub const fn new(align: usize) -> Option<Self> {
         if align.is_power_of_two() {
@@ -78,25 +96,24 @@ impl Alignment{
             None
         }
     }
-    pub const fn as_usize(&self)->usize{
-        unsafe { mem::transmute::<Alignment,usize>(*self) }
+    pub const fn as_usize(&self) -> usize {
+        unsafe { mem::transmute::<Alignment, usize>(*self) }
     }
     pub const unsafe fn new_unchecked(align: usize) -> Self {
-
         // SAFETY: By precondition, this must be a power of two, and
         // our variants encompass all possible powers of two.
         unsafe { mem::transmute::<usize, Alignment>(align) }
     }
 }
-impl Layout{
-    pub fn test_layout(){
-        unsafe{
-        let mut res = Self::from_size_align_unchecked(0,1024);
-        res.size = 64;
-        test_eq!(res.size,64);
-        res.align =  Alignment::new_unchecked(1024);
-        test_eq!(res.align(),1024);
-        test_eq!(res.size,64);
+impl Layout {
+    pub fn test_layout() {
+        unsafe {
+            let mut res = Self::from_size_align_unchecked(0, 1024);
+            res.size = 64;
+            test_eq!(res.size, 64);
+            res.align = Alignment::new_unchecked(1024);
+            test_eq!(res.align(), 1024);
+            test_eq!(res.size, 64);
         }
     }
     #[must_use]
@@ -120,11 +137,16 @@ impl Layout{
     }
     #[must_use]
     #[inline]
-    pub  unsafe fn from_size_align_unchecked(size: usize, align: usize) -> Self {
+    pub unsafe fn from_size_align_unchecked(size: usize, align: usize) -> Self {
         // SAFETY: the caller is required to uphold the preconditions.
-        unsafe { Layout { size, align: Alignment::new_unchecked(align) } }
+        unsafe {
+            Layout {
+                size,
+                align: Alignment::new_unchecked(align),
+            }
+        }
     }
-    /* 
+    /*
     #[must_use]
     #[inline]
     pub fn for_value<T>(t: &T) -> Self {
@@ -154,28 +176,26 @@ pub struct AllocError;
 #[lang = "owned_box"]
 #[fundamental]
 pub struct Box<T>(Unique<T>, Alloc);
-impl<T> Box<T>{
+impl<T> Box<T> {
     #[must_use]
     #[inline]
-    pub fn new_in(x: T, alloc: Alloc) -> Self
-    {
+    pub fn new_in(x: T, alloc: Alloc) -> Self {
         let mut boxed = Self::new_uninit_in(alloc);
-        test_ne!(boxed.as_ptr(),0_usize as *const T);
+        test_ne!(boxed.as_ptr(), 0_usize as *const T);
         u64::putnl(boxed.as_ptr() as usize as u64);
         unsafe {
             boxed.as_mut_ptr().write(x);
         }
-        unsafe{core::mem::transmute(boxed)}
+        unsafe { core::mem::transmute(boxed) }
     }
-    pub fn new(x:T)->Self{
-        Self::new_in(x,Alloc)
+    pub fn new(x: T) -> Self {
+        Self::new_in(x, Alloc)
     }
     #[inline]
     pub const unsafe fn from_raw_in(raw: *mut T, alloc: Alloc) -> Self {
         Box(unsafe { Unique::new_unchecked(raw) }, alloc)
     }
-    pub fn try_new_uninit_in(alloc: Alloc) -> Result<Box<mem::MaybeUninit<T>>, AllocError>
-    {
+    pub fn try_new_uninit_in(alloc: Alloc) -> Result<Box<mem::MaybeUninit<T>>, AllocError> {
         let ptr = if T::IS_ZST {
             f64::putnl(3.0);
             NonNull::dangling()
@@ -183,38 +203,37 @@ impl<T> Box<T>{
             f64::putnl(4.0);
             let layout = Layout::new::<mem::MaybeUninit<T>>();
             //test_ne!(layout.size(),0);
-            unsafe{alloc.allocate(layout)?.cast()}
+            unsafe { alloc.allocate(layout)?.cast() }
         };
         u64::putnl(ptr.as_ptr() as usize as u64);
         unsafe { Ok(Box::from_raw_in(ptr.as_ptr(), alloc)) }
     }
-     // #[unstable(feature = "new_uninit", issue = "63291")]
-     pub fn new_uninit_in(alloc: Alloc) -> Box<mem::MaybeUninit<T>>
-     where
-     {
-         let layout = Layout::new::<mem::MaybeUninit<T>>();
-         // NOTE: Prefer match over unwrap_or_else since closure sometimes not inlineable.
-         // That would make code size bigger.
-         match Box::try_new_uninit_in(alloc) {
-             Ok(m) => m,
-             Err(_) => handle_alloc_error(layout),
-         }
-     }
+    // #[unstable(feature = "new_uninit", issue = "63291")]
+    pub fn new_uninit_in(alloc: Alloc) -> Box<mem::MaybeUninit<T>>
+where {
+        let layout = Layout::new::<mem::MaybeUninit<T>>();
+        // NOTE: Prefer match over unwrap_or_else since closure sometimes not inlineable.
+        // That would make code size bigger.
+        match Box::try_new_uninit_in(alloc) {
+            Ok(m) => m,
+            Err(_) => handle_alloc_error(layout),
+        }
+    }
 }
-pub  fn handle_alloc_error(layout: Layout) -> ! {
+pub fn handle_alloc_error(layout: Layout) -> ! {
     core::intrinsics::abort()
 }
 struct Alloc;
 impl Alloc {
     #[inline]
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
-        test_ne!(layout.size(),0);
+        test_ne!(layout.size(), 0);
         self.alloc_impl(layout, false)
     }
-    
+
     #[inline]
     fn alloc_impl(&self, layout: Layout, zeroed: bool) -> Result<NonNull<[u8]>, AllocError> {
-        test_ne!(layout.size(),0);
+        test_ne!(layout.size(), 0);
         match layout.size() {
             0 => Ok(NonNull::slice_from_raw_parts(layout.dangling(), 0)),
             // SAFETY: `layout` is non-zero in size,
@@ -239,7 +258,7 @@ impl Alloc {
         // <https://github.com/rust-lang/rust/issues/62251#issuecomment-507580914>.
         let ptr = if layout.align() <= MIN_ALIGN && layout.align() <= layout.size() {
             let ptr = malloc(layout.size()) as *mut u8;
-            printf("Malloc retunred ptr: %p\n\0".as_ptr() as *const _,ptr);
+            printf("Malloc retunred ptr: %p\n\0".as_ptr() as *const _, ptr);
             ptr
         } else {
             Self::aligned_malloc(&layout)
@@ -258,19 +277,47 @@ impl Alloc {
         __rust_alloc(align, size) as *mut u8
     }
 }
-const MIN_ALIGN:usize = 8;
-fn main(){
-    unsafe{
+const MIN_ALIGN: usize = 8;
+fn main() {
+    unsafe {
         Layout::test_layout();
         let layout = black_box(Layout::new::<i32>());
-        test_eq!(layout.size(),4_usize);
-        let layout = black_box(Layout::from_size_align_unchecked(4,black_box(64)));
-        test_eq!(layout.size(),4_usize);
-        test_eq!(8,core::mem::size_of::<AlignmentEnum>());
-        test_eq!(8,core::mem::size_of::<Alignment>());
-        test_eq!(16,core::mem::size_of::<Layout>());
-        let mut layout = Layout::new::<u8>(); 
-        test_eq!(layout.size(),1);
+        test_eq!(layout.size(), 4_usize);
+        let layout = black_box(Layout::from_size_align_unchecked(4, black_box(64)));
+        test_eq!(layout.size(), 4_usize);
+        test_eq!(8, core::mem::size_of::<AlignmentEnum>());
+        test_eq!(8, core::mem::size_of::<Alignment>());
+        test_eq!(16, core::mem::size_of::<Layout>());
+        let mut layout = Layout::new::<u8>();
+        test_eq!(layout.size(), 1);
         let boxed = Box::new(64_u8);
+        main2();
     }
+}
+struct UnsizedStruct<T: ?Sized> {
+    unsized_field: T,
+}
+trait TestTrait {}
+impl<T> TestTrait for [T] {}
+impl<T, const N: usize> TestTrait for [T; N] {}
+fn main2() {
+    let x: UnsizedStruct<[u8; 4]> = UnsizedStruct {
+        unsized_field: [0; 4],
+    };
+    let r1: &UnsizedStruct<[u8]> = &x;
+    let r2: &UnsizedStruct<dyn TestTrait> = &x;
+    let (addr1, size) = unsafe { std::mem::transmute::<_, (usize, usize)>(r1) };
+    let (addr2, vptr) = unsafe { std::mem::transmute::<_, (usize, usize)>(r2) };
+    assert_eq!(addr1, addr2);
+    assert_eq!(size, 4);
+    let x: UnsizedStruct<[u8; 4]> = UnsizedStruct {
+        unsized_field: [0; 4],
+    };
+    let boxed = Box::new(&x);
+    let r1: Box<UnsizedStruct<[u8]>> = boxed;
+    let r2: Box<UUnsizedStruct<dyn TestTrait>> = boxed;
+    let (addr1, size) = unsafe { std::mem::transmute::<_, (usize, usize)>(r1) };
+    let (addr2, vptr) = unsafe { std::mem::transmute::<_, (usize, usize)>(r2) };
+    assert_eq!(addr1, addr2);
+    assert_eq!(size, 4);
 }

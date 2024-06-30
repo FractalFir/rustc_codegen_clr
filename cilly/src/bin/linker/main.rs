@@ -730,6 +730,7 @@ fn main() {
 
     let (mut final_assembly, linkables) =
         load::load_assemblies(to_link.as_slice(), ar_to_link.as_slice());
+    final_assembly.resolve_method_aliases();
     // Aplly certain fixes/workarounds to the final assembly
     override_errno(&mut final_assembly);
     patch::patch_all(&mut final_assembly);
@@ -751,9 +752,9 @@ fn main() {
         || output_file_path.contains(".so")
         || output_file_path.contains(".o");
     add_mandatory_statics(&mut final_assembly);
-    final_assembly.finalize();
+
     if !is_lib {
-        final_assembly.eliminate_dead_code();
+        //final_assembly.eliminate_dead_code();
     }
     if *C_MODE {
         type Exporter = cilly::c_exporter::CExporter;

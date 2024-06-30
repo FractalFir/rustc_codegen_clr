@@ -27,6 +27,7 @@ struct RustcCLRInteropManagedClass<const ASSEMBLY: &'static str, const CLASS_PAT
 type Object = RustcCLRInteropManagedClass<"System.Runtime", "System.Object">;
 type MString = RustcCLRInteropManagedClass<"System.Runtime", "System.String">;
 type RustObj_ = RustcCLRInteropManagedClass<"", "RustObj">;
+type RustObj2_ = RustcCLRInteropManagedClass<"", "RustObj2">;
 #[inline(never)]
 pub fn rustc_codegen_clr_add_field_def<T, const FNAME: &'static str>(class: ClassDef) -> ClassDef {
     black_box(());
@@ -86,11 +87,19 @@ macro_rules! typedef_fields {
     };
     ($typedef:ident, virtual fn $fname:ident($($args:tt)*)->$ret:ty{$($inner:tt)*}, $($tail:tt)*) => {
         use super::*;
-        fn $fname($($args)*)->$ret{
-            $($inner)*
+        mod $fname{
+            use super::super::*;
+            #[inline(never)]
+
+            pub extern "C" fn rustc_codegen_clr_not_magic ($($args)*)->$ret{
+                $($inner)*
+            }
         }
         const FNAME:&str = stringify!($fname);
-        $typedef = $crate::rustc_codegen_clr_add_method_def::<"pub","virtual",FNAME,_>($typedef,$fname);
+        #[used]
+        static KEEP_FN: extern "C" fn ($($args)*)->$ret = $fname::rustc_codegen_clr_not_magic;
+
+        $typedef = $crate::rustc_codegen_clr_add_method_def::<"pub","virtual",FNAME,_>($typedef,$fname::rustc_codegen_clr_not_magic);
         typedef_fields!($typedef, $($tail)*)
     };
 }
@@ -137,12 +146,21 @@ dotnet_typedef! {
     class RustObj inherits [System::Runtime]System::Runtime::Object{
         a : f32,
         virtual fn ToString(this:RustObj_)->MString{
-            panic!()//mstring!()
+            panic!()
         },
 
     }
 }
 
+dotnet_typedef! {
+    class RustObj2 inherits [System::Runtime]System::Runtime::Object{
+        a : f32,
+        virtual fn ToString(this:RustObj2_)->MString{
+            panic!()
+        },
+
+    }
+}
 /*dotnet_typedef! {
     class RustObj2 inherits RustObj{
 

@@ -1,7 +1,9 @@
 use crate::{
     assembly::MethodCompileCtx,
-    operand::handle_operand,
+    operand::{handle_operand, operand_address},
+    place::{place_address_raw, place_get},
     r#type::{pointer_to_is_fat, Type},
+    unsize::coerce_unsized_into,
 };
 use cilly::{
     call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_usize,
@@ -45,7 +47,31 @@ pub fn handle_rvalue<'tcx>(
             dst,
         ) => ptr_to_ptr(ctx, operand, *dst),
         Rvalue::Cast(CastKind::PointerCoercion(PointerCoercion::Unsize), operand, target) => {
-            crate::unsize::unsize(ctx, operand, *target)
+            if *crate::config::NEW_UNSIZE {
+                let src_cil = handle_operand(operand, ctx);
+                let src_cil = match src_cil.validate(ctx.validator(), None).unwrap() {
+                    Type::Ptr(_) => src_cil,
+                    Type::DotnetType(_) => operand_address(operand, ctx),
+                    _ => todo!(),
+                };
+                let src_type = src_cil.validate(ctx.validator(), None).unwrap();
+                assert!(matches!(src_type, Type::Ptr(_)), "{src_type:?}");
+                let dst_ty = ctx.layout_of(target_location.ty(ctx.body(), ctx.tcx()).ty);
+                let dst_cil = place_address_raw(target_location, ctx);
+                let coerce = coerce_unsized_into(
+                    ctx,
+                    src_cil,
+                    ctx.layout_of(operand.ty(ctx.body(), ctx.tcx())),
+                    dst_ty,
+                    dst_cil,
+                );
+                CILNode::SubTrees(Box::new((
+                    coerce.into(),
+                    Box::new(place_get(target_location, ctx)),
+                )))
+            } else {
+                crate::unsize::unsize(ctx, operand, *target)
+            }
         }
         Rvalue::BinaryOp(binop, operands) => {
             crate::binop::binop(*binop, &operands.0, &operands.1, ctx)

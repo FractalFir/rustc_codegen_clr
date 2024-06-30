@@ -179,7 +179,7 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
             .find(|&tpe| tpe.0.as_ref() == path)
             .map(|t| t.1)
     }
-    pub fn finalize(&mut self) {
+    pub fn resolve_method_aliases(&mut self) {
         for method in self
             .types
             .iter_mut()
@@ -192,7 +192,8 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
                 .next()
             {
                 let Some(target) = self.functions.get(site) else {
-                    panic!("can't find  {site:?}");
+                    eprintln!("can't find  {site:?}");
+                    eprintln!("can't find  {site:?}");
                     continue;
                 };
                 method.set_locals(target.locals());

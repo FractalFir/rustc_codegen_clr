@@ -306,6 +306,9 @@ pub fn add_fn<'tcx>(
     }
     let mir = tcx.instance_mir(instance.def);
     if name.contains("rustc_codegen_clr_comptime_entrypoint") {
+        if name.contains("rustc_codegen_clr_not_magic") {
+            return Ok(());
+        }
         crate::comptime::interpret(asm, instance, tcx, mir, cache);
         return Ok(());
     }
@@ -884,11 +887,27 @@ impl<'tcx, 'validator, 'type_cache> MethodCompileCtx<'tcx, 'validator, 'type_cac
         &self,
         ty: rustc_middle::ty::Ty<'tcx>,
     ) -> rustc_middle::ty::layout::TyAndLayout<'tcx> {
+        let ty = self.monomorphize(ty);
         self.tcx
             .layout_of(rustc_middle::ty::ParamEnvAnd {
                 param_env: ParamEnv::reveal_all(),
                 value: ty,
             })
             .expect("Could not get type layout!")
+    }
+}
+impl<'tcx> rustc_middle::ty::layout::HasTyCtxt<'tcx> for MethodCompileCtx<'tcx, '_, '_> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+}
+impl rustc_abi::HasDataLayout for MethodCompileCtx<'_, '_, '_> {
+    fn data_layout(&self) -> &rustc_abi::TargetDataLayout {
+        self.tcx.data_layout()
+    }
+}
+impl<'tcx> rustc_middle::ty::layout::HasParamEnv<'tcx> for MethodCompileCtx<'tcx, '_, '_> {
+    fn param_env(&self) -> ParamEnv<'tcx> {
+        ParamEnv::reveal_all()
     }
 }

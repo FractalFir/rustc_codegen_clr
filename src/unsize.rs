@@ -1,17 +1,20 @@
 use crate::assembly::MethodCompileCtx;
-use crate::operand::handle_operand;
+use crate::operand::{handle_operand, operand_address};
+use crate::place::{place_address_raw, place_adress};
 use crate::r#type::pointer_to_is_fat;
-
+use crate::utilis::field_descrptor;
 use cilly::cil_node::CILNode;
 use cilly::cil_root::CILRoot;
-use cilly::{conv_usize, ld_field, ld_field_address, ldc_u64, ptr};
-
 use cilly::field_desc::FieldDescriptor;
+use cilly::{
+    conv_u32, conv_usize, ld_field, ld_field_address, ldc_i64, ldc_u32, ldc_u64, ptr, size_of,
+};
 use cilly::{DotnetTypeRef, Type};
 use rustc_middle::{
-    mir::Operand,
-    ty::{Ty, TyKind},
+    mir::{Operand, Place},
+    ty::{layout::TyAndLayout, ParamEnv, PolyExistentialTraitRef, Ty, TyKind},
 };
+use rustc_target::abi::FIRST_VARIANT;
 struct UnsizeInfo<'tcx> {
     /// Type the source pointer points to
     source_points_to: Ty<'tcx>,
@@ -240,5 +243,205 @@ pub fn unsize<'tcx>(
             "Unhandled unsizing cast:{:?} -> {target:?}",
             info.source_points_to
         ),
+    }
+}
+/// Adopted from https://github.com/rust-lang/rustc_codegen_cranelift/blob/45600348c009303847e8cddcfa8483f1f3d56625/src/unsize.rs#L64
+pub(crate) fn unsized_info<'tcx>(
+    fx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    source: Ty<'tcx>,
+    target: Ty<'tcx>,
+    old_info: Option<CILNode>,
+) -> CILNode {
+    let (source, target) =
+        fx.tcx()
+            .struct_lockstep_tails_erasing_lifetimes(source, target, ParamEnv::reveal_all());
+    match (&source.kind(), &target.kind()) {
+        (&TyKind::Array(_, len), &TyKind::Slice(_)) => conv_usize!(ldc_i64!(len
+            .eval_target_usize(fx.tcx(), ParamEnv::reveal_all())
+            as i64)),
+        (
+            &TyKind::Dynamic(data_a, _, src_dyn_kind),
+            &TyKind::Dynamic(data_b, _, target_dyn_kind),
+        ) if src_dyn_kind == target_dyn_kind => {
+            let old_info =
+                old_info.expect("unsized_info: missing old info for trait upcasting coercion");
+            if data_a.principal_def_id() == data_b.principal_def_id() {
+                // A NOP cast that doesn't actually change anything, should be allowed even with invalid vtables.
+                return old_info;
+            }
+
+            // trait upcasting coercion
+            let vptr_entry_idx = fx.tcx().supertrait_vtable_slot((source, target));
+
+            if let Some(entry_idx) = vptr_entry_idx {
+                let entry_idx = u32::try_from(entry_idx).unwrap();
+                let entry_offset = ldc_u32!(entry_idx) * conv_u32!(size_of!(ptr!(Type::Void)));
+                let vptr_ptr = CILNode::LDIndUSize {
+                    ptr: Box::new(
+                        (old_info + conv_usize!(entry_offset)).cast_ptr(ptr!(Type::USize)),
+                    ),
+                };
+                vptr_ptr
+            } else {
+                old_info
+            }
+        }
+        (_, TyKind::Dynamic(data, ..)) => get_vtable(fx, source, data.principal()),
+        _ => panic!(
+            "unsized_info: invalid unsizing {:?} -> {:?}",
+            source, target
+        ),
+    }
+}
+/// Coerce `src`, which is a reference to a value of type `src_ty`,
+/// to a value of type `dst_ty` and store the result in `dst`
+pub(crate) fn coerce_unsized_into<'tcx>(
+    fx: &mut MethodCompileCtx<'tcx, '_, '_>,
+
+    src_cil: CILNode,
+    src_ty: TyAndLayout<'tcx>,
+    dst_ty: TyAndLayout<'tcx>,
+    dst_cil: CILNode,
+) -> Vec<CILRoot> {
+    let src_tpe = src_cil.validate(fx.validator(), None).unwrap();
+    assert!(matches!(src_tpe, Type::Ptr(_)), "{src_tpe:?}");
+    let mut coerce_ptr = || {
+        let (base, info) = if fx
+            .layout_of(src_ty.ty.builtin_deref(true).unwrap())
+            .is_unsized()
+        {
+            let (old_base, old_info) = load_scalar_pair(src_cil.clone());
+            unsize_ptr(fx, old_base, src_ty, dst_ty, Some(old_info))
+        } else {
+            let base = src_cil.clone();
+            unsize_ptr(fx, base, src_ty, dst_ty, None)
+        };
+        write_scalar_pair(
+            dst_cil.clone().cast_ptr(ptr!(Type::USize)),
+            (base.cast_ptr(Type::USize), info.cast_ptr(Type::USize)),
+        )
+    };
+
+    match (&src_ty.ty.kind(), &dst_ty.ty.kind()) {
+        (&TyKind::Ref(..), &TyKind::Ref(..) | &TyKind::RawPtr(..))
+        | (&TyKind::RawPtr(..), &TyKind::RawPtr(..)) => coerce_ptr(),
+        (&TyKind::Adt(def_a, subst_a), &TyKind::Adt(def_b, subst_b)) => {
+            assert_eq!(def_a, def_b);
+            let mut res = Vec::new();
+            for i in 0..def_a.variant(FIRST_VARIANT).fields.len() {
+                let src_f = &def_a.variant(FIRST_VARIANT).fields[i.into()];
+                let dst_f = &def_b.variant(FIRST_VARIANT).fields[i.into()];
+                let src_f_ty = fx.layout_of(src_f.ty(fx.tcx(), subst_a));
+                let dst_f_ty = fx.layout_of(dst_f.ty(fx.tcx(), subst_b));
+                if src_f_ty.layout.is_zst() {
+                    // No data here, nothing to copy/coerce.
+                    continue;
+                }
+                let src_desc = field_descrptor(src_ty.ty, i.try_into().unwrap(), fx);
+                let target_desc = field_descrptor(dst_ty.ty, i.try_into().unwrap(), fx);
+                if src_f_ty.ty == dst_f_ty.ty {
+                    //dst_f.write_cvalue(fx, src_f);
+
+                    res.push(crate::place::ptr_set_op(
+                        dst_f_ty.ty.into(),
+                        fx,
+                        ld_field_address!(dst_cil.clone(), src_desc),
+                        ld_field!(src_cil.clone(), target_desc),
+                    ));
+                } else {
+                    //return coerce_unsized_into(fx, src_f, dst_f);
+                    let src_cil = ld_field_address!(src_cil.clone(), src_desc);
+                    let src_tpe = src_cil.validate(fx.validator(), None).unwrap();
+                    assert!(matches!(src_tpe, Type::Ptr(_)), "{src_tpe:?}");
+                    let target_cil = ld_field_address!(dst_cil.clone(), target_desc);
+                    assert!(matches!(
+                        target_cil.validate(fx.validator(), None).unwrap(),
+                        Type::Ptr(_)
+                    ));
+                    res.extend(coerce_unsized_into(
+                        fx, src_cil, src_f_ty, dst_f_ty, target_cil,
+                    ));
+                }
+            }
+            res
+        }
+        _ => panic!(
+            "coerce_unsized_into: invalid coercion {:?} -> {:?}",
+            src_ty, dst_ty
+        ),
+    }
+}
+fn load_scalar_pair(addr: CILNode) -> (CILNode, CILNode) {
+    (
+        CILNode::LDIndUSize {
+            ptr: Box::new(addr.clone()),
+        },
+        CILNode::LDIndUSize {
+            ptr: Box::new(addr + conv_usize!(size_of!(Type::USize))),
+        },
+    )
+}
+fn write_scalar_pair(addr: CILNode, vals: (CILNode, CILNode)) -> Vec<CILRoot> {
+    vec![
+        CILRoot::STIndISize(addr.clone(), vals.0),
+        CILRoot::STIndISize(addr + conv_usize!(size_of!(Type::USize)), vals.1),
+    ]
+}
+/// Coerce `src` to `dst_ty`.
+fn unsize_ptr<'tcx>(
+    fx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    src: CILNode,
+    src_layout: TyAndLayout<'tcx>,
+    dst_layout: TyAndLayout<'tcx>,
+    old_info: Option<CILNode>,
+) -> (CILNode, CILNode) {
+    match (&src_layout.ty.kind(), &dst_layout.ty.kind()) {
+        (&TyKind::Ref(_, a, _), &TyKind::Ref(_, b, _) | &TyKind::RawPtr(b, _))
+        | (&TyKind::RawPtr(a, _), &TyKind::RawPtr(b, _)) => {
+            (src, unsized_info(fx, *a, *b, old_info))
+        }
+        (&TyKind::Adt(def_a, _), &TyKind::Adt(def_b, _)) => {
+            assert_eq!(def_a, def_b);
+
+            if src_layout == dst_layout {
+                return (src, old_info.unwrap());
+            }
+
+            let mut result = None;
+            for i in 0..src_layout.fields.count() {
+                let src_f = src_layout.field(fx, i);
+
+                assert_eq!(
+                    src_layout.fields.offset(i).bytes(),
+                    0,
+                    "{:?}",
+                    src_layout.ty
+                );
+                assert_eq!(dst_layout.fields.offset(i).bytes(), 0);
+                if src_f.is_1zst() {
+                    // We are looking for the one non-1-ZST field; this is not it.
+                    continue;
+                }
+                assert_eq!(src_layout.size, src_f.size);
+
+                let dst_f = dst_layout.field(fx, i);
+                assert_ne!(src_f.ty, dst_f.ty);
+                assert_eq!(result, None);
+                result = Some(unsize_ptr(fx, src.clone(), src_f, dst_f, old_info.clone()));
+            }
+            result.unwrap()
+        }
+        _ => panic!("unsize_ptr: called on bad types"),
+    }
+}
+pub(crate) fn get_vtable<'tcx>(
+    fx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ty: Ty<'tcx>,
+    trait_ref: Option<PolyExistentialTraitRef<'tcx>>,
+) -> CILNode {
+    let ty = fx.monomorphize(ty);
+    let alloc_id = fx.tcx().vtable_allocation((ty, trait_ref));
+    CILNode::LoadGlobalAllocPtr {
+        alloc_id: alloc_id.0.get(),
     }
 }

@@ -22,7 +22,7 @@ cat > config.toml <<EOF
 change-id = 999999
 
 [build]
-rustc = "rustc"
+rustc = "$(rustup which rustc)"
 cargo = "$(rustup which cargo)"
 full-bootstrap = false
 local-rebuild = true

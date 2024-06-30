@@ -5,3 +5,6 @@ fn should_pass() {}
 fn should_panic() {
     panic!();
 }
+fn main() {
+    println!("Hi!");
+}

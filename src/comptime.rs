@@ -40,7 +40,18 @@ pub fn interpret<'tcx>(
             match &statement.kind {
                 StatementKind::Assign(bx) => {
                     let (target, rvalue) = bx.as_ref();
-                    let Rvalue::Use(src) = rvalue else { panic!() };
+                    let src = match rvalue {
+                        Rvalue::Use(src) => src,
+                        Rvalue::Cast(
+                            rustc_middle::mir::CastKind::PointerCoercion(
+                                rustc_middle::ty::adjustment::PointerCoercion::ReifyFnPointer,
+                            ),
+                            _,
+                            _,
+                        ) => continue,
+                        _ => panic!(),
+                    };
+
                     let src = src.place().unwrap().as_local().unwrap();
                     let target = target.as_local().unwrap();
                     locals[usize::from(target)] = locals[usize::from(src)].clone();
@@ -130,6 +141,8 @@ pub fn interpret<'tcx>(
                             .expect("ERROR: unuported operation in interop type definiton.");
                         asm.add_typedef(locals[usize::from(local)].as_type_def().unwrap().clone());
                         ComptimeLocalVar::Void
+                    } else if function_name == "black_box".into() {
+                        ComptimeLocalVar::NotSet
                     } else if function_name.contains("rustc_codegen_clr_add_field_def") {
                         let src = args[0]
                             .node

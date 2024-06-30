@@ -68,7 +68,18 @@ impl FieldOffsetIterator {
                 count: Into::<usize>::into(*count) as u64,
             },
             FieldsShape::Primitive => Self::Empty,
-            FieldsShape::Array { .. } => todo!("Unhandled fields shape: {fields:?}"),
+            FieldsShape::Array { stride, count } => {
+                let mut curr = 0;
+                let mut offsets = Vec::new();
+                for _ in 0..*count {
+                    offsets.push(curr);
+                    curr += stride.bytes() as u32;
+                }
+                FieldOffsetIterator::Explicit {
+                    offsets: offsets.into(),
+                    index: 0,
+                }
+            }
         }
     }
     pub fn fields(parent: LayoutS<FieldIdx, rustc_target::abi::VariantIdx>) -> FieldOffsetIterator {
