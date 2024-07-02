@@ -11,6 +11,7 @@ use cilly::{
     cil_root::CILRoot,
     conv_usize,
     ilasm_exporter::ILASM_FLAVOUR,
+    js_exporter::JSExporter,
     ldc_i32,
     method::{Method, MethodType},
     DotnetTypeRef, FnSig, IString, IlasmFlavour, Type,
@@ -24,7 +25,7 @@ mod export;
 use cilly::libc_fns;
 mod load;
 mod patch;
-use std::{collections::HashMap, env, io::Write};
+use std::{collections::HashMap, env, io::Write, path::Path};
 struct NativePastroughInfo {
     defs: HashMap<IString, IString>,
 }
@@ -771,66 +772,111 @@ fn main() {
             false,
         )
         .unwrap();
-        return;
-    }
-
-    // Run ILASM
-    export::export_assembly(&final_assembly, output_file_path, is_lib)
+    } else if *JS_MODE {
+        type Exporter = cilly::js_exporter::JSExporter;
+        use cilly::asm_exporter::AssemblyExporter;
+        Exporter::export_assembly(
+            Exporter::default(),
+            &final_assembly,
+            output_file_path.as_ref(),
+            is_lib,
+            false,
+        )
         .expect("Assembly export faliure!");
-    let path: std::path::PathBuf = output_file_path.into();
-    final_assembly
-        .save_tmp(&mut std::fs::File::create(path.with_extension("cilly")).unwrap())
-        .unwrap();
-    // Run AOT compiler
-    aot_compile_mode.compile(output_file_path);
-
-    //      Cargo integration
-
-    if cargo_support {
-        let bootstrap = format!(
-            include_str!("dotnet_jumpstart.rs"),
-            exec_file = path.file_name().unwrap().to_string_lossy(),
-            has_native_companion = *NATIVE_PASSTROUGH,
-            has_pdb = match *ILASM_FLAVOUR {
-                IlasmFlavour::Clasic => false,
-                IlasmFlavour::Modern => true,
-            },
-            pdb_file = match *ILASM_FLAVOUR {
-                IlasmFlavour::Clasic => String::new(),
-                IlasmFlavour::Modern => format!(
-                    "{output_file_path}.pdb",
-                    output_file_path = path.file_name().unwrap().to_string_lossy()
-                ),
-            },
-            native_companion_file = if *NATIVE_PASSTROUGH {
-                format!(
-                    "rust_native_{output_file_path}.so",
-                    output_file_path = file_stem(output_file_path)
-                )
-            } else {
-                String::new()
-            }
-        );
-        let bootstrap_path = path.with_extension("rs");
-        let mut bootstrap_file = std::fs::File::create(&bootstrap_path).unwrap();
-        bootstrap_file.write_all(bootstrap.as_bytes()).unwrap();
-        let path = std::env::var("PATH").unwrap();
-        let out = std::process::Command::new("rustc")
-            .arg("-O")
-            .arg(bootstrap_path)
-            .arg("-o")
-            .arg(output_file_path)
-            .env_clear()
-            .env("PATH", path)
-            .output()
+        let path: std::path::PathBuf = output_file_path.into();
+        final_assembly
+            .save_tmp(&mut std::fs::File::create(path.with_extension("cilly")).unwrap())
             .unwrap();
-        assert!(
-            out.stderr.is_empty(),
-            "{}",
-            String::from_utf8(out.stderr).unwrap()
-        );
+        // Run AOT compiler
+        aot_compile_mode.compile(output_file_path);
+
+        //      Cargo integration
+
+        if cargo_support {
+            let bootstrap = bootstrap_source(&path, output_file_path, "node");
+            let bootstrap_path = path.with_extension("rs");
+            let mut bootstrap_file = std::fs::File::create(&bootstrap_path).unwrap();
+            bootstrap_file.write_all(bootstrap.as_bytes()).unwrap();
+            let path = std::env::var("PATH").unwrap();
+            let out = std::process::Command::new("rustc")
+                .arg("-O")
+                .arg(bootstrap_path)
+                .arg("-o")
+                .arg(output_file_path)
+                .env_clear()
+                .env("PATH", path)
+                .output()
+                .unwrap();
+            assert!(
+                out.stderr.is_empty(),
+                "{}",
+                String::from_utf8(out.stderr).unwrap()
+            );
+        }
+    } else {
+        // Run ILASM
+        export::export_assembly(&final_assembly, output_file_path, is_lib)
+            .expect("Assembly export faliure!");
+        let path: std::path::PathBuf = output_file_path.into();
+        final_assembly
+            .save_tmp(&mut std::fs::File::create(path.with_extension("cilly")).unwrap())
+            .unwrap();
+        // Run AOT compiler
+        aot_compile_mode.compile(output_file_path);
+
+        //      Cargo integration
+
+        if cargo_support {
+            let bootstrap = bootstrap_source(&path, output_file_path, "dotnet");
+            let bootstrap_path = path.with_extension("rs");
+            let mut bootstrap_file = std::fs::File::create(&bootstrap_path).unwrap();
+            bootstrap_file.write_all(bootstrap.as_bytes()).unwrap();
+            let path = std::env::var("PATH").unwrap();
+            let out = std::process::Command::new("rustc")
+                .arg("-O")
+                .arg(bootstrap_path)
+                .arg("-o")
+                .arg(output_file_path)
+                .env_clear()
+                .env("PATH", path)
+                .output()
+                .unwrap();
+            assert!(
+                out.stderr.is_empty(),
+                "{}",
+                String::from_utf8(out.stderr).unwrap()
+            );
+        }
     }
+
     //todo!();
+}
+fn bootstrap_source(fpath: &Path, output_file_path: &str, jumpstart_cmd: &str) -> String {
+    format!(
+        include_str!("dotnet_jumpstart.rs"),
+        jumpstart_cmd = "dotnet",
+        exec_file = fpath.file_name().unwrap().to_string_lossy(),
+        has_native_companion = *NATIVE_PASSTROUGH,
+        has_pdb = match *ILASM_FLAVOUR {
+            IlasmFlavour::Clasic => false,
+            IlasmFlavour::Modern => true,
+        },
+        pdb_file = match *ILASM_FLAVOUR {
+            IlasmFlavour::Clasic => String::new(),
+            IlasmFlavour::Modern => format!(
+                "{output_file_path}.pdb",
+                output_file_path = fpath.file_name().unwrap().to_string_lossy()
+            ),
+        },
+        native_companion_file = if *NATIVE_PASSTROUGH {
+            format!(
+                "rust_native_{output_file_path}.so",
+                output_file_path = file_stem(output_file_path)
+            )
+        } else {
+            String::new()
+        }
+    )
 }
 lazy_static! {
     #[doc = "Tells the codegen compile linked static libraries into a shared library, which will be bundled with the .NET executable."]pub static ref NATIVE_PASSTROUGH:bool = {
@@ -857,6 +903,17 @@ lazy_static! {
 lazy_static! {
     #[doc = "Tells the codegen to emmit C source files."]pub static ref C_MODE:bool = {
         std::env::vars().find_map(|(key,value)|if key == stringify!(C_MODE){
+            Some(value)
+        }else {
+            None
+        }).map(|value|match value.as_ref(){
+            "0"|"false"|"False"|"FALSE" => false,"1"|"true"|"True"|"TRUE" => true,_ => panic!("Boolean enviroment variable {} has invalid value {}",stringify!(C_MODE),value),
+        }).unwrap_or(false)
+    };
+}
+lazy_static! {
+    #[doc = "Tells the codegen to emmit JS source files."]pub static ref JS_MODE:bool = {
+        std::env::vars().find_map(|(key,value)|if key == stringify!(JS_MODE){
             Some(value)
         }else {
             None

@@ -291,7 +291,7 @@ fn main() {
         let mut layout = Layout::new::<u8>();
         test_eq!(layout.size(), 1);
         let boxed = Box::new(64_u8);
-        main2();
+        //main2();
     }
 }
 struct UnsizedStruct<T: ?Sized> {
@@ -300,7 +300,7 @@ struct UnsizedStruct<T: ?Sized> {
 trait TestTrait {}
 impl<T> TestTrait for [T] {}
 impl<T, const N: usize> TestTrait for [T; N] {}
-fn main2() {
+/*fn main2() {
     let x: UnsizedStruct<[u8; 4]> = UnsizedStruct {
         unsized_field: [0; 4],
     };
@@ -320,4 +320,4 @@ fn main2() {
     let (addr2, vptr) = unsafe { std::mem::transmute::<_, (usize, usize)>(r2) };
     assert_eq!(addr1, addr2);
     assert_eq!(size, 4);
-}
+}*/

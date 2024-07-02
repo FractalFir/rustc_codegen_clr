@@ -56,6 +56,8 @@ lazy_static! {
 
 config_flag! {TEST_WITH_MONO,false,"Tells the codegen to use the mono runtime for tests."}
 
+config_flag! {JS_MODE,false,"Tells the codegen to emmit JS source files."}
+
 config_flag! {C_MODE,false,"Tells the codegen to emmit C source files."}
 config_flag! {C_SANITIZE,false,"Tells the codegen sanitize C."}
 

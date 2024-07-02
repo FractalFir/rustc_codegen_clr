@@ -179,3 +179,14 @@ impl DepthSetting {
         }
     }
 }
+pub mod js_exporter;
+pub fn escape_type_name(name: &str) -> String {
+    name.replace(['.', ' '], "_")
+        .replace('<', "lt")
+        .replace('>', "gt")
+        .replace('$', "ds")
+        .replace(',', "cm")
+        .replace('{', "bs")
+        .replace('}', "be")
+        .replace('+', "ps")
+}

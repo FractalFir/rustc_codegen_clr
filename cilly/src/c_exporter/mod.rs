@@ -1,16 +1,12 @@
 use crate::asm::AssemblyExternRef;
 use crate::asm_exporter::{AssemblyExportError, AssemblyExporter, AssemblyInfo};
-use crate::cil_node::CILNode;
-use crate::cil_root::CILRoot;
-use crate::cil_tree::CILTree;
 use crate::method::Method;
 use crate::type_def::TypeDef;
 
 mod method;
-use crate::DepthSetting;
+use crate::{escape_type_name, DepthSetting};
 use crate::{r#type::Type, IString};
 use std::collections::HashMap;
-use std::hash::Hasher;
 use std::process::Command;
 use std::{borrow::Cow, collections::HashSet, io::Write};
 mod varaible;
@@ -80,16 +76,6 @@ impl CExporter {
     }
 }
 
-fn escape_type_name(name: &str) -> String {
-    name.replace(['.', ' '], "_")
-        .replace('<', "lt")
-        .replace('>', "gt")
-        .replace('$', "ds")
-        .replace(',', "cm")
-        .replace('{', "bs")
-        .replace('}', "be")
-        .replace('+', "ps")
-}
 impl CExporter {
     fn as_source(&self, is_dll: bool) -> Vec<u8> {
         let mut res = self.headers.clone();

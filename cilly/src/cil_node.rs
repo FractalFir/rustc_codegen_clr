@@ -1101,6 +1101,8 @@ impl CILNode {
                                     ));
                                 }
                             }
+                            (Type::DelegatePtr(_),Type::ISize)=>(),
+                            (Type::DotnetType(ty_a), Type::DotnetType(ty_b)) if !ty_a.is_valuetype() && !ty_b.is_valuetype() =>(),
                             _ => {
                                 return Err(format!(
                                     "Expected an argument of type {tpe:?}, but got {arg:?} when calling the ctor of {class:?}", class = call_op_args.site.class()
@@ -1217,6 +1219,13 @@ impl CILNode {
                 let idx = idx.validate(vctx, tmp_loc)?;
                 match arr {
                     Type::ManagedArray { element, dims } => Ok(Type::ManagedReference(element)),
+                    _ => panic!("{arr:?} is not an array!"),
+                }
+            }
+            Self::LDLen { arr } => {
+                let arr = arr.validate(vctx, tmp_loc)?;
+                match arr {
+                    Type::ManagedArray { element, dims } => Ok(Type::I32),
                     _ => panic!("{arr:?} is not an array!"),
                 }
             }

@@ -1,8 +1,5 @@
 use crate::assembly::MethodCompileCtx;
 use crate::operand::{handle_operand, operand_address};
-use crate::place::{place_address_raw, place_adress};
-use crate::r#type::pointer_to_is_fat;
-use crate::utilis::field_descrptor;
 use cilly::cil_node::CILNode;
 use cilly::cil_root::CILRoot;
 use cilly::field_desc::FieldDescriptor;
@@ -11,7 +8,7 @@ use cilly::{
 };
 use cilly::{DotnetTypeRef, Type};
 use rustc_middle::{
-    mir::{Operand, Place},
+    mir::Operand,
     ty::{layout::TyAndLayout, ParamEnv, PolyExistentialTraitRef, Ty, TyKind},
 };
 use rustc_target::abi::FIRST_VARIANT;
@@ -117,6 +114,43 @@ impl<'tcx> UnsizeInfo<'tcx> {
     }
 }
 
+/// Preforms an unsizing cast on operand `operand`, converting it to the `target` type.
+pub fn unsize2<'tcx>(
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    operand: &Operand<'tcx>,
+    target: Ty<'tcx>,
+) -> CILNode {
+    let info = UnsizeInfo::for_unsize(ctx, operand, target);
+    let src_cil = operand_address(operand, ctx);
+    let metadata = unsize_metadata(
+        ctx,
+        src_cil,
+        ctx.layout_of(operand.ty(ctx.body(), ctx.tcx())),
+        ctx.layout_of(target),
+    );
+    let metadata_field =
+        FieldDescriptor::new(info.target_dotnet.clone(), Type::USize, "metadata".into());
+    let ptr_field = FieldDescriptor::new(
+        info.target_dotnet,
+        Type::Ptr(Type::Void.into()),
+        "data_pointer".into(),
+    );
+    let init_len = CILRoot::SetField {
+        addr: Box::new(info.target_ptr.clone()),
+        value: Box::new(metadata),
+        desc: Box::new(metadata_field),
+    };
+    let init_ptr = CILRoot::SetField {
+        addr: Box::new(info.target_ptr),
+        value: Box::new(info.source_ptr.cast_ptr(ptr!(Type::Void))),
+        desc: Box::new(ptr_field),
+    };
+    CILNode::TemporaryLocal(Box::new((
+        info.target_type,
+        [init_len, init_ptr].into(),
+        CILNode::LoadTMPLocal,
+    )))
+}
 /// Preforms an unsizing cast on operand `operand`, converting it to the `target` type.
 pub fn unsize<'tcx>(
     ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
@@ -287,90 +321,10 @@ pub(crate) fn unsized_info<'tcx>(
             }
         }
         (_, TyKind::Dynamic(data, ..)) => get_vtable(fx, source, data.principal()),
-        _ => panic!(
-            "unsized_info: invalid unsizing {:?} -> {:?}",
-            source, target
-        ),
+        _ => panic!("unsized_info: invalid unsizing {source:?} -> {target:?}"),
     }
 }
-/// Coerce `src`, which is a reference to a value of type `src_ty`,
-/// to a value of type `dst_ty` and store the result in `dst`
-pub(crate) fn coerce_unsized_into<'tcx>(
-    fx: &mut MethodCompileCtx<'tcx, '_, '_>,
 
-    src_cil: CILNode,
-    src_ty: TyAndLayout<'tcx>,
-    dst_ty: TyAndLayout<'tcx>,
-    dst_cil: CILNode,
-) -> Vec<CILRoot> {
-    let src_tpe = src_cil.validate(fx.validator(), None).unwrap();
-    assert!(matches!(src_tpe, Type::Ptr(_)), "{src_tpe:?}");
-    let mut coerce_ptr = || {
-        let (base, info) = if fx
-            .layout_of(src_ty.ty.builtin_deref(true).unwrap())
-            .is_unsized()
-        {
-            let (old_base, old_info) = load_scalar_pair(src_cil.clone());
-            unsize_ptr(fx, old_base, src_ty, dst_ty, Some(old_info))
-        } else {
-            let base = src_cil.clone();
-            unsize_ptr(fx, base, src_ty, dst_ty, None)
-        };
-        write_scalar_pair(
-            dst_cil.clone().cast_ptr(ptr!(Type::USize)),
-            (base.cast_ptr(Type::USize), info.cast_ptr(Type::USize)),
-        )
-    };
-
-    match (&src_ty.ty.kind(), &dst_ty.ty.kind()) {
-        (&TyKind::Ref(..), &TyKind::Ref(..) | &TyKind::RawPtr(..))
-        | (&TyKind::RawPtr(..), &TyKind::RawPtr(..)) => coerce_ptr(),
-        (&TyKind::Adt(def_a, subst_a), &TyKind::Adt(def_b, subst_b)) => {
-            assert_eq!(def_a, def_b);
-            let mut res = Vec::new();
-            for i in 0..def_a.variant(FIRST_VARIANT).fields.len() {
-                let src_f = &def_a.variant(FIRST_VARIANT).fields[i.into()];
-                let dst_f = &def_b.variant(FIRST_VARIANT).fields[i.into()];
-                let src_f_ty = fx.layout_of(src_f.ty(fx.tcx(), subst_a));
-                let dst_f_ty = fx.layout_of(dst_f.ty(fx.tcx(), subst_b));
-                if src_f_ty.layout.is_zst() {
-                    // No data here, nothing to copy/coerce.
-                    continue;
-                }
-                let src_desc = field_descrptor(src_ty.ty, i.try_into().unwrap(), fx);
-                let target_desc = field_descrptor(dst_ty.ty, i.try_into().unwrap(), fx);
-                if src_f_ty.ty == dst_f_ty.ty {
-                    //dst_f.write_cvalue(fx, src_f);
-
-                    res.push(crate::place::ptr_set_op(
-                        dst_f_ty.ty.into(),
-                        fx,
-                        ld_field_address!(dst_cil.clone(), src_desc),
-                        ld_field!(src_cil.clone(), target_desc),
-                    ));
-                } else {
-                    //return coerce_unsized_into(fx, src_f, dst_f);
-                    let src_cil = ld_field_address!(src_cil.clone(), src_desc);
-                    let src_tpe = src_cil.validate(fx.validator(), None).unwrap();
-                    assert!(matches!(src_tpe, Type::Ptr(_)), "{src_tpe:?}");
-                    let target_cil = ld_field_address!(dst_cil.clone(), target_desc);
-                    assert!(matches!(
-                        target_cil.validate(fx.validator(), None).unwrap(),
-                        Type::Ptr(_)
-                    ));
-                    res.extend(coerce_unsized_into(
-                        fx, src_cil, src_f_ty, dst_f_ty, target_cil,
-                    ));
-                }
-            }
-            res
-        }
-        _ => panic!(
-            "coerce_unsized_into: invalid coercion {:?} -> {:?}",
-            src_ty, dst_ty
-        ),
-    }
-}
 fn load_scalar_pair(addr: CILNode) -> (CILNode, CILNode) {
     (
         CILNode::LDIndUSize {
@@ -381,30 +335,79 @@ fn load_scalar_pair(addr: CILNode) -> (CILNode, CILNode) {
         },
     )
 }
-fn write_scalar_pair(addr: CILNode, vals: (CILNode, CILNode)) -> Vec<CILRoot> {
-    vec![
-        CILRoot::STIndISize(addr.clone(), vals.0),
-        CILRoot::STIndISize(addr + conv_usize!(size_of!(Type::USize)), vals.1),
-    ]
+
+pub(crate) fn get_vtable<'tcx>(
+    fx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ty: Ty<'tcx>,
+    trait_ref: Option<PolyExistentialTraitRef<'tcx>>,
+) -> CILNode {
+    let ty = fx.monomorphize(ty);
+    let alloc_id = fx.tcx().vtable_allocation((ty, trait_ref));
+    CILNode::LoadGlobalAllocPtr {
+        alloc_id: alloc_id.0.get(),
+    }
+}
+/// Coerce `src`, which is a reference to a value of type `src_ty`,
+/// to a value of type `dst_ty` and store the result in `dst`
+pub(crate) fn unsize_metadata<'tcx>(
+    fx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    src_cil: CILNode,
+    src_ty: TyAndLayout<'tcx>,
+    dst_ty: TyAndLayout<'tcx>,
+) -> CILNode {
+    let mut coerce_ptr = || {
+        let info = if fx
+            .layout_of(src_ty.ty.builtin_deref(true).unwrap())
+            .is_unsized()
+        {
+            let (_, old_info) = load_scalar_pair(src_cil.clone());
+            unsize_ptr_metadata(fx, src_ty, dst_ty, Some(old_info))
+        } else {
+            unsize_ptr_metadata(fx, src_ty, dst_ty, None)
+        };
+        info
+    };
+
+    match (&src_ty.ty.kind(), &dst_ty.ty.kind()) {
+        (&TyKind::Ref(..), &TyKind::Ref(..) | &TyKind::RawPtr(..))
+        | (&TyKind::RawPtr(..), &TyKind::RawPtr(..)) => coerce_ptr(),
+        (&TyKind::Adt(def_a, subst_a), &TyKind::Adt(def_b, subst_b)) => {
+            assert_eq!(def_a, def_b);
+
+            for i in 0..def_a.variant(FIRST_VARIANT).fields.len() {
+                let src_f = &def_a.variant(FIRST_VARIANT).fields[i.into()];
+                let dst_f = &def_b.variant(FIRST_VARIANT).fields[i.into()];
+                let src_f_ty = fx.layout_of(src_f.ty(fx.tcx(), subst_a));
+                let dst_f_ty = fx.layout_of(dst_f.ty(fx.tcx(), subst_b));
+                if src_f_ty.layout.is_zst() {
+                    // No data here, nothing to copy/coerce.
+                    continue;
+                }
+                if src_f_ty.ty != dst_f_ty.ty {
+                    return unsize_metadata(fx, src_cil, src_f_ty, dst_f_ty);
+                }
+            }
+            todo!()
+        }
+        _ => panic!("unsize_metadata: invalid coercion {src_ty:?} -> {dst_ty:?}",),
+    }
 }
 /// Coerce `src` to `dst_ty`.
-fn unsize_ptr<'tcx>(
+fn unsize_ptr_metadata<'tcx>(
     fx: &mut MethodCompileCtx<'tcx, '_, '_>,
-    src: CILNode,
+
     src_layout: TyAndLayout<'tcx>,
     dst_layout: TyAndLayout<'tcx>,
     old_info: Option<CILNode>,
-) -> (CILNode, CILNode) {
+) -> CILNode {
     match (&src_layout.ty.kind(), &dst_layout.ty.kind()) {
         (&TyKind::Ref(_, a, _), &TyKind::Ref(_, b, _) | &TyKind::RawPtr(b, _))
-        | (&TyKind::RawPtr(a, _), &TyKind::RawPtr(b, _)) => {
-            (src, unsized_info(fx, *a, *b, old_info))
-        }
+        | (&TyKind::RawPtr(a, _), &TyKind::RawPtr(b, _)) => unsized_info(fx, *a, *b, old_info),
         (&TyKind::Adt(def_a, _), &TyKind::Adt(def_b, _)) => {
             assert_eq!(def_a, def_b);
 
             if src_layout == dst_layout {
-                return (src, old_info.unwrap());
+                return old_info.unwrap();
             }
 
             let mut result = None;
@@ -427,21 +430,10 @@ fn unsize_ptr<'tcx>(
                 let dst_f = dst_layout.field(fx, i);
                 assert_ne!(src_f.ty, dst_f.ty);
                 assert_eq!(result, None);
-                result = Some(unsize_ptr(fx, src.clone(), src_f, dst_f, old_info.clone()));
+                result = Some(unsize_ptr_metadata(fx, src_f, dst_f, old_info.clone()));
             }
             result.unwrap()
         }
-        _ => panic!("unsize_ptr: called on bad types"),
-    }
-}
-pub(crate) fn get_vtable<'tcx>(
-    fx: &mut MethodCompileCtx<'tcx, '_, '_>,
-    ty: Ty<'tcx>,
-    trait_ref: Option<PolyExistentialTraitRef<'tcx>>,
-) -> CILNode {
-    let ty = fx.monomorphize(ty);
-    let alloc_id = fx.tcx().vtable_allocation((ty, trait_ref));
-    CILNode::LoadGlobalAllocPtr {
-        alloc_id: alloc_id.0.get(),
+        _ => panic!("unsize_ptr_metadata: called on bad types"),
     }
 }

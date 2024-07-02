@@ -24,6 +24,8 @@ jobs:
         run: cargo build --verbose
   linux_test:
     runs-on: ubuntu-latest
+    env: 
+     NEW_UNSIZE: 1
     steps:
       - uses: actions/checkout@v3
       - name: Build
