@@ -6,7 +6,7 @@ use cilly::{
     cil_root::CILRoot,
     conv_u64, conv_usize,
     field_desc::FieldDescriptor,
-    ldc_u64,
+    ldc_u64, ptr,
     static_field_desc::StaticFieldDescriptor,
     DotnetTypeRef, FnSig, Type,
 };
@@ -143,7 +143,12 @@ fn load_scalar_ptr(
                     Type::U8,
                     [CILRoot::SetTMPLocal {
                         value: CILNode::LDStaticField(
-                            StaticFieldDescriptor::new(None, Type::U8, name.clone().into()).into(),
+                            StaticFieldDescriptor::new(
+                                None,
+                                ptr!(ptr!(Type::U8)),
+                                name.clone().into(),
+                            )
+                            .into(),
                         ),
                     }]
                     .into(),

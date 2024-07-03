@@ -1,5 +1,6 @@
 use crate::{
     assembly::MethodCompileCtx,
+    call_info::CallInfo,
     operand::{handle_operand, operand_address},
     place::{place_address_raw, place_get},
     r#type::{pointer_to_is_fat, Type},
@@ -94,6 +95,30 @@ pub fn handle_rvalue<'tcx>(
             aggregate_kind.as_ref(),
             field_index,
         ),
+        Rvalue::Cast(
+            CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(_)),
+            ref operand,
+            _to_ty,
+        ) => match ctx.monomorphize(operand.ty(ctx.body(), ctx.tcx())).kind() {
+            TyKind::Closure(def_id, args) => {
+                let instance = Instance::resolve_closure(
+                    ctx.tcx(),
+                    *def_id,
+                    args,
+                    rustc_middle::ty::ClosureKind::FnOnce,
+                )
+                .polymorphize(ctx.tcx());
+                let call_info = CallInfo::sig_from_instance_(instance, ctx.tcx(), ctx.type_cache());
+
+                let function_name = crate::utilis::function_name(ctx.tcx().symbol_name(instance));
+                let call_site = CallSite::new(None, function_name, call_info.sig().clone(), true);
+                CILNode::LDFtn(Box::new(call_site))
+            }
+            _ => panic!(
+                "{} cannot be cast to a fn ptr",
+                operand.ty(ctx.body(), ctx.tcx())
+            ),
+        },
         Rvalue::Cast(CastKind::Transmute, operand, dst) => {
             let dst = ctx.monomorphize(*dst);
             let dst_ty = dst;

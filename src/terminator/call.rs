@@ -418,7 +418,6 @@ pub fn call<'tcx>(
         };
     }
     let call_info = CallInfo::sig_from_instance_(instance, ctx.tcx(), ctx.type_cache());
-    // SHOULD NOT BE MUTABLE BUT VARIADICS ARE FUCKING WIERD.
 
     let function_name = crate::utilis::function_name(ctx.tcx().symbol_name(instance));
     if crate::utilis::is_fn_intrinsic(fn_type, ctx.tcx()) {

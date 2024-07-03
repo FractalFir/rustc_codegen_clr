@@ -8,10 +8,17 @@ fn main() {
     let path = std::env::args().nth(1).unwrap();
     let tests = find_tests(&path);
     let out_path = std::env::args().nth(2).unwrap();
-    std::fs::File::create(out_path)
-        .unwrap()
-        .write_all(Test::into_classic_tests(tests).as_bytes())
-        .unwrap();
+    if let Some("main") = std::env::args().nth(3).as_deref() {
+        std::fs::File::create(out_path)
+            .unwrap()
+            .write_all(Test::into_main_test(tests).as_bytes())
+            .unwrap();
+    } else {
+        std::fs::File::create(out_path)
+            .unwrap()
+            .write_all(Test::into_classic_tests(tests).as_bytes())
+            .unwrap();
+    }
 }
 #[derive(Debug)]
 pub struct Test {
@@ -134,10 +141,37 @@ impl Test {
         }
         for (index, test) in tests.iter().enumerate() {
             res.push_str(&format!(
-                "#[test]fn test{index:x}(){{{source}}}",
+                "#[test]fn test{index:x}n(){{{source}}}",
                 source = test.source
             ));
         }
+        if let Some(fmt) = rust_format(&res) {
+            res = fmt
+        }
+        res
+    }
+    fn into_main_test(tests: Vec<Test>) -> String {
+        let mut res = String::new();
+        let all_features: HashSet<_> = tests.iter().flat_map(|test| test.features.iter()).collect();
+        if !all_features.is_empty() {
+            res.push_str("#![feature(");
+            let sep = ",".to_string();
+            for feature in all_features.iter().intersperse(&&sep) {
+                res.push_str(feature);
+            }
+            res.push_str(")]");
+        }
+        let mut main = String::new();
+        main.push_str("fn main(){");
+        for (index, test) in tests.iter().enumerate() {
+            res.push_str(&format!(
+                "fn test{index:x}n()-> impl Sized{{{source}}}",
+                source = test.source
+            ));
+            main.push_str(&format!("println!(\"prepraing to run `test{index:x}n`\");test{index:x}n();println!(\"`test{index:x}n` OK\");",));
+        }
+        main.push('}');
+        res.push_str(&main);
         if let Some(fmt) = rust_format(&res) {
             res = fmt
         }

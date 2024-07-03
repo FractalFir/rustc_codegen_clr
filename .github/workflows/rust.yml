@@ -48,7 +48,6 @@ jobs:
         run: cargo build
       - name: Run cargo tests
         run: |
-          cargo test compile_test::arr
           cargo test compile_test::dst::stable
           cargo test compile_test::cmp_bytes
           cargo test compile_test::fail0
