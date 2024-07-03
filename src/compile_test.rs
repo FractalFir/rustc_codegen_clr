@@ -655,7 +655,7 @@ pub fn absolute_backend_path() -> PathBuf {
 }
 #[cfg(target_family = "unix")]
 fn with_stack_size(cmd: &mut std::process::Command, limit_kb: u64) {
-    use ::libc::{rlimit, setrlimit, RLIMIT_STACK};
+    use libc::{rlimit, setrlimit, RLIMIT_STACK};
     use std::os::unix::process::CommandExt;
 
     unsafe {
@@ -681,7 +681,6 @@ test_lib! {calls,stable}
 test_lib! {casts,stable}
 test_lib! {closure,stable}
 test_lib! {identity,stable}
-test_lib! {libc,stable}
 
 run_test! {iter,fold,stable}
 
@@ -695,6 +694,7 @@ test_lib! {tuple,stable}
 
 run_test! {types,dst,stable}
 run_test! {types,dyns,stable}
+run_test! {types,any,stable}
 run_test! {types,maybeuninit,stable}
 test_lib! {types,stable}
 

@@ -1,10 +1,11 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashSet,
     hash::Hash,
     hash::Hasher,
     ops::{Deref, DerefMut},
 };
 
+use fxhash::{FxBuildHasher, FxHashMap, FxHashSet};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -153,7 +154,7 @@ impl Method {
     pub fn realloc_locals(&mut self) {
         let blocks = &mut self.blocks;
         let mut locals = Vec::new();
-        let mut local_map: HashMap<u32, u32> = HashMap::new();
+        let mut local_map: FxHashMap<u32, u32> = FxHashMap::with_hasher(FxBuildHasher::default());
         blocks
             .iter_mut()
             .flat_map(|block| block.iter_cil_mut())
@@ -200,7 +201,7 @@ impl Method {
         blocks: Vec<BasicBlock>,
         mut arg_names: Vec<Option<IString>>,
     ) -> Self {
-        let mut used_names = HashSet::new();
+        let mut used_names = FxHashSet::with_hasher(FxBuildHasher::default());
         for name in arg_names
             .iter_mut()
             .chain(locals.iter_mut().map(|loc| &mut loc.0))

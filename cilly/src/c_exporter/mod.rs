@@ -6,7 +6,7 @@ use crate::type_def::TypeDef;
 mod method;
 use crate::{escape_type_name, DepthSetting};
 use crate::{r#type::Type, IString};
-use std::collections::HashMap;
+use fxhash::{FxBuildHasher, FxHashMap, FxHashSet};
 use std::process::Command;
 use std::{borrow::Cow, collections::HashSet, io::Write};
 mod varaible;
@@ -17,8 +17,8 @@ pub struct CExporter {
     static_defs: Vec<u8>,
     encoded_asm: String,
     headers: Vec<u8>,
-    defined: HashSet<IString>,
-    delayed_typedefs: HashMap<IString, TypeDef>,
+    defined: FxHashSet<IString>,
+    delayed_typedefs: FxHashMap<IString, TypeDef>,
 }
 impl CExporter {
     pub fn init(_asm_info: &AssemblyInfo) -> Self {
@@ -70,8 +70,8 @@ impl CExporter {
             method_defs,
             static_defs,
             headers,
-            defined: HashSet::new(),
-            delayed_typedefs: HashMap::new(),
+            defined: FxHashSet::with_hasher(FxBuildHasher::default()),
+            delayed_typedefs: FxHashMap::with_hasher(FxBuildHasher::default()),
         }
     }
 }
@@ -214,7 +214,7 @@ impl AssemblyExporter for CExporter {
         }
         self.defined.insert(name);
         let delayed_typedefs = self.delayed_typedefs.clone();
-        self.delayed_typedefs = HashMap::new();
+        self.delayed_typedefs = FxHashMap::with_hasher(FxBuildHasher::default());
         for (_, tpe) in delayed_typedefs {
             self.add_type(&tpe);
         }

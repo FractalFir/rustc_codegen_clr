@@ -1,6 +1,6 @@
 #![feature(iterator_try_collect)]
 #![allow(dead_code)]
-use std::{collections::HashMap, io::Write};
+use std::io::Write;
 
 use cilly::{
     asm::Assembly,
@@ -12,6 +12,7 @@ use cilly::{
     FnSig, Type,
 };
 mod value;
+use fxhash::{FxBuildHasher, FxHashMap};
 use value::Value;
 #[derive(Debug)]
 enum Exception {
@@ -25,11 +26,11 @@ struct InterpreterState<'asm> {
     asm: &'asm Assembly,
     call_stack: Vec<(&'asm CallSite, usize, usize, cilly::cil_root::SFI)>,
     locals: Vec<Box<[Value]>>,
-    mem: HashMap<AllocID, Box<[u8]>>,
+    mem: FxHashMap<AllocID, Box<[u8]>>,
     last_alloc: AllocID,
-    fields: HashMap<StaticFieldDescriptor, Value>,
-    methods: HashMap<AllocID, CallSite>,
-    inv_methods: HashMap<CallSite, AllocID>,
+    fields: FxHashMap<StaticFieldDescriptor, Value>,
+    methods: FxHashMap<AllocID, CallSite>,
+    inv_methods: FxHashMap<CallSite, AllocID>,
     last_alloc_method: AllocID,
 }
 
@@ -586,11 +587,11 @@ impl<'asm> InterpreterState<'asm> {
             asm,
             call_stack: vec![],
             locals: vec![],
-            mem: HashMap::new(),
+            mem: FxHashMap::with_hasher(FxBuildHasher::default()),
             last_alloc: 1,
-            fields: HashMap::new(),
-            methods: HashMap::new(),
-            inv_methods: HashMap::new(),
+            fields: FxHashMap::with_hasher(FxBuildHasher::default()),
+            methods: FxHashMap::with_hasher(FxBuildHasher::default()),
+            inv_methods: FxHashMap::with_hasher(FxBuildHasher::default()),
             last_alloc_method: 1 << 31,
         }
     }

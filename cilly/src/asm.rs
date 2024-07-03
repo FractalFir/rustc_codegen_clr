@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use fxhash::{FxBuildHasher, FxHashMap};
 
 use serde::{Deserialize, Serialize};
 
@@ -35,16 +35,16 @@ pub type ExternFnDef = (IString, FnSig, bool);
 /// Representation of a .NET assembly.
 pub struct Assembly {
     /// List of types desined within the assembly.
-    types: HashMap<IString, TypeDef>,
+    types: FxHashMap<IString, TypeDef>,
     /// List of functions defined within this assembly.
-    functions: HashMap<CallSite, Method>,
+    functions: FxHashMap<CallSite, Method>,
     /// Callsite representing the entrypoint of this assebmly if any present.
     entrypoint: Option<CallSite>,
     /// List of references to external assemblies
-    extern_refs: HashMap<IString, AssemblyExternRef>,
-    extern_fns: HashMap<ExternFnDef, IString>,
+    extern_refs: FxHashMap<IString, AssemblyExternRef>,
+    extern_fns: FxHashMap<ExternFnDef, IString>,
     /// List of all static fields within the assembly
-    static_fields: HashMap<IString, Type>,
+    static_fields: FxHashMap<IString, Type>,
 }
 impl Assembly {
     pub fn call_graph(&self) -> String {
@@ -96,19 +96,19 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
     }
     /// Returns the external assembly reference
     #[must_use]
-    pub fn extern_refs(&self) -> &HashMap<IString, AssemblyExternRef> {
+    pub fn extern_refs(&self) -> &FxHashMap<IString, AssemblyExternRef> {
         &self.extern_refs
     }
     /// Creates a new, empty assembly.
     #[must_use]
     pub fn empty() -> Self {
         let mut res = Self {
-            types: HashMap::new(),
-            functions: HashMap::new(),
+            types: FxHashMap::with_hasher(FxBuildHasher::default()),
+            functions: FxHashMap::with_hasher(FxBuildHasher::default()),
             entrypoint: None,
-            extern_refs: HashMap::new(),
-            static_fields: HashMap::new(),
-            extern_fns: HashMap::new(),
+            extern_refs: FxHashMap::with_hasher(FxBuildHasher::default()),
+            static_fields: FxHashMap::with_hasher(FxBuildHasher::default()),
+            extern_fns: FxHashMap::with_hasher(FxBuildHasher::default()),
         };
         res.static_fields.insert(
             "GlobalAtomicLock".into(),
@@ -347,15 +347,15 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
     }
 
     #[must_use]
-    pub fn extern_fns(&self) -> &HashMap<ExternFnDef, IString> {
+    pub fn extern_fns(&self) -> &FxHashMap<ExternFnDef, IString> {
         &self.extern_fns
     }
 
     pub fn add_extern_fn(&mut self, name: IString, sig: FnSig, lib: IString, preserve_errno: bool) {
         self.extern_fns.insert((name, sig, preserve_errno), lib);
     }
-    fn get_exported_fn(&self) -> HashMap<CallSite, Method> {
-        let mut externs = HashMap::new();
+    fn get_exported_fn(&self) -> FxHashMap<CallSite, Method> {
+        let mut externs = FxHashMap::with_hasher(FxBuildHasher::default());
         if let Some(entrypoint) = &self.entrypoint {
             let method = self.functions.get(entrypoint).cloned().unwrap();
             externs.insert(entrypoint.clone(), method);
@@ -378,14 +378,16 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
         externs
     }
     pub fn eliminate_dead_fn(&mut self) {
-        let mut alive: HashMap<CallSite, Method> = HashMap::new();
-        let mut resurecting: HashMap<CallSite, Method> = HashMap::new();
-        let mut to_resurect: HashMap<CallSite, Method> = self.get_exported_fn();
+        let mut alive: FxHashMap<CallSite, Method> =
+            FxHashMap::with_hasher(FxBuildHasher::default());
+        let mut resurecting: FxHashMap<CallSite, Method> =
+            FxHashMap::with_hasher(FxBuildHasher::default());
+        let mut to_resurect: FxHashMap<CallSite, Method> = self.get_exported_fn();
         while !to_resurect.is_empty() {
             alive.extend(resurecting);
-            resurecting = HashMap::new();
+            resurecting = FxHashMap::with_hasher(FxBuildHasher::default());
             resurecting.extend(to_resurect);
-            to_resurect = HashMap::new();
+            to_resurect = FxHashMap::with_hasher(FxBuildHasher::default());
             for call in resurecting.iter().flat_map(|fnc| fnc.1.calls()) {
                 if let Some(_class) = call.class() {
                     // TODO: if dead code elimination too agressive check this
@@ -416,8 +418,8 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
         self.eliminate_dead_fn();
     }
     pub fn eliminate_dead_types(&mut self) {
-        let mut alive = HashMap::new();
-        let mut resurected: HashMap<IString, _> = self
+        let mut alive = FxHashMap::with_hasher(FxBuildHasher::default());
+        let mut resurected: FxHashMap<IString, _> = self
             .functions
             .values()
             .flat_map(Method::dotnet_types)
@@ -452,7 +454,8 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
             "Foreign".into(),
             self.types.get("Foreign").cloned().unwrap(),
         );
-        let mut to_resurect: HashMap<IString, _> = HashMap::new();
+        let mut to_resurect: FxHashMap<IString, _> =
+            FxHashMap::with_hasher(FxBuildHasher::default());
         let mut cycle_count = 0;
         while !resurected.is_empty() {
             for tpe in &resurected {
@@ -487,7 +490,7 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
             assert!(cycle_count < 1000);
 
             resurected = to_resurect;
-            to_resurect = HashMap::new();
+            to_resurect = FxHashMap::with_hasher(FxBuildHasher::default());
         }
         self.types = alive;
     }
@@ -501,11 +504,11 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
         ))
     }
 
-    pub fn static_fields_mut(&mut self) -> &mut HashMap<IString, Type> {
+    pub fn static_fields_mut(&mut self) -> &mut FxHashMap<IString, Type> {
         &mut self.static_fields
     }
 
-    pub fn functions(&self) -> &HashMap<CallSite, Method> {
+    pub fn functions(&self) -> &FxHashMap<CallSite, Method> {
         &self.functions
     }
 }

@@ -1,4 +1,5 @@
 #![feature(iter_intersperse)]
+use fxhash::{FxBuildHasher, FxHashSet};
 use regex::{self, Captures, Regex};
 use std::collections::HashSet;
 use std::io::{BufRead, BufReader, Read, Write};
@@ -23,12 +24,12 @@ fn main() {
 #[derive(Debug)]
 pub struct Test {
     source: String,
-    features: HashSet<String>,
+    features: FxHashSet<String>,
 }
 impl Test {
     pub fn new(mut source: String) -> Self {
         let pattern = Regex::new("#!\\[feature\\(([^,\\)]+(?:,[^,\\)]+)*)\\)\\]").unwrap();
-        let mut features = HashSet::new();
+        let mut features = FxHashSet::with_hasher(FxBuildHasher::default());
         let replaced = pattern.replace_all(&source, |caps: &Captures| {
             features.extend(caps[1].split(',').map(|s| s.to_string()));
             String::new()
@@ -130,7 +131,8 @@ impl Test {
 
     fn into_classic_tests(tests: Vec<Test>) -> String {
         let mut res = String::new();
-        let all_features: HashSet<_> = tests.iter().flat_map(|test| test.features.iter()).collect();
+        let all_features: FxHashSet<_> =
+            tests.iter().flat_map(|test| test.features.iter()).collect();
         if !all_features.is_empty() {
             res.push_str("#![feature(");
             let sep = ",".to_string();
@@ -152,7 +154,8 @@ impl Test {
     }
     fn into_main_test(tests: Vec<Test>) -> String {
         let mut res = String::new();
-        let all_features: HashSet<_> = tests.iter().flat_map(|test| test.features.iter()).collect();
+        let all_features: FxHashSet<_> =
+            tests.iter().flat_map(|test| test.features.iter()).collect();
         if !all_features.is_empty() {
             res.push_str("#![feature(");
             let sep = ",".to_string();

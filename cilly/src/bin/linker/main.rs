@@ -25,14 +25,15 @@ mod export;
 use cilly::libc_fns;
 mod load;
 mod patch;
-use std::{collections::HashMap, env, io::Write, path::Path};
+use fxhash::{FxBuildHasher, FxHashMap};
+use std::{env, io::Write, path::Path};
 struct NativePastroughInfo {
-    defs: HashMap<IString, IString>,
+    defs: FxHashMap<IString, IString>,
 }
 impl NativePastroughInfo {
     pub fn new() -> Self {
         Self {
-            defs: HashMap::new(),
+            defs: FxHashMap::with_hasher(FxBuildHasher::default()),
         }
     }
     pub fn insert(&mut self, k: IString, v: impl Into<IString>) -> Option<IString> {
@@ -114,7 +115,7 @@ fn patch_missing_method(call_site: &cilly::call_site::CallSite) -> Method {
     method
 }
 /// Replaces `malloc` with a direct call to `AllocHGlobal`
-fn override_malloc(patched: &mut HashMap<CallSite, Method>, call: &CallSite) {
+fn override_malloc(patched: &mut FxHashMap<CallSite, Method>, call: &CallSite) {
     patched.insert(
         call.clone(),
         Method::new(
@@ -144,7 +145,7 @@ fn override_malloc(patched: &mut HashMap<CallSite, Method>, call: &CallSite) {
     );
 }
 /// Fixes calls to `pthread_attr_init`
-fn override_pthread_attr_init(patched: &mut HashMap<CallSite, Method>, call: &CallSite) {
+fn override_pthread_attr_init(patched: &mut FxHashMap<CallSite, Method>, call: &CallSite) {
     patched.insert(
         call.clone(),
         Method::new(
@@ -173,7 +174,7 @@ fn override_pthread_attr_init(patched: &mut HashMap<CallSite, Method>, call: &Ca
     );
 }
 /// Fixes calls to `pthread_attr_destroy`
-fn override_pthread_attr_destroy(patched: &mut HashMap<CallSite, Method>, call: &CallSite) {
+fn override_pthread_attr_destroy(patched: &mut FxHashMap<CallSite, Method>, call: &CallSite) {
     patched.insert(
         call.clone(),
         Method::new(
@@ -202,7 +203,7 @@ fn override_pthread_attr_destroy(patched: &mut HashMap<CallSite, Method>, call: 
     );
 }
 /// Fixes calls to `pthread_detach`
-fn override_pthread_detach(patched: &mut HashMap<CallSite, Method>, call: &CallSite) {
+fn override_pthread_detach(patched: &mut FxHashMap<CallSite, Method>, call: &CallSite) {
     patched.insert(
         call.clone(),
         Method::new(
@@ -232,7 +233,7 @@ fn override_pthread_detach(patched: &mut HashMap<CallSite, Method>, call: &CallS
 }
 /// Replaces calls to `pthread_atfork` with nops.
 /// TODO: this can cause issues.
-fn override_pthread_atfork(patched: &mut HashMap<CallSite, Method>, call: &CallSite) {
+fn override_pthread_atfork(patched: &mut FxHashMap<CallSite, Method>, call: &CallSite) {
     patched.insert(
         call.clone(),
         Method::new(
@@ -256,7 +257,7 @@ fn override_pthread_atfork(patched: &mut HashMap<CallSite, Method>, call: &CallS
 }
 
 /// Fixes calls to `pthread_attr_setstacksize`
-fn override_pthread_attr_setstacksize(patched: &mut HashMap<CallSite, Method>, call: &CallSite) {
+fn override_pthread_attr_setstacksize(patched: &mut FxHashMap<CallSite, Method>, call: &CallSite) {
     patched.insert(
         call.clone(),
         Method::new(
@@ -285,7 +286,7 @@ fn override_pthread_attr_setstacksize(patched: &mut HashMap<CallSite, Method>, c
     );
 }
 /// Fixes calls to `pthread_create`
-fn override_pthread_create(patched: &mut HashMap<CallSite, Method>, call: &CallSite) {
+fn override_pthread_create(patched: &mut FxHashMap<CallSite, Method>, call: &CallSite) {
     patched.insert(
         call.clone(),
         Method::new(
@@ -337,7 +338,7 @@ fn override_pthread_create(patched: &mut HashMap<CallSite, Method>, call: &CallS
     );
 }
 /// Replaces `free` with a direct call to `FreeHGlobal`
-fn override_free(patched: &mut HashMap<CallSite, Method>, call: &CallSite) {
+fn override_free(patched: &mut FxHashMap<CallSite, Method>, call: &CallSite) {
     patched.insert(
         call.clone(),
         Method::new(
@@ -367,7 +368,7 @@ fn override_free(patched: &mut HashMap<CallSite, Method>, call: &CallSite) {
     );
 }
 /// Replaces `realloc` with a direct call to `ReAllocHGlobal`
-fn override_realloc(patched: &mut HashMap<CallSite, Method>, call: &CallSite) {
+fn override_realloc(patched: &mut FxHashMap<CallSite, Method>, call: &CallSite) {
     patched.insert(
         call.clone(),
         Method::new(
@@ -397,7 +398,7 @@ fn override_realloc(patched: &mut HashMap<CallSite, Method>, call: &CallSite) {
     );
 }
 /// Replaces `_Unwind_RaiseException` with a throw of a special object.
-fn override_raise_exception(patched: &mut HashMap<CallSite, Method>, call: &CallSite) {
+fn override_raise_exception(patched: &mut FxHashMap<CallSite, Method>, call: &CallSite) {
     patched.insert(
         call.clone(),
         Method::new(
@@ -428,7 +429,7 @@ fn override_raise_exception(patched: &mut HashMap<CallSite, Method>, call: &Call
     );
 }
 /// Replaces `_UnwindBacktrace` with a nop.
-fn override_backtrace(patched: &mut HashMap<CallSite, Method>, call: &CallSite) {
+fn override_backtrace(patched: &mut FxHashMap<CallSite, Method>, call: &CallSite) {
     patched.insert(
         call.clone(),
         Method::new(
@@ -455,7 +456,7 @@ fn autopatch(asm: &mut Assembly, native_pastrough: &NativePastroughInfo) {
         .iter()
         .filter(|call| call.is_static() && call.class().is_none())
         .filter(|call| !asm.contains_fn(call));
-    let mut patched = std::collections::HashMap::new();
+    let mut patched = FxHashMap::with_hasher(FxBuildHasher::default());
     let mut externs = Vec::new();
     for call in call_sites {
         let name = call.name();
@@ -755,7 +756,7 @@ fn main() {
     add_mandatory_statics(&mut final_assembly);
 
     if !is_lib {
-        //final_assembly.eliminate_dead_code();
+        final_assembly.eliminate_dead_code();
     }
     if *C_MODE {
         type Exporter = cilly::c_exporter::CExporter;

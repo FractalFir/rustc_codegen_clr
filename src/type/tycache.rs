@@ -10,33 +10,20 @@ use cilly::{
     access_modifier::AccessModifer, cil_node::CILNode, fn_sig::FnSig, type_def::TypeDef,
     DotnetTypeRef, Type,
 };
+use fxhash::{FxBuildHasher, FxHashMap};
 use rustc_middle::ty::{AdtDef, AdtKind, Instance, List, ParamEnv, Ty, TyCtxt, TyKind, UintTy};
-use std::{collections::HashMap, num::NonZeroU64};
-// CAN'T BE SERAILIZED!
+use std::num::NonZeroU64;
+// SHOULDN'T BE SERAILIZED!
 pub struct TyCache {
-    type_def_cache: HashMap<IString, TypeDef>,
+    type_def_cache: FxHashMap<IString, TypeDef>,
     cycle_prevention: Vec<IString>,
 }
-fn create_typedef<'tcx>(
-    _cache: &mut TyCache,
-    _name: &str,
-    def: AdtDef<'tcx>,
-    _tcx: TyCtxt<'tcx>,
-    _method: Instance<'tcx>,
-) -> TypeDef {
-    assert_eq!(
-        def.adt_kind(),
-        AdtKind::Struct,
-        "Only struct types may be used in custom .NET typedefs!"
-    );
-    for _field in def.all_fields() {}
-    todo!()
-}
+
 impl TyCache {
     #[must_use]
     pub fn empty() -> Self {
         Self {
-            type_def_cache: HashMap::new(),
+            type_def_cache: FxHashMap::with_hasher(FxBuildHasher::default()),
             cycle_prevention: vec![],
         }
     }
@@ -65,12 +52,7 @@ impl TyCache {
         }
         self.cycle_prevention.push(name.into());
         if crate::r#type::is_name_magic(name) {
-            assert!(
-                subst.is_empty(),
-                "A custom typedef may not contain neiter generic arguments nor lifetimes!"
-            );
-            let def = create_typedef(self, name, def, tcx, method);
-            self.type_def_cache.insert(name.into(), def);
+            todo!();
         } else {
             let def = match def.adt_kind() {
                 AdtKind::Struct => self.struct_(name, def, adt_ty, subst, tcx, method),

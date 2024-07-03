@@ -1,5 +1,6 @@
 use crate::assembly::MethodCompileCtx;
 use crate::operand::{handle_operand, operand_address};
+use crate::r#type::pointer_to_is_fat;
 use cilly::cil_node::CILNode;
 use cilly::cil_root::CILRoot;
 use cilly::field_desc::FieldDescriptor;
@@ -135,19 +136,31 @@ pub fn unsize2<'tcx>(
         Type::Ptr(Type::Void.into()),
         "data_pointer".into(),
     );
-    let init_len = CILRoot::SetField {
+    let init_metadata = CILRoot::SetField {
         addr: Box::new(info.target_ptr.clone()),
-        value: Box::new(metadata),
+        value: Box::new(metadata.cast_ptr(Type::USize)),
         desc: Box::new(metadata_field),
     };
-    let init_ptr = CILRoot::SetField {
-        addr: Box::new(info.target_ptr),
-        value: Box::new(info.source_ptr.cast_ptr(ptr!(Type::Void))),
-        desc: Box::new(ptr_field),
+    let init_ptr = if pointer_to_is_fat(info.source_points_to, ctx.tcx(), ctx.instance()) {
+        CILRoot::SetField {
+            addr: Box::new(info.target_ptr),
+            value: Box::new(CILNode::LDIndPtr {
+                ptr: Box::new(operand_address(operand, ctx).cast_ptr(ptr!(Type::Void))),
+                loaded_ptr: Box::new(ptr!(Type::Void)),
+            }),
+            desc: Box::new(ptr_field),
+        }
+    } else {
+        CILRoot::SetField {
+            addr: Box::new(info.target_ptr),
+            value: Box::new(handle_operand(operand, ctx).cast_ptr(ptr!(Type::Void))),
+            desc: Box::new(ptr_field),
+        }
     };
+
     CILNode::TemporaryLocal(Box::new((
         info.target_type,
-        [init_len, init_ptr].into(),
+        [init_metadata, init_ptr].into(),
         CILNode::LoadTMPLocal,
     )))
 }

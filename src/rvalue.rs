@@ -47,11 +47,7 @@ pub fn handle_rvalue<'tcx>(
             dst,
         ) => ptr_to_ptr(ctx, operand, *dst),
         Rvalue::Cast(CastKind::PointerCoercion(PointerCoercion::Unsize), operand, target) => {
-            if *crate::config::NEW_UNSIZE {
-                crate::unsize::unsize2(ctx, operand, *target)
-            } else {
-                crate::unsize::unsize(ctx, operand, *target)
-            }
+            crate::unsize::unsize2(ctx, operand, *target)
         }
         Rvalue::BinaryOp(binop, operands) => {
             crate::binop::binop(*binop, &operands.0, &operands.1, ctx)

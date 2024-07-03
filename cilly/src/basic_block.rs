@@ -1,5 +1,4 @@
-use std::collections::HashSet;
-
+use fxhash::{FxBuildHasher, FxHashSet};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -46,9 +45,9 @@ fn find_bb(id: u32, bbs: &[BasicBlock]) -> &BasicBlock {
 }
 fn block_gc(entrypoint: u32, bbs: &[BasicBlock]) -> Vec<BasicBlock> {
     //debug_assert!(crate::utilis::is_sorted(bbs.iter(),|a,b|a.id + 1 == b.id));
-    let mut alive: HashSet<u32> = HashSet::new();
-    let mut resurecting = HashSet::new();
-    let mut to_resurect = HashSet::new();
+    let mut alive: FxHashSet<u32> = FxHashSet::with_hasher(FxBuildHasher::default());
+    let mut resurecting = FxHashSet::with_hasher(FxBuildHasher::default());
+    let mut to_resurect = FxHashSet::with_hasher(FxBuildHasher::default());
     to_resurect.insert(entrypoint);
     while !to_resurect.is_empty() {
         alive.extend(&resurecting);
@@ -135,7 +134,7 @@ impl BasicBlock {
         // Generate launching pads for cross-block branches!
         let id = self.id();
         let targets = self.targets();
-        let targets: HashSet<_> = targets.iter().collect();
+        let targets: FxHashSet<_> = targets.iter().collect();
         for (target, sub_target) in targets {
             assert_eq!(*sub_target, 0);
             self.trees.push(
