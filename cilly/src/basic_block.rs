@@ -193,17 +193,7 @@ impl BasicBlock {
     }
     /// Returns a iterator over `CILIterElem`
     pub fn iter_cil(&self) -> impl Iterator<Item = CILIterElem> {
-        let handler_bbs = self
-            .handler
-            .iter()
-            .filter_map(|handler| handler.as_blocks())
-            .flatten();
-        let sref: &Self = self;
-        let self_blocks = Some(sref).into_iter();
-        let block_iter = self_blocks.chain(handler_bbs);
-        block_iter
-            .flat_map(|block| block.trees.iter())
-            .flat_map(|tree| tree.root().into_iter())
+        self.iter_tree_roots().flat_map(|root| root.into_iter())
     }
     /// Returns a iterator over `CILIterElemMut`
     pub fn iter_cil_mut(&mut self) -> impl Iterator<Item = CILIterElemMut> {
@@ -240,6 +230,20 @@ impl BasicBlock {
             return Err(errs[0].clone());
         }
         Ok(())
+    }
+
+    pub(crate) fn iter_tree_roots(&self) -> impl Iterator<Item = &CILRoot> {
+        let handler_bbs = self
+            .handler
+            .iter()
+            .filter_map(|handler| handler.as_blocks())
+            .flatten();
+        let sref: &Self = self;
+        let self_blocks = Some(sref).into_iter();
+        let block_iter = self_blocks.chain(handler_bbs);
+        block_iter
+            .flat_map(|block| block.trees.iter())
+            .map(|tree| tree.root())
     }
 }
 pub fn export(

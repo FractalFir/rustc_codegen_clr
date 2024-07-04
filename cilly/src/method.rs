@@ -91,8 +91,15 @@ impl Method {
             .any(|node| matches!(node, CILNode::LDLocA(loc) if *loc == local))
     }
     /// For a `local`, returns the *values* of all its assigements. This *will not include the root, only the nodes*!
+    /// WARNING: this ONLY works on "finalized" CIL, and DOES NOT SUPPORT SUBTREES
     pub fn local_sets(&self, local: u32) -> impl Iterator<Item = &CILNode> {
-        self.iter_cil().roots().filter_map(move |node| match node {
+        {
+            let this = &self;
+            this.blocks()
+                .iter()
+                .flat_map(|block| block.iter_tree_roots())
+        }
+        .filter_map(move |root| match root {
             CILRoot::STLoc { local: loc, tree } if (*loc == local) => Some(tree),
             _ => None,
         })
@@ -103,16 +110,11 @@ impl Method {
     pub fn const_opt_pass(&mut self) {
         // If a local is set only once, and its address is never taken, it is likely to be const
         // TODO: this is inefficient Consider checking all locals at once?
-        let locals_address_not_taken: Box<[_]> = (0..(self.locals().len() as u32))
-            .enumerate()
-            .filter_map(|(idx, loc)| {
-                if !self.is_address_taken(loc) {
-                    Some(idx)
-                } else {
-                    None
-                }
-            })
+        let luo = LocalUsageInfo::from_method(self);
+        let locals_address_not_taken: Box<[_]> = (0..(self.locals().len()))
+            .filter(|idx| !luo.is_address_taken(*idx))
             .collect();
+
         for local in locals_address_not_taken {
             let sets = self.local_sets(local as u32);
             if let Some(val) = all_evals_identical(sets) {
@@ -668,5 +670,25 @@ pub(crate) fn all_evals_identical<'a>(
         Some(first_val)
     } else {
         None
+    }
+}
+struct LocalUsageInfo {
+    is_address_taken: Box<[bool]>,
+}
+
+impl LocalUsageInfo {
+    fn from_method(method: &Method) -> Self {
+        let mut is_address_taken: Box<[_]> = vec![false; method.locals().len()].into();
+        for node in method.iter_cil().nodes() {
+            match node {
+                CILNode::LDLocA(loc) => is_address_taken[*loc as usize] = true,
+                _ => (),
+            }
+        }
+        Self { is_address_taken }
+    }
+
+    fn is_address_taken(&self, idx: usize) -> bool {
+        self.is_address_taken[idx]
     }
 }

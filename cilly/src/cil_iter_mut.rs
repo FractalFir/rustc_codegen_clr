@@ -141,7 +141,8 @@ impl<'a> Iterator for CILIterMut<'a> {
                     | CILNode::Not(a)
                     | CILNode::Neg(a)
                     | CILNode::LDLen { arr: a }
-                    | CILNode::LocAlloc { size: a } => {
+                    | CILNode::LocAlloc { size: a }
+                    | CILNode::Volatile(a) => {
                         if *idx == 1 {
                             *idx += 1;
                             self.elems.push((
@@ -354,6 +355,24 @@ impl<'a> Iterator for CILIterMut<'a> {
                             ));
                             continue;
                         }
+                        _ => {
+                            self.elems.pop();
+                            continue;
+                        }
+                    },
+                    CILRoot::Volatile(inner) => match *idx {
+                        1 => {
+                            *idx += 1;
+                            self.elems.push((
+                                0,
+                                CILIterElemUnsafe::Root(
+                                    std::ptr::from_mut(&mut *inner),
+                                    PhantomData,
+                                ),
+                            ));
+                            continue;
+                        }
+
                         _ => {
                             self.elems.pop();
                             continue;

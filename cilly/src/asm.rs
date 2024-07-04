@@ -311,6 +311,11 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
                 }
             }
         }
+        cctor
+            .blocks_mut()
+            .iter_mut()
+            .map(BasicBlock::trees_mut)
+            .for_each(|trees| trees.retain(|tree| !matches!(tree.root(), CILRoot::Nop)));
     }
     /// Returns an interator over all methods within the assembly.
     pub fn methods(&self) -> impl Iterator<Item = &Method> {

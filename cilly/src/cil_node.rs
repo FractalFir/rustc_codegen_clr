@@ -220,6 +220,8 @@ pub enum CILNode {
     CheckedCast(Box<(CILNode, DotnetTypeRef)>),
     // Checks if `lhs` is of type `rhs`.  Returns a boolean.
     IsInst(Box<(CILNode, DotnetTypeRef)>),
+    /// Marks the inner pointer operation as volatile.
+    Volatile(Box<Self>),
 }
 
 impl CILNode {
@@ -364,6 +366,7 @@ impl CILNode {
     fn opt_children(&mut self, opt_count: &mut usize) {
         match self {
             Self::CheckedCast(inner)=>inner.0.opt(opt_count),
+            Self::Volatile(inner)=>inner.opt(opt_count),
             Self::IsInst(inner)=>inner.0.opt(opt_count),
             Self::GetException=>(),
             Self::LocAlloc{size}=>size.opt(opt_count),
@@ -542,6 +545,7 @@ impl CILNode {
         locals: &mut Vec<(Option<Box<str>>, Type)>,
     ) {
         match self {
+            Self::Volatile(inner)=>inner.allocate_tmps(curr_loc, locals),
             Self::CheckedCast(inner)=>inner.0.allocate_tmps(curr_loc, locals),
             Self::IsInst(inner)=>inner.0.allocate_tmps(curr_loc, locals),
             Self::GetException=>(),
@@ -1234,6 +1238,7 @@ impl CILNode {
                 Ok(ptr!(Type::Void))
             }
             Self::LocAllocAligned { tpe, align } => Ok(ptr!(tpe.as_ref().clone())),
+            Self::Volatile(inner) => inner.validate(vctx, tmp_loc),
             _ => todo!("Can't check the type safety of {self:?}"),
         }
     }

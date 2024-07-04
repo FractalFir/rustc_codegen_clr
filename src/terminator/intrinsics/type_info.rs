@@ -44,6 +44,12 @@ pub fn size_of_val<'tcx>(
     if pointer_to_is_fat(pointed_ty, ctx.tcx(), ctx.instance()) {
         let ptr_ty = ctx.monomorphize(args[0].node.ty(ctx.body(), ctx.tcx()));
         match pointed_ty.kind() {
+            TyKind::Str => {
+                let slice_tpe: DotnetTypeRef = ctx.type_from_cache(ptr_ty).as_dotnet().unwrap();
+                let descriptor = FieldDescriptor::new(slice_tpe, Type::USize, "metadata".into());
+                let addr = crate::operand::operand_address(&args[0].node, ctx);
+                return place_set(destination, ld_field!(addr, descriptor), ctx);
+            }
             TyKind::Slice(inner) => {
                 let slice_tpe: DotnetTypeRef = ctx.type_from_cache(ptr_ty).as_dotnet().unwrap();
                 let inner = ctx.monomorphize(*inner);

@@ -51,9 +51,11 @@ macro_rules! test {
 #[macro_export]
 macro_rules! test_eq {
     ($a:expr,$b:expr) => {
-        if core::intrinsics::black_box($a) != core::intrinsics::black_box($b) {
-            //Put::putnl($a);
-            //Put::putnl($b);
+        let a = $a;
+        let b = $b;
+        if core::intrinsics::black_box(a) != core::intrinsics::black_box(b) {
+            Put::putnl(a);
+            Put::putnl(b);
             crate::rustc_clr_interop_managed_call1_::<
                 "System.Console",
                 "System.Console",

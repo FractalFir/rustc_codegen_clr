@@ -40,6 +40,10 @@ impl DotnetTypeRef {
         .with_valuetype(false)
     }
     #[must_use]
+    pub fn half() -> Self {
+        Self::new(Some("System.Runtime"), "System.Half").with_valuetype(true)
+    }
+    #[must_use]
     pub fn single() -> Self {
         Self::new(Some("System.Runtime"), "System.Single").with_valuetype(true)
     }

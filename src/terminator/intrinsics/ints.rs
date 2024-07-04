@@ -318,11 +318,35 @@ pub fn rotate_right<'tcx>(
     let val = handle_operand(&args[0].node, ctx);
     let rot = handle_operand(&args[0].node, ctx);
     match val_tpe {
+        Type::U8 => place_set(
+            destination,
+            or!(
+                CILNode::ShrUn(Box::new(val.clone()), Box::new(rot.clone())),
+                CILNode::Shl(Box::new(val), Box::new(ldc_u32!(8) - rot))
+            ),
+            ctx,
+        ),
+        Type::U16 => place_set(
+            destination,
+            or!(
+                CILNode::ShrUn(Box::new(val.clone()), Box::new(rot.clone())),
+                CILNode::Shl(Box::new(val), Box::new(ldc_u32!(16) - rot))
+            ),
+            ctx,
+        ),
         Type::U32 => place_set(
             destination,
             or!(
                 CILNode::ShrUn(Box::new(val.clone()), Box::new(rot.clone())),
                 CILNode::Shl(Box::new(val), Box::new(ldc_u32!(32) - rot))
+            ),
+            ctx,
+        ),
+        Type::U64 => place_set(
+            destination,
+            or!(
+                CILNode::ShrUn(Box::new(val.clone()), Box::new(rot.clone())),
+                CILNode::Shl(Box::new(val), Box::new(ldc_u32!(64) - rot))
             ),
             ctx,
         ),

@@ -115,6 +115,74 @@ fn export_node(
         CILNode::LDIndISize { ptr } => un_op!(out, ptr, depth, il_flavour, "ldind.i"),
         CILNode::LDIndPtr { ptr, loaded_ptr: _ } => un_op!(out, ptr, depth, il_flavour, "ldind.i"),
         CILNode::LDIndUSize { ptr } => un_op!(out, ptr, depth, il_flavour, "ldind.i"),
+        CILNode::Volatile(inner) => match inner.as_ref() {
+            CILNode::LDIndI8 { ptr } => {
+                export_node(out, ptr, depth.incremented(), il_flavour)?;
+                depth.pad(out)?;
+                write!(out, "volatile. ldind.i1")
+            }
+            CILNode::LDIndI16 { ptr } => {
+                export_node(out, ptr, depth.incremented(), il_flavour)?;
+                depth.pad(out)?;
+                write!(out, "volatile. ldind.i2")
+            }
+            CILNode::LDIndI32 { ptr } => {
+                export_node(out, ptr, depth.incremented(), il_flavour)?;
+                depth.pad(out)?;
+                write!(out, "volatile. ldind.i4")
+            }
+            CILNode::LDIndI64 { ptr } => {
+                export_node(out, ptr, depth.incremented(), il_flavour)?;
+                depth.pad(out)?;
+                write!(out, "volatile. ldind.i8")
+            }
+            CILNode::LDIndISize { ptr }
+            | CILNode::LDIndPtr { ptr, loaded_ptr: _ }
+            | CILNode::LDIndUSize { ptr } => {
+                export_node(out, ptr, depth.incremented(), il_flavour)?;
+                depth.pad(out)?;
+                write!(out, "volatile. ldind.i")
+            }
+            CILNode::LdObj { ptr, obj } => {
+                export_node(out, ptr, depth.incremented(), il_flavour)?;
+                depth.pad(out)?;
+                write!(out, "volatile. ldobj {tpe}", tpe = type_cil(obj))
+            }
+            CILNode::LDIndF32 { ptr } => {
+                export_node(out, ptr, depth.incremented(), il_flavour)?;
+                depth.pad(out)?;
+                write!(out, "volatile. ldind.r4")
+            }
+            CILNode::LDIndF64 { ptr } => {
+                export_node(out, ptr, depth.incremented(), il_flavour)?;
+                depth.pad(out)?;
+                write!(out, "volatile. ldind.r8")
+            }
+            CILNode::LDIndBool { ptr } | CILNode::LDIndU8 { ptr } => {
+                export_node(out, ptr, depth.incremented(), il_flavour)?;
+                depth.pad(out)?;
+                write!(out, "volatile. ldind.u1")
+            }
+            CILNode::LDIndU16 { ptr } => {
+                export_node(out, ptr, depth.incremented(), il_flavour)?;
+                depth.pad(out)?;
+                write!(out, "volatile. ldind.u2")
+            }
+            CILNode::LDIndU32 { ptr } => {
+                export_node(out, ptr, depth.incremented(), il_flavour)?;
+                depth.pad(out)?;
+                write!(out, "volatile. ldind.u4")
+            }
+            CILNode::LDIndU64 { ptr } => {
+                export_node(out, ptr, depth.incremented(), il_flavour)?;
+                depth.pad(out)?;
+                write!(out, "volatile. ldind.u8")
+            }
+
+            //CILNode::LDFieldAdress { addr, field } => |
+            //CILNode::LDField { addr, field } |
+            _ => panic!("The prefix olatile. can't be applied to op {inner:?}"),
+        },
         CILNode::LdObj { ptr, obj } => {
             export_node(out, ptr, depth.incremented(), il_flavour)?;
             depth.pad(out)?;
@@ -591,6 +659,90 @@ pub fn export_root(
                 _ => write!(out, "stloc {local}"),
             }
         }
+        CILRoot::Volatile(inner) => {
+            match inner.as_ref() {
+                //CILRoot::SetField { addr, value, desc } => todo!(),
+                CILRoot::CpBlk { dst, src, len } => {
+                    export_node(out, dst, depth.incremented(), il_flavour)?;
+                    depth.pad(out)?;
+                    export_node(out, src, depth.incremented(), il_flavour)?;
+                    depth.pad(out)?;
+                    export_node(out, len, depth.incremented(), il_flavour)?;
+                    depth.pad(out)?;
+                    write!(out, "volatile. cpblk")
+                }
+                CILRoot::STIndI8(addr, val) => {
+                    export_node(out, addr, depth.incremented(), il_flavour)?;
+                    depth.pad(out)?;
+                    export_node(out, val, depth.incremented(), il_flavour)?;
+                    depth.pad(out)?;
+                    write!(out, "volatile. stind.i1")
+                }
+                CILRoot::STIndI16(addr, val) => {
+                    export_node(out, addr, depth.incremented(), il_flavour)?;
+                    depth.pad(out)?;
+                    export_node(out, val, depth.incremented(), il_flavour)?;
+                    depth.pad(out)?;
+                    write!(out, "volatile. stind.i2")
+                }
+                CILRoot::STIndI32(addr, val) => {
+                    export_node(out, addr, depth.incremented(), il_flavour)?;
+                    depth.pad(out)?;
+                    export_node(out, val, depth.incremented(), il_flavour)?;
+                    depth.pad(out)?;
+                    write!(out, "volatile. stind.i4")
+                }
+                CILRoot::STIndI64(addr, val) => {
+                    export_node(out, addr, depth.incremented(), il_flavour)?;
+                    depth.pad(out)?;
+                    export_node(out, val, depth.incremented(), il_flavour)?;
+                    depth.pad(out)?;
+                    write!(out, "volatile. stind.i8")
+                }
+                CILRoot::STIndISize(addr, val) | CILRoot::STIndPtr(addr, val, _) => {
+                    export_node(out, addr, depth.incremented(), il_flavour)?;
+                    depth.pad(out)?;
+                    export_node(out, val, depth.incremented(), il_flavour)?;
+                    depth.pad(out)?;
+                    write!(out, "volatile. stind.i")
+                }
+                CILRoot::STIndF64(addr, val) => {
+                    export_node(out, addr, depth.incremented(), il_flavour)?;
+                    depth.pad(out)?;
+                    export_node(out, val, depth.incremented(), il_flavour)?;
+                    depth.pad(out)?;
+                    write!(out, "volatile. stind.r8")
+                }
+                CILRoot::STIndF32(addr, val) => {
+                    export_node(out, addr, depth.incremented(), il_flavour)?;
+                    depth.pad(out)?;
+                    export_node(out, val, depth.incremented(), il_flavour)?;
+                    depth.pad(out)?;
+                    write!(out, "volatile. stind.r4")
+                }
+                CILRoot::STObj {
+                    tpe,
+                    addr_calc,
+                    value_calc,
+                } => {
+                    export_node(out, addr_calc, depth.incremented(), il_flavour)?;
+                    depth.pad(out)?;
+                    export_node(out, value_calc, depth.incremented(), il_flavour)?;
+                    depth.pad(out)?;
+                    write!(out, "volatile. stobj {tpe}", tpe = type_cil(tpe))
+                }
+                CILRoot::InitBlk { dst, val, count } => {
+                    export_node(out, dst, depth.incremented(), il_flavour)?;
+                    depth.pad(out)?;
+                    export_node(out, val, depth.incremented(), il_flavour)?;
+                    depth.pad(out)?;
+                    export_node(out, count, depth.incremented(), il_flavour)?;
+                    depth.pad(out)?;
+                    write!(out, "volatile. initblk")
+                }
+                _ => todo!("Invalid volitale prefix on instrctuion {inner:?}"),
+            }
+        }
         CILRoot::BTrue {
             target,
             sub_target,
@@ -973,7 +1125,7 @@ pub fn type_cil(tpe: &Type) -> Cow<'static, str> {
         Type::Void => "void".into(),
         Type::I8 => "int8".into(),
         Type::U8 => "uint8".into(),
-        Type::F16 => "valuetype [System.Runtime]System.Numerics.Half".into(),
+        Type::F16 => "valuetype [System.Runtime]System.Half".into(),
         Type::I16 => "int16".into(),
         Type::U16 => "uint16".into(),
         Type::F32 => "float32".into(),

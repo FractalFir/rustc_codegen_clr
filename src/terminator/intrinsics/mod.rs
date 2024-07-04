@@ -6,13 +6,14 @@ use crate::{
 };
 use cilly::{
     call, call_site::CallSite, call_virt, cil_node::CILNode, cil_root::CILRoot, conv_f32, conv_f64,
-    conv_isize, conv_u32, conv_usize, eq, fn_sig::FnSig, ld_field, ldc_i32, ldc_u64, ptr, size_of,
-    sub, DotnetTypeRef, Type,
+    conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8,
+    conv_usize, eq, fn_sig::FnSig, ld_field, ldc_i32, ldc_u64, ptr, size_of, sub, DotnetTypeRef,
+    Type,
 };
 use ints::{ctlz, rotate_left, rotate_right};
 use rustc_middle::{
     mir::{Operand, Place},
-    ty::{Instance, ParamEnv, Ty},
+    ty::{Instance, ParamEnv, Ty, UintTy},
 };
 use rustc_span::source_map::Spanned;
 use saturating::{saturating_add, saturating_sub};
@@ -283,6 +284,21 @@ pub fn handle_intrinsic<'tcx>(
             )
         }
         "volatile_load" => volitale_load(args, destination, ctx),
+        "volatile_store" => {
+            let pointed_type = ctx.monomorphize(
+                call_instance.args[0]
+                    .as_type()
+                    .expect("needs_drop works only on types!"),
+            );
+            let addr_calc = handle_operand(&args[0].node, ctx);
+            let value_calc = handle_operand(&args[1].node, ctx);
+            CILRoot::Volatile(Box::new(crate::place::ptr_set_op(
+                pointed_type.into(),
+                ctx,
+                addr_calc,
+                value_calc,
+            )))
+        }
         "atomic_load_unordered" => {
             // This is already implemented by default in .NET when volatile is used. TODO: ensure this is 100% right.
             //TODO:fix volitale prefix!
@@ -461,7 +477,7 @@ pub fn handle_intrinsic<'tcx>(
 
             place_set(
                 destination,
-                interlocked_add(dst, add_ammount, src_type) + sub_ammount,
+                interlocked_add(dst, add_ammount, src_type),
                 ctx,
             )
         }
@@ -627,11 +643,34 @@ pub fn handle_intrinsic<'tcx>(
                 ctx,
             )
         }
+        "ptr_mask" => {
+            debug_assert_eq!(
+                args.len(),
+                2,
+                "The intrinsic `ptr_mask` MUST take in exactly 2 arguments!"
+            );
+            let tpe = ctx.monomorphize(
+                call_instance.args[0]
+                    .as_type()
+                    .expect("needs_drop works only on types!"),
+            );
+            let tpe = ptr!(ctx.type_from_cache(tpe));
+
+            place_set(
+                destination,
+                CILNode::And(
+                    Box::new(handle_operand(&args[0].node, ctx).cast_ptr(Type::USize)),
+                    Box::new(handle_operand(&args[1].node, ctx)),
+                )
+                .cast_ptr(tpe),
+                ctx,
+            )
+        }
         "ptr_offset_from" => {
             debug_assert_eq!(
                 args.len(),
                 2,
-                "The intrinsic `min_align_of_val` MUST take in exactly 1 argument!"
+                "The intrinsic `ptr_offset_from` MUST take in exactly 1 argument!"
             );
             let tpe = ctx.monomorphize(
                 call_instance.args[0]
@@ -751,53 +790,7 @@ pub fn handle_intrinsic<'tcx>(
                 ctx,
             )
         }
-        "maxnumf32" => {
-            debug_assert_eq!(
-                args.len(),
-                2,
-                "The intrinsic `maxnumf32` MUST take in exactly 2 arguments!"
-            );
 
-            place_set(
-                destination,
-                call!(
-                    CallSite::boxed(
-                        Some(DotnetTypeRef::mathf()),
-                        "Max".into(),
-                        FnSig::new(&[Type::F32, Type::F32], Type::F32),
-                        true,
-                    ),
-                    [
-                        handle_operand(&args[0].node, ctx),
-                        handle_operand(&args[1].node, ctx)
-                    ]
-                ),
-                ctx,
-            )
-        }
-        "minnumf32" => {
-            debug_assert_eq!(
-                args.len(),
-                2,
-                "The intrinsic `minnumf32` MUST take in exactly 2 arguments!"
-            );
-            place_set(
-                destination,
-                call!(
-                    CallSite::boxed(
-                        Some(DotnetTypeRef::mathf()),
-                        "Min".into(),
-                        FnSig::new(&[Type::F32, Type::F32], Type::F32),
-                        true,
-                    ),
-                    [
-                        handle_operand(&args[0].node, ctx),
-                        handle_operand(&args[1].node, ctx)
-                    ]
-                ),
-                ctx,
-            )
-        }
         "powif32" => {
             debug_assert_eq!(
                 args.len(),
@@ -871,6 +864,169 @@ pub fn handle_intrinsic<'tcx>(
             place_set(
                 destination,
                 crate::constant::load_const_value(const_val, Ty::new_static_str(ctx.tcx()), ctx),
+                ctx,
+            )
+        }
+        "float_to_int_unchecked" => {
+            let tpe = ctx.monomorphize(
+                call_instance.args[1]
+                    .as_type()
+                    .expect("needs_drop works only on types!"),
+            );
+            let tpe = ctx.monomorphize(tpe);
+            let tpe = ctx.type_from_cache(tpe);
+            let input = handle_operand(&args[0].node, ctx);
+            place_set(
+                destination,
+                match tpe {
+                    Type::U8 => conv_u8!(input),
+                    Type::U16 => conv_u16!(input),
+                    Type::U32 => conv_u32!(input),
+                    Type::U64 => conv_u64!(input),
+                    Type::USize => conv_usize!(input),
+                    Type::I8 => conv_i8!(input),
+                    Type::I16 => conv_i16!(input),
+                    Type::I32 => conv_i32!(input),
+                    Type::I64 => conv_i64!(input),
+                    Type::ISize => conv_isize!(input),
+                    _ => todo!("can't float_to_int_unchecked on {tpe:?}"),
+                },
+                ctx,
+            )
+        }
+        "fabsf32" => place_set(
+            destination,
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::single(),
+                    "Abs".into(),
+                    FnSig::new([Type::F32], Type::F32),
+                    true
+                ),
+                [handle_operand(&args[0].node, ctx),]
+            ),
+            ctx,
+        ),
+        "fabsf64" => place_set(
+            destination,
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::double(),
+                    "Abs".into(),
+                    FnSig::new([Type::F64], Type::F64),
+                    true
+                ),
+                [handle_operand(&args[0].node, ctx),]
+            ),
+            ctx,
+        ),
+        "truncf32" => place_set(
+            destination,
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::mathf(),
+                    "Truncate".into(),
+                    FnSig::new([Type::F32], Type::F32),
+                    true
+                ),
+                [handle_operand(&args[0].node, ctx),]
+            ),
+            ctx,
+        ),
+        "truncf64" => place_set(
+            destination,
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::math(),
+                    "Truncate".into(),
+                    FnSig::new([Type::F64], Type::F64),
+                    true
+                ),
+                [handle_operand(&args[0].node, ctx),]
+            ),
+            ctx,
+        ),
+        "maxnumf64" => place_set(
+            destination,
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::double(),
+                    "Max".into(),
+                    FnSig::new([Type::F64, Type::F64], Type::F64),
+                    true
+                ),
+                [
+                    handle_operand(&args[0].node, ctx),
+                    handle_operand(&args[1].node, ctx),
+                ]
+            ),
+            ctx,
+        ),
+        "maxnumf32" => place_set(
+            destination,
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::single(),
+                    "Max".into(),
+                    FnSig::new([Type::F32, Type::F32], Type::F32),
+                    true
+                ),
+                [
+                    handle_operand(&args[0].node, ctx),
+                    handle_operand(&args[1].node, ctx),
+                ]
+            ),
+            ctx,
+        ),
+        "minnumf64" => place_set(
+            destination,
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::double(),
+                    "Min".into(),
+                    FnSig::new([Type::F64, Type::F64], Type::F64),
+                    true
+                ),
+                [
+                    handle_operand(&args[0].node, ctx),
+                    handle_operand(&args[1].node, ctx),
+                ]
+            ),
+            ctx,
+        ),
+        "minnumf32" => place_set(
+            destination,
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::single(),
+                    "Min".into(),
+                    FnSig::new([Type::F32, Type::F32], Type::F32),
+                    true
+                ),
+                [
+                    handle_operand(&args[0].node, ctx),
+                    handle_operand(&args[1].node, ctx),
+                ]
+            ),
+            ctx,
+        ),
+        "variant_count" => {
+            let ty = ctx.monomorphize(
+                call_instance.args[0]
+                    .as_type()
+                    .expect("needs_drop works only on types!"),
+            );
+            let const_val = ctx
+                .tcx()
+                .const_eval_instance(ParamEnv::reveal_all(), call_instance, span)
+                .unwrap();
+            place_set(
+                destination,
+                crate::constant::load_const_value(
+                    const_val,
+                    Ty::new_uint(ctx.tcx(), UintTy::Usize),
+                    ctx,
+                ),
                 ctx,
             )
         }
@@ -1007,7 +1163,7 @@ fn volitale_load<'tcx>(
     let arg = ctx.monomorphize(args[0].node.ty(ctx.body(), ctx.tcx()));
     let arg_ty = arg.builtin_deref(true).unwrap();
     let arg = handle_operand(&args[0].node, ctx);
-    let ops = crate::place::deref_op(arg_ty.into(), ctx, arg);
+    let ops = CILNode::Volatile(Box::new(crate::place::deref_op(arg_ty.into(), ctx, arg)));
     place_set(destination, ops, ctx)
 }
 fn caller_location<'tcx>(

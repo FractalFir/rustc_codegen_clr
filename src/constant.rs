@@ -1,6 +1,9 @@
+use core::f16;
+
 use crate::assembly::MethodCompileCtx;
 
 use cilly::{
+    call,
     call_site::CallSite,
     cil_node::{CILNode, CallOpArgs},
     cil_root::CILRoot,
@@ -380,7 +383,17 @@ fn load_const_scalar<'tcx>(
 }
 fn load_const_float(value: u128, float_type: FloatTy, _tcx: TyCtxt) -> CILNode {
     match float_type {
-        FloatTy::F16 => todo!("Can't hanlde 16 bit floats yet!"),
+        FloatTy::F16 => call!(
+            CallSite::new_extern(
+                DotnetTypeRef::half(),
+                "op_Explicit".into(),
+                FnSig::new(&[Type::F32], Type::F16),
+                true
+            ),
+            [CILNode::LdcF32(
+                (f16::from_ne_bytes((u16::try_from(value).unwrap()).to_ne_bytes())) as f32,
+            )]
+        ),
         FloatTy::F32 => {
             let value = f32::from_ne_bytes((u32::try_from(value).unwrap()).to_ne_bytes());
             CILNode::LdcF32(value)

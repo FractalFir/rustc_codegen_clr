@@ -95,6 +95,7 @@ impl<'a> Iterator for CILIter<'a> {
                         ptr: a,
                         loaded_ptr: _,
                     }
+                    | CILNode::Volatile(a)
                     | CILNode::LDIndISize { ptr: a }
                     | CILNode::LDIndUSize { ptr: a }
                     | CILNode::Not(a)
@@ -232,6 +233,18 @@ impl<'a> Iterator for CILIter<'a> {
                         self.elems.push((0, CILIterElem::Node(b)));
                         continue;
                     }
+                    _ => {
+                        self.elems.pop();
+                        continue;
+                    }
+                },
+                CILIterElem::Root(CILRoot::Volatile(inner)) => match idx {
+                    1 => {
+                        *idx += 1;
+                        self.elems.push((0, CILIterElem::Root(inner)));
+                        continue;
+                    }
+
                     _ => {
                         self.elems.pop();
                         continue;

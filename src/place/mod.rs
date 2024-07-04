@@ -98,7 +98,10 @@ pub fn deref_op<'tcx>(
                    //_ => todo!("TODO: can't deref int type {int_ty:?} yet"),
             },
             TyKind::Float(float_ty) => match float_ty {
-                FloatTy::F16 => todo!("Can't handle halfs yet!"),
+                FloatTy::F16 => CILNode::LdObj {
+                    ptr,
+                    obj: Box::new(Type::F16),
+                },
                 FloatTy::F32 => CILNode::LDIndF32 { ptr },
                 FloatTy::F64 => CILNode::LDIndF64 { ptr },
                 FloatTy::F128 => todo!("Can't 128 bit floats yet!"),

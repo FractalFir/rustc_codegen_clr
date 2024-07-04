@@ -146,13 +146,14 @@ pub enum CILRoot {
         value: CILNode,
     },
     SourceFileInfo(SFI),
-    //LabelStart(u32),
-    //LabelEnd(u32),
+    /// Marks the inner pointer operation as volatile.
+    Volatile(Box<Self>),
 }
 pub type SFI = Box<(std::ops::Range<u64>, std::ops::Range<u64>, IString)>;
 impl CILRoot {
     pub fn opt(&mut self, opt_count: &mut usize) {
         match self {
+            Self::Volatile(inner) => inner.opt(opt_count),
             Self::SourceFileInfo(_) => (),
             Self::STLoc { tree, local: _ } => tree.opt(opt_count),
             Self::BTrue {
@@ -525,6 +526,7 @@ impl CILRoot {
         locals: &mut Vec<(Option<Box<str>>, Type)>,
     ) {
         match self {
+            Self::Volatile(inner) => inner.allocate_tmps(curr_loc, locals),
             Self::SourceFileInfo(_) => (),
             Self::STLoc { tree, .. } => {
                 tree.allocate_tmps(curr_loc, locals);
@@ -1032,6 +1034,7 @@ impl CILRoot {
                 }
                 Ok(())
             }
+            Self::Volatile(vol) => vol.validate(vctx, tmp_loc),
             _ => todo!("Can't check the type safety of cil root {self:?}"),
         }
     }
