@@ -29,17 +29,13 @@ pub fn handle_call_terminator<'tycxt>(
     };
     match func_ty.kind() {
         TyKind::FnDef(_, _) => {
-            //rustc_middle::ty::print::with_no_trimmed_paths! {eprintln!("call terminator {terminator:?}")};
-            //eprintln!("calling {operand_ty:?} indirectly");
             let fn_ty = ctx.monomorphize(func_ty);
-            //let fn_instance = Instance::resolve(tcx,ParamEnv::reveal_all,fn_ty.did,List::empty());
+
             assert!(
                 fn_ty.is_fn(),
                 "fn_ty{fn_ty:?} in call is not a function type!"
             );
             let fn_ty = ctx.monomorphize(fn_ty);
-            //let fn_instance = Instance::resolve(tcx,ParamEnv::reveal_all,fn_ty.did,List::empty());
-
             let call_ops = call::call(fn_ty, ctx, args, destination, terminator.source_info.span);
             //eprintln!("\nCalling FnDef:{fn_ty:?}. call_ops:{call_ops:?}");
             trees.push(call_ops.into());

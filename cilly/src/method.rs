@@ -333,6 +333,9 @@ impl Method {
                 CILIterElem::Node(CILNode::LDField { addr: _, field }) => {
                     Some(field.owner().clone())
                 }
+                CILIterElem::Root(CILRoot::SetField { addr, value, desc }) => {
+                    Some(desc.owner().clone())
+                }
                 _ => None,
             }))
     }

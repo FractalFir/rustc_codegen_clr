@@ -214,6 +214,58 @@ fn load_scalar_ptr(
                         CILNode::LoadAddresOfTMPLocal,
                     )));
                 }
+                if name == "posix_spawn" {
+                    return CILNode::TemporaryLocal(Box::new((
+                        Type::DelegatePtr(Box::new(FnSig::new(
+                            &[
+                                ptr!(Type::U8),
+                                ptr!(Type::U8),
+                                ptr!(Type::U8),
+                                ptr!(Type::U8),
+                                ptr!(Type::U8),
+                                ptr!(Type::U8),
+                            ],
+                            Type::I32,
+                        ))),
+                        [CILRoot::SetTMPLocal {
+                            value: CILNode::LDFtn(Box::new(CallSite::builtin(
+                                "posix_spawn".into(),
+                                FnSig::new(
+                                    &[
+                                        ptr!(Type::U8),
+                                        ptr!(Type::U8),
+                                        ptr!(Type::U8),
+                                        ptr!(Type::U8),
+                                        ptr!(Type::U8),
+                                        ptr!(Type::U8),
+                                    ],
+                                    Type::I32,
+                                ),
+                                true,
+                            ))),
+                        }]
+                        .into(),
+                        CILNode::LoadAddresOfTMPLocal,
+                    )));
+                }
+                if name == "posix_spawn_file_actions_addchdir_np" {
+                    return CILNode::TemporaryLocal(Box::new((
+                        Type::DelegatePtr(Box::new(FnSig::new(
+                            &[ptr!(Type::U8), ptr!(Type::U8)],
+                            Type::I32,
+                        ))),
+                        [CILRoot::SetTMPLocal {
+                            value: CILNode::LDFtn(Box::new(CallSite::builtin(
+                                "posix_spawn_file_actions_addchdir_np".into(),
+                                FnSig::new(&[ptr!(Type::U8), ptr!(Type::U8)], Type::I32),
+                                true,
+                            ))),
+                        }]
+                        .into(),
+                        CILNode::LoadAddresOfTMPLocal,
+                    )));
+                }
+
                 if name == "__dso_handle" {
                     return CILNode::TemporaryLocal(Box::new((
                         Type::DelegatePtr(Box::new(FnSig::new(&[], Type::Void))),

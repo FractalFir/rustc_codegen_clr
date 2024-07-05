@@ -3,10 +3,11 @@ use crate::{
     assembly::MethodCompileCtx,
     assert_morphic,
     r#type::{pointer_to_is_fat, Type},
+    utilis::adt::FieldOffsetIterator,
 };
 use cilly::{
     call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_usize,
-    field_desc::FieldDescriptor, fn_sig::FnSig, ld_field, ldc_u64, size_of,
+    field_desc::FieldDescriptor, fn_sig::FnSig, ld_field, ldc_u32, ldc_u64, ptr, size_of,
 };
 use rustc_middle::{
     mir::PlaceElem,
@@ -99,10 +100,15 @@ pub fn place_elem_adress<'tcx>(
 
                 let curr_ty = ctx.monomorphize(curr_type);
                 if crate::r#type::pointer_to_is_fat(curr_ty, ctx.tcx(), ctx.instance()) {
+                    let mut explicit_offset_iter = crate::utilis::adt::FieldOffsetIterator::fields(
+                        ctx.layout_of(curr_type).layout.0 .0.clone(),
+                    );
+                    let offset = explicit_offset_iter
+                        .nth(index.as_usize())
+                        .expect("Field index not in field offset iterator");
                     assert_eq!(
-                        index.as_u32(),
-                        0,
-                        "Can't handle DST with more than 1 field."
+                        offset, 0,
+                        "Can't handle DST fields with non-zero offsets. owner:{curr_type:?}"
                     );
                     let field_ty = ctx.monomorphize(*field_ty);
                     let curr_type = ctx.type_from_cache(Ty::new_ptr(
@@ -115,13 +121,31 @@ pub fn place_elem_adress<'tcx>(
                         field_ty,
                         rustc_middle::ty::Mutability::Mut,
                     ));
+                    let ptr_descr = FieldDescriptor::new(
+                        curr_type.as_dotnet().unwrap(),
+                        ptr!(Type::Void),
+                        "data_pointer".into(),
+                    );
                     return CILNode::TemporaryLocal(Box::new((
                         curr_type,
-                        [CILRoot::SetTMPLocal { value: addr_calc }].into(),
+                        [
+                            CILRoot::SetTMPLocal {
+                                value: addr_calc.clone(),
+                            },
+                            CILRoot::SetField {
+                                addr: Box::new(addr_calc.clone()),
+                                value: Box::new(
+                                    ld_field!(addr_calc, ptr_descr.clone())
+                                        + conv_usize!(ldc_u32!(offset)),
+                                ),
+                                desc: Box::new(ptr_descr),
+                            },
+                        ]
+                        .into(),
                         CILNode::LdObj {
                             ptr: Box::new(CILNode::TransmutePtr {
                                 val: CILNode::LoadAddresOfTMPLocal.into(),
-                                new_ptr: Box::new(Type::Ptr(Box::new(field_type.clone()))),
+                                new_ptr: Box::new(ptr!(field_type.clone())),
                             }),
                             obj: field_type.into(),
                         },

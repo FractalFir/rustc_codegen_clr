@@ -62,7 +62,8 @@ pub fn size_of_val<'tcx>(
                     ctx,
                 );
             }
-            TyKind::Dynamic(_, _, _) => {
+            // WARNING: ASSUMES ANY NON-SLICE DST IS A DYN.
+            _ => {
                 let slice_tpe: DotnetTypeRef = ctx.type_from_cache(ptr_ty).as_dotnet().unwrap();
 
                 let descriptor = FieldDescriptor::new(slice_tpe, Type::USize, "metadata".into());
@@ -80,7 +81,6 @@ pub fn size_of_val<'tcx>(
                     ctx,
                 );
             }
-            _ => todo!("Can't yet get `size_of_val` on non-slice dst. dst:{ptr_ty}"),
         }
     }
     let tpe = ctx.monomorphize(pointed_ty);
