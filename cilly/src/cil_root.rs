@@ -616,11 +616,7 @@ impl CILRoot {
             Self::JumpingPad { .. } => (),
         };
     }
-    pub(crate) fn validate(
-        &self,
-        vctx: ValidationContext,
-        tmp_loc: Option<&Type>,
-    ) -> Result<(), String> {
+    pub fn validate(&self, vctx: ValidationContext, tmp_loc: Option<&Type>) -> Result<(), String> {
         match self {
             Self::Pop { tree } => {
                 tree.validate(vctx, tmp_loc)?;
@@ -1030,7 +1026,11 @@ impl CILRoot {
                             ));
                         }
                     }
-                    _ => (),
+                    _ => {
+                        return Err(format!(
+                            "Expected pointer type in set field. Expected a pointer to {desc:?} got non-pointer type {addr:?}",desc = desc.owner()
+                        ))
+                    }
                 }
                 Ok(())
             }

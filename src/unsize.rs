@@ -1,7 +1,7 @@
 use crate::assembly::MethodCompileCtx;
 use crate::operand::{handle_operand, operand_address};
 use crate::r#type::pointer_to_is_fat;
-use cilly::cil_node::CILNode;
+use cilly::cil_node::{CILNode, ValidationContext};
 use cilly::cil_root::CILRoot;
 use cilly::field_desc::FieldDescriptor;
 use cilly::{
@@ -18,12 +18,34 @@ struct UnsizeInfo<'tcx> {
     source_points_to: Ty<'tcx>,
     /// The address of the rarget pointer. This pointer should always be a thin pointer, pointing to a fat pointer.
     target_ptr: CILNode,
-    /// The source pointer. If the source pointer is fat, this will be a fat pointer!
-    source_ptr: CILNode,
+
     target_dotnet: DotnetTypeRef,
     target_type: Type,
+    source_ptr: CILNode,
 }
 impl<'tcx> UnsizeInfo<'tcx> {
+    fn new(
+        source_points_to: Ty<'tcx>,
+        target_ptr: CILNode,
+        target_dotnet: DotnetTypeRef,
+        target_type: Type,
+        source_ptr: CILNode,
+        validator: ValidationContext,
+    ) -> Self {
+        let tptr_type = target_ptr.validate(validator, Some(&target_type)).unwrap();
+        debug_assert!(
+            matches!(tptr_type, Type::Ptr(_) | Type::ManagedReference(_)),
+            "Invalid tmp local pointer:{tptr_type:?}"
+        );
+        Self {
+            source_points_to,
+            target_ptr,
+            target_dotnet,
+            target_type,
+            source_ptr,
+        }
+    }
+
     pub fn for_unsize(
         ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
         operand: &Operand<'tcx>,
@@ -33,13 +55,14 @@ impl<'tcx> UnsizeInfo<'tcx> {
         let target = ctx.monomorphize(target);
         let source = ctx.monomorphize(operand.ty(ctx.body(), ctx.tcx()));
         // Get the source and target types as .NET types
-        let source_type = ctx.type_from_cache(source);
+
         let target_type = ctx.type_from_cache(target);
         // Get the target type as a fat pointer.
         let target_dotnet = target_type.as_dotnet().unwrap();
-        let mut sized_ptr = handle_operand(operand, ctx);
+
         // Unsizing a box
         if target.is_box() && source.is_box() {
+            let sized_ptr = operand_address(operand, ctx);
             // 1. Get Unqiue<Source> from Box<Source>
             let unique_desc = crate::utilis::field_descrptor(source, 0, ctx);
             let source_ptr = ld_field!(sized_ptr, unique_desc);
@@ -76,41 +99,33 @@ impl<'tcx> UnsizeInfo<'tcx> {
             // 7. Set the target->metatdata = len and target->ptr = source->ptr
             let derefed_source = source.boxed_ty();
 
-            Self {
-                source_points_to: derefed_source,
+            Self::new(
+                derefed_source,
                 target_ptr,
-                source_ptr,
-                target_dotnet: non_null_ptr_desc.tpe().as_dotnet().unwrap(),
+                non_null_ptr_desc.tpe().as_dotnet().unwrap(),
                 target_type,
-            }
+                source_ptr,
+                ctx.validator(),
+            )
         } else {
-            let derefed_source = match source.kind() {
-                TyKind::RawPtr(tpe, _) => *tpe,
-                TyKind::Ref(_, inner, _) => *inner,
-                TyKind::Adt(_, _) => {
-                    if source.is_box() {
-                        let inner = source.boxed_ty();
-                        let field_descriptor = crate::utilis::field_descrptor(source, 0, ctx);
-                        sized_ptr = CILNode::TemporaryLocal(Box::new((
-                            source_type.clone(),
-                            [CILRoot::SetTMPLocal { value: sized_ptr }].into(),
-                            ld_field!(CILNode::LoadAddresOfTMPLocal, field_descriptor),
-                        )));
-                        inner
-                    } else {
-                        panic!("Non ptr type:{source:?}")
-                    }
-                }
-                _ => panic!("Non ptr type:{source:?}"),
+            let derefed_source = source.builtin_deref(true).unwrap();
+            let sized_ptr = if pointer_to_is_fat(derefed_source, ctx.tcx(), ctx.instance()) {
+                operand_address(operand, ctx)
+            } else {
+                handle_operand(operand, ctx)
             };
-
-            Self {
-                source_points_to: derefed_source,
-                target_ptr: CILNode::LoadAddresOfTMPLocal,
-                source_ptr: sized_ptr,
+            assert!(matches!(
+                sized_ptr.validate(ctx.validator(), None).unwrap(),
+                Type::Ptr(_)
+            ));
+            Self::new(
+                derefed_source,
+                CILNode::LoadAddresOfTMPLocal,
                 target_dotnet,
                 target_type,
-            }
+                sized_ptr,
+                ctx.validator(),
+            )
         }
     }
 }
@@ -136,11 +151,21 @@ pub fn unsize2<'tcx>(
         Type::Ptr(Type::Void.into()),
         "data_pointer".into(),
     );
+    assert!(matches!(
+        info.target_ptr
+            .validate(ctx.validator(), Some(&info.target_type))
+            .unwrap(),
+        Type::Ptr(_) | Type::ManagedReference(_)
+    ));
+
     let init_metadata = CILRoot::SetField {
         addr: Box::new(info.target_ptr.clone()),
         value: Box::new(metadata.cast_ptr(Type::USize)),
         desc: Box::new(metadata_field),
     };
+    init_metadata
+        .validate(ctx.validator(), Some(&info.target_type))
+        .expect("init_metadata invalid!");
     let init_ptr = if pointer_to_is_fat(info.source_points_to, ctx.tcx(), ctx.instance()) {
         CILRoot::SetField {
             addr: Box::new(info.target_ptr),
@@ -157,12 +182,17 @@ pub fn unsize2<'tcx>(
             desc: Box::new(ptr_field),
         }
     };
-
-    CILNode::TemporaryLocal(Box::new((
-        info.target_type,
+    init_ptr
+        .validate(ctx.validator(), Some(&info.target_type))
+        .expect("init_ptr invalid!");
+    let res = CILNode::TemporaryLocal(Box::new((
+        info.target_type.clone(),
         [init_metadata, init_ptr].into(),
         CILNode::LoadTMPLocal,
-    )))
+    )));
+    res.validate(ctx.validator(), Some(&info.target_type))
+        .expect("res invalid!");
+    res
 }
 /// Preforms an unsizing cast on operand `operand`, converting it to the `target` type.
 pub fn unsize<'tcx>(

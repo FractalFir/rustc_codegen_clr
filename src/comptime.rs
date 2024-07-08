@@ -80,8 +80,9 @@ pub fn interpret<'tcx>(
                     {
                         let subst_ref = crate::utilis::monomorphize(&instance, *subst_ref, tcx);
                         let env = ParamEnv::reveal_all();
-                        let Some(call_instance) = Instance::resolve(tcx, env, *def_id, subst_ref)
-                            .expect("Invalid function def")
+                        let Some(call_instance) =
+                            Instance::try_resolve(tcx, env, *def_id, subst_ref)
+                                .expect("Invalid function def")
                         else {
                             panic!("ERROR: Could not get function instance. fn type:{func_ty:?}")
                         };
@@ -180,8 +181,9 @@ pub fn interpret<'tcx>(
                         {
                             let subst_ref = crate::utilis::monomorphize(&instance, *subst_ref, tcx);
                             let env = ParamEnv::reveal_all();
-                            let Some(instance) = Instance::resolve(tcx, env, *def_id, subst_ref)
-                                .expect("Invalid function def")
+                            let Some(instance) =
+                                Instance::try_resolve(tcx, env, *def_id, subst_ref)
+                                    .expect("Invalid function def")
                             else {
                                 panic!(
                                     "ERROR: Could not get function instance. fn type:{fn_type:?}"

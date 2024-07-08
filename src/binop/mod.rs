@@ -92,7 +92,7 @@ pub(crate) fn binop<'tcx>(
                 .get(LangItem::OrderingEnum)
                 .unwrap();
             let ordering =
-                Instance::resolve(ctx.tcx(), ParamEnv::reveal_all(), ordering, List::empty())
+                Instance::try_resolve(ctx.tcx(), ParamEnv::reveal_all(), ordering, List::empty())
                     .unwrap()
                     .unwrap();
             let ordering_ty = ordering.ty(ctx.tcx(), ParamEnv::reveal_all());

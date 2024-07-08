@@ -47,7 +47,9 @@ pub fn handle_rvalue<'tcx>(
             dst,
         ) => ptr_to_ptr(ctx, operand, *dst),
         Rvalue::Cast(CastKind::PointerCoercion(PointerCoercion::Unsize), operand, target) => {
-            crate::unsize::unsize2(ctx, operand, *target)
+            let us = crate::unsize::unsize2(ctx, operand, *target);
+            us.validate(ctx.validator(), None).unwrap();
+            us
         }
         Rvalue::BinaryOp(binop, operands) => {
             crate::binop::binop(*binop, &operands.0, &operands.1, ctx)
@@ -229,7 +231,7 @@ pub fn handle_rvalue<'tcx>(
             {
                 let subst = ctx.monomorphize(*subst_ref);
                 let env = ParamEnv::reveal_all();
-                let Some(instance) = Instance::resolve(ctx.tcx(), env, *def_id, subst)
+                let Some(instance) = Instance::try_resolve(ctx.tcx(), env, *def_id, subst)
                     .expect("Invalid function def")
                 else {
                     panic!("ERROR: Could not get function instance. fn type:{operand_ty:?}")
@@ -323,7 +325,6 @@ pub fn handle_rvalue<'tcx>(
         Rvalue::Cast(rustc_middle::mir::CastKind::DynStar, _, _) => {
             todo!("Unusported cast kind:DynStar")
         }
-        Rvalue::Cast(_, _, _) => todo!(),
     }
 }
 fn repeat<'tcx>(

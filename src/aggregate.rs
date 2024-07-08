@@ -38,7 +38,7 @@ pub fn handle_aggregate<'tcx>(
             let penv = ParamEnv::reveal_all();
             let subst = ctx.monomorphize(*subst);
             //eprintln!("Preparing to resolve {adt_def:?} {subst:?}");
-            let adt_type = Instance::resolve(ctx.tcx(), penv, *adt_def, subst);
+            let adt_type = Instance::try_resolve(ctx.tcx(), penv, *adt_def, subst);
 
             let adt_type = adt_type
                 .expect("Could not resolve instance")

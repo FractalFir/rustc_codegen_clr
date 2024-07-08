@@ -247,14 +247,13 @@ impl AssemblyExporter for ILASMExporter {
             "-output:{out_path}",
             out_path = out_path.clone().to_string_lossy()
         );
-        let args: [String; 7] = [
+        let args: [String; 6] = [
             asm_type.into(),
             target,
             cil_path.clone().to_string_lossy().to_string(),
             "-debug".into(),
             "-OPTIMIZE".into(),
             "-FOLD".into(),
-            "-quiet".into(),
         ];
 
         let out = std::process::Command::new(self.ilasm_path.as_ref())

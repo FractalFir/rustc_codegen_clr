@@ -35,7 +35,7 @@ pub fn adt_name<'tcx>(
         rustc_middle::ty::print::with_no_trimmed_paths! {tcx.def_path_str(adt.did())}
     };
     let krate = adt.did().krate;
-    let adt_instance = Instance::resolve(tcx, ParamEnv::reveal_all(), adt.did(), gargs)
+    let adt_instance = Instance::try_resolve(tcx, ParamEnv::reveal_all(), adt.did(), gargs)
         .unwrap()
         .unwrap();
     // Get the mangled path: it is absolute, and not poluted by types being rexported

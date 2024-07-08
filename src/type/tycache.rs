@@ -88,7 +88,7 @@ impl TyCache {
         // if it is a DST, check it has a size of 0, and treat it as a name-only
         if layout.layout.is_unsized() {
             if layout.layout.size().bytes() != 0 {
-                eprintln!(
+                println!(
                     "WARNING: adt_ty:{adt_ty:?} is a dst with a size {}. This could mean it has fields.",
                     layout.layout.size().bytes()
                 );

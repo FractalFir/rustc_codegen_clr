@@ -333,6 +333,7 @@ impl Method {
                 CILIterElem::Node(CILNode::LDField { addr: _, field }) => {
                     Some(field.owner().clone())
                 }
+                CILIterElem::Node(CILNode::LDTypeToken(tpe)) => tpe.as_dotnet(),
                 CILIterElem::Root(CILRoot::SetField { addr, value, desc }) => {
                     Some(desc.owner().clone())
                 }

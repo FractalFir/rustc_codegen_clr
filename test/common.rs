@@ -50,10 +50,10 @@ macro_rules! test {
 #[allow(unused_macros)]
 #[macro_export]
 macro_rules! test_eq {
-    ($a:expr,$b:expr) => {
+    ($a:expr,$b:expr) => {{
         let a = $a;
         let b = $b;
-        if core::intrinsics::black_box(a) != core::intrinsics::black_box(b) {
+        if core::intrinsics::black_box(&a) != core::intrinsics::black_box(&b) {
             //Put::putnl(a);
             //Put::putnl(b);
             crate::rustc_clr_interop_managed_call1_::<
@@ -68,7 +68,7 @@ macro_rules! test_eq {
             unsafe { core::intrinsics::breakpoint() };
             core::intrinsics::abort();
         }
-    };
+    }};
 }
 #[allow(unused_macros)]
 #[macro_export]
@@ -241,3 +241,16 @@ impl Put for u32 {}
 impl Put for u64 {}
 impl Put for f32 {}
 impl Put for f64 {}
+fn println(msg: &str) {
+    unsafe {
+        let tmp = malloc(msg.len() + 1) as *mut u8;
+        let tmp_slice: &mut [u8] = core::slice::from_raw_parts_mut(tmp, msg.len() + 1);
+        tmp_slice[..msg.len()].clone_from_slice(msg.as_bytes());
+        tmp_slice[msg.len()] = b'\0';
+        printf(
+            "%s\n\0".as_ptr() as *const i8,
+            tmp_slice.as_ptr() as *const i8,
+        );
+        free(tmp as *mut core::ffi::c_void);
+    }
+}

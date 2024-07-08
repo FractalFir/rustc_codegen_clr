@@ -343,7 +343,10 @@ fn load_scalar_ptr(
                 }
             }
         }
-        GlobalAlloc::Function(finstance) => {
+        GlobalAlloc::Function {
+            instance: finstance,
+            unique: _,
+        } => {
             assert_eq!(offset.bytes(), 0);
             // If it is a function, patch its pointer up.
             let call_info = crate::call_info::CallInfo::sig_from_instance_(

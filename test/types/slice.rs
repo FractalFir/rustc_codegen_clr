@@ -1,24 +1,40 @@
-#![feature(lang_items,adt_const_params,associated_type_defaults,core_intrinsics,start,ascii_char,slice_internals)]
-#![allow(internal_features,incomplete_features,unused_variables,dead_code)]
+#![feature(
+    lang_items,
+    adt_const_params,
+    associated_type_defaults,
+    core_intrinsics,
+    start,
+    ascii_char,
+    slice_internals
+)]
+#![allow(internal_features, incomplete_features, unused_variables, dead_code)]
 #![no_std]
 include!("../common.rs");
 // 7 bytes
-#[derive(Default,Clone,Copy)]
-struct SizeNotAligned{
-    data:[u8;3],
-    val:u32,
+#[derive(Default, Clone, Copy)]
+struct SizeNotAligned {
+    data: [u8; 3],
+    val: u32,
 }
-fn test_index(){
-    let arr = [SizeNotAligned::default();4];
-    test_eq!(black_box(core::mem::size_of::<[SizeNotAligned;4]>()) % black_box(core::mem::align_of::<SizeNotAligned>()),0);
-    for &elem in &arr{
-        test_eq!(black_box(&elem as *const SizeNotAligned as usize) % black_box(core::mem::align_of::<SizeNotAligned>()),0);
+fn test_index() {
+    let arr = [SizeNotAligned::default(); 4];
+    test_eq!(
+        black_box(core::mem::size_of::<[SizeNotAligned; 4]>())
+            % black_box(core::mem::align_of::<SizeNotAligned>()),
+        0
+    );
+    for &elem in &arr {
+        test_eq!(
+            black_box(&elem as *const SizeNotAligned as usize)
+                % black_box(core::mem::align_of::<SizeNotAligned>()),
+            0
+        );
     }
 }
-fn main(){
-    let ptr = unsafe{malloc(64) as *mut _};
+fn main() {
+    let ptr = unsafe { malloc(64) as *mut _ };
     black_box(ptr);
-    let slice:&mut [u8] = unsafe{core::slice::from_raw_parts_mut(ptr,64)};
+    let slice: &mut [u8] = unsafe { core::slice::from_raw_parts_mut(ptr, 64) };
     let len = slice.len();
     let first = slice[black_box(0)];
     Put::putnl(len as u64);
@@ -31,19 +47,18 @@ fn main(){
     slice[black_box(5)] = '.' as u8;
     slice[black_box(6)] = '\n' as u8;
     slice[black_box(7)] = 0;
-    unsafe{puts(ptr)};
+    unsafe { puts(ptr) };
     black_box(&slice);
     let oslice = b"Hello, World\n\0";
-    test_eq!(oslice.len(),14);
-    test_eq!(oslice.last(),Some(&b'\0'));
-    if let Some((first,rem)) = oslice.split_first(){
-        unsafe{printf(rem.as_ptr() as *const i8)};
-        test_eq!(rem.len(),oslice.len() - 1);
-        unsafe{printf("%c\n\0".as_ptr() as *const i8,*first  as i32)};
+    test_eq!(oslice.len(), 14);
+    test_eq!(oslice.last(), Some(&b'\0'));
+    if let Some((first, rem)) = oslice.split_first() {
+        unsafe { printf(rem.as_ptr() as *const i8) };
+        test_eq!(rem.len(), oslice.len() - 1);
+        unsafe { printf("%c\n\0".as_ptr() as *const i8, *first as i32) };
     }
-    test_eq!(oslice.split_first(),Some((&b'H',b"ello, World\n\0")));
-    test_eq!(memrchr(b'W',b"Hello, World\n\0"),Some(7));
-    dump_var(0,0,true,1,1,2,2,3,false);
+    test_eq!(memrchr(b'W', b"Hello, World\n\0"), Some(7));
+    dump_var(0, 0, true, 1, 1, 2, 2, 3, false);
     test_index();
 }
 #[must_use]
@@ -99,53 +114,56 @@ pub fn memrchr(x: u8, text: &[u8]) -> Option<usize> {
     text[..offset].iter().rposition(|elt| *elt == x)
 }
 #[inline(never)]
-    fn dump_var(
-        f: usize,
-        var0: usize, val0: impl PrintFDebug,
-        var1: usize, val1: impl PrintFDebug,
-        var2: usize, val2: impl PrintFDebug,
-        var3: usize, val3: impl PrintFDebug,
-    ) {
-        unsafe{
-            printf("fn%u:_%u = \0".as_ptr() as *const i8,f,var0);
-            val0.printf_debug();
-            printf("\n_%u = \0".as_ptr() as *const i8,var1);
-            val1.printf_debug();
-            printf("\n_%u = \0".as_ptr() as *const i8,var2);
-            val2.printf_debug();
-            printf("\n_%u = \0".as_ptr() as *const i8,var3);
-            val3.printf_debug();
-            printf("\n\0".as_ptr() as *const i8);
+fn dump_var(
+    f: usize,
+    var0: usize,
+    val0: impl PrintFDebug,
+    var1: usize,
+    val1: impl PrintFDebug,
+    var2: usize,
+    val2: impl PrintFDebug,
+    var3: usize,
+    val3: impl PrintFDebug,
+) {
+    unsafe {
+        printf("fn%u:_%u = \0".as_ptr() as *const i8, f, var0);
+        val0.printf_debug();
+        printf("\n_%u = \0".as_ptr() as *const i8, var1);
+        val1.printf_debug();
+        printf("\n_%u = \0".as_ptr() as *const i8, var2);
+        val2.printf_debug();
+        printf("\n_%u = \0".as_ptr() as *const i8, var3);
+        val3.printf_debug();
+        printf("\n\0".as_ptr() as *const i8);
+    }
+}
+trait PrintFDebug {
+    unsafe fn printf_debug(&self);
+}
+impl PrintFDebug for u8 {
+    unsafe fn printf_debug(&self) {
+        printf("%u\0".as_ptr() as *const i8, *self as u8 as i32);
+    }
+}
+impl PrintFDebug for bool {
+    unsafe fn printf_debug(&self) {
+        if *self {
+            printf("true\0".as_ptr() as *const i8);
+        } else {
+            printf("false\0".as_ptr() as *const i8);
         }
     }
-    trait PrintFDebug{
-        unsafe fn printf_debug(&self);
+}
+impl PrintFDebug for () {
+    unsafe fn printf_debug(&self) {
+        printf("()\0".as_ptr() as *const i8);
     }
-    impl PrintFDebug for u8{
-        unsafe fn printf_debug(&self){
-            printf("%u\0".as_ptr() as *const i8,*self as u8 as i32);
-        }
-    } 
-    impl PrintFDebug for bool{
-        unsafe fn printf_debug(&self){
-            if *self{
-                printf("true\0".as_ptr() as *const i8);
-            }
-            else{
-                printf("false\0".as_ptr() as *const i8);
-            }
-        }
-    } 
-    impl PrintFDebug for (){
-        unsafe fn printf_debug(&self){
-            printf("()\0".as_ptr() as *const i8);
-        }
-    } 
-    #[inline]
-    pub(crate) const fn repeat_u8(x: u8) -> usize {
-        usize::from_ne_bytes([x; core::mem::size_of::<usize>()])
-    }
-    #[inline]
+}
+#[inline]
+pub(crate) const fn repeat_u8(x: u8) -> usize {
+    usize::from_ne_bytes([x; core::mem::size_of::<usize>()])
+}
+#[inline]
 
 const fn contains_zero_byte(x: usize) -> bool {
     x.wrapping_sub(LO_USIZE) & !x & HI_USIZE != 0

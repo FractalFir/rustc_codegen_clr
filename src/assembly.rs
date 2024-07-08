@@ -149,7 +149,11 @@ fn allocation_initializer_method(
             let offset = u32::try_from(offset.bytes_usize()).unwrap();
             // Check if this allocation is a function
             let reloc_target_alloc = tcx.global_alloc(prov.alloc_id());
-            if let GlobalAlloc::Function(finstance) = reloc_target_alloc {
+            if let GlobalAlloc::Function {
+                instance: finstance,
+                unique,
+            } = reloc_target_alloc
+            {
                 // If it is a function, patch its pointer up.
                 let call_info =
                     crate::call_info::CallInfo::sig_from_instance_(finstance, tcx, tycache);
@@ -569,7 +573,7 @@ pub fn add_allocation(
                     .insert(alloc_fld, Type::Ptr(Type::U8.into()));
                 return field_desc;
             }
-            GlobalAlloc::Function(_) => {
+            GlobalAlloc::Function { .. } => {
                 //TODO: handle constant functions
                 let alloc_fld: IString = format!("alloc_{alloc_id:x}").into();
                 let field_desc =

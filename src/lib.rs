@@ -1,6 +1,6 @@
 #![feature(rustc_private)]
 #![feature(let_chains)]
-#![feature(f16)]
+#![feature(f16, alloc_error_hook)]
 #![warn(clippy::pedantic)]
 // Used for handling some configs. Will be refactored later.
 #![allow(clippy::assertions_on_constants)]
@@ -95,6 +95,8 @@ extern crate rustc_symbol_mangling;
 extern crate rustc_target;
 extern crate rustc_ty_utils;
 extern crate stable_mir;
+/// Used for handling OOM in compiler
+mod alloc_erorr_hook;
 pub mod native_pastrough;
 // Modules
 
@@ -219,7 +221,7 @@ impl CodegenBackend for MyBackend {
             }
             if let Some((entrypoint, _kind)) = tcx.entry_fn(()) {
                 let penv = rustc_middle::ty::ParamEnv::reveal_all();
-                let entrypoint = rustc_middle::ty::Instance::resolve(
+                let entrypoint = rustc_middle::ty::Instance::try_resolve(
                     tcx,
                     penv,
                     entrypoint,
@@ -325,5 +327,6 @@ impl ArchiveBuilderBuilder for RlibArchiveBuilder {
 #[no_mangle]
 /// Entrypoint of the codegen. This function starts the backend up, and returns a reference to it to rustc.
 pub extern "Rust" fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
+    std::alloc::set_alloc_error_hook(alloc_erorr_hook::custom_alloc_error_hook);
     Box::new(MyBackend)
 }

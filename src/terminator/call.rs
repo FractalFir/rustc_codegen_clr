@@ -301,7 +301,7 @@ pub fn call<'tcx>(
         let subst = ctx.monomorphize(*subst_ref);
         let env = ParamEnv::reveal_all();
         let Some(instance) =
-            Instance::resolve(ctx.tcx(), env, *def_id, subst).expect("Invalid function def")
+            Instance::try_resolve(ctx.tcx(), env, *def_id, subst).expect("Invalid function def")
         else {
             panic!("ERROR: Could not get function instance. fn type:{fn_type:?}")
         };
