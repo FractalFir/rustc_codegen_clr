@@ -75,7 +75,7 @@ pub fn variant_name(ty: Ty, idx: u32) -> crate::IString {
     }
 }
 /// Escapes the name of a function
-pub fn function_name(name: SymbolName) -> crate::IString {
+pub fn function_name(name: SymbolName) -> IString {
     let mut name: String = name.to_string();
     // Name TOO long
     if *crate::config::ESCAPE_NAMES {

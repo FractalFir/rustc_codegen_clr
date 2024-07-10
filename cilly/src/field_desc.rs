@@ -10,7 +10,7 @@ pub struct FieldDescriptor {
 impl FieldDescriptor {
     /// Returns the name of the field
     #[must_use]
-    pub const fn name(&self) -> &str {
+    pub fn name(&self) -> &str {
         &self.name
     }
     /// Returns the type of the field. For getting the type this field belongs to, see [self.owner]

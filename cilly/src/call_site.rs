@@ -129,7 +129,7 @@ impl CallSite {
     }
     /// Returns the name of the targteted method.
     #[must_use]
-    pub const fn name(&self) -> &str {
+    pub fn name(&self) -> &str {
         &self.name
     }
     /// Returns true if a call is equivalent to a No-Op. Used to handle `black_box`.
@@ -141,7 +141,9 @@ impl CallSite {
         if self.class().is_some() {
             return false;
         };
-        if self.name.as_ref() != "black_box" && self.name.as_ref() != "assert_inhabited" {
+        if AsRef::<str>::as_ref(&self.name) != "black_box"
+            && AsRef::<str>::as_ref(&self.name) != "assert_inhabited"
+        {
             return false;
         };
         if self.signature.inputs().len() != 1 {

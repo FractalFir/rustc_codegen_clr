@@ -184,7 +184,6 @@ fn allocation_initializer_method(
                 );
             }
         }
-        //eprintln!("Constant requires rellocation support!");
     }
     //trees.push(CILRoot::debug(&format!("Finished initializing an allocation with size {}",bytes.len())).into());
     trees.push(
@@ -519,7 +518,7 @@ pub fn add_item<'tcx>(
     match item {
         MonoItem::Fn(instance) => {
             //let instance = crate::utilis::monomorphize(&instance,tcx);
-            let symbol_name: Box<str> = crate::utilis::function_name(item.symbol_name(tcx));
+            let symbol_name: IString = crate::utilis::function_name(item.symbol_name(tcx));
 
             let function_compile_timer = tcx
                 .profiler()
@@ -540,11 +539,18 @@ pub fn add_item<'tcx>(
             );
             let alloc = tcx.eval_static_initializer(stotic).unwrap();
             let alloc_id = tcx.reserve_and_set_memory_alloc(alloc);
-
+            let attrs = tcx.codegen_fn_attrs(stotic);
+            if let Some(section) = attrs.link_section {
+                if section.to_string().contains(".init_array") {
+                    eprintln!("Detected an initiazlier.");
+                } else {
+                    panic!("Unsuported link section {section}.")
+                }
+            }
             add_allocation(asm, crate::utilis::alloc_id_to_u64(alloc_id), tcx, cache);
-            //let ty = alloc.0;
+
             drop(static_compile_timer);
-            //eprintln!("Unsuported item - Static:{stotic:?}");
+
             Ok(())
         }
     }
@@ -561,7 +567,11 @@ pub fn add_allocation(
             GlobalAlloc::Memory(alloc) => alloc,
             GlobalAlloc::Static(def_id) => {
                 let alloc = tcx.eval_static_initializer(def_id).unwrap();
-                //tcx.reserve_and_set_memory_alloc(alloc)
+                let attrs = tcx.codegen_fn_attrs(def_id);
+                if let Some(section) = attrs.link_section {
+                    panic!("static {def_id:?} requires special linkage in section {section:?}");
+                }
+
                 alloc
             }
             GlobalAlloc::VTable(..) => {

@@ -11,7 +11,7 @@ pub struct StaticFieldDescriptor {
 impl StaticFieldDescriptor {
     /// Returns the name of the static field
     #[must_use]
-    pub const fn name(&self) -> &str {
+    pub fn name(&self) -> &str {
         &self.name
     }
     /// Returns the type of the static field. For getting the type this field belongs to, see [self.owner]

@@ -318,7 +318,9 @@ fn load_scalar_ptr(
                     panic!("Static {def_id:?} requires special linkage {import_linkage:?} handling. Its name is:{name:?}")
                 };
             }
-
+            if let Some(section) = attrs.link_section {
+                panic!("static {name} requires special linkage in section {section:?}");
+            }
             let alloc = ctx
                 .tcx()
                 .eval_static_initializer(def_id)

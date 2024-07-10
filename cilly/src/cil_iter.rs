@@ -102,7 +102,8 @@ impl<'a> Iterator for CILIter<'a> {
                     | CILNode::Neg(a)
                     | CILNode::LDLen { arr: a }
                     | CILNode::BlackBox(a)
-                    | CILNode::LocAlloc { size: a },
+                    | CILNode::LocAlloc { size: a }
+                    | CILNode::UnboxAny(a, _),
                 ) => {
                     if idx == &1 {
                         *idx += 1;

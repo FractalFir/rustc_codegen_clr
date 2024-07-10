@@ -173,7 +173,7 @@ impl AssemblyExporter for CExporter {
                 }
             })
         {
-            if !self.defined.contains::<Box<_>>(&tpe_name.clone().into()) {
+            if !self.defined.contains::<IString>(&tpe_name.clone().into()) {
                 //eprintln!("type {tpe_name:?} has unresolved dependencies");
                 self.delayed_typedefs.insert(name, tpe.clone());
                 return;

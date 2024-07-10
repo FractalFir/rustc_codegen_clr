@@ -239,7 +239,7 @@ impl Method {
     }
     /// Sets the name of this method.
     pub fn set_name(&mut self, name: &str) {
-        self.name = name.into();
+        self.name = <IString>::from(name);
     }
     /// Adds a local variable of type `local`
     pub fn add_local(&mut self, local: Type, name: Option<IString>) -> usize {

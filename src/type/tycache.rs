@@ -46,7 +46,7 @@ impl TyCache {
         if self
             .cycle_prevention
             .iter()
-            .any(|c_name| c_name.as_ref() == name)
+            .any(|c_name| AsRef::<str>::as_ref(&c_name) == name)
         {
             return DotnetTypeRef::new::<&str, _>(None, name);
         }
@@ -171,7 +171,7 @@ impl TyCache {
                 .into(),
             );
             let check = cilly::method::Method::new(
-                AccessModifer::MoudlePublic,
+                AccessModifer::ModulePublic,
                 cilly::method::MethodType::Static,
                 FnSig::new(&[tpe.clone()], tpe),
                 "check_valid",
@@ -357,7 +357,7 @@ impl TyCache {
         if *crate::config::VALIDTE_VALUES {
             let tpe = self.type_from_cache(adt_ty, tcx, method);
             let check = cilly::method::Method::new(
-                AccessModifer::MoudlePublic,
+                AccessModifer::ModulePublic,
                 cilly::method::MethodType::Static,
                 FnSig::new(&[tpe.clone()], tpe),
                 "check_valid",
@@ -571,7 +571,7 @@ impl TyCache {
         let name: IString = format!("FatPtr{elem}", elem = cilly::mangle(&inner_tpe)).into();
         if !self.type_def_cache.contains_key(&name) {
             let def = TypeDef::new(
-                AccessModifer::MoudlePublic,
+                AccessModifer::ModulePublic,
                 name.clone(),
                 vec![],
                 vec![

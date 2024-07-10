@@ -256,7 +256,7 @@ impl AssemblyExporter for ILASMExporter {
             "-FOLD".into(),
         ];
 
-        let out = std::process::Command::new(self.ilasm_path.as_ref())
+        let out = std::process::Command::new(AsRef::<str>::as_ref(&self.ilasm_path))
             .args(args)
             .output()
             .expect("failed run ilasm process");

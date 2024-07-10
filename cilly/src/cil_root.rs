@@ -523,7 +523,7 @@ impl CILRoot {
     pub fn allocate_tmps(
         &mut self,
         curr_loc: Option<u32>,
-        locals: &mut Vec<(Option<Box<str>>, Type)>,
+        locals: &mut Vec<(Option<IString>, Type)>,
     ) {
         match self {
             Self::Volatile(inner) => inner.allocate_tmps(curr_loc, locals),
@@ -1035,6 +1035,15 @@ impl CILRoot {
                 Ok(())
             }
             Self::Volatile(vol) => vol.validate(vctx, tmp_loc),
+            Self::SetStaticField { descr, value } => {
+                let value = value.validate(vctx, tmp_loc)?;
+                if value != *descr.tpe() {
+                    return Err(format!(
+                        "Tried to set static {descr:?} with value of type {value:?}"
+                    ));
+                }
+                Ok(())
+            }
             _ => todo!("Can't check the type safety of cil root {self:?}"),
         }
     }

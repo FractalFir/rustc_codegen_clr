@@ -7,5 +7,5 @@ pub enum AccessModifer {
     /// Specifies that the givem item is public
     Public,
     /// Specifies that the given item is accesible form this assembly, but the dead-code elimination should not treat it as such.
-    MoudlePublic,
+    ModulePublic,
 }

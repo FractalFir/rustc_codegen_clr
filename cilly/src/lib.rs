@@ -26,6 +26,7 @@ pub mod libc_fns;
 pub mod method;
 pub mod static_field_desc;
 pub mod type_def;
+pub mod utilis;
 #[must_use]
 /// Returns the name of a fixed-size array
 pub fn arr_name(element_count: usize, element: &Type) -> IString {

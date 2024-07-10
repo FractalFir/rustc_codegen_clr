@@ -99,7 +99,8 @@ impl<'a> Iterator for CILIterMut<'a> {
                             continue;
                         }
                     }
-                    CILNode::BlackBox(a)
+                    CILNode::UnboxAny(a, _)
+                    | CILNode::BlackBox(a)
                     | CILNode::ZeroExtendToISize(a)
                     | CILNode::ZeroExtendToU64(a)
                     | CILNode::SignExtendToI64(a)

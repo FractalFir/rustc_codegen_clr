@@ -176,7 +176,7 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
             return Some(td);
         }
         self.types()
-            .find(|&tpe| tpe.0.as_ref() == path)
+            .find(|&tpe| std::convert::AsRef::<str>::as_ref(tpe.0) == path)
             .map(|t| t.1)
     }
     pub fn resolve_method_aliases(&mut self) {

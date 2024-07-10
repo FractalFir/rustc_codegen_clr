@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{cil_node::ValidationContext, cil_root::CILRoot, method::Method, Type};
+use crate::{cil_node::ValidationContext, cil_root::CILRoot, method::Method, IString, Type};
 
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 /// A root of a CIL Tree with metadata about local variables it reads/writes into.  
@@ -42,7 +42,7 @@ impl CILTree {
         self.tree.opt(opt_count);
     }
     /// Allocates the temporary variables this tree uses.
-    pub fn allocate_tmps(&mut self, locals: &mut Vec<(Option<Box<str>>, Type)>) {
+    pub fn allocate_tmps(&mut self, locals: &mut Vec<(Option<IString>, Type)>) {
         self.tree.allocate_tmps(None, locals);
     }
     pub fn validate(&self, vctx: ValidationContext) -> Result<(), String> {

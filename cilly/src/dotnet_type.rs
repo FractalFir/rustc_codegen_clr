@@ -124,7 +124,7 @@ impl DotnetTypeRef {
         )
         .with_valuetype(false)
     }
-    pub fn new<S: Into<Box<str>>, S2: Into<Box<str>> + std::borrow::Borrow<str>>(
+    pub fn new<S: Into<IString>, S2: Into<IString> + std::borrow::Borrow<str>>(
         assembly: Option<S>,
         name_path: S2,
     ) -> Self {
@@ -162,7 +162,7 @@ impl DotnetTypeRef {
     }
     #[must_use]
     pub fn name_path(&self) -> &str {
-        self.name_path.as_ref()
+        &self.name_path
     }
     #[must_use]
     pub fn generics(&self) -> &[Type] {
@@ -186,6 +186,18 @@ impl DotnetTypeRef {
     #[must_use]
     pub fn assembly() -> Self {
         Self::new(Some("System.Runtime"), "System.Reflection.Assembly").with_valuetype(false)
+    }
+    #[must_use]
+    pub fn dictionary() -> Self {
+        Self::new(Some("System.Runtime"), "System.Collections.IDictionary ").with_valuetype(false)
+    }
+    #[must_use]
+    pub fn dictionary_iterator() -> Self {
+        Self::new(
+            Some("System.Runtime"),
+            "System.Collections.IDictionaryEnumerator",
+        )
+        .with_valuetype(false)
     }
     #[must_use]
     pub fn native_mem() -> Self {

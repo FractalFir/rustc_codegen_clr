@@ -222,6 +222,7 @@ pub enum CILNode {
     IsInst(Box<(CILNode, DotnetTypeRef)>),
     /// Marks the inner pointer operation as volatile.
     Volatile(Box<Self>),
+    UnboxAny(Box<Self>, Box<Type>),
 }
 
 impl CILNode {
@@ -365,6 +366,7 @@ impl CILNode {
     }
     fn opt_children(&mut self, opt_count: &mut usize) {
         match self {
+            Self::UnboxAny(val,tpe )=>val.opt(opt_count),
             Self::CheckedCast(inner)=>inner.0.opt(opt_count),
             Self::Volatile(inner)=>inner.opt(opt_count),
             Self::IsInst(inner)=>inner.0.opt(opt_count),
@@ -542,9 +544,10 @@ impl CILNode {
     pub(crate) fn allocate_tmps(
         &mut self,
         curr_loc: Option<u32>,
-        locals: &mut Vec<(Option<Box<str>>, Type)>,
+        locals: &mut Vec<(Option<IString>, Type)>,
     ) {
         match self {
+            Self::UnboxAny(val,tpe )=>val.allocate_tmps(curr_loc, locals),
             Self::Volatile(inner)=>inner.allocate_tmps(curr_loc, locals),
             Self::CheckedCast(inner)=>inner.0.allocate_tmps(curr_loc, locals),
             Self::IsInst(inner)=>inner.0.allocate_tmps(curr_loc, locals),

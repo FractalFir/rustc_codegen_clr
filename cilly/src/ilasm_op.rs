@@ -148,6 +148,7 @@ fn export_node(
                 depth.pad(out)?;
                 write!(out, "volatile. ldobj {tpe}", tpe = type_cil(obj))
             }
+
             CILNode::LDIndF32 { ptr } => {
                 export_node(out, ptr, depth.incremented(), il_flavour)?;
                 depth.pad(out)?;
@@ -187,6 +188,11 @@ fn export_node(
             export_node(out, ptr, depth.incremented(), il_flavour)?;
             depth.pad(out)?;
             write!(out, "ldobj {tpe}", tpe = type_cil(obj))
+        }
+        CILNode::UnboxAny(ptr, obj) => {
+            export_node(out, ptr, depth.incremented(), il_flavour)?;
+            depth.pad(out)?;
+            write!(out, "unbox.any {tpe}", tpe = type_cil(obj))
         }
         CILNode::LDIndF32 { ptr } => un_op!(out, ptr, depth, il_flavour, "ldind.r4"),
         CILNode::LDIndF64 { ptr } => un_op!(out, ptr, depth, il_flavour, "ldind.r8"),

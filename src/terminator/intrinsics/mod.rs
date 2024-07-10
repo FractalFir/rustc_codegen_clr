@@ -334,8 +334,8 @@ pub fn handle_intrinsic<'tcx>(
             // This is *propably* wrong :)
             debug_assert_eq!(
                 args.len(),
-                1,
-                "The intrinsic `atomic_load_acquire` MUST take in exactly 1 argument!"
+                2,
+                "The intrinsic `{fn_name}` MUST take in exactly 1 argument!"
             );
             let addr = handle_operand(&args[0].node, ctx);
             let val = handle_operand(&args[1].node, ctx);
