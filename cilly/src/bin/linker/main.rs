@@ -732,6 +732,7 @@ fn main() {
 
     let (mut final_assembly, linkables) =
         load::load_assemblies(to_link.as_slice(), ar_to_link.as_slice());
+    final_assembly.resolve_initializers();
     final_assembly.resolve_method_aliases();
     // Aplly certain fixes/workarounds to the final assembly
     override_errno(&mut final_assembly);

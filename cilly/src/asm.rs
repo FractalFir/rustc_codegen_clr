@@ -112,7 +112,7 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
             static_fields: FxHashMap::with_hasher(FxBuildHasher::default()),
             extern_fns: FxHashMap::with_hasher(FxBuildHasher::default()),
             initializers: vec![],
-,        };
+        };
         res.static_fields.insert(
             "GlobalAtomicLock".into(),
             Type::DotnetType(Box::new(DotnetTypeRef::object_type())),
@@ -146,7 +146,8 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
         static_fields.extend(other.static_fields);
         extern_refs.extend(other.extern_refs);
         extern_fns.extend(other.extern_fns);
-
+        let mut initializers = self.initializers;
+        initializers.extend(other.initializers);
         Self {
             types,
             functions,
@@ -154,6 +155,7 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
             extern_refs,
             extern_fns,
             static_fields,
+            initializers,
         }
     }
     /// Gets the typdefef at path `path`.
@@ -503,26 +505,7 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
         self.types = alive;
     }
     pub fn add_initialzer(&mut self, root: CILRoot) {
-        let cctor = self.add_cctor();
-        let mut blocks = cctor.blocks_mut();
-        if blocks.is_empty() {
-            blocks.push(BasicBlock::new(vec![CILRoot::VoidRet.into()], 0, None));
-        }
-        assert_eq!(
-            blocks.len(),
-            1,
-            "Unexpected number of basic blocks in a static data initializer."
-        );
-        let trees = blocks[0].trees_mut();
-        {
-            // Remove return
-            let ret = trees.pop().unwrap();
-            // Append initailzer
-            trees.push(root.into());
-            // Add return again
-            trees.push(ret);
-        }
-        drop(blocks);
+        self.initializers.push(root);
     }
     pub fn cctor_mut(&mut self) -> Option<&mut Method> {
         self.functions.get_mut(&CallSite::new(
@@ -539,6 +522,41 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
 
     pub fn functions(&self) -> &FxHashMap<CallSite, Method> {
         &self.functions
+    }
+
+    pub fn resolve_initializers(&mut self) {
+        self.add_cctor();
+        let mut blocks = {
+            self.functions.get_mut(&CallSite::new(
+                None,
+                ".cctor".into(),
+                FnSig::new(&[], Type::Void),
+                true,
+            ))
+        }
+        .unwrap()
+        .blocks_mut();
+        if blocks.is_empty() {
+            blocks.push(BasicBlock::new(vec![CILRoot::VoidRet.into()], 0, None));
+        }
+        for initializer in &self.initializers {
+            assert_eq!(
+                blocks.len(),
+                1,
+                "Unexpected number of basic blocks in a static data initializer."
+            );
+            let trees = blocks[0].trees_mut();
+            {
+                // Remove return
+                let ret = trees.pop().unwrap();
+                // Append initailzer
+                trees.push(initializer.clone().into());
+                // Add return again
+                trees.push(ret);
+            }
+        }
+        self.initializers.clear();
+        drop(blocks);
     }
 }
 use lazy_static::*;

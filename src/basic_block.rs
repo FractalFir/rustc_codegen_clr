@@ -39,13 +39,10 @@ fn simplify_handler<'tcx>(
         return Some(handler);
     }
     match blocks[handler.into()].terminator.as_ref()?.kind {
-        TerminatorKind::Goto { target } => simplify_handler(
-            Some(target.as_u32()),
-            blocks,
-            tcx,
-            method_instance,
-            method,
-        ),
+        TerminatorKind::TailCall { .. } => None,
+        TerminatorKind::Goto { target } => {
+            simplify_handler(Some(target.as_u32()), blocks, tcx, method_instance, method)
+        }
         // Reaching Unreachable is UB, so we can do whatever, including doing nothing :).
         TerminatorKind::UnwindResume | TerminatorKind::Unreachable => None,
         TerminatorKind::Return => panic!("Interal error: cleanup(unwind) block returns!"),
@@ -56,19 +53,12 @@ fn simplify_handler<'tcx>(
             unwind: _,
             replace: _,
         } => {
-            let ty =
-                crate::utilis::monomorphize(method_instance, place.ty(method, tcx).ty, tcx);
+            let ty = crate::utilis::monomorphize(method_instance, place.ty(method, tcx).ty, tcx);
 
             let drop_instance = Instance::resolve_drop_in_place(tcx, ty).polymorphize(tcx);
             if let InstanceKind::DropGlue(_, None) = drop_instance.def {
                 //Empty drop, nothing needs to happen.
-                simplify_handler(
-                    Some(target.as_u32()),
-                    blocks,
-                    tcx,
-                    method_instance,
-                    method,
-                )
+                simplify_handler(Some(target.as_u32()), blocks, tcx, method_instance, method)
             } else {
                 Some(handler)
             }
