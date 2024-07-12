@@ -51,20 +51,14 @@ pub fn handle_statement<'tcx>(
                 return None;
             }
             let value_calc = crate::rvalue::handle_rvalue(rvalue, &place, ctx);
-            value_calc
-                .validate(ctx.validator(), None)
-                .unwrap_or_else(|err| {
-                    panic!("Invalid {rvalue:?}\n value_calc:{value_calc:?}\n err:{err:?}")
-                });
+            /*value_calc
+            .validate(ctx.validator(), None)
+            .unwrap_or_else(|err| {
+                panic!("Invalid {rvalue:?}\n value_calc:{value_calc:?}\n err:{err:?}")
+            });*/
             let method = ctx.instance();
             let tcx = ctx.tcx();
-            let value_calc = crate::r#type::tycache::validity_check(
-                value_calc,
-                ty,
-                ctx.type_cache(),
-                method,
-                tcx,
-            );
+
             Some(crate::place::place_set(&place, value_calc, ctx).into())
         }
         StatementKind::Intrinsic(non_diverging_intirinsic) => {

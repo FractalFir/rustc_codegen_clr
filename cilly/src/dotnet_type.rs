@@ -189,7 +189,11 @@ impl DotnetTypeRef {
     }
     #[must_use]
     pub fn dictionary() -> Self {
-        Self::new(Some("System.Runtime"), "System.Collections.IDictionary ").with_valuetype(false)
+        Self::new(Some("System.Runtime"), "System.Collections.IDictionary").with_valuetype(false)
+    }
+    #[must_use]
+    pub fn collection() -> Self {
+        Self::new(Some("System.Runtime"), "System.Collections.ICollection").with_valuetype(false)
     }
     #[must_use]
     pub fn dictionary_iterator() -> Self {
@@ -200,11 +204,29 @@ impl DotnetTypeRef {
         .with_valuetype(false)
     }
     #[must_use]
+    pub fn collection_iterator() -> Self {
+        Self::new(Some("System.Runtime"), "System.Collections.IEnumerator").with_valuetype(false)
+    }
+
+    #[must_use]
     pub fn native_mem() -> Self {
         Self::new(
             Some("System.Runtime.InteropServices"),
             "System.Runtime.InteropServices.NativeMemory",
         )
         .with_valuetype(false)
+    }
+
+    pub fn dotnet_tuple(elements: &[Type]) -> Self {
+        let mut res = Self::new(
+            Some("System.Runtime"),
+            format!("System.ValueTuple`{count}", count = elements.len()),
+        );
+        res.set_generics(elements);
+        res
+    }
+
+    pub fn dictionary_entry() -> Self {
+        Self::new(Some("System.Runtime"), "System.Collections.DictionaryEntry")
     }
 }

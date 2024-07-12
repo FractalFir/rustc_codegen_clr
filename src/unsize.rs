@@ -170,7 +170,7 @@ pub fn unsize2<'tcx>(
         CILRoot::SetField {
             addr: Box::new(info.target_ptr),
             value: Box::new(CILNode::LDIndPtr {
-                ptr: Box::new(operand_address(operand, ctx).cast_ptr(ptr!(Type::Void))),
+                ptr: Box::new(operand_address(operand, ctx).cast_ptr(ptr!(ptr!(Type::Void)))),
                 loaded_ptr: Box::new(ptr!(Type::Void)),
             }),
             desc: Box::new(ptr_field),
@@ -371,10 +371,12 @@ pub(crate) fn unsized_info<'tcx>(
 fn load_scalar_pair(addr: CILNode) -> (CILNode, CILNode) {
     (
         CILNode::LDIndUSize {
-            ptr: Box::new(addr.clone()),
+            ptr: Box::new(Box::new(addr.clone()).cast_ptr(ptr!(Type::USize))),
         },
         CILNode::LDIndUSize {
-            ptr: Box::new(addr + conv_usize!(size_of!(Type::USize))),
+            ptr: Box::new(
+                Box::new(addr + conv_usize!(size_of!(Type::USize))).cast_ptr(ptr!(Type::USize)),
+            ),
         },
     )
 }

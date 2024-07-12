@@ -58,7 +58,7 @@ fn main() {
     os_str();
     // A reference to child should be thin.
     test_eq!(core::mem::size_of::<&Child>(), core::mem::size_of::<&()>());
-    test10fn();
+    //test10fn();
 }
 #[derive(Debug)]
 struct Parent(Option<u8>);

@@ -1242,6 +1242,10 @@ impl CILNode {
             }
             Self::LocAllocAligned { tpe, align } => Ok(ptr!(tpe.as_ref().clone())),
             Self::Volatile(inner) => inner.validate(vctx, tmp_loc),
+            Self::UnboxAny(val, tpe) => {
+                let _val = val.validate(vctx, tmp_loc)?;
+                Ok(tpe.as_ref().clone())
+            }
             _ => todo!("Can't check the type safety of {self:?}"),
         }
     }

@@ -165,7 +165,7 @@ macro_rules! add_method_from_trees {
     ($name:ident,$input:expr,$output:expr,$trees:expr,$args:expr) => {
         fn $name(asm: &mut cilly::asm::Assembly) {
             let method = cilly::method::Method::new(
-                AccessModifer::MoudlePublic,
+                AccessModifer::ModulePublic,
                 cilly::method::MethodType::Static,
                 cilly::fn_sig::FnSig::new($input, $output),
                 stringify!($name),
@@ -179,7 +179,7 @@ macro_rules! add_method_from_trees {
     ($name:ident,$input:expr,$output:expr,$trees:expr,$locals:expr,$args:expr) => {
         fn $name(asm: &mut cilly::asm::Assembly) {
             let method = cilly::method::Method::new(
-                AccessModifer::MoudlePublic,
+                AccessModifer::ModulePublic,
                 cilly::method::MethodType::Static,
                 cilly::fn_sig::FnSig::new($input, $output),
                 stringify!($name),

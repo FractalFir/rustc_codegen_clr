@@ -221,8 +221,8 @@ fn hijack_arg_init(asm: &mut Assembly) {
     eprintln!("WARNING: Can't patch `std::env::args`, since this target not fully supported!")
 }
 pub fn patch_all(asm: &mut Assembly) {
-    println!("Applying patches to the resulting assembly...");
-    hijack_arg_init(asm);
+    //println!("Applying patches to the resulting assembly...");
+    //hijack_arg_init(asm);
 }
 /*
 public class C {

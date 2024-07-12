@@ -499,7 +499,28 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
         }
         self.types = alive;
     }
-
+    pub fn add_initialzer(&mut self, root: CILRoot) {
+        let cctor = self.add_cctor();
+        let mut blocks = cctor.blocks_mut();
+        if blocks.is_empty() {
+            blocks.push(BasicBlock::new(vec![CILRoot::VoidRet.into()], 0, None));
+        }
+        assert_eq!(
+            blocks.len(),
+            1,
+            "Unexpected number of basic blocks in a static data initializer."
+        );
+        let trees = blocks[0].trees_mut();
+        {
+            // Remove return
+            let ret = trees.pop().unwrap();
+            // Append initailzer
+            trees.push(root.into());
+            // Add return again
+            trees.push(ret);
+        }
+        drop(blocks);
+    }
     pub fn cctor_mut(&mut self) -> Option<&mut Method> {
         self.functions.get_mut(&CallSite::new(
             None,

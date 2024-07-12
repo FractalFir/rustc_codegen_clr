@@ -1,5 +1,6 @@
 use crate::{
     basic_block::handler_for_block,
+    call_info::CallInfo,
     cil::span_source_info,
     codegen_error::{CodegenError, MethodCodegenError},
     r#type::{TyCache, Type},
@@ -20,7 +21,7 @@ use cilly::{
     method::{Method, MethodType},
     ptr,
     static_field_desc::StaticFieldDescriptor,
-    FnSig,
+    utilis, FnSig,
 };
 use rustc_middle::{
     mir::{
@@ -542,7 +543,46 @@ pub fn add_item<'tcx>(
             let attrs = tcx.codegen_fn_attrs(stotic);
             if let Some(section) = attrs.link_section {
                 if section.to_string().contains(".init_array") {
-                    eprintln!("Detected an initiazlier.");
+                    let argc = utilis::argc_argv_init_method(asm);
+                    asm.add_initialzer(CILRoot::Call {
+                        site: Box::new(argc),
+                        args: [].into(),
+                    });
+                    let get_environ: CallSite = utilis::get_environ(asm);
+                    let fn_ptr = alloc.0.provenance().ptrs().iter().next().unwrap();
+                    let fn_ptr = tcx.global_alloc(fn_ptr.1.alloc_id());
+                    let init_call_site = if let GlobalAlloc::Function {
+                        instance: finstance,
+                        unique: _,
+                    } = fn_ptr
+                    {
+                        // If it is a function, patch its pointer up.
+                        let call_info =
+                            crate::call_info::CallInfo::sig_from_instance_(finstance, tcx, cache);
+                        let function_name =
+                            crate::utilis::function_name(tcx.symbol_name(finstance));
+                        CallSite::new(None, function_name, call_info.sig().clone(), true)
+                    } else {
+                        panic!()
+                    };
+
+                    asm.add_initialzer(CILRoot::Call {
+                        site: Box::new(init_call_site),
+                        args: [
+                            CILNode::LDStaticField(Box::new(StaticFieldDescriptor::new(
+                                None,
+                                Type::I32,
+                                "argc".into(),
+                            ))),
+                            CILNode::LDStaticField(Box::new(StaticFieldDescriptor::new(
+                                None,
+                                ptr!(ptr!(Type::U8)),
+                                "argv".into(),
+                            ))),
+                            call!(get_environ, []),
+                        ]
+                        .into(),
+                    });
                 } else {
                     panic!("Unsuported link section {section}.")
                 }
