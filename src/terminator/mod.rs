@@ -117,6 +117,7 @@ pub fn handle_terminator<'tcx>(
             call_source: _,
             fn_span: _,
         } => handle_call_terminator(terminator, ctx, args, destination, func, *target),
+        TerminatorKind::TailCall { .. } => todo!(),
         TerminatorKind::Return => {
             let ret = ctx.monomorphize(ctx.body().return_ty());
             if ctx.type_from_cache(ret) == crate::r#type::Type::Void {

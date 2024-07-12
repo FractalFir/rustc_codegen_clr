@@ -45,6 +45,8 @@ pub struct Assembly {
     extern_fns: FxHashMap<ExternFnDef, IString>,
     /// List of all static fields within the assembly
     static_fields: FxHashMap<IString, Type>,
+    /// Initializers. Call order not guarnateed(but should match the order they are added in), but should be called after most of `.cctor` runs.
+    initializers: Vec<CILRoot>,
 }
 impl Assembly {
     pub fn call_graph(&self) -> String {
@@ -109,7 +111,8 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
             extern_refs: FxHashMap::with_hasher(FxBuildHasher::default()),
             static_fields: FxHashMap::with_hasher(FxBuildHasher::default()),
             extern_fns: FxHashMap::with_hasher(FxBuildHasher::default()),
-        };
+            initializers: vec![],
+,        };
         res.static_fields.insert(
             "GlobalAtomicLock".into(),
             Type::DotnetType(Box::new(DotnetTypeRef::object_type())),
