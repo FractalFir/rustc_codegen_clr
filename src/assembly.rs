@@ -699,7 +699,7 @@ pub fn add_const_value(asm: &mut Assembly, bytes: u128, tcx: TyCtxt) -> StaticFi
             vec![
                 CILRoot::STLoc {
                     local: 0,
-                    tree: call!(crate::cil::malloc(tcx), [conv_isize!(ldc_u32!(16))])
+                    tree: call!(crate::cil::malloc(tcx), [conv_usize!(ldc_u32!(16))])
                         .cast_ptr(ptr!(Type::U8)),
                 }
                 .into(),
