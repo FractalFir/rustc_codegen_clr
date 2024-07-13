@@ -10,22 +10,22 @@ static char *exec_fname;
 #define System_Int128_op_Addition_i128i128(a, b) ((a) + (b))
 #define System_UInt128_op_Addition_u128u128(a, b) ((a) + (b))
 
-#define System_Int128op_Subtraction(a, b) ((a) - (b))
+#define System_Int128_op_Subtraction_i128i128(a, b) ((a) - (b))
 #define System_UInt128_op_Subtraction_u128u128(a, b) ((a) - (b))
 
 #define System_Int128_op_Multiply_i128i128(a, b) ((a) * (b))
-#define System_UInt128op_Multiply(a, b) ((a) * (b))
+#define System_UInt128_op_Multiply_u128u128(a, b) ((a) * (b))
 
 #define System_UInt128_op_Division_u128u128(a, b) ((a) / (b))
 
 #define System_UInt128_op_Equality_u128u128(a, b) ((a) == (b))
 #define System_Int128_op_Equality_i128i128(a, b) ((a) == (b))
 
-#define System_UInt128op_LessThan(a, b) ((a) < (b))
+#define System_UInt128_op_LessThan_u128u128(a, b) ((a) < (b))
 #define System_Int128op_LessThan(a, b) ((a) < (b))
 
 #define System_UInt128_op_ExclusiveOr_u128u128(a, b) ((a) ^ (b))
-#define System_Int128op_ExclusiveOr(a, b) ((a) ^ (b))
+#define System_Int128_op_ExclusiveOr_i128i128(a, b) ((a) ^ (b))
 
 #define System_UInt128_op_RightShift_u128i32(a, b) ((a) >> (b))
 #define System_UInt128_op_RightShift_u128i32(a, b) ((a) >> (b))
@@ -41,18 +41,39 @@ static char *exec_fname;
 #define System_Int128_op_BitwiseAnd_i128i128(a, b) ((a) & (b))
 
 #define System_Int128_op_BitwiseOr_i128i128(a, b) ((a) | (b))
+#define System_UInt128_op_BitwiseOr_u128u128(a, b) ((a) | (b))
+
+#define System_UInt128_op_Modulus_u128u128(a, b) ((a) % (b))
 
 #define System_Int128op_UnaryNegation(a) (-(a))
 
 #define System_Int128op_Explicit(arg) ((__int128)(arg))
+#define System_UInt128_op_Explicit_i8(arg) ((unsigned __int128)(arg))
+#define System_UInt128_op_Explicit_i16(arg) ((unsigned __int128)(arg))
+#define System_UInt128_op_Explicit_i32(arg) ((unsigned __int128)(arg))
 #define System_UInt128_op_Explicit_i64(arg) ((unsigned __int128)(arg))
-#define System_Int128_op_Implicit_i64(arg) ((__int128)(arg))
-#define System_Int128_op_Implicit_u64(arg) ((__int128)(arg))
+#define System_UInt128_op_Explicit_f32(arg) ((unsigned __int128)(arg))
 
+#define System_Int128_op_Implicit_i8(arg) ((__int128)(arg))
+#define System_Int128_op_Implicit_i16(arg) ((__int128)(arg))
+#define System_Int128_op_Implicit_i32(arg) ((__int128)(arg))
+#define System_Int128_op_Implicit_i64(arg) ((__int128)(arg))
+#define System_Int128_op_Implicit_is4(arg) ((__int128)(arg))
 #define System_Int128_op_Implicit_i128(arg) ((__int128)(arg))
+
+#define System_Int128_op_Implicit_u8(arg) ((__int128)(arg))
+#define System_Int128_op_Implicit_u16(arg) ((__int128)(arg))
+#define System_Int128_op_Implicit_u32(arg) ((__int128)(arg))
+#define System_Int128_op_Implicit_u64(arg) ((__int128)(arg))
 
 #define System_UInt128_op_Explicit_u128(arg) ((unsigned __int128)(arg))
 #define System_Int128_op_Explicit_i128(arg) (__int128)(arg)
+
+#define System_Int128_op_Explicit_f64(arg) (__int128)(arg)
+#define System_Int128_op_Explicit_f32(arg) (__int128)(arg)
+
+#define System_UInt128_op_Implicit_u8(arg) ((unsigned __int128)(arg))
+#define System_UInt128_op_Implicit_u16(arg) ((unsigned __int128)(arg))
 #define System_UInt128_op_Implicit_u32(arg) ((unsigned __int128)(arg))
 #define System_UInt128_op_Implicit_u64(arg) ((unsigned __int128)(arg))
 #define System_UInt128_op_Implicit_us(arg) ((unsigned __int128)(arg))
@@ -119,7 +140,19 @@ static char **commandLineArgs = {0};
 #define System_Single_IsNaN_f32(val) isnan(val)
 #define System_Double_IsNaN_f64(val) isnan(val)
 
-#define System_Buffers_Binary_BinaryPrimitives_ReverseEndianness_i64 __builtin_bswap64(val)
+#define System_Buffers_Binary_BinaryPrimitives_ReverseEndianness_u128(val) __builtin_bswap128(val)
+#define System_Buffers_Binary_BinaryPrimitives_ReverseEndianness_i64(val) __builtin_bswap64(val)
+#define System_Buffers_Binary_BinaryPrimitives_ReverseEndianness_i32(val) __builtin_bswap32(val)
+#define System_Buffers_Binary_BinaryPrimitives_ReverseEndianness_i16(val) __builtin_bswap16(val)
+#define System_Buffers_Binary_BinaryPrimitives_ReverseEndianness_i8(val) (val)
+
+#if defined(__LP64__) || defined(_LP64)
+#define System_Buffers_Binary_BinaryPrimitives_ReverseEndianness_is(val) (intptr_t)(int64_t) __builtin_bswap64((uint64_t)(int64_t)val)
+#define System_Buffers_Binary_BinaryPrimitives_ReverseEndianness_us(val) (uintptr_t) __builtin_bswap64((uint64_t)val)
+#else
+#error "Unsuported architecture size"
+#endif
+
 #define System_Exception__ctor_System_ExceptionSystem_String(msg) msg
 typedef struct System_Object
 {

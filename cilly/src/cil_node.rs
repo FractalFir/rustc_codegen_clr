@@ -685,7 +685,15 @@ impl CILNode {
             }
         };
     }
-
+    pub fn is_valid_dbg(
+        self,
+        vctx: ValidationContext,
+        tmp_loc: Option<&Type>,
+    ) -> Result<Self, String> {
+        // TODO: make this check debug only
+        self.validate(vctx, tmp_loc)?;
+        Ok(self)
+    }
     pub fn validate(
         &self,
         vctx: ValidationContext,

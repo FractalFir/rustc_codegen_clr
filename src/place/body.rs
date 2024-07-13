@@ -75,11 +75,11 @@ pub fn place_elem_body<'tcx>(
                                 },
                             }]
                             .into(),
-                            (CILNode::TransmutePtr {
-                                val: CILNode::LoadAddresOfTMPLocal.into(),
-                                new_ptr: Box::new(Type::Ptr(Box::new(field_type.clone()))),
-                            }),
-                        ))),
+                            CILNode::LoadAddresOfTMPLocal
+                                .cast_ptr(Type::Ptr(Box::new(field_type.clone()))),
+                        )))
+                        .is_valid_dbg(ctx.validator(), None)
+                        .unwrap(),
                     );
 
                     //todo!("Handle DST fields. DST:")

@@ -341,6 +341,8 @@ fn call_site_to_name(call_site: &CallSite) -> String {
 }
 fn node_code(method: &Method, node: &crate::cil_node::CILNode) -> IString {
     match node {
+        // TODO: propely handle volitale
+        CILNode::Volatile(inner) => node_code(method, inner),
         CILNode::LdStr(string) => format!("{string:?}").into(),
         CILNode::LdTrue => "true".into(),
         CILNode::LdFalse => "false".into(),
@@ -454,9 +456,10 @@ fn node_code(method: &Method, node: &crate::cil_node::CILNode) -> IString {
                 Type::U64
                 | Type::F64
                 | Type::F32
-                | Type::ISize
                 | Type::I8
+                | Type::I16
                 | Type::I32
+                | Type::ISize
                 | Type::Bool => format!("((int64_t)({val}))").into(),
                 _ => todo!("Can't yet `SignExtendToI64` {tpe:?}"),
             }
@@ -556,7 +559,7 @@ fn node_code(method: &Method, node: &crate::cil_node::CILNode) -> IString {
             }
         }
         CILNode::Neg(a) => format!("-({a})", a = node_code(method, a),).into(),
-        CILNode::Not(a) => format!("!({a})", a = node_code(method, a),).into(),
+        CILNode::Not(a) => format!("~({a})", a = node_code(method, a),).into(),
         CILNode::Eq(a, b) => format!(
             "({a}) == ({b})",
             a = node_code(method, a),

@@ -95,11 +95,11 @@ extern crate rustc_symbol_mangling;
 extern crate rustc_target;
 extern crate rustc_ty_utils;
 extern crate stable_mir;
+
 /// Used for handling OOM in compiler
 mod alloc_erorr_hook;
-pub mod native_pastrough;
-// Modules
 
+// Modules
 /// Code handling the creation of aggreate values (Arrays, enums,structs,tuples,etc.)
 mod aggregate;
 /// Representation of a .NET assembly
@@ -113,6 +113,9 @@ pub mod builtin;
 mod call_info;
 /// Code hansling rust `as` casts.
 mod casts;
+/// Method compilation context
+mod fn_ctx;
+pub mod native_pastrough;
 
 /// A representation of C# IL op.
 pub mod cil;

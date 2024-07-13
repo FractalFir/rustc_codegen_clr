@@ -132,8 +132,9 @@ fn override_malloc(patched: &mut FxHashMap<CallSite, Method>, call: &CallSite) {
                             FnSig::new(&[Type::ISize], Type::ISize),
                             true,
                         ),
-                        [CILNode::LDArg(0)]
-                    ),
+                        [CILNode::LDArg(0).cast_ptr(Type::ISize)]
+                    )
+                    .cast_ptr(call.signature().output().clone()),
                 }
                 .into()],
                 0,
