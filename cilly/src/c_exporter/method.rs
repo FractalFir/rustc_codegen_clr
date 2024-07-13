@@ -390,7 +390,10 @@ fn node_code(method: &Method, node: &crate::cil_node::CILNode) -> IString {
         | CILNode::LDIndI8 { ptr }
         | CILNode::LDIndI16 { ptr }
         | CILNode::LDIndF64 { ptr }
-        | CILNode::LDIndF32 { ptr } => format!("(*({ptr}))", ptr = node_code(method, ptr)).into(),
+        | CILNode::LDIndF32 { ptr }
+        | CILNode::LDIndPtr { ptr, .. } => {
+            format!("(*({ptr}))", ptr = node_code(method, ptr)).into()
+        }
         CILNode::LdObj { ptr, obj: _ } => {
             format!("(*({ptr}))", ptr = node_code(method, ptr)).into()
         }

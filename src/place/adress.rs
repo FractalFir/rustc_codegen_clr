@@ -49,7 +49,7 @@ pub fn address_last_dereference<'tcx>(
     let curr_points_to = super::pointed_type(curr_type.into());
     let curr_type = ctx.type_from_cache(curr_type);
     let target_type = ctx.type_from_cache(target_ty);
-    eprintln!("address_last_dereference called on {curr_points_to} and {target_ty}");
+
     match (
         pointer_to_is_fat(curr_points_to, ctx.tcx(), ctx.instance()),
         pointer_to_is_fat(target_ty, ctx.tcx(), ctx.instance()),
