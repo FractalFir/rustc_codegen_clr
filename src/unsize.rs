@@ -136,68 +136,118 @@ pub fn unsize2<'tcx>(
     operand: &Operand<'tcx>,
     target: Ty<'tcx>,
 ) -> CILNode {
-    let info = UnsizeInfo::for_unsize(ctx, operand, target);
+    // Get the monomorphized source and target type
+    let target = ctx.monomorphize(target);
+    let source = ctx.monomorphize(operand.ty(ctx.body(), ctx.tcx()));
+    // Get the source and target types as .NET types
+
+    let target_type = ctx.type_from_cache(target);
+    // Get the target type as a fat pointer.
+    let target_dotnet = target_type.as_dotnet().unwrap();
+
     let src_cil = operand_address(operand, ctx);
+    src_cil.validate(ctx.validator(), None).unwrap();
     let metadata = unsize_metadata(
         ctx,
         src_cil,
         ctx.layout_of(operand.ty(ctx.body(), ctx.tcx())),
         ctx.layout_of(target),
     );
-    let metadata_field =
-        FieldDescriptor::new(info.target_dotnet.clone(), Type::USize, "metadata".into());
+    let fat_ptr_type = DotnetTypeRef::new::<&str, _>(None, "FatPtru8");
+
+    let metadata_field = FieldDescriptor::new(fat_ptr_type.clone(), Type::USize, "metadata".into());
     let ptr_field = FieldDescriptor::new(
-        info.target_dotnet,
+        fat_ptr_type.clone(),
         Type::Ptr(Type::Void.into()),
         "data_pointer".into(),
     );
+
+    let target_ptr = CILNode::LoadAddresOfTMPLocal;
     assert!(matches!(
-        info.target_ptr
-            .validate(ctx.validator(), Some(&info.target_type))
+        target_ptr
+            .validate(ctx.validator(), Some(&target_type))
             .unwrap(),
         Type::Ptr(_) | Type::ManagedReference(_)
     ));
 
     let init_metadata = CILRoot::set_field(
-        info.target_ptr.clone(),
+        target_ptr
+            .clone()
+            .cast_ptr(ptr!(fat_ptr_type.clone().into())),
         metadata.cast_ptr(Type::USize),
         metadata_field,
         ctx.validator(),
-        Some(&info.target_type),
+        Some(&target_type),
     );
     init_metadata
-        .validate(ctx.validator(), Some(&info.target_type))
+        .validate(ctx.validator(), Some(&target_type))
         .expect("init_metadata invalid!");
-    let init_ptr = if pointer_to_is_fat(info.source_points_to, ctx.tcx(), ctx.instance()) {
+
+    let init_ptr = if pointer_to_is_fat(
+        source.builtin_deref(true).unwrap(),
+        ctx.tcx(),
+        ctx.instance(),
+    ) {
         CILRoot::set_field(
-            info.target_ptr,
+            target_ptr.cast_ptr(ptr!(fat_ptr_type.clone().into())),
             CILNode::LDIndPtr {
                 ptr: Box::new(operand_address(operand, ctx).cast_ptr(ptr!(ptr!(Type::Void)))),
                 loaded_ptr: Box::new(ptr!(Type::Void)),
             },
             ptr_field,
             ctx.validator(),
-            Some(&info.target_type),
+            Some(&target_type),
         )
     } else {
+        let operand = if source.is_box() {
+            let source_type = ctx.type_from_cache(source);
+            // If this type is a box<thin>, then its layout *should* be equivalent to a pointer, so this *should* be OK.
+            CILNode::LDIndUSize {
+                ptr: Box::new(
+                    CILNode::TemporaryLocal(Box::new((
+                        source_type,
+                        Box::new([CILRoot::SetTMPLocal {
+                            value: handle_operand(operand, ctx),
+                        }]),
+                        CILNode::LoadAddresOfTMPLocal,
+                    )))
+                    .cast_ptr(ptr!(Type::USize)),
+                ),
+            }
+        } else {
+            handle_operand(operand, ctx)
+        };
+        // `source` is not a fat pointer, so operand should be a pointer.
+        let val = operand.validate(ctx.validator(), None).unwrap();
+        assert!(
+            matches!(val, Type::Ptr(_) | Type::USize),
+            "source:{source:?} val:{val:?}"
+        );
         CILRoot::set_field(
-            info.target_ptr,
-            handle_operand(operand, ctx).cast_ptr(ptr!(Type::Void)),
+            target_ptr.cast_ptr(ptr!(fat_ptr_type.clone().into())),
+            operand.cast_ptr(ptr!(Type::Void)),
             ptr_field,
             ctx.validator(),
-            Some(&info.target_type),
+            Some(&target_type),
         )
     };
+
     init_ptr
-        .validate(ctx.validator(), Some(&info.target_type))
+        .validate(ctx.validator(), Some(&target_type))
         .expect("init_ptr invalid!");
-    assert!(matches!(info.target_type, Type::DotnetType(_)));
-    let res = CILNode::TemporaryLocal(Box::new((
-        info.target_type.clone(),
-        [init_metadata, init_ptr].into(),
-        CILNode::LoadTMPLocal,
-    )));
-    res.validate(ctx.validator(), Some(&info.target_type))
+
+    let res = CILNode::LdObj {
+        ptr: Box::new(
+            CILNode::TemporaryLocal(Box::new((
+                Type::DotnetType(Box::new(fat_ptr_type)).clone(),
+                [init_metadata, init_ptr].into(),
+                CILNode::LoadAddresOfTMPLocal,
+            )))
+            .cast_ptr(ptr!(target_type.clone())),
+        ),
+        obj: Box::new(target_type.clone()),
+    };
+    res.validate(ctx.validator(), Some(&target_type))
         .expect("res invalid!");
     res
 }
