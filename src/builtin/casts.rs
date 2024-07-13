@@ -31,7 +31,10 @@ add_method_from_trees!(
         ),
         BasicBlock::new(
             vec![CILRoot::Ret {
-                tree: or!(conv_u64!(CILNode::LDArg(0)), conv_i64!(ldc_i32!(i32::MIN)))
+                tree: conv_u64!(or!(
+                    conv_i64!(CILNode::LDArg(0)),
+                    conv_i64!(ldc_i32!(i32::MIN))
+                ))
             }
             .into()],
             1,
@@ -81,7 +84,7 @@ add_method_from_trees!(
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_u32!(u32::from(u8::MAX))
+                    tree: CILNode::LdcU8(u8::MAX)
                 }
                 .into()
             ],
@@ -97,7 +100,7 @@ add_method_from_trees!(
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_u32!(u32::from(u8::MIN))
+                    tree: CILNode::LdcU8(u8::MIN)
                 }
                 .into()
             ],
@@ -139,7 +142,10 @@ add_method_from_trees!(
                     )
                 }
                 .into(),
-                CILRoot::Ret { tree: ldc_u64!(0) }.into()
+                CILRoot::Ret {
+                    tree: CILNode::LdcU16(0)
+                }
+                .into()
             ],
             0,
             None
@@ -153,7 +159,7 @@ add_method_from_trees!(
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_u32!(u32::from(u16::MAX))
+                    tree: CILNode::LdcU16(u16::MAX)
                 }
                 .into()
             ],
@@ -169,7 +175,7 @@ add_method_from_trees!(
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_u32!(u32::from(u16::MIN))
+                    tree: CILNode::LdcU16(u16::MIN)
                 }
                 .into()
             ],
@@ -355,7 +361,10 @@ add_method_from_trees!(
                     )
                 }
                 .into(),
-                CILRoot::Ret { tree: ldc_u64!(0) }.into()
+                CILRoot::Ret {
+                    tree: conv_usize!(ldc_u32!(0))
+                }
+                .into()
             ],
             0,
             None
@@ -435,9 +444,9 @@ add_method_from_trees!(
                     cond: eq!(
                         call!(
                             CallSite::new_extern(
-                                DotnetTypeRef::single(),
+                                DotnetTypeRef::double(),
                                 "IsNaN".into(),
-                                FnSig::new(&[Type::F32], Type::Bool),
+                                FnSig::new(&[Type::F64], Type::Bool),
                                 true
                             ),
                             [CILNode::LDArg(0)]
@@ -446,7 +455,10 @@ add_method_from_trees!(
                     )
                 }
                 .into(),
-                CILRoot::Ret { tree: ldc_u64!(0) }.into()
+                CILRoot::Ret {
+                    tree: conv_usize!(ldc_u64!(0))
+                }
+                .into()
             ],
             0,
             None
@@ -491,7 +503,7 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 3,
                     sub_target: 0,
-                    cond: gt!(CILNode::LDArg(0), CILNode::LdcF32(0 as f32))
+                    cond: gt!(CILNode::LDArg(0), CILNode::LdcF64(0.0))
                 }
                 .into(),
                 CILRoot::Ret {
@@ -526,9 +538,9 @@ add_method_from_trees!(
                     cond: eq!(
                         call!(
                             CallSite::new_extern(
-                                DotnetTypeRef::single(),
+                                DotnetTypeRef::double(),
                                 "IsNaN".into(),
-                                FnSig::new(&[Type::F32], Type::Bool),
+                                FnSig::new(&[Type::F64], Type::Bool),
                                 true
                             ),
                             [CILNode::LDArg(0)]
@@ -537,7 +549,10 @@ add_method_from_trees!(
                     )
                 }
                 .into(),
-                CILRoot::Ret { tree: ldc_u64!(0) }.into()
+                CILRoot::Ret {
+                    tree: conv_isize!(ldc_i32!(0))
+                }
+                .into()
             ],
             0,
             None
@@ -647,7 +662,10 @@ add_method_from_trees!(
                     )
                 }
                 .into(),
-                CILRoot::Ret { tree: ldc_u64!(0) }.into()
+                CILRoot::Ret {
+                    tree: conv_isize!(ldc_i32!(0))
+                }
+                .into()
             ],
             0,
             None
@@ -757,7 +775,10 @@ add_method_from_trees!(
                     )
                 }
                 .into(),
-                CILRoot::Ret { tree: ldc_i32!(0) }.into()
+                CILRoot::Ret {
+                    tree: CILNode::LdcI8(0)
+                }
+                .into()
             ],
             0,
             None
@@ -771,7 +792,7 @@ add_method_from_trees!(
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_i32!(i32::from(i8::MAX))
+                    tree: CILNode::LdcI8(i8::MAX)
                 }
                 .into()
             ],
@@ -787,7 +808,7 @@ add_method_from_trees!(
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_i32!(i32::from(i8::MIN))
+                    tree: CILNode::LdcI8(i8::MIN)
                 }
                 .into()
             ],
@@ -829,7 +850,10 @@ add_method_from_trees!(
                     )
                 }
                 .into(),
-                CILRoot::Ret { tree: ldc_i32!(0) }.into()
+                CILRoot::Ret {
+                    tree: CILNode::LdcI16(0)
+                }
+                .into()
             ],
             0,
             None
@@ -843,7 +867,7 @@ add_method_from_trees!(
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_i32!(i32::from(i16::MAX))
+                    tree: CILNode::LdcI16(i16::MAX)
                 }
                 .into()
             ],
@@ -859,7 +883,7 @@ add_method_from_trees!(
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_i32!(i32::from(i16::MIN))
+                    tree: CILNode::LdcI16(i16::MIN)
                 }
                 .into()
             ],
@@ -1045,7 +1069,10 @@ add_method_from_trees!(
                     )
                 }
                 .into(),
-                CILRoot::Ret { tree: ldc_i32!(0) }.into()
+                CILRoot::Ret {
+                    tree: CILNode::LdcU8(0)
+                }
+                .into()
             ],
             0,
             None
@@ -1059,7 +1086,7 @@ add_method_from_trees!(
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_u32!(u32::from(u8::MAX))
+                    tree: CILNode::LdcU8(u8::MAX)
                 }
                 .into()
             ],
@@ -1075,7 +1102,7 @@ add_method_from_trees!(
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_u32!(u32::from(u8::MIN))
+                    tree: CILNode::LdcU8(u8::MIN)
                 }
                 .into()
             ],
@@ -1117,7 +1144,10 @@ add_method_from_trees!(
                     )
                 }
                 .into(),
-                CILRoot::Ret { tree: ldc_i32!(0) }.into()
+                CILRoot::Ret {
+                    tree: CILNode::LdcU16(0)
+                }
+                .into()
             ],
             0,
             None
@@ -1131,7 +1161,7 @@ add_method_from_trees!(
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_u32!(u32::from(u16::MAX))
+                    tree: CILNode::LdcU16(u16::MAX)
                 }
                 .into()
             ],
@@ -1147,7 +1177,7 @@ add_method_from_trees!(
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_u32!(u32::from(u16::MIN))
+                    tree: CILNode::LdcU16(u16::MIN)
                 }
                 .into()
             ],
@@ -1189,7 +1219,7 @@ add_method_from_trees!(
                     )
                 }
                 .into(),
-                CILRoot::Ret { tree: ldc_i32!(0) }.into()
+                CILRoot::Ret { tree: ldc_u32!(0) }.into()
             ],
             0,
             None
@@ -1333,7 +1363,10 @@ add_method_from_trees!(
                     )
                 }
                 .into(),
-                CILRoot::Ret { tree: ldc_i32!(0) }.into()
+                CILRoot::Ret {
+                    tree: CILNode::LdcI8(0)
+                }
+                .into()
             ],
             0,
             None
@@ -1347,7 +1380,7 @@ add_method_from_trees!(
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_i32!(i32::from(i8::MAX))
+                    tree: CILNode::LdcI8(i8::MAX)
                 }
                 .into()
             ],
@@ -1363,7 +1396,7 @@ add_method_from_trees!(
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_i32!(i32::from(i8::MIN))
+                    tree: CILNode::LdcI8(i8::MIN)
                 }
                 .into()
             ],
@@ -1405,7 +1438,10 @@ add_method_from_trees!(
                     )
                 }
                 .into(),
-                CILRoot::Ret { tree: ldc_i32!(0) }.into()
+                CILRoot::Ret {
+                    tree: CILNode::LdcI16(0)
+                }
+                .into()
             ],
             0,
             None
@@ -1419,7 +1455,7 @@ add_method_from_trees!(
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_i32!(i32::from(i16::MAX))
+                    tree: CILNode::LdcI16(i16::MAX)
                 }
                 .into()
             ],
@@ -1435,7 +1471,7 @@ add_method_from_trees!(
                 }
                 .into(),
                 CILRoot::Ret {
-                    tree: ldc_i32!(i32::from(i16::MIN))
+                    tree: CILNode::LdcI16(i16::MIN)
                 }
                 .into()
             ],

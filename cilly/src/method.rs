@@ -1,5 +1,4 @@
 use std::{
-    collections::HashSet,
     hash::Hash,
     hash::Hasher,
     ops::{Deref, DerefMut},
@@ -53,7 +52,7 @@ pub enum Attribute {
 }
 
 impl Attribute {
-    pub fn as_alias_for(&self) -> Option<&Box<CallSite>> {
+    pub fn as_alias_for(&self) -> Option<&CallSite> {
         if let Self::AliasFor(v) = self {
             Some(v)
         } else {
@@ -334,9 +333,11 @@ impl Method {
                     Some(field.owner().clone())
                 }
                 CILIterElem::Node(CILNode::LDTypeToken(tpe)) => tpe.as_dotnet(),
-                CILIterElem::Root(CILRoot::SetField { addr, value, desc }) => {
-                    Some(desc.owner().clone())
-                }
+                CILIterElem::Root(CILRoot::SetField {
+                    addr: _,
+                    value: _,
+                    desc,
+                }) => Some(desc.owner().clone()),
                 _ => None,
             }))
     }
@@ -684,9 +685,8 @@ impl LocalUsageInfo {
     fn from_method(method: &Method) -> Self {
         let mut is_address_taken: Box<[_]> = vec![false; method.locals().len()].into();
         for node in method.iter_cil().nodes() {
-            match node {
-                CILNode::LDLocA(loc) => is_address_taken[*loc as usize] = true,
-                _ => (),
+            if let CILNode::LDLocA(loc) = node {
+                is_address_taken[*loc as usize] = true
             }
         }
         Self { is_address_taken }

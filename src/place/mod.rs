@@ -36,7 +36,7 @@ fn pointed_type(ty: PlaceTy) -> Ty {
         panic!("Can't dereference enum variant!");
     }
 }
-fn body_ty_is_by_adress(last_ty: Ty) -> bool {
+fn body_ty_is_by_adress<'tcx>(last_ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_, '_>) -> bool {
     crate::assert_morphic!(last_ty);
     match *last_ty.kind() {
         // True for non-0 tuples
@@ -49,14 +49,10 @@ fn body_ty_is_by_adress(last_ty: Ty) -> bool {
         | TyKind::Slice(_)
         | TyKind::Str => true,
 
-        TyKind::Int(_)
-        | TyKind::Float(_)
-        | TyKind::Uint(_)
-        | TyKind::Ref(_, _, _)
-        | TyKind::RawPtr(_, _)
-        | TyKind::Bool
-        | TyKind::Char => false,
-
+        TyKind::Int(_) | TyKind::Float(_) | TyKind::Uint(_) | TyKind::Bool | TyKind::Char => false,
+        TyKind::Ref(_, ty, _) | TyKind::RawPtr(ty, _) => {
+            pointer_to_is_fat(ty, ctx.tcx(), ctx.instance())
+        }
         _ => todo!(
             "TODO: body_ty_is_by_adress does not support type {last_ty:?} kind:{kind:?}",
             kind = last_ty.kind()
@@ -172,7 +168,12 @@ pub fn place_adress<'a>(place: &Place<'a>, ctx: &mut MethodCompileCtx<'a, '_, '_
         };
     }
     if place.projection.is_empty() {
-        local_adress(place.local.as_usize(), ctx.body())
+        let loc_ty = ctx.monomorphize(ctx.body().local_decls[place.local].ty);
+        if pointer_to_is_fat(loc_ty, ctx.tcx(), ctx.instance()) {
+            local_get(place.local.as_usize(), ctx.body())
+        } else {
+            local_adress(place.local.as_usize(), ctx.body())
+        }
     } else {
         let (mut addr_calc, mut ty) = local_body(place.local.as_usize(), ctx);
 

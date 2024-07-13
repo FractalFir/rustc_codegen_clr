@@ -7,4 +7,7 @@ fn should_panic() {
 }
 fn main() {
     println!("Hi!");
+    for arg in std::env::args() {
+        println!("arg:{arg:?}");
+    }
 }

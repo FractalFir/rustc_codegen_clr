@@ -100,6 +100,7 @@ pub enum CILRoot {
     STIndI32(CILNode, CILNode),
     STIndI64(CILNode, CILNode),
     STIndISize(CILNode, CILNode),
+    // addr, val, points_to
     STIndPtr(CILNode, CILNode, Box<Type>),
     STIndF64(CILNode, CILNode),
     STIndF32(CILNode, CILNode),
@@ -617,7 +618,7 @@ impl CILRoot {
         };
     }
     pub fn validate(&self, vctx: ValidationContext, tmp_loc: Option<&Type>) -> Result<(), String> {
-        match self {
+        let var_name = match self {
             Self::Pop { tree } => {
                 tree.validate(vctx, tmp_loc)?;
                 Ok(())
@@ -646,16 +647,16 @@ impl CILRoot {
                 }
             }
             Self::CpBlk { dst, src, len } => {
-                let dst = dst.validate(vctx, tmp_loc)?;
-                let src = src.validate(vctx, tmp_loc)?;
-                let len = len.validate(vctx, tmp_loc)?;
+                let _dst = dst.validate(vctx, tmp_loc)?;
+                let _src = src.validate(vctx, tmp_loc)?;
+                let _len = len.validate(vctx, tmp_loc)?;
                 // TODO: verify the types of those!
                 Ok(())
             }
             Self::InitBlk { dst, val, count } => {
-                let dst = dst.validate(vctx, tmp_loc)?;
-                let src = val.validate(vctx, tmp_loc)?;
-                let len = count.validate(vctx, tmp_loc)?;
+                let _dst = dst.validate(vctx, tmp_loc)?;
+                let _src = val.validate(vctx, tmp_loc)?;
+                let _len = count.validate(vctx, tmp_loc)?;
                 // TODO: verify the types of those!
                 Ok(())
             }
@@ -851,8 +852,8 @@ impl CILRoot {
             Self::Break => Ok(()),
             Self::JumpingPad { .. } => Ok(()),
             Self::BTrue {
-                target,
-                sub_target,
+                target: _,
+                sub_target: _,
                 cond,
             } => {
                 // Just check that `cond` is a boolean.
@@ -866,8 +867,8 @@ impl CILRoot {
                 }
             }
             Self::BFalse {
-                target,
-                sub_target,
+                target: _,
+                sub_target: _,
                 cond,
             } => {
                 // Just check that `cond` is a boolean.
@@ -919,7 +920,7 @@ impl CILRoot {
                 let expected_tpe = if let Some(loc) = tmp_loc {
                     loc
                 } else {
-                    return Err(format!("SetTMPLocal used where no tmp local present!"));
+                    return Err("SetTMPLocal used where no tmp local present!".to_string());
                 };
                 let got = value.validate(vctx, tmp_loc)?;
                 if *expected_tpe != got {
@@ -968,7 +969,7 @@ impl CILRoot {
                 Ok(())
             }
             Self::CallI { args, sig, fn_ptr } => {
-                let ptr = fn_ptr.validate(vctx, tmp_loc)?;
+                let _ptr = fn_ptr.validate(vctx, tmp_loc)?;
                 if sig.inputs().len() != args.len() {
                     return Err(format!(
                         "Expected {} arguments, got {}",
@@ -992,7 +993,7 @@ impl CILRoot {
             Self::Nop => Ok(()),
             Self::Throw(execption) => {
                 let tpe = execption.validate(vctx, tmp_loc)?;
-                if let Some(_) = tpe.as_dotnet() {
+                if tpe.as_dotnet().is_some() {
                     Ok(())
                 } else {
                     Err("`throw` instruction suplied with a non-object type.".into())
@@ -1045,7 +1046,8 @@ impl CILRoot {
                 Ok(())
             }
             _ => todo!("Can't check the type safety of cil root {self:?}"),
-        }
+        };
+        var_name
     }
     #[must_use]
     pub fn source_info(
@@ -1058,6 +1060,29 @@ impl CILRoot {
             "PDB files must have columns that contain at least one element "
         );
         Self::SourceFileInfo(Box::new((line, column, file.into())))
+    }
+    #[must_use]
+    pub fn set_field(
+        addr: CILNode,
+        value: CILNode,
+        desc: FieldDescriptor,
+        vctx: ValidationContext,
+        tmp_loc: Option<&Type>,
+    ) -> Self {
+        //#[cfg(debug_assertions)]
+        {
+            let addr_type = addr.validate(vctx, tmp_loc).unwrap();
+
+            assert!(matches!(
+                addr_type,
+                Type::ManagedReference(_) | Type::Ptr(_)
+            ));
+        }
+        Self::SetField {
+            addr: Box::new(addr),
+            value: Box::new(value),
+            desc: Box::new(desc),
+        }
     }
 }
 fn tiny_message(msg: &str) -> CILNode {

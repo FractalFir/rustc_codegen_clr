@@ -140,21 +140,9 @@ lazy_static! {
         })
     };
 }
-pub(crate) fn async_drop<T: Drop + Send + 'static>(val: T) {
-    std::thread::spawn(move || drop(val));
-}
-pub(crate) fn iter_take_one<T>(mut iter: impl Iterator<Item = T>) -> T {
-    let val = iter
-        .next()
-        .expect("iter_take_one recived an empty iterator");
-    debug_assert!(
-        iter.next().is_none(),
-        "iter_take_one recived an iterator wich returned more than one element"
-    );
-    val
-}
+
 #[derive(Copy, Clone)]
-pub(crate) struct DepthSetting(u32);
+pub struct DepthSetting(u32);
 impl DepthSetting {
     pub fn with_pading() -> Self {
         Self(0)

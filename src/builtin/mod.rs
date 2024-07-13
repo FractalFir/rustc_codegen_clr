@@ -363,7 +363,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
                         FnSig::new(&[Type::Ptr(Type::Void.into())], Type::Void),
                         true,
                     )),
-                    args: [CILNode::LDArg(0)].into(),
+                    args: [CILNode::LDArg(0).cast_ptr(ptr!(Type::Void))].into(),
                 }
                 .into(),
                 CILRoot::VoidRet.into(),
@@ -377,7 +377,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
             Some("size".into()),
         ],
     );
-    puts(asm);
+
     asm.add_method(__rust_dealloc);
     let free = Method::new(
         AccessModifer::Private,
@@ -394,7 +394,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
                         FnSig::new(&[Type::ISize], Type::Void),
                         true,
                     )),
-                    args: [CILNode::LDArg(0)].into(),
+                    args: [CILNode::LDArg(0).cast_ptr(Type::ISize)].into(),
                 }
                 .into(),
                 CILRoot::VoidRet.into(),
@@ -434,8 +434,13 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
                     vec![CILRoot::Ret {
                         tree: call!(
                             CallSite::realloc(),
-                            [CILNode::LDArg(0), CILNode::LDArg(3), CILNode::LDArg(2)]
-                        ),
+                            [
+                                CILNode::LDArg(0).cast_ptr(ptr!(Type::Void)),
+                                CILNode::LDArg(3),
+                                CILNode::LDArg(2)
+                            ]
+                        )
+                        .cast_ptr(ptr!(Type::U8)),
                     }
                     .into()],
                     1,
@@ -455,8 +460,13 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
                 vec![CILRoot::Ret {
                     tree: call!(
                         CallSite::realloc(),
-                        [CILNode::LDArg(0), CILNode::LDArg(3), CILNode::LDArg(2)]
-                    ),
+                        [
+                            CILNode::LDArg(0).cast_ptr(ptr!(Type::Void)),
+                            CILNode::LDArg(3),
+                            CILNode::LDArg(2)
+                        ]
+                    )
+                    .cast_ptr(ptr!(Type::U8)),
                 }
                 .into()],
                 0,
@@ -483,10 +493,10 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
     //memcmp::add_raw_eq(asm);
     //add_ptr_offset_from_unsigned(asm);
     //caller_location::add_caller_location(asm,tcx,&mut TyCache::empty());
-    pthread_create(asm);
+    //pthread_create(asm);
     pthread_attr_init(asm);
     pthread_attr_destroy(asm);
-    pthread_attr_setstacksize(asm);
+    //pthread_attr_setstacksize(asm);
     pthread_detach(asm);
     __cxa_thread_atexit_impl(asm);
     llvm_x86_sse2_pause(asm);
@@ -649,52 +659,6 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
     asm.add_typedef(unmanaged_start);
 }
 
-add_method_from_trees!(
-    puts,
-    &[Type::Ptr(Box::new(Type::U8))],
-    Type::Void,
-    vec![
-        BasicBlock::new(
-            vec![
-                CILRoot::BTrue {
-                    target: 1,
-                    sub_target: 0,
-                    cond: CILNode::LDIndI8 {
-                        ptr: CILNode::LDArg(0).into()
-                    }
-                }
-                .into(),
-                CILRoot::Call {
-                    site: Box::new(CallSite::new_extern(
-                        DotnetTypeRef::console(),
-                        "Write".into(),
-                        FnSig::new(&[Type::DotnetChar], Type::Void),
-                        true
-                    )),
-                    args: [CILNode::LDIndI8 {
-                        ptr: CILNode::LDArg(0).into()
-                    }]
-                    .into()
-                }
-                .into(),
-                CILRoot::STArg {
-                    arg: 0,
-                    tree: CILNode::LDArg(0) + ldc_u64!(1)
-                }
-                .into(),
-                CILRoot::GoTo {
-                    target: 0,
-                    sub_target: 0
-                }
-                .into(),
-            ],
-            0,
-            None,
-        ),
-        BasicBlock::new(vec![CILRoot::VoidRet.into(),], 1, None,)
-    ],
-    vec![Some("str".into())]
-);
 add_method_from_trees!(
     pthread_create,
     &[

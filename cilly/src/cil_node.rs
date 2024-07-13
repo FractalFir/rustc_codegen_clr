@@ -366,7 +366,7 @@ impl CILNode {
     }
     fn opt_children(&mut self, opt_count: &mut usize) {
         match self {
-            Self::UnboxAny(val,tpe )=>val.opt(opt_count),
+            Self::UnboxAny(val,_tpe )=>val.opt(opt_count),
             Self::CheckedCast(inner)=>inner.0.opt(opt_count),
             Self::Volatile(inner)=>inner.opt(opt_count),
             Self::IsInst(inner)=>inner.0.opt(opt_count),
@@ -547,7 +547,7 @@ impl CILNode {
         locals: &mut Vec<(Option<IString>, Type)>,
     ) {
         match self {
-            Self::UnboxAny(val,tpe )=>val.allocate_tmps(curr_loc, locals),
+            Self::UnboxAny(val,_tpe )=>val.allocate_tmps(curr_loc, locals),
             Self::Volatile(inner)=>inner.allocate_tmps(curr_loc, locals),
             Self::CheckedCast(inner)=>inner.0.allocate_tmps(curr_loc, locals),
             Self::IsInst(inner)=>inner.0.allocate_tmps(curr_loc, locals),
@@ -563,7 +563,7 @@ impl CILNode {
             Self::LDArg(_) |
             Self::LDLocA(_)|
             Self::LDArgA(_) => (),
-            Self::BlackBox(_) => todo!(),
+            Self::BlackBox(inner) => inner.allocate_tmps(curr_loc, locals),
             Self::SizeOf(_) => (),
             Self::LDIndI8 { ptr }|
             Self::LDIndBool { ptr }|
@@ -966,6 +966,8 @@ impl CILNode {
                 let tpe = src.validate(vctx, tmp_loc)?;
                 if let Type::ManagedReference(pointed) = tpe {
                     Ok(Type::Ptr(pointed))
+                } else if let Type::Ptr(pointed) = tpe {
+                    Ok(Type::Ptr(pointed))
                 } else {
                     Err(format!(
                         "MRefToRawPtr expected a managed ref, but got {tpe:?}"
@@ -1156,8 +1158,13 @@ impl CILNode {
                             || (matches!(arg_tpe, Type::Ptr(_))
                                 && matches!(got, Type::ManagedReference(_)))
                         {
-                            // TODO: check the mref and ptr point to the same mem.
+                            // TODO: check the mref and ptr point to the same type.
                             continue;
+                        }
+                        if let Type::DotnetType(dt) = arg_tpe {
+                            if dt.name_path().contains("System.Object") {
+                                continue;
+                            }
                         }
                         return Err(format!(
                             "Expected an argument of type {arg_tpe:?}, but got {got:?} when calling {name}",name = call_op_args.site.name()
@@ -1223,16 +1230,19 @@ impl CILNode {
                 .ok_or_else(|| ("TMP local requred when no tmp locals!".to_string())),
             Self::LDElelemRef { arr, idx } => {
                 let arr = arr.validate(vctx, tmp_loc)?;
-                let idx = idx.validate(vctx, tmp_loc)?;
+                let _idx = idx.validate(vctx, tmp_loc)?;
                 match arr {
-                    Type::ManagedArray { element, dims } => Ok(Type::ManagedReference(element)),
+                    Type::ManagedArray { element, dims: _ } => Ok(*element),
                     _ => panic!("{arr:?} is not an array!"),
                 }
             }
             Self::LDLen { arr } => {
                 let arr = arr.validate(vctx, tmp_loc)?;
                 match arr {
-                    Type::ManagedArray { element, dims } => Ok(Type::I32),
+                    Type::ManagedArray {
+                        element: _,
+                        dims: _,
+                    } => Ok(Type::I32),
                     _ => panic!("{arr:?} is not an array!"),
                 }
             }
@@ -1240,7 +1250,7 @@ impl CILNode {
                 size.validate(vctx, tmp_loc)?;
                 Ok(ptr!(Type::Void))
             }
-            Self::LocAllocAligned { tpe, align } => Ok(ptr!(tpe.as_ref().clone())),
+            Self::LocAllocAligned { tpe, align: _ } => Ok(ptr!(tpe.as_ref().clone())),
             Self::Volatile(inner) => inner.validate(vctx, tmp_loc),
             Self::UnboxAny(val, tpe) => {
                 let _val = val.validate(vctx, tmp_loc)?;

@@ -49,6 +49,7 @@ pub fn address_last_dereference<'tcx>(
     let curr_points_to = super::pointed_type(curr_type.into());
     let curr_type = ctx.type_from_cache(curr_type);
     let target_type = ctx.type_from_cache(target_ty);
+    eprintln!("address_last_dereference called on {curr_points_to} and {target_ty}");
     match (
         pointer_to_is_fat(curr_points_to, ctx.tcx(), ctx.instance()),
         pointer_to_is_fat(target_ty, ctx.tcx(), ctx.instance()),
@@ -66,7 +67,11 @@ pub fn address_last_dereference<'tcx>(
             loaded_ptr: Box::new(Type::Ptr(Box::new(target_type))),
         },
         (false, true) => panic!("Invalid last dereference in address!"),
-        (false, false) | (true, true) => addr_calc,
+        (false, false) => addr_calc,
+        (true, true) => CILNode::LdObj {
+            ptr: Box::new(addr_calc),
+            obj: Box::new(curr_type),
+        },
     }
     /*match (curr_points_to.kind(), target_type.kind()) {
         (TyKind::Slice(_), TyKind::Slice(_)) => addr_calc,
@@ -92,23 +97,21 @@ pub fn place_elem_adress<'tcx>(
 ) -> CILNode {
     let curr_type = curr_type.monomorphize(ctx);
     assert_morphic!(curr_type);
+
     match place_elem {
         PlaceElem::Deref => address_last_dereference(place_ty, curr_type, ctx, addr_calc),
         PlaceElem::Field(index, field_ty) => match curr_type {
-            PlaceTy::Ty(curr_type) => {
-                //TODO: Why was this commented out?
-
-                let curr_ty = ctx.monomorphize(curr_type);
+            PlaceTy::Ty(curr_ty) => {
                 if crate::r#type::pointer_to_is_fat(curr_ty, ctx.tcx(), ctx.instance()) {
                     let mut explicit_offset_iter = crate::utilis::adt::FieldOffsetIterator::fields(
-                        ctx.layout_of(curr_type).layout.0 .0.clone(),
+                        ctx.layout_of(curr_ty).layout.0 .0.clone(),
                     );
                     let offset = explicit_offset_iter
                         .nth(index.as_usize())
                         .expect("Field index not in field offset iterator");
                     assert_eq!(
                         offset, 0,
-                        "Can't handle DST fields with non-zero offsets. owner:{curr_type:?}"
+                        "Can't handle DST fields with non-zero offsets. owner:{curr_ty:?}"
                     );
                     let field_ty = ctx.monomorphize(*field_ty);
                     let curr_type = ctx.type_from_cache(Ty::new_ptr(
@@ -127,10 +130,13 @@ pub fn place_elem_adress<'tcx>(
                         "data_pointer".into(),
                     );
                     return CILNode::TemporaryLocal(Box::new((
-                        curr_type,
+                        curr_type.clone(),
                         [
                             CILRoot::SetTMPLocal {
-                                value: addr_calc.clone(),
+                                value: CILNode::LdObj {
+                                    ptr: Box::new(addr_calc.clone()),
+                                    obj: Box::new(curr_type),
+                                },
                             },
                             CILRoot::SetField {
                                 addr: Box::new(addr_calc.clone()),

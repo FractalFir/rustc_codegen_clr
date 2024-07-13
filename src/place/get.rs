@@ -36,10 +36,7 @@ pub(super) fn local_get(local: usize, method: &rustc_middle::mir::Body) -> CILNo
     }
 }
 /// Returns the ops for getting the value of place.
-pub fn place_get<'tcx>(
-    place: &Place<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
-) -> CILNode {
+pub fn place_get<'tcx>(place: &Place<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_, '_>) -> CILNode {
     if place.projection.is_empty() {
         local_get(place.local.as_usize(), ctx.body())
     } else {
@@ -65,14 +62,7 @@ fn place_elem_get<'a>(
     addr_calc: CILNode,
 ) -> CILNode {
     match place_elem {
-        PlaceElem::Deref => {
-            if curr_type.as_ty().is_some_and(|ty| {
-                pointer_to_is_fat(ty.builtin_deref(true).unwrap(), ctx.tcx(), ctx.instance())
-            }) {
-                return addr_calc;
-            }
-            super::deref_op(super::pointed_type(curr_type).into(), ctx, addr_calc)
-        }
+        PlaceElem::Deref => super::deref_op(super::pointed_type(curr_type).into(), ctx, addr_calc),
         PlaceElem::Field(field_index, _field_type) => match curr_type {
             super::PlaceTy::Ty(curr_type) => {
                 let curr_type = ctx.monomorphize(curr_type);
@@ -214,7 +204,7 @@ fn place_elem_get<'a>(
             }
         }
         PlaceElem::Subtype(tpe) => {
-            if body_ty_is_by_adress(curr_type.as_ty().unwrap()) {
+            if body_ty_is_by_adress(curr_type.as_ty().unwrap(), ctx) {
                 super::deref_op((*tpe).into(), ctx, addr_calc)
             } else {
                 addr_calc

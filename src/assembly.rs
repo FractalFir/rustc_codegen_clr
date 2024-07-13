@@ -699,83 +699,84 @@ pub fn add_const_value(asm: &mut Assembly, bytes: u128, tcx: TyCtxt) -> StaticFi
             vec![
                 CILRoot::STLoc {
                     local: 0,
-                    tree: call!(crate::cil::malloc(tcx), [ldc_u32!(16)]),
+                    tree: call!(crate::cil::malloc(tcx), [conv_usize!(ldc_u32!(16))])
+                        .cast_ptr(ptr!(Type::U8)),
                 }
                 .into(),
-                CILRoot::STIndI8(CILNode::LDLoc(0), ldc_u32!(u32::from(raw_bytes[0]))).into(),
+                CILRoot::STIndI8(CILNode::LDLoc(0), CILNode::LdcU8(raw_bytes[0])).into(),
                 CILRoot::STIndI8(
-                    CILNode::LDLoc(0) + ldc_u32!(1),
-                    ldc_u32!(u32::from(raw_bytes[1])),
+                    CILNode::LDLoc(0) + conv_usize!(ldc_u32!(1)),
+                    CILNode::LdcU8(raw_bytes[1]),
                 )
                 .into(),
                 CILRoot::STIndI8(
-                    CILNode::LDLoc(0) + ldc_u32!(2),
-                    ldc_u32!(u32::from(raw_bytes[2])),
+                    CILNode::LDLoc(0) + conv_usize!(ldc_u32!(2)),
+                    CILNode::LdcU8(raw_bytes[2]),
                 )
                 .into(),
                 CILRoot::STIndI8(
-                    CILNode::LDLoc(0) + ldc_u32!(3),
-                    ldc_u32!(u32::from(raw_bytes[3])),
+                    CILNode::LDLoc(0) + conv_usize!(ldc_u32!(3)),
+                    CILNode::LdcU8(raw_bytes[3]),
                 )
                 .into(),
                 CILRoot::STIndI8(
-                    CILNode::LDLoc(0) + ldc_u32!(4),
-                    ldc_u32!(u32::from(raw_bytes[4])),
+                    CILNode::LDLoc(0) + conv_usize!(ldc_u32!(4)),
+                    CILNode::LdcU8(raw_bytes[4]),
                 )
                 .into(),
                 CILRoot::STIndI8(
-                    CILNode::LDLoc(0) + ldc_u32!(5),
-                    ldc_u32!(u32::from(raw_bytes[5])),
+                    CILNode::LDLoc(0) + conv_usize!(ldc_u32!(5)),
+                    CILNode::LdcU8(raw_bytes[5]),
                 )
                 .into(),
                 CILRoot::STIndI8(
-                    CILNode::LDLoc(0) + ldc_u32!(6),
-                    ldc_u32!(u32::from(raw_bytes[6])),
+                    CILNode::LDLoc(0) + conv_usize!(ldc_u32!(6)),
+                    CILNode::LdcU8(raw_bytes[6]),
                 )
                 .into(),
                 CILRoot::STIndI8(
-                    CILNode::LDLoc(0) + ldc_u32!(7),
-                    ldc_u32!(u32::from(raw_bytes[7])),
+                    CILNode::LDLoc(0) + conv_usize!(ldc_u32!(7)),
+                    CILNode::LdcU8(raw_bytes[7]),
                 )
                 .into(),
                 CILRoot::STIndI8(
-                    CILNode::LDLoc(0) + ldc_u32!(8),
-                    ldc_u32!(u32::from(raw_bytes[8])),
+                    CILNode::LDLoc(0) + conv_usize!(ldc_u32!(8)),
+                    CILNode::LdcU8(raw_bytes[8]),
                 )
                 .into(),
                 CILRoot::STIndI8(
-                    CILNode::LDLoc(0) + ldc_u32!(9),
-                    ldc_u32!(u32::from(raw_bytes[9])),
+                    CILNode::LDLoc(0) + conv_usize!(ldc_u32!(9)),
+                    CILNode::LdcU8(raw_bytes[9]),
                 )
                 .into(),
                 CILRoot::STIndI8(
-                    CILNode::LDLoc(0) + ldc_u32!(10),
-                    ldc_u32!(u32::from(raw_bytes[10])),
+                    CILNode::LDLoc(0) + conv_usize!(ldc_u32!(10)),
+                    CILNode::LdcU8(raw_bytes[10]),
                 )
                 .into(),
                 CILRoot::STIndI8(
-                    CILNode::LDLoc(0) + ldc_u32!(11),
-                    ldc_u32!(u32::from(raw_bytes[11])),
+                    CILNode::LDLoc(0) + conv_usize!(ldc_u32!(11)),
+                    CILNode::LdcU8(raw_bytes[11]),
                 )
                 .into(),
                 CILRoot::STIndI8(
-                    CILNode::LDLoc(0) + ldc_u32!(12),
-                    ldc_u32!(u32::from(raw_bytes[12])),
+                    CILNode::LDLoc(0) + conv_usize!(ldc_u32!(12)),
+                    CILNode::LdcU8(raw_bytes[12]),
                 )
                 .into(),
                 CILRoot::STIndI8(
-                    CILNode::LDLoc(0) + ldc_u32!(13),
-                    ldc_u32!(u32::from(raw_bytes[13])),
+                    CILNode::LDLoc(0) + conv_usize!(ldc_u32!(13)),
+                    CILNode::LdcU8(raw_bytes[13]),
                 )
                 .into(),
                 CILRoot::STIndI8(
-                    CILNode::LDLoc(0) + ldc_u32!(14),
-                    ldc_u32!(u32::from(raw_bytes[14])),
+                    CILNode::LDLoc(0) + conv_usize!(ldc_u32!(14)),
+                    CILNode::LdcU8(raw_bytes[14]),
                 )
                 .into(),
                 CILRoot::STIndI8(
-                    CILNode::LDLoc(0) + ldc_u32!(15),
-                    ldc_u32!(u32::from(raw_bytes[15])),
+                    CILNode::LDLoc(0) + conv_usize!(ldc_u32!(15)),
+                    CILNode::LdcU8(raw_bytes[15]),
                 )
                 .into(),
                 CILRoot::Ret {

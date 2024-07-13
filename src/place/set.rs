@@ -54,11 +54,7 @@ pub fn place_elem_set<'a>(
                 let curr_type = ctx.monomorphize(curr_type);
                 let field_desc =
                     crate::utilis::field_descrptor(curr_type, (*field_index).into(), ctx);
-                CILRoot::SetField {
-                    addr: Box::new(addr_calc),
-                    value: Box::new(value_calc),
-                    desc: Box::new(field_desc),
-                }
+                CILRoot::set_field(addr_calc, value_calc, field_desc, ctx.validator(), None)
             }
             super::PlaceTy::EnumVariant(enm, var_idx) => {
                 let enm = ctx.monomorphize(enm);

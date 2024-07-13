@@ -158,33 +158,40 @@ pub fn unsize2<'tcx>(
         Type::Ptr(_) | Type::ManagedReference(_)
     ));
 
-    let init_metadata = CILRoot::SetField {
-        addr: Box::new(info.target_ptr.clone()),
-        value: Box::new(metadata.cast_ptr(Type::USize)),
-        desc: Box::new(metadata_field),
-    };
+    let init_metadata = CILRoot::set_field(
+        info.target_ptr.clone(),
+        metadata.cast_ptr(Type::USize),
+        metadata_field,
+        ctx.validator(),
+        Some(&info.target_type),
+    );
     init_metadata
         .validate(ctx.validator(), Some(&info.target_type))
         .expect("init_metadata invalid!");
     let init_ptr = if pointer_to_is_fat(info.source_points_to, ctx.tcx(), ctx.instance()) {
-        CILRoot::SetField {
-            addr: Box::new(info.target_ptr),
-            value: Box::new(CILNode::LDIndPtr {
+        CILRoot::set_field(
+            info.target_ptr,
+            CILNode::LDIndPtr {
                 ptr: Box::new(operand_address(operand, ctx).cast_ptr(ptr!(ptr!(Type::Void)))),
                 loaded_ptr: Box::new(ptr!(Type::Void)),
-            }),
-            desc: Box::new(ptr_field),
-        }
+            },
+            ptr_field,
+            ctx.validator(),
+            Some(&info.target_type),
+        )
     } else {
-        CILRoot::SetField {
-            addr: Box::new(info.target_ptr),
-            value: Box::new(handle_operand(operand, ctx).cast_ptr(ptr!(Type::Void))),
-            desc: Box::new(ptr_field),
-        }
+        CILRoot::set_field(
+            info.target_ptr,
+            handle_operand(operand, ctx).cast_ptr(ptr!(Type::Void)),
+            ptr_field,
+            ctx.validator(),
+            Some(&info.target_type),
+        )
     };
     init_ptr
         .validate(ctx.validator(), Some(&info.target_type))
         .expect("init_ptr invalid!");
+    assert!(matches!(info.target_type, Type::DotnetType(_)));
     let res = CILNode::TemporaryLocal(Box::new((
         info.target_type.clone(),
         [init_metadata, init_ptr].into(),
@@ -353,12 +360,11 @@ pub(crate) fn unsized_info<'tcx>(
             if let Some(entry_idx) = vptr_entry_idx {
                 let entry_idx = u32::try_from(entry_idx).unwrap();
                 let entry_offset = ldc_u32!(entry_idx) * conv_u32!(size_of!(ptr!(Type::Void)));
-                let vptr_ptr = CILNode::LDIndUSize {
+                CILNode::LDIndUSize {
                     ptr: Box::new(
                         (old_info + conv_usize!(entry_offset)).cast_ptr(ptr!(Type::USize)),
                     ),
-                };
-                vptr_ptr
+                }
             } else {
                 old_info
             }

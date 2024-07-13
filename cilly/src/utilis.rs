@@ -1,13 +1,10 @@
-use crate::cil_node::CallOpArgs;
-use crate::field_desc::FieldDescriptor;
 use crate::method::Method;
 use crate::static_field_desc::StaticFieldDescriptor;
 use crate::{
     asm::Assembly, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, eq, lt, size_of,
 };
 use crate::{
-    call, call_virt, conv_i32, conv_usize, ld_field, ldc_i32, ldc_u32, mul, ptr, DotnetTypeRef,
-    FnSig, Type,
+    call, call_virt, conv_i32, conv_usize, ldc_i32, ldc_u32, mul, ptr, DotnetTypeRef, FnSig, Type,
 };
 pub fn argc_argv_init_method(asm: &mut Assembly) -> CallSite {
     use std::num::NonZeroU8;
@@ -32,11 +29,8 @@ pub fn argc_argv_init_method(asm: &mut Assembly) -> CallSite {
 
     // Allocate the variables necesarry for initializng args.
     let argc = u32::try_from(init_method.add_local(Type::I32, Some("argc".into()))).unwrap();
-    let argv = u32::try_from(init_method.add_local(
-        Type::Ptr(Type::Ptr(Type::U8.into()).into()),
-        Some("argv".into()),
-    ))
-    .unwrap();
+    let argv =
+        u32::try_from(init_method.add_local(ptr!(ptr!(Type::U8)), Some("argv".into()))).unwrap();
     let managed_args = u32::try_from(init_method.add_local(
         Type::ManagedArray {
             element: Box::new(DotnetTypeRef::string_type().into()),
@@ -82,7 +76,8 @@ pub fn argc_argv_init_method(asm: &mut Assembly) -> CallSite {
             ),
             conv_usize!(ldc_u32!(8))
         ]
-    );
+    )
+    .cast_ptr(ptr!(ptr!(Type::U8)));
     let argv_alloc = CILRoot::STLoc { local: argv, tree };
     // Create the block which allocates argv and calculates argc.
     let start_bb = init_method.new_bb();
@@ -131,9 +126,10 @@ pub fn argc_argv_init_method(asm: &mut Assembly) -> CallSite {
     let uarg = mstring_to_utf8ptr(arg_nth);
     // Store the converted arg at idx+1
     loop_block.trees_mut().push(
-        CILRoot::STIndISize(
+        CILRoot::STIndPtr(
             CILNode::LDLoc(argv) + conv_usize!(size_of!(Type::ISize) * CILNode::LDLoc(arg_idx)),
             uarg,
+            Box::new(Type::U8),
         )
         .into(),
     );
@@ -157,7 +153,7 @@ pub fn argc_argv_init_method(asm: &mut Assembly) -> CallSite {
                         arr: CILNode::LDLoc(managed_args).into()
                     })
                 ),
-                ldc_i32!(0)
+                CILNode::LdFalse
             ),
         }
         .into(),
@@ -228,6 +224,7 @@ pub fn mstring_to_utf8ptr(mstring: CILNode) -> CILNode {
         ),
         [mstring]
     )
+    .cast_ptr(ptr!(Type::U8))
 }
 /*
  .method public hidebysig
@@ -448,7 +445,7 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
     init.trees_mut().push(
         CILRoot::STLoc {
             local: arr_ptr,
-            tree: call!(CallSite::alloc(), [arr_size, arr_align]),
+            tree: call!(CallSite::alloc(), [arr_size, arr_align]).cast_ptr(ptr!(ptr!(Type::U8))),
         }
         .into(),
     );
@@ -546,7 +543,9 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
             keyval_tpe.clone(),
             "get_Key".into(),
             FnSig::new(
-                [Type::DotnetType(Box::new(keyval_tpe.clone()))],
+                [Type::ManagedReference(
+                    Type::DotnetType(Box::new(keyval_tpe.clone())).into()
+                )],
                 Type::DotnetType(Box::new(DotnetTypeRef::object_type()))
             ),
             false,
@@ -558,7 +557,9 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
             keyval_tpe.clone(),
             "get_Value".into(),
             FnSig::new(
-                [Type::DotnetType(Box::new(keyval_tpe.clone()))],
+                [Type::ManagedReference(
+                    Type::DotnetType(Box::new(keyval_tpe.clone())).into()
+                )],
                 Type::DotnetType(Box::new(DotnetTypeRef::object_type()))
             ),
             false,
@@ -593,7 +594,7 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
             CILNode::LDLoc(arr_ptr)
                 + conv_usize!(CILNode::LDLoc(idx) * size_of!(ptr!(ptr!(Type::U8)))),
             utf8_kval,
-            Box::new(ptr!(ptr!(Type::U8))),
+            Box::new(Type::U8),
         )
         .into(),
     );
@@ -619,7 +620,7 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
             CILNode::LDLoc(arr_ptr)
                 + conv_usize!(CILNode::LDLoc(envc) * size_of!(ptr!(ptr!(Type::U8)))),
             null_ptr,
-            Box::new(ptr!(ptr!(Type::U8))),
+            Box::new(Type::U8),
         )
         .into(),
     );

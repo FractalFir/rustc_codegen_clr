@@ -57,20 +57,6 @@ static ARGV_INIT_ARRAY: extern "C" fn(core::ffi::c_int, *const *const u8, *const
     init_wrapper
 };
 
-#[cfg(any(target_os = "espidf", target_os = "vita"))]
-mod imp {
-    use super::Args;
-
-    #[inline(always)]
-    pub unsafe fn init(_argc: isize, _argv: *const *const u8) {}
-
-    pub fn args() -> Args {
-        Args {
-            iter: Vec::new().into_iter(),
-        }
-    }
-}
-
 fn main() {
     test_ne!(ARGV.load(Ordering::Relaxed), ptr::null_mut());
 }

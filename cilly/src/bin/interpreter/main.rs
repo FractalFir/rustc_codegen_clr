@@ -445,7 +445,7 @@ impl<'asm> InterpreterState<'asm> {
     ) -> Result<Value, Exception> {
         assert_eq!(self.locals.len(), self.call_stack.len());
         assert!(args.len() >= self.method(call)?.sig().inputs().len());
-        let locals = self.method(call)?.locals().clone();
+        let locals = self.method(call)?.locals();
         let locals = locals
             .iter()
             .map(|(_name, tpe)| Value::default_for_type(tpe, self))
@@ -465,7 +465,7 @@ impl<'asm> InterpreterState<'asm> {
             match tree_ref.root() {
                 CILRoot::GoTo { target, sub_target } => {
                     assert_eq!(*sub_target, 0);
-                    let (method, block, tree, _) = self.call_stack.last_mut().unwrap();
+                    let (_method, block, tree, _) = self.call_stack.last_mut().unwrap();
                     *block = *target as usize;
                     *tree = 0;
                     continue;
@@ -478,7 +478,7 @@ impl<'asm> InterpreterState<'asm> {
                     assert_eq!(*sub_target, 0);
                     let cond = eval_node(cond, self, args)?.as_bool().unwrap();
                     if cond {
-                        let (method, block, tree, _) = self.call_stack.last_mut().unwrap();
+                        let (_method, block, tree, _) = self.call_stack.last_mut().unwrap();
                         *block = *target as usize;
                         *tree = 0;
                         continue;
@@ -492,7 +492,7 @@ impl<'asm> InterpreterState<'asm> {
                     assert_eq!(*sub_target, 0);
                     let cond = eval_node(cond, self, args)?.as_bool().unwrap();
                     if !cond {
-                        let (method, block, tree, _) = self.call_stack.last_mut().unwrap();
+                        let (_method, block, tree, _) = self.call_stack.last_mut().unwrap();
                         *block = *target as usize;
                         *tree = 0;
                         continue;
@@ -511,10 +511,14 @@ impl<'asm> InterpreterState<'asm> {
                     let val = eval_node(tree, self, args)?;
                     args[*arg as usize].set(val, self);
                 }
-                CILRoot::SetField { addr, value, desc } => {
+                CILRoot::SetField {
+                    addr,
+                    value,
+                    desc: _,
+                } => {
                     assert_eq!(self.locals.len(), self.call_stack.len());
-                    let val = eval_node(value, self, args)?;
-                    let addr = eval_node(addr, self, args)?;
+                    let _val = eval_node(value, self, args)?;
+                    let _addr = eval_node(addr, self, args)?;
                     todo!()
                 }
                 CILRoot::SetStaticField { descr, value } => {

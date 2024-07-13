@@ -3,6 +3,7 @@ use cilly::{IString, Type};
 use crate::{AllocID, InterpreterState};
 
 #[derive(Clone, Debug, PartialEq)]
+#[allow(clippy::enum_variant_names)]
 pub enum Value {
     Undef,
     StringArray(Box<[IString]>),
@@ -37,6 +38,7 @@ impl Value {
         }
     }
     pub fn set(&mut self, other: Self, state: &mut InterpreterState) {
+        let _ = state;
         match self {
             Value::Undef
             | Value::StringArray(_)
@@ -57,10 +59,11 @@ impl Value {
             | Value::Bool(_)
             | Value::F32(_)
             | Value::F64(_) => *self = other,
-            Value::ValueType(alloc) => todo!("Can't yet assign a value of type ValueType"),
+            Value::ValueType(_alloc) => todo!("Can't yet assign a value of type ValueType"),
         }
     }
     pub fn pass_as_arg(self, state: &mut InterpreterState) -> Self {
+        let _ = state;
         match self {
             Value::Undef
             | Value::StringArray(_)
@@ -81,7 +84,7 @@ impl Value {
             | Value::Bool(_)
             | Value::F32(_)
             | Value::F64(_) => self.clone(),
-            Value::ValueType(alloc) => todo!("Can't yet pass a valuetype as an arg"),
+            Value::ValueType(_alloc) => todo!("Can't yet pass a valuetype as an arg"),
         }
     }
     pub fn as_usize(&self) -> Option<usize> {

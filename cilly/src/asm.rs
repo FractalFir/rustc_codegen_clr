@@ -273,10 +273,10 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
         method.allocate_temporaries();
         method.allocate_temporaries();
         if let Err(err) = method.validate() {
-            /*eprintln!(
+            eprintln!(
                 "Could not validate the method {name} because {err}",
                 name = method.name()
-            );*/
+            );
         }
 
         self.functions.insert(method.call_site(), method);

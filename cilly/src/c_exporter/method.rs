@@ -478,6 +478,7 @@ fn node_code(method: &Method, node: &crate::cil_node::CILNode) -> IString {
             let tpe = val.validate(method.vctx(), None).expect("ERROR: type info is necceary for exporting C code, but the type checker could not validate a node.");
             let val = node_code(method, val);
             match tpe {
+                Type::ISize => val,
                 _ => todo!("Can't yet `ZeroExtendToISize` {tpe:?}"),
             }
         }
@@ -710,10 +711,10 @@ pub(crate) fn fn_ptr_ty(sig: &FnSig) -> String {
         .iter()
         .enumerate()
         .filter(|(_, tpe)| **tpe != Type::Void);
-    if let Some((idx, input)) = input_iter.next() {
+    if let Some((_idx, input)) = input_iter.next() {
         inputs.push_str(&format!("{input}", input = c_tpe(input),));
     }
-    for (idx, input) in input_iter {
+    for (_idx, input) in input_iter {
         inputs.push_str(&format!(",{input}", input = c_tpe(input),));
     }
     inputs.push(')');

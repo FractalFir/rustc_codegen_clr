@@ -272,7 +272,7 @@ pub fn export(
             .count()
         {
             0 => write!(out, "}}catch [System.Runtime]System.Exception{{\npop").unwrap(),
-            1 => write!(out, "}}catch [System.Runtime]System.Exception{{\n").unwrap(),
+            1 => writeln!(out, "}}catch [System.Runtime]System.Exception{{").unwrap(),
             _ => panic!("Error: More than 1 GetException in a handler."),
         };
         DepthSetting::with_pading().pad(out).unwrap();

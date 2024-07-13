@@ -8,7 +8,7 @@ use crate::{escape_type_name, DepthSetting};
 use crate::{r#type::Type, IString};
 use fxhash::{FxBuildHasher, FxHashMap, FxHashSet};
 use std::process::Command;
-use std::{borrow::Cow, collections::HashSet, io::Write};
+use std::{borrow::Cow, io::Write};
 mod varaible;
 pub struct CExporter {
     types: Vec<u8>,

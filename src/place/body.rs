@@ -18,7 +18,7 @@ pub fn local_body<'tcx>(
 ) -> (CILNode, Ty<'tcx>) {
     let ty = ctx.body().local_decls[local.into()].ty;
     let ty = ctx.monomorphize(ty);
-    if body_ty_is_by_adress(ty) {
+    if body_ty_is_by_adress(ty, ctx) {
         (super::adress::local_adress(local, ctx.body()), ty)
     } else {
         (super::get::local_get(local, ctx.body()), ty)
@@ -39,7 +39,7 @@ pub fn place_elem_body<'tcx>(
         PlaceElem::Deref => {
             let pointed = pointed_type(curr_ty);
             assert_morphic!(pointed);
-            if body_ty_is_by_adress(pointed) {
+            if body_ty_is_by_adress(pointed, ctx) {
                 (pointed.into(), parrent_node)
             } else {
                 (pointed.into(), deref_op(pointed.into(), ctx, parrent_node))
@@ -67,18 +67,18 @@ pub fn place_elem_body<'tcx>(
                     return (
                         field_ty.into(),
                         CILNode::TemporaryLocal(Box::new((
-                            curr_type,
+                            curr_type.clone(),
                             [CILRoot::SetTMPLocal {
-                                value: parrent_node,
+                                value: CILNode::LdObj {
+                                    ptr: Box::new(parrent_node),
+                                    obj: Box::new(curr_type),
+                                },
                             }]
                             .into(),
-                            CILNode::LdObj {
-                                ptr: Box::new(CILNode::TransmutePtr {
-                                    val: CILNode::LoadAddresOfTMPLocal.into(),
-                                    new_ptr: Box::new(Type::Ptr(Box::new(field_type.clone()))),
-                                }),
-                                obj: field_type.into(),
-                            },
+                            (CILNode::TransmutePtr {
+                                val: CILNode::LoadAddresOfTMPLocal.into(),
+                                new_ptr: Box::new(Type::Ptr(Box::new(field_type.clone()))),
+                            }),
                         ))),
                     );
 
@@ -86,7 +86,7 @@ pub fn place_elem_body<'tcx>(
                 }
 
                 let field_desc = crate::utilis::field_descrptor(curr_ty, (*index).into(), ctx);
-                if body_ty_is_by_adress(field_ty) {
+                if body_ty_is_by_adress(field_ty, ctx) {
                     (
                         (field_ty).into(),
                         CILNode::LDFieldAdress {
@@ -158,7 +158,7 @@ pub fn place_elem_body<'tcx>(
                         .into(),
                     );
 
-                    if body_ty_is_by_adress(inner) {
+                    if body_ty_is_by_adress(inner, ctx) {
                         (inner.into(), addr)
                     } else {
                         (
@@ -172,7 +172,7 @@ pub fn place_elem_body<'tcx>(
                     let element_type = ctx.type_from_cache(element);
                     let array_type = ctx.type_from_cache(curr_ty);
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
-                    if body_ty_is_by_adress(element) {
+                    if body_ty_is_by_adress(element, ctx) {
                         let ops = call!(
                             CallSite::new(
                                 Some(array_dotnet),
@@ -239,7 +239,7 @@ pub fn place_elem_body<'tcx>(
                         ),
                         [index, ld_field!(parrent_node.clone(), metadata)]
                     ) * conv_usize!(CILNode::SizeOf(inner_type.into()));
-                    if body_ty_is_by_adress(inner) {
+                    if body_ty_is_by_adress(inner, ctx) {
                         (inner.into(), addr)
                     } else {
                         (
@@ -253,7 +253,7 @@ pub fn place_elem_body<'tcx>(
                     let element = ctx.type_from_cache(element_ty);
                     let array_type = ctx.type_from_cache(curr_ty);
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
-                    if body_ty_is_by_adress(element_ty) {
+                    if body_ty_is_by_adress(element_ty, ctx) {
                         let ops = call!(
                             CallSite::new(
                                 Some(array_dotnet),
