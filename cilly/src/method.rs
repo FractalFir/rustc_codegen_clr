@@ -18,6 +18,7 @@ use crate::{
     cil_tree::CILTree,
     ilasm_op::{non_void_type_cil, type_cil},
     static_field_desc::StaticFieldDescriptor,
+    utilis::MemoryUsage,
     DepthSetting, DotnetTypeRef, FnSig, IString, IlasmFlavour, Type,
 };
 
@@ -32,6 +33,29 @@ pub struct Method {
     pub(in crate::method) blocks: Vec<BasicBlock>,
     attributes: Vec<Attribute>,
     arg_names: Vec<Option<IString>>,
+}
+impl MemoryUsage for Method {
+    fn memory_usage(&self, counter: &mut impl crate::utilis::MemoryUsageCounter) -> usize {
+        let mut total_size = std::mem::size_of::<Self>();
+        let tpe_name = std::any::type_name::<Self>();
+        //TODO:count the fields too
+        let blocks_size = self
+            .blocks()
+            .iter()
+            .map(|block| block.memory_usage(counter))
+            .sum();
+        counter.add_field(tpe_name, "blocks", blocks_size);
+        total_size += blocks_size;
+        let locals_size = self
+            .locals()
+            .iter()
+            .map(|locals| locals.memory_usage(counter))
+            .sum();
+        counter.add_field(tpe_name, "locals", locals_size);
+        total_size += locals_size;
+        counter.add_type(tpe_name, total_size);
+        total_size
+    }
 }
 /// Local varaible. Consists of an optional name and type.
 pub type LocalDef = (Option<IString>, Type);

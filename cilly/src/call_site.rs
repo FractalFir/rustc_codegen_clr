@@ -1,4 +1,4 @@
-use crate::{DotnetTypeRef, FnSig, Type};
+use crate::{utilis::MemoryUsage, DotnetTypeRef, FnSig, Type};
 use serde::{Deserialize, Serialize};
 
 use crate::IString;
@@ -11,6 +11,15 @@ pub struct CallSite {
     signature: FnSig,
     is_static: bool,
     generics: Vec<Type>,
+}
+impl MemoryUsage for CallSite {
+    fn memory_usage(&self, counter: &mut impl crate::utilis::MemoryUsageCounter) -> usize {
+        let total_size = std::mem::size_of::<Self>();
+        let tpe_name = std::any::type_name::<Self>();
+        //TODO:count the fields too
+        counter.add_type(tpe_name, total_size);
+        total_size
+    }
 }
 impl CallSite {
     #[must_use]

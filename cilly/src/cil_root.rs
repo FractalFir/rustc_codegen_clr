@@ -5,6 +5,7 @@ use crate::{
     field_desc::FieldDescriptor,
     fn_sig::FnSig,
     static_field_desc::StaticFieldDescriptor,
+    utilis::MemoryUsage,
     DotnetTypeRef, IString, Type,
 };
 
@@ -1178,6 +1179,39 @@ fn runtime_string(pieces: &[&str]) -> CILNode {
                 ]
             )
         }
+    }
+}
+impl MemoryUsage for CILRoot {
+    fn memory_usage(&self, counter: &mut impl crate::utilis::MemoryUsageCounter) -> usize {
+        let tpe_name = std::any::type_name::<Self>();
+        let mut total_size = std::mem::size_of::<Self>();
+        let name = std::any::type_name::<Self>();
+        let inner = self
+            .into_iter()
+            .map(|node| match node {
+                crate::cil_iter::CILIterElem::Node(node) => {
+                    let var_name = &format!("{node:?}");
+                    let name = var_name
+                        .split('{')
+                        .next()
+                        .unwrap_or("")
+                        .split('(')
+                        .next()
+                        .unwrap_or("");
+                    let size = std::mem::size_of::<CILNode>();
+                    counter.add_type(name, size);
+                    size
+                }
+                crate::cil_iter::CILIterElem::Root(CILRoot::SourceFileInfo(sfi)) => {
+                    sfi.memory_usage(counter) + std::mem::size_of::<CILRoot>()
+                }
+                crate::cil_iter::CILIterElem::Root(_) => std::mem::size_of::<CILRoot>(),
+            })
+            .sum();
+        counter.add_field(name, "inner", inner);
+        total_size += inner;
+        counter.add_type(tpe_name, total_size);
+        total_size
     }
 }
 

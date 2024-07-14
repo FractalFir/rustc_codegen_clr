@@ -12,6 +12,7 @@ lazy_static = "1.4.0"
 postcard = { version = "1.0.6", features = ["use-std"] }
 ar = "0.9.0"
 fxhash = "0.2.1"
+name-variant = "0.1.0"
 [[bin]]
 name = "linker"
 test = false

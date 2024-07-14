@@ -11,6 +11,7 @@ use crate::{
     method::{Method, MethodType},
     static_field_desc::StaticFieldDescriptor,
     type_def::TypeDef,
+    utilis::MemoryUsage,
     DotnetTypeRef, FnSig, IString, Type,
 };
 
@@ -22,6 +23,17 @@ pub struct AssemblyExternRef {
     /// (Major Version, Minor Version, Revision number, Build number)
     /// In that order.
     version: (u16, u16, u16, u16),
+}
+impl MemoryUsage for AssemblyExternRef {
+    fn memory_usage(&self, counter: &mut impl crate::utilis::MemoryUsageCounter) -> usize {
+        let mut total_size = std::mem::size_of::<Self>();
+        let name = std::any::type_name::<Self>();
+        let version = self.version.memory_usage(counter);
+        counter.add_field(name, "version", version);
+        total_size += version;
+        counter.add_type(name, total_size);
+        total_size
+    }
 }
 impl AssemblyExternRef {
     /// Returns the version information of this assembly.
@@ -585,5 +597,24 @@ fn link_static_initializers(a: Option<&Method>, b: Option<&Method>) -> Option<Me
             drop(blocks);
             Some(merged)
         }
+    }
+}
+impl MemoryUsage for Assembly {
+    fn memory_usage(&self, counter: &mut impl crate::utilis::MemoryUsageCounter) -> usize {
+        let total_size = std::mem::size_of::<Self>();
+        let name = std::any::type_name::<Self>();
+        let types = self.types.memory_usage(counter);
+        counter.add_field(name, "types", types);
+        let functions = self.functions.memory_usage(counter);
+        counter.add_field(name, "types", functions);
+        let extern_fns = self.extern_fns.memory_usage(counter);
+        counter.add_field(name, "extern_fns", extern_fns);
+        let extern_refs = self.extern_refs.memory_usage(counter);
+        counter.add_field(name, "extern_refs", extern_refs);
+        let entrypoint = self.entrypoint.memory_usage(counter);
+        counter.add_field(name, "entrypoint", entrypoint);
+        let initializers = self.initializers.memory_usage(counter);
+        counter.add_field(name, "initializers", initializers);
+        total_size
     }
 }

@@ -1,3 +1,5 @@
+use fxhash::FxHashMap;
+
 use crate::method::Method;
 use crate::static_field_desc::StaticFieldDescriptor;
 use crate::{
@@ -699,6 +701,164 @@ fn argv() {
         .unwrap()
         .export(&mut out, crate::IlasmFlavour::Clasic, true, false)
         .unwrap();
+}
+pub trait MemoryUsage {
+    fn memory_usage(&self, counter: &mut impl MemoryUsageCounter) -> usize;
+}
+pub trait MemoryUsageCounter {
+    fn add_type(&mut self, tpe_name: &str, size: usize);
+    fn add_field(&mut self, tpe_name: &str, field_name: &str, size: usize);
+}
+impl<K: MemoryUsage, V: MemoryUsage> MemoryUsage for FxHashMap<K, V> {
+    fn memory_usage(&self, counter: &mut impl MemoryUsageCounter) -> usize {
+        let mut total_size = std::mem::size_of::<Self>();
+        let tpe_name = std::any::type_name::<Self>();
+        let values = self.values().map(|val| val.memory_usage(counter)).sum();
+        counter.add_field(tpe_name, "values", values);
+        total_size += values;
+        let keys = self.values().map(|val| val.memory_usage(counter)).sum();
+        total_size += keys;
+        counter.add_field(tpe_name, "keys", keys);
+        counter.add_type(tpe_name, total_size);
+        total_size
+    }
+}
+impl<T: MemoryUsage> MemoryUsage for Vec<T> {
+    fn memory_usage(&self, counter: &mut impl MemoryUsageCounter) -> usize {
+        let mut total_size = std::mem::size_of::<Self>();
+        let tpe_name = std::any::type_name::<Self>();
+        let elements = self.iter().map(|val| val.memory_usage(counter)).sum();
+        counter.add_field(tpe_name, "elements", elements);
+        total_size += elements;
+        counter.add_type(tpe_name, total_size);
+        total_size
+    }
+}
+
+impl<T: MemoryUsage> MemoryUsage for Option<T> {
+    fn memory_usage(&self, counter: &mut impl MemoryUsageCounter) -> usize {
+        let mut total_size = std::mem::size_of::<Self>();
+        let tpe_name = std::any::type_name::<Self>();
+        let inner = match self.as_ref() {
+            Some(inner) => inner.memory_usage(counter),
+            None => 0,
+        };
+        counter.add_field(tpe_name, "inner", inner);
+        total_size += inner;
+        counter.add_type(tpe_name, total_size);
+        total_size
+    }
+}
+
+impl<T: MemoryUsage> MemoryUsage for Box<T> {
+    fn memory_usage(&self, counter: &mut impl MemoryUsageCounter) -> usize {
+        let mut total_size = std::mem::size_of::<Self>();
+        let tpe_name = std::any::type_name::<Self>();
+        let inner = self.as_ref().memory_usage(counter);
+        counter.add_field(tpe_name, "inner", inner);
+        total_size += inner;
+        counter.add_type(tpe_name, total_size);
+        total_size
+    }
+}
+impl MemoryUsage for Box<str> {
+    fn memory_usage(&self, counter: &mut impl MemoryUsageCounter) -> usize {
+        let mut total_size = std::mem::size_of::<Self>();
+        let tpe_name = std::any::type_name::<Self>();
+        let inner = self.as_ref().len();
+        counter.add_field(tpe_name, "inner", inner);
+        total_size += inner;
+        counter.add_type(tpe_name, total_size);
+        total_size
+    }
+}
+impl MemoryUsage for bool {
+    fn memory_usage(&self, counter: &mut impl MemoryUsageCounter) -> usize {
+        let total_size = std::mem::size_of::<Self>();
+        counter.add_type("bool", total_size);
+        total_size
+    }
+}
+impl MemoryUsage for u16 {
+    fn memory_usage(&self, counter: &mut impl MemoryUsageCounter) -> usize {
+        let total_size = std::mem::size_of::<Self>();
+        counter.add_type("u16", total_size);
+        total_size
+    }
+}
+impl MemoryUsage for std::ops::Range<u64> {
+    fn memory_usage(&self, counter: &mut impl MemoryUsageCounter) -> usize {
+        let total_size = std::mem::size_of::<Self>();
+        counter.add_type("Range<u64>", total_size);
+        total_size
+    }
+}
+impl<T: MemoryUsage> MemoryUsage for &T {
+    fn memory_usage(&self, counter: &mut impl MemoryUsageCounter) -> usize {
+        (*self).memory_usage(counter)
+    }
+}
+impl<A: MemoryUsage> MemoryUsage for (A,) {
+    fn memory_usage(&self, counter: &mut impl MemoryUsageCounter) -> usize {
+        let mut total_size = std::mem::size_of::<Self>();
+        let tpe_name = std::any::type_name::<Self>();
+        let a = self.0.memory_usage(counter);
+        counter.add_field(tpe_name, "0", a);
+        total_size += a;
+        counter.add_type(tpe_name, total_size);
+        total_size
+    }
+}
+impl<A: MemoryUsage, B: MemoryUsage> MemoryUsage for (A, B) {
+    fn memory_usage(&self, counter: &mut impl MemoryUsageCounter) -> usize {
+        let mut total_size = std::mem::size_of::<Self>();
+        let tpe_name = std::any::type_name::<Self>();
+        let a = self.0.memory_usage(counter);
+        counter.add_field(tpe_name, "0", a);
+        total_size += a;
+        let b = self.1.memory_usage(counter);
+        counter.add_field(tpe_name, "1", b);
+        total_size += b;
+        counter.add_type(tpe_name, total_size);
+        total_size
+    }
+}
+impl<A: MemoryUsage, B: MemoryUsage, C: MemoryUsage> MemoryUsage for (A, B, C) {
+    fn memory_usage(&self, counter: &mut impl MemoryUsageCounter) -> usize {
+        let mut total_size = std::mem::size_of::<Self>();
+        let tpe_name = std::any::type_name::<Self>();
+        let a = self.0.memory_usage(counter);
+        counter.add_field(tpe_name, "0", a);
+        total_size += a;
+        let b = self.1.memory_usage(counter);
+        counter.add_field(tpe_name, "1", b);
+        total_size += b;
+        let c = self.2.memory_usage(counter);
+        counter.add_field(tpe_name, "2", c);
+        total_size += c;
+        counter.add_type(tpe_name, total_size);
+        total_size
+    }
+}
+impl<A: MemoryUsage, B: MemoryUsage, C: MemoryUsage, D: MemoryUsage> MemoryUsage for (A, B, C, D) {
+    fn memory_usage(&self, counter: &mut impl MemoryUsageCounter) -> usize {
+        let mut total_size = std::mem::size_of::<Self>();
+        let tpe_name = std::any::type_name::<Self>();
+        let a = self.0.memory_usage(counter);
+        counter.add_field(tpe_name, "0", a);
+        total_size += a;
+        let b = self.1.memory_usage(counter);
+        counter.add_field(tpe_name, "1", b);
+        total_size += b;
+        let c = self.2.memory_usage(counter);
+        counter.add_field(tpe_name, "2", c);
+        total_size += c;
+        let d = self.3.memory_usage(counter);
+        counter.add_field(tpe_name, "3", c);
+        total_size += d;
+        counter.add_type(tpe_name, total_size);
+        total_size
+    }
 }
 #[test]
 fn environ() {

@@ -1,11 +1,10 @@
 #![allow(clippy::module_name_repetitions)]
 pub mod field_desc;
 pub mod r#type;
-use std::rc::Rc;
 
 use cil_root::SFI;
 pub use r#type::*;
-pub type IString = Rc<str>;
+pub type IString = Box<str>;
 pub mod dotnet_type;
 pub use dotnet_type::*;
 pub mod fn_sig;

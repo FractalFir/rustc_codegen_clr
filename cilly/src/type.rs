@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{DotnetTypeRef, FnSig};
+use crate::{utilis::MemoryUsage, DotnetTypeRef, FnSig};
 #[derive(Serialize, Deserialize, PartialEq, Clone, Eq, Hash, Debug)]
 pub enum Type {
     /// Void type
@@ -46,6 +46,14 @@ pub enum Type {
         element: Box<Self>,
         dims: std::num::NonZeroU8,
     },
+}
+impl MemoryUsage for Type {
+    fn memory_usage(&self, counter: &mut impl crate::utilis::MemoryUsageCounter) -> usize {
+        let total_size = std::mem::size_of::<Self>();
+        let name = std::any::type_name::<Self>();
+
+        total_size
+    }
 }
 impl Type {
     /// If this is a reference to a dotnet type, return that type. Will not work with pointers/references.

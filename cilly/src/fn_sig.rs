@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::Type;
+use crate::{utilis::MemoryUsage, Type};
 
 #[derive(Clone, PartialEq, Serialize, Deserialize, Eq, Hash, Debug)]
 /// Function signature.
@@ -33,5 +33,16 @@ impl FnSig {
 
     pub fn inputs_mut(&mut self) -> &mut Vec<Type> {
         &mut self.inputs
+    }
+}
+impl MemoryUsage for FnSig {
+    fn memory_usage(&self, counter: &mut impl crate::utilis::MemoryUsageCounter) -> usize {
+        let total_size = std::mem::size_of::<Self>();
+        let name = std::any::type_name::<Self>();
+        let inputs = self.inputs.memory_usage(counter);
+        counter.add_field(name, "inputs", inputs);
+        let output = self.output.memory_usage(counter);
+        counter.add_field(name, "output", output);
+        total_size
     }
 }

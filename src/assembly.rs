@@ -134,8 +134,22 @@ fn allocation_initializer_method(
         }
         .into(),
     );
+    if !bytes.iter().all(|byte| *byte != 0) {
+        trees.push(
+            CILRoot::InitBlk {
+                dst: Box::new(CILNode::LDLoc(1)),
+                val: Box::new(CILNode::LdcU8(0)),
+                count: Box::new(conv_usize!(ldc_u64!(bytes.len() as u64))),
+            }
+            .into(),
+        );
+    }
+
     for byte in bytes {
-        trees.push(CILRoot::STIndI8(CILNode::LDLoc(0), CILNode::LdcU8(*byte)).into());
+        if *byte != 0 {
+            trees.push(CILRoot::STIndI8(CILNode::LDLoc(0), CILNode::LdcU8(*byte)).into());
+        }
+
         //trees.push(CILRoot::debug(&format!("Writing the byte {}",byte)).into());
         trees.push(
             CILRoot::STLoc {
@@ -695,98 +709,41 @@ pub fn add_const_value(asm: &mut Assembly, bytes: u128, tcx: TyCtxt) -> StaticFi
     let field_desc =
         StaticFieldDescriptor::new(None, Type::Ptr(Type::U8.into()), alloc_fld.clone());
     if !asm.static_fields_mut().contains_key(&alloc_fld) {
-        let block = BasicBlock::new(
-            vec![
-                CILRoot::STLoc {
-                    local: 0,
-                    tree: call!(crate::cil::malloc(tcx), [conv_usize!(ldc_u32!(16))])
-                        .cast_ptr(ptr!(Type::U8)),
+        let mut trees = vec![CILRoot::STLoc {
+            local: 0,
+            tree: call!(crate::cil::malloc(tcx), [conv_usize!(ldc_u32!(16))])
+                .cast_ptr(ptr!(Type::U8)),
+        }
+        .into()];
+        // This is an optimization if and only if there are enough zero-bytes to justify this.
+        if !raw_bytes.iter().all(|byte| *byte != 0) {
+            trees.push(
+                CILRoot::InitBlk {
+                    dst: Box::new(CILNode::LDLoc(0)),
+                    val: Box::new(CILNode::LdcU8(0)),
+                    count: Box::new(conv_usize!(ldc_u32!(16))),
                 }
                 .into(),
-                CILRoot::STIndI8(CILNode::LDLoc(0), CILNode::LdcU8(raw_bytes[0])).into(),
-                CILRoot::STIndI8(
-                    CILNode::LDLoc(0) + conv_usize!(ldc_u32!(1)),
-                    CILNode::LdcU8(raw_bytes[1]),
-                )
-                .into(),
-                CILRoot::STIndI8(
-                    CILNode::LDLoc(0) + conv_usize!(ldc_u32!(2)),
-                    CILNode::LdcU8(raw_bytes[2]),
-                )
-                .into(),
-                CILRoot::STIndI8(
-                    CILNode::LDLoc(0) + conv_usize!(ldc_u32!(3)),
-                    CILNode::LdcU8(raw_bytes[3]),
-                )
-                .into(),
-                CILRoot::STIndI8(
-                    CILNode::LDLoc(0) + conv_usize!(ldc_u32!(4)),
-                    CILNode::LdcU8(raw_bytes[4]),
-                )
-                .into(),
-                CILRoot::STIndI8(
-                    CILNode::LDLoc(0) + conv_usize!(ldc_u32!(5)),
-                    CILNode::LdcU8(raw_bytes[5]),
-                )
-                .into(),
-                CILRoot::STIndI8(
-                    CILNode::LDLoc(0) + conv_usize!(ldc_u32!(6)),
-                    CILNode::LdcU8(raw_bytes[6]),
-                )
-                .into(),
-                CILRoot::STIndI8(
-                    CILNode::LDLoc(0) + conv_usize!(ldc_u32!(7)),
-                    CILNode::LdcU8(raw_bytes[7]),
-                )
-                .into(),
-                CILRoot::STIndI8(
-                    CILNode::LDLoc(0) + conv_usize!(ldc_u32!(8)),
-                    CILNode::LdcU8(raw_bytes[8]),
-                )
-                .into(),
-                CILRoot::STIndI8(
-                    CILNode::LDLoc(0) + conv_usize!(ldc_u32!(9)),
-                    CILNode::LdcU8(raw_bytes[9]),
-                )
-                .into(),
-                CILRoot::STIndI8(
-                    CILNode::LDLoc(0) + conv_usize!(ldc_u32!(10)),
-                    CILNode::LdcU8(raw_bytes[10]),
-                )
-                .into(),
-                CILRoot::STIndI8(
-                    CILNode::LDLoc(0) + conv_usize!(ldc_u32!(11)),
-                    CILNode::LdcU8(raw_bytes[11]),
-                )
-                .into(),
-                CILRoot::STIndI8(
-                    CILNode::LDLoc(0) + conv_usize!(ldc_u32!(12)),
-                    CILNode::LdcU8(raw_bytes[12]),
-                )
-                .into(),
-                CILRoot::STIndI8(
-                    CILNode::LDLoc(0) + conv_usize!(ldc_u32!(13)),
-                    CILNode::LdcU8(raw_bytes[13]),
-                )
-                .into(),
-                CILRoot::STIndI8(
-                    CILNode::LDLoc(0) + conv_usize!(ldc_u32!(14)),
-                    CILNode::LdcU8(raw_bytes[14]),
-                )
-                .into(),
-                CILRoot::STIndI8(
-                    CILNode::LDLoc(0) + conv_usize!(ldc_u32!(15)),
-                    CILNode::LdcU8(raw_bytes[15]),
-                )
-                .into(),
-                CILRoot::Ret {
-                    tree: CILNode::LDLoc(0),
-                }
-                .into(),
-            ],
-            0,
-            None,
+            );
+        }
+        for index in 0..16 {
+            if raw_bytes[index as usize] != 0 {
+                trees.push(
+                    CILRoot::STIndI8(
+                        CILNode::LDLoc(0) + conv_usize!(ldc_u32!(index)),
+                        CILNode::LdcU8(raw_bytes[index as usize]),
+                    )
+                    .into(),
+                );
+            }
+        }
+        trees.push(
+            CILRoot::Ret {
+                tree: CILNode::LDLoc(0),
+            }
+            .into(),
         );
+        let block = BasicBlock::new(trees, 0, None);
         let init_method = Method::new(
             AccessModifer::Public,
             MethodType::Static,
