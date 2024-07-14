@@ -2,7 +2,7 @@ use crate::{
     assembly::MethodCompileCtx,
     call_info::CallInfo,
     interop::AssemblyRef,
-    operand::handle_operand,
+    operand::{handle_operand, operand_address},
     utilis::{garg_to_string, CTOR_FN_NAME, MANAGED_CALL_FN_NAME, MANAGED_CALL_VIRT_FN_NAME},
 };
 use cilly::{
@@ -313,7 +313,7 @@ pub fn call<'tcx>(
     if let rustc_middle::ty::InstanceKind::Virtual(_def, fn_idx) = instance.def {
         assert!(!args.is_empty());
 
-        let fat_ptr_address = handle_operand(&args[0].node, ctx);
+        let fat_ptr_address = operand_address(&args[0].node, ctx);
 
         let vtable_ptr = ld_field!(
             fat_ptr_address.clone(),
