@@ -6,6 +6,7 @@ use cilly::{
     basic_block::{BasicBlock, Handler},
     call,
     call_site::CallSite,
+    call_virt,
     cil_node::{CILNode, CallOpArgs},
     cil_root::CILRoot,
     conv_u64, conv_usize,
@@ -16,6 +17,7 @@ use cilly::{
     ptr,
     r#type::Type,
     size_of,
+    static_field_desc::StaticFieldDescriptor,
     type_def::TypeDef,
     DotnetTypeRef,
 };
@@ -26,11 +28,7 @@ mod select;
 const MAX_ALLOC_SIZE: u64 = u32::MAX as u64;
 add_method_from_trees!(
     swap_at_generic,
-    &[
-        Type::Ptr(Box::new(Type::Void)),
-        Type::Ptr(Box::new(Type::Void)),
-        Type::USize
-    ],
+    &[ptr!((Type::Void)), ptr!((Type::Void)), Type::USize],
     Type::Void,
     vec![BasicBlock::new(
         vec![
@@ -68,7 +66,7 @@ add_method_from_trees!(
         0,
         None
     )],
-    vec![(Some("loc_buff".into()), Type::Ptr(Box::new(Type::Void)))],
+    vec![(Some("loc_buff".into()), ptr!((Type::Void)))],
     vec![
         Some("buf1".into()),
         Some("buf2".into()),
@@ -287,7 +285,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
         MethodType::Static,
         FnSig::new(&[Type::USize, Type::USize], Type::Ptr(Type::U8.into())),
         "__rust_alloc_zeroed",
-        vec![(Some("alloc_ptr".into()), Type::Ptr(Box::new(Type::U8)))],
+        vec![(Some("alloc_ptr".into()), ptr!((Type::U8)))],
         if *crate::config::CHECK_ALLOCATIONS {
             vec![
                 BasicBlock::new(
@@ -493,11 +491,39 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
     //memcmp::add_raw_eq(asm);
     //add_ptr_offset_from_unsigned(asm);
     //caller_location::add_caller_location(asm,tcx,&mut TyCache::empty());
-    //pthread_create(asm);
+
+    asm.add_static(
+        Type::DotnetType(Box::new(DotnetTypeRef::dictionary(Type::I32, Type::ISize))),
+        "thread_results",
+    );
+    asm.add_initialzer(CILRoot::SetStaticField {
+        descr: Box::new(StaticFieldDescriptor::new(
+            None,
+            Type::DotnetType(Box::new(DotnetTypeRef::dictionary(Type::I32, Type::ISize))),
+            "thread_results".into(),
+        )),
+        value: CILNode::NewObj(Box::new(CallOpArgs {
+            site: Box::new(CallSite::new_extern(
+                DotnetTypeRef::dictionary(Type::I32, Type::ISize),
+                ".ctor".into(),
+                FnSig::new(
+                    [Type::DotnetType(Box::new(DotnetTypeRef::dictionary(
+                        Type::I32,
+                        Type::ISize,
+                    )))],
+                    Type::Void,
+                ),
+                false,
+            )),
+            args: [].into(),
+        })),
+    });
+    pthread_create(asm);
     pthread_attr_init(asm);
     pthread_attr_destroy(asm);
-    //pthread_attr_setstacksize(asm);
+    pthread_attr_setstacksize(asm);
     pthread_detach(asm);
+    pthread_join(asm);
     __cxa_thread_atexit_impl(asm);
     llvm_x86_sse2_pause(asm);
     let rust_exception = TypeDef::new(
@@ -545,6 +571,127 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
         None,
     );
     asm.add_typedef(rust_exception);
+    let start = Method::new(
+        AccessModifer::ModulePublic,
+        MethodType::Instance,
+        FnSig::new(&[Type::DotnetType(Box::new(unmanaged_start()))], Type::Void),
+        "Start",
+        vec![(Some("res".into()), Type::ISize)],
+        vec![BasicBlock::new(
+            vec![
+                CILRoot::debug("Preparing to start  the child thread.").into(),
+                CILRoot::STLoc {
+                    local: 0,
+                    tree: CILNode::CallI(Box::new((
+                        (FnSig::new(&[ptr!(Type::Void)], ptr!(Type::Void))),
+                        (ld_field!(
+                            CILNode::LDArg(0),
+                            FieldDescriptor::new(
+                                unmanaged_start(),
+                                Type::DelegatePtr(Box::new(FnSig::new(
+                                    &[ptr!(Type::Void)],
+                                    ptr!(Type::Void),
+                                ))),
+                                "start_fn".into(),
+                            )
+                        )),
+                        [ld_field!(
+                            CILNode::LDArg(0),
+                            FieldDescriptor::new(
+                                unmanaged_start(),
+                                ptr!(Type::Void),
+                                "data".into(),
+                            )
+                        )]
+                        .into(),
+                    )))
+                    .cast_ptr(Type::ISize),
+                }
+                .into(),
+                CILRoot::Call {
+                    site: Box::new(CallSite::new_extern(
+                        DotnetTypeRef::dictionary(Type::I32, Type::ISize),
+                        "set_Item".into(),
+                        FnSig::new(
+                            [
+                                Type::DotnetType(Box::new(DotnetTypeRef::dictionary(
+                                    Type::I32,
+                                    Type::ISize,
+                                ))),
+                                Type::GenericArg(0),
+                                Type::GenericArg(1),
+                            ],
+                            Type::Void,
+                        ),
+                        false,
+                    )),
+                    args: Box::new([
+                        CILNode::LDStaticField(Box::new(StaticFieldDescriptor::new(
+                            None,
+                            Type::DotnetType(Box::new(DotnetTypeRef::dictionary(
+                                Type::I32,
+                                Type::ISize,
+                            ))),
+                            "thread_results".into(),
+                        ))),
+                        CILNode::CallVirt(Box::new(CallOpArgs {
+                            site: Box::new(CallSite::new_extern(
+                                DotnetTypeRef::thread(),
+                                "get_ManagedThreadId".into(),
+                                FnSig::new(
+                                    [Type::DotnetType(Box::new(DotnetTypeRef::thread()))],
+                                    Type::I32,
+                                ),
+                                false,
+                            )),
+                            args: [call!(
+                                CallSite::new_extern(
+                                    DotnetTypeRef::thread(),
+                                    "get_CurrentThread".into(),
+                                    FnSig::new(
+                                        [],
+                                        Type::DotnetType(Box::new(DotnetTypeRef::thread())),
+                                    ),
+                                    true,
+                                ),
+                                []
+                            )]
+                            .into(),
+                        })),
+                        CILNode::LDLoc(0),
+                    ]),
+                }
+                .into(),
+                CILRoot::debug("Finished running the child thread.").into(),
+                CILRoot::Call {
+                    site: Box::new(CallSite::new_extern(
+                        DotnetTypeRef::console(),
+                        "WriteLine".into(),
+                        FnSig::new(
+                            [Type::DotnetType(Box::new(DotnetTypeRef::object_type()))],
+                            Type::Void,
+                        ),
+                        true,
+                    )),
+                    args: Box::new([CILNode::LDStaticField(Box::new(
+                        StaticFieldDescriptor::new(
+                            None,
+                            Type::DotnetType(Box::new(DotnetTypeRef::dictionary(
+                                Type::I32,
+                                Type::ISize,
+                            ))),
+                            "thread_results".into(),
+                        ),
+                    ))]),
+                }
+                .into(),
+                CILRoot::VoidRet.into(),
+            ],
+            0,
+            None,
+        )],
+        vec![],
+    );
     let unmanaged_start = TypeDef::new(
         AccessModifer::ModulePublic,
         "UnmanagedThreadStart".into(),
@@ -552,12 +699,9 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
         vec![
             (
                 "start_fn".into(),
-                Type::DelegatePtr(Box::new(FnSig::new(
-                    &[Type::Ptr(Box::new(Type::Void))],
-                    Type::Void,
-                ))),
+                Type::DelegatePtr(Box::new(FnSig::new(&[ptr!(Type::Void)], ptr!(Type::Void)))),
             ),
-            ("data".into(), Type::Ptr(Box::new(Type::Void))),
+            ("data".into(), ptr!(Type::Void)),
         ],
         vec![
             Method::new(
@@ -567,10 +711,10 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
                     &[
                         Type::DotnetType(Box::new(unmanaged_start())),
                         Type::DelegatePtr(Box::new(FnSig::new(
-                            &[Type::Ptr(Box::new(Type::Void))],
-                            Type::Void,
+                            &[ptr!(Type::Void)],
+                            ptr!(Type::Void),
                         ))),
-                        Type::Ptr(Box::new(Type::Void)),
+                        ptr!(Type::Void),
                     ],
                     Type::Void,
                 ),
@@ -584,8 +728,8 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
                             desc: Box::new(FieldDescriptor::new(
                                 unmanaged_start(),
                                 Type::DelegatePtr(Box::new(FnSig::new(
-                                    &[Type::Ptr(Box::new(Type::Void))],
-                                    Type::Void,
+                                    &[ptr!(Type::Void)],
+                                    ptr!(Type::Void),
                                 ))),
                                 "start_fn".into(),
                             )),
@@ -596,7 +740,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
                             value: Box::new(CILNode::LDArg(2)),
                             desc: Box::new(FieldDescriptor::new(
                                 unmanaged_start(),
-                                Type::Ptr(Box::new(Type::Void)),
+                                ptr!(Type::Void),
                                 "data".into(),
                             )),
                         }
@@ -608,48 +752,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
                 )],
                 vec![Some("start_routine".into()), Some("data".into())],
             ),
-            Method::new(
-                AccessModifer::ModulePublic,
-                MethodType::Instance,
-                FnSig::new(&[Type::DotnetType(Box::new(unmanaged_start()))], Type::Void),
-                "Start",
-                vec![],
-                vec![BasicBlock::new(
-                    vec![
-                        CILRoot::CallI {
-                            sig: Box::new(FnSig::new(
-                                &[Type::Ptr(Box::new(Type::Void))],
-                                Type::Void,
-                            )),
-                            fn_ptr: Box::new(ld_field!(
-                                CILNode::LDArg(0),
-                                FieldDescriptor::new(
-                                    unmanaged_start(),
-                                    Type::DelegatePtr(Box::new(FnSig::new(
-                                        &[Type::Ptr(Box::new(Type::Void))],
-                                        Type::Void,
-                                    ))),
-                                    "start_fn".into(),
-                                )
-                            )),
-                            args: [ld_field!(
-                                CILNode::LDArg(0),
-                                FieldDescriptor::new(
-                                    unmanaged_start(),
-                                    Type::Ptr(Box::new(Type::Void)),
-                                    "data".into(),
-                                )
-                            )]
-                            .into(),
-                        }
-                        .into(),
-                        CILRoot::VoidRet.into(),
-                    ],
-                    0,
-                    None,
-                )],
-                vec![],
-            ),
+            start,
         ],
         None,
         0,
@@ -662,13 +765,10 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
 add_method_from_trees!(
     pthread_create,
     &[
-        Type::Ptr(Box::new(Type::ISize)),
-        Type::Ptr(Box::new(Type::Void)),
-        Type::DelegatePtr(Box::new(FnSig::new(
-            &[Type::Ptr(Box::new(Type::Void))],
-            Type::Void
-        ))),
-        Type::Ptr(Box::new(Type::Void))
+        ptr!(Type::ISize),
+        ptr!(Type::Void),
+        Type::DelegatePtr(Box::new(FnSig::new(&[ptr!(Type::Void)], ptr!(Type::Void)))),
+        ptr!(Type::Void)
     ],
     Type::I32,
     vec![BasicBlock::new(
@@ -686,10 +786,10 @@ add_method_from_trees!(
                                         &[
                                             Type::DotnetType(Box::new(unmanaged_start())),
                                             Type::DelegatePtr(Box::new(FnSig::new(
-                                                &[Type::Ptr(Box::new(Type::Void))],
-                                                Type::Void
+                                                &[ptr!(Type::Void)],
+                                                ptr!(Type::Void)
                                             ))),
-                                            Type::Ptr(Box::new(Type::Void))
+                                            ptr!(Type::Void)
                                         ],
                                         Type::Void
                                     ),
@@ -751,27 +851,16 @@ add_method_from_trees!(
                 args: [CILNode::LDLoc(0)].into(),
             }
             .into(),
-            CILRoot::STIndI64(
+            CILRoot::STIndISize(
                 CILNode::LDArg(0),
-                conv_u64!(call!(
-                    CallSite::new(
-                        Some(DotnetTypeRef::thread()),
-                        "get_ManagedThreadId".into(),
-                        FnSig::new(
-                            &[Type::DotnetType(Box::new(DotnetTypeRef::thread()))],
-                            Type::I32
-                        ),
-                        false
-                    ),
-                    [CILNode::LDLoc(0)]
-                ))
+                CILNode::managed_ref_to_handle(CILNode::LDLoc(0))
             )
             .into(),
             CILRoot::Ret { tree: ldc_i32!(0) }.into(),
         ],
         0,
         None
-    )],
+    ),],
     vec![(
         Some("thread_handle".into()),
         Type::DotnetType(Box::new(DotnetTypeRef::thread()))
@@ -792,7 +881,7 @@ add_method_from_trees!(
 */
 add_method_from_trees!(
     pthread_attr_init,
-    &[Type::Ptr(Box::new(Type::ISize)),],
+    &[ptr!(Type::ISize),],
     Type::I32,
     vec![BasicBlock::new(
         vec![
@@ -812,12 +901,12 @@ add_method_from_trees!(
 );
 add_method_from_trees!(
     pthread_attr_setstacksize,
-    &[Type::Ptr(Box::new(Type::ISize)), Type::USize],
+    &[ptr!(Type::ISize), Type::USize],
     Type::I32,
     vec![BasicBlock::new(
         vec![
             CILRoot::STIndISize(
-                CILNode::LDArg(0) + size_of!(Type::USize) * ldc_i32!(2),
+                CILNode::LDArg(0) + conv_usize!(size_of!(Type::USize) * ldc_i32!(2)),
                 CILNode::LDArg(1)
             )
             .into(),
@@ -831,21 +920,58 @@ add_method_from_trees!(
 );
 
 // detaching a thread in .NET does nothing(since the runtime manages everyting) - so this is safe.
+// However, we still have to free the GC handle.
 add_method_from_trees!(
     pthread_detach,
     &[Type::ISize],
     Type::I32,
     vec![BasicBlock::new(
-        vec![CILRoot::Ret { tree: ldc_i32!(0) }.into()],
+        vec![
+            CILRoot::STLoc {
+                local: 0,
+                tree: call!(
+                    CallSite::new_extern(
+                        DotnetTypeRef::gc_handle(),
+                        "FromIntPtr".into(),
+                        FnSig::new(
+                            [Type::ISize],
+                            Type::DotnetType(Box::new(DotnetTypeRef::gc_handle()))
+                        ),
+                        true
+                    ),
+                    [CILNode::LDArg(0)]
+                )
+            }
+            .into(),
+            CILRoot::Call {
+                site: Box::new(CallSite::new_extern(
+                    DotnetTypeRef::gc_handle(),
+                    "Free".into(),
+                    FnSig::new(
+                        [Type::ManagedReference(Box::new(Type::DotnetType(
+                            Box::new(DotnetTypeRef::gc_handle())
+                        )))],
+                        Type::Void
+                    ),
+                    false
+                )),
+                args: [CILNode::LDLocA(0)].into()
+            }
+            .into(),
+            CILRoot::Ret { tree: ldc_i32!(0) }.into()
+        ],
         0,
         None
     )],
-    vec![],
+    vec![(
+        Some("gc_habdle".into()),
+        Type::DotnetType(Box::new(DotnetTypeRef::gc_handle()))
+    )],
     vec![Some("thread_attr".into()), Some("size".into())]
 );
 add_method_from_trees!(
     pthread_attr_destroy,
-    &[Type::Ptr(Box::new(Type::ISize)),],
+    &[ptr!((Type::ISize)),],
     Type::I32,
     vec![BasicBlock::new(
         vec![CILRoot::Ret { tree: ldc_i32!(0) }.into()],
@@ -862,12 +988,9 @@ fn unmanaged_start() -> DotnetTypeRef {
 add_method_from_trees!(
     __cxa_thread_atexit_impl,
     [
-        Type::DelegatePtr(Box::new(FnSig::new(
-            [Type::Ptr(Box::new(Type::Void))],
-            Type::Void
-        ))),
-        Type::Ptr(Box::new(Type::Void)),
-        Type::Ptr(Box::new(Type::Void))
+        Type::DelegatePtr(Box::new(FnSig::new([ptr!((Type::Void))], Type::Void))),
+        ptr!(Type::Void),
+        ptr!(Type::Void)
     ],
     Type::Void,
     vec![BasicBlock::new(vec![CILRoot::VoidRet.into()], 0, None)],
@@ -1022,4 +1145,84 @@ add_method_from_trees!(
         Some("data".into()),
         Some("catch_fn".into()),
     ]
+);
+add_method_from_trees!(
+    pthread_join,
+    [Type::ISize, ptr!(ptr!(Type::Void))],
+    Type::I32,
+    vec![BasicBlock::new(
+        vec![
+            CILRoot::STLoc {
+                local: 0,
+                tree: CILNode::LDArg(0).gc_handle_to_obj(DotnetTypeRef::thread()),
+            }
+            .into(),
+            CILRoot::CallVirt {
+                site: Box::new(CallSite::new_extern(
+                    DotnetTypeRef::thread(),
+                    "Join".into(),
+                    FnSig::new(
+                        [Type::DotnetType(Box::new(DotnetTypeRef::thread()))],
+                        Type::Void
+                    ),
+                    false
+                )),
+                args: Box::new([CILNode::LDLoc(0)])
+            }
+            .into(),
+            CILRoot::STIndPtr(
+                CILNode::LDArg(1),
+                call_virt!(
+                    CallSite::new_extern(
+                        DotnetTypeRef::dictionary(Type::I32, Type::ISize),
+                        "get_Item".into(),
+                        FnSig::new(
+                            [
+                                Type::DotnetType(Box::new(DotnetTypeRef::dictionary(
+                                    Type::I32,
+                                    Type::ISize
+                                ))),
+                                Type::GenericArg(0)
+                            ],
+                            Type::GenericArg(1)
+                        ),
+                        false
+                    ),
+                    [
+                        CILNode::LDStaticField(Box::new(StaticFieldDescriptor::new(
+                            None,
+                            Type::DotnetType(Box::new(DotnetTypeRef::dictionary(
+                                Type::I32,
+                                Type::ISize
+                            )),),
+                            "thread_results".into()
+                        ))),
+                        call_virt!(
+                            CallSite::new_extern(
+                                DotnetTypeRef::thread(),
+                                "get_ManagedThreadId".into(),
+                                FnSig::new(
+                                    [Type::DotnetType(Box::new(DotnetTypeRef::thread()))],
+                                    Type::I32
+                                ),
+                                false
+                            ),
+                            [CILNode::LDLoc(0)]
+                        )
+                    ]
+                )
+                .cast_ptr(ptr!(ptr!(Type::Void))),
+                Box::new(ptr!(Type::Void))
+            )
+            .into(),
+            CILRoot::Ret { tree: ldc_i32!(0) }.into()
+        ],
+        0,
+        None
+    )],
+    vec![(
+        Some("thread".into()),
+        Type::DotnetType(Box::new(DotnetTypeRef::thread()))
+    )],
+    vec![Some("thread_handle".into()), Some("result_ptr".into())]
 );

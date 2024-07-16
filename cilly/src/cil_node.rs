@@ -253,6 +253,40 @@ impl CILNode {
             [gc_handle]
         )
     }
+    pub fn gc_handle_to_obj(self, obj: DotnetTypeRef) -> Self {
+        let gc_handle = call!(
+            CallSite::new(
+                Some(DotnetTypeRef::gc_handle()),
+                "FromIntPtr".into(),
+                FnSig::new(
+                    &[Type::ISize],
+                    Type::DotnetType(Box::new(DotnetTypeRef::gc_handle()))
+                ),
+                true
+            ),
+            [self]
+        );
+        let gc_handle = CILNode::TemporaryLocal(Box::new((
+            Type::DotnetType(Box::new(DotnetTypeRef::gc_handle())),
+            [CILRoot::SetTMPLocal { value: gc_handle }].into(),
+            CILNode::LoadAddresOfTMPLocal,
+        )));
+        let object = call!(
+            CallSite::new(
+                Some(DotnetTypeRef::gc_handle()),
+                "get_Target".into(),
+                FnSig::new(
+                    &[Type::ManagedReference(Box::new(Type::DotnetType(
+                        Box::new(DotnetTypeRef::gc_handle())
+                    )))],
+                    Type::DotnetType(Box::new(DotnetTypeRef::object_type()))
+                ),
+                false,
+            ),
+            [gc_handle]
+        );
+        CILNode::CheckedCast(Box::new((object, obj)))
+    }
     #[must_use]
     pub fn select(tpe: Type, a: Self, b: Self, predictate: Self) -> Self {
         match tpe {
@@ -1157,8 +1191,12 @@ impl CILNode {
                     .zip(call_op_args.site.inputs().iter())
                 {
                     let got = arg_node.validate(vctx, tmp_loc)?;
+
                     if got != *arg_tpe {
                         if matches!(arg_tpe, Type::USize) && matches!(got, Type::Ptr(_)) {
+                            continue;
+                        }
+                        if matches!(arg_tpe, Type::GenericArg(_)) {
                             continue;
                         }
                         if (matches!(arg_tpe, Type::ManagedReference(_))
@@ -1179,7 +1217,12 @@ impl CILNode {
                         ));
                     }
                 }
-                Ok(call_op_args.site.signature().output().clone())
+                match call_op_args.site.signature().output() {
+                    Type::GenericArg(arg) => {
+                        Ok(call_op_args.site.class().unwrap().generics()[*arg as usize].clone())
+                    }
+                    _ => Ok(call_op_args.site.signature().output().clone()),
+                }
             }
             Self::CallI(packed) => {
                 let (sig, ptr, args) = packed.as_ref();
@@ -1263,6 +1306,11 @@ impl CILNode {
             Self::UnboxAny(val, tpe) => {
                 let _val = val.validate(vctx, tmp_loc)?;
                 Ok(tpe.as_ref().clone())
+            }
+            Self::CheckedCast(inner) => {
+                let (val, tpe) = inner.as_ref();
+                let _val = val.validate(vctx, tmp_loc)?;
+                Ok(Type::DotnetType(Box::new(tpe.clone())))
             }
             _ => todo!("Can't check the type safety of {self:?}"),
         }

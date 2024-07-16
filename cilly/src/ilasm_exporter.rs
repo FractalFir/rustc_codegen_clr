@@ -285,7 +285,7 @@ impl AssemblyExporter for ILASMExporter {
         let preserve_errno = if preserve_errno { "lasterr" } else { "" };
         writeln!(
             self.methods,
-            ".method private hidebysig static pinvokeimpl(\"{lib_path}\" cdecl {preserve_errno}) {output} '{name}' ("
+            ".method public hidebysig static pinvokeimpl(\"{lib_path}\" cdecl {preserve_errno}) {output} '{name}' ("
         )
         .unwrap();
         let mut input_iter = sig.inputs().iter();

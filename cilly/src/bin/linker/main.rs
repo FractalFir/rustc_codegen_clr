@@ -309,6 +309,30 @@ fn autopatch(asm: &mut Assembly, native_pastrough: &NativePastroughInfo) {
             override_pthread_atfork(&mut patched, call);
             continue;
         }
+        if name == "pthread_create" {
+            patch::override_pthread_create(&mut patched, call);
+            continue;
+        }
+        if name == "pthread_detach" {
+            patch::override_pthread_detach(&mut patched, call);
+            continue;
+        }
+        if name == "pthread_attr_init" {
+            patch::override_pthread_attr_init(&mut patched, call);
+            continue;
+        }
+        if name == "pthread_attr_setstacksize" {
+            patch::override_pthread_attr_setstacksize(&mut patched, call);
+            continue;
+        }
+        if name == "pthread_attr_destroy" {
+            patch::pthread_attr_destroy(&mut patched, call);
+            continue;
+        }
+        if name == "pthread_join" {
+            patch::override_pthread_join(&mut patched, call);
+            continue;
+        }
 
         if name == "_Unwind_RaiseException" {
             override_raise_exception(&mut patched, call);
@@ -589,7 +613,7 @@ fn main() {
         || output_file_path.contains(".o");
     add_mandatory_statics(&mut final_assembly);
 
-    if !is_lib {
+    if !is_lib && !*KEEP_DEAD_CODE {
         final_assembly.eliminate_dead_code();
     }
     if *C_MODE {
@@ -747,13 +771,24 @@ lazy_static! {
     };
 }
 lazy_static! {
+    #[doc = "Tells the linker to not remove any dead code."]pub static ref KEEP_DEAD_CODE:bool = {
+        std::env::vars().find_map(|(key,value)|if key == stringify!(KEEP_DEAD_CODE){
+            Some(value)
+        }else {
+            None
+        }).map(|value|match value.as_ref(){
+            "0"|"false"|"False"|"FALSE" => false,"1"|"true"|"True"|"TRUE" => true,_ => panic!("Boolean enviroment variable {} has invalid value {}",stringify!(KEEP_DEAD_CODE),value),
+        }).unwrap_or(false)
+    };
+}
+lazy_static! {
     #[doc = "Tells the codegen to emmit JS source files."]pub static ref JS_MODE:bool = {
         std::env::vars().find_map(|(key,value)|if key == stringify!(JS_MODE){
             Some(value)
         }else {
             None
         }).map(|value|match value.as_ref(){
-            "0"|"false"|"False"|"FALSE" => false,"1"|"true"|"True"|"TRUE" => true,_ => panic!("Boolean enviroment variable {} has invalid value {}",stringify!(C_MODE),value),
+            "0"|"false"|"False"|"FALSE" => false,"1"|"true"|"True"|"TRUE" => true,_ => panic!("Boolean enviroment variable {} has invalid value {}",stringify!(JS_MODE),value),
         }).unwrap_or(false)
     };
 }

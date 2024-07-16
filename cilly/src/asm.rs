@@ -293,10 +293,13 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
 
         self.functions.insert(method.call_site(), method);
     }
-    /// Returns the list of all calls within the method. Calls may repeat.
+    /// Returns the list of all calls within the assembly. Calls may repeat.
     #[must_use]
     pub fn call_sites(&self) -> Vec<&CallSite> {
-        self.methods().flat_map(Method::calls).collect()
+        self.methods()
+            .chain(self.types().flat_map(|(name, def)| def.methods()))
+            .flat_map(Method::calls)
+            .collect()
     }
     pub fn remove_dead_statics(&mut self) {
         // Get the set of "alive" fields(fields referenced outside of the static initializer).

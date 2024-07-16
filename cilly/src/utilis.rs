@@ -362,7 +362,7 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
         vec![],
     );
     let dictionary_local = get_environ.add_local(
-        Type::DotnetType(Box::new(DotnetTypeRef::dictionary())),
+        Type::DotnetType(Box::new(DotnetTypeRef::i_dictionary())),
         Some("dict".into()),
     ) as u32;
     let envc = get_environ.add_local(Type::I32, Some("envc".into())) as u32;
@@ -415,7 +415,10 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
                 CallSite::new(
                     Some(DotnetTypeRef::enviroment()),
                     "GetEnvironmentVariables".into(),
-                    FnSig::new(&[], Type::DotnetType(Box::new(DotnetTypeRef::dictionary()))),
+                    FnSig::new(
+                        &[],
+                        Type::DotnetType(Box::new(DotnetTypeRef::i_dictionary()))
+                    ),
                     true
                 ),
                 []
@@ -431,7 +434,7 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
                     Some(DotnetTypeRef::collection()),
                     "get_Count".into(),
                     FnSig::new(
-                        &[Type::DotnetType(Box::new(DotnetTypeRef::dictionary()))],
+                        &[Type::DotnetType(Box::new(DotnetTypeRef::i_dictionary()))],
                         Type::I32
                     ),
                     false
@@ -463,10 +466,10 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
             local: iter_local,
             tree: call_virt!(
                 CallSite::new(
-                    Some(DotnetTypeRef::dictionary()),
+                    Some(DotnetTypeRef::i_dictionary()),
                     "GetEnumerator".into(),
                     FnSig::new(
-                        &[Type::DotnetType(Box::new(DotnetTypeRef::dictionary()))],
+                        &[Type::DotnetType(Box::new(DotnetTypeRef::i_dictionary()))],
                         Type::DotnetType(Box::new(DotnetTypeRef::dictionary_iterator()))
                     ),
                     false

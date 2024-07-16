@@ -188,8 +188,18 @@ impl DotnetTypeRef {
         Self::new(Some("System.Runtime"), "System.Reflection.Assembly").with_valuetype(false)
     }
     #[must_use]
-    pub fn dictionary() -> Self {
+    pub fn i_dictionary() -> Self {
         Self::new(Some("System.Runtime"), "System.Collections.IDictionary").with_valuetype(false)
+    }
+    #[must_use]
+    pub fn dictionary(key: Type, value: Type) -> Self {
+        let mut res = Self::new(
+            Some("System.Collections"),
+            "System.Collections.Generic.Dictionary",
+        )
+        .with_valuetype(false);
+        res.set_generics(&[key, value]);
+        res
     }
     #[must_use]
     pub fn collection() -> Self {
@@ -218,10 +228,7 @@ impl DotnetTypeRef {
     }
 
     pub fn dotnet_tuple(elements: &[Type]) -> Self {
-        let mut res = Self::new(
-            Some("System.Runtime"),
-            format!("System.ValueTuple`{count}", count = elements.len()),
-        );
+        let mut res = Self::new(Some("System.Runtime"), "System.ValueTuple");
         res.set_generics(elements);
         res
     }

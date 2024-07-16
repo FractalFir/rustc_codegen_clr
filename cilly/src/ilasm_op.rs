@@ -1184,7 +1184,15 @@ pub fn dotnet_type_ref_cli(dotnet_type: &DotnetTypeRef) -> String {
     } else {
         String::new()
     };
-    let name = dotnet_type.name_path();
+    let name = if dotnet_type.generics().is_empty() {
+        dotnet_type.name_path().to_string()
+    } else {
+        format!(
+            "{name}`{count}",
+            count = dotnet_type.generics().len(),
+            name = dotnet_type.name_path().to_string()
+        )
+    };
 
     let generics = generics_str(dotnet_type.generics());
     format!("{prefix} {asm}'{name}'{generics}")
