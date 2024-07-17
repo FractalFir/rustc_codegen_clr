@@ -335,6 +335,7 @@ impl Method {
             .flat_map(|block| block.iter_cil())
             .filter_map(|node| match node {
                 CILIterElem::Node(CILNode::LDStaticField(field)) => Some(field.as_ref()),
+                CILIterElem::Node(CILNode::AddressOfStaticField(field)) => Some(field.as_ref()),
                 CILIterElem::Root(CILRoot::SetStaticField { descr, value: _ }) => Some(descr),
                 _ => None,
             })

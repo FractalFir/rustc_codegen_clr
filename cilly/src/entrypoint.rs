@@ -47,6 +47,16 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
             vec![BasicBlock::new(
                 vec![
                     mem_checks.into(),
+                    CILRoot::Call {
+                        site: Box::new(CallSite::new(
+                            None,
+                            ".tcctor".into(),
+                            FnSig::new(&[], Type::Void),
+                            true,
+                        )),
+                        args: [].into(),
+                    }
+                    .into(),
                     CILRoot::Pop {
                         tree: call!(
                             Box::new(entrypoint.clone()),
@@ -79,6 +89,16 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
             vec![],
             vec![BasicBlock::new(
                 vec![
+                    CILRoot::Call {
+                        site: Box::new(CallSite::new(
+                            None,
+                            ".tcctor".into(),
+                            FnSig::new(&[], Type::Void),
+                            true,
+                        )),
+                        args: [].into(),
+                    }
+                    .into(),
                     CILRoot::Call {
                         site: Box::new(entrypoint.clone()),
                         args: [].into(),

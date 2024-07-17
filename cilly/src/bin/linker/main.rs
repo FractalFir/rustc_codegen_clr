@@ -329,6 +329,14 @@ fn autopatch(asm: &mut Assembly, native_pastrough: &NativePastroughInfo) {
             patch::pthread_attr_destroy(&mut patched, call);
             continue;
         }
+        if name == "pthread_self" {
+            patch::pthread_self(&mut patched, call);
+            continue;
+        }
+        if name == "pthread_setname_np" {
+            patch::pthread_setname_np(&mut patched, call);
+            continue;
+        }
         if name == "pthread_join" {
             patch::override_pthread_join(&mut patched, call);
             continue;
@@ -378,9 +386,13 @@ fn autopatch(asm: &mut Assembly, native_pastrough: &NativePastroughInfo) {
         .for_each(|method| asm.add_method(method.clone()));
 }
 fn add_mandatory_statics(asm: &mut Assembly) {
-    asm.add_static(Type::U8, "__rust_alloc_error_handler_should_panic");
-    asm.add_static(Type::U8, "__rust_no_alloc_shim_is_unstable");
-    asm.add_static(Type::Ptr(Type::Ptr(Type::U8.into()).into()), "environ");
+    asm.add_static(Type::U8, "__rust_alloc_error_handler_should_panic", false);
+    asm.add_static(Type::U8, "__rust_no_alloc_shim_is_unstable", false);
+    asm.add_static(
+        Type::Ptr(Type::Ptr(Type::U8.into()).into()),
+        "environ",
+        false,
+    );
 }
 
 fn get_libc() -> &'static str {
@@ -828,3 +840,44 @@ fn override_errno(asm: &mut Assembly) {
         }
     }
 }
+/*
+0x00007ffff74bacc6 in TypeHandle::IsValueType() const () from /usr/lib64/dotnet/shared/Microsoft.NETCore.App/8.0.4/libcoreclr.so
+(gdb) bt
+#0  0x00007ffff74bacc6 in TypeHandle::IsValueType() const () from /usr/lib64/dotnet/shared/Microsoft.NETCore.App/8.0.4/libcoreclr.so
+#1  0x00007ffff7436856 in CEEInfo::isValueClass(CORINFO_CLASS_STRUCT_*) () from /usr/lib64/dotnet/shared/Microsoft.NETCore.App/8.0.4/libcoreclr.so
+#2  0x00007ffff46be348 in ClassLayout::Create(Compiler*, CORINFO_CLASS_STRUCT_*) () from /usr/lib64/dotnet/shared/Microsoft.NETCore.App/8.0.4/libclrjit.so
+#3  0x00007ffff46bf5a9 in ClassLayoutTable::GetObjLayoutIndex(Compiler*, CORINFO_CLASS_STRUCT_*) () from /usr/lib64/dotnet/shared/Microsoft.NETCore.App/8.0.4/libclrjit.so
+#4  0x00007ffff46be2fa in Compiler::typGetObjLayout(CORINFO_CLASS_STRUCT_*) () from /usr/lib64/dotnet/shared/Microsoft.NETCore.App/8.0.4/libclrjit.so
+#5  0x00007ffff477ac5f in Compiler::lvaSetStruct(unsigned int, CORINFO_CLASS_STRUCT_*, bool) () from /usr/lib64/dotnet/shared/Microsoft.NETCore.App/8.0.4/libclrjit.so
+#6  0x00007ffff479d756 in Lowering::SpillStructCallResult(GenTreeCall*) const () from /usr/lib64/dotnet/shared/Microsoft.NETCore.App/8.0.4/libclrjit.so
+#7  0x00007ffff4797c6b in Lowering::LowerStoreSingleRegCallStruct(GenTreeBlk*) () from /usr/lib64/dotnet/shared/Microsoft.NETCore.App/8.0.4/libclrjit.so
+#8  0x00007ffff4795e22 in Lowering::LowerNode(GenTree*) () from /usr/lib64/dotnet/shared/Microsoft.NETCore.App/8.0.4/libclrjit.so
+#9  0x00007ffff479fc8b in Lowering::DoPhase() () from /usr/lib64/dotnet/shared/Microsoft.NETCore.App/8.0.4/libclrjit.so
+#10 0x00007ffff47e45bc in Phase::Run() () from /usr/lib64/dotnet/shared/Microsoft.NETCore.App/8.0.4/libclrjit.so
+#11 0x00007ffff46d0b02 in Compiler::compCompile(void**, unsigned int*, JitFlags*) () from /usr/lib64/dotnet/shared/Microsoft.NETCore.App/8.0.4/libclrjit.so
+#12 0x00007ffff46d332a in Compiler::compCompileHelper(CORINFO_MODULE_STRUCT_*, ICorJitInfo*, CORINFO_METHOD_INFO*, void**, unsigned int*, JitFlags*) () from /usr/lib64/dotnet/shared/Microsoft.NETCore.App/8.0.4/libclrjit.so
+#13 0x00007ffff46d1d8a in Compiler::compCompile(CORINFO_MODULE_STRUCT_*, void**, unsigned int*, JitFlags*) () from /usr/lib64/dotnet/shared/Microsoft.NETCore.App/8.0.4/libclrjit.so
+#14 0x00007ffff46d3d1b in jitNativeCode(CORINFO_METHOD_STRUCT_*, CORINFO_MODULE_STRUCT_*, ICorJitInfo*, CORINFO_METHOD_INFO*, void**, unsigned int*, JitFlags*, void*) () from /usr/lib64/dotnet/shared/Microsoft.NETCore.App/8.0.4/libclrjit.so
+#15 0x00007ffff46d8ad8 in CILJit::compileMethod(ICorJitInfo*, CORINFO_METHOD_INFO*, unsigned int, unsigned char**, unsigned int*) () from /usr/lib64/dotnet/shared/Microsoft.NETCore.App/8.0.4/libclrjit.so
+#16 0x00007ffff7445cfa in invokeCompileMethodHelper(EEJitManager*, CEEInfo*, CORINFO_METHOD_INFO*, CORJIT_FLAGS, unsigned char**, unsigned int*) () from /usr/lib64/dotnet/shared/Microsoft.NETCore.App/8.0.4/libcoreclr.so
+#17 0x00007ffff7445f14 in invokeCompileMethod(EEJitManager*, CEEInfo*, CORINFO_METHOD_INFO*, CORJIT_FLAGS, unsigned char**, unsigned int*) () from /usr/lib64/dotnet/shared/Microsoft.NETCore.App/8.0.4/libcoreclr.so
+#18 0x00007ffff7446ab7 in UnsafeJitFunction(PrepareCodeConfig*, COR_ILMETHOD_DECODER*, CORJIT_FLAGS*, unsigned int*) () from /usr/lib64/dotnet/shared/Microsoft.NETCore.App/8.0.4/libcoreclr.so
+#19 0x00007ffff74843ee in MethodDesc::JitCompileCodeLocked(PrepareCodeConfig*, COR_ILMETHOD_DECODER*, ListLockEntryBase<NativeCodeVersion>*, unsigned int*) () from /usr/lib64/dotnet/shared/Microsoft.NETCore.App/8.0.4/libcoreclr.so
+#20 0x00007ffff7483c8f in MethodDesc::JitCompileCodeLockedEventWrapper(PrepareCodeConfig*, ListLockEntryBase<NativeCodeVersion>*) () from /usr/lib64/dotnet/shared/Microsoft.NETCore.App/8.0.4/libcoreclr.so
+#21 0x00007ffff74833e8 in MethodDesc::JitCompileCode(PrepareCodeConfig*) () from /usr/lib64/dotnet/shared/Microsoft.NETCore.App/8.0.4/libcoreclr.so
+#22 0x00007ffff7482da2 in MethodDesc::PrepareILBasedCode(PrepareCodeConfig*) () from /usr/lib64/dotnet/shared/Microsoft.NETCore.App/8.0.4/libcoreclr.so
+#23 0x00007ffff73ef178 in CodeVersionManager::PublishVersionableCodeIfNecessary(MethodDesc*, CallerGCMode, bool*, bool*) () from /usr/lib64/dotnet/shared/Microsoft.NETCore.App/8.0.4/libcoreclr.so
+#24 0x00007ffff748766b in MethodDesc::DoPrestub(MethodTable*, CallerGCMode) () from /usr/lib64/dotnet/shared/Microsoft.NETCore.App/8.0.4/libcoreclr.so
+#25 0x00007ffff7487163 in PreStubWorker () from /usr/lib64/dotnet/shared/Microsoft.NETCore.App/8.0.4/libcoreclr.so
+#26 0x00007ffff76b8a00 in ThePreStub () from /usr/lib64/dotnet/shared/Microsoft.NETCore.App/8.0.4/libcoreclr.so
+#27 0x00007ffff76b7aef in CallDescrWorkerInternal () from /usr/lib64/dotnet/shared/Microsoft.NETCore.App/8.0.4/libcoreclr.so
+#28 0x00007ffff74e3c96 in DispatchCallDebuggerWrapper(CallDescrData*, int) () from /usr/lib64/dotnet/shared/Microsoft.NETCore.App/8.0.4/libcoreclr.so
+#29 0x00007ffff74e3ec7 in DispatchCallSimple(unsigned long*, unsigned int, unsigned long, unsigned int) () from /usr/lib64/dotnet/shared/Microsoft.NETCore.App/8.0.4/libcoreclr.so
+#30 0x00007ffff7462efb in MethodTable::RunClassInitEx(Object**) () from /usr/lib64/dotnet/shared/Microsoft.NETCore.App/8.0.4/libcoreclr.so
+#31 0x00007ffff7463409 in MethodTable::DoRunClassInitThrowing() () from /usr/lib64/dotnet/shared/Microsoft.NETCore.App/8.0.4/libcoreclr.so
+#32 0x00007ffff7544739 in JIT_GetSharedNonGCStaticBase_Helper () from /usr/lib64/dotnet/shared/Microsoft.NETCore.App/8.0.4/libcoreclr.so
+#33 0x00007fff78f4196e in ?? ()
+#34 0x00007fff00000000 in ?? ()
+#35 0x0000000000000000 in ?? ()
+
+*/

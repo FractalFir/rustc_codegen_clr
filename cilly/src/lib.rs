@@ -180,3 +180,14 @@ pub fn escape_type_name(name: &str) -> String {
         .replace('}', "be")
         .replace('+', "ps")
 }
+#[macro_export]
+macro_rules! source_info {
+    () => {
+        CILRoot::source_info(
+            file!(),
+            (line!() as u64)..(line!() as u64),
+            (column!() as u64)..(column!() as u64 + 1),
+        )
+        .into()
+    };
+}

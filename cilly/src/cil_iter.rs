@@ -155,6 +155,7 @@ impl<'a> Iterator for CILIter<'a> {
                     | CILNode::LdFalse
                     | CILNode::LdTrue
                     | CILNode::LDStaticField(_)
+                    | CILNode::AddressOfStaticField(_)
                     | CILNode::LDFtn(_)
                     | CILNode::LDTypeToken(_)
                     | CILNode::LocAllocAligned { tpe: _, align: _ }

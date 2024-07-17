@@ -30,7 +30,7 @@ use rustc_middle::{
         mono::MonoItem,
         Local, LocalDecl, Statement, Terminator,
     },
-    ty::{Instance, ParamEnv, TyCtxt, TyKind},
+    ty::{Instance, ParamEnv, Ty, TyCtxt, TyKind},
 };
 type LocalDefList = Vec<(Option<IString>, Type)>;
 type ArgsDebugInfo = Vec<Option<IString>>;
@@ -193,7 +193,7 @@ fn allocation_initializer_method(
                     CILRoot::STIndISize(
                         (CILNode::LDLoc(1) + conv_usize!(ldc_u32!(offset)))
                             .cast_ptr(ptr!(Type::USize)),
-                        CILNode::LDStaticField(ptr_alloc.into()).cast_ptr(Type::USize),
+                        ptr_alloc.cast_ptr(Type::USize),
                     )
                     .into(),
                 );
@@ -615,10 +615,10 @@ pub fn add_allocation(
     alloc_id: u64,
     tcx: TyCtxt<'_>,
     tycache: &mut TyCache,
-) -> StaticFieldDescriptor {
-    let const_allocation =
+) -> CILNode {
+    let (thread_local, const_allocation) =
         match tcx.global_alloc(AllocId(alloc_id.try_into().expect("0 alloc id?"))) {
-            GlobalAlloc::Memory(alloc) => alloc,
+            GlobalAlloc::Memory(alloc) => (false, alloc),
             GlobalAlloc::Static(def_id) => {
                 let alloc = tcx.eval_static_initializer(def_id).unwrap();
                 let attrs = tcx.codegen_fn_attrs(def_id);
@@ -626,7 +626,12 @@ pub fn add_allocation(
                     panic!("static {def_id:?} requires special linkage in section {section:?}");
                 }
 
-                alloc
+                (
+                    attrs.flags.contains(
+                        rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags::THREAD_LOCAL,
+                    ),
+                    alloc,
+                )
             }
             GlobalAlloc::VTable(..) => {
                 //TODO: handle VTables
@@ -634,8 +639,8 @@ pub fn add_allocation(
                 let field_desc =
                     StaticFieldDescriptor::new(None, Type::Ptr(Type::U8.into()), alloc_fld.clone());
                 asm.static_fields_mut()
-                    .insert(alloc_fld, Type::Ptr(Type::U8.into()));
-                return field_desc;
+                    .insert(alloc_fld, (Type::Ptr(Type::U8.into()), false));
+                return CILNode::LDStaticField(Box::new(field_desc));
             }
             GlobalAlloc::Function { .. } => {
                 //TODO: handle constant functions
@@ -643,8 +648,8 @@ pub fn add_allocation(
                 let field_desc =
                     StaticFieldDescriptor::new(None, Type::Ptr(Type::U8.into()), alloc_fld.clone());
                 asm.static_fields_mut()
-                    .insert(alloc_fld, Type::Ptr(Type::U8.into()));
-                return field_desc;
+                    .insert(alloc_fld, (Type::Ptr(Type::U8.into()), false));
+                return CILNode::LDStaticField(Box::new(field_desc));
                 //todo!("Function/Vtable allocation.");
             }
         };
@@ -657,22 +662,36 @@ pub fn add_allocation(
     // TODO:consider using something better here / making the hashes stable.
     let byte_hash = calculate_hash(&bytes);
     let alloc_fld: IString = format!("alloc_{alloc_id:x}_{byte_hash:x}").into();
-
     let field_desc =
         StaticFieldDescriptor::new(None, Type::Ptr(Type::U8.into()), alloc_fld.clone());
     if !asm.static_fields_mut().contains_key(&alloc_fld) {
         let init_method =
             allocation_initializer_method(const_allocation, &alloc_fld, tcx, asm, tycache);
-        let cctor = asm.add_cctor();
-        let mut blocks = cctor.blocks_mut();
-        if blocks.is_empty() {
-            blocks.push(BasicBlock::new(vec![CILRoot::VoidRet.into()], 0, None));
-        }
-        assert_eq!(
-            blocks.len(),
-            1,
-            "Unexpected number of basic blocks in a static data initializer."
-        );
+        let mut blocks = if thread_local {
+            let tcctor = asm.add_tcctor();
+            let mut blocks = tcctor.blocks_mut();
+            if blocks.is_empty() {
+                blocks.push(BasicBlock::new(vec![CILRoot::VoidRet.into()], 0, None));
+            }
+            assert_eq!(
+                blocks.len(),
+                1,
+                "Unexpected number of basic blocks in a static data initializer."
+            );
+            blocks
+        } else {
+            let cctor = asm.add_cctor();
+            let mut blocks = cctor.blocks_mut();
+            if blocks.is_empty() {
+                blocks.push(BasicBlock::new(vec![CILRoot::VoidRet.into()], 0, None));
+            }
+            assert_eq!(
+                blocks.len(),
+                1,
+                "Unexpected number of basic blocks in a static data initializer."
+            );
+            blocks
+        };
         let trees = blocks[0].trees_mut();
         {
             // Remove return
@@ -699,9 +718,9 @@ pub fn add_allocation(
         }
         drop(blocks);
         asm.add_method(init_method);
-        asm.add_static(Type::Ptr(Type::U8.into()), &alloc_fld);
+        asm.add_static(Type::Ptr(Type::U8.into()), &alloc_fld, thread_local);
     }
-    field_desc
+    CILNode::LDStaticField(Box::new(field_desc))
 }
 pub fn add_const_value(asm: &mut Assembly, bytes: u128, tcx: TyCtxt) -> StaticFieldDescriptor {
     let alloc_fld: IString = format!("a_{bytes:x}").into();
@@ -796,7 +815,7 @@ pub fn add_const_value(asm: &mut Assembly, bytes: u128, tcx: TyCtxt) -> StaticFi
         }
         drop(blocks);
         asm.add_method(init_method);
-        asm.add_static(Type::Ptr(Type::U8.into()), &alloc_fld);
+        asm.add_static(Type::Ptr(Type::U8.into()), &alloc_fld, false);
     }
     field_desc
 }

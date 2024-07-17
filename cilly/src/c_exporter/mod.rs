@@ -297,7 +297,7 @@ impl AssemblyExporter for CExporter {
         // Not needed in C
     }
 
-    fn add_global(&mut self, tpe: &crate::r#type::Type, name: &str) {
+    fn add_global(&mut self, tpe: &crate::r#type::Type, name: &str, thread_local: bool) {
         writeln!(self.static_defs, "static {tpe} {name};", tpe = c_tpe(tpe)).unwrap();
     }
 }

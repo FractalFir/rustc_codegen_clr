@@ -859,12 +859,11 @@ impl CILRoot {
             } => {
                 // Just check that `cond` is a boolean.
                 let cond = cond.validate(vctx, tmp_loc)?;
-                if cond != Type::Bool && cond != Type::ISize {
-                    Err(format!(
+                match cond {
+                    Type::Bool | Type::Ptr(_) | Type::ISize => Ok(()),
+                    _ => Err(format!(
                         "BTrue must have a boolean argument. cond is:{cond:?}"
-                    ))
-                } else {
-                    Ok(())
+                    )),
                 }
             }
             Self::BFalse {
@@ -874,12 +873,11 @@ impl CILRoot {
             } => {
                 // Just check that `cond` is a boolean.
                 let cond = cond.validate(vctx, tmp_loc)?;
-                if cond != Type::Bool {
-                    Err(format!(
-                        "BTrue must have a boolean argument. cond is:{cond:?}"
-                    ))
-                } else {
-                    Ok(())
+                match cond {
+                    Type::Bool | Type::Ptr(_) | Type::ISize => Ok(()),
+                    _ => Err(format!(
+                        "BFalse must have a boolean argument. cond is:{cond:?}"
+                    )),
                 }
             }
             Self::BEq {

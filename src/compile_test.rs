@@ -771,6 +771,8 @@ run_test! {intrinsics,cmp_bytes,stable}
 run_test! {alloc,abox,stable}
 run_test! {alloc,raw_vec,stable}
 run_test! {alloc,slice_to_owned,stable}
+run_test! {statics,thread_local,stable}
+
 run_test! {fuzz,test0,stable}
 run_test! {fuzz,test1,stable}
 

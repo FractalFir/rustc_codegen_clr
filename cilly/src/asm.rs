@@ -1,3 +1,5 @@
+use std::os::unix::thread;
+
 use fxhash::{FxBuildHasher, FxHashMap};
 
 use serde::{Deserialize, Serialize};
@@ -56,7 +58,7 @@ pub struct Assembly {
     extern_refs: FxHashMap<IString, AssemblyExternRef>,
     extern_fns: FxHashMap<ExternFnDef, IString>,
     /// List of all static fields within the assembly
-    static_fields: FxHashMap<IString, Type>,
+    static_fields: FxHashMap<IString, (Type, bool)>,
     /// Initializers. Call order not guarnateed(but should match the order they are added in), but should be called after most of `.cctor` runs.
     initializers: Vec<CILRoot>,
 }
@@ -95,7 +97,7 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
         w.write_all(&postcard::to_stdvec(&self).unwrap())
     }
     /// Returns iterator over all global fields
-    pub fn globals(&self) -> impl Iterator<Item = (&IString, &Type)> {
+    pub fn globals(&self) -> impl Iterator<Item = (&IString, &(Type, bool))> {
         self.static_fields.iter()
     }
     /// Returns the `.cctor` function used to initialize static data
@@ -104,6 +106,16 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
         self.functions.get(&CallSite::new(
             None,
             ".cctor".into(),
+            FnSig::new(&[], Type::Void),
+            true,
+        ))
+    }
+    /// Returns the `.tcctor` function used to initialize thread-local static data
+    #[must_use]
+    pub fn tcctor(&self) -> Option<&Method> {
+        self.functions.get(&CallSite::new(
+            None,
+            ".tcctor".into(),
             FnSig::new(&[], Type::Void),
             true,
         ))
@@ -127,7 +139,10 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
         };
         res.static_fields.insert(
             "GlobalAtomicLock".into(),
-            Type::DotnetType(Box::new(DotnetTypeRef::object_type())),
+            (
+                Type::DotnetType(Box::new(DotnetTypeRef::object_type())),
+                false,
+            ),
         );
         let dotnet_ver = AssemblyExternRef {
             version: (6, 12, 0, 0),
@@ -138,18 +153,23 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
             .insert("System.Runtime.InteropServices".into(), dotnet_ver);
         // Needed to get C-Mode to work
         res.add_cctor();
+        res.add_tcctor();
         res
     }
     /// Joins 2 assemblies together.
     #[must_use]
     pub fn join(self, other: Self) -> Self {
         let static_initializer = link_static_initializers(self.cctor(), other.cctor());
+        let tcctor = link_static_initializers(self.tcctor(), other.tcctor());
         let mut types = self.types;
         types.extend(other.types);
         let mut functions = self.functions;
         functions.extend(other.functions);
         if let Some(static_initializer) = static_initializer {
             functions.insert(static_initializer.call_site(), static_initializer);
+        }
+        if let Some(tcctor) = tcctor {
+            functions.insert(tcctor.call_site(), tcctor);
         }
         let entrypoint = self.entrypoint.or(other.entrypoint);
         let mut extern_refs = self.extern_refs;
@@ -219,8 +239,8 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
         }
     }
     /// Adds a global static field named *name* of type *tpe*
-    pub fn add_static(&mut self, tpe: Type, name: &str) {
-        self.static_fields.insert(name.into(), tpe);
+    pub fn add_static(&mut self, tpe: Type, name: &str, thread_local: bool) {
+        self.static_fields.insert(name.into(), (tpe, thread_local));
     }
     pub fn add_cctor(&mut self) -> &mut Method {
         self.functions
@@ -236,6 +256,53 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
                     MethodType::Static,
                     FnSig::new(&[], Type::Void),
                     ".cctor",
+                    vec![
+                        (None, Type::Ptr(Type::U8.into())),
+                        (None, Type::Ptr(Type::U8.into())),
+                    ],
+                    vec![BasicBlock::new(
+                        vec![
+                            CILRoot::SetStaticField {
+                                descr: Box::new(StaticFieldDescriptor::new(
+                                    None,
+                                    Type::DotnetType(Box::new(DotnetTypeRef::object_type())),
+                                    "GlobalAtomicLock".into(),
+                                )),
+                                value: CILNode::NewObj(Box::new(CallOpArgs {
+                                    args: [].into(),
+                                    site: Box::new(CallSite::new(
+                                        Some(DotnetTypeRef::object_type()),
+                                        ".ctor".into(),
+                                        FnSig::new(&[], Type::Void),
+                                        true,
+                                    )),
+                                })),
+                            }
+                            .into(),
+                            CILRoot::VoidRet.into(),
+                        ],
+                        0,
+                        None,
+                    )],
+                    vec![],
+                )
+            })
+    }
+    /// Addds a per-thread static initailzer
+    pub fn add_tcctor(&mut self) -> &mut Method {
+        self.functions
+            .entry(CallSite::new(
+                None,
+                ".tcctor".into(),
+                FnSig::new(&[], Type::Void),
+                true,
+            ))
+            .or_insert_with(|| {
+                Method::new(
+                    AccessModifer::Public,
+                    MethodType::Static,
+                    FnSig::new(&[], Type::Void),
+                    ".tcctor",
                     vec![
                         (None, Type::Ptr(Type::U8.into())),
                         (None, Type::Ptr(Type::U8.into())),
@@ -311,7 +378,12 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
             .collect();
         // Remove the definitions of all non-alive fields
         self.static_fields.retain(|name, tpe| {
-            alive_fields.contains(&StaticFieldDescriptor::new(None, tpe.clone(), name.clone()))
+            //
+            alive_fields.contains(&StaticFieldDescriptor::new(
+                None,
+                tpe.0.clone(),
+                name.clone(),
+            ))
         });
         // Remove their initializers from the cctor
         let Some(cctor) = self.cctor_mut() else {
@@ -389,6 +461,12 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
             externs.insert(
                 CallSite::new(None, ".cctor".into(), FnSig::new(&[], Type::Void), true),
                 cctor.clone(),
+            );
+        }
+        if let Some(tcctor) = self.tcctor() {
+            externs.insert(
+                CallSite::new(None, ".tcctor".into(), FnSig::new(&[], Type::Void), true),
+                tcctor.clone(),
             );
         }
         for call in self
@@ -531,7 +609,7 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
         ))
     }
 
-    pub fn static_fields_mut(&mut self) -> &mut FxHashMap<IString, Type> {
+    pub fn static_fields_mut(&mut self) -> &mut FxHashMap<IString, (Type, bool)> {
         &mut self.static_fields
     }
 

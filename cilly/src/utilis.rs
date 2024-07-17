@@ -211,9 +211,9 @@ pub fn argc_argv_init_method(asm: &mut Assembly) -> CallSite {
     final_block.trees_mut().push(CILRoot::VoidRet.into());
     drop(blocks);
     asm.add_method(init_method);
-    asm.add_static(Type::Bool, "argv_argc_init_status");
-    asm.add_static(ptr!(ptr!(Type::U8)), "argv");
-    asm.add_static(Type::I32, "argc");
+    asm.add_static(Type::Bool, "argv_argc_init_status", false);
+    asm.add_static(ptr!(ptr!(Type::U8)), "argv", false);
+    asm.add_static(Type::I32, "argc", false);
     init_cs
 }
 pub fn mstring_to_utf8ptr(mstring: CILNode) -> CILNode {
@@ -631,8 +631,8 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
     );
     drop(blocks);
     asm.add_method(get_environ);
-    asm.add_static(Type::Bool, "environ_init_status");
-    asm.add_static(ptr!(ptr!(Type::U8)), "environ");
+    asm.add_static(Type::Bool, "environ_init_status", false);
+    asm.add_static(ptr!(ptr!(Type::U8)), "environ", false);
     init_cs
 }
 // Enviorn init

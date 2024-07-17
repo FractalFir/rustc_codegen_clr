@@ -223,6 +223,7 @@ pub enum CILNode {
     /// Marks the inner pointer operation as volatile.
     Volatile(Box<Self>),
     UnboxAny(Box<Self>, Box<Type>),
+    AddressOfStaticField(Box<StaticFieldDescriptor>),
 }
 
 impl CILNode {
@@ -498,6 +499,7 @@ impl CILNode {
                 ptr_sig_arg.1.opt(opt_count);
             }
             Self::LDStaticField(_static_field) => (),
+            Self::AddressOfStaticField(_static_field) => (),
             Self::LDLen { arr } => arr.opt(opt_count),
             Self::LDElelemRef { arr, idx } =>{
                 idx.opt(opt_count);
@@ -710,6 +712,7 @@ impl CILNode {
                 sig_ptr_args.2.iter_mut().for_each(|arg|arg.allocate_tmps(curr_loc, locals));
             }
             Self::LDStaticField(_sfield)=>(),
+            Self::AddressOfStaticField(_sfield)=>(),
             Self::LDLen { arr } =>{
                arr.allocate_tmps(curr_loc, locals);
             }
@@ -801,6 +804,9 @@ impl CILNode {
                 }
             }
             Self::LDStaticField(sfd) => Ok(sfd.tpe().clone()),
+            Self::AddressOfStaticField(sfd) => {
+                Ok(Type::ManagedReference(Box::new(sfd.tpe().clone())))
+            }
             Self::LDLocA(loc) => match vctx.locals().get(*loc as usize) {
                 Some(local) => Ok(Type::ManagedReference(Box::new(local.1.clone()))),
                 None => Err(format!("Local {loc} out of range.")),

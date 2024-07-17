@@ -23,7 +23,7 @@ pub trait AssemblyExporter: Sized {
     /// Adds a reference to assembly `asm_name` with info `info`
     fn add_extern_ref(&mut self, asm_name: &str, info: &AssemblyExternRef);
     /// Adds a global field
-    fn add_global(&mut self, tpe: &Type, name: &str);
+    fn add_global(&mut self, tpe: &Type, name: &str, thread_local: bool);
     /// Handles the whole assembly export process all at once.
     fn export_assembly(
         mut self,
@@ -51,7 +51,7 @@ pub trait AssemblyExporter: Sized {
             self.add_extern_method(lib, name, sig, *preserve_errno);
         }
         for global in asm.globals() {
-            self.add_global(global.1, global.0);
+            self.add_global(&global.1 .0, global.0, global.1 .1);
         }
 
         self.finalize(final_path, is_dll)

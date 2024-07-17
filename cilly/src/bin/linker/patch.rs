@@ -206,3 +206,39 @@ pub(crate) fn pthread_attr_destroy(patched: &mut FxHashMap<CallSite, Method>, ca
         ),
     );
 }
+pub(crate) fn pthread_self(patched: &mut FxHashMap<CallSite, Method>, call: &CallSite) {
+    patched.insert(
+        call.clone(),
+        Method::new(
+            access_modifier::AccessModifer::Private,
+            MethodType::Static,
+            call.signature().clone(),
+            "pthread_self",
+            vec![],
+            vec![BasicBlock::new(
+                vec![CILRoot::Ret { tree: ldc_i32!(0) }.into()],
+                0,
+                None,
+            )],
+            vec![Some("attr".into())],
+        ),
+    );
+}
+pub(crate) fn pthread_setname_np(patched: &mut FxHashMap<CallSite, Method>, call: &CallSite) {
+    patched.insert(
+        call.clone(),
+        Method::new(
+            access_modifier::AccessModifer::Private,
+            MethodType::Static,
+            call.signature().clone(),
+            "pthread_setname_np",
+            vec![],
+            vec![BasicBlock::new(
+                vec![CILRoot::Ret { tree: ldc_i32!(0) }.into()],
+                0,
+                None,
+            )],
+            vec![Some("attr".into())],
+        ),
+    );
+}

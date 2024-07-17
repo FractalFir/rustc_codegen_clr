@@ -74,7 +74,7 @@ impl AssemblyExporter for JSExporter {
 
     fn add_extern_ref(&mut self, asm_name: &str, info: &crate::asm::AssemblyExternRef) {}
 
-    fn add_global(&mut self, tpe: &Type, name: &str) {
+    fn add_global(&mut self, tpe: &Type, name: &str, thread_local: bool) {
         if name == "GlobalAtomicLock" {
             return;
         }

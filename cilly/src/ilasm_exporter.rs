@@ -173,12 +173,21 @@ impl ILASMExporter {
 }
 
 impl AssemblyExporter for ILASMExporter {
-    fn add_global(&mut self, tpe: &Type, name: &str) {
+    fn add_global(&mut self, tpe: &Type, name: &str, thread_local: bool) {
+        if thread_local{
+            writeln!(
+                self.methods,
+                ".field static {tpe} '{name}'\n.custom instance void [System.Runtime]System.ThreadStaticAttribute::.ctor() = (01 00 00 00)",
+                tpe = super::ilasm_op::non_void_type_cil(tpe)
+            )
+        }
+       else{
         writeln!(
             self.methods,
             ".field static {tpe} '{name}'",
             tpe = super::ilasm_op::non_void_type_cil(tpe)
         )
+       }
         .expect("Could not write global!");
     }
 

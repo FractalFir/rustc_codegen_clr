@@ -543,22 +543,21 @@ impl TyCache {
                     })
                     .expect("Could not get type layout!");
                 let arr_size = layout.layout.size();
-                let arr_name = crate::r#type::type_def::arr_name(length, &element);
-                if !self.type_def_cache.contains_key(&arr_name) {
-                    self.type_def_cache.insert(
-                        arr_name.clone(),
-                        crate::r#type::type_def::get_array_type(
-                            length,
-                            element.clone(),
-                            arr_size.bytes(),
-                        ),
-                    );
-                }
-                DotnetTypeRef::array(&element, length).into()
+                self.add_arr(element, length, arr_size.bytes())
             }
             TyKind::Alias(_, _) => panic!("Attempted to get the .NET type of an unmorphized type"),
             _ => todo!("Can't yet get type {ty:?} from type cache."),
         }
+    }
+    pub fn add_arr(&mut self, element: Type, length: usize, arr_size: u64) -> Type {
+        let arr_name = crate::r#type::type_def::arr_name(length, &element);
+        if !self.type_def_cache.contains_key(&arr_name) {
+            self.type_def_cache.insert(
+                arr_name.clone(),
+                crate::r#type::type_def::get_array_type(length, element.clone(), arr_size),
+            );
+        }
+        DotnetTypeRef::array(&element, length).into()
     }
     pub fn slice_ref_to<'tcx>(
         &mut self,

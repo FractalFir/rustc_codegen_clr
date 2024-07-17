@@ -194,8 +194,8 @@ impl DotnetTypeRef {
     #[must_use]
     pub fn dictionary(key: Type, value: Type) -> Self {
         let mut res = Self::new(
-            Some("System.Collections"),
-            "System.Collections.Generic.Dictionary",
+            Some("System.Collections.Concurrent"),
+            "System.Collections.Concurrent.ConcurrentDictionary",
         )
         .with_valuetype(false);
         res.set_generics(&[key, value]);

@@ -100,6 +100,18 @@ fn export_node(
                 ),
             }
         }
+        CILNode::AddressOfStaticField(static_field) => {
+            depth.pad(out)?;
+            match static_field.owner() {
+                Some(_owner) => todo!("Can't load static field {static_field:?}"),
+                None => write!(
+                    out,
+                    "ldsflda {tpe} RustModule::{name}",
+                    tpe = non_void_type_cil(static_field.tpe()),
+                    name = static_field.name()
+                ),
+            }
+        }
         CILNode::ConvF32(val) => un_op!(out, val, depth, il_flavour, "conv.r4"),
         CILNode::ConvF64(val) => un_op!(out, val, depth, il_flavour, "conv.r8"),
         CILNode::ConvF64Un(val) => un_op!(out, val, depth, il_flavour, "conv.r.un"),

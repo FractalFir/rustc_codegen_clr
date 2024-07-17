@@ -19,9 +19,8 @@ pub(crate) fn resolve_global_allocations(
             if let CILIterElemMut::Node(node) = elem {
                 match node {
                     CILNode::LoadGlobalAllocPtr { alloc_id } => {
-                        *node = CILNode::LDStaticField(
-                            crate::assembly::add_allocation(asm, *alloc_id, tcx, tycache).into(),
-                        );
+                        *node =
+                            crate::assembly::add_allocation(asm, *alloc_id, tcx, tycache).into();
                     }
                     CILNode::PointerToConstValue(bytes) => {
                         *node = CILNode::LDStaticField(Box::new(crate::assembly::add_const_value(
