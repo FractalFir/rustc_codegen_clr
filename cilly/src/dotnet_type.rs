@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{IString, Type};
+use crate::{utilis::MemoryUsage, IString, Type};
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Eq, Hash, Debug)]
 pub struct DotnetTypeRef {
@@ -235,5 +235,18 @@ impl DotnetTypeRef {
 
     pub fn dictionary_entry() -> Self {
         Self::new(Some("System.Runtime"), "System.Collections.DictionaryEntry")
+    }
+}
+impl MemoryUsage for DotnetTypeRef {
+    fn memory_usage(&self, counter: &mut impl crate::utilis::MemoryUsageCounter) -> usize {
+        let tpe_name = std::any::type_name::<Self>();
+        let self_size = std::mem::size_of::<Self>();
+        let asm_size = self.assembly.memory_usage(counter);
+        let name_size = self.name_path.memory_usage(counter);
+        let generic_size = self.generics.memory_usage(counter);
+
+        let size = self_size + asm_size + name_size + generic_size;
+        counter.add_type(tpe_name, size);
+        size
     }
 }

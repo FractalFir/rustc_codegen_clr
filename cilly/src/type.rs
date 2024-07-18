@@ -51,8 +51,13 @@ impl MemoryUsage for Type {
     fn memory_usage(&self, counter: &mut impl crate::utilis::MemoryUsageCounter) -> usize {
         let total_size = std::mem::size_of::<Self>();
         let name = std::any::type_name::<Self>();
-
-        total_size
+        let inner_size = match self {
+            Self::Ptr(inner) | Self::ManagedReference(inner) => inner.memory_usage(counter),
+            Self::DelegatePtr(inner) => inner.memory_usage(counter),
+            _ => 0,
+        };
+        counter.add_type(name, total_size + inner_size);
+        total_size + inner_size
     }
 }
 impl Type {

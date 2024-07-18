@@ -142,7 +142,7 @@ pub fn interpret<'tcx>(
                             .expect("ERROR: unuported operation in interop type definiton.");
                         asm.add_typedef(locals[usize::from(local)].as_type_def().unwrap().clone());
                         ComptimeLocalVar::Void
-                    } else if function_name == "black_box".into() {
+                    } else if function_name.as_ref() == "black_box" {
                         ComptimeLocalVar::NotSet
                     } else if function_name.contains("rustc_codegen_clr_add_field_def") {
                         let src = args[0]

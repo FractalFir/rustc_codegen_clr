@@ -851,12 +851,8 @@ pub fn handle_intrinsic<'tcx>(
                 .into(),
             }
         }
+
         "type_name" => {
-            let ty = ctx.monomorphize(
-                call_instance.args[0]
-                    .as_type()
-                    .expect("needs_drop works only on types!"),
-            );
             let const_val = ctx
                 .tcx()
                 .const_eval_instance(ParamEnv::reveal_all(), call_instance, span)
@@ -917,6 +913,90 @@ pub fn handle_intrinsic<'tcx>(
                     true
                 ),
                 [handle_operand(&args[0].node, ctx),]
+            ),
+            ctx,
+        ),
+        "log2f32" => place_set(
+            destination,
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::single(),
+                    "Log2".into(),
+                    FnSig::new([Type::F32], Type::F32),
+                    true
+                ),
+                [handle_operand(&args[0].node, ctx),]
+            ),
+            ctx,
+        ),
+        "log2f64" => place_set(
+            destination,
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::double(),
+                    "Log2".into(),
+                    FnSig::new([Type::F64], Type::F64),
+                    true
+                ),
+                [handle_operand(&args[0].node, ctx),]
+            ),
+            ctx,
+        ),
+        "log10f32" => place_set(
+            destination,
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::single(),
+                    "Log10".into(),
+                    FnSig::new([Type::F32], Type::F32),
+                    true
+                ),
+                [handle_operand(&args[0].node, ctx),]
+            ),
+            ctx,
+        ),
+        "log10f64" => place_set(
+            destination,
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::double(),
+                    "Log10".into(),
+                    FnSig::new([Type::F64], Type::F64),
+                    true
+                ),
+                [handle_operand(&args[0].node, ctx),]
+            ),
+            ctx,
+        ),
+        "powf32" => place_set(
+            destination,
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::single(),
+                    "Pow".into(),
+                    FnSig::new([Type::F32, Type::F32], Type::F32),
+                    true
+                ),
+                [
+                    handle_operand(&args[0].node, ctx),
+                    handle_operand(&args[1].node, ctx),
+                ]
+            ),
+            ctx,
+        ),
+        "powf64" => place_set(
+            destination,
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::double(),
+                    "Pow".into(),
+                    FnSig::new([Type::F64, Type::F64], Type::F64),
+                    true
+                ),
+                [
+                    handle_operand(&args[0].node, ctx),
+                    handle_operand(&args[1].node, ctx),
+                ]
             ),
             ctx,
         ),

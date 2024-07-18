@@ -1,5 +1,7 @@
 use std::marker::PhantomData;
 
+use ordered_float::OrderedFloat;
+
 use crate::{cil_node::CILNode, cil_root::CILRoot};
 
 #[derive(Debug)]
@@ -601,7 +603,11 @@ fn iter() {
             FnSig::new(&[Type::I32, Type::F32], Type::Void),
             true,
         )),
-        args: [CILNode::LdcI32(-77), CILNode::LdcF32(3.119765)].into(),
+        args: [
+            CILNode::LdcI32(-77),
+            CILNode::LdcF32(OrderedFloat(3.119765)),
+        ]
+        .into(),
     };
     let mut iter = (&mut root).into_iter();
     assert!(matches!(
@@ -614,7 +620,9 @@ fn iter() {
     ));
     assert!(matches!(
         iter.next(),
-        Some(CILIterElemMut::Node(CILNode::LdcF32(3.119765)))
+        Some(CILIterElemMut::Node(CILNode::LdcF32(OrderedFloat(
+            3.119765
+        ))))
     ));
     assert!(iter.next().is_none());
 }

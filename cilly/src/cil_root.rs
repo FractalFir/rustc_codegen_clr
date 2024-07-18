@@ -10,7 +10,7 @@ use crate::{
 };
 
 use serde::{Deserialize, Serialize};
-#[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
+#[derive(Clone, Eq, PartialEq, Hash, Serialize, Deserialize, Debug)]
 pub enum CILRoot {
     STLoc {
         local: u32,
@@ -1187,6 +1187,22 @@ impl MemoryUsage for CILRoot {
         let inner = self
             .into_iter()
             .map(|node| match node {
+                crate::cil_iter::CILIterElem::Node(
+                    CILNode::LDFieldAdress { addr: _, field } | CILNode::LDField { addr: _, field },
+                ) => {
+                    let var_name = &format!("{node:?}");
+                    let name = var_name
+                        .split('{')
+                        .next()
+                        .unwrap_or("")
+                        .split('(')
+                        .next()
+                        .unwrap_or("");
+                    let size = std::mem::size_of::<CILNode>();
+                    let field_size = field.memory_usage(counter);
+                    counter.add_type(name, size + field_size);
+                    size
+                }
                 crate::cil_iter::CILIterElem::Node(node) => {
                     let var_name = &format!("{node:?}");
                     let name = var_name

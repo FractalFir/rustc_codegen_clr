@@ -1,3 +1,5 @@
+use ordered_float::OrderedFloat;
+
 use crate::{call_site::CallSite, cil_node::CILNode, cil_root::CILRoot};
 
 #[derive(Debug, Clone, Copy)]
@@ -566,7 +568,11 @@ fn iter() {
             FnSig::new(&[Type::I32, Type::F32], Type::Void),
             true,
         )),
-        args: [CILNode::LdcI32(-77), CILNode::LdcF32(3.119765)].into(),
+        args: [
+            CILNode::LdcI32(-77),
+            CILNode::LdcF32(OrderedFloat(3.119765)),
+        ]
+        .into(),
     };
     let mut iter = root.into_iter();
     assert!(matches!(
@@ -579,7 +585,7 @@ fn iter() {
     ));
     assert!(matches!(
         iter.next(),
-        Some(CILIterElem::Node(CILNode::LdcF32(3.119765)))
+        Some(CILIterElem::Node(CILNode::LdcF32(OrderedFloat(3.119765))))
     ));
     assert!(iter.next().is_none());
 }

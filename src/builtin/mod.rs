@@ -1086,7 +1086,7 @@ add_method_from_trees!(
                 ),
                 BasicBlock::new(
                     vec![
-                        CILRoot::debug("Can't yet cacth .NET exceptions.").into(),
+                        CILRoot::debug("Can't yet catch .NET exceptions.").into(),
                         CILRoot::Call {
                             site: Box::new(CallSite::new_extern(
                                 DotnetTypeRef::console(),
@@ -1100,7 +1100,7 @@ add_method_from_trees!(
                             args: Box::new([CILNode::LDLoc(1)])
                         }
                         .into(),
-                        CILRoot::CallI {
+                        /*CILRoot::CallI {
                             sig: Box::new(FnSig::new(
                                 &[ptr!(Type::U8), ptr!(Type::U8)],
                                 Type::Void
@@ -1108,7 +1108,7 @@ add_method_from_trees!(
                             fn_ptr: Box::new(CILNode::LDArg(2)),
                             args: Box::new([CILNode::LDArg(1), conv_usize!(ldc_u32!(0))])
                         }
-                        .into(),
+                        .into(),*/
                         CILRoot::JumpingPad {
                             source: 0,
                             target: 2

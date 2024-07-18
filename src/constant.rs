@@ -13,6 +13,7 @@ use cilly::{
     static_field_desc::StaticFieldDescriptor,
     DotnetTypeRef, FnSig, Type,
 };
+use ordered_float::OrderedFloat;
 use rustc_middle::{
     mir::{
         interpret::{AllocId, GlobalAlloc, Scalar},
@@ -447,17 +448,17 @@ fn load_const_float(value: u128, float_type: FloatTy, _tcx: TyCtxt) -> CILNode {
                 FnSig::new(&[Type::F32], Type::F16),
                 true
             ),
-            [CILNode::LdcF32(
-                (f16::from_ne_bytes((u16::try_from(value).unwrap()).to_ne_bytes())) as f32,
-            )]
+            [CILNode::LdcF32(OrderedFloat(
+                (f16::from_ne_bytes((u16::try_from(value).unwrap()).to_ne_bytes())) as f32
+            ),)]
         ),
         FloatTy::F32 => {
             let value = f32::from_ne_bytes((u32::try_from(value).unwrap()).to_ne_bytes());
-            CILNode::LdcF32(value)
+            CILNode::LdcF32(OrderedFloat(value))
         }
         FloatTy::F64 => {
             let value = f64::from_ne_bytes((u64::try_from(value).unwrap()).to_ne_bytes());
-            CILNode::LdcF64(value)
+            CILNode::LdcF64(OrderedFloat(value))
         }
         FloatTy::F128 => todo!("Can't hanlde 128 bit floats yet!"),
     }

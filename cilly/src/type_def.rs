@@ -172,9 +172,13 @@ impl From<&TypeDef> for DotnetTypeRef {
 }
 impl MemoryUsage for TypeDef {
     fn memory_usage(&self, counter: &mut impl crate::utilis::MemoryUsageCounter) -> usize {
-        let total_size = std::mem::size_of::<Self>();
+        let self_size = std::mem::size_of::<Self>();
         let tpe_name = std::any::type_name::<Self>();
         //TODO:count the fields too
+        let name_size = self.name.memory_usage(counter);
+        let fields_size = self.fields.memory_usage(counter);
+        let function_size = self.functions.memory_usage(counter);
+        let total_size = self_size + name_size + fields_size + function_size;
         counter.add_type(tpe_name, total_size);
         total_size
     }

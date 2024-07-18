@@ -45,8 +45,8 @@ fn eval_node<'asm>(
         CILNode::LdcI64(val) => Ok(Value::I64(*val)),
         CILNode::LdcU32(val) => Ok(Value::U32(*val)),
         CILNode::LdcI32(val) => Ok(Value::I32(*val)),
-        CILNode::LdcF64(val) => Ok(Value::F64(*val)),
-        CILNode::LdcF32(val) => Ok(Value::F32(*val)),
+        //CILNode::LdcF64(val) => Ok(Value::F64(*val.into())),
+        //CILNode::LdcF32(val) => Ok(Value::F32(*val)),
         CILNode::LdFalse => Ok(Value::Bool(false)),
         CILNode::LdTrue => Ok(Value::Bool(true)),
         CILNode::SizeOf(tpe) => match tpe.as_ref() {

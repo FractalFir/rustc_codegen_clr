@@ -3,15 +3,16 @@ use crate::{
     field_desc::FieldDescriptor, fn_sig::FnSig, ptr, static_field_desc::StaticFieldDescriptor,
     DotnetTypeRef, IString, Type,
 };
+use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 /// A container for the arguments of a call, callvirt, or newobj instruction.
-#[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
+#[derive(Clone, Eq, PartialEq, Serialize, Deserialize, Hash, Debug)]
 pub struct CallOpArgs {
     pub args: Box<[CILNode]>,
     pub site: Box<CallSite>,
 }
 
-#[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
+#[derive(Clone, Eq, PartialEq, Serialize, Deserialize, Debug, Hash)]
 pub enum CILNode {
     /// Loads the value of local variable number `n`.
     LDLoc(u32),
@@ -133,8 +134,8 @@ pub enum CILNode {
     LdcU32(u32),
     LdcI8(i8),
     LdcI16(i16),
-    LdcF64(f64),
-    LdcF32(f32),
+    LdcF64(OrderedFloat<f64>),
+    LdcF32(OrderedFloat<f32>),
     LoadGlobalAllocPtr {
         alloc_id: u64,
     },

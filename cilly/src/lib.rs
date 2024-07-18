@@ -23,6 +23,7 @@ pub mod cil_tree;
 pub mod entrypoint;
 pub mod ilasm_exporter;
 pub mod ilasm_op;
+pub mod intercow;
 pub mod libc_fns;
 pub mod method;
 pub mod static_field_desc;

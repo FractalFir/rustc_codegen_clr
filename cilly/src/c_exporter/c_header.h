@@ -156,11 +156,13 @@ static char **commandLineArgs = {0};
 #define System_Exception__ctor_System_ExceptionSystem_String(msg) msg
 typedef struct System_Object
 {
-};
-#define System_Object__ctor_() \
-	System_Object              \
-	{                          \
-	}
+} System_Object;
+System_Object *System_Object__ctor_()
+{
+
+	return NULL;
+}
+
 // other
 
 #define System_Threading_Monitor_Enter_System_Object(_) pthread_mutex_lock(&global_lock)

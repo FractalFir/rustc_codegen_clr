@@ -1,5 +1,3 @@
-use std::os::unix::thread;
-
 use fxhash::{FxBuildHasher, FxHashMap};
 
 use serde::{Deserialize, Serialize};
@@ -682,20 +680,23 @@ fn link_static_initializers(a: Option<&Method>, b: Option<&Method>) -> Option<Me
 }
 impl MemoryUsage for Assembly {
     fn memory_usage(&self, counter: &mut impl crate::utilis::MemoryUsageCounter) -> usize {
-        let total_size = std::mem::size_of::<Self>();
-        let name = std::any::type_name::<Self>();
+        let self_size = std::mem::size_of::<Self>();
+        let tpe_name = std::any::type_name::<Self>();
         let types = self.types.memory_usage(counter);
-        counter.add_field(name, "types", types);
+        counter.add_field(tpe_name, "types", types);
         let functions = self.functions.memory_usage(counter);
-        counter.add_field(name, "types", functions);
+        counter.add_field(tpe_name, "types", functions);
         let extern_fns = self.extern_fns.memory_usage(counter);
-        counter.add_field(name, "extern_fns", extern_fns);
+        counter.add_field(tpe_name, "extern_fns", extern_fns);
         let extern_refs = self.extern_refs.memory_usage(counter);
-        counter.add_field(name, "extern_refs", extern_refs);
+        counter.add_field(tpe_name, "extern_refs", extern_refs);
         let entrypoint = self.entrypoint.memory_usage(counter);
-        counter.add_field(name, "entrypoint", entrypoint);
+        counter.add_field(tpe_name, "entrypoint", entrypoint);
         let initializers = self.initializers.memory_usage(counter);
-        counter.add_field(name, "initializers", initializers);
+        counter.add_field(tpe_name, "initializers", initializers);
+        let total_size =
+            self_size + functions + extern_fns + extern_refs + entrypoint + initializers;
+        counter.add_type(tpe_name, total_size);
         total_size
     }
 }

@@ -51,8 +51,8 @@ pub fn saturating_sub<'tcx>(
         Type::U128 | Type::U64 | Type::U32 | Type::U16 | Type::U8 | Type::USize => {
             let undeflow = crate::binop::cmp::lt_unchecked(a_ty, a.clone(), b.clone());
             let diff = crate::binop::sub_unchecked(a_ty, a_ty, ctx, a, b);
-            let max = crate::binop::checked::zero(a_ty);
-            CILNode::select(a_type, max, diff, undeflow)
+            let zero = crate::binop::checked::zero(a_ty);
+            CILNode::select(a_type, zero, diff, undeflow)
         }
         _ => todo!("Can't use the intrinsic `saturating_sub` on {a_type:?}"),
     };
