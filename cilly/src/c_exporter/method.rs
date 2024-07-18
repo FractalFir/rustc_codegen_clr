@@ -362,14 +362,14 @@ fn node_code(method: &Method, node: &crate::cil_node::CILNode) -> IString {
             if val.is_nan() {
                 "NAN".into()
             } else {
-                format!("{val:?}f").into()
+                format!("{:?}f", val.0).into()
             }
         }
         CILNode::LdcF64(val) => {
             if val.is_nan() {
                 "NAN".into()
             } else {
-                format!("{val:?}").into()
+                format!("{:?}", val.0).into()
             }
         }
         CILNode::SizeOf(tpe) => format!("sizeof({tpe})", tpe = c_tpe(tpe)).into(),
