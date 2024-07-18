@@ -80,6 +80,7 @@
 
 // References to internal rustc crates.
 extern crate rustc_abi;
+
 extern crate rustc_codegen_ssa;
 extern crate rustc_const_eval;
 extern crate rustc_data_structures;
@@ -95,7 +96,6 @@ extern crate rustc_symbol_mangling;
 extern crate rustc_target;
 extern crate rustc_ty_utils;
 extern crate stable_mir;
-
 /// Used for handling OOM in compiler
 mod alloc_erorr_hook;
 
@@ -166,9 +166,7 @@ mod unsize;
 use crate::rustc_middle::dep_graph::DepContext;
 use cilly::asm::Assembly;
 use rustc_codegen_ssa::{
-    back::archive::{
-        get_native_object_symbols, ArArchiveBuilder, ArchiveBuilder, ArchiveBuilderBuilder,
-    },
+    back::archive::{ArArchiveBuilder, ArchiveBuilder, ArchiveBuilderBuilder},
     traits::CodegenBackend,
     CodegenResults, CompiledModule, CrateInfo, ModuleKind,
 };
@@ -314,7 +312,10 @@ impl CodegenBackend for MyBackend {
 struct RlibArchiveBuilder;
 impl ArchiveBuilderBuilder for RlibArchiveBuilder {
     fn new_archive_builder<'a>(&self, sess: &'a Session) -> Box<dyn ArchiveBuilder + 'a> {
-        Box::new(ArArchiveBuilder::new(sess, get_native_object_symbols))
+        Box::new(ArArchiveBuilder::new(
+            sess,
+            &rustc_codegen_ssa::back::archive::DEFAULT_OBJECT_READER,
+        ))
     }
     fn create_dll_import_lib(
         &self,
