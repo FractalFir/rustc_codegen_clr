@@ -185,7 +185,7 @@ pub fn set_discr<'tcx>(
                 desc: Box::new(FieldDescriptor::new(
                     enum_tpe.clone(),
                     tag_tpe,
-                    "value__".into(),
+                    crate::ENUM_TAG.into(),
                 )),
             }
         }
@@ -216,7 +216,7 @@ pub fn set_discr<'tcx>(
                     desc: Box::new(FieldDescriptor::new(
                         enum_tpe.clone(),
                         tag_tpe,
-                        "value__".into(),
+                        crate::ENUM_TAG.into(),
                     )),
                 }
             }
@@ -258,7 +258,8 @@ pub fn get_discr<'tcx>(
                 todo!();
             } else {
                 CILNode::LDField {
-                    field: FieldDescriptor::new(enum_tpe, tag_tpe.clone(), "value__".into()).into(),
+                    field: FieldDescriptor::new(enum_tpe, tag_tpe.clone(), crate::ENUM_TAG.into())
+                        .into(),
                     addr: enum_addr.into(),
                 }
             }
@@ -271,7 +272,8 @@ pub fn get_discr<'tcx>(
             let (disrc_type, _) = crate::utilis::adt::enum_tag_info(layout, tcx);
             let relative_max = niche_variants.end().as_u32() - niche_variants.start().as_u32();
             let tag = CILNode::LDField {
-                field: FieldDescriptor::new(enum_tpe, disrc_type.clone(), "value__".into()).into(),
+                field: FieldDescriptor::new(enum_tpe, disrc_type.clone(), crate::ENUM_TAG.into())
+                    .into(),
                 addr: enum_addr.into(),
             };
             // We have a subrange `niche_start..=niche_end` inside `range`.

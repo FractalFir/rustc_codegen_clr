@@ -702,7 +702,7 @@ fn argv() {
     asm.methods()
         .find(|method| method.name().contains("argc"))
         .unwrap()
-        .export(&mut out, crate::IlasmFlavour::Clasic, true, false)
+        .export(&mut out, crate::IlasmFlavour::Clasic, true, false, &asm)
         .unwrap();
 }
 pub trait MemoryUsage {
@@ -871,7 +871,7 @@ fn environ() {
     asm.methods()
         .find(|method| method.name().contains("environ"))
         .unwrap()
-        .export(&mut out, crate::IlasmFlavour::Clasic, true, false)
+        .export(&mut out, crate::IlasmFlavour::Clasic, true, false, &asm)
         .unwrap();
     panic!("{out}");
 }

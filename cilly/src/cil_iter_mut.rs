@@ -455,6 +455,7 @@ impl<'a> Iterator for CILIterMut<'a> {
                         }
                     },
                     CILRoot::SourceFileInfo(_)
+                    | CILRoot::OptimizedSourceFileInfo(_, _, _)
                     | CILRoot::GoTo { .. }
                     | CILRoot::JumpingPad { .. }
                     | CILRoot::VoidRet

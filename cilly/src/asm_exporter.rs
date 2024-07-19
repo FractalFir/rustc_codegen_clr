@@ -13,17 +13,24 @@ use crate::{
 /// This trait represents an interface implemented by all .NET assembly exporters. (Currently only ilasm)
 pub trait AssemblyExporter: Sized {
     /// Adds type definition `tpe` to the assembly.
-    fn add_type(&mut self, tpe: &TypeDef);
+    fn add_type(&mut self, tpe: &TypeDef, asm: &Assembly);
     /// Adds method to assembly.
-    fn add_method(&mut self, method: &Method);
-    fn add_extern_method(&mut self, lib_path: &str, name: &str, sig: &FnSig, preserve_errno: bool);
+    fn add_method(&mut self, method: &Method, asm: &Assembly);
+    fn add_extern_method(
+        &mut self,
+        lib_path: &str,
+        name: &str,
+        sig: &FnSig,
+        preserve_errno: bool,
+        info: &Assembly,
+    );
     //fn extern_asm(&mut self,asm:&str);
     /// Finishes exporting the assembly.
     fn finalize(self, final_path: &Path, is_dll: bool) -> Result<(), AssemblyExportError>;
     /// Adds a reference to assembly `asm_name` with info `info`
     fn add_extern_ref(&mut self, asm_name: &str, info: &AssemblyExternRef);
     /// Adds a global field
-    fn add_global(&mut self, tpe: &Type, name: &str, thread_local: bool);
+    fn add_global(&mut self, tpe: &Type, name: &str, thread_local: bool, info: &Assembly);
     /// Handles the whole assembly export process all at once.
     fn export_assembly(
         mut self,
@@ -36,22 +43,22 @@ pub trait AssemblyExporter: Sized {
             self.add_extern_ref(asm_name, asm_ref);
         }
         for tpe in asm.types() {
-            self.add_type(tpe.1);
+            self.add_type(tpe.1, asm);
         }
         for method in asm.methods() {
             if escape_names {
                 let mut method = method.clone();
                 method.set_name(&escape_class_name(method.name()));
-                self.add_method(&method);
+                self.add_method(&method, asm);
             } else {
-                self.add_method(method);
+                self.add_method(method, asm);
             }
         }
         for ((name, sig, preserve_errno), lib) in asm.extern_fns() {
-            self.add_extern_method(lib, name, sig, *preserve_errno);
+            self.add_extern_method(lib, name, sig, *preserve_errno, asm);
         }
         for global in asm.globals() {
-            self.add_global(&global.1 .0, global.0, global.1 .1);
+            self.add_global(&global.1 .0, global.0, global.1 .1, asm);
         }
 
         self.finalize(final_path, is_dll)

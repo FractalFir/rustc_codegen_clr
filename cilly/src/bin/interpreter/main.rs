@@ -1,7 +1,8 @@
 #![feature(iterator_try_collect)]
 #![allow(dead_code)]
+fn main() {}
+/*
 use std::io::Write;
-
 use cilly::{
     asm::Assembly,
     call_site::CallSite,
@@ -9,7 +10,7 @@ use cilly::{
     cil_root::{CILRoot, SFI},
     method::Method,
     static_field_desc::StaticFieldDescriptor,
-    FnSig, Type,
+    AsmStringContainer, FnSig, Type,
 };
 mod value;
 use fxhash::{FxBuildHasher, FxHashMap};
@@ -38,6 +39,7 @@ fn eval_node<'asm>(
     node: &'asm CILNode,
     state: &mut InterpreterState<'asm>,
     args: &mut Box<[Value]>,
+    string_map: &AsmStringContainer,
 ) -> Result<Value, Exception> {
     assert_eq!(state.locals.len(), state.call_stack.len());
     match node {
@@ -357,6 +359,7 @@ impl<'asm> InterpreterState<'asm> {
         &mut self,
         call: &'asm CallSite,
         args: &mut Box<[Value]>,
+        string_map: &AsmStringContainer,
     ) -> Result<Value, Exception> {
         assert_eq!(self.locals.len(), self.call_stack.len());
         let res = match (call.class(), call.name(), call.signature()) {
@@ -379,7 +382,7 @@ impl<'asm> InterpreterState<'asm> {
                     _ => todo!("Can't get length of {arg:?}"),
                 }
             }
-            (Some(tpe), ".ctor", _) => match tpe.name_path() {
+            (Some(tpe), ".ctor", _) => match tpe.name_path(string_map) {
                 "System.UInt128" => {
                     let (lower, upper) = (
                         *args[0].as_u64().unwrap() as u128,
@@ -574,7 +577,7 @@ impl<'asm> InterpreterState<'asm> {
                     match self.run(site, &mut call_args) {
                         Ok(val) => Ok(val),
                         Err(Exception::MethodNotFound(_)) => {
-                            self.try_call_extern(site, &mut call_args)
+                            self.try_call_extern(site, &mut call_args, self.asm.string_map())
                         }
                         Err(err) => Err(err),
                     }?;
@@ -624,3 +627,4 @@ fn main() {
     interpreter.run_cctor().unwrap();
     interpreter.run_entypoint().unwrap();
 }
+*/

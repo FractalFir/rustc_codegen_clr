@@ -8,7 +8,7 @@ use crate::{
 };
 use cilly::{
     access_modifier::AccessModifer, cil_node::CILNode, fn_sig::FnSig, type_def::TypeDef,
-    DotnetTypeRef, Type,
+    AsmStringContainer, DotnetTypeRef, Type,
 };
 use fxhash::{FxBuildHasher, FxHashMap};
 use rustc_middle::ty::{AdtDef, AdtKind, Instance, List, ParamEnv, Ty, TyCtxt, TyKind, UintTy};
@@ -255,7 +255,7 @@ impl TyCache {
             rustc_target::abi::Variants::Single { index: _ } => {
                 let (tag_type, offset) = crate::utilis::adt::enum_tag_info(layout.layout, tcx);
                 if tag_type != Type::Void {
-                    fields.push(("value__".into(), tag_type));
+                    fields.push((crate::ENUM_TAG.into(), tag_type));
                     explicit_offsets.push(offset);
                 }
             }
@@ -278,7 +278,7 @@ impl TyCache {
                             crate::utilis::adt::enum_tag_info(layout.layout, tcx);
 
                         if tag_type != Type::Void {
-                            fields.push(("value__".into(), tag_type));
+                            fields.push((crate::ENUM_TAG.into(), tag_type));
                             explicit_offsets.push(offset);
                         }
                     }
@@ -293,7 +293,7 @@ impl TyCache {
                         //eprintln!("enum:{adt_ty} layout.fields:{:?}",layout.fields);
                         assert!(offsets.count() > 0, "layout.fields:{:?}", layout.fields);
                         if tag_type != Type::Void {
-                            fields.push(("value__".into(), tag_type));
+                            fields.push((crate::ENUM_TAG.into(), tag_type));
 
                             explicit_offsets.push(offset);
                         }
@@ -408,16 +408,16 @@ impl TyCache {
                 if types.is_empty() {
                     Type::Void
                 } else {
-                    let name = tuple_name(&types);
+                    let name = tuple_name(&types, &AsmStringContainer::default());
                     let layout = tcx
                         .layout_of(rustc_middle::ty::ParamEnvAnd {
                             param_env: ParamEnv::reveal_all(),
                             value: ty,
                         })
                         .expect("Could not get type layout!");
-                    self.type_def_cache
-                        .entry(name)
-                        .or_insert_with(|| tuple_typedef(&types, layout.layout));
+                    self.type_def_cache.entry(name).or_insert_with(|| {
+                        tuple_typedef(&types, layout.layout, &AsmStringContainer::default())
+                    });
                     super::simple_tuple(&types).into()
                 }
             }
@@ -448,7 +448,13 @@ impl TyCache {
                     .iter()
                     .map(|ty| self.type_from_cache(ty, tcx, method))
                     .collect();
-                let name: IString = crate::r#type::closure_name(*def, &fields, &sig).into();
+                let name: IString = crate::r#type::closure_name(
+                    *def,
+                    &fields,
+                    &sig,
+                    &AsmStringContainer::default(),
+                )
+                .into();
                 let layout = tcx
                     .layout_of(rustc_middle::ty::ParamEnvAnd {
                         param_env: ParamEnv::reveal_all(),
@@ -458,7 +464,13 @@ impl TyCache {
                 if !self.type_def_cache.contains_key(&name) {
                     self.type_def_cache.insert(
                         name.clone(),
-                        closure_typedef(*def, &fields, &sig, layout.layout),
+                        closure_typedef(
+                            *def,
+                            &fields,
+                            &sig,
+                            layout.layout,
+                            &AsmStringContainer::default(),
+                        ),
                     );
                 }
                 DotnetTypeRef::new::<&str, _>(None, name).into()
@@ -550,14 +562,20 @@ impl TyCache {
         }
     }
     pub fn add_arr(&mut self, element: Type, length: usize, arr_size: u64) -> Type {
-        let arr_name = crate::r#type::type_def::arr_name(length, &element);
+        let arr_name =
+            crate::r#type::type_def::arr_name(length, &element, &AsmStringContainer::default());
         if !self.type_def_cache.contains_key(&arr_name) {
             self.type_def_cache.insert(
                 arr_name.clone(),
-                crate::r#type::type_def::get_array_type(length, element.clone(), arr_size),
+                crate::r#type::type_def::get_array_type(
+                    length,
+                    element.clone(),
+                    arr_size,
+                    &AsmStringContainer::default(),
+                ),
             );
         }
-        DotnetTypeRef::array(&element, length).into()
+        DotnetTypeRef::array(&element, length, &AsmStringContainer::default()).into()
     }
     pub fn slice_ref_to<'tcx>(
         &mut self,
@@ -567,7 +585,11 @@ impl TyCache {
     ) -> Type {
         inner = crate::utilis::monomorphize(&method, inner, tcx);
         let inner_tpe = self.type_from_cache(inner, tcx, method);
-        let name: IString = format!("FatPtr{elem}", elem = cilly::mangle(&inner_tpe)).into();
+        let name: IString = format!(
+            "FatPtr{elem}",
+            elem = cilly::mangle(&inner_tpe, &AsmStringContainer::default())
+        )
+        .into();
         if !self.type_def_cache.contains_key(&name) {
             let def = TypeDef::new(
                 AccessModifer::ModulePublic,

@@ -108,7 +108,7 @@ pub(crate) fn binop<'tcx>(
                     desc: Box::new(FieldDescriptor::new(
                         ordering_type.as_dotnet().unwrap(),
                         Type::I8,
-                        "value__".into(),
+                        crate::ENUM_TAG.into(),
                     )),
                 }]
                 .into(),

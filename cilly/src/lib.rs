@@ -2,10 +2,46 @@
 pub mod field_desc;
 pub mod r#type;
 
-use internment::Intern;
+use std::collections::HashMap;
+
+use fxhash::{FxBuildHasher, FxHasher};
 pub use r#type::*;
 
 pub type IString = Box<str>;
+#[derive(serde::Serialize, serde::Deserialize, Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub struct AsmString(u64);
+#[derive(serde::Serialize, serde::Deserialize, Debug, Default)]
+pub struct AsmStringContainer {
+    map: HashMap<AsmString, IString>,
+    inv_map: HashMap<IString, AsmString>,
+}
+impl AsmStringContainer {
+    pub fn alloc(&mut self, val: impl Into<IString> + Clone) -> AsmString {
+        match self.inv_map.entry(val.clone().into()) {
+            std::collections::hash_map::Entry::Occupied(occupied) => *occupied.get(),
+            std::collections::hash_map::Entry::Vacant(vacant) => {
+                let vstr = val.into();
+                let hash = calculate_hash(&vstr);
+                let string = AsmString(hash);
+                assert!(self.map.insert(string, vstr.clone()).is_none());
+                *vacant.insert(string)
+            }
+        }
+    }
+    pub fn join(&mut self, other: &mut Self) {
+        self.map.extend(other.map.clone());
+        self.inv_map.extend(other.inv_map.clone());
+    }
+    pub fn get(&self, key: AsmString) -> &IString {
+        &self.map[&key]
+    }
+}
+pub fn calculate_hash<T: std::hash::Hash>(t: &T) -> u64 {
+    use std::hash::Hasher;
+    let mut s = FxHasher::default();
+    t.hash(&mut s);
+    s.finish()
+}
 pub mod dotnet_type;
 pub use dotnet_type::*;
 pub mod fn_sig;
@@ -33,14 +69,14 @@ pub mod type_def;
 pub mod utilis;
 #[must_use]
 /// Returns the name of a fixed-size array
-pub fn arr_name(element_count: usize, element: &Type) -> IString {
-    let element_name = mangle(element);
+pub fn arr_name(element_count: usize, element: &Type, strings: &AsmStringContainer) -> IString {
+    let element_name = mangle(element, strings);
     format!("Arr{element_count}_{element_name}",).into()
 }
 /// Returns a mangled type name.
 /// # Panics
 /// Panics when a genetic managed array is used.
-pub fn mangle(tpe: &Type) -> std::borrow::Cow<'static, str> {
+pub fn mangle(tpe: &Type, strings: &AsmStringContainer) -> std::borrow::Cow<'static, str> {
     match tpe {
         Type::Bool => "b".into(),
         Type::Void => "v".into(),
@@ -59,26 +95,32 @@ pub fn mangle(tpe: &Type) -> std::borrow::Cow<'static, str> {
         Type::F16 => "f16".into(),
         Type::F32 => "f32".into(),
         Type::F64 => "f64".into(),
-        Type::Ptr(inner) => format!("p{inner}", inner = mangle(inner)).into(),
+        Type::Ptr(inner) => format!("p{inner}", inner = mangle(inner, strings)).into(),
         Type::DotnetType(tpe) => {
             assert!(
                 tpe.generics().is_empty(),
                 "Arrays of generic .NET types not supported yet"
             );
-            tpe.name_path().replace('.', "_").into()
+            tpe.name_path(strings).replace('.', "_").into()
         }
-        Type::ManagedArray { element, dims } => format!("a{}{}", dims, mangle(element)).into(),
+        Type::ManagedArray { element, dims } => {
+            format!("a{}{}", dims, mangle(element, strings)).into()
+        }
         Type::DotnetChar => "c".into(),
         Type::GenericArg(_) => todo!("Can't mangle generic type arg"),
 
         Type::DelegatePtr(sig) => format!(
             "d{output}{input_count}{input_string}",
-            output = mangle(sig.output()),
+            output = mangle(sig.output(), strings),
             input_count = sig.inputs().len(),
-            input_string = sig.inputs().iter().map(mangle).collect::<String>()
+            input_string = sig
+                .inputs()
+                .iter()
+                .map(|s| mangle(s, strings))
+                .collect::<String>()
         )
         .into(),
-        Type::ManagedReference(inner) => format!("m{inner}", inner = mangle(inner)).into(),
+        Type::ManagedReference(inner) => format!("m{inner}", inner = mangle(inner, strings)).into(),
         Type::Foreign => "g".into(),
         Type::CallGenericArg(_) => "l".into(),
         Type::MethodGenericArg(_) => "h".into(),

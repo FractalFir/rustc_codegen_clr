@@ -200,7 +200,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
 
     asm.add_typedef(TypeDef::new(
         AccessModifer::Public,
-        escape_class_name(c_void.as_dotnet().unwrap().name_path()).into(),
+        escape_class_name(c_void.as_dotnet().unwrap().name_path(asm.string_map())).into(),
         vec![],
         vec![],
         vec![],

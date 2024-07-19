@@ -1,10 +1,10 @@
-use crate::asm::AssemblyExternRef;
+use crate::asm::{Assembly, AssemblyExternRef};
 use crate::asm_exporter::{AssemblyExportError, AssemblyExporter, AssemblyInfo};
 use crate::method::Method;
 use crate::type_def::TypeDef;
 
 mod method;
-use crate::{escape_type_name, DepthSetting};
+use crate::{escape_type_name, AsmStringContainer, DepthSetting};
 use crate::{r#type::Type, IString};
 use fxhash::{FxBuildHasher, FxHashMap, FxHashSet};
 use std::process::Command;
@@ -89,7 +89,12 @@ impl CExporter {
         }
         res
     }
-    fn add_method_inner(&mut self, method: &Method, class: Option<&str>) {
+    fn add_method_inner(
+        &mut self,
+        method: &Method,
+        class: Option<&str>,
+        strings: &AsmStringContainer,
+    ) {
         /*//eprintln!("C source:\n{}",String::from_utf8_lossy(&self.as_source()));
         let sig = method.sig();
 
@@ -151,12 +156,13 @@ impl CExporter {
             method,
             class,
             DepthSetting::with_pading(),
+            strings,
         )
         .unwrap();
     }
 }
 impl AssemblyExporter for CExporter {
-    fn add_type(&mut self, tpe: &TypeDef) {
+    fn add_type(&mut self, tpe: &TypeDef, asm: &Assembly) {
         let name: IString = escape_type_name(tpe.name()).into();
         if self.defined.contains(&name) {
             return;
@@ -167,7 +173,7 @@ impl AssemblyExporter for CExporter {
             .filter_map(|field| field.1.as_dotnet())
             .filter_map(|tpe| {
                 if tpe.asm().is_none() {
-                    Some(escape_type_name(tpe.name_path()))
+                    Some(escape_type_name(tpe.name_path(asm.string_map())))
                 } else {
                     None
                 }
@@ -188,7 +194,7 @@ impl AssemblyExporter for CExporter {
 
                 fields.push_str(&format!(
                     "\tstruct {{char pad[{offset}];{field_type} f;}} {field_name};\n\n",
-                    field_type = c_tpe(field_type)
+                    field_type = c_tpe(field_type, asm.string_map())
                 ));
             }
         } else {
@@ -198,12 +204,12 @@ impl AssemblyExporter for CExporter {
                 }
                 fields.push_str(&format!(
                     "\tstruct {{{field_type} f;}} {field_name};\n",
-                    field_type = c_tpe(field_type)
+                    field_type = c_tpe(field_type, asm.string_map())
                 ));
             }
         }
         for method in tpe.methods() {
-            self.add_method_inner(method, Some(&name));
+            self.add_method_inner(method, Some(&name), asm.string_map());
         }
         if tpe.explicit_offsets().is_some() {
             writeln!(self.types, "typedef union {name} {name};").unwrap();
@@ -216,12 +222,12 @@ impl AssemblyExporter for CExporter {
         let delayed_typedefs = self.delayed_typedefs.clone();
         self.delayed_typedefs = FxHashMap::with_hasher(FxBuildHasher::default());
         for (_, tpe) in delayed_typedefs {
-            self.add_type(&tpe);
+            self.add_type(&tpe, asm);
         }
     }
 
-    fn add_method(&mut self, method: &Method) {
-        self.add_method_inner(method, None);
+    fn add_method(&mut self, method: &Method, asm: &Assembly) {
+        self.add_method_inner(method, None, asm.string_map());
     }
 
     fn add_extern_method(
@@ -230,6 +236,7 @@ impl AssemblyExporter for CExporter {
         name: &str,
         sig: &crate::FnSig,
         _preserve_errno: bool,
+        info: &Assembly,
     ) {
         use std::fmt::Write;
         if name == "puts"
@@ -242,7 +249,7 @@ impl AssemblyExporter for CExporter {
         {
             return;
         }
-        let output = c_tpe(sig.output());
+        let output = c_tpe(sig.output(), info.string_map());
         let mut inputs: String = "(".into();
         let mut input_iter = sig
             .inputs()
@@ -250,10 +257,16 @@ impl AssemblyExporter for CExporter {
             .enumerate()
             .filter(|(_, tpe)| **tpe != Type::Void);
         if let Some((idx, input)) = input_iter.next() {
-            inputs.push_str(&format!("{input} A{idx}", input = c_tpe(input)));
+            inputs.push_str(&format!(
+                "{input} A{idx}",
+                input = c_tpe(input, info.string_map())
+            ));
         }
         for (idx, input) in input_iter {
-            inputs.push_str(&format!(",{input} A{idx} ", input = c_tpe(input)));
+            inputs.push_str(&format!(
+                ",{input} A{idx} ",
+                input = c_tpe(input, info.string_map())
+            ));
         }
         inputs.push(')');
         writeln!(self.method_defs, "extern {output} {name} {inputs};").unwrap();
@@ -297,11 +310,22 @@ impl AssemblyExporter for CExporter {
         // Not needed in C
     }
 
-    fn add_global(&mut self, tpe: &crate::r#type::Type, name: &str, thread_local: bool) {
-        writeln!(self.static_defs, "static {tpe} {name};", tpe = c_tpe(tpe)).unwrap();
+    fn add_global(
+        &mut self,
+        tpe: &crate::r#type::Type,
+        name: &str,
+        thread_local: bool,
+        info: &Assembly,
+    ) {
+        writeln!(
+            self.static_defs,
+            "static {tpe} {name};",
+            tpe = c_tpe(tpe, info.string_map())
+        )
+        .unwrap();
     }
 }
-fn c_tpe(tpe: &Type) -> Cow<'static, str> {
+fn c_tpe(tpe: &Type, string_map: &AsmStringContainer) -> Cow<'static, str> {
     match tpe {
         Type::Bool => "bool".into(),
         Type::USize => "uintptr_t".into(),
@@ -321,26 +345,30 @@ fn c_tpe(tpe: &Type) -> Cow<'static, str> {
         Type::I8 => "int8_t".into(),
         Type::U8 => "uint8_t".into(),
         Type::Ptr(inner) | Type::ManagedReference(inner) => {
-            format!("{inner}*", inner = c_tpe(inner)).into()
+            format!("{inner}*", inner = c_tpe(inner, string_map)).into()
         }
         Type::DotnetType(tref) => {
             if let Some(asm) = tref.asm() {
-                match (asm, tref.name_path()) {
-                    ("System.Runtime", "System.UInt128") => return c_tpe(&Type::U128),
-                    ("System.Runtime", "System.Int128") => return c_tpe(&Type::I128),
+                match (asm, tref.name_path(string_map)) {
+                    ("System.Runtime", "System.UInt128") => return c_tpe(&Type::U128, string_map),
+                    ("System.Runtime", "System.Int128") => return c_tpe(&Type::I128, string_map),
                     _ => println!("Type {tref:?} is not supported in C"),
                 }
             }
             if tref.is_valuetype() {
-                escape_type_name(tref.name_path()).into()
+                escape_type_name(tref.name_path(string_map)).into()
             } else {
-                format!("{name}*", name = escape_type_name(tref.name_path())).into()
+                format!(
+                    "{name}*",
+                    name = escape_type_name(tref.name_path(string_map))
+                )
+                .into()
             }
         }
         Type::DelegatePtr(_sig) => "void*".into(),
         Type::ManagedArray { element, dims } => {
             let ptrs: String = (0..(dims.get())).map(|_| '*').collect();
-            format!("{element}{ptrs}", element = c_tpe(element)).into()
+            format!("{element}{ptrs}", element = c_tpe(element, string_map)).into()
         }
         Type::Foreign => "Foregin".into(),
         _ => todo!("Unsuported type {tpe:?}"),

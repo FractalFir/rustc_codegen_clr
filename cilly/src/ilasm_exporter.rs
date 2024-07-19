@@ -1,6 +1,6 @@
 use crate::{
     access_modifier::AccessModifer,
-    asm::AssemblyExternRef,
+    asm::{Assembly, AssemblyExternRef},
     asm_exporter::{AssemblyExportError, AssemblyExporter},
     ilasm_op::{non_void_type_cil, type_cil},
     method::Method,
@@ -173,19 +173,19 @@ impl ILASMExporter {
 }
 
 impl AssemblyExporter for ILASMExporter {
-    fn add_global(&mut self, tpe: &Type, name: &str, thread_local: bool) {
+    fn add_global(&mut self, tpe: &Type, name: &str, thread_local: bool, info: &Assembly) {
         if thread_local{
             writeln!(
                 self.methods,
                 ".field static {tpe} '{name}'\n.custom instance void [System.Runtime]System.ThreadStaticAttribute::.ctor() = (01 00 00 00)",
-                tpe = super::ilasm_op::non_void_type_cil(tpe)
+                tpe = super::ilasm_op::non_void_type_cil(tpe,info.string_map())
             )
         }
        else{
         writeln!(
             self.methods,
             ".field static {tpe} '{name}'",
-            tpe = super::ilasm_op::non_void_type_cil(tpe)
+            tpe = super::ilasm_op::non_void_type_cil(tpe,info.string_map())
         )
        }
         .expect("Could not write global!");
@@ -199,7 +199,7 @@ impl AssemblyExporter for ILASMExporter {
         )
         .expect("Write error!");
     }
-    fn add_type(&mut self, tpe: &TypeDef) {
+    fn add_type(&mut self, tpe: &TypeDef, asm: &Assembly) {
         type_def_cli(
             &mut self.encoded_asm,
             tpe,
@@ -208,17 +208,19 @@ impl AssemblyExporter for ILASMExporter {
             self.flavour,
             self.init_locals,
             self.print_stack_traces,
+            asm,
         )
         .expect("Error");
         //let _ = self.types.push(tpe.clone());
     }
-    fn add_method(&mut self, method: &Method) {
+    fn add_method(&mut self, method: &Method, asm: &Assembly) {
         method
             .export(
                 &mut self.methods,
                 self.flavour,
                 self.init_locals,
                 self.print_stack_traces,
+                asm,
             )
             .expect("Error");
     }
@@ -288,9 +290,10 @@ impl AssemblyExporter for ILASMExporter {
         name: &str,
         sig: &crate::fn_sig::FnSig,
         preserve_errno: bool,
+        info: &Assembly,
     ) {
         // /lib64/libc.so.6
-        let output = type_cil(sig.output());
+        let output = type_cil(sig.output(), info.string_map());
         let preserve_errno = if preserve_errno { "lasterr" } else { "" };
         writeln!(
             self.methods,
@@ -299,10 +302,20 @@ impl AssemblyExporter for ILASMExporter {
         .unwrap();
         let mut input_iter = sig.inputs().iter();
         if let Some(input) = input_iter.next() {
-            write!(self.methods, "{}", non_void_type_cil(input)).unwrap();
+            write!(
+                self.methods,
+                "{}",
+                non_void_type_cil(input, info.string_map())
+            )
+            .unwrap();
         }
         for input in input_iter {
-            write!(self.methods, ",{}", non_void_type_cil(input)).unwrap();
+            write!(
+                self.methods,
+                ",{}",
+                non_void_type_cil(input, info.string_map())
+            )
+            .unwrap();
         }
         // The `preservesig` is STRICTLY necesary - without it, the runtime sometimes replaces the result value with a HRESULT.
         writeln!(self.methods, ") preservesig {{}}").unwrap();
@@ -316,6 +329,7 @@ fn type_def_cli(
     flavour: IlasmFlavour,
     init_locals: bool,
     print_stack_traces: bool,
+    asm: &Assembly,
 ) -> std::fmt::Result {
     let name = tpe.name();
     let name = if escape_names {
@@ -328,7 +342,7 @@ fn type_def_cli(
         "Generic typedefs not supported yet. tpe:{tpe:?}"
     );
     let extends: IString = if let Some(extended) = tpe.extends() {
-        crate::ilasm_op::dotnet_type_ref_extends(extended).into()
+        crate::ilasm_op::dotnet_type_ref_extends(extended, asm.string_map()).into()
     } else {
         "[System.Runtime]System.ValueType".into()
     };
@@ -364,6 +378,7 @@ fn type_def_cli(
             flavour,
             init_locals,
             print_stack_traces,
+            asm,
         )?;
     }
     if let Some(offsets) = tpe.explicit_offsets() {
@@ -371,7 +386,7 @@ fn type_def_cli(
             writeln!(
                 w,
                 "\t.field [{offset}] public {field_type_name} '{field_name}'",
-                field_type_name = non_void_type_cil(field_type)
+                field_type_name = non_void_type_cil(field_type, asm.string_map())
             )?;
         }
     } else {
@@ -379,12 +394,12 @@ fn type_def_cli(
             writeln!(
                 w,
                 "\t.field public {field_type_name} '{field_name}'",
-                field_type_name = non_void_type_cil(field_type)
+                field_type_name = non_void_type_cil(field_type, asm.string_map())
             )?;
         }
     }
     for method in tpe.methods() {
-        method.export(w, flavour, init_locals, print_stack_traces)?;
+        method.export(w, flavour, init_locals, print_stack_traces, asm)?;
     }
     writeln!(w, "}}")?;
     Ok(())

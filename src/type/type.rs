@@ -1,6 +1,6 @@
 use cilly::{
-    call, call_site::CallSite, cil_node::CILNode, fn_sig::FnSig, ldc_u32, ldc_u64, DotnetTypeRef,
-    Type,
+    call, call_site::CallSite, cil_node::CILNode, fn_sig::FnSig, ldc_u32, ldc_u64,
+    AsmStringContainer, DotnetTypeRef, Type,
 };
 
 use rustc_middle::{
@@ -136,8 +136,8 @@ fn garag_to_usize<'tcx>(garg: GenericArg<'tcx>, _ctx: TyCtxt<'tcx>) -> u64 {
 /// Creates a tuple with no more than 8 elements.
 #[must_use]
 pub fn simple_tuple(elements: &[Type]) -> DotnetTypeRef {
-    //assert!(elements.len() <= 8,"Tuple ({elements:?}) contains more than 8 elements, so it can't be stored inside a simple tuple.");
-    let name = tuple_name(elements);
+    // Since no intering can happen at this stage, we can pass an empty AsmStringContainer safely.
+    let name = tuple_name(elements, &AsmStringContainer::default());
 
     DotnetTypeRef::new::<&str, _>(None, name)
 }

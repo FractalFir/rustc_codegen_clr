@@ -8,6 +8,7 @@ use std::{
 
 use crate::{
     access_modifier::AccessModifer,
+    asm::Assembly,
     basic_block::BasicBlock,
     call_site::CallSite,
     cil_iter::{CILIterElem, CILIterTrait},
@@ -18,7 +19,7 @@ use crate::{
     ilasm_op::{non_void_type_cil, type_cil},
     static_field_desc::StaticFieldDescriptor,
     utilis::MemoryUsage,
-    DepthSetting, DotnetTypeRef, FnSig, IString, IlasmFlavour, Type,
+    AsmStringContainer, DepthSetting, DotnetTypeRef, FnSig, IString, IlasmFlavour, Type,
 };
 
 /// Represenation of a CIL method.
@@ -85,6 +86,25 @@ impl Attribute {
 }
 
 impl Method {
+    pub fn optimize_types(&mut self, strings: &mut AsmStringContainer) {
+        self.locals
+            .iter_mut()
+            .for_each(|(name, tpe)| tpe.opt(strings))
+    }
+    /// Turns the unoptimized Source File Information into a more optimized format by storing common strings in the `AsmStringContainer`
+    pub fn optimize_sfi(&mut self, strings: &mut AsmStringContainer) {
+        let mut blocks = self.blocks_mut();
+        blocks
+            .iter_mut()
+            .flat_map(|block| block.tree_iter())
+            .map(|root| root.root_mut())
+            .for_each(|root| {
+                if let CILRoot::SourceFileInfo(sfi) = root {
+                    let fname = strings.alloc(sfi.2.clone());
+                    *root = CILRoot::OptimizedSourceFileInfo(sfi.0.clone(), sfi.1.clone(), fname);
+                }
+            })
+    }
     pub fn alias_for(
         access: AccessModifer,
         method_type: MethodType,
@@ -209,11 +229,11 @@ impl Method {
             });
         self.locals = locals;
     }
-    pub fn validate(&self) -> Result<(), String> {
+    pub fn validate(&self, asm: &AsmStringContainer) -> Result<(), String> {
         let errs: Vec<String> = self
             .blocks()
             .iter()
-            .map(|tree| tree.validate(self.into()))
+            .map(|tree| tree.validate(ValidationContext::new(&self.sig, &self.locals, asm)))
             .filter_map(|err| match err {
                 Ok(()) => None,
                 Err(err) => Some(err),
@@ -504,6 +524,7 @@ impl Method {
         flavour: IlasmFlavour,
         init_locals: bool,
         print_stack_traces: bool,
+        asm: &Assembly,
     ) -> std::fmt::Result {
         let access = if let AccessModifer::Private = self.access() {
             "private"
@@ -515,7 +536,7 @@ impl Method {
             MethodType::Virtual => "virtual instance",
             MethodType::Instance => "instance",
         };
-        let output = type_cil(self.sig().output());
+        let output = type_cil(self.sig().output(), asm.string_map());
         let name = self.name();
         write!(
             w,
@@ -528,24 +549,30 @@ impl Method {
                 println!("WARNING: debug arg count invalid!");
             }
             if let Some(input) = input_iter.next() {
-                write!(w, "{}", non_void_type_cil(input))?;
+                write!(w, "{}", non_void_type_cil(input, asm.string_map()))?;
             }
             for input in input_iter {
-                write!(w, ",{}", non_void_type_cil(input))?;
+                write!(w, ",{}", non_void_type_cil(input, asm.string_map()))?;
             }
         } else {
             assert_eq!(self.arg_names().len(), self.explicit_inputs().len());
             let mut input_iter = self.explicit_inputs().iter().zip(self.arg_names().iter());
             if let Some((input, name)) = input_iter.next() {
                 match name {
-                    Some(name) => write!(w, "{} '{name}'", non_void_type_cil(input))?,
-                    None => write!(w, "{}", non_void_type_cil(input))?,
+                    Some(name) => {
+                        write!(w, "{} '{name}'", non_void_type_cil(input, asm.string_map()))?
+                    }
+                    None => write!(w, "{}", non_void_type_cil(input, asm.string_map()))?,
                 }
             }
             for (input, name) in input_iter {
                 match name {
-                    Some(name) => write!(w, ",{} '{name}'", non_void_type_cil(input))?,
-                    None => write!(w, ",{}", non_void_type_cil(input))?,
+                    Some(name) => write!(
+                        w,
+                        ",{} '{name}'",
+                        non_void_type_cil(input, asm.string_map())
+                    )?,
+                    None => write!(w, ",{}", non_void_type_cil(input, asm.string_map()))?,
                 }
             }
         }
@@ -564,12 +591,12 @@ impl Method {
                 None => write!(
                     w,
                     "\t\t[{local_id}] {escaped_type}",
-                    escaped_type = non_void_type_cil(&local.1)
+                    escaped_type = non_void_type_cil(&local.1, asm.string_map())
                 )?,
                 Some(name) => write!(
                     w,
                     "\t\t[{local_id}] {escaped_type} '{name}'",
-                    escaped_type = non_void_type_cil(&local.1)
+                    escaped_type = non_void_type_cil(&local.1, asm.string_map())
                 )?,
             }
         }
@@ -578,12 +605,12 @@ impl Method {
                 None => write!(
                     w,
                     ",\n\t\t[{local_id}] {escaped_type}",
-                    escaped_type = non_void_type_cil(&local.1)
+                    escaped_type = non_void_type_cil(&local.1, asm.string_map())
                 )?,
                 Some(name) => write!(
                     w,
                     ",\n\t\t[{local_id}] {escaped_type} '{name}'",
-                    escaped_type = non_void_type_cil(&local.1)
+                    escaped_type = non_void_type_cil(&local.1, asm.string_map())
                 )?,
             }
         }
@@ -596,7 +623,8 @@ impl Method {
             write!(w,"call string [System.Runtime]System.Environment::get_StackTrace()\ncall void [System.Console]System.Console::WriteLine(string)")?;
         }
         for block in self.blocks().iter() {
-            crate::basic_block::export(w, block, DepthSetting::with_pading(), flavour).unwrap();
+            crate::basic_block::export(w, block, DepthSetting::with_pading(), flavour, asm)
+                .unwrap();
         }
 
         writeln!(w, "}}")
@@ -653,8 +681,8 @@ impl Method {
         &self.attributes
     }
 
-    pub(crate) fn vctx(&self) -> ValidationContext {
-        ValidationContext::new(&self.sig, &self.locals)
+    pub(crate) fn vctx<'a, 'b: 'a>(&'a self, strings: &'b AsmStringContainer) -> ValidationContext {
+        ValidationContext::new(&self.sig, &self.locals, strings)
     }
 
     pub(crate) fn set_blocks(&mut self, blocks: impl Into<Vec<BasicBlock>>) {
@@ -700,11 +728,7 @@ pub enum MethodType {
     /// A "normal" method.
     Static,
 }
-impl<'a> From<&'a Method> for ValidationContext<'a> {
-    fn from(val: &'a Method) -> Self {
-        ValidationContext::new(val.sig(), val.locals())
-    }
-}
+
 pub(crate) fn all_evals_identical<'a>(
     mut nodes: impl Iterator<Item = &'a CILNode>,
 ) -> Option<CILNode> {

@@ -14,7 +14,7 @@ use crate::{
     static_field_desc::StaticFieldDescriptor,
     type_def::TypeDef,
     utilis::MemoryUsage,
-    DotnetTypeRef, FnSig, IString, Type,
+    AsmStringContainer, DotnetTypeRef, FnSig, IString, Type,
 };
 
 #[derive(Clone, Copy, Serialize, Deserialize, Debug)]
@@ -61,6 +61,8 @@ pub struct Assembly {
     static_fields: FxHashMap<IString, (Type, bool)>,
     /// Initializers. Call order not guarnateed(but should match the order they are added in), but should be called after most of `.cctor` runs.
     initializers: Vec<CILRoot>,
+    /// A string map. Used for some optimzations
+    string_map: AsmStringContainer,
 }
 impl Assembly {
     pub fn call_graph(&self) -> String {
@@ -88,7 +90,7 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
     pub fn sizeof_tpedef(&self, tpe: &crate::DotnetTypeRef) -> std::num::NonZeroU64 {
         assert!(tpe.asm().is_none());
         self.types
-            .get(tpe.name_path())
+            .get(tpe.name_path(&self.string_map))
             .unwrap()
             .explict_size()
             .unwrap()
@@ -136,6 +138,7 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
             static_fields: FxHashMap::with_hasher(FxBuildHasher::default()),
             extern_fns: FxHashMap::with_hasher(FxBuildHasher::default()),
             initializers: vec![],
+            string_map: AsmStringContainer::default(),
         };
         res.static_fields.insert(
             "GlobalAtomicLock".into(),
@@ -158,7 +161,7 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
     }
     /// Joins 2 assemblies together.
     #[must_use]
-    pub fn join(self, other: Self) -> Self {
+    pub fn join(mut self, mut other: Self) -> Self {
         let static_initializer = link_static_initializers(self.cctor(), other.cctor());
         let tcctor = link_static_initializers(self.tcctor(), other.tcctor());
         let mut types = self.types;
@@ -180,6 +183,7 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
         extern_fns.extend(other.extern_fns);
         let mut initializers = self.initializers;
         initializers.extend(other.initializers);
+        self.string_map.join(&mut other.string_map);
         Self {
             types,
             functions,
@@ -188,6 +192,7 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
             extern_fns,
             static_fields,
             initializers,
+            string_map: self.string_map,
         }
     }
     /// Gets the typdefef at path `path`.
@@ -349,15 +354,15 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
     }
     /// Adds a method to the assebmly.
     pub fn add_method(&mut self, mut method: Method) {
-        method.allocate_temporaries();
-        method.allocate_temporaries();
-        if let Err(err) = method.validate() {
+        if let Err(err) = method.validate(&self.string_map) {
             eprintln!(
                 "Could not validate the method {name} because {err}",
                 name = method.name()
             );
         }
-
+        // Saves on storage and memory
+        method.optimize_sfi(self.string_map_mut());
+        method.optimize_types(self.string_map_mut());
         self.functions.insert(method.call_site(), method);
     }
     /// Returns the list of all calls within the assembly. Calls may repeat.
@@ -529,7 +534,7 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
             .flat_map(Method::dotnet_types)
             .filter_map(|tpe| match tpe.asm() {
                 Some(_) => None,
-                None => Some(IString::from(tpe.name_path())),
+                None => Some(IString::from(tpe.name_path(&self.string_map))),
             })
             .map(|name| (name.clone(), self.types.get(&name).unwrap().clone()))
             .collect();
@@ -546,7 +551,7 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
                 })
                 .filter_map(|tpe| match tpe.asm() {
                     Some(_) => None,
-                    None => Some(IString::from(tpe.name_path())),
+                    None => Some(IString::from(tpe.name_path(&self.string_map))),
                 })
                 .map(|name| (name.clone(), self.types.get(&name).unwrap().clone())),
         );
@@ -565,7 +570,7 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
                     .filter_map(Type::dotnet_refs)
                     .filter_map(|tpe| match tpe.asm() {
                         Some(_) => None,
-                        None => Some(IString::from(tpe.name_path())),
+                        None => Some(IString::from(tpe.name_path(&self.string_map))),
                     })
                     //.map(|(a,b)|a.into())
                     .map(|name: IString| {
@@ -646,6 +651,18 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
         }
         self.initializers.clear();
         drop(blocks);
+    }
+
+    pub fn get_string(&self, key: crate::AsmString) -> &IString {
+        self.string_map.get(key)
+    }
+
+    pub fn string_map_mut(&mut self) -> &mut AsmStringContainer {
+        &mut self.string_map
+    }
+
+    pub fn string_map(&self) -> &AsmStringContainer {
+        &self.string_map
     }
 }
 use lazy_static::*;

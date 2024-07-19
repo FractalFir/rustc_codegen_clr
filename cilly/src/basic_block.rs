@@ -290,6 +290,7 @@ pub fn export(
     block: &BasicBlock,
     depth: DepthSetting,
     flavour: IlasmFlavour,
+    asm: &crate::asm::Assembly,
 ) -> std::fmt::Result {
     let this_depth = if block.handler().is_some() {
         write!(out, ".try{{").unwrap();
@@ -300,7 +301,7 @@ pub fn export(
     // Basic block
     writeln!(out, "bb_{id}_0:", id = block.id()).unwrap();
     for tree in block.trees() {
-        crate::ilasm_op::export_root(out, tree.root(), this_depth, flavour).unwrap();
+        crate::ilasm_op::export_root(out, tree.root(), this_depth, flavour, asm).unwrap();
     }
     if let Some(handler) = block.handler() {
         let handler = handler.as_blocks().unwrap();
@@ -324,7 +325,7 @@ pub fn export(
             )
             .unwrap();
             for tree in handler_block.trees() {
-                crate::ilasm_op::export_root(out, tree.root(), this_depth, flavour).unwrap();
+                crate::ilasm_op::export_root(out, tree.root(), this_depth, flavour, asm).unwrap();
             }
             this_depth.pad(out).unwrap();
         }

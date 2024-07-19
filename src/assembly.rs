@@ -127,17 +127,11 @@ fn allocation_initializer_method(
         }
         .into(),
     );
-    trees.push(
-        CILRoot::STLoc {
-            local: 1,
-            tree: CILNode::LDLoc(0),
-        }
-        .into(),
-    );
+
     if !bytes.iter().all(|byte| *byte != 0) {
         trees.push(
             CILRoot::InitBlk {
-                dst: Box::new(CILNode::LDLoc(1)),
+                dst: Box::new(CILNode::LDLoc(0)),
                 val: Box::new(CILNode::LdcU8(0)),
                 count: Box::new(conv_usize!(ldc_u64!(bytes.len() as u64))),
             }
@@ -145,19 +139,16 @@ fn allocation_initializer_method(
         );
     }
 
-    for byte in bytes {
+    for (offset, byte) in bytes.iter().enumerate() {
         if *byte != 0 {
-            trees.push(CILRoot::STIndI8(CILNode::LDLoc(0), CILNode::LdcU8(*byte)).into());
+            trees.push(
+                CILRoot::STIndI8(
+                    CILNode::LDLoc(0) + conv_usize!(ldc_u32!(offset.try_into().unwrap())),
+                    CILNode::LdcU8(*byte),
+                )
+                .into(),
+            );
         }
-
-        //trees.push(CILRoot::debug(&format!("Writing the byte {}",byte)).into());
-        trees.push(
-            CILRoot::STLoc {
-                local: 0,
-                tree: CILNode::LDLoc(0) + conv_usize!(ldc_u32!(1)),
-            }
-            .into(),
-        );
     }
     if !ptrs.is_empty() {
         for (offset, prov) in ptrs.iter() {
@@ -176,7 +167,7 @@ fn allocation_initializer_method(
 
                 trees.push(
                     CILRoot::STIndISize(
-                        (CILNode::LDLoc(1) + conv_usize!(ldc_u32!(offset)))
+                        (CILNode::LDLoc(0) + conv_usize!(ldc_u32!(offset)))
                             .cast_ptr(ptr!(Type::USize)),
                         CILNode::LDFtn(
                             CallSite::new(None, function_name, call_info.sig().clone(), true)
@@ -191,7 +182,7 @@ fn allocation_initializer_method(
 
                 trees.push(
                     CILRoot::STIndISize(
-                        (CILNode::LDLoc(1) + conv_usize!(ldc_u32!(offset)))
+                        (CILNode::LDLoc(0) + conv_usize!(ldc_u32!(offset)))
                             .cast_ptr(ptr!(Type::USize)),
                         ptr_alloc.cast_ptr(Type::USize),
                     )
@@ -203,7 +194,7 @@ fn allocation_initializer_method(
     //trees.push(CILRoot::debug(&format!("Finished initializing an allocation with size {}",bytes.len())).into());
     trees.push(
         CILRoot::Ret {
-            tree: CILNode::LDLoc(1),
+            tree: CILNode::LDLoc(0),
         }
         .into(),
     );
@@ -213,10 +204,7 @@ fn allocation_initializer_method(
         MethodType::Static,
         FnSig::new(&[], Type::Ptr(Type::U8.into())),
         &format!("init_{name}"),
-        vec![
-            (Some("curr".into()), Type::Ptr(Type::U8.into())),
-            (Some("alloc_ptr".into()), Type::Ptr(Type::U8.into())),
-        ],
+        vec![(Some("alloc_ptr".into()), Type::Ptr(Type::U8.into()))],
         vec![BasicBlock::new(trees, 0, None)],
         vec![],
     )
@@ -371,7 +359,7 @@ pub fn add_fn<'tcx>(
             panic!("Arg to spread not a tuple???")
         };
         for (arg_id, ty) in packed.iter().enumerate() {
-            let validation_context = ValidationContext::new(&sig, &locals);
+            let validation_context = ValidationContext::new(&sig, &locals, asm.string_map());
             let mut method_context =
                 MethodCompileCtx::new(tcx, mir, instance, validation_context, cache);
             if crate::utilis::is_zst(ty, tcx) {
@@ -393,7 +381,7 @@ pub fn add_fn<'tcx>(
         vec![]
     };
     // Used for type-checking the CIL to ensure its validity.
-    let validation_context = ValidationContext::new(&sig, &locals);
+    let validation_context = ValidationContext::new(&sig, &locals, asm.string_map());
     let mut method_context = MethodCompileCtx::new(tcx, mir, instance, validation_context, cache);
     for (last_bb_id, block_data) in blocks.into_iter().enumerate() {
         let mut trees = Vec::new();
@@ -476,7 +464,7 @@ pub fn add_fn<'tcx>(
     method.allocate_temporaries();
 
     if *crate::config::TYPECHECK_CIL {
-        match method.validate() {
+        match method.validate(asm.string_map()) {
             Ok(()) => (),
             Err(msg) => eprintln!(
                 "\n\nMethod {} failed compilation with message:\ns {msg}",

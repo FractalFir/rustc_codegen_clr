@@ -335,6 +335,8 @@ pub extern "Rust" fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
     Box::new(MyBackend)
 }
 /// The metadata of a slice
-const METADATA: &'static str = "m";
+const METADATA: &str = "m";
 /// The data pointer of a slice
-const DATA_PTR: &'static str = "d";
+const DATA_PTR: &str = "d";
+/// The tag of an enum
+const ENUM_TAG: &str = "v";

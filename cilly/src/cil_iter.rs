@@ -256,6 +256,7 @@ impl<'a> Iterator for CILIter<'a> {
                 },
                 CILIterElem::Root(
                     CILRoot::SourceFileInfo(_)
+                    | CILRoot::OptimizedSourceFileInfo(_, _, _)
                     | CILRoot::GoTo { .. }
                     | CILRoot::VoidRet
                     | CILRoot::Break

@@ -1,7 +1,7 @@
 use crate::{
-    asm_exporter::AssemblyExporter, basic_block::BasicBlock, call_site::CallSite,
-    cil_node::CILNode, cil_root::CILRoot, escape_type_name, mangle, method::Method, DepthSetting,
-    IString, Type,
+    asm::Assembly, asm_exporter::AssemblyExporter, basic_block::BasicBlock, call_site::CallSite,
+    cil_node::CILNode, cil_root::CILRoot, escape_type_name, mangle, method::Method,
+    AsmStringContainer, DepthSetting, IString, Type,
 };
 use std::fmt::Write;
 #[derive(Default)]
@@ -9,7 +9,7 @@ pub struct JSExporter {
     file: String,
 }
 impl AssemblyExporter for JSExporter {
-    fn add_type(&mut self, tpe: &crate::type_def::TypeDef) {
+    fn add_type(&mut self, tpe: &crate::type_def::TypeDef, asm: &Assembly) {
         if tpe.fields().is_empty() {
             return;
         }
@@ -24,8 +24,9 @@ impl AssemblyExporter for JSExporter {
         {}
     }
 
-    fn add_method(&mut self, method: &crate::method::Method) {
-        self.file.push_str(&function_decl(method, None));
+    fn add_method(&mut self, method: &crate::method::Method, asm: &Assembly) {
+        self.file
+            .push_str(&function_decl(method, None, asm.string_map()));
         write!(self.file, "{{").unwrap();
         let ds = DepthSetting::with_pading();
         self.file.push_str(&local_defs(method, ds.incremented()));
@@ -34,7 +35,7 @@ impl AssemblyExporter for JSExporter {
         write!(self.file, "while (true){{switch (bb_id){{").unwrap();
         ds.pad(&mut self.file).unwrap();
         for block in method.blocks() {
-            export_bb(block, method, &mut self.file, ds).unwrap();
+            export_bb(block, method, &mut self.file, ds, asm.string_map()).unwrap();
         }
         write!(self.file, "default: throw new Error(\"Invalid bb_id.\");}}").unwrap();
         ds.pad(&mut self.file).unwrap();
@@ -51,6 +52,7 @@ impl AssemblyExporter for JSExporter {
         name: &str,
         sig: &crate::FnSig,
         preserve_errno: bool,
+        info: &Assembly,
     ) {
         //todo!()
     }
@@ -74,7 +76,7 @@ impl AssemblyExporter for JSExporter {
 
     fn add_extern_ref(&mut self, asm_name: &str, info: &crate::asm::AssemblyExternRef) {}
 
-    fn add_global(&mut self, tpe: &Type, name: &str, thread_local: bool) {
+    fn add_global(&mut self, tpe: &Type, name: &str, thread_local: bool, info: &Assembly) {
         if name == "GlobalAtomicLock" {
             return;
         }
@@ -118,7 +120,11 @@ pub(crate) fn loc_name(method: &Method, loc: u32) -> IString {
 fn is_reserved(name: &str) -> bool {
     false
 }
-pub(crate) fn function_decl(method: &Method, class: Option<&str>) -> String {
+pub(crate) fn function_decl(
+    method: &Method,
+    class: Option<&str>,
+    strings: &AsmStringContainer,
+) -> String {
     let name = method.name();
     let name = escape_type_name(name);
 
@@ -140,7 +146,12 @@ pub(crate) fn function_decl(method: &Method, class: Option<&str>) -> String {
         let class = escape_type_name(class);
         let name = method.name();
         let name = escape_type_name(name);
-        let mangled_overloads: String = method.sig().inputs().iter().map(mangle).collect();
+        let mangled_overloads: String = method
+            .sig()
+            .inputs()
+            .iter()
+            .map(|inp| mangle(inp, strings))
+            .collect();
         format!("function {class}_{name}_{mangled_overloads} {inputs}")
     } else {
         format!("function {name} {inputs}")
@@ -172,11 +183,12 @@ fn export_bb(
     method: &Method,
     out: &mut impl Write,
     ds: DepthSetting,
+    strings: &AsmStringContainer,
 ) -> std::fmt::Result {
     ds.pad(out)?;
     write!(out, "case {id}:", id = block.id())?;
     for tree in block.trees() {
-        tree_code(method, tree.root(), out, ds.incremented())?;
+        tree_code(method, tree.root(), out, ds.incremented(), strings)?;
     }
     ds.pad(out)
 }
@@ -185,6 +197,7 @@ fn tree_code(
     root: &CILRoot,
     code: &mut impl Write,
     ds: DepthSetting,
+    strings: &AsmStringContainer,
 ) -> std::fmt::Result {
     ds.pad(code)?;
     match root {
@@ -196,7 +209,7 @@ fn tree_code(
                 code,
                 "{name} = {value};",
                 name = descr.name(),
-                value = node_code(method, value)
+                value = node_code(method, value, strings)
             )?;
             ds.pad(code)
         }
@@ -205,13 +218,17 @@ fn tree_code(
             write!(
                 code,
                 "{local} = {node};",
-                node = node_code(method, tree),
+                node = node_code(method, tree, strings),
                 local = loc_name(method, *local)
             )
         }
         CILRoot::Ret { tree } => {
             ds.pad(code)?;
-            write!(code, "return {node};", node = node_code(method, tree),)
+            write!(
+                code,
+                "return {node};",
+                node = node_code(method, tree, strings),
+            )
         }
         CILRoot::GoTo { target, sub_target } => {
             if *sub_target != 0 {
@@ -226,9 +243,9 @@ fn tree_code(
         }
         CILRoot::STIndI8(addr, val) => {
             ds.pad(code)?;
-            let vtpe = val.validate(method.vctx(), None).unwrap();
-            let val = node_code(method, val);
-            let addr = node_code(method, addr);
+            let vtpe = val.validate(method.vctx(strings), None).unwrap();
+            let val = node_code(method, val, strings);
+            let addr = node_code(method, addr, strings);
             match vtpe {
                 Type::I8 => write!(code, "globalMemory.setInt8(Number({addr}),({val}))"),
                 Type::U8 | Type::Bool => {
@@ -239,9 +256,9 @@ fn tree_code(
         }
         CILRoot::STIndISize(addr, val) => {
             ds.pad(code)?;
-            let vtpe = val.validate(method.vctx(), None).unwrap();
-            let val = node_code(method, val);
-            let addr = node_code(method, addr);
+            let vtpe = val.validate(method.vctx(strings), None).unwrap();
+            let val = node_code(method, val, strings);
+            let addr = node_code(method, addr, strings);
             write!(code, "globalMemory.setBigInt64(Number({addr}),({val}))")
         }
         _ => {
@@ -257,7 +274,7 @@ fn tree_code(
 fn local_is_byaddress(method: &Method, local: usize) -> bool {
     false
 }
-fn node_code(method: &Method, node: &CILNode) -> IString {
+fn node_code(method: &Method, node: &CILNode, strings: &AsmStringContainer) -> IString {
     match node {
         CILNode::LdcI64(val) => format!("{val}n").into(),
         CILNode::LdcU64(val) => format!("{val}n").into(),
@@ -269,7 +286,7 @@ fn node_code(method: &Method, node: &CILNode) -> IString {
         CILNode::LdcU8(val) => format!("{val}").into(),
         CILNode::LDIndU8 { ptr } => format!(
             "globalMemory.getUint8(Number({ptr}))",
-            ptr = node_code(method, ptr)
+            ptr = node_code(method, ptr, strings)
         )
         .into(),
         CILNode::SizeOf(tpe) => match tpe.as_ref() {
@@ -280,125 +297,133 @@ fn node_code(method: &Method, node: &CILNode) -> IString {
         CILNode::Call(call_op_args)
         | CILNode::NewObj(call_op_args)
         | CILNode::CallVirt(call_op_args) => {
-            let name = call_site_to_name(&call_op_args.site);
+            let name = call_site_to_name(&call_op_args.site, strings);
             let mut arg_iter = call_op_args.args.iter();
             let mut call_inner = String::new();
             if let Some(arg) = arg_iter.next() {
-                if arg.validate(method.vctx(), None).unwrap() != Type::Void {
-                    call_inner.push_str(&node_code(method, arg));
+                if arg.validate(method.vctx(strings), None).unwrap() != Type::Void {
+                    call_inner.push_str(&node_code(method, arg, strings));
                 }
             }
             for arg in arg_iter {
-                if arg.validate(method.vctx(), None).unwrap() == Type::Void {
+                if arg.validate(method.vctx(strings), None).unwrap() == Type::Void {
                     continue;
                 }
                 call_inner.push(',');
-                call_inner.push_str(&node_code(method, arg));
+                call_inner.push_str(&node_code(method, arg, strings));
             }
             format!("{name}({call_inner})").into()
         }
         // Transmute Ptr does nothing.
         CILNode::TransmutePtr { val, new_ptr } => format!(
             "(/*TransmutePtr to {new_ptr}*/{val})",
-            new_ptr = mangle(new_ptr),
-            val = node_code(method, val)
+            new_ptr = mangle(new_ptr, strings),
+            val = node_code(method, val, strings)
         )
         .into(),
         CILNode::ConvI32(val) => {
-            let vtpe = val.validate(method.vctx(), None).unwrap();
+            let vtpe = val.validate(method.vctx(strings), None).unwrap();
             match vtpe {
-                Type::I32 | Type::I16 | Type::I8 | Type::F32 | Type::F64 => node_code(method, val),
+                Type::I32 | Type::I16 | Type::I8 | Type::F32 | Type::F64 => {
+                    node_code(method, val, strings)
+                }
 
                 _ => todo!("Can't yet cast {vtpe:?} to i32."),
             }
         }
         CILNode::ZeroExtendToUSize(val) => {
-            let vtpe = val.validate(method.vctx(), None).unwrap();
+            let vtpe = val.validate(method.vctx(strings), None).unwrap();
             match vtpe {
                 Type::U64 => format!(
                     "({val}) & {max}n",
-                    val = node_code(method, val),
+                    val = node_code(method, val, strings),
                     max = u64::MAX
                 )
                 .into(),
                 Type::U32 => format!(
                     "BigInt(({val} & {max}))",
-                    val = node_code(method, val),
+                    val = node_code(method, val, strings),
                     max = u32::MAX
                 )
                 .into(),
-                Type::F32 => format!("BigInt({val})", val = node_code(method, val),).into(),
-                Type::F64 => format!("BigInt({val})", val = node_code(method, val),).into(),
-                Type::I32 => {
-                    format!("BigInt(i32_to_u32({val}))", val = node_code(method, val),).into()
+                Type::F32 => {
+                    format!("BigInt({val})", val = node_code(method, val, strings),).into()
                 }
+                Type::F64 => {
+                    format!("BigInt({val})", val = node_code(method, val, strings),).into()
+                }
+                Type::I32 => format!(
+                    "BigInt(i32_to_u32({val}))",
+                    val = node_code(method, val, strings),
+                )
+                .into(),
                 _ => todo!("Can't yet cast {vtpe:?} to usize."),
             }
         }
         CILNode::LDArg(arg) => arg_name(method, *arg),
         CILNode::Mul(a, b) => {
-            let atpe = a.validate(method.vctx(), None).unwrap();
-            let btpe = b.validate(method.vctx(), None).unwrap();
+            let atpe = a.validate(method.vctx(strings), None).unwrap();
+            let btpe = b.validate(method.vctx(strings), None).unwrap();
             match (&atpe, &btpe) {
                 (Type::Ptr(_) | Type::USize, Type::USize) => format!(
                     "({a}) * ({b})",
-                    a = node_code(method, a),
-                    b = node_code(method, b)
+                    a = node_code(method, a, strings),
+                    b = node_code(method, b, strings)
                 )
                 .into(),
                 _ => todo!("Can't yet mul {atpe:?} and {btpe:?}"),
             }
         }
         CILNode::Add(a, b) => {
-            let atpe = a.validate(method.vctx(), None).unwrap();
-            let btpe = b.validate(method.vctx(), None).unwrap();
+            let atpe = a.validate(method.vctx(strings), None).unwrap();
+            let btpe = b.validate(method.vctx(strings), None).unwrap();
             match (&atpe, &btpe) {
                 (Type::Ptr(_) | Type::USize, Type::USize) => format!(
                     "({a}) + ({b})",
-                    a = node_code(method, a),
-                    b = node_code(method, b)
+                    a = node_code(method, a, strings),
+                    b = node_code(method, b, strings)
                 )
                 .into(),
                 (Type::I8, Type::I8) => format!(
                     "add_i8(({a}),({b}))",
-                    a = node_code(method, a),
-                    b = node_code(method, b)
+                    a = node_code(method, a, strings),
+                    b = node_code(method, b, strings)
                 )
                 .into(),
                 (Type::I16, Type::I16) => format!(
                     "add_i16(({a}),({b}))",
-                    a = node_code(method, a),
-                    b = node_code(method, b)
+                    a = node_code(method, a, strings),
+                    b = node_code(method, b, strings)
                 )
                 .into(),
                 (Type::I32, Type::I32) => format!(
                     "add_i32(({a}),({b}))",
-                    a = node_code(method, a),
-                    b = node_code(method, b)
+                    a = node_code(method, a, strings),
+                    b = node_code(method, b, strings)
                 )
                 .into(),
                 (Type::I64, Type::I64) => format!(
                     "add_i64(({a}),({b}))",
-                    a = node_code(method, a),
-                    b = node_code(method, b)
+                    a = node_code(method, a, strings),
+                    b = node_code(method, b, strings)
                 )
                 .into(),
                 (Type::F32, Type::F32) => format!(
                     "add_f32(({a}),({b}))",
-                    a = node_code(method, a),
-                    b = node_code(method, b)
+                    a = node_code(method, a, strings),
+                    b = node_code(method, b, strings)
                 )
                 .into(),
                 (Type::F64, Type::F64) => format!(
                     "add_f64(({a}),({b}))",
-                    a = node_code(method, a),
-                    b = node_code(method, b)
+                    a = node_code(method, a, strings),
+                    b = node_code(method, b, strings)
                 )
                 .into(),
                 (Type::U8, Type::U8) => format!(
                     "add_u8(({a}),({b}))",
-                    a = node_code(method, a),
-                    b = node_code(method, b)
+                    a = node_code(method, a, strings),
+                    b = node_code(method, b, strings)
                 )
                 .into(),
                 _ => todo!("Can't yet add {atpe:?} and {btpe:?}"),
@@ -407,7 +432,9 @@ fn node_code(method: &Method, node: &CILNode) -> IString {
         //CILNode::LDArgA(loc) => format!("&{name}", name = arg_name(method, *loc)).into(),
         CILNode::LDLoc(loc) => loc_name(method, *loc),
         //CILNode::LDLocA(loc) => format!("&{name}", name = loc_name(method, *loc)).into(),
-        CILNode::LDLen { arr } => format!("({arr}).length", arr = node_code(method, arr)).into(),
+        CILNode::LDLen { arr } => {
+            format!("({arr}).length", arr = node_code(method, arr, strings)).into()
+        }
         _ => {
             eprintln!("Unsuported CIL node {node:?}");
             format!(
@@ -418,12 +445,17 @@ fn node_code(method: &Method, node: &CILNode) -> IString {
         }
     }
 }
-fn call_site_to_name(call_site: &CallSite) -> String {
+fn call_site_to_name(call_site: &CallSite, strings: &AsmStringContainer) -> String {
     if let Some(class) = call_site.class() {
-        let class = escape_type_name(class.name_path());
+        let class = escape_type_name(class.name_path(strings));
         let name = call_site.name();
         let name = escape_type_name(name);
-        let mangled_overloads: String = call_site.signature().inputs().iter().map(mangle).collect();
+        let mangled_overloads: String = call_site
+            .signature()
+            .inputs()
+            .iter()
+            .map(|input| mangle(input, strings))
+            .collect();
         format!("{class}_{name}_{mangled_overloads}")
     } else {
         escape_type_name(call_site.name())

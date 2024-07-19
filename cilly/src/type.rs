@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{utilis::MemoryUsage, DotnetTypeRef, FnSig};
+use crate::{utilis::MemoryUsage, AsmStringContainer, DotnetTypeRef, FnSig};
 #[derive(Serialize, Deserialize, PartialEq, Clone, Eq, Hash, Debug)]
 pub enum Type {
     /// Void type
@@ -31,7 +31,6 @@ pub enum Type {
     Ptr(Box<Self>),
     /// A managed reference `&`. IS NOT EQUIVALENT TO RUST `&`!
     ManagedReference(Box<Self>),
-
     /// Foregin type. Will never be interacted with directly
     Foreign,
     /// Generic argument
@@ -47,6 +46,7 @@ pub enum Type {
         dims: std::num::NonZeroU8,
     },
 }
+
 impl MemoryUsage for Type {
     fn memory_usage(&self, counter: &mut impl crate::utilis::MemoryUsageCounter) -> usize {
         let total_size = std::mem::size_of::<Self>();
@@ -61,6 +61,13 @@ impl MemoryUsage for Type {
     }
 }
 impl Type {
+    pub fn opt(&mut self, strings: &mut AsmStringContainer) {
+        match self {
+            Type::Ptr(inner) | Type::ManagedReference(inner) => inner.opt(strings),
+            Type::DotnetType(dref) => dref.as_mut().opt(strings),
+            _ => (),
+        }
+    }
     /// If this is a reference to a dotnet type, return that type. Will not work with pointers/references.
     #[must_use]
     pub fn as_dotnet(&self) -> Option<DotnetTypeRef> {

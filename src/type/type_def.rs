@@ -10,7 +10,7 @@ use cilly::{
     method::{Method, MethodType},
     size_of,
     type_def::TypeDef,
-    Type,
+    AsmStringContainer, Type,
 };
 use rustc_span::def_id::DefId;
 use rustc_target::abi::Layout;
@@ -49,8 +49,13 @@ pub fn escape_field_name(name: &str) -> IString {
         }
     }
 }
-pub fn closure_name(_def_id: DefId, fields: &[Type], _sig: &cilly::fn_sig::FnSig) -> String {
-    let mangled_fields: String = fields.iter().map(crate::r#type::mangle).collect();
+pub fn closure_name(
+    _def_id: DefId,
+    fields: &[Type],
+    _sig: &cilly::fn_sig::FnSig,
+    map: &AsmStringContainer,
+) -> String {
+    let mangled_fields: String = fields.iter().map(|tpe| cilly::mangle(tpe, map)).collect();
     format!(
         "Closure{field_count}{mangled_fields}",
         field_count = fields.len()
@@ -62,8 +67,9 @@ pub fn closure_typedef(
     fields: &[Type],
     sig: &cilly::fn_sig::FnSig,
     layout: Layout,
+    map: &AsmStringContainer,
 ) -> TypeDef {
-    let name = closure_name(def_id, fields, sig);
+    let name = closure_name(def_id, fields, sig, map);
     let field_iter = fields
         .iter()
         .enumerate()
@@ -93,11 +99,11 @@ pub fn closure_typedef(
     )
 }
 #[must_use]
-pub fn arr_name(element_count: usize, element: &Type) -> IString {
-    cilly::arr_name(element_count, element)
+pub fn arr_name(element_count: usize, element: &Type, map: &AsmStringContainer) -> IString {
+    cilly::arr_name(element_count, element, map)
 }
-pub fn tuple_name(elements: &[Type]) -> IString {
-    let generics: String = elements.iter().map(super::mangle).collect();
+pub fn tuple_name(elements: &[Type], map: &AsmStringContainer) -> IString {
+    let generics: String = elements.iter().map(|t| cilly::mangle(t, map)).collect();
     format!(
         "Tuple{generic_count}{generics}",
         generic_count = generics.len()
@@ -106,8 +112,8 @@ pub fn tuple_name(elements: &[Type]) -> IString {
 }
 
 #[must_use]
-pub fn tuple_typedef(elements: &[Type], layout: Layout) -> TypeDef {
-    let name = tuple_name(elements);
+pub fn tuple_typedef(elements: &[Type], layout: Layout, map: &AsmStringContainer) -> TypeDef {
+    let name = tuple_name(elements, map);
     let field_iter = elements
         .iter()
         .enumerate()
@@ -136,24 +142,15 @@ pub fn tuple_typedef(elements: &[Type], layout: Layout) -> TypeDef {
     )
 }
 #[must_use]
-pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) -> TypeDef {
-    let name = arr_name(element_count, &element);
-    //
-    /* let element_size = if explict_size != 0 {
-        assert!(
-            explict_size % element_count as u64 == 0,
-            "The total array size must be divisible by its element count."
-        );
-        explict_size / (element_count as u64)
-    } else {
-        // WARNING: ZSTs in .NET aren't real(they have size of 1). Handle zero-sized arrays with caution!
-        0
-    };
+pub fn get_array_type(
+    element_count: usize,
+    element: Type,
+    explict_size: u64,
+    map: &AsmStringContainer,
+) -> TypeDef {
+    let name = arr_name(element_count, &element, map);
+    // No string intering could have happended at this stage, so we can safely pass an empty string map.
 
-
-    for field in 0..element_count {
-
-    }*/
     let explicit_offsets = vec![0];
     let fields = vec![("f0".into(), element.clone())];
 
@@ -208,7 +205,7 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
             )],
             vec![Some("this".into()), Some("idx".into()), Some("val".into())],
         );
-        set_usize.validate().unwrap();
+        set_usize.validate(&map).unwrap();
         def.add_method(set_usize);
 
         // get_Address(usize offset)
@@ -239,7 +236,7 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
             )],
             vec![Some("this".into()), Some("idx".into())],
         );
-        get_adress_usize.validate().unwrap();
+        get_adress_usize.validate(map).unwrap();
         def.add_method(get_adress_usize);
 
         // get_Item
@@ -275,7 +272,7 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
             )],
             vec![Some("this".into()), Some("idx".into())],
         );
-        get_item_usize.validate().unwrap();
+        get_item_usize.validate(&map).unwrap();
         def.add_method(get_item_usize);
 
         //to_string.set_ops(ops);

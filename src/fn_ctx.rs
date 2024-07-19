@@ -87,7 +87,7 @@ impl<'tcx, 'validator, 'type_cache> MethodCompileCtx<'tcx, 'validator, 'type_cac
             }
         };
         match ptr_tpe{
-            Type::DotnetType(tpe) if tpe.name_path().contains("FatPtr")=> (),
+            Type::DotnetType(tpe) => (),
             _=>panic!("VALIDATION failed. {ptr_tpe:?} is not a raw pointer type. It is the result of {ptr:?}, compiled from MIR item {node_from:?}")  
         }
     }

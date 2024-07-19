@@ -1,7 +1,7 @@
 use crate::{
     call, call_site::CallSite, cil_iter::CILIterTrait, cil_root::CILRoot,
     field_desc::FieldDescriptor, fn_sig::FnSig, ptr, static_field_desc::StaticFieldDescriptor,
-    DotnetTypeRef, IString, Type,
+    AsmStringContainer, DotnetTypeRef, IString, Type,
 };
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
@@ -1217,7 +1217,7 @@ impl CILNode {
                             continue;
                         }
                         if let Type::DotnetType(dt) = arg_tpe {
-                            if dt.name_path().contains("System.Object") {
+                            if dt.name_path(vctx.strings()).contains("System.Object") {
                                 continue;
                             }
                         }
@@ -1634,11 +1634,20 @@ impl std::ops::Neg for CILNode {
 pub struct ValidationContext<'a> {
     sig: &'a FnSig,
     locals: &'a [(Option<IString>, Type)],
+    strings: &'a AsmStringContainer,
 }
 
 impl<'a> ValidationContext<'a> {
-    pub fn new(sig: &'a FnSig, locals: &'a [(Option<IString>, Type)]) -> Self {
-        Self { sig, locals }
+    pub fn new(
+        sig: &'a FnSig,
+        locals: &'a [(Option<IString>, Type)],
+        strings: &'a AsmStringContainer,
+    ) -> Self {
+        Self {
+            sig,
+            locals,
+            strings,
+        }
     }
 
     pub fn sig(&self) -> &FnSig {
@@ -1647,5 +1656,9 @@ impl<'a> ValidationContext<'a> {
 
     pub fn locals(&self) -> &[(Option<IString>, Type)] {
         self.locals
+    }
+
+    pub fn strings(&self) -> &AsmStringContainer {
+        self.strings
     }
 }

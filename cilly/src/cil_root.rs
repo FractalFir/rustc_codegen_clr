@@ -6,7 +6,7 @@ use crate::{
     fn_sig::FnSig,
     static_field_desc::StaticFieldDescriptor,
     utilis::MemoryUsage,
-    DotnetTypeRef, IString, Type,
+    AsmString, DotnetTypeRef, IString, Type,
 };
 
 use serde::{Deserialize, Serialize};
@@ -148,6 +148,7 @@ pub enum CILRoot {
         value: CILNode,
     },
     SourceFileInfo(SFI),
+    OptimizedSourceFileInfo(std::ops::Range<u64>, std::ops::Range<u64>, AsmString),
     /// Marks the inner pointer operation as volatile.
     Volatile(Box<Self>),
 }
@@ -157,6 +158,7 @@ impl CILRoot {
         match self {
             Self::Volatile(inner) => inner.opt(opt_count),
             Self::SourceFileInfo(_) => (),
+            Self::OptimizedSourceFileInfo(_, _, _) => (),
             Self::STLoc { tree, local: _ } => tree.opt(opt_count),
             Self::BTrue {
                 cond: ops,
@@ -536,6 +538,7 @@ impl CILRoot {
         match self {
             Self::Volatile(inner) => inner.allocate_tmps(curr_loc, locals),
             Self::SourceFileInfo(_) => (),
+            Self::OptimizedSourceFileInfo(_, _, _) => (),
             Self::STLoc { tree, .. } => {
                 tree.allocate_tmps(curr_loc, locals);
             }
@@ -995,6 +998,7 @@ impl CILRoot {
             Self::ReThrow => Ok(()),
             Self::VoidRet => Ok(()),
             Self::SourceFileInfo(_) => Ok(()),
+            Self::OptimizedSourceFileInfo(_, _, _) => Ok(()),
             Self::Nop => Ok(()),
             Self::Throw(execption) => {
                 let tpe = execption.validate(vctx, tmp_loc)?;

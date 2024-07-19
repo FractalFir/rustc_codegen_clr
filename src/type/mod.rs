@@ -9,10 +9,6 @@ pub use r#type::*;
 use rustc_middle::ty::{FloatTy, IntTy, UintTy};
 pub use tycache::*;
 pub use type_def::*;
-#[must_use]
-pub fn mangle(tpe: &Type) -> std::borrow::Cow<'static, str> {
-    cilly::mangle(tpe)
-}
 
 #[must_use]
 pub fn from_int(int_tpe: &IntTy) -> Type {

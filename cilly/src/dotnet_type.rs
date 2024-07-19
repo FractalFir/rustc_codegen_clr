@@ -1,14 +1,20 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{utilis::MemoryUsage, IString, Type};
+use crate::{utilis::MemoryUsage, AsmString, AsmStringContainer, IString, Type};
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Eq, Hash, Debug)]
-pub struct DotnetTypeRef {
-    assembly: Option<IString>,
-    name_path: IString,
-    generics: Vec<Type>,
-    // In cause of `System.BadImageFormatException: Expected value type but got type kind 14` check if `is_valuetype` is always correct!
-    is_valuetype: bool,
+pub enum DotnetTypeRef {
+    Full {
+        assembly: Option<IString>,
+        name_path: IString,
+        generics: Vec<Type>,
+        // In cause of `System.BadImageFormatException: Expected value type but got type kind 14` check if `is_valuetype` is always correct!
+        is_valuetype: bool,
+    },
+    // This type is a valuetype in this assmebly, without any generics.
+    OptimizedRustStruct {
+        name: AsmString,
+    },
 }
 impl DotnetTypeRef {
     #[must_use]
@@ -129,7 +135,7 @@ impl DotnetTypeRef {
         name_path: S2,
     ) -> Self {
         assert!(!name_path.borrow().contains('/'));
-        Self {
+        Self::Full {
             assembly: assembly.map(std::convert::Into::into),
             name_path: name_path.into(),
             generics: Vec::new(),
@@ -138,7 +144,10 @@ impl DotnetTypeRef {
     }
     #[must_use]
     pub const fn is_valuetype(&self) -> bool {
-        self.is_valuetype
+        match self {
+            DotnetTypeRef::Full { is_valuetype, .. } => *is_valuetype,
+            DotnetTypeRef::OptimizedRustStruct { .. } => true,
+        }
     }
     #[must_use]
     pub const fn tpe_prefix(&self) -> &'static str {
@@ -148,29 +157,48 @@ impl DotnetTypeRef {
             "class"
         }
     }
-    pub fn set_valuetype(&mut self, is_valuetype: bool) {
-        self.is_valuetype = is_valuetype;
+    pub fn set_valuetype(&mut self, set_valuetype: bool) {
+        match self {
+            DotnetTypeRef::Full { is_valuetype, .. } => *is_valuetype = set_valuetype,
+            DotnetTypeRef::OptimizedRustStruct { .. } => panic!(),
+        }
     }
     #[must_use]
-    pub fn array(element: &Type, length: usize) -> Self {
-        let name = crate::arr_name(length, element);
+    pub fn array(element: &Type, length: usize, strings: &AsmStringContainer) -> Self {
+        let name = crate::arr_name(length, element, strings);
         Self::new::<crate::IString, _>(None, name)
     }
 
     pub fn asm(&self) -> Option<&str> {
-        self.assembly.as_ref().map(std::convert::AsRef::as_ref)
+        match self {
+            DotnetTypeRef::Full { assembly, .. } => {
+                assembly.as_ref().map(std::convert::AsRef::as_ref)
+            }
+            DotnetTypeRef::OptimizedRustStruct { name } => None,
+        }
     }
     #[must_use]
-    pub fn name_path(&self) -> &str {
-        &self.name_path
+    pub fn name_path<'a, 'b: 'a>(&'a self, strings: &'b AsmStringContainer) -> &'a str {
+        match self {
+            DotnetTypeRef::Full { name_path, .. } => name_path,
+            DotnetTypeRef::OptimizedRustStruct { name } => strings.get(*name),
+        }
     }
+
     #[must_use]
     pub fn generics(&self) -> &[Type] {
-        self.generics.as_ref()
+        match self {
+            DotnetTypeRef::Full { generics, .. } => generics,
+            DotnetTypeRef::OptimizedRustStruct { name } => &[],
+        }
     }
-    pub fn set_generics(&mut self, generics: impl Into<Vec<Type>>) {
-        self.generics = generics.into();
+    pub fn set_generics(&mut self, set_generics: impl Into<Vec<Type>>) {
+        match self {
+            DotnetTypeRef::Full { generics, .. } => *generics = set_generics.into(),
+            DotnetTypeRef::OptimizedRustStruct { name } => panic!(),
+        }
     }
+
     #[must_use]
     pub fn interlocked() -> Self {
         Self::new(Some("System.Threading"), "System.Threading.Interlocked").with_valuetype(false)
@@ -236,17 +264,51 @@ impl DotnetTypeRef {
     pub fn dictionary_entry() -> Self {
         Self::new(Some("System.Runtime"), "System.Collections.DictionaryEntry")
     }
+
+    pub(crate) fn opt(&mut self, strings: &mut AsmStringContainer) {
+        match self {
+            DotnetTypeRef::Full {
+                assembly,
+                name_path,
+                generics,
+                is_valuetype,
+            } => {
+                if generics.is_empty() && assembly.is_none() && *is_valuetype {
+                    *self = DotnetTypeRef::OptimizedRustStruct {
+                        name: strings.alloc(name_path.clone()),
+                    }
+                }
+            }
+
+            DotnetTypeRef::OptimizedRustStruct { .. } => (),
+        }
+    }
 }
 impl MemoryUsage for DotnetTypeRef {
     fn memory_usage(&self, counter: &mut impl crate::utilis::MemoryUsageCounter) -> usize {
-        let tpe_name = std::any::type_name::<Self>();
-        let self_size = std::mem::size_of::<Self>();
-        let asm_size = self.assembly.memory_usage(counter);
-        let name_size = self.name_path.memory_usage(counter);
-        let generic_size = self.generics.memory_usage(counter);
+        match self {
+            DotnetTypeRef::Full {
+                assembly,
+                name_path,
+                generics,
+                ..
+            } => {
+                let tpe_name = std::any::type_name::<Self>();
+                let self_size = std::mem::size_of::<Self>();
+                let asm_size = assembly.memory_usage(counter);
+                let name_size = name_path.memory_usage(counter);
+                let generic_size = generics.memory_usage(counter);
 
-        let size = self_size + asm_size + name_size + generic_size;
-        counter.add_type(tpe_name, size);
-        size
+                let size = self_size + asm_size + name_size + generic_size;
+                counter.add_type(tpe_name, size);
+                size
+            }
+            DotnetTypeRef::OptimizedRustStruct { name } => {
+                let tpe_name = std::any::type_name::<Self>();
+                let self_size = std::mem::size_of::<Self>();
+                counter.add_type(tpe_name, self_size);
+                self_size
+            }
+        }
     }
 }
