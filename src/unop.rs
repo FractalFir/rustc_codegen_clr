@@ -68,7 +68,7 @@ pub fn unop<'tcx>(
             let tpe = ctx.type_from_cache(ty).as_dotnet().unwrap();
             ld_field!(
                 parrent_node,
-                FieldDescriptor::new(tpe, Type::USize, "metadata".into())
+                FieldDescriptor::new(tpe, Type::USize, crate::METADATA.into())
             )
         }
     }

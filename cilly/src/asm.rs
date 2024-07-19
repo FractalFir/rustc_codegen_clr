@@ -1,3 +1,5 @@
+use std::borrow::BorrowMut;
+
 use fxhash::{FxBuildHasher, FxHashMap};
 
 use serde::{Deserialize, Serialize};
@@ -392,12 +394,13 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
             .iter_mut()
             .flat_map(BasicBlock::trees_mut)
         {
-            if let CILRoot::SetStaticField { descr, value } = tree.root_mut() {
+            let mut root_ref = tree.root_mut();
+            if let CILRoot::SetStaticField { descr, value } = root_ref.clone() {
                 // Assigement to a dead static, remove.
-                if !alive_fields.contains(descr) {
+                if !alive_fields.contains(&descr) {
                     debug_assert!(descr.name().contains('a'));
                     debug_assert!(matches!(value, CILNode::Call(_) | CILNode::NewObj(_)));
-                    *tree = CILRoot::Nop.into();
+                    *root_ref = CILRoot::Nop.into();
                 }
             }
         }
@@ -547,14 +550,9 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
                 })
                 .map(|name| (name.clone(), self.types.get(&name).unwrap().clone())),
         );
-        resurected.insert(
-            "RustVoid".into(),
-            self.types.get("RustVoid").cloned().unwrap(),
-        );
-        resurected.insert(
-            "Foreign".into(),
-            self.types.get("Foreign").cloned().unwrap(),
-        );
+        resurected.insert("RustVoid".into(), TypeDef::nameonly("RustVoid"));
+        resurected.insert("Foreign".into(), TypeDef::nameonly("Foreign"));
+
         let mut to_resurect: FxHashMap<IString, _> =
             FxHashMap::with_hasher(FxBuildHasher::default());
         let mut cycle_count = 0;

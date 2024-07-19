@@ -413,9 +413,12 @@ impl CILRoot {
     }
     #[must_use]
     pub fn throw(msg: &str) -> Self {
-        let mut class = DotnetTypeRef::new(Some("System.Runtime"), "System.Exception");
+        let mut class = DotnetTypeRef::new(
+            Some("System.Runtime".to_owned()),
+            "System.Exception".to_owned(),
+        );
         class.set_valuetype(false);
-        let name = ".ctor".into();
+        let name = ".ctor".to_owned().into();
         let signature = FnSig::new(
             &[class.clone().into(), DotnetTypeRef::string_type().into()],
             Type::Void,
@@ -427,9 +430,12 @@ impl CILRoot {
     }
     #[must_use]
     pub fn debug(msg: &str) -> Self {
-        let mut class = DotnetTypeRef::new(Some("System.Console"), "System.Console");
+        let mut class = DotnetTypeRef::new(
+            Some("System.Console".to_owned()),
+            "System.Console".to_owned(),
+        );
         class.set_valuetype(false);
-        let name = "WriteLine".into();
+        let name = "WriteLine".to_owned().into();
         let signature = FnSig::new(&[DotnetTypeRef::string_type().into()], Type::Void);
         let message = tiny_message(msg);
         Self::Call {
@@ -1058,7 +1064,7 @@ impl CILRoot {
             column.start < column.end,
             "PDB files must have columns that contain at least one element "
         );
-        Self::SourceFileInfo(Box::new((line, column, file.into())))
+        Self::SourceFileInfo(Box::new((line, column, file.to_owned().into())))
     }
     #[must_use]
     pub fn set_field(
@@ -1091,11 +1097,11 @@ fn tiny_message(msg: &str) -> CILNode {
 fn runtime_string(pieces: &[&str]) -> CILNode {
     match pieces.len() {
         0 => panic!("Incorrect piece count"),
-        1 => CILNode::LdStr(pieces[0].into()),
+        1 => CILNode::LdStr(pieces[0].to_owned().into()),
         2 => call!(
             CallSite::new_extern(
                 DotnetTypeRef::string_type(),
-                "Concat".into(),
+                "Concat".to_owned().into(),
                 FnSig::new(
                     &[
                         Type::DotnetType(Box::new(DotnetTypeRef::string_type())),
@@ -1106,14 +1112,14 @@ fn runtime_string(pieces: &[&str]) -> CILNode {
                 true
             ),
             [
-                CILNode::LdStr(pieces[0].into()),
-                CILNode::LdStr(pieces[1].into())
+                CILNode::LdStr(pieces[0].to_owned().into()),
+                CILNode::LdStr(pieces[1].to_owned().into())
             ]
         ),
         3 => call!(
             CallSite::new_extern(
                 DotnetTypeRef::string_type(),
-                "Concat".into(),
+                "Concat".to_owned().into(),
                 FnSig::new(
                     &[
                         Type::DotnetType(Box::new(DotnetTypeRef::string_type())),
@@ -1125,15 +1131,15 @@ fn runtime_string(pieces: &[&str]) -> CILNode {
                 true
             ),
             [
-                CILNode::LdStr(pieces[0].into()),
-                CILNode::LdStr(pieces[1].into()),
-                CILNode::LdStr(pieces[2].into())
+                CILNode::LdStr(pieces[0].to_owned().into()),
+                CILNode::LdStr(pieces[1].to_owned().into()),
+                CILNode::LdStr(pieces[2].to_owned().into())
             ]
         ),
         4 => call!(
             CallSite::new_extern(
                 DotnetTypeRef::string_type(),
-                "Concat".into(),
+                "Concat".to_owned().into(),
                 FnSig::new(
                     &[
                         Type::DotnetType(Box::new(DotnetTypeRef::string_type())),
@@ -1146,10 +1152,10 @@ fn runtime_string(pieces: &[&str]) -> CILNode {
                 true
             ),
             [
-                CILNode::LdStr(pieces[0].into()),
-                CILNode::LdStr(pieces[1].into()),
-                CILNode::LdStr(pieces[2].into()),
-                CILNode::LdStr(pieces[3].into())
+                CILNode::LdStr(pieces[0].to_owned().into()),
+                CILNode::LdStr(pieces[1].to_owned().into()),
+                CILNode::LdStr(pieces[2].to_owned().into()),
+                CILNode::LdStr(pieces[3].to_owned().into())
             ]
         ),
         _ => {
@@ -1157,7 +1163,7 @@ fn runtime_string(pieces: &[&str]) -> CILNode {
             call!(
                 CallSite::new_extern(
                     DotnetTypeRef::string_type(),
-                    "Concat".into(),
+                    "Concat".to_owned().into(),
                     FnSig::new(
                         &[
                             Type::DotnetType(Box::new(DotnetTypeRef::string_type())),

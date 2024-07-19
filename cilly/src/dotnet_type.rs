@@ -154,7 +154,7 @@ impl DotnetTypeRef {
     #[must_use]
     pub fn array(element: &Type, length: usize) -> Self {
         let name = crate::arr_name(length, element);
-        Self::new::<Box<str>, _>(None, name)
+        Self::new::<crate::IString, _>(None, name)
     }
 
     pub fn asm(&self) -> Option<&str> {

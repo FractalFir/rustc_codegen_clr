@@ -207,7 +207,7 @@ pub fn try_resolve_const_size(size: Const) -> Result<usize, &'static str> {
 }
 
 /// Converts a generic argument to a string, and panics if it could not.
-pub fn garg_to_string<'tcx>(garg: GenericArg<'tcx>, ctx: TyCtxt<'tcx>) -> String {
+pub fn garg_to_string<'tcx>(garg: GenericArg<'tcx>, ctx: TyCtxt<'tcx>) -> IString {
     let str_const = garg
         .as_const()
         .expect("Generic argument was not an constant!");
@@ -224,7 +224,9 @@ pub fn garg_to_string<'tcx>(garg: GenericArg<'tcx>, ctx: TyCtxt<'tcx>) -> String
                 tpe.is_str(),
                 "Generic argument was not a string, but {str_const:?}!"
             );
-            String::from_utf8(raw_bytes.into()).expect("String constant invalid!")
+            String::from_utf8(raw_bytes.into())
+                .expect("String constant invalid!")
+                .into()
         }
         _ => todo!("Can't convert generic arg of const kind {kind:?} to string!"),
     }

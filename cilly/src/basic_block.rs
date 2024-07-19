@@ -1,3 +1,5 @@
+use std::ops::DerefMut;
+
 use fxhash::{FxBuildHasher, FxHashSet};
 use serde::{Deserialize, Serialize};
 
@@ -227,8 +229,7 @@ impl BasicBlock {
     pub fn iter_cil(&self) -> impl Iterator<Item = CILIterElem> {
         self.iter_tree_roots().flat_map(|root| root.into_iter())
     }
-    /// Returns a iterator over `CILIterElemMut`
-    pub fn iter_cil_mut(&mut self) -> impl Iterator<Item = CILIterElemMut> {
+    pub fn tree_iter(&mut self) -> impl Iterator<Item = &mut CILTree> {
         let handler_bbs = self
             .handler
             .iter_mut()
@@ -237,8 +238,14 @@ impl BasicBlock {
             .flat_map(|block| block.trees.iter_mut());
         let self_blocks = self.trees.iter_mut();
         let block_iter = self_blocks.chain(handler_bbs);
-        block_iter.flat_map(|tree| tree.root_mut().into_iter())
+        block_iter
     }
+    /*
+    /// Returns a iterator over `CILIterElemMut`
+    pub fn iter_cil_mut(&mut self) -> impl Iterator<Item = CILIterElemMut> {
+        self.tree_iter()
+            .flat_map(|tree| tree.root_mut().deref_mut().into_iter())
+    }*/
 
     #[must_use]
     pub fn handler(&self) -> Option<&Handler> {

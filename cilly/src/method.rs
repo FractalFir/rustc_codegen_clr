@@ -1,18 +1,17 @@
-use std::{
-    hash::Hash,
-    hash::Hasher,
-    ops::{Deref, DerefMut},
-};
-
 use fxhash::{FxBuildHasher, FxHashMap, FxHashSet};
 use serde::{Deserialize, Serialize};
+use std::{
+    borrow::BorrowMut,
+    hash::{Hash, Hasher},
+    ops::{Deref, DerefMut},
+};
 
 use crate::{
     access_modifier::AccessModifer,
     basic_block::BasicBlock,
     call_site::CallSite,
     cil_iter::{CILIterElem, CILIterTrait},
-    cil_iter_mut::{CILIterElemMut, CILIterMutTrait},
+    cil_iter_mut::{CILIterElemMut, CILIterMut, CILIterMutTrait},
     cil_node::{CILNode, ValidationContext},
     cil_root::CILRoot,
     cil_tree::CILTree,
@@ -131,6 +130,7 @@ impl Method {
         self.local_sets(local).count()
     }
     pub fn const_opt_pass(&mut self) {
+        use crate::cil_iter_mut::{CILIterElemMut, CILIterMutTrait};
         // If a local is set only once, and its address is never taken, it is likely to be const
         // TODO: this is inefficient Consider checking all locals at once?
         let luo = LocalUsageInfo::from_method(self);
@@ -141,10 +141,15 @@ impl Method {
         for local in locals_address_not_taken {
             let sets = self.local_sets(local as u32);
             if let Some(val) = all_evals_identical(sets) {
-                self.blocks
+                let mut tmp: Vec<_> = self
+                    .blocks
                     .iter_mut()
                     .flat_map(|block| block.all_trees_mut())
-                    .flat_map(|tree| tree.root_mut().into_iter().nodes())
+                    .map(|tree| tree.root_mut())
+                    .collect();
+
+                tmp.iter_mut()
+                    .flat_map(|tree| tree.deref_mut().into_iter().nodes())
                     .for_each(|node| match node {
                         CILNode::LDLoc(loc) if *loc == local as u32 => *node = val.clone(),
                         CILNode::LDLocA(loc) if *loc == local as u32 => {
@@ -180,9 +185,13 @@ impl Method {
         let blocks = &mut self.blocks;
         let mut locals = Vec::new();
         let mut local_map: FxHashMap<u32, u32> = FxHashMap::with_hasher(FxBuildHasher::default());
-        blocks
+        let mut tmp: Vec<_> = blocks
             .iter_mut()
-            .flat_map(|block| block.iter_cil_mut())
+            .flat_map(|block| block.tree_iter())
+            .map(|tree| tree.root_mut())
+            .collect();
+        tmp.iter_mut()
+            .flat_map(|root| root.deref_mut().into_iter())
             .for_each(|node| match node {
                 CILIterElemMut::Node(CILNode::LDLoc(loc) | CILNode::LDLocA(loc))
                 | CILIterElemMut::Root(CILRoot::STLoc { local: loc, .. }) => {
@@ -249,7 +258,7 @@ impl Method {
             access,
             method_type,
             sig,
-            name: name.into(),
+            name: name.to_owned().into(),
             locals,
             blocks,
             attributes: Vec::new(),
@@ -262,7 +271,7 @@ impl Method {
     }
     /// Sets the name of this method.
     pub fn set_name(&mut self, name: &str) {
-        self.name = <IString>::from(name);
+        self.name = <IString>::from(name.to_owned());
     }
     /// Adds a local variable of type `local`
     pub fn add_local(&mut self, local: Type, name: Option<IString>) -> usize {
@@ -368,7 +377,12 @@ impl Method {
     }
     /// Returns a call site that describes this method.
     pub fn call_site(&self) -> CallSite {
-        CallSite::new(None, self.name().into(), self.sig().clone(), true)
+        CallSite::new(
+            None,
+            self.name().to_owned().into(),
+            self.sig().clone(),
+            true,
+        )
     }
     /// Alocates all temporary variables within this method.
     pub fn allocate_temporaries(&mut self) {
@@ -442,9 +456,14 @@ impl Method {
                 }
                 .into(),
             );
-            self.blocks
+            let mut tmp: Vec<_> = self
+                .blocks
                 .iter_mut()
-                .flat_map(|blck| blck.iter_cil_mut())
+                .flat_map(|block| block.tree_iter())
+                .map(|tree| tree.root_mut())
+                .collect();
+            tmp.iter_mut()
+                .flat_map(|root| root.deref_mut().into_iter())
                 .for_each(|node| match node {
                     CILIterElemMut::Root(root) => {
                         if let CILRoot::STLoc { local, tree } = root {

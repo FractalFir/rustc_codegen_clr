@@ -1,19 +1,31 @@
+use std::borrow::Borrow;
+
 use serde::{Deserialize, Serialize};
 
-use crate::{cil_node::ValidationContext, cil_root::CILRoot, IString, Type};
+use crate::{
+    cil_node::ValidationContext,
+    cil_root::CILRoot,
+    intercow::{InterCow, InterCowRefMut},
+    IString, Type,
+};
 
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 /// A root of a CIL Tree with metadata about local variables it reads/writes into.  
 pub struct CILTree {
+    //tree: InterCow<CILRoot>,
     tree: CILRoot,
 }
 impl From<CILRoot> for CILTree {
     fn from(tree: CILRoot) -> Self {
-        Self { tree }
+        Self {
+            //tree: InterCow::new(tree),
+            tree,
+        }
     }
 }
 impl CILTree {
     pub fn fix_for_exception_handler(&mut self, id: u32) {
+        //self.tree.borrow_mut().fix_for_exception_handler(id);
         self.tree.fix_for_exception_handler(id);
     }
     /// Returns a list of blocks this object may jump to.
@@ -23,8 +35,9 @@ impl CILTree {
     /// Converts a tree with subtrees into multiple trees.
     #[must_use]
     pub fn shed_trees(self) -> Vec<Self> {
-        let trees: Vec<Self> = self
-            .tree
+        //let tree: CILRoot = (*self.tree).clone();
+        let tree: CILRoot = self.tree;
+        let trees: Vec<Self> = tree
             .sheed_trees()
             .into_iter()
             .map(std::convert::Into::into)
@@ -39,10 +52,12 @@ impl CILTree {
     }
     /// Optimizes this tree
     pub fn opt(&mut self, opt_count: &mut usize) {
+        // self.tree.borrow_mut().opt(opt_count);
         self.tree.opt(opt_count);
     }
     /// Allocates the temporary variables this tree uses.
     pub fn allocate_tmps(&mut self, locals: &mut Vec<(Option<IString>, Type)>) {
+        // self.tree.borrow_mut().allocate_tmps(None, locals);
         self.tree.allocate_tmps(None, locals);
     }
     pub fn validate(&self, vctx: ValidationContext) -> Result<(), String> {
@@ -50,6 +65,7 @@ impl CILTree {
     }
     // TODO: remember to make this recompute tree metadtata when it is added
     pub fn root_mut(&mut self) -> &mut CILRoot {
+        //self.tree.borrow_mut()
         &mut self.tree
     }
 }
@@ -92,12 +108,11 @@ fn test_sheed() {
             )))),
         }),
     )));
-    let tree = CILTree {
-        tree: CILRoot::STLoc {
-            local: 7,
-            tree: node,
-        },
-    };
+    let tree: CILTree = CILRoot::STLoc {
+        local: 7,
+        tree: node,
+    }
+    .into();
     let _trees = tree.shed_trees();
 }
 #[test]

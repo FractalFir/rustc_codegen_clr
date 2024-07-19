@@ -233,7 +233,7 @@ impl CILNode {
         let gc_handle = call!(
             CallSite::new(
                 Some(DotnetTypeRef::gc_handle()),
-                "Alloc".into(),
+                "Alloc".to_owned().into(),
                 FnSig::new(
                     &[Type::DotnetType(Box::new(DotnetTypeRef::object_type()))],
                     Type::DotnetType(Box::new(DotnetTypeRef::gc_handle()))
@@ -245,7 +245,7 @@ impl CILNode {
         call!(
             CallSite::new(
                 Some(DotnetTypeRef::gc_handle()),
-                "op_Explicit".into(),
+                "op_Explicit".to_owned().into(),
                 FnSig::new(
                     &[Type::DotnetType(Box::new(DotnetTypeRef::gc_handle()))],
                     Type::ISize
@@ -259,7 +259,7 @@ impl CILNode {
         let gc_handle = call!(
             CallSite::new(
                 Some(DotnetTypeRef::gc_handle()),
-                "FromIntPtr".into(),
+                "FromIntPtr".to_owned().into(),
                 FnSig::new(
                     &[Type::ISize],
                     Type::DotnetType(Box::new(DotnetTypeRef::gc_handle()))
@@ -276,7 +276,7 @@ impl CILNode {
         let object = call!(
             CallSite::new(
                 Some(DotnetTypeRef::gc_handle()),
-                "get_Target".into(),
+                "get_Target".to_owned().into(),
                 FnSig::new(
                     &[Type::ManagedReference(Box::new(Type::DotnetType(
                         Box::new(DotnetTypeRef::gc_handle())
@@ -294,7 +294,7 @@ impl CILNode {
         match tpe {
             Type::U128 => call!(
                 CallSite::builtin(
-                    "select_u128".into(),
+                    "select_u128".to_owned().into(),
                     FnSig::new(&[Type::U128, Type::U128, Type::Bool], Type::U128),
                     true
                 ),
@@ -302,7 +302,7 @@ impl CILNode {
             ),
             Type::I128 => call!(
                 CallSite::builtin(
-                    "select_i128".into(),
+                    "select_i128".to_owned().into(),
                     FnSig::new(&[Type::I128, Type::I128, Type::Bool], Type::I128),
                     true
                 ),
@@ -310,7 +310,7 @@ impl CILNode {
             ),
             Type::USize => call!(
                 CallSite::builtin(
-                    "select_usize".into(),
+                    "select_usize".to_owned().into(),
                     FnSig::new(&[Type::USize, Type::USize, Type::Bool], Type::USize),
                     true
                 ),
@@ -318,7 +318,7 @@ impl CILNode {
             ),
             Type::Ptr(_) => call!(
                 CallSite::builtin(
-                    "select_usize".into(),
+                    "select_usize".to_owned().into(),
                     FnSig::new(&[Type::USize, Type::USize, Type::Bool], Type::USize),
                     true
                 ),
@@ -327,7 +327,7 @@ impl CILNode {
             .cast_ptr(tpe),
             Type::ISize => call!(
                 CallSite::builtin(
-                    "select_isize".into(),
+                    "select_isize".to_owned().into(),
                     FnSig::new(&[Type::ISize, Type::ISize, Type::Bool], Type::ISize),
                     true
                 ),
@@ -335,7 +335,7 @@ impl CILNode {
             ),
             Type::U64 => call!(
                 CallSite::builtin(
-                    "select_u64".into(),
+                    "select_u64".to_owned().into(),
                     FnSig::new(&[Type::U64, Type::U64, Type::Bool], Type::U64),
                     true
                 ),
@@ -343,7 +343,7 @@ impl CILNode {
             ),
             Type::I64 => call!(
                 CallSite::builtin(
-                    "select_i64".into(),
+                    "select_i64".to_owned().into(),
                     FnSig::new(&[Type::I64, Type::I64, Type::Bool], Type::I64),
                     true
                 ),
@@ -351,7 +351,7 @@ impl CILNode {
             ),
             Type::U32 => call!(
                 CallSite::builtin(
-                    "select_u32".into(),
+                    "select_u32".to_owned().into(),
                     FnSig::new(&[Type::U32, Type::U32, Type::Bool], Type::U32),
                     true
                 ),
@@ -359,7 +359,7 @@ impl CILNode {
             ),
             Type::I32 => call!(
                 CallSite::builtin(
-                    "select_i32".into(),
+                    "select_i32".to_owned().into(),
                     FnSig::new(&[Type::I32, Type::I32, Type::Bool], Type::I32),
                     true
                 ),
@@ -367,7 +367,7 @@ impl CILNode {
             ),
             Type::U16 => call!(
                 CallSite::builtin(
-                    "select_u16".into(),
+                    "select_u16".to_owned().into(),
                     FnSig::new(&[Type::U16, Type::U16, Type::Bool], Type::U16),
                     true
                 ),
@@ -375,7 +375,7 @@ impl CILNode {
             ),
             Type::I16 => call!(
                 CallSite::builtin(
-                    "select_i16".into(),
+                    "select_i16".to_owned().into(),
                     FnSig::new(&[Type::I16, Type::I16, Type::Bool], Type::I16),
                     true
                 ),
@@ -383,7 +383,7 @@ impl CILNode {
             ),
             Type::U8 | Type::Bool => call!(
                 CallSite::builtin(
-                    "select_u8".into(),
+                    "select_u8".to_owned().into(),
                     FnSig::new(&[Type::U8, Type::U8, Type::Bool], Type::U8),
                     true
                 ),
@@ -391,7 +391,7 @@ impl CILNode {
             ),
             Type::I8 => call!(
                 CallSite::builtin(
-                    "select_i8".into(),
+                    "select_i8".to_owned().into(),
                     FnSig::new(&[Type::I8, Type::I8, Type::Bool], Type::I8),
                     true
                 ),
@@ -1181,7 +1181,9 @@ impl CILNode {
                         }
                         Ok(Type::DotnetType(class.clone().into()))
                     }
-                    None => Err("Newobj instruction witn no class specified".into()),
+                    None => Err("Newobj instruction witn no class specified"
+                        .to_owned()
+                        .into()),
                 }
             }
             Self::Call(call_op_args) | Self::CallVirt(call_op_args) => {

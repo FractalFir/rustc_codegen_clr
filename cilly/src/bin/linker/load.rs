@@ -28,7 +28,8 @@ fn load_ar(r: &mut impl std::io::Read) -> std::io::Result<(Assembly, Vec<Linkabl
     while let Some(entry_result) = archive.next_entry() {
         let mut entry = entry_result?;
         let name: String = String::from_utf8_lossy(entry.header().identifier()).into();
-        if name.contains(".bc") {
+
+        if name.contains(".bc") || name.contains(".cilly") {
             let mut asm_bytes = Vec::with_capacity(0x100);
             entry
                 .read_to_end(&mut asm_bytes)
@@ -57,7 +58,7 @@ pub fn load_assemblies(
     for asm_path in raw_files {
         let mut asm_file =
             std::fs::File::open(asm_path).expect("ERROR:Could not open the assembly file!");
-        let mut asm_bytes = Vec::with_capacity(0x100);
+        let mut asm_bytes = Vec::with_capacity(0x10000);
         asm_file
             .read_to_end(&mut asm_bytes)
             .expect("ERROR: Could not load the assembly file!");

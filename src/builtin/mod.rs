@@ -1124,7 +1124,7 @@ add_method_from_trees!(
         BasicBlock::new(vec![CILRoot::Ret { tree: ldc_i32!(0) }.into()], 3, None)
     ],
     vec![
-        (Some("data_ptr".into()), Type::USize),
+        (Some(crate::DATA_PTR.into()), Type::USize),
         (
             Some("exception".into()),
             Type::DotnetType(Box::new(DotnetTypeRef::exception())),

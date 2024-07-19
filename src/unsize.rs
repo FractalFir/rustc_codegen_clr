@@ -155,11 +155,12 @@ pub fn unsize2<'tcx>(
     );
     let fat_ptr_type = DotnetTypeRef::new::<&str, _>(None, "FatPtru8");
 
-    let metadata_field = FieldDescriptor::new(fat_ptr_type.clone(), Type::USize, "metadata".into());
+    let metadata_field =
+        FieldDescriptor::new(fat_ptr_type.clone(), Type::USize, crate::METADATA.into());
     let ptr_field = FieldDescriptor::new(
         fat_ptr_type.clone(),
         Type::Ptr(Type::Void.into()),
-        "data_pointer".into(),
+        crate::DATA_PTR.into(),
     );
 
     let target_ptr = CILNode::LoadAddresOfTMPLocal;
@@ -262,12 +263,15 @@ pub fn unsize<'tcx>(
     match (info.source_points_to.kind(), target_points_to.kind()) {
         (TyKind::Array(_, length), _) => {
             let length = crate::utilis::try_resolve_const_size(*length).unwrap();
-            let metadata_field =
-                FieldDescriptor::new(info.target_dotnet.clone(), Type::USize, "metadata".into());
+            let metadata_field = FieldDescriptor::new(
+                info.target_dotnet.clone(),
+                Type::USize,
+                crate::METADATA.into(),
+            );
             let ptr_field = FieldDescriptor::new(
                 info.target_dotnet,
                 Type::Ptr(Type::Void.into()),
-                "data_pointer".into(),
+                crate::DATA_PTR.into(),
             );
             let init_len = CILRoot::SetField {
                 addr: Box::new(info.target_ptr.clone()),
@@ -329,7 +333,7 @@ pub fn unsize<'tcx>(
                                         .as_dotnet()
                                         .unwrap(),
                                         ptr!(Type::Void),
-                                        "data_pointer".into(),
+                                        crate::DATA_PTR.into(),
                                     )
                                 )
                                 .cast_ptr(ptr!(info.target_type.clone())),
@@ -347,10 +351,13 @@ pub fn unsize<'tcx>(
             let alloc_id = ctx
                 .tcx()
                 .vtable_allocation((info.source_points_to, data.principal()));
-            let metadata_field =
-                FieldDescriptor::new(info.target_dotnet.clone(), Type::USize, "metadata".into());
+            let metadata_field = FieldDescriptor::new(
+                info.target_dotnet.clone(),
+                Type::USize,
+                crate::METADATA.into(),
+            );
             let ptr_field =
-                FieldDescriptor::new(info.target_dotnet, ptr!(Type::Void), "data_pointer".into());
+                FieldDescriptor::new(info.target_dotnet, ptr!(Type::Void), crate::DATA_PTR.into());
             let init_vtable_ptr = CILRoot::SetField {
                 addr: Box::new(info.target_ptr.clone()),
                 value: Box::new(

@@ -334,3 +334,7 @@ pub extern "Rust" fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
     std::alloc::set_alloc_error_hook(alloc_erorr_hook::custom_alloc_error_hook);
     Box::new(MyBackend)
 }
+/// The metadata of a slice
+const METADATA: &'static str = "m";
+/// The data pointer of a slice
+const DATA_PTR: &'static str = "d";

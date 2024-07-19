@@ -574,8 +574,8 @@ impl TyCache {
                 name.clone(),
                 vec![],
                 vec![
-                    ("data_pointer".into(), Type::Ptr(Type::Void.into())),
-                    ("metadata".into(), Type::USize),
+                    (crate::DATA_PTR.into(), Type::Ptr(Type::Void.into())),
+                    (crate::METADATA.into(), Type::USize),
                 ],
                 vec![],
                 None,

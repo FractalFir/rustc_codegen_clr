@@ -138,8 +138,8 @@ pub fn tuple_typedef(elements: &[Type], layout: Layout) -> TypeDef {
 #[must_use]
 pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) -> TypeDef {
     let name = arr_name(element_count, &element);
-    let mut fields = Vec::with_capacity(element_count);
-    let element_size = if explict_size != 0 {
+    //
+    /* let element_size = if explict_size != 0 {
         assert!(
             explict_size % element_count as u64 == 0,
             "The total array size must be divisible by its element count."
@@ -150,11 +150,13 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
         0
     };
 
-    let mut explicit_offsets = Vec::with_capacity(element_count);
+
     for field in 0..element_count {
-        fields.push((format!("f_{field}").into(), element.clone()));
-        explicit_offsets.push(u32::try_from(field as u64 * element_size).unwrap());
-    }
+
+    }*/
+    let explicit_offsets = vec![0];
+    let fields = vec![("f0".into(), element.clone())];
+
     //TODO:check array aligement
     let mut def = TypeDef::new(
         AccessModifer::Public,
@@ -191,7 +193,7 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
                                 FieldDescriptor::boxed(
                                     (&def).into(),
                                     element.clone(),
-                                    "f_0".to_string().into(),
+                                    "f0".to_string().into(),
                                 )
                             )) + CILNode::LDArg(1) * conv_usize!(size_of!(element.clone())))
                             .cast_ptr(Type::Ptr(Box::new(element.clone()))),
@@ -226,7 +228,7 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
                         FieldDescriptor::boxed(
                             (&def).into(),
                             element.clone(),
-                            "f_0".to_string().into(),
+                            "f0".to_string().into(),
                         )
                     )) + CILNode::LDArg(1) * conv_usize!(size_of!(element.clone())))
                     .cast_ptr(Type::Ptr(Box::new(element.clone()))),
@@ -259,7 +261,7 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
                                 FieldDescriptor::boxed(
                                     (&def).into(),
                                     element.clone(),
-                                    "f_0".to_string().into(),
+                                    "f0".to_string().into(),
                                 )
                             )) + CILNode::LDArg(1) * conv_usize!(size_of!(element.clone())))
                             .cast_ptr(Type::Ptr(Box::new(element.clone()))),

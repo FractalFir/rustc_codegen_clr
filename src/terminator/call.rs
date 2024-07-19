@@ -320,7 +320,7 @@ pub fn call<'tcx>(
             FieldDescriptor::new(
                 DotnetTypeRef::new::<&str, _>(None, "FatPtrDyn"),
                 Type::USize,
-                "metadata".into()
+                crate::METADATA.into()
             )
         );
 
@@ -340,7 +340,7 @@ pub fn call<'tcx>(
             FieldDescriptor::new(
                 DotnetTypeRef::new::<&str, _>(None, "FatPtrDyn"),
                 Type::Ptr(Type::Void.into()),
-                "data_pointer".into()
+                crate::DATA_PTR.into()
             )
         );
         // Get the call info

@@ -85,7 +85,7 @@ pub fn magic_type<'tcx>(
             subst.len() == 2,
             "Managed object reference must have exactly 2 generic arguments!"
         );
-        let assembly: Box<str> = garg_to_string(subst[0], ctx).into();
+        let assembly = garg_to_string(subst[0], ctx);
         let assembly = Some(assembly).filter(|assembly| !assembly.is_empty());
         let name = garg_to_string(subst[1], ctx);
         let dotnet_tpe = DotnetTypeRef::new(assembly, name).with_valuetype(false);
@@ -95,7 +95,7 @@ pub fn magic_type<'tcx>(
             subst.len() == 2,
             "Managed struct reference must have exactly 2 generic arguments!"
         );
-        let assembly: Box<str> = garg_to_string(subst[0], ctx).into();
+        let assembly = garg_to_string(subst[0], ctx);
         let assembly = Some(assembly).filter(|assembly| !assembly.is_empty());
         let name = garg_to_string(subst[1], ctx);
         let dotnet_tpe = DotnetTypeRef::new(assembly, name);

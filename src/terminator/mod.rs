@@ -188,7 +188,7 @@ pub fn handle_terminator<'tcx>(
                             FieldDescriptor::new(
                                 fat_ptr_type.as_dotnet().unwrap(),
                                 Type::USize,
-                                "metadata".into()
+                                crate::METADATA.into()
                             )
                         );
                         // Get the addres of the object
@@ -197,7 +197,7 @@ pub fn handle_terminator<'tcx>(
                             FieldDescriptor::new(
                                 fat_ptr_type.as_dotnet().unwrap(),
                                 Type::Ptr(Type::Void.into()),
-                                "data_pointer".into()
+                                crate::DATA_PTR.into()
                             )
                         );
                         // We asusme the drop is the first method in the vtable

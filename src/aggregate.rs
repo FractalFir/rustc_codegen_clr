@@ -200,7 +200,7 @@ pub fn handle_aggregate<'tcx>(
                 desc: Box::new(FieldDescriptor::new(
                     fat_ptr_type.as_dotnet().unwrap(),
                     Type::Ptr(Type::Void.into()),
-                    "data_pointer".into(),
+                    crate::DATA_PTR.into(),
                 )),
             };
             let assign_metadata = CILRoot::SetField {
@@ -209,7 +209,7 @@ pub fn handle_aggregate<'tcx>(
                 desc: Box::new(FieldDescriptor::new(
                     fat_ptr_type.as_dotnet().unwrap(),
                     Type::USize,
-                    "metadata".into(),
+                    crate::METADATA.into(),
                 )),
             };
 

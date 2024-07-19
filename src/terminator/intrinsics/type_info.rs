@@ -46,7 +46,8 @@ pub fn size_of_val<'tcx>(
         match pointed_ty.kind() {
             TyKind::Str => {
                 let slice_tpe: DotnetTypeRef = ctx.type_from_cache(ptr_ty).as_dotnet().unwrap();
-                let descriptor = FieldDescriptor::new(slice_tpe, Type::USize, "metadata".into());
+                let descriptor =
+                    FieldDescriptor::new(slice_tpe, Type::USize, crate::METADATA.into());
                 let addr = crate::operand::operand_address(&args[0].node, ctx);
                 return place_set(destination, ld_field!(addr, descriptor), ctx);
             }
@@ -54,7 +55,8 @@ pub fn size_of_val<'tcx>(
                 let slice_tpe: DotnetTypeRef = ctx.type_from_cache(ptr_ty).as_dotnet().unwrap();
                 let inner = ctx.monomorphize(*inner);
                 let inner_type = ctx.type_from_cache(inner);
-                let descriptor = FieldDescriptor::new(slice_tpe, Type::USize, "metadata".into());
+                let descriptor =
+                    FieldDescriptor::new(slice_tpe, Type::USize, crate::METADATA.into());
                 let addr = crate::operand::operand_address(&args[0].node, ctx);
                 return place_set(
                     destination,
@@ -66,7 +68,8 @@ pub fn size_of_val<'tcx>(
             _ => {
                 let slice_tpe: DotnetTypeRef = ctx.type_from_cache(ptr_ty).as_dotnet().unwrap();
 
-                let descriptor = FieldDescriptor::new(slice_tpe, Type::USize, "metadata".into());
+                let descriptor =
+                    FieldDescriptor::new(slice_tpe, Type::USize, crate::METADATA.into());
                 let addr = crate::operand::operand_address(&args[0].node, ctx);
                 return place_set(
                     destination,

@@ -2,7 +2,11 @@ use std::marker::PhantomData;
 
 use ordered_float::OrderedFloat;
 
-use crate::{cil_node::CILNode, cil_root::CILRoot};
+use crate::{
+    cil_node::CILNode,
+    cil_root::CILRoot,
+    intercow::{InterCow, InterCowRefMut},
+};
 
 #[derive(Debug)]
 enum CILIterElemUnsafe<'a> {
@@ -546,6 +550,17 @@ impl<'a> IntoIterator for &'a mut CILRoot {
         CILIterMut::new_root(self)
     }
 }
+/*
+struct ICowIterMut<'a> {
+    cow: InterCowRefMut<'a, CILRoot>,
+}
+impl<'a> Iterator for ICowIterMut<'a> {
+    type Item = &'a mut CILIterElemMut<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.cow.iter
+    }
+}*/
 pub trait CILIterMutTrait<'a> {
     fn nodes(self) -> impl Iterator<Item = &'a mut CILNode>;
     fn roots(self) -> impl Iterator<Item = &'a mut CILRoot>;

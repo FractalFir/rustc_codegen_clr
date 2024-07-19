@@ -59,7 +59,7 @@ pub fn address_last_dereference<'tcx>(
                 field: FieldDescriptor::new(
                     curr_type.as_dotnet().unwrap(),
                     Type::Ptr(Type::Void.into()),
-                    "data_pointer".into(),
+                    crate::DATA_PTR.into(),
                 )
                 .into(),
                 addr: addr_calc.into(),
@@ -79,7 +79,7 @@ pub fn address_last_dereference<'tcx>(
             field: FieldDescriptor::new(
                 curr_type.as_dotnet().unwrap(),
                 Type::Ptr(Type::Void.into()),
-                "data_pointer".into(),
+                crate::DATA_PTR.into(),
             )
             .into(),
             addr: addr_calc.into(),
@@ -127,7 +127,7 @@ pub fn place_elem_adress<'tcx>(
                     let ptr_descr = FieldDescriptor::new(
                         curr_type.as_dotnet().unwrap(),
                         ptr!(Type::Void),
-                        "data_pointer".into(),
+                        crate::DATA_PTR.into(),
                     );
                     return CILNode::TemporaryLocal(Box::new((
                         curr_type.clone(),
@@ -187,7 +187,7 @@ pub fn place_elem_adress<'tcx>(
                     let desc = FieldDescriptor::new(
                         slice,
                         Type::Ptr(Type::Void.into()),
-                        "data_pointer".into(),
+                        crate::DATA_PTR.into(),
                     );
                     // This is a false positive
                     #[allow(unused_parens)]
@@ -225,11 +225,11 @@ pub fn place_elem_adress<'tcx>(
             let curr_dotnet = curr_type.as_dotnet().unwrap();
             if *from_end {
                 let metadata_field =
-                    FieldDescriptor::new(curr_dotnet.clone(), Type::USize, "metadata".into());
+                    FieldDescriptor::new(curr_dotnet.clone(), Type::USize, crate::METADATA.into());
                 let ptr_field = FieldDescriptor::new(
                     curr_dotnet.clone(),
                     Type::Ptr(Type::Void.into()),
-                    "data_pointer".into(),
+                    crate::DATA_PTR.into(),
                 );
                 CILNode::TemporaryLocal(Box::new((
                     curr_type,
@@ -256,11 +256,11 @@ pub fn place_elem_adress<'tcx>(
                 )))
             } else {
                 let metadata_field =
-                    FieldDescriptor::new(curr_dotnet.clone(), Type::USize, "metadata".into());
+                    FieldDescriptor::new(curr_dotnet.clone(), Type::USize, crate::METADATA.into());
                 let ptr_field = FieldDescriptor::new(
                     curr_dotnet.clone(),
                     Type::Ptr(Type::Void.into()),
-                    "data_pointer".into(),
+                    crate::DATA_PTR.into(),
                 );
                 CILNode::TemporaryLocal(Box::new((
                     curr_type,
@@ -304,9 +304,10 @@ pub fn place_elem_adress<'tcx>(
                     let desc = FieldDescriptor::new(
                         slice.clone(),
                         Type::Ptr(Type::Void.into()),
-                        "data_pointer".into(),
+                        crate::DATA_PTR.into(),
                     );
-                    let len = FieldDescriptor::new(slice.clone(), Type::USize, "metadata".into());
+                    let len =
+                        FieldDescriptor::new(slice.clone(), Type::USize, crate::METADATA.into());
                     let index = if *from_end {
                         //eprintln!("Slice index from end is:{offset}");
                         CILNode::Sub(

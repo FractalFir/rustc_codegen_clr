@@ -139,7 +139,7 @@ pub fn place_elem_body<'tcx>(
                     let desc = FieldDescriptor::new(
                         slice,
                         Type::Ptr(Type::Void.into()),
-                        "data_pointer".into(),
+                        crate::DATA_PTR.into(),
                     );
                     let addr = CILNode::Add(
                         Box::new(CILNode::TransmutePtr {
@@ -225,7 +225,7 @@ pub fn place_elem_body<'tcx>(
                     let desc = FieldDescriptor::new(
                         slice.clone(),
                         Type::Ptr(Type::Void.into()),
-                        "data_pointer".into(),
+                        crate::DATA_PTR.into(),
                     );
                     let metadata = FieldDescriptor::new(slice, Type::USize, "metadata".into());
                     let addr = CILNode::TransmutePtr {

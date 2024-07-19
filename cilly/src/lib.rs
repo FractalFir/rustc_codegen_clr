@@ -2,8 +2,9 @@
 pub mod field_desc;
 pub mod r#type;
 
-use cil_root::SFI;
+use internment::Intern;
 pub use r#type::*;
+
 pub type IString = Box<str>;
 pub mod dotnet_type;
 pub use dotnet_type::*;
@@ -24,6 +25,7 @@ pub mod entrypoint;
 pub mod ilasm_exporter;
 pub mod ilasm_op;
 pub mod intercow;
+pub mod interns;
 pub mod libc_fns;
 pub mod method;
 pub mod static_field_desc;
@@ -108,7 +110,7 @@ pub enum IlasmFlavour {
     Clasic,
     Modern,
 }
-pub fn sfi_debug_print(sfi: &SFI) -> String {
+pub fn sfi_debug_print(sfi: &crate::cil_root::SFI) -> String {
     format!(
         "ldstr {name:?}
         call void [System.Console]System.Console::Write(string)

@@ -576,6 +576,7 @@ fn export_node(
         }
         CILNode::LdStr(string) => {
             depth.pad(out)?;
+            let string: &str = string.as_ref();
             write!(out, "ldstr {string:?}")
         }
         CILNode::CallI(fn_ptr_and_sig) => {

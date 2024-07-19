@@ -103,7 +103,7 @@ fn place_elem_get<'a>(
                     let desc = FieldDescriptor::new(
                         slice,
                         Type::Ptr(Type::Void.into()),
-                        "data_pointer".into(),
+                        crate::DATA_PTR.into(),
                     );
                     let size = crate::casts::int_to_int(
                         Type::I32,
@@ -162,9 +162,9 @@ fn place_elem_get<'a>(
                     let data_pointer = FieldDescriptor::new(
                         slice.clone(),
                         Type::Ptr(Type::Void.into()),
-                        "data_pointer".into(),
+                        crate::DATA_PTR.into(),
                     );
-                    let metadata = FieldDescriptor::new(slice, Type::USize, "metadata".into());
+                    let metadata = FieldDescriptor::new(slice, Type::USize, crate::METADATA.into());
 
                     let addr = CILNode::TransmutePtr {
                         val: Box::new(ld_field!(addr_calc.clone(), data_pointer)),

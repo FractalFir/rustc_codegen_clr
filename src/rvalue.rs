@@ -283,7 +283,7 @@ pub fn handle_rvalue<'tcx>(
                 TyKind::Slice(inner) => {
                     let slice_tpe = ctx.slice_ty(*inner).as_dotnet().unwrap();
                     let descriptor =
-                        FieldDescriptor::new(slice_tpe, Type::USize, "metadata".into());
+                        FieldDescriptor::new(slice_tpe, Type::USize, crate::METADATA.into());
                     let addr = crate::place::place_address_raw(operand, ctx);
                     assert!(
                         !matches!(addr, CILNode::LDLoc(_)),
@@ -425,7 +425,7 @@ fn ptr_to_ptr<'tcx>(
                         FieldDescriptor::new(
                             source_type.as_dotnet().unwrap(),
                             Type::Ptr(Type::Void.into()),
-                            "data_pointer".into(),
+                            crate::DATA_PTR.into(),
                         )
                     )),
                     new_ptr: Box::new(target_type),

@@ -564,7 +564,7 @@ fn iter() {
     let root = CILRoot::Call {
         site: Box::new(CallSite::new(
             None,
-            "bob".into(),
+            "bob".to_owned().into(),
             FnSig::new(&[Type::I32, Type::F32], Type::Void),
             true,
         )),

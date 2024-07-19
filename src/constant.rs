@@ -75,11 +75,11 @@ pub(crate) fn load_const_value<'tcx>(
             let slice_type = ctx.type_from_cache(const_ty);
             let slice_dotnet = slice_type.as_dotnet().expect("Slice type invalid!");
             let metadata_field =
-                FieldDescriptor::new(slice_dotnet.clone(), Type::USize, "metadata".into());
+                FieldDescriptor::new(slice_dotnet.clone(), Type::USize, crate::METADATA.into());
             let ptr_field = FieldDescriptor::new(
                 slice_dotnet,
                 Type::Ptr(Type::Void.into()),
-                "data_pointer".into(),
+                crate::DATA_PTR.into(),
             );
             // TODO: find a better way to get an alloc_id. This is likely to be incoreect.
             let alloc_id = ctx.tcx().reserve_and_set_memory_alloc(data);
