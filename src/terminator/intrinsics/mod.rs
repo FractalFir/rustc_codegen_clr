@@ -618,7 +618,7 @@ pub fn handle_intrinsic<'tcx>(
             debug_assert_eq!(
                 args.len(),
                 2,
-                "The intrinsic `min_align_of_val` MUST take in exactly 1 argument!"
+                "The intrinsic `ptr_offset_from_unsigned` MUST take in exactly 1 argument!"
             );
             let tpe = ctx.monomorphize(
                 call_instance.args[0]
@@ -1188,7 +1188,7 @@ fn intrinsic_slow<'tcx>(
         // assert_eq!(args.len(),1,"The intrinsic `unlikely` MUST take in exactly 1 argument!");
         place_set(destination, handle_operand(&args[0].node, ctx), ctx)
     } else if fn_name.contains("volitale_load") {
-        return volitale_load(args, destination, ctx);
+        volitale_load(args, destination, ctx)
     } else if fn_name.contains("type_id") {
         let tpe = ctx.monomorphize(
             call_instance.args[0]
@@ -1201,7 +1201,7 @@ fn intrinsic_slow<'tcx>(
             DotnetTypeRef::type_type(),
         );
         let gethash_sig = FnSig::new(&[DotnetTypeRef::type_type().into()], Type::I32);
-        return place_set(
+        place_set(
             destination,
             call!(
                 CallSite::boxed(
@@ -1229,11 +1229,27 @@ fn intrinsic_slow<'tcx>(
                 ))]
             ),
             ctx,
-        );
+        )
     } else if fn_name.contains("size_of_val") {
-        return size_of_val(args, destination, ctx, call_instance);
+        size_of_val(args, destination, ctx, call_instance)
     } else if fn_name.contains("is_val_statically_known") {
         is_val_statically_known(args, destination, ctx)
+    } else if fn_name.contains("min_align_of_val") {
+        debug_assert_eq!(
+            args.len(),
+            1,
+            "The intrinsic `min_align_of_val` MUST take in exactly 1 argument!"
+        );
+        let tpe = ctx.monomorphize(
+            call_instance.args[0]
+                .as_type()
+                .expect("needs_drop works only on types!"),
+        );
+        place_set(
+            destination,
+            conv_usize!(ldc_u64!(crate::utilis::align_of(tpe, ctx.tcx()))),
+            ctx,
+        )
     } else if fn_name.contains("typed_swap") {
         let pointed_ty = ctx.monomorphize(
             call_instance.args[0]

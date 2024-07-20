@@ -116,9 +116,7 @@ impl Method {
                 CILIterElemMut::Node(CILNode::LDFtn(site)) => {
                     site.opt(strings);
                 }
-                /*CILIterElemMut::Root(CILRoot::Call { site, args } | CILRoot::CallVirt { site, args } )=>{
-                    site.signature()
-                }*/
+
                 CILIterElemMut::Node(_) => (),
                 CILIterElemMut::Root(_) => (),
             });

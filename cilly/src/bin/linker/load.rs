@@ -33,7 +33,7 @@ fn load_ar(r: &mut impl std::io::Read) -> std::io::Result<(Assembly, Vec<Linkabl
         } else {
             continue;
         };
-        if ext.contains(".bc") || ext.contains(".cilly") {
+        if ext.contains("bc") || ext.contains("cilly") {
             let mut asm_bytes = Vec::with_capacity(0x100);
             entry
                 .read_to_end(&mut asm_bytes)
@@ -41,7 +41,7 @@ fn load_ar(r: &mut impl std::io::Read) -> std::io::Result<(Assembly, Vec<Linkabl
             let assembly = postcard::from_bytes(&asm_bytes)
                 .unwrap_or_else(|_| panic!("ERROR:Could not decode the assembly file {name}!"));
             final_assembly = final_assembly.join(assembly);
-        } else if ext.contains(".o") {
+        } else if ext.contains("o") {
             let mut file_bytes = Vec::with_capacity(0x100);
             entry
                 .read_to_end(&mut file_bytes)

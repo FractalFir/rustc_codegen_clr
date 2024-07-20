@@ -363,7 +363,9 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
         // Saves on storage and memory
         method.optimize_sfi(self.string_map_mut());
         method.optimize_types(self.string_map_mut());
-        self.functions.insert(method.call_site(), method);
+        let mut cs = method.call_site();
+        cs.opt(self.string_map_mut());
+        self.functions.insert(cs, method);
     }
     /// Returns the list of all calls within the assembly. Calls may repeat.
     #[must_use]
