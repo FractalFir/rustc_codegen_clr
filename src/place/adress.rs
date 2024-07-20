@@ -149,7 +149,7 @@ pub fn place_elem_adress<'tcx>(
                         ]
                         .into(),
                         CILNode::LdObj {
-                            ptr: Box::new(CILNode::TransmutePtr {
+                            ptr: Box::new(CILNode::CastPtr {
                                 val: CILNode::LoadAddresOfTMPLocal.into(),
                                 new_ptr: Box::new(ptr!(field_type.clone())),
                             }),
@@ -191,7 +191,7 @@ pub fn place_elem_adress<'tcx>(
                     );
                     // This is a false positive
                     #[allow(unused_parens)]
-                    (CILNode::TransmutePtr {
+                    (CILNode::CastPtr {
                         val: Box::new(ld_field!(addr_calc.clone(), desc)),
                         new_ptr: Box::new(Type::Ptr(Box::new(inner_type.clone()))),
                     } + conv_usize!(size_of!(inner_type)) * conv_usize!(index))
@@ -318,7 +318,7 @@ pub fn place_elem_adress<'tcx>(
                         conv_usize!(ldc_u64!(*offset))
                         //ops.extend(derf_op);
                     };
-                    CILNode::TransmutePtr {
+                    CILNode::CastPtr {
                         val: Box::new(ld_field!(addr_calc.clone(), desc)),
                         new_ptr: Box::new(Type::Ptr(Box::new(inner_type.clone()))),
                     } + (call!(

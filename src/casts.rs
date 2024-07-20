@@ -374,7 +374,7 @@ fn to_int(target: &Type, operand: CILNode) -> CILNode {
         Type::U64 => conv_u64!(operand),
         Type::ISize => conv_isize!(operand),
         Type::USize => conv_usize!(operand),
-        Type::Ptr(tpe) => CILNode::TransmutePtr {
+        Type::Ptr(tpe) => CILNode::CastPtr {
             val: Box::new(conv_usize!(operand)),
             new_ptr: Box::new(Type::Ptr(tpe.clone())),
         },

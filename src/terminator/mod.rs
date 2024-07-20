@@ -206,7 +206,7 @@ pub fn handle_terminator<'tcx>(
                             0
                         );
                         let drop_fn_ptr = CILNode::LDIndPtr {
-                            ptr: Box::new(CILNode::TransmutePtr {
+                            ptr: Box::new(CILNode::CastPtr {
                                 val: Box::new(vtable_ptr),
                                 new_ptr: Box::new(Type::Ptr(Box::new(Type::DelegatePtr(
                                     Box::new(FnSig::new(

@@ -178,7 +178,7 @@ pub fn handle_aggregate<'tcx>(
                 return CILNode::SubTrees(Box::new((
                     [CILRoot::STIndPtr(
                         init_addr,
-                        CILNode::TransmutePtr {
+                        CILNode::CastPtr {
                             val: Box::new(handle_operand(data, ctx)),
                             new_ptr: Box::new(Type::Ptr(Box::new(Type::Ptr(Box::new(
                                 fat_ptr_type.clone(),
@@ -194,7 +194,7 @@ pub fn handle_aggregate<'tcx>(
             // Assign the components
             let assign_ptr = CILRoot::SetField {
                 addr: Box::new(init_addr.clone()),
-                value: Box::new(CILNode::TransmutePtr {
+                value: Box::new(CILNode::CastPtr {
                     val: Box::new(values[0].1.clone()),
                     new_ptr: Box::new(Type::Ptr(Type::Void.into())),
                 }),

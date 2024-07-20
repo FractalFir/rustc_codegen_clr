@@ -128,7 +128,7 @@ pub fn handle_rvalue<'tcx>(
                 (
                     Type::ISize | Type::USize | Type::Ptr(_),
                     Type::ISize | Type::USize | Type::Ptr(_),
-                ) => CILNode::TransmutePtr {
+                ) => CILNode::CastPtr {
                     val: Box::new(handle_operand(operand, ctx)),
                     new_ptr: Box::new(dst),
                 },
@@ -142,7 +142,7 @@ pub fn handle_rvalue<'tcx>(
                     crate::place::deref_op(
                         crate::place::PlaceTy::Ty(dst_ty),
                         ctx,
-                        CILNode::TransmutePtr {
+                        CILNode::CastPtr {
                             val: Box::new(CILNode::LoadAddresOfTMPLocal),
                             new_ptr: Box::new(Type::Ptr(Box::new(dst))),
                         },
@@ -172,7 +172,7 @@ pub fn handle_rvalue<'tcx>(
                 crate::place::deref_op(
                     crate::place::PlaceTy::Ty(boxed_dst),
                     ctx,
-                    CILNode::TransmutePtr {
+                    CILNode::CastPtr {
                         val: Box::new(CILNode::LoadAddresOfTMPLocal),
                         new_ptr: Box::new(Type::Ptr(Box::new(boxed_dst_type))),
                     },
@@ -187,7 +187,7 @@ pub fn handle_rvalue<'tcx>(
             let target = ctx.monomorphize(*target);
             let target = ctx.type_from_cache(target);
             // Cast from usize/isize to any *T is a NOP, so we just have to load the operand.
-            CILNode::TransmutePtr {
+            CILNode::CastPtr {
                 val: Box::new(handle_operand(operand, ctx)),
                 new_ptr: Box::new(target),
             }
@@ -200,7 +200,7 @@ pub fn handle_rvalue<'tcx>(
             let target = ctx.monomorphize(*target);
             let target = ctx.type_from_cache(target);
             // Cast to usize/isize from any *T is a NOP, so we just have to load the operand.
-            CILNode::TransmutePtr {
+            CILNode::CastPtr {
                 val: Box::new(handle_operand(operand, ctx)),
                 new_ptr: Box::new(target),
             }
@@ -402,7 +402,7 @@ fn ptr_to_ptr<'tcx>(
                 CILNode::TemporaryLocal(Box::new((
                     source_type,
                     [CILRoot::SetTMPLocal { value: parrent }].into(),
-                    CILNode::TransmutePtr {
+                    CILNode::CastPtr {
                         val: Box::new(CILNode::LoadAddresOfTMPLocal),
                         new_ptr: Box::new(Type::Ptr(Box::new(target_type))),
                     },
@@ -419,7 +419,7 @@ fn ptr_to_ptr<'tcx>(
                     value: handle_operand(operand, ctx),
                 }]
                 .into(),
-                CILNode::TransmutePtr {
+                CILNode::CastPtr {
                     val: Box::new(ld_field!(
                         CILNode::LoadAddresOfTMPLocal,
                         FieldDescriptor::new(
@@ -435,7 +435,7 @@ fn ptr_to_ptr<'tcx>(
         (false, true) => {
             panic!("ERROR: a non-unsizing cast turned a sized ptr into an unsized one")
         }
-        _ => CILNode::TransmutePtr {
+        _ => CILNode::CastPtr {
             val: Box::new(handle_operand(operand, ctx)),
             new_ptr: Box::new(target_type),
         },

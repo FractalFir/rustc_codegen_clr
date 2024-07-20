@@ -300,6 +300,15 @@ fn autopatch(asm: &mut Assembly, native_pastrough: &NativePastroughInfo) {
             ));
             continue;
         }
+        if libc_fns::LIBM_FNS.iter().any(|libc_fn| *libc_fn == name) {
+            externs.push((
+                call.name().into(),
+                call.signature().to_owned(),
+                get_libm(),
+                false,
+            ));
+            continue;
+        }
         if let Some(lib) = native_pastrough.get(name) {
             externs.push((
                 call.name().into(),
@@ -339,6 +348,12 @@ fn get_libc() -> &'static str {
 lazy_static! {
     static ref LIBC: String = get_libc_();
 }
+fn get_libm() -> &'static str {
+    LIBM.as_ref()
+}
+lazy_static! {
+    static ref LIBM: String = get_libm_();
+}
 #[cfg(target_os = "linux")]
 fn get_libc_() -> String {
     let mut libc = None;
@@ -367,12 +382,48 @@ fn get_libc_() -> String {
     libc.unwrap_or("libc.so.6".into())
     //todo!()
 }
+#[cfg(target_os = "linux")]
+fn get_libm_() -> String {
+    let mut libc = None;
+    for entry in std::fs::read_dir("/lib").unwrap() {
+        let Ok(entry) = entry else {
+            continue;
+        };
+        if entry.metadata().unwrap().is_file() {
+            let name = entry.file_name().to_string_lossy().to_string();
+            if name.contains("libm.so.") {
+                libc = Some(entry.path().to_str().unwrap().to_owned());
+            }
+        }
+    }
+    for entry in std::fs::read_dir("/lib64").unwrap() {
+        let Ok(entry) = entry else {
+            continue;
+        };
+        if entry.metadata().unwrap().is_file() {
+            let name = entry.file_name().to_string_lossy().to_string();
+            if name.contains("libm.so.") {
+                libc = Some(entry.path().to_str().unwrap().to_owned());
+            }
+        }
+    }
+    libc.unwrap_or("libm.so.6".into())
+    //todo!()
+}
 #[cfg(target_os = "windows")]
 fn get_libc_() -> String {
     "ucrtbase.dll".to_string()
 }
+#[cfg(target_os = "windows")]
+fn get_libm_() -> String {
+    "ucrtbase.dll".to_string()
+}
 #[cfg(target_os = "macos")]
 fn get_libc_() -> String {
+    "libSystem.B.dylib".to_string()
+}
+#[cfg(target_os = "macos")]
+fn get_libm_() -> String {
     "libSystem.B.dylib".to_string()
 }
 

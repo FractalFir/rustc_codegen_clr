@@ -632,7 +632,7 @@ fn export_node(
         }
         CILNode::PointerToConstValue(_) => todo!(),
 
-        CILNode::TransmutePtr { val, new_ptr: _ } => {
+        CILNode::CastPtr { val, new_ptr: _ } => {
             export_node(out, val, depth.incremented(), il_flavour, strings)
         }
         CILNode::LdFalse => {

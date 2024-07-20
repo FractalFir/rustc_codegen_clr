@@ -162,11 +162,11 @@ pub fn handle_intrinsic<'tcx>(
                 destination,
                 eq!(
                     compare_bytes(
-                        CILNode::TransmutePtr {
+                        CILNode::CastPtr {
                             val: Box::new(handle_operand(&args[0].node, ctx)),
                             new_ptr: Box::new(Type::Ptr(Box::new(Type::U8))),
                         },
-                        CILNode::TransmutePtr {
+                        CILNode::CastPtr {
                             val: Box::new(handle_operand(&args[1].node, ctx)),
                             new_ptr: Box::new(Type::Ptr(Box::new(Type::U8))),
                         },
@@ -629,7 +629,7 @@ pub fn handle_intrinsic<'tcx>(
             place_set(
                 destination,
                 CILNode::DivUn(
-                    CILNode::TransmutePtr {
+                    CILNode::CastPtr {
                         val: sub!(
                             handle_operand(&args[0].node, ctx),
                             handle_operand(&args[1].node, ctx)
@@ -681,7 +681,7 @@ pub fn handle_intrinsic<'tcx>(
             place_set(
                 destination,
                 CILNode::Div(
-                    CILNode::TransmutePtr {
+                    CILNode::CastPtr {
                         val: sub!(
                             handle_operand(&args[0].node, ctx),
                             handle_operand(&args[1].node, ctx)
@@ -838,11 +838,11 @@ pub fn handle_intrinsic<'tcx>(
                     true,
                 )),
                 args: [
-                    CILNode::TransmutePtr {
+                    CILNode::CastPtr {
                         val: Box::new(handle_operand(&args[0].node, ctx)),
                         new_ptr: Box::new(Type::Ptr(Box::new(Type::Void))),
                     },
-                    CILNode::TransmutePtr {
+                    CILNode::CastPtr {
                         val: Box::new(handle_operand(&args[1].node, ctx)),
                         new_ptr: Box::new(Type::Ptr(Box::new(Type::Void))),
                     },
@@ -1213,11 +1213,11 @@ fn intrinsic_slow<'tcx>(
                 true,
             )),
             args: [
-                CILNode::TransmutePtr {
+                CILNode::CastPtr {
                     val: Box::new(handle_operand(&args[0].node, ctx)),
                     new_ptr: Box::new(Type::Ptr(Box::new(Type::Void))),
                 },
-                CILNode::TransmutePtr {
+                CILNode::CastPtr {
                     val: Box::new(handle_operand(&args[1].node, ctx)),
                     new_ptr: Box::new(Type::Ptr(Box::new(Type::Void))),
                 },

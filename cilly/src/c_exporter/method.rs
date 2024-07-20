@@ -560,7 +560,7 @@ fn node_code(
                 _ => todo!("Can't yet `ZeroExtendToU64` {tpe:?}"),
             }
         }
-        CILNode::TransmutePtr { val, new_ptr } => format!(
+        CILNode::CastPtr { val, new_ptr } => format!(
             "({new_ptr})({val})",
             new_ptr = c_tpe(new_ptr, strings),
             val = node_code(method, val, strings)

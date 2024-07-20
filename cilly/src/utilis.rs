@@ -635,65 +635,21 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
     asm.add_static(ptr!(ptr!(Type::U8)), "environ", false);
     init_cs
 }
-// Enviorn init
-/*
-using System;
-using System.Collections;
-using System.Diagnostics;
-using System.Reflection;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using System.Security;
-using System.Security.Permissions;
-
-[assembly: CompilationRelaxations(8)]
-[assembly: RuntimeCompatibility(WrapNonExceptionThrows = true)]
-[assembly: Debuggable(DebuggableAttribute.DebuggingModes.IgnoreSymbolStoreSequencePoints)]
-[assembly: SecurityPermission(SecurityAction.RequestMinimum, SkipVerification = true)]
-[assembly: AssemblyVersion("0.0.0.0")]
-[module: UnverifiableCode]
-
-
-public class C
-{
-    private unsafe static byte** environ = null;
-
-    public unsafe byte** M()
-    {
-        if (environ != null)
-        {
-            return environ;
-        }
-        IDictionary environmentVariables = Environment.GetEnvironmentVariables();
-        int count = environmentVariables.Count;
-        byte** ptr = (byte**)NativeMemory.AlignedAlloc((nuint)((count + 1) * sizeof(byte*)), (nuint)sizeof(byte*));
-        nuint num = 0u;
-        IDictionaryEnumerator enumerator = environmentVariables.GetEnumerator();
-        try
-        {
-            while (enumerator.MoveNext())
-            {
-                ValueTuple<string, string> valueTuple = (ValueTuple<string, string>)enumerator.Current;
-                string s = string.Concat(valueTuple.Item1, "=", valueTuple.Item2);
-                ptr[num] = (byte*)Marshal.StringToCoTaskMemUTF8(s);
-                num++;
-            }
-        }
-        finally
-        {
-            IDisposable disposable = enumerator as IDisposable;
-            if (disposable != null)
-            {
-                disposable.Dispose();
-            }
-        }
-        ptr[count] = null;
-        environ = ptr;
-        return environ;
+static CHARS: &[char] = &[
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i',
+    'j', 'k', 'l', 'm', 'n', 'o', 'p', 'r', 's', 't', 'u', 'w', 'v', 'x', 'y', 'z', 'A', 'B', 'C',
+    'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'R', 'S', 'T', 'U', 'W', 'V',
+    'X', 'Y', 'Z', '_',
+];
+pub fn encode(mut int: u64) -> String {
+    let mut res = String::new();
+    while int != 0 {
+        let curr = int % (CHARS.len() as u64);
+        res.push(CHARS[curr as usize]);
+        int /= CHARS.len() as u64;
     }
+    res
 }
-
-*/
 #[test]
 fn argv() {
     let mut asm = Assembly::empty();

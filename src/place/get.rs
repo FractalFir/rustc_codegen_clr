@@ -111,7 +111,7 @@ fn place_elem_get<'a>(
                         CILNode::SizeOf(inner_type.clone().into()),
                     );
                     let addr = CILNode::Add(
-                        Box::new(CILNode::TransmutePtr {
+                        Box::new(CILNode::CastPtr {
                             val: CILNode::LDField {
                                 addr: addr_calc.into(),
                                 field: desc.into(),
@@ -166,7 +166,7 @@ fn place_elem_get<'a>(
                     );
                     let metadata = FieldDescriptor::new(slice, Type::USize, crate::METADATA.into());
 
-                    let addr = CILNode::TransmutePtr {
+                    let addr = CILNode::CastPtr {
                         val: Box::new(ld_field!(addr_calc.clone(), data_pointer)),
                         new_ptr: Box::new(Type::Ptr(Box::new(inner_type.clone()))),
                     } + call!(

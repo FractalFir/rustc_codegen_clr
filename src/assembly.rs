@@ -22,7 +22,8 @@ use cilly::{
     method::{Method, MethodType},
     ptr,
     static_field_desc::StaticFieldDescriptor,
-    utilis, FnSig,
+    utilis::{self, encode},
+    FnSig,
 };
 use rustc_middle::{
     mir::{
@@ -114,7 +115,7 @@ fn allocation_initializer_method(
     trees.push(
         CILRoot::STLoc {
             local: 0,
-            tree: CILNode::TransmutePtr {
+            tree: CILNode::CastPtr {
                 val: Box::new(call!(
                     CallSite::alloc(),
                     [
@@ -649,7 +650,7 @@ pub fn add_allocation(
     // Alloc ids are *not* unique across all crates. Adding the hash here ensures we don't overwrite allocations during linking
     // TODO:consider using something better here / making the hashes stable.
     let byte_hash = calculate_hash(&bytes);
-    let alloc_fld: IString = format!("alloc_{alloc_id:x}_{byte_hash:x}").into();
+    let alloc_fld: IString = format!("a_{}{}", encode(alloc_id), encode(byte_hash)).into();
     let field_desc =
         StaticFieldDescriptor::new(None, Type::Ptr(Type::U8.into()), alloc_fld.clone());
     if !asm.static_fields_mut().contains_key(&alloc_fld) {

@@ -315,7 +315,7 @@ fn node_code(method: &Method, node: &CILNode, strings: &AsmStringContainer) -> I
             format!("{name}({call_inner})").into()
         }
         // Transmute Ptr does nothing.
-        CILNode::TransmutePtr { val, new_ptr } => format!(
+        CILNode::CastPtr { val, new_ptr } => format!(
             "(/*TransmutePtr to {new_ptr}*/{val})",
             new_ptr = mangle(new_ptr, strings),
             val = node_code(method, val, strings)

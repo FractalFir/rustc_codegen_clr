@@ -329,7 +329,7 @@ pub fn call<'tcx>(
         let vtable_offset = conv_usize!(vtable_index * size_of!(Type::USize));
         // Get the address of the function ptr, and load it
         let fn_ptr = CILNode::LDIndISize {
-            ptr: Box::new(CILNode::TransmutePtr {
+            ptr: Box::new(CILNode::CastPtr {
                 val: Box::new(vtable_ptr + vtable_offset),
                 new_ptr: Box::new(Type::Ptr(Box::new(Type::ISize))),
             }),

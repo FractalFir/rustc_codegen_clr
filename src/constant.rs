@@ -48,7 +48,7 @@ fn create_const_from_data<'tcx>(
     crate::place::deref_op(
         ty.into(),
         ctx,
-        CILNode::TransmutePtr {
+        CILNode::CastPtr {
             val: Box::new(ptr),
             new_ptr: Box::new(Type::Ptr(Box::new(tpe))),
         },
@@ -95,7 +95,7 @@ pub(crate) fn load_const_value<'tcx>(
                     },
                     CILRoot::SetField {
                         addr: Box::new(CILNode::LoadAddresOfTMPLocal),
-                        value: Box::new(CILNode::TransmutePtr {
+                        value: Box::new(CILNode::CastPtr {
                             val: Box::new(CILNode::LoadGlobalAllocPtr { alloc_id }),
                             new_ptr: Box::new(Type::Ptr(Type::Void.into())),
                         }),
@@ -381,7 +381,7 @@ fn load_const_scalar<'tcx>(
                 matches!(scalar_type, Type::Ptr(_) | Type::DelegatePtr(_)),
                 "Invalid const ptr: {scalar_type:?}"
             );
-            return CILNode::TransmutePtr {
+            return CILNode::CastPtr {
                 val: Box::new(load_scalar_ptr(ctx, ptr)),
                 new_ptr: Box::new(scalar_type),
             };
@@ -399,7 +399,7 @@ fn load_const_scalar<'tcx>(
                 CILNode::LdTrue
             }
         }
-        TyKind::RawPtr(_, _) => CILNode::TransmutePtr {
+        TyKind::RawPtr(_, _) => CILNode::CastPtr {
             val: Box::new(CILNode::ZeroExtendToUSize(
                 CILNode::LdcU64(
                     u64::try_from(scalar_u128).expect("pointers must be smaller than 2^64"),
@@ -420,7 +420,7 @@ fn load_const_scalar<'tcx>(
                 )))
             } else {
                 CILNode::LdObj {
-                    ptr: Box::new(CILNode::TransmutePtr {
+                    ptr: Box::new(CILNode::CastPtr {
                         val: Box::new(CILNode::PointerToConstValue(Box::new(scalar_u128))),
                         new_ptr: Box::new(Type::Ptr(Box::new(scalar_type.clone()))),
                     }),
@@ -429,7 +429,7 @@ fn load_const_scalar<'tcx>(
             }
         }
         TyKind::Adt(_, _subst) => CILNode::LdObj {
-            ptr: Box::new(CILNode::TransmutePtr {
+            ptr: Box::new(CILNode::CastPtr {
                 val: Box::new(CILNode::PointerToConstValue(Box::new(scalar_u128))),
                 new_ptr: Box::new(Type::Ptr(Box::new(scalar_type.clone()))),
             }),

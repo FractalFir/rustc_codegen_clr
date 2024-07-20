@@ -80,7 +80,7 @@ impl<'a> Iterator for CILIter<'a> {
                     | CILNode::ZeroExtendToISize(a)
                     | CILNode::LDFieldAdress { addr: a, field: _ }
                     | CILNode::LDField { addr: a, field: _ }
-                    | CILNode::TransmutePtr { val: a, .. }
+                    | CILNode::CastPtr { val: a, .. }
                     | CILNode::LDIndI8 { ptr: a }
                     | CILNode::LDIndU8 { ptr: a }
                     | CILNode::LDIndI16 { ptr: a }

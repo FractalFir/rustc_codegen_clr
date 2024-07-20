@@ -75,7 +75,7 @@ pub fn size_of_val<'tcx>(
                     destination,
                     CILNode::LDIndUSize {
                         ptr: Box::new(
-                            CILNode::TransmutePtr {
+                            CILNode::CastPtr {
                                 val: Box::new(ld_field!(addr, descriptor)),
                                 new_ptr: Box::new(Type::Ptr(Box::new(Type::USize))),
                             } + conv_usize!((size_of!(Type::ISize))),

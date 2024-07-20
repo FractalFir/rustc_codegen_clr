@@ -149,6 +149,15 @@ impl TypeDef {
         self.field_types()
             .for_each(|tpe| assert_ne!(*tpe, Type::Void));
     }
+
+    pub(crate) fn opt_types(&mut self, string_map: &mut crate::AsmStringContainer) {
+        self.fields
+            .iter_mut()
+            .for_each(|(_, tpe)| tpe.opt(string_map));
+        self.inner_types
+            .iter_mut()
+            .for_each(|tpe| tpe.opt_types(string_map));
+    }
 }
 impl From<TypeDef> for Type {
     fn from(val: TypeDef) -> Type {

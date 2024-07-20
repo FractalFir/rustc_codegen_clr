@@ -89,7 +89,33 @@ impl Method {
     pub fn optimize_types(&mut self, strings: &mut AsmStringContainer) {
         self.locals
             .iter_mut()
-            .for_each(|(name, tpe)| tpe.opt(strings))
+            .for_each(|(name, tpe)| tpe.opt(strings));
+        //self.sig.opt_types(strings);
+        self.blocks
+            .iter_mut()
+            .flat_map(|block| block.all_trees_mut())
+            .flat_map(|tree| tree.root_mut().into_iter())
+            .for_each(|elem| match elem {
+                CILIterElemMut::Node(CILNode::CastPtr { new_ptr, .. }) => new_ptr.opt(strings),
+                CILIterElemMut::Node(
+                    CILNode::LDField { field, .. } | CILNode::LDFieldAdress { field, .. },
+                ) => field.optimize_repr(strings),
+                CILIterElemMut::Node(CILNode::LdObj { obj, .. }) => obj.opt(strings),
+                CILIterElemMut::Root(CILRoot::STObj { tpe, .. }) => tpe.opt(strings),
+                CILIterElemMut::Root(CILRoot::SetField { desc, .. }) => desc.optimize_repr(strings),
+                CILIterElemMut::Root(CILRoot::Call { site, .. }) => {
+                    let _ = site.class_mut().as_mut().map(|owner| owner.opt(strings));
+                }
+                /*CILIterElemMut::Root(CILRoot::Call { site, args } | CILRoot::CallVirt { site, args } )=>{
+                    site.signature()
+                }*/
+                CILIterElemMut::Node(_) => (),
+                CILIterElemMut::Root(_) => (),
+            });
+
+        // 45.5 | 36.5
+        // 41.9 | 32.1
+        // 39.3 | 28.7
     }
     /// Turns the unoptimized Source File Information into a more optimized format by storing common strings in the `AsmStringContainer`
     pub fn optimize_sfi(&mut self, strings: &mut AsmStringContainer) {

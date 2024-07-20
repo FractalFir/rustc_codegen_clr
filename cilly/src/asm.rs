@@ -437,7 +437,8 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
         });
     }
     /// Adds a definition of a type to the assembly.
-    pub fn add_typedef(&mut self, type_def: TypeDef) {
+    pub fn add_typedef(&mut self, mut type_def: TypeDef) {
+        type_def.opt_types(self.string_map_mut());
         self.types.insert(type_def.name().into(), type_def);
     }
 

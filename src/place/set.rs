@@ -86,7 +86,7 @@ pub fn place_elem_set<'a>(
                     ptr_set_op(
                         super::PlaceTy::Ty(inner),
                         ctx,
-                        CILNode::TransmutePtr {
+                        CILNode::CastPtr {
                             val: Box::new(ld_field!(addr_calc, desc)),
                             new_ptr: Box::new(Type::Ptr(Box::new(inner_type.clone()))),
                         } + index * conv_usize!(size_of!(inner_type)),
@@ -142,7 +142,7 @@ pub fn place_elem_set<'a>(
                         crate::DATA_PTR.into(),
                     );
                     let metadata = FieldDescriptor::new(slice, Type::USize, crate::METADATA.into());
-                    let addr = CILNode::TransmutePtr {
+                    let addr = CILNode::CastPtr {
                         val: Box::new(ld_field!(addr_calc.clone(), desc)),
                         new_ptr: Box::new(Type::Ptr(Box::new(inner_type.clone()))),
                     } + call!(

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{utilis::MemoryUsage, Type};
+use crate::{utilis::MemoryUsage, AsmStringContainer, Type};
 
 #[derive(Clone, PartialEq, Serialize, Deserialize, Eq, Hash, Debug)]
 /// Function signature.
@@ -33,6 +33,14 @@ impl FnSig {
 
     pub fn inputs_mut(&mut self) -> &mut Vec<Type> {
         &mut self.inputs
+    }
+
+    pub fn output_mut(&mut self) -> &mut Type {
+        &mut self.output
+    }
+    pub fn opt_types(&mut self, string_map: &mut AsmStringContainer) {
+        self.inputs.iter_mut().for_each(|t| t.opt(string_map));
+        self.output.opt(string_map);
     }
 }
 impl MemoryUsage for FnSig {

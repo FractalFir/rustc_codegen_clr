@@ -177,4 +177,8 @@ impl CallSite {
             &self.signature.inputs()[1..]
         }
     }
+
+    pub fn class_mut(&mut self) -> &mut Option<DotnetTypeRef> {
+        &mut self.class
+    }
 }

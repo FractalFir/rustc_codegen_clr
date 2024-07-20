@@ -1,4 +1,4 @@
-use crate::{utilis::MemoryUsage, DotnetTypeRef, IString, Type};
+use crate::{utilis::MemoryUsage, AsmStringContainer, DotnetTypeRef, IString, Type};
 use serde::{Deserialize, Serialize};
 /// This struct descibes a .NET field. It contains information about the type this field belongs to, the name of the field, and the fields type.
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Debug, Hash)]
@@ -33,6 +33,11 @@ impl FieldDescriptor {
     #[must_use]
     pub fn boxed(owner: DotnetTypeRef, tpe: Type, name: IString) -> Box<Self> {
         Box::new(Self { owner, tpe, name })
+    }
+    /// Replaces types with their more efficent representation
+    pub fn optimize_repr(&mut self, strings: &mut AsmStringContainer) {
+        self.owner.opt(strings);
+        self.tpe.opt(strings);
     }
 }
 impl MemoryUsage for FieldDescriptor {

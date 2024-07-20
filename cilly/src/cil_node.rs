@@ -198,7 +198,7 @@ pub enum CILNode {
     PointerToConstValue(Box<u128>),
 
     /// Tells the codegen a pointer value type is changed. Used during verification, to implement things like`transmute`.
-    TransmutePtr {
+    CastPtr {
         val: Box<Self>,
         new_ptr: Box<Type>,
     },
@@ -410,7 +410,7 @@ impl CILNode {
             Self::LocAlloc{size}=>size.opt(opt_count),
             Self::LocAllocAligned { .. }=>(),
             Self::LdFalse | Self::LdTrue=>(),
-            Self::TransmutePtr { val, new_ptr: _ }=>val.opt(opt_count),
+            Self::CastPtr { val, new_ptr: _ }=>val.opt(opt_count),
             Self::LDLoc(_)| Self::LDArg(_) | Self::LDLocA(_) | Self::LDArgA(_)=> (),
             Self::BlackBox(inner)
             | Self::ConvF32(inner)
@@ -573,7 +573,7 @@ impl CILNode {
             ),
             "Invalid new ptr {new_ptr:?}"
         );
-        Self::TransmutePtr {
+        Self::CastPtr {
             val: Box::new(self),
             new_ptr: Box::new(new_ptr),
         }
@@ -593,7 +593,7 @@ impl CILNode {
             Self::LocAllocAligned {..}=>(),
             Self::LdFalse=>(),
             Self::LdTrue=>(),
-            Self::TransmutePtr { val, new_ptr: _ }=>val.allocate_tmps(curr_loc, locals),
+            Self::CastPtr { val, new_ptr: _ }=>val.allocate_tmps(curr_loc, locals),
             Self:: PointerToConstValue(_arr)=>(),
             Self::LoadGlobalAllocPtr { alloc_id: _ } => (),
             Self::LDLoc(_) |
@@ -1253,7 +1253,7 @@ impl CILNode {
                 }
                 Ok(sig.output().clone())
             }
-            Self::TransmutePtr { val, new_ptr } => {
+            Self::CastPtr { val, new_ptr } => {
                 let val = val.validate(vctx, tmp_loc)?;
                 match val {
                     Type::USize => (),

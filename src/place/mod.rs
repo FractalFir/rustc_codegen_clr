@@ -162,7 +162,7 @@ pub fn place_adress<'a>(place: &Place<'a>, ctx: &mut MethodCompileCtx<'a, '_, '_
     let layout = ctx.layout_of(place_ty);
     if layout.is_zst() {
         let place_type = ctx.type_from_cache(place_ty);
-        return CILNode::TransmutePtr {
+        return CILNode::CastPtr {
             val: Box::new(conv_usize!(ldc_u64!(layout.align.pref.bytes()))),
             new_ptr: Box::new(Type::Ptr(Box::new(place_type))),
         };
