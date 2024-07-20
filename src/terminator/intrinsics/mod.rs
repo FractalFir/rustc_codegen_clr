@@ -1189,6 +1189,49 @@ fn intrinsic_slow<'tcx>(
         place_set(destination, handle_operand(&args[0].node, ctx), ctx)
     } else if fn_name.contains("volitale_load") {
         return volitale_load(args, destination, ctx);
+    } else if fn_name.contains("type_id") {
+        let tpe = ctx.monomorphize(
+            call_instance.args[0]
+                .as_type()
+                .expect("needs_drop works only on types!"),
+        );
+        let tpe = ctx.type_from_cache(tpe);
+        let sig = FnSig::new(
+            &[DotnetTypeRef::type_handle_type().into()],
+            DotnetTypeRef::type_type(),
+        );
+        let gethash_sig = FnSig::new(&[DotnetTypeRef::type_type().into()], Type::I32);
+        return place_set(
+            destination,
+            call!(
+                CallSite::boxed(
+                    Some(DotnetTypeRef::uint_128()),
+                    "op_Implicit".into(),
+                    FnSig::new(&[Type::U32], Type::U128),
+                    true,
+                ),
+                [conv_u32!(call_virt!(
+                    CallSite::boxed(
+                        DotnetTypeRef::object_type().into(),
+                        "GetHashCode".into(),
+                        gethash_sig,
+                        false,
+                    ),
+                    [call!(
+                        CallSite::boxed(
+                            DotnetTypeRef::type_type().into(),
+                            "GetTypeFromHandle".into(),
+                            sig,
+                            true,
+                        ),
+                        [CILNode::LDTypeToken(tpe.into())]
+                    )]
+                ))]
+            ),
+            ctx,
+        );
+    } else if fn_name.contains("size_of_val") {
+        return size_of_val(args, destination, ctx, call_instance);
     } else if fn_name.contains("is_val_statically_known") {
         is_val_statically_known(args, destination, ctx)
     } else if fn_name.contains("typed_swap") {

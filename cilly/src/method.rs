@@ -90,7 +90,7 @@ impl Method {
         self.locals
             .iter_mut()
             .for_each(|(name, tpe)| tpe.opt(strings));
-        //self.sig.opt_types(strings);
+        self.sig.opt_types(strings);
         self.blocks
             .iter_mut()
             .flat_map(|block| block.all_trees_mut())
@@ -103,8 +103,18 @@ impl Method {
                 CILIterElemMut::Node(CILNode::LdObj { obj, .. }) => obj.opt(strings),
                 CILIterElemMut::Root(CILRoot::STObj { tpe, .. }) => tpe.opt(strings),
                 CILIterElemMut::Root(CILRoot::SetField { desc, .. }) => desc.optimize_repr(strings),
-                CILIterElemMut::Root(CILRoot::Call { site, .. }) => {
-                    let _ = site.class_mut().as_mut().map(|owner| owner.opt(strings));
+                CILIterElemMut::Root(
+                    CILRoot::Call { site, .. } | CILRoot::CallVirt { site, .. },
+                ) => {
+                    site.opt(strings);
+                }
+                CILIterElemMut::Node(
+                    CILNode::Call(args) | CILNode::CallVirt(args) | CILNode::NewObj(args),
+                ) => {
+                    args.site.opt(strings);
+                }
+                CILIterElemMut::Node(CILNode::LDFtn(site)) => {
+                    site.opt(strings);
                 }
                 /*CILIterElemMut::Root(CILRoot::Call { site, args } | CILRoot::CallVirt { site, args } )=>{
                     site.signature()
