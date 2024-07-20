@@ -822,12 +822,13 @@ impl<A: MemoryUsage, B: MemoryUsage, C: MemoryUsage, D: MemoryUsage> MemoryUsage
 #[test]
 fn environ() {
     let mut asm = Assembly::empty();
+
     get_environ(&mut asm);
+
     let mut out = String::new();
     asm.methods()
         .find(|method| method.name().contains("environ"))
         .unwrap()
         .export(&mut out, crate::IlasmFlavour::Clasic, true, false, &asm)
         .unwrap();
-    panic!("{out}");
 }

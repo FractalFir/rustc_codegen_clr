@@ -3,8 +3,8 @@ use std::num::NonZeroU64;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    access_modifier::AccessModifer, intercow::InterCow, method::Method, utilis::MemoryUsage,
-    DotnetTypeRef, IString, Type,
+    access_modifier::AccessModifer, method::Method, utilis::MemoryUsage, DotnetTypeRef, IString,
+    Type,
 };
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug)]
@@ -190,12 +190,5 @@ impl MemoryUsage for TypeDef {
         let total_size = self_size + name_size + fields_size + function_size;
         counter.add_type(tpe_name, total_size);
         total_size
-    }
-}
-impl<'de, T: Deserialize<'de> + std::marker::Send + std::hash::Hash + Eq + Sync + Clone> MemoryUsage
-    for InterCow<T>
-{
-    fn memory_usage(&self, _: &mut impl crate::utilis::MemoryUsageCounter) -> usize {
-        0
     }
 }

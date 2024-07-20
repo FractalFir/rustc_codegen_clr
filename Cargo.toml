@@ -14,7 +14,7 @@ lazy_static = "1.4.0"
 libc = "0.2.153"
 libloading = "0.8.1"
 
-postcard = { version = "1.0.6", features = ["use-std"] }
+postcard = { version = "1.0.8", features = ["use-std"] }
 rayon = "1.10.0"
 rustc-demangle = "0.1.23"
 cilly = {path = "./cilly"}

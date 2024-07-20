@@ -2,11 +2,7 @@ use std::marker::PhantomData;
 
 use ordered_float::OrderedFloat;
 
-use crate::{
-    cil_node::CILNode,
-    cil_root::CILRoot,
-    intercow::{InterCow, InterCowRefMut},
-};
+use crate::{cil_node::CILNode, cil_root::CILRoot};
 
 #[derive(Debug)]
 enum CILIterElemUnsafe<'a> {

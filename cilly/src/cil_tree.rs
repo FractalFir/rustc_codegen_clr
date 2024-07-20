@@ -2,12 +2,7 @@ use std::borrow::Borrow;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    cil_node::ValidationContext,
-    cil_root::CILRoot,
-    intercow::{InterCow, InterCowRefMut},
-    IString, Type,
-};
+use crate::{cil_node::ValidationContext, cil_root::CILRoot, IString, Type};
 
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 /// A root of a CIL Tree with metadata about local variables it reads/writes into.  

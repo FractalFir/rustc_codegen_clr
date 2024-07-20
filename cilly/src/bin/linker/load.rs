@@ -28,16 +28,20 @@ fn load_ar(r: &mut impl std::io::Read) -> std::io::Result<(Assembly, Vec<Linkabl
     while let Some(entry_result) = archive.next_entry() {
         let mut entry = entry_result?;
         let name: String = String::from_utf8_lossy(entry.header().identifier()).into();
-
-        if name.contains(".bc") || name.contains(".cilly") {
+        let ext = if let Some(ext) = name.split('.').last() {
+            ext
+        } else {
+            continue;
+        };
+        if ext.contains(".bc") || ext.contains(".cilly") {
             let mut asm_bytes = Vec::with_capacity(0x100);
             entry
                 .read_to_end(&mut asm_bytes)
                 .expect("ERROR: Could not load the assembly file!");
             let assembly = postcard::from_bytes(&asm_bytes)
-                .expect("ERROR:Could not decode the assembly file!");
+                .unwrap_or_else(|_| panic!("ERROR:Could not decode the assembly file {name}!"));
             final_assembly = final_assembly.join(assembly);
-        } else if name.contains(".o") {
+        } else if ext.contains(".o") {
             let mut file_bytes = Vec::with_capacity(0x100);
             entry
                 .read_to_end(&mut file_bytes)
@@ -53,6 +57,7 @@ pub fn load_assemblies(
     raw_files: &[&String],
     archives: &[String],
 ) -> (Assembly, Vec<LinkableFile>) {
+    println!("Preparing to load assmeblies");
     let mut final_assembly = Assembly::empty();
     let mut linkables = Vec::new();
     for asm_path in raw_files {
@@ -73,5 +78,6 @@ pub fn load_assemblies(
         final_assembly = final_assembly.join(assembly.0);
         linkables.extend(assembly.1);
     }
+    println!("Loaded assmeblies");
     (final_assembly, linkables)
 }
