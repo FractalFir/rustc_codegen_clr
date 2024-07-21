@@ -18,7 +18,7 @@ impl<Key: HashWrapper + Eq + Hash + Clone, Value: Eq + Hash + Clone> BiMap<Key, 
             Entry::Vacant(empty) => {
                 let hash = calculate_hash(&val);
                 let key = Key::from_hash(hash);
-                empty.insert(key.clone()).clone();
+                empty.insert(key.clone());
                 assert!(self.0.insert(key.clone(), val).is_none());
                 key
             }

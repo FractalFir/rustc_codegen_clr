@@ -17,6 +17,7 @@ internment = { version = "0.8.4", features = ["arc", "serde"] }
 ordered-float = { version = "4.2.1", features = ["serde"] }
 string-interner = { version = "*", features = ["serde"] }
 interner = "0.2.1"
+streaming-iterator = "0.1.9"
 [[bin]]
 name = "linker"
 test = false

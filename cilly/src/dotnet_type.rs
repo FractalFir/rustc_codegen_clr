@@ -174,7 +174,7 @@ impl DotnetTypeRef {
             DotnetTypeRef::Full { assembly, .. } => {
                 assembly.as_ref().map(std::convert::AsRef::as_ref)
             }
-            DotnetTypeRef::OptimizedRustStruct { name } => None,
+            DotnetTypeRef::OptimizedRustStruct { name: _ } => None,
         }
     }
     #[must_use]
@@ -189,13 +189,13 @@ impl DotnetTypeRef {
     pub fn generics(&self) -> &[Type] {
         match self {
             DotnetTypeRef::Full { generics, .. } => generics,
-            DotnetTypeRef::OptimizedRustStruct { name } => &[],
+            DotnetTypeRef::OptimizedRustStruct { name: _ } => &[],
         }
     }
     pub fn set_generics(&mut self, set_generics: impl Into<Vec<Type>>) {
         match self {
             DotnetTypeRef::Full { generics, .. } => *generics = set_generics.into(),
-            DotnetTypeRef::OptimizedRustStruct { name } => panic!(),
+            DotnetTypeRef::OptimizedRustStruct { name: _ } => panic!(),
         }
     }
 
@@ -303,7 +303,7 @@ impl MemoryUsage for DotnetTypeRef {
                 counter.add_type(tpe_name, size);
                 size
             }
-            DotnetTypeRef::OptimizedRustStruct { name } => {
+            DotnetTypeRef::OptimizedRustStruct { name: _ } => {
                 let tpe_name = std::any::type_name::<Self>();
                 let self_size = std::mem::size_of::<Self>();
                 counter.add_type(tpe_name, self_size);

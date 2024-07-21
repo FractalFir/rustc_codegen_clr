@@ -54,9 +54,8 @@ pub use fn_sig::*;
 pub mod access_modifier;
 pub mod asm;
 pub mod asm_exporter;
-pub mod assembly;
 pub mod basic_block;
-pub mod bimap;
+
 pub mod c_exporter;
 pub mod call_site;
 pub mod cil_iter;
@@ -72,6 +71,7 @@ pub mod method;
 pub mod static_field_desc;
 pub mod type_def;
 pub mod utilis;
+pub mod v2;
 #[must_use]
 /// Returns the name of a fixed-size array
 pub fn arr_name(element_count: usize, element: &Type, strings: &AsmStringContainer) -> IString {

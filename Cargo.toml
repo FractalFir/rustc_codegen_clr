@@ -23,7 +23,8 @@ strsim = "0.11.1"
 regex = "1.10.5"
 fxhash = "0.2.1"
 ordered-float = { version = "4.2.1", features = ["serde"] }
-
+[profile.dev.package.fxhash]
+opt-level = 3
 [lib]
 crate-type=["rlib", "cdylib"]
 
