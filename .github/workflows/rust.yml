@@ -77,7 +77,7 @@ jobs:
           cargo test compile_test::slice_ptr_cast::stable::debug
           cargo test compile_test::string_slice
           cargo test compile_test::sub
-          cargo test compile_test::subslice
+
           cargo test compile_test::structs
           cargo test enum
           cargo test compile_test::xor

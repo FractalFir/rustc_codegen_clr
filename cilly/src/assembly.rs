@@ -6,6 +6,7 @@ use crate::{
 struct Assembly {
     strings: BiMap<StringIdx, IString>,
     types: BiMap<TypeIdx, Type>,
+    class_refs: BiMap<ClassIdx, Class>,
     nodes: BiMap<NodeIdx, CILNode>,
 }
 impl Assembly {
@@ -22,6 +23,18 @@ impl Assembly {
         let lhs = self.nodes.alloc(lhs);
         let rhs = self.nodes.alloc(rhs);
         CILNode::Add(lhs, rhs)
+    }
+    pub fn ldstr(&mut self, msg: impl Into<IString>) -> CILNode {
+        CILNode::LdStr(self.strings.alloc(msg.into()))
+    }
+    pub fn strct(&mut self, name: IString) -> ClassIdx {
+        let class = Class {
+            name: self.strings.alloc(name),
+            asm: None,
+            is_valuetype: true,
+            generics: vec![],
+        };
+        self.class_refs.alloc(class)
     }
 }
 #[derive(Hash, PartialEq, Eq, Clone, Default, Debug)]
@@ -50,9 +63,13 @@ enum Type {
     Ptr(TypeIdx),
     Ref(TypeIdx),
     Int(Int),
-    ClassRef(Class),
+    ClassRef(ClassIdx),
+    Float(Float),
+    PlatformChar,
+    PlarformGeneric,
+    Bool,
+    PlatformArray { elem: TypeIdx, dim: usize },
 }
-
 impl Type {
     pub fn deref<'a, 'b: 'a>(&'a self, asm: &'b Assembly) -> &Self {
         match self {
@@ -61,8 +78,17 @@ impl Type {
         }
     }
 }
+impl From<ClassIdx> for Type {
+    fn from(val: ClassIdx) -> Self {
+        Type::ClassRef(val)
+    }
+}
 #[derive(Hash, PartialEq, Eq, Clone, Debug)]
 enum Int {
+    U8,
+}
+#[derive(Hash, PartialEq, Eq, Clone, Debug)]
+enum Float {
     U8,
 }
 #[derive(Hash, PartialEq, Eq, Clone, Debug)]
@@ -70,7 +96,7 @@ struct Class {
     name: StringIdx,
     asm: Option<ClassIdx>,
     is_valuetype: bool,
-    generics: Option<TypeIdx>,
+    generics: Vec<Type>,
 }
 #[test]
 fn types() {
@@ -83,11 +109,21 @@ fn types() {
 pub fn nodes() {
     let mut asm = Assembly::default();
     let add = asm.add(CILNode::LdcI32(2), CILNode::LdcI32(1));
+    let msg = asm.ldstr("Hi!");
+}
+#[test]
+fn no_collision() {
+    let mut asm = Assembly::default();
+    let mut curr = CILNode::LdcI32(1);
+    for _ in 0..100_000 {
+        curr = std::hint::black_box(asm.add(curr.clone(), curr));
+    }
 }
 #[derive(Hash, PartialEq, Eq, Clone, Debug)]
 enum CILNode {
     LdcI32(i32),
     Add(NodeIdx, NodeIdx),
+    LdStr(StringIdx),
 }
 #[derive(Hash, PartialEq, Eq, Clone, Default, Debug)]
 struct NodeIdx(u64);
