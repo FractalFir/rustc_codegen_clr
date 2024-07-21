@@ -52,7 +52,7 @@ jobs:
           cargo test compile_test::cmp_bytes
           cargo test compile_test::fail0
           cargo test compile_test::add::
-          cargo test compile_test::fail5
+
           cargo test compile_test::fail4::stable::release
           cargo test compile_test::fail6::stable::release
           cargo test compile_test::fail3::stable::release

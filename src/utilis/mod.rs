@@ -1,5 +1,5 @@
 use crate::{assembly::MethodCompileCtx, IString};
-use cilly::{asm_exporter::escape_class_name, field_desc::FieldDescriptor};
+use cilly::{asm_exporter::escape_class_name, call_site::CallSite, field_desc::FieldDescriptor};
 use rustc_middle::{
     mir::interpret::AllocId,
     ty::{
@@ -74,6 +74,7 @@ pub fn variant_name(ty: Ty, idx: u32) -> crate::IString {
         _ => todo!("Can't yet get fields of typr {ty:?}"),
     }
 }
+
 /// Escapes the name of a function
 pub fn function_name(name: SymbolName) -> IString {
     let mut name: String = name.to_string();
