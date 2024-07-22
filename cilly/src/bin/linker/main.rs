@@ -187,8 +187,17 @@ fn override_raise_exception(patched: &mut FxHashMap<CallSite, Method>, call: &Ca
                                 .with_valuetype(false),
                         ),
                         ".ctor".into(),
-                        FnSig::new(&[Type::USize], Type::Void),
-                        true,
+                        FnSig::new(
+                            &[
+                                Type::DotnetType(Box::new(
+                                    DotnetTypeRef::new::<&str, _>(None, "RustException")
+                                        .with_valuetype(false),
+                                )),
+                                Type::USize,
+                            ],
+                            Type::Void,
+                        ),
+                        false,
                     )),
                 })))
                 .into()],

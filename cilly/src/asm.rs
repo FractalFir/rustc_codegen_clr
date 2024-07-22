@@ -277,7 +277,7 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
                                         Some(DotnetTypeRef::object_type()),
                                         ".ctor".into(),
                                         FnSig::new(&[], Type::Void),
-                                        true,
+                                        false,
                                     )),
                                 })),
                             }
@@ -310,30 +310,7 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
                         (None, Type::Ptr(Type::U8.into())),
                         (None, Type::Ptr(Type::U8.into())),
                     ],
-                    vec![BasicBlock::new(
-                        vec![
-                            CILRoot::SetStaticField {
-                                descr: Box::new(StaticFieldDescriptor::new(
-                                    None,
-                                    Type::DotnetType(Box::new(DotnetTypeRef::object_type())),
-                                    "GlobalAtomicLock".into(),
-                                )),
-                                value: CILNode::NewObj(Box::new(CallOpArgs {
-                                    args: [].into(),
-                                    site: Box::new(CallSite::new(
-                                        Some(DotnetTypeRef::object_type()),
-                                        ".ctor".into(),
-                                        FnSig::new(&[], Type::Void),
-                                        true,
-                                    )),
-                                })),
-                            }
-                            .into(),
-                            CILRoot::VoidRet.into(),
-                        ],
-                        0,
-                        None,
-                    )],
+                    vec![BasicBlock::new(vec![CILRoot::VoidRet.into()], 0, None)],
                     vec![],
                 )
             })
