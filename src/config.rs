@@ -81,4 +81,3 @@ config_flag! {CHECK_REFS,false,"Tells codegen to check if references it assigns 
 config_flag! {TYPECHECK_CIL,false,"Checks the geneareted CIL for type safety."}
 
 config_flag! {TRACE_CIL_OPS,false,"Tells the print each CIL op before it is executed."}
-config_flag! {CILLY_V2,false,"Tells the codegen to use the new version of cilly."}

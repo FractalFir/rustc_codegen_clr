@@ -5,6 +5,7 @@ pub use cilnode::{BinOp, CILNode, NodeIdx};
 pub use cilroot::{CILRoot, RootIdx};
 pub use class::{ClassIdx, ClassRef};
 pub use cst::Const;
+pub use field::{FieldDesc, FieldIdx, StaticFieldDesc, StaticFieldIdx};
 pub use float::Float;
 pub use fnsig::{FnSig, SigIdx};
 pub use int::Int;
@@ -20,6 +21,7 @@ pub mod cilnode;
 pub mod cilroot;
 pub mod class;
 pub mod cst;
+pub mod field;
 pub mod float;
 pub mod fnsig;
 pub mod int;
@@ -67,4 +69,7 @@ fn no_collision() {
     for _ in 0..100_000 {
         curr = std::hint::black_box(asm.biop(curr.clone(), curr, BinOp::Add));
     }
+    asm.node_idx(CILNode::LdLoc(0));
+    asm.node_idx(CILNode::Const(Const::I32(0)));
+    asm.node_idx(CILNode::Const(Const::I64(0)));
 }

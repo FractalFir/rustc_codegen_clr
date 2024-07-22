@@ -1,15 +1,17 @@
 use std::num::NonZeroU8;
 
-use super::{bimap::HashWrapper, Assembly, ClassIdx, ClassRef, Float, Int};
+use serde::{Deserialize, Serialize};
 
-#[derive(Hash, PartialEq, Eq, Clone, Default, Debug)]
+use super::{bimap::HashWrapper, Assembly, ClassIdx, ClassRef, Float, FnSig, Int, SigIdx};
+
+#[derive(Hash, PartialEq, Eq, Clone, Default, Copy, Debug, Serialize, Deserialize)]
 pub struct TypeIdx(u64);
 impl HashWrapper for TypeIdx {
     fn from_hash(val: u64) -> Self {
         Self(val)
     }
 }
-#[derive(Hash, PartialEq, Eq, Clone, Debug)]
+#[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum Type {
     Ptr(TypeIdx),
     Ref(TypeIdx),
@@ -21,8 +23,9 @@ pub enum Type {
     Bool,
     Void,
     PlatformArray { elem: TypeIdx, dims: NonZeroU8 },
+    FnPtr(SigIdx),
 }
-#[derive(Hash, PartialEq, Eq, Clone, Debug)]
+#[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum GenericKind {
     MethodGeneric,
     CallGeneric,
@@ -31,7 +34,7 @@ pub enum GenericKind {
 impl Type {
     pub fn deref<'a, 'b: 'a>(&'a self, asm: &'b Assembly) -> &Self {
         match self {
-            Type::Ptr(inner) | Type::Ref(inner) => asm.type_from_id(inner.clone()),
+            Type::Ptr(inner) | Type::Ref(inner) => asm.type_from_id(*inner),
             _ => panic!(),
         }
     }
@@ -69,12 +72,15 @@ impl Type {
                 asm.nref(inner)
             }
             crate::Type::Foreign => Self::Void,
-            crate::Type::GenericArg(_) => todo!(),
+            crate::Type::GenericArg(arg) => Self::PlarformGeneric(*arg, GenericKind::TypeGeneric),
             crate::Type::CallGenericArg(arg) => {
                 Self::PlarformGeneric(*arg, GenericKind::CallGeneric)
             }
             crate::Type::DotnetChar => Self::PlatformChar,
-            crate::Type::DelegatePtr(_) => todo!(),
+            crate::Type::DelegatePtr(sig) => {
+                let sig = FnSig::from_v1(sig, asm);
+                Self::FnPtr(asm.sig_idx(sig))
+            }
             crate::Type::MethodGenericArg(_) => todo!(),
             crate::Type::ManagedArray { element, dims } => {
                 let element = Type::from_v1(element, asm);

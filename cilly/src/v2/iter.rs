@@ -1,8 +1,6 @@
 use std::fmt::Debug;
 
-use streaming_iterator::StreamingIterator;
-
-use crate::v2::{cilroot::BranchCond, BinOp, Const};
+use super::cilroot::BranchCond;
 
 use super::{Assembly, CILNode, CILRoot};
 #[derive(Hash, PartialEq, Eq, Clone, Debug)]
@@ -54,17 +52,59 @@ impl<'asm> Iterator for CILIter<'asm> {
                 return Some(elem.clone());
             }
             match elem {
-                CILIterElem::Node(CILNode::BinOp(rhs, lhs, _)) => match idx {
+                CILIterElem::Root(CILRoot::SetField(fld)) => match idx {
                     1 => {
                         *idx += 1;
-                        let rhs = self.asm.get_node(rhs.clone());
-                        self.elems.push((CILIterElem::Node(rhs.clone()), 0));
+                        let lhs = self.asm.get_node(fld.1.clone());
+                        self.elems.push((CILIterElem::Node(lhs.clone()), 0));
                         continue;
                     }
                     2 => {
                         *idx += 1;
+                        let rhs = self.asm.get_node(fld.2.clone());
+                        self.elems.push((CILIterElem::Node(rhs.clone()), 0));
+                        continue;
+                    }
+                    _ => {
+                        self.elems.pop();
+                        continue;
+                    }
+                },
+                CILIterElem::Root(CILRoot::StInd(ind)) => match idx {
+                    1 => {
+                        *idx += 1;
+                        let lhs = self.asm.get_node(ind.0.clone());
+                        self.elems.push((CILIterElem::Node(lhs.clone()), 0));
+                        continue;
+                    }
+                    2 => {
+                        *idx += 1;
+                        let rhs = self.asm.get_node(ind.1.clone());
+                        self.elems.push((CILIterElem::Node(rhs.clone()), 0));
+                        continue;
+                    }
+                    _ => {
+                        self.elems.pop();
+                        continue;
+                    }
+                },
+                CILIterElem::Node(
+                    CILNode::BinOp(lhs, rhs, _)
+                    | CILNode::LdElelemRef {
+                        array: lhs,
+                        index: rhs,
+                    },
+                ) => match idx {
+                    1 => {
+                        *idx += 1;
                         let lhs = self.asm.get_node(lhs.clone());
                         self.elems.push((CILIterElem::Node(lhs.clone()), 0));
+                        continue;
+                    }
+                    2 => {
+                        *idx += 1;
+                        let rhs = self.asm.get_node(rhs.clone());
+                        self.elems.push((CILIterElem::Node(rhs.clone()), 0));
                         continue;
                     }
                     _ => {
@@ -84,17 +124,47 @@ impl<'asm> Iterator for CILIter<'asm> {
                         continue;
                     }
                 }
+                CILIterElem::Node(CILNode::CallI(info))
+                | CILIterElem::Root(CILRoot::CallI(info)) => match (*idx - 1).cmp(&info.2.len()) {
+                    std::cmp::Ordering::Less => {
+                        let arg = &info.2[*idx - 1];
+                        let arg = self.asm.get_node(arg.clone());
+                        *idx += 1;
+                        self.elems.push((CILIterElem::Node(arg.clone()), 0));
+                        continue;
+                    }
+                    std::cmp::Ordering::Equal => {
+                        let arg = self.asm.get_node(info.0.clone());
+                        *idx += 1;
+                        self.elems.push((CILIterElem::Node(arg.clone()), 0));
+                    }
+                    std::cmp::Ordering::Greater => {
+                        self.elems.pop();
+                        continue;
+                    }
+                },
                 CILIterElem::Node(
                     CILNode::UnOp(val, _)
                     | CILNode::PtrCast(val, _)
+                    | CILNode::LdLen(val)
                     | CILNode::RefToPtr(val)
-                    | CILNode::IntCast { input: val, .. },
+                    | CILNode::IntCast { input: val, .. }
+                    | CILNode::FloatCast { input: val, .. }
+                    | CILNode::LdField { addr: val, .. }
+                    | CILNode::LdFieldAdress { addr: val, .. }
+                    | CILNode::LdInd { addr: val, .. }
+                    | CILNode::IsInst(val, _)
+                    | CILNode::CheckedCast(val, _)
+                    | CILNode::LocAlloc { size: val }
+                    | CILNode::UnboxAny { object: val, .. },
                 )
                 | CILIterElem::Root(
                     CILRoot::StLoc(_, val)
                     | CILRoot::StArg(_, val)
                     | CILRoot::Ret(val)
-                    | CILRoot::Throw(val),
+                    | CILRoot::Pop(val)
+                    | CILRoot::Throw(val)
+                    | CILRoot::SetStaticField { val, .. },
                 ) => match idx {
                     1 => {
                         *idx += 1;
@@ -107,12 +177,53 @@ impl<'asm> Iterator for CILIter<'asm> {
                         continue;
                     }
                 },
-                CILIterElem::Node(CILNode::Const(_) | CILNode::LdArg(_) | CILNode::LdLoc(_))
+                CILIterElem::Node(
+                    CILNode::Const(_)
+                    | CILNode::LdArg(_)
+                    | CILNode::LdLoc(_)
+                    | CILNode::LdArgA(_)
+                    | CILNode::LdLocA(_)
+                    | CILNode::SizeOf(_)
+                    | CILNode::LdStaticField(_)
+                    | CILNode::LdFtn(_)
+                    | CILNode::LdTypeToken(_)
+                    | CILNode::LocAllocAlgined { .. }
+                    | CILNode::GetException,
+                )
                 | CILIterElem::Root(
-                    CILRoot::VoidRet | CILRoot::Break | CILRoot::SourceFileInfo { .. },
+                    CILRoot::VoidRet
+                    | CILRoot::Break
+                    | CILRoot::SourceFileInfo { .. }
+                    | CILRoot::ExitSpecialRegion { .. }
+                    | CILRoot::Nop
+                    | CILRoot::ReThrow,
                 ) => {
                     self.elems.pop();
                 }
+                CILIterElem::Root(CILRoot::InitBlk(blk) | CILRoot::CpBlk(blk)) => match idx {
+                    1 => {
+                        *idx += 1;
+                        let rhs = self.asm.get_node(blk.0.clone());
+                        self.elems.push((CILIterElem::Node(rhs.clone()), 0));
+                        continue;
+                    }
+                    2 => {
+                        *idx += 1;
+                        let rhs = self.asm.get_node(blk.1.clone());
+                        self.elems.push((CILIterElem::Node(rhs.clone()), 0));
+                        continue;
+                    }
+                    3 => {
+                        *idx += 1;
+                        let rhs = self.asm.get_node(blk.2.clone());
+                        self.elems.push((CILIterElem::Node(rhs.clone()), 0));
+                        continue;
+                    }
+                    _ => {
+                        self.elems.pop();
+                        continue;
+                    }
+                },
                 CILIterElem::Root(CILRoot::Branch { cond, .. }) => {
                     let Some(cond) = cond else {
                         self.elems.pop();
@@ -310,6 +421,7 @@ impl<'start> CILIterMut<'start> {
 }
 #[test]
 pub fn nodes() {
+    use super::{BinOp, Const};
     let mut asm = Assembly::default();
     let mut add = asm.biop(Const::I8(2), Const::I8(1), BinOp::Add);
     let mut iter = CILIterMut::new(&mut add, &mut asm);
@@ -325,5 +437,5 @@ pub fn nodes() {
         iter.next(),
         Some((_, Either::A(CILNode::Const(Const::I8(1)))))
     ));
-    assert!(matches!(iter.next(), None));
+    assert!(iter.next().is_none());
 }

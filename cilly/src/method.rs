@@ -86,59 +86,6 @@ impl Attribute {
 }
 
 impl Method {
-    pub fn optimize_types(&mut self, strings: &mut AsmStringContainer) {
-        self.locals
-            .iter_mut()
-            .for_each(|(name, tpe)| tpe.opt(strings));
-        self.sig.opt_types(strings);
-        self.blocks
-            .iter_mut()
-            .flat_map(|block| block.all_trees_mut())
-            .flat_map(|tree| tree.root_mut().into_iter())
-            .for_each(|elem| match elem {
-                CILIterElemMut::Node(CILNode::CastPtr { new_ptr, .. }) => new_ptr.opt(strings),
-                CILIterElemMut::Node(
-                    CILNode::LDField { field, .. } | CILNode::LDFieldAdress { field, .. },
-                ) => field.optimize_repr(strings),
-                CILIterElemMut::Node(CILNode::LdObj { obj, .. }) => obj.opt(strings),
-                CILIterElemMut::Root(CILRoot::STObj { tpe, .. }) => tpe.opt(strings),
-                CILIterElemMut::Root(CILRoot::SetField { desc, .. }) => desc.optimize_repr(strings),
-                CILIterElemMut::Root(
-                    CILRoot::Call { site, .. } | CILRoot::CallVirt { site, .. },
-                ) => {
-                    site.opt(strings);
-                }
-                CILIterElemMut::Node(
-                    CILNode::Call(args) | CILNode::CallVirt(args) | CILNode::NewObj(args),
-                ) => {
-                    args.site.opt(strings);
-                }
-                CILIterElemMut::Node(CILNode::LDFtn(site)) => {
-                    site.opt(strings);
-                }
-
-                CILIterElemMut::Node(_) => (),
-                CILIterElemMut::Root(_) => (),
-            });
-
-        // 45.5 | 36.5
-        // 41.9 | 32.1
-        // 39.3 | 28.7
-    }
-    /// Turns the unoptimized Source File Information into a more optimized format by storing common strings in the `AsmStringContainer`
-    pub fn optimize_sfi(&mut self, strings: &mut AsmStringContainer) {
-        let mut blocks = self.blocks_mut();
-        blocks
-            .iter_mut()
-            .flat_map(|block| block.tree_iter())
-            .map(|root| root.root_mut())
-            .for_each(|root| {
-                if let CILRoot::SourceFileInfo(sfi) = root {
-                    let fname = strings.alloc(sfi.2.clone());
-                    *root = CILRoot::OptimizedSourceFileInfo(sfi.0.clone(), sfi.1.clone(), fname);
-                }
-            })
-    }
     pub fn alias_for(
         access: AccessModifer,
         method_type: MethodType,

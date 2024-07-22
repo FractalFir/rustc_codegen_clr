@@ -1,5 +1,7 @@
+use serde::{Deserialize, Serialize};
+
 use super::{bimap::HashWrapper, Type};
-#[derive(Hash, PartialEq, Eq, Clone, Default, Debug, Copy)]
+#[derive(Hash, PartialEq, Eq, Clone, Default, Debug, Copy, Serialize, Deserialize)]
 pub struct SigIdx(u64);
 impl HashWrapper for SigIdx {
     fn from_hash(val: u64) -> Self {

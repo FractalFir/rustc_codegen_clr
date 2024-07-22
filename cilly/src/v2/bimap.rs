@@ -1,5 +1,5 @@
 use fxhash::{FxHashMap, FxHasher};
-use std::{collections::hash_map::Entry, hash::Hash};
+use std::{collections::hash_map::Entry, fmt::Debug, hash::Hash};
 
 pub struct BiMap<Key: HashWrapper + Eq + Hash + Clone, Value: Eq + Hash + Clone>(
     pub FxHashMap<Key, Value>,
@@ -10,7 +10,9 @@ impl<Key: HashWrapper + Eq + Hash + Clone, Value: Eq + Hash + Clone> Default for
         Self(Default::default(), Default::default())
     }
 }
-impl<Key: HashWrapper + Eq + Hash + Clone, Value: Eq + Hash + Clone> BiMap<Key, Value> {
+impl<Key: HashWrapper + Eq + Hash + Clone + Debug, Value: Eq + Hash + Clone + Debug>
+    BiMap<Key, Value>
+{
     /// Allocates a new Value and returns a Key.
     pub fn alloc(&mut self, val: Value) -> Key {
         match self.1.entry(val.clone()) {
@@ -19,7 +21,10 @@ impl<Key: HashWrapper + Eq + Hash + Clone, Value: Eq + Hash + Clone> BiMap<Key, 
                 let hash = calculate_hash(&val);
                 let key = Key::from_hash(hash);
                 empty.insert(key.clone());
-                assert!(self.0.insert(key.clone(), val).is_none());
+                if let Some(collision) = self.0.insert(key.clone(), val.clone()) {
+                    panic!("{val:?} and {collision:?} have colliding hashes");
+                }
+
                 key
             }
         }

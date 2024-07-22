@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 use crate::DotnetTypeRef as V1ClassRef;
 
 use super::{bimap::HashWrapper, StringIdx, Type};
@@ -7,7 +9,7 @@ impl From<ClassIdx> for Type {
         Type::ClassRef(val)
     }
 }
-#[derive(Hash, PartialEq, Eq, Clone, Default, Debug, Copy)]
+#[derive(Hash, PartialEq, Eq, Clone, Default, Debug, Copy, Serialize, Deserialize)]
 pub struct ClassIdx(u64);
 impl HashWrapper for ClassIdx {
     fn from_hash(val: u64) -> Self {

@@ -73,6 +73,9 @@ impl CallSite {
         signature: FnSig,
         is_static: bool,
     ) -> Self {
+        if *name == *".ctor" {
+            assert!(!is_static);
+        }
         Self {
             class,
             name,

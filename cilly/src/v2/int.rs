@@ -1,6 +1,8 @@
+use serde::{Deserialize, Serialize};
+
 use super::Type;
 
-#[derive(Hash, PartialEq, Eq, Clone, Debug)]
+#[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum Int {
     U8,
     U16,

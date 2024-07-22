@@ -430,7 +430,12 @@ fn export_node(
         }
         CILNode::LdcF64(f64const) => {
             depth.pad(out)?;
-            let const_literal = f64const.to_le_bytes();
+            let const_literal = if f64const.is_nan() {
+                [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF8, 0xFF]
+            } else {
+                f64const.to_le_bytes()
+            };
+
             write!(
                 out,
                 "ldc.r8 ({:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x})",
@@ -446,7 +451,11 @@ fn export_node(
         }
         CILNode::LdcF32(f32const) => {
             depth.pad(out)?;
-            let const_literal = f32const.to_le_bytes();
+            let const_literal = if f32const.is_nan() {
+                [0x00, 0x00, 0xF8, 0xFF]
+            } else {
+                f32const.to_le_bytes()
+            };
             write!(
                 out,
                 "ldc.r4 ({:02x} {:02x} {:02x} {:02x})",

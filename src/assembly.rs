@@ -446,17 +446,13 @@ pub fn add_fn<'tcx>(
     normal_bbs
         .iter_mut()
         .for_each(|bb| bb.resolve_exception_handlers(&cleanup_bbs));
+    normal_bbs
+        .iter_mut()
+        .for_each(cilly::basic_block::BasicBlock::sheed_trees);
     // Get the first bb, and append repack_cil at its start
     let first_bb: &mut BasicBlock = &mut normal_bbs[0];
     repack_cil.append(first_bb.trees_mut());
     *first_bb.trees_mut() = repack_cil;
-    let mut v2_asm = cilly::v2::Assembly::default();
-    if *crate::config::CILLY_V2 {
-        let v2_blocks: Box<[_]> = normal_bbs
-            .iter()
-            .map(|block| cilly::v2::BasicBlock::from_v1(block, &mut v2_asm))
-            .collect();
-    }
 
     let mut method = Method::new(
         access_modifier,

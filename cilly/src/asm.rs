@@ -1,5 +1,3 @@
-use std::borrow::BorrowMut;
-
 use fxhash::{FxBuildHasher, FxHashMap};
 
 use serde::{Deserialize, Serialize};
@@ -353,18 +351,23 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
         self.functions.contains_key(site)
     }
     /// Adds a method to the assebmly.
-    pub fn add_method(&mut self, mut method: Method) {
+    pub fn add_method(&mut self, method: Method) {
         if let Err(err) = method.validate(&self.string_map) {
             eprintln!(
                 "Could not validate the method {name} because {err}",
                 name = method.name()
             );
         }
-        // Saves on storage and memory
-        method.optimize_sfi(self.string_map_mut());
-        method.optimize_types(self.string_map_mut());
-        let mut cs = method.call_site();
-        cs.opt(self.string_map_mut());
+        let mut v2_asm = crate::v2::Assembly::default();
+        if *CILLY_V2 {
+            let v2_blocks: Box<[_]> = method
+                .blocks()
+                .iter()
+                .map(|block| crate::v2::BasicBlock::from_v1(block, &mut v2_asm))
+                .collect();
+        }
+        let cs = method.call_site();
+
         self.functions.insert(cs, method);
     }
     /// Returns the list of all calls within the assembly. Calls may repeat.
@@ -440,7 +443,6 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
     }
     /// Adds a definition of a type to the assembly.
     pub fn add_typedef(&mut self, mut type_def: TypeDef) {
-        type_def.opt_types(self.string_map_mut());
         self.types.insert(type_def.name().into(), type_def);
     }
 
@@ -717,4 +719,16 @@ impl MemoryUsage for Assembly {
         counter.add_type(tpe_name, total_size);
         total_size
     }
+}
+lazy_static! {
+    #[doc = "Tells the codegen to use the new version of cilly."]
+    pub static ref CILLY_V2:bool = {
+        std::env::vars().find_map(|(key,value)|if key == stringify!(CILLY_V2){
+            Some(value)
+        }else {
+            None
+        }).map(|value|match value.as_ref(){
+            "0"|"false"|"False"|"FALSE" => false,"1"|"true"|"True"|"TRUE" => true,_ => panic!("Boolean enviroment variable {} has invalid value {}",stringify!(CILLY_V2),value),
+        }).unwrap_or(false)
+    };
 }

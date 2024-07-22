@@ -137,7 +137,7 @@ add_method_from_trees!(
                         ),
                         ".ctor".into(),
                         FnSig::new(&[], Type::Void),
-                        true
+                        false
                     ),
                     args: [].into()
                 })))

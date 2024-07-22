@@ -1,8 +1,9 @@
 use super::{
     bimap::BiMap,
     cilnode::{BinOp, UnOp},
-    CILNode, CILRoot, ClassIdx, ClassRef, Const, FnSig, MethodRef, MethodRefIdx, NodeIdx, RootIdx,
-    SigIdx, StringIdx, Type, TypeIdx,
+    CILNode, CILRoot, ClassIdx, ClassRef, Const, FieldDesc, FieldIdx, FnSig, MethodRef,
+    MethodRefIdx, NodeIdx, RootIdx, SigIdx, StaticFieldDesc, StaticFieldIdx, StringIdx, Type,
+    TypeIdx,
 };
 use crate::IString;
 #[derive(Default)]
@@ -14,6 +15,8 @@ pub struct Assembly {
     roots: BiMap<RootIdx, CILRoot>,
     sigs: BiMap<SigIdx, FnSig>,
     method_refs: BiMap<MethodRefIdx, MethodRef>,
+    fields: BiMap<FieldIdx, FieldDesc>,
+    statics: BiMap<StaticFieldIdx, StaticFieldDesc>,
 }
 impl Assembly {
     pub fn alloc_string(&mut self, string: impl Into<IString>) -> StringIdx {
@@ -74,5 +77,13 @@ impl Assembly {
 
     pub(crate) fn get_node(&self, key: NodeIdx) -> &CILNode {
         self.nodes.get(key)
+    }
+
+    pub(crate) fn field_idx(&mut self, field: FieldDesc) -> FieldIdx {
+        self.fields.alloc(field)
+    }
+
+    pub(crate) fn sfld_idx(&mut self, sfld: StaticFieldDesc) -> StaticFieldIdx {
+        self.statics.alloc(sfld)
     }
 }
