@@ -4,7 +4,7 @@
 //! implement an equivalent APIs in standard Rust.
 #![no_std]
 #![allow(internal_features, incomplete_features)]
-#![feature(core_intrinsics, adt_const_params)]
+#![feature(core_intrinsics, unsized_const_params)]
 
 /// Very low-level interop stuff. Don't use unless you need to.
 pub mod intrinsics;

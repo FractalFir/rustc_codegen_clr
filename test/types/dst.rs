@@ -5,7 +5,8 @@
     associated_type_defaults,
     core_intrinsics,
     start,
-    error_generic_member_access
+    error_generic_member_access,
+    unsized_const_params
 )]
 #![allow(internal_features, incomplete_features, unused_variables, dead_code)]
 include!("../common.rs");

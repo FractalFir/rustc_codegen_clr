@@ -4,7 +4,8 @@
     associated_type_defaults,
     core_intrinsics,
     start,
-    let_chains
+    let_chains,
+    unsized_const_params
 )]
 #![allow(internal_features, incomplete_features, unused_variables, dead_code)]
 #![no_std]

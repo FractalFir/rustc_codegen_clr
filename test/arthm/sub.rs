@@ -1,12 +1,19 @@
-#![feature(lang_items,adt_const_params,associated_type_defaults,core_intrinsics,start)]
-#![allow(internal_features,incomplete_features,unused_variables,dead_code)]
+#![feature(
+    lang_items,
+    adt_const_params,
+    associated_type_defaults,
+    core_intrinsics,
+    start,
+    unsized_const_params
+)]
+#![allow(internal_features, incomplete_features, unused_variables, dead_code)]
 #![no_std]
 #[allow(dead_code)]
-struct Test<T>{
-    data:T,
+struct Test<T> {
+    data: T,
 }
 include!("../common.rs");
-fn main(){
+fn main() {
     // Test subtraction of different types
     test_eq!(black_box(4_u8) - 2, 2);
     test_eq!(black_box(4_i8) - 2, 2);

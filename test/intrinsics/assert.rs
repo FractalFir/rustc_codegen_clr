@@ -1,12 +1,18 @@
-#![feature(lang_items,adt_const_params,associated_type_defaults,core_intrinsics,start)]
-#![allow(internal_features,incomplete_features,unused_variables,dead_code)]
+#![feature(
+    lang_items,
+    adt_const_params,
+    associated_type_defaults,
+    core_intrinsics,
+    start,
+    unsized_const_params
+)]
+#![allow(internal_features, incomplete_features, unused_variables, dead_code)]
 #![no_std]
 include!("../common.rs");
 
-fn main(){
-   assert_eq!(8,black_box(8));
-   assert_ne!(7,black_box(8));
-   assert_eq!(8.0,black_box(8.0));
-   assert_ne!(7.999,black_box(8.0));
+fn main() {
+    assert_eq!(8, black_box(8));
+    assert_ne!(7, black_box(8));
+    assert_eq!(8.0, black_box(8.0));
+    assert_ne!(7.999, black_box(8.0));
 }
-    

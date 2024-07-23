@@ -1,5 +1,12 @@
-#![feature(lang_items,adt_const_params,associated_type_defaults,core_intrinsics,start)]
-#![allow(internal_features,incomplete_features,unused_variables,dead_code)]
+#![feature(
+    lang_items,
+    adt_const_params,
+    associated_type_defaults,
+    core_intrinsics,
+    start,
+    unsized_const_params
+)]
+#![allow(internal_features, incomplete_features, unused_variables, dead_code)]
 #![no_std]
 include!("../common.rs");
 //use core::intrinsics::{sqrtf32, powif32};
@@ -221,12 +228,36 @@ fn complex_function8(arg0: i32, arg1: &CustomEnum, arg2: f32, arg3: &CustomStruc
 
     var0
 }
-fn main(){
-    let res = complex_function1(black_box(8), 444.8, &mut [574,4554,-35335,433], &CustomStruct { field1: -43, field2: -0.00545463 });
-    test_eq!(res,0.09977405);
-    let res = complex_function1(black_box(786), 44.8, &mut [3,-46564,975,-899867], &CustomStruct { field1: 86495, field2: 39355335.34 });
-    test_eq!(res,-323.10748);
-    let res = complex_function2(black_box(22),&CustomEnum::Variant1(118),-3.14159,&CustomStruct { field1: -942, field2: 0.577567572 });
+fn main() {
+    let res = complex_function1(
+        black_box(8),
+        444.8,
+        &mut [574, 4554, -35335, 433],
+        &CustomStruct {
+            field1: -43,
+            field2: -0.00545463,
+        },
+    );
+    test_eq!(res, 0.09977405);
+    let res = complex_function1(
+        black_box(786),
+        44.8,
+        &mut [3, -46564, 975, -899867],
+        &CustomStruct {
+            field1: 86495,
+            field2: 39355335.34,
+        },
+    );
+    test_eq!(res, -323.10748);
+    let res = complex_function2(
+        black_box(22),
+        &CustomEnum::Variant1(118),
+        -3.14159,
+        &CustomStruct {
+            field1: -942,
+            field2: 0.577567572,
+        },
+    );
     Put::putnl(res);
-    test_eq!(res,1717935880);
+    test_eq!(res, 1717935880);
 }

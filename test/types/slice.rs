@@ -5,7 +5,8 @@
     core_intrinsics,
     start,
     ascii_char,
-    slice_internals
+    slice_internals,
+    unsized_const_params
 )]
 #![allow(internal_features, incomplete_features, unused_variables, dead_code)]
 #![no_std]

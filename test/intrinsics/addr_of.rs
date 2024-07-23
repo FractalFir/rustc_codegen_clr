@@ -5,7 +5,8 @@
     core_intrinsics,
     start,
     ptr_metadata,
-    strict_provenance
+    strict_provenance,
+    unsized_const_params
 )]
 #![allow(internal_features, incomplete_features, unused_variables, dead_code)]
 #![no_std]

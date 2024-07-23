@@ -5,7 +5,8 @@
     core_intrinsics,
     start,
     let_chains,
-    never_type
+    never_type,
+    unsized_const_params
 )]
 #![allow(
     internal_features,

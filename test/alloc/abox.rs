@@ -6,7 +6,8 @@
     start,
     fundamental,
     ptr_internals,
-    sized_type_properties
+    sized_type_properties,
+    unsized_const_params
 )]
 #![allow(
     internal_features,

@@ -3,7 +3,8 @@
     adt_const_params,
     associated_type_defaults,
     core_intrinsics,
-    start
+    start,
+    unsized_const_params
 )]
 #![allow(internal_features, incomplete_features, unused_variables, dead_code)]
 #![no_std]
@@ -21,7 +22,7 @@ fn equivalent_offset(val: u8, off: i16) -> i16 {
     panic!()
 }
 fn main() {
-    /* 
+    /*
     #[cfg(not(debug_assertions))]
     {
         let val = 105_u8;

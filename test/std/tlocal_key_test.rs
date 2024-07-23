@@ -5,9 +5,20 @@
     core_intrinsics,
     start,
     let_chains,
-    never_type
+    never_type,
+    unsized_const_params
 )]
-#![allow(internal_features, incomplete_features, unused_variables, dead_code,unused_imports,unused_mut,private_interfaces,non_upper_case_globals,unused_unsafe)]
+#![allow(
+    internal_features,
+    incomplete_features,
+    unused_variables,
+    dead_code,
+    unused_imports,
+    unused_mut,
+    private_interfaces,
+    non_upper_case_globals,
+    unused_unsafe
+)]
 #![no_std]
 #[allow(dead_code)]
 mod tlocal_key;
@@ -27,13 +38,13 @@ fn to_static<T: Copy>(tmp: Option<&mut Option<Cell<T>>>) -> Option<&'static Cell
         alloc.write(None);
         alloc.assume_init_mut()
     };
-    
+
     if let Some(tmp) = tmp {
         if let Some(tmp) = tmp.as_ref() {
             *static_val = Some(Cell::new(tmp.get()));
         }
     }
-    
+
     //Put::putnl((static_val.as_ref().unwrap()) as *const _ as usize);
     Put::putnl(0xC0FE_BABE_u32);
     static_val.as_ref()
@@ -46,6 +57,6 @@ fn main() {
             ts
         })
     };
-    let _ = KEY.try_with(|_|64);
+    let _ = KEY.try_with(|_| 64);
     KEY.set(64);
 }
