@@ -1,4 +1,4 @@
-use std::num::NonZeroU64;
+use std::num::NonZeroU32;
 
 use serde::{Deserialize, Serialize};
 
@@ -17,7 +17,7 @@ pub struct TypeDef {
     explicit_offsets: Option<Vec<u32>>,
     gargc: u32,
     extends: Option<DotnetTypeRef>,
-    explict_size: Option<NonZeroU64>,
+    explict_size: Option<NonZeroU32>,
     //requires_aligement_adjustements:bool,
 }
 impl TypeDef {
@@ -97,7 +97,7 @@ impl TypeDef {
         explicit_offsets: Option<Vec<u32>>,
         gargc: u32,
         extends: Option<DotnetTypeRef>,
-        explict_size: Option<NonZeroU64>,
+        explict_size: Option<NonZeroU32>,
     ) -> Self {
         let res = Self {
             access,
@@ -116,7 +116,7 @@ impl TypeDef {
     }
 
     #[must_use]
-    pub const fn explict_size(&self) -> Option<NonZeroU64> {
+    pub const fn explict_size(&self) -> Option<NonZeroU32> {
         self.explict_size
     }
 
@@ -134,7 +134,7 @@ impl TypeDef {
             let max_offset = offsets.iter().max().unwrap_or(&0);
 
             assert!(
-                (*max_offset as u64)
+                (*max_offset as u32)
                     < self
                         .explict_size()
                         .unwrap_or_else(|| {

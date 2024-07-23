@@ -1,5 +1,8 @@
+use serde::{Deserialize, Serialize};
+
 use super::{Assembly, CILRoot, RootIdx};
 use crate::basic_block::BasicBlock as V1Block;
+#[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub struct BasicBlock {
     roots: Vec<RootIdx>,
     block_id: u32,
@@ -25,6 +28,10 @@ impl BasicBlock {
 
     pub fn handler(&self) -> Option<&[BasicBlock]> {
         self.handler.as_ref().map(|b| b.as_ref())
+    }
+
+    pub fn roots_mut(&mut self) -> &mut Vec<RootIdx> {
+        &mut self.roots
     }
 }
 impl BasicBlock {

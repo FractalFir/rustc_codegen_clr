@@ -12,7 +12,7 @@ use cilly::{
 };
 use fxhash::{FxBuildHasher, FxHashMap};
 use rustc_middle::ty::{AdtDef, AdtKind, Instance, List, ParamEnv, Ty, TyCtxt, TyKind, UintTy};
-use std::num::NonZeroU64;
+use std::num::NonZeroU32;
 // SHOULDN'T BE SERAILIZED!
 pub struct TyCache {
     type_def_cache: FxHashMap<IString, TypeDef>,
@@ -128,7 +128,10 @@ impl TyCache {
             Some(explicit_offsets),
             0,
             None,
-            Some(NonZeroU64::new(layout.layout.size().bytes()).expect("Type size can't be 0!")),
+            Some(
+                NonZeroU32::new(layout.layout.size().bytes() as u32)
+                    .expect("Type size can't be 0!"),
+            ),
         );
         // If validation enabled, insert validation code.
         if *crate::config::VALIDTE_VALUES {
@@ -228,7 +231,7 @@ impl TyCache {
             Some(explicit_offsets),
             0,
             None,
-            Some(NonZeroU64::new(layout.layout.size().bytes()).unwrap()),
+            Some(NonZeroU32::new(layout.layout.size().bytes() as u32).unwrap()),
         )
     }
     fn enum_<'tcx>(
@@ -352,7 +355,7 @@ impl TyCache {
             Some(explicit_offsets),
             0,
             None,
-            Some(NonZeroU64::new(layout.layout.size().bytes()).unwrap()),
+            Some(NonZeroU32::new(layout.layout.size().bytes() as u32).unwrap()),
         );
         if *crate::config::VALIDTE_VALUES {
             let tpe = self.type_from_cache(adt_ty, tcx, method);

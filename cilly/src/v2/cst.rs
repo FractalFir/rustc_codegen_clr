@@ -1,10 +1,11 @@
 use std::any::type_name;
 
 use ordered_float::OrderedFloat;
+use serde::{Deserialize, Serialize};
 
 use super::{CILNode, StringIdx};
 
-#[derive(PartialEq, Eq, Clone, Debug)]
+#[derive(PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum Const {
     I8(i8),
     I16(i16),

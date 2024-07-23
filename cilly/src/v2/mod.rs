@@ -1,19 +1,21 @@
+pub use access::Access;
 pub use asm::Assembly;
 pub use basic_block::BasicBlock;
 pub use bimap::BiMap;
 pub use cilnode::{BinOp, CILNode, NodeIdx};
 pub use cilroot::{CILRoot, RootIdx};
-pub use class::{ClassIdx, ClassRef};
+pub use class::{ClassDef, ClassDefIdx, ClassRef, ClassRefIdx};
 pub use cst::Const;
 pub use field::{FieldDesc, FieldIdx, StaticFieldDesc, StaticFieldIdx};
 pub use float::Float;
 pub use fnsig::{FnSig, SigIdx};
 pub use int::Int;
 pub use iter::{CILIter, CILIterElem};
-pub use method::{MethodRef, MethodRefIdx};
+pub use method::{MethodDef, MethodDefIdx, MethodImpl, MethodRef, MethodRefIdx};
 pub use strings::StringIdx;
 pub use tpe::{Type, TypeIdx};
 
+pub mod access;
 pub mod asm;
 pub mod basic_block;
 pub mod bimap;

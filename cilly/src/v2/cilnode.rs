@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 use super::field::{StaticFieldDesc, StaticFieldIdx};
 use super::{bimap::HashWrapper, Assembly, Const, Int, MethodRefIdx, SigIdx, TypeIdx};
 use super::{FieldDesc, FieldIdx, Float};
@@ -6,7 +8,7 @@ use crate::{
     cil_node::CILNode as V1Node,
     v2::{ClassRef, FnSig, MethodRef, Type},
 };
-#[derive(Hash, PartialEq, Eq, Clone, Default, Debug)]
+#[derive(Hash, PartialEq, Eq, Clone, Default, Debug, Serialize, Deserialize)]
 pub struct NodeIdx(u64);
 impl HashWrapper for NodeIdx {
     fn from_hash(val: u64) -> Self {
@@ -14,7 +16,7 @@ impl HashWrapper for NodeIdx {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Debug)]
+#[derive(PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum CILNode {
     Const(Const),
     BinOp(NodeIdx, NodeIdx, BinOp),
@@ -237,7 +239,7 @@ impl std::hash::Hash for CILNode {
         }
     }
 }
-#[derive(Hash, PartialEq, Eq, Clone, Debug)]
+#[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum PtrCastRes {
     Ptr(TypeIdx),
     Ref(TypeIdx),
@@ -245,25 +247,25 @@ pub enum PtrCastRes {
     USize,
     ISize,
 }
-#[derive(Hash, PartialEq, Eq, Clone, Debug)]
+#[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 
 pub enum ExtendKind {
     ZeroExtend,
     SignExtend,
 }
-#[derive(Hash, PartialEq, Eq, Clone, Copy, Debug)]
+#[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum MethodKind {
     Static,
     Instance,
     Virtual,
     Constructor,
 }
-#[derive(Hash, PartialEq, Eq, Clone, Debug)]
+#[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum UnOp {
     Not,
     Neg,
 }
-#[derive(Hash, PartialEq, Eq, Clone, Debug)]
+#[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 
 pub enum BinOp {
     Add,

@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 use super::{
     bimap::HashWrapper, cilnode::MethodKind, field::FieldIdx, Assembly, CILNode, ClassRef,
     FieldDesc, Float, FnSig, Int, MethodRef, MethodRefIdx, NodeIdx, SigIdx, StaticFieldDesc,
@@ -5,7 +7,7 @@ use super::{
 };
 use crate::cil_root::CILRoot as V1Root;
 //use crate::cil_node::CILNode as V1Node;
-#[derive(PartialEq, Eq, Clone, Debug)]
+#[derive(PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum CILRoot {
     StLoc(u64, NodeIdx),
     StArg(u64, NodeIdx),
@@ -143,7 +145,7 @@ impl std::hash::Hash for CILRoot {
         }
     }
 }
-#[derive(Hash, PartialEq, Eq, Clone, Debug)]
+#[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum BranchCond {
     True(NodeIdx),
     False(NodeIdx),
@@ -152,14 +154,14 @@ pub enum BranchCond {
     Lt(NodeIdx, NodeIdx, CmpKind),
     Gt(NodeIdx, NodeIdx, CmpKind),
 }
-#[derive(Hash, PartialEq, Eq, Clone, Debug)]
+#[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum CmpKind {
     Ordered,
     Unordered,
     Signed,
     Unsigned,
 }
-#[derive(Hash, PartialEq, Eq, Clone, Default, Debug)]
+#[derive(Hash, PartialEq, Eq, Copy, Clone, Default, Debug, Serialize, Deserialize)]
 
 pub struct RootIdx(u64);
 impl HashWrapper for RootIdx {

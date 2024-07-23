@@ -3,7 +3,7 @@
 use aot::aot_compile_mode;
 use cilly::{
     access_modifier,
-    asm::Assembly,
+    asm::{Assembly, CILLY_V2},
     basic_block::BasicBlock,
     c_exporter::CExporter,
     call,
@@ -563,6 +563,11 @@ fn main() {
         export::export_assembly(&final_assembly, output_file_path, is_lib)
             .expect("Assembly export faliure!");
         let path: std::path::PathBuf = output_file_path.into();
+        if *CILLY_V2 {
+            cilly::v2::Assembly::from_v1(&final_assembly)
+                .save_tmp(&mut std::fs::File::create(path.with_extension("cilly2")).unwrap())
+                .unwrap()
+        }
         final_assembly
             .save_tmp(&mut std::fs::File::create(path.with_extension("cilly")).unwrap())
             .unwrap();

@@ -85,7 +85,7 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
         res.push('}');
         res
     }
-    pub fn sizeof_tpedef(&self, tpe: &crate::DotnetTypeRef) -> std::num::NonZeroU64 {
+    pub fn sizeof_tpedef(&self, tpe: &crate::DotnetTypeRef) -> std::num::NonZeroU32 {
         assert!(tpe.asm().is_none());
         self.types
             .get(tpe.name_path(&self.string_map))
@@ -645,6 +645,14 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
 
     pub fn string_map(&self) -> &AsmStringContainer {
         &self.string_map
+    }
+
+    pub fn initializers(&self) -> &[CILRoot] {
+        &self.initializers
+    }
+
+    pub fn static_fields(&self) -> &FxHashMap<IString, (Type, bool)> {
+        &self.static_fields
     }
 }
 use lazy_static::*;

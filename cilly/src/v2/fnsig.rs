@@ -8,7 +8,7 @@ impl HashWrapper for SigIdx {
         Self(val)
     }
 }
-#[derive(Hash, PartialEq, Eq, Clone, Debug)]
+#[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub struct FnSig {
     input: Box<[Type]>,
     output: Type,

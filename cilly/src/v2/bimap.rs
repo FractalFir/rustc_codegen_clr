@@ -1,6 +1,7 @@
 use fxhash::{FxHashMap, FxHasher};
+use serde::{Deserialize, Serialize};
 use std::{collections::hash_map::Entry, fmt::Debug, hash::Hash};
-
+#[derive(Serialize, Deserialize)]
 pub struct BiMap<Key: HashWrapper + Eq + Hash + Clone, Value: Eq + Hash + Clone>(
     pub FxHashMap<Key, Value>,
     pub FxHashMap<Value, Key>,

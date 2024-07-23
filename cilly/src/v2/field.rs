@@ -1,10 +1,10 @@
 use serde::{Deserialize, Serialize};
 
-use super::{bimap::HashWrapper, ClassIdx, ClassRef, StringIdx, Type};
+use super::{bimap::HashWrapper, ClassRef, ClassRefIdx, StringIdx, Type};
 use crate::field_desc::FieldDescriptor as V1Field;
 use crate::static_field_desc::StaticFieldDescriptor as V1StaticField;
 
-#[derive(Hash, PartialEq, Eq, Clone, Default, Debug, Copy)]
+#[derive(Hash, PartialEq, Eq, Clone, Default, Debug, Copy, Serialize, Deserialize)]
 pub struct FieldIdx(u64);
 impl HashWrapper for FieldIdx {
     fn from_hash(val: u64) -> Self {
@@ -13,13 +13,13 @@ impl HashWrapper for FieldIdx {
 }
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Debug)]
 pub struct FieldDesc {
-    owner: ClassIdx,
+    owner: ClassRefIdx,
     name: StringIdx,
     tpe: Type,
 }
 
 impl FieldDesc {
-    fn new(owner: ClassIdx, name: StringIdx, tpe: Type) -> Self {
+    fn new(owner: ClassRefIdx, name: StringIdx, tpe: Type) -> Self {
         Self { owner, name, tpe }
     }
 
@@ -34,7 +34,7 @@ impl FieldDesc {
         )
     }
 }
-#[derive(Hash, PartialEq, Eq, Clone, Default, Debug, Copy)]
+#[derive(Hash, PartialEq, Eq, Clone, Default, Debug, Copy, Serialize, Deserialize)]
 pub struct StaticFieldIdx(u64);
 impl HashWrapper for StaticFieldIdx {
     fn from_hash(val: u64) -> Self {
@@ -43,13 +43,13 @@ impl HashWrapper for StaticFieldIdx {
 }
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Debug)]
 pub struct StaticFieldDesc {
-    owner: Option<ClassIdx>,
+    owner: Option<ClassRefIdx>,
     name: StringIdx,
     tpe: Type,
 }
 
 impl StaticFieldDesc {
-    fn new(owner: Option<ClassIdx>, name: StringIdx, tpe: Type) -> Self {
+    fn new(owner: Option<ClassRefIdx>, name: StringIdx, tpe: Type) -> Self {
         Self { owner, name, tpe }
     }
 

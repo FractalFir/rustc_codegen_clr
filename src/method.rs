@@ -17,7 +17,7 @@ pub(crate) fn resolve_global_allocations(
     let mut tmp: Vec<_> = blocks
         .iter_mut()
         .flat_map(|block| block.tree_iter())
-        .map(|tree| tree.root_mut())
+        .map(cilly::cil_tree::CILTree::root_mut)
         .collect();
     tmp.iter_mut()
         .flat_map(|root| root.deref_mut().into_iter())

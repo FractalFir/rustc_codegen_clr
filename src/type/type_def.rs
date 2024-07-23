@@ -14,7 +14,7 @@ use cilly::{
 };
 use rustc_span::def_id::DefId;
 use rustc_target::abi::Layout;
-use std::num::{NonZero, NonZeroU64};
+use std::num::{NonZero, NonZeroU32};
 
 #[must_use]
 pub fn escape_field_name(name: &str) -> IString {
@@ -95,7 +95,7 @@ pub fn closure_typedef(
         Some(explicit_offsets),
         0,
         None,
-        Some(NonZeroU64::new(layout.size().bytes()).unwrap()),
+        Some(NonZeroU32::new(layout.size().bytes() as u32).unwrap()),
     )
 }
 #[must_use]
@@ -138,7 +138,7 @@ pub fn tuple_typedef(elements: &[Type], layout: Layout, map: &AsmStringContainer
         Some(explicit_offsets),
         0,
         None,
-        Some(NonZero::new(layout.size().bytes()).expect("Zero-sized tuple!")),
+        Some(NonZero::new(layout.size().bytes() as u32).expect("Zero-sized tuple!")),
     )
 }
 #[must_use]
@@ -164,7 +164,7 @@ pub fn get_array_type(
         Some(explicit_offsets),
         0,
         None,
-        Some(NonZeroU64::new(explict_size).unwrap()),
+        Some(NonZeroU32::new(explict_size as u32).unwrap()),
     );
     if element_count > 0 {
         let set_usize = Method::new(

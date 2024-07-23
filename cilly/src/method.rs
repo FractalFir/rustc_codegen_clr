@@ -30,7 +30,7 @@ pub struct Method {
     sig: FnSig,
     name: IString,
     locals: Vec<LocalDef>,
-    pub(in crate::method) blocks: Vec<BasicBlock>,
+    blocks: Vec<BasicBlock>,
     attributes: Vec<Attribute>,
     arg_names: Vec<Option<IString>>,
 }
@@ -382,7 +382,7 @@ impl Method {
             None,
             self.name().to_owned().into(),
             self.sig().clone(),
-            true,
+            self.is_static(),
         )
     }
     /// Alocates all temporary variables within this method.

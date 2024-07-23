@@ -2,7 +2,7 @@ use std::num::NonZeroU8;
 
 use serde::{Deserialize, Serialize};
 
-use super::{bimap::HashWrapper, Assembly, ClassIdx, ClassRef, Float, FnSig, Int, SigIdx};
+use super::{bimap::HashWrapper, Assembly, ClassRef, ClassRefIdx, Float, FnSig, Int, SigIdx};
 
 #[derive(Hash, PartialEq, Eq, Clone, Default, Copy, Debug, Serialize, Deserialize)]
 pub struct TypeIdx(u64);
@@ -16,7 +16,7 @@ pub enum Type {
     Ptr(TypeIdx),
     Ref(TypeIdx),
     Int(Int),
-    ClassRef(ClassIdx),
+    ClassRef(ClassRefIdx),
     Float(Float),
     PlatformChar,
     PlarformGeneric(u32, GenericKind),
