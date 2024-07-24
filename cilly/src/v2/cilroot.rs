@@ -1,13 +1,15 @@
 use serde::{Deserialize, Serialize};
 
 use super::{
-    bimap::HashWrapper, cilnode::MethodKind, field::FieldIdx, Assembly, CILNode, ClassRef,
-    FieldDesc, Float, FnSig, Int, MethodRef, MethodRefIdx, NodeIdx, SigIdx, StaticFieldDesc,
-    StaticFieldIdx, StringIdx, Type,
+    bimap::{BiMapIndex, IntoBiMapIndex},
+    cilnode::MethodKind,
+    field::FieldIdx,
+    Assembly, CILNode, ClassRef, FieldDesc, Float, FnSig, Int, MethodRef, MethodRefIdx, NodeIdx,
+    SigIdx, StaticFieldDesc, StaticFieldIdx, StringIdx, Type,
 };
 use crate::cil_root::CILRoot as V1Root;
 //use crate::cil_node::CILNode as V1Node;
-#[derive(PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Hash, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum CILRoot {
     StLoc(u64, NodeIdx),
     StArg(u64, NodeIdx),
@@ -54,97 +56,6 @@ pub enum CILRoot {
     },
 }
 
-impl std::hash::Hash for CILRoot {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        core::mem::discriminant(self).hash(state);
-        match self {
-            CILRoot::StLoc(loc, val) => {
-                "StLoc".hash(state);
-                loc.hash(state);
-                val.hash(state);
-            }
-            CILRoot::StArg(arg, val) => {
-                "StArg".hash(state);
-                arg.hash(state);
-                val.hash(state);
-            }
-            CILRoot::Ret(val) => {
-                "Ret".hash(state);
-                val.hash(state);
-            }
-            CILRoot::Pop(val) => {
-                "Pop".hash(state);
-                val.hash(state);
-            }
-            CILRoot::Throw(val) => {
-                "Throw".hash(state);
-                val.hash(state);
-            }
-            CILRoot::VoidRet => "VoidRet".hash(state),
-            CILRoot::Break => "Break".hash(state),
-            CILRoot::Nop => "Nop".hash(state),
-            CILRoot::Branch {
-                target,
-                sub_target,
-                cond,
-            } => {
-                "Branch".hash(state);
-                target.hash(state);
-                sub_target.hash(state);
-                cond.hash(state);
-            }
-            CILRoot::SourceFileInfo {
-                line_start,
-                line_len,
-                col_start,
-                col_len,
-                file,
-            } => {
-                "SourceFileInfo".hash(state);
-                line_start.hash(state);
-                line_len.hash(state);
-                col_start.hash(state);
-                col_len.hash(state);
-                file.hash(state);
-            }
-            CILRoot::SetField(val) => {
-                "SetField".hash(state);
-                val.hash(state);
-            }
-            CILRoot::Call(val) => {
-                "Call".hash(state);
-                val.hash(state);
-            }
-            CILRoot::StInd(val) => {
-                "StInd".hash(state);
-                val.hash(state);
-            }
-            CILRoot::InitBlk(val) => {
-                "InitBlk".hash(state);
-                val.hash(state);
-            }
-            CILRoot::CpBlk(val) => {
-                "CpBlk".hash(state);
-                val.hash(state);
-            }
-            CILRoot::CallI(val) => {
-                "CallI".hash(state);
-                val.hash(state);
-            }
-            CILRoot::ExitSpecialRegion { target, source } => {
-                "ExitSpecialRegion".hash(state);
-                target.hash(state);
-                source.hash(state);
-            }
-            CILRoot::SetStaticField { field, val: value } => {
-                "ExitSpecialRegion".hash(state);
-                field.hash(state);
-                value.hash(state);
-            }
-            CILRoot::ReThrow => "ReThrow".hash(state),
-        }
-    }
-}
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum BranchCond {
     True(NodeIdx),
@@ -161,12 +72,15 @@ pub enum CmpKind {
     Signed,
     Unsigned,
 }
-#[derive(Hash, PartialEq, Eq, Copy, Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Hash, PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
 
-pub struct RootIdx(u64);
-impl HashWrapper for RootIdx {
-    fn from_hash(val: u64) -> Self {
+pub struct RootIdx(BiMapIndex);
+impl IntoBiMapIndex for RootIdx {
+    fn from_hash(val: BiMapIndex) -> Self {
         Self(val)
+    }
+    fn as_bimap_index(&self) -> BiMapIndex {
+        self.0
     }
 }
 impl CILRoot {

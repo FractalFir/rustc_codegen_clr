@@ -1,22 +1,26 @@
 use serde::{Deserialize, Serialize};
 
+use super::bimap::BiMapIndex;
 use super::field::{StaticFieldDesc, StaticFieldIdx};
-use super::{bimap::HashWrapper, Assembly, Const, Int, MethodRefIdx, SigIdx, TypeIdx};
+use super::{bimap::IntoBiMapIndex, Assembly, Const, Int, MethodRefIdx, SigIdx, TypeIdx};
 use super::{FieldDesc, FieldIdx, Float};
 use crate::r#type::Type as V1Type;
 use crate::{
     cil_node::CILNode as V1Node,
     v2::{ClassRef, FnSig, MethodRef, Type},
 };
-#[derive(Hash, PartialEq, Eq, Clone, Default, Debug, Serialize, Deserialize)]
-pub struct NodeIdx(u64);
-impl HashWrapper for NodeIdx {
-    fn from_hash(val: u64) -> Self {
+#[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
+pub struct NodeIdx(BiMapIndex);
+impl IntoBiMapIndex for NodeIdx {
+    fn from_hash(val: BiMapIndex) -> Self {
         Self(val)
+    }
+    fn as_bimap_index(&self) -> BiMapIndex {
+        self.0
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
+#[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum CILNode {
     Const(Const),
     BinOp(NodeIdx, NodeIdx, BinOp),
@@ -92,152 +96,6 @@ pub enum CILNode {
         object: NodeIdx,
         tpe: TypeIdx,
     },
-}
-
-impl std::hash::Hash for CILNode {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        core::mem::discriminant(self).hash(state);
-        match self {
-            CILNode::Const(cst) => {
-                "Const".hash(state);
-                cst.hash(state);
-            }
-            CILNode::BinOp(lhs, rhs, op) => {
-                "BinOp".hash(state);
-                lhs.hash(state);
-                rhs.hash(state);
-                op.hash(state);
-            }
-            CILNode::UnOp(val, op) => {
-                "UnOp".hash(state);
-                val.hash(state);
-                op.hash(state);
-            }
-            CILNode::LdLoc(loc) => {
-                "LdLoc".hash(state);
-                loc.hash(state)
-            }
-            CILNode::LdLocA(loc) => {
-                "LdLocA".hash(state);
-                loc.hash(state)
-            }
-            CILNode::LdArg(arg) => {
-                "LdArg".hash(state);
-                arg.hash(state)
-            }
-            CILNode::LdArgA(arg) => {
-                "LdArgA".hash(state);
-                arg.hash(state)
-            }
-            CILNode::Call(call) => {
-                "Call".hash(state);
-                call.hash(state);
-            }
-            CILNode::IntCast {
-                input,
-                target,
-                extend,
-            } => {
-                "IntCast".hash(state);
-                input.hash(state);
-                target.hash(state);
-                extend.hash(state);
-            }
-            CILNode::FloatCast {
-                input,
-                target,
-                is_signed,
-            } => {
-                "FloatCast".hash(state);
-                input.hash(state);
-                target.hash(state);
-                is_signed.hash(state);
-            }
-            CILNode::RefToPtr(ptr) => {
-                "RefToPtr".hash(state);
-                ptr.hash(state);
-            }
-            CILNode::PtrCast(ptr, new_tpe) => {
-                "PtrCast".hash(state);
-                ptr.hash(state);
-                new_tpe.hash(state);
-            }
-            CILNode::LdFieldAdress { addr, field } => {
-                "LdFieldAdress".hash(state);
-                addr.hash(state);
-                field.hash(state);
-            }
-            CILNode::LdField { addr, field } => {
-                "LdField".hash(state);
-                addr.hash(state);
-                field.hash(state);
-            }
-            CILNode::LdInd {
-                addr,
-                tpe,
-                volitale,
-            } => {
-                "LdInd".hash(state);
-                addr.hash(state);
-                tpe.hash(state);
-                volitale.hash(state);
-            }
-            CILNode::SizeOf(tpe) => {
-                "SizeOf".hash(state);
-                tpe.hash(state);
-            }
-            CILNode::GetException => "GetException".hash(state),
-            CILNode::IsInst(val, tpe) => {
-                "IsInst".hash(state);
-                val.hash(state);
-                tpe.hash(state);
-            }
-            CILNode::CheckedCast(val, tpe) => {
-                "CheckedCast".hash(state);
-                val.hash(state);
-                tpe.hash(state);
-            }
-            CILNode::CallI(call) => {
-                "CallI".hash(state);
-                call.hash(state);
-            }
-            CILNode::LocAlloc { size } => {
-                "LocAlloc".hash(state);
-                size.hash(state);
-            }
-            CILNode::LocAllocAlgined { tpe, align: algin } => {
-                "LocAllocAlgined".hash(state);
-                tpe.hash(state);
-                algin.hash(state);
-            }
-            CILNode::LdStaticField(fld) => {
-                "LdStaticField".hash(state);
-                fld.hash(state);
-            }
-            CILNode::LdFtn(site) => {
-                "LdFtn".hash(state);
-                site.hash(state);
-            }
-            CILNode::LdTypeToken(tpe) => {
-                "LdTypeToken".hash(state);
-                tpe.hash(state);
-            }
-            CILNode::LdLen(val) => {
-                "LdLen".hash(state);
-                val.hash(state);
-            }
-            CILNode::LdElelemRef { array, index } => {
-                "LdElelemRef".hash(state);
-                array.hash(state);
-                index.hash(state);
-            }
-            CILNode::UnboxAny { object, tpe } => {
-                "UnboxAny".hash(state);
-                object.hash(state);
-                tpe.hash(state);
-            }
-        }
-    }
 }
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum PtrCastRes {

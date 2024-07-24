@@ -1,3 +1,5 @@
+use std::path::Path;
+
 pub use access::Access;
 pub use asm::Assembly;
 pub use basic_block::BasicBlock;
@@ -74,4 +76,8 @@ fn no_collision() {
     asm.node_idx(CILNode::LdLoc(0));
     asm.node_idx(CILNode::Const(Const::I32(0)));
     asm.node_idx(CILNode::Const(Const::I64(0)));
+}
+pub trait Exporter {
+    type Error;
+    fn export(asm: &Assembly, target: &Path) -> Result<(), Self::Error>;
 }

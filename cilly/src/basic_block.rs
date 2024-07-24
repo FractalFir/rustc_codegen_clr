@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     cil_iter::{CILIterElem, CILIterTrait},
-    cil_iter_mut::CILIterElemMut,
     cil_node::{CILNode, ValidationContext},
     cil_root::CILRoot,
     cil_tree::CILTree,

@@ -4,18 +4,25 @@ use serde::{Deserialize, Serialize};
 
 use crate::{v2::MethodDef, DotnetTypeRef as V1ClassRef};
 
-use super::{access::Access, bimap::HashWrapper, MethodDefIdx, StringIdx, Type};
+use super::{
+    access::Access,
+    bimap::{BiMapIndex, IntoBiMapIndex},
+    MethodDefIdx, StringIdx, Type,
+};
 
 impl From<ClassRefIdx> for Type {
     fn from(val: ClassRefIdx) -> Self {
         Type::ClassRef(val)
     }
 }
-#[derive(Hash, PartialEq, Eq, Clone, Default, Debug, Copy, Serialize, Deserialize)]
-pub struct ClassRefIdx(u64);
-impl HashWrapper for ClassRefIdx {
-    fn from_hash(val: u64) -> Self {
+#[derive(Hash, PartialEq, Eq, Clone, Debug, Copy, Serialize, Deserialize)]
+pub struct ClassRefIdx(BiMapIndex);
+impl IntoBiMapIndex for ClassRefIdx {
+    fn from_hash(val: BiMapIndex) -> Self {
         Self(val)
+    }
+    fn as_bimap_index(&self) -> BiMapIndex {
+        self.0
     }
 }
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
@@ -170,7 +177,7 @@ impl ClassDef {
         defid
     }
 }
-#[derive(Hash, PartialEq, Eq, Clone, Default, Debug, Copy, Serialize, Deserialize)]
+#[derive(Hash, PartialEq, Eq, Clone, Debug, Copy, Serialize, Deserialize)]
 pub struct ClassDefIdx(pub ClassRefIdx);
 
 impl std::ops::Deref for ClassDefIdx {

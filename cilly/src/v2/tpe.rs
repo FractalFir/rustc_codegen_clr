@@ -2,13 +2,20 @@ use std::num::NonZeroU8;
 
 use serde::{Deserialize, Serialize};
 
-use super::{bimap::HashWrapper, Assembly, ClassRef, ClassRefIdx, Float, FnSig, Int, SigIdx};
+use super::{
+    bimap::{BiMapIndex, IntoBiMapIndex},
+    Assembly, ClassRef, ClassRefIdx, Float, FnSig, Int, SigIdx,
+};
 
-#[derive(Hash, PartialEq, Eq, Clone, Default, Copy, Debug, Serialize, Deserialize)]
-pub struct TypeIdx(u64);
-impl HashWrapper for TypeIdx {
-    fn from_hash(val: u64) -> Self {
+#[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct TypeIdx(BiMapIndex);
+impl IntoBiMapIndex for TypeIdx {
+    fn from_hash(val: BiMapIndex) -> Self {
         Self(val)
+    }
+
+    fn as_bimap_index(&self) -> BiMapIndex {
+        self.0
     }
 }
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]

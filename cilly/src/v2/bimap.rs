@@ -1,17 +1,19 @@
 use fxhash::{FxHashMap, FxHasher};
 use serde::{Deserialize, Serialize};
-use std::{collections::hash_map::Entry, fmt::Debug, hash::Hash};
+use std::{collections::hash_map::Entry, fmt::Debug, hash::Hash, num::NonZeroU32};
 #[derive(Serialize, Deserialize)]
-pub struct BiMap<Key: HashWrapper + Eq + Hash + Clone, Value: Eq + Hash + Clone>(
-    pub FxHashMap<Key, Value>,
+pub struct BiMap<Key: IntoBiMapIndex + Eq + Hash + Clone, Value: Eq + Hash + Clone>(
+    pub Vec<Value>,
     pub FxHashMap<Value, Key>,
 );
-impl<Key: HashWrapper + Eq + Hash + Clone, Value: Eq + Hash + Clone> Default for BiMap<Key, Value> {
+impl<Key: IntoBiMapIndex + Eq + Hash + Clone, Value: Eq + Hash + Clone> Default
+    for BiMap<Key, Value>
+{
     fn default() -> Self {
         Self(Default::default(), Default::default())
     }
 }
-impl<Key: HashWrapper + Eq + Hash + Clone + Debug, Value: Eq + Hash + Clone + Debug>
+impl<Key: IntoBiMapIndex + Eq + Hash + Clone + Debug, Value: Eq + Hash + Clone + Debug>
     BiMap<Key, Value>
 {
     /// Allocates a new Value and returns a Key.
@@ -19,24 +21,23 @@ impl<Key: HashWrapper + Eq + Hash + Clone + Debug, Value: Eq + Hash + Clone + De
         match self.1.entry(val.clone()) {
             Entry::Occupied(key) => key.get().clone(),
             Entry::Vacant(empty) => {
-                let hash = calculate_hash(&val);
-                let key = Key::from_hash(hash);
-                empty.insert(key.clone());
-                if let Some(collision) = self.0.insert(key.clone(), val.clone()) {
-                    panic!("{val:?} and {collision:?} have colliding hashes");
-                }
+                let key = Key::from_hash(NonZeroU32::new(self.0.len() as u32 + 1).unwrap());
 
+                empty.insert(key.clone());
+                self.0.push(val);
                 key
             }
         }
     }
     /// Gets an allocated value with id `key`
     pub fn get(&self, key: Key) -> &Value {
-        self.0.get(&key).unwrap()
+        self.0.get(key.as_bimap_index().get() as usize - 1).unwrap()
     }
 }
-pub trait HashWrapper {
-    fn from_hash(val: u64) -> Self;
+pub type BiMapIndex = NonZeroU32;
+pub trait IntoBiMapIndex {
+    fn from_hash(val: BiMapIndex) -> Self;
+    fn as_bimap_index(&self) -> BiMapIndex;
 }
 pub fn calculate_hash<T: std::hash::Hash>(t: &T) -> u64 {
     use std::hash::Hasher;

@@ -1,8 +1,9 @@
 use serde::{Deserialize, Serialize};
 
 use super::{
-    bimap::HashWrapper, cilnode::MethodKind, BasicBlock, ClassDefIdx, ClassRefIdx, FnSig, SigIdx,
-    StringIdx, Type, TypeIdx,
+    bimap::{BiMapIndex, IntoBiMapIndex},
+    cilnode::MethodKind,
+    BasicBlock, ClassDefIdx, ClassRefIdx, FnSig, SigIdx, StringIdx, Type, TypeIdx,
 };
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub struct MethodRef {
@@ -43,11 +44,14 @@ impl MethodRef {
     }
 }
 
-#[derive(Hash, PartialEq, Eq, Clone, Copy, Default, Debug, Serialize, Deserialize)]
-pub struct MethodRefIdx(u64);
-impl HashWrapper for MethodRefIdx {
-    fn from_hash(val: u64) -> Self {
+#[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct MethodRefIdx(BiMapIndex);
+impl IntoBiMapIndex for MethodRefIdx {
+    fn from_hash(val: BiMapIndex) -> Self {
         Self(val)
+    }
+    fn as_bimap_index(&self) -> BiMapIndex {
+        self.0
     }
 }
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
@@ -165,7 +169,7 @@ impl MethodImpl {
         }
     }
 }
-#[derive(Hash, PartialEq, Eq, Clone, Copy, Default, Debug, Serialize, Deserialize)]
+#[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct MethodDefIdx(pub MethodRefIdx);
 
 impl std::ops::Deref for MethodDefIdx {

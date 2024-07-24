@@ -1,14 +1,18 @@
 use serde::{Deserialize, Serialize};
 
-use super::{bimap::HashWrapper, ClassRef, ClassRefIdx, StringIdx, Type};
+use super::bimap::BiMapIndex;
+use super::{bimap::IntoBiMapIndex, ClassRef, ClassRefIdx, StringIdx, Type};
 use crate::field_desc::FieldDescriptor as V1Field;
 use crate::static_field_desc::StaticFieldDescriptor as V1StaticField;
 
-#[derive(Hash, PartialEq, Eq, Clone, Default, Debug, Copy, Serialize, Deserialize)]
-pub struct FieldIdx(u64);
-impl HashWrapper for FieldIdx {
-    fn from_hash(val: u64) -> Self {
+#[derive(Hash, PartialEq, Eq, Clone, Debug, Copy, Serialize, Deserialize)]
+pub struct FieldIdx(BiMapIndex);
+impl IntoBiMapIndex for FieldIdx {
+    fn from_hash(val: BiMapIndex) -> Self {
         Self(val)
+    }
+    fn as_bimap_index(&self) -> BiMapIndex {
+        self.0
     }
 }
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Debug)]
@@ -34,11 +38,14 @@ impl FieldDesc {
         )
     }
 }
-#[derive(Hash, PartialEq, Eq, Clone, Default, Debug, Copy, Serialize, Deserialize)]
-pub struct StaticFieldIdx(u64);
-impl HashWrapper for StaticFieldIdx {
-    fn from_hash(val: u64) -> Self {
+#[derive(Hash, PartialEq, Eq, Clone, Debug, Copy, Serialize, Deserialize)]
+pub struct StaticFieldIdx(BiMapIndex);
+impl IntoBiMapIndex for StaticFieldIdx {
+    fn from_hash(val: BiMapIndex) -> Self {
         Self(val)
+    }
+    fn as_bimap_index(&self) -> BiMapIndex {
+        self.0
     }
 }
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Debug)]

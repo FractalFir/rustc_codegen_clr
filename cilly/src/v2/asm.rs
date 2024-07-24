@@ -16,6 +16,7 @@ use crate::{asm::Assembly as V1Asm, v2::MethodImpl};
 struct IStringWrapper(IString);
 impl std::hash::Hash for IStringWrapper {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        calculate_hash(&0xC0FE_BEEFu32).hash(state);
         for char in self.0.chars() {
             calculate_hash(&char).hash(state);
         }
@@ -278,20 +279,28 @@ impl Assembly {
         });
         empty
     }
-
+    pub fn export(&self, out: impl AsRef<std::path::Path>) {
+        todo!();
+    }
     pub fn memory_info(&self) {
-        encoded_stats(self);
-        encoded_stats(&self.strings);
-        encoded_stats(&self.types);
-        encoded_stats(&self.class_refs);
-        encoded_stats(&self.class_defs);
-        encoded_stats(&self.nodes);
-        encoded_stats(&self.roots);
-        encoded_stats(&self.sigs);
-        encoded_stats(&self.types);
-        encoded_stats(&self.fields);
-        encoded_stats(&self.statics);
-        encoded_stats(&self.method_defs);
+        let mut stats = vec![
+            encoded_stats(self),
+            encoded_stats(&self.strings),
+            encoded_stats(&self.types),
+            encoded_stats(&self.class_refs),
+            encoded_stats(&self.class_defs),
+            encoded_stats(&self.nodes),
+            encoded_stats(&self.roots),
+            encoded_stats(&self.sigs),
+            encoded_stats(&self.types),
+            encoded_stats(&self.fields),
+            encoded_stats(&self.statics),
+            encoded_stats(&self.method_defs),
+        ];
+        stats.sort_by(|(_, a), (_, b)| a.cmp(b));
+        for stat in stats {
+            println!("{}:\t{} bytes", stat.0, stat.1);
+        }
     }
 }
 /// An initializer, which runs before everything else. By convention, it is used to initialize static / const data. Should not execute any user code
@@ -304,9 +313,18 @@ pub const USER_INIT: &str = "static_init";
 pub const ENTRYPOINT: &str = "entrypoint";
 /// Main class of this module
 pub const MAIN_MODULE: &str = "MainModule";
-fn encoded_stats<T: Serialize>(val: &T) {
+
+fn encoded_stats<T: Serialize + for<'a> Deserialize<'a>>(val: &T) -> (&'static str, usize) {
     let buff = postcard::to_allocvec(val).unwrap();
-    println!("{}:\t{} bytes", type_name::<T>(), buff.len());
+    let start = std::time::Instant::now();
+    let _: T = postcard::from_bytes(&buff).unwrap();
+    let end = std::time::Instant::now();
+    println!(
+        "Decoding {} took {} ms",
+        type_name::<T>(),
+        end.duration_since(start).as_millis()
+    );
+    (type_name::<T>(), buff.len())
 }
 #[test]
 fn user_init() {
