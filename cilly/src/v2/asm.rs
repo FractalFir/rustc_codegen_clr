@@ -10,8 +10,8 @@ use super::{
     FieldDesc, FieldIdx, FnSig, MethodDef, MethodDefIdx, MethodRef, MethodRefIdx, NodeIdx, RootIdx,
     SigIdx, StaticFieldDesc, StaticFieldIdx, StringIdx, Type, TypeIdx,
 };
-use crate::IString;
 use crate::{asm::Assembly as V1Asm, v2::MethodImpl};
+use crate::{utilis::assert_unique, IString};
 #[derive(Default, Serialize, Deserialize, Eq, PartialEq, Clone, Debug)]
 struct IStringWrapper(IString);
 impl std::hash::Hash for IStringWrapper {
@@ -121,9 +121,14 @@ impl Assembly {
     pub(crate) fn field_idx(&mut self, field: FieldDesc) -> FieldIdx {
         self.fields.alloc(field)
     }
-
+    pub fn get_field(&self, key: FieldIdx) -> &FieldDesc {
+        self.fields.get(key)
+    }
     pub(crate) fn sfld_idx(&mut self, sfld: StaticFieldDesc) -> StaticFieldIdx {
         self.statics.alloc(sfld)
+    }
+    pub fn get_static_field(&self, key: StaticFieldIdx) -> &StaticFieldDesc {
+        self.statics.get(key)
     }
     pub fn class_def(&mut self, def: ClassDef) -> ClassDefIdx {
         let cref = def.ref_to();
@@ -163,12 +168,14 @@ impl Assembly {
         let mref = def.ref_to();
         let def_class = def.class();
         let ref_idx = self.methodref_idx(mref);
+        // Check that this def is unique
         self.class_defs
             .get_mut(&def_class)
             .expect("Method added without a class")
             .methods_mut()
             .push(MethodDefIdx(ref_idx));
         self.method_defs.insert(ref_idx, def);
+        crate::utilis::assert_unique(self.class_defs.get(&def_class).unwrap().methods());
         MethodDefIdx(ref_idx)
     }
     pub fn user_init(&mut self) -> MethodDefIdx {
@@ -183,28 +190,27 @@ impl Assembly {
             vec![].into(),
         );
         let mref = self.methodref_idx(mref);
-        match self.method_defs.entry(mref) {
-            std::collections::hash_map::Entry::Occupied(_) => MethodDefIdx(mref),
-            std::collections::hash_map::Entry::Vacant(_) => {
-                let mimpl = MethodImpl::MethodBody {
-                    blocks: vec![super::BasicBlock::new(
-                        vec![self.alloc_root(CILRoot::VoidRet)],
-                        0,
-                        None,
-                    )],
-                    locals: vec![],
-                };
-                let cctor_def = MethodDef::new(
-                    Access::Extern,
-                    main_module,
-                    user_init,
-                    ctor_sig,
-                    MethodKind::Static,
-                    mimpl,
-                    vec![],
-                );
-                self.new_method(cctor_def)
-            }
+        if self.method_defs.contains_key(&mref) {
+            MethodDefIdx(mref)
+        } else {
+            let mimpl = MethodImpl::MethodBody {
+                blocks: vec![super::BasicBlock::new(
+                    vec![self.alloc_root(CILRoot::VoidRet)],
+                    0,
+                    None,
+                )],
+                locals: vec![],
+            };
+            let cctor_def = MethodDef::new(
+                Access::Extern,
+                main_module,
+                user_init,
+                ctor_sig,
+                MethodKind::Static,
+                mimpl,
+                vec![],
+            );
+            self.new_method(cctor_def)
         }
     }
     /// Adds new rooots to the user init list.
@@ -263,48 +269,46 @@ impl Assembly {
             .static_fields_mut()
             .extend(fields);
         // Convert external function refs
-        let extern_fns: Vec<_> = v1
-            .extern_fns()
+        v1.extern_fns()
             .iter()
-            .map(|((fn_name, sig, preserve_errno), lib_name)| {
-                let sig = FnSig::from_v1(sig, &mut empty);
-                MethodDef::new(
+            .for_each(|((fn_name, sig, preserve_errno), lib_name)| {
+                let v2_sig = FnSig::from_v1(sig, &mut empty);
+                let name = empty.alloc_string(fn_name.clone());
+                let sigidx = empty.sig_idx(v2_sig);
+                let lib = empty.alloc_string(lib_name.clone());
+                empty.new_method(MethodDef::new(
                     Access::Public,
                     main_module,
-                    empty.alloc_string(fn_name.clone()),
-                    empty.sig_idx(sig),
+                    name,
+                    sigidx,
                     MethodKind::Static,
                     MethodImpl::Extern {
-                        lib: empty.alloc_string(lib_name.clone()),
+                        lib,
                         preserve_errno: *preserve_errno,
                     },
-                    vec![],
-                )
-            })
-            .collect();
-        extern_fns.into_iter().for_each(|def| {
+                    sig.inputs().iter().map(|_| None).collect(),
+                ));
+            });
+
+        empty.sanity_check();
+        // Convert module methods
+        v1.functions().values().for_each(|method| {
+            let def = MethodDef::from_v1(method, &mut empty, main_module);
             empty.new_method(def);
         });
-        // Convert module methods
-        let fns: Vec<_> = v1
-            .functions()
-            .values()
-            .map(|method| {
-                let def = MethodDef::from_v1(method, &mut empty, main_module);
-                empty.new_method(def)
-            })
-            .collect();
-        empty
-            .class_defs
-            .get_mut(&main_module)
-            .expect("Main module missing, even tough it has been added")
-            .methods_mut()
-            .extend(fns);
+        empty.sanity_check();
         //todo!();
         v1.types().for_each(|(_, tdef)| {
             ClassDef::from_v1(tdef, &mut empty);
         });
+        empty.sanity_check();
         empty
+    }
+    #[track_caller]
+    pub fn sanity_check(&self) {
+        self.class_defs
+            .values()
+            .for_each(|class| assert_unique(class.methods()))
     }
     pub fn export(&self, out: impl AsRef<std::path::Path>, exporter: impl Exporter) {
         exporter.export(self, out.as_ref()).unwrap()
@@ -375,4 +379,43 @@ fn add_user_init() {
         asm.alloc_root(CILRoot::Nop),
     ];
     asm.add_user_init(&roots);
+}
+#[test]
+fn export() {
+    use super::il_exporter::ILExporter;
+    use crate::ilasm_exporter::ILASM_FLAVOUR;
+    let mut asm = Assembly::default();
+    let main_module = asm.main_module();
+    let name = asm.alloc_string("entrypoint");
+    let sig = asm.sig([], Type::Void);
+    let body = vec![asm.alloc_root(CILRoot::VoidRet)];
+    asm.new_method(MethodDef::new(
+        Access::Extern,
+        main_module,
+        name,
+        sig,
+        MethodKind::Static,
+        MethodImpl::MethodBody {
+            blocks: vec![super::BasicBlock::new(body, 0, None)],
+            locals: vec![],
+        },
+        vec![],
+    ));
+    let type_idx = asm.type_idx(Type::Int(super::Int::I8));
+    let sig = asm.sig([Type::Ptr(type_idx)], Type::Void);
+    let name = asm.alloc_string("pritnf");
+    let lib = asm.alloc_string("/lib/libc.so");
+    asm.new_method(MethodDef::new(
+        Access::Extern,
+        main_module,
+        name,
+        sig,
+        MethodKind::Static,
+        MethodImpl::Extern {
+            lib,
+            preserve_errno: false,
+        },
+        vec![None],
+    ));
+    asm.export("/tmp/export.exe", ILExporter::new(*ILASM_FLAVOUR));
 }

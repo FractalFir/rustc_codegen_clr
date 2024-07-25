@@ -44,11 +44,20 @@ impl CallSite {
         )
     }
     #[must_use]
-    pub fn alloc() -> Self {
+    pub fn aligned_alloc() -> Self {
         Self::new_extern(
             DotnetTypeRef::native_mem(),
             "AlignedAlloc".into(),
             FnSig::new(&[Type::USize, Type::USize], Type::Ptr(Type::Void.into())),
+            true,
+        )
+    }
+    #[must_use]
+    pub fn alloc() -> Self {
+        Self::new_extern(
+            DotnetTypeRef::marshal(),
+            "AllocHGlobal".into(),
+            FnSig::new(&[Type::I32], Type::ISize),
             true,
         )
     }

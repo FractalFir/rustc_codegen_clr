@@ -107,7 +107,7 @@ pub fn mangle(tpe: &Type, strings: &AsmStringContainer) -> std::borrow::Cow<'sta
                 tpe.generics().is_empty(),
                 "Arrays of generic .NET types not supported yet"
             );
-            tpe.name_path(strings).replace('.', "_").into()
+            tpe.name_path().replace('.', "_").into()
         }
         Type::ManagedArray { element, dims } => {
             format!("a{}{}", dims, mangle(element, strings)).into()

@@ -88,7 +88,7 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
     pub fn sizeof_tpedef(&self, tpe: &crate::DotnetTypeRef) -> std::num::NonZeroU32 {
         assert!(tpe.asm().is_none());
         self.types
-            .get(tpe.name_path(&self.string_map))
+            .get(tpe.name_path())
             .unwrap()
             .explict_size()
             .unwrap()
@@ -516,7 +516,7 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
             .flat_map(Method::dotnet_types)
             .filter_map(|tpe| match tpe.asm() {
                 Some(_) => None,
-                None => Some(IString::from(tpe.name_path(&self.string_map))),
+                None => Some(IString::from(tpe.name_path())),
             })
             .map(|name| (name.clone(), self.types.get(&name).unwrap().clone()))
             .collect();
@@ -533,7 +533,7 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
                 })
                 .filter_map(|tpe| match tpe.asm() {
                     Some(_) => None,
-                    None => Some(IString::from(tpe.name_path(&self.string_map))),
+                    None => Some(IString::from(tpe.name_path())),
                 })
                 .map(|name| (name.clone(), self.types.get(&name).unwrap().clone())),
         );
@@ -552,7 +552,7 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
                     .filter_map(Type::dotnet_refs)
                     .filter_map(|tpe| match tpe.asm() {
                         Some(_) => None,
-                        None => Some(IString::from(tpe.name_path(&self.string_map))),
+                        None => Some(IString::from(tpe.name_path())),
                     })
                     //.map(|(a,b)|a.into())
                     .map(|name: IString| {

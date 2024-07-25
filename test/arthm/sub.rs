@@ -8,10 +8,6 @@
 )]
 #![allow(internal_features, incomplete_features, unused_variables, dead_code)]
 #![no_std]
-#[allow(dead_code)]
-struct Test<T> {
-    data: T,
-}
 include!("../common.rs");
 fn main() {
     // Test subtraction of different types

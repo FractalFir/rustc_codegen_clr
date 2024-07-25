@@ -37,6 +37,18 @@ impl FieldDesc {
             Type::from_v1(desc.tpe(), asm),
         )
     }
+
+    pub fn owner(&self) -> ClassRefIdx {
+        self.owner
+    }
+
+    pub fn name(&self) -> StringIdx {
+        self.name
+    }
+
+    pub fn tpe(&self) -> Type {
+        self.tpe
+    }
 }
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Copy, Serialize, Deserialize)]
 pub struct StaticFieldIdx(BiMapIndex);
@@ -50,28 +62,39 @@ impl IntoBiMapIndex for StaticFieldIdx {
 }
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Debug)]
 pub struct StaticFieldDesc {
-    owner: Option<ClassRefIdx>,
+    owner: ClassRefIdx,
     name: StringIdx,
     tpe: Type,
 }
 
 impl StaticFieldDesc {
-    fn new(owner: Option<ClassRefIdx>, name: StringIdx, tpe: Type) -> Self {
+    fn new(owner: ClassRefIdx, name: StringIdx, tpe: Type) -> Self {
         Self { owner, name, tpe }
     }
 
     pub(crate) fn from_v1(desc: &V1StaticField, asm: &mut super::Assembly) -> Self {
         let owner = if let Some(owner) = desc.owner() {
             let owner = ClassRef::from_v1(owner, asm);
-            Some(asm.class_idx(owner))
+            asm.class_idx(owner)
         } else {
-            None
+            *asm.main_module()
         };
-
         Self::new(
             owner,
             asm.alloc_string(desc.name()),
             Type::from_v1(desc.tpe(), asm),
         )
+    }
+
+    pub fn owner(&self) -> ClassRefIdx {
+        self.owner
+    }
+
+    pub fn name(&self) -> StringIdx {
+        self.name
+    }
+
+    pub fn tpe(&self) -> Type {
+        self.tpe
     }
 }

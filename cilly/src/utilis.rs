@@ -70,7 +70,7 @@ pub fn argc_argv_init_method(asm: &mut Assembly) -> CallSite {
     };
     // Alloc argv
     let tree = call!(
-        CallSite::alloc(),
+        CallSite::aligned_alloc(),
         [
             mul!(
                 conv_usize!(CILNode::LDLoc(argc)),
@@ -450,7 +450,8 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
     init.trees_mut().push(
         CILRoot::STLoc {
             local: arr_ptr,
-            tree: call!(CallSite::alloc(), [arr_size, arr_align]).cast_ptr(ptr!(ptr!(Type::U8))),
+            tree: call!(CallSite::aligned_alloc(), [arr_size, arr_align])
+                .cast_ptr(ptr!(ptr!(Type::U8))),
         }
         .into(),
     );
@@ -649,6 +650,13 @@ pub fn encode(mut int: u64) -> String {
         int /= CHARS.len() as u64;
     }
     res
+}
+/// Checks if all elements in a slice are truly unquie.
+#[track_caller]
+pub fn assert_unique<T: std::hash::Hash + PartialEq + Eq>(val: &[T]) {
+    let mut set = std::collections::HashSet::new();
+    set.extend(val.iter());
+    assert_eq!(set.len(), val.len());
 }
 #[test]
 fn argv() {

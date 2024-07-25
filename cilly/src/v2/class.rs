@@ -104,6 +104,7 @@ impl ClassDef {
         access: Access,
         explict_size: Option<NonZeroU32>,
     ) -> Self {
+        crate::utilis::assert_unique(&methods);
         Self {
             name,
             is_valuetype,
@@ -177,15 +178,10 @@ impl ClassDef {
             tdef.explict_size(),
         );
         let defid = asm.class_def(def);
-        let methods: Vec<_> = tdef
-            .methods()
-            .map(|method| {
-                let def = MethodDef::from_v1(method, asm, defid);
-                asm.new_method(def)
-            })
-            .collect();
-        let def = asm.class_mut(defid);
-        def.methods_mut().extend(methods);
+        tdef.methods().for_each(|method| {
+            let def = MethodDef::from_v1(method, asm, defid);
+            asm.new_method(def);
+        });
         defid
     }
 
@@ -219,6 +215,10 @@ impl ClassDef {
 
     pub fn methods(&self) -> &[MethodDefIdx] {
         &self.methods
+    }
+
+    pub fn explict_size(&self) -> Option<NonZeroU32> {
+        self.explict_size
     }
 }
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Copy, Serialize, Deserialize)]

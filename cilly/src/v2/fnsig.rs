@@ -25,7 +25,7 @@ impl FnSig {
         Self { input, output }
     }
 
-    pub fn input(&self) -> &[Type] {
+    pub fn inputs(&self) -> &[Type] {
         &self.input
     }
 

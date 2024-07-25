@@ -170,7 +170,7 @@ impl CILNode {
                     Ok(lhs)
                 }
             }
-            CILNode::BinOp(lhs, rhs, _) => todo!(),
+            CILNode::BinOp(lhs, rhs, op) => todo!("op:{op:?}"),
             CILNode::UnOp(_, _) => todo!(),
             CILNode::LdLoc(_) => todo!(),
             CILNode::LdLocA(_) => todo!(),
@@ -613,7 +613,7 @@ impl CILNode {
                 let field = FieldDesc::from_v1(field, asm);
                 let field = asm.field_idx(field);
                 let addr = Self::from_v1(addr, asm);
-                Self::LdField {
+                Self::LdFieldAdress {
                     addr: asm.node_idx(addr),
                     field,
                 }

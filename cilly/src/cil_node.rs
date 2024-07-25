@@ -1217,7 +1217,7 @@ impl CILNode {
                             continue;
                         }
                         if let Type::DotnetType(dt) = arg_tpe {
-                            if dt.name_path(vctx.strings()).contains("System.Object") {
+                            if dt.name_path().contains("System.Object") {
                                 continue;
                             }
                         }

@@ -18,7 +18,7 @@ use cilly::{
     cil_node::{CILNode, ValidationContext},
     cil_root::CILRoot,
     cil_tree::CILTree,
-    conv_isize, conv_usize, ldc_u32, ldc_u64,
+    conv_isize, conv_usize, ldc_i32, ldc_u32, ldc_u64,
     method::{Method, MethodType},
     ptr,
     static_field_desc::StaticFieldDescriptor,
@@ -112,22 +112,35 @@ fn allocation_initializer_method(
     let mut trees: Vec<CILTree> = Vec::new();
     let align = const_allocation.align.bytes().max(1);
     //trees.push(CILRoot::debug(&format!("Preparing to initialize allocation with size {}",bytes.len())).into());
-    trees.push(
-        CILRoot::STLoc {
-            local: 0,
-            tree: CILNode::CastPtr {
-                val: Box::new(call!(
-                    CallSite::alloc(),
-                    [
-                        conv_usize!(ldc_u64!(bytes.len() as u64)),
-                        conv_usize!(ldc_u64!(align))
-                    ]
-                )),
-                new_ptr: Box::new(Type::Ptr(Box::new(Type::U8))),
-            },
-        }
-        .into(),
-    );
+    if align > 8 {
+        trees.push(
+            CILRoot::STLoc {
+                local: 0,
+                tree: CILNode::CastPtr {
+                    val: Box::new(call!(
+                        CallSite::aligned_alloc(),
+                        [
+                            conv_usize!(ldc_u64!(bytes.len() as u64)),
+                            conv_usize!(ldc_u64!(align))
+                        ]
+                    )),
+                    new_ptr: Box::new(Type::Ptr(Box::new(Type::U8))),
+                },
+            }
+            .into(),
+        );
+    } else {
+        trees.push(
+            CILRoot::STLoc {
+                local: 0,
+                tree: CILNode::CastPtr {
+                    val: Box::new(call!(CallSite::alloc(), [ldc_i32!(bytes.len() as i32)])),
+                    new_ptr: Box::new(Type::Ptr(Box::new(Type::U8))),
+                },
+            }
+            .into(),
+        );
+    }
 
     if !bytes.iter().all(|byte| *byte != 0) {
         trees.push(

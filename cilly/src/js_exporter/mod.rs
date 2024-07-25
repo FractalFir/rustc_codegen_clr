@@ -447,7 +447,7 @@ fn node_code(method: &Method, node: &CILNode, strings: &AsmStringContainer) -> I
 }
 fn call_site_to_name(call_site: &CallSite, strings: &AsmStringContainer) -> String {
     if let Some(class) = call_site.class() {
-        let class = escape_type_name(class.name_path(strings));
+        let class = escape_type_name(class.name_path());
         let name = call_site.name();
         let name = escape_type_name(name);
         let mangled_overloads: String = call_site

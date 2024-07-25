@@ -183,23 +183,24 @@ impl MethodDef {
             std::cmp::Ordering::Less => {
                 eprintln!(
                     "WARNING: argument debug info count invalid(Too few). Expected {}, got {}. fn name:{}",
-                    arg_debug_count,
                     arg_sig_count,
+                    arg_debug_count,
                     v1.call_site().name()
                 );
-                arg_names.extend((arg_sig_count..arg_debug_count).map(|_| None))
+                arg_names.extend((arg_debug_count..arg_sig_count).map(|_| None))
             }
             std::cmp::Ordering::Equal => (),
             std::cmp::Ordering::Greater => {
                 eprintln!(
                 "WARNING: argument debug info count invalid(Too many). Expected {}, got {}. fn name:{}",
-                arg_debug_count,
                 arg_sig_count,
+                arg_debug_count,
                 v1.call_site().name()
                 );
                 arg_names.truncate(arg_sig_count)
             }
         }
+        assert_eq!(arg_names.len(), v1.call_site().signature().inputs().len());
         MethodDef::new(acceess, class, name, sig, kind, implementation, arg_names)
     }
 

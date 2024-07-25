@@ -67,6 +67,13 @@ impl Type {
             crate::Type::I128 => Int::I128.into(),
             crate::Type::ISize => Int::ISize.into(),
             crate::Type::DotnetType(dotnet_type) => {
+                #[allow(clippy::single_match)]
+                if dotnet_type.asm() == Some("System.Runtime") {
+                    match dotnet_type.name_path() {
+                        "System.String" => return Type::PlatformString,
+                        _ => (),
+                    }
+                }
                 let cref = ClassRef::from_v1(dotnet_type, asm);
                 let cref = asm.class_idx(cref);
                 cref.into()

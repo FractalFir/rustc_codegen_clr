@@ -173,7 +173,7 @@ impl AssemblyExporter for CExporter {
             .filter_map(|field| field.1.as_dotnet())
             .filter_map(|tpe| {
                 if tpe.asm().is_none() {
-                    Some(escape_type_name(tpe.name_path(asm.string_map())))
+                    Some(escape_type_name(tpe.name_path()))
                 } else {
                     None
                 }
@@ -349,20 +349,16 @@ fn c_tpe(tpe: &Type, string_map: &AsmStringContainer) -> Cow<'static, str> {
         }
         Type::DotnetType(tref) => {
             if let Some(asm) = tref.asm() {
-                match (asm, tref.name_path(string_map)) {
+                match (asm, tref.name_path()) {
                     ("System.Runtime", "System.UInt128") => return c_tpe(&Type::U128, string_map),
                     ("System.Runtime", "System.Int128") => return c_tpe(&Type::I128, string_map),
                     _ => println!("Type {tref:?} is not supported in C"),
                 }
             }
             if tref.is_valuetype() {
-                escape_type_name(tref.name_path(string_map)).into()
+                escape_type_name(tref.name_path()).into()
             } else {
-                format!(
-                    "{name}*",
-                    name = escape_type_name(tref.name_path(string_map))
-                )
-                .into()
+                format!("{name}*", name = escape_type_name(tref.name_path())).into()
             }
         }
         Type::DelegatePtr(_sig) => "void*".into(),

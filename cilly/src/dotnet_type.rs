@@ -178,10 +178,10 @@ impl DotnetTypeRef {
         }
     }
     #[must_use]
-    pub fn name_path<'a, 'b: 'a>(&'a self, strings: &'b AsmStringContainer) -> &'a str {
+    pub fn name_path<'a, 'b: 'a>(&'a self) -> &'a str {
         match self {
             DotnetTypeRef::Full { name_path, .. } => name_path,
-            DotnetTypeRef::OptimizedRustStruct { name } => strings.get(*name),
+            DotnetTypeRef::OptimizedRustStruct { .. } => panic!(),
         }
     }
 

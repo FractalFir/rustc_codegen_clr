@@ -1269,13 +1269,13 @@ pub fn type_cil(tpe: &Type, strings: &AsmStringContainer) -> Cow<'static, str> {
 pub fn dotnet_type_ref_cli(dotnet_type: &DotnetTypeRef, strings: &AsmStringContainer) -> String {
     let prefix = dotnet_type.tpe_prefix();
     if Some("System.Runtime") == dotnet_type.asm()
-        && "System.String" == dotnet_type.name_path(strings)
+        && "System.String" == dotnet_type.name_path()
         && !dotnet_type.is_valuetype()
     {
         return "string".into();
     }
     if Some("System.Runtime") == dotnet_type.asm()
-        && "System.Object" == dotnet_type.name_path(strings)
+        && "System.Object" == dotnet_type.name_path()
         && !dotnet_type.is_valuetype()
     {
         return "object".into();
@@ -1286,12 +1286,12 @@ pub fn dotnet_type_ref_cli(dotnet_type: &DotnetTypeRef, strings: &AsmStringConta
         String::new()
     };
     let name = if dotnet_type.generics().is_empty() {
-        dotnet_type.name_path(strings).to_string()
+        dotnet_type.name_path().to_string()
     } else {
         format!(
             "{name}`{count}",
             count = dotnet_type.generics().len(),
-            name = dotnet_type.name_path(strings).to_string()
+            name = dotnet_type.name_path().to_string()
         )
     };
 
@@ -1309,7 +1309,7 @@ pub fn dotnet_type_ref_extends(
     } else {
         String::new()
     };
-    let name = dotnet_type.name_path(strings);
+    let name = dotnet_type.name_path();
 
     let generics = generics_str(dotnet_type.generics(), strings);
     format!("{asm}'{name}'{generics}")

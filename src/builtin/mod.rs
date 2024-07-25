@@ -200,7 +200,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
 
     asm.add_typedef(TypeDef::new(
         AccessModifer::Public,
-        escape_class_name(c_void.as_dotnet().unwrap().name_path(asm.string_map())).into(),
+        escape_class_name(c_void.as_dotnet().unwrap().name_path()).into(),
         vec![],
         vec![],
         vec![],
@@ -250,7 +250,10 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
                 ),
                 BasicBlock::new(
                     vec![CILRoot::Ret {
-                        tree: call!(CallSite::alloc(), [CILNode::LDArg(0), CILNode::LDArg(1)]),
+                        tree: call!(
+                            CallSite::aligned_alloc(),
+                            [CILNode::LDArg(0), CILNode::LDArg(1)]
+                        ),
                     }
                     .into()],
                     1,
@@ -268,8 +271,11 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
         } else {
             vec![BasicBlock::new(
                 vec![CILRoot::Ret {
-                    tree: call!(CallSite::alloc(), [CILNode::LDArg(0), CILNode::LDArg(1)])
-                        .cast_ptr(ptr!(Type::U8)),
+                    tree: call!(
+                        CallSite::aligned_alloc(),
+                        [CILNode::LDArg(0), CILNode::LDArg(1)]
+                    )
+                    .cast_ptr(ptr!(Type::U8)),
                 }
                 .into()],
                 0,
@@ -302,7 +308,10 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
                     vec![
                         CILRoot::STLoc {
                             local: 0,
-                            tree: call!(CallSite::alloc(), [CILNode::LDArg(0), CILNode::LDArg(1)]),
+                            tree: call!(
+                                CallSite::aligned_alloc(),
+                                [CILNode::LDArg(0), CILNode::LDArg(1)]
+                            ),
                         }
                         .into(),
                         CILRoot::InitBlk {
@@ -331,8 +340,11 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
         } else {
             vec![BasicBlock::new(
                 vec![CILRoot::Ret {
-                    tree: call!(CallSite::alloc(), [CILNode::LDArg(0), CILNode::LDArg(1)])
-                        .cast_ptr(ptr!(Type::U8)),
+                    tree: call!(
+                        CallSite::aligned_alloc(),
+                        [CILNode::LDArg(0), CILNode::LDArg(1)]
+                    )
+                    .cast_ptr(ptr!(Type::U8)),
                 }
                 .into()],
                 0,
