@@ -3,11 +3,12 @@ use serde::{Deserialize, Serialize};
 use super::{
     bimap::{BiMapIndex, IntoBiMapIndex},
     cilnode::MethodKind,
-    BasicBlock, ClassDefIdx, ClassRefIdx, FnSig, SigIdx, StringIdx, Type, TypeIdx,
+    Access, Assembly, BasicBlock, ClassDefIdx, ClassRefIdx, FnSig, SigIdx, StringIdx, Type,
+    TypeIdx,
 };
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub struct MethodRef {
-    class: Option<ClassRefIdx>,
+    class: ClassRefIdx,
     name: StringIdx,
     sig: SigIdx,
     kind: MethodKind,
@@ -16,7 +17,7 @@ pub struct MethodRef {
 
 impl MethodRef {
     pub fn new(
-        class: Option<ClassRefIdx>,
+        class: ClassRefIdx,
         name: StringIdx,
         sig: SigIdx,
         kind: MethodKind,
@@ -31,7 +32,7 @@ impl MethodRef {
         }
     }
 
-    pub fn class(&self) -> Option<ClassRefIdx> {
+    pub fn class(&self) -> ClassRefIdx {
         self.class
     }
 
@@ -41,6 +42,10 @@ impl MethodRef {
 
     pub fn sig(&self) -> SigIdx {
         self.sig
+    }
+
+    pub fn kind(&self) -> MethodKind {
+        self.kind
     }
 }
 
@@ -56,9 +61,11 @@ impl IntoBiMapIndex for MethodRefIdx {
 }
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub struct MethodDef {
+    access: Access,
     class: ClassDefIdx,
     name: StringIdx,
     sig: SigIdx,
+    arg_names: Vec<Option<StringIdx>>,
     kind: MethodKind,
     implementation: MethodImpl,
 }
@@ -66,7 +73,7 @@ pub struct MethodDef {
 impl MethodDef {
     pub fn ref_to(&self) -> MethodRef {
         MethodRef::new(
-            Some(*self.class()),
+            *self.class(),
             self.name(),
             self.sig(),
             self.kind(),
@@ -74,18 +81,22 @@ impl MethodDef {
         )
     }
     pub fn new(
+        access: Access,
         class: ClassDefIdx,
         name: StringIdx,
         sig: SigIdx,
         kind: MethodKind,
         implementation: MethodImpl,
+        arg_names: Vec<Option<StringIdx>>,
     ) -> Self {
         Self {
+            access,
             class,
             name,
             sig,
             kind,
             implementation,
+            arg_names,
         }
     }
 
@@ -108,7 +119,20 @@ impl MethodDef {
     pub fn implementation(&self) -> &MethodImpl {
         &self.implementation
     }
-
+    pub fn resolved_implementation<'asm: 'method, 'method>(
+        &'method self,
+        asm: &'asm Assembly,
+    ) -> &'method MethodImpl {
+        match self.implementation {
+            MethodImpl::MethodBody { .. } | MethodImpl::Extern { .. } | MethodImpl::Missing => {
+                &self.implementation
+            }
+            MethodImpl::AliasFor(method) => asm
+                .method_def_from_ref(method)
+                .expect("ERROR: a method is an alias for an extern function")
+                .resolved_implementation(asm),
+        }
+    }
     pub fn implementation_mut(&mut self) -> &mut MethodImpl {
         &mut self.implementation
     }
@@ -120,7 +144,11 @@ impl MethodDef {
     ) -> Self {
         let sig = FnSig::from_v1(v1.call_site().signature(), asm);
         let sig = asm.sig_idx(sig);
-
+        let acceess = match v1.access() {
+            crate::access_modifier::AccessModifer::Private => Access::Private,
+            crate::access_modifier::AccessModifer::Public => Access::Public,
+            crate::access_modifier::AccessModifer::ModulePublic => Access::Extern,
+        };
         let name = asm.alloc_string(v1.call_site().name());
         let kind = if v1.call_site().is_static() {
             MethodKind::Static
@@ -144,7 +172,43 @@ impl MethodDef {
             })
             .collect();
         let implementation = MethodImpl::MethodBody { blocks, locals };
-        MethodDef::new(class, name, sig, kind, implementation)
+        let mut arg_names: Vec<_> = v1
+            .arg_names()
+            .iter()
+            .map(|name| name.as_ref().map(|name| asm.alloc_string(name.clone())))
+            .collect();
+        let arg_debug_count = arg_names.len();
+        let arg_sig_count = v1.call_site().signature().inputs().len();
+        match arg_debug_count.cmp(&arg_sig_count) {
+            std::cmp::Ordering::Less => {
+                eprintln!(
+                    "WARNING: argument debug info count invalid(Too few). Expected {}, got {}. fn name:{}",
+                    arg_debug_count,
+                    arg_sig_count,
+                    v1.call_site().name()
+                );
+                arg_names.extend((arg_sig_count..arg_debug_count).map(|_| None))
+            }
+            std::cmp::Ordering::Equal => (),
+            std::cmp::Ordering::Greater => {
+                eprintln!(
+                "WARNING: argument debug info count invalid(Too many). Expected {}, got {}. fn name:{}",
+                arg_debug_count,
+                arg_sig_count,
+                v1.call_site().name()
+                );
+                arg_names.truncate(arg_sig_count)
+            }
+        }
+        MethodDef::new(acceess, class, name, sig, kind, implementation, arg_names)
+    }
+
+    pub fn access(&self) -> &Access {
+        &self.access
+    }
+
+    pub fn arg_names(&self) -> &[Option<StringIdx>] {
+        &self.arg_names
     }
 }
 

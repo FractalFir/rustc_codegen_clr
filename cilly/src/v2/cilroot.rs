@@ -19,11 +19,7 @@ pub enum CILRoot {
     VoidRet,
     Break,
     Nop,
-    Branch {
-        target: u32,
-        sub_target: u32,
-        cond: Option<Box<BranchCond>>,
-    },
+    Branch(Box<(u32, u32, Option<BranchCond>)>),
     SourceFileInfo {
         line_start: u32,
         line_len: u16,
@@ -123,11 +119,9 @@ impl CILRoot {
                 let tree = CILNode::from_v1(tree, asm);
                 Self::StArg(*arg as u64, asm.node_idx(tree))
             }
-            V1Root::GoTo { target, sub_target } => Self::Branch {
-                target: *target,
-                sub_target: *sub_target,
-                cond: None,
-            },
+            V1Root::GoTo { target, sub_target } => {
+                Self::Branch(Box::new((*target, *sub_target, None)))
+            }
             V1Root::BEq {
                 target,
                 sub_target,
@@ -136,35 +130,11 @@ impl CILRoot {
             } => {
                 let a = CILNode::from_v1(a, asm);
                 let b = CILNode::from_v1(b, asm);
-                Self::Branch {
-                    target: *target,
-                    sub_target: *sub_target,
-                    cond: Some(Box::new(BranchCond::Eq(asm.node_idx(a), asm.node_idx(b)))),
-                }
-            }
-            V1Root::BTrue {
-                target,
-                sub_target,
-                cond,
-            } => {
-                let cond = CILNode::from_v1(cond, asm);
-                Self::Branch {
-                    target: *target,
-                    sub_target: *sub_target,
-                    cond: Some(Box::new(BranchCond::True(asm.node_idx(cond)))),
-                }
-            }
-            V1Root::BFalse {
-                target,
-                sub_target,
-                cond,
-            } => {
-                let cond = CILNode::from_v1(cond, asm);
-                Self::Branch {
-                    target: *target,
-                    sub_target: *sub_target,
-                    cond: Some(Box::new(BranchCond::False(asm.node_idx(cond)))),
-                }
+                Self::Branch(Box::new((
+                    *target,
+                    *sub_target,
+                    Some(BranchCond::Eq(asm.node_idx(a), asm.node_idx(b))),
+                )))
             }
             V1Root::BNe {
                 target,
@@ -174,12 +144,37 @@ impl CILRoot {
             } => {
                 let a = CILNode::from_v1(a, asm);
                 let b = CILNode::from_v1(b, asm);
-                Self::Branch {
-                    target: *target,
-                    sub_target: *sub_target,
-                    cond: Some(Box::new(BranchCond::Ne(asm.node_idx(a), asm.node_idx(b)))),
-                }
+                Self::Branch(Box::new((
+                    *target,
+                    *sub_target,
+                    Some(BranchCond::Ne(asm.node_idx(a), asm.node_idx(b))),
+                )))
             }
+            V1Root::BTrue {
+                target,
+                sub_target,
+                cond,
+            } => {
+                let cond = CILNode::from_v1(cond, asm);
+                Self::Branch(Box::new((
+                    *target,
+                    *sub_target,
+                    Some(BranchCond::True(asm.node_idx(cond))),
+                )))
+            }
+            V1Root::BFalse {
+                target,
+                sub_target,
+                cond,
+            } => {
+                let cond = CILNode::from_v1(cond, asm);
+                Self::Branch(Box::new((
+                    *target,
+                    *sub_target,
+                    Some(BranchCond::False(asm.node_idx(cond))),
+                )))
+            }
+
             V1Root::Call { site, args } => {
                 let args: Box<[_]> = args
                     .iter()
@@ -195,10 +190,13 @@ impl CILRoot {
                     .iter()
                     .map(|gen| Type::from_v1(gen, asm))
                     .collect();
-                let class = site.class().map(|dt| {
-                    let cref = ClassRef::from_v1(dt, asm);
-                    asm.class_idx(cref)
-                });
+                let class = site
+                    .class()
+                    .map(|dt| {
+                        let cref = ClassRef::from_v1(dt, asm);
+                        asm.class_idx(cref)
+                    })
+                    .unwrap_or_else(|| *asm.main_module());
                 let name = asm.alloc_string(site.name());
                 let method_ref = if site.is_static() {
                     MethodRef::new(class, name, sig, MethodKind::Static, generics)
@@ -223,10 +221,13 @@ impl CILRoot {
                     .iter()
                     .map(|gen| Type::from_v1(gen, asm))
                     .collect();
-                let class = site.class().map(|dt| {
-                    let cref = ClassRef::from_v1(dt, asm);
-                    asm.class_idx(cref)
-                });
+                let class = site
+                    .class()
+                    .map(|dt| {
+                        let cref = ClassRef::from_v1(dt, asm);
+                        asm.class_idx(cref)
+                    })
+                    .unwrap_or_else(|| *asm.main_module());
                 let name = asm.alloc_string(site.name());
                 assert!(!site.is_static());
                 let method_ref = MethodRef::new(class, name, sig, MethodKind::Virtual, generics);

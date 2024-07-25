@@ -1,4 +1,5 @@
 #![allow(clippy::module_name_repetitions)]
+#![feature(iter_intersperse)]
 pub mod field_desc;
 pub mod r#type;
 

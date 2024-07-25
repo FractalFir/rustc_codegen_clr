@@ -28,6 +28,7 @@ pub mod cst;
 pub mod field;
 pub mod float;
 pub mod fnsig;
+pub mod il_exporter;
 pub mod int;
 pub mod iter;
 pub mod method;
@@ -51,33 +52,51 @@ pub fn nodes() {
     ));
     assert!(matches!(
         iter.next(),
-        Some(CILIterElem::Node(CILNode::Const(Const::I8(2))))
+        Some(CILIterElem::Node(CILNode::Const(_)))
     ));
     assert!(matches!(
         iter.next(),
-        Some(CILIterElem::Node(CILNode::Const(Const::I8(1))))
+        Some(CILIterElem::Node(CILNode::Const(_)))
     ));
     assert!(iter.next().is_none());
     let msg = asm.ldstr("Hi!");
     let mut iter = CILIter::new(msg, &asm);
     assert!(matches!(
         iter.next(),
-        Some(CILIterElem::Node(CILNode::Const(Const::PlatformString(_))))
+        Some(CILIterElem::Node(CILNode::Const(_)))
     ));
     assert!(iter.next().is_none());
 }
+pub trait Exporter {
+    type Error: std::fmt::Debug;
+    fn export(&self, asm: &Assembly, target: &Path) -> Result<(), Self::Error>;
+}
+
 #[test]
 fn no_collision() {
     let mut asm = Assembly::default();
-    let mut curr = CILNode::Const(Const::I8(1));
+    let mut curr: CILNode = Const::I8(1).into();
     for _ in 0..100_000 {
         curr = std::hint::black_box(asm.biop(curr.clone(), curr, BinOp::Add));
     }
     asm.node_idx(CILNode::LdLoc(0));
-    asm.node_idx(CILNode::Const(Const::I32(0)));
-    asm.node_idx(CILNode::Const(Const::I64(0)));
+    asm.node_idx(Const::I32(0));
+    asm.node_idx(Const::I64(0));
 }
-pub trait Exporter {
-    type Error;
-    fn export(asm: &Assembly, target: &Path) -> Result<(), Self::Error>;
+#[test]
+fn test_binops() {
+    fn test_binop(asm: &mut Assembly, op: BinOp) -> CILNode {
+        let mut curr: CILNode = Const::I8(1).into();
+        for _ in 0..10 {
+            curr = std::hint::black_box(asm.biop(curr.clone(), curr, op));
+        }
+        curr.get_type(asm.sig(vec![], Type::Void), &[], &asm)
+            .unwrap();
+        curr
+    }
+    let mut asm = Assembly::default();
+    test_binop(&mut asm, BinOp::Add);
+    test_binop(&mut asm, BinOp::Sub);
+    test_binop(&mut asm, BinOp::Mul);
+    test_binop(&mut asm, BinOp::Rem);
 }

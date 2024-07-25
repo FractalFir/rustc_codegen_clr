@@ -1,5 +1,3 @@
-use std::num::NonZeroU64;
-
 use serde::{Deserialize, Serialize};
 
 use super::bimap::{BiMapIndex, IntoBiMapIndex};

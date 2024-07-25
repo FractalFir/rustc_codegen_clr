@@ -3,13 +3,14 @@ use serde::{Deserialize, Serialize};
 use super::bimap::BiMapIndex;
 use super::field::{StaticFieldDesc, StaticFieldIdx};
 use super::{bimap::IntoBiMapIndex, Assembly, Const, Int, MethodRefIdx, SigIdx, TypeIdx};
-use super::{FieldDesc, FieldIdx, Float};
+use super::{FieldDesc, FieldIdx, Float, StringIdx};
 use crate::r#type::Type as V1Type;
+use crate::IString;
 use crate::{
     cil_node::CILNode as V1Node,
     v2::{ClassRef, FnSig, MethodRef, Type},
 };
-#[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
+#[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct NodeIdx(BiMapIndex);
 impl IntoBiMapIndex for NodeIdx {
     fn from_hash(val: BiMapIndex) -> Self {
@@ -22,13 +23,13 @@ impl IntoBiMapIndex for NodeIdx {
 
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum CILNode {
-    Const(Const),
+    Const(Box<Const>),
     BinOp(NodeIdx, NodeIdx, BinOp),
     UnOp(NodeIdx, UnOp),
-    LdLoc(u64),
-    LdLocA(u64),
-    LdArg(u64),
-    LdArgA(u64),
+    LdLoc(u32),
+    LdLocA(u32),
+    LdArg(u32),
+    LdArgA(u32),
     Call(Box<(MethodRefIdx, Box<[NodeIdx]>)>),
     IntCast {
         input: NodeIdx,
@@ -123,7 +124,7 @@ pub enum UnOp {
     Not,
     Neg,
 }
-#[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
+#[derive(Hash, PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
 
 pub enum BinOp {
     Add,
@@ -146,13 +147,79 @@ pub enum BinOp {
     Div,
 }
 impl CILNode {
+    pub fn get_type(
+        &self,
+        sig: SigIdx,
+        locals: &[(Option<StringIdx>, TypeIdx)],
+        asm: &Assembly,
+    ) -> Result<Type, IString> {
+        match self {
+            CILNode::Const(cst) => Ok(cst.as_ref().get_type()),
+            CILNode::BinOp(lhs, rhs, BinOp::Add | BinOp::Sub | BinOp::Mul) => {
+                let lhs = asm.get_node(*lhs);
+                let rhs = asm.get_node(*rhs);
+                let lhs = lhs.get_type(sig, locals, asm)?;
+                let rhs = rhs.get_type(sig, locals, asm)?;
+                if lhs != rhs {
+                    match (rhs, lhs) {
+                        (Type::Int(Int::USize | Int::ISize), Type::Ptr(_)) => Ok(rhs),
+                        (Type::Ptr(_), Type::Int(Int::USize | Int::ISize)) => Ok(lhs),
+                        _ => Err(format!("mismatched binop args. {lhs:?} != {rhs:?}").into()),
+                    }
+                } else {
+                    Ok(lhs)
+                }
+            }
+            CILNode::BinOp(lhs, rhs, _) => todo!(),
+            CILNode::UnOp(_, _) => todo!(),
+            CILNode::LdLoc(_) => todo!(),
+            CILNode::LdLocA(_) => todo!(),
+            CILNode::LdArg(_) => todo!(),
+            CILNode::LdArgA(_) => todo!(),
+            CILNode::Call(_) => todo!(),
+            CILNode::IntCast {
+                input,
+                target,
+                extend,
+            } => todo!(),
+            CILNode::FloatCast {
+                input,
+                target,
+                is_signed,
+            } => todo!(),
+            CILNode::RefToPtr(_) => todo!(),
+            CILNode::PtrCast(_, _) => todo!(),
+            CILNode::LdFieldAdress { addr, field } => todo!(),
+            CILNode::LdField { addr, field } => todo!(),
+            CILNode::LdInd {
+                addr,
+                tpe,
+                volitale,
+            } => todo!(),
+            CILNode::SizeOf(_) => todo!(),
+            CILNode::GetException => todo!(),
+            CILNode::IsInst(_, _) => todo!(),
+            CILNode::CheckedCast(_, _) => todo!(),
+            CILNode::CallI(_) => todo!(),
+            CILNode::LocAlloc { size } => todo!(),
+            CILNode::LdStaticField(_) => todo!(),
+            CILNode::LdFtn(_) => todo!(),
+            CILNode::LdTypeToken(_) => todo!(),
+            CILNode::LdLen(_) => todo!(),
+            CILNode::LocAllocAlgined { tpe, align } => todo!(),
+            CILNode::LdElelemRef { array, index } => todo!(),
+            CILNode::UnboxAny { object, tpe } => todo!(),
+        }
+    }
+}
+impl CILNode {
     pub fn from_v1(v1: &V1Node, asm: &mut Assembly) -> Self {
         match v1 {
             // Varaible access
-            V1Node::LDArg(arg) => CILNode::LdArg(*arg as u64),
-            V1Node::LDLoc(arg) => CILNode::LdLoc(*arg as u64),
-            V1Node::LDArgA(arg) => CILNode::LdArgA(*arg as u64),
-            V1Node::LDLocA(arg) => CILNode::LdLocA(*arg as u64),
+            V1Node::LDArg(arg) => CILNode::LdArg(*arg),
+            V1Node::LDLoc(arg) => CILNode::LdLoc(*arg),
+            V1Node::LDArgA(arg) => CILNode::LdArgA(*arg),
+            V1Node::LDLocA(arg) => CILNode::LdLocA(*arg),
             // Ptr deref
             V1Node::LDIndBool { ptr } => {
                 let ptr = Self::from_v1(ptr, asm);
@@ -569,10 +636,14 @@ impl CILNode {
                     .iter()
                     .map(|gen| Type::from_v1(gen, asm))
                     .collect();
-                let class = callargs.site.class().map(|dt| {
-                    let cref = ClassRef::from_v1(dt, asm);
-                    asm.class_idx(cref)
-                });
+                let class = callargs
+                    .site
+                    .class()
+                    .map(|dt| {
+                        let cref = ClassRef::from_v1(dt, asm);
+                        asm.class_idx(cref)
+                    })
+                    .unwrap_or_else(|| *asm.main_module());
                 let name = asm.alloc_string(callargs.site.name());
                 let method_ref = if callargs.site.is_static() {
                     MethodRef::new(class, name, sig, MethodKind::Static, generics)
@@ -599,10 +670,14 @@ impl CILNode {
                     .iter()
                     .map(|gen| Type::from_v1(gen, asm))
                     .collect();
-                let class = callargs.site.class().map(|dt| {
-                    let cref = ClassRef::from_v1(dt, asm);
-                    asm.class_idx(cref)
-                });
+                let class = callargs
+                    .site
+                    .class()
+                    .map(|dt| {
+                        let cref = ClassRef::from_v1(dt, asm);
+                        asm.class_idx(cref)
+                    })
+                    .unwrap_or_else(|| *asm.main_module());
                 let name = asm.alloc_string(callargs.site.name());
                 assert!(!callargs.site.is_static());
                 let method_ref = MethodRef::new(class, name, sig, MethodKind::Virtual, generics);
@@ -626,10 +701,14 @@ impl CILNode {
                     .iter()
                     .map(|gen| Type::from_v1(gen, asm))
                     .collect();
-                let class = callargs.site.class().map(|dt| {
-                    let cref = ClassRef::from_v1(dt, asm);
-                    asm.class_idx(cref)
-                });
+                let class = callargs
+                    .site
+                    .class()
+                    .map(|dt| {
+                        let cref = ClassRef::from_v1(dt, asm);
+                        asm.class_idx(cref)
+                    })
+                    .unwrap_or_else(|| *asm.main_module());
                 let name = asm.alloc_string(callargs.site.name());
                 assert!(
                     !callargs.site.is_static(),
@@ -724,10 +803,13 @@ impl CILNode {
                     .iter()
                     .map(|gen| Type::from_v1(gen, asm))
                     .collect();
-                let class = site.class().map(|dt| {
-                    let cref = ClassRef::from_v1(dt, asm);
-                    asm.class_idx(cref)
-                });
+                let class = site
+                    .class()
+                    .map(|dt| {
+                        let cref = ClassRef::from_v1(dt, asm);
+                        asm.class_idx(cref)
+                    })
+                    .unwrap_or_else(|| *asm.main_module());
                 let name = asm.alloc_string(site.name());
 
                 let method_ref = if site.is_static() {

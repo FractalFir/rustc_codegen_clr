@@ -25,6 +25,7 @@ pub enum Type {
     Int(Int),
     ClassRef(ClassRefIdx),
     Float(Float),
+    PlatformString,
     PlatformChar,
     PlarformGeneric(u32, GenericKind),
     Bool,
@@ -41,7 +42,7 @@ pub enum GenericKind {
 impl Type {
     pub fn deref<'a, 'b: 'a>(&'a self, asm: &'b Assembly) -> &Self {
         match self {
-            Type::Ptr(inner) | Type::Ref(inner) => asm.type_from_id(*inner),
+            Type::Ptr(inner) | Type::Ref(inner) => asm.get_type(*inner),
             _ => panic!(),
         }
     }

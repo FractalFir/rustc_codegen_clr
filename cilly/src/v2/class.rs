@@ -65,6 +65,18 @@ impl ClassRef {
             V1ClassRef::OptimizedRustStruct { name: _ } => panic!(),
         }
     }
+
+    pub fn asm(&self) -> Option<StringIdx> {
+        self.asm
+    }
+
+    pub fn name(&self) -> StringIdx {
+        self.name
+    }
+
+    pub fn is_valuetype(&self) -> bool {
+        self.is_valuetype
+    }
 }
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub struct ClassDef {
@@ -175,6 +187,38 @@ impl ClassDef {
         let def = asm.class_mut(defid);
         def.methods_mut().extend(methods);
         defid
+    }
+
+    pub fn access(&self) -> &Access {
+        &self.access
+    }
+
+    pub fn is_valuetype(&self) -> bool {
+        self.is_valuetype
+    }
+
+    pub fn extends(&self) -> Option<ClassRefIdx> {
+        self.extends
+    }
+
+    pub(crate) fn has_explicit_layout(&self) -> bool {
+        self.explict_size.is_some() && self.fields.iter().any(|(_, _, offset)| offset.is_some())
+    }
+
+    pub fn fields(&self) -> &[(Type, StringIdx, Option<u32>)] {
+        &self.fields
+    }
+
+    pub fn name(&self) -> StringIdx {
+        self.name
+    }
+
+    pub fn static_fields(&self) -> &[(Type, StringIdx, bool)] {
+        &self.static_fields
+    }
+
+    pub fn methods(&self) -> &[MethodDefIdx] {
+        &self.methods
     }
 }
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Copy, Serialize, Deserialize)]

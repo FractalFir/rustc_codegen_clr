@@ -224,12 +224,13 @@ impl<'asm> Iterator for CILIter<'asm> {
                         continue;
                     }
                 },
-                CILIterElem::Root(CILRoot::Branch { cond, .. }) => {
+                CILIterElem::Root(CILRoot::Branch(packed)) => {
+                    let (_, _, cond) = packed.as_ref();
                     let Some(cond) = cond else {
                         self.elems.pop();
                         continue;
                     };
-                    match cond.as_ref() {
+                    match cond {
                         BranchCond::True(cond) | BranchCond::False(cond) => match idx {
                             1 => {
                                 *idx += 1;
@@ -431,11 +432,11 @@ pub fn nodes() {
     ));
     assert!(matches!(
         iter.next(),
-        Some((_, Either::A(CILNode::Const(Const::I8(2)))))
+        Some((_, Either::A(CILNode::Const(_))))
     ));
     assert!(matches!(
         iter.next(),
-        Some((_, Either::A(CILNode::Const(Const::I8(1)))))
+        Some((_, Either::A(CILNode::Const(_))))
     ));
     assert!(iter.next().is_none());
 }

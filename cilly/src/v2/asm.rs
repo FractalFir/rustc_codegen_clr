@@ -6,9 +6,9 @@ use serde::{Deserialize, Serialize};
 use super::{
     bimap::{calculate_hash, BiMap},
     cilnode::{BinOp, MethodKind, UnOp},
-    Access, CILNode, CILRoot, ClassDef, ClassDefIdx, ClassRef, ClassRefIdx, Const, FieldDesc,
-    FieldIdx, FnSig, MethodDef, MethodDefIdx, MethodRef, MethodRefIdx, NodeIdx, RootIdx, SigIdx,
-    StaticFieldDesc, StaticFieldIdx, StringIdx, Type, TypeIdx,
+    Access, CILNode, CILRoot, ClassDef, ClassDefIdx, ClassRef, ClassRefIdx, Const, Exporter,
+    FieldDesc, FieldIdx, FnSig, MethodDef, MethodDefIdx, MethodRef, MethodRefIdx, NodeIdx, RootIdx,
+    SigIdx, StaticFieldDesc, StaticFieldIdx, StringIdx, Type, TypeIdx,
 };
 use crate::IString;
 use crate::{asm::Assembly as V1Asm, v2::MethodImpl};
@@ -40,11 +40,23 @@ impl Assembly {
     pub fn class_mut(&mut self, id: ClassDefIdx) -> &mut ClassDef {
         self.class_defs.get_mut(&id).unwrap()
     }
+    pub fn class_ref(&self, cref: ClassRefIdx) -> &ClassRef {
+        self.class_refs.get(cref)
+    }
+    pub fn method_def(&self, dref: MethodDefIdx) -> &MethodDef {
+        self.method_defs.get(&dref).unwrap()
+    }
     pub fn alloc_string(&mut self, string: impl Into<IString>) -> StringIdx {
         self.strings.alloc(IStringWrapper(string.into()))
     }
+    pub fn get_string(&self, key: StringIdx) -> &IString {
+        &self.strings.get(key).0
+    }
     pub fn sig(&mut self, input: impl Into<Box<[Type]>>, output: impl Into<Type>) -> SigIdx {
         self.sigs.alloc(FnSig::new(input.into(), output.into()))
+    }
+    pub fn get_sig(&self, key: SigIdx) -> &FnSig {
+        self.sigs.get(key)
     }
     pub fn nptr(&mut self, inner: Type) -> Type {
         Type::Ptr(self.types.alloc(inner))
@@ -52,8 +64,14 @@ impl Assembly {
     pub fn nref(&mut self, inner: Type) -> Type {
         Type::Ref(self.types.alloc(inner))
     }
-    pub fn type_from_id(&self, idx: TypeIdx) -> &Type {
+    pub fn get_type(&self, idx: TypeIdx) -> &Type {
         self.types.get(idx)
+    }
+    pub fn get_mref(&self, idx: MethodRefIdx) -> &MethodRef {
+        self.method_refs.get(idx)
+    }
+    pub fn get_root(&self, root: RootIdx) -> &CILRoot {
+        self.roots.get(root)
     }
     pub fn biop(&mut self, lhs: impl Into<CILNode>, rhs: impl Into<CILNode>, op: BinOp) -> CILNode {
         let lhs = self.nodes.alloc(lhs.into());
@@ -65,15 +83,15 @@ impl Assembly {
         CILNode::UnOp(val, op)
     }
     pub fn ldstr(&mut self, msg: impl Into<IString>) -> CILNode {
-        CILNode::Const(Const::PlatformString(self.alloc_string(msg)))
+        CILNode::Const(Box::new(Const::PlatformString(self.alloc_string(msg))))
     }
     pub fn strct(&mut self, name: IString) -> ClassRefIdx {
         let class = ClassRef::new(self.alloc_string(name), None, true, vec![].into());
         self.class_refs.alloc(class)
     }
 
-    pub(crate) fn node_idx(&mut self, node: CILNode) -> NodeIdx {
-        self.nodes.alloc(node)
+    pub(crate) fn node_idx(&mut self, node: impl Into<CILNode>) -> NodeIdx {
+        self.nodes.alloc(node.into())
     }
 
     pub(crate) fn class_idx(&mut self, cref: ClassRef) -> ClassRefIdx {
@@ -158,7 +176,7 @@ impl Assembly {
         let user_init = self.alloc_string(USER_INIT);
         let ctor_sig = self.sig([], Type::Void);
         let mref = MethodRef::new(
-            Some(*main_module),
+            *main_module,
             user_init,
             ctor_sig,
             MethodKind::Static,
@@ -176,8 +194,15 @@ impl Assembly {
                     )],
                     locals: vec![],
                 };
-                let cctor_def =
-                    MethodDef::new(main_module, user_init, ctor_sig, MethodKind::Static, mimpl);
+                let cctor_def = MethodDef::new(
+                    Access::Extern,
+                    main_module,
+                    user_init,
+                    ctor_sig,
+                    MethodKind::Static,
+                    mimpl,
+                    vec![],
+                );
                 self.new_method(cctor_def)
             }
         }
@@ -244,6 +269,7 @@ impl Assembly {
             .map(|((fn_name, sig, preserve_errno), lib_name)| {
                 let sig = FnSig::from_v1(sig, &mut empty);
                 MethodDef::new(
+                    Access::Public,
                     main_module,
                     empty.alloc_string(fn_name.clone()),
                     empty.sig_idx(sig),
@@ -252,6 +278,7 @@ impl Assembly {
                         lib: empty.alloc_string(lib_name.clone()),
                         preserve_errno: *preserve_errno,
                     },
+                    vec![],
                 )
             })
             .collect();
@@ -279,8 +306,8 @@ impl Assembly {
         });
         empty
     }
-    pub fn export(&self, out: impl AsRef<std::path::Path>) {
-        todo!();
+    pub fn export(&self, out: impl AsRef<std::path::Path>, exporter: impl Exporter) {
+        exporter.export(self, out.as_ref()).unwrap()
     }
     pub fn memory_info(&self) {
         let mut stats = vec![
@@ -301,6 +328,14 @@ impl Assembly {
         for stat in stats {
             println!("{}:\t{} bytes", stat.0, stat.1);
         }
+    }
+
+    pub(crate) fn iter_class_defs(&self) -> impl Iterator<Item = &ClassDef> {
+        self.class_defs.values()
+    }
+
+    pub(crate) fn method_def_from_ref(&self, mref: MethodRefIdx) -> Option<&MethodDef> {
+        self.method_defs.get(&MethodDefIdx(mref))
     }
 }
 /// An initializer, which runs before everything else. By convention, it is used to initialize static / const data. Should not execute any user code

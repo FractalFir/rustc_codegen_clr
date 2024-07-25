@@ -564,9 +564,14 @@ fn main() {
             .expect("Assembly export faliure!");
         let path: std::path::PathBuf = output_file_path.into();
         if *CILLY_V2 {
-            cilly::v2::Assembly::from_v1(&final_assembly)
-                .save_tmp(&mut std::fs::File::create(path.with_extension("cilly2")).unwrap())
-                .unwrap()
+            let tmp = cilly::v2::Assembly::from_v1(&final_assembly);
+            tmp.save_tmp(&mut std::fs::File::create(path.with_extension("cilly2")).unwrap())
+                .unwrap();
+            tmp.export(
+                path,
+                cilly::v2::il_exporter::ILExporter::new(*ILASM_FLAVOUR),
+            );
+            todo!();
         }
         final_assembly
             .save_tmp(&mut std::fs::File::create(path.with_extension("cilly")).unwrap())

@@ -1,9 +1,7 @@
-use std::any::type_name;
-
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 
-use super::{CILNode, StringIdx};
+use super::{CILNode, Float, Int, StringIdx, Type};
 
 #[derive(PartialEq, Eq, Clone, Debug, Hash, Serialize, Deserialize)]
 pub enum Const {
@@ -22,9 +20,29 @@ pub enum Const {
     F32(OrderedFloat<f32>),
     F64(OrderedFloat<f64>),
 }
+impl Const {
+    pub(crate) fn get_type(&self) -> Type {
+        match self {
+            Const::I8(_) => Type::Int(Int::I8),
+            Const::I16(_) => Type::Int(Int::I16),
+            Const::I32(_) => Type::Int(Int::I32),
+            Const::I64(_) => Type::Int(Int::I64),
+            Const::ISize(_) => Type::Int(Int::ISize),
+            Const::U8(_) => Type::Int(Int::U8),
+            Const::U16(_) => Type::Int(Int::U16),
+            Const::U32(_) => Type::Int(Int::U32),
+            Const::U64(_) => Type::Int(Int::U64),
+            Const::USize(_) => Type::Int(Int::USize),
+            Const::PlatformString(_) => Type::PlatformString,
+            Const::Bool(_) => Type::Bool,
+            Const::F32(_) => Type::Float(Float::F32),
+            Const::F64(_) => Type::Float(Float::F64),
+        }
+    }
+}
 
 impl From<Const> for CILNode {
     fn from(value: Const) -> Self {
-        Self::Const(value)
+        Self::Const(Box::new(value))
     }
 }
