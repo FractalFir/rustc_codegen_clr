@@ -87,6 +87,9 @@ fn main() {
         (),
     ));
     black_box(core::ptr::null_mut::<statx>());
+    #[allow(arithmetic_overflow)]
+    let a = 3011126281_u32 >> -71_i8;
+    test_eq!(a, 89);
 }
 #[repr(C)]
 pub struct statx {

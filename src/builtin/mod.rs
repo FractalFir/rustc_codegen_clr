@@ -136,7 +136,16 @@ add_method_from_trees!(
                             .with_valuetype(false)
                         ),
                         ".ctor".into(),
-                        FnSig::new(&[], Type::Void),
+                        FnSig::new(
+                            &[Type::DotnetType(Box::new(
+                                DotnetTypeRef::new(
+                                    Some("System.Runtime"),
+                                    "System.IndexOutOfRangeException"
+                                )
+                                .with_valuetype(false)
+                            ))],
+                            Type::Void
+                        ),
                         false
                     ),
                     args: [].into()

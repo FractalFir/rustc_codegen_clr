@@ -45,9 +45,10 @@ impl BasicBlock {
                 .collect()
         });
         Self::new(
-            v1.iter_tree_roots()
+            v1.trees()
+                .iter()
                 .map(|root| {
-                    let root = CILRoot::from_v1(root, asm);
+                    let root = CILRoot::from_v1(root.root(), asm);
                     asm.alloc_root(root)
                 })
                 .collect(),

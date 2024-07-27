@@ -27,7 +27,8 @@ pub enum Type {
     Float(Float),
     PlatformString,
     PlatformChar,
-    PlarformGeneric(u32, GenericKind),
+    PlatformGeneric(u32, GenericKind),
+    PlatformObject,
     Bool,
     Void,
     PlatformArray { elem: TypeIdx, dims: NonZeroU8 },
@@ -71,6 +72,7 @@ impl Type {
                 if dotnet_type.asm() == Some("System.Runtime") {
                     match dotnet_type.name_path() {
                         "System.String" => return Type::PlatformString,
+                        "System.Object" => return Type::PlatformObject,
                         _ => (),
                     }
                 }
@@ -87,9 +89,9 @@ impl Type {
                 asm.nref(inner)
             }
             crate::Type::Foreign => Self::Void,
-            crate::Type::GenericArg(arg) => Self::PlarformGeneric(*arg, GenericKind::TypeGeneric),
+            crate::Type::GenericArg(arg) => Self::PlatformGeneric(*arg, GenericKind::TypeGeneric),
             crate::Type::CallGenericArg(arg) => {
-                Self::PlarformGeneric(*arg, GenericKind::CallGeneric)
+                Self::PlatformGeneric(*arg, GenericKind::CallGeneric)
             }
             crate::Type::DotnetChar => Self::PlatformChar,
             crate::Type::DelegatePtr(sig) => {

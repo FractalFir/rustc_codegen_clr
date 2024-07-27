@@ -417,5 +417,56 @@ fn export() {
         },
         vec![None],
     ));
-    asm.export("/tmp/export.exe", ILExporter::new(*ILASM_FLAVOUR));
+    asm.export("/tmp/export.exe", ILExporter::new(*ILASM_FLAVOUR, false));
+}
+#[test]
+fn export2() {
+    use super::il_exporter::ILExporter;
+    use crate::ilasm_exporter::ILASM_FLAVOUR;
+    let mut asm = Assembly::default();
+    let main_module = asm.main_module();
+    let name = asm.alloc_string("entrypoint");
+    let sig = asm.sig([], Type::Void);
+    let body1 = vec![asm.alloc_root(CILRoot::VoidRet)];
+    let hbody = vec![asm.alloc_root(CILRoot::ExitSpecialRegion {
+        target: 2,
+        source: 0,
+    })];
+    let body2 = vec![asm.alloc_root(CILRoot::VoidRet)];
+    asm.new_method(MethodDef::new(
+        Access::Extern,
+        main_module,
+        name,
+        sig,
+        MethodKind::Static,
+        MethodImpl::MethodBody {
+            blocks: vec![
+                super::BasicBlock::new(
+                    body1,
+                    0,
+                    Some(vec![super::BasicBlock::new(hbody, 1, None)].into()),
+                ),
+                super::BasicBlock::new(body2, 2, None),
+            ],
+            locals: vec![],
+        },
+        vec![],
+    ));
+    let type_idx = asm.type_idx(Type::Int(super::Int::I8));
+    let sig = asm.sig([Type::Ptr(type_idx)], Type::Void);
+    let name = asm.alloc_string("pritnf");
+    let lib = asm.alloc_string("/lib/libc.so");
+    asm.new_method(MethodDef::new(
+        Access::Extern,
+        main_module,
+        name,
+        sig,
+        MethodKind::Static,
+        MethodImpl::Extern {
+            lib,
+            preserve_errno: false,
+        },
+        vec![None],
+    ));
+    asm.export("/tmp/export2.exe", ILExporter::new(*ILASM_FLAVOUR, false));
 }

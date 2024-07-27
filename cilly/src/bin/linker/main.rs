@@ -566,10 +566,14 @@ fn main() {
                 .unwrap();
             tmp.export(
                 &path,
-                cilly::v2::il_exporter::ILExporter::new(*ILASM_FLAVOUR),
+                cilly::v2::il_exporter::ILExporter::new(*ILASM_FLAVOUR, is_lib),
             );
             if cargo_support {
-                let bootstrap = bootstrap_source(&path, output_file_path, "dotnet");
+                let bootstrap = bootstrap_source(
+                    &path.with_extension("exe"),
+                    path.to_str().unwrap(),
+                    "dotnet",
+                );
                 let bootstrap_path = path.with_extension("rs");
                 let mut bootstrap_file = std::fs::File::create(&bootstrap_path).unwrap();
                 bootstrap_file.write_all(bootstrap.as_bytes()).unwrap();

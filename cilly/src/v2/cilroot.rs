@@ -19,6 +19,7 @@ pub enum CILRoot {
     VoidRet,
     Break,
     Nop,
+    /// target subtarget cond
     Branch(Box<(u32, u32, Option<BranchCond>)>),
     SourceFileInfo {
         line_start: u32,
@@ -27,14 +28,14 @@ pub enum CILRoot {
         col_len: u16,
         file: StringIdx,
     },
-    // Field, value, addr
+    /// Field, value, addr
     SetField(Box<(FieldIdx, NodeIdx, NodeIdx)>),
     Call(Box<(MethodRefIdx, Box<[NodeIdx]>)>),
-    // value, addr, type
+    /// addr, value, type
     StInd(Box<(NodeIdx, NodeIdx, Type, bool)>),
-    // dst, val, count
+    /// dst, val, count
     InitBlk(Box<(NodeIdx, NodeIdx, NodeIdx)>),
-    // dst src len
+    /// dst src len
     CpBlk(Box<(NodeIdx, NodeIdx, NodeIdx)>),
     /// Calls fn pointer with args
     CallI(Box<(NodeIdx, SigIdx, Box<[NodeIdx]>)>),
@@ -286,6 +287,7 @@ impl CILRoot {
                 let addr = CILNode::from_v1(addr, asm);
                 let addr = asm.node_idx(addr);
                 let ptr = Type::from_v1(ptr, asm);
+                let ptr = asm.nptr(ptr);
                 Self::StInd(Box::new((addr, val, ptr, false)))
             }
             V1Root::STObj {

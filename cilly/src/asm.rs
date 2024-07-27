@@ -276,7 +276,12 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
                                     site: Box::new(CallSite::new(
                                         Some(DotnetTypeRef::object_type()),
                                         ".ctor".into(),
-                                        FnSig::new(&[], Type::Void),
+                                        FnSig::new(
+                                            &[Type::DotnetType(Box::new(
+                                                DotnetTypeRef::object_type(),
+                                            ))],
+                                            Type::Void,
+                                        ),
                                         false,
                                     )),
                                 })),

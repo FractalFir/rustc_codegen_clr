@@ -4,6 +4,7 @@ use fxhash::{FxBuildHasher, FxHashSet};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    asm::CILLY_V2,
     cil_iter::{CILIterElem, CILIterTrait},
     cil_node::{CILNode, ValidationContext},
     cil_root::CILRoot,
@@ -183,6 +184,7 @@ impl BasicBlock {
         self.trees
             .iter_mut()
             .for_each(|tree| tree.fix_for_exception_handler(id));
+
         self.handler = Some(Handler::Blocks(handler));
     }
     /// Creates a new basic block with id `id`, made up from `trees` and with exception handler `handler`.

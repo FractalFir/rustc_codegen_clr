@@ -181,7 +181,7 @@ impl MethodDef {
         let arg_sig_count = v1.call_site().signature().inputs().len();
         match arg_debug_count.cmp(&arg_sig_count) {
             std::cmp::Ordering::Less => {
-                eprintln!(
+                println!(
                     "WARNING: argument debug info count invalid(Too few). Expected {}, got {}. fn name:{}",
                     arg_sig_count,
                     arg_debug_count,
@@ -191,7 +191,7 @@ impl MethodDef {
             }
             std::cmp::Ordering::Equal => (),
             std::cmp::Ordering::Greater => {
-                eprintln!(
+                println!(
                 "WARNING: argument debug info count invalid(Too many). Expected {}, got {}. fn name:{}",
                 arg_sig_count,
                 arg_debug_count,
@@ -232,6 +232,14 @@ impl MethodImpl {
             Self::MethodBody { blocks, .. } => Some(blocks),
             _ => None,
         }
+    }
+
+    /// Returns `true` if the method impl is [`Extern`].
+    ///
+    /// [`Extern`]: MethodImpl::Extern
+    #[must_use]
+    pub fn is_extern(&self) -> bool {
+        matches!(self, Self::Extern { .. })
     }
 }
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]

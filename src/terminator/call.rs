@@ -185,7 +185,10 @@ fn call_ctor<'tcx>(
                 site: CallSite::boxed(
                     Some(tpe.clone()),
                     ".ctor".into(),
-                    FnSig::new(&[], cilly::r#type::Type::Void),
+                    FnSig::new(
+                        &[Type::DotnetType(tpe.clone().into())],
+                        cilly::r#type::Type::Void,
+                    ),
                     false,
                 ),
                 args: [].into(),

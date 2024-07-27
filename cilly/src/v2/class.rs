@@ -77,6 +77,10 @@ impl ClassRef {
     pub fn is_valuetype(&self) -> bool {
         self.is_valuetype
     }
+
+    pub fn generics(&self) -> &[Type] {
+        &self.generics
+    }
 }
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub struct ClassDef {

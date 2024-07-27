@@ -2,14 +2,18 @@ use std::io::Write;
 
 use crate::{ilasm_exporter::ILASM_PATH, utilis::assert_unique, v2::MethodImpl, IlasmFlavour};
 
-use super::{cilroot::BranchCond, int, Assembly, ClassRefIdx, Exporter, NodeIdx, RootIdx, Type};
+use super::{
+    cilroot::BranchCond, int, Assembly, CILIter, CILIterElem, CILNode, ClassRefIdx, Exporter,
+    NodeIdx, RootIdx, Type,
+};
 
 pub struct ILExporter {
     flavour: IlasmFlavour,
+    is_lib: bool,
 }
 impl ILExporter {
-    pub fn new(flavour: IlasmFlavour) -> Self {
-        Self { flavour }
+    pub fn new(flavour: IlasmFlavour, is_lib: bool) -> Self {
+        Self { flavour, is_lib }
     }
 
     fn export_to_write(&self, asm: &super::Assembly, out: &mut impl Write) -> std::io::Result<()> {
@@ -60,10 +64,11 @@ impl ILExporter {
             for (tpe, name, thread_local) in class_def.static_fields() {
                 let name = asm.get_string(*name);
                 let tpe = non_void_type_il(tpe, asm);
+                
+                writeln!(out, ".field static {tpe} '{name}'")?;
                 if *thread_local {
                     writeln!(out,".custom instance void [System.Runtime]System.ThreadStaticAttribute::.ctor() = (01 00 00 00)")?;
                 };
-                writeln!(out, ".field static {tpe} '{name}'")?;
             }
             // Export all methods
             assert_unique(class_def.methods());
@@ -117,10 +122,12 @@ impl ILExporter {
                     })
                     .intersperse(",".to_string())
                     .collect();
-
+                let preservesig = if method.implementation().is_extern(){
+                    "preservesig"
+                }else{""};
                 writeln!(
                     out,
-                    ".method {vis} hidebysig {kind} {pinvoke} {ret} '{name}'({inputs}) cil managed{{"
+                    ".method {vis} hidebysig {kind} {pinvoke} {ret} '{name}'({inputs}) cil managed {preservesig}{{"
                 )?;
                 let stack_size = match method.implementation() {
                     MethodImpl::MethodBody { blocks, .. } => blocks
@@ -167,9 +174,28 @@ impl ILExporter {
                 }).intersperse(",".to_owned()).collect();
                 writeln!(out," .locals ({locals})")?;
                 for block in blocks{
-                    writeln!(out," bb_{}_{}:",block.block_id(),0)?;
+                    if block.handler().is_some(){
+                        writeln!(out,".try{{")?;
+                    }
+                    writeln!(out," bb{}:",block.block_id())?;
                     for root in block.roots(){
-                        self.export_root(asm,out,*root)?;
+                        self.export_root(asm,out,*root,false)?;
+                    }
+                    if let Some(handler) = block.handler(){
+                        writeln!(out,"}} catch [System.Runtime]System.Object{{")?;
+                        // Check for the GetException intrinsic. If it is not used, put a pop here.
+                        if !handler.iter().flat_map(|block|block.roots()).flat_map(|root|CILIter::new(asm.get_root(*root).clone(),asm)).any(|elem|matches!(elem,CILIterElem::Node(CILNode::GetException))){
+                            writeln!(out,"pop")?;
+                        }
+                        for hblock in handler{
+                            writeln!(out," h{}_{}:",block.block_id(),hblock.block_id())?;
+                            for root in hblock.roots(){
+                                self.export_root(asm,out,*root,true)?;
+                            }
+                        }  
+                    }
+                      if block.handler().is_some(){
+                        writeln!(out,"}}")?;
                     }
                 }
             }
@@ -361,7 +387,15 @@ impl ILExporter {
                     crate::v2::cilnode::MethodKind::Static => sig.inputs(),
                     crate::v2::cilnode::MethodKind::Instance
                     | crate::v2::cilnode::MethodKind::Virtual
-                    | crate::v2::cilnode::MethodKind::Constructor => &sig.inputs()[1..],
+                    | crate::v2::cilnode::MethodKind::Constructor => {
+                        assert!(
+                            !sig.inputs().is_empty(),
+                            "invalid argc when calling {} of {}",
+                            asm.get_string(mref.name()),
+                            class_ref(mref.class(), asm)
+                        );
+                        &sig.inputs()[1..]
+                    }
                 };
                 let inputs: String = inputs
                     .iter()
@@ -452,7 +486,7 @@ impl ILExporter {
                 let owner = class_ref(fld.owner(), asm);
                 let name = asm.get_string(fld.name());
                 let tpe = type_il(&fld.tpe(), asm);
-                writeln!(out, "ldflda {tpe} {owner}::{name}")
+                writeln!(out, "ldflda {tpe} {owner}::'{name}'")
             }
             super::CILNode::LdField { addr, field } => {
                 self.export_node(asm, out, *addr)?;
@@ -460,7 +494,7 @@ impl ILExporter {
                 let owner = class_ref(fld.owner(), asm);
                 let name = asm.get_string(fld.name());
                 let tpe = type_il(&fld.tpe(), asm);
-                writeln!(out, "ldfld {tpe} {owner}::{name}")
+                writeln!(out, "ldfld {tpe} {owner}::'{name}'")
             }
             super::CILNode::LdInd {
                 addr,
@@ -528,12 +562,16 @@ impl ILExporter {
                         (super::Float::F64, true) => writeln!(out, "volatile. ldind.r8"),
                         (super::Float::F64, false) => writeln!(out, "ldind.r8"),
                     },
-                    (Type::PlatformString, true) => writeln!(out, "volatile. ldind.ref"),
-                    (Type::PlatformString, false) => writeln!(out, "ldind.ref"),
+                    (Type::PlatformString | Type::PlatformObject, true) => {
+                        writeln!(out, "volatile. ldind.ref")
+                    }
+                    (Type::PlatformString | Type::PlatformObject, false) => {
+                        writeln!(out, "ldind.ref")
+                    }
                     (Type::PlatformChar, true) => writeln!(out, "volatile. ldind.i2"),
                     (Type::PlatformChar, false) => writeln!(out, "ldind.i2"),
-                    (Type::PlarformGeneric(_, _), true) => todo!(),
-                    (Type::PlarformGeneric(_, _), false) => todo!(),
+                    (Type::PlatformGeneric(_, _), true) => todo!(),
+                    (Type::PlatformGeneric(_, _), false) => todo!(),
                     (Type::Bool, true) => writeln!(out, "volatile. ldind.i1"),
                     (Type::Bool, false) => writeln!(out, "ldind.i1"),
                     (Type::Void, true) | (Type::Void, false) => {
@@ -548,11 +586,39 @@ impl ILExporter {
             super::CILNode::SizeOf(tpe) => {
                 writeln!(out, "sizeof {}", type_il(asm.get_type(*tpe), asm))
             }
-            super::CILNode::GetException => todo!(),
-            super::CILNode::IsInst(_, _) => todo!(),
-            super::CILNode::CheckedCast(_, _) => todo!(),
-            super::CILNode::CallI(_) => todo!(),
-            super::CILNode::LocAlloc { size } => todo!(),
+            super::CILNode::GetException => Ok(()),
+            super::CILNode::IsInst(val, tpe) => {
+                self.export_node(asm, out, *val)?;
+                writeln!(out, "isinst {tpe}", tpe = type_il(asm.get_type(*tpe), asm))
+            }
+            super::CILNode::CheckedCast(val, tpe) => {
+                self.export_node(asm, out, *val)?;
+                writeln!(
+                    out,
+                    "castclass {tpe}",
+                    tpe = type_il(asm.get_type(*tpe), asm)
+                )
+            }
+            super::CILNode::CallI(calli) => {
+                let (fn_ptr, sig, args) = calli.as_ref();
+                for arg in args {
+                    self.export_node(asm, out, *arg)?;
+                }
+                let sig = asm.get_sig(*sig);
+                let output = type_il(sig.output(), asm);
+                self.export_node(asm, out, *fn_ptr)?;
+                let inputs: String = sig
+                    .inputs()
+                    .iter()
+                    .map(|tpe| non_void_type_il(tpe, asm))
+                    .intersperse(",".to_owned())
+                    .collect();
+                writeln!(out, "calli {output} ({inputs})")
+            }
+            super::CILNode::LocAlloc { size } => {
+                self.export_node(asm, out, *size)?;
+                writeln!(out, "localloc")
+            }
             super::CILNode::LdStaticField(sfld) => {
                 let sfld = asm.get_static_field(*sfld);
                 let owner = class_ref(sfld.owner(), asm);
@@ -560,12 +626,54 @@ impl ILExporter {
                 let tpe = type_il(&sfld.tpe(), asm);
                 writeln!(out, "ldsfld {tpe} {owner}::{name}")
             }
-            super::CILNode::LdFtn(_) => todo!(),
-            super::CILNode::LdTypeToken(_) => todo!(),
-            super::CILNode::LdLen(_) => todo!(),
-            super::CILNode::LocAllocAlgined { tpe, align } => todo!(),
-            super::CILNode::LdElelemRef { array, index } => todo!(),
-            super::CILNode::UnboxAny { object, tpe } => todo!(),
+            super::CILNode::LdFtn(ftn) => {
+                let mref = asm.get_mref(*ftn);
+                let sig = asm.get_sig(mref.sig());
+                let output = type_il(sig.output(), asm);
+                let inputs = match mref.kind() {
+                    crate::v2::cilnode::MethodKind::Static => sig.inputs(),
+                    crate::v2::cilnode::MethodKind::Instance
+                    | crate::v2::cilnode::MethodKind::Virtual
+                    | crate::v2::cilnode::MethodKind::Constructor => &sig.inputs()[1..],
+                };
+                let inputs: String = inputs
+                    .iter()
+                    .map(|tpe| non_void_type_il(tpe, asm))
+                    .intersperse(",".to_owned())
+                    .collect();
+                let name = asm.get_string(mref.name());
+                let class = class_ref(mref.class(), asm);
+                let ldftn_op = match mref.kind() {
+                    crate::v2::cilnode::MethodKind::Static => "ldftn",
+                    crate::v2::cilnode::MethodKind::Instance => "ldftn instance",
+                    crate::v2::cilnode::MethodKind::Virtual => " ldftn instance",
+                    crate::v2::cilnode::MethodKind::Constructor => "ldftn instance",
+                };
+                writeln!(out, "{ldftn_op} {output} {class}::'{name}'({inputs})")
+            }
+            super::CILNode::LdTypeToken(tok) => {
+                writeln!(out, "ldtoken {tok}", tok = type_il(asm.get_type(*tok), asm))
+            }
+            super::CILNode::LdLen(array) => {
+                self.export_node(asm, out, *array)?;
+                writeln!(out, "ldlen")
+            }
+            super::CILNode::LocAllocAlgined { tpe, align } => {
+                writeln!(out, "sizeof {tpe} ldc.i8 {align} conv.i add localloc dup ldc.i8 {align} add ldc.i8 {align} rem sub ldc.i8 {align} add", tpe = type_il(asm.get_type(*tpe), asm))
+            }
+            super::CILNode::LdElelemRef { array, index } => {
+                self.export_node(asm, out, *array)?;
+                self.export_node(asm, out, *index)?;
+                writeln!(out, "ldelem.ref")
+            }
+            super::CILNode::UnboxAny { object, tpe } => {
+                self.export_node(asm, out, *object)?;
+                writeln!(
+                    out,
+                    "unbox.any {object}",
+                    object = type_il(asm.get_type(*tpe), asm)
+                )
+            }
         }
     }
     fn export_root(
@@ -573,6 +681,7 @@ impl ILExporter {
         asm: &super::Assembly,
         out: &mut impl Write,
         root: RootIdx,
+        is_handler: bool,
     ) -> std::io::Result<()> {
         let root = asm.get_root(root);
         match root {
@@ -616,24 +725,61 @@ impl ILExporter {
                 Some(BranchCond::Eq(a, b)) => {
                     self.export_node(asm, out, *a)?;
                     self.export_node(asm, out, *b)?;
-                    writeln!(out, "beq bb_{}_{}", branch.0, branch.1)
+                    if branch.1 == 0 {
+                        writeln!(out, "beq bb{}", branch.0)
+                    } else if is_handler {
+                        writeln!(out, "beq h{}_{}", branch.0, branch.1)
+                    }
+                    else {
+                        writeln!(out, "beq bb{}", branch.1)
+                    }
                 }
                 Some(BranchCond::Ne(a, b)) => {
                     self.export_node(asm, out, *a)?;
                     self.export_node(asm, out, *b)?;
-                    writeln!(out, "bne bb_{}_{}", branch.0, branch.1)
+                    if branch.1 == 0 {
+                        writeln!(out, "bne bb{}", branch.0)
+                    } else if is_handler {
+                        writeln!(out, "bne h{}_{}", branch.0, branch.1)
+                    }
+                    else {
+                        writeln!(out, "bne bb{}", branch.1)
+                    }
                 }
                 Some(BranchCond::Lt(a, b, kind)) => todo!(),
                 Some(BranchCond::Gt(a, b, kind)) => todo!(),
                 Some(BranchCond::True(cond)) => {
                     self.export_node(asm, out, *cond)?;
-                    writeln!(out, "brtrue bb_{}_{}", branch.0, branch.1)
+                    if branch.1 == 0 {
+                        writeln!(out, "brtrue bb{}", branch.0)
+                    } else if is_handler {
+                        writeln!(out, "brtrue h{}_{}", branch.0, branch.1)
+                    }
+                    else {
+                        writeln!(out, "brtrue bb{}", branch.1)
+                    }
                 }
                 Some(BranchCond::False(cond)) => {
                     self.export_node(asm, out, *cond)?;
-                    writeln!(out, "brfalse bb_{}_{}", branch.0, branch.1)
+                    if branch.1 == 0 {
+                        writeln!(out, "brfalse bb{}", branch.0)
+                    } else if is_handler {
+                        writeln!(out, "brfalse h{}_{}", branch.0, branch.1)
+                    } else {
+                        writeln!(out, "brfalse jp{}_{}", branch.0, branch.1)
+                    }
                 }
-                None => writeln!(out, "br bb_{}_{}", branch.0, branch.1),
+                None => {
+                    if branch.1 == 0 {
+                        writeln!(out, "br bb{}", branch.0)
+                    } else if is_handler {
+                        writeln!(out, "br h{}_{}", branch.0, branch.1)
+                    }
+                    // If it is not a handler, then this is the only block in this try, then all jumps are extern, then we can just use leave
+                    else {
+                        writeln!(out, "leave bb{}", branch.1)
+                    }
+                }
             },
             super::CILRoot::SourceFileInfo {
                 line_start,
@@ -662,7 +808,7 @@ impl ILExporter {
                 let owner = class_ref(fld.owner(), asm);
                 let name = asm.get_string(fld.name());
                 let tpe = type_il(&fld.tpe(), asm);
-                writeln!(out, "stfld {tpe} {owner}::{name}")
+                writeln!(out, "stfld {tpe} {owner}::'{name}'")
             }
             super::CILRoot::Call(call) => {
                 for arg in &call.1 {
@@ -697,6 +843,7 @@ impl ILExporter {
             super::CILRoot::StInd(stind) => {
                 self.export_node(asm, out, stind.0)?;
                 self.export_node(asm, out, stind.1)?;
+              
                 let tpe = stind.2;
                 let is_volitale = if stind.3 { "volatile." } else { "" };
                 match tpe {
@@ -737,11 +884,13 @@ impl ILExporter {
                         super::Float::F32 => writeln!(out, "{is_volitale} stind.r4"),
                         super::Float::F64 => writeln!(out, "{is_volitale} stind.r8"),
                     },
-                    Type::PlatformString => writeln!(out, "{is_volitale} stind.ref"),
+                    Type::PlatformString | Type::PlatformObject => {
+                        writeln!(out, "{is_volitale} stind.ref")
+                    }
                     Type::PlatformChar => writeln!(out, "{is_volitale} stind.i2"),
-                    Type::PlarformGeneric(_, _) => todo!(),
+                    Type::PlatformGeneric(_, _) => todo!(),
                     Type::Bool => writeln!(out, "{is_volitale} stind.i1"),
-                    Type::Void => todo!(),
+                    Type::Void => writeln!(out, "pop pop ldstr \"Attempted to wrtie to a zero-sized type(void).\" newobj void [System.Runtime]System.Exception::.ctor(string) throw"), // TODO: forbid this, since this is NEVER valid.
                     Type::PlatformArray { .. } => writeln!(out, "{is_volitale} stind.ref"),
                     Type::FnPtr(_) => writeln!(out, "{is_volitale} stind.i"),
                 }
@@ -752,9 +901,35 @@ impl ILExporter {
                 self.export_node(asm, out, blk.2)?;
                 writeln!(out, "initblk")
             }
-            super::CILRoot::CpBlk(_) => todo!(),
-            super::CILRoot::CallI(_) => todo!(),
-            super::CILRoot::ExitSpecialRegion { target, source } => todo!(),
+            super::CILRoot::CpBlk(cpblk) => {
+                self.export_node(asm, out, cpblk.0)?;
+                self.export_node(asm, out, cpblk.1)?;
+                self.export_node(asm, out, cpblk.2)?;
+                writeln!(out, "cpblk")
+            }
+            super::CILRoot::CallI(calli) => {
+                let (fn_ptr, sig, args) = calli.as_ref();
+                for arg in args {
+                    self.export_node(asm, out, *arg)?;
+                }
+                let sig = asm.get_sig(*sig);
+                let output = type_il(sig.output(), asm);
+                self.export_node(asm, out, *fn_ptr)?;
+                let inputs: String = sig
+                    .inputs()
+                    .iter()
+                    .map(|tpe| non_void_type_il(tpe, asm))
+                    .intersperse(",".to_owned())
+                    .collect();
+                writeln!(out, "calli {output} ({inputs})")
+            }
+            super::CILRoot::ExitSpecialRegion { target, source } => {
+                if is_handler {
+                    writeln!(out, "h{source}_{target}: leave bb{target}")
+                } else {
+                    writeln!(out, "jp{source}_{target}: leave bb{target}")
+                }
+            }
             super::CILRoot::ReThrow => {
                 writeln!(out, "rethrow")
             }
@@ -782,11 +957,13 @@ impl Exporter for ILExporter {
         il_out.flush().unwrap();
         drop(il_out);
         let exe_out = target.with_extension("exe");
+        let asm_type = if self.is_lib { "-dll" } else { "-exe" };
         let mut cmd = std::process::Command::new(ILASM_PATH.clone());
         cmd.arg(il_path)
         .arg(format!("-output:{exe_out}", exe_out = exe_out.clone().to_string_lossy()))
         .arg("-debug")
         .arg("-OPTIMIZE")
+        .arg(asm_type)
         // .arg("-FOLD") saves up on space, consider enabling.
         ;
         let out = cmd.output().unwrap();
@@ -822,11 +999,29 @@ fn class_ref(cref: ClassRefIdx, asm: &Assembly) -> String {
     } else {
         "class"
     };
+    let generic_list = if cref.generics().is_empty() {
+        "".into()
+    } else {
+        format!(
+            "<{generics}>",
+            generics = cref
+                .generics()
+                .iter()
+                .map(|tpe| type_il(tpe, asm))
+                .intersperse(",".to_string())
+                .collect::<String>()
+        )
+    };
+    let generic_postfix = if cref.generics().is_empty() {
+        "".into()
+    } else {
+        format!("`{}", cref.generics().len())
+    };
     if let Some(assembly) = cref.asm() {
         let assembly = asm.get_string(assembly);
-        format!("{prefix} [{assembly}]'{name}'")
+        format!("{prefix} [{assembly}]'{name}{generic_postfix}'{generic_list}")
     } else {
-        format!("{prefix} '{name}'")
+        format!("{prefix} '{name}{generic_postfix}'{generic_list}")
     }
 }
 fn non_void_type_il(tpe: &Type, asm: &Assembly) -> String {
@@ -860,7 +1055,11 @@ fn type_il(tpe: &Type, asm: &Assembly) -> String {
             super::Float::F64 => "float64".into(),
         },
         Type::PlatformChar => "char".into(),
-        Type::PlarformGeneric(_, _) => todo!(),
+        Type::PlatformGeneric(arg, generic) => match generic {
+            super::tpe::GenericKind::MethodGeneric => todo!(),
+            super::tpe::GenericKind::CallGeneric => format!("!!{arg}"),
+            super::tpe::GenericKind::TypeGeneric => format!("!{arg}"),
+        },
         Type::Bool => "bool".into(),
         Type::Void => "void".into(),
         Type::PlatformArray { elem, dims } => format!(
@@ -877,10 +1076,12 @@ fn type_il(tpe: &Type, asm: &Assembly) -> String {
                     .inputs()
                     .iter()
                     .map(|tpe| non_void_type_il(tpe, asm))
+                    .intersperse(",".to_string())
                     .collect::<String>(),
             )
         }
         Type::PlatformString => "string".into(),
+        Type::PlatformObject => "object".into(),
     }
 }
 /*
