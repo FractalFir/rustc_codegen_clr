@@ -83,7 +83,7 @@ impl ILExporter {
                     crate::v2::cilnode::MethodKind::Instance => "instance",
                     crate::v2::cilnode::MethodKind::Virtual => "virtual instance",
                     crate::v2::cilnode::MethodKind::Constructor => {
-                        "static rtspecialname specialname"
+                        "rtspecialname specialname"
                     }
                 };
                 let pinvoke = if let MethodImpl::Extern {

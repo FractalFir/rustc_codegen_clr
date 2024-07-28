@@ -105,6 +105,7 @@ static char *exec_fname;
 #define System_Console_Write_System_String(arg) printf("%s\n", arg)
 // Allocation
 #define System_Runtime_InteropServices_NativeMemory_AlignedAlloc_usus _mm_malloc
+#define System_Runtime_InteropServices_Marshal_AllocHGlobal_i32 malloc
 // #define System_Runtime_InteropServices_NativeMemory_AlignedRealloc_pvusus _mm_realloc
 #define System_Runtime_InteropServices_NativeMemory_AlignedFree_pv(ptr) _mm_free(ptr)
 // Atomics
