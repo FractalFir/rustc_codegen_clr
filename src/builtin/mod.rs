@@ -172,7 +172,7 @@ macro_rules! add_method_from_trees {
     ($name:ident,$input:expr,$output:expr,$trees:expr,$args:expr) => {
         fn $name(asm: &mut cilly::asm::Assembly) {
             let method = cilly::method::Method::new(
-                AccessModifer::ModulePublic,
+                AccessModifer::Public,
                 cilly::method::MethodType::Static,
                 cilly::fn_sig::FnSig::new($input, $output),
                 stringify!($name),
@@ -186,7 +186,7 @@ macro_rules! add_method_from_trees {
     ($name:ident,$input:expr,$output:expr,$trees:expr,$locals:expr,$args:expr) => {
         fn $name(asm: &mut cilly::asm::Assembly) {
             let method = cilly::method::Method::new(
-                AccessModifer::ModulePublic,
+                AccessModifer::Public,
                 cilly::method::MethodType::Static,
                 cilly::fn_sig::FnSig::new($input, $output),
                 stringify!($name),
@@ -549,12 +549,12 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
     __cxa_thread_atexit_impl(asm);
     llvm_x86_sse2_pause(asm);
     let rust_exception = TypeDef::new(
-        AccessModifer::ModulePublic,
+        AccessModifer::Public,
         "RustException".into(),
         vec![],
         vec![("data_pointer".into(), Type::USize)],
         vec![Method::new(
-            AccessModifer::ModulePublic,
+            AccessModifer::Public,
             MethodType::Instance,
             FnSig::new(
                 &[
@@ -594,7 +594,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
     );
     asm.add_typedef(rust_exception);
     let start = Method::new(
-        AccessModifer::ModulePublic,
+        AccessModifer::Public,
         MethodType::Instance,
         FnSig::new(&[Type::DotnetType(Box::new(unmanaged_start()))], Type::Void),
         "Start",
@@ -704,7 +704,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
         vec![],
     );
     let unmanaged_start = TypeDef::new(
-        AccessModifer::ModulePublic,
+        AccessModifer::Public,
         "UnmanagedThreadStart".into(),
         vec![],
         vec![
@@ -716,7 +716,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
         ],
         vec![
             Method::new(
-                AccessModifer::ModulePublic,
+                AccessModifer::Public,
                 MethodType::Instance,
                 FnSig::new(
                     &[
@@ -1015,7 +1015,7 @@ add_method_from_trees!(
 // TODO: this instruction waits for a small ammount of time. Implementing it could improve performance.
 fn llvm_x86_sse2_pause(asm: &mut cilly::asm::Assembly) {
     let method = cilly::method::Method::new(
-        AccessModifer::ModulePublic,
+        AccessModifer::Public,
         cilly::method::MethodType::Static,
         cilly::fn_sig::FnSig::new([], Type::Void),
         "llvm.x86.sse2.pause",

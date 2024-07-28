@@ -174,7 +174,7 @@ impl TyCache {
                 .into(),
             );
             let check = cilly::method::Method::new(
-                AccessModifer::ModulePublic,
+                AccessModifer::Extern,
                 cilly::method::MethodType::Static,
                 FnSig::new(&[tpe.clone()], tpe),
                 "check_valid",
@@ -360,7 +360,7 @@ impl TyCache {
         if *crate::config::VALIDTE_VALUES {
             let tpe = self.type_from_cache(adt_ty, tcx, method);
             let check = cilly::method::Method::new(
-                AccessModifer::ModulePublic,
+                AccessModifer::Extern,
                 cilly::method::MethodType::Static,
                 FnSig::new(&[tpe.clone()], tpe),
                 "check_valid",
@@ -595,7 +595,7 @@ impl TyCache {
         .into();
         if !self.type_def_cache.contains_key(&name) {
             let def = TypeDef::new(
-                AccessModifer::ModulePublic,
+                AccessModifer::Extern,
                 name.clone(),
                 vec![],
                 vec![

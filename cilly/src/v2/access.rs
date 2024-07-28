@@ -6,3 +6,13 @@ pub enum Access {
     Public,
     Private,
 }
+
+impl Access {
+    /// Returns `true` if the access is [`Extern`].
+    ///
+    /// [`Extern`]: Access::Extern
+    #[must_use]
+    pub fn is_extern(&self) -> bool {
+        matches!(self, Self::Extern)
+    }
+}

@@ -1,6 +1,6 @@
-use std::any::type_name;
+use std::{any::type_name, collections::HashMap};
 
-use fxhash::FxHashMap;
+use fxhash::{FxBuildHasher, FxHashMap};
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -10,7 +10,10 @@ use super::{
     FieldDesc, FieldIdx, FnSig, MethodDef, MethodDefIdx, MethodRef, MethodRefIdx, NodeIdx, RootIdx,
     SigIdx, StaticFieldDesc, StaticFieldIdx, StringIdx, Type, TypeIdx,
 };
-use crate::{asm::Assembly as V1Asm, v2::MethodImpl};
+use crate::{
+    asm::Assembly as V1Asm,
+    v2::{il_exporter, MethodImpl},
+};
 use crate::{utilis::assert_unique, IString};
 #[derive(Default, Serialize, Deserialize, Eq, PartialEq, Clone, Debug)]
 struct IStringWrapper(IString);
@@ -34,7 +37,7 @@ pub struct Assembly {
     method_refs: BiMap<MethodRefIdx, MethodRef>,
     fields: BiMap<FieldIdx, FieldDesc>,
     statics: BiMap<StaticFieldIdx, StaticFieldDesc>,
-    method_defs: FxHashMap<MethodRefIdx, MethodDef>,
+    method_defs: FxHashMap<MethodDefIdx, MethodDef>,
 }
 impl Assembly {
     pub fn class_mut(&mut self, id: ClassDefIdx) -> &mut ClassDef {
@@ -174,7 +177,7 @@ impl Assembly {
             .expect("Method added without a class")
             .methods_mut()
             .push(MethodDefIdx(ref_idx));
-        self.method_defs.insert(ref_idx, def);
+        self.method_defs.insert(MethodDefIdx(ref_idx), def);
         crate::utilis::assert_unique(self.class_defs.get(&def_class).unwrap().methods());
         MethodDefIdx(ref_idx)
     }
@@ -190,7 +193,7 @@ impl Assembly {
             vec![].into(),
         );
         let mref = self.methodref_idx(mref);
-        if self.method_defs.contains_key(&mref) {
+        if self.method_defs.contains_key(&MethodDefIdx(mref)) {
             MethodDefIdx(mref)
         } else {
             let mimpl = MethodImpl::MethodBody {
@@ -341,6 +344,53 @@ impl Assembly {
     pub(crate) fn method_def_from_ref(&self, mref: MethodRefIdx) -> Option<&MethodDef> {
         self.method_defs.get(&MethodDefIdx(mref))
     }
+    pub fn eliminate_dead_code(&mut self) {
+        // 1st. Collect all "extern" method definitons, since those are always alive.
+        let mut previosly_ressurected: FxHashMap<MethodDefIdx, MethodDef> = self
+            .method_defs
+            .iter()
+            .filter(|(_, def)| def.access().is_extern())
+            .map(|(idx, def)| (*idx, def.clone()))
+            .collect();
+        let mut to_resurrect: FxHashMap<MethodDefIdx, MethodDef> = FxHashMap::default();
+        let mut alive: FxHashMap<MethodDefIdx, MethodDef> = FxHashMap::default();
+        while !previosly_ressurected.is_empty() {
+            for def in previosly_ressurected.values() {
+                // Iterate torugh the cil of this method, if present
+                let Some(cil) = def.iter_cil(self) else {
+                    continue;
+                };
+                // Get all the ref ids of the methods used in the cil.
+                let refids = cil.filter_map(|elem| match elem {
+                    crate::v2::CILIterElem::Node(CILNode::Call(args)) => Some(args.0),
+                    crate::v2::CILIterElem::Node(CILNode::LdFtn(mref)) => Some(mref),
+                    crate::v2::CILIterElem::Node(_) => None,
+                    crate::v2::CILIterElem::Root(CILRoot::Call(args)) => Some(args.0),
+                    crate::v2::CILIterElem::Root(_) => None,
+                });
+                // Check if this method reference is also a def. If so, map it to a def
+                let defids = refids.filter_map(|refid| {
+                    self.method_defs
+                        .get(&MethodDefIdx(refid))
+                        .map(|def| (MethodDefIdx(refid), def.clone()))
+                });
+                to_resurrect.extend(defids);
+            }
+            alive.extend(previosly_ressurected);
+            previosly_ressurected = to_resurrect;
+            to_resurrect = FxHashMap::default();
+        }
+        // Some cheap sanity checks
+        assert!(previosly_ressurected.is_empty());
+        assert!(to_resurrect.is_empty());
+        // Set the method set to only include alive methods
+        self.method_defs = alive;
+        // TODO: clean up typedefs
+        self.class_defs.values_mut().for_each(|tdef| {
+            tdef.methods_mut()
+                .retain(|def| self.method_defs.contains_key(def));
+        });
+    }
 }
 /// An initializer, which runs before everything else. By convention, it is used to initialize static / const data. Should not execute any user code
 pub const CCTOR: &str = ".cctor";
@@ -457,7 +507,7 @@ fn export2() {
     let name = asm.alloc_string("pritnf");
     let lib = asm.alloc_string("/lib/libc.so");
     asm.new_method(MethodDef::new(
-        Access::Extern,
+        Access::Public,
         main_module,
         name,
         sig,
@@ -468,5 +518,8 @@ fn export2() {
         },
         vec![None],
     ));
+    let uinit = asm.alloc_root(CILRoot::Break);
+    asm.add_user_init(&[uinit]);
+    asm.eliminate_dead_code();
     asm.export("/tmp/export2.exe", ILExporter::new(*ILASM_FLAVOUR, false));
 }

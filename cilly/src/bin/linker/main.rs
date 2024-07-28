@@ -560,8 +560,12 @@ fn main() {
         }
     } else {
         let path: std::path::PathBuf = output_file_path.into();
+        final_assembly
+            .save_tmp(&mut std::fs::File::create(path.with_extension("cilly")).unwrap())
+            .unwrap();
 
-        let tmp = cilly::v2::Assembly::from_v1(&final_assembly);
+        let mut tmp = cilly::v2::Assembly::from_v1(&final_assembly);
+        tmp.eliminate_dead_code();
         tmp.save_tmp(&mut std::fs::File::create(path.with_extension("cilly2")).unwrap())
             .unwrap();
         tmp.export(

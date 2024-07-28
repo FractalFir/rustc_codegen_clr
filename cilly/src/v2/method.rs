@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 use super::{
     bimap::{BiMapIndex, IntoBiMapIndex},
     cilnode::MethodKind,
-    Access, Assembly, BasicBlock, ClassDefIdx, ClassRefIdx, FnSig, SigIdx, StringIdx, Type,
-    TypeIdx,
+    Access, Assembly, BasicBlock, CILIterElem, ClassDefIdx, ClassRefIdx, FnSig, SigIdx, StringIdx,
+    Type, TypeIdx,
 };
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub struct MethodRef {
@@ -71,6 +71,22 @@ pub struct MethodDef {
 }
 
 impl MethodDef {
+    pub fn iter_cil<'asm: 'method, 'method>(
+        &'method self,
+        asm: &'asm Assembly,
+    ) -> Option<impl Iterator<Item = CILIterElem> + 'method> {
+        match self.resolved_implementation(asm) {
+            MethodImpl::MethodBody { blocks, .. } => Some(
+                blocks
+                    .iter()
+                    .flat_map(|block| block.roots())
+                    .flat_map(|root| super::CILIter::new(asm.get_root(*root).clone(), asm)),
+            ),
+            MethodImpl::Extern { .. } => None,
+            MethodImpl::AliasFor(_) => panic!(),
+            MethodImpl::Missing => None,
+        }
+    }
     pub fn ref_to(&self) -> MethodRef {
         MethodRef::new(
             *self.class(),
@@ -147,14 +163,19 @@ impl MethodDef {
         let acceess = match v1.access() {
             crate::access_modifier::AccessModifer::Private => Access::Private,
             crate::access_modifier::AccessModifer::Public => Access::Public,
-            crate::access_modifier::AccessModifer::ModulePublic => Access::Extern,
+            crate::access_modifier::AccessModifer::Extern => Access::Extern,
         };
-        let name = asm.alloc_string(v1.call_site().name());
+
         let kind = if v1.call_site().is_static() {
             MethodKind::Static
         } else {
-            MethodKind::Instance
+            if v1.call_site().name() == ".ctor" {
+                MethodKind::Constructor
+            } else {
+                MethodKind::Instance
+            }
         };
+        let name = asm.alloc_string(v1.call_site().name());
         let blocks = v1
             .blocks()
             .iter()

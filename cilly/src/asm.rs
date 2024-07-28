@@ -255,7 +255,7 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
             ))
             .or_insert_with(|| {
                 Method::new(
-                    AccessModifer::Public,
+                    AccessModifer::Extern,
                     MethodType::Static,
                     FnSig::new(&[], Type::Void),
                     ".cctor",
@@ -307,7 +307,7 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
             ))
             .or_insert_with(|| {
                 Method::new(
-                    AccessModifer::Public,
+                    AccessModifer::Extern,
                     MethodType::Static,
                     FnSig::new(&[], Type::Void),
                     ".tcctor",

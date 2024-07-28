@@ -20,7 +20,7 @@ pub fn argc_argv_init_method(asm: &mut Assembly) -> CallSite {
         return init_cs;
     }
     let mut init_method = Method::new(
-        crate::access_modifier::AccessModifer::ModulePublic,
+        crate::access_modifier::AccessModifer::Extern,
         crate::method::MethodType::Static,
         FnSig::new(&[], Type::Void),
         "argc_argv_init",
@@ -353,7 +353,7 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
         return init_cs;
     }
     let mut get_environ = Method::new(
-        crate::access_modifier::AccessModifer::ModulePublic,
+        crate::access_modifier::AccessModifer::Extern,
         crate::method::MethodType::Static,
         FnSig::new(&[], ptr!(ptr!(Type::U8))),
         "get_environ",

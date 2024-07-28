@@ -746,8 +746,51 @@ impl ILExporter {
                         writeln!(out, "bne jp{}_{}", branch.0, branch.1)
                     }
                 }
-                Some(BranchCond::Lt(a, b, kind)) => todo!(),
-                Some(BranchCond::Gt(a, b, kind)) => todo!(),
+                Some(BranchCond::Lt(a, b, kind)) => {
+                    self.export_node(asm, out, *a)?;
+                    self.export_node(asm, out, *b)?;
+                    match kind{
+                        super::cilroot::CmpKind::Ordered |  super::cilroot::CmpKind::Signed =>  if branch.1 == 0 {
+                            writeln!(out, "blt bb{}", branch.0)
+                        } else if is_handler {
+                            writeln!(out, "blt h{}_{}", branch.0, branch.1)
+                        }
+                        else {
+                            writeln!(out, "blt jp{}_{}", branch.0, branch.1)
+                        }
+                        super::cilroot::CmpKind::Unordered  | super::cilroot::CmpKind::Unsigned =>  if branch.1 == 0 {
+                            writeln!(out, "blt.un bb{}", branch.0)
+                        } else if is_handler {
+                            writeln!(out, "blt.un h{}_{}", branch.0, branch.1)
+                        }
+                        else {
+                            writeln!(out, "blt.un jp{}_{}", branch.0, branch.1)
+                        }
+                    }
+                }
+                Some(BranchCond::Gt(a, b, kind)) => {
+                    self.export_node(asm, out, *a)?;
+                    self.export_node(asm, out, *b)?;
+                    match kind{
+                        super::cilroot::CmpKind::Ordered |  super::cilroot::CmpKind::Signed =>  if branch.1 == 0 {
+                            writeln!(out, "bgt bb{}", branch.0)
+                        } else if is_handler {
+                            writeln!(out, "bgt h{}_{}", branch.0, branch.1)
+                        }
+                        else {
+                            writeln!(out, "bgt jp{}_{}", branch.0, branch.1)
+                        }
+                        super::cilroot::CmpKind::Unordered  | super::cilroot::CmpKind::Unsigned =>  if branch.1 == 0 {
+                            writeln!(out, "bgt.un bb{}", branch.0)
+                        } else if is_handler {
+                            writeln!(out, "bgt.un h{}_{}", branch.0, branch.1)
+                        }
+                        else {
+                            writeln!(out, "bgt.un jp{}_{}", branch.0, branch.1)
+                        }
+                    }
+                   
+                }
                 Some(BranchCond::True(cond)) => {
                     self.export_node(asm, out, *cond)?;
                     if branch.1 == 0 {
@@ -991,7 +1034,7 @@ fn simple_class_ref(cref: ClassRefIdx, asm: &Assembly) -> String {
         format!("'{name}'")
     }
 }
-fn class_ref(cref: ClassRefIdx, asm: &Assembly) -> String {
+pub(crate) fn class_ref(cref: ClassRefIdx, asm: &Assembly) -> String {
     let cref = asm.class_ref(cref);
     let name = asm.get_string(cref.name());
     let prefix = if cref.is_valuetype() {

@@ -36,7 +36,7 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
             CILRoot::Nop
         };
         let mut method = Method::new(
-            AccessModifer::Public,
+            AccessModifer::Extern,
             MethodType::Static,
             sig,
             "entrypoint",
@@ -82,7 +82,7 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
     {
         let sig = FnSig::new(&[], Type::Void);
         let mut method = Method::new(
-            AccessModifer::Public,
+            AccessModifer::Extern,
             MethodType::Static,
             sig,
             "entrypoint",

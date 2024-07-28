@@ -124,7 +124,7 @@ impl ClassDef {
 
     pub(crate) fn ref_to(&self) -> ClassRef {
         assert_eq!(self.generics, 0);
-        ClassRef::new(self.name, None, false, vec![].into())
+        ClassRef::new(self.name, None, self.is_valuetype, vec![].into())
     }
 
     pub fn methods_mut(&mut self) -> &mut Vec<MethodDefIdx> {
