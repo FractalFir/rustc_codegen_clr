@@ -3,7 +3,7 @@
 use aot::aot_compile_mode;
 use cilly::{
     access_modifier,
-    asm::{Assembly, CILLY_V2},
+    asm::Assembly,
     basic_block::BasicBlock,
     c_exporter::CExporter,
     call,
@@ -560,72 +560,38 @@ fn main() {
         }
     } else {
         let path: std::path::PathBuf = output_file_path.into();
-        if *CILLY_V2 {
-            let tmp = cilly::v2::Assembly::from_v1(&final_assembly);
-            tmp.save_tmp(&mut std::fs::File::create(path.with_extension("cilly2")).unwrap())
-                .unwrap();
-            tmp.export(
-                &path,
-                cilly::v2::il_exporter::ILExporter::new(*ILASM_FLAVOUR, is_lib),
+
+        let tmp = cilly::v2::Assembly::from_v1(&final_assembly);
+        tmp.save_tmp(&mut std::fs::File::create(path.with_extension("cilly2")).unwrap())
+            .unwrap();
+        tmp.export(
+            &path,
+            cilly::v2::il_exporter::ILExporter::new(*ILASM_FLAVOUR, is_lib),
+        );
+        if cargo_support {
+            let bootstrap = bootstrap_source(
+                &path.with_extension("exe"),
+                path.to_str().unwrap(),
+                "dotnet",
             );
-            if cargo_support {
-                let bootstrap = bootstrap_source(
-                    &path.with_extension("exe"),
-                    path.to_str().unwrap(),
-                    "dotnet",
-                );
-                let bootstrap_path = path.with_extension("rs");
-                let mut bootstrap_file = std::fs::File::create(&bootstrap_path).unwrap();
-                bootstrap_file.write_all(bootstrap.as_bytes()).unwrap();
-                let path = std::env::var("PATH").unwrap();
-                let out = std::process::Command::new("rustc")
-                    .arg("-O")
-                    .arg(bootstrap_path)
-                    .arg("-o")
-                    .arg(output_file_path)
-                    .env_clear()
-                    .env("PATH", path)
-                    .output()
-                    .unwrap();
-                assert!(
-                    out.stderr.is_empty(),
-                    "{}",
-                    String::from_utf8(out.stderr).unwrap()
-                );
-            }
-        } else {
-            // Run ILASM
-            export::export_assembly(&final_assembly, output_file_path, is_lib)
-                .expect("Assembly export faliure!");
-            final_assembly
-                .save_tmp(&mut std::fs::File::create(path.with_extension("cilly")).unwrap())
+            let bootstrap_path = path.with_extension("rs");
+            let mut bootstrap_file = std::fs::File::create(&bootstrap_path).unwrap();
+            bootstrap_file.write_all(bootstrap.as_bytes()).unwrap();
+            let path = std::env::var("PATH").unwrap();
+            let out = std::process::Command::new("rustc")
+                .arg("-O")
+                .arg(bootstrap_path)
+                .arg("-o")
+                .arg(output_file_path)
+                .env_clear()
+                .env("PATH", path)
+                .output()
                 .unwrap();
-            // Run AOT compiler
-            aot_compile_mode.compile(output_file_path);
-
-            //      Cargo integration
-
-            if cargo_support {
-                let bootstrap = bootstrap_source(&path, output_file_path, "dotnet");
-                let bootstrap_path = path.with_extension("rs");
-                let mut bootstrap_file = std::fs::File::create(&bootstrap_path).unwrap();
-                bootstrap_file.write_all(bootstrap.as_bytes()).unwrap();
-                let path = std::env::var("PATH").unwrap();
-                let out = std::process::Command::new("rustc")
-                    .arg("-O")
-                    .arg(bootstrap_path)
-                    .arg("-o")
-                    .arg(output_file_path)
-                    .env_clear()
-                    .env("PATH", path)
-                    .output()
-                    .unwrap();
-                assert!(
-                    out.stderr.is_empty(),
-                    "{}",
-                    String::from_utf8(out.stderr).unwrap()
-                );
-            }
+            assert!(
+                out.stderr.is_empty(),
+                "{}",
+                String::from_utf8(out.stderr).unwrap()
+            );
         }
     }
 

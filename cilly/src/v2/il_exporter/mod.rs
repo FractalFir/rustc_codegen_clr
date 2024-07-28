@@ -134,7 +134,7 @@ impl ILExporter {
                         .iter()
                         .flat_map(|block| block.roots().iter())
                         .map(|root| {
-                            crate::v2::CILIter::new(asm.get_root(*root).clone(), asm).count()
+                            crate::v2::CILIter::new(asm.get_root(*root).clone(), asm).count() + 4
                         })
                         .max()
                         .unwrap_or(0),
@@ -731,7 +731,7 @@ impl ILExporter {
                         writeln!(out, "beq h{}_{}", branch.0, branch.1)
                     }
                     else {
-                        writeln!(out, "beq bb{}", branch.1)
+                        writeln!(out, "beq jp{}_{}", branch.0, branch.1)
                     }
                 }
                 Some(BranchCond::Ne(a, b)) => {
@@ -743,7 +743,7 @@ impl ILExporter {
                         writeln!(out, "bne h{}_{}", branch.0, branch.1)
                     }
                     else {
-                        writeln!(out, "bne bb{}", branch.1)
+                        writeln!(out, "bne jp{}_{}", branch.0, branch.1)
                     }
                 }
                 Some(BranchCond::Lt(a, b, kind)) => todo!(),
@@ -756,7 +756,7 @@ impl ILExporter {
                         writeln!(out, "brtrue h{}_{}", branch.0, branch.1)
                     }
                     else {
-                        writeln!(out, "brtrue bb{}", branch.1)
+                        writeln!(out, "brtrue jp{}_{}", branch.0, branch.1)
                     }
                 }
                 Some(BranchCond::False(cond)) => {
