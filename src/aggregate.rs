@@ -7,7 +7,7 @@ use crate::{
 };
 use cilly::{
     call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_usize,
-    field_desc::FieldDescriptor, ldc_u64, AsmStringContainer, DotnetTypeRef, Type,
+    field_desc::FieldDescriptor, ldc_u64, ptr, AsmStringContainer, DotnetTypeRef, Type,
 };
 use rustc_index::IndexVec;
 use rustc_middle::{
@@ -66,11 +66,7 @@ pub fn handle_aggregate<'tcx>(
                 DotnetTypeRef::array(&element, value_index.len(), &AsmStringContainer::default());
             let array_getter = super::place::place_adress(target_location, ctx);
             let sig = cilly::fn_sig::FnSig::new(
-                &[
-                    Type::Ptr(Into::<Type>::into(array_type.clone()).into()),
-                    Type::USize,
-                    element,
-                ],
+                &[ptr!(array_type.clone().into()), Type::USize, element],
                 Type::Void,
             );
             let site = CallSite::new(Some(array_type), "set_Item".into(), sig, false);
@@ -178,13 +174,8 @@ pub fn handle_aggregate<'tcx>(
                 return CILNode::SubTrees(Box::new((
                     [CILRoot::STIndPtr(
                         init_addr,
-                        CILNode::CastPtr {
-                            val: Box::new(handle_operand(data, ctx)),
-                            new_ptr: Box::new(Type::Ptr(Box::new(Type::Ptr(Box::new(
-                                fat_ptr_type.clone(),
-                            ))))),
-                        },
-                        Box::new(Type::Ptr(Box::new(fat_ptr_type))),
+                        handle_operand(data, ctx).cast_ptr(ptr!(ptr!(fat_ptr_type.clone()))),
+                        Box::new(ptr!(fat_ptr_type)),
                     )]
                     .into(),
                     Box::new(place_get(target_location, ctx)),
@@ -194,13 +185,10 @@ pub fn handle_aggregate<'tcx>(
             // Assign the components
             let assign_ptr = CILRoot::SetField {
                 addr: Box::new(init_addr.clone()),
-                value: Box::new(CILNode::CastPtr {
-                    val: Box::new(values[0].1.clone()),
-                    new_ptr: Box::new(Type::Ptr(Type::Void.into())),
-                }),
+                value: Box::new(values[0].1.clone().cast_ptr(ptr!(Type::Void))),
                 desc: Box::new(FieldDescriptor::new(
                     fat_ptr_type.as_dotnet().unwrap(),
-                    Type::Ptr(Type::Void.into()),
+                    ptr!(Type::Void),
                     crate::DATA_PTR.into(),
                 )),
             };

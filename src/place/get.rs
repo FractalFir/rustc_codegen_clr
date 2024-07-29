@@ -1,11 +1,7 @@
-use crate::{
-    assembly::MethodCompileCtx,
-    r#type::{pointer_to_is_fat, Type},
-    utilis::is_zst,
-};
+use crate::{assembly::MethodCompileCtx, r#type::Type};
 use cilly::{
     call, call_site::CallSite, cil_node::CILNode, conv_usize, field_desc::FieldDescriptor,
-    fn_sig::FnSig, ld_field,
+    fn_sig::FnSig, ld_field, ptr,
 };
 use rustc_middle::{
     mir::{Place, PlaceElem},
@@ -110,17 +106,8 @@ fn place_elem_get<'a>(
                         &index_type,
                         CILNode::SizeOf(inner_type.clone().into()),
                     );
-                    let addr = CILNode::Add(
-                        Box::new(CILNode::CastPtr {
-                            val: CILNode::LDField {
-                                addr: addr_calc.into(),
-                                field: desc.into(),
-                            }
-                            .into(),
-                            new_ptr: Box::new(Type::Ptr(Box::new(inner_type))),
-                        }),
-                        CILNode::Mul(index.into(), size.into()).into(),
-                    );
+                    let addr =
+                        (ld_field!(addr_calc, desc).cast_ptr(ptr!(inner_type))) + (index * size);
                     super::deref_op(super::PlaceTy::Ty(inner), ctx, addr)
                 }
                 TyKind::Array(element, _length) => {
@@ -166,20 +153,17 @@ fn place_elem_get<'a>(
                     );
                     let metadata = FieldDescriptor::new(slice, Type::USize, crate::METADATA.into());
 
-                    let addr = CILNode::CastPtr {
-                        val: Box::new(ld_field!(addr_calc.clone(), data_pointer)),
-                        new_ptr: Box::new(Type::Ptr(Box::new(inner_type.clone()))),
-                    } + call!(
-                        CallSite::new(
-                            None,
-                            "bounds_check".into(),
-                            FnSig::new(&[Type::USize, Type::USize], Type::USize),
-                            true
-                        ),
-                        [conv_usize!(index), ld_field!(addr_calc, metadata),]
-                    ) * CILNode::ZeroExtendToUSize(
-                        CILNode::SizeOf(inner_type.into()).into(),
-                    );
+                    let addr = ld_field!(addr_calc.clone(), data_pointer)
+                        .cast_ptr(ptr!(inner_type.clone()))
+                        + call!(
+                            CallSite::new(
+                                None,
+                                "bounds_check".into(),
+                                FnSig::new(&[Type::USize, Type::USize], Type::USize),
+                                true
+                            ),
+                            [conv_usize!(index), ld_field!(addr_calc, metadata),]
+                        ) * CILNode::ZeroExtendToUSize(CILNode::SizeOf(inner_type.into()).into());
                     super::deref_op(super::PlaceTy::Ty(inner), ctx, addr)
                 }
                 TyKind::Array(element, _length) => {

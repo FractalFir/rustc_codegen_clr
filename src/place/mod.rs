@@ -4,7 +4,7 @@ use crate::assembly::MethodCompileCtx;
 use crate::r#type::pointer_to_is_fat;
 use cilly::cil_node::CILNode;
 use cilly::cil_root::CILRoot;
-use cilly::{conv_usize, ldc_u64, Type};
+use cilly::{conv_usize, ldc_u64, ptr, Type};
 
 use cilly::DotnetTypeRef;
 use rustc_middle::mir::Place;
@@ -162,10 +162,7 @@ pub fn place_adress<'a>(place: &Place<'a>, ctx: &mut MethodCompileCtx<'a, '_, '_
     let layout = ctx.layout_of(place_ty);
     if layout.is_zst() {
         let place_type = ctx.type_from_cache(place_ty);
-        return CILNode::CastPtr {
-            val: Box::new(conv_usize!(ldc_u64!(layout.align.pref.bytes()))),
-            new_ptr: Box::new(Type::Ptr(Box::new(place_type))),
-        };
+        return conv_usize!(ldc_u64!(layout.align.pref.bytes())).cast_ptr(ptr!(place_type));
     }
     if place.projection.is_empty() {
         let loc_ty = ctx.monomorphize(ctx.body().local_decls[place.local].ty);

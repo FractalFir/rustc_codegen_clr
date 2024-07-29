@@ -45,14 +45,7 @@ fn create_const_from_data<'tcx>(
     };
     let ty = ctx.monomorphize(ty);
     let tpe = ctx.type_from_cache(ty);
-    crate::place::deref_op(
-        ty.into(),
-        ctx,
-        CILNode::CastPtr {
-            val: Box::new(ptr),
-            new_ptr: Box::new(Type::Ptr(Box::new(tpe))),
-        },
-    )
+    crate::place::deref_op(ty.into(), ctx, ptr.cast_ptr(ptr!(tpe)))
 }
 
 pub(crate) fn load_const_value<'tcx>(
@@ -76,11 +69,8 @@ pub(crate) fn load_const_value<'tcx>(
             let slice_dotnet = slice_type.as_dotnet().expect("Slice type invalid!");
             let metadata_field =
                 FieldDescriptor::new(slice_dotnet.clone(), Type::USize, crate::METADATA.into());
-            let ptr_field = FieldDescriptor::new(
-                slice_dotnet,
-                Type::Ptr(Type::Void.into()),
-                crate::DATA_PTR.into(),
-            );
+            let ptr_field =
+                FieldDescriptor::new(slice_dotnet, ptr!(Type::Void), crate::DATA_PTR.into());
             // TODO: find a better way to get an alloc_id. This is likely to be incoreect.
             let alloc_id = ctx.tcx().reserve_and_set_memory_alloc(data);
             let alloc_id: u64 = crate::utilis::alloc_id_to_u64(alloc_id);
@@ -95,10 +85,9 @@ pub(crate) fn load_const_value<'tcx>(
                     },
                     CILRoot::SetField {
                         addr: Box::new(CILNode::LoadAddresOfTMPLocal),
-                        value: Box::new(CILNode::CastPtr {
-                            val: Box::new(CILNode::LoadGlobalAllocPtr { alloc_id }),
-                            new_ptr: Box::new(Type::Ptr(Type::Void.into())),
-                        }),
+                        value: Box::new(
+                            CILNode::LoadGlobalAllocPtr { alloc_id }.cast_ptr(ptr!(Type::Void)),
+                        ),
                         desc: Box::new(ptr_field),
                     },
                 ]
@@ -168,10 +157,10 @@ fn load_scalar_ptr(
                         Type::DelegatePtr(Box::new(FnSig::new(
                             [
                                 Type::I32,
-                                Type::Ptr(Box::new(Type::U8)),
+                                ptr!(Type::U8),
                                 Type::I32,
                                 Type::U32,
-                                Type::Ptr(Box::new(Type::Void)),
+                                ptr!(Type::Void),
                             ],
                             Type::I32,
                         ))),
@@ -181,10 +170,10 @@ fn load_scalar_ptr(
                                 FnSig::new(
                                     &[
                                         Type::I32,
-                                        Type::Ptr(Type::U8.into()),
+                                        ptr!(Type::U8),
                                         Type::I32,
                                         Type::U32,
-                                        Type::Ptr(Type::Void.into()),
+                                        ptr!(Type::Void),
                                     ],
                                     Type::I32,
                                 ),
@@ -198,16 +187,13 @@ fn load_scalar_ptr(
                 if name == "getrandom" {
                     return CILNode::TemporaryLocal(Box::new((
                         Type::DelegatePtr(Box::new(FnSig::new(
-                            &[Type::Ptr(Type::U8.into()), Type::USize, Type::U32],
+                            &[ptr!(Type::U8), Type::USize, Type::U32],
                             Type::USize,
                         ))),
                         [CILRoot::SetTMPLocal {
                             value: CILNode::LDFtn(Box::new(CallSite::builtin(
                                 "getrandom".into(),
-                                FnSig::new(
-                                    &[Type::Ptr(Type::U8.into()), Type::USize, Type::U32],
-                                    Type::USize,
-                                ),
+                                FnSig::new(&[ptr!(Type::U8), Type::USize, Type::U32], Type::USize),
                                 true,
                             ))),
                         }]
@@ -286,11 +272,11 @@ fn load_scalar_ptr(
                         Type::DelegatePtr(Box::new(FnSig::new(
                             &[
                                 Type::DelegatePtr(Box::new(FnSig::new(
-                                    [Type::Ptr(Box::new(Type::Void))],
+                                    [ptr!(Type::Void)],
                                     Type::Void,
                                 ))),
-                                Type::Ptr(Box::new(Type::Void)),
-                                Type::Ptr(Box::new(Type::Void)),
+                                ptr!(Type::Void),
+                                ptr!(Type::Void),
                             ],
                             Type::Void,
                         ))),
@@ -300,11 +286,11 @@ fn load_scalar_ptr(
                                 FnSig::new(
                                     &[
                                         Type::DelegatePtr(Box::new(FnSig::new(
-                                            [Type::Ptr(Box::new(Type::Void))],
+                                            [ptr!(Type::Void)],
                                             Type::Void,
                                         ))),
-                                        Type::Ptr(Box::new(Type::Void)),
-                                        Type::Ptr(Box::new(Type::Void)),
+                                        ptr!(Type::Void),
+                                        ptr!(Type::Void),
                                     ],
                                     Type::Void,
                                 ),
@@ -381,10 +367,7 @@ fn load_const_scalar<'tcx>(
                 matches!(scalar_type, Type::Ptr(_) | Type::DelegatePtr(_)),
                 "Invalid const ptr: {scalar_type:?}"
             );
-            return CILNode::CastPtr {
-                val: Box::new(load_scalar_ptr(ctx, ptr)),
-                new_ptr: Box::new(scalar_type),
-            };
+            return load_scalar_ptr(ctx, ptr).cast_ptr(scalar_type);
         }
     };
 
@@ -399,19 +382,14 @@ fn load_const_scalar<'tcx>(
                 CILNode::LdTrue
             }
         }
-        TyKind::RawPtr(_, _) => CILNode::CastPtr {
-            val: Box::new(CILNode::ZeroExtendToUSize(
-                CILNode::LdcU64(
-                    u64::try_from(scalar_u128).expect("pointers must be smaller than 2^64"),
-                )
-                .into(),
-            )),
-            new_ptr: Box::new(scalar_type),
-        },
+        TyKind::RawPtr(_, _) => conv_usize!(ldc_u64!(
+            u64::try_from(scalar_u128).expect("pointers must be smaller than 2^64")
+        ))
+        .cast_ptr(scalar_type),
         TyKind::Tuple(elements) => {
             if elements.is_empty() {
                 CILNode::TemporaryLocal(Box::new((
-                    Type::Ptr(scalar_type.clone().into()),
+                    ptr!(scalar_type.clone()),
                     [].into(),
                     CILNode::LdObj {
                         ptr: CILNode::LoadTMPLocal.into(),
@@ -420,19 +398,19 @@ fn load_const_scalar<'tcx>(
                 )))
             } else {
                 CILNode::LdObj {
-                    ptr: Box::new(CILNode::CastPtr {
-                        val: Box::new(CILNode::PointerToConstValue(Box::new(scalar_u128))),
-                        new_ptr: Box::new(Type::Ptr(Box::new(scalar_type.clone()))),
-                    }),
+                    ptr: Box::new(
+                        CILNode::PointerToConstValue(Box::new(scalar_u128))
+                            .cast_ptr(ptr!(scalar_type.clone())),
+                    ),
                     obj: scalar_type.into(),
                 }
             }
         }
         TyKind::Adt(_, _subst) => CILNode::LdObj {
-            ptr: Box::new(CILNode::CastPtr {
-                val: Box::new(CILNode::PointerToConstValue(Box::new(scalar_u128))),
-                new_ptr: Box::new(Type::Ptr(Box::new(scalar_type.clone()))),
-            }),
+            ptr: Box::new(
+                CILNode::PointerToConstValue(Box::new(scalar_u128))
+                    .cast_ptr(ptr!(scalar_type.clone())),
+            ),
             obj: scalar_type.into(),
         },
         TyKind::Char => CILNode::LdcU32(u32::try_from(scalar_u128).unwrap()),

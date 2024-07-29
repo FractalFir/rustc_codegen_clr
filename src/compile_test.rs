@@ -901,10 +901,6 @@ compare_tests! {fuzz,fuzz580,stable}
 compare_tests! {fuzz,fuzz952,stable}
 //compare_tests! {fuzz,fuzz4433,stable}
 
-//Created 10000 test cases, totaling 50134773 LOC, found faliures:
-//[(4433, 0.00124986574458541), (3887, 0.001907857376218569), (6525, 0.002377739688105507), (9941, 0.0024949373398358565), (1897, 0.010652768462668605), (6569, 0.012736690853880961),
-// (7194, 0.023466921178423306), (9864, 0.023612268642348222), (2311, 0.03313094708696396), (3480, 0.09376201412758611), (2631, 0.11244941219251492), (3554, 0.11515223073778913)
-// (1069, 0.14060863859727935)]
 run_test! {fuzz,fail0,stable}
 run_test! {fuzz,fail1,stable}
 compare_tests! {fuzz,fail3,stable}
@@ -924,7 +920,7 @@ cargo_test! {std_hello_world,stable}
 cargo_test_ignored! {build_core}
 cargo_test_ignored! {build_alloc}
 cargo_test_ignored! {build_std}
-cargo_test! {benchmarks,stable}
+cargo_test! {benchmarks,bench}
 cargo_test! {glam_test,stable}
 cargo_test! {fastrand_test,stable}
 

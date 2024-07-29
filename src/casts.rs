@@ -3,7 +3,7 @@ use cilly::{call_site::CallSite, DotnetTypeRef, FnSig, Type};
 
 use cilly::{
     call, conv_f32, conv_f64, conv_f_un, conv_i16, conv_i32, conv_i64, conv_i8, conv_isize,
-    conv_u16, conv_u32, conv_u64, conv_u8, conv_usize,
+    conv_u16, conv_u32, conv_u64, conv_u8, conv_usize, ptr,
 };
 /// Casts from intiger type `src` to target `target`
 pub fn int_to_int(src: Type, target: &Type, operand: CILNode) -> CILNode {
@@ -374,10 +374,7 @@ fn to_int(target: &Type, operand: CILNode) -> CILNode {
         Type::U64 => conv_u64!(operand),
         Type::ISize => conv_isize!(operand),
         Type::USize => conv_usize!(operand),
-        Type::Ptr(tpe) => CILNode::CastPtr {
-            val: Box::new(conv_usize!(operand)),
-            new_ptr: Box::new(Type::Ptr(tpe.clone())),
-        },
+        Type::Ptr(tpe) => conv_usize!(operand).cast_ptr(ptr!(*tpe.clone())),
         _ => todo!("Can't cast to {target:?} yet!"),
     }
 }

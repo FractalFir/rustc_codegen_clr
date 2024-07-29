@@ -1,6 +1,4 @@
-use cilly::{
-    call, call_site::CallSite, cil_node::CILNode, ptr, size_of, sub, DotnetTypeRef, FnSig, Type,
-};
+use cilly::{call, call_site::CallSite, cil_node::CILNode, ptr, sub, DotnetTypeRef, FnSig, Type};
 
 pub fn interlocked_add(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
     sub!(

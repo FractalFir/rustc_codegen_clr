@@ -8,7 +8,7 @@ use crate::{
 };
 use cilly::{
     call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_usize,
-    field_desc::FieldDescriptor, fn_sig::FnSig, ld_field,
+    field_desc::FieldDescriptor, fn_sig::FnSig, ld_field, ptr, size_of,
 };
 use rustc_middle::mir::PlaceElem;
 use rustc_middle::ty::{Ty, TyKind};
@@ -141,22 +141,8 @@ pub fn place_elem_body<'tcx>(
                         Type::Ptr(Type::Void.into()),
                         crate::DATA_PTR.into(),
                     );
-                    let addr = CILNode::Add(
-                        Box::new(CILNode::CastPtr {
-                            val: CILNode::LDField {
-                                addr: parrent_node.into(),
-                                field: desc.into(),
-                            }
-                            .into(),
-                            new_ptr: Box::new(Type::Ptr(Box::new(inner_type.clone()))),
-                        }),
-                        CILNode::Mul(
-                            index.into(),
-                            CILNode::ZeroExtendToUSize(CILNode::SizeOf(inner_type.into()).into())
-                                .into(),
-                        )
-                        .into(),
-                    );
+                    let addr = ld_field!(parrent_node, desc).cast_ptr(ptr!(inner_type.clone()))
+                        + (index * CILNode::ZeroExtendToUSize(size_of!(inner_type).into()));
 
                     if body_ty_is_by_adress(inner, ctx) {
                         (inner.into(), addr)
@@ -228,17 +214,16 @@ pub fn place_elem_body<'tcx>(
                         crate::DATA_PTR.into(),
                     );
                     let metadata = FieldDescriptor::new(slice, Type::USize, "metadata".into());
-                    let addr = CILNode::CastPtr {
-                        val: Box::new(ld_field!(parrent_node.clone(), desc)),
-                        new_ptr: Box::new(Type::Ptr(Box::new(inner_type.clone()))),
-                    } + call!(
-                        CallSite::builtin(
-                            "bounds_check".into(),
-                            FnSig::new(&[Type::USize, Type::USize], Type::USize),
-                            true
-                        ),
-                        [index, ld_field!(parrent_node.clone(), metadata)]
-                    ) * conv_usize!(CILNode::SizeOf(inner_type.into()));
+                    let addr = Box::new(ld_field!(parrent_node.clone(), desc))
+                        .cast_ptr(ptr!(inner_type.clone()))
+                        + call!(
+                            CallSite::builtin(
+                                "bounds_check".into(),
+                                FnSig::new(&[Type::USize, Type::USize], Type::USize),
+                                true
+                            ),
+                            [index, ld_field!(parrent_node.clone(), metadata)]
+                        ) * conv_usize!(CILNode::SizeOf(inner_type.into()));
                     if body_ty_is_by_adress(inner, ctx) {
                         (inner.into(), addr)
                     } else {

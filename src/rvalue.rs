@@ -1,13 +1,12 @@
 use crate::{
     assembly::MethodCompileCtx,
     call_info::CallInfo,
-    operand::{handle_operand, operand_address},
-    place::{place_address_raw, place_get},
+    operand::handle_operand,
     r#type::{pointer_to_is_fat, Type},
 };
 use cilly::{
     call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_usize,
-    field_desc::FieldDescriptor, fn_sig::FnSig, ld_field, ldc_i32, ldc_u64, size_of,
+    field_desc::FieldDescriptor, fn_sig::FnSig, ld_field, ldc_i32, ldc_u64, ptr, size_of,
 };
 use rustc_middle::{
     mir::{CastKind, NullOp, Operand, Place, Rvalue},
@@ -128,10 +127,8 @@ pub fn handle_rvalue<'tcx>(
                 (
                     Type::ISize | Type::USize | Type::Ptr(_),
                     Type::ISize | Type::USize | Type::Ptr(_),
-                ) => CILNode::CastPtr {
-                    val: Box::new(handle_operand(operand, ctx)),
-                    new_ptr: Box::new(dst),
-                },
+                ) => handle_operand(operand, ctx).cast_ptr(dst),
+
                 (Type::U16, Type::DotnetChar) => handle_operand(operand, ctx),
                 (_, _) => CILNode::TemporaryLocal(Box::new((
                     src,
@@ -142,10 +139,7 @@ pub fn handle_rvalue<'tcx>(
                     crate::place::deref_op(
                         crate::place::PlaceTy::Ty(dst_ty),
                         ctx,
-                        CILNode::CastPtr {
-                            val: Box::new(CILNode::LoadAddresOfTMPLocal),
-                            new_ptr: Box::new(Type::Ptr(Box::new(dst))),
-                        },
+                        CILNode::LoadAddresOfTMPLocal.cast_ptr(ptr!(dst)),
                     ),
                 ))),
             }
@@ -172,10 +166,7 @@ pub fn handle_rvalue<'tcx>(
                 crate::place::deref_op(
                     crate::place::PlaceTy::Ty(boxed_dst),
                     ctx,
-                    CILNode::CastPtr {
-                        val: Box::new(CILNode::LoadAddresOfTMPLocal),
-                        new_ptr: Box::new(Type::Ptr(Box::new(boxed_dst_type))),
-                    },
+                    CILNode::LoadAddresOfTMPLocal.cast_ptr(ptr!(boxed_dst_type)),
                 ),
             )))
         }
@@ -187,10 +178,7 @@ pub fn handle_rvalue<'tcx>(
             let target = ctx.monomorphize(*target);
             let target = ctx.type_from_cache(target);
             // Cast from usize/isize to any *T is a NOP, so we just have to load the operand.
-            CILNode::CastPtr {
-                val: Box::new(handle_operand(operand, ctx)),
-                new_ptr: Box::new(target),
-            }
+            handle_operand(operand, ctx).cast_ptr(target)
         }
         Rvalue::Cast(CastKind::PointerExposeProvenance, operand, target) => {
             //FIXME: the documentation of this cast(https://doc.rust-lang.org/nightly/std/primitive.pointer.html#method.expose_addrl) is a bit confusing,
@@ -200,10 +188,7 @@ pub fn handle_rvalue<'tcx>(
             let target = ctx.monomorphize(*target);
             let target = ctx.type_from_cache(target);
             // Cast to usize/isize from any *T is a NOP, so we just have to load the operand.
-            CILNode::CastPtr {
-                val: Box::new(handle_operand(operand, ctx)),
-                new_ptr: Box::new(target),
-            }
+            handle_operand(operand, ctx).cast_ptr(target)
         }
         Rvalue::Cast(CastKind::FloatToFloat, operand, target) => {
             let target = ctx.monomorphize(*target);
@@ -402,10 +387,7 @@ fn ptr_to_ptr<'tcx>(
                 CILNode::TemporaryLocal(Box::new((
                     source_type,
                     [CILRoot::SetTMPLocal { value: parrent }].into(),
-                    CILNode::CastPtr {
-                        val: Box::new(CILNode::LoadAddresOfTMPLocal),
-                        new_ptr: Box::new(Type::Ptr(Box::new(target_type))),
-                    },
+                    Box::new(CILNode::LoadAddresOfTMPLocal).cast_ptr(ptr!(target_type)),
                 ))),
             )
         }
@@ -419,25 +401,20 @@ fn ptr_to_ptr<'tcx>(
                     value: handle_operand(operand, ctx),
                 }]
                 .into(),
-                CILNode::CastPtr {
-                    val: Box::new(ld_field!(
-                        CILNode::LoadAddresOfTMPLocal,
-                        FieldDescriptor::new(
-                            source_type.as_dotnet().unwrap(),
-                            Type::Ptr(Type::Void.into()),
-                            crate::DATA_PTR.into(),
-                        )
-                    )),
-                    new_ptr: Box::new(target_type),
-                },
+                ld_field!(
+                    CILNode::LoadAddresOfTMPLocal,
+                    FieldDescriptor::new(
+                        source_type.as_dotnet().unwrap(),
+                        Type::Ptr(Type::Void.into()),
+                        crate::DATA_PTR.into(),
+                    )
+                )
+                .cast_ptr(target_type),
             )))
         }
         (false, true) => {
             panic!("ERROR: a non-unsizing cast turned a sized ptr into an unsized one")
         }
-        _ => CILNode::CastPtr {
-            val: Box::new(handle_operand(operand, ctx)),
-            new_ptr: Box::new(target_type),
-        },
+        _ => handle_operand(operand, ctx).cast_ptr(target_type),
     }
 }

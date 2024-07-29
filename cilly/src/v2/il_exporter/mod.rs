@@ -127,7 +127,7 @@ impl ILExporter {
                 }else{""};
                 writeln!(
                     out,
-                    ".method {vis} hidebysig {kind} {pinvoke} {ret} '{name}'({inputs}) cil managed {preservesig}{{"
+                    ".method {vis} hidebysig {kind} {pinvoke} {ret} '{name}'({inputs}) cil managed {preservesig}{{// Method ID {method_id:?}"
                 )?;
                 let stack_size = match method.implementation() {
                     MethodImpl::MethodBody { blocks, .. } => blocks
@@ -881,7 +881,7 @@ impl ILExporter {
                     .collect();
                 let name = asm.get_string(mref.name());
                 let class = class_ref(mref.class(), asm);
-                writeln!(out, "{call_op} {output} {class}::'{name}'({inputs})")
+                writeln!(out, "{call_op} {output} {class}::'{name}'({inputs}) //mref:{:?}",call.0)
             }
             super::CILRoot::StInd(stind) => {
                 self.export_node(asm, out, stind.0)?;

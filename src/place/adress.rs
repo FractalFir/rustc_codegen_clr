@@ -3,7 +3,6 @@ use crate::{
     assembly::MethodCompileCtx,
     assert_morphic,
     r#type::{pointer_to_is_fat, Type},
-    utilis::adt::FieldOffsetIterator,
 };
 use cilly::{
     call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_usize,
@@ -64,7 +63,7 @@ pub fn address_last_dereference<'tcx>(
                 .into(),
                 addr: addr_calc.into(),
             }),
-            loaded_ptr: Box::new(Type::Ptr(Box::new(target_type))),
+            loaded_ptr: Box::new(ptr!(target_type)),
         },
         (false, true) => panic!("Invalid last dereference in address!"),
         (false, false) => addr_calc,
@@ -149,10 +148,9 @@ pub fn place_elem_adress<'tcx>(
                         ]
                         .into(),
                         CILNode::LdObj {
-                            ptr: Box::new(CILNode::CastPtr {
-                                val: CILNode::LoadAddresOfTMPLocal.into(),
-                                new_ptr: Box::new(ptr!(field_type.clone())),
-                            }),
+                            ptr: Box::new(
+                                CILNode::LoadAddresOfTMPLocal.cast_ptr(ptr!(field_type.clone())),
+                            ),
                             obj: field_type.into(),
                         },
                     )));
@@ -190,11 +188,9 @@ pub fn place_elem_adress<'tcx>(
                         crate::DATA_PTR.into(),
                     );
                     // This is a false positive
-                    #[allow(unused_parens)]
-                    (CILNode::CastPtr {
-                        val: Box::new(ld_field!(addr_calc.clone(), desc)),
-                        new_ptr: Box::new(Type::Ptr(Box::new(inner_type.clone()))),
-                    } + conv_usize!(size_of!(inner_type)) * conv_usize!(index))
+                    //    #[allow(unused_parens)]
+                    (ld_field!(addr_calc.clone(), desc)).cast_ptr(ptr!(inner_type.clone()))
+                        + conv_usize!(size_of!(inner_type)) * conv_usize!(index)
                 }
                 TyKind::Array(element, _length) => {
                     let element = ctx.monomorphize(*element);
@@ -318,18 +314,17 @@ pub fn place_elem_adress<'tcx>(
                         conv_usize!(ldc_u64!(*offset))
                         //ops.extend(derf_op);
                     };
-                    CILNode::CastPtr {
-                        val: Box::new(ld_field!(addr_calc.clone(), desc)),
-                        new_ptr: Box::new(Type::Ptr(Box::new(inner_type.clone()))),
-                    } + (call!(
-                        CallSite::new(
-                            None,
-                            "bounds_check".into(),
-                            FnSig::new(&[Type::USize, Type::USize], Type::USize),
-                            true
-                        ),
-                        [conv_usize!(index), ld_field!(addr_calc, len)]
-                    ) * conv_usize!(CILNode::SizeOf(inner_type.into())))
+
+                    ld_field!(addr_calc.clone(), desc).cast_ptr(ptr!(inner_type.clone()))
+                        + (call!(
+                            CallSite::new(
+                                None,
+                                "bounds_check".into(),
+                                FnSig::new(&[Type::USize, Type::USize], Type::USize),
+                                true
+                            ),
+                            [conv_usize!(index), ld_field!(addr_calc, len)]
+                        ) * conv_usize!(CILNode::SizeOf(inner_type.into())))
                 }
                 TyKind::Array(element, _) => {
                     let element_ty = ctx.monomorphize(*element);

@@ -1,7 +1,7 @@
 use crate::{assembly::MethodCompileCtx, place::place_set};
 use cilly::{
     call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, cil_tree::CILTree, conv_usize,
-    field_desc::FieldDescriptor, ld_field, ldc_u32, FnSig, Type,
+    field_desc::FieldDescriptor, ld_field, ldc_u32, ptr, FnSig, Type,
 };
 use rustc_middle::{
     mir::{BasicBlock, Operand, Place, SwitchTargets, Terminator, TerminatorKind},
@@ -206,17 +206,11 @@ pub fn handle_terminator<'tcx>(
                             0
                         );
                         let drop_fn_ptr = CILNode::LDIndPtr {
-                            ptr: Box::new(CILNode::CastPtr {
-                                val: Box::new(vtable_ptr),
-                                new_ptr: Box::new(Type::Ptr(Box::new(Type::DelegatePtr(
-                                    Box::new(FnSig::new(
-                                        [Type::Ptr(Box::new(Type::Void))],
-                                        Type::Void,
-                                    )),
-                                )))),
-                            }),
+                            ptr: Box::new(vtable_ptr.cast_ptr(ptr!(Type::DelegatePtr(Box::new(
+                                FnSig::new([ptr!(Type::Void)], Type::Void,)
+                            ),)))),
                             loaded_ptr: Box::new(Type::DelegatePtr(Box::new(FnSig::new(
-                                [Type::Ptr(Box::new(Type::Void))],
+                                [ptr!(Type::Void)],
                                 Type::Void,
                             )))),
                         };
@@ -229,10 +223,7 @@ pub fn handle_terminator<'tcx>(
                             }
                             .into(),
                             CILRoot::CallI {
-                                sig: Box::new(FnSig::new(
-                                    [Type::Ptr(Box::new(Type::Void))],
-                                    Type::Void,
-                                )),
+                                sig: Box::new(FnSig::new([ptr!((Type::Void))], Type::Void)),
                                 fn_ptr: Box::new(drop_fn_ptr),
                                 args: [obj_ptr].into(),
                             }

@@ -1264,7 +1264,7 @@ impl CILNode {
                     Type::DelegatePtr(_) => (),
                     _ => {
                         return Err(format!(
-                            "Invalid TransmutePtr input: {val:?} is not a pointer or usize/isize"
+                            "Invalid CastPtr input: {val:?} is not a pointer or usize/isize"
                         ))
                     }
                 }

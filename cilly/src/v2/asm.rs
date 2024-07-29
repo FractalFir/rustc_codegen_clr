@@ -1,6 +1,6 @@
 use std::{any::type_name, collections::HashMap};
 
-use fxhash::{FxBuildHasher, FxHashMap};
+use fxhash::{FxBuildHasher, FxHashMap, FxHashSet};
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -10,11 +10,11 @@ use super::{
     FieldDesc, FieldIdx, FnSig, MethodDef, MethodDefIdx, MethodRef, MethodRefIdx, NodeIdx, RootIdx,
     SigIdx, StaticFieldDesc, StaticFieldIdx, StringIdx, Type, TypeIdx,
 };
+use crate::IString;
 use crate::{
     asm::Assembly as V1Asm,
     v2::{il_exporter, MethodImpl},
 };
-use crate::{utilis::assert_unique, IString};
 #[derive(Default, Serialize, Deserialize, Eq, PartialEq, Clone, Debug)]
 struct IStringWrapper(IString);
 impl std::hash::Hash for IStringWrapper {
@@ -178,7 +178,7 @@ impl Assembly {
             .methods_mut()
             .push(MethodDefIdx(ref_idx));
         self.method_defs.insert(MethodDefIdx(ref_idx), def);
-        crate::utilis::assert_unique(self.class_defs.get(&def_class).unwrap().methods());
+
         MethodDefIdx(ref_idx)
     }
     pub fn user_init(&mut self) -> MethodDefIdx {
@@ -293,17 +293,17 @@ impl Assembly {
                 ));
             });
 
-        empty.sanity_check();
         // Convert module methods
         v1.functions().values().for_each(|method| {
             let def = MethodDef::from_v1(method, &mut empty, main_module);
             empty.new_method(def);
         });
-        empty.sanity_check();
+
         //todo!();
         v1.types().for_each(|(_, tdef)| {
             ClassDef::from_v1(tdef, &mut empty);
         });
+        #[cfg(debug_assertions)]
         empty.sanity_check();
         empty
     }
@@ -311,7 +311,7 @@ impl Assembly {
     pub fn sanity_check(&self) {
         self.class_defs
             .values()
-            .for_each(|class| assert_unique(class.methods()))
+            .for_each(|class| crate::utilis::assert_unique(class.methods()))
     }
     pub fn export(&self, out: impl AsRef<std::path::Path>, exporter: impl Exporter) {
         exporter.export(self, out.as_ref()).unwrap()
@@ -346,16 +346,19 @@ impl Assembly {
     }
     pub fn eliminate_dead_code(&mut self) {
         // 1st. Collect all "extern" method definitons, since those are always alive.
-        let mut previosly_ressurected: FxHashMap<MethodDefIdx, MethodDef> = self
+        let mut previosly_ressurected: FxHashSet<MethodDefIdx> = self
             .method_defs
             .iter()
             .filter(|(_, def)| def.access().is_extern())
-            .map(|(idx, def)| (*idx, def.clone()))
+            .map(|(idx, _)| *idx)
             .collect();
-        let mut to_resurrect: FxHashMap<MethodDefIdx, MethodDef> = FxHashMap::default();
-        let mut alive: FxHashMap<MethodDefIdx, MethodDef> = FxHashMap::default();
+        let mut to_resurrect: FxHashSet<MethodDefIdx> = FxHashSet::default();
+        let mut alive: FxHashSet<MethodDefIdx> = FxHashSet::default();
         while !previosly_ressurected.is_empty() {
-            for def in previosly_ressurected.values() {
+            for def in previosly_ressurected
+                .iter()
+                .map(|def| self.method_defs.get(def).unwrap())
+            {
                 // Iterate torugh the cil of this method, if present
                 let Some(cil) = def.iter_cil(self) else {
                     continue;
@@ -372,24 +375,60 @@ impl Assembly {
                 let defids = refids.filter_map(|refid| {
                     self.method_defs
                         .get(&MethodDefIdx(refid))
-                        .map(|def| (MethodDefIdx(refid), def.clone()))
+                        .map(|_| MethodDefIdx(refid))
+                        .and_then(|refid| {
+                            if alive.contains(&refid) {
+                                None
+                            } else {
+                                Some(refid)
+                            }
+                        })
                 });
                 to_resurrect.extend(defids);
             }
             alive.extend(previosly_ressurected);
             previosly_ressurected = to_resurrect;
-            to_resurrect = FxHashMap::default();
+            to_resurrect = FxHashSet::default();
         }
         // Some cheap sanity checks
         assert!(previosly_ressurected.is_empty());
         assert!(to_resurrect.is_empty());
         // Set the method set to only include alive methods
-        self.method_defs = alive;
-        // TODO: clean up typedefs
+        self.method_defs = alive
+            .iter()
+            .map(|id| (*id, self.method_defs.remove(id).unwrap()))
+            .collect();
+        // clean up typedefs
         self.class_defs.values_mut().for_each(|tdef| {
             tdef.methods_mut()
                 .retain(|def| self.method_defs.contains_key(def));
         });
+        // Free all the dead roots
+        //self.realloc_roots();
+    }
+    /*pub fn realloc_nodes(&mut self){
+
+    }*/
+    /// Reallocates the roots, freeing all dead ones.
+    pub fn realloc_roots(&mut self) {
+        let mut new_roots = BiMap::default();
+        for block in self
+            .method_defs
+            .values_mut()
+            .flat_map(|def| def.implementation_mut().blocks_mut())
+            .flatten()
+        {
+            let (handler, roots) = block.handler_and_root_mut();
+            for root in roots.iter_mut().chain(
+                handler
+                    .into_iter()
+                    .flat_map(|blocks| blocks.iter_mut())
+                    .flat_map(|b| b.roots_mut()),
+            ) {
+                *root = new_roots.alloc(self.roots.get(*root).clone());
+            }
+        }
+        self.roots = new_roots;
     }
 }
 /// An initializer, which runs before everything else. By convention, it is used to initialize static / const data. Should not execute any user code
@@ -482,6 +521,7 @@ fn export2() {
         target: 2,
         source: 0,
     })];
+    asm.alloc_root(CILRoot::Break);
     let body2 = vec![asm.alloc_root(CILRoot::VoidRet)];
     asm.new_method(MethodDef::new(
         Access::Extern,
@@ -521,5 +561,6 @@ fn export2() {
     let uinit = asm.alloc_root(CILRoot::Break);
     asm.add_user_init(&[uinit]);
     asm.eliminate_dead_code();
+    asm.realloc_roots();
     asm.export("/tmp/export2.exe", ILExporter::new(*ILASM_FLAVOUR, false));
 }

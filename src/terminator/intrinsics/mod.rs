@@ -7,8 +7,7 @@ use crate::{
 use cilly::{
     call, call_site::CallSite, call_virt, cil_node::CILNode, cil_root::CILRoot, conv_f32, conv_f64,
     conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8,
-    conv_usize, eq, fn_sig::FnSig, ld_field, ldc_i32, ldc_u64, ptr, size_of, sub, DotnetTypeRef,
-    Type,
+    conv_usize, eq, fn_sig::FnSig, ld_field, ldc_i32, ldc_u64, ptr, size_of, DotnetTypeRef, Type,
 };
 use ints::{ctlz, rotate_left, rotate_right};
 use rustc_middle::{
@@ -162,14 +161,8 @@ pub fn handle_intrinsic<'tcx>(
                 destination,
                 eq!(
                     compare_bytes(
-                        CILNode::CastPtr {
-                            val: Box::new(handle_operand(&args[0].node, ctx)),
-                            new_ptr: Box::new(Type::Ptr(Box::new(Type::U8))),
-                        },
-                        CILNode::CastPtr {
-                            val: Box::new(handle_operand(&args[1].node, ctx)),
-                            new_ptr: Box::new(Type::Ptr(Box::new(Type::U8))),
-                        },
+                        handle_operand(&args[0].node, ctx).cast_ptr(ptr!(Type::U8)),
+                        handle_operand(&args[1].node, ctx).cast_ptr(ptr!(Type::U8)),
                         conv_usize!(size),
                     ),
                     ldc_i32!(0)
@@ -629,15 +622,9 @@ pub fn handle_intrinsic<'tcx>(
             place_set(
                 destination,
                 CILNode::DivUn(
-                    CILNode::CastPtr {
-                        val: sub!(
-                            handle_operand(&args[0].node, ctx),
-                            handle_operand(&args[1].node, ctx)
-                        )
+                    (handle_operand(&args[0].node, ctx) - handle_operand(&args[1].node, ctx))
+                        .cast_ptr(Type::USize)
                         .into(),
-                        new_ptr: Box::new(Type::USize),
-                    }
-                    .into(),
                     conv_usize!(size_of!(tpe)).into(),
                 ),
                 ctx,
@@ -681,15 +668,9 @@ pub fn handle_intrinsic<'tcx>(
             place_set(
                 destination,
                 CILNode::Div(
-                    CILNode::CastPtr {
-                        val: sub!(
-                            handle_operand(&args[0].node, ctx),
-                            handle_operand(&args[1].node, ctx)
-                        )
+                    (handle_operand(&args[0].node, ctx) - handle_operand(&args[1].node, ctx))
+                        .cast_ptr(Type::ISize)
                         .into(),
-                        new_ptr: Box::new(Type::ISize),
-                    }
-                    .into(),
                     conv_isize!(size_of!(tpe)).into(),
                 ),
                 ctx,
@@ -828,24 +809,14 @@ pub fn handle_intrinsic<'tcx>(
                 site: Box::new(CallSite::builtin(
                     "swap_at_generic".into(),
                     FnSig::new(
-                        [
-                            Type::Ptr(Box::new(Type::Void)),
-                            Type::Ptr(Box::new(Type::Void)),
-                            Type::USize,
-                        ],
+                        [ptr!(Type::Void), ptr!(Type::Void), Type::USize],
                         Type::Void,
                     ),
                     true,
                 )),
                 args: [
-                    CILNode::CastPtr {
-                        val: Box::new(handle_operand(&args[0].node, ctx)),
-                        new_ptr: Box::new(Type::Ptr(Box::new(Type::Void))),
-                    },
-                    CILNode::CastPtr {
-                        val: Box::new(handle_operand(&args[1].node, ctx)),
-                        new_ptr: Box::new(Type::Ptr(Box::new(Type::Void))),
-                    },
+                    handle_operand(&args[0].node, ctx).cast_ptr(ptr!(Type::Void)),
+                    handle_operand(&args[1].node, ctx).cast_ptr(ptr!(Type::Void)),
                     conv_usize!(size_of!(tpe)),
                 ]
                 .into(),
@@ -1091,11 +1062,6 @@ pub fn handle_intrinsic<'tcx>(
             ctx,
         ),
         "variant_count" => {
-            let ty = ctx.monomorphize(
-                call_instance.args[0]
-                    .as_type()
-                    .expect("needs_drop works only on types!"),
-            );
             let const_val = ctx
                 .tcx()
                 .const_eval_instance(ParamEnv::reveal_all(), call_instance, span)
@@ -1262,24 +1228,14 @@ fn intrinsic_slow<'tcx>(
             site: Box::new(CallSite::builtin(
                 "swap_at_generic".into(),
                 FnSig::new(
-                    [
-                        Type::Ptr(Box::new(Type::Void)),
-                        Type::Ptr(Box::new(Type::Void)),
-                        Type::USize,
-                    ],
+                    [ptr!(Type::Void), ptr!(Type::Void), Type::USize],
                     Type::Void,
                 ),
                 true,
             )),
             args: [
-                CILNode::CastPtr {
-                    val: Box::new(handle_operand(&args[0].node, ctx)),
-                    new_ptr: Box::new(Type::Ptr(Box::new(Type::Void))),
-                },
-                CILNode::CastPtr {
-                    val: Box::new(handle_operand(&args[1].node, ctx)),
-                    new_ptr: Box::new(Type::Ptr(Box::new(Type::Void))),
-                },
+                handle_operand(&args[0].node, ctx).cast_ptr(ptr!(Type::Void)),
+                handle_operand(&args[1].node, ctx).cast_ptr(ptr!(Type::Void)),
                 conv_usize!(size_of!(tpe)),
             ]
             .into(),

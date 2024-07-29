@@ -29,9 +29,14 @@ impl BasicBlock {
     pub fn handler(&self) -> Option<&[BasicBlock]> {
         self.handler.as_ref().map(|b| b.as_ref())
     }
-
+    pub fn handler_mut(&mut self) -> Option<&mut [BasicBlock]> {
+        self.handler.as_mut().map(|b| b.as_mut())
+    }
     pub fn roots_mut(&mut self) -> &mut Vec<RootIdx> {
         &mut self.roots
+    }
+    pub fn handler_and_root_mut(&mut self) -> (Option<&mut [BasicBlock]>, &mut Vec<RootIdx>) {
+        (self.handler.as_mut().map(|b| b.as_mut()), &mut self.roots)
     }
 }
 impl BasicBlock {

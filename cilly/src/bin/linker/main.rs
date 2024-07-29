@@ -500,7 +500,7 @@ fn main() {
     add_mandatory_statics(&mut final_assembly);
 
     if !is_lib && !*KEEP_DEAD_CODE {
-        final_assembly.eliminate_dead_code();
+        //final_assembly.eliminate_dead_code();
     }
     if *C_MODE {
         type Exporter = cilly::c_exporter::CExporter;
@@ -565,7 +565,7 @@ fn main() {
             .unwrap();
 
         let mut tmp = cilly::v2::Assembly::from_v1(&final_assembly);
-        tmp.eliminate_dead_code();
+        //tmp.eliminate_dead_code();
         tmp.save_tmp(&mut std::fs::File::create(path.with_extension("cilly2")).unwrap())
             .unwrap();
         tmp.export(

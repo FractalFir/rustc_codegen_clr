@@ -2,14 +2,14 @@ use crate::{
     assembly::MethodCompileCtx,
     call_info::CallInfo,
     interop::AssemblyRef,
-    operand::{handle_operand, operand_address},
+    operand::operand_address,
     utilis::{garg_to_string, CTOR_FN_NAME, MANAGED_CALL_FN_NAME, MANAGED_CALL_VIRT_FN_NAME},
 };
 use cilly::{
     call, call_virt,
     cil_node::{CILNode, CallOpArgs},
     cil_root::CILRoot,
-    conv_usize, ld_field, ldc_i32, size_of,
+    conv_usize, ld_field, ldc_i32, ptr, size_of,
 };
 use cilly::{call_site::CallSite, field_desc::FieldDescriptor, fn_sig::FnSig, DotnetTypeRef, Type};
 use rustc_middle::ty::InstanceKind;
@@ -53,7 +53,7 @@ fn call_managed<'tcx>(
         let ret = crate::r#type::Type::Void;
         let call_site = CallSite::new(
             Some(tpe.clone()),
-            managed_fn_name.into(),
+            managed_fn_name,
             FnSig::new(&[], ret),
             true,
         );
@@ -74,7 +74,7 @@ fn call_managed<'tcx>(
         }
         let call = CallSite::new(
             Some(tpe.clone()),
-            managed_fn_name.into(),
+            managed_fn_name,
             signature.clone(),
             is_static,
         );
@@ -120,7 +120,7 @@ fn callvirt_managed<'tcx>(
         let ret = crate::r#type::Type::Void;
         let call = CallSite::new(
             Some(tpe.clone()),
-            managed_fn_name.into(),
+            managed_fn_name,
             FnSig::new(&[], ret),
             true,
         );
@@ -141,7 +141,7 @@ fn callvirt_managed<'tcx>(
         }
         let call = CallSite::new(
             Some(tpe.clone()),
-            managed_fn_name.into(),
+            managed_fn_name,
             signature.clone(),
             is_static,
         );
@@ -332,10 +332,7 @@ pub fn call<'tcx>(
         let vtable_offset = conv_usize!(vtable_index * size_of!(Type::USize));
         // Get the address of the function ptr, and load it
         let fn_ptr = CILNode::LDIndISize {
-            ptr: Box::new(CILNode::CastPtr {
-                val: Box::new(vtable_ptr + vtable_offset),
-                new_ptr: Box::new(Type::Ptr(Box::new(Type::ISize))),
-            }),
+            ptr: Box::new((vtable_ptr + vtable_offset).cast_ptr(ptr!(Type::ISize))),
         };
         // Get the addres of the object
         let obj_ptr = ld_field!(
@@ -350,7 +347,7 @@ pub fn call<'tcx>(
         let call_info = CallInfo::sig_from_instance_(instance, ctx.tcx(), ctx.type_cache());
 
         let mut signature = call_info.sig().clone();
-        signature.inputs_mut()[0] = Type::Ptr(Box::new(Type::Void));
+        signature.inputs_mut()[0] = ptr!(Type::Void);
         let mut call_args = [obj_ptr].to_vec();
         if call_info.split_last_tuple() {
             let last_arg = args

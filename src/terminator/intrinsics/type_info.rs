@@ -1,7 +1,7 @@
 use crate::{assembly::MethodCompileCtx, place::place_set, r#type::pointer_to_is_fat};
 use cilly::{
     cil_node::CILNode, cil_root::CILRoot, conv_usize, field_desc::FieldDescriptor, ld_field,
-    ldc_u32, size_of, DotnetTypeRef, Type,
+    ldc_u32, ptr, size_of, DotnetTypeRef, Type,
 };
 use rustc_middle::{
     mir::{Operand, Place},
@@ -75,10 +75,8 @@ pub fn size_of_val<'tcx>(
                     destination,
                     CILNode::LDIndUSize {
                         ptr: Box::new(
-                            CILNode::CastPtr {
-                                val: Box::new(ld_field!(addr, descriptor)),
-                                new_ptr: Box::new(Type::Ptr(Box::new(Type::USize))),
-                            } + conv_usize!((size_of!(Type::ISize))),
+                            ld_field!(addr, descriptor).cast_ptr(ptr!(Type::USize))
+                                + conv_usize!((size_of!(Type::ISize))),
                         ),
                     },
                     ctx,

@@ -5,7 +5,8 @@ use crate::{
 };
 use cilly::{
     call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_usize,
-    field_desc::FieldDescriptor, fn_sig::FnSig, ld_field, ldc_u64, size_of, DotnetTypeRef, Type,
+    field_desc::FieldDescriptor, fn_sig::FnSig, ld_field, ldc_u64, ptr, size_of, DotnetTypeRef,
+    Type,
 };
 use rustc_middle::{
     mir::PlaceElem,
@@ -86,10 +87,8 @@ pub fn place_elem_set<'a>(
                     ptr_set_op(
                         super::PlaceTy::Ty(inner),
                         ctx,
-                        CILNode::CastPtr {
-                            val: Box::new(ld_field!(addr_calc, desc)),
-                            new_ptr: Box::new(Type::Ptr(Box::new(inner_type.clone()))),
-                        } + index * conv_usize!(size_of!(inner_type)),
+                        ld_field!(addr_calc, desc).cast_ptr(ptr!(inner_type.clone()))
+                            + index * conv_usize!(size_of!(inner_type)),
                         value_calc,
                     )
                 }
@@ -142,18 +141,17 @@ pub fn place_elem_set<'a>(
                         crate::DATA_PTR.into(),
                     );
                     let metadata = FieldDescriptor::new(slice, Type::USize, crate::METADATA.into());
-                    let addr = CILNode::CastPtr {
-                        val: Box::new(ld_field!(addr_calc.clone(), desc)),
-                        new_ptr: Box::new(Type::Ptr(Box::new(inner_type.clone()))),
-                    } + call!(
-                        CallSite::new(
-                            None,
-                            "bounds_check".into(),
-                            FnSig::new(&[Type::USize, Type::USize], Type::USize),
-                            true
-                        ),
-                        [conv_usize!(index), ld_field!(addr_calc, metadata),]
-                    ) * conv_usize!(CILNode::SizeOf(inner_type.into()));
+                    let addr = ld_field!(addr_calc.clone(), desc)
+                        .cast_ptr(ptr!(inner_type.clone()))
+                        + call!(
+                            CallSite::new(
+                                None,
+                                "bounds_check".into(),
+                                FnSig::new(&[Type::USize, Type::USize], Type::USize),
+                                true
+                            ),
+                            [conv_usize!(index), ld_field!(addr_calc, metadata),]
+                        ) * conv_usize!(CILNode::SizeOf(inner_type.into()));
                     ptr_set_op(super::PlaceTy::Ty(inner), ctx, addr, value_calc)
                 }
                 TyKind::Array(element, _length) => {

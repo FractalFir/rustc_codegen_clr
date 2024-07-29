@@ -168,12 +168,10 @@ impl MethodDef {
 
         let kind = if v1.call_site().is_static() {
             MethodKind::Static
+        } else if v1.call_site().name() == ".ctor" {
+            MethodKind::Constructor
         } else {
-            if v1.call_site().name() == ".ctor" {
-                MethodKind::Constructor
-            } else {
-                MethodKind::Instance
-            }
+            MethodKind::Instance
         };
         let name = asm.alloc_string(v1.call_site().name());
         let blocks = v1
