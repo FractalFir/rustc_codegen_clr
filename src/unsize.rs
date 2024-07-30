@@ -143,7 +143,6 @@ pub fn unsize2<'tcx>(
 
     let target_type = ctx.type_from_cache(target);
     // Get the target type as a fat pointer.
-    let target_dotnet = target_type.as_dotnet().unwrap();
 
     let src_cil = operand_address(operand, ctx);
     src_cil.validate(ctx.validator(), None).unwrap();
@@ -153,7 +152,13 @@ pub fn unsize2<'tcx>(
         ctx.layout_of(operand.ty(ctx.body(), ctx.tcx())),
         ctx.layout_of(target),
     );
-    let fat_ptr_type = DotnetTypeRef::new::<&str, _>(None, "FatPtru8");
+    let fat_ptr_type = ctx
+        .slice_ref_to(Ty::new(
+            ctx.tcx(),
+            TyKind::Uint(rustc_middle::ty::UintTy::U8),
+        ))
+        .as_dotnet()
+        .unwrap();
 
     let metadata_field =
         FieldDescriptor::new(fat_ptr_type.clone(), Type::USize, crate::METADATA.into());

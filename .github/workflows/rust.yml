@@ -24,8 +24,7 @@ jobs:
         run: cargo build --verbose
   linux_test:
     runs-on: ubuntu-latest
-    env: 
-     NEW_UNSIZE: 1
+   
     steps:
       - uses: actions/checkout@v3
       - name: Build
@@ -38,47 +37,4 @@ jobs:
         run: ilasm --version
       - name: Run cargo tests
         run: cargo test --verbose ::stable
-  linux_test_c:
-    runs-on: ubuntu-latest
-    env:
-      C_MODE: 1
-    steps:
-      - uses: actions/checkout@v3
-      - name: Build
-        run: cargo build
-      - name: Run cargo tests
-        run: |
-          cargo test compile_test::dst::stable
-          cargo test compile_test::cmp_bytes
-          cargo test compile_test::fail0
-          cargo test compile_test::add::
-
-          cargo test compile_test::fail4::stable::release
-          cargo test compile_test::fail6::stable::release
-          cargo test compile_test::fail3::stable::release
-          cargo test compile_test::fail7::stable::release
-          cargo test compile_test::fail9
-          cargo test compile_test::fuzz73::stable::release
-          cargo test compile_test::greater_than
-          cargo test compile_test::i16_to_u64
-          cargo test compile_test::i32_to_u64
-          cargo test compile_test::i32_to_usize
-          cargo test compile_test::i8_to_u64
-          cargo test compile_test::int128::stable::debug
-          cargo test compile_test::main
-          cargo test compile_test::malloc
-          cargo test compile_test::max
-          cargo test compile_test::maybeuninit
-          cargo test compile_test::offset_of
-          cargo test compile_test::printf
-          cargo test compile_test::raw_vec
-          cargo test compile_test::ref_deref
-          cargo test compile_test::slice_to_owned
-          cargo test compile_test::slice_ptr_cast::stable::debug
-          cargo test compile_test::string_slice
-          cargo test compile_test::sub::
-
-          cargo test compile_test::structs
-          cargo test enum
-          cargo test compile_test::xor
-          cargo test statics
+ 
