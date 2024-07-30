@@ -503,20 +503,19 @@ fn main() {
         //final_assembly.eliminate_dead_code();
     }
     if *C_MODE {
-        type Exporter = cilly::c_exporter::CExporter;
-        use cilly::asm_exporter::AssemblyExporter;
-        println!(
-            "The codegen is now running in C mode. It will emmit C source files and build them."
-        );
+        let path: std::path::PathBuf = output_file_path.into();
+        final_assembly
+            .save_tmp(&mut std::fs::File::create(path.with_extension("cilly")).unwrap())
+            .unwrap();
 
-        Exporter::export_assembly(
-            CExporter::init("rust_module"),
-            &final_assembly,
-            output_file_path.as_ref(),
-            is_lib,
-            false,
-        )
-        .unwrap();
+        let mut tmp = cilly::v2::Assembly::from_v1(&final_assembly);
+        //tmp.eliminate_dead_code();
+        tmp.save_tmp(&mut std::fs::File::create(path.with_extension("cilly2")).unwrap())
+            .unwrap();
+        tmp.export(
+            &path,
+            cilly::v2::il_exporter::ILExporter::new(*ILASM_FLAVOUR, is_lib),
+        );
     } else if *JS_MODE {
         type Exporter = cilly::js_exporter::JSExporter;
         use cilly::asm_exporter::AssemblyExporter;

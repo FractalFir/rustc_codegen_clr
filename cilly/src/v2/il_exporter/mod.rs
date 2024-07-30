@@ -71,7 +71,7 @@ impl ILExporter {
                 };
             }
             // Export all methods
-            assert_unique(class_def.methods());
+
             for method_id in class_def.methods() {
                 let method = asm.method_def(*method_id);
                 let vis = match method.access() {

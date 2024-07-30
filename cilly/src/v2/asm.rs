@@ -340,7 +340,9 @@ impl Assembly {
     pub(crate) fn iter_class_defs(&self) -> impl Iterator<Item = &ClassDef> {
         self.class_defs.values()
     }
-
+    pub(crate) fn iter_class_def_ids(&self) -> impl Iterator<Item = &ClassDefIdx> {
+        self.class_defs.keys()
+    }
     pub(crate) fn method_def_from_ref(&self, mref: MethodRefIdx) -> Option<&MethodDef> {
         self.method_defs.get(&MethodDefIdx(mref))
     }
@@ -357,7 +359,7 @@ impl Assembly {
         while !previosly_ressurected.is_empty() {
             for def in previosly_ressurected
                 .iter()
-                .map(|def| self.method_defs.get(def).unwrap())
+                .map(|def: &MethodDefIdx| self.method_defs.get(def).unwrap())
             {
                 // Iterate torugh the cil of this method, if present
                 let Some(cil) = def.iter_cil(self) else {
