@@ -419,17 +419,27 @@ fn load_const_scalar<'tcx>(
 }
 fn load_const_float(value: u128, float_type: FloatTy, _tcx: TyCtxt) -> CILNode {
     match float_type {
-        FloatTy::F16 => call!(
-            CallSite::new_extern(
-                DotnetTypeRef::half(),
-                "op_Explicit".into(),
-                FnSig::new(&[Type::F32], Type::F16),
-                true
-            ),
-            [CILNode::LdcF32(OrderedFloat(
-                (f16::from_ne_bytes((u16::try_from(value).unwrap()).to_ne_bytes())) as f32
-            ),)]
-        ),
+        FloatTy::F16 => {
+            #[cfg(not(target_family = "windows"))]
+            {
+                call!(
+                    CallSite::new_extern(
+                        DotnetTypeRef::half(),
+                        "op_Explicit".into(),
+                        FnSig::new(&[Type::F32], Type::F16),
+                        true
+                    ),
+                    [CILNode::LdcF32(OrderedFloat(
+                        (f16::from_ne_bytes((u16::try_from(value).unwrap()).to_ne_bytes())) as f32
+                    ),)]
+                )
+            }
+            #[cfg(target_family = "windows")]
+            {
+                todo!("building a program using 16 bit floats is not supported on windwows yet")
+                // TODO: check if this still causes a linker error on windows
+            }
+        }
         FloatTy::F32 => {
             let value = f32::from_ne_bytes((u32::try_from(value).unwrap()).to_ne_bytes());
             CILNode::LdcF32(OrderedFloat(value))
