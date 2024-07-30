@@ -84,7 +84,7 @@ impl TypeDef {
             gargc: 0,
             extends: None,
             explicit_offsets: None,
-            explict_size: None,
+            explict_size: Some(NonZeroU32::new(1).unwrap()),
         }
     }
     #[must_use]

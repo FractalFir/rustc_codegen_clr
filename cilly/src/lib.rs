@@ -54,10 +54,9 @@ pub mod fn_sig;
 pub use fn_sig::*;
 pub mod access_modifier;
 pub mod asm;
-pub mod asm_exporter;
+
 pub mod basic_block;
 
-pub mod c_exporter;
 pub mod call_site;
 pub mod cil_iter;
 pub mod cil_iter_mut;
@@ -65,8 +64,7 @@ pub mod cil_node;
 pub mod cil_root;
 pub mod cil_tree;
 pub mod entrypoint;
-pub mod ilasm_exporter;
-pub mod ilasm_op;
+
 pub mod libc_fns;
 pub mod method;
 pub mod static_field_desc;
@@ -153,11 +151,7 @@ lazy_static! {
         })
     };
 }
-#[derive(Clone, Copy)]
-pub enum IlasmFlavour {
-    Clasic,
-    Modern,
-}
+
 pub fn sfi_debug_print(sfi: &crate::cil_root::SFI) -> String {
     format!(
         "ldstr {name:?}
@@ -220,7 +214,7 @@ impl DepthSetting {
         }
     }
 }
-pub mod js_exporter;
+
 pub fn escape_type_name(name: &str) -> String {
     name.replace(['.', ' '], "_")
         .replace('<', "lt")

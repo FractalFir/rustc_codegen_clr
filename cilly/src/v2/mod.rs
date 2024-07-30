@@ -1,7 +1,7 @@
 use std::path::Path;
 
 pub use access::Access;
-pub use asm::Assembly;
+pub use asm::{Assembly, IlasmFlavour};
 pub use basic_block::BasicBlock;
 pub use bimap::BiMap;
 pub use cilnode::{BinOp, CILNode, NodeIdx};
@@ -32,6 +32,7 @@ pub mod fnsig;
 pub mod il_exporter;
 pub mod int;
 pub mod iter;
+pub mod java_exporter;
 pub mod method;
 pub mod strings;
 pub mod tpe;

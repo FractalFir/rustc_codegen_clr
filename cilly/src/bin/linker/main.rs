@@ -5,16 +5,14 @@ use cilly::{
     access_modifier,
     asm::Assembly,
     basic_block::BasicBlock,
-    c_exporter::CExporter,
     call,
     call_site::CallSite,
     cil_node::{CILNode, CallOpArgs},
     cil_root::CILRoot,
-    conv_usize,
-    ilasm_exporter::ILASM_FLAVOUR,
-    ldc_i32,
+    conv_usize, ldc_i32,
     method::{Method, MethodType},
-    DotnetTypeRef, FnSig, IlasmFlavour, Type,
+    v2::{asm::ILASM_FLAVOUR, IlasmFlavour},
+    DotnetTypeRef, FnSig, Type,
 };
 //use assembly::Assembly;
 use lazy_static::lazy_static;
@@ -499,45 +497,24 @@ fn main() {
         || output_file_path.contains(".o");
     add_mandatory_statics(&mut final_assembly);
 
-    if !is_lib && !*KEEP_DEAD_CODE {
-        //final_assembly.eliminate_dead_code();
-    }
+    let mut tmp = cilly::v2::Assembly::from_v1(&final_assembly);
+    drop(final_assembly);
+    let path: std::path::PathBuf = output_file_path.into();
+    //tmp.eliminate_dead_code();
+    tmp.save_tmp(&mut std::fs::File::create(path.with_extension("cilly2")).unwrap())
+        .unwrap();
     if *C_MODE {
-        let path: std::path::PathBuf = output_file_path.into();
-        final_assembly
-            .save_tmp(&mut std::fs::File::create(path.with_extension("cilly")).unwrap())
-            .unwrap();
-
-        let mut tmp = cilly::v2::Assembly::from_v1(&final_assembly);
-        //tmp.eliminate_dead_code();
-        tmp.save_tmp(&mut std::fs::File::create(path.with_extension("cilly2")).unwrap())
-            .unwrap();
         tmp.export(
             &path,
             cilly::v2::il_exporter::ILExporter::new(*ILASM_FLAVOUR, is_lib),
         );
     } else if *JS_MODE {
-        type Exporter = cilly::js_exporter::JSExporter;
-        use cilly::asm_exporter::AssemblyExporter;
-        Exporter::export_assembly(
-            Exporter::default(),
-            &final_assembly,
-            output_file_path.as_ref(),
-            is_lib,
-            false,
-        )
-        .expect("Assembly export faliure!");
-        let path: std::path::PathBuf = output_file_path.into();
-        final_assembly
-            .save_tmp(&mut std::fs::File::create(path.with_extension("cilly")).unwrap())
-            .unwrap();
-        // Run AOT compiler
-        aot_compile_mode.compile(output_file_path);
-
-        //      Cargo integration
-
+        todo!();
+    } else if *JAVA_MODE {
+        tmp.export(&path, cilly::v2::java_exporter::JavaExporter::new(is_lib));
         if cargo_support {
-            let bootstrap = bootstrap_source(&path, output_file_path, "node");
+            let bootstrap =
+                bootstrap_source(&path.with_extension("jar"), path.to_str().unwrap(), "java");
             let bootstrap_path = path.with_extension("rs");
             let mut bootstrap_file = std::fs::File::create(&bootstrap_path).unwrap();
             bootstrap_file.write_all(bootstrap.as_bytes()).unwrap();
@@ -558,15 +535,6 @@ fn main() {
             );
         }
     } else {
-        let path: std::path::PathBuf = output_file_path.into();
-        final_assembly
-            .save_tmp(&mut std::fs::File::create(path.with_extension("cilly")).unwrap())
-            .unwrap();
-
-        let mut tmp = cilly::v2::Assembly::from_v1(&final_assembly);
-        //tmp.eliminate_dead_code();
-        tmp.save_tmp(&mut std::fs::File::create(path.with_extension("cilly2")).unwrap())
-            .unwrap();
         tmp.export(
             &path,
             cilly::v2::il_exporter::ILExporter::new(*ILASM_FLAVOUR, is_lib),
@@ -679,6 +647,17 @@ lazy_static! {
             None
         }).map(|value|match value.as_ref(){
             "0"|"false"|"False"|"FALSE" => false,"1"|"true"|"True"|"TRUE" => true,_ => panic!("Boolean enviroment variable {} has invalid value {}",stringify!(JS_MODE),value),
+        }).unwrap_or(false)
+    };
+}
+lazy_static! {
+    #[doc = "Tells the codegen to emmit JS source files."]pub static ref JAVA_MODE:bool = {
+        std::env::vars().find_map(|(key,value)|if key == stringify!(JAVA_MODE){
+            Some(value)
+        }else {
+            None
+        }).map(|value|match value.as_ref(){
+            "0"|"false"|"False"|"FALSE" => false,"1"|"true"|"True"|"TRUE" => true,_ => panic!("Boolean enviroment variable {} has invalid value {}",stringify!(JAVA_MODE),value),
         }).unwrap_or(false)
     };
 }

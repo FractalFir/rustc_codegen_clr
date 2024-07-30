@@ -2,7 +2,6 @@ use crate::add_method_from_trees;
 use cilly::{
     access_modifier::AccessModifer,
     asm::Assembly,
-    asm_exporter::escape_class_name,
     basic_block::{BasicBlock, Handler},
     call,
     call_site::CallSite,
@@ -19,6 +18,7 @@ use cilly::{
     size_of, source_info,
     static_field_desc::StaticFieldDescriptor,
     type_def::TypeDef,
+    utilis::escape_class_name,
     DotnetTypeRef,
 };
 use rustc_middle::ty::TyCtxt;

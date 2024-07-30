@@ -603,10 +603,10 @@ impl TyCache {
                     (crate::METADATA.into(), Type::USize),
                 ],
                 vec![],
-                None,
+                Some(vec![0, 8]),
                 0,
                 None,
-                None,
+                Some(NonZeroU32::new(16).unwrap()),
             );
             self.type_def_cache.insert(name.clone(), def);
         }

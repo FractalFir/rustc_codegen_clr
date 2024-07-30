@@ -1,8 +1,3 @@
-use std::{any::type_name, collections::HashMap};
-
-use fxhash::{FxBuildHasher, FxHashMap, FxHashSet};
-use serde::{Deserialize, Serialize};
-
 use super::{
     bimap::{calculate_hash, BiMap},
     cilnode::{BinOp, MethodKind, UnOp},
@@ -11,10 +6,11 @@ use super::{
     SigIdx, StaticFieldDesc, StaticFieldIdx, StringIdx, Type, TypeIdx,
 };
 use crate::IString;
-use crate::{
-    asm::Assembly as V1Asm,
-    v2::{il_exporter, MethodImpl},
-};
+use crate::{asm::Assembly as V1Asm, v2::MethodImpl};
+use fxhash::{FxHashMap, FxHashSet};
+use lazy_static::*;
+use serde::{Deserialize, Serialize};
+use std::any::type_name;
 #[derive(Default, Serialize, Deserialize, Eq, PartialEq, Clone, Debug)]
 struct IStringWrapper(IString);
 impl std::hash::Hash for IStringWrapper {
@@ -473,8 +469,8 @@ fn add_user_init() {
 }
 #[test]
 fn export() {
-    use super::il_exporter::ILExporter;
-    use crate::ilasm_exporter::ILASM_FLAVOUR;
+    use super::il_exporter::*;
+
     let mut asm = Assembly::default();
     let main_module = asm.main_module();
     let name = asm.alloc_string("entrypoint");
@@ -512,8 +508,8 @@ fn export() {
 }
 #[test]
 fn export2() {
-    use super::il_exporter::ILExporter;
-    use crate::ilasm_exporter::ILASM_FLAVOUR;
+    use super::il_exporter::*;
+
     let mut asm = Assembly::default();
     let main_module = asm.main_module();
     let name = asm.alloc_string("entrypoint");
@@ -565,4 +561,34 @@ fn export2() {
     asm.eliminate_dead_code();
     asm.realloc_roots();
     asm.export("/tmp/export2.exe", ILExporter::new(*ILASM_FLAVOUR, false));
+}
+lazy_static! {
+    pub static ref ILASM_FLAVOUR: IlasmFlavour = {
+        if String::from_utf8_lossy(
+            &std::process::Command::new(&*ILASM_PATH)
+                .output()
+                .unwrap()
+                .stdout,
+        )
+        .contains("PDB")
+        {
+            IlasmFlavour::Modern
+        } else {
+            IlasmFlavour::Clasic
+        }
+    };
+}
+#[derive(Clone, Copy)]
+pub enum IlasmFlavour {
+    Clasic,
+    Modern,
+}
+pub fn ilasm_path() -> &'static str {
+    ILASM_PATH.as_str()
+}
+lazy_static! {
+    #[doc = "Specifies the path to the IL assembler."]
+    pub static ref ILASM_PATH:String = {
+        std::env::vars().find_map(|(key,value)|if key == "ILASM_PATH"{Some(value)}else{None}).unwrap_or("ilasm".into())
+    };
 }

@@ -1,5 +1,5 @@
 use crate::{assembly::MethodCompileCtx, IString};
-use cilly::{asm_exporter::escape_class_name, call_site::CallSite, field_desc::FieldDescriptor};
+use cilly::{call_site::CallSite, field_desc::FieldDescriptor, utilis::escape_class_name};
 use rustc_middle::{
     mir::interpret::AllocId,
     ty::{

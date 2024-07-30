@@ -10,7 +10,7 @@ use crate::{
     cil_root::CILRoot,
     cil_tree::CILTree,
     utilis::MemoryUsage,
-    DepthSetting, IlasmFlavour,
+    DepthSetting,
 };
 
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
@@ -286,57 +286,7 @@ impl BasicBlock {
             .map(|tree| tree.root())
     }
 }
-pub fn export(
-    out: &mut impl std::fmt::Write,
-    block: &BasicBlock,
-    depth: DepthSetting,
-    flavour: IlasmFlavour,
-    asm: &crate::asm::Assembly,
-) -> std::fmt::Result {
-    let this_depth = if block.handler().is_some() {
-        write!(out, ".try{{").unwrap();
-        depth.incremented()
-    } else {
-        depth
-    };
-    // Basic block
-    writeln!(out, "bb_{id}_0:", id = block.id()).unwrap();
-    for tree in block.trees() {
-        crate::ilasm_op::export_root(out, tree.root(), this_depth, flavour, asm).unwrap();
-    }
-    if let Some(handler) = block.handler() {
-        let handler = handler.as_blocks().unwrap();
-        match handler
-            .iter()
-            .flat_map(|block| block.iter_cil().nodes())
-            .filter(|node| matches!(node, CILNode::GetException))
-            .count()
-        {
-            0 => write!(out, "}}catch [System.Runtime]System.Exception{{\npop").unwrap(),
-            1 => writeln!(out, "}}catch [System.Runtime]System.Exception{{").unwrap(),
-            _ => panic!("Error: More than 1 GetException in a handler."),
-        };
-        DepthSetting::with_pading().pad(out).unwrap();
-        for handler_block in handler {
-            writeln!(
-                out,
-                "bb_{main_id}_{sub_id}:",
-                main_id = block.id(),
-                sub_id = handler_block.id()
-            )
-            .unwrap();
-            for tree in handler_block.trees() {
-                crate::ilasm_op::export_root(out, tree.root(), this_depth, flavour, asm).unwrap();
-            }
-            this_depth.pad(out).unwrap();
-        }
 
-        write!(out, "}}")?;
-    }
-    //eprintln!("{string}");
-    depth.pad(out)?;
-    Ok(())
-}
 #[inline]
 pub fn swap_out<T>(val: &mut Vec<T>) -> Vec<T> {
     let mut tmp = Vec::new();

@@ -16,10 +16,9 @@ use crate::{
     cil_node::{CILNode, ValidationContext},
     cil_root::CILRoot,
     cil_tree::CILTree,
-    ilasm_op::{non_void_type_cil, type_cil},
     static_field_desc::StaticFieldDescriptor,
     utilis::MemoryUsage,
-    AsmStringContainer, DepthSetting, DotnetTypeRef, FnSig, IString, IlasmFlavour, Type,
+    AsmStringContainer, DepthSetting, DotnetTypeRef, FnSig, IString, Type,
 };
 
 /// Represenation of a CIL method.
@@ -499,117 +498,7 @@ impl Method {
                 });
         }
     }
-    pub fn export(
-        &self,
-        w: &mut impl std::fmt::Write,
-        flavour: IlasmFlavour,
-        init_locals: bool,
-        print_stack_traces: bool,
-        asm: &Assembly,
-    ) -> std::fmt::Result {
-        let access = if let AccessModifer::Private = self.access() {
-            "private"
-        } else {
-            "public"
-        };
-        let static_inst = match self.method_type() {
-            MethodType::Static => "static",
-            MethodType::Virtual => "virtual instance",
-            MethodType::Instance => "instance",
-        };
-        let output = type_cil(self.sig().output(), asm.string_map());
-        let name = self.name();
-        write!(
-            w,
-            ".method {access} hidebysig {static_inst} {output} '{name}'("
-        )?;
 
-        let mut input_iter = self.explicit_inputs().iter();
-        if self.arg_names().is_empty() || self.arg_names().len() != self.explicit_inputs().len() {
-            if self.arg_names().len() != self.explicit_inputs().len() {
-                println!("WARNING: debug arg count invalid!");
-            }
-            if let Some(input) = input_iter.next() {
-                write!(w, "{}", non_void_type_cil(input, asm.string_map()))?;
-            }
-            for input in input_iter {
-                write!(w, ",{}", non_void_type_cil(input, asm.string_map()))?;
-            }
-        } else {
-            assert_eq!(self.arg_names().len(), self.explicit_inputs().len());
-            let mut input_iter = self.explicit_inputs().iter().zip(self.arg_names().iter());
-            if let Some((input, name)) = input_iter.next() {
-                match name {
-                    Some(name) => {
-                        write!(w, "{} '{name}'", non_void_type_cil(input, asm.string_map()))?
-                    }
-                    None => write!(w, "{}", non_void_type_cil(input, asm.string_map()))?,
-                }
-            }
-            for (input, name) in input_iter {
-                match name {
-                    Some(name) => write!(
-                        w,
-                        ",{} '{name}'",
-                        non_void_type_cil(input, asm.string_map())
-                    )?,
-                    None => write!(w, ",{}", non_void_type_cil(input, asm.string_map()))?,
-                }
-            }
-        }
-        writeln!(w, "){{")?;
-        if self.is_entrypoint() {
-            writeln!(w, ".entrypoint")?;
-        }
-        if init_locals {
-            writeln!(w, "\t.locals init(")?;
-        } else {
-            writeln!(w, "\t.locals (")?;
-        }
-        let mut locals_iter = self.locals().iter().enumerate();
-        if let Some((local_id, local)) = locals_iter.next() {
-            match &local.0 {
-                None => write!(
-                    w,
-                    "\t\t[{local_id}] {escaped_type}",
-                    escaped_type = non_void_type_cil(&local.1, asm.string_map())
-                )?,
-                Some(name) => write!(
-                    w,
-                    "\t\t[{local_id}] {escaped_type} '{name}'",
-                    escaped_type = non_void_type_cil(&local.1, asm.string_map())
-                )?,
-            }
-        }
-        for (local_id, local) in locals_iter {
-            match &local.0 {
-                None => write!(
-                    w,
-                    ",\n\t\t[{local_id}] {escaped_type}",
-                    escaped_type = non_void_type_cil(&local.1, asm.string_map())
-                )?,
-                Some(name) => write!(
-                    w,
-                    ",\n\t\t[{local_id}] {escaped_type} '{name}'",
-                    escaped_type = non_void_type_cil(&local.1, asm.string_map())
-                )?,
-            }
-        }
-        writeln!(
-            w,
-            "\n\t)\n.maxstack {maxstack}\n",
-            maxstack = self.maxstack()
-        )?;
-        if print_stack_traces {
-            write!(w,"call string [System.Runtime]System.Environment::get_StackTrace()\ncall void [System.Console]System.Console::WriteLine(string)")?;
-        }
-        for block in self.blocks().iter() {
-            crate::basic_block::export(w, block, DepthSetting::with_pading(), flavour, asm)
-                .unwrap();
-        }
-
-        writeln!(w, "}}")
-    }
     fn count_jumps_to(&self, block_id: u32) -> usize {
         self.blocks()
             .iter()

@@ -665,8 +665,6 @@ fn argv() {
     let mut out = String::new();
     asm.methods()
         .find(|method| method.name().contains("argc"))
-        .unwrap()
-        .export(&mut out, crate::IlasmFlavour::Clasic, true, false, &asm)
         .unwrap();
 }
 pub trait MemoryUsage {
@@ -836,7 +834,30 @@ fn environ() {
     let mut out = String::new();
     asm.methods()
         .find(|method| method.name().contains("environ"))
-        .unwrap()
-        .export(&mut out, crate::IlasmFlavour::Clasic, true, false, &asm)
         .unwrap();
+}
+#[must_use]
+pub fn escape_class_name(name: &str) -> String {
+    name.replace("::", ".")
+        .replace("..", ".")
+        .replace('$', "_dsig_")
+        .replace('<', "_lt_")
+        .replace('\'', "_ap_")
+        .replace(' ', "_spc_")
+        .replace('>', "_gt_")
+        .replace('(', "_lpar_")
+        .replace(')', "_rpar")
+        .replace('{', "_lbra_")
+        .replace('}', "_rbra")
+        .replace('[', "_lsbra_")
+        .replace(']', "_rsbra_")
+        .replace('+', "_pls_")
+        .replace('-', "_hyp_")
+        .replace(',', "_com_")
+        .replace('*', "_ptr_")
+        .replace('#', "_hsh_")
+        .replace('&', "_ref_")
+        .replace(';', "_scol_")
+        .replace('!', "_excl_")
+        .replace('\"', "_qt_")
 }

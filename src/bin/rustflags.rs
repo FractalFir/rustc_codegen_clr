@@ -1,8 +1,10 @@
+use cilly::v2::asm::ILASM_PATH;
+
 fn ilasm_check() {
-    match std::process::Command::new(&*cilly::ilasm_exporter::ILASM_PATH).output(){
+    match std::process::Command::new(&*ILASM_PATH).output(){
         Ok(_)=>println!("An CIL assembler has been detected."),
         Err(err)=>panic!("Could not find the CIL assembler at name/path {:?}, due to {err:?}. 
-Please instal the CIL assembler, and/or set the ILASM_PATH enviroment variable to point to your CIL assembler.",*cilly::ilasm_exporter::ILASM_PATH)
+Please instal the CIL assembler, and/or set the ILASM_PATH enviroment variable to point to your CIL assembler.",*ILASM_PATH)
     }
 }
 fn main() {

@@ -1,6 +1,6 @@
 use cilly::{
     call, call_site::CallSite, cil_node::CILNode, fn_sig::FnSig, ldc_u32, ldc_u64,
-    AsmStringContainer, DotnetTypeRef, Type,
+    utilis::escape_class_name, AsmStringContainer, DotnetTypeRef, Type,
 };
 
 use rustc_middle::{
@@ -29,7 +29,7 @@ pub fn c_void(tcx: TyCtxt) -> Type {
     let demangled = rustc_demangle::demangle(&name);
     // Using formating preserves the generic hash.
     let name = format!("{demangled}");
-    let name = cilly::asm_exporter::escape_class_name(&name);
+    let name = escape_class_name(&name);
     DotnetTypeRef::new::<&str, _>(None, name).into()
 }
 #[must_use]
