@@ -8,7 +8,7 @@ use crate::static_field_desc::StaticFieldDescriptor as V1StaticField;
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Copy, Serialize, Deserialize)]
 pub struct FieldIdx(BiMapIndex);
 impl IntoBiMapIndex for FieldIdx {
-    fn from_hash(val: BiMapIndex) -> Self {
+    fn from_index(val: BiMapIndex) -> Self {
         Self(val)
     }
     fn as_bimap_index(&self) -> BiMapIndex {
@@ -29,7 +29,7 @@ impl FieldDesc {
 
     pub(crate) fn from_v1(desc: &V1Field, asm: &mut super::Assembly) -> Self {
         let owner = ClassRef::from_v1(desc.owner(), asm);
-        let owner = asm.class_idx(owner);
+        let owner = asm.alloc_class_ref(owner);
 
         Self::new(
             owner,
@@ -53,7 +53,7 @@ impl FieldDesc {
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Copy, Serialize, Deserialize)]
 pub struct StaticFieldIdx(BiMapIndex);
 impl IntoBiMapIndex for StaticFieldIdx {
-    fn from_hash(val: BiMapIndex) -> Self {
+    fn from_index(val: BiMapIndex) -> Self {
         Self(val)
     }
     fn as_bimap_index(&self) -> BiMapIndex {
@@ -68,14 +68,14 @@ pub struct StaticFieldDesc {
 }
 
 impl StaticFieldDesc {
-    fn new(owner: ClassRefIdx, name: StringIdx, tpe: Type) -> Self {
+    pub fn new(owner: ClassRefIdx, name: StringIdx, tpe: Type) -> Self {
         Self { owner, name, tpe }
     }
 
     pub(crate) fn from_v1(desc: &V1StaticField, asm: &mut super::Assembly) -> Self {
         let owner = if let Some(owner) = desc.owner() {
             let owner = ClassRef::from_v1(owner, asm);
-            asm.class_idx(owner)
+            asm.alloc_class_ref(owner)
         } else {
             *asm.main_module()
         };

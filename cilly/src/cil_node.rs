@@ -1482,7 +1482,7 @@ macro_rules! call_virt {
 #[macro_export]
 macro_rules! conv_usize {
     ($a:expr) => {
-        CILNode::ZeroExtendToUSize($a.into())
+        $crate::cil_node::CILNode::ZeroExtendToUSize($a.into())
     };
 }
 #[macro_export]

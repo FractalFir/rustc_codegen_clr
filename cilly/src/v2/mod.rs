@@ -81,9 +81,9 @@ fn no_collision() {
     for _ in 0..100_000 {
         curr = std::hint::black_box(asm.biop(curr.clone(), curr, BinOp::Add));
     }
-    asm.node_idx(CILNode::LdLoc(0));
-    asm.node_idx(Const::I32(0));
-    asm.node_idx(Const::I64(0));
+    asm.alloc_node(CILNode::LdLoc(0));
+    asm.alloc_node(Const::I32(0));
+    asm.alloc_node(Const::I64(0));
 }
 #[test]
 fn test_binops() {

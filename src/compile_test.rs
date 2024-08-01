@@ -21,22 +21,7 @@ pub fn test_dotnet_executable(file_path: &str, test_dir: &str) -> String {
         );
         return String::from_utf8_lossy(&out.stdout).to_string();
     }
-    if *crate::config::JS_MODE {
-        let out = std::process::Command::new("timeout")
-            .current_dir(test_dir)
-            .arg("-v")
-            .arg("1")
-            .arg("node")
-            .arg(exec_path)
-            .output()
-            .expect("failed to run test program!");
-        let stderr = String::from_utf8(out.stderr).expect("stderr is not UTF8 String!");
-        assert!(
-            stderr.is_empty(),
-            "Test program failed with message {stderr:}"
-        );
-        return String::from_utf8_lossy(&out.stdout).to_string();
-    }
+
     //println!("exec_path:{exec_path:?}");
     if *IS_DOTNET_PRESENT {
         let config_path = if file_path.contains(test_dir) {
@@ -53,7 +38,7 @@ pub fn test_dotnet_executable(file_path: &str, test_dir: &str) -> String {
         cmd.arg("-v");
         cmd.arg("5");
         cmd.arg("dotnet");
-        cmd.current_dir(test_dir).args([exec_path]);
+        cmd.current_dir(test_dir).arg(exec_path);
         #[cfg(target_family = "unix")]
         with_stack_size(&mut cmd, 1024 * 80);
         let out = cmd.output().expect("failed to run test assebmly!");
@@ -385,6 +370,7 @@ macro_rules! run_test {
                             "-o",
                             concat!("./", stringify!($test_name), ".exe"),
                         ]);
+
                     eprintln!("Command: {cmd:?}");
                     let out = cmd.output().expect("failed to execute process");
                     // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
@@ -395,6 +381,7 @@ macro_rules! run_test {
                             .expect("rustc error contained non-UTF8 characters.");
                         panic!("stdout:\n{stdout}\nstderr:\n{stderr}");
                     }
+
                     let exec_path = concat!("./", stringify!($test_name));
                     drop(lock);
                     let _ = super::super::test_dotnet_executable(exec_path, test_dir);

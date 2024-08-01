@@ -18,7 +18,7 @@ impl From<ClassRefIdx> for Type {
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Copy, Serialize, Deserialize)]
 pub struct ClassRefIdx(BiMapIndex);
 impl IntoBiMapIndex for ClassRefIdx {
-    fn from_hash(val: BiMapIndex) -> Self {
+    fn from_index(val: BiMapIndex) -> Self {
         Self(val)
     }
     fn as_bimap_index(&self) -> BiMapIndex {
@@ -48,7 +48,7 @@ impl ClassRef {
         }
     }
 
-    pub(crate) fn from_v1(dotnet_type: &V1ClassRef, asm: &mut super::Assembly) -> ClassRef {
+    pub fn from_v1(dotnet_type: &V1ClassRef, asm: &mut super::Assembly) -> ClassRef {
         match dotnet_type {
             V1ClassRef::Full {
                 assembly,
@@ -166,7 +166,7 @@ impl ClassDef {
         let generics = tdef.gargc();
         let extends = if let Some(extends) = tdef.extends() {
             let cref = ClassRef::from_v1(extends, asm);
-            Some(asm.class_idx(cref))
+            Some(asm.alloc_class_ref(cref))
         } else {
             None
         };

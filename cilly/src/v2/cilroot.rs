@@ -73,7 +73,7 @@ pub enum CmpKind {
 
 pub struct RootIdx(BiMapIndex);
 impl IntoBiMapIndex for RootIdx {
-    fn from_hash(val: BiMapIndex) -> Self {
+    fn from_index(val: BiMapIndex) -> Self {
         Self(val)
     }
     fn as_bimap_index(&self) -> BiMapIndex {
@@ -102,23 +102,23 @@ impl CILRoot {
             V1Root::VoidRet => Self::VoidRet,
             V1Root::Ret { tree } => {
                 let tree = CILNode::from_v1(tree, asm);
-                Self::Ret(asm.node_idx(tree))
+                Self::Ret(asm.alloc_node(tree))
             }
             V1Root::Pop { tree } => {
                 let tree = CILNode::from_v1(tree, asm);
-                Self::Pop(asm.node_idx(tree))
+                Self::Pop(asm.alloc_node(tree))
             }
             V1Root::Throw(tree) => {
                 let tree = CILNode::from_v1(tree, asm);
-                Self::Throw(asm.node_idx(tree))
+                Self::Throw(asm.alloc_node(tree))
             }
             V1Root::STLoc { local, tree } => {
                 let tree = CILNode::from_v1(tree, asm);
-                Self::StLoc(*local as u64, asm.node_idx(tree))
+                Self::StLoc(*local as u64, asm.alloc_node(tree))
             }
             V1Root::STArg { arg, tree } => {
                 let tree = CILNode::from_v1(tree, asm);
-                Self::StArg(*arg as u64, asm.node_idx(tree))
+                Self::StArg(*arg as u64, asm.alloc_node(tree))
             }
             V1Root::GoTo { target, sub_target } => {
                 Self::Branch(Box::new((*target, *sub_target, None)))
@@ -134,7 +134,7 @@ impl CILRoot {
                 Self::Branch(Box::new((
                     *target,
                     *sub_target,
-                    Some(BranchCond::Eq(asm.node_idx(a), asm.node_idx(b))),
+                    Some(BranchCond::Eq(asm.alloc_node(a), asm.alloc_node(b))),
                 )))
             }
             V1Root::BNe {
@@ -148,7 +148,7 @@ impl CILRoot {
                 Self::Branch(Box::new((
                     *target,
                     *sub_target,
-                    Some(BranchCond::Ne(asm.node_idx(a), asm.node_idx(b))),
+                    Some(BranchCond::Ne(asm.alloc_node(a), asm.alloc_node(b))),
                 )))
             }
             V1Root::BTrue {
@@ -160,7 +160,7 @@ impl CILRoot {
                 Self::Branch(Box::new((
                     *target,
                     *sub_target,
-                    Some(BranchCond::True(asm.node_idx(cond))),
+                    Some(BranchCond::True(asm.alloc_node(cond))),
                 )))
             }
             V1Root::BFalse {
@@ -172,7 +172,7 @@ impl CILRoot {
                 Self::Branch(Box::new((
                     *target,
                     *sub_target,
-                    Some(BranchCond::False(asm.node_idx(cond))),
+                    Some(BranchCond::False(asm.alloc_node(cond))),
                 )))
             }
 
@@ -181,11 +181,11 @@ impl CILRoot {
                     .iter()
                     .map(|arg| {
                         let node = CILNode::from_v1(arg, asm);
-                        asm.node_idx(node)
+                        asm.alloc_node(node)
                     })
                     .collect();
                 let sig = FnSig::from_v1(site.signature(), asm);
-                let sig = asm.sig_idx(sig);
+                let sig = asm.allocs_sig(sig);
                 let generics: Box<[_]> = site
                     .generics()
                     .iter()
@@ -195,7 +195,7 @@ impl CILRoot {
                     .class()
                     .map(|dt| {
                         let cref = ClassRef::from_v1(dt, asm);
-                        asm.class_idx(cref)
+                        asm.alloc_class_ref(cref)
                     })
                     .unwrap_or_else(|| *asm.main_module());
                 let name = asm.alloc_string(site.name());
@@ -204,7 +204,7 @@ impl CILRoot {
                 } else {
                     MethodRef::new(class, name, sig, MethodKind::Instance, generics)
                 };
-                let method_ref = asm.methodref_idx(method_ref);
+                let method_ref = asm.alloc_methodref(method_ref);
                 Self::Call(Box::new((method_ref, args)))
             }
             V1Root::CallVirt { site, args } => {
@@ -212,11 +212,11 @@ impl CILRoot {
                     .iter()
                     .map(|arg| {
                         let node = CILNode::from_v1(arg, asm);
-                        asm.node_idx(node)
+                        asm.alloc_node(node)
                     })
                     .collect();
                 let sig = FnSig::from_v1(site.signature(), asm);
-                let sig = asm.sig_idx(sig);
+                let sig = asm.allocs_sig(sig);
                 let generics: Box<[_]> = site
                     .generics()
                     .iter()
@@ -226,66 +226,66 @@ impl CILRoot {
                     .class()
                     .map(|dt| {
                         let cref = ClassRef::from_v1(dt, asm);
-                        asm.class_idx(cref)
+                        asm.alloc_class_ref(cref)
                     })
                     .unwrap_or_else(|| *asm.main_module());
                 let name = asm.alloc_string(site.name());
                 assert!(!site.is_static());
                 let method_ref = MethodRef::new(class, name, sig, MethodKind::Virtual, generics);
-                let method_ref = asm.methodref_idx(method_ref);
+                let method_ref = asm.alloc_methodref(method_ref);
                 Self::Call(Box::new((method_ref, args)))
             }
             V1Root::SetField { value, addr, desc } => {
                 let field = FieldDesc::from_v1(desc, asm);
                 let field = asm.field_idx(field);
                 let value = CILNode::from_v1(value, asm);
-                let value = asm.node_idx(value);
+                let value = asm.alloc_node(value);
                 let addr = CILNode::from_v1(addr, asm);
-                let addr = asm.node_idx(addr);
+                let addr = asm.alloc_node(addr);
 
                 Self::SetField(Box::new((field, addr, value)))
             }
             V1Root::STIndI8(addr, val) => {
                 let val = CILNode::from_v1(val, asm);
-                let val = asm.node_idx(val);
+                let val = asm.alloc_node(val);
                 let addr = CILNode::from_v1(addr, asm);
-                let addr = asm.node_idx(addr);
+                let addr = asm.alloc_node(addr);
                 Self::StInd(Box::new((addr, val, Type::Int(Int::I8), false)))
             }
 
             V1Root::STIndI16(addr, val) => {
                 let val = CILNode::from_v1(val, asm);
-                let val = asm.node_idx(val);
+                let val = asm.alloc_node(val);
                 let addr = CILNode::from_v1(addr, asm);
-                let addr = asm.node_idx(addr);
+                let addr = asm.alloc_node(addr);
                 Self::StInd(Box::new((addr, val, Type::Int(Int::I16), false)))
             }
             V1Root::STIndI32(addr, val) => {
                 let val = CILNode::from_v1(val, asm);
-                let val = asm.node_idx(val);
+                let val = asm.alloc_node(val);
                 let addr = CILNode::from_v1(addr, asm);
-                let addr = asm.node_idx(addr);
+                let addr = asm.alloc_node(addr);
                 Self::StInd(Box::new((addr, val, Type::Int(Int::I32), false)))
             }
             V1Root::STIndI64(addr, val) => {
                 let val = CILNode::from_v1(val, asm);
-                let val = asm.node_idx(val);
+                let val = asm.alloc_node(val);
                 let addr = CILNode::from_v1(addr, asm);
-                let addr = asm.node_idx(addr);
+                let addr = asm.alloc_node(addr);
                 Self::StInd(Box::new((addr, val, Type::Int(Int::I64), false)))
             }
             V1Root::STIndISize(addr, val) => {
                 let val = CILNode::from_v1(val, asm);
-                let val = asm.node_idx(val);
+                let val = asm.alloc_node(val);
                 let addr = CILNode::from_v1(addr, asm);
-                let addr = asm.node_idx(addr);
+                let addr = asm.alloc_node(addr);
                 Self::StInd(Box::new((addr, val, Type::Int(Int::ISize), false)))
             }
             V1Root::STIndPtr(addr, val, ptr) => {
                 let val = CILNode::from_v1(val, asm);
-                let val = asm.node_idx(val);
+                let val = asm.alloc_node(val);
                 let addr = CILNode::from_v1(addr, asm);
-                let addr = asm.node_idx(addr);
+                let addr = asm.alloc_node(addr);
                 let ptr = Type::from_v1(ptr, asm);
                 let ptr = asm.nptr(ptr);
                 Self::StInd(Box::new((addr, val, ptr, false)))
@@ -296,56 +296,56 @@ impl CILRoot {
                 value_calc,
             } => {
                 let value_calc = CILNode::from_v1(value_calc, asm);
-                let value_calc = asm.node_idx(value_calc);
+                let value_calc = asm.alloc_node(value_calc);
                 let addr_calc = CILNode::from_v1(addr_calc, asm);
-                let addr_calc = asm.node_idx(addr_calc);
+                let addr_calc = asm.alloc_node(addr_calc);
                 let tpe = Type::from_v1(tpe, asm);
                 Self::StInd(Box::new((addr_calc, value_calc, tpe, false)))
             }
             V1Root::STIndF32(addr, val) => {
                 let val = CILNode::from_v1(val, asm);
-                let val = asm.node_idx(val);
+                let val = asm.alloc_node(val);
                 let addr = CILNode::from_v1(addr, asm);
-                let addr = asm.node_idx(addr);
+                let addr = asm.alloc_node(addr);
                 Self::StInd(Box::new((addr, val, Type::Float(Float::F32), false)))
             }
             V1Root::STIndF64(addr, val) => {
                 let val = CILNode::from_v1(val, asm);
-                let val = asm.node_idx(val);
+                let val = asm.alloc_node(val);
                 let addr = CILNode::from_v1(addr, asm);
-                let addr = asm.node_idx(addr);
+                let addr = asm.alloc_node(addr);
                 Self::StInd(Box::new((addr, val, Type::Float(Float::F64), false)))
             }
             V1Root::Nop => Self::Nop,
             V1Root::Break => Self::Break,
             V1Root::InitBlk { dst, val, count } => {
                 let dst = CILNode::from_v1(dst, asm);
-                let dst = asm.node_idx(dst);
+                let dst = asm.alloc_node(dst);
                 let val = CILNode::from_v1(val, asm);
-                let val = asm.node_idx(val);
+                let val = asm.alloc_node(val);
                 let count = CILNode::from_v1(count, asm);
-                let count = asm.node_idx(count);
+                let count = asm.alloc_node(count);
                 Self::InitBlk(Box::new((dst, val, count)))
             }
             V1Root::CpBlk { dst, src, len } => {
                 let dst = CILNode::from_v1(dst, asm);
-                let dst = asm.node_idx(dst);
+                let dst = asm.alloc_node(dst);
                 let src = CILNode::from_v1(src, asm);
-                let src = asm.node_idx(src);
+                let src = asm.alloc_node(src);
                 let len = CILNode::from_v1(len, asm);
-                let len = asm.node_idx(len);
+                let len = asm.alloc_node(len);
                 Self::CpBlk(Box::new((dst, src, len)))
             }
             V1Root::CallI { sig, fn_ptr, args } => {
                 let sig = FnSig::from_v1(sig, asm);
-                let sig = asm.sig_idx(sig);
+                let sig = asm.allocs_sig(sig);
                 let ptr = CILNode::from_v1(fn_ptr, asm);
-                let ptr = asm.node_idx(ptr);
+                let ptr = asm.alloc_node(ptr);
                 let args: Box<[_]> = args
                     .iter()
                     .map(|arg| {
                         let arg = CILNode::from_v1(arg, asm);
-                        asm.node_idx(arg)
+                        asm.alloc_node(arg)
                     })
                     .collect();
                 Self::CallI(Box::new((ptr, sig, args)))
@@ -368,7 +368,7 @@ impl CILRoot {
                 let val = CILNode::from_v1(value, asm);
                 Self::SetStaticField {
                     field: asm.sfld_idx(descr),
-                    val: asm.node_idx(val),
+                    val: asm.alloc_node(val),
                 }
             }
             _ => todo!("v1:{v1:?}"),

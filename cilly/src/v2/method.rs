@@ -16,6 +16,26 @@ pub struct MethodRef {
 }
 
 impl MethodRef {
+    pub fn into_def(
+        &self,
+        implementation: MethodImpl,
+        access: Access,
+        asm: &Assembly,
+    ) -> MethodDef {
+        let class = asm.class_ref_to_def(self.class()).unwrap();
+        let arg_names = (0..(asm.get_sig(self.sig()).inputs().len()))
+            .map(|_| None)
+            .collect();
+        MethodDef::new(
+            access,
+            class,
+            self.name,
+            self.sig,
+            self.kind,
+            implementation,
+            arg_names,
+        )
+    }
     pub fn new(
         class: ClassRefIdx,
         name: StringIdx,
@@ -52,7 +72,7 @@ impl MethodRef {
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct MethodRefIdx(BiMapIndex);
 impl IntoBiMapIndex for MethodRefIdx {
-    fn from_hash(val: BiMapIndex) -> Self {
+    fn from_index(val: BiMapIndex) -> Self {
         Self(val)
     }
     fn as_bimap_index(&self) -> BiMapIndex {
@@ -159,7 +179,7 @@ impl MethodDef {
         class: ClassDefIdx,
     ) -> Self {
         let sig = FnSig::from_v1(v1.call_site().signature(), asm);
-        let sig = asm.sig_idx(sig);
+        let sig = asm.allocs_sig(sig);
         let acceess = match v1.access() {
             crate::access_modifier::AccessModifer::Private => Access::Private,
             crate::access_modifier::AccessModifer::Public => Access::Public,
@@ -186,7 +206,7 @@ impl MethodDef {
                 let tpe = Type::from_v1(tpe, asm);
                 (
                     name.as_ref().map(|name| asm.alloc_string(name.clone())),
-                    asm.type_idx(tpe),
+                    asm.alloc_type(tpe),
                 )
             })
             .collect();

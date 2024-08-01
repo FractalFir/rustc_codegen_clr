@@ -10,7 +10,7 @@ use super::{
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct TypeIdx(BiMapIndex);
 impl IntoBiMapIndex for TypeIdx {
-    fn from_hash(val: BiMapIndex) -> Self {
+    fn from_index(val: BiMapIndex) -> Self {
         Self(val)
     }
 
@@ -77,7 +77,7 @@ impl Type {
                     }
                 }
                 let cref = ClassRef::from_v1(dotnet_type, asm);
-                let cref = asm.class_idx(cref);
+                let cref = asm.alloc_class_ref(cref);
                 cref.into()
             }
             crate::Type::Ptr(inner) => {
@@ -96,12 +96,12 @@ impl Type {
             crate::Type::DotnetChar => Self::PlatformChar,
             crate::Type::DelegatePtr(sig) => {
                 let sig = FnSig::from_v1(sig, asm);
-                Self::FnPtr(asm.sig_idx(sig))
+                Self::FnPtr(asm.allocs_sig(sig))
             }
             crate::Type::MethodGenericArg(_) => todo!(),
             crate::Type::ManagedArray { element, dims } => {
                 let element = Type::from_v1(element, asm);
-                let element = asm.type_idx(element);
+                let element = asm.alloc_type(element);
                 Self::PlatformArray {
                     elem: element,
                     dims: *dims,

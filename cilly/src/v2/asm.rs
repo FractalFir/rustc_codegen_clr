@@ -1,5 +1,5 @@
 use super::{
-    bimap::{calculate_hash, BiMap},
+    bimap::{calculate_hash, BiMap, IntoBiMapIndex},
     cilnode::{BinOp, MethodKind, UnOp},
     Access, CILNode, CILRoot, ClassDef, ClassDefIdx, ClassRef, ClassRefIdx, Const, Exporter,
     FieldDesc, FieldIdx, FnSig, MethodDef, MethodDefIdx, MethodRef, MethodRefIdx, NodeIdx, RootIdx,
@@ -21,6 +21,8 @@ impl std::hash::Hash for IStringWrapper {
         }
     }
 }
+pub type MissingMethodPatcher =
+    FxHashMap<StringIdx, Box<dyn Fn(MethodRefIdx, &mut Assembly) -> MethodImpl>>;
 #[derive(Default, Serialize, Deserialize)]
 pub struct Assembly {
     strings: BiMap<StringIdx, IStringWrapper>,
@@ -53,6 +55,10 @@ impl Assembly {
     }
     pub fn sig(&mut self, input: impl Into<Box<[Type]>>, output: impl Into<Type>) -> SigIdx {
         self.sigs.alloc(FnSig::new(input.into(), output.into()))
+    }
+    pub fn fn_ptr(&mut self, input: impl Into<Box<[Type]>>, output: impl Into<Type>) -> Type {
+        let sig = self.sig(input, output);
+        Type::FnPtr(sig)
     }
     pub fn get_sig(&self, key: SigIdx) -> &FnSig {
         self.sigs.get(key)
@@ -89,27 +95,38 @@ impl Assembly {
         self.class_refs.alloc(class)
     }
 
-    pub(crate) fn node_idx(&mut self, node: impl Into<CILNode>) -> NodeIdx {
+    pub fn alloc_node(&mut self, node: impl Into<CILNode>) -> NodeIdx {
         self.nodes.alloc(node.into())
     }
 
-    pub(crate) fn class_idx(&mut self, cref: ClassRef) -> ClassRefIdx {
+    pub fn alloc_class_ref(&mut self, cref: ClassRef) -> ClassRefIdx {
         self.class_refs.alloc(cref)
     }
 
-    pub(crate) fn sig_idx(&mut self, sig: FnSig) -> SigIdx {
+    pub(crate) fn allocs_sig(&mut self, sig: FnSig) -> SigIdx {
         self.sigs.alloc(sig)
     }
 
-    pub(crate) fn methodref_idx(&mut self, method_ref: MethodRef) -> MethodRefIdx {
+    pub fn alloc_methodref(&mut self, method_ref: MethodRef) -> MethodRefIdx {
         self.method_refs.alloc(method_ref)
     }
+    pub fn new_methodref(
+        &mut self,
+        class: ClassRefIdx,
+        name: impl Into<IString>,
+        sig: SigIdx,
+        kind: MethodKind,
+        generics: impl Into<Box<[Type]>>,
+    ) -> MethodRefIdx {
+        let name = self.alloc_string(name);
 
-    pub(crate) fn alloc_root(&mut self, val: CILRoot) -> RootIdx {
+        self.alloc_methodref(MethodRef::new(class, name, sig, kind, generics.into()))
+    }
+    pub fn alloc_root(&mut self, val: CILRoot) -> RootIdx {
         self.roots.alloc(val)
     }
 
-    pub(crate) fn type_idx(&mut self, tpe: Type) -> TypeIdx {
+    pub fn alloc_type(&mut self, tpe: Type) -> TypeIdx {
         self.types.alloc(tpe)
     }
 
@@ -129,9 +146,32 @@ impl Assembly {
     pub fn get_static_field(&self, key: StaticFieldIdx) -> &StaticFieldDesc {
         self.statics.get(key)
     }
+    pub fn add_static(
+        &mut self,
+        tpe: Type,
+        name: impl Into<IString>,
+        thread_local: bool,
+        in_class: ClassDefIdx,
+    ) -> StaticFieldIdx {
+        let name = self.alloc_string(name);
+        let sfld = StaticFieldDesc::new(*in_class, name, tpe);
+        let idx = self.sfld_idx(sfld);
+        if !self
+            .class_mut(in_class)
+            .static_fields()
+            .contains(&(tpe, name, thread_local))
+        {
+            self.class_mut(in_class)
+                .static_fields_mut()
+                .push((tpe, name, thread_local));
+        }
+
+        idx
+    }
+    /// Adds a new class definition to this type
     pub fn class_def(&mut self, def: ClassDef) -> ClassDefIdx {
         let cref = def.ref_to();
-        let cref = self.class_idx(cref);
+        let cref = self.alloc_class_ref(cref);
 
         if let Some(dup) = self.class_defs.insert(ClassDefIdx(cref), def.clone()) {
             panic!("duplicate class def. {dup:?} {def:?}");
@@ -166,7 +206,7 @@ impl Assembly {
     pub fn new_method(&mut self, def: MethodDef) -> MethodDefIdx {
         let mref = def.ref_to();
         let def_class = def.class();
-        let ref_idx = self.methodref_idx(mref);
+        let ref_idx = self.alloc_methodref(mref);
         // Check that this def is unique
         self.class_defs
             .get_mut(&def_class)
@@ -188,7 +228,7 @@ impl Assembly {
             MethodKind::Static,
             vec![].into(),
         );
-        let mref = self.methodref_idx(mref);
+        let mref = self.alloc_methodref(mref);
         if self.method_defs.contains_key(&MethodDefIdx(mref)) {
             MethodDefIdx(mref)
         } else {
@@ -273,7 +313,7 @@ impl Assembly {
             .for_each(|((fn_name, sig, preserve_errno), lib_name)| {
                 let v2_sig = FnSig::from_v1(sig, &mut empty);
                 let name = empty.alloc_string(fn_name.clone());
-                let sigidx = empty.sig_idx(v2_sig);
+                let sigidx = empty.allocs_sig(v2_sig);
                 let lib = empty.alloc_string(lib_name.clone());
                 empty.new_method(MethodDef::new(
                     Access::Public,
@@ -428,6 +468,104 @@ impl Assembly {
         }
         self.roots = new_roots;
     }
+
+    pub fn patch_missing_methods(
+        &mut self,
+        externs: FxHashMap<&str, &str>,
+        modifies_errno: FxHashSet<&str>,
+        override_methods: MissingMethodPatcher,
+    ) {
+        let mref_count = self.method_refs.0.len();
+        let externs: FxHashMap<_, _> = externs
+            .into_iter()
+            .map(|(fn_name, lib_name)| (self.alloc_string(fn_name), self.alloc_string(lib_name)))
+            .collect();
+        let preserve_errno: FxHashSet<_> = modifies_errno
+            .into_iter()
+            .map(|fn_name| self.alloc_string(fn_name))
+            .collect();
+        for index in 0..mref_count {
+            // Get the full method refernce
+            let mref = &self.method_refs.0[index];
+            // Check if this method reference's class has an assembly. If it has, then the method is extern. If it has not, then it is defined in this assembly
+            // and must have some kind of implementation
+            let class = self.class_ref(mref.class());
+
+            if class.asm().is_some() {
+                // Is extern, skip
+
+                continue;
+            }
+            let mref_idx =
+                MethodRefIdx::from_index(std::num::NonZeroU32::new(index as u32 + 1).unwrap());
+            // Check if this method already has an implementation.
+            if self.method_defs.contains_key(&MethodDefIdx(mref_idx)) {
+                // A method defintion already present, so we don't need to do anyting, so skip.
+
+                continue;
+            }
+            if let Some(overrider) = override_methods.get(&mref.name()) {
+                let mref = mref.clone();
+                let implementation = overrider(mref_idx, self);
+                self.new_method(mref.into_def(implementation, Access::Private, self));
+                continue;
+            }
+            // Check if this method is in the extern list
+            if let Some(lib) = externs.get(&mref.name()) {
+                let arg_names = (0..(self.get_sig(mref.sig()).inputs().len()))
+                    .map(|_| None)
+                    .collect();
+                let method_def = MethodDef::new(
+                    Access::Public,
+                    ClassDefIdx(mref.class()),
+                    mref.name(),
+                    mref.sig(),
+                    mref.kind(),
+                    MethodImpl::Extern {
+                        lib: *lib,
+                        preserve_errno: preserve_errno.contains(&mref.name()),
+                    },
+                    arg_names,
+                );
+                assert!(
+                    self.class_defs.contains_key(&ClassDefIdx(mref.class())),
+                    "Can't yet handle missing types."
+                );
+
+                self.new_method(method_def);
+
+                continue;
+            }
+            // Create a replacement method.
+
+            let arg_names = (0..(self.get_sig(mref.sig()).inputs().len()))
+                .map(|_| None)
+                .collect();
+            let method_def = MethodDef::new(
+                Access::Public,
+                ClassDefIdx(mref.class()),
+                mref.name(),
+                mref.sig(),
+                mref.kind(),
+                MethodImpl::Missing,
+                arg_names,
+            );
+            assert!(
+                self.class_defs.contains_key(&ClassDefIdx(mref.class())),
+                "Can't yet handle missing types."
+            );
+
+            self.new_method(method_def);
+        }
+    }
+
+    pub(crate) fn class_ref_to_def(&self, class: ClassRefIdx) -> Option<ClassDefIdx> {
+        if self.class_defs.contains_key(&ClassDefIdx(class)) {
+            Some(ClassDefIdx(class))
+        } else {
+            None
+        }
+    }
 }
 /// An initializer, which runs before everything else. By convention, it is used to initialize static / const data. Should not execute any user code
 pub const CCTOR: &str = ".cctor";
@@ -488,7 +626,7 @@ fn export() {
         },
         vec![],
     ));
-    let type_idx = asm.type_idx(Type::Int(super::Int::I8));
+    let type_idx = asm.alloc_type(Type::Int(super::Int::I8));
     let sig = asm.sig([Type::Ptr(type_idx)], Type::Void);
     let name = asm.alloc_string("pritnf");
     let lib = asm.alloc_string("/lib/libc.so");
@@ -540,7 +678,7 @@ fn export2() {
         },
         vec![],
     ));
-    let type_idx = asm.type_idx(Type::Int(super::Int::I8));
+    let type_idx = asm.alloc_type(Type::Int(super::Int::I8));
     let sig = asm.sig([Type::Ptr(type_idx)], Type::Void);
     let name = asm.alloc_string("pritnf");
     let lib = asm.alloc_string("/lib/libc.so");

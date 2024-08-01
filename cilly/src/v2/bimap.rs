@@ -21,7 +21,7 @@ impl<Key: IntoBiMapIndex + Eq + Hash + Clone + Debug, Value: Eq + Hash + Clone +
         match self.1.entry(val.clone()) {
             Entry::Occupied(key) => key.get().clone(),
             Entry::Vacant(empty) => {
-                let key = Key::from_hash(NonZeroU32::new(self.0.len() as u32 + 1).unwrap());
+                let key = Key::from_index(NonZeroU32::new(self.0.len() as u32 + 1).unwrap());
 
                 empty.insert(key.clone());
                 self.0.push(val);
@@ -36,7 +36,7 @@ impl<Key: IntoBiMapIndex + Eq + Hash + Clone + Debug, Value: Eq + Hash + Clone +
 }
 pub type BiMapIndex = NonZeroU32;
 pub trait IntoBiMapIndex {
-    fn from_hash(val: BiMapIndex) -> Self;
+    fn from_index(val: BiMapIndex) -> Self;
     fn as_bimap_index(&self) -> BiMapIndex;
 }
 pub fn calculate_hash<T: std::hash::Hash>(t: &T) -> u64 {

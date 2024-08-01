@@ -13,7 +13,7 @@ use crate::{
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct NodeIdx(BiMapIndex);
 impl IntoBiMapIndex for NodeIdx {
-    fn from_hash(val: BiMapIndex) -> Self {
+    fn from_index(val: BiMapIndex) -> Self {
         Self(val)
     }
     fn as_bimap_index(&self) -> BiMapIndex {
@@ -224,104 +224,104 @@ impl CILNode {
             V1Node::LDIndBool { ptr } => {
                 let ptr = Self::from_v1(ptr, asm);
                 Self::LdInd {
-                    addr: asm.node_idx(ptr),
-                    tpe: asm.type_idx(Type::Bool),
+                    addr: asm.alloc_node(ptr),
+                    tpe: asm.alloc_type(Type::Bool),
                     volitale: false,
                 }
             }
             V1Node::LDIndU8 { ptr } => {
                 let ptr = Self::from_v1(ptr, asm);
                 Self::LdInd {
-                    addr: asm.node_idx(ptr),
-                    tpe: asm.type_idx(Type::Int(Int::U8)),
+                    addr: asm.alloc_node(ptr),
+                    tpe: asm.alloc_type(Type::Int(Int::U8)),
                     volitale: false,
                 }
             }
             V1Node::LDIndU16 { ptr } => {
                 let ptr = Self::from_v1(ptr, asm);
                 Self::LdInd {
-                    addr: asm.node_idx(ptr),
-                    tpe: asm.type_idx(Type::Int(Int::U16)),
+                    addr: asm.alloc_node(ptr),
+                    tpe: asm.alloc_type(Type::Int(Int::U16)),
                     volitale: false,
                 }
             }
             V1Node::LDIndU32 { ptr } => {
                 let ptr = Self::from_v1(ptr, asm);
                 Self::LdInd {
-                    addr: asm.node_idx(ptr),
-                    tpe: asm.type_idx(Type::Int(Int::U32)),
+                    addr: asm.alloc_node(ptr),
+                    tpe: asm.alloc_type(Type::Int(Int::U32)),
                     volitale: false,
                 }
             }
             V1Node::LDIndU64 { ptr } => {
                 let ptr = Self::from_v1(ptr, asm);
                 Self::LdInd {
-                    addr: asm.node_idx(ptr),
-                    tpe: asm.type_idx(Type::Int(Int::U64)),
+                    addr: asm.alloc_node(ptr),
+                    tpe: asm.alloc_type(Type::Int(Int::U64)),
                     volitale: false,
                 }
             }
             V1Node::LDIndUSize { ptr } => {
                 let ptr = Self::from_v1(ptr, asm);
                 Self::LdInd {
-                    addr: asm.node_idx(ptr),
-                    tpe: asm.type_idx(Type::Int(Int::USize)),
+                    addr: asm.alloc_node(ptr),
+                    tpe: asm.alloc_type(Type::Int(Int::USize)),
                     volitale: false,
                 }
             }
             V1Node::LDIndI8 { ptr } => {
                 let ptr = Self::from_v1(ptr, asm);
                 Self::LdInd {
-                    addr: asm.node_idx(ptr),
-                    tpe: asm.type_idx(Type::Int(Int::I8)),
+                    addr: asm.alloc_node(ptr),
+                    tpe: asm.alloc_type(Type::Int(Int::I8)),
                     volitale: false,
                 }
             }
             V1Node::LDIndI16 { ptr } => {
                 let ptr = Self::from_v1(ptr, asm);
                 Self::LdInd {
-                    addr: asm.node_idx(ptr),
-                    tpe: asm.type_idx(Type::Int(Int::I16)),
+                    addr: asm.alloc_node(ptr),
+                    tpe: asm.alloc_type(Type::Int(Int::I16)),
                     volitale: false,
                 }
             }
             V1Node::LDIndI32 { ptr } => {
                 let ptr = Self::from_v1(ptr, asm);
                 Self::LdInd {
-                    addr: asm.node_idx(ptr),
-                    tpe: asm.type_idx(Type::Int(Int::I32)),
+                    addr: asm.alloc_node(ptr),
+                    tpe: asm.alloc_type(Type::Int(Int::I32)),
                     volitale: false,
                 }
             }
             V1Node::LDIndI64 { ptr } => {
                 let ptr = Self::from_v1(ptr, asm);
                 Self::LdInd {
-                    addr: asm.node_idx(ptr),
-                    tpe: asm.type_idx(Type::Int(Int::I64)),
+                    addr: asm.alloc_node(ptr),
+                    tpe: asm.alloc_type(Type::Int(Int::I64)),
                     volitale: false,
                 }
             }
             V1Node::LDIndISize { ptr } => {
                 let ptr = Self::from_v1(ptr, asm);
                 Self::LdInd {
-                    addr: asm.node_idx(ptr),
-                    tpe: asm.type_idx(Type::Int(Int::ISize)),
+                    addr: asm.alloc_node(ptr),
+                    tpe: asm.alloc_type(Type::Int(Int::ISize)),
                     volitale: false,
                 }
             }
             V1Node::LDIndF32 { ptr } => {
                 let ptr = Self::from_v1(ptr, asm);
                 Self::LdInd {
-                    addr: asm.node_idx(ptr),
-                    tpe: asm.type_idx(Type::Float(Float::F32)),
+                    addr: asm.alloc_node(ptr),
+                    tpe: asm.alloc_type(Type::Float(Float::F32)),
                     volitale: false,
                 }
             }
             V1Node::LDIndF64 { ptr } => {
                 let ptr = Self::from_v1(ptr, asm);
                 Self::LdInd {
-                    addr: asm.node_idx(ptr),
-                    tpe: asm.type_idx(Type::Float(Float::F64)),
+                    addr: asm.alloc_node(ptr),
+                    tpe: asm.alloc_type(Type::Float(Float::F64)),
                     volitale: false,
                 }
             }
@@ -329,8 +329,8 @@ impl CILNode {
                 let obj = Type::from_v1(obj, asm);
                 let ptr = Self::from_v1(ptr, asm);
                 Self::LdInd {
-                    addr: asm.node_idx(ptr),
-                    tpe: asm.type_idx(obj),
+                    addr: asm.alloc_node(ptr),
+                    tpe: asm.alloc_type(obj),
                     volitale: false,
                 }
             }
@@ -338,8 +338,8 @@ impl CILNode {
                 let ptr = Self::from_v1(ptr, asm);
                 let loaded_ptr = Type::from_v1(loaded_ptr, asm);
                 Self::LdInd {
-                    addr: asm.node_idx(ptr),
-                    tpe: asm.type_idx(loaded_ptr),
+                    addr: asm.alloc_node(ptr),
+                    tpe: asm.alloc_type(loaded_ptr),
                     volitale: false,
                 }
             }
@@ -347,7 +347,7 @@ impl CILNode {
             V1Node::ZeroExtendToU64(inner) => {
                 let node = Self::from_v1(inner, asm);
                 CILNode::IntCast {
-                    input: asm.node_idx(node),
+                    input: asm.alloc_node(node),
                     target: Int::U64,
                     extend: ExtendKind::ZeroExtend,
                 }
@@ -355,7 +355,7 @@ impl CILNode {
             V1Node::SignExtendToU64(inner) => {
                 let node = Self::from_v1(inner, asm);
                 CILNode::IntCast {
-                    input: asm.node_idx(node),
+                    input: asm.alloc_node(node),
                     target: Int::U64,
                     extend: ExtendKind::SignExtend,
                 }
@@ -363,7 +363,7 @@ impl CILNode {
             V1Node::ZeroExtendToUSize(inner) => {
                 let node = Self::from_v1(inner, asm);
                 CILNode::IntCast {
-                    input: asm.node_idx(node),
+                    input: asm.alloc_node(node),
                     target: Int::USize,
                     extend: ExtendKind::ZeroExtend,
                 }
@@ -371,7 +371,7 @@ impl CILNode {
             V1Node::SignExtendToUSize(inner) => {
                 let node = Self::from_v1(inner, asm);
                 CILNode::IntCast {
-                    input: asm.node_idx(node),
+                    input: asm.alloc_node(node),
                     target: Int::USize,
                     extend: ExtendKind::SignExtend,
                 }
@@ -379,7 +379,7 @@ impl CILNode {
             V1Node::ConvU8(inner) => {
                 let node = Self::from_v1(inner, asm);
                 CILNode::IntCast {
-                    input: asm.node_idx(node),
+                    input: asm.alloc_node(node),
                     target: Int::U8,
                     extend: ExtendKind::ZeroExtend,
                 }
@@ -387,7 +387,7 @@ impl CILNode {
             V1Node::ConvU16(inner) => {
                 let node = Self::from_v1(inner, asm);
                 CILNode::IntCast {
-                    input: asm.node_idx(node),
+                    input: asm.alloc_node(node),
                     target: Int::U16,
                     extend: ExtendKind::ZeroExtend,
                 }
@@ -395,7 +395,7 @@ impl CILNode {
             V1Node::ConvU32(inner) => {
                 let node = Self::from_v1(inner, asm);
                 CILNode::IntCast {
-                    input: asm.node_idx(node),
+                    input: asm.alloc_node(node),
                     target: Int::U32,
                     extend: ExtendKind::ZeroExtend,
                 }
@@ -403,7 +403,7 @@ impl CILNode {
             V1Node::SignExtendToI64(inner) => {
                 let node = Self::from_v1(inner, asm);
                 CILNode::IntCast {
-                    input: asm.node_idx(node),
+                    input: asm.alloc_node(node),
                     target: Int::I64,
                     extend: ExtendKind::SignExtend,
                 }
@@ -411,7 +411,7 @@ impl CILNode {
             V1Node::ZeroExtendToISize(inner) => {
                 let node = Self::from_v1(inner, asm);
                 CILNode::IntCast {
-                    input: asm.node_idx(node),
+                    input: asm.alloc_node(node),
                     target: Int::ISize,
                     extend: ExtendKind::ZeroExtend,
                 }
@@ -419,7 +419,7 @@ impl CILNode {
             V1Node::SignExtendToISize(inner) => {
                 let node = Self::from_v1(inner, asm);
                 CILNode::IntCast {
-                    input: asm.node_idx(node),
+                    input: asm.alloc_node(node),
                     target: Int::ISize,
                     extend: ExtendKind::SignExtend,
                 }
@@ -427,7 +427,7 @@ impl CILNode {
             V1Node::ConvI8(inner) => {
                 let node = Self::from_v1(inner, asm);
                 CILNode::IntCast {
-                    input: asm.node_idx(node),
+                    input: asm.alloc_node(node),
                     target: Int::I8,
                     extend: ExtendKind::ZeroExtend,
                 }
@@ -435,7 +435,7 @@ impl CILNode {
             V1Node::ConvI16(inner) => {
                 let node = Self::from_v1(inner, asm);
                 CILNode::IntCast {
-                    input: asm.node_idx(node),
+                    input: asm.alloc_node(node),
                     target: Int::I16,
                     extend: ExtendKind::ZeroExtend,
                 }
@@ -443,7 +443,7 @@ impl CILNode {
             V1Node::ConvI32(inner) => {
                 let node = Self::from_v1(inner, asm);
                 CILNode::IntCast {
-                    input: asm.node_idx(node),
+                    input: asm.alloc_node(node),
                     target: Int::I32,
                     extend: ExtendKind::ZeroExtend,
                 }
@@ -451,7 +451,7 @@ impl CILNode {
             V1Node::ConvF32(inner) => {
                 let node = Self::from_v1(inner, asm);
                 CILNode::FloatCast {
-                    input: asm.node_idx(node),
+                    input: asm.alloc_node(node),
                     target: Float::F32,
                     is_signed: true,
                 }
@@ -459,7 +459,7 @@ impl CILNode {
             V1Node::ConvF64(inner) => {
                 let node = Self::from_v1(inner, asm);
                 CILNode::FloatCast {
-                    input: asm.node_idx(node),
+                    input: asm.alloc_node(node),
                     target: Float::F64,
                     is_signed: true,
                 }
@@ -467,14 +467,14 @@ impl CILNode {
             V1Node::ConvF64Un(inner) => {
                 let node = Self::from_v1(inner, asm);
                 CILNode::FloatCast {
-                    input: asm.node_idx(node),
+                    input: asm.alloc_node(node),
                     target: Float::F64,
                     is_signed: false,
                 }
             }
             V1Node::MRefToRawPtr(inner) => {
                 let raw = Self::from_v1(inner, asm);
-                CILNode::RefToPtr(asm.node_idx(raw))
+                CILNode::RefToPtr(asm.alloc_node(raw))
             }
             V1Node::CastPtr { val, new_ptr } => {
                 let val = Self::from_v1(val, asm);
@@ -484,120 +484,120 @@ impl CILNode {
                     V1Type::ISize => PtrCastRes::ISize,
                     V1Type::Ptr(inner) => {
                         let inner = Type::from_v1(inner, asm);
-                        PtrCastRes::Ptr(asm.type_idx(inner))
+                        PtrCastRes::Ptr(asm.alloc_type(inner))
                     }
                     V1Type::ManagedReference(inner) => {
                         let inner = Type::from_v1(inner, asm);
-                        PtrCastRes::Ref(asm.type_idx(inner))
+                        PtrCastRes::Ref(asm.alloc_type(inner))
                     }
                     V1Type::DelegatePtr(sig) => {
                         let sig = FnSig::from_v1(sig, asm);
-                        let sig = asm.sig_idx(sig);
+                        let sig = asm.allocs_sig(sig);
                         PtrCastRes::FnPtr(sig)
                     }
                     _ => panic!("Type {new_ptr:?} is not a pointer."),
                 };
-                CILNode::PtrCast(asm.node_idx(val), Box::new(ptr))
+                CILNode::PtrCast(asm.alloc_node(val), Box::new(ptr))
             }
             // Binops
             V1Node::Add(lhs, rhs) => {
                 let lhs = Self::from_v1(lhs, asm);
                 let rhs = Self::from_v1(rhs, asm);
-                Self::BinOp(asm.node_idx(lhs), asm.node_idx(rhs), BinOp::Add)
+                Self::BinOp(asm.alloc_node(lhs), asm.alloc_node(rhs), BinOp::Add)
             }
             V1Node::Sub(lhs, rhs) => {
                 let lhs = Self::from_v1(lhs, asm);
                 let rhs = Self::from_v1(rhs, asm);
-                Self::BinOp(asm.node_idx(lhs), asm.node_idx(rhs), BinOp::Sub)
+                Self::BinOp(asm.alloc_node(lhs), asm.alloc_node(rhs), BinOp::Sub)
             }
             V1Node::Mul(lhs, rhs) => {
                 let lhs = Self::from_v1(lhs, asm);
                 let rhs = Self::from_v1(rhs, asm);
-                Self::BinOp(asm.node_idx(lhs), asm.node_idx(rhs), BinOp::Mul)
+                Self::BinOp(asm.alloc_node(lhs), asm.alloc_node(rhs), BinOp::Mul)
             }
             V1Node::Eq(lhs, rhs) => {
                 let lhs = Self::from_v1(lhs, asm);
                 let rhs = Self::from_v1(rhs, asm);
-                Self::BinOp(asm.node_idx(lhs), asm.node_idx(rhs), BinOp::Eq)
+                Self::BinOp(asm.alloc_node(lhs), asm.alloc_node(rhs), BinOp::Eq)
             }
             V1Node::Or(lhs, rhs) => {
                 let lhs = Self::from_v1(lhs, asm);
                 let rhs = Self::from_v1(rhs, asm);
-                Self::BinOp(asm.node_idx(lhs), asm.node_idx(rhs), BinOp::Or)
+                Self::BinOp(asm.alloc_node(lhs), asm.alloc_node(rhs), BinOp::Or)
             }
             V1Node::XOr(lhs, rhs) => {
                 let lhs = Self::from_v1(lhs, asm);
                 let rhs = Self::from_v1(rhs, asm);
-                Self::BinOp(asm.node_idx(lhs), asm.node_idx(rhs), BinOp::XOr)
+                Self::BinOp(asm.alloc_node(lhs), asm.alloc_node(rhs), BinOp::XOr)
             }
             V1Node::And(lhs, rhs) => {
                 let lhs = Self::from_v1(lhs, asm);
                 let rhs = Self::from_v1(rhs, asm);
-                Self::BinOp(asm.node_idx(lhs), asm.node_idx(rhs), BinOp::And)
+                Self::BinOp(asm.alloc_node(lhs), asm.alloc_node(rhs), BinOp::And)
             }
             V1Node::LtUn(lhs, rhs) => {
                 let lhs = Self::from_v1(lhs, asm);
                 let rhs = Self::from_v1(rhs, asm);
-                Self::BinOp(asm.node_idx(lhs), asm.node_idx(rhs), BinOp::LtUn)
+                Self::BinOp(asm.alloc_node(lhs), asm.alloc_node(rhs), BinOp::LtUn)
             }
             V1Node::Lt(lhs, rhs) => {
                 let lhs = Self::from_v1(lhs, asm);
                 let rhs = Self::from_v1(rhs, asm);
-                Self::BinOp(asm.node_idx(lhs), asm.node_idx(rhs), BinOp::Lt)
+                Self::BinOp(asm.alloc_node(lhs), asm.alloc_node(rhs), BinOp::Lt)
             }
             V1Node::GtUn(lhs, rhs) => {
                 let lhs = Self::from_v1(lhs, asm);
                 let rhs = Self::from_v1(rhs, asm);
-                Self::BinOp(asm.node_idx(lhs), asm.node_idx(rhs), BinOp::GtUn)
+                Self::BinOp(asm.alloc_node(lhs), asm.alloc_node(rhs), BinOp::GtUn)
             }
             V1Node::Gt(lhs, rhs) => {
                 let lhs = Self::from_v1(lhs, asm);
                 let rhs = Self::from_v1(rhs, asm);
-                Self::BinOp(asm.node_idx(lhs), asm.node_idx(rhs), BinOp::Gt)
+                Self::BinOp(asm.alloc_node(lhs), asm.alloc_node(rhs), BinOp::Gt)
             }
             V1Node::Rem(lhs, rhs) => {
                 let lhs = Self::from_v1(lhs, asm);
                 let rhs = Self::from_v1(rhs, asm);
-                Self::BinOp(asm.node_idx(lhs), asm.node_idx(rhs), BinOp::Rem)
+                Self::BinOp(asm.alloc_node(lhs), asm.alloc_node(rhs), BinOp::Rem)
             }
             V1Node::RemUn(lhs, rhs) => {
                 let lhs = Self::from_v1(lhs, asm);
                 let rhs = Self::from_v1(rhs, asm);
-                Self::BinOp(asm.node_idx(lhs), asm.node_idx(rhs), BinOp::RemUn)
+                Self::BinOp(asm.alloc_node(lhs), asm.alloc_node(rhs), BinOp::RemUn)
             }
             V1Node::Shl(lhs, rhs) => {
                 let lhs = Self::from_v1(lhs, asm);
                 let rhs = Self::from_v1(rhs, asm);
-                Self::BinOp(asm.node_idx(lhs), asm.node_idx(rhs), BinOp::Shl)
+                Self::BinOp(asm.alloc_node(lhs), asm.alloc_node(rhs), BinOp::Shl)
             }
             V1Node::Shr(lhs, rhs) => {
                 let lhs = Self::from_v1(lhs, asm);
                 let rhs = Self::from_v1(rhs, asm);
-                Self::BinOp(asm.node_idx(lhs), asm.node_idx(rhs), BinOp::Shr)
+                Self::BinOp(asm.alloc_node(lhs), asm.alloc_node(rhs), BinOp::Shr)
             }
             V1Node::ShrUn(lhs, rhs) => {
                 let lhs = Self::from_v1(lhs, asm);
                 let rhs = Self::from_v1(rhs, asm);
-                Self::BinOp(asm.node_idx(lhs), asm.node_idx(rhs), BinOp::ShrUn)
+                Self::BinOp(asm.alloc_node(lhs), asm.alloc_node(rhs), BinOp::ShrUn)
             }
             V1Node::Div(lhs, rhs) => {
                 let lhs = Self::from_v1(lhs, asm);
                 let rhs = Self::from_v1(rhs, asm);
-                Self::BinOp(asm.node_idx(lhs), asm.node_idx(rhs), BinOp::Div)
+                Self::BinOp(asm.alloc_node(lhs), asm.alloc_node(rhs), BinOp::Div)
             }
             V1Node::DivUn(lhs, rhs) => {
                 let lhs = Self::from_v1(lhs, asm);
                 let rhs = Self::from_v1(rhs, asm);
-                Self::BinOp(asm.node_idx(lhs), asm.node_idx(rhs), BinOp::DivUn)
+                Self::BinOp(asm.alloc_node(lhs), asm.alloc_node(rhs), BinOp::DivUn)
             }
             // Unops
             V1Node::Not(val) => {
                 let val = Self::from_v1(val, asm);
-                Self::UnOp(asm.node_idx(val), UnOp::Not)
+                Self::UnOp(asm.alloc_node(val), UnOp::Not)
             }
             V1Node::Neg(val) => {
                 let val = Self::from_v1(val, asm);
-                Self::UnOp(asm.node_idx(val), UnOp::Neg)
+                Self::UnOp(asm.alloc_node(val), UnOp::Neg)
             }
             // Field access
             V1Node::LDField { addr, field } => {
@@ -605,7 +605,7 @@ impl CILNode {
                 let field = asm.field_idx(field);
                 let addr = Self::from_v1(addr, asm);
                 Self::LdField {
-                    addr: asm.node_idx(addr),
+                    addr: asm.alloc_node(addr),
                     field,
                 }
             }
@@ -614,7 +614,7 @@ impl CILNode {
                 let field = asm.field_idx(field);
                 let addr = Self::from_v1(addr, asm);
                 Self::LdFieldAdress {
-                    addr: asm.node_idx(addr),
+                    addr: asm.alloc_node(addr),
                     field,
                 }
             }
@@ -625,11 +625,11 @@ impl CILNode {
                     .iter()
                     .map(|arg| {
                         let node = Self::from_v1(arg, asm);
-                        asm.node_idx(node)
+                        asm.alloc_node(node)
                     })
                     .collect();
                 let sig = FnSig::from_v1(callargs.site.signature(), asm);
-                let sig = asm.sig_idx(sig);
+                let sig = asm.allocs_sig(sig);
                 let generics: Box<[_]> = callargs
                     .site
                     .generics()
@@ -641,7 +641,7 @@ impl CILNode {
                     .class()
                     .map(|dt| {
                         let cref = ClassRef::from_v1(dt, asm);
-                        asm.class_idx(cref)
+                        asm.alloc_class_ref(cref)
                     })
                     .unwrap_or_else(|| *asm.main_module());
                 let name = asm.alloc_string(callargs.site.name());
@@ -650,7 +650,7 @@ impl CILNode {
                 } else {
                     MethodRef::new(class, name, sig, MethodKind::Instance, generics)
                 };
-                let method_ref = asm.methodref_idx(method_ref);
+                let method_ref = asm.alloc_methodref(method_ref);
                 Self::Call(Box::new((method_ref, args)))
             }
             V1Node::CallVirt(callargs) => {
@@ -659,11 +659,11 @@ impl CILNode {
                     .iter()
                     .map(|arg| {
                         let node = Self::from_v1(arg, asm);
-                        asm.node_idx(node)
+                        asm.alloc_node(node)
                     })
                     .collect();
                 let sig = FnSig::from_v1(callargs.site.signature(), asm);
-                let sig = asm.sig_idx(sig);
+                let sig = asm.allocs_sig(sig);
                 let generics: Box<[_]> = callargs
                     .site
                     .generics()
@@ -675,13 +675,13 @@ impl CILNode {
                     .class()
                     .map(|dt| {
                         let cref = ClassRef::from_v1(dt, asm);
-                        asm.class_idx(cref)
+                        asm.alloc_class_ref(cref)
                     })
                     .unwrap_or_else(|| *asm.main_module());
                 let name = asm.alloc_string(callargs.site.name());
                 assert!(!callargs.site.is_static());
                 let method_ref = MethodRef::new(class, name, sig, MethodKind::Virtual, generics);
-                let method_ref = asm.methodref_idx(method_ref);
+                let method_ref = asm.alloc_methodref(method_ref);
                 Self::Call(Box::new((method_ref, args)))
             }
             V1Node::NewObj(callargs) => {
@@ -690,11 +690,11 @@ impl CILNode {
                     .iter()
                     .map(|arg| {
                         let node = Self::from_v1(arg, asm);
-                        asm.node_idx(node)
+                        asm.alloc_node(node)
                     })
                     .collect();
                 let sig = FnSig::from_v1(callargs.site.signature(), asm);
-                let sig = asm.sig_idx(sig);
+                let sig = asm.allocs_sig(sig);
                 let generics: Box<[_]> = callargs
                     .site
                     .generics()
@@ -706,7 +706,7 @@ impl CILNode {
                     .class()
                     .map(|dt| {
                         let cref = ClassRef::from_v1(dt, asm);
-                        asm.class_idx(cref)
+                        asm.alloc_class_ref(cref)
                     })
                     .unwrap_or_else(|| *asm.main_module());
                 let name = asm.alloc_string(callargs.site.name());
@@ -717,7 +717,7 @@ impl CILNode {
                 );
                 let method_ref =
                     MethodRef::new(class, name, sig, MethodKind::Constructor, generics);
-                let method_ref = asm.methodref_idx(method_ref);
+                let method_ref = asm.alloc_methodref(method_ref);
                 Self::Call(Box::new((method_ref, args)))
             }
             // Special
@@ -729,11 +729,11 @@ impl CILNode {
             }
             V1Node::SizeOf(tpe) => {
                 let tpe = Type::from_v1(tpe, asm);
-                Self::SizeOf(asm.type_idx(tpe))
+                Self::SizeOf(asm.alloc_type(tpe))
             }
             V1Node::LDTypeToken(tpe) => {
                 let tpe = Type::from_v1(tpe, asm);
-                Self::LdTypeToken(asm.type_idx(tpe))
+                Self::LdTypeToken(asm.alloc_type(tpe))
             }
             V1Node::LdcU64(val) => Const::U64(*val).into(),
             V1Node::LdcU32(val) => Const::U32(*val).into(),
@@ -751,44 +751,44 @@ impl CILNode {
             V1Node::IsInst(combined) => {
                 let (val, tpe) = combined.as_ref();
                 let tpe = ClassRef::from_v1(tpe, asm);
-                let tpe = asm.class_idx(tpe);
-                let tpe = asm.type_idx(tpe.into());
+                let tpe = asm.alloc_class_ref(tpe);
+                let tpe = asm.alloc_type(tpe.into());
                 let val = Self::from_v1(val, asm);
 
-                Self::IsInst(asm.node_idx(val), tpe)
+                Self::IsInst(asm.alloc_node(val), tpe)
             }
             V1Node::CheckedCast(combined) => {
                 let (val, tpe) = combined.as_ref();
                 let tpe = ClassRef::from_v1(tpe, asm);
-                let tpe = asm.class_idx(tpe);
-                let tpe = asm.type_idx(tpe.into());
+                let tpe = asm.alloc_class_ref(tpe);
+                let tpe = asm.alloc_type(tpe.into());
                 let val = Self::from_v1(val, asm);
 
-                Self::CheckedCast(asm.node_idx(val), tpe)
+                Self::CheckedCast(asm.alloc_node(val), tpe)
             }
             V1Node::CallI(sig_ptr_args) => {
                 let sig = FnSig::from_v1(&sig_ptr_args.0, asm);
-                let sig = asm.sig_idx(sig);
+                let sig = asm.allocs_sig(sig);
                 let ptr = Self::from_v1(&sig_ptr_args.1, asm);
-                let ptr = asm.node_idx(ptr);
+                let ptr = asm.alloc_node(ptr);
                 let args: Box<[_]> = sig_ptr_args
                     .2
                     .iter()
                     .map(|arg| {
                         let arg = Self::from_v1(arg, asm);
-                        asm.node_idx(arg)
+                        asm.alloc_node(arg)
                     })
                     .collect();
                 Self::CallI(Box::new((ptr, sig, args)))
             }
             V1Node::LocAlloc { size } => {
                 let size = Self::from_v1(size, asm);
-                let size = asm.node_idx(size);
+                let size = asm.alloc_node(size);
                 CILNode::LocAlloc { size }
             }
             V1Node::LocAllocAligned { tpe, align } => {
                 let tpe = Type::from_v1(tpe, asm);
-                let tpe = asm.type_idx(tpe);
+                let tpe = asm.alloc_type(tpe);
                 CILNode::LocAllocAlgined { tpe, align: *align }
             }
             V1Node::LDStaticField(sfld) => {
@@ -797,7 +797,7 @@ impl CILNode {
             }
             V1Node::LDFtn(site) => {
                 let sig = FnSig::from_v1(site.signature(), asm);
-                let sig = asm.sig_idx(sig);
+                let sig = asm.allocs_sig(sig);
                 let generics: Box<[_]> = site
                     .generics()
                     .iter()
@@ -807,7 +807,7 @@ impl CILNode {
                     .class()
                     .map(|dt| {
                         let cref = ClassRef::from_v1(dt, asm);
-                        asm.class_idx(cref)
+                        asm.alloc_class_ref(cref)
                     })
                     .unwrap_or_else(|| *asm.main_module());
                 let name = asm.alloc_string(site.name());
@@ -817,7 +817,7 @@ impl CILNode {
                 } else {
                     MethodRef::new(class, name, sig, MethodKind::Instance, generics)
                 };
-                let method_ref = asm.methodref_idx(method_ref);
+                let method_ref = asm.alloc_methodref(method_ref);
                 Self::LdFtn(method_ref)
             }
             V1Node::Volatile(inner) => {
@@ -830,21 +830,21 @@ impl CILNode {
             }
             V1Node::LDLen { arr } => {
                 let arr = Self::from_v1(arr, asm);
-                let arr = asm.node_idx(arr);
+                let arr = asm.alloc_node(arr);
                 Self::LdLen(arr)
             }
             V1Node::LDElelemRef { arr, idx } => {
                 let arr = Self::from_v1(arr, asm);
-                let array = asm.node_idx(arr);
+                let array = asm.alloc_node(arr);
                 let idx = Self::from_v1(idx, asm);
-                let index = asm.node_idx(idx);
+                let index = asm.alloc_node(idx);
                 Self::LdElelemRef { array, index }
             }
             V1Node::UnboxAny(object, tpe) => {
                 let object = Self::from_v1(object, asm);
-                let object = asm.node_idx(object);
+                let object = asm.alloc_node(object);
                 let tpe = Type::from_v1(tpe, asm);
-                let tpe = asm.type_idx(tpe);
+                let tpe = asm.alloc_type(tpe);
                 Self::UnboxAny { object, tpe }
             }
             _ => todo!("v1:{v1:?}"),

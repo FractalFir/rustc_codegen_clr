@@ -1,16 +1,12 @@
 use cilly::{
-    access_modifier,
-    basic_block::BasicBlock,
-    call,
-    call_site::CallSite,
-    cil_node::CILNode,
-    cil_root::CILRoot,
-    ldc_i32,
-    method::{Method, MethodType},
-    ptr, FnSig, Type,
+    v2::{
+        asm::MissingMethodPatcher, cilnode::MethodKind, Assembly, CILNode, CILRoot, Int, MethodRef,
+        SigIdx, Type,
+    },
+    IString,
 };
-use fxhash::FxHashMap;
 
+/*
 pub fn patch_all(asm: &mut cilly::asm::Assembly) {
     let _ = asm;
     //println!("Applying patches to the resulting assembly...");
@@ -241,4 +237,89 @@ pub(crate) fn pthread_setname_np(patched: &mut FxHashMap<CallSite, Method>, call
             vec![Some("attr".into())],
         ),
     );
+}*/
+pub fn call_alias(
+    overrides: &mut MissingMethodPatcher,
+    asm: &mut Assembly,
+    name: impl Into<IString>,
+    call: MethodRef,
+) {
+    overrides.insert(
+        asm.alloc_string(name),
+        Box::new(move |original, asm| {
+            let method_ref = asm.alloc_methodref(call.clone());
+            let inputs: Box<[_]> = asm.get_sig(call.sig()).inputs().into();
+            let original_inputs: Box<[_]> =
+                asm.get_sig(asm.get_mref(original).sig()).inputs().into();
+            let args = inputs
+                .iter()
+                .zip(original_inputs.iter())
+                .enumerate()
+                .map(|(arg, (tpe, original_tpe))| {
+                    if tpe == original_tpe {
+                        asm.alloc_node(CILNode::LdArg(arg as u32))
+                    } else {
+                        match (tpe, original_tpe) {
+                            (
+                                Type::Ptr(_) | Type::Int(Int::ISize | Int::USize) | Type::FnPtr(_),
+                                Type::ClassRef(_),
+                            ) => {
+                                // Transmute to a pointer
+                                let ptr_address = asm.alloc_node(CILNode::LdArgA(arg as u32));
+                                let tpe = asm.alloc_type(*tpe);
+                                asm.alloc_node(CILNode::LdInd {
+                                    addr: ptr_address,
+                                    tpe,
+                                    volitale: false,
+                                })
+                            }
+                            (
+                                Type::Ptr(_) | Type::Int(Int::ISize | Int::USize),
+                                Type::Int(Int::U64),
+                            ) => {
+                                let arg = asm.alloc_node(CILNode::LdArg(arg as u32));
+
+                                asm.alloc_node(CILNode::IntCast {
+                                    input: arg,
+                                    target: Int::USize,
+                                    extend: cilly::v2::cilnode::ExtendKind::ZeroExtend,
+                                })
+                            }
+                            (
+                                Type::Ptr(_) | Type::Int(Int::ISize | Int::USize) | Type::FnPtr(_),
+                                Type::Ptr(_) | Type::Int(Int::ISize | Int::USize) | Type::FnPtr(_),
+                            ) | (Type::Int(Int::I64),Type::Int(Int::U64)) => asm.alloc_node(CILNode::LdArg(arg as u32)),
+                            _ => todo!("can't auto convert {original_tpe:?} to {tpe:?} when autogenrating wrappers."),
+                        }
+                    }
+                })
+                .collect();
+            if *asm.get_sig(call.sig()).output() == Type::Void {
+                let call = asm.alloc_root(CILRoot::Call(Box::new((method_ref, args))));
+                let ret = asm.alloc_root(CILRoot::VoidRet);
+                cilly::v2::MethodImpl::MethodBody {
+                    blocks: vec![cilly::v2::BasicBlock::new(vec![call, ret], 0, None)],
+                    locals: vec![],
+                }
+            } else {
+                let ret_value = asm.alloc_node(CILNode::Call(Box::new((method_ref, args))));
+                let ret = asm.alloc_root(CILRoot::Ret(ret_value));
+                cilly::v2::MethodImpl::MethodBody {
+                    blocks: vec![cilly::v2::BasicBlock::new(vec![ret], 0, None)],
+                    locals: vec![],
+                }
+            }
+        }),
+    );
+}
+pub fn builtin_call(
+    overrides: &mut MissingMethodPatcher,
+    asm: &mut Assembly,
+    name: impl Into<IString> + Clone,
+    sig: SigIdx,
+) {
+    let main = asm.main_module();
+    let call = asm.new_methodref(*main, name.clone(), sig, MethodKind::Static, []);
+    let call = asm.get_mref(call).clone();
+    call_alias(overrides, asm, name, call)
 }

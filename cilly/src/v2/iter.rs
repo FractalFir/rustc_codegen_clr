@@ -328,7 +328,7 @@ impl<'start> LendingIter for CILIterMut<'start> {
                             }
                             1 => {
                                 let curr = curr.take().expect("Iterator error").as_node().unwrap();
-                                *lhs = self.asm.node_idx(curr);
+                                *lhs = self.asm.alloc_node(curr);
 
                                 let rhs = self.asm.get_node(rhs.clone());
                                 self.elems.push((CILIterElem::Node(rhs.clone()), 0));
@@ -336,7 +336,7 @@ impl<'start> LendingIter for CILIterMut<'start> {
                             }
                             2 => {
                                 let curr = curr.take().expect("Iterator error").as_node().unwrap();
-                                *rhs = self.asm.node_idx(curr);
+                                *rhs = self.asm.alloc_node(curr);
                                 self.idx += 1;
                                 return;
                             }

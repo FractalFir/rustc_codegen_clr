@@ -8,7 +8,7 @@ use cilly::{
     call_virt,
     cil_node::{CILNode, CallOpArgs},
     cil_root::CILRoot,
-    conv_u64, conv_usize,
+    conv_isize, conv_u64, conv_usize,
     field_desc::FieldDescriptor,
     fn_sig::FnSig,
     ld_field, ldc_i32, ldc_u32, ldc_u64, lt_un,
@@ -546,6 +546,9 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
     pthread_attr_setstacksize(asm);
     pthread_detach(asm);
     pthread_join(asm);
+    pthread_self(asm);
+    _Unwind_RaiseException(asm);
+    pthread_setname_np(asm);
     __cxa_thread_atexit_impl(asm);
     llvm_x86_sse2_pause(asm);
     let rust_exception = TypeDef::new(
@@ -772,7 +775,63 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
     );
     asm.add_typedef(unmanaged_start);
 }
-
+add_method_from_trees!(
+    pthread_self,
+    &[],
+    Type::ISize,
+    vec![BasicBlock::new(
+        vec![CILRoot::Ret {
+            tree: conv_isize!(ldc_i32!(0))
+        }
+        .into()],
+        0,
+        None
+    )],
+    vec![],
+    vec![]
+);
+add_method_from_trees!(
+    pthread_setname_np,
+    &[Type::U64, ptr!(Type::I8)],
+    Type::I32,
+    vec![BasicBlock::new(
+        vec![CILRoot::Ret { tree: ldc_i32!(0) }.into()],
+        0,
+        None
+    )],
+    vec![],
+    vec![]
+);
+add_method_from_trees!(
+    _Unwind_RaiseException,
+    &[ptr!(Type::Void)],
+    Type::Void,
+    vec![BasicBlock::new(
+        vec![CILRoot::Throw(CILNode::NewObj(Box::new(CallOpArgs {
+            args: Box::new([conv_usize!(CILNode::LDArg(0))]),
+            site: Box::new(CallSite::new(
+                Some(DotnetTypeRef::new::<&str, _>(None, "RustException").with_valuetype(false),),
+                ".ctor".into(),
+                FnSig::new(
+                    &[
+                        Type::DotnetType(Box::new(
+                            DotnetTypeRef::new::<&str, _>(None, "RustException")
+                                .with_valuetype(false),
+                        )),
+                        Type::USize,
+                    ],
+                    Type::Void,
+                ),
+                false,
+            )),
+        })))
+        .into()],
+        0,
+        None,
+    )],
+    vec![],
+    vec![Some("ptr".into())]
+);
 add_method_from_trees!(
     pthread_create,
     &[

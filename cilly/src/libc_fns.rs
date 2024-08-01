@@ -542,14 +542,14 @@ pub const LIBC_FNS: &[&str] = &[
     "wscanf",
     "__xpg_strerror_r",
     "pthread_atfork",
-    "pthread_attr_destroy",
-    "pthread_attr_init",
-    "pthread_attr_setstacksize",
-    "pthread_create",
-    "pthread_detach",
-    "pthread_join",
-    "pthread_self",
-    "pthread_setname_np",
+    "__errno_location", /* "pthread_attr_destroy",
+                        "pthread_attr_init",
+                        "pthread_attr_setstacksize",
+                        "pthread_create",
+                        "pthread_detach",
+                        "pthread_join",
+                        "pthread_self",
+                        "pthread_setname_np",*/
 ];
 pub const LIBC_MODIFIES_ERRNO: &[&str] = &[
     "bind",
