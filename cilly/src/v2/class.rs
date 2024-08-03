@@ -224,6 +224,36 @@ impl ClassDef {
     pub fn explict_size(&self) -> Option<NonZeroU32> {
         self.explict_size
     }
+
+    pub fn generics(&self) -> u32 {
+        self.generics
+    }
+
+    pub(crate) fn merge_defs(&mut self, translated: ClassDef) {
+        // Check name matches
+        assert_eq!(self.name(), translated.name());
+        // Check valuetype matches
+        assert_eq!(self.is_valuetype(), translated.is_valuetype());
+        // Check generic count matches
+        assert_eq!(self.generics(), translated.generics());
+        // Check inheretence matches
+        assert_eq!(self.extends(), translated.extends());
+        // If we want to merge types, we need to confoirm they have identical fields.
+        assert_eq!(self.fields(), translated.fields());
+        // Merge the static fields, removing duplicates
+        self.static_fields_mut().extend(translated.static_fields());
+        make_unique(&mut self.static_fields);
+        // Merge the static fields, removing duplicates
+        self.static_fields_mut().extend(translated.static_fields());
+        make_unique(self.static_fields_mut());
+        // Merge the methods, removing duplicates
+        self.methods_mut().extend(translated.methods());
+        make_unique(self.methods_mut());
+        // Check accessibility matches
+        assert_eq!(self.access(), translated.access());
+        // Check size matches
+        assert_eq!(self.explict_size(), translated.explict_size());
+    }
 }
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Copy, Serialize, Deserialize)]
 pub struct ClassDefIdx(pub ClassRefIdx);
@@ -234,4 +264,14 @@ impl std::ops::Deref for ClassDefIdx {
     fn deref(&self) -> &Self::Target {
         &self.0
     }
+}
+fn into_unique<T: Eq + std::hash::Hash>(input: Vec<T>) -> Vec<T> {
+    let set: fxhash::FxHashSet<_> = input.into_iter().collect();
+    set.into_iter().collect()
+}
+fn make_unique<T: Eq + std::hash::Hash>(input: &mut Vec<T>) {
+    let mut tmp = Vec::new();
+    std::mem::swap(&mut tmp, input);
+    let mut tmp = into_unique(tmp);
+    std::mem::swap(&mut tmp, input);
 }

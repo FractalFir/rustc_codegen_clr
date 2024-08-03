@@ -96,7 +96,7 @@ impl Type {
             crate::Type::DotnetChar => Self::PlatformChar,
             crate::Type::DelegatePtr(sig) => {
                 let sig = FnSig::from_v1(sig, asm);
-                Self::FnPtr(asm.allocs_sig(sig))
+                Self::FnPtr(asm.alloc_sig(sig))
             }
             crate::Type::MethodGenericArg(_) => todo!(),
             crate::Type::ManagedArray { element, dims } => {

@@ -629,9 +629,6 @@ pub fn add_allocation(
         GlobalAlloc::Static(def_id) => {
             let alloc = tcx.eval_static_initializer(def_id).unwrap();
             let attrs = tcx.codegen_fn_attrs(def_id);
-            if let Some(section) = attrs.link_section {
-                panic!("static {def_id:?} requires special linkage in section {section:?}");
-            }
 
             (
                 attrs.flags.contains(

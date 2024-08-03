@@ -103,7 +103,7 @@ impl Assembly {
         self.class_refs.alloc(cref)
     }
 
-    pub(crate) fn allocs_sig(&mut self, sig: FnSig) -> SigIdx {
+    pub(crate) fn alloc_sig(&mut self, sig: FnSig) -> SigIdx {
         self.sigs.alloc(sig)
     }
 
@@ -134,13 +134,13 @@ impl Assembly {
         self.nodes.get(key)
     }
 
-    pub(crate) fn field_idx(&mut self, field: FieldDesc) -> FieldIdx {
+    pub(crate) fn alloc_field(&mut self, field: FieldDesc) -> FieldIdx {
         self.fields.alloc(field)
     }
     pub fn get_field(&self, key: FieldIdx) -> &FieldDesc {
         self.fields.get(key)
     }
-    pub(crate) fn sfld_idx(&mut self, sfld: StaticFieldDesc) -> StaticFieldIdx {
+    pub(crate) fn alloc_sfld(&mut self, sfld: StaticFieldDesc) -> StaticFieldIdx {
         self.statics.alloc(sfld)
     }
     pub fn get_static_field(&self, key: StaticFieldIdx) -> &StaticFieldDesc {
@@ -155,7 +155,7 @@ impl Assembly {
     ) -> StaticFieldIdx {
         let name = self.alloc_string(name);
         let sfld = StaticFieldDesc::new(*in_class, name, tpe);
-        let idx = self.sfld_idx(sfld);
+        let idx = self.alloc_sfld(sfld);
         if !self
             .class_mut(in_class)
             .static_fields()
@@ -269,8 +269,8 @@ impl Assembly {
         } else {
             last.roots().len() - 1
         };
-        for root in roots {
-            last.roots_mut().insert(last_root_idx, *root);
+        for (idx, root) in roots.iter().enumerate() {
+            last.roots_mut().insert(idx + last_root_idx, *root);
         }
     }
     /// Serializes and saves this assembly
@@ -313,7 +313,7 @@ impl Assembly {
             .for_each(|((fn_name, sig, preserve_errno), lib_name)| {
                 let v2_sig = FnSig::from_v1(sig, &mut empty);
                 let name = empty.alloc_string(fn_name.clone());
-                let sigidx = empty.allocs_sig(v2_sig);
+                let sigidx = empty.alloc_sig(v2_sig);
                 let lib = empty.alloc_string(lib_name.clone());
                 empty.new_method(MethodDef::new(
                     Access::Public,
@@ -566,6 +566,21 @@ impl Assembly {
             None
         }
     }
+    pub fn link(mut self, other: Self) -> Self {
+        for def in other.iter_class_defs() {
+            let translated = self.translate_class_def(&other, def);
+            let class_ref = self.alloc_class_ref(translated.ref_to());
+            match self.class_defs.entry(ClassDefIdx(class_ref)) {
+                std::collections::hash_map::Entry::Occupied(mut occupied) => {
+                    occupied.get_mut().merge_defs(translated)
+                }
+                std::collections::hash_map::Entry::Vacant(vacant) => {
+                    vacant.insert(translated);
+                }
+            }
+        }
+        self
+    }
 }
 /// An initializer, which runs before everything else. By convention, it is used to initialize static / const data. Should not execute any user code
 pub const CCTOR: &str = ".cctor";
@@ -590,6 +605,37 @@ fn encoded_stats<T: Serialize + for<'a> Deserialize<'a>>(val: &T) -> (&'static s
     );
     (type_name::<T>(), buff.len())
 }
+lazy_static! {
+    pub static ref ILASM_FLAVOUR: IlasmFlavour = {
+        if String::from_utf8_lossy(
+            &std::process::Command::new(&*ILASM_PATH)
+                .output()
+                .unwrap()
+                .stdout,
+        )
+        .contains("PDB")
+        {
+            IlasmFlavour::Modern
+        } else {
+            IlasmFlavour::Clasic
+        }
+    };
+}
+#[derive(Clone, Copy)]
+pub enum IlasmFlavour {
+    Clasic,
+    Modern,
+}
+pub fn ilasm_path() -> &'static str {
+    ILASM_PATH.as_str()
+}
+lazy_static! {
+    #[doc = "Specifies the path to the IL assembler."]
+    pub static ref ILASM_PATH:String = {
+        std::env::vars().find_map(|(key,value)|if key == "ILASM_PATH"{Some(value)}else{None}).unwrap_or("ilasm".into())
+    };
+}
+
 #[test]
 fn user_init() {
     let mut asm = Assembly::default();
@@ -700,33 +746,68 @@ fn export2() {
     asm.realloc_roots();
     asm.export("/tmp/export2.exe", ILExporter::new(*ILASM_FLAVOUR, false));
 }
-lazy_static! {
-    pub static ref ILASM_FLAVOUR: IlasmFlavour = {
-        if String::from_utf8_lossy(
-            &std::process::Command::new(&*ILASM_PATH)
-                .output()
-                .unwrap()
-                .stdout,
-        )
-        .contains("PDB")
-        {
-            IlasmFlavour::Modern
-        } else {
-            IlasmFlavour::Clasic
-        }
+#[test]
+fn link() {
+    use super::il_exporter::*;
+
+    let asm1 = {
+        let mut asm = Assembly::default();
+        let main_module = asm.main_module();
+        let name = asm.alloc_string("entrypoint");
+        let sig = asm.sig([], Type::Void);
+        let body1 = vec![asm.alloc_root(CILRoot::VoidRet)];
+        let hbody = vec![asm.alloc_root(CILRoot::ExitSpecialRegion {
+            target: 2,
+            source: 0,
+        })];
+        asm.alloc_root(CILRoot::Break);
+        let body2 = vec![asm.alloc_root(CILRoot::VoidRet)];
+        asm.new_method(MethodDef::new(
+            Access::Extern,
+            main_module,
+            name,
+            sig,
+            MethodKind::Static,
+            MethodImpl::MethodBody {
+                blocks: vec![
+                    super::BasicBlock::new(
+                        body1,
+                        0,
+                        Some(vec![super::BasicBlock::new(hbody, 1, None)].into()),
+                    ),
+                    super::BasicBlock::new(body2, 2, None),
+                ],
+                locals: vec![],
+            },
+            vec![],
+        ));
+        asm
     };
-}
-#[derive(Clone, Copy)]
-pub enum IlasmFlavour {
-    Clasic,
-    Modern,
-}
-pub fn ilasm_path() -> &'static str {
-    ILASM_PATH.as_str()
-}
-lazy_static! {
-    #[doc = "Specifies the path to the IL assembler."]
-    pub static ref ILASM_PATH:String = {
-        std::env::vars().find_map(|(key,value)|if key == "ILASM_PATH"{Some(value)}else{None}).unwrap_or("ilasm".into())
+    let asm2 = {
+        let mut asm = Assembly::default();
+        let main_module = asm.main_module();
+        let type_idx = asm.alloc_type(Type::Int(super::Int::I8));
+        let sig = asm.sig([Type::Ptr(type_idx)], Type::Void);
+        let name = asm.alloc_string("pritnf");
+        let lib = asm.alloc_string("/lib/libc.so");
+        asm.new_method(MethodDef::new(
+            Access::Public,
+            main_module,
+            name,
+            sig,
+            MethodKind::Static,
+            MethodImpl::Extern {
+                lib,
+                preserve_errno: false,
+            },
+            vec![None],
+        ));
+        let uinit = asm.alloc_root(CILRoot::Break);
+        asm.add_user_init(&[uinit]);
+        asm
     };
+    let mut asm = asm1.link(asm2);
+    asm.eliminate_dead_code();
+    asm.realloc_roots();
+    asm.export("/tmp/link_test.exe", ILExporter::new(*ILASM_FLAVOUR, false));
 }

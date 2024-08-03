@@ -2,10 +2,7 @@ use fxhash::{FxHashMap, FxHasher};
 use serde::{Deserialize, Serialize};
 use std::{collections::hash_map::Entry, fmt::Debug, hash::Hash, num::NonZeroU32};
 #[derive(Serialize, Deserialize)]
-pub struct BiMap<Key: IntoBiMapIndex + Eq + Hash + Clone, Value: Eq + Hash + Clone>(
-    pub Vec<Value>,
-    pub FxHashMap<Value, Key>,
-);
+pub struct BiMap<Key, Value: Eq + Hash>(pub Vec<Value>, pub FxHashMap<Value, Key>);
 impl<Key: IntoBiMapIndex + Eq + Hash + Clone, Value: Eq + Hash + Clone> Default
     for BiMap<Key, Value>
 {
@@ -32,6 +29,13 @@ impl<Key: IntoBiMapIndex + Eq + Hash + Clone + Debug, Value: Eq + Hash + Clone +
     /// Gets an allocated value with id `key`
     pub fn get(&self, key: Key) -> &Value {
         self.0.get(key.as_bimap_index().get() as usize - 1).unwrap()
+    }
+
+    pub fn translate(&mut self, destination: &mut Self) -> FxHashMap<Key, Key> {
+        let mut res = FxHashMap::default();
+        for (val, key) in self.1.iter_mut() {}
+        todo!();
+        res
     }
 }
 pub type BiMapIndex = NonZeroU32;

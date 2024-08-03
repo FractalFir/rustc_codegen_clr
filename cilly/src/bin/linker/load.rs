@@ -56,7 +56,7 @@ fn load_ar(r: &mut impl std::io::Read) -> std::io::Result<(Assembly, Vec<Linkabl
 pub fn load_assemblies(
     raw_files: &[&String],
     archives: &[String],
-) -> (Assembly, Vec<LinkableFile>) {
+) -> (cilly::v2::Assembly, Vec<LinkableFile>) {
     println!("Preparing to load assmeblies");
     let mut final_assembly = Assembly::empty();
     let mut linkables = Vec::new();
@@ -79,5 +79,7 @@ pub fn load_assemblies(
         linkables.extend(assembly.1);
     }
     println!("Loaded assmeblies");
+    let final_assembly = cilly::v2::Assembly::from_v1(&final_assembly);
+    println!("Converted assmeblies");
     (final_assembly, linkables)
 }

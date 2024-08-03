@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
+#[derive(Hash, PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum Access {
     Extern,
     Public,

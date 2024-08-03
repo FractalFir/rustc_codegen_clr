@@ -341,13 +341,7 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
             );
         }
         let mut v2_asm = crate::v2::Assembly::default();
-        if *CILLY_V2 {
-            let v2_blocks: Box<[_]> = method
-                .blocks()
-                .iter()
-                .map(|block| crate::v2::BasicBlock::from_v1(block, &mut v2_asm))
-                .collect();
-        }
+
         let cs = method.call_site();
 
         self.functions.insert(cs, method);
@@ -658,6 +652,9 @@ edge [fontname=\"Helvetica,Arial,sans-serif\"]\nnode [shape=box];\n".to_string()
 
     pub fn static_fields(&self) -> &FxHashMap<IString, (Type, bool)> {
         &self.static_fields
+    }
+    pub fn link(self, other: Self) -> Self {
+        todo!();
     }
 }
 use lazy_static::*;

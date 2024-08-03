@@ -57,6 +57,16 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
                         args: [].into(),
                     }
                     .into(),
+                    CILRoot::Call {
+                        site: Box::new(CallSite::new(
+                            None,
+                            "static_init".into(),
+                            FnSig::new(&[], Type::Void),
+                            true,
+                        )),
+                        args: [].into(),
+                    }
+                    .into(),
                     CILRoot::Pop {
                         tree: call!(
                             Box::new(entrypoint.clone()),
@@ -93,6 +103,16 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
                         site: Box::new(CallSite::new(
                             None,
                             ".tcctor".into(),
+                            FnSig::new(&[], Type::Void),
+                            true,
+                        )),
+                        args: [].into(),
+                    }
+                    .into(),
+                    CILRoot::Call {
+                        site: Box::new(CallSite::new(
+                            None,
+                            "static_init".into(),
                             FnSig::new(&[], Type::Void),
                             true,
                         )),

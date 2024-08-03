@@ -23,7 +23,7 @@ pub struct FieldDesc {
 }
 
 impl FieldDesc {
-    fn new(owner: ClassRefIdx, name: StringIdx, tpe: Type) -> Self {
+    pub fn new(owner: ClassRefIdx, name: StringIdx, tpe: Type) -> Self {
         Self { owner, name, tpe }
     }
 

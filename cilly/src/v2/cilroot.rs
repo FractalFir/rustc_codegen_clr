@@ -185,7 +185,7 @@ impl CILRoot {
                     })
                     .collect();
                 let sig = FnSig::from_v1(site.signature(), asm);
-                let sig = asm.allocs_sig(sig);
+                let sig = asm.alloc_sig(sig);
                 let generics: Box<[_]> = site
                     .generics()
                     .iter()
@@ -216,7 +216,7 @@ impl CILRoot {
                     })
                     .collect();
                 let sig = FnSig::from_v1(site.signature(), asm);
-                let sig = asm.allocs_sig(sig);
+                let sig = asm.alloc_sig(sig);
                 let generics: Box<[_]> = site
                     .generics()
                     .iter()
@@ -237,7 +237,7 @@ impl CILRoot {
             }
             V1Root::SetField { value, addr, desc } => {
                 let field = FieldDesc::from_v1(desc, asm);
-                let field = asm.field_idx(field);
+                let field = asm.alloc_field(field);
                 let value = CILNode::from_v1(value, asm);
                 let value = asm.alloc_node(value);
                 let addr = CILNode::from_v1(addr, asm);
@@ -338,7 +338,7 @@ impl CILRoot {
             }
             V1Root::CallI { sig, fn_ptr, args } => {
                 let sig = FnSig::from_v1(sig, asm);
-                let sig = asm.allocs_sig(sig);
+                let sig = asm.alloc_sig(sig);
                 let ptr = CILNode::from_v1(fn_ptr, asm);
                 let ptr = asm.alloc_node(ptr);
                 let args: Box<[_]> = args
@@ -367,7 +367,7 @@ impl CILRoot {
                 let descr = StaticFieldDesc::from_v1(descr, asm);
                 let val = CILNode::from_v1(value, asm);
                 Self::SetStaticField {
-                    field: asm.sfld_idx(descr),
+                    field: asm.alloc_sfld(descr),
                     val: asm.alloc_node(val),
                 }
             }

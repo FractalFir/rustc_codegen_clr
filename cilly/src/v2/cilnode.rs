@@ -492,7 +492,7 @@ impl CILNode {
                     }
                     V1Type::DelegatePtr(sig) => {
                         let sig = FnSig::from_v1(sig, asm);
-                        let sig = asm.allocs_sig(sig);
+                        let sig = asm.alloc_sig(sig);
                         PtrCastRes::FnPtr(sig)
                     }
                     _ => panic!("Type {new_ptr:?} is not a pointer."),
@@ -602,7 +602,7 @@ impl CILNode {
             // Field access
             V1Node::LDField { addr, field } => {
                 let field = FieldDesc::from_v1(field, asm);
-                let field = asm.field_idx(field);
+                let field = asm.alloc_field(field);
                 let addr = Self::from_v1(addr, asm);
                 Self::LdField {
                     addr: asm.alloc_node(addr),
@@ -611,7 +611,7 @@ impl CILNode {
             }
             V1Node::LDFieldAdress { addr, field } => {
                 let field = FieldDesc::from_v1(field, asm);
-                let field = asm.field_idx(field);
+                let field = asm.alloc_field(field);
                 let addr = Self::from_v1(addr, asm);
                 Self::LdFieldAdress {
                     addr: asm.alloc_node(addr),
@@ -629,7 +629,7 @@ impl CILNode {
                     })
                     .collect();
                 let sig = FnSig::from_v1(callargs.site.signature(), asm);
-                let sig = asm.allocs_sig(sig);
+                let sig = asm.alloc_sig(sig);
                 let generics: Box<[_]> = callargs
                     .site
                     .generics()
@@ -663,7 +663,7 @@ impl CILNode {
                     })
                     .collect();
                 let sig = FnSig::from_v1(callargs.site.signature(), asm);
-                let sig = asm.allocs_sig(sig);
+                let sig = asm.alloc_sig(sig);
                 let generics: Box<[_]> = callargs
                     .site
                     .generics()
@@ -694,7 +694,7 @@ impl CILNode {
                     })
                     .collect();
                 let sig = FnSig::from_v1(callargs.site.signature(), asm);
-                let sig = asm.allocs_sig(sig);
+                let sig = asm.alloc_sig(sig);
                 let generics: Box<[_]> = callargs
                     .site
                     .generics()
@@ -768,7 +768,7 @@ impl CILNode {
             }
             V1Node::CallI(sig_ptr_args) => {
                 let sig = FnSig::from_v1(&sig_ptr_args.0, asm);
-                let sig = asm.allocs_sig(sig);
+                let sig = asm.alloc_sig(sig);
                 let ptr = Self::from_v1(&sig_ptr_args.1, asm);
                 let ptr = asm.alloc_node(ptr);
                 let args: Box<[_]> = sig_ptr_args
@@ -793,11 +793,11 @@ impl CILNode {
             }
             V1Node::LDStaticField(sfld) => {
                 let sfld = StaticFieldDesc::from_v1(sfld, asm);
-                Self::LdStaticField(asm.sfld_idx(sfld))
+                Self::LdStaticField(asm.alloc_sfld(sfld))
             }
             V1Node::LDFtn(site) => {
                 let sig = FnSig::from_v1(site.signature(), asm);
-                let sig = asm.allocs_sig(sig);
+                let sig = asm.alloc_sig(sig);
                 let generics: Box<[_]> = site
                     .generics()
                     .iter()

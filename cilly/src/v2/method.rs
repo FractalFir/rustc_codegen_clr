@@ -67,6 +67,10 @@ impl MethodRef {
     pub fn kind(&self) -> MethodKind {
         self.kind
     }
+
+    pub fn generics(&self) -> &[Type] {
+        &self.generics
+    }
 }
 
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
@@ -179,7 +183,7 @@ impl MethodDef {
         class: ClassDefIdx,
     ) -> Self {
         let sig = FnSig::from_v1(v1.call_site().signature(), asm);
-        let sig = asm.allocs_sig(sig);
+        let sig = asm.alloc_sig(sig);
         let acceess = match v1.access() {
             crate::access_modifier::AccessModifer::Private => Access::Private,
             crate::access_modifier::AccessModifer::Public => Access::Public,

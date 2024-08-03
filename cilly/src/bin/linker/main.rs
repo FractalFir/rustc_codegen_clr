@@ -196,33 +196,14 @@ fn main() {
 
     // Load assemblies from files
 
-    let (mut final_assembly, linkables) =
-        load::load_assemblies(to_link.as_slice(), ar_to_link.as_slice());
-    final_assembly.resolve_initializers();
-    final_assembly.resolve_method_aliases();
-    // Aplly certain fixes/workarounds to the final assembly
-    //override_errno(&mut final_assembly);
-    //patch::patch_all(&mut final_assembly);
-    let mut native_pastrough = NativePastroughInfo::new();
-    #[cfg(target_os = "linux")]
-    {
-        if *NATIVE_PASSTROUGH {
-            add_shared(get_libc(), &mut native_pastrough);
-        }
-    }
-    if *NATIVE_PASSTROUGH {
-        handle_native_passtrough(args, &linkables, output_file_path, &mut native_pastrough);
-    }
+    let (mut final_assembly, _) = load::load_assemblies(to_link.as_slice(), ar_to_link.as_slice());
+
     let path: std::path::PathBuf = output_file_path.into();
+
     let is_lib = output_file_path.contains(".dll")
         || output_file_path.contains(".so")
         || output_file_path.contains(".o");
 
-    let mut tmp = cilly::v2::Assembly::from_v1(&final_assembly);
-    final_assembly
-        .save_tmp(&mut std::fs::File::create(path.with_extension("cilly")).unwrap())
-        .unwrap();
-    drop(final_assembly);
     let externs = LIBC_FNS
         .iter()
         .map(|fn_name| (*fn_name, LIBC.as_ref()))
@@ -232,49 +213,67 @@ fn main() {
     // Override allocator
     {
         // Get the marshal class
-        let marshal = ClassRef::from_v1(&DotnetTypeRef::marshal(), &mut tmp);
-        let marshal = tmp.alloc_class_ref(marshal);
+        let marshal = ClassRef::from_v1(&DotnetTypeRef::marshal(), &mut final_assembly);
+        let marshal = final_assembly.alloc_class_ref(marshal);
         // Overrides calls to malloc
-        let sig = tmp.sig([Type::Int(Int::ISize)], Type::Int(Int::ISize));
-        let allochglobal = tmp.new_methodref(marshal, "AllocHGlobal", sig, MethodKind::Static, []);
-        let mref = tmp.get_mref(allochglobal).clone();
-        call_alias(&mut overrides, &mut tmp, "malloc", mref);
+        let sig = final_assembly.sig([Type::Int(Int::ISize)], Type::Int(Int::ISize));
+        let allochglobal =
+            final_assembly.new_methodref(marshal, "AllocHGlobal", sig, MethodKind::Static, []);
+        let mref = final_assembly.get_mref(allochglobal).clone();
+        call_alias(&mut overrides, &mut final_assembly, "malloc", mref);
         // Overrides calls to realloc
-        let sig = tmp.sig(
+        let sig = final_assembly.sig(
             [Type::Int(Int::ISize), Type::Int(Int::ISize)],
             Type::Int(Int::ISize),
         );
-        let realloc = tmp.new_methodref(marshal, "ReAllocHGlobal", sig, MethodKind::Static, []);
-        let mref = tmp.get_mref(realloc).clone();
-        call_alias(&mut overrides, &mut tmp, "realloc", mref);
+        let realloc =
+            final_assembly.new_methodref(marshal, "ReAllocHGlobal", sig, MethodKind::Static, []);
+        let mref = final_assembly.get_mref(realloc).clone();
+        call_alias(&mut overrides, &mut final_assembly, "realloc", mref);
         // Overrides calls to free
-        let sig = tmp.sig([Type::Int(Int::ISize)], Type::Void);
-        let allochglobal = tmp.new_methodref(marshal, "FreeHGlobal", sig, MethodKind::Static, []);
-        let mref = tmp.get_mref(allochglobal).clone();
-        call_alias(&mut overrides, &mut tmp, "free", mref);
+        let sig = final_assembly.sig([Type::Int(Int::ISize)], Type::Void);
+        let allochglobal =
+            final_assembly.new_methodref(marshal, "FreeHGlobal", sig, MethodKind::Static, []);
+        let mref = final_assembly.get_mref(allochglobal).clone();
+        call_alias(&mut overrides, &mut final_assembly, "free", mref);
     }
     // Override pthreads
     {
         // Override pthread create
-        let void_ptr = tmp.nptr(Type::Void);
+        let void_ptr = final_assembly.nptr(Type::Void);
 
-        let fn_ptr = tmp.fn_ptr([void_ptr], void_ptr);
-        let isize_ptr = tmp.nptr(Type::Int(Int::ISize));
-        let sig = tmp.sig([isize_ptr, void_ptr, fn_ptr, void_ptr], Type::Int(Int::I32));
-        builtin_call(&mut overrides, &mut tmp, "pthread_create", sig);
-        let sig = tmp.sig([isize_ptr], Type::Int(Int::I32));
-        builtin_call(&mut overrides, &mut tmp, "pthread_attr_init", sig);
-        builtin_call(&mut overrides, &mut tmp, "pthread_attr_destroy", sig);
-        let sig = tmp.sig([isize_ptr, Type::Int(Int::USize)], Type::Int(Int::I32));
-        builtin_call(&mut overrides, &mut tmp, "pthread_attr_setstacksize", sig);
-        let void_ptr_ptr = tmp.nptr(void_ptr);
-        let sig = tmp.sig([Type::Int(Int::ISize), void_ptr_ptr], Type::Int(Int::I32));
-        builtin_call(&mut overrides, &mut tmp, "pthread_join", sig);
-        let sig = tmp.sig([], Type::Int(Int::ISize));
-        builtin_call(&mut overrides, &mut tmp, "pthread_self", sig);
+        let fn_ptr = final_assembly.fn_ptr([void_ptr], void_ptr);
+        let isize_ptr = final_assembly.nptr(Type::Int(Int::ISize));
+        let sig = final_assembly.sig([isize_ptr, void_ptr, fn_ptr, void_ptr], Type::Int(Int::I32));
+        builtin_call(&mut overrides, &mut final_assembly, "pthread_create", sig);
+        let sig = final_assembly.sig([isize_ptr], Type::Int(Int::I32));
+        builtin_call(
+            &mut overrides,
+            &mut final_assembly,
+            "pthread_attr_init",
+            sig,
+        );
+        builtin_call(
+            &mut overrides,
+            &mut final_assembly,
+            "pthread_attr_destroy",
+            sig,
+        );
+        let sig = final_assembly.sig([isize_ptr, Type::Int(Int::USize)], Type::Int(Int::I32));
+        builtin_call(
+            &mut overrides,
+            &mut final_assembly,
+            "pthread_attr_setstacksize",
+            sig,
+        );
+        let void_ptr_ptr = final_assembly.nptr(void_ptr);
+        let sig = final_assembly.sig([Type::Int(Int::ISize), void_ptr_ptr], Type::Int(Int::I32));
+        builtin_call(&mut overrides, &mut final_assembly, "pthread_join", sig);
+        let sig = final_assembly.sig([], Type::Int(Int::ISize));
+        builtin_call(&mut overrides, &mut final_assembly, "pthread_self", sig);
     }
     overrides.insert(
-        tmp.alloc_string("_Unwind_RaiseException"),
+        final_assembly.alloc_string("_Unwind_RaiseException"),
         Box::new(|_, asm| MethodImpl::MethodBody {
             blocks: vec![cilly::v2::BasicBlock::from_v1(
                 &cilly::basic_block::BasicBlock::new(
@@ -315,22 +314,23 @@ fn main() {
             locals: vec![],
         }),
     );
-    tmp.patch_missing_methods(externs, modifies_errno, overrides);
+    final_assembly.patch_missing_methods(externs, modifies_errno, overrides);
 
-    add_mandatory_statics(&mut tmp);
+    add_mandatory_statics(&mut final_assembly);
 
     //tmp.eliminate_dead_code();
-    tmp.save_tmp(&mut std::fs::File::create(path.with_extension("cilly2")).unwrap())
+    final_assembly
+        .save_tmp(&mut std::fs::File::create(path.with_extension("cilly2")).unwrap())
         .unwrap();
     if *C_MODE {
-        tmp.export(
+        final_assembly.export(
             &path,
             cilly::v2::il_exporter::ILExporter::new(*ILASM_FLAVOUR, is_lib),
         );
     } else if *JS_MODE {
         todo!();
     } else if *JAVA_MODE {
-        tmp.export(&path, cilly::v2::java_exporter::JavaExporter::new(is_lib));
+        final_assembly.export(&path, cilly::v2::java_exporter::JavaExporter::new(is_lib));
         if cargo_support {
             let bootstrap =
                 bootstrap_source(&path.with_extension("jar"), path.to_str().unwrap(), "java");
@@ -354,7 +354,7 @@ fn main() {
             );
         }
     } else {
-        tmp.export(
+        final_assembly.export(
             &path,
             cilly::v2::il_exporter::ILExporter::new(*ILASM_FLAVOUR, is_lib),
         );

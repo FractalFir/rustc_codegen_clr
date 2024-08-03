@@ -19,6 +19,7 @@ pub use tpe::{Type, TypeIdx};
 
 pub mod access;
 pub mod asm;
+pub mod asm_link;
 pub mod basic_block;
 pub mod bimap;
 pub mod c_exporter;
