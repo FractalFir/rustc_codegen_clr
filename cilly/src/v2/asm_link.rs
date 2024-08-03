@@ -1,9 +1,10 @@
 use super::{
-    Assembly, BasicBlock, CILNode, CILRoot, ClassDef, ClassRef, ClassRefIdx, FieldDesc, FnSig,
-    MethodDef, MethodRef, StaticFieldDesc, Type,
+    asm::{CCTOR, TCCTOR, USER_INIT},
+    Assembly, BasicBlock, CILNode, CILRoot, ClassDef, ClassDefIdx, ClassRef, ClassRefIdx,
+    FieldDesc, FnSig, MethodDef, MethodDefIdx, MethodRef, StaticFieldDesc, Type,
 };
 impl Assembly {
-    pub fn translate_type(&mut self, source: &Self, tpe: Type) -> Type {
+    pub(crate) fn translate_type(&mut self, source: &Self, tpe: Type) -> Type {
         match tpe {
             Type::Ptr(inner) => {
                 let inner = self.translate_type(source, *source.get_type(inner));
@@ -11,7 +12,7 @@ impl Assembly {
             }
             Type::Ref(inner) => {
                 let inner = self.translate_type(source, *source.get_type(inner));
-                self.nptr(inner)
+                self.nref(inner)
             }
             Type::Int(_)
             | Type::Float(_)
@@ -35,13 +36,15 @@ impl Assembly {
             }
         }
     }
-    pub fn translate_class_ref(
+    pub(crate) fn translate_class_ref(
         &mut self,
         source: &Assembly,
         class_ref: ClassRefIdx,
     ) -> ClassRefIdx {
         let cref = source.class_ref(class_ref);
+
         let name = self.alloc_string(source.get_string(cref.name()).as_ref());
+
         let asm = cref
             .asm()
             .map(|asm_name| self.alloc_string(source.get_string(asm_name).as_ref()));
@@ -50,9 +53,12 @@ impl Assembly {
             .iter()
             .map(|tpe| self.translate_type(source, *tpe))
             .collect();
-        self.alloc_class_ref(ClassRef::new(name, asm, cref.is_valuetype(), generics))
+
+        let cref = self.alloc_class_ref(ClassRef::new(name, asm, cref.is_valuetype(), generics));
+
+        cref
     }
-    pub fn translate_sig(&mut self, source: &Assembly, sig: FnSig) -> FnSig {
+    pub(crate) fn translate_sig(&mut self, source: &Assembly, sig: FnSig) -> FnSig {
         FnSig::new(
             sig.inputs()
                 .iter()
@@ -61,24 +67,28 @@ impl Assembly {
             self.translate_type(source, *sig.output()),
         )
     }
-    pub fn translate_field(&mut self, source: &Assembly, field: FieldDesc) -> FieldDesc {
+    pub(crate) fn translate_field(&mut self, source: &Assembly, field: FieldDesc) -> FieldDesc {
         let name = self.alloc_string(source.get_string(field.name()).as_ref());
-        let owner = self.alloc_class_ref(source.class_ref(field.owner()).clone());
+        let owner = self.translate_class_ref(source, field.owner());
         let tpe = self.translate_type(source, field.tpe());
         FieldDesc::new(owner, name, tpe)
     }
-    pub fn translate_static_field(
+    pub(crate) fn translate_static_field(
         &mut self,
         source: &Assembly,
         field: StaticFieldDesc,
     ) -> StaticFieldDesc {
         let name = self.alloc_string(source.get_string(field.name()).as_ref());
-        let owner = self.alloc_class_ref(source.class_ref(field.owner()).clone());
+        let owner = self.translate_class_ref(source, field.owner());
         let tpe = self.translate_type(source, field.tpe());
         StaticFieldDesc::new(owner, name, tpe)
     }
-    pub fn translate_method_ref(&mut self, source: &Assembly, method_ref: MethodRef) -> MethodRef {
-        let class = self.alloc_class_ref(source.class_ref(method_ref.class()).clone());
+    pub(crate) fn translate_method_ref(
+        &mut self,
+        source: &Assembly,
+        method_ref: MethodRef,
+    ) -> MethodRef {
+        let class = self.translate_class_ref(source, method_ref.class());
         let name = self.alloc_string(source.get_string(method_ref.name()).as_ref());
         let sig = self.translate_sig(source, source.get_sig(method_ref.sig()).clone());
         let sig = self.alloc_sig(sig);
@@ -89,7 +99,7 @@ impl Assembly {
             .collect();
         MethodRef::new(class, name, sig, method_ref.kind(), generics)
     }
-    pub fn translate_node(&mut self, source: &Assembly, node: CILNode) -> CILNode {
+    pub(crate) fn translate_node(&mut self, source: &Assembly, node: CILNode) -> CILNode {
         match node {
             CILNode::LdLoc(_)
             | CILNode::LdLocA(_)
@@ -280,7 +290,7 @@ impl Assembly {
             }
         }
     }
-    pub fn translate_root(&mut self, source: &Assembly, root: CILRoot) -> CILRoot {
+    pub(crate) fn translate_root(&mut self, source: &Assembly, root: CILRoot) -> CILRoot {
         match root {
             CILRoot::StLoc(loc, node) => {
                 let node = self.translate_node(source, source.get_node(node).clone());
@@ -447,7 +457,7 @@ impl Assembly {
             }
         }
     }
-    pub fn translate_block(&mut self, source: &Assembly, block: &BasicBlock) -> BasicBlock {
+    pub(crate) fn translate_block(&mut self, source: &Assembly, block: &BasicBlock) -> BasicBlock {
         let roots = block
             .roots()
             .iter()
@@ -464,9 +474,11 @@ impl Assembly {
         });
         BasicBlock::new(roots, block.block_id(), handler)
     }
-    pub fn translate_method_def(&mut self, source: &Assembly, def: &MethodDef) -> MethodDef {
+    pub(crate) fn translate_method_def(&mut self, source: &Assembly, def: &MethodDef) -> MethodDef {
         let class = self.translate_class_ref(source, *def.class());
-        let class = self.class_ref_to_def(class).unwrap();
+
+        // OK, becuase our caller translates the parrent of this class too.
+        let class = ClassDefIdx(class);
         let name = self.alloc_string(source.get_string(def.name()).as_ref());
         let sig = self.translate_sig(source, source.get_sig(def.sig()).clone());
         let sig = self.alloc_sig(sig);
@@ -520,7 +532,7 @@ impl Assembly {
             arg_names,
         )
     }
-    pub fn translate_class_def(&mut self, source: &Assembly, def: &ClassDef) -> ClassDef {
+    pub(crate) fn translate_class_def(&mut self, source: &Assembly, def: &ClassDef) -> ClassDef {
         let name = self.alloc_string(source.get_string(def.name()).as_ref());
         let extends = def
             .extends()
@@ -530,7 +542,7 @@ impl Assembly {
             .iter()
             .map(|(tpe, name, offset)| {
                 let tpe = self.translate_type(source, *tpe);
-                let name = self.alloc_string(source.get_string(def.name()).as_ref());
+                let name = self.alloc_string(source.get_string(*name).as_ref());
                 (tpe, name, *offset)
             })
             .collect();
@@ -539,7 +551,7 @@ impl Assembly {
             .iter()
             .map(|(tpe, name, thread_local)| {
                 let tpe = self.translate_type(source, *tpe);
-                let name = self.alloc_string(source.get_string(def.name()).as_ref());
+                let name = self.alloc_string(source.get_string(*name).as_ref());
                 (tpe, name, *thread_local)
             })
             .collect();
@@ -547,8 +559,44 @@ impl Assembly {
             .methods()
             .iter()
             .map(|mdef| {
-                let method_def = self.translate_method_def(source, source.method_def(*mdef));
-                self.new_method(method_def)
+                let mut method_def = self.translate_method_def(source, source.method_def(*mdef));
+                let method_ref = self.alloc_methodref(method_def.ref_to());
+                // 1st Take the orignal method, if it exists(we need this to be able to mutate methods)
+                let original = self.method_defs().get(&MethodDefIdx(method_ref));
+                let method_def = match original {
+                    Some(original) => {
+                        assert_eq!(method_def.name(), original.name());
+                        // Check if this method has a special name, and needs merging.
+                        let name = self.get_string(method_def.name());
+                        if SPECIAL_METHOD_NAMES.iter().any(|val| **val == **name) {
+                            // Not special, proly does not need merging, so we can check if it matches and go on our merry way.
+                            assert_eq!(method_def.access(), original.access());
+                            assert_eq!(method_def.class(), original.class());
+                            assert_eq!(method_def.sig(), original.sig());
+                            assert_eq!(method_def.kind(), original.kind());
+                            method_def
+                                .implementation_mut()
+                                .merge_cctor_impls(original.implementation(), self);
+                            method_def
+                        } else {
+                            // Not special, proly does not need merging, so we can check if it matches and go on our merry way.
+                            assert_eq!(method_def.access(), original.access());
+                            assert_eq!(method_def.class(), original.class());
+                            assert_eq!(method_def.sig(), original.sig());
+                            assert_eq!(method_def.kind(), original.kind());
+                            // EXPENSIVE, consider making this check debug only.
+                            let (left_val,right_val) = (&(method_def.implementation()), &(original.implementation()));
+                            if!(*left_val== *right_val){
+                                eprintln!("WARNING: linking methods with diveriging implmenentations. This is usualy a sign of a bug. {left_val:?} {right_val:?}");
+                            };
+                            method_def
+                        }
+                    }
+                    None => method_def,
+                };
+                self.method_defs_mut()
+                    .insert(MethodDefIdx(method_ref), method_def);
+                MethodDefIdx(method_ref)
             })
             .collect();
         ClassDef::new(
@@ -564,3 +612,4 @@ impl Assembly {
         )
     }
 }
+const SPECIAL_METHOD_NAMES: &[&str] = &[CCTOR, TCCTOR, USER_INIT];

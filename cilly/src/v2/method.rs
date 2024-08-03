@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::v2::CILRoot;
+
 use super::{
     bimap::{BiMapIndex, IntoBiMapIndex},
     cilnode::MethodKind,
@@ -283,6 +285,119 @@ impl MethodImpl {
     #[must_use]
     pub fn is_extern(&self) -> bool {
         matches!(self, Self::Extern { .. })
+    }
+
+    pub(crate) fn merge_cctor_impls(&mut self, implementation: &MethodImpl, asm: &Assembly) {
+        let tmp = match (&self, &implementation) {
+            (
+                MethodImpl::MethodBody { blocks, locals },
+                MethodImpl::MethodBody {
+                    blocks: other_blocks,
+                    locals: other_locals,
+                },
+            ) => {
+                assert_eq!(locals, other_locals);
+                let mut blocks = blocks.clone();
+                // First, check that 1st blocks end in `VoidRet`, and remove it.
+                let last_root = if blocks.is_empty() {
+                    blocks.push(BasicBlock::new(vec![], 0, None));
+                    CILRoot::VoidRet
+                } else {
+                    blocks
+                        .last_mut()
+                        .unwrap()
+                        .roots_mut()
+                        .pop()
+                        .map(|root_id| asm.get_root(root_id).clone())
+                        .unwrap_or(CILRoot::VoidRet)
+                };
+                assert_eq!(last_root, CILRoot::VoidRet);
+                assert_eq!(
+                    other_blocks.len(),
+                    1,
+                    "Only merging one block method impls is currently supported"
+                );
+                blocks
+                    .last_mut()
+                    .unwrap()
+                    .roots_mut()
+                    .extend(other_blocks.last().unwrap().roots());
+                MethodImpl::MethodBody {
+                    blocks,
+                    locals: locals.to_vec(),
+                }
+            }
+            (MethodImpl::MethodBody { .. }, MethodImpl::Extern { .. }) => {
+                panic!("Unmergable method impl.")
+            }
+            (MethodImpl::MethodBody { .. }, MethodImpl::AliasFor(_)) => {
+                panic!("Unmergable method impl.")
+            }
+            (MethodImpl::MethodBody { blocks, locals }, MethodImpl::Missing) => {
+                MethodImpl::MethodBody {
+                    blocks: blocks.to_vec(),
+                    locals: locals.to_vec(),
+                }
+            }
+            (MethodImpl::Extern { .. }, MethodImpl::MethodBody { .. }) => {
+                panic!("Unmergable method impl.")
+            }
+            (
+                MethodImpl::Extern {
+                    lib,
+                    preserve_errno,
+                },
+                MethodImpl::Extern {
+                    lib: liba,
+                    preserve_errno: preserve_errnoa,
+                },
+            ) => {
+                assert_eq!(lib, liba);
+                assert_eq!(preserve_errno, preserve_errnoa);
+                self.clone()
+            }
+            (MethodImpl::Extern { .. }, MethodImpl::AliasFor(_)) => {
+                panic!("Unmergable method impl.")
+            }
+            (
+                MethodImpl::Extern {
+                    lib,
+                    preserve_errno,
+                },
+                MethodImpl::Missing,
+            ) => MethodImpl::Extern {
+                lib: *lib,
+                preserve_errno: *preserve_errno,
+            },
+            (MethodImpl::AliasFor(_), MethodImpl::MethodBody { .. })
+            | (MethodImpl::AliasFor(_), MethodImpl::Extern { .. }) => {
+                panic!("Unmergable method impl.")
+            }
+            (MethodImpl::AliasFor(a), MethodImpl::AliasFor(b)) => {
+                assert_eq!(a, b);
+                self.clone()
+            }
+            (MethodImpl::AliasFor(alias), MethodImpl::Missing) => MethodImpl::AliasFor(*alias),
+            (MethodImpl::Missing, MethodImpl::MethodBody { blocks, locals }) => {
+                MethodImpl::MethodBody {
+                    blocks: blocks.to_vec(),
+                    locals: locals.to_vec(),
+                }
+            }
+            (
+                MethodImpl::Missing,
+                MethodImpl::Extern {
+                    lib,
+                    preserve_errno,
+                },
+            ) => MethodImpl::Extern {
+                lib: *lib,
+                preserve_errno: *preserve_errno,
+            },
+            (MethodImpl::Missing, MethodImpl::AliasFor(alias)) => MethodImpl::AliasFor(*alias),
+            (MethodImpl::Missing, MethodImpl::Missing) => MethodImpl::Missing,
+        };
+        *self = tmp;
     }
 }
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]

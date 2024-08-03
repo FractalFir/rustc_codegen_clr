@@ -7,7 +7,7 @@ use crate::{v2::MethodDef, DotnetTypeRef as V1ClassRef};
 use super::{
     access::Access,
     bimap::{BiMapIndex, IntoBiMapIndex},
-    MethodDefIdx, StringIdx, Type,
+    Assembly, MethodDefIdx, StringIdx, Type,
 };
 
 impl From<ClassRefIdx> for Type {
@@ -34,6 +34,17 @@ pub struct ClassRef {
 }
 
 impl ClassRef {
+    pub fn display(&self, asm: &Assembly) -> String {
+        format!(
+            "ClassRef{{name:{:?} {},asm:{:?} {:?},is_valuetype:{},generics{:?}}}",
+            self.name(),
+            asm.get_string(self.name()),
+            self.asm(),
+            self.asm().map(|idx| asm.get_string(idx)),
+            self.is_valuetype(),
+            self.generics()
+        )
+    }
     pub fn new(
         name: StringIdx,
         asm: Option<StringIdx>,

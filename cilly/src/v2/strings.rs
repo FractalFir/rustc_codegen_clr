@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use super::bimap::{BiMapIndex, IntoBiMapIndex};
 
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Copy, Serialize, Deserialize)]
-pub struct StringIdx(BiMapIndex);
+pub struct StringIdx(pub(crate) BiMapIndex);
 impl IntoBiMapIndex for StringIdx {
     fn from_index(val: BiMapIndex) -> Self {
         Self(val)

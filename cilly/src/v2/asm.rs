@@ -552,7 +552,10 @@ impl Assembly {
             );
             assert!(
                 self.class_defs.contains_key(&ClassDefIdx(mref.class())),
-                "Can't yet handle missing types."
+                "Can't yet handle missing types. Type {} with id {:?} is missing. Method {}",
+                self.class_ref(mref.class()).display(self),
+                mref.class(),
+                self.get_string(mref.name())
             );
 
             self.new_method(method_def);
@@ -567,6 +570,7 @@ impl Assembly {
         }
     }
     pub fn link(mut self, other: Self) -> Self {
+        let original_str = self.alloc_string(MAIN_MODULE);
         for def in other.iter_class_defs() {
             let translated = self.translate_class_def(&other, def);
             let class_ref = self.alloc_class_ref(translated.ref_to());
@@ -579,7 +583,16 @@ impl Assembly {
                 }
             }
         }
+        assert_eq!(self.alloc_string(MAIN_MODULE), original_str);
         self
+    }
+
+    pub(crate) fn method_defs_mut(&mut self) -> &mut FxHashMap<MethodDefIdx, MethodDef> {
+        &mut self.method_defs
+    }
+
+    pub(crate) fn method_defs(&self) -> &FxHashMap<MethodDefIdx, MethodDef> {
+        &self.method_defs
     }
 }
 /// An initializer, which runs before everything else. By convention, it is used to initialize static / const data. Should not execute any user code

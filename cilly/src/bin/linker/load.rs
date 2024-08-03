@@ -58,7 +58,7 @@ pub fn load_assemblies(
     archives: &[String],
 ) -> (cilly::v2::Assembly, Vec<LinkableFile>) {
     println!("Preparing to load assmeblies");
-    let mut final_assembly = Assembly::empty();
+    let mut final_assembly = cilly::v2::Assembly::default();
     let mut linkables = Vec::new();
     for asm_path in raw_files {
         let mut asm_file =
@@ -67,19 +67,19 @@ pub fn load_assemblies(
         asm_file
             .read_to_end(&mut asm_bytes)
             .expect("ERROR: Could not load the assembly file!");
-        let assembly =
+        let assembly: cilly::asm::Assembly =
             postcard::from_bytes(&asm_bytes).expect("ERROR:Could not decode the assembly file!");
-        final_assembly = final_assembly.join(assembly);
+        let asm = cilly::v2::Assembly::from_v1(&assembly);
+        final_assembly = final_assembly.link(asm);
     }
     for asm_path in archives {
         let mut asm_file =
             std::fs::File::open(asm_path).expect("ERROR: Could not open the assembly file!");
         let assembly = load_ar(&mut asm_file).expect("Could not open archive");
-        final_assembly = final_assembly.join(assembly.0);
+        let asm = cilly::v2::Assembly::from_v1(&assembly.0);
+        final_assembly = final_assembly.link(asm);
         linkables.extend(assembly.1);
     }
     println!("Loaded assmeblies");
-    let final_assembly = cilly::v2::Assembly::from_v1(&final_assembly);
-    println!("Converted assmeblies");
     (final_assembly, linkables)
 }

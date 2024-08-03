@@ -4,7 +4,6 @@ use aot::aot_compile_mode;
 use cilly::{
     access_modifier,
     asm::Assembly,
-    basic_block::BasicBlock,
     call,
     call_site::CallSite,
     conv_usize, ldc_i32,
@@ -13,7 +12,7 @@ use cilly::{
     v2::{
         asm::{MissingMethodPatcher, ILASM_FLAVOUR},
         cilnode::MethodKind,
-        CILNode, CILRoot, ClassRef, IlasmFlavour, Int, MethodDef, MethodImpl, Type,
+        BasicBlock, CILNode, CILRoot, ClassRef, IlasmFlavour, Int, MethodDef, MethodImpl, Type,
     },
     DotnetTypeRef, FnSig,
 };
@@ -312,6 +311,23 @@ fn main() {
                 asm,
             )],
             locals: vec![],
+        }),
+    );
+    overrides.insert(
+        final_assembly.alloc_string("_Unwind_Backtrace"),
+        Box::new(|mref, asm| {
+            // 1 Get the output of the method.
+            let mref = asm.get_mref(mref);
+            let sig = asm.get_sig(mref.sig()).clone();
+            let output = sig.output();
+            // 2. Create one local of the output type
+            let loc_name = asm.alloc_string("uninit");
+            let locals = vec![(Some(loc_name), asm.alloc_type(*output))];
+            // 3. Create CIL returning an uninitalized value of this type. TODO: even tough this value is shortly discarded on the Rust side, this is UB. Consider zero-initializing it.
+            let loc = asm.alloc_node(CILNode::LdLoc(0));
+            let ret = asm.alloc_root(CILRoot::Ret(loc));
+            let blocks = vec![BasicBlock::new(vec![ret], 0, None)];
+            MethodImpl::MethodBody { blocks, locals }
         }),
     );
     final_assembly.patch_missing_methods(externs, modifies_errno, overrides);
