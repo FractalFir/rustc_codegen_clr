@@ -634,7 +634,7 @@ lazy_static! {
         }
     };
 }
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum IlasmFlavour {
     Clasic,
     Modern,

@@ -3,7 +3,7 @@ use lazy_static::*;
 use crate::{ utilis::assert_unique, v2::MethodImpl, };
 
 use super::{
-    asm::ILASM_PATH, cilroot::BranchCond, int, Assembly, CILIter, CILIterElem, CILNode, ClassRefIdx, Exporter, NodeIdx, RootIdx, Type,asm::IlasmFlavour
+    asm::{IlasmFlavour, ILASM_FLAVOUR, ILASM_PATH}, cilroot::BranchCond, int, Assembly, CILIter, CILIterElem, CILNode, ClassRefIdx, Exporter, NodeIdx, RootIdx, Type
 };
 
 pub struct ILExporter {
@@ -1008,6 +1008,10 @@ impl Exporter for ILExporter {
         .arg(asm_type)
         // .arg("-FOLD") saves up on space, consider enabling.
         ;
+        if *ILASM_FLAVOUR == IlasmFlavour::Clasic{
+            // Limit the memory usage of mono
+            cmd.env("MONO_GC_PARAMS","soft-heap-limit=500m");
+        }
         let out = cmd.output().unwrap();
         let stdout = String::from_utf8_lossy(&out.stdout);
         let stderr = String::from_utf8_lossy(&out.stderr);
