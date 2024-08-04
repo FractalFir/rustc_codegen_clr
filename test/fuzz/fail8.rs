@@ -1,5 +1,11 @@
 #![feature(custom_mir, core_intrinsics, const_hash)]
-#![allow(dead_code)]
+#![allow(
+    unused_parens,
+    unused_assignments,
+    overflowing_literals,
+    internal_features
+)]
+#![allow(dead_code, unused_imports, unused_mut)]
 use std::ffi::{c_char, c_int};
 use std::intrinsics::mir::*;
 extern "C" {

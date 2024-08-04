@@ -6,7 +6,8 @@
     overflowing_literals,
     internal_features
 )]
-#![allow(dead_code)]
+#![allow(dead_code, unused_imports, unused_mut)]
+
 extern crate core;
 use core::intrinsics::mir::*;
 
