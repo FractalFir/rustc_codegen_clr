@@ -334,7 +334,7 @@ fn main() {
 
     add_mandatory_statics(&mut final_assembly);
 
-    //tmp.eliminate_dead_code();
+    final_assembly.eliminate_dead_code();
     final_assembly
         .save_tmp(&mut std::fs::File::create(path.with_extension("cilly2")).unwrap())
         .unwrap();

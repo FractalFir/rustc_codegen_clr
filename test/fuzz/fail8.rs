@@ -2,6 +2,7 @@
 #![allow(
     unused_parens,
     unused_assignments,
+    unused_variables,
     overflowing_literals,
     internal_features
 )]
@@ -131,7 +132,7 @@ fn dump_var(
         val2.printf_debug();
     }
 }
-#[custom_mir(dialect = "runtime", phase = "initial")]
+
 pub fn fn0(
     mut _1: bool,
     mut _2: char,
@@ -148,16 +149,11 @@ pub fn fn0(
     mut _13: u64,
     mut _14: u128,
 ) -> f32 {
-    mir! {
-    let _16: (bool, i16, i8);
-    let _18: Adt46;
-    {
-    Call(_18 = fn1(_1, _16, _12, _1, _3, _4), ReturnTo(bb9), UnwindUnreachable())
-    }
-    bb9 = {
-    Return()
-    }
-    }
+    let _16: (bool, i16, i8) = Default::default();
+
+    fn1(_1, _16, _12, _1, _3, _4);
+
+    0.0
 }
 #[custom_mir(dialect = "runtime", phase = "initial")]
 pub fn fn1(
@@ -167,7 +163,7 @@ pub fn fn1(
     mut _4: bool,
     mut _5: isize,
     mut _6: i8,
-) -> Adt46 {
+) -> () {
     mir! {
     let _8: (u64, f32);
     let _11: Adt43;
@@ -179,7 +175,7 @@ pub fn fn1(
     }
     }
 }
-#[custom_mir(dialect = "runtime", phase = "initial")]
+
 pub fn fn2(
     mut _1: isize,
     mut _2: i16,
@@ -189,25 +185,28 @@ pub fn fn2(
     mut _6: i16,
     mut _7: isize,
     mut _8: (bool, i16, i8),
-) -> Adt46 {
-    mir! {
-    let _9: ((u128, (i128, i8, i8, u16)),);
-    let _10: (bool, i16, i8);
-    let _12: isize;
-    let _14: (bool, i16, i8);
-    let _15: ((u128, (i128, i8, i8, u16)),);
-    {
-    Goto(bb1)
-    }
-    bb1 = {
-    Call(RET = fn3(_12, _9.0.1.3, _10, _8, _14.0, _15.0.1.3, _10.0, _9.0.1.3, _10, _10, _14), ReturnTo(bb13), UnwindUnreachable())
-    }
-    bb13 = {
-    Return()
-    }
-    }
+) {
+    let _9: ((u128, (i128, i8, i8, u16)),) = Default::default();
+    let _10: (bool, i16, i8) = Default::default();
+    let _12: isize = Default::default();
+    let _14: (bool, i16, i8) = Default::default();
+    let _15: ((u128, (i128, i8, i8, u16)),) = Default::default();
+
+    fn3(
+        _12,
+        _9.0 .1 .3,
+        _10,
+        _8,
+        _14.0,
+        _15.0 .1 .3,
+        _10.0,
+        _9.0 .1 .3,
+        _10,
+        _10,
+        _14,
+    )
 }
-#[custom_mir(dialect = "runtime", phase = "initial")]
+
 pub fn fn3(
     mut _1: isize,
     mut _2: u16,
@@ -220,32 +219,20 @@ pub fn fn3(
     mut _9: (bool, i16, i8),
     mut _10: (bool, i16, i8),
     mut _11: (bool, i16, i8),
-) -> Adt46 {
-    mir! {
-    let _16: (i8, i16);
-    {
-    Call(_10.1 = fn4(_11.0, _16.1, _11.0), ReturnTo(bb12), UnwindUnreachable())
-    }
-    bb12 = {
-    Return()
-    }
-    }
+) {
+    let _16: (i8, i16) = Default::default();
+
+    fn4(_11.0, _16.1, _11.0);
 }
-#[custom_mir(dialect = "runtime", phase = "initial")]
-fn fn4(mut _1: bool, mut _2: i16, mut _3: bool) -> i16 {
-    mir! {
-    let _5: f32;
-    let _7: Adt49;
-    let _8: ((u64, f32), u8, f32, [bool; 2]);
-    {
-    Call(_7 = fn6(_1, _8, _3, _3, _5, _8.3, _8), ReturnTo(bb3), UnwindUnreachable())
-    }
-    bb3 = {
-    Return()
-    }
-    }
+
+fn fn4(mut _1: bool, mut _2: i16, mut _3: bool) {
+    let _5: f32 = Default::default();
+
+    let _8: ((u64, f32), u8, f32, [bool; 2]) = Default::default();
+
+    fn6(_1, _8, _3, _3, _5, _8.3, _8);
 }
-#[custom_mir(dialect = "runtime", phase = "initial")]
+
 pub fn fn6(
     mut _1: bool,
     mut _2: ((u64, f32), u8, f32, [bool; 2]),
@@ -254,19 +241,12 @@ pub fn fn6(
     mut _5: f32,
     mut _6: [bool; 2],
     mut _7: ((u64, f32), u8, f32, [bool; 2]),
-) -> Adt49 {
-    mir! {
-    let _9: (u64, f32);
-    let _10: bool;
-    let _27: Adt49;
-    {
+) {
+    let mut _9: (u64, f32) = Default::default();
+    let _10: bool = Default::default();
+
     _9.0 = 869855573_u32 as u64;
-    Call(_27.fld0 = fn13(_2, _3, _9, _1, _10, _9.1, _2.3), ReturnTo(bb10), UnwindUnreachable())
-    }
-    bb10 = {
-    Return()
-    }
-    }
+    fn13(_2, _3, _9, _1, _10, _9.1, _2.3);
 }
 #[custom_mir(dialect = "runtime", phase = "initial")]
 pub fn fn13(

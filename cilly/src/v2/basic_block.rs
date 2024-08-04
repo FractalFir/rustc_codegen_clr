@@ -25,7 +25,13 @@ impl BasicBlock {
     pub fn block_id(&self) -> u32 {
         self.block_id
     }
-
+    pub fn iter_roots(&self) -> impl Iterator<Item = RootIdx> + '_ {
+        let handler_iter: Box<dyn Iterator<Item = RootIdx>> = match self.handler() {
+            Some(handler) => Box::new(handler.iter().flat_map(|block| block.iter_roots())),
+            None => Box::new(std::iter::empty()),
+        };
+        self.roots().iter().copied().chain(handler_iter)
+    }
     pub fn handler(&self) -> Option<&[BasicBlock]> {
         self.handler.as_ref().map(|b| b.as_ref())
     }

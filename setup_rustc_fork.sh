@@ -11,7 +11,7 @@ test -e "rust" || git clone --quiet https://github.com/rust-lang/rust.git --filt
 pushd rust
 git fetch
 git checkout --no-progress -- .
-# git checkout --no-progress "$(rustc -V | cut -d' ' -f3 | tr -d '(')"
+git checkout --no-progress "$(rustc -V | cut -d' ' -f3 | tr -d '(')"
 
 git submodule update --quiet --init src/tools/cargo library/backtrace library/stdarch
 

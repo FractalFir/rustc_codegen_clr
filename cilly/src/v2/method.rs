@@ -105,11 +105,13 @@ impl MethodDef {
             MethodImpl::MethodBody { blocks, .. } => Some(
                 blocks
                     .iter()
-                    .flat_map(|block| block.roots())
-                    .flat_map(|root| super::CILIter::new(asm.get_root(*root).clone(), asm)),
+                    .flat_map(|block| block.iter_roots())
+                    .flat_map(|root| super::CILIter::new(asm.get_root(root).clone(), asm)),
             ),
             MethodImpl::Extern { .. } => None,
-            MethodImpl::AliasFor(_) => panic!(),
+            MethodImpl::AliasFor(_) => {
+                panic!("Unresolved alias returned by MethodDef::resolved_implementation")
+            }
             MethodImpl::Missing => None,
         }
     }

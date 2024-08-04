@@ -441,8 +441,6 @@ impl Assembly {
             tdef.methods_mut()
                 .retain(|def| self.method_defs.contains_key(def));
         });
-        // Free all the dead roots
-        //self.realloc_roots();
     }
     /*pub fn realloc_nodes(&mut self){
 
