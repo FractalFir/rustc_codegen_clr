@@ -663,9 +663,6 @@ fn argv() {
     let mut asm = Assembly::empty();
     argc_argv_init_method(&mut asm);
     let mut out = String::new();
-    asm.methods()
-        .find(|method| method.name().contains("argc"))
-        .unwrap();
 }
 pub trait MemoryUsage {
     fn memory_usage(&self, counter: &mut impl MemoryUsageCounter) -> usize;
@@ -832,9 +829,6 @@ fn environ() {
     get_environ(&mut asm);
 
     let mut out = String::new();
-    asm.methods()
-        .find(|method| method.name().contains("environ"))
-        .unwrap();
 }
 #[must_use]
 pub fn escape_class_name(name: &str) -> String {

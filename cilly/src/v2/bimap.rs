@@ -1,7 +1,7 @@
 use fxhash::{FxHashMap, FxHasher};
 use serde::{Deserialize, Serialize};
 use std::{collections::hash_map::Entry, fmt::Debug, hash::Hash, num::NonZeroU32};
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct BiMap<Key, Value: Eq + Hash>(pub Vec<Value>, pub FxHashMap<Value, Key>);
 impl<Key: IntoBiMapIndex + Eq + Hash + Clone, Value: Eq + Hash + Clone> Default
     for BiMap<Key, Value>

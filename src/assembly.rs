@@ -641,16 +641,15 @@ pub fn add_allocation(
             //TODO: handle VTables
             let alloc_fld: IString = format!("alloc_{alloc_id:x}").into();
             let field_desc = StaticFieldDescriptor::new(None, ptr!(Type::U8), alloc_fld.clone());
-            asm.static_fields_mut()
-                .insert(alloc_fld, (ptr!(Type::U8), false));
+            asm.add_static(ptr!(Type::U8), &alloc_fld, false);
             return CILNode::LDStaticField(Box::new(field_desc));
         }
         GlobalAlloc::Function { .. } => {
             //TODO: handle constant functions
             let alloc_fld: IString = format!("alloc_{alloc_id:x}").into();
             let field_desc = StaticFieldDescriptor::new(None, ptr!(Type::U8), alloc_fld.clone());
-            asm.static_fields_mut()
-                .insert(alloc_fld, (ptr!(Type::U8), false));
+            asm.add_static(ptr!(Type::U8), &alloc_fld, false);
+
             return CILNode::LDStaticField(Box::new(field_desc));
             //todo!("Function/Vtable allocation.");
         }
@@ -665,7 +664,7 @@ pub fn add_allocation(
     let byte_hash = calculate_hash(&bytes);
     let alloc_fld: IString = format!("a_{}{}", encode(alloc_id), encode(byte_hash)).into();
     let field_desc = StaticFieldDescriptor::new(None, ptr!(Type::U8), alloc_fld.clone());
-    if !asm.static_fields_mut().contains_key(&alloc_fld) {
+    if !asm.static_fields().contains_key(&alloc_fld) {
         let init_method =
             allocation_initializer_method(const_allocation, &alloc_fld, tcx, asm, tycache);
         let mut blocks = if thread_local {
@@ -727,7 +726,7 @@ pub fn add_const_value(asm: &mut Assembly, bytes: u128, tcx: TyCtxt) -> StaticFi
     let alloc_fld: IString = format!("a_{bytes:x}").into();
     let raw_bytes = bytes.to_le_bytes();
     let field_desc = StaticFieldDescriptor::new(None, ptr!(Type::U8), alloc_fld.clone());
-    if !asm.static_fields_mut().contains_key(&alloc_fld) {
+    if !asm.static_fields().contains_key(&alloc_fld) {
         let mut trees = vec![CILRoot::STLoc {
             local: 0,
             tree: call!(crate::cil::malloc(tcx), [conv_usize!(ldc_u32!(16))])

@@ -43,11 +43,9 @@ impl AssemblyExternRef {
     }
 }
 pub type ExternFnDef = (IString, FnSig, bool);
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize)]
 /// Representation of a .NET assembly.
 pub struct Assembly {
-    /// List of types desined within the assembly.
-    types: FxHashMap<IString, TypeDef>,
     /// List of functions defined within this assembly.
     functions: FxHashMap<CallSite, Method>,
     /// Callsite representing the entrypoint of this assebmly if any present.
@@ -59,28 +57,10 @@ pub struct Assembly {
     static_fields: FxHashMap<IString, (Type, bool)>,
     /// Initializers. Call order not guarnateed(but should match the order they are added in), but should be called after most of `.cctor` runs.
     initializers: Vec<CILRoot>,
+    // Inner v2 assembly
+    inner: super::v2::Assembly,
 }
 impl Assembly {
-    /// Returns the `.cctor` function used to initialize static data
-    #[must_use]
-    pub fn cctor(&self) -> Option<&Method> {
-        self.functions.get(&CallSite::new(
-            None,
-            ".cctor".into(),
-            FnSig::new(&[], Type::Void),
-            true,
-        ))
-    }
-    /// Returns the `.tcctor` function used to initialize thread-local static data
-    #[must_use]
-    pub fn tcctor(&self) -> Option<&Method> {
-        self.functions.get(&CallSite::new(
-            None,
-            ".tcctor".into(),
-            FnSig::new(&[], Type::Void),
-            true,
-        ))
-    }
     /// Returns the external assembly reference
     #[must_use]
     pub fn extern_refs(&self) -> &FxHashMap<IString, AssemblyExternRef> {
@@ -90,13 +70,13 @@ impl Assembly {
     #[must_use]
     pub fn empty() -> Self {
         let mut res = Self {
-            types: FxHashMap::with_hasher(FxBuildHasher::default()),
             functions: FxHashMap::with_hasher(FxBuildHasher::default()),
             entrypoint: None,
             extern_refs: FxHashMap::with_hasher(FxBuildHasher::default()),
             static_fields: FxHashMap::with_hasher(FxBuildHasher::default()),
             extern_fns: FxHashMap::with_hasher(FxBuildHasher::default()),
             initializers: vec![],
+            inner: Default::default(),
         };
         res.static_fields.insert(
             "GlobalAtomicLock".into(),
@@ -116,41 +96,6 @@ impl Assembly {
         res.add_cctor();
         res.add_tcctor();
         res
-    }
-    /// Joins 2 assemblies together.
-    #[must_use]
-    pub fn join(self, other: Self) -> Self {
-        let static_initializer = link_static_initializers(self.cctor(), other.cctor());
-        let tcctor = link_static_initializers(self.tcctor(), other.tcctor());
-        let mut types = self.types;
-        types.extend(other.types);
-        let mut functions = self.functions;
-        functions.extend(other.functions);
-        if let Some(static_initializer) = static_initializer {
-            functions.insert(static_initializer.call_site(), static_initializer);
-        }
-        if let Some(tcctor) = tcctor {
-            functions.insert(tcctor.call_site(), tcctor);
-        }
-        let entrypoint = self.entrypoint.or(other.entrypoint);
-        let mut extern_refs = self.extern_refs;
-        let mut static_fields = self.static_fields;
-        let mut extern_fns = self.extern_fns;
-        static_fields.extend(other.static_fields);
-        extern_refs.extend(other.extern_refs);
-        extern_fns.extend(other.extern_fns);
-        let mut initializers = self.initializers;
-        initializers.extend(other.initializers);
-
-        Self {
-            types,
-            functions,
-            entrypoint,
-            extern_refs,
-            extern_fns,
-            static_fields,
-            initializers,
-        }
     }
 
     /// Adds a global static field named *name* of type *tpe*
@@ -252,18 +197,6 @@ impl Assembly {
         self.functions.insert(cs, method);
     }
 
-    /// Returns an interator over all methods within the assembly.
-    pub fn methods(&self) -> impl Iterator<Item = &Method> {
-        self.functions.values()
-    }
-    /// Returns an interator over all methods within the assembly.
-    pub fn methods_mut(&mut self) -> impl Iterator<Item = &mut Method> {
-        self.functions.values_mut()
-    }
-    /// Returns an iterator over all types witin the assembly.
-    pub fn types(&self) -> impl Iterator<Item = (&IString, &TypeDef)> {
-        self.types.iter()
-    }
     /// Optimizes all the methods witin the assembly.
     pub fn opt(&mut self) {
         self.functions.iter_mut().for_each(|method| {
@@ -274,8 +207,8 @@ impl Assembly {
         });
     }
     /// Adds a definition of a type to the assembly.
-    pub fn add_typedef(&mut self, mut type_def: TypeDef) {
-        self.types.insert(type_def.name().into(), type_def);
+    pub fn add_typedef(&mut self, type_def: TypeDef) {
+        super::v2::ClassDef::from_v1(&type_def, &mut self.inner);
     }
 
     /// Sets the entrypoint of the assembly to the method behind `CallSite`.
@@ -287,12 +220,8 @@ impl Assembly {
     }
 
     #[must_use]
-    pub fn extern_fns(&self) -> &FxHashMap<ExternFnDef, IString> {
+    pub(crate) fn extern_fns(&self) -> &FxHashMap<ExternFnDef, IString> {
         &self.extern_fns
-    }
-
-    pub fn add_extern_fn(&mut self, name: IString, sig: FnSig, lib: IString, preserve_errno: bool) {
-        self.extern_fns.insert((name, sig, preserve_errno), lib);
     }
 
     pub fn add_initialzer(&mut self, root: CILRoot) {
@@ -307,20 +236,20 @@ impl Assembly {
         ))
     }
 
-    pub fn static_fields_mut(&mut self) -> &mut FxHashMap<IString, (Type, bool)> {
-        &mut self.static_fields
-    }
-
-    pub fn functions(&self) -> &FxHashMap<CallSite, Method> {
+    pub(crate) fn functions(&self) -> &FxHashMap<CallSite, Method> {
         &self.functions
     }
 
-    pub fn initializers(&self) -> &[CILRoot] {
+    pub(crate) fn initializers(&self) -> &[CILRoot] {
         &self.initializers
     }
 
     pub fn static_fields(&self) -> &FxHashMap<IString, (Type, bool)> {
         &self.static_fields
+    }
+
+    pub(crate) fn inner(&self) -> &super::v2::Assembly {
+        &self.inner
     }
 }
 use lazy_static::*;
@@ -355,8 +284,7 @@ impl MemoryUsage for Assembly {
     fn memory_usage(&self, counter: &mut impl crate::utilis::MemoryUsageCounter) -> usize {
         let self_size = std::mem::size_of::<Self>();
         let tpe_name = std::any::type_name::<Self>();
-        let types = self.types.memory_usage(counter);
-        counter.add_field(tpe_name, "types", types);
+
         let functions = self.functions.memory_usage(counter);
         counter.add_field(tpe_name, "types", functions);
         let extern_fns = self.extern_fns.memory_usage(counter);

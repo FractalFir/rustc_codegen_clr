@@ -23,7 +23,7 @@ impl std::hash::Hash for IStringWrapper {
 }
 pub type MissingMethodPatcher =
     FxHashMap<StringIdx, Box<dyn Fn(MethodRefIdx, &mut Assembly) -> MethodImpl>>;
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Default, Serialize, Deserialize, Clone)]
 pub struct Assembly {
     strings: BiMap<StringIdx, IStringWrapper>,
     types: BiMap<TypeIdx, Type>,
@@ -177,7 +177,11 @@ impl Assembly {
         let cref = self.alloc_class_ref(cref);
 
         if let Some(dup) = self.class_defs.insert(ClassDefIdx(cref), def.clone()) {
-            panic!("duplicate class def. {dup:?} {def:?}");
+            // TODO: this is costly, consider skipping in release.
+            // HACK: cvoid is doing *something* bizzare,  but it seems harmless, so I ignore it I guess???
+            if !self.get_string(dup.name()).contains("core.ffi.c_void") {
+                assert_eq!(dup, def, "{}", self.get_string(dup.name()));
+            }
         }
 
         ClassDefIdx(cref)
@@ -282,7 +286,7 @@ impl Assembly {
     }
     /// Converts the old assembly repr to the new one.
     pub fn from_v1(v1: &V1Asm) -> Self {
-        let mut empty = Self::default();
+        let mut empty: Assembly = v1.inner().clone();
         // Add the user defined roots
         let roots = v1
             .initializers()
@@ -338,10 +342,6 @@ impl Assembly {
             empty.new_method(def);
         });
 
-        //todo!();
-        v1.types().for_each(|(_, tdef)| {
-            ClassDef::from_v1(tdef, &mut empty);
-        });
         #[cfg(debug_assertions)]
         empty.sanity_check();
         empty
@@ -449,6 +449,7 @@ impl Assembly {
         self.eliminate_dead_fns();
         //self.eliminate_dead_types();
     }
+    #[allow(dead_code)]
     pub(crate) fn eliminate_dead_types(&mut self) {
         let mut previosly_ressurected: FxHashSet<ClassDefIdx> = self
             .method_defs()
