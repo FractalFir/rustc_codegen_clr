@@ -237,9 +237,7 @@ impl CodegenBackend for MyBackend {
                 let cs = cilly::call_site::CallSite::new(None, symbol.into(), sig, true);
                 asm.set_entrypoint(&cs);
             }
-            asm.opt();
-            // Done twice for inlining!
-            asm.opt();
+
             let ffi_compile_timer = tcx
                 .profiler()
                 .generic_activity("insert .NET FFI functions/types");

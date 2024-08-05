@@ -125,8 +125,8 @@ pub fn handle_rvalue<'tcx>(
             let src = ctx.type_from_cache(src);
             match (&src, &dst) {
                 (
-                    Type::ISize | Type::USize | Type::Ptr(_),
-                    Type::ISize | Type::USize | Type::Ptr(_),
+                    Type::ISize | Type::USize | Type::Ptr(_) | Type::DelegatePtr(_),
+                    Type::ISize | Type::USize | Type::Ptr(_)| Type::DelegatePtr(_),
                 ) => handle_operand(operand, ctx).cast_ptr(dst),
 
                 (Type::U16, Type::DotnetChar) => handle_operand(operand, ctx),

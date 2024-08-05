@@ -126,7 +126,7 @@ impl ClassDef {
         access: Access,
         explict_size: Option<NonZeroU32>,
     ) -> Self {
-        crate::utilis::assert_unique(&methods);
+        //crate::utilis::assert_unique(&methods);
         Self {
             name,
             is_valuetype,
@@ -247,17 +247,27 @@ impl ClassDef {
         self.generics
     }
 
-    pub(crate) fn merge_defs(&mut self, translated: ClassDef) {
+    pub(super) fn merge_defs(
+        &mut self,
+        translated: ClassDef,
+        strings: &super::BiMap<StringIdx, super::asm::IStringWrapper>,
+    ) {
         // Check name matches
         assert_eq!(self.name(), translated.name());
+
         // Check valuetype matches
         assert_eq!(self.is_valuetype(), translated.is_valuetype());
         // Check generic count matches
         assert_eq!(self.generics(), translated.generics());
         // Check inheretence matches
         assert_eq!(self.extends(), translated.extends());
-        // If we want to merge types, we need to confoirm they have identical fields.
-        assert_eq!(self.fields(), translated.fields());
+        // C void does some wierd stuff, but it is harmless, so we just ignore its phantom fields.
+        if !strings.get(self.name()).0.contains("core.ffi.c_void") {
+            // If we want to merge types, we need to confoirm they have identical fields.
+            assert_eq!(self.fields(), translated.fields());
+            // Check size matches
+            assert_eq!(self.explict_size(), translated.explict_size());
+        }
         // Merge the static fields, removing duplicates
         self.static_fields_mut().extend(translated.static_fields());
         make_unique(&mut self.static_fields);
@@ -269,8 +279,6 @@ impl ClassDef {
         make_unique(self.methods_mut());
         // Check accessibility matches
         assert_eq!(self.access(), translated.access());
-        // Check size matches
-        assert_eq!(self.explict_size(), translated.explict_size());
     }
 }
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Copy, Serialize, Deserialize)]

@@ -550,10 +550,6 @@ impl Method {
     pub fn attributes(&self) -> &[Attribute] {
         &self.attributes
     }
-
-    pub(crate) fn set_blocks(&mut self, blocks: impl Into<Vec<BasicBlock>>) {
-        self.blocks = blocks.into();
-    }
 }
 
 /// A wrapper around mutably borrowed [`BasicBlock`]s of a method. Prevents certain bugs.

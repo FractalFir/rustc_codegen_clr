@@ -12,7 +12,7 @@ use lazy_static::*;
 use serde::{Deserialize, Serialize};
 use std::any::type_name;
 #[derive(Default, Serialize, Deserialize, Eq, PartialEq, Clone, Debug)]
-struct IStringWrapper(IString);
+pub(super) struct IStringWrapper(pub(super) IString);
 impl std::hash::Hash for IStringWrapper {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         calculate_hash(&0xC0FE_BEEFu32).hash(state);
@@ -176,14 +176,13 @@ impl Assembly {
         let cref = def.ref_to();
         let cref = self.alloc_class_ref(cref);
 
-        if let Some(dup) = self.class_defs.insert(ClassDefIdx(cref), def.clone()) {
-            // TODO: this is costly, consider skipping in release.
-            // HACK: cvoid is doing *something* bizzare,  but it seems harmless, so I ignore it I guess???
-            if !self.get_string(dup.name()).contains("core.ffi.c_void") {
-                assert_eq!(dup, def, "{}", self.get_string(dup.name()));
+        if self.class_defs.contains_key(&ClassDefIdx(cref)) {
+            if self.get_string(def.name()).contains("core.ffi.c_void") {
+                return ClassDefIdx(cref);
             }
+            panic!()
         }
-
+        self.class_defs.insert(ClassDefIdx(cref), def.clone());
         ClassDefIdx(cref)
     }
     pub fn main_module(&mut self) -> ClassDefIdx {
@@ -623,7 +622,7 @@ impl Assembly {
             let class_ref = self.alloc_class_ref(translated.ref_to());
             match self.class_defs.entry(ClassDefIdx(class_ref)) {
                 std::collections::hash_map::Entry::Occupied(mut occupied) => {
-                    occupied.get_mut().merge_defs(translated)
+                    occupied.get_mut().merge_defs(translated, &self.strings)
                 }
                 std::collections::hash_map::Entry::Vacant(vacant) => {
                     vacant.insert(translated);
@@ -640,6 +639,10 @@ impl Assembly {
 
     pub(crate) fn method_defs(&self) -> &FxHashMap<MethodDefIdx, MethodDef> {
         &self.method_defs
+    }
+
+    pub(crate) fn contains_def(&self, cref: ClassRefIdx) -> bool {
+        self.class_ref_to_def(cref).is_some()
     }
 }
 /// An initializer, which runs before everything else. By convention, it is used to initialize static / const data. Should not execute any user code

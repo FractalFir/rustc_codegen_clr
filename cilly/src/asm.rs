@@ -192,23 +192,30 @@ impl Assembly {
             );
         }
 
-        let cs = method.call_site();
-
-        self.functions.insert(cs, method);
+        let main_module = self.inner.main_module();
+        let def = crate::v2::MethodDef::from_v1(&method, &mut self.inner, main_module);
+        self.inner.new_method(def);
     }
 
-    /// Optimizes all the methods witin the assembly.
-    pub fn opt(&mut self) {
-        self.functions.iter_mut().for_each(|method| {
-            let (_site, method) = method;
-            let mut method = method.clone();
-            method.opt();
-            //crate::opt::opt_method(&mut method, self);
-        });
-    }
     /// Adds a definition of a type to the assembly.
     pub fn add_typedef(&mut self, type_def: TypeDef) {
-        super::v2::ClassDef::from_v1(&type_def, &mut self.inner);
+        let dotnet_type: DotnetTypeRef =
+            std::convert::Into::<DotnetTypeRef>::into(type_def.clone())
+                .with_valuetype(type_def.extends().is_none());
+        let cref = super::v2::ClassRef::from_v1(&dotnet_type, &mut self.inner);
+
+        let cref = self.inner.alloc_class_ref(cref);
+        if !self.inner().contains_def(cref) {
+            let def = super::v2::ClassDef::from_v1(&type_def, &mut self.inner);
+            assert_eq!(
+                *def,
+                cref,
+                "{} != {}",
+                self.inner.class_ref(*def).display(self.inner()),
+                self.inner.class_ref(cref).display(self.inner())
+            );
+            assert!(self.inner().contains_def(cref));
+        }
     }
 
     /// Sets the entrypoint of the assembly to the method behind `CallSite`.

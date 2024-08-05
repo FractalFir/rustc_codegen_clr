@@ -27,7 +27,7 @@ fn main() {
     println!();
     println!("Doing dependency checks...");
     ilasm_check();
-    println!("Dependency checks succeded.");
+    println!("Dependency checks succeeded.");
     println!();
     println!("WARNING: Please note, the project is currently in the early stages of development.  Bugs, crashes and miscompilations will occur.");
     println!("Currently, there is no way to permanently install the codegen. It is enabled on a per-shell-session basis (enabled for your particular command prompt window).");
