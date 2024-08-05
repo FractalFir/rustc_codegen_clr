@@ -76,11 +76,11 @@ impl ClassRef {
             V1ClassRef::OptimizedRustStruct { name: _ } => panic!(),
         }
     }
-
+    /// Returns the assembly containing this typedef
     pub fn asm(&self) -> Option<StringIdx> {
         self.asm
     }
-
+    /// The name of this class definition
     pub fn name(&self) -> StringIdx {
         self.name
     }
@@ -105,8 +105,15 @@ pub struct ClassDef {
     access: Access,
     explict_size: Option<NonZeroU32>,
 }
-
 impl ClassDef {
+    pub(crate) fn iter_types(&self) -> impl Iterator<Item = Type> + '_ {
+        self.fields()
+            .iter()
+            .map(|(tpe, _, _)| tpe)
+            .chain(self.static_fields().iter().map(|(tpe, _, _)| tpe))
+            .copied()
+            .chain(self.extends.iter().map(|cref| Type::ClassRef(*cref)))
+    }
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         name: StringIdx,

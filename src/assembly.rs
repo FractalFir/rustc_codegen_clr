@@ -373,7 +373,7 @@ pub fn add_fn<'tcx>(
             panic!("Arg to spread not a tuple???")
         };
         for (arg_id, ty) in packed.iter().enumerate() {
-            let validation_context = ValidationContext::new(&sig, &locals, asm.string_map());
+            let validation_context = ValidationContext::new(&sig, &locals);
             let mut method_context =
                 MethodCompileCtx::new(tcx, mir, instance, validation_context, cache);
             if crate::utilis::is_zst(ty, tcx) {
@@ -395,7 +395,7 @@ pub fn add_fn<'tcx>(
         vec![]
     };
     // Used for type-checking the CIL to ensure its validity.
-    let validation_context = ValidationContext::new(&sig, &locals, asm.string_map());
+    let validation_context = ValidationContext::new(&sig, &locals);
     let mut method_context = MethodCompileCtx::new(tcx, mir, instance, validation_context, cache);
     for (last_bb_id, block_data) in blocks.into_iter().enumerate() {
         let mut trees = Vec::new();
@@ -482,7 +482,7 @@ pub fn add_fn<'tcx>(
     method.allocate_temporaries();
 
     if *crate::config::TYPECHECK_CIL {
-        match method.validate(asm.string_map()) {
+        match method.validate() {
             Ok(()) => (),
             Err(msg) => eprintln!(
                 "\n\nMethod {} failed compilation with message:\ns {msg}",

@@ -605,7 +605,7 @@ pub fn main() {
 
 impl PrintFDebug for Adt50 {
     unsafe fn printf_debug(&self) {
-        unsafe { printf("Adt50{ ".as_ptr() as *const c_char) };
+        unsafe { printf("Adt50{\0".as_ptr() as *const c_char) };
         unsafe { printf("}\0".as_ptr() as *const c_char) };
     }
 }
@@ -634,9 +634,9 @@ fn fn9() {
     );
 }
 #[custom_mir(dialect = "runtime", phase = "initial")]
-fn fn1() -> f64 {
+fn fn1() -> () {
     mir! {
-    type RET = f64;
+    type RET = ();
     let _1: (i16, bool);
     let _2: (i16, bool);
     let _3: (i16, bool);
@@ -825,8 +825,8 @@ pub fn fn16(
     _17 = _27 & _27;
     RET = _33.fld3 * _33.fld3;
     _19 = _4;
-    _33.fld3 = RET | RET;
-    _33.fld3 = RET >> RET;
+
+
     _29 = (-1977566323656098150_i64) as f64;
     _5 = [7311357670104946435_usize,4_usize,1_usize];
     _21 = [_8,_19,_19,_4];
@@ -876,9 +876,9 @@ pub fn fn16(
     _16 = [_27,_27,_27,_17,_17,_17];
 
     _42.0 = !true;
-    RET = (-687246327_i32) as u16;
+
     _33.fld0 = _24;
-    RET = _33.fld3;
+
     _10.0 = 215_u8 as f32;
 
     _21 = [_38,_38,_38,_4];
@@ -891,12 +891,12 @@ pub fn fn16(
     _39 = -_29;
 
     _28 = (-123_i8) * (-104_i8);
-    RET = _33.fld3;
-    _24.0 = -f32::NAN;
+    RET = 64;
+
 
     let tmp = -f32::NAN;
     _45 = tmp >= _24.0;
-    _16 = _1;
+
     Goto(bb20)
     }
     bb20 = {
@@ -911,7 +911,7 @@ pub fn fn16(
 }
 impl PrintFDebug for Adt45 {
     unsafe fn printf_debug(&self) {
-        unsafe { printf("Adt45{ ".as_ptr() as *const c_char) };
+        unsafe { printf("Adt45{\0".as_ptr() as *const c_char) };
         unsafe { printf("}\0".as_ptr() as *const c_char) };
     }
 }

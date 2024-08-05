@@ -1634,20 +1634,11 @@ impl std::ops::Neg for CILNode {
 pub struct ValidationContext<'a> {
     sig: &'a FnSig,
     locals: &'a [(Option<IString>, Type)],
-    strings: &'a AsmStringContainer,
 }
 
 impl<'a> ValidationContext<'a> {
-    pub fn new(
-        sig: &'a FnSig,
-        locals: &'a [(Option<IString>, Type)],
-        strings: &'a AsmStringContainer,
-    ) -> Self {
-        Self {
-            sig,
-            locals,
-            strings,
-        }
+    pub fn new(sig: &'a FnSig, locals: &'a [(Option<IString>, Type)]) -> Self {
+        Self { sig, locals }
     }
 
     pub fn sig(&self) -> &FnSig {
@@ -1656,9 +1647,5 @@ impl<'a> ValidationContext<'a> {
 
     pub fn locals(&self) -> &[(Option<IString>, Type)] {
         self.locals
-    }
-
-    pub fn strings(&self) -> &AsmStringContainer {
-        self.strings
     }
 }

@@ -41,6 +41,31 @@ pub enum GenericKind {
     TypeGeneric,
 }
 impl Type {
+    pub fn iter_class_refs<'a, 'asm: 'a>(
+        &'a self,
+        asm: &'asm Assembly,
+    ) -> impl Iterator<Item = ClassRefIdx> + 'a {
+        let tmp: Box<dyn Iterator<Item = ClassRefIdx>> = match self {
+            Type::PlatformArray { elem: inner, .. } | Type::Ptr(inner) | Type::Ref(inner) => {
+                asm.get_type(*inner).iter_class_refs::<'a, 'asm>(asm)
+            }
+            Type::Int(_)
+            | Type::Float(_)
+            | Type::PlatformString
+            | Type::PlatformChar
+            | Type::PlatformGeneric(_, _)
+            | Type::PlatformObject
+            | Type::Bool
+            | Type::Void => Box::new(std::iter::empty()),
+            Type::FnPtr(sig) => Box::new(
+                asm.get_sig(*sig)
+                    .iter_types()
+                    .flat_map(|tpe| tpe.iter_class_refs(asm).collect::<Box<_>>()),
+            ),
+            Type::ClassRef(cref) => Box::new(std::iter::once(*cref)),
+        };
+        tmp
+    }
     pub fn deref<'a, 'b: 'a>(&'a self, asm: &'b Assembly) -> &Self {
         match self {
             Type::Ptr(inner) | Type::Ref(inner) => asm.get_type(*inner),

@@ -53,10 +53,7 @@ impl Assembly {
             .iter()
             .map(|tpe| self.translate_type(source, *tpe))
             .collect();
-
-        let cref = self.alloc_class_ref(ClassRef::new(name, asm, cref.is_valuetype(), generics));
-
-        cref
+        self.alloc_class_ref(ClassRef::new(name, asm, cref.is_valuetype(), generics))
     }
     pub(crate) fn translate_sig(&mut self, source: &Assembly, sig: FnSig) -> FnSig {
         FnSig::new(

@@ -205,7 +205,7 @@ pub fn get_array_type(
             )],
             vec![Some("this".into()), Some("idx".into()), Some("val".into())],
         );
-        set_usize.validate(&map).unwrap();
+        set_usize.validate().unwrap();
         def.add_method(set_usize);
 
         // get_Address(usize offset)
@@ -236,7 +236,7 @@ pub fn get_array_type(
             )],
             vec![Some("this".into()), Some("idx".into())],
         );
-        get_adress_usize.validate(map).unwrap();
+        get_adress_usize.validate().unwrap();
         def.add_method(get_adress_usize);
 
         // get_Item
@@ -272,7 +272,7 @@ pub fn get_array_type(
             )],
             vec![Some("this".into()), Some("idx".into())],
         );
-        get_item_usize.validate(&map).unwrap();
+        get_item_usize.validate().unwrap();
         def.add_method(get_item_usize);
 
         //to_string.set_ops(ops);

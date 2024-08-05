@@ -1,13 +1,13 @@
 use serde::{Deserialize, Serialize};
 
-use crate::v2::CILRoot;
-
 use super::{
     bimap::{BiMapIndex, IntoBiMapIndex},
     cilnode::MethodKind,
     Access, Assembly, BasicBlock, CILIterElem, ClassDefIdx, ClassRefIdx, FnSig, SigIdx, StringIdx,
     Type, TypeIdx,
 };
+use crate::v2::iter::TpeIter;
+use crate::v2::CILRoot;
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub struct MethodRef {
     class: ClassRefIdx,
@@ -97,6 +97,24 @@ pub struct MethodDef {
 }
 
 impl MethodDef {
+    pub fn iter_types<'a, 'asm: 'a>(
+        &'a self,
+        asm: &'asm Assembly,
+    ) -> impl Iterator<Item = Type> + 'a {
+        let defining_class = Type::ClassRef(*self.class());
+        let sig = asm.get_sig(self.sig());
+        let sig_types = sig.iter_types();
+        let local_types = self.iter_locals(asm).map(|(_, tpe)| asm.get_type(*tpe));
+        let body_types = self
+            .iter_cil(asm)
+            .into_iter()
+            .map(|cil| cil.iter_types(asm));
+        let body_types = body_types.flatten();
+        std::iter::once(defining_class)
+            .chain(sig_types)
+            .chain(local_types.copied())
+            .chain(body_types)
+    }
     pub fn iter_cil<'asm: 'method, 'method>(
         &'method self,
         asm: &'asm Assembly,
@@ -257,6 +275,18 @@ impl MethodDef {
 
     pub fn arg_names(&self) -> &[Option<StringIdx>] {
         &self.arg_names
+    }
+
+    pub(crate) fn iter_locals<'a>(
+        &'a self,
+        asm: &'a Assembly,
+    ) -> impl Iterator<Item = &'a (Option<StringIdx>, TypeIdx)> {
+        match self.resolved_implementation(asm) {
+            MethodImpl::MethodBody { blocks: _, locals } => locals.iter(),
+            MethodImpl::Extern { .. } => [].iter(),
+            MethodImpl::AliasFor(_) => panic!(),
+            MethodImpl::Missing => [].iter(),
+        }
     }
 }
 

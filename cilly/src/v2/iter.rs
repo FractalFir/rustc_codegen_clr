@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use super::cilroot::BranchCond;
 
-use super::{Assembly, CILNode, CILRoot};
+use super::{Assembly, CILNode, CILRoot, Type};
 #[derive(Hash, PartialEq, Eq, Clone, Debug)]
 pub enum CILIterElem {
     Node(CILNode),
@@ -418,6 +418,106 @@ impl<'start> CILIterMut<'start> {
             elems: vec![],
             asm,
         }
+    }
+}
+pub(crate) trait TpeIter<'this>: Sized + 'this {
+    fn iter_types<'asm: 'this>(self, asm: &'asm Assembly) -> impl Iterator<Item = Type> + 'this;
+}
+impl<'this, T: Iterator<Item = CILIterElem> + 'this> TpeIter<'this> for T {
+    fn iter_types<'asm: 'this>(self, asm: &'asm Assembly) -> impl Iterator<Item = Type> + 'this {
+        let this = self;
+        this.filter_map(|cil_item| {
+            let iter: Option<Box<dyn Iterator<Item = Type>>> = match cil_item {
+                crate::v2::CILIterElem::Node(node) => match node {
+                    CILNode::Const(_)
+                    | CILNode::BinOp(_, _, _)
+                    | CILNode::UnOp(_, _)
+                    | CILNode::LdLoc(_)
+                    | CILNode::LdLocA(_)
+                    | CILNode::LdArg(_)
+                    | CILNode::LdArgA(_)
+                    | CILNode::IntCast { .. }
+                    | CILNode::FloatCast { .. }
+                    | CILNode::RefToPtr(_)
+                    | CILNode::GetException
+                    | CILNode::LocAlloc { .. }
+                    | CILNode::LdLen(_)
+                    | CILNode::LdElelemRef { .. } => None,
+                    // Since this method is called, then if it uses an "internal" type, we must assume it is defined in this module. Thus, its types are already included, and we don't need to include them again.
+                    CILNode::Call(_) | CILNode::LdFtn(_) => None,
+                    CILNode::PtrCast(_, res) => match res.as_ref() {
+                        crate::v2::cilnode::PtrCastRes::Ptr(inner) => {
+                            Some(Box::new(std::iter::once(asm.get_type(*inner)).copied()))
+                        }
+                        crate::v2::cilnode::PtrCastRes::Ref(inner) => {
+                            Some(Box::new(std::iter::once(asm.get_type(*inner)).copied()))
+                        }
+                        crate::v2::cilnode::PtrCastRes::FnPtr(sig) => {
+                            Some(Box::new(asm.get_sig(*sig).iter_types()))
+                        }
+                        crate::v2::cilnode::PtrCastRes::USize => None,
+                        crate::v2::cilnode::PtrCastRes::ISize => None,
+                    },
+                    CILNode::LdFieldAdress { field, .. } | CILNode::LdField { field, .. } => {
+                        let field = asm.get_field(field);
+                        let class = Type::ClassRef(field.owner());
+                        let tpe = field.tpe();
+                        Some(Box::new([class, tpe].into_iter()))
+                    }
+                    CILNode::LdInd { tpe, .. } => {
+                        Some(Box::new(std::iter::once(asm.get_type(tpe)).copied()))
+                    }
+                    CILNode::SizeOf(tpe)
+                    | CILNode::IsInst(_, tpe)
+                    | CILNode::CheckedCast(_, tpe)
+                    | CILNode::LdTypeToken(tpe)
+                    | CILNode::UnboxAny { tpe, .. }
+                    | CILNode::LocAllocAlgined { tpe, .. } => {
+                        Some(Box::new(std::iter::once(asm.get_type(tpe)).copied()))
+                    }
+                    CILNode::CallI(info) => Some(Box::new(asm.get_sig(info.1).iter_types())),
+                    CILNode::LdStaticField(sfld) => {
+                        let field = asm.get_static_field(sfld);
+                        let class = Type::ClassRef(field.owner());
+                        let tpe = field.tpe();
+                        Some(Box::new([class, tpe].into_iter()))
+                    }
+                },
+                crate::v2::CILIterElem::Root(root) => match root {
+                    CILRoot::StLoc(_, _)
+                    | CILRoot::StArg(_, _)
+                    | CILRoot::Ret(_)
+                    | CILRoot::Pop(_)
+                    | CILRoot::Throw(_)
+                    | CILRoot::VoidRet
+                    | CILRoot::Break
+                    | CILRoot::Nop
+                    | CILRoot::Branch(_)
+                    | CILRoot::SourceFileInfo { .. }
+                    | CILRoot::ExitSpecialRegion { .. }
+                    | CILRoot::InitBlk(_)
+                    | CILRoot::CpBlk(_)
+                    | CILRoot::ReThrow => None,
+                    CILRoot::SetStaticField { field, .. } => {
+                        let field = asm.get_static_field(field);
+                        let class = Type::ClassRef(field.owner());
+                        let tpe = field.tpe();
+                        Some(Box::new([class, tpe].into_iter()))
+                    }
+                    CILRoot::SetField(info) => {
+                        let field = asm.get_field(info.0);
+                        let class = Type::ClassRef(field.owner());
+                        let tpe = field.tpe();
+                        Some(Box::new([class, tpe].into_iter()))
+                    }
+                    // Since this method is called, then if it uses an "internal" type, we must assume it is defined in this module. Thus, its types are already included, and we don't need to include them again.
+                    CILRoot::Call(_) | CILRoot::CallI(_) => None,
+                    CILRoot::StInd(info) => Some(Box::new(std::iter::once(info.2))),
+                },
+            };
+            iter
+        })
+        .flat_map(move |d| d)
     }
 }
 #[test]

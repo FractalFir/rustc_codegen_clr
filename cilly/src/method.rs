@@ -209,11 +209,11 @@ impl Method {
             });
         self.locals = locals;
     }
-    pub fn validate(&self, asm: &AsmStringContainer) -> Result<(), String> {
+    pub fn validate(&self) -> Result<(), String> {
         let errs: Vec<String> = self
             .blocks()
             .iter()
-            .map(|tree| tree.validate(ValidationContext::new(&self.sig, &self.locals, asm)))
+            .map(|tree| tree.validate(ValidationContext::new(&self.sig, &self.locals)))
             .filter_map(|err| match err {
                 Ok(()) => None,
                 Err(err) => Some(err),
@@ -549,10 +549,6 @@ impl Method {
     }
     pub fn attributes(&self) -> &[Attribute] {
         &self.attributes
-    }
-
-    pub(crate) fn vctx<'a, 'b: 'a>(&'a self, strings: &'b AsmStringContainer) -> ValidationContext {
-        ValidationContext::new(&self.sig, &self.locals, strings)
     }
 
     pub(crate) fn set_blocks(&mut self, blocks: impl Into<Vec<BasicBlock>>) {

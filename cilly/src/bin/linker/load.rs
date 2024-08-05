@@ -20,8 +20,10 @@ impl LinkableFile {
         &self.file
     }
 }
-fn load_ar(r: &mut impl std::io::Read) -> std::io::Result<(Assembly, Vec<LinkableFile>)> {
-    let mut final_assembly = Assembly::empty();
+fn load_ar(
+    r: &mut impl std::io::Read,
+) -> std::io::Result<(cilly::v2::Assembly, Vec<LinkableFile>)> {
+    let mut final_assembly = cilly::v2::Assembly::default();
     let mut archive = Archive::new(r);
     let mut linkables = Vec::new();
     // Iterate over all entries in the archive:
@@ -40,7 +42,7 @@ fn load_ar(r: &mut impl std::io::Read) -> std::io::Result<(Assembly, Vec<Linkabl
                 .expect("ERROR: Could not load the assembly file!");
             let assembly = postcard::from_bytes(&asm_bytes)
                 .unwrap_or_else(|_| panic!("ERROR:Could not decode the assembly file {name}!"));
-            final_assembly = final_assembly.join(assembly);
+            final_assembly = final_assembly.link(assembly);
         } else if ext.contains("o") {
             let mut file_bytes = Vec::with_capacity(0x100);
             entry
@@ -67,18 +69,17 @@ pub fn load_assemblies(
         asm_file
             .read_to_end(&mut asm_bytes)
             .expect("ERROR: Could not load the assembly file!");
-        let assembly: cilly::asm::Assembly =
+        let asm: cilly::v2::Assembly =
             postcard::from_bytes(&asm_bytes).expect("ERROR:Could not decode the assembly file!");
-        let asm = cilly::v2::Assembly::from_v1(&assembly);
+
         final_assembly = final_assembly.link(asm);
     }
     for asm_path in archives {
         let mut asm_file =
             std::fs::File::open(asm_path).expect("ERROR: Could not open the assembly file!");
-        let assembly = load_ar(&mut asm_file).expect("Could not open archive");
-        let asm = cilly::v2::Assembly::from_v1(&assembly.0);
+        let (asm, linkable) = load_ar(&mut asm_file).expect("Could not open archive");
         final_assembly = final_assembly.link(asm);
-        linkables.extend(assembly.1);
+        linkables.extend(linkable);
     }
     println!("Loaded assmeblies");
     (final_assembly, linkables)

@@ -1,18 +1,13 @@
 #![deny(unused_must_use)]
 #![allow(clippy::module_name_repetitions)]
-use aot::aot_compile_mode;
 use cilly::{
-    access_modifier,
-    asm::Assembly,
-    call,
     call_site::CallSite,
-    conv_usize, ldc_i32,
+    conv_usize,
     libc_fns::{LIBC_FNS, LIBC_MODIFIES_ERRNO},
-    method::{Method, MethodType},
     v2::{
         asm::{MissingMethodPatcher, ILASM_FLAVOUR},
         cilnode::MethodKind,
-        BasicBlock, CILNode, CILRoot, ClassRef, IlasmFlavour, Int, MethodDef, MethodImpl, Type,
+        BasicBlock, CILNode, CILRoot, ClassRef, IlasmFlavour, Int, MethodImpl, Type,
     },
     DotnetTypeRef, FnSig,
 };
@@ -21,38 +16,13 @@ use lazy_static::lazy_static;
 
 mod cmd;
 mod export;
-use cilly::libc_fns;
 mod load;
 mod native_passtrough;
 mod patch;
-use fxhash::{FxBuildHasher, FxHashMap};
-use native_passtrough::{add_shared, handle_native_passtrough, NativePastroughInfo};
+use fxhash::FxHashMap;
 use patch::{builtin_call, call_alias};
 use std::{env, io::Write, path::Path};
 mod aot;
-
-/// Replaces `_UnwindBacktrace` with a nop.
-/*fn override_backtrace(patched: &mut FxHashMap<CallSite, Method>, call: &CallSite) {
-    patched.insert(
-        call.clone(),
-        Method::new(
-            access_modifier::AccessModifer::Private,
-            MethodType::Static,
-            call.signature().clone(),
-            "_Unwind_Backtrace",
-            vec![],
-            vec![BasicBlock::new(
-                vec![
-                    CILRoot::debug("called _Unwind_Backtrace").into(),
-                    CILRoot::Ret { tree: ldc_i32!(4) }.into(),
-                ],
-                0,
-                None,
-            )],
-            vec![Some("trace".into()), Some("trace_arg".into())],
-        ),
-    );
-}*/
 
 fn add_mandatory_statics(asm: &mut cilly::v2::Assembly) {
     let main_module = asm.main_module();

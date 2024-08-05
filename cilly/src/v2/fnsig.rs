@@ -16,17 +16,20 @@ impl IntoBiMapIndex for SigIdx {
 }
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub struct FnSig {
-    input: Box<[Type]>,
+    inputs: Box<[Type]>,
     output: Type,
 }
 
 impl FnSig {
     pub fn new(input: Box<[Type]>, output: Type) -> Self {
-        Self { input, output }
+        Self {
+            inputs: input,
+            output,
+        }
     }
 
     pub fn inputs(&self) -> &[Type] {
-        &self.input
+        &self.inputs
     }
 
     pub fn output(&self) -> &Type {
@@ -41,5 +44,12 @@ impl FnSig {
             .collect();
         let output = Type::from_v1(signature.output(), asm);
         Self::new(input, output)
+    }
+
+    pub fn iter_types(&self) -> impl Iterator<Item = Type> + '_ {
+        self.inputs()
+            .iter()
+            .copied()
+            .chain(std::iter::once(*self.output()))
     }
 }

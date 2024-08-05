@@ -41,6 +41,9 @@ impl Assembly {
     pub fn class_mut(&mut self, id: ClassDefIdx) -> &mut ClassDef {
         self.class_defs.get_mut(&id).unwrap()
     }
+    pub fn get_class_def(&self, id: ClassDefIdx) -> &ClassDef {
+        self.class_defs.get(&id).unwrap()
+    }
     pub fn class_ref(&self, cref: ClassRefIdx) -> &ClassRef {
         self.class_refs.get(cref)
     }
@@ -382,7 +385,7 @@ impl Assembly {
     pub(crate) fn method_def_from_ref(&self, mref: MethodRefIdx) -> Option<&MethodDef> {
         self.method_defs.get(&MethodDefIdx(mref))
     }
-    pub fn eliminate_dead_code(&mut self) {
+    pub(crate) fn eliminate_dead_fns(&mut self) {
         // 1st. Collect all "extern" method definitons, since those are always alive.
         let mut previosly_ressurected: FxHashSet<MethodDefIdx> = self
             .method_defs
@@ -441,6 +444,51 @@ impl Assembly {
             tdef.methods_mut()
                 .retain(|def| self.method_defs.contains_key(def));
         });
+    }
+    pub fn eliminate_dead_code(&mut self) {
+        self.eliminate_dead_fns();
+        //self.eliminate_dead_types();
+    }
+    pub(crate) fn eliminate_dead_types(&mut self) {
+        let mut previosly_ressurected: FxHashSet<ClassDefIdx> = self
+            .method_defs()
+            .values()
+            .flat_map(|method| method.iter_types(self))
+            .flat_map(|tpe| tpe.iter_class_refs(self).collect::<Vec<_>>())
+            .flat_map(|cref| self.class_ref_to_def(cref))
+            .collect();
+        let rust_void = self.alloc_string("RustVoid");
+        let rust_void = self.alloc_class_ref(ClassRef::new(rust_void, None, true, vec![].into()));
+        if let Some(cref) = self.class_ref_to_def(rust_void) {
+            previosly_ressurected.insert(cref);
+        }
+
+        let mut to_resurrect: FxHashSet<ClassDefIdx> = FxHashSet::default();
+        let mut alive: FxHashSet<ClassDefIdx> = FxHashSet::default();
+        while !previosly_ressurected.is_empty() {
+            for def in previosly_ressurected.iter() {
+                let defids: FxHashSet<ClassDefIdx> = self
+                    .get_class_def(*def)
+                    .iter_types()
+                    .flat_map(|tpe| tpe.iter_class_refs(self).collect::<Vec<_>>())
+                    .flat_map(|cref| self.class_ref_to_def(cref))
+                    .filter(|refid| alive.contains(refid))
+                    .collect();
+
+                to_resurrect.extend(defids);
+            }
+            alive.extend(previosly_ressurected);
+            previosly_ressurected = to_resurrect;
+            to_resurrect = FxHashSet::default();
+        }
+        // Some cheap sanity checks
+        assert!(previosly_ressurected.is_empty());
+        assert!(to_resurrect.is_empty());
+        // Set the class_defs to only include alive classes
+        self.class_defs = alive
+            .iter()
+            .map(|id| (*id, self.class_defs.remove(id).unwrap()))
+            .collect();
     }
     /*pub fn realloc_nodes(&mut self){
 
