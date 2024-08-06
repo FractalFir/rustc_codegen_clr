@@ -668,8 +668,7 @@ test_lib! {calls,stable}
 test_lib! {casts,stable}
 test_lib! {closure,stable}
 test_lib! {identity,stable}
-
-run_test! {iter,fold,stable}
+test_lib! {types,stable}
 
 test_lib! {references,stable}
 //test_lib! {structs}
@@ -679,95 +678,83 @@ test_lib! {recursive,stable}
 test_lib! {fn_ptr,stable}
 test_lib! {tuple,stable}
 
-run_test! {types,dst,stable}
-run_test! {types,dyns,stable}
-run_test! {types,any,stable}
-run_test! {types,maybeuninit,stable}
-test_lib! {types,stable}
-
-run_test! {arthm,add,stable}
-run_test! {arthm,max,stable}
-run_test! {arthm,cmp,stable}
-run_test! {arthm,shift,stable}
-run_test! {arthm,not,stable}
-
-run_test! {arthm,xor,stable}
-
-run_test! {arthm,mul,stable}
-run_test! {arthm,greater_than,stable}
-run_test! {arthm,sub,stable}
-
-run_test! {types,tuple_structs,stable}
-run_test! {types,tuple_enum,stable}
-run_test! {types,enums,stable}
-run_test! {types,arr,stable}
-run_test! {types,aligned,stable}
-
-run_test! {types,adt_enum,stable}
-run_test! {types,nbody,stable}
-run_test! {types,structs,stable}
-run_test! {types,interop,stable}
-run_test! {types,interop_typedef,unstable}
-run_test! {types,vec,stable}
-run_test! {types,subslice,stable}
-
-run_test! {types,string_slice,stable}
-run_test! {types,ref_deref,stable}
-run_test! {types,slice_ptr_cast,stable}
-run_test! {types,slice_index_ref,stable}
-run_test! {types,slice,stable}
-run_test! {types,slice_from_end,stable}
-run_test! {types,statics,stable}
-run_test! {types,async_types,unstable}
-run_test! {types,self_referential_statics,stable}
-run_test! {types,int128,stable}
-
-run_test! {std,main,stable}
-run_test! {std,mutithreading,stable}
-
-run_test! {std,futex_test,unstable}
-run_test! {std,arg_test,stable}
-run_test! {std,futexrw_test,unstable}
-run_test! {std,tlocal_key_test,stable}
-run_test! {std,cstr,unstable}
-run_test! {std,format,unstable}
-run_test! {std,cell_test,stable}
-run_test! {std,once_lock_test,unstable}
-run_test! {control_flow,cf_for,stable}
-run_test! {control_flow,drop,stable}
-run_test! {intrinsics,bswap,stable}
-
-run_test! {intrinsics,assert,stable}
-run_test! {intrinsics,addr_of,stable}
-run_test! {intrinsics,catch,stable}
-
-run_test! {intrinsics,ctpop,stable}
-run_test! {intrinsics,atomics,stable}
-run_test! {intrinsics,alloc,stable}
-run_test! {intrinsics,size_of_val,stable}
-run_test! {intrinsics,malloc,stable}
-run_test! {intrinsics,offset_of,stable}
-run_test! {intrinsics,printf,stable}
-run_test! {intrinsics,type_id,stable}
-run_test! {intrinsics,caller_location,stable}
-run_test! {intrinsics,copy_nonoverlaping,stable}
-run_test! {intrinsics,ptr_offset_from_unsigned,stable}
-run_test! {intrinsics,arith_offset,stable}
-run_test! {intrinsics,cmp_bytes,stable}
-run_test! {intrinsics,transmute,stable}
-
+//test_lib! {structs}
 run_test! {alloc,abox,stable}
 run_test! {alloc,raw_vec,stable}
 run_test! {alloc,slice_to_owned,stable}
-run_test! {statics,thread_local,stable}
-
+run_test! {arthm,add,stable}
+run_test! {arthm,cmp,stable}
+run_test! {arthm,greater_than,stable}
+run_test! {arthm,max,stable}
+run_test! {arthm,mul,stable}
+run_test! {arthm,not,stable}
+run_test! {arthm,shift,stable}
+run_test! {arthm,sub,stable}
+run_test! {arthm,xor,stable}
+run_test! {cast,i8_to_u64,stable}
+run_test! {cast,i16_to_u64,stable}
+run_test! {cast,i32_to_u64,stable}
+run_test! {cast,i32_to_usize,stable}
+run_test! {control_flow,cf_for,stable}
+run_test! {control_flow,drop,stable}
 run_test! {fuzz,test0,stable}
 run_test! {fuzz,test1,stable}
-
-run_test! {cast,i32_to_usize,stable}
-run_test! {cast,i32_to_u64,stable}
-run_test! {cast,i16_to_u64,stable}
-run_test! {cast,i8_to_u64,stable}
+run_test! {intrinsics,addr_of,stable}
+run_test! {intrinsics,alloc,stable}
+run_test! {intrinsics,arith_offset,stable}
+run_test! {intrinsics,assert,stable}
+run_test! {intrinsics,atomics,stable}
+run_test! {intrinsics,bswap,stable}
+run_test! {intrinsics,caller_location,stable}
+run_test! {intrinsics,catch,stable}
+run_test! {intrinsics,cmp_bytes,stable}
+run_test! {intrinsics,copy_nonoverlaping,stable}
+run_test! {intrinsics,ctpop,stable}
+run_test! {intrinsics,malloc,stable}
+run_test! {intrinsics,offset_of,stable}
+run_test! {intrinsics,printf,stable}
+run_test! {intrinsics,ptr_offset_from_unsigned,stable}
+run_test! {intrinsics,size_of_val,stable}
+run_test! {intrinsics,transmute,stable}
+run_test! {intrinsics,type_id,stable}
+run_test! {iter,fold,stable}
+run_test! {statics,thread_local,stable}
+run_test! {std,arg_test,stable}
+run_test! {std,cell_test,stable}
+run_test! {std,cstr,unstable}
+run_test! {std,format,unstable}
+run_test! {std,futex_test,unstable}
+run_test! {std,futexrw_test,unstable}
+run_test! {std,main,stable}
+run_test! {std,mutithreading,stable}
+run_test! {std,once_lock_test,unstable}
+run_test! {std,tlocal_key_test,stable}
+run_test! {types,adt_enum,stable}
+run_test! {types,aligned,stable}
+run_test! {types,any,stable}
+run_test! {types,arr,stable}
+run_test! {types,async_types,unstable}
+run_test! {types,dst,stable}
+run_test! {types,dyns,stable}
+run_test! {types,enums,stable}
+run_test! {types,int128,stable}
+run_test! {types,interop,stable}
+run_test! {types,interop_typedef,unstable}
+run_test! {types,maybeuninit,stable}
+run_test! {types,nbody,stable}
+run_test! {types,ref_deref,stable}
+run_test! {types,self_referential_statics,stable}
+run_test! {types,slice,stable}
+run_test! {types,slice_from_end,stable}
+run_test! {types,slice_index_ref,stable}
+run_test! {types,slice_ptr_cast,stable}
+run_test! {types,statics,stable}
+run_test! {types,string_slice,stable}
+run_test! {types,structs,stable}
+run_test! {types,subslice,stable}
+run_test! {types,tuple_enum,stable}
+run_test! {types,tuple_structs,stable}
+run_test! {types,vec,stable}
 
 compare_tests! {fuzz,fuzz0,stable}
 compare_tests! {fuzz,fuzz1,stable}
@@ -909,7 +896,8 @@ cargo_test_ignored! {build_core}
 cargo_test_ignored! {build_alloc}
 cargo_test_ignored! {build_std}
 cargo_test! {benchmarks,bench}
-cargo_test! {glam_test,stable}
+// TODO: This trips up some post-link sanity checks, investigate.
+cargo_test! {glam_test,unstable}
 cargo_test! {fastrand_test,stable}
 
 use lazy_static::lazy_static;

@@ -126,7 +126,7 @@ pub fn handle_rvalue<'tcx>(
             match (&src, &dst) {
                 (
                     Type::ISize | Type::USize | Type::Ptr(_) | Type::DelegatePtr(_),
-                    Type::ISize | Type::USize | Type::Ptr(_)| Type::DelegatePtr(_),
+                    Type::ISize | Type::USize | Type::Ptr(_) | Type::DelegatePtr(_),
                 ) => handle_operand(operand, ctx).cast_ptr(dst),
 
                 (Type::U16, Type::DotnetChar) => handle_operand(operand, ctx),
@@ -304,8 +304,9 @@ pub fn handle_rvalue<'tcx>(
                 .cast_ptr(rvalue_type)
             }
         }
-        Rvalue::Cast(rustc_middle::mir::CastKind::FnPtrToPtr, operand, _) => {
-            handle_operand(operand, ctx)
+        Rvalue::Cast(rustc_middle::mir::CastKind::FnPtrToPtr, operand, target) => {
+            let target = ctx.type_from_cache(*target);
+            handle_operand(operand, ctx).cast_ptr(target)
         }
         Rvalue::Cast(rustc_middle::mir::CastKind::DynStar, _, _) => {
             todo!("Unusported cast kind:DynStar")

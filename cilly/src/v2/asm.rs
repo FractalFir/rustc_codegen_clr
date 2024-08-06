@@ -347,9 +347,9 @@ impl Assembly {
     }
     #[track_caller]
     pub fn sanity_check(&self) {
-        self.class_defs
-            .values()
-            .for_each(|class| crate::utilis::assert_unique(class.methods()))
+        self.class_defs.values().for_each(|class| {
+            crate::utilis::assert_unique(class.methods(), class.ref_to().display(self))
+        })
     }
     pub fn export(&self, out: impl AsRef<std::path::Path>, exporter: impl Exporter) {
         exporter.export(self, out.as_ref()).unwrap()

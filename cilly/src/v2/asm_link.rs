@@ -97,20 +97,24 @@ impl Assembly {
         MethodRef::new(class, name, sig, method_ref.kind(), generics)
     }
     pub(crate) fn translate_node(&mut self, source: &Assembly, node: CILNode) -> CILNode {
-        match node {
-            CILNode::LdLoc(_)
-            | CILNode::LdLocA(_)
-            | CILNode::LdArg(_)
-            | CILNode::LdArgA(_)
-            | CILNode::Const(_) => node,
+        match &node {
+            CILNode::LdLoc(_) | CILNode::LdLocA(_) | CILNode::LdArg(_) | CILNode::LdArgA(_) => node,
+            CILNode::Const(cst) => match cst.as_ref() {
+                super::Const::PlatformString(pstr) => {
+                    CILNode::Const(Box::new(super::Const::PlatformString(
+                        self.alloc_string(source.get_string(*pstr).as_ref()),
+                    )))
+                }
+                _ => node.clone(),
+            },
             CILNode::BinOp(a, b, op) => {
-                let a = self.translate_node(source, source.get_node(a).clone());
-                let b = self.translate_node(source, source.get_node(b).clone());
-                CILNode::BinOp(self.alloc_node(a), self.alloc_node(b), op)
+                let a = self.translate_node(source, source.get_node(*a).clone());
+                let b = self.translate_node(source, source.get_node(*b).clone());
+                CILNode::BinOp(self.alloc_node(a), self.alloc_node(b), *op)
             }
             CILNode::UnOp(a, op) => {
-                let a = self.translate_node(source, source.get_node(a).clone());
-                CILNode::UnOp(self.alloc_node(a), op)
+                let a = self.translate_node(source, source.get_node(*a).clone());
+                CILNode::UnOp(self.alloc_node(a), op.clone())
             }
             CILNode::Call(call_arg) => {
                 let (mref, args) = call_arg.as_ref();
@@ -130,12 +134,12 @@ impl Assembly {
                 target,
                 extend,
             } => {
-                let input = self.translate_node(source, source.get_node(input).clone());
+                let input = self.translate_node(source, source.get_node(*input).clone());
                 let input = self.alloc_node(input);
                 CILNode::IntCast {
                     input,
-                    target,
-                    extend,
+                    target: *target,
+                    extend: extend.clone(),
                 }
             }
             CILNode::FloatCast {
@@ -143,51 +147,51 @@ impl Assembly {
                 target,
                 is_signed,
             } => {
-                let input = self.translate_node(source, source.get_node(input).clone());
+                let input = self.translate_node(source, source.get_node(*input).clone());
                 let input = self.alloc_node(input);
                 CILNode::FloatCast {
                     input,
-                    target,
-                    is_signed,
+                    target: *target,
+                    is_signed: *is_signed,
                 }
             }
             CILNode::RefToPtr(input) => {
-                let input = self.translate_node(source, source.get_node(input).clone());
+                let input = self.translate_node(source, source.get_node(*input).clone());
                 let input = self.alloc_node(input);
                 CILNode::RefToPtr(input)
             }
             CILNode::PtrCast(input, cast_res) => {
-                let input = self.translate_node(source, source.get_node(input).clone());
+                let input = self.translate_node(source, source.get_node(*input).clone());
                 let input = self.alloc_node(input);
-                let cast_res = match *cast_res {
+                let cast_res = match cast_res.as_ref() {
                     crate::v2::cilnode::PtrCastRes::Ptr(inner) => {
-                        let inner = self.translate_type(source, *source.get_type(inner));
+                        let inner = self.translate_type(source, *source.get_type(*inner));
                         crate::v2::cilnode::PtrCastRes::Ptr(self.alloc_type(inner))
                     }
                     crate::v2::cilnode::PtrCastRes::Ref(inner) => {
-                        let inner = self.translate_type(source, *source.get_type(inner));
+                        let inner = self.translate_type(source, *source.get_type(*inner));
                         crate::v2::cilnode::PtrCastRes::Ref(self.alloc_type(inner))
                     }
                     crate::v2::cilnode::PtrCastRes::FnPtr(sig) => {
-                        let sig = self.translate_sig(source, source.get_sig(sig).clone());
+                        let sig = self.translate_sig(source, source.get_sig(*sig).clone());
                         crate::v2::cilnode::PtrCastRes::FnPtr(self.alloc_sig(sig))
                     }
                     crate::v2::cilnode::PtrCastRes::USize
-                    | crate::v2::cilnode::PtrCastRes::ISize => *cast_res,
+                    | crate::v2::cilnode::PtrCastRes::ISize => *cast_res.clone(),
                 };
                 CILNode::PtrCast(input, Box::new(cast_res))
             }
             CILNode::LdFieldAdress { addr, field } => {
-                let field = self.translate_field(source, *source.get_field(field));
+                let field = self.translate_field(source, *source.get_field(*field));
                 let field = self.alloc_field(field);
-                let addr = self.translate_node(source, source.get_node(addr).clone());
+                let addr = self.translate_node(source, source.get_node(*addr).clone());
                 let addr = self.alloc_node(addr);
                 CILNode::LdFieldAdress { addr, field }
             }
             CILNode::LdField { addr, field } => {
-                let field = self.translate_field(source, *source.get_field(field));
+                let field = self.translate_field(source, *source.get_field(*field));
                 let field = self.alloc_field(field);
-                let addr = self.translate_node(source, source.get_node(addr).clone());
+                let addr = self.translate_node(source, source.get_node(*addr).clone());
                 let addr = self.alloc_node(addr);
                 CILNode::LdField { addr, field }
             }
@@ -196,33 +200,33 @@ impl Assembly {
                 tpe,
                 volitale,
             } => {
-                let addr = self.translate_node(source, source.get_node(addr).clone());
+                let addr = self.translate_node(source, source.get_node(*addr).clone());
                 let addr = self.alloc_node(addr);
-                let tpe = self.translate_type(source, *source.get_type(tpe));
+                let tpe = self.translate_type(source, *source.get_type(*tpe));
                 let tpe = self.alloc_type(tpe);
                 CILNode::LdInd {
                     addr,
                     tpe,
-                    volitale,
+                    volitale: *volitale,
                 }
             }
             CILNode::SizeOf(tpe) => {
-                let tpe = self.translate_type(source, *source.get_type(tpe));
+                let tpe = self.translate_type(source, *source.get_type(*tpe));
                 let tpe = self.alloc_type(tpe);
                 CILNode::SizeOf(tpe)
             }
             CILNode::GetException => CILNode::GetException,
             CILNode::IsInst(object, tpe) => {
-                let object = self.translate_node(source, source.get_node(object).clone());
+                let object = self.translate_node(source, source.get_node(*object).clone());
                 let object = self.alloc_node(object);
-                let tpe = self.translate_type(source, *source.get_type(tpe));
+                let tpe = self.translate_type(source, *source.get_type(*tpe));
                 let tpe = self.alloc_type(tpe);
                 CILNode::IsInst(object, tpe)
             }
             CILNode::CheckedCast(object, tpe) => {
-                let object = self.translate_node(source, source.get_node(object).clone());
+                let object = self.translate_node(source, source.get_node(*object).clone());
                 let object = self.alloc_node(object);
-                let tpe = self.translate_type(source, *source.get_type(tpe));
+                let tpe = self.translate_type(source, *source.get_type(*tpe));
                 let tpe = self.alloc_type(tpe);
                 CILNode::CheckedCast(object, tpe)
             }
@@ -242,46 +246,46 @@ impl Assembly {
                 CILNode::CallI(Box::new((fnptr, sig, args)))
             }
             CILNode::LocAlloc { size } => {
-                let size = self.translate_node(source, source.get_node(size).clone());
+                let size = self.translate_node(source, source.get_node(*size).clone());
                 let size = self.alloc_node(size);
                 CILNode::LocAlloc { size }
             }
             CILNode::LdStaticField(sfld) => {
-                let sfld = self.translate_static_field(source, *source.get_static_field(sfld));
+                let sfld = self.translate_static_field(source, *source.get_static_field(*sfld));
                 let sfld = self.alloc_sfld(sfld);
                 CILNode::LdStaticField(sfld)
             }
             CILNode::LdFtn(mref) => {
-                let method_ref = self.translate_method_ref(source, source.get_mref(mref).clone());
+                let method_ref = self.translate_method_ref(source, source.get_mref(*mref).clone());
                 let mref = self.alloc_methodref(method_ref);
                 CILNode::LdFtn(mref)
             }
             CILNode::LdTypeToken(tpe) => {
-                let tpe = self.translate_type(source, *source.get_type(tpe));
+                let tpe = self.translate_type(source, *source.get_type(*tpe));
                 let tpe = self.alloc_type(tpe);
                 CILNode::LdTypeToken(tpe)
             }
             CILNode::LdLen(len) => {
-                let len = self.translate_node(source, source.get_node(len).clone());
+                let len = self.translate_node(source, source.get_node(*len).clone());
                 let len = self.alloc_node(len);
                 CILNode::LdLen(len)
             }
             CILNode::LocAllocAlgined { tpe, align } => {
-                let tpe = self.translate_type(source, *source.get_type(tpe));
+                let tpe = self.translate_type(source, *source.get_type(*tpe));
                 let tpe = self.alloc_type(tpe);
-                CILNode::LocAllocAlgined { tpe, align }
+                CILNode::LocAllocAlgined { tpe, align: *align }
             }
             CILNode::LdElelemRef { array, index } => {
-                let array = self.translate_node(source, source.get_node(array).clone());
+                let array = self.translate_node(source, source.get_node(*array).clone());
                 let array = self.alloc_node(array);
-                let index = self.translate_node(source, source.get_node(index).clone());
+                let index = self.translate_node(source, source.get_node(*index).clone());
                 let index = self.alloc_node(index);
                 CILNode::LdElelemRef { array, index }
             }
             CILNode::UnboxAny { object, tpe } => {
-                let object = self.translate_node(source, source.get_node(object).clone());
+                let object = self.translate_node(source, source.get_node(*object).clone());
                 let object = self.alloc_node(object);
-                let tpe = self.translate_type(source, *source.get_type(tpe));
+                let tpe = self.translate_type(source, *source.get_type(*tpe));
                 let tpe = self.alloc_type(tpe);
                 CILNode::UnboxAny { object, tpe }
             }
