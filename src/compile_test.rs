@@ -694,6 +694,7 @@ run_test! {fuzz,test1,stable}
 run_test! {intrinsics,addr_of,stable}
 run_test! {intrinsics,alloc,stable}
 run_test! {intrinsics,arith_offset,stable}
+run_test! {intrinsics,arithmetic_misc,stable}
 run_test! {intrinsics,assert,stable}
 run_test! {intrinsics,atomics,stable}
 run_test! {intrinsics,bswap,stable}
@@ -703,7 +704,7 @@ run_test! {intrinsics,cmp_bytes,stable}
 run_test! {intrinsics,copy_nonoverlaping,stable}
 run_test! {intrinsics,ctpop,stable}
 run_test! {intrinsics,malloc,stable}
-run_test! {intrinsics,offset_of,stable}
+run_test! {intrinsics,offset_of,unstable}
 run_test! {intrinsics,overflow_ops,stable}
 run_test! {intrinsics,pow_sqrt,stable}
 run_test! {intrinsics,printf,stable}
