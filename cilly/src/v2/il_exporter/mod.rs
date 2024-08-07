@@ -1,6 +1,6 @@
 use std::io::Write;
 use lazy_static::*;
-use crate::{ utilis::assert_unique, v2::MethodImpl, };
+use crate::v2::MethodImpl;
 
 use super::{
     asm::{IlasmFlavour, ILASM_FLAVOUR, ILASM_PATH}, cilroot::BranchCond, int, Assembly, CILIter, CILIterElem, CILNode, ClassRefIdx, Exporter, NodeIdx, RootIdx, Type
@@ -128,7 +128,7 @@ impl ILExporter {
                     out,
                     ".method {vis} hidebysig {kind} {pinvoke} {ret} '{name}'({inputs}) cil managed {preservesig}{{// Method ID {method_id:?}"
                 )?;
-                let stack_size = match method.implementation() {
+                let stack_size = match method.resolved_implementation(asm) {
                     MethodImpl::MethodBody { blocks, .. } => blocks
                         .iter()
                         .flat_map(|block| block.roots().iter())

@@ -137,7 +137,7 @@ fn garag_to_usize<'tcx>(garg: GenericArg<'tcx>, _ctx: TyCtxt<'tcx>) -> u64 {
 #[must_use]
 pub fn simple_tuple(elements: &[Type]) -> DotnetTypeRef {
     // Since no intering can happen at this stage, we can pass an empty AsmStringContainer safely.
-    let name = tuple_name(elements, &AsmStringContainer::default());
+    let name = tuple_name(elements);
 
     DotnetTypeRef::new::<&str, _>(None, name)
 }

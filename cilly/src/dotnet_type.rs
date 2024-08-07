@@ -164,8 +164,8 @@ impl DotnetTypeRef {
         }
     }
     #[must_use]
-    pub fn array(element: &Type, length: usize, strings: &AsmStringContainer) -> Self {
-        let name = crate::arr_name(length, element, strings);
+    pub fn array(element: &Type, length: usize) -> Self {
+        let name = crate::arr_name(length, element);
         Self::new::<crate::IString, _>(None, name)
     }
 

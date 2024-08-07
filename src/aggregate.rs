@@ -62,8 +62,7 @@ pub fn handle_aggregate<'tcx>(
         AggregateKind::Array(element) => {
             let element = ctx.monomorphize(*element);
             let element = ctx.type_from_cache(element);
-            let array_type =
-                DotnetTypeRef::array(&element, value_index.len(), &AsmStringContainer::default());
+            let array_type = DotnetTypeRef::array(&element, value_index.len());
             let array_getter = super::place::place_adress(target_location, ctx);
             let sig = cilly::fn_sig::FnSig::new(
                 &[ptr!(array_type.clone().into()), Type::USize, element],

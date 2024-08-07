@@ -134,7 +134,7 @@ impl TypeDef {
             let max_offset = offsets.iter().max().unwrap_or(&0);
 
             assert!(
-                (*max_offset as u32)
+                (*max_offset)
                     < self
                         .explict_size()
                         .unwrap_or_else(|| {

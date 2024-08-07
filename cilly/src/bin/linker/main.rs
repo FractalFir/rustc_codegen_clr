@@ -1,6 +1,7 @@
 #![deny(unused_must_use)]
 #![allow(clippy::module_name_repetitions)]
 use cilly::{
+    asm::DEAD_CODE_ELIMINATION,
     call_site::CallSite,
     conv_usize,
     libc_fns::{LIBC_FNS, LIBC_MODIFIES_ERRNO},
@@ -300,11 +301,36 @@ fn main() {
             MethodImpl::MethodBody { blocks, locals }
         }),
     );
+    overrides.insert(
+        final_assembly.alloc_string("_Unwind_DeleteException"),
+        Box::new(|_, asm| {
+            let ret = asm.alloc_root(CILRoot::VoidRet);
+            let blocks = vec![BasicBlock::new(vec![ret], 0, None)];
+            MethodImpl::MethodBody {
+                blocks,
+                locals: vec![],
+            }
+        }),
+    );
+    overrides.insert(
+        final_assembly.alloc_string("rust_begin_unwind"),
+        Box::new(|_, asm| {
+            MethodImpl::AliasFor(
+                *asm.find_methods_named("rust_begin_unwind")
+                    .unwrap()
+                    .next()
+                    .unwrap(),
+            )
+        }),
+    );
     final_assembly.patch_missing_methods(externs, modifies_errno, overrides);
 
     add_mandatory_statics(&mut final_assembly);
+    if *DEAD_CODE_ELIMINATION {
+        println!("Eliminating dead code");
+        final_assembly.eliminate_dead_code();
+    }
 
-    final_assembly.eliminate_dead_code();
     final_assembly
         .save_tmp(&mut std::fs::File::create(path.with_extension("cilly2")).unwrap())
         .unwrap();

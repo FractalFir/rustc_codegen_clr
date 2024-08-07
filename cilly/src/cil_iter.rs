@@ -1,5 +1,3 @@
-use ordered_float::OrderedFloat;
-
 use crate::{call_site::CallSite, cil_node::CILNode, cil_root::CILRoot};
 
 #[derive(Debug, Clone, Copy)]
@@ -312,30 +310,39 @@ impl<'a> Iterator for CILIter<'a> {
                 }
                 CILIterElem::Node(CILNode::SubTrees(rn)) => {
                     let (roots, node) = rn.as_ref();
-                    if *idx - 1 < roots.len() {
-                        let root: &CILRoot = &roots[*idx - 1];
-                        *idx += 1;
-                        self.elems.push((0, CILIterElem::Root(root)));
-                    } else if *idx - 1 == roots.len() {
-                        *idx += 1;
-                        self.elems.push((0, CILIterElem::Node(node)));
-                    } else {
-                        self.elems.pop();
+                    match (*idx - 1).cmp(&roots.len()) {
+                        std::cmp::Ordering::Less => {
+                            let root: &CILRoot = &roots[*idx - 1];
+                            *idx += 1;
+                            self.elems.push((0, CILIterElem::Root(root)));
+                        }
+                        std::cmp::Ordering::Equal => {
+                            *idx += 1;
+                            self.elems.push((0, CILIterElem::Node(node)));
+                        }
+                        std::cmp::Ordering::Greater => {
+                            self.elems.pop();
+                        }
                     }
+
                     continue;
                 }
 
                 CILIterElem::Node(CILNode::TemporaryLocal(pack)) => {
                     let (_, roots, node) = pack.as_ref();
-                    if *idx - 1 < roots.len() {
-                        let root: &CILRoot = &roots[*idx - 1];
-                        *idx += 1;
-                        self.elems.push((0, CILIterElem::Root(root)));
-                    } else if *idx - 1 == roots.len() {
-                        *idx += 1;
-                        self.elems.push((0, CILIterElem::Node(node)));
-                    } else {
-                        self.elems.pop();
+                    match (*idx - 1).cmp(&roots.len()) {
+                        std::cmp::Ordering::Less => {
+                            let root: &CILRoot = &roots[*idx - 1];
+                            *idx += 1;
+                            self.elems.push((0, CILIterElem::Root(root)));
+                        }
+                        std::cmp::Ordering::Equal => {
+                            *idx += 1;
+                            self.elems.push((0, CILIterElem::Node(node)));
+                        }
+                        std::cmp::Ordering::Greater => {
+                            self.elems.pop();
+                        }
                     }
                     continue;
                 }
@@ -571,7 +578,7 @@ fn iter() {
         )),
         args: [
             CILNode::LdcI32(-77),
-            CILNode::LdcF32(OrderedFloat(3.119765)),
+            CILNode::LdcF32(ordered_float::OrderedFloat(3.119765)),
         ]
         .into(),
     };
@@ -586,7 +593,9 @@ fn iter() {
     ));
     assert!(matches!(
         iter.next(),
-        Some(CILIterElem::Node(CILNode::LdcF32(OrderedFloat(3.119765))))
+        Some(CILIterElem::Node(CILNode::LdcF32(
+            ordered_float::OrderedFloat(3.119765)
+        )))
     ));
     assert!(iter.next().is_none());
 }

@@ -73,14 +73,14 @@ pub mod utilis;
 pub mod v2;
 #[must_use]
 /// Returns the name of a fixed-size array
-pub fn arr_name(element_count: usize, element: &Type, strings: &AsmStringContainer) -> IString {
-    let element_name = mangle(element, strings);
+pub fn arr_name(element_count: usize, element: &Type) -> IString {
+    let element_name = mangle(element);
     format!("Arr{element_count}_{element_name}",).into()
 }
 /// Returns a mangled type name.
 /// # Panics
 /// Panics when a genetic managed array is used.
-pub fn mangle(tpe: &Type, strings: &AsmStringContainer) -> std::borrow::Cow<'static, str> {
+pub fn mangle(tpe: &Type) -> std::borrow::Cow<'static, str> {
     match tpe {
         Type::Bool => "b".into(),
         Type::Void => "v".into(),
@@ -99,7 +99,7 @@ pub fn mangle(tpe: &Type, strings: &AsmStringContainer) -> std::borrow::Cow<'sta
         Type::F16 => "f16".into(),
         Type::F32 => "f32".into(),
         Type::F64 => "f64".into(),
-        Type::Ptr(inner) => format!("p{inner}", inner = mangle(inner, strings)).into(),
+        Type::Ptr(inner) => format!("p{inner}", inner = mangle(inner,)).into(),
         Type::DotnetType(tpe) => {
             assert!(
                 tpe.generics().is_empty(),
@@ -107,24 +107,18 @@ pub fn mangle(tpe: &Type, strings: &AsmStringContainer) -> std::borrow::Cow<'sta
             );
             tpe.name_path().replace('.', "_").into()
         }
-        Type::ManagedArray { element, dims } => {
-            format!("a{}{}", dims, mangle(element, strings)).into()
-        }
+        Type::ManagedArray { element, dims } => format!("a{}{}", dims, mangle(element,)).into(),
         Type::DotnetChar => "c".into(),
         Type::GenericArg(_) => todo!("Can't mangle generic type arg"),
 
         Type::DelegatePtr(sig) => format!(
             "d{output}{input_count}{input_string}",
-            output = mangle(sig.output(), strings),
+            output = mangle(sig.output(),),
             input_count = sig.inputs().len(),
-            input_string = sig
-                .inputs()
-                .iter()
-                .map(|s| mangle(s, strings))
-                .collect::<String>()
+            input_string = sig.inputs().iter().map(|s| mangle(s,)).collect::<String>()
         )
         .into(),
-        Type::ManagedReference(inner) => format!("m{inner}", inner = mangle(inner, strings)).into(),
+        Type::ManagedReference(inner) => format!("m{inner}", inner = mangle(inner,)).into(),
         Type::Foreign => "g".into(),
         Type::CallGenericArg(_) => "l".into(),
         Type::MethodGenericArg(_) => "h".into(),

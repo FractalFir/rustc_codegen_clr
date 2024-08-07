@@ -1166,7 +1166,6 @@ add_method_from_trees!(
                 ),
                 BasicBlock::new(
                     vec![
-                        CILRoot::debug("Can't yet catch .NET exceptions.").into(),
                         CILRoot::Call {
                             site: Box::new(CallSite::new_extern(
                                 DotnetTypeRef::console(),
@@ -1180,15 +1179,30 @@ add_method_from_trees!(
                             args: Box::new([CILNode::LDLoc(1)])
                         }
                         .into(),
-                        /*CILRoot::CallI {
+                        CILRoot::CallI {
                             sig: Box::new(FnSig::new(
                                 &[ptr!(Type::U8), ptr!(Type::U8)],
                                 Type::Void
                             )),
                             fn_ptr: Box::new(CILNode::LDArg(2)),
-                            args: Box::new([CILNode::LDArg(1), conv_usize!(ldc_u32!(0))])
+                            args: Box::new([
+                                CILNode::LDArg(1),
+                                call!(
+                                    CallSite::builtin(
+                                        "exception_to_native".into(),
+                                        FnSig::new(
+                                            vec![Type::DotnetType(Box::new(
+                                                DotnetTypeRef::object_type()
+                                            )),],
+                                            ptr!(Type::U8)
+                                        ),
+                                        true
+                                    ),
+                                    [CILNode::LDLoc(1)]
+                                )
+                            ])
                         }
-                        .into(),*/
+                        .into(),
                         CILRoot::JumpingPad {
                             source: 0,
                             target: 2
@@ -1208,7 +1222,11 @@ add_method_from_trees!(
         (
             Some("exception".into()),
             Type::DotnetType(Box::new(DotnetTypeRef::exception())),
-        )
+        ),
+        (
+            Some("tmp_buff".into()),
+            Type::DotnetType(Box::new(DotnetTypeRef::array(&Type::USize, 4)))
+        ),
     ],
     vec![
         Some("try_fn".into()),

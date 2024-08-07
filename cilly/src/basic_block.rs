@@ -1,16 +1,9 @@
-use std::ops::DerefMut;
-
 use fxhash::{FxBuildHasher, FxHashSet};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    asm::CILLY_V2,
-    cil_iter::{CILIterElem, CILIterTrait},
-    cil_node::{CILNode, ValidationContext},
-    cil_root::CILRoot,
-    cil_tree::CILTree,
+    cil_iter::CILIterElem, cil_node::ValidationContext, cil_root::CILRoot, cil_tree::CILTree,
     utilis::MemoryUsage,
-    DepthSetting,
 };
 
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]

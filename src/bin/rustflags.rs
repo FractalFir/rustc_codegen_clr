@@ -7,6 +7,7 @@ fn ilasm_check() {
 Please instal the CIL assembler, and/or set the ILASM_PATH enviroment variable to point to your CIL assembler.",*ILASM_PATH)
     }
 }
+
 fn main() {
     let build_env = rustc_codegen_clr::compile_test::cargo_build_env();
     let print_raw_env = std::env::args().any(|arg| arg == "--print_raw_env");

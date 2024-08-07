@@ -1,7 +1,7 @@
 use crate::{
     call, call_site::CallSite, cil_iter::CILIterTrait, cil_root::CILRoot,
     field_desc::FieldDescriptor, fn_sig::FnSig, ptr, static_field_desc::StaticFieldDescriptor,
-    AsmStringContainer, DotnetTypeRef, IString, Type,
+    DotnetTypeRef, IString, Type,
 };
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};

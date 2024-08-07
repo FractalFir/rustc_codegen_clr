@@ -22,10 +22,12 @@ pub struct TyCache {
 impl TyCache {
     #[must_use]
     pub fn empty() -> Self {
-        Self {
+        let mut new = Self {
             type_def_cache: FxHashMap::with_hasher(FxBuildHasher::default()),
             cycle_prevention: vec![],
-        }
+        };
+        new.add_arr(Type::USize, 4, 32);
+        new
     }
     pub fn defs(&self) -> impl Iterator<Item = &TypeDef> {
         self.type_def_cache.values()
@@ -411,16 +413,16 @@ impl TyCache {
                 if types.is_empty() {
                     Type::Void
                 } else {
-                    let name = tuple_name(&types, &AsmStringContainer::default());
+                    let name = tuple_name(&types);
                     let layout = tcx
                         .layout_of(rustc_middle::ty::ParamEnvAnd {
                             param_env: ParamEnv::reveal_all(),
                             value: ty,
                         })
                         .expect("Could not get type layout!");
-                    self.type_def_cache.entry(name).or_insert_with(|| {
-                        tuple_typedef(&types, layout.layout, &AsmStringContainer::default())
-                    });
+                    self.type_def_cache
+                        .entry(name)
+                        .or_insert_with(|| tuple_typedef(&types, layout.layout));
                     super::simple_tuple(&types).into()
                 }
             }
@@ -451,13 +453,7 @@ impl TyCache {
                     .iter()
                     .map(|ty| self.type_from_cache(ty, tcx, method))
                     .collect();
-                let name: IString = crate::r#type::closure_name(
-                    *def,
-                    &fields,
-                    &sig,
-                    &AsmStringContainer::default(),
-                )
-                .into();
+                let name: IString = crate::r#type::closure_name(*def, &fields, &sig).into();
                 let layout = tcx
                     .layout_of(rustc_middle::ty::ParamEnvAnd {
                         param_env: ParamEnv::reveal_all(),
@@ -467,13 +463,7 @@ impl TyCache {
                 if !self.type_def_cache.contains_key(&name) {
                     self.type_def_cache.insert(
                         name.clone(),
-                        closure_typedef(
-                            *def,
-                            &fields,
-                            &sig,
-                            layout.layout,
-                            &AsmStringContainer::default(),
-                        ),
+                        closure_typedef(*def, &fields, &sig, layout.layout),
                     );
                 }
                 DotnetTypeRef::new::<&str, _>(None, name).into()
@@ -565,20 +555,14 @@ impl TyCache {
         }
     }
     pub fn add_arr(&mut self, element: Type, length: usize, arr_size: u64) -> Type {
-        let arr_name =
-            crate::r#type::type_def::arr_name(length, &element, &AsmStringContainer::default());
+        let arr_name = crate::r#type::type_def::arr_name(length, &element);
         if !self.type_def_cache.contains_key(&arr_name) {
             self.type_def_cache.insert(
                 arr_name.clone(),
-                crate::r#type::type_def::get_array_type(
-                    length,
-                    element.clone(),
-                    arr_size,
-                    &AsmStringContainer::default(),
-                ),
+                crate::r#type::type_def::get_array_type(length, element.clone(), arr_size),
             );
         }
-        DotnetTypeRef::array(&element, length, &AsmStringContainer::default()).into()
+        DotnetTypeRef::array(&element, length).into()
     }
     pub fn slice_ref_to<'tcx>(
         &mut self,
@@ -588,11 +572,7 @@ impl TyCache {
     ) -> Type {
         inner = crate::utilis::monomorphize(&method, inner, tcx);
         let inner_tpe = self.type_from_cache(inner, tcx, method);
-        let name: IString = format!(
-            "FatPtr{elem}",
-            elem = cilly::mangle(&inner_tpe, &AsmStringContainer::default())
-        )
-        .into();
+        let name: IString = format!("FatPtr{elem}", elem = cilly::mangle(&inner_tpe)).into();
         if !self.type_def_cache.contains_key(&name) {
             let def = TypeDef::new(
                 AccessModifer::Extern,

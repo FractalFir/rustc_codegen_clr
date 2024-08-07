@@ -271,22 +271,7 @@ lazy_static! {
         }).unwrap_or(true)
     };
 }
-fn link_static_initializers(a: Option<&Method>, b: Option<&Method>) -> Option<Method> {
-    match (a, b) {
-        (None, None) => None,
-        (Some(a), None) => Some(a.clone()),
-        (None, Some(b)) => Some(b.clone()),
-        (Some(a), Some(b)) => {
-            let mut merged: Method = a.clone();
-            let mut blocks = merged.blocks_mut();
-            let trees = blocks[0].trees_mut();
-            trees.pop();
-            trees.extend(b.blocks()[0].trees().iter().cloned());
-            drop(blocks);
-            Some(merged)
-        }
-    }
-}
+
 impl MemoryUsage for Assembly {
     fn memory_usage(&self, counter: &mut impl crate::utilis::MemoryUsageCounter) -> usize {
         let self_size = std::mem::size_of::<Self>();

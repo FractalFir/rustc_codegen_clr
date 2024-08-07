@@ -1,24 +1,22 @@
 use fxhash::{FxBuildHasher, FxHashMap, FxHashSet};
 use serde::{Deserialize, Serialize};
 use std::{
-    borrow::BorrowMut,
     hash::{Hash, Hasher},
     ops::{Deref, DerefMut},
 };
 
 use crate::{
     access_modifier::AccessModifer,
-    asm::Assembly,
     basic_block::BasicBlock,
     call_site::CallSite,
     cil_iter::{CILIterElem, CILIterTrait},
-    cil_iter_mut::{CILIterElemMut, CILIterMut, CILIterMutTrait},
+    cil_iter_mut::CILIterElemMut,
     cil_node::{CILNode, ValidationContext},
     cil_root::CILRoot,
     cil_tree::CILTree,
     static_field_desc::StaticFieldDescriptor,
     utilis::MemoryUsage,
-    AsmStringContainer, DepthSetting, DotnetTypeRef, FnSig, IString, Type,
+    DotnetTypeRef, FnSig, IString, Type,
 };
 
 /// Represenation of a CIL method.
@@ -130,7 +128,7 @@ impl Method {
         self.local_sets(local).count()
     }
     pub fn const_opt_pass(&mut self) {
-        use crate::cil_iter_mut::{CILIterElemMut, CILIterMutTrait};
+        use crate::cil_iter_mut::CILIterMutTrait;
         // If a local is set only once, and its address is never taken, it is likely to be const
         // TODO: this is inefficient Consider checking all locals at once?
         let luo = LocalUsageInfo::from_method(self);

@@ -280,6 +280,11 @@ impl ClassDef {
         // Check accessibility matches
         assert_eq!(self.access(), translated.access());
     }
+
+    pub(crate) fn add_def(&mut self, ref_idx: MethodDefIdx) {
+        assert!(!self.methods.iter().any(|def| *def == ref_idx));
+        self.methods_mut().push(ref_idx);
+    }
 }
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Copy, Serialize, Deserialize)]
 pub struct ClassDefIdx(pub ClassRefIdx);

@@ -1,5 +1,3 @@
-use std::borrow::Borrow;
-
 use serde::{Deserialize, Serialize};
 
 use crate::{cil_node::ValidationContext, cil_root::CILRoot, IString, Type};

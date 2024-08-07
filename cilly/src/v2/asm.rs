@@ -38,6 +38,22 @@ pub struct Assembly {
     method_defs: FxHashMap<MethodDefIdx, MethodDef>,
 }
 impl Assembly {
+    pub fn find_methods_named(
+        &self,
+        name: impl Into<IString>,
+    ) -> Option<impl Iterator<Item = MethodDefIdx> + '_> {
+        let name = self.get_prealllocated_string(name)?;
+        Some(self.method_defs.iter().filter_map(move |(mdefidx, mdef)| {
+            if mdef.name() == name {
+                Some(*mdefidx)
+            } else {
+                None
+            }
+        }))
+    }
+    pub fn get_prealllocated_string(&self, string: impl Into<IString>) -> Option<StringIdx> {
+        self.strings.1.get(&IStringWrapper(string.into())).copied()
+    }
     pub fn class_mut(&mut self, id: ClassDefIdx) -> &mut ClassDef {
         self.class_defs.get_mut(&id).unwrap()
     }
@@ -217,8 +233,8 @@ impl Assembly {
         self.class_defs
             .get_mut(&def_class)
             .expect("Method added without a class")
-            .methods_mut()
-            .push(MethodDefIdx(ref_idx));
+            .add_def(MethodDefIdx(ref_idx));
+
         self.method_defs.insert(MethodDefIdx(ref_idx), def);
 
         MethodDefIdx(ref_idx)

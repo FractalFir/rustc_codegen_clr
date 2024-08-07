@@ -664,7 +664,6 @@ pub fn assert_unique<T: std::hash::Hash + PartialEq + Eq>(val: &[T], msg: impl D
 fn argv() {
     let mut asm = Assembly::empty();
     argc_argv_init_method(&mut asm);
-    let mut out = String::new();
 }
 pub trait MemoryUsage {
     fn memory_usage(&self, counter: &mut impl MemoryUsageCounter) -> usize;

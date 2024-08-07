@@ -49,13 +49,8 @@ pub fn escape_field_name(name: &str) -> IString {
         }
     }
 }
-pub fn closure_name(
-    _def_id: DefId,
-    fields: &[Type],
-    _sig: &cilly::fn_sig::FnSig,
-    map: &AsmStringContainer,
-) -> String {
-    let mangled_fields: String = fields.iter().map(|tpe| cilly::mangle(tpe, map)).collect();
+pub fn closure_name(_def_id: DefId, fields: &[Type], _sig: &cilly::fn_sig::FnSig) -> String {
+    let mangled_fields: String = fields.iter().map(|tpe| cilly::mangle(tpe)).collect();
     format!(
         "Closure{field_count}{mangled_fields}",
         field_count = fields.len()
@@ -67,9 +62,8 @@ pub fn closure_typedef(
     fields: &[Type],
     sig: &cilly::fn_sig::FnSig,
     layout: Layout,
-    map: &AsmStringContainer,
 ) -> TypeDef {
-    let name = closure_name(def_id, fields, sig, map);
+    let name = closure_name(def_id, fields, sig);
     let field_iter = fields
         .iter()
         .enumerate()
@@ -99,11 +93,11 @@ pub fn closure_typedef(
     )
 }
 #[must_use]
-pub fn arr_name(element_count: usize, element: &Type, map: &AsmStringContainer) -> IString {
-    cilly::arr_name(element_count, element, map)
+pub fn arr_name(element_count: usize, element: &Type) -> IString {
+    cilly::arr_name(element_count, element)
 }
-pub fn tuple_name(elements: &[Type], map: &AsmStringContainer) -> IString {
-    let generics: String = elements.iter().map(|t| cilly::mangle(t, map)).collect();
+pub fn tuple_name(elements: &[Type]) -> IString {
+    let generics: String = elements.iter().map(|t| cilly::mangle(t)).collect();
     format!(
         "Tuple{generic_count}{generics}",
         generic_count = generics.len()
@@ -112,8 +106,8 @@ pub fn tuple_name(elements: &[Type], map: &AsmStringContainer) -> IString {
 }
 
 #[must_use]
-pub fn tuple_typedef(elements: &[Type], layout: Layout, map: &AsmStringContainer) -> TypeDef {
-    let name = tuple_name(elements, map);
+pub fn tuple_typedef(elements: &[Type], layout: Layout) -> TypeDef {
+    let name = tuple_name(elements);
     let field_iter = elements
         .iter()
         .enumerate()
@@ -142,13 +136,8 @@ pub fn tuple_typedef(elements: &[Type], layout: Layout, map: &AsmStringContainer
     )
 }
 #[must_use]
-pub fn get_array_type(
-    element_count: usize,
-    element: Type,
-    explict_size: u64,
-    map: &AsmStringContainer,
-) -> TypeDef {
-    let name = arr_name(element_count, &element, map);
+pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) -> TypeDef {
+    let name = arr_name(element_count, &element);
     // No string intering could have happended at this stage, so we can safely pass an empty string map.
 
     let explicit_offsets = vec![0];
