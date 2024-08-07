@@ -705,6 +705,7 @@ run_test! {intrinsics,ctpop,stable}
 run_test! {intrinsics,malloc,stable}
 run_test! {intrinsics,offset_of,stable}
 run_test! {intrinsics,overflow_ops,stable}
+run_test! {intrinsics,pow_sqrt,stable}
 run_test! {intrinsics,printf,stable}
 run_test! {intrinsics,ptr_offset_from_unsigned,stable}
 run_test! {intrinsics,size_of_val,stable}
