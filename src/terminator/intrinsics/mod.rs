@@ -111,19 +111,40 @@ pub fn handle_intrinsic<'tcx>(
             let needs_drop = i32::from(needs_drop);
             place_set(destination, ldc_i32!(needs_drop), ctx)
         }
-
-        "fmaf64" => {
-            debug_assert_eq!(
-                args.len(),
-                3,
-                "The intrinsic `fmaf64` MUST take in exactly 1 argument!"
-            );
-            let a = handle_operand(&args[0].node, ctx);
-            let b = handle_operand(&args[1].node, ctx);
-            let c = handle_operand(&args[2].node, ctx);
-
-            place_set(destination, a * b + c, ctx)
-        }
+        "fmaf32" => place_set(
+            destination,
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::single(),
+                    "FusedMultiplyAdd".into(),
+                    FnSig::new([Type::F32, Type::F32, Type::F32], Type::F32),
+                    true
+                ),
+                [
+                    handle_operand(&args[0].node, ctx),
+                    handle_operand(&args[1].node, ctx),
+                    handle_operand(&args[2].node, ctx),
+                ]
+            ),
+            ctx,
+        ),
+        "fmaf64" => place_set(
+            destination,
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::double(),
+                    "FusedMultiplyAdd".into(),
+                    FnSig::new([Type::F64, Type::F64, Type::F64], Type::F64),
+                    true
+                ),
+                [
+                    handle_operand(&args[0].node, ctx),
+                    handle_operand(&args[1].node, ctx),
+                    handle_operand(&args[2].node, ctx),
+                ]
+            ),
+            ctx,
+        ),
 
         "raw_eq" => {
             // Raw eq returns 0 if values are not equal, and 1 if they are, unlike memcmp, which does the oposite.
@@ -756,47 +777,6 @@ pub fn handle_intrinsic<'tcx>(
                 ctx,
             )
         }
-        "floorf32" => {
-            debug_assert_eq!(
-                args.len(),
-                1,
-                "The intrinsic `floorf32` MUST take in exactly 1 argument!"
-            );
-            place_set(
-                destination,
-                call!(
-                    CallSite::boxed(
-                        Some(DotnetTypeRef::mathf()),
-                        "Floor".into(),
-                        FnSig::new(&[Type::F32], Type::F32),
-                        true,
-                    ),
-                    [handle_operand(&args[0].node, ctx)]
-                ),
-                ctx,
-            )
-        }
-        "ceilf32" => {
-            debug_assert_eq!(
-                args.len(),
-                1,
-                "The intrinsic `ceilf32` MUST take in exactly 1 argument!"
-            );
-
-            place_set(
-                destination,
-                call!(
-                    CallSite::boxed(
-                        Some(DotnetTypeRef::mathf()),
-                        "Ceiling".into(),
-                        FnSig::new(&[Type::F32], Type::F32),
-                        true,
-                    ),
-                    [handle_operand(&args[0].node, ctx)]
-                ),
-                ctx,
-            )
-        }
 
         "powif32" => {
             debug_assert_eq!(
@@ -807,18 +787,42 @@ pub fn handle_intrinsic<'tcx>(
 
             place_set(
                 destination,
-                conv_f32!(call!(
+                call!(
                     CallSite::boxed(
-                        Some(DotnetTypeRef::math()),
+                        Some(DotnetTypeRef::single()),
+                        "Pow".into(),
+                        FnSig::new(&[Type::F32, Type::F32], Type::F32),
+                        true,
+                    ),
+                    [
+                        handle_operand(&args[0].node, ctx),
+                        conv_f32!(handle_operand(&args[1].node, ctx))
+                    ]
+                ),
+                ctx,
+            )
+        }
+        "powif64" => {
+            debug_assert_eq!(
+                args.len(),
+                2,
+                "The intrinsic `powif64` MUST take in exactly 2 arguments!"
+            );
+
+            place_set(
+                destination,
+                call!(
+                    CallSite::boxed(
+                        Some(DotnetTypeRef::double()),
                         "Pow".into(),
                         FnSig::new(&[Type::F64, Type::F64], Type::F64),
                         true,
                     ),
                     [
-                        conv_f64!(handle_operand(&args[0].node, ctx)),
+                        handle_operand(&args[0].node, ctx),
                         conv_f64!(handle_operand(&args[1].node, ctx))
                     ]
-                )),
+                ),
                 ctx,
             )
         }
@@ -997,6 +1001,116 @@ pub fn handle_intrinsic<'tcx>(
             ),
             ctx,
         ),
+        "copysignf32" => place_set(
+            destination,
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::single(),
+                    "CopySign".into(),
+                    FnSig::new([Type::F32, Type::F32], Type::F32),
+                    true
+                ),
+                [
+                    handle_operand(&args[0].node, ctx),
+                    handle_operand(&args[1].node, ctx),
+                ]
+            ),
+            ctx,
+        ),
+        "copysignf64" => place_set(
+            destination,
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::double(),
+                    "CopySign".into(),
+                    FnSig::new([Type::F64, Type::F64], Type::F64),
+                    true
+                ),
+                [
+                    handle_operand(&args[0].node, ctx),
+                    handle_operand(&args[1].node, ctx),
+                ]
+            ),
+            ctx,
+        ),
+        "sinf32" => place_set(
+            destination,
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::single(),
+                    "Sin".into(),
+                    FnSig::new([Type::F32], Type::F32),
+                    true
+                ),
+                [handle_operand(&args[0].node, ctx),]
+            ),
+            ctx,
+        ),
+        "sinf64" => place_set(
+            destination,
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::double(),
+                    "Sin".into(),
+                    FnSig::new([Type::F64], Type::F64),
+                    true
+                ),
+                [handle_operand(&args[0].node, ctx),]
+            ),
+            ctx,
+        ),
+        "cosf32" => place_set(
+            destination,
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::single(),
+                    "Cos".into(),
+                    FnSig::new([Type::F32], Type::F32),
+                    true
+                ),
+                [handle_operand(&args[0].node, ctx),]
+            ),
+            ctx,
+        ),
+        "cosf64" => place_set(
+            destination,
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::double(),
+                    "Cos".into(),
+                    FnSig::new([Type::F64], Type::F64),
+                    true
+                ),
+                [handle_operand(&args[0].node, ctx),]
+            ),
+            ctx,
+        ),
+        "exp2f32" => place_set(
+            destination,
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::single(),
+                    "Exp2".into(),
+                    FnSig::new([Type::F32], Type::F32),
+                    true
+                ),
+                [handle_operand(&args[0].node, ctx),]
+            ),
+            ctx,
+        ),
+        "exp2f64" => place_set(
+            destination,
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::double(),
+                    "Exp2".into(),
+                    FnSig::new([Type::F64], Type::F64),
+                    true
+                ),
+                [handle_operand(&args[0].node, ctx),]
+            ),
+            ctx,
+        ),
         "truncf32" => place_set(
             destination,
             call!(
@@ -1016,6 +1130,147 @@ pub fn handle_intrinsic<'tcx>(
                 CallSite::new_extern(
                     DotnetTypeRef::math(),
                     "Truncate".into(),
+                    FnSig::new([Type::F64], Type::F64),
+                    true
+                ),
+                [handle_operand(&args[0].node, ctx),]
+            ),
+            ctx,
+        ),
+        // `roundf32` should be a differnt intrinsics, but it requires some .NET fuckery to implement(.NET enums are **wierd**)
+        "nearbyintf32" | "rintf32" | "roundevenf32" => place_set(
+            destination,
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::mathf(),
+                    "Round".into(),
+                    FnSig::new([Type::F32], Type::F32),
+                    true
+                ),
+                [handle_operand(&args[0].node, ctx),]
+            ),
+            ctx,
+        ),
+        "roundf32" => place_set(
+            destination,
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::mathf(),
+                    "Round".into(),
+                    FnSig::new(
+                        [
+                            Type::F32,
+                            Type::DotnetType(Box::new(DotnetTypeRef::new(
+                                Some("System.Runtime"),
+                                "System.MidpointRounding"
+                            )))
+                        ],
+                        Type::F32
+                    ),
+                    true
+                ),
+                [
+                    handle_operand(&args[0].node, ctx),
+                    ldc_i32!(1).transmute_on_stack(
+                        Type::I32,
+                        Type::DotnetType(Box::new(DotnetTypeRef::new(
+                            Some("System.Runtime"),
+                            "System.MidpointRounding"
+                        )))
+                    )
+                ]
+            ),
+            ctx,
+        ),
+        "nearbyintf64" | "rintf64" | "roundevenf64" => place_set(
+            destination,
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::math(),
+                    "Round".into(),
+                    FnSig::new([Type::F64], Type::F64),
+                    true
+                ),
+                [handle_operand(&args[0].node, ctx),]
+            ),
+            ctx,
+        ),
+        "roundf64" => place_set(
+            destination,
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::math(),
+                    "Round".into(),
+                    FnSig::new(
+                        [
+                            Type::F64,
+                            Type::DotnetType(Box::new(DotnetTypeRef::new(
+                                Some("System.Runtime"),
+                                "System.MidpointRounding"
+                            )))
+                        ],
+                        Type::F64
+                    ),
+                    true
+                ),
+                [
+                    handle_operand(&args[0].node, ctx),
+                    ldc_i32!(1).transmute_on_stack(
+                        Type::I32,
+                        Type::DotnetType(Box::new(DotnetTypeRef::new(
+                            Some("System.Runtime"),
+                            "System.MidpointRounding"
+                        )))
+                    )
+                ]
+            ),
+            ctx,
+        ),
+        "floorf32" => place_set(
+            destination,
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::mathf(),
+                    "Floor".into(),
+                    FnSig::new([Type::F32], Type::F32),
+                    true
+                ),
+                [handle_operand(&args[0].node, ctx),]
+            ),
+            ctx,
+        ),
+        "floorf64" => place_set(
+            destination,
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::math(),
+                    "Floor".into(),
+                    FnSig::new([Type::F64], Type::F64),
+                    true
+                ),
+                [handle_operand(&args[0].node, ctx),]
+            ),
+            ctx,
+        ),
+        "ceilf32" => place_set(
+            destination,
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::mathf(),
+                    "Ceiling".into(),
+                    FnSig::new([Type::F32], Type::F32),
+                    true
+                ),
+                [handle_operand(&args[0].node, ctx),]
+            ),
+            ctx,
+        ),
+        "ceilf64" => place_set(
+            destination,
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::math(),
+                    "Ceiling".into(),
                     FnSig::new([Type::F64], Type::F64),
                     true
                 ),

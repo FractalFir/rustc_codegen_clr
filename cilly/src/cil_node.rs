@@ -560,7 +560,17 @@ impl CILNode {
             _ => (),
         }
     }
-
+    pub fn transmute_on_stack(self, src: Type, target: Type) -> Self {
+        let tmp_loc = Self::TemporaryLocal(Box::new((
+            src,
+            Box::new([CILRoot::SetTMPLocal { value: self }]),
+            CILNode::LoadAddresOfTMPLocal,
+        )));
+        Self::LdObj {
+            ptr: Box::new(crate::conv_usize!(tmp_loc).cast_ptr(ptr!(target.clone()))),
+            obj: Box::new(target),
+        }
+    }
     pub fn cast_ptr(self, new_ptr: Type) -> Self {
         assert!(
             matches!(

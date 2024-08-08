@@ -27,9 +27,9 @@ fn main() {
     let abs_difference = unsafe { fabsf64(cosf64(x) - 1.0) };
     test!(abs_difference <= black_box(f64::EPSILON));
     let x = 2.0 * core::f32::consts::FRAC_PI_2;
-    let abs_difference = unsafe { fabsf32(sinf32(x) - 1.0) };
+    let abs_difference = unsafe { fabsf32(sinf32(x)) };
     test!(abs_difference <= black_box(f32::EPSILON));
     let x = 2.0 * core::f64::consts::FRAC_PI_2;
-    let abs_difference = unsafe { fabsf64(sinf64(x) - 1.0) };
+    let abs_difference = unsafe { fabsf64(sinf64(x)) };
     test!(abs_difference <= black_box(f64::EPSILON));
 }
