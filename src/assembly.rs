@@ -30,7 +30,7 @@ use rustc_middle::{
         mono::MonoItem,
         Local, LocalDecl, Statement, Terminator,
     },
-    ty::{Instance, ParamEnv, Ty, TyCtxt, TyKind},
+    ty::{Instance, ParamEnv, TyCtxt, TyKind},
 };
 type LocalDefList = Vec<(Option<IString>, Type)>;
 type ArgsDebugInfo = Vec<Option<IString>>;
@@ -639,14 +639,14 @@ pub fn add_allocation(
         }
         GlobalAlloc::VTable(..) => {
             //TODO: handle VTables
-            let alloc_fld: IString = format!("alloc_{alloc_id:x}").into();
+            let alloc_fld: IString = format!("al_{alloc_id:x}").into();
             let field_desc = StaticFieldDescriptor::new(None, ptr!(Type::U8), alloc_fld.clone());
             asm.add_static(ptr!(Type::U8), &alloc_fld, false);
             return CILNode::LDStaticField(Box::new(field_desc));
         }
         GlobalAlloc::Function { .. } => {
             //TODO: handle constant functions
-            let alloc_fld: IString = format!("alloc_{alloc_id:x}").into();
+            let alloc_fld: IString = format!("al_{alloc_id:x}").into();
             let field_desc = StaticFieldDescriptor::new(None, ptr!(Type::U8), alloc_fld.clone());
             asm.add_static(ptr!(Type::U8), &alloc_fld, false);
 
@@ -662,7 +662,7 @@ pub fn add_allocation(
     // Alloc ids are *not* unique across all crates. Adding the hash here ensures we don't overwrite allocations during linking
     // TODO:consider using something better here / making the hashes stable.
     let byte_hash = calculate_hash(&bytes);
-    let alloc_fld: IString = format!("a_{}{}", encode(alloc_id), encode(byte_hash)).into();
+    let alloc_fld: IString = format!("al_{}_{}", encode(alloc_id), encode(byte_hash)).into();
     let field_desc = StaticFieldDescriptor::new(None, ptr!(Type::U8), alloc_fld.clone());
     if !asm.static_fields().contains_key(&alloc_fld) {
         let init_method =

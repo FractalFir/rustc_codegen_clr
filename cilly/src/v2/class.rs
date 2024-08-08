@@ -271,9 +271,6 @@ impl ClassDef {
         // Merge the static fields, removing duplicates
         self.static_fields_mut().extend(translated.static_fields());
         make_unique(&mut self.static_fields);
-        // Merge the static fields, removing duplicates
-        self.static_fields_mut().extend(translated.static_fields());
-        make_unique(self.static_fields_mut());
         // Merge the methods, removing duplicates
         self.methods_mut().extend(translated.methods());
         make_unique(self.methods_mut());

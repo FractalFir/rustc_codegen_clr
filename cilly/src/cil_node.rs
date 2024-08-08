@@ -1,9 +1,16 @@
 use crate::{
-    call, call_site::CallSite, cil_iter::CILIterTrait, cil_root::CILRoot,
-    field_desc::FieldDescriptor, fn_sig::FnSig, ptr, static_field_desc::StaticFieldDescriptor,
+    call,
+    call_site::CallSite,
+    cil_iter::CILIterTrait,
+    cil_root::CILRoot,
+    field_desc::FieldDescriptor,
+    fn_sig::FnSig,
+    ptr,
+    static_field_desc::StaticFieldDescriptor,
+    v2::hashable::{HashableF32, HashableF64},
     DotnetTypeRef, IString, Type,
 };
-use ordered_float::OrderedFloat;
+
 use serde::{Deserialize, Serialize};
 /// A container for the arguments of a call, callvirt, or newobj instruction.
 #[derive(Clone, Eq, PartialEq, Serialize, Deserialize, Hash, Debug)]
@@ -134,8 +141,8 @@ pub enum CILNode {
     LdcU32(u32),
     LdcI8(i8),
     LdcI16(i16),
-    LdcF64(OrderedFloat<f64>),
-    LdcF32(OrderedFloat<f32>),
+    LdcF64(HashableF64),
+    LdcF32(HashableF32),
     LoadGlobalAllocPtr {
         alloc_id: u64,
     },

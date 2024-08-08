@@ -2,13 +2,21 @@
 
 use crate::add_method_from_trees;
 use cilly::{
-    access_modifier::AccessModifer, asm::Assembly, basic_block::BasicBlock, call,
-    call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_f32, conv_f64, conv_f_un,
-    conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8,
-    conv_usize, eq, fn_sig::FnSig, gt, ldc_i32, ldc_i64, ldc_u32, ldc_u64, lt, or, DotnetTypeRef,
-    Type,
+    access_modifier::AccessModifer,
+    asm::Assembly,
+    basic_block::BasicBlock,
+    call,
+    call_site::CallSite,
+    cil_node::CILNode,
+    cil_root::CILRoot,
+    conv_f32, conv_f64, conv_f_un, conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16,
+    conv_u32, conv_u64, conv_u8, conv_usize, eq,
+    fn_sig::FnSig,
+    gt, ldc_i32, ldc_i64, ldc_u32, ldc_u64, lt, or,
+    v2::hashable::{HashableF32, HashableF64},
+    DotnetTypeRef, Type,
 };
-use ordered_float::OrderedFloat;
+
 add_method_from_trees!(
     cast_i32_to_u64,
     &[Type::I32],
@@ -83,7 +91,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: lt!(
                         CILNode::LDArg(0),
-                        CILNode::LdcF32(OrderedFloat(f32::from(u8::MAX)))
+                        CILNode::LdcF32(HashableF32(f32::from(u8::MAX)))
                     )
                 }
                 .into(),
@@ -102,7 +110,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: gt!(
                         CILNode::LDArg(0),
-                        CILNode::LdcF32(OrderedFloat(f32::from(u8::MIN)))
+                        CILNode::LdcF32(HashableF32(f32::from(u8::MIN)))
                     )
                 }
                 .into(),
@@ -164,7 +172,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: lt!(
                         CILNode::LDArg(0),
-                        CILNode::LdcF32(OrderedFloat(f32::from(u16::MAX)))
+                        CILNode::LdcF32(HashableF32(f32::from(u16::MAX)))
                     )
                 }
                 .into(),
@@ -183,7 +191,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: gt!(
                         CILNode::LDArg(0),
-                        CILNode::LdcF32(OrderedFloat(f32::from(u16::MIN)))
+                        CILNode::LdcF32(HashableF32(f32::from(u16::MIN)))
                     )
                 }
                 .into(),
@@ -242,7 +250,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: lt!(
                         CILNode::LDArg(0),
-                        CILNode::LdcF32(OrderedFloat(u32::MAX as f32))
+                        CILNode::LdcF32(HashableF32(u32::MAX as f32))
                     )
                 }
                 .into(),
@@ -261,7 +269,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: gt!(
                         CILNode::LDArg(0),
-                        CILNode::LdcF32(OrderedFloat(u32::MIN as f32))
+                        CILNode::LdcF32(HashableF32(u32::MIN as f32))
                     )
                 }
                 .into(),
@@ -320,7 +328,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: lt!(
                         CILNode::LDArg(0),
-                        CILNode::LdcF32(OrderedFloat(u64::MAX as f32))
+                        CILNode::LdcF32(HashableF32(u64::MAX as f32))
                     )
                 }
                 .into(),
@@ -339,7 +347,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: gt!(
                         CILNode::LDArg(0),
-                        CILNode::LdcF32(OrderedFloat(u64::MIN as f32))
+                        CILNode::LdcF32(HashableF32(u64::MIN as f32))
                     )
                 }
                 .into(),
@@ -434,7 +442,7 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 3,
                     sub_target: 0,
-                    cond: gt!(CILNode::LDArg(0), CILNode::LdcF32(OrderedFloat(0 as f32)))
+                    cond: gt!(CILNode::LDArg(0), CILNode::LdcF32(HashableF32(0 as f32)))
                 }
                 .into(),
                 CILRoot::Ret {
@@ -528,7 +536,7 @@ add_method_from_trees!(
                 CILRoot::BTrue {
                     target: 3,
                     sub_target: 0,
-                    cond: gt!(CILNode::LDArg(0), CILNode::LdcF64(OrderedFloat(0.0)))
+                    cond: gt!(CILNode::LDArg(0), CILNode::LdcF64(HashableF64(0.0)))
                 }
                 .into(),
                 CILRoot::Ret {
@@ -815,7 +823,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: lt!(
                         CILNode::LDArg(0),
-                        CILNode::LdcF32(OrderedFloat(f32::from(i8::MAX)))
+                        CILNode::LdcF32(HashableF32(f32::from(i8::MAX)))
                     )
                 }
                 .into(),
@@ -834,7 +842,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: gt!(
                         CILNode::LDArg(0),
-                        CILNode::LdcF32(OrderedFloat(f32::from(i8::MIN)))
+                        CILNode::LdcF32(HashableF32(f32::from(i8::MIN)))
                     )
                 }
                 .into(),
@@ -896,7 +904,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: lt!(
                         CILNode::LDArg(0),
-                        CILNode::LdcF32(OrderedFloat(f32::from(i16::MAX)))
+                        CILNode::LdcF32(HashableF32(f32::from(i16::MAX)))
                     )
                 }
                 .into(),
@@ -915,7 +923,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: gt!(
                         CILNode::LDArg(0),
-                        CILNode::LdcF32(OrderedFloat(f32::from(i16::MIN)))
+                        CILNode::LdcF32(HashableF32(f32::from(i16::MIN)))
                     )
                 }
                 .into(),
@@ -974,7 +982,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: lt!(
                         CILNode::LDArg(0),
-                        CILNode::LdcF32(OrderedFloat(i32::MAX as f32))
+                        CILNode::LdcF32(HashableF32(i32::MAX as f32))
                     )
                 }
                 .into(),
@@ -993,7 +1001,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: gt!(
                         CILNode::LDArg(0),
-                        CILNode::LdcF32(OrderedFloat(i32::MIN as f32))
+                        CILNode::LdcF32(HashableF32(i32::MIN as f32))
                     )
                 }
                 .into(),
@@ -1052,7 +1060,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: lt!(
                         CILNode::LDArg(0),
-                        CILNode::LdcF32(OrderedFloat(i64::MAX as f32))
+                        CILNode::LdcF32(HashableF32(i64::MAX as f32))
                     )
                 }
                 .into(),
@@ -1071,7 +1079,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: gt!(
                         CILNode::LDArg(0),
-                        CILNode::LdcF32(OrderedFloat(i64::MIN as f32))
+                        CILNode::LdcF32(HashableF32(i64::MIN as f32))
                     )
                 }
                 .into(),
@@ -1133,7 +1141,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: lt!(
                         CILNode::LDArg(0),
-                        CILNode::LdcF64(OrderedFloat(f64::from(u8::MAX)))
+                        CILNode::LdcF64(HashableF64(f64::from(u8::MAX)))
                     )
                 }
                 .into(),
@@ -1152,7 +1160,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: gt!(
                         CILNode::LDArg(0),
-                        CILNode::LdcF64(OrderedFloat(f64::from(u8::MIN)))
+                        CILNode::LdcF64(HashableF64(f64::from(u8::MIN)))
                     )
                 }
                 .into(),
@@ -1214,7 +1222,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: lt!(
                         CILNode::LDArg(0),
-                        CILNode::LdcF64(OrderedFloat(f64::from(u16::MAX)))
+                        CILNode::LdcF64(HashableF64(f64::from(u16::MAX)))
                     )
                 }
                 .into(),
@@ -1233,7 +1241,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: gt!(
                         CILNode::LDArg(0),
-                        CILNode::LdcF64(OrderedFloat(f64::from(u16::MIN)))
+                        CILNode::LdcF64(HashableF64(f64::from(u16::MIN)))
                     )
                 }
                 .into(),
@@ -1292,7 +1300,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: lt!(
                         CILNode::LDArg(0),
-                        CILNode::LdcF64(OrderedFloat(f64::from(u32::MAX)))
+                        CILNode::LdcF64(HashableF64(f64::from(u32::MAX)))
                     )
                 }
                 .into(),
@@ -1311,7 +1319,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: gt!(
                         CILNode::LDArg(0),
-                        CILNode::LdcF64(OrderedFloat(f64::from(u32::MIN)))
+                        CILNode::LdcF64(HashableF64(f64::from(u32::MIN)))
                     )
                 }
                 .into(),
@@ -1370,7 +1378,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: lt!(
                         CILNode::LDArg(0),
-                        CILNode::LdcF64(OrderedFloat(u64::MAX as f64))
+                        CILNode::LdcF64(HashableF64(u64::MAX as f64))
                     )
                 }
                 .into(),
@@ -1389,7 +1397,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: gt!(
                         CILNode::LDArg(0),
-                        CILNode::LdcF64(OrderedFloat(u64::MIN as f64))
+                        CILNode::LdcF64(HashableF64(u64::MIN as f64))
                     )
                 }
                 .into(),
@@ -1451,7 +1459,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: lt!(
                         CILNode::LDArg(0),
-                        CILNode::LdcF64(OrderedFloat(f64::from(i8::MAX)))
+                        CILNode::LdcF64(HashableF64(f64::from(i8::MAX)))
                     )
                 }
                 .into(),
@@ -1470,7 +1478,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: gt!(
                         CILNode::LDArg(0),
-                        CILNode::LdcF64(OrderedFloat(f64::from(i8::MIN)))
+                        CILNode::LdcF64(HashableF64(f64::from(i8::MIN)))
                     )
                 }
                 .into(),
@@ -1532,7 +1540,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: lt!(
                         CILNode::LDArg(0),
-                        CILNode::LdcF64(OrderedFloat(f64::from(i16::MAX)))
+                        CILNode::LdcF64(HashableF64(f64::from(i16::MAX)))
                     )
                 }
                 .into(),
@@ -1551,7 +1559,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: gt!(
                         CILNode::LDArg(0),
-                        CILNode::LdcF64(OrderedFloat(f64::from(i16::MIN)))
+                        CILNode::LdcF64(HashableF64(f64::from(i16::MIN)))
                     )
                 }
                 .into(),
@@ -1610,7 +1618,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: lt!(
                         CILNode::LDArg(0),
-                        CILNode::LdcF64(OrderedFloat(f64::from(i32::MAX)))
+                        CILNode::LdcF64(HashableF64(f64::from(i32::MAX)))
                     )
                 }
                 .into(),
@@ -1629,7 +1637,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: gt!(
                         CILNode::LDArg(0),
-                        CILNode::LdcF64(OrderedFloat(f64::from(i32::MIN)))
+                        CILNode::LdcF64(HashableF64(f64::from(i32::MIN)))
                     )
                 }
                 .into(),
@@ -1688,7 +1696,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: lt!(
                         CILNode::LDArg(0),
-                        CILNode::LdcF64(OrderedFloat(i64::MAX as f64))
+                        CILNode::LdcF64(HashableF64(i64::MAX as f64))
                     )
                 }
                 .into(),
@@ -1707,7 +1715,7 @@ add_method_from_trees!(
                     sub_target: 0,
                     cond: gt!(
                         CILNode::LDArg(0),
-                        CILNode::LdcF64(OrderedFloat(i64::MIN as f64))
+                        CILNode::LdcF64(HashableF64(i64::MIN as f64))
                     )
                 }
                 .into(),

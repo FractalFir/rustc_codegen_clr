@@ -7,7 +7,8 @@ use crate::{
 use cilly::{
     call, call_site::CallSite, call_virt, cil_node::CILNode, cil_root::CILRoot, conv_f32, conv_f64,
     conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8,
-    conv_usize, eq, fn_sig::FnSig, ld_field, ldc_i32, ldc_u64, ptr, size_of, DotnetTypeRef, Type,
+    conv_usize, eq, fn_sig::FnSig, ld_field, ldc_i32, ldc_u32, ldc_u64, ptr, size_of,
+    DotnetTypeRef, Type,
 };
 use ints::{ctlz, rotate_left, rotate_right};
 use rustc_middle::{
@@ -1413,6 +1414,34 @@ pub fn handle_intrinsic<'tcx>(
             )
         }
         "abort" => CILRoot::throw("Called abort!"),
+        "const_allocate" => place_set(destination, conv_usize!(ldc_u32!(0)), ctx),
+        "const_deallocate" => CILRoot::Nop,
+        "vtable_size" => {
+            let vtableptr = handle_operand(&args[0].node, ctx);
+            place_set(
+                destination,
+                CILNode::LDIndUSize {
+                    ptr: Box::new(
+                        (vtableptr + conv_usize!((size_of!(Type::ISize))))
+                            .cast_ptr(ptr!(Type::USize)),
+                    ),
+                },
+                ctx,
+            )
+        }
+        "vtable_align" => {
+            let vtableptr = handle_operand(&args[0].node, ctx);
+            place_set(
+                destination,
+                CILNode::LDIndUSize {
+                    ptr: Box::new(
+                        (vtableptr + conv_usize!((size_of!(Type::ISize)) * ldc_i32!(2)))
+                            .cast_ptr(ptr!(Type::USize)),
+                    ),
+                },
+                ctx,
+            )
+        }
         _ => intrinsic_slow(fn_name, args, destination, ctx, call_instance, span),
     }
 }
@@ -1547,6 +1576,33 @@ fn intrinsic_slow<'tcx>(
                 handle_operand(&args[2].node, ctx),
                 handle_operand(&args[0].node, ctx),
             ),
+            ctx,
+        )
+    } else if fn_name.contains("const_allocate") {
+        place_set(destination, conv_usize!(ldc_u32!(0)), ctx)
+    } else if fn_name.contains("const_deallocate") {
+        CILRoot::Nop
+    } else if fn_name.contains("vtable_size") {
+        let vtableptr = handle_operand(&args[0].node, ctx);
+        place_set(
+            destination,
+            CILNode::LDIndUSize {
+                ptr: Box::new(
+                    (vtableptr + conv_usize!((size_of!(Type::ISize)))).cast_ptr(ptr!(Type::USize)),
+                ),
+            },
+            ctx,
+        )
+    } else if fn_name.contains("vtable_align") {
+        let vtableptr = handle_operand(&args[0].node, ctx);
+        place_set(
+            destination,
+            CILNode::LDIndUSize {
+                ptr: Box::new(
+                    (vtableptr + conv_usize!((size_of!(Type::ISize)) * ldc_i32!(2)))
+                        .cast_ptr(ptr!(Type::USize)),
+                ),
+            },
             ctx,
         )
     } else {

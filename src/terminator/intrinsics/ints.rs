@@ -1,6 +1,6 @@
 use crate::{assembly::MethodCompileCtx, operand::handle_operand, place::place_set};
 use cilly::{
-    call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_u32, conv_u64,
+    call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_i32, conv_u32, conv_u64,
     fn_sig::FnSig, ldc_i32, ldc_i64, ldc_u32, ldc_u64, or, size_of, sub, DotnetTypeRef, Type,
 };
 use rustc_middle::{
@@ -169,20 +169,47 @@ pub fn cttz<'tcx>(
     let tpe = ctx.type_from_cache(tpe);
     let bit_operations = Some(bit_operations);
     let operand = handle_operand(&args[0].node, ctx);
-
-    place_set(
-        destination,
-        conv_u32!(call!(
-            CallSite::boxed(
-                bit_operations.clone(),
-                "TrailingZeroCount".into(),
-                FnSig::new(&[tpe], Type::I32),
-                true,
-            ),
-            [operand]
-        )),
-        ctx,
-    )
+    match tpe {
+        Type::I16 | Type::I8 => place_set(
+            destination,
+            conv_u32!(call!(
+                CallSite::boxed(
+                    bit_operations.clone(),
+                    "TrailingZeroCount".into(),
+                    FnSig::new(&[Type::I32], Type::I32),
+                    true,
+                ),
+                [conv_i32!(operand)]
+            )),
+            ctx,
+        ),
+        Type::U16 | Type::U8 => place_set(
+            destination,
+            conv_u32!(call!(
+                CallSite::boxed(
+                    bit_operations.clone(),
+                    "TrailingZeroCount".into(),
+                    FnSig::new(&[Type::U32], Type::I32),
+                    true,
+                ),
+                [conv_u32!(operand)]
+            )),
+            ctx,
+        ),
+        _ => place_set(
+            destination,
+            conv_u32!(call!(
+                CallSite::boxed(
+                    bit_operations.clone(),
+                    "TrailingZeroCount".into(),
+                    FnSig::new(&[tpe], Type::I32),
+                    true,
+                ),
+                [operand]
+            )),
+            ctx,
+        ),
+    }
 }
 pub fn rotate_left<'tcx>(
     args: &[Spanned<Operand<'tcx>>],

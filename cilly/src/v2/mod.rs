@@ -30,6 +30,8 @@ pub mod cst;
 pub mod field;
 pub mod float;
 pub mod fnsig;
+/// Defines hashable and equable floating point types. All NaNs are compared by bits, and -0.0 != 0.0.
+pub mod hashable;
 pub mod il_exporter;
 pub mod int;
 pub mod iter;

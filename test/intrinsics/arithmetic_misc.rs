@@ -75,4 +75,5 @@ fn main() {
     test_eq!(unsafe { copysignf64(-f, 0.42) }, black_box(3.5_f64));
     test_eq!(unsafe { copysignf64(-f, -0.42) }, black_box(-3.5_f64));
     test!(unsafe { copysignf64(f64::NAN, 1.0) }.is_nan());
+    test_eq!(unsafe { copysignf64(-f, -0.0) }, black_box(-3.5_f64));
 }

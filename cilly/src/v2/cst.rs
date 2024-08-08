@@ -1,7 +1,9 @@
-use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 
-use super::{CILNode, Float, Int, StringIdx, Type};
+use super::{
+    hashable::{HashableF32, HashableF64},
+    CILNode, Float, Int, StringIdx, Type,
+};
 
 #[derive(PartialEq, Eq, Clone, Debug, Hash, Serialize, Deserialize)]
 pub enum Const {
@@ -17,8 +19,8 @@ pub enum Const {
     USize(u64),
     PlatformString(StringIdx),
     Bool(bool),
-    F32(OrderedFloat<f32>),
-    F64(OrderedFloat<f64>),
+    F32(HashableF32),
+    F64(HashableF64),
 }
 impl Const {
     pub(crate) fn get_type(&self) -> Type {

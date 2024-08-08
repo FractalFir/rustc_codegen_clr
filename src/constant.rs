@@ -11,9 +11,10 @@ use cilly::{
     field_desc::FieldDescriptor,
     ldc_u64, ptr,
     static_field_desc::StaticFieldDescriptor,
+    v2::hashable::{HashableF32, HashableF64},
     DotnetTypeRef, FnSig, Type,
 };
-use ordered_float::OrderedFloat;
+
 use rustc_middle::{
     mir::{
         interpret::{AllocId, GlobalAlloc, Scalar},
@@ -429,7 +430,7 @@ fn load_const_float(value: u128, float_type: FloatTy, _tcx: TyCtxt) -> CILNode {
                         FnSig::new(&[Type::F32], Type::F16),
                         true
                     ),
-                    [CILNode::LdcF32(OrderedFloat(
+                    [CILNode::LdcF32(HashableF32(
                         (f16::from_ne_bytes((u16::try_from(value).unwrap()).to_ne_bytes())) as f32
                     ),)]
                 )
@@ -442,11 +443,11 @@ fn load_const_float(value: u128, float_type: FloatTy, _tcx: TyCtxt) -> CILNode {
         }
         FloatTy::F32 => {
             let value = f32::from_ne_bytes((u32::try_from(value).unwrap()).to_ne_bytes());
-            CILNode::LdcF32(OrderedFloat(value))
+            CILNode::LdcF32(HashableF32(value))
         }
         FloatTy::F64 => {
             let value = f64::from_ne_bytes((u64::try_from(value).unwrap()).to_ne_bytes());
-            CILNode::LdcF64(OrderedFloat(value))
+            CILNode::LdcF64(HashableF64(value))
         }
         FloatTy::F128 => todo!("Can't hanlde 128 bit floats yet!"),
     }
