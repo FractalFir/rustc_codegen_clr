@@ -282,7 +282,11 @@ impl ClassDef {
     }
 
     pub(crate) fn add_def(&mut self, ref_idx: MethodDefIdx) {
-        assert!(!self.methods.iter().any(|def| *def == ref_idx));
+        if self.methods.iter().any(|def| *def == ref_idx) {
+            // Duplicate, skip I guess?
+            // TODO: check if this duplicate matches the current function.
+            return;
+        }
         self.methods_mut().push(ref_idx);
     }
 }

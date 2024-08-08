@@ -176,9 +176,72 @@ crate::add_method_from_trees!(
     ],
     vec![Some("addr".into()), Some("orend".into())]
 );
+crate::add_method_from_trees!(
+    interlocked_and_usize,
+    &[Type::ManagedReference(Box::new(Type::USize)), Type::USize],
+    Type::USize,
+    vec![
+        BasicBlock::new(
+            vec![
+                CILRoot::BEq {
+                    target: 1,
+                    sub_target: 0,
+                    a: Box::new(size_of!(Type::USize)),
+                    b: Box::new(size_of!(Type::U32))
+                }
+                .into(),
+                CILRoot::Ret {
+                    tree: conv_usize!(call!(
+                        CallSite::new(
+                            Some(DotnetTypeRef::interlocked()),
+                            "And".into(),
+                            FnSig::new(
+                                &[Type::ManagedReference(Box::new(Type::U64)), Type::U64],
+                                Type::U64
+                            ),
+                            true
+                        ),
+                        [
+                            CILNode::LDArg(0).cast_ptr(Type::ManagedReference(Box::new(Type::U64))),
+                            conv_u64!(CILNode::LDArg(1))
+                        ]
+                    ))
+                }
+                .into(),
+            ],
+            0,
+            None
+        ),
+        // sizeof::<usize>() == sizeof::<u32>()
+        BasicBlock::new(
+            vec![CILRoot::Ret {
+                tree: conv_usize!(call!(
+                    CallSite::new(
+                        Some(DotnetTypeRef::interlocked()),
+                        "And".into(),
+                        FnSig::new(
+                            &[Type::ManagedReference(Box::new(Type::U32)), Type::U32],
+                            Type::U32
+                        ),
+                        true
+                    ),
+                    [
+                        CILNode::LDArg(0).cast_ptr(Type::ManagedReference(Box::new(Type::U32))),
+                        conv_u32!(CILNode::LDArg(1))
+                    ]
+                ))
+            }
+            .into(),],
+            1,
+            None
+        )
+    ],
+    vec![Some("addr".into()), Some("andend".into())]
+);
 pub fn atomics(asm: &mut Assembly) {
     interlocked_add_usize(asm);
     interlocked_or_usize(asm);
+    interlocked_and_usize(asm);
     interlocked_emulate_xchng_byte(asm);
 }
 crate::add_method_from_trees!(

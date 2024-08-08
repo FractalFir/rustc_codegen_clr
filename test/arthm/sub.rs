@@ -26,4 +26,5 @@ fn main() {
     //test_eq!(black_box(4_u64) - 2, 2);
     //test_eq!(black_box(4_i64) - 2, 2);
     //test_eq!(black_box(0_i64) - 2, -2);
+    test_eq!(black_box(0_usize).saturating_sub(10), 0);
 }

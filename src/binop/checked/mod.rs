@@ -41,8 +41,8 @@ pub fn zero(ty: Ty) -> CILNode {
         TyKind::Int(IntTy::I8) => CILNode::LdcI8(0),
         TyKind::Uint(UintTy::U64) => ldc_u64!(0),
         TyKind::Int(IntTy::I64) => ldc_i64!(0),
-        TyKind::Uint(UintTy::Usize) => conv_usize!(size_of!(Type::USize)),
-        TyKind::Int(IntTy::Isize) => conv_isize!(size_of!(Type::USize)),
+        TyKind::Uint(UintTy::Usize) => conv_usize!(ldc_u32!(0)),
+        TyKind::Int(IntTy::Isize) => conv_isize!(ldc_u32!(0)),
         TyKind::Uint(UintTy::U128) => call!(
             CallSite::new_extern(
                 DotnetTypeRef::uint_128(),

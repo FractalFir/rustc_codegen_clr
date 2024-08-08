@@ -319,9 +319,9 @@ pub fn requries_align_adjustement<'tcx>(
     ty: rustc_middle::ty::Ty<'tcx>,
     tcx: TyCtxt<'tcx>,
 ) -> Option<u64> {
-    //TODO: some types requre aligement smaller than 16 bytes but larger than their size. Handle that. Requires reimplemting .NETs algiement clacualtions.
+    //TODO: some types requre aligement smaller than 16 bytes but larger than their size. Handle that. Requires reimplementing .NETs algiement clacualtions.
     let align = align_of(ty, tcx);
-    if align > 16 {
+    if align > 8 {
         Some(align)
     } else {
         None

@@ -121,15 +121,14 @@ impl Layout {
     #[inline]
     pub fn dangling(&self) -> NonNull<u8> {
         // SAFETY: align is guaranteed to be non-zero
-        f64::putnl(77.6655443322);
+
         unsafe { NonNull::new_unchecked(invalid_mut::<u8>(self.align())) }
     }
     #[must_use]
     #[inline]
     pub fn new<T>() -> Self {
         let (size, align) = size_align::<T>();
-        f64::putnl(642.544);
-        u64::putnl(size as u64);
+
         // SAFETY: if the type is instantiated, rustc already ensures that its
         // layout is valid. Use the unchecked constructor to avoid inserting a
         // panicking codepath that needs to be optimized out.
@@ -147,14 +146,31 @@ impl Layout {
             }
         }
     }
+    fn from_size_align(size: usize, align: usize) -> Result<Self, LayoutError> {
+        if !align.is_power_of_two() {
+            return Err(LayoutError);
+        }
+
+        // SAFETY: just checked that align is a power of two.
+        Layout::from_size_alignment(size, unsafe { Alignment::new_unchecked(align) })
+    }
+    /// Internal helper constructor to skip revalidating alignment validity.
+    #[inline]
+    fn from_size_alignment(size: usize, align: Alignment) -> Result<Self, LayoutError> {
+        if size > Self::max_size_for_align(align) {
+            return Err(LayoutError);
+        }
+
+        // SAFETY: Layout::size invariants checked above.
+        Ok(Layout { size, align })
+    }
     /*
     #[must_use]
     #[inline]
     pub fn for_value<T>(t: &T) -> Self {
         let (size, align) = size_align::<T>();
         // SAFETY: see rationale in `new` for why this is using the unsafe variant
-        f64::putnl(552.544);
-        u64::putnl(size as u64);
+
         unsafe { Layout::from_size_align_unchecked(size, align) }
     }*/
     #[inline]
@@ -162,11 +178,28 @@ impl Layout {
         self.align.as_usize()
     }
     pub fn size(&self) -> usize {
-        f64::putnl(111.544);
-        u64::putnl(self.size as u64);
         self.size
     }
+    #[inline(always)]
+    const fn max_size_for_align(align: Alignment) -> usize {
+        // (power-of-two implies align != 0.)
+
+        // Rounded up size is:
+        //   size_rounded_up = (size + align - 1) & !(align - 1);
+        //
+        // We know from above that align != 0. If adding (align - 1)
+        // does not overflow, then rounding up will be fine.
+        //
+        // Conversely, &-masking with !(align - 1) will subtract off
+        // only low-order-bits. Thus if overflow occurs with the sum,
+        // the &-mask cannot subtract enough to undo that overflow.
+        //
+        // Above implies that checking for summation overflow is both
+        // necessary and sufficient.
+        isize::MAX as usize - (align.as_usize() - 1)
+    }
 }
+pub struct LayoutError;
 #[derive(Debug)]
 pub struct ScalarSizeMismatch {
     pub target_size: u64,
@@ -183,7 +216,7 @@ impl<T> Box<T> {
     pub fn new_in(x: T, alloc: Alloc) -> Self {
         let mut boxed = Self::new_uninit_in(alloc);
         test_ne!(boxed.as_ptr(), 0_usize as *const T);
-        u64::putnl(boxed.as_ptr() as usize as u64);
+
         unsafe {
             boxed.as_mut_ptr().write(x);
         }
@@ -198,15 +231,13 @@ impl<T> Box<T> {
     }
     pub fn try_new_uninit_in(alloc: Alloc) -> Result<Box<mem::MaybeUninit<T>>, AllocError> {
         let ptr = if T::IS_ZST {
-            f64::putnl(3.0);
             NonNull::dangling()
         } else {
-            f64::putnl(4.0);
             let layout = Layout::new::<mem::MaybeUninit<T>>();
             //test_ne!(layout.size(),0);
             unsafe { alloc.allocate(layout)?.cast() }
         };
-        u64::putnl(ptr.as_ptr() as usize as u64);
+
         unsafe { Ok(Box::from_raw_in(ptr.as_ptr(), alloc)) }
     }
     // #[unstable(feature = "new_uninit", issue = "63291")]
@@ -246,7 +277,7 @@ impl Alloc {
                     Self::alloc(self, layout)
                 };
                 let ptr = NonNull::new(raw_ptr).ok_or(AllocError)?;
-                u64::putnl(ptr.as_ptr() as usize as u64);
+
                 Ok(NonNull::slice_from_raw_parts(ptr, size))
             },
         }
@@ -264,9 +295,7 @@ impl Alloc {
         } else {
             Self::aligned_malloc(&layout)
         };
-        f64::putnl(3434.334);
-        u64::putnl(ptr as usize as u64);
-        f64::putnl(3434.334);
+
         ptr
     }
     #[inline]
@@ -278,6 +307,7 @@ impl Alloc {
         __rust_alloc(align, size) as *mut u8
     }
 }
+
 const MIN_ALIGN: usize = 8;
 fn main() {
     unsafe {
@@ -294,6 +324,7 @@ fn main() {
         let boxed = Box::new(64_u8);
         //main2();
     }
+    layout_round_up_to_align_edge_cases();
 }
 struct UnsizedStruct<T: ?Sized> {
     unsized_field: T,
@@ -301,24 +332,31 @@ struct UnsizedStruct<T: ?Sized> {
 trait TestTrait {}
 impl<T> TestTrait for [T] {}
 impl<T, const N: usize> TestTrait for [T; N] {}
-/*fn main2() {
-    let x: UnsizedStruct<[u8; 4]> = UnsizedStruct {
-        unsized_field: [0; 4],
-    };
-    let r1: &UnsizedStruct<[u8]> = &x;
-    let r2: &UnsizedStruct<dyn TestTrait> = &x;
-    let (addr1, size) = unsafe { std::mem::transmute::<_, (usize, usize)>(r1) };
-    let (addr2, vptr) = unsafe { std::mem::transmute::<_, (usize, usize)>(r2) };
-    assert_eq!(addr1, addr2);
-    assert_eq!(size, 4);
-    let x: UnsizedStruct<[u8; 4]> = UnsizedStruct {
-        unsized_field: [0; 4],
-    };
-    let boxed = Box::new(&x);
-    let r1: Box<UnsizedStruct<[u8]>> = boxed;
-    let r2: Box<UUnsizedStruct<dyn TestTrait>> = boxed;
-    let (addr1, size) = unsafe { std::mem::transmute::<_, (usize, usize)>(r1) };
-    let (addr2, vptr) = unsafe { std::mem::transmute::<_, (usize, usize)>(r2) };
-    assert_eq!(addr1, addr2);
-    assert_eq!(size, 4);
-}*/
+fn layout_round_up_to_align_edge_cases() {
+    const MAX_SIZE: usize = isize::MAX as usize;
+
+    for shift in 0..usize::BITS {
+        let align = 1_usize << shift;
+        let edge = (MAX_SIZE + 1) - align;
+        let low = edge.saturating_sub(10);
+        let high = edge.saturating_add(10);
+
+        unsafe {
+            printf(
+                c"low:%p edge:%p high:%p align:%p\n".as_ptr(),
+                low,
+                edge,
+                high,
+                align,
+            )
+        };
+        test!(Layout::from_size_align(low, align).is_ok());
+        test!(Layout::from_size_align(high, align).is_err());
+        for size in low..=high {
+            test_eq!(
+                Layout::from_size_align(size, align).is_ok(),
+                size.next_multiple_of(align) <= MAX_SIZE
+            );
+        }
+    }
+}

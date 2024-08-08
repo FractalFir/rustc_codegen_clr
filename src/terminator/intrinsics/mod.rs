@@ -17,7 +17,7 @@ use rustc_middle::{
 use rustc_span::source_map::Spanned;
 use saturating::{saturating_add, saturating_sub};
 use type_info::{is_val_statically_known, size_of_val};
-use utilis::{compare_bytes, interlocked_add, interlocked_or};
+use utilis::{compare_bytes, interlocked_add, interlocked_and, interlocked_or, interlocked_xor};
 mod bswap;
 mod interop;
 mod ints;
@@ -486,6 +486,32 @@ pub fn handle_intrinsic<'tcx>(
             let src_type = ctx.type_from_cache(src_type);
 
             place_set(destination, interlocked_or(dst, orand, src_type), ctx)
+        }
+        "atomic_xor_seqcst" | "atomic_xor_release" | "atomic_xor_acqrel" | "atomic_xor_acquire"
+        | "atomic_xor_relaxed" => {
+            // *T
+            let dst = handle_operand(&args[0].node, ctx);
+            // T
+            let xorand = handle_operand(&args[1].node, ctx);
+            // we sub by adding a negative number
+
+            let src_type = ctx.monomorphize(args[1].node.ty(ctx.body(), ctx.tcx()));
+            let src_type = ctx.type_from_cache(src_type);
+
+            place_set(destination, interlocked_xor(dst, xorand, src_type), ctx)
+        }
+        "atomic_and_seqcst" | "atomic_and_release" | "atomic_and_acqrel" | "atomic_and_acquire"
+        | "atomic_and_relaxed" => {
+            // *T
+            let dst = handle_operand(&args[0].node, ctx);
+            // T
+            let andand = handle_operand(&args[1].node, ctx);
+            // we sub by adding a negative number
+
+            let src_type = ctx.monomorphize(args[1].node.ty(ctx.body(), ctx.tcx()));
+            let src_type = ctx.type_from_cache(src_type);
+
+            place_set(destination, interlocked_and(dst, andand, src_type), ctx)
         }
         "atomic_fence_acquire"
         | "atomic_fence_seqcst"
@@ -1240,6 +1266,16 @@ fn intrinsic_slow<'tcx>(
             ]
             .into(),
         }
+    } else if fn_name.contains("type_name") {
+        let const_val = ctx
+            .tcx()
+            .const_eval_instance(ParamEnv::reveal_all(), call_instance, span)
+            .unwrap();
+        place_set(
+            destination,
+            crate::constant::load_const_value(const_val, Ty::new_static_str(ctx.tcx()), ctx),
+            ctx,
+        )
     } else {
         todo!("Unhandled intrinsic {fn_name}.")
     }
