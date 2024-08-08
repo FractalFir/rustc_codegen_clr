@@ -1276,6 +1276,24 @@ fn intrinsic_slow<'tcx>(
             crate::constant::load_const_value(const_val, Ty::new_static_str(ctx.tcx()), ctx),
             ctx,
         )
+    } else if fn_name.contains("select_unpredictable") {
+        let select_ty = ctx.monomorphize(
+            call_instance.args[0]
+                .as_type()
+                .expect("needs_drop works only on types!"),
+        );
+        let select_ty = ctx.monomorphize(select_ty);
+        let select_ty = ctx.type_from_cache(select_ty);
+        place_set(
+            destination,
+            CILNode::select(
+                select_ty,
+                handle_operand(&args[1].node, ctx),
+                handle_operand(&args[2].node, ctx),
+                handle_operand(&args[0].node, ctx),
+            ),
+            ctx,
+        )
     } else {
         todo!("Unhandled intrinsic {fn_name}.")
     }
