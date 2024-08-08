@@ -81,3 +81,5 @@ config_flag! {CHECK_REFS,false,"Tells codegen to check if references it assigns 
 config_flag! {TYPECHECK_CIL,false,"Checks the geneareted CIL for type safety."}
 
 config_flag! {TRACE_CIL_OPS,false,"Tells the print each CIL op before it is executed."}
+
+config_flag! {DRY_RUN,false,"Tells the codegen test suite to not execute or link any test code, enabling testing on platforms without the .NET runtime present."}

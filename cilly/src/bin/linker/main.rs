@@ -316,7 +316,7 @@ fn main() {
         final_assembly.alloc_string("rust_begin_unwind"),
         Box::new(|_, asm| {
             MethodImpl::AliasFor(
-                *asm.find_methods_named("rust_begin_unwind")
+                *asm.find_methods_matching("rust_begin_unwind")
                     .unwrap()
                     .next()
                     .unwrap(),

@@ -3,6 +3,9 @@ use std::path::PathBuf;
 #[must_use]
 pub fn test_dotnet_executable(file_path: &str, test_dir: &str) -> String {
     use std::io::Write;
+    if *crate::config::DRY_RUN {
+        return String::new();
+    }
 
     let exec_path = &format!("{file_path}.exe");
     let mut stdout = String::new();
@@ -137,16 +140,7 @@ macro_rules! compare_tests {
                         .as_ref()
                         .expect("Could not build rustc!");
                     // Compiles the test project
-                    let mut cmd = std::process::Command::new("rustc");
-                    //.env("RUST_TARGET_PATH","../../")
-                    cmd.current_dir(test_dir)
-                        .arg("-O")
-                        .args(super::super::rustc_args().iter())
-                        .args([
-                            concat!("./", stringify!($test_name), ".rs"),
-                            "-o",
-                            concat!("./", stringify!($test_name), ".exe"),
-                        ]);
+                    let mut cmd = super::super::compiler(stringify!($test_name), test_dir, true);
                     let out = cmd.output().expect("failed to execute process");
                     // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
                     if !out.stderr.is_empty() {
@@ -158,6 +152,9 @@ macro_rules! compare_tests {
                         /*if stderr.contains("error"){
                             should_panic = true;
                         }*/
+                    }
+                    if *crate::config::DRY_RUN {
+                        return;
                     }
                     let exec_path = concat!("./", stringify!($test_name));
                     drop(lock);
@@ -214,16 +211,7 @@ macro_rules! compare_tests {
                     super::super::RUSTC_BUILD_STATUS
                         .as_ref()
                         .expect("Could not build rustc!");
-                    // Compiles the test project
-                    let mut cmd = std::process::Command::new("rustc");
-                    //.env("RUST_TARGET_PATH","../../")
-                    cmd.current_dir(test_dir)
-                        .args(super::super::rustc_args().iter())
-                        .args([
-                            concat!("./", stringify!($test_name), ".rs"),
-                            "-o",
-                            concat!("./", stringify!($test_name), ".exe"),
-                        ]);
+                    let mut cmd = super::super::compiler(stringify!($test_name), test_dir, true);
                     let out = cmd.output().expect("failed to execute process");
                     // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
                     if !out.stderr.is_empty() {
@@ -240,6 +228,9 @@ macro_rules! compare_tests {
                     drop(lock);
                     //super::peverify(exec_path, test_dir);
                     eprintln!("Prepating to test with .NET");
+                    if *crate::config::DRY_RUN {
+                        return;
+                    }
                     let dotnet_out = super::super::test_dotnet_executable(exec_path, test_dir);
                     // Compiles the project with native rust
                     let mut cmd = std::process::Command::new("rustc");
@@ -343,6 +334,27 @@ macro_rules! test_lib {
         }
     };
 }
+#[cfg(test)]
+fn compiler(test_name: &str, test_dir: &str, release: bool) -> std::process::Command {
+    // Compiles the test project
+    let mut cmd = std::process::Command::new("rustc");
+    //.env("RUST_TARGET_PATH","../../")
+    if release {
+        cmd.arg("-O");
+    }
+    cmd.current_dir(test_dir)
+        .args(rustc_args().iter())
+        .args([format!("./{test_name}.rs"), "-o".to_owned()]);
+    if release {
+        cmd.arg(format!("./{test_name}.exe"));
+    } else {
+        cmd.arg(format!("./debug_{test_name}.exe"));
+    }
+    if *crate::config::DRY_RUN {
+        cmd.args(["-Z", "no-codegen"]);
+    }
+    cmd
+}
 macro_rules! run_test {
     ($prefix:ident,$test_name:ident,$is_stable:ident) => {
         mod $test_name {
@@ -359,17 +371,7 @@ macro_rules! run_test {
                     super::super::RUSTC_BUILD_STATUS
                         .as_ref()
                         .expect("Could not build rustc!");
-                    // Compiles the test project
-                    let mut cmd = std::process::Command::new("rustc");
-                    //.env("RUST_TARGET_PATH","../../")
-                    cmd.current_dir(test_dir)
-                        .arg("-O")
-                        .args(super::super::rustc_args().iter())
-                        .args([
-                            concat!("./", stringify!($test_name), ".rs"),
-                            "-o",
-                            concat!("./", stringify!($test_name), ".exe"),
-                        ]);
+                    let mut cmd = super::super::compiler(stringify!($test_name), test_dir, true);
 
                     eprintln!("Command: {cmd:?}");
                     let out = cmd.output().expect("failed to execute process");
@@ -397,20 +399,10 @@ macro_rules! run_test {
                         .as_ref()
                         .expect("Could not build rustc!");
                     let test_name = concat!("debug_", stringify!($test_name));
-                    // Compiles the test project
-                    let mut out = std::process::Command::new("rustc");
-                    //.env("RUST_TARGET_PATH","../../")
-                    out.current_dir(test_dir)
-                        .arg("-O")
-                        .args(super::super::rustc_args().iter())
-                        .args([
-                            concat!("./", stringify!($test_name), ".rs"),
-                            "-o",
-                            concat!("./debug_", stringify!($test_name), ".exe"),
-                        ]);
+                    let mut cmd = super::super::compiler(stringify!($test_name), test_dir, false);
                     // /eprintln!("out:{out:?}");
                     eprintln!("test_name:{test_name:?}");
-                    let out = out.output().expect("failed to execute process");
+                    let out = cmd.output().expect("failed to execute process");
                     // If stderr is not empty, then something went wrong, so print the stdout and stderr for debuging.
                     if !out.stderr.is_empty() {
                         let stdout = String::from_utf8(out.stdout)
@@ -711,7 +703,7 @@ run_test! {intrinsics,cmp_bytes,stable}
 run_test! {intrinsics,copy_nonoverlaping,stable}
 run_test! {intrinsics,ctpop,stable}
 run_test! {intrinsics,malloc,stable}
-run_test! {intrinsics,offset_of,stable}
+run_test! {intrinsics,offset_of,unstable}
 run_test! {intrinsics,printf,stable}
 run_test! {intrinsics,ptr_offset_from_unsigned,stable}
 run_test! {intrinsics,size_of_val,stable}
@@ -1015,6 +1007,7 @@ fn build_liblets(backend: &str, linker: &str, link_args: &str, radomize_layout: 
         "-O",
         "-o",
         &out.display().to_string(),
+        "--edition=2021",
     ]);
     let _ = cmd.output().unwrap();
     out

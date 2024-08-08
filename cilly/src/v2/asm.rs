@@ -1,5 +1,5 @@
 use super::{
-    bimap::{calculate_hash, BiMap, IntoBiMapIndex},
+    bimap::{calculate_hash, BiMap, BiMapIndex, IntoBiMapIndex},
     cilnode::{BinOp, MethodKind, UnOp},
     Access, CILNode, CILRoot, ClassDef, ClassDefIdx, ClassRef, ClassRefIdx, Const, Exporter,
     FieldDesc, FieldIdx, FnSig, MethodDef, MethodDefIdx, MethodRef, MethodRefIdx, NodeIdx, RootIdx,
@@ -38,18 +38,34 @@ pub struct Assembly {
     method_defs: FxHashMap<MethodDefIdx, MethodDef>,
 }
 impl Assembly {
-    pub fn find_methods_named(
+    pub fn find_methods_matching<'a, P: std::str::pattern::Pattern + Clone + 'a>(
         &self,
-        name: impl Into<IString>,
+        pat: P,
     ) -> Option<impl Iterator<Item = MethodDefIdx> + '_> {
-        let name = self.get_prealllocated_string(name)?;
+        let names: Box<[StringIdx]> = self.find_strs_containing(pat).collect();
         Some(self.method_defs.iter().filter_map(move |(mdefidx, mdef)| {
-            if mdef.name() == name {
+            if names.iter().any(|name| *name == mdef.name()) {
                 Some(*mdefidx)
             } else {
                 None
             }
         }))
+    }
+    pub fn find_strs_containing<'a, P: std::str::pattern::Pattern + Clone + 'a>(
+        &'a self,
+        pat: P,
+    ) -> impl Iterator<Item = StringIdx> + '_ {
+        self.strings
+            .0
+            .iter()
+            .enumerate()
+            .filter_map(move |(idx, str)| {
+                if str.0.contains(pat.clone()) {
+                    Some(StringIdx(BiMapIndex::new((idx + 1) as u32).unwrap()))
+                } else {
+                    None
+                }
+            })
     }
     pub fn get_prealllocated_string(&self, string: impl Into<IString>) -> Option<StringIdx> {
         self.strings.1.get(&IStringWrapper(string.into())).copied()

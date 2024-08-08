@@ -114,24 +114,12 @@ pub extern "C" fn exception_to_native(exception: Object) -> *mut u8 {
         isize,
         MString,
     >(mstring) as *mut u8;
-    //3. Register the  UTF-8 string as an excpetion payload, to be freed on next convertion on this thread.
-    exception_str(ptr);
+
     //4. create a static reference to the message string
     let payload: &'static str =
         unsafe { from_utf8_unchecked(core::slice::from_raw_parts(ptr, strlen(ptr))) };
-    PAYLOAD.set(payload);
-    //5. Assemble the panic info.
-    // TODO: get .NET exception location and use it to construct this panic info.
-    let location = core::panic::Location::caller();
-    let payload = unsafe { &*(&PAYLOAD as *const core::cell::Cell<&'static str>) };
-    // 6. throw the panic info and immedieatly catch it to get a valid payload.
-    custom_payload(&PanicInfo {
-        can_unwind: true,
-        force_no_backtrace: false,
-        payload: payload,
-        message: None,
-        location,
-    })
+
+    custom_payload(payload)
 }
 // Needed for some convertion. Joinked from core
 pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
@@ -139,28 +127,23 @@ pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
     // Also relies on `&str` and `&[u8]` having the same layout.
     unsafe { core::mem::transmute(v) }
 }
-/// Converts a PanicInfo to an panic payload by panicking and ctaching that panic.
-fn custom_payload(pi: &PanicInfo<'_>) -> *mut u8 {
-    extern "Rust" {
-        #[lang = "panic_impl"]
-        /// Converts a PanicInfo to a panic and panics.
-        fn panic_impl(pi: &std::panic::PanicHookInfo<'_>) -> !;
-    }
-    // Converts a packed PanicInfo to a panic and panics.
+/// Converts a messagge to an panic payload by panicking and ctaching that panic.
+fn custom_payload(pi: &str) -> *mut u8 {
+    // Converts a packed messagge to a panic and panics.
     fn panicker(ptr: *mut u8) {
-        let (pi, _) = unsafe { &*(ptr as *mut (&std::panic::PanicHookInfo, &mut *mut u8)) };
-        unsafe { panic_impl(*pi) };
+        let (msg, _) = unsafe { &*(ptr as *mut (&str, &mut *mut u8)) };
+        panic!("{msg}")
     }
     /// "steals" the panic payload and stores it in the packed data structure.
     fn panic_stealer(data_ptr: *mut u8, payload: *mut u8) {
-        let (_, payload_ptr) = unsafe { &mut *(data_ptr as *mut (&PanicInfo, &mut *mut u8)) };
+        let (_, payload_ptr) = unsafe { &mut *(data_ptr as *mut (&str, &mut *mut u8)) };
         **payload_ptr = payload;
     }
     // The resulting panic payload
     let mut res = core::ptr::null_mut();
-    // Packed PanicInfo + &mut payload result. Used to create a panic, catch it, and return the payload.
-    let mut packed: (&PanicInfo, &mut *mut u8) = (pi, &mut res);
-    // Converts a packed PanicInfo to a panic payload by panicking, and stores the result in the packed payload.
+    // Packed messagge + &mut payload result. Used to create a panic, catch it, and return the payload.
+    let mut packed: (&str, &mut *mut u8) = (pi, &mut res);
+    // Converts a packed messagge to a panic payload by panicking, and stores the result in the packed payload.
     let res = unsafe {
         core::intrinsics::catch_unwind(panicker, &mut packed as *const _ as *mut u8, panic_stealer)
     };
