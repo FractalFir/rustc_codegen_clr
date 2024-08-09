@@ -320,9 +320,10 @@ impl ArchiveBuilderBuilder for RlibArchiveBuilder {
         &self,
         _sess: &Session,
         _lib_name: &str,
-        _dll_imports: std::vec::Vec<(std::string::String, std::option::Option<u16>)>,
+        _dll_imports: &[rustc_session::cstore::DllImport],
         _tmpdir: &Path,
-    ) {
+        _bool: bool,
+    ) -> PathBuf {
         unimplemented!("creating dll imports is not supported");
     }
 }

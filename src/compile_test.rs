@@ -705,6 +705,7 @@ run_test! {intrinsics,catch,stable}
 run_test! {intrinsics,cmp_bytes,stable}
 run_test! {intrinsics,copy_nonoverlaping,stable}
 run_test! {intrinsics,ctpop,stable}
+run_test! {intrinsics,is_val_statically_known,stable}
 run_test! {intrinsics,malloc,stable}
 run_test! {intrinsics,offset_of,unstable}
 run_test! {intrinsics,overflow_ops,stable}
