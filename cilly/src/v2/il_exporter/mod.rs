@@ -59,6 +59,7 @@ impl ILExporter {
                     writeln!(out, ".field {tpe} '{name}'")
                 }?;
             }
+            crate::utilis::assert_unique(class_def.static_fields(), format!("The class {} contains a duplicate static field",asm.get_string(class_def.name())));
             // Export all static fields
             for (tpe, name, thread_local) in class_def.static_fields() {
                 let name = asm.get_string(*name);

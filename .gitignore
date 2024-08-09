@@ -17,6 +17,7 @@ test/out
 *.pdb
 *.out
 *.cilly
+*.cilly2
 .cargo/
 config.toml
 rust/
