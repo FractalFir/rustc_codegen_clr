@@ -15,7 +15,7 @@ use cilly::{
     method::{Method, MethodType},
     ptr,
     r#type::Type,
-    size_of, source_info,
+    shl, shr, size_of, source_info,
     static_field_desc::StaticFieldDescriptor,
     type_def::TypeDef,
     utilis::escape_class_name,
@@ -206,6 +206,8 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
     bounds_check(asm);
     atomic::atomics(asm);
     bitreverse_u128(asm);
+    bitreverse_u64(asm);
+    bitreverse_u32(asm);
     let c_void = crate::r#type::c_void(tcx);
 
     asm.add_typedef(TypeDef::new(
@@ -1374,27 +1376,7 @@ fn shl_u128(value: CILNode, shift: CILNode) -> CILNode {
         [value, shift]
     )
 }
-fn const_u128(value: u128) -> CILNode {
-    let low = u128_low_u64(value);
-    let high = (value >> 64) as u64;
-    let ctor_sig = FnSig::new(
-        &[
-            Type::ManagedReference(Type::U128.into()),
-            Type::U64,
-            Type::U64,
-        ],
-        Type::Void,
-    );
-    CILNode::NewObj(Box::new(CallOpArgs {
-        site: CallSite::boxed(
-            Some(DotnetTypeRef::uint_128()),
-            ".ctor".into(),
-            ctor_sig,
-            false,
-        ),
-        args: [conv_u64!(ldc_u64!(high)), conv_u64!(ldc_u64!(low))].into(),
-    }))
-}
+
 add_method_from_trees!(
     bitreverse_u128,
     &[Type::U128],
@@ -1406,12 +1388,12 @@ add_method_from_trees!(
                 tree: or_u128(
                     and_u128(
                         shr_u128(CILNode::LDArg(0), ldc_i32!(1)),
-                        const_u128(0x5555_5555_5555_5555_5555_5555_5555_5555_u128),
+                        CILNode::const_u128(0x5555_5555_5555_5555_5555_5555_5555_5555_u128),
                     ),
                     shl_u128(
                         and_u128(
                             CILNode::LDArg(0),
-                            const_u128(0x5555_5555_5555_5555_5555_5555_5555_5555_u128),
+                            CILNode::const_u128(0x5555_5555_5555_5555_5555_5555_5555_5555_u128),
                         ),
                         ldc_i32!(1),
                     ),
@@ -1423,12 +1405,12 @@ add_method_from_trees!(
                 tree: or_u128(
                     and_u128(
                         shr_u128(CILNode::LDLoc(0), ldc_i32!(2)),
-                        const_u128(0x3333_3333_3333_3333_3333_3333_3333_3333_u128),
+                        CILNode::const_u128(0x3333_3333_3333_3333_3333_3333_3333_3333_u128),
                     ),
                     shl_u128(
                         and_u128(
                             CILNode::LDLoc(0),
-                            const_u128(0x3333_3333_3333_3333_3333_3333_3333_3333_u128),
+                            CILNode::const_u128(0x3333_3333_3333_3333_3333_3333_3333_3333_u128),
                         ),
                         ldc_i32!(2),
                     ),
@@ -1440,12 +1422,12 @@ add_method_from_trees!(
                 tree: or_u128(
                     and_u128(
                         shr_u128(CILNode::LDLoc(0), ldc_i32!(4)),
-                        const_u128(0x0F0F_0F0F_0F0F_0F0F_0F0F_0F0F_0F0F_0F0F_u128),
+                        CILNode::const_u128(0x0F0F_0F0F_0F0F_0F0F_0F0F_0F0F_0F0F_0F0F_u128),
                     ),
                     shl_u128(
                         and_u128(
                             CILNode::LDLoc(0),
-                            const_u128(0x0F0F_0F0F_0F0F_0F0F_0F0F_0F0F_0F0F_0F0F_u128),
+                            CILNode::const_u128(0x0F0F_0F0F_0F0F_0F0F_0F0F_0F0F_0F0F_0F0F_u128),
                         ),
                         ldc_i32!(4),
                     ),
@@ -1457,12 +1439,12 @@ add_method_from_trees!(
                 tree: or_u128(
                     and_u128(
                         shr_u128(CILNode::LDLoc(0), ldc_i32!(8)),
-                        const_u128(0x00FF_00FF_00FF_00FF_00FF_00FF_00FF_00FF_u128),
+                        CILNode::const_u128(0x00FF_00FF_00FF_00FF_00FF_00FF_00FF_00FF_u128),
                     ),
                     shl_u128(
                         and_u128(
                             CILNode::LDLoc(0),
-                            const_u128(0x00FF_00FF_00FF_00FF_00FF_00FF_00FF_00FF_u128),
+                            CILNode::const_u128(0x00FF_00FF_00FF_00FF_00FF_00FF_00FF_00FF_u128),
                         ),
                         ldc_i32!(8),
                     ),
@@ -1474,12 +1456,12 @@ add_method_from_trees!(
                 tree: or_u128(
                     and_u128(
                         shr_u128(CILNode::LDLoc(0), ldc_i32!(16)),
-                        const_u128(0x0000_FFFF_0000_FFFF_0000_FFFF_0000_FFFF_u128),
+                        CILNode::const_u128(0x0000_FFFF_0000_FFFF_0000_FFFF_0000_FFFF_u128),
                     ),
                     shl_u128(
                         and_u128(
                             CILNode::LDLoc(0),
-                            const_u128(0x0000_FFFF_0000_FFFF_0000_FFFF_0000_FFFF_u128),
+                            CILNode::const_u128(0x0000_FFFF_0000_FFFF_0000_FFFF_0000_FFFF_u128),
                         ),
                         ldc_i32!(16),
                     ),
@@ -1491,12 +1473,12 @@ add_method_from_trees!(
                 tree: or_u128(
                     and_u128(
                         shr_u128(CILNode::LDLoc(0), ldc_i32!(32)),
-                        const_u128(0x0000_0000_FFFF_FFFF_0000_0000_FFFF_FFFF_u128),
+                        CILNode::const_u128(0x0000_0000_FFFF_FFFF_0000_0000_FFFF_FFFF_u128),
                     ),
                     shl_u128(
                         and_u128(
                             CILNode::LDLoc(0),
-                            const_u128(0x0000_0000_FFFF_FFFF_0000_0000_FFFF_FFFF_u128),
+                            CILNode::const_u128(0x0000_0000_FFFF_FFFF_0000_0000_FFFF_FFFF_u128),
                         ),
                         ldc_i32!(32),
                     ),
@@ -1515,12 +1497,116 @@ add_method_from_trees!(
         None
     )],
     vec![(Some("n".into()), Type::U128)],
-    vec![
-        Some("buf1".into()),
-        Some("buf2".into()),
-        Some("size".into())
-    ]
+    vec![Some("input".into()),]
 );
-fn u128_low_u64(value: u128) -> u64 {
-    u64::try_from(value & u128::from(u64::MAX)).expect("trucating cast error")
-}
+add_method_from_trees!(
+    bitreverse_u64,
+    &[Type::U64],
+    Type::U64,
+    vec![BasicBlock::new(
+        vec![
+            CILRoot::STLoc {
+                local: 0,
+                tree: shr!(CILNode::LDArg(0), ldc_i32!(1)) & ldc_u64!(0x5555_5555_5555_5555_u64)
+                    | shl!(
+                        (CILNode::LDArg(0) & ldc_u64!(0x5555_5555_5555_5555_u64)),
+                        ldc_i32!(1)
+                    )
+            }
+            .into(),
+            CILRoot::STLoc {
+                local: 0,
+                tree: shr!(CILNode::LDLoc(0), ldc_i32!(2)) & ldc_u64!(0x3333_3333_3333_3333_u64)
+                    | shl!(
+                        (CILNode::LDLoc(0) & ldc_u64!(0x3333_3333_3333_3333_u64)),
+                        ldc_i32!(2)
+                    )
+            }
+            .into(),
+            CILRoot::STLoc {
+                local: 0,
+                tree: shr!(CILNode::LDLoc(0), ldc_i32!(4)) & ldc_u64!(0x0F0F_0F0F_0F0F_0F0F_u64)
+                    | shl!(
+                        (CILNode::LDLoc(0) & ldc_u64!(0x0F0F_0F0F_0F0F_0F0F_u64)),
+                        ldc_i32!(4)
+                    )
+            }
+            .into(),
+            CILRoot::STLoc {
+                local: 0,
+                tree: shr!(CILNode::LDLoc(0), ldc_i32!(8)) & ldc_u64!(0x00FF_00FF_00FF_00FF_u64)
+                    | shl!(
+                        (CILNode::LDLoc(0) & ldc_u64!(0x00FF_00FF_00FF_00FF_u64)),
+                        ldc_i32!(8)
+                    )
+            }
+            .into(),
+            CILRoot::STLoc {
+                local: 0,
+                tree: shr!(CILNode::LDLoc(0), ldc_i32!(16)) & ldc_u64!(0x0000_FFFF_0000_FFFF_u64)
+                    | shl!(
+                        (CILNode::LDLoc(0) & ldc_u64!(0x0000_FFFF_0000_FFFF_u64)),
+                        ldc_i32!(16)
+                    )
+            }
+            .into(),
+            CILRoot::Ret {
+                tree: shr!(CILNode::LDLoc(0), ldc_i32!(32)) & ldc_u64!(0x0000_0000_FFFF_FFFF_u64)
+                    | shl!(
+                        (CILNode::LDLoc(0) & ldc_u64!(0x0000_0000_FFFF_FFFF_u64)),
+                        ldc_i32!(32)
+                    )
+            }
+            .into()
+        ],
+        0,
+        None
+    )],
+    vec![(Some("n".into()), Type::U64)],
+    vec![Some("input".into()),]
+);
+add_method_from_trees!(
+    bitreverse_u32,
+    &[Type::U32],
+    Type::U32,
+    vec![BasicBlock::new(
+        vec![
+            CILRoot::STLoc {
+                local: 0,
+                tree: shr!(CILNode::LDArg(0), ldc_i32!(1)) & ldc_u32!(0x5555_5555_u32)
+                    | shl!((CILNode::LDArg(0) & ldc_u32!(0x5555_5555_u32)), ldc_i32!(1))
+            }
+            .into(),
+            CILRoot::STLoc {
+                local: 0,
+                tree: shr!(CILNode::LDLoc(0), ldc_i32!(2)) & ldc_u32!(0x3333_3333_u32)
+                    | shl!((CILNode::LDLoc(0) & ldc_u32!(0x3333_3333_u32)), ldc_i32!(2))
+            }
+            .into(),
+            CILRoot::STLoc {
+                local: 0,
+                tree: shr!(CILNode::LDLoc(0), ldc_i32!(4)) & ldc_u32!(0x0F0F_0F0F_u32)
+                    | shl!((CILNode::LDLoc(0) & ldc_u32!(0x0F0F_0F0F_u32)), ldc_i32!(4))
+            }
+            .into(),
+            CILRoot::STLoc {
+                local: 0,
+                tree: shr!(CILNode::LDLoc(0), ldc_i32!(8)) & ldc_u32!(0x00FF_00FF_u32)
+                    | shl!((CILNode::LDLoc(0) & ldc_u32!(0x00FF_00FF_u32)), ldc_i32!(8))
+            }
+            .into(),
+            CILRoot::Ret {
+                tree: shr!(CILNode::LDLoc(0), ldc_i32!(16)) & ldc_u32!(0x0000_FFFF_u32)
+                    | shl!(
+                        (CILNode::LDLoc(0) & ldc_u32!(0x0000_FFFF_u32)),
+                        ldc_i32!(16)
+                    )
+            }
+            .into()
+        ],
+        0,
+        None
+    )],
+    vec![(Some("n".into()), Type::U32)],
+    vec![Some("input".into()),]
+);

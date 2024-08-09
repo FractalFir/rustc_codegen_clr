@@ -1,6 +1,6 @@
 use cilly::{
-    cil_node::CILNode, cil_root::CILRoot, eq, field_desc::FieldDescriptor, gt_un, ldc_u64, sub,
-    DotnetTypeRef, Type,
+    call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, eq,
+    field_desc::FieldDescriptor, gt_un, ldc_u64, sub, DotnetTypeRef, FnSig, Type,
 };
 use rustc_middle::ty::{AdtDef, Ty, TyCtxt};
 use rustc_target::abi::{
@@ -301,16 +301,43 @@ pub fn get_discr<'tcx>(
                 //     untagged_variant
                 // }
 
-                let is_niche = eq!(
-                    tag,
-                    crate::casts::int_to_int(
-                        Type::U64,
-                        &disrc_type,
-                        ldc_u64!(niche_start
-                            .try_into()
-                            .expect("tag is too big to fit within u64"))
-                    )
-                ); //bx.icmp(IntPredicate::IntEQ, tag, niche_start);
+                let is_niche = match tag_tpe {
+                    Type::U128 => call!(
+                        CallSite::new_extern(
+                            DotnetTypeRef::uint_128(),
+                            "op_Equality".into(),
+                            FnSig::new([Type::U128, Type::U128], Type::Bool),
+                            true
+                        ),
+                        [
+                            tag,
+                            CILNode::const_u128(u128::from(niche_variants.start().as_u32()))
+                        ]
+                    ),
+                    Type::I128 => call!(
+                        CallSite::new_extern(
+                            DotnetTypeRef::int_128(),
+                            "op_Equality".into(),
+                            FnSig::new([Type::I128, Type::I128], Type::Bool),
+                            true
+                        ),
+                        [
+                            tag,
+                            CILNode::const_i128(u128::from(niche_variants.start().as_u32()))
+                        ]
+                    ),
+
+                    _ => eq!(
+                        tag,
+                        crate::casts::int_to_int(
+                            Type::U64,
+                            &disrc_type,
+                            ldc_u64!(niche_start
+                                .try_into()
+                                .expect("tag is too big to fit within u64"))
+                        )
+                    ),
+                }; //bx.icmp(IntPredicate::IntEQ, tag, niche_start);
 
                 let tagged_discr = crate::casts::int_to_int(
                     Type::U64,
@@ -323,19 +350,48 @@ pub fn get_discr<'tcx>(
                 // The special cases don't apply, so we'll have to go with
                 // the general algorithm.
                 //let tag = crate::casts::int_to_int(disrc_type.clone(), &Type::U64, tag);
-                let relative_discr = sub!(
-                    tag,
-                    crate::casts::int_to_int(
-                        Type::U64,
-                        &disrc_type,
-                        ldc_u64!(niche_start
-                            .try_into()
-                            .expect("tag is too big to fit within u64"))
-                    )
-                );
+                let relative_discr = match tag_tpe {
+                    Type::I128 | Type::U128 => {
+                        todo!("niche encoidng of 128 bit wide tags is not fully supported yet")
+                    }
+                    _ => sub!(
+                        tag,
+                        crate::casts::int_to_int(
+                            Type::U64,
+                            &disrc_type,
+                            ldc_u64!(niche_start
+                                .try_into()
+                                .expect("tag is too big to fit within u64"))
+                        )
+                    ),
+                };
+                let gt = match tag_tpe {
+                    Type::U128 => call!(
+                        CallSite::new_extern(
+                            DotnetTypeRef::uint_128(),
+                            "op_GreaterThan".into(),
+                            FnSig::new([Type::U128, Type::U128], Type::Bool),
+                            true
+                        ),
+                        [
+                            relative_discr.clone(),
+                            CILNode::const_u128(u128::from(relative_max))
+                        ]
+                    ),
+                    Type::I128 => call!(
+                        CallSite::new_extern(
+                            DotnetTypeRef::int_128(),
+                            "op_GreaterThan".into(),
+                            FnSig::new([Type::I128, Type::I128], Type::Bool),
+                            true
+                        ),
+                        [
+                            relative_discr.clone(),
+                            CILNode::const_i128(u128::from(relative_max))
+                        ]
+                    ),
 
-                let is_niche = eq!(
-                    gt_un!(
+                    _ => gt_un!(
                         relative_discr.clone(),
                         crate::casts::int_to_int(
                             Type::U64,
@@ -343,8 +399,8 @@ pub fn get_discr<'tcx>(
                             ldc_u64!(u64::from(relative_max))
                         )
                     ),
-                    CILNode::LdFalse
-                );
+                };
+                let is_niche = eq!(gt, CILNode::LdFalse);
                 (
                     is_niche,
                     relative_discr,

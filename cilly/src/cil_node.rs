@@ -235,6 +235,62 @@ pub enum CILNode {
 }
 
 impl CILNode {
+    pub fn const_u128(value: u128) -> CILNode {
+        fn u128_low_u64(value: u128) -> u64 {
+            u64::try_from(value & u128::from(u64::MAX)).expect("trucating cast error")
+        }
+        let low = u128_low_u64(value);
+        let high = (value >> 64) as u64;
+        let ctor_sig = FnSig::new(
+            &[
+                Type::ManagedReference(Type::U128.into()),
+                Type::U64,
+                Type::U64,
+            ],
+            Type::Void,
+        );
+        CILNode::NewObj(Box::new(CallOpArgs {
+            site: CallSite::boxed(
+                Some(DotnetTypeRef::uint_128()),
+                ".ctor".into(),
+                ctor_sig,
+                false,
+            ),
+            args: [
+                crate::conv_u64!(crate::ldc_u64!(high)),
+                crate::conv_u64!(crate::ldc_u64!(low)),
+            ]
+            .into(),
+        }))
+    }
+    pub fn const_i128(value: u128) -> CILNode {
+        fn u128_low_u64(value: u128) -> u64 {
+            u64::try_from(value & u128::from(u64::MAX)).expect("trucating cast error")
+        }
+        let low = u128_low_u64(value);
+        let high = (value >> 64) as u64;
+        let ctor_sig = FnSig::new(
+            &[
+                Type::ManagedReference(Type::I128.into()),
+                Type::U64,
+                Type::U64,
+            ],
+            Type::Void,
+        );
+        CILNode::NewObj(Box::new(CallOpArgs {
+            site: CallSite::boxed(
+                Some(DotnetTypeRef::int_128()),
+                ".ctor".into(),
+                ctor_sig,
+                false,
+            ),
+            args: [
+                crate::conv_u64!(crate::ldc_u64!(high)),
+                crate::conv_u64!(crate::ldc_u64!(low)),
+            ]
+            .into(),
+        }))
+    }
     /// Allocates a GC handle to the object, and converts that handle to a nint sized handleID.
     pub fn managed_ref_to_handle(self) -> Self {
         let gc_handle = call!(
@@ -1639,7 +1695,13 @@ impl std::ops::BitOr<Self> for CILNode {
         or!(self, rhs)
     }
 }
+impl std::ops::BitAnd<Self> for CILNode {
+    type Output = Self;
 
+    fn bitand(self, rhs: Self) -> Self::Output {
+        and!(self, rhs)
+    }
+}
 impl std::ops::Neg for CILNode {
     fn neg(self) -> Self::Output {
         Self::Neg(self.into())
