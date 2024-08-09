@@ -718,6 +718,7 @@ run_test! {intrinsics,size_of_val,stable}
 run_test! {intrinsics,transmute,stable}
 run_test! {intrinsics,trigonometry,stable}
 run_test! {intrinsics,type_id,stable}
+run_test! {intrinsics,type_name,stable}
 run_test! {intrinsics,wrapping_ops,stable}
 run_test! {iter,fold,stable}
 run_test! {statics,thread_local,stable}
