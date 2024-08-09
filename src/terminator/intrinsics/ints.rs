@@ -657,6 +657,26 @@ pub fn bitreverse<'tcx>(
             Type::I8 => conv_i8!(bitreverse_u8(val)),
             Type::U16 => bitreverse_u16(val),
             Type::I16 => conv_i16!(bitreverse_u16(conv_u16!(val))),
+            Type::U128 => call!(
+                CallSite::builtin(
+                    "bitreverse_u128".into(),
+                    FnSig::new(&[Type::U128], Type::U128,),
+                    true
+                ),
+                [val]
+            ),
+            Type::I128 => crate::casts::int_to_int(
+                Type::U128,
+                &Type::I128,
+                call!(
+                    CallSite::builtin(
+                        "bitreverse_u128".into(),
+                        FnSig::new(&[Type::U128], Type::U128,),
+                        true
+                    ),
+                    [crate::casts::int_to_int(Type::I128, &Type::U128, val)]
+                ),
+            ),
             _ => todo!("can't yet bitreverse {val_tpe:?}"),
         },
         ctx,

@@ -69,4 +69,34 @@ fn main() {
     for b in 0..u16::MAX {
         test_eq!(bitreverse_u16(b), core::intrinsics::bitreverse(b));
     }
+    #[cfg(not(debug_assertions))]
+    fn bitreverse_u128(mut n: u128) -> u128 {
+        n = (n >> 1) & 0x55555555555555555555555555555555u128
+            | (n & 0x55555555555555555555555555555555u128) << 1;
+        n = (n >> 2) & 0x33333333333333333333333333333333u128
+            | (n & 0x33333333333333333333333333333333u128) << 2;
+        n = (n >> 4) & 0x0F0F0F0F0F0F0F0F0F0F0F0F0F0F0F0Fu128
+            | (n & 0x0F0F0F0F0F0F0F0F0F0F0F0F0F0F0F0Fu128) << 4;
+        n = (n >> 8) & 0x00FF00FF00FF00FF00FF00FF00FF00FFu128
+            | (n & 0x00FF00FF00FF00FF00FF00FF00FF00FFu128) << 8;
+        n = (n >> 16) & 0x0000FFFF0000FFFF0000FFFF0000FFFFu128
+            | (n & 0x0000FFFF0000FFFF0000FFFF0000FFFFu128) << 16;
+        n = (n >> 32) & 0x00000000FFFFFFFF00000000FFFFFFFFu128
+            | (n & 0x00000000FFFFFFFF00000000FFFFFFFFu128) << 32;
+        n = (n >> 64) | (n << 64);
+        n
+    }
+    #[cfg(not(debug_assertions))]
+    for b in 0..u16::MAX {
+        let b = b as u128 + b as u128 * (u64::MAX as u128);
+        assert_eq!(bitreverse_u128(b), core::intrinsics::bitreverse(b));
+    }
+    #[cfg(not(debug_assertions))]
+    for b in 0..u16::MAX {
+        let b = b as i128 + b as i128 * (u64::MAX as i128);
+        assert_eq!(
+            bitreverse_u128(b as u128) as i128,
+            core::intrinsics::bitreverse(b)
+        );
+    }
 }
