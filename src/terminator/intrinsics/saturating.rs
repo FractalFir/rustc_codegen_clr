@@ -1,5 +1,8 @@
 use crate::{assembly::MethodCompileCtx, operand::handle_operand, place::place_set};
-use cilly::{cil_node::CILNode, cil_root::CILRoot, lt_un, Type};
+use cilly::{
+    call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_i16, conv_i32, conv_i64,
+    conv_i8, ldc_i32, ldc_i64, lt_un, DotnetTypeRef, FnSig, Type,
+};
 
 use rustc_middle::{
     mir::{Operand, Place},
@@ -29,6 +32,63 @@ pub fn saturating_add<'tcx>(
             let max = crate::r#type::max_value(&a_type);
             CILNode::select(a_type, max, sum, flag)
         }
+        Type::I32 => {
+            let a = conv_i64!(a);
+            let b = conv_i64!(b);
+            let diff = a + b;
+            let diff_capped = call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::math(),
+                    "Clamp".into(),
+                    FnSig::new(&[Type::I64, Type::I64, Type::I64], Type::I64),
+                    true
+                ),
+                [
+                    diff,
+                    ldc_i64!(i64::from(i32::MIN)),
+                    ldc_i64!(i64::from(i32::MAX))
+                ]
+            );
+            conv_i32!(diff_capped)
+        }
+        Type::I16 => {
+            let a = conv_i32!(a);
+            let b = conv_i32!(b);
+            let diff = a + b;
+            let diff_capped = call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::math(),
+                    "Clamp".into(),
+                    FnSig::new(&[Type::I32, Type::I32, Type::I32], Type::I32),
+                    true
+                ),
+                [
+                    diff,
+                    ldc_i32!(i32::from(i16::MIN)),
+                    ldc_i32!(i32::from(i16::MAX))
+                ]
+            );
+            conv_i16!(diff_capped)
+        }
+        Type::I8 => {
+            let a = conv_i32!(a);
+            let b = conv_i32!(b);
+            let diff = a + b;
+            let diff_capped = call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::math(),
+                    "Clamp".into(),
+                    FnSig::new(&[Type::I32, Type::I32, Type::I32], Type::I32),
+                    true
+                ),
+                [
+                    diff,
+                    ldc_i32!(i32::from(i8::MIN)),
+                    ldc_i32!(i32::from(i8::MAX))
+                ]
+            );
+            conv_i8!(diff_capped)
+        }
         _ => todo!("Can't use the intrinsic `saturating_add` on {a_type:?}"),
     };
     place_set(destination, calc, ctx)
@@ -53,6 +113,63 @@ pub fn saturating_sub<'tcx>(
             let diff = crate::binop::sub_unchecked(a_ty, a_ty, ctx, a, b);
             let zero = crate::binop::checked::zero(a_ty);
             CILNode::select(a_type, zero, diff, undeflow)
+        }
+        Type::I32 => {
+            let a = conv_i64!(a);
+            let b = conv_i64!(b);
+            let diff = a - b;
+            let diff_capped = call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::math(),
+                    "Clamp".into(),
+                    FnSig::new(&[Type::I64, Type::I64, Type::I64], Type::I64),
+                    true
+                ),
+                [
+                    diff,
+                    ldc_i64!(i64::from(i32::MIN)),
+                    ldc_i64!(i64::from(i32::MAX))
+                ]
+            );
+            conv_i32!(diff_capped)
+        }
+        Type::I16 => {
+            let a = conv_i32!(a);
+            let b = conv_i32!(b);
+            let diff = a - b;
+            let diff_capped = call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::math(),
+                    "Clamp".into(),
+                    FnSig::new(&[Type::I32, Type::I32, Type::I32], Type::I32),
+                    true
+                ),
+                [
+                    diff,
+                    ldc_i32!(i32::from(i16::MIN)),
+                    ldc_i32!(i32::from(i16::MAX))
+                ]
+            );
+            conv_i16!(diff_capped)
+        }
+        Type::I8 => {
+            let a = conv_i32!(a);
+            let b = conv_i32!(b);
+            let diff = a - b;
+            let diff_capped = call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::math(),
+                    "Clamp".into(),
+                    FnSig::new(&[Type::I32, Type::I32, Type::I32], Type::I32),
+                    true
+                ),
+                [
+                    diff,
+                    ldc_i32!(i32::from(i8::MIN)),
+                    ldc_i32!(i32::from(i8::MAX))
+                ]
+            );
+            conv_i8!(diff_capped)
         }
         _ => todo!("Can't use the intrinsic `saturating_sub` on {a_type:?}"),
     };

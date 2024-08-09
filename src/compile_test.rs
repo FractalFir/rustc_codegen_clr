@@ -680,6 +680,7 @@ run_test! {arthm,greater_than,stable}
 run_test! {arthm,max,stable}
 run_test! {arthm,mul,stable}
 run_test! {arthm,not,stable}
+run_test! {arthm,num_test,stable}
 run_test! {arthm,shift,stable}
 run_test! {arthm,sub,stable}
 run_test! {arthm,xor,stable}
@@ -697,6 +698,7 @@ run_test! {intrinsics,arith_offset,stable}
 run_test! {intrinsics,arithmetic_misc,stable}
 run_test! {intrinsics,assert,stable}
 run_test! {intrinsics,atomics,stable}
+
 run_test! {intrinsics,bswap,stable}
 run_test! {intrinsics,caller_location,stable}
 run_test! {intrinsics,catch,stable}

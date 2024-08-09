@@ -86,6 +86,7 @@ pub fn handle_intrinsic<'tcx>(
             ctx,
         ),
         "ctpop" => ints::ctpop(args, destination, call_instance, ctx),
+        "bitreverse" => ints::bitreverse(args, destination, ctx, call_instance),
         "ctlz" | "ctlz_nonzero" => ctlz(args, destination, call_instance, ctx),
         "unlikely" | "likely" => {
             debug_assert_eq!(

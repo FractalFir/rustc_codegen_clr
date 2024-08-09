@@ -18,6 +18,11 @@ pub enum DotnetTypeRef {
 }
 impl DotnetTypeRef {
     #[must_use]
+    pub fn bit_operations() -> Self {
+        DotnetTypeRef::new("System.Runtime".into(), "System.Numerics.BitOperations")
+            .with_valuetype(false)
+    }
+    #[must_use]
     pub fn marshal() -> Self {
         Self::new(
             Some("System.Runtime.InteropServices"),
@@ -52,6 +57,14 @@ impl DotnetTypeRef {
     #[must_use]
     pub fn single() -> Self {
         Self::new(Some("System.Runtime"), "System.Single").with_valuetype(true)
+    }
+    #[must_use]
+    pub fn byte() -> Self {
+        Self::new(Some("System.Runtime"), "System.Byte")
+    }
+    #[must_use]
+    pub fn sbyte() -> Self {
+        Self::new(Some("System.Runtime"), "System.SByte")
     }
     #[must_use]
     pub fn double() -> Self {
