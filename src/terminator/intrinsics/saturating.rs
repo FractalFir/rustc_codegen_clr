@@ -17,6 +17,11 @@ pub fn saturating_add<'tcx>(
 ) -> CILRoot {
     let a = handle_operand(&args[0].node, ctx);
     let b = handle_operand(&args[1].node, ctx);
+    let a_ty = ctx.monomorphize(
+        call_instance.args[0]
+            .as_type()
+            .expect("saturating_sub works only on types!"),
+    );
     let a_type = ctx.type_from_cache(
         ctx.monomorphize(
             call_instance.args[0]
@@ -25,10 +30,10 @@ pub fn saturating_add<'tcx>(
         ),
     );
     let calc = match a_type {
-        Type::USize | Type::U64 | Type::U32 | Type::U16 | Type::U8 => {
-            let sum = a.clone() + b.clone();
-            let or = a | b;
-            let flag = lt_un!(sum.clone(), or);
+        Type::USize | Type::U128 | Type::U64 | Type::U32 | Type::U16 | Type::U8 => {
+            let sum = crate::binop::add_unchecked(a_ty, a_ty, ctx, a.clone(), b.clone());
+            let or = crate::binop::bitop::bit_or_unchecked(a_ty, a_ty, ctx, a.clone(), b.clone());
+            let flag = crate::binop::cmp::lt_unchecked(a_ty, sum.clone(), or.clone());
             let max = crate::r#type::max_value(&a_type);
             CILNode::select(a_type, max, sum, flag)
         }
@@ -51,6 +56,36 @@ pub fn saturating_add<'tcx>(
             );
             conv_i32!(diff_capped)
         }
+
+        Type::I64 => {
+            let a = crate::casts::int_to_int(Type::I64, &Type::I128, a);
+            let b = crate::casts::int_to_int(Type::I64, &Type::I128, b);
+            let diff = call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::int_128(),
+                    "op_Addition".into(),
+                    FnSig::new(&[Type::I128, Type::I128], Type::I128),
+                    true,
+                ),
+                [a, b]
+            );
+            #[allow(clippy::cast_sign_loss)]
+            let diff_capped = call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::int_128(),
+                    "Clamp".into(),
+                    FnSig::new(&[Type::I128, Type::I128, Type::I128], Type::I128),
+                    true
+                ),
+                [
+                    diff,
+                    CILNode::const_i128(i128::from(i64::MIN) as u128),
+                    CILNode::const_i128(i128::from(i64::MAX) as u128),
+                ]
+            );
+            crate::casts::int_to_int(Type::I128, &Type::I64, diff_capped)
+        }
+
         Type::I16 => {
             let a = conv_i32!(a);
             let b = conv_i32!(b);
@@ -113,6 +148,34 @@ pub fn saturating_sub<'tcx>(
             let diff = crate::binop::sub_unchecked(a_ty, a_ty, ctx, a, b);
             let zero = crate::binop::checked::zero(a_ty);
             CILNode::select(a_type, zero, diff, undeflow)
+        }
+        Type::I64 => {
+            let a = crate::casts::int_to_int(Type::I64, &Type::I128, a);
+            let b = crate::casts::int_to_int(Type::I64, &Type::I128, b);
+            let diff = call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::int_128(),
+                    "op_Subtraction".into(),
+                    FnSig::new(&[Type::I128, Type::I128], Type::I128),
+                    true,
+                ),
+                [a, b]
+            );
+            #[allow(clippy::cast_sign_loss)]
+            let diff_capped = call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::int_128(),
+                    "Clamp".into(),
+                    FnSig::new(&[Type::I128, Type::I128, Type::I128], Type::I128),
+                    true
+                ),
+                [
+                    diff,
+                    CILNode::const_i128(i128::from(i64::MIN) as u128),
+                    CILNode::const_i128(i128::from(i64::MAX) as u128),
+                ]
+            );
+            crate::casts::int_to_int(Type::I128, &Type::I64, diff_capped)
         }
         Type::I32 => {
             let a = conv_i64!(a);

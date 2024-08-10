@@ -49,7 +49,11 @@ fn main() {
                 }
             }
         }
-        if stderr.contains("failures:") | stdout.contains("failures:") {
+        if stderr.contains("failures:")
+            | stdout.contains("failures:")
+            | stderr.contains("finished")
+            | stdout.contains("finished")
+        {
             println!("search done.");
             break;
         }
