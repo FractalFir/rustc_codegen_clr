@@ -1,8 +1,8 @@
 use crate::{assembly::MethodCompileCtx, casts};
 use cilly::{
-    and, call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_i64, conv_isize,
-    conv_u64, conv_usize, field_desc::FieldDescriptor, gt, gt_un, ldc_i32, ldc_i64, ldc_u32,
-    ldc_u64, lt, mul, or, size_of, DotnetTypeRef, FnSig, Type,
+    and, call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_i16, conv_i32,
+    conv_i64, conv_i8, conv_isize, conv_u64, conv_usize, field_desc::FieldDescriptor, gt, gt_un,
+    ldc_i32, ldc_i64, ldc_u32, ldc_u64, lt, mul, or, size_of, DotnetTypeRef, FnSig, Type,
 };
 use rustc_middle::ty::{IntTy, Ty, TyKind, UintTy};
 
@@ -118,8 +118,8 @@ fn max(ty: Ty) -> CILNode {
         TyKind::Uint(UintTy::U8) => CILNode::LdcU8(u8::MAX),
         TyKind::Uint(UintTy::U16) => CILNode::LdcU16(u16::MAX),
         TyKind::Uint(UintTy::U32) => ldc_u32!(u32::MAX),
-        TyKind::Int(IntTy::I8) => CILNode::LdcI8(i8::MIN),
-        TyKind::Int(IntTy::I16) => CILNode::LdcI16(i16::MIN),
+        TyKind::Int(IntTy::I8) => CILNode::LdcI8(i8::MAX),
+        TyKind::Int(IntTy::I16) => CILNode::LdcI16(i16::MAX),
         TyKind::Int(IntTy::I32) => ldc_i32!(i32::MAX),
         TyKind::Uint(UintTy::U64) => ldc_u64!(u64::MAX),
         TyKind::Int(IntTy::I64) => ldc_i64!(i64::MAX),
@@ -399,6 +399,39 @@ pub fn add_signed<'tcx>(
     ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
 ) -> CILNode {
     let tpe = ctx.type_from_cache(ty);
+    match ty.kind() {
+        TyKind::Int(IntTy::I8) => {
+            let sum = conv_i16!(ops_a.clone()) + conv_i16!(ops_b.clone());
+            return result_tuple(
+                tpe,
+                or!(
+                    lt!(sum.clone(), conv_i16!(ldc_i32!(i8::MIN.into()))),
+                    gt!(sum.clone(), conv_i16!(ldc_i32!(i8::MAX.into())))
+                ),
+                conv_i8!(sum),
+            );
+        }
+        TyKind::Int(IntTy::I16) => {
+            let sum = conv_i32!(ops_a.clone()) + conv_i32!(ops_b.clone());
+            return result_tuple(
+                tpe,
+                or!(
+                    lt!(sum.clone(), (ldc_i32!(i16::MIN.into()))),
+                    gt!(sum.clone(), (ldc_i32!(i16::MAX.into())))
+                ),
+                conv_i16!(sum),
+            );
+        }
+        TyKind::Int(IntTy::I32) => {
+            let sum = conv_i64!(ops_a.clone()) + conv_i64!(ops_b.clone());
+            let out_of_range = or!(
+                lt!(sum.clone(), conv_i64!(ldc_i32!(i32::MIN))),
+                gt!(sum.clone(), conv_i64!(ldc_i32!(i32::MAX.into())))
+            );
+            return result_tuple(tpe, out_of_range, conv_i32!(sum));
+        }
+        _ => (),
+    }
     let res = super::add_unchecked(ty, ty, ctx, ops_a.clone(), ops_b.clone());
     result_tuple(
         tpe,

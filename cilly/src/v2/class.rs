@@ -58,7 +58,11 @@ impl ClassRef {
             generics,
         }
     }
-
+    pub fn interlocked(asm: &mut super::Assembly) -> Self {
+        let name = asm.alloc_string("System.Threading.Interlocked");
+        let asm = Some(asm.alloc_string("System.Threading"));
+        Self::new(name, asm, false, vec![].into())
+    }
     pub fn from_v1(dotnet_type: &V1ClassRef, asm: &mut super::Assembly) -> ClassRef {
         match dotnet_type {
             V1ClassRef::Full {
@@ -91,6 +95,12 @@ impl ClassRef {
 
     pub fn generics(&self) -> &[Type] {
         &self.generics
+    }
+    /// The .NET math class
+    pub fn math(asm: &mut Assembly) -> Self {
+        let name = asm.alloc_string("System.Math");
+        let asm = Some(asm.alloc_string("System.Runtime"));
+        Self::new(name, asm, false, vec![].into())
     }
 }
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]

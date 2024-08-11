@@ -18,7 +18,10 @@ use rustc_middle::{
 use rustc_span::source_map::Spanned;
 use saturating::{saturating_add, saturating_sub};
 use type_info::{is_val_statically_known, size_of_val};
-use utilis::{compare_bytes, interlocked_add, interlocked_and, interlocked_or, interlocked_xor};
+use utilis::{
+    compare_bytes, interlocked_add, interlocked_and, interlocked_max, interlocked_min,
+    interlocked_nand, interlocked_or, interlocked_xor,
+};
 mod bswap;
 mod interop;
 mod ints;
@@ -503,7 +506,6 @@ pub fn handle_intrinsic<'tcx>(
             let dst = handle_operand(&args[0].node, ctx);
             // T
             let orand = handle_operand(&args[1].node, ctx);
-            // we sub by adding a negative number
 
             let src_type = ctx.monomorphize(args[1].node.ty(ctx.body(), ctx.tcx()));
             let src_type = ctx.type_from_cache(src_type);
@@ -516,7 +518,6 @@ pub fn handle_intrinsic<'tcx>(
             let dst = handle_operand(&args[0].node, ctx);
             // T
             let xorand = handle_operand(&args[1].node, ctx);
-            // we sub by adding a negative number
 
             let src_type = ctx.monomorphize(args[1].node.ty(ctx.body(), ctx.tcx()));
             let src_type = ctx.type_from_cache(src_type);
@@ -529,12 +530,26 @@ pub fn handle_intrinsic<'tcx>(
             let dst = handle_operand(&args[0].node, ctx);
             // T
             let andand = handle_operand(&args[1].node, ctx);
-            // we sub by adding a negative number
 
             let src_type = ctx.monomorphize(args[1].node.ty(ctx.body(), ctx.tcx()));
             let src_type = ctx.type_from_cache(src_type);
 
             place_set(destination, interlocked_and(dst, andand, src_type), ctx)
+        }
+        "atomic_nand_seqcst"
+        | "atomic_nand_release"
+        | "atomic_nand_acqrel"
+        | "atomic_nand_acquire"
+        | "atomic_nand_relaxed" => {
+            // *T
+            let dst = handle_operand(&args[0].node, ctx);
+            // T
+            let andand = handle_operand(&args[1].node, ctx);
+
+            let src_type = ctx.monomorphize(args[1].node.ty(ctx.body(), ctx.tcx()));
+            let src_type = ctx.type_from_cache(src_type);
+
+            place_set(destination, interlocked_nand(dst, andand, src_type), ctx)
         }
         "atomic_fence_acquire"
         | "atomic_fence_seqcst"
@@ -568,6 +583,56 @@ pub fn handle_intrinsic<'tcx>(
             place_set(
                 destination,
                 interlocked_add(dst, add_ammount, src_type),
+                ctx,
+            )
+        }
+        "atomic_umin_release"
+        | "atomic_umin_relaxed"
+        | "atomic_umin_seqcst"
+        | "atomic_umin_acqrel"
+        | "atomic_umin_acquire"
+        | "atomic_min_release"
+        | "atomic_min_relaxed"
+        | "atomic_min_seqcst"
+        | "atomic_min_acqrel"
+        | "atomic_min_acquire" => {
+            // *T
+            let dst = handle_operand(&args[0].node, ctx);
+            // T
+            let min_ammount = handle_operand(&args[1].node, ctx);
+            // we sub by mining a negative number
+
+            let src_type = ctx.monomorphize(args[1].node.ty(ctx.body(), ctx.tcx()));
+            let src_type = ctx.type_from_cache(src_type);
+
+            place_set(
+                destination,
+                interlocked_min(dst, min_ammount, src_type),
+                ctx,
+            )
+        }
+        "atomic_umax_release"
+        | "atomic_umax_relaxed"
+        | "atomic_umax_seqcst"
+        | "atomic_umax_acqrel"
+        | "atomic_umax_acquire"
+        | "atomic_max_release"
+        | "atomic_max_relaxed"
+        | "atomic_max_seqcst"
+        | "atomic_max_acqrel"
+        | "atomic_max_acquire" => {
+            // *T
+            let dst = handle_operand(&args[0].node, ctx);
+            // T
+            let max_ammount = handle_operand(&args[1].node, ctx);
+            // we sub by maxing a negative number
+
+            let src_type = ctx.monomorphize(args[1].node.ty(ctx.body(), ctx.tcx()));
+            let src_type = ctx.type_from_cache(src_type);
+
+            place_set(
+                destination,
+                interlocked_max(dst, max_ammount, src_type),
                 ctx,
             )
         }

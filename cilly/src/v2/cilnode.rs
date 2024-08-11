@@ -429,7 +429,7 @@ impl CILNode {
                 CILNode::IntCast {
                     input: asm.alloc_node(node),
                     target: Int::I8,
-                    extend: ExtendKind::ZeroExtend,
+                    extend: ExtendKind::SignExtend,
                 }
             }
             V1Node::ConvI16(inner) => {
@@ -437,7 +437,7 @@ impl CILNode {
                 CILNode::IntCast {
                     input: asm.alloc_node(node),
                     target: Int::I16,
-                    extend: ExtendKind::ZeroExtend,
+                    extend: ExtendKind::SignExtend,
                 }
             }
             V1Node::ConvI32(inner) => {
@@ -445,7 +445,7 @@ impl CILNode {
                 CILNode::IntCast {
                     input: asm.alloc_node(node),
                     target: Int::I32,
-                    extend: ExtendKind::ZeroExtend,
+                    extend: ExtendKind::SignExtend,
                 }
             }
             V1Node::ConvF32(inner) => {

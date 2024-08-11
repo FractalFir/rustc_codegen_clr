@@ -8,14 +8,23 @@
     strict_provenance,
     strict_provenance_atomic_ptr
 )]
-#![allow(internal_features, incomplete_features, unused_variables, dead_code)]
+#![allow(
+    internal_features,
+    incomplete_features,
+    unused_variables,
+    dead_code,
+    unused_unsafe
+)]
 #![no_std]
 use core::sync::atomic::AtomicPtr;
 use core::sync::atomic::Ordering::SeqCst;
 
 include!("../common.rs");
 extern crate core;
-
+extern "C" {
+    fn atomic_xor_u32(addr: &mut u32, xorand: u32) -> u32;
+    fn atomic_nand_u32(addr: &mut u32, xorand: u32) -> u32;
+}
 use core::ptr::addr_of_mut;
 
 fn main() {
@@ -33,6 +42,12 @@ fn main() {
     let (val, is_eq) =
         unsafe { core::intrinsics::atomic_cxchgweak_acquire_relaxed(addr_of_mut!(u), 10_u32, 20) };
     test_eq!(val, 10_u32);
+    let mut tmp = 0xFF_u32;
+    unsafe { test_eq!(atomic_xor_u32(&mut tmp, 0x0A), 0xFF_u32) };
+    test_eq!(tmp, 0xFF ^ 0x0A);
+    let mut tmp = 0xFF_u32;
+    unsafe { test_eq!(atomic_nand_u32(&mut tmp, 0x0A), 0xFF_u32) };
+    test_eq!(tmp, !(0xFF & 0x0A));
     ptr_bitops_tagging();
 }
 fn ptr_bitops_tagging() {
@@ -61,13 +76,14 @@ fn ptr_bitops_tagging() {
         ptr.map_addr(|a| a | 0b111)
     );
     test_eq!(atom.load(SeqCst), ptr.map_addr(|a| a | 0b0010));
+
     // XOR not yet supported
-    /*test_eq!(atom.fetch_xor(0b1011, SeqCst), ptr.map_addr(|a| a | 0b0010));
+    test_eq!(atom.fetch_xor(0b1011, SeqCst), ptr.map_addr(|a| a | 0b0010));
     test_eq!(atom.load(SeqCst), ptr.map_addr(|a| a | 0b1001));
 
     test_eq!(
         atom.fetch_and(MASK_PTR, SeqCst),
         ptr.map_addr(|a| a | 0b1001)
     );
-    test_eq!(atom.load(SeqCst), ptr);*/
+    test_eq!(atom.load(SeqCst), ptr);
 }

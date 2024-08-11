@@ -22,6 +22,7 @@ pub mod asm;
 pub mod asm_link;
 pub mod basic_block;
 pub mod bimap;
+pub mod builtins;
 pub mod c_exporter;
 pub mod cilnode;
 pub mod cilroot;

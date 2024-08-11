@@ -323,6 +323,7 @@ fn main() {
             )
         }),
     );
+    cilly::v2::builtins::atomics::generate_all_atomics(&mut final_assembly, &mut overrides);
     final_assembly.patch_missing_methods(externs, modifies_errno, overrides);
 
     add_mandatory_statics(&mut final_assembly);

@@ -219,9 +219,8 @@ pub fn cttz<'tcx>(
     let bit_operations = Some(bit_operations);
     let operand = handle_operand(&args[0].node, ctx);
     match tpe {
-        Type::I16 | Type::I8 => place_set(
-            destination,
-            conv_u32!(call!(
+        Type::I8 => {
+            let value_calc = conv_u32!(call!(
                 CallSite::boxed(
                     bit_operations.clone(),
                     "TrailingZeroCount".into(),
@@ -229,12 +228,47 @@ pub fn cttz<'tcx>(
                     true,
                 ),
                 [conv_i32!(operand)]
-            )),
-            ctx,
-        ),
-        Type::U16 | Type::U8 => place_set(
-            destination,
-            conv_u32!(call!(
+            ));
+            place_set(
+                destination,
+                call!(
+                    CallSite::new_extern(
+                        DotnetTypeRef::math(),
+                        "Min".into(),
+                        FnSig::new([Type::U32, Type::U32], Type::U32),
+                        true
+                    ),
+                    [value_calc, ldc_u32!(i8::BITS)]
+                ),
+                ctx,
+            )
+        }
+        Type::I16 => {
+            let value_calc = conv_u32!(call!(
+                CallSite::boxed(
+                    bit_operations.clone(),
+                    "TrailingZeroCount".into(),
+                    FnSig::new(&[Type::I32], Type::I32),
+                    true,
+                ),
+                [conv_i32!(operand)]
+            ));
+            place_set(
+                destination,
+                call!(
+                    CallSite::new_extern(
+                        DotnetTypeRef::math(),
+                        "Min".into(),
+                        FnSig::new([Type::U32, Type::U32], Type::U32),
+                        true
+                    ),
+                    [value_calc, ldc_u32!(i16::BITS)]
+                ),
+                ctx,
+            )
+        }
+        Type::U8 => {
+            let value_calc = conv_u32!(call!(
                 CallSite::boxed(
                     bit_operations.clone(),
                     "TrailingZeroCount".into(),
@@ -242,9 +276,45 @@ pub fn cttz<'tcx>(
                     true,
                 ),
                 [conv_u32!(operand)]
-            )),
-            ctx,
-        ),
+            ));
+            place_set(
+                destination,
+                call!(
+                    CallSite::new_extern(
+                        DotnetTypeRef::math(),
+                        "Min".into(),
+                        FnSig::new([Type::U32, Type::U32], Type::U32),
+                        true
+                    ),
+                    [value_calc, ldc_u32!(u8::BITS)]
+                ),
+                ctx,
+            )
+        }
+        Type::U16 => {
+            let value_calc = conv_u32!(call!(
+                CallSite::boxed(
+                    bit_operations.clone(),
+                    "TrailingZeroCount".into(),
+                    FnSig::new(&[Type::U32], Type::I32),
+                    true,
+                ),
+                [conv_u32!(operand)]
+            ));
+            place_set(
+                destination,
+                call!(
+                    CallSite::new_extern(
+                        DotnetTypeRef::math(),
+                        "Min".into(),
+                        FnSig::new([Type::U32, Type::U32], Type::U32),
+                        true
+                    ),
+                    [value_calc, ldc_u32!(u16::BITS)]
+                ),
+                ctx,
+            )
+        }
         Type::I128 => place_set(
             destination,
             conv_u32!(call!(

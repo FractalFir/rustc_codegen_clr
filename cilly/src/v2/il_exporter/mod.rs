@@ -738,12 +738,12 @@ impl ILExporter {
                     self.export_node(asm, out, *a)?;
                     self.export_node(asm, out, *b)?;
                     if branch.1 == 0 {
-                        writeln!(out, "bne bb{}", branch.0)
+                        writeln!(out, "bne.un bb{}", branch.0)
                     } else if is_handler {
-                        writeln!(out, "bne h{}_{}", branch.0, branch.1)
+                        writeln!(out, "bne.un h{}_{}", branch.0, branch.1)
                     }
                     else {
-                        writeln!(out, "bne jp{}_{}", branch.0, branch.1)
+                        writeln!(out, "bne.un jp{}_{}", branch.0, branch.1)
                     }
                 }
                 Some(BranchCond::Lt(a, b, kind)) => {
