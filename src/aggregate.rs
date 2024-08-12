@@ -60,6 +60,12 @@ pub fn handle_aggregate<'tcx>(
             )
         }
         AggregateKind::Array(element) => {
+            // Check if this array is made up from uninit values
+            if crate::operand::is_uninit(&value_index[FieldIdx::from_usize(0)], ctx) {
+                // This array is created from uninitalized data, so it itsefl is uninitialzed, so we can skip initializing it.
+                return super::place::place_get(target_location, ctx);
+            }
+
             let element = ctx.monomorphize(*element);
             let element = ctx.type_from_cache(element);
             let array_type = DotnetTypeRef::array(&element, value_index.len());
@@ -81,6 +87,7 @@ pub fn handle_aggregate<'tcx>(
                     .into(),
                 });
             }
+
             CILNode::SubTrees(Box::new((
                 sub_trees.into(),
                 Box::new(super::place::place_get(target_location, ctx)),

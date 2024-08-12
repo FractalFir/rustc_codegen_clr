@@ -407,7 +407,7 @@ fn load_const_scalar<'tcx>(
                 }
             }
         }
-        TyKind::Adt(_, _subst) => CILNode::LdObj {
+        TyKind::Adt(_, _) | TyKind::Closure(_, _) => CILNode::LdObj {
             ptr: Box::new(
                 CILNode::PointerToConstValue(Box::new(scalar_u128))
                     .cast_ptr(ptr!(scalar_type.clone())),

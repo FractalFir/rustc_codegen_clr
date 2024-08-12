@@ -27,7 +27,7 @@ fn main() {
         let stderr = str::from_utf8(&out.stderr).unwrap().to_string();
         let stdout = str::from_utf8(&out.stdout).unwrap().to_string();
         for line in stdout.lines() {
-            if !line.contains("test ") {
+            if !line.contains("test ") || line.contains("finished in") {
                 continue;
             }
             let mut split = line.split("...");
@@ -39,14 +39,15 @@ fn main() {
             let name = name["test ".len()..].trim();
             let name = name.split("-").next().unwrap().trim();
             let status = split.next().unwrap_or("");
+
             if status.contains("ok") {
                 ok.insert(name.to_owned());
             } else if status.contains("FAILED") {
                 failures.insert(name.to_owned());
-            } else {
-                if !broken.iter().any(|exisitng| exisitng == name) {
-                    broken.push(name.to_owned());
-                }
+            } else if status.contains("ignored") {
+                continue;
+            } else if !broken.iter().any(|exisitng| exisitng == name) {
+                broken.push(name.to_owned());
             }
         }
         if stderr.contains("failures:")

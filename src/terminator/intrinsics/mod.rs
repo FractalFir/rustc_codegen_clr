@@ -1350,7 +1350,7 @@ pub fn handle_intrinsic<'tcx>(
             call!(
                 CallSite::new_extern(
                     DotnetTypeRef::double(),
-                    "Max".into(),
+                    "MaxNumber".into(),
                     FnSig::new([Type::F64, Type::F64], Type::F64),
                     true
                 ),
@@ -1366,7 +1366,7 @@ pub fn handle_intrinsic<'tcx>(
             call!(
                 CallSite::new_extern(
                     DotnetTypeRef::single(),
-                    "Max".into(),
+                    "MaxNumber".into(),
                     FnSig::new([Type::F32, Type::F32], Type::F32),
                     true
                 ),
@@ -1382,7 +1382,7 @@ pub fn handle_intrinsic<'tcx>(
             call!(
                 CallSite::new_extern(
                     DotnetTypeRef::double(),
-                    "Min".into(),
+                    "MinNumber".into(),
                     FnSig::new([Type::F64, Type::F64], Type::F64),
                     true
                 ),
@@ -1398,7 +1398,7 @@ pub fn handle_intrinsic<'tcx>(
             call!(
                 CallSite::new_extern(
                     DotnetTypeRef::single(),
-                    "Min".into(),
+                    "MinNumber".into(),
                     FnSig::new([Type::F32, Type::F32], Type::F32),
                     true
                 ),

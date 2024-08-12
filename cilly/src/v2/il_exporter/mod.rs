@@ -994,12 +994,30 @@ impl Exporter for ILExporter {
     fn export(&self, asm: &super::Assembly, target: &std::path::Path) -> Result<(), Self::Error> {
         // The IL file should be next to the target
         let il_path = target.with_extension("il");
+     
+        if let Err(err) = std::fs::remove_file(&il_path) {
+            match err.kind() {
+                std::io::ErrorKind::NotFound => (),
+                _ => {
+                    panic!("Could not remove tmp file because {err:?}")
+                }
+            }
+        };
         let mut il_out = std::io::BufWriter::new(std::fs::File::create(&il_path)?);
         self.export_to_write(asm, &mut il_out)?;
         // Needed to ensure the IL file is valid!
         il_out.flush().unwrap();
         drop(il_out);
         let exe_out = target.with_extension("exe");
+
+        if let Err(err) = std::fs::remove_file(&exe_out) {
+            match err.kind() {
+                std::io::ErrorKind::NotFound => (),
+                _ => {
+                    panic!("Could not remove tmp file because {err:?}")
+                }
+            }
+        };
         let asm_type = if self.is_lib { "-dll" } else { "-exe" };
         let mut cmd = std::process::Command::new(ILASM_PATH.clone());
         cmd.arg(il_path)
@@ -1097,7 +1115,7 @@ fn type_il(tpe: &Type, asm: &Assembly) -> String {
         },
         Type::ClassRef(cref) => class_ref(*cref, asm),
         Type::Float(float) => match float {
-            super::Float::F16 => todo!(),
+            super::Float::F16 => "valuetype [System.Runtime]System.Half".into(),
             super::Float::F32 => "float32".into(),
             super::Float::F64 => "float64".into(),
         },

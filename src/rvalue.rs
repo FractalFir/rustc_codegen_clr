@@ -22,6 +22,21 @@ macro_rules! cast {
         $cast_name(src, &target, handle_operand($operand, $ctx))
     }};
 }
+pub fn is_rvalue_unint<'tcx>(
+    rvalue: &Rvalue<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+) -> bool {
+    match rvalue {
+        Rvalue::Repeat(operand, _) | Rvalue::Use(operand) => {
+            crate::operand::is_uninit(operand, ctx)
+        }
+        /* TODO: before enabling this, check if the aggregate is an enum, and if so, check if it has a discriminant.
+        Rvalue::Aggregate(_, field_index) => field_index
+        .iter()
+        .all(|operand| crate::operand::is_uninit(operand, ctx)),*/
+        _ => false,
+    }
+}
 pub fn handle_rvalue<'tcx>(
     rvalue: &Rvalue<'tcx>,
     target_location: &Place<'tcx>,
@@ -235,7 +250,7 @@ pub fn handle_rvalue<'tcx>(
             let call_site = CallSite::new(None, function_name, function_sig, true);
             CILNode::LDFtn(call_site.into())
         }
-        //Rvalue::Cast(kind, _operand, _) => todo!("Unhandled cast kind {kind:?}, rvalue:{rvalue:?}"),
+
         Rvalue::Discriminant(place) => {
             let addr = crate::place::place_adress(place, ctx);
             let owner_ty = ctx.monomorphize(place.ty(ctx.body(), ctx.tcx()).ty);

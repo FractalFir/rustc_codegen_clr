@@ -132,18 +132,21 @@ impl TypeDef {
                 name = self.name()
             );
             let max_offset = offsets.iter().max().unwrap_or(&0);
-
+            let explict_size = self
+                .explict_size()
+                .unwrap_or_else(|| {
+                    panic!(
+                        "Explict offsets provided without explicit size. Type: {}",
+                        self.name()
+                    )
+                })
+                .get();
             assert!(
-                (*max_offset)
-                    < self
-                        .explict_size()
-                        .unwrap_or_else(|| {
-                            panic!(
-                                "Explict offsets provided without explicit size. Type: {}",
-                                self.name()
-                            )
-                        })
-                        .get()
+                (*max_offset) < explict_size,
+                "name:{:?} max_offset:{max_offset} explict_size:{explict_size} offsets:{:?} fields:{:?}",
+                self.name(),
+                self.explicit_offsets().unwrap(),
+                self.fields()
             );
         }
         self.field_types()

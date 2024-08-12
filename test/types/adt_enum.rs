@@ -8,6 +8,8 @@
 )]
 #![allow(internal_features, incomplete_features, unused_variables, dead_code)]
 #![no_std]
+use core::mem::MaybeUninit;
+
 include!("../common.rs");
 enum CustomEnum {
     Variant1(i32),
@@ -48,6 +50,9 @@ fn main() {
     }
     test_indirect(&animal);
     test_eq!(complex_function2(&CustomEnum::Variant1(118)), 118);
+    let mut stack_buf = AlignedStorage::<u8, 4096>::new();
+    let stack_scratch = stack_buf.as_uninit_slice_mut();
+    black_box(stack_scratch);
 }
 
 fn complex_function2(arg1: &CustomEnum) -> i32 {
@@ -73,5 +78,31 @@ fn complex_function2(arg1: &CustomEnum) -> i32 {
             //var0 -= *value as i32;
             *value as i32
         }
+    }
+}
+#[no_mangle]
+#[inline(never)]
+pub fn return_maybeuinint_array() -> [core::mem::MaybeUninit<i32>; 16] {
+    [core::mem::MaybeUninit::uninit(); 16]
+}
+#[repr(C)]
+struct AlignedStorage<T, const N: usize> {
+    _align: [T; 0],
+    storage: [MaybeUninit<u8>; N],
+}
+
+impl<T, const N: usize> AlignedStorage<T, N> {
+    fn new() -> Self {
+        Self {
+            _align: [],
+            storage: [const { MaybeUninit::uninit() }; N],
+        }
+    }
+
+    fn as_uninit_slice_mut(&mut self) -> &mut [MaybeUninit<T>] {
+        let len = N / core::mem::size_of::<T>();
+
+        // SAFETY: `_align` ensures we are correctly aligned.
+        unsafe { core::slice::from_raw_parts_mut(self.storage.as_mut_ptr().cast(), len) }
     }
 }

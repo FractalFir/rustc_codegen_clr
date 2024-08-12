@@ -8,7 +8,8 @@ use cilly::{
     v2::{
         asm::{MissingMethodPatcher, ILASM_FLAVOUR},
         cilnode::MethodKind,
-        BasicBlock, CILNode, CILRoot, ClassRef, IlasmFlavour, Int, MethodImpl, Type,
+        Assembly, BasicBlock, CILNode, CILRoot, ClassRef, Const, IlasmFlavour, Int, MethodImpl,
+        Type,
     },
     DotnetTypeRef, FnSig,
 };
@@ -178,8 +179,24 @@ fn main() {
         .iter()
         .map(|fn_name| (*fn_name, LIBC.as_ref()))
         .collect();
+
     let modifies_errno = LIBC_MODIFIES_ERRNO.iter().copied().collect();
     let mut overrides: MissingMethodPatcher = FxHashMap::default();
+    overrides.insert(
+        final_assembly.alloc_string("pthread_atfork"),
+        Box::new(|_, asm: &mut Assembly| {
+            let ret_val = asm.alloc_node(Const::I32(0));
+            let blocks = vec![BasicBlock::new(
+                vec![asm.alloc_root(CILRoot::Ret(ret_val))],
+                1,
+                None,
+            )];
+            MethodImpl::MethodBody {
+                blocks,
+                locals: vec![],
+            }
+        }),
+    );
     // Override allocator
     {
         // Get the marshal class
@@ -401,6 +418,14 @@ fn main() {
     //todo!();
 }
 fn bootstrap_source(fpath: &Path, output_file_path: &str, jumpstart_cmd: &str) -> String {
+    if let Err(err) = std::fs::remove_file(output_file_path) {
+        match err.kind() {
+            std::io::ErrorKind::NotFound => (),
+            _ => {
+                panic!("Could not remove tmp file because {err:?}")
+            }
+        }
+    };
     format!(
         include_str!("dotnet_jumpstart.rs"),
         jumpstart_cmd = jumpstart_cmd,

@@ -72,7 +72,10 @@ pub extern "C" fn ref_ref_ident<'a, 'b>(a: &'a &'b u64) -> &'a &'b u64 {
 }
 #[no_mangle]
 pub extern "C" fn slice(_arr: &[i32]) {}
-
+#[no_mangle]
+pub extern "C" fn return_maybeuinint_array() -> [core::mem::MaybeUninit<i32>; 16] {
+    [core::mem::MaybeUninit::uninit(); 16]
+}
 /*
 pub extern fn init_arr()->[i32;8]{
     [0,1,2,3,4,5,6,7]

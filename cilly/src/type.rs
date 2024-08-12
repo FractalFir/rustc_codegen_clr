@@ -113,7 +113,7 @@ impl Type {
             | Self::USize => true,
             Self::Bool => true,
             Self::F32 | Self::F64 => true,
-            Self::Ptr(_) => true,
+            Self::Ptr(_) | Self::DelegatePtr(_) => true,
             // 128 bit ints are NOT primitve CIL types!
             Self::I128 | Self::U128 => true,
             _ => false,

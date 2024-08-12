@@ -70,7 +70,7 @@ pub fn lt_unchecked(ty_a: Ty<'_>, operand_a: CILNode, operand_b: CILNode) -> CIL
         },
         // TODO: are chars considered signed or unsigned?
         TyKind::Bool | TyKind::Char | TyKind::Float(_) => lt!(operand_a, operand_b),
-        TyKind::RawPtr(_, _) => lt_un!(operand_a, operand_b),
+        TyKind::RawPtr(_, _) | TyKind::FnPtr(_) => lt_un!(operand_a, operand_b),
         _ => panic!("Can't eq type  {ty_a:?}"),
     }
 }

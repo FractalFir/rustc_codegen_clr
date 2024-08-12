@@ -18,7 +18,26 @@
 #![no_std]
 use core::num::NonZero;
 include!("../common.rs");
+#[inline(never)]
+#[no_mangle]
+fn check_float_nan() {
+    test_eq!((-9.0_f32).max(f32::NAN), -9.0);
+    //test_eq!((-9.0_f64).max(f64::NAN), -9.0);
+}
+pub fn test_variadic_fnptr() {
+    extern "C" {
+        // This needs to use the correct function signature even though it isn't called as some
+        // codegen backends make it UB to declare a function with multiple conflicting signatures
+        // (like LLVM) while others straight up return an error (like Cranelift).
+        fn printf(_: *const core::ffi::c_char, ...) -> core::ffi::c_int;
+    }
+    let p: unsafe extern "C" fn(*const core::ffi::c_char, ...) -> core::ffi::c_int = printf;
+    let q = p.clone();
+    test_eq!(p, q);
+    test!(!(p < q));
+}
 fn main() {
+    check_float_nan();
     const A: u32 = 0b0101100;
     const B: u32 = 0b0100001;
     const C: u32 = 0b1111001;
@@ -27,6 +46,7 @@ fn main() {
     const _1: u32 = !0;
     test_eq!(add_signed(i8::MAX, black_box(1)), true);
     test_checked_next_multiple_of();
+    test_variadic_fnptr();
     unsafe {
         printf(
             c" %x rol = %x\n".as_ptr(),

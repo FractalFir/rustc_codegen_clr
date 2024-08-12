@@ -312,7 +312,6 @@ pub const LIBC_FNS: &[&str] = &[
     "prlimit",
     "psiginfo",
     "psignal",
-    "pthread_atfork",
     "ptrace",
     "ptsname",
     "putchar",

@@ -1,5 +1,6 @@
 use crate::assembly::MethodCompileCtx;
 use crate::place::place_get;
+use crate::rvalue::is_rvalue_unint;
 use cilly::{cil_node::CILNode, cil_root::CILRoot, cil_tree::CILTree, size_of};
 use cilly::{conv_usize, Type};
 
@@ -43,6 +44,12 @@ pub fn handle_statement<'tcx>(
             )
         }
         StatementKind::Assign(palce_rvalue) => {
+            if is_rvalue_unint(&palce_rvalue.as_ref().1, ctx) {
+                return None;
+                /*return Some(
+                    CILRoot::debug(&format!("{:?} is unint.", palce_rvalue.as_ref().1)).into(),
+                );*/
+            }
             let place = palce_rvalue.as_ref().0;
             let rvalue = &palce_rvalue.as_ref().1;
             let ty = ctx.monomorphize(place.ty(ctx.body(), ctx.tcx()).ty);
@@ -51,13 +58,6 @@ pub fn handle_statement<'tcx>(
                 return None;
             }
             let value_calc = crate::rvalue::handle_rvalue(rvalue, &place, ctx);
-            /*value_calc
-            .validate(ctx.validator(), None)
-            .unwrap_or_else(|err| {
-                panic!("Invalid {rvalue:?}\n value_calc:{value_calc:?}\n err:{err:?}")
-            });*/
-            let method = ctx.instance();
-            let tcx = ctx.tcx();
 
             Some(crate::place::place_set(&place, value_calc, ctx).into())
         }
