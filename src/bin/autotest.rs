@@ -6,12 +6,12 @@ fn main() {
     let mut ok: HashSet<String> = HashSet::default();
     let mut failures: HashSet<String> = HashSet::default();
     let mut broken: Vec<String> = Vec::default();
-
+    let timeout = std::env::args().nth(2).unwrap_or("20".to_owned());
     loop {
         let mut cmd = std::process::Command::new("timeout");
         cmd.arg("-k");
-        cmd.arg("20");
-        cmd.arg("20");
+        cmd.arg(&timeout);
+        cmd.arg(&timeout);
         cmd.arg("dotnet");
         cmd.arg(exec_path.clone());
         cmd.arg("--test-threads=1");

@@ -34,20 +34,15 @@ impl FieldDescriptor {
     pub fn boxed(owner: DotnetTypeRef, tpe: Type, name: IString) -> Box<Self> {
         Box::new(Self { owner, tpe, name })
     }
-    /// Replaces types with their more efficent representation
-    pub fn optimize_repr(&mut self, strings: &mut AsmStringContainer) {
-        self.owner.opt(strings);
-        self.tpe.opt(strings);
-    }
 }
 impl MemoryUsage for FieldDescriptor {
     fn memory_usage(&self, counter: &mut impl crate::utilis::MemoryUsageCounter) -> usize {
         let tpe_name = std::any::type_name::<Self>();
         let self_size = std::mem::size_of::<Self>();
-        let owner_size = self.owner.memory_usage(counter);
+
         let tpe_size = self.tpe.memory_usage(counter);
         let name_size = self.name.memory_usage(counter);
-        let size = self_size + owner_size + tpe_size + name_size;
+        let size = self_size + tpe_size + name_size;
         counter.add_type(tpe_name, size);
         size
     }

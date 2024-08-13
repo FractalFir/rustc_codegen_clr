@@ -984,6 +984,58 @@ pub fn handle_intrinsic<'tcx>(
             ),
             ctx,
         ),
+        "expf32" => place_set(
+            destination,
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::single(),
+                    "Exp".into(),
+                    FnSig::new([Type::F32], Type::F32),
+                    true
+                ),
+                [handle_operand(&args[0].node, ctx),]
+            ),
+            ctx,
+        ),
+        "expf64" => place_set(
+            destination,
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::double(),
+                    "Exp".into(),
+                    FnSig::new([Type::F64], Type::F64),
+                    true
+                ),
+                [handle_operand(&args[0].node, ctx),]
+            ),
+            ctx,
+        ),
+        "logf32" => place_set(
+            destination,
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::single(),
+                    "Log".into(),
+                    FnSig::new([Type::F32], Type::F32),
+                    true
+                ),
+                [handle_operand(&args[0].node, ctx),]
+            ),
+            ctx,
+        ),
+        "logf64" => place_set(
+            destination,
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::double(),
+                    "Log".into(),
+                    FnSig::new([Type::F64], Type::F64),
+                    true
+                ),
+                [handle_operand(&args[0].node, ctx),]
+            ),
+            ctx,
+        ),
         "log2f32" => place_set(
             destination,
             call!(

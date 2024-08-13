@@ -233,6 +233,9 @@ fn main() {
         let isize_ptr = final_assembly.nptr(Type::Int(Int::ISize));
         let sig = final_assembly.sig([isize_ptr, void_ptr, fn_ptr, void_ptr], Type::Int(Int::I32));
         builtin_call(&mut overrides, &mut final_assembly, "pthread_create", sig);
+        let sig = final_assembly.sig([Type::Int(Int::ISize)], Type::Int(Int::I32));
+        builtin_call(&mut overrides, &mut final_assembly, "pthread_detach", sig);
+
         let sig = final_assembly.sig([isize_ptr], Type::Int(Int::I32));
         builtin_call(
             &mut overrides,

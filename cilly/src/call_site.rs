@@ -22,10 +22,6 @@ impl MemoryUsage for CallSite {
     }
 }
 impl CallSite {
-    pub fn opt(&mut self, string_map: &mut AsmStringContainer) {
-        let _ = self.class.as_mut().map(|owner| owner.opt(string_map));
-        self.signature.opt_types(string_map);
-    }
     #[must_use]
     pub fn mcheck() -> Self {
         Self::builtin("mcheck".into(), FnSig::new(&[Type::ISize], Type::I32), true)

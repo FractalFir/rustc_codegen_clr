@@ -153,158 +153,15 @@ fn load_scalar_ptr(
 
             if let Some(import_linkage) = attrs.import_linkage {
                 // TODO: this could cause issues if the pointer to the static is not imediatly dereferenced.
-                if name == "statx" {
-                    return CILNode::TemporaryLocal(Box::new((
-                        Type::DelegatePtr(Box::new(FnSig::new(
-                            [
-                                Type::I32,
-                                ptr!(Type::U8),
-                                Type::I32,
-                                Type::U32,
-                                ptr!(Type::Void),
-                            ],
-                            Type::I32,
-                        ))),
-                        [CILRoot::SetTMPLocal {
-                            value: CILNode::LDFtn(Box::new(CallSite::builtin(
-                                "statx".into(),
-                                FnSig::new(
-                                    &[
-                                        Type::I32,
-                                        ptr!(Type::U8),
-                                        Type::I32,
-                                        Type::U32,
-                                        ptr!(Type::Void),
-                                    ],
-                                    Type::I32,
-                                ),
-                                true,
-                            ))),
-                        }]
-                        .into(),
-                        CILNode::LoadAddresOfTMPLocal,
-                    )));
-                }
-                if name == "getrandom" {
-                    return CILNode::TemporaryLocal(Box::new((
-                        Type::DelegatePtr(Box::new(FnSig::new(
-                            &[ptr!(Type::U8), Type::USize, Type::U32],
-                            Type::USize,
-                        ))),
-                        [CILRoot::SetTMPLocal {
-                            value: CILNode::LDFtn(Box::new(CallSite::builtin(
-                                "getrandom".into(),
-                                FnSig::new(&[ptr!(Type::U8), Type::USize, Type::U32], Type::USize),
-                                true,
-                            ))),
-                        }]
-                        .into(),
-                        CILNode::LoadAddresOfTMPLocal,
-                    )));
-                }
-                if name == "posix_spawn" {
-                    return CILNode::TemporaryLocal(Box::new((
-                        Type::DelegatePtr(Box::new(FnSig::new(
-                            &[
-                                ptr!(Type::U8),
-                                ptr!(Type::U8),
-                                ptr!(Type::U8),
-                                ptr!(Type::U8),
-                                ptr!(Type::U8),
-                                ptr!(Type::U8),
-                            ],
-                            Type::I32,
-                        ))),
-                        [CILRoot::SetTMPLocal {
-                            value: CILNode::LDFtn(Box::new(CallSite::builtin(
-                                "posix_spawn".into(),
-                                FnSig::new(
-                                    &[
-                                        ptr!(Type::U8),
-                                        ptr!(Type::U8),
-                                        ptr!(Type::U8),
-                                        ptr!(Type::U8),
-                                        ptr!(Type::U8),
-                                        ptr!(Type::U8),
-                                    ],
-                                    Type::I32,
-                                ),
-                                true,
-                            ))),
-                        }]
-                        .into(),
-                        CILNode::LoadAddresOfTMPLocal,
-                    )));
-                }
-                if name == "posix_spawn_file_actions_addchdir_np" {
-                    return CILNode::TemporaryLocal(Box::new((
-                        Type::DelegatePtr(Box::new(FnSig::new(
-                            &[ptr!(Type::U8), ptr!(Type::U8)],
-                            Type::I32,
-                        ))),
-                        [CILRoot::SetTMPLocal {
-                            value: CILNode::LDFtn(Box::new(CallSite::builtin(
-                                "posix_spawn_file_actions_addchdir_np".into(),
-                                FnSig::new(&[ptr!(Type::U8), ptr!(Type::U8)], Type::I32),
-                                true,
-                            ))),
-                        }]
-                        .into(),
-                        CILNode::LoadAddresOfTMPLocal,
-                    )));
-                }
-
-                if name == "__dso_handle" {
-                    return CILNode::TemporaryLocal(Box::new((
-                        Type::DelegatePtr(Box::new(FnSig::new(&[], Type::Void))),
-                        [CILRoot::SetTMPLocal {
-                            value: CILNode::LDFtn(Box::new(CallSite::builtin(
-                                "__dso_handle".into(),
-                                FnSig::new(&[], Type::Void),
-                                true,
-                            ))),
-                        }]
-                        .into(),
-                        CILNode::LoadAddresOfTMPLocal,
-                    )));
-                }
-                if name == "__cxa_thread_atexit_impl" {
-                    return CILNode::TemporaryLocal(Box::new((
-                        Type::DelegatePtr(Box::new(FnSig::new(
-                            &[
-                                Type::DelegatePtr(Box::new(FnSig::new(
-                                    [ptr!(Type::Void)],
-                                    Type::Void,
-                                ))),
-                                ptr!(Type::Void),
-                                ptr!(Type::Void),
-                            ],
-                            Type::Void,
-                        ))),
-                        [CILRoot::SetTMPLocal {
-                            value: CILNode::LDFtn(Box::new(CallSite::builtin(
-                                "__cxa_thread_atexit_impl".into(),
-                                FnSig::new(
-                                    &[
-                                        Type::DelegatePtr(Box::new(FnSig::new(
-                                            [ptr!(Type::Void)],
-                                            Type::Void,
-                                        ))),
-                                        ptr!(Type::Void),
-                                        ptr!(Type::Void),
-                                    ],
-                                    Type::Void,
-                                ),
-                                true,
-                            ))),
-                        }]
-                        .into(),
-                        CILNode::LoadAddresOfTMPLocal,
-                    )));
-                }
-                rustc_middle::ty::print::with_no_trimmed_paths! {
-                    panic!("Static {def_id:?} requires special linkage {import_linkage:?} handling. Its name is:{name:?}")
-                };
+                let site = get_fn_from_static_name(&name);
+                return CILNode::TemporaryLocal(Box::new((
+                    Type::DelegatePtr(Box::new(site.signature().clone())),
+                    [CILRoot::SetTMPLocal {
+                        value: CILNode::LDFtn(Box::new(site)),
+                    }]
+                    .into(),
+                    CILNode::LoadAddresOfTMPLocal,
+                )));
             }
             if let Some(section) = attrs.link_section {
                 panic!("static {name} requires special linkage in section {section:?}");
@@ -364,11 +221,21 @@ fn load_const_scalar<'tcx>(
     let scalar_u128 = match scalar {
         Scalar::Int(scalar_int) => scalar_int.to_uint(scalar.size()),
         Scalar::Ptr(ptr, _size) => {
-            assert!(
-                matches!(scalar_type, Type::Ptr(_) | Type::DelegatePtr(_)),
-                "Invalid const ptr: {scalar_type:?}"
-            );
-            return load_scalar_ptr(ctx, ptr).cast_ptr(scalar_type);
+            if matches!(scalar_type, Type::Ptr(_) | Type::DelegatePtr(_)) {
+                return load_scalar_ptr(ctx, ptr).cast_ptr(scalar_type);
+            }
+
+            return CILNode::LdObj {
+                obj: Box::new(scalar_type.clone()),
+                ptr: Box::new(CILNode::TemporaryLocal(Box::new((
+                    ptr!(Type::U8),
+                    [CILRoot::SetTMPLocal {
+                        value: load_scalar_ptr(ctx, ptr),
+                    }]
+                    .into(),
+                    CILNode::LoadAddresOfTMPLocal.cast_ptr(ptr!(scalar_type)),
+                )))),
+            };
         }
     };
 
@@ -542,4 +409,100 @@ pub fn load_const_uint(value: u128, int_type: UintTy) -> CILNode {
 }
 fn u128_low_u64(value: u128) -> u64 {
     u64::try_from(value & u128::from(u64::MAX)).expect("trucating cast error")
+}
+fn get_fn_from_static_name(name: &str) -> CallSite {
+    match name {
+        "statx" => CallSite::builtin(
+            "statx".into(),
+            FnSig::new(
+                &[
+                    Type::I32,
+                    ptr!(Type::U8),
+                    Type::I32,
+                    Type::U32,
+                    ptr!(Type::Void),
+                ],
+                Type::I32,
+            ),
+            true,
+        ),
+        "getrandom" => CallSite::builtin(
+            "getrandom".into(),
+            FnSig::new(&[ptr!(Type::U8), Type::USize, Type::U32], Type::USize),
+            true,
+        ),
+        "posix_spawn" => CallSite::builtin(
+            "posix_spawn".into(),
+            FnSig::new(
+                &[
+                    ptr!(Type::U8),
+                    ptr!(Type::U8),
+                    ptr!(Type::U8),
+                    ptr!(Type::U8),
+                    ptr!(Type::U8),
+                    ptr!(Type::U8),
+                ],
+                Type::I32,
+            ),
+            true,
+        ),
+        "posix_spawn_file_actions_addchdir_np" => CallSite::builtin(
+            "posix_spawn_file_actions_addchdir_np".into(),
+            FnSig::new(&[ptr!(Type::U8), ptr!(Type::U8)], Type::I32),
+            true,
+        ),
+        "__dso_handle" => {
+            CallSite::builtin("__dso_handle".into(), FnSig::new(&[], Type::Void), true)
+        }
+        "__cxa_thread_atexit_impl" => CallSite::builtin(
+            "__cxa_thread_atexit_impl".into(),
+            FnSig::new(
+                &[
+                    Type::DelegatePtr(Box::new(FnSig::new([ptr!(Type::Void)], Type::Void))),
+                    ptr!(Type::Void),
+                    ptr!(Type::Void),
+                ],
+                Type::Void,
+            ),
+            true,
+        ),
+        "copy_file_range" => CallSite::builtin(
+            "copy_file_range".into(),
+            FnSig::new(
+                &[
+                    Type::I32,
+                    ptr!(Type::I64),
+                    Type::I32,
+                    ptr!(Type::I64),
+                    Type::ISize,
+                    Type::U32,
+                ],
+                Type::ISize,
+            ),
+            true,
+        ),
+        "pidfd_spawnp" => CallSite::builtin(
+            "pidfd_spawnp".into(),
+            FnSig::new(
+                &[
+                    ptr!(Type::I32),
+                    ptr!(Type::I8),
+                    ptr!(Type::Void),
+                    ptr!(Type::Void),
+                    ptr!(ptr!(Type::I8)),
+                    ptr!(ptr!(Type::I8)),
+                ],
+                Type::I32,
+            ),
+            true,
+        ),
+        "pidfd_getpid" => CallSite::builtin(
+            "pidfd_getpid".into(),
+            FnSig::new(&[Type::I32], Type::I32),
+            true,
+        ),
+        _ => {
+            todo!("Unsuported function refered to using a weak static. Function name is {name:?}.")
+        }
+    }
 }

@@ -61,13 +61,6 @@ impl MemoryUsage for Type {
     }
 }
 impl Type {
-    pub fn opt(&mut self, strings: &mut AsmStringContainer) {
-        match self {
-            Type::Ptr(inner) | Type::ManagedReference(inner) => inner.opt(strings),
-            Type::DotnetType(dref) => dref.as_mut().opt(strings),
-            _ => (),
-        }
-    }
     /// If this is a reference to a dotnet type, return that type. Will not work with pointers/references.
     #[must_use]
     pub fn as_dotnet(&self) -> Option<DotnetTypeRef> {

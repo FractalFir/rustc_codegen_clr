@@ -622,10 +622,10 @@ pub fn add_allocation(
     tcx: TyCtxt<'_>,
     tycache: &mut TyCache,
 ) -> CILNode {
-    let (thread_local, const_allocation) = match tcx
+    let (thread_local, const_allocation, krate) = match tcx
         .global_alloc(AllocId(alloc_id.try_into().expect("0 alloc id?")))
     {
-        GlobalAlloc::Memory(alloc) => (false, alloc),
+        GlobalAlloc::Memory(alloc) => (false, alloc, None),
         GlobalAlloc::Static(def_id) => {
             let alloc = tcx.eval_static_initializer(def_id).unwrap();
             let attrs = tcx.codegen_fn_attrs(def_id);
@@ -635,6 +635,7 @@ pub fn add_allocation(
                     rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags::THREAD_LOCAL,
                 ),
                 alloc,
+                Some(def_id.krate),
             )
         }
         GlobalAlloc::VTable(..) => {
@@ -662,7 +663,17 @@ pub fn add_allocation(
     // Alloc ids are *not* unique across all crates. Adding the hash here ensures we don't overwrite allocations during linking
     // TODO:consider using something better here / making the hashes stable.
     let byte_hash = calculate_hash(&bytes);
-    let alloc_fld: IString = format!("al_{}_{}", encode(alloc_id), encode(byte_hash)).into();
+    let alloc_fld: IString = if let Some(krate) = krate {
+        format!(
+            "al_{}_{}_{}",
+            encode(alloc_id),
+            encode(byte_hash),
+            encode(krate.as_u32() as u64),
+        )
+        .into()
+    } else {
+        format!("al_{}_{}", encode(alloc_id), encode(byte_hash)).into()
+    };
     let field_desc = StaticFieldDescriptor::new(None, ptr!(Type::U8), alloc_fld.clone());
     if !asm.static_fields().contains_key(&alloc_fld) {
         let init_method =

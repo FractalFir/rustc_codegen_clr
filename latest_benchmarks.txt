@@ -1,0 +1,475 @@
+running 472 tests
+test any::bench_downcast_ref                                       ... bench:           7.01 ns/iter (+/- 0.23)
+test array::map_8byte_256byte_256                                  ... bench:      54,313.75 ns/iter (+/- 649.12)
+test array::map_8byte_8byte_256                                    ... bench:      12,716.73 ns/iter (+/- 1,160.11)
+test array::map_8byte_8byte_64                                     ... bench:       3,030.90 ns/iter (+/- 201.12)
+test array::map_8byte_8byte_8                                      ... bench:         371.12 ns/iter (+/- 8.28)
+test ascii::bench_ascii_escape_display_mixed                       ... bench:     112,645.98 ns/iter (+/- 71,582.50)
+test ascii::bench_ascii_escape_display_no_escape                   ... bench:       1,450.22 ns/iter (+/- 72.46)
+test ascii::is_ascii::long::case00_libcore                         ... bench:          25.59 ns/iter (+/- 1.29) = 279600 MB/s
+test ascii::is_ascii::long::case01_iter_all                        ... bench:         311.71 ns/iter (+/- 8.10) = 22475 MB/s
+test ascii::is_ascii::long::case02_align_to                        ... bench:          48.66 ns/iter (+/- 5.71) = 145625 MB/s
+test ascii::is_ascii::long::case03_align_to_unrolled               ... bench:          48.92 ns/iter (+/- 8.33) = 145625 MB/s
+test ascii::is_ascii::medium::case00_libcore                       ... bench:           4.70 ns/iter (+/- 0.27) = 8000 MB/s
+test ascii::is_ascii::medium::case01_iter_all                      ... bench:          61.84 ns/iter (+/- 6.98) = 524 MB/s
+test ascii::is_ascii::medium::case02_align_to                      ... bench:          11.83 ns/iter (+/- 1.16) = 2909 MB/s
+test ascii::is_ascii::medium::case03_align_to_unrolled             ... bench:          13.14 ns/iter (+/- 1.06) = 2461 MB/s
+test ascii::is_ascii::short::case00_libcore                        ... bench:          18.76 ns/iter (+/- 0.78) = 388 MB/s
+test ascii::is_ascii::short::case01_iter_all                       ... bench:          17.60 ns/iter (+/- 1.63) = 411 MB/s
+test ascii::is_ascii::short::case02_align_to                       ... bench:          17.39 ns/iter (+/- 2.68) = 411 MB/s
+test ascii::is_ascii::short::case03_align_to_unrolled              ... bench:          19.40 ns/iter (+/- 3.05) = 368 MB/s
+test ascii::is_ascii::unaligned_both::case00_libcore               ... bench:           5.70 ns/iter (+/- 0.49) = 6000 MB/s
+test ascii::is_ascii::unaligned_both::case01_iter_all              ... bench:          65.69 ns/iter (+/- 8.77) = 461 MB/s
+test ascii::is_ascii::unaligned_both::case02_align_to              ... bench:          37.36 ns/iter (+/- 3.59) = 810 MB/s
+test ascii::is_ascii::unaligned_both::case03_align_to_unrolled     ... bench:          34.41 ns/iter (+/- 5.40) = 882 MB/s
+test ascii::is_ascii::unaligned_head::case00_libcore               ... bench:           5.79 ns/iter (+/- 0.31) = 6200 MB/s
+test ascii::is_ascii::unaligned_head::case01_iter_all              ... bench:          50.26 ns/iter (+/- 9.22) = 620 MB/s
+test ascii::is_ascii::unaligned_head::case02_align_to              ... bench:          24.81 ns/iter (+/- 2.81) = 1291 MB/s
+test ascii::is_ascii::unaligned_head::case03_align_to_unrolled     ... bench:          36.51 ns/iter (+/- 5.10) = 861 MB/s
+test ascii::is_ascii::unaligned_tail::case00_libcore               ... bench:           5.76 ns/iter (+/- 0.24) = 6200 MB/s
+test ascii::is_ascii::unaligned_tail::case01_iter_all              ... bench:          45.91 ns/iter (+/- 13.15) = 688 MB/s
+test ascii::is_ascii::unaligned_tail::case02_align_to              ... bench:          26.03 ns/iter (+/- 1.72) = 1192 MB/s
+test ascii::is_ascii::unaligned_tail::case03_align_to_unrolled     ... bench:          36.16 ns/iter (+/- 6.11) = 861 MB/s
+test ascii::long::case00_alloc_only                                ... bench:         184.70 ns/iter (+/- 2.79) = 37989 MB/s
+test ascii::long::case01_black_box_read_each_byte                  ... bench:       6,611.96 ns/iter (+/- 328.37) = 1057 MB/s
+test ascii::long::case02_lookup_table                              ... bench:      30,151.08 ns/iter (+/- 555.19) = 231 MB/s
+test ascii::long::case03_branch_and_subtract                       ... bench:      10,952.89 ns/iter (+/- 1,016.52) = 638 MB/s
+test ascii::long::case04_branch_and_mask                           ... bench:      11,140.50 ns/iter (+/- 724.23) = 627 MB/s
+test ascii::long::case05_branchless                                ... bench:      12,568.01 ns/iter (+/- 4,454.01) = 556 MB/s
+test ascii::long::case06_libcore                                   ... bench:      14,334.89 ns/iter (+/- 185.85) = 487 MB/s
+test ascii::long::case07_fake_simd_u32                             ... bench:       2,278.70 ns/iter (+/- 109.03) = 3068 MB/s
+test ascii::long::case08_fake_simd_u64                             ... bench:       1,207.11 ns/iter (+/- 25.98) = 5791 MB/s
+test ascii::long::case09_mask_mult_bool_branchy_lookup_table       ... bench:      12,796.56 ns/iter (+/- 752.96) = 546 MB/s
+test ascii::long::case10_mask_mult_bool_lookup_table               ... bench:      18,640.51 ns/iter (+/- 1,004.82) = 375 MB/s
+test ascii::long::case11_mask_mult_bool_match_range                ... bench:      11,693.25 ns/iter (+/- 1,087.60) = 597 MB/s
+test ascii::long::case12_mask_shifted_bool_match_range             ... bench:       9,405.99 ns/iter (+/- 383.41) = 743 MB/s
+test ascii::long::case13_subtract_shifted_bool_match_range         ... bench:      11,449.03 ns/iter (+/- 775.68) = 610 MB/s
+test ascii::long::case14_subtract_multiplied_bool_match_range      ... bench:      11,771.84 ns/iter (+/- 1,170.42) = 593 MB/s
+test ascii::long::is_ascii                                         ... bench:         433.46 ns/iter (+/- 80.47) = 16143 MB/s
+test ascii::long::is_ascii_alphabetic                              ... bench:         129.58 ns/iter (+/- 0.49) = 54186 MB/s
+test ascii::long::is_ascii_alphanumeric                            ... bench:         129.69 ns/iter (+/- 1.40) = 54186 MB/s
+test ascii::long::is_ascii_control                                 ... bench:         129.99 ns/iter (+/- 0.19) = 54186 MB/s
+test ascii::long::is_ascii_digit                                   ... bench:         128.55 ns/iter (+/- 0.23) = 54609 MB/s
+test ascii::long::is_ascii_graphic                                 ... bench:         122.09 ns/iter (+/- 19.02) = 57295 MB/s
+test ascii::long::is_ascii_hexdigit                                ... bench:         122.88 ns/iter (+/- 18.09) = 57295 MB/s
+test ascii::long::is_ascii_lowercase                               ... bench:         122.00 ns/iter (+/- 19.42) = 57768 MB/s
+test ascii::long::is_ascii_punctuation                             ... bench:         123.02 ns/iter (+/- 18.86) = 56829 MB/s
+test ascii::long::is_ascii_uppercase                               ... bench:         121.68 ns/iter (+/- 18.16) = 57768 MB/s
+test ascii::long::is_ascii_whitespace                              ... bench:         130.54 ns/iter (+/- 1.28) = 53769 MB/s
+test ascii::medium::case00_alloc_only                              ... bench:          40.83 ns/iter (+/- 3.08) = 800 MB/s
+test ascii::medium::case01_black_box_read_each_byte                ... bench:          68.77 ns/iter (+/- 5.93) = 470 MB/s
+test ascii::medium::case02_lookup_table                            ... bench:         153.48 ns/iter (+/- 3.59) = 209 MB/s
+test ascii::medium::case03_branch_and_subtract                     ... bench:          81.88 ns/iter (+/- 4.19) = 395 MB/s
+test ascii::medium::case04_branch_and_mask                         ... bench:         278.22 ns/iter (+/- 8.82) = 115 MB/s
+test ascii::medium::case05_branchless                              ... bench:          82.55 ns/iter (+/- 1.98) = 390 MB/s
+test ascii::medium::case06_libcore                                 ... bench:          97.52 ns/iter (+/- 5.34) = 329 MB/s
+test ascii::medium::case07_fake_simd_u32                           ... bench:          59.03 ns/iter (+/- 3.62) = 542 MB/s
+test ascii::medium::case08_fake_simd_u64                           ... bench:          47.54 ns/iter (+/- 2.28) = 680 MB/s
+test ascii::medium::case09_mask_mult_bool_branchy_lookup_table     ... bench:          94.68 ns/iter (+/- 8.56) = 340 MB/s
+test ascii::medium::case10_mask_mult_bool_lookup_table             ... bench:          95.00 ns/iter (+/- 14.03) = 340 MB/s
+test ascii::medium::case11_mask_mult_bool_match_range              ... bench:          74.17 ns/iter (+/- 3.71) = 432 MB/s
+test ascii::medium::case12_mask_shifted_bool_match_range           ... bench:          73.37 ns/iter (+/- 3.62) = 438 MB/s
+test ascii::medium::case13_subtract_shifted_bool_match_range       ... bench:          82.16 ns/iter (+/- 5.01) = 390 MB/s
+test ascii::medium::case14_subtract_multiplied_bool_match_range    ... bench:          73.53 ns/iter (+/- 5.45) = 438 MB/s
+test ascii::medium::is_ascii                                       ... bench:          75.55 ns/iter (+/- 4.32) = 426 MB/s
+test ascii::medium::is_ascii_alphabetic                            ... bench:          45.09 ns/iter (+/- 1.64) = 711 MB/s
+test ascii::medium::is_ascii_alphanumeric                          ... bench:          49.31 ns/iter (+/- 1.96) = 653 MB/s
+test ascii::medium::is_ascii_control                               ... bench:          52.99 ns/iter (+/- 14.19) = 615 MB/s
+test ascii::medium::is_ascii_digit                                 ... bench:          40.29 ns/iter (+/- 2.32) = 800 MB/s
+test ascii::medium::is_ascii_graphic                               ... bench:          51.24 ns/iter (+/- 2.72) = 627 MB/s
+test ascii::medium::is_ascii_hexdigit                              ... bench:          43.10 ns/iter (+/- 1.88) = 744 MB/s
+test ascii::medium::is_ascii_lowercase                             ... bench:          53.48 ns/iter (+/- 13.99) = 603 MB/s
+test ascii::medium::is_ascii_punctuation                           ... bench:          42.06 ns/iter (+/- 2.80) = 761 MB/s
+test ascii::medium::is_ascii_uppercase                             ... bench:          41.37 ns/iter (+/- 1.41) = 780 MB/s
+test ascii::medium::is_ascii_whitespace                            ... bench:          41.44 ns/iter (+/- 2.22) = 780 MB/s
+test ascii::short::case00_alloc_only                               ... bench:          37.41 ns/iter (+/- 0.50) = 189 MB/s
+test ascii::short::case01_black_box_read_each_byte                 ... bench:          44.47 ns/iter (+/- 3.01) = 159 MB/s
+test ascii::short::case02_lookup_table                             ... bench:          63.17 ns/iter (+/- 0.97) = 111 MB/s
+test ascii::short::case03_branch_and_subtract                      ... bench:          45.35 ns/iter (+/- 3.35) = 155 MB/s
+test ascii::short::case04_branch_and_mask                          ... bench:          45.18 ns/iter (+/- 2.06) = 155 MB/s
+test ascii::short::case05_branchless                               ... bench:          47.07 ns/iter (+/- 2.31) = 148 MB/s
+test ascii::short::case06_libcore                                  ... bench:          46.35 ns/iter (+/- 2.67) = 152 MB/s
+test ascii::short::case07_fake_simd_u32                            ... bench:          45.36 ns/iter (+/- 1.76) = 155 MB/s
+test ascii::short::case08_fake_simd_u64                            ... bench:          47.82 ns/iter (+/- 1.88) = 148 MB/s
+test ascii::short::case09_mask_mult_bool_branchy_lookup_table      ... bench:          49.79 ns/iter (+/- 2.92) = 142 MB/s
+test ascii::short::case10_mask_mult_bool_lookup_table              ... bench:          48.79 ns/iter (+/- 2.24) = 145 MB/s
+test ascii::short::case11_mask_mult_bool_match_range               ... bench:          45.05 ns/iter (+/- 2.72) = 155 MB/s
+test ascii::short::case12_mask_shifted_bool_match_range            ... bench:          46.62 ns/iter (+/- 3.89) = 152 MB/s
+test ascii::short::case13_subtract_shifted_bool_match_range        ... bench:          45.24 ns/iter (+/- 2.94) = 155 MB/s
+test ascii::short::case14_subtract_multiplied_bool_match_range     ... bench:          45.60 ns/iter (+/- 2.96) = 155 MB/s
+test ascii::short::is_ascii                                        ... bench:          45.02 ns/iter (+/- 4.59) = 155 MB/s
+test ascii::short::is_ascii_alphabetic                             ... bench:          44.42 ns/iter (+/- 2.53) = 159 MB/s
+test ascii::short::is_ascii_alphanumeric                           ... bench:          48.18 ns/iter (+/- 1.79) = 145 MB/s
+test ascii::short::is_ascii_control                                ... bench:          39.55 ns/iter (+/- 2.17) = 179 MB/s
+test ascii::short::is_ascii_digit                                  ... bench:          51.76 ns/iter (+/- 14.61) = 137 MB/s
+test ascii::short::is_ascii_graphic                                ... bench:          51.03 ns/iter (+/- 2.12) = 137 MB/s
+test ascii::short::is_ascii_hexdigit                               ... bench:          43.47 ns/iter (+/- 1.65) = 162 MB/s
+test ascii::short::is_ascii_lowercase                              ... bench:          38.82 ns/iter (+/- 1.82) = 184 MB/s
+test ascii::short::is_ascii_punctuation                            ... bench:          39.63 ns/iter (+/- 1.72) = 179 MB/s
+test ascii::short::is_ascii_uppercase                              ... bench:          40.48 ns/iter (+/- 1.08) = 175 MB/s
+test ascii::short::is_ascii_whitespace                             ... bench:          38.66 ns/iter (+/- 1.63) = 184 MB/s
+test char::methods::bench_ascii_char_to_lowercase                  ... bench:     259,754.85 ns/iter (+/- 1,245.74)
+test char::methods::bench_ascii_char_to_uppercase                  ... bench:     259,762.55 ns/iter (+/- 2,771.76)
+test char::methods::bench_ascii_mix_to_lowercase                   ... bench:     307,518.00 ns/iter (+/- 1,527.47)
+test char::methods::bench_ascii_mix_to_uppercase                   ... bench:     308,208.35 ns/iter (+/- 2,145.16)
+test char::methods::bench_non_ascii_char_to_lowercase              ... bench:     355,558.05 ns/iter (+/- 2,484.71)
+test char::methods::bench_non_ascii_char_to_uppercase              ... bench:     356,602.10 ns/iter (+/- 2,278.24)
+test char::methods::bench_to_ascii_lowercase                       ... bench:     151,047.58 ns/iter (+/- 7,853.51)
+test char::methods::bench_to_ascii_uppercase                       ... bench:     151,075.15 ns/iter (+/- 6,779.96)
+test char::methods::bench_to_digit_radix_10                        ... bench:     353,622.08 ns/iter (+/- 4,508.85)
+test char::methods::bench_to_digit_radix_16                        ... bench:     366,779.70 ns/iter (+/- 6,090.04)
+test char::methods::bench_to_digit_radix_2                         ... bench:     333,016.32 ns/iter (+/- 3,924.06)
+test char::methods::bench_to_digit_radix_36                        ... bench:     389,130.97 ns/iter (+/- 1,854.20)
+test char::methods::bench_to_digit_radix_var                       ... bench:     376,938.05 ns/iter (+/- 8,288.35)
+test fmt::write_str_macro1                                         ... bench:      48,555.11 ns/iter (+/- 673.96)
+test fmt::write_str_macro2                                         ... bench:      36,924.87 ns/iter (+/- 383.76)
+test fmt::write_str_macro_debug                                    ... bench:   1,563,046.25 ns/iter (+/- 33,415.61)
+test fmt::write_str_macro_debug_ascii                              ... bench:     137,228.90 ns/iter (+/- 13,716.23)
+test fmt::write_str_ref                                            ... bench:       9,788.96 ns/iter (+/- 39.19)
+test fmt::write_str_value                                          ... bench:      23,279.64 ns/iter (+/- 15,717.22)
+test fmt::write_u128_max                                           ... bench:         193.59 ns/iter (+/- 3.27)
+test fmt::write_u128_min                                           ... bench:          39.74 ns/iter (+/- 0.42)
+test fmt::write_u64_max                                            ... bench:         117.82 ns/iter (+/- 0.64)
+test fmt::write_u64_min                                            ... bench:          40.03 ns/iter (+/- 0.60)
+test fmt::write_vec_macro1                                         ... bench:      36,201.68 ns/iter (+/- 3,694.88)
+test fmt::write_vec_macro2                                         ... bench:      36,207.35 ns/iter (+/- 349.76)
+test fmt::write_vec_macro_debug                                    ... bench:   1,538,114.55 ns/iter (+/- 9,215.11)
+test fmt::write_vec_ref                                            ... bench:      10,156.06 ns/iter (+/- 51.32)
+test fmt::write_vec_value                                          ... bench:       9,296.29 ns/iter (+/- 68.64)
+test hash::sip::bench_bytes_4                                      ... bench:          35.24 ns/iter (+/- 1.39) = 114 MB/s
+test hash::sip::bench_bytes_7                                      ... bench:          35.14 ns/iter (+/- 1.91) = 200 MB/s
+test hash::sip::bench_bytes_8                                      ... bench:          48.88 ns/iter (+/- 1.52) = 166 MB/s
+test hash::sip::bench_bytes_a_16                                   ... bench:          59.51 ns/iter (+/- 2.76) = 271 MB/s
+test hash::sip::bench_bytes_b_32                                   ... bench:          77.15 ns/iter (+/- 5.67) = 415 MB/s
+test hash::sip::bench_bytes_c_128                                  ... bench:         203.73 ns/iter (+/- 15.44) = 630 MB/s
+test hash::sip::bench_long_str                                     ... bench:         520.53 ns/iter (+/- 20.23)
+test hash::sip::bench_str_of_8_bytes                               ... bench:          49.76 ns/iter (+/- 1.59)
+test hash::sip::bench_str_over_8_bytes                             ... bench:          49.90 ns/iter (+/- 1.08)
+test hash::sip::bench_str_under_8_bytes                            ... bench:          35.96 ns/iter (+/- 1.01)
+test hash::sip::bench_u32                                          ... bench:          33.98 ns/iter (+/- 1.08) = 242 MB/s
+test hash::sip::bench_u32_keyed                                    ... bench:          35.38 ns/iter (+/- 1.06) = 228 MB/s
+test hash::sip::bench_u64                                          ... bench:          47.49 ns/iter (+/- 1.53) = 170 MB/s
+test iter::bench_chain_partial_cmp                                 ... bench:   2,707,440.80 ns/iter (+/- 23,491.61)
+test iter::bench_cycle_skip_take_ref_sum                           ... bench:  15,951,859.10 ns/iter (+/- 265,674.39)
+test iter::bench_cycle_skip_take_sum                               ... bench:  15,254,400.10 ns/iter (+/- 294,443.03)
+test iter::bench_cycle_take_ref_sum                                ... bench:  15,663,404.10 ns/iter (+/- 88,535.17)
+test iter::bench_cycle_take_skip_ref_sum                           ... bench:  14,338,451.20 ns/iter (+/- 247,175.08)
+test iter::bench_cycle_take_skip_sum                               ... bench:  13,742,782.70 ns/iter (+/- 145,725.19)
+test iter::bench_cycle_take_sum                                    ... bench:  15,256,257.60 ns/iter (+/- 209,462.60)
+test iter::bench_enumerate_chain_ref_sum                           ... bench:  41,199,324.80 ns/iter (+/- 263,192.13)
+test iter::bench_enumerate_chain_sum                               ... bench:  40,320,123.10 ns/iter (+/- 497,591.47)
+test iter::bench_enumerate_ref_sum                                 ... bench:  20,376,277.50 ns/iter (+/- 143,955.74)
+test iter::bench_enumerate_sum                                     ... bench:  20,256,054.30 ns/iter (+/- 288,945.15)
+test iter::bench_filter_chain_count                                ... bench:  28,692,012.70 ns/iter (+/- 752,874.19)
+test iter::bench_filter_chain_ref_count                            ... bench:  29,568,131.20 ns/iter (+/- 3,424,739.59)
+test iter::bench_filter_chain_ref_sum                              ... bench:  21,660,972.00 ns/iter (+/- 202,431.41)
+test iter::bench_filter_chain_sum                                  ... bench:  21,190,253.00 ns/iter (+/- 176,996.70)
+test iter::bench_filter_count                                      ... bench:  14,314,180.50 ns/iter (+/- 70,309.06)
+test iter::bench_filter_map_chain_ref_sum                          ... bench:  43,296,278.70 ns/iter (+/- 602,462.34)
+test iter::bench_filter_map_chain_sum                              ... bench:  43,067,165.10 ns/iter (+/- 91,387.51)
+test iter::bench_filter_map_ref_sum                                ... bench:  21,592,202.40 ns/iter (+/- 36,548.68)
+test iter::bench_filter_map_sum                                    ... bench:  21,542,905.30 ns/iter (+/- 82,149.41)
+test iter::bench_filter_ref_count                                  ... bench:  14,980,628.10 ns/iter (+/- 25,971.87)
+test iter::bench_filter_ref_sum                                    ... bench:  10,701,869.40 ns/iter (+/- 53,193.09)
+test iter::bench_filter_sum                                        ... bench:  10,640,568.10 ns/iter (+/- 144,997.08)
+test iter::bench_flat_map_chain_ref_sum                            ... bench:  53,505,736.60 ns/iter (+/- 98,310.10)
+test iter::bench_flat_map_chain_sum                                ... bench:  47,755,956.60 ns/iter (+/- 132,641.74)
+test iter::bench_flat_map_ref_sum                                  ... bench:  13,901,020.90 ns/iter (+/- 20,652.94)
+test iter::bench_flat_map_sum                                      ... bench:  13,210,169.10 ns/iter (+/- 269,930.76)
+test iter::bench_for_each_chain_fold                               ... bench:  15,597,054.00 ns/iter (+/- 2,396,872.35)
+test iter::bench_for_each_chain_loop                               ... bench:  18,875,179.70 ns/iter (+/- 148,401.98)
+test iter::bench_for_each_chain_ref_fold                           ... bench:  15,822,717.00 ns/iter (+/- 182,298.55)
+test iter::bench_fuse_chain_ref_sum                                ... bench:  28,285,717.30 ns/iter (+/- 440,457.65)
+test iter::bench_fuse_chain_sum                                    ... bench:  26,674,124.10 ns/iter (+/- 2,815,486.72)
+test iter::bench_fuse_ref_sum                                      ... bench:  14,126,646.10 ns/iter (+/- 269,645.41)
+test iter::bench_fuse_sum                                          ... bench:  13,423,651.30 ns/iter (+/- 215,685.09)
+test iter::bench_inspect_chain_ref_sum                             ... bench:  29,167,847.10 ns/iter (+/- 2,632,089.03)
+test iter::bench_inspect_chain_sum                                 ... bench:  27,735,091.40 ns/iter (+/- 1,706,187.16)
+test iter::bench_inspect_ref_sum                                   ... bench:  14,304,435.20 ns/iter (+/- 302,879.72)
+test iter::bench_inspect_sum                                       ... bench:  13,861,683.70 ns/iter (+/- 510,097.25)
+test iter::bench_lt                                                ... bench:   2,713,944.62 ns/iter (+/- 16,113.54)
+test iter::bench_max                                               ... bench:       1,657.84 ns/iter (+/- 40.93)
+test iter::bench_max_by_key                                        ... bench:       3,203.97 ns/iter (+/- 76.59)
+test iter::bench_max_by_key2                                       ... bench:      52,215.81 ns/iter (+/- 18,353.29)
+test iter::bench_multiple_take                                     ... bench:       2,128.67 ns/iter (+/- 39.10)
+test iter::bench_next_chunk_copied                                 ... bench:       1,672.15 ns/iter (+/- 15.47)
+test iter::bench_next_chunk_filter_even                            ... bench:         271.26 ns/iter (+/- 9.42)
+test iter::bench_next_chunk_filter_mostly_false                    ... bench:       3,594.95 ns/iter (+/- 326.55)
+test iter::bench_next_chunk_filter_predictably_true                ... bench:         158.52 ns/iter (+/- 7.49)
+test iter::bench_next_chunk_trusted_random_access                  ... bench:       2,337.54 ns/iter (+/- 197.14)
+test iter::bench_partial_cmp                                       ... bench:   2,714,149.20 ns/iter (+/- 15,060.84)
+test iter::bench_peekable_chain_ref_sum                            ... bench:  27,747,012.30 ns/iter (+/- 39,811.99)
+test iter::bench_peekable_chain_sum                                ... bench:  26,637,238.20 ns/iter (+/- 45,573.79)
+test iter::bench_peekable_ref_sum                                  ... bench:  13,888,393.70 ns/iter (+/- 31,653.65)
+test iter::bench_peekable_sum                                      ... bench:  13,420,445.80 ns/iter (+/- 239,101.17)
+test iter::bench_range_step_by_fold_u16                            ... bench:       1,717.03 ns/iter (+/- 292.91)
+test iter::bench_range_step_by_fold_usize                          ... bench:       1,626.52 ns/iter (+/- 38.48)
+test iter::bench_range_step_by_loop_u32                            ... bench:       6,658.04 ns/iter (+/- 25.92)
+test iter::bench_range_step_by_sum_reducible                       ... bench:         832.22 ns/iter (+/- 7.21)
+test iter::bench_rposition                                         ... bench:         125.18 ns/iter (+/- 18.76)
+test iter::bench_skip_chain_ref_sum                                ... bench:  27,730,668.30 ns/iter (+/- 40,574.51)
+test iter::bench_skip_chain_sum                                    ... bench:  26,634,004.00 ns/iter (+/- 67,360.86)
+test iter::bench_skip_cycle_skip_zip_add_ref_sum                   ... bench:  27,339,622.20 ns/iter (+/- 147,644.01)
+test iter::bench_skip_cycle_skip_zip_add_sum                       ... bench:  26,604,755.80 ns/iter (+/- 236,190.51)
+test iter::bench_skip_ref_sum                                      ... bench:  13,860,649.00 ns/iter (+/- 33,614.81)
+test iter::bench_skip_sum                                          ... bench:  13,425,851.90 ns/iter (+/- 236,110.74)
+test iter::bench_skip_then_zip                                     ... bench:       1,133.04 ns/iter (+/- 17.38)
+test iter::bench_skip_trusted_random_access                        ... bench:      68,816.27 ns/iter (+/- 519.74)
+test iter::bench_skip_while                                        ... bench:       1,538.45 ns/iter (+/- 288.68)
+test iter::bench_skip_while_chain_ref_sum                          ... bench:  28,227,700.10 ns/iter (+/- 2,506,836.59)
+test iter::bench_skip_while_chain_sum                              ... bench:  26,651,045.00 ns/iter (+/- 125,787.73)
+test iter::bench_skip_while_ref_sum                                ... bench:  14,092,358.10 ns/iter (+/- 109,235.53)
+test iter::bench_skip_while_sum                                    ... bench:  13,190,794.50 ns/iter (+/- 234,957.02)
+test iter::bench_take_while_chain_ref_sum                          ... bench:  16,809,734.30 ns/iter (+/- 234,363.19)
+test iter::bench_take_while_chain_sum                              ... bench:  16,835,295.80 ns/iter (+/- 3,410,173.45)
+test iter::bench_trusted_random_access_adapters                    ... bench:     662,965.29 ns/iter (+/- 32,923.04)
+test iter::bench_zip_add                                           ... bench:      17,391.52 ns/iter (+/- 77.96)
+test iter::bench_zip_copy                                          ... bench:      15,047.06 ns/iter (+/- 1,477.52)
+test iter::bench_zip_then_skip                                     ... bench:       3,891.39 ns/iter (+/- 86.16)
+test net::addr_parser::bench_parse_ipaddr_v4                       ... bench:         260.64 ns/iter (+/- 14.02)
+test net::addr_parser::bench_parse_ipaddr_v6_compress              ... bench:         707.62 ns/iter (+/- 25.69)
+test net::addr_parser::bench_parse_ipaddr_v6_full                  ... bench:       1,026.30 ns/iter (+/- 16.82)
+test net::addr_parser::bench_parse_ipaddr_v6_v4                    ... bench:         740.36 ns/iter (+/- 28.30)
+test net::addr_parser::bench_parse_ipv4                            ... bench:         267.17 ns/iter (+/- 39.40)
+test net::addr_parser::bench_parse_ipv6_compress                   ... bench:         548.91 ns/iter (+/- 5.89)
+test net::addr_parser::bench_parse_ipv6_full                       ... bench:         828.28 ns/iter (+/- 17.20)
+test net::addr_parser::bench_parse_ipv6_v4                         ... bench:         576.43 ns/iter (+/- 17.48)
+test net::addr_parser::bench_parse_socket_v4                       ... bench:         365.34 ns/iter (+/- 16.42)
+test net::addr_parser::bench_parse_socket_v6                       ... bench:         724.60 ns/iter (+/- 30.88)
+test net::addr_parser::bench_parse_socket_v6_scope_id              ... bench:         803.83 ns/iter (+/- 13.85)
+test net::addr_parser::bench_parse_socketaddr_v4                   ... bench:         396.33 ns/iter (+/- 21.60)
+test net::addr_parser::bench_parse_socketaddr_v6                   ... bench:         774.71 ns/iter (+/- 12.68)
+test num::bench_i16_from_str                                       ... bench:     305,040.10 ns/iter (+/- 4,662.31)
+test num::bench_i16_from_str_radix_10                              ... bench:     304,283.95 ns/iter (+/- 7,821.09)
+test num::bench_i16_from_str_radix_16                              ... bench:     337,414.72 ns/iter (+/- 3,574.58)
+test num::bench_i16_from_str_radix_2                               ... bench:     141,804.18 ns/iter (+/- 1,386.01)
+test num::bench_i16_from_str_radix_36                              ... bench:     366,759.33 ns/iter (+/- 9,672.79)
+test num::bench_i32_from_str                                       ... bench:     270,506.03 ns/iter (+/- 7,203.62)
+test num::bench_i32_from_str_radix_10                              ... bench:     270,188.10 ns/iter (+/- 6,190.66)
+test num::bench_i32_from_str_radix_16                              ... bench:     293,468.72 ns/iter (+/- 4,727.85)
+test num::bench_i32_from_str_radix_2                               ... bench:     120,578.16 ns/iter (+/- 5,406.07)
+test num::bench_i32_from_str_radix_36                              ... bench:     472,782.70 ns/iter (+/- 2,243.11)
+test num::bench_i64_from_str                                       ... bench:     131,145.70 ns/iter (+/- 2,213.79)
+test num::bench_i64_from_str_radix_10                              ... bench:     202,916.70 ns/iter (+/- 4,968.17)
+test num::bench_i64_from_str_radix_16                              ... bench:     158,968.33 ns/iter (+/- 6,600.07)
+test num::bench_i64_from_str_radix_2                               ... bench:      62,182.84 ns/iter (+/- 3,493.67)
+test num::bench_i64_from_str_radix_36                              ... bench:     488,984.47 ns/iter (+/- 2,081.63)
+test num::bench_i8_from_str                                        ... bench:     188,269.48 ns/iter (+/- 4,078.00)
+test num::bench_i8_from_str_radix_10                               ... bench:     220,315.30 ns/iter (+/- 7,957.78)
+test num::bench_i8_from_str_radix_16                               ... bench:     194,698.12 ns/iter (+/- 3,708.86)
+test num::bench_i8_from_str_radix_2                                ... bench:     133,495.88 ns/iter (+/- 2,858.60)
+test num::bench_i8_from_str_radix_36                               ... bench:     187,043.30 ns/iter (+/- 3,396.11)
+test num::bench_u16_from_str                                       ... bench:     254,114.27 ns/iter (+/- 2,972.68)
+test num::bench_u16_from_str_radix_10                              ... bench:     283,636.10 ns/iter (+/- 33,163.05)
+test num::bench_u16_from_str_radix_16                              ... bench:     286,877.45 ns/iter (+/- 3,564.05)
+test num::bench_u16_from_str_radix_2                               ... bench:     130,581.01 ns/iter (+/- 2,038.62)
+test num::bench_u16_from_str_radix_36                              ... bench:     308,885.45 ns/iter (+/- 3,054.12)
+test num::bench_u32_from_str                                       ... bench:     220,981.73 ns/iter (+/- 4,574.27)
+test num::bench_u32_from_str_radix_10                              ... bench:     252,143.45 ns/iter (+/- 32,649.88)
+test num::bench_u32_from_str_radix_16                              ... bench:     277,249.00 ns/iter (+/- 34,992.58)
+test num::bench_u32_from_str_radix_2                               ... bench:     112,779.77 ns/iter (+/- 2,116.84)
+test num::bench_u32_from_str_radix_36                              ... bench:     394,004.92 ns/iter (+/- 3,416.16)
+test num::bench_u64_from_str                                       ... bench:     123,276.52 ns/iter (+/- 4,249.46)
+test num::bench_u64_from_str_radix_10                              ... bench:     195,356.80 ns/iter (+/- 5,061.26)
+test num::bench_u64_from_str_radix_16                              ... bench:     143,915.83 ns/iter (+/- 3,461.36)
+test num::bench_u64_from_str_radix_2                               ... bench:      62,029.13 ns/iter (+/- 1,726.79)
+test num::bench_u64_from_str_radix_36                              ... bench:     367,448.47 ns/iter (+/- 755.01)
+test num::bench_u8_from_str                                        ... bench:     166,353.30 ns/iter (+/- 2,487.82)
+test num::bench_u8_from_str_radix_10                               ... bench:     198,746.35 ns/iter (+/- 3,281.77)
+test num::bench_u8_from_str_radix_16                               ... bench:     177,857.52 ns/iter (+/- 1,547.53)
+test num::bench_u8_from_str_radix_2                                ... bench:     122,277.04 ns/iter (+/- 2,684.05)
+test num::bench_u8_from_str_radix_36                               ... bench:     168,574.46 ns/iter (+/- 1,784.04)
+test num::dec2flt::bench_0                                         ... bench:          51.65 ns/iter (+/- 0.23)
+test num::dec2flt::bench_1e150                                     ... bench:          53.42 ns/iter (+/- 2.68)
+test num::dec2flt::bench_42                                        ... bench:          40.72 ns/iter (+/- 0.35)
+test num::dec2flt::bench_huge_int                                  ... bench:         115.40 ns/iter (+/- 3.57)
+test num::dec2flt::bench_long_decimal_and_exp                      ... bench:         131.78 ns/iter (+/- 2.95)
+test num::dec2flt::bench_max                                       ... bench:          97.87 ns/iter (+/- 15.01)
+test num::dec2flt::bench_min_normal                                ... bench:          86.38 ns/iter (+/- 2.29)
+test num::dec2flt::bench_min_subnormal                             ... bench:          68.31 ns/iter (+/- 15.63)
+test num::dec2flt::bench_pi_long                                   ... bench:         133.76 ns/iter (+/- 8.85)
+test num::dec2flt::bench_pi_short                                  ... bench:          76.28 ns/iter (+/- 3.42)
+test num::dec2flt::bench_short_decimal                             ... bench:          75.17 ns/iter (+/- 15.19)
+test num::flt2dec::bench_big_shortest                              ... bench:         199.20 ns/iter (+/- 2.34)
+test num::flt2dec::bench_small_shortest                            ... bench:         157.44 ns/iter (+/- 0.81)
+test num::flt2dec::strategy::dragon::bench_big_exact_12            ... bench:      14,079.26 ns/iter (+/- 231.18)
+test num::flt2dec::strategy::dragon::bench_big_exact_3             ... bench:       5,355.62 ns/iter (+/- 82.61)
+test num::flt2dec::strategy::dragon::bench_big_exact_inf           ... bench:     301,772.71 ns/iter (+/- 2,626.14)
+test num::flt2dec::strategy::dragon::bench_big_shortest            ... bench:      28,372.76 ns/iter (+/- 346.07)
+test num::flt2dec::strategy::dragon::bench_small_exact_12          ... bench:       3,371.75 ns/iter (+/- 48.81)
+test num::flt2dec::strategy::dragon::bench_small_exact_3           ... bench:       1,084.41 ns/iter (+/- 13.35)
+test num::flt2dec::strategy::dragon::bench_small_exact_inf         ... bench:      16,983.63 ns/iter (+/- 327.29)
+test num::flt2dec::strategy::dragon::bench_small_shortest          ... bench:       3,424.92 ns/iter (+/- 61.79)
+test num::flt2dec::strategy::grisu::bench_big_exact_12             ... bench:          77.28 ns/iter (+/- 6.63)
+test num::flt2dec::strategy::grisu::bench_big_exact_3              ... bench:          48.24 ns/iter (+/- 0.87)
+test num::flt2dec::strategy::grisu::bench_big_exact_inf            ... bench:     302,931.74 ns/iter (+/- 4,995.20)
+test num::flt2dec::strategy::grisu::bench_big_shortest             ... bench:          86.86 ns/iter (+/- 1.27)
+test num::flt2dec::strategy::grisu::bench_halfway_point_exact_inf  ... bench:       3,699.51 ns/iter (+/- 87.92)
+test num::flt2dec::strategy::grisu::bench_one_exact_inf            ... bench:       3,683.41 ns/iter (+/- 77.08)
+test num::flt2dec::strategy::grisu::bench_small_exact_12           ... bench:          55.09 ns/iter (+/- 0.40)
+test num::flt2dec::strategy::grisu::bench_small_exact_3            ... bench:          42.61 ns/iter (+/- 0.47)
+test num::flt2dec::strategy::grisu::bench_small_exact_inf          ... bench:      17,066.34 ns/iter (+/- 258.34)
+test num::flt2dec::strategy::grisu::bench_small_shortest           ... bench:          68.66 ns/iter (+/- 5.80)
+test num::flt2dec::strategy::grisu::bench_trailing_zero_exact_inf  ... bench:       3,983.42 ns/iter (+/- 76.71)
+test num::int_log::u128_log10_predictable                          ... bench:     107,472.35 ns/iter (+/- 33,285.51)
+test num::int_log::u128_log10_random                               ... bench:       4,328.00 ns/iter (+/- 96.85)
+test num::int_log::u128_log10_random_small                         ... bench:       1,674.80 ns/iter (+/- 64.70)
+test num::int_log::u128_log_geometric                              ... bench:     356,433.65 ns/iter (+/- 7,903.58)
+test num::int_log::u128_log_random                                 ... bench:   6,718,511.30 ns/iter (+/- 36,637.48)
+test num::int_log::u128_log_random_small                           ... bench:   4,036,105.10 ns/iter (+/- 19,219.40)
+test num::int_log::u16_log10_predictable                           ... bench:       1,491.76 ns/iter (+/- 6.54)
+test num::int_log::u16_log10_random                                ... bench:         305.99 ns/iter (+/- 10.31)
+test num::int_log::u16_log10_random_small                          ... bench:         307.51 ns/iter (+/- 11.69)
+test num::int_log::u16_log_geometric                               ... bench:         401.89 ns/iter (+/- 8.30)
+test num::int_log::u16_log_random                                  ... bench:     248,022.47 ns/iter (+/- 7,437.68)
+test num::int_log::u16_log_random_small                            ... bench:     198,519.35 ns/iter (+/- 5,477.96)
+test num::int_log::u32_log10_predictable                           ... bench:       4,912.43 ns/iter (+/- 71.33)
+test num::int_log::u32_log10_random                                ... bench:       1,540.81 ns/iter (+/- 38.61)
+test num::int_log::u32_log10_random_small                          ... bench:       1,444.71 ns/iter (+/- 8.85)
+test num::int_log::u32_log_geometric                               ... bench:         819.12 ns/iter (+/- 57.43)
+test num::int_log::u32_log_random                                  ... bench:     273,718.09 ns/iter (+/- 3,775.60)
+test num::int_log::u32_log_random_small                            ... bench:     162,534.59 ns/iter (+/- 11,705.06)
+test num::int_log::u64_log10_predictable                           ... bench:       2,444.86 ns/iter (+/- 129.35)
+test num::int_log::u64_log10_random                                ... bench:         901.43 ns/iter (+/- 109.89)
+test num::int_log::u64_log10_random_small                          ... bench:         779.96 ns/iter (+/- 14.46)
+test num::int_log::u64_log_geometric                               ... bench:       2,722.57 ns/iter (+/- 133.42)
+test num::int_log::u64_log_random                                  ... bench:     356,460.12 ns/iter (+/- 16,480.91)
+test num::int_log::u64_log_random_small                            ... bench:     226,112.86 ns/iter (+/- 68,393.17)
+test num::int_log::u8_log10_predictable                            ... bench:         866.90 ns/iter (+/- 99.46)
+test num::int_log::u8_log10_random                                 ... bench:         948.00 ns/iter (+/- 159.62)
+test num::int_log::u8_log10_random_small                           ... bench:         559.69 ns/iter (+/- 153.75)
+test num::int_log::u8_log_geometric                                ... bench:         255.36 ns/iter (+/- 64.89)
+test num::int_log::u8_log_random                                   ... bench:     265,612.45 ns/iter (+/- 25,972.99)
+test num::int_log::u8_log_random_small                             ... bench:     203,783.71 ns/iter (+/- 25,720.31)
+test num::int_pow::checked_pow_variable                            ... bench:      16,207.16 ns/iter (+/- 82.50)
+test num::int_pow::overflowing_pow_variable                        ... bench:      18,229.61 ns/iter (+/- 269.70)
+test num::int_pow::pow_m7                                          ... bench:      10,723.15 ns/iter (+/- 163.42)
+test num::int_pow::pow_m8                                          ... bench:      10,627.56 ns/iter (+/- 43.28)
+test num::int_pow::pow_variable                                    ... bench:       9,519.49 ns/iter (+/- 51.35)
+test num::int_pow::saturating_pow_variable                         ... bench:      16,752.24 ns/iter (+/- 105.48)
+test num::int_pow::wrapping_pow_variable                           ... bench:       8,808.51 ns/iter (+/- 41.75)
+test ops::alloc_obj_with_dtor                                      ... bench:           0.38 ns/iter (+/- 0.00)
+test pattern::ends_with_char                                       ... bench:      58,772.16 ns/iter (+/- 45,284.04)
+test pattern::ends_with_str                                        ... bench:       8,020.24 ns/iter (+/- 46.15)
+test pattern::starts_with_char                                     ... bench:      14,196.34 ns/iter (+/- 63.12)
+test pattern::starts_with_str                                      ... bench:       8,248.79 ns/iter (+/- 51.26)
+test slice::binary_search_l1                                       ... bench:          67.55 ns/iter (+/- 1.05)
+test slice::binary_search_l1_with_dups                             ... bench:          47.91 ns/iter (+/- 1.27)
+test slice::binary_search_l1_worst_case                            ... bench:          12.79 ns/iter (+/- 0.41)
+test slice::binary_search_l2                                       ... bench:         112.80 ns/iter (+/- 19.86)
+test slice::binary_search_l2_with_dups                             ... bench:          87.15 ns/iter (+/- 1.81)
+test slice::binary_search_l2_worst_case                            ... bench:          16.20 ns/iter (+/- 1.41)
+test slice::binary_search_l3                                       ... bench:         171.00 ns/iter (+/- 7.65)
+test slice::binary_search_l3_with_dups                             ... bench:         172.01 ns/iter (+/- 10.23)
+test slice::binary_search_l3_worst_case                            ... bench:          22.94 ns/iter (+/- 0.58)
+test slice::fill_byte_sized                                        ... bench:         948.24 ns/iter (+/- 187.57)
+test slice::fold_to_last                                           ... bench:         247.18 ns/iter (+/- 3.81)
+test slice::rotate_16_usize_4                                      ... bench:         358.64 ns/iter (+/- 7.84)
+test slice::rotate_16_usize_5                                      ... bench:         403.49 ns/iter (+/- 6.70)
+test slice::rotate_64_usize_4                                      ... bench:       5,590.11 ns/iter (+/- 130.10)
+test slice::rotate_64_usize_5                                      ... bench:       8,504.63 ns/iter (+/- 2,253.41)
+test slice::rotate_rgb                                             ... bench:         367.93 ns/iter (+/- 14.32)
+test slice::rotate_u8                                              ... bench:         779.52 ns/iter (+/- 361.29)
+test slice::rotate_usize                                           ... bench:         372.96 ns/iter (+/- 10.82)
+test slice::swap_with_slice_4x_usize_30                            ... bench:       1,735.39 ns/iter (+/- 3.25)
+test slice::swap_with_slice_4x_usize_3000                          ... bench:     193,001.66 ns/iter (+/- 261.29)
+test slice::swap_with_slice_5x_usize_30                            ... bench:       2,120.75 ns/iter (+/- 23.80)
+test slice::swap_with_slice_5x_usize_3000                          ... bench:     242,609.90 ns/iter (+/- 2,363.24)
+test slice::swap_with_slice_rgb_30                                 ... bench:       1,358.30 ns/iter (+/- 5.97)
+test slice::swap_with_slice_rgb_3000                               ... bench:     131,461.85 ns/iter (+/- 2,258.07)
+test slice::swap_with_slice_u8_30                                  ... bench:         605.13 ns/iter (+/- 7.59)
+test slice::swap_with_slice_u8_3000                                ... bench:      43,799.61 ns/iter (+/- 1,462.60)
+test slice::swap_with_slice_usize_30                               ... bench:         606.22 ns/iter (+/- 8.97)
+test slice::swap_with_slice_usize_3000                             ... bench:      45,406.55 ns/iter (+/- 118.54)
+test str::char_count::emoji_huge::case00_libcore                   ... bench:      90,255.36 ns/iter (+/- 2,869.96) = 4016 MB/s
+test str::char_count::emoji_huge::case01_filter_count_cont_bytes   ... bench:   2,434,710.67 ns/iter (+/- 9,957.72) = 148 MB/s
+test str::char_count::emoji_huge::case02_iter_increment            ... bench:     713,930.66 ns/iter (+/- 15,307.74) = 507 MB/s
+test str::char_count::emoji_huge::case03_manual_char_len           ... bench:      45,495.86 ns/iter (+/- 1,051.43) = 7967 MB/s
+test str::char_count::emoji_large::case00_libcore                  ... bench:       1,595.13 ns/iter (+/- 340.53) = 3551 MB/s
+test str::char_count::emoji_large::case01_filter_count_cont_bytes  ... bench:      47,338.72 ns/iter (+/- 5,754.28) = 119 MB/s
+test str::char_count::emoji_large::case02_iter_increment           ... bench:      11,491.65 ns/iter (+/- 2,691.51) = 492 MB/s
+test str::char_count::emoji_large::case03_manual_char_len          ... bench:         725.96 ns/iter (+/- 17.80) = 7812 MB/s
+test str::char_count::emoji_medium::case00_libcore                 ... bench:         219.77 ns/iter (+/- 6.49) = 3232 MB/s
+test str::char_count::emoji_medium::case01_filter_count_cont_bytes ... bench:       4,800.35 ns/iter (+/- 155.07) = 147 MB/s
+test str::char_count::emoji_medium::case02_iter_increment          ... bench:       1,421.50 ns/iter (+/- 95.04) = 498 MB/s
+test str::char_count::emoji_medium::case03_manual_char_len         ... bench:          92.39 ns/iter (+/- 1.89) = 7695 MB/s
+test str::char_count::emoji_small::case00_libcore                  ... bench:          53.49 ns/iter (+/- 6.36) = 1283 MB/s
+test str::char_count::emoji_small::case01_filter_count_cont_bytes  ... bench:         464.21 ns/iter (+/- 8.41) = 146 MB/s
+test str::char_count::emoji_small::case02_iter_increment           ... bench:         141.43 ns/iter (+/- 8.10) = 482 MB/s
+test str::char_count::emoji_small::case03_manual_char_len          ... bench:           9.10 ns/iter (+/- 0.19) = 7555 MB/s
+test str::char_count::emoji_tiny::case00_libcore                   ... bench:          59.39 ns/iter (+/- 0.65) = 135 MB/s
+test str::char_count::emoji_tiny::case01_filter_count_cont_bytes   ... bench:          58.01 ns/iter (+/- 0.65) = 137 MB/s
+test str::char_count::emoji_tiny::case02_iter_increment            ... bench:          20.48 ns/iter (+/- 1.80) = 400 MB/s
+test str::char_count::emoji_tiny::case03_manual_char_len           ... bench:           2.68 ns/iter (+/- 0.17) = 4000 MB/s
+test str::char_count::en_huge::case00_libcore                      ... bench:      86,821.08 ns/iter (+/- 1,430.25) = 3968 MB/s
+test str::char_count::en_huge::case01_filter_count_cont_bytes      ... bench:   2,313,608.23 ns/iter (+/- 4,039.71) = 148 MB/s
+test str::char_count::en_huge::case02_iter_increment               ... bench:   1,842,672.50 ns/iter (+/- 19,292.45) = 186 MB/s
+test str::char_count::en_huge::case03_manual_char_len              ... bench:     113,109.17 ns/iter (+/- 3,903.35) = 3046 MB/s
+test str::char_count::en_large::case00_libcore                     ... bench:       1,639.20 ns/iter (+/- 115.84) = 3284 MB/s
+test str::char_count::en_large::case01_filter_count_cont_bytes     ... bench:      42,756.96 ns/iter (+/- 1,846.83) = 125 MB/s
+test str::char_count::en_large::case02_iter_increment              ... bench:      33,571.84 ns/iter (+/- 845.94) = 160 MB/s
+test str::char_count::en_large::case03_manual_char_len             ... bench:       1,756.74 ns/iter (+/- 21.57) = 3066 MB/s
+test str::char_count::en_medium::case00_libcore                    ... bench:         233.80 ns/iter (+/- 10.28) = 2888 MB/s
+test str::char_count::en_medium::case01_filter_count_cont_bytes    ... bench:       4,963.45 ns/iter (+/- 49.65) = 135 MB/s
+test str::char_count::en_medium::case02_iter_increment             ... bench:       3,946.16 ns/iter (+/- 46.56) = 170 MB/s
+test str::char_count::en_medium::case03_manual_char_len            ... bench:         236.58 ns/iter (+/- 10.57) = 2851 MB/s
+test str::char_count::en_small::case00_libcore                     ... bench:          51.39 ns/iter (+/- 8.75) = 686 MB/s
+test str::char_count::en_small::case01_filter_count_cont_bytes     ... bench:         272.31 ns/iter (+/- 2.11) = 128 MB/s
+test str::char_count::en_small::case02_iter_increment              ... bench:         219.48 ns/iter (+/- 21.03) = 159 MB/s
+test str::char_count::en_small::case03_manual_char_len             ... bench:          31.28 ns/iter (+/- 3.59) = 1129 MB/s
+test str::char_count::en_tiny::case00_libcore                      ... bench:          65.10 ns/iter (+/- 0.52) = 123 MB/s
+test str::char_count::en_tiny::case01_filter_count_cont_bytes      ... bench:          67.01 ns/iter (+/- 0.57) = 119 MB/s
+test str::char_count::en_tiny::case02_iter_increment               ... bench:          54.13 ns/iter (+/- 4.87) = 148 MB/s
+test str::char_count::en_tiny::case03_manual_char_len              ... bench:          11.88 ns/iter (+/- 0.89) = 727 MB/s
+test str::char_count::ru_huge::case00_libcore                      ... bench:      81,619.68 ns/iter (+/- 1,284.21) = 3983 MB/s
+test str::char_count::ru_huge::case01_filter_count_cont_bytes      ... bench:   2,188,015.80 ns/iter (+/- 13,262.74) = 148 MB/s
+test str::char_count::ru_huge::case02_iter_increment               ... bench:   1,185,639.77 ns/iter (+/- 37,120.51) = 274 MB/s
+test str::char_count::ru_huge::case03_manual_char_len              ... bench:     150,734.65 ns/iter (+/- 7,010.63) = 2156 MB/s
+test str::char_count::ru_large::case00_libcore                     ... bench:       1,358.53 ns/iter (+/- 46.81) = 3740 MB/s
+test str::char_count::ru_large::case01_filter_count_cont_bytes     ... bench:      34,039.78 ns/iter (+/- 124.11) = 149 MB/s
+test str::char_count::ru_large::case02_iter_increment              ... bench:      18,269.54 ns/iter (+/- 813.58) = 278 MB/s
+test str::char_count::ru_large::case03_manual_char_len             ... bench:       2,367.74 ns/iter (+/- 51.92) = 2146 MB/s
+test str::char_count::ru_medium::case00_libcore                    ... bench:         195.96 ns/iter (+/- 5.64) = 3256 MB/s
+test str::char_count::ru_medium::case01_filter_count_cont_bytes    ... bench:       4,332.40 ns/iter (+/- 42.70) = 146 MB/s
+test str::char_count::ru_medium::case02_iter_increment             ... bench:       2,295.42 ns/iter (+/- 101.89) = 276 MB/s
+test str::char_count::ru_medium::case03_manual_char_len            ... bench:         297.37 ns/iter (+/- 10.70) = 2138 MB/s
+test str::char_count::ru_small::case00_libcore                     ... bench:          27.79 ns/iter (+/- 1.22) = 1185 MB/s
+test str::char_count::ru_small::case01_filter_count_cont_bytes     ... bench:         221.59 ns/iter (+/- 3.89) = 144 MB/s
+test str::char_count::ru_small::case02_iter_increment              ... bench:         117.69 ns/iter (+/- 7.36) = 273 MB/s
+test str::char_count::ru_small::case03_manual_char_len             ... bench:          14.71 ns/iter (+/- 2.25) = 2285 MB/s
+test str::char_count::ru_tiny::case00_libcore                      ... bench:          81.58 ns/iter (+/- 0.94) = 123 MB/s
+test str::char_count::ru_tiny::case01_filter_count_cont_bytes      ... bench:          79.69 ns/iter (+/- 9.39) = 126 MB/s
+test str::char_count::ru_tiny::case02_iter_increment               ... bench:          41.47 ns/iter (+/- 12.61) = 243 MB/s
+test str::char_count::ru_tiny::case03_manual_char_len              ... bench:           6.05 ns/iter (+/- 0.99) = 1666 MB/s
+test str::char_count::zh_huge::case00_libcore                      ... bench:      75,802.47 ns/iter (+/- 1,930.54) = 3985 MB/s
+test str::char_count::zh_huge::case01_filter_count_cont_bytes      ... bench:   2,032,418.70 ns/iter (+/- 13,350.31) = 148 MB/s
+test str::char_count::zh_huge::case02_iter_increment               ... bench:     731,330.28 ns/iter (+/- 15,288.27) = 413 MB/s
+test str::char_count::zh_huge::case03_manual_char_len              ... bench:      97,234.32 ns/iter (+/- 1,694.49) = 3106 MB/s
+test str::char_count::zh_large::case00_libcore                     ... bench:       1,269.99 ns/iter (+/- 29.47) = 3719 MB/s
+test str::char_count::zh_large::case01_filter_count_cont_bytes     ... bench:      31,997.25 ns/iter (+/- 354.02) = 147 MB/s
+test str::char_count::zh_large::case02_iter_increment              ... bench:      11,458.75 ns/iter (+/- 138.68) = 411 MB/s
+test str::char_count::zh_large::case03_manual_char_len             ... bench:       1,640.56 ns/iter (+/- 327.46) = 2878 MB/s
+test str::char_count::zh_medium::case00_libcore                    ... bench:         196.77 ns/iter (+/- 5.49) = 3010 MB/s
+test str::char_count::zh_medium::case01_filter_count_cont_bytes    ... bench:       3,982.27 ns/iter (+/- 33.88) = 148 MB/s
+test str::char_count::zh_medium::case02_iter_increment             ... bench:       1,440.91 ns/iter (+/- 30.43) = 409 MB/s
+test str::char_count::zh_medium::case03_manual_char_len            ... bench:         193.87 ns/iter (+/- 23.67) = 3056 MB/s
+test str::char_count::zh_small::case00_libcore                     ... bench:          52.19 ns/iter (+/- 8.71) = 692 MB/s
+test str::char_count::zh_small::case01_filter_count_cont_bytes     ... bench:         248.70 ns/iter (+/- 2.10) = 145 MB/s
+test str::char_count::zh_small::case02_iter_increment              ... bench:          88.91 ns/iter (+/- 17.95) = 409 MB/s
+test str::char_count::zh_small::case03_manual_char_len             ... bench:          13.42 ns/iter (+/- 3.72) = 2769 MB/s
+test str::char_count::zh_tiny::case00_libcore                      ... bench:          76.30 ns/iter (+/- 0.36) = 118 MB/s
+test str::char_count::zh_tiny::case01_filter_count_cont_bytes      ... bench:          72.51 ns/iter (+/- 2.00) = 125 MB/s
+test str::char_count::zh_tiny::case02_iter_increment               ... bench:          27.00 ns/iter (+/- 2.88) = 346 MB/s
+test str::char_count::zh_tiny::case03_manual_char_len              ... bench:           5.50 ns/iter (+/- 0.56) = 1800 MB/s
+test str::debug::ascii_escapes                                     ... bench:         910.69 ns/iter (+/- 17.05)
+test str::debug::ascii_only                                        ... bench:         603.57 ns/iter (+/- 2.35)
+test str::debug::mixed                                             ... bench:       4,163.50 ns/iter (+/- 263.27)
+test str::debug::mostly_unicode                                    ... bench:       3,169.46 ns/iter (+/- 144.70)
+test str::debug::some_unicode                                      ... bench:         838.94 ns/iter (+/- 28.97)
+test str::iter::chars_advance_by_0001                              ... bench:          10.24 ns/iter (+/- 0.53)
+test str::iter::chars_advance_by_0010                              ... bench:          66.28 ns/iter (+/- 13.39)
+test str::iter::chars_advance_by_1000                              ... bench:       9,753.84 ns/iter (+/- 205.44)
+test str::str_validate_emoji                                       ... bench:       6,028.91 ns/iter (+/- 3,759.74)
+test tuple::bench_tuple_comparison                                 ... bench:          67.20 ns/iter (+/- 1.23)
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 472 measured; 4 filtered out; finished in 1159.51s

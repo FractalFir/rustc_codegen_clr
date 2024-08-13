@@ -1,5 +1,6 @@
 use std::num::NonZeroU32;
 
+use fxhash::FxHashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{v2::MethodDef, DotnetTypeRef as V1ClassRef};
@@ -64,21 +65,14 @@ impl ClassRef {
         Self::new(name, asm, false, vec![].into())
     }
     pub fn from_v1(dotnet_type: &V1ClassRef, asm: &mut super::Assembly) -> ClassRef {
-        match dotnet_type {
-            V1ClassRef::Full {
-                assembly,
-                name_path,
-                generics,
-                is_valuetype,
-            } => {
-                let name = asm.alloc_string(name_path.clone());
-                let assembly = assembly.clone().map(|assembly| asm.alloc_string(assembly));
-                let generics: Box<[_]> =
-                    generics.iter().map(|gen| Type::from_v1(gen, asm)).collect();
-                ClassRef::new(name, assembly, *is_valuetype, generics)
-            }
-            V1ClassRef::OptimizedRustStruct { name: _ } => panic!(),
-        }
+        let name = asm.alloc_string(dotnet_type.name_path().clone());
+        let assembly = dotnet_type.asm().map(|assembly| asm.alloc_string(assembly));
+        let generics: Box<[_]> = dotnet_type
+            .generics()
+            .iter()
+            .map(|gen| Type::from_v1(gen, asm))
+            .collect();
+        ClassRef::new(name, assembly, dotnet_type.is_valuetype(), generics)
     }
     /// Returns the assembly containing this typedef
     pub fn asm(&self) -> Option<StringIdx> {
@@ -288,7 +282,7 @@ impl ClassDef {
         assert_eq!(self.access(), translated.access());
     }
 
-    pub(crate) fn add_def(&mut self, ref_idx: MethodDefIdx) {
+    pub fn add_def(&mut self, ref_idx: MethodDefIdx) {
         if self.methods.iter().any(|def| *def == ref_idx) {
             // Duplicate, skip I guess?
             // TODO: check if this duplicate matches the current function.
@@ -317,3 +311,21 @@ fn make_unique<T: Eq + std::hash::Hash>(input: &mut Vec<T>) {
     let mut tmp = into_unique(tmp);
     std::mem::swap(&mut tmp, input);
 }
+/*
+fn into_unique_configurable<T, K: Eq + std::hash::Hash>(
+    input: Vec<T>,
+    by: impl Fn(&T) -> K,
+    on_collision: impl Fn(T, T) -> T,
+) -> Vec<T> {
+    let mut map = FxHashMap::default();
+    for item in input {
+        match map.entry(by(&item)) {
+            std::collections::hash_map::Entry::Occupied(occupied) => todo!(),
+            std::collections::hash_map::Entry::Vacant(vacant) => {
+                vacant.insert(item);
+            }
+        }
+    }
+    todo!()
+}
+*/

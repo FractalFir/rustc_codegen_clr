@@ -38,10 +38,6 @@ impl FnSig {
     pub fn output_mut(&mut self) -> &mut Type {
         &mut self.output
     }
-    pub fn opt_types(&mut self, string_map: &mut AsmStringContainer) {
-        self.inputs.iter_mut().for_each(|t| t.opt(string_map));
-        self.output.opt(string_map);
-    }
 }
 impl MemoryUsage for FnSig {
     fn memory_usage(&self, counter: &mut impl crate::utilis::MemoryUsageCounter) -> usize {

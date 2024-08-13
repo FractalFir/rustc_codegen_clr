@@ -3,18 +3,12 @@ use serde::{Deserialize, Serialize};
 use crate::{utilis::MemoryUsage, AsmString, AsmStringContainer, IString, Type};
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Eq, Hash, Debug)]
-pub enum DotnetTypeRef {
-    Full {
-        assembly: Option<IString>,
-        name_path: IString,
-        generics: Vec<Type>,
-        // In cause of `System.BadImageFormatException: Expected value type but got type kind 14` check if `is_valuetype` is always correct!
-        is_valuetype: bool,
-    },
-    // This type is a valuetype in this assmebly, without any generics.
-    OptimizedRustStruct {
-        name: AsmString,
-    },
+pub struct DotnetTypeRef {
+    assembly: Option<IString>,
+    name_path: IString,
+    generics: Vec<Type>,
+    // In cause of `System.BadImageFormatException: Expected value type but got type kind 14` check if `is_valuetype` is always correct!
+    is_valuetype: bool,
 }
 impl DotnetTypeRef {
     #[must_use]
@@ -148,7 +142,7 @@ impl DotnetTypeRef {
         name_path: S2,
     ) -> Self {
         assert!(!name_path.borrow().contains('/'));
-        Self::Full {
+        Self {
             assembly: assembly.map(std::convert::Into::into),
             name_path: name_path.into(),
             generics: Vec::new(),
@@ -157,10 +151,7 @@ impl DotnetTypeRef {
     }
     #[must_use]
     pub const fn is_valuetype(&self) -> bool {
-        match self {
-            DotnetTypeRef::Full { is_valuetype, .. } => *is_valuetype,
-            DotnetTypeRef::OptimizedRustStruct { .. } => true,
-        }
+        self.is_valuetype
     }
     #[must_use]
     pub const fn tpe_prefix(&self) -> &'static str {
@@ -171,10 +162,7 @@ impl DotnetTypeRef {
         }
     }
     pub fn set_valuetype(&mut self, set_valuetype: bool) {
-        match self {
-            DotnetTypeRef::Full { is_valuetype, .. } => *is_valuetype = set_valuetype,
-            DotnetTypeRef::OptimizedRustStruct { .. } => panic!(),
-        }
+        self.is_valuetype = set_valuetype
     }
     #[must_use]
     pub fn array(element: &Type, length: usize) -> Self {
@@ -183,33 +171,19 @@ impl DotnetTypeRef {
     }
 
     pub fn asm(&self) -> Option<&str> {
-        match self {
-            DotnetTypeRef::Full { assembly, .. } => {
-                assembly.as_ref().map(std::convert::AsRef::as_ref)
-            }
-            DotnetTypeRef::OptimizedRustStruct { name: _ } => None,
-        }
+        self.assembly.as_ref().map(std::convert::AsRef::as_ref)
     }
     #[must_use]
     pub fn name_path<'a, 'b: 'a>(&'a self) -> &'a str {
-        match self {
-            DotnetTypeRef::Full { name_path, .. } => name_path,
-            DotnetTypeRef::OptimizedRustStruct { .. } => panic!(),
-        }
+        &self.name_path
     }
 
     #[must_use]
     pub fn generics(&self) -> &[Type] {
-        match self {
-            DotnetTypeRef::Full { generics, .. } => generics,
-            DotnetTypeRef::OptimizedRustStruct { name: _ } => &[],
-        }
+        &self.generics
     }
     pub fn set_generics(&mut self, set_generics: impl Into<Vec<Type>>) {
-        match self {
-            DotnetTypeRef::Full { generics, .. } => *generics = set_generics.into(),
-            DotnetTypeRef::OptimizedRustStruct { name: _ } => panic!(),
-        }
+        self.generics = set_generics.into()
     }
 
     #[must_use]
@@ -276,52 +250,5 @@ impl DotnetTypeRef {
 
     pub fn dictionary_entry() -> Self {
         Self::new(Some("System.Runtime"), "System.Collections.DictionaryEntry")
-    }
-
-    pub(crate) fn opt(&mut self, strings: &mut AsmStringContainer) {
-        match self {
-            DotnetTypeRef::Full {
-                assembly,
-                name_path,
-                generics,
-                is_valuetype,
-            } => {
-                if generics.is_empty() && assembly.is_none() && *is_valuetype {
-                    *self = DotnetTypeRef::OptimizedRustStruct {
-                        name: strings.alloc(name_path.clone()),
-                    }
-                }
-            }
-
-            DotnetTypeRef::OptimizedRustStruct { .. } => (),
-        }
-    }
-}
-impl MemoryUsage for DotnetTypeRef {
-    fn memory_usage(&self, counter: &mut impl crate::utilis::MemoryUsageCounter) -> usize {
-        match self {
-            DotnetTypeRef::Full {
-                assembly,
-                name_path,
-                generics,
-                ..
-            } => {
-                let tpe_name = std::any::type_name::<Self>();
-                let self_size = std::mem::size_of::<Self>();
-                let asm_size = assembly.memory_usage(counter);
-                let name_size = name_path.memory_usage(counter);
-                let generic_size = generics.memory_usage(counter);
-
-                let size = self_size + asm_size + name_size + generic_size;
-                counter.add_type(tpe_name, size);
-                size
-            }
-            DotnetTypeRef::OptimizedRustStruct { name: _ } => {
-                let tpe_name = std::any::type_name::<Self>();
-                let self_size = std::mem::size_of::<Self>();
-                counter.add_type(tpe_name, self_size);
-                self_size
-            }
-        }
     }
 }

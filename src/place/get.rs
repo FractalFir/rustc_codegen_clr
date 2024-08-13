@@ -1,7 +1,7 @@
 use crate::{assembly::MethodCompileCtx, r#type::Type};
 use cilly::{
     call, call_site::CallSite, cil_node::CILNode, conv_usize, field_desc::FieldDescriptor,
-    fn_sig::FnSig, ld_field, ptr,
+    fn_sig::FnSig, ld_field, ldc_u64, ptr,
 };
 use rustc_middle::{
     mir::{Place, PlaceElem},
@@ -139,8 +139,7 @@ fn place_elem_get<'a>(
             let curr_ty = curr_type
                 .as_ty()
                 .expect("INVALID PLACE: Indexing into enum variant???");
-            let index = CILNode::LdcU64(*offset);
-            assert!(!from_end, "Indexing slice form end");
+
             match curr_ty.kind() {
                 TyKind::Slice(inner) => {
                     let inner = ctx.monomorphize(*inner);
@@ -152,7 +151,16 @@ fn place_elem_get<'a>(
                         crate::DATA_PTR.into(),
                     );
                     let metadata = FieldDescriptor::new(slice, Type::USize, crate::METADATA.into());
-
+                    let index = if *from_end {
+                        //eprintln!("Slice index from end is:{offset}");
+                        CILNode::Sub(
+                            Box::new(ld_field!(addr_calc.clone(), metadata.clone())),
+                            Box::new(conv_usize!(ldc_u64!(*offset))),
+                        )
+                    } else {
+                        conv_usize!(ldc_u64!(*offset))
+                        //ops.extend(derf_op);
+                    };
                     let addr = ld_field!(addr_calc.clone(), data_pointer)
                         .cast_ptr(ptr!(inner_type.clone()))
                         + call!(
@@ -172,15 +180,20 @@ fn place_elem_get<'a>(
                     let array_type = ctx.type_from_cache(curr_ty);
                     let array_dotnet = array_type.as_dotnet().expect("Non array type");
                     //eprintln!("WARNING: ConstantIndex has required min_length of {min_length}, but bounds checking on const access not supported yet!");
-                    call!(
-                        CallSite::new(
-                            Some(array_dotnet),
-                            "get_Item".into(),
-                            FnSig::new(&[Type::Ptr(array_type.into()), Type::USize], element),
-                            false,
-                        ),
-                        [addr_calc, CILNode::ZeroExtendToUSize(index.into())]
-                    )
+                    if *from_end {
+                        todo!("Can't index array from end!");
+                    } else {
+                        let index = CILNode::LdcU64(*offset);
+                        call!(
+                            CallSite::new(
+                                Some(array_dotnet),
+                                "get_Item".into(),
+                                FnSig::new(&[Type::Ptr(array_type.into()), Type::USize], element),
+                                false,
+                            ),
+                            [addr_calc, CILNode::ZeroExtendToUSize(index.into())]
+                        )
+                    }
                 }
                 _ => {
                     rustc_middle::ty::print::with_no_trimmed_paths! { todo!("Can't index into {curr_ty}!")}
