@@ -38,6 +38,7 @@ pub mod int;
 pub mod iter;
 pub mod java_exporter;
 pub mod method;
+pub mod opt;
 pub mod strings;
 pub mod tpe;
 #[test]

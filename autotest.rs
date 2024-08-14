@@ -1,3 +1,4 @@
+#!/usr/bin/env -S cargo +nightly -Zscript
 use core::str;
 use std::collections::HashSet;
 

@@ -32,6 +32,16 @@ impl BasicBlock {
         };
         self.roots().iter().copied().chain(handler_iter)
     }
+    pub fn iter_roots_mut(&mut self) -> impl Iterator<Item = &mut RootIdx> + '_ {
+        let handler_iter: Box<dyn Iterator<Item = &mut RootIdx>> =
+            match self.handler.as_mut().map(|b| b.as_mut()) {
+                Some(handler) => {
+                    Box::new(handler.iter_mut().flat_map(|block| block.iter_roots_mut()))
+                }
+                None => Box::new(std::iter::empty()),
+            };
+        self.roots.iter_mut().chain(handler_iter)
+    }
     pub fn handler(&self) -> Option<&[BasicBlock]> {
         self.handler.as_ref().map(|b| b.as_ref())
     }

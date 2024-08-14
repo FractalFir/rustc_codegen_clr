@@ -11,8 +11,8 @@ use crate::cil_root::CILRoot as V1Root;
 //use crate::cil_node::CILNode as V1Node;
 #[derive(PartialEq, Hash, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum CILRoot {
-    StLoc(u64, NodeIdx),
-    StArg(u64, NodeIdx),
+    StLoc(u32, NodeIdx),
+    StArg(u32, NodeIdx),
     Ret(NodeIdx),
     Pop(NodeIdx),
     Throw(NodeIdx),
@@ -81,6 +81,57 @@ impl IntoBiMapIndex for RootIdx {
     }
 }
 impl CILRoot {
+    /// Returns a mutable reference to all the arguments of this CIL root, in the order they are evaluated.
+    pub fn nodes_mut(&mut self) -> Box<[&mut NodeIdx]> {
+        match self {
+            CILRoot::StLoc(_, tree)
+            | CILRoot::StArg(_, tree)
+            | CILRoot::Ret(tree)
+            | CILRoot::Pop(tree)
+            | CILRoot::Throw(tree)
+            | CILRoot::SetStaticField { val: tree, .. } => [tree].into(),
+            CILRoot::SourceFileInfo { .. }
+            | CILRoot::ExitSpecialRegion { .. }
+            | CILRoot::VoidRet
+            | CILRoot::Break
+            | CILRoot::Nop
+            | CILRoot::ReThrow => [].into(),
+            CILRoot::Branch(info) => {
+                let (_, _, cond) = info.as_mut();
+                let Some(cond) = cond else { return [].into() };
+                match cond {
+                    BranchCond::True(cond) | BranchCond::False(cond) => [cond].into(),
+                    BranchCond::Eq(lhs, rhs)
+                    | BranchCond::Ne(lhs, rhs)
+                    | BranchCond::Lt(lhs, rhs, _)
+                    | BranchCond::Gt(lhs, rhs, _) => [lhs, rhs].into(),
+                }
+            }
+            CILRoot::SetField(info) => {
+                let (_, addr, val) = info.as_mut();
+                [addr, val].into()
+            }
+            CILRoot::Call(info) => many_mut(&mut info.1).into(),
+            CILRoot::StInd(info) => {
+                let (addr, val, _, _) = info.as_mut();
+                [addr, val].into()
+            }
+            CILRoot::InitBlk(info) => {
+                let (addr, val, len) = info.as_mut();
+                [addr, val, len].into()
+            }
+            CILRoot::CpBlk(info) => {
+                let (dst, src, len) = info.as_mut();
+                [dst, src, len].into()
+            }
+            CILRoot::CallI(info) => {
+                let (ptr, _, args) = info.as_mut();
+                let mut args = many_mut(args);
+                args.push(ptr);
+                args.into()
+            }
+        }
+    }
     pub fn from_v1(v1: &V1Root, asm: &mut Assembly) -> Self {
         match v1 {
             V1Root::SourceFileInfo(sfi) => {
@@ -114,11 +165,11 @@ impl CILRoot {
             }
             V1Root::STLoc { local, tree } => {
                 let tree = CILNode::from_v1(tree, asm);
-                Self::StLoc(*local as u64, asm.alloc_node(tree))
+                Self::StLoc(*local, asm.alloc_node(tree))
             }
             V1Root::STArg { arg, tree } => {
                 let tree = CILNode::from_v1(tree, asm);
-                Self::StArg(*arg as u64, asm.alloc_node(tree))
+                Self::StArg(*arg, asm.alloc_node(tree))
             }
             V1Root::GoTo { target, sub_target } => {
                 Self::Branch(Box::new((*target, *sub_target, None)))
@@ -374,4 +425,62 @@ impl CILRoot {
             _ => todo!("v1:{v1:?}"),
         }
     }
+}
+/// Changes a mutable reference to a slice to an vec of mutable references to the elements.
+fn many_mut<T>(input: &mut [T]) -> Vec<&mut T> {
+    let input_len = input.len();
+    let res = match input.len() {
+        0 => [].into(),
+        1 => [&mut input[0]].into(),
+        2 => {
+            let (a, b) = input.split_at_mut(1);
+
+            [&mut a[0], &mut b[0]].into()
+        }
+        3 => {
+            let (a, b) = input.split_at_mut(1);
+            let (b, c) = b.split_at_mut(1);
+            [&mut a[0], &mut b[0], &mut c[0]].into()
+        }
+        4 => {
+            let (lhs, rhs) = input.split_at_mut(2);
+            let (a, b) = lhs.split_at_mut(1);
+            let (c, d) = rhs.split_at_mut(1);
+            [&mut a[0], &mut b[0], &mut c[0], &mut d[0]].into()
+        }
+        _ => {
+            let half = input.len() / 2;
+            let (lhs, rhs) = input.split_at_mut(half);
+            let mut res = many_mut(lhs);
+            res.extend(many_mut(rhs));
+            res
+        }
+    };
+    assert_eq!(res.len(), input_len);
+    res
+}
+#[test]
+fn test_many_mut() {
+    // 0 elements
+    many_mut::<i32>(&mut []);
+    // 1 element
+    *many_mut(&mut [1])[0] = 1;
+    // 2 elements
+    *many_mut(&mut [1, 2])[0] = 1;
+    *many_mut(&mut [1, 2])[1] = 2;
+    // 3 elements
+    *many_mut(&mut [1, 2, 3])[0] = 1;
+    *many_mut(&mut [1, 2, 3])[1] = 2;
+    *many_mut(&mut [1, 2, 3])[2] = 3;
+    // 4 elements
+    *many_mut(&mut [1, 2, 3, 4])[0] = 1;
+    *many_mut(&mut [1, 2, 3, 4])[1] = 2;
+    *many_mut(&mut [1, 2, 3, 4])[2] = 3;
+    *many_mut(&mut [1, 2, 3, 4])[3] = 4;
+    // 5 elements
+    *many_mut(&mut [1, 2, 3, 4, 5])[0] = 1;
+    *many_mut(&mut [1, 2, 3, 4, 5])[1] = 2;
+    *many_mut(&mut [1, 2, 3, 4, 5])[2] = 3;
+    *many_mut(&mut [1, 2, 3, 4, 5])[3] = 4;
+    *many_mut(&mut [1, 2, 3, 4, 5])[4] = 5;
 }

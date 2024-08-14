@@ -6,9 +6,9 @@ fn should_panic() {
     panic!();
 }
 fn main() {
-    select_nth_unstable();
+    //select_nth_unstable();
 }
-
+/*
 fn select_nth_unstable() {
     use core::cmp::Ordering::{Equal, Greater, Less};
 
@@ -120,4 +120,20 @@ fn select_nth_unstable() {
     v.select_nth_unstable(0);
     assert!(v == [0xDEADBEEF]);
     println!("v:{v:?}");
+}
+*/
+pub fn test(start: u32, end: u32) -> u32 {
+    let mut sum = 0;
+    for i in start..end {
+        sum += i;
+    }
+    sum
+}
+pub fn test2(mut start: u32, end: u32) -> u32 {
+    let mut sum = 0;
+    while start < end {
+        sum += start;
+        start += 1;
+    }
+    sum
 }

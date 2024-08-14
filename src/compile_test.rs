@@ -149,9 +149,9 @@ macro_rules! compare_tests {
                         let stderr = String::from_utf8(out.stderr)
                             .expect("rustc error contained non-UTF8 characters.");
                         eprintln!("stdout:\n{stdout}\nstderr:\n{stderr}");
-                        /*if stderr.contains("error"){
+                        if stderr.contains("error") {
                             should_panic = true;
-                        }*/
+                        }
                     }
                     if *crate::config::DRY_RUN {
                         return;
@@ -220,9 +220,9 @@ macro_rules! compare_tests {
                         let stderr = String::from_utf8(out.stderr)
                             .expect("rustc error contained non-UTF8 characters.");
                         eprintln!("stdout:\n{stdout}\nstderr:\n{stderr}");
-                        /*if stderr.contains("error"){
+                        if stderr.contains("error") {
                             should_panic = true;
-                        }*/
+                        }
                     }
                     let exec_path = concat!("./", stringify!($test_name));
                     drop(lock);

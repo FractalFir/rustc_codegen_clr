@@ -15,18 +15,18 @@ libc = "0.2.153"
 libloading = "0.8.1"
 
 postcard = { version = "1.0.8", features = ["use-std"] }
-rayon = "1.10.0"
+
 rustc-demangle = "0.1.23"
 cilly = {path = "./cilly"}
 serde = { version = "1.0.183", features = ["derive"] }
-strsim = "0.11.1"
+
 
 fxhash = "0.2.1"
 
 [profile.dev.package.fxhash]
 opt-level = 3
 [lib]
-crate-type=["rlib", "cdylib"]
+crate-type = ["dylib"]
 
 [workspace]
 members = [ "cilly",

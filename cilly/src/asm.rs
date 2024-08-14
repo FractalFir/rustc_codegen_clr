@@ -12,6 +12,7 @@ use crate::{
     static_field_desc::StaticFieldDescriptor,
     type_def::TypeDef,
     utilis::MemoryUsage,
+    v2::opt::SideEffectInfoCache,
     DotnetTypeRef, FnSig, IString, Type,
 };
 
@@ -193,7 +194,8 @@ impl Assembly {
         }
 
         let main_module = self.inner.main_module();
-        let def = crate::v2::MethodDef::from_v1(&method, &mut self.inner, main_module);
+        let mut def = crate::v2::MethodDef::from_v1(&method, &mut self.inner, main_module);
+        def.optimize(&mut self.inner, &mut SideEffectInfoCache::default(), 4);
         self.inner.new_method(def);
     }
 

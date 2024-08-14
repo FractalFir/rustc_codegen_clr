@@ -1,3 +1,9 @@
+#!/usr/bin/env -S cargo +nightly -Zscript
+---cargo
+[dependencies]
+rayon = "1.10.0"
+strsim = "0.11.1"
+---
 use std::{io::Write, process::Command, sync::atomic::AtomicU64};
 static LINES: AtomicU64 = AtomicU64::new(0);
 fn run_test(test_id: u64, is_release: bool) -> Option<f64> {
@@ -90,7 +96,7 @@ fn gen_file(test_id: u64, generator: &str) {
     assert!(cout.stderr.is_empty());
     let src = cout.stdout;
     LINES.fetch_add(
-        bytecount::count(&src, b'\n') as u64,
+        src.iter().filter(|byte| **byte == b'\n').count() as u64,
         std::sync::atomic::Ordering::Relaxed,
     );
     let mut file = std::fs::File::create(rust_src).unwrap();

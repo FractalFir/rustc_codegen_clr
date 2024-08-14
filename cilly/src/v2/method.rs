@@ -289,12 +289,12 @@ impl MethodDef {
         }
     }
 }
-
+pub type LocalDef = (Option<StringIdx>, TypeIdx);
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum MethodImpl {
     MethodBody {
         blocks: Vec<BasicBlock>,
-        locals: Vec<(Option<StringIdx>, TypeIdx)>,
+        locals: Vec<LocalDef>,
     },
     Extern {
         lib: StringIdx,

@@ -752,7 +752,7 @@ impl CILNode {
                 let (val, tpe) = combined.as_ref();
                 let tpe = ClassRef::from_v1(tpe, asm);
                 let tpe = asm.alloc_class_ref(tpe);
-                let tpe = asm.alloc_type(tpe.into());
+                let tpe = asm.alloc_type(tpe);
                 let val = Self::from_v1(val, asm);
 
                 Self::IsInst(asm.alloc_node(val), tpe)
@@ -761,7 +761,7 @@ impl CILNode {
                 let (val, tpe) = combined.as_ref();
                 let tpe = ClassRef::from_v1(tpe, asm);
                 let tpe = asm.alloc_class_ref(tpe);
-                let tpe = asm.alloc_type(tpe.into());
+                let tpe = asm.alloc_type(tpe);
                 let val = Self::from_v1(val, asm);
 
                 Self::CheckedCast(asm.alloc_node(val), tpe)

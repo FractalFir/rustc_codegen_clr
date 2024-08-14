@@ -161,8 +161,8 @@ impl Assembly {
         self.roots.alloc(val)
     }
 
-    pub fn alloc_type(&mut self, tpe: Type) -> TypeIdx {
-        self.types.alloc(tpe)
+    pub fn alloc_type(&mut self, tpe: impl Into<Type>) -> TypeIdx {
+        self.types.alloc(tpe.into())
     }
 
     pub(crate) fn get_node(&self, key: NodeIdx) -> &CILNode {
