@@ -24,9 +24,10 @@ extern crate core;
 extern "C" {
     fn atomic_xor_u32(addr: &mut u32, xorand: u32) -> u32;
     fn atomic_nand_u32(addr: &mut u32, xorand: u32) -> u32;
+    //fn atomic_cmpxchng_i32(addr: *mut i32, bytes: i32) -> i32;
 }
 use core::ptr::addr_of_mut;
-
+//fn compare_exchange_byte(addr:&mut u8, byte:u8)->u8
 fn main() {
     let mut u: u32 = black_box(20);
     test_eq!(

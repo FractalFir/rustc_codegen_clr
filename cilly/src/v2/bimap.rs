@@ -30,6 +30,14 @@ impl<Key: IntoBiMapIndex + Eq + Hash + Clone + Debug, Value: Eq + Hash + Clone +
     pub fn get(&self, key: Key) -> &Value {
         self.0.get(key.as_bimap_index().get() as usize - 1).unwrap()
     }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
 }
 pub type BiMapIndex = NonZeroU32;
 pub trait IntoBiMapIndex {

@@ -8,6 +8,7 @@ fn main() {
     let mut failures: HashSet<String> = HashSet::default();
     let mut broken: Vec<String> = Vec::default();
     let timeout = std::env::args().nth(2).unwrap_or("20".to_owned());
+    let mut shuffles = 4;
     loop {
         let mut cmd = std::process::Command::new("timeout");
         cmd.arg("-k");
@@ -15,6 +16,11 @@ fn main() {
         cmd.arg(&timeout);
         cmd.arg("dotnet");
         cmd.arg(exec_path.clone());
+        if shuffles > 0 {
+            cmd.arg("--shuffle");
+            cmd.arg("-Z");
+            cmd.arg("unstable-options");
+        }
         cmd.arg("--test-threads=1");
         cmd.args(broken.iter().flat_map(|arg| ["--skip", arg]));
         println!("\n{cmd:?}");
@@ -56,8 +62,12 @@ fn main() {
             | stderr.contains("finished")
             | stdout.contains("finished")
         {
-            println!("search done.");
-            break;
+            if shuffles > 0 {
+                shuffles -= 1;
+            } else {
+                println!("search done.");
+                break;
+            }
         }
     }
     println!();

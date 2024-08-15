@@ -1,6 +1,8 @@
 use super::{
     bimap::{calculate_hash, BiMap, BiMapIndex, IntoBiMapIndex},
+    cache::{CachedAssemblyInfo, NonMaxU32, StackUsage},
     cilnode::{BinOp, MethodKind, UnOp},
+    opt::{OptFuel, SideEffectInfoCache},
     Access, CILNode, CILRoot, ClassDef, ClassDefIdx, ClassRef, ClassRefIdx, Const, Exporter,
     FieldDesc, FieldIdx, FnSig, MethodDef, MethodDefIdx, MethodRef, MethodRefIdx, NodeIdx, RootIdx,
     SigIdx, StaticFieldDesc, StaticFieldIdx, StringIdx, Type, TypeIdx,
@@ -11,6 +13,7 @@ use fxhash::{FxHashMap, FxHashSet};
 use lazy_static::*;
 use serde::{Deserialize, Serialize};
 use std::any::type_name;
+
 #[derive(Default, Serialize, Deserialize, Eq, PartialEq, Clone, Debug)]
 pub(super) struct IStringWrapper(pub(super) IString);
 impl std::hash::Hash for IStringWrapper {
@@ -25,7 +28,9 @@ pub type MissingMethodPatcher =
     FxHashMap<StringIdx, Box<dyn Fn(MethodRefIdx, &mut Assembly) -> MethodImpl>>;
 #[derive(Default, Serialize, Deserialize, Clone)]
 pub struct Assembly {
+    /// A list of strings used in this assembly
     strings: BiMap<StringIdx, IStringWrapper>,
+    /// A list of all types in this assembly
     types: BiMap<TypeIdx, Type>,
     class_refs: BiMap<ClassRefIdx, ClassRef>,
     class_defs: FxHashMap<ClassDefIdx, ClassDef>,
@@ -36,8 +41,57 @@ pub struct Assembly {
     fields: BiMap<FieldIdx, FieldDesc>,
     statics: BiMap<StaticFieldIdx, StaticFieldDesc>,
     method_defs: FxHashMap<MethodDefIdx, MethodDef>,
+    // Cache containing information about the stack usage of a CIL node.
+    //#[serde(skip)]
+    //cache: CachedAssemblyInfo<NodeIdx, NonMaxU32, StackUsage>,
 }
 impl Assembly {
+    pub fn fuel_from_env(&self) -> OptFuel {
+        match std::env::var("OPT_FUEL") {
+            Ok(fuel) => match fuel.parse::<u32>() {
+                Ok(fuel) => OptFuel::new(fuel),
+                Err(_) => self.default_fuel(),
+            },
+            Err(_) => self.default_fuel(),
+        }
+    }
+    pub fn default_fuel(&self) -> OptFuel {
+        OptFuel::new((self.method_defs.len() * 4 + self.roots.len()) as u32)
+    }
+    pub(crate) fn borrow_methoddef(&mut self, def_id: MethodDefIdx) -> MethodDef {
+        self.method_defs.remove(&def_id).unwrap()
+    }
+    pub(crate) fn return_methoddef(&mut self, def_id: MethodDefIdx, def: MethodDef) {
+        assert!(
+            self.method_defs.insert(def_id, def).is_none(),
+            "Could not return a methoddef, because a method def is already present."
+        );
+    }
+    /// Optimizes the assembly uitill all fuel is consumed, or no more progress can be made
+    pub fn opt(&mut self, fuel: &mut OptFuel) {
+        let mut cache = SideEffectInfoCache::default();
+        while !fuel.exchausted() {
+            let prev = fuel.clone();
+            self.opt_sigle_pass(fuel, &mut cache);
+            // No fuel consumed, progress can't be made, break.
+            if *fuel == prev {
+                break;
+            }
+            let _pass_min_cost: bool = fuel.consume(1);
+        }
+    }
+    /// Optimizes the assembly, cosuming some fuel. This performs a single optimization pass.
+    pub fn opt_sigle_pass(&mut self, fuel: &mut OptFuel, cache: &mut SideEffectInfoCache) {
+        let method_def_idxs: Box<[_]> = self.method_defs.keys().copied().collect();
+        for method in method_def_idxs {
+            let mut tmp_method = self.borrow_methoddef(method);
+            tmp_method.optimize(self, cache, fuel);
+            self.return_methoddef(method, tmp_method);
+            if fuel.exchausted() {
+                break;
+            }
+        }
+    }
     pub fn find_methods_matching<'a, P: std::str::pattern::Pattern + Clone + 'a>(
         &self,
         pat: P,

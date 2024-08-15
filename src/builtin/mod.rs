@@ -245,55 +245,64 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
     let mut __rust_alloc = Method::new(
         AccessModifer::Private,
         MethodType::Static,
-        FnSig::new(&[Type::USize, Type::USize], Type::Ptr(Type::U8.into())),
+        FnSig::new(&[Type::USize, Type::USize], ptr!(Type::U8)),
         "__rust_alloc",
-        vec![],
-        if *crate::config::CHECK_ALLOCATIONS {
-            vec![
-                BasicBlock::new(
-                    vec![CILRoot::BTrue {
-                        target: 2,
-                        sub_target: 0,
-                        cond: lt_un!(conv_usize!(ldc_u64!(MAX_ALLOC_SIZE)), CILNode::LDArg(0)),
-                    }
-                    .into()],
-                    0,
-                    None,
-                ),
-                BasicBlock::new(
-                    vec![CILRoot::Ret {
+        vec![(None, ptr!(Type::U8))],
+        vec![
+            BasicBlock::new(
+                vec![
+                    CILRoot::STLoc {
+                        local: 0,
                         tree: call!(
                             CallSite::aligned_alloc(),
                             [CILNode::LDArg(0), CILNode::LDArg(1)]
-                        ),
+                        )
+                        .cast_ptr(ptr!(Type::U8)),
                     }
-                    .into()],
+                    .into(),
+                    CILRoot::GoTo {
+                        target: 0,
+                        sub_target: 2,
+                    }
+                    .into(),
+                    CILRoot::JumpingPad {
+                        source: 0,
+                        target: 2,
+                    }
+                    .into(),
+                ],
+                0,
+                Some(Handler::Blocks(vec![BasicBlock::new(
+                    vec![
+                        CILRoot::STLoc {
+                            local: 0,
+                            tree: conv_usize!(ldc_i32!(0)).cast_ptr(ptr!(Type::U8)),
+                        }
+                        .into(),
+                        CILRoot::GoTo {
+                            target: 0,
+                            sub_target: 2,
+                        }
+                        .into(),
+                        CILRoot::JumpingPad {
+                            source: 0,
+                            target: 2,
+                        }
+                        .into(),
+                    ],
                     1,
                     None,
-                ),
-                BasicBlock::new(
-                    vec![
-                        CILRoot::throw(&format!("Max alloc size of {MAX_ALLOC_SIZE} exceeded."))
-                            .into(),
-                    ],
-                    2,
-                    None,
-                ),
-            ]
-        } else {
-            vec![BasicBlock::new(
+                )])),
+            ),
+            BasicBlock::new(
                 vec![CILRoot::Ret {
-                    tree: call!(
-                        CallSite::aligned_alloc(),
-                        [CILNode::LDArg(0), CILNode::LDArg(1)]
-                    )
-                    .cast_ptr(ptr!(Type::U8)),
+                    tree: CILNode::LDLoc(0),
                 }
                 .into()],
-                0,
+                2,
                 None,
-            )]
-        },
+            ),
+        ],
         vec![Some("size".into()), Some("align".into())],
     );
 
@@ -301,7 +310,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
     let mut __rust_alloc_zeroed = Method::new(
         AccessModifer::Private,
         MethodType::Static,
-        FnSig::new(&[Type::USize, Type::USize], Type::Ptr(Type::U8.into())),
+        FnSig::new(&[Type::USize, Type::USize], ptr!(Type::U8)),
         "__rust_alloc_zeroed",
         vec![(Some("alloc_ptr".into()), ptr!((Type::U8)))],
         if *crate::config::CHECK_ALLOCATIONS {
@@ -370,10 +379,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
     let mut __rust_dealloc = Method::new(
         AccessModifer::Private,
         MethodType::Static,
-        FnSig::new(
-            &[Type::Ptr(Type::U8.into()), Type::USize, Type::USize],
-            Type::Void,
-        ),
+        FnSig::new(&[ptr!(Type::U8), Type::USize, Type::USize], Type::Void),
         "__rust_dealloc",
         vec![],
         vec![BasicBlock::new(
@@ -430,13 +436,8 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
         AccessModifer::Private,
         MethodType::Static,
         FnSig::new(
-            &[
-                Type::Ptr(Type::U8.into()),
-                Type::USize,
-                Type::USize,
-                Type::USize,
-            ],
-            Type::Ptr(Type::U8.into()),
+            &[ptr!(Type::U8), Type::USize, Type::USize, Type::USize],
+            ptr!(Type::U8),
         ),
         "__rust_realloc",
         vec![],

@@ -8,6 +8,7 @@ use crate::{v2::MethodDef, DotnetTypeRef as V1ClassRef};
 use super::{
     access::Access,
     bimap::{BiMapIndex, IntoBiMapIndex},
+    opt::{OptFuel, SideEffectInfoCache},
     Assembly, MethodDefIdx, StringIdx, Type,
 };
 
@@ -289,6 +290,9 @@ impl ClassDef {
             return;
         }
         self.methods_mut().push(ref_idx);
+    }
+    /// Optimizes this class definition, consuming fuel
+    pub fn opt(&mut self, fuel: &mut OptFuel, asm: &mut Assembly, cache: &mut SideEffectInfoCache) {
     }
 }
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Copy, Serialize, Deserialize)]

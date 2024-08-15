@@ -3,10 +3,30 @@ use std::collections::HashMap;
 use crate::v2::{
     asm::ILASM_FLAVOUR, cilnode::MethodKind, il_exporter::ILExporter, Assembly, MethodDef,
 };
-
+#[derive(Clone, Eq, PartialEq, Debug)]
+pub struct OptFuel(u32);
+impl OptFuel {
+    /// Creates *fuel* fuel
+    pub fn new(fuel: u32) -> Self {
+        Self(fuel)
+    }
+    /// Decreases the ammount of fuel avalible if fuel present, and returns false if not enough fuel present.
+    pub fn consume(&mut self, cost: u32) -> bool {
+        if self.0 > cost {
+            self.0 -= 1;
+            true
+        } else {
+            false
+        }
+    }
+    /// Checks if no fuel remains
+    pub fn exchausted(&self) -> bool {
+        self.0 == 0
+    }
+}
 use super::{
-    method::LocalDef, BasicBlock, BinOp, CILIter, CILNode, CILRoot, Float, Int, MethodImpl,
-    NodeIdx, Type,
+    method::LocalDef, BasicBlock, BinOp, CILIter, CILIterElem, CILNode, CILRoot, Float, Int,
+    MethodImpl, NodeIdx, Type,
 };
 impl CILNode {
     pub fn propagate_locals(
@@ -15,24 +35,28 @@ impl CILNode {
         idx: u32,
         tpe: Type,
         new_node: NodeIdx,
+        fuel: &mut OptFuel,
     ) -> Self {
         match self {
             CILNode::Const(_) => self.clone(),
             CILNode::BinOp(rhs, lhs, biop) => {
                 let rhs = asm.get_node(*rhs).clone();
                 let lhs = asm.get_node(*lhs).clone();
-                let rhs = rhs.propagate_locals(asm, idx, tpe, new_node);
-                let lhs = lhs.propagate_locals(asm, idx, tpe, new_node);
+                let rhs = rhs.propagate_locals(asm, idx, tpe, new_node, fuel);
+                let lhs = lhs.propagate_locals(asm, idx, tpe, new_node, fuel);
                 CILNode::BinOp(asm.alloc_node(rhs), asm.alloc_node(lhs), *biop)
             }
             CILNode::UnOp(input, unop) => {
                 let input = asm.get_node(*input).clone();
-                let input = input.propagate_locals(asm, idx, tpe, new_node);
+                let input = input.propagate_locals(asm, idx, tpe, new_node, fuel);
                 let input = asm.alloc_node(input);
                 CILNode::UnOp(input, unop.clone())
             }
             CILNode::LdLoc(loc) => {
                 if *loc == idx {
+                    if !fuel.consume(1) {
+                        return self.clone();
+                    }
                     match tpe {
                         Type::Float(_)
                         | Type::Bool
@@ -57,7 +81,7 @@ impl CILNode {
                 extend,
             } => {
                 let input = asm.get_node(*input).clone();
-                let input = input.propagate_locals(asm, idx, tpe, new_node);
+                let input = input.propagate_locals(asm, idx, tpe, new_node, fuel);
                 let input = asm.alloc_node(input);
                 CILNode::IntCast {
                     input,
@@ -71,7 +95,7 @@ impl CILNode {
                 is_signed,
             } => {
                 let input = asm.get_node(*input).clone();
-                let input = input.propagate_locals(asm, idx, tpe, new_node);
+                let input = input.propagate_locals(asm, idx, tpe, new_node, fuel);
                 let input = asm.alloc_node(input);
                 CILNode::FloatCast {
                     input,
@@ -81,19 +105,19 @@ impl CILNode {
             }
             CILNode::RefToPtr(ptr) => {
                 let ptr = asm.get_node(*ptr).clone();
-                let ptr = ptr.propagate_locals(asm, idx, tpe, new_node);
+                let ptr = ptr.propagate_locals(asm, idx, tpe, new_node, fuel);
                 let ptr = asm.alloc_node(ptr);
                 CILNode::RefToPtr(ptr)
             }
             CILNode::PtrCast(ptr, cast_res) => {
                 let ptr = asm.get_node(*ptr).clone();
-                let ptr = ptr.propagate_locals(asm, idx, tpe, new_node);
+                let ptr = ptr.propagate_locals(asm, idx, tpe, new_node, fuel);
                 let ptr = asm.alloc_node(ptr);
                 CILNode::PtrCast(ptr, cast_res.clone())
             }
             CILNode::LdFieldAdress { addr, field } => {
                 let addr = asm.get_node(*addr).clone();
-                let addr = addr.propagate_locals(asm, idx, tpe, new_node);
+                let addr = addr.propagate_locals(asm, idx, tpe, new_node, fuel);
                 let addr = asm.alloc_node(addr);
                 CILNode::LdFieldAdress {
                     addr,
@@ -102,7 +126,7 @@ impl CILNode {
             }
             CILNode::LdField { addr, field } => {
                 let addr = asm.get_node(*addr).clone();
-                let addr = addr.propagate_locals(asm, idx, tpe, new_node);
+                let addr = addr.propagate_locals(asm, idx, tpe, new_node, fuel);
                 let addr = asm.alloc_node(addr);
                 CILNode::LdField {
                     addr,
@@ -115,7 +139,7 @@ impl CILNode {
                 volitale,
             } => {
                 let addr = asm.get_node(*addr).clone();
-                let addr = addr.propagate_locals(asm, idx, tpe, new_node);
+                let addr = addr.propagate_locals(asm, idx, tpe, new_node, fuel);
                 let addr = asm.alloc_node(addr);
                 CILNode::LdInd {
                     addr,
@@ -135,7 +159,7 @@ impl CILNode {
             | CILNode::LocAllocAlgined { .. } => self.clone(),
             CILNode::LdLen(arr) => {
                 let arr = asm.get_node(*arr).clone();
-                let arr = arr.propagate_locals(asm, idx, tpe, new_node);
+                let arr = arr.propagate_locals(asm, idx, tpe, new_node, fuel);
                 let arr = asm.alloc_node(arr);
                 CILNode::LdLen(arr)
             }
@@ -153,6 +177,7 @@ impl BasicBlock {
         asm: &mut Assembly,
         locals: &[LocalDef],
         cache: &mut SideEffectInfoCache,
+        fuel: &mut OptFuel,
     ) {
         let root_iter: Vec<_> = self
             .roots_mut()
@@ -174,6 +199,12 @@ impl BasicBlock {
                         if cache.has_side_effects(tree, asm) {
                             break 'm;
                         }
+                        // Check that it does not depend on itself
+                        if CILIter::new(asm.get_node(tree).clone(), asm)
+                            .any(|node| node == CILIterElem::Node(CILNode::LdLoc(loc)))
+                        {
+                            break 'm;
+                        }
                         let mut tmp_root = asm.get_root(*root).clone();
 
                         for node in tmp_root.nodes_mut() {
@@ -189,6 +220,7 @@ impl BasicBlock {
                                 loc as u32,
                                 *asm.get_type(locals[loc as usize].1),
                                 tree,
+                                fuel,
                             );
                             *node = asm.alloc_node(new_node);
                         }
@@ -203,7 +235,12 @@ impl BasicBlock {
 }
 impl MethodImpl {
     /// Propagates writes to local variables.
-    pub fn propagate_locals(&mut self, asm: &mut Assembly, cache: &mut SideEffectInfoCache) {
+    pub fn propagate_locals(
+        &mut self,
+        asm: &mut Assembly,
+        cache: &mut SideEffectInfoCache,
+        fuel: &mut OptFuel,
+    ) {
         // Optimization only suported for methods with locals
         let MethodImpl::MethodBody { blocks, locals } = self else {
             return;
@@ -211,10 +248,15 @@ impl MethodImpl {
 
         blocks
             .iter_mut()
-            .for_each(|block| block.local_opt(asm, locals, cache));
+            .for_each(|block| block.local_opt(asm, locals, cache, fuel));
     }
     /// Replaces writes to locals, which are never read, with pops.
-    pub fn remove_dead_writes(&mut self, asm: &mut Assembly, cache: &mut SideEffectInfoCache) {
+    pub fn remove_dead_writes(
+        &mut self,
+        asm: &mut Assembly,
+        cache: &mut SideEffectInfoCache,
+        fuel: &mut OptFuel,
+    ) {
         // Optimization only suported for methods with locals
         let MethodImpl::MethodBody { blocks, locals } = self else {
             return;
@@ -222,6 +264,9 @@ impl MethodImpl {
         // Check if each local is ever read or its address is taken
         let mut local_reads = vec![false; locals.len()];
         let mut local_address_of = vec![false; locals.len()];
+        if !fuel.consume(8) {
+            return;
+        }
         for node in blocks
             .iter()
             .flat_map(|block| block.iter_roots())
@@ -305,11 +350,15 @@ impl SideEffectInfoCache {
     }
 }
 impl MethodDef {
-    pub fn optimize(&mut self, asm: &mut Assembly, cache: &mut SideEffectInfoCache, passes: usize) {
-        for _ in 0..passes {
-            //self.implementation_mut().propagate_locals(asm, cache);
-            self.implementation_mut().remove_dead_writes(asm, cache);
-        }
+    pub fn optimize(
+        &mut self,
+        asm: &mut Assembly,
+        cache: &mut SideEffectInfoCache,
+        fuel: &mut OptFuel,
+    ) {
+        self.implementation_mut().propagate_locals(asm, cache, fuel);
+        self.implementation_mut()
+            .remove_dead_writes(asm, cache, fuel);
     }
 }
 #[test]
@@ -344,10 +393,6 @@ fn opt_mag() {
         blocks: vec![bb],
         locals,
     };
-    for _ in 0..3 {
-        mimpl.propagate_locals(&mut asm, &mut cache);
-        mimpl.remove_dead_writes(&mut asm, &mut cache);
-    }
 
     let main_module = asm.main_module();
     let sig = asm.sig(
@@ -374,6 +419,10 @@ fn opt_mag() {
         MethodImpl::Missing,
         vec![None, None],
     ));
+    let mut fuel = OptFuel::new(77);
+
+    asm.opt(&mut fuel);
+
     /*
     .method public hidebysig static  float32 'mag'(float32 'x',float32 'y') cil managed {// Method ID MethodDefIdx(MethodRefIdx(18))
         .maxstack 8

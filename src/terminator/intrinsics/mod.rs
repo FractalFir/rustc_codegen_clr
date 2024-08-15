@@ -436,6 +436,15 @@ pub fn handle_intrinsic<'tcx>(
                     )
                     .cast_ptr(src_type.clone())
                 }
+                // TODO: this is a bug, on purpose. The 1 byte compare exchange is not supported untill .NET 9. Remove after November, when .NET 9 Releases.
+                /*
+
+
+
+
+
+                */
+                Type::U8 => comaprand,
                 _ => {
                     let call_site = CallSite::new(
                         Some(interlocked),

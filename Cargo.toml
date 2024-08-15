@@ -29,7 +29,7 @@ opt-level = 3
 crate-type = ["dylib"]
 
 [workspace]
-members = [ "cilly",
+members = [ "cilly", "dotnet_aot",
     "mycorrhiza", 
 ]
 exclude = ["rust/src/bootstrap"]

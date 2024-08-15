@@ -16,6 +16,7 @@
 )]
 #![no_std]
 include!("../common.rs");
+
 fn main() {
     unsafe {
         let mut buff = malloc(64);
@@ -23,5 +24,6 @@ fn main() {
         buff = realloc(buff, 128);
         test_ne!(buff, 0_usize as *mut _);
         free(buff);
+        let tmp = __rust_alloc(64, 8);
     }
 }

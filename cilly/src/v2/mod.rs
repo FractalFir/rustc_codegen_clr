@@ -24,6 +24,7 @@ pub mod basic_block;
 pub mod bimap;
 pub mod builtins;
 pub mod c_exporter;
+pub mod cache;
 pub mod cilnode;
 pub mod cilroot;
 pub mod class;

@@ -1,3 +1,4 @@
+#![feature(float_next_up_down)]
 #[test]
 fn should_pass() {}
 #[test]
@@ -5,135 +6,114 @@ fn should_pass() {}
 fn should_panic() {
     panic!();
 }
+#[allow(unused_macros)]
+macro_rules! assert_f64_biteq {
+    ($left : expr, $right : expr) => {
+        let l: &f64 = &$left;
+        let r: &f64 = &$right;
+        let lb = l.to_bits();
+        let rb = r.to_bits();
+        assert_eq!(
+            lb, rb,
+            "float {l} ({lb:#018x}) is not bitequal to {r} ({rb:#018x})"
+        );
+    };
+}
 fn main() {
-    //select_nth_unstable();
+    let nan0 = f64::NAN;
+    let nan1 = f64::from_bits(f64::NAN.to_bits() ^ NAN_MASK1);
+    let nan2 = f64::from_bits(f64::NAN.to_bits() ^ NAN_MASK2);
+    assert_f64_biteq!(next_up(nan0), nan0);
+    assert_f64_biteq!(next_up(nan1), nan1);
+    assert_f64_biteq!(next_up(nan2), nan2);
 }
-/*
-fn select_nth_unstable() {
-    use core::cmp::Ordering::{Equal, Greater, Less};
 
-    use rand::seq::SliceRandom;
-    use rand::Rng;
-    let mut rng = rand::thread_rng();
-    let mut v = [0; 500];
-    for pivot in 0..v.len() {
-        println!("{}:{}", file!(), line!());
-        v.select_nth_unstable_by(pivot, |_, _| {
-            *[Less, Equal, Greater].choose(&mut rng).unwrap()
-        });
-        v.sort();
-        for i in 0..v.len() {
-            println!("{}:{}", file!(), line!());
-            assert_eq!(v[i], i as i32);
-        }
-    }
+#[test]
+fn test_next_up() {
+    let tiny = f64::from_bits(TINY_BITS);
+    let tiny_up = f64::from_bits(TINY_UP_BITS);
+    let max_down = f64::from_bits(MAX_DOWN_BITS);
+    let largest_subnormal = f64::from_bits(LARGEST_SUBNORMAL_BITS);
+    let smallest_normal = f64::from_bits(SMALLEST_NORMAL_BITS);
+    assert_f64_biteq!(f64::NEG_INFINITY.next_up(), f64::MIN);
+    assert_f64_biteq!(f64::MIN.next_up(), -max_down);
+    assert_f64_biteq!((-1.0 - f64::EPSILON).next_up(), -1.0);
+    assert_f64_biteq!((-smallest_normal).next_up(), -largest_subnormal);
+    assert_f64_biteq!((-tiny_up).next_up(), -tiny);
+    assert_f64_biteq!((-tiny).next_up(), -0.0f64);
+    assert_f64_biteq!((-0.0f64).next_up(), tiny);
+    assert_f64_biteq!(0.0f64.next_up(), tiny);
+    assert_f64_biteq!(tiny.next_up(), tiny_up);
+    assert_f64_biteq!(largest_subnormal.next_up(), smallest_normal);
+    assert_f64_biteq!(1.0f64.next_up(), 1.0 + f64::EPSILON);
+    assert_f64_biteq!(f64::MAX.next_up(), f64::INFINITY);
+    assert_f64_biteq!(f64::INFINITY.next_up(), f64::INFINITY);
 
-    for len in (2..21).chain(500..501) {
-        let mut orig = vec![0; len];
-        println!("{}:{}", file!(), line!());
-        for &modulus in &[5, 10, 1000] {
-            for _ in 0..10 {
-                println!("{}:{}", file!(), line!());
-                for i in 0..len {
-                    println!("{}:{}", file!(), line!());
-                    orig[i] = rng.gen::<i32>() % modulus;
-                }
-
-                let v_sorted = {
-                    let mut v = orig.clone();
-                    v.sort();
-                    v
-                };
-
-                // Sort in default order.
-                for pivot in 0..len {
-                    println!("{}:{}", file!(), line!());
-                    let mut v = orig.clone();
-                    v.select_nth_unstable(pivot);
-
-                    assert_eq!(v_sorted[pivot], v[pivot]);
-                    for i in 0..pivot {
-                        for j in pivot..len {
-                            assert!(v[i] <= v[j]);
-                        }
-                    }
-                }
-
-                // Sort in ascending order.
-                for pivot in 0..len {
-                    println!("{}:{}", file!(), line!());
-                    let mut v = orig.clone();
-                    let (left, pivot, right) = v.select_nth_unstable_by(pivot, |a, b| a.cmp(b));
-
-                    assert_eq!(left.len() + right.len(), len - 1);
-
-                    for l in left {
-                        assert!(l <= pivot);
-                        for r in right.iter_mut() {
-                            assert!(l <= r);
-                            assert!(pivot <= r);
-                        }
-                    }
-                }
-
-                // Sort in descending order.
-                let sort_descending_comparator = |a: &i32, b: &i32| b.cmp(a);
-                let v_sorted_descending = {
-                    let mut v = orig.clone();
-                    v.sort_by(sort_descending_comparator);
-                    v
-                };
-
-                for pivot in 0..len {
-                    println!("{}:{}", file!(), line!());
-                    let mut v = orig.clone();
-                    v.select_nth_unstable_by(pivot, sort_descending_comparator);
-
-                    assert_eq!(v_sorted_descending[pivot], v[pivot]);
-                    for i in 0..pivot {
-                        for j in pivot..len {
-                            assert!(v[j] <= v[i]);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // Sort at index using a completely random comparison function.
-    // This will reorder the elements *somehow*, but won't panic.
-    let mut v = [0; 500];
-    for i in 0..v.len() {
-        println!("{}:{}", file!(), line!());
-        v[i] = i as i32;
-    }
-
-    // Should not panic.
-    [(); 10].select_nth_unstable(0);
-    [(); 10].select_nth_unstable(5);
-    [(); 10].select_nth_unstable(9);
-    [(); 100].select_nth_unstable(0);
-    [(); 100].select_nth_unstable(50);
-    [(); 100].select_nth_unstable(99);
-
-    let mut v = [0xDEADBEEFu64];
-    v.select_nth_unstable(0);
-    assert!(v == [0xDEADBEEF]);
-    println!("v:{v:?}");
+    let nan0 = f64::NAN;
+    let nan1 = f64::from_bits(f64::NAN.to_bits() ^ NAN_MASK1);
+    let nan2 = f64::from_bits(f64::NAN.to_bits() ^ NAN_MASK2);
+    assert_f64_biteq!(next_up(nan0), nan0);
+    assert_f64_biteq!(next_up(nan1), nan1);
+    assert_f64_biteq!(next_up(nan2), nan2);
 }
-*/
-pub fn test(start: u32, end: u32) -> u32 {
-    let mut sum = 0;
-    for i in start..end {
-        sum += i;
+pub fn next_up(val: f64) -> f64 {
+    // Some targets violate Rust's assumption of IEEE semantics, e.g. by flushing
+    // denormals to zero. This is in general unsound and unsupported, but here
+    // we do our best to still produce the correct result on such targets.
+    let bits = val.to_bits();
+    eprintln!("bits:{bits:?}");
+    if val.is_nan() || bits == f64::INFINITY.to_bits() {
+        return val;
     }
-    sum
+
+    let abs = bits & !SIGN_MASK;
+    let next_bits = if abs == 0 {
+        TINY_BITS
+    } else if bits == abs {
+        bits + 1
+    } else {
+        bits - 1
+    };
+    eprintln!("next_bits:{next_bits:?}");
+    f64::from_bits(next_bits)
 }
-pub fn test2(mut start: u32, end: u32) -> u32 {
-    let mut sum = 0;
-    while start < end {
-        sum += start;
-        start += 1;
-    }
-    sum
-}
+/// Sign bit
+const SIGN_MASK: u64 = 0x8000_0000_0000_0000;
+
+/// Exponent mask
+const EXP_MASK: u64 = 0x7ff0_0000_0000_0000;
+
+/// Mantissa mask
+const MAN_MASK: u64 = 0x000f_ffff_ffff_ffff;
+
+/// Minimum representable positive value (min subnormal)
+
+/// Minimum representable negative value (min negative subnormal)
+const NEG_TINY_BITS: u64 = TINY_BITS | SIGN_MASK;
+/// Smallest number
+#[allow(dead_code)] // unused on x86
+const TINY_BITS: u64 = 0x1;
+
+/// Next smallest number
+#[allow(dead_code)] // unused on x86
+const TINY_UP_BITS: u64 = 0x2;
+
+/// Exponent = 0b11...10, Sifnificand 0b1111..10. Min val > 0
+#[allow(dead_code)] // unused on x86
+const MAX_DOWN_BITS: u64 = 0x7fef_ffff_ffff_fffe;
+
+/// Zeroed exponent, full significant
+#[allow(dead_code)] // unused on x86
+const LARGEST_SUBNORMAL_BITS: u64 = 0x000f_ffff_ffff_ffff;
+
+/// Exponent = 0b1, zeroed significand
+#[allow(dead_code)] // unused on x86
+const SMALLEST_NORMAL_BITS: u64 = 0x0010_0000_0000_0000;
+
+/// First pattern over the mantissa
+#[allow(dead_code)] // unused on x86
+const NAN_MASK1: u64 = 0x000a_aaaa_aaaa_aaaa;
+
+/// Second pattern over the mantissa
+#[allow(dead_code)] // unused on x86
+const NAN_MASK2: u64 = 0x0005_5555_5555_5555;

@@ -1,13 +1,32 @@
 use crate::v2::{
     asm::MissingMethodPatcher, cilnode::MethodKind, cilroot::BranchCond, BasicBlock, BinOp,
-    CILNode, CILRoot, ClassRef, Int, MethodDef, MethodImpl, MethodRef, Type,
+    CILNode, CILRoot, ClassRef, Const, Int, MethodDef, MethodImpl, MethodRef, Type,
 };
 
 use super::{
     super::{Assembly, NodeIdx},
     math::{int_max, int_min},
 };
-
+/// Emulates operations on bytes using operations on int32s. Enidianess dependent, can cause segfuaults when used on a page boundary.
+/// TODO: remove when .NET 9 is out.
+pub fn emulate_uint8_cmp_xchng(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
+    generate_atomic(
+        asm,
+        patcher,
+        "cmpxchng",
+        |asm, prev, arg, _| {
+            // 1st, mask the previous value
+            let prev_mask = asm.alloc_node(Const::I32(0x00FFFFFF));
+            let prev = asm.alloc_node(CILNode::BinOp(prev, prev_mask, BinOp::And));
+            // 2nd. Shift the byte into the least siginificant position(by 24 bytes)
+            let shift_ammount = asm.alloc_node(Const::I32(24));
+            let arg = asm.alloc_node(CILNode::BinOp(arg, shift_ammount, BinOp::Shl));
+            // Assemble those into a new value for the target memory.
+            asm.alloc_node(CILNode::BinOp(prev, arg, BinOp::Or))
+        },
+        Int::I32,
+    )
+}
 pub fn generate_atomic(
     asm: &mut Assembly,
     patcher: &mut MissingMethodPatcher,
@@ -98,7 +117,9 @@ pub fn generate_all_atomics(asm: &mut Assembly, patcher: &mut MissingMethodPatch
     // Max
     generate_atomic_for_ints(asm, patcher, "max", int_max);
     // Max
-    generate_atomic_for_ints(asm, patcher, "min", int_min)
+    generate_atomic_for_ints(asm, patcher, "min", int_min);
+    // Emulates 1 byte compare exchange
+    emulate_uint8_cmp_xchng(asm, patcher)
 }
 /*
   .method public hidebysig static
