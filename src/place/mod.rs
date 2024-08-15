@@ -108,7 +108,7 @@ pub fn deref_op<'tcx>(
             TyKind::Adt(_, _)
             | TyKind::Tuple(_)
             | TyKind::Array(_, _)
-            | TyKind::FnPtr(_)
+            | TyKind::FnPtr(_, _)
             | TyKind::Closure(_, _) => {
                 let derefed_type = ctx.type_from_cache(derefed_type);
 

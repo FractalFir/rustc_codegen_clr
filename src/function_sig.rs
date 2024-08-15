@@ -3,7 +3,7 @@ use crate::{
     r#type::{TyCache, Type},
 };
 use cilly::FnSig;
-use rustc_middle::ty::{Instance, List, ParamEnv, ParamEnvAnd, PolyFnSig, Ty, TyCtxt, TyKind};
+use rustc_middle::ty::{Instance, List, ParamEnv, ParamEnvAnd, Ty, TyCtxt, TyKind};
 use rustc_target::abi::call::Conv;
 use rustc_target::spec::abi::Abi as TargetAbi;
 
@@ -13,15 +13,23 @@ pub fn from_poly_sig<'tcx>(
     method_instance: Instance<'tcx>,
     tcx: TyCtxt<'tcx>,
     tycache: &mut TyCache,
-    sig: PolyFnSig<'tcx>,
+    sig: rustc_middle::ty::FnSigTys<TyCtxt<'tcx>>,
 ) -> FnSig {
-    crate::utilis::monomorphize(&method_instance, sig, tcx);
-    let sig = tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), sig);
-    let output = tycache.type_from_cache(sig.output(), tcx, method_instance);
+    let output = tycache.type_from_cache(
+        crate::utilis::monomorphize(&method_instance, sig.output(), tcx),
+        tcx,
+        method_instance,
+    );
     let inputs: Box<[Type]> = sig
         .inputs()
         .iter()
-        .map(|input| tycache.type_from_cache(*input, tcx, method_instance))
+        .map(|input| {
+            tycache.type_from_cache(
+                crate::utilis::monomorphize(&method_instance, *input, tcx),
+                tcx,
+                method_instance,
+            )
+        })
         .collect();
     FnSig::new(inputs, output)
 }

@@ -510,8 +510,9 @@ impl TyCache {
             }
             TyKind::Foreign(_foregin) => Type::Foreign,
             TyKind::Bound(_, _inner) => Type::Foreign,
-            TyKind::FnPtr(sig) => {
-                let sig = crate::function_sig::from_poly_sig(method, tcx, self, *sig);
+            TyKind::FnPtr(sig, _) => {
+                let sig = tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), *sig);
+                let sig = crate::function_sig::from_poly_sig(method, tcx, self, sig);
                 Type::DelegatePtr(sig.into())
             }
             TyKind::FnDef(_did, _subst) => {

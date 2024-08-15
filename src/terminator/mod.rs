@@ -5,7 +5,7 @@ use cilly::{
 };
 use rustc_middle::{
     mir::{BasicBlock, Operand, Place, SwitchTargets, Terminator, TerminatorKind},
-    ty::{Instance, InstanceKind, Ty, TyKind},
+    ty::{Instance, InstanceKind, ParamEnv, Ty, TyKind},
 };
 use rustc_span::source_map::Spanned;
 
@@ -40,9 +40,12 @@ pub fn handle_call_terminator<'tycxt>(
             //eprintln!("\nCalling FnDef:{fn_ty:?}. call_ops:{call_ops:?}");
             trees.push(call_ops.into());
         }
-        TyKind::FnPtr(sig) => {
+        TyKind::FnPtr(sig, _) => {
             //eprintln!("Calling FnPtr:{func_ty:?}");
-            let sig = ctx.monomorphize(*sig);
+
+            let sig = ctx
+                .tcx()
+                .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), *sig);
             let sig = crate::function_sig::from_poly_sig(
                 ctx.instance(),
                 ctx.tcx(),

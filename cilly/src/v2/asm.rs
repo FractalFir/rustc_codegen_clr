@@ -56,7 +56,7 @@ impl Assembly {
         }
     }
     pub fn default_fuel(&self) -> OptFuel {
-        OptFuel::new((self.method_defs.len() * 4 + self.roots.len()) as u32)
+        OptFuel::new((self.method_defs.len() * 4 + self.roots.len() * 2) as u32)
     }
     pub(crate) fn borrow_methoddef(&mut self, def_id: MethodDefIdx) -> MethodDef {
         self.method_defs.remove(&def_id).unwrap()

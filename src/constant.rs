@@ -192,7 +192,6 @@ fn load_scalar_ptr(
         }
         GlobalAlloc::Function {
             instance: finstance,
-            unique: _,
         } => {
             assert_eq!(offset.bytes(), 0);
             // If it is a function, patch its pointer up.

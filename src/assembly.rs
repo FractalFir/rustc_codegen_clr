@@ -171,7 +171,6 @@ fn allocation_initializer_method(
             let reloc_target_alloc = tcx.global_alloc(prov.alloc_id());
             if let GlobalAlloc::Function {
                 instance: finstance,
-                unique,
             } = reloc_target_alloc
             {
                 // If it is a function, patch its pointer up.
@@ -573,7 +572,6 @@ pub fn add_item<'tcx>(
                     let fn_ptr = tcx.global_alloc(fn_ptr.1.alloc_id());
                     let init_call_site = if let GlobalAlloc::Function {
                         instance: finstance,
-                        unique: _,
                     } = fn_ptr
                     {
                         // If it is a function, patch its pointer up.
