@@ -99,6 +99,7 @@ pub fn mangle(tpe: &Type) -> std::borrow::Cow<'static, str> {
         Type::F16 => "f16".into(),
         Type::F32 => "f32".into(),
         Type::F64 => "f64".into(),
+        Type::F128 => "f128".into(),
         Type::Ptr(inner) => format!("p{inner}", inner = mangle(inner,)).into(),
         Type::DotnetType(tpe) => {
             assert!(

@@ -1,8 +1,8 @@
 use cilly::{
-    call, call_site::CallSite, cil_node::CILNode, eq, fn_sig::FnSig, gt, gt_un, lt, lt_un,
-    DotnetTypeRef, Type,
+    call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, eq, fn_sig::FnSig, gt, gt_un,
+    lt, lt_un, ptr, DotnetTypeRef, Type,
 };
-use rustc_middle::ty::{IntTy, Ty, TyKind, UintTy};
+use rustc_middle::ty::{FloatTy, IntTy, Ty, TyKind, UintTy};
 
 pub fn ne_unchecked(ty_a: Ty<'_>, operand_a: CILNode, operand_b: CILNode) -> CILNode {
     //vec![eq_unchecked(ty_a), CILOp::LdcI32(0), CILOp::Eq]
@@ -35,9 +35,21 @@ pub fn eq_unchecked(ty_a: Ty<'_>, operand_a: CILNode, operand_b: CILNode) -> CIL
             ),
             _ => eq!(operand_a, operand_b),
         },
-        TyKind::Bool | TyKind::Char | TyKind::Float(_) | TyKind::RawPtr(_, _) => {
+        TyKind::Bool
+        | TyKind::Char
+        | TyKind::Float(FloatTy::F32 | FloatTy::F64)
+        | TyKind::RawPtr(_, _) => {
             eq!(operand_a, operand_b)
         }
+        TyKind::Float(FloatTy::F128) => call!(
+            CallSite::builtin(
+                "__eqtf2".into(),
+                FnSig::new([Type::F128, Type::F128], Type::Bool),
+                true
+            ),
+            [operand_a, operand_b]
+        ),
+
         _ => panic!("Can't eq type  {ty_a:?}"),
     }
 }
@@ -69,8 +81,18 @@ pub fn lt_unchecked(ty_a: Ty<'_>, operand_a: CILNode, operand_b: CILNode) -> CIL
             _ => lt!(operand_a, operand_b),
         },
         // TODO: are chars considered signed or unsigned?
-        TyKind::Bool | TyKind::Char | TyKind::Float(_) => lt!(operand_a, operand_b),
+        TyKind::Bool | TyKind::Char | TyKind::Float(FloatTy::F32 | FloatTy::F64) => {
+            lt!(operand_a, operand_b)
+        }
         TyKind::RawPtr(_, _) | TyKind::FnPtr(_, _) => lt_un!(operand_a, operand_b),
+        TyKind::Float(FloatTy::F128) => call!(
+            CallSite::builtin(
+                "__lttf2".into(),
+                FnSig::new([Type::F128, Type::F128], Type::Bool),
+                true
+            ),
+            [operand_a, operand_b]
+        ),
         _ => panic!("Can't eq type  {ty_a:?}"),
     }
 }
@@ -101,7 +123,17 @@ pub fn gt_unchecked(ty_a: Ty<'_>, operand_a: CILNode, operand_b: CILNode) -> CIL
             _ => gt!(operand_a, operand_b),
         },
         // TODO: are chars considered signed or unsigned?
-        TyKind::Bool | TyKind::Char | TyKind::Float(_) => gt!(operand_a, operand_b),
+        TyKind::Bool | TyKind::Char | TyKind::Float(FloatTy::F32 | FloatTy::F64) => {
+            gt!(operand_a, operand_b)
+        }
+        TyKind::Float(FloatTy::F128) => call!(
+            CallSite::builtin(
+                "__gttf2".into(),
+                FnSig::new([Type::F128, Type::F128], Type::Bool),
+                true
+            ),
+            [operand_a, operand_b]
+        ),
         TyKind::RawPtr(_, _) => gt_un!(operand_a, operand_b),
         _ => panic!("Can't eq type  {ty_a:?}"),
     }

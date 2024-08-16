@@ -100,7 +100,10 @@ pub fn deref_op<'tcx>(
                 },
                 FloatTy::F32 => CILNode::LDIndF32 { ptr },
                 FloatTy::F64 => CILNode::LDIndF64 { ptr },
-                FloatTy::F128 => todo!("Can't 128 bit floats yet!"),
+                FloatTy::F128 => CILNode::LdObj {
+                    ptr,
+                    obj: Box::new(Type::F128),
+                },
             },
             TyKind::Bool => CILNode::LDIndBool { ptr }, // Both Rust bool and a managed bool are 1 byte wide. .NET bools are 4 byte wide only in the context of Marshaling/PInvoke,
             // due to historic reasons(BOOL was an alias for int in early Windows, and it stayed this way.) - FractalFir

@@ -267,7 +267,8 @@ impl CodegenBackend for MyBackend {
             let mut asm_out = std::fs::File::create(&serialized_asm_path).expect(
                 "Could not create the temporary files necessary for building the assembly!",
             );
-            let v2 = cilly::v2::Assembly::from_v1(&asm);
+            let mut v2 = cilly::v2::Assembly::from_v1(&asm);
+            v2.opt(&mut v2.fuel_from_env());
             asm_out
                 .write_all(
                     &postcard::to_stdvec(&v2).expect("Could not serialize the tmp assembly file!"),

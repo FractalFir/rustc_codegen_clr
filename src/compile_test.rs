@@ -731,6 +731,7 @@ run_test! {std,mutithreading,stable}
 run_test! {std,once_lock_test,unstable}
 run_test! {std,tlocal_key_test,stable}
 run_test! {types,adt_enum,stable}
+run_test! {types,f128,stable}
 run_test! {types,aligned,stable}
 run_test! {types,any,stable}
 run_test! {types,arr,stable}

@@ -4,13 +4,13 @@ use bitop::{bit_and_unchecked, bit_or_unchecked, bit_xor_unchecked};
 use cilly::{
     call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_i8, conv_u16, conv_u32,
     conv_u64, conv_u8, div, eq, field_desc::FieldDescriptor, fn_sig::FnSig, gt_un, ld_false, lt_un,
-    rem, rem_un, size_of, sub, DotnetTypeRef, Type,
+    ptr, rem, rem_un, size_of, sub, DotnetTypeRef, Type,
 };
 use cmp::{eq_unchecked, gt_unchecked, lt_unchecked, ne_unchecked};
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::{
     mir::{BinOp, Operand},
-    ty::{Instance, IntTy, List, ParamEnv, Ty, TyKind, UintTy},
+    ty::{FloatTy, Instance, IntTy, List, ParamEnv, Ty, TyKind, UintTy},
 };
 use shift::{shl_checked, shl_unchecked, shr_checked, shr_unchecked};
 
@@ -66,12 +66,28 @@ pub(crate) fn binop<'tcx>(
 
         BinOp::Ge => match ty_a.kind() {
             // Unordered, to handle NaNs propely
-            TyKind::Float(_) => eq!(lt_un!(ops_a, ops_b), ld_false!()),
+            TyKind::Float(FloatTy::F32 | FloatTy::F64) => eq!(lt_un!(ops_a, ops_b), ld_false!()),
+            TyKind::Float(FloatTy::F128) => call!(
+                CallSite::builtin(
+                    "__getf2".into(),
+                    FnSig::new([Type::F128, Type::F128], Type::Bool),
+                    true
+                ),
+                [ops_a, ops_b]
+            ),
             _ => eq!(lt_unchecked(ty_a, ops_a, ops_b), ld_false!()),
         },
         BinOp::Le => match ty_a.kind() {
             // Unordered, to handle NaNs propely
-            TyKind::Float(_) => eq!(gt_un!(ops_a, ops_b), ld_false!()),
+            TyKind::Float(FloatTy::F32 | FloatTy::F64) => eq!(gt_un!(ops_a, ops_b), ld_false!()),
+            TyKind::Float(FloatTy::F128) => call!(
+                CallSite::builtin(
+                    "__letf2".into(),
+                    FnSig::new([Type::F128, Type::F128], Type::Bool),
+                    true
+                ),
+                [ops_a, ops_b]
+            ),
             _ => eq!(gt_unchecked(ty_a, ops_a, ops_b), ld_false!()),
         },
         BinOp::Offset => {
@@ -166,7 +182,15 @@ pub fn add_unchecked<'tcx>(
                 }
             }
         }
-        TyKind::Float(_) => ops_a + ops_b,
+        TyKind::Float(FloatTy::F32 | FloatTy::F64) => ops_a + ops_b,
+        TyKind::Float(FloatTy::F128) => call!(
+            CallSite::builtin(
+                "__addtf3".into(),
+                FnSig::new([Type::F128, Type::F128], Type::F128),
+                true
+            ),
+            [ops_a, ops_b,]
+        ),
         _ => todo!("can't add numbers of types {ty_a} and {ty_b}"),
     }
 }
@@ -213,7 +237,15 @@ pub fn sub_unchecked<'tcx>(
                 sub!(ops_a, ops_b)
             }
         }
-        TyKind::Float(_) => sub!(ops_a, ops_b),
+        TyKind::Float(FloatTy::F32 | FloatTy::F64) => sub!(ops_a, ops_b),
+        TyKind::Float(FloatTy::F128) => call!(
+            CallSite::builtin(
+                "__subtf3".into(),
+                FnSig::new([Type::F128, Type::F128], Type::F128),
+                true
+            ),
+            [ops_a, ops_b,]
+        ),
         _ => todo!("can't sub numbers of types {ty_a} and {ty_b}"),
     }
 }
@@ -252,7 +284,17 @@ fn rem_unchecked<'tcx>(
                 [ops_a, ops_b]
             )
         }
-        TyKind::Int(_) | TyKind::Char | TyKind::Float(_) => rem!(ops_a, ops_b),
+        TyKind::Int(_) | TyKind::Char | TyKind::Float(FloatTy::F32 | FloatTy::F64) => {
+            rem!(ops_a, ops_b)
+        }
+        TyKind::Float(FloatTy::F128) => call!(
+            CallSite::builtin(
+                "fmodl".into(),
+                FnSig::new([Type::F128, Type::F128], Type::F128),
+                true
+            ),
+            [ops_a, ops_b]
+        ),
         TyKind::Uint(_) => rem_un!(ops_a, ops_b),
 
         _ => todo!(),
@@ -293,6 +335,14 @@ fn mul_unchecked<'tcx>(
                 [operand_a, operand_b]
             )
         }
+        TyKind::Float(FloatTy::F128) => call!(
+            CallSite::builtin(
+                "__multf3".into(),
+                FnSig::new([Type::F128, Type::F128], Type::F128),
+                true
+            ),
+            [operand_a, operand_b]
+        ),
         _ => operand_a * operand_b,
     }
 }
@@ -331,7 +381,17 @@ fn div_unchecked<'tcx>(
             )
         }
         TyKind::Uint(_) => CILNode::DivUn(operand_a.into(), operand_b.into()),
-        TyKind::Int(_) | TyKind::Char | TyKind::Float(_) => div!(operand_a, operand_b),
+        TyKind::Int(_) | TyKind::Char | TyKind::Float(FloatTy::F32 | FloatTy::F64) => {
+            div!(operand_a, operand_b)
+        }
+        TyKind::Float(FloatTy::F128) => call!(
+            CallSite::builtin(
+                "__divtf3".into(),
+                FnSig::new([Type::F128, Type::F128], Type::F128),
+                true
+            ),
+            [operand_a, operand_b]
+        ),
         _ => todo!(),
     }
 }

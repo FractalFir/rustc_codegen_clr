@@ -1,6 +1,6 @@
 use crate::v2::{
     asm::MissingMethodPatcher, cilnode::MethodKind, cilroot::BranchCond, BasicBlock, BinOp,
-    CILNode, CILRoot, ClassRef, Const, Int, MethodDef, MethodImpl, MethodRef, Type,
+    CILNode, CILRoot, ClassRef, Const, Int, MethodImpl, MethodRef, Type,
 };
 
 use super::{

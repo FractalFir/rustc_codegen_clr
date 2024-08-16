@@ -4,7 +4,7 @@ use cilly::{
     asm::DEAD_CODE_ELIMINATION,
     call_site::CallSite,
     conv_usize,
-    libc_fns::{LIBC_FNS, LIBC_MODIFIES_ERRNO},
+    libc_fns::{self, LIBC_FNS, LIBC_MODIFIES_ERRNO},
     v2::{
         asm::{MissingMethodPatcher, ILASM_FLAVOUR},
         cilnode::MethodKind,
@@ -175,12 +175,20 @@ fn main() {
         || output_file_path.contains(".so")
         || output_file_path.contains(".o");
 
-    let externs = LIBC_FNS
+    let mut externs: FxHashMap<_, _> = LIBC_FNS
         .iter()
-        .map(|fn_name| (*fn_name, LIBC.as_ref()))
+        .map(|fn_name| (*fn_name, LIBC.to_string()))
         .collect();
 
     let modifies_errno = LIBC_MODIFIES_ERRNO.iter().copied().collect();
+    if let Some(f128_support) = libc_fns::f128_support_lib() {
+        let f128_support = f128_support.to_str().to_owned().unwrap();
+        externs.extend(
+            libc_fns::F128_SYMBOLS
+                .iter()
+                .map(|fn_name| (*fn_name, f128_support.to_owned())),
+        );
+    }
     let mut overrides: MissingMethodPatcher = FxHashMap::default();
     overrides.insert(
         final_assembly.alloc_string("pthread_atfork"),
@@ -351,7 +359,7 @@ fn main() {
         println!("Eliminating dead code");
         final_assembly.eliminate_dead_code();
     }
-    let mut fuel = final_assembly.fuel_from_env();
+    let mut fuel = final_assembly.fuel_from_env().scale(0.1);
     final_assembly.opt(&mut fuel);
     final_assembly
         .save_tmp(&mut std::fs::File::create(path.with_extension("cilly2")).unwrap())
@@ -443,7 +451,7 @@ fn bootstrap_source(fpath: &Path, output_file_path: &str, jumpstart_cmd: &str) -
             IlasmFlavour::Clasic => String::new(),
             IlasmFlavour::Modern => format!(
                 "{output_file_path}.pdb",
-                output_file_path = fpath.file_name().unwrap().to_string_lossy()
+                output_file_path = fpath.file_stem().unwrap().to_string_lossy()
             ),
         },
         native_companion_file = if *NATIVE_PASSTROUGH {

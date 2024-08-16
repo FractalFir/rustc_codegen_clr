@@ -1,6 +1,5 @@
 use super::{
     bimap::{calculate_hash, BiMap, BiMapIndex, IntoBiMapIndex},
-    cache::{CachedAssemblyInfo, NonMaxU32, StackUsage},
     cilnode::{BinOp, MethodKind, UnOp},
     opt::{OptFuel, SideEffectInfoCache},
     Access, CILNode, CILRoot, ClassDef, ClassDefIdx, ClassRef, ClassRefIdx, Const, Exporter,
@@ -548,6 +547,11 @@ impl Assembly {
         if let Some(cref) = self.class_ref_to_def(rust_void) {
             previosly_ressurected.insert(cref);
         }
+        let f128 = self.alloc_string("f128");
+        let f128 = self.alloc_class_ref(ClassRef::new(f128, None, true, vec![].into()));
+        if let Some(cref) = self.class_ref_to_def(f128) {
+            previosly_ressurected.insert(cref);
+        }
 
         let mut to_resurrect: FxHashSet<ClassDefIdx> = FxHashSet::default();
         let mut alive: FxHashSet<ClassDefIdx> = FxHashSet::default();
@@ -603,7 +607,7 @@ impl Assembly {
 
     pub fn patch_missing_methods(
         &mut self,
-        externs: FxHashMap<&str, &str>,
+        externs: FxHashMap<&str, String>,
         modifies_errno: FxHashSet<&str>,
         override_methods: MissingMethodPatcher,
     ) {

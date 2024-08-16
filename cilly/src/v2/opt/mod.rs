@@ -1,11 +1,14 @@
 use std::collections::HashMap;
 
-use crate::v2::{
-    asm::ILASM_FLAVOUR, cilnode::MethodKind, il_exporter::ILExporter, Assembly, MethodDef,
-};
+use crate::v2::{Assembly, MethodDef};
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct OptFuel(u32);
 impl OptFuel {
+    pub fn scale(self, scale: f32) -> Self {
+        let inner = self.0;
+        let scale_div = (1.0 / scale) as u32;
+        Self(inner / scale_div)
+    }
     /// Creates *fuel* fuel
     pub fn new(fuel: u32) -> Self {
         Self(fuel)
@@ -25,8 +28,8 @@ impl OptFuel {
     }
 }
 use super::{
-    method::LocalDef, BasicBlock, BinOp, CILIter, CILIterElem, CILNode, CILRoot, Float, Int,
-    MethodImpl, NodeIdx, Type,
+    method::LocalDef, BasicBlock, CILIter, CILIterElem, CILNode, CILRoot, Int, MethodImpl, NodeIdx,
+    Type,
 };
 impl CILNode {
     pub fn propagate_locals(
@@ -170,6 +173,42 @@ impl CILNode {
     }
 }
 impl BasicBlock {
+    /// Removes duplicate debug info, to reduce the size of the final assembly.
+    pub fn remove_duplicate_sfi(&mut self, asm: &mut Assembly) {
+        let mut prev_ls = u32::MAX;
+        let mut prev_ll = u16::MAX;
+        let mut prev_cs = u16::MAX;
+        let mut prev_cl = u16::MAX;
+        let mut prev_file = asm.alloc_string("InvalidDebugInfoString");
+        let nop = asm.alloc_root(CILRoot::Nop);
+        for root in self.roots_mut().iter_mut() {
+            if let CILRoot::SourceFileInfo {
+                line_start,
+                line_len,
+                col_start,
+                col_len,
+                file,
+            } = asm.get_root(*root)
+            {
+                // Check if this sfi is a duplciate. If so, replace it with a NOP; We ignore columns cos they are not all that important in most cases.
+                if *file == prev_file
+                    //&& *col_len == prev_cl
+                    //&& *col_start == prev_cs
+                    && *line_len == prev_ll
+                    && *line_start == prev_ls
+                {
+                    *root = nop;
+                }
+                // Set the prev sfi to curr sfi
+                prev_file = *file;
+                prev_cl = *col_len;
+                prev_cs = *col_start;
+                prev_ll = *line_len;
+                prev_ls = *line_start;
+            }
+        }
+        self.roots_mut().retain(|root| *root != nop);
+    }
     /// Optimizes the [`BasicBlock`] by attempting to propagate the value of local assigments. This, in turn, allows for certain assigements to be removed in the future, and reduces the local varaible count.
     /// Having less locals allows the JIT to optimize this function more, and, in the case of valuetypes, shrinks down the stack usage.
     pub fn local_opt(
@@ -217,7 +256,7 @@ impl BasicBlock {
                             let new_node: CILNode = asm.get_node(*node).clone();
                             let new_node = new_node.propagate_locals(
                                 asm,
-                                loc as u32,
+                                loc,
                                 *asm.get_type(locals[loc as usize].1),
                                 tree,
                                 fuel,
@@ -234,6 +273,15 @@ impl BasicBlock {
     }
 }
 impl MethodImpl {
+    pub fn remove_duplicate_sfi(&mut self, asm: &mut Assembly) {
+        // Optimization only suported for methods with locals
+        let MethodImpl::MethodBody { blocks, .. } = self else {
+            return;
+        };
+        blocks
+            .iter_mut()
+            .for_each(|block| block.remove_duplicate_sfi(asm));
+    }
     /// Propagates writes to local variables.
     pub fn propagate_locals(
         &mut self,
@@ -359,12 +407,17 @@ impl MethodDef {
         self.implementation_mut().propagate_locals(asm, cache, fuel);
         self.implementation_mut()
             .remove_dead_writes(asm, cache, fuel);
+        if fuel.consume(5) {
+            self.implementation_mut().remove_duplicate_sfi(asm);
+        }
     }
 }
 #[test]
 fn opt_mag() {
+    use super::{BinOp, Float};
+    use crate::v2::{asm::ILASM_FLAVOUR, cilnode::MethodKind, il_exporter::ILExporter};
     let mut asm = Assembly::default();
-    let mut cache = SideEffectInfoCache::default();
+
     // Arg gets
     let ldarg_0 = asm.alloc_node(CILNode::LdArg(0));
     let ldarg_1 = asm.alloc_node(CILNode::LdArg(1));
@@ -381,7 +434,7 @@ fn opt_mag() {
     let stloc_2 = asm.alloc_root(CILRoot::StLoc(2, mag));
     let ret = asm.alloc_root(CILRoot::Ret(ldloc_2));
 
-    let mut bb = BasicBlock::new(vec![stloc_0, stloc_1, stloc_2, ret], 0, None);
+    let bb = BasicBlock::new(vec![stloc_0, stloc_1, stloc_2, ret], 0, None);
     // Locals
     let locals = vec![
         (None, asm.alloc_type(Float::F32)),
@@ -389,7 +442,7 @@ fn opt_mag() {
         (None, asm.alloc_type(Float::F32)),
     ];
 
-    let mut mimpl = MethodImpl::MethodBody {
+    let mimpl = MethodImpl::MethodBody {
         blocks: vec![bb],
         locals,
     };

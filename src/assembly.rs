@@ -152,16 +152,51 @@ fn allocation_initializer_method(
             .into(),
         );
     }
-
-    for (offset, byte) in bytes.iter().enumerate() {
-        if *byte != 0 {
-            trees.push(
-                CILRoot::STIndI8(
-                    CILNode::LDLoc(0) + conv_usize!(ldc_u32!(offset.try_into().unwrap())),
-                    CILNode::LdcU8(*byte),
-                )
-                .into(),
-            );
+    let mut offset = 0;
+    while offset < bytes.len() {
+        let reminder = bytes.len() - offset;
+        match reminder {
+            8.. => {
+                let long = u64::from_ne_bytes(bytes[offset..(offset + 8)].try_into().unwrap());
+                if long != 0 {
+                    trees.push(
+                        CILRoot::STIndI64(
+                            (CILNode::LDLoc(0) + conv_usize!(ldc_u32!(offset.try_into().unwrap())))
+                                .cast_ptr(ptr!(Type::U64)),
+                            CILNode::LdcU64(long),
+                        )
+                        .into(),
+                    );
+                }
+                offset += 8;
+            }
+            4.. => {
+                let long = u32::from_ne_bytes(bytes[offset..(offset + 4)].try_into().unwrap());
+                if long != 0 {
+                    trees.push(
+                        CILRoot::STIndI32(
+                            (CILNode::LDLoc(0) + conv_usize!(ldc_u32!(offset.try_into().unwrap())))
+                                .cast_ptr(ptr!(Type::U32)),
+                            CILNode::LdcU32(long),
+                        )
+                        .into(),
+                    );
+                }
+                offset += 4;
+            }
+            _ => {
+                let byte = bytes[offset];
+                if byte != 0 {
+                    trees.push(
+                        CILRoot::STIndI8(
+                            CILNode::LDLoc(0) + conv_usize!(ldc_u32!(offset.try_into().unwrap())),
+                            CILNode::LdcU8(byte),
+                        )
+                        .into(),
+                    );
+                }
+                offset += 1;
+            }
         }
     }
     if !ptrs.is_empty() {

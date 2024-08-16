@@ -11,6 +11,7 @@ pub enum Type {
     F16,
     F32,
     F64,
+    F128,
     // Unsigned intiegers
     U8,
     U16,

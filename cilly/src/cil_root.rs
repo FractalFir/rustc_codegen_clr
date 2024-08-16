@@ -850,10 +850,12 @@ impl CILRoot {
                         ))
                     }
                 };
-                if **inner != **tpe && !matches!(inner.as_ref(), Type::I128 | Type::U128) {
+                if **inner != **tpe
+                    && !matches!(inner.as_ref(), Type::I128 | Type::U128 | Type::F128)
+                {
                     Err(format!("Can't indirectly set a value of type {tpe:?} because the pointer points to {inner:?}, and it should point to {tpe:?}"))?;
                 }
-                if **inner != value_calc {
+                if **inner != value_calc && !(value_calc == Type::I128 && **inner == Type::F128) {
                     Err(format!("Can't indirectly set a value of type {tpe:?} because the provided value is {value_calc:?}, and it should be {inner:?}"))
                 } else {
                     Ok(())

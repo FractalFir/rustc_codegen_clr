@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 /// A list of all functions which are redirected to system libc.
 pub const LIBC_FNS: &[&str] = &[
     "__errno_location",
@@ -673,7 +674,35 @@ pub const LIBM_FNS: &[&str] = &[
     "log1pf",
     "tgamma",
     "tgammaf",
+    "fmodl",
 ];
+pub const F128_SYMBOLS: &[&str] = &[
+    "__addtf3", "__subtf3", "__multf3", "__divtf3", "__eqtf2", "__netf2", "__getf2", "__lttf2",
+    "__letf2", "__gttf2",
+];
+#[cfg(all(target_os = "linux", target_env = "gnu"))]
+// TODO: this is not portable at all.
+pub fn f128_support_lib() -> Option<PathBuf> {
+    // 1st. Open `/usr/lib/`.
+
+    let dir = std::fs::read_dir("/usr/lib64").expect("No `/usr/lib64`");
+    // 2nd Iterate trough all files there, and search for the GNU `libgcc_s`, where the f128 support is located.
+    for entry in dir {
+        let entry = entry.unwrap();
+        let name = entry.file_name();
+        let Some(name) = name.to_str() else {
+            continue;
+        };
+        if name.contains("libgcc_s") && entry.metadata().unwrap().is_file() {
+            return Some(entry.path());
+        }
+    }
+    None
+}
+#[cfg(not(all(target_os = "linux", target_env = "gnu")))]
+pub fn f128_support() -> Option<String> {
+    None
+}
 /*
 "pthread_atfork",
 "pthread_attr_destroy",

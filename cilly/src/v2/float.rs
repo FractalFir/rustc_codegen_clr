@@ -7,6 +7,7 @@ pub enum Float {
     F16,
     F32,
     F64,
+    F128,
 }
 impl From<Float> for Type {
     fn from(value: Float) -> Self {

@@ -315,7 +315,37 @@ fn load_const_float(value: u128, float_type: FloatTy, _tcx: TyCtxt) -> CILNode {
             let value = f64::from_ne_bytes((u64::try_from(value).unwrap()).to_ne_bytes());
             CILNode::LdcF64(HashableF64(value))
         }
-        FloatTy::F128 => todo!("Can't hanlde 128 bit floats yet!"),
+        FloatTy::F128 => {
+            // Int128 is used to emulate f128
+            let low = u128_low_u64(value);
+            let high = (value >> 64) as u64;
+            let ctor_sig = FnSig::new(
+                &[
+                    Type::ManagedReference(Type::F128.into()),
+                    Type::U64,
+                    Type::U64,
+                ],
+                Type::Void,
+            );
+            CILNode::TemporaryLocal(Box::new((
+                Type::I128,
+                Box::new([CILRoot::SetTMPLocal {
+                    value: CILNode::NewObj(Box::new(CallOpArgs {
+                        site: CallSite::boxed(
+                            Some(DotnetTypeRef::int_128()),
+                            ".ctor".into(),
+                            ctor_sig,
+                            false,
+                        ),
+                        args: [conv_u64!(ldc_u64!(high)), conv_u64!(ldc_u64!(low))].into(),
+                    })),
+                }]),
+                CILNode::LdObj {
+                    ptr: Box::new(CILNode::LoadAddresOfTMPLocal.cast_ptr(ptr!(Type::F128))),
+                    obj: Box::new(Type::F128),
+                },
+            )))
+        }
     }
 }
 pub fn load_const_int(value: u128, int_type: IntTy) -> CILNode {
@@ -348,7 +378,7 @@ pub fn load_const_int(value: u128, int_type: IntTy) -> CILNode {
             let high = (value >> 64) as u64;
             let ctor_sig = FnSig::new(
                 &[
-                    Type::ManagedReference(Type::U128.into()),
+                    Type::ManagedReference(Type::I128.into()),
                     Type::U64,
                     Type::U64,
                 ],

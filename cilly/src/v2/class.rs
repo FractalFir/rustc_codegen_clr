@@ -1,6 +1,5 @@
 use std::num::NonZeroU32;
 
-use fxhash::FxHashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{v2::MethodDef, DotnetTypeRef as V1ClassRef};
@@ -8,7 +7,6 @@ use crate::{v2::MethodDef, DotnetTypeRef as V1ClassRef};
 use super::{
     access::Access,
     bimap::{BiMapIndex, IntoBiMapIndex},
-    opt::{OptFuel, SideEffectInfoCache},
     Assembly, MethodDefIdx, StringIdx, Type,
 };
 
@@ -291,9 +289,10 @@ impl ClassDef {
         }
         self.methods_mut().push(ref_idx);
     }
+    /*
     /// Optimizes this class definition, consuming fuel
     pub fn opt(&mut self, fuel: &mut OptFuel, asm: &mut Assembly, cache: &mut SideEffectInfoCache) {
-    }
+    } */
 }
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Copy, Serialize, Deserialize)]
 pub struct ClassDefIdx(pub ClassRefIdx);

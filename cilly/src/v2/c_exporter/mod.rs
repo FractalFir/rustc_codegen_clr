@@ -11,14 +11,10 @@ use super::{
 
 pub struct CExporter {
     is_lib: bool,
-   
 }
 impl CExporter {
     pub fn new(is_lib: bool) -> Self {
-        Self {
-            is_lib,
-           
-        }
+        Self { is_lib }
     }
     fn export_class(
         &self,
@@ -27,8 +23,8 @@ impl CExporter {
         method_decls: &mut impl Write,
         method_defs: &mut impl Write,
         type_defs: &mut impl Write,
-        defined_types: &mut FxHashSet<ClassDefIdx> ,
-        delayed_defs: &mut FxHashSet<ClassDefIdx>
+        defined_types: &mut FxHashSet<ClassDefIdx>,
+        delayed_defs: &mut FxHashSet<ClassDefIdx>,
     ) -> std::io::Result<()> {
         todo!();
     }
@@ -46,11 +42,11 @@ impl CExporter {
                 &mut method_defs,
                 &mut type_defs,
                 &mut defined_types,
-                &mut delayed_defs
+                &mut delayed_defs,
             )?;
         }
-        while !delayed_defs.is_empty(){
-            /* 
+        while !delayed_defs.is_empty() {
+            /*
             self.export_class(  asm,
                 *class_def,
                 &mut method_decls,
@@ -86,14 +82,12 @@ impl Exporter for CExporter {
         .arg(exe_out)
         .arg("-g")
         .arg("-Ofast")
-  
         // .arg("-FOLD") saves up on space, consider enabling.
         ;
         let out = cmd.output().unwrap();
         let stdout = String::from_utf8_lossy(&out.stdout);
         let stderr = String::from_utf8_lossy(&out.stderr);
-        if stderr.contains("error") || stderr.contains("fatal")
-        {
+        if stderr.contains("error") || stderr.contains("fatal") {
             panic!(
                 "stdout:{} stderr:{} cmd:{cmd:?}",
                 stdout,

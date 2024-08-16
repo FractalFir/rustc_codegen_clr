@@ -1,9 +1,11 @@
-use std::io::Write;
-use lazy_static::*;
 use crate::v2::MethodImpl;
+use lazy_static::*;
+use std::io::Write;
 
 use super::{
-    asm::{IlasmFlavour, ILASM_FLAVOUR, ILASM_PATH}, cilroot::BranchCond, int, Assembly, CILIter, CILIterElem, CILNode, ClassRefIdx, Exporter, NodeIdx, RootIdx, Type
+    asm::{IlasmFlavour, ILASM_FLAVOUR, ILASM_PATH},
+    cilroot::BranchCond,
+    int, Assembly, CILIter, CILIterElem, CILNode, ClassRefIdx, Exporter, NodeIdx, RootIdx, Type,
 };
 
 pub struct ILExporter {
@@ -59,12 +61,18 @@ impl ILExporter {
                     writeln!(out, ".field {tpe} '{name}'")
                 }?;
             }
-            crate::utilis::assert_unique(class_def.static_fields(), format!("The class {} contains a duplicate static field",asm.get_string(class_def.name())));
+            crate::utilis::assert_unique(
+                class_def.static_fields(),
+                format!(
+                    "The class {} contains a duplicate static field",
+                    asm.get_string(class_def.name())
+                ),
+            );
             // Export all static fields
             for (tpe, name, thread_local) in class_def.static_fields() {
                 let name = asm.get_string(*name);
                 let tpe = non_void_type_il(tpe, asm);
-                
+
                 writeln!(out, ".field static {tpe} '{name}'")?;
                 if *thread_local {
                     writeln!(out,".custom instance void [System.Runtime]System.ThreadStaticAttribute::.ctor() = (01 00 00 00)")?;
@@ -82,9 +90,7 @@ impl ILExporter {
                     crate::v2::cilnode::MethodKind::Static => "static",
                     crate::v2::cilnode::MethodKind::Instance => "instance",
                     crate::v2::cilnode::MethodKind::Virtual => "virtual instance",
-                    crate::v2::cilnode::MethodKind::Constructor => {
-                        "rtspecialname specialname"
-                    }
+                    crate::v2::cilnode::MethodKind::Constructor => "rtspecialname specialname",
                 };
                 let pinvoke = if let MethodImpl::Extern {
                     lib,
@@ -122,9 +128,11 @@ impl ILExporter {
                     })
                     .intersperse(",".to_string())
                     .collect();
-                let preservesig = if method.implementation().is_extern(){
+                let preservesig = if method.implementation().is_extern() {
                     "preservesig"
-                }else{""};
+                } else {
+                    ""
+                };
                 writeln!(
                     out,
                     ".method {vis} hidebysig {kind} {pinvoke} {ret} '{name}'({inputs}) cil managed {preservesig}{{// Method ID {method_id:?}"
@@ -192,7 +200,7 @@ impl ILExporter {
                             for root in hblock.roots(){
                                 self.export_root(asm,out,*root,true)?;
                             }
-                        }  
+                        }
                     }
                       if block.handler().is_some(){
                         writeln!(out,"}}")?;
@@ -207,6 +215,7 @@ impl ILExporter {
         };
         Ok(())
     }
+    #[allow(clippy::only_used_in_recursion)] // Futrue proffing. The IL exporter will need this in the future.
     fn export_node(
         &self,
         asm: &super::Assembly,
@@ -473,6 +482,8 @@ impl ILExporter {
                     (super::Float::F32, false) => writeln!(out, "conv.r.un conv.r4"),
                     (super::Float::F64, true) => writeln!(out, "conv.r8"),
                     (super::Float::F64, false) => writeln!(out, "conv.r.un conv.r8"),
+                    (super::Float::F128, true) => todo!(),
+                    (super::Float::F128, false) => todo!(),
                 }
             }
             super::CILNode::RefToPtr(inner) => {
@@ -561,6 +572,10 @@ impl ILExporter {
                         (super::Float::F32, false) => writeln!(out, "ldind.r4"),
                         (super::Float::F64, true) => writeln!(out, "volatile. ldind.r8"),
                         (super::Float::F64, false) => writeln!(out, "ldind.r8"),
+                        (super::Float::F128, true) => {
+                            writeln!(out, "volatile. ldobj {}", type_il(tpe, asm))
+                        }
+                        (super::Float::F128, false) => writeln!(out, "ldobj {}", type_il(tpe, asm)),
                     },
                     (Type::PlatformString | Type::PlatformObject, true) => {
                         writeln!(out, "volatile. ldind.ref")
@@ -729,8 +744,7 @@ impl ILExporter {
                         writeln!(out, "beq bb{}", branch.0)
                     } else if is_handler {
                         writeln!(out, "beq h{}_{}", branch.0, branch.1)
-                    }
-                    else {
+                    } else {
                         writeln!(out, "beq jp{}_{}", branch.0, branch.1)
                     }
                 }
@@ -741,55 +755,57 @@ impl ILExporter {
                         writeln!(out, "bne.un bb{}", branch.0)
                     } else if is_handler {
                         writeln!(out, "bne.un h{}_{}", branch.0, branch.1)
-                    }
-                    else {
+                    } else {
                         writeln!(out, "bne.un jp{}_{}", branch.0, branch.1)
                     }
                 }
                 Some(BranchCond::Lt(a, b, kind)) => {
                     self.export_node(asm, out, *a)?;
                     self.export_node(asm, out, *b)?;
-                    match kind{
-                        super::cilroot::CmpKind::Ordered |  super::cilroot::CmpKind::Signed =>  if branch.1 == 0 {
-                            writeln!(out, "blt bb{}", branch.0)
-                        } else if is_handler {
-                            writeln!(out, "blt h{}_{}", branch.0, branch.1)
+                    match kind {
+                        super::cilroot::CmpKind::Ordered | super::cilroot::CmpKind::Signed => {
+                            if branch.1 == 0 {
+                                writeln!(out, "blt bb{}", branch.0)
+                            } else if is_handler {
+                                writeln!(out, "blt h{}_{}", branch.0, branch.1)
+                            } else {
+                                writeln!(out, "blt jp{}_{}", branch.0, branch.1)
+                            }
                         }
-                        else {
-                            writeln!(out, "blt jp{}_{}", branch.0, branch.1)
-                        }
-                        super::cilroot::CmpKind::Unordered  | super::cilroot::CmpKind::Unsigned =>  if branch.1 == 0 {
-                            writeln!(out, "blt.un bb{}", branch.0)
-                        } else if is_handler {
-                            writeln!(out, "blt.un h{}_{}", branch.0, branch.1)
-                        }
-                        else {
-                            writeln!(out, "blt.un jp{}_{}", branch.0, branch.1)
+                        super::cilroot::CmpKind::Unordered | super::cilroot::CmpKind::Unsigned => {
+                            if branch.1 == 0 {
+                                writeln!(out, "blt.un bb{}", branch.0)
+                            } else if is_handler {
+                                writeln!(out, "blt.un h{}_{}", branch.0, branch.1)
+                            } else {
+                                writeln!(out, "blt.un jp{}_{}", branch.0, branch.1)
+                            }
                         }
                     }
                 }
                 Some(BranchCond::Gt(a, b, kind)) => {
                     self.export_node(asm, out, *a)?;
                     self.export_node(asm, out, *b)?;
-                    match kind{
-                        super::cilroot::CmpKind::Ordered |  super::cilroot::CmpKind::Signed =>  if branch.1 == 0 {
-                            writeln!(out, "bgt bb{}", branch.0)
-                        } else if is_handler {
-                            writeln!(out, "bgt h{}_{}", branch.0, branch.1)
+                    match kind {
+                        super::cilroot::CmpKind::Ordered | super::cilroot::CmpKind::Signed => {
+                            if branch.1 == 0 {
+                                writeln!(out, "bgt bb{}", branch.0)
+                            } else if is_handler {
+                                writeln!(out, "bgt h{}_{}", branch.0, branch.1)
+                            } else {
+                                writeln!(out, "bgt jp{}_{}", branch.0, branch.1)
+                            }
                         }
-                        else {
-                            writeln!(out, "bgt jp{}_{}", branch.0, branch.1)
-                        }
-                        super::cilroot::CmpKind::Unordered  | super::cilroot::CmpKind::Unsigned =>  if branch.1 == 0 {
-                            writeln!(out, "bgt.un bb{}", branch.0)
-                        } else if is_handler {
-                            writeln!(out, "bgt.un h{}_{}", branch.0, branch.1)
-                        }
-                        else {
-                            writeln!(out, "bgt.un jp{}_{}", branch.0, branch.1)
+                        super::cilroot::CmpKind::Unordered | super::cilroot::CmpKind::Unsigned => {
+                            if branch.1 == 0 {
+                                writeln!(out, "bgt.un bb{}", branch.0)
+                            } else if is_handler {
+                                writeln!(out, "bgt.un h{}_{}", branch.0, branch.1)
+                            } else {
+                                writeln!(out, "bgt.un jp{}_{}", branch.0, branch.1)
+                            }
                         }
                     }
-                   
                 }
                 Some(BranchCond::True(cond)) => {
                     self.export_node(asm, out, *cond)?;
@@ -797,8 +813,7 @@ impl ILExporter {
                         writeln!(out, "brtrue bb{}", branch.0)
                     } else if is_handler {
                         writeln!(out, "brtrue h{}_{}", branch.0, branch.1)
-                    }
-                    else {
+                    } else {
                         writeln!(out, "brtrue jp{}_{}", branch.0, branch.1)
                     }
                 }
@@ -881,12 +896,16 @@ impl ILExporter {
                     .collect();
                 let name = asm.get_string(mref.name());
                 let class = class_ref(mref.class(), asm);
-                writeln!(out, "{call_op} {output} {class}::'{name}'({inputs}) //mref:{:?}",call.0)
+                writeln!(
+                    out,
+                    "{call_op} {output} {class}::'{name}'({inputs}) //mref:{:?}",
+                    call.0
+                )
             }
             super::CILRoot::StInd(stind) => {
                 self.export_node(asm, out, stind.0)?;
                 self.export_node(asm, out, stind.1)?;
-              
+
                 let tpe = stind.2;
                 let is_volitale = if stind.3 { "volatile." } else { "" };
                 match tpe {
@@ -926,6 +945,7 @@ impl ILExporter {
                         super::Float::F16 => todo!(),
                         super::Float::F32 => writeln!(out, "{is_volitale} stind.r4"),
                         super::Float::F64 => writeln!(out, "{is_volitale} stind.r8"),
+                        super::Float::F128 => writeln!(out, "stobj {}", type_il(&tpe, asm)),
                     },
                     Type::PlatformString | Type::PlatformObject => {
                         writeln!(out, "{is_volitale} stind.ref")
@@ -994,7 +1014,7 @@ impl Exporter for ILExporter {
     fn export(&self, asm: &super::Assembly, target: &std::path::Path) -> Result<(), Self::Error> {
         // The IL file should be next to the target
         let il_path = target.with_extension("il");
-     
+
         if let Err(err) = std::fs::remove_file(&il_path) {
             match err.kind() {
                 std::io::ErrorKind::NotFound => (),
@@ -1027,9 +1047,9 @@ impl Exporter for ILExporter {
         .arg(asm_type)
         // .arg("-FOLD") saves up on space, consider enabling.
         ;
-        if *ILASM_FLAVOUR == IlasmFlavour::Clasic{
+        if *ILASM_FLAVOUR == IlasmFlavour::Clasic {
             // Limit the memory usage of mono
-            cmd.env("MONO_GC_PARAMS","soft-heap-limit=500m");
+            cmd.env("MONO_GC_PARAMS", "soft-heap-limit=500m");
         }
         let out = cmd.output().unwrap();
         let stdout = String::from_utf8_lossy(&out.stdout);
@@ -1118,6 +1138,8 @@ fn type_il(tpe: &Type, asm: &Assembly) -> String {
             super::Float::F16 => "valuetype [System.Runtime]System.Half".into(),
             super::Float::F32 => "float32".into(),
             super::Float::F64 => "float64".into(),
+
+            super::Float::F128 => "valuetype f128".into(),
         },
         Type::PlatformChar => "char".into(),
         Type::PlatformGeneric(arg, generic) => match generic {

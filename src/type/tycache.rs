@@ -26,6 +26,20 @@ impl TyCache {
             type_def_cache: FxHashMap::with_hasher(FxBuildHasher::default()),
             cycle_prevention: vec![],
         };
+        new.type_def_cache.insert(
+            "f128".into(),
+            TypeDef::new(
+                AccessModifer::Extern,
+                "f128".into(),
+                vec![],
+                vec![("low".into(), Type::U64), ("high".into(), Type::U64)],
+                vec![],
+                Some(vec![0, 8]),
+                0,
+                None,
+                Some(NonZeroU32::new(std::mem::size_of::<u128>().try_into().unwrap()).unwrap()),
+            ),
+        );
         new.add_arr(Type::USize, 4, 32);
         new
     }

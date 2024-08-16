@@ -40,6 +40,6 @@ pub fn from_float(float: &FloatTy) -> Type {
         FloatTy::F16 => Type::F16,
         FloatTy::F32 => Type::F32,
         FloatTy::F64 => Type::F64,
-        FloatTy::F128 => todo!("Can't hanlde 128 bit floats yet!"),
+        FloatTy::F128 => Type::F128,
     }
 }

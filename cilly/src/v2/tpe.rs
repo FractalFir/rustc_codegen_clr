@@ -80,6 +80,7 @@ impl Type {
             crate::Type::F16 => Float::F16.into(),
             crate::Type::F32 => Float::F32.into(),
             crate::Type::F64 => Float::F64.into(),
+            crate::Type::F128 => Float::F128.into(),
             crate::Type::U8 => Int::U8.into(),
             crate::Type::U16 => Int::U16.into(),
             crate::Type::U32 => Int::U32.into(),

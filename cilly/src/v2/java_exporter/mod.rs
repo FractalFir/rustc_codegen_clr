@@ -266,6 +266,7 @@ fn type_il(tpe: &Type, asm: &Assembly) -> String {
             super::Float::F16 => todo!(),
             super::Float::F32 => "float32".into(),
             super::Float::F64 => "float64".into(),
+            super::Float::F128 => todo!(),
         },
         Type::PlatformChar => "char".into(),
         Type::PlatformGeneric(arg, generic) => match generic {
