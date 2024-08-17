@@ -4,20 +4,21 @@
 
 set -e
 
-cargo build && cargo build --release && cd cranelift && cargo build && cargo build --release && cd ..
+cargo build && cargo build --release 
 
-echo "[SETUP] Rust fork"
-test -e "rust" || git clone --quiet https://github.com/rust-lang/rust.git --filter=tree:0 || true
+echo "[SETUP] Downloading the Rust compiler"
+test -e "rust" || git clone https://github.com/rust-lang/rust.git --filter=tree:0 --quiet  --depth 500 || true
 pushd rust
+echo "[SETUP] Finished donwloading the Rust compiler"
 git fetch
 git checkout --no-progress -- .
-# git checkout --no-progress "$(rustc -V | cut -d' ' -f3 | tr -d '(')"
-
+git checkout --no-progress "$(rustc -V | cut -d' ' -f3 | tr -d '(')"
+echo "[SETUP] Updating git submodules"
 git submodule update --quiet --init src/tools/cargo library/backtrace library/stdarch
-
+echo "[SETUP] Finished updating git submodules"
 #git -c user.name=Dummy -c user.email=dummy@example.com -c commit.gpgSign=false \
  #   am ../patches/*-stdlib-*.patch
-
+echo "[SETUP] Writing config"
 cat > config.toml <<EOF
 change-id = 999999
 
