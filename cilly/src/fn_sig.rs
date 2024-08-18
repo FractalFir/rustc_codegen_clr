@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{utilis::MemoryUsage, AsmStringContainer, Type};
+use crate::{utilis::MemoryUsage, Type};
 
 #[derive(Clone, PartialEq, Serialize, Deserialize, Eq, Hash, Debug)]
 /// Function signature.

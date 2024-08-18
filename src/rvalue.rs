@@ -331,45 +331,117 @@ pub fn handle_rvalue<'tcx>(
 fn repeat<'tcx>(
     rvalue: &Rvalue<'tcx>,
     ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
-    operand: &Operand<'tcx>,
+    element: &Operand<'tcx>,
     times: rustc_middle::ty::Const<'tcx>,
 ) -> CILNode {
+    // Get the type of the operand
+    let element_ty = ctx.monomorphize(element.ty(ctx.body(), ctx.tcx()));
+    let element_type = ctx.type_from_cache(element_ty);
+    let element = handle_operand(element, ctx);
+    // Array size
     let times = ctx.monomorphize(times);
     let times = times
         .try_eval_target_usize(ctx.tcx(), ParamEnv::reveal_all())
         .expect("Could not evalute array size as usize.");
+    // Array type
     let array = ctx.monomorphize(rvalue.ty(ctx.body(), ctx.tcx()));
     let array = ctx.type_from_cache(array);
     let array_dotnet = array.clone().as_dotnet().expect("Invalid array type.");
-
-    let operand_type = ctx.type_from_cache(ctx.monomorphize(operand.ty(ctx.body(), ctx.tcx())));
-    let operand = handle_operand(operand, ctx);
-    let mut branches = Vec::new();
-    for idx in 0..times {
-        branches.push(CILRoot::Call {
-            site: Box::new(CallSite::new(
-                Some(array_dotnet.clone()),
-                "set_Item".into(),
-                FnSig::new(
-                    &[
-                        Type::Ptr(array.clone().into()),
-                        Type::USize,
-                        operand_type.clone(),
-                    ],
-                    Type::Void,
-                ),
-                false,
-            )),
-            args: [
-                CILNode::LoadAddresOfTMPLocal,
-                conv_usize!(ldc_u64!(idx)),
-                operand.clone(),
-            ]
-            .into(),
-        });
+    // Check if the element is byte sized. If so, use initblk to quickly initialize this array.
+    if crate::utilis::compiletime_sizeof(element_ty, ctx.tcx()) == 1 {
+        let val = Box::new(CILNode::TemporaryLocal(Box::new((
+            element_type.clone(),
+            vec![CILRoot::SetTMPLocal { value: element }].into(),
+            CILNode::LDIndU8 {
+                ptr: Box::new(CILNode::LoadAddresOfTMPLocal.cast_ptr(ptr!(Type::U8))),
+            },
+        ))));
+        let init = CILRoot::InitBlk {
+            dst: Box::new(CILNode::LoadAddresOfTMPLocal.cast_ptr(ptr!(Type::U8))),
+            val,
+            count: Box::new(conv_usize!(ldc_u64!(times))),
+        };
+        return CILNode::TemporaryLocal(Box::new((
+            array.clone(),
+            vec![init].into(),
+            CILNode::LoadTMPLocal,
+        )));
     }
-    let branches: Box<_> = branches.into();
-    CILNode::TemporaryLocal(Box::new((array.clone(), branches, CILNode::LoadTMPLocal)))
+    // Check if there are more than 16 elements. If so, use mecmpy to accelerate initialzation
+    if times > 16 {
+        let mut branches = Vec::new();
+        for idx in 0..16 {
+            branches.push(CILRoot::Call {
+                site: Box::new(CallSite::new(
+                    Some(array_dotnet.clone()),
+                    "set_Item".into(),
+                    FnSig::new(
+                        &[
+                            Type::Ptr(array.clone().into()),
+                            Type::USize,
+                            element_type.clone(),
+                        ],
+                        Type::Void,
+                    ),
+                    false,
+                )),
+                args: [
+                    CILNode::LoadAddresOfTMPLocal,
+                    conv_usize!(ldc_u64!(idx)),
+                    element.clone(),
+                ]
+                .into(),
+            });
+        }
+        let mut curr_len = 16;
+
+        while curr_len < times {
+            // Copy curr_len elements if possible, otherwise this is the last iteration, so copy the reminder.
+            let curr_copy_size = curr_len.min(times - curr_len);
+            // Copy curr_copy_size elements from the start of the array, starting at curr_len(the ammount of already initialized buffers)
+            branches.push(CILRoot::CpBlk {
+                dst: Box::new(
+                    CILNode::MRefToRawPtr(Box::new(CILNode::LoadAddresOfTMPLocal))
+                        + conv_usize!(ldc_u64!(curr_len)),
+                ),
+                src: Box::new(CILNode::LoadAddresOfTMPLocal),
+                len: Box::new(
+                    conv_usize!(ldc_u64!(curr_copy_size))
+                        * conv_usize!(size_of!(element_type.clone())),
+                ),
+            });
+            curr_len *= 2;
+        }
+        let branches: Box<_> = branches.into();
+        CILNode::TemporaryLocal(Box::new((array.clone(), branches, CILNode::LoadTMPLocal)))
+    } else {
+        let mut branches = Vec::new();
+        for idx in 0..times {
+            branches.push(CILRoot::Call {
+                site: Box::new(CallSite::new(
+                    Some(array_dotnet.clone()),
+                    "set_Item".into(),
+                    FnSig::new(
+                        &[
+                            Type::Ptr(array.clone().into()),
+                            Type::USize,
+                            element_type.clone(),
+                        ],
+                        Type::Void,
+                    ),
+                    false,
+                )),
+                args: [
+                    CILNode::LoadAddresOfTMPLocal,
+                    conv_usize!(ldc_u64!(idx)),
+                    element.clone(),
+                ]
+                .into(),
+            });
+        }
+        let branches: Box<_> = branches.into();
+        CILNode::TemporaryLocal(Box::new((array.clone(), branches, CILNode::LoadTMPLocal)))
+    }
 }
 fn ptr_to_ptr<'tcx>(
     ctx: &mut MethodCompileCtx<'tcx, '_, '_>,

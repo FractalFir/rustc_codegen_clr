@@ -252,7 +252,7 @@ impl MethodDef {
                     arg_debug_count,
                     v1.call_site().name()
                 );
-                arg_names.extend((arg_debug_count..arg_sig_count).map(|_| None))
+                arg_names.extend((arg_debug_count..arg_sig_count).map(|_| None));
             }
             std::cmp::Ordering::Equal => (),
             std::cmp::Ordering::Greater => {
@@ -262,17 +262,19 @@ impl MethodDef {
                 arg_debug_count,
                 v1.call_site().name()
                 );
-                arg_names.truncate(arg_sig_count)
+                arg_names.truncate(arg_sig_count);
             }
         }
         assert_eq!(arg_names.len(), v1.call_site().signature().inputs().len());
         MethodDef::new(acceess, class, name, sig, kind, implementation, arg_names)
     }
 
+    #[must_use]
     pub fn access(&self) -> &Access {
         &self.access
     }
 
+    #[must_use]
     pub fn arg_names(&self) -> &[Option<StringIdx>] {
         &self.arg_names
     }
@@ -283,9 +285,8 @@ impl MethodDef {
     ) -> impl Iterator<Item = &'a (Option<StringIdx>, TypeIdx)> {
         match self.resolved_implementation(asm) {
             MethodImpl::MethodBody { blocks: _, locals } => locals.iter(),
-            MethodImpl::Extern { .. } => [].iter(),
+            MethodImpl::Extern { .. } | MethodImpl::Missing => [].iter(),
             MethodImpl::AliasFor(_) => panic!(),
-            MethodImpl::Missing => [].iter(),
         }
     }
 }
@@ -318,7 +319,8 @@ impl MethodImpl {
     pub fn is_extern(&self) -> bool {
         matches!(self, Self::Extern { .. })
     }
-
+    // While this function is a bit long, this is not an issue.
+    #[allow(clippy::too_many_lines)]
     pub(crate) fn merge_cctor_impls(&mut self, implementation: &MethodImpl, asm: &Assembly) {
         let tmp = match (&self, &implementation) {
             (
@@ -340,8 +342,7 @@ impl MethodImpl {
                         .unwrap()
                         .roots_mut()
                         .pop()
-                        .map(|root_id| asm.get_root(root_id).clone())
-                        .unwrap_or(CILRoot::VoidRet)
+                        .map_or(CILRoot::VoidRet, |root_id| asm.get_root(root_id).clone())
                 };
                 assert_eq!(last_root, CILRoot::VoidRet);
                 assert_eq!(
@@ -356,23 +357,18 @@ impl MethodImpl {
                     .extend(other_blocks.last().unwrap().roots());
                 MethodImpl::MethodBody {
                     blocks,
-                    locals: locals.to_vec(),
+                    locals: locals.clone(),
                 }
             }
             (MethodImpl::MethodBody { .. }, MethodImpl::Extern { .. }) => {
-                panic!("Unmergable method impl.")
+                panic!("Unmergable method impl: Can't merge MethodBody with Extern.")
             }
             (MethodImpl::MethodBody { .. }, MethodImpl::AliasFor(_)) => {
-                panic!("Unmergable method impl.")
+                panic!("Unmergable method impl: Can't merge MethodBody with AliasFor.")
             }
-            (MethodImpl::MethodBody { blocks, locals }, MethodImpl::Missing) => {
-                MethodImpl::MethodBody {
-                    blocks: blocks.to_vec(),
-                    locals: locals.to_vec(),
-                }
-            }
+
             (MethodImpl::Extern { .. }, MethodImpl::MethodBody { .. }) => {
-                panic!("Unmergable method impl.")
+                panic!("Unmergable method impl: Can't merge Extern with MethodBody.")
             }
             (
                 MethodImpl::Extern {
@@ -389,7 +385,7 @@ impl MethodImpl {
                 self.clone()
             }
             (MethodImpl::Extern { .. }, MethodImpl::AliasFor(_)) => {
-                panic!("Unmergable method impl.")
+                panic!("Unmergable method impl: Can't merge Extern with AliasFor.")
             }
             (
                 MethodImpl::Extern {
@@ -397,36 +393,37 @@ impl MethodImpl {
                     preserve_errno,
                 },
                 MethodImpl::Missing,
+            )
+            | (
+                MethodImpl::Missing,
+                MethodImpl::Extern {
+                    lib,
+                    preserve_errno,
+                },
             ) => MethodImpl::Extern {
                 lib: *lib,
                 preserve_errno: *preserve_errno,
             },
-            (MethodImpl::AliasFor(_), MethodImpl::MethodBody { .. })
-            | (MethodImpl::AliasFor(_), MethodImpl::Extern { .. }) => {
-                panic!("Unmergable method impl.")
+            (
+                MethodImpl::AliasFor(_),
+                MethodImpl::MethodBody { .. } | MethodImpl::Extern { .. },
+            ) => {
+                panic!("Unmergable method impl: can't merge alias.")
             }
             (MethodImpl::AliasFor(a), MethodImpl::AliasFor(b)) => {
                 assert_eq!(a, b);
                 self.clone()
             }
-            (MethodImpl::AliasFor(alias), MethodImpl::Missing) => MethodImpl::AliasFor(*alias),
-            (MethodImpl::Missing, MethodImpl::MethodBody { blocks, locals }) => {
+            (MethodImpl::AliasFor(alias), MethodImpl::Missing)
+            | (MethodImpl::Missing, MethodImpl::AliasFor(alias)) => MethodImpl::AliasFor(*alias),
+            (MethodImpl::Missing, MethodImpl::MethodBody { blocks, locals })
+            | (MethodImpl::MethodBody { blocks, locals }, MethodImpl::Missing) => {
                 MethodImpl::MethodBody {
-                    blocks: blocks.to_vec(),
-                    locals: locals.to_vec(),
+                    blocks: blocks.clone(),
+                    locals: locals.clone(),
                 }
             }
-            (
-                MethodImpl::Missing,
-                MethodImpl::Extern {
-                    lib,
-                    preserve_errno,
-                },
-            ) => MethodImpl::Extern {
-                lib: *lib,
-                preserve_errno: *preserve_errno,
-            },
-            (MethodImpl::Missing, MethodImpl::AliasFor(alias)) => MethodImpl::AliasFor(*alias),
+
             (MethodImpl::Missing, MethodImpl::Missing) => MethodImpl::Missing,
         };
         *self = tmp;

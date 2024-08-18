@@ -1,3 +1,5 @@
+// This exporter is WIP.
+#![allow(dead_code, unused_imports, unused_variables, clippy::let_unit_value)]
 use std::{collections::HashSet, io::Write};
 
 use fxhash::FxHashSet;
@@ -16,6 +18,7 @@ impl CExporter {
     pub fn new(is_lib: bool) -> Self {
         Self { is_lib }
     }
+    #[allow(clippy::too_many_arguments)]
     fn export_class(
         &self,
         asm: &super::Assembly,
@@ -47,18 +50,22 @@ impl CExporter {
         }
         while !delayed_defs.is_empty() {
             /*
-            self.export_class(  asm,
+            self.export_class(
+                asm,
                 *class_def,
                 &mut method_decls,
                 &mut method_defs,
                 &mut type_defs,
                 &mut defined_types,
-                &mut delayed_defs
-            )?;*/
+                &mut delayed_defs,
+            )?; */
             todo!();
         }
         //
-        todo!();
+        if true {
+            todo!();
+        }
+
         Ok(())
     }
 }
@@ -116,5 +123,4 @@ pub fn name_sig_class_to_mangled(
         Some(_) => todo!(),
         None => todo!(),
     };
-    todo!();
 }

@@ -1,3 +1,7 @@
+//#![warn(clippy::pedantic)]
+#![allow(clippy::module_name_repetitions)]
+// This lint includes tests for some bizzare reason, so ignoring it seems like the best course of action
+#![allow(clippy::missing_panics_doc)]
 use std::path::Path;
 
 pub use access::Access;
@@ -77,6 +81,8 @@ pub fn nodes() {
 }
 pub trait Exporter {
     type Error: std::fmt::Debug;
+    /// # Errors
+    /// Returns an error if the export process failed.
     fn export(&self, asm: &Assembly, target: &Path) -> Result<(), Self::Error>;
 }
 

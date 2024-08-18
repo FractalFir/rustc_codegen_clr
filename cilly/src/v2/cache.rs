@@ -1,3 +1,4 @@
+/*
 use std::marker::PhantomData;
 
 use super::{bimap::IntoBiMapIndex, Assembly, NodeIdx};
@@ -114,3 +115,4 @@ impl NonMaxU32 {
         self.0.get() + 1
     }
 }
+*/

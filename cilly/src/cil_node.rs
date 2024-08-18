@@ -1254,9 +1254,7 @@ impl CILNode {
                         }
                         Ok(Type::DotnetType(class.clone().into()))
                     }
-                    None => Err("Newobj instruction witn no class specified"
-                        .to_owned()
-                        .into()),
+                    None => Err("Newobj instruction witn no class specified".to_owned()),
                 }
             }
             Self::Call(call_op_args) | Self::CallVirt(call_op_args) => {

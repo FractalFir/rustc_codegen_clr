@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::{cil_node::CILNode, cil_root::CILRoot, v2::hashable::HashableF32};
+use crate::{cil_node::CILNode, cil_root::CILRoot};
 
 #[derive(Debug)]
 enum CILIterElemUnsafe<'a> {
@@ -576,7 +576,7 @@ impl<'a, T: Iterator<Item = CILIterElemMut<'a>>> CILIterMutTrait<'a> for T {
 }
 #[test]
 fn iter() {
-    use crate::{call_site::CallSite, FnSig, Type};
+    use crate::{call_site::CallSite, v2::hashable::HashableF32, FnSig, Type};
     let mut node = CILNode::Add(
         Box::new(CILNode::Mul(
             Box::new(CILNode::LDLoc(0)),

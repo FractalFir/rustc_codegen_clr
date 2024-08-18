@@ -45,15 +45,10 @@ fn add_mandatory_statics(asm: &mut cilly::v2::Assembly) {
     asm.add_static(tpe, "environ", false, main_module);
 }
 
-fn get_libc() -> &'static str {
-    LIBC.as_ref()
-}
 lazy_static! {
     static ref LIBC: String = get_libc_();
 }
-fn get_libm() -> &'static str {
-    LIBM.as_ref()
-}
+
 lazy_static! {
     static ref LIBM: String = get_libm_();
 }

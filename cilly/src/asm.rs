@@ -12,7 +12,6 @@ use crate::{
     static_field_desc::StaticFieldDescriptor,
     type_def::TypeDef,
     utilis::MemoryUsage,
-    v2::opt::{OptFuel, SideEffectInfoCache},
     DotnetTypeRef, FnSig, IString, Type,
 };
 

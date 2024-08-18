@@ -828,8 +828,6 @@ fn environ() {
     let mut asm = Assembly::empty();
 
     get_environ(&mut asm);
-
-    let mut out = String::new();
 }
 #[must_use]
 pub fn escape_class_name(name: &str) -> String {

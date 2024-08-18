@@ -5,14 +5,10 @@ pub mod r#type;
 
 use std::collections::HashMap;
 
-use fxhash::{FxBuildHasher, FxHasher};
+use fxhash::FxHasher;
 pub use r#type::*;
 
 pub type IString = Box<str>;
-enum IStringOrInterned {
-    IString(IString),
-    Interned(AsmString),
-}
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct AsmString(u64);

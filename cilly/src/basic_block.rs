@@ -231,8 +231,8 @@ impl BasicBlock {
             .flatten()
             .flat_map(|block| block.trees.iter_mut());
         let self_blocks = self.trees.iter_mut();
-        let block_iter = self_blocks.chain(handler_bbs);
-        block_iter
+
+        self_blocks.chain(handler_bbs)
     }
     /*
     /// Returns a iterator over `CILIterElemMut`

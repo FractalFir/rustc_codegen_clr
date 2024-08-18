@@ -1,3 +1,5 @@
+// This is a WIP experiment.
+#![allow(dead_code, unused_imports)]
 use std::io::Write;
 
 use crate::v2::MethodImpl;
@@ -397,7 +399,11 @@ fn type_string(tpe: Type, asm: &Assembly) -> String {
         Type::PlatformObject => todo!(),
         Type::Bool => "B".into(),
         Type::Void => "V".into(),
-        Type::PlatformArray { elem, dims } => todo!(),
+        Type::PlatformArray { elem, dims } => format!(
+            "{arr}{elem}",
+            arr = (0..dims.get()).map(|_| "[").collect::<String>(),
+            elem = type_string(*asm.get_type(elem), asm)
+        ),
         Type::FnPtr(_) => "J".into(),
     }
 }

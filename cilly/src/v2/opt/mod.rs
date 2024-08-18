@@ -167,8 +167,27 @@ impl CILNode {
                 CILNode::LdLen(arr)
             }
 
-            CILNode::LdElelemRef { array, index } => todo!(),
-            CILNode::UnboxAny { object, tpe } => todo!(),
+            CILNode::LdElelemRef { array, index } => {
+                let array = asm.get_node(*array).clone();
+                let array = array.propagate_locals(asm, idx, tpe, new_node, fuel);
+                let array = asm.alloc_node(array);
+                CILNode::LdElelemRef {
+                    array,
+                    index: *index,
+                }
+            }
+            CILNode::UnboxAny {
+                object,
+                tpe: unboxtpe,
+            } => {
+                let object = asm.get_node(*object).clone();
+                let object = object.propagate_locals(asm, idx, tpe, new_node, fuel);
+                let object = asm.alloc_node(object);
+                CILNode::UnboxAny {
+                    object,
+                    tpe: *unboxtpe,
+                }
+            }
         }
     }
 }
@@ -177,7 +196,11 @@ impl BasicBlock {
     pub fn remove_duplicate_sfi(&mut self, asm: &mut Assembly) {
         let mut prev_ls = u32::MAX;
         let mut prev_ll = u16::MAX;
+        #[allow(unused_variables)]
+        // This variable could become used if I change the duplicate sfi removal rules.
         let mut prev_cs = u16::MAX;
+        #[allow(unused_variables)]
+        // This variable could become used if I change the duplicate sfi removal rules.
         let mut prev_cl = u16::MAX;
         let mut prev_file = asm.alloc_string("InvalidDebugInfoString");
         let nop = asm.alloc_root(CILRoot::Nop);
@@ -201,8 +224,12 @@ impl BasicBlock {
                 }
                 // Set the prev sfi to curr sfi
                 prev_file = *file;
-                prev_cl = *col_len;
-                prev_cs = *col_start;
+                #[allow(unused_assignments)]
+                // This could become enabled if I ever want to change the SFI deduplcation rules.
+                {
+                    prev_cl = *col_len;
+                    prev_cs = *col_start;
+                }
                 prev_ll = *line_len;
                 prev_ls = *line_start;
             }

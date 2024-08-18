@@ -1,5 +1,5 @@
 use ar::Archive;
-use cilly::asm::Assembly;
+
 use cilly::IString;
 use std::io::Read;
 pub struct LinkableFile {

@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use cilly::IString;
 use fxhash::{FxBuildHasher, FxHashMap};
 

@@ -66,6 +66,7 @@ impl Type {
         };
         tmp
     }
+    #[must_use]
     pub fn deref<'a, 'b: 'a>(&'a self, asm: &'b Assembly) -> &Self {
         match self {
             Type::Ptr(inner) | Type::Ref(inner) => asm.get_type(*inner),
@@ -75,7 +76,8 @@ impl Type {
 
     pub(crate) fn from_v1(tpe: &crate::Type, asm: &mut Assembly) -> Type {
         match tpe {
-            crate::Type::Void => Self::Void,
+            // We turn Foregin into void.
+            crate::Type::Void | crate::Type::Foreign => Self::Void,
             crate::Type::Bool => Self::Bool,
             crate::Type::F16 => Float::F16.into(),
             crate::Type::F32 => Float::F32.into(),
@@ -114,7 +116,7 @@ impl Type {
                 let inner = Self::from_v1(inner, asm);
                 asm.nref(inner)
             }
-            crate::Type::Foreign => Self::Void,
+
             crate::Type::GenericArg(arg) => Self::PlatformGeneric(*arg, GenericKind::TypeGeneric),
             crate::Type::CallGenericArg(arg) => {
                 Self::PlatformGeneric(*arg, GenericKind::CallGeneric)

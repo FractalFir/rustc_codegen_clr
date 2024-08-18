@@ -16,7 +16,7 @@ pub fn emulate_uint8_cmp_xchng(asm: &mut Assembly, patcher: &mut MissingMethodPa
         "cmpxchng",
         |asm, prev, arg, _| {
             // 1st, mask the previous value
-            let prev_mask = asm.alloc_node(Const::I32(0x00FFFFFF));
+            let prev_mask = asm.alloc_node(Const::I32(0x00FF_FFFF));
             let prev = asm.alloc_node(CILNode::BinOp(prev, prev_mask, BinOp::And));
             // 2nd. Shift the byte into the least siginificant position(by 24 bytes)
             let shift_ammount = asm.alloc_node(Const::I32(24));
@@ -25,7 +25,7 @@ pub fn emulate_uint8_cmp_xchng(asm: &mut Assembly, patcher: &mut MissingMethodPa
             asm.alloc_node(CILNode::BinOp(prev, arg, BinOp::Or))
         },
         Int::I32,
-    )
+    );
 }
 pub fn generate_atomic(
     asm: &mut Assembly,
@@ -101,9 +101,10 @@ pub fn generate_atomic_for_ints(
         Int::ISize,
     ];
     for int in ATOMIC_INTS {
-        generate_atomic(asm, patcher, op_name, op.clone(), int)
+        generate_atomic(asm, patcher, op_name, op.clone(), int);
     }
 }
+/// Adds all the builitn atomic functions to the patcher, allowing for their use.
 pub fn generate_all_atomics(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     // XOR
     generate_atomic_for_ints(asm, patcher, "xor", |asm, lhs, rhs, _| {
@@ -119,7 +120,7 @@ pub fn generate_all_atomics(asm: &mut Assembly, patcher: &mut MissingMethodPatch
     // Max
     generate_atomic_for_ints(asm, patcher, "min", int_min);
     // Emulates 1 byte compare exchange
-    emulate_uint8_cmp_xchng(asm, patcher)
+    emulate_uint8_cmp_xchng(asm, patcher);
 }
 /*
   .method public hidebysig static

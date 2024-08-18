@@ -147,17 +147,20 @@ pub enum BinOp {
     Div,
 }
 impl CILNode {
+    // WIP
+    #[allow(unused_variables)]
+    /// Typechecks this node, and returns its type if its valid.
     pub fn get_type(
         &self,
         sig: SigIdx,
         locals: &[(Option<StringIdx>, TypeIdx)],
-        asm: &Assembly,
+        asm: &mut Assembly,
     ) -> Result<Type, IString> {
         match self {
             CILNode::Const(cst) => Ok(cst.as_ref().get_type()),
             CILNode::BinOp(lhs, rhs, BinOp::Add | BinOp::Sub | BinOp::Mul) => {
-                let lhs = asm.get_node(*lhs);
-                let rhs = asm.get_node(*rhs);
+                let lhs = asm.get_node(*lhs).clone();
+                let rhs = asm.get_node(*rhs).clone();
                 let lhs = lhs.get_type(sig, locals, asm)?;
                 let rhs = rhs.get_type(sig, locals, asm)?;
                 if lhs != rhs {
@@ -172,10 +175,10 @@ impl CILNode {
             }
             CILNode::BinOp(lhs, rhs, op) => todo!("op:{op:?}"),
             CILNode::UnOp(_, _) => todo!(),
-            CILNode::LdLoc(_) => todo!(),
-            CILNode::LdLocA(_) => todo!(),
-            CILNode::LdArg(_) => todo!(),
-            CILNode::LdArgA(_) => todo!(),
+            CILNode::LdLoc(loc) => Ok(*asm.get_type(locals[*loc as usize].1)),
+            CILNode::LdLocA(loc) => Ok(asm.nref(*asm.get_type(locals[*loc as usize].1))),
+            CILNode::LdArg(arg) => Ok(asm.get_sig(sig).inputs()[*arg as usize]),
+            CILNode::LdArgA(arg) => Ok(asm.nref(asm.get_sig(sig).inputs()[*arg as usize])),
             CILNode::Call(_) => todo!(),
             CILNode::IntCast {
                 input,
@@ -187,7 +190,14 @@ impl CILNode {
                 target,
                 is_signed,
             } => todo!(),
-            CILNode::RefToPtr(_) => todo!(),
+            CILNode::RefToPtr(refn) => {
+                let refn = asm.get_node(*refn).clone();
+                let tpe = refn.get_type(sig, locals, asm)?;
+                match tpe {
+                    Type::Ref(inner) => Ok(asm.nptr(*asm.get_type(inner))),
+                    _ => Err(format!("Invalid RefToPtr input {refn:?}").into()),
+                }
+            }
             CILNode::PtrCast(_, _) => todo!(),
             CILNode::LdFieldAdress { addr, field } => todo!(),
             CILNode::LdField { addr, field } => todo!(),

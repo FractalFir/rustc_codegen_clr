@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{utilis::MemoryUsage, AsmString, AsmStringContainer, IString, Type};
+use crate::{IString, Type};
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Eq, Hash, Debug)]
 pub struct DotnetTypeRef {

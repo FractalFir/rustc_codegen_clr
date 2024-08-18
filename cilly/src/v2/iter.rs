@@ -55,13 +55,13 @@ impl<'asm> Iterator for CILIter<'asm> {
                 CILIterElem::Root(CILRoot::SetField(fld)) => match idx {
                     1 => {
                         *idx += 1;
-                        let lhs = self.asm.get_node(fld.1.clone());
+                        let lhs = self.asm.get_node(fld.1);
                         self.elems.push((CILIterElem::Node(lhs.clone()), 0));
                         continue;
                     }
                     2 => {
                         *idx += 1;
-                        let rhs = self.asm.get_node(fld.2.clone());
+                        let rhs = self.asm.get_node(fld.2);
                         self.elems.push((CILIterElem::Node(rhs.clone()), 0));
                         continue;
                     }
@@ -73,13 +73,13 @@ impl<'asm> Iterator for CILIter<'asm> {
                 CILIterElem::Root(CILRoot::StInd(ind)) => match idx {
                     1 => {
                         *idx += 1;
-                        let lhs = self.asm.get_node(ind.0.clone());
+                        let lhs = self.asm.get_node(ind.0);
                         self.elems.push((CILIterElem::Node(lhs.clone()), 0));
                         continue;
                     }
                     2 => {
                         *idx += 1;
-                        let rhs = self.asm.get_node(ind.1.clone());
+                        let rhs = self.asm.get_node(ind.1);
                         self.elems.push((CILIterElem::Node(rhs.clone()), 0));
                         continue;
                     }
@@ -97,13 +97,13 @@ impl<'asm> Iterator for CILIter<'asm> {
                 ) => match idx {
                     1 => {
                         *idx += 1;
-                        let lhs = self.asm.get_node(lhs.clone());
+                        let lhs = self.asm.get_node(*lhs);
                         self.elems.push((CILIterElem::Node(lhs.clone()), 0));
                         continue;
                     }
                     2 => {
                         *idx += 1;
-                        let rhs = self.asm.get_node(rhs.clone());
+                        let rhs = self.asm.get_node(*rhs);
                         self.elems.push((CILIterElem::Node(rhs.clone()), 0));
                         continue;
                     }
@@ -115,7 +115,7 @@ impl<'asm> Iterator for CILIter<'asm> {
                 CILIterElem::Node(CILNode::Call(info)) | CILIterElem::Root(CILRoot::Call(info)) => {
                     if *idx - 1 < info.1.len() {
                         let arg = &info.1[*idx - 1];
-                        let arg = self.asm.get_node(arg.clone());
+                        let arg = self.asm.get_node(*arg);
                         *idx += 1;
                         self.elems.push((CILIterElem::Node(arg.clone()), 0));
                         continue;
@@ -128,13 +128,13 @@ impl<'asm> Iterator for CILIter<'asm> {
                 | CILIterElem::Root(CILRoot::CallI(info)) => match (*idx - 1).cmp(&info.2.len()) {
                     std::cmp::Ordering::Less => {
                         let arg = &info.2[*idx - 1];
-                        let arg = self.asm.get_node(arg.clone());
+                        let arg = self.asm.get_node(*arg);
                         *idx += 1;
                         self.elems.push((CILIterElem::Node(arg.clone()), 0));
                         continue;
                     }
                     std::cmp::Ordering::Equal => {
-                        let arg = self.asm.get_node(info.0.clone());
+                        let arg = self.asm.get_node(info.0);
                         *idx += 1;
                         self.elems.push((CILIterElem::Node(arg.clone()), 0));
                     }
@@ -168,7 +168,7 @@ impl<'asm> Iterator for CILIter<'asm> {
                 ) => match idx {
                     1 => {
                         *idx += 1;
-                        let val = self.asm.get_node(val.clone());
+                        let val = self.asm.get_node(*val);
                         self.elems.push((CILIterElem::Node(val.clone()), 0));
                         continue;
                     }
@@ -203,19 +203,19 @@ impl<'asm> Iterator for CILIter<'asm> {
                 CILIterElem::Root(CILRoot::InitBlk(blk) | CILRoot::CpBlk(blk)) => match idx {
                     1 => {
                         *idx += 1;
-                        let rhs = self.asm.get_node(blk.0.clone());
+                        let rhs = self.asm.get_node(blk.0);
                         self.elems.push((CILIterElem::Node(rhs.clone()), 0));
                         continue;
                     }
                     2 => {
                         *idx += 1;
-                        let rhs = self.asm.get_node(blk.1.clone());
+                        let rhs = self.asm.get_node(blk.1);
                         self.elems.push((CILIterElem::Node(rhs.clone()), 0));
                         continue;
                     }
                     3 => {
                         *idx += 1;
-                        let rhs = self.asm.get_node(blk.2.clone());
+                        let rhs = self.asm.get_node(blk.2);
                         self.elems.push((CILIterElem::Node(rhs.clone()), 0));
                         continue;
                     }
@@ -234,7 +234,7 @@ impl<'asm> Iterator for CILIter<'asm> {
                         BranchCond::True(cond) | BranchCond::False(cond) => match idx {
                             1 => {
                                 *idx += 1;
-                                let val = self.asm.get_node(cond.clone());
+                                let val = self.asm.get_node(*cond);
                                 self.elems.push((CILIterElem::Node(val.clone()), 0));
                                 continue;
                             }
@@ -249,13 +249,13 @@ impl<'asm> Iterator for CILIter<'asm> {
                         | BranchCond::Gt(lhs, rhs, _) => match idx {
                             1 => {
                                 *idx += 1;
-                                let rhs = self.asm.get_node(rhs.clone());
+                                let rhs = self.asm.get_node(*rhs);
                                 self.elems.push((CILIterElem::Node(rhs.clone()), 0));
                                 continue;
                             }
                             2 => {
                                 *idx += 1;
-                                let lhs = self.asm.get_node(lhs.clone());
+                                let lhs = self.asm.get_node(*lhs);
                                 self.elems.push((CILIterElem::Node(lhs.clone()), 0));
                                 continue;
                             }
@@ -278,7 +278,7 @@ pub struct CILIterMut<'start> {
     asm: &'start mut Assembly,
 }
 #[derive(Debug)]
-enum Either<A, B> {
+pub enum Either<A, B> {
     A(A),
     B(B),
 }
@@ -289,12 +289,14 @@ impl<A, B> From<A> for Either<A, B> {
     }
 }
 
-trait LendingIter {
+pub trait CILIterMutTrait {
     type Ctx;
     type A: Debug;
     type B: Debug;
     fn advance(&mut self);
+    #[allow(clippy::type_complexity)]
     fn get(&mut self) -> Option<(&mut Self::Ctx, Either<&mut Self::A, &mut Self::B>)>;
+    #[allow(clippy::type_complexity)]
     fn next(&mut self) -> Option<(&mut Self::Ctx, Either<&mut Self::A, &mut Self::B>)> {
         self.advance();
         let got = self.get();
@@ -305,7 +307,7 @@ trait LendingIter {
         got
     }
 }
-impl<'start> LendingIter for CILIterMut<'start> {
+impl<'start> CILIterMutTrait for CILIterMut<'start> {
     type Ctx = Assembly;
 
     type A = CILNode;
@@ -320,9 +322,9 @@ impl<'start> LendingIter for CILIterMut<'start> {
                     return;
                 } else {
                     match &mut self.start {
-                        Either::A(CILNode::BinOp(lhs, rhs, op)) => match self.idx {
+                        Either::A(CILNode::BinOp(lhs, rhs, _)) => match self.idx {
                             0 => {
-                                let lhs = self.asm.get_node(lhs.clone());
+                                let lhs = self.asm.get_node(*lhs);
                                 self.elems.push((CILIterElem::Node(lhs.clone()), 0));
                                 continue 'main;
                             }
@@ -330,7 +332,7 @@ impl<'start> LendingIter for CILIterMut<'start> {
                                 let curr = curr.take().expect("Iterator error").as_node().unwrap();
                                 *lhs = self.asm.alloc_node(curr);
 
-                                let rhs = self.asm.get_node(rhs.clone());
+                                let rhs = self.asm.get_node(*rhs);
                                 self.elems.push((CILIterElem::Node(rhs.clone()), 0));
                                 continue 'main;
                             }
@@ -367,7 +369,6 @@ impl<'start> LendingIter for CILIterMut<'start> {
                     CILIterElem::Node(_) => todo!(),
                     CILIterElem::Root(_) => todo!(),
                 }
-                todo!();
             }
         }
     }
@@ -402,7 +403,6 @@ impl<'start> LendingIter for CILIterMut<'start> {
                     CILIterElem::Node(node) => todo!("node:{node:?}"),
                     CILIterElem::Root(root) => todo!("root:{root:?}"),
                 }
-                todo!();
             }
         }
     }
@@ -517,7 +517,7 @@ impl<'this, T: Iterator<Item = CILIterElem> + 'this> TpeIter<'this> for T {
             };
             iter
         })
-        .flat_map(move |d| d)
+        .flatten()
     }
 }
 #[test]

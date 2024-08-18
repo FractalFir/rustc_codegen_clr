@@ -88,6 +88,7 @@ impl TypeDef {
         }
     }
     #[must_use]
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         access: AccessModifer,
         name: IString,
@@ -122,7 +123,7 @@ impl TypeDef {
 
     fn sanity_check(&self) {
         if let Some(size) = self.explict_size() {
-            self.explicit_offsets().iter().flat_map(|vec|*vec).for_each(|offset|assert!(*offset <= u32::try_from(size.get()).unwrap(), "Sanity check failed! The size of type {name} is {size}, yet it has a filed at offset {offset}",name = self.name));
+            self.explicit_offsets().iter().flat_map(|vec|*vec).for_each(|offset|assert!(*offset <= size.get(), "Sanity check failed! The size of type {name} is {size}, yet it has a filed at offset {offset}",name = self.name));
         }
         if let Some(offsets) = self.explicit_offsets() {
             assert_eq!(
@@ -151,12 +152,6 @@ impl TypeDef {
         }
         self.field_types()
             .for_each(|tpe| assert_ne!(*tpe, Type::Void));
-    }
-
-    pub(crate) fn opt_types(&mut self, string_map: &mut crate::AsmStringContainer) {
-        self.inner_types
-            .iter_mut()
-            .for_each(|tpe| tpe.opt_types(string_map));
     }
 }
 impl From<TypeDef> for Type {

@@ -1,4 +1,4 @@
-use crate::{call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, v2::hashable::HashableF32};
+use crate::{call_site::CallSite, cil_node::CILNode, cil_root::CILRoot};
 
 #[derive(Debug, Clone, Copy)]
 pub enum CILIterElem<'a> {
@@ -539,7 +539,7 @@ impl<'a> IntoIterator for &'a CILRoot {
 }
 #[test]
 fn iter() {
-    use crate::{call_site::CallSite, FnSig, Type};
+    use crate::{call_site::CallSite, v2::hashable::HashableF32, FnSig, Type};
     let node = CILNode::Add(
         Box::new(CILNode::Mul(
             Box::new(CILNode::LDLoc(0)),

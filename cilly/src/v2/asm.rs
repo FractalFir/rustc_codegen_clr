@@ -531,7 +531,7 @@ impl Assembly {
     }
     pub fn eliminate_dead_code(&mut self) {
         self.eliminate_dead_fns();
-        //self.eliminate_dead_types();
+        self.eliminate_dead_types();
     }
     #[allow(dead_code)]
     pub(crate) fn eliminate_dead_types(&mut self) {
@@ -562,7 +562,7 @@ impl Assembly {
                     .iter_types()
                     .flat_map(|tpe| tpe.iter_class_refs(self).collect::<Vec<_>>())
                     .flat_map(|cref| self.class_ref_to_def(cref))
-                    .filter(|refid| alive.contains(refid))
+                    .filter(|refid| !alive.contains(refid))
                     .collect();
 
                 to_resurrect.extend(defids);

@@ -89,4 +89,18 @@ fn main() {
     test_eq!(indarr.arr[4], 4);
     let a = [123456_u128];
     black_box(a);
+    big_repeat_u8();
+    big_repeat_u32();
+}
+fn big_repeat_u8() {
+    // An array of identical elements, of size way over 16. Should use `initblk`
+    let elem = black_box(0_u8);
+    let arr = [elem; 16384];
+    black_box(&arr);
+}
+fn big_repeat_u32() {
+    // An array of identical elements, of size ay over 16. Should use `cpblk`
+    let elem = black_box(0_u32);
+    let arr = [elem; 16384 / 4];
+    black_box(&arr);
 }

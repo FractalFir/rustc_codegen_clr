@@ -64,7 +64,7 @@ impl ClassRef {
         Self::new(name, asm, false, vec![].into())
     }
     pub fn from_v1(dotnet_type: &V1ClassRef, asm: &mut super::Assembly) -> ClassRef {
-        let name = asm.alloc_string(dotnet_type.name_path().clone());
+        let name = asm.alloc_string(dotnet_type.name_path());
         let assembly = dotnet_type.asm().map(|assembly| asm.alloc_string(assembly));
         let generics: Box<[_]> = dotnet_type
             .generics()

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{utilis::MemoryUsage, AsmStringContainer, DotnetTypeRef, FnSig};
+use crate::{utilis::MemoryUsage, DotnetTypeRef, FnSig};
 #[derive(Serialize, Deserialize, PartialEq, Clone, Eq, Hash, Debug)]
 pub enum Type {
     /// Void type
