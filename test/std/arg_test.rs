@@ -23,7 +23,10 @@ use core::sync::atomic::{AtomicIsize, AtomicPtr, Ordering};
 // strings, which allows the code in this file to be very simple.
 static ARGC: AtomicIsize = AtomicIsize::new(0);
 static ARGV: AtomicPtr<*const u8> = AtomicPtr::new(ptr::null_mut());
-
+extern "C" {
+    fn fork() -> i32;
+    static mut environ: *mut *mut i8;
+}
 unsafe fn really_init(argc: isize, argv: *const *const u8) {
     // These don't need to be ordered with each other or other stores,
     // because they only hold the unmodified system-provide argv/argc.
@@ -58,6 +61,26 @@ static ARGV_INIT_ARRAY: extern "C" fn(core::ffi::c_int, *const *const u8, *const
     init_wrapper
 };
 
+#[no_mangle]
+fn load_environ() -> *mut *mut i8 {
+    unsafe { environ }
+}
 fn main() {
     test_ne!(ARGV.load(Ordering::Relaxed), ptr::null_mut());
+    unsafe {
+        printf(c"%p\n".as_ptr(), load_environ());
+    };
+    let mut i = 0_isize;
+    unsafe {
+        while !(*environ.offset(i)).is_null() {
+            let fresh0 = i;
+            i = i + 1;
+            printf(
+                b"%s\n\0" as *const u8 as *const i8,
+                *environ.offset(fresh0 as isize),
+            );
+        }
+    }
+    // Ensure that fork returns -1, to indicate it is unsupported.
+    test_eq!(unsafe { fork() }, -1);
 }

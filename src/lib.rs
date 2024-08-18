@@ -209,6 +209,7 @@ impl CodegenBackend for MyBackend {
             let (_defid_set, cgus) = tcx.collect_and_partition_mono_items(());
 
             let mut asm = Assembly::empty();
+            let _ = cilly::utilis::get_environ(&mut asm);
             let mut cache = crate::r#type::TyCache::empty();
             for cgu in cgus {
                 //println!("codegen {} has {} items.", cgu.name(), cgu.items().len());

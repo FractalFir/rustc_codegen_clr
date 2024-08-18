@@ -134,16 +134,17 @@ fn load_scalar_ptr(
             }
             if name == "environ" {
                 return CILNode::TemporaryLocal(Box::new((
-                    Type::U8,
+                    ptr!(ptr!(Type::U8)),
                     [CILRoot::SetTMPLocal {
-                        value: CILNode::LDStaticField(
-                            StaticFieldDescriptor::new(
+                        value: CILNode::Call(Box::new(CallOpArgs {
+                            args: Box::new([]),
+                            site: Box::new(CallSite::new(
                                 None,
-                                ptr!(ptr!(Type::U8)),
-                                name.clone().into(),
-                            )
-                            .into(),
-                        ),
+                                "get_environ".into(),
+                                FnSig::new(&[], ptr!(ptr!(Type::U8))),
+                                true,
+                            )),
+                        })),
                     }]
                     .into(),
                     CILNode::LoadAddresOfTMPLocal,

@@ -391,14 +391,13 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
     let mut blocks = get_environ.blocks_mut();
     let first_check = &mut blocks[first_check_bb as usize];
     first_check.trees_mut().push(
-        CILRoot::BTrue {
+        CILRoot::BNe {
             target: ret_bb,
             sub_target: 0,
-            cond: CILNode::LDStaticField(Box::new(StaticFieldDescriptor::new(
-                None,
-                Type::Bool,
-                "environ_init_status".into(),
+            a: Box::new(CILNode::LDStaticField(Box::new(
+                StaticFieldDescriptor::new(None, ptr!(ptr!(Type::U8)), "environ".into()),
             ))),
+            b: Box::new(conv_usize!(ldc_u32!(0)).cast_ptr(ptr!(ptr!(Type::U8)))),
         }
         .into(),
     );
@@ -632,10 +631,21 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
         )
         .into(),
     );
+    loop_end.trees_mut().push(
+        CILRoot::SetStaticField {
+            descr: Box::new(StaticFieldDescriptor::new(
+                None,
+                ptr!(ptr!(Type::U8)),
+                "environ".into(),
+            )),
+            value: CILNode::LDLoc(arr_ptr),
+        }
+        .into(),
+    );
     drop(blocks);
     asm.add_method(get_environ);
-    asm.add_static(Type::Bool, "environ_init_status", false);
-    asm.add_static(ptr!(ptr!(Type::U8)), "environ", false);
+
+    asm.add_static(ptr!(ptr!(Type::U8)), "environ", true);
     init_cs
 }
 static CHARS: &[char] = &[

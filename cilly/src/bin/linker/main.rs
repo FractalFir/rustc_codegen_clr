@@ -40,9 +40,6 @@ fn add_mandatory_statics(asm: &mut cilly::v2::Assembly) {
         false,
         main_module,
     );
-    let inner = asm.nptr(Type::Int(cilly::v2::Int::U8));
-    let tpe = asm.nptr(inner);
-    asm.add_static(tpe, "environ", false, main_module);
 }
 
 lazy_static! {
@@ -184,6 +181,12 @@ fn main() {
                 .map(|fn_name| (*fn_name, f128_support.to_owned())),
         );
     }
+    let mathf = LIBM.to_owned();
+    externs.extend(
+        libc_fns::LIBM_FNS
+            .iter()
+            .map(|fn_name| (*fn_name, mathf.to_owned())),
+    );
     let mut overrides: MissingMethodPatcher = FxHashMap::default();
     overrides.insert(
         final_assembly.alloc_string("pthread_atfork"),
@@ -336,14 +339,29 @@ fn main() {
         }),
     );
     overrides.insert(
-        final_assembly.alloc_string("rust_begin_unwind"),
+        final_assembly.alloc_string("_Unwind_DeleteException"),
         Box::new(|_, asm| {
-            MethodImpl::AliasFor(
-                *asm.find_methods_matching("rust_begin_unwind")
-                    .unwrap()
-                    .next()
-                    .unwrap(),
-            )
+            let ret = asm.alloc_root(CILRoot::VoidRet);
+            let blocks = vec![BasicBlock::new(vec![ret], 0, None)];
+            MethodImpl::MethodBody {
+                blocks,
+                locals: vec![],
+            }
+        }),
+    );
+    overrides.insert(
+        final_assembly.alloc_string("fork"),
+        Box::new(|_, asm| {
+            let ret_val = asm.alloc_node(Const::I32(-1));
+            let blocks = vec![BasicBlock::new(
+                vec![asm.alloc_root(CILRoot::Ret(ret_val))],
+                0,
+                None,
+            )];
+            MethodImpl::MethodBody {
+                blocks,
+                locals: vec![],
+            }
         }),
     );
     cilly::v2::builtins::atomics::generate_all_atomics(&mut final_assembly, &mut overrides);

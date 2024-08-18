@@ -86,6 +86,35 @@ pub fn saturating_add<'tcx>(
             crate::casts::int_to_int(Type::I128, &Type::I64, diff_capped)
         }
 
+        Type::ISize => {
+            let a = crate::casts::int_to_int(Type::ISize, &Type::I128, a);
+            let b = crate::casts::int_to_int(Type::ISize, &Type::I128, b);
+            let diff = call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::int_128(),
+                    "op_Addition".into(),
+                    FnSig::new(&[Type::I128, Type::I128], Type::I128),
+                    true,
+                ),
+                [a, b]
+            );
+            #[allow(clippy::cast_sign_loss)]
+            let diff_capped = call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::int_128(),
+                    "Clamp".into(),
+                    FnSig::new(&[Type::I128, Type::I128, Type::I128], Type::I128),
+                    true
+                ),
+                [
+                    diff,
+                    // TODO: this assumes isize::MAX == i64::MAX
+                    CILNode::const_i128(i128::from(i64::MIN) as u128),
+                    CILNode::const_i128(i128::from(i64::MAX) as u128),
+                ]
+            );
+            crate::casts::int_to_int(Type::I128, &Type::ISize, diff_capped)
+        }
         Type::I16 => {
             let a = conv_i32!(a);
             let b = conv_i32!(b);
@@ -176,6 +205,35 @@ pub fn saturating_sub<'tcx>(
                 ]
             );
             crate::casts::int_to_int(Type::I128, &Type::I64, diff_capped)
+        }
+        Type::ISize => {
+            let a = crate::casts::int_to_int(Type::ISize, &Type::I128, a);
+            let b = crate::casts::int_to_int(Type::ISize, &Type::I128, b);
+            let diff = call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::int_128(),
+                    "op_Subtraction".into(),
+                    FnSig::new(&[Type::I128, Type::I128], Type::I128),
+                    true,
+                ),
+                [a, b]
+            );
+            #[allow(clippy::cast_sign_loss)]
+            let diff_capped = call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::int_128(),
+                    "Clamp".into(),
+                    FnSig::new(&[Type::I128, Type::I128, Type::I128], Type::I128),
+                    true
+                ),
+                [
+                    diff,
+                    // TODO: this assumes isize::MAX == i64::MAX
+                    CILNode::const_i128(i128::from(i64::MIN) as u128),
+                    CILNode::const_i128(i128::from(i64::MAX) as u128),
+                ]
+            );
+            crate::casts::int_to_int(Type::I128, &Type::ISize, diff_capped)
         }
         Type::I32 => {
             let a = conv_i64!(a);

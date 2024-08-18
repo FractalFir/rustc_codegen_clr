@@ -905,6 +905,20 @@ impl CILRoot {
                     Ok(())
                 }
             }
+            Self::BNe {
+                target: _,
+                sub_target: _,
+                a,
+                b,
+            } => {
+                let a = a.validate(vctx, tmp_loc)?;
+                let b = b.validate(vctx, tmp_loc)?;
+                if a != b {
+                    Err(format!("Can't compare {a:?} and {b:?}"))
+                } else {
+                    Ok(())
+                }
+            }
             Self::GoTo {
                 target: _,
                 sub_target: _,
