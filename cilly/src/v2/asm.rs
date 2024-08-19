@@ -45,6 +45,16 @@ pub struct Assembly {
     //cache: CachedAssemblyInfo<NodeIdx, NonMaxU32, StackUsage>,
 }
 impl Assembly {
+    pub fn class_defs(&self) -> &FxHashMap<ClassDefIdx, ClassDef> {
+        &self.class_defs
+    }
+    pub fn method_ref_to_def(&self, class: MethodRefIdx) -> Option<MethodDefIdx> {
+        if self.method_defs.contains_key(&MethodDefIdx(class)) {
+            Some(MethodDefIdx(class))
+        } else {
+            None
+        }
+    }
     pub fn fuel_from_env(&self) -> OptFuel {
         match std::env::var("OPT_FUEL") {
             Ok(fuel) => match fuel.parse::<u32>() {
@@ -55,7 +65,7 @@ impl Assembly {
         }
     }
     pub fn default_fuel(&self) -> OptFuel {
-        OptFuel::new((self.method_defs.len() * 4 + self.roots.len() * 2) as u32)
+        OptFuel::new((self.method_defs.len() * 4 + self.roots.len() * 4) as u32)
     }
     pub(crate) fn borrow_methoddef(&mut self, def_id: MethodDefIdx) -> MethodDef {
         self.method_defs.remove(&def_id).unwrap()
@@ -90,6 +100,26 @@ impl Assembly {
                 break;
             }
         }
+    }
+    /// Finds all methods matching the closure
+    pub fn methods_with<'a>(
+        &'a self,
+        mut filter: impl FnMut(&Self, MethodDefIdx, &MethodDef) -> bool + 'a,
+    ) -> impl Iterator<Item = (&MethodDefIdx, &MethodDef)> + 'a {
+        self.method_defs
+            .iter()
+            .filter(move |(id, def)| filter(self, **id, def))
+    }
+    /// Modifies the method deifinition by running the closure on it
+
+    pub fn modify_methodef(
+        &mut self,
+        modify: impl FnOnce(&mut Self, &mut MethodDef),
+        def_id: MethodDefIdx,
+    ) {
+        let mut borrowed = self.borrow_methoddef(def_id);
+        modify(self, &mut borrowed);
+        self.return_methoddef(def_id, borrowed);
     }
     pub fn find_methods_matching<'a, P: std::str::pattern::Pattern + Clone + 'a>(
         &self,

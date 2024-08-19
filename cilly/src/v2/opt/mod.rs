@@ -356,18 +356,27 @@ impl MethodImpl {
         }
         // Remove writes to those dead locals
         for root in blocks.iter_mut().flat_map(|block| block.iter_roots_mut()) {
-            if let CILRoot::StLoc(idx, tree) = asm.get_root(*root) {
+            if let CILRoot::StLoc(local, tree) = asm.get_root(*root) {
                 // If the local is never read nor adress of, replace it with a pop or a nop.
-                if !local_reads[*idx as usize] && !local_address_of[*idx as usize] {
+                if !local_reads[*local as usize] && !local_address_of[*local as usize] {
                     // Tree has side effects, so it has to be evalueted, so we replace it with a pop
                     if cache.has_side_effects(*tree, asm) {
                         *root = asm.alloc_root(CILRoot::Pop(*tree));
                     } else {
                         *root = asm.alloc_root(CILRoot::Nop);
                     }
+                } else {
+                    // Also, if we are assigining to the same value, this is equivalent to a nop, and can be safely removed.
+                    match asm.get_node(*tree) {
+                        CILNode::LdLoc(local_2) if local == local_2 => {
+                            *root = asm.alloc_root(CILRoot::Nop);
+                        }
+                        _ => (),
+                    }
                 }
             }
         }
+
         // Remove Nops
         blocks.iter_mut().for_each(|block| {
             block
@@ -434,6 +443,9 @@ impl MethodDef {
         self.implementation_mut().propagate_locals(asm, cache, fuel);
         self.implementation_mut()
             .remove_dead_writes(asm, cache, fuel);
+        if fuel.consume(5) {
+            self.implementation_mut().realloc_locals(asm);
+        }
         if fuel.consume(5) {
             self.implementation_mut().remove_duplicate_sfi(asm);
         }

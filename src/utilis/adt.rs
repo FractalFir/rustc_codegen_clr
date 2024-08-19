@@ -346,7 +346,6 @@ pub fn get_discr<'tcx>(
                 );
                 (is_niche, tagged_discr, 0)
             } else {
-                eprintln!("General alg used for {ty:?}");
                 // The special cases don't apply, so we'll have to go with
                 // the general algorithm.
                 //let tag = crate::casts::int_to_int(disrc_type.clone(), &Type::U64, tag);

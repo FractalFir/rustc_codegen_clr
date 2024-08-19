@@ -184,7 +184,6 @@ pub fn handle_terminator<'tcx>(
                             ty,
                             rustc_middle::ty::Mutability::Mut,
                         ));
-                        eprintln!("fat_ptr_type:{fat_ptr_type:?} ty:{ty:?}");
                         // Get the vtable
                         let vtable_ptr = ld_field!(
                             fat_ptr_address.clone(),

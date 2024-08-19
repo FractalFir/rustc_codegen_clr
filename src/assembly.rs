@@ -381,7 +381,7 @@ pub fn add_fn<'tcx>(
     let sig = call_site.sig().clone();
 
     // Get locals
-    let (arg_names, mut locals) = locals_from_mir(
+    let (mut arg_names, mut locals) = locals_from_mir(
         &mir.local_decls,
         tcx,
         mir.arg_count,
@@ -389,6 +389,9 @@ pub fn add_fn<'tcx>(
         cache,
         &mir.var_debug_info,
     );
+    if sig.inputs().len() > arg_names.len() {
+        arg_names.push(Some("panic_location".into()));
+    }
 
     let blocks = &mir.basic_blocks;
     let mut normal_bbs = Vec::new();

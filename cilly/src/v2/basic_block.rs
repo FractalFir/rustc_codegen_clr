@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::{Assembly, CILRoot, RootIdx};
+use super::{Assembly, CILNode, CILRoot, RootIdx};
 use crate::basic_block::BasicBlock as V1Block;
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub struct BasicBlock {
@@ -32,6 +32,8 @@ impl BasicBlock {
         };
         self.roots().iter().copied().chain(handler_iter)
     }
+    /// Remaps all the roots in this block using `root_map` and `node_root`
+    /// Iterates trough the roots of this block and its handlers
     pub fn iter_roots_mut(&mut self) -> impl Iterator<Item = &mut RootIdx> + '_ {
         let handler_iter: Box<dyn Iterator<Item = &mut RootIdx>> =
             match self.handler.as_mut().map(|b| b.as_mut()) {
@@ -41,6 +43,19 @@ impl BasicBlock {
                 None => Box::new(std::iter::empty()),
             };
         self.roots.iter_mut().chain(handler_iter)
+    }
+    /// Modifies all nodes and roots in this `BasicBlock`
+    pub fn map_roots(
+        &mut self,
+        asm: &mut Assembly,
+        root_map: &mut impl Fn(CILRoot, &mut Assembly) -> CILRoot,
+        node_map: &mut impl Fn(CILNode, &mut Assembly) -> CILNode,
+    ) {
+        self.iter_roots_mut().for_each(|root| {
+            let get_root = asm.get_root(*root).clone();
+            let val = get_root.map(asm, root_map, node_map);
+            *root = asm.alloc_root(val)
+        })
     }
     pub fn handler(&self) -> Option<&[BasicBlock]> {
         self.handler.as_ref().map(|b| b.as_ref())

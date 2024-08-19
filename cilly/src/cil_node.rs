@@ -634,6 +634,7 @@ impl CILNode {
             obj: Box::new(target),
         }
     }
+    #[track_caller]
     pub fn cast_ptr(self, new_ptr: Type) -> Self {
         assert!(
             matches!(

@@ -203,7 +203,17 @@ pub fn handle_rvalue<'tcx>(
             let target = ctx.monomorphize(*target);
             let target = ctx.type_from_cache(target);
             // Cast to usize/isize from any *T is a NOP, so we just have to load the operand.
-            handle_operand(operand, ctx).cast_ptr(target)
+
+            let val = handle_operand(operand, ctx);
+            match target {
+                Type::USize | Type::ISize | Type::Ptr(_) | Type::DelegatePtr(_) => {
+                    val.cast_ptr(target)
+                }
+                Type::U64 | Type::I64 => {
+                    crate::casts::int_to_int(Type::USize, &target, val.cast_ptr(Type::USize))
+                }
+                _ => todo!("Can't cast using `PointerExposeProvenance` to {target:?}"),
+            }
         }
         Rvalue::Cast(CastKind::FloatToFloat, operand, target) => {
             let target = ctx.monomorphize(*target);

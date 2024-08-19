@@ -708,7 +708,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
             0,
             None,
         )],
-        vec![],
+        vec![Some("this".into())],
     );
     let unmanaged_start = TypeDef::new(
         AccessModifer::Public,
@@ -768,7 +768,11 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
                     0,
                     None,
                 )],
-                vec![Some("start_routine".into()), Some("data".into())],
+                vec![
+                    Some("this".into()),
+                    Some("start_routine".into()),
+                    Some("data".into()),
+                ],
             ),
             start,
         ],
@@ -804,7 +808,7 @@ add_method_from_trees!(
         None
     )],
     vec![],
-    vec![]
+    vec![Some("thread".into()), Some("name".into())]
 );
 add_method_from_trees!(
     _Unwind_RaiseException,
@@ -1041,7 +1045,7 @@ add_method_from_trees!(
         Some("gc_habdle".into()),
         Type::DotnetType(Box::new(DotnetTypeRef::gc_handle()))
     )],
-    vec![Some("thread_attr".into()), Some("size".into())]
+    vec![Some("thread".into())]
 );
 add_method_from_trees!(
     pthread_attr_destroy,

@@ -30,6 +30,7 @@ impl CallInfo {
         //assert!(!fn_abi.c_variadic);
         let ret = tycache.type_from_cache(fn_abi.ret.layout.ty, tcx, function);
         let mut args = Vec::with_capacity(fn_abi.args.len());
+
         for arg in &fn_abi.args {
             args.push(tycache.type_from_cache(arg.layout.ty, tcx, function));
         }

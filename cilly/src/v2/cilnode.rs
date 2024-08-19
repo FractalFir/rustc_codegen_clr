@@ -861,3 +861,164 @@ impl CILNode {
         }
     }
 }
+impl CILNode {
+    /// Changes the node by applying the `map` closure to each node. This process is
+    pub fn map(self, asm: &mut Assembly, map: &mut impl Fn(Self, &mut Assembly) -> Self) -> Self {
+        match self {
+            CILNode::Const(_)
+            | CILNode::LdLoc(_)
+            | CILNode::LdLocA(_)
+            | CILNode::LdArg(_)
+            | CILNode::LdArgA(_)
+            | CILNode::SizeOf(_)
+            | CILNode::GetException
+            | CILNode::LocAllocAlgined { .. }
+            | CILNode::LdStaticField(_)
+            | CILNode::LdFtn(_)
+            | CILNode::LdTypeToken(_) => map(self, asm),
+            CILNode::BinOp(lhs, rhs, op) => {
+                let lhs = asm.get_node(lhs).clone().map(asm, map);
+                let rhs = asm.get_node(rhs).clone().map(asm, map);
+                let node = CILNode::BinOp(asm.alloc_node(lhs), asm.alloc_node(rhs), op);
+                map(node, asm)
+            }
+            CILNode::UnOp(lhs, op) => {
+                let lhs = asm.get_node(lhs).clone().map(asm, map);
+                let node = CILNode::UnOp(asm.alloc_node(lhs), op);
+                map(node, asm)
+            }
+            CILNode::Call(call_info) => {
+                let (method_id, args) = *call_info;
+                let args = args
+                    .iter()
+                    .map(|arg| {
+                        let node = asm.get_node(*arg).clone().map(asm, map);
+                        asm.alloc_node(node)
+                    })
+                    .collect();
+
+                let node = CILNode::Call(Box::new((method_id, args)));
+                map(node, asm)
+            }
+            CILNode::IntCast {
+                input,
+                target,
+                extend,
+            } => {
+                let input = asm.get_node(input).clone().map(asm, map);
+                let node = CILNode::IntCast {
+                    input: asm.alloc_node(input),
+                    target,
+                    extend,
+                };
+                map(node, asm)
+            }
+            CILNode::FloatCast {
+                input,
+                target,
+                is_signed,
+            } => {
+                let input = asm.get_node(input).clone().map(asm, map);
+                let node = CILNode::FloatCast {
+                    input: asm.alloc_node(input),
+                    target,
+                    is_signed,
+                };
+                map(node, asm)
+            }
+            CILNode::RefToPtr(input) => {
+                let input = asm.get_node(input).clone().map(asm, map);
+                let node = CILNode::RefToPtr(asm.alloc_node(input));
+                map(node, asm)
+            }
+            CILNode::PtrCast(input, tpe) => {
+                let input = asm.get_node(input).clone().map(asm, map);
+                let node = CILNode::PtrCast(asm.alloc_node(input), tpe);
+                map(node, asm)
+            }
+            CILNode::LdFieldAdress { addr, field } => {
+                let addr = asm.get_node(addr).clone().map(asm, map);
+                let node = CILNode::LdFieldAdress {
+                    addr: asm.alloc_node(addr),
+                    field,
+                };
+                map(node, asm)
+            }
+            CILNode::LdField { addr, field } => {
+                let addr = asm.get_node(addr).clone().map(asm, map);
+                let node = CILNode::LdField {
+                    addr: asm.alloc_node(addr),
+                    field,
+                };
+                map(node, asm)
+            }
+            CILNode::LdInd {
+                addr,
+                tpe,
+                volitale,
+            } => {
+                let addr = asm.get_node(addr).clone().map(asm, map);
+                let node = CILNode::LdInd {
+                    addr: asm.alloc_node(addr),
+                    tpe,
+                    volitale,
+                };
+                map(node, asm)
+            }
+            CILNode::IsInst(object, tpe) => {
+                let object = asm.get_node(object).clone().map(asm, map);
+                let node = CILNode::IsInst(asm.alloc_node(object), tpe);
+                map(node, asm)
+            }
+            CILNode::CheckedCast(object, tpe) => {
+                let object = asm.get_node(object).clone().map(asm, map);
+                let node = CILNode::CheckedCast(asm.alloc_node(object), tpe);
+                map(node, asm)
+            }
+            CILNode::CallI(call_info) => {
+                let (ptr, sig, args) = *call_info;
+                let args = args
+                    .iter()
+                    .map(|arg| {
+                        let node = asm.get_node(*arg).clone().map(asm, map);
+                        asm.alloc_node(node)
+                    })
+                    .collect();
+                let ptr = asm.get_node(ptr).clone().map(asm, map);
+                let node = CILNode::CallI(Box::new((asm.alloc_node(ptr), sig, args)));
+                map(node, asm)
+            }
+            CILNode::LocAlloc { size } => {
+                let size = asm.get_node(size).clone().map(asm, map);
+                let node = CILNode::LocAlloc {
+                    size: asm.alloc_node(size),
+                };
+                map(node, asm)
+            }
+
+            CILNode::LdLen(input) => {
+                let input = asm.get_node(input).clone().map(asm, map);
+                let node = CILNode::LdLen(asm.alloc_node(input));
+                map(node, asm)
+            }
+
+            CILNode::LdElelemRef { array, index } => {
+                let array = asm.get_node(array).clone().map(asm, map);
+                let index = asm.get_node(index).clone().map(asm, map);
+                let node = CILNode::LdElelemRef {
+                    array: asm.alloc_node(array),
+                    index: asm.alloc_node(index),
+                };
+                map(node, asm)
+            }
+            CILNode::UnboxAny { object, tpe } => {
+                let object = asm.get_node(object).clone().map(asm, map);
+                let node = CILNode::UnboxAny {
+                    object: asm.alloc_node(object),
+                    tpe,
+                };
+                map(node, asm)
+            }
+        }
+    }
+}

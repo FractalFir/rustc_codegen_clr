@@ -425,6 +425,169 @@ impl CILRoot {
             _ => todo!("v1:{v1:?}"),
         }
     }
+    /// Maps this root using `root_map` and `node_map`.
+    pub fn map(
+        self,
+        asm: &mut Assembly,
+        root_map: &mut impl Fn(Self, &mut Assembly) -> Self,
+        node_map: &mut impl Fn(CILNode, &mut Assembly) -> CILNode,
+    ) -> Self {
+        match self {
+            CILRoot::StLoc(loc, val) => {
+                let val: CILNode = asm.get_node(val).clone().map(asm, node_map);
+                let root = CILRoot::StLoc(loc, asm.alloc_node(val));
+                root_map(root, asm)
+            }
+            CILRoot::StArg(arg, val) => {
+                let val: CILNode = asm.get_node(val).clone().map(asm, node_map);
+                let root = CILRoot::StArg(arg, asm.alloc_node(val));
+                root_map(root, asm)
+            }
+            CILRoot::Ret(ret) => {
+                let ret = asm.get_node(ret).clone().map(asm, node_map);
+                let root = CILRoot::Ret(asm.alloc_node(ret));
+                root_map(root, asm)
+            }
+            CILRoot::Pop(pop) => {
+                let pop = asm.get_node(pop).clone().map(asm, node_map);
+                let root = CILRoot::Pop(asm.alloc_node(pop));
+                root_map(root, asm)
+            }
+            CILRoot::Throw(throw) => {
+                let throw = asm.get_node(throw).clone().map(asm, node_map);
+                let root = CILRoot::Throw(asm.alloc_node(throw));
+                root_map(root, asm)
+            }
+            CILRoot::SourceFileInfo { .. }
+            | CILRoot::VoidRet
+            | CILRoot::Break
+            | CILRoot::Nop
+            | CILRoot::ExitSpecialRegion { .. }
+            | CILRoot::ReThrow => root_map(self, asm),
+            CILRoot::Branch(branch) => {
+                let (a, b, cond) = *branch;
+                let cond = match cond {
+                    Some(BranchCond::True(tr)) => {
+                        let tr = asm.get_node(tr).clone().map(asm, node_map);
+                        Some(BranchCond::True(asm.alloc_node(tr)))
+                    }
+                    Some(BranchCond::False(fl)) => {
+                        let fl = asm.get_node(fl).clone().map(asm, node_map);
+                        Some(BranchCond::False(asm.alloc_node(fl)))
+                    }
+                    Some(BranchCond::Eq(lhs, rhs)) => {
+                        let lhs = asm.get_node(lhs).clone().map(asm, node_map);
+                        let rhs = asm.get_node(rhs).clone().map(asm, node_map);
+                        Some(BranchCond::Eq(asm.alloc_node(lhs), asm.alloc_node(rhs)))
+                    }
+                    Some(BranchCond::Ne(lhs, rhs)) => {
+                        let lhs = asm.get_node(lhs).clone().map(asm, node_map);
+                        let rhs = asm.get_node(rhs).clone().map(asm, node_map);
+                        Some(BranchCond::Ne(asm.alloc_node(lhs), asm.alloc_node(rhs)))
+                    }
+                    Some(BranchCond::Lt(lhs, rhs, cmp_kind)) => {
+                        let lhs = asm.get_node(lhs).clone().map(asm, node_map);
+                        let rhs = asm.get_node(rhs).clone().map(asm, node_map);
+                        Some(BranchCond::Lt(
+                            asm.alloc_node(lhs),
+                            asm.alloc_node(rhs),
+                            cmp_kind,
+                        ))
+                    }
+                    Some(BranchCond::Gt(lhs, rhs, cmp_kind)) => {
+                        let lhs = asm.get_node(lhs).clone().map(asm, node_map);
+                        let rhs = asm.get_node(rhs).clone().map(asm, node_map);
+                        Some(BranchCond::Gt(
+                            asm.alloc_node(lhs),
+                            asm.alloc_node(rhs),
+                            cmp_kind,
+                        ))
+                    }
+                    None => None,
+                };
+                let root = CILRoot::Branch(Box::new((a, b, cond)));
+                root_map(root, asm)
+            }
+            CILRoot::SetStaticField { field, val } => {
+                let val = asm.get_node(val).clone().map(asm, node_map);
+                let root = CILRoot::SetStaticField {
+                    field,
+                    val: asm.alloc_node(val),
+                };
+                root_map(root, asm)
+            }
+            CILRoot::SetField(set_field) => {
+                let (field, addr, val) = *set_field;
+                let addr = asm.get_node(addr).clone().map(asm, node_map);
+                let val = asm.get_node(val).clone().map(asm, node_map);
+                let root =
+                    CILRoot::SetField(Box::new((field, asm.alloc_node(addr), asm.alloc_node(val))));
+                root_map(root, asm)
+            }
+            CILRoot::Call(call_info) => {
+                let (method_id, args) = *call_info;
+                let args = args
+                    .iter()
+                    .map(|arg| {
+                        let node = asm.get_node(*arg).clone().map(asm, node_map);
+                        asm.alloc_node(node)
+                    })
+                    .collect();
+
+                let root = CILRoot::Call(Box::new((method_id, args)));
+                root_map(root, asm)
+            }
+            CILRoot::StInd(ind) => {
+                let (addr, val, tpe, volitale) = *ind;
+                let addr = asm.get_node(addr).clone().map(asm, node_map);
+                let val = asm.get_node(val).clone().map(asm, node_map);
+                let root = CILRoot::StInd(Box::new((
+                    asm.alloc_node(addr),
+                    asm.alloc_node(val),
+                    tpe,
+                    volitale,
+                )));
+                root_map(root, asm)
+            }
+            CILRoot::InitBlk(blk) => {
+                let (dst, val, count) = *blk;
+                let dst = asm.get_node(dst).clone().map(asm, node_map);
+                let val = asm.get_node(val).clone().map(asm, node_map);
+                let count = asm.get_node(count).clone().map(asm, node_map);
+                let root = CILRoot::InitBlk(Box::new((
+                    asm.alloc_node(dst),
+                    asm.alloc_node(val),
+                    asm.alloc_node(count),
+                )));
+                root_map(root, asm)
+            }
+            CILRoot::CpBlk(blk) => {
+                let (dst, src, len) = *blk;
+                let dst = asm.get_node(dst).clone().map(asm, node_map);
+                let src = asm.get_node(src).clone().map(asm, node_map);
+                let len = asm.get_node(len).clone().map(asm, node_map);
+                let root = CILRoot::CpBlk(Box::new((
+                    asm.alloc_node(dst),
+                    asm.alloc_node(src),
+                    asm.alloc_node(len),
+                )));
+                root_map(root, asm)
+            }
+            CILRoot::CallI(call_info) => {
+                let (ptr, sig, args) = *call_info;
+                let args = args
+                    .iter()
+                    .map(|arg| {
+                        let node = asm.get_node(*arg).clone().map(asm, node_map);
+                        asm.alloc_node(node)
+                    })
+                    .collect();
+                let ptr = asm.get_node(ptr).clone().map(asm, node_map);
+                let root = CILRoot::CallI(Box::new((asm.alloc_node(ptr), sig, args)));
+                root_map(root, asm)
+            }
+        }
+    }
 }
 /// Changes a mutable reference to a slice to an vec of mutable references to the elements.
 fn many_mut<T>(input: &mut [T]) -> Vec<&mut T> {

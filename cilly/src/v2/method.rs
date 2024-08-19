@@ -1,10 +1,11 @@
+use fxhash::{FxHashMap, FxHashSet};
 use serde::{Deserialize, Serialize};
 
 use super::{
     bimap::{BiMapIndex, IntoBiMapIndex},
     cilnode::MethodKind,
-    Access, Assembly, BasicBlock, CILIterElem, ClassDefIdx, ClassRefIdx, FnSig, SigIdx, StringIdx,
-    Type, TypeIdx,
+    Access, Assembly, BasicBlock, CILIterElem, CILNode, ClassDefIdx, ClassRefIdx, FnSig, SigIdx,
+    StringIdx, Type, TypeIdx,
 };
 use crate::v2::iter::TpeIter;
 use crate::v2::CILRoot;
@@ -289,6 +290,11 @@ impl MethodDef {
             MethodImpl::AliasFor(_) => panic!(),
         }
     }
+
+    /// Sets the accesibility of this method to `access`.
+    pub fn set_access(&mut self, access: Access) {
+        self.access = access;
+    }
 }
 pub type LocalDef = (Option<StringIdx>, TypeIdx);
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
@@ -428,6 +434,66 @@ impl MethodImpl {
         };
         *self = tmp;
     }
+
+    pub(crate) fn realloc_locals(&mut self, asm: &mut Assembly) {
+        // Optimization only suported for methods with locals
+        let MethodImpl::MethodBody {
+            blocks,
+            ref mut locals,
+        } = self
+        else {
+            return;
+        };
+        let mut new_locals = std::sync::Mutex::new(Vec::new());
+        let local_map = std::sync::Mutex::new(FxHashMap::default());
+        blocks.iter_mut().for_each(|block| {
+            block.map_roots(
+                asm,
+                &mut |root, _| match root {
+                    CILRoot::StLoc(loc, tree) => CILRoot::StLoc(
+                        match local_map.lock().unwrap().entry(loc) {
+                            std::collections::hash_map::Entry::Occupied(val) => *val.get(),
+                            std::collections::hash_map::Entry::Vacant(empty) => {
+                                let mut new_locals = new_locals.lock().unwrap();
+                                let new_idx = new_locals.len();
+                                new_locals.push(locals[loc as usize]);
+                                *empty.insert(new_idx as u32)
+                            }
+                        },
+                        tree,
+                    ),
+                    _ => root,
+                },
+                &mut |node, _| match node {
+                    CILNode::LdLoc(loc) => {
+                        CILNode::LdLoc(match local_map.lock().unwrap().entry(loc) {
+                            std::collections::hash_map::Entry::Occupied(val) => *val.get(),
+                            std::collections::hash_map::Entry::Vacant(empty) => {
+                                let mut new_locals = new_locals.lock().unwrap();
+                                let new_idx = new_locals.len();
+                                new_locals.push(locals[loc as usize]);
+                                *empty.insert(new_idx as u32)
+                            }
+                        })
+                    }
+                    CILNode::LdLocA(loc) => {
+                        CILNode::LdLocA(match local_map.lock().unwrap().entry(loc) {
+                            std::collections::hash_map::Entry::Occupied(val) => *val.get(),
+                            std::collections::hash_map::Entry::Vacant(empty) => {
+                                let mut new_locals = new_locals.lock().unwrap();
+                                let new_idx = new_locals.len();
+                                new_locals.push(locals[loc as usize]);
+                                *empty.insert(new_idx as u32)
+                            }
+                        })
+                    }
+                    _ => node,
+                },
+            )
+        });
+        // Swap new and locals
+        std::mem::swap(locals, new_locals.get_mut().unwrap());
+    }
 }
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct MethodDefIdx(pub MethodRefIdx);
@@ -437,5 +503,12 @@ impl std::ops::Deref for MethodDefIdx {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+impl MethodRefIdx {
+    /// # Safety
+    /// This function can't cause UB, but it can corrupt the internal assembly representation. Can only be used to rebuild a [`MethodRefIdx`] obtained in some other way.
+    pub unsafe fn from_raw(raw: BiMapIndex) -> Self {
+        Self(raw)
     }
 }
