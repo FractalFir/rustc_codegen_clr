@@ -106,7 +106,7 @@ pub enum PtrCastRes {
     USize,
     ISize,
 }
-#[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
+#[derive(Hash, PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
 
 pub enum ExtendKind {
     ZeroExtend,

@@ -1,6 +1,11 @@
-use std::collections::HashMap;
-
+use super::{
+    cilroot::BranchCond, method::LocalDef, BasicBlock, CILIter, CILIterElem, CILNode, CILRoot,
+    Const, Int, MethodImpl, NodeIdx, RootIdx, Type,
+};
 use crate::v2::{Assembly, MethodDef};
+use std::collections::HashMap;
+mod opt_node;
+
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct OptFuel(u32);
 impl OptFuel {
@@ -27,10 +32,7 @@ impl OptFuel {
         self.0 == 0
     }
 }
-use super::{
-    method::LocalDef, BasicBlock, CILIter, CILIterElem, CILNode, CILRoot, Int, MethodImpl, NodeIdx,
-    Type,
-};
+
 impl CILNode {
     pub fn propagate_locals(
         &self,
@@ -89,7 +91,7 @@ impl CILNode {
                 CILNode::IntCast {
                     input,
                     target: *target,
-                    extend: extend.clone(),
+                    extend: *extend,
                 }
             }
             CILNode::FloatCast {
@@ -434,6 +436,24 @@ impl SideEffectInfoCache {
     }
 }
 impl MethodDef {
+    pub fn iter_roots_mut(&mut self) -> Option<impl Iterator<Item = &mut RootIdx>> {
+        self.implementation_mut()
+            .blocks_mut()
+            .map(|blocks| blocks.iter_mut().flat_map(|block| block.iter_roots_mut()))
+    }
+    pub fn map_roots(
+        &mut self,
+        asm: &mut Assembly,
+        root_map: &mut impl Fn(CILRoot, &mut Assembly) -> CILRoot,
+        node_map: &mut impl Fn(CILNode, &mut Assembly) -> CILNode,
+    ) {
+        if let Some(roots) = self.iter_roots_mut() {
+            roots.for_each(|root| {
+                let val = asm.get_root(*root).clone().map(asm, root_map, node_map);
+                *root = asm.alloc_root(val)
+            })
+        }
+    }
     pub fn optimize(
         &mut self,
         asm: &mut Assembly,
@@ -445,6 +465,49 @@ impl MethodDef {
             .remove_dead_writes(asm, cache, fuel);
         if fuel.consume(5) {
             self.implementation_mut().realloc_locals(asm);
+        }
+        if fuel.consume(5) {
+            let nop = asm.alloc_root(CILRoot::Nop);
+            if let Some(roots) = self.iter_roots_mut() {
+                let mut peekable = roots.peekable();
+                while let Some(curr) = peekable.next() {
+                    let Some(peek) = peekable.peek() else {
+                        continue;
+                    };
+                    match (asm.get_root(*curr), asm.get_root(**peek)) {
+                        (CILRoot::SourceFileInfo { .. }, CILRoot::SourceFileInfo { .. }) => {
+                            *curr = nop
+                        }
+                        _ => (),
+                    }
+                }
+            }
+        }
+        if fuel.consume(5) {
+            self.map_roots(
+                asm,
+                &mut |root, asm| match root {
+                    CILRoot::Branch(ref info) => {
+                        let (target, sub_target, cond) = info.as_ref();
+                        match cond {
+                            Some(BranchCond::False(cond)) => match asm.get_node(*cond) {
+                                CILNode::Const(cst) => match cst.as_ref() {
+                                    Const::Bool(false) => {
+                                        CILRoot::Branch(Box::new((*target, *sub_target, None)))
+                                    }
+                                    Const::Bool(true) => CILRoot::Nop,
+                                    _ => root,
+                                },
+                                _ => root,
+                            },
+                            Some(_) => root,
+                            None => root,
+                        }
+                    }
+                    _ => root,
+                },
+                &mut opt_node::opt_node,
+            )
         }
         if fuel.consume(5) {
             self.implementation_mut().remove_duplicate_sfi(asm);

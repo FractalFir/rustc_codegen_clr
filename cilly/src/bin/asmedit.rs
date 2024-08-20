@@ -26,7 +26,23 @@ fn main() {
         let stem = stem.trim();
         match stem {
             "deadcode" => asm.eliminate_dead_code(),
-            "opt" => asm.opt(&mut asm.default_fuel()),
+            "opt" => {
+                let mut fuel = asm.default_fuel();
+                eprintln!("Preparing to optimize the assembly with {fuel:?}");
+                let start = std::time::Instant::now();
+                asm.opt(&mut fuel);
+                if fuel.exchausted() {
+                    eprintln!(
+                        "Optimization exchausted fuel, finishing early. Took {} ms",
+                        start.elapsed().as_millis()
+                    );
+                } else {
+                    eprintln!(
+                        "Optimized the assemblty, {fuel:?} remains. Took {} ms",
+                        start.elapsed().as_millis()
+                    );
+                }
+            }
             "gc" => asm = asm.clone().link(Assembly::default()),
             "exit" => return,
             "open" => {

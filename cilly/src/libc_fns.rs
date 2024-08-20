@@ -56,6 +56,7 @@ pub const LIBC_FNS: &[&str] = &[
     "dirname",
     "div",
     "dlsym",
+    "dup",
     "dprintf",
     "drand48",
     "dysize",
@@ -667,6 +668,7 @@ pub const LIBC_MODIFIES_ERRNO: &[&str] = &[
     "waitid",
     "waitpid",
     "write",
+    "dup",
     "writev",
 ];
 pub const LIBM_FNS: &[&str] = &[
