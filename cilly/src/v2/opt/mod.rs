@@ -1,3 +1,5 @@
+use simplify_handlers::simplify_bbs;
+
 use super::{
     cilroot::BranchCond, method::LocalDef, BasicBlock, CILIter, CILIterElem, CILNode, CILRoot,
     Const, Int, MethodImpl, NodeIdx, RootIdx, Type,
@@ -5,7 +7,7 @@ use super::{
 use crate::v2::{Assembly, MethodDef};
 use std::collections::HashMap;
 mod opt_node;
-
+mod simplify_handlers;
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct OptFuel(u32);
 impl OptFuel {
@@ -383,7 +385,15 @@ impl MethodImpl {
         blocks.iter_mut().for_each(|block| {
             block
                 .roots_mut()
-                .retain(|root| !matches!(asm.get_root(*root), CILRoot::Nop))
+                .retain(|root| !matches!(asm.get_root(*root), CILRoot::Nop));
+            // Remove Nops from the handler too.
+            if let Some(blocks) = block.handler_mut() {
+                blocks.iter_mut().for_each(|block| {
+                    block
+                        .roots_mut()
+                        .retain(|root| !matches!(asm.get_root(*root), CILRoot::Nop))
+                })
+            }
         });
     }
 }
@@ -460,6 +470,7 @@ impl MethodDef {
         cache: &mut SideEffectInfoCache,
         fuel: &mut OptFuel,
     ) {
+        let nop = asm.alloc_root(CILRoot::Nop);
         self.implementation_mut().propagate_locals(asm, cache, fuel);
         self.implementation_mut()
             .remove_dead_writes(asm, cache, fuel);
@@ -467,7 +478,6 @@ impl MethodDef {
             self.implementation_mut().realloc_locals(asm);
         }
         if fuel.consume(5) {
-            let nop = asm.alloc_root(CILRoot::Nop);
             if let Some(roots) = self.iter_roots_mut() {
                 let mut peekable = roots.peekable();
                 while let Some(curr) = peekable.next() {
@@ -478,6 +488,30 @@ impl MethodDef {
                         (CILRoot::SourceFileInfo { .. }, CILRoot::SourceFileInfo { .. }) => {
                             *curr = nop
                         }
+                        // If a rethrow is followed by a rethrow, this is effectively just a single rethrow
+                        (CILRoot::ReThrow, CILRoot::ReThrow) => *curr = nop,
+                        /*// If SFI is followed by an uncodtional branch, then it has no effect, then it can be safely ommited.
+                        (CILRoot::SourceFileInfo { .. }, CILRoot::Branch(info))
+                            if is_branch_unconditional(info) =>
+                        {
+                            *curr = nop
+                        }*/
+                        (CILRoot::Branch(info), CILRoot::Branch(info2))
+                            if is_branch_unconditional(info2) =>
+                        {
+                            let (target, subtarget, cond) = info.as_ref();
+                            let (target2, subtarget2, _) = info2.as_ref();
+                            // If a conditional jump to a target is followed by an unconditonal jump to the same target, we just need to perform the unconditonla jump.
+                            if target == target2 && subtarget == subtarget2 {
+                                match cond {
+                                    None => *curr = nop,
+                                    Some(BranchCond::True(tr)) | Some(BranchCond::False(tr)) => {
+                                        *curr = asm.alloc_root(CILRoot::Pop(*tr))
+                                    }
+                                    _ => (),
+                                }
+                            }
+                        }
                         _ => (),
                     }
                 }
@@ -487,6 +521,10 @@ impl MethodDef {
             self.map_roots(
                 asm,
                 &mut |root, asm| match root {
+                    CILRoot::Pop(pop) => match asm.get_node(pop) {
+                        CILNode::LdLoc(_) => CILRoot::Nop,
+                        _ => root,
+                    },
                     CILRoot::Branch(ref info) => {
                         let (target, sub_target, cond) = info.as_ref();
                         match cond {
@@ -500,6 +538,19 @@ impl MethodDef {
                                 },
                                 _ => root,
                             },
+                            Some(BranchCond::Eq(lhs, rhs)) => {
+                                match (asm.get_node(*lhs), asm.get_node(*rhs)) {
+                                    (_, CILNode::Const(cst)) => match cst.as_ref() {
+                                        Const::ISize(0) => CILRoot::Branch(Box::new((
+                                            *target,
+                                            *sub_target,
+                                            Some(BranchCond::False(*lhs)),
+                                        ))),
+                                        _ => root,
+                                    },
+                                    _ => root,
+                                }
+                            }
                             Some(_) => root,
                             None => root,
                         }
@@ -511,6 +562,23 @@ impl MethodDef {
         }
         if fuel.consume(5) {
             self.implementation_mut().remove_duplicate_sfi(asm);
+        }
+        if fuel.consume(6) {
+            if let MethodImpl::MethodBody { blocks, .. } = self.implementation_mut() {
+                blocks.iter_mut().for_each(|block| {
+                    simplify_bbs(block.handler_mut(), asm, fuel);
+                    /*
+                    let Some(handler) = block.handler() else {
+                        return;
+                    };
+                    // If tall the blocks only rethrow(and don't do anything else!), then this handler nothing, and we can ommit it
+                    if handler.iter().all(|block| block.is_only_rethrow(asm)) {
+                        //panic!("about to remove {handler}");
+                        block.remove_handler();
+                    }*/
+                });
+                // simplify_bbs(Some(blocks), asm, fuel)
+            };
         }
     }
 }
@@ -621,3 +689,6 @@ fn opt_mag() {
 
 
 */
+pub fn is_branch_unconditional(branch: &(u32, u32, Option<BranchCond>)) -> bool {
+    branch.2.is_none()
+}

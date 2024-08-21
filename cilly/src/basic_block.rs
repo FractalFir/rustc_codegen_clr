@@ -13,43 +13,13 @@ pub struct BasicBlock {
     id: u32,
     handler: Option<Handler>,
 }
-impl MemoryUsage for BasicBlock {
-    fn memory_usage(&self, counter: &mut impl crate::utilis::MemoryUsageCounter) -> usize {
-        let mut total_size = std::mem::size_of::<Self>();
-        let tpe_name = std::any::type_name::<Self>();
-        //TODO:count the fields too
-        let trees_size = self
-            .trees()
-            .iter()
-            .map(|block| block.root().memory_usage(counter))
-            .sum();
-        counter.add_field(tpe_name, "trees", trees_size);
-        total_size += trees_size;
-        let handler_size = self.handler().memory_usage(counter);
-        counter.add_field(tpe_name, "handler", handler_size);
-        counter.add_type(tpe_name, total_size);
-        total_size
-    }
-}
+
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 pub enum Handler {
     RawID(u32),
     Blocks(Vec<BasicBlock>),
 }
-impl MemoryUsage for Handler {
-    fn memory_usage(&self, counter: &mut impl crate::utilis::MemoryUsageCounter) -> usize {
-        let mut total_size = std::mem::size_of::<Self>();
-        let tpe_name = std::any::type_name::<Self>();
-        let size = match self {
-            Handler::RawID(_) => std::mem::size_of::<u32>(),
-            Handler::Blocks(blocks) => blocks.memory_usage(counter),
-        };
-        counter.add_field(tpe_name, "size", size);
-        total_size += size;
-        counter.add_type(tpe_name, total_size);
-        total_size
-    }
-}
+
 impl Handler {
     pub fn as_blocks_mut(&mut self) -> Option<&mut Vec<BasicBlock>> {
         if let Self::Blocks(v) = self {
@@ -240,6 +210,7 @@ impl BasicBlock {
         self.tree_iter()
             .flat_map(|tree| tree.root_mut().deref_mut().into_iter())
     }*/
+    /// Checks if this block does nothing except cononditionaly jump to another block.
 
     #[must_use]
     pub fn handler(&self) -> Option<&Handler> {

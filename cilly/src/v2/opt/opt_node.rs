@@ -5,17 +5,25 @@ pub fn opt_node(node: crate::v2::CILNode, asm: &mut Assembly) -> CILNode {
         CILNode::IntCast {
             input,
             target,
-            extend: _,
-        } => {
-            if let CILNode::Const(cst) = asm.get_node(input) {
-                match (cst.as_ref(), target) {
-                    (Const::U64(val), Int::USize) => Const::USize(*val).into(),
-                    _ => node,
+            extend,
+        } => match asm.get_node(input) {
+            CILNode::Const(cst) => match (cst.as_ref(), target) {
+                (Const::U64(val), Int::USize) => Const::USize(*val).into(),
+                (Const::I64(val), Int::ISize) => Const::ISize(*val).into(),
+                _ => node,
+            },
+            CILNode::IntCast {
+                input: input2,
+                target: target2,
+                extend: extend2,
+            } => {
+                if target == *target2 && extend == *extend2 {
+                    return asm.get_node(input).clone();
                 }
-            } else {
                 node
             }
-        }
+            _ => node,
+        },
         CILNode::LdInd {
             addr,
             tpe,
@@ -33,11 +41,16 @@ pub fn opt_node(node: crate::v2::CILNode, asm: &mut Assembly) -> CILNode {
         }
 
         CILNode::LdField { addr, field } => match asm.get_node(addr) {
+            CILNode::RefToPtr(addr) => CILNode::LdField { addr: *addr, field },
             CILNode::LdLocA(loc) => CILNode::LdField {
                 addr: asm.alloc_node(CILNode::LdLoc(*loc)),
                 field,
             },
-            /*CILNode::LdFieldAdress {
+            CILNode::LdArgA(loc) => CILNode::LdField {
+                addr: asm.alloc_node(CILNode::LdArg(*loc)),
+                field,
+            },
+            CILNode::LdFieldAdress {
                 addr: addr2,
                 field: field2,
             } => CILNode::LdField {
@@ -46,7 +59,7 @@ pub fn opt_node(node: crate::v2::CILNode, asm: &mut Assembly) -> CILNode {
                     field: *field2,
                 }),
                 field,
-            },*/
+            },
             CILNode::LdInd {
                 addr,
                 tpe,

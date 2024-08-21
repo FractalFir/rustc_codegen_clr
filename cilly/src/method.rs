@@ -15,7 +15,6 @@ use crate::{
     cil_root::CILRoot,
     cil_tree::CILTree,
     static_field_desc::StaticFieldDescriptor,
-    utilis::MemoryUsage,
     DotnetTypeRef, FnSig, IString, Type,
 };
 
@@ -31,29 +30,7 @@ pub struct Method {
     attributes: Vec<Attribute>,
     arg_names: Vec<Option<IString>>,
 }
-impl MemoryUsage for Method {
-    fn memory_usage(&self, counter: &mut impl crate::utilis::MemoryUsageCounter) -> usize {
-        let mut total_size = std::mem::size_of::<Self>();
-        let tpe_name = std::any::type_name::<Self>();
-        //TODO:count the fields too
-        let blocks_size = self
-            .blocks()
-            .iter()
-            .map(|block| block.memory_usage(counter))
-            .sum();
-        counter.add_field(tpe_name, "blocks", blocks_size);
-        total_size += blocks_size;
-        let locals_size = self
-            .locals()
-            .iter()
-            .map(|locals| locals.memory_usage(counter))
-            .sum();
-        counter.add_field(tpe_name, "locals", locals_size);
-        total_size += locals_size;
-        counter.add_type(tpe_name, total_size);
-        total_size
-    }
-}
+
 /// Local varaible. Consists of an optional name and type.
 pub type LocalDef = (Option<IString>, Type);
 impl Eq for Method {}
@@ -158,22 +135,7 @@ impl Method {
             }
         }
     }
-    pub fn opt(&mut self) {
-        for tree in self
-            .blocks
-            .iter_mut()
-            .flat_map(|block| block.all_trees_mut())
-        {
-            let mut opt_counter: usize = 1;
-            while opt_counter > 0 {
-                // Reset `opt_counter`
-                opt_counter = 0;
-                tree.opt(&mut opt_counter);
-            }
-        }
-        self.const_opt_pass();
-        self.opt_merge_bbs();
-    }
+
     /// Iterates over each `CILNode` and `CILRoot`.
     pub fn iter_cil(&self) -> impl Iterator<Item = CILIterElem> {
         self.blocks().iter().flat_map(|block| block.iter_cil())
@@ -497,21 +459,21 @@ impl Method {
         }
     }
 
-    fn count_jumps_to(&self, block_id: u32) -> usize {
-        self.blocks()
-            .iter()
-            .flat_map(|block| block.targets())
-            .filter(|(target, sub_target)| {
-                if *sub_target != 0 {
-                    *sub_target == block_id
-                } else {
-                    *target == block_id
-                }
-            })
-            .count()
-    }
-    pub fn block_with_id(&self, id: u32) -> Option<usize> {
-        self.blocks.iter().position(|block| block.id() == id)
+    pub fn opt(&mut self) {
+        for tree in self
+            .blocks
+            .iter_mut()
+            .flat_map(|block| block.all_trees_mut())
+        {
+            let mut opt_counter: usize = 1;
+            while opt_counter > 0 {
+                // Reset `opt_counter`
+                opt_counter = 0;
+                tree.opt(&mut opt_counter);
+            }
+        }
+        //self.const_opt_pass();
+        self.opt_merge_bbs();
     }
     pub fn opt_merge_bbs(&mut self) {
         for block in 0..self.blocks().len() {
@@ -545,6 +507,23 @@ impl Method {
         // let prev_c = self.blocks.len();
         self.blocks.retain(|block| !block.trees().is_empty());
     }
+    fn count_jumps_to(&self, block_id: u32) -> usize {
+        self.blocks()
+            .iter()
+            .flat_map(|block| block.targets())
+            .filter(|(target, sub_target)| {
+                if *sub_target != 0 {
+                    *sub_target == block_id
+                } else {
+                    *target == block_id
+                }
+            })
+            .count()
+    }
+    pub fn block_with_id(&self, id: u32) -> Option<usize> {
+        self.blocks.iter().position(|block| block.id() == id)
+    }
+
     pub fn attributes(&self) -> &[Attribute] {
         &self.attributes
     }

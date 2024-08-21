@@ -670,7 +670,7 @@ test_lib! {recursive,stable}
 test_lib! {fn_ptr,stable}
 test_lib! {tuple,stable}
 
-//test_lib! {structs}
+run_test! {bench,iter,stable}
 run_test! {alloc,abox,stable}
 run_test! {alloc,raw_vec,stable}
 run_test! {alloc,slice_to_owned,stable}

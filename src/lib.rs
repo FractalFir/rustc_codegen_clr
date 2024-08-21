@@ -140,8 +140,7 @@ mod verify;
 pub mod method;
 /// Handles a MIR operand.
 mod operand;
-/// Method-level CIL opitimizations
-pub mod opt;
+
 /// Code handling getting/setting/adressing memory locations.
 mod place;
 /// Converts righthandside of a MIR statement into CIL ops.

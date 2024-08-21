@@ -273,27 +273,6 @@ lazy_static! {
     };
 }
 
-impl MemoryUsage for Assembly {
-    fn memory_usage(&self, counter: &mut impl crate::utilis::MemoryUsageCounter) -> usize {
-        let self_size = std::mem::size_of::<Self>();
-        let tpe_name = std::any::type_name::<Self>();
-
-        let functions = self.functions.memory_usage(counter);
-        counter.add_field(tpe_name, "types", functions);
-        let extern_fns = self.extern_fns.memory_usage(counter);
-        counter.add_field(tpe_name, "extern_fns", extern_fns);
-        let extern_refs = self.extern_refs.memory_usage(counter);
-        counter.add_field(tpe_name, "extern_refs", extern_refs);
-        let entrypoint = self.entrypoint.memory_usage(counter);
-        counter.add_field(tpe_name, "entrypoint", entrypoint);
-        let initializers = self.initializers.memory_usage(counter);
-        counter.add_field(tpe_name, "initializers", initializers);
-        let total_size =
-            self_size + functions + extern_fns + extern_refs + entrypoint + initializers;
-        counter.add_type(tpe_name, total_size);
-        total_size
-    }
-}
 lazy_static! {
     #[doc = "Tells the codegen to use the new version of cilly."]
     pub static ref CILLY_V2:bool = {

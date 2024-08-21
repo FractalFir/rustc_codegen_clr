@@ -1,16 +1,16 @@
 use serde::{Deserialize, Serialize};
 
-use super::{Assembly, CILNode, CILRoot, RootIdx};
+use super::{opt, Assembly, CILNode, CILRoot, RootIdx};
 use crate::basic_block::BasicBlock as V1Block;
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub struct BasicBlock {
     roots: Vec<RootIdx>,
     block_id: u32,
-    handler: Option<Box<[Self]>>,
+    handler: Option<Vec<Self>>,
 }
 
 impl BasicBlock {
-    pub fn new(roots: Vec<RootIdx>, block_id: u32, handler: Option<Box<[Self]>>) -> Self {
+    pub fn new(roots: Vec<RootIdx>, block_id: u32, handler: Option<Vec<Self>>) -> Self {
         Self {
             roots,
             block_id,
@@ -36,7 +36,7 @@ impl BasicBlock {
     /// Iterates trough the roots of this block and its handlers
     pub fn iter_roots_mut(&mut self) -> impl Iterator<Item = &mut RootIdx> + '_ {
         let handler_iter: Box<dyn Iterator<Item = &mut RootIdx>> =
-            match self.handler.as_mut().map(|b| b.as_mut()) {
+            match self.handler.as_mut().map(|b| b) {
                 Some(handler) => {
                     Box::new(handler.iter_mut().flat_map(|block| block.iter_roots_mut()))
                 }
@@ -60,7 +60,7 @@ impl BasicBlock {
     pub fn handler(&self) -> Option<&[BasicBlock]> {
         self.handler.as_ref().map(|b| b.as_ref())
     }
-    pub fn handler_mut(&mut self) -> Option<&mut [BasicBlock]> {
+    pub fn handler_mut(&mut self) -> Option<&mut Vec<BasicBlock>> {
         self.handler.as_mut().map(|b| b.as_mut())
     }
     pub fn roots_mut(&mut self) -> &mut Vec<RootIdx> {
@@ -69,10 +69,39 @@ impl BasicBlock {
     pub fn handler_and_root_mut(&mut self) -> (Option<&mut [BasicBlock]>, &mut Vec<RootIdx>) {
         (self.handler.as_mut().map(|b| b.as_mut()), &mut self.roots)
     }
+    /// Checks if this basic block consists of nothing more than an unconditional jump to another block
+    pub fn is_direct_jump(&self, asm: &Assembly) -> Option<(u32, u32)> {
+        let mut meningfull_root = self
+            .iter_roots()
+            .filter(|root| !matches!(asm.get_root(*root), CILRoot::SourceFileInfo { .. }));
+        let root = meningfull_root.next()?;
+        let CILRoot::Branch(binfo) = asm.get_root(root) else {
+            return None;
+        };
+        if opt::is_branch_unconditional(binfo) && meningfull_root.next().is_none() {
+            Some((binfo.0, binfo.1))
+        } else {
+            None
+        }
+    }
+    /// Checks if this basic block consists of nothing more thaan an uncondtional rethrow
+    pub fn is_only_rethrow(&self, asm: &Assembly) -> bool {
+        let mut meningfull_root = self
+            .iter_roots()
+            .filter(|root| !matches!(asm.get_root(*root), CILRoot::SourceFileInfo { .. }));
+        let Some(root) = meningfull_root.next() else {
+            return false;
+        };
+        CILRoot::ReThrow == *asm.get_root(root) && meningfull_root.next().is_none()
+    }
+
+    pub fn remove_handler(&mut self) {
+        self.handler = None;
+    }
 }
 impl BasicBlock {
     pub fn from_v1(v1: &V1Block, asm: &mut Assembly) -> Self {
-        let handler: Option<Box<[Self]>> = v1.handler().map(|handler| {
+        let handler: Option<Vec<Self>> = v1.handler().map(|handler| {
             handler
                 .as_blocks()
                 .unwrap()
