@@ -857,6 +857,11 @@ impl CILNode {
                 let tpe = asm.alloc_type(tpe);
                 Self::UnboxAny { object, tpe }
             }
+            V1Node::LdNull(tpe) => {
+                let tpe = ClassRef::from_v1(tpe, asm);
+                let tpe = asm.alloc_class_ref(tpe);
+                Self::Const(Box::new(Const::Null(tpe)))
+            }
             _ => todo!("v1:{v1:?}"),
         }
     }

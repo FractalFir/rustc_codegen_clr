@@ -137,6 +137,7 @@ impl<'a> Iterator for CILIter<'a> {
                 }
                 CILIterElem::Node(
                     CILNode::LDLoc(_)
+                    | CILNode::LdNull(_)
                     | CILNode::LDLocA(_)
                     | CILNode::LDArg(_)
                     | CILNode::LDArgA(_)

@@ -225,6 +225,7 @@ impl ILExporter {
         let node = asm.get_node(node);
         match node {
             super::CILNode::Const(cst) => match cst.as_ref() {
+                super::Const::Null(_) => writeln!(out, "ldnull"),
                 super::Const::I8(val) => match val {
                     -1 => writeln!(out, "ldc.i4.m1"),
                     0..=8 => writeln!(out, "ldc.i4.{val}"),

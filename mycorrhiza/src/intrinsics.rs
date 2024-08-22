@@ -1,3 +1,5 @@
+use std::ptr::null;
+
 #[derive(Clone, Copy)]
 #[repr(C)]
 pub struct RustcCLRInteropManagedClass<const ASSEMBLY: &'static str, const CLASS_PATH: &'static str>
@@ -70,7 +72,19 @@ impl<const ASSEMBLY: &'static str, const CLASS_PATH: &'static str>
     pub fn to_mstring(self) -> crate::system::MString {
         self.instance0::<"ToString", crate::system::MString>()
     }
+    #[inline(always)]
+    pub fn equality(self, other: Self) -> bool {
+        Self::static2::<"op_Equality", Self, Self, bool>(self, other)
+    }
+    #[inline(always)]
+    pub fn null() -> Self {
+        rustc_clr_interop_managed_ld_null::<Self>()
+    }
+    pub fn is_null(self) -> bool {
+        self.equality(Self::null())
+    }
 }
+
 #[derive(Clone, Copy)]
 #[repr(C)]
 pub struct RustcCLRInteropManagedChar {
@@ -194,6 +208,21 @@ pub fn rustc_clr_interop_managed_ctor0_<
     const CLASS_PATH: &'static str,
     const IS_VALUETYPE: bool,
 >() -> RustcCLRInteropManagedClass<ASSEMBLY, CLASS_PATH> {
+    core::intrinsics::abort();
+}
+#[allow(unused_variables)]
+#[inline(never)]
+pub fn rustc_clr_interop_managed_ld_null<T>() -> T {
+    core::intrinsics::abort();
+}
+#[allow(unused_variables)]
+#[inline(never)]
+pub fn rustc_clr_interop_managed_checked_cast<DST, SRC>(src: SRC) -> DST {
+    core::intrinsics::abort();
+}
+#[allow(unused_variables)]
+#[inline(never)]
+pub fn rustc_clr_interop_managed_is_inst<DST, SRC>(src: SRC) -> bool {
     core::intrinsics::abort();
 }
 #[allow(unused_variables)]

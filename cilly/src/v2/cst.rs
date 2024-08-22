@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     hashable::{HashableF32, HashableF64},
-    CILNode, Float, Int, StringIdx, Type,
+    CILNode, ClassRefIdx, Float, Int, StringIdx, Type,
 };
 
 #[derive(PartialEq, Eq, Clone, Debug, Hash, Serialize, Deserialize)]
@@ -21,6 +21,7 @@ pub enum Const {
     Bool(bool),
     F32(HashableF32),
     F64(HashableF64),
+    Null(ClassRefIdx),
 }
 impl Const {
     pub(crate) fn get_type(&self) -> Type {
@@ -39,6 +40,7 @@ impl Const {
             Const::Bool(_) => Type::Bool,
             Const::F32(_) => Type::Float(Float::F32),
             Const::F64(_) => Type::Float(Float::F64),
+            Const::Null(tpe) => Type::ClassRef(*tpe),
         }
     }
 }

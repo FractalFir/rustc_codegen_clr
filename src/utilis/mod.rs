@@ -12,12 +12,12 @@ pub const CTOR_FN_NAME: &str = "rustc_clr_interop_managed_ctor";
 pub const MANAGED_CALL_FN_NAME: &str = "rustc_clr_interop_managed_call";
 pub const MANAGED_CALL_VIRT_FN_NAME: &str = "rustc_clr_interop_managed_call_virt";
 pub const MANAGED_LD_LEN: &str = "rustc_clr_interop_managed_ld_len";
+pub const MANAGED_LD_NULL: &str = "rustc_clr_interop_managed_ld_null";
+pub const MANAGED_CHECKED_CAST: &str = "rustc_clr_interop_managed_checked_cast";
+pub const MANAGED_IS_INST: &str = "rustc_clr_interop_managed_is_inst";
 pub const MANAGED_LD_ELEM_REF: &str = "rustc_clr_interop_managed_ld_elem_ref";
 pub fn is_function_magic(name: &str) -> bool {
-    name.contains(CTOR_FN_NAME)
-        || name.contains(MANAGED_CALL_FN_NAME)
-        || name.contains(MANAGED_LD_LEN)
-        || name.contains(MANAGED_LD_ELEM_REF)
+    name.contains(CTOR_FN_NAME) || name.contains(MANAGED_CALL_FN_NAME)
 }
 pub fn as_adt(ty: Ty) -> Option<(AdtDef, &List<GenericArg>)> {
     match ty.kind() {

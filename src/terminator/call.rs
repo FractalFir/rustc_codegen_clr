@@ -5,7 +5,8 @@ use crate::{
     operand::operand_address,
     utilis::{
         garg_to_string, CTOR_FN_NAME, MANAGED_CALL_FN_NAME, MANAGED_CALL_VIRT_FN_NAME,
-        MANAGED_LD_ELEM_REF, MANAGED_LD_LEN,
+        MANAGED_CHECKED_CAST, MANAGED_IS_INST, MANAGED_LD_ELEM_REF, MANAGED_LD_LEN,
+        MANAGED_LD_NULL,
     },
 };
 use cilly::{
@@ -469,6 +470,39 @@ pub fn call<'tcx>(
             },
             ctx,
         );
+    } else if function_name.contains(MANAGED_LD_NULL) {
+        assert!(
+            !call_info.split_last_tuple(),
+            "Managed calls may not use the `rust_call` calling convention!"
+        );
+        // Not-Virtual (for interop)
+        let tpe = ctx.type_from_cache(subst_ref[0].as_type().unwrap());
+
+        return crate::place::place_set(
+            destination,
+            CILNode::LdNull(tpe.as_dotnet().unwrap()),
+            ctx,
+        );
+    } else if function_name.contains(MANAGED_CHECKED_CAST) {
+        let tpe = ctx
+            .type_from_cache(subst_ref[0].as_type().unwrap())
+            .as_dotnet()
+            .unwrap();
+        let input = crate::operand::handle_operand(&args[0].node, ctx);
+        // Not-Virtual (for interop)
+        return crate::place::place_set(
+            destination,
+            CILNode::CheckedCast(Box::new((input, tpe))),
+            ctx,
+        );
+    } else if function_name.contains(MANAGED_IS_INST) {
+        let tpe = ctx
+            .type_from_cache(subst_ref[0].as_type().unwrap())
+            .as_dotnet()
+            .unwrap();
+        let input = crate::operand::handle_operand(&args[0].node, ctx);
+        // Not-Virtual (for interop)
+        return crate::place::place_set(destination, CILNode::IsInst(Box::new((input, tpe))), ctx);
     } else if function_name.contains(MANAGED_LD_ELEM_REF) {
         assert!(
             !call_info.split_last_tuple(),

@@ -5,11 +5,10 @@
 
 #![allow(internal_features, incomplete_features)]
 #![feature(core_intrinsics, unsized_const_params)]
-
+pub mod bindings;pub use bindings::*;
 /// Very low-level interop stuff. Don't use unless you need to.
 pub mod intrinsics;
-/// Reimplementation of some Rust std APIs
-pub mod std;
+
 /// Wrappers around types from the `System` namespace
 pub mod system;
 /// C# `char` type

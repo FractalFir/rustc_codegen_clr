@@ -232,6 +232,7 @@ pub enum CILNode {
     Volatile(Box<Self>),
     UnboxAny(Box<Self>, Box<Type>),
     AddressOfStaticField(Box<StaticFieldDescriptor>),
+    LdNull(DotnetTypeRef),
 }
 
 impl CILNode {
@@ -465,6 +466,7 @@ impl CILNode {
     }
     fn opt_children(&mut self, opt_count: &mut usize) {
         match self {
+            Self::LdNull(_)=>(),
             Self::UnboxAny(val,_tpe )=>val.opt(opt_count),
             Self::CheckedCast(inner)=>inner.0.opt(opt_count),
             Self::Volatile(inner)=>inner.opt(opt_count),
@@ -658,6 +660,7 @@ impl CILNode {
         locals: &mut Vec<(Option<IString>, Type)>,
     ) {
         match self {
+            Self::LdNull(tpe)=>(),
             Self::UnboxAny(val,_tpe )=>val.allocate_tmps(curr_loc, locals),
             Self::Volatile(inner)=>inner.allocate_tmps(curr_loc, locals),
             Self::CheckedCast(inner)=>inner.0.allocate_tmps(curr_loc, locals),
@@ -1393,6 +1396,7 @@ impl CILNode {
                 let _val = val.validate(vctx, tmp_loc)?;
                 Ok(Type::DotnetType(Box::new(tpe.clone())))
             }
+            Self::LdNull(tpe) => Ok(Type::DotnetType(Box::new(tpe.clone()))),
             _ => todo!("Can't check the type safety of {self:?}"),
         }
     }
