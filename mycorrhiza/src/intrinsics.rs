@@ -78,7 +78,7 @@ pub struct RustcCLRInteropManagedChar {
 }
 #[derive(Clone, Copy)]
 #[repr(C)]
-struct RustcCLRInteropManagedArray<T, const DIMENSIONS: usize> {
+pub struct RustcCLRInteropManagedArray<T, const DIMENSIONS: usize> {
     object_ref: usize,
     pd: core::marker::PhantomData<T>,
 }
@@ -92,6 +92,22 @@ pub fn rustc_clr_interop_managed_call0_<
     const METHOD: &'static str,
     Ret,
 >() -> Ret {
+    core::intrinsics::abort();
+}
+#[allow(unused_variables)]
+#[inline(never)]
+pub fn rustc_clr_interop_managed_ld_len<T>(arr: RustcCLRInteropManagedArray<T, 1>) -> i32 {
+    core::intrinsics::abort();
+}
+#[allow(unused_variables)]
+#[inline(never)]
+pub fn rustc_clr_interop_managed_ld_elem_ref<
+    const ASSEMBLY: &'static str,
+    const CLASS_PATH: &'static str,
+>(
+    arr: RustcCLRInteropManagedArray<RustcCLRInteropManagedClass<ASSEMBLY, CLASS_PATH>, 1>,
+    idx: i32,
+) -> RustcCLRInteropManagedClass<ASSEMBLY, CLASS_PATH> {
     core::intrinsics::abort();
 }
 #[allow(unused_variables)]
@@ -231,48 +247,7 @@ impl From<u16> for RustcCLRInteropManagedChar {
         }
     }
 }
-/*
-impl TryFrom<char> for RustcCLRInteropManagedChar{
-    type Error = (RustcCLRInteropManagedChar,RustcCLRInteropManagedChar);
-    fn try_from(value: char) -> Result<RustcCLRInteropManagedChar, (RustcCLRInteropManagedChar,RustcCLRInteropManagedChar)> {
-        let byte1 = (value as u64) & 0xFF;
-        if (byte1 & 0x80) == 0x00{
-            //1 byte long char
-            let utf16 = (byte1 & 0x7F) as u16;
-            Ok(utf16.into())
-        }
-        else if (byte1 & 0xE0) == 0xC0{
-            //2 byte long char
-            let byte2 = ((value as u64) & 0x00FF)>>8;
-            let utf16 = (((byte1 & 0x1F)<<6) | (byte2 & 0x3F)) as u16;
-            Ok(utf16.into())
-        }
-        else if (byte1 & 0xF0) == 0xE0{
-            //3 byte long char
-            let byte2 = ((value as u64) & 0x00FF)>>8;
-            let byte3 = ((value as u64) & 0x0000FF)>>16;
-            let utf16  = (((byte1 & 0x0F)<<12)
-            | ((byte2 & 0x3F) << 6)
-            | (byte3 & 0x3F)) as u16;
-            Ok(utf16.into())
-        }
-        else if (byte1 & 0xF8) == 0xF0{
-            let byte2 = ((value as u64) & 0x00FF)>>8;
-            let byte3 = ((value as u64) & 0x0000FF)>>16;
-            let byte4 = ((value as u64) & 0x000000FF)>>24;
-                  //4 byte long char
-            let code_point = ((byte1 & 0x07) << 18) | ((byte2 & 0x3F)<< 12) | ((byte3 & 0x3F)<< 6) | (byte4 & 0x3F);
-            let code_point = code_point - 0x10000;
-            let high_surrogate = (0xD800 + ((code_point >> 10) & 0x3FF)) as u16;
-            let low_surrogate = (0xDC00 + (code_point & 0x3FF)) as u16;
-            Err((high_surrogate.into(), low_surrogate.into()))
-        }
-        else{
-            //Invalid char.
-            Ok(0xFFFD.into())
-        }
-    }
-}*/
+
 impl RustcCLRInteropManagedChar {
     pub fn single_codepoint_unchecked(value: char) -> Self {
         let byte1 = (value as u64) & 0xFF;
@@ -298,5 +273,21 @@ impl RustcCLRInteropManagedChar {
             //Invalid utf8.
             0xFFFD.into()
         }
+    }
+}
+impl<T> RustcCLRInteropManagedArray<T, 1> {
+    /// Gets the length of this managed array
+    pub fn len(self) -> i32 {
+        rustc_clr_interop_managed_ld_len(self)
+    }
+    pub fn is_empty(self) -> bool {
+        self.len() == 0
+    }
+}
+impl<const ASSEMBLY: &'static str, const CLASS_PATH: &'static str>
+    RustcCLRInteropManagedArray<RustcCLRInteropManagedClass<ASSEMBLY, CLASS_PATH>, 1>
+{
+    pub fn index(self, index: i32) -> RustcCLRInteropManagedClass<ASSEMBLY, CLASS_PATH> {
+        rustc_clr_interop_managed_ld_elem_ref(self, index)
     }
 }

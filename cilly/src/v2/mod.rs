@@ -29,6 +29,7 @@ pub mod bimap;
 pub mod builtins;
 pub mod c_exporter;
 pub mod cache;
+pub mod cillyir_exporter;
 pub mod cilnode;
 pub mod cilroot;
 pub mod class;

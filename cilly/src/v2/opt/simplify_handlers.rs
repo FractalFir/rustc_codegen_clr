@@ -71,7 +71,7 @@ pub fn simplify_bbs(handler: Option<&mut Vec<BasicBlock>>, asm: &mut Assembly, f
         let CILRoot::Branch(info) = asm.get_root(*root) else {
             continue;
         };
-        let (target, sub_target, cond) = info.as_ref();
+        /*let (target, sub_target, cond) = info.as_ref();
         // Sub target of 0, look up by the target
         let jump = if *sub_target == 0 {
             direct_jumps.get(target)
@@ -98,7 +98,7 @@ pub fn simplify_bbs(handler: Option<&mut Vec<BasicBlock>>, asm: &mut Assembly, f
                 *sub_target,
                 cond.clone(),
             ))));
-        }
+        }*/
     }
 
     //block_gc(handler, asm);

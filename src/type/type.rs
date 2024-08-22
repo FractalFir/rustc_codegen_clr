@@ -5,7 +5,7 @@ use cilly::{
 
 use rustc_middle::{
     middle::exported_symbols::ExportedSymbol,
-    ty::{AdtDef, ConstKind, GenericArg, ParamEnv, Ty, TyCtxt, TyKind},
+    ty::{AdtDef, ConstKind, GenericArg, Instance, ParamEnv, Ty, TyCtxt, TyKind},
 };
 /// This struct represetnts either a primitive .NET type (F32,F64), or stores information on how to lookup a more complex type (struct,class,array)
 use serde::{Deserialize, Serialize};
@@ -78,7 +78,8 @@ pub fn magic_type<'tcx>(
     _adt: &AdtDef<'tcx>,
     subst: &[GenericArg<'tcx>],
     ctx: TyCtxt<'tcx>,
-    //method: &Instance<'tcx>,
+    method: &Instance<'tcx>,
+    cache: &mut TyCache,
 ) -> Type {
     if name.contains(INTEROP_CLASS_TPE_NAME) {
         assert!(
@@ -103,10 +104,14 @@ pub fn magic_type<'tcx>(
     } else if name.contains(INTEROP_ARR_TPE_NAME) {
         assert!(subst.len() == 2, "Managed array reference must have exactly 2 generic arguments: type and dimension count!");
         let element = &subst[0].as_type().expect("Array type must be specified!");
+        let element = crate::utilis::monomorphize(method, *element, ctx);
         let dimensions = garag_to_usize(subst[1], ctx);
-        let _ = (element, dimensions);
+        let element = cache.type_from_cache(element, ctx, *method);
 
-        todo!()
+        Type::ManagedArray {
+            element: Box::new(element),
+            dims: std::num::NonZeroU8::new(dimensions.try_into().unwrap()).unwrap(),
+        }
     } else if name.contains(INTEROP_CHR_TPE_NAME) {
         Type::DotnetChar
     } else {
@@ -143,7 +148,7 @@ pub fn simple_tuple(elements: &[Type]) -> DotnetTypeRef {
 }
 use crate::utilis::{garg_to_string, monomorphize};
 
-use super::tuple_name;
+use super::{tuple_name, TyCache};
 #[must_use]
 pub fn pointer_to_is_fat<'tcx>(
     pointed_type: Ty<'tcx>,

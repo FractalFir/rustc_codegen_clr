@@ -1,19 +1,36 @@
 use std::{
+    collections::VecDeque,
     io::{stdin, Read},
     num::NonZeroU32,
 };
 
 use cilly::v2::{
-    access, asm::Assembly, il_exporter::ILExporter, Access, CILIter, MethodImpl, MethodRefIdx,
+    access, asm::Assembly, cillyir_exporter::CillyIRExpoter, il_exporter::ILExporter, Access,
+    CILIter, MethodImpl, MethodRefIdx,
 };
 
 fn main() {
     let mut asm = Assembly::default();
     let mut cmd = String::new();
-
+    let mut script: VecDeque<_> = if let Some(script) = std::env::args().nth(1) {
+        use std::io::Read;
+        let mut tmp: String = String::default();
+        std::fs::File::open(script)
+            .unwrap()
+            .read_to_string(&mut tmp)
+            .unwrap();
+        tmp.split('\n').map(|s| s.to_owned()).collect()
+    } else {
+        VecDeque::default()
+    };
     loop {
         cmd.clear();
-        stdin().read_line(&mut cmd).unwrap();
+        if let Some(next_line) = script.pop_front() {
+            cmd.push_str(&next_line);
+        } else {
+            stdin().read_line(&mut cmd).unwrap();
+        }
+
         if cmd.trim() == "exit" {
             return;
         }
@@ -106,6 +123,12 @@ fn main() {
                 println!("Preparing to export the assembly");
                 asm.export(path, ILExporter::new(cilly::v2::IlasmFlavour::Clasic, true))
             }
+            "tocillyir" => {
+                let path = body;
+                let path = path.trim().trim_matches('\'').trim();
+                println!("Preparing to export the assembly");
+                asm.export(path, CillyIRExpoter::default())
+            }
             "mmakemissing" => {
                 let id = parse_id(body, &asm);
                 let Some(id) = asm.method_ref_to_def(id) else {
@@ -170,6 +193,7 @@ fn main() {
                 };
                 asm.modify_methodef(|_, method| method.set_access(access), id);
             }
+            "" => continue,
             _ => eprintln!("unknown command {cmd:?}"),
         }
     }

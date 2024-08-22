@@ -71,9 +71,12 @@ impl BasicBlock {
     }
     /// Checks if this basic block consists of nothing more than an unconditional jump to another block
     pub fn is_direct_jump(&self, asm: &Assembly) -> Option<(u32, u32)> {
-        let mut meningfull_root = self
-            .iter_roots()
-            .filter(|root| !matches!(asm.get_root(*root), CILRoot::SourceFileInfo { .. }));
+        let mut meningfull_root = self.iter_roots().filter(|root| {
+            !matches!(
+                asm.get_root(*root),
+                CILRoot::Nop | CILRoot::SourceFileInfo { .. }
+            )
+        });
         let root = meningfull_root.next()?;
         let CILRoot::Branch(binfo) = asm.get_root(root) else {
             return None;
@@ -86,9 +89,12 @@ impl BasicBlock {
     }
     /// Checks if this basic block consists of nothing more thaan an uncondtional rethrow
     pub fn is_only_rethrow(&self, asm: &Assembly) -> bool {
-        let mut meningfull_root = self
-            .iter_roots()
-            .filter(|root| !matches!(asm.get_root(*root), CILRoot::SourceFileInfo { .. }));
+        let mut meningfull_root = self.iter_roots().filter(|root| {
+            !matches!(
+                asm.get_root(*root),
+                CILRoot::Nop | CILRoot::SourceFileInfo { .. }
+            )
+        });
         let Some(root) = meningfull_root.next() else {
             return false;
         };
@@ -121,4 +127,30 @@ impl BasicBlock {
             handler,
         )
     }
+}
+#[test]
+fn is_direct_jump() {
+    let asm = &mut Assembly::default();
+    let block = BasicBlock::new(vec![], 0, None);
+    // A Block which is empty is not a direwct jump anywhere.'
+    assert!(block.is_direct_jump(asm).is_none());
+}
+#[test]
+fn is_only_rethrow() {
+    let asm = &mut Assembly::default();
+    let block = BasicBlock::new(vec![], 0, None);
+    // A Block which is empty is not a rethrow.
+    assert!(!block.is_only_rethrow(asm));
+    let rethrow = asm.alloc_root(CILRoot::ReThrow);
+    let block = BasicBlock::new(vec![rethrow], 0, None);
+    // A Block which is just a rethrow is, well, a rethrow.
+    assert!(block.is_only_rethrow(asm));
+    let dbg_break = asm.alloc_root(CILRoot::Break);
+    let block = BasicBlock::new(vec![dbg_break, rethrow], 0, None);
+    // A dbg break has side effects, this should return false
+    assert!(!block.is_only_rethrow(asm));
+    let dbg_break = asm.alloc_root(CILRoot::Break);
+    let block = BasicBlock::new(vec![rethrow, dbg_break], 0, None);
+    // A dbf break has side effects, this should return false
+    assert!(!block.is_only_rethrow(asm));
 }

@@ -2,7 +2,7 @@
 //! One of aims of the `rustc_codegen_clr` is to reuse existing Rust features and syntax to allow semless integration between Rust and the .NET runtime
 //! Mycorrhiza must "look" like a normal crate from the outside, even tough it deeply interacts with `rustc_codegen_clr`. It also should be possible to
 //! implement an equivalent APIs in standard Rust.
-#![no_std]
+
 #![allow(internal_features, incomplete_features)]
 #![feature(core_intrinsics, unsized_const_params)]
 

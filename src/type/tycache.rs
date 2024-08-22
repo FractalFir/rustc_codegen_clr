@@ -498,7 +498,7 @@ impl TyCache {
             TyKind::Adt(def, subst) => {
                 let name = crate::utilis::adt_name(*def, tcx, subst);
                 if super::is_name_magic(name.as_ref()) {
-                    return super::magic_type(name.as_ref(), def, subst, tcx);
+                    return super::magic_type(name.as_ref(), def, subst, tcx, &method, self);
                 }
                 self.adt(&name, *def, ty, subst, tcx, method).into()
             }

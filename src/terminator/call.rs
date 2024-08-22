@@ -3,7 +3,10 @@ use crate::{
     call_info::CallInfo,
     interop::AssemblyRef,
     operand::operand_address,
-    utilis::{garg_to_string, CTOR_FN_NAME, MANAGED_CALL_FN_NAME, MANAGED_CALL_VIRT_FN_NAME},
+    utilis::{
+        garg_to_string, CTOR_FN_NAME, MANAGED_CALL_FN_NAME, MANAGED_CALL_VIRT_FN_NAME,
+        MANAGED_LD_ELEM_REF, MANAGED_LD_LEN,
+    },
 };
 use cilly::{
     call, call_virt,
@@ -453,6 +456,33 @@ pub fn call<'tcx>(
         );
         // Not-Virtual (for interop)
         return call_managed(subst_ref, &function_name, args, destination, instance, ctx);
+    } else if function_name.contains(MANAGED_LD_LEN) {
+        assert!(
+            !call_info.split_last_tuple(),
+            "Managed calls may not use the `rust_call` calling convention!"
+        );
+        // Not-Virtual (for interop)
+        return crate::place::place_set(
+            destination,
+            CILNode::LDLen {
+                arr: Box::new(crate::operand::handle_operand(&args[0].node, ctx)),
+            },
+            ctx,
+        );
+    } else if function_name.contains(MANAGED_LD_ELEM_REF) {
+        assert!(
+            !call_info.split_last_tuple(),
+            "Managed calls may not use the `rust_call` calling convention!"
+        );
+        // Not-Virtual (for interop)
+        return crate::place::place_set(
+            destination,
+            CILNode::LDElelemRef {
+                arr: Box::new(crate::operand::handle_operand(&args[0].node, ctx)),
+                idx: Box::new(crate::operand::handle_operand(&args[1].node, ctx)),
+            },
+            ctx,
+        );
     }
     if call_info.split_last_tuple() {
         return call_closure(args, destination, signature, &function_name, ctx);
