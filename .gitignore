@@ -21,3 +21,4 @@ test/out
 .cargo/
 config.toml
 rust/
+cargo_tests/spinacz/target/

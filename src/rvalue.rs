@@ -46,7 +46,8 @@ pub fn handle_rvalue<'tcx>(
         Rvalue::Use(operand) => handle_operand(operand, ctx),
         Rvalue::CopyForDeref(place) => crate::place::place_get(place, ctx),
         Rvalue::Ref(_region, _kind, place) => crate::place::place_adress(place, ctx),
-        Rvalue::AddressOf(_mutability, place) => crate::place::place_adress(place, ctx),
+        Rvalue::Ref(_region, _borrow_kind, place) => crate::place::place_adress(place, ctx),
+        Rvalue::RawPtr(_mutability, place) => crate::place::place_adress(place, ctx),
         Rvalue::Cast(
             CastKind::PointerCoercion(PointerCoercion::UnsafeFnPointer),
             operand,
