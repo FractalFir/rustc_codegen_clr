@@ -24,6 +24,93 @@ pub fn local_body<'tcx>(
         (super::get::local_get(local, ctx.body()), ty)
     }
 }
+fn body_field<'a>(
+    curr_type: super::PlaceTy<'a>,
+    ctx: &mut MethodCompileCtx<'a, '_, '_>,
+    field_index: u32,
+    field_ty: Ty<'a>,
+    parrent_node: CILNode,
+) -> (PlaceTy<'a>, CILNode) {
+    match curr_type {
+        super::PlaceTy::Ty(curr_type) => {
+            let curr_type = ctx.monomorphize(curr_type);
+            let field_type = ctx.monomorphize(field_ty);
+            match (
+                crate::r#type::pointer_to_is_fat(curr_type, ctx.tcx(), ctx.instance()),
+                crate::r#type::pointer_to_is_fat(field_type, ctx.tcx(), ctx.instance()),
+            ) {
+                (false, false) => {
+                    let field_desc = crate::utilis::field_descrptor(curr_type, field_index, ctx);
+                    if body_ty_is_by_adress(field_type, ctx) {
+                        (
+                            (field_type).into(),
+                            CILNode::LDFieldAdress {
+                                field: field_desc.into(),
+                                addr: parrent_node.into(),
+                            },
+                        )
+                    } else {
+                        (
+                            (field_type).into(),
+                            CILNode::LDField {
+                                field: field_desc.into(),
+                                addr: parrent_node.into(),
+                            },
+                        )
+                    }
+                }
+                (false, true) => panic!("Sized type {curr_type:?} contains an unsized field of type {field_type}. This is a bug."),
+                (true,false)=>todo!("Can't yet handle access of a sized field of an unsized type. "),
+                (true,true)=>{
+                    assert_eq!(
+                        field_index,
+                        0,
+                        "Can't handle DST with more than 1 field."
+                    );
+                    let curr_type = ctx.type_from_cache(Ty::new_ptr(
+                        ctx.tcx(),
+                        curr_type,
+                        rustc_middle::ty::Mutability::Mut,
+                    ));
+                    let field_type = ctx.type_from_cache(Ty::new_ptr(
+                        ctx.tcx(),
+                        field_type,
+                        rustc_middle::ty::Mutability::Mut,
+                    ));
+                   (
+                    field_ty.into(),
+                        CILNode::TemporaryLocal(Box::new((
+                            curr_type.clone(),
+                            [CILRoot::SetTMPLocal {
+                                value: CILNode::LdObj {
+                                    ptr: Box::new(parrent_node),
+                                    obj: Box::new(curr_type),
+                                },
+                            }]
+                            .into(),
+                            CILNode::LoadAddresOfTMPLocal
+                                .cast_ptr(Type::Ptr(Box::new(field_type.clone()))),
+                        )))
+                        .is_valid_dbg(ctx.validator(), None)
+                        .unwrap(),
+                    )
+                }
+            }
+        }
+        super::PlaceTy::EnumVariant(enm, var_idx) => {
+            let owner = ctx.monomorphize(enm);
+            let field_desc = crate::utilis::enum_field_descriptor(owner, field_index, var_idx, ctx);
+
+            (
+                field_ty.into(),
+                CILNode::LDFieldAdress {
+                    field: field_desc.into(),
+                    addr: parrent_node.into(),
+                },
+            )
+        }
+    }
+}
 pub fn place_elem_body<'tcx>(
     place_elem: &PlaceElem<'tcx>,
     curr_type: PlaceTy<'tcx>,
@@ -45,78 +132,13 @@ pub fn place_elem_body<'tcx>(
                 (pointed.into(), deref_op(pointed.into(), ctx, parrent_node))
             }
         }
-        PlaceElem::Field(index, field_ty) => match curr_ty {
-            PlaceTy::Ty(curr_ty) => {
-                let field_ty = ctx.monomorphize(*field_ty);
-                if crate::r#type::pointer_to_is_fat(curr_ty, ctx.tcx(), ctx.instance()) {
-                    assert_eq!(
-                        index.as_u32(),
-                        0,
-                        "Can't handle DST with more than 1 field."
-                    );
-                    let curr_type = ctx.type_from_cache(Ty::new_ptr(
-                        ctx.tcx(),
-                        curr_ty,
-                        rustc_middle::ty::Mutability::Mut,
-                    ));
-                    let field_type = ctx.type_from_cache(Ty::new_ptr(
-                        ctx.tcx(),
-                        field_ty,
-                        rustc_middle::ty::Mutability::Mut,
-                    ));
-                    return (
-                        field_ty.into(),
-                        CILNode::TemporaryLocal(Box::new((
-                            curr_type.clone(),
-                            [CILRoot::SetTMPLocal {
-                                value: CILNode::LdObj {
-                                    ptr: Box::new(parrent_node),
-                                    obj: Box::new(curr_type),
-                                },
-                            }]
-                            .into(),
-                            CILNode::LoadAddresOfTMPLocal
-                                .cast_ptr(Type::Ptr(Box::new(field_type.clone()))),
-                        )))
-                        .is_valid_dbg(ctx.validator(), None)
-                        .unwrap(),
-                    );
-
-                    //todo!("Handle DST fields. DST:")
-                }
-
-                let field_desc = crate::utilis::field_descrptor(curr_ty, (*index).into(), ctx);
-                if body_ty_is_by_adress(field_ty, ctx) {
-                    (
-                        (field_ty).into(),
-                        CILNode::LDFieldAdress {
-                            field: field_desc.into(),
-                            addr: parrent_node.into(),
-                        },
-                    )
-                } else {
-                    (
-                        (field_ty).into(),
-                        CILNode::LDField {
-                            field: field_desc.into(),
-                            addr: parrent_node.into(),
-                        },
-                    )
-                }
-            }
-            PlaceTy::EnumVariant(enm, var_idx) => {
-                let owner = ctx.monomorphize(enm);
-                let field_desc =
-                    crate::utilis::enum_field_descriptor(owner, index.as_u32(), var_idx, ctx);
-                (
-                    (*field_ty).into(),
-                    CILNode::LDFieldAdress {
-                        field: field_desc.into(),
-                        addr: parrent_node.into(),
-                    },
-                )
-            }
-        },
+        PlaceElem::Field(field_index, field_ty) => body_field(
+            curr_type,
+            ctx,
+            field_index.as_u32(),
+            *field_ty,
+            parrent_node,
+        ),
         PlaceElem::Downcast(_, variant) => {
             let curr_type = curr_ty
                 .as_ty()

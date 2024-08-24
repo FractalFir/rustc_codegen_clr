@@ -391,9 +391,14 @@ pub fn rotate_left<'tcx>(
         ),
         Type::U16 => place_set(
             destination,
-            or!(
-                CILNode::Shl(Box::new(val.clone()), Box::new(rot.clone())),
-                CILNode::ShrUn(Box::new(val), Box::new(ldc_u32!(16) - rot))
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::uint16(),
+                    "RotateLeft".into(),
+                    FnSig::new([Type::U16, Type::I32], Type::U16),
+                    true
+                ),
+                [val, conv_i32!(rot)]
             ),
             ctx,
         ),
@@ -451,9 +456,14 @@ pub fn rotate_left<'tcx>(
         ),
         Type::I16 => place_set(
             destination,
-            or!(
-                CILNode::Shl(Box::new(val.clone()), Box::new(rot.clone())),
-                CILNode::Shr(Box::new(val), Box::new(ldc_u32!(16) - rot))
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::int16(),
+                    "RotateLeft".into(),
+                    FnSig::new([Type::I16, Type::I32], Type::I16),
+                    true
+                ),
+                [val, conv_i32!(rot)]
             ),
             ctx,
         ),
@@ -547,9 +557,14 @@ pub fn rotate_right<'tcx>(
     match val_tpe {
         Type::U16 => place_set(
             destination,
-            or!(
-                CILNode::ShrUn(Box::new(val.clone()), Box::new(rot.clone())),
-                CILNode::Shl(Box::new(val), Box::new(ldc_u32!(16) - rot))
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::uint16(),
+                    "RotateRight".into(),
+                    FnSig::new([Type::U16, Type::I32], Type::U16),
+                    true
+                ),
+                [val, conv_i32!(rot)]
             ),
             ctx,
         ),
@@ -612,6 +627,19 @@ pub fn rotate_right<'tcx>(
                     DotnetTypeRef::sbyte(),
                     "RotateRight".into(),
                     FnSig::new([Type::I8, Type::I32], Type::I8),
+                    true
+                ),
+                [val, conv_i32!(rot)]
+            ),
+            ctx,
+        ),
+        Type::I16 => place_set(
+            destination,
+            call!(
+                CallSite::new_extern(
+                    DotnetTypeRef::int16(),
+                    "RotateRight".into(),
+                    FnSig::new([Type::I16, Type::I32], Type::I16),
                     true
                 ),
                 [val, conv_i32!(rot)]

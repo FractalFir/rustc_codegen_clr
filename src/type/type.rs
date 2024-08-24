@@ -155,12 +155,24 @@ pub fn pointer_to_is_fat<'tcx>(
     tcx: TyCtxt<'tcx>,
     method: rustc_middle::ty::Instance<'tcx>,
 ) -> bool {
+    is_fat_ptr(
+        Ty::new_ptr(tcx, pointed_type, rustc_hir::Mutability::Mut),
+        tcx,
+        method,
+    )
+}
+#[must_use]
+pub fn is_fat_ptr<'tcx>(
+    ptr_type: Ty<'tcx>,
+    tcx: TyCtxt<'tcx>,
+    method: rustc_middle::ty::Instance<'tcx>,
+) -> bool {
     use rustc_target::abi::Abi;
-    let pointed_type = monomorphize(&method, pointed_type, tcx);
+    let ptr_type = monomorphize(&method, ptr_type, tcx);
     let layout = tcx
         .layout_of(rustc_middle::ty::ParamEnvAnd {
             param_env: ParamEnv::reveal_all(),
-            value: Ty::new_ptr(tcx, pointed_type, rustc_hir::Mutability::Mut),
+            value: ptr_type,
         })
         .expect("Can't get layout of a type.")
         .layout;
@@ -168,6 +180,6 @@ pub fn pointer_to_is_fat<'tcx>(
     match abi {
         Abi::Scalar(_) => false,
         Abi::ScalarPair(_, _) => true,
-        _ => panic!("Unexpected abi of pointer to {pointed_type:?}. The ABI was:{abi:?}"),
+        _ => panic!("Unexpected abi of pointer to {ptr_type:?}. The ABI was:{abi:?}"),
     }
 }

@@ -1,10 +1,11 @@
 use crate::{assembly::MethodCompileCtx, r#type::Type};
 use cilly::{
     call, call_site::CallSite, cil_node::CILNode, conv_usize, field_desc::FieldDescriptor,
-    fn_sig::FnSig, ld_field, ldc_u64, ptr,
+    fn_sig::FnSig, ld_field, ldc_u32, ldc_u64, ptr,
 };
 use rustc_middle::{
     mir::{Place, PlaceElem},
+    ty::Ty,
     ty::TyKind,
 };
 
@@ -50,7 +51,61 @@ pub fn place_get<'tcx>(place: &Place<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_,
         place_elem_get(head, ty, ctx, op)
     }
 }
-
+fn get_field<'a>(
+    curr_type: super::PlaceTy<'a>,
+    ctx: &mut MethodCompileCtx<'a, '_, '_>,
+    addr_calc: CILNode,
+    field_index: u32,
+    field_type: Ty<'a>,
+) -> CILNode {
+    match curr_type {
+        super::PlaceTy::Ty(curr_type) => {
+            let curr_type = ctx.monomorphize(curr_type);
+            let field_type = ctx.monomorphize(field_type);
+            match (
+                crate::r#type::pointer_to_is_fat(curr_type, ctx.tcx(), ctx.instance()),
+                crate::r#type::pointer_to_is_fat(field_type, ctx.tcx(), ctx.instance()),
+            ) {
+                (false, false) => {
+                    let field_desc = crate::utilis::field_descrptor(curr_type, field_index, ctx);
+                    CILNode::LDField {
+                        addr: addr_calc.into(),
+                        field: field_desc.into(),
+                    }
+                }
+                (false, true) => panic!("Sized type {curr_type:?} contains an unsized field of type {field_type}. This is a bug."),
+                (true,false)=>{
+                    let mut explicit_offset_iter = crate::utilis::adt::FieldOffsetIterator::fields(
+                        ctx.layout_of(curr_type).layout.0 .0.clone(),
+                    );
+                    let offset = explicit_offset_iter
+                        .nth(field_index as usize)
+                        .expect("Field index not in field offset iterator");
+                    let curr_type_fat_ptr = ctx.type_from_cache(Ty::new_ptr(
+                        ctx.tcx(),
+                        curr_type,
+                        rustc_middle::ty::Mutability::Mut,
+                    ));
+                    let addr_descr = FieldDescriptor::new(curr_type_fat_ptr.as_dotnet().unwrap(),ptr!(Type::Void),crate::DATA_PTR.into());
+                    // Get the address of the unsized object.
+                    let obj_addr = ld_field!(addr_calc,addr_descr);
+                    let obj = ctx.type_from_cache(field_type);
+                    // Add the offset to the object.
+                    CILNode::LdObj{ ptr: Box::new(obj_addr + conv_usize!(ldc_u32!(offset))), obj: Box::new(obj) }
+                },
+                (true,true)=>panic!("Nonsensical operation: attempted to get value of the unsized type {field_type}. Unsized types can only be accessed by address."),
+            }
+        }
+        super::PlaceTy::EnumVariant(enm, var_idx) => {
+            let owner = ctx.monomorphize(enm);
+            let field_desc = crate::utilis::enum_field_descriptor(owner, field_index, var_idx, ctx);
+            CILNode::LDField {
+                addr: addr_calc.into(),
+                field: field_desc.into(),
+            }
+        }
+    }
+}
 fn place_elem_get<'a>(
     place_elem: &PlaceElem<'a>,
     curr_type: super::PlaceTy<'a>,
@@ -59,28 +114,9 @@ fn place_elem_get<'a>(
 ) -> CILNode {
     match place_elem {
         PlaceElem::Deref => super::deref_op(super::pointed_type(curr_type).into(), ctx, addr_calc),
-        PlaceElem::Field(field_index, _field_type) => match curr_type {
-            super::PlaceTy::Ty(curr_type) => {
-                let curr_type = ctx.monomorphize(curr_type);
-                let _field_type = ctx.monomorphize(curr_type);
-
-                let field_desc =
-                    crate::utilis::field_descrptor(curr_type, (*field_index).into(), ctx);
-                CILNode::LDField {
-                    addr: addr_calc.into(),
-                    field: field_desc.into(),
-                }
-            }
-            super::PlaceTy::EnumVariant(enm, var_idx) => {
-                let owner = ctx.monomorphize(enm);
-                let field_desc =
-                    crate::utilis::enum_field_descriptor(owner, field_index.as_u32(), var_idx, ctx);
-                CILNode::LDField {
-                    addr: addr_calc.into(),
-                    field: field_desc.into(),
-                }
-            }
-        },
+        PlaceElem::Field(field_index, field_type) => {
+            get_field(curr_type, ctx, addr_calc, field_index.as_u32(), *field_type)
+        }
         PlaceElem::Index(index) => {
             let curr_ty = curr_type
                 .as_ty()

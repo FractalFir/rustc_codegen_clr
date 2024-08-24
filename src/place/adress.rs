@@ -87,6 +87,101 @@ pub fn address_last_dereference<'tcx>(
     }*/
     //println!("casting {source:?} source_pointed_to:{source_pointed_to:?} to {target:?} target_pointed_to:{target_pointed_to:?}. ops:{ops:?}");
 }
+fn field_address<'a>(
+    curr_type: super::PlaceTy<'a>,
+    ctx: &mut MethodCompileCtx<'a, '_, '_>,
+    addr_calc: CILNode,
+    field_index: u32,
+    field_type: Ty<'a>,
+) -> CILNode {
+    match curr_type {
+        super::PlaceTy::Ty(curr_type) => {
+            let curr_type = ctx.monomorphize(curr_type);
+            let field_ty = ctx.monomorphize(field_type);
+            match (
+                crate::r#type::pointer_to_is_fat(curr_type, ctx.tcx(), ctx.instance()),
+                crate::r#type::pointer_to_is_fat(field_ty, ctx.tcx(), ctx.instance()),
+            ) {
+                (false, false) => {
+                    let field_desc = crate::utilis::field_descrptor(curr_type, field_index, ctx);
+                CILNode::LDFieldAdress {
+                    addr: addr_calc.into(),
+                    field: field_desc.into(),
+                }
+                }
+                (false, true) => panic!("Sized type {curr_type:?} contains an unsized field of type {field_ty}. This is a bug."),
+                (true,false)=>{
+                    let mut explicit_offset_iter = crate::utilis::adt::FieldOffsetIterator::fields(
+                        ctx.layout_of(curr_type).layout.0 .0.clone(),
+                    );
+                    let offset = explicit_offset_iter
+                        .nth(field_index as usize)
+                        .expect("Field index not in field offset iterator");
+                    let curr_type_fat_ptr = ctx.type_from_cache(Ty::new_ptr(
+                        ctx.tcx(),
+                        curr_type,
+                        rustc_middle::ty::Mutability::Mut,
+                    ));
+                    let addr_descr = FieldDescriptor::new(curr_type_fat_ptr.as_dotnet().unwrap(),ptr!(Type::Void),crate::DATA_PTR.into());
+                    // Get the address of the unsized object.
+                    let obj_addr = ld_field!(addr_calc,addr_descr);
+                    // Add the offset to the object.
+                    obj_addr + conv_usize!(ldc_u32!(offset))
+                },
+                (true,true)=>{
+                    let mut explicit_offset_iter = crate::utilis::adt::FieldOffsetIterator::fields(
+                        ctx.layout_of(curr_type).layout.0 .0.clone(),
+                    );
+                    let offset = explicit_offset_iter
+                        .nth(field_index as usize)
+                        .expect("Field index not in field offset iterator");
+                    let curr_type_fat_ptr = ctx.type_from_cache(Ty::new_ptr(
+                        ctx.tcx(),
+                        curr_type,
+                        rustc_middle::ty::Mutability::Mut,
+                    ));
+                        let addr_descr = FieldDescriptor::new(curr_type_fat_ptr.as_dotnet().unwrap(),ptr!(Type::Void),crate::DATA_PTR.into());
+                        // Get the address of the unsized object.
+                        let obj_addr = ld_field!(addr_calc.clone(),addr_descr);
+                        let metadata_descr = FieldDescriptor::new(curr_type_fat_ptr.as_dotnet().unwrap(),Type::USize,crate::METADATA.into());
+                        let metadata = ld_field!(addr_calc,metadata_descr);
+                        let field_fat_ptr = ctx.type_from_cache(Ty::new_ptr(
+                            ctx.tcx(),
+                            field_ty,
+                            rustc_middle::ty::Mutability::Mut,
+                        ));
+                        CILNode::TemporaryLocal(Box::new((
+                            field_fat_ptr.clone(),
+                            [
+                                CILRoot::SetField {
+                                    addr: Box::new(CILNode::LoadAddresOfTMPLocal),
+                                    value: Box::new(obj_addr
+                                            + conv_usize!(ldc_u32!(offset))),
+                                    desc: Box::new(FieldDescriptor::new(field_fat_ptr.as_dotnet().unwrap(),ptr!(Type::Void),crate::DATA_PTR.into())),
+                                },
+                                CILRoot::SetField {
+                                    addr: Box::new(CILNode::LoadAddresOfTMPLocal),
+                                    value: Box::new(metadata
+                                           ),
+                                    desc: Box::new(FieldDescriptor::new(field_fat_ptr.as_dotnet().unwrap(),Type::USize,crate::METADATA.into())),
+                                },
+                            ]
+                            .into(),
+                           CILNode::LoadTMPLocal,
+                        )))
+                }
+            }
+        }
+        super::PlaceTy::EnumVariant(enm, var_idx) => {
+            let owner = ctx.monomorphize(enm);
+            let field_desc = crate::utilis::enum_field_descriptor(owner, field_index, var_idx, ctx);
+            CILNode::LDFieldAdress {
+                addr: addr_calc.into(),
+                field: field_desc.into(),
+            }
+        }
+    }
+}
 pub fn place_elem_adress<'tcx>(
     place_elem: &PlaceElem<'tcx>,
     curr_type: PlaceTy<'tcx>,
@@ -99,79 +194,9 @@ pub fn place_elem_adress<'tcx>(
 
     match place_elem {
         PlaceElem::Deref => address_last_dereference(place_ty, curr_type, ctx, addr_calc),
-        PlaceElem::Field(index, field_ty) => match curr_type {
-            PlaceTy::Ty(curr_ty) => {
-                if crate::r#type::pointer_to_is_fat(curr_ty, ctx.tcx(), ctx.instance()) {
-                    let mut explicit_offset_iter = crate::utilis::adt::FieldOffsetIterator::fields(
-                        ctx.layout_of(curr_ty).layout.0 .0.clone(),
-                    );
-                    let offset = explicit_offset_iter
-                        .nth(index.as_usize())
-                        .expect("Field index not in field offset iterator");
-                    assert_eq!(
-                        offset, 0,
-                        "Can't handle DST fields with non-zero offsets. owner:{curr_ty:?}"
-                    );
-                    let field_ty = ctx.monomorphize(*field_ty);
-                    let curr_type = ctx.type_from_cache(Ty::new_ptr(
-                        ctx.tcx(),
-                        curr_ty,
-                        rustc_middle::ty::Mutability::Mut,
-                    ));
-                    let field_type = ctx.type_from_cache(Ty::new_ptr(
-                        ctx.tcx(),
-                        field_ty,
-                        rustc_middle::ty::Mutability::Mut,
-                    ));
-                    let ptr_descr = FieldDescriptor::new(
-                        curr_type.as_dotnet().unwrap(),
-                        ptr!(Type::Void),
-                        crate::DATA_PTR.into(),
-                    );
-                    return CILNode::TemporaryLocal(Box::new((
-                        curr_type.clone(),
-                        [
-                            CILRoot::SetTMPLocal {
-                                value: CILNode::LdObj {
-                                    ptr: Box::new(addr_calc.clone()),
-                                    obj: Box::new(curr_type),
-                                },
-                            },
-                            CILRoot::SetField {
-                                addr: Box::new(addr_calc.clone()),
-                                value: Box::new(
-                                    ld_field!(addr_calc, ptr_descr.clone())
-                                        + conv_usize!(ldc_u32!(offset)),
-                                ),
-                                desc: Box::new(ptr_descr),
-                            },
-                        ]
-                        .into(),
-                        CILNode::LdObj {
-                            ptr: Box::new(
-                                CILNode::LoadAddresOfTMPLocal.cast_ptr(ptr!(field_type.clone())),
-                            ),
-                            obj: field_type.into(),
-                        },
-                    )));
-                    //todo!("Handle DST fields. DST:")
-                }
-                let field_desc = crate::utilis::field_descrptor(curr_ty, (*index).into(), ctx);
-                CILNode::LDFieldAdress {
-                    addr: addr_calc.into(),
-                    field: field_desc.into(),
-                }
-            }
-            PlaceTy::EnumVariant(enm, var_idx) => {
-                let owner = ctx.monomorphize(enm);
-                let field_desc =
-                    crate::utilis::enum_field_descriptor(owner, index.as_u32(), var_idx, ctx);
-                CILNode::LDFieldAdress {
-                    addr: addr_calc.into(),
-                    field: field_desc.into(),
-                }
-            }
-        },
+        PlaceElem::Field(field_index, field_ty) => {
+            field_address(curr_type, ctx, addr_calc, field_index.as_u32(), *field_ty)
+        }
         PlaceElem::Index(index) => {
             let curr_ty = curr_type
                 .as_ty()

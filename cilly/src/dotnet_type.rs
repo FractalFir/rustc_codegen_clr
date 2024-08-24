@@ -61,6 +61,14 @@ impl DotnetTypeRef {
         Self::new(Some("System.Runtime"), "System.SByte")
     }
     #[must_use]
+    pub fn uint16() -> Self {
+        Self::new(Some("System.Runtime"), "System.UInt16")
+    }
+    #[must_use]
+    pub fn int16() -> Self {
+        Self::new(Some("System.Runtime"), "System.Int16")
+    }
+    #[must_use]
     pub fn double() -> Self {
         Self::new(Some("System.Runtime"), "System.Double").with_valuetype(true)
     }

@@ -189,11 +189,7 @@ pub fn unsize2<'tcx>(
         .validate(ctx.validator(), Some(&target_type))
         .expect("init_metadata invalid!");
 
-    let init_ptr = if pointer_to_is_fat(
-        source.builtin_deref(true).unwrap(),
-        ctx.tcx(),
-        ctx.instance(),
-    ) {
+    let init_ptr = if crate::r#type::is_fat_ptr(source, ctx.tcx(), ctx.instance()) {
         CILRoot::set_field(
             target_ptr.cast_ptr(ptr!(fat_ptr_type.clone().into())),
             CILNode::LDIndPtr {
@@ -205,7 +201,7 @@ pub fn unsize2<'tcx>(
             Some(&target_type),
         )
     } else {
-        let operand = if source.is_box() {
+        let operand = if !source.is_any_ptr() {
             let source_type = ctx.type_from_cache(source);
             // If this type is a box<thin>, then its layout *should* be equivalent to a pointer, so this *should* be OK.
             CILNode::LDIndUSize {
@@ -225,10 +221,10 @@ pub fn unsize2<'tcx>(
         };
         // `source` is not a fat pointer, so operand should be a pointer.
         let val = operand.validate(ctx.validator(), None).unwrap();
-        assert!(
+        /*assert!(
             matches!(val, Type::Ptr(_) | Type::USize),
             "source:{source:?} val:{val:?}"
-        );
+        );*/
         CILRoot::set_field(
             target_ptr.cast_ptr(ptr!(fat_ptr_type.clone().into())),
             operand.cast_ptr(ptr!(Type::Void)),

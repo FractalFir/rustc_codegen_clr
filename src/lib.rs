@@ -343,7 +343,9 @@ const ENUM_TAG: &str = "v";
 Compiler test flags, used to skip tests which cause crashes.
 
 For core:
---test-threads 1 --skip atomic --skip refcell_ref_coercion --skip future --skip test_writer_hasher --skip test_iterator_step_by_nth_try_fold --skip test_range_advance_by --skip test_monad_laws_left_identity --skip manually_drop::smoke --skip nonzero_trailing_zeros --skip midpoint --skip test_count_ones --skip test_count_zeros --skip test_leading_trailing_ones --skip test_rotate --skip test_saturating_abs --skip test_saturating_neg --skip test_isqrt --skip test_reverse_bits --skip ptr_metadata --skip test_variadic_fnptr --skip result_try_trait_v2_branch --skip simd --skip select_nth_unstable  --skip take_in_bounds_max_range --skip take_mut_in_bounds_max_range --skip take_mut_oob_max_rang --skip take_oob_max_rang
+--skip atomic::atomic_access_bool --skip atomic::bool_and  --skip  atomic::bool_nand --skip cell::refcell_ref_coercion --skip future::test_join --skip  hash::test_writer_hasher --skip  manually_drop::smoke --skip num::i128::tests::test_saturating_abs --skip num::i128::tests::test_saturating_neg --skip  ptr::ptr_metadata --skip ptr::test_ptr_metadata_in_const --skip result::result_try_trait_v2_branch --skip simd::testing --skip slice::take_in_bounds_max_range_from --skip slice::take_in_bounds_max_range_to --skip slice::take_mut_in_bounds_max_range_from --skip slice::take_mut_in_bounds_max_range_to --skip slice::take_mut_oob_max_range_to_inclusive --skip slice::take_oob_max_range_to_inclusive
+
 For alloc:
 --test-threads 1
 */
+//

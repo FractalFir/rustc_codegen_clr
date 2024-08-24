@@ -61,6 +61,7 @@ fn main() {
     test_eq!(memrchr(b'W', b"Hello, World\n\0"), Some(7));
     dump_var(0, 0, true, 1, 1, 2, 2, 3, false);
     test_index();
+    test_mockrc();
 }
 #[must_use]
 pub fn memrchr(x: u8, text: &[u8]) -> Option<usize> {
@@ -171,3 +172,34 @@ const fn contains_zero_byte(x: usize) -> bool {
 }
 const LO_USIZE: usize = repeat_u8(0x01);
 const HI_USIZE: usize = repeat_u8(0x80);
+struct MockRc<T: ?Sized> {
+    strong: usize,
+    weak: usize,
+    t: T,
+}
+impl<T> MockRc<T> {
+    pub fn new(t: T) -> Self {
+        Self {
+            strong: 0,
+            weak: 0,
+            t,
+        }
+    }
+}
+impl<T: ?Sized> MockRc<T> {
+    pub fn increment(&mut self) {
+        self.strong += 1;
+    }
+    pub fn decrement(&mut self) {
+        self.strong -= 1;
+    }
+    pub fn get_t(&self) -> &T {
+        &self.t
+    }
+}
+#[no_mangle]
+fn test_mockrc() {
+    let rc = MockRc::new([0_u8; 16]);
+    let rc = &rc as &MockRc<[u8]>;
+    test_eq!(rc.get_t().len(), 16);
+}

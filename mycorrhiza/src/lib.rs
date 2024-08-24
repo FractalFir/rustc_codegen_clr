@@ -5,7 +5,8 @@
 
 #![allow(internal_features, incomplete_features)]
 #![feature(core_intrinsics, unsized_const_params)]
-pub mod bindings;pub use bindings::*;
+pub mod bindings;
+pub use bindings::*;
 /// Very low-level interop stuff. Don't use unless you need to.
 pub mod intrinsics;
 

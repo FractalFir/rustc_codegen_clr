@@ -71,7 +71,7 @@ fn mstring_to_string(mstr: MString) -> String {
         .to_owned();
     Marshal::static1::<"FreeCoTaskMem", isize, ()>(ptr);
 }
-pub fn method_sig()
+//pub fn method_sig()
 enum DType {
     Ptr(Box<Self>),
     Class(String),
