@@ -987,7 +987,7 @@ pub fn cargo_build_env() -> String {
         .to_string();
     format!("-Z codegen-backend={backend} -C linker={linker} -C link-args={link_args} -C link_args={liblet_path}  {radomize_layout}")
 }
-fn build_liblets(backend: &str, linker: &str, link_args: &str, radomize_layout: &str) -> PathBuf {
+fn build_liblets(backend: &str, linker: &str, link_args: &str, _: &str) -> PathBuf {
     let panic_info = include_str!("liblets/panic_info.rs");
     let mut tmp = std::env::current_exe().unwrap();
     tmp.pop();

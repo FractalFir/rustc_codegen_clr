@@ -2,7 +2,7 @@ use crate::{assembly::MethodCompileCtx, operand::handle_operand, place::place_se
 use cilly::{
     and, call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_i16, conv_i32,
     conv_i8, conv_isize, conv_u16, conv_u32, conv_u64, conv_u8, conv_usize, div, fn_sig::FnSig,
-    ldc_i32, ldc_i64, ldc_u32, ldc_u64, or, rem_un, size_of, sub, DotnetTypeRef, Type,
+    ldc_i32, ldc_u32, ldc_u64, rem_un, size_of, sub, DotnetTypeRef, Type,
 };
 use rustc_middle::{
     mir::{Operand, Place},
@@ -14,7 +14,7 @@ pub fn ctpop<'tcx>(
     destination: &Place<'tcx>,
 
     call_instance: Instance<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
 ) -> CILRoot {
     debug_assert_eq!(
         args.len(),
@@ -124,7 +124,7 @@ pub fn ctlz<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
     call_instance: Instance<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
 ) -> CILRoot {
     debug_assert_eq!(
         args.len(),
@@ -201,7 +201,7 @@ pub fn ctlz<'tcx>(
 pub fn cttz<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
     call_instance: Instance<'tcx>,
 ) -> CILRoot {
     debug_assert_eq!(
@@ -359,7 +359,7 @@ pub fn cttz<'tcx>(
 pub fn rotate_left<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
     call_instance: Instance<'tcx>,
 ) -> CILRoot {
     debug_assert_eq!(
@@ -538,7 +538,7 @@ pub fn rotate_left<'tcx>(
 pub fn rotate_right<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
     call_instance: Instance<'tcx>,
 ) -> CILRoot {
     debug_assert_eq!(
@@ -733,7 +733,7 @@ fn bitreverse_u16(ushort: CILNode) -> CILNode {
 pub fn bitreverse<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
     call_instance: Instance<'tcx>,
 ) -> CILRoot {
     debug_assert_eq!(

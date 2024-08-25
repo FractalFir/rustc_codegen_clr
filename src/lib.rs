@@ -119,8 +119,6 @@ pub mod native_pastrough;
 
 /// A representation of C# IL op.
 pub mod cil;
-/// A tree based representation of C# CIL.
-pub mod cil_tree;
 /// Runtime errors and utlity functions/macros related to them
 mod codegen_error;
 /// Test harnesses.

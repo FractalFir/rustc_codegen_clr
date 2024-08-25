@@ -101,7 +101,7 @@ pub fn interpret<'tcx>(
                     {
                         let name =
                             crate::utilis::garg_to_string(subst_ref[0], tcx).replace("::", ".");
-                        let is_value_type = crate::utilis::garag_to_bool(subst_ref[1], tcx);
+                        let _is_value_type = crate::utilis::garag_to_bool(subst_ref[1], tcx);
                         let superclass_asm =
                             crate::utilis::garg_to_string(subst_ref[2], tcx).replace("::", ".");
                         let superclass_name =

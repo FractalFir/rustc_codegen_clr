@@ -10,7 +10,7 @@ use rustc_middle::ty::{IntTy, Ty, TyKind, UintTy};
 pub fn shr_unchecked<'tcx>(
     value_type: Ty<'tcx>,
     shift_type: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
     ops_a: CILNode,
     ops_b: CILNode,
 ) -> CILNode {
@@ -70,7 +70,7 @@ pub fn shr_unchecked<'tcx>(
 pub fn shr_checked<'tcx>(
     value_type: Ty<'tcx>,
     shift_type: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
     ops_a: CILNode,
     ops_b: CILNode,
 ) -> CILNode {
@@ -147,7 +147,7 @@ pub fn shr_checked<'tcx>(
 pub fn shl_checked<'tcx>(
     value_type: Ty<'tcx>,
     shift_type: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
     ops_a: CILNode,
     ops_b: CILNode,
 ) -> CILNode {
@@ -225,7 +225,7 @@ pub fn shl_checked<'tcx>(
 pub fn shl_unchecked<'tcx>(
     value_type: Ty<'tcx>,
     shift_type: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
     ops_a: CILNode,
     ops_b: CILNode,
 ) -> CILNode {

@@ -1,12 +1,10 @@
 use crate::{
-    assembly::MethodCompileCtx,
-    call_info::CallInfo,
-    operand::handle_operand,
-    r#type::{pointer_to_is_fat, Type},
+    assembly::MethodCompileCtx, call_info::CallInfo, operand::handle_operand,
+    r#type::pointer_to_is_fat,
 };
 use cilly::{
     call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_usize,
-    field_desc::FieldDescriptor, fn_sig::FnSig, ld_field, ldc_i32, ldc_u64, ptr, size_of,
+    field_desc::FieldDescriptor, fn_sig::FnSig, ld_field, ldc_i32, ldc_u64, ptr, size_of, Type,
 };
 use rustc_middle::{
     mir::{CastKind, NullOp, Operand, Place, Rvalue},
@@ -24,7 +22,7 @@ macro_rules! cast {
 }
 pub fn is_rvalue_unint<'tcx>(
     rvalue: &Rvalue<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
 ) -> bool {
     match rvalue {
         Rvalue::Repeat(operand, _) | Rvalue::Use(operand) => {
@@ -40,7 +38,7 @@ pub fn is_rvalue_unint<'tcx>(
 pub fn handle_rvalue<'tcx>(
     rvalue: &Rvalue<'tcx>,
     target_location: &Place<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
 ) -> CILNode {
     match rvalue {
         Rvalue::Use(operand) => handle_operand(operand, ctx),
@@ -270,7 +268,7 @@ pub fn handle_rvalue<'tcx>(
             let layout = ctx.layout_of(owner_ty);
             let target = ctx.type_from_cache(owner_ty.discriminant_ty(ctx.tcx()));
             let (disrc_type, _) = crate::utilis::adt::enum_tag_info(layout.layout, ctx.tcx());
-            let owner = if let crate::r#type::Type::DotnetType(dotnet_type) = owner {
+            let owner = if let cilly::Type::DotnetType(dotnet_type) = owner {
                 dotnet_type.as_ref().clone()
             } else {
                 eprintln!("Can't get the discirminant of type {owner_ty:?}, because it is a zst. Size:{} Discr type:{:?}",layout.layout.size.bytes(), owner_ty.discriminant_ty(ctx.tcx()));
@@ -341,7 +339,7 @@ pub fn handle_rvalue<'tcx>(
 }
 fn repeat<'tcx>(
     rvalue: &Rvalue<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
     element: &Operand<'tcx>,
     times: rustc_middle::ty::Const<'tcx>,
 ) -> CILNode {
@@ -455,7 +453,7 @@ fn repeat<'tcx>(
     }
 }
 fn ptr_to_ptr<'tcx>(
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
     operand: &Operand<'tcx>,
     dst: Ty<'tcx>,
 ) -> CILNode {

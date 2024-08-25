@@ -1,12 +1,8 @@
 use super::PlaceTy;
-use crate::{
-    assembly::MethodCompileCtx,
-    assert_morphic,
-    r#type::{pointer_to_is_fat, Type},
-};
+use crate::{assembly::MethodCompileCtx, assert_morphic, r#type::pointer_to_is_fat};
 use cilly::{
     call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_usize,
-    field_desc::FieldDescriptor, fn_sig::FnSig, ld_field, ldc_u32, ldc_u64, ptr, size_of,
+    field_desc::FieldDescriptor, fn_sig::FnSig, ld_field, ldc_u32, ldc_u64, ptr, size_of, Type,
 };
 use rustc_middle::{
     mir::PlaceElem,
@@ -35,7 +31,7 @@ pub fn local_adress(local: usize, method: &rustc_middle::mir::Body) -> CILNode {
 pub fn address_last_dereference<'tcx>(
     target_ty: Ty<'tcx>,
     curr_type: PlaceTy<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
     addr_calc: CILNode,
 ) -> CILNode {
     let curr_type = match curr_type {
@@ -89,7 +85,7 @@ pub fn address_last_dereference<'tcx>(
 }
 fn field_address<'a>(
     curr_type: super::PlaceTy<'a>,
-    ctx: &mut MethodCompileCtx<'a, '_, '_>,
+    ctx: &mut MethodCompileCtx<'a, '_, '_, '_>,
     addr_calc: CILNode,
     field_index: u32,
     field_type: Ty<'a>,
@@ -185,7 +181,7 @@ fn field_address<'a>(
 pub fn place_elem_adress<'tcx>(
     place_elem: &PlaceElem<'tcx>,
     curr_type: PlaceTy<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
     place_ty: Ty<'tcx>,
     addr_calc: CILNode,
 ) -> CILNode {

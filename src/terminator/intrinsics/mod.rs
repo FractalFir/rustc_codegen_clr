@@ -34,7 +34,7 @@ pub fn handle_intrinsic<'tcx>(
     destination: &Place<'tcx>,
     call_instance: Instance<'tcx>,
     span: rustc_span::Span,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
 ) -> CILRoot {
     match fn_name {
         "arith_offset" => {
@@ -729,7 +729,7 @@ pub fn handle_intrinsic<'tcx>(
             place_set(destination, call!(call_site, [dst, new]), ctx)
         }
         // TODO:Those are not stricly neccessary, but SHOULD be implemented at some point.
-        "assert_inhabited" | "assert_zero_valid" => CILRoot::Nop,
+        "assert_inhabited" | "assert_zero_valid" | "const_deallocate" => CILRoot::Nop,
         "ptr_offset_from_unsigned" => {
             debug_assert_eq!(
                 args.len(),
@@ -1542,7 +1542,6 @@ pub fn handle_intrinsic<'tcx>(
         }
         "abort" => CILRoot::throw("Called abort!"),
         "const_allocate" => place_set(destination, conv_usize!(ldc_u32!(0)), ctx),
-        "const_deallocate" => CILRoot::Nop,
         "vtable_size" => {
             let vtableptr = handle_operand(&args[0].node, ctx);
             place_set(
@@ -1576,7 +1575,7 @@ fn intrinsic_slow<'tcx>(
     fn_name: &str,
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
     call_instance: Instance<'tcx>,
     span: rustc_span::Span,
 ) -> CILRoot {
@@ -1739,7 +1738,7 @@ fn intrinsic_slow<'tcx>(
 fn volitale_load<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
 ) -> CILRoot {
     //TODO:fix volitale prefix!
     debug_assert_eq!(
@@ -1755,7 +1754,7 @@ fn volitale_load<'tcx>(
 }
 fn caller_location<'tcx>(
     destination: &Place<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
     span: rustc_span::Span,
 ) -> CILRoot {
     let caller_loc = ctx.tcx().span_as_caller_location(span);

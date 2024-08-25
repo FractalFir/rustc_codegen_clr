@@ -7,7 +7,7 @@ use rustc_middle::ty::{IntTy, Ty, TyKind, UintTy};
 pub fn bit_and_unchecked<'tcx>(
     ty_a: Ty<'tcx>,
     ty_b: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
     operand_a: CILNode,
     operand_b: CILNode,
 ) -> CILNode {
@@ -43,7 +43,7 @@ pub fn bit_and_unchecked<'tcx>(
 pub fn bit_or_unchecked<'tcx>(
     ty_a: Ty<'tcx>,
     ty_b: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
     operand_a: CILNode,
     operand_b: CILNode,
 ) -> CILNode {
@@ -80,7 +80,7 @@ pub fn bit_or_unchecked<'tcx>(
 pub fn bit_xor_unchecked<'tcx>(
     ty_a: Ty<'tcx>,
     ty_b: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
     ops_a: CILNode,
     ops_b: CILNode,
 ) -> CILNode {

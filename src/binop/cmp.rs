@@ -1,6 +1,6 @@
 use cilly::{
-    call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, eq, fn_sig::FnSig, gt, gt_un,
-    lt, lt_un, ptr, DotnetTypeRef, Type,
+    call, call_site::CallSite, cil_node::CILNode, eq, fn_sig::FnSig, gt, gt_un, lt, lt_un,
+    DotnetTypeRef, Type,
 };
 use rustc_middle::ty::{FloatTy, IntTy, Ty, TyKind, UintTy};
 

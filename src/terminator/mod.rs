@@ -13,7 +13,7 @@ mod call;
 mod intrinsics;
 pub fn handle_call_terminator<'tycxt>(
     terminator: &Terminator<'tycxt>,
-    ctx: &mut MethodCompileCtx<'tycxt, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tycxt, '_, '_, '_>,
     args: &[Spanned<Operand<'tycxt>>],
     destination: &Place<'tycxt>,
     func: &Operand<'tycxt>,
@@ -57,7 +57,7 @@ pub fn handle_call_terminator<'tycxt>(
                 arg_operands.push(crate::operand::handle_operand(&arg.node, ctx));
             }
             let called_operand = crate::operand::handle_operand(func, ctx);
-            if *sig.output() == crate::r#type::Type::Void {
+            if *sig.output() == cilly::Type::Void {
                 trees.push(
                     CILRoot::CallI {
                         sig: Box::new(sig.clone()),
@@ -108,7 +108,7 @@ pub fn handle_call_terminator<'tycxt>(
 }
 pub fn handle_terminator<'tcx>(
     terminator: &Terminator<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
 ) -> Vec<CILTree> {
     let res = match &terminator.kind {
         TerminatorKind::Call {
@@ -123,7 +123,7 @@ pub fn handle_terminator<'tcx>(
         TerminatorKind::TailCall { .. } => todo!(),
         TerminatorKind::Return => {
             let ret = ctx.monomorphize(ctx.body().return_ty());
-            if ctx.type_from_cache(ret) == crate::r#type::Type::Void {
+            if ctx.type_from_cache(ret) == cilly::Type::Void {
                 vec![CILRoot::VoidRet.into()]
             } else {
                 vec![CILRoot::Ret {
@@ -225,7 +225,7 @@ pub fn handle_terminator<'tcx>(
                             }
                             .into(),
                             CILRoot::CallI {
-                                sig: Box::new(FnSig::new([ptr!((Type::Void))], Type::Void)),
+                                sig: Box::new(FnSig::new([ptr!(Type::Void)], Type::Void)),
                                 fn_ptr: Box::new(drop_fn_ptr),
                                 args: [obj_ptr].into(),
                             }

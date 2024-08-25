@@ -2,7 +2,7 @@ use crate::{assembly::MethodCompileCtx, casts};
 use cilly::{
     and, call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_i16, conv_i32,
     conv_i64, conv_i8, conv_isize, conv_u64, conv_usize, field_desc::FieldDescriptor, gt, gt_un,
-    ldc_i32, ldc_i64, ldc_u32, ldc_u64, lt, mul, or, size_of, DotnetTypeRef, FnSig, Type,
+    ldc_i32, ldc_i64, ldc_u32, ldc_u64, lt, mul, or, DotnetTypeRef, FnSig, Type,
 };
 use rustc_middle::ty::{IntTy, Ty, TyKind, UintTy};
 
@@ -167,7 +167,7 @@ pub fn mul<'tcx>(
     ops_a: &CILNode,
     ops_b: &CILNode,
     ty: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
 ) -> CILNode {
     //(b > 0 && a < INT_MIN + b) || (b < 0 && a > INT_MAX + b);
     let tpe = ctx.type_from_cache(ty);
@@ -334,7 +334,7 @@ pub fn sub_signed<'tcx>(
     ops_a: &CILNode,
     ops_b: &CILNode,
     ty: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
 ) -> CILNode {
     let tpe = ctx.type_from_cache(ty);
     result_tuple(
@@ -364,7 +364,7 @@ pub fn sub_unsigned<'tcx>(
     ops_a: &CILNode,
     ops_b: &CILNode,
     ty: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
 ) -> CILNode {
     let tpe = ctx.type_from_cache(ty);
     result_tuple(
@@ -377,7 +377,7 @@ pub fn add_unsigned<'tcx>(
     ops_a: &CILNode,
     ops_b: &CILNode,
     ty: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
 ) -> CILNode {
     let tpe = ctx.type_from_cache(ty);
     let res = super::add_unchecked(ty, ty, ctx, ops_a.clone(), ops_b.clone());
@@ -396,7 +396,7 @@ pub fn add_signed<'tcx>(
     ops_a: &CILNode,
     ops_b: &CILNode,
     ty: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
 ) -> CILNode {
     let tpe = ctx.type_from_cache(ty);
     match ty.kind() {

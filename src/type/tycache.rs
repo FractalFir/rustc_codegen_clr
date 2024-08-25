@@ -1,5 +1,5 @@
 use crate::{
-    r#type::{closure_typedef, escape_field_name, tuple_name, tuple_typedef},
+    r#type::{escape_field_name, tuple_name, tuple_typedef},
     utilis::{
         adt::{get_discr, FieldOffsetIterator},
         is_zst,
@@ -8,7 +8,7 @@ use crate::{
 };
 use cilly::{
     access_modifier::AccessModifer, cil_node::CILNode, fn_sig::FnSig, type_def::TypeDef,
-    AsmStringContainer, DotnetTypeRef, Type,
+    DotnetTypeRef, Type,
 };
 use fxhash::{FxBuildHasher, FxHashMap};
 use rustc_middle::ty::{AdtDef, AdtKind, Instance, List, ParamEnv, Ty, TyCtxt, TyKind, UintTy};
@@ -467,7 +467,7 @@ impl TyCache {
                     .iter()
                     .map(|ty| self.type_from_cache(ty, tcx, method))
                     .collect();
-                let name: IString = crate::r#type::closure_name(*def, &fields, &sig).into();
+                let name: IString = super::type_def::closure_name(*def, &fields, &sig).into();
                 let layout = tcx
                     .layout_of(rustc_middle::ty::ParamEnvAnd {
                         param_env: ParamEnv::reveal_all(),
@@ -477,7 +477,7 @@ impl TyCache {
                 if !self.type_def_cache.contains_key(&name) {
                     self.type_def_cache.insert(
                         name.clone(),
-                        closure_typedef(*def, &fields, &sig, layout.layout),
+                        super::type_def::closure_typedef(*def, &fields, &sig, layout.layout),
                     );
                 }
                 DotnetTypeRef::new::<&str, _>(None, name).into()

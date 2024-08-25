@@ -1,6 +1,6 @@
 use cilly::{
     call, call_site::CallSite, cil_node::CILNode, fn_sig::FnSig, ldc_u32, ldc_u64,
-    utilis::escape_class_name, AsmStringContainer, DotnetTypeRef, Type,
+    utilis::escape_class_name, DotnetTypeRef, Type,
 };
 
 use rustc_middle::{
@@ -60,10 +60,10 @@ pub fn element_type(src: Ty<'_>) -> Ty<'_> {
         _ => panic!("Can't get element type of {src:?}"),
     }
 }
-const INTEROP_CLASS_TPE_NAME: &str = "RustcCLRInteropManagedClass";
-const INTEROP_STRUCT_TPE_NAME: &str = "RustcCLRInteropManagedStruct";
-const INTEROP_CHR_TPE_NAME: &str = "RustcCLRInteropManagedChar";
-const INTEROP_ARR_TPE_NAME: &str = "RustcCLRInteropManagedArray";
+pub const INTEROP_CLASS_TPE_NAME: &str = "RustcCLRInteropManagedClass";
+pub const INTEROP_STRUCT_TPE_NAME: &str = "RustcCLRInteropManagedStruct";
+pub const INTEROP_CHR_TPE_NAME: &str = "RustcCLRInteropManagedChar";
+pub const INTEROP_ARR_TPE_NAME: &str = "RustcCLRInteropManagedArray";
 #[must_use]
 /// Checks if a type is a magic interop type.
 pub fn is_name_magic(name: &str) -> bool {
@@ -118,7 +118,7 @@ pub fn magic_type<'tcx>(
         todo!("Interop type {name:?} is not yet supported!")
     }
 }
-fn garag_to_usize<'tcx>(garg: GenericArg<'tcx>, _ctx: TyCtxt<'tcx>) -> u64 {
+pub fn garag_to_usize<'tcx>(garg: GenericArg<'tcx>, _ctx: TyCtxt<'tcx>) -> u64 {
     let usize_const = garg
         .as_const()
         .expect("Generic argument was not an constant!");

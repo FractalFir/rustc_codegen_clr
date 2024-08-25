@@ -40,7 +40,7 @@ pub fn local_set(local: usize, method: &rustc_middle::mir::Body, tree: CILNode) 
 pub fn place_elem_set<'a>(
     place_elem: &PlaceElem<'a>,
     curr_type: PlaceTy<'a>,
-    ctx: &mut MethodCompileCtx<'a, '_, '_>,
+    ctx: &mut MethodCompileCtx<'a, '_, '_, '_>,
     addr_calc: CILNode,
     value_calc: CILNode,
 ) -> CILRoot {
@@ -205,7 +205,7 @@ pub fn place_elem_set<'a>(
 /// Returns a set of instructons to set a pointer to a `pointed_type` to a value from the stack.
 pub fn ptr_set_op<'tcx>(
     pointed_type: PlaceTy<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
     addr_calc: CILNode,
     value_calc: CILNode,
 ) -> CILRoot {

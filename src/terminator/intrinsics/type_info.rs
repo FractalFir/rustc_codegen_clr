@@ -11,7 +11,7 @@ use rustc_span::source_map::Spanned;
 pub fn is_val_statically_known<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
 ) -> CILRoot {
     debug_assert_eq!(
         args.len(),
@@ -24,7 +24,7 @@ pub fn is_val_statically_known<'tcx>(
 pub fn size_of_val<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
     call_instance: Instance<'tcx>,
 ) -> CILRoot {
     debug_assert_eq!(

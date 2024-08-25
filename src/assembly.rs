@@ -3,7 +3,7 @@ use crate::{
     basic_block::handler_for_block,
     cil::span_source_info,
     codegen_error::{CodegenError, MethodCodegenError},
-    r#type::{TyCache, Type},
+    r#type::TyCache,
     rustc_middle::dep_graph::DepContext,
     utilis::field_descrptor,
     IString,
@@ -22,7 +22,7 @@ use cilly::{
     ptr,
     static_field_desc::StaticFieldDescriptor,
     utilis::{self, encode},
-    FnSig,
+    FnSig, Type,
 };
 use rustc_middle::{
     mir::{
@@ -266,7 +266,7 @@ fn calculate_hash<T: std::hash::Hash>(t: &T) -> u64 {
 /// Turns a terminator into ops, if `ABORT_ON_ERROR` set to false, will handle and recover from errors.
 pub fn terminator_to_ops<'tcx>(
     term: &Terminator<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
 ) -> Result<Vec<CILTree>, CodegenError> {
     let terminator = if *crate::config::ABORT_ON_ERROR {
         crate::terminator::handle_terminator(term, ctx)
@@ -307,7 +307,7 @@ pub fn terminator_to_ops<'tcx>(
 /// Turns a statement into ops, if `ABORT_ON_ERROR` set to false, will handle and recover from errors.
 pub fn statement_to_ops<'tcx>(
     statement: &Statement<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
 ) -> Result<Option<CILTree>, CodegenError> {
     if *crate::config::ABORT_ON_ERROR {
         Ok(crate::statement::handle_statement(statement, ctx))
@@ -411,8 +411,14 @@ pub fn add_fn<'tcx>(
         };
         for (arg_id, ty) in packed.iter().enumerate() {
             let validation_context = ValidationContext::new(&sig, &locals);
-            let mut method_context =
-                MethodCompileCtx::new(tcx, mir, instance, validation_context, cache);
+            let mut method_context = MethodCompileCtx::new(
+                tcx,
+                mir,
+                instance,
+                validation_context,
+                cache,
+                asm.inner_mut(),
+            );
             if crate::utilis::is_zst(ty, tcx) {
                 continue;
             }
@@ -433,7 +439,14 @@ pub fn add_fn<'tcx>(
     };
     // Used for type-checking the CIL to ensure its validity.
     let validation_context = ValidationContext::new(&sig, &locals);
-    let mut method_context = MethodCompileCtx::new(tcx, mir, instance, validation_context, cache);
+    let mut method_context = MethodCompileCtx::new(
+        tcx,
+        mir,
+        instance,
+        validation_context,
+        cache,
+        asm.inner_mut(),
+    );
     for (last_bb_id, block_data) in blocks.into_iter().enumerate() {
         let mut trees = Vec::new();
         for statement in &block_data.statements {
@@ -461,21 +474,17 @@ pub fn add_fn<'tcx>(
             //ops.extend(statement_ops);
             //
         }
-        match &block_data.terminator {
-            Some(term) => {
-                if *crate::config::INSERT_MIR_DEBUG_COMMENTS {
-                    rustc_middle::ty::print::with_no_trimmed_paths! {trees.push(CILRoot::debug(&format!("{term:?}")).into())};
-                }
-                let term_trees =
-                    terminator_to_ops(term, &mut method_context).unwrap_or_else(|err| {
-                        panic!("Could not compile terminator {term:?} because {err:?}")
-                    });
-                if !term_trees.is_empty() {
-                    trees.push(span_source_info(tcx, term.source_info.span).into());
-                }
-                trees.extend(term_trees);
+        if let Some(term) = &block_data.terminator {
+            if *crate::config::INSERT_MIR_DEBUG_COMMENTS {
+                rustc_middle::ty::print::with_no_trimmed_paths! {trees.push(CILRoot::debug(&format!("{term:?}")).into())};
             }
-            None => (),
+            let term_trees = terminator_to_ops(term, &mut method_context).unwrap_or_else(|err| {
+                panic!("Could not compile terminator {term:?} because {err:?}")
+            });
+            if !term_trees.is_empty() {
+                trees.push(span_source_info(tcx, term.source_info.span).into());
+            }
+            trees.extend(term_trees);
         }
         if block_data.is_cleanup {
             cleanup_bbs.push(BasicBlock::new(

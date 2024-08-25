@@ -1,7 +1,7 @@
 use crate::{assembly::MethodCompileCtx, operand::handle_operand, place::place_set};
 use cilly::{
     call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_i16, conv_i32, conv_i64,
-    conv_i8, ldc_i32, ldc_i64, lt_un, DotnetTypeRef, FnSig, Type,
+    conv_i8, ldc_i32, ldc_i64, DotnetTypeRef, FnSig, Type,
 };
 
 use rustc_middle::{
@@ -12,7 +12,7 @@ use rustc_span::source_map::Spanned;
 pub fn saturating_add<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
     call_instance: Instance<'tcx>,
 ) -> CILRoot {
     let a = handle_operand(&args[0].node, ctx);
@@ -160,7 +160,7 @@ pub fn saturating_add<'tcx>(
 pub fn saturating_sub<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
     call_instance: Instance<'tcx>,
 ) -> CILRoot {
     let a = handle_operand(&args[0].node, ctx);

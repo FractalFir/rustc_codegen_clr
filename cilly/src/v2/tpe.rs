@@ -74,7 +74,7 @@ impl Type {
         }
     }
 
-    pub(crate) fn from_v1(tpe: &crate::Type, asm: &mut Assembly) -> Type {
+    pub fn from_v1(tpe: &crate::Type, asm: &mut Assembly) -> Type {
         match tpe {
             // We turn Foregin into void.
             crate::Type::Void | crate::Type::Foreign => Self::Void,
@@ -134,6 +134,66 @@ impl Type {
                     elem: element,
                     dims: *dims,
                 }
+            }
+        }
+    }
+
+    pub fn mangle(&self, asm: &Assembly) -> String {
+        match self {
+            Type::Ptr(inner) => format!("p{}", asm.get_type(*inner).mangle(asm)),
+            Type::Ref(inner) => format!("r{}", asm.get_type(*inner).mangle(asm)),
+            Type::Int(int) => match int {
+                Int::U8 => "u1".into(),
+                Int::U16 => "u2".into(),
+                Int::U32 => "u4".into(),
+                Int::U64 => "u8".into(),
+                Int::U128 => "u16".into(),
+                Int::USize => "us".into(),
+                Int::I8 => "i1".into(),
+                Int::I16 => "i2".into(),
+                Int::I32 => "i4".into(),
+                Int::I64 => "i8".into(),
+                Int::I128 => "i16".into(),
+                Int::ISize => "is".into(),
+            },
+            Type::ClassRef(cref) => {
+                let cref = asm.class_ref(*cref);
+                match cref.asm() {
+                    Some(asm_name) => format!(
+                        "{len}{asm_name}",
+                        len = asm.get_string(asm_name).len(),
+                        asm_name = asm.get_string(asm_name)
+                    ),
+                    None => "n".into(),
+                }
+            }
+            Type::Float(float) => match float {
+                Float::F16 => "f2".into(),
+                Float::F32 => "f4".into(),
+                Float::F64 => "f8".into(),
+                Float::F128 => "f16".into(),
+            },
+            Type::PlatformString => "s".into(),
+            Type::PlatformChar => "c".into(),
+            Type::PlatformGeneric(_, _) => todo!(),
+            Type::PlatformObject => "o".into(),
+            Type::Bool => "b".into(),
+            Type::Void => "v".into(),
+            Type::PlatformArray { elem, dims } => format!(
+                "a{dims}{elem}",
+                elem = asm.get_type(*elem).mangle(asm),
+                dims = dims.get()
+            ),
+            Type::FnPtr(sig) => {
+                let sig = asm.get_sig(*sig);
+                let argc = sig.inputs().len();
+                let output = sig.output().mangle(asm);
+                let inputs = sig
+                    .inputs()
+                    .iter()
+                    .map(|input| input.mangle(asm))
+                    .collect::<String>();
+                format!("{argc}{inputs}{output}")
             }
         }
     }

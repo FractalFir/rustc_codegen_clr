@@ -1,21 +1,27 @@
-use crate::r#type::{TyCache, Type};
-use cilly::cil_node::{CILNode, ValidationContext};
+use crate::r#type::TyCache;
+use cilly::Type;
+use cilly::{
+    cil_node::{CILNode, ValidationContext},
+    v2::Assembly,
+};
 use rustc_middle::ty::{Instance, ParamEnv, TyCtxt};
-pub struct MethodCompileCtx<'tcx, 'validator, 'type_cache> {
+pub struct MethodCompileCtx<'tcx, 'validator, 'type_cache, 'asm> {
     tcx: TyCtxt<'tcx>,
     method: &'tcx rustc_middle::mir::Body<'tcx>,
     method_instance: Instance<'tcx>,
     validator: ValidationContext<'validator>,
     type_cache: &'type_cache mut TyCache,
+    asm: &'asm mut Assembly,
 }
 
-impl<'tcx, 'validator, 'type_cache> MethodCompileCtx<'tcx, 'validator, 'type_cache> {
+impl<'tcx, 'validator, 'type_cache, 'asm> MethodCompileCtx<'tcx, 'validator, 'type_cache, 'asm> {
     pub fn new(
         tcx: TyCtxt<'tcx>,
         method: &'tcx rustc_middle::mir::Body<'tcx>,
         method_instance: Instance<'tcx>,
         validator: ValidationContext<'validator>,
         type_cache: &'type_cache mut TyCache,
+        asm: &'asm mut Assembly,
     ) -> Self {
         Self {
             tcx,
@@ -23,6 +29,7 @@ impl<'tcx, 'validator, 'type_cache> MethodCompileCtx<'tcx, 'validator, 'type_cac
             method_instance,
             validator,
             type_cache,
+            asm,
         }
     }
     pub fn slice_ty(&mut self, inner: rustc_middle::ty::Ty<'tcx>) -> Type {
@@ -49,8 +56,8 @@ impl<'tcx, 'validator, 'type_cache> MethodCompileCtx<'tcx, 'validator, 'type_cac
         self.method_instance
     }
     /// Returns a Type cache.
-    pub fn type_cache(&mut self) -> &mut &'type_cache mut TyCache {
-        &mut self.type_cache
+    pub fn type_cache<'s: 'a, 'a>(&'s mut self) -> &'a mut TyCache {
+        self.type_cache
     }
     #[must_use]
     pub fn validator(&self) -> ValidationContext<'validator> {
@@ -87,7 +94,7 @@ impl<'tcx, 'validator, 'type_cache> MethodCompileCtx<'tcx, 'validator, 'type_cac
             }
         };
         match ptr_tpe{
-            Type::DotnetType(tpe) => (),
+            Type::DotnetType(_) => (),
             _=>panic!("VALIDATION failed. {ptr_tpe:?} is not a raw pointer type. It is the result of {ptr:?}, compiled from MIR item {node_from:?}")  
         }
     }
@@ -108,18 +115,26 @@ impl<'tcx, 'validator, 'type_cache> MethodCompileCtx<'tcx, 'validator, 'type_cac
             })
             .expect("Could not get type layout!")
     }
+
+    pub fn asm_mut<'s: 'a, 'a>(&'s mut self) -> &'a mut Assembly {
+        self.asm
+    }
+    #[must_use]
+    pub fn asm<'s: 'a, 'a>(&'s self) -> &'a Assembly {
+        self.asm
+    }
 }
-impl<'tcx> rustc_middle::ty::layout::HasTyCtxt<'tcx> for MethodCompileCtx<'tcx, '_, '_> {
+impl<'tcx> rustc_middle::ty::layout::HasTyCtxt<'tcx> for MethodCompileCtx<'tcx, '_, '_, '_> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 }
-impl rustc_abi::HasDataLayout for MethodCompileCtx<'_, '_, '_> {
+impl rustc_abi::HasDataLayout for MethodCompileCtx<'_, '_, '_, '_> {
     fn data_layout(&self) -> &rustc_abi::TargetDataLayout {
         self.tcx.data_layout()
     }
 }
-impl<'tcx> rustc_middle::ty::layout::HasParamEnv<'tcx> for MethodCompileCtx<'tcx, '_, '_> {
+impl<'tcx> rustc_middle::ty::layout::HasParamEnv<'tcx> for MethodCompileCtx<'tcx, '_, '_, '_> {
     fn param_env(&self) -> ParamEnv<'tcx> {
         ParamEnv::reveal_all()
     }

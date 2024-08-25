@@ -28,7 +28,7 @@ mod select;
 const MAX_ALLOC_SIZE: u64 = u32::MAX as u64;
 add_method_from_trees!(
     swap_at_generic,
-    &[ptr!((Type::Void)), ptr!((Type::Void)), Type::USize],
+    &[ptr!(Type::Void), ptr!(Type::Void), Type::USize],
     Type::Void,
     vec![BasicBlock::new(
         vec![
@@ -66,7 +66,7 @@ add_method_from_trees!(
         0,
         None
     )],
-    vec![(Some("loc_buff".into()), ptr!((Type::Void)))],
+    vec![(Some("loc_buff".into()), ptr!(Type::Void))],
     vec![
         Some("buf1".into()),
         Some("buf2".into()),
@@ -170,6 +170,7 @@ add_method_from_trees!(
 #[macro_export]
 macro_rules! add_method_from_trees {
     ($name:ident,$input:expr,$output:expr,$trees:expr,$args:expr) => {
+        #[allow(non_snake_case)]
         fn $name(asm: &mut cilly::asm::Assembly) {
             let method = cilly::method::Method::new(
                 AccessModifer::Public,
@@ -312,7 +313,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
         MethodType::Static,
         FnSig::new(&[Type::USize, Type::USize], ptr!(Type::U8)),
         "__rust_alloc_zeroed",
-        vec![(Some("alloc_ptr".into()), ptr!((Type::U8)))],
+        vec![(Some("alloc_ptr".into()), ptr!(Type::U8))],
         if *crate::config::CHECK_ALLOCATIONS {
             vec![
                 BasicBlock::new(
@@ -1049,7 +1050,7 @@ add_method_from_trees!(
 );
 add_method_from_trees!(
     pthread_attr_destroy,
-    &[ptr!((Type::ISize)),],
+    &[ptr!(Type::ISize),],
     Type::I32,
     vec![BasicBlock::new(
         vec![CILRoot::Ret { tree: ldc_i32!(0) }.into()],
@@ -1066,7 +1067,7 @@ fn unmanaged_start() -> DotnetTypeRef {
 add_method_from_trees!(
     __cxa_thread_atexit_impl,
     [
-        Type::DelegatePtr(Box::new(FnSig::new([ptr!((Type::Void))], Type::Void))),
+        Type::DelegatePtr(Box::new(FnSig::new([ptr!(Type::Void)], Type::Void))),
         ptr!(Type::Void),
         ptr!(Type::Void)
     ],

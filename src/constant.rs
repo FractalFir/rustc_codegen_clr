@@ -24,7 +24,7 @@ use rustc_middle::{
 };
 pub fn handle_constant<'tcx>(
     constant_op: &ConstOperand<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
 ) -> CILNode {
     let constant = constant_op.const_;
     let constant = ctx.monomorphize(constant);
@@ -38,7 +38,7 @@ fn create_const_from_data<'tcx>(
     ty: Ty<'tcx>,
     alloc_id: AllocId,
     offset_bytes: u64,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
 ) -> CILNode {
     let _ = offset_bytes;
     let ptr = CILNode::LoadGlobalAllocPtr {
@@ -52,7 +52,7 @@ fn create_const_from_data<'tcx>(
 pub(crate) fn load_const_value<'tcx>(
     const_val: ConstValue<'tcx>,
     const_ty: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
 ) -> CILNode {
     match const_val {
         ConstValue::Scalar(scalar) => load_const_scalar(scalar, const_ty, ctx),
@@ -103,7 +103,7 @@ pub(crate) fn load_const_value<'tcx>(
     }
 }
 fn load_scalar_ptr(
-    ctx: &mut MethodCompileCtx<'_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'_, '_, '_, '_>,
     ptr: rustc_middle::mir::interpret::Pointer,
 ) -> CILNode {
     let (alloc_id, offset) = ptr.into_parts();
@@ -152,7 +152,7 @@ fn load_scalar_ptr(
             }
             let attrs = ctx.tcx().codegen_fn_attrs(def_id);
 
-            if let Some(import_linkage) = attrs.import_linkage {
+            if let Some(_) = attrs.import_linkage {
                 // TODO: this could cause issues if the pointer to the static is not imediatly dereferenced.
                 let site = get_fn_from_static_name(&name);
                 return CILNode::TemporaryLocal(Box::new((
@@ -213,7 +213,7 @@ fn load_scalar_ptr(
 fn load_const_scalar<'tcx>(
     scalar: Scalar,
     scalar_type: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
 ) -> CILNode {
     let scalar_ty = ctx.monomorphize(scalar_type);
 

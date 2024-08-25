@@ -1,7 +1,7 @@
-use crate::{assembly::MethodCompileCtx, r#type::Type};
+use crate::assembly::MethodCompileCtx;
 use cilly::{
     call, call_site::CallSite, cil_node::CILNode, conv_usize, field_desc::FieldDescriptor,
-    fn_sig::FnSig, ld_field, ldc_u32, ldc_u64, ptr,
+    fn_sig::FnSig, ld_field, ldc_u32, ldc_u64, ptr, Type,
 };
 use rustc_middle::{
     mir::{Place, PlaceElem},
@@ -33,7 +33,10 @@ pub(super) fn local_get(local: usize, method: &rustc_middle::mir::Body) -> CILNo
     }
 }
 /// Returns the ops for getting the value of place.
-pub fn place_get<'tcx>(place: &Place<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_, '_>) -> CILNode {
+pub fn place_get<'tcx>(
+    place: &Place<'tcx>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+) -> CILNode {
     if place.projection.is_empty() {
         local_get(place.local.as_usize(), ctx.body())
     } else {
@@ -53,7 +56,7 @@ pub fn place_get<'tcx>(place: &Place<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_,
 }
 fn get_field<'a>(
     curr_type: super::PlaceTy<'a>,
-    ctx: &mut MethodCompileCtx<'a, '_, '_>,
+    ctx: &mut MethodCompileCtx<'a, '_, '_, '_>,
     addr_calc: CILNode,
     field_index: u32,
     field_type: Ty<'a>,
@@ -109,7 +112,7 @@ fn get_field<'a>(
 fn place_elem_get<'a>(
     place_elem: &PlaceElem<'a>,
     curr_type: super::PlaceTy<'a>,
-    ctx: &mut MethodCompileCtx<'a, '_, '_>,
+    ctx: &mut MethodCompileCtx<'a, '_, '_, '_>,
     addr_calc: CILNode,
 ) -> CILNode {
     match place_elem {

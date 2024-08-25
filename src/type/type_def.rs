@@ -10,7 +10,7 @@ use cilly::{
     method::{Method, MethodType},
     size_of,
     type_def::TypeDef,
-    AsmStringContainer, Type,
+    Type,
 };
 use rustc_span::def_id::DefId;
 use rustc_target::abi::Layout;

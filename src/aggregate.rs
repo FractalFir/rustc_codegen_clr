@@ -7,7 +7,7 @@ use crate::{
 };
 use cilly::{
     call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_usize,
-    field_desc::FieldDescriptor, ldc_u64, ptr, AsmStringContainer, DotnetTypeRef, Type,
+    field_desc::FieldDescriptor, ldc_u64, ptr, DotnetTypeRef, Type,
 };
 use rustc_index::IndexVec;
 use rustc_middle::{
@@ -17,7 +17,7 @@ use rustc_middle::{
 use rustc_target::abi::FieldIdx;
 /// Returns the CIL ops to create the aggreagate value specifed by `aggregate_kind` at `target_location`. Uses indivlidual values specifed by `value_index`
 pub fn handle_aggregate<'tcx>(
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
     target_location: &Place<'tcx>,
     aggregate_kind: &AggregateKind<'tcx>,
     value_index: &IndexVec<FieldIdx, Operand<'tcx>>,
@@ -218,7 +218,7 @@ pub fn handle_aggregate<'tcx>(
 }
 /// Builds an Algebraic Data Type (struct,enum,union) at location `target_location`, with fields set using ops in `fields`.
 fn aggregate_adt<'tcx>(
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
     target_location: &Place<'tcx>,
     adt: AdtDef<'tcx>,
     adt_type: Ty<'tcx>,

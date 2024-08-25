@@ -259,6 +259,9 @@ impl Assembly {
     pub(crate) fn inner(&self) -> &super::v2::Assembly {
         &self.inner
     }
+    pub fn inner_mut(&mut self) -> &mut super::v2::Assembly {
+        &mut self.inner
+    }
 }
 use lazy_static::*;
 lazy_static! {

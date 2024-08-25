@@ -1,6 +1,7 @@
 use crate::assembly::MethodCompileCtx;
 use crate::place::place_get;
 use crate::rvalue::is_rvalue_unint;
+
 use cilly::{cil_node::CILNode, cil_root::CILRoot, cil_tree::CILTree, size_of};
 use cilly::{conv_usize, Type};
 
@@ -8,7 +9,7 @@ use rustc_middle::mir::{CopyNonOverlapping, NonDivergingIntrinsic, Statement, St
 #[allow(clippy::match_same_arms)]
 pub fn handle_statement<'tcx>(
     statement: &Statement<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
 ) -> Option<CILTree> {
     let kind = &statement.kind;
     match kind {
@@ -24,7 +25,7 @@ pub fn handle_statement<'tcx>(
 
             let layout = ctx.layout_of(owner_ty);
             //let (disrc_type, _) = crate::utilis::adt::enum_tag_info(&layout.layout, tcx);
-            let owner = if let crate::r#type::Type::DotnetType(dotnet_type) = owner {
+            let owner = if let cilly::Type::DotnetType(dotnet_type) = owner {
                 dotnet_type.as_ref().clone()
             } else {
                 panic!();
@@ -75,7 +76,7 @@ pub fn handle_statement<'tcx>(
                     let src_ty = src.ty(ctx.body(), ctx.tcx());
                     let src_ty = ctx.monomorphize(src_ty);
                     let ptr_type = ctx.type_from_cache(src_ty);
-                    let crate::r#type::Type::Ptr(pointed) = ptr_type else {
+                    let cilly::Type::Ptr(pointed) = ptr_type else {
                         rustc_middle::ty::print::with_no_trimmed_paths! { panic!("Copy nonoverlaping called with non-pointer type {src_ty:?}")};
                     };
 

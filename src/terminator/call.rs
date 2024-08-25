@@ -35,7 +35,7 @@ fn call_managed<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
     fn_instance: Instance<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
 ) -> CILRoot {
     let argument_count = argc_from_fn_name(function_name, MANAGED_CALL_FN_NAME);
     //FIXME: figure out the proper argc.
@@ -54,14 +54,14 @@ fn call_managed<'tcx>(
             .expect("Can't get the function signature");
 
     if argument_count == 0 {
-        let ret = crate::r#type::Type::Void;
+        let ret = cilly::Type::Void;
         let call_site = CallSite::new(
             Some(tpe.clone()),
             managed_fn_name,
             FnSig::new(&[], ret),
             true,
         );
-        if *signature.output() == crate::r#type::Type::Void {
+        if *signature.output() == cilly::Type::Void {
             CILRoot::Call {
                 site: Box::new(call_site),
                 args: [].into(),
@@ -82,7 +82,7 @@ fn call_managed<'tcx>(
             signature.clone(),
             is_static,
         );
-        if *signature.output() == crate::r#type::Type::Void {
+        if *signature.output() == cilly::Type::Void {
             CILRoot::Call {
                 site: Box::new(call),
                 args: call_args.into(),
@@ -99,7 +99,7 @@ fn callvirt_managed<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
     fn_instance: Instance<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
 ) -> CILRoot {
     let argument_count = argc_from_fn_name(function_name, MANAGED_CALL_VIRT_FN_NAME);
     //assert!(subst_ref.len() as u32 == argc + 3 || subst_ref.len() as u32 == argc + 4);
@@ -121,14 +121,14 @@ fn callvirt_managed<'tcx>(
         crate::function_sig::sig_from_instance_(fn_instance, ctx.tcx(), ctx.type_cache())
             .expect("Can't get the function signature");
     if argument_count == 0 {
-        let ret = crate::r#type::Type::Void;
+        let ret = cilly::Type::Void;
         let call = CallSite::new(
             Some(tpe.clone()),
             managed_fn_name,
             FnSig::new(&[], ret),
             true,
         );
-        if *signature.output() == crate::r#type::Type::Void {
+        if *signature.output() == cilly::Type::Void {
             CILRoot::CallVirt {
                 site: Box::new(call),
                 args: [].into(),
@@ -149,7 +149,7 @@ fn callvirt_managed<'tcx>(
             signature.clone(),
             is_static,
         );
-        if *signature.output() == crate::r#type::Type::Void {
+        if *signature.output() == cilly::Type::Void {
             CILRoot::CallVirt {
                 site: Box::new(call),
                 args: call_args.into(),
@@ -165,7 +165,7 @@ fn call_ctor<'tcx>(
     function_name: &str,
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
 ) -> CILRoot {
     let argument_count = argc_from_fn_name(function_name, CTOR_FN_NAME);
     // Check that there are enough function path and argument specifers
@@ -232,7 +232,7 @@ pub fn call_closure<'tcx>(
     destination: &Place<'tcx>,
     sig: FnSig,
     function_name: &str,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
 ) -> CILRoot {
     let last_arg = args
         .last()
@@ -282,7 +282,7 @@ pub fn call_closure<'tcx>(
     }
     //panic!("Last arg:{last_arg:?}last_arg_type:{last_arg_type:?}");
     //assert_eq!(args.len(),signature.inputs().len(),"CALL SIGNATURE ARG COUNT MISMATCH!");
-    let is_void = matches!(sig.output(), crate::r#type::Type::Void);
+    let is_void = matches!(sig.output(), cilly::Type::Void);
     let call = CallSite::new(None, function_name.into(), sig, true);
     // Hande the call itself
 
@@ -298,7 +298,7 @@ pub fn call_closure<'tcx>(
 /// Calls `fn_type` with `args`, placing the return value in destination.
 pub fn call<'tcx>(
     fn_type: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
     span: rustc_span::Span,
@@ -406,7 +406,7 @@ pub fn call<'tcx>(
             call_args.len(),
             "sig:{signature:?} call_args:{call_args:?}"
         );
-        let is_ret_void = matches!(signature.output(), crate::r#type::Type::Void);
+        let is_ret_void = matches!(signature.output(), cilly::Type::Void);
         return if is_ret_void {
             CILRoot::CallI {
                 sig: Box::new(signature),
@@ -545,7 +545,7 @@ pub fn call<'tcx>(
         );
     }
     if args.len() < signature.inputs().len() {
-        let tpe: crate::r#type::Type = signature.inputs()[signature.inputs().len() - 1].clone();
+        let tpe: cilly::Type = signature.inputs()[signature.inputs().len() - 1].clone();
         // let arg_len = args.len();
         //assert_eq!(args.len() + 1,signature.inputs().len(),"ERROR: mismatched argument count. \nsignature inputs:{:?} \narguments:{args:?}\narg_len:{arg_len}\n",signature.inputs());
         // assert_eq!(signature.inputs()[signature.inputs().len() - 1],tpe);
@@ -558,7 +558,7 @@ pub fn call<'tcx>(
         //panic!("Call with PanicLocation!");
     }
     //assert_eq!(args.len(),signature.inputs().len(),"CALL SIGNATURE ARG COUNT MISMATCH!");
-    let is_void = matches!(signature.output(), crate::r#type::Type::Void);
+    let is_void = matches!(signature.output(), cilly::Type::Void);
     //rustc_middle::ty::print::with_no_trimmed_paths! {call.push(CILOp::Comment(format!("Calling {instance:?}").into()))};
     if let InstanceKind::DropGlue(_def, None) = instance.def {
         return CILRoot::Nop;

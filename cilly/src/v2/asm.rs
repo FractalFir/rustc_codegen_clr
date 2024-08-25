@@ -728,7 +728,7 @@ impl Assembly {
         }
     }
 
-    pub(crate) fn class_ref_to_def(&self, class: ClassRefIdx) -> Option<ClassDefIdx> {
+    pub fn class_ref_to_def(&self, class: ClassRefIdx) -> Option<ClassDefIdx> {
         if self.class_defs.contains_key(&ClassDefIdx(class)) {
             Some(ClassDefIdx(class))
         } else {
@@ -763,6 +763,10 @@ impl Assembly {
 
     pub(crate) fn contains_def(&self, cref: ClassRefIdx) -> bool {
         self.class_ref_to_def(cref).is_some()
+    }
+    /// Checks if this assembly contains a reference [`ClassRef`]
+    pub fn contains_ref(&self, cref: &ClassRef) -> bool {
+        self.class_refs.1.contains_key(cref)
     }
 }
 /// An initializer, which runs before everything else. By convention, it is used to initialize static / const data. Should not execute any user code

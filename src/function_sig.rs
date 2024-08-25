@@ -1,8 +1,5 @@
-use crate::{
-    codegen_error::CodegenError,
-    r#type::{TyCache, Type},
-};
-use cilly::FnSig;
+use crate::{codegen_error::CodegenError, r#type::TyCache};
+use cilly::{FnSig, Type};
 use rustc_middle::ty::{Instance, List, ParamEnv, ParamEnvAnd, Ty, TyCtxt, TyKind};
 use rustc_target::abi::call::Conv;
 use rustc_target::spec::abi::Abi as TargetAbi;

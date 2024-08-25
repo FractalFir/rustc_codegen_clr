@@ -4,7 +4,7 @@ use bitop::{bit_and_unchecked, bit_or_unchecked, bit_xor_unchecked};
 use cilly::{
     call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_i8, conv_u16, conv_u32,
     conv_u64, conv_u8, div, eq, field_desc::FieldDescriptor, fn_sig::FnSig, gt_un, ld_false, lt_un,
-    ptr, rem, rem_un, size_of, sub, DotnetTypeRef, Type,
+    rem, rem_un, size_of, sub, DotnetTypeRef, Type,
 };
 use cmp::{eq_unchecked, gt_unchecked, lt_unchecked, ne_unchecked};
 use rustc_hir::lang_items::LangItem;
@@ -24,7 +24,7 @@ pub(crate) fn binop<'tcx>(
     binop: BinOp,
     operand_a: &Operand<'tcx>,
     operand_b: &Operand<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
 ) -> CILNode {
     let ops_a = crate::operand::handle_operand(operand_a, ctx);
     let ops_b = crate::operand::handle_operand(operand_b, ctx);
@@ -137,7 +137,7 @@ pub(crate) fn binop<'tcx>(
 pub fn add_unchecked<'tcx>(
     ty_a: Ty<'tcx>,
     ty_b: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
     ops_a: CILNode,
     ops_b: CILNode,
 ) -> CILNode {
@@ -198,7 +198,7 @@ pub fn add_unchecked<'tcx>(
 pub fn sub_unchecked<'tcx>(
     ty_a: Ty<'tcx>,
     ty_b: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
     ops_a: CILNode,
     ops_b: CILNode,
 ) -> CILNode {
@@ -253,7 +253,7 @@ pub fn sub_unchecked<'tcx>(
 fn rem_unchecked<'tcx>(
     ty_a: Ty<'tcx>,
     ty_b: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
     ops_a: CILNode,
     ops_b: CILNode,
 ) -> CILNode {
@@ -304,7 +304,7 @@ fn rem_unchecked<'tcx>(
 fn mul_unchecked<'tcx>(
     ty_a: Ty<'tcx>,
     ty_b: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
     operand_a: CILNode,
     operand_b: CILNode,
 ) -> CILNode {
@@ -349,7 +349,7 @@ fn mul_unchecked<'tcx>(
 fn div_unchecked<'tcx>(
     ty_a: Ty<'tcx>,
     ty_b: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
     operand_a: CILNode,
     operand_b: CILNode,
 ) -> CILNode {

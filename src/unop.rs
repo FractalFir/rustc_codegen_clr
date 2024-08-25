@@ -12,7 +12,7 @@ use rustc_middle::ty::{IntTy, TyKind, UintTy};
 pub fn unop<'tcx>(
     unnop: UnOp,
     operand: &Operand<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
 ) -> CILNode {
     let parrent_node = crate::operand::handle_operand(operand, ctx);
     let ty = operand.ty(&ctx.body().local_decls, ctx.tcx());

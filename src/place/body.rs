@@ -4,17 +4,16 @@ use crate::{
     assembly::MethodCompileCtx,
     assert_morphic,
     place::{body_ty_is_by_adress, deref_op},
-    r#type::Type,
 };
 use cilly::{
     call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_usize,
-    field_desc::FieldDescriptor, fn_sig::FnSig, ld_field, ptr, size_of,
+    field_desc::FieldDescriptor, fn_sig::FnSig, ld_field, ptr, size_of, Type,
 };
 use rustc_middle::mir::PlaceElem;
 use rustc_middle::ty::{Ty, TyKind};
 pub fn local_body<'tcx>(
     local: usize,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
 ) -> (CILNode, Ty<'tcx>) {
     let ty = ctx.body().local_decls[local.into()].ty;
     let ty = ctx.monomorphize(ty);
@@ -26,7 +25,7 @@ pub fn local_body<'tcx>(
 }
 fn body_field<'a>(
     curr_type: super::PlaceTy<'a>,
-    ctx: &mut MethodCompileCtx<'a, '_, '_>,
+    ctx: &mut MethodCompileCtx<'a, '_, '_, '_>,
     field_index: u32,
     field_ty: Ty<'a>,
     parrent_node: CILNode,
@@ -114,7 +113,7 @@ fn body_field<'a>(
 pub fn place_elem_body<'tcx>(
     place_elem: &PlaceElem<'tcx>,
     curr_type: PlaceTy<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
     parrent_node: CILNode,
 ) -> (PlaceTy<'tcx>, CILNode) {
     let curr_ty = match curr_type {
