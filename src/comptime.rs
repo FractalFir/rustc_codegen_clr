@@ -1,5 +1,5 @@
 use crate::{call_info::CallInfo, r#type::TyCache};
-use cilly::{asm::Assembly, call_site::CallSite, method::Method, type_def::TypeDef, DotnetTypeRef};
+use cilly::{asm::Assembly, call_site::CallSite, method::Method, v2::ClassDef};
 use rustc_middle::{
     mir::{Rvalue, StatementKind, TerminatorKind},
     ty::{Instance, ParamEnv, TyCtxt, TyKind},
@@ -8,12 +8,12 @@ use rustc_middle::{
 enum ComptimeLocalVar {
     NotSet,
     Void,
-    TypeDef(TypeDef),
+    ClassDef(ClassDef),
 }
 
 impl ComptimeLocalVar {
-    fn as_type_def(&self) -> Option<&TypeDef> {
-        if let Self::TypeDef(v) = self {
+    fn as_type_def(&self) -> Option<&ClassDef> {
+        if let Self::ClassDef(v) = self {
             Some(v)
         } else {
             None
@@ -109,7 +109,7 @@ pub fn interpret<'tcx>(
                         let inherits = if superclass_name.is_empty() {
                             None
                         } else {
-                            Some(DotnetTypeRef::new(
+                            Some(ClassRef::new(
                                 Some(superclass_asm).and_then(|superclass_asm| {
                                     if superclass_asm.is_empty() {
                                         None
@@ -120,7 +120,7 @@ pub fn interpret<'tcx>(
                                 superclass_name,
                             ))
                         };
-                        let tdef = TypeDef::new(
+                        let tdef = ClassDef::new(
                             cilly::access_modifier::AccessModifer::Public,
                             name.into(),
                             vec![],
@@ -132,7 +132,7 @@ pub fn interpret<'tcx>(
                             None,
                         );
 
-                        ComptimeLocalVar::TypeDef(tdef)
+                        ComptimeLocalVar::ClassDef(tdef)
                     } else if function_name.contains("rustc_codegen_clr_finish_type") {
                         let local = args[0]
                             .node
@@ -160,7 +160,7 @@ pub fn interpret<'tcx>(
                         let tpe = cache.type_from_cache(tpe, tcx, instance);
                         let name = crate::utilis::garg_to_string(subst_ref[1], tcx);
                         type_def.add_field(name.into(), tpe);
-                        ComptimeLocalVar::TypeDef(type_def)
+                        ComptimeLocalVar::ClassDef(type_def)
                     } else if function_name.contains("rustc_codegen_clr_add_method_def") {
                         let src = args[0]
                             .node
@@ -214,7 +214,7 @@ pub fn interpret<'tcx>(
                         type_def.add_method(method);
 
                         //type_def.add_method(name.into(), tpe);
-                        ComptimeLocalVar::TypeDef(type_def)
+                        ComptimeLocalVar::ClassDef(type_def)
                     } else {
                         todo!("Can't yet call the rustc_codegen_clr comptime interop fn named {function_name:?}")
                     };

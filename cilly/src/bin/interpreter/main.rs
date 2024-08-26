@@ -52,7 +52,7 @@ fn eval_node<'asm>(
         CILNode::LdFalse => Ok(Value::Bool(false)),
         CILNode::LdTrue => Ok(Value::Bool(true)),
         CILNode::SizeOf(tpe) => match tpe.as_ref() {
-            Type::USize | Type::ISize => Ok(Value::I32(8)),
+            Type::Int(Int::USize) | Type::Int(Int::ISize) => Ok(Value::I32(8)),
             _ => todo!("Can't yet calc sizeof {tpe:?}"),
         },
         CILNode::TransmutePtr { val, new_ptr: _ } => match eval_node(val, state, args)? {

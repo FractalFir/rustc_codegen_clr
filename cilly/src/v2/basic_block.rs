@@ -35,13 +35,10 @@ impl BasicBlock {
     /// Remaps all the roots in this block using `root_map` and `node_root`
     /// Iterates trough the roots of this block and its handlers
     pub fn iter_roots_mut(&mut self) -> impl Iterator<Item = &mut RootIdx> + '_ {
-        let handler_iter: Box<dyn Iterator<Item = &mut RootIdx>> =
-            match self.handler.as_mut().map(|b| b) {
-                Some(handler) => {
-                    Box::new(handler.iter_mut().flat_map(|block| block.iter_roots_mut()))
-                }
-                None => Box::new(std::iter::empty()),
-            };
+        let handler_iter: Box<dyn Iterator<Item = &mut RootIdx>> = match self.handler.as_mut() {
+            Some(handler) => Box::new(handler.iter_mut().flat_map(|block| block.iter_roots_mut())),
+            None => Box::new(std::iter::empty()),
+        };
         self.roots.iter_mut().chain(handler_iter)
     }
     /// Modifies all nodes and roots in this `BasicBlock`
@@ -61,7 +58,7 @@ impl BasicBlock {
         self.handler.as_ref().map(|b| b.as_ref())
     }
     pub fn handler_mut(&mut self) -> Option<&mut Vec<BasicBlock>> {
-        self.handler.as_mut().map(|b| b.as_mut())
+        self.handler.as_mut()
     }
     pub fn roots_mut(&mut self) -> &mut Vec<RootIdx> {
         &mut self.roots

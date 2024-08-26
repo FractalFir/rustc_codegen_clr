@@ -139,7 +139,7 @@ impl Assembly {
                 CILNode::IntCast {
                     input,
                     target: *target,
-                    extend: extend.clone(),
+                    extend: *extend,
                 }
             }
             CILNode::FloatCast {

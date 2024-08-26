@@ -2,7 +2,7 @@ use std::{borrow::Cow, fmt::Write};
 
 use crate::{
     asm::Assembly, cil_node::CILNode, cil_root::CILRoot, AsmStringContainer, DepthSetting,
-    DotnetTypeRef, IlasmFlavour, Type,
+    ClassRef, IlasmFlavour, Type,
 };
 
 macro_rules! un_op {
@@ -1178,7 +1178,7 @@ fn node_to_il() {
     let node = CILNode::Add(
         Box::new(CILNode::Mul(
             Box::new(CILNode::LDLoc(0)),
-            Box::new(CILNode::SizeOf(Box::new(Type::U8))),
+            Box::new(CILNode::SizeOf(Box::new(Type::Int(Int::U8)))),
         )),
         Box::new(CILNode::LDLoc(1)),
     );
@@ -1210,7 +1210,7 @@ pub fn non_void_type_cil(tpe: &Type, strings: &AsmStringContainer) -> Cow<'stati
 }
 pub fn type_cil(tpe: &Type, strings: &AsmStringContainer) -> Cow<'static, str> {
     match tpe {
-        Type::DelegatePtr(sig) => {
+        Type::FnPtr(sig) => {
             let mut inputs_iter = sig.inputs().iter();
             let mut input_string = String::new();
             if let Some(firts_arg) = inputs_iter.next() {
@@ -1228,26 +1228,26 @@ pub fn type_cil(tpe: &Type, strings: &AsmStringContainer) -> Cow<'static, str> {
         }
 
         Type::Void => "void".into(),
-        Type::I8 => "int8".into(),
-        Type::U8 => "uint8".into(),
+        Type::Int(Int::I8) => "int8".into(),
+        Type::Int(Int::U8) => "uint8".into(),
         Type::F16 => "valuetype [System.Runtime]System.Half".into(),
-        Type::I16 => "int16".into(),
-        Type::U16 => "uint16".into(),
-        Type::F32 => "float32".into(),
-        Type::I32 => "int32".into(),
-        Type::U32 => "uint32".into(),
-        Type::F64 => "float64".into(),
-        Type::I64 => "int64".into(),
-        Type::U64 => "uint64".into(),
-        Type::I128 => "valuetype [System.Runtime]System.Int128".into(),
-        Type::U128 => "valuetype [System.Runtime]System.UInt128".into(),
-        Type::ISize => "native int".into(),
-        Type::USize => "native uint".into(),
+        Type::Int(Int::I16) => "int16".into(),
+        Type::Int(Int::U16) => "uint16".into(),
+        Type::Float(Float::F32) => "float32".into(),
+        Type::Int(Int::I32) => "int32".into(),
+        Type::Int(Int::U32) => "uint32".into(),
+        Type::Float(Float::F64) => "float64".into(),
+        Type::Int(Int::I64) => "int64".into(),
+        Type::Int(Int::U64) => "uint64".into(),
+        Type::Int(Int::I128) => "valuetype [System.Runtime]System.Int128".into(),
+        Type::Int(Int::U128) => "valuetype [System.Runtime]System.UInt128".into(),
+        Type::Int(Int::ISize) => "native int".into(),
+        Type::Int(Int::USize) => "native uint".into(),
         Type::Ptr(inner) => format!("{inner}*", inner = type_cil(inner, strings)).into(),
-        Type::ManagedReference(inner) => {
+        Type::Ref(inner) => {
             format!("{inner}&", inner = type_cil(inner, strings)).into()
         }
-        Type::DotnetType(dotnet_type) => dotnet_type_ref_cli(dotnet_type, strings).into(),
+        Type::ClassRef(dotnet_type) => dotnet_type_ref_cli(dotnet_type, strings).into(),
 
         Type::Bool => "bool".into(),
         Type::DotnetChar => "char".into(),
@@ -1266,7 +1266,7 @@ pub fn type_cil(tpe: &Type, strings: &AsmStringContainer) -> Cow<'static, str> {
         Type::MethodGenericArg(idx) => format!("!!{idx}").into(),
     }
 }
-pub fn dotnet_type_ref_cli(dotnet_type: &DotnetTypeRef, strings: &AsmStringContainer) -> String {
+pub fn dotnet_type_ref_cli(dotnet_type: &ClassRef, strings: &AsmStringContainer) -> String {
     let prefix = dotnet_type.tpe_prefix();
     if Some("System.Runtime") == dotnet_type.asm()
         && "System.String" == dotnet_type.name_path()
@@ -1299,7 +1299,7 @@ pub fn dotnet_type_ref_cli(dotnet_type: &DotnetTypeRef, strings: &AsmStringConta
     format!("{prefix} {asm}'{name}'{generics}")
 }
 pub fn dotnet_type_ref_extends(
-    dotnet_type: &DotnetTypeRef,
+    dotnet_type: &ClassRef,
     strings: &AsmStringContainer,
 ) -> String {
     //let prefix = dotnet_type.tpe_prefix();

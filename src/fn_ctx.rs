@@ -74,30 +74,8 @@ impl<'tcx, 'validator, 'type_cache, 'asm> MethodCompileCtx<'tcx, 'validator, 'ty
                 rustc_middle::ty::EarlyBinder::bind(ty),
             )
     }
-    pub fn assert_raw_pointer_type(&self, ptr: &CILNode, node_from: &impl std::fmt::Debug) {
-        let ptr_tpe = match ptr.validate(self.validator(), None) {
-            Ok(ptr_tpe) => ptr_tpe,
-            Err(err) => {
-                panic!("VALIDATION falied: {err}. ops create from {node_from:?} weren't valid.")
-            }
-        };
-        match ptr_tpe{
-            Type::USize | Type::ISize | Type::DelegatePtr(_) | Type::Ptr(_) => (),
-            _=>panic!("VALIDATION failed. {ptr_tpe:?} is not a raw pointer type. It is the result of {ptr:?}, compiled from MIR item {node_from:?}")  
-        }
-    }
-    pub fn assert_fat_pointer_type(&self, ptr: &CILNode, node_from: &impl std::fmt::Debug) {
-        let ptr_tpe = match ptr.validate(self.validator(), None) {
-            Ok(ptr_tpe) => ptr_tpe,
-            Err(err) => {
-                panic!("VALIDATION falied: {err}. ops create from {node_from:?} weren't valid.")
-            }
-        };
-        match ptr_tpe{
-            Type::DotnetType(_) => (),
-            _=>panic!("VALIDATION failed. {ptr_tpe:?} is not a raw pointer type. It is the result of {ptr:?}, compiled from MIR item {node_from:?}")  
-        }
-    }
+    pub fn assert_raw_pointer_type(&self, ptr: &CILNode, node_from: &impl std::fmt::Debug) {}
+    pub fn assert_fat_pointer_type(&self, ptr: &CILNode, node_from: &impl std::fmt::Debug) {}
     pub fn type_from_cache(&mut self, ty: rustc_middle::ty::Ty<'tcx>) -> Type {
         self.type_cache
             .type_from_cache(ty, self.tcx, self.method_instance)

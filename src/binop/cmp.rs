@@ -1,22 +1,41 @@
 use cilly::{
-    call, call_site::CallSite, cil_node::CILNode, eq, fn_sig::FnSig, gt, gt_un, lt, lt_un,
-    DotnetTypeRef, Type,
+    call,
+    call_site::CallSite,
+    cil_node::CILNode,
+    eq,
+    fn_sig::FnSig,
+    gt, gt_un, lt, lt_un,
+    v2::{Assembly, ClassRef, Float, Int},
+    Type,
 };
 use rustc_middle::ty::{FloatTy, IntTy, Ty, TyKind, UintTy};
 
-pub fn ne_unchecked(ty_a: Ty<'_>, operand_a: CILNode, operand_b: CILNode) -> CILNode {
+pub fn ne_unchecked(
+    ty_a: Ty<'_>,
+    operand_a: CILNode,
+    operand_b: CILNode,
+    asm: &mut Assembly,
+) -> CILNode {
     //vec![eq_unchecked(ty_a), CILOp::LdcI32(0), CILOp::Eq]
-    eq!(eq_unchecked(ty_a, operand_a, operand_b), CILNode::LdFalse)
+    eq!(
+        eq_unchecked(ty_a, operand_a, operand_b, asm),
+        CILNode::LdFalse
+    )
 }
-pub fn eq_unchecked(ty_a: Ty<'_>, operand_a: CILNode, operand_b: CILNode) -> CILNode {
+pub fn eq_unchecked(
+    ty_a: Ty<'_>,
+    operand_a: CILNode,
+    operand_b: CILNode,
+    asm: &mut Assembly,
+) -> CILNode {
     //vec![CILOp::Eq]
     match ty_a.kind() {
         TyKind::Uint(uint) => match uint {
             UintTy::U128 => call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::uint_128(),
+                    ClassRef::uint_128(asm),
                     "op_Equality".into(),
-                    FnSig::new(&[Type::U128, Type::U128], Type::Bool),
+                    FnSig::new(&[Type::Int(Int::U128), Type::Int(Int::U128)], Type::Bool),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -26,9 +45,9 @@ pub fn eq_unchecked(ty_a: Ty<'_>, operand_a: CILNode, operand_b: CILNode) -> CIL
         TyKind::Int(int) => match int {
             IntTy::I128 => call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::int_128(),
+                    ClassRef::int_128(asm),
                     "op_Equality".into(),
-                    FnSig::new(&[Type::I128, Type::I128], Type::Bool),
+                    FnSig::new(&[Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -44,7 +63,10 @@ pub fn eq_unchecked(ty_a: Ty<'_>, operand_a: CILNode, operand_b: CILNode) -> CIL
         TyKind::Float(FloatTy::F128) => call!(
             CallSite::builtin(
                 "__eqtf2".into(),
-                FnSig::new([Type::F128, Type::F128], Type::Bool),
+                FnSig::new(
+                    [Type::Float(Float::F128), Type::Float(Float::F128)],
+                    Type::Bool
+                ),
                 true
             ),
             [operand_a, operand_b]
@@ -53,15 +75,20 @@ pub fn eq_unchecked(ty_a: Ty<'_>, operand_a: CILNode, operand_b: CILNode) -> CIL
         _ => panic!("Can't eq type  {ty_a:?}"),
     }
 }
-pub fn lt_unchecked(ty_a: Ty<'_>, operand_a: CILNode, operand_b: CILNode) -> CILNode {
+pub fn lt_unchecked(
+    ty_a: Ty<'_>,
+    operand_a: CILNode,
+    operand_b: CILNode,
+    asm: &mut Assembly,
+) -> CILNode {
     //return CILOp::Lt;
     match ty_a.kind() {
         TyKind::Uint(uint) => match uint {
             UintTy::U128 => call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::uint_128(),
+                    ClassRef::uint_128(asm),
                     "op_LessThan".into(),
-                    FnSig::new(&[Type::U128, Type::U128], Type::Bool),
+                    FnSig::new(&[Type::Int(Int::U128), Type::Int(Int::U128)], Type::Bool),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -71,9 +98,9 @@ pub fn lt_unchecked(ty_a: Ty<'_>, operand_a: CILNode, operand_b: CILNode) -> CIL
         TyKind::Int(int) => match int {
             IntTy::I128 => call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::int_128(),
+                    ClassRef::int_128(asm),
                     "op_LessThan".into(),
-                    FnSig::new(&[Type::I128, Type::I128], Type::Bool),
+                    FnSig::new(&[Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -88,7 +115,10 @@ pub fn lt_unchecked(ty_a: Ty<'_>, operand_a: CILNode, operand_b: CILNode) -> CIL
         TyKind::Float(FloatTy::F128) => call!(
             CallSite::builtin(
                 "__lttf2".into(),
-                FnSig::new([Type::F128, Type::F128], Type::Bool),
+                FnSig::new(
+                    [Type::Float(Float::F128), Type::Float(Float::F128)],
+                    Type::Bool
+                ),
                 true
             ),
             [operand_a, operand_b]
@@ -96,14 +126,19 @@ pub fn lt_unchecked(ty_a: Ty<'_>, operand_a: CILNode, operand_b: CILNode) -> CIL
         _ => panic!("Can't eq type  {ty_a:?}"),
     }
 }
-pub fn gt_unchecked(ty_a: Ty<'_>, operand_a: CILNode, operand_b: CILNode) -> CILNode {
+pub fn gt_unchecked(
+    ty_a: Ty<'_>,
+    operand_a: CILNode,
+    operand_b: CILNode,
+    asm: &mut Assembly,
+) -> CILNode {
     match ty_a.kind() {
         TyKind::Uint(uint) => match uint {
             UintTy::U128 => call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::uint_128(),
+                    ClassRef::uint_128(asm),
                     "op_GreaterThan".into(),
-                    FnSig::new(&[Type::U128, Type::U128], Type::Bool),
+                    FnSig::new(&[Type::Int(Int::U128), Type::Int(Int::U128)], Type::Bool),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -113,9 +148,9 @@ pub fn gt_unchecked(ty_a: Ty<'_>, operand_a: CILNode, operand_b: CILNode) -> CIL
         TyKind::Int(int) => match int {
             IntTy::I128 => call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::int_128(),
+                    ClassRef::int_128(asm),
                     "op_GreaterThan".into(),
-                    FnSig::new(&[Type::I128, Type::I128], Type::Bool),
+                    FnSig::new(&[Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -129,7 +164,10 @@ pub fn gt_unchecked(ty_a: Ty<'_>, operand_a: CILNode, operand_b: CILNode) -> CIL
         TyKind::Float(FloatTy::F128) => call!(
             CallSite::builtin(
                 "__gttf2".into(),
-                FnSig::new([Type::F128, Type::F128], Type::Bool),
+                FnSig::new(
+                    [Type::Float(Float::F128), Type::Float(Float::F128)],
+                    Type::Bool
+                ),
                 true
             ),
             [operand_a, operand_b]

@@ -1,16 +1,24 @@
 use cilly::{
-    access_modifier::AccessModifer, asm::Assembly, basic_block::BasicBlock, call,
-    call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_u32, conv_u64, conv_usize,
-    size_of, static_field_desc::StaticFieldDescriptor, DotnetTypeRef, FnSig, Type,
+    access_modifier::AccessModifer,
+    asm::Assembly,
+    basic_block::BasicBlock,
+    call,
+    call_site::CallSite,
+    cil_node::CILNode,
+    cil_root::CILRoot,
+    conv_u32, conv_u64, conv_usize, size_of,
+    static_field_desc::StaticFieldDescriptor,
+    v2::{ClassRef, Int},
+    FnSig, Type,
 };
 macro_rules! monitor_enter {
     () => {{
         CILRoot::Call {
             site: Box::new(CallSite::new(
-                Some(DotnetTypeRef::monitor()),
+                Some(ClassRef::monitor()),
                 "Enter".into(),
                 FnSig::new(
-                    &[Type::DotnetType(Box::new(DotnetTypeRef::object_type()))],
+                    &[Type::ClassRef(Box::new(ClassRef::object_type()))],
                     Type::Void,
                 ),
                 true,
@@ -18,7 +26,7 @@ macro_rules! monitor_enter {
             args: [CILNode::LDStaticField(Box::new(
                 StaticFieldDescriptor::new(
                     None,
-                    Type::DotnetType(Box::new(DotnetTypeRef::object_type())),
+                    Type::ClassRef(Box::new(ClassRef::object_type())),
                     "GlobalAtomicLock".into(),
                 ),
             ))]
@@ -31,10 +39,10 @@ macro_rules! monitor_exit {
     () => {{
         CILRoot::Call {
             site: Box::new(CallSite::new(
-                Some(DotnetTypeRef::monitor()),
+                Some(ClassRef::monitor()),
                 "Exit".into(),
                 FnSig::new(
-                    &[Type::DotnetType(Box::new(DotnetTypeRef::object_type()))],
+                    &[Type::ClassRef(Box::new(ClassRef::object_type()))],
                     Type::Void,
                 ),
                 true,
@@ -42,7 +50,7 @@ macro_rules! monitor_exit {
             args: [CILNode::LDStaticField(Box::new(
                 StaticFieldDescriptor::new(
                     None,
-                    Type::DotnetType(Box::new(DotnetTypeRef::object_type())),
+                    Type::ClassRef(Box::new(ClassRef::object_type())),
                     "GlobalAtomicLock".into(),
                 ),
             ))]
@@ -54,31 +62,37 @@ macro_rules! monitor_exit {
 
 crate::add_method_from_trees!(
     interlocked_add_usize,
-    &[Type::ManagedReference(Box::new(Type::USize)), Type::USize],
-    Type::USize,
+    &[
+        Type::Ref(Box::new(Type::Int(Int::USize))),
+        Type::Int(Int::USize)
+    ],
+    Type::Int(Int::USize),
     vec![
         BasicBlock::new(
             vec![
                 CILRoot::BEq {
                     target: 1,
                     sub_target: 0,
-                    a: Box::new(size_of!(Type::USize)),
-                    b: Box::new(size_of!(Type::U32))
+                    a: Box::new(size_of!(Type::Int(Int::USize))),
+                    b: Box::new(size_of!(Type::Int(Int::U32)))
                 }
                 .into(),
                 CILRoot::Ret {
                     tree: conv_usize!(call!(
                         CallSite::new(
-                            Some(DotnetTypeRef::interlocked()),
+                            Some(ClassRef::interlocked()),
                             "Add".into(),
                             FnSig::new(
-                                &[Type::ManagedReference(Box::new(Type::U64)), Type::U64],
-                                Type::U64
+                                &[
+                                    Type::Ref(Box::new(Type::Int(Int::U64))),
+                                    Type::Int(Int::U64)
+                                ],
+                                Type::Int(Int::U64)
                             ),
                             true
                         ),
                         [
-                            CILNode::LDArg(0).cast_ptr(Type::ManagedReference(Box::new(Type::U64))),
+                            CILNode::LDArg(0).cast_ptr(Type::Ref(Box::new(Type::Int(Int::U64)))),
                             conv_u64!(CILNode::LDArg(1))
                         ]
                     ))
@@ -93,16 +107,19 @@ crate::add_method_from_trees!(
             vec![CILRoot::Ret {
                 tree: conv_usize!(call!(
                     CallSite::new(
-                        Some(DotnetTypeRef::interlocked()),
+                        Some(ClassRef::interlocked()),
                         "Add".into(),
                         FnSig::new(
-                            &[Type::ManagedReference(Box::new(Type::U32)), Type::U32],
-                            Type::U32
+                            &[
+                                Type::Ref(Box::new(Type::Int(Int::U32))),
+                                Type::Int(Int::U32)
+                            ],
+                            Type::Int(Int::U32)
                         ),
                         true
                     ),
                     [
-                        CILNode::LDArg(0).cast_ptr(Type::ManagedReference(Box::new(Type::U32))),
+                        CILNode::LDArg(0).cast_ptr(Type::Ref(Box::new(Type::Int(Int::U32)))),
                         conv_u32!(CILNode::LDArg(1))
                     ]
                 ))
@@ -116,31 +133,37 @@ crate::add_method_from_trees!(
 );
 crate::add_method_from_trees!(
     interlocked_or_usize,
-    &[Type::ManagedReference(Box::new(Type::USize)), Type::USize],
-    Type::USize,
+    &[
+        Type::Ref(Box::new(Type::Int(Int::USize))),
+        Type::Int(Int::USize)
+    ],
+    Type::Int(Int::USize),
     vec![
         BasicBlock::new(
             vec![
                 CILRoot::BEq {
                     target: 1,
                     sub_target: 0,
-                    a: Box::new(size_of!(Type::USize)),
-                    b: Box::new(size_of!(Type::U32))
+                    a: Box::new(size_of!(Type::Int(Int::USize))),
+                    b: Box::new(size_of!(Type::Int(Int::U32)))
                 }
                 .into(),
                 CILRoot::Ret {
                     tree: conv_usize!(call!(
                         CallSite::new(
-                            Some(DotnetTypeRef::interlocked()),
+                            Some(ClassRef::interlocked()),
                             "Or".into(),
                             FnSig::new(
-                                &[Type::ManagedReference(Box::new(Type::U64)), Type::U64],
-                                Type::U64
+                                &[
+                                    Type::Ref(Box::new(Type::Int(Int::U64))),
+                                    Type::Int(Int::U64)
+                                ],
+                                Type::Int(Int::U64)
                             ),
                             true
                         ),
                         [
-                            CILNode::LDArg(0).cast_ptr(Type::ManagedReference(Box::new(Type::U64))),
+                            CILNode::LDArg(0).cast_ptr(Type::Ref(Box::new(Type::Int(Int::U64)))),
                             conv_u64!(CILNode::LDArg(1))
                         ]
                     ))
@@ -155,16 +178,19 @@ crate::add_method_from_trees!(
             vec![CILRoot::Ret {
                 tree: conv_usize!(call!(
                     CallSite::new(
-                        Some(DotnetTypeRef::interlocked()),
+                        Some(ClassRef::interlocked()),
                         "Or".into(),
                         FnSig::new(
-                            &[Type::ManagedReference(Box::new(Type::U32)), Type::U32],
-                            Type::U32
+                            &[
+                                Type::Ref(Box::new(Type::Int(Int::U32))),
+                                Type::Int(Int::U32)
+                            ],
+                            Type::Int(Int::U32)
                         ),
                         true
                     ),
                     [
-                        CILNode::LDArg(0).cast_ptr(Type::ManagedReference(Box::new(Type::U32))),
+                        CILNode::LDArg(0).cast_ptr(Type::Ref(Box::new(Type::Int(Int::U32)))),
                         conv_u32!(CILNode::LDArg(1))
                     ]
                 ))
@@ -178,31 +204,37 @@ crate::add_method_from_trees!(
 );
 crate::add_method_from_trees!(
     interlocked_and_usize,
-    &[Type::ManagedReference(Box::new(Type::USize)), Type::USize],
-    Type::USize,
+    &[
+        Type::Ref(Box::new(Type::Int(Int::USize))),
+        Type::Int(Int::USize)
+    ],
+    Type::Int(Int::USize),
     vec![
         BasicBlock::new(
             vec![
                 CILRoot::BEq {
                     target: 1,
                     sub_target: 0,
-                    a: Box::new(size_of!(Type::USize)),
-                    b: Box::new(size_of!(Type::U32))
+                    a: Box::new(size_of!(Type::Int(Int::USize))),
+                    b: Box::new(size_of!(Type::Int(Int::U32)))
                 }
                 .into(),
                 CILRoot::Ret {
                     tree: conv_usize!(call!(
                         CallSite::new(
-                            Some(DotnetTypeRef::interlocked()),
+                            Some(ClassRef::interlocked()),
                             "And".into(),
                             FnSig::new(
-                                &[Type::ManagedReference(Box::new(Type::U64)), Type::U64],
-                                Type::U64
+                                &[
+                                    Type::Ref(Box::new(Type::Int(Int::U64))),
+                                    Type::Int(Int::U64)
+                                ],
+                                Type::Int(Int::U64)
                             ),
                             true
                         ),
                         [
-                            CILNode::LDArg(0).cast_ptr(Type::ManagedReference(Box::new(Type::U64))),
+                            CILNode::LDArg(0).cast_ptr(Type::Ref(Box::new(Type::Int(Int::U64)))),
                             conv_u64!(CILNode::LDArg(1))
                         ]
                     ))
@@ -217,16 +249,19 @@ crate::add_method_from_trees!(
             vec![CILRoot::Ret {
                 tree: conv_usize!(call!(
                     CallSite::new(
-                        Some(DotnetTypeRef::interlocked()),
+                        Some(ClassRef::interlocked()),
                         "And".into(),
                         FnSig::new(
-                            &[Type::ManagedReference(Box::new(Type::U32)), Type::U32],
-                            Type::U32
+                            &[
+                                Type::Ref(Box::new(Type::Int(Int::U32))),
+                                Type::Int(Int::U32)
+                            ],
+                            Type::Int(Int::U32)
                         ),
                         true
                     ),
                     [
-                        CILNode::LDArg(0).cast_ptr(Type::ManagedReference(Box::new(Type::U32))),
+                        CILNode::LDArg(0).cast_ptr(Type::Ref(Box::new(Type::Int(Int::U32)))),
                         conv_u32!(CILNode::LDArg(1))
                     ]
                 ))
@@ -246,8 +281,8 @@ pub fn atomics(asm: &mut Assembly) {
 }
 crate::add_method_from_trees!(
     interlocked_emulate_xchng_byte,
-    &[Type::ManagedReference(Box::new(Type::U8)), Type::U8],
-    Type::U8,
+    &[Type::Ref(Box::new(Type::Int(Int::U8))), Type::Int(Int::U8)],
+    Type::Int(Int::U8),
     vec![
         BasicBlock::new(
             vec![
@@ -301,7 +336,7 @@ crate::add_method_from_trees!(
             None
         ),
     ],
-    vec![(Some("val".into()), Type::U8)],
+    vec![(Some("val".into()), Type::Int(Int::U8))],
     vec![Some("addr".into()), Some("new_val".into())]
 );
 #[test]

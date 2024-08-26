@@ -3,17 +3,17 @@ use serde::{Deserialize, Serialize};
 use crate::{IString, Type};
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Eq, Hash, Debug)]
-pub struct DotnetTypeRef {
+pub struct ClassRef {
     assembly: Option<IString>,
     name_path: IString,
     generics: Vec<Type>,
     // In cause of `System.BadImageFormatException: Expected value type but got type kind 14` check if `is_valuetype` is always correct!
     is_valuetype: bool,
 }
-impl DotnetTypeRef {
+impl ClassRef {
     #[must_use]
     pub fn bit_operations() -> Self {
-        DotnetTypeRef::new("System.Runtime".into(), "System.Numerics.BitOperations")
+        ClassRef::new("System.Runtime".into(), "System.Numerics.BitOperations")
             .with_valuetype(false)
     }
     #[must_use]

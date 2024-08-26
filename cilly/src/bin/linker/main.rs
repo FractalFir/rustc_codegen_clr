@@ -11,7 +11,7 @@ use cilly::{
         Assembly, BasicBlock, CILNode, CILRoot, ClassRef, Const, IlasmFlavour, Int, MethodImpl,
         Type,
     },
-    DotnetTypeRef, FnSig,
+    FnSig,
 };
 //use assembly::Assembly;
 use lazy_static::lazy_static;
@@ -206,8 +206,7 @@ fn main() {
     // Override allocator
     {
         // Get the marshal class
-        let marshal = ClassRef::from_v1(&DotnetTypeRef::marshal(), &mut final_assembly);
-        let marshal = final_assembly.alloc_class_ref(marshal);
+        let marshal = ClassRef::marshal(&mut final_assembly);
         // Overrides calls to malloc
         let sig = final_assembly.sig([Type::Int(Int::ISize)], Type::Int(Int::ISize));
         let allochglobal =
@@ -270,44 +269,50 @@ fn main() {
     }
     overrides.insert(
         final_assembly.alloc_string("_Unwind_RaiseException"),
-        Box::new(|_, asm| MethodImpl::MethodBody {
-            blocks: vec![cilly::v2::BasicBlock::from_v1(
-                &cilly::basic_block::BasicBlock::new(
-                    vec![
-                        cilly::cil_root::CILRoot::Throw(cilly::cil_node::CILNode::NewObj(
-                            Box::new(cilly::cil_node::CallOpArgs {
-                                args: Box::new([conv_usize!(cilly::cil_node::CILNode::LDArg(0))]),
-                                site: Box::new(CallSite::new(
-                                    Some(
-                                        DotnetTypeRef::new::<&str, _>(None, "RustException")
-                                            .with_valuetype(false),
-                                    ),
-                                    ".ctor".into(),
-                                    FnSig::new(
-                                        &[
-                                            cilly::r#type::Type::DotnetType(Box::new(
-                                                DotnetTypeRef::new::<&str, _>(
+        Box::new(|_, asm| {
+            let rust_exception = asm.alloc_string("RustException");
+            MethodImpl::MethodBody {
+                blocks: vec![cilly::v2::BasicBlock::from_v1(
+                    &cilly::basic_block::BasicBlock::new(
+                        vec![
+                            cilly::cil_root::CILRoot::Throw(cilly::cil_node::CILNode::NewObj(
+                                Box::new(cilly::cil_node::CallOpArgs {
+                                    args: Box::new([conv_usize!(cilly::cil_node::CILNode::LDArg(
+                                        0
+                                    ))]),
+                                    site: Box::new(CallSite::new(
+                                        Some(asm.alloc_class_ref(ClassRef::new(
+                                            rust_exception,
+                                            None,
+                                            false,
+                                            [].into(),
+                                        ))),
+                                        ".ctor".into(),
+                                        FnSig::new(
+                                            [
+                                                Type::ClassRef(asm.alloc_class_ref(ClassRef::new(
+                                                    rust_exception,
                                                     None,
-                                                    "RustException",
-                                                )
-                                                .with_valuetype(false),
-                                            )),
-                                            cilly::r#type::Type::USize,
-                                        ],
-                                        cilly::r#type::Type::Void,
-                                    ),
-                                    false,
-                                )),
-                            }),
-                        ))
-                        .into(),
-                    ],
-                    0,
-                    None,
-                ),
-                asm,
-            )],
-            locals: vec![],
+                                                    false,
+                                                    [].into(),
+                                                ))),
+                                                Type::Int(Int::USize),
+                                            ],
+                                            Type::Void,
+                                        ),
+                                        false,
+                                    )),
+                                }),
+                            ))
+                            .into(),
+                        ],
+                        0,
+                        None,
+                    ),
+                    asm,
+                )],
+                locals: vec![],
+            }
         }),
     );
     overrides.insert(
@@ -563,9 +568,9 @@ fn override_errno(asm: &mut Assembly) {
                     vec![CILRoot::Ret {
                         tree: cilly::call!(
                             CallSite::new(
-                                Some(DotnetTypeRef::marshal()),
+                                Some(ClassRef::marshal()),
                                 "GetLastWin32Error".into(),
-                                FnSig::new(&[], Type::I32),
+                                FnSig::new(&[], Type::Int(Int::I32)),
                                 true
                             ),
                             []

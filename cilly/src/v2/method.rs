@@ -1,4 +1,4 @@
-use fxhash::{FxHashMap, FxHashSet};
+use fxhash::FxHashMap;
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -205,7 +205,7 @@ impl MethodDef {
         asm: &mut super::Assembly,
         class: ClassDefIdx,
     ) -> Self {
-        let sig = FnSig::from_v1(v1.call_site().signature(), asm);
+        let sig = FnSig::from_v1(v1.call_site().signature());
         let sig = asm.alloc_sig(sig);
         let acceess = match v1.access() {
             crate::access_modifier::AccessModifer::Private => Access::Private,
@@ -230,10 +230,9 @@ impl MethodDef {
             .locals()
             .iter()
             .map(|(name, tpe)| {
-                let tpe = Type::from_v1(tpe, asm);
                 (
                     name.as_ref().map(|name| asm.alloc_string(name.clone())),
-                    asm.alloc_type(tpe),
+                    asm.alloc_type(*tpe),
                 )
             })
             .collect();

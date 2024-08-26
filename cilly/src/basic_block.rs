@@ -3,7 +3,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     cil_iter::CILIterElem, cil_node::ValidationContext, cil_root::CILRoot, cil_tree::CILTree,
-    utilis::MemoryUsage,
 };
 
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]

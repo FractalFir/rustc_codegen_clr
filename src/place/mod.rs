@@ -4,9 +4,9 @@ use crate::assembly::MethodCompileCtx;
 use crate::r#type::pointer_to_is_fat;
 use cilly::cil_node::CILNode;
 use cilly::cil_root::CILRoot;
-use cilly::{conv_usize, ldc_u64, ptr, Type};
+use cilly::v2::{ClassRef, Float};
+use cilly::{conv_usize, ldc_u64, Type};
 
-use cilly::DotnetTypeRef;
 use rustc_middle::mir::Place;
 
 mod adress;
@@ -80,7 +80,7 @@ pub fn deref_op<'tcx>(
                 IntTy::Isize => CILNode::LDIndISize { ptr },
                 IntTy::I128 => CILNode::LdObj {
                     ptr,
-                    obj: Box::new(DotnetTypeRef::int_128().into()),
+                    obj: Box::new(ClassRef::int_128(ctx.asm_mut()).into()),
                 },
                 //_ => todo!("TODO: can't deref int type {int_ty:?} yet"),
             },
@@ -92,20 +92,20 @@ pub fn deref_op<'tcx>(
                 UintTy::Usize => CILNode::LDIndUSize { ptr },
                 UintTy::U128 => CILNode::LdObj {
                     ptr,
-                    obj: Box::new(DotnetTypeRef::uint_128().into()),
+                    obj: Box::new(ClassRef::uint_128(ctx.asm_mut()).into()),
                 }, //vec![CILOp::LdObj(Box::new())],
                    //_ => todo!("TODO: can't deref int type {int_ty:?} yet"),
             },
             TyKind::Float(float_ty) => match float_ty {
                 FloatTy::F16 => CILNode::LdObj {
                     ptr,
-                    obj: Box::new(Type::F16),
+                    obj: Box::new(Type::Float(Float::F16)),
                 },
                 FloatTy::F32 => CILNode::LDIndF32 { ptr },
                 FloatTy::F64 => CILNode::LDIndF64 { ptr },
                 FloatTy::F128 => CILNode::LdObj {
                     ptr,
-                    obj: Box::new(Type::F128),
+                    obj: Box::new(Type::Float(Float::F128)),
                 },
             },
             TyKind::Bool => CILNode::LDIndBool { ptr }, // Both Rust bool and a managed bool are 1 byte wide. .NET bools are 4 byte wide only in the context of Marshaling/PInvoke,
@@ -168,7 +168,8 @@ pub fn place_adress<'a>(place: &Place<'a>, ctx: &mut MethodCompileCtx<'a, '_, '_
     let layout = ctx.layout_of(place_ty);
     if layout.is_zst() {
         let place_type = ctx.type_from_cache(place_ty);
-        return conv_usize!(ldc_u64!(layout.align.pref.bytes())).cast_ptr(ptr!(place_type));
+        return conv_usize!(ldc_u64!(layout.align.pref.bytes()))
+            .cast_ptr(ctx.asm_mut().nptr(place_type));
     }
     if place.projection.is_empty() {
         let loc_ty = ctx.monomorphize(ctx.body().local_decls[place.local].ty);

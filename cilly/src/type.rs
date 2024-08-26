@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{utilis::MemoryUsage, DotnetTypeRef, FnSig};
+use crate::{utilis::MemoryUsage, ClassRef, FnSig};
 #[derive(Serialize, Deserialize, PartialEq, Clone, Eq, Hash, Debug)]
 pub enum Type {
     /// Void type
@@ -27,7 +27,7 @@ pub enum Type {
     I128,
     ISize,
     /// A refernece to a .NET type
-    DotnetType(Box<DotnetTypeRef>),
+    DotnetType(Box<ClassRef>),
     // Pointer to a type
     Ptr(Box<Self>),
     /// A managed reference `&`. IS NOT EQUIVALENT TO RUST `&`!
@@ -64,7 +64,7 @@ impl MemoryUsage for Type {
 impl Type {
     /// If this is a reference to a dotnet type, return that type. Will not work with pointers/references.
     #[must_use]
-    pub fn as_dotnet(&self) -> Option<DotnetTypeRef> {
+    pub fn as_class_ref(&self) -> Option<ClassRef> {
         match self {
             Self::DotnetType(inner) => Some(inner.as_ref().clone()),
             _ => None,
@@ -72,7 +72,7 @@ impl Type {
     }
     /// If this is a reference to a dotnet type, return that type. Works with pointers/references.
     #[must_use]
-    pub fn dotnet_refs(&self) -> Option<DotnetTypeRef> {
+    pub fn dotnet_refs(&self) -> Option<ClassRef> {
         match self {
             Self::DotnetType(inner) => Some(inner.as_ref().clone()),
             Self::Ptr(inner) | Self::ManagedReference(inner) => inner.dotnet_refs(),
@@ -114,8 +114,8 @@ impl Type {
         }
     }
 }
-impl From<DotnetTypeRef> for Type {
-    fn from(value: DotnetTypeRef) -> Self {
+impl From<ClassRef> for Type {
+    fn from(value: ClassRef) -> Self {
         Self::DotnetType(Box::new(value))
     }
 }

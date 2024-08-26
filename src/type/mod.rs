@@ -10,7 +10,10 @@ use crate::{
     fn_ctx::MethodCompileCtx,
     utilis::{adt::FieldOffsetIterator, garg_to_string},
 };
-use cilly::v2::{Access, ClassDef, ClassRef, ClassRefIdx, Float, Int, StringIdx, Type};
+use cilly::v2::{
+    cilnode::MethodKind, Access, Assembly, ClassDef, ClassDefIdx, ClassRef, ClassRefIdx, Float,
+    Int, MethodDef, StringIdx, Type,
+};
 pub use r#type::*;
 use rustc_middle::ty::{AdtDef, AdtKind, FloatTy, IntTy, List, ParamEnv, Ty, TyKind, UintTy};
 use rustc_span::def_id::DefId;
@@ -22,12 +25,12 @@ pub use type_def::*;
 pub fn from_int(int_tpe: &IntTy) -> cilly::Type {
     use cilly::Type;
     match int_tpe {
-        IntTy::I8 => Type::I8,
-        IntTy::I16 => Type::I16,
-        IntTy::I32 => Type::I32,
-        IntTy::I64 => Type::I64,
-        IntTy::I128 => Type::I128,
-        IntTy::Isize => Type::ISize,
+        IntTy::I8 => Type::Int(Int::I8),
+        IntTy::I16 => Type::Int(Int::I16),
+        IntTy::I32 => Type::Int(Int::I32),
+        IntTy::I64 => Type::Int(Int::I64),
+        IntTy::I128 => Type::Int(Int::I128),
+        IntTy::Isize => Type::Int(Int::ISize),
     }
 }
 
@@ -35,12 +38,12 @@ pub fn from_int(int_tpe: &IntTy) -> cilly::Type {
 pub fn from_uint(uint_tpe: &UintTy) -> cilly::Type {
     use cilly::Type;
     match uint_tpe {
-        UintTy::U8 => Type::U8,
-        UintTy::U16 => Type::U16,
-        UintTy::U32 => Type::U32,
-        UintTy::U64 => Type::U64,
-        UintTy::U128 => Type::U128,
-        UintTy::Usize => Type::USize,
+        UintTy::U8 => Type::Int(Int::U8),
+        UintTy::U16 => Type::Int(Int::U16),
+        UintTy::U32 => Type::Int(Int::U32),
+        UintTy::U64 => Type::Int(Int::U64),
+        UintTy::U128 => Type::Int(Int::U128),
+        UintTy::Usize => Type::Int(Int::USize),
     }
 }
 
@@ -49,9 +52,9 @@ pub fn from_float(float: &FloatTy) -> cilly::Type {
     use cilly::Type;
     match float {
         FloatTy::F16 => Type::F16,
-        FloatTy::F32 => Type::F32,
-        FloatTy::F64 => Type::F64,
-        FloatTy::F128 => Type::F128,
+        FloatTy::F32 => Type::Float(Float::F32),
+        FloatTy::F64 => Type::Float(Float::F64),
+        FloatTy::F128 => Type::Float(Float::F128),
     }
 }
 fn get_adt<'tcx>(
@@ -574,4 +577,133 @@ fn union_<'tcx>(
         Access::Public,
         Some(NonZeroU32::new(layout.layout.size().bytes().try_into().unwrap()).unwrap()),
     )
+}
+fn array_methods(element_count: usize, arr_class: ClassDefIdx, element: Type, asm: &mut Assembly) {
+    if element_count > 0 {
+        let mimpl = cilly::v2::MethodImpl::MethodBody {
+            blocks: vec![cilly::v2::BasicBlock::new(
+                vec![
+                    CILRoot::STObj {
+                        tpe: element.clone().into(),
+                        addr_calc: Box::new(
+                            (conv_usize!(ld_field_address!(
+                                CILNode::LDArg(0),
+                                FieldDescriptor::boxed(
+                                    (&def).into(),
+                                    element.clone(),
+                                    "f0".to_string().into(),
+                                )
+                            )) + CILNode::LDArg(1) * conv_usize!(size_of!(element.clone())))
+                            .cast_ptr(Type::Ptr(Box::new(element.clone()))),
+                        ),
+                        value_calc: Box::new(CILNode::LDArg(2)),
+                    }
+                    .into(),
+                    CILRoot::VoidRet.into(),
+                ],
+                0,
+                None,
+            )],
+            locals: [].into(),
+        };
+        let set_usize = MethodDef::new(
+            Access::Public,
+            arr_class,
+            asm.alloc_string("set_Item"),
+            asm.sig(
+                [
+                    asm.nptr(Type::ClassRef(*arr_class)),
+                    Type::Int(Int::USize),
+                    element,
+                ],
+                cilly::v2::Type::Void,
+            ),
+            MethodKind::Instance,
+            mimpl,
+            vec![
+                Some(asm.alloc_string("this")),
+                Some(asm.alloc_string("idx")),
+                Some(asm.alloc_string("val")),
+            ],
+        );
+
+        def.add_method(set_usize);
+
+        // get_Address(usize offset)
+        let get_adress_usize = Method::new(
+            AccessModifer::Public,
+            MethodType::Instance,
+            cilly::fn_sig::FnSig::new(
+                &[
+                    Type::Ptr(Box::new(def.clone().into())),
+                    Type::Int(Int::USize),
+                ],
+                Type::Ptr(element.clone().into()),
+            ),
+            "get_Address",
+            vec![],
+            vec![BasicBlock::new(
+                vec![CILRoot::Ret {
+                    tree: (conv_usize!(ld_field_address!(
+                        CILNode::LDArg(0),
+                        FieldDescriptor::boxed(
+                            (&def).into(),
+                            element.clone(),
+                            "f0".to_string().into(),
+                        )
+                    )) + CILNode::LDArg(1) * conv_usize!(size_of!(element.clone())))
+                    .cast_ptr(Type::Ptr(Box::new(element.clone()))),
+                }
+                .into()],
+                0,
+                None,
+            )],
+            vec![Some("this".into()), Some("idx".into())],
+        );
+        get_adress_usize.validate().unwrap();
+        def.add_method(get_adress_usize);
+
+        // get_Item
+        let get_item_usize = Method::new(
+            AccessModifer::Public,
+            MethodType::Instance,
+            cilly::fn_sig::FnSig::new(
+                &[
+                    Type::Ptr(Box::new(def.clone().into())),
+                    Type::Int(Int::USize),
+                ],
+                element.clone(),
+            ),
+            "get_Item",
+            vec![],
+            vec![BasicBlock::new(
+                vec![CILRoot::Ret {
+                    tree: CILNode::LdObj {
+                        ptr: Box::new(
+                            (conv_usize!(ld_field_address!(
+                                CILNode::LDArg(0),
+                                FieldDescriptor::boxed(
+                                    (&def).into(),
+                                    element.clone(),
+                                    "f0".to_string().into(),
+                                )
+                            )) + CILNode::LDArg(1) * conv_usize!(size_of!(element.clone())))
+                            .cast_ptr(Type::Ptr(Box::new(element.clone()))),
+                        ),
+                        obj: Box::new(element),
+                    },
+                }
+                .into()],
+                0,
+                None,
+            )],
+            vec![Some("this".into()), Some("idx".into())],
+        );
+        get_item_usize.validate().unwrap();
+        def.add_method(get_item_usize);
+
+        //to_string.set_ops(ops);
+        //def.add_method(to_string);
+    }
+    def
 }

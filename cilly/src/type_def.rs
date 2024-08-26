@@ -2,10 +2,10 @@ use std::num::NonZeroU32;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{access_modifier::AccessModifer, method::Method, DotnetTypeRef, IString, Type};
+use crate::{access_modifier::AccessModifer, method::Method, ClassRef, IString, Type};
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug)]
-pub struct TypeDef {
+pub struct ClassDef {
     access: AccessModifer,
     name: IString,
     inner_types: Vec<Self>,
@@ -13,11 +13,11 @@ pub struct TypeDef {
     functions: Vec<Method>,
     explicit_offsets: Option<Vec<u32>>,
     gargc: u32,
-    extends: Option<DotnetTypeRef>,
+    extends: Option<ClassRef>,
     explict_size: Option<NonZeroU32>,
     //requires_aligement_adjustements:bool,
 }
-impl TypeDef {
+impl ClassDef {
     pub fn set_generic_count(&mut self, generic_count: u32) {
         self.gargc = generic_count;
     }
@@ -28,7 +28,7 @@ impl TypeDef {
     pub fn all_types(&self) -> impl Iterator<Item = &Type> {
         //TODO: this breaks if a type contains more than one layer of nested types!
         self.field_types()
-            .chain(self.inner_types().iter().flat_map(TypeDef::field_types))
+            .chain(self.inner_types().iter().flat_map(ClassDef::field_types))
     }
     #[must_use]
     pub fn gargc(&self) -> u32 {
@@ -43,7 +43,7 @@ impl TypeDef {
         self.access
     }
     #[must_use]
-    pub fn extends(&self) -> Option<&DotnetTypeRef> {
+    pub fn extends(&self) -> Option<&ClassRef> {
         self.extends.as_ref()
     }
     #[must_use]
@@ -94,7 +94,7 @@ impl TypeDef {
         functions: Vec<Method>,
         explicit_offsets: Option<Vec<u32>>,
         gargc: u32,
-        extends: Option<DotnetTypeRef>,
+        extends: Option<ClassRef>,
         explict_size: Option<NonZeroU32>,
     ) -> Self {
         let res = Self {
@@ -151,23 +151,23 @@ impl TypeDef {
             .for_each(|tpe| assert_ne!(*tpe, Type::Void));
     }
 }
-impl From<TypeDef> for Type {
-    fn from(val: TypeDef) -> Type {
-        Type::DotnetType(DotnetTypeRef::new::<&str, _>(None, val.name()).into())
+impl From<ClassDef> for Type {
+    fn from(val: ClassDef) -> Type {
+        Type::ClassRef(ClassRef::new::<&str, _>(None, val.name()).into())
     }
 }
-impl From<&TypeDef> for Type {
-    fn from(val: &TypeDef) -> Type {
-        Type::DotnetType(DotnetTypeRef::new::<&str, _>(None, val.name()).into())
+impl From<&ClassDef> for Type {
+    fn from(val: &ClassDef) -> Type {
+        Type::ClassRef(ClassRef::new::<&str, _>(None, val.name()).into())
     }
 }
-impl From<TypeDef> for DotnetTypeRef {
-    fn from(val: TypeDef) -> DotnetTypeRef {
-        DotnetTypeRef::new::<&str, _>(None, val.name())
+impl From<ClassDef> for ClassRef {
+    fn from(val: ClassDef) -> ClassRef {
+        ClassRef::new::<&str, _>(None, val.name())
     }
 }
-impl From<&TypeDef> for DotnetTypeRef {
-    fn from(val: &TypeDef) -> DotnetTypeRef {
-        DotnetTypeRef::new::<&str, _>(None, val.name())
+impl From<&ClassDef> for ClassRef {
+    fn from(val: &ClassDef) -> ClassRef {
+        ClassRef::new::<&str, _>(None, val.name())
     }
 }

@@ -6,14 +6,14 @@ use crate::{
     asm::{Assembly, AssemblyExternRef},
     fn_sig::FnSig,
     method::Method,
-    type_def::TypeDef,
+    type_def::ClassDef,
     IString, Type,
 };
 
 /// This trait represents an interface implemented by all .NET assembly exporters. (Currently only ilasm)
 pub trait AssemblyExporter: Sized {
     /// Adds type definition `tpe` to the assembly.
-    fn add_type(&mut self, tpe: &TypeDef, asm: &Assembly);
+    fn add_type(&mut self, tpe: &ClassDef, asm: &Assembly);
     /// Adds method to assembly.
     fn add_method(&mut self, method: &Method, asm: &Assembly);
     fn add_extern_method(

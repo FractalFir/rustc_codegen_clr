@@ -141,7 +141,7 @@ pub fn enum_field_descriptor<'tcx>(
     let field_ty = ctx.type_from_cache(field_ty);
     let owner_ty = ctx
         .type_from_cache(owner_ty)
-        .as_dotnet()
+        .as_class_ref()
         .expect("Error: tried to set a field of a non-object type!");
 
     FieldDescriptor::new(owner_ty, field_ty, field_name)
@@ -181,7 +181,7 @@ pub fn field_descrptor<'tcx>(
         let owner_type = ctx.type_from_cache(owner_ty);
         let field_name = format!("f_{field_idx}").into();
         return FieldDescriptor::new(
-            owner_type.as_dotnet().expect("Closure type invalid!"),
+            owner_type.as_class_ref().expect("Closure type invalid!"),
             field_type,
             field_name,
         );
@@ -197,7 +197,7 @@ pub fn field_descrptor<'tcx>(
     let field_ty = ctx.type_from_cache(field_ty);
     let owner_ty = ctx
         .type_from_cache(owner_ty)
-        .as_dotnet()
+        .as_class_ref()
         .expect("Error: tried to set a field of a non-object type!");
     FieldDescriptor::new(owner_ty, field_ty, field_name)
 }

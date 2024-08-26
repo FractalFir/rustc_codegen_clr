@@ -7,51 +7,40 @@ use crate::{
     call_site::CallSite,
     cil_node::CILNode,
     cil_root::CILRoot,
-    conv_isize, conv_usize, ldc_u32, ldc_u64,
+    conv_isize, conv_usize, ldc_u32,
     method::{Attribute, Method, MethodType},
-    ptr, DotnetTypeRef, FnSig, Type,
+    v2::{Assembly, Int},
+    FnSig, Type,
 };
 
 /// Creates a wrapper method around entypoint represented by `CallSite`
-pub fn wrapper(entrypoint: &CallSite) -> Method {
-    if entrypoint.signature().inputs()
-        == [
-            Type::ISize,
-            Type::Ptr(Box::new(Type::Ptr(Box::new(Type::U8)))),
-        ]
-        && entrypoint.signature().output() == &Type::ISize
+pub fn wrapper(entrypoint: &CallSite, asm: &mut Assembly) -> Method {
+    let uint8_ptr = asm.nptr(Type::Int(Int::U8));
+    let uint8_ptr_ptr = asm.nptr(uint8_ptr);
+    if entrypoint.signature().inputs() == [Type::Int(Int::ISize), uint8_ptr_ptr]
+        && entrypoint.signature().output() == &Type::Int(Int::ISize)
     {
         let sig = FnSig::new(
-            &[Type::ManagedArray {
-                element: Box::new(DotnetTypeRef::string_type().into()),
+            [Type::PlatformArray {
+                elem: asm.alloc_type(Type::PlatformString),
                 dims: NonZeroU8::new(1).unwrap(),
             }],
             Type::Void,
         );
-        let mem_checks = if crate::mem_checks() {
-            CILRoot::Pop {
-                tree: call!(CallSite::mcheck(), [conv_usize!(ldc_u64!(0))]),
-            }
-        } else {
-            CILRoot::Nop
-        };
+
         let mut method = Method::new(
             AccessModifer::Extern,
             MethodType::Static,
             sig,
             "entrypoint",
-            vec![(
-                Some("argc".into()),
-                Type::Ptr(Type::Ptr(Type::U8.into()).into()),
-            )],
+            vec![(Some("argc".into()), uint8_ptr_ptr)],
             vec![BasicBlock::new(
                 vec![
-                    mem_checks.into(),
                     CILRoot::Call {
                         site: Box::new(CallSite::new(
                             None,
                             ".tcctor".into(),
-                            FnSig::new(&[], Type::Void),
+                            FnSig::new([], Type::Void),
                             true,
                         )),
                         args: [].into(),
@@ -61,7 +50,7 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
                         site: Box::new(CallSite::new(
                             None,
                             "static_init".into(),
-                            FnSig::new(&[], Type::Void),
+                            FnSig::new([], Type::Void),
                             true,
                         )),
                         args: [].into(),
@@ -72,7 +61,7 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
                             Box::new(entrypoint.clone()),
                             [
                                 conv_isize!(ldc_u32!(0)),
-                                conv_usize!(ldc_u32!(0)).cast_ptr(ptr!(ptr!(Type::U8)))
+                                conv_usize!(ldc_u32!(0)).cast_ptr(uint8_ptr_ptr)
                             ]
                         ),
                     }
@@ -90,7 +79,7 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
     } else if entrypoint.signature().inputs().is_empty()
         && entrypoint.signature().output() == &Type::Void
     {
-        let sig = FnSig::new(&[], Type::Void);
+        let sig = FnSig::new([], Type::Void);
         let mut method = Method::new(
             AccessModifer::Extern,
             MethodType::Static,
@@ -103,7 +92,7 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
                         site: Box::new(CallSite::new(
                             None,
                             ".tcctor".into(),
-                            FnSig::new(&[], Type::Void),
+                            FnSig::new([], Type::Void),
                             true,
                         )),
                         args: [].into(),
@@ -113,7 +102,7 @@ pub fn wrapper(entrypoint: &CallSite) -> Method {
                         site: Box::new(CallSite::new(
                             None,
                             "static_init".into(),
-                            FnSig::new(&[], Type::Void),
+                            FnSig::new([], Type::Void),
                             true,
                         )),
                         args: [].into(),

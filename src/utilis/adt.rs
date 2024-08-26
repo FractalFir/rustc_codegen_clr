@@ -1,6 +1,6 @@
 use cilly::{
     call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, eq,
-    field_desc::FieldDescriptor, gt_un, ldc_u64, sub, DotnetTypeRef, FnSig, Type,
+    field_desc::FieldDescriptor, gt_un, ldc_u64, sub, v2::ClassRefIdx, ClassRef, FnSig, Type,
 };
 use rustc_middle::ty::{AdtDef, Ty, TyCtxt};
 use rustc_target::abi::{
@@ -116,20 +116,20 @@ fn primitive_to_type(primitive: rustc_target::abi::Primitive) -> Type {
     use rustc_target::abi::Primitive;
     match primitive {
         Primitive::Int(int, sign) => match (int, sign) {
-            (Integer::I8, true) => Type::I8,
-            (Integer::I16, true) => Type::I16,
-            (Integer::I32, true) => Type::I32,
-            (Integer::I64, true) => Type::I64,
-            (Integer::I128, true) => Type::I128,
-            (Integer::I8, false) => Type::U8,
-            (Integer::I16, false) => Type::U16,
-            (Integer::I32, false) => Type::U32,
-            (Integer::I64, false) => Type::U64,
-            (Integer::I128, false) => Type::U128,
+            (Integer::I8, true) => Type::Int(Int::I8),
+            (Integer::I16, true) => Type::Int(Int::I16),
+            (Integer::I32, true) => Type::Int(Int::I32),
+            (Integer::I64, true) => Type::Int(Int::I64),
+            (Integer::I128, true) => Type::Int(Int::I128),
+            (Integer::I8, false) => Type::Int(Int::U8),
+            (Integer::I16, false) => Type::Int(Int::U16),
+            (Integer::I32, false) => Type::Int(Int::U32),
+            (Integer::I64, false) => Type::Int(Int::U64),
+            (Integer::I128, false) => Type::Int(Int::U128),
         },
         Primitive::Float(rustc_abi::Float::F16) => Type::F16,
-        Primitive::Float(rustc_abi::Float::F32) => Type::F32,
-        Primitive::Float(rustc_abi::Float::F64) => Type::F64,
+        Primitive::Float(rustc_abi::Float::F32) => Type::Float(Float::F32),
+        Primitive::Float(rustc_abi::Float::F64) => Type::Float(Float::F64),
         Primitive::Float(rustc_abi::Float::F128) => todo!("No support for 128 bit floats yet!"),
         Primitive::Pointer(_) => Type::Ptr(Type::Void.into()),
     }
@@ -147,7 +147,7 @@ pub fn set_discr<'tcx>(
     layout: Layout<'tcx>,
     variant_index: VariantIdx,
     enum_addr: CILNode,
-    enum_tpe: &DotnetTypeRef,
+    enum_tpe: ClassRefIdx,
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
 ) -> CILRoot {
@@ -178,7 +178,7 @@ pub fn set_discr<'tcx>(
                 .val
                 .try_into()
                 .expect("Enum varaint id can't fit in u64."));
-            let tag_val = crate::casts::int_to_int(Type::U64, &tag_tpe, tag_val);
+            let tag_val = crate::casts::int_to_int(Type::Int(Int::U64), &tag_tpe, tag_val);
             CILRoot::SetField {
                 addr: Box::new(enum_addr),
                 value: Box::new(tag_val),
@@ -209,7 +209,7 @@ pub fn set_discr<'tcx>(
                 let tag_val = ldc_u64!(niche_value
                     .try_into()
                     .expect("Enum varaint id can't fit in u64."));
-                let tag_val = crate::casts::int_to_int(Type::U64, &tag_tpe, tag_val);
+                let tag_val = crate::casts::int_to_int(Type::Int(Int::U64), &tag_tpe, tag_val);
                 CILRoot::SetField {
                     addr: Box::new(enum_addr),
                     value: Box::new(tag_val),
@@ -227,7 +227,7 @@ pub fn set_discr<'tcx>(
 pub fn get_discr<'tcx>(
     layout: Layout<'tcx>,
     enum_addr: CILNode,
-    enum_tpe: DotnetTypeRef,
+    enum_tpe: ClassRef,
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
 ) -> CILNode {
@@ -243,7 +243,7 @@ pub fn get_discr<'tcx>(
                 .discriminant_for_variant(tcx, index)
                 .map_or(index.as_u32() as u128, |discr| discr.val);
             let tag_val = ldc_u64!(discr_val.try_into().expect("Tag does not fit within a u64"));
-            return crate::casts::int_to_int(Type::U64, &tag_tpe, tag_val);
+            return crate::casts::int_to_int(Type::Int(Int::U64), &tag_tpe, tag_val);
         }
         Variants::Multiple {
             ref tag_encoding, ..
@@ -302,11 +302,11 @@ pub fn get_discr<'tcx>(
                 // }
 
                 let is_niche = match tag_tpe {
-                    Type::U128 => call!(
+                    Type::Int(Int::U128) => call!(
                         CallSite::new_extern(
-                            DotnetTypeRef::uint_128(),
+                            ClassRef::uint_128(asm),
                             "op_Equality".into(),
-                            FnSig::new([Type::U128, Type::U128], Type::Bool),
+                            FnSig::new([Type::Int(Int::U128), Type::Int(Int::U128)], Type::Bool),
                             true
                         ),
                         [
@@ -314,11 +314,11 @@ pub fn get_discr<'tcx>(
                             CILNode::const_u128(u128::from(niche_variants.start().as_u32()))
                         ]
                     ),
-                    Type::I128 => call!(
+                    Type::Int(Int::I128) => call!(
                         CallSite::new_extern(
-                            DotnetTypeRef::int_128(),
+                            ClassRef::int_128(asm),
                             "op_Equality".into(),
-                            FnSig::new([Type::I128, Type::I128], Type::Bool),
+                            FnSig::new([Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
                             true
                         ),
                         [
@@ -330,7 +330,7 @@ pub fn get_discr<'tcx>(
                     _ => eq!(
                         tag,
                         crate::casts::int_to_int(
-                            Type::U64,
+                            Type::Int(Int::U64),
                             &disrc_type,
                             ldc_u64!(niche_start
                                 .try_into()
@@ -340,7 +340,7 @@ pub fn get_discr<'tcx>(
                 }; //bx.icmp(IntPredicate::IntEQ, tag, niche_start);
 
                 let tagged_discr = crate::casts::int_to_int(
-                    Type::U64,
+                    Type::Int(Int::U64),
                     &disrc_type,
                     ldc_u64!(u64::from(niche_variants.start().as_u32())),
                 );
@@ -348,15 +348,15 @@ pub fn get_discr<'tcx>(
             } else {
                 // The special cases don't apply, so we'll have to go with
                 // the general algorithm.
-                //let tag = crate::casts::int_to_int(disrc_type.clone(), &Type::U64, tag);
+                //let tag = crate::casts::int_to_int(disrc_type.clone(), &Type::Int(Int::U64), tag);
                 let relative_discr = match tag_tpe {
-                    Type::I128 | Type::U128 => {
+                    Type::Int(Int::I128) | Type::Int(Int::U128) => {
                         todo!("niche encoidng of 128 bit wide tags is not fully supported yet")
                     }
                     _ => sub!(
                         tag,
                         crate::casts::int_to_int(
-                            Type::U64,
+                            Type::Int(Int::U64),
                             &disrc_type,
                             ldc_u64!(niche_start
                                 .try_into()
@@ -365,11 +365,11 @@ pub fn get_discr<'tcx>(
                     ),
                 };
                 let gt = match tag_tpe {
-                    Type::U128 => call!(
+                    Type::Int(Int::U128) => call!(
                         CallSite::new_extern(
-                            DotnetTypeRef::uint_128(),
+                            ClassRef::uint_128(asm),
                             "op_GreaterThan".into(),
-                            FnSig::new([Type::U128, Type::U128], Type::Bool),
+                            FnSig::new([Type::Int(Int::U128), Type::Int(Int::U128)], Type::Bool),
                             true
                         ),
                         [
@@ -377,11 +377,11 @@ pub fn get_discr<'tcx>(
                             CILNode::const_u128(u128::from(relative_max))
                         ]
                     ),
-                    Type::I128 => call!(
+                    Type::Int(Int::I128) => call!(
                         CallSite::new_extern(
-                            DotnetTypeRef::int_128(),
+                            ClassRef::int_128(asm),
                             "op_GreaterThan".into(),
-                            FnSig::new([Type::I128, Type::I128], Type::Bool),
+                            FnSig::new([Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
                             true
                         ),
                         [
@@ -393,7 +393,7 @@ pub fn get_discr<'tcx>(
                     _ => gt_un!(
                         relative_discr.clone(),
                         crate::casts::int_to_int(
-                            Type::U64,
+                            Type::Int(Int::U64),
                             &disrc_type,
                             ldc_u64!(u64::from(relative_max))
                         )
@@ -411,23 +411,23 @@ pub fn get_discr<'tcx>(
                 tagged_discr
             } else {
                 let delta = crate::casts::int_to_int(
-                    Type::U64,
+                    Type::Int(Int::U64),
                     &disrc_type,
                     ldc_u64!(delta.try_into().expect("Tag does not fit within u64")),
                 );
                 assert!(matches!(
                     disrc_type.clone(),
-                    Type::U8
-                        | Type::I8
-                        | Type::U16
-                        | Type::I16
-                        | Type::U32
-                        | Type::I32
-                        | Type::U64
-                        | Type::I64
+                    Type::Int(Int::U8)
+                        | Type::Int(Int::I8)
+                        | Type::Int(Int::U16)
+                        | Type::Int(Int::I16)
+                        | Type::Int(Int::U32)
+                        | Type::Int(Int::I32)
+                        | Type::Int(Int::U64)
+                        | Type::Int(Int::I64)
                         | Type::Ptr(_)
-                        | Type::USize
-                        | Type::ISize
+                        | Type::Int(Int::USize)
+                        | Type::Int(Int::ISize)
                 ));
                 tagged_discr + delta
             };
@@ -439,7 +439,7 @@ pub fn get_discr<'tcx>(
                 disrc_type.clone(),
                 tagged_discr,
                 crate::casts::int_to_int(
-                    Type::U64,
+                    Type::Int(Int::U64),
                     &disrc_type,
                     ldc_u64!(u64::from(untagged_variant.as_u32())),
                 ),

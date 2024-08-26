@@ -4,8 +4,15 @@ use crate::{
     r#type::pointer_to_is_fat,
 };
 use cilly::{
-    call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_usize,
-    field_desc::FieldDescriptor, fn_sig::FnSig, ld_field, ldc_u64, ptr, size_of, DotnetTypeRef,
+    call,
+    call_site::CallSite,
+    cil_node::CILNode,
+    cil_root::CILRoot,
+    conv_usize,
+    field_desc::FieldDescriptor,
+    fn_sig::FnSig,
+    ld_field, ldc_u64, size_of,
+    v2::{ClassRef, Int},
     Type,
 };
 use rustc_middle::{
@@ -78,16 +85,16 @@ pub fn place_elem_set<'a>(
                 TyKind::Slice(inner) => {
                     let inner = ctx.monomorphize(*inner);
                     let inner_type = ctx.type_from_cache(inner);
-                    let slice = ctx.slice_ty(inner).as_dotnet().unwrap();
+                    let slice = ctx.slice_ty(inner).as_class_ref().unwrap();
                     let desc = FieldDescriptor::new(
                         slice,
-                        Type::Ptr(Type::Void.into()),
+                        ctx.asm_mut().nptr(Type::Void.into()),
                         crate::DATA_PTR.into(),
                     );
                     ptr_set_op(
                         super::PlaceTy::Ty(inner),
                         ctx,
-                        ld_field!(addr_calc, desc).cast_ptr(ptr!(inner_type.clone()))
+                        ld_field!(addr_calc, desc).cast_ptr(ctx.asm_mut().nptr(inner_type.clone()))
                             + index * conv_usize!(size_of!(inner_type)),
                         value_calc,
                     )
@@ -97,14 +104,18 @@ pub fn place_elem_set<'a>(
                     let array_type = ctx.type_from_cache(curr_ty);
                     let element_type = ctx.type_from_cache(element);
 
-                    let array_dotnet = array_type.as_dotnet().expect("Non array type");
+                    let array_dotnet = array_type.as_class_ref().expect("Non array type");
 
                     CILRoot::Call {
                         site: Box::new(CallSite::new(
                             Some(array_dotnet),
                             "set_Item".into(),
                             FnSig::new(
-                                &[Type::Ptr(array_type.into()), Type::USize, element_type],
+                                &[
+                                    ctx.asm_mut().nptr(array_type.into()),
+                                    Type::Int(Int::USize),
+                                    element_type,
+                                ],
                                 Type::Void,
                             ),
                             false,
@@ -134,20 +145,24 @@ pub fn place_elem_set<'a>(
                     let inner = ctx.monomorphize(*inner);
 
                     let inner_type = ctx.type_from_cache(inner);
-                    let slice = ctx.slice_ty(inner).as_dotnet().unwrap();
+                    let slice = ctx.slice_ty(inner).as_class_ref().unwrap();
                     let desc = FieldDescriptor::new(
                         slice.clone(),
-                        Type::Ptr(Type::Void.into()),
+                        ctx.asm_mut().nptr(Type::Void.into()),
                         crate::DATA_PTR.into(),
                     );
-                    let metadata = FieldDescriptor::new(slice, Type::USize, crate::METADATA.into());
+                    let metadata =
+                        FieldDescriptor::new(slice, Type::Int(Int::USize), crate::METADATA.into());
                     let addr = ld_field!(addr_calc.clone(), desc)
-                        .cast_ptr(ptr!(inner_type.clone()))
+                        .cast_ptr(ctx.asm_mut().nptr(inner_type.clone()))
                         + call!(
                             CallSite::new(
                                 None,
                                 "bounds_check".into(),
-                                FnSig::new(&[Type::USize, Type::USize], Type::USize),
+                                FnSig::new(
+                                    &[Type::Int(Int::USize), Type::Int(Int::USize)],
+                                    Type::Int(Int::USize)
+                                ),
                                 true
                             ),
                             [conv_usize!(index), ld_field!(addr_calc, metadata),]
@@ -159,13 +174,17 @@ pub fn place_elem_set<'a>(
                     let element = ctx.monomorphize(*element);
                     let element = ctx.type_from_cache(element);
                     let array_type = ctx.type_from_cache(curr_ty);
-                    let array_dotnet = array_type.as_dotnet().expect("Non array type");
+                    let array_dotnet = array_type.as_class_ref().expect("Non array type");
                     CILRoot::Call {
                         site: Box::new(CallSite::new(
                             Some(array_dotnet),
                             "set_Item".into(),
                             FnSig::new(
-                                &[Type::Ptr(array_type.into()), Type::USize, element],
+                                &[
+                                    ctx.asm_mut().nptr(array_type.into()),
+                                    Type::Int(Int::USize),
+                                    element,
+                                ],
                                 Type::Void,
                             ),
                             false,
@@ -218,7 +237,7 @@ pub fn ptr_set_op<'tcx>(
                 IntTy::I64 => CILRoot::STIndI64(addr_calc, value_calc),
                 IntTy::Isize => CILRoot::STIndISize(addr_calc, value_calc),
                 IntTy::I128 => CILRoot::STObj {
-                    tpe: Box::new(DotnetTypeRef::int_128().into()),
+                    tpe: Box::new(ClassRef::int_128(ctx.asm_mut()).into()),
                     addr_calc: Box::new(addr_calc),
                     value_calc: Box::new(value_calc),
                 },
@@ -230,7 +249,7 @@ pub fn ptr_set_op<'tcx>(
                 UintTy::U64 => CILRoot::STIndI64(addr_calc, value_calc),
                 UintTy::Usize => CILRoot::STIndISize(addr_calc, value_calc),
                 UintTy::U128 => CILRoot::STObj {
-                    tpe: Box::new(DotnetTypeRef::uint_128().into()),
+                    tpe: Box::new(ClassRef::uint_128(ctx.asm_mut()).into()),
                     addr_calc: Box::new(addr_calc),
                     value_calc: Box::new(value_calc),
                 },

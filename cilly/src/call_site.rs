@@ -1,4 +1,7 @@
-use crate::{utilis::MemoryUsage, DotnetTypeRef, FnSig, Type};
+use crate::{
+    v2::{Assembly, ClassRef, ClassRefIdx, Int},
+    FnSig, Type,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::IString;
@@ -6,65 +9,56 @@ use crate::IString;
 /// Represenation of a target of a call.
 #[derive(Clone, PartialEq, Serialize, Deserialize, Eq, Hash, Debug)]
 pub struct CallSite {
-    class: Option<DotnetTypeRef>,
+    class: Option<ClassRefIdx>,
     name: IString,
     signature: FnSig,
     is_static: bool,
     generics: Vec<Type>,
 }
-impl MemoryUsage for CallSite {
-    fn memory_usage(&self, counter: &mut impl crate::utilis::MemoryUsageCounter) -> usize {
-        let total_size = std::mem::size_of::<Self>();
-        let tpe_name = std::any::type_name::<Self>();
-        //TODO:count the fields too
-        counter.add_type(tpe_name, total_size);
-        total_size
-    }
-}
+
 impl CallSite {
     #[must_use]
-    pub fn mcheck() -> Self {
-        Self::builtin("mcheck".into(), FnSig::new(&[Type::ISize], Type::I32), true)
-    }
-    #[must_use]
-    pub fn mcheck_check_all() -> Self {
-        Self::builtin("mcheck_check_all".into(), FnSig::new(&[], Type::Void), true)
-    }
-    #[must_use]
-    pub fn mstring_to_ptr() -> Self {
+    pub fn mstring_to_ptr(asm: &mut Assembly) -> Self {
         Self::new_extern(
-            DotnetTypeRef::marshal(),
+            ClassRef::marshal(asm),
             "StringToCoTaskMemUTF8".into(),
-            FnSig::new(&[DotnetTypeRef::string_type().into()], Type::ISize),
+            FnSig::new([Type::PlatformString], Type::Int(Int::ISize)),
             true,
         )
     }
     #[must_use]
-    pub fn aligned_alloc() -> Self {
+    pub fn aligned_alloc(asm: &mut Assembly) -> Self {
         Self::new_extern(
-            DotnetTypeRef::native_mem(),
+            ClassRef::native_mem(asm),
             "AlignedAlloc".into(),
-            FnSig::new(&[Type::USize, Type::USize], Type::Ptr(Type::Void.into())),
+            FnSig::new(
+                [Type::Int(Int::USize), Type::Int(Int::USize)],
+                asm.nptr(Type::Void),
+            ),
             true,
         )
     }
     #[must_use]
-    pub fn alloc() -> Self {
+    pub fn alloc(asm: &mut Assembly) -> Self {
         Self::new_extern(
-            DotnetTypeRef::marshal(),
+            ClassRef::marshal(asm),
             "AllocHGlobal".into(),
-            FnSig::new(&[Type::I32], Type::ISize),
+            FnSig::new([Type::Int(Int::I32)], Type::Int(Int::ISize)),
             true,
         )
     }
     #[must_use]
-    pub fn realloc() -> Self {
+    pub fn realloc(asm: &mut Assembly) -> Self {
         Self::new(
-            Some(DotnetTypeRef::native_mem()),
+            Some(ClassRef::native_mem(asm)),
             "AlignedRealloc".into(),
             FnSig::new(
-                &[Type::Ptr(Type::Void.into()), Type::USize, Type::USize],
-                Type::Ptr(Type::Void.into()),
+                [
+                    asm.nptr(Type::Void),
+                    Type::Int(Int::USize),
+                    Type::Int(Int::USize),
+                ],
+                asm.nptr(Type::Void),
             ),
             true,
         )
@@ -73,7 +67,7 @@ impl CallSite {
     /// is assumed.
     #[must_use]
     pub fn new(
-        class: Option<DotnetTypeRef>,
+        class: Option<ClassRefIdx>,
         name: IString,
         signature: FnSig,
         is_static: bool,
@@ -91,12 +85,11 @@ impl CallSite {
     }
     #[must_use]
     pub fn new_extern(
-        class: DotnetTypeRef,
+        class: ClassRefIdx,
         name: IString,
         signature: FnSig,
         is_static: bool,
     ) -> Self {
-        debug_assert!(class.asm().is_some());
         Self {
             class: Some(class),
             name,
@@ -125,7 +118,7 @@ impl CallSite {
     /// The same as [`Self::new`], but boxes the result.
     #[must_use]
     pub fn boxed(
-        class: Option<DotnetTypeRef>,
+        class: Option<ClassRefIdx>,
         name: IString,
         signature: FnSig,
         is_static: bool,
@@ -140,8 +133,8 @@ impl CallSite {
 
     /// Returns the class the targeted method belongs to.
     #[must_use]
-    pub const fn class(&self) -> Option<&DotnetTypeRef> {
-        self.class.as_ref()
+    pub const fn class(&self) -> Option<ClassRefIdx> {
+        self.class
     }
     /// Returns `true` if the method in question is static.
     #[must_use]
@@ -177,20 +170,16 @@ impl CallSite {
     }
     /// All inputs. Includes impilcit `this` argument for instance functions.
     #[must_use]
-    pub fn inputs(&self) -> &[crate::r#type::Type] {
+    pub fn inputs(&self) -> &[Type] {
         self.signature.inputs()
     }
     /// Inputs, with the implicit `this` skipped if needed.
     #[must_use]
-    pub fn explicit_inputs(&self) -> &[crate::r#type::Type] {
+    pub fn explicit_inputs(&self) -> &[Type] {
         if self.is_static || self.inputs().is_empty() {
             self.signature.inputs()
         } else {
             &self.signature.inputs()[1..]
         }
-    }
-
-    pub fn class_mut(&mut self) -> &mut Option<DotnetTypeRef> {
-        &mut self.class
     }
 }

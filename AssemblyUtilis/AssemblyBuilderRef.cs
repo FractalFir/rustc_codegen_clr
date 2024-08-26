@@ -29,7 +29,7 @@ class AssemblyDefinitionRef{
         asm.GetRef().Write(filePath.ToString());
     }
     [UnmanagedCallersOnly(EntryPoint = "add_typedef")]
-    public static void AddTypedef(ManagedHandle<AssemblyDefinition> asm, ManagedHandle<TypeDefinition> type){
+    public static void AddTypedef(ManagedHandle<AssemblyDefinition> asm, ManagedHandle<ClassDefinition> type){
         asm.GetRef().MainModule.Types.Add(type.GetRef());
     }
 }

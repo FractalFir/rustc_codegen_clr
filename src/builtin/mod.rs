@@ -17,9 +17,9 @@ use cilly::{
     r#type::Type,
     shl, shr, size_of, source_info,
     static_field_desc::StaticFieldDescriptor,
-    type_def::TypeDef,
+    type_def::ClassDef,
     utilis::escape_class_name,
-    DotnetTypeRef,
+    ClassRef,
 };
 use rustc_middle::ty::TyCtxt;
 mod atomic;
@@ -28,7 +28,7 @@ mod select;
 const MAX_ALLOC_SIZE: u64 = u32::MAX as u64;
 add_method_from_trees!(
     swap_at_generic,
-    &[ptr!(Type::Void), ptr!(Type::Void), Type::USize],
+    &[ptr!(Type::Void), ptr!(Type::Void), Type::Int(Int::USize)],
     Type::Void,
     vec![BasicBlock::new(
         vec![
@@ -75,8 +75,8 @@ add_method_from_trees!(
 );
 add_method_from_trees!(
     bounds_check,
-    &[Type::USize, Type::USize],
-    Type::USize,
+    &[Type::Int(Int::USize), Type::Int(Int::USize)],
+    Type::Int(Int::USize),
     vec![
         BasicBlock::new(
             vec![
@@ -88,9 +88,9 @@ add_method_from_trees!(
                 .into(),
                 CILRoot::Call {
                     site: Box::new(CallSite::new_extern(
-                        DotnetTypeRef::console(),
+                        ClassRef::console(),
                         "Write".into(),
-                        FnSig::new(&[DotnetTypeRef::string_type().into()], Type::Void),
+                        FnSig::new(&[ClassRef::string_type().into()], Type::Void),
                         true
                     )),
                     args: Box::new([CILNode::LdStr("Bounds check failed. idx:".into())])
@@ -98,9 +98,9 @@ add_method_from_trees!(
                 .into(),
                 CILRoot::Call {
                     site: Box::new(CallSite::new_extern(
-                        DotnetTypeRef::console(),
+                        ClassRef::console(),
                         "Write".into(),
-                        FnSig::new(&[Type::U64], Type::Void),
+                        FnSig::new(&[Type::Int(Int::U64)], Type::Void),
                         true
                     )),
                     args: Box::new([conv_u64!(CILNode::LDArg(0))])
@@ -108,9 +108,9 @@ add_method_from_trees!(
                 .into(),
                 CILRoot::Call {
                     site: Box::new(CallSite::new_extern(
-                        DotnetTypeRef::console(),
+                        ClassRef::console(),
                         "Write".into(),
-                        FnSig::new(&[DotnetTypeRef::string_type().into()], Type::Void),
+                        FnSig::new(&[ClassRef::string_type().into()], Type::Void),
                         true
                     )),
                     args: Box::new([CILNode::LdStr("len:".into())])
@@ -118,9 +118,9 @@ add_method_from_trees!(
                 .into(),
                 CILRoot::Call {
                     site: Box::new(CallSite::new_extern(
-                        DotnetTypeRef::console(),
+                        ClassRef::console(),
                         "WriteLine".into(),
-                        FnSig::new(&[Type::U64], Type::Void),
+                        FnSig::new(&[Type::Int(Int::U64)], Type::Void),
                         true
                     )),
                     args: Box::new([conv_u64!(CILNode::LDArg(1))])
@@ -129,7 +129,7 @@ add_method_from_trees!(
                 CILRoot::Throw(CILNode::NewObj(Box::new(CallOpArgs {
                     site: CallSite::boxed(
                         Some(
-                            DotnetTypeRef::new(
+                            ClassRef::new(
                                 Some("System.Runtime"),
                                 "System.IndexOutOfRangeException"
                             )
@@ -137,8 +137,8 @@ add_method_from_trees!(
                         ),
                         ".ctor".into(),
                         FnSig::new(
-                            &[Type::DotnetType(Box::new(
-                                DotnetTypeRef::new(
+                            &[Type::ClassRef(Box::new(
+                                ClassRef::new(
                                     Some("System.Runtime"),
                                     "System.IndexOutOfRangeException"
                                 )
@@ -211,9 +211,9 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
     bitreverse_u32(asm);
     let c_void = crate::r#type::c_void(tcx);
 
-    asm.add_typedef(TypeDef::new(
+    asm.add_typedef(ClassDef::new(
         AccessModifer::Public,
-        escape_class_name(c_void.as_dotnet().unwrap().name_path()).into(),
+        escape_class_name(c_void.as_class_ref().unwrap().name_path()).into(),
         vec![],
         vec![],
         vec![],
@@ -222,23 +222,23 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
         None,
         None,
     ));
-    asm.add_typedef(TypeDef::nameonly("Unresolved"));
-    asm.add_typedef(TypeDef::nameonly("RustVoid"));
-    asm.add_typedef(TypeDef::nameonly("Foreign"));
-    asm.add_typedef(TypeDef::nameonly("RustStr"));
-    /*asm.add_method(Method::new(AccessModifer::Public,MethodType::Static,FnSig::new(&[Type::U64,Type::U64],Type::U128),"new_u128",vec![],vec![
+    asm.add_typedef(ClassDef::nameonly("Unresolved"));
+    asm.add_typedef(ClassDef::nameonly("RustVoid"));
+    asm.add_typedef(ClassDef::nameonly("Foreign"));
+    asm.add_typedef(ClassDef::nameonly("RustStr"));
+    /*asm.add_method(Method::new(AccessModifer::Public,MethodType::Static,FnSig::new(&[Type::Int(Int::U64),Type::Int(Int::U64)],Type::Int(Int::U128)),"new_u128",vec![],vec![
         BasicBlock::new(vec![CILRoot::Ret{ tree: todo!() }.into()],0,None),
     ]));*/
     //rust_slice(asm);
 
     casts::casts(asm);
     select::selects(asm);
-    let mut marshal = DotnetTypeRef::new(
+    let mut marshal = ClassRef::new(
         Some("System.Runtime.InteropServices"),
         "System.Runtime.InteropServices.Marshal",
     );
     marshal.set_valuetype(false);
-    let mut native_mem = DotnetTypeRef::new(
+    let mut native_mem = ClassRef::new(
         Some("System.Runtime.InteropServices"),
         "System.Runtime.InteropServices.NativeMemory",
     );
@@ -246,9 +246,12 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
     let mut __rust_alloc = Method::new(
         AccessModifer::Private,
         MethodType::Static,
-        FnSig::new(&[Type::USize, Type::USize], ptr!(Type::U8)),
+        FnSig::new(
+            &[Type::Int(Int::USize), Type::Int(Int::USize)],
+            ptr!(Type::Int(Int::U8)),
+        ),
         "__rust_alloc",
-        vec![(None, ptr!(Type::U8))],
+        vec![(None, ptr!(Type::Int(Int::U8)))],
         vec![
             BasicBlock::new(
                 vec![
@@ -258,7 +261,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
                             CallSite::aligned_alloc(),
                             [CILNode::LDArg(0), CILNode::LDArg(1)]
                         )
-                        .cast_ptr(ptr!(Type::U8)),
+                        .cast_ptr(ptr!(Type::Int(Int::U8))),
                     }
                     .into(),
                     CILRoot::GoTo {
@@ -277,7 +280,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
                     vec![
                         CILRoot::STLoc {
                             local: 0,
-                            tree: conv_usize!(ldc_i32!(0)).cast_ptr(ptr!(Type::U8)),
+                            tree: conv_usize!(ldc_i32!(0)).cast_ptr(ptr!(Type::Int(Int::U8))),
                         }
                         .into(),
                         CILRoot::GoTo {
@@ -311,9 +314,12 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
     let mut __rust_alloc_zeroed = Method::new(
         AccessModifer::Private,
         MethodType::Static,
-        FnSig::new(&[Type::USize, Type::USize], ptr!(Type::U8)),
+        FnSig::new(
+            &[Type::Int(Int::USize), Type::Int(Int::USize)],
+            ptr!(Type::Int(Int::U8)),
+        ),
         "__rust_alloc_zeroed",
-        vec![(Some("alloc_ptr".into()), ptr!(Type::U8))],
+        vec![(Some("alloc_ptr".into()), ptr!(Type::Int(Int::U8)))],
         if *crate::config::CHECK_ALLOCATIONS {
             vec![
                 BasicBlock::new(
@@ -366,7 +372,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
                         CallSite::aligned_alloc(),
                         [CILNode::LDArg(0), CILNode::LDArg(1)]
                     )
-                    .cast_ptr(ptr!(Type::U8)),
+                    .cast_ptr(ptr!(Type::Int(Int::U8))),
                 }
                 .into()],
                 0,
@@ -380,7 +386,14 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
     let mut __rust_dealloc = Method::new(
         AccessModifer::Private,
         MethodType::Static,
-        FnSig::new(&[ptr!(Type::U8), Type::USize, Type::USize], Type::Void),
+        FnSig::new(
+            &[
+                ptr!(Type::Int(Int::U8)),
+                Type::Int(Int::USize),
+                Type::Int(Int::USize),
+            ],
+            Type::Void,
+        ),
         "__rust_dealloc",
         vec![],
         vec![BasicBlock::new(
@@ -420,10 +433,10 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
                     site: Box::new(CallSite::new_extern(
                         marshal,
                         "FreeHGlobal".into(),
-                        FnSig::new(&[Type::ISize], Type::Void),
+                        FnSig::new(&[Type::Int(Int::ISize)], Type::Void),
                         true,
                     )),
-                    args: [CILNode::LDArg(0).cast_ptr(Type::ISize)].into(),
+                    args: [CILNode::LDArg(0).cast_ptr(Type::Int(Int::ISize))].into(),
                 }
                 .into(),
                 CILRoot::VoidRet.into(),
@@ -437,8 +450,13 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
         AccessModifer::Private,
         MethodType::Static,
         FnSig::new(
-            &[ptr!(Type::U8), Type::USize, Type::USize, Type::USize],
-            ptr!(Type::U8),
+            &[
+                ptr!(Type::Int(Int::U8)),
+                Type::Int(Int::USize),
+                Type::Int(Int::USize),
+                Type::Int(Int::USize),
+            ],
+            ptr!(Type::Int(Int::U8)),
         ),
         "__rust_realloc",
         vec![],
@@ -464,7 +482,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
                                 CILNode::LDArg(2)
                             ]
                         )
-                        .cast_ptr(ptr!(Type::U8)),
+                        .cast_ptr(ptr!(Type::Int(Int::U8))),
                     }
                     .into()],
                     1,
@@ -490,7 +508,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
                             CILNode::LDArg(2)
                         ]
                     )
-                    .cast_ptr(ptr!(Type::U8)),
+                    .cast_ptr(ptr!(Type::Int(Int::U8))),
                 }
                 .into()],
                 0,
@@ -519,24 +537,30 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
     //caller_location::add_caller_location(asm,tcx,&mut TyCache::empty());
 
     asm.add_static(
-        Type::DotnetType(Box::new(DotnetTypeRef::dictionary(Type::I32, Type::ISize))),
+        Type::ClassRef(Box::new(ClassRef::dictionary(
+            Type::Int(Int::I32),
+            Type::Int(Int::ISize),
+        ))),
         "thread_results",
         false,
     );
     asm.add_initialzer(CILRoot::SetStaticField {
         descr: Box::new(StaticFieldDescriptor::new(
             None,
-            Type::DotnetType(Box::new(DotnetTypeRef::dictionary(Type::I32, Type::ISize))),
+            Type::ClassRef(Box::new(ClassRef::dictionary(
+                Type::Int(Int::I32),
+                Type::Int(Int::ISize),
+            ))),
             "thread_results".into(),
         )),
         value: CILNode::NewObj(Box::new(CallOpArgs {
             site: Box::new(CallSite::new_extern(
-                DotnetTypeRef::dictionary(Type::I32, Type::ISize),
+                ClassRef::dictionary(Type::Int(Int::I32), Type::Int(Int::ISize)),
                 ".ctor".into(),
                 FnSig::new(
-                    [Type::DotnetType(Box::new(DotnetTypeRef::dictionary(
-                        Type::I32,
-                        Type::ISize,
+                    [Type::ClassRef(Box::new(ClassRef::dictionary(
+                        Type::Int(Int::I32),
+                        Type::Int(Int::ISize),
                     )))],
                     Type::Void,
                 ),
@@ -556,20 +580,20 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
     pthread_setname_np(asm);
     __cxa_thread_atexit_impl(asm);
     llvm_x86_sse2_pause(asm);
-    let rust_exception = TypeDef::new(
+    let rust_exception = ClassDef::new(
         AccessModifer::Public,
         "RustException".into(),
         vec![],
-        vec![("data_pointer".into(), Type::USize)],
+        vec![("data_pointer".into(), Type::Int(Int::USize))],
         vec![Method::new(
             AccessModifer::Public,
             MethodType::Instance,
             FnSig::new(
                 &[
-                    Type::DotnetType(Box::new(
-                        DotnetTypeRef::new::<&str, _>(None, "RustException").with_valuetype(false),
+                    Type::ClassRef(Box::new(
+                        ClassRef::new::<&str, _>(None, "RustException").with_valuetype(false),
                     )),
-                    Type::USize,
+                    Type::Int(Int::USize),
                 ],
                 Type::Void,
             ),
@@ -581,9 +605,8 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
                         addr: Box::new(CILNode::LDArg(0)),
                         value: Box::new(CILNode::LDArg(1)),
                         desc: Box::new(FieldDescriptor::new(
-                            DotnetTypeRef::new::<&str, _>(None, "RustException")
-                                .with_valuetype(false),
-                            Type::USize,
+                            ClassRef::new::<&str, _>(None, "RustException").with_valuetype(false),
+                            Type::Int(Int::USize),
                             "data_pointer".into(),
                         )),
                     }
@@ -597,16 +620,16 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
         )],
         None,
         0,
-        Some(DotnetTypeRef::exception()),
+        Some(ClassRef::exception()),
         None,
     );
     asm.add_typedef(rust_exception);
     let start = Method::new(
         AccessModifer::Public,
         MethodType::Instance,
-        FnSig::new(&[Type::DotnetType(Box::new(unmanaged_start()))], Type::Void),
+        FnSig::new(&[Type::ClassRef(Box::new(unmanaged_start()))], Type::Void),
         "Start",
-        vec![(Some("res".into()), Type::ISize)],
+        vec![(Some("res".into()), Type::Int(Int::ISize))],
         vec![BasicBlock::new(
             vec![
                 CILRoot::Call {
@@ -628,7 +651,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
                             CILNode::LDArg(0),
                             FieldDescriptor::new(
                                 unmanaged_start(),
-                                Type::DelegatePtr(Box::new(FnSig::new(
+                                Type::FnPtr(Box::new(FnSig::new(
                                     &[ptr!(Type::Void)],
                                     ptr!(Type::Void),
                                 ))),
@@ -645,19 +668,19 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
                         )]
                         .into(),
                     )))
-                    .cast_ptr(Type::ISize),
+                    .cast_ptr(Type::Int(Int::ISize)),
                 }
                 .into(),
                 source_info!(),
                 CILRoot::Call {
                     site: Box::new(CallSite::new_extern(
-                        DotnetTypeRef::dictionary(Type::I32, Type::ISize),
+                        ClassRef::dictionary(Type::Int(Int::I32), Type::Int(Int::ISize)),
                         "set_Item".into(),
                         FnSig::new(
                             [
-                                Type::DotnetType(Box::new(DotnetTypeRef::dictionary(
-                                    Type::I32,
-                                    Type::ISize,
+                                Type::ClassRef(Box::new(ClassRef::dictionary(
+                                    Type::Int(Int::I32),
+                                    Type::Int(Int::ISize),
                                 ))),
                                 Type::GenericArg(0),
                                 Type::GenericArg(1),
@@ -669,30 +692,27 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
                     args: Box::new([
                         CILNode::LDStaticField(Box::new(StaticFieldDescriptor::new(
                             None,
-                            Type::DotnetType(Box::new(DotnetTypeRef::dictionary(
-                                Type::I32,
-                                Type::ISize,
+                            Type::ClassRef(Box::new(ClassRef::dictionary(
+                                Type::Int(Int::I32),
+                                Type::Int(Int::ISize),
                             ))),
                             "thread_results".into(),
                         ))),
                         CILNode::CallVirt(Box::new(CallOpArgs {
                             site: Box::new(CallSite::new_extern(
-                                DotnetTypeRef::thread(),
+                                ClassRef::thread(),
                                 "get_ManagedThreadId".into(),
                                 FnSig::new(
-                                    [Type::DotnetType(Box::new(DotnetTypeRef::thread()))],
-                                    Type::I32,
+                                    [Type::ClassRef(Box::new(ClassRef::thread()))],
+                                    Type::Int(Int::I32),
                                 ),
                                 false,
                             )),
                             args: [call!(
                                 CallSite::new_extern(
-                                    DotnetTypeRef::thread(),
+                                    ClassRef::thread(),
                                     "get_CurrentThread".into(),
-                                    FnSig::new(
-                                        [],
-                                        Type::DotnetType(Box::new(DotnetTypeRef::thread())),
-                                    ),
+                                    FnSig::new([], Type::ClassRef(Box::new(ClassRef::thread())),),
                                     true,
                                 ),
                                 []
@@ -711,14 +731,14 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
         )],
         vec![Some("this".into())],
     );
-    let unmanaged_start = TypeDef::new(
+    let unmanaged_start = ClassDef::new(
         AccessModifer::Public,
         "UnmanagedThreadStart".into(),
         vec![],
         vec![
             (
                 "start_fn".into(),
-                Type::DelegatePtr(Box::new(FnSig::new(&[ptr!(Type::Void)], ptr!(Type::Void)))),
+                Type::FnPtr(Box::new(FnSig::new(&[ptr!(Type::Void)], ptr!(Type::Void)))),
             ),
             ("data".into(), ptr!(Type::Void)),
         ],
@@ -728,11 +748,8 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
                 MethodType::Instance,
                 FnSig::new(
                     &[
-                        Type::DotnetType(Box::new(unmanaged_start())),
-                        Type::DelegatePtr(Box::new(FnSig::new(
-                            &[ptr!(Type::Void)],
-                            ptr!(Type::Void),
-                        ))),
+                        Type::ClassRef(Box::new(unmanaged_start())),
+                        Type::FnPtr(Box::new(FnSig::new(&[ptr!(Type::Void)], ptr!(Type::Void)))),
                         ptr!(Type::Void),
                     ],
                     Type::Void,
@@ -746,7 +763,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
                             value: Box::new(CILNode::LDArg(1)),
                             desc: Box::new(FieldDescriptor::new(
                                 unmanaged_start(),
-                                Type::DelegatePtr(Box::new(FnSig::new(
+                                Type::FnPtr(Box::new(FnSig::new(
                                     &[ptr!(Type::Void)],
                                     ptr!(Type::Void),
                                 ))),
@@ -779,7 +796,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
         ],
         None,
         0,
-        Some(DotnetTypeRef::object_type()),
+        Some(ClassRef::object_type()),
         None,
     );
     asm.add_typedef(unmanaged_start);
@@ -787,7 +804,7 @@ pub fn insert_ffi_functions(asm: &mut Assembly, tcx: TyCtxt) {
 add_method_from_trees!(
     pthread_self,
     &[],
-    Type::ISize,
+    Type::Int(Int::ISize),
     vec![BasicBlock::new(
         vec![CILRoot::Ret {
             tree: conv_isize!(ldc_i32!(0))
@@ -801,8 +818,8 @@ add_method_from_trees!(
 );
 add_method_from_trees!(
     pthread_setname_np,
-    &[Type::U64, ptr!(Type::I8)],
-    Type::I32,
+    &[Type::Int(Int::U64), ptr!(Type::Int(Int::I8))],
+    Type::Int(Int::I32),
     vec![BasicBlock::new(
         vec![CILRoot::Ret { tree: ldc_i32!(0) }.into()],
         0,
@@ -819,15 +836,14 @@ add_method_from_trees!(
         vec![CILRoot::Throw(CILNode::NewObj(Box::new(CallOpArgs {
             args: Box::new([conv_usize!(CILNode::LDArg(0))]),
             site: Box::new(CallSite::new(
-                Some(DotnetTypeRef::new::<&str, _>(None, "RustException").with_valuetype(false),),
+                Some(ClassRef::new::<&str, _>(None, "RustException").with_valuetype(false),),
                 ".ctor".into(),
                 FnSig::new(
                     &[
-                        Type::DotnetType(Box::new(
-                            DotnetTypeRef::new::<&str, _>(None, "RustException")
-                                .with_valuetype(false),
+                        Type::ClassRef(Box::new(
+                            ClassRef::new::<&str, _>(None, "RustException").with_valuetype(false),
                         )),
-                        Type::USize,
+                        Type::Int(Int::USize),
                     ],
                     Type::Void,
                 ),
@@ -844,12 +860,12 @@ add_method_from_trees!(
 add_method_from_trees!(
     pthread_create,
     &[
-        ptr!(Type::ISize),
+        ptr!(Type::Int(Int::ISize)),
         ptr!(Type::Void),
-        Type::DelegatePtr(Box::new(FnSig::new(&[ptr!(Type::Void)], ptr!(Type::Void)))),
+        Type::FnPtr(Box::new(FnSig::new(&[ptr!(Type::Void)], ptr!(Type::Void)))),
         ptr!(Type::Void)
     ],
-    Type::I32,
+    Type::Int(Int::I32),
     vec![BasicBlock::new(
         vec![
             CILRoot::STLoc {
@@ -863,8 +879,8 @@ add_method_from_trees!(
                                     ".ctor".into(),
                                     FnSig::new(
                                         &[
-                                            Type::DotnetType(Box::new(unmanaged_start())),
-                                            Type::DelegatePtr(Box::new(FnSig::new(
+                                            Type::ClassRef(Box::new(unmanaged_start())),
+                                            Type::FnPtr(Box::new(FnSig::new(
                                                 &[ptr!(Type::Void)],
                                                 ptr!(Type::Void)
                                             ))),
@@ -880,7 +896,7 @@ add_method_from_trees!(
                                 Some(unmanaged_start()),
                                 "Start".into(),
                                 FnSig::new(
-                                    &[Type::DotnetType(Box::new(unmanaged_start()))],
+                                    &[Type::ClassRef(Box::new(unmanaged_start()))],
                                     Type::Void
                                 ),
                                 false
@@ -888,13 +904,13 @@ add_method_from_trees!(
                         ]
                         .into(),
                         site: Box::new(CallSite::new(
-                            Some(DotnetTypeRef::thread_start()),
+                            Some(ClassRef::thread_start()),
                             ".ctor".into(),
                             FnSig::new(
                                 &[
-                                    Type::DotnetType(Box::new(DotnetTypeRef::thread_start())),
-                                    Type::DotnetType(Box::new(DotnetTypeRef::object_type())),
-                                    Type::ISize
+                                    Type::ClassRef(Box::new(ClassRef::thread_start())),
+                                    Type::ClassRef(Box::new(ClassRef::object_type())),
+                                    Type::Int(Int::ISize)
                                 ],
                                 Type::Void
                             ),
@@ -903,12 +919,12 @@ add_method_from_trees!(
                     }))]
                     .into(),
                     site: Box::new(CallSite::new(
-                        Some(DotnetTypeRef::thread()),
+                        Some(ClassRef::thread()),
                         ".ctor".into(),
                         FnSig::new(
                             &[
-                                Type::DotnetType(Box::new(DotnetTypeRef::thread())),
-                                Type::DotnetType(Box::new(DotnetTypeRef::thread_start())),
+                                Type::ClassRef(Box::new(ClassRef::thread())),
+                                Type::ClassRef(Box::new(ClassRef::thread_start())),
                             ],
                             Type::Void
                         ),
@@ -919,12 +935,9 @@ add_method_from_trees!(
             .into(),
             CILRoot::CallVirt {
                 site: Box::new(CallSite::new(
-                    Some(DotnetTypeRef::thread()),
+                    Some(ClassRef::thread()),
                     "Start".into(),
-                    FnSig::new(
-                        &[Type::DotnetType(Box::new(DotnetTypeRef::thread()))],
-                        Type::Void
-                    ),
+                    FnSig::new(&[Type::ClassRef(Box::new(ClassRef::thread()))], Type::Void),
                     false
                 )),
                 args: [CILNode::LDLoc(0)].into(),
@@ -942,7 +955,7 @@ add_method_from_trees!(
     ),],
     vec![(
         Some("thread_handle".into()),
-        Type::DotnetType(Box::new(DotnetTypeRef::thread()))
+        Type::ClassRef(Box::new(ClassRef::thread()))
     )],
     vec![
         Some("thread".into()),
@@ -960,14 +973,14 @@ add_method_from_trees!(
 */
 add_method_from_trees!(
     pthread_attr_init,
-    &[ptr!(Type::ISize),],
-    Type::I32,
+    &[ptr!(Type::Int(Int::ISize)),],
+    Type::Int(Int::I32),
     vec![BasicBlock::new(
         vec![
             CILRoot::InitBlk {
                 dst: Box::new(CILNode::LDArg(0)),
                 val: Box::new(ldc_u32!(0)),
-                count: Box::new(size_of!(Type::USize) * ldc_i32!(3))
+                count: Box::new(size_of!(Type::Int(Int::USize)) * ldc_i32!(3))
             }
             .into(),
             CILRoot::Ret { tree: ldc_i32!(0) }.into()
@@ -980,12 +993,12 @@ add_method_from_trees!(
 );
 add_method_from_trees!(
     pthread_attr_setstacksize,
-    &[ptr!(Type::ISize), Type::USize],
-    Type::I32,
+    &[ptr!(Type::Int(Int::ISize)), Type::Int(Int::USize)],
+    Type::Int(Int::I32),
     vec![BasicBlock::new(
         vec![
             CILRoot::STIndISize(
-                CILNode::LDArg(0) + conv_usize!(size_of!(Type::USize) * ldc_i32!(2)),
+                CILNode::LDArg(0) + conv_usize!(size_of!(Type::Int(Int::USize)) * ldc_i32!(2)),
                 CILNode::LDArg(1)
             )
             .into(),
@@ -1002,19 +1015,19 @@ add_method_from_trees!(
 // However, we still have to free the GC handle.
 add_method_from_trees!(
     pthread_detach,
-    &[Type::ISize],
-    Type::I32,
+    &[Type::Int(Int::ISize)],
+    Type::Int(Int::I32),
     vec![BasicBlock::new(
         vec![
             CILRoot::STLoc {
                 local: 0,
                 tree: call!(
                     CallSite::new_extern(
-                        DotnetTypeRef::gc_handle(),
+                        ClassRef::gc_handle(),
                         "FromIntPtr".into(),
                         FnSig::new(
-                            [Type::ISize],
-                            Type::DotnetType(Box::new(DotnetTypeRef::gc_handle()))
+                            [Type::Int(Int::ISize)],
+                            Type::ClassRef(Box::new(ClassRef::gc_handle()))
                         ),
                         true
                     ),
@@ -1024,12 +1037,12 @@ add_method_from_trees!(
             .into(),
             CILRoot::Call {
                 site: Box::new(CallSite::new_extern(
-                    DotnetTypeRef::gc_handle(),
+                    ClassRef::gc_handle(),
                     "Free".into(),
                     FnSig::new(
-                        [Type::ManagedReference(Box::new(Type::DotnetType(
-                            Box::new(DotnetTypeRef::gc_handle())
-                        )))],
+                        [Type::Ref(Box::new(Type::ClassRef(Box::new(
+                            ClassRef::gc_handle()
+                        ))))],
                         Type::Void
                     ),
                     false
@@ -1044,14 +1057,14 @@ add_method_from_trees!(
     )],
     vec![(
         Some("gc_habdle".into()),
-        Type::DotnetType(Box::new(DotnetTypeRef::gc_handle()))
+        Type::ClassRef(Box::new(ClassRef::gc_handle()))
     )],
     vec![Some("thread".into())]
 );
 add_method_from_trees!(
     pthread_attr_destroy,
-    &[ptr!(Type::ISize),],
-    Type::I32,
+    &[ptr!(Type::Int(Int::ISize)),],
+    Type::Int(Int::I32),
     vec![BasicBlock::new(
         vec![CILRoot::Ret { tree: ldc_i32!(0) }.into()],
         0,
@@ -1060,14 +1073,14 @@ add_method_from_trees!(
     vec![],
     vec![Some("thread_attr".into()),]
 );
-fn unmanaged_start() -> DotnetTypeRef {
-    DotnetTypeRef::new::<&str, _>(None, "UnmanagedThreadStart").with_valuetype(false)
+fn unmanaged_start() -> ClassRef {
+    ClassRef::new::<&str, _>(None, "UnmanagedThreadStart").with_valuetype(false)
 }
 // TODO: Can't yet register thread-local deconstructors.
 add_method_from_trees!(
     __cxa_thread_atexit_impl,
     [
-        Type::DelegatePtr(Box::new(FnSig::new([ptr!(Type::Void)], Type::Void))),
+        Type::FnPtr(Box::new(FnSig::new([ptr!(Type::Void)], Type::Void))),
         ptr!(Type::Void),
         ptr!(Type::Void)
     ],
@@ -1096,19 +1109,22 @@ fn llvm_x86_sse2_pause(asm: &mut cilly::asm::Assembly) {
 add_method_from_trees!(
     catch_unwind,
     &[
-        Type::DelegatePtr(Box::new(FnSig::new(&[ptr!(Type::U8)], Type::Void))),
-        ptr!(Type::U8),
-        Type::DelegatePtr(Box::new(FnSig::new(
-            &[ptr!(Type::U8), ptr!(Type::U8)],
+        Type::FnPtr(Box::new(FnSig::new(
+            &[ptr!(Type::Int(Int::U8))],
+            Type::Void
+        ))),
+        ptr!(Type::Int(Int::U8)),
+        Type::FnPtr(Box::new(FnSig::new(
+            &[ptr!(Type::Int(Int::U8)), ptr!(Type::Int(Int::U8))],
             Type::Void
         ))),
     ],
-    Type::I32,
+    Type::Int(Int::I32),
     vec![
         BasicBlock::new(
             vec![
                 CILRoot::CallI {
-                    sig: Box::new(FnSig::new(&[ptr!(Type::U8)], Type::Void)),
+                    sig: Box::new(FnSig::new(&[ptr!(Type::Int(Int::U8))], Type::Void)),
                     fn_ptr: Box::new(CILNode::LDArg(0)),
                     args: Box::new([CILNode::LDArg(1)])
                 }
@@ -1133,7 +1149,7 @@ add_method_from_trees!(
                             sub_target: 4,
                             cond: CILNode::IsInst(Box::new((
                                 CILNode::LDLoc(1),
-                                DotnetTypeRef::new::<&str, _>(None, "RustException")
+                                ClassRef::new::<&str, _>(None, "RustException")
                                     .with_valuetype(false)
                             ))),
                         }
@@ -1143,13 +1159,13 @@ add_method_from_trees!(
                             tree: ld_field!(
                                 CILNode::CheckedCast(Box::new((
                                     CILNode::LDLoc(1),
-                                    DotnetTypeRef::new::<&str, _>(None, "RustException")
+                                    ClassRef::new::<&str, _>(None, "RustException")
                                         .with_valuetype(false)
                                 ))),
                                 FieldDescriptor::new(
-                                    DotnetTypeRef::new::<&str, _>(None, "RustException")
+                                    ClassRef::new::<&str, _>(None, "RustException")
                                         .with_valuetype(false),
-                                    Type::USize,
+                                    Type::Int(Int::USize),
                                     "data_pointer".into()
                                 )
                             ),
@@ -1157,7 +1173,7 @@ add_method_from_trees!(
                         .into(),
                         CILRoot::CallI {
                             sig: Box::new(FnSig::new(
-                                &[ptr!(Type::U8), ptr!(Type::U8)],
+                                &[ptr!(Type::Int(Int::U8)), ptr!(Type::Int(Int::U8))],
                                 Type::Void
                             )),
                             fn_ptr: Box::new(CILNode::LDArg(2)),
@@ -1177,10 +1193,10 @@ add_method_from_trees!(
                     vec![
                         CILRoot::Call {
                             site: Box::new(CallSite::new_extern(
-                                DotnetTypeRef::console(),
+                                ClassRef::console(),
                                 "WriteLine".into(),
                                 FnSig::new(
-                                    &[Type::DotnetType(Box::new(DotnetTypeRef::object_type()))],
+                                    &[Type::ClassRef(Box::new(ClassRef::object_type()))],
                                     Type::Void
                                 ),
                                 true
@@ -1190,7 +1206,7 @@ add_method_from_trees!(
                         .into(),
                         CILRoot::CallI {
                             sig: Box::new(FnSig::new(
-                                &[ptr!(Type::U8), ptr!(Type::U8)],
+                                &[ptr!(Type::Int(Int::U8)), ptr!(Type::Int(Int::U8))],
                                 Type::Void
                             )),
                             fn_ptr: Box::new(CILNode::LDArg(2)),
@@ -1200,10 +1216,10 @@ add_method_from_trees!(
                                     CallSite::builtin(
                                         "exception_to_native".into(),
                                         FnSig::new(
-                                            vec![Type::DotnetType(Box::new(
-                                                DotnetTypeRef::object_type()
+                                            vec![Type::ClassRef(Box::new(
+                                                ClassRef::object_type()
                                             )),],
-                                            ptr!(Type::U8)
+                                            ptr!(Type::Int(Int::U8))
                                         ),
                                         true
                                     ),
@@ -1227,14 +1243,14 @@ add_method_from_trees!(
         BasicBlock::new(vec![CILRoot::Ret { tree: ldc_i32!(0) }.into()], 3, None)
     ],
     vec![
-        (Some(crate::DATA_PTR.into()), Type::USize),
+        (Some(crate::DATA_PTR.into()), Type::Int(Int::USize)),
         (
             Some("exception".into()),
-            Type::DotnetType(Box::new(DotnetTypeRef::exception())),
+            Type::ClassRef(Box::new(ClassRef::exception())),
         ),
         (
             Some("tmp_buff".into()),
-            Type::DotnetType(Box::new(DotnetTypeRef::array(&Type::USize, 4)))
+            Type::ClassRef(Box::new(ClassRef::array(&Type::Int(Int::USize), 4)))
         ),
     ],
     vec![
@@ -1245,26 +1261,23 @@ add_method_from_trees!(
 );
 add_method_from_trees!(
     pthread_join,
-    [Type::ISize, ptr!(ptr!(Type::Void))],
-    Type::I32,
+    [Type::Int(Int::ISize), ptr!(ptr!(Type::Void))],
+    Type::Int(Int::I32),
     vec![
         BasicBlock::new(
             vec![
                 source_info!(),
                 CILRoot::STLoc {
                     local: 0,
-                    tree: CILNode::LDArg(0).gc_handle_to_obj(DotnetTypeRef::thread()),
+                    tree: CILNode::LDArg(0).gc_handle_to_obj(ClassRef::thread()),
                 }
                 .into(),
                 source_info!(),
                 CILRoot::CallVirt {
                     site: Box::new(CallSite::new_extern(
-                        DotnetTypeRef::thread(),
+                        ClassRef::thread(),
                         "Join".into(),
-                        FnSig::new(
-                            [Type::DotnetType(Box::new(DotnetTypeRef::thread()))],
-                            Type::Void
-                        ),
+                        FnSig::new([Type::ClassRef(Box::new(ClassRef::thread()))], Type::Void),
                         false
                     )),
                     args: Box::new([CILNode::LDLoc(0)])
@@ -1282,13 +1295,13 @@ add_method_from_trees!(
                     CILNode::LDArg(1),
                     call_virt!(
                         CallSite::new_extern(
-                            DotnetTypeRef::dictionary(Type::I32, Type::ISize),
+                            ClassRef::dictionary(Type::Int(Int::I32), Type::Int(Int::ISize)),
                             "get_Item".into(),
                             FnSig::new(
                                 [
-                                    Type::DotnetType(Box::new(DotnetTypeRef::dictionary(
-                                        Type::I32,
-                                        Type::ISize
+                                    Type::ClassRef(Box::new(ClassRef::dictionary(
+                                        Type::Int(Int::I32),
+                                        Type::Int(Int::ISize)
                                     ))),
                                     Type::GenericArg(0)
                                 ],
@@ -1299,19 +1312,19 @@ add_method_from_trees!(
                         [
                             CILNode::LDStaticField(Box::new(StaticFieldDescriptor::new(
                                 None,
-                                Type::DotnetType(Box::new(DotnetTypeRef::dictionary(
-                                    Type::I32,
-                                    Type::ISize
+                                Type::ClassRef(Box::new(ClassRef::dictionary(
+                                    Type::Int(Int::I32),
+                                    Type::Int(Int::ISize)
                                 )),),
                                 "thread_results".into()
                             ))),
                             call_virt!(
                                 CallSite::new_extern(
-                                    DotnetTypeRef::thread(),
+                                    ClassRef::thread(),
                                     "get_ManagedThreadId".into(),
                                     FnSig::new(
-                                        [Type::DotnetType(Box::new(DotnetTypeRef::thread()))],
-                                        Type::I32
+                                        [Type::ClassRef(Box::new(ClassRef::thread()))],
+                                        Type::Int(Int::I32)
                                     ),
                                     false
                                 ),
@@ -1333,7 +1346,7 @@ add_method_from_trees!(
     ],
     vec![(
         Some("thread".into()),
-        Type::DotnetType(Box::new(DotnetTypeRef::thread()))
+        Type::ClassRef(Box::new(ClassRef::thread()))
     )],
     vec![Some("thread_handle".into()), Some("result_ptr".into())]
 );
@@ -1341,9 +1354,12 @@ add_method_from_trees!(
 fn shr_u128(value: CILNode, shift: CILNode) -> CILNode {
     call!(
         CallSite::boxed(
-            DotnetTypeRef::uint_128().into(),
+            ClassRef::uint_128(asm).into(),
             "op_RightShift".into(),
-            FnSig::new(&[Type::U128, Type::I32], Type::U128),
+            FnSig::new(
+                &[Type::Int(Int::U128), Type::Int(Int::I32)],
+                Type::Int(Int::U128)
+            ),
             true,
         ),
         [value, shift]
@@ -1352,9 +1368,12 @@ fn shr_u128(value: CILNode, shift: CILNode) -> CILNode {
 fn or_u128(lhs: CILNode, rhs: CILNode) -> CILNode {
     call!(
         CallSite::boxed(
-            DotnetTypeRef::uint_128().into(),
+            ClassRef::uint_128(asm).into(),
             "op_BitwiseOr".into(),
-            FnSig::new(&[Type::U128, Type::U128], Type::U128),
+            FnSig::new(
+                &[Type::Int(Int::U128), Type::Int(Int::U128)],
+                Type::Int(Int::U128)
+            ),
             true,
         ),
         [lhs, rhs]
@@ -1363,9 +1382,12 @@ fn or_u128(lhs: CILNode, rhs: CILNode) -> CILNode {
 fn and_u128(lhs: CILNode, rhs: CILNode) -> CILNode {
     call!(
         CallSite::boxed(
-            DotnetTypeRef::uint_128().into(),
+            ClassRef::uint_128(asm).into(),
             "op_BitwiseAnd".into(),
-            FnSig::new(&[Type::U128, Type::U128], Type::U128),
+            FnSig::new(
+                &[Type::Int(Int::U128), Type::Int(Int::U128)],
+                Type::Int(Int::U128)
+            ),
             true,
         ),
         [lhs, rhs]
@@ -1374,9 +1396,12 @@ fn and_u128(lhs: CILNode, rhs: CILNode) -> CILNode {
 fn shl_u128(value: CILNode, shift: CILNode) -> CILNode {
     call!(
         CallSite::boxed(
-            DotnetTypeRef::uint_128().into(),
+            ClassRef::uint_128(asm).into(),
             "op_LeftShift".into(),
-            FnSig::new(&[Type::U128, Type::I32], Type::U128),
+            FnSig::new(
+                &[Type::Int(Int::U128), Type::Int(Int::I32)],
+                Type::Int(Int::U128)
+            ),
             true,
         ),
         [value, shift]
@@ -1385,8 +1410,8 @@ fn shl_u128(value: CILNode, shift: CILNode) -> CILNode {
 
 add_method_from_trees!(
     bitreverse_u128,
-    &[Type::U128],
-    Type::U128,
+    &[Type::Int(Int::U128)],
+    Type::Int(Int::U128),
     vec![BasicBlock::new(
         vec![
             CILRoot::STLoc {
@@ -1502,13 +1527,13 @@ add_method_from_trees!(
         0,
         None
     )],
-    vec![(Some("n".into()), Type::U128)],
+    vec![(Some("n".into()), Type::Int(Int::U128))],
     vec![Some("input".into()),]
 );
 add_method_from_trees!(
     bitreverse_u64,
-    &[Type::U64],
-    Type::U64,
+    &[Type::Int(Int::U64)],
+    Type::Int(Int::U64),
     vec![BasicBlock::new(
         vec![
             CILRoot::STLoc {
@@ -1568,13 +1593,13 @@ add_method_from_trees!(
         0,
         None
     )],
-    vec![(Some("n".into()), Type::U64)],
+    vec![(Some("n".into()), Type::Int(Int::U64))],
     vec![Some("input".into()),]
 );
 add_method_from_trees!(
     bitreverse_u32,
-    &[Type::U32],
-    Type::U32,
+    &[Type::Int(Int::U32)],
+    Type::Int(Int::U32),
     vec![BasicBlock::new(
         vec![
             CILRoot::STLoc {
@@ -1613,6 +1638,6 @@ add_method_from_trees!(
         0,
         None
     )],
-    vec![(Some("n".into()), Type::U32)],
+    vec![(Some("n".into()), Type::Int(Int::U32))],
     vec![Some("input".into()),]
 );

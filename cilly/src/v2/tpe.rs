@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     bimap::{BiMapIndex, IntoBiMapIndex},
-    Assembly, ClassRef, ClassRefIdx, Float, FnSig, Int, SigIdx,
+    Assembly, ClassRefIdx, Float, Int, SigIdx,
 };
 
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
@@ -73,71 +73,71 @@ impl Type {
             _ => panic!(),
         }
     }
-
-    pub fn from_v1(tpe: &crate::Type, asm: &mut Assembly) -> Type {
-        match tpe {
-            // We turn Foregin into void.
-            crate::Type::Void | crate::Type::Foreign => Self::Void,
-            crate::Type::Bool => Self::Bool,
-            crate::Type::F16 => Float::F16.into(),
-            crate::Type::F32 => Float::F32.into(),
-            crate::Type::F64 => Float::F64.into(),
-            crate::Type::F128 => Float::F128.into(),
-            crate::Type::U8 => Int::U8.into(),
-            crate::Type::U16 => Int::U16.into(),
-            crate::Type::U32 => Int::U32.into(),
-            crate::Type::U64 => Int::U64.into(),
-            crate::Type::U128 => Int::U128.into(),
-            crate::Type::USize => Int::USize.into(),
-            crate::Type::I8 => Int::I8.into(),
-            crate::Type::I16 => Int::I16.into(),
-            crate::Type::I32 => Int::I32.into(),
-            crate::Type::I64 => Int::I64.into(),
-            crate::Type::I128 => Int::I128.into(),
-            crate::Type::ISize => Int::ISize.into(),
-            crate::Type::DotnetType(dotnet_type) => {
-                #[allow(clippy::single_match)]
-                if dotnet_type.asm() == Some("System.Runtime") {
-                    match dotnet_type.name_path() {
-                        "System.String" => return Type::PlatformString,
-                        "System.Object" => return Type::PlatformObject,
-                        _ => (),
+    /*
+        pub fn from_v1(tpe: &crate::Type, asm: &mut Assembly) -> Type {
+            match tpe {
+                // We turn Foregin into void.
+                crate::Type::Void | crate::Type::Foreign => Self::Void,
+                crate::Type::Bool => Self::Bool,
+                crate::Type::F16 => Float::F16.into(),
+                crate::Type::Float(Float::F32) => Float::F32.into(),
+                crate::Type::Float(Float::F64) => Float::F64.into(),
+                crate::Type::Float(Float::F128) => Float::F128.into(),
+                crate::Type::Int(Int::U8) => Int::U8.into(),
+                crate::Type::Int(Int::U16) => Int::U16.into(),
+                crate::Type::Int(Int::U32) => Int::U32.into(),
+                crate::Type::Int(Int::U64) => Int::U64.into(),
+                crate::Type::Int(Int::U128) => Int::U128.into(),
+                crate::Type::Int(Int::USize) => Int::USize.into(),
+                crate::Type::Int(Int::I8) => Int::I8.into(),
+                crate::Type::Int(Int::I16) => Int::I16.into(),
+                crate::Type::Int(Int::I32) => Int::I32.into(),
+                crate::Type::Int(Int::I64) => Int::I64.into(),
+                crate::Type::Int(Int::I128) => Int::I128.into(),
+                crate::Type::Int(Int::ISize) => Int::ISize.into(),
+                crate::Type::ClassRef(dotnet_type) => {
+                    #[allow(clippy::single_match)]
+                    if dotnet_type.asm() == Some("System.Runtime") {
+                        match dotnet_type.name_path() {
+                            "System.String" => return Type::PlatformString,
+                            "System.Object" => return Type::PlatformObject,
+                            _ => (),
+                        }
                     }
+                    let cref = ClassRef::from_v1(dotnet_type, asm);
+                    let cref = asm.alloc_class_ref(cref);
+                    cref.into()
                 }
-                let cref = ClassRef::from_v1(dotnet_type, asm);
-                let cref = asm.alloc_class_ref(cref);
-                cref.into()
-            }
-            crate::Type::Ptr(inner) => {
-                let inner = Self::from_v1(inner, asm);
-                asm.nptr(inner)
-            }
-            crate::Type::ManagedReference(inner) => {
-                let inner = Self::from_v1(inner, asm);
-                asm.nref(inner)
-            }
+                crate::Type::Ptr(inner) => {
+                    let inner = Self::from_v1(inner, asm);
+                    asm.nptr(inner)
+                }
+                crate::Type::Ref(inner) => {
+                    let inner = Self::from_v1(inner, asm);
+                    asm.nref(inner)
+                }
 
-            crate::Type::GenericArg(arg) => Self::PlatformGeneric(*arg, GenericKind::TypeGeneric),
-            crate::Type::CallGenericArg(arg) => {
-                Self::PlatformGeneric(*arg, GenericKind::CallGeneric)
-            }
-            crate::Type::DotnetChar => Self::PlatformChar,
-            crate::Type::DelegatePtr(sig) => {
-                let sig = FnSig::from_v1(sig, asm);
-                Self::FnPtr(asm.alloc_sig(sig))
-            }
-            crate::Type::MethodGenericArg(_) => todo!(),
-            crate::Type::ManagedArray { element, dims } => {
-                let element = Type::from_v1(element, asm);
-                let element = asm.alloc_type(element);
-                Self::PlatformArray {
-                    elem: element,
-                    dims: *dims,
+                crate::Type::GenericArg(arg) => Self::PlatformGeneric(*arg, GenericKind::TypeGeneric),
+                crate::Type::CallGenericArg(arg) => {
+                    Self::PlatformGeneric(*arg, GenericKind::CallGeneric)
+                }
+                crate::Type::DotnetChar => Self::PlatformChar,
+                crate::Type::FnPtr(sig) => {
+                    let sig = FnSig::from_v1(sig, asm);
+                    Self::FnPtr(asm.alloc_sig(sig))
+                }
+                crate::Type::MethodGenericArg(_) => todo!(),
+                crate::Type::ManagedArray { element, dims } => {
+                    let element = Type::from_v1(element, asm);
+                    let element = asm.alloc_type(element);
+                    Self::PlatformArray {
+                        elem: element,
+                        dims: *dims,
+                    }
                 }
             }
         }
-    }
-
+    */
     pub fn mangle(&self, asm: &Assembly) -> String {
         match self {
             Type::Ptr(inner) => format!("p{}", asm.get_type(*inner).mangle(asm)),
@@ -195,6 +195,14 @@ impl Type {
                     .collect::<String>();
                 format!("{argc}{inputs}{output}")
             }
+        }
+    }
+
+    pub fn as_class_ref(&self) -> Option<ClassRefIdx> {
+        if let Self::ClassRef(v) = self {
+            Some(*v)
+        } else {
+            None
         }
     }
 }

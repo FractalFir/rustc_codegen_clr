@@ -2,7 +2,7 @@ use super::PlaceTy;
 use crate::{assembly::MethodCompileCtx, assert_morphic, r#type::pointer_to_is_fat};
 use cilly::{
     call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_usize,
-    field_desc::FieldDescriptor, fn_sig::FnSig, ld_field, ldc_u32, ldc_u64, ptr, size_of, Type,
+    field_desc::FieldDescriptor, fn_sig::FnSig, ld_field, ldc_u32, ldc_u64, size_of, v2::Int, Type,
 };
 use rustc_middle::{
     mir::PlaceElem,
@@ -52,14 +52,14 @@ pub fn address_last_dereference<'tcx>(
         (true, false) => CILNode::LDIndPtr {
             ptr: Box::new(CILNode::LDField {
                 field: FieldDescriptor::new(
-                    curr_type.as_dotnet().unwrap(),
-                    Type::Ptr(Type::Void.into()),
+                    curr_type.as_class_ref().unwrap(),
+                    ctx.asm_mut().nptr(Type::Void.into()),
                     crate::DATA_PTR.into(),
                 )
                 .into(),
                 addr: addr_calc.into(),
             }),
-            loaded_ptr: Box::new(ptr!(target_type)),
+            loaded_ptr: Box::new(ctx.asm_mut().nptr(target_type)),
         },
         (false, true) => panic!("Invalid last dereference in address!"),
         (false, false) => addr_calc,
@@ -72,8 +72,8 @@ pub fn address_last_dereference<'tcx>(
         (TyKind::Slice(_), TyKind::Slice(_)) => addr_calc,
         (TyKind::Slice(_), _) => CILNode::LDField {
             field: FieldDescriptor::new(
-                curr_type.as_dotnet().unwrap(),
-                Type::Ptr(Type::Void.into()),
+                curr_type.as_class_ref().unwrap(),
+                ctx.asm_mut().nptr(Type::Void.into()),
                 crate::DATA_PTR.into(),
             )
             .into(),
@@ -118,7 +118,7 @@ fn field_address<'a>(
                         curr_type,
                         rustc_middle::ty::Mutability::Mut,
                     ));
-                    let addr_descr = FieldDescriptor::new(curr_type_fat_ptr.as_dotnet().unwrap(),ptr!(Type::Void),crate::DATA_PTR.into());
+                    let addr_descr = FieldDescriptor::new(curr_type_fat_ptr.as_class_ref().unwrap(),ctx.asm_mut().nptr(Type::Void),crate::DATA_PTR.into());
                     // Get the address of the unsized object.
                     let obj_addr = ld_field!(addr_calc,addr_descr);
                     // Add the offset to the object.
@@ -136,10 +136,10 @@ fn field_address<'a>(
                         curr_type,
                         rustc_middle::ty::Mutability::Mut,
                     ));
-                        let addr_descr = FieldDescriptor::new(curr_type_fat_ptr.as_dotnet().unwrap(),ptr!(Type::Void),crate::DATA_PTR.into());
+                        let addr_descr = FieldDescriptor::new(curr_type_fat_ptr.as_class_ref().unwrap(),ctx.asm_mut().nptr(Type::Void),crate::DATA_PTR.into());
                         // Get the address of the unsized object.
                         let obj_addr = ld_field!(addr_calc.clone(),addr_descr);
-                        let metadata_descr = FieldDescriptor::new(curr_type_fat_ptr.as_dotnet().unwrap(),Type::USize,crate::METADATA.into());
+                        let metadata_descr = FieldDescriptor::new(curr_type_fat_ptr.as_class_ref().unwrap(),Type::Int(Int::USize),crate::METADATA.into());
                         let metadata = ld_field!(addr_calc,metadata_descr);
                         let field_fat_ptr = ctx.type_from_cache(Ty::new_ptr(
                             ctx.tcx(),
@@ -153,13 +153,13 @@ fn field_address<'a>(
                                     addr: Box::new(CILNode::LoadAddresOfTMPLocal),
                                     value: Box::new(obj_addr
                                             + conv_usize!(ldc_u32!(offset))),
-                                    desc: Box::new(FieldDescriptor::new(field_fat_ptr.as_dotnet().unwrap(),ptr!(Type::Void),crate::DATA_PTR.into())),
+                                    desc: Box::new(FieldDescriptor::new(field_fat_ptr.as_class_ref().unwrap(),ctx.asm_mut().nptr(Type::Void),crate::DATA_PTR.into())),
                                 },
                                 CILRoot::SetField {
                                     addr: Box::new(CILNode::LoadAddresOfTMPLocal),
                                     value: Box::new(metadata
                                            ),
-                                    desc: Box::new(FieldDescriptor::new(field_fat_ptr.as_dotnet().unwrap(),Type::USize,crate::METADATA.into())),
+                                    desc: Box::new(FieldDescriptor::new(field_fat_ptr.as_class_ref().unwrap(),Type::Int(Int::USize),crate::METADATA.into())),
                                 },
                             ]
                             .into(),
@@ -202,30 +202,31 @@ pub fn place_elem_adress<'tcx>(
                 TyKind::Slice(inner) => {
                     let inner = ctx.monomorphize(*inner);
                     let inner_type = ctx.type_from_cache(inner);
-                    let slice = ctx.slice_ty(inner).as_dotnet().unwrap();
+                    let slice = ctx.slice_ty(inner).as_class_ref().unwrap();
                     let desc = FieldDescriptor::new(
                         slice,
-                        Type::Ptr(Type::Void.into()),
+                        ctx.asm_mut().nptr(Type::Void.into()),
                         crate::DATA_PTR.into(),
                     );
                     // This is a false positive
                     //    #[allow(unused_parens)]
-                    (ld_field!(addr_calc.clone(), desc)).cast_ptr(ptr!(inner_type.clone()))
+                    (ld_field!(addr_calc.clone(), desc))
+                        .cast_ptr(ctx.asm_mut().nptr(inner_type.clone()))
                         + conv_usize!(size_of!(inner_type)) * conv_usize!(index)
                 }
                 TyKind::Array(element, _length) => {
                     let element = ctx.monomorphize(*element);
                     let element_type = ctx.type_from_cache(element);
                     let array_type = ctx.type_from_cache(curr_ty);
-                    let array_dotnet = array_type.as_dotnet().expect("Non array type");
+                    let array_dotnet = array_type.as_class_ref().expect("Non array type");
 
                     call!(
                         CallSite::new(
                             Some(array_dotnet),
                             "get_Address".into(),
                             FnSig::new(
-                                &[Type::Ptr(array_type.into()), Type::USize],
-                                Type::Ptr(element_type.into()),
+                                &[ctx.asm_mut().nptr(array_type.into()), Type::Int(Int::USize)],
+                                ctx.asm_mut().nptr(element_type.into()),
                             ),
                             false,
                         ),
@@ -239,13 +240,16 @@ pub fn place_elem_adress<'tcx>(
         }
         PlaceElem::Subslice { from, to, from_end } => {
             let curr_type = ctx.slice_ref_to(curr_type.as_ty().expect("Can't index into an enum!"));
-            let curr_dotnet = curr_type.as_dotnet().unwrap();
+            let curr_dotnet = curr_type.as_class_ref().unwrap();
             if *from_end {
-                let metadata_field =
-                    FieldDescriptor::new(curr_dotnet.clone(), Type::USize, crate::METADATA.into());
+                let metadata_field = FieldDescriptor::new(
+                    curr_dotnet.clone(),
+                    Type::Int(Int::USize),
+                    crate::METADATA.into(),
+                );
                 let ptr_field = FieldDescriptor::new(
                     curr_dotnet.clone(),
-                    Type::Ptr(Type::Void.into()),
+                    ctx.asm_mut().nptr(Type::Void.into()),
                     crate::DATA_PTR.into(),
                 );
                 CILNode::TemporaryLocal(Box::new((
@@ -272,11 +276,14 @@ pub fn place_elem_adress<'tcx>(
                     CILNode::LoadTMPLocal,
                 )))
             } else {
-                let metadata_field =
-                    FieldDescriptor::new(curr_dotnet.clone(), Type::USize, crate::METADATA.into());
+                let metadata_field = FieldDescriptor::new(
+                    curr_dotnet.clone(),
+                    Type::Int(Int::USize),
+                    crate::METADATA.into(),
+                );
                 let ptr_field = FieldDescriptor::new(
                     curr_dotnet.clone(),
-                    Type::Ptr(Type::Void.into()),
+                    ctx.asm_mut().nptr(Type::Void.into()),
                     crate::DATA_PTR.into(),
                 );
                 CILNode::TemporaryLocal(Box::new((
@@ -317,14 +324,17 @@ pub fn place_elem_adress<'tcx>(
                     let inner = ctx.monomorphize(*inner);
 
                     let inner_type = ctx.type_from_cache(inner);
-                    let slice = ctx.slice_ty(inner).as_dotnet().unwrap();
+                    let slice = ctx.slice_ty(inner).as_class_ref().unwrap();
                     let desc = FieldDescriptor::new(
                         slice.clone(),
-                        Type::Ptr(Type::Void.into()),
+                        ctx.asm_mut().nptr(Type::Void),
                         crate::DATA_PTR.into(),
                     );
-                    let len =
-                        FieldDescriptor::new(slice.clone(), Type::USize, crate::METADATA.into());
+                    let len = FieldDescriptor::new(
+                        slice.clone(),
+                        Type::Int(Int::USize),
+                        crate::METADATA.into(),
+                    );
                     let index = if *from_end {
                         //eprintln!("Slice index from end is:{offset}");
                         CILNode::Sub(
@@ -336,12 +346,16 @@ pub fn place_elem_adress<'tcx>(
                         //ops.extend(derf_op);
                     };
 
-                    ld_field!(addr_calc.clone(), desc).cast_ptr(ptr!(inner_type.clone()))
+                    ld_field!(addr_calc.clone(), desc)
+                        .cast_ptr(ctx.asm_mut().nptr(inner_type.clone()))
                         + (call!(
                             CallSite::new(
                                 None,
                                 "bounds_check".into(),
-                                FnSig::new(&[Type::USize, Type::USize], Type::USize),
+                                FnSig::new(
+                                    &[Type::Int(Int::USize), Type::Int(Int::USize)],
+                                    Type::Int(Int::USize)
+                                ),
                                 true
                             ),
                             [conv_usize!(index), ld_field!(addr_calc, len)]
@@ -352,7 +366,7 @@ pub fn place_elem_adress<'tcx>(
 
                     let element = ctx.type_from_cache(element_ty);
                     let array_type = ctx.type_from_cache(curr_ty);
-                    let array_dotnet = array_type.as_dotnet().expect("Non array type");
+                    let array_dotnet = array_type.as_class_ref().expect("Non array type");
                     if *from_end {
                         todo!("Can't index array from end!");
                     } else {
@@ -361,8 +375,8 @@ pub fn place_elem_adress<'tcx>(
                                 Some(array_dotnet),
                                 "get_Address".into(),
                                 FnSig::new(
-                                    &[Type::Ptr(array_type.into()), Type::USize],
-                                    Type::Ptr(element.into()),
+                                    &[ctx.asm_mut().nptr(array_type.into()), Type::Int(Int::USize)],
+                                    ctx.asm_mut().nptr(element.into()),
                                 ),
                                 false,
                             ),

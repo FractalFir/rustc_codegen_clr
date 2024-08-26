@@ -1,6 +1,11 @@
 use crate::assembly::MethodCompileCtx;
 use cilly::{
-    and, call, call_site::CallSite, cil_node::CILNode, or, xor, DotnetTypeRef, FnSig, Type,
+    and, call,
+    call_site::CallSite,
+    cil_node::CILNode,
+    or,
+    v2::{ClassRef, Int},
+    xor, FnSig, Type,
 };
 use rustc_middle::ty::{IntTy, Ty, TyKind, UintTy};
 
@@ -15,26 +20,42 @@ pub fn bit_and_unchecked<'tcx>(
     match ty_a.kind() {
         TyKind::Uint(UintTy::U128) => call!(
             CallSite::boxed(
-                DotnetTypeRef::uint_128().into(),
+                ClassRef::uint_128(ctx.asm_mut()).into(),
                 "op_BitwiseAnd".into(),
-                FnSig::new(&[Type::U128, Type::U128], Type::U128),
+                FnSig::new(
+                    &[Type::Int(Int::U128), Type::Int(Int::U128)],
+                    Type::Int(Int::U128)
+                ),
                 true,
             ),
             [
                 operand_a,
-                crate::casts::int_to_int(type_b.clone(), &Type::U128, operand_b)
+                crate::casts::int_to_int(
+                    type_b.clone(),
+                    &Type::Int(Int::U128),
+                    operand_b,
+                    ctx.asm_mut()
+                )
             ]
         ),
         TyKind::Int(IntTy::I128) => call!(
             CallSite::boxed(
-                DotnetTypeRef::int_128().into(),
+                ClassRef::int_128(ctx.asm_mut()).into(),
                 "op_BitwiseAnd".into(),
-                FnSig::new(&[Type::I128, Type::I128], Type::I128),
+                FnSig::new(
+                    &[Type::Int(Int::I128), Type::Int(Int::I128)],
+                    Type::Int(Int::I128)
+                ),
                 true,
             ),
             [
                 operand_a,
-                crate::casts::int_to_int(type_b.clone(), &Type::I128, operand_b)
+                crate::casts::int_to_int(
+                    type_b.clone(),
+                    &Type::Int(Int::I128),
+                    operand_b,
+                    ctx.asm_mut()
+                )
             ]
         ),
         _ => and!(operand_a, operand_b),
@@ -53,7 +74,7 @@ pub fn bit_or_unchecked<'tcx>(
             let ty_b = ctx.type_from_cache(ty_b);
             call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::int_128(),
+                    ClassRef::int_128(ctx.asm_mut()),
                     "op_BitwiseOr".into(),
                     FnSig::new(&[ty_a.clone(), ty_b], ty_a),
                     true,
@@ -66,7 +87,7 @@ pub fn bit_or_unchecked<'tcx>(
             let ty_b = ctx.type_from_cache(ty_b);
             call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::uint_128(),
+                    ClassRef::uint_128(ctx.asm_mut()),
                     "op_BitwiseOr".into(),
                     FnSig::new(&[ty_a.clone(), ty_b], ty_a),
                     true,
@@ -90,7 +111,7 @@ pub fn bit_xor_unchecked<'tcx>(
             let ty_b = ctx.type_from_cache(ty_b);
             call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::int_128(),
+                    ClassRef::int_128(ctx.asm_mut()),
                     "op_ExclusiveOr".into(),
                     FnSig::new(&[ty_a.clone(), ty_b], ty_a),
                     true,
@@ -103,7 +124,7 @@ pub fn bit_xor_unchecked<'tcx>(
             let ty_b = ctx.type_from_cache(ty_b);
             call!(
                 CallSite::new_extern(
-                    DotnetTypeRef::uint_128(),
+                    ClassRef::uint_128(ctx.asm_mut()),
                     "op_ExclusiveOr".into(),
                     FnSig::new(&[ty_a.clone(), ty_b], ty_a),
                     true,

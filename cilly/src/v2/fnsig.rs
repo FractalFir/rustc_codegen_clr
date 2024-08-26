@@ -36,14 +36,9 @@ impl FnSig {
         &self.output
     }
 
-    pub(crate) fn from_v1(signature: &crate::FnSig, asm: &mut super::Assembly) -> Self {
-        let input = signature
-            .inputs()
-            .iter()
-            .map(|input| Type::from_v1(input, asm))
-            .collect();
-        let output = Type::from_v1(signature.output(), asm);
-        Self::new(input, output)
+    pub fn from_v1(signature: &crate::FnSig) -> Self {
+        let input = signature.inputs().iter().copied().collect();
+        Self::new(input, *signature.output())
     }
 
     pub fn iter_types(&self) -> impl Iterator<Item = Type> + '_ {

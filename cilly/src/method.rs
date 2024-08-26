@@ -15,7 +15,8 @@ use crate::{
     cil_root::CILRoot,
     cil_tree::CILTree,
     static_field_desc::StaticFieldDescriptor,
-    DotnetTypeRef, FnSig, IString, Type,
+    v2::Assembly,
+    FnSig, IString, Type,
 };
 
 /// Represenation of a CIL method.
@@ -236,12 +237,12 @@ impl Method {
     /// Adds a local variable of type `local`
     pub fn add_local(&mut self, local: Type, name: Option<IString>) -> usize {
         let loc = self.locals.len();
-        self.locals.push((name, local.clone()));
+        self.locals.push((name, local));
         loc
     }
     /// Extends local variables by `iter`.
     pub fn extend_locals<'a>(&mut self, iter: impl Iterator<Item = &'a Type>) {
-        self.locals.extend(iter.map(|tpe| (None, tpe.clone())));
+        self.locals.extend(iter.map(|tpe| (None, *tpe)));
     }
     /// Checks if the method `self` is the entrypoint.
     #[must_use]
@@ -309,32 +310,7 @@ impl Method {
                 _ => None,
             })
     }
-    /// Returns a list of type references that are used within this method.
-    pub fn dotnet_types(&self) -> impl Iterator<Item = DotnetTypeRef> + '_ {
-        self.sig()
-            .inputs()
-            .iter()
-            .filter_map(Type::dotnet_refs)
-            .chain(self.locals().iter().filter_map(|tpe| tpe.1.dotnet_refs()))
-            .chain(self.sig().inputs().iter().filter_map(Type::dotnet_refs))
-            .chain(self.sig().output().dotnet_refs())
-            .chain(self.iter_cil().filter_map(|node| match node {
-                CILIterElem::Node(CILNode::SizeOf(tpe)) => tpe.dotnet_refs(),
-                CILIterElem::Node(CILNode::NewObj(call_op_args)) => {
-                    call_op_args.site.class().cloned()
-                }
-                CILIterElem::Node(CILNode::LDField { addr: _, field }) => {
-                    Some(field.owner().clone())
-                }
-                CILIterElem::Node(CILNode::LDTypeToken(tpe)) => tpe.as_dotnet(),
-                CILIterElem::Root(CILRoot::SetField {
-                    addr: _,
-                    value: _,
-                    desc,
-                }) => Some(desc.owner().clone()),
-                _ => None,
-            }))
-    }
+
     /// Returns a call site that describes this method.
     pub fn call_site(&self) -> CallSite {
         CallSite::new(
@@ -393,7 +369,7 @@ impl Method {
         self.locals.push((name, tpe));
         new_loc
     }
-    pub fn adjust_aligement(&mut self, adjust: Vec<Option<u64>>) {
+    pub fn adjust_aligement(&mut self, adjust: Vec<Option<u64>>, asm: &mut Assembly) {
         if !adjust.iter().any(|adjust| adjust.is_some()) {
             return;
         }
@@ -404,13 +380,13 @@ impl Method {
         {
             let (name, tpe) = &self.locals[unaligned_local];
             let unaligned_local = unaligned_local as u32;
-            let (name, tpe) = (name.clone(), tpe.clone());
-            let new_loc = self.alloc_local(Type::Ptr(Box::new(tpe.clone())), name.clone()) as u32;
+            let (name, tpe) = (name.clone(), *tpe);
+            let new_loc = self.alloc_local(asm.nptr(tpe), name.clone()) as u32;
             self.append_preamble(
                 CILRoot::STLoc {
                     local: new_loc,
                     tree: CILNode::LocAllocAligned {
-                        tpe: Box::new(tpe.clone()),
+                        tpe: Box::new(tpe),
                         align,
                     },
                 }
@@ -432,7 +408,7 @@ impl Method {
                                 *root = CILRoot::STObj {
                                     addr_calc: Box::new(CILNode::LDLoc(new_loc)),
                                     value_calc: Box::new(tree.clone()),
-                                    tpe: Box::new(tpe.clone()),
+                                    tpe: Box::new(tpe),
                                 };
                             }
                         }
@@ -449,7 +425,7 @@ impl Method {
                                 // We replace getting the value of *a* with a read of the value *b* points to.
                                 *node = CILNode::LdObj {
                                     ptr: Box::new(CILNode::LDLoc(new_loc)),
-                                    obj: Box::new(tpe.clone()),
+                                    obj: Box::new(tpe),
                                 };
                             }
                         }

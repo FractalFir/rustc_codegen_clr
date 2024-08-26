@@ -4,8 +4,8 @@ use super::{
     bimap::{BiMapIndex, IntoBiMapIndex},
     cilnode::MethodKind,
     field::FieldIdx,
-    Assembly, CILNode, ClassRef, FieldDesc, Float, FnSig, Int, MethodRef, MethodRefIdx, NodeIdx,
-    SigIdx, StaticFieldDesc, StaticFieldIdx, StringIdx, Type,
+    Assembly, CILNode, FieldDesc, Float, FnSig, Int, MethodRef, MethodRefIdx, NodeIdx, SigIdx,
+    StaticFieldDesc, StaticFieldIdx, StringIdx, Type,
 };
 use crate::cil_root::CILRoot as V1Root;
 //use crate::cil_node::CILNode as V1Node;
@@ -235,20 +235,10 @@ impl CILRoot {
                         asm.alloc_node(node)
                     })
                     .collect();
-                let sig = FnSig::from_v1(site.signature(), asm);
+                let sig = FnSig::from_v1(site.signature());
                 let sig = asm.alloc_sig(sig);
-                let generics: Box<[_]> = site
-                    .generics()
-                    .iter()
-                    .map(|gen| Type::from_v1(gen, asm))
-                    .collect();
-                let class = site
-                    .class()
-                    .map(|dt| {
-                        let cref = ClassRef::from_v1(dt, asm);
-                        asm.alloc_class_ref(cref)
-                    })
-                    .unwrap_or_else(|| *asm.main_module());
+                let generics: Box<[_]> = (site.generics()).into();
+                let class = site.class().unwrap_or_else(|| *asm.main_module());
                 let name = asm.alloc_string(site.name());
                 let method_ref = if site.is_static() {
                     MethodRef::new(class, name, sig, MethodKind::Static, generics)
@@ -266,20 +256,10 @@ impl CILRoot {
                         asm.alloc_node(node)
                     })
                     .collect();
-                let sig = FnSig::from_v1(site.signature(), asm);
+                let sig = FnSig::from_v1(site.signature());
                 let sig = asm.alloc_sig(sig);
-                let generics: Box<[_]> = site
-                    .generics()
-                    .iter()
-                    .map(|gen| Type::from_v1(gen, asm))
-                    .collect();
-                let class = site
-                    .class()
-                    .map(|dt| {
-                        let cref = ClassRef::from_v1(dt, asm);
-                        asm.alloc_class_ref(cref)
-                    })
-                    .unwrap_or_else(|| *asm.main_module());
+                let generics: Box<[_]> = (site.generics()).into();
+                let class = site.class().unwrap_or_else(|| *asm.main_module());
                 let name = asm.alloc_string(site.name());
                 assert!(!site.is_static());
                 let method_ref = MethodRef::new(class, name, sig, MethodKind::Virtual, generics);
@@ -337,8 +317,8 @@ impl CILRoot {
                 let val = asm.alloc_node(val);
                 let addr = CILNode::from_v1(addr, asm);
                 let addr = asm.alloc_node(addr);
-                let ptr = Type::from_v1(ptr, asm);
-                let ptr = asm.nptr(ptr);
+
+                let ptr = asm.nptr(**ptr);
                 Self::StInd(Box::new((addr, val, ptr, false)))
             }
             V1Root::STObj {
@@ -350,8 +330,8 @@ impl CILRoot {
                 let value_calc = asm.alloc_node(value_calc);
                 let addr_calc = CILNode::from_v1(addr_calc, asm);
                 let addr_calc = asm.alloc_node(addr_calc);
-                let tpe = Type::from_v1(tpe, asm);
-                Self::StInd(Box::new((addr_calc, value_calc, tpe, false)))
+
+                Self::StInd(Box::new((addr_calc, value_calc, **tpe, false)))
             }
             V1Root::STIndF32(addr, val) => {
                 let val = CILNode::from_v1(val, asm);
@@ -388,7 +368,7 @@ impl CILRoot {
                 Self::CpBlk(Box::new((dst, src, len)))
             }
             V1Root::CallI { sig, fn_ptr, args } => {
-                let sig = FnSig::from_v1(sig, asm);
+                let sig = FnSig::from_v1(sig);
                 let sig = asm.alloc_sig(sig);
                 let ptr = CILNode::from_v1(fn_ptr, asm);
                 let ptr = asm.alloc_node(ptr);

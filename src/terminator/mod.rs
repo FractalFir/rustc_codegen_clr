@@ -188,8 +188,8 @@ pub fn handle_terminator<'tcx>(
                         let vtable_ptr = ld_field!(
                             fat_ptr_address.clone(),
                             FieldDescriptor::new(
-                                fat_ptr_type.as_dotnet().unwrap(),
-                                Type::USize,
+                                fat_ptr_type.as_class_ref().unwrap(),
+                                Type::Int(Int::USize),
                                 crate::METADATA.into()
                             )
                         );
@@ -197,7 +197,7 @@ pub fn handle_terminator<'tcx>(
                         let obj_ptr = ld_field!(
                             fat_ptr_address,
                             FieldDescriptor::new(
-                                fat_ptr_type.as_dotnet().unwrap(),
+                                fat_ptr_type.as_class_ref().unwrap(),
                                 Type::Ptr(Type::Void.into()),
                                 crate::DATA_PTR.into()
                             )
@@ -208,10 +208,10 @@ pub fn handle_terminator<'tcx>(
                             0
                         );
                         let drop_fn_ptr = CILNode::LDIndPtr {
-                            ptr: Box::new(vtable_ptr.cast_ptr(ptr!(Type::DelegatePtr(Box::new(
+                            ptr: Box::new(vtable_ptr.cast_ptr(ptr!(Type::FnPtr(Box::new(
                                 FnSig::new([ptr!(Type::Void)], Type::Void,)
                             ),)))),
-                            loaded_ptr: Box::new(Type::DelegatePtr(Box::new(FnSig::new(
+                            loaded_ptr: Box::new(Type::FnPtr(Box::new(FnSig::new(
                                 [ptr!(Type::Void)],
                                 Type::Void,
                             )))),
@@ -220,7 +220,7 @@ pub fn handle_terminator<'tcx>(
                             CILRoot::BEq {
                                 target: target.as_u32(),
                                 sub_target: 0,
-                                a: Box::new(drop_fn_ptr.clone().cast_ptr(Type::USize)),
+                                a: Box::new(drop_fn_ptr.clone().cast_ptr(Type::Int(Int::USize))),
                                 b: Box::new(conv_usize!(ldc_u32!(0))),
                             }
                             .into(),

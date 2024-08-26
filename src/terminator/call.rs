@@ -15,7 +15,7 @@ use cilly::{
     cil_root::CILRoot,
     conv_usize, ld_field, ldc_i32, ptr, size_of,
 };
-use cilly::{call_site::CallSite, field_desc::FieldDescriptor, fn_sig::FnSig, DotnetTypeRef, Type};
+use cilly::{call_site::CallSite, field_desc::FieldDescriptor, fn_sig::FnSig, ClassRef, Type};
 use rustc_middle::ty::InstanceKind;
 use rustc_middle::{
     mir::{Operand, Place},
@@ -46,7 +46,7 @@ fn call_managed<'tcx>(
     let class_name = garg_to_string(subst_ref[1], ctx.tcx());
     let is_valuetype = crate::utilis::garag_to_bool(subst_ref[2], ctx.tcx());
     let managed_fn_name = garg_to_string(subst_ref[3], ctx.tcx());
-    let mut tpe = DotnetTypeRef::new(asm, class_name);
+    let mut tpe = ClassRef::new(asm, class_name);
     tpe.set_valuetype(is_valuetype);
     //eprintln!("tpe:{tpe:?}");
     let signature =
@@ -115,7 +115,7 @@ fn callvirt_managed<'tcx>(
     let managed_fn_garg = ctx.monomorphize(*managed_fn_garg);
     let managed_fn_name = garg_to_string(managed_fn_garg, ctx.tcx());
 
-    let mut tpe = DotnetTypeRef::new(asm, class_name);
+    let mut tpe = ClassRef::new(asm, class_name);
     tpe.set_valuetype(is_valuetype);
     let signature =
         crate::function_sig::sig_from_instance_(fn_instance, ctx.tcx(), ctx.type_cache())
@@ -179,7 +179,7 @@ fn call_ctor<'tcx>(
     let class_name = garg_to_string(subst_ref[1], ctx.tcx());
     // Check if the costructed object is valuetype. TODO: this may be unnecesary. Are valuetpes constructed using newobj?
     let is_valuetype = crate::utilis::garag_to_bool(subst_ref[2], ctx.tcx());
-    let mut tpe = DotnetTypeRef::new(asm, class_name);
+    let mut tpe = ClassRef::new(asm, class_name);
     tpe.set_valuetype(is_valuetype);
     // If no arguments, inputs don't have to be handled, so a simpler call handling is used.
     if argument_count == 0 {
@@ -190,7 +190,7 @@ fn call_ctor<'tcx>(
                     Some(tpe.clone()),
                     ".ctor".into(),
                     FnSig::new(
-                        &[Type::DotnetType(tpe.clone().into())],
+                        &[Type::ClassRef(tpe.clone().into())],
                         cilly::r#type::Type::Void,
                     ),
                     false,
@@ -264,7 +264,7 @@ pub fn call_closure<'tcx>(
                     }
                     let tuple_element_name = format!("Item{}", index + 1);
                     let field_descriptor = FieldDescriptor::boxed(
-                        tuple_type.as_dotnet().expect("Invalid tuple type"),
+                        tuple_type.as_class_ref().expect("Invalid tuple type"),
                         element_type,
                         tuple_element_name.into(),
                     );
@@ -325,24 +325,24 @@ pub fn call<'tcx>(
         let vtable_ptr = ld_field!(
             fat_ptr_address.clone(),
             FieldDescriptor::new(
-                DotnetTypeRef::new::<&str, _>(None, "FatPtrDyn"),
-                Type::USize,
+                ClassRef::new::<&str, _>(None, "FatPtrDyn"),
+                Type::Int(Int::USize),
                 crate::METADATA.into()
             )
         );
 
         let vtable_index =
             ldc_i32!(i32::try_from(fn_idx).expect("More tahn 2^31 functions in a vtable!"));
-        let vtable_offset = conv_usize!(vtable_index * size_of!(Type::USize));
+        let vtable_offset = conv_usize!(vtable_index * size_of!(Type::Int(Int::USize)));
         // Get the address of the function ptr, and load it
         let fn_ptr = CILNode::LDIndISize {
-            ptr: Box::new((vtable_ptr + vtable_offset).cast_ptr(ptr!(Type::ISize))),
+            ptr: Box::new((vtable_ptr + vtable_offset).cast_ptr(ptr!(Type::Int(Int::ISize)))),
         };
         // Get the addres of the object
         let obj_ptr = ld_field!(
             fat_ptr_address,
             FieldDescriptor::new(
-                DotnetTypeRef::new::<&str, _>(None, "FatPtrDyn"),
+                ClassRef::new::<&str, _>(None, "FatPtrDyn"),
                 Type::Ptr(Type::Void.into()),
                 crate::DATA_PTR.into()
             )
@@ -383,7 +383,7 @@ pub fn call<'tcx>(
                             }
                             let tuple_element_name = format!("Item{}", index + 1);
                             let field_descriptor = FieldDescriptor::boxed(
-                                tuple_type.as_dotnet().expect("Invalid tuple type"),
+                                tuple_type.as_class_ref().expect("Invalid tuple type"),
                                 element_type,
                                 tuple_element_name.into(),
                             );
@@ -480,13 +480,13 @@ pub fn call<'tcx>(
 
         return crate::place::place_set(
             destination,
-            CILNode::LdNull(tpe.as_dotnet().unwrap()),
+            CILNode::LdNull(tpe.as_class_ref().unwrap()),
             ctx,
         );
     } else if function_name.contains(MANAGED_CHECKED_CAST) {
         let tpe = ctx
             .type_from_cache(subst_ref[0].as_type().unwrap())
-            .as_dotnet()
+            .as_class_ref()
             .unwrap();
         let input = crate::operand::handle_operand(&args[0].node, ctx);
         // Not-Virtual (for interop)
@@ -498,7 +498,7 @@ pub fn call<'tcx>(
     } else if function_name.contains(MANAGED_IS_INST) {
         let tpe = ctx
             .type_from_cache(subst_ref[0].as_type().unwrap())
-            .as_dotnet()
+            .as_class_ref()
             .unwrap();
         let input = crate::operand::handle_operand(&args[0].node, ctx);
         // Not-Virtual (for interop)

@@ -25,8 +25,8 @@ pub fn handle_statement<'tcx>(
 
             let layout = ctx.layout_of(owner_ty);
             //let (disrc_type, _) = crate::utilis::adt::enum_tag_info(&layout.layout, tcx);
-            let owner = if let cilly::Type::DotnetType(dotnet_type) = owner {
-                dotnet_type.as_ref().clone()
+            let owner = if let cilly::Type::ClassRef(dotnet_type) = owner {
+                dotnet_type
             } else {
                 panic!();
             };
@@ -37,7 +37,7 @@ pub fn handle_statement<'tcx>(
                     layout.layout,
                     *variant_index,
                     crate::place::place_adress(place, ctx),
-                    &owner,
+                    owner,
                     ctx.tcx(),
                     owner_ty,
                 )

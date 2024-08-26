@@ -1,4 +1,4 @@
-use cilly::{call_site::CallSite, cil_root::CILRoot, fn_sig::FnSig, Type};
+use cilly::{call_site::CallSite, cil_root::CILRoot, fn_sig::FnSig, v2::Int, Type};
 use rustc_middle::ty::TyCtxt;
 
 /// Returns the call site refering to the function malloc.
@@ -7,7 +7,10 @@ pub fn malloc(ctx: TyCtxt) -> CallSite {
     CallSite::new(
         None,
         "malloc".into(),
-        FnSig::new(&[Type::USize], Type::Ptr(crate::r#type::c_void(ctx).into())),
+        FnSig::new(
+            &[Type::Int(Int::USize)],
+            Type::Ptr(crate::r#type::c_void(ctx).into()),
+        ),
         true,
     )
 }

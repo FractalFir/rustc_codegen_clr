@@ -2,8 +2,14 @@ use crate::assembly::MethodCompileCtx;
 use crate::utilis::compiletime_sizeof;
 
 use cilly::{
-    call, call_site::CallSite, cil_node::CILNode, conv_i32, conv_u32, fn_sig::FnSig, ldc_u32,
-    rem_un, shl, shr, shr_un, DotnetTypeRef, Type,
+    call,
+    call_site::CallSite,
+    cil_node::CILNode,
+    conv_i32, conv_u32,
+    fn_sig::FnSig,
+    ldc_u32, rem_un, shl, shr, shr_un,
+    v2::{ClassRef, Int},
+    Type,
 };
 
 use rustc_middle::ty::{IntTy, Ty, TyKind, UintTy};
@@ -19,28 +25,44 @@ pub fn shr_unchecked<'tcx>(
         TyKind::Uint(UintTy::U128) => {
             call!(
                 CallSite::boxed(
-                    DotnetTypeRef::uint_128().into(),
+                    ClassRef::uint_128(ctx.asm_mut()).into(),
                     "op_RightShift".into(),
-                    FnSig::new(&[Type::U128, Type::I32], Type::U128),
+                    FnSig::new(
+                        &[Type::Int(Int::U128), Type::Int(Int::I32)],
+                        Type::Int(Int::U128)
+                    ),
                     true,
                 ),
                 [
                     ops_a,
-                    crate::casts::int_to_int(type_b.clone(), &Type::I32, ops_b)
+                    crate::casts::int_to_int(
+                        type_b.clone(),
+                        &Type::Int(Int::I32),
+                        ops_b,
+                        ctx.asm_mut()
+                    )
                 ]
             )
         }
         TyKind::Int(IntTy::I128) => {
             call!(
                 CallSite::boxed(
-                    DotnetTypeRef::int_128().into(),
+                    ClassRef::int_128(ctx.asm_mut()).into(),
                     "op_RightShift".into(),
-                    FnSig::new(&[Type::I128, Type::I32], Type::I128),
+                    FnSig::new(
+                        &[Type::Int(Int::I128), Type::Int(Int::I32)],
+                        Type::Int(Int::I128)
+                    ),
                     true,
                 ),
                 [
                     ops_a,
-                    crate::casts::int_to_int(type_b.clone(), &Type::I32, ops_b)
+                    crate::casts::int_to_int(
+                        type_b.clone(),
+                        &Type::Int(Int::I32),
+                        ops_b,
+                        ctx.asm_mut()
+                    )
                 ]
             )
         }
@@ -48,7 +70,12 @@ pub fn shr_unchecked<'tcx>(
             TyKind::Uint(UintTy::U128 | UintTy::U64) | TyKind::Int(IntTy::I128 | IntTy::I64) => {
                 shr_un!(
                     ops_a,
-                    crate::casts::int_to_int(type_b.clone(), &Type::I32, ops_b)
+                    crate::casts::int_to_int(
+                        type_b.clone(),
+                        &Type::Int(Int::I32),
+                        ops_b,
+                        ctx.asm_mut()
+                    )
                 )
             }
             _ => shr_un!(ops_a, ops_b),
@@ -57,7 +84,12 @@ pub fn shr_unchecked<'tcx>(
             TyKind::Uint(UintTy::U128 | UintTy::U64) | TyKind::Int(IntTy::I128 | IntTy::I64) => {
                 shr!(
                     ops_a,
-                    crate::casts::int_to_int(type_b.clone(), &Type::I32, ops_b)
+                    crate::casts::int_to_int(
+                        type_b.clone(),
+                        &Type::Int(Int::I32),
+                        ops_b,
+                        ctx.asm_mut()
+                    )
                 )
             }
 
@@ -81,15 +113,23 @@ pub fn shr_checked<'tcx>(
         TyKind::Uint(UintTy::U128) => {
             call!(
                 CallSite::boxed(
-                    DotnetTypeRef::uint_128().into(),
+                    ClassRef::uint_128(ctx.asm_mut()).into(),
                     "op_RightShift".into(),
-                    FnSig::new(&[Type::U128, Type::I32], Type::U128),
+                    FnSig::new(
+                        &[Type::Int(Int::U128), Type::Int(Int::I32)],
+                        Type::Int(Int::U128)
+                    ),
                     true,
                 ),
                 [
                     ops_a,
                     conv_i32!(rem_un!(
-                        crate::casts::int_to_int(type_b.clone(), &Type::U32, ops_b),
+                        crate::casts::int_to_int(
+                            type_b.clone(),
+                            &Type::Int(Int::U32),
+                            ops_b,
+                            ctx.asm_mut()
+                        ),
                         ldc_u32!(128)
                     ))
                 ]
@@ -98,15 +138,23 @@ pub fn shr_checked<'tcx>(
         TyKind::Int(IntTy::I128) => {
             call!(
                 CallSite::boxed(
-                    DotnetTypeRef::int_128().into(),
+                    ClassRef::int_128(ctx.asm_mut()).into(),
                     "op_RightShift".into(),
-                    FnSig::new(&[Type::I128, Type::I32], Type::I128),
+                    FnSig::new(
+                        &[Type::Int(Int::I128), Type::Int(Int::I32)],
+                        Type::Int(Int::I128)
+                    ),
                     true,
                 ),
                 [
                     ops_a,
                     conv_i32!(rem_un!(
-                        crate::casts::int_to_int(type_b.clone(), &Type::U32, ops_b),
+                        crate::casts::int_to_int(
+                            type_b.clone(),
+                            &Type::Int(Int::U32),
+                            ops_b,
+                            ctx.asm_mut()
+                        ),
                         ldc_u32!(128)
                     ))
                 ]
@@ -117,7 +165,12 @@ pub fn shr_checked<'tcx>(
                 shr_un!(
                     ops_a,
                     rem_un!(
-                        conv_u32!(crate::casts::int_to_int(type_b.clone(), &Type::I32, ops_b)),
+                        conv_u32!(crate::casts::int_to_int(
+                            type_b.clone(),
+                            &Type::Int(Int::I32),
+                            ops_b,
+                            ctx.asm_mut()
+                        )),
                         ldc_u32!(bit_cap)
                     )
                 )
@@ -131,7 +184,12 @@ pub fn shr_checked<'tcx>(
                 shr!(
                     ops_a,
                     rem_un!(
-                        conv_u32!(crate::casts::int_to_int(type_b.clone(), &Type::I32, ops_b)),
+                        conv_u32!(crate::casts::int_to_int(
+                            type_b.clone(),
+                            &Type::Int(Int::I32),
+                            ops_b,
+                            ctx.asm_mut()
+                        )),
                         ldc_u32!(bit_cap)
                     )
                 )
@@ -158,15 +216,23 @@ pub fn shl_checked<'tcx>(
         TyKind::Uint(UintTy::U128) => {
             call!(
                 CallSite::boxed(
-                    DotnetTypeRef::uint_128().into(),
+                    ClassRef::uint_128(ctx.asm_mut()).into(),
                     "op_LeftShift".into(),
-                    FnSig::new(&[Type::U128, Type::I32], Type::U128),
+                    FnSig::new(
+                        &[Type::Int(Int::U128), Type::Int(Int::I32)],
+                        Type::Int(Int::U128)
+                    ),
                     true,
                 ),
                 [
                     ops_a,
                     conv_i32!(rem_un!(
-                        conv_u32!(crate::casts::int_to_int(type_b.clone(), &Type::U32, ops_b)),
+                        conv_u32!(crate::casts::int_to_int(
+                            type_b.clone(),
+                            &Type::Int(Int::U32),
+                            ops_b,
+                            ctx.asm_mut()
+                        )),
                         ldc_u32!(bit_cap)
                     ))
                 ]
@@ -175,15 +241,23 @@ pub fn shl_checked<'tcx>(
         TyKind::Int(IntTy::I128) => {
             call!(
                 CallSite::boxed(
-                    DotnetTypeRef::int_128().into(),
+                    ClassRef::int_128(ctx.asm_mut()).into(),
                     "op_LeftShift".into(),
-                    FnSig::new(&[Type::I128, Type::I32], Type::I128),
+                    FnSig::new(
+                        &[Type::Int(Int::I128), Type::Int(Int::I32)],
+                        Type::Int(Int::I128)
+                    ),
                     true,
                 ),
                 [
                     ops_a,
                     conv_i32!(rem_un!(
-                        conv_u32!(crate::casts::int_to_int(type_b.clone(), &Type::U32, ops_b)),
+                        conv_u32!(crate::casts::int_to_int(
+                            type_b.clone(),
+                            &Type::Int(Int::U32),
+                            ops_b,
+                            ctx.asm_mut()
+                        )),
                         ldc_u32!(bit_cap)
                     ))
                 ]
@@ -194,7 +268,12 @@ pub fn shl_checked<'tcx>(
                 shl!(
                     ops_a,
                     rem_un!(
-                        conv_u32!(crate::casts::int_to_int(type_b.clone(), &Type::I32, ops_b)),
+                        conv_u32!(crate::casts::int_to_int(
+                            type_b.clone(),
+                            &Type::Int(Int::I32),
+                            ops_b,
+                            ctx.asm_mut()
+                        )),
                         ldc_u32!(bit_cap)
                     )
                 )
@@ -208,7 +287,12 @@ pub fn shl_checked<'tcx>(
                 shl!(
                     ops_a,
                     rem_un!(
-                        conv_u32!(crate::casts::int_to_int(type_b.clone(), &Type::I32, ops_b)),
+                        conv_u32!(crate::casts::int_to_int(
+                            type_b.clone(),
+                            &Type::Int(Int::I32),
+                            ops_b,
+                            ctx.asm_mut()
+                        )),
                         ldc_u32!(bit_cap)
                     )
                 )
@@ -234,28 +318,44 @@ pub fn shl_unchecked<'tcx>(
         TyKind::Uint(UintTy::U128) => {
             call!(
                 CallSite::boxed(
-                    DotnetTypeRef::uint_128().into(),
+                    ClassRef::uint_128(ctx.asm_mut()).into(),
                     "op_LeftShift".into(),
-                    FnSig::new(&[Type::U128, Type::I32], Type::U128),
+                    FnSig::new(
+                        &[Type::Int(Int::U128), Type::Int(Int::I32)],
+                        Type::Int(Int::U128)
+                    ),
                     true,
                 ),
                 [
                     ops_a,
-                    crate::casts::int_to_int(type_b.clone(), &Type::I32, ops_b)
+                    crate::casts::int_to_int(
+                        type_b.clone(),
+                        &Type::Int(Int::I32),
+                        ops_b,
+                        ctx.asm_mut()
+                    )
                 ]
             )
         }
         TyKind::Int(IntTy::I128) => {
             call!(
                 CallSite::boxed(
-                    DotnetTypeRef::int_128().into(),
+                    ClassRef::int_128(ctx.asm_mut()).into(),
                     "op_LeftShift".into(),
-                    FnSig::new(&[Type::I128, Type::I32], Type::I128),
+                    FnSig::new(
+                        &[Type::Int(Int::I128), Type::Int(Int::I32)],
+                        Type::Int(Int::I128)
+                    ),
                     true,
                 ),
                 [
                     ops_a,
-                    crate::casts::int_to_int(type_b.clone(), &Type::I32, ops_b)
+                    crate::casts::int_to_int(
+                        type_b.clone(),
+                        &Type::Int(Int::I32),
+                        ops_b,
+                        ctx.asm_mut()
+                    )
                 ]
             )
         }
@@ -263,7 +363,12 @@ pub fn shl_unchecked<'tcx>(
             TyKind::Uint(UintTy::U128 | UintTy::U64) | TyKind::Int(IntTy::I128 | IntTy::I64) => {
                 shl!(
                     ops_a,
-                    crate::casts::int_to_int(type_b.clone(), &Type::I32, ops_b)
+                    crate::casts::int_to_int(
+                        type_b.clone(),
+                        &Type::Int(Int::I32),
+                        ops_b,
+                        ctx.asm_mut()
+                    )
                 )
             }
             _ => shl!(ops_a, ops_b),

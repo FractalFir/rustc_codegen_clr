@@ -1,23 +1,32 @@
 use crate::{
-    assembly::MethodCompileCtx, call_info::CallInfo, operand::handle_operand,
-    r#type::pointer_to_is_fat,
+    assembly::MethodCompileCtx,
+    call_info::CallInfo,
+    operand::handle_operand,
+    r#type::{fat_ptr_to, get_type, pointer_to_is_fat},
 };
 use cilly::{
-    call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_usize,
-    field_desc::FieldDescriptor, fn_sig::FnSig, ld_field, ldc_i32, ldc_u64, ptr, size_of, Type,
+    call_site::CallSite,
+    cil_node::CILNode,
+    cil_root::CILRoot,
+    conv_usize,
+    field_desc::FieldDescriptor,
+    fn_sig::FnSig,
+    ld_field, ldc_i32, ldc_u64, size_of,
+    v2::{Float, Int},
+    Type,
 };
 use rustc_middle::{
     mir::{CastKind, NullOp, Operand, Place, Rvalue},
     ty::{adjustment::PointerCoercion, GenericArgs, Instance, InstanceKind, ParamEnv, Ty, TyKind},
 };
 macro_rules! cast {
-    ($ctx:ident,$operand:ident,$target:ident,$cast_name:path) => {{
+    ($ctx:ident,$operand:ident,$target:ident,$cast_name:path,$asm:expr) => {{
         let target = $ctx.monomorphize(*$target);
         let target = $ctx.type_from_cache(target);
         let src = $operand.ty(&$ctx.body().local_decls, $ctx.tcx());
         let src = $ctx.monomorphize(src);
         let src = $ctx.type_from_cache(src);
-        $cast_name(src, &target, handle_operand($operand, $ctx))
+        $cast_name(src, &target, handle_operand($operand, $ctx), $asm)
     }};
 }
 pub fn is_rvalue_unint<'tcx>(
@@ -60,22 +69,38 @@ pub fn handle_rvalue<'tcx>(
             dst,
         ) => ptr_to_ptr(ctx, operand, *dst),
         Rvalue::Cast(CastKind::PointerCoercion(PointerCoercion::Unsize), operand, target) => {
-            let us = crate::unsize::unsize2(ctx, operand, *target);
-            us.validate(ctx.validator(), None).unwrap();
-            us
+            crate::unsize::unsize2(ctx, operand, *target)
         }
         Rvalue::BinaryOp(binop, operands) => {
             crate::binop::binop(*binop, &operands.0, &operands.1, ctx)
         }
         Rvalue::UnaryOp(binop, operand) => crate::unop::unop(*binop, operand, ctx),
         Rvalue::Cast(CastKind::IntToInt, operand, target) => {
-            cast!(ctx, operand, target, crate::casts::int_to_int)
+            cast!(
+                ctx,
+                operand,
+                target,
+                crate::casts::int_to_int,
+                ctx.asm_mut()
+            )
         }
         Rvalue::Cast(CastKind::FloatToInt, operand, target) => {
-            cast!(ctx, operand, target, crate::casts::float_to_int)
+            cast!(
+                ctx,
+                operand,
+                target,
+                crate::casts::float_to_int,
+                ctx.asm_mut()
+            )
         }
         Rvalue::Cast(CastKind::IntToFloat, operand, target) => {
-            cast!(ctx, operand, target, crate::casts::int_to_float)
+            cast!(
+                ctx,
+                operand,
+                target,
+                crate::casts::int_to_float,
+                ctx.asm_mut()
+            )
         }
         Rvalue::NullaryOp(op, ty) => match op {
             NullOp::SizeOf => {
@@ -139,11 +164,11 @@ pub fn handle_rvalue<'tcx>(
             let src = ctx.type_from_cache(src);
             match (&src, &dst) {
                 (
-                    Type::ISize | Type::USize | Type::Ptr(_) | Type::DelegatePtr(_),
-                    Type::ISize | Type::USize | Type::Ptr(_) | Type::DelegatePtr(_),
+                    Type::Int(Int::ISize | Int::USize) | Type::Ptr(_) | Type::FnPtr(_),
+                    Type::Int(Int::ISize | Int::USize) | Type::Ptr(_) | Type::FnPtr(_),
                 ) => handle_operand(operand, ctx).cast_ptr(dst),
 
-                (Type::U16, Type::DotnetChar) => handle_operand(operand, ctx),
+                (Type::Int(Int::U16), Type::PlatformChar) => handle_operand(operand, ctx),
                 (_, _) => CILNode::TemporaryLocal(Box::new((
                     src,
                     [CILRoot::SetTMPLocal {
@@ -153,7 +178,7 @@ pub fn handle_rvalue<'tcx>(
                     crate::place::deref_op(
                         crate::place::PlaceTy::Ty(dst_ty),
                         ctx,
-                        CILNode::LoadAddresOfTMPLocal.cast_ptr(ptr!(dst)),
+                        CILNode::LoadAddresOfTMPLocal.cast_ptr(ctx.asm_mut().nptr(dst)),
                     ),
                 ))),
             }
@@ -180,7 +205,7 @@ pub fn handle_rvalue<'tcx>(
                 crate::place::deref_op(
                     crate::place::PlaceTy::Ty(boxed_dst),
                     ctx,
-                    CILNode::LoadAddresOfTMPLocal.cast_ptr(ptr!(boxed_dst_type)),
+                    CILNode::LoadAddresOfTMPLocal.cast_ptr(ctx.asm_mut().nptr(boxed_dst_type)),
                 ),
             )))
         }
@@ -205,12 +230,15 @@ pub fn handle_rvalue<'tcx>(
 
             let val = handle_operand(operand, ctx);
             match target {
-                Type::USize | Type::ISize | Type::Ptr(_) | Type::DelegatePtr(_) => {
+                Type::Int(Int::USize | Int::ISize) | Type::Ptr(_) | Type::FnPtr(_) => {
                     val.cast_ptr(target)
                 }
-                Type::U64 | Type::I64 => {
-                    crate::casts::int_to_int(Type::USize, &target, val.cast_ptr(Type::USize))
-                }
+                Type::Int(Int::U64 | Int::I64) => crate::casts::int_to_int(
+                    Type::Int(Int::USize),
+                    &target,
+                    val.cast_ptr(Type::Int(Int::USize)),
+                    ctx.asm_mut(),
+                ),
                 _ => todo!("Can't cast using `PointerExposeProvenance` to {target:?}"),
             }
         }
@@ -219,8 +247,8 @@ pub fn handle_rvalue<'tcx>(
             let target = ctx.type_from_cache(target);
             let mut ops = handle_operand(operand, ctx);
             match target {
-                Type::F32 => ops = CILNode::ConvF32(ops.into()),
-                Type::F64 => ops = CILNode::ConvF64(ops.into()),
+                Type::Float(Float::F32) => ops = CILNode::ConvF32(ops.into()),
+                Type::Float(Float::F64) => ops = CILNode::ConvF64(ops.into()),
                 _ => panic!("Can't preform a FloatToFloat cast to type {target:?}"),
             }
             ops
@@ -268,21 +296,27 @@ pub fn handle_rvalue<'tcx>(
             let layout = ctx.layout_of(owner_ty);
             let target = ctx.type_from_cache(owner_ty.discriminant_ty(ctx.tcx()));
             let (disrc_type, _) = crate::utilis::adt::enum_tag_info(layout.layout, ctx.tcx());
-            let owner = if let cilly::Type::DotnetType(dotnet_type) = owner {
-                dotnet_type.as_ref().clone()
+            let owner = if let Type::ClassRef(dotnet_type) = owner {
+                dotnet_type
             } else {
                 eprintln!("Can't get the discirminant of type {owner_ty:?}, because it is a zst. Size:{} Discr type:{:?}",layout.layout.size.bytes(), owner_ty.discriminant_ty(ctx.tcx()));
-                return crate::casts::int_to_int(Type::I32, &target, ldc_i32!(0));
+                return crate::casts::int_to_int(
+                    Type::Int(Int::I32),
+                    &target,
+                    ldc_i32!(0),
+                    ctx.asm_mut(),
+                );
             };
 
             if disrc_type == Type::Void {
                 // Just alwways return 0 if the discriminat type is `()` - this seems to work, and be what rustc expects. Wierd, but OK.
-                crate::casts::int_to_int(Type::I32, &target, ldc_i32!(0))
+                crate::casts::int_to_int(Type::Int(Int::I32), &target, ldc_i32!(0), ctx.asm_mut())
             } else {
                 crate::casts::int_to_int(
                     disrc_type.clone(),
                     &target,
                     crate::utilis::adt::get_discr(layout.layout, addr, owner, ctx.tcx(), owner_ty),
+                    ctx.asm_mut(),
                 )
             }
         }
@@ -290,9 +324,12 @@ pub fn handle_rvalue<'tcx>(
             let ty = ctx.monomorphize(operand.ty(ctx.body(), ctx.tcx()));
             match ty.ty.kind() {
                 TyKind::Slice(inner) => {
-                    let slice_tpe = ctx.slice_ty(*inner).as_dotnet().unwrap();
-                    let descriptor =
-                        FieldDescriptor::new(slice_tpe, Type::USize, crate::METADATA.into());
+                    let slice_tpe = fat_ptr_to(*inner, ctx);
+                    let descriptor = FieldDescriptor::new(
+                        slice_tpe,
+                        cilly::v2::Type::Int(Int::USize),
+                        crate::METADATA.into(),
+                    );
                     let addr = crate::place::place_address_raw(operand, ctx);
                     assert!(
                         !matches!(addr, CILNode::LDLoc(_)),
@@ -355,18 +392,22 @@ fn repeat<'tcx>(
     // Array type
     let array = ctx.monomorphize(rvalue.ty(ctx.body(), ctx.tcx()));
     let array = ctx.type_from_cache(array);
-    let array_dotnet = array.clone().as_dotnet().expect("Invalid array type.");
+    let array_dotnet = array.clone().as_class_ref().expect("Invalid array type.");
     // Check if the element is byte sized. If so, use initblk to quickly initialize this array.
     if crate::utilis::compiletime_sizeof(element_ty, ctx.tcx()) == 1 {
         let val = Box::new(CILNode::TemporaryLocal(Box::new((
             element_type.clone(),
             vec![CILRoot::SetTMPLocal { value: element }].into(),
             CILNode::LDIndU8 {
-                ptr: Box::new(CILNode::LoadAddresOfTMPLocal.cast_ptr(ptr!(Type::U8))),
+                ptr: Box::new(
+                    CILNode::LoadAddresOfTMPLocal.cast_ptr(ctx.asm_mut().nptr(Type::Int(Int::U8))),
+                ),
             },
         ))));
         let init = CILRoot::InitBlk {
-            dst: Box::new(CILNode::LoadAddresOfTMPLocal.cast_ptr(ptr!(Type::U8))),
+            dst: Box::new(
+                CILNode::LoadAddresOfTMPLocal.cast_ptr(ctx.asm_mut().nptr(Type::Int(Int::U8))),
+            ),
             val,
             count: Box::new(conv_usize!(ldc_u64!(times))),
         };
@@ -386,8 +427,8 @@ fn repeat<'tcx>(
                     "set_Item".into(),
                     FnSig::new(
                         &[
-                            Type::Ptr(array.clone().into()),
-                            Type::USize,
+                            ctx.asm_mut().nptr(array.clone()),
+                            Type::Int(Int::USize),
                             element_type.clone(),
                         ],
                         Type::Void,
@@ -432,8 +473,8 @@ fn repeat<'tcx>(
                     "set_Item".into(),
                     FnSig::new(
                         &[
-                            Type::Ptr(array.clone().into()),
-                            Type::USize,
+                            ctx.asm_mut().nptr(array.clone()),
+                            Type::Int(Int::USize),
                             element_type.clone(),
                         ],
                         Type::Void,
@@ -478,37 +519,33 @@ fn ptr_to_ptr<'tcx>(
         (true, true) => {
             let parrent = handle_operand(operand, ctx);
 
+            let target_ptr = ctx.asm_mut().nptr(target_type);
             crate::place::deref_op(
                 crate::place::PlaceTy::Ty(target),
                 ctx,
                 CILNode::TemporaryLocal(Box::new((
                     source_type,
                     [CILRoot::SetTMPLocal { value: parrent }].into(),
-                    Box::new(CILNode::LoadAddresOfTMPLocal).cast_ptr(ptr!(target_type)),
+                    Box::new(CILNode::LoadAddresOfTMPLocal).cast_ptr(target_ptr),
                 ))),
             )
         }
-        (true, false) => {
-            if source_type.as_dotnet().is_none() {
-                eprintln!("source:{source:?}");
-            }
-            CILNode::TemporaryLocal(Box::new((
-                source_type.clone(),
-                [CILRoot::SetTMPLocal {
-                    value: handle_operand(operand, ctx),
-                }]
-                .into(),
-                ld_field!(
-                    CILNode::LoadAddresOfTMPLocal,
-                    FieldDescriptor::new(
-                        source_type.as_dotnet().unwrap(),
-                        Type::Ptr(Type::Void.into()),
-                        crate::DATA_PTR.into(),
-                    )
+        (true, false) => CILNode::TemporaryLocal(Box::new((
+            source_type.clone(),
+            [CILRoot::SetTMPLocal {
+                value: handle_operand(operand, ctx),
+            }]
+            .into(),
+            ld_field!(
+                CILNode::LoadAddresOfTMPLocal,
+                FieldDescriptor::new(
+                    get_type(source, ctx).as_class_ref().unwrap(),
+                    ctx.asm_mut().nptr(cilly::v2::Type::Void.into()),
+                    crate::DATA_PTR.into(),
                 )
-                .cast_ptr(target_type),
-            )))
-        }
+            )
+            .cast_ptr(target_type),
+        ))),
         (false, true) => {
             panic!("ERROR: a non-unsizing cast turned a sized ptr into an unsized one")
         }

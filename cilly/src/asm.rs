@@ -1,3 +1,5 @@
+use std::ops::DerefMut;
+
 use fxhash::{FxBuildHasher, FxHashMap};
 
 use serde::{Deserialize, Serialize};
@@ -10,9 +12,8 @@ use crate::{
     cil_root::CILRoot,
     method::{Method, MethodType},
     static_field_desc::StaticFieldDescriptor,
-    type_def::TypeDef,
-    utilis::MemoryUsage,
-    DotnetTypeRef, FnSig, IString, Type,
+    v2::{ClassDef, ClassRef, Int},
+    FnSig, IString, Type,
 };
 
 #[derive(Clone, Copy, Serialize, Deserialize, Debug)]
@@ -24,17 +25,7 @@ pub struct AssemblyExternRef {
     /// In that order.
     version: (u16, u16, u16, u16),
 }
-impl MemoryUsage for AssemblyExternRef {
-    fn memory_usage(&self, counter: &mut impl crate::utilis::MemoryUsageCounter) -> usize {
-        let mut total_size = std::mem::size_of::<Self>();
-        let name = std::any::type_name::<Self>();
-        let version = self.version.memory_usage(counter);
-        counter.add_field(name, "version", version);
-        total_size += version;
-        counter.add_type(name, total_size);
-        total_size
-    }
-}
+
 impl AssemblyExternRef {
     /// Returns the version information of this assembly.
     #[must_use]
@@ -60,6 +51,19 @@ pub struct Assembly {
     // Inner v2 assembly
     inner: super::v2::Assembly,
 }
+
+impl __Deref for Assembly {
+    type Target = super::v2::Assembly;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+impl DerefMut for Assembly {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
+    }
+}
 impl Assembly {
     /// Returns the external assembly reference
     #[must_use]
@@ -78,13 +82,8 @@ impl Assembly {
             initializers: vec![],
             inner: Default::default(),
         };
-        res.static_fields.insert(
-            "GlobalAtomicLock".into(),
-            (
-                Type::DotnetType(Box::new(DotnetTypeRef::object_type())),
-                false,
-            ),
-        );
+        res.static_fields
+            .insert("GlobalAtomicLock".into(), (Type::PlatformObject, false));
         let dotnet_ver = AssemblyExternRef {
             version: (6, 12, 0, 0),
         };
@@ -107,38 +106,33 @@ impl Assembly {
             .entry(CallSite::new(
                 None,
                 ".cctor".into(),
-                FnSig::new(&[], Type::Void),
+                FnSig::new([], Type::Void),
                 true,
             ))
             .or_insert_with(|| {
                 Method::new(
                     AccessModifer::Extern,
                     MethodType::Static,
-                    FnSig::new(&[], Type::Void),
+                    FnSig::new([], Type::Void),
                     ".cctor",
                     vec![
-                        (None, Type::Ptr(Type::U8.into())),
-                        (None, Type::Ptr(Type::U8.into())),
+                        (None, self.inner.nptr(Type::Int(Int::U8))),
+                        (None, self.inner.nptr(Type::Int(Int::U8))),
                     ],
                     vec![BasicBlock::new(
                         vec![
                             CILRoot::SetStaticField {
                                 descr: Box::new(StaticFieldDescriptor::new(
                                     None,
-                                    Type::DotnetType(Box::new(DotnetTypeRef::object_type())),
+                                    Type::PlatformObject,
                                     "GlobalAtomicLock".into(),
                                 )),
                                 value: CILNode::NewObj(Box::new(CallOpArgs {
                                     args: [].into(),
                                     site: Box::new(CallSite::new(
-                                        Some(DotnetTypeRef::object_type()),
+                                        Some(ClassRef::object(&mut self.inner)),
                                         ".ctor".into(),
-                                        FnSig::new(
-                                            &[Type::DotnetType(Box::new(
-                                                DotnetTypeRef::object_type(),
-                                            ))],
-                                            Type::Void,
-                                        ),
+                                        FnSig::new([Type::PlatformObject], Type::Void),
                                         false,
                                     )),
                                 })),
@@ -159,18 +153,18 @@ impl Assembly {
             .entry(CallSite::new(
                 None,
                 ".tcctor".into(),
-                FnSig::new(&[], Type::Void),
+                FnSig::new([], Type::Void),
                 true,
             ))
             .or_insert_with(|| {
                 Method::new(
                     AccessModifer::Extern,
                     MethodType::Static,
-                    FnSig::new(&[], Type::Void),
+                    FnSig::new([], Type::Void),
                     ".tcctor",
                     vec![
-                        (None, Type::Ptr(Type::U8.into())),
-                        (None, Type::Ptr(Type::U8.into())),
+                        (None, self.inner.nptr(Type::Int(Int::U8))),
+                        (None, self.inner.nptr(Type::Int(Int::U8))),
                     ],
                     vec![BasicBlock::new(vec![CILRoot::VoidRet.into()], 0, None)],
                     vec![],
@@ -199,30 +193,17 @@ impl Assembly {
     }
 
     /// Adds a definition of a type to the assembly.
-    pub fn add_typedef(&mut self, type_def: TypeDef) {
-        let dotnet_type: DotnetTypeRef =
-            std::convert::Into::<DotnetTypeRef>::into(type_def.clone())
-                .with_valuetype(type_def.extends().is_none());
-        let cref = super::v2::ClassRef::from_v1(&dotnet_type, &mut self.inner);
-
-        let cref = self.inner.alloc_class_ref(cref);
+    pub fn add_typedef(&mut self, type_def: ClassDef) {
+        let cref = self.alloc_class_ref(type_def.ref_to());
         if !self.inner().contains_def(cref) {
-            let def = super::v2::ClassDef::from_v1(&type_def, &mut self.inner);
-            assert_eq!(
-                *def,
-                cref,
-                "{} != {}",
-                self.inner.class_ref(*def).display(self.inner()),
-                self.inner.class_ref(cref).display(self.inner())
-            );
-            assert!(self.inner().contains_def(cref));
+            self.inner.class_def(type_def);
         }
     }
 
     /// Sets the entrypoint of the assembly to the method behind `CallSite`.
     pub fn set_entrypoint(&mut self, entrypoint: &CallSite) {
         assert!(self.entrypoint.is_none(), "ERROR: Multiple entrypoints");
-        let wrapper = crate::entrypoint::wrapper(entrypoint);
+        let wrapper = crate::entrypoint::wrapper(entrypoint, self.inner_mut());
         self.entrypoint = Some(wrapper.call_site());
         self.add_method(wrapper);
     }
@@ -239,7 +220,7 @@ impl Assembly {
         self.functions.get_mut(&CallSite::new(
             None,
             ".cctor".into(),
-            FnSig::new(&[], Type::Void),
+            FnSig::new([], Type::Void),
             true,
         ))
     }

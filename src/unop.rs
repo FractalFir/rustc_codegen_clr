@@ -1,9 +1,11 @@
 use crate::assembly::MethodCompileCtx;
+use crate::r#type::get_type;
 use cilly::call_site::CallSite;
 use cilly::cil_node::CILNode;
 use cilly::field_desc::FieldDescriptor;
 use cilly::fn_sig::FnSig;
-use cilly::{call, ld_field, DotnetTypeRef, Type};
+use cilly::v2::{ClassRef, Int};
+use cilly::{call, ld_field, Type};
 
 use rustc_middle::mir::{Operand, UnOp};
 use rustc_middle::ty::{IntTy, TyKind, UintTy};
@@ -20,9 +22,9 @@ pub fn unop<'tcx>(
         UnOp::Neg => match ty.kind() {
             TyKind::Int(IntTy::I128) => call!(
                 CallSite::boxed(
-                    DotnetTypeRef::int_128().into(),
+                    ClassRef::int_128(ctx.asm_mut()).into(),
                     "op_UnaryNegation".into(),
-                    FnSig::new(&[Type::I128], Type::I128),
+                    FnSig::new(&[Type::Int(Int::I128)], Type::Int(Int::I128)),
                     true,
                 ),
                 [parrent_node]
@@ -31,9 +33,9 @@ pub fn unop<'tcx>(
             TyKind::Int(IntTy::I16) => CILNode::Neg(CILNode::ConvI16(parrent_node.into()).into()),
             TyKind::Uint(UintTy::U128) => call!(
                 CallSite::boxed(
-                    DotnetTypeRef::uint_128().into(),
+                    ClassRef::uint_128(ctx.asm_mut()).into(),
                     "op_UnaryNegation".into(),
-                    FnSig::new(&[Type::U128], Type::U128),
+                    FnSig::new(&[Type::Int(Int::U128)], Type::Int(Int::U128)),
                     true,
                 ),
                 [parrent_node]
@@ -44,18 +46,18 @@ pub fn unop<'tcx>(
             TyKind::Bool => CILNode::Eq(CILNode::LdFalse.into(), parrent_node.into()),
             TyKind::Uint(UintTy::U128) => call!(
                 CallSite::boxed(
-                    DotnetTypeRef::uint_128().into(),
+                    ClassRef::uint_128(ctx.asm_mut()).into(),
                     "op_OnesComplement".into(),
-                    FnSig::new(&[Type::U128], Type::U128),
+                    FnSig::new(&[Type::Int(Int::U128)], Type::Int(Int::U128)),
                     true,
                 ),
                 [parrent_node]
             ),
             TyKind::Int(IntTy::I128) => call!(
                 CallSite::boxed(
-                    DotnetTypeRef::int_128().into(),
+                    ClassRef::int_128(ctx.asm_mut()).into(),
                     "op_OnesComplement".into(),
-                    FnSig::new(&[Type::I128], Type::I128),
+                    FnSig::new(&[Type::Int(Int::I128)], Type::Int(Int::I128)),
                     true,
                 ),
                 [parrent_node]
@@ -65,10 +67,16 @@ pub fn unop<'tcx>(
             _ => CILNode::Not(parrent_node.into()),
         },
         rustc_middle::mir::UnOp::PtrMetadata => {
-            let tpe = ctx.type_from_cache(ty).as_dotnet().unwrap();
+            let tpe = get_type(ty, ctx)
+                .as_class_ref()
+                .expect("Invalid pointer type");
             ld_field!(
                 parrent_node,
-                FieldDescriptor::new(tpe, Type::USize, crate::METADATA.into())
+                FieldDescriptor::new(
+                    tpe,
+                    cilly::v2::Type::Int(cilly::v2::Int::USize),
+                    crate::METADATA.into()
+                )
             )
         }
     }

@@ -1,7 +1,7 @@
 // TODO: Can't yet register thread-local deconstructors.
 add_method_from_trees!(
     push_panic_location,
-    [Type::ISize,],
+    [Type::Int(Int::ISize),],
     Type::Void,
     vec![BasicBlock::new(vec![CILRoot::VoidRet.into()], 0, None)],
     vec![],

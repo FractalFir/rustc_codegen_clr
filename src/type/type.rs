@@ -1,6 +1,12 @@
 use cilly::{
-    call, call_site::CallSite, cil_node::CILNode, fn_sig::FnSig, ldc_u32, ldc_u64,
-    utilis::escape_class_name, DotnetTypeRef, Type,
+    call,
+    call_site::CallSite,
+    cil_node::CILNode,
+    fn_sig::FnSig,
+    ldc_u32, ldc_u64,
+    utilis::escape_class_name,
+    v2::{Assembly, ClassRef, ClassRefIdx},
+    ClassRef, Type,
 };
 
 use rustc_middle::{
@@ -30,22 +36,22 @@ pub fn c_void(tcx: TyCtxt) -> Type {
     // Using formating preserves the generic hash.
     let name = format!("{demangled}");
     let name = escape_class_name(&name);
-    DotnetTypeRef::new::<&str, _>(None, name).into()
+    ClassRef::new::<&str, _>(None, name).into()
 }
 #[must_use]
 pub fn max_value(tpe: &Type) -> CILNode {
     match tpe {
-        Type::USize => call!(
+        Type::Int(Int::USize) => call!(
             CallSite::new_extern(
-                DotnetTypeRef::usize_type(),
+                ClassRef::usize_type(),
                 "get_MaxValue".into(),
-                FnSig::new(&[], Type::USize),
+                FnSig::new(&[], Type::Int(Int::USize)),
                 true
             ),
             []
         ),
-        Type::U64 => ldc_u64!(u64::MAX),
-        Type::U32 => ldc_u32!(u32::MAX),
+        Type::Int(Int::U64) => ldc_u64!(u64::MAX),
+        Type::Int(Int::U32) => ldc_u32!(u32::MAX),
         _ => todo!("Can't get the max value of {tpe:?}"),
     }
 }
@@ -89,8 +95,8 @@ pub fn magic_type<'tcx>(
         let assembly = garg_to_string(subst[0], ctx);
         let assembly = Some(assembly).filter(|assembly| !assembly.is_empty());
         let name = garg_to_string(subst[1], ctx);
-        let dotnet_tpe = DotnetTypeRef::new(assembly, name).with_valuetype(false);
-        Type::DotnetType(dotnet_tpe.into())
+        let dotnet_tpe = ClassRef::new(assembly, name).with_valuetype(false);
+        Type::ClassRef(dotnet_tpe.into())
     } else if name.contains(INTEROP_STRUCT_TPE_NAME) {
         assert!(
             subst.len() == 2,
@@ -99,8 +105,8 @@ pub fn magic_type<'tcx>(
         let assembly = garg_to_string(subst[0], ctx);
         let assembly = Some(assembly).filter(|assembly| !assembly.is_empty());
         let name = garg_to_string(subst[1], ctx);
-        let dotnet_tpe = DotnetTypeRef::new(assembly, name);
-        Type::DotnetType(dotnet_tpe.into())
+        let dotnet_tpe = ClassRef::new(assembly, name);
+        Type::ClassRef(dotnet_tpe.into())
     } else if name.contains(INTEROP_ARR_TPE_NAME) {
         assert!(subst.len() == 2, "Managed array reference must have exactly 2 generic arguments: type and dimension count!");
         let element = &subst[0].as_type().expect("Array type must be specified!");
@@ -140,11 +146,11 @@ pub fn garag_to_usize<'tcx>(garg: GenericArg<'tcx>, _ctx: TyCtxt<'tcx>) -> u64 {
 }
 /// Creates a tuple with no more than 8 elements.
 #[must_use]
-pub fn simple_tuple(elements: &[Type]) -> DotnetTypeRef {
+pub fn simple_tuple(elements: &[cilly::v2::Type], asm: &mut Assembly) -> ClassRefIdx {
     // Since no intering can happen at this stage, we can pass an empty AsmStringContainer safely.
-    let name = tuple_name(elements);
-
-    DotnetTypeRef::new::<&str, _>(None, name)
+    let name = tuple_name(elements, asm);
+    let name = asm.alloc_string(name);
+    asm.alloc_class_ref(ClassRef::new(name, None, true, [].into()))
 }
 use crate::utilis::{garg_to_string, monomorphize};
 

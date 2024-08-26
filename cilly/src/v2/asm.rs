@@ -221,7 +221,7 @@ impl Assembly {
         self.class_refs.alloc(cref)
     }
 
-    pub(crate) fn alloc_sig(&mut self, sig: FnSig) -> SigIdx {
+    pub fn alloc_sig(&mut self, sig: FnSig) -> SigIdx {
         self.sigs.alloc(sig)
     }
 
@@ -416,9 +416,8 @@ impl Assembly {
             .static_fields()
             .iter()
             .map(|(name, (tpe, thread_local))| {
-                let tpe = Type::from_v1(tpe, &mut empty);
                 let name = empty.alloc_string(name.clone());
-                (tpe, name, *thread_local)
+                (*tpe, name, *thread_local)
             })
             .collect();
         let main_module = empty.main_module();
@@ -432,7 +431,7 @@ impl Assembly {
         v1.extern_fns()
             .iter()
             .for_each(|((fn_name, sig, preserve_errno), lib_name)| {
-                let v2_sig = FnSig::from_v1(sig, &mut empty);
+                let v2_sig = FnSig::from_v1(sig);
                 let name = empty.alloc_string(fn_name.clone());
                 let sigidx = empty.alloc_sig(v2_sig);
                 let lib = empty.alloc_string(lib_name.clone());
@@ -903,7 +902,7 @@ fn export2() {
                 super::BasicBlock::new(
                     body1,
                     0,
-                    Some(vec![super::BasicBlock::new(hbody, 1, None)].into()),
+                    Some(vec![super::BasicBlock::new(hbody, 1, None)]),
                 ),
                 super::BasicBlock::new(body2, 2, None),
             ],
@@ -960,7 +959,7 @@ fn link() {
                     super::BasicBlock::new(
                         body1,
                         0,
-                        Some(vec![super::BasicBlock::new(hbody, 1, None)].into()),
+                        Some(vec![super::BasicBlock::new(hbody, 1, None)]),
                     ),
                     super::BasicBlock::new(body2, 2, None),
                 ],

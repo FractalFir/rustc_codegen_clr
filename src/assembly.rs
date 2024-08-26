@@ -19,7 +19,6 @@ use cilly::{
     cil_tree::CILTree,
     conv_usize, ldc_i32, ldc_u32, ldc_u64,
     method::{Method, MethodType},
-    ptr,
     static_field_desc::StaticFieldDescriptor,
     utilis::{self, encode},
     FnSig, Type,
@@ -122,7 +121,7 @@ fn allocation_initializer_method(
                         conv_usize!(ldc_u64!(align))
                     ]
                 ))
-                .cast_ptr(ptr!(Type::U8)),
+                .cast_ptr(ptr!(Type::Int(Int::U8))),
             }
             .into(),
         );
@@ -136,7 +135,7 @@ fn allocation_initializer_method(
                         i32::try_from(bytes.len()).expect("Static alloc too big")
                     )]
                 ))
-                .cast_ptr(ptr!(Type::U8)),
+                .cast_ptr(ptr!(Type::Int(Int::U8))),
             }
             .into(),
         );
@@ -162,7 +161,7 @@ fn allocation_initializer_method(
                     trees.push(
                         CILRoot::STIndI64(
                             (CILNode::LDLoc(0) + conv_usize!(ldc_u32!(offset.try_into().unwrap())))
-                                .cast_ptr(ptr!(Type::U64)),
+                                .cast_ptr(ptr!(Type::Int(Int::U64))),
                             CILNode::LdcU64(long),
                         )
                         .into(),
@@ -176,7 +175,7 @@ fn allocation_initializer_method(
                     trees.push(
                         CILRoot::STIndI32(
                             (CILNode::LDLoc(0) + conv_usize!(ldc_u32!(offset.try_into().unwrap())))
-                                .cast_ptr(ptr!(Type::U32)),
+                                .cast_ptr(ptr!(Type::Int(Int::U32))),
                             CILNode::LdcU32(long),
                         )
                         .into(),
@@ -216,12 +215,12 @@ fn allocation_initializer_method(
                 trees.push(
                     CILRoot::STIndISize(
                         (CILNode::LDLoc(0) + conv_usize!(ldc_u32!(offset)))
-                            .cast_ptr(ptr!(Type::USize)),
+                            .cast_ptr(ptr!(Type::Int(Int::USize))),
                         CILNode::LDFtn(
                             CallSite::new(None, function_name, call_info.sig().clone(), true)
                                 .into(),
                         )
-                        .cast_ptr(Type::USize),
+                        .cast_ptr(Type::Int(Int::USize)),
                     )
                     .into(),
                 );
@@ -231,8 +230,8 @@ fn allocation_initializer_method(
                 trees.push(
                     CILRoot::STIndISize(
                         (CILNode::LDLoc(0) + conv_usize!(ldc_u32!(offset)))
-                            .cast_ptr(ptr!(Type::USize)),
-                        ptr_alloc.cast_ptr(Type::USize),
+                            .cast_ptr(ptr!(Type::Int(Int::USize))),
+                        ptr_alloc.cast_ptr(Type::Int(Int::USize)),
                     )
                     .into(),
                 );
@@ -250,9 +249,9 @@ fn allocation_initializer_method(
     Method::new(
         AccessModifer::Private,
         MethodType::Static,
-        FnSig::new(&[], ptr!(Type::U8)),
+        FnSig::new(&[], ptr!(Type::Int(Int::U8))),
         &format!("init_{name}"),
-        vec![(Some("alloc_ptr".into()), ptr!(Type::U8))],
+        vec![(Some("alloc_ptr".into()), ptr!(Type::Int(Int::U8)))],
         vec![BasicBlock::new(trees, 0, None)],
         vec![],
     )
@@ -636,12 +635,12 @@ pub fn add_item<'tcx>(
                         args: [
                             CILNode::LDStaticField(Box::new(StaticFieldDescriptor::new(
                                 None,
-                                Type::I32,
+                                Type::Int(Int::I32),
                                 "argc".into(),
                             ))),
                             CILNode::LDStaticField(Box::new(StaticFieldDescriptor::new(
                                 None,
-                                ptr!(ptr!(Type::U8)),
+                                ptr!(ptr!(Type::Int(Int::U8))),
                                 "argv".into(),
                             ))),
                             call!(get_environ, []),
@@ -667,39 +666,40 @@ pub fn add_allocation(
     tcx: TyCtxt<'_>,
     tycache: &mut TyCache,
 ) -> CILNode {
-    let (thread_local, const_allocation, krate) = match tcx
-        .global_alloc(AllocId(alloc_id.try_into().expect("0 alloc id?")))
-    {
-        GlobalAlloc::Memory(alloc) => (false, alloc, None),
-        GlobalAlloc::Static(def_id) => {
-            let alloc = tcx.eval_static_initializer(def_id).unwrap();
-            let attrs = tcx.codegen_fn_attrs(def_id);
+    let (thread_local, const_allocation, krate) =
+        match tcx.global_alloc(AllocId(alloc_id.try_into().expect("0 alloc id?"))) {
+            GlobalAlloc::Memory(alloc) => (false, alloc, None),
+            GlobalAlloc::Static(def_id) => {
+                let alloc = tcx.eval_static_initializer(def_id).unwrap();
+                let attrs = tcx.codegen_fn_attrs(def_id);
 
-            (
-                attrs.flags.contains(
-                    rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags::THREAD_LOCAL,
-                ),
-                alloc,
-                Some(def_id.krate),
-            )
-        }
-        GlobalAlloc::VTable(..) => {
-            //TODO: handle VTables
-            let alloc_fld: IString = format!("al_{alloc_id:x}").into();
-            let field_desc = StaticFieldDescriptor::new(None, ptr!(Type::U8), alloc_fld.clone());
-            asm.add_static(ptr!(Type::U8), &alloc_fld, false);
-            return CILNode::LDStaticField(Box::new(field_desc));
-        }
-        GlobalAlloc::Function { .. } => {
-            //TODO: handle constant functions
-            let alloc_fld: IString = format!("al_{alloc_id:x}").into();
-            let field_desc = StaticFieldDescriptor::new(None, ptr!(Type::U8), alloc_fld.clone());
-            asm.add_static(ptr!(Type::U8), &alloc_fld, false);
+                (
+                    attrs.flags.contains(
+                        rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags::THREAD_LOCAL,
+                    ),
+                    alloc,
+                    Some(def_id.krate),
+                )
+            }
+            GlobalAlloc::VTable(..) => {
+                //TODO: handle VTables
+                let alloc_fld: IString = format!("al_{alloc_id:x}").into();
+                let field_desc =
+                    StaticFieldDescriptor::new(None, ptr!(Type::Int(Int::U8)), alloc_fld.clone());
+                asm.add_static(ptr!(Type::Int(Int::U8)), &alloc_fld, false);
+                return CILNode::LDStaticField(Box::new(field_desc));
+            }
+            GlobalAlloc::Function { .. } => {
+                //TODO: handle constant functions
+                let alloc_fld: IString = format!("al_{alloc_id:x}").into();
+                let field_desc =
+                    StaticFieldDescriptor::new(None, ptr!(Type::Int(Int::U8)), alloc_fld.clone());
+                asm.add_static(ptr!(Type::Int(Int::U8)), &alloc_fld, false);
 
-            return CILNode::LDStaticField(Box::new(field_desc));
-            //todo!("Function/Vtable allocation.");
-        }
-    };
+                return CILNode::LDStaticField(Box::new(field_desc));
+                //todo!("Function/Vtable allocation.");
+            }
+        };
 
     let const_allocation = const_allocation.inner();
 
@@ -719,7 +719,7 @@ pub fn add_allocation(
     } else {
         format!("al_{}_{}", encode(alloc_id), encode(byte_hash)).into()
     };
-    let field_desc = StaticFieldDescriptor::new(None, ptr!(Type::U8), alloc_fld.clone());
+    let field_desc = StaticFieldDescriptor::new(None, ptr!(Type::Int(Int::U8)), alloc_fld.clone());
     if !asm.static_fields().contains_key(&alloc_fld) {
         let init_method =
             allocation_initializer_method(const_allocation, &alloc_fld, tcx, asm, tycache);
@@ -774,19 +774,19 @@ pub fn add_allocation(
         }
         drop(blocks);
         asm.add_method(init_method);
-        asm.add_static(ptr!(Type::U8), &alloc_fld, thread_local);
+        asm.add_static(ptr!(Type::Int(Int::U8)), &alloc_fld, thread_local);
     }
     CILNode::LDStaticField(Box::new(field_desc))
 }
 pub fn add_const_value(asm: &mut Assembly, bytes: u128, tcx: TyCtxt) -> StaticFieldDescriptor {
     let alloc_fld: IString = format!("a_{bytes:x}").into();
     let raw_bytes = bytes.to_le_bytes();
-    let field_desc = StaticFieldDescriptor::new(None, ptr!(Type::U8), alloc_fld.clone());
+    let field_desc = StaticFieldDescriptor::new(None, ptr!(Type::Int(Int::U8)), alloc_fld.clone());
     if !asm.static_fields().contains_key(&alloc_fld) {
         let mut trees = vec![CILRoot::STLoc {
             local: 0,
             tree: call!(crate::cil::malloc(tcx), [conv_usize!(ldc_u32!(16))])
-                .cast_ptr(ptr!(Type::U8)),
+                .cast_ptr(ptr!(Type::Int(Int::U8))),
         }
         .into()];
         // This is an optimization if and only if there are enough zero-bytes to justify this.
@@ -821,9 +821,9 @@ pub fn add_const_value(asm: &mut Assembly, bytes: u128, tcx: TyCtxt) -> StaticFi
         let init_method = Method::new(
             AccessModifer::Public,
             MethodType::Static,
-            FnSig::new(&[], ptr!(Type::U8)),
+            FnSig::new(&[], ptr!(Type::Int(Int::U8))),
             &format!("init_a{bytes:x}"),
-            vec![(Some("alloc_ptr".into()), ptr!(Type::U8))],
+            vec![(Some("alloc_ptr".into()), ptr!(Type::Int(Int::U8)))],
             vec![block],
             vec![],
         );
@@ -846,7 +846,12 @@ pub fn add_const_value(asm: &mut Assembly, bytes: u128, tcx: TyCtxt) -> StaticFi
             trees.push(
                 CILRoot::SetStaticField {
                     descr: Box::new(
-                        StaticFieldDescriptor::new(None, ptr!(Type::U8), alloc_fld.clone()).clone(),
+                        StaticFieldDescriptor::new(
+                            None,
+                            ptr!(Type::Int(Int::U8)),
+                            alloc_fld.clone(),
+                        )
+                        .clone(),
                     ),
                     value: call!(
                         CallSite::new(
@@ -865,7 +870,7 @@ pub fn add_const_value(asm: &mut Assembly, bytes: u128, tcx: TyCtxt) -> StaticFi
         }
         drop(blocks);
         asm.add_method(init_method);
-        asm.add_static(ptr!(Type::U8), &alloc_fld, false);
+        asm.add_static(ptr!(Type::Int(Int::U8)), &alloc_fld, false);
     }
     field_desc
 }

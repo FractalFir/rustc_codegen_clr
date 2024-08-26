@@ -9,7 +9,8 @@ use cilly::{
     ld_field_address,
     method::{Method, MethodType},
     size_of,
-    type_def::TypeDef,
+    type_def::ClassDef,
+    v2::Assembly,
     Type,
 };
 use rustc_span::def_id::DefId;
@@ -62,7 +63,7 @@ pub fn closure_typedef(
     fields: &[Type],
     sig: &cilly::fn_sig::FnSig,
     layout: Layout,
-) -> TypeDef {
+) -> ClassDef {
     let name = closure_name(def_id, fields, sig);
     let field_iter = fields
         .iter()
@@ -80,7 +81,7 @@ pub fn closure_typedef(
         explicit_offsets.push(offset);
     }
     assert_eq!(fields.len(), explicit_offsets.len());
-    TypeDef::new(
+    ClassDef::new(
         AccessModifer::Public,
         name.into(),
         vec![],
@@ -96,8 +97,8 @@ pub fn closure_typedef(
 pub fn arr_name(element_count: usize, element: &Type) -> IString {
     cilly::arr_name(element_count, element)
 }
-pub fn tuple_name(elements: &[Type]) -> IString {
-    let generics: String = elements.iter().map(|t| cilly::mangle(t)).collect();
+pub fn tuple_name(elements: &[cilly::v2::Type], asm: &Assembly) -> IString {
+    let generics: String = elements.iter().map(|t| t.mangle(asm)).collect();
     format!(
         "Tuple{generic_count}{generics}",
         generic_count = generics.len()
@@ -106,8 +107,9 @@ pub fn tuple_name(elements: &[Type]) -> IString {
 }
 
 #[must_use]
-pub fn tuple_typedef(elements: &[Type], layout: Layout) -> TypeDef {
-    let name = tuple_name(elements);
+pub fn tuple_typedef(elements: &[Type], layout: Layout) -> ClassDef {
+    let name = todo!();
+    //tuple_name(elements);
     let field_iter = elements
         .iter()
         .enumerate()
@@ -123,7 +125,7 @@ pub fn tuple_typedef(elements: &[Type], layout: Layout) -> TypeDef {
         explicit_offsets.push(offset);
     }
 
-    TypeDef::new(
+    ClassDef::new(
         AccessModifer::Public,
         name,
         vec![],
@@ -136,7 +138,7 @@ pub fn tuple_typedef(elements: &[Type], layout: Layout) -> TypeDef {
     )
 }
 #[must_use]
-pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) -> TypeDef {
+pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) -> ClassDef {
     let name = arr_name(element_count, &element);
     // No string intering could have happended at this stage, so we can safely pass an empty string map.
 
@@ -144,7 +146,7 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
     let fields = vec![("f0".into(), element.clone())];
 
     //TODO:check array aligement
-    let mut def = TypeDef::new(
+    let mut def = ClassDef::new(
         AccessModifer::Public,
         name,
         vec![],
@@ -162,7 +164,7 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
             cilly::fn_sig::FnSig::new(
                 &[
                     Type::Ptr(Box::new(def.clone().into())),
-                    Type::USize,
+                    Type::Int(Int::USize),
                     element.clone(),
                 ],
                 Type::Void,
@@ -202,7 +204,10 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
             AccessModifer::Public,
             MethodType::Instance,
             cilly::fn_sig::FnSig::new(
-                &[Type::Ptr(Box::new(def.clone().into())), Type::USize],
+                &[
+                    Type::Ptr(Box::new(def.clone().into())),
+                    Type::Int(Int::USize),
+                ],
                 Type::Ptr(element.clone().into()),
             ),
             "get_Address",
@@ -233,7 +238,10 @@ pub fn get_array_type(element_count: usize, element: Type, explict_size: u64) ->
             AccessModifer::Public,
             MethodType::Instance,
             cilly::fn_sig::FnSig::new(
-                &[Type::Ptr(Box::new(def.clone().into())), Type::USize],
+                &[
+                    Type::Ptr(Box::new(def.clone().into())),
+                    Type::Int(Int::USize),
+                ],
                 element.clone(),
             ),
             "get_Item",

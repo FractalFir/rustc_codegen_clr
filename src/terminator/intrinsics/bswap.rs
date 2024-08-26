@@ -1,7 +1,5 @@
 use crate::{assembly::MethodCompileCtx, operand::handle_operand, place::place_set};
-use cilly::{
-    call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, fn_sig::FnSig, DotnetTypeRef,
-};
+use cilly::{call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, fn_sig::FnSig};
 use rustc_middle::{
     mir::{Operand, Place},
     ty::{TyKind, UintTy},
@@ -29,7 +27,7 @@ pub fn bswap<'tcx>(
             TyKind::Uint(_) | TyKind::Int(_) => {
                 call!(
                     CallSite::boxed(
-                        Some(DotnetTypeRef::binary_primitives()),
+                        Some(ClassRef::binary_primitives()),
                         "ReverseEndianness".into(),
                         FnSig::new(&[tpe.clone()], tpe),
                         true,

@@ -1,3 +1,4 @@
+use crate::v2::{tpe, Assembly, ClassRef, ClassRefIdx, Int, Type};
 use crate::{
     call,
     call_site::CallSite,
@@ -5,12 +6,10 @@ use crate::{
     cil_root::CILRoot,
     field_desc::FieldDescriptor,
     fn_sig::FnSig,
-    ptr,
     static_field_desc::StaticFieldDescriptor,
     v2::hashable::{HashableF32, HashableF64},
-    DotnetTypeRef, IString, Type,
+    IString,
 };
-
 use serde::{Deserialize, Serialize};
 /// A container for the arguments of a call, callvirt, or newobj instruction.
 #[derive(Clone, Eq, PartialEq, Serialize, Deserialize, Hash, Debug)]
@@ -225,34 +224,34 @@ pub enum CILNode {
     /// Gets the exception. Can only be used in handlers, only once per handler.
     GetException,
     /// Checks if `lhs` is of type `rhs`. If not, throws.
-    CheckedCast(Box<(CILNode, DotnetTypeRef)>),
+    CheckedCast(Box<(CILNode, ClassRefIdx)>),
     // Checks if `lhs` is of type `rhs`.  Returns a boolean.
-    IsInst(Box<(CILNode, DotnetTypeRef)>),
+    IsInst(Box<(CILNode, ClassRefIdx)>),
     /// Marks the inner pointer operation as volatile.
     Volatile(Box<Self>),
     UnboxAny(Box<Self>, Box<Type>),
     AddressOfStaticField(Box<StaticFieldDescriptor>),
-    LdNull(DotnetTypeRef),
+    LdNull(ClassRefIdx),
 }
 
 impl CILNode {
-    pub fn const_u128(value: u128) -> CILNode {
+    pub fn const_u128(value: u128, asm: &mut Assembly) -> CILNode {
         fn u128_low_u64(value: u128) -> u64 {
             u64::try_from(value & u128::from(u64::MAX)).expect("trucating cast error")
         }
         let low = u128_low_u64(value);
         let high = (value >> 64) as u64;
         let ctor_sig = FnSig::new(
-            &[
-                Type::ManagedReference(Type::U128.into()),
-                Type::U64,
-                Type::U64,
+            [
+                asm.nref(Type::Int(Int::U128)),
+                Type::Int(Int::U64),
+                Type::Int(Int::U64),
             ],
             Type::Void,
         );
         CILNode::NewObj(Box::new(CallOpArgs {
             site: CallSite::boxed(
-                Some(DotnetTypeRef::uint_128()),
+                Some(ClassRef::uint_128(asm)),
                 ".ctor".into(),
                 ctor_sig,
                 false,
@@ -264,23 +263,23 @@ impl CILNode {
             .into(),
         }))
     }
-    pub fn const_i128(value: u128) -> CILNode {
+    pub fn const_i128(value: u128, asm: &mut Assembly) -> CILNode {
         fn u128_low_u64(value: u128) -> u64 {
             u64::try_from(value & u128::from(u64::MAX)).expect("trucating cast error")
         }
         let low = u128_low_u64(value);
         let high = (value >> 64) as u64;
         let ctor_sig = FnSig::new(
-            &[
-                Type::ManagedReference(Type::I128.into()),
-                Type::U64,
-                Type::U64,
+            [
+                asm.nref(Type::Int(Int::U128)),
+                Type::Int(Int::U64),
+                Type::Int(Int::U64),
             ],
             Type::Void,
         );
         CILNode::NewObj(Box::new(CallOpArgs {
             site: CallSite::boxed(
-                Some(DotnetTypeRef::int_128()),
+                Some(ClassRef::int_128(asm)),
                 ".ctor".into(),
                 ctor_sig,
                 false,
@@ -293,14 +292,14 @@ impl CILNode {
         }))
     }
     /// Allocates a GC handle to the object, and converts that handle to a nint sized handleID.
-    pub fn managed_ref_to_handle(self) -> Self {
+    pub fn managed_ref_to_handle(self, asm: &mut Assembly) -> Self {
         let gc_handle = call!(
             CallSite::new(
-                Some(DotnetTypeRef::gc_handle()),
+                Some(ClassRef::gc_handle(asm)),
                 "Alloc".to_owned().into(),
                 FnSig::new(
-                    &[Type::DotnetType(Box::new(DotnetTypeRef::object_type()))],
-                    Type::DotnetType(Box::new(DotnetTypeRef::gc_handle()))
+                    [Type::PlatformObject],
+                    Type::ClassRef(ClassRef::gc_handle(asm))
                 ),
                 true
             ),
@@ -308,45 +307,41 @@ impl CILNode {
         );
         call!(
             CallSite::new(
-                Some(DotnetTypeRef::gc_handle()),
+                Some(ClassRef::gc_handle(asm)),
                 "op_Explicit".to_owned().into(),
                 FnSig::new(
-                    &[Type::DotnetType(Box::new(DotnetTypeRef::gc_handle()))],
-                    Type::ISize
+                    [Type::ClassRef(ClassRef::gc_handle(asm))],
+                    Type::Int(Int::ISize)
                 ),
                 true,
             ),
             [gc_handle]
         )
     }
-    pub fn gc_handle_to_obj(self, obj: DotnetTypeRef) -> Self {
+    pub fn gc_handle_to_obj(self, obj: ClassRefIdx, asm: &mut Assembly) -> Self {
         let gc_handle = call!(
             CallSite::new(
-                Some(DotnetTypeRef::gc_handle()),
+                Some(ClassRef::gc_handle(asm)),
                 "FromIntPtr".to_owned().into(),
                 FnSig::new(
-                    &[Type::ISize],
-                    Type::DotnetType(Box::new(DotnetTypeRef::gc_handle()))
+                    [Type::Int(Int::ISize)],
+                    Type::ClassRef(ClassRef::gc_handle(asm))
                 ),
                 true
             ),
             [self]
         );
         let gc_handle = CILNode::TemporaryLocal(Box::new((
-            Type::DotnetType(Box::new(DotnetTypeRef::gc_handle())),
+            Type::ClassRef(ClassRef::gc_handle(asm)),
             [CILRoot::SetTMPLocal { value: gc_handle }].into(),
             CILNode::LoadAddresOfTMPLocal,
         )));
+        let gc_handle_tpe = Type::ClassRef(ClassRef::gc_handle(asm));
         let object = call!(
             CallSite::new(
-                Some(DotnetTypeRef::gc_handle()),
+                Some(ClassRef::gc_handle(asm)),
                 "get_Target".to_owned().into(),
-                FnSig::new(
-                    &[Type::ManagedReference(Box::new(Type::DotnetType(
-                        Box::new(DotnetTypeRef::gc_handle())
-                    )))],
-                    Type::DotnetType(Box::new(DotnetTypeRef::object_type()))
-                ),
+                FnSig::new([asm.nref(gc_handle_tpe)], Type::PlatformObject),
                 false,
             ),
             [gc_handle]
@@ -356,26 +351,35 @@ impl CILNode {
     #[must_use]
     pub fn select(tpe: Type, a: Self, b: Self, predictate: Self) -> Self {
         match tpe {
-            Type::U128 => call!(
+            Type::Int(Int::U128) => call!(
                 CallSite::builtin(
                     "select_u128".to_owned().into(),
-                    FnSig::new(&[Type::U128, Type::U128, Type::Bool], Type::U128),
+                    FnSig::new(
+                        [Type::Int(Int::U128), Type::Int(Int::U128), Type::Bool],
+                        Type::Int(Int::U128)
+                    ),
                     true
                 ),
                 [a, b, predictate]
             ),
-            Type::I128 => call!(
+            Type::Int(Int::I128) => call!(
                 CallSite::builtin(
                     "select_i128".to_owned().into(),
-                    FnSig::new(&[Type::I128, Type::I128, Type::Bool], Type::I128),
+                    FnSig::new(
+                        [Type::Int(Int::I128), Type::Int(Int::I128), Type::Bool],
+                        Type::Int(Int::I128)
+                    ),
                     true
                 ),
                 [a, b, predictate]
             ),
-            Type::USize => call!(
+            Type::Int(Int::USize) => call!(
                 CallSite::builtin(
                     "select_usize".to_owned().into(),
-                    FnSig::new(&[Type::USize, Type::USize, Type::Bool], Type::USize),
+                    FnSig::new(
+                        [Type::Int(Int::USize), Type::Int(Int::USize), Type::Bool],
+                        Type::Int(Int::USize)
+                    ),
                     true
                 ),
                 [a, b, predictate]
@@ -383,80 +387,114 @@ impl CILNode {
             Type::Ptr(_) => call!(
                 CallSite::builtin(
                     "select_usize".to_owned().into(),
-                    FnSig::new(&[Type::USize, Type::USize, Type::Bool], Type::USize),
+                    FnSig::new(
+                        [Type::Int(Int::USize), Type::Int(Int::USize), Type::Bool],
+                        Type::Int(Int::USize)
+                    ),
                     true
                 ),
-                [a.cast_ptr(Type::USize), b.cast_ptr(Type::USize), predictate]
+                [
+                    a.cast_ptr(Type::Int(Int::USize)),
+                    b.cast_ptr(Type::Int(Int::USize)),
+                    predictate
+                ]
             )
             .cast_ptr(tpe),
-            Type::ISize => call!(
+            Type::Int(Int::ISize) => call!(
                 CallSite::builtin(
                     "select_isize".to_owned().into(),
-                    FnSig::new(&[Type::ISize, Type::ISize, Type::Bool], Type::ISize),
+                    FnSig::new(
+                        [Type::Int(Int::ISize), Type::Int(Int::ISize), Type::Bool],
+                        Type::Int(Int::ISize)
+                    ),
                     true
                 ),
                 [a, b, predictate]
             ),
-            Type::U64 => call!(
+            Type::Int(Int::U64) => call!(
                 CallSite::builtin(
                     "select_u64".to_owned().into(),
-                    FnSig::new(&[Type::U64, Type::U64, Type::Bool], Type::U64),
+                    FnSig::new(
+                        [Type::Int(Int::U64), Type::Int(Int::U64), Type::Bool],
+                        Type::Int(Int::U64)
+                    ),
                     true
                 ),
                 [a, b, predictate]
             ),
-            Type::I64 => call!(
+            Type::Int(Int::I64) => call!(
                 CallSite::builtin(
                     "select_i64".to_owned().into(),
-                    FnSig::new(&[Type::I64, Type::I64, Type::Bool], Type::I64),
+                    FnSig::new(
+                        [Type::Int(Int::I64), Type::Int(Int::I64), Type::Bool],
+                        Type::Int(Int::I64)
+                    ),
                     true
                 ),
                 [a, b, predictate]
             ),
-            Type::U32 => call!(
+            Type::Int(Int::U32) => call!(
                 CallSite::builtin(
                     "select_u32".to_owned().into(),
-                    FnSig::new(&[Type::U32, Type::U32, Type::Bool], Type::U32),
+                    FnSig::new(
+                        [Type::Int(Int::U32), Type::Int(Int::U32), Type::Bool],
+                        Type::Int(Int::U32)
+                    ),
                     true
                 ),
                 [a, b, predictate]
             ),
-            Type::I32 => call!(
+            Type::Int(Int::I32) => call!(
                 CallSite::builtin(
                     "select_i32".to_owned().into(),
-                    FnSig::new(&[Type::I32, Type::I32, Type::Bool], Type::I32),
+                    FnSig::new(
+                        [Type::Int(Int::I32), Type::Int(Int::I32), Type::Bool],
+                        Type::Int(Int::I32)
+                    ),
                     true
                 ),
                 [a, b, predictate]
             ),
-            Type::U16 => call!(
+            Type::Int(Int::U16) => call!(
                 CallSite::builtin(
                     "select_u16".to_owned().into(),
-                    FnSig::new(&[Type::U16, Type::U16, Type::Bool], Type::U16),
+                    FnSig::new(
+                        [Type::Int(Int::U16), Type::Int(Int::U16), Type::Bool],
+                        Type::Int(Int::U16)
+                    ),
                     true
                 ),
                 [a, b, predictate]
             ),
-            Type::I16 => call!(
+            Type::Int(Int::I16) => call!(
                 CallSite::builtin(
                     "select_i16".to_owned().into(),
-                    FnSig::new(&[Type::I16, Type::I16, Type::Bool], Type::I16),
+                    FnSig::new(
+                        [Type::Int(Int::I16), Type::Int(Int::I16), Type::Bool],
+                        Type::Int(Int::I16)
+                    ),
                     true
                 ),
                 [a, b, predictate]
             ),
-            Type::U8 | Type::Bool => call!(
+            Type::Int(Int::U8) | Type::Bool => call!(
                 CallSite::builtin(
                     "select_u8".to_owned().into(),
-                    FnSig::new(&[Type::U8, Type::U8, Type::Bool], Type::U8),
+                    FnSig::new(
+                        [Type::Int(Int::U8), Type::Int(Int::U8), Type::Bool],
+                        Type::Int(Int::U8)
+                    ),
                     true
                 ),
                 [a, b, predictate]
             ),
-            Type::I8 => call!(
+            Type::Int(Int::I8) => call!(
                 CallSite::builtin(
                     "select_i8".to_owned().into(),
-                    FnSig::new(&[Type::I8, Type::I8, Type::Bool], Type::I8),
+                    FnSig::new(
+                        [Type::Int(Int::I8), Type::Int(Int::I8), Type::Bool],
+                        Type::Int(Int::I8)
+                    ),
                     true
                 ),
                 [a, b, predictate]
@@ -625,14 +663,14 @@ impl CILNode {
             _ => (),
         }
     }
-    pub fn transmute_on_stack(self, src: Type, target: Type) -> Self {
+    pub fn transmute_on_stack(self, src: Type, target: Type, asm: &mut Assembly) -> Self {
         let tmp_loc = Self::TemporaryLocal(Box::new((
             src,
             Box::new([CILRoot::SetTMPLocal { value: self }]),
             CILNode::LoadAddresOfTMPLocal,
         )));
         Self::LdObj {
-            ptr: Box::new(crate::conv_usize!(tmp_loc).cast_ptr(ptr!(target.clone()))),
+            ptr: Box::new(crate::conv_usize!(tmp_loc).cast_ptr(asm.nptr(target))),
             obj: Box::new(target),
         }
     }
@@ -642,10 +680,10 @@ impl CILNode {
             matches!(
                 new_ptr,
                 Type::Ptr(_)
-                    | Type::ManagedReference(_)
-                    | Type::DelegatePtr(_)
-                    | Type::USize
-                    | Type::ISize
+                    | Type::Ref(_)
+                    | Type::FnPtr(_)
+                    | Type::Int(Int::USize)
+                    | Type::Int(Int::ISize)
             ),
             "Invalid new ptr {new_ptr:?}"
         );
@@ -660,7 +698,7 @@ impl CILNode {
         locals: &mut Vec<(Option<IString>, Type)>,
     ) {
         match self {
-            Self::LdNull(tpe)=>(),
+            Self::LdNull(_tpe)=>(),
             Self::UnboxAny(val,_tpe )=>val.allocate_tmps(curr_loc, locals),
             Self::Volatile(inner)=>inner.allocate_tmps(curr_loc, locals),
             Self::CheckedCast(inner)=>inner.0.allocate_tmps(curr_loc, locals),
@@ -751,7 +789,7 @@ impl CILNode {
             Self::TemporaryLocal(tmp_loc) => {
                 let tpe = &mut tmp_loc.0;
                 let end_loc = locals.len();
-                locals.push((None,tpe.clone()));
+                locals.push((None,*tpe));
                 let roots = &mut tmp_loc.1;
                 let main = &mut tmp_loc.2;
                 roots.iter_mut().for_each(|tree|tree.allocate_tmps(Some(end_loc as u32), locals));
@@ -806,599 +844,8 @@ impl CILNode {
         tmp_loc: Option<&Type>,
     ) -> Result<Self, String> {
         // TODO: make this check debug only
-        self.validate(vctx, tmp_loc)?;
+
         Ok(self)
-    }
-    pub fn validate(
-        &self,
-        vctx: ValidationContext,
-        tmp_loc: Option<&Type>,
-    ) -> Result<Type, String> {
-        match self {
-            Self::LDTypeToken(_) => Ok(Type::DotnetType(Box::new(
-                DotnetTypeRef::type_handle_type(),
-            ))),
-            Self::SubTrees(tm) => {
-                let (trees, main) = tm.as_ref();
-                for tree in trees.iter() {
-                    tree.validate(vctx, tmp_loc)?;
-                }
-                main.validate(vctx, tmp_loc)
-            }
-            Self::LdTrue => Ok(Type::Bool),
-            Self::LDField { addr, field } => {
-                let addr = addr.validate(vctx, tmp_loc)?;
-                match addr {
-                    Type::ManagedReference(tpe) | Type::Ptr(tpe) => {
-                        if tpe.as_dotnet() != Some(field.owner().clone()) {
-                            return Err(format!(
-                                "Mismatched pointer type. Expected {field:?} got {tpe:?}",
-                                field = field.owner().clone()
-                            ));
-                        }
-                    }
-                    Type::DotnetType(tpe) => {
-                        if tpe.as_ref() != field.owner() {
-                            return Err(format!(
-                                "Mismatched pointer type. Expected {field:?} got {tpe:?}",
-                                field = field.owner().clone()
-                            ));
-                        }
-                    }
-                    _ => {
-                        return Err(format!(
-                            "Tired to load a field of a non-pointer type! addr:{addr:?}"
-                        ))
-                    }
-                }
-                Ok(field.tpe().clone())
-            }
-            Self::LDFieldAdress { addr, field } => {
-                let addr = addr.validate(vctx, tmp_loc)?;
-                match addr {
-                    Type::ManagedReference(tpe) => {
-                        if tpe.as_dotnet() != Some(field.owner().clone()) {
-                            Err(format!(
-                                "Mismatched pointer type. Expected {field:?} got {tpe:?}",
-                                field = field.owner().clone()
-                            ))
-                        } else {
-                            Ok(Type::ManagedReference(Box::new(field.tpe().clone())))
-                        }
-                    }
-                    Type::Ptr(tpe) => {
-                        if tpe.as_dotnet() != Some(field.owner().clone()) {
-                            Err(format!(
-                                "Mismatched pointer type. Expected {field:?} got {tpe:?}",
-                                field = field.owner().clone()
-                            ))
-                        } else {
-                            Ok(Type::Ptr(Box::new(field.tpe().clone())))
-                        }
-                    }
-                    _ => Err(format!(
-                        "Tired to load a field of a non-pointer type! addr:{addr:?}"
-                    )),
-                }
-            }
-            Self::LDStaticField(sfd) => Ok(sfd.tpe().clone()),
-            Self::AddressOfStaticField(sfd) => {
-                Ok(Type::ManagedReference(Box::new(sfd.tpe().clone())))
-            }
-            Self::LDLocA(loc) => match vctx.locals().get(*loc as usize) {
-                Some(local) => Ok(Type::ManagedReference(Box::new(local.1.clone()))),
-                None => Err(format!("Local {loc} out of range.")),
-            },
-            Self::LDLoc(loc) => match vctx.locals().get(*loc as usize) {
-                Some(local) => Ok(local.1.clone()),
-                None => Err(format!("Local {loc} out of range.")),
-            },
-            Self::LDArg(arg) => match vctx.sig().inputs().get(*arg as usize) {
-                Some(arg) => Ok(arg.clone()),
-                None => Err(format!("Argument {arg} out of range.")),
-            },
-            Self::LDArgA(arg) => match vctx.sig().inputs().get(*arg as usize) {
-                Some(arg) => Ok(Type::ManagedReference(Box::new(arg.clone()))),
-                None => Err(format!("Argument {arg} out of range.")),
-            },
-            Self::LdObj { ptr, obj } => {
-                if **obj == Type::Void {
-                    return Err("Using ldobj to load void is not allowed".to_owned());
-                }
-                let ptr = ptr.validate(vctx, tmp_loc)?;
-                match ptr {
-                    Type::Ptr(pointed) | Type::ManagedReference(pointed) => {
-                        if pointed != *obj {
-                            if matches!(*pointed, Type::I128) {
-                                return Ok(Type::I128);
-                            }
-                            if matches!(*pointed, Type::U128) {
-                                return Ok(Type::U128);
-                            }
-                            Err(format!("Tried to load a object of type {obj:?} from a pointer to type {pointed:?}"))
-                        } else {
-                            Ok(*obj.clone())
-                        }
-                    }
-                    _ => Err(format!(
-                        "{ptr:?} is not a pointer type, so LdObj can't operate on it."
-                    )),
-                }
-            }
-            Self::LDIndISize { ptr } => {
-                let ptr = ptr.validate(vctx, tmp_loc)?;
-                if ptr != Type::Ptr(Box::new(Type::ISize))
-                    && ptr != Type::ManagedReference(Box::new(Type::ISize))
-                {
-                    return Err(format!("Tried to load isize from pointer of type {ptr:?}"));
-                }
-                Ok(Type::ISize)
-            }
-            Self::LDIndPtr { ptr, loaded_ptr } => {
-                let ptr = ptr.validate(vctx, tmp_loc)?;
-                if ptr != Type::Ptr(loaded_ptr.clone())
-                    && ptr != Type::ManagedReference(loaded_ptr.clone())
-                {
-                    return Err(format!(
-                        "Tried to load {loaded_ptr:?} from pointer of type {ptr:?}"
-                    ));
-                }
-                Ok(*(loaded_ptr).clone())
-            }
-            Self::LDIndUSize { ptr } => {
-                let ptr = ptr.validate(vctx, tmp_loc)?;
-                if ptr != Type::Ptr(Box::new(Type::USize))
-                    && ptr != Type::ManagedReference(Box::new(Type::USize))
-                {
-                    return Err(format!("Tried to load usize from pointer of type {ptr:?}"));
-                }
-                Ok(Type::USize)
-            }
-            Self::LDIndU32 { ptr } => {
-                let ptr = ptr.validate(vctx, tmp_loc)?;
-                if ptr != Type::Ptr(Box::new(Type::U32))
-                    && ptr != Type::ManagedReference(Box::new(Type::U32))
-                {
-                    return Err(format!("Tried to load isize from pointer of type {ptr:?}"));
-                }
-                Ok(Type::U32)
-            }
-            Self::LDIndI32 { ptr } => {
-                let ptr = ptr.validate(vctx, tmp_loc)?;
-                if ptr != Type::Ptr(Box::new(Type::I32))
-                    && ptr != Type::ManagedReference(Box::new(Type::I32))
-                {
-                    return Err(format!("Tried to load i32 from pointer of type {ptr:?}"));
-                }
-                Ok(Type::I32)
-            }
-            Self::LDIndF32 { ptr } => {
-                let ptr = ptr.validate(vctx, tmp_loc)?;
-                if ptr != Type::Ptr(Box::new(Type::F32))
-                    && ptr != Type::ManagedReference(Box::new(Type::F32))
-                {
-                    return Err(format!("Tried to load f32 from pointer of type {ptr:?}"));
-                }
-                Ok(Type::F32)
-            }
-            Self::LDIndF64 { ptr } => {
-                let ptr = ptr.validate(vctx, tmp_loc)?;
-                if ptr != Type::Ptr(Box::new(Type::F64))
-                    && ptr != Type::ManagedReference(Box::new(Type::F64))
-                {
-                    return Err(format!("Tried to load f64 from pointer of type {ptr:?}"));
-                }
-                Ok(Type::F64)
-            }
-            Self::LDIndU16 { ptr } => {
-                let ptr = ptr.validate(vctx, tmp_loc)?;
-                if ptr != Type::Ptr(Box::new(Type::U16))
-                    && ptr != Type::ManagedReference(Box::new(Type::U16))
-                {
-                    return Err(format!("Tried to load u16 from pointer of type {ptr:?}"));
-                }
-                Ok(Type::U16)
-            }
-            Self::LDIndI16 { ptr } => {
-                let ptr = ptr.validate(vctx, tmp_loc)?;
-                if ptr != Type::Ptr(Box::new(Type::I16))
-                    && ptr != Type::ManagedReference(Box::new(Type::I16))
-                {
-                    return Err(format!("Tried to load i16 from pointer of type {ptr:?}"));
-                }
-                Ok(Type::I16)
-            }
-            Self::LDIndU8 { ptr } => {
-                let ptr = ptr.validate(vctx, tmp_loc)?;
-                if ptr != Type::Ptr(Box::new(Type::U8))
-                    && ptr != Type::ManagedReference(Box::new(Type::U8))
-                {
-                    return Err(format!("Tried to load u8 from pointer of type {ptr:?}"));
-                }
-                Ok(Type::U8)
-            }
-            Self::LDIndI8 { ptr } => {
-                let ptr = ptr.validate(vctx, tmp_loc)?;
-                if ptr != Type::Ptr(Box::new(Type::I8))
-                    && ptr != Type::ManagedReference(Box::new(Type::I8))
-                {
-                    return Err(format!("Tried to load i8 from pointer of type {ptr:?}"));
-                }
-                Ok(Type::I8)
-            }
-            Self::LDIndI64 { ptr } => {
-                let ptr = ptr.validate(vctx, tmp_loc)?;
-                if ptr != Type::Ptr(Box::new(Type::I64))
-                    && ptr != Type::ManagedReference(Box::new(Type::I64))
-                {
-                    return Err(format!("Tried to load i8 from pointer of type {ptr:?}"));
-                }
-                Ok(Type::I64)
-            }
-            Self::LDIndU64 { ptr } => {
-                let ptr = ptr.validate(vctx, tmp_loc)?;
-                if ptr != Type::Ptr(Box::new(Type::U64))
-                    && ptr != Type::ManagedReference(Box::new(Type::U64))
-                {
-                    return Err(format!("Tried to load i8 from pointer of type {ptr:?}"));
-                }
-                Ok(Type::U64)
-            }
-            Self::LDIndBool { ptr } => {
-                let ptr = ptr.validate(vctx, tmp_loc)?;
-                if ptr != Type::Ptr(Box::new(Type::Bool))
-                    && ptr != Type::ManagedReference(Box::new(Type::Bool))
-                {
-                    return Err(format!("Tried to load bool from pointer of type {ptr:?}"));
-                }
-                Ok(Type::Bool)
-            }
-            Self::LdcU64(_) => Ok(Type::U64),
-            Self::LdcI64(_) => Ok(Type::I64),
-            Self::LdcU16(_) => Ok(Type::U16),
-            Self::LdcU32(_) => Ok(Type::U32),
-            Self::LdcU8(_) => Ok(Type::U8),
-            Self::LdcI32(_) => Ok(Type::I32),
-            Self::LdcI8(_) => Ok(Type::I8),
-            Self::LdcI16(_) => Ok(Type::I16),
-            Self::LdcF32(_) => Ok(Type::F32),
-            Self::LdcF64(_) => Ok(Type::F64),
-            Self::SignExtendToISize(src) => {
-                src.validate(vctx, tmp_loc)?;
-                Ok(Type::ISize)
-            }
-            Self::SignExtendToI64(src) => {
-                src.validate(vctx, tmp_loc)?;
-                Ok(Type::I64)
-            }
-            Self::SignExtendToU64(src) => {
-                src.validate(vctx, tmp_loc)?;
-                Ok(Type::U64)
-            }
-            Self::ZeroExtendToUSize(src) => {
-                let _tpe = src.validate(vctx, tmp_loc)?;
-                Ok(Type::USize)
-            }
-            Self::ZeroExtendToISize(src) => {
-                let _tpe = src.validate(vctx, tmp_loc)?;
-                Ok(Type::ISize)
-            }
-            Self::SignExtendToUSize(src) => {
-                let _tpe = src.validate(vctx, tmp_loc)?;
-                Ok(Type::USize)
-            }
-
-            Self::MRefToRawPtr(src) => {
-                let tpe = src.validate(vctx, tmp_loc)?;
-                if let Type::ManagedReference(pointed) = tpe {
-                    Ok(Type::Ptr(pointed))
-                } else if let Type::Ptr(pointed) = tpe {
-                    Ok(Type::Ptr(pointed))
-                } else {
-                    Err(format!(
-                        "MRefToRawPtr expected a managed ref, but got {tpe:?}"
-                    ))
-                }
-            }
-            Self::ZeroExtendToU64(src) => {
-                src.validate(vctx, tmp_loc)?;
-                Ok(Type::U64)
-            }
-            Self::ConvU32(src) => {
-                src.validate(vctx, tmp_loc)?;
-                Ok(Type::U32)
-            }
-            Self::ConvI32(src) => {
-                src.validate(vctx, tmp_loc)?;
-                Ok(Type::I32)
-            }
-            Self::ConvF32(src) => {
-                src.validate(vctx, tmp_loc)?;
-                Ok(Type::F32)
-            }
-            Self::ConvF64(src) | Self::ConvF64Un(src) => {
-                src.validate(vctx, tmp_loc)?;
-                Ok(Type::F64)
-            }
-            Self::ConvU16(src) => {
-                src.validate(vctx, tmp_loc)?;
-                Ok(Type::U16)
-            }
-            Self::ConvI16(src) => {
-                src.validate(vctx, tmp_loc)?;
-                Ok(Type::I16)
-            }
-            Self::ConvU8(src) => {
-                src.validate(vctx, tmp_loc)?;
-                Ok(Type::U8)
-            }
-            Self::ConvI8(src) => {
-                src.validate(vctx, tmp_loc)?;
-                Ok(Type::I8)
-            }
-            Self::LtUn(a, b)
-            | Self::Lt(a, b)
-            | Self::GtUn(a, b)
-            | Self::Gt(a, b)
-            | Self::Eq(a, b) => {
-                let a = a.validate(vctx, tmp_loc)?;
-                let b = b.validate(vctx, tmp_loc)?;
-                if a != b {
-                    return Err(format!(
-                        "Invalid arguments of the {self:?} instruction. {a:?} != {b:?}"
-                    ));
-                }
-
-                if !a.is_primitive_numeric() {
-                    return Err(format!(
-                        "The instruction {self:?} can't operate on a non-primitve CIL type {a:?}."
-                    ));
-                }
-                Ok(Type::Bool)
-            }
-            Self::Add(a, b)
-            | Self::Mul(a, b)
-            | Self::And(a, b)
-            | Self::Sub(a, b)
-            | Self::Or(a, b)
-            | Self::Rem(a, b)
-            | Self::RemUn(a, b)
-            | Self::Div(a, b)
-            | Self::DivUn(a, b)
-            | Self::XOr(a, b) => {
-                let a = a.validate(vctx, tmp_loc)?;
-                let b = b.validate(vctx, tmp_loc)?;
-                if a != b {
-                    match (&a, &b) {
-                        (Type::Ptr(_), Type::ISize | Type::USize) => return Ok(a),
-                        _ => {
-                            return Err(format!(
-                                "Invalid arguments of the Add instruction. {a:?} != {b:?}"
-                            ))
-                        }
-                    }
-                }
-
-                if !a.is_primitive_numeric() {
-                    return Err(format!(
-                        "The instruction Add can't operate on a non-primitve CIL type {a:?}."
-                    ));
-                }
-                Ok(a)
-            }
-            Self::Not(a) | Self::Neg(a) => {
-                let a = a.validate(vctx, tmp_loc)?;
-                if !a.is_primitive_numeric() {
-                    return Err(format!(
-                        "The instruction Add can't operate on a non-primitve CIL type {a:?}."
-                    ));
-                }
-                Ok(a)
-            }
-            Self::Shr(a, b) | Self::ShrUn(a, b) | Self::Shl(a, b) => {
-                let a = a.validate(vctx, tmp_loc)?;
-                let b = b.validate(vctx, tmp_loc)?;
-                if !a.is_primitive_numeric() {
-                    return Err(format!(
-                        "The instruction Add can't operate on a non-primitve CIL type {a:?}."
-                    ));
-                }
-                if !b.is_primitive_numeric() {
-                    return Err(format!(
-                        "The instruction Add can't operate on a non-primitve CIL type {a:?}."
-                    ));
-                }
-                Ok(a)
-            }
-            Self::PointerToConstValue(_) => Ok(Type::Ptr(Box::new(Type::U8))),
-            Self::LdStr(_) => Ok(Type::DotnetType(DotnetTypeRef::string_type().into())),
-            Self::LoadGlobalAllocPtr { alloc_id: _ } => Ok(Type::Ptr(Box::new(Type::U8))),
-            Self::NewObj(call_op_args) => {
-                if call_op_args.site.explicit_inputs().len() != call_op_args.args.len() {
-                    return Err(format!(
-                        "Expected {} arguments, got {}",
-                        call_op_args.site.explicit_inputs().len(),
-                        call_op_args.args.len()
-                    ));
-                }
-                for (arg, tpe) in call_op_args
-                    .args
-                    .iter()
-                    .zip(call_op_args.site.explicit_inputs().iter())
-                {
-                    let arg = arg.validate(vctx, tmp_loc)?;
-                    if arg != *tpe {
-                        match (&arg, &tpe) {
-                            (Type::ManagedReference(arg), Type::Ptr(tpe)) => {
-                                if arg != tpe {
-                                    return Err(format!(
-                                        "Expected an argument of type {tpe:?}, but got {arg:?} when calling the ctor of {class:?}", class = call_op_args.site.class() 
-                                    ));
-                                }
-                            }
-                            (Type::DelegatePtr(_),Type::ISize)=>(),
-                            (Type::DotnetType(ty_a), Type::DotnetType(ty_b)) if !ty_a.is_valuetype() && !ty_b.is_valuetype() =>(),
-                            _ => {
-                                return Err(format!(
-                                    "Expected an argument of type {tpe:?}, but got {arg:?} when calling the ctor of {class:?}", class = call_op_args.site.class()
-                                ))
-                            }
-                        };
-                    }
-                }
-                match call_op_args.site.class() {
-                    Some(class) => {
-                        if class.asm() == Some("System.Runtime") {
-                            if *class == DotnetTypeRef::int_128() {
-                                return Ok(Type::I128);
-                            }
-                            if *class == DotnetTypeRef::uint_128() {
-                                return Ok(Type::U128);
-                            }
-                        }
-                        Ok(Type::DotnetType(class.clone().into()))
-                    }
-                    None => Err("Newobj instruction witn no class specified".to_owned()),
-                }
-            }
-            Self::Call(call_op_args) | Self::CallVirt(call_op_args) => {
-                if call_op_args.site.inputs().len() != call_op_args.args.len() {
-                    return Err(format!(
-                        "Expected {} arguments, got {}",
-                        call_op_args.site.inputs().len(),
-                        call_op_args.args.len()
-                    ));
-                }
-                for (arg_node, arg_tpe) in call_op_args
-                    .args
-                    .iter()
-                    .zip(call_op_args.site.inputs().iter())
-                {
-                    let got = arg_node.validate(vctx, tmp_loc)?;
-
-                    if got != *arg_tpe {
-                        if matches!(arg_tpe, Type::USize) && matches!(got, Type::Ptr(_)) {
-                            continue;
-                        }
-                        if matches!(arg_tpe, Type::GenericArg(_)) {
-                            continue;
-                        }
-                        if (matches!(arg_tpe, Type::ManagedReference(_))
-                            && matches!(got, Type::Ptr(_)))
-                            || (matches!(arg_tpe, Type::Ptr(_))
-                                && matches!(got, Type::ManagedReference(_)))
-                        {
-                            // TODO: check the mref and ptr point to the same type.
-                            continue;
-                        }
-                        if let Type::DotnetType(dt) = arg_tpe {
-                            if dt.name_path().contains("System.Object") {
-                                continue;
-                            }
-                        }
-                        return Err(format!(
-                            "Expected an argument of type {arg_tpe:?}, but got {got:?} when calling {name}",name = call_op_args.site.name()
-                        ));
-                    }
-                }
-                match call_op_args.site.signature().output() {
-                    Type::GenericArg(arg) => {
-                        Ok(call_op_args.site.class().unwrap().generics()[*arg as usize].clone())
-                    }
-                    _ => Ok(call_op_args.site.signature().output().clone()),
-                }
-            }
-            Self::CallI(packed) => {
-                let (sig, ptr, args) = packed.as_ref();
-                let _ptr = ptr.validate(vctx, tmp_loc)?;
-                if sig.inputs().len() != args.len() {
-                    return Err(format!(
-                        "Expected {} arguments, got {}",
-                        sig.inputs().len(),
-                        args.len()
-                    ));
-                }
-                for (arg, tpe) in args.iter().zip(sig.inputs().iter()) {
-                    let arg = arg.validate(vctx, tmp_loc)?;
-                    if arg != *tpe {
-                        return Err(format!(
-                            "Expected an argument of type {tpe:?}, but got {arg:?} in indirect call."
-                        ));
-                    }
-                }
-                Ok(sig.output().clone())
-            }
-            Self::CastPtr { val, new_ptr } => {
-                let val = val.validate(vctx, tmp_loc)?;
-                match val {
-                    Type::USize => (),
-                    Type::ISize => (),
-                    Type::Ptr(_) => (),
-                    // ManagedReference is accepted, because sometimes we use this to transmute local
-                    Type::ManagedReference(_) => (),
-                    Type::DelegatePtr(_) => (),
-                    _ => {
-                        return Err(format!(
-                            "Invalid CastPtr input: {val:?} is not a pointer or usize/isize"
-                        ))
-                    }
-                }
-                Ok(*new_ptr.clone())
-            }
-            Self::LdFalse => Ok(Type::Bool),
-            Self::SizeOf(_) => Ok(Type::I32),
-            Self::LDFtn(ftn) => Ok(Type::DelegatePtr(Box::new(ftn.signature().clone()))),
-            Self::TemporaryLocal(tmp) => {
-                let (tpe, roots, main) = tmp.as_ref();
-                for root in roots {
-                    root.validate(vctx, Some(tpe))?;
-                }
-                main.validate(vctx, Some(tpe))
-            }
-            Self::LoadAddresOfTMPLocal => Ok(Type::ManagedReference(Box::new(
-                tmp_loc
-                    .cloned()
-                    .ok_or_else(|| ("TMP local requred when no tmp locals!".to_string()))?,
-            ))),
-            Self::LoadTMPLocal => tmp_loc
-                .cloned()
-                .ok_or_else(|| ("TMP local requred when no tmp locals!".to_string())),
-            Self::LDElelemRef { arr, idx } => {
-                let arr = arr.validate(vctx, tmp_loc)?;
-                let _idx = idx.validate(vctx, tmp_loc)?;
-                match arr {
-                    Type::ManagedArray { element, dims: _ } => Ok(*element),
-                    _ => panic!("{arr:?} is not an array!"),
-                }
-            }
-            Self::LDLen { arr } => {
-                let arr = arr.validate(vctx, tmp_loc)?;
-                match arr {
-                    Type::ManagedArray {
-                        element: _,
-                        dims: _,
-                    } => Ok(Type::I32),
-                    _ => panic!("{arr:?} is not an array!"),
-                }
-            }
-            Self::LocAlloc { size } => {
-                size.validate(vctx, tmp_loc)?;
-                Ok(ptr!(Type::Void))
-            }
-            Self::LocAllocAligned { tpe, align: _ } => Ok(ptr!(tpe.as_ref().clone())),
-            Self::Volatile(inner) => inner.validate(vctx, tmp_loc),
-            Self::UnboxAny(val, tpe) => {
-                let _val = val.validate(vctx, tmp_loc)?;
-                Ok(tpe.as_ref().clone())
-            }
-            Self::CheckedCast(inner) => {
-                let (val, tpe) = inner.as_ref();
-                let _val = val.validate(vctx, tmp_loc)?;
-                Ok(Type::DotnetType(Box::new(tpe.clone())))
-            }
-            Self::LdNull(tpe) => Ok(Type::DotnetType(Box::new(tpe.clone()))),
-            _ => todo!("Can't check the type safety of {self:?}"),
-        }
     }
 
     pub(crate) fn try_const_eval(&self) -> Option<Self> {
