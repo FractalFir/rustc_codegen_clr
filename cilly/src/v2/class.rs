@@ -56,10 +56,10 @@ impl ClassRef {
             generics,
         }
     }
-    pub fn interlocked(asm: &mut super::Assembly) -> Self {
+    pub fn interlocked(asm: &mut super::Assembly) -> ClassRefIdx {
         let name = asm.alloc_string("System.Threading.Interlocked");
-        let asm = Some(asm.alloc_string("System.Threading"));
-        Self::new(name, asm, false, vec![].into())
+        let asm_name = Some(asm.alloc_string("System.Threading"));
+        asm.alloc_class_ref(ClassRef::new(name, asm_name, false, vec![].into()))
     }
 
     /// Returns the assembly containing this typedef
@@ -79,10 +79,29 @@ impl ClassRef {
         &self.generics
     }
     /// The .NET math class
-    pub fn math(asm: &mut Assembly) -> Self {
+    pub fn math(asm: &mut Assembly) -> ClassRefIdx {
         let name = asm.alloc_string("System.Math");
-        let asm = Some(asm.alloc_string("System.Runtime"));
-        Self::new(name, asm, false, vec![].into())
+        let asm_name = Some(asm.alloc_string("System.Runtime"));
+        asm.alloc_class_ref(ClassRef::new(name, asm_name, false, vec![].into()))
+    }
+    /// Retusn a reference to the class `System.Double`
+    pub fn double(asm: &mut Assembly) -> ClassRefIdx {
+        let name = asm.alloc_string("System.Double");
+        let asm_name = Some(asm.alloc_string("System.Runtime"));
+        asm.alloc_class_ref(ClassRef::new(name, asm_name, false, vec![].into()))
+    }
+    /// Retusn a reference to the class `System.Single`
+    pub fn single(asm: &mut Assembly) -> ClassRefIdx {
+        let name = asm.alloc_string("System.Single");
+        let asm_name = Some(asm.alloc_string("System.Runtime"));
+        asm.alloc_class_ref(ClassRef::new(name, asm_name, false, vec![].into()))
+    }
+    /// Returns a reference to the class `System.MathF`
+    #[must_use]
+    pub fn mathf(asm: &mut Assembly) -> ClassRefIdx {
+        let name: StringIdx = asm.alloc_string("System.MathF");
+        let asm_name = Some(asm.alloc_string("System.Runtime"));
+        asm.alloc_class_ref(ClassRef::new(name, asm_name, false, [].into()))
     }
     /// Returns a reference to the `System.UInt128` type.
     pub fn uint_128(asm: &mut Assembly) -> ClassRefIdx {
@@ -102,6 +121,18 @@ impl ClassRef {
         let asm_name = Some(asm.alloc_string("System.Runtime"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, true, [].into()))
     }
+    /// Returns a reference to the `System.UInt16` type.
+    pub fn uint16(asm: &mut Assembly) -> ClassRefIdx {
+        let name = asm.alloc_string("System.UInt16");
+        let asm_name = Some(asm.alloc_string("System.Runtime"));
+        asm.alloc_class_ref(ClassRef::new(name, asm_name, true, [].into()))
+    }
+    /// Returns a reference to the `System.Int16` type.
+    pub fn int16(asm: &mut Assembly) -> ClassRefIdx {
+        let name = asm.alloc_string("System.Int16");
+        let asm_name = Some(asm.alloc_string("System.Runtime"));
+        asm.alloc_class_ref(ClassRef::new(name, asm_name, true, [].into()))
+    }
     /// Returns a reference to the `System.IntPtr` type.
     pub fn isize_type(asm: &mut Assembly) -> ClassRefIdx {
         let name = asm.alloc_string("System.IntPtr");
@@ -111,6 +142,18 @@ impl ClassRef {
     /// Returns a reference to the `System.Half` type.
     pub fn half(asm: &mut Assembly) -> ClassRefIdx {
         let name = asm.alloc_string("System.Half");
+        let asm_name = Some(asm.alloc_string("System.Runtime"));
+        asm.alloc_class_ref(ClassRef::new(name, asm_name, true, [].into()))
+    }
+    /// Returns a reference to the `System.Byte` type.
+    pub fn byte(asm: &mut Assembly) -> ClassRefIdx {
+        let name = asm.alloc_string("System.Byte");
+        let asm_name = Some(asm.alloc_string("System.Runtime"));
+        asm.alloc_class_ref(ClassRef::new(name, asm_name, true, [].into()))
+    }
+    /// Returns a reference to the `System.SByte` type.
+    pub fn sbyte(asm: &mut Assembly) -> ClassRefIdx {
+        let name = asm.alloc_string("System.SByte");
         let asm_name = Some(asm.alloc_string("System.Runtime"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, true, [].into()))
     }
@@ -131,6 +174,24 @@ impl ClassRef {
         let name = asm.alloc_string("System.Object");
         let asm_name = Some(asm.alloc_string("System.Runtime"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, false, [].into()))
+    }
+    /// Returns a reference to the `System.Threading`
+    pub fn thread(asm: &mut Assembly) -> ClassRefIdx {
+        let name = asm.alloc_string("System.Threading.Thread");
+        let asm_name = Some(asm.alloc_string("System.Threading.Thread"));
+        asm.alloc_class_ref(ClassRef::new(name, asm_name, false, [].into()))
+    }
+    /// Returns a reference to the `System.Type`
+    pub fn type_type(asm: &mut Assembly) -> ClassRefIdx {
+        let name = asm.alloc_string("System.Type");
+        let asm_name = Some(asm.alloc_string("System.Runtime"));
+        asm.alloc_class_ref(ClassRef::new(name, asm_name, false, [].into()))
+    }
+    /// Returns a reference to the `System.RuntimeTypeHandle`
+    pub fn runtime_type_hadle(asm: &mut Assembly) -> ClassRefIdx {
+        let name = asm.alloc_string("System.RuntimeTypeHandle");
+        let asm_name = Some(asm.alloc_string("System.Runtime"));
+        asm.alloc_class_ref(ClassRef::new(name, asm_name, true, [].into()))
     }
     /// Returns a reference to the `System.String`
     pub fn exception(asm: &mut Assembly) -> ClassRefIdx {
@@ -198,6 +259,27 @@ impl ClassRef {
     pub fn native_mem(asm: &mut Assembly) -> ClassRefIdx {
         let name = asm.alloc_string("System.Runtime.InteropServices.NativeMemory");
         let asm_name = Some(asm.alloc_string("System.Runtime.InteropServices"));
+        asm.alloc_class_ref(ClassRef::new(name, asm_name, false, [].into()))
+    }
+    /// Returns a reference to the class `System.Numerics.BitOperations`
+    #[must_use]
+    pub fn bit_operations(asm: &mut Assembly) -> ClassRefIdx {
+        let name: StringIdx = asm.alloc_string("System.Numerics.BitOperations");
+        let asm_name = Some(asm.alloc_string("System.Runtime"));
+        asm.alloc_class_ref(ClassRef::new(name, asm_name, false, [].into()))
+    }
+    /// Returns a reference to the class `System.Buffers.Binary.BinaryPrimitives`
+    #[must_use]
+    pub fn binary_primitives(asm: &mut Assembly) -> ClassRefIdx {
+        let name: StringIdx = asm.alloc_string("System.Buffers.Binary.BinaryPrimitives");
+        let asm_name = Some(asm.alloc_string("System.Memory"));
+        asm.alloc_class_ref(ClassRef::new(name, asm_name, false, [].into()))
+    }
+    /// Returns a reference to the class `System.MidpointRounding`
+    #[must_use]
+    pub fn midpoint_rounding(asm: &mut Assembly) -> ClassRefIdx {
+        let name: StringIdx = asm.alloc_string("System.MidpointRounding");
+        let asm_name = Some(asm.alloc_string("System.Runtime"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, false, [].into()))
     }
 }

@@ -1,25 +1,19 @@
-/// Cached type handler
-pub(crate) mod tycache;
 /// A representation of a primitve type or a reference.
 pub mod r#type;
-/// Contains a reperesentation of a non-primitve .NET type(class,struct)
-pub(crate) mod type_def;
+
 use std::num::NonZeroU32;
 
 use crate::{
     fn_ctx::MethodCompileCtx,
     utilis::{adt::FieldOffsetIterator, garg_to_string},
 };
-use cilly::v2::{
-    cilnode::MethodKind, Access, Assembly, ClassDef, ClassDefIdx, ClassRef, ClassRefIdx, Float,
-    Int, MethodDef, StringIdx, Type,
-};
+use cilly::v2::{Access, ClassDef, ClassRef, ClassRefIdx, Float, Int, StringIdx, Type};
 pub use r#type::*;
 use rustc_middle::ty::{AdtDef, AdtKind, FloatTy, IntTy, List, ParamEnv, Ty, TyKind, UintTy};
 use rustc_span::def_id::DefId;
 use rustc_target::abi::Layout;
-pub use tycache::*;
-pub use type_def::*;
+//pub use tycache::*;
+//pub use type_def::*;
 
 #[must_use]
 pub fn from_int(int_tpe: &IntTy) -> cilly::Type {
@@ -51,7 +45,7 @@ pub fn from_uint(uint_tpe: &UintTy) -> cilly::Type {
 pub fn from_float(float: &FloatTy) -> cilly::Type {
     use cilly::Type;
     match float {
-        FloatTy::F16 => Type::F16,
+        FloatTy::F16 => Type::Float(Float::F16),
         FloatTy::F32 => Type::Float(Float::F32),
         FloatTy::F64 => Type::Float(Float::F64),
         FloatTy::F128 => Type::Float(Float::F128),
@@ -446,8 +440,9 @@ fn enum_<'tcx>(
     // Handle the enum tag.
     match &layout.variants {
         rustc_target::abi::Variants::Single { index: _ } => {
-            let (tag_type, offset) = crate::utilis::adt::enum_tag_info(layout.layout, ctx.tcx());
-            let tag_type = Type::from_v1(&tag_type, ctx.asm_mut());
+            let (tag_type, offset) =
+                crate::utilis::adt::enum_tag_info(layout.layout, ctx.asm_mut());
+
             if tag_type != Type::Void {
                 fields.push((
                     tag_type,
@@ -467,8 +462,8 @@ fn enum_<'tcx>(
             match tag_encoding {
                 rustc_target::abi::TagEncoding::Direct => {
                     let (tag_type, offset) =
-                        crate::utilis::adt::enum_tag_info(layout.layout, ctx.tcx());
-                    let tag_type = Type::from_v1(&tag_type, ctx.asm_mut());
+                        crate::utilis::adt::enum_tag_info(layout.layout, ctx.asm_mut());
+
                     if tag_type != Type::Void {
                         fields.push((
                             tag_type,
@@ -483,9 +478,9 @@ fn enum_<'tcx>(
                     ..
                 } => {
                     let (tag_type, offset) =
-                        crate::utilis::adt::enum_tag_info(layout.layout, ctx.tcx());
+                        crate::utilis::adt::enum_tag_info(layout.layout, ctx.asm_mut());
                     let offsets = FieldOffsetIterator::fields((*layout.layout.0).clone());
-                    let tag_type = Type::from_v1(&tag_type, ctx.asm_mut());
+
                     assert!(offsets.count() > 0, "layout.fields:{:?}", layout.fields);
                     if tag_type != Type::Void {
                         fields.push((
@@ -578,6 +573,7 @@ fn union_<'tcx>(
         Some(NonZeroU32::new(layout.layout.size().bytes().try_into().unwrap()).unwrap()),
     )
 }
+/*
 fn array_methods(element_count: usize, arr_class: ClassDefIdx, element: Type, asm: &mut Assembly) {
     if element_count > 0 {
         let mimpl = cilly::v2::MethodImpl::MethodBody {
@@ -706,4 +702,38 @@ fn array_methods(element_count: usize, arr_class: ClassDefIdx, element: Type, as
         //def.add_method(to_string);
     }
     def
+}
+*/
+#[must_use]
+pub fn escape_field_name(name: &str) -> String {
+    match name.chars().next() {
+        None => "fld".into(),
+        Some(first) => {
+            if !(first.is_alphabetic() || first == '_')
+        || name == "value"
+        || name == "flags"
+        || name == "alignment"
+        || name == "init"
+        || name == "string"
+        || name == "nint"
+        || name == "nuint"
+        || name == "out"
+        || name == "rem"
+        || name == "add"
+        || name == "div"
+        || name == "error"
+        || name == "opt"
+        || name == "private"
+        || name == "public"
+        || name == "object"
+        || name == "class"
+        //FIXME: this is a sign of a bug. ALL fields not starting with a letter should have been caught by the statement above.
+        || name == "0"
+            {
+                format!("m_{name}")
+            } else {
+                name.into()
+            }
+        }
+    }
 }

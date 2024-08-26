@@ -51,7 +51,7 @@ pub fn generate_atomic(
 
         let cmpxchng_sig = asm.sig([tref, tpe, tpe], tpe);
         let interlocked = ClassRef::interlocked(asm);
-        let interlocked = asm.alloc_class_ref(interlocked);
+
         let compare_exchange = asm.alloc_string("CompareExchange");
         let mref = asm.alloc_methodref(MethodRef::new(
             interlocked,

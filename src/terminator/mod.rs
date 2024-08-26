@@ -1,7 +1,14 @@
 use crate::{assembly::MethodCompileCtx, place::place_set};
 use cilly::{
-    call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, cil_tree::CILTree, conv_usize,
-    field_desc::FieldDescriptor, ld_field, ldc_u32, ptr, FnSig, Type,
+    call_site::CallSite,
+    cil_node::CILNode,
+    cil_root::CILRoot,
+    cil_tree::CILTree,
+    conv_usize,
+    field_desc::FieldDescriptor,
+    ld_field, ldc_u32,
+    v2::{Assembly, Int},
+    FnSig, Type,
 };
 use rustc_middle::{
     mir::{BasicBlock, Operand, Place, SwitchTargets, Terminator, TerminatorKind},
@@ -46,12 +53,7 @@ pub fn handle_call_terminator<'tycxt>(
             let sig = ctx
                 .tcx()
                 .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), *sig);
-            let sig = crate::function_sig::from_poly_sig(
-                ctx.instance(),
-                ctx.tcx(),
-                ctx.type_cache(),
-                sig,
-            );
+            let sig = crate::function_sig::from_poly_sig(ctx, sig);
             let mut arg_operands = Vec::new();
             for arg in args {
                 arg_operands.push(crate::operand::handle_operand(&arg.node, ctx));
@@ -83,15 +85,6 @@ pub fn handle_call_terminator<'tycxt>(
         }
         _ => todo!("Can't call type {func_ty:?}"),
     }
-    if cilly::mem_checks() {
-        trees.push(
-            CILRoot::Call {
-                site: Box::new(CallSite::mcheck_check_all()),
-                args: [].into(),
-            }
-            .into(),
-        );
-    }
     // Final Jump
     if let Some(target) = target {
         trees.push(
@@ -102,7 +95,7 @@ pub fn handle_call_terminator<'tycxt>(
             .into(),
         );
     } else {
-        trees.push(CILRoot::throw("Function returning `Never` returned!").into());
+        trees.push(CILRoot::throw("Function returning `Never` returned!", ctx.asm_mut()).into());
     }
     trees
 }
@@ -135,7 +128,7 @@ pub fn handle_terminator<'tcx>(
         TerminatorKind::SwitchInt { discr, targets } => {
             let ty = ctx.monomorphize(discr.ty(ctx.body(), ctx.tcx()));
             let discr = crate::operand::handle_operand(discr, ctx);
-            handle_switch(ty, &discr, targets)
+            handle_switch(ty, &discr, targets, ctx.asm_mut())
         }
         TerminatorKind::Assert {
             cond: _,
@@ -193,12 +186,13 @@ pub fn handle_terminator<'tcx>(
                                 crate::METADATA.into()
                             )
                         );
+                        let void_ptr = ctx.asm_mut().nptr(Type::Void);
                         // Get the addres of the object
                         let obj_ptr = ld_field!(
                             fat_ptr_address,
                             FieldDescriptor::new(
                                 fat_ptr_type.as_class_ref().unwrap(),
-                                Type::Ptr(Type::Void.into()),
+                                void_ptr,
                                 crate::DATA_PTR.into()
                             )
                         );
@@ -207,14 +201,12 @@ pub fn handle_terminator<'tcx>(
                             rustc_middle::ty::vtable::COMMON_VTABLE_ENTRIES_DROPINPLACE,
                             0
                         );
+                        let sig = ctx.asm_mut().sig([void_ptr], Type::Void);
                         let drop_fn_ptr = CILNode::LDIndPtr {
-                            ptr: Box::new(vtable_ptr.cast_ptr(ptr!(Type::FnPtr(Box::new(
-                                FnSig::new([ptr!(Type::Void)], Type::Void,)
-                            ),)))),
-                            loaded_ptr: Box::new(Type::FnPtr(Box::new(FnSig::new(
-                                [ptr!(Type::Void)],
-                                Type::Void,
-                            )))),
+                            ptr: Box::new(
+                                vtable_ptr.cast_ptr(ctx.asm_mut().nptr(Type::FnPtr(sig))),
+                            ),
+                            loaded_ptr: Box::new(Type::FnPtr(sig)),
                         };
                         vec![
                             CILRoot::BEq {
@@ -225,7 +217,7 @@ pub fn handle_terminator<'tcx>(
                             }
                             .into(),
                             CILRoot::CallI {
-                                sig: Box::new(FnSig::new([ptr!(Type::Void)], Type::Void)),
+                                sig: Box::new(FnSig::new([void_ptr], Type::Void)),
                                 fn_ptr: Box::new(drop_fn_ptr),
                                 args: [obj_ptr].into(),
                             }
@@ -241,12 +233,8 @@ pub fn handle_terminator<'tcx>(
                         todo!("Can't drop dyn star yet!")
                     }
                     _ => {
-                        let sig = crate::function_sig::sig_from_instance_(
-                            drop_instance,
-                            ctx.tcx(),
-                            ctx.type_cache(),
-                        )
-                        .unwrap();
+                        let sig =
+                            crate::function_sig::sig_from_instance_(drop_instance, ctx).unwrap();
                         let function_name =
                             crate::utilis::function_name(ctx.tcx().symbol_name(drop_instance));
                         vec![
@@ -268,7 +256,7 @@ pub fn handle_terminator<'tcx>(
         TerminatorKind::Unreachable => {
             let loc = terminator.source_info.span;
             vec![
-                rustc_middle::ty::print::with_no_trimmed_paths! {CILRoot::throw(&format!("Unreachable reached at {loc:?}!")).into()},
+                rustc_middle::ty::print::with_no_trimmed_paths! {CILRoot::throw(&format!("Unreachable reached at {loc:?}!"),ctx.asm_mut()).into()},
             ]
         }
         TerminatorKind::InlineAsm {
@@ -280,12 +268,12 @@ pub fn handle_terminator<'tcx>(
             targets: _,
         } => {
             eprintln!("Inline assembly is not yet supported!");
-            vec![CILRoot::throw("Inline assembly is not yet supported!").into()]
+            vec![CILRoot::throw("Inline assembly is not yet supported!", ctx.asm_mut()).into()]
         }
         TerminatorKind::UnwindTerminate(_) => {
             let loc = terminator.source_info.span;
             vec![
-                rustc_middle::ty::print::with_no_trimmed_paths! {CILRoot::throw(&format!("UnwindTerminate reached at {loc:?}!")).into()},
+                rustc_middle::ty::print::with_no_trimmed_paths! {CILRoot::throw(&format!("UnwindTerminate reached at {loc:?}!"),ctx.asm_mut()).into()},
             ]
         }
         TerminatorKind::FalseEdge {
@@ -334,14 +322,19 @@ pub fn handle_terminator<'tcx>(
     res
 }
 
-fn handle_switch(ty: Ty, discr: &CILNode, switch: &SwitchTargets) -> Vec<CILTree> {
+fn handle_switch(
+    ty: Ty,
+    discr: &CILNode,
+    switch: &SwitchTargets,
+    asm: &mut Assembly,
+) -> Vec<CILTree> {
     let mut trees = Vec::new();
     for (value, target) in switch.iter() {
         //ops.extend(CILOp::debug_msg("Switchin"));
 
         let const_val = match ty.kind() {
-            TyKind::Int(int) => crate::constant::load_const_int(value, *int),
-            TyKind::Uint(uint) => crate::constant::load_const_uint(value, *uint),
+            TyKind::Int(int) => crate::constant::load_const_int(value, *int, asm),
+            TyKind::Uint(uint) => crate::constant::load_const_uint(value, *uint, asm),
             TyKind::Bool => {
                 if value == 0 {
                     CILNode::LdFalse
@@ -349,14 +342,16 @@ fn handle_switch(ty: Ty, discr: &CILNode, switch: &SwitchTargets) -> Vec<CILTree
                     CILNode::LdTrue
                 }
             }
-            TyKind::Char => crate::constant::load_const_uint(value, rustc_middle::ty::UintTy::U32),
+            TyKind::Char => {
+                crate::constant::load_const_uint(value, rustc_middle::ty::UintTy::U32, asm)
+            }
             _ => todo!("Unsuported switch discriminant type {ty:?}"),
         };
         //ops.push(CILOp::LdcI64(value as i64));
         trees.push(
             CILRoot::BTrue {
                 target: target.into(),
-                cond: crate::binop::cmp::eq_unchecked(ty, discr.clone(), const_val),
+                cond: crate::binop::cmp::eq_unchecked(ty, discr.clone(), const_val, asm),
                 sub_target: 0,
             }
             .into(),

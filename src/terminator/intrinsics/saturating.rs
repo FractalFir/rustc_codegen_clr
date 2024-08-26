@@ -1,7 +1,12 @@
 use crate::{assembly::MethodCompileCtx, operand::handle_operand, place::place_set};
 use cilly::{
-    call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_i16, conv_i32, conv_i64,
-    conv_i8, ldc_i32, ldc_i64, ClassRef, FnSig, Type,
+    call,
+    call_site::CallSite,
+    cil_node::CILNode,
+    cil_root::CILRoot,
+    conv_i16, conv_i32, conv_i64, conv_i8, ldc_i32, ldc_i64,
+    v2::{ClassRef, Int},
+    FnSig, Type,
 };
 
 use rustc_middle::{
@@ -30,15 +35,11 @@ pub fn saturating_add<'tcx>(
         ),
     );
     let calc = match a_type {
-        Type::Int(Int::USize)
-        | Type::Int(Int::U128)
-        | Type::Int(Int::U64)
-        | Type::Int(Int::U32)
-        | Type::Int(Int::U16)
-        | Type::Int(Int::U8) => {
+        Type::Int(Int::USize | Int::U128 | Int::U64 | Int::U32 | Int::U16 | Int::U8) => {
             let sum = crate::binop::add_unchecked(a_ty, a_ty, ctx, a.clone(), b.clone());
             let or = crate::binop::bitop::bit_or_unchecked(a_ty, a_ty, ctx, a.clone(), b.clone());
-            let flag = crate::binop::cmp::lt_unchecked(a_ty, sum.clone(), or.clone());
+            let flag =
+                crate::binop::cmp::lt_unchecked(a_ty, sum.clone(), or.clone(), ctx.asm_mut());
             let max = crate::r#type::max_value(&a_type);
             CILNode::select(a_type, max, sum, flag)
         }
@@ -48,7 +49,7 @@ pub fn saturating_add<'tcx>(
             let diff = a + b;
             let diff_capped = call!(
                 CallSite::new_extern(
-                    ClassRef::math(),
+                    ClassRef::math(ctx.asm_mut()),
                     "Clamp".into(),
                     FnSig::new(
                         &[
@@ -70,11 +71,21 @@ pub fn saturating_add<'tcx>(
         }
 
         Type::Int(Int::I64) => {
-            let a = crate::casts::int_to_int(Type::Int(Int::I64), &Type::Int(Int::I128), a);
-            let b = crate::casts::int_to_int(Type::Int(Int::I64), &Type::Int(Int::I128), b);
+            let a = crate::casts::int_to_int(
+                Type::Int(Int::I64),
+                &Type::Int(Int::I128),
+                a,
+                ctx.asm_mut(),
+            );
+            let b = crate::casts::int_to_int(
+                Type::Int(Int::I64),
+                &Type::Int(Int::I128),
+                b,
+                ctx.asm_mut(),
+            );
             let diff = call!(
                 CallSite::new_extern(
-                    ClassRef::int_128(asm),
+                    ClassRef::int_128(ctx.asm_mut()),
                     "op_Addition".into(),
                     FnSig::new(
                         &[Type::Int(Int::I128), Type::Int(Int::I128)],
@@ -87,7 +98,7 @@ pub fn saturating_add<'tcx>(
             #[allow(clippy::cast_sign_loss)]
             let diff_capped = call!(
                 CallSite::new_extern(
-                    ClassRef::int_128(asm),
+                    ClassRef::int_128(ctx.asm_mut()),
                     "Clamp".into(),
                     FnSig::new(
                         &[
@@ -101,19 +112,34 @@ pub fn saturating_add<'tcx>(
                 ),
                 [
                     diff,
-                    CILNode::const_i128(i128::from(i64::MIN) as u128),
-                    CILNode::const_i128(i128::from(i64::MAX) as u128),
+                    CILNode::const_i128(i128::from(i64::MIN) as u128, ctx.asm_mut()),
+                    CILNode::const_i128(i128::from(i64::MAX) as u128, ctx.asm_mut()),
                 ]
             );
-            crate::casts::int_to_int(Type::Int(Int::I128), &Type::Int(Int::I64), diff_capped)
+            crate::casts::int_to_int(
+                Type::Int(Int::I128),
+                &Type::Int(Int::I64),
+                diff_capped,
+                ctx.asm_mut(),
+            )
         }
 
         Type::Int(Int::ISize) => {
-            let a = crate::casts::int_to_int(Type::Int(Int::ISize), &Type::Int(Int::I128), a);
-            let b = crate::casts::int_to_int(Type::Int(Int::ISize), &Type::Int(Int::I128), b);
+            let a = crate::casts::int_to_int(
+                Type::Int(Int::ISize),
+                &Type::Int(Int::I128),
+                a,
+                ctx.asm_mut(),
+            );
+            let b = crate::casts::int_to_int(
+                Type::Int(Int::ISize),
+                &Type::Int(Int::I128),
+                b,
+                ctx.asm_mut(),
+            );
             let diff = call!(
                 CallSite::new_extern(
-                    ClassRef::int_128(asm),
+                    ClassRef::int_128(ctx.asm_mut()),
                     "op_Addition".into(),
                     FnSig::new(
                         &[Type::Int(Int::I128), Type::Int(Int::I128)],
@@ -126,7 +152,7 @@ pub fn saturating_add<'tcx>(
             #[allow(clippy::cast_sign_loss)]
             let diff_capped = call!(
                 CallSite::new_extern(
-                    ClassRef::int_128(asm),
+                    ClassRef::int_128(ctx.asm_mut()),
                     "Clamp".into(),
                     FnSig::new(
                         &[
@@ -141,11 +167,16 @@ pub fn saturating_add<'tcx>(
                 [
                     diff,
                     // TODO: this assumes isize::MAX == i64::MAX
-                    CILNode::const_i128(i128::from(i64::MIN) as u128),
-                    CILNode::const_i128(i128::from(i64::MAX) as u128),
+                    CILNode::const_i128(i128::from(i64::MIN) as u128, ctx.asm_mut()),
+                    CILNode::const_i128(i128::from(i64::MAX) as u128, ctx.asm_mut()),
                 ]
             );
-            crate::casts::int_to_int(Type::Int(Int::I128), &Type::Int(Int::ISize), diff_capped)
+            crate::casts::int_to_int(
+                Type::Int(Int::I128),
+                &Type::Int(Int::ISize),
+                diff_capped,
+                ctx.asm_mut(),
+            )
         }
         Type::Int(Int::I16) => {
             let a = conv_i32!(a);
@@ -153,7 +184,7 @@ pub fn saturating_add<'tcx>(
             let diff = a + b;
             let diff_capped = call!(
                 CallSite::new_extern(
-                    ClassRef::math(),
+                    ClassRef::math(ctx.asm_mut()),
                     "Clamp".into(),
                     FnSig::new(
                         &[
@@ -179,7 +210,7 @@ pub fn saturating_add<'tcx>(
             let diff = a + b;
             let diff_capped = call!(
                 CallSite::new_extern(
-                    ClassRef::math(),
+                    ClassRef::math(ctx.asm_mut()),
                     "Clamp".into(),
                     FnSig::new(
                         &[
@@ -218,23 +249,29 @@ pub fn saturating_sub<'tcx>(
     );
     let a_type = ctx.type_from_cache(a_ty);
     let calc = match a_type {
-        Type::Int(Int::U128)
-        | Type::Int(Int::U64)
-        | Type::Int(Int::U32)
-        | Type::Int(Int::U16)
-        | Type::Int(Int::U8)
-        | Type::Int(Int::USize) => {
-            let undeflow = crate::binop::cmp::lt_unchecked(a_ty, a.clone(), b.clone());
+        Type::Int(Int::U128 | Int::U64 | Int::U32 | Int::U16 | Int::U8 | Int::USize) => {
+            let undeflow =
+                crate::binop::cmp::lt_unchecked(a_ty, a.clone(), b.clone(), ctx.asm_mut());
             let diff = crate::binop::sub_unchecked(a_ty, a_ty, ctx, a, b);
-            let zero = crate::binop::checked::zero(a_ty);
+            let zero = crate::binop::checked::zero(a_ty, ctx.asm_mut());
             CILNode::select(a_type, zero, diff, undeflow)
         }
         Type::Int(Int::I64) => {
-            let a = crate::casts::int_to_int(Type::Int(Int::I64), &Type::Int(Int::I128), a);
-            let b = crate::casts::int_to_int(Type::Int(Int::I64), &Type::Int(Int::I128), b);
+            let a = crate::casts::int_to_int(
+                Type::Int(Int::I64),
+                &Type::Int(Int::I128),
+                a,
+                ctx.asm_mut(),
+            );
+            let b = crate::casts::int_to_int(
+                Type::Int(Int::I64),
+                &Type::Int(Int::I128),
+                b,
+                ctx.asm_mut(),
+            );
             let diff = call!(
                 CallSite::new_extern(
-                    ClassRef::int_128(asm),
+                    ClassRef::int_128(ctx.asm_mut()),
                     "op_Subtraction".into(),
                     FnSig::new(
                         &[Type::Int(Int::I128), Type::Int(Int::I128)],
@@ -247,7 +284,7 @@ pub fn saturating_sub<'tcx>(
             #[allow(clippy::cast_sign_loss)]
             let diff_capped = call!(
                 CallSite::new_extern(
-                    ClassRef::int_128(asm),
+                    ClassRef::int_128(ctx.asm_mut()),
                     "Clamp".into(),
                     FnSig::new(
                         &[
@@ -261,18 +298,33 @@ pub fn saturating_sub<'tcx>(
                 ),
                 [
                     diff,
-                    CILNode::const_i128(i128::from(i64::MIN) as u128),
-                    CILNode::const_i128(i128::from(i64::MAX) as u128),
+                    CILNode::const_i128(i128::from(i64::MIN) as u128, ctx.asm_mut()),
+                    CILNode::const_i128(i128::from(i64::MAX) as u128, ctx.asm_mut()),
                 ]
             );
-            crate::casts::int_to_int(Type::Int(Int::I128), &Type::Int(Int::I64), diff_capped)
+            crate::casts::int_to_int(
+                Type::Int(Int::I128),
+                &Type::Int(Int::I64),
+                diff_capped,
+                ctx.asm_mut(),
+            )
         }
         Type::Int(Int::ISize) => {
-            let a = crate::casts::int_to_int(Type::Int(Int::ISize), &Type::Int(Int::I128), a);
-            let b = crate::casts::int_to_int(Type::Int(Int::ISize), &Type::Int(Int::I128), b);
+            let a = crate::casts::int_to_int(
+                Type::Int(Int::ISize),
+                &Type::Int(Int::I128),
+                a,
+                ctx.asm_mut(),
+            );
+            let b = crate::casts::int_to_int(
+                Type::Int(Int::ISize),
+                &Type::Int(Int::I128),
+                b,
+                ctx.asm_mut(),
+            );
             let diff = call!(
                 CallSite::new_extern(
-                    ClassRef::int_128(asm),
+                    ClassRef::int_128(ctx.asm_mut()),
                     "op_Subtraction".into(),
                     FnSig::new(
                         &[Type::Int(Int::I128), Type::Int(Int::I128)],
@@ -285,7 +337,7 @@ pub fn saturating_sub<'tcx>(
             #[allow(clippy::cast_sign_loss)]
             let diff_capped = call!(
                 CallSite::new_extern(
-                    ClassRef::int_128(asm),
+                    ClassRef::int_128(ctx.asm_mut()),
                     "Clamp".into(),
                     FnSig::new(
                         &[
@@ -300,11 +352,16 @@ pub fn saturating_sub<'tcx>(
                 [
                     diff,
                     // TODO: this assumes isize::MAX == i64::MAX
-                    CILNode::const_i128(i128::from(i64::MIN) as u128),
-                    CILNode::const_i128(i128::from(i64::MAX) as u128),
+                    CILNode::const_i128(i128::from(i64::MIN) as u128, ctx.asm_mut()),
+                    CILNode::const_i128(i128::from(i64::MAX) as u128, ctx.asm_mut()),
                 ]
             );
-            crate::casts::int_to_int(Type::Int(Int::I128), &Type::Int(Int::ISize), diff_capped)
+            crate::casts::int_to_int(
+                Type::Int(Int::I128),
+                &Type::Int(Int::ISize),
+                diff_capped,
+                ctx.asm_mut(),
+            )
         }
         Type::Int(Int::I32) => {
             let a = conv_i64!(a);
@@ -312,7 +369,7 @@ pub fn saturating_sub<'tcx>(
             let diff = a - b;
             let diff_capped = call!(
                 CallSite::new_extern(
-                    ClassRef::math(),
+                    ClassRef::math(ctx.asm_mut()),
                     "Clamp".into(),
                     FnSig::new(
                         &[
@@ -338,7 +395,7 @@ pub fn saturating_sub<'tcx>(
             let diff = a - b;
             let diff_capped = call!(
                 CallSite::new_extern(
-                    ClassRef::math(),
+                    ClassRef::math(ctx.asm_mut()),
                     "Clamp".into(),
                     FnSig::new(
                         &[
@@ -364,7 +421,7 @@ pub fn saturating_sub<'tcx>(
             let diff = a - b;
             let diff_capped = call!(
                 CallSite::new_extern(
-                    ClassRef::math(),
+                    ClassRef::math(ctx.asm_mut()),
                     "Clamp".into(),
                     FnSig::new(
                         &[

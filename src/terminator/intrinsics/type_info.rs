@@ -1,7 +1,7 @@
 use crate::{assembly::MethodCompileCtx, place::place_set, r#type::pointer_to_is_fat};
 use cilly::{
     cil_node::CILNode, cil_root::CILRoot, conv_usize, field_desc::FieldDescriptor, ld_field,
-    ldc_u32, ptr, size_of, ClassRef, Type,
+    ldc_u32, size_of, v2::Int, Type,
 };
 use rustc_middle::{
     mir::{Operand, Place},
@@ -45,14 +45,14 @@ pub fn size_of_val<'tcx>(
         let ptr_ty = ctx.monomorphize(args[0].node.ty(ctx.body(), ctx.tcx()));
         match pointed_ty.kind() {
             TyKind::Str => {
-                let slice_tpe: ClassRef = ctx.type_from_cache(ptr_ty).as_class_ref().unwrap();
+                let slice_tpe = ctx.type_from_cache(ptr_ty).as_class_ref().unwrap();
                 let descriptor =
                     FieldDescriptor::new(slice_tpe, Type::Int(Int::USize), crate::METADATA.into());
                 let addr = crate::operand::operand_address(&args[0].node, ctx);
                 return place_set(destination, ld_field!(addr, descriptor), ctx);
             }
             TyKind::Slice(inner) => {
-                let slice_tpe: ClassRef = ctx.type_from_cache(ptr_ty).as_class_ref().unwrap();
+                let slice_tpe = ctx.type_from_cache(ptr_ty).as_class_ref().unwrap();
                 let inner = ctx.monomorphize(*inner);
                 let inner_type = ctx.type_from_cache(inner);
                 let descriptor =
@@ -66,7 +66,7 @@ pub fn size_of_val<'tcx>(
             }
             // WARNING: ASSUMES ANY NON-SLICE DST IS A DYN.
             _ => {
-                let slice_tpe: ClassRef = ctx.type_from_cache(ptr_ty).as_class_ref().unwrap();
+                let slice_tpe = ctx.type_from_cache(ptr_ty).as_class_ref().unwrap();
 
                 let descriptor =
                     FieldDescriptor::new(slice_tpe, Type::Int(Int::USize), crate::METADATA.into());
@@ -75,7 +75,8 @@ pub fn size_of_val<'tcx>(
                     destination,
                     CILNode::LDIndUSize {
                         ptr: Box::new(
-                            ld_field!(addr, descriptor).cast_ptr(ptr!(Type::Int(Int::USize)))
+                            ld_field!(addr, descriptor)
+                                .cast_ptr(ctx.asm_mut().nptr(Type::Int(Int::USize)))
                                 + conv_usize!((size_of!(Type::Int(Int::ISize)))),
                         ),
                     },

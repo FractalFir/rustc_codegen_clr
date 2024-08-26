@@ -1,5 +1,9 @@
 use super::PlaceTy;
-use crate::{assembly::MethodCompileCtx, assert_morphic, r#type::pointer_to_is_fat};
+use crate::{
+    assembly::MethodCompileCtx,
+    assert_morphic,
+    r#type::{fat_ptr_to, get_type, pointer_to_is_fat},
+};
 use cilly::{
     call, call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_usize,
     field_desc::FieldDescriptor, fn_sig::FnSig, ld_field, ldc_u32, ldc_u64, size_of, v2::Int, Type,
@@ -202,7 +206,7 @@ pub fn place_elem_adress<'tcx>(
                 TyKind::Slice(inner) => {
                     let inner = ctx.monomorphize(*inner);
                     let inner_type = ctx.type_from_cache(inner);
-                    let slice = ctx.slice_ty(inner).as_class_ref().unwrap();
+                    let slice = get_type(inner, ctx).as_class_ref().unwrap();
                     let desc = FieldDescriptor::new(
                         slice,
                         ctx.asm_mut().nptr(Type::Void.into()),
@@ -239,21 +243,21 @@ pub fn place_elem_adress<'tcx>(
             }
         }
         PlaceElem::Subslice { from, to, from_end } => {
-            let curr_type = ctx.slice_ref_to(curr_type.as_ty().expect("Can't index into an enum!"));
-            let curr_dotnet = curr_type.as_class_ref().unwrap();
+            let curr_type = fat_ptr_to(curr_type.as_ty().expect("Can't index into an enum!"), ctx);
+
             if *from_end {
                 let metadata_field = FieldDescriptor::new(
-                    curr_dotnet.clone(),
+                    curr_type.clone(),
                     Type::Int(Int::USize),
                     crate::METADATA.into(),
                 );
                 let ptr_field = FieldDescriptor::new(
-                    curr_dotnet.clone(),
+                    curr_type.clone(),
                     ctx.asm_mut().nptr(Type::Void.into()),
                     crate::DATA_PTR.into(),
                 );
                 CILNode::TemporaryLocal(Box::new((
-                    curr_type,
+                    Type::ClassRef(curr_type),
                     [
                         CILRoot::SetField {
                             addr: Box::new(CILNode::LoadAddresOfTMPLocal),
@@ -277,17 +281,17 @@ pub fn place_elem_adress<'tcx>(
                 )))
             } else {
                 let metadata_field = FieldDescriptor::new(
-                    curr_dotnet.clone(),
+                    curr_type.clone(),
                     Type::Int(Int::USize),
                     crate::METADATA.into(),
                 );
                 let ptr_field = FieldDescriptor::new(
-                    curr_dotnet.clone(),
+                    curr_type.clone(),
                     ctx.asm_mut().nptr(Type::Void.into()),
                     crate::DATA_PTR.into(),
                 );
                 CILNode::TemporaryLocal(Box::new((
-                    curr_type,
+                    Type::ClassRef(curr_type),
                     [
                         CILRoot::SetField {
                             addr: Box::new(CILNode::LoadAddresOfTMPLocal),
@@ -324,7 +328,7 @@ pub fn place_elem_adress<'tcx>(
                     let inner = ctx.monomorphize(*inner);
 
                     let inner_type = ctx.type_from_cache(inner);
-                    let slice = ctx.slice_ty(inner).as_class_ref().unwrap();
+                    let slice = fat_ptr_to(Ty::new_slice(ctx.tcx(), inner), ctx);
                     let desc = FieldDescriptor::new(
                         slice.clone(),
                         ctx.asm_mut().nptr(Type::Void),

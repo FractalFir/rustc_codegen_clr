@@ -216,11 +216,7 @@ fn load_scalar_ptr(
         } => {
             assert_eq!(offset.bytes(), 0);
             // If it is a function, patch its pointer up.
-            let call_info = crate::call_info::CallInfo::sig_from_instance_(
-                finstance,
-                ctx.tcx(),
-                ctx.type_cache(),
-            );
+            let call_info = crate::call_info::CallInfo::sig_from_instance_(finstance, ctx);
             let function_name = crate::utilis::function_name(ctx.tcx().symbol_name(finstance));
             return CILNode::LDFtn(
                 CallSite::new(None, function_name, call_info.sig().clone(), true).into(),

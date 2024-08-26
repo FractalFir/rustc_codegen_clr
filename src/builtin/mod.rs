@@ -1,4 +1,4 @@
-use crate::add_method_from_trees;
+/*use crate::add_method_from_trees;
 use cilly::{
     access_modifier::AccessModifer,
     asm::Assembly,
@@ -13,14 +13,12 @@ use cilly::{
     fn_sig::FnSig,
     ld_field, ldc_i32, ldc_u32, ldc_u64, lt_un,
     method::{Method, MethodType},
-    ptr,
-    r#type::Type,
     shl, shr, size_of, source_info,
     static_field_desc::StaticFieldDescriptor,
-    type_def::ClassDef,
     utilis::escape_class_name,
-    ClassRef,
+    v2::Int,
 };
+
 use rustc_middle::ty::TyCtxt;
 mod atomic;
 mod casts;
@@ -1641,3 +1639,4 @@ add_method_from_trees!(
     vec![(Some("n".into()), Type::Int(Int::U32))],
     vec![Some("input".into()),]
 );
+ */

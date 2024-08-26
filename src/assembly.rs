@@ -785,8 +785,11 @@ pub fn add_const_value(asm: &mut Assembly, bytes: u128, tcx: TyCtxt) -> StaticFi
     if !asm.static_fields().contains_key(&alloc_fld) {
         let mut trees = vec![CILRoot::STLoc {
             local: 0,
-            tree: call!(crate::cil::malloc(tcx), [conv_usize!(ldc_u32!(16))])
-                .cast_ptr(ptr!(Type::Int(Int::U8))),
+            tree: call!(
+                cilly::call_site::CallSite::alloc(tcx),
+                [conv_usize!(ldc_u32!(16))]
+            )
+            .cast_ptr(ptr!(Type::Int(Int::U8))),
         }
         .into()];
         // This is an optimization if and only if there are enough zero-bytes to justify this.

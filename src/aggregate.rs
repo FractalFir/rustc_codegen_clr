@@ -6,8 +6,14 @@ use crate::{
     utilis::{adt::set_discr, field_name},
 };
 use cilly::{
-    call_site::CallSite, cil_node::CILNode, cil_root::CILRoot, conv_usize,
-    field_desc::FieldDescriptor, ldc_u64, v2::Int, Type,
+    call_site::CallSite,
+    cil_node::CILNode,
+    cil_root::CILRoot,
+    conv_usize,
+    field_desc::FieldDescriptor,
+    ldc_u64,
+    v2::{ClassRef, Int},
+    Type,
 };
 use rustc_index::IndexVec;
 use rustc_middle::{
@@ -72,7 +78,7 @@ pub fn handle_aggregate<'tcx>(
             let array_getter = super::place::place_adress(target_location, ctx);
             let sig = cilly::fn_sig::FnSig::new(
                 &[
-                    ptr!(array_type.clone().into()),
+                    ctx.asm_mut().nptr(array_type.clone().into()),
                     Type::Int(Int::USize),
                     element,
                 ],
@@ -184,8 +190,9 @@ pub fn handle_aggregate<'tcx>(
                 return CILNode::SubTrees(Box::new((
                     [CILRoot::STIndPtr(
                         init_addr,
-                        handle_operand(data, ctx).cast_ptr(ptr!(ptr!(fat_ptr_type.clone()))),
-                        Box::new(ptr!(fat_ptr_type)),
+                        handle_operand(data, ctx)
+                            .cast_ptr(ctx.asm_mut().nptr(ctx.asm_mut().nptr(fat_ptr_type.clone()))),
+                        Box::new(ctx.asm_mut().nptr(fat_ptr_type)),
                     )]
                     .into(),
                     Box::new(place_get(target_location, ctx)),
@@ -196,7 +203,7 @@ pub fn handle_aggregate<'tcx>(
             // Assign the components
             let assign_ptr = CILRoot::SetField {
                 addr: Box::new(init_addr.clone()),
-                value: Box::new(values[0].1.clone().cast_ptr(ptr!(Type::Void))),
+                value: Box::new(values[0].1.clone().cast_ptr(ctx.asm_mut().nptr(Type::Void))),
                 desc: Box::new(FieldDescriptor::new(
                     fat_ptr_type.as_class_ref().unwrap(),
                     ctx.asm_mut().nptr(cilly::v2::Type::Void),
@@ -300,15 +307,15 @@ fn aggregate_adt<'tcx>(
             }
 
             let layout = ctx.layout_of(adt_type);
-            let (disrc_type, _) = crate::utilis::adt::enum_tag_info(layout.layout, ctx.tcx());
+            let (disrc_type, _) = crate::utilis::adt::enum_tag_info(layout.layout, ctx.asm_mut());
             if disrc_type != Type::Void {
                 sub_trees.push(set_discr(
                     layout.layout,
                     variant_idx.into(),
                     adt_adress_ops,
                     adt_type_ref,
-                    ctx.tcx(),
                     layout.ty,
+                    ctx,
                 ));
             }
 

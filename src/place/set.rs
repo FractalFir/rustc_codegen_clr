@@ -1,7 +1,7 @@
 use crate::{
     assembly::MethodCompileCtx,
     place::{pointed_type, PlaceTy},
-    r#type::pointer_to_is_fat,
+    r#type::{fat_ptr_to, pointer_to_is_fat},
 };
 use cilly::{
     call,
@@ -17,7 +17,7 @@ use cilly::{
 };
 use rustc_middle::{
     mir::PlaceElem,
-    ty::{FloatTy, IntTy, TyKind, UintTy},
+    ty::{FloatTy, IntTy, Ty, TyKind, UintTy},
 };
 pub fn local_set(local: usize, method: &rustc_middle::mir::Body, tree: CILNode) -> CILRoot {
     if let Some(spread_arg) = method.spread_arg
@@ -81,11 +81,13 @@ pub fn place_elem_set<'a>(
                 .as_ty()
                 .expect("INVALID PLACE: Indexing into enum variant???");
             let index = crate::place::local_get(index.as_usize(), ctx.body());
+
             match curr_ty.kind() {
                 TyKind::Slice(inner) => {
                     let inner = ctx.monomorphize(*inner);
                     let inner_type = ctx.type_from_cache(inner);
-                    let slice = ctx.slice_ty(inner).as_class_ref().unwrap();
+                    let inner_ptr = ctx.asm_mut().nptr(inner_type.clone());
+                    let slice = fat_ptr_to(Ty::new_slice(ctx.tcx(), inner), ctx);
                     let desc = FieldDescriptor::new(
                         slice,
                         ctx.asm_mut().nptr(Type::Void.into()),
@@ -94,7 +96,7 @@ pub fn place_elem_set<'a>(
                     ptr_set_op(
                         super::PlaceTy::Ty(inner),
                         ctx,
-                        ld_field!(addr_calc, desc).cast_ptr(ctx.asm_mut().nptr(inner_type.clone()))
+                        ld_field!(addr_calc, desc).cast_ptr(inner_ptr)
                             + index * conv_usize!(size_of!(inner_type)),
                         value_calc,
                     )
@@ -145,7 +147,7 @@ pub fn place_elem_set<'a>(
                     let inner = ctx.monomorphize(*inner);
 
                     let inner_type = ctx.type_from_cache(inner);
-                    let slice = ctx.slice_ty(inner).as_class_ref().unwrap();
+                    let slice = fat_ptr_to(Ty::new_slice(ctx.tcx(), inner), ctx);
                     let desc = FieldDescriptor::new(
                         slice.clone(),
                         ctx.asm_mut().nptr(Type::Void.into()),

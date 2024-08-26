@@ -63,7 +63,7 @@ pub fn field_name(ty: Ty, idx: u32) -> crate::IString {
                 .all_fields()
                 .nth(idx as usize)
                 .expect("Field index out of range.");
-            crate::r#type::escape_field_name(&field_def.name.to_string())
+            crate::r#type::escape_field_name(&field_def.name.to_string()).into()
         }
         TyKind::Tuple(_) => format!("Item{}", idx + 1).into(),
         _ => todo!("Can't yet get fields of typr {ty:?}"),
@@ -164,6 +164,7 @@ pub fn field_descrptor<'tcx>(
                         ctx.type_from_cache(tpe)
                     })
                     .collect::<Vec<_>>(),
+                ctx.asm_mut(),
             ),
             element,
             format!("Item{}", field_idx + 1).into(),
@@ -199,7 +200,7 @@ pub fn field_descrptor<'tcx>(
         .type_from_cache(owner_ty)
         .as_class_ref()
         .expect("Error: tried to set a field of a non-object type!");
-    FieldDescriptor::new(owner_ty, field_ty, field_name)
+    FieldDescriptor::new(owner_ty, field_ty, field_name.into())
 }
 
 /// Tires to get the value of Const `size` as usize.

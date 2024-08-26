@@ -1,16 +1,17 @@
-use crate::r#type::TyCache;
 use cilly::Type;
 use cilly::{
     cil_node::{CILNode, ValidationContext},
     v2::Assembly,
 };
 use rustc_middle::ty::{Instance, ParamEnv, TyCtxt};
+
+use crate::r#type::get_type;
 pub struct MethodCompileCtx<'tcx, 'validator, 'type_cache, 'asm> {
     tcx: TyCtxt<'tcx>,
     method: &'tcx rustc_middle::mir::Body<'tcx>,
     method_instance: Instance<'tcx>,
     validator: ValidationContext<'validator>,
-    type_cache: &'type_cache mut TyCache,
+    type_cache: &'type_cache mut (),
     asm: &'asm mut Assembly,
 }
 
@@ -20,7 +21,7 @@ impl<'tcx, 'validator, 'type_cache, 'asm> MethodCompileCtx<'tcx, 'validator, 'ty
         method: &'tcx rustc_middle::mir::Body<'tcx>,
         method_instance: Instance<'tcx>,
         validator: ValidationContext<'validator>,
-        type_cache: &'type_cache mut TyCache,
+        type_cache: &'type_cache mut (),
         asm: &'asm mut Assembly,
     ) -> Self {
         Self {
@@ -32,6 +33,7 @@ impl<'tcx, 'validator, 'type_cache, 'asm> MethodCompileCtx<'tcx, 'validator, 'ty
             asm,
         }
     }
+    /*
     pub fn slice_ty(&mut self, inner: rustc_middle::ty::Ty<'tcx>) -> Type {
         self.type_cache
             .slice_ty(inner, self.tcx, self.method_instance)
@@ -39,7 +41,7 @@ impl<'tcx, 'validator, 'type_cache, 'asm> MethodCompileCtx<'tcx, 'validator, 'ty
     pub fn slice_ref_to(&mut self, inner: rustc_middle::ty::Ty<'tcx>) -> Type {
         self.type_cache
             .slice_ref_to(self.tcx, inner, self.method_instance)
-    }
+    } */
     /// Returns the type context this method is compiled in.
     #[must_use]
     pub fn tcx(&self) -> TyCtxt<'tcx> {
@@ -55,10 +57,7 @@ impl<'tcx, 'validator, 'type_cache, 'asm> MethodCompileCtx<'tcx, 'validator, 'ty
     pub fn instance(&self) -> Instance<'tcx> {
         self.method_instance
     }
-    /// Returns a Type cache.
-    pub fn type_cache<'s: 'a, 'a>(&'s mut self) -> &'a mut TyCache {
-        self.type_cache
-    }
+
     #[must_use]
     pub fn validator(&self) -> ValidationContext<'validator> {
         self.validator
@@ -77,8 +76,7 @@ impl<'tcx, 'validator, 'type_cache, 'asm> MethodCompileCtx<'tcx, 'validator, 'ty
     pub fn assert_raw_pointer_type(&self, ptr: &CILNode, node_from: &impl std::fmt::Debug) {}
     pub fn assert_fat_pointer_type(&self, ptr: &CILNode, node_from: &impl std::fmt::Debug) {}
     pub fn type_from_cache(&mut self, ty: rustc_middle::ty::Ty<'tcx>) -> Type {
-        self.type_cache
-            .type_from_cache(ty, self.tcx, self.method_instance)
+        get_type(ty, self)
     }
     #[must_use]
     pub fn layout_of(

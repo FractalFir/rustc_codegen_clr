@@ -1,7 +1,7 @@
 use crate::assembly::MethodCompileCtx;
 use crate::operand::{handle_operand, operand_address};
 use crate::r#type::{fat_ptr_to, pointer_to_is_fat};
-use cilly::cil_node::{CILNode, ValidationContext};
+use cilly::cil_node::CILNode;
 use cilly::cil_root::CILRoot;
 use cilly::field_desc::FieldDescriptor;
 use cilly::v2::{ClassRefIdx, Int};
@@ -29,7 +29,6 @@ impl<'tcx> UnsizeInfo<'tcx> {
         target_dotnet: ClassRefIdx,
         target_type: Type,
         source_ptr: CILNode,
-        validator: ValidationContext,
     ) -> Self {
         Self {
             source_points_to,
@@ -99,7 +98,6 @@ impl<'tcx> UnsizeInfo<'tcx> {
                 non_null_ptr_desc.tpe().as_class_ref().unwrap(),
                 target_type,
                 source_ptr,
-                ctx.validator(),
             )
         } else {
             let derefed_source = source.builtin_deref(true).unwrap();
@@ -115,7 +113,6 @@ impl<'tcx> UnsizeInfo<'tcx> {
                 target_dotnet,
                 target_type,
                 sized_ptr,
-                ctx.validator(),
             )
         }
     }

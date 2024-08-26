@@ -1,5 +1,10 @@
 use crate::{call_info::CallInfo, r#type::TyCache};
-use cilly::{asm::Assembly, call_site::CallSite, method::Method, v2::ClassDef};
+use cilly::{
+    asm::Assembly,
+    call_site::CallSite,
+    method::Method,
+    v2::{ClassDef, ClassRef},
+};
 use rustc_middle::{
     mir::{Rvalue, StatementKind, TerminatorKind},
     ty::{Instance, ParamEnv, TyCtxt, TyKind},

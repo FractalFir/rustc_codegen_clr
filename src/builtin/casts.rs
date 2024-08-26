@@ -13,8 +13,11 @@ use cilly::{
     conv_u32, conv_u64, conv_u8, conv_usize, eq,
     fn_sig::FnSig,
     gt, ldc_i32, ldc_i64, ldc_u32, ldc_u64, lt, or,
-    v2::hashable::{HashableF32, HashableF64},
-    ClassRef, Type,
+    v2::{
+        hashable::{HashableF32, HashableF64},
+        Int,
+    },
+    Type,
 };
 
 add_method_from_trees!(

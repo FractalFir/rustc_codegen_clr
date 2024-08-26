@@ -1,4 +1,4 @@
-use crate::assembly::MethodCompileCtx;
+use crate::{assembly::MethodCompileCtx, r#type::fat_ptr_to};
 use cilly::{
     call, call_site::CallSite, cil_node::CILNode, conv_usize, field_desc::FieldDescriptor,
     fn_sig::FnSig, ld_field, ldc_u32, ldc_u64, v2::Int, Type,
@@ -132,7 +132,7 @@ fn place_elem_get<'a>(
                 TyKind::Slice(inner) => {
                     let inner = ctx.monomorphize(*inner);
                     let inner_type = ctx.type_from_cache(inner);
-                    let slice = ctx.slice_ty(inner).as_class_ref().unwrap();
+                    let slice = fat_ptr_to(Ty::new_slice(ctx.tcx(), inner), ctx);
 
                     let index_type = ctx.type_from_cache(index_type);
                     let desc = FieldDescriptor::new(
@@ -188,7 +188,7 @@ fn place_elem_get<'a>(
                 TyKind::Slice(inner) => {
                     let inner = ctx.monomorphize(*inner);
                     let inner_type = ctx.type_from_cache(inner);
-                    let slice = ctx.slice_ty(inner).as_class_ref().unwrap();
+                    let slice = fat_ptr_to(Ty::new_slice(ctx.tcx(), inner), ctx);
                     let data_pointer = FieldDescriptor::new(
                         slice.clone(),
                         ctx.asm_mut().nptr(Type::Void.into()),

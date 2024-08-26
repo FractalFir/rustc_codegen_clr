@@ -9,7 +9,6 @@ use cilly::{
     ld_field_address,
     method::{Method, MethodType},
     size_of,
-    type_def::ClassDef,
     v2::Assembly,
     Type,
 };
@@ -17,39 +16,6 @@ use rustc_span::def_id::DefId;
 use rustc_target::abi::Layout;
 use std::num::{NonZero, NonZeroU32};
 
-#[must_use]
-pub fn escape_field_name(name: &str) -> IString {
-    match name.chars().next() {
-        None => "fld".into(),
-        Some(first) => {
-            if !(first.is_alphabetic() || first == '_')
-        || name == "value"
-        || name == "flags"
-        || name == "alignment"
-        || name == "init"
-        || name == "string"
-        || name == "nint"
-        || name == "nuint"
-        || name == "out"
-        || name == "rem"
-        || name == "add"
-        || name == "div"
-        || name == "error"
-        || name == "opt"
-        || name == "private"
-        || name == "public"
-        || name == "object"
-        || name == "class"
-        //FIXME: this is a sign of a bug. ALL fields not starting with a letter should have been caught by the statement above.
-        || name == "0"
-            {
-                format!("m_{name}").into()
-            } else {
-                name.into()
-            }
-        }
-    }
-}
 pub fn closure_name(_def_id: DefId, fields: &[Type], _sig: &cilly::fn_sig::FnSig) -> String {
     let mangled_fields: String = fields.iter().map(|tpe| cilly::mangle(tpe)).collect();
     format!(

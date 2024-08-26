@@ -180,10 +180,7 @@ use rustc_session::{
 };
 use rustc_span::ErrorGuaranteed;
 
-use std::{
-    any::Any,
-    path::{Path, PathBuf},
-};
+use std::{any::Any, path::Path};
 /// Immutable string - used to save a bit of memory on storage.
 pub type IString = cilly::IString;
 /// Immutable string - used to save a bit of memory on storage.
@@ -207,7 +204,7 @@ impl CodegenBackend for MyBackend {
 
             let mut asm = Assembly::empty();
             let _ = cilly::utilis::get_environ(&mut asm);
-            let mut cache = crate::r#type::TyCache::empty();
+
             for cgu in cgus {
                 //println!("codegen {} has {} items.", cgu.name(), cgu.items().len());
                 for (item, _data) in cgu.items() {
@@ -239,7 +236,7 @@ impl CodegenBackend for MyBackend {
             let ffi_compile_timer = tcx
                 .profiler()
                 .generic_activity("insert .NET FFI functions/types");
-            builtin::insert_ffi_functions(&mut asm, tcx);
+            //builtin::insert_ffi_functions(&mut asm, tcx);
             drop(ffi_compile_timer);
             let name: IString = cgus.iter().next().unwrap().name().to_string().into();
 

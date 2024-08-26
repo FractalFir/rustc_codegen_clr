@@ -38,8 +38,8 @@ pub fn handle_statement<'tcx>(
                     *variant_index,
                     crate::place::place_adress(place, ctx),
                     owner,
-                    ctx.tcx(),
                     owner_ty,
+                    ctx,
                 )
                 .into(),
             )

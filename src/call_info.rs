@@ -1,8 +1,10 @@
-use crate::r#type::TyCache;
 use cilly::FnSig;
-use rustc_middle::ty::{Instance, List, ParamEnv, ParamEnvAnd, TyCtxt, TyKind};
+use rustc_middle::ty::{Instance, List, ParamEnv, ParamEnvAnd, TyKind};
 use rustc_target::abi::call::Conv;
 use rustc_target::spec::abi::Abi as TargetAbi;
+
+use crate::fn_ctx::MethodCompileCtx;
+use crate::r#type::get_type;
 pub struct CallInfo {
     sig: FnSig,
     split_last_tuple: bool,
@@ -11,10 +13,9 @@ impl CallInfo {
     /// Returns the signature of function behind `function`.
     pub fn sig_from_instance_<'tcx>(
         function: Instance<'tcx>,
-        tcx: TyCtxt<'tcx>,
-        tycache: &mut TyCache,
+        ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
     ) -> Self {
-        let fn_abi = tcx.fn_abi_of_instance(ParamEnvAnd {
+        let fn_abi = ctx.tcx().fn_abi_of_instance(ParamEnvAnd {
             param_env: ParamEnv::reveal_all(),
             value: (function, List::empty()),
         });
@@ -28,16 +29,16 @@ impl CallInfo {
             _ => panic!("ERROR:calling using convention {conv:?} is not supported!"),
         }
         //assert!(!fn_abi.c_variadic);
-        let ret = tycache.type_from_cache(fn_abi.ret.layout.ty, tcx, function);
+        let ret = get_type(fn_abi.ret.layout.ty, ctx);
         let mut args = Vec::with_capacity(fn_abi.args.len());
 
         for arg in &fn_abi.args {
-            args.push(tycache.type_from_cache(arg.layout.ty, tcx, function));
+            args.push(get_type(arg.layout.ty, ctx));
         }
         // There are 2 ABI enums for some reasons(they differ in what memebers they have)
-        let fn_ty = function.ty(tcx, ParamEnv::reveal_all());
+        let fn_ty = function.ty(ctx.tcx(), ParamEnv::reveal_all());
         let internal_abi = match fn_ty.kind() {
-            TyKind::FnDef(_, _) => fn_ty.fn_sig(tcx),
+            TyKind::FnDef(_, _) => fn_ty.fn_sig(ctx.tcx()),
             TyKind::Closure(_, args) => args.as_closure().sig(),
             _ => todo!("Can't get signature of {fn_ty}"),
         }
@@ -59,13 +60,7 @@ impl CallInfo {
         if fn_abi.c_variadic {
             let remaining = fn_abi.args[(fn_abi.fixed_count as usize)..]
                 .iter()
-                .map(|ty| {
-                    tycache.type_from_cache(
-                        crate::utilis::monomorphize(&function, ty.layout.ty, tcx),
-                        tcx,
-                        function,
-                    )
-                });
+                .map(|ty| get_type(ctx.monomorphize(ty.layout.ty), ctx));
             let mut inputs = sig.inputs().to_vec();
             inputs.extend(remaining);
             sig.set_inputs(inputs);

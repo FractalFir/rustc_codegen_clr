@@ -144,7 +144,7 @@ pub fn handle_rvalue<'tcx>(
                     rustc_middle::ty::ClosureKind::FnOnce,
                 )
                 .polymorphize(ctx.tcx());
-                let call_info = CallInfo::sig_from_instance_(instance, ctx.tcx(), ctx.type_cache());
+                let call_info = CallInfo::sig_from_instance_(instance, ctx);
 
                 let function_name = crate::utilis::function_name(ctx.tcx().symbol_name(instance));
                 let call_site = CallSite::new(None, function_name, call_info.sig().clone(), true);
@@ -159,6 +159,7 @@ pub fn handle_rvalue<'tcx>(
             let dst = ctx.monomorphize(*dst);
             let dst_ty = dst;
             let dst = ctx.type_from_cache(dst);
+            let dst_ptr = ctx.asm_mut().nptr(dst);
             let src = operand.ty(&ctx.body().local_decls, ctx.tcx());
             let src = ctx.monomorphize(src);
             let src = ctx.type_from_cache(src);
@@ -178,7 +179,7 @@ pub fn handle_rvalue<'tcx>(
                     crate::place::deref_op(
                         crate::place::PlaceTy::Ty(dst_ty),
                         ctx,
-                        CILNode::LoadAddresOfTMPLocal.cast_ptr(ctx.asm_mut().nptr(dst)),
+                        CILNode::LoadAddresOfTMPLocal.cast_ptr(dst_ptr),
                     ),
                 ))),
             }
@@ -195,7 +196,7 @@ pub fn handle_rvalue<'tcx>(
                 "ERROR: shallow init box used to initialze a fat box!"
             );
             let src = ctx.type_from_cache(src);
-
+            let boxed_ptr = ctx.asm_mut().nptr(boxed_dst_type);
             CILNode::TemporaryLocal(Box::new((
                 src,
                 [CILRoot::SetTMPLocal {
@@ -205,7 +206,7 @@ pub fn handle_rvalue<'tcx>(
                 crate::place::deref_op(
                     crate::place::PlaceTy::Ty(boxed_dst),
                     ctx,
-                    CILNode::LoadAddresOfTMPLocal.cast_ptr(ctx.asm_mut().nptr(boxed_dst_type)),
+                    CILNode::LoadAddresOfTMPLocal.cast_ptr(boxed_ptr),
                 ),
             )))
         }
@@ -278,11 +279,8 @@ pub fn handle_rvalue<'tcx>(
                 todo!("Trying to call a type which is not a function definition!");
             };
             let function_name = crate::utilis::function_name(ctx.tcx().symbol_name(instance));
-            let function_sig =
-                crate::function_sig::sig_from_instance_(instance, ctx.tcx(), ctx.type_cache())
-                    .expect(
-                        "Could not get function signature when trying to get a function pointer!",
-                    );
+            let function_sig = crate::function_sig::sig_from_instance_(instance, ctx)
+                .expect("Could not get function signature when trying to get a function pointer!");
             //FIXME: propely handle `#[track_caller]`
             let call_site = CallSite::new(None, function_name, function_sig, true);
             CILNode::LDFtn(call_site.into())
@@ -295,7 +293,7 @@ pub fn handle_rvalue<'tcx>(
 
             let layout = ctx.layout_of(owner_ty);
             let target = ctx.type_from_cache(owner_ty.discriminant_ty(ctx.tcx()));
-            let (disrc_type, _) = crate::utilis::adt::enum_tag_info(layout.layout, ctx.tcx());
+            let (disrc_type, _) = crate::utilis::adt::enum_tag_info(layout.layout, ctx.asm_mut());
             let owner = if let Type::ClassRef(dotnet_type) = owner {
                 dotnet_type
             } else {
@@ -315,7 +313,7 @@ pub fn handle_rvalue<'tcx>(
                 crate::casts::int_to_int(
                     disrc_type.clone(),
                     &target,
-                    crate::utilis::adt::get_discr(layout.layout, addr, owner, ctx.tcx(), owner_ty),
+                    crate::utilis::adt::get_discr(layout.layout, addr, owner, owner_ty, ctx),
                     ctx.asm_mut(),
                 )
             }

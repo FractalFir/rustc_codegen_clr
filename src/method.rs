@@ -1,6 +1,5 @@
 use std::ops::DerefMut;
 
-use crate::r#type::tycache::TyCache;
 use cilly::{asm::Assembly, cil_iter_mut::CILIterElemMut, cil_node::CILNode, method::Method};
 use rustc_middle::ty::TyCtxt;
 

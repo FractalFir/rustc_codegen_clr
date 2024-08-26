@@ -1,18 +1,22 @@
-use cilly::{call, call_site::CallSite, cil_node::CILNode, ptr, sub, ClassRef, FnSig, Type};
+use cilly::{
+    call,
+    call_site::CallSite,
+    cil_node::CILNode,
+    sub,
+    v2::{Assembly, ClassRef, Int},
+    FnSig, Type,
+};
 
-pub fn interlocked_add(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
+pub fn interlocked_add(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
     sub!(
         match tpe {
-            Type::Int(Int::U64) | Type::Int(Int::I64) => {
+            Type::Int(Int::U64 | Int::I64) => {
                 call!(
                     CallSite::new(
-                        Some(ClassRef::interlocked()),
+                        Some(ClassRef::interlocked(asm)),
                         "Add".into(),
                         FnSig::new(
-                            &[
-                                Type::Ref(Box::new(Type::Int(Int::U64))),
-                                Type::Int(Int::U64)
-                            ],
+                            &[asm.nref(Type::Int(Int::U64)), Type::Int(Int::U64)],
                             Type::Int(Int::U64)
                         ),
                         true
@@ -20,13 +24,13 @@ pub fn interlocked_add(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
                     [addr, addend.clone()]
                 )
             }
-            Type::Int(Int::U32) | Type::Int(Int::I32) => {
+            Type::Int(Int::U32 | Int::I32) => {
                 call!(
                     CallSite::new(
-                        Some(ClassRef::interlocked()),
+                        Some(ClassRef::interlocked(asm)),
                         "Add".into(),
                         FnSig::new(
-                            &[Type::Ref(Box::new(Type::Int(Int::U32))), Type::Int(Int::U32)],
+                            &[asm.nref(Type::Int(Int::U32)), Type::Int(Int::U32)],
                             Type::Int(Int::U32)
                         ),
                         true
@@ -34,14 +38,11 @@ pub fn interlocked_add(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
                     [addr, addend.clone()]
                 )
             }
-            Type::Int(Int::USize) | Type::Int(Int::ISize) | Type::Ptr(_) => call!(
+            Type::Int(Int::USize | Int::ISize) | Type::Ptr(_) => call!(
                 CallSite::builtin(
                     "interlocked_add_usize".into(),
                     FnSig::new(
-                        &[
-                            Type::Ref(Box::new(Type::Int(Int::USize))),
-                            Type::Int(Int::USize)
-                        ],
+                        &[asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)],
                         Type::Int(Int::USize)
                     ),
                     true
@@ -54,18 +55,15 @@ pub fn interlocked_add(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
         addend
     )
 }
-pub fn interlocked_or(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
+pub fn interlocked_or(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
     match tpe {
-        Type::Int(Int::U64) | Type::Int(Int::I64) => {
+        Type::Int(Int::U64 | Int::I64) => {
             call!(
                 CallSite::new(
-                    Some(ClassRef::interlocked()),
+                    Some(ClassRef::interlocked(asm)),
                     "Or".into(),
                     FnSig::new(
-                        &[
-                            Type::Ref(Box::new(Type::Int(Int::U64))),
-                            Type::Int(Int::U64)
-                        ],
+                        &[asm.nref(Type::Int(Int::U64)), Type::Int(Int::U64)],
                         Type::Int(Int::U64)
                     ),
                     true
@@ -73,13 +71,13 @@ pub fn interlocked_or(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
                 [addr, addend]
             )
         }
-        Type::Int(Int::U32) | Type::Int(Int::I32) => {
+        Type::Int(Int::U32 | Int::I32) => {
             call!(
                 CallSite::new(
-                    Some(ClassRef::interlocked()),
+                    Some(ClassRef::interlocked(asm)),
                     "Or".into(),
                     FnSig::new(
-                        &[Type::Ref(Box::new(Type::Int(Int::U32))), Type::Int(Int::U32)],
+                        &[asm.nref(Type::Int(Int::U32)), Type::Int(Int::U32)],
                         Type::Int(Int::U32)
                     ),
                     true
@@ -87,14 +85,11 @@ pub fn interlocked_or(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
                 [addr, addend]
             )
         }
-        Type::Int(Int::USize) | Type::Int(Int::ISize) => call!(
+        Type::Int(Int::USize | Int::ISize) => call!(
             CallSite::builtin(
                 "interlocked_or_usize".into(),
                 FnSig::new(
-                    &[
-                        Type::Ref(Box::new(Type::Int(Int::USize))),
-                        Type::Int(Int::USize)
-                    ],
+                    &[asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)],
                     Type::Int(Int::USize)
                 ),
                 true
@@ -105,34 +100,28 @@ pub fn interlocked_or(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
             CallSite::builtin(
                 "interlocked_or_usize".into(),
                 FnSig::new(
-                    &[
-                        Type::Ref(Box::new(Type::Int(Int::USize))),
-                        Type::Int(Int::USize)
-                    ],
+                    &[asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)],
                     Type::Int(Int::USize)
                 ),
                 true
             ),
             [
-                addr.cast_ptr(Type::Ref(Box::new(Type::Int(Int::USize)))),
+                addr.cast_ptr(asm.nref(Type::Int(Int::USize))),
                 addend.cast_ptr(Type::Int(Int::USize))
             ]
         )
-        .cast_ptr(ptr!(*inner)),
+        .cast_ptr(Type::Ptr(inner)),
         _ => todo!(),
     }
 }
-pub fn interlocked_xor(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
+pub fn interlocked_xor(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
     match tpe {
         Type::Int(Int::I32) => {
             call!(
                 CallSite::builtin(
                     "atomic_xor_i32".into(),
                     FnSig::new(
-                        &[
-                            Type::Ref(Box::new(Type::Int(Int::I32))),
-                            Type::Int(Int::I32)
-                        ],
+                        &[asm.nref(Type::Int(Int::I32)), Type::Int(Int::I32)],
                         Type::Int(Int::I32)
                     ),
                     true
@@ -145,10 +134,7 @@ pub fn interlocked_xor(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
                 CallSite::builtin(
                     "atomic_xor_i64".into(),
                     FnSig::new(
-                        &[
-                            Type::Ref(Box::new(Type::Int(Int::I64))),
-                            Type::Int(Int::I64)
-                        ],
+                        &[asm.nref(Type::Int(Int::I64)), Type::Int(Int::I64)],
                         Type::Int(Int::I64)
                     ),
                     true
@@ -161,7 +147,7 @@ pub fn interlocked_xor(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
                 CallSite::builtin(
                     "atomic_xor_u32".into(),
                     FnSig::new(
-                        &[Type::Ref(Box::new(Type::Int(Int::U32))), Type::Int(Int::U32)],
+                        &[asm.nref(Type::Int(Int::U32)), Type::Int(Int::U32)],
                         Type::Int(Int::U32)
                     ),
                     true
@@ -174,10 +160,7 @@ pub fn interlocked_xor(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
                 CallSite::builtin(
                     "atomic_xor_u64".into(),
                     FnSig::new(
-                        &[
-                            Type::Ref(Box::new(Type::Int(Int::U64))),
-                            Type::Int(Int::U64)
-                        ],
+                        &[asm.nref(Type::Int(Int::U64)), Type::Int(Int::U64)],
                         Type::Int(Int::U64)
                     ),
                     true
@@ -189,10 +172,7 @@ pub fn interlocked_xor(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
             CallSite::builtin(
                 "atomic_xor_usize".into(),
                 FnSig::new(
-                    &[
-                        Type::Ref(Box::new(Type::Int(Int::USize))),
-                        Type::Int(Int::USize)
-                    ],
+                    &[asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)],
                     Type::Int(Int::USize)
                 ),
                 true
@@ -203,10 +183,7 @@ pub fn interlocked_xor(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
             CallSite::builtin(
                 "atomic_xor_isize".into(),
                 FnSig::new(
-                    &[
-                        Type::Ref(Box::new(Type::Int(Int::ISize))),
-                        Type::Int(Int::ISize)
-                    ],
+                    &[asm.nref(Type::Int(Int::ISize)), Type::Int(Int::ISize)],
                     Type::Int(Int::ISize)
                 ),
                 true
@@ -217,35 +194,29 @@ pub fn interlocked_xor(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
             CallSite::builtin(
                 "atomic_xor_usize".into(),
                 FnSig::new(
-                    &[
-                        Type::Ref(Box::new(Type::Int(Int::USize))),
-                        Type::Int(Int::USize)
-                    ],
+                    &[asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)],
                     Type::Int(Int::USize)
                 ),
                 true
             ),
             [
-                addr.cast_ptr(Type::Ref(Box::new(Type::Int(Int::USize)))),
+                addr.cast_ptr(asm.nref(Type::Int(Int::USize))),
                 addend.cast_ptr(Type::Int(Int::USize))
             ]
         )
-        .cast_ptr(ptr!(*inner)),
+        .cast_ptr(Type::Ptr(inner)),
         _ => todo!(),
     }
 }
-pub fn interlocked_and(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
+pub fn interlocked_and(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
     match tpe {
-        Type::Int(Int::U64) | Type::Int(Int::I64) => {
+        Type::Int(Int::U64 | Int::I64) => {
             call!(
                 CallSite::new(
-                    Some(ClassRef::interlocked()),
+                    Some(ClassRef::interlocked(asm)),
                     "And".into(),
                     FnSig::new(
-                        &[
-                            Type::Ref(Box::new(Type::Int(Int::U64))),
-                            Type::Int(Int::U64)
-                        ],
+                        &[asm.nref(Type::Int(Int::U64)), Type::Int(Int::U64)],
                         Type::Int(Int::U64)
                     ),
                     true
@@ -253,13 +224,13 @@ pub fn interlocked_and(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
                 [addr, addend]
             )
         }
-        Type::Int(Int::U32) | Type::Int(Int::I32) => {
+        Type::Int(Int::U32 | Int::I32) => {
             call!(
                 CallSite::new(
-                    Some(ClassRef::interlocked()),
+                    Some(ClassRef::interlocked(asm)),
                     "And".into(),
                     FnSig::new(
-                        &[Type::Ref(Box::new(Type::Int(Int::U32))), Type::Int(Int::U32)],
+                        &[asm.nref(Type::Int(Int::U32)), Type::Int(Int::U32)],
                         Type::Int(Int::U32)
                     ),
                     true
@@ -267,14 +238,11 @@ pub fn interlocked_and(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
                 [addr, addend]
             )
         }
-        Type::Int(Int::USize) | Type::Int(Int::ISize) => call!(
+        Type::Int(Int::USize | Int::ISize) => call!(
             CallSite::builtin(
                 "interlocked_and_usize".into(),
                 FnSig::new(
-                    &[
-                        Type::Ref(Box::new(Type::Int(Int::USize))),
-                        Type::Int(Int::USize)
-                    ],
+                    &[asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)],
                     Type::Int(Int::USize)
                 ),
                 true
@@ -285,31 +253,28 @@ pub fn interlocked_and(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
             CallSite::builtin(
                 "interlocked_and_usize".into(),
                 FnSig::new(
-                    &[
-                        Type::Ref(Box::new(Type::Int(Int::USize))),
-                        Type::Int(Int::USize)
-                    ],
+                    &[asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)],
                     Type::Int(Int::USize)
                 ),
                 true
             ),
             [
-                addr.cast_ptr(Type::Ref(Box::new(Type::Int(Int::USize)))),
+                addr.cast_ptr(asm.nref(Type::Int(Int::USize))),
                 addend.cast_ptr(Type::Int(Int::USize))
             ]
         )
-        .cast_ptr(ptr!(*inner)),
+        .cast_ptr(Type::Ptr(inner)),
         _ => todo!(),
     }
 }
-pub fn compare_bytes(a: CILNode, b: CILNode, len: CILNode) -> CILNode {
+pub fn compare_bytes(a: CILNode, b: CILNode, len: CILNode, asm: &mut Assembly) -> CILNode {
     call!(
         CallSite::builtin(
             "memcmp".into(),
             FnSig::new(
                 &[
-                    Type::Ptr(Type::Int(Int::U8).into()),
-                    Type::Ptr(Type::Int(Int::U8).into()),
+                    asm.nptr(Type::Int(Int::U8)),
+                    asm.nptr(Type::Int(Int::U8)),
                     Type::Int(Int::USize)
                 ],
                 Type::Int(Int::I32)
@@ -319,17 +284,14 @@ pub fn compare_bytes(a: CILNode, b: CILNode, len: CILNode) -> CILNode {
         [a, b, len]
     )
 }
-pub fn interlocked_nand(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
+pub fn interlocked_nand(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
     match tpe {
         Type::Int(Int::I32) => {
             call!(
                 CallSite::builtin(
                     "atomic_nand_i32".into(),
                     FnSig::new(
-                        &[
-                            Type::Ref(Box::new(Type::Int(Int::I32))),
-                            Type::Int(Int::I32)
-                        ],
+                        &[asm.nref(Type::Int(Int::I32)), Type::Int(Int::I32)],
                         Type::Int(Int::I32)
                     ),
                     true
@@ -342,10 +304,7 @@ pub fn interlocked_nand(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
                 CallSite::builtin(
                     "atomic_nand_i64".into(),
                     FnSig::new(
-                        &[
-                            Type::Ref(Box::new(Type::Int(Int::I64))),
-                            Type::Int(Int::I64)
-                        ],
+                        &[asm.nref(Type::Int(Int::I64)), Type::Int(Int::I64)],
                         Type::Int(Int::I64)
                     ),
                     true
@@ -358,7 +317,7 @@ pub fn interlocked_nand(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
                 CallSite::builtin(
                     "atomic_nand_u32".into(),
                     FnSig::new(
-                        &[Type::Ref(Box::new(Type::Int(Int::U32))), Type::Int(Int::U32)],
+                        &[asm.nref(Type::Int(Int::U32)), Type::Int(Int::U32)],
                         Type::Int(Int::U32)
                     ),
                     true
@@ -371,10 +330,7 @@ pub fn interlocked_nand(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
                 CallSite::builtin(
                     "atomic_nand_u64".into(),
                     FnSig::new(
-                        &[
-                            Type::Ref(Box::new(Type::Int(Int::U64))),
-                            Type::Int(Int::U64)
-                        ],
+                        &[asm.nref(Type::Int(Int::U64)), Type::Int(Int::U64)],
                         Type::Int(Int::U64)
                     ),
                     true
@@ -386,10 +342,7 @@ pub fn interlocked_nand(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
             CallSite::builtin(
                 "atomic_nand_usize".into(),
                 FnSig::new(
-                    &[
-                        Type::Ref(Box::new(Type::Int(Int::USize))),
-                        Type::Int(Int::USize)
-                    ],
+                    &[asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)],
                     Type::Int(Int::USize)
                 ),
                 true
@@ -400,10 +353,7 @@ pub fn interlocked_nand(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
             CallSite::builtin(
                 "atomic_nand_isize".into(),
                 FnSig::new(
-                    &[
-                        Type::Ref(Box::new(Type::Int(Int::ISize))),
-                        Type::Int(Int::ISize)
-                    ],
+                    &[asm.nref(Type::Int(Int::ISize)), Type::Int(Int::ISize)],
                     Type::Int(Int::ISize)
                 ),
                 true
@@ -414,34 +364,28 @@ pub fn interlocked_nand(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
             CallSite::builtin(
                 "atomic_nand_usize".into(),
                 FnSig::new(
-                    &[
-                        Type::Ref(Box::new(Type::Int(Int::USize))),
-                        Type::Int(Int::USize)
-                    ],
+                    &[asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)],
                     Type::Int(Int::USize)
                 ),
                 true
             ),
             [
-                addr.cast_ptr(Type::Ref(Box::new(Type::Int(Int::USize)))),
+                addr.cast_ptr(asm.nref(Type::Int(Int::USize))),
                 addend.cast_ptr(Type::Int(Int::USize))
             ]
         )
-        .cast_ptr(ptr!(*inner)),
+        .cast_ptr(Type::Ptr(inner)),
         _ => todo!(),
     }
 }
-pub fn interlocked_min(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
+pub fn interlocked_min(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
     match tpe {
         Type::Int(Int::I32) => {
             call!(
                 CallSite::builtin(
                     "atomic_min_i32".into(),
                     FnSig::new(
-                        &[
-                            Type::Ref(Box::new(Type::Int(Int::I32))),
-                            Type::Int(Int::I32)
-                        ],
+                        &[asm.nref(Type::Int(Int::I32)), Type::Int(Int::I32)],
                         Type::Int(Int::I32)
                     ),
                     true
@@ -454,10 +398,7 @@ pub fn interlocked_min(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
                 CallSite::builtin(
                     "atomic_min_i64".into(),
                     FnSig::new(
-                        &[
-                            Type::Ref(Box::new(Type::Int(Int::I64))),
-                            Type::Int(Int::I64)
-                        ],
+                        &[asm.nref(Type::Int(Int::I64)), Type::Int(Int::I64)],
                         Type::Int(Int::I64)
                     ),
                     true
@@ -470,7 +411,7 @@ pub fn interlocked_min(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
                 CallSite::builtin(
                     "atomic_min_u32".into(),
                     FnSig::new(
-                        &[Type::Ref(Box::new(Type::Int(Int::U32))), Type::Int(Int::U32)],
+                        &[asm.nref(Type::Int(Int::U32)), Type::Int(Int::U32)],
                         Type::Int(Int::U32)
                     ),
                     true
@@ -483,10 +424,7 @@ pub fn interlocked_min(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
                 CallSite::builtin(
                     "atomic_min_u64".into(),
                     FnSig::new(
-                        &[
-                            Type::Ref(Box::new(Type::Int(Int::U64))),
-                            Type::Int(Int::U64)
-                        ],
+                        &[asm.nref(Type::Int(Int::U64)), Type::Int(Int::U64)],
                         Type::Int(Int::U64)
                     ),
                     true
@@ -498,10 +436,7 @@ pub fn interlocked_min(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
             CallSite::builtin(
                 "atomic_min_usize".into(),
                 FnSig::new(
-                    &[
-                        Type::Ref(Box::new(Type::Int(Int::USize))),
-                        Type::Int(Int::USize)
-                    ],
+                    &[asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)],
                     Type::Int(Int::USize)
                 ),
                 true
@@ -512,10 +447,7 @@ pub fn interlocked_min(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
             CallSite::builtin(
                 "atomic_min_isize".into(),
                 FnSig::new(
-                    &[
-                        Type::Ref(Box::new(Type::Int(Int::ISize))),
-                        Type::Int(Int::ISize)
-                    ],
+                    &[asm.nref(Type::Int(Int::ISize)), Type::Int(Int::ISize)],
                     Type::Int(Int::ISize)
                 ),
                 true
@@ -526,34 +458,28 @@ pub fn interlocked_min(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
             CallSite::builtin(
                 "atomic_min_usize".into(),
                 FnSig::new(
-                    &[
-                        Type::Ref(Box::new(Type::Int(Int::USize))),
-                        Type::Int(Int::USize)
-                    ],
+                    &[asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)],
                     Type::Int(Int::USize)
                 ),
                 true
             ),
             [
-                addr.cast_ptr(Type::Ref(Box::new(Type::Int(Int::USize)))),
+                addr.cast_ptr(asm.nref(Type::Int(Int::USize))),
                 addend.cast_ptr(Type::Int(Int::USize))
             ]
         )
-        .cast_ptr(ptr!(*inner)),
+        .cast_ptr(Type::Ptr(inner)),
         _ => todo!(),
     }
 }
-pub fn interlocked_max(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
+pub fn interlocked_max(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
     match tpe {
         Type::Int(Int::I32) => {
             call!(
                 CallSite::builtin(
                     "atomic_max_i32".into(),
                     FnSig::new(
-                        &[
-                            Type::Ref(Box::new(Type::Int(Int::I32))),
-                            Type::Int(Int::I32)
-                        ],
+                        &[asm.nref(Type::Int(Int::I32)), Type::Int(Int::I32)],
                         Type::Int(Int::I32)
                     ),
                     true
@@ -566,10 +492,7 @@ pub fn interlocked_max(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
                 CallSite::builtin(
                     "atomic_max_i64".into(),
                     FnSig::new(
-                        &[
-                            Type::Ref(Box::new(Type::Int(Int::I64))),
-                            Type::Int(Int::I64)
-                        ],
+                        &[asm.nref(Type::Int(Int::I64)), Type::Int(Int::I64)],
                         Type::Int(Int::I64)
                     ),
                     true
@@ -582,7 +505,7 @@ pub fn interlocked_max(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
                 CallSite::builtin(
                     "atomic_max_u32".into(),
                     FnSig::new(
-                        &[Type::Ref(Box::new(Type::Int(Int::U32))), Type::Int(Int::U32)],
+                        &[asm.nref(Type::Int(Int::U32)), Type::Int(Int::U32)],
                         Type::Int(Int::U32)
                     ),
                     true
@@ -595,10 +518,7 @@ pub fn interlocked_max(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
                 CallSite::builtin(
                     "atomic_max_u64".into(),
                     FnSig::new(
-                        &[
-                            Type::Ref(Box::new(Type::Int(Int::U64))),
-                            Type::Int(Int::U64)
-                        ],
+                        &[asm.nref(Type::Int(Int::U64)), Type::Int(Int::U64)],
                         Type::Int(Int::U64)
                     ),
                     true
@@ -610,10 +530,7 @@ pub fn interlocked_max(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
             CallSite::builtin(
                 "atomic_max_usize".into(),
                 FnSig::new(
-                    &[
-                        Type::Ref(Box::new(Type::Int(Int::USize))),
-                        Type::Int(Int::USize)
-                    ],
+                    &[asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)],
                     Type::Int(Int::USize)
                 ),
                 true
@@ -624,10 +541,7 @@ pub fn interlocked_max(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
             CallSite::builtin(
                 "atomic_max_isize".into(),
                 FnSig::new(
-                    &[
-                        Type::Ref(Box::new(Type::Int(Int::ISize))),
-                        Type::Int(Int::ISize)
-                    ],
+                    &[asm.nref(Type::Int(Int::ISize)), Type::Int(Int::ISize)],
                     Type::Int(Int::ISize)
                 ),
                 true
@@ -638,20 +552,17 @@ pub fn interlocked_max(addr: CILNode, addend: CILNode, tpe: Type) -> CILNode {
             CallSite::builtin(
                 "atomic_max_usize".into(),
                 FnSig::new(
-                    &[
-                        Type::Ref(Box::new(Type::Int(Int::USize))),
-                        Type::Int(Int::USize)
-                    ],
+                    &[asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)],
                     Type::Int(Int::USize)
                 ),
                 true
             ),
             [
-                addr.cast_ptr(Type::Ref(Box::new(Type::Int(Int::USize)))),
+                addr.cast_ptr(asm.nref(Type::Int(Int::USize))),
                 addend.cast_ptr(Type::Int(Int::USize))
             ]
         )
-        .cast_ptr(ptr!(*inner)),
+        .cast_ptr(Type::Ptr(inner)),
         _ => todo!(),
     }
 }
