@@ -20,7 +20,7 @@ mod call;
 mod intrinsics;
 pub fn handle_call_terminator<'tycxt>(
     terminator: &Terminator<'tycxt>,
-    ctx: &mut MethodCompileCtx<'tycxt, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tycxt, '_>,
     args: &[Spanned<Operand<'tycxt>>],
     destination: &Place<'tycxt>,
     func: &Operand<'tycxt>,
@@ -101,7 +101,7 @@ pub fn handle_call_terminator<'tycxt>(
 }
 pub fn handle_terminator<'tcx>(
     terminator: &Terminator<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> Vec<CILTree> {
     let res = match &terminator.kind {
         TerminatorKind::Call {

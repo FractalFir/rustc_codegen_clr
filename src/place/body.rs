@@ -12,10 +12,7 @@ use cilly::{
 };
 use rustc_middle::mir::PlaceElem;
 use rustc_middle::ty::{Ty, TyKind};
-pub fn local_body<'tcx>(
-    local: usize,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
-) -> (CILNode, Ty<'tcx>) {
+pub fn local_body<'tcx>(local: usize, ctx: &mut MethodCompileCtx<'tcx, '_>) -> (CILNode, Ty<'tcx>) {
     let ty = ctx.body().local_decls[local.into()].ty;
     let ty = ctx.monomorphize(ty);
     if body_ty_is_by_adress(ty, ctx) {
@@ -26,7 +23,7 @@ pub fn local_body<'tcx>(
 }
 fn body_field<'a>(
     curr_type: super::PlaceTy<'a>,
-    ctx: &mut MethodCompileCtx<'a, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'a, '_>,
     field_index: u32,
     field_ty: Ty<'a>,
     parrent_node: CILNode,
@@ -91,8 +88,6 @@ fn body_field<'a>(
                             CILNode::LoadAddresOfTMPLocal
                                 .cast_ptr(ctx.asm_mut().nptr(field_type)),
                         )))
-                        .is_valid_dbg(ctx.validator(), None)
-                        .unwrap(),
                     )
                 }
             }
@@ -114,7 +109,7 @@ fn body_field<'a>(
 pub fn place_elem_body<'tcx>(
     place_elem: &PlaceElem<'tcx>,
     curr_type: PlaceTy<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
     parrent_node: CILNode,
 ) -> (PlaceTy<'tcx>, CILNode) {
     let curr_ty = match curr_type {

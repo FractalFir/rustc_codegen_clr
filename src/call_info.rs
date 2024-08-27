@@ -13,7 +13,7 @@ impl CallInfo {
     /// Returns the signature of function behind `function`.
     pub fn sig_from_instance_<'tcx>(
         function: Instance<'tcx>,
-        ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+        ctx: &mut MethodCompileCtx<'tcx, '_>,
     ) -> Self {
         let fn_abi = ctx.tcx().fn_abi_of_instance(ParamEnvAnd {
             param_env: ParamEnv::reveal_all(),

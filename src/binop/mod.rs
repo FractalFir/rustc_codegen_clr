@@ -31,7 +31,7 @@ pub(crate) fn binop<'tcx>(
     binop: BinOp,
     operand_a: &Operand<'tcx>,
     operand_b: &Operand<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILNode {
     let ops_a = crate::operand::handle_operand(operand_a, ctx);
     let ops_b = crate::operand::handle_operand(operand_b, ctx);
@@ -157,7 +157,7 @@ pub(crate) fn binop<'tcx>(
 pub fn add_unchecked<'tcx>(
     ty_a: Ty<'tcx>,
     ty_b: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
     ops_a: CILNode,
     ops_b: CILNode,
 ) -> CILNode {
@@ -221,7 +221,7 @@ pub fn add_unchecked<'tcx>(
 pub fn sub_unchecked<'tcx>(
     ty_a: Ty<'tcx>,
     ty_b: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
     ops_a: CILNode,
     ops_b: CILNode,
 ) -> CILNode {
@@ -279,7 +279,7 @@ pub fn sub_unchecked<'tcx>(
 fn rem_unchecked<'tcx>(
     ty_a: Ty<'tcx>,
     ty_b: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
     ops_a: CILNode,
     ops_b: CILNode,
 ) -> CILNode {
@@ -333,7 +333,7 @@ fn rem_unchecked<'tcx>(
 fn mul_unchecked<'tcx>(
     ty_a: Ty<'tcx>,
     ty_b: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
     operand_a: CILNode,
     operand_b: CILNode,
 ) -> CILNode {
@@ -381,7 +381,7 @@ fn mul_unchecked<'tcx>(
 fn div_unchecked<'tcx>(
     ty_a: Ty<'tcx>,
     ty_b: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
     operand_a: CILNode,
     operand_b: CILNode,
 ) -> CILNode {

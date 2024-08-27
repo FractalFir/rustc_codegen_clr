@@ -35,7 +35,7 @@ pub fn local_adress(local: usize, method: &rustc_middle::mir::Body) -> CILNode {
 pub fn address_last_dereference<'tcx>(
     target_ty: Ty<'tcx>,
     curr_type: PlaceTy<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
     addr_calc: CILNode,
 ) -> CILNode {
     let curr_type = match curr_type {
@@ -89,7 +89,7 @@ pub fn address_last_dereference<'tcx>(
 }
 fn field_address<'a>(
     curr_type: super::PlaceTy<'a>,
-    ctx: &mut MethodCompileCtx<'a, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'a, '_>,
     addr_calc: CILNode,
     field_index: u32,
     field_type: Ty<'a>,
@@ -185,7 +185,7 @@ fn field_address<'a>(
 pub fn place_elem_adress<'tcx>(
     place_elem: &PlaceElem<'tcx>,
     curr_type: PlaceTy<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
     place_ty: Ty<'tcx>,
     addr_calc: CILNode,
 ) -> CILNode {

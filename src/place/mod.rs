@@ -36,10 +36,7 @@ fn pointed_type(ty: PlaceTy) -> Ty {
         panic!("Can't dereference enum variant!");
     }
 }
-fn body_ty_is_by_adress<'tcx>(
-    last_ty: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
-) -> bool {
+fn body_ty_is_by_adress<'tcx>(last_ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> bool {
     crate::assert_morphic!(last_ty);
     match *last_ty.kind() {
         // True for non-0 tuples
@@ -66,7 +63,7 @@ fn body_ty_is_by_adress<'tcx>(
 /// Given a type `derefed_type`, it retuns a set of instructions to get a value behind a pointer to `derefed_type`.
 pub fn deref_op<'tcx>(
     derefed_type: PlaceTy<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
     ptr: CILNode,
 ) -> CILNode {
     let ptr = Box::new(ptr);
@@ -161,7 +158,7 @@ pub fn deref_op<'tcx>(
 }
 
 /// Returns the ops for getting the address of a given place.
-pub fn place_adress<'a>(place: &Place<'a>, ctx: &mut MethodCompileCtx<'a, '_, '_, '_>) -> CILNode {
+pub fn place_adress<'a>(place: &Place<'a>, ctx: &mut MethodCompileCtx<'a, '_>) -> CILNode {
     let place_ty = place.ty(ctx.body(), ctx.tcx());
     let place_ty = ctx.monomorphize(place_ty).ty;
 
@@ -197,7 +194,7 @@ pub fn place_adress<'a>(place: &Place<'a>, ctx: &mut MethodCompileCtx<'a, '_, '_
 /// Should be only used in certain builit-in features. For unsized types, returns the address of the fat pointer, not the address contained within it.
 pub(crate) fn place_address_raw<'a>(
     place: &Place<'a>,
-    ctx: &mut MethodCompileCtx<'a, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'a, '_>,
 ) -> CILNode {
     let place_ty = place.ty(ctx.body(), ctx.tcx());
     let place_ty = ctx.monomorphize(place_ty).ty;
@@ -234,7 +231,7 @@ pub(crate) fn place_address_raw<'a>(
 pub(crate) fn place_set<'tcx>(
     place: &Place<'tcx>,
     value_calc: CILNode,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILRoot {
     if place.projection.is_empty() {
         set::local_set(place.local.as_usize(), ctx.body(), value_calc)
@@ -265,7 +262,7 @@ impl<'tcx> From<Ty<'tcx>> for PlaceTy<'tcx> {
     }
 }
 impl<'tcx> PlaceTy<'tcx> {
-    pub fn monomorphize(&self, ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>) -> Self {
+    pub fn monomorphize(&self, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Self {
         match self {
             Self::Ty(inner) => Self::Ty(ctx.monomorphize(*inner)),
             Self::EnumVariant(enm, variant) => Self::EnumVariant(ctx.monomorphize(*enm), *variant),

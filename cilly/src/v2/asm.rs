@@ -258,7 +258,7 @@ impl Assembly {
     pub fn get_field(&self, key: FieldIdx) -> &FieldDesc {
         self.fields.get(key)
     }
-    pub(crate) fn alloc_sfld(&mut self, sfld: StaticFieldDesc) -> StaticFieldIdx {
+    pub fn alloc_sfld(&mut self, sfld: StaticFieldDesc) -> StaticFieldIdx {
         self.statics.alloc(sfld)
     }
     pub fn get_static_field(&self, key: StaticFieldIdx) -> &StaticFieldDesc {
@@ -373,6 +373,78 @@ impl Assembly {
             self.new_method(cctor_def)
         }
     }
+    /// Returns a reference to tht thread local constructor.
+    pub fn tcctor(&mut self) -> MethodDefIdx {
+        let main_module = self.main_module();
+        let user_init = self.alloc_string(TCCTOR);
+        let ctor_sig = self.sig([], Type::Void);
+        let mref = MethodRef::new(
+            *main_module,
+            user_init,
+            ctor_sig,
+            MethodKind::Static,
+            vec![].into(),
+        );
+        let mref = self.alloc_methodref(mref);
+        if self.method_defs.contains_key(&MethodDefIdx(mref)) {
+            MethodDefIdx(mref)
+        } else {
+            let mimpl = MethodImpl::MethodBody {
+                blocks: vec![super::BasicBlock::new(
+                    vec![self.alloc_root(CILRoot::VoidRet)],
+                    0,
+                    None,
+                )],
+                locals: vec![],
+            };
+            let cctor_def = MethodDef::new(
+                Access::Extern,
+                main_module,
+                user_init,
+                ctor_sig,
+                MethodKind::Static,
+                mimpl,
+                vec![],
+            );
+            self.new_method(cctor_def)
+        }
+    }
+    /// Returns a reference to the static initializer
+    pub fn cctor(&mut self) -> MethodDefIdx {
+        let main_module = self.main_module();
+        let user_init = self.alloc_string(CCTOR);
+        let ctor_sig = self.sig([], Type::Void);
+        let mref = MethodRef::new(
+            *main_module,
+            user_init,
+            ctor_sig,
+            MethodKind::Static,
+            vec![].into(),
+        );
+        let mref = self.alloc_methodref(mref);
+        if self.method_defs.contains_key(&MethodDefIdx(mref)) {
+            MethodDefIdx(mref)
+        } else {
+            let mimpl = MethodImpl::MethodBody {
+                blocks: vec![super::BasicBlock::new(
+                    vec![self.alloc_root(CILRoot::VoidRet)],
+                    0,
+                    None,
+                )],
+                locals: vec![],
+            };
+            let cctor_def = MethodDef::new(
+                Access::Extern,
+                main_module,
+                user_init,
+                ctor_sig,
+                MethodKind::Static,
+                mimpl,
+                vec![],
+            );
+            self.new_method(cctor_def)
+        }
+    }
     /// Adds new rooots to the user init list.
     pub fn add_user_init(&mut self, roots: &[RootIdx]) {
         let user_init = self.user_init();
@@ -385,6 +457,48 @@ impl Assembly {
             .iter_mut()
             .last()
             .expect("ERROR: {USER_INIT} has a body without blocks.");
+        let last_root_idx = if last.roots().is_empty() {
+            0
+        } else {
+            last.roots().len() - 1
+        };
+        for (idx, root) in roots.iter().enumerate() {
+            last.roots_mut().insert(idx + last_root_idx, *root);
+        }
+    }
+    /// Adds new rooots to the thread local intiailzer .
+    pub fn add_tcctor(&mut self, roots: &[RootIdx]) {
+        let user_init = self.tcctor();
+        let user_init = self.method_defs.get_mut(&user_init).unwrap();
+        let blocks = user_init
+            .implementation_mut()
+            .blocks_mut()
+            .expect("EROROR: {TCCTOR} has no body.");
+        let last = blocks
+            .iter_mut()
+            .last()
+            .expect("ERROR: {TCCTOR} has a body without blocks.");
+        let last_root_idx = if last.roots().is_empty() {
+            0
+        } else {
+            last.roots().len() - 1
+        };
+        for (idx, root) in roots.iter().enumerate() {
+            last.roots_mut().insert(idx + last_root_idx, *root);
+        }
+    }
+    /// Adds new rooots to the static initializer
+    pub fn add_cctor(&mut self, roots: &[RootIdx]) {
+        let user_init = self.cctor();
+        let user_init = self.method_defs.get_mut(&user_init).unwrap();
+        let blocks = user_init
+            .implementation_mut()
+            .blocks_mut()
+            .expect("EROROR: {CCTOR} has no body.");
+        let last = blocks
+            .iter_mut()
+            .last()
+            .expect("ERROR: {CCTOR} has a body without blocks.");
         let last_root_idx = if last.roots().is_empty() {
             0
         } else {

@@ -41,7 +41,7 @@ pub fn handle_intrinsic<'tcx>(
     destination: &Place<'tcx>,
     call_instance: Instance<'tcx>,
     span: rustc_span::Span,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILRoot {
     match fn_name {
         "arith_offset" => {
@@ -1634,7 +1634,7 @@ fn intrinsic_slow<'tcx>(
     fn_name: &str,
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
     call_instance: Instance<'tcx>,
     span: rustc_span::Span,
 ) -> CILRoot {
@@ -1805,7 +1805,7 @@ fn intrinsic_slow<'tcx>(
 fn volitale_load<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILRoot {
     //TODO:fix volitale prefix!
     debug_assert_eq!(
@@ -1821,7 +1821,7 @@ fn volitale_load<'tcx>(
 }
 fn caller_location<'tcx>(
     destination: &Place<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
     span: rustc_span::Span,
 ) -> CILRoot {
     let caller_loc = ctx.tcx().span_as_caller_location(span);

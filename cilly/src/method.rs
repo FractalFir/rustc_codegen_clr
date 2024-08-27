@@ -11,7 +11,7 @@ use crate::{
     call_site::CallSite,
     cil_iter::{CILIterElem, CILIterTrait},
     cil_iter_mut::CILIterElemMut,
-    cil_node::{CILNode, ValidationContext},
+    cil_node::CILNode,
     cil_root::CILRoot,
     cil_tree::CILTree,
     static_field_desc::StaticFieldDescriptor,
@@ -170,21 +170,7 @@ impl Method {
             });
         self.locals = locals;
     }
-    pub fn validate(&self) -> Result<(), String> {
-        let errs: Vec<String> = self
-            .blocks()
-            .iter()
-            .map(|tree| tree.validate(ValidationContext::new(&self.sig, &self.locals)))
-            .filter_map(|err| match err {
-                Ok(()) => None,
-                Err(err) => Some(err),
-            })
-            .collect::<Vec<_>>();
-        if !errs.is_empty() {
-            return Err(errs[0].clone());
-        }
-        Ok(())
-    }
+
     /// Creates a new method with name `name`, signature `sig`, accessibility of `access`, and consists of `blocks` basic blocks.
     #[must_use]
     pub fn new(

@@ -2,7 +2,7 @@ use crate::v2::{Assembly, ClassRef, Type};
 use crate::{
     call,
     call_site::CallSite,
-    cil_node::{CILNode, CallOpArgs, ValidationContext},
+    cil_node::{CILNode, CallOpArgs},
     field_desc::FieldDescriptor,
     fn_sig::FnSig,
     static_field_desc::StaticFieldDescriptor,
@@ -417,7 +417,7 @@ impl CILRoot {
         let class = ClassRef::exception(asm);
 
         let name = ".ctor".to_owned().into();
-        let signature = FnSig::new([class.into(), ClassRef::string(asm).into()], Type::Void);
+        let signature = FnSig::new([class.into(), Type::PlatformString], Type::Void);
         Self::Throw(CILNode::NewObj(Box::new(CallOpArgs {
             site: CallSite::boxed(Some(class), name, signature, false),
             args: [CILNode::LdStr(msg.into())].into(),
@@ -428,7 +428,7 @@ impl CILRoot {
         let class = ClassRef::console(asm);
 
         let name = "WriteLine".to_owned().into();
-        let signature = FnSig::new([ClassRef::string(asm).into()], Type::Void);
+        let signature = FnSig::new([Type::PlatformString], Type::Void);
         let message = tiny_message(msg, asm);
         Self::Call {
             site: Box::new(CallSite::new_extern(class, name, signature, true)),
@@ -617,9 +617,7 @@ impl CILRoot {
             Self::JumpingPad { .. } => (),
         };
     }
-    pub fn validate(&self, vctx: ValidationContext, tmp_loc: Option<&Type>) -> Result<(), String> {
-        Ok(())
-    }
+
     #[must_use]
     pub fn source_info(
         file: &str,
@@ -633,13 +631,7 @@ impl CILRoot {
         Self::SourceFileInfo(Box::new((line, column, file.to_owned().into())))
     }
     #[must_use]
-    pub fn set_field(
-        addr: CILNode,
-        value: CILNode,
-        desc: FieldDescriptor,
-        vctx: ValidationContext,
-        tmp_loc: Option<&Type>,
-    ) -> Self {
+    pub fn set_field(addr: CILNode, value: CILNode, desc: FieldDescriptor) -> Self {
         Self::SetField {
             addr: Box::new(addr),
             value: Box::new(value),

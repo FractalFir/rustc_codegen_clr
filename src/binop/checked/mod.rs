@@ -173,7 +173,7 @@ pub fn mul<'tcx>(
     ops_a: &CILNode,
     ops_b: &CILNode,
     ty: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILNode {
     //(b > 0 && a < INT_MIN + b) || (b < 0 && a > INT_MAX + b);
     let tpe = ctx.type_from_cache(ty);
@@ -425,7 +425,7 @@ pub fn sub_signed<'tcx>(
     ops_a: &CILNode,
     ops_b: &CILNode,
     ty: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILNode {
     let tpe = ctx.type_from_cache(ty);
     let min = min(ty, ctx.asm_mut());
@@ -460,7 +460,7 @@ pub fn sub_unsigned<'tcx>(
     ops_a: &CILNode,
     ops_b: &CILNode,
     ty: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILNode {
     let tpe = ctx.type_from_cache(ty);
     result_tuple(
@@ -474,7 +474,7 @@ pub fn add_unsigned<'tcx>(
     ops_a: &CILNode,
     ops_b: &CILNode,
     ty: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILNode {
     let tpe = ctx.type_from_cache(ty);
     let res = super::add_unchecked(ty, ty, ctx, ops_a.clone(), ops_b.clone());
@@ -495,7 +495,7 @@ pub fn add_signed<'tcx>(
     ops_a: &CILNode,
     ops_b: &CILNode,
     ty: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILNode {
     let tpe = ctx.type_from_cache(ty);
     match ty.kind() {

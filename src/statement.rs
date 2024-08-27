@@ -9,7 +9,7 @@ use rustc_middle::mir::{CopyNonOverlapping, NonDivergingIntrinsic, Statement, St
 #[allow(clippy::match_same_arms)]
 pub fn handle_statement<'tcx>(
     statement: &Statement<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> Option<CILTree> {
     let kind = &statement.kind;
     match kind {
@@ -84,7 +84,9 @@ pub fn handle_statement<'tcx>(
                         CILRoot::CpBlk {
                             src: Box::new(src_op),
                             dst: Box::new(dst_op),
-                            len: Box::new(count_op * conv_usize!(size_of!(pointed))),
+                            len: Box::new(
+                                count_op * conv_usize!(size_of!((*ctx.asm().get_type(pointed)))),
+                            ),
                         }
                         .into(),
                     )

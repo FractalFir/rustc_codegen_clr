@@ -158,7 +158,7 @@ pub fn set_discr<'tcx>(
     enum_addr: CILNode,
     enum_tpe: ClassRefIdx,
     ty: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILRoot {
     if get_variant_at_index(variant_index, (*layout.0).clone())
         .abi
@@ -241,7 +241,7 @@ pub fn get_discr<'tcx>(
     enum_addr: CILNode,
     enum_tpe: ClassRefIdx,
     ty: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILNode {
     //return CILNode::
     assert!(

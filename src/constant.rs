@@ -27,7 +27,7 @@ use rustc_middle::{
 };
 pub fn handle_constant<'tcx>(
     constant_op: &ConstOperand<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILNode {
     let constant = constant_op.const_;
     let constant = ctx.monomorphize(constant);
@@ -41,7 +41,7 @@ fn create_const_from_data<'tcx>(
     ty: Ty<'tcx>,
     alloc_id: AllocId,
     offset_bytes: u64,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILNode {
     let _ = offset_bytes;
     let ptr = CILNode::LoadGlobalAllocPtr {
@@ -56,7 +56,7 @@ fn create_const_from_data<'tcx>(
 pub(crate) fn load_const_value<'tcx>(
     const_val: ConstValue<'tcx>,
     const_ty: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILNode {
     match const_val {
         ConstValue::Scalar(scalar) => load_const_scalar(scalar, const_ty, ctx),
@@ -114,7 +114,7 @@ pub(crate) fn load_const_value<'tcx>(
     }
 }
 fn load_scalar_ptr(
-    ctx: &mut MethodCompileCtx<'_, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'_, '_>,
     ptr: rustc_middle::mir::interpret::Pointer,
 ) -> CILNode {
     let (alloc_id, offset) = ptr.into_parts();
@@ -229,7 +229,7 @@ fn load_scalar_ptr(
 fn load_const_scalar<'tcx>(
     scalar: Scalar,
     scalar_type: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILNode {
     let scalar_ty = ctx.monomorphize(scalar_type);
 
@@ -458,7 +458,7 @@ pub fn load_const_uint(value: u128, int_type: UintTy, asm: &mut Assembly) -> CIL
 fn u128_low_u64(value: u128) -> u64 {
     u64::try_from(value & u128::from(u64::MAX)).expect("trucating cast error")
 }
-fn get_fn_from_static_name(name: &str, ctx: &mut MethodCompileCtx<'_, '_, '_, '_>) -> CallSite {
+fn get_fn_from_static_name(name: &str, ctx: &mut MethodCompileCtx<'_, '_>) -> CallSite {
     let int8_ptr = ctx.asm_mut().nptr(Type::Int(Int::I8));
     let void_ptr = ctx.asm_mut().nptr(Type::Void);
     match name {

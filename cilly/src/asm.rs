@@ -179,13 +179,6 @@ impl Assembly {
     }
     /// Adds a method to the assebmly.
     pub fn add_method(&mut self, method: Method) {
-        if let Err(err) = method.validate() {
-            eprintln!(
-                "Could not validate the method {name} because {err}",
-                name = method.name()
-            );
-        }
-
         let main_module = self.inner.main_module();
         let def = crate::v2::MethodDef::from_v1(&method, &mut self.inner, main_module);
         //def.optimize(&mut self.inner, &mut SideEffectInfoCache::default(), 4);

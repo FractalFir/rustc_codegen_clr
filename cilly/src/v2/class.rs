@@ -282,6 +282,13 @@ impl ClassRef {
         let asm_name = Some(asm.alloc_string("System.Runtime"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, false, [].into()))
     }
+    #[must_use]
+    pub fn fixed_array(element: Type, length: usize, asm: &mut Assembly) -> ClassRefIdx {
+        let name = format!("{element}_{length}", element = element.mangle(asm));
+        let name = asm.alloc_string(name);
+        let cref = ClassRef::new(name, None, true, [].into());
+        asm.alloc_class_ref(cref)
+    }
 }
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub struct ClassDef {
@@ -296,6 +303,13 @@ pub struct ClassDef {
     explict_size: Option<NonZeroU32>,
 }
 impl ClassDef {
+    /// Checks if this class defition has a with the name and type.
+
+    pub fn has_static_field(&self, fld_name: StringIdx, fld_tpe: Type) -> bool {
+        self.static_fields
+            .iter()
+            .any(|(tpe, name, _)| *tpe == fld_tpe && *name == fld_name)
+    }
     pub(crate) fn iter_types(&self) -> impl Iterator<Item = Type> + '_ {
         self.fields()
             .iter()

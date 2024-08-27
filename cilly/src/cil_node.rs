@@ -1,4 +1,4 @@
-use crate::v2::{tpe, Assembly, ClassRef, ClassRefIdx, Int, Type};
+use crate::v2::{Assembly, ClassRef, ClassRefIdx, Int, Type};
 use crate::{
     call,
     call_site::CallSite,
@@ -837,15 +837,6 @@ impl CILNode {
                 idx.allocate_tmps(curr_loc, locals);
             }
         };
-    }
-    pub fn is_valid_dbg(
-        self,
-        vctx: ValidationContext,
-        tmp_loc: Option<&Type>,
-    ) -> Result<Self, String> {
-        // TODO: make this check debug only
-
-        Ok(self)
     }
 
     pub(crate) fn try_const_eval(&self) -> Option<Self> {

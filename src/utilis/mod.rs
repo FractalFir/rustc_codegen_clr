@@ -117,7 +117,7 @@ pub fn enum_field_descriptor<'tcx>(
     owner_ty: Ty<'tcx>,
     field_idx: u32,
     variant_idx: u32,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> FieldDescriptor {
     let (adt, subst) = as_adt(owner_ty).expect("Tried to get a field of a non ADT or tuple type!");
     let variant = adt
@@ -149,7 +149,7 @@ pub fn enum_field_descriptor<'tcx>(
 pub fn field_descrptor<'tcx>(
     owner_ty: Ty<'tcx>,
     field_idx: u32,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> FieldDescriptor {
     if let TyKind::Tuple(elements) = owner_ty.kind() {
         let element = elements[field_idx as usize];

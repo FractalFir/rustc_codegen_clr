@@ -162,6 +162,7 @@ mod unsize;
 // rustc functions used here.
 use crate::rustc_middle::dep_graph::DepContext;
 use cilly::asm::Assembly;
+use fn_ctx::MethodCompileCtx;
 use rustc_codegen_ssa::{
     back::archive::{ArArchiveBuilder, ArchiveBuilder, ArchiveBuilderBuilder},
     traits::CodegenBackend,
@@ -208,13 +209,10 @@ impl CodegenBackend for MyBackend {
             for cgu in cgus {
                 //println!("codegen {} has {} items.", cgu.name(), cgu.items().len());
                 for (item, _data) in cgu.items() {
-                    assembly::add_item(&mut asm, *item, tcx, &mut cache)
-                        .expect("Could not add function");
+                    assembly::add_item(&mut asm, *item, tcx).expect("Could not add function");
                 }
             }
-            for type_def in cache.defs() {
-                asm.add_typedef(type_def.clone());
-            }
+
             if let Some((entrypoint, _kind)) = tcx.entry_fn(()) {
                 let penv = rustc_middle::ty::ParamEnv::reveal_all();
                 let entrypoint = rustc_middle::ty::Instance::try_resolve(
@@ -225,7 +223,8 @@ impl CodegenBackend for MyBackend {
                 )
                 .expect("Could not resolve entrypoint!")
                 .expect("Could not resolve entrypoint!");
-                let sig = function_sig::sig_from_instance_(entrypoint, tcx, &mut cache)
+                let mut ctx = MethodCompileCtx::new(tcx, None, entrypoint, asm.inner_mut());
+                let sig = function_sig::sig_from_instance_(entrypoint, &mut ctx)
                     .expect("Could not get the signature of the entrypoint.");
                 let symbol = tcx.symbol_name(entrypoint);
                 let symbol = format!("{symbol:?}");

@@ -17,7 +17,7 @@ use rustc_span::source_map::Spanned;
 pub fn saturating_add<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
     call_instance: Instance<'tcx>,
 ) -> CILRoot {
     let a = handle_operand(&args[0].node, ctx);
@@ -40,7 +40,7 @@ pub fn saturating_add<'tcx>(
             let or = crate::binop::bitop::bit_or_unchecked(a_ty, a_ty, ctx, a.clone(), b.clone());
             let flag =
                 crate::binop::cmp::lt_unchecked(a_ty, sum.clone(), or.clone(), ctx.asm_mut());
-            let max = crate::r#type::max_value(&a_type);
+            let max = crate::r#type::max_value(&a_type, ctx.asm_mut());
             CILNode::select(a_type, max, sum, flag)
         }
         Type::Int(Int::I32) => {
@@ -237,7 +237,7 @@ pub fn saturating_add<'tcx>(
 pub fn saturating_sub<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
     call_instance: Instance<'tcx>,
 ) -> CILRoot {
     let a = handle_operand(&args[0].node, ctx);

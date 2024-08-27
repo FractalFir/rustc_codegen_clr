@@ -11,7 +11,7 @@ use rustc_span::source_map::Spanned;
 pub fn bswap<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILRoot {
     debug_assert_eq!(
         args.len(),

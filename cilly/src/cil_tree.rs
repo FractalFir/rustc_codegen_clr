@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{cil_node::ValidationContext, cil_root::CILRoot, IString, Type};
+use crate::{cil_root::CILRoot, IString, Type};
 
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 /// A root of a CIL Tree with metadata about local variables it reads/writes into.  
@@ -53,9 +53,7 @@ impl CILTree {
         // self.tree.borrow_mut().allocate_tmps(None, locals);
         self.tree.allocate_tmps(None, locals);
     }
-    pub fn validate(&self, vctx: ValidationContext) -> Result<(), String> {
-        self.root().validate(vctx, None)
-    }
+
     // TODO: remember to make this recompute tree metadtata when it is added
     pub fn root_mut(&mut self) -> &mut CILRoot {
         //self.tree.borrow_mut()

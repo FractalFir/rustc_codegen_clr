@@ -9,7 +9,7 @@ use rustc_target::spec::abi::Abi as TargetAbi;
 /// Creates a `FnSig` from ` `. May not match the result of `sig_from_instance_`!
 /// Use ONLY for function pointers!
 pub fn from_poly_sig<'tcx>(
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
     sig: rustc_middle::ty::FnSigTys<TyCtxt<'tcx>>,
 ) -> FnSig {
     let output = get_type(ctx.monomorphize(sig.output()), ctx);
@@ -23,7 +23,7 @@ pub fn from_poly_sig<'tcx>(
 /// Returns the signature of function behind `function`.
 pub fn sig_from_instance_<'tcx>(
     function: Instance<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> Result<FnSig, CodegenError> {
     let fn_abi = ctx.tcx().fn_abi_of_instance(ParamEnvAnd {
         param_env: ParamEnv::reveal_all(),

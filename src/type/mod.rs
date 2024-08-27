@@ -1,13 +1,15 @@
 /// A representation of a primitve type or a reference.
 pub mod r#type;
 
-use std::num::NonZeroU32;
+use std::num::{NonZero, NonZeroU32};
 
 use crate::{
     fn_ctx::MethodCompileCtx,
     utilis::{adt::FieldOffsetIterator, garg_to_string},
 };
-use cilly::v2::{Access, ClassDef, ClassRef, ClassRefIdx, Float, Int, StringIdx, Type};
+use cilly::v2::{
+    Access, ClassDef, ClassDefIdx, ClassRef, ClassRefIdx, Float, Int, StringIdx, Type,
+};
 pub use r#type::*;
 use rustc_middle::ty::{AdtDef, AdtKind, FloatTy, IntTy, List, ParamEnv, Ty, TyKind, UintTy};
 use rustc_span::def_id::DefId;
@@ -57,7 +59,7 @@ fn get_adt<'tcx>(
 
     subst: &'tcx List<rustc_middle::ty::GenericArg<'tcx>>,
     name: StringIdx,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> ClassRefIdx {
     let cref = ClassRef::new(name, None, true, [].into());
     if ctx.asm_mut().contains_ref(&cref) {
@@ -74,7 +76,7 @@ fn get_adt<'tcx>(
     }
 }
 /// Converts a Rust MIR type to an optimized .NET type representation.
-pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>) -> Type {
+pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Type {
     let ty = ctx.monomorphize(ty);
     // If this is a ZST, return a void type.
     if crate::utilis::is_zst(ty, ctx.tcx()) {
@@ -139,12 +141,7 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>
             }
             Type::ClassRef(cref)
         }
-        TyKind::Float(float) => match float {
-            FloatTy::F16 => Type::Float(Float::F16),
-            FloatTy::F32 => Type::Float(Float::F32),
-            FloatTy::F64 => Type::Float(Float::F64),
-            FloatTy::F128 => Type::Float(Float::F128),
-        },
+        TyKind::Float(float) => from_float(float),
         TyKind::Foreign(_foregin) => Type::Void,
         TyKind::FnDef(_did, _subst) => Type::Void,
         TyKind::FnPtr(sig, _) => {
@@ -161,6 +158,8 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>
             let sig = ctx.asm_mut().sig(inputs, output);
             Type::FnPtr(sig)
         }
+        TyKind::Int(int) => from_int(int),
+        TyKind::Uint(int) => from_uint(int),
         TyKind::Never => Type::Void,
         TyKind::RawPtr(inner, _) | TyKind::Ref(_, inner, _) => {
             if pointer_to_is_fat(*inner, ctx.tcx(), ctx.instance()) {
@@ -181,6 +180,22 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>
         TyKind::Slice(inner) => {
             let inner = ctx.monomorphize(*inner);
             get_type(inner, ctx)
+        }
+        TyKind::Tuple(types) => {
+            let types: Vec<_> = types.iter().map(|ty| get_type(ty, ctx)).collect();
+            if types.is_empty() {
+                Type::Void
+            } else {
+                let name = tuple_name(&types, ctx.asm_mut());
+                let name = ctx.asm_mut().alloc_string(name);
+                let cref = ClassRef::new(name, None, true, [].into());
+                // This only checks if a refernce to this class has already been allocated. In theory, allocating a class reference beforhand could break this, and make it not add the type definition
+                if !ctx.asm().contains_ref(&cref) {
+                    let layout = ctx.layout_of(ty);
+                    tuple_typedef(&types, layout.layout, ctx, name);
+                }
+                Type::ClassRef(ctx.asm_mut().alloc_class_ref(cref))
+            }
         }
         TyKind::Adt(def, subst) => {
             let name = crate::utilis::adt_name(*def, ctx.tcx(), subst);
@@ -286,10 +301,7 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>
 }
 
 /// Returns a fat pointer to an inner type.
-pub fn fat_ptr_to<'tcx>(
-    mut inner: Ty<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
-) -> ClassRefIdx {
+pub fn fat_ptr_to<'tcx>(mut inner: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> ClassRefIdx {
     inner = ctx.monomorphize(inner);
     let inner_tpe = get_type(inner, ctx);
     let name = format!("FatPtr{elem}", elem = inner_tpe.mangle(ctx.asm()));
@@ -329,7 +341,7 @@ pub fn closure_name(
     _def_id: DefId,
     fields: &[Type],
     _sig: cilly::v2::SigIdx,
-    ctx: &mut MethodCompileCtx<'_, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'_, '_>,
 ) -> String {
     let mangled_fields: String = fields.iter().map(|tpe| tpe.mangle(ctx.asm())).collect();
     format!(
@@ -342,7 +354,7 @@ pub fn closure_name(
 pub fn closure_typedef(
     fields: &[Type],
     layout: Layout,
-    ctx: &mut MethodCompileCtx<'_, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'_, '_>,
     closure_name: StringIdx,
 ) -> ClassDef {
     // Collects all field types, offsets, and names
@@ -386,7 +398,7 @@ fn struct_<'tcx>(
     adt: AdtDef<'tcx>,
     adt_ty: Ty<'tcx>,
     subst: &'tcx List<rustc_middle::ty::GenericArg<'tcx>>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> ClassDef {
     // Double-check is not a ZST.
 
@@ -433,7 +445,7 @@ fn enum_<'tcx>(
     adt: AdtDef<'tcx>,
     adt_ty: Ty<'tcx>,
     subst: &'tcx List<rustc_middle::ty::GenericArg<'tcx>>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> ClassDef {
     let layout = ctx.layout_of(adt_ty);
     let mut fields: Vec<(Type, StringIdx, Option<u32>)> = vec![];
@@ -536,7 +548,7 @@ fn union_<'tcx>(
     adt: AdtDef<'tcx>,
     adt_ty: Ty<'tcx>,
     subst: &'tcx List<rustc_middle::ty::GenericArg<'tcx>>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> ClassDef {
     // Get union layout
     let layout = ctx.layout_of(adt_ty);
@@ -736,4 +748,45 @@ pub fn escape_field_name(name: &str) -> String {
             }
         }
     }
+}
+#[must_use]
+pub fn tuple_typedef(
+    elements: &[Type],
+    layout: Layout,
+    ctx: &mut MethodCompileCtx<'_, '_>,
+    name: StringIdx,
+) -> ClassDefIdx {
+    let field_iter = elements
+        .iter()
+        .enumerate()
+        .map(|(idx, ele)| (format!("Item{}", idx + 1), *ele));
+    let explicit_offset_iter = FieldOffsetIterator::fields((*layout.0).clone());
+
+    let mut fields = Vec::new();
+    for ((name, field), offset) in (field_iter).zip(explicit_offset_iter) {
+        if field == Type::Void {
+            continue;
+        }
+        fields.push((field, ctx.asm_mut().alloc_string(name), Some(offset)));
+    }
+    ctx.asm_mut().class_def(ClassDef::new(
+        name,
+        true,
+        0,
+        None,
+        fields,
+        vec![],
+        vec![],
+        Access::Public,
+        Some(
+            NonZero::new(
+                layout
+                    .size()
+                    .bytes()
+                    .try_into()
+                    .expect("Tuple size >= 2^32. Unsuported"),
+            )
+            .expect("Zero-sized tuple!"),
+        ),
+    ))
 }

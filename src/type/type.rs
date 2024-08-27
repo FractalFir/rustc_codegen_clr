@@ -9,14 +9,10 @@ use cilly::{
     cil_node::CILNode,
     fn_sig::FnSig,
     ldc_u32, ldc_u64,
-    utilis::escape_class_name,
     v2::{Assembly, ClassRef, ClassRefIdx, Int},
     Type,
 };
-use rustc_middle::{
-    middle::exported_symbols::ExportedSymbol,
-    ty::{AdtDef, ConstKind, GenericArg, Instance, ParamEnv, Ty, TyCtxt, TyKind},
-};
+use rustc_middle::ty::{AdtDef, ConstKind, GenericArg, ParamEnv, Ty, TyCtxt, TyKind};
 /// This struct represetnts either a primitive .NET type (F32,F64), or stores information on how to lookup a more complex type (struct,class,array)
 use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, PartialEq, Clone, Eq, Hash, Debug)]
@@ -26,11 +22,11 @@ pub struct DotnetArray {
 }
 
 #[must_use]
-pub fn max_value(tpe: &Type) -> CILNode {
+pub fn max_value(tpe: &Type, asm: &mut Assembly) -> CILNode {
     match tpe {
         Type::Int(Int::USize) => call!(
             CallSite::new_extern(
-                ClassRef::usize_type(),
+                ClassRef::usize_type(asm),
                 "get_MaxValue".into(),
                 FnSig::new(&[], Type::Int(Int::USize)),
                 true
@@ -70,7 +66,7 @@ pub fn magic_type<'tcx>(
     name: &str,
     _adt: &AdtDef<'tcx>,
     subst: &[GenericArg<'tcx>],
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> Type {
     if name.contains(INTEROP_CLASS_TPE_NAME) {
         assert!(
@@ -138,6 +134,14 @@ pub fn garag_to_usize<'tcx>(garg: GenericArg<'tcx>, _ctx: TyCtxt<'tcx>) -> u64 {
         }
         _ => todo!("Can't convert generic arg of const kind {kind:?} to string!"),
     }
+}
+pub fn tuple_name(elements: &[Type], asm: &Assembly) -> String {
+    let generics: String = elements.iter().map(|t| t.mangle(asm)).collect();
+    format!(
+        "Tuple{generic_count}{generics}",
+        generic_count = generics.len()
+    )
+    .into()
 }
 /// Creates a tuple with no more than 8 elements.
 #[must_use]

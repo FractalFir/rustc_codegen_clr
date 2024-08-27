@@ -200,7 +200,7 @@ impl MethodDef {
         &mut self.implementation
     }
 
-    pub(crate) fn from_v1(
+    pub fn from_v1(
         v1: &crate::method::Method,
         asm: &mut super::Assembly,
         class: ClassDefIdx,

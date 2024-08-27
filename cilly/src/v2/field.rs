@@ -67,7 +67,7 @@ impl StaticFieldDesc {
         Self { owner, name, tpe }
     }
 
-    pub(crate) fn from_v1(desc: &V1StaticField, asm: &mut super::Assembly) -> Self {
+    pub fn from_v1(desc: &V1StaticField, asm: &mut super::Assembly) -> Self {
         let owner = if let Some(owner) = desc.owner() {
             *owner
         } else {

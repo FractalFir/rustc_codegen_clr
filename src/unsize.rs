@@ -40,7 +40,7 @@ impl<'tcx> UnsizeInfo<'tcx> {
     }
 
     pub fn for_unsize(
-        ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+        ctx: &mut MethodCompileCtx<'tcx, '_>,
         operand: &Operand<'tcx>,
         target: Ty<'tcx>,
     ) -> Self {
@@ -120,7 +120,7 @@ impl<'tcx> UnsizeInfo<'tcx> {
 
 /// Preforms an unsizing cast on operand `operand`, converting it to the `target` type.
 pub fn unsize2<'tcx>(
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
     operand: &Operand<'tcx>,
     target: Ty<'tcx>,
 ) -> CILNode {
@@ -161,12 +161,7 @@ pub fn unsize2<'tcx>(
             .cast_ptr(ctx.asm_mut().nptr(fat_ptr_type.clone().into())),
         metadata.cast_ptr(Type::Int(Int::USize)),
         metadata_field,
-        ctx.validator(),
-        Some(&target_type),
     );
-    init_metadata
-        .validate(ctx.validator(), Some(&target_type))
-        .expect("init_metadata invalid!");
 
     let init_ptr = if crate::r#type::is_fat_ptr(source, ctx.tcx(), ctx.instance()) {
         let void_ptr = ctx.asm_mut().nptr(Type::Void);
@@ -177,8 +172,6 @@ pub fn unsize2<'tcx>(
                 loaded_ptr: Box::new(ctx.asm_mut().nptr(Type::Void)),
             },
             ptr_field,
-            ctx.validator(),
-            Some(&target_type),
         )
     } else {
         let operand = if !source.is_any_ptr() {
@@ -205,14 +198,8 @@ pub fn unsize2<'tcx>(
             target_ptr.cast_ptr(ctx.asm_mut().nptr(fat_ptr_type.clone().into())),
             operand.cast_ptr(ctx.asm_mut().nptr(Type::Void)),
             ptr_field,
-            ctx.validator(),
-            Some(&target_type),
         )
     };
-
-    init_ptr
-        .validate(ctx.validator(), Some(&target_type))
-        .expect("init_ptr invalid!");
 
     let res = CILNode::LdObj {
         ptr: Box::new(
@@ -230,7 +217,7 @@ pub fn unsize2<'tcx>(
 }
 /// Adopted from https://github.com/rust-lang/rustc_codegen_cranelift/blob/45600348c009303847e8cddcfa8483f1f3d56625/src/unsize.rs#L64
 pub(crate) fn unsized_info<'tcx>(
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
     source: Ty<'tcx>,
     target: Ty<'tcx>,
     old_info: Option<CILNode>,
@@ -275,10 +262,7 @@ pub(crate) fn unsized_info<'tcx>(
     }
 }
 
-fn load_scalar_pair(
-    addr: CILNode,
-    ctx: &mut MethodCompileCtx<'_, '_, '_, '_>,
-) -> (CILNode, CILNode) {
+fn load_scalar_pair(addr: CILNode, ctx: &mut MethodCompileCtx<'_, '_>) -> (CILNode, CILNode) {
     (
         CILNode::LDIndUSize {
             ptr: Box::new(
@@ -295,7 +279,7 @@ fn load_scalar_pair(
 }
 
 pub(crate) fn get_vtable<'tcx>(
-    fx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    fx: &mut MethodCompileCtx<'tcx, '_>,
     ty: Ty<'tcx>,
     trait_ref: Option<PolyExistentialTraitRef<'tcx>>,
 ) -> CILNode {
@@ -308,7 +292,7 @@ pub(crate) fn get_vtable<'tcx>(
 /// Coerce `src`, which is a reference to a value of type `src_ty`,
 /// to a value of type `dst_ty` and store the result in `dst`
 pub(crate) fn unsize_metadata<'tcx>(
-    fx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    fx: &mut MethodCompileCtx<'tcx, '_>,
     src_cil: CILNode,
     src_ty: TyAndLayout<'tcx>,
     dst_ty: TyAndLayout<'tcx>,
@@ -352,7 +336,7 @@ pub(crate) fn unsize_metadata<'tcx>(
 }
 /// Coerce `src` to `dst_ty`.
 fn unsize_ptr_metadata<'tcx>(
-    fx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    fx: &mut MethodCompileCtx<'tcx, '_>,
 
     src_layout: TyAndLayout<'tcx>,
     dst_layout: TyAndLayout<'tcx>,

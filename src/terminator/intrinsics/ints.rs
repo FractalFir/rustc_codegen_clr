@@ -21,7 +21,7 @@ pub fn ctpop<'tcx>(
     destination: &Place<'tcx>,
 
     call_instance: Instance<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILRoot {
     debug_assert_eq!(
         args.len(),
@@ -135,7 +135,7 @@ pub fn ctlz<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
     call_instance: Instance<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILRoot {
     debug_assert_eq!(
         args.len(),
@@ -212,7 +212,7 @@ pub fn ctlz<'tcx>(
 pub fn cttz<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
     call_instance: Instance<'tcx>,
 ) -> CILRoot {
     debug_assert_eq!(
@@ -382,7 +382,7 @@ pub fn cttz<'tcx>(
 pub fn rotate_left<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
     call_instance: Instance<'tcx>,
 ) -> CILRoot {
     debug_assert_eq!(
@@ -597,7 +597,7 @@ pub fn rotate_left<'tcx>(
 pub fn rotate_right<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
     call_instance: Instance<'tcx>,
 ) -> CILRoot {
     debug_assert_eq!(
@@ -828,7 +828,7 @@ fn bitreverse_u16(ushort: CILNode) -> CILNode {
 pub fn bitreverse<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: &Place<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
     call_instance: Instance<'tcx>,
 ) -> CILRoot {
     debug_assert_eq!(

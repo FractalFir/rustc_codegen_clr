@@ -23,7 +23,7 @@ use rustc_middle::{
 use rustc_target::abi::FieldIdx;
 /// Returns the CIL ops to create the aggreagate value specifed by `aggregate_kind` at `target_location`. Uses indivlidual values specifed by `value_index`
 pub fn handle_aggregate<'tcx>(
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
     target_location: &Place<'tcx>,
     aggregate_kind: &AggregateKind<'tcx>,
     value_index: &IndexVec<FieldIdx, Operand<'tcx>>,
@@ -74,7 +74,7 @@ pub fn handle_aggregate<'tcx>(
 
             let element = ctx.monomorphize(*element);
             let element = ctx.type_from_cache(element);
-            let array_type = ClassRef::array(&element, value_index.len());
+            let array_type = ClassRef::fixed_array(element, value_index.len(), ctx.asm_mut());
             let array_getter = super::place::place_adress(target_location, ctx);
             let sig = cilly::fn_sig::FnSig::new(
                 &[
@@ -185,13 +185,13 @@ pub fn handle_aggregate<'tcx>(
                     "data_ty:{data_ty:?} is a zst. That is bizzare, cause it should be a pointer?"
                 );
                 let data_type = ctx.type_from_cache(data_ty);
+                let fat_ptr_type_ptr = ctx.asm_mut().nptr(fat_ptr_type.clone());
                 assert_ne!(data_type, Type::Void);
                 // Pointer is thin, just directly assign
                 return CILNode::SubTrees(Box::new((
                     [CILRoot::STIndPtr(
                         init_addr,
-                        handle_operand(data, ctx)
-                            .cast_ptr(ctx.asm_mut().nptr(ctx.asm_mut().nptr(fat_ptr_type.clone()))),
+                        handle_operand(data, ctx).cast_ptr(ctx.asm_mut().nptr(fat_ptr_type_ptr)),
                         Box::new(ctx.asm_mut().nptr(fat_ptr_type)),
                     )]
                     .into(),
@@ -230,7 +230,7 @@ pub fn handle_aggregate<'tcx>(
 }
 /// Builds an Algebraic Data Type (struct,enum,union) at location `target_location`, with fields set using ops in `fields`.
 fn aggregate_adt<'tcx>(
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
     target_location: &Place<'tcx>,
     adt: AdtDef<'tcx>,
     adt_type: Ty<'tcx>,

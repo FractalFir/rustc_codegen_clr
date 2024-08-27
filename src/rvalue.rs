@@ -29,10 +29,7 @@ macro_rules! cast {
         $cast_name(src, &target, handle_operand($operand, $ctx), $asm)
     }};
 }
-pub fn is_rvalue_unint<'tcx>(
-    rvalue: &Rvalue<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
-) -> bool {
+pub fn is_rvalue_unint<'tcx>(rvalue: &Rvalue<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> bool {
     match rvalue {
         Rvalue::Repeat(operand, _) | Rvalue::Use(operand) => {
             crate::operand::is_uninit(operand, ctx)
@@ -47,7 +44,7 @@ pub fn is_rvalue_unint<'tcx>(
 pub fn handle_rvalue<'tcx>(
     rvalue: &Rvalue<'tcx>,
     target_location: &Place<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
 ) -> CILNode {
     match rvalue {
         Rvalue::Use(operand) => handle_operand(operand, ctx),
@@ -374,7 +371,7 @@ pub fn handle_rvalue<'tcx>(
 }
 fn repeat<'tcx>(
     rvalue: &Rvalue<'tcx>,
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
     element: &Operand<'tcx>,
     times: rustc_middle::ty::Const<'tcx>,
 ) -> CILNode {
@@ -492,7 +489,7 @@ fn repeat<'tcx>(
     }
 }
 fn ptr_to_ptr<'tcx>(
-    ctx: &mut MethodCompileCtx<'tcx, '_, '_, '_>,
+    ctx: &mut MethodCompileCtx<'tcx, '_>,
     operand: &Operand<'tcx>,
     dst: Ty<'tcx>,
 ) -> CILNode {
