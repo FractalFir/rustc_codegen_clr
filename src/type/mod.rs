@@ -7,8 +7,12 @@ use crate::{
     fn_ctx::MethodCompileCtx,
     utilis::{adt::FieldOffsetIterator, garg_to_string},
 };
-use cilly::v2::{
-    Access, ClassDef, ClassDefIdx, ClassRef, ClassRefIdx, Float, Int, StringIdx, Type,
+use cilly::{
+    method::Method,
+    v2::{
+        cilnode::MethodKind, Access, BasicBlock, BinOp, CILNode, CILRoot, ClassDef, ClassDefIdx,
+        ClassRef, ClassRefIdx, Float, Int, MethodDef, MethodImpl, StringIdx, Type,
+    },
 };
 pub use r#type::*;
 use rustc_middle::ty::{AdtDef, AdtKind, FloatTy, IntTy, List, ParamEnv, Ty, TyKind, UintTy};
@@ -263,18 +267,16 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
             // Get the layout and size of this array
             let layout = ctx.layout_of(ty);
             let arr_size = layout.layout.size();
-            let element_name = element.mangle(ctx.asm());
-            let arr_name = format!("A{length}_{element_name}");
-            let arr_name = ctx.asm_mut().alloc_string(arr_name);
+
             // Get the reference to the array class
-            let cref =
-                ctx.asm_mut()
-                    .alloc_class_ref(ClassRef::new(arr_name, None, true, [].into()));
+            let cref = ClassRef::fixed_array(element, length, ctx.asm_mut());
+
             // If the array definition not already present, add it.
             if ctx.asm().class_ref_to_def(cref).is_none() {
                 let fields = vec![(element, ctx.asm_mut().alloc_string("f0"), Some(0))];
-                ctx.asm_mut().class_def(ClassDef::new(
-                    arr_name,
+                let class_ref = ctx.asm().class_ref(cref).clone();
+                let arr = ctx.asm_mut().class_def(ClassDef::new(
+                    class_ref.name(),
                     true,
                     0,
                     None,
@@ -291,6 +293,45 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
                         )
                         .unwrap(),
                     ),
+                ));
+                // Common nodes
+                let ldarg_0 = ctx.asm_mut().alloc_node(CILNode::LdArg(0));
+                let ldarg_1 = ctx.asm_mut().alloc_node(CILNode::LdArg(1));
+                let ldarg_2 = ctx.asm_mut().alloc_node(CILNode::LdArg(2));
+                let elem_tpe_idx = ctx.asm_mut().alloc_type(element);
+                let elem_size = ctx.asm_mut().alloc_node(CILNode::SizeOf(elem_tpe_idx));
+                let offset =
+                    ctx.asm_mut()
+                        .alloc_node(CILNode::BinOp(ldarg_1, elem_size, BinOp::Mul));
+                let elem_addr =
+                    ctx.asm_mut()
+                        .alloc_node(CILNode::BinOp(ldarg_0, offset, BinOp::Add));
+                // Defintion of the set_Item method.
+                let set_item = ctx.asm_mut().alloc_string("set_Item");
+                let this_ref = ctx.asm_mut().nref(Type::ClassRef(cref));
+                let set_sig = ctx
+                    .asm_mut()
+                    .sig([this_ref, Type::Int(Int::USize), element], Type::Void);
+                let arg_names = vec![
+                    Some(ctx.asm_mut().alloc_string("this")),
+                    Some(ctx.asm_mut().alloc_string("idx")),
+                    Some(ctx.asm_mut().alloc_string("elem")),
+                ];
+                let set_root = ctx.asm_mut().alloc_root(CILRoot::StInd(Box::new((
+                    elem_addr, ldarg_2, element, false,
+                ))));
+                let void_ret = ctx.asm_mut().alloc_root(CILRoot::VoidRet);
+                ctx.asm_mut().new_method(MethodDef::new(
+                    Access::Public,
+                    arr,
+                    set_item,
+                    set_sig,
+                    MethodKind::Instance,
+                    MethodImpl::MethodBody {
+                        blocks: vec![BasicBlock::new(vec![set_root, void_ret], 0, None)],
+                        locals: vec![],
+                    },
+                    arg_names,
                 ));
             }
             Type::ClassRef(cref)

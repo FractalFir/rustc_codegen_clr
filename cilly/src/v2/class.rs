@@ -280,7 +280,7 @@ impl ClassRef {
     pub fn midpoint_rounding(asm: &mut Assembly) -> ClassRefIdx {
         let name: StringIdx = asm.alloc_string("System.MidpointRounding");
         let asm_name = Some(asm.alloc_string("System.Runtime"));
-        asm.alloc_class_ref(ClassRef::new(name, asm_name, false, [].into()))
+        asm.alloc_class_ref(ClassRef::new(name, asm_name, true, [].into()))
     }
     #[must_use]
     pub fn fixed_array(element: Type, length: usize, asm: &mut Assembly) -> ClassRefIdx {

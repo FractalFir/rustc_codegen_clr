@@ -78,7 +78,7 @@ pub fn handle_aggregate<'tcx>(
             let array_getter = super::place::place_adress(target_location, ctx);
             let sig = cilly::fn_sig::FnSig::new(
                 &[
-                    ctx.asm_mut().nptr(array_type.clone().into()),
+                    ctx.asm_mut().nref(array_type.clone().into()),
                     Type::Int(Int::USize),
                     element,
                 ],

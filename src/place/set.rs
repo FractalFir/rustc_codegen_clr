@@ -113,8 +113,8 @@ pub fn place_elem_set<'a>(
                             Some(array_dotnet),
                             "set_Item".into(),
                             FnSig::new(
-                                &[
-                                    ctx.asm_mut().nptr(array_type.into()),
+                                [
+                                    ctx.asm_mut().nref(array_type.into()),
                                     Type::Int(Int::USize),
                                     element_type,
                                 ],

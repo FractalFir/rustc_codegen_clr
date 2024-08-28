@@ -516,6 +516,18 @@ impl Assembly {
     /// Converts the old assembly repr to the new one.
     pub fn from_v1(v1: &V1Asm) -> Self {
         let mut empty: Assembly = v1.inner().clone();
+        let rust_void = empty.alloc_string("RustVoid");
+        empty.class_def(ClassDef::new(
+            rust_void,
+            true,
+            0,
+            None,
+            vec![],
+            vec![],
+            vec![],
+            Access::Public,
+            None,
+        ));
         // Add the user defined roots
         let roots = v1
             .initializers()

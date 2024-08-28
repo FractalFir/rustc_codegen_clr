@@ -407,7 +407,7 @@ fn repeat<'tcx>(
             count: Box::new(conv_usize!(ldc_u64!(times))),
         };
         return CILNode::TemporaryLocal(Box::new((
-            array.clone(),
+            array,
             vec![init].into(),
             CILNode::LoadTMPLocal,
         )));
@@ -418,13 +418,13 @@ fn repeat<'tcx>(
         for idx in 0..16 {
             branches.push(CILRoot::Call {
                 site: Box::new(CallSite::new(
-                    Some(array_dotnet.clone()),
+                    Some(array_dotnet),
                     "set_Item".into(),
                     FnSig::new(
-                        &[
-                            ctx.asm_mut().nptr(array.clone()),
+                        [
+                            ctx.asm_mut().nref(array),
                             Type::Int(Int::USize),
-                            element_type.clone(),
+                            element_type,
                         ],
                         Type::Void,
                     ),
@@ -468,7 +468,7 @@ fn repeat<'tcx>(
                     "set_Item".into(),
                     FnSig::new(
                         &[
-                            ctx.asm_mut().nptr(array.clone()),
+                            ctx.asm_mut().nref(array.clone()),
                             Type::Int(Int::USize),
                             element_type.clone(),
                         ],
