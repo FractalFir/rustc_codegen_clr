@@ -82,8 +82,7 @@ impl Assembly {
             initializers: vec![],
             inner: Default::default(),
         };
-        res.static_fields
-            .insert("GlobalAtomicLock".into(), (Type::PlatformObject, false));
+
         let dotnet_ver = AssemblyExternRef {
             version: (6, 12, 0, 0),
         };
@@ -92,7 +91,7 @@ impl Assembly {
         res.extern_refs
             .insert("System.Runtime.InteropServices".into(), dotnet_ver);
         // Needed to get C-Mode to work
-        res.add_cctor();
+
         res.add_tcctor();
         res
     }
@@ -101,52 +100,7 @@ impl Assembly {
     pub fn add_static(&mut self, tpe: Type, name: &str, thread_local: bool) {
         self.static_fields.insert(name.into(), (tpe, thread_local));
     }
-    pub fn add_cctor(&mut self) -> &mut Method {
-        self.functions
-            .entry(CallSite::new(
-                None,
-                ".cctor".into(),
-                FnSig::new([], Type::Void),
-                true,
-            ))
-            .or_insert_with(|| {
-                Method::new(
-                    AccessModifer::Extern,
-                    MethodType::Static,
-                    FnSig::new([], Type::Void),
-                    ".cctor",
-                    vec![
-                        (None, self.inner.nptr(Type::Int(Int::U8))),
-                        (None, self.inner.nptr(Type::Int(Int::U8))),
-                    ],
-                    vec![BasicBlock::new(
-                        vec![
-                            CILRoot::SetStaticField {
-                                descr: Box::new(StaticFieldDescriptor::new(
-                                    None,
-                                    Type::PlatformObject,
-                                    "GlobalAtomicLock".into(),
-                                )),
-                                value: CILNode::NewObj(Box::new(CallOpArgs {
-                                    args: [].into(),
-                                    site: Box::new(CallSite::new(
-                                        Some(ClassRef::object(&mut self.inner)),
-                                        ".ctor".into(),
-                                        FnSig::new([Type::PlatformObject], Type::Void),
-                                        false,
-                                    )),
-                                })),
-                            }
-                            .into(),
-                            CILRoot::VoidRet.into(),
-                        ],
-                        0,
-                        None,
-                    )],
-                    vec![],
-                )
-            })
-    }
+
     /// Addds a per-thread static initailzer
     pub fn add_tcctor(&mut self) -> &mut Method {
         self.functions

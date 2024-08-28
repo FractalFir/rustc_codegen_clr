@@ -701,109 +701,74 @@ pub fn add_const_value(
     bytes: u128,
     tcx: TyCtxt,
 ) -> StaticFieldDescriptor {
+    let uint8_ptr = asm.nptr(Type::Int(Int::U8));
+    let main_module_id = asm.main_module();
     let alloc_fld: IString = format!("a_{bytes:x}").into();
     let raw_bytes = bytes.to_le_bytes();
     let field_desc =
         StaticFieldDescriptor::new(None, asm.nptr(Type::Int(Int::U8)), alloc_fld.clone());
-    todo!();
-    /*
-    if !asm.static_fields().contains_key(&alloc_fld) {
-        let mut trees = vec![CILRoot::STLoc {
-            local: 0,
-            tree: call!(
-                cilly::call_site::CallSite::alloc(tcx),
-                [conv_usize!(ldc_u32!(16))]
-            )
-            .cast_ptr(asm.nptr(Type::Int(Int::U8))),
-        }
-        .into()];
-        // This is an optimization if and only if there are enough zero-bytes to justify this.
-        if !raw_bytes.iter().all(|byte| *byte != 0) {
-            trees.push(
-                CILRoot::InitBlk {
-                    dst: Box::new(CILNode::LDLoc(0)),
-                    val: Box::new(CILNode::LdcU8(0)),
-                    count: Box::new(conv_usize!(ldc_u32!(16))),
-                }
-                .into(),
-            );
-        }
-        for index in 0..16 {
-            if raw_bytes[index as usize] != 0 {
-                trees.push(
-                    CILRoot::STIndI8(
-                        CILNode::LDLoc(0) + conv_usize!(ldc_u32!(index)),
-                        CILNode::LdcU8(raw_bytes[index as usize]),
-                    )
-                    .into(),
-                );
-            }
-        }
+    let name = asm.alloc_string(alloc_fld.clone());
+    let main_module = asm.class_mut(main_module_id);
+    if main_module.has_static_field(name, *field_desc.tpe()) {
+        return field_desc;
+    }
+    asm.add_static(uint8_ptr, alloc_fld, false, main_module_id);
+    let mut trees = vec![CILRoot::STLoc {
+        local: 0,
+        tree: call!(
+            cilly::call_site::CallSite::alloc(asm),
+            [conv_usize!(ldc_u32!(16))]
+        )
+        .cast_ptr(asm.nptr(Type::Int(Int::U8))),
+    }
+    .into()];
+    // This is an optimization if and only if there are enough zero-bytes to justify this.
+    if !raw_bytes.iter().all(|byte| *byte != 0) {
         trees.push(
-            CILRoot::Ret {
-                tree: CILNode::LDLoc(0),
+            CILRoot::InitBlk {
+                dst: Box::new(CILNode::LDLoc(0)),
+                val: Box::new(CILNode::LdcU8(0)),
+                count: Box::new(conv_usize!(ldc_u32!(16))),
             }
             .into(),
         );
-        let block = BasicBlock::new(trees, 0, None);
-        let init_method = Method::new(
-            AccessModifer::Public,
-            MethodType::Static,
-            FnSig::new(&[], asm.nptr(Type::Int(Int::U8))),
-            &format!("init_a{bytes:x}"),
-            vec![(Some("alloc_ptr".into()), asm.nptr(Type::Int(Int::U8)))],
-            vec![block],
-            vec![],
-        );
-
-        let cctor = asm.add_cctor();
-        let mut blocks = cctor.blocks_mut();
-        if blocks.is_empty() {
-            blocks.push(BasicBlock::new(vec![CILRoot::VoidRet.into()], 0, None));
-        }
-        assert_eq!(
-            blocks.len(),
-            1,
-            "Unexpected number of basic blocks in a static data initializer."
-        );
-        let trees = blocks[0].trees_mut();
-        {
-            // Remove return
-            let ret = trees.pop().unwrap();
-            // Append initailzer
+    }
+    for index in 0..16 {
+        if raw_bytes[index as usize] != 0 {
             trees.push(
-                CILRoot::SetStaticField {
-                    descr: Box::new(
-                        StaticFieldDescriptor::new(
-                            None,
-                            asm.nptr(Type::Int(Int::U8)),
-                            alloc_fld.clone(),
-                        )
-                        .clone(),
-                    ),
-                    value: call!(
-                        CallSite::new(
-                            None,
-                            init_method.name().into(),
-                            init_method.sig().clone(),
-                            true,
-                        ),
-                        []
-                    ),
-                }
+                CILRoot::STIndI8(
+                    CILNode::LDLoc(0) + conv_usize!(ldc_u32!(index)),
+                    CILNode::LdcU8(raw_bytes[index as usize]),
+                )
                 .into(),
             );
-            // Add return again
-            trees.push(ret);
         }
-        drop(blocks);
-        asm.add_method(init_method);
-        asm.add_static(
-            asm.nptr(Type::Int(Int::U8)),
-            &alloc_fld,
-            false,
-            asm.main_module(),
-        );
     }
-    field_desc */
+    trees.push(
+        CILRoot::Ret {
+            tree: CILNode::LDLoc(0),
+        }
+        .into(),
+    );
+    let block = BasicBlock::new(trees, 0, None);
+    let init_method = Method::new(
+        AccessModifer::Public,
+        MethodType::Static,
+        FnSig::new([], asm.nptr(Type::Int(Int::U8))),
+        &format!("init_a{bytes:x}"),
+        vec![(Some("alloc_ptr".into()), asm.nptr(Type::Int(Int::U8)))],
+        vec![block],
+        vec![],
+    );
+    let init_method = MethodDef::from_v1(&init_method, asm, main_module_id);
+    let initialzer = asm.new_method(init_method);
+    let val = asm.alloc_node(cilly::v2::CILNode::Call(Box::new((*initialzer, [].into()))));
+
+    let field = StaticFieldDesc::from_v1(&field_desc, asm);
+    let field = asm.alloc_sfld(field);
+    let root = asm.alloc_root(cilly::v2::CILRoot::SetStaticField { field, val });
+
+    asm.add_cctor(&[root]);
+
+    field_desc
 }

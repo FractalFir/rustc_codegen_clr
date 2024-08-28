@@ -504,6 +504,7 @@ impl Assembly {
         } else {
             last.roots().len() - 1
         };
+
         for (idx, root) in roots.iter().enumerate() {
             last.roots_mut().insert(idx + last_root_idx, *root);
         }
