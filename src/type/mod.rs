@@ -333,6 +333,57 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
                     },
                     arg_names,
                 ));
+                // Implementation of the get_Item method
+                let get_item = ctx.asm_mut().alloc_string("get_Item");
+                let get_sig = ctx
+                    .asm_mut()
+                    .sig([this_ref, Type::Int(Int::USize)], element);
+                let arg_names = vec![
+                    Some(ctx.asm_mut().alloc_string("this")),
+                    Some(ctx.asm_mut().alloc_string("idx")),
+                ];
+                let elem_val = ctx.asm_mut().alloc_node(CILNode::LdInd {
+                    addr: elem_addr,
+                    tpe: elem_tpe_idx,
+                    volitale: false,
+                });
+                let elem_ret = ctx.asm_mut().alloc_root(CILRoot::Ret(elem_val));
+                ctx.asm_mut().new_method(MethodDef::new(
+                    Access::Public,
+                    arr,
+                    get_item,
+                    get_sig,
+                    MethodKind::Instance,
+                    MethodImpl::MethodBody {
+                        blocks: vec![BasicBlock::new(vec![elem_ret], 0, None)],
+                        locals: vec![],
+                    },
+                    arg_names,
+                ));
+                // Implementation of the get_Address method
+                let get_address = ctx.asm_mut().alloc_string("get_Address");
+                let elem_ref_tpe = ctx.asm_mut().nptr(element);
+                let addr_sig = ctx
+                    .asm_mut()
+                    .sig([this_ref, Type::Int(Int::USize)], elem_ref_tpe);
+                let arg_names = vec![
+                    Some(ctx.asm_mut().alloc_string("this")),
+                    Some(ctx.asm_mut().alloc_string("idx")),
+                ];
+
+                let elem_ret = ctx.asm_mut().alloc_root(CILRoot::Ret(elem_addr));
+                ctx.asm_mut().new_method(MethodDef::new(
+                    Access::Public,
+                    arr,
+                    get_address,
+                    addr_sig,
+                    MethodKind::Instance,
+                    MethodImpl::MethodBody {
+                        blocks: vec![BasicBlock::new(vec![elem_ret], 0, None)],
+                        locals: vec![],
+                    },
+                    arg_names,
+                ));
             }
             Type::ClassRef(cref)
         }
@@ -474,10 +525,7 @@ fn struct_<'tcx>(
         vec![],
         vec![],
         Access::Public,
-        Some(
-            NonZeroU32::new(layout.layout.size().bytes().try_into().unwrap())
-                .expect("Type size can't be 0!"),
-        ),
+        NonZeroU32::new(layout.layout.size().bytes().try_into().unwrap()),
     )
 }
 /// Turns an adt enum defintion into a [`ClassDef`]

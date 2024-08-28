@@ -206,10 +206,11 @@ pub fn place_elem_adress<'tcx>(
                 TyKind::Slice(inner) => {
                     let inner = ctx.monomorphize(*inner);
                     let inner_type = ctx.type_from_cache(inner);
-                    let slice = get_type(inner, ctx).as_class_ref().unwrap();
+                    let slice = fat_ptr_to(inner, ctx);
+
                     let desc = FieldDescriptor::new(
                         slice,
-                        ctx.asm_mut().nptr(Type::Void.into()),
+                        ctx.asm_mut().nptr(Type::Void),
                         crate::DATA_PTR.into(),
                     );
                     // This is a false positive
@@ -229,7 +230,7 @@ pub fn place_elem_adress<'tcx>(
                             Some(array_dotnet),
                             "get_Address".into(),
                             FnSig::new(
-                                &[ctx.asm_mut().nptr(array_type.into()), Type::Int(Int::USize)],
+                                [ctx.asm_mut().nref(array_type.into()), Type::Int(Int::USize)],
                                 ctx.asm_mut().nptr(element_type.into()),
                             ),
                             false,
@@ -352,18 +353,7 @@ pub fn place_elem_adress<'tcx>(
 
                     ld_field!(addr_calc.clone(), desc)
                         .cast_ptr(ctx.asm_mut().nptr(inner_type.clone()))
-                        + (call!(
-                            CallSite::new(
-                                None,
-                                "bounds_check".into(),
-                                FnSig::new(
-                                    &[Type::Int(Int::USize), Type::Int(Int::USize)],
-                                    Type::Int(Int::USize)
-                                ),
-                                true
-                            ),
-                            [conv_usize!(index), ld_field!(addr_calc, len)]
-                        ) * conv_usize!(CILNode::SizeOf(inner_type.into())))
+                        + (index * conv_usize!(CILNode::SizeOf(inner_type.into())))
                 }
                 TyKind::Array(element, _) => {
                     let element_ty = ctx.monomorphize(*element);
@@ -379,7 +369,7 @@ pub fn place_elem_adress<'tcx>(
                                 Some(array_dotnet),
                                 "get_Address".into(),
                                 FnSig::new(
-                                    &[ctx.asm_mut().nptr(array_type.into()), Type::Int(Int::USize)],
+                                    [ctx.asm_mut().nref(array_type.into()), Type::Int(Int::USize)],
                                     ctx.asm_mut().nptr(element.into()),
                                 ),
                                 false,

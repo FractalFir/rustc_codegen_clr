@@ -92,7 +92,6 @@ impl Assembly {
             .insert("System.Runtime.InteropServices".into(), dotnet_ver);
         // Needed to get C-Mode to work
 
-        res.add_tcctor();
         res
     }
 

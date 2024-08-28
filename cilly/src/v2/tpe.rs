@@ -158,14 +158,16 @@ impl Type {
             },
             Type::ClassRef(cref) => {
                 let cref = asm.class_ref(*cref);
-                match cref.asm() {
+                let asm_name = match cref.asm() {
                     Some(asm_name) => format!(
                         "{len}{asm_name}",
                         len = asm.get_string(asm_name).len(),
                         asm_name = asm.get_string(asm_name)
                     ),
                     None => "n".into(),
-                }
+                };
+                let name = asm.get_string(cref.name());
+                format!("{asm_name}{len}{name}", len = name.len())
             }
             Type::Float(float) => match float {
                 Float::F16 => "f2".into(),

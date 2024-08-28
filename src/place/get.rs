@@ -140,7 +140,7 @@ fn place_elem_get<'a>(
                     let size = crate::casts::int_to_int(
                         Type::Int(Int::I32),
                         &index_type,
-                        CILNode::SizeOf(inner_type.clone().into()),
+                        CILNode::SizeOf(inner_type.into()),
                         ctx.asm_mut(),
                     );
                     let addr = (ld_field!(addr_calc, desc)
@@ -158,7 +158,7 @@ fn place_elem_get<'a>(
                             Some(array_dotnet),
                             "get_Item".into(),
                             FnSig::new(
-                                &[ctx.asm_mut().nptr(array_type.into()), Type::Int(Int::USize)],
+                                [ctx.asm_mut().nref(array_type), Type::Int(Int::USize)],
                                 element
                             ),
                             false,
@@ -187,8 +187,8 @@ fn place_elem_get<'a>(
                     let inner_type = ctx.type_from_cache(inner);
                     let slice = fat_ptr_to(Ty::new_slice(ctx.tcx(), inner), ctx);
                     let data_pointer = FieldDescriptor::new(
-                        slice.clone(),
-                        ctx.asm_mut().nptr(Type::Void.into()),
+                        slice,
+                        ctx.asm_mut().nptr(Type::Void),
                         crate::DATA_PTR.into(),
                     );
                     let metadata =
@@ -204,19 +204,9 @@ fn place_elem_get<'a>(
                         //ops.extend(derf_op);
                     };
                     let addr = ld_field!(addr_calc.clone(), data_pointer)
-                        .cast_ptr(ctx.asm_mut().nptr(inner_type.clone()))
-                        + call!(
-                            CallSite::new(
-                                None,
-                                "bounds_check".into(),
-                                FnSig::new(
-                                    &[Type::Int(Int::USize), Type::Int(Int::USize)],
-                                    Type::Int(Int::USize)
-                                ),
-                                true
-                            ),
-                            [conv_usize!(index), ld_field!(addr_calc, metadata),]
-                        ) * CILNode::ZeroExtendToUSize(CILNode::SizeOf(inner_type.into()).into());
+                        .cast_ptr(ctx.asm_mut().nptr(inner_type))
+                        + (conv_usize!(index))
+                            * CILNode::ZeroExtendToUSize(CILNode::SizeOf(inner_type.into()).into());
                     super::deref_op(super::PlaceTy::Ty(inner), ctx, addr)
                 }
                 TyKind::Array(element, _length) => {
@@ -234,7 +224,7 @@ fn place_elem_get<'a>(
                                 Some(array_dotnet),
                                 "get_Item".into(),
                                 FnSig::new(
-                                    &[ctx.asm_mut().nptr(array_type.into()), Type::Int(Int::USize)],
+                                    [ctx.asm_mut().nref(array_type.into()), Type::Int(Int::USize)],
                                     element
                                 ),
                                 false,

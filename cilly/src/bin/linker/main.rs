@@ -8,8 +8,8 @@ use cilly::{
     v2::{
         asm::{MissingMethodPatcher, ILASM_FLAVOUR},
         cilnode::MethodKind,
-        Assembly, BasicBlock, CILNode, CILRoot, ClassRef, Const, IlasmFlavour, Int, MethodImpl,
-        Type,
+        Assembly, BasicBlock, CILNode, CILRoot, ClassDef, ClassRef, Const, IlasmFlavour, Int,
+        MethodImpl, Type,
     },
     FnSig,
 };
@@ -23,7 +23,12 @@ mod native_passtrough;
 mod patch;
 use fxhash::FxHashMap;
 use patch::{builtin_call, call_alias};
-use std::{env, io::Write, path::Path};
+use std::{
+    env,
+    io::Write,
+    num::{NonZero, NonZeroU32},
+    path::Path,
+};
 mod aot;
 
 fn add_mandatory_statics(asm: &mut cilly::v2::Assembly) {
@@ -372,6 +377,22 @@ fn main() {
     cilly::v2::builtins::atomics::generate_all_atomics(&mut final_assembly, &mut overrides);
     cilly::v2::builtins::casts::insert_casts(&mut final_assembly, &mut overrides);
     cilly::v2::builtins::select::generate_int_selects(&mut final_assembly, &mut overrides);
+    cilly::v2::builtins::insert_heap(&mut final_assembly, &mut overrides);
+    // Ensure the cctor and tcctor exist!
+    let _ = final_assembly.tcctor();
+    let _ = final_assembly.cctor();
+    let float128 = final_assembly.alloc_string("f128");
+    final_assembly.class_def(ClassDef::new(
+        float128,
+        true,
+        0,
+        None,
+        vec![],
+        vec![],
+        vec![],
+        cilly::v2::Access::Public,
+        NonZeroU32::new(16),
+    ));
     final_assembly.patch_missing_methods(externs, modifies_errno, overrides);
 
     add_mandatory_statics(&mut final_assembly);

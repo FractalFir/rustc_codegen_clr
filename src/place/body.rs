@@ -182,8 +182,8 @@ pub fn place_elem_body<'tcx>(
                                 Some(array_dotnet),
                                 "get_Address".into(),
                                 FnSig::new(
-                                    &[ctx.asm_mut().nptr(array_type.into()), Type::Int(Int::USize)],
-                                    ctx.asm_mut().nptr(element_type.into()),
+                                    [ctx.asm_mut().nref(array_type), Type::Int(Int::USize)],
+                                    ctx.asm_mut().nptr(element_type),
                                 ),
                                 false,
                             ),
@@ -196,7 +196,7 @@ pub fn place_elem_body<'tcx>(
                                 Some(array_dotnet),
                                 "get_Item".into(),
                                 FnSig::new(
-                                    &[ctx.asm_mut().nptr(array_type.into()), Type::Int(Int::USize)],
+                                    [ctx.asm_mut().nref(array_type), Type::Int(Int::USize)],
                                     element_type,
                                 ),
                                 false,
@@ -227,25 +227,15 @@ pub fn place_elem_body<'tcx>(
                     let inner_type = ctx.type_from_cache(inner);
                     let slice = fat_ptr_to(Ty::new_slice(ctx.tcx(), inner), ctx);
                     let desc = FieldDescriptor::new(
-                        slice.clone(),
-                        ctx.asm_mut().nptr(Type::Void.into()),
+                        slice,
+                        ctx.asm_mut().nptr(Type::Void),
                         crate::DATA_PTR.into(),
                     );
                     let metadata =
                         FieldDescriptor::new(slice, Type::Int(Int::USize), "metadata".into());
                     let addr = Box::new(ld_field!(parrent_node.clone(), desc))
-                        .cast_ptr(ctx.asm_mut().nptr(inner_type.clone()))
-                        + call!(
-                            CallSite::builtin(
-                                "bounds_check".into(),
-                                FnSig::new(
-                                    &[Type::Int(Int::USize), Type::Int(Int::USize)],
-                                    Type::Int(Int::USize)
-                                ),
-                                true
-                            ),
-                            [index, ld_field!(parrent_node.clone(), metadata)]
-                        ) * conv_usize!(CILNode::SizeOf(inner_type.into()));
+                        .cast_ptr(ctx.asm_mut().nptr(inner_type))
+                        + (index) * conv_usize!(CILNode::SizeOf(inner_type.into()));
                     if body_ty_is_by_adress(inner, ctx) {
                         (inner.into(), addr)
                     } else {
@@ -266,7 +256,7 @@ pub fn place_elem_body<'tcx>(
                                 Some(array_dotnet),
                                 "get_Address".into(),
                                 FnSig::new(
-                                    &[ctx.asm_mut().nptr(array_type.into()), Type::Int(Int::USize)],
+                                    [ctx.asm_mut().nref(array_type.into()), Type::Int(Int::USize)],
                                     ctx.asm_mut().nptr(element.into()),
                                 ),
                                 false,
@@ -280,7 +270,7 @@ pub fn place_elem_body<'tcx>(
                                 Some(array_dotnet),
                                 "get_Item".into(),
                                 FnSig::new(
-                                    &[ctx.asm_mut().nptr(array_type.into()), Type::Int(Int::USize)],
+                                    [ctx.asm_mut().nref(array_type), Type::Int(Int::USize)],
                                     element
                                 ),
                                 false,

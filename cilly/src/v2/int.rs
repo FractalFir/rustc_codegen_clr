@@ -82,7 +82,7 @@ impl Int {
             Int::ISize => {
                 let min_value = asm.alloc_string("get_MinValue");
                 let sig = asm.sig([], Type::Int(*self));
-                let class = ClassRef::usize_type(asm);
+                let class = ClassRef::isize_type(asm);
                 CILNode::Call(Box::new((
                     asm.alloc_methodref(MethodRef::new(
                         class,
@@ -155,7 +155,7 @@ impl Int {
             Int::ISize => {
                 let max_value = asm.alloc_string("get_MaxValue");
                 let sig = asm.sig([], Type::Int(*self));
-                let class = ClassRef::usize_type(asm);
+                let class = ClassRef::isize_type(asm);
                 CILNode::Call(Box::new((
                     asm.alloc_methodref(MethodRef::new(
                         class,

@@ -86,11 +86,11 @@ pub fn place_elem_set<'a>(
                 TyKind::Slice(inner) => {
                     let inner = ctx.monomorphize(*inner);
                     let inner_type = ctx.type_from_cache(inner);
-                    let inner_ptr = ctx.asm_mut().nptr(inner_type.clone());
+                    let inner_ptr = ctx.asm_mut().nptr(inner_type);
                     let slice = fat_ptr_to(Ty::new_slice(ctx.tcx(), inner), ctx);
                     let desc = FieldDescriptor::new(
                         slice,
-                        ctx.asm_mut().nptr(Type::Void.into()),
+                        ctx.asm_mut().nptr(Type::Void),
                         crate::DATA_PTR.into(),
                     );
                     ptr_set_op(
@@ -114,7 +114,7 @@ pub fn place_elem_set<'a>(
                             "set_Item".into(),
                             FnSig::new(
                                 [
-                                    ctx.asm_mut().nref(array_type.into()),
+                                    ctx.asm_mut().nref(array_type),
                                     Type::Int(Int::USize),
                                     element_type,
                                 ],
@@ -149,20 +149,20 @@ pub fn place_elem_set<'a>(
                     let inner_type = ctx.type_from_cache(inner);
                     let slice = fat_ptr_to(Ty::new_slice(ctx.tcx(), inner), ctx);
                     let desc = FieldDescriptor::new(
-                        slice.clone(),
-                        ctx.asm_mut().nptr(Type::Void.into()),
+                        slice,
+                        ctx.asm_mut().nptr(Type::Void),
                         crate::DATA_PTR.into(),
                     );
                     let metadata =
                         FieldDescriptor::new(slice, Type::Int(Int::USize), crate::METADATA.into());
                     let addr = ld_field!(addr_calc.clone(), desc)
-                        .cast_ptr(ctx.asm_mut().nptr(inner_type.clone()))
+                        .cast_ptr(ctx.asm_mut().nptr(inner_type))
                         + call!(
                             CallSite::new(
                                 None,
                                 "bounds_check".into(),
                                 FnSig::new(
-                                    &[Type::Int(Int::USize), Type::Int(Int::USize)],
+                                    [Type::Int(Int::USize), Type::Int(Int::USize)],
                                     Type::Int(Int::USize)
                                 ),
                                 true
@@ -182,8 +182,8 @@ pub fn place_elem_set<'a>(
                             Some(array_dotnet),
                             "set_Item".into(),
                             FnSig::new(
-                                &[
-                                    ctx.asm_mut().nptr(array_type.into()),
+                                [
+                                    ctx.asm_mut().nref(array_type),
                                     Type::Int(Int::USize),
                                     element,
                                 ],
