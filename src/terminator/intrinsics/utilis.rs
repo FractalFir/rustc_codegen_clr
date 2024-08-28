@@ -7,7 +7,7 @@ use cilly::{
     FnSig, Type,
 };
 
-pub fn interlocked_add(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
+pub fn atomic_add(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
     sub!(
         match tpe {
             Type::Int(Int::U64 | Int::I64) => {
@@ -40,7 +40,7 @@ pub fn interlocked_add(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Asse
             }
             Type::Int(Int::USize | Int::ISize) | Type::Ptr(_) => call!(
                 CallSite::builtin(
-                    "interlocked_add_usize".into(),
+                    "atomic_add_usize".into(),
                     FnSig::new(
                         &[asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)],
                         Type::Int(Int::USize)
@@ -55,7 +55,7 @@ pub fn interlocked_add(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Asse
         addend
     )
 }
-pub fn interlocked_or(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
+pub fn atomic_or(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
     match tpe {
         Type::Int(Int::U64 | Int::I64) => {
             call!(
@@ -85,12 +85,23 @@ pub fn interlocked_or(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assem
                 [addr, addend]
             )
         }
-        Type::Int(Int::USize | Int::ISize) => call!(
+        Type::Int(Int::USize) => call!(
             CallSite::builtin(
-                "interlocked_or_usize".into(),
+                "atomic_or_usize".into(),
                 FnSig::new(
-                    &[asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)],
+                    [asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)],
                     Type::Int(Int::USize)
+                ),
+                true
+            ),
+            [addr, addend]
+        ),
+        Type::Int(Int::ISize) => call!(
+            CallSite::builtin(
+                "atomic_or_isize".into(),
+                FnSig::new(
+                    [asm.nref(Type::Int(Int::ISize)), Type::Int(Int::ISize)],
+                    Type::Int(Int::ISize)
                 ),
                 true
             ),
@@ -98,9 +109,9 @@ pub fn interlocked_or(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assem
         ),
         Type::Ptr(inner) => call!(
             CallSite::builtin(
-                "interlocked_or_usize".into(),
+                "atomic_or_usize".into(),
                 FnSig::new(
-                    &[asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)],
+                    [asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)],
                     Type::Int(Int::USize)
                 ),
                 true
@@ -114,7 +125,7 @@ pub fn interlocked_or(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assem
         _ => todo!(),
     }
 }
-pub fn interlocked_xor(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
+pub fn atomic_xor(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
     match tpe {
         Type::Int(Int::I32) => {
             call!(
@@ -208,7 +219,7 @@ pub fn interlocked_xor(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Asse
         _ => todo!(),
     }
 }
-pub fn interlocked_and(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
+pub fn atomic_and(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
     match tpe {
         Type::Int(Int::U64 | Int::I64) => {
             call!(
@@ -240,7 +251,7 @@ pub fn interlocked_and(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Asse
         }
         Type::Int(Int::USize | Int::ISize) => call!(
             CallSite::builtin(
-                "interlocked_and_usize".into(),
+                "atomic_and_usize".into(),
                 FnSig::new(
                     &[asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)],
                     Type::Int(Int::USize)
@@ -251,7 +262,7 @@ pub fn interlocked_and(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Asse
         ),
         Type::Ptr(inner) => call!(
             CallSite::builtin(
-                "interlocked_and_usize".into(),
+                "atomic_and_usize".into(),
                 FnSig::new(
                     &[asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)],
                     Type::Int(Int::USize)
@@ -284,7 +295,7 @@ pub fn compare_bytes(a: CILNode, b: CILNode, len: CILNode, asm: &mut Assembly) -
         [a, b, len]
     )
 }
-pub fn interlocked_nand(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
+pub fn atomic_nand(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
     match tpe {
         Type::Int(Int::I32) => {
             call!(
@@ -378,7 +389,7 @@ pub fn interlocked_nand(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Ass
         _ => todo!(),
     }
 }
-pub fn interlocked_min(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
+pub fn atomic_min(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
     match tpe {
         Type::Int(Int::I32) => {
             call!(
@@ -472,7 +483,7 @@ pub fn interlocked_min(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Asse
         _ => todo!(),
     }
 }
-pub fn interlocked_max(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
+pub fn atomic_max(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
     match tpe {
         Type::Int(Int::I32) => {
             call!(

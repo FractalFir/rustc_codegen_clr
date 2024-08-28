@@ -457,7 +457,7 @@ pub fn get_environ(asm: &mut Assembly) -> CallSite {
                             Type::PlatformObject,
                             Type::PlatformObject
                         ],
-                        Type::ClassRef(ClassRef::string(asm))
+                        Type::PlatformString
                     ),
                     true
                 ),

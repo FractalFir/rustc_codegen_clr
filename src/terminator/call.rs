@@ -319,7 +319,7 @@ pub fn call<'tcx>(
         assert!(!args.is_empty());
 
         let fat_ptr_address = operand_address(&args[0].node, ctx);
-        let fat_ptr_dyn = ctx.asm_mut().alloc_string("FatPtrDyn");
+        let fat_ptr_dyn = ctx.asm_mut().alloc_string("FatPtrn3Dyn");
         let vtable_ptr = ld_field!(
             fat_ptr_address.clone(),
             FieldDescriptor::new(

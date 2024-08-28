@@ -121,6 +121,22 @@ pub fn generate_all_atomics(asm: &mut Assembly, patcher: &mut MissingMethodPatch
     generate_atomic_for_ints(asm, patcher, "min", int_min);
     // Emulates 1 byte compare exchange
     emulate_uint8_cmp_xchng(asm, patcher);
+    for int in [Int::ISize, Int::USize] {
+        generate_atomic(
+            asm,
+            patcher,
+            "or",
+            |asm, lhs, rhs, _| asm.alloc_node(CILNode::BinOp(lhs, rhs, BinOp::Or)),
+            int,
+        );
+        generate_atomic(
+            asm,
+            patcher,
+            "and",
+            |asm, lhs, rhs, _| asm.alloc_node(CILNode::BinOp(lhs, rhs, BinOp::And)),
+            int,
+        );
+    }
 }
 /*
   .method public hidebysig static

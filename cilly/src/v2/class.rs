@@ -252,7 +252,7 @@ impl ClassRef {
     pub fn dictionary_entry(asm: &mut Assembly) -> ClassRefIdx {
         let name = asm.alloc_string("System.Collections.DictionaryEntry");
         let asm_name = Some(asm.alloc_string("System.Runtime"));
-        asm.alloc_class_ref(ClassRef::new(name, asm_name, false, [].into()))
+        asm.alloc_class_ref(ClassRef::new(name, asm_name, true, [].into()))
     }
     /// Returns a reference to the class `System.Runtime.InteropServices.NativeMemory`
     #[must_use]

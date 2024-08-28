@@ -26,8 +26,8 @@ use rustc_span::source_map::Spanned;
 use saturating::{saturating_add, saturating_sub};
 use type_info::{is_val_statically_known, size_of_val};
 use utilis::{
-    compare_bytes, interlocked_add, interlocked_and, interlocked_max, interlocked_min,
-    interlocked_nand, interlocked_or, interlocked_xor,
+    atomic_add, atomic_and, atomic_max, atomic_min, atomic_nand, atomic_or, atomic_xor,
+    compare_bytes,
 };
 mod bswap;
 mod interop;
@@ -528,7 +528,7 @@ pub fn handle_intrinsic<'tcx>(
 
             place_set(
                 destination,
-                interlocked_add(dst, add_ammount, src_type, ctx.asm_mut()),
+                atomic_add(dst, add_ammount, src_type, ctx.asm_mut()),
                 ctx,
             )
         }
@@ -544,7 +544,7 @@ pub fn handle_intrinsic<'tcx>(
 
             place_set(
                 destination,
-                interlocked_or(dst, orand, src_type, ctx.asm_mut()),
+                atomic_or(dst, orand, src_type, ctx.asm_mut()),
                 ctx,
             )
         }
@@ -560,7 +560,7 @@ pub fn handle_intrinsic<'tcx>(
 
             place_set(
                 destination,
-                interlocked_xor(dst, xorand, src_type, ctx.asm_mut()),
+                atomic_xor(dst, xorand, src_type, ctx.asm_mut()),
                 ctx,
             )
         }
@@ -576,7 +576,7 @@ pub fn handle_intrinsic<'tcx>(
 
             place_set(
                 destination,
-                interlocked_and(dst, andand, src_type, ctx.asm_mut()),
+                atomic_and(dst, andand, src_type, ctx.asm_mut()),
                 ctx,
             )
         }
@@ -595,7 +595,7 @@ pub fn handle_intrinsic<'tcx>(
 
             place_set(
                 destination,
-                interlocked_nand(dst, andand, src_type, ctx.asm_mut()),
+                atomic_nand(dst, andand, src_type, ctx.asm_mut()),
                 ctx,
             )
         }
@@ -630,7 +630,7 @@ pub fn handle_intrinsic<'tcx>(
 
             place_set(
                 destination,
-                interlocked_add(dst, add_ammount, src_type, ctx.asm_mut()),
+                atomic_add(dst, add_ammount, src_type, ctx.asm_mut()),
                 ctx,
             )
         }
@@ -655,7 +655,7 @@ pub fn handle_intrinsic<'tcx>(
 
             place_set(
                 destination,
-                interlocked_min(dst, min_ammount, src_type, ctx.asm_mut()),
+                atomic_min(dst, min_ammount, src_type, ctx.asm_mut()),
                 ctx,
             )
         }
@@ -680,7 +680,7 @@ pub fn handle_intrinsic<'tcx>(
 
             place_set(
                 destination,
-                interlocked_max(dst, max_ammount, src_type, ctx.asm_mut()),
+                atomic_max(dst, max_ammount, src_type, ctx.asm_mut()),
                 ctx,
             )
         }
@@ -708,7 +708,7 @@ pub fn handle_intrinsic<'tcx>(
                         destination,
                         call!(
                             CallSite::builtin(
-                                "interlocked_emulate_xchng_byte".into(),
+                                "atomic_emulate_xchng_byte".into(),
                                 FnSig::new(
                                     &[ctx.asm_mut().nref(Type::Int(Int::U8)), Type::Int(Int::U8)],
                                     Type::Int(Int::U8)
