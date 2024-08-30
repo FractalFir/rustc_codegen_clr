@@ -4,7 +4,6 @@ pub const LIBC_FNS: &[&str] = &[
     "__errno_location",
     "__xpg_strerror_r",
     "a64l",
-    "abort",
     "abs",
     "accept4",
     "accept",

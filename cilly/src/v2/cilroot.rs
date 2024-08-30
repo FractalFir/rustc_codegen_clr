@@ -61,6 +61,8 @@ pub enum BranchCond {
     Ne(NodeIdx, NodeIdx),
     Lt(NodeIdx, NodeIdx, CmpKind),
     Gt(NodeIdx, NodeIdx, CmpKind),
+    Le(NodeIdx, NodeIdx, CmpKind),
+    Ge(NodeIdx, NodeIdx, CmpKind),
 }
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum CmpKind {
@@ -104,7 +106,9 @@ impl CILRoot {
                     BranchCond::Eq(lhs, rhs)
                     | BranchCond::Ne(lhs, rhs)
                     | BranchCond::Lt(lhs, rhs, _)
-                    | BranchCond::Gt(lhs, rhs, _) => [lhs, rhs].into(),
+                    | BranchCond::Gt(lhs, rhs, _)
+                    | BranchCond::Le(lhs, rhs, _)
+                    | BranchCond::Ge(lhs, rhs, _) => [lhs, rhs].into(),
                 }
             }
             CILRoot::SetField(info) => {
@@ -478,6 +482,24 @@ impl CILRoot {
                         let lhs = asm.get_node(lhs).clone().map(asm, node_map);
                         let rhs = asm.get_node(rhs).clone().map(asm, node_map);
                         Some(BranchCond::Gt(
+                            asm.alloc_node(lhs),
+                            asm.alloc_node(rhs),
+                            cmp_kind,
+                        ))
+                    }
+                    Some(BranchCond::Le(lhs, rhs, cmp_kind)) => {
+                        let lhs = asm.get_node(lhs).clone().map(asm, node_map);
+                        let rhs = asm.get_node(rhs).clone().map(asm, node_map);
+                        Some(BranchCond::Le(
+                            asm.alloc_node(lhs),
+                            asm.alloc_node(rhs),
+                            cmp_kind,
+                        ))
+                    }
+                    Some(BranchCond::Ge(lhs, rhs, cmp_kind)) => {
+                        let lhs = asm.get_node(lhs).clone().map(asm, node_map);
+                        let rhs = asm.get_node(rhs).clone().map(asm, node_map);
+                        Some(BranchCond::Ge(
                             asm.alloc_node(lhs),
                             asm.alloc_node(rhs),
                             cmp_kind,

@@ -405,6 +405,7 @@ pub fn add_fn<'tcx, 'asm, 'a: 'asm>(
         for statement in &block_data.statements {
             if *crate::config::INSERT_MIR_DEBUG_COMMENTS {
                 rustc_middle::ty::print::with_no_trimmed_paths! {trees.push(CILRoot::debug(&format!("{statement:?}"),ctx.asm_mut()).into())};
+                rustc_middle::ty::print::with_no_trimmed_paths! {trees.push(CILRoot::debug(&format!("{:?}",statement.source_info.span),ctx.asm_mut()).into())};
             }
 
             let statement_tree = match statement_to_ops(statement, ctx) {

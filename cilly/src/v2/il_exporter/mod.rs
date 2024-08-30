@@ -808,6 +808,54 @@ impl ILExporter {
                         }
                     }
                 }
+                Some(BranchCond::Le(a, b, kind)) => {
+                    self.export_node(asm, out, *a)?;
+                    self.export_node(asm, out, *b)?;
+                    match kind {
+                        super::cilroot::CmpKind::Ordered | super::cilroot::CmpKind::Signed => {
+                            if branch.1 == 0 {
+                                writeln!(out, "ble bb{}", branch.0)
+                            } else if is_handler {
+                                writeln!(out, "ble h{}_{}", branch.0, branch.1)
+                            } else {
+                                writeln!(out, "ble jp{}_{}", branch.0, branch.1)
+                            }
+                        }
+                        super::cilroot::CmpKind::Unordered | super::cilroot::CmpKind::Unsigned => {
+                            if branch.1 == 0 {
+                                writeln!(out, "ble.un bb{}", branch.0)
+                            } else if is_handler {
+                                writeln!(out, "ble.un h{}_{}", branch.0, branch.1)
+                            } else {
+                                writeln!(out, "ble.un jp{}_{}", branch.0, branch.1)
+                            }
+                        }
+                    }
+                }
+                Some(BranchCond::Ge(a, b, kind)) => {
+                    self.export_node(asm, out, *a)?;
+                    self.export_node(asm, out, *b)?;
+                    match kind {
+                        super::cilroot::CmpKind::Ordered | super::cilroot::CmpKind::Signed => {
+                            if branch.1 == 0 {
+                                writeln!(out, "bge bb{}", branch.0)
+                            } else if is_handler {
+                                writeln!(out, "bge h{}_{}", branch.0, branch.1)
+                            } else {
+                                writeln!(out, "bge jp{}_{}", branch.0, branch.1)
+                            }
+                        }
+                        super::cilroot::CmpKind::Unordered | super::cilroot::CmpKind::Unsigned => {
+                            if branch.1 == 0 {
+                                writeln!(out, "bge.un bb{}", branch.0)
+                            } else if is_handler {
+                                writeln!(out, "bge.un h{}_{}", branch.0, branch.1)
+                            } else {
+                                writeln!(out, "bge.un jp{}_{}", branch.0, branch.1)
+                            }
+                        }
+                    }
+                }
                 Some(BranchCond::True(cond)) => {
                     self.export_node(asm, out, *cond)?;
                     if branch.1 == 0 {

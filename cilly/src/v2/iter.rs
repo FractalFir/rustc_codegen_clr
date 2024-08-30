@@ -246,7 +246,9 @@ impl<'asm> Iterator for CILIter<'asm> {
                         BranchCond::Eq(lhs, rhs)
                         | BranchCond::Ne(lhs, rhs)
                         | BranchCond::Lt(lhs, rhs, _)
-                        | BranchCond::Gt(lhs, rhs, _) => match idx {
+                        | BranchCond::Gt(lhs, rhs, _)
+                        | BranchCond::Le(lhs, rhs, _)
+                        | BranchCond::Ge(lhs, rhs, _) => match idx {
                             1 => {
                                 *idx += 1;
                                 let rhs = self.asm.get_node(*rhs);

@@ -229,55 +229,60 @@ fn main() {
         let mref = final_assembly.get_mref(allochglobal).clone();
         call_alias(&mut overrides, &mut final_assembly, "free", mref);
     }
-
-    overrides.insert(
-        final_assembly.alloc_string("_Unwind_RaiseException"),
-        Box::new(|_, asm| {
-            let rust_exception = asm.alloc_string("RustException");
-            MethodImpl::MethodBody {
-                blocks: vec![cilly::v2::BasicBlock::from_v1(
-                    &cilly::basic_block::BasicBlock::new(
-                        vec![
-                            cilly::cil_root::CILRoot::Throw(cilly::cil_node::CILNode::NewObj(
-                                Box::new(cilly::cil_node::CallOpArgs {
-                                    args: Box::new([conv_usize!(cilly::cil_node::CILNode::LDArg(
-                                        0
-                                    ))]),
-                                    site: Box::new(CallSite::new(
-                                        Some(asm.alloc_class_ref(ClassRef::new(
-                                            rust_exception,
-                                            None,
+    eprintln!("!*PANIC_MANAGED_BT :{}", !*PANIC_MANAGED_BT);
+    if !*PANIC_MANAGED_BT {
+        overrides.insert(
+            final_assembly.alloc_string("_Unwind_RaiseException"),
+            Box::new(|_, asm| {
+                let rust_exception = asm.alloc_string("RustException");
+                MethodImpl::MethodBody {
+                    blocks: vec![cilly::v2::BasicBlock::from_v1(
+                        &cilly::basic_block::BasicBlock::new(
+                            vec![cilly::cil_root::CILRoot::Throw(
+                                cilly::cil_node::CILNode::NewObj(Box::new(
+                                    cilly::cil_node::CallOpArgs {
+                                        args: Box::new([conv_usize!(
+                                            cilly::cil_node::CILNode::LDArg(0)
+                                        )]),
+                                        site: Box::new(CallSite::new(
+                                            Some(asm.alloc_class_ref(ClassRef::new(
+                                                rust_exception,
+                                                None,
+                                                false,
+                                                [].into(),
+                                            ))),
+                                            ".ctor".into(),
+                                            FnSig::new(
+                                                [
+                                                    Type::ClassRef(asm.alloc_class_ref(
+                                                        ClassRef::new(
+                                                            rust_exception,
+                                                            None,
+                                                            false,
+                                                            [].into(),
+                                                        ),
+                                                    )),
+                                                    Type::Int(Int::USize),
+                                                ],
+                                                Type::Void,
+                                            ),
                                             false,
-                                            [].into(),
-                                        ))),
-                                        ".ctor".into(),
-                                        FnSig::new(
-                                            [
-                                                Type::ClassRef(asm.alloc_class_ref(ClassRef::new(
-                                                    rust_exception,
-                                                    None,
-                                                    false,
-                                                    [].into(),
-                                                ))),
-                                                Type::Int(Int::USize),
-                                            ],
-                                            Type::Void,
-                                        ),
-                                        false,
-                                    )),
-                                }),
-                            ))
-                            .into(),
-                        ],
-                        0,
-                        None,
-                    ),
-                    asm,
-                )],
-                locals: vec![],
-            }
-        }),
-    );
+                                        )),
+                                    },
+                                )),
+                            )
+                            .into()],
+                            0,
+                            None,
+                        ),
+                        asm,
+                    )],
+                    locals: vec![],
+                }
+            }),
+        );
+    }
+
     overrides.insert(
         final_assembly.alloc_string("_Unwind_Backtrace"),
         Box::new(|mref, asm| {
@@ -351,6 +356,8 @@ fn main() {
     cilly::v2::builtins::select::generate_int_selects(&mut final_assembly, &mut overrides);
     cilly::v2::builtins::insert_heap(&mut final_assembly, &mut overrides);
     cilly::v2::builtins::instert_threading(&mut final_assembly, &mut overrides);
+    cilly::v2::builtins::insert_swap_at_generic(&mut final_assembly, &mut overrides);
+    cilly::v2::builtins::insert_bounds_check(&mut final_assembly, &mut overrides);
 
     // Ensure the cctor and tcctor exist!
     let _ = final_assembly.tcctor();
@@ -536,7 +543,7 @@ lazy_static! {
     };
 }
 lazy_static! {
-    #[doc = "Tells the codegen to emmit JS source files."]pub static ref JAVA_MODE:bool = {
+    #[doc = "Tells the codegen to emmit Java source files."]pub static ref JAVA_MODE:bool = {
         std::env::vars().find_map(|(key,value)|if key == stringify!(JAVA_MODE){
             Some(value)
         }else {
@@ -546,6 +553,18 @@ lazy_static! {
         }).unwrap_or(false)
     };
 }
+lazy_static! {
+    #[doc = "Tells the codegen to throw exceptions on panics"]pub static ref PANIC_MANAGED_BT:bool = {
+        std::env::vars().find_map(|(key,value)|if key == stringify!(PANIC_MANAGED_BT){
+            Some(value)
+        }else {
+            None
+        }).map(|value|match value.as_ref(){
+            "0"|"false"|"False"|"FALSE" => false,"1"|"true"|"True"|"TRUE" => true,_ => panic!("Boolean enviroment variable {} has invalid value {}",stringify!(PANIC_MANAGED_BT),value),
+        }).unwrap_or(false)
+    };
+}
+
 /*
 fn override_errno(asm: &mut Assembly) {
     for method in asm.methods_mut() {

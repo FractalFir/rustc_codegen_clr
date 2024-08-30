@@ -359,6 +359,20 @@ impl Assembly {
                         let b = self.alloc_node(b);
                         super::cilroot::BranchCond::Gt(a, b, cmp_kind.clone())
                     }
+                    super::cilroot::BranchCond::Le(a, b, cmp_kind) => {
+                        let a = self.translate_node(source, source.get_node(*a).clone());
+                        let a = self.alloc_node(a);
+                        let b = self.translate_node(source, source.get_node(*b).clone());
+                        let b = self.alloc_node(b);
+                        super::cilroot::BranchCond::Le(a, b, cmp_kind.clone())
+                    }
+                    super::cilroot::BranchCond::Ge(a, b, cmp_kind) => {
+                        let a = self.translate_node(source, source.get_node(*a).clone());
+                        let a = self.alloc_node(a);
+                        let b = self.translate_node(source, source.get_node(*b).clone());
+                        let b = self.alloc_node(b);
+                        super::cilroot::BranchCond::Ge(a, b, cmp_kind.clone())
+                    }
                 });
                 CILRoot::Branch(Box::new((*target, *sub_target, cond)))
             }
