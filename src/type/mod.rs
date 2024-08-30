@@ -266,7 +266,7 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
             let element = get_type(element, ctx);
             // Get the layout and size of this array
             let layout = ctx.layout_of(ty);
-            let arr_size = layout.layout.size();
+            let arr_size = layout.layout.size().bytes();
 
             // Get the reference to the array class
             let cref = ClassRef::fixed_array(element, length, ctx.asm_mut());
@@ -275,6 +275,14 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
             if ctx.asm().class_ref_to_def(cref).is_none() {
                 let fields = vec![(element, ctx.asm_mut().alloc_string("f0"), Some(0))];
                 let class_ref = ctx.asm().class_ref(cref).clone();
+                let size = if let Ok(size) = std::convert::TryInto::<u32>::try_into(arr_size) {
+                    size
+                } else if *crate::config::ABORT_ON_ERROR {
+                    panic!("Array {ty:?} size {arr_size} >= 2^32. Unsuported.")
+                } else {
+                    eprintln!("WARNING: Array {ty:?} excceeds max size of 2^32. Clamping the size, this can cause UB.");
+                    u32::MAX
+                };
                 let arr = ctx.asm_mut().class_def(ClassDef::new(
                     class_ref.name(),
                     true,
@@ -284,15 +292,7 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
                     vec![],
                     vec![],
                     Access::Public,
-                    Some(
-                        NonZeroU32::new(
-                            arr_size
-                                .bytes()
-                                .try_into()
-                                .expect("Array size >= 2^32. Unsuported."),
-                        )
-                        .unwrap(),
-                    ),
+                    Some(NonZeroU32::new(size).unwrap()),
                 ));
                 // Common nodes
                 let ldarg_0 = ctx.asm_mut().alloc_node(CILNode::LdArg(0));
@@ -388,6 +388,14 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
             Type::ClassRef(cref)
         }
         TyKind::Alias(_, _) => panic!("Attempted to get the .NET type of an unmorphized type"),
+        TyKind::Coroutine(_, _) => {
+            if *crate::config::ABORT_ON_ERROR {
+                panic!("Corutine {ty:?} is not yet supported")
+            } else {
+                eprintln!("WARNING: Corutine {ty:?} is not yet supported. Replacing it with Void to continue anyway, this can cause UB.");
+                Type::Void
+            }
+        }
         _ => todo!("Can't yet get type {ty:?} from type cache."),
     }
 }
@@ -516,6 +524,15 @@ fn struct_<'tcx>(
         }
         fields.push((field_type, ctx.asm_mut().alloc_string(name), Some(offset)));
     }
+    let size = layout.layout.size().bytes();
+    let size = if let Ok(size) = std::convert::TryInto::<u32>::try_into(size) {
+        size
+    } else if *crate::config::ABORT_ON_ERROR {
+        panic!("Struct {adt_ty:?} size {size} >= 2^32. Unsuported.")
+    } else {
+        eprintln!("WARNING: Struct {adt_ty:?} excceeds max size of 2^32. Clamping the size, this can cause UB.");
+        u32::MAX
+    };
     ClassDef::new(
         name,
         true,
@@ -525,7 +542,7 @@ fn struct_<'tcx>(
         vec![],
         vec![],
         Access::Public,
-        NonZeroU32::new(layout.layout.size().bytes().try_into().unwrap()),
+        NonZeroU32::new(size),
     )
 }
 /// Turns an adt enum defintion into a [`ClassDef`]

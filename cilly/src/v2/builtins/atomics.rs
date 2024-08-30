@@ -136,6 +136,13 @@ pub fn generate_all_atomics(asm: &mut Assembly, patcher: &mut MissingMethodPatch
             |asm, lhs, rhs, _| asm.alloc_node(CILNode::BinOp(lhs, rhs, BinOp::And)),
             int,
         );
+        generate_atomic(
+            asm,
+            patcher,
+            "add",
+            |asm, lhs, rhs, _| asm.alloc_node(CILNode::BinOp(lhs, rhs, BinOp::And)),
+            int,
+        );
     }
 }
 /*

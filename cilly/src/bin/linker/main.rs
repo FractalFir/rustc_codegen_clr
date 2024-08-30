@@ -22,13 +22,8 @@ mod load;
 mod native_passtrough;
 mod patch;
 use fxhash::FxHashMap;
-use patch::{builtin_call, call_alias};
-use std::{
-    env,
-    io::Write,
-    num::{NonZero, NonZeroU32},
-    path::Path,
-};
+use patch::call_alias;
+use std::{env, io::Write, num::NonZeroU32, path::Path};
 mod aot;
 
 fn add_mandatory_statics(asm: &mut cilly::v2::Assembly) {
@@ -234,44 +229,7 @@ fn main() {
         let mref = final_assembly.get_mref(allochglobal).clone();
         call_alias(&mut overrides, &mut final_assembly, "free", mref);
     }
-    // Override pthreads
-    {
-        // Override pthread create
-        let void_ptr = final_assembly.nptr(Type::Void);
 
-        let fn_ptr = final_assembly.fn_ptr([void_ptr], void_ptr);
-        let isize_ptr = final_assembly.nptr(Type::Int(Int::ISize));
-        let sig = final_assembly.sig([isize_ptr, void_ptr, fn_ptr, void_ptr], Type::Int(Int::I32));
-        builtin_call(&mut overrides, &mut final_assembly, "pthread_create", sig);
-        let sig = final_assembly.sig([Type::Int(Int::ISize)], Type::Int(Int::I32));
-        builtin_call(&mut overrides, &mut final_assembly, "pthread_detach", sig);
-
-        let sig = final_assembly.sig([isize_ptr], Type::Int(Int::I32));
-        builtin_call(
-            &mut overrides,
-            &mut final_assembly,
-            "pthread_attr_init",
-            sig,
-        );
-        builtin_call(
-            &mut overrides,
-            &mut final_assembly,
-            "pthread_attr_destroy",
-            sig,
-        );
-        let sig = final_assembly.sig([isize_ptr, Type::Int(Int::USize)], Type::Int(Int::I32));
-        builtin_call(
-            &mut overrides,
-            &mut final_assembly,
-            "pthread_attr_setstacksize",
-            sig,
-        );
-        let void_ptr_ptr = final_assembly.nptr(void_ptr);
-        let sig = final_assembly.sig([Type::Int(Int::ISize), void_ptr_ptr], Type::Int(Int::I32));
-        builtin_call(&mut overrides, &mut final_assembly, "pthread_join", sig);
-        let sig = final_assembly.sig([], Type::Int(Int::ISize));
-        builtin_call(&mut overrides, &mut final_assembly, "pthread_self", sig);
-    }
     overrides.insert(
         final_assembly.alloc_string("_Unwind_RaiseException"),
         Box::new(|_, asm| {
@@ -374,10 +332,26 @@ fn main() {
             }
         }),
     );
+    overrides.insert(
+        final_assembly.alloc_string("__cxa_thread_atexit_impl"),
+        Box::new(|_, asm| {
+            let blocks = vec![BasicBlock::new(
+                vec![asm.alloc_root(CILRoot::VoidRet)],
+                0,
+                None,
+            )];
+            MethodImpl::MethodBody {
+                blocks,
+                locals: vec![],
+            }
+        }),
+    );
     cilly::v2::builtins::atomics::generate_all_atomics(&mut final_assembly, &mut overrides);
     cilly::v2::builtins::casts::insert_casts(&mut final_assembly, &mut overrides);
     cilly::v2::builtins::select::generate_int_selects(&mut final_assembly, &mut overrides);
     cilly::v2::builtins::insert_heap(&mut final_assembly, &mut overrides);
+    cilly::v2::builtins::instert_threading(&mut final_assembly, &mut overrides);
+
     // Ensure the cctor and tcctor exist!
     let _ = final_assembly.tcctor();
     let _ = final_assembly.cctor();

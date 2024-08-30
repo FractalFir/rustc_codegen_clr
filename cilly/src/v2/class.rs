@@ -370,7 +370,7 @@ impl ClassDef {
     }
 
     pub(crate) fn has_explicit_layout(&self) -> bool {
-        self.explict_size.is_some() && self.fields.iter().any(|(_, _, offset)| offset.is_some())
+        self.explict_size.is_some() || self.fields.iter().any(|(_, _, offset)| offset.is_some())
     }
 
     pub fn fields(&self) -> &[(Type, StringIdx, Option<u32>)] {

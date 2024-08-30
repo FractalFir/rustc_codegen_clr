@@ -28,8 +28,25 @@ fn insert_rust_alloc(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
             Box::new([ldarg_0, ldarg_1]),
         ))));
         let ret = asm.alloc_root(CILRoot::Ret(alloc));
+        let cap = asm.alloc_node(Const::USize(ALLOC_CAP));
+        let check = asm.alloc_root(CILRoot::Branch(Box::new((
+            1,
+            0,
+            Some(super::cilroot::BranchCond::Gt(
+                ldarg_0,
+                cap,
+                super::cilroot::CmpKind::Unsigned,
+            )),
+        ))));
+        let throw =
+            crate::cil_root::CILRoot::throw(&format!("Alloc limit of {ALLOC_CAP} exceeded.",), asm);
+        let throw = CILRoot::from_v1(&throw, asm);
+        let throw = asm.alloc_root(throw);
         MethodImpl::MethodBody {
-            blocks: vec![BasicBlock::new(vec![ret], 0, None)],
+            blocks: vec![
+                BasicBlock::new(vec![check, ret], 0, None),
+                BasicBlock::new(vec![throw], 1, None),
+            ],
             locals: vec![],
         }
     };
@@ -90,6 +107,116 @@ fn insert_rust_dealloc(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
         }
     };
     patcher.insert(name, Box::new(generator));
+}
+fn insert_pthread_attr_setstacksize(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
+    let name = asm.alloc_string("pthread_attr_setstacksize");
+    let generator = move |_, asm: &mut Assembly| {
+        let ldarg_0 = asm.alloc_node(CILNode::LdArg(0));
+        let ldarg_1 = asm.alloc_node(CILNode::LdArg(1));
+        let const_0_u8 = asm.alloc_node(Const::U8(0));
+        let three = asm.alloc_node(Const::I32(2));
+        let usize_tpe = asm.alloc_type(Int::USize);
+        let usize_size = asm.alloc_node(CILNode::SizeOf(usize_tpe));
+        let offset = asm.alloc_node(CILNode::BinOp(usize_size, three, super::BinOp::Mul));
+        let offset = asm.alloc_node(CILNode::IntCast {
+            input: offset,
+            target: Int::USize,
+            extend: super::cilnode::ExtendKind::ZeroExtend,
+        });
+        let init = asm.alloc_root(CILRoot::StInd(Box::new((
+            ldarg_0,
+            ldarg_1,
+            Type::Int(Int::USize),
+            false,
+        ))));
+        let const_0 = asm.alloc_node(Const::I32(0));
+        let ret = asm.alloc_root(CILRoot::Ret(const_0));
+        MethodImpl::MethodBody {
+            blocks: vec![BasicBlock::new(vec![init, ret], 0, None)],
+            locals: vec![],
+        }
+    };
+    patcher.insert(name, Box::new(generator));
+}
+fn insert_pthread_attr_init(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
+    let name = asm.alloc_string("pthread_attr_init");
+    let generator = move |_, asm: &mut Assembly| {
+        let ldarg_0 = asm.alloc_node(CILNode::LdArg(0));
+        let const_0_u8 = asm.alloc_node(Const::U8(0));
+        let three = asm.alloc_node(Const::I32(3));
+        let usize_tpe = asm.alloc_type(Int::USize);
+        let usize_size = asm.alloc_node(CILNode::SizeOf(usize_tpe));
+        let size = asm.alloc_node(CILNode::BinOp(usize_size, three, super::BinOp::Mul));
+        let size = asm.alloc_node(CILNode::IntCast {
+            input: size,
+            target: Int::USize,
+            extend: super::cilnode::ExtendKind::ZeroExtend,
+        });
+        let init = asm.alloc_root(CILRoot::InitBlk(Box::new((ldarg_0, const_0_u8, size))));
+        let const_0 = asm.alloc_node(Const::I32(0));
+        let ret = asm.alloc_root(CILRoot::Ret(const_0));
+        MethodImpl::MethodBody {
+            blocks: vec![BasicBlock::new(vec![init, ret], 0, None)],
+            locals: vec![],
+        }
+    };
+    patcher.insert(name, Box::new(generator));
+}
+fn insert_pthread_create(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
+    let name = asm.alloc_string("pthread_create");
+    let generator = move |_, asm: &mut Assembly| {
+        // Common
+        let ldarg_0 = asm.alloc_node(CILNode::LdArg(0));
+        let ldarg_1 = asm.alloc_node(CILNode::LdArg(1));
+        let ldarg_2 = asm.alloc_node(CILNode::LdArg(2));
+        let ldarg_3 = asm.alloc_node(CILNode::LdArg(3));
+        // Common types
+        let void_ptr = asm.nptr(Type::Void);
+        let start_sig = asm.sig([void_ptr], void_ptr);
+        let unmanaged_thread_start = asm.alloc_string("UnmanagedThreadStart");
+        let unmanaged_thread_start = asm.alloc_class_ref(ClassRef::new(
+            unmanaged_thread_start,
+            None,
+            false,
+            [].into(),
+        ));
+
+        let ctor_sig = asm.sig(
+            [
+                Type::ClassRef(unmanaged_thread_start),
+                Type::FnPtr(start_sig),
+                void_ptr,
+            ],
+            Type::Void,
+        );
+        let ctor = asm.alloc_string(".ctor");
+
+        let ctor = asm.alloc_methodref(MethodRef::new(
+            unmanaged_thread_start,
+            ctor,
+            ctor_sig,
+            MethodKind::Constructor,
+            [].into(),
+        ));
+        let new_obj = asm.alloc_node(CILNode::Call(Box::new((ctor, [ldarg_2, ldarg_3].into()))));
+        /*let start = asm.alloc_methodref(MethodRef::new(
+            unmanaged_thread_start,
+            ctor,
+            ctor_sig,
+            MethodKind::Constructor,
+            [].into(),
+        ));*/
+        todo!();
+        /*MethodImpl::MethodBody {
+            blocks: vec![BasicBlock::new(vec![init, ret], 0, None)],
+            locals: vec![],
+        }*/
+    };
+    patcher.insert(name, Box::new(generator));
+}
+pub fn instert_threading(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
+    insert_pthread_attr_init(asm, patcher);
+    insert_pthread_attr_setstacksize(asm, patcher);
 }
 pub fn insert_heap(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     insert_rust_alloc(asm, patcher);
@@ -215,122 +342,4 @@ fn insert_catch_unwind(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     };
     patcher.insert(name, Box::new(generator));
 }
-/*
-BasicBlock::new(
-    vec![
-        CILRoot::CallI {
-            sig: Box::new(FnSig::new(&[ptr!(Type::U8)], Type::Void)),
-            fn_ptr: Box::new(CILNode::LDArg(0)),
-            args: Box::new([CILNode::LDArg(1)])
-        }
-        .into(),
-        CILRoot::JumpingPad {
-            source: 0,
-            target: 3
-        }
-        .into()
-    ],
-    0,
-    Some(Handler::Blocks(vec![
-        BasicBlock::new(
-            vec![
-                CILRoot::STLoc {
-                    local: 1,
-                    tree: CILNode::GetException,
-                }
-                .into(),
-                CILRoot::BFalse {
-                    target: 0,
-                    sub_target: 4,
-                    cond: CILNode::IsInst(Box::new((
-                        CILNode::LDLoc(1),
-                        DotnetTypeRef::new::<&str, _>(None, "RustException")
-                            .with_valuetype(false)
-                    ))),
-                }
-                .into(),
-                CILRoot::STLoc {
-                    local: 0,
-                    tree: ld_field!(
-                        CILNode::CheckedCast(Box::new((
-                            CILNode::LDLoc(1),
-                            DotnetTypeRef::new::<&str, _>(None, "RustException")
-                                .with_valuetype(false)
-                        ))),
-                        FieldDescriptor::new(
-                            DotnetTypeRef::new::<&str, _>(None, "RustException")
-                                .with_valuetype(false),
-                            Type::USize,
-                            "data_pointer".into()
-                        )
-                    ),
-                }
-                .into(),
-                CILRoot::CallI {
-                    sig: Box::new(FnSig::new(
-                        &[ptr!(Type::U8), ptr!(Type::U8)],
-                        Type::Void
-                    )),
-                    fn_ptr: Box::new(CILNode::LDArg(2)),
-                    args: Box::new([CILNode::LDArg(1), CILNode::LDLoc(0)])
-                }
-                .into(),
-                CILRoot::GoTo {
-                    target: 0,
-                    sub_target: 2
-                }
-                .into()
-            ],
-            1,
-            None
-        ),
-        BasicBlock::new(
-            vec![
-                CILRoot::Call {
-                    site: Box::new(CallSite::new_extern(
-                        DotnetTypeRef::console(),
-                        "WriteLine".into(),
-                        FnSig::new(
-                            &[Type::DotnetType(Box::new(DotnetTypeRef::object_type()))],
-                            Type::Void
-                        ),
-                        true
-                    )),
-                    args: Box::new([CILNode::LDLoc(1)])
-                }
-                .into(),
-                CILRoot::CallI {
-                    sig: Box::new(FnSig::new(
-                        &[ptr!(Type::U8), ptr!(Type::U8)],
-                        Type::Void
-                    )),
-                    fn_ptr: Box::new(CILNode::LDArg(2)),
-                    args: Box::new([
-                        CILNode::LDArg(1),
-                        call!(
-                            CallSite::builtin(
-                                "exception_to_native".into(),
-                                FnSig::new(
-                                    vec![Type::DotnetType(Box::new(
-                                        DotnetTypeRef::object_type()
-                                    )),],
-                                    ptr!(Type::U8)
-                                ),
-                                true
-                            ),
-                            [CILNode::LDLoc(1)]
-                        )
-                    ])
-                }
-                .into(),
-                CILRoot::JumpingPad {
-                    source: 0,
-                    target: 2
-                }
-                .into()
-            ],
-            4,
-            None
-        )
-    ]))
-), */
+const ALLOC_CAP: u64 = u32::MAX as u64;
