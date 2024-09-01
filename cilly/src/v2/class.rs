@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use super::{
     access::Access,
     bimap::{BiMapIndex, IntoBiMapIndex},
-    Assembly, MethodDefIdx, StringIdx, Type,
+    Assembly, MethodDefIdx, MethodRef, MethodRefIdx, StringIdx, Type,
 };
 
 impl From<ClassRefIdx> for Type {
@@ -175,9 +175,15 @@ impl ClassRef {
         let asm_name = Some(asm.alloc_string("System.Runtime"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, false, [].into()))
     }
-    /// Returns a reference to the `System.Threading`
+    /// Returns a reference to the `System.Threading.Thread`
     pub fn thread(asm: &mut Assembly) -> ClassRefIdx {
         let name = asm.alloc_string("System.Threading.Thread");
+        let asm_name = Some(asm.alloc_string("System.Threading.Thread"));
+        asm.alloc_class_ref(ClassRef::new(name, asm_name, false, [].into()))
+    }
+    /// Returns a reference to the `System.Threading.ThreadStart`
+    pub fn thread_start(asm: &mut Assembly) -> ClassRefIdx {
+        let name = asm.alloc_string(" System.Threading.ThreadStart");
         let asm_name = Some(asm.alloc_string("System.Threading.Thread"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, false, [].into()))
     }
@@ -288,6 +294,79 @@ impl ClassRef {
         let name = asm.alloc_string(name);
         let cref = ClassRef::new(name, None, true, [].into());
         asm.alloc_class_ref(cref)
+    }
+    /// Returns a reference to the constructor of this class  - `.ctor`. The explict inputs of the constructor should not include `this` - that parameter will be automaticaly provided.
+    pub fn ctor(&self, explict_inputs: &[Type], asm: &mut Assembly) -> MethodRefIdx {
+        let this = asm.alloc_class_ref(self.clone());
+        let mut inputs = vec![Type::ClassRef(this)];
+        inputs.extend(explict_inputs);
+        let sig = asm.sig(inputs, Type::Void);
+        let fn_name = asm.alloc_string(".ctor");
+        asm.alloc_methodref(MethodRef::new(
+            this,
+            fn_name,
+            sig,
+            super::cilnode::MethodKind::Constructor,
+            [].into(),
+        ))
+    }
+    /// Returns a reference to an instance method of this class, with a given name. The explict inputs of the method should not include `this` - that parameter will be automaticaly provided.
+    pub fn instance(
+        &self,
+        explict_inputs: &[Type],
+        output: Type,
+        fn_name: StringIdx,
+        asm: &mut Assembly,
+    ) -> MethodRefIdx {
+        let this = asm.alloc_class_ref(self.clone());
+        let mut inputs = vec![Type::ClassRef(this)];
+        inputs.extend(explict_inputs);
+        let sig = asm.sig(inputs, output);
+        asm.alloc_methodref(MethodRef::new(
+            this,
+            fn_name,
+            sig,
+            super::cilnode::MethodKind::Instance,
+            [].into(),
+        ))
+    }
+    /// Returns a reference to an virtual method of this class, with a given name. The explict inputs of the method should not include `this` - that parameter will be automaticaly provided.
+    pub fn virtual_mref(
+        &self,
+        explict_inputs: &[Type],
+        output: Type,
+        fn_name: StringIdx,
+        asm: &mut Assembly,
+    ) -> MethodRefIdx {
+        let this = asm.alloc_class_ref(self.clone());
+        let mut inputs = vec![Type::ClassRef(this)];
+        inputs.extend(explict_inputs);
+        let sig = asm.sig(inputs, output);
+        asm.alloc_methodref(MethodRef::new(
+            this,
+            fn_name,
+            sig,
+            super::cilnode::MethodKind::Virtual,
+            [].into(),
+        ))
+    }
+    /// Returns a reference to an static method of this class, with a given name.
+    pub fn static_mref(
+        &self,
+        inputs: &[Type],
+        output: Type,
+        fn_name: StringIdx,
+        asm: &mut Assembly,
+    ) -> MethodRefIdx {
+        let this = asm.alloc_class_ref(self.clone());
+        let sig = asm.sig(inputs, output);
+        asm.alloc_methodref(MethodRef::new(
+            this,
+            fn_name,
+            sig,
+            super::cilnode::MethodKind::Static,
+            [].into(),
+        ))
     }
 }
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]

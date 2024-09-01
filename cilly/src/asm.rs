@@ -8,11 +8,9 @@ use crate::{
     access_modifier::AccessModifer,
     basic_block::BasicBlock,
     call_site::CallSite,
-    cil_node::{CILNode, CallOpArgs},
     cil_root::CILRoot,
     method::{Method, MethodType},
-    static_field_desc::StaticFieldDescriptor,
-    v2::{ClassDef, ClassRef, Int},
+    v2::{ClassDef, Int},
     FnSig, IString, Type,
 };
 

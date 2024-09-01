@@ -1,8 +1,5 @@
 use cilly::{
-    v2::{
-        asm::MissingMethodPatcher, cilnode::MethodKind, Assembly, CILNode, CILRoot, Int, MethodRef,
-        SigIdx, Type,
-    },
+    v2::{asm::MissingMethodPatcher, Assembly, CILNode, CILRoot, Int, MethodRef, Type},
     IString,
 };
 
@@ -312,6 +309,7 @@ pub fn call_alias(
         }),
     );
 }
+/*
 pub fn builtin_call(
     overrides: &mut MissingMethodPatcher,
     asm: &mut Assembly,
@@ -323,3 +321,4 @@ pub fn builtin_call(
     let call = asm.get_mref(call).clone();
     call_alias(overrides, asm, name, call)
 }
+ */

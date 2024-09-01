@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use super::bimap::BiMapIndex;
 use super::field::{StaticFieldDesc, StaticFieldIdx};
 use super::{bimap::IntoBiMapIndex, Assembly, Const, Int, MethodRefIdx, SigIdx, TypeIdx};
-use super::{FieldDesc, FieldIdx, Float, StringIdx};
+use super::{ClassRef, FieldDesc, FieldIdx, Float, StringIdx};
 
 use crate::cil_node::CILNode as V1Node;
 use crate::v2::{FnSig, MethodRef, Type};
@@ -145,6 +145,27 @@ pub enum BinOp {
     Div,
 }
 impl CILNode {
+    /// Turns a native object handle into a special handle of type ISize
+    pub fn ref_to_handle(&self, asm: &mut Assembly) -> Self {
+        let gc_handle = ClassRef::gc_handle(asm);
+        let alloc = asm.alloc_string("Alloc");
+        let alloc = asm.class_ref(gc_handle).clone().static_mref(
+            &[Type::PlatformObject],
+            Type::ClassRef(gc_handle),
+            alloc,
+            asm,
+        );
+        let op_explict = asm.alloc_string("op_Explict");
+        let op_explict = asm.class_ref(gc_handle).clone().static_mref(
+            &[Type::ClassRef(gc_handle)],
+            Type::Int(Int::ISize),
+            op_explict,
+            asm,
+        );
+        let arg = asm.alloc_node(self.clone());
+        let alloc = asm.alloc_node(CILNode::Call(Box::new((alloc, [arg].into()))));
+        CILNode::Call(Box::new((op_explict, [alloc].into())))
+    }
     // WIP
     #[allow(unused_variables)]
     /// Typechecks this node, and returns its type if its valid.

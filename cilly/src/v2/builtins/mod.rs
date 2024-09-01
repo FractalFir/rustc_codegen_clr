@@ -18,9 +18,9 @@ pub fn insert_swap_at_generic(asm: &mut Assembly, patcher: &mut MissingMethodPat
         // Alloc the tmp buffer
         let alloc_buff = asm.alloc_root(CILRoot::StLoc(0, tmp_alloc));
         // Swap buffers
-        let buf1_to_tmp = asm.alloc_root(CILRoot::CpBlk(Box::new((buf1, tmp, size))));
-        let buf2_to_buff1 = asm.alloc_root(CILRoot::CpBlk(Box::new((buf2, buf1, size))));
-        let tmp_to_buf2 = asm.alloc_root(CILRoot::CpBlk(Box::new((tmp, buf2, size))));
+        let buf1_to_tmp = asm.alloc_root(CILRoot::CpBlk(Box::new((tmp, buf1, size))));
+        let buf2_to_buff1 = asm.alloc_root(CILRoot::CpBlk(Box::new((buf1, buf2, size))));
+        let tmp_to_buf2 = asm.alloc_root(CILRoot::CpBlk(Box::new((buf2, tmp, size))));
         // Ret
         let ret = asm.alloc_root(CILRoot::VoidRet);
         let void_ptr = asm.nptr(Type::Void);
@@ -206,7 +206,7 @@ fn insert_pthread_attr_init(asm: &mut Assembly, patcher: &mut MissingMethodPatch
     patcher.insert(name, Box::new(generator));
 }
 fn insert_pthread_create(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
-    let name = asm.alloc_string("pthread_create");
+    let fn_name = asm.alloc_string("pthread_create");
     let generator = move |_, asm: &mut Assembly| {
         // Common
         let ldarg_0 = asm.alloc_node(CILNode::LdArg(0));
@@ -216,50 +216,94 @@ fn insert_pthread_create(asm: &mut Assembly, patcher: &mut MissingMethodPatcher)
         // Common types
         let void_ptr = asm.nptr(Type::Void);
         let start_sig = asm.sig([void_ptr], void_ptr);
-        let unmanaged_thread_start = asm.alloc_string("UnmanagedThreadStart");
-        let unmanaged_thread_start = asm.alloc_class_ref(ClassRef::new(
-            unmanaged_thread_start,
-            None,
+        let unmanaged_thread_start = asm.alloc_string(UNMANAGED_THREAD_START);
+        let unmanaged_thread_start = ClassRef::new(unmanaged_thread_start, None, false, [].into());
+        // UnmanagedThreadStart constructor
+        let unmanaged_thread_start_ctor =
+            unmanaged_thread_start.ctor(&[Type::FnPtr(start_sig), void_ptr], asm);
+        let start = asm.alloc_string("Start");
+        let unmanaged_thread_start_start =
+            unmanaged_thread_start.instance(&[], Type::Void, start, asm);
+        // Create UnmanagedThreadStart
+        let unmanaged_thread_start_obj = asm.alloc_node(CILNode::Call(Box::new((
+            unmanaged_thread_start_ctor,
+            [ldarg_2, ldarg_3].into(),
+        ))));
+        // Get pointer to UnmanagedThreadStart.Start
+
+        let unmanaged_thread_start_fn =
+            asm.alloc_node(CILNode::LdFtn(unmanaged_thread_start_start));
+        // Create a ThreadStart object
+        let thread_start = ClassRef::thread_start(asm);
+        let thread_start_ctor = asm
+            .class_ref(thread_start)
+            .clone()
+            .ctor(&[Type::PlatformObject, Type::Int(Int::ISize)], asm);
+        let thread_start_obj = asm.alloc_node(CILNode::Call(Box::new((
+            thread_start_ctor,
+            [unmanaged_thread_start_obj, unmanaged_thread_start_fn].into(),
+        ))));
+        let thread_type = ClassRef::thread(asm);
+        let thread_ctor = asm
+            .class_ref(thread_type)
+            .clone()
+            .ctor(&[Type::ClassRef(thread_start)], asm);
+        let thread_obj = asm.alloc_node(CILNode::Call(Box::new((
+            thread_ctor,
+            [thread_start_obj].into(),
+        ))));
+        let create_thread = asm.alloc_root(CILRoot::StLoc(0, thread_obj));
+        let thread_start =
+            asm.class_ref(thread_type)
+                .clone()
+                .virtual_mref(&[], Type::Void, start, asm);
+        let thread = asm.alloc_node(CILNode::LdLoc(0));
+        let start_thread = asm.alloc_root(CILRoot::Call(Box::new((thread_start, [thread].into()))));
+        let thread_handle = CILNode::LdLoc(0).ref_to_handle(asm);
+        let thread_handle = asm.alloc_node(thread_handle);
+        let set_thread_handle = asm.alloc_root(CILRoot::StInd(Box::new((
+            ldarg_0,
+            thread_handle,
+            Type::Int(Int::ISize),
             false,
-            [].into(),
-        ));
-
-        let ctor_sig = asm.sig(
-            [
-                Type::ClassRef(unmanaged_thread_start),
-                Type::FnPtr(start_sig),
-                void_ptr,
-            ],
-            Type::Void,
-        );
-        let ctor = asm.alloc_string(".ctor");
-
-        let ctor = asm.alloc_methodref(MethodRef::new(
-            unmanaged_thread_start,
-            ctor,
-            ctor_sig,
-            MethodKind::Constructor,
-            [].into(),
-        ));
-        let new_obj = asm.alloc_node(CILNode::Call(Box::new((ctor, [ldarg_2, ldarg_3].into()))));
-        /*let start = asm.alloc_methodref(MethodRef::new(
-            unmanaged_thread_start,
-            ctor,
-            ctor_sig,
-            MethodKind::Constructor,
-            [].into(),
-        ));*/
-        todo!();
-        /*MethodImpl::MethodBody {
-            blocks: vec![BasicBlock::new(vec![init, ret], 0, None)],
-            locals: vec![],
-        }*/
+        ))));
+        let const_0 = asm.alloc_node(Const::I32(0));
+        let ret = asm.alloc_root(CILRoot::Ret(const_0));
+        let thread_type = asm.alloc_type(Type::ClassRef(thread_type));
+        MethodImpl::MethodBody {
+            blocks: vec![BasicBlock::new(
+                vec![create_thread, start_thread, set_thread_handle, ret],
+                0,
+                None,
+            )],
+            locals: vec![(None, thread_type)],
+        }
     };
-    patcher.insert(name, Box::new(generator));
+    patcher.insert(fn_name, Box::new(generator));
 }
 pub fn instert_threading(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     insert_pthread_attr_init(asm, patcher);
     insert_pthread_attr_setstacksize(asm, patcher);
+    insert_pthread_create(asm, patcher);
+    let uts = asm.alloc_string(UNMANAGED_THREAD_START);
+    let object = ClassRef::object(asm);
+    let void_ptr = asm.nptr(Type::Void);
+    let start_fn_sig = asm.sig([void_ptr], void_ptr);
+    let start_fn_tpe = (Type::FnPtr(start_fn_sig));
+    let start_fn = asm.alloc_string("start_fn");
+    let data = asm.alloc_string("data");
+    let unmanaged_start = asm.class_def(ClassDef::new(
+        uts,
+        false,
+        0,
+        Some(object),
+        vec![(start_fn_tpe, start_fn, None), (void_ptr, data, None)],
+        vec![],
+        vec![],
+        // TODO: fix the bug which causes this to be leaned up by dead code elimination when access is set to Public.
+        Access::Extern,
+        None,
+    ));
 }
 pub fn insert_heap(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     insert_rust_alloc(asm, patcher);
@@ -386,3 +430,4 @@ fn insert_catch_unwind(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     patcher.insert(name, Box::new(generator));
 }
 const ALLOC_CAP: u64 = u32::MAX as u64;
+const UNMANAGED_THREAD_START: &str = "UnmanagedThreadStart";
