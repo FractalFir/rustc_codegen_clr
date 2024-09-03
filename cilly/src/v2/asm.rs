@@ -310,7 +310,6 @@ impl Assembly {
             None,
             vec![],
             vec![],
-            vec![],
             Access::Public,
             None,
         );
@@ -522,7 +521,6 @@ impl Assembly {
             true,
             0,
             None,
-            vec![],
             vec![],
             vec![],
             Access::Public,
@@ -893,6 +891,22 @@ impl Assembly {
     /// Checks if this assembly contains a reference [`ClassRef`]
     pub fn contains_ref(&self, cref: &ClassRef) -> bool {
         self.class_refs.1.contains_key(cref)
+    }
+
+    pub(crate) fn class_defs_mut(&mut self) -> &mut FxHashMap<ClassDefIdx, ClassDef> {
+        &mut self.class_defs
+    }
+
+    pub(crate) fn strings(&self) -> &BiMap<StringIdx, IStringWrapper> {
+        &self.strings
+    }
+    pub(crate) fn class_defs_mut_strings(
+        &mut self,
+    ) -> (
+        &mut FxHashMap<ClassDefIdx, ClassDef>,
+        &BiMap<StringIdx, IStringWrapper>,
+    ) {
+        (&mut self.class_defs, &self.strings)
     }
 }
 /// An initializer, which runs before everything else. By convention, it is used to initialize static / const data. Should not execute any user code

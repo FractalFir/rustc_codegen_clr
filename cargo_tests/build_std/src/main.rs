@@ -17,5 +17,5 @@ pub fn main() {
     s.push_str("Hi. Message");
     println!("E");
     println!("Hi! UWU:{vec:?} {s:?}");
-    println!("F");
+    println!("F all is well, when all is well. Right?");
 }

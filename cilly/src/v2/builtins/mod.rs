@@ -211,8 +211,18 @@ fn insert_pthread_create(asm: &mut Assembly, patcher: &mut MissingMethodPatcher)
         // Common
         let ldarg_0 = asm.alloc_node(CILNode::LdArg(0));
         let ldarg_1 = asm.alloc_node(CILNode::LdArg(1));
-        let ldarg_2 = asm.alloc_node(CILNode::LdArg(2));
         let ldarg_3 = asm.alloc_node(CILNode::LdArg(3));
+        let isize_tpe = asm.alloc_type(Type::Int(Int::ISize));
+        let arg2_addr = asm.alloc_node(CILNode::LdArgA(2));
+        let arg2_addr = asm.alloc_node(CILNode::RefToPtr(arg2_addr));
+        let transmuted_arg_2 = asm.alloc_node(CILNode::LdInd {
+            addr: arg2_addr,
+            tpe: isize_tpe,
+            volitale: false,
+        });
+        let transmute_arg_2 = asm.alloc_root(CILRoot::StLoc(2, transmuted_arg_2));
+        // Arg2 needs to be transmuted, and the local 2 holds the transmuted value of arg2.
+        let ldarg_2 = asm.alloc_node(CILNode::LdLoc(2));
         // Common types
         let void_ptr = asm.nptr(Type::Void);
         let start_sig = asm.sig([void_ptr], void_ptr);
@@ -243,6 +253,8 @@ fn insert_pthread_create(asm: &mut Assembly, patcher: &mut MissingMethodPatcher)
             thread_start_ctor,
             [unmanaged_thread_start_obj, unmanaged_thread_start_fn].into(),
         ))));
+        let create_thread_start = asm.alloc_root(CILRoot::StLoc(1, thread_start_obj));
+        let thread_start_obj = asm.alloc_node(CILNode::LdLoc(1));
         let thread_type = ClassRef::thread(asm);
         let thread_ctor = asm
             .class_ref(thread_type)
@@ -270,13 +282,25 @@ fn insert_pthread_create(asm: &mut Assembly, patcher: &mut MissingMethodPatcher)
         let const_0 = asm.alloc_node(Const::I32(0));
         let ret = asm.alloc_root(CILRoot::Ret(const_0));
         let thread_type = asm.alloc_type(Type::ClassRef(thread_type));
+        let unmanaged_thread_start = asm.alloc_class_ref(unmanaged_thread_start);
         MethodImpl::MethodBody {
             blocks: vec![BasicBlock::new(
-                vec![create_thread, start_thread, set_thread_handle, ret],
+                vec![
+                    transmute_arg_2,
+                    create_thread_start,
+                    create_thread,
+                    start_thread,
+                    set_thread_handle,
+                    ret,
+                ],
                 0,
                 None,
             )],
-            locals: vec![(None, thread_type)],
+            locals: vec![
+                (None, thread_type),
+                (None, asm.alloc_type(Type::ClassRef(unmanaged_thread_start))),
+                (None, asm.alloc_type(Type::Int(Int::ISize))),
+            ],
         }
     };
     patcher.insert(fn_name, Box::new(generator));
@@ -299,11 +323,60 @@ pub fn instert_threading(asm: &mut Assembly, patcher: &mut MissingMethodPatcher)
         Some(object),
         vec![(start_fn_tpe, start_fn, None), (void_ptr, data, None)],
         vec![],
-        vec![],
         // TODO: fix the bug which causes this to be leaned up by dead code elimination when access is set to Public.
         Access::Extern,
         None,
     ));
+
+    let ctor = asm.alloc_string(".ctor");
+    let this = asm.alloc_node(CILNode::LdArg(0));
+    let ldarg_1 = asm.alloc_node(CILNode::LdArg(1));
+    let ldarg_2 = asm.alloc_node(CILNode::LdArg(2));
+
+    let start_field = asm.alloc_field(FieldDesc::new(*unmanaged_start, start_fn, start_fn_tpe));
+    let data_field = asm.alloc_field(FieldDesc::new(*unmanaged_start, data, void_ptr));
+    let set_start = asm.alloc_root(CILRoot::SetField(Box::new((start_field, this, ldarg_1))));
+    let set_data = asm.alloc_root(CILRoot::SetField(Box::new((data_field, this, ldarg_2))));
+    let ret = asm.alloc_root(CILRoot::VoidRet);
+    let ctor_sig = asm.sig(
+        [
+            Type::ClassRef(*unmanaged_start),
+            Type::FnPtr(start_fn_sig),
+            void_ptr,
+        ],
+        Type::Void,
+    );
+    asm.new_method(MethodDef::new(
+        Access::Public,
+        unmanaged_start,
+        ctor,
+        ctor_sig,
+        MethodKind::Constructor,
+        MethodImpl::MethodBody {
+            blocks: vec![BasicBlock::new(vec![set_start, set_data, ret], 0, None)],
+            locals: vec![],
+        },
+        vec![None, Some(start_fn), Some(data)],
+    ));
+    let start_sig = asm.sig([Type::ClassRef(*unmanaged_start)], Type::Void);
+    let start = asm.alloc_string("Start");
+    asm.new_method(MethodDef::new(
+        Access::Public,
+        unmanaged_start,
+        start,
+        start_sig,
+        MethodKind::Virtual,
+        MethodImpl::MethodBody {
+            blocks: vec![BasicBlock::new(vec![ret], 0, None)],
+            locals: vec![],
+        },
+        vec![None],
+    ));
+
+    assert_eq!(
+        *unmanaged_start,
+        asm.alloc_class_ref(ClassRef::new(uts, None, false, [].into()))
+    )
 }
 pub fn insert_heap(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     insert_rust_alloc(asm, patcher);
@@ -320,7 +393,6 @@ pub fn insert_heap(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
         0,
         extends,
         vec![(Type::Int(Int::USize), data_pointer, None)],
-        vec![],
         vec![],
         Access::Public,
         None,

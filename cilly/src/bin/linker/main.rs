@@ -229,7 +229,6 @@ fn main() {
         let mref = final_assembly.get_mref(allochglobal).clone();
         call_alias(&mut overrides, &mut final_assembly, "free", mref);
     }
-    eprintln!("!*PANIC_MANAGED_BT :{}", !*PANIC_MANAGED_BT);
     if !*PANIC_MANAGED_BT {
         overrides.insert(
             final_assembly.alloc_string("_Unwind_RaiseException"),
@@ -368,7 +367,6 @@ fn main() {
         true,
         0,
         None,
-        vec![],
         vec![],
         vec![],
         cilly::v2::Access::Public,

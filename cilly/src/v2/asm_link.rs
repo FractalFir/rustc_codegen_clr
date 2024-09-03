@@ -570,10 +570,31 @@ impl Assembly {
                 (tpe, name, *thread_local)
             })
             .collect();
-        let methods = def
+        let translated =   ClassDef::new(
+            name,
+            def.is_valuetype(),
+            def.generics(),
+            extends,
+            fields,
+            static_fields,
+            *def.access(),
+            def.explict_size(),
+        );
+        let class_ref = self.alloc_class_ref(translated.ref_to());
+        let (defs_mut, strings) = self.class_defs_mut_strings();
+        match defs_mut.entry(ClassDefIdx(class_ref)) {
+            std::collections::hash_map::Entry::Occupied(mut occupied) => {
+                occupied.get_mut().merge_defs(translated.clone(),strings)
+            }
+            std::collections::hash_map::Entry::Vacant(vacant) => {
+                vacant.insert(translated.clone());
+            }
+        }
+  
+   def
             .methods()
             .iter()
-            .map(|mdef| {
+            .for_each(|mdef| {
                 let mut method_def = self.translate_method_def(source, source.method_def(*mdef));
                 let method_ref = self.alloc_methodref(method_def.ref_to());
                 // 1st Take the orignal method, if it exists(we need this to be able to mutate methods)
@@ -609,22 +630,11 @@ impl Assembly {
                     }
                     None => method_def,
                 };
-                self.method_defs_mut()
-                    .insert(MethodDefIdx(method_ref), method_def);
-                MethodDefIdx(method_ref)
+                self.new_method(method_def);
+       
             })
-            .collect();
-        ClassDef::new(
-            name,
-            def.is_valuetype(),
-            def.generics(),
-            extends,
-            fields,
-            static_fields,
-            methods,
-            *def.access(),
-            def.explict_size(),
-        )
+            ;
+            translated
     }
 }
 const SPECIAL_METHOD_NAMES: &[&str] = &[CCTOR, TCCTOR, USER_INIT];

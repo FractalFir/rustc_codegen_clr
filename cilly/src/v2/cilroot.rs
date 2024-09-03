@@ -28,7 +28,7 @@ pub enum CILRoot {
         col_len: u16,
         file: StringIdx,
     },
-    /// Field, value, addr
+    /// Field,  addr,value
     SetField(Box<(FieldIdx, NodeIdx, NodeIdx)>),
     Call(Box<(MethodRefIdx, Box<[NodeIdx]>)>),
     /// addr, value, type

@@ -582,14 +582,6 @@ pub const LIBC_FNS: &[&str] = &[
     "write",
     "writev",
     "wscanf",
-    "pthread_attr_destroy",
-    "pthread_attr_init",
-    "pthread_attr_setstacksize",
-    "pthread_create",
-    "pthread_detach",
-    "pthread_join",
-    "pthread_self",
-    "pthread_setname_np",
 ];
 pub const LIBC_MODIFIES_ERRNO: &[&str] = &[
     "bind",
@@ -670,14 +662,6 @@ pub const LIBC_MODIFIES_ERRNO: &[&str] = &[
     "write",
     "dup",
     "writev",
-    "pthread_attr_destroy",
-    "pthread_attr_init",
-    "pthread_attr_setstacksize",
-    "pthread_create",
-    "pthread_detach",
-    "pthread_join",
-    "pthread_self",
-    "pthread_setname_np",
 ];
 pub const LIBM_FNS: &[&str] = &[
     "hypotf",

@@ -138,7 +138,6 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
                     None,
                     vec![],
                     vec![],
-                    vec![],
                     cilly::v2::Access::Public,
                     None,
                 ));
@@ -290,7 +289,6 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
                     None,
                     fields,
                     vec![],
-                    vec![],
                     Access::Public,
                     Some(NonZeroU32::new(size).unwrap()),
                 ));
@@ -428,7 +426,6 @@ pub fn fat_ptr_to<'tcx>(mut inner: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_
                 ),
             ],
             vec![],
-            vec![],
             Access::Public,
             Some(NonZeroU32::new(16).unwrap()),
         );
@@ -477,7 +474,6 @@ pub fn closure_typedef(
         0,
         None,
         fields,
-        vec![],
         vec![],
         Access::Public,
         Some(
@@ -539,7 +535,6 @@ fn struct_<'tcx>(
         0,
         None,
         fields,
-        vec![],
         vec![],
         Access::Public,
         NonZeroU32::new(size),
@@ -643,7 +638,6 @@ fn enum_<'tcx>(
         None,
         fields,
         vec![],
-        vec![],
         Access::Public,
         Some(NonZeroU32::new(layout.layout.size().bytes().try_into().unwrap()).unwrap()),
     )
@@ -685,7 +679,6 @@ fn union_<'tcx>(
         0,
         None,
         fields,
-        vec![],
         vec![],
         Access::Public,
         Some(NonZeroU32::new(layout.layout.size().bytes().try_into().unwrap()).unwrap()),
@@ -881,7 +874,6 @@ pub fn tuple_typedef(
         0,
         None,
         fields,
-        vec![],
         vec![],
         Access::Public,
         Some(

@@ -155,7 +155,7 @@ impl CILNode {
             alloc,
             asm,
         );
-        let op_explict = asm.alloc_string("op_Explict");
+        let op_explict = asm.alloc_string("op_Explicit");
         let op_explict = asm.class_ref(gc_handle).clone().static_mref(
             &[Type::ClassRef(gc_handle)],
             Type::Int(Int::ISize),

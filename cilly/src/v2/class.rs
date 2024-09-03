@@ -183,7 +183,7 @@ impl ClassRef {
     }
     /// Returns a reference to the `System.Threading.ThreadStart`
     pub fn thread_start(asm: &mut Assembly) -> ClassRefIdx {
-        let name = asm.alloc_string(" System.Threading.ThreadStart");
+        let name = asm.alloc_string("System.Threading.ThreadStart");
         let asm_name = Some(asm.alloc_string("System.Threading.Thread"));
         asm.alloc_class_ref(ClassRef::new(name, asm_name, false, [].into()))
     }
@@ -405,7 +405,7 @@ impl ClassDef {
         extends: Option<ClassRefIdx>,
         fields: Vec<(Type, StringIdx, Option<u32>)>,
         static_fields: Vec<(Type, StringIdx, bool)>,
-        methods: Vec<MethodDefIdx>,
+
         access: Access,
         explict_size: Option<NonZeroU32>,
     ) -> Self {
@@ -417,7 +417,7 @@ impl ClassDef {
             extends,
             fields,
             static_fields,
-            methods,
+            methods: vec![],
             access,
             explict_size,
         }
