@@ -295,11 +295,11 @@ pub fn handle_intrinsic<'tcx>(
             );
             let tpe = ctx.type_from_cache(tpe);
             let sig = FnSig::new(
-                &[ClassRef::runtime_type_hadle(ctx.asm_mut()).into()],
+                [ClassRef::runtime_type_hadle(ctx.asm_mut()).into()],
                 ClassRef::type_type(ctx.asm_mut()),
             );
             let gethash_sig = FnSig::new(
-                &[ClassRef::type_type(ctx.asm_mut()).into()],
+                [ClassRef::type_type(ctx.asm_mut()).into()],
                 Type::Int(Int::I32),
             );
             place_set(
@@ -308,7 +308,7 @@ pub fn handle_intrinsic<'tcx>(
                     CallSite::boxed(
                         Some(ClassRef::uint_128(ctx.asm_mut())),
                         "op_Implicit".into(),
-                        FnSig::new(&[Type::Int(Int::U32)], Type::Int(Int::U128)),
+                        FnSig::new([Type::Int(Int::U32)], Type::Int(Int::U128)),
                         true,
                     ),
                     [conv_u32!(call_virt!(
@@ -446,12 +446,12 @@ pub fn handle_intrinsic<'tcx>(
                         Some(interlocked),
                         "CompareExchange".into(),
                         FnSig::new(
-                            &[
-                                ctx.asm_mut().nref(Type::Int(Int::USize).clone().into()),
-                                Type::Int(Int::USize).clone(),
-                                Type::Int(Int::USize).clone(),
+                            [
+                                ctx.asm_mut().nref(Type::Int(Int::USize)),
+                                Type::Int(Int::USize),
+                                Type::Int(Int::USize),
                             ],
-                            Type::Int(Int::USize).clone(),
+                            Type::Int(Int::USize),
                         ),
                         true,
                     );
@@ -459,12 +459,12 @@ pub fn handle_intrinsic<'tcx>(
                         call_site,
                         [
                             Box::new(dst)
-                                .cast_ptr(ctx.asm_mut().nref(Type::Int(Int::USize).clone().into())),
+                                .cast_ptr(ctx.asm_mut().nref(Type::Int(Int::USize))),
                             conv_usize!(value),
                             conv_usize!(comaprand)
                         ]
                     )
-                    .cast_ptr(src_type.clone())
+                    .cast_ptr(src_type)
                 }
                 // TODO: this is a bug, on purpose. The 1 byte compare exchange is not supported untill .NET 9. Remove after November, when .NET 9 Releases.
                 Type::Int(Int::U8) => comaprand,
@@ -473,12 +473,12 @@ pub fn handle_intrinsic<'tcx>(
                         Some(interlocked),
                         "CompareExchange".into(),
                         FnSig::new(
-                            &[
-                                ctx.asm_mut().nref(src_type.clone().into()),
-                                src_type.clone(),
-                                src_type.clone(),
+                            [
+                                ctx.asm_mut().nref(src_type),
+                                src_type,
+                                src_type,
                             ],
-                            src_type.clone(),
+                            src_type,
                         ),
                         true,
                     );
@@ -608,7 +608,7 @@ pub fn handle_intrinsic<'tcx>(
                 site: Box::new(CallSite::new(
                     Some(thread),
                     "MemoryBarrier".into(),
-                    FnSig::new(&[], Type::Void),
+                    FnSig::new([], Type::Void),
                     true,
                 )),
                 args: [].into(),
@@ -710,7 +710,7 @@ pub fn handle_intrinsic<'tcx>(
                             CallSite::builtin(
                                 "atomic_emulate_xchng_byte".into(),
                                 FnSig::new(
-                                    &[ctx.asm_mut().nref(Type::Int(Int::U8)), Type::Int(Int::U8)],
+                                    [ctx.asm_mut().nref(Type::Int(Int::U8)), Type::Int(Int::U8)],
                                     Type::Int(Int::U8)
                                 ),
                                 true
@@ -725,11 +725,11 @@ pub fn handle_intrinsic<'tcx>(
                         Some(interlocked),
                         "Exchange".into(),
                         FnSig::new(
-                            &[
-                                ctx.asm_mut().nref(Type::Int(Int::USize).clone().into()),
-                                Type::Int(Int::USize).clone(),
+                            [
+                                ctx.asm_mut().nref(Type::Int(Int::USize)),
+                                Type::Int(Int::USize),
                             ],
-                            Type::Int(Int::USize).clone(),
+                            Type::Int(Int::USize),
                         ),
                         true,
                     );
@@ -739,12 +739,12 @@ pub fn handle_intrinsic<'tcx>(
                             call_site,
                             [
                                 Box::new(dst).cast_ptr(
-                                    ctx.asm_mut().nref(Type::Int(Int::USize).clone().into())
+                                    ctx.asm_mut().nref(Type::Int(Int::USize))
                                 ),
                                 conv_usize!(new),
                             ]
                         )
-                        .cast_ptr(src_type.clone()),
+                        .cast_ptr(src_type),
                         ctx,
                     );
                 }
@@ -757,11 +757,11 @@ pub fn handle_intrinsic<'tcx>(
                 Some(interlocked),
                 "Exchange".into(),
                 FnSig::new(
-                    &[
-                        ctx.asm_mut().nref(src_type.clone().into()),
-                        src_type.clone(),
+                    [
+                        ctx.asm_mut().nref(src_type),
+                        src_type,
                     ],
-                    src_type.clone(),
+                    src_type,
                 ),
                 true,
             );
@@ -886,7 +886,7 @@ pub fn handle_intrinsic<'tcx>(
                     CallSite::boxed(
                         Some(ClassRef::mathf(ctx.asm_mut())),
                         "Sqrt".into(),
-                        FnSig::new(&[Type::Float(Float::F32)], Type::Float(Float::F32)),
+                        FnSig::new([Type::Float(Float::F32)], Type::Float(Float::F32)),
                         true,
                     ),
                     [handle_operand(&args[0].node, ctx)]
@@ -909,7 +909,7 @@ pub fn handle_intrinsic<'tcx>(
                         Some(ClassRef::single(ctx.asm_mut())),
                         "Pow".into(),
                         FnSig::new(
-                            &[Type::Float(Float::F32), Type::Float(Float::F32)],
+                            [Type::Float(Float::F32), Type::Float(Float::F32)],
                             Type::Float(Float::F32)
                         ),
                         true,
@@ -936,7 +936,7 @@ pub fn handle_intrinsic<'tcx>(
                         Some(ClassRef::double(ctx.asm_mut())),
                         "Pow".into(),
                         FnSig::new(
-                            &[Type::Float(Float::F64), Type::Float(Float::F64)],
+                            [Type::Float(Float::F64), Type::Float(Float::F64)],
                             Type::Float(Float::F64)
                         ),
                         true,
@@ -1561,7 +1561,7 @@ pub fn handle_intrinsic<'tcx>(
                 CallSite::boxed(
                     Some(ClassRef::math(ctx.asm_mut())),
                     "Sqrt".into(),
-                    FnSig::new(&[Type::Float(Float::F64)], Type::Float(Float::F64)),
+                    FnSig::new([Type::Float(Float::F64)], Type::Float(Float::F64)),
                     true,
                 ),
                 [handle_operand(&args[0].node, ctx)]
@@ -1585,7 +1585,7 @@ pub fn handle_intrinsic<'tcx>(
                     CallSite::builtin(
                         "catch_unwind".into(),
                         FnSig::new(
-                            &[
+                            [
                                 Type::FnPtr(ctx.asm_mut().sig([uint8_ptr], Type::Void)),
                                 uint8_ptr,
                                 Type::FnPtr(ctx.asm_mut().sig([uint8_ptr, uint8_ptr], Type::Void)),
@@ -1658,11 +1658,11 @@ fn intrinsic_slow<'tcx>(
         );
         let tpe = ctx.type_from_cache(tpe);
         let sig = FnSig::new(
-            &[ClassRef::runtime_type_hadle(ctx.asm_mut()).into()],
+            [ClassRef::runtime_type_hadle(ctx.asm_mut()).into()],
             ClassRef::type_type(ctx.asm_mut()),
         );
         let gethash_sig = FnSig::new(
-            &[ClassRef::type_type(ctx.asm_mut()).into()],
+            [ClassRef::type_type(ctx.asm_mut()).into()],
             Type::Int(Int::I32),
         );
         place_set(
@@ -1671,7 +1671,7 @@ fn intrinsic_slow<'tcx>(
                 CallSite::boxed(
                     Some(ClassRef::uint_128(ctx.asm_mut())),
                     "op_Implicit".into(),
-                    FnSig::new(&[Type::Int(Int::U32)], Type::Int(Int::U128)),
+                    FnSig::new([Type::Int(Int::U32)], Type::Int(Int::U128)),
                     true,
                 ),
                 [conv_u32!(call_virt!(

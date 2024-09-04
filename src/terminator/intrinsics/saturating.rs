@@ -52,7 +52,7 @@ pub fn saturating_add<'tcx>(
                     ClassRef::math(ctx.asm_mut()),
                     "Clamp".into(),
                     FnSig::new(
-                        &[
+                        [
                             Type::Int(Int::I64),
                             Type::Int(Int::I64),
                             Type::Int(Int::I64)
@@ -88,7 +88,7 @@ pub fn saturating_add<'tcx>(
                     ClassRef::int_128(ctx.asm_mut()),
                     "op_Addition".into(),
                     FnSig::new(
-                        &[Type::Int(Int::I128), Type::Int(Int::I128)],
+                        [Type::Int(Int::I128), Type::Int(Int::I128)],
                         Type::Int(Int::I128)
                     ),
                     true,
@@ -101,7 +101,7 @@ pub fn saturating_add<'tcx>(
                     ClassRef::int_128(ctx.asm_mut()),
                     "Clamp".into(),
                     FnSig::new(
-                        &[
+                        [
                             Type::Int(Int::I128),
                             Type::Int(Int::I128),
                             Type::Int(Int::I128)
@@ -142,7 +142,7 @@ pub fn saturating_add<'tcx>(
                     ClassRef::int_128(ctx.asm_mut()),
                     "op_Addition".into(),
                     FnSig::new(
-                        &[Type::Int(Int::I128), Type::Int(Int::I128)],
+                        [Type::Int(Int::I128), Type::Int(Int::I128)],
                         Type::Int(Int::I128)
                     ),
                     true,
@@ -155,7 +155,7 @@ pub fn saturating_add<'tcx>(
                     ClassRef::int_128(ctx.asm_mut()),
                     "Clamp".into(),
                     FnSig::new(
-                        &[
+                        [
                             Type::Int(Int::I128),
                             Type::Int(Int::I128),
                             Type::Int(Int::I128)
@@ -187,7 +187,7 @@ pub fn saturating_add<'tcx>(
                     ClassRef::math(ctx.asm_mut()),
                     "Clamp".into(),
                     FnSig::new(
-                        &[
+                        [
                             Type::Int(Int::I32),
                             Type::Int(Int::I32),
                             Type::Int(Int::I32)
@@ -213,7 +213,7 @@ pub fn saturating_add<'tcx>(
                     ClassRef::math(ctx.asm_mut()),
                     "Clamp".into(),
                     FnSig::new(
-                        &[
+                        [
                             Type::Int(Int::I32),
                             Type::Int(Int::I32),
                             Type::Int(Int::I32)
@@ -274,7 +274,7 @@ pub fn saturating_sub<'tcx>(
                     ClassRef::int_128(ctx.asm_mut()),
                     "op_Subtraction".into(),
                     FnSig::new(
-                        &[Type::Int(Int::I128), Type::Int(Int::I128)],
+                        [Type::Int(Int::I128), Type::Int(Int::I128)],
                         Type::Int(Int::I128)
                     ),
                     true,
@@ -287,7 +287,7 @@ pub fn saturating_sub<'tcx>(
                     ClassRef::int_128(ctx.asm_mut()),
                     "Clamp".into(),
                     FnSig::new(
-                        &[
+                        [
                             Type::Int(Int::I128),
                             Type::Int(Int::I128),
                             Type::Int(Int::I128)
@@ -327,7 +327,7 @@ pub fn saturating_sub<'tcx>(
                     ClassRef::int_128(ctx.asm_mut()),
                     "op_Subtraction".into(),
                     FnSig::new(
-                        &[Type::Int(Int::I128), Type::Int(Int::I128)],
+                        [Type::Int(Int::I128), Type::Int(Int::I128)],
                         Type::Int(Int::I128)
                     ),
                     true,
@@ -340,7 +340,7 @@ pub fn saturating_sub<'tcx>(
                     ClassRef::int_128(ctx.asm_mut()),
                     "Clamp".into(),
                     FnSig::new(
-                        &[
+                        [
                             Type::Int(Int::I128),
                             Type::Int(Int::I128),
                             Type::Int(Int::I128)
@@ -372,7 +372,7 @@ pub fn saturating_sub<'tcx>(
                     ClassRef::math(ctx.asm_mut()),
                     "Clamp".into(),
                     FnSig::new(
-                        &[
+                        [
                             Type::Int(Int::I64),
                             Type::Int(Int::I64),
                             Type::Int(Int::I64)
@@ -398,7 +398,7 @@ pub fn saturating_sub<'tcx>(
                     ClassRef::math(ctx.asm_mut()),
                     "Clamp".into(),
                     FnSig::new(
-                        &[
+                        [
                             Type::Int(Int::I32),
                             Type::Int(Int::I32),
                             Type::Int(Int::I32)
@@ -424,7 +424,7 @@ pub fn saturating_sub<'tcx>(
                     ClassRef::math(ctx.asm_mut()),
                     "Clamp".into(),
                     FnSig::new(
-                        &[
+                        [
                             Type::Int(Int::I32),
                             Type::Int(Int::I32),
                             Type::Int(Int::I32)

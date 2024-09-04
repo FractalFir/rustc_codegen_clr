@@ -77,8 +77,8 @@ pub fn handle_aggregate<'tcx>(
             let array_type = ClassRef::fixed_array(element, value_index.len(), ctx.asm_mut());
             let array_getter = super::place::place_adress(target_location, ctx);
             let sig = cilly::fn_sig::FnSig::new(
-                &[
-                    ctx.asm_mut().nref(array_type.clone().into()),
+                [
+                    ctx.asm_mut().nref(array_type.into()),
                     Type::Int(Int::USize),
                     element,
                 ],
@@ -125,8 +125,8 @@ pub fn handle_aggregate<'tcx>(
                     addr: Box::new(tuple_getter.clone()),
                     value: Box::new(field.1.clone()),
                     desc: Box::new(FieldDescriptor::new(
-                        dotnet_tpe.clone(),
-                        types[field.0 as usize].clone(),
+                        dotnet_tpe,
+                        types[field.0 as usize],
                         name.into(),
                     )),
                 });
@@ -154,7 +154,7 @@ pub fn handle_aggregate<'tcx>(
                     addr: Box::new(closure_getter.clone()),
                     value: Box::new(handle_operand(value, ctx)),
                     desc: Box::new(FieldDescriptor::new(
-                        closure_dotnet.clone(),
+                        closure_dotnet,
                         field_type,
                         format!("f_{}", index.as_u32()).into(),
                     )),
@@ -185,7 +185,7 @@ pub fn handle_aggregate<'tcx>(
                     "data_ty:{data_ty:?} is a zst. That is bizzare, cause it should be a pointer?"
                 );
                 let data_type = ctx.type_from_cache(data_ty);
-                let fat_ptr_type_ptr = ctx.asm_mut().nptr(fat_ptr_type.clone());
+                let fat_ptr_type_ptr = ctx.asm_mut().nptr(fat_ptr_type);
                 assert_ne!(data_type, Type::Void);
                 // Pointer is thin, just directly assign
                 return CILNode::SubTrees(Box::new((
@@ -299,7 +299,7 @@ fn aggregate_adt<'tcx>(
                     addr: Box::new(variant_address.clone()),
                     value: Box::new(field_value.1.clone()),
                     desc: Box::new(FieldDescriptor::new(
-                        adt_type_ref.clone(),
+                        adt_type_ref,
                         field_type,
                         field_name,
                     )),
@@ -344,7 +344,7 @@ fn aggregate_adt<'tcx>(
 
             let field_name = field_name(adt_type, active_field.as_u32());
 
-            let desc = FieldDescriptor::new(adt_type_ref.clone(), field_type, field_name);
+            let desc = FieldDescriptor::new(adt_type_ref, field_type, field_name);
             sub_trees.push(CILRoot::SetField {
                 addr: Box::new(obj_getter.clone()),
                 value: Box::new(fields[0].1.clone()),

@@ -247,7 +247,7 @@ fn allocation_initializer_method(
     Method::new(
         AccessModifer::Private,
         MethodType::Static,
-        FnSig::new(&[], asm.nptr(Type::Int(Int::U8))),
+        FnSig::new([], asm.nptr(Type::Int(Int::U8))),
         &format!("init_{name}"),
         vec![(Some("alloc_ptr".into()), asm.nptr(Type::Int(Int::U8)))],
         vec![BasicBlock::new(trees, 0, None)],
@@ -384,12 +384,14 @@ pub fn add_fn<'tcx, 'asm, 'a: 'asm>(
             if crate::utilis::is_zst(ty, ctx.tcx()) {
                 continue;
             }
-            let arg_field = field_descrptor(repacked_ty, arg_id as u32, ctx);
+            let arg_field = field_descrptor(repacked_ty, arg_id.try_into().unwrap(), ctx);
 
             repack_cil.push(
                 CILRoot::SetField {
                     addr: Box::new(CILNode::LDLocA(repacked)),
-                    value: Box::new(CILNode::LDArg((spread_arg.as_u32() - 1) + (arg_id as u32))),
+                    value: Box::new(CILNode::LDArg(
+                        spread_arg.as_u32() - 1 + u32::try_from(arg_id).unwrap(),
+                    )),
                     desc: Box::new(arg_field),
                 }
                 .into(),
@@ -663,7 +665,7 @@ pub fn add_allocation(alloc_id: u64, asm: &mut cilly::v2::Assembly, tcx: TyCtxt<
             "al_{}_{}_{}",
             encode(alloc_id),
             encode(byte_hash),
-            encode(krate.as_u32() as u64),
+            encode(u64::from(krate.as_u32())),
         )
         .into()
     } else {
@@ -697,11 +699,7 @@ pub fn add_allocation(alloc_id: u64, asm: &mut cilly::v2::Assembly, tcx: TyCtxt<
 
     CILNode::LDStaticField(Box::new(field_desc))
 }
-pub fn add_const_value(
-    asm: &mut cilly::v2::Assembly,
-    bytes: u128,
-    tcx: TyCtxt,
-) -> StaticFieldDescriptor {
+pub fn add_const_value(asm: &mut cilly::v2::Assembly, bytes: u128) -> StaticFieldDescriptor {
     let uint8_ptr = asm.nptr(Type::Int(Int::U8));
     let main_module_id = asm.main_module();
     let alloc_fld: IString = format!("a_{bytes:x}").into();

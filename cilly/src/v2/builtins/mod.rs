@@ -39,7 +39,7 @@ pub fn insert_bounds_check(asm: &mut Assembly, patcher: &mut MissingMethodPatche
     let name = asm.alloc_string("bounds_check");
     let generator = move |_, asm: &mut Assembly| {
         let idx = asm.alloc_node(CILNode::LdArg(0));
-        let size = asm.alloc_node(CILNode::LdArg(1));
+        let _size = asm.alloc_node(CILNode::LdArg(1));
         // Ret
         let ret = asm.alloc_root(CILRoot::Ret(idx));
         MethodImpl::MethodBody {
@@ -154,20 +154,25 @@ fn insert_rust_dealloc(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
 fn insert_pthread_attr_setstacksize(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     let name = asm.alloc_string("pthread_attr_setstacksize");
     let generator = move |_, asm: &mut Assembly| {
-        let ldarg_0 = asm.alloc_node(CILNode::LdArg(0));
         let ldarg_1 = asm.alloc_node(CILNode::LdArg(1));
-        let const_0_u8 = asm.alloc_node(Const::U8(0));
+
         let three = asm.alloc_node(Const::I32(2));
         let usize_tpe = asm.alloc_type(Int::USize);
         let usize_size = asm.alloc_node(CILNode::SizeOf(usize_tpe));
         let offset = asm.alloc_node(CILNode::BinOp(usize_size, three, super::BinOp::Mul));
-        let offset = asm.alloc_node(CILNode::IntCast {
-            input: offset,
-            target: Int::USize,
-            extend: super::cilnode::ExtendKind::ZeroExtend,
-        });
+
+        let addr = asm.biop(
+            CILNode::IntCast {
+                input: offset,
+                target: Int::USize,
+                extend: super::cilnode::ExtendKind::ZeroExtend,
+            },
+            CILNode::LdArg(0),
+            super::BinOp::Add,
+        );
+        let addr = asm.alloc_node(addr);
         let init = asm.alloc_root(CILRoot::StInd(Box::new((
-            ldarg_0,
+            addr,
             ldarg_1,
             Type::Int(Int::USize),
             false,
@@ -210,7 +215,8 @@ fn insert_pthread_create(asm: &mut Assembly, patcher: &mut MissingMethodPatcher)
     let generator = move |_, asm: &mut Assembly| {
         // Common
         let ldarg_0 = asm.alloc_node(CILNode::LdArg(0));
-        let ldarg_1 = asm.alloc_node(CILNode::LdArg(1));
+        // Thread info is ignored
+        let _ldarg_1 = asm.alloc_node(CILNode::LdArg(1));
         let ldarg_3 = asm.alloc_node(CILNode::LdArg(3));
         let isize_tpe = asm.alloc_type(Type::Int(Int::ISize));
         let arg2_addr = asm.alloc_node(CILNode::LdArgA(2));
@@ -313,7 +319,7 @@ pub fn instert_threading(asm: &mut Assembly, patcher: &mut MissingMethodPatcher)
     let object = ClassRef::object(asm);
     let void_ptr = asm.nptr(Type::Void);
     let start_fn_sig = asm.sig([void_ptr], void_ptr);
-    let start_fn_tpe = (Type::FnPtr(start_fn_sig));
+    let start_fn_tpe = Type::FnPtr(start_fn_sig);
     let start_fn = asm.alloc_string("start_fn");
     let data = asm.alloc_string("data");
     let unmanaged_start = asm.class_def(ClassDef::new(

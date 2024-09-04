@@ -143,12 +143,12 @@ pub fn unsize2<'tcx>(
     let fat_ptr_type = fat_ptr_to(Ty::new(ctx.tcx(), TyKind::Uint(UintTy::U8)), ctx);
 
     let metadata_field = FieldDescriptor::new(
-        fat_ptr_type.clone(),
+        fat_ptr_type,
         cilly::v2::Type::Int(Int::USize),
         crate::METADATA.into(),
     );
     let ptr_field = FieldDescriptor::new(
-        fat_ptr_type.clone(),
+        fat_ptr_type,
         ctx.asm_mut().nptr(cilly::v2::Type::Void),
         crate::DATA_PTR.into(),
     );
@@ -158,7 +158,7 @@ pub fn unsize2<'tcx>(
     let init_metadata = CILRoot::set_field(
         target_ptr
             .clone()
-            .cast_ptr(ctx.asm_mut().nptr(fat_ptr_type.clone().into())),
+            .cast_ptr(ctx.asm_mut().nptr(fat_ptr_type.into())),
         metadata.cast_ptr(Type::Int(Int::USize)),
         metadata_field,
     );
@@ -166,7 +166,7 @@ pub fn unsize2<'tcx>(
     let init_ptr = if crate::r#type::is_fat_ptr(source, ctx.tcx(), ctx.instance()) {
         let void_ptr = ctx.asm_mut().nptr(Type::Void);
         CILRoot::set_field(
-            target_ptr.cast_ptr(ctx.asm_mut().nptr(fat_ptr_type.clone().into())),
+            target_ptr.cast_ptr(ctx.asm_mut().nptr(fat_ptr_type.into())),
             CILNode::LDIndPtr {
                 ptr: Box::new(operand_address(operand, ctx).cast_ptr(ctx.asm_mut().nptr(void_ptr))),
                 loaded_ptr: Box::new(ctx.asm_mut().nptr(Type::Void)),
@@ -195,7 +195,7 @@ pub fn unsize2<'tcx>(
         // `source` is not a fat pointer, so operand should be a pointer.
 
         CILRoot::set_field(
-            target_ptr.cast_ptr(ctx.asm_mut().nptr(fat_ptr_type.clone().into())),
+            target_ptr.cast_ptr(ctx.asm_mut().nptr(fat_ptr_type.into())),
             operand.cast_ptr(ctx.asm_mut().nptr(Type::Void)),
             ptr_field,
         )
@@ -204,18 +204,18 @@ pub fn unsize2<'tcx>(
     let res = CILNode::LdObj {
         ptr: Box::new(
             CILNode::TemporaryLocal(Box::new((
-                Type::ClassRef(fat_ptr_type).clone(),
+                Type::ClassRef(fat_ptr_type),
                 [init_metadata, init_ptr].into(),
                 CILNode::LoadAddresOfTMPLocal,
             )))
-            .cast_ptr(ctx.asm_mut().nptr(target_type.clone())),
+            .cast_ptr(ctx.asm_mut().nptr(target_type)),
         ),
-        obj: Box::new(target_type.clone()),
+        obj: Box::new(target_type),
     };
 
     res
 }
-/// Adopted from https://github.com/rust-lang/rustc_codegen_cranelift/blob/45600348c009303847e8cddcfa8483f1f3d56625/src/unsize.rs#L64
+/// Adopted from <https://github.com/rust-lang/rustc_codegen_cranelift/blob/45600348c009303847e8cddcfa8483f1f3d56625/src/unsize.rs#L64>
 pub(crate) fn unsized_info<'tcx>(
     ctx: &mut MethodCompileCtx<'tcx, '_>,
     source: Ty<'tcx>,
@@ -298,7 +298,8 @@ pub(crate) fn unsize_metadata<'tcx>(
     dst_ty: TyAndLayout<'tcx>,
 ) -> CILNode {
     let mut coerce_ptr = || {
-        let info = if fx
+        
+        if fx
             .layout_of(src_ty.ty.builtin_deref(true).unwrap())
             .is_unsized()
         {
@@ -306,8 +307,7 @@ pub(crate) fn unsize_metadata<'tcx>(
             unsize_ptr_metadata(fx, src_ty, dst_ty, Some(old_info))
         } else {
             unsize_ptr_metadata(fx, src_ty, dst_ty, None)
-        };
-        info
+        }
     };
 
     match (&src_ty.ty.kind(), &dst_ty.ty.kind()) {

@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use std::any::type_name;
 
 #[derive(Default, Serialize, Deserialize, Eq, PartialEq, Clone, Debug)]
-pub(super) struct IStringWrapper(pub(super) IString);
+pub(crate) struct IStringWrapper(pub(super) IString);
 impl std::hash::Hash for IStringWrapper {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         calculate_hash(&0xC0FE_BEEFu32).hash(state);
@@ -877,10 +877,6 @@ impl Assembly {
         self
     }
 
-    pub(crate) fn method_defs_mut(&mut self) -> &mut FxHashMap<MethodDefIdx, MethodDef> {
-        &mut self.method_defs
-    }
-
     pub(crate) fn method_defs(&self) -> &FxHashMap<MethodDefIdx, MethodDef> {
         &self.method_defs
     }
@@ -893,13 +889,6 @@ impl Assembly {
         self.class_refs.1.contains_key(cref)
     }
 
-    pub(crate) fn class_defs_mut(&mut self) -> &mut FxHashMap<ClassDefIdx, ClassDef> {
-        &mut self.class_defs
-    }
-
-    pub(crate) fn strings(&self) -> &BiMap<StringIdx, IStringWrapper> {
-        &self.strings
-    }
     pub(crate) fn class_defs_mut_strings(
         &mut self,
     ) -> (

@@ -24,7 +24,7 @@ pub fn unop<'tcx>(
                 CallSite::boxed(
                     ClassRef::int_128(ctx.asm_mut()).into(),
                     "op_UnaryNegation".into(),
-                    FnSig::new(&[Type::Int(Int::I128)], Type::Int(Int::I128)),
+                    FnSig::new([Type::Int(Int::I128)], Type::Int(Int::I128)),
                     true,
                 ),
                 [parrent_node]
@@ -35,7 +35,7 @@ pub fn unop<'tcx>(
                 CallSite::boxed(
                     ClassRef::uint_128(ctx.asm_mut()).into(),
                     "op_UnaryNegation".into(),
-                    FnSig::new(&[Type::Int(Int::U128)], Type::Int(Int::U128)),
+                    FnSig::new([Type::Int(Int::U128)], Type::Int(Int::U128)),
                     true,
                 ),
                 [parrent_node]
@@ -48,7 +48,7 @@ pub fn unop<'tcx>(
                 CallSite::boxed(
                     ClassRef::uint_128(ctx.asm_mut()).into(),
                     "op_OnesComplement".into(),
-                    FnSig::new(&[Type::Int(Int::U128)], Type::Int(Int::U128)),
+                    FnSig::new([Type::Int(Int::U128)], Type::Int(Int::U128)),
                     true,
                 ),
                 [parrent_node]
@@ -57,7 +57,7 @@ pub fn unop<'tcx>(
                 CallSite::boxed(
                     ClassRef::int_128(ctx.asm_mut()).into(),
                     "op_OnesComplement".into(),
-                    FnSig::new(&[Type::Int(Int::I128)], Type::Int(Int::I128)),
+                    FnSig::new([Type::Int(Int::I128)], Type::Int(Int::I128)),
                     true,
                 ),
                 [parrent_node]

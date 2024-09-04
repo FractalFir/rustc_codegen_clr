@@ -73,7 +73,7 @@ pub(crate) fn load_const_value<'tcx>(
             let slice_type = get_type(const_ty, ctx);
             let slice_dotnet = slice_type.as_class_ref().expect("Slice type invalid!");
             let metadata_field = FieldDescriptor::new(
-                slice_dotnet.clone(),
+                slice_dotnet,
                 cilly::v2::Type::Int(Int::USize),
                 crate::METADATA.into(),
             );
@@ -158,7 +158,7 @@ fn load_scalar_ptr(
                             site: Box::new(CallSite::new(
                                 None,
                                 "get_environ".into(),
-                                FnSig::new(&[], ctx.asm_mut().nptr(u8_ptr)),
+                                FnSig::new([], ctx.asm_mut().nptr(u8_ptr)),
                                 true,
                             )),
                         })),
@@ -169,7 +169,7 @@ fn load_scalar_ptr(
             }
             let attrs = ctx.tcx().codegen_fn_attrs(def_id);
 
-            if let Some(_) = attrs.import_linkage {
+            if attrs.import_linkage.is_some() {
                 // TODO: this could cause issues if the pointer to the static is not imediatly dereferenced.
                 let site = get_fn_from_static_name(&name, ctx);
                 return CILNode::TemporaryLocal(Box::new((
@@ -242,7 +242,7 @@ fn load_const_scalar<'tcx>(
             }
 
             return CILNode::LdObj {
-                obj: Box::new(scalar_type.clone()),
+                obj: Box::new(scalar_type),
                 ptr: Box::new(CILNode::TemporaryLocal(Box::new((
                     ctx.asm_mut().nptr(Type::Int(Int::U8)),
                     [CILRoot::SetTMPLocal {
@@ -273,7 +273,7 @@ fn load_const_scalar<'tcx>(
         TyKind::Tuple(elements) => {
             if elements.is_empty() {
                 CILNode::TemporaryLocal(Box::new((
-                    ctx.asm_mut().nptr(scalar_type.clone()),
+                    ctx.asm_mut().nptr(scalar_type),
                     [].into(),
                     CILNode::LdObj {
                         ptr: CILNode::LoadTMPLocal.into(),
@@ -284,7 +284,7 @@ fn load_const_scalar<'tcx>(
                 CILNode::LdObj {
                     ptr: Box::new(
                         CILNode::PointerToConstValue(Box::new(scalar_u128))
-                            .cast_ptr(ctx.asm_mut().nptr(scalar_type.clone())),
+                            .cast_ptr(ctx.asm_mut().nptr(scalar_type)),
                     ),
                     obj: scalar_type.into(),
                 }
@@ -293,7 +293,7 @@ fn load_const_scalar<'tcx>(
         TyKind::Adt(_, _) | TyKind::Closure(_, _) => CILNode::LdObj {
             ptr: Box::new(
                 CILNode::PointerToConstValue(Box::new(scalar_u128))
-                    .cast_ptr(ctx.asm_mut().nptr(scalar_type.clone())),
+                    .cast_ptr(ctx.asm_mut().nptr(scalar_type)),
             ),
             obj: scalar_type.into(),
         },
@@ -310,7 +310,7 @@ fn load_const_float(value: u128, float_type: FloatTy, asm: &mut Assembly) -> CIL
                     CallSite::new_extern(
                         ClassRef::half(asm),
                         "op_Explicit".into(),
-                        FnSig::new(&[Type::Float(Float::F32)], Type::Float(Float::F16)),
+                        FnSig::new([Type::Float(Float::F32)], Type::Float(Float::F16)),
                         true
                     ),
                     [CILNode::LdcF32(HashableF32(
@@ -337,8 +337,8 @@ fn load_const_float(value: u128, float_type: FloatTy, asm: &mut Assembly) -> CIL
             let low = u128_low_u64(value);
             let high = (value >> 64) as u64;
             let ctor_sig = FnSig::new(
-                &[
-                    asm.nref(Type::Float(Float::F128).into()),
+                [
+                    asm.nref(Type::Float(Float::F128)),
                     Type::Int(Int::U64),
                     Type::Int(Int::U64),
                 ],
@@ -396,7 +396,7 @@ pub fn load_const_int(value: u128, int_type: IntTy, asm: &mut Assembly) -> CILNo
             let low = u128_low_u64(value);
             let high = (value >> 64) as u64;
             let ctor_sig = FnSig::new(
-                &[
+                [
                     asm.nref(Type::Int(Int::I128)),
                     Type::Int(Int::U64),
                     Type::Int(Int::U64),
@@ -436,8 +436,8 @@ pub fn load_const_uint(value: u128, int_type: UintTy, asm: &mut Assembly) -> CIL
             let low = u128_low_u64(value);
             let high = (value >> 64) as u64;
             let ctor_sig = FnSig::new(
-                &[
-                    asm.nref(Type::Int(Int::U128).into()),
+                [
+                    asm.nref(Type::Int(Int::U128)),
                     Type::Int(Int::U64),
                     Type::Int(Int::U64),
                 ],
@@ -465,7 +465,7 @@ fn get_fn_from_static_name(name: &str, ctx: &mut MethodCompileCtx<'_, '_>) -> Ca
         "statx" => CallSite::builtin(
             "statx".into(),
             FnSig::new(
-                &[
+                [
                     Type::Int(Int::I32),
                     ctx.asm_mut().nptr(Type::Int(Int::U8)),
                     Type::Int(Int::I32),
@@ -479,7 +479,7 @@ fn get_fn_from_static_name(name: &str, ctx: &mut MethodCompileCtx<'_, '_>) -> Ca
         "getrandom" => CallSite::builtin(
             "getrandom".into(),
             FnSig::new(
-                &[
+                [
                     ctx.asm_mut().nptr(Type::Int(Int::U8)),
                     Type::Int(Int::USize),
                     Type::Int(Int::U32),
@@ -491,7 +491,7 @@ fn get_fn_from_static_name(name: &str, ctx: &mut MethodCompileCtx<'_, '_>) -> Ca
         "posix_spawn" => CallSite::builtin(
             "posix_spawn".into(),
             FnSig::new(
-                &[
+                [
                     ctx.asm_mut().nptr(Type::Int(Int::U8)),
                     ctx.asm_mut().nptr(Type::Int(Int::U8)),
                     ctx.asm_mut().nptr(Type::Int(Int::U8)),
@@ -506,7 +506,7 @@ fn get_fn_from_static_name(name: &str, ctx: &mut MethodCompileCtx<'_, '_>) -> Ca
         "posix_spawn_file_actions_addchdir_np" => CallSite::builtin(
             "posix_spawn_file_actions_addchdir_np".into(),
             FnSig::new(
-                &[
+                [
                     ctx.asm_mut().nptr(Type::Int(Int::U8)),
                     ctx.asm_mut().nptr(Type::Int(Int::U8)),
                 ],
@@ -515,12 +515,12 @@ fn get_fn_from_static_name(name: &str, ctx: &mut MethodCompileCtx<'_, '_>) -> Ca
             true,
         ),
         "__dso_handle" => {
-            CallSite::builtin("__dso_handle".into(), FnSig::new(&[], Type::Void), true)
+            CallSite::builtin("__dso_handle".into(), FnSig::new([], Type::Void), true)
         }
         "__cxa_thread_atexit_impl" => CallSite::builtin(
             "__cxa_thread_atexit_impl".into(),
             FnSig::new(
-                &[
+                [
                     Type::FnPtr(ctx.asm_mut().sig([void_ptr], Type::Void)),
                     void_ptr,
                     void_ptr,
@@ -532,7 +532,7 @@ fn get_fn_from_static_name(name: &str, ctx: &mut MethodCompileCtx<'_, '_>) -> Ca
         "copy_file_range" => CallSite::builtin(
             "copy_file_range".into(),
             FnSig::new(
-                &[
+                [
                     Type::Int(Int::I32),
                     ctx.asm_mut().nptr(Type::Int(Int::I64)),
                     Type::Int(Int::I32),
@@ -547,7 +547,7 @@ fn get_fn_from_static_name(name: &str, ctx: &mut MethodCompileCtx<'_, '_>) -> Ca
         "pidfd_spawnp" => CallSite::builtin(
             "pidfd_spawnp".into(),
             FnSig::new(
-                &[
+                [
                     ctx.asm_mut().nptr(Type::Int(Int::I32)),
                     ctx.asm_mut().nptr(Type::Int(Int::I8)),
                     void_ptr,
@@ -561,7 +561,7 @@ fn get_fn_from_static_name(name: &str, ctx: &mut MethodCompileCtx<'_, '_>) -> Ca
         ),
         "pidfd_getpid" => CallSite::builtin(
             "pidfd_getpid".into(),
-            FnSig::new(&[Type::Int(Int::I32)], Type::Int(Int::I32)),
+            FnSig::new([Type::Int(Int::I32)], Type::Int(Int::I32)),
             true,
         ),
         _ => {

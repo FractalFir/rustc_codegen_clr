@@ -5,6 +5,7 @@
 
 #![allow(internal_features, incomplete_features)]
 #![feature(core_intrinsics, unsized_const_params)]
+#[allow(non_snake_case, unused_imports)]
 pub mod bindings;
 pub use bindings::*;
 /// Very low-level interop stuff. Don't use unless you need to.

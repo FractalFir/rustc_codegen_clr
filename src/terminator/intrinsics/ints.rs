@@ -43,27 +43,27 @@ pub fn ctpop<'tcx>(
         match tpe {
             Type::Int(Int::U64) => conv_u32!(call!(
                 CallSite::boxed(
-                    bit_operations.clone(),
+                    bit_operations,
                     "PopCount".into(),
-                    FnSig::new(&[Type::Int(Int::U64)], Type::Int(Int::I32)),
+                    FnSig::new([Type::Int(Int::U64)], Type::Int(Int::I32)),
                     true,
                 ),
                 [operand]
             )),
             Type::Int(Int::I64) => conv_u32!(call!(
                 CallSite::boxed(
-                    bit_operations.clone(),
+                    bit_operations,
                     "PopCount".into(),
-                    FnSig::new(&[Type::Int(Int::U64)], Type::Int(Int::I32)),
+                    FnSig::new([Type::Int(Int::U64)], Type::Int(Int::I32)),
                     true,
                 ),
                 [conv_u64!(operand)]
             )),
             Type::Int(Int::U32) => conv_u32!(call!(
                 CallSite::boxed(
-                    bit_operations.clone(),
+                    bit_operations,
                     "PopCount".into(),
-                    FnSig::new(&[Type::Int(Int::U32)], Type::Int(Int::I32)),
+                    FnSig::new([Type::Int(Int::U32)], Type::Int(Int::I32)),
                     true,
                 ),
                 [operand]
@@ -72,9 +72,9 @@ pub fn ctpop<'tcx>(
             Type::Int(Int::U8 | Int::U16 | Int::I8 | Int::I16 | Int::I32) => {
                 conv_u32!(call!(
                     CallSite::boxed(
-                        bit_operations.clone(),
+                        bit_operations,
                         "PopCount".into(),
-                        FnSig::new(&[Type::Int(Int::U32)], Type::Int(Int::I32)),
+                        FnSig::new([Type::Int(Int::U32)], Type::Int(Int::I32)),
                         true,
                     ),
                     [conv_u32!(operand)]
@@ -82,18 +82,18 @@ pub fn ctpop<'tcx>(
             }
             Type::Int(Int::USize) => conv_u32!(call!(
                 CallSite::boxed(
-                    bit_operations.clone(),
+                    bit_operations,
                     "PopCount".into(),
-                    FnSig::new(&[Type::Int(Int::USize)], Type::Int(Int::I32)),
+                    FnSig::new([Type::Int(Int::USize)], Type::Int(Int::I32)),
                     true,
                 ),
                 [operand]
             )),
             Type::Int(Int::ISize) => conv_u32!(call!(
                 CallSite::boxed(
-                    bit_operations.clone(),
+                    bit_operations,
                     "PopCount".into(),
-                    FnSig::new(&[Type::Int(Int::USize)], Type::Int(Int::I32)),
+                    FnSig::new([Type::Int(Int::USize)], Type::Int(Int::I32)),
                     true,
                 ),
                 [conv_isize!(operand)]
@@ -103,9 +103,9 @@ pub fn ctpop<'tcx>(
                 &Type::Int(Int::U32),
                 call!(
                     CallSite::new_extern(
-                        ClassRef::uint_128(ctx.asm_mut()).clone(),
+                        ClassRef::uint_128(ctx.asm_mut()),
                         "PopCount".into(),
-                        FnSig::new(&[Type::Int(Int::U128)], Type::Int(Int::U128)),
+                        FnSig::new([Type::Int(Int::U128)], Type::Int(Int::U128)),
                         true,
                     ),
                     [operand]
@@ -117,9 +117,9 @@ pub fn ctpop<'tcx>(
                 &Type::Int(Int::U32),
                 call!(
                     CallSite::new_extern(
-                        ClassRef::int_128(ctx.asm_mut()).clone(),
+                        ClassRef::int_128(ctx.asm_mut()),
                         "PopCount".into(),
-                        FnSig::new(&[Type::Int(Int::I128)], Type::Int(Int::I128)),
+                        FnSig::new([Type::Int(Int::I128)], Type::Int(Int::I128)),
                         true,
                     ),
                     [operand]
@@ -154,7 +154,7 @@ pub fn ctlz<'tcx>(
     // TODO: this assumes a 64 bit system!
     let sub = match tpe {
         Type::Int(Int::ISize | Int::USize) | Type::Ptr(_) => {
-            ldc_i32!(64) - (size_of!(tpe.clone()) * ldc_i32!(8))
+            ldc_i32!(64) - (size_of!(tpe) * ldc_i32!(8))
         }
         Type::Int(Int::I64 | Int::U64) => ldc_i32!(0),
         Type::Int(Int::I32 | Int::U32) => ldc_i32!(32),
@@ -197,9 +197,9 @@ pub fn ctlz<'tcx>(
         conv_u32!(sub!(
             call!(
                 CallSite::boxed(
-                    bit_operations.clone(),
+                    bit_operations,
                     "LeadingZeroCount".into(),
-                    FnSig::new(&[Type::Int(Int::U64)], Type::Int(Int::I32)),
+                    FnSig::new([Type::Int(Int::U64)], Type::Int(Int::I32)),
                     true,
                 ),
                 [conv_u64!(handle_operand(&args[0].node, ctx))]
@@ -233,9 +233,9 @@ pub fn cttz<'tcx>(
         Type::Int(Int::I8) => {
             let value_calc = conv_u32!(call!(
                 CallSite::boxed(
-                    bit_operations.clone(),
+                    bit_operations,
                     "TrailingZeroCount".into(),
-                    FnSig::new(&[Type::Int(Int::I32)], Type::Int(Int::I32)),
+                    FnSig::new([Type::Int(Int::I32)], Type::Int(Int::I32)),
                     true,
                 ),
                 [conv_i32!(operand)]
@@ -260,9 +260,9 @@ pub fn cttz<'tcx>(
         Type::Int(Int::I16) => {
             let value_calc = conv_u32!(call!(
                 CallSite::boxed(
-                    bit_operations.clone(),
+                    bit_operations,
                     "TrailingZeroCount".into(),
-                    FnSig::new(&[Type::Int(Int::I32)], Type::Int(Int::I32)),
+                    FnSig::new([Type::Int(Int::I32)], Type::Int(Int::I32)),
                     true,
                 ),
                 [conv_i32!(operand)]
@@ -287,9 +287,9 @@ pub fn cttz<'tcx>(
         Type::Int(Int::U8) => {
             let value_calc = conv_u32!(call!(
                 CallSite::boxed(
-                    bit_operations.clone(),
+                    bit_operations,
                     "TrailingZeroCount".into(),
-                    FnSig::new(&[Type::Int(Int::U32)], Type::Int(Int::I32)),
+                    FnSig::new([Type::Int(Int::U32)], Type::Int(Int::I32)),
                     true,
                 ),
                 [conv_u32!(operand)]
@@ -314,9 +314,9 @@ pub fn cttz<'tcx>(
         Type::Int(Int::U16) => {
             let value_calc = conv_u32!(call!(
                 CallSite::boxed(
-                    bit_operations.clone(),
+                    bit_operations,
                     "TrailingZeroCount".into(),
-                    FnSig::new(&[Type::Int(Int::U32)], Type::Int(Int::I32)),
+                    FnSig::new([Type::Int(Int::U32)], Type::Int(Int::I32)),
                     true,
                 ),
                 [conv_u32!(operand)]
@@ -368,9 +368,9 @@ pub fn cttz<'tcx>(
             destination,
             conv_u32!(call!(
                 CallSite::boxed(
-                    bit_operations.clone(),
+                    bit_operations,
                     "TrailingZeroCount".into(),
-                    FnSig::new(&[tpe], Type::Int(Int::I32)),
+                    FnSig::new([tpe], Type::Int(Int::I32)),
                     true,
                 ),
                 [operand]
@@ -853,7 +853,7 @@ pub fn bitreverse<'tcx>(
             Type::Int(Int::U32) => call!(
                 CallSite::builtin(
                     "bitreverse_u32".into(),
-                    FnSig::new(&[Type::Int(Int::U32)], Type::Int(Int::U32)),
+                    FnSig::new([Type::Int(Int::U32)], Type::Int(Int::U32)),
                     true
                 ),
                 [val]
@@ -864,7 +864,7 @@ pub fn bitreverse<'tcx>(
                 call!(
                     CallSite::builtin(
                         "bitreverse_u32".into(),
-                        FnSig::new(&[Type::Int(Int::U32)], Type::Int(Int::U32)),
+                        FnSig::new([Type::Int(Int::U32)], Type::Int(Int::U32)),
                         true
                     ),
                     [crate::casts::int_to_int(
@@ -879,7 +879,7 @@ pub fn bitreverse<'tcx>(
             Type::Int(Int::U64) => call!(
                 CallSite::builtin(
                     "bitreverse_u64".into(),
-                    FnSig::new(&[Type::Int(Int::U64)], Type::Int(Int::U64)),
+                    FnSig::new([Type::Int(Int::U64)], Type::Int(Int::U64)),
                     true
                 ),
                 [val]
@@ -890,7 +890,7 @@ pub fn bitreverse<'tcx>(
                 call!(
                     CallSite::builtin(
                         "bitreverse_u64".into(),
-                        FnSig::new(&[Type::Int(Int::U64)], Type::Int(Int::U64)),
+                        FnSig::new([Type::Int(Int::U64)], Type::Int(Int::U64)),
                         true
                     ),
                     [crate::casts::int_to_int(
@@ -905,7 +905,7 @@ pub fn bitreverse<'tcx>(
             Type::Int(Int::U128) => call!(
                 CallSite::builtin(
                     "bitreverse_u128".into(),
-                    FnSig::new(&[Type::Int(Int::U128)], Type::Int(Int::U128),),
+                    FnSig::new([Type::Int(Int::U128)], Type::Int(Int::U128),),
                     true
                 ),
                 [val]
@@ -916,7 +916,7 @@ pub fn bitreverse<'tcx>(
                 call!(
                     CallSite::builtin(
                         "bitreverse_u128".into(),
-                        FnSig::new(&[Type::Int(Int::U128)], Type::Int(Int::U128),),
+                        FnSig::new([Type::Int(Int::U128)], Type::Int(Int::U128),),
                         true
                     ),
                     [crate::casts::int_to_int(

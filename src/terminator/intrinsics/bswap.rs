@@ -31,7 +31,7 @@ pub fn bswap<'tcx>(
                     CallSite::boxed(
                         Some(ClassRef::binary_primitives(ctx.asm_mut())),
                         "ReverseEndianness".into(),
-                        FnSig::new(&[tpe.clone()], tpe),
+                        FnSig::new([tpe], tpe),
                         true,
                     ),
                     [operand]

@@ -59,7 +59,7 @@ fn call_managed<'tcx>(
         let call_site = CallSite::new(
             Some(ctx.asm_mut().alloc_class_ref(tpe)),
             managed_fn_name,
-            FnSig::new(&[], ret),
+            FnSig::new([], ret),
             true,
         );
         if *signature.output() == cilly::Type::Void {
@@ -125,7 +125,7 @@ fn callvirt_managed<'tcx>(
         let call = CallSite::new(
             Some(ctx.asm_mut().alloc_class_ref(tpe)),
             managed_fn_name,
-            FnSig::new(&[], ret),
+            FnSig::new([], ret),
             true,
         );
         if *signature.output() == cilly::Type::Void {
@@ -190,7 +190,7 @@ fn call_ctor<'tcx>(
                 site: CallSite::boxed(
                     Some(tpe),
                     ".ctor".into(),
-                    FnSig::new(&[Type::ClassRef(tpe)], Type::Void),
+                    FnSig::new([Type::ClassRef(tpe)], Type::Void),
                     false,
                 ),
                 args: [].into(),
@@ -539,7 +539,7 @@ pub fn call<'tcx>(
         );
     }
     if args.len() < signature.inputs().len() {
-        let tpe: cilly::Type = signature.inputs()[signature.inputs().len() - 1].clone();
+        let tpe: cilly::Type = signature.inputs()[signature.inputs().len() - 1];
         // let arg_len = args.len();
         //assert_eq!(args.len() + 1,signature.inputs().len(),"ERROR: mismatched argument count. \nsignature inputs:{:?} \narguments:{args:?}\narg_len:{arg_len}\n",signature.inputs());
         // assert_eq!(signature.inputs()[signature.inputs().len() - 1],tpe);

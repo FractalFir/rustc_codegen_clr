@@ -8,7 +8,7 @@ pub(crate) fn resolve_global_allocations(method: &mut Method, ctx: &mut MethodCo
     let mut blocks = method.blocks_mut();
     let mut tmp: Vec<_> = blocks
         .iter_mut()
-        .flat_map(|block| block.tree_iter())
+        .flat_map(cilly::basic_block::BasicBlock::tree_iter)
         .map(cilly::cil_tree::CILTree::root_mut)
         .collect();
     tmp.iter_mut()
@@ -21,9 +21,9 @@ pub(crate) fn resolve_global_allocations(method: &mut Method, ctx: &mut MethodCo
                         *node = crate::assembly::add_allocation(*alloc_id, asm, tcx);
                     }
                     CILNode::PointerToConstValue(bytes) => {
-                        let (tcx, asm) = ctx.tcx_and_asm();
+                        let asm = ctx.asm_mut();
                         *node = CILNode::LDStaticField(Box::new(crate::assembly::add_const_value(
-                            asm, **bytes, tcx,
+                            asm, **bytes,
                         )));
                     }
                     _ => (),

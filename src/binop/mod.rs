@@ -137,7 +137,7 @@ pub(crate) fn binop<'tcx>(
             let gt = gt_unchecked(ty_a, ops_a, ops_b, ctx.asm_mut());
             let res = conv_i8!(lt | gt);
             CILNode::TemporaryLocal(Box::new((
-                ordering_type.clone(),
+                ordering_type,
                 [CILRoot::SetField {
                     addr: Box::new(CILNode::LoadAddresOfTMPLocal),
                     value: Box::new(res),
@@ -170,7 +170,7 @@ pub fn add_unchecked<'tcx>(
                     CallSite::new_extern(
                         ClassRef::int_128(ctx.asm_mut()),
                         "op_Addition".into(),
-                        FnSig::new(&[ty_a.clone(), ty_b], ty_a),
+                        FnSig::new([ty_a, ty_b], ty_a),
                         true,
                     ),
                     [ops_a, ops_b]
@@ -187,7 +187,7 @@ pub fn add_unchecked<'tcx>(
                     CallSite::new_extern(
                         ClassRef::uint_128(ctx.asm_mut()),
                         "op_Addition".into(),
-                        FnSig::new(&[ty_a.clone(), ty_b], ty_a),
+                        FnSig::new([ty_a, ty_b], ty_a),
                         true,
                     ),
                     [ops_a, ops_b]
@@ -234,7 +234,7 @@ pub fn sub_unchecked<'tcx>(
                     CallSite::new_extern(
                         ClassRef::int_128(ctx.asm_mut()),
                         "op_Subtraction".into(),
-                        FnSig::new(&[ty_a.clone(), ty_b], ty_a),
+                        FnSig::new([ty_a, ty_b], ty_a),
                         true,
                     ),
                     [ops_a, ops_b]
@@ -251,7 +251,7 @@ pub fn sub_unchecked<'tcx>(
                     CallSite::new_extern(
                         ClassRef::uint_128(ctx.asm_mut()),
                         "op_Subtraction".into(),
-                        FnSig::new(&[ty_a.clone(), ty_b], ty_a),
+                        FnSig::new([ty_a, ty_b], ty_a),
                         true,
                     ),
                     [ops_a, ops_b]
@@ -291,7 +291,7 @@ fn rem_unchecked<'tcx>(
                 CallSite::new_extern(
                     ClassRef::int_128(ctx.asm_mut()),
                     "op_Modulus".into(),
-                    FnSig::new(&[ty_a.clone(), ty_b], ty_a),
+                    FnSig::new([ty_a, ty_b], ty_a),
                     true,
                 ),
                 [ops_a, ops_b]
@@ -304,7 +304,7 @@ fn rem_unchecked<'tcx>(
                 CallSite::new_extern(
                     ClassRef::uint_128(ctx.asm_mut()),
                     "op_Modulus".into(),
-                    FnSig::new(&[ty_a.clone(), ty_b], ty_a),
+                    FnSig::new([ty_a, ty_b], ty_a),
                     true,
                 ),
                 [ops_a, ops_b]
@@ -345,7 +345,7 @@ fn mul_unchecked<'tcx>(
                 CallSite::new_extern(
                     ClassRef::int_128(ctx.asm_mut()),
                     "op_Multiply".into(),
-                    FnSig::new(&[ty_a.clone(), ty_b], ty_a),
+                    FnSig::new([ty_a, ty_b], ty_a),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -358,7 +358,7 @@ fn mul_unchecked<'tcx>(
                 CallSite::new_extern(
                     ClassRef::uint_128(ctx.asm_mut()),
                     "op_Multiply".into(),
-                    FnSig::new(&[ty_a.clone(), ty_b], ty_a),
+                    FnSig::new([ty_a, ty_b], ty_a),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -393,7 +393,7 @@ fn div_unchecked<'tcx>(
                 CallSite::new_extern(
                     ClassRef::int_128(ctx.asm_mut()),
                     "op_Division".into(),
-                    FnSig::new(&[ty_a.clone(), ty_b], ty_a),
+                    FnSig::new([ty_a, ty_b], ty_a),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -406,7 +406,7 @@ fn div_unchecked<'tcx>(
                 CallSite::new_extern(
                     ClassRef::uint_128(ctx.asm_mut()),
                     "op_Division".into(),
-                    FnSig::new(&[ty_a.clone(), ty_b], ty_a),
+                    FnSig::new([ty_a, ty_b], ty_a),
                     true,
                 ),
                 [operand_a, operand_b]

@@ -7,12 +7,9 @@ use crate::{
     fn_ctx::MethodCompileCtx,
     utilis::{adt::FieldOffsetIterator, garg_to_string},
 };
-use cilly::{
-    method::Method,
-    v2::{
-        cilnode::MethodKind, Access, BasicBlock, BinOp, CILNode, CILRoot, ClassDef, ClassDefIdx,
-        ClassRef, ClassRefIdx, Float, Int, MethodDef, MethodImpl, StringIdx, Type,
-    },
+use cilly::v2::{
+    cilnode::MethodKind, Access, BasicBlock, BinOp, CILNode, CILRoot, ClassDef, ClassDefIdx,
+    ClassRef, ClassRefIdx, Float, Int, MethodDef, MethodImpl, StringIdx, Type,
 };
 pub use r#type::*;
 use rustc_middle::ty::{AdtDef, AdtKind, FloatTy, IntTy, List, ParamEnv, Ty, TyKind, UintTy};
@@ -195,7 +192,7 @@ pub fn get_type<'tcx>(ty: Ty<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> Typ
                 // This only checks if a refernce to this class has already been allocated. In theory, allocating a class reference beforhand could break this, and make it not add the type definition
                 if !ctx.asm().contains_ref(&cref) {
                     let layout = ctx.layout_of(ty);
-                    tuple_typedef(&types, layout.layout, ctx, name);
+                    let _ = tuple_typedef(&types, layout.layout, ctx, name);
                 }
                 Type::ClassRef(ctx.asm_mut().alloc_class_ref(cref))
             }

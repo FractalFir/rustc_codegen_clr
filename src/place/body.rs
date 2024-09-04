@@ -77,7 +77,7 @@ fn body_field<'a>(
                    (
                     field_ty.into(),
                         CILNode::TemporaryLocal(Box::new((
-                            curr_type.clone(),
+                            curr_type,
                             [CILRoot::SetTMPLocal {
                                 value: CILNode::LdObj {
                                     ptr: Box::new(parrent_node),
@@ -155,11 +155,11 @@ pub fn place_elem_body<'tcx>(
                     let slice = fat_ptr_to(Ty::new_slice(ctx.tcx(), inner), ctx);
                     let desc = FieldDescriptor::new(
                         slice,
-                        ctx.asm_mut().nptr(Type::Void.into()),
+                        ctx.asm_mut().nptr(Type::Void),
                         crate::DATA_PTR.into(),
                     );
                     let addr = ld_field!(parrent_node, desc)
-                        .cast_ptr(ctx.asm_mut().nptr(inner_type.clone()))
+                        .cast_ptr(ctx.asm_mut().nptr(inner_type))
                         + (index * CILNode::ZeroExtendToUSize(size_of!(inner_type).into()));
 
                     if body_ty_is_by_adress(inner, ctx) {
@@ -231,8 +231,7 @@ pub fn place_elem_body<'tcx>(
                         ctx.asm_mut().nptr(Type::Void),
                         crate::DATA_PTR.into(),
                     );
-                    let metadata =
-                        FieldDescriptor::new(slice, Type::Int(Int::USize), "metadata".into());
+
                     let addr = Box::new(ld_field!(parrent_node.clone(), desc))
                         .cast_ptr(ctx.asm_mut().nptr(inner_type))
                         + (index) * conv_usize!(CILNode::SizeOf(inner_type.into()));
@@ -256,8 +255,8 @@ pub fn place_elem_body<'tcx>(
                                 Some(array_dotnet),
                                 "get_Address".into(),
                                 FnSig::new(
-                                    [ctx.asm_mut().nref(array_type.into()), Type::Int(Int::USize)],
-                                    ctx.asm_mut().nptr(element.into()),
+                                    [ctx.asm_mut().nref(array_type), Type::Int(Int::USize)],
+                                    ctx.asm_mut().nptr(element),
                                 ),
                                 false,
                             ),

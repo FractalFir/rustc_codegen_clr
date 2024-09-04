@@ -35,7 +35,7 @@ pub fn eq_unchecked(
                 CallSite::new_extern(
                     ClassRef::uint_128(asm),
                     "op_Equality".into(),
-                    FnSig::new(&[Type::Int(Int::U128), Type::Int(Int::U128)], Type::Bool),
+                    FnSig::new([Type::Int(Int::U128), Type::Int(Int::U128)], Type::Bool),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -47,7 +47,7 @@ pub fn eq_unchecked(
                 CallSite::new_extern(
                     ClassRef::int_128(asm),
                     "op_Equality".into(),
-                    FnSig::new(&[Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
+                    FnSig::new([Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -88,7 +88,7 @@ pub fn lt_unchecked(
                 CallSite::new_extern(
                     ClassRef::uint_128(asm),
                     "op_LessThan".into(),
-                    FnSig::new(&[Type::Int(Int::U128), Type::Int(Int::U128)], Type::Bool),
+                    FnSig::new([Type::Int(Int::U128), Type::Int(Int::U128)], Type::Bool),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -100,7 +100,7 @@ pub fn lt_unchecked(
                 CallSite::new_extern(
                     ClassRef::int_128(asm),
                     "op_LessThan".into(),
-                    FnSig::new(&[Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
+                    FnSig::new([Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -138,7 +138,7 @@ pub fn gt_unchecked(
                 CallSite::new_extern(
                     ClassRef::uint_128(asm),
                     "op_GreaterThan".into(),
-                    FnSig::new(&[Type::Int(Int::U128), Type::Int(Int::U128)], Type::Bool),
+                    FnSig::new([Type::Int(Int::U128), Type::Int(Int::U128)], Type::Bool),
                     true,
                 ),
                 [operand_a, operand_b]
@@ -150,7 +150,7 @@ pub fn gt_unchecked(
                 CallSite::new_extern(
                     ClassRef::int_128(asm),
                     "op_GreaterThan".into(),
-                    FnSig::new(&[Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
+                    FnSig::new([Type::Int(Int::I128), Type::Int(Int::I128)], Type::Bool),
                     true,
                 ),
                 [operand_a, operand_b]

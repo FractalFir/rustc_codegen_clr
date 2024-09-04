@@ -28,7 +28,7 @@ pub fn max_value(tpe: &Type, asm: &mut Assembly) -> CILNode {
             CallSite::new_extern(
                 ClassRef::usize_type(asm),
                 "get_MaxValue".into(),
-                FnSig::new(&[], Type::Int(Int::USize)),
+                FnSig::new([], Type::Int(Int::USize)),
                 true
             ),
             []
@@ -82,7 +82,7 @@ pub fn magic_type<'tcx>(
         let dotnet_tpe =
             ctx.asm_mut()
                 .alloc_class_ref(ClassRef::new(name, assembly, false, [].into()));
-        Type::ClassRef(dotnet_tpe.into())
+        Type::ClassRef(dotnet_tpe)
     } else if name.contains(INTEROP_STRUCT_TPE_NAME) {
         assert!(
             subst.len() == 2,
@@ -115,7 +115,7 @@ pub fn magic_type<'tcx>(
         todo!("Interop type {name:?} is not yet supported!")
     }
 }
-pub fn garag_to_usize<'tcx>(garg: GenericArg<'tcx>, _ctx: TyCtxt<'tcx>) -> u64 {
+#[must_use] pub fn garag_to_usize<'tcx>(garg: GenericArg<'tcx>, _ctx: TyCtxt<'tcx>) -> u64 {
     let usize_const = garg
         .as_const()
         .expect("Generic argument was not an constant!");
@@ -135,13 +135,12 @@ pub fn garag_to_usize<'tcx>(garg: GenericArg<'tcx>, _ctx: TyCtxt<'tcx>) -> u64 {
         _ => todo!("Can't convert generic arg of const kind {kind:?} to string!"),
     }
 }
-pub fn tuple_name(elements: &[Type], asm: &Assembly) -> String {
+#[must_use] pub fn tuple_name(elements: &[Type], asm: &Assembly) -> String {
     let generics: String = elements.iter().map(|t| t.mangle(asm)).collect();
     format!(
         "Tuple{generic_count}{generics}",
         generic_count = generics.len()
     )
-    .into()
 }
 /// Creates a tuple with no more than 8 elements.
 #[must_use]

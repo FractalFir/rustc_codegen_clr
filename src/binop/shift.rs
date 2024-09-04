@@ -28,7 +28,7 @@ pub fn shr_unchecked<'tcx>(
                     ClassRef::uint_128(ctx.asm_mut()).into(),
                     "op_RightShift".into(),
                     FnSig::new(
-                        &[Type::Int(Int::U128), Type::Int(Int::I32)],
+                        [Type::Int(Int::U128), Type::Int(Int::I32)],
                         Type::Int(Int::U128)
                     ),
                     true,
@@ -36,7 +36,7 @@ pub fn shr_unchecked<'tcx>(
                 [
                     ops_a,
                     crate::casts::int_to_int(
-                        type_b.clone(),
+                        type_b,
                         &Type::Int(Int::I32),
                         ops_b,
                         ctx.asm_mut()
@@ -50,7 +50,7 @@ pub fn shr_unchecked<'tcx>(
                     ClassRef::int_128(ctx.asm_mut()).into(),
                     "op_RightShift".into(),
                     FnSig::new(
-                        &[Type::Int(Int::I128), Type::Int(Int::I32)],
+                        [Type::Int(Int::I128), Type::Int(Int::I32)],
                         Type::Int(Int::I128)
                     ),
                     true,
@@ -58,7 +58,7 @@ pub fn shr_unchecked<'tcx>(
                 [
                     ops_a,
                     crate::casts::int_to_int(
-                        type_b.clone(),
+                        type_b,
                         &Type::Int(Int::I32),
                         ops_b,
                         ctx.asm_mut()
@@ -71,7 +71,7 @@ pub fn shr_unchecked<'tcx>(
                 shr_un!(
                     ops_a,
                     crate::casts::int_to_int(
-                        type_b.clone(),
+                        type_b,
                         &Type::Int(Int::I32),
                         ops_b,
                         ctx.asm_mut()
@@ -85,7 +85,7 @@ pub fn shr_unchecked<'tcx>(
                 shr!(
                     ops_a,
                     crate::casts::int_to_int(
-                        type_b.clone(),
+                        type_b,
                         &Type::Int(Int::I32),
                         ops_b,
                         ctx.asm_mut()
@@ -116,7 +116,7 @@ pub fn shr_checked<'tcx>(
                     ClassRef::uint_128(ctx.asm_mut()).into(),
                     "op_RightShift".into(),
                     FnSig::new(
-                        &[Type::Int(Int::U128), Type::Int(Int::I32)],
+                        [Type::Int(Int::U128), Type::Int(Int::I32)],
                         Type::Int(Int::U128)
                     ),
                     true,
@@ -125,7 +125,7 @@ pub fn shr_checked<'tcx>(
                     ops_a,
                     conv_i32!(rem_un!(
                         crate::casts::int_to_int(
-                            type_b.clone(),
+                            type_b,
                             &Type::Int(Int::U32),
                             ops_b,
                             ctx.asm_mut()
@@ -141,7 +141,7 @@ pub fn shr_checked<'tcx>(
                     ClassRef::int_128(ctx.asm_mut()).into(),
                     "op_RightShift".into(),
                     FnSig::new(
-                        &[Type::Int(Int::I128), Type::Int(Int::I32)],
+                        [Type::Int(Int::I128), Type::Int(Int::I32)],
                         Type::Int(Int::I128)
                     ),
                     true,
@@ -150,7 +150,7 @@ pub fn shr_checked<'tcx>(
                     ops_a,
                     conv_i32!(rem_un!(
                         crate::casts::int_to_int(
-                            type_b.clone(),
+                            type_b,
                             &Type::Int(Int::U32),
                             ops_b,
                             ctx.asm_mut()
@@ -166,7 +166,7 @@ pub fn shr_checked<'tcx>(
                     ops_a,
                     rem_un!(
                         conv_u32!(crate::casts::int_to_int(
-                            type_b.clone(),
+                            type_b,
                             &Type::Int(Int::I32),
                             ops_b,
                             ctx.asm_mut()
@@ -185,7 +185,7 @@ pub fn shr_checked<'tcx>(
                     ops_a,
                     rem_un!(
                         conv_u32!(crate::casts::int_to_int(
-                            type_b.clone(),
+                            type_b,
                             &Type::Int(Int::I32),
                             ops_b,
                             ctx.asm_mut()
@@ -219,7 +219,7 @@ pub fn shl_checked<'tcx>(
                     ClassRef::uint_128(ctx.asm_mut()).into(),
                     "op_LeftShift".into(),
                     FnSig::new(
-                        &[Type::Int(Int::U128), Type::Int(Int::I32)],
+                        [Type::Int(Int::U128), Type::Int(Int::I32)],
                         Type::Int(Int::U128)
                     ),
                     true,
@@ -228,7 +228,7 @@ pub fn shl_checked<'tcx>(
                     ops_a,
                     conv_i32!(rem_un!(
                         conv_u32!(crate::casts::int_to_int(
-                            type_b.clone(),
+                            type_b,
                             &Type::Int(Int::U32),
                             ops_b,
                             ctx.asm_mut()
@@ -244,7 +244,7 @@ pub fn shl_checked<'tcx>(
                     ClassRef::int_128(ctx.asm_mut()).into(),
                     "op_LeftShift".into(),
                     FnSig::new(
-                        &[Type::Int(Int::I128), Type::Int(Int::I32)],
+                        [Type::Int(Int::I128), Type::Int(Int::I32)],
                         Type::Int(Int::I128)
                     ),
                     true,
@@ -253,7 +253,7 @@ pub fn shl_checked<'tcx>(
                     ops_a,
                     conv_i32!(rem_un!(
                         conv_u32!(crate::casts::int_to_int(
-                            type_b.clone(),
+                            type_b,
                             &Type::Int(Int::U32),
                             ops_b,
                             ctx.asm_mut()
@@ -269,7 +269,7 @@ pub fn shl_checked<'tcx>(
                     ops_a,
                     rem_un!(
                         conv_u32!(crate::casts::int_to_int(
-                            type_b.clone(),
+                            type_b,
                             &Type::Int(Int::I32),
                             ops_b,
                             ctx.asm_mut()
@@ -288,7 +288,7 @@ pub fn shl_checked<'tcx>(
                     ops_a,
                     rem_un!(
                         conv_u32!(crate::casts::int_to_int(
-                            type_b.clone(),
+                            type_b,
                             &Type::Int(Int::I32),
                             ops_b,
                             ctx.asm_mut()
@@ -321,7 +321,7 @@ pub fn shl_unchecked<'tcx>(
                     ClassRef::uint_128(ctx.asm_mut()).into(),
                     "op_LeftShift".into(),
                     FnSig::new(
-                        &[Type::Int(Int::U128), Type::Int(Int::I32)],
+                        [Type::Int(Int::U128), Type::Int(Int::I32)],
                         Type::Int(Int::U128)
                     ),
                     true,
@@ -329,7 +329,7 @@ pub fn shl_unchecked<'tcx>(
                 [
                     ops_a,
                     crate::casts::int_to_int(
-                        type_b.clone(),
+                        type_b,
                         &Type::Int(Int::I32),
                         ops_b,
                         ctx.asm_mut()
@@ -343,7 +343,7 @@ pub fn shl_unchecked<'tcx>(
                     ClassRef::int_128(ctx.asm_mut()).into(),
                     "op_LeftShift".into(),
                     FnSig::new(
-                        &[Type::Int(Int::I128), Type::Int(Int::I32)],
+                        [Type::Int(Int::I128), Type::Int(Int::I32)],
                         Type::Int(Int::I128)
                     ),
                     true,
@@ -351,7 +351,7 @@ pub fn shl_unchecked<'tcx>(
                 [
                     ops_a,
                     crate::casts::int_to_int(
-                        type_b.clone(),
+                        type_b,
                         &Type::Int(Int::I32),
                         ops_b,
                         ctx.asm_mut()
@@ -364,7 +364,7 @@ pub fn shl_unchecked<'tcx>(
                 shl!(
                     ops_a,
                     crate::casts::int_to_int(
-                        type_b.clone(),
+                        type_b,
                         &Type::Int(Int::I32),
                         ops_b,
                         ctx.asm_mut()

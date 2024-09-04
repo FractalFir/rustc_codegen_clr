@@ -224,7 +224,7 @@ fn place_elem_get<'a>(
                                 Some(array_dotnet),
                                 "get_Item".into(),
                                 FnSig::new(
-                                    [ctx.asm_mut().nref(array_type.into()), Type::Int(Int::USize)],
+                                    [ctx.asm_mut().nref(array_type), Type::Int(Int::USize)],
                                     element
                                 ),
                                 false,

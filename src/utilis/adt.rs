@@ -78,11 +78,12 @@ impl FieldOffsetIterator {
             },
             FieldsShape::Primitive => Self::Empty,
             FieldsShape::Array { stride, count } => {
-                let mut curr = 0;
+                let mut curr: u32 = 0;
                 let mut offsets = Vec::new();
                 for _ in 0..*count {
                     offsets.push(curr);
-                    curr += stride.bytes() as u32;
+                    curr += std::convert::TryInto::<u32>::try_into(stride.bytes())
+                        .expect("Array stride too large");
                 }
                 FieldOffsetIterator::Explicit {
                     offsets: offsets.into(),
@@ -97,7 +98,7 @@ impl FieldOffsetIterator {
     }
 }
 /// Takes layout of an enum as input, and returns the type of its tag(Void if no tag) and the size of the tag(0 if no tag).
-pub fn enum_tag_info<'tcx>(r#enum: Layout<'tcx>, asm: &mut Assembly) -> (Type, u32) {
+pub fn enum_tag_info(r#enum: Layout<'_>, asm: &mut Assembly) -> (Type, u32) {
     match r#enum.variants() {
         Variants::Single { .. } => (
             Type::Void,
@@ -194,7 +195,7 @@ pub fn set_discr<'tcx>(
                 addr: Box::new(enum_addr),
                 value: Box::new(tag_val),
                 desc: Box::new(FieldDescriptor::new(
-                    enum_tpe.clone(),
+                    enum_tpe,
                     tag_tpe,
                     crate::ENUM_TAG.into(),
                 )),
@@ -216,7 +217,7 @@ pub fn set_discr<'tcx>(
                 //let niche = self.project_field(bx, tag_field);
                 //let niche_llty = bx.cx().immediate_backend_type(niche.layout);
                 let niche_value = variant_index.as_u32() - niche_variants.start().as_u32();
-                let niche_value = (niche_value as u128).wrapping_add(niche_start);
+                let niche_value = u128::from(niche_value).wrapping_add(niche_start);
                 let tag_val = ldc_u64!(niche_value
                     .try_into()
                     .expect("Enum varaint id can't fit in u64."));
@@ -226,7 +227,7 @@ pub fn set_discr<'tcx>(
                     addr: Box::new(enum_addr),
                     value: Box::new(tag_val),
                     desc: Box::new(FieldDescriptor::new(
-                        enum_tpe.clone(),
+                        enum_tpe,
                         tag_tpe,
                         crate::ENUM_TAG.into(),
                     )),
@@ -253,7 +254,7 @@ pub fn get_discr<'tcx>(
         Variants::Single { index } => {
             let discr_val = ty
                 .discriminant_for_variant(ctx.tcx(), index)
-                .map_or(index.as_u32() as u128, |discr| discr.val);
+                .map_or(u128::from(index.as_u32()), |discr| discr.val);
             let tag_val = ldc_u64!(discr_val.try_into().expect("Tag does not fit within a u64"));
             return crate::casts::int_to_int(Type::Int(Int::U64), &tag_tpe, tag_val, ctx.asm_mut());
         }
@@ -270,8 +271,7 @@ pub fn get_discr<'tcx>(
                 todo!();
             } else {
                 CILNode::LDField {
-                    field: FieldDescriptor::new(enum_tpe, tag_tpe.clone(), crate::ENUM_TAG.into())
-                        .into(),
+                    field: FieldDescriptor::new(enum_tpe, tag_tpe, crate::ENUM_TAG.into()).into(),
                     addr: enum_addr.into(),
                 }
             }
@@ -284,8 +284,7 @@ pub fn get_discr<'tcx>(
             let (disrc_type, _) = crate::utilis::adt::enum_tag_info(layout, ctx.asm_mut());
             let relative_max = niche_variants.end().as_u32() - niche_variants.start().as_u32();
             let tag = CILNode::LDField {
-                field: FieldDescriptor::new(enum_tpe, disrc_type.clone(), crate::ENUM_TAG.into())
-                    .into(),
+                field: FieldDescriptor::new(enum_tpe, disrc_type, crate::ENUM_TAG.into()).into(),
                 addr: enum_addr.into(),
             };
             // We have a subrange `niche_start..=niche_end` inside `range`.
@@ -425,7 +424,7 @@ pub fn get_discr<'tcx>(
                 (
                     is_niche,
                     relative_discr,
-                    niche_variants.start().as_u32() as u128,
+                    u128::from(niche_variants.start().as_u32()),
                 )
             };
 
@@ -439,7 +438,7 @@ pub fn get_discr<'tcx>(
                     ctx.asm_mut(),
                 );
                 assert!(matches!(
-                    disrc_type.clone(),
+                    disrc_type,
                     Type::Int(
                         Int::U8
                             | Int::I8
@@ -460,7 +459,7 @@ pub fn get_discr<'tcx>(
             // currently in LLVM this seems to be a pessimization.
 
             CILNode::select(
-                disrc_type.clone(),
+                disrc_type,
                 tagged_discr,
                 crate::casts::int_to_int(
                     Type::Int(Int::U64),

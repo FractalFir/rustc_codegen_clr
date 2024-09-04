@@ -36,7 +36,7 @@ pub fn int_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assembly
             CallSite::new_extern(
                 ClassRef::int_128(asm),
                 "op_Implicit".into(),
-                FnSig::new(&[Type::Int(Int::ISize)], Type::Int(Int::I128)),
+                FnSig::new([Type::Int(Int::ISize)], Type::Int(Int::I128)),
                 true,
             ),
             [operand]
@@ -45,7 +45,7 @@ pub fn int_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assembly
             CallSite::new_extern(
                 ClassRef::int_128(asm),
                 "op_Implicit".into(),
-                FnSig::new(&[Type::Int(Int::U32)], Type::Int(Int::I128)),
+                FnSig::new([Type::Int(Int::U32)], Type::Int(Int::I128)),
                 true,
             ),
             [operand]
@@ -54,7 +54,7 @@ pub fn int_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assembly
             CallSite::new_extern(
                 ClassRef::uint_128(asm),
                 "op_Explicit".into(),
-                FnSig::new(&[Type::Int(Int::I64)], Type::Int(Int::U128)),
+                FnSig::new([Type::Int(Int::I64)], Type::Int(Int::U128)),
                 true,
             ),
             [conv_i64!(operand)]
@@ -63,7 +63,7 @@ pub fn int_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assembly
             CallSite::new_extern(
                 ClassRef::uint_128(asm),
                 "op_Explicit".into(),
-                FnSig::new(&[Type::Int(Int::I32)], Type::Int(Int::U128)),
+                FnSig::new([Type::Int(Int::I32)], Type::Int(Int::U128)),
                 true,
             ),
             [conv_i32!(operand)]
@@ -72,7 +72,7 @@ pub fn int_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assembly
             CallSite::new_extern(
                 ClassRef::int_128(asm),
                 "op_Implicit".into(),
-                FnSig::new(&[Type::Int(Int::I32)], Type::Int(Int::I128)),
+                FnSig::new([Type::Int(Int::I32)], Type::Int(Int::I128)),
                 true,
             ),
             [conv_i32!(operand)]
@@ -91,7 +91,7 @@ pub fn int_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assembly
                 CallSite::new_extern(
                     ClassRef::uint_128(asm),
                     "op_Explicit".into(),
-                    FnSig::new(&[src], target.clone()),
+                    FnSig::new([src], *target),
                     true,
                 ),
                 [operand]
@@ -101,7 +101,7 @@ pub fn int_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assembly
             CallSite::new_extern(
                 ClassRef::int_128(asm),
                 "op_Implicit".into(),
-                FnSig::new(&[src], target.clone()),
+                FnSig::new([src], *target),
                 true,
             ),
             [operand]
@@ -110,7 +110,7 @@ pub fn int_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assembly
             CallSite::new_extern(
                 ClassRef::int_128(asm),
                 "op_Explicit".into(),
-                FnSig::new(&[src], target.clone()),
+                FnSig::new([src], *target),
                 true,
             ),
             [operand]
@@ -119,7 +119,7 @@ pub fn int_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assembly
             CallSite::new_extern(
                 ClassRef::uint_128(asm),
                 "op_Implicit".into(),
-                FnSig::new(&[src], target.clone()),
+                FnSig::new([src], *target),
                 true,
             ),
             [operand]
@@ -128,7 +128,7 @@ pub fn int_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assembly
             CallSite::new_extern(
                 ClassRef::int_128(asm),
                 "op_Explicit".into(),
-                FnSig::new(&[src], target.clone()),
+                FnSig::new([src], *target),
                 true,
             ),
             [operand]
@@ -137,7 +137,7 @@ pub fn int_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assembly
             CallSite::new_extern(
                 ClassRef::uint_128(asm),
                 "op_Explicit".into(),
-                FnSig::new(&[src], target.clone()),
+                FnSig::new([src], *target),
                 true,
             ),
             [operand]
@@ -153,7 +153,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assemb
             CallSite::new_extern(
                 ClassRef::int_128(asm),
                 "op_Explicit".into(),
-                FnSig::new(&[src], target.clone()),
+                FnSig::new([src], *target),
                 true,
             ),
             [operand]
@@ -162,7 +162,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assemb
             CallSite::new_extern(
                 ClassRef::uint_128(asm),
                 "op_Explicit".into(),
-                FnSig::new(&[src], target.clone()),
+                FnSig::new([src], *target),
                 true,
             ),
             [operand]
@@ -171,7 +171,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assemb
             Type::Float(Float::F32) => call!(
                 CallSite::builtin(
                     "cast_f32_u8".into(),
-                    FnSig::new(&[Type::Float(Float::F32)], Type::Int(Int::U8)),
+                    FnSig::new([Type::Float(Float::F32)], Type::Int(Int::U8)),
                     true
                 ),
                 [operand]
@@ -179,7 +179,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assemb
             Type::Float(Float::F64) => call!(
                 CallSite::builtin(
                     "cast_f64_u8".into(),
-                    FnSig::new(&[Type::Float(Float::F64)], Type::Int(Int::U8)),
+                    FnSig::new([Type::Float(Float::F64)], Type::Int(Int::U8)),
                     true
                 ),
                 [operand]
@@ -190,7 +190,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assemb
             Type::Float(Float::F32) => call!(
                 CallSite::builtin(
                     "cast_f32_u16".into(),
-                    FnSig::new(&[Type::Float(Float::F32)], Type::Int(Int::U16)),
+                    FnSig::new([Type::Float(Float::F32)], Type::Int(Int::U16)),
                     true
                 ),
                 [operand]
@@ -198,7 +198,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assemb
             Type::Float(Float::F64) => call!(
                 CallSite::builtin(
                     "cast_f64_u16".into(),
-                    FnSig::new(&[Type::Float(Float::F64)], Type::Int(Int::U16)),
+                    FnSig::new([Type::Float(Float::F64)], Type::Int(Int::U16)),
                     true
                 ),
                 [operand]
@@ -209,7 +209,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assemb
             Type::Float(Float::F32) => call!(
                 CallSite::builtin(
                     "cast_f32_u32".into(),
-                    FnSig::new(&[Type::Float(Float::F32)], Type::Int(Int::U32)),
+                    FnSig::new([Type::Float(Float::F32)], Type::Int(Int::U32)),
                     true
                 ),
                 [operand]
@@ -217,7 +217,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assemb
             Type::Float(Float::F64) => call!(
                 CallSite::builtin(
                     "cast_f64_u32".into(),
-                    FnSig::new(&[Type::Float(Float::F64)], Type::Int(Int::U32)),
+                    FnSig::new([Type::Float(Float::F64)], Type::Int(Int::U32)),
                     true
                 ),
                 [operand]
@@ -228,7 +228,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assemb
             Type::Float(Float::F32) => call!(
                 CallSite::builtin(
                     "cast_f32_u64".into(),
-                    FnSig::new(&[Type::Float(Float::F32)], Type::Int(Int::U64)),
+                    FnSig::new([Type::Float(Float::F32)], Type::Int(Int::U64)),
                     true
                 ),
                 [operand]
@@ -236,7 +236,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assemb
             Type::Float(Float::F64) => call!(
                 CallSite::builtin(
                     "cast_f64_u64".into(),
-                    FnSig::new(&[Type::Float(Float::F64)], Type::Int(Int::U64)),
+                    FnSig::new([Type::Float(Float::F64)], Type::Int(Int::U64)),
                     true
                 ),
                 [operand]
@@ -248,7 +248,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assemb
             Type::Float(Float::F32) => call!(
                 CallSite::builtin(
                     "cast_f32_usize".into(),
-                    FnSig::new(&[Type::Float(Float::F32)], Type::Int(Int::USize)),
+                    FnSig::new([Type::Float(Float::F32)], Type::Int(Int::USize)),
                     true
                 ),
                 [operand]
@@ -257,7 +257,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assemb
             Type::Float(Float::F64) => call!(
                 CallSite::builtin(
                     "cast_f64_usize".into(),
-                    FnSig::new(&[Type::Float(Float::F64)], Type::Int(Int::USize)),
+                    FnSig::new([Type::Float(Float::F64)], Type::Int(Int::USize)),
                     true
                 ),
                 [operand]
@@ -269,7 +269,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assemb
             Type::Float(Float::F32) => call!(
                 CallSite::builtin(
                     "cast_f32_isize".into(),
-                    FnSig::new(&[Type::Float(Float::F32)], Type::Int(Int::ISize)),
+                    FnSig::new([Type::Float(Float::F32)], Type::Int(Int::ISize)),
                     true
                 ),
                 [operand]
@@ -277,7 +277,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assemb
             Type::Float(Float::F64) => call!(
                 CallSite::builtin(
                     "cast_f64_isize".into(),
-                    FnSig::new(&[Type::Float(Float::F64)], Type::Int(Int::ISize)),
+                    FnSig::new([Type::Float(Float::F64)], Type::Int(Int::ISize)),
                     true
                 ),
                 [operand]
@@ -288,7 +288,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assemb
             Type::Float(Float::F32) => call!(
                 CallSite::builtin(
                     "cast_f32_i8".into(),
-                    FnSig::new(&[Type::Float(Float::F32)], Type::Int(Int::I8)),
+                    FnSig::new([Type::Float(Float::F32)], Type::Int(Int::I8)),
                     true
                 ),
                 [operand]
@@ -296,7 +296,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assemb
             Type::Float(Float::F64) => call!(
                 CallSite::builtin(
                     "cast_f64_i8".into(),
-                    FnSig::new(&[Type::Float(Float::F64)], Type::Int(Int::I8)),
+                    FnSig::new([Type::Float(Float::F64)], Type::Int(Int::I8)),
                     true
                 ),
                 [operand]
@@ -307,7 +307,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assemb
             Type::Float(Float::F32) => call!(
                 CallSite::builtin(
                     "cast_f32_i16".into(),
-                    FnSig::new(&[Type::Float(Float::F32)], Type::Int(Int::I16)),
+                    FnSig::new([Type::Float(Float::F32)], Type::Int(Int::I16)),
                     true
                 ),
                 [operand]
@@ -315,7 +315,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assemb
             Type::Float(Float::F64) => call!(
                 CallSite::builtin(
                     "cast_f64_i16".into(),
-                    FnSig::new(&[Type::Float(Float::F64)], Type::Int(Int::I16)),
+                    FnSig::new([Type::Float(Float::F64)], Type::Int(Int::I16)),
                     true
                 ),
                 [operand]
@@ -326,7 +326,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assemb
             Type::Float(Float::F32) => call!(
                 CallSite::builtin(
                     "cast_f32_i32".into(),
-                    FnSig::new(&[Type::Float(Float::F32)], Type::Int(Int::I32)),
+                    FnSig::new([Type::Float(Float::F32)], Type::Int(Int::I32)),
                     true
                 ),
                 [operand]
@@ -334,7 +334,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assemb
             Type::Float(Float::F64) => call!(
                 CallSite::builtin(
                     "cast_f64_i32".into(),
-                    FnSig::new(&[Type::Float(Float::F64)], Type::Int(Int::I32)),
+                    FnSig::new([Type::Float(Float::F64)], Type::Int(Int::I32)),
                     true
                 ),
                 [operand]
@@ -345,7 +345,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assemb
             Type::Float(Float::F32) => call!(
                 CallSite::builtin(
                     "cast_f32_i64".into(),
-                    FnSig::new(&[Type::Float(Float::F32)], Type::Int(Int::I64)),
+                    FnSig::new([Type::Float(Float::F32)], Type::Int(Int::I64)),
                     true
                 ),
                 [operand]
@@ -353,7 +353,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assemb
             Type::Float(Float::F64) => call!(
                 CallSite::builtin(
                     "cast_f64_i64".into(),
-                    FnSig::new(&[Type::Float(Float::F64)], Type::Int(Int::I64)),
+                    FnSig::new([Type::Float(Float::F64)], Type::Int(Int::I64)),
                     true
                 ),
                 [operand]
@@ -390,7 +390,7 @@ pub fn int_to_float(src: Type, target: &Type, parrent: CILNode, asm: &mut Assemb
             CallSite::boxed(
                 ClassRef::int_128(asm).into(),
                 "op_Explicit".into(),
-                FnSig::new(&[src], target.clone()),
+                FnSig::new([src], *target),
                 true,
             ),
             [parrent]
@@ -401,7 +401,7 @@ pub fn int_to_float(src: Type, target: &Type, parrent: CILNode, asm: &mut Assemb
             CallSite::boxed(
                 ClassRef::uint_128(asm).into(),
                 "op_Explicit".into(),
-                FnSig::new(&[src], target.clone()),
+                FnSig::new([src], *target),
                 true,
             ),
             [parrent]

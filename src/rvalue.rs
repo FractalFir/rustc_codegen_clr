@@ -308,7 +308,7 @@ pub fn handle_rvalue<'tcx>(
                 crate::casts::int_to_int(Type::Int(Int::I32), &target, ldc_i32!(0), ctx.asm_mut())
             } else {
                 crate::casts::int_to_int(
-                    disrc_type.clone(),
+                    disrc_type,
                     &target,
                     crate::utilis::adt::get_discr(layout.layout, addr, owner, owner_ty, ctx),
                     ctx.asm_mut(),
@@ -391,7 +391,7 @@ fn repeat<'tcx>(
     // Check if the element is byte sized. If so, use initblk to quickly initialize this array.
     if crate::utilis::compiletime_sizeof(element_ty, ctx.tcx()) == 1 {
         let val = Box::new(CILNode::TemporaryLocal(Box::new((
-            element_type.clone(),
+            element_type,
             vec![CILRoot::SetTMPLocal { value: element }].into(),
             CILNode::LDIndU8 {
                 ptr: Box::new(
@@ -452,25 +452,25 @@ fn repeat<'tcx>(
                 src: Box::new(CILNode::LoadAddresOfTMPLocal),
                 len: Box::new(
                     conv_usize!(ldc_u64!(curr_copy_size))
-                        * conv_usize!(size_of!(element_type.clone())),
+                        * conv_usize!(size_of!(element_type)),
                 ),
             });
             curr_len *= 2;
         }
         let branches: Box<_> = branches.into();
-        CILNode::TemporaryLocal(Box::new((array.clone(), branches, CILNode::LoadTMPLocal)))
+        CILNode::TemporaryLocal(Box::new((array, branches, CILNode::LoadTMPLocal)))
     } else {
         let mut branches = Vec::new();
         for idx in 0..times {
             branches.push(CILRoot::Call {
                 site: Box::new(CallSite::new(
-                    Some(array_dotnet.clone()),
+                    Some(array_dotnet),
                     "set_Item".into(),
                     FnSig::new(
-                        &[
-                            ctx.asm_mut().nref(array.clone()),
+                        [
+                            ctx.asm_mut().nref(array),
                             Type::Int(Int::USize),
-                            element_type.clone(),
+                            element_type,
                         ],
                         Type::Void,
                     ),
@@ -485,7 +485,7 @@ fn repeat<'tcx>(
             });
         }
         let branches: Box<_> = branches.into();
-        CILNode::TemporaryLocal(Box::new((array.clone(), branches, CILNode::LoadTMPLocal)))
+        CILNode::TemporaryLocal(Box::new((array, branches, CILNode::LoadTMPLocal)))
     }
 }
 fn ptr_to_ptr<'tcx>(
@@ -526,7 +526,7 @@ fn ptr_to_ptr<'tcx>(
             )
         }
         (true, false) => CILNode::TemporaryLocal(Box::new((
-            source_type.clone(),
+            source_type,
             [CILRoot::SetTMPLocal {
                 value: handle_operand(operand, ctx),
             }]
@@ -535,7 +535,7 @@ fn ptr_to_ptr<'tcx>(
                 CILNode::LoadAddresOfTMPLocal,
                 FieldDescriptor::new(
                     get_type(source, ctx).as_class_ref().unwrap(),
-                    ctx.asm_mut().nptr(cilly::v2::Type::Void.into()),
+                    ctx.asm_mut().nptr(cilly::v2::Type::Void),
                     crate::DATA_PTR.into(),
                 )
             )
