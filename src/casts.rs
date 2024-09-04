@@ -7,8 +7,8 @@ use cilly::{
     conv_u16, conv_u32, conv_u64, conv_u8, conv_usize,
 };
 /// Casts from intiger type `src` to target `target`
-pub fn int_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assembly) -> CILNode {
-    if src == *target {
+pub fn int_to_int(src: Type, target: Type, operand: CILNode, asm: &mut Assembly) -> CILNode {
+    if src == target {
         return operand;
     }
     match (&src, &target) {
@@ -91,7 +91,7 @@ pub fn int_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assembly
                 CallSite::new_extern(
                     ClassRef::uint_128(asm),
                     "op_Explicit".into(),
-                    FnSig::new([src], *target),
+                    FnSig::new([src], target),
                     true,
                 ),
                 [operand]
@@ -101,7 +101,7 @@ pub fn int_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assembly
             CallSite::new_extern(
                 ClassRef::int_128(asm),
                 "op_Implicit".into(),
-                FnSig::new([src], *target),
+                FnSig::new([src], target),
                 true,
             ),
             [operand]
@@ -110,7 +110,7 @@ pub fn int_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assembly
             CallSite::new_extern(
                 ClassRef::int_128(asm),
                 "op_Explicit".into(),
-                FnSig::new([src], *target),
+                FnSig::new([src], target),
                 true,
             ),
             [operand]
@@ -119,7 +119,7 @@ pub fn int_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assembly
             CallSite::new_extern(
                 ClassRef::uint_128(asm),
                 "op_Implicit".into(),
-                FnSig::new([src], *target),
+                FnSig::new([src], target),
                 true,
             ),
             [operand]
@@ -128,7 +128,7 @@ pub fn int_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assembly
             CallSite::new_extern(
                 ClassRef::int_128(asm),
                 "op_Explicit".into(),
-                FnSig::new([src], *target),
+                FnSig::new([src], target),
                 true,
             ),
             [operand]
@@ -137,7 +137,7 @@ pub fn int_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assembly
             CallSite::new_extern(
                 ClassRef::uint_128(asm),
                 "op_Explicit".into(),
-                FnSig::new([src], *target),
+                FnSig::new([src], target),
                 true,
             ),
             [operand]
@@ -147,13 +147,13 @@ pub fn int_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assembly
     }
 }
 /// Returns CIL ops required to convert type src to target
-pub fn float_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assembly) -> CILNode {
+pub fn float_to_int(src: Type, target: Type, operand: CILNode, asm: &mut Assembly) -> CILNode {
     match target {
         Type::Int(Int::I128) => call!(
             CallSite::new_extern(
                 ClassRef::int_128(asm),
                 "op_Explicit".into(),
-                FnSig::new([src], *target),
+                FnSig::new([src], target),
                 true,
             ),
             [operand]
@@ -162,7 +162,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assemb
             CallSite::new_extern(
                 ClassRef::uint_128(asm),
                 "op_Explicit".into(),
-                FnSig::new([src], *target),
+                FnSig::new([src], target),
                 true,
             ),
             [operand]
@@ -367,7 +367,7 @@ pub fn float_to_int(src: Type, target: &Type, operand: CILNode, asm: &mut Assemb
     //
 }
 /// Returns CIL ops required to convert to intiger of type `target`
-fn to_int(target: &Type, operand: CILNode) -> CILNode {
+fn to_int(target: Type, operand: CILNode) -> CILNode {
     match target {
         Type::Int(Int::I8) => conv_i8!(operand),
         Type::Int(Int::U8) => conv_u8!(operand),
@@ -379,18 +379,18 @@ fn to_int(target: &Type, operand: CILNode) -> CILNode {
         Type::Int(Int::U64) => conv_u64!(operand),
         Type::Int(Int::ISize) => conv_isize!(operand),
         Type::Int(Int::USize) => conv_usize!(operand),
-        Type::Ptr(tpe) => conv_usize!(operand).cast_ptr(Type::Ptr(*tpe)),
+        Type::Ptr(tpe) => conv_usize!(operand).cast_ptr(Type::Ptr(tpe)),
         _ => todo!("Can't cast to {target:?} yet!"),
     }
 }
 /// Returns CIL ops required to casts from intiger type `src` to `target` MOVE TO CILLY
-pub fn int_to_float(src: Type, target: &Type, parrent: CILNode, asm: &mut Assembly) -> CILNode {
+pub fn int_to_float(src: Type, target: Type, parrent: CILNode, asm: &mut Assembly) -> CILNode {
     if matches!(src, Type::Int(Int::I128)) {
         call!(
             CallSite::boxed(
                 ClassRef::int_128(asm).into(),
                 "op_Explicit".into(),
-                FnSig::new([src], *target),
+                FnSig::new([src], target),
                 true,
             ),
             [parrent]
@@ -401,7 +401,7 @@ pub fn int_to_float(src: Type, target: &Type, parrent: CILNode, asm: &mut Assemb
             CallSite::boxed(
                 ClassRef::uint_128(asm).into(),
                 "op_Explicit".into(),
-                FnSig::new([src], *target),
+                FnSig::new([src], target),
                 true,
             ),
             [parrent]

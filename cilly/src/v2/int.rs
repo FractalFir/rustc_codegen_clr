@@ -170,6 +170,7 @@ impl Int {
         }
     }
     /// Returns a short name of this int.
+    #[must_use]
     pub fn name(&self) -> &'static str {
         match self {
             Int::U8 => "u8",
@@ -187,6 +188,7 @@ impl Int {
         }
     }
     /// Checks if this int is signed.
+    #[must_use]
     pub fn is_signed(&self) -> bool {
         match self {
             Int::U8 | Int::U16 | Int::U32 | Int::U64 | Int::U128 | Int::USize => false,

@@ -118,7 +118,7 @@ fn sig_to(sig: FnSig, asm: &Assembly) -> String {
     )
 }
 fn escape_class_name(name: &str) -> String {
-    name.replace(".", "dot")
+    name.replace('.', "dot")
 }
 fn class_ref(cref: &ClassRef, asm: &Assembly) -> String {
     let name = asm.get_string(cref.name());

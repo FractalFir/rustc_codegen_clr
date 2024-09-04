@@ -120,13 +120,9 @@ impl CILRoot {
                 let (addr, val, _, _) = info.as_mut();
                 [addr, val].into()
             }
-            CILRoot::InitBlk(info) => {
+            CILRoot::InitBlk(info) | CILRoot::CpBlk(info) => {
                 let (addr, val, len) = info.as_mut();
                 [addr, val, len].into()
-            }
-            CILRoot::CpBlk(info) => {
-                let (dst, src, len) = info.as_mut();
-                [dst, src, len].into()
             }
             CILRoot::CallI(info) => {
                 let (ptr, _, args) = info.as_mut();
@@ -136,14 +132,16 @@ impl CILRoot {
             }
         }
     }
+    #[allow(clippy::too_many_lines)]
     pub fn from_v1(v1: &V1Root, asm: &mut Assembly) -> Self {
         match v1 {
             V1Root::SourceFileInfo(sfi) => {
-                let line_start = sfi.0.start.min(u32::MAX as u64) as u32;
-                let line_end = sfi.0.end.min(u32::MAX as u64) as u32;
-                let line_len = (line_end - line_start).min(u16::MAX as u32) as u16;
-                let col_start = sfi.1.start.min(u16::MAX as u64) as u16;
-                let col_end = sfi.1.end.min(u16::MAX as u64) as u16;
+                let line_start = u32::try_from(sfi.0.start.min(u64::from(u32::MAX))).unwrap();
+                let line_end = u32::try_from(sfi.0.end.min(u64::from(u32::MAX))).unwrap();
+                let line_len =
+                    u16::try_from((line_end - line_start).min(u32::from(u16::MAX))).unwrap();
+                let col_start = u16::try_from(sfi.1.start.min(u64::from(u16::MAX))).unwrap();
+                let col_end = u16::try_from(sfi.1.end.min(u64::from(u16::MAX))).unwrap();
                 let col_len = col_end - col_start;
                 let file = asm.alloc_string(sfi.2.clone());
                 Self::SourceFileInfo {
@@ -391,9 +389,10 @@ impl CILRoot {
             },
             V1Root::Volatile(inner) => {
                 let mut tmp = Self::from_v1(inner, asm);
-                match &mut tmp {
-                    Self::StInd(inner) => inner.3 = true,
-                    _ => panic!(),
+                if let Self::StInd(inner) = &mut tmp {
+                    inner.3 = true;
+                } else {
+                    panic!()
                 }
                 tmp
             }
@@ -410,6 +409,8 @@ impl CILRoot {
         }
     }
     /// Maps this root using `root_map` and `node_map`.
+    #[allow(clippy::too_many_lines)]
+    #[must_use]
     pub fn map(
         self,
         asm: &mut Assembly,
@@ -616,9 +617,9 @@ fn many_mut<T>(input: &mut [T]) -> Vec<&mut T> {
         _ => {
             let half = input.len() / 2;
             let (lhs, rhs) = input.split_at_mut(half);
-            let mut res = many_mut(lhs);
-            res.extend(many_mut(rhs));
-            res
+            let mut result = many_mut(lhs);
+            result.extend(many_mut(rhs));
+            result
         }
     };
     assert_eq!(res.len(), input_len);

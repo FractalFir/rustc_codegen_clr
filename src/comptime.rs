@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::fn_ctx::MethodCompileCtx;
 use cilly::v2::ClassDef;
 #[derive(Clone)]
@@ -16,14 +17,16 @@ impl ComptimeLocalVar {
         }
     }
 }
+#[allow(unused_variables)]
 pub fn interpret<'tcx>(
     ctx: &mut MethodCompileCtx<'tcx, '_>,
     body: &'tcx rustc_middle::mir::Body<'tcx>,
 ) {
+    todo!("Can't yet start the comptime assembly editor.");
+    /*
     let block_id = rustc_middle::mir::BasicBlock::from_usize(0);
     let locals = vec![ComptimeLocalVar::NotSet; body.local_decls.len()];
-    todo!();
-    /*
+
     loop {
         let block_data = &body.basic_blocks[block_id];
         // Skip cleanup in the interpreter

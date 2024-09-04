@@ -23,6 +23,7 @@ pub struct FieldDesc {
 }
 
 impl FieldDesc {
+    #[must_use]
     pub fn new(owner: ClassRefIdx, name: StringIdx, tpe: Type) -> Self {
         Self { owner, name, tpe }
     }
@@ -33,14 +34,17 @@ impl FieldDesc {
         Self::new(*owner, asm.alloc_string(desc.name()), *desc.tpe())
     }
 
+    #[must_use]
     pub fn owner(&self) -> ClassRefIdx {
         self.owner
     }
 
+    #[must_use]
     pub fn name(&self) -> StringIdx {
         self.name
     }
 
+    #[must_use]
     pub fn tpe(&self) -> Type {
         self.tpe
     }
@@ -63,6 +67,7 @@ pub struct StaticFieldDesc {
 }
 
 impl StaticFieldDesc {
+    #[must_use]
     pub fn new(owner: ClassRefIdx, name: StringIdx, tpe: Type) -> Self {
         Self { owner, name, tpe }
     }
@@ -76,14 +81,17 @@ impl StaticFieldDesc {
         Self::new(owner, asm.alloc_string(desc.name()), *desc.tpe())
     }
 
+    #[must_use]
     pub fn owner(&self) -> ClassRefIdx {
         self.owner
     }
 
+    #[must_use]
     pub fn name(&self) -> StringIdx {
         self.name
     }
 
+    #[must_use]
     pub fn tpe(&self) -> Type {
         self.tpe
     }

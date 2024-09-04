@@ -30,12 +30,7 @@ pub fn bit_and_unchecked<'tcx>(
             ),
             [
                 operand_a,
-                crate::casts::int_to_int(
-                    type_b,
-                    &Type::Int(Int::U128),
-                    operand_b,
-                    ctx.asm_mut()
-                )
+                crate::casts::int_to_int(type_b, Type::Int(Int::U128), operand_b, ctx.asm_mut())
             ]
         ),
         TyKind::Int(IntTy::I128) => call!(
@@ -50,12 +45,7 @@ pub fn bit_and_unchecked<'tcx>(
             ),
             [
                 operand_a,
-                crate::casts::int_to_int(
-                    type_b,
-                    &Type::Int(Int::I128),
-                    operand_b,
-                    ctx.asm_mut()
-                )
+                crate::casts::int_to_int(type_b, Type::Int(Int::I128), operand_b, ctx.asm_mut())
             ]
         ),
         _ => and!(operand_a, operand_b),

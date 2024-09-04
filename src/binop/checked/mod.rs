@@ -210,13 +210,13 @@ pub fn mul<'tcx>(
                 [
                     casts::int_to_int(
                         Type::Int(Int::U64),
-                        &Type::Int(Int::U128),
+                        Type::Int(Int::U128),
                         ops_a.clone(),
                         ctx.asm_mut()
                     ),
                     casts::int_to_int(
                         Type::Int(Int::U64),
-                        &Type::Int(Int::U128),
+                        Type::Int(Int::U128),
                         ops_b.clone(),
                         ctx.asm_mut()
                     )
@@ -233,7 +233,7 @@ pub fn mul<'tcx>(
                     mul.clone(),
                     casts::int_to_int(
                         Type::Int(Int::U64),
-                        &Type::Int(Int::U128),
+                        Type::Int(Int::U128),
                         max(ty, ctx.asm_mut()),
                         ctx.asm_mut()
                     )
@@ -254,13 +254,13 @@ pub fn mul<'tcx>(
                 [
                     casts::int_to_int(
                         Type::Int(Int::I64),
-                        &Type::Int(Int::I128),
+                        Type::Int(Int::I128),
                         ops_a.clone(),
                         ctx.asm_mut()
                     ),
                     casts::int_to_int(
                         Type::Int(Int::I64),
-                        &Type::Int(Int::I128),
+                        Type::Int(Int::I128),
                         ops_b.clone(),
                         ctx.asm_mut()
                     )
@@ -277,7 +277,7 @@ pub fn mul<'tcx>(
                     mul.clone(),
                     casts::int_to_int(
                         Type::Int(Int::I64),
-                        &Type::Int(Int::I128),
+                        Type::Int(Int::I128),
                         max(ty, ctx.asm_mut()),
                         ctx.asm_mut()
                     )
@@ -294,7 +294,7 @@ pub fn mul<'tcx>(
                     mul.clone(),
                     casts::int_to_int(
                         Type::Int(Int::I64),
-                        &Type::Int(Int::I128),
+                        Type::Int(Int::I128),
                         min(ty, ctx.asm_mut()),
                         ctx.asm_mut()
                     )
@@ -317,13 +317,13 @@ pub fn mul<'tcx>(
                 [
                     casts::int_to_int(
                         Type::Int(Int::USize),
-                        &Type::Int(Int::U128),
+                        Type::Int(Int::U128),
                         ops_a.clone(),
                         ctx.asm_mut()
                     ),
                     casts::int_to_int(
                         Type::Int(Int::USize),
-                        &Type::Int(Int::U128),
+                        Type::Int(Int::U128),
                         ops_b.clone(),
                         ctx.asm_mut()
                     )
@@ -341,7 +341,7 @@ pub fn mul<'tcx>(
                     mul.clone(),
                     casts::int_to_int(
                         Type::Int(Int::USize),
-                        &Type::Int(Int::U128),
+                        Type::Int(Int::U128),
                         max(ty, ctx.asm_mut()),
                         ctx.asm_mut()
                     )
@@ -362,13 +362,13 @@ pub fn mul<'tcx>(
                 [
                     casts::int_to_int(
                         Type::Int(Int::ISize),
-                        &Type::Int(Int::I128),
+                        Type::Int(Int::I128),
                         ops_a.clone(),
                         ctx.asm_mut()
                     ),
                     casts::int_to_int(
                         Type::Int(Int::ISize),
-                        &Type::Int(Int::I128),
+                        Type::Int(Int::I128),
                         ops_b.clone(),
                         ctx.asm_mut()
                     )
@@ -385,7 +385,7 @@ pub fn mul<'tcx>(
                     mul.clone(),
                     casts::int_to_int(
                         Type::Int(Int::ISize),
-                        &Type::Int(Int::I128),
+                        Type::Int(Int::I128),
                         max(ty, ctx.asm_mut()),
                         ctx.asm_mut()
                     )
@@ -402,7 +402,7 @@ pub fn mul<'tcx>(
                     mul.clone(),
                     casts::int_to_int(
                         Type::Int(Int::ISize),
-                        &Type::Int(Int::I128),
+                        Type::Int(Int::I128),
                         min(ty, ctx.asm_mut()),
                         ctx.asm_mut()
                     )

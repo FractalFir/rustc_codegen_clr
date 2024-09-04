@@ -1,6 +1,6 @@
 #![feature(rustc_private)]
 #![feature(let_chains)]
-#![feature(f16, alloc_error_hook, unsized_const_params)]
+#![feature(f16, alloc_error_hook)]
 #![warn(clippy::pedantic)]
 // Used for handling some configs. Will be refactored later.
 #![allow(clippy::assertions_on_constants)]

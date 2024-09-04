@@ -10,6 +10,7 @@ pub enum CILIterElem {
 }
 
 impl CILIterElem {
+    #[must_use]
     pub fn as_node(self) -> Option<CILNode> {
         if let Self::Node(v) = self {
             Some(v)
@@ -165,18 +166,17 @@ impl<'asm> Iterator for CILIter<'asm> {
                     | CILRoot::Pop(val)
                     | CILRoot::Throw(val)
                     | CILRoot::SetStaticField { val, .. },
-                ) => match idx {
-                    1 => {
+                ) => {
+                    if idx == &1 {
                         *idx += 1;
                         let val = self.asm.get_node(*val);
                         self.elems.push((CILIterElem::Node(val.clone()), 0));
                         continue;
-                    }
-                    _ => {
+                    } else {
                         self.elems.pop();
                         continue;
                     }
-                },
+                }
                 CILIterElem::Node(
                     CILNode::Const(_)
                     | CILNode::LdArg(_)
@@ -231,18 +231,17 @@ impl<'asm> Iterator for CILIter<'asm> {
                         continue;
                     };
                     match cond {
-                        BranchCond::True(cond) | BranchCond::False(cond) => match idx {
-                            1 => {
+                        BranchCond::True(cond) | BranchCond::False(cond) => {
+                            if idx == &1 {
                                 *idx += 1;
                                 let val = self.asm.get_node(*cond);
                                 self.elems.push((CILIterElem::Node(val.clone()), 0));
                                 continue;
-                            }
-                            _ => {
+                            } else {
                                 self.elems.pop();
                                 continue;
                             }
-                        },
+                        }
                         BranchCond::Eq(lhs, rhs)
                         | BranchCond::Ne(lhs, rhs)
                         | BranchCond::Lt(lhs, rhs, _)

@@ -73,13 +73,13 @@ pub fn saturating_add<'tcx>(
         Type::Int(Int::I64) => {
             let a = crate::casts::int_to_int(
                 Type::Int(Int::I64),
-                &Type::Int(Int::I128),
+                Type::Int(Int::I128),
                 a,
                 ctx.asm_mut(),
             );
             let b = crate::casts::int_to_int(
                 Type::Int(Int::I64),
-                &Type::Int(Int::I128),
+                Type::Int(Int::I128),
                 b,
                 ctx.asm_mut(),
             );
@@ -118,7 +118,7 @@ pub fn saturating_add<'tcx>(
             );
             crate::casts::int_to_int(
                 Type::Int(Int::I128),
-                &Type::Int(Int::I64),
+                Type::Int(Int::I64),
                 diff_capped,
                 ctx.asm_mut(),
             )
@@ -127,13 +127,13 @@ pub fn saturating_add<'tcx>(
         Type::Int(Int::ISize) => {
             let a = crate::casts::int_to_int(
                 Type::Int(Int::ISize),
-                &Type::Int(Int::I128),
+                Type::Int(Int::I128),
                 a,
                 ctx.asm_mut(),
             );
             let b = crate::casts::int_to_int(
                 Type::Int(Int::ISize),
-                &Type::Int(Int::I128),
+                Type::Int(Int::I128),
                 b,
                 ctx.asm_mut(),
             );
@@ -173,7 +173,7 @@ pub fn saturating_add<'tcx>(
             );
             crate::casts::int_to_int(
                 Type::Int(Int::I128),
-                &Type::Int(Int::ISize),
+                Type::Int(Int::ISize),
                 diff_capped,
                 ctx.asm_mut(),
             )
@@ -259,13 +259,13 @@ pub fn saturating_sub<'tcx>(
         Type::Int(Int::I64) => {
             let a = crate::casts::int_to_int(
                 Type::Int(Int::I64),
-                &Type::Int(Int::I128),
+                Type::Int(Int::I128),
                 a,
                 ctx.asm_mut(),
             );
             let b = crate::casts::int_to_int(
                 Type::Int(Int::I64),
-                &Type::Int(Int::I128),
+                Type::Int(Int::I128),
                 b,
                 ctx.asm_mut(),
             );
@@ -304,7 +304,7 @@ pub fn saturating_sub<'tcx>(
             );
             crate::casts::int_to_int(
                 Type::Int(Int::I128),
-                &Type::Int(Int::I64),
+                Type::Int(Int::I64),
                 diff_capped,
                 ctx.asm_mut(),
             )
@@ -312,13 +312,13 @@ pub fn saturating_sub<'tcx>(
         Type::Int(Int::ISize) => {
             let a = crate::casts::int_to_int(
                 Type::Int(Int::ISize),
-                &Type::Int(Int::I128),
+                Type::Int(Int::I128),
                 a,
                 ctx.asm_mut(),
             );
             let b = crate::casts::int_to_int(
                 Type::Int(Int::ISize),
-                &Type::Int(Int::I128),
+                Type::Int(Int::I128),
                 b,
                 ctx.asm_mut(),
             );
@@ -358,7 +358,7 @@ pub fn saturating_sub<'tcx>(
             );
             crate::casts::int_to_int(
                 Type::Int(Int::I128),
-                &Type::Int(Int::ISize),
+                Type::Int(Int::ISize),
                 diff_capped,
                 ctx.asm_mut(),
             )

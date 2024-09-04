@@ -26,7 +26,7 @@ macro_rules! cast {
         let src = $operand.ty(&$ctx.body().local_decls, $ctx.tcx());
         let src = $ctx.monomorphize(src);
         let src = $ctx.type_from_cache(src);
-        $cast_name(src, &target, handle_operand($operand, $ctx), $asm)
+        $cast_name(src, target, handle_operand($operand, $ctx), $asm)
     }};
 }
 pub fn is_rvalue_unint<'tcx>(rvalue: &Rvalue<'tcx>, ctx: &mut MethodCompileCtx<'tcx, '_>) -> bool {
@@ -233,7 +233,7 @@ pub fn handle_rvalue<'tcx>(
                 }
                 Type::Int(Int::U64 | Int::I64) => crate::casts::int_to_int(
                     Type::Int(Int::USize),
-                    &target,
+                    target,
                     val.cast_ptr(Type::Int(Int::USize)),
                     ctx.asm_mut(),
                 ),
@@ -291,25 +291,23 @@ pub fn handle_rvalue<'tcx>(
             let layout = ctx.layout_of(owner_ty);
             let target = ctx.type_from_cache(owner_ty.discriminant_ty(ctx.tcx()));
             let (disrc_type, _) = crate::utilis::adt::enum_tag_info(layout.layout, ctx.asm_mut());
-            let owner = if let Type::ClassRef(dotnet_type) = owner {
-                dotnet_type
-            } else {
+            let Type::ClassRef(owner) = owner else {
                 eprintln!("Can't get the discirminant of type {owner_ty:?}, because it is a zst. Size:{} Discr type:{:?}",layout.layout.size.bytes(), owner_ty.discriminant_ty(ctx.tcx()));
                 return crate::casts::int_to_int(
                     Type::Int(Int::I32),
-                    &target,
+                    target,
                     ldc_i32!(0),
                     ctx.asm_mut(),
                 );
             };
 
             if disrc_type == Type::Void {
-                // Just alwways return 0 if the discriminat type is `()` - this seems to work, and be what rustc expects. Wierd, but OK.
-                crate::casts::int_to_int(Type::Int(Int::I32), &target, ldc_i32!(0), ctx.asm_mut())
+                // TODO: This always returns 0 if the discriminat type is `()` - this seems to work, but is incorrect. I should be finding the only inhabited variant instead.
+                crate::casts::int_to_int(Type::Int(Int::I32), target, ldc_i32!(0), ctx.asm_mut())
             } else {
                 crate::casts::int_to_int(
                     disrc_type,
-                    &target,
+                    target,
                     crate::utilis::adt::get_discr(layout.layout, addr, owner, owner_ty, ctx),
                     ctx.asm_mut(),
                 )
@@ -451,8 +449,7 @@ fn repeat<'tcx>(
                 ),
                 src: Box::new(CILNode::LoadAddresOfTMPLocal),
                 len: Box::new(
-                    conv_usize!(ldc_u64!(curr_copy_size))
-                        * conv_usize!(size_of!(element_type)),
+                    conv_usize!(ldc_u64!(curr_copy_size)) * conv_usize!(size_of!(element_type)),
                 ),
             });
             curr_len *= 2;

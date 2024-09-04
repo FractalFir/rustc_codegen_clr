@@ -12,6 +12,8 @@ pub struct MethodCompileCtx<'tcx, 'asm> {
 }
 
 impl<'tcx, 'asm> MethodCompileCtx<'tcx, 'asm> {
+    #[must_use]
+    /// Creates a [`MethodCompileCtx`] with a certain MIR body.
     pub fn with_body<'a: 'asm>(&'a mut self, body: &'tcx rustc_middle::mir::Body<'tcx>) -> Self {
         assert!(
             self.method.is_none(),

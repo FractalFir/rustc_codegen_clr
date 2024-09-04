@@ -32,6 +32,7 @@ pub struct ClassRef {
 }
 
 impl ClassRef {
+    #[must_use]
     pub fn display(&self, asm: &Assembly) -> String {
         format!(
             "ClassRef{{name:{:?} {},asm:{:?} {:?},is_valuetype:{},generics{:?}}}",
@@ -43,6 +44,7 @@ impl ClassRef {
             self.generics()
         )
     }
+    #[must_use]
     pub fn new(
         name: StringIdx,
         asm: Option<StringIdx>,
@@ -63,18 +65,22 @@ impl ClassRef {
     }
 
     /// Returns the assembly containing this typedef
+    #[must_use]
     pub fn asm(&self) -> Option<StringIdx> {
         self.asm
     }
     /// The name of this class definition
+    #[must_use]
     pub fn name(&self) -> StringIdx {
         self.name
     }
 
+    #[must_use]
     pub fn is_valuetype(&self) -> bool {
         self.is_valuetype
     }
 
+    #[must_use]
     pub fn generics(&self) -> &[Type] {
         &self.generics
     }
@@ -384,6 +390,7 @@ pub struct ClassDef {
 impl ClassDef {
     /// Checks if this class defition has a with the name and type.
 
+    #[must_use]
     pub fn has_static_field(&self, fld_name: StringIdx, fld_tpe: Type) -> bool {
         self.static_fields
             .iter()
@@ -398,6 +405,7 @@ impl ClassDef {
             .chain(self.extends.iter().map(|cref| Type::ClassRef(*cref)))
     }
     #[allow(clippy::too_many_arguments)]
+    #[must_use]
     pub fn new(
         name: StringIdx,
         is_valuetype: bool,
@@ -436,14 +444,17 @@ impl ClassDef {
         &mut self.static_fields
     }
 
+    #[must_use]
     pub fn access(&self) -> &Access {
         &self.access
     }
 
+    #[must_use]
     pub fn is_valuetype(&self) -> bool {
         self.is_valuetype
     }
 
+    #[must_use]
     pub fn extends(&self) -> Option<ClassRefIdx> {
         self.extends
     }
@@ -452,26 +463,32 @@ impl ClassDef {
         self.explict_size.is_some() || self.fields.iter().any(|(_, _, offset)| offset.is_some())
     }
 
+    #[must_use]
     pub fn fields(&self) -> &[(Type, StringIdx, Option<u32>)] {
         &self.fields
     }
 
+    #[must_use]
     pub fn name(&self) -> StringIdx {
         self.name
     }
 
+    #[must_use]
     pub fn static_fields(&self) -> &[(Type, StringIdx, bool)] {
         &self.static_fields
     }
 
+    #[must_use]
     pub fn methods(&self) -> &[MethodDefIdx] {
         &self.methods
     }
 
+    #[must_use]
     pub fn explict_size(&self) -> Option<NonZeroU32> {
         self.explict_size
     }
 
+    #[must_use]
     pub fn generics(&self) -> u32 {
         self.generics
     }

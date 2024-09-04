@@ -190,7 +190,7 @@ pub fn set_discr<'tcx>(
                 .try_into()
                 .expect("Enum varaint id can't fit in u64."));
             let tag_val =
-                crate::casts::int_to_int(Type::Int(Int::U64), &tag_tpe, tag_val, ctx.asm_mut());
+                crate::casts::int_to_int(Type::Int(Int::U64), tag_tpe, tag_val, ctx.asm_mut());
             CILRoot::SetField {
                 addr: Box::new(enum_addr),
                 value: Box::new(tag_val),
@@ -222,7 +222,7 @@ pub fn set_discr<'tcx>(
                     .try_into()
                     .expect("Enum varaint id can't fit in u64."));
                 let tag_val =
-                    crate::casts::int_to_int(Type::Int(Int::U64), &tag_tpe, tag_val, ctx.asm_mut());
+                    crate::casts::int_to_int(Type::Int(Int::U64), tag_tpe, tag_val, ctx.asm_mut());
                 CILRoot::SetField {
                     addr: Box::new(enum_addr),
                     value: Box::new(tag_val),
@@ -256,7 +256,7 @@ pub fn get_discr<'tcx>(
                 .discriminant_for_variant(ctx.tcx(), index)
                 .map_or(u128::from(index.as_u32()), |discr| discr.val);
             let tag_val = ldc_u64!(discr_val.try_into().expect("Tag does not fit within a u64"));
-            return crate::casts::int_to_int(Type::Int(Int::U64), &tag_tpe, tag_val, ctx.asm_mut());
+            return crate::casts::int_to_int(Type::Int(Int::U64), tag_tpe, tag_val, ctx.asm_mut());
         }
         Variants::Multiple {
             ref tag_encoding, ..
@@ -348,7 +348,7 @@ pub fn get_discr<'tcx>(
                         tag,
                         crate::casts::int_to_int(
                             Type::Int(Int::U64),
-                            &disrc_type,
+                            disrc_type,
                             ldc_u64!(niche_start
                                 .try_into()
                                 .expect("tag is too big to fit within u64")),
@@ -359,7 +359,7 @@ pub fn get_discr<'tcx>(
 
                 let tagged_discr = crate::casts::int_to_int(
                     Type::Int(Int::U64),
-                    &disrc_type,
+                    disrc_type,
                     ldc_u64!(u64::from(niche_variants.start().as_u32())),
                     ctx.asm_mut(),
                 );
@@ -376,7 +376,7 @@ pub fn get_discr<'tcx>(
                         tag,
                         crate::casts::int_to_int(
                             Type::Int(Int::U64),
-                            &disrc_type,
+                            disrc_type,
                             ldc_u64!(niche_start
                                 .try_into()
                                 .expect("tag is too big to fit within u64")),
@@ -414,7 +414,7 @@ pub fn get_discr<'tcx>(
                         relative_discr.clone(),
                         crate::casts::int_to_int(
                             Type::Int(Int::U64),
-                            &disrc_type,
+                            disrc_type,
                             ldc_u64!(u64::from(relative_max)),
                             ctx.asm_mut()
                         )
@@ -433,7 +433,7 @@ pub fn get_discr<'tcx>(
             } else {
                 let delta = crate::casts::int_to_int(
                     Type::Int(Int::U64),
-                    &disrc_type,
+                    disrc_type,
                     ldc_u64!(delta.try_into().expect("Tag does not fit within u64")),
                     ctx.asm_mut(),
                 );
@@ -463,7 +463,7 @@ pub fn get_discr<'tcx>(
                 tagged_discr,
                 crate::casts::int_to_int(
                     Type::Int(Int::U64),
-                    &disrc_type,
+                    disrc_type,
                     ldc_u64!(u64::from(untagged_variant.as_u32())),
                     ctx.asm_mut(),
                 ),

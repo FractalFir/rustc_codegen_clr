@@ -35,12 +35,7 @@ pub fn shr_unchecked<'tcx>(
                 ),
                 [
                     ops_a,
-                    crate::casts::int_to_int(
-                        type_b,
-                        &Type::Int(Int::I32),
-                        ops_b,
-                        ctx.asm_mut()
-                    )
+                    crate::casts::int_to_int(type_b, Type::Int(Int::I32), ops_b, ctx.asm_mut())
                 ]
             )
         }
@@ -57,12 +52,7 @@ pub fn shr_unchecked<'tcx>(
                 ),
                 [
                     ops_a,
-                    crate::casts::int_to_int(
-                        type_b,
-                        &Type::Int(Int::I32),
-                        ops_b,
-                        ctx.asm_mut()
-                    )
+                    crate::casts::int_to_int(type_b, Type::Int(Int::I32), ops_b, ctx.asm_mut())
                 ]
             )
         }
@@ -70,12 +60,7 @@ pub fn shr_unchecked<'tcx>(
             TyKind::Uint(UintTy::U128 | UintTy::U64) | TyKind::Int(IntTy::I128 | IntTy::I64) => {
                 shr_un!(
                     ops_a,
-                    crate::casts::int_to_int(
-                        type_b,
-                        &Type::Int(Int::I32),
-                        ops_b,
-                        ctx.asm_mut()
-                    )
+                    crate::casts::int_to_int(type_b, Type::Int(Int::I32), ops_b, ctx.asm_mut())
                 )
             }
             _ => shr_un!(ops_a, ops_b),
@@ -84,12 +69,7 @@ pub fn shr_unchecked<'tcx>(
             TyKind::Uint(UintTy::U128 | UintTy::U64) | TyKind::Int(IntTy::I128 | IntTy::I64) => {
                 shr!(
                     ops_a,
-                    crate::casts::int_to_int(
-                        type_b,
-                        &Type::Int(Int::I32),
-                        ops_b,
-                        ctx.asm_mut()
-                    )
+                    crate::casts::int_to_int(type_b, Type::Int(Int::I32), ops_b, ctx.asm_mut())
                 )
             }
 
@@ -124,12 +104,7 @@ pub fn shr_checked<'tcx>(
                 [
                     ops_a,
                     conv_i32!(rem_un!(
-                        crate::casts::int_to_int(
-                            type_b,
-                            &Type::Int(Int::U32),
-                            ops_b,
-                            ctx.asm_mut()
-                        ),
+                        crate::casts::int_to_int(type_b, Type::Int(Int::U32), ops_b, ctx.asm_mut()),
                         ldc_u32!(128)
                     ))
                 ]
@@ -149,12 +124,7 @@ pub fn shr_checked<'tcx>(
                 [
                     ops_a,
                     conv_i32!(rem_un!(
-                        crate::casts::int_to_int(
-                            type_b,
-                            &Type::Int(Int::U32),
-                            ops_b,
-                            ctx.asm_mut()
-                        ),
+                        crate::casts::int_to_int(type_b, Type::Int(Int::U32), ops_b, ctx.asm_mut()),
                         ldc_u32!(128)
                     ))
                 ]
@@ -167,7 +137,7 @@ pub fn shr_checked<'tcx>(
                     rem_un!(
                         conv_u32!(crate::casts::int_to_int(
                             type_b,
-                            &Type::Int(Int::I32),
+                            Type::Int(Int::I32),
                             ops_b,
                             ctx.asm_mut()
                         )),
@@ -186,7 +156,7 @@ pub fn shr_checked<'tcx>(
                     rem_un!(
                         conv_u32!(crate::casts::int_to_int(
                             type_b,
-                            &Type::Int(Int::I32),
+                            Type::Int(Int::I32),
                             ops_b,
                             ctx.asm_mut()
                         )),
@@ -229,7 +199,7 @@ pub fn shl_checked<'tcx>(
                     conv_i32!(rem_un!(
                         conv_u32!(crate::casts::int_to_int(
                             type_b,
-                            &Type::Int(Int::U32),
+                            Type::Int(Int::U32),
                             ops_b,
                             ctx.asm_mut()
                         )),
@@ -254,7 +224,7 @@ pub fn shl_checked<'tcx>(
                     conv_i32!(rem_un!(
                         conv_u32!(crate::casts::int_to_int(
                             type_b,
-                            &Type::Int(Int::U32),
+                            Type::Int(Int::U32),
                             ops_b,
                             ctx.asm_mut()
                         )),
@@ -270,7 +240,7 @@ pub fn shl_checked<'tcx>(
                     rem_un!(
                         conv_u32!(crate::casts::int_to_int(
                             type_b,
-                            &Type::Int(Int::I32),
+                            Type::Int(Int::I32),
                             ops_b,
                             ctx.asm_mut()
                         )),
@@ -289,7 +259,7 @@ pub fn shl_checked<'tcx>(
                     rem_un!(
                         conv_u32!(crate::casts::int_to_int(
                             type_b,
-                            &Type::Int(Int::I32),
+                            Type::Int(Int::I32),
                             ops_b,
                             ctx.asm_mut()
                         )),
@@ -328,12 +298,7 @@ pub fn shl_unchecked<'tcx>(
                 ),
                 [
                     ops_a,
-                    crate::casts::int_to_int(
-                        type_b,
-                        &Type::Int(Int::I32),
-                        ops_b,
-                        ctx.asm_mut()
-                    )
+                    crate::casts::int_to_int(type_b, Type::Int(Int::I32), ops_b, ctx.asm_mut())
                 ]
             )
         }
@@ -350,12 +315,7 @@ pub fn shl_unchecked<'tcx>(
                 ),
                 [
                     ops_a,
-                    crate::casts::int_to_int(
-                        type_b,
-                        &Type::Int(Int::I32),
-                        ops_b,
-                        ctx.asm_mut()
-                    )
+                    crate::casts::int_to_int(type_b, Type::Int(Int::I32), ops_b, ctx.asm_mut())
                 ]
             )
         }
@@ -363,12 +323,7 @@ pub fn shl_unchecked<'tcx>(
             TyKind::Uint(UintTy::U128 | UintTy::U64) | TyKind::Int(IntTy::I128 | IntTy::I64) => {
                 shl!(
                     ops_a,
-                    crate::casts::int_to_int(
-                        type_b,
-                        &Type::Int(Int::I32),
-                        ops_b,
-                        ctx.asm_mut()
-                    )
+                    crate::casts::int_to_int(type_b, Type::Int(Int::I32), ops_b, ctx.asm_mut())
                 )
             }
             _ => shl!(ops_a, ops_b),

@@ -1,122 +1,17 @@
 use crate::assembly::MethodCompileCtx;
 use crate::operand::{handle_operand, operand_address};
-use crate::r#type::{fat_ptr_to, pointer_to_is_fat};
+use crate::r#type::fat_ptr_to;
 use cilly::cil_node::CILNode;
 use cilly::cil_root::CILRoot;
 use cilly::field_desc::FieldDescriptor;
-use cilly::v2::{ClassRefIdx, Int};
+use cilly::v2::Int;
 use cilly::Type;
-use cilly::{conv_u32, conv_usize, ld_field, ld_field_address, ldc_i64, ldc_u32, size_of};
+use cilly::{conv_u32, conv_usize, ldc_i64, ldc_u32, size_of};
 use rustc_middle::{
     mir::Operand,
     ty::{layout::TyAndLayout, ParamEnv, PolyExistentialTraitRef, Ty, TyKind, UintTy},
 };
 use rustc_target::abi::FIRST_VARIANT;
-struct UnsizeInfo<'tcx> {
-    /// Type the source pointer points to
-    source_points_to: Ty<'tcx>,
-    /// The address of the rarget pointer. This pointer should always be a thin pointer, pointing to a fat pointer.
-    target_ptr: CILNode,
-
-    target_dotnet: ClassRefIdx,
-    target_type: Type,
-    source_ptr: CILNode,
-}
-impl<'tcx> UnsizeInfo<'tcx> {
-    fn new(
-        source_points_to: Ty<'tcx>,
-        target_ptr: CILNode,
-        target_dotnet: ClassRefIdx,
-        target_type: Type,
-        source_ptr: CILNode,
-    ) -> Self {
-        Self {
-            source_points_to,
-            target_ptr,
-            target_dotnet,
-            target_type,
-            source_ptr,
-        }
-    }
-
-    pub fn for_unsize(
-        ctx: &mut MethodCompileCtx<'tcx, '_>,
-        operand: &Operand<'tcx>,
-        target: Ty<'tcx>,
-    ) -> Self {
-        // Get the monomorphized source and target type
-        let target = ctx.monomorphize(target);
-        let source = ctx.monomorphize(operand.ty(ctx.body(), ctx.tcx()));
-        // Get the source and target types as .NET types
-
-        let target_type = ctx.type_from_cache(target);
-        // Get the target type as a fat pointer.
-        let target_dotnet = target_type.as_class_ref().unwrap();
-
-        // Unsizing a box
-        if target.is_box() && source.is_box() {
-            let sized_ptr = operand_address(operand, ctx);
-            // 1. Get Unqiue<Source> from Box<Source>
-            let unique_desc = crate::utilis::field_descrptor(source, 0, ctx);
-            let source_ptr = ld_field!(sized_ptr, unique_desc);
-            // 2. Get NonNull<Source> from Unuqie<Source>
-            let unique_adt = crate::utilis::as_adt(source).unwrap();
-            let unique_ty = unique_adt.0.all_fields().nth(0).unwrap();
-            let non_null_ptr_desc =
-                crate::utilis::field_descrptor(unique_ty.ty(ctx.tcx(), unique_adt.1), 0, ctx);
-            let source_ptr = ld_field!(source_ptr, non_null_ptr_desc.clone());
-            // 3. Get Source* from NonNull<Source>
-            let non_null_adt =
-                crate::utilis::as_adt(unique_ty.ty(ctx.tcx(), unique_adt.1)).unwrap();
-            let non_null_ty = non_null_adt.0.all_fields().nth(0).unwrap();
-            let source_ptr_desc =
-                crate::utilis::field_descrptor(non_null_ty.ty(ctx.tcx(), unique_adt.1), 0, ctx);
-
-            let source_ptr = ld_field!(source_ptr, source_ptr_desc.clone());
-            // 4. Get Unique<Target> from Box<Target>
-            let unique_desc = crate::utilis::field_descrptor(target, 0, ctx);
-            let target_ptr = ld_field_address!(CILNode::LoadAddresOfTMPLocal, unique_desc);
-            // 5. Get NonNull<Target>  from Unique<Target>
-            let unique_adt = crate::utilis::as_adt(target).unwrap();
-            let unique_ty = unique_adt.0.all_fields().nth(0).unwrap();
-            let target_ptr_desc =
-                crate::utilis::field_descrptor(unique_ty.ty(ctx.tcx(), unique_adt.1), 0, ctx);
-            let target_ptr = ld_field_address!(target_ptr, target_ptr_desc);
-            // 6. Get Target* from NonNull<Target>
-            let non_null_adt =
-                crate::utilis::as_adt(unique_ty.ty(ctx.tcx(), unique_adt.1)).unwrap();
-            let non_null_ty = non_null_adt.0.all_fields().nth(0).unwrap();
-            let non_null_ptr_desc =
-                crate::utilis::field_descrptor(non_null_ty.ty(ctx.tcx(), non_null_adt.1), 0, ctx);
-            let target_ptr = ld_field_address!(target_ptr, non_null_ptr_desc.clone());
-            // 7. Set the target->metatdata = len and target->ptr = source->ptr
-            let derefed_source = source.boxed_ty();
-
-            Self::new(
-                derefed_source,
-                target_ptr,
-                non_null_ptr_desc.tpe().as_class_ref().unwrap(),
-                target_type,
-                source_ptr,
-            )
-        } else {
-            let derefed_source = source.builtin_deref(true).unwrap();
-            let sized_ptr = if pointer_to_is_fat(derefed_source, ctx.tcx(), ctx.instance()) {
-                operand_address(operand, ctx)
-            } else {
-                handle_operand(operand, ctx)
-            };
-
-            Self::new(
-                derefed_source,
-                CILNode::LoadAddresOfTMPLocal,
-                target_dotnet,
-                target_type,
-                sized_ptr,
-            )
-        }
-    }
-}
 
 /// Preforms an unsizing cast on operand `operand`, converting it to the `target` type.
 pub fn unsize2<'tcx>(
@@ -174,7 +69,9 @@ pub fn unsize2<'tcx>(
             ptr_field,
         )
     } else {
-        let operand = if !source.is_any_ptr() {
+        let operand = if source.is_any_ptr() {
+            handle_operand(operand, ctx)
+        } else {
             let source_type = ctx.type_from_cache(source);
             // If this type is a box<thin>, then its layout *should* be equivalent to a pointer, so this *should* be OK.
             CILNode::LDIndUSize {
@@ -189,8 +86,6 @@ pub fn unsize2<'tcx>(
                     .cast_ptr(ctx.asm_mut().nptr(Type::Int(Int::USize))),
                 ),
             }
-        } else {
-            handle_operand(operand, ctx)
         };
         // `source` is not a fat pointer, so operand should be a pointer.
 
@@ -226,9 +121,10 @@ pub(crate) fn unsized_info<'tcx>(
         ctx.tcx()
             .struct_lockstep_tails_for_codegen(source, target, ParamEnv::reveal_all());
     match (&source.kind(), &target.kind()) {
-        (&TyKind::Array(_, len), &TyKind::Slice(_)) => conv_usize!(ldc_i64!(len
-            .eval_target_usize(ctx.tcx(), ParamEnv::reveal_all())
-            as i64)),
+        (&TyKind::Array(_, len), &TyKind::Slice(_)) => conv_usize!(ldc_i64!(i64::try_from(
+            len.eval_target_usize(ctx.tcx(), ParamEnv::reveal_all())
+        )
+        .unwrap())),
         (
             &TyKind::Dynamic(data_a, _, src_dyn_kind),
             &TyKind::Dynamic(data_b, _, target_dyn_kind),
@@ -298,7 +194,6 @@ pub(crate) fn unsize_metadata<'tcx>(
     dst_ty: TyAndLayout<'tcx>,
 ) -> CILNode {
     let mut coerce_ptr = || {
-        
         if fx
             .layout_of(src_ty.ty.builtin_deref(true).unwrap())
             .is_unsized()

@@ -115,7 +115,8 @@ pub fn magic_type<'tcx>(
         todo!("Interop type {name:?} is not yet supported!")
     }
 }
-#[must_use] pub fn garag_to_usize<'tcx>(garg: GenericArg<'tcx>, _ctx: TyCtxt<'tcx>) -> u64 {
+#[must_use]
+pub fn garag_to_usize<'tcx>(garg: GenericArg<'tcx>, _ctx: TyCtxt<'tcx>) -> u64 {
     let usize_const = garg
         .as_const()
         .expect("Generic argument was not an constant!");
@@ -135,7 +136,8 @@ pub fn magic_type<'tcx>(
         _ => todo!("Can't convert generic arg of const kind {kind:?} to string!"),
     }
 }
-#[must_use] pub fn tuple_name(elements: &[Type], asm: &Assembly) -> String {
+#[must_use]
+pub fn tuple_name(elements: &[Type], asm: &Assembly) -> String {
     let generics: String = elements.iter().map(|t| t.mangle(asm)).collect();
     format!(
         "Tuple{generic_count}{generics}",

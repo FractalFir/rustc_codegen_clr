@@ -15,6 +15,7 @@ pub enum Float {
 }
 impl Float {
     /// Returns a constant 0 of this float.
+    #[must_use]
     pub fn zero(&self) -> Const {
         match self {
             Float::F16 => todo!(),
@@ -65,6 +66,7 @@ impl Float {
         }
     }
     /// Returns a short name of the float
+    #[must_use]
     pub fn name(&self) -> &str {
         match self {
             Float::F16 => "f16",

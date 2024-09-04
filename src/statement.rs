@@ -25,10 +25,8 @@ pub fn handle_statement<'tcx>(
 
             let layout = ctx.layout_of(owner_ty);
             //let (disrc_type, _) = crate::utilis::adt::enum_tag_info(&layout.layout, tcx);
-            let owner = if let cilly::Type::ClassRef(dotnet_type) = owner {
-                dotnet_type
-            } else {
-                panic!();
+            let cilly::Type::ClassRef(owner) = owner else {
+                panic!("Nonsense operation: attempted to set the discriminant of type {owner_ty:?}, which is not valid.");
             };
             //ops.push();
 

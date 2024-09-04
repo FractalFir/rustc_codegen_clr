@@ -53,7 +53,7 @@ fn block_gc(blocks: &mut Vec<BasicBlock>, asm: &Assembly) {
         .iter()
         .filter(|bb| alive.contains(&bb.block_id()))
         .cloned()
-        .collect()
+        .collect();
 }
 pub fn simplify_bbs(handler: Option<&mut Vec<BasicBlock>>, asm: &mut Assembly, fuel: &mut OptFuel) {
     let Some(blocks) = handler else { return };

@@ -8,7 +8,7 @@ use super::{
     cilroot::BranchCond, int, Assembly, CILIter, CILIterElem, CILNode, ClassRefIdx, Exporter,
     NodeIdx, RootIdx, Type,
 };
-use lazy_static::*;
+use lazy_static::lazy_static;
 lazy_static! {
     #[doc = "Specifies the path to the java bytecode assembler."]
     pub static ref JAVA_ASM_PATH:String = {
@@ -19,6 +19,7 @@ pub struct JavaExporter {
     is_lib: bool,
 }
 impl JavaExporter {
+    #[must_use]
     pub fn new(is_lib: bool) -> Self {
         Self { is_lib }
     }
@@ -41,7 +42,7 @@ impl JavaExporter {
                 "java/lang/Object".into()
             };
 
-            let name = asm.get_string(class_def.name()).replace(".", "/");
+            let name = asm.get_string(class_def.name()).replace('.', "/");
             writeln!(out, ".class {vis} {sealed} {name}\n.super {extends}")?;
             // Export size
             if let Some(size) = class_def.explict_size() {
@@ -185,22 +186,21 @@ impl Exporter for JavaExporter {
         let out = cmd.output().unwrap();
         let stdout = String::from_utf8_lossy(&out.stdout);
         let stderr = String::from_utf8_lossy(&out.stderr);
-        if stderr.contains("Error") || stdout.contains("Error") {
-            panic!(
-                "stdout:{} stderr:{} cmd:{cmd:?}",
-                stdout,
-                String::from_utf8_lossy(&out.stderr)
-            );
-        }
+        assert!(
+            !(stderr.contains("Error") || stdout.contains("Error")),
+            "stdout:{} stderr:{} cmd:{cmd:?}",
+            stdout,
+            String::from_utf8_lossy(&out.stderr)
+        );
 
         Ok(())
     }
 }
 fn simple_class_ref(cref: ClassRefIdx, asm: &Assembly) -> String {
     let cref = asm.class_ref(cref);
-    let name = asm.get_string(cref.name()).replace(".", "/");
+    let name = asm.get_string(cref.name()).replace('.', "/");
     if let Some(assembly) = cref.asm() {
-        let assembly = asm.get_string(assembly).replace(".", "/");
+        let assembly = asm.get_string(assembly).replace('.', "/");
         format!("{assembly}/{name}")
     } else {
         name
@@ -215,7 +215,7 @@ pub(crate) fn class_ref(cref: ClassRefIdx, asm: &Assembly) -> String {
         "class"
     };
     let generic_list = if cref.generics().is_empty() {
-        "".into()
+        String::new()
     } else {
         format!(
             "<{generics}>",
@@ -228,7 +228,7 @@ pub(crate) fn class_ref(cref: ClassRefIdx, asm: &Assembly) -> String {
         )
     };
     let generic_postfix = if cref.generics().is_empty() {
-        "".into()
+        String::new()
     } else {
         format!("`{}", cref.generics().len())
     };

@@ -138,6 +138,7 @@ impl Type {
             }
         }
     */
+    #[must_use]
     pub fn mangle(&self, asm: &Assembly) -> String {
         match self {
             Type::Ptr(inner) => format!("p{}", asm.get_type(*inner).mangle(asm)),
@@ -199,7 +200,7 @@ impl Type {
             }
         }
     }
-
+    #[must_use]
     pub fn as_class_ref(&self) -> Option<ClassRefIdx> {
         if let Self::ClassRef(v) = self {
             Some(*v)

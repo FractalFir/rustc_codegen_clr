@@ -215,8 +215,7 @@ pub fn place_elem_adress<'tcx>(
                     );
                     // This is a false positive
                     //    #[allow(unused_parens)]
-                    (ld_field!(addr_calc.clone(), desc))
-                        .cast_ptr(ctx.asm_mut().nptr(inner_type))
+                    (ld_field!(addr_calc.clone(), desc)).cast_ptr(ctx.asm_mut().nptr(inner_type))
                         + conv_usize!(size_of!(inner_type)) * conv_usize!(index)
                 }
                 TyKind::Array(element, _length) => {
@@ -247,11 +246,8 @@ pub fn place_elem_adress<'tcx>(
             let curr_type = fat_ptr_to(curr_type.as_ty().expect("Can't index into an enum!"), ctx);
 
             if *from_end {
-                let metadata_field = FieldDescriptor::new(
-                    curr_type,
-                    Type::Int(Int::USize),
-                    crate::METADATA.into(),
-                );
+                let metadata_field =
+                    FieldDescriptor::new(curr_type, Type::Int(Int::USize), crate::METADATA.into());
                 let ptr_field = FieldDescriptor::new(
                     curr_type,
                     ctx.asm_mut().nptr(Type::Void),
@@ -281,11 +277,8 @@ pub fn place_elem_adress<'tcx>(
                     CILNode::LoadTMPLocal,
                 )))
             } else {
-                let metadata_field = FieldDescriptor::new(
-                    curr_type,
-                    Type::Int(Int::USize),
-                    crate::METADATA.into(),
-                );
+                let metadata_field =
+                    FieldDescriptor::new(curr_type, Type::Int(Int::USize), crate::METADATA.into());
                 let ptr_field = FieldDescriptor::new(
                     curr_type,
                     ctx.asm_mut().nptr(Type::Void),
@@ -335,11 +328,8 @@ pub fn place_elem_adress<'tcx>(
                         ctx.asm_mut().nptr(Type::Void),
                         crate::DATA_PTR.into(),
                     );
-                    let len = FieldDescriptor::new(
-                        slice,
-                        Type::Int(Int::USize),
-                        crate::METADATA.into(),
-                    );
+                    let len =
+                        FieldDescriptor::new(slice, Type::Int(Int::USize), crate::METADATA.into());
                     let index = if *from_end {
                         //eprintln!("Slice index from end is:{offset}");
                         CILNode::Sub(
@@ -351,8 +341,7 @@ pub fn place_elem_adress<'tcx>(
                         //ops.extend(derf_op);
                     };
 
-                    ld_field!(addr_calc.clone(), desc)
-                        .cast_ptr(ctx.asm_mut().nptr(inner_type))
+                    ld_field!(addr_calc.clone(), desc).cast_ptr(ctx.asm_mut().nptr(inner_type))
                         + (index * conv_usize!(CILNode::SizeOf(inner_type.into())))
                 }
                 TyKind::Array(element, _) => {

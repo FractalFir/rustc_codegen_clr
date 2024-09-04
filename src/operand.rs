@@ -78,9 +78,8 @@ pub(crate) fn is_uninit<'tcx>(
                 }
                 ConstValue::Indirect { alloc_id, .. } => {
                     let data = ctx.tcx().global_alloc(alloc_id);
-                    let data = match data {
-                        rustc_middle::mir::interpret::GlobalAlloc::Memory(data) => data,
-                        _ => return false,
+                    let rustc_middle::mir::interpret::GlobalAlloc::Memory(data) = data else {
+                        return false;
                     };
                     let mask = data.0.init_mask();
                     let mut chunks =

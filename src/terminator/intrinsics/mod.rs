@@ -458,8 +458,7 @@ pub fn handle_intrinsic<'tcx>(
                     call!(
                         call_site,
                         [
-                            Box::new(dst)
-                                .cast_ptr(ctx.asm_mut().nref(Type::Int(Int::USize))),
+                            Box::new(dst).cast_ptr(ctx.asm_mut().nref(Type::Int(Int::USize))),
                             conv_usize!(value),
                             conv_usize!(comaprand)
                         ]
@@ -472,14 +471,7 @@ pub fn handle_intrinsic<'tcx>(
                     let call_site = CallSite::new(
                         Some(interlocked),
                         "CompareExchange".into(),
-                        FnSig::new(
-                            [
-                                ctx.asm_mut().nref(src_type),
-                                src_type,
-                                src_type,
-                            ],
-                            src_type,
-                        ),
+                        FnSig::new([ctx.asm_mut().nref(src_type), src_type, src_type], src_type),
                         true,
                     );
                     call!(call_site, [dst, value, comaprand])
@@ -738,9 +730,7 @@ pub fn handle_intrinsic<'tcx>(
                         call!(
                             call_site,
                             [
-                                Box::new(dst).cast_ptr(
-                                    ctx.asm_mut().nref(Type::Int(Int::USize))
-                                ),
+                                Box::new(dst).cast_ptr(ctx.asm_mut().nref(Type::Int(Int::USize))),
                                 conv_usize!(new),
                             ]
                         )
@@ -756,13 +746,7 @@ pub fn handle_intrinsic<'tcx>(
             let call_site = CallSite::new(
                 Some(interlocked),
                 "Exchange".into(),
-                FnSig::new(
-                    [
-                        ctx.asm_mut().nref(src_type),
-                        src_type,
-                    ],
-                    src_type,
-                ),
+                FnSig::new([ctx.asm_mut().nref(src_type), src_type], src_type),
                 true,
             );
             // T

@@ -100,7 +100,7 @@ pub fn ctpop<'tcx>(
             )),
             Type::Int(Int::U128) => crate::casts::int_to_int(
                 Type::Int(Int::U128),
-                &Type::Int(Int::U32),
+                Type::Int(Int::U32),
                 call!(
                     CallSite::new_extern(
                         ClassRef::uint_128(ctx.asm_mut()),
@@ -114,7 +114,7 @@ pub fn ctpop<'tcx>(
             ),
             Type::Int(Int::I128) => crate::casts::int_to_int(
                 Type::Int(Int::I128),
-                &Type::Int(Int::U32),
+                Type::Int(Int::U32),
                 call!(
                     CallSite::new_extern(
                         ClassRef::int_128(ctx.asm_mut()),
@@ -860,7 +860,7 @@ pub fn bitreverse<'tcx>(
             ),
             Type::Int(Int::I32) => crate::casts::int_to_int(
                 Type::Int(Int::U32),
-                &Type::Int(Int::I32),
+                Type::Int(Int::I32),
                 call!(
                     CallSite::builtin(
                         "bitreverse_u32".into(),
@@ -869,7 +869,7 @@ pub fn bitreverse<'tcx>(
                     ),
                     [crate::casts::int_to_int(
                         Type::Int(Int::I32),
-                        &Type::Int(Int::U32),
+                        Type::Int(Int::U32),
                         val,
                         ctx.asm_mut()
                     )]
@@ -886,7 +886,7 @@ pub fn bitreverse<'tcx>(
             ),
             Type::Int(Int::I64) => crate::casts::int_to_int(
                 Type::Int(Int::U64),
-                &Type::Int(Int::I64),
+                Type::Int(Int::I64),
                 call!(
                     CallSite::builtin(
                         "bitreverse_u64".into(),
@@ -895,7 +895,7 @@ pub fn bitreverse<'tcx>(
                     ),
                     [crate::casts::int_to_int(
                         Type::Int(Int::I64),
-                        &Type::Int(Int::U64),
+                        Type::Int(Int::U64),
                         val,
                         ctx.asm_mut()
                     )]
@@ -912,7 +912,7 @@ pub fn bitreverse<'tcx>(
             ),
             Type::Int(Int::I128) => crate::casts::int_to_int(
                 Type::Int(Int::U128),
-                &Type::Int(Int::I128),
+                Type::Int(Int::I128),
                 call!(
                     CallSite::builtin(
                         "bitreverse_u128".into(),
@@ -921,7 +921,7 @@ pub fn bitreverse<'tcx>(
                     ),
                     [crate::casts::int_to_int(
                         Type::Int(Int::I128),
-                        &Type::Int(Int::U128),
+                        Type::Int(Int::U128),
                         val,
                         ctx.asm_mut()
                     )]

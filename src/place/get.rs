@@ -139,7 +139,7 @@ fn place_elem_get<'a>(
                     );
                     let size = crate::casts::int_to_int(
                         Type::Int(Int::I32),
-                        &index_type,
+                        index_type,
                         CILNode::SizeOf(inner_type.into()),
                         ctx.asm_mut(),
                     );

@@ -221,12 +221,12 @@ fn insert_pthread_create(asm: &mut Assembly, patcher: &mut MissingMethodPatcher)
         let isize_tpe = asm.alloc_type(Type::Int(Int::ISize));
         let arg2_addr = asm.alloc_node(CILNode::LdArgA(2));
         let arg2_addr = asm.alloc_node(CILNode::RefToPtr(arg2_addr));
-        let transmuted_arg_2 = asm.alloc_node(CILNode::LdInd {
+        let transmute_arg_2 = asm.alloc_node(CILNode::LdInd {
             addr: arg2_addr,
             tpe: isize_tpe,
             volitale: false,
         });
-        let transmute_arg_2 = asm.alloc_root(CILRoot::StLoc(2, transmuted_arg_2));
+        let transmute_arg_2 = asm.alloc_root(CILRoot::StLoc(2, transmute_arg_2));
         // Arg2 needs to be transmuted, and the local 2 holds the transmuted value of arg2.
         let ldarg_2 = asm.alloc_node(CILNode::LdLoc(2));
         // Common types
@@ -382,7 +382,7 @@ pub fn instert_threading(asm: &mut Assembly, patcher: &mut MissingMethodPatcher)
     assert_eq!(
         *unmanaged_start,
         asm.alloc_class_ref(ClassRef::new(uts, None, false, [].into()))
-    )
+    );
 }
 pub fn insert_heap(asm: &mut Assembly, patcher: &mut MissingMethodPatcher) {
     insert_rust_alloc(asm, patcher);

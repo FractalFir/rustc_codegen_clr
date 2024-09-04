@@ -11,12 +11,15 @@ mod simplify_handlers;
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct OptFuel(u32);
 impl OptFuel {
+    #[must_use]
     pub fn scale(self, scale: f32) -> Self {
         let inner = self.0;
+        #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
         let scale_div = (1.0 / scale) as u32;
         Self(inner / scale_div)
     }
     /// Creates *fuel* fuel
+    #[must_use]
     pub fn new(fuel: u32) -> Self {
         Self(fuel)
     }
@@ -30,12 +33,16 @@ impl OptFuel {
         }
     }
     /// Checks if no fuel remains
+    #[must_use]
     pub fn exchausted(&self) -> bool {
         self.0 == 0
     }
 }
 
 impl CILNode {
+    // The complexity of this function is unavoidable.
+    #[allow(clippy::too_many_lines)]
+    #[must_use]
     pub fn propagate_locals(
         &self,
         asm: &mut Assembly,
@@ -45,7 +52,6 @@ impl CILNode {
         fuel: &mut OptFuel,
     ) -> Self {
         match self {
-            CILNode::Const(_) => self.clone(),
             CILNode::BinOp(rhs, lhs, biop) => {
                 let rhs = asm.get_node(*rhs).clone();
                 let lhs = asm.get_node(*lhs).clone();
@@ -163,7 +169,8 @@ impl CILNode {
             | CILNode::LdStaticField(_)
             | CILNode::LdFtn(_)
             | CILNode::LdTypeToken(_)
-            | CILNode::LocAllocAlgined { .. } => self.clone(),
+            | CILNode::LocAllocAlgined { .. }
+            | CILNode::Const(_) => self.clone(),
             CILNode::LdLen(arr) => {
                 let arr = asm.get_node(*arr).clone();
                 let arr = arr.propagate_locals(asm, idx, tpe, new_node, fuel);
@@ -197,11 +204,12 @@ impl CILNode {
 }
 impl BasicBlock {
     /// Removes duplicate debug info, to reduce the size of the final assembly.
+    #[allow(clippy::similar_names)]
     pub fn remove_duplicate_sfi(&mut self, asm: &mut Assembly) {
         let mut prev_ls = u32::MAX;
-        let mut prev_ll = u16::MAX;
-        #[allow(unused_variables)]
+        let mut prev_ll: u16 = u16::MAX;
         // This variable could become used if I change the duplicate sfi removal rules.
+        #[allow(unused_variables)]
         let mut prev_cs = u16::MAX;
         #[allow(unused_variables)]
         // This variable could become used if I change the duplicate sfi removal rules.
@@ -348,9 +356,9 @@ impl MethodImpl {
         }
         for node in blocks
             .iter()
-            .flat_map(|block| block.iter_roots())
+            .flat_map(super::basic_block::BasicBlock::iter_roots)
             .flat_map(|root| CILIter::new(asm.get_root(root).clone(), asm))
-            .flat_map(|elem| elem.as_node())
+            .filter_map(super::iter::CILIterElem::as_node)
         {
             match node {
                 CILNode::LdLoc(loc) => local_reads[loc as usize] = true,
@@ -359,7 +367,10 @@ impl MethodImpl {
             }
         }
         // Remove writes to those dead locals
-        for root in blocks.iter_mut().flat_map(|block| block.iter_roots_mut()) {
+        for root in blocks
+            .iter_mut()
+            .flat_map(super::basic_block::BasicBlock::iter_roots_mut)
+        {
             if let CILRoot::StLoc(local, tree) = asm.get_root(*root) {
                 // If the local is never read nor adress of, replace it with a pop or a nop.
                 if !local_reads[*local as usize] && !local_address_of[*local as usize] {
@@ -382,19 +393,19 @@ impl MethodImpl {
         }
 
         // Remove Nops
-        blocks.iter_mut().for_each(|block| {
+        for block in blocks.iter_mut() {
             block
                 .roots_mut()
                 .retain(|root| !matches!(asm.get_root(*root), CILRoot::Nop));
             // Remove Nops from the handler too.
             if let Some(blocks) = block.handler_mut() {
-                blocks.iter_mut().for_each(|block| {
+                for block in blocks.iter_mut() {
                     block
                         .roots_mut()
-                        .retain(|root| !matches!(asm.get_root(*root), CILRoot::Nop))
-                })
+                        .retain(|root| !matches!(asm.get_root(*root), CILRoot::Nop));
+                }
             }
-        });
+        }
     }
 }
 #[derive(Default)]
@@ -403,6 +414,7 @@ pub struct SideEffectInfoCache {
 }
 impl SideEffectInfoCache {
     /// Checks if a node may have side effects(if dupilcating it and poping the result would change the way a program runs).
+    #[allow(clippy::match_same_arms)]
     fn has_side_effects(&mut self, node: NodeIdx, asm: &Assembly) -> bool {
         if let Some(side_effect) = self.side_effects.get(&node) {
             return *side_effect;
@@ -447,9 +459,11 @@ impl SideEffectInfoCache {
 }
 impl MethodDef {
     pub fn iter_roots_mut(&mut self) -> Option<impl Iterator<Item = &mut RootIdx>> {
-        self.implementation_mut()
-            .blocks_mut()
-            .map(|blocks| blocks.iter_mut().flat_map(|block| block.iter_roots_mut()))
+        self.implementation_mut().blocks_mut().map(|blocks| {
+            blocks
+                .iter_mut()
+                .flat_map(super::basic_block::BasicBlock::iter_roots_mut)
+        })
     }
     pub fn map_roots(
         &mut self,
@@ -460,8 +474,8 @@ impl MethodDef {
         if let Some(roots) = self.iter_roots_mut() {
             roots.for_each(|root| {
                 let val = asm.get_root(*root).clone().map(asm, root_map, node_map);
-                *root = asm.alloc_root(val)
-            })
+                *root = asm.alloc_root(val);
+            });
         }
     }
     pub fn optimize(
@@ -486,7 +500,7 @@ impl MethodDef {
                     };
                     match (asm.get_root(*curr), asm.get_root(**peek)) {
                         (CILRoot::SourceFileInfo { .. }, CILRoot::SourceFileInfo { .. }) => {
-                            *curr = nop
+                            *curr = nop;
                         }
                         // If a rethrow is followed by a rethrow, this is effectively just a single rethrow
                         (CILRoot::ReThrow, CILRoot::ReThrow) => *curr = nop,
@@ -505,8 +519,8 @@ impl MethodDef {
                             if target == target2 && subtarget == subtarget2 {
                                 match cond {
                                     None => *curr = nop,
-                                    Some(BranchCond::True(tr)) | Some(BranchCond::False(tr)) => {
-                                        *curr = asm.alloc_root(CILRoot::Pop(*tr))
+                                    Some(BranchCond::True(tr) | BranchCond::False(tr)) => {
+                                        *curr = asm.alloc_root(CILRoot::Pop(*tr));
                                     }
                                     _ => (),
                                 }
@@ -551,21 +565,20 @@ impl MethodDef {
                                     _ => root,
                                 }
                             }
-                            Some(_) => root,
-                            None => root,
+                            Some(_) | None => root,
                         }
                     }
                     _ => root,
                 },
                 &mut opt_node::opt_node,
-            )
+            );
         }
         if fuel.consume(5) {
             self.implementation_mut().remove_duplicate_sfi(asm);
         }
         if fuel.consume(6) {
             if let MethodImpl::MethodBody { blocks, .. } = self.implementation_mut() {
-                blocks.iter_mut().for_each(|block| {
+                for block in blocks.iter_mut() {
                     simplify_bbs(block.handler_mut(), asm, fuel);
                     /*
                     let Some(handler) = block.handler() else {
@@ -576,7 +589,7 @@ impl MethodDef {
                         //panic!("about to remove {handler}");
                         block.remove_handler();
                     }*/
-                });
+                }
                 // simplify_bbs(Some(blocks), asm, fuel)
             };
         }
@@ -689,6 +702,7 @@ fn opt_mag() {
 
 
 */
+#[must_use]
 pub fn is_branch_unconditional(branch: &(u32, u32, Option<BranchCond>)) -> bool {
     branch.2.is_none()
 }

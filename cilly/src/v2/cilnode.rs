@@ -145,7 +145,8 @@ pub enum BinOp {
     Div,
 }
 impl CILNode {
-    /// Turns a native object handle into a special handle of type ISize
+    /// Turns a native object handle into a special handle of type [`Int::ISize`]
+    #[must_use]
     pub fn ref_to_handle(&self, asm: &mut Assembly) -> Self {
         let gc_handle = ClassRef::gc_handle(asm);
         let alloc = asm.alloc_string("Alloc");
@@ -169,6 +170,8 @@ impl CILNode {
     // WIP
     #[allow(unused_variables)]
     /// Typechecks this node, and returns its type if its valid.
+    /// # Errors
+    /// Returns an error if this node can't pass type checks.
     pub fn get_type(
         &self,
         sig: SigIdx,
@@ -182,14 +185,14 @@ impl CILNode {
                 let rhs = asm.get_node(*rhs).clone();
                 let lhs = lhs.get_type(sig, locals, asm)?;
                 let rhs = rhs.get_type(sig, locals, asm)?;
-                if lhs != rhs {
+                if lhs == rhs {
+                    Ok(lhs)
+                } else {
                     match (rhs, lhs) {
                         (Type::Int(Int::USize | Int::ISize), Type::Ptr(_)) => Ok(rhs),
                         (Type::Ptr(_), Type::Int(Int::USize | Int::ISize)) => Ok(lhs),
                         _ => Err(format!("mismatched binop args. {lhs:?} != {rhs:?}").into()),
                     }
-                } else {
-                    Ok(lhs)
                 }
             }
             CILNode::BinOp(lhs, rhs, op) => todo!("op:{op:?}"),
@@ -242,6 +245,8 @@ impl CILNode {
     }
 }
 impl CILNode {
+    // This function has to be complex
+    #[allow(clippy::too_many_lines)]
     pub fn from_v1(v1: &V1Node, asm: &mut Assembly) -> Self {
         match v1 {
             // Varaible access
@@ -784,9 +789,10 @@ impl CILNode {
             }
             V1Node::Volatile(inner) => {
                 let mut tmp = Self::from_v1(inner, asm);
-                match &mut tmp {
-                    Self::LdInd { volitale, .. } => *volitale = true,
-                    _ => panic!(),
+                if let Self::LdInd { volitale, .. } = &mut tmp {
+                    *volitale = true;
+                } else {
+                    panic!()
                 }
                 tmp
             }
@@ -815,6 +821,9 @@ impl CILNode {
 }
 impl CILNode {
     /// Changes the node by applying the `map` closure to each node. This process is
+    // The complexity of this function is unavoidable.
+    #[allow(clippy::too_many_lines)]
+    #[must_use]
     pub fn map(self, asm: &mut Assembly, map: &mut impl Fn(Self, &mut Assembly) -> Self) -> Self {
         match self {
             CILNode::Const(_)

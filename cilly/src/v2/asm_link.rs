@@ -31,7 +31,7 @@ impl Assembly {
                 Type::PlatformArray { elem, dims }
             }
             Type::FnPtr(sig) => {
-                let sig = self.translate_sig(source, source.get_sig(sig).clone());
+                let sig = self.translate_sig(source, &source.get_sig(sig).clone());
                 Type::FnPtr(self.alloc_sig(sig))
             }
         }
@@ -55,7 +55,7 @@ impl Assembly {
             .collect();
         self.alloc_class_ref(ClassRef::new(name, asm, cref.is_valuetype(), generics))
     }
-    pub(crate) fn translate_sig(&mut self, source: &Assembly, sig: FnSig) -> FnSig {
+    pub(crate) fn translate_sig(&mut self, source: &Assembly, sig: &FnSig) -> FnSig {
         FnSig::new(
             sig.inputs()
                 .iter()
@@ -83,11 +83,11 @@ impl Assembly {
     pub(crate) fn translate_method_ref(
         &mut self,
         source: &Assembly,
-        method_ref: MethodRef,
+        method_ref: &MethodRef,
     ) -> MethodRef {
         let class = self.translate_class_ref(source, method_ref.class());
         let name = self.alloc_string(source.get_string(method_ref.name()).as_ref());
-        let sig = self.translate_sig(source, source.get_sig(method_ref.sig()).clone());
+        let sig = self.translate_sig(source, &source.get_sig(method_ref.sig()).clone());
         let sig = self.alloc_sig(sig);
         let generics = method_ref
             .generics()
@@ -96,6 +96,8 @@ impl Assembly {
             .collect();
         MethodRef::new(class, name, sig, method_ref.kind(), generics)
     }
+    // The complexity of this function is unavoidable.
+    #[allow(clippy::too_many_lines)]
     pub(crate) fn translate_node(&mut self, source: &Assembly, node: CILNode) -> CILNode {
         match &node {
             CILNode::LdLoc(_) | CILNode::LdLocA(_) | CILNode::LdArg(_) | CILNode::LdArgA(_) => node,
@@ -118,7 +120,7 @@ impl Assembly {
             }
             CILNode::Call(call_arg) => {
                 let (mref, args) = call_arg.as_ref();
-                let method_ref = self.translate_method_ref(source, source.get_mref(*mref).clone());
+                let method_ref = self.translate_method_ref(source, &source.get_mref(*mref).clone());
                 let mref = self.alloc_methodref(method_ref);
                 let args = args
                     .iter()
@@ -173,7 +175,7 @@ impl Assembly {
                         crate::v2::cilnode::PtrCastRes::Ref(self.alloc_type(inner))
                     }
                     crate::v2::cilnode::PtrCastRes::FnPtr(sig) => {
-                        let sig = self.translate_sig(source, source.get_sig(*sig).clone());
+                        let sig = self.translate_sig(source, &source.get_sig(*sig).clone());
                         crate::v2::cilnode::PtrCastRes::FnPtr(self.alloc_sig(sig))
                     }
                     crate::v2::cilnode::PtrCastRes::USize
@@ -234,7 +236,7 @@ impl Assembly {
                 let (fnptr, sig, args) = args.as_ref();
                 let fnptr = self.translate_node(source, source.get_node(*fnptr).clone());
                 let fnptr = self.alloc_node(fnptr);
-                let sig = self.translate_sig(source, source.get_sig(*sig).clone());
+                let sig = self.translate_sig(source, &source.get_sig(*sig).clone());
                 let sig = self.alloc_sig(sig);
                 let args = args
                     .iter()
@@ -256,7 +258,7 @@ impl Assembly {
                 CILNode::LdStaticField(sfld)
             }
             CILNode::LdFtn(mref) => {
-                let method_ref = self.translate_method_ref(source, source.get_mref(*mref).clone());
+                let method_ref = self.translate_method_ref(source, &source.get_mref(*mref).clone());
                 let mref = self.alloc_methodref(method_ref);
                 CILNode::LdFtn(mref)
             }
@@ -291,6 +293,8 @@ impl Assembly {
             }
         }
     }
+    // The complexity of this function is unavoidable.
+    #[allow(clippy::too_many_lines)]
     pub(crate) fn translate_root(&mut self, source: &Assembly, root: CILRoot) -> CILRoot {
         match root {
             CILRoot::StLoc(loc, node) => {
@@ -405,7 +409,7 @@ impl Assembly {
             }
             CILRoot::Call(call_arg) => {
                 let (mref, args) = call_arg.as_ref();
-                let method_ref = self.translate_method_ref(source, source.get_mref(*mref).clone());
+                let method_ref = self.translate_method_ref(source, &source.get_mref(*mref).clone());
                 let mref = self.alloc_methodref(method_ref);
                 let args = args
                     .iter()
@@ -417,13 +421,13 @@ impl Assembly {
                 CILRoot::Call(Box::new((mref, args)))
             }
             CILRoot::StInd(info) => {
-                let (addr, val, tpe, vol) = info.as_ref();
+                let (addr, val, tpe, volitile) = info.as_ref();
                 let addr = self.translate_node(source, source.get_node(*addr).clone());
                 let addr = self.alloc_node(addr);
                 let val = self.translate_node(source, source.get_node(*val).clone());
                 let val = self.alloc_node(val);
                 let tpe = self.translate_type(source, *tpe);
-                CILRoot::StInd(Box::new((addr, val, tpe, *vol)))
+                CILRoot::StInd(Box::new((addr, val, tpe, *volitile)))
             }
             CILRoot::InitBlk(info) => {
                 let (dst, val, count) = info.as_ref();
@@ -449,7 +453,7 @@ impl Assembly {
                 let (fnptr, sig, args) = args.as_ref();
                 let fnptr = self.translate_node(source, source.get_node(*fnptr).clone());
                 let fnptr = self.alloc_node(fnptr);
-                let sig = self.translate_sig(source, source.get_sig(*sig).clone());
+                let sig = self.translate_sig(source, &source.get_sig(*sig).clone());
                 let sig = self.alloc_sig(sig);
                 let args = args
                     .iter()
@@ -495,7 +499,7 @@ impl Assembly {
         // OK, becuase our caller translates the parrent of this class too.
         let class = ClassDefIdx(class);
         let name = self.alloc_string(source.get_string(def.name()).as_ref());
-        let sig = self.translate_sig(source, source.get_sig(def.sig()).clone());
+        let sig = self.translate_sig(source, &source.get_sig(def.sig()).clone());
         let sig = self.alloc_sig(sig);
         let method_impl = match def.implementation() {
             super::MethodImpl::MethodBody { blocks, locals } => {
@@ -526,7 +530,7 @@ impl Assembly {
                 }
             }
             super::MethodImpl::AliasFor(mref) => {
-                let method_ref = self.translate_method_ref(source, source.get_mref(*mref).clone());
+                let method_ref = self.translate_method_ref(source, &source.get_mref(*mref).clone());
                 let mref = self.alloc_methodref(method_ref);
                 super::MethodImpl::AliasFor(mref)
             }
@@ -570,7 +574,7 @@ impl Assembly {
                 (tpe, name, *thread_local)
             })
             .collect();
-        let translated =   ClassDef::new(
+        let translated = ClassDef::new(
             name,
             def.is_valuetype(),
             def.generics(),
@@ -584,57 +588,56 @@ impl Assembly {
         let (defs_mut, strings) = self.class_defs_mut_strings();
         match defs_mut.entry(ClassDefIdx(class_ref)) {
             std::collections::hash_map::Entry::Occupied(mut occupied) => {
-                occupied.get_mut().merge_defs(translated.clone(),strings)
+                occupied.get_mut().merge_defs(translated.clone(), strings);
             }
             std::collections::hash_map::Entry::Vacant(vacant) => {
                 vacant.insert(translated.clone());
             }
         }
-  
-   def
+
+        def
             .methods()
             .iter()
             .for_each(|mdef| {
-                let mut method_def = self.translate_method_def(source, source.method_def(*mdef));
-                let method_ref = self.alloc_methodref(method_def.ref_to());
+                let mut method_definition = self.translate_method_def(source, source.method_def(*mdef));
+                let method_ref = self.alloc_methodref(method_definition.ref_to());
                 // 1st Take the orignal method, if it exists(we need this to be able to mutate methods)
                 let original = self.method_defs().get(&MethodDefIdx(method_ref));
-                let method_def = match original {
+                let method_definition = match original {
                     Some(original) => {
-                        assert_eq!(method_def.name(), original.name());
+                        assert_eq!(method_definition.name(), original.name());
                         // Check if this method has a special name, and needs merging.
-                        let name = self.get_string(method_def.name());
+                        let name = self.get_string(method_definition.name());
                         if SPECIAL_METHOD_NAMES.iter().any(|val| **val == **name) {
                             // Not special, proly does not need merging, so we can check if it matches and go on our merry way.
-                            assert_eq!(method_def.access(), original.access());
-                            assert_eq!(method_def.class(), original.class());
-                            assert_eq!(method_def.sig(), original.sig());
-                            assert_eq!(method_def.kind(), original.kind());
-                            method_def
+                            assert_eq!(method_definition.access(), original.access());
+                            assert_eq!(method_definition.class(), original.class());
+                            assert_eq!(method_definition.sig(), original.sig());
+                            assert_eq!(method_definition.kind(), original.kind());
+                            method_definition
                                 .implementation_mut()
                                 .merge_cctor_impls(original.implementation(), self);
-                            method_def
+                            method_definition
                         } else {
                             // Not special, proly does not need merging, so we can check if it matches and go on our merry way.
-                            assert_eq!(method_def.access(), original.access());
-                            assert_eq!(method_def.class(), original.class());
-                            assert_eq!(method_def.sig(), original.sig());
-                            assert_eq!(method_def.kind(), original.kind());
+                            assert_eq!(method_definition.access(), original.access());
+                            assert_eq!(method_definition.class(), original.class());
+                            assert_eq!(method_definition.sig(), original.sig());
+                            assert_eq!(method_definition.kind(), original.kind());
                             // EXPENSIVE, consider making this check debug only.
-                            let (left_val,right_val) = (&(method_def.implementation()), &(original.implementation()));
+                            let (left_val,right_val) = (&(method_definition.implementation()), &(original.implementation()));
                             if!(*left_val== *right_val){
                                 eprintln!("WARNING: linking methods with diveriging implmenentations. This is usualy a sign of a bug. {left_val:?} {right_val:?}");
                             };
-                            method_def
+                            method_definition
                         }
                     }
-                    None => method_def,
+                    None => method_definition,
                 };
-                self.new_method(method_def);
-       
+                self.new_method(method_definition);
             })
             ;
-            translated
+        translated
     }
 }
 const SPECIAL_METHOD_NAMES: &[&str] = &[CCTOR, TCCTOR, USER_INIT];

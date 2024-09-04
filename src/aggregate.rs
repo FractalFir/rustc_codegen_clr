@@ -298,11 +298,7 @@ fn aggregate_adt<'tcx>(
                 sub_trees.push(CILRoot::SetField {
                     addr: Box::new(variant_address.clone()),
                     value: Box::new(field_value.1.clone()),
-                    desc: Box::new(FieldDescriptor::new(
-                        adt_type_ref,
-                        field_type,
-                        field_name,
-                    )),
+                    desc: Box::new(FieldDescriptor::new(adt_type_ref, field_type, field_name)),
                 });
             }
 

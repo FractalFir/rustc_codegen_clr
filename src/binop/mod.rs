@@ -116,7 +116,7 @@ pub(crate) fn binop<'tcx>(
                 + ops_b
                     * crate::casts::int_to_int(
                         Type::Int(Int::U64),
-                        &offset_tpe,
+                        offset_tpe,
                         size_of!(pointed_ty),
                         ctx.asm_mut(),
                     )

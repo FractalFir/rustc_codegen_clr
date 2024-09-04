@@ -21,6 +21,7 @@ pub struct FnSig {
 }
 
 impl FnSig {
+    #[must_use]
     pub fn new(input: Box<[Type]>, output: Type) -> Self {
         Self {
             inputs: input,
@@ -28,14 +29,17 @@ impl FnSig {
         }
     }
 
+    #[must_use]
     pub fn inputs(&self) -> &[Type] {
         &self.inputs
     }
 
+    #[must_use]
     pub fn output(&self) -> &Type {
         &self.output
     }
 
+    #[must_use]
     pub fn from_v1(signature: &crate::FnSig) -> Self {
         let input = signature.inputs().iter().copied().collect();
         Self::new(input, *signature.output())

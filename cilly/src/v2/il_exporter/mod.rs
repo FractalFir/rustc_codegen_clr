@@ -1,5 +1,5 @@
 use crate::v2::MethodImpl;
-use lazy_static::*;
+use lazy_static::lazy_static;
 use std::io::Write;
 
 use super::{
@@ -13,6 +13,7 @@ pub struct ILExporter {
     is_lib: bool,
 }
 impl ILExporter {
+    #[must_use]
     pub fn new(flavour: IlasmFlavour, is_lib: bool) -> Self {
         Self { flavour, is_lib }
     }
@@ -104,7 +105,7 @@ impl ILExporter {
                         format!("pinvokeimpl(\"{lib}\" cdecl)")
                     }
                 } else {
-                    "".into()
+                    String::new()
                 };
                 let name = asm.get_string(method.name());
                 let sig = asm.get_sig(method.sig());
@@ -192,7 +193,7 @@ impl ILExporter {
                     if let Some(handler) = block.handler(){
                         writeln!(out,"}} catch [System.Runtime]System.Object{{")?;
                         // Check for the GetException intrinsic. If it is not used, put a pop here.
-                        if !handler.iter().flat_map(|block|block.roots()).flat_map(|root|CILIter::new(asm.get_root(*root).clone(),asm)).any(|elem|matches!(elem,CILIterElem::Node(CILNode::GetException))){
+                        if !handler.iter().flat_map(super::basic_block::BasicBlock::roots).flat_map(|root|CILIter::new(asm.get_root(*root).clone(),asm)).any(|elem|matches!(elem,CILIterElem::Node(CILNode::GetException))){
                             writeln!(out,"pop")?;
                         }
                         for hblock in handler{
@@ -423,45 +424,41 @@ impl ILExporter {
             } => {
                 self.export_node(asm, out, *input)?;
                 match (target, extend) {
-                    (super::Int::U8, super::cilnode::ExtendKind::ZeroExtend)
-                    | (super::Int::I8, super::cilnode::ExtendKind::ZeroExtend) => {
+                    (super::Int::U8 | super::Int::I8, super::cilnode::ExtendKind::ZeroExtend) => {
                         writeln!(out, "conv.u1")
                     }
-                    (super::Int::U8, super::cilnode::ExtendKind::SignExtend)
-                    | (super::Int::I8, super::cilnode::ExtendKind::SignExtend) => {
+                    (super::Int::U8 | super::Int::I8, super::cilnode::ExtendKind::SignExtend) => {
                         writeln!(out, "conv.i1")
                     }
-                    (super::Int::U16, super::cilnode::ExtendKind::ZeroExtend)
-                    | (super::Int::I16, super::cilnode::ExtendKind::ZeroExtend) => {
+                    (super::Int::U16 | super::Int::I16, super::cilnode::ExtendKind::ZeroExtend) => {
                         writeln!(out, "conv.u2")
                     }
-                    (super::Int::U16, super::cilnode::ExtendKind::SignExtend)
-                    | (super::Int::I16, super::cilnode::ExtendKind::SignExtend) => {
+                    (super::Int::U16 | super::Int::I16, super::cilnode::ExtendKind::SignExtend) => {
                         writeln!(out, "conv.i2")
                     }
-                    (super::Int::U32, super::cilnode::ExtendKind::ZeroExtend)
-                    | (super::Int::I32, super::cilnode::ExtendKind::ZeroExtend) => {
+                    (super::Int::U32 | super::Int::I32, super::cilnode::ExtendKind::ZeroExtend) => {
                         writeln!(out, "conv.u4")
                     }
-                    (super::Int::U32, super::cilnode::ExtendKind::SignExtend)
-                    | (super::Int::I32, super::cilnode::ExtendKind::SignExtend) => {
+                    (super::Int::U32 | super::Int::I32, super::cilnode::ExtendKind::SignExtend) => {
                         writeln!(out, "conv.i4")
                     }
 
-                    (super::Int::U64, super::cilnode::ExtendKind::ZeroExtend)
-                    | (super::Int::I64, super::cilnode::ExtendKind::ZeroExtend) => {
+                    (super::Int::U64 | super::Int::I64, super::cilnode::ExtendKind::ZeroExtend) => {
                         writeln!(out, "conv.u8")
                     }
-                    (super::Int::U64, super::cilnode::ExtendKind::SignExtend)
-                    | (super::Int::I64, super::cilnode::ExtendKind::SignExtend) => {
+                    (super::Int::U64 | super::Int::I64, super::cilnode::ExtendKind::SignExtend) => {
                         writeln!(out, "conv.i8")
                     }
-                    (super::Int::USize, super::cilnode::ExtendKind::SignExtend)
-                    | (super::Int::ISize, super::cilnode::ExtendKind::SignExtend) => {
+                    (
+                        super::Int::USize | super::Int::ISize,
+                        super::cilnode::ExtendKind::SignExtend,
+                    ) => {
                         writeln!(out, "conv.i")
                     }
-                    (super::Int::USize, super::cilnode::ExtendKind::ZeroExtend)
-                    | (super::Int::ISize, super::cilnode::ExtendKind::ZeroExtend) => {
+                    (
+                        super::Int::USize | super::Int::ISize,
+                        super::cilnode::ExtendKind::ZeroExtend,
+                    ) => {
                         writeln!(out, "conv.u")
                     }
                     (super::Int::U128, super::cilnode::ExtendKind::ZeroExtend) => todo!(),
@@ -590,7 +587,7 @@ impl ILExporter {
                     (Type::PlatformGeneric(_, _), false) => todo!(),
                     (Type::Bool, true) => writeln!(out, "volatile. ldind.i1"),
                     (Type::Bool, false) => writeln!(out, "ldind.i1"),
-                    (Type::Void, true) | (Type::Void, false) => {
+                    (Type::Void, true | false) => {
                         panic!("Void can't be dereferenced!")
                     }
                     (Type::PlatformArray { .. }, true) => writeln!(out, "volatile. ldind.ref"),
@@ -895,8 +892,8 @@ impl ILExporter {
                 col_len,
                 file,
             } => {
-                let col_end = *col_start as u32 + *col_len as u32;
-                let line_end = *line_start + *line_len as u32;
+                let col_end = u32::from(*col_start) + u32::from(*col_len);
+                let line_end = *line_start + u32::from(*line_len);
                 let file = asm.get_string(*file);
                 match self.flavour {
                     IlasmFlavour::Clasic => {
@@ -1103,14 +1100,14 @@ impl Exporter for ILExporter {
         let out = cmd.output().unwrap();
         let stdout = String::from_utf8_lossy(&out.stdout);
         let stderr = String::from_utf8_lossy(&out.stderr);
-        if stderr.contains("\nError\n") || stderr.contains("FAILURE") || stdout.contains("FAILURE")
-        {
-            panic!(
-                "stdout:{} stderr:{} cmd:{cmd:?}",
-                stdout,
-                String::from_utf8_lossy(&out.stderr)
-            );
-        }
+        assert!(
+            !(stderr.contains("\nError\n")
+                || stderr.contains("FAILURE")
+                || stdout.contains("FAILURE")),
+            "stdout:{} stderr:{} cmd:{cmd:?}",
+            stdout,
+            String::from_utf8_lossy(&out.stderr)
+        );
 
         Ok(())
     }
@@ -1134,7 +1131,7 @@ pub(crate) fn class_ref(cref: ClassRefIdx, asm: &Assembly) -> String {
         "class"
     };
     let generic_list = if cref.generics().is_empty() {
-        "".into()
+        String::new()
     } else {
         format!(
             "<{generics}>",
@@ -1147,7 +1144,7 @@ pub(crate) fn class_ref(cref: ClassRefIdx, asm: &Assembly) -> String {
         )
     };
     let generic_postfix = if cref.generics().is_empty() {
-        "".into()
+        String::new()
     } else {
         format!("`{}", cref.generics().len())
     };
