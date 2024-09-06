@@ -8,52 +8,49 @@ use cilly::{
 };
 
 pub fn atomic_add(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
-    sub!(
-        match tpe {
-            Type::Int(Int::U64 | Int::I64) => {
-                call!(
-                    CallSite::new(
-                        Some(ClassRef::interlocked(asm)),
-                        "Add".into(),
-                        FnSig::new(
-                            [asm.nref(Type::Int(Int::U64)), Type::Int(Int::U64)],
-                            Type::Int(Int::U64)
-                        ),
-                        true
-                    ),
-                    [addr, addend.clone()]
-                )
-            }
-            Type::Int(Int::U32 | Int::I32) => {
-                call!(
-                    CallSite::new(
-                        Some(ClassRef::interlocked(asm)),
-                        "Add".into(),
-                        FnSig::new(
-                            [asm.nref(Type::Int(Int::U32)), Type::Int(Int::U32)],
-                            Type::Int(Int::U32)
-                        ),
-                        true
-                    ),
-                    [addr, addend.clone()]
-                )
-            }
-            Type::Int(Int::USize | Int::ISize) | Type::Ptr(_) => call!(
-                CallSite::builtin(
-                    "atomic_add_usize".into(),
+    match tpe {
+        Type::Int(Int::U64 | Int::I64) => {
+            call!(
+                CallSite::new(
+                    Some(ClassRef::interlocked(asm)),
+                    "Add".into(),
                     FnSig::new(
-                        [asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)],
-                        Type::Int(Int::USize)
+                        [asm.nref(Type::Int(Int::U64)), Type::Int(Int::U64)],
+                        Type::Int(Int::U64)
                     ),
                     true
                 ),
                 [addr, addend.clone()]
+            )
+        }
+        Type::Int(Int::U32 | Int::I32) => {
+            call!(
+                CallSite::new(
+                    Some(ClassRef::interlocked(asm)),
+                    "Add".into(),
+                    FnSig::new(
+                        [asm.nref(Type::Int(Int::U32)), Type::Int(Int::U32)],
+                        Type::Int(Int::U32)
+                    ),
+                    true
+                ),
+                [addr, addend.clone()]
+            )
+        }
+        Type::Int(Int::USize | Int::ISize) | Type::Ptr(_) => call!(
+            CallSite::builtin(
+                "atomic_add_usize".into(),
+                FnSig::new(
+                    [asm.nref(Type::Int(Int::USize)), Type::Int(Int::USize)],
+                    Type::Int(Int::USize)
+                ),
+                true
             ),
+            [addr, addend.clone()]
+        ),
 
-            _ => todo!(),
-        },
-        addend
-    )
+        _ => todo!(),
+    }
 }
 pub fn atomic_or(addr: CILNode, addend: CILNode, tpe: Type, asm: &mut Assembly) -> CILNode {
     match tpe {

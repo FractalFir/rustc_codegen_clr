@@ -26,6 +26,33 @@ pub fn emulate_uint8_cmp_xchng(asm: &mut Assembly, patcher: &mut MissingMethodPa
         },
         Int::I32,
     );
+    let name = asm.alloc_string("atomic_xchng_u8");
+    let generator = move |_, asm: &mut Assembly| {
+        let ldarg_0 = asm.alloc_node(CILNode::LdArg(0));
+        let ldarg_1 = asm.alloc_node(CILNode::LdArg(1));
+        let ldloc_0 = asm.alloc_node(CILNode::LdLoc(0));
+        let uint8_idx = asm.alloc_type(Type::Int(Int::U8));
+        // Load value at addr 0 and write it to tmp
+        let arg0_val = asm.alloc_node(CILNode::LdInd {
+            addr: ldarg_0,
+            tpe: uint8_idx,
+            volitale: true,
+        });
+        let set_tmp = asm.alloc_root(CILRoot::StLoc(0, arg0_val));
+        // Copy arg1 to addr0
+        let copy_arg1 = asm.alloc_root(CILRoot::StInd(Box::new((
+            ldarg_0,
+            ldarg_1,
+            Type::Int(Int::U8),
+            true,
+        ))));
+        let ret = asm.alloc_root(CILRoot::Ret(ldloc_0));
+        MethodImpl::MethodBody {
+            blocks: vec![BasicBlock::new(vec![set_tmp, copy_arg1, ret], 0, None)],
+            locals: vec![(None, uint8_idx)],
+        }
+    };
+    patcher.insert(name, Box::new(generator));
 }
 pub fn generate_atomic(
     asm: &mut Assembly,
@@ -140,7 +167,7 @@ pub fn generate_all_atomics(asm: &mut Assembly, patcher: &mut MissingMethodPatch
             asm,
             patcher,
             "add",
-            |asm, lhs, rhs, _| asm.alloc_node(CILNode::BinOp(lhs, rhs, BinOp::And)),
+            |asm, lhs, rhs, _| asm.alloc_node(CILNode::BinOp(lhs, rhs, BinOp::Add)),
             int,
         );
     }

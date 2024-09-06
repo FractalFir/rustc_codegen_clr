@@ -13,7 +13,7 @@ use cilly::{
     conv_f32, conv_f64, conv_i16, conv_i32, conv_i64, conv_i8, conv_isize, conv_u16, conv_u32,
     conv_u64, conv_u8, conv_usize, eq,
     fn_sig::FnSig,
-    ld_field, ldc_i32, ldc_u32, ldc_u64, size_of,
+    ld_field, ldc_i32, ldc_u32, ldc_u64, size_of, sub,
     v2::{ClassRef, Float, Int},
     Type,
 };
@@ -520,7 +520,10 @@ pub fn handle_intrinsic<'tcx>(
 
             place_set(
                 destination,
-                atomic_add(dst, add_ammount, src_type, ctx.asm_mut()),
+                sub!(
+                    atomic_add(dst, add_ammount.clone(), src_type, ctx.asm_mut()),
+                    add_ammount
+                ),
                 ctx,
             )
         }
@@ -700,7 +703,7 @@ pub fn handle_intrinsic<'tcx>(
                         destination,
                         call!(
                             CallSite::builtin(
-                                "atomic_emulate_xchng_byte".into(),
+                                "atomic_xchng_u8".into(),
                                 FnSig::new(
                                     [ctx.asm_mut().nref(Type::Int(Int::U8)), Type::Int(Int::U8)],
                                     Type::Int(Int::U8)

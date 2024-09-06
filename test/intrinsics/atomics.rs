@@ -30,10 +30,9 @@ use core::ptr::addr_of_mut;
 //fn compare_exchange_byte(addr:&mut u8, byte:u8)->u8
 fn main() {
     let mut u: u32 = black_box(20);
-    test_eq!(
-        unsafe { core::intrinsics::atomic_xsub_release(addr_of_mut!(u), 10) },
-        20
-    );
+    let sub_old = unsafe { core::intrinsics::atomic_xsub_release(addr_of_mut!(u), 10) };
+    unsafe { printf(c"sub_old:%lx\n".as_ptr(), sub_old) };
+    test_eq!(sub_old, 20);
     let mut u: u32 = black_box(20);
     let (val, is_eq) =
         unsafe { core::intrinsics::atomic_cxchgweak_acquire_relaxed(addr_of_mut!(u), 20_u32, 10) };
@@ -50,6 +49,11 @@ fn main() {
     unsafe { test_eq!(atomic_nand_u32(&mut tmp, 0x0A), 0xFF_u32) };
     test_eq!(tmp, !(0xFF & 0x0A));
     ptr_bitops_tagging();
+    let atomic = core::sync::atomic::AtomicUsize::new(0);
+    test_eq!(atomic.load(core::sync::atomic::Ordering::Relaxed), 0);
+    let atomic_old = atomic.fetch_add(1, core::sync::atomic::Ordering::Relaxed);
+    unsafe { printf(c"atomic_old:%lx\n".as_ptr(), atomic_old as u64) };
+    test_eq!(atomic_old, 0);
 }
 fn ptr_bitops_tagging() {
     #[repr(align(16))]

@@ -662,7 +662,10 @@ impl ILExporter {
                     crate::v2::cilnode::MethodKind::Virtual => " ldftn instance",
                     crate::v2::cilnode::MethodKind::Constructor => "ldftn instance",
                 };
-                writeln!(out, "{ldftn_op} {output} {class}::'{name}'({inputs})")
+                writeln!(
+                    out,
+                    "{ldftn_op} {output} {class}::'{name}'({inputs}) //{ftn:?}"
+                )
             }
             super::CILNode::LdTypeToken(tok) => {
                 writeln!(out, "ldtoken {tok}", tok = type_il(asm.get_type(*tok), asm))
@@ -1189,7 +1192,7 @@ fn type_il(tpe: &Type, asm: &Assembly) -> String {
         },
         Type::PlatformChar => "char".into(),
         Type::PlatformGeneric(arg, generic) => match generic {
-            super::tpe::GenericKind::MethodGeneric => todo!(),
+            super::tpe::GenericKind::MethodGeneric => format!("!{arg}"),
             super::tpe::GenericKind::CallGeneric => format!("!!{arg}"),
             super::tpe::GenericKind::TypeGeneric => format!("!{arg}"),
         },

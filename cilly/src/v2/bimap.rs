@@ -18,8 +18,12 @@ impl<Key: IntoBiMapIndex + Eq + Hash + Clone + Debug, Value: Eq + Hash + Clone +
         match self.1.entry(val.clone()) {
             Entry::Occupied(key) => key.get().clone(),
             Entry::Vacant(empty) => {
-                let key =
-                    Key::from_index(NonZeroU32::new(u32::try_from(self.0.len()).unwrap()).unwrap());
+                let key = Key::from_index(
+                    NonZeroU32::new(u32::try_from(self.0.len()).expect("Key ID out of range") + 1)
+                        .expect(
+                            "Key ID 0 when a non-zero value expected, this could be an overflow",
+                        ),
+                );
 
                 empty.insert(key.clone());
                 self.0.push(val);

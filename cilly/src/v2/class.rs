@@ -374,6 +374,13 @@ impl ClassRef {
             [].into(),
         ))
     }
+    // Returns a `System.Collections.Concurrent.ConcurrentDictionary` of key,value
+    pub fn dictionary(key: Type, value: Type, asm: &mut Assembly) -> ClassRefIdx {
+        let name: StringIdx =
+            asm.alloc_string("System.Collections.Concurrent.ConcurrentDictionary");
+        let asm_name = Some(asm.alloc_string("System.Collections.Concurrent"));
+        asm.alloc_class_ref(ClassRef::new(name, asm_name, false, [key, value].into()))
+    }
 }
 #[derive(Hash, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub struct ClassDef {
